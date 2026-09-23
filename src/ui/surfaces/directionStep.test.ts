@@ -1,4 +1,4 @@
-// Decide Your Tenant's Direction on the Plan (DirectionQuestions.tsx, ContentStep.tsx,
+// Define Your Rollout Scope on the Plan (DirectionQuestions.tsx, ContentStep.tsx,
 // stepBody.ts): the decision anatomy, one Approve answers button, and the
 // "Answered in" line where a question used to be asked.
 import { test } from 'node:test'

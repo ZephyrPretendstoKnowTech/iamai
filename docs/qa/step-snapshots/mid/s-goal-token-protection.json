@@ -1,7 +1,7 @@
 {
   "lane": "Up Next",
   "substatus": null,
-  "reason": "after: Create or Correct Service Accounts Group",
+  "reason": "after: Configure Passkey Authentication",
   "fact": null,
   "badge": "Up Next",
   "bar": "After Configure Passkey Authentication",
@@ -13,14 +13,6 @@
     "Completion Criteria"
   ],
   "tiles": [
-    {
-      "label": "Affected people",
-      "state": "Not established"
-    },
-    {
-      "label": "Create or Correct Service Accounts Group",
-      "state": "Prerequisite · To do"
-    },
     {
       "label": "Configure Passkey Authentication",
       "state": "Prerequisite · To do"

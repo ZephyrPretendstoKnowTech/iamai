@@ -18,6 +18,8 @@ import { datesLineFor } from './stepExport.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { hoursInWords } from '../../coverage/verdict.ts'
 import { effectsOf } from '../../roadmap/strand.ts'
+import { PINNED } from '../../baseline/pinned.ts'
+import { PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
 
 test('a shared reference with an unfilled variable is a hole in the line that names it', () => {
   // {datesNew} expands to "Announce {announce} · Report-only from {reportOnly} · Enforce {enforce}".
@@ -31,8 +33,8 @@ test('a shared reference with an unfilled variable is a hole in the line that na
 
 test('a policy already in report-only dates its Report-only line from the scan', () => {
   // Week two: the policy names nothing this tenant lacks, so it is datable.
-  // With the plan's foundation settled (roadmap/foundations.ts): until both
-  // pinned groups are, every policy step is held and the plan dates nothing.
+  // With the plan's foundation settled (roadmap/foundations.ts): until Emergency Access and
+  // Direction are, every policy step is held and the plan dates nothing.
   const f = withFoundationSettled(fixture('demo-week2'))
   const r = runFixture(f)
   const step = r.steps.find((s) => s.goalId === 'block-auth-transfer')!
@@ -50,6 +52,23 @@ test('a policy already in report-only dates its Report-only line from the scan',
   assert.deepEqual(missingVars('{datesObserve}', ex), [], 'the Dates line has no hole')
 })
 
+/** The fixture on a package that carries its own admin-session policy: every admin role but the pin's, twelve hours, never persistent. */
+function withOwnAdminSession(f: Fixture): Fixture {
+  const first = f.baseline.policies[0] as unknown as { conditions: { users: { excludeGroups?: string[] } }; placeholders?: Record<string, string> }
+  const pinned = PINNED.policies.find((p) => p.id === PINNED_GOAL_MAP['admin-session'][0])!
+  const roles = (pinned.conditions as { users: { includeRoles: string[] } }).users.includeRoles
+  const own = {
+    id: '0000a115-0000-4000-8000-000000000001',
+    displayName: 'Custom - Session - Admin sign-in frequency',
+    state: 'enabled',
+    placeholders: first.placeholders,
+    conditions: { users: { includeRoles: roles, excludeGroups: first.conditions.users.excludeGroups ?? [] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['browser'] },
+    grantControls: null,
+    sessionControls: { persistentBrowser: { isEnabled: true, mode: 'never' }, signInFrequency: { isEnabled: true, type: 'hours', value: 12, frequencyInterval: 'timeBased', authenticationType: 'primaryAndSecondaryAuthentication' } },
+  }
+  return { ...f, baseline: { ...f.baseline, policies: [...f.baseline.policies, own] as typeof f.baseline.policies } }
+}
+
 test('a session goal fills {wanted} from the policy the step will write, and says nothing where it cannot read one', () => {
   assert.equal(sessionWantedForGoal('admin-session'), '4 hours', 'the baseline still answers for a step with no policy of its own')
   assert.equal(sessionWantedForGoal('mfa-all-users'), null, 'a grant goal wants no session frequency')
@@ -62,8 +81,10 @@ test('a session goal fills {wanted} from the policy the step will write, and say
     return { ex: stepVars(step, { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => id, signature: 'IT', operatorId: null, now: f.snapshot.asOf }) as Record<string, unknown>, hours }
   }
   // The operation the step will run says how long a session lives — whatever the
-  // baseline's own version of the goal wants.
-  const { ex, hours } = varsFor(fixture('getiamai'))
+  // baseline's own version of the goal wants. A goal the package carries no
+  // policy for is written from the pinned one (q-pin), so this tenant's package
+  // carries an admin-session policy of its own, at twelve hours.
+  const { ex, hours } = varsFor(withOwnAdminSession(fixture('getiamai')))
   assert.equal(hours, 12, 'this tenant’s admin-session policy sets twelve hours')
   assert.equal(ex.wanted, hoursInWords(hours!), 'the manager note "expire after {wanted}" fills from the policy')
   assert.equal(ex.wantedLong, '12 hours', 'the email "expire after {wantedLong}" fills, as a duration')

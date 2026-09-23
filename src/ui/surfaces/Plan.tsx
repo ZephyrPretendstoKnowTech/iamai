@@ -26,9 +26,8 @@ import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { Button, Callout, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { ALL_WORK_TAB, BOARD, LANES, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupSummary, groupTotalsOf, groupsFor, laneViewFor, laneViewOf, partitionPinnedGroups, pinnedBoardGroups, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, splitPinned, waveStartOf } from './planBoard.ts'
+import { ALL_WORK_TAB, BOARD, DEFAULT_TAB, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupNumberOf, groupSummary, groupTotalsOf, groupsFor, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, sectionNumbersOf, tileSections, togglesOf, waveStartOf, drawsCompact, finishedDayOf, followOpenStep, followLaneChange, groupClosed, pressKeyOf, readyToCreateOf, releaseFor } from './planBoard.ts'
 import type { BoardGroup, BoardItem, BoardTab, Focus, LaneTab, WorkType } from './planBoard.ts'
-import { TAB_OF } from './planBoard.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
 import { rowWho } from './rowWho.ts'
@@ -56,7 +55,7 @@ type PlanPage = {
   settings: { h3: string; start: string; planStarts: string; firstDeployment: string; firstDeploymentNote: string; workdays: string; workdaysWeek: string; workdaysWith: string; freeze: string; freezeFrom: string; freezeTo: string; freezeNote: string; freezeNeedsTo: string; freezeOrder: string; timezone: string; signature: string; scheduling: string; communications: string; saveFreeze: string; removeFreeze: string; cancelFreeze: string; freezeSaved: string; close: string }
   blocked: { after: string }
   progress: { label: string; steps: string; completed: string; projectedFinish: string; atPace: string; committed: string; started: string; none: string }
-  howTo: { link: string; items: string[]; intro?: string; legend?: { label: string; description: string }[] }
+  howTo: { link: string; intro: string; legend?: { label: string; description: string }[] }
 }
 const PP = pages.plan as unknown as PlanPage
 const S = app.shell
@@ -92,11 +91,11 @@ export function Plan({ scan: lastScan, baseline, account }: {
     requestAnimationFrame(() => document.getElementById(PLAN_SETTINGS_ID)?.scrollIntoView({ block: 'start' }))
   }
   const [showHow, setShowHow] = useState(false)
-  // The board's four tabs (planBoard.ts). Ready is the default, because the
-  // Plan's own subject is what can be done now; the other two lanes hold the
-  // same rows, and All work holds every group that is not finished, whole.
-  const [summaryFilter, setSummaryFilter] = useState<'input' | 'observing' | 'completed' | null>(null)
-  const [tab, setTab] = useState<BoardTab>('ready')
+  // The board's four tabs (planBoard.ts). All work is the default and sits
+  // leftmost (owner, 2026-09-23): the whole plan, section by section, from the
+  // top. Ready, Up Next and On Hold are filters over the same list.
+  const [summaryFilter, setSummaryFilter] = useState<'input' | 'observing' | 'completed' | 'create' | null>(null)
+  const [tab, setTab] = useState<BoardTab>(DEFAULT_TAB)
   const [focus, setFocus] = useState<Focus>(NO_FOCUS)
   // Which groups the operator has collapsed, keyed by lane and group, so
   // collapsing Completed under Ready does not also collapse it under On Hold.
@@ -105,24 +104,33 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // Close removes the panel, and with it the button that had focus. The link
   // that opened it is where focus belongs afterwards (task 017).
   const settingsLink = useRef<HTMLAnchorElement>(null)
+  // A step opened from a link (a Readiness tile's link to its prerequisite, a
+  // deep link) rather than by pressing its row: the page moves to it
+  // (TabFollowsOpenStep). A row press clears it (openStep): a link to the step
+  // already open changes nothing, so the effect that clears it does not run.
+  const linked = useRef<boolean>(stepFromPlanHash(window.location.hash) !== null)
   useEffect(() => {
-    const onHash = () => { setSummaryFilter(null); setOpen(stepFromPlanHash(window.location.hash)) }
+    const onHash = () => { linked.current = true; setSummaryFilter(null); setOpen(stepFromPlanHash(window.location.hash)) }
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
   // Approving a Direction step's answers moves to the next Direction step still
   // open, once the plan has re-rendered with the saved answers; the page would
-  // otherwise stay where the completed step's row used to be.
+  // otherwise stay where the completed step's row used to be. A link moves to
+  // its step the same way (TabFollowsOpenStep).
   const moveTo = useRef<string | null>(null)
   useEffect(() => {
     const id = moveTo.current
     if (id === null) return
     const row = document.querySelector(`.plan-row[data-step="${id}"]`)
-    if (!row) return
+    // A row inside a folded section is in the document and not on screen, and
+    // scrolling it moves nothing: wait for the render that unfolds it (planBoard.ts releaseFor).
+    if (!row || row.closest('[hidden]') !== null) return
     moveTo.current = null
     row.scrollIntoView({ block: 'start' })
   })
   const openStep = (id: string | null): void => {
+    linked.current = false
     setOpen((cur) => {
       const next = cur === id ? null : id
       window.history.replaceState(null, '', next ? `#/plan/${next}` : '#/plan')
@@ -219,6 +227,11 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // row. `renderById` holds the ONE renderer for each row, so a tab can only
   // choose where a row goes, never what it says.
   const items: BoardItem[] = board.rows.map((r) => r.item)
+  // The number each section's heading shows (planBoard.ts sectionNumbersOf),
+  // taken over the whole board as the row numbers are: the number the printed
+  // plan heads the section with and the exports number its steps under
+  // (`<section>.<row>`), the same on every tab and while a focus filters rows.
+  const sectionNumbers = sectionNumbersOf(items)
   const renderById = new Map<string, () => ReactNode>()
   for (const { step, reading, lane: laneView } of board.rows) {
     if (step === null) continue
@@ -241,61 +254,80 @@ export function Plan({ scan: lastScan, baseline, account }: {
     }
   }
 
-  // The tab panel draws its own lane; the Completed and Deferred groups the
-  // toggles reveal are drawn after it, never inside a tab.
+  // A lane tab's panel draws its own lane; the Completed and Deferred groups
+  // the toggles reveal are drawn after it, never inside a tab.
   const inputIds = new Set(c.steps.filter((s) => !s.doesntApply && s.status !== 'done' && s.status !== 'skipped' && (s.state.condition === 'needs-decision' || (s.unsavedInputs ?? []).length > 0 || s.action.missing?.some((m) => m.decision === true))).map((s) => s.id))
   const observingIds = new Set(c.steps.filter((s) => !s.doesntApply && s.status !== 'skipped' && s.state.lifecycle === 'report-only').map((s) => s.id))
-  // The pinned groups (roadmap/stepGroups.ts). Pinning is a POSITION and not an
-  // exemption from the filter (owner, 2026-09-20): a lane tab filters Emergency
-  // Access and Direction like every other group, and `splitPinned` lifts
-  // whatever the tab left of them above the tab strip. The partition is still
-  // read for the one thing lanes cannot say — a group all of whose rows are
-  // Completed, which folds into the aside under its completed title.
-  const { pinned, remaining: remainingItems } = partitionPinnedGroups(items)
-  const completePinnedIds = new Set(pinned.filter((p) => p.complete).flatMap((p) => p.group.members))
-  const summaryItems = summaryFilter === 'input' ? remainingItems.filter((i) => inputIds.has(i.id)) : summaryFilter === 'observing' ? remainingItems.filter((i) => observingIds.has(i.id)) : summaryFilter === 'completed' ? remainingItems.filter((i) => i.lane === 'Completed') : remainingItems
+  // The policies ready to create in report-only now (planBoard.ts
+  // readyToCreateOf, decision H): the line above the board counts them and its
+  // control shows exactly them, in section order.
+  const createIds = new Set(readyToCreateOf(board.rows))
+  const summaryItems = summaryFilter === 'input' ? items.filter((i) => inputIds.has(i.id)) : summaryFilter === 'observing' ? items.filter((i) => observingIds.has(i.id)) : summaryFilter === 'completed' ? items.filter((i) => i.lane === 'Completed') : summaryFilter === 'create' ? items.filter((i) => createIds.has(i.id)) : items
   const shown = summaryFilter ? summaryItems.filter((i) => (!focus.search || i.title.toLowerCase().includes(focus.search.toLowerCase())) && (!focus.workType || focus.workType === i.workType)) : applyFocus(items, tab, focus)
-  // The fourth tab draws whole groups instead of one lane (planBoard.ts
-  // allWorkGroups): every group with unfinished work, all of its rows, and the
-  // finished groups folded into the aside the board already has for them.
+  // Sections never move (owner, roadmap flow V2): nothing is lifted above the
+  // tabs while it is open and nothing is sunk below them once it is finished.
+  // Every section is drawn in its registry place (roadmap/stepGroups.ts).
+  // All work draws every section whole, in its place, and a finished one
+  // collapsed there to its title and one line (planBoard.ts allWorkGroups); it
+  // counts each heading over the whole board. A lane tab draws its own lane
+  // under the same headings (groupsFor). A header tile filters the one list,
+  // in section order, each heading once (tileSections).
   const laneTab: LaneTab | null = tab === ALL_WORK_TAB ? null : tab
-  const whole = !summaryFilter && laneTab === null ? allWorkGroups(shown, { completed: focus.showCompleted, open }) : null
-  const drawn = summaryFilter ? LANES.flatMap((t) => groupsFor(t, shown)) : laneTab === null ? whole?.active ?? [] : groupsFor(laneTab, shown)
-  const split = splitPinned(drawn)
-  const groups = summaryFilter ? drawn : split.rest
-  // A complete pinned group is drawn whole under its completed title, so its
-  // rows are not also loose in the flat Completed group beside it. On the fourth
-  // tab every row is already inside its group, so the aside holds the finished
-  // groups and nothing loose at all.
-  const aside = whole ? [] : asideGroupsFor(summaryFilter ? shown : shown.filter((i) => !completePinnedIds.has(i.id)))
-  const { active: pinnedWhole, completed: pinnedCompletedGroups } = pinnedBoardGroups(pinned, { completed: summaryFilter === 'completed' || focus.showCompleted, open })
-  const pinnedCompleted = whole ? whole.completed : pinnedCompletedGroups
-  // The summary views are not a lane, so they still draw a pinned group whole.
-  const pinnedActive = summaryFilter ? pinnedWhole : split.pinned
-  // A step opened by its hash — a Readiness tile's link to its prerequisite, a
-  // deep link — is drawn under its own lane's tab (planBoard.ts TAB_OF), so the
-  // tab follows the step; otherwise the link would open nothing on screen. Every
-  // row is under its lane's tab now, the pinned groups' rows included. The
-  // fourth tab shows every lane, so opening a step there follows no tab: the
-  // step is already on screen and moving would take the operator off the view
-  // they chose.
-  const openTab = open && tab !== ALL_WORK_TAB ? (TAB_OF[readings.get(open)?.lane ?? 'Completed'] ?? null) : null
+  const groups = summaryFilter ? tileSections(shown) : laneTab === null ? allWorkGroups(shown, items) : groupsFor(laneTab, shown)
+  // On a lane tab, the Completed and Deferred rows the toggles reveal; on All
+  // work and in a tile's list every row is already inside its section, so
+  // there is no aside at all.
+  const aside = summaryFilter || laneTab === null ? [] : asideGroupsFor(shown)
+  // Where a step opened from a link or a tile is shown (planBoard.ts
+  // followOpenStep, owner, roadmap flow V2): the view the person is on, where
+  // it draws the step; otherwise All work, where every row is, with the focus
+  // cleared, the step's section open (groupClosed) and the page moved to it.
+  // A step with no row on the board (marked Doesn't apply here) moves nothing.
+  const follow = open !== null ? followOpenStep(open, shown, items) : null
+  const onFollow = (follow: BoardTab): void => { setSummaryFilter(null); setTab(follow); setFocus(NO_FOCUS); setToggled({}); moveTo.current = open }
+  // The open step's lane as the board reads it, Cleanup rows included.
+  const openLane = open !== null ? items.find((i) => i.id === open)?.lane : undefined
+  // When the open step's lane changes under the person (finished, deferred,
+  // answered) and the view no longer draws it: keep the tab and press the
+  // toggle that shows it, or follow it to its new lane's tab (planBoard.ts
+  // followLaneChange), as the board did before roadmap flow V2. All work only
+  // where that still leaves it off screen, such as a tile's list. A step that
+  // left the board (marked Doesn't apply here: the footer holds it) is drawn by
+  // no view, so the view, its focus, its folds and the scroll stay as they are.
+  const onMoved = (): void => {
+    const lane = openLane
+    if (lane === undefined) return
+    const keep = summaryFilter === null ? followLaneChange(lane, tab, focus) : null
+    if (keep !== null && applyFocus(items, keep.tab, keep.focus).some((i) => i.id === open)) { setTab(keep.tab); setFocus(keep.focus) } else onFollow(ALL_WORK_TAB)
+  }
+  // On the view that draws it, a link lets go of the fold the person put over
+  // the step's section (planBoard.ts releaseFor): a step opened inside a folded
+  // section opened out of sight. Each group is keyed by the scope it is drawn
+  // under, as drawGroup keys it. A link to a step with no row moves nothing:
+  // the page would wait for that row and jump to it once it was put back.
+  const drawn = [...groups.map((g) => [tab, g] as const), ...aside.map((g) => ['aside', g] as const)]
+  const onShow = (): void => {
+    if (open === null || openLane === undefined) return
+    setToggled((t) => releaseFor(t, open, drawn))
+    moveTo.current = open
+  }
   // The header's four tiles (A1b decision 11): every step (the one denominator,
   // derive/facts.ts, which the board's rows equal), the Completed lane counted
   // off the board's own rows, the projected finish (A2 fills it; the placeholder
-  // until then) and the day the plan started. Counted over the WHOLE row set:
-  // the pinned groups' rows are in the lane tabs, so they are in the badges.
+  // until then) and the day the plan started. Counted over the WHOLE row set,
+  // so every section's rows are in the badges.
   const counts = focusCounts(items)
   const drawGroup = (scope: string) => (g: BoardGroup) => {
-    const key = `${scope}:${g.key}`
+    const key = pressKeyOf(scope, g)
     // A group holding the open step is not collapsed by default: switching
-    // tab must not fold the step the operator is working on out of sight.
-    // An explicit collapse still wins — the operator's own press is the
-    // one thing that outranks the default.
-    const holdsOpen = open !== null && g.items.some((i) => i.id === open)
-    const closed = toggled[key] ?? (g.closed && !holdsOpen)
+    // tab must not fold the step the operator is working on out of sight, and
+    // a search must not match rows inside a section nobody can see. An
+    // explicit collapse still wins — the operator's own press is the one thing
+    // that outranks the default (planBoard.ts groupClosed) — until a link opens
+    // a step under it (releaseFor).
+    const closed = groupClosed(g, open, toggled[key], focusActive(focus))
     return (
-      <BoardGroupView key={key} group={g} closed={closed} onToggle={() => setToggled((t) => ({ ...t, [key]: !closed }))} totals={groupTotals}>
+      <BoardGroupView key={key} group={g} number={groupNumberOf(g, sectionNumbers)} closed={closed} onToggle={() => setToggled((t) => ({ ...t, [key]: !closed }))} totals={groupTotals}>
         {g.items.map((i) => renderById.get(i.id)?.() ?? null)}
       </BoardGroupView>
     )
@@ -316,7 +348,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
   }
   const summary = structuralWords.summary
   const licenceLine = conditionalAccessLicenceLine(scan.snapshot)
-  const selectSummary = (filter: typeof summaryFilter): void => { setSummaryFilter(filter); setFocus(NO_FOCUS); setToggled({ 'aside:complete': false }); setOpen(null) }
+  const selectSummary = (filter: typeof summaryFilter): void => { setSummaryFilter(filter); setFocus(NO_FOCUS); setToggled({}); setOpen(null) }
   const progressTiles: { key: string; label: string; value: string | number; sub?: string[]; tip?: string; select?: () => void }[] = [
     { key: 'ready', label: summary.ready, value: counts.lanes.ready, select: () => { selectSummary(null); setTab('ready') } },
     { key: 'input', label: summary.input, value: inputIds.size, select: () => selectSummary('input') },
@@ -399,7 +431,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
       </p>
       {showHow && (
         <div className="plan-how no-print" id={PLAN_HOW_ID}>
-          <p>{PP.howTo.intro ?? PP.howTo.items[0]}</p>
+          <p>{PP.howTo.intro}</p>
           <hr />
           <h3>Legend</h3>
           <dl className="plan-legend">{PP.howTo.legend?.map((item) => <div key={item.label}><dt>{item.label}</dt><dd>{item.description}</dd></div>)}</dl>
@@ -412,7 +444,18 @@ export function Plan({ scan: lastScan, baseline, account }: {
           `planBoard.ts` groups them and decides nothing else. `renderById` is why
           there is one row renderer and not three: a tab hands back ids, and the
           id comes back to the same `<Row>` or `<CleanupRow>` whichever tab shows it. */}
-      <TabFollowsOpenStep open={open} openTab={openTab} tab={tab} onTab={setTab} openLane={open ? readings.get(open)?.lane : undefined} onFocus={setFocus} />
+      {/* Decision H (owner, roadmap flow V2), tried as a visible line: every
+          policy the board has at Ready · Create can be created in report-only
+          today, whatever section it sits in. A count, never a name. */}
+      {createIds.size > 0 && summaryFilter !== 'create' && (
+        <div className="plan-create-now no-print">
+          <Callout kind="info">
+            {fillText(BOARD.createNow, { n: createIds.size })}{' '}
+            <Button variant="tertiary" size="sm" onClick={() => selectSummary('create')}>{BOARD.createNowShow}</Button>
+          </Callout>
+        </div>
+      )}
+      <TabFollowsOpenStep open={open} lane={openLane} follow={follow} linked={linked} onFollow={onFollow} onShow={onShow} onMoved={onMoved} />
       <PlanControls
         tab={tab}
         onTab={(next) => { setSummaryFilter(null); setTab(next) }}
@@ -422,12 +465,11 @@ export function Plan({ scan: lastScan, baseline, account }: {
         base={boardBase}
       />
       {summaryFilter && <p className="actions"><strong>{fillText(summary.filter, { view: summary[summaryFilter] })}</strong><Button variant="tertiary" onClick={() => selectSummary(null)}>{summary.all}</Button></p>}
-      {pinnedActive.map((g) => <div key={g.key} className="plan-board plan-board-foundation">{drawGroup('pinned')(g)}</div>)}
       <div className="plan-board" {...onePanelProps(boardBase, tab)}>
-        {groups.length === 0 && (aside.length === 0 || !summaryFilter) && <p className="reason plan-board-empty">{pinnedActive.length > 0 && !focusActive(focus) ? 'No other items in this lane.' : focusActive(focus) ? BOARD.empty : nothingReadyLine(tab, counts.lanes) ?? BOARD.emptyLane}</p>}
+        {groups.length === 0 && (aside.length === 0 || !summaryFilter) && <p className="reason plan-board-empty">{focusActive(focus) ? BOARD.empty : nothingReadyLine(tab, counts.lanes) ?? BOARD.emptyLane}</p>}
         {groups.map(drawGroup(tab))}
       </div>
-      {(aside.length > 0 || pinnedCompleted.length > 0) && <div className="plan-board plan-board-aside">{pinnedCompleted.map(drawGroup('aside'))}{aside.map(drawGroup('aside'))}</div>}
+      {aside.length > 0 && <div className="plan-board plan-board-aside">{aside.map(drawGroup('aside'))}</div>}
 
       {/* What is left in the footer is what was never a row: the person's own
           Doesn't apply here answers, the licence ladder and housekeeping. The
@@ -459,12 +501,16 @@ function PlanControls({ tab, onTab, focus, onFocus, counts, base }: {
   counts: ReturnType<typeof focusCounts>
   base: string
 }) {
+  // What the toggles show on this tab: the person's press, else the tab's
+  // default — pressed on All work, where finished work sits in its sections,
+  // and not on a lane tab (planBoard.ts togglesOf).
+  const shows = togglesOf(focus, tab)
   return (
     <section className="plan-controls no-print" aria-label={BOARD.lanesLabel}>
       <div className="view-wrap">
         {/* The shared tab strip (task 017): one tab stop, arrows move and select,
             every tab names the panel it controls. The board is that panel. */}
-        {/* The three lanes carry a row count; the fourth tab is not a lane and
+        {/* The three lanes carry a row count; All work is not a lane and
             counts nothing, because the rows it shows are every other tab's rows
             plus the completed ones and a number over that means nothing. */}
         <TabList base={base} tabs={TABS.map((l) => ({ id: l, label: l === ALL_WORK_TAB ? BOARD.allWorkTab : BOARD.lanes[l], badge: l === ALL_WORK_TAB ? undefined : counts.lanes[l] }))} active={tab} onSelect={(id) => onTab(id as BoardTab)} panelId={() => `${base}-panel`} className="tabs view-tabs" />
@@ -488,11 +534,11 @@ function PlanControls({ tab, onTab, focus, onFocus, counts, base }: {
             ))}
           </select>
         </label>
-        <button type="button" className={`focus${focus.showCompleted ? ' active' : ''}`} aria-pressed={focus.showCompleted} onClick={() => onFocus({ ...focus, showCompleted: !focus.showCompleted })}>
+        <button type="button" className={`focus${shows.completed ? ' active' : ''}`} aria-pressed={shows.completed} onClick={() => onFocus({ ...focus, showCompleted: !shows.completed })}>
           {BOARD.showCompleted}
           <span className="count">{counts.complete}</span>
         </button>
-        <button type="button" className={`focus${focus.showDeferred ? ' active' : ''}`} aria-pressed={focus.showDeferred} onClick={() => onFocus({ ...focus, showDeferred: !focus.showDeferred })}>
+        <button type="button" className={`focus${shows.deferred ? ' active' : ''}`} aria-pressed={shows.deferred} onClick={() => onFocus({ ...focus, showDeferred: !shows.deferred })}>
           {BOARD.showDeferred}
           <span className="count">{counts.deferred}</span>
         </button>
@@ -503,7 +549,9 @@ function PlanControls({ tab, onTab, focus, onFocus, counts, base }: {
 
 /**
  * One group of the board: its heading, the one line that summarises it, and the
- * control that folds it.
+ * control that folds it. The control's hit area is the whole heading line, so
+ * selecting a collapsed section anywhere on its line opens it (owner, roadmap
+ * flow V2 decision B), with one tab stop and one name for a screen reader.
  *
  * The heading carries the group's identity by itself — there is no chip beside
  * it repeating it, and no sentence under it explaining what a group is for. A
@@ -511,31 +559,45 @@ function PlanControls({ tab, onTab, focus, onFocus, counts, base }: {
  * column (roadmap/stepSchedule.ts), and a lane is not a phase.
  */
 /**
- * The tab follows the step the hash opened (a Readiness tile's link, a deep
- * link): where the open step's lane is under another tab, that tab is chosen.
- * A child with the one effect, because the Plan's rows are built after its
- * early returns and a hook cannot sit there.
+ * The view follows the step a link or a tile opened (planBoard.ts
+ * followOpenStep): where the view the person is on does not draw it, the board
+ * goes to All work with the step's section open; where it does and a link
+ * opened it, the page moves to it. When the same step's lane changes under the
+ * person instead (they finished, deferred or answered it), the view they chose
+ * is kept where it can draw the step (`onMoved`, planBoard.ts
+ * followLaneChange). A child with the one effect, because the Plan's rows are
+ * built after its early returns and a hook cannot sit there.
  */
-function TabFollowsOpenStep({ open, openTab, tab, onTab, openLane, onFocus }: { open: string | null; openTab: BoardTab | null; tab: BoardTab; onTab: (t: BoardTab) => void; openLane?: string; onFocus: (f: Focus) => void }) {
+function TabFollowsOpenStep({ open, lane, follow, linked, onFollow, onShow, onMoved }: { open: string | null; lane?: string; follow: BoardTab | null; linked: { current: boolean }; onFollow: (tab: BoardTab) => void; onShow: () => void; onMoved: () => void }) {
+  // The step the effect last ran for, which tells a change of lane alone from a newly opened step.
+  const was = useRef<string | null>(null)
   useEffect(() => {
-    if (open && openTab && openTab !== tab) onTab(openTab)
-    if (open) onFocus({ ...NO_FOCUS, showCompleted: openLane === 'Completed', showDeferred: openLane === 'Deferred' })
-    // Only when the opened step changes: choosing another tab afterwards is the person's.
-  }, [open, openTab, openLane])
+    const moved = open !== null && open === was.current && !linked.current
+    was.current = open
+    if (open === null) { linked.current = false; return }
+    if (follow !== null) { if (moved) onMoved(); else onFollow(follow) }
+    else if (linked.current) onShow()
+    linked.current = false
+    // Only when the opened step or its lane changes: choosing another tab afterwards is the person's.
+  }, [open, lane])
   return null
 }
 
-function BoardGroupView({ group, closed, onToggle, totals, children }: { group: BoardGroup; closed: boolean; onToggle: () => void; totals?: ReadonlyMap<string, number>; children: ReactNode }) {
+function BoardGroupView({ group, number, closed, onToggle, totals, children }: { group: BoardGroup; number: number | null; closed: boolean; onToggle: () => void; totals?: ReadonlyMap<string, number>; children: ReactNode }) {
   const id = `plan-group-${group.key}`
   // How many rows this group has on the whole board, so a tab that left fewer
   // says so rather than presenting its own selection as the whole group.
   const key = groupKeyOf(group)
   const total = key !== null ? totals?.get(key) ?? null : null
   return (
-    <section className={`plan-group${group.secondary ? ' secondary' : ''}`}>
+    <section className={`plan-group${group.secondary ? ' secondary' : ''}${closed ? ' closed' : ''}`}>
       <div className="plan-group-head">
         <div className="plan-group-lead">
-          <h2>{group.label}</h2>
+          {/* The section's number beside its title (planBoard.ts groupNumberOf): none for a lane tab's Completed or Deferred group. */}
+          <h2>
+            {number !== null && <><span className="plan-group-number">{number}</span>{' '}</>}
+            <span className="plan-group-title">{group.label}</span>
+          </h2>
           <div className="plan-group-meta">{groupSummary(group, total)}</div>
         </div>
         <button type="button" className="plan-group-toggle no-print" aria-expanded={!closed} aria-controls={id} aria-label={`${closed ? BOARD.expandGroup : BOARD.collapseGroup}: ${group.label}`} onClick={onToggle}>
@@ -592,7 +654,8 @@ function CleanupRow({ phase, row, number, answers, open, onToggle, onScan, onDon
       {/* The one row shape the Plan draws (StepSections.tsx PlanRow), not one per kind of row. */}
       {/* A completed row's When is the placeholder, as every finished row's is (planBoard.ts boardWhen). */}
       {/* A Cleanup row is held by the same engine and says what holds it the same way. */}
-      <PlanRow lane={lane.label} tone={lane.tone} number={number} title={entry.title} waitingFor={lane.waitingFor} who={who} when={cleanupWhenOf(row, undated, lane)} open={open} onToggle={onToggle} />
+      {/* Finished, it is one compact line like every finished row (planBoard.ts drawsCompact), dated the day it was marked done. */}
+      <PlanRow stepId={`cleanup-${row.kind}`} lane={lane.label} tone={lane.tone} number={number} title={entry.title} waitingFor={lane.waitingFor} who={who} when={cleanupWhenOf(row, undated, lane, drawsCompact(lane.lane))} open={open} onToggle={onToggle} compact={drawsCompact(lane.lane)} />
       {open && <CleanupBody phase={phase} row={row} status={status} onScan={() => (onScan ? onScan(returnToStep(`cleanup-${row.kind}`)) : (window.location.hash = '#/connect'))} onClose={onToggle} onDone={onDone} />}
     </>
   )
@@ -676,9 +739,10 @@ function Row({ step, lane, number, blockers, enforceWaits, prerequisiteLabel, on
         title={contentTitle(step)}
         waitingFor={lane.waitingFor}
         who={rowWho(step)}
-        when={when}
+        when={drawsCompact(lane.lane) ? finishedDayOf(step, lane.lane) ?? '' : when}
         open={open}
         onToggle={onToggle}
+        compact={drawsCompact(lane.lane)}
       />
       {open && (
         <ContentStep

@@ -6,7 +6,7 @@
 // legitimate report-only create is kept, and a held step keeps its hold and its note.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from '../../roadmap/fixtures/index.ts'
+import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import { implementationIsCurrent, nextSafeAction } from '../../roadmap/nextSafeAction.ts'
 import { laneReadings } from './planLanes.ts'
@@ -31,11 +31,14 @@ function open(f: ReturnType<typeof fixture>, id: string) {
 }
 
 test('a report-only create waiting only on values reads Ready on the board, the screen and the export, and says values stand between it and Copy', () => {
-  // With the plan's foundation settled (roadmap/foundations.ts): until both
-  // pinned groups are, every policy step is held and the plan dates nothing.
+  // With the plan's foundation settled (roadmap/foundations.ts): until Emergency Access
+  // and Direction are, every policy step is held and the plan dates nothing.
   const small = withFoundationSettled(fixture('small'))
   const mid = withFoundationSettled(fixture('mid'))
-  for (const [f, id] of [[small, 's-goal-all-users-no-persistence'], [mid, 's-goal-all-users-no-persistence'], [mid, 's-goal-pim-activation-reauth'], [mid, 's-goal-user-risk']] as const) {
+  // Curated for the High user-risk step: it is written from the pinned policy
+  // (q-pin), which names groups of the author's this baseline has not settled.
+  const midCurated = withFoundationSettled(curatedFixture('mid'))
+  for (const [f, id] of [[small, 's-goal-all-users-no-persistence'], [mid, 's-goal-all-users-no-persistence'], [mid, 's-goal-pim-activation-reauth'], [midCurated, 's-goal-user-risk']] as const) {
     const { step, lane, body, exp } = open(f, id)
     const what = `${f === small ? 'small' : 'mid'} ${id}`
     // Premises: the intended next action is the report-only create, and it is not copyable yet.

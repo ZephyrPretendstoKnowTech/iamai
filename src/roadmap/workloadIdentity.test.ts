@@ -10,6 +10,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
+import { PINNED } from '../baseline/pinned.ts'
+import { PINNED_GOAL_MAP } from './goalMap.ts'
 import type { Fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { laneReadings } from '../ui/surfaces/planLanes.ts'
@@ -60,9 +62,14 @@ test('a sync role holder with a Workload ID licence is not proof of support: the
 
 test('unknown identity evidence is never Completed: a tenant that already enforces a policy like the target keeps the step on hold, with that policy left as it is', () => {
   const f0 = licensed(fixture('mid'))
-  const resolved = runFixture(f0, { snapshot: f0.snapshot } as never).steps.find((s) => s.id === WORKLOAD)!.action.resolution!.policies[0].body as Record<string, unknown>
-  // The tenant's own enforced policy, with the resolved operation's settings: coverage reads the goal as delivered.
-  const own = { ...resolved, id: 'aaaaaaaa-1111-4222-8333-444444444444', state: 'enabled', description: undefined, displayName: 'Tenant - Block - Workloads outside trusted locations' }
+  // The tenant's own enforced policy, with the settings of the policy the step is
+  // written from: coverage reads the goal as delivered. That is the pinned policy
+  // (q-pin), whose service principal and location are the author's and do not
+  // resolve here, so the step's own resolved body is not a policy that delivers
+  // anything; the tenant's copy carries them as the tenant's own objects.
+  const source = PINNED.policies.find((p) => p.displayName === PINNED_GOAL_MAP['workload-identity-block'][0])
+  assert.ok(source, 'the premise: the pinned map hands the goal a pinned policy')
+  const own = { ...structuredClone(source), placeholders: undefined, id: 'aaaaaaaa-1111-4222-8333-444444444444', state: 'enabled', displayName: 'Tenant - Block - Workloads outside trusted locations' }
   const caPolicies = { ...f0.snapshot.config.caPolicies!, rows: [...f0.snapshot.config.caPolicies!.rows, own] }
   const f = { ...f0, snapshot: { ...f0.snapshot, config: { ...f0.snapshot.config, caPolicies } } } as Fixture
   const r = runFixture(f, { snapshot: f.snapshot } as never)

@@ -1,5 +1,5 @@
 // Where every Direction answer is stored (docs/plans/direction-spec.md,
-// "Storage"): the one alias table between a Decide Your Tenant's Direction
+// "Storage"): the one alias table between a Define Your Rollout Scope
 // question and the key its answer has always lived under.
 //
 // A Direction step saves one decision under its own id (`stepDecisions[

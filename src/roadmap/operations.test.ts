@@ -197,8 +197,8 @@ const withAdminsReady = (viability: MfaViability[]): MfaViability[] => viability
 
 /** The demo's week two, with the tenant's own policies replaced and the mapping overridden. */
 function demoRun(rows: Record<string, unknown>[] = [], mappingOver: Record<string, unknown> = {}, snapshotOver: (f: ReturnType<typeof fixture>) => Record<string, unknown> = () => ({}), opts: { adminsReady?: boolean; guestsReady?: boolean } = {}) {
-  // With the plan's foundation settled (roadmap/foundations.ts): until both
-  // pinned groups are, every policy step is held and none of these cases could
+  // With the plan's foundation settled (roadmap/foundations.ts): until Emergency Access and
+  // Direction are, every policy step is held and none of these cases could
   // be about what a policy the plan CAN write does.
   const f = withFoundationSettled(fixture('demo-week2'))
   const ca = f.snapshot.config.caPolicies ?? { status: 'ok' as const, reason: null, rows: [] }

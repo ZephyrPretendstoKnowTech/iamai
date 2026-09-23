@@ -363,8 +363,10 @@ test('the Plan, the Export page and the step snapshots read the plan-wide dates 
   assert.match(read('./Plan.tsx'), /planDates\([^)]*scan\.snapshot, \(s\) => boardHolds\(s, laneViewFor\(s, \{ readings, titleOf \}\)\)\)/, 'the Plan')
   const exportPage = read('./Export.tsx')
   // One board: the hold and the views read the same construction, built once per render.
-  assert.equal(exportPage.split('boardReadingsOf(').length - 1, 1, 'the Export page builds its board once')
-  assert.match(exportPage, /const board = boardReadingsOf\(steps, schedule\.cleanup, data\.mapping\?\.breakGlassAnswers \?\? null\)/, 'the Export page builds the board')
+  // It is boardOf, on boardReadingsOf, so the exports' order reads the same rows (planBoard.ts boardOrderOf).
+  assert.equal(exportPage.split('boardOf(').length - 1, 1, 'the Export page builds its board once')
+  assert.equal(exportPage.includes('boardReadingsOf('), false, 'the Export page builds a second board')
+  assert.match(exportPage, /const board = boardOf\(steps, schedule\.cleanup, data\.mapping\?\.breakGlassAnswers \?\? null\)/, 'the Export page builds the board')
   assert.match(exportPage, /const held = exportHoldOf\(board\)/, 'the Export page reads the board\'s hold')
   assert.match(exportPage, /exportViewsOf\(board, stepCtx\)/, 'the Export page\'s views read the same board')
   assert.match(exportPage, /planDates\([^)]*snapshot, held\)/, 'the Export page\'s plan-wide dates')
@@ -501,12 +503,15 @@ test('a device line names no MFA day where Require MFA for Everyone has none, an
 // (a turn-on day is caught by the Up Next rule too), so it is forged: a create
 // sequenced on Up Next behind two waits, read On Hold, not Observing.
 test('an On Hold row, not Observing, carries no day whatever waits the roadmap records on the step itself', () => {
-  const f = fixture('mid')
+  // small's administrators step: mid's admin-portal create was this row until the
+  // step was written from the pinned policy (q-pin), whose source contradicts
+  // itself, so that step holds on the baseline instead.
+  const f = fixture('small')
   const r = runFixture(f, {}, null, f.snapshot.asOf)
   const board = boardReadingsOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
-  const step = r.steps.find((s) => s.id === 's-goal-admin-portals-protected')!
+  const step = r.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!
   const read = laneViewFor(step, board)
-  const where = `mid/${step.id}`
+  const where = `small/${step.id}`
   // The premise: a create with a day, sequenced behind waits the roadmap records on it, and not held on the board.
   assert.ok(step.blockedBy.length > 0, `${where}: the premise, the roadmap records a wait on it`)
   assert.equal(scheduleOf(step).transition, 'createReportOnly', `${where}: the premise, its day is a create, not a turn-on`)

@@ -1844,6 +1844,14 @@ footer.app a {
 .plan-controls .dot-upnext {
   background: var(--attention);
 }
+/* The line above the board (decision H): how many policies can be created in
+   report-only now, and the control that shows them. */
+.plan-create-now {
+  margin: 12px 0;
+}
+.plan-create-now .btn {
+  margin-left: 4px;
+}
 .plan-board {
   padding-top: 4px;
 }
@@ -1861,12 +1869,18 @@ footer.app a {
 .plan-group:first-child {
   margin-top: 0;
 }
+/* The whole heading line is the fold control's hit area (owner, roadmap flow
+   V2: selecting a collapsed section opens it): the toggle's box is stretched
+   over the head (.plan-group-toggle::after), so the head is its containing
+   block and shows the pointer. */
 .plan-group-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 16px;
   align-items: center;
   padding: 15px 0 10px;
+  position: relative;
+  cursor: pointer;
 }
 .plan-group-head h2 {
   font-size: var(--d-15);
@@ -1874,6 +1888,13 @@ footer.app a {
   font-weight: var(--weight-display);
   line-height: var(--lh-heading);
   margin: 0;
+}
+/* The section's number (planBoard.ts groupNumberOf): the one the printed plan
+   heads it with and the exports number its steps under. */
+.plan-group-number {
+  font-variant-numeric: tabular-nums;
+  color: var(--quiet-text);
+  margin-right: 0.15em;
 }
 /* The heading carries the group's identity by itself. This is the one
    supporting line: how many rows, and how many of them need the operator. */
@@ -1900,6 +1921,24 @@ footer.app a {
   font: inherit;
   line-height: 1;
   cursor: pointer;
+}
+/* The button stays the one tab stop and the one accessible name; its box is
+   stretched over the whole heading line. */
+.plan-group-toggle::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+/* A collapsed section is one line: its title, and beside it what became of it
+   ("All 4 completed") or what is left. */
+.plan-group.closed .plan-group-lead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 14px;
+}
+.plan-group.closed .plan-group-meta {
+  margin-top: 0;
 }
 /* The four zones, named. Impact is a population and When is a date; before this
    they were two unlabelled columns of grey text on the right. The floor for a
@@ -2078,6 +2117,20 @@ footer.app a {
 }
 .plan-row .when {
   white-space: nowrap;
+}
+/* Finished work, one quiet line (owner, roadmap flow V2; planBoard.ts
+   drawsCompact): the number, the lane word, the title and the day it was
+   finished. It has no Impact cell, so its day is placed in the When column
+   by name rather than falling into Impact's. */
+.plan-row[data-compact] {
+  min-height: 40px;
+}
+.plan-row[data-compact] .step-title {
+  font-weight: 400;
+  color: var(--secondary-text);
+}
+.plan-row[data-compact] .when {
+  grid-column: 5;
 }
 /* ---- the approved expanded step (task 034) ----
    docs/design/approved/anatomy/plan-step-v1.html: the row opens into ONE frame attached
@@ -3346,6 +3399,17 @@ footer.app a {
   .print-warnings { margin: 1mm 0 2mm 4mm; }
   .print-warnings dt { font-weight: var(--weight-strong); margin-top: 1mm; }
   .print-warnings dd { margin: 0; }
+  /* The board's numbers on paper (printPlan.ts printSectionsOf): a section's in
+     its heading, a row's above its step or at the head of its line. A finished
+     section is one line where the board folds it, with no page of its own: a
+     heading under the section heading's rule, set apart from the rows above it
+     so its number never reads as the next row of the section before. */
+  .print-number { font-variant-numeric: tabular-nums; font-weight: var(--weight-strong); color: var(--secondary-text); }
+  .print-row-number { margin: 0; color: var(--secondary-text); }
+  .print-line { break-inside: avoid-page; border-top: 1px solid var(--line); padding-top: 2mm; margin-top: 2mm; }
+  .print-line p { margin: 0; }
+  .print-section-done { margin-top: 12mm; }
+  .print-section-line { font-size: var(--t-4); margin: 0; border-bottom: 2px solid var(--brand-primary); padding-bottom: 2mm; break-after: avoid-page; }
   /* The screen's attached frame is a screen idea: on paper a step is a section
      under a heading, in one column, with no card, no shadow and no rail beside
      it. The rail's own blocks still print, under the main column, because they
@@ -4652,6 +4716,15 @@ footer.app a {
   .plan-row .when {
     grid-column: 3;
     text-align: left;
+  }
+  /* A finished row's day follows the same rule; its own column rule above is
+     more specific, so it is told again here. */
+  .plan-row[data-compact] .when {
+    grid-column: 3;
+  }
+  .plan-row[data-compact] {
+    padding-top: 8px;
+    padding-bottom: 8px;
   }
   /* The reason line can take the space it needs once the row is already tall. */
   .plan-row-reason {

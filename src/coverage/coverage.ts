@@ -4,7 +4,7 @@ import { groupSignatures } from '../baseline/index.ts'
 import type { CaPolicy } from '../baseline/types.ts'
 import { guestKindsReached, matchesSignature, narrowerApps, narrowerConditions, populationReach, raiseFloor } from './classify.ts'
 import { engine } from '../content/content.ts'
-import { PINNED_GOAL_MAP, policyKey } from '../roadmap/goalMap.ts'
+import { PINNED_GOAL_MAP, pinnedSource, policiesForGoal, policyKey } from '../roadmap/goalMap.ts'
 import type { GoalMap } from '../roadmap/goalMap.ts'
 import { applyDeviations } from '../roadmap/deviations.ts'
 import { policyFacts } from './facts.ts'
@@ -179,6 +179,12 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
   // The map describes this package when its keys resolve in it (the pinned
   // baseline), as generate.ts sourcesFor reads it.
   const mapDescribesPackage = Object.values(goalMap).flat().some((k) => factsByKey.has(k))
+  const standInFacts = (goalId: string): PolicyFacts[] =>
+    policiesForGoal(goalMap, pinnedSource(input.baselinePolicies as CaPolicy[]), goalId).map((p) => {
+      const facts = policyFacts(p, input.strengths)
+      rawByFacts.set(facts, p)
+      return facts
+    })
   const goals: { goal: Goal; baselineMatches: PolicyFacts[]; goalPolicies: PolicyFacts[]; written: PolicyFacts | null }[] = CATALOGUE.map((goal) => {
     const signatureMatches = baselineFacts.filter((f) =>
       goal.implementations.some((impl) => matchesSignature(f, impl.signature)),
@@ -186,16 +192,21 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
     for (const b of signatureMatches) matchedBaseline.add(b.name)
     // The map's policies, in order (A first), when the package carries them;
     // else the signature matches (an upload with no map, a synthetic fixture).
-    const mapped = (goalMap[goal.id] ?? []).map((k) => factsByKey.get(k)).filter((f): f is PolicyFacts => f !== undefined)
+    const inPackage = (goalMap[goal.id] ?? []).map((k) => factsByKey.get(k)).filter((f): f is PolicyFacts => f !== undefined)
+    // A goal the map holds that the package carries no policy for is judged
+    // against the pinned policy its step is written from (generate.ts sourcesFor,
+    // goalMap.ts pinnedSource, q-pin), never against the goal's own template.
+    const standIn = inPackage.length === 0 && (goalMap[goal.id] ?? []).length > 0 && (mapDescribesPackage || !signatureMatches.some((f) => !/no[-_ ]?exclusions?/i.test(f.name)))
+    const mapped = standIn ? standInFacts(goal.id) : inPackage
     // The policy a step for the goal writes, which is what its resources are
     // judged against (classify.ts narrowerApps): the map's policy; where the map
-    // describes the package and does not hold the goal, nothing in the package —
-    // generate.ts sourcesFor gives such a goal no source, and a step for it
-    // would write the goal's own template (null here); and only for a package
-    // the map does not describe, the signature match. A signature match on the
-    // pin is another goal's policy: the admin-portal block names Azure
-    // management beside the portals, so a tenant's MFA policy on Azure
-    // management alone read "covers fewer apps" against it.
+    // does not hold the goal, nothing — generate.ts sourcesFor gives such a goal
+    // no source, and a step for it would write the goal's own template (null
+    // here); and only for a package the map does not describe, the signature
+    // match. A signature match on the pin is another goal's policy: the
+    // admin-portal block names Azure management beside the portals, so a
+    // tenant's MFA policy on Azure management alone read "covers fewer apps"
+    // against it.
     const written = mapped.length > 0 ? mapped[0] : mapDescribesPackage ? null : (signatureMatches[0] ?? null)
     // Every policy the baseline implements the goal with, both halves of a pair:
     // what the goal reaches is what they reach together.

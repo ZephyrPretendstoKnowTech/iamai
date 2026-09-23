@@ -26,13 +26,17 @@
 // registration with neither. The next action, which the surface states above
 // these lines from the frozen Step Contract, stands alone.
 //
+// One hold keeps the "before" lines: a create that waits on device readiness
+// (`preparesWhileCreateWaits`). There they are preparation, not the change, and
+// the wait depends on them.
+//
 // The export already withheld them. The screen built them unconditionally and
 // rendered them wherever the portal translator returned nothing, which is
 // exactly when the change is not due, so the screen instructed a change the
 // artifacts refused to describe. One reading now, here.
 //
 // Pure: no DOM, no network.
-import { policyHold, unavailableReason } from '../../roadmap/operations.ts'
+import { createHeldOnReadiness, policyHold, toReportOnly, unavailableReason } from '../../roadmap/operations.ts'
 import { fillText, whatToDoFor, whole } from '../../content/render.ts'
 import { stepPortalLines } from './stepPortal.ts'
 import type { PortalNames } from './stepPortal.ts'
@@ -51,10 +55,29 @@ export function instructionsHeld(step: Step, cs: ContentStepLike): boolean {
   return unavailableReason(step) !== null || policyHold(step) !== null
 }
 
+/**
+ * True where all that holds a policy is its create, waiting on the device
+ * readiness that holds its turn-on (roadmap/operations.ts createHeldOnReadiness).
+ * Its "before" lines stand then, and each surface carries them where a held step
+ * carries an inspection: the Entra tab and its Implementation Task (stepBody.ts),
+ * the export and AI Info (stepExport.ts).
+ *
+ * They set up the devices, not the policy. They are also what keeps the number
+ * the create waits on honest. Require a Managed Device Outside the Office says to
+ * set Intune's "Mark devices with no compliance policy assigned as" to Not
+ * compliant. At its shipped value, Compliant, a device with no compliance policy
+ * reads compliant, so readiness could reach the threshold and release the create
+ * into the certificate prompts the wait exists to prevent. Withheld with the
+ * create, the line appeared only once it was too late to matter.
+ */
+export function preparesWhileCreateWaits(step: Step, cs: ContentStepLike): boolean {
+  return cs?.kind === 'policy' && createHeldOnReadiness(step)
+}
+
 export type StepInstructions = {
   /** The baseline's portal lines through the translator, or null where none are offered. */
   portal: string[] | null
-  /** The content's leading lines, filled and whole; empty while the change is held. */
+  /** The content's leading lines, filled and whole; empty while the change is held, unless the hold is a create waiting on device readiness (`preparesWhileCreateWaits`). */
   before: string[]
   /** The step's own instruction lines, filled and whole, as the surface renders them; empty while the change is held or the portal stands in their place. */
   steps: string[]
@@ -91,7 +114,7 @@ export function stepInstructions(step: Step, cs: ContentStepLike, ex: Record<str
   // roadmap/operations.ts implementationOffered), so a held step has none.
   const lines = cs?.kind === 'policy' ? stepPortalLines(step, names) : null
   const portal = lines && lines.length > 0 ? lines : null
-  const before = held ? [] : wholeLines(w.before, ex)
+  const before = held && !preparesWhileCreateWaits(step, cs) ? [] : wholeLines(w.before, ex)
   const own = Array.isArray(w.steps) ? (w.steps as unknown[]) : []
   const steps = held || portal !== null ? [] : wholeLines(own.length > 0 ? own : engineSteps(step, cs), ex)
   return { portal, before, steps, held }
@@ -147,10 +170,15 @@ export function rescanLinesOf(step: Step, cs: ContentStepLike): { steps: string[
  * placeholders, beside existing guest coverage the step said to compare first,
  * while the opened step's portal said to review the pair (Phase 2 export
  * finding 4).
+ *
+ * Never over a policy the tenant has switched off: the one change there is to
+ * set that policy to Report-only, and its own lines say so on every channel
+ * (stepResources.ts switchedOffLines).
  */
 export function preparationLines(step: Step, cs: { preparation?: unknown; kind?: unknown } | undefined, portalProduced: boolean): string[] | null {
   if (!cs || !Array.isArray(cs.preparation)) return null
   const reason = cs.kind === 'policy' ? unavailableReason(step) : null
+  if (reason !== null && toReportOnly(step).length > 0) return null
   const stands = step.id === 's-prereq-passkey-settings' ? !portalProduced : reason !== null || !portalProduced
   if (!stands) return null
   return [...cs.preparation.filter((line: unknown): line is string => typeof line === 'string'), ...(step.action.unmatchedPair ? step.action.portalSteps : [])]

@@ -1,8 +1,10 @@
-// The plan's foundation: the two pinned groups (roadmap/stepGroups.ts), and the
+// The plan's foundation: Emergency Access and Direction (roadmap/stepGroups.ts), and the
 // one rule that no policy step runs ahead of them.
 //
-// Establish Emergency Access is the way back into the tenant; Decide Your
-// Tenant's Direction is what every policy this plan writes is written from.
+// Establish Emergency Access is the way back into the tenant; Define Your
+// Rollout Scope (the Direction steps, named Decide Your Tenant's Direction
+// when the owner set this rule) is what every policy this plan writes is
+// written from.
 // Until both are settled a policy step is not Ready (owner, 2026-09-19: "all
 // policies should not be marked 'Ready' until Establish Emergency Access and
 // Decide Your Tenant's Direction are set"). Before this the emergency gate held
@@ -26,7 +28,7 @@
 // is not in that graph — nothing in Entra changes on it — so the wait is the
 // `decision` blocker a policy waiting on a Direction answer has always carried
 // (direction.ts gateOnDirection), which holds the step the same way and reads as
-// Waiting on your direction.
+// Waiting on your answers.
 //
 // Not gated: the members of the two groups themselves, anything that is not a
 // policy step (a prerequisite, a check, a Cleanup or campaign row, a baseline
@@ -47,7 +49,7 @@ import { FOUNDATION_WAIT } from './holds.ts'
 import { setState, workflowReviewIsCurrent } from './lifecycle.ts'
 import type { Step } from './types.ts'
 
-/** The member ids of the two pinned groups, Emergency Access first, in the order each group draws them. */
+/** The member ids of the foundation, Emergency Access and Direction, Emergency Access first, in the order each group draws them. */
 export const FOUNDATION_STEP_IDS: readonly string[] = [...membersOf(EMERGENCY_ACCESS_GROUP), ...membersOf(DIRECTION_GROUP)]
 
 /** Whether a step is one of the foundation's own members (which this rule never gates). */
@@ -68,7 +70,7 @@ export function unsettledFoundations(steps: readonly Step[]): Step[] {
   return FOUNDATION_STEP_IDS.map((id) => byId.get(id)).filter((s): s is Step => s !== undefined && !settled(s))
 }
 
-/** Whether both pinned groups are settled, so the rollout may go ahead. */
+/** Whether Emergency Access and Direction (the foundation) are settled, so the rollout may go ahead. */
 export const foundationsSettled = (steps: readonly Step[]): boolean => unsettledFoundations(steps).length === 0
 
 const POLICY: readonly Step['kind'][] = ['create', 'adjust', 'enforce']

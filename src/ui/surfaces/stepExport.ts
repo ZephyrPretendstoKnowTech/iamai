@@ -16,8 +16,8 @@ import { SHARED_REF_KEYS, fillText, ifWrongFor, listCountVars, whatToDoFor, whol
 import { stepVars, withoutScheduleDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor, unwrittenCorrectionLines } from './stepPortal.ts'
-import { instructionsHeld, preparationLines, rescanLinesOf, wholeLines } from './stepInstructions.ts'
-import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, proceduresAreReference, stepContract } from './stepContract.ts'
+import { instructionsHeld, preparationLines, preparesWhileCreateWaits, rescanLinesOf, wholeLines } from './stepInstructions.ts'
+import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, proceduresAreReference, readinessHeldLine, stepContract } from './stepContract.ts'
 import type { LaneView, PrerequisiteLabel, StepContract } from './stepContract.ts'
 import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, previewNoteLines, selectedPolicyBodiesOf, entraWithSettings } from './stepPackage.ts'
 import { projectSafely } from '../../content/implementation/project.ts'
@@ -30,14 +30,14 @@ import { planFinish } from '../../derive/finish.ts'
 import type { Substatus } from '../../actionability/lanes.ts'
 import { createsNewPolicy, enforcesByStateOnly, updatesExistingPolicy, heldByTitle, implementationOffered, waitingLine } from './stepJson.ts'
 import { awaitingDeployment, enforcementUnearned, forecastEnforcement } from '../../roadmap/forecast.ts'
-import { isPreserved, unavailableReason } from '../../roadmap/operations.ts'
+import { isPreserved, toReportOnly, unavailableReason } from '../../roadmap/operations.ts'
 import { baselineConflictWords } from '../../roadmap/baselineConflict.ts'
 import { heldForCorrection, heldForReview } from '../../roadmap/lifecycle.ts'
 import { stepPopulation } from '../../derive/population.ts'
 import { list } from '../../copy/statements.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
 import { isHeld } from '../../roadmap/holds.ts'
-import { namedPortalResource, policyInspectionLines, lifecycleResources, verificationResourceLines } from './stepResources.ts'
+import { namedPortalResource, policyInspectionLines, lifecycleResources, switchedOffLines, verificationResourceLines } from './stepResources.ts'
 import { scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import { EMERGENCY_ACCOUNTS, EMERGENCY_GROUP, PASSKEY_SETTINGS } from '../../roadmap/emergencyJourney.ts'
 import { emergencyGroupTasksOf } from './emergencyGroupTasks.ts'
@@ -136,8 +136,10 @@ export function ifWrongLineFor(step: Step, cs: Record<string, unknown>, ex: Reco
   //
   // What replaces it is decided by the patch, never by update mode alone. The
   // one update whose inverse is report-only is the state-only enforcement: it
-  // turned the policy on and touched nothing else, so switching it back off puts
-  // the tenant exactly where it was. Every other update changed a setting —
+  // turned the policy on and touched nothing else, so setting it back to
+  // report-only puts the tenant exactly where it was — never Off (owner,
+  // 2026-09-23): a policy left in report-only keeps collecting the sign-in data
+  // its next turn-on is judged by. Every other update changed a setting —
   // including a correction to a policy the tenant already enforces — and the way
   // back from those is to restore the settings the step shows above the line.
   // Report-only would be the wrong instruction twice over there: it weakens a
@@ -219,7 +221,7 @@ export function manualEvidenceLines(step: Step, ctx: StepVarContext): string[] {
  *
  * Only where the gate is the board's own words for a waiting row (the lane's
  * tail on Up Next or On Hold: "After Configure Passkey Authentication",
- * "Waiting on your direction"), which the row itself shows. The engine's
+ * "Waiting on your answers"), which the row itself shows. The engine's
  * milestone clause is not a sentence ("until both policies of the pair can be
  * matched", "when admin readiness reaches 100% (now 66%)"), and the board's
  * "Not supported" over a policy already in place is a group label, not an
@@ -430,7 +432,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   else if (emergencyUnsafe) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.emergencyUnsafe), { tenant: String(ex.tenant ?? '') }))
   else if (emergencyUnproven) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.emergencyUnproven), { tenant: String(ex.tenant ?? '') }))
   else if (escapeHatch) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.escapeHatchHeld), { tenant: String(ex.tenant ?? ''), steps: heldByTitle(step) }))
-  else if (readinessHeld) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.readinessHeld), { tenant: String(ex.tenant ?? ''), ...(step.action.readinessGate ?? {}) }))
+  else if (readinessHeld) lines.push(readinessHeldLine(step, String(ex.tenant ?? '')))
   // A goal the tenant already delivers says *which* policy delivers it, in the
   // artifacts as on the screen. The line used to be the bare "nothing to
   // create", which is also the contract's action and is unshifted in front of
@@ -476,8 +478,9 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
       lines.push(...(preparation ?? [...(projectedEntra ? entraWithSettings(entra.text, step, ctx, contract, preview ?? projection) : entra.text).replace(/\*\*(.*?)\*\*/g, '$1').split(/\r?\n/).map(line => line.trim()).filter(Boolean), ...(preview ? previewNoteLines(step, contract, preview.hold) : [])]))
     }
   }
-  // A policy the tenant has switched off inspects the one that is there, in
-  // every channel that carries these lines.
+  // A policy the tenant has switched off is set to Report-only, in every
+  // channel that carries these lines: the screen's own procedure for it
+  // (stepResources.ts switchedOffLines), never straight to On.
   //
   // The package's blocked projection is the create procedure, and
   // `hasPackagePortal` let it through to the export and to the AI brief — so
@@ -486,8 +489,14 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // Policies > New policy. 2. Name: ...". That is the channel most likely to be
   // pasted into an assistant, which would then confidently instruct the
   // duplicate this whole reason exists to prevent.
-  const switchedOff = cs.kind === 'policy' && unavailableReason(step) === 'switched-off'
-  if (switchedOff || (!conflicted && !inPlace && !hasPackagePortal && cs.kind === 'policy' && !(portal?.length && implementationIsCurrent(step)))) lines.splice(0, lines.length, ...policyInspectionLines(step))
+  const switchedOff = cs.kind === 'policy' && toReportOnly(step).length > 0
+  // A create that waits on device readiness carries its preparation there
+  // instead, as the screen's Entra tab does (stepInstructions.ts
+  // preparesWhileCreateWaits): the contract's action, why the create waits,
+  // leads, and the content's "before" lines follow it.
+  const preparation = preparesWhileCreateWaits(step, cs) ? wholeLines(w.before, ex) : []
+  if (switchedOff) lines.splice(0, lines.length, ...(switchedOffLines(step, String(ex.tenant ?? '')) ?? policyInspectionLines(step)))
+  else if (preparation.length > 0 || (!conflicted && !inPlace && !hasPackagePortal && cs.kind === 'policy' && !(portal?.length && implementationIsCurrent(step)))) lines.splice(0, lines.length, ...(preparation.length > 0 ? preparation : policyInspectionLines(step)))
   // The correction a person owes in a part IAMAI does not write, as the screen's
   // portal carries it (stepPortal.ts unwrittenCorrectionLines), once.
   if (cs.kind === 'policy') {

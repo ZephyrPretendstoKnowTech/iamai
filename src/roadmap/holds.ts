@@ -39,7 +39,7 @@
 // Pure: no DOM, no network.
 import type { Step } from './types.ts'
 import { heldForReview, workflowReviewIsCurrent } from './lifecycle.ts'
-import { awaitsOwnObject, enforcementHeld, isOpenPolicy, unavailableReason } from './operations.ts'
+import { awaitsOwnObject, createHeldOnReadiness, enforcementHeld, isOpenPolicy, unavailableReason } from './operations.ts'
 import { directionBlockerStep } from './directionAnswers.ts'
 import { readyWhen } from '../derive/readyWhen.ts'
 
@@ -47,8 +47,8 @@ export type HoldKind = 'unavailable' | 'readiness' | 'prerequisite' | 'decision'
 
 /**
  * The label a wait on the plan's foundation carries (roadmap/foundations.ts
- * gateOnFoundations): the two pinned groups, Establish Emergency Access and
- * Decide Your Tenant's Direction.
+ * gateOnFoundations): the foundation, Establish Emergency Access and
+ * Define Your Rollout Scope.
  *
  * It is the one wait on another step that is a hold whatever that step's own
  * state (owner, 2026-09-19): nothing dates a policy before the way back into the
@@ -93,6 +93,11 @@ export function holdOf(step: Step): Hold | null {
   if (c === 'baseline-conflict') return { kind: 'conflict' }
   if (heldForReview(step)) return { kind: 'review' }
   const policy = isOpenPolicy(step)
+  // A compliant-device create the readiness threshold holds with its turn-on
+  // (operations.ts createHeldOnReadiness): nothing about the policy is
+  // unwritable, the threshold is all that holds it, and it is counted and
+  // worded as a readiness wait like the turn-on it waits with.
+  if (policy && createHeldOnReadiness(step)) return { kind: 'readiness' }
   // An object the step makes itself is its own next task, and that is work the
   // plan schedules now, not a hold (Stage 3: the countries policy creates the
   // countries location, then its policy). Its policy still cannot be written

@@ -3,7 +3,7 @@ import { emergencyAccountPreparationComplete, emergencyAccountPreparationOf } fr
 import { followUpIdsOf, settleFollowUp } from './followUp.ts'
 import { addWorkflowSteps } from './workflows.ts'
 import { directionSteps } from './direction.ts'
-import { applyManualReviews } from './manualWork.ts'
+import { applyManualReviews, perUserMfaReading } from './manualWork.ts'
 // Step generation (roadmap.md §1–§6; 2026-08-27 redesign: collapsed phase 0,
 // per-tenant impact, safe-today lane, handle-with-care gating, comms drafts,
 // operator self-safety, Learn links, auto-scheduling). Pure.
@@ -43,7 +43,7 @@ function deferredHardeningLines(step: Step, nameOf: (id: string) => string): str
 import { BASELINE_CONFLICT, baselineConflicts } from './baselineConflict.ts'
 import type { TemplateBody, TemplatePlaceholder, TemplateValues } from './template.ts'
 import { policyFacts } from '../coverage/facts.ts'
-import { PINNED_GOAL_MAP, goalInMap, policyKey } from './goalMap.ts'
+import { PINNED_GOAL_MAP, goalInMap, pinnedSource, policiesForGoal, policyKey } from './goalMap.ts'
 import { COVERAGE_JUDGED, memberKeyOf, sameDimension, unwrittenDifferences } from './observation.ts'
 import type { GoalMap } from './goalMap.ts'
 import type { StrengthLookup } from '../coverage/strength.ts'
@@ -1066,10 +1066,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
 
   // The baseline policy that stands for each goal is decided once, here, so
   // the prerequisites know which template placeholders the plan will need.
-  const baselineFactsList = input.baseline.policies.map((p) => ({
+  // Each carries the package it came from, which its references, readings and
+  // strengths are resolved against: the running package, or the pinned one for a
+  // goal the running package carries no policy for (`sourcesFor`, q-pin).
+  const baselineFactsList: { key: string; policy: RawPolicy; facts: ReturnType<typeof policyFacts>; authors: readonly CaPolicy[]; standIn?: true }[] = input.baseline.policies.map((p) => ({
     key: policyKey(p),
     policy: p as unknown as RawPolicy,
     facts: policyFacts(p, input.strengths),
+    authors: input.baseline.policies,
   }))
   // Style variants are decided by data, never by a question (prompt 16 §4):
   // "NoExclusions" variants are never considered.
@@ -1084,13 +1088,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // fallback for a package that does not carry the mapped policy — the
   // synthetic test fixtures, which stand in for the pinned baseline.
   const goalMap = input.goalMap ?? PINNED_GOAL_MAP
-  // Read once, from the map *and the package* this run is planning against
-  // (baselineConflict.ts): the conflict belongs to the source policy the active
-  // baseline hands the goal, and to what that policy still says about itself. An
-  // uploaded baseline is judged by its own map and its own policies, never by
-  // the pin — and a revised version of a reviewed policy that settles the
-  // contradiction is planned like any other.
-  const conflictGoals = baselineConflicts(goalMap, input.baseline)
   const inBaseline = (goal: Goal): boolean => goalInMap(goalMap, goal.id)
   const factsByKey = new Map(baselineFactsList.map((b) => [b.key, b]))
   // The map describes this package when its keys resolve in it (the pinned
@@ -1098,6 +1095,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // describe — a synthetic fixture that carries the goal's policy under a key
   // the map does not name.
   const mapDescribesPackage = Object.values(goalMap).flat().some((k) => factsByKey.has(k))
+  const standInsByGoal = new Map<string, (typeof baselineFactsList)[number][]>()
   const sourcesFor = (goal: Goal): typeof baselineFactsList => {
     // The active baseline not holding the goal is the whole answer: it has no
     // source, whatever a signature would match. Otherwise the floor's step —
@@ -1110,8 +1108,32 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     if (!inBaseline(goal)) return []
     const mapped = (goalMap[goal.id] ?? []).map((k) => factsByKey.get(k)).filter((b): b is (typeof baselineFactsList)[number] => b !== undefined)
     if (mapped.length > 0) return mapped
-    return mapDescribesPackage ? [] : baselineMatchesFor(goal)
+    const matched = mapDescribesPackage ? [] : baselineMatchesFor(goal)
+    if (matched.length > 0) return matched
+    // A goal the map holds and the package carries no policy for is written from
+    // the pinned policy the map names, through the same translator, and never
+    // from the goal's own template (goalMap.ts pinnedSource, q-pin).
+    const known = standInsByGoal.get(goal.id)
+    if (known) return known
+    const pinned = pinnedSource(input.baseline.policies)
+    const found = policiesForGoal(goalMap, pinned, goal.id).map((p) => ({ key: policyKey(p), policy: p as unknown as RawPolicy, facts: policyFacts(p, input.strengths), authors: pinned, standIn: true as const }))
+    standInsByGoal.set(goal.id, found)
+    return found
   }
+  // The policies this run plans from: the package's, and the pinned ones that
+  // stand in for a goal it carries no policy for. What the plan requires of the
+  // tenant (a strength), what it asks about (a source reference) and where a
+  // source contradicts itself are read from these, so a stand-in is planned by
+  // the same rules as the package's own.
+  const standIns = [...new Map(input.coverage.results.flatMap((r) => sourcesFor(r.goal)).filter((s) => s.standIn).map((s) => [s.key, s.policy as unknown as CaPolicy])).values()]
+  const planPolicies: readonly CaPolicy[] = standIns.length > 0 ? [...input.baseline.policies, ...standIns] : input.baseline.policies
+  // Read once, from the map *and the package* this run is planning against
+  // (baselineConflict.ts): the conflict belongs to the source policy the active
+  // baseline hands the goal, and to what that policy still says about itself. An
+  // uploaded baseline is judged by its own map and its own policies, never by
+  // the pin — and a revised version of a reviewed policy that settles the
+  // contradiction is planned like any other.
+  const conflictGoals = baselineConflicts(goalMap, { policies: planPolicies, docs: input.baseline.docs })
   const templateNeeds = new Set<TemplatePlaceholder>()
   for (const r of input.coverage.results) {
     if (r.status !== 'absent' || (!inBaseline(r.goal) && !isFloorGoal(r.goal.id)) || sourcesFor(r.goal).length > 0) continue
@@ -1204,8 +1226,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // requirement under another name (resolvePolicy.ts); where none does, this is
   // the step that makes one, and the policies that require it wait on it.
   const strengthStepId = PREREQ_STEP_ID.authStrength
-  const strengthsUnanswered = canUseConditionalAccess ? unmatchedStrengths(input.baseline.policies, tenantObjects) : []
-  const requiredStrengths = canUseConditionalAccess ? unmatchedStrengths(input.baseline.policies, { ...tenantObjects, strengths: new Map(), confirmed: new Map() }) : []
+  const strengthsUnanswered = canUseConditionalAccess ? unmatchedStrengths(planPolicies, tenantObjects) : []
+  const requiredStrengths = canUseConditionalAccess ? unmatchedStrengths(planPolicies, { ...tenantObjects, strengths: new Map(), confirmed: new Map() }) : []
   if (requiredStrengths.length > 0) {
     // The author's own name for it, which is what the step's words call it: the
     // strength this tenant is being asked to make is the baseline's, not one of
@@ -1314,7 +1336,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     steps.push(step)
   }
 
-  // The device decision (E2) is Decide Your Tenant's Direction's D3
+  // The device decision (E2) is Define Your Rollout Scope's D3
   // (roadmap/direction.ts): always asked with Conditional Access, never hidden
   // on evidence, and the device steps wait on its answers (gateOnDirection).
 
@@ -1399,8 +1421,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     steps.push(s)
   }
   // Per-user MFA still on (migration not complete): a conflict named up front (roadmap-v2.md §7, messy).
+  // Built only when needed (v2-research/peruser.md): a clean read — every
+  // account's per-user state read, none Enabled or Enforced — has nothing for
+  // the step to do, the way the service-accounts group step is built only when
+  // its condition holds. An absent reading, an unknown account or a partial
+  // Users read keeps it: unknown is never hidden (manualWork.ts perUserMfaReading).
   const methodsPolicy = (snapshot.config.authMethodsPolicy?.rows?.[0] ?? null) as { policyMigrationState?: string } | null
-  if (canUseConditionalAccess) {
+  if (canUseConditionalAccess && !perUserMfaReading(snapshot).clean) {
     const s = prereq('s-prereq-per-user-mfa')
     s.readiness.lines = [`Authentication methods migration: ${methodsPolicy?.policyMigrationState ?? 'not read'}. Legacy per-user MFA states require a separate check in Entra.`]
     steps.push(s)
@@ -1617,7 +1644,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // package (a synthetic fixture) the step describes the one chosen variant —
     // never the variants it rejected.
     const mappedSources = (goalMap[goal.id] ?? []).map((k) => factsByKey.get(k)).filter((b): b is (typeof baselineFactsList)[number] => b !== undefined)
-    const stepSources = mappedSources.length > 0 ? mappedSources : source ? [source] : []
+    const stepSources = mappedSources.length > 0 ? mappedSources : source?.standIn ? matches : source ? [source] : []
     // The step's one resolution (resolvePolicy.ts): each of those policies,
     // resolved once against the applied mapping. The action below builds its
     // JSON from the same result, and the portal instructions read it off the
@@ -1632,7 +1659,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
      * the instruction and the name in the body are the one name.
      */
     const stepPolicies = (): StepPolicyInput[] =>
-      stepSources.map((m) => ({ sourceName: m.facts.name, sourceKey: m.key, resolved: resolveOne(m.policy as RawPolicy, input.baseline.policies) }))
+      stepSources.map((m) => ({ sourceName: m.facts.name, sourceKey: m.key, resolved: resolveOne(m.policy as RawPolicy, m.authors) }))
     const templatePolicy = (): StepPolicyInput[] => [{ sourceName: goal.id, sourceKey: `template:${goal.id}`, resolved: resolveOne(resolveTemplate(impl.template as TemplateBody, templateValues).body as RawPolicy, []) }]
     const named = (policies: StepPolicyInput[], first: string): StepPolicyInput[] =>
       policies.map((p, i) => ({ ...p, displayName: i === 0 ? first : policyPairNames(first, p.sourceName, naming ?? null).b }))
@@ -2607,12 +2634,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // `missing` and holds its policy (planLanes.ts observe: a `sourceMapping`
   // blocker); no step is waited on.
   {
-    const usage = new Map(referenceUsage(input.baseline.policies).map((u) => [u.id, u]))
+    const usage = new Map(referenceUsage(planPolicies as CaPolicy[]).map((u) => [u.id, u]))
     const roleOf = (id: string): Pick<SourceReference, 'role' | 'baselinePolicies' | 'baselineTotal'> => {
       const u = usage.get(id.toLowerCase())
       if (!u) return {}
       const role = u.includedIn.length > 0 && u.excludedFrom.length > 0 ? 'both' : u.includedIn.length > 0 ? 'include' : 'exclude'
-      return { role, baselinePolicies: new Set([...u.includedIn, ...u.excludedFrom]).size, baselineTotal: input.baseline.policies.length }
+      return { role, baselinePolicies: new Set([...u.includedIn, ...u.excludedFrom]).size, baselineTotal: planPolicies.length }
     }
     for (const s of steps) {
       if (!s.action.sourceReferences?.length) continue
@@ -3017,7 +3044,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     setState(s, { setAside: true })
   }
   if (canUseConditionalAccess && devicePlan?.phones === 'none') steps.push(prereq('s-ladder-phone-access-restriction'))
-  // Decide Your Tenant's Direction (roadmap/direction.ts): the four decision
+  // Define Your Rollout Scope (roadmap/direction.ts): the four decision
   // steps, and the review rows whose services D1 asks about.
   if (canUseConditionalAccess) {
     steps.unshift(...directionSteps({ snapshot, mapping, notAssessed: input.coverage.organisation.notAssessed, availableGoalIds: input.coverage.results.filter((r) => r.status !== 'licence-limited').map((r) => r.goal.id), nameOf }))

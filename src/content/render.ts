@@ -219,6 +219,7 @@ const SINGULAR: Record<string, string> = {
   members: 'member', devices: 'device', methods: 'method', days: 'day', weeks: 'week', keys: 'key',
   checks: 'check', steps: 'step', tenants: 'tenant', locations: 'location', countries: 'country', roles: 'role', groups: 'group',
   'sign-ins': 'sign-in', files: 'file', pages: 'page', records: 'record', sections: 'section', rings: 'ring', windows: 'window', prerequisites: 'prerequisite', results: 'result',
+  controls: 'control',
 }
 // The verbs a count governs, plural → singular, for a count of one: "1 person
 // holds", "1 of them has". Present-tense verbs the content writes after a
@@ -226,6 +227,8 @@ const SINGULAR: Record<string, string> = {
 const SINGULAR_VERB: Record<string, string> = {
   hold: 'holds', have: 'has', use: 'uses', are: 'is', were: 'was', do: 'does', sign: 'signs', need: 'needs', own: 'owns', read: 'reads', work: 'works',
   look: 'looks', open: 'opens', keep: 'keeps', register: 'registers', appear: 'appears', remain: 'remains', carry: 'carries', wait: 'waits', share: 'shares', run: 'runs', belong: 'belongs', get: 'gets', see: 'sees', stay: 'stays', exist: 'exists',
+  // The one contraction a count governs (pages.export.printPage1.notLicensed): "1 baseline control … isn't in this plan".
+  "aren't": "isn't", 'aren’t': 'isn’t',
 }
 // A whole word only: "sign" inside "sign-in" is a noun, not the verb.
 const VERB_RE = new RegExp(`(?<![\\w-])(${Object.keys(SINGULAR_VERB).join('|')})(?![\\w-])`, 'g')
@@ -915,7 +918,9 @@ export function renderPages(): string {
       h('Gap suffix on a partly-in-place row') +
       ul([pl.gapSuffix['admin-session']], exT) +
       h('Footer groups') +
-      ul([pl.footer.inPlace, pl.footer.doesntApply + ' — ' + pl.footer.doesntApplyRow, pl.footer.notLicensed + ' — ' + pl.footer.notLicensedRow + ' — ' + pl.footer.notLicensedNote, pl.footer.housekeeping + ' — ' + pl.footer.notInBaseline + ' · ' + pl.footer.rename], exT),
+      ul([pl.footer.inPlace, pl.footer.doesntApply + ' — ' + pl.footer.doesntApplyRow, pl.footer.notLicensed + ' — ' + pl.footer.notLicensedRow + ' — ' + pl.footer.notLicensedNote, pl.footer.housekeeping + ' — ' + pl.footer.notInBaseline + ' · ' + pl.footer.rename], exT) +
+      h('In the baseline, not in this plan: the group, then each reason a policy can read') +
+      ul([pl.footer.notInPlan + ' — ' + pl.footer.notInPlanRow, ...words(pl.footer.notInPlanReason)], { ...exT, policy: 'IAC - GLOBAL - GRANT - BreakGlass - TrustedLocations', reason: '[its reason]', step: 'Establish Emergency Access' }),
   )
   const td = P.readiness
   // MFA Readiness (prompt 62): every word the page, its panel and its rail can

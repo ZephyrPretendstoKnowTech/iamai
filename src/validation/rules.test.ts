@@ -7,7 +7,7 @@ import { observedRecoveryRecords, recoveryCandidate, withPreparedPasskeys } from
 import { test } from 'node:test'
 import { inBaselineConflict } from '../roadmap/baselineConflict.ts'
 import assert from 'node:assert/strict'
-import { fixture } from '../roadmap/fixtures/index.ts'
+import { curatedFixture, fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { REGISTRY, citationFor, evaluateSubject, ruleText } from './rules.ts'
 import { NEED_LABEL } from '../copy/validation.ts'
@@ -615,7 +615,10 @@ test('worst-state trusted location: the whole internet, untrusted, one address',
 // ---- the plan gate (design §2) ---------------------------------------------
 
 test('with an emergency-access blocker, no step that can deny access is Ready', () => {
-  const f = fixture('small')
+  // Curated: small's steps written from the pinned policies (q-pin) name groups of
+  // the author's this baseline has not settled, and that mapping would be the
+  // nearer reason; this case is about the emergency-access gate.
+  const f = curatedFixture('small')
   const broken = structuredClone(f)
   // One account, and it is not a Global Administrator: two blockers.
   broken.mapping.breakGlassUserIds = [f.mapping.breakGlassUserIds[0]]

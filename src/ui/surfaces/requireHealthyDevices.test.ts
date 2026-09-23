@@ -1,4 +1,4 @@
-// The "Require Healthy Devices" group, taken to the V1 standard:
+// The "Require Healthy Devices" steps, taken to the V1 standard:
 // docs/plans/require-healthy-devices-spec.md holds the outcome, the Microsoft
 // Learn page behind every technical claim and the date it was checked. One test
 // per acceptance item in that spec.
@@ -16,7 +16,7 @@ import { fillText } from '../../content/render.ts'
 import registry from '../../content/implementation/registry.generated.json' with { type: 'json' }
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import type { Fixture, FixtureName } from '../../roadmap/fixtures/index.ts'
-import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withDevicesReady } from '../../roadmap/fixtures/run.ts'
 import { setDisplayTimeZone } from '../../copy/dates.ts'
 import { laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from './planBoard.ts'
 import { laneReadings } from './planLanes.ts'
@@ -25,12 +25,12 @@ import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
 import type { StepBody } from './stepBody.ts'
 import { CONTRACT } from './stepContract.ts'
-import { membersOf } from '../../roadmap/stepGroups.ts'
+import { groupOf } from '../../roadmap/stepGroups.ts'
 import { answerKey } from '../../roadmap/answers.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import type { MappingState } from '../../mapping/types.ts'
 
-/** The group's four members, in registry order (roadmap/stepGroups.ts). */
+/** The spec's four steps (docs/plans/require-healthy-devices-spec.md), in its order. */
 const DEVICES = ['s-goal-require-managed-device', 's-goal-intune-enrollment-reauth', 's-ladder-phone-access-restriction', 's-shared-devices']
 
 const MANAGED = 's-goal-require-managed-device'
@@ -134,8 +134,8 @@ function checkedOn(stepId: string): string {
 // The group itself
 // ---------------------------------------------------------------------------
 
-test('the group draws its four members in the spec order', () => {
-  assert.deepEqual([...membersOf('devices')], DEVICES)
+test('the spec’s four steps sit in Limit Sessions and Require Healthy Devices', () => {
+  assert.deepEqual(DEVICES.map((id) => groupOf(id)?.key), ['devices-sessions', 'devices-sessions', 'devices-sessions', 'devices-sessions'])
 })
 
 // ---------------------------------------------------------------------------
@@ -172,8 +172,15 @@ test('D3: the create and correct procedures set Configure to Yes on Locations an
   }
 })
 
+/** Every tab a body draws, joined: the whole of what it hands over. */
+const allDrawn = (b: StepBody): string => b.artifacts.map((a) => a.text()).join('\n')
+
 test('D4: the device answer that narrows the platforms puts them in the Entra procedure, beside the JSON that carries them', () => {
-  const b = bodyOf('demo', MANAGED, withPhonesBlocked)
+  // Below device readiness the create waits with its turn-on, and nothing the
+  // step draws creates the policy: no procedure, no platform line, no body.
+  const held = allDrawn(bodyOf('demo', MANAGED, withPhonesBlocked))
+  assert.doesNotMatch(held, /New policy|Device platforms|excludePlatforms|enabledForReportingButNotEnforced/, 'the held create draws no procedure')
+  const b = bodyOf('demo', MANAGED, (f) => withDevicesReady(withPhonesBlocked(f)))
   const entra = drawn(b, 'portal')
   const json = drawn(b, 'json')
   // The JSON always carried the exclusion; before this wave the Entra procedure did not name it at all.
@@ -185,7 +192,9 @@ test('D4: the device answer that narrows the platforms puts them in the Entra pr
 test('D4b: a target with no platform condition drops the platform line and keeps the rest of the procedure', () => {
   // The demo with the device decision unanswered is the pinned baseline's own
   // shape: no platform condition, so there is nothing to configure and no line.
-  const entra = drawn(bodyOf('demo', MANAGED), 'portal')
+  // Held on device readiness, it draws no procedure at all.
+  assert.doesNotMatch(allDrawn(bodyOf('demo', MANAGED)), /New policy|Locations: set|enabledForReportingButNotEnforced/, 'the held create draws no procedure')
+  const entra = drawn(bodyOf('demo', MANAGED, withDevicesReady), 'portal')
   assert.doesNotMatch(entra, /Device platforms/)
   assert.doesNotMatch(entra, /\[omit |\{\{/)
   assert.match(entra, /Locations: set \*\*Configure\*\* to \*\*Yes\*\*/)

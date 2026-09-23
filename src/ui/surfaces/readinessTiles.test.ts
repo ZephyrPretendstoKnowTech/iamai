@@ -156,19 +156,19 @@ test('the package’s gates merge without a cap: unresolved after the runtime’
   assert.deepEqual(merged.satisfied.map((t) => t.key), [...runtime.satisfied.map((t) => t.key), 'pkg.done'])
 })
 
-test('the printed step and the screen read the same blockers, the row hands them to the step, and a tile’s link opens its step under its own tab', () => {
+test('the printed step and the screen read the same blockers, the row hands them to the step, and a tile’s link opens its step on the view that shows it, else on All work', () => {
   assert.match(read('src/ui/surfaces/PrintPlan.tsx'), /blockers=\{blockersOf\(s\)\}/)
   const plan = read('src/ui/surfaces/Plan.tsx')
   // `enforceWaits` sits between them now: the Cleanup work the enforce
   // checklist's own conditions depend on, which is not a prerequisite of this
   // step's next action and so is not among `blockers` (stepBody.ts).
   assert.match(plan, /blockers=\{readinessBlockersOf\(reading, titleOf\)\} enforceWaits=\{enforceWaits\} prerequisiteLabel=\{prerequisiteLabel\} onOpenMappings=\{openSettings\}/)
-  // A prerequisite in another lane: the tab follows the step the link opened, or the link
-  // would open nothing on screen. The fourth tab (All work) shows every lane, so a step
-  // opened there is already on screen and the tab stays where the operator put it.
-  assert.match(plan, /const openTab = open && tab !== ALL_WORK_TAB \? \(TAB_OF\[readings\.get\(open\)\?\.lane \?\? 'Completed'\] \?\? null\) : null/)
-  assert.match(plan, /<TabFollowsOpenStep open=\{open\} openTab=\{openTab\} tab=\{tab\} onTab=\{setTab\}[^>]*\/>/)
-  assert.match(plan, /if \(open && openTab && openTab !== tab\) onTab\(openTab\)/)
+  // A prerequisite the view does not show: the link opens it on All work, in its own
+  // section (planBoard.ts followOpenStep, owner, roadmap flow V2), or the link would open
+  // nothing on screen. Where the view shows it, the tab stays where the operator put it.
+  // A change of the open step's lane alone is not a link, and keeps the view (planBoard.ts followLaneChange).
+  assert.match(plan, /<TabFollowsOpenStep open=\{open\} lane=\{openLane\} follow=\{follow\}[^>]*\/>/)
+  assert.match(plan, /if \(follow !== null\) \{ if \(moved\) onMoved\(\); else onFollow\(follow\) \}/)
   // Narrow widths: two across at the pack's first breakpoint, one at the second; nothing hidden.
   const narrow = (w: number): string => CSS.slice(CSS.indexOf(`@media (max-width: ${w}px)`))
   assert.match(narrow(940), /\.step \.readiness-strip,\s*\.step \.readiness-strip\.tiles-3 \{\s*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/)
@@ -189,7 +189,7 @@ test('a card is headed by what is being waited on, with its state beneath', () =
   assert.ok(waits.length > 1, 'the premise: this step waits on more than one thing')
   assert.equal(new Set(waits.map((t) => t.label)).size, waits.length, 'two cards are headed the same')
   for (const t of waits) {
-    assert.match(t.value, /^(?:Prerequisite\b|Baseline mapping$|Waiting on your direction$)/, `${t.key}: the check is not a state`)
+    assert.match(t.value, /^(?:Prerequisite\b|Baseline mapping$|Waiting on your answers$)/, `${t.key}: the check is not a state`)
     assert.notEqual(t.label, t.value, `${t.key}: the heading and the check say the same thing`)
     assert.ok(t.link, `${t.key}: the card does not open what it names`)
   }

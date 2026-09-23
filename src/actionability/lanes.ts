@@ -14,7 +14,12 @@
 //
 // An evidence gate — the observation predicate, a readiness threshold, an `evidence` or
 // `time/evidence-window` edge — gates `enforce` only, and an unstarted policy's create
-// never waits on it. The owner's status contract supersedes "evidence is never a hold":
+// never waits on it, unless the gate says it holds the create too (`holdsCreate`: a
+// compliant-device grant, whose report-only create prompts for a certificate; owner,
+// 2026-09-23). Then the unstarted policy waits On Hold with the gate as its reason,
+// and so does a started one whose correction is what puts it into report-only (the
+// same grant, found switched off).
+// The owner's status contract supersedes "evidence is never a hold":
 // a started policy behind an open gate waits On Hold with the gate as its reason, and
 // reads Ready · Observing (the review) only where the gate says what was collected can
 // be reviewed. Ready means the next action can be performed now; Up Next means every
@@ -60,6 +65,11 @@ export type EvidenceGate = {
   reason: string | null
   /** Open, but what was collected can be reviewed now (the window closed over records that were read). */
   reviewable?: boolean
+  /** The gate holds the policy's creation too, not only its enforcement: a report-only create
+   *  that is not safe preparation (roadmap/operations.ts createWaitsOnReadiness; owner, 2026-09-23).
+   *  On a started policy it holds the correction, which for that grant found switched off is the
+   *  Report-only patch that prompts as the create would. */
+  holdsCreate?: boolean
 }
 
 export type StepObservation = {
@@ -487,8 +497,15 @@ function deriveUncached(ctx: Ctx, id: string): LaneResult {
     ? result('Up Next', { nextAction, started, reason: healthy[0]!, blockers: healthy, gates, layers })
     : result('On Hold', { nextAction, started, reason: deeper[0]!, blockers: healthy, gates, layers })
 
+  // A gate that holds the policy's report-only preparation as well as its enforcement
+  // (`holdsCreate`): no prerequisite finishing makes that preparation available.
+  const createGate = kind === 'policy' ? gates.find((g) => !g.satisfied && g.holdsCreate === true) : undefined
   // 4–5. Started. A correction comes first; enforcement waits for every gate to close (§7).
   if (started) {
+    // Save a correction that is itself the report-only preparation the gate holds: a
+    // compliant-device policy found switched off, whose Report-only patch prompts for a
+    // certificate as its create would (owner, 2026-09-23). It waits On Hold on the gate.
+    if (nextAction === 'correct' && createGate) return result('On Hold', { nextAction, started, reason: evidenceBlocker(createGate), blockers: healthy, gates, layers })
     if (nextAction === 'correct') return healthy.length === 0 ? result('Ready', { substatus: 'Correct', nextAction, started, gates, layers }) : queued()
     const open = gates.filter((g) => !g.satisfied)
     // A conditional input nobody saved (U28) waits on a person's answer, not on
@@ -516,7 +533,11 @@ function deriveUncached(ctx: Ctx, id: string): LaneResult {
     // bringing it to the target is available now. `Observing` is a report-only policy's review.
     return result('Ready', { substatus: 'Correct', nextAction, started, gates, layers })
   }
-  // 6. Not started, next safe action executable now.
+  // 6. Not started, behind a gate that holds its create as well as its enforcement
+  // (`holdsCreate`): no prerequisite finishing makes the create available, so it is
+  // never Up Next, and the gate is the reason, prerequisites or not.
+  if (createGate) return result('On Hold', { nextAction, started, reason: evidenceBlocker(createGate), blockers: healthy, gates, layers })
+  // Not started, next safe action executable now.
   if (healthy.length === 0) {
     return result('Ready', { substatus: kind === 'decision' ? 'Decision' : 'Create', nextAction, started, gates, layers })
   }

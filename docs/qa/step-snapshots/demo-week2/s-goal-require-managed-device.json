@@ -1,10 +1,10 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": null,
+  "reason": "when device readiness reaches 80% (now 30%)",
   "fact": null,
   "badge": "On Hold",
-  "bar": "Waiting on your direction",
+  "bar": "Waiting on your answers",
   "rail": "Not scheduled",
   "headings": [
     "About this Step",
@@ -19,11 +19,11 @@
     },
     {
       "label": "Decide How and Where People Sign In",
-      "state": "Waiting on your direction"
+      "state": "Waiting on your answers"
     },
     {
       "label": "Confirm What You Use",
-      "state": "Waiting on your direction"
+      "state": "Waiting on your answers"
     }
   ],
   "channels": [

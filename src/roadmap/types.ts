@@ -618,7 +618,7 @@ export type Step = {
   guidance?: import('../content/content.ts').ContentStep
   baselineReviewSource?: { name: string; json: string | null; reason: string }
   dormantChoices?: { id: string; name: string; outcome: 'keep' | 'disable' | 'investigate' | ''; reason: string; disabled: boolean }[]
-  /** A Decide Your Tenant's Direction step's questions (roadmap/direction.ts), one tile each. */
+  /** A Define Your Rollout Scope step's questions (roadmap/direction.ts), one tile each. */
   directionQuestions?: DirectionQuestion[]
   authenticationStrengthTarget?: { allowedCombinations: string[] }
   configurationFindings?: ConfigurationFinding[]
@@ -949,6 +949,21 @@ export type ExportStep = {
   undated: boolean
 }
 export type StepView = (step: Step) => ExportStep
+
+/**
+ * The Plan board's order and numbers as an export lists steps (roadmap flow V1
+ * decision 8), built by src/ui/surfaces/planBoard.ts boardOrderOf: the board's
+ * row ids, the Cleanup rows' `cleanup-<kind>` among them, section by section in
+ * the board's order; each row's place in that order; and the number it reads
+ * outside the screen, `<section>.<row>`. A step the board draws no row for (one
+ * that does not apply here) has no number and comes after every row.
+ */
+export type ExportOrder = {
+  ids: readonly string[]
+  /** A row's place in `ids`; `ids.length` for an id the board has no row for, so it sorts after every row. */
+  rankOf: (id: string) => number
+  numberOf: (id: string) => string | null
+}
 
 /** A Cleanup row as an export says it (E4): the calendar entry on its day, the prompt pack's and the bundle's cleanup list. Built by src/ui/surfaces/cleanupExport.ts. */
 export type CleanupExport = {

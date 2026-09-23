@@ -150,7 +150,7 @@ function withExclusions(mapping: MappingState): MappingState {
 const exclusionsMembers = (): GroupMembers => new Map([[XGROUP, { memberIds: ['u9'], memberCount: 1, sampled: false, directMembers: 'complete', directMemberIds: ['u9'], displayName: 'CA - Exclusions', membershipRule: null, membershipRuleProcessingState: null, mailEnabled: false, securityEnabled: true, groupTypes: [], isAssignableToRole: false, assignedLicenseSkuIds: [] }]])
 
 /**
- * The plan's two pinned groups settled (roadmap/foundations.ts). Until they are,
+ * The plan's foundation, Emergency Access and Direction, settled (roadmap/foundations.ts). Until they are,
  * every policy step is held and none is dated, which is that gate's case and not
  * the translator's: these cases are about what a policy the plan can write does.
  */

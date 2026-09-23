@@ -291,8 +291,8 @@ function sweep(): Variant[] {
     out.push(...planOf(`${f.name}+curated`, f))
     out.push(...planOf(`${f.name}+curated+unanswered`, noExclusionsAnswer(f)))
   }
-  // The plan's foundation settled (roadmap/foundations.ts): until both pinned
-  // groups are, every policy is held, so the stages a released policy reaches —
+  // The plan's foundation settled (roadmap/foundations.ts): until Emergency Access and Direction
+  // are, every policy is held, so the stages a released policy reaches —
   // Ready to enforce above all — are reachable nowhere else.
   out.push(...planOf('demo-week2+settled', withDirectionApproved(fixture('demo-week2'))))
   out.push(...owesCorrection(fixture('large')))
@@ -402,6 +402,12 @@ const INVENTORY: string[] = [
   // over no instructions (Jordan D6).
   'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-known', // a tenant that switched a tracked policy off (operations.ts switched-off)
   'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown', // small/s-goal-geo-restriction
+  // A compliant-device create held on device readiness with its turn-on (owner,
+  // 2026-09-23; operations.ts createWaitsOnReadiness): the reason is the
+  // certificate prompt, the finding is the readiness number, and the threshold is
+  // a wait, never a fix. Its Direction answer still open is the fix on the first visit.
+  'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-known', // demo/s-goal-require-managed-device
+  'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · found · no-fix · one-policy · who-known', // demo-week2+settled/s-goal-require-managed-device
   'blocker · prerequisite · no-lifecycle · needs-decision · open · do:decide · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small+unanswered/s-prereq-exclusion-group
   'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-unknown', // small+unanswered/s-goal-register-info-protected
   'policy · adjust · enforced · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown', // small+unanswered/s-goal-block-legacy-auth
@@ -457,6 +463,9 @@ const INVENTORY: string[] = [
   'policy · create · not-deployed · healthy · open · do:resolve · track · no-implementation · no-found · no-fix · one-policy · who-unknown', // demo-week2+settled/s-goal-geo-restriction
   // And asking for its work countries, before which nothing of it can be written.
   'policy · create · not-deployed · needs-decision · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown', // demo/s-goal-geo-restriction
+  // The High user-risk create written from the pinned policy (q-pin), not the
+  // goal's template: an account's own risk is not a reach the scan holds.
+  'policy · create · not-deployed · blocked · open · do:resolve · track · implementation · no-found · fix · one-policy · who-unknown', // mid+curated/s-goal-user-risk
 ]
 
 test('§1 the sweep reaches every canonical Plan case, and renders the inventory that was migrated', () => {

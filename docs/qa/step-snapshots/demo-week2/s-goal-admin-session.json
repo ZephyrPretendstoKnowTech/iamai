@@ -4,7 +4,7 @@
   "reason": "after: Confirm What You Use",
   "fact": null,
   "badge": "On Hold",
-  "bar": "Waiting on your direction",
+  "bar": "Waiting on your answers",
   "rail": "Not scheduled",
   "headings": [
     "About this Step",
@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Confirm What You Use",
-      "state": "Waiting on your direction"
+      "state": "Waiting on your answers"
     }
   ],
   "channels": [
