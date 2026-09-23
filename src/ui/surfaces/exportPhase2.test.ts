@@ -12,7 +12,8 @@ import { runFixture, withDirectionApproved } from '../../roadmap/fixtures/run.ts
 import { buildIcs } from '../../roadmap/ics.ts'
 import { scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import { nextMilestone } from '../../roadmap/lifecycle.ts'
-import { sameBaselineSource } from '../../roadmap/plan.ts'
+import { parsePlanFile, planFileRefusal, sameBaselineSource } from '../../roadmap/plan.ts'
+import type { PlanFileProblem } from '../../roadmap/plan.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { app, pages } from '../../content/content.ts'
 import { planFinish, planLengthSentence } from '../../derive/finish.ts'
@@ -354,4 +355,34 @@ test('a plan file saved against another baseline is refused with what is true, a
   assert.doesNotMatch(refusal, /\bLoad\b|\bon Connect\b/, `the refusal instructs an action Connect does not offer: ${refusal}`)
   assert.match(refusal, /different baseline/, refusal)
   assert.match(refusal, /has not been changed\./, refusal)
+})
+
+// Finding 14 (severity 2). Load a plan file showed the parser's own message:
+// "Unexpected token 'N', "Name,UPN\nA,a@b.c\n" is not valid JSON" (the loaded
+// file's text, a sign-in address in it, echoed onto the page), "not a plan file
+// (missing schemaVersion or steps)", and "update the app" for a web page. Each
+// failure reads a whole sentence of its own, and none repeats the file.
+test('a plan file that does not load is refused in a sentence that repeats nothing from the file', () => {
+  const cases: [string, string, PlanFileProblem][] = [
+    ['a CSV export', 'Name,UPN\nA,a@b.c\n', 'notPlan'],
+    ['an empty file', '', 'notPlan'],
+    ['the grounding bundle', JSON.stringify({ _readme: 'x', tenant: { name: 'a@b.c' } }), 'notPlan'],
+    ['a truncated plan file', '{"schemaVersion": 2, "steps": [{"id": "a@b.c"', 'damaged'],
+    ['a plan file from a newer IAMAI', JSON.stringify({ schemaVersion: 999, steps: [] }), 'newer'],
+  ]
+  const said = new Set<string>()
+  for (const [what, text, kind] of cases) {
+    const parsed = parsePlanFile(text)
+    assert.equal(parsed.plan, null, `${what}: loaded`)
+    assert.equal(parsed.kind, kind, `${what}: read as ${parsed.kind}`)
+    const refusal = planFileRefusal(parsed.kind)
+    said.add(refusal)
+    assert.match(refusal, /^[A-Z].*\.$/, `${what}: not a sentence: ${refusal}`)
+    assert.doesNotMatch(refusal, /a@b\.c|Name,UPN|schema|update the app/i, `${what}: the refusal repeats the file or the parser: ${refusal}`)
+    assert.match(refusal, /Nothing was loaded\./, `${what}: ${refusal}`)
+  }
+  assert.equal(said.size, 3, 'one sentence for each way a file fails to load')
+  assert.match(planFileRefusal(null), /^[A-Z].*\.$/, 'the fallback is a sentence too')
+  const page = readFileSync(new URL('./Export.tsx', import.meta.url), 'utf8').replace(/\/\/[^\n]*/g, '')
+  assert.doesNotMatch(page, /setExportError\(error/, 'the Export page shows the parser\'s message')
 })

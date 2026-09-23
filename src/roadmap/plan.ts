@@ -9,7 +9,7 @@ import type { TenantMfaSummary } from '../scoring/mfaViability.ts'
 import type { Step } from './types.ts'
 import type { PlanDecisions, StepDecision } from './decisions.ts'
 import { isCleanupCheckpoint } from './cleanupDone.ts'
-import { engine } from '../content/content.ts'
+import { app, engine } from '../content/content.ts'
 
 export const PLAN_SCHEMA_VERSION = 2
 
@@ -283,23 +283,39 @@ function validatePlanShape(plan: PlanFile): string | null {
   return null
 }
 
-export function parsePlanFile(text: string): { plan: PlanFile | null; error: string | null } {
+/**
+ * Why a plan file did not load: it is not a plan file at all, it is one that is
+ * damaged or incomplete, or a newer IAMAI saved it. `parsePlanFile` reads which;
+ * its `error` is the technical detail, for tests and diagnostics, and is never
+ * shown (it can carry the file's own text).
+ */
+export type PlanFileProblem = 'notPlan' | 'damaged' | 'newer'
+
+/** The Export page's sentence for a plan file that did not load (pages.app.export.planFile*); the generic one where the kind is unknown. */
+export function planFileRefusal(kind: PlanFileProblem | null): string {
+  const words = (app as unknown as { export: Record<'couldNotRead' | 'planFileNotPlan' | 'planFileDamaged' | 'planFileNewer', string> }).export
+  return kind === 'notPlan' ? words.planFileNotPlan : kind === 'damaged' ? words.planFileDamaged : kind === 'newer' ? words.planFileNewer : words.couldNotRead
+}
+
+export function parsePlanFile(text: string): { plan: PlanFile | null; error: string | null; kind: PlanFileProblem | null } {
+  // A file saved in demo mode opens with the sample-data line (exportGuard):
+  // the plan is the JSON object after it. A file with no object in it is not a
+  // plan file; one whose object does not parse is a damaged one.
+  const start = text.indexOf('{')
+  if (start < 0) return { plan: null, error: 'not a plan file (no JSON object)', kind: 'notPlan' }
   try {
-    // A file saved in demo mode opens with the sample-data line (exportGuard):
-    // the plan is the JSON object after it.
-    const start = text.indexOf('{')
     const parsed = JSON.parse(start > 0 ? text.slice(start) : text) as PlanFile
     if (typeof parsed.schemaVersion !== 'number' || !Array.isArray(parsed.steps)) {
-      return { plan: null, error: 'not a plan file (missing schemaVersion or steps)' }
+      return { plan: null, error: 'not a plan file (missing schemaVersion or steps)', kind: 'notPlan' }
     }
     if (parsed.schemaVersion > PLAN_SCHEMA_VERSION) {
-      return { plan: null, error: `plan file is newer (schema ${parsed.schemaVersion}) than this app understands: update the app` }
+      return { plan: null, error: `plan file is newer (schema ${parsed.schemaVersion}) than this app understands`, kind: 'newer' }
     }
     const upgraded = upgradePlanFile(parsed)
     const error = validatePlanShape(upgraded)
-    return error ? { plan: null, error } : { plan: upgraded, error: null }
+    return error ? { plan: null, error, kind: 'damaged' } : { plan: upgraded, error: null, kind: null }
   } catch (e) {
-    return { plan: null, error: e instanceof Error ? e.message : String(e) }
+    return { plan: null, error: e instanceof Error ? e.message : String(e), kind: 'damaged' }
   }
 }
 
