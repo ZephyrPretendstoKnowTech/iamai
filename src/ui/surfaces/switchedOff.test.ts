@@ -223,6 +223,10 @@ test('the other readings of a policy found Off say Report-only too, and never On
     assert.doesNotMatch(line, TURN_ON, `${key}: ${line}`)
     assert.doesNotMatch(line, /\benable it\b|\bScan again once it is on\b/i, `${key}: ${line}`)
   }
+  // The finding renders where another reason holds the step first, and the
+  // instructions below it there were the create procedure: following them
+  // built a second policy beside the one that is Off.
+  assert.doesNotMatch(CONTRACT.foundTaggedDisabled, /instructions below/, CONTRACT.foundTaggedDisabled)
 })
 
 const GUESTS = 's-goal-guests-mfa'
