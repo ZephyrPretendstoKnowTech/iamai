@@ -115,7 +115,7 @@ export const GROUNDING = {
   download: 'Download the bundle',
   header: (tenant: string, redacted: boolean, generated: string) => [
     `IAMAI grounding bundle for ${tenant}, generated ${generated}. ${redacted ? 'Redacted: no user names, sign-in names or tenant id; counts and roles instead.' : 'Unredacted: contains user names and sign-in names.'}`,
-    'Contents: plan (steps, rings, dates, evidence), findings (goal by goal), tenant profile (counts, licences, readiness). Paste into your own assistant to ask questions across the plan. IAMAI runs no models and sent nothing; this file leaves the browser only if you upload it somewhere.',
+    'Contents: plan (steps with their state, dates and what to do, and the Cleanup rows), findings (goal by goal), tenant profile (counts, licences, readiness). Paste into your own assistant to ask questions across the plan. IAMAI runs no models and sent nothing; this file leaves the browser only if you upload it somewhere.',
     'Do not invent facts beyond this file.',
   ],
 }
