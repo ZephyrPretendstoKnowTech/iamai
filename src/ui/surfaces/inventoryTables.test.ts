@@ -328,3 +328,11 @@ test('Policies and sign-in rows name Graph values as the portal does, never by t
   assert.ok(byCountry.rows.length > 0)
   for (const r of byCountry.rows) assert.doesNotMatch(String(byCountry.columns[0].cell(r)), /^[A-Z]{2}$/)
 })
+
+test('the tab that lists every account is named for accounts, as its count is', () => {
+  const s = fixture('demo').snapshot
+  const m = peopleModel(s, buildNameDirectory(s))
+  // demo: 38 accounts, of which 30 are active people; the tab lists every one, and its badge counts them.
+  assert.equal(m.rows.length, s.users.length)
+  assert.doesNotMatch(m.label, /people/i, 'the person word over a count of every account')
+})
