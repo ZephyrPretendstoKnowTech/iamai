@@ -22,8 +22,8 @@ import { customerPlanSteps } from './customerPlanSteps.ts'
 import { boardOf } from './planBoard.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { completedRows, openDoneRows } from './planRows.ts'
-import { completedLinesOf, laneGroupsOf, noPlanLine, postureOf } from './printPlan.ts'
+import { completedRows, doesntApplyRows, openDoneRows } from './planRows.ts'
+import { completedLinesOf, doesntApplyLinesOf, laneGroupsOf, noPlanLine, postureOf } from './printPlan.ts'
 import { stepFacts } from '../../derive/facts.ts'
 import { conditionalAccessLicenceLine } from '../../derive/notLicensed.ts'
 import { planFinish } from '../../derive/finish.ts'
@@ -173,4 +173,24 @@ test('the cover\'s Completed and To do lists are the rows the header counts, Cle
   }
   const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
   assert.match(print, /postureOf\(\[\.\.\.steps\.map\(\(s\) => s\.id\), \.\.\.cleanupRows\.map\(\(r\) => r\.id\)\], laneOf, laneTitleOf\)/, 'the cover builds its lists from something other than the board')
+})
+
+// ---- Doesn't apply: the Plan's own list ----
+
+test('the cover\'s Doesn\'t apply list is the Plan footer\'s, each step with the reason given', () => {
+  // Midflight after Foundation: the cover named five coverage verdicts while the
+  // Plan's footer said "Doesn't apply here (3)", and two of those three (the
+  // service accounts group, shared devices) were on no printed line at all.
+  const p = plan('midflight', { stage: 'foundation' })
+  const said = doesntApplyRows(p.steps)
+  assert.ok(said.some((s) => s.id === 's-prereq-service-accounts-group'), 'the premise: the service accounts group does not apply here')
+  const lines = doesntApplyLinesOf(p.steps)
+  assert.equal(lines.length, said.length, 'the cover counts a different set from the Plan footer')
+  const group = lines.find((l) => l.startsWith('Create or Correct Service Accounts Group'))
+  assert.ok(group && group.includes('No service accounts are selected.'), `the step is not named with its reason: ${lines.join(' | ')}`)
+  // Both surfaces read the one list.
+  assert.match(readFileSync('src/ui/surfaces/PlanFooter.tsx', 'utf8'), /const said = doesntApplyRows\(computed\.steps\)/, 'the Plan footer decides its list itself')
+  const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
+  assert.match(print, /const doesntApply = doesntApplyLinesOf\(steps\)/, 'the cover builds Doesn\'t apply from something other than the Plan\'s list')
+  assert.equal(print.includes('not-applicable'), false, 'the cover still names coverage verdicts under Doesn\'t apply')
 })

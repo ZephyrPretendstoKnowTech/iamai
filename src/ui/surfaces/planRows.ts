@@ -74,6 +74,17 @@ export function deferredRows(steps: readonly Step[]): Step[] {
 }
 
 /**
+ * The steps the person said do not apply here (mapping.notApplicable), each with
+ * the reason as given: the Plan footer's Doesn't apply here list and the printed
+ * cover's, one list. The cover had named the coverage verdicts instead, a
+ * different set from the footer's, and the steps set aside this way appeared on
+ * no printed line.
+ */
+export function doesntApplyRows(steps: readonly Step[]): Step[] {
+  return steps.filter((s) => typeof s.doesntApply === 'string' && s.doesntApply.length > 0)
+}
+
+/**
  * The rows the printed document's Completed section draws: the steps the board
  * reads Completed (`laneOf`, planBoard.ts boardReadingsOf), which the screen's
  * Completed group holds and no phase dates. The board's lane and not

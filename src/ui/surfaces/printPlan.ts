@@ -8,6 +8,9 @@ import type { Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { conditionalAccessLicenceLine } from '../../derive/notLicensed.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
+import { pages } from '../../content/content.ts'
+import { fillText } from '../../content/render.ts'
+import { doesntApplyRows } from './planRows.ts'
 import { stepBodyOf } from './stepBody.ts'
 import type { StepVarContext } from './stepVars.ts'
 import type { LaneView, PrerequisiteBlocker, PrerequisiteLabel, ReadinessTile } from './stepContract.ts'
@@ -71,4 +74,13 @@ export function postureOf(ids: readonly string[], laneOf: (id: string) => { lane
 /** Rows grouped under their board lane's word, in the lanes' order, empty lanes left out: how the document prints the rows no phase dates. */
 export function laneGroupsOf(rows: readonly Step[], laneOf: (id: string) => { lane: Lane }): { lane: Lane; rows: Step[] }[] {
   return LANE_ORDER.map((lane) => ({ lane, rows: rows.filter((s) => laneOf(s.id).lane === lane) })).filter((g) => g.rows.length > 0)
+}
+
+/**
+ * The cover's Doesn't apply list: the Plan footer's rows (planRows.ts
+ * doesntApplyRows), each worded as the footer words it, with the reason given.
+ */
+export function doesntApplyLinesOf(steps: readonly Step[]): string[] {
+  const row = (pages.plan as { footer: { doesntApplyRow: string } }).footer.doesntApplyRow
+  return doesntApplyRows(steps).map((s) => fillText(row, { stepTitle: contentTitle(s), reason: s.doesntApply ?? '' }))
 }

@@ -18,14 +18,13 @@ import { headerLine1 } from '../../derive/planHeader.ts'
 import { notReady, stepFacts } from '../../derive/facts.ts'
 import type { Facts } from '../../derive/facts.ts'
 import { fillText } from '../../content/render.ts'
-import { goalInMap } from '../../roadmap/goalMap.ts'
 import type { GoalMap } from '../../roadmap/goalMap.ts'
 import { notLicensedPrintLine, notLicensedRows } from '../../derive/notLicensed.ts'
 import { completedRows, deferredRows, floorRows, openDoneRows, phaseRows, planPhases, stepListOf, undatedRows } from './planRows.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { boardHolds, boardReadingsOf, doesntApplyView, laneViewOf, laneWordOf, prerequisiteLabelFor, readinessBlockersOf } from './planBoard.ts'
 import type { LaneView } from './stepContract.ts'
-import { completedLinesOf, laneGroupsOf, noPlanLine, postureOf } from './printPlan.ts'
+import { completedLinesOf, doesntApplyLinesOf, laneGroupsOf, noPlanLine, postureOf } from './printPlan.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { PrintBoard } from './printPlan.ts'
 
@@ -83,9 +82,9 @@ export function PrintPlan({
   schedule: Schedule
   /** The scan the plan reads, so page 1 can date the posture. */
   scanAt: string
-  /** The goal verdicts, so page 1 can name what does not apply. */
+  /** The goal verdicts, so page 1 can count the controls a licence switched off. */
   coverage: CoverageReport
-  /** The baseline's goal map: page 1 names only goals the baseline holds (walk-51 item 9). */
+  /** The baseline's goal map: page 1 counts only goals the baseline holds (walk-51 item 9). */
   goalMap: GoalMap
   /** The step's variables for the content renderer, as the Plan builds them. */
   stepCtx: (step: Step) => StepVarContext
@@ -191,9 +190,10 @@ export function PrintPlan({
   const posture = postureOf([...steps.map((s) => s.id), ...cleanupRows.map((r) => r.id)], laneOf, laneTitleOf)
   const inPlaceNames = posture.completed
   const toDoNames = posture.toDo
-  // Over the goals the baseline holds: an absent goal never renders (walk-51 item 9).
-  // Not licensed is its own count and sentence (§5), not a name in this list.
-  const doesntApplyNames = coverage.results.filter((r) => goalInMap(goalMap, r.goal.id) && r.status === 'not-applicable').map((r) => contentTitle({ id: r.goal.id, goalId: r.goal.id, title: r.goal.shortName || r.goal.name }))
+  // The Plan footer's Doesn't apply here list, each step with the reason given
+  // (printPlan.ts doesntApplyLinesOf). Not licensed is its own count and
+  // sentence (§5), not a name in this list.
+  const doesntApply = doesntApplyLinesOf(steps)
   const notLicensedCount = notLicensedRows(coverage, goalMap).length
   // The header's own count (derive/facts.ts): the steps and the Cleanup rows, so the cover and the Plan agree.
   const { steps: totalCount, done: inPlaceCount } = stepFacts(steps, schedule.cleanup, answers)
@@ -244,8 +244,15 @@ export function PrintPlan({
             <strong>{fillText(C.posture.toDo, { n: toDoNames.length })}</strong> {toDoNames.join(', ')}
           </p>
           <p>
-            <strong>{fillText(C.posture.doesntApply, { n: doesntApplyNames.length })}</strong> {doesntApplyNames.length > 0 ? doesntApplyNames.join(', ') : C.posture.none}
+            <strong>{fillText(C.posture.doesntApply, { n: doesntApply.length })}</strong> {doesntApply.length === 0 && C.posture.none}
           </p>
+          {doesntApply.length > 0 && (
+            <ul>
+              {doesntApply.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          )}
           {notLicensedCount > 0 && <p>{notLicensedPrintLine(notLicensedCount)}</p>}
         </div>
         <p className="muted">{fillText(C.cover.prepared, { by: operator })}</p>
