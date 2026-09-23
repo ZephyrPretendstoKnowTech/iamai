@@ -15,6 +15,7 @@ import { buildNameDirectory } from '../../names.ts'
 import type { NameDirectory } from '../../names.ts'
 import { coversAdminSet, roleLabel } from '../../roles.ts'
 import type { MfaViability } from '../../scoring/mfaViability.ts'
+import type { ReadinessRow } from '../../derive/mfaReadiness.ts'
 import { INVENTORY as C, migrationName } from '../../copy/inventory.ts'
 import { TILE } from '../../copy/definitions.ts'
 import { absoluteDate, relative } from '../format.ts'
@@ -34,6 +35,7 @@ import {
   licencesModel,
   locationsModel,
   peopleModel,
+  readinessRowsOf,
   policiesModel,
   policyFactsOf,
   referencedGroupsOf,
@@ -124,6 +126,7 @@ export function InventoryPage({ snapshot }: { snapshot: TenantSnapshot }) {
 
   const names = useMemo(() => buildNameDirectory(snapshot, groups ?? []), [snapshot, groups])
   const viability = useMemo(() => viabilityOf(snapshot), [snapshot])
+  const readiness = useMemo(() => readinessRowsOf(snapshot), [snapshot])
   // A tab counts only a section the scan got data out of: an unread one is no count, never 0.
   const badge = (key: 'caPolicies' | 'users' | 'devices', n: number): number | undefined => (sectionHasData(snapshot, key) ? n : undefined)
   // A read that did not come back carries no date (the catch above).
@@ -139,7 +142,7 @@ export function InventoryPage({ snapshot }: { snapshot: TenantSnapshot }) {
           { id: 'policies', label: C.tabs.policies, badge: badge('caPolicies', policies.length), render: () => <PoliciesTab snapshot={snapshot} facts={facts} names={names} groupsPending={groups === null} /> },
           { id: 'locations', label: C.tabs.locations, render: () => <LocationsTab snapshot={snapshot} facts={facts} /> },
           { id: 'authentication', label: C.tabs.authentication, render: () => <AuthenticationTab snapshot={snapshot} names={names} groupsPending={groups === null} /> },
-          { id: 'people', label: C.tabs.people, badge: badge('users', snapshot.users.length), render: () => <PeopleTab snapshot={snapshot} names={names} viability={viability} /> },
+          { id: 'people', label: C.tabs.people, badge: badge('users', snapshot.users.length), render: () => <PeopleTab snapshot={snapshot} names={names} viability={viability} readiness={readiness} /> },
           { id: 'groups', label: C.tabs.groups, badge: referencedGroups.size, render: () => <GroupsTab referenced={referencedGroups} groups={groupEntries} names={names} /> },
           { id: 'devices', label: C.tabs.devices, badge: badge('devices', snapshot.devices.length), render: () => <DevicesTab snapshot={snapshot} names={names} /> },
           { id: 'roles', label: C.tabs.roles, render: () => <RolesTab snapshot={snapshot} names={names} /> },
@@ -271,13 +274,13 @@ function AuthenticationTab({ snapshot, names, groupsPending }: { snapshot: Tenan
 
 // ---------- People ----------
 
-function PeopleTab({ snapshot, names, viability }: { snapshot: TenantSnapshot; names: NameDirectory; viability: Map<string, MfaViability> }) {
+function PeopleTab({ snapshot, names, viability, readiness }: { snapshot: TenantSnapshot; names: NameDirectory; viability: Map<string, MfaViability>; readiness: Map<string, ReadinessRow> }) {
   const P = C.people
   return (
     <div>
       <Heading text={C.tabs.people} source="people" />
       <ModelTable
-        model={peopleModel(snapshot, names, viability)}
+        model={peopleModel(snapshot, names, viability, readiness)}
         render={{
           upn: (r) => <span className="sub">{r.user.userPrincipalName}</span>,
           // A sign-in-disabled account (a shared mailbox, a resource) is listed here with its tag, and counted as a person nowhere.

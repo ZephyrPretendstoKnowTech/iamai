@@ -27,7 +27,7 @@ import { CAPABILITIES, deriveTenantCapabilities, deriveUserCapabilities } from '
 import { ROLE_TEMPLATES, coversAdminSet, heldOnlyByServices, roleLabel, roleName, roleTemplate } from '../../roles.ts'
 import productNames from '../../../data/product-names.json' with { type: 'json' }
 import { INVENTORY as C, combinationName, methodName, protocolName, trustTypeName } from '../../copy/inventory.ts'
-import { ACTIVITY_STATE, METHOD_TIER, MFA_STATE } from '../../copy/definitions.ts'
+import { ACTIVITY_STATE, MFA_STATE } from '../../copy/definitions.ts'
 import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { absoluteDate } from '../format.ts'
@@ -413,7 +413,15 @@ export function registrationModel(snapshot: TenantSnapshot): InventoryModel<Regi
 
 // ---------- People ----------
 
-export type PersonRow = { user: UserRow; v: MfaViability | undefined; roles: string; licence: string }
+export type PersonRow = {
+  user: UserRow
+  v: MfaViability | undefined
+  roles: string
+  licence: string
+  /** The methods as MFA Readiness names them (readinessCells.ts methodsCell), and whether the scan read them at all. */
+  methods: string
+  methodsRead: boolean
+}
 
 function licenceTier(u: UserRow): string {
   const caps = deriveUserCapabilities(u.assignedPlans)
@@ -427,9 +435,20 @@ export function viabilityOf(snapshot: TenantSnapshot): Map<string, MfaViability>
   return new Map(buildViabilityInputs(snapshot, snapshot.asOf).map(scoreMfaViability).map((v) => [v.userId, v]))
 }
 
-export function peopleModel(snapshot: TenantSnapshot, names: NameDirectory, viability: Map<string, MfaViability> = viabilityOf(snapshot)): InventoryModel<PersonRow> {
+/** Every account's row on MFA Readiness, keyed by id: the one reading of a person's methods. */
+export function readinessRowsOf(snapshot: TenantSnapshot): Map<string, ReadinessRow> {
+  return new Map(readinessView(snapshot, snapshot.asOf).rows.map((r) => [r.user.id, r]))
+}
+
+export function peopleModel(snapshot: TenantSnapshot, names: NameDirectory, viability: Map<string, MfaViability> = viabilityOf(snapshot), readiness: Map<string, ReadinessRow> = readinessRowsOf(snapshot)): InventoryModel<PersonRow> {
   const P = C.people
-  const rows: PersonRow[] = snapshot.users.map((u) => ({ user: u, v: viability.get(u.id), roles: (snapshot.roles.active[u.id] ?? []).map(roleLabel).join(', '), licence: licenceTier(u) }))
+  // A person's methods are MFA Readiness's reading of them: named where the
+  // scan read them (one by one, without the registration report too), and "not
+  // read" where it did not, never a registered method nothing showed.
+  const rows: PersonRow[] = snapshot.users.map((u) => {
+    const row = readiness.get(u.id)
+    return { user: u, v: viability.get(u.id), roles: (snapshot.roles.active[u.id] ?? []).map(roleLabel).join(', '), licence: licenceTier(u), methods: row ? methodsCell(row).main : '—', methodsRead: row?.methods !== null }
+  })
   const type = (u: UserRow): string => (u.userType === 'guest' ? P.guest : P.member)
   return readOf(snapshot, 'users', {
     id: 'people',
@@ -446,8 +465,8 @@ export function peopleModel(snapshot: TenantSnapshot, names: NameDirectory, viab
       { key: 'type', header: P.columns.type, sort: (r) => `${r.user.userType}${r.user.accountEnabled === false ? ' disabled' : ''}`, cell: (r) => (r.user.accountEnabled === false ? `${type(r.user)} · ${P.signInDisabled}` : type(r.user)) },
       { key: 'lastSignIn', header: C.devices.columns.lastSignIn, hidden: true, cell: (r) => (r.user.lastSuccessfulSignIn ? absoluteDate(r.user.lastSuccessfulSignIn) : '') },
       { key: 'activity', header: P.columns.activity, sort: (r) => r.v?.activity ?? '', cell: (r) => (r.v ? ACTIVITY_STATE[r.v.activity].title : '—') },
-      { key: 'mfa', header: P.columns.mfa, sort: (r) => r.v?.mfa ?? '', cell: (r) => (r.v ? MFA_STATE[r.v.mfa].title : '—') },
-      { key: 'method', header: P.columns.method, sort: (r) => r.v?.strongestMethod ?? '', cell: (r) => (r.v && r.v.strongestMethod !== 'none' ? METHOD_TIER[r.v.strongestMethod].title : '—') },
+      { key: 'mfa', header: P.columns.mfa, sort: (r) => (r.methodsRead ? (r.v?.mfa ?? '') : ''), cell: (r) => (!r.methodsRead ? r.methods : r.v ? MFA_STATE[r.v.mfa].title : '—') },
+      { key: 'method', header: P.columns.method, sort: (r) => r.methods, cell: (r) => r.methods },
       { key: 'licence', header: P.columns.licence, sort: (r) => r.licence, cell: (r) => r.licence },
       { key: 'roles', header: P.columns.roles, sort: (r) => r.roles, cell: (r) => r.roles || P.noRoles },
     ],
@@ -871,7 +890,8 @@ export function inventoryTables(snapshot: TenantSnapshot, groups: GroupMembers =
 // MFA Readiness, as CSV: the same columns the page's table shows, whole (the
 // page's own Export CSV writes what is on screen, which is the filtered set).
 import { readinessView } from '../../derive/mfaReadiness.ts'
-import { rowCells } from './readinessCells.ts'
+import type { ReadinessRow } from '../../derive/mfaReadiness.ts'
+import { methodsCell, rowCells } from './readinessCells.ts'
 export function readinessTable(snapshot: TenantSnapshot, mapping: { breakGlassUserIds: readonly string[]; serviceAccountUserIds: readonly string[] } = { breakGlassUserIds: [], serviceAccountUserIds: [] }): InventoryTable {
   // The same cells the MFA Readiness table renders (readinessCells.ts): a row's CSV equals its screen.
   const view = readinessView(snapshot, snapshot.asOf, mapping)

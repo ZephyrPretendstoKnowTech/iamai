@@ -5,8 +5,10 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
-import { appsModel, authMethodsModel, authStrengthsModel, capabilitiesModel, devicesModel, groupsModel, inventoryTables, licencesModel, locationsModel, methodTargetGroupsOf, policiesModel, policyFactsOf, referencedGroupsOf, registrationModel, rolesModel, securityDefaultsOf, signInModels, workloadsModel } from './inventoryTables.ts'
+import { appsModel, authMethodsModel, authStrengthsModel, capabilitiesModel, devicesModel, groupsModel, inventoryTables, licencesModel, locationsModel, methodTargetGroupsOf, peopleModel, policiesModel, policyFactsOf, referencedGroupsOf, registrationModel, rolesModel, securityDefaultsOf, signInModels, workloadsModel } from './inventoryTables.ts'
 import { serviceReading } from '../../roadmap/workflows.ts'
+import { readinessView } from '../../derive/mfaReadiness.ts'
+import { methodsCell } from './readinessCells.ts'
 import { buildNameDirectory } from '../../names.ts'
 import { app, engine, pages } from '../../content/content.ts'
 import { INVENTORY as C } from '../../copy/inventory.ts'
@@ -34,7 +36,8 @@ test('the Export CSV writes the table the Inventory draws: words, never raw keys
   for (const v of column(methods, C.authentication.methodColumns.method)) assert.ok(!/^(Fido2|MicrosoftAuthenticator|Sms|Voice)$/i.test(String(v)), `a method name, not the key ${v}`)
   for (const v of column(methods, C.authentication.methodColumns.state)) assert.ok([C.authentication.enabled, C.authentication.disabled].includes(String(v)))
   const people = tables.find((t) => t.id === 'people')!
-  const words = Object.values(MFA_STATE).map((d) => d.title) as string[]
+  // An MFA state word, or MFA Readiness's word for methods the scan did not read.
+  const words = [...Object.values(MFA_STATE).map((d) => d.title), (pages.readiness as unknown as { methods: { unread: string } }).methods.unread] as string[]
   for (const v of column(people, C.people.columns.mfa)) assert.ok(v === '—' || words.includes(String(v)), `an MFA state word, not ${v}`)
   // The surface draws these models and builds no CSV of its own.
   const page = readFileSync('src/ui/surfaces/InventoryPage.tsx', 'utf8')
@@ -278,4 +281,23 @@ test('Detected workloads says what the scan saw of each service, as Direction re
   unread.sources.appSignInSummary = { ...unread.sources.appSignInSummary, status: 'error', reason: 'Request failed (500)' }
   assert.equal(word(unread, 'avd').word, notReadWord)
   assert.equal(word(demo, 'intune').word, demo.capabilities.intune.enabled ? app.inventory.licensed : C.licensing.notLicensed)
+})
+
+test('People: a person whose methods were not read is not "Possibly broken", and read methods are named as MFA Readiness names them', () => {
+  const unreadWord = (pages.readiness as unknown as { methods: { unread: string } }).methods.unread
+  // micro: no Entra ID P1, so no registration report, but every person's methods were read one by one.
+  const micro = fixture('micro').snapshot
+  const m = peopleModel(micro, buildNameDirectory(micro))
+  const cell = (model: typeof m, key: string, id: string) => String(model.columns.find((c) => c.key === key)!.cell(model.rows.find((r) => r.user.id === id)!))
+  const rows = new Map(readinessView(micro, micro.asOf).rows.map((r) => [r.user.id, r]))
+  for (const u of micro.users) assert.equal(cell(m, 'method', u.id), methodsCell(rows.get(u.id)!).main, u.displayName ?? u.id)
+  assert.ok(micro.users.some((u) => cell(m, 'method', u.id) !== '—' && !/not read/.test(cell(m, 'method', u.id))), 'read methods are named')
+  // mid: a method batch failed for one person, who has no registration row.
+  const mid = structuredClone(fixture('mid').snapshot)
+  const person = mid.users.find((u) => !mid.registrationDetails.some((r) => r.id === u.id)) ?? mid.users[0]
+  mid.registrationDetails = mid.registrationDetails.filter((r) => r.id !== person.id)
+  mid.authMethods[person.id] = 'unknown'
+  const p = peopleModel(mid, buildNameDirectory(mid))
+  assert.equal(cell(p, 'mfa', person.id), unreadWord)
+  assert.equal(cell(p, 'method', person.id), unreadWord)
 })

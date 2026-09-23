@@ -21,7 +21,7 @@ export const INVENTORY = {
     policies: { title: 'Where this comes from', text: 'Conditional Access policies read from the tenant at scan time (/identity/conditionalAccess/policies).' },
     locations: { title: 'Where this comes from', text: 'Named locations read from the tenant (/identity/conditionalAccess/namedLocations). "Used by" counts policies that include or exclude the location.' },
     authentication: { title: 'Where this comes from', text: 'The authentication methods policy, authentication strengths, security defaults, and per-user registration details (/reports/authenticationMethods/userRegistrationDetails).' },
-    people: { title: 'Where this comes from', text: 'The user list (/users) with sign-in activity, plus MFA state and strongest method from registered methods and sign-in records.' },
+    people: { title: 'Where this comes from', text: 'The user list (/users) with sign-in activity, plus MFA state from registered methods and sign-in records, and each account\'s methods as MFA Readiness reads them.' },
     groups: { title: 'Where this comes from', text: 'Every group any policy includes or excludes, with members read on demand (/groups/{id}/transitiveMembers).' },
     devices: { title: 'Where this comes from', text: 'Registered devices (/devices) with compliance, management, trust type, and registered owners.' },
     roles: { title: 'Where this comes from', text: 'Active role assignments (/roleManagement/directory/roleAssignments) and PIM-eligible schedules where Entra ID P2 or Microsoft Entra ID Governance is present.' },
@@ -101,7 +101,7 @@ export const INVENTORY = {
     empty: 'The authentication methods policy could not be read.',
   },
   people: {
-    columns: { name: 'Name', upn: 'Sign-in address', type: 'Type', activity: 'Activity', mfa: 'MFA state', method: 'Strongest method', licence: 'Licence', roles: 'Roles' },
+    columns: { name: 'Name', upn: 'Sign-in address', type: 'Type', activity: 'Activity', mfa: 'MFA state', method: 'Methods', licence: 'Licence', roles: 'Roles' },
     member: 'Member',
     guest: 'Guest',
     /** Sign-in blocked (a shared mailbox, a resource): listed here, and not a person anywhere else. */
