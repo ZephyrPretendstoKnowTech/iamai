@@ -3035,9 +3035,8 @@
         "verificationWindow": "Registration and verification window · {days} days",
         "observation": "Observation window · {days} days",
         "observationText": "Policies that support report-only can collect evidence at the same time. User-action policies also need direct workflow tests.",
-        "$commentVerificationNote": "The verification window row’s third column (task 042; Step 7). The count is derive/facts.ts notReady: the active people who are not Ready for phishing-resistant MFA (Needs proof, Needs setup, Unknown), the same people MFA Readiness and the MFA gate count.",
-        "verificationNote": "{n} of {active} active people are not Ready yet.",
-        "verificationNoteReady": "Every active person is Ready."
+        "$commentVerificationNote": "The verification window row’s third column: the people the window is sized for (roadmap/generate.ts registrationWindow, five a working day), which are the campaign step’s people with no usable registered MFA method yet (its preparation.missingIds), of everyone that step prepares. It used to count derive/facts.ts notReady, readiness to the phishing-resistant standard: a different population beside a window sized for this one (messy: one working day beside 104 of 106 people). The row prints only while someone is still to set up, so there is no everyone-ready variant.",
+        "verificationNote": "{n} of {total} people in {step} have no usable registered MFA method yet."
       },
       "how": {
         "h1": "How IAMAI works",

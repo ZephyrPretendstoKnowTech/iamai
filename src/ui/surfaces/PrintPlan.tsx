@@ -14,7 +14,7 @@ import type { StepVarContext } from './stepVars.ts'
 import { CleanupBody } from './CleanupStep.tsx'
 import { app, phases } from '../../content/content.ts'
 import { headerLine1 } from '../../derive/planHeader.ts'
-import { notReady, stepFacts } from '../../derive/facts.ts'
+import { stepFacts } from '../../derive/facts.ts'
 import type { Facts } from '../../derive/facts.ts'
 import { fillText } from '../../content/render.ts'
 import type { GoalMap } from '../../roadmap/goalMap.ts'
@@ -23,7 +23,7 @@ import { completedRows, deferredRows, floorRows, openDoneRows, phaseRows, planPh
 import { contentTitle } from '../../content/stepTitle.ts'
 import { boardHolds, boardReadingsOf, doesntApplyView, laneViewOf, laneWordOf, prerequisiteLabelFor, readinessBlockersOf } from './planBoard.ts'
 import type { LaneView } from './stepContract.ts'
-import { cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, laneGroupsOf, noPlanLine, phaseDatesOf, postureOf } from './printPlan.ts'
+import { cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, laneGroupsOf, noPlanLine, phaseDatesOf, postureOf, verificationNoteOf } from './printPlan.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { PrintBoard } from './printPlan.ts'
 
@@ -55,7 +55,6 @@ export function PrintPlan({
   baselinePin = null,
   steps,
   schedule,
-  facts,
   scanAt,
   coverage,
   goalMap,
@@ -69,15 +68,13 @@ export function PrintPlan({
   baselinePin?: string | null
   steps: Step[]
   /**
-   * The tenant's people counts (derive/facts.ts), for the verification window's
-   * own note. The note used to arrive pre-worded from Export.tsx, which built
-   * both of its sentences in JSX out of two rungs of the ladder: the only two
-   * sentences in the printed plan that existed in no content file, and a
-   * readiness claim made outside the readiness authorities (task 042). Null
-   * where the counts are not available, and then the row carries no note rather
-   * than the ready one.
+   * The tenant's people counts (derive/facts.ts). No longer read: the
+   * verification window's note states the people the window is sized for, from
+   * the campaign step (printPlan.ts verificationNoteOf), where it had stated
+   * readiness to the phishing-resistant standard beside a window sized for
+   * another population. Kept while the Export page still passes it.
    */
-  facts: Facts | null
+  facts?: Facts | null
   schedule: Schedule
   /** The scan the plan reads, so page 1 can date the posture. */
   scanAt: string
@@ -196,11 +193,10 @@ export function PrintPlan({
   const notLicensedCount = notLicensedRows(coverage, goalMap).length
   // The header's own count (derive/facts.ts): the steps and the Cleanup rows, so the cover and the Plan agree.
   const { steps: totalCount, done: inPlaceCount } = stepFacts(steps, schedule.cleanup, answers)
-  // Who the registration and verification window is for, from the one people
-  // count (derive/facts.ts) and the content's own two sentences. Nothing is
-  // claimed where the counts are absent: an empty cell, never "everyone is
-  // ready" (task 042).
-  const verificationNote = facts === null ? '' : notReady(facts) > 0 ? fillText(C.verificationNote, { n: notReady(facts), active: facts.active }) : C.verificationNoteReady
+  // Who the registration and verification window is for: the people it is
+  // sized for, of everyone the campaign step prepares (printPlan.ts
+  // verificationNoteOf), never a count of another population beside it.
+  const verificationNote = verificationNoteOf(steps)
   const weeks = planWeeks(finish, schedule)
   // What holds the plan: every readiness number that holds steps, and the steps
   // held on other work with the step each waits on (derive/finish.ts), joined
