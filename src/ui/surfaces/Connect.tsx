@@ -68,8 +68,6 @@ import { facts, stepFacts } from '../../derive/facts.ts'
 import { unreadSources } from '../../graph/collect/coreSections.ts'
 import { signInProofRead } from '../../scoring/fromSnapshot.ts'
 import { usePlanData } from './planData.ts'
-import { laneCountsOf } from './planLanes.ts'
-import { boardReadingsOf } from './planBoard.ts'
 
 const C = app.connect
 const PACKAGE_HREF = '#/how#package'
@@ -523,13 +521,13 @@ function SignedIn({
   // answers complete (derive/facts.ts): the tile and the Plan header state one number.
   const cleanupAnswers = plan.mapping?.breakGlassAnswers ?? null
   const steps = computed ? stepFacts(computed.steps, computed.schedule.cleanup ?? null, cleanupAnswers) : null
-  // The Completed lane's count, from the engine reading the Plan's own rows are
-  // built from (planBoard.ts boardReadingsOf, A1c): the tile and the Plan header's
-  // Completed tile state one number, read once here for the tile's state line.
+  // The Completed lane's count: stepFacts counts the board's rows (planBoard.ts
+  // boardReadingsOf, A1c), so the tile and the Plan header's Completed tile
+  // state one number, read once here for the tile's state line.
   const laneTileCounts = useMemo(() => {
-    if (!computed || !steps) return null
-    return { steps: steps.steps, completed: laneCountsOf(boardReadingsOf(computed.steps, computed.schedule.cleanup, cleanupAnswers).readings).Completed }
-  }, [computed, steps?.steps, cleanupAnswers])
+    if (!steps) return null
+    return { steps: steps.steps, completed: steps.done }
+  }, [steps?.steps, steps?.done])
   // What the complete scan produced, for the step's meta row. Each number comes
   // from the authority that already owns it: derive/facts.ts for the people (the
   // one denominator the Plan and MFA Readiness count against), the loaded
