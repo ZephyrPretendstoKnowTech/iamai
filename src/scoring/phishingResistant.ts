@@ -564,14 +564,17 @@ export function emptyReadinessContext(now: string): ReadinessContext {
   }
 }
 
+/** Keep `p` if it is the latest proof of its class and platform seen so far; the first one seen wins a tie. */
+export function foldProof(into: Map<string, ProofRecord>, p: ProofRecord): void {
+  const k = `${p.cls}|${p.os ?? ''}`
+  const held = into.get(k)
+  if (!held || p.at > held.at) into.set(k, p)
+}
+
 /** The latest proof per class and platform. */
 export function latestProofs(proofs: readonly ProofRecord[]): ProofRecord[] {
   const out = new Map<string, ProofRecord>()
-  for (const p of proofs) {
-    const k = `${p.cls}|${p.os ?? ''}`
-    const held = out.get(k)
-    if (!held || p.at > held.at) out.set(k, p)
-  }
+  for (const p of proofs) foldProof(out, p)
   return [...out.values()]
 }
 
