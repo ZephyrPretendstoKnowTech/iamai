@@ -554,3 +554,21 @@ test('the Apps heading tip says what its tables show, and claims no window and n
   assert.doesNotMatch(C.source.apps.text, /goal|30 days|drive/i)
   assert.ok(C.source.apps.text.includes(D.steps.use.title), C.source.apps.text)
 })
+
+test('every pinned-baseline policy drawn as a Policies row names its values in words: no Graph key in any cell', () => {
+  const W = app.inventory as unknown as Record<string, string>
+  const pinned = JSON.parse(readFileSync('baselines/jhope188-conditionalaccesspolicies.pinned.json', 'utf8')) as { policies: unknown[] }
+  const s = fixture('demo').snapshot
+  const m = policiesModel(s, policyFactsOf(s, pinned.policies), buildNameDirectory(s))
+  assert.equal(m.rows.length, pinned.policies.length)
+  // A camelCase word is a Graph key ("riskRemediation"); the portal's own names that look like one are allowed.
+  const portalWords = new Set(['iOS', 'macOS'])
+  for (const r of m.rows) {
+    const cells = m.columns.filter((c) => c.key !== 'name').map((c) => String(c.cell(r))).join(' | ')
+    const keys = (cells.match(/\b[a-z]+[A-Z][A-Za-z]*\b/g) ?? []).filter((k) => !portalWords.has(k))
+    assert.deepEqual(keys, [], `${r.name}: ${cells}`)
+  }
+  // The risk remediation grant, by name (the high-risk users policy asks for it with a strength).
+  const grant = m.columns.find((c) => c.key === 'grant')!
+  assert.ok(m.rows.some((r) => String(grant.cell(r)).includes(W.riskRemediation)), 'a grant names risk remediation')
+})

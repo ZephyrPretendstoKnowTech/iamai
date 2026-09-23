@@ -3075,6 +3075,8 @@
         "deviceFilterInclude": "device filter (matching devices only)",
         "deviceFilterExclude": "device filter (matching devices left out)",
         "termsOfUse": "terms of use",
+        "$commentRiskRemediation": "The Grant cell's word for Graph's riskRemediation grant control (ui/surfaces/inventoryTables.ts CONTROL_WORDS), as the portal's \"Require risk remediation\" names it. The control had no word, so the pinned baseline's high-risk policies read \"Require MFA and riskRemediation\" and \"Require riskRemediation and strength: …\" on screen and in iamai-policies.csv.",
+        "riskRemediation": "risk remediation",
         "signInEveryTime": "sign in every time",
         "$commentWorkloadSeen": "The Detected workloads table's word for a service, from the product's one reading of it (roadmap/workflows.ts serviceReading, the reading Direction's Confirm What You Use asks from): seen in use, not seen where the sources that would show it were read, or not read (pages.connect.scan.gaps.notRead). The table drew \"detected\" for every service whose goal applies, seen or not, so Azure Virtual Desktop, Azure management and Inforcer read \"detected\" where Direction said the scan did not see them. Intune is read from the licence, as licensed or not licensed.",
         "workloadSeen": "seen in use",

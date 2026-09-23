@@ -140,6 +140,7 @@ export type AppWords = {
     deviceFilterInclude: string
     deviceFilterExclude: string
     termsOfUse: string
+    riskRemediation: string
     signInEveryTime: string
     workloadSeen: string
     workloadNotSeen: string
