@@ -33,6 +33,8 @@ import { conditionalAccessLicenceLine } from '../../derive/notLicensed.ts'
 import { planFinish, statedEstimate } from '../../derive/finish.ts'
 import { headerLine1 } from '../../derive/planHeader.ts'
 import { list } from '../../copy/statements.ts'
+import { app } from '../../content/content.ts'
+import { fillText } from '../../content/render.ts'
 import type { PrintBoard } from './printPlan.ts'
 
 type Stage = 'fresh' | 'foundation' | 'recovered'
@@ -117,6 +119,14 @@ test('a tenant without Entra ID P1 prints the Plan\'s one licence sentence and n
   const body = print.slice(gate, print.indexOf('document.body', gate))
   for (const drawn of ['headerLine', 'schedule.cleanup', 'C.timeline', 'C.posture']) assert.equal(body.includes(drawn), false, `the no-plan document still draws ${drawn}`)
   assert.ok(body.includes('{licenceLine}'), 'the no-plan document does not state the sentence')
+  // Nor is it titled a plan: it read "Microsoft Entra Conditional Access
+  // rollout plan" and "IAMAI plan" over "IAMAI has no plan to offer".
+  assert.ok(body.includes('fillText(C.titleNoPlan, { tenant: tenantName })') && body.includes('fillText(C.runningHeaderNoPlan, { tenant: tenantName, date: today })'), 'the no-plan document is not titled as one')
+  assert.equal(/fillText\(C\.(title|runningHeader),/.test(body), false, 'the no-plan document is titled a rollout plan')
+  for (const said of [fillText(app.print.titleNoPlan, { tenant: 'Contoso' }), fillText(app.print.runningHeaderNoPlan, { tenant: 'Contoso', date: 'Aug 28, 2026' })]) {
+    assert.ok(said.includes('Contoso'), said)
+    assert.equal(/\bplan\b/i.test(said), false, `the no-plan document calls itself a plan: ${said}`)
+  }
   // The gate reads the scan the Export page hands it. Unwired, noPlanLine(null)
   // is null and micro printed a dated plan with Cleanup instructions: the prop
   // is required, so the page cannot mount the document without the scan, and

@@ -3010,6 +3010,9 @@
       "print": {
         "runningHeader": "IAMAI plan · {tenant} · {date}",
         "title": "Microsoft Entra Conditional Access rollout plan. {tenant}",
+        "$commentNoPlan": "The printed document's running header and title where the tenant has no Entra ID P1 (ui/surfaces/printPlan.ts noPlanLine): the Plan renders one licence sentence and no plan, and the document is that sentence under the tenant's identity. It was titled \"Microsoft Entra Conditional Access rollout plan\" and \"IAMAI plan\" over \"IAMAI has no plan to offer\".",
+        "runningHeaderNoPlan": "IAMAI · {tenant} · {date}",
+        "titleNoPlan": "Microsoft Entra Conditional Access. {tenant}",
         "cover": {
           "tenant": "Tenant",
           "scanned": "Scanned",
