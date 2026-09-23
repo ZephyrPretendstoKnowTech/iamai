@@ -586,3 +586,10 @@ test('the readiness page contract allows every group summary and every Not count
     assert.ok(allowed(kinds[k], contract.allow.links), `${k}: "${kinds[k]}"`)
   }
 })
+
+test('the rule for when a synced passkey can register is written once, for the rows and the page words alike', () => {
+  const src = readFileSync('src/scoring/phishingResistant.ts', 'utf8')
+  assert.equal((src.match(/attestation === false && [\w.]*restriction === 'unrestricted'/g) ?? []).length, 1, 'one statement of the rule')
+  assert.match(src, /export function syncedPasskeyOffered\(ctx: ReadinessContext\): boolean \{\n\s+return syncedAllowed\(ctx\.passkey\)/, 'the page words read it')
+  assert.match(src, /if \(syncedAllowed\(pk\) && pk\.reach !== 'unknown'\) return \{ best: 'syncedPasskey'/, 'a Mac row reads it')
+})
