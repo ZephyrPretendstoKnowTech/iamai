@@ -156,13 +156,19 @@ export function finishedWarningsOf(section: Pick<PrintSection, 'rows'>, board: P
 
 /**
  * The rows a finished section still prints under its one line, in the board's
- * order: its Cleanup rows in full (a Cleanup row's body is its record, PrintRow)
- * and its Completed steps that keep a warning (`finishedWarningsOf`). The rest
- * of a finished section is what its line counts.
+ * order: its Cleanup rows in full (a Cleanup row's body is its record, PrintRow),
+ * its Deferred steps as their lines, and its Completed steps that keep a
+ * warning (`finishedWarningsOf`). The rest of a finished section is what its
+ * line counts.
+ *
+ * A section is finished once nothing in it is left to do, whether its rows were
+ * completed or set aside (planBoard.ts sectionProgressOf). Its line says how
+ * many were deferred ("1 of 2 completed, 1 deferred"); the lines under it say
+ * which, as the document always listed every deferred step by title.
  */
 export function finishedRowsOf(section: Pick<PrintSection, 'rows'>, board: PrintBoard, stepCtx: (s: Step) => StepVarContext): PrintRow[] {
   const warned = new Set(finishedWarningsOf(section, board, stepCtx).map((l) => l.id))
-  return section.rows.filter((r) => r.print === 'body' || warned.has(r.id))
+  return section.rows.filter((r) => r.print === 'body' || r.lane.lane === 'Deferred' || warned.has(r.id))
 }
 
 /**

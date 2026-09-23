@@ -385,8 +385,9 @@ export function PrintPlan({
 
       {/* The board's sections (printPlan.ts printSectionsOf). A finished section is
           one line where the board folds it, over the rows it keeps (printPlan.ts
-          finishedRowsOf): its Cleanup rows in full and the Completed steps that
-          keep a warning; an open one is its heading, its line and its rows. */}
+          finishedRowsOf): its Cleanup rows in full, its Deferred steps' lines and
+          the Completed steps that keep a warning; an open one is its heading, its
+          line and its rows. */}
       {sections.map((sec) =>
         sec.line !== null ? (
           <section key={sec.key ?? 'rows'} className="print-section-done">
