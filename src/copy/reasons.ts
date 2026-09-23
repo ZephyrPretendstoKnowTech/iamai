@@ -13,6 +13,9 @@ export const REASON = {
   /** Conditions confine the policy to fewer sign-ins than the baseline's (coverage/classify.ts narrowerConditions), in words. */
   conditionsNarrower: (policy: string, dimensions: string[]): string =>
     fillText(COVERAGE.reason.conditionsNarrower, { policy, conditions: list([...new Set(dimensions.map((d) => COVERAGE.conditions[d] ?? COVERAGE.conditions.unread))]) }),
+  /** The conditions a delivering policy narrows the baseline by because a recorded answer chose them (coverage.ts recordedReference), in words. */
+  conditionsRecorded: (dimensions: string[]): string =>
+    fillText(COVERAGE.statement.conditionsRecorded, { conditions: list([...new Set(dimensions.map((d) => COVERAGE.conditions[d] ?? COVERAGE.conditions.unread))]) }),
   /** The goal's satisfiers between them reach fewer guest and external user kinds than its baseline policies. */
   guestTypes: (reached: number, required: number): string => fillText(COVERAGE.reason.guestTypes, { reached, required }),
   /** People the goal expects that no enabled policy includes. */

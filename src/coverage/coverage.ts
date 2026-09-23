@@ -6,6 +6,7 @@ import { guestKindsReached, matchesSignature, narrowerApps, narrowerConditions, 
 import { engine } from '../content/content.ts'
 import { PINNED_GOAL_MAP, policyKey } from '../roadmap/goalMap.ts'
 import type { GoalMap } from '../roadmap/goalMap.ts'
+import { applyDeviations } from '../roadmap/deviations.ts'
 import { policyFacts } from './facts.ts'
 import type { StrengthLookup } from './strength.ts'
 import { grantExceedsFloor, satisfiesFloor } from './strength.ts'
@@ -124,6 +125,13 @@ export type CoverageInput = {
     exclusionsGroupId?: string | null
     /** The confirmed service accounts: the population of a goal that targets them (E9). */
     serviceAccountUsers?: string[]
+    /**
+     * The person's recorded answers (MappingState.questionAnswers), the same ones
+     * the step's policy is built from (roadmap/deviations.ts applyDeviations). A
+     * policy is judged for where it applies against the baseline as those answers
+     * narrowed it. Undefined: nothing recorded, so the baseline as the author wrote it.
+     */
+    questionAnswers?: Record<string, string>
   }
   /**
    * The baseline's goal map (walk-51 item 9, goalMap.ts): for a goal it holds,
@@ -282,6 +290,18 @@ function carvesOutExclusionsGroup(raw: unknown): boolean {
   return excluded.some((g) => tokens.has(g))
 }
 
+/**
+ * The goal's reference with the recorded answers applied (roadmap/deviations.ts
+ * applyDeviations), read for where the policy applies; the reference itself
+ * where no answer changes it. The caller reads only its conditions.
+ */
+function recordedReference(goalId: string, raw: unknown, reference: PolicyFacts, input: CoverageInput): PolicyFacts {
+  const questionAnswers = input.mapping?.questionAnswers
+  if (questionAnswers === undefined || raw === null || typeof raw !== 'object') return reference
+  const answered = applyDeviations(raw as Record<string, unknown>, goalId, { questionAnswers })
+  return answered === raw ? reference : policyFacts(answered, input.strengths)
+}
+
 function confirmedExclusions(mapping: NonNullable<CoverageInput['mapping']>): AssumedExclusions {
   return {
     groups: new Map(Object.entries(mapping.exclusionGroups ?? {})),
@@ -354,6 +374,18 @@ function evaluateGoal(
   // goal's own template. A tenant policy is read against it for what it gives
   // away — resources it excludes, conditions that confine it — and never by name.
   const reference = baselineMatches[0] ?? policyFacts(impl.template, input.strengths)
+  // Where a policy applies is judged against the reference as the person's
+  // recorded answers narrowed it (roadmap/deviations.ts applyDeviations, the one
+  // rule the step's JSON and its portal lines follow): the device decision's
+  // phones-out answer scopes the compliant-device policy away from Android and
+  // iOS, and that policy, enforced exactly as its step built it, read as
+  // "applies only under narrower conditions than the baseline" and sat On Hold as
+  // a correction with nothing to submit, finishable only by being declined
+  // (patch Q3). Only the conditions are read from it: a decision may narrow
+  // where a policy applies, never weaken a grant, so the floor stays the
+  // baseline's (raiseFloor above). A narrowing nobody recorded is judged against
+  // the baseline's own conditions and is still a gap.
+  const recorded = recordedReference(goal.id, baselineMatches[0] !== undefined ? rawByFacts.get(baselineMatches[0]) : impl.template, reference, input)
   // The exclusions group, where the goal's own policy carves it out, is part of
   // what the goal means (owner decision, Step 3 correction): the group the
   // operator chose and this scan read, or null where there is none for a policy
@@ -422,6 +454,8 @@ function evaluateGoal(
   // "targeted" even when the policy is too weak to count.
   const targeted = new Set<string>()
   const exclusionHits: { id: string; kind: string; userIds: Set<string> }[] = []
+  /** The conditions a candidate narrows the baseline by that a recorded answer chose, by policy id. */
+  const narrowedByAnswer = new Map<string, string[]>()
 
   for (const c of candidates) {
     const caveats: string[] = []
@@ -434,10 +468,16 @@ function evaluateGoal(
     const extraExcluded = [...c.apps.excludedIds].filter((a) => !baselineExcludedApps.has(a.toLowerCase()))
     const unreadableAppFilter = c.apps.filterRule !== null
     if (extraExcluded.length > 0 || unreadableAppFilter) caveats.push('apps-excluded')
-    // Conditions that confine it to fewer sign-ins than the reference, and the
-    // exclusions group the goal's own policy carves out and this one does not.
-    const conditions = narrowerConditions(c, reference)
+    // Conditions that confine it to fewer sign-ins than the reference as the
+    // recorded answers narrowed it, and the exclusions group the goal's own policy
+    // carves out and this one does not. Where it is narrower than the baseline
+    // only as far as an answer records, the statement still names that narrowing.
+    const conditions = narrowerConditions(c, recorded)
     if (conditions.length > 0) caveats.push('conditions-narrower')
+    else if (recorded !== reference) {
+      const chosen = narrowerConditions(c, reference)
+      if (chosen.length > 0) narrowedByAnswer.set(c.id, chosen)
+    }
     const lacksExclusion = requiresExclusion && exclusionsGroupKey !== undefined &&!(exclusionsGroupKey !== null && [...c.whoNot.groups].some((g) => g.toLowerCase() === exclusionsGroupKey))
     // With no usable, owner-confirmed group there is nothing the policy could carry
     // yet: the correction waits on the exclusions prerequisite (owner decision).
@@ -724,7 +764,10 @@ function evaluateGoal(
     }
   }
 
-  const statement = buildStatement(goal, status, base, E, enforced, impl.expectedWho.kind, anyEstimated, baselineMatches, input.snapshot, assumed.users)
+  // What the policies delivering the goal leave out because a recorded answer
+  // chose it: the goal is in place as decided, and the statement says how.
+  const byAnswer = [...new Set((base.satisfaction?.policyIds ?? []).flatMap((id) => narrowedByAnswer.get(id) ?? []))]
+  const statement = buildStatement(goal, status, base, E, enforced, impl.expectedWho.kind, anyEstimated, baselineMatches, input.snapshot, assumed.users, byAnswer)
   return { ...base, status, statement }
 }
 
@@ -892,6 +935,7 @@ function buildStatement(
   baselineMatches: PolicyFacts[],
   snapshot: TenantSnapshot,
   allBreakGlass: ReadonlySet<string>,
+  byAnswer: string[] = [],
 ): string {
   const noun = who === 'coreAdmins' ? 'admin' : who === 'guests' ? 'guest' : who === 'members' ? 'member' : 'user'
   const strongNames = base.candidates.filter((c) => c.contribution === 'strong').map((c) => c.policyName)
@@ -915,7 +959,10 @@ function buildStatement(
 
   // The policies the classifier counted towards the satisfaction, not every strong
   // candidate: a strong policy that covers none of the goal's people delivers none of it.
-  if (status === 'enforced') return inPlaceStatement(goal.name, base.satisfaction?.policyNames ?? strongNames, breakGlass, allBreakGlass.size, breakGlassMissing) + est
+  if (status === 'enforced') {
+    const chosen = byAnswer.length > 0 ? ` ${REASON.conditionsRecorded(byAnswer)}` : ''
+    return inPlaceStatement(goal.name, base.satisfaction?.policyNames ?? strongNames, breakGlass, allBreakGlass.size, breakGlassMissing) + chosen + est
+  }
   if (status === 'absent') return missingStatement(goal.name, null, baselineMatches[0]?.name ?? null)
   if (status === 'unknown') return unknownStatement(goal.name) + est
   if (status === 'not-applicable' || status === 'licence-limited') return `**${goal.name}**.`
