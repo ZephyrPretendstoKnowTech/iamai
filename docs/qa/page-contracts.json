@@ -349,12 +349,12 @@
           "re:^(Next check)?Waiting on tenant setupThey can’t act until an admin change lands\\d+$",
           "re:^(Next check)?Set up a phishing-resistant methodNo passkey, security key or Windows Hello yet\\d+$",
           "re:^(Next check)?Confirm the method still existsRegistered, but no confirmed sign-in in 30 days\\d+$",
-          "re:^(Next check)?Cover the device that signs in without a phishing-resistant methodConfirmed on one device, but another signs in without it\\d+$",
-          "re:^(Next check)?IAMAI couldn’t read these peopleEach row says what was missing\\.\\d+$",
+          "re:^(Next check)?Add a passkey to the device they useConfirmed on one device, but another signs in without it\\d+$",
+          "re:^(Next check)?IAMAI couldn’t read these peopleEach row says what was missing\\. The next scan retries\\.\\d+$",
           "re:^(Next check)?ReadyConfirmed in the last 30 days\\. A row names a built-in option where the device has one\\d+$",
           "re:^(Next check)?SeamlessNothing to do\\d+$",
           "re:^AdminsFirst, because a lockout hurts most here\\d+$",
-          "re:^((Windows|macOS|iPhone|Android|Linux|ChromeOS)((, (Windows|macOS|iPhone|Android|Linux|ChromeOS))* and (Windows|macOS|iPhone|Android|Linux|ChromeOS))?|No sign-in seen in 30 days|Sign-ins not read)\\d+$",
+          "re:^((Windows|macOS|iPhone|Android|Linux|ChromeOS)((, (Windows|macOS|iPhone|Android|Linux|ChromeOS))* and (Windows|macOS|iPhone|Android|Linux|ChromeOS))?|No sign-in seen in 30 days)\\d+$",
           "re:^Completed checks · \\d+$"
         ],
         "links": [
@@ -365,11 +365,8 @@
           "New this month, hasn’t signed in yet.",
           "Activity not read.",
           "Emergency access accounts",
-          "Emergency access account",
           "Service accounts",
-          "Service account",
           "Shared devices",
-          "Shared device",
           "Sign-in disabled",
           "Open the step",
           "← Back to the step"
