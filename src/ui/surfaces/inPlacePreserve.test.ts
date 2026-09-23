@@ -1063,8 +1063,9 @@ const unwatchedWarnings = (step: Step, ctx: StepVarContext) => readinessOf(step,
 
 /**
  * What a finished policy this plan watched go On with no report-only period
- * reads: Completed, one warning tile that states the fact, the finished bar,
- * and "Verify after the change" in every place the Done-when is read.
+ * reads: Completed, one warning tile that states the fact once on the whole
+ * step, the finished bar, and "Verify after the change" in every place the
+ * Done-when is read.
  */
 function assertWentLiveUnwatched(scan: Scan, id: string): void {
   const { label, h, run } = scan
@@ -1082,6 +1083,11 @@ function assertWentLiveUnwatched(scan: Scan, id: string): void {
   assert.ok(body.readiness.tiles.some((t) => t.key === warn[0].key), `${label}: the opened step lost the tile`)
   assert.equal(policyBarOf(policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)), 'Every task on this step is complete, and it left something behind.', label)
   assert.notEqual(body.empty.key, 'blocked', `${label}: ${body.empty.title}`)
+  // One fact, one home: the tile. The scan that saw the policy arrive also
+  // wrote it as the observation note, and the step said it under New evidence
+  // too.
+  const told = [...body.contract.found.map((x) => x.text), ...body.readiness.tiles.map((t) => String(t.note ?? ''))].filter((text) => UNWATCHED.test(text))
+  assert.equal(told.length, 1, `${label}: the fact is said ${told.length} times: ${told.join(' | ')}`)
   const done = stepContract(step, ctx).doneWhen
   assert.ok(done.includes(POLICY_VERIFY_AFTER), `${label}: the check after the change is gone: ${done.join(' | ')}`)
   // The tile states the fact; the Done-when keeps the check and does not say it twice.

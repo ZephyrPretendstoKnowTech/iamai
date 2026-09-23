@@ -25,7 +25,7 @@ import type { Step } from '../../roadmap/types.ts'
 import { RULE_TO_FIX } from '../../validation/checkFixes.ts'
 import type { StepCheckItem } from '../../validation/checkFixes.ts'
 import { SET_LEVEL } from '../../validation/report.ts'
-import { dimensionWords, watchedArrive } from '../../roadmap/observation.ts'
+import { appearedEnforced, dimensionWords, watchedArrive } from '../../roadmap/observation.ts'
 import type { Condition, Lifecycle, Milestone } from '../../roadmap/lifecycle.ts'
 import { heldForReview, nextMilestone, reviewCauses } from '../../roadmap/lifecycle.ts'
 import type { PolicyHold, UnavailableReason } from '../../roadmap/operations.ts'
@@ -829,7 +829,12 @@ function foundOf(step: Step, tenant: string, said: string | null, routeStart: St
   // milestone, and the Next line then carries it: saying it twice on one step
   // reads as two findings.
   const obs = step.state.observation
-  if (obs && (obs.reviewRequired || obs.continuity === 'reset' || (obs.changed !== 'none' && obs.changed !== 'first-scan')) && !(said ?? '').includes(obs.note)) out.push(found('observation', obs.note))
+  // Where the step draws the unwatched tile (unwatchedTile), that tile is the
+  // one home of "it went live without a report-only period IAMAI could watch".
+  // The scan that saw the policy arrive On also wrote it as this note, and the
+  // step said it twice, once under New evidence and once in Readiness.
+  const toldByTile = obs ? enforcedUnwatched(step) && appearedEnforced(obs) : false
+  if (obs && !toldByTile && (obs.reviewRequired || obs.continuity === 'reset' || (obs.changed !== 'none' && obs.changed !== 'first-scan')) && !(said ?? '').includes(obs.note)) out.push(found('observation', obs.note))
   return out
 }
 
@@ -1945,7 +1950,8 @@ export const FINISHED_FINDINGS: ReadonlySet<string> = new Set([FINISHED_READING,
  * R4-12): it stays Completed, and this warning says so. Built straight to On,
  * policies filed under Completed with nothing in Readiness, and the one note
  * that said nobody watched them sat under New evidence. The tile states the
- * fact; the Done-when keeps the check after the change (doneWhenOf).
+ * fact, and is its one home on the step (foundOf leaves that note out where the
+ * tile draws); the Done-when keeps the check after the change (doneWhenOf).
  */
 function unwatchedTile(step: Step): ReadinessTile | null {
   if (!enforcedUnwatched(step)) return null

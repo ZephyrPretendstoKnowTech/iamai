@@ -575,6 +575,16 @@ export function watchedArrive(step: Pick<Step, 'state'>): boolean {
     || step.state.members.some((m) => m.change.prior?.state === 'absent')
 }
 
+/**
+ * Whether this change's note is the one that says the policy arrived On with no
+ * report-only period IAMAI could watch (observations.appearedEnforced), so a
+ * surface that states that fact elsewhere can leave the note out rather than
+ * say it twice. Read from the note this module wrote, never re-derived.
+ */
+export function appearedEnforced(change: ObservationChange): boolean {
+  return change.note === fillText(OBS.appearedEnforced, { date: absoluteDate(change.latest.lastSeenAt) })
+}
+
 /** Microsoft's evidence, where it can still be about the policy that is deployed now. */
 function admit(at: string | null, floor: string, since: StepObservation['since']): string | null {
   if (at === null) return null
