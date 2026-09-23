@@ -18,6 +18,7 @@ import { recoveryPasskeyCandidateSet } from './passkeyCompatibility.ts'
 import { emergencyAccountPreparationOf } from './emergencyAccountPreparation.ts'
 import type { CleanupKind } from './cleanup.ts'
 import { BREAK_GLASS_DRILL_DAYS } from './constants.ts'
+import { whyNotRecoveryTest } from '../graph/collect/laneBCore.ts'
 
 export type RecoveryPurpose = 'pre-change' | 'final'
 export type VerifiedRecoveryEvidence = {
@@ -229,19 +230,17 @@ export function recoveryCredentialBasis(snapshot: TenantSnapshot, accountIds: re
 }
 
 /** Match exact, projected events. Missing interaction, method or resource facts
- * remain unknown and cannot be converted into a manual pass. */
+ * remain unknown and cannot be converted into a manual pass. The checks that do
+ * not turn on the time are whyNotRecoveryTest's, which the sign-in read's
+ * recovery-candidate cap reads too. */
 export function recoveryCandidateReadings(snapshot: TenantSnapshot, accountId: string, now = snapshot.asOf, configurationObservedAt?: string | null): RecoveryCandidateReading[] {
   const candidates = snapshot.signInEvidence[accountId]?.recoveryCandidates ?? []
   return candidates.map(candidate => {
-    let reason: string | null = null
-    if (candidate.schema !== 1 || candidate.userId.toLowerCase() !== accountId.toLowerCase()) reason = 'This event belongs to a different account or evidence schema.'
-    else if (!candidate.eventId || !Number.isFinite(Date.parse(candidate.at))) reason = 'The sign-in has no stable event identity or valid UTC time.'
-    else if (candidate.success !== true) reason = 'The sign-in did not succeed.'
-    else if (candidate.isInteractive !== true) reason = candidate.isInteractive === null ? 'Interactive sign-in evidence was not returned.' : 'The sign-in was not interactive.'
-    else if (candidate.freshMethod !== true || candidate.method !== 'Passkey (FIDO2)') reason = candidate.freshMethod === null ? 'Fresh passkey authentication details are not available yet.' : 'The event does not show a fresh successful passkey authentication.'
-    else if (!candidate.resourceTenantId || candidate.resourceTenantId.toLowerCase() !== snapshot.tenantId.toLowerCase()) reason = candidate.resourceTenantId ? 'The event belongs to a different resource tenant.' : 'The resource tenant was not returned.'
-    else if (!candidate.authenticationAt || !Number.isFinite(Date.parse(candidate.authenticationAt)) || Date.parse(candidate.authenticationAt) > Date.parse(now)) reason = 'A valid fresh authentication time was not returned.'
-    else if (configurationObservedAt && Date.parse(candidate.authenticationAt) <= Date.parse(configurationObservedAt)) reason = 'The passkey authentication predates the current recovery configuration.'
+    let reason = whyNotRecoveryTest(candidate, accountId, snapshot.tenantId)
+    if (reason !== null) return { candidate, qualifies: false, reason }
+    const authenticatedAt = Date.parse(candidate.authenticationAt ?? '')
+    if (authenticatedAt > Date.parse(now)) reason = 'A valid fresh authentication time was not returned.'
+    else if (configurationObservedAt && authenticatedAt <= Date.parse(configurationObservedAt)) reason = 'The passkey authentication predates the current recovery configuration.'
     else if (configurationObservedAt && Date.parse(candidate.at) <= Date.parse(configurationObservedAt)) reason = 'The sign-in did not occur after the current recovery configuration was observed.'
     else if (Date.parse(candidate.at) > Date.parse(now)) reason = 'The event time is in the future.'
     else if (Date.parse(now) - Date.parse(candidate.at) > BREAK_GLASS_DRILL_DAYS * 86_400_000) reason = 'The event is older than the recovery-test interval.'

@@ -4,7 +4,7 @@
 // scale is laneBStream.test.ts.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { aggregate, deriveAggregates, deriveBlockedToday, derivePolicyResults, deriveReportOnlyPolicyIds, deriveUsageSignals, lastEnforcedOf, mapRecoveryAudit, mapRow, noteEnforced, recoveryAuditRequest } from './laneBCore.ts'
+import { aggregate, deriveAggregates, deriveBlockedToday, derivePolicyResults, deriveReportOnlyPolicyIds, deriveUsageSignals, lastEnforcedOf, mapRecoveryAudit, mapRow, noteEnforced, recoveryAuditRequest, whyNotRecoveryTest } from './laneBCore.ts'
 import { runLaneB } from './signInStream.ts'
 import type { LaneBDeps } from './signInStream.ts'
 import { deriveScenarioEvidence } from '../../derive/evidence.ts'
@@ -297,9 +297,12 @@ test('each person keeps only the newest passkey sign-ins as recovery candidates,
   assert.deepEqual(aggregate(tied).account.recoveryCandidates!.map((c) => c.eventId), tied.slice(0, n).map((r) => r.id))
 })
 
+/** A passkey sign-in by `account` to a resource in `resourceTenantId`; `result` 'MFA successfully completed' is a fresh passkey step. */
+const tenantPasskey = (id: string, hoursAgo: number, resourceTenantId: string, result = 'MFA successfully completed'): StoredSignIn => row({ id, hoursAgo, userId: 'account', resourceTenantId, isInteractive: true, authenticationRequirement: 'multiFactorAuthentication', authenticationDetails: [{ succeeded: true, authenticationMethod: 'Passkey (device-bound)', authenticationStepDateTime: iso(hoursAgo), authenticationStepResultDetail: result }] })
+
 test('newer passkey sign-ins that cannot be a recovery test do not push out the newest one that can', () => {
   const n = RECOVERY_CANDIDATES_PER_PERSON
-  const passkey = (id: string, hoursAgo: number, result: string): StoredSignIn => row({ id, hoursAgo, userId: 'account', isInteractive: true, authenticationRequirement: 'multiFactorAuthentication', authenticationDetails: [{ succeeded: true, authenticationMethod: 'Passkey (device-bound)', authenticationStepDateTime: iso(hoursAgo), authenticationStepResultDetail: result }] })
+  const passkey = (id: string, hoursAgo: number, result: string): StoredSignIn => tenantPasskey(id, hoursAgo, 'home-tenant', result)
   // The drill: a fresh passkey step. After it, sign-ins whose passkey was previously satisfied, no fresh step.
   const drill = passkey('drill', 200, 'MFA successfully completed')
   const stale = Array.from({ length: n + 5 }, (_, i) => passkey(`stale-${i}`, i + 1, 'MFA requirement previously satisfied'))
@@ -313,6 +316,42 @@ test('newer passkey sign-ins that cannot be a recovery test do not push out the 
   // A newer sign-in that can be a test is among the newest, so nothing is added.
   const fresh = passkey('fresh', 0.5, 'MFA successfully completed')
   assert.deepEqual(aggregate([fresh, ...rows]).account.recoveryCandidates!.map((c) => c.eventId), [fresh.id, ...stale.slice(0, n - 1).map((r) => r.id)])
+})
+
+// Round-3 review: the cap restated part of Step 4's reading (roadmap/cleanupDone.ts
+// recoveryCandidateReadings) and missed the resource tenant, so fresh passkey
+// sign-ins to another tenant's resources, each of which Step 4 refuses, pushed
+// the home-tenant drill out.
+test('fresh passkey sign-ins to another tenant’s resources do not push out the home-tenant drill', () => {
+  const n = RECOVERY_CANDIDATES_PER_PERSON
+  const drill = tenantPasskey('drill', 200, 'home-tenant')
+  const away = Array.from({ length: n + 5 }, (_, i) => tenantPasskey(`away-${i}`, i + 1, 'other-tenant'))
+  const rows = [...away, drill]
+  const scrambled = rows.map((r, i) => ({ r, k: (i * 7919) % rows.length })).sort((a, b) => a.k - b.k).map((x) => x.r)
+  const newest = away.slice(0, n).map((r) => r.id)
+  for (const order of [rows, [...rows].reverse(), scrambled]) {
+    // The tenant known, in any case; not known, the newest that could be a test in each resource tenant.
+    for (const tenant of ['home-tenant', 'HOME-TENANT', null]) {
+      assert.deepEqual(aggregate(order, tenant).account.recoveryCandidates!.map((c) => c.eventId), [...newest, 'drill'], String(tenant))
+    }
+    // Read as the other tenant, the drill is the sign-in that cannot be its test, and nothing is added.
+    assert.deepEqual(aggregate(order, 'other-tenant').account.recoveryCandidates!.map((c) => c.eventId), newest)
+  }
+  // The kept drill is one Step 4 accepts, on the same reading.
+  const kept = aggregate(rows, 'home-tenant').account.recoveryCandidates!
+  assert.equal(whyNotRecoveryTest(kept.at(-1)!, 'account', 'home-tenant'), null)
+  assert.equal(whyNotRecoveryTest(kept[0], 'account', 'home-tenant'), 'The event belongs to a different resource tenant.')
+})
+
+test('the sign-in read judges recovery candidates in the tenant it reads', async () => {
+  const n = RECOVERY_CANDIDATES_PER_PERSON
+  // Newer sign-ins with no fresh passkey step, a fresh one to another tenant's resource, then the drill.
+  const stale = Array.from({ length: n + 5 }, (_, i) => tenantPasskey(`stale-${i}`, i + 1, 'home-tenant', 'MFA requirement previously satisfied'))
+  const rows = [...stale, tenantPasskey('away', 100, 'other-tenant'), tenantPasskey('drill', 200, 'home-tenant')]
+  const kept = async (over: Partial<LaneBDeps>): Promise<string[]> => (await runLaneB(deps([{ value: rows }], over))).perUser.account.recoveryCandidates!.map((c) => c.eventId)
+  const newest = stale.slice(0, n).map((r) => r.id)
+  assert.deepEqual(await kept({ tenantId: 'home-tenant' }), [...newest, 'drill'])
+  assert.deepEqual(await kept({}), [...newest, 'away', 'drill'], 'no tenant given: the newest that could be a test per resource tenant')
 })
 
 test('noteEnforced keeps the latest enforced record per policy, in any order, and is lastEnforcedOf a record at a time', () => {

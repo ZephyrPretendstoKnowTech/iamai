@@ -15,6 +15,7 @@ import type {
   PolicyAppliedResult,
   PolicyResultClass,
   RecoveryDirectoryAudit,
+  RecoverySignInCandidate,
   StoredSignIn,
   UserEvidence,
 } from './types.ts'
@@ -312,8 +313,28 @@ export { GENERIC_MFA }
 // scoring/phishingResistant.ts readSignIn's answer, so a single-factor sign-in
 // with a named step is not an MFA success, and a sign-in proves the method it
 // used and no other.
-export function aggregate(rows: Iterable<StoredSignIn>): Record<string, UserEvidence> {
-  return foldAll(aggregateFold(), rows)
+export function aggregate(rows: Iterable<StoredSignIn>, tenantId: string | null = null): Record<string, UserEvidence> {
+  return foldAll(aggregateFold(tenantId), rows)
+}
+
+/**
+ * Why a passkey sign-in cannot be `accountId`'s recovery test whatever the
+ * time, or null when these facts allow it. Step 4 reads it first
+ * (roadmap/cleanupDone.ts recoveryCandidateReadings adds the checks that turn
+ * on the time and the configuration), and the recovery-candidate cap keeps the
+ * newest sign-in it allows (aggregateFold), so the two cannot drift. `tenantId`
+ * null judges the resource tenant only as returned or not.
+ */
+export function whyNotRecoveryTest(candidate: RecoverySignInCandidate, accountId: string, tenantId: string | null): string | null {
+  if (candidate.schema !== 1 || candidate.userId.toLowerCase() !== accountId.toLowerCase()) return 'This event belongs to a different account or evidence schema.'
+  if (!candidate.eventId || !Number.isFinite(Date.parse(candidate.at))) return 'The sign-in has no stable event identity or valid UTC time.'
+  if (candidate.success !== true) return 'The sign-in did not succeed.'
+  if (candidate.isInteractive !== true) return candidate.isInteractive === null ? 'Interactive sign-in evidence was not returned.' : 'The sign-in was not interactive.'
+  if (candidate.freshMethod !== true || candidate.method !== 'Passkey (FIDO2)') return candidate.freshMethod === null ? 'Fresh passkey authentication details are not available yet.' : 'The event does not show a fresh successful passkey authentication.'
+  if (!candidate.resourceTenantId) return 'The resource tenant was not returned.'
+  if (tenantId !== null && candidate.resourceTenantId.toLowerCase() !== tenantId.toLowerCase()) return 'The event belongs to a different resource tenant.'
+  if (!candidate.authenticationAt || !Number.isFinite(Date.parse(candidate.authenticationAt))) return 'A valid fresh authentication time was not returned.'
+  return null
 }
 
 /**
@@ -328,7 +349,8 @@ function keepNewest(list: NonNullable<UserEvidence['recoveryCandidates']>): NonN
   return list
 }
 
-export function aggregateFold(): RowFold<Record<string, UserEvidence>> {
+/** `tenantId` is the tenant whose sign-ins these are (the sign-in read passes it), for the recovery candidates. */
+export function aggregateFold(tenantId: string | null = null): RowFold<Record<string, UserEvidence>> {
   const perUser: Record<string, UserEvidence> = {}
   // Proof is kept per method class and platform family, never in one slot: a
   // later Authenticator sign-in cannot hide an earlier passkey one.
@@ -340,11 +362,12 @@ export function aggregateFold(): RowFold<Record<string, UserEvidence>> {
   const trusted = new Set<string>()
   const recovery = new Map<string, NonNullable<UserEvidence['recoveryCandidates']>>()
   // Each person's newest candidate that can be a recovery test on the facts that
-  // do not depend on its time (recoveryCandidateReadings in roadmap/cleanupDone.ts:
-  // success, interactive, a fresh passkey step, an authentication time). It is
-  // kept beside the newest, so newer sign-ins that cannot be a test do not push
-  // it out; every check left favours a newer event.
-  const couldTest = new Map<string, NonNullable<UserEvidence['recoveryCandidates']>[number]>()
+  // do not turn on its time (whyNotRecoveryTest, the reading Step 4 starts from).
+  // It is kept beside the newest, so newer sign-ins that cannot be a test do not
+  // push it out. Every check Step 4 adds favours a newer event, or never fails
+  // one read before the time it judges at. Where the tenant is not known, the
+  // newest per resource tenant is kept, so the tenant's own is among them.
+  const couldTest = new Map<string, Map<string, RecoverySignInCandidate>>()
   // The latest record of each kind, kept apart while the rows are read: a
   // record that names a method is proof of that method, a generic one is
   // proof only that MFA happened. Graph returns the newest row first, so one
@@ -368,7 +391,7 @@ export function aggregateFold(): RowFold<Record<string, UserEvidence>> {
         return !/previously satisfied|satisfied by token/i.test(detail.authenticationStepResultDetail ?? '')
       })
       if (read.proof?.cls === 'passkey') {
-        const candidate = {
+        const candidate: RecoverySignInCandidate = {
           schema: 1 as const,
           eventId: row.id,
           userId: row.userId,
@@ -388,9 +411,12 @@ export function aggregateFold(): RowFold<Record<string, UserEvidence>> {
         if (!list) recovery.set(row.userId, (list = []))
         list.push(candidate)
         if (list.length >= 2 * RECOVERY_CANDIDATES_PER_PERSON) keepNewest(list)
-        if (candidate.success && candidate.isInteractive === true && candidate.freshMethod === true && candidate.authenticationAt) {
-          const held = couldTest.get(row.userId)
-          if (held === undefined || candidate.at > held.at) couldTest.set(row.userId, candidate)
+        if (whyNotRecoveryTest(candidate, row.userId, tenantId) === null) {
+          let byTenant = couldTest.get(row.userId)
+          if (!byTenant) couldTest.set(row.userId, (byTenant = new Map()))
+          const key = tenantId === null ? (candidate.resourceTenantId ?? '').toLowerCase() : ''
+          const held = byTenant.get(key)
+          if (held === undefined || candidate.at > held.at) byTenant.set(key, candidate)
         }
       }
       if (read.mfa) {
@@ -433,9 +459,9 @@ export function aggregateFold(): RowFold<Record<string, UserEvidence>> {
       for (const [id, u] of Object.entries(perUser)) {
         u.lastMfaSuccess = named.get(id) ?? generic.get(id) ?? null
         u.proofs = [...(proofs.get(id)?.values() ?? [])].sort((a, b) => (a.cls < b.cls ? -1 : a.cls > b.cls ? 1 : (a.os ?? '') < (b.os ?? '') ? -1 : 1))
+        // One left out of the newest is no newer than any kept, so newest first holds.
         const kept = keepNewest(recovery.get(id) ?? [])
-        const test = couldTest.get(id)
-        if (test && !kept.includes(test)) kept.push(test)
+        kept.push(...[...(couldTest.get(id)?.values() ?? [])].filter((test) => !kept.includes(test)).sort((a, b) => b.at.localeCompare(a.at)))
         u.recoveryCandidates = kept
         const seen = platforms.get(id)
         u.platforms = PLATFORMS.filter((os) => seen?.has(os)).map((os) => ({ os, at: seen?.get(os) as string }))

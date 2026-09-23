@@ -37,6 +37,8 @@ export type LaneBDeps = {
   clock: () => number
   fetchPage: (url: string) => Promise<{ value?: unknown[]; '@odata.nextLink'?: string | null }>
   store: EvidenceStore
+  /** The tenant read, which a recovery candidate's resource tenant is judged against (laneBCore.ts aggregateFold). */
+  tenantId?: string
   signal?: AbortSignal
   budgetMs?: number
   slowThresholdMs?: number
@@ -61,9 +63,9 @@ const newestFirst = (a: StoredSignIn, b: StoredSignIn): number => (a.createdDate
  * before any record of that second is counted, which keeps the rule's strict
  * "after" exact on a tie.
  */
-export function evidenceFold(compliantOwners: ReadonlySet<string> | null = null) {
+export function evidenceFold(compliantOwners: ReadonlySet<string> | null = null, tenantId: string | null = null) {
   const running = new Map<string, string>()
-  const perUser = aggregateFold()
+  const perUser = aggregateFold(tenantId)
   const policyResults = policyResultsFold((id) => running.get(id))
   const reportOnly = reportOnlyIdsFold()
   const blocked = blockedTodayFold()
@@ -169,7 +171,7 @@ export async function runLaneB(deps: LaneBDeps): Promise<SignInEvidence> {
   // Without a span, the tenant's saved records are deleted first, so none is later read as saved.
   let writable = meta !== null ? true : await store.reset().catch(() => false)
 
-  const fold = evidenceFold()
+  const fold = evidenceFold(null, deps.tenantId ?? null)
   const stats: LaneBStats = { pages: 0, savedRows: 0, folded: 0, maxResidentRows: 0, disorder: 0, duplicates: 0, tieOverflow: 0, refusedWrites: 0, readFailed: false, reanchors: 0 }
   const wallStart = deps.clock()
   let slowSignalled = false
