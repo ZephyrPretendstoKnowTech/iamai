@@ -12,7 +12,7 @@
 //   2. the saved span itself, read back from the store,
 //   3. the records Graph has older than what has been folded, to the window's start.
 // The fetch, store and clock are injected, so Node tests drive all of it.
-import { DEDUP_HORIZON_MS, MIN_COVERAGE_HOURS, SIGN_IN_REANCHOR_MAX, SIGN_IN_TIE_GROUP_MAX, SLOW_THRESHOLD_MS } from './constants.ts'
+import { DEDUP_HORIZON_MS, MIN_COVERAGE_HOURS, SIGN_IN_PAGE_SIZE, SIGN_IN_REANCHOR_MAX, SIGN_IN_TIE_GROUP_MAX, SLOW_THRESHOLD_MS } from './constants.ts'
 import { GraphResponseShapeError, SectionDisabledError } from './http.ts'
 import { absolute } from '../../copy/dates.ts'
 import { scenarioFold } from '../../derive/evidence.ts'
@@ -74,7 +74,9 @@ export function evidenceFold(compliantOwners: ReadonlySet<string> | null = null)
   const reducers = [perUser, policyResults, reportOnly, blocked, usage, aggregates, scenarios]
   let open: StoredSignIn[] = []
   const openIds = new Set<string>()
-  // The ids folded within DEDUP_HORIZON_MS of the frontier, newest first.
+  // The ids folded within DEDUP_HORIZON_MS of the frontier, and the last
+  // SIGN_IN_PAGE_SIZE folded whatever their time (a sparse tenant's record sent
+  // again from the page before), in the order folded.
   const recent = new Map<string, number>()
   let frontier: string | null = null
   const counts = { folded: 0, disorder: 0, duplicates: 0, tieOverflow: 0 }
@@ -99,7 +101,7 @@ export function evidenceFold(compliantOwners: ReadonlySet<string> | null = null)
     openIds.clear()
     const horizon = Date.parse(frontier) + DEDUP_HORIZON_MS
     for (const [id, ms] of recent) {
-      if (ms <= horizon) break
+      if (recent.size <= SIGN_IN_PAGE_SIZE || ms <= horizon) break
       recent.delete(id)
     }
   }

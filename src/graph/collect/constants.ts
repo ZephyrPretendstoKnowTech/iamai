@@ -8,7 +8,8 @@ export const SIGN_IN_PAGE_SIZE = 200
 /**
  * How far above the oldest folded second a record id is remembered, so a record
  * Graph sends twice (a page boundary, or the second a continued read starts
- * again from) is folded once.
+ * again from) is folded once. The last SIGN_IN_PAGE_SIZE ids folded are
+ * remembered whatever their time, for a sparse tenant's page sent again.
  */
 export const DEDUP_HORIZON_MS = 2_000
 /** The most records of one second held back before they are folded; a bigger second is folded in parts (LaneBStats.tieOverflow). */

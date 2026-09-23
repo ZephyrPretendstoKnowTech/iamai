@@ -266,6 +266,23 @@ test('a record Graph sends twice is folded once; a record newer than those alrea
   assert.equal(d.rows, straightFold(() => disordered.rowsInWindow(windowStartOf(NOW))).rows, 'it is still folded')
 })
 
+test('in a sparse tenant, a record sent again from further back than the frontier is still folded once', async () => {
+  // Sign-ins five minutes apart; each page after the first starts with a copy of the previous page's third-last record.
+  const records = Array.from({ length: 60 }, (_, i) => ({ id: `sparse-${i}`, createdDateTime: whole(NOW - HOUR - i * 300_000), userId: `person-${i % 7}`, status: { errorCode: 0 } }))
+  const size = 10
+  const fetchPage: LaneBDeps['fetchPage'] = async (url) => {
+    const offset = url === 'start' ? 0 : Number(url)
+    const value = [...(offset > 0 ? [records[offset - 3]] : []), ...records.slice(offset, offset + size)]
+    return { value, '@odata.nextLink': offset + size < records.length ? String(offset + size) : null }
+  }
+  const r = await read({ pageUrl: () => 'start', fetchPage }, discardStore())
+  assert.equal(r.status, 'ok')
+  assert.equal(r.rows, 60)
+  assert.equal(r.stats?.duplicates, 5)
+  assert.equal(r.stats?.disorder, 0)
+  assert.deepStrictEqual(derived(r), straightFold(() => records.map((x) => mapRow(x)!)).derived)
+})
+
 test('a person whose only sign-in is in the second the read stopped in is left out, and read on their own (MFA Readiness)', async () => {
   const at = (h: number) => iso(NOW - h * HOUR)
   const rec = (id: string, userId: string, h: number) => ({ id, createdDateTime: at(h), userId, status: { errorCode: 0 } })
