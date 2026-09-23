@@ -11,7 +11,7 @@ import type { CoverageInput } from './coverage.ts'
 import { buildStrengthLookup } from './strength.ts'
 import type { GoalResult } from './types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
-import { curatedFixture, fixture, noExclusionsAnswer } from '../roadmap/fixtures/index.ts'
+import { allFixtures, curatedFixture, fixture, noExclusionsAnswer } from '../roadmap/fixtures/index.ts'
 import { PREREQ_STEP_ID } from '../roadmap/stepIds.ts'
 import type { Fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture, withFoundationSettled } from '../roadmap/fixtures/run.ts'
@@ -562,7 +562,7 @@ test('demo week two: its token-protection policy switched On without the Cloud P
   assert.equal(operationsOf(s).length, 0, 'IAMAI offers a write for a part it does not write')
 })
 
-test('no step, on the fixtures the D7 defect reached, proposes an update that changes nothing on the policy it names', () => {
+test('no step, on any fixture, proposes an update that changes nothing on the policy it names', () => {
   // Nadia D7 / R4-10 as a class: coverage reads a tenant policy as short of the
   // goal, the correction it proposes is the policy's own settings back, and the
   // step sits at "Correct" for ever. The base had six such updates here: the
@@ -571,13 +571,19 @@ test('no step, on the fixtures the D7 defect reached, proposes an update that ch
   // writes no material field (roadmap/changedFields.ts) and no state is never
   // the answer to a gap, so wherever one appears, coverage and the correction
   // disagree about the same policy. Each fixture runs as shipped and with every
-  // report-only policy switched on.
+  // report-only policy switched on, as shipped and settled.
+  //
+  // Every fixture the suite sweeps (allFixtures; huge with HUGE=1), not only
+  // demo-week2 and large: the commit that added this test said no fixture step
+  // proposes such a correction, and the sweep that showed it was a local script
+  // (review of c924c3ab).
   const noop: string[] = []
   let updates = 0
-  for (const name of ['demo-week2', 'large'] as const) {
+  for (const base of allFixtures()) {
+    const name = base.name
     for (const settled of [false, true]) {
       for (const on of [false, true]) {
-        const f = structuredClone(settled ? withFoundationSettled(fixture(name)) : fixture(name))
+        const f = structuredClone(settled ? withFoundationSettled(base) : base)
         const rows = rowsOf(f)
         if (on) for (const r of rows) if (r.state === 'enabledForReportingButNotEnforced') r.state = 'enabled'
         for (const step of runFixture(f).steps) {
