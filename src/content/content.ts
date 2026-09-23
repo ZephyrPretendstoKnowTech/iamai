@@ -171,6 +171,8 @@ export type EngineWords = {
     statement: { exclusionMissing: string; conditionsNarrower: string; conditionsRecorded: string; guestTypes: string }
     conditions: Record<string, string>
   }
+  /** The name directory's fallback for a role holder it holds no name for (names.ts label). */
+  names: { unnamedHolder: string }
 }
 export const engine = shared.engine as unknown as EngineWords
 
