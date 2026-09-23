@@ -566,7 +566,7 @@ export function ContentStep({
                   {contract.who !== null && !contract.who.known && <p className="reason">{contract.who.text}</p>}
                 </section>
               )}
-              {reason === null && datesLineFor(step, cs) && whole(datesLineFor(step, cs), ex) && (
+              {reason === null && !contract.undated && datesLineFor(step, cs) && whole(datesLineFor(step, cs), ex) && (
                 <section className="step-section">
                   <h4>{HEAD.dates}</h4>
                   <p className="line"><T s={datesLineFor(step, cs)} ex={ex} /></p>
@@ -654,7 +654,7 @@ export function ContentStep({
                   here (owner, 2026-09-20). It used to be reachable only by
                   printing the plan, which is not where a person reads it. The
                   printed page draws the same component below, unchanged. */}
-              {reason === null && datesLineFor(step, cs) && whole(datesLineFor(step, cs), ex) && (
+              {reason === null && !contract.undated && datesLineFor(step, cs) && whole(datesLineFor(step, cs), ex) && (
                 <>
                   <h4>{HEAD.dates}</h4>
                   <p className="line"><T s={datesLineFor(step, cs)} ex={ex} /></p>

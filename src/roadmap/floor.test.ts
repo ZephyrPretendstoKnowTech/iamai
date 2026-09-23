@@ -258,8 +258,9 @@ test('the printed document carries the floor as the same named group, never unde
   // read the Plan's own row rule, so the document never attributes it to the
   // author. That rule (ui/surfaces/planRows.ts phaseRows) drops the floor's ids
   // and the footer's alike, which is one authority rather than a filter the
-  // document keeps for itself (task 027).
-  assert.match(src, /phaseRows\(steps, w\)/, 'the phases drop the floor\'s ids')
+  // document keeps for itself (task 027). It reads the board's hold beside it
+  // (owner decision 2): a step the board holds prints undated.
+  assert.match(src, /phaseRows\(steps, w, boardHeld\)/, 'the phases drop the floor\'s ids')
   assert.equal(src.includes('floorGroupIds'), false, 'the document decides for itself which ids a phase may draw')
   assert.equal(src.includes('w.stepIds.map('), false, 'no printed section reads a wave\'s raw step ids')
   assert.equal(src.includes('w.stepIds.filter('), false, 'no printed section filters a wave\'s raw step ids itself')

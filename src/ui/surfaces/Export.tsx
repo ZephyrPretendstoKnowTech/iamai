@@ -43,7 +43,8 @@ import { GROUNDING } from '../../copy/comms.ts'
 import { absoluteDate, toCsv } from '../format.ts'
 import { Button, Callout, Card, PageTip } from '../components/index.ts'
 import { PrintPlan } from './PrintPlan.tsx'
-import { exportViewsOf } from './stepExport.ts'
+import { exportHoldOf, exportViewsOf } from './stepExport.ts'
+import { boardReadingsOf } from './planBoard.ts'
 import { cleanupExportViews } from './cleanupExport.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -232,18 +233,23 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   }
 
   // Every export speaks from the content-driven step (prompt 53 queue item 7):
-  // the same variables the Plan builds for a step, then the same view.
-  const dates = planDates(steps, schedule.start, coverage.organisation.naming, snapshot)
+  // the same variables the Plan builds for a step, then the same view. A step
+  // the board holds lends no day to the plan-wide dates or the announcement
+  // (stepExport.ts exportHoldOf; owner decision 2).
+  // The board, built once (planBoard.ts boardReadingsOf): the hold and the views read it.
+  const board = boardReadingsOf(steps, schedule.cleanup, data.mapping?.breakGlassAnswers ?? null)
+  const held = exportHoldOf(board)
+  const dates = planDates(steps, schedule.start, coverage.organisation.naming, snapshot, held)
   const stepCtx = (s: typeof steps[number]): StepVarContext => ({ snapshot, mapping: data.mapping ?? ({ breakGlassUserIds: [], serviceAccountUserIds: [] } as never), nameOf, signature: data.signature, operatorId, now: snapshot.asOf, ...dates, reportOnlyAt: s.reportOnlyAt ?? null, groups: data.groups, directory: data.directory, naming: coverage.organisation.naming })
   // Every step under the lane the board reads it in (stepExport.ts
   // exportViewsOf): every export states a step's lane label (A1c), and the
   // drill every policy's enforcement waits on is part of that reading (R4-22).
-  const view = exportViewsOf(steps, schedule.cleanup, data.mapping?.breakGlassAnswers ?? null, stepCtx)
+  const view = exportViewsOf(board, stepCtx)
   // The Cleanup rows as the screen says them (E4): calendar entries, the pack's and the bundle's cleanup list.
   const cleanupViews = cleanupExportViews(schedule.cleanup)
   const getPack = (): PackItem[] => {
     if (packCache.current?.plan === c) return packCache.current.pack
-    const built = promptPack({ view, tenant: tenantName, steps, schedule, changeRecord: '', planSummary: schedule.derivation.criticalPath, announcement: announcementDraft(steps), cleanup: cleanupViews })
+    const built = promptPack({ view, tenant: tenantName, steps, schedule, changeRecord: '', planSummary: schedule.derivation.criticalPath, announcement: announcementDraft(steps, held), cleanup: cleanupViews })
     packCache.current = { plan: c, pack: built }
     return built
   }

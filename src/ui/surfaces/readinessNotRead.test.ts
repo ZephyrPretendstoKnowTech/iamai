@@ -10,7 +10,9 @@ import { readinessView, shows } from '../../derive/mfaReadiness.ts'
 import { signInsNeedP1 } from '../../derive/readinessContext.ts'
 import type { SourceState, TenantSnapshot } from '../../graph/collect/types.ts'
 import { pages } from '../../content/content.ts'
-import { goalLine, needsActionWords, nextCell, noDevicesWord, rowCells, signInsUnavailableFor } from './readinessCells.ts'
+import { goalLine, needsActionWords, nextCell, noDevicesWord, rowCells, signInsUnavailableFor, summaryLine } from './readinessCells.ts'
+import { fillText } from '../../content/render.ts'
+import { cohortWords } from '../../derive/whoLine.ts'
 import { whoEvidenceLines } from './stepExport.ts'
 import { stepById } from '../../content/content.ts'
 import { activityKnown, enabledUsers, notActiveUsers, notPeopleIds } from '../../derive/sets.ts'
@@ -50,7 +52,10 @@ test('without P1 no person is marked "not read": the row says nothing is to do, 
   }
   // The page: one sentence under the answer, and the Unknown group's own words when only the licence put people there.
   const page = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
-  assert.match(page, /signInsNeedP1\(snapshot\) \? fillText\(T\.summaryNoP1, \{ cohort \}\)/)
+  assert.match(page, /summaryLine\(counted, \{ needP1: signInsNeedP1\(snapshot\)/)
+  const counted = view.rows.filter((r) => r.state !== null)
+  assert.ok(counted.length > 0)
+  assert.equal(summaryLine(counted, { needP1: true, proofRead: false }), fillText(W.summaryNoP1, { cohort: cohortWords(counted.length, counted.filter((r) => r.guest).length) }))
   assert.match(page, /rows\.every\(signInsUnavailableFor\) \? T\.groupNoP1 : T\.groups\[state\]/)
   assert.match(page, /noDevicesWord\(r\) && \(/, 'the chip for an unseen device is the one cell function the CSV reads')
   assert.match(W.summaryNoP1, /Entra ID P1/)
@@ -129,8 +134,10 @@ test('no-P1: the headline says the activity was not read, never "No active peopl
   const { f } = MICRO()
   const W2 = pages.readiness as unknown as { summaryNone: string; summaryNoneNoP1: string }
   const page = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
-  assert.match(page, /active === 0 \? \(signInsNeedP1\(snapshot\) \? T\.summaryNoneNoP1 : T\.summaryNone\)/)
+  assert.match(page, /summaryLine\(counted, \{ needP1: signInsNeedP1\(snapshot\)/)
   assert.equal(signInsNeedP1(f.snapshot), true, 'so this tenant reads the second of the two')
+  assert.equal(summaryLine([], { needP1: true, proofRead: false }), W2.summaryNoneNoP1)
+  assert.equal(summaryLine([], { needP1: false, proofRead: true }), W2.summaryNone)
   assert.match(W2.summaryNoneNoP1, /Entra ID P1/)
   assert.doesNotMatch(W2.summaryNoneNoP1, /No active people/)
   assert.match(W2.summaryNone, /No active people/, 'unchanged for a tenant whose activity WAS read')

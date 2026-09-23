@@ -107,7 +107,13 @@ test('a who-line never renders its negation because a claim could not be filled'
           !out.includes(none),
           `${id} who.${key}: the claim "${line.slice(0, 60)}…" could not be filled and the step answered with its own negation, "${none}"`,
         )
-        assert.ok(out.includes(WHO_UNRESOLVED), `${id} who.${key}: the slot the claim would have taken says nothing at all`)
+        // The slot says so - or holds the claim itself, in the undated form the
+        // content writes for a line whose one hole was the day it names
+        // (who.<key>Undated, stepExport.ts whoEvidenceLines): the people are
+        // what was read, and the day is not.
+        const forms = (who[`${key}Undated`] ?? {}) as Record<string, unknown>
+        const undated: unknown = forms[String(lines.indexOf(line))]
+        assert.ok(out.includes(WHO_UNRESOLVED) || (typeof undated === 'string' && out.includes(undated)), `${id} who.${key}: the slot the claim would have taken says nothing at all`)
       }
     }
   }
@@ -158,9 +164,14 @@ test('the legacy-authentication step does not say nobody while it holds three ac
     const ex = stepVars(step, ctxFor(f, r)) as Ex
     assert.ok(Array.isArray(ex.legacyUsers) && (ex.legacyUsers as string[]).length > 0, `${name} has accounts on a legacy protocol`)
     assert.equal(ex.enforce, undefined, `${name}: and no date to fix them before, which is what used to drop the claim`)
-    const { lines } = whoSentences(name, 'block-legacy-auth')
+    const { lines, names } = whoSentences(name, 'block-legacy-auth')
     assert.ok(!lines.some((l) => /Nobody used a legacy protocol/.test(l)), `${name}: ${JSON.stringify(lines)}`)
-    assert.ok(lines.includes(WHO_UNRESOLVED), `${name}: the slot says so instead`)
+    // The claim itself, in its undated form (who.evidenceUndated): the accounts
+    // the scan read, and no day to fix them before. It used to say only that
+    // IAMAI could not finish the line, though it had read every account in it.
+    assert.ok(lines.some((l) => /signed in by a legacy protocol/.test(l) && !/before/.test(l)), `${name}: the slot names the accounts, without a day: ${JSON.stringify(lines)}`)
+    for (const who of ex.legacyUsers as string[]) assert.ok(names.includes(who), `${name}: ${who} is not named`)
+    assert.ok(!lines.includes(WHO_UNRESOLVED), `${name}: the slot says IAMAI could not finish a line it read`)
   }
 })
 
@@ -295,9 +306,12 @@ test('the geography step does not say nobody while it holds the person who did',
   const step = r.steps.find((s) => s.goalId === 'geo-restriction')!
   const ex = stepVars(step, ctxFor(f, r)) as Ex
   assert.ok(Array.isArray(ex.outsideUsers) && (ex.outsideUsers as string[]).length > 0, 'somebody signed in from outside the approved countries')
-  const { lines } = whoSentences('small', 'geo-restriction')
+  const { lines, names } = whoSentences('small', 'geo-restriction')
   assert.ok(!lines.some((l) => /Nobody signed in from outside/.test(l)), JSON.stringify(lines))
-  assert.ok(lines.includes(WHO_UNRESOLVED))
+  // The claim itself, in its undated form (who.evidenceUndated): the person, no day.
+  assert.ok(lines.some((l) => /signed in from outside/.test(l) && !/before/.test(l)), JSON.stringify(lines))
+  for (const who of ex.outsideUsers as string[]) assert.ok(names.includes(who), `${who} is not named`)
+  assert.ok(!lines.includes(WHO_UNRESOLVED))
 })
 
 /**

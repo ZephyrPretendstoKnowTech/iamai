@@ -35,6 +35,9 @@ import { holdOf } from './holds.ts'
 import { directionBlockerStep } from './directionAnswers.ts'
 import type { HoldKind } from './holds.ts'
 import { awaitsWorkflowRecord, implementationOffered } from './operations.ts'
+import { schedulingWords, shared } from '../content/content.ts'
+import { fillText } from '../content/render.ts'
+import { absoluteDate } from '../copy/dates.ts'
 
 /**
  * Where a step stands in the schedule:
@@ -210,6 +213,39 @@ export function stepScheduleOf(step: Step, basis: ScheduleBasis | null): StepSch
 export function scheduleOf(step: Step): StepSchedule {
   return stepScheduleOf(step, step.scheduled?.basis ?? null)
 }
+
+/**
+ * The day the plan gives a step is an estimate: the step is a person's review
+ * (`manualReview`) or a Direction step's questions (`directionQuestions`), and
+ * nothing in the tenant settles when either is done. The board's When column
+ * says so ("Est. {date}", pages.plan.when.estimate; ui/surfaces/planBoard.ts
+ * boardWhenOf), and every other place that prints the day says it in the same
+ * words (`shownDay`).
+ */
+export function estimatedDay(step: Pick<Step, 'manualReview' | 'directionQuestions'>): boolean {
+  return Boolean(step.manualReview || step.directionQuestions)
+}
+
+/**
+ * A day the plan gives a step, as every surface prints it: marked as an
+ * estimate where it is one (`estimatedDay`), else the day. The rail, the
+ * milestone and its Next line, the Dates line, the who-lines and the calendar
+ * read this, so none of them states as a deadline a day the board's row reads
+ * as an estimate (R4-34: the rail, then the lead, the export and the calendar,
+ * read "Aug 31, 2026" bare under a row reading "Est. Aug 31, 2026").
+ *
+ * `form` is where the day sits. A label - the When cell, the rail, the
+ * observation tile, the calendar's summary - reads the board's "Est. Aug 31,
+ * 2026" (pages.plan.when.estimate). Inside a sentence that label read "Create
+ * the policy in report-only on Est. Aug 31, 2026", so a sentence reads
+ * "Aug 31, 2026 (estimated)" (shared.dates.estimatedInSentence).
+ */
+export function shownDay(at: string, estimate: boolean, form: 'label' | 'sentence'): string {
+  if (!estimate) return absoluteDate(at)
+  return fillText(form === 'label' ? schedulingWords.estimate : ESTIMATED_IN_SENTENCE, { date: absoluteDate(at) })
+}
+
+const ESTIMATED_IN_SENTENCE = (shared as unknown as { dates: { estimatedInSentence: string } }).dates.estimatedInSentence
 
 /** A step's one dated event, as an export books it: what the day is for, and the days it spans. */
 export type ScheduledEvent = { transition: ScheduledTransition; start: string; end: string }
