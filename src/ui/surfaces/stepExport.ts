@@ -21,7 +21,8 @@ import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, proceduresAreRef
 import type { LaneView, StepContract } from './stepContract.ts'
 import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, previewNoteLines, selectedPolicyBodiesOf, entraWithSettings } from './stepPackage.ts'
 import { projectSafely } from '../../content/implementation/project.ts'
-import { SUBSTATUS_WORD, boardHolds, boardReadingsOf, laneViewAlone, laneViewFor, laneWordOf } from './planBoard.ts'
+import { SUBSTATUS_WORD, boardHolds, laneViewAlone, laneViewFor, laneWordOf } from './planBoard.ts'
+import type { BoardReadings } from './planBoard.ts'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import { createsNewPolicy, enforcesByStateOnly, updatesExistingPolicy, heldByTitle, implementationOffered, waitingLine } from './stepJson.ts'
 import { awaitingDeployment, enforcementUnearned, forecastEnforcement } from '../../roadmap/forecast.ts'
@@ -220,9 +221,10 @@ function gateLine(gatedBy: string | null): string | null {
 
 /**
  * The Export page's view of every step — the one its calendar, grounding
- * bundle and prompt pack read — each under the lane the board reads it in
- * (planBoard.ts boardReadingsOf, the one construction the Plan builds its rows
- * with, Cleanup rows and all).
+ * bundle and prompt pack read — each under the lane the board reads it in.
+ * `board` is planBoard.ts boardReadingsOf, the one construction the Plan builds
+ * its rows with, Cleanup rows and all; the page builds it once and hands the
+ * same board to this and to `exportHoldOf`.
  *
  * The page built its own lane readings, with no Cleanup rows, so the
  * emergency-access drill did not exist there. A policy the board held Up Next
@@ -230,13 +232,7 @@ function gateLine(gatedBy: string | null): string | null {
  * enforce", beside the very guard that said not to turn it on until emergency
  * access was tested (R4-22). The page calls this, and the tests call this.
  */
-export function exportViewsOf(
-  steps: readonly Step[],
-  cleanup: CleanupPhase | null | undefined,
-  answers: { signInMonitoring: boolean | null } | null | undefined,
-  ctxOf: (s: Step) => StepVarContext,
-): (s: Step) => ExportStep {
-  const board = boardReadingsOf(steps, cleanup, answers)
+export function exportViewsOf(board: Pick<BoardReadings, 'readings' | 'titleOf'>, ctxOf: (s: Step) => StepVarContext): (s: Step) => ExportStep {
   return (s) => stepExportView(s, ctxOf(s), laneViewFor(s, board))
 }
 
@@ -245,14 +241,11 @@ export function exportViewsOf(
  * `exportViewsOf` reads: what the Export page's plan-wide dates
  * (stepVars.ts planDates) and the prompt pack's announcement
  * (roadmap/prompts.ts announcementDraft) ask before any view exists, so that a
- * step the board holds lends neither its turn-on day (owner decision 2).
+ * step the board holds lends neither its turn-on day (owner decision 2). The
+ * page built the board twice per render, once here and once for its views,
+ * from the same arguments; it builds it once now and hands it to both.
  */
-export function exportHoldOf(
-  steps: readonly Step[],
-  cleanup: CleanupPhase | null | undefined,
-  answers: { signInMonitoring: boolean | null } | null | undefined,
-): (s: Step) => boolean {
-  const board = boardReadingsOf(steps, cleanup, answers)
+export function exportHoldOf(board: Pick<BoardReadings, 'readings' | 'titleOf'>): (s: Step) => boolean {
   return (s) => boardHolds(s, laneViewFor(s, board))
 }
 

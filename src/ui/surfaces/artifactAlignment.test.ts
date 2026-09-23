@@ -70,7 +70,7 @@ function load(named: string | Fixture): Case {
   // reads the page's own construction and holds it to the Plan's.
   const board = boardReadingsOf(run.steps, run.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
   const lane = once((s: Step): ReturnType<typeof laneViewFor> => laneViewFor(s, board))
-  const view = once(exportViewsOf(run.steps, run.schedule.cleanup, f.mapping.breakGlassAnswers ?? null, ctx))
+  const view = once(exportViewsOf(board, ctx))
   let entries: Map<string, string> | null = null
   const entry = (s: Step): string | undefined => {
     if (entries === null) {
@@ -655,7 +655,7 @@ test('R4-22: the Export page, the print, Connect and the Plan read the board thr
   for (const [file, call] of [
     ['./Plan.tsx', 'boardOf(c.steps, cleanupPhase, answers)'],
     ['./PrintPlan.tsx', 'boardReadingsOf(steps, schedule.cleanup, answers)'],
-    ['./Export.tsx', 'exportViewsOf(steps, schedule.cleanup, data.mapping?.breakGlassAnswers ?? null, stepCtx)'],
+    ['./Export.tsx', 'boardReadingsOf(steps, schedule.cleanup, data.mapping?.breakGlassAnswers ?? null)'],
     ['./Connect.tsx', 'boardReadingsOf(computed.steps, computed.schedule.cleanup, cleanupAnswers)'],
   ] as const) {
     const src = read(file)
@@ -709,7 +709,7 @@ test('R4-22: a policy the board holds behind the drill is exported as the board 
   const nameOf = (id: string): string => run.input.names?.label(id) ?? id
   const ctx = (s: Step): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: run.schedule.reportOnlyAt[s.id] ?? null, groups: f.groups }) as StepVarContext
   // The Export page's own construction, as Export.tsx calls it.
-  const view = exportViewsOf(run.steps, run.schedule.cleanup, answers, ctx)
+  const view = exportViewsOf(board, ctx)
   assert.equal(view(step).state, laneViewFor(step, board).label, 'the export states a lane the board does not')
   assert.equal(view(step).state, 'Up Next')
   // The runbook every flat artifact carries (the calendar entry's description,

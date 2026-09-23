@@ -92,7 +92,7 @@ test('a step the board holds carries no date on any surface, and every step it d
     const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot)
     const ctxOf = (step: Step): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: step.reportOnlyAt ?? null, scheduledOn: waveStartOf(step), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming })
     // The Export page's views, read off the same board (stepExport.ts exportViewsOf).
-    const view = exportViewsOf(r.steps, r.schedule.cleanup, answers, ctxOf)
+    const view = exportViewsOf(board, ctxOf)
     const ics = buildIcs(r.steps, 'Tenant', 'plan-held', view)
     const bundle = groundingBundle({ view, tenant: 'Tenant', snapshot: f.snapshot, coverage: r.coverage, steps: r.steps, schedule: r.schedule, redacted: false, generated: f.snapshot.asOf })
     const bundleSteps = (bundle.plan as { steps: { id: string; enforcement: { at: string | null } }[] }).steps
@@ -163,7 +163,7 @@ test('a policy whose turn-on waits behind the recovery test carries no turn-on d
     const board = boardReadingsOf(r.steps, r.schedule.cleanup, answers)
     const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot)
     const ctxOf = (step: Step): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: step.reportOnlyAt ?? null, scheduledOn: waveStartOf(step), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming })
-    const view = exportViewsOf(r.steps, r.schedule.cleanup, answers, ctxOf)
+    const view = exportViewsOf(board, ctxOf)
     const ics = buildIcs(r.steps, 'Tenant', 'plan-held', view)
     const bundle = groundingBundle({ view, tenant: 'Tenant', snapshot: f.snapshot, coverage: r.coverage, steps: r.steps, schedule: r.schedule, redacted: false, generated: f.snapshot.asOf })
     const token = r.steps.find((s) => s.id === 's-goal-token-protection')!
@@ -361,7 +361,11 @@ test('the Plan, the Export page and the step snapshots read the plan-wide dates 
   const read = (p: string): string => readFileSync(new URL(p, import.meta.url), 'utf8').replace(/\/\/[^\n]*/g, '')
   assert.match(read('./Plan.tsx'), /planDates\([^)]*scan\.snapshot, \(s\) => boardHolds\(s, laneViewFor\(s, \{ readings, titleOf \}\)\)\)/, 'the Plan')
   const exportPage = read('./Export.tsx')
-  assert.match(exportPage, /const held = exportHoldOf\(steps, schedule\.cleanup, data\.mapping\?\.breakGlassAnswers \?\? null\)/, 'the Export page reads the board\'s hold')
+  // One board: the hold and the views read the same construction, built once per render.
+  assert.equal(exportPage.split('boardReadingsOf(').length - 1, 1, 'the Export page builds its board once')
+  assert.match(exportPage, /const board = boardReadingsOf\(steps, schedule\.cleanup, data\.mapping\?\.breakGlassAnswers \?\? null\)/, 'the Export page builds the board')
+  assert.match(exportPage, /const held = exportHoldOf\(board\)/, 'the Export page reads the board\'s hold')
+  assert.match(exportPage, /exportViewsOf\(board, stepCtx\)/, 'the Export page\'s views read the same board')
   assert.match(exportPage, /planDates\([^)]*snapshot, held\)/, 'the Export page\'s plan-wide dates')
   assert.match(exportPage, /announcementDraft\(steps, held\)/, 'the Export page\'s announcement')
   assert.match(read('../../testing/stepSnapshots.ts'), /planDates\([^)]*f\.snapshot, \(s\) => boardHolds\(s, laneViewFor\(s, board\)\)\)/, 'the step snapshots')
@@ -393,7 +397,7 @@ test('a day the board reads as an estimate is never printed bare: a sentence say
     const board = boardReadingsOf(r.steps, r.schedule.cleanup, answers)
     const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot)
     const ctxOf = (step: Step): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: step.reportOnlyAt ?? null, scheduledOn: waveStartOf(step), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming })
-    const view = exportViewsOf(r.steps, r.schedule.cleanup, answers, ctxOf)
+    const view = exportViewsOf(board, ctxOf)
     const ics = buildIcs(r.steps, 'Tenant', 'plan-est', view).replace(/\r\n /g, '')
     for (const step of r.steps) {
       const lane = laneViewFor(step, board)
