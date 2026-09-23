@@ -393,7 +393,7 @@ test('D: no demo file generates an artifact, and the export guard still redacts 
   // The demo adds a line saying the file is a sample; it does not change what
   // redaction does, and the unredacted branch still demands a named surface.
   assert.ok(/isDemo\(\) \?/.test(guard) && /demoWatermark/.test(guard))
-  assert.ok(/d\.redact \? redactIdentifiers\(content\) : content/.test(guard), 'the demo changed how redaction is applied')
+  assert.ok(/d\.redact \? redactIdentifiers\(content, d\.keep\) : content/.test(guard), 'the demo changed how redaction is applied')
 })
 
 // ---------------------------------------------------------------------------

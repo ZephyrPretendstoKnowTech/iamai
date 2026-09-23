@@ -38,7 +38,7 @@ import { facts } from '../../derive/facts.ts'
 import { announcementDraft, groundingBundle, promptPack, promptPackMarkdown } from '../../roadmap/prompts.ts'
 import type { PackItem } from '../../roadmap/prompts.ts'
 import { importPlanRecords } from '../../graph/collect/cache.ts'
-import { REDACTED, exportClipboard, exportDownload, exportPrint, unredactedFrom } from '../exportGuard.ts'
+import { REDACTED, exportClipboard, exportDownload, exportPrint, runbookRedaction, unredactedFrom } from '../exportGuard.ts'
 import { GROUNDING } from '../../copy/comms.ts'
 import { absoluteDate, toCsv } from '../format.ts'
 import { Button, Callout, Card, PageTip } from '../components/index.ts'
@@ -158,7 +158,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   // derive/facts.ts's (task 042).
   const tenantFacts = data.mapping ? facts(snapshot, data.mapping) : null
   const copy = (id: string, text: string): void => {
-    void exportClipboard(text, REDACTED).then((ok) => {
+    void exportClipboard(text, runbookRedaction(data.mapping)).then((ok) => {
       if (!ok) { setExportError('Copy failed. Try copying again.'); return }
       setExportError(null)
       setCopied(id)
@@ -296,7 +296,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
         <Card className="export-card" title={P.cards.prompts[0]}>
           <p className="reason">{P.cards.prompts[1]}</p>
           <p className="actions">
-            <Button variant="secondary" onClick={() => exportDownload(`iamai-prompts-${snapshot.tenantId.slice(0, 8)}.md`, promptPackMarkdown(getPack(), tenantName), 'text/markdown', REDACTED)}>
+            <Button variant="secondary" onClick={() => exportDownload(`iamai-prompts-${snapshot.tenantId.slice(0, 8)}.md`, promptPackMarkdown(getPack(), tenantName), 'text/markdown', runbookRedaction(data.mapping))}>
               {buttons('prompts')[0]}
             </Button>
           </p>
@@ -327,7 +327,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
         <Card className="export-card" title={P.cards.calendar[0]}>
           <p className="reason">{P.cards.calendar[1]}</p>
           <p className="actions">
-            <Button variant="secondary" onClick={() => exportDownload(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.ics`, buildIcs(steps, tenantName, planId, view, cleanupViews), 'text/calendar', REDACTED)}>
+            <Button variant="secondary" onClick={() => exportDownload(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.ics`, buildIcs(steps, tenantName, planId, view, cleanupViews), 'text/calendar', runbookRedaction(data.mapping))}>
               {buttons('calendar')[0]}
             </Button>
           </p>

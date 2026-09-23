@@ -1,8 +1,9 @@
 // Shared identifier redaction (CLAUDE.md: never commit tenant-derived data;
 // docs/design/diagnostics.md: every log line and diagnostic artifact obeys
 // this). Pure: no DOM, no network. Placeholders are stable within one text so
-// correlations survive redaction.
-export function redactIdentifiers(text: string): string {
+// correlations survive redaction. `keep` names GUIDs that are vendor constants
+// rather than tenant data (lower case), which a runbook needs as they are.
+export function redactIdentifiers(text: string, keep: ReadonlySet<string> = new Set()): string {
   const seen = new Map<string, string>()
   let upns = 0
   let guids = 0
@@ -18,7 +19,7 @@ export function redactIdentifiers(text: string): string {
   return text
     .replace(/[A-Za-z0-9._%+'-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, (m) => sub(m, () => `upn-${++upns}@redacted`))
     .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, (m) =>
-      sub(m, () => `guid-${String(++guids).padStart(4, '0')}`),
+      keep.has(m.toLowerCase()) ? m : sub(m, () => `guid-${String(++guids).padStart(4, '0')}`),
     )
 }
 

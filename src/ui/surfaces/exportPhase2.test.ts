@@ -25,6 +25,8 @@ import { exportCleanupViewsOf, exportHoldOf, exportViewsOf } from './stepExport.
 import { cleanupExportViews, cleanupWhen } from './cleanupExport.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
+import { exportText, runbookRedaction } from '../exportGuard.ts'
+import { requiredModels } from '../../roadmap/passkeySettings.ts'
 
 /** The Plan rail's words for a scheduled day (pages.app.plan.stepContract.railTransition). */
 const RAIL = (app.plan as unknown as { stepContract: { railTransition: Record<string, string> } }).stepContract.railTransition
@@ -307,4 +309,30 @@ test('the plan-file card says the file holds names, sign-in addresses and object
   const card = (pages.export as unknown as { cards: { planFile: [string, string, string] } }).cards.planFile[1]
   assert.match(card, /names, sign-in addresses and object IDs in full/, card)
   assert.match(card, /Review it before sharing\./, card)
+})
+
+// Finding 10 (severity 2), the part that is not the owner's to decide. The
+// masked calendar was masked after RFC 5545 folding, so an address split across
+// a fold left whole ("bg1@messy-fixture.onmicrosoft.com") or half masked
+// ("upn-1@redactedsoft.com"); and every GUID was masked, the approved passkey
+// models' AAGUIDs with them, so the passkey runbook named "YubiKey 5 Series
+// (guid-0002)". The file says what it masks on its card.
+test('a masked calendar masks every address, however it folds, and keeps the passkey model AAGUIDs', () => {
+  const p = exportPage(fixture('messy'))
+  const ics = buildIcs(p.r.steps, 'Tenant', 'plan-mask', p.view, p.cleanup)
+  const out = exportText('plan.ics', ics, runbookRedaction(p.f.mapping))
+  for (const line of out.split('\r\n')) assert.ok(Buffer.byteLength(line, 'utf8') <= 75, `a line past 75 octets: ${line}`)
+  const unfolded = out.replace(/\r\n[ \t]/g, '')
+  const addresses = [...new Set(unfolded.match(/[A-Za-z0-9._%+'-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g) ?? [])]
+  assert.deepEqual(addresses.filter((a) => !/^upn-\d+@redacted$/.test(a)), [], 'an address the masking missed')
+  // The approved models are vendor constants the runbook needs; a tenant's own ids are masked.
+  const model = requiredModels(p.f.mapping)[0]!
+  const text = exportText('prompts.md', `Allow ${model.name} (${model.aaguid}) for 0d5c1a2b-1111-4222-8333-944455556666.`, runbookRedaction(p.f.mapping))
+  assert.ok(text.includes(model.aaguid), `the approved model's AAGUID is masked: ${text}`)
+  assert.ok(!text.includes('0d5c1a2b-1111-4222-8333-944455556666'), `a tenant id is kept: ${text}`)
+})
+
+test('the calendar and prompt cards say the file masks sign-in addresses and IDs and keeps names', () => {
+  const cards = (pages.export as unknown as { cards: Record<'calendar' | 'prompts', [string, string, string]> }).cards
+  for (const card of [cards.calendar[1], cards.prompts[1]]) assert.match(card, /sign-in addresses and object IDs are masked; names are not\./, card)
 })
