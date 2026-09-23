@@ -212,6 +212,7 @@ export function App() {
           snapshot.registrationDetails = []
           snapshot.signInEvidence = {}
           snapshot.evidencePolicyResults = []
+          snapshot.evidenceReportOnlyPolicyIds = []
           snapshot.evidenceUsage = null
           snapshot.evidenceAggregates = null
           snapshot.config.subscribedSkus = { status: 'ok', reason: null, rows: [] }

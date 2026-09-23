@@ -61,6 +61,8 @@ import { contentStepFor } from '../../content/stepTitle.ts'
 import { inWave } from '../../derive/phases.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import type { Step } from '../../roadmap/types.ts'
+import { derivePolicyResults, deriveReportOnlyPolicyIds } from '../../graph/collect/laneBCore.ts'
+import type { StoredSignIn } from '../../graph/collect/types.ts'
 import { CONTRACT, FINISHED_READING, readinessOf, stepContract } from './stepContract.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { unreadLine } from '../../roadmap/evidence.ts'
@@ -1038,14 +1040,23 @@ type Scan = { label: string; h: Fixture; run: ReturnType<typeof runFixture> }
 type CreatedRecords = { reportOnlySuccess: number; enforcedSuccess: number }
 
 /**
+ * The created policy's sign-in rows as the collector stores them: for each
+ * [first day, last day, result], five interactive sign-ins a day (at midday,
+ * days after the first scan) whose applied result for it is that one.
+ */
+type CreatedSignIns = readonly (readonly [number, number, string])[]
+
+/**
  * demo's Block Unsupported Platforms, built from the step's own create
  * operation, and a scan per [day, Graph state, records] after the first scan,
  * which recorded it absent. Each scan carries the record the scans before it
  * wrote. Records, where given, are the scan's sign-in results for the created
  * policy, in the shape the collector leaves a policy that has an enforced
- * record: `firstReportOnlyAt` null.
+ * record: `firstReportOnlyAt` null. Sign-ins, where given, are rows every scan
+ * reads the part of that falls in its window, through the collector's own
+ * derivations (laneBCore.ts derivePolicyResults, deriveReportOnlyPolicyIds).
  */
-function unsupportedOver(scans: readonly (readonly [number, string, CreatedRecords?])[]): Scan[] {
+function unsupportedOver(scans: readonly (readonly [number, string, CreatedRecords?])[], signIns: CreatedSignIns = []): Scan[] {
   const DAY = 86_400_000
   const f = withFoundationSettled(fixture('demo'))
   const first = runFixture(f)
@@ -1054,8 +1065,20 @@ function unsupportedOver(scans: readonly (readonly [number, string, CreatedRecor
   const bodies = stepOperations(planned).filter((o) => o.mode === 'create').map((o, i) => ({ ...(structuredClone(o.body) as Record<string, unknown>), id: `0f0f0f0f-1111-4222-a333-44444444444${i}` }))
   assert.ok(bodies.length > 0, 'the premise: the step creates its policy')
   let prior = observationsOf(first.steps)
+  const base = Date.parse(f.snapshot.asOf)
+  const stored: StoredSignIn[] = bodies.flatMap((r) =>
+    signIns.flatMap(([from, to, result]) =>
+      Array.from({ length: (to - from + 1) * 5 }, (_, n): StoredSignIn => ({
+        id: `${String(r.id)}-${result}-${from + Math.floor(n / 5)}-${n % 5}`,
+        createdDateTime: new Date(base + (from + Math.floor(n / 5)) * DAY + DAY / 2 + (n % 5) * 60_000).toISOString(),
+        userId: `signin-${n % 5}`,
+        status: { errorCode: 0 },
+        appliedConditionalAccessPolicies: [{ id: String(r.id), result }],
+      })),
+    ),
+  )
   return scans.map(([days, state, records]) => {
-    const asOf = new Date(Date.parse(f.snapshot.asOf) + days * DAY).toISOString()
+    const asOf = new Date(base + days * DAY).toISOString()
     const rows = [...((f.snapshot.config.caPolicies?.rows ?? []) as Record<string, unknown>[]), ...bodies.map((r) => ({ ...r, state, createdDateTime: asOf, modifiedDateTime: asOf }))]
     const results = records
       ? bodies.map((r) => ({
@@ -1066,7 +1089,17 @@ function unsupportedOver(scans: readonly (readonly [number, string, CreatedRecor
           firstReportOnlyAt: null,
         }))
       : []
-    const h = { ...f, snapshot: { ...f.snapshot, asOf, evidencePolicyResults: [...f.snapshot.evidencePolicyResults, ...results], config: { ...f.snapshot.config, caPolicies: { ...f.snapshot.config.caPolicies!, rows } } } as typeof f.snapshot }
+    const inWindow = stored.filter((s) => s.createdDateTime < asOf && Date.parse(s.createdDateTime) >= Date.parse(asOf) - 30 * DAY)
+    const h = {
+      ...f,
+      snapshot: {
+        ...f.snapshot,
+        asOf,
+        evidencePolicyResults: [...f.snapshot.evidencePolicyResults, ...results, ...derivePolicyResults(inWindow)],
+        evidenceReportOnlyPolicyIds: [...(f.snapshot.evidenceReportOnlyPolicyIds ?? []), ...deriveReportOnlyPolicyIds(inWindow)],
+        config: { ...f.snapshot.config, caPolicies: { ...f.snapshot.config.caPolicies!, rows } },
+      } as typeof f.snapshot,
+    }
     const run = runFixture(h, { snapshot: h.snapshot }, prior)
     prior = observationsOf(run.steps, prior)
     return { label: `day ${days}, ${state}`, h, run }
@@ -1205,6 +1238,38 @@ test("a policy created in report-only and turned On between two scans is not sai
   // is left to the owner rather than to this change.
   const next = after.run.steps.find((s) => s.id === UNSUPPORTED)!
   assert.equal(briefingTells(next, unwatchedCtx(after.h, after.run)), 0, `${after.label}: the AI Info briefing says it went live unwatched`)
+})
+
+test("a block policy whose only report-only records are reportOnlyNotApplied is not said to have gone live unwatched", () => {
+  // The same workflow for a block policy in a tenant whose people sign in from
+  // supported platforms. A block grant never records reportOnlySuccess: a
+  // sign-in its conditions match is reportOnlyFailure, and every other one is
+  // reportOnlyNotApplied, which the collector counted nowhere and kept no entry
+  // for. Two weeks in report-only, then On: every sign-in the scan held for it
+  // was reportOnlyNotApplied and then notApplied, and the step said "This policy
+  // went live without a report-only period IAMAI could watch".
+  const watched: CreatedSignIns = [[1, 15, 'reportOnlyNotApplied'], [16, 22, 'notApplied']]
+  const assertWatched = ({ label, h, run }: Scan): void => {
+    const step = run.steps.find((s) => s.id === UNSUPPORTED)!
+    const ids = (step.tracking?.members ?? []).map((m) => m.policyId)
+    assert.equal(ids.length > 0 && ids.every((id) => !h.snapshot.evidencePolicyResults.some((p) => p.policyId === id)), true, `the premise (${label}): the collector keeps no result entry for it`)
+    assert.equal(step.state.lifecycle === 'enforced' && step.state.satisfied && !step.state.inPlace, true, `the premise (${label}): the plan's own policy, enforced and finished`)
+    assert.equal(laneViewOf(laneReadings(run.steps).get(UNSUPPORTED)!, (x) => x).label, 'Completed', `${label}: it stays Completed`)
+    assert.equal(step.state.members.every((m) => m.change.latest.skippedWindow === undefined), true, `${label}: the record claims a skipped report-only period the scan's records disprove`)
+    const ctx = unwatchedCtx(h, run)
+    assert.equal(readinessOf(step, stepContract(step, ctx)).tiles.some((t) => t.key === 'enforced-unwatched'), false, `${label}: said to have gone live unwatched`)
+    const ai = stepBodyOf(step, ctx).artifacts.find((a) => a.id === 'ai')
+    assert.ok(ai, `${label}: the opened step has no AI Info`)
+    assert.equal(ai.text().includes(CONTRACT.foundEnforcedUnwatched), false, `${label}: the AI Info briefing carries the unwatched tile's words`)
+  }
+  // Recorded absent, created in report-only, On at day 16, and the scans at day
+  // 20 and day 23.
+  for (const scan of unsupportedOver([[20, 'enabled'], [23, 'enabled']], watched)) assertWatched(scan)
+  // Recorded absent, seen Off at day 1 before any sign-in was evaluated under
+  // it, then report-only, then On.
+  const [off, arrived, after] = unsupportedOver([[1, 'disabled'], [20, 'enabled'], [23, 'enabled']], watched)
+  assert.equal(off.run.steps.find((s) => s.id === UNSUPPORTED)!.state.members.every((m) => m.change.latest.offOnly === true), true, 'the premise: seen arrive Off, with no record of it yet')
+  for (const scan of [arrived, after]) assertWatched(scan)
 })
 
 test('a policy carrying this plan\'s tag, first seen On, is never said to have gone live unwatched', () => {
