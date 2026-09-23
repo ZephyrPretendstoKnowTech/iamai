@@ -600,5 +600,7 @@ test('042.15: no surface re-derives a fact that has an authority', () => {
   // and a readiness count computed in JSX beside them.
   assert.equal(/rungs\[1\]|rungs\[2\]/.test(exportSurface), false, 'Export computes a readiness population itself; derive/facts.ts toSetUp is the count')
   assert.equal(/Everyone active/.test(exportSurface), false, 'Export words a sentence the printed plan should take from content.json')
-  assert.ok(print.includes('C.verificationNote'), 'the printed plan does not take the verification note from its own content entry')
+  // The print draws it from its view (ui/surfaces/printPlan.ts verificationNoteOf), which words it from the content entry.
+  assert.ok(print.includes('verificationNoteOf(steps)'), 'the printed plan words the verification note itself')
+  assert.ok(read('src/ui/surfaces/printPlan.ts').includes('app.print.verificationNote'), 'the printed plan does not take the verification note from its own content entry')
 })

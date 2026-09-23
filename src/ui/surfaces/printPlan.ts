@@ -8,7 +8,7 @@ import type { Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { conditionalAccessLicenceLine } from '../../derive/notLicensed.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
-import { pages } from '../../content/content.ts'
+import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { doesntApplyRows } from './planRows.ts'
 import { FINISH } from '../../copy/statements.ts'
@@ -145,4 +145,20 @@ export function phaseDatesOf(rows: readonly Step[]): string | null {
   }
   if (start === null || end === null) return null
   return absoluteDate(start) === absoluteDate(end) ? absoluteDate(start) : dateRange(start, end)
+}
+
+/**
+ * The registration and verification window's note: the people the window is
+ * sized for (roadmap/generate.ts registrationWindow, from the campaign step's
+ * preparation.missingIds), of everyone that step prepares. It used to state
+ * derive/facts.ts notReady, readiness to the phishing-resistant standard, a
+ * different population: messy's one-day window sat beside "104 of 106 active
+ * people are not Ready yet". Empty where the campaign step or its preparation
+ * is absent, and then the row says nothing rather than another count.
+ */
+export function verificationNoteOf(steps: readonly Step[]): string {
+  const campaign = steps.find((s) => s.id === 's-verify-mfa')
+  const prep = campaign?.preparation
+  if (!campaign || !prep) return ''
+  return fillText(app.print.verificationNote, { n: prep.missingIds.length, total: prep.ids.length, step: contentTitle(campaign) })
 }

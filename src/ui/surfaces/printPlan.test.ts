@@ -23,7 +23,7 @@ import { boardHolds, boardOf } from './planBoard.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { completedRows, deferredRows, doesntApplyRows, floorRows, openDoneRows, phaseRows, planPhases } from './planRows.ts'
-import { cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, laneGroupsOf, noPlanLine, phaseDatesOf, postureOf } from './printPlan.ts'
+import { cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, laneGroupsOf, noPlanLine, phaseDatesOf, postureOf, verificationNoteOf } from './printPlan.ts'
 import { scheduleOf, scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { absoluteDate, dateRange } from '../../copy/dates.ts'
@@ -310,4 +310,22 @@ test('a printed phase is dated by the days its rows state, never by a forecast e
   const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
   assert.equal(/w\.days === 0 \? absoluteDate\(w\.start\) : dateRange\(w\.start, w\.end\)/.test(print), false, 'the print still dates a phase by the wave\'s own window')
   assert.match(print, /phaseDatesOf\(phaseSteps\(w\)\)/, 'the print does not date a phase by its rows')
+})
+
+// ---- The registration window states the people it is sized for ----
+
+test('the registration window\'s row states the people the window is sized for, not another population', () => {
+  // Messy: the window runs one working day because 5 people in Prepare Your
+  // Team for MFA have no usable method yet (five a working day), but the row
+  // said "104 of 106 active people are not Ready yet": readiness to the
+  // phishing-resistant standard, a different population. An admin read one day
+  // for 104 people.
+  const p = plan('messy')
+  const verify = byId(p.steps, 's-verify-mfa')
+  const missing = verify.preparation?.missingIds.length ?? 0
+  assert.ok(p.schedule.verification.days > 0 && missing === 5, `the premise: messy's window is sized for 5 people (${missing})`)
+  const note = verificationNoteOf(p.steps)
+  assert.equal(note, `5 of ${verify.preparation?.ids.length} people in Prepare Your Team for MFA have no usable registered MFA method yet.`)
+  assert.equal(/104|106/.test(note), false, `the note counts another population: ${note}`)
+  assert.match(readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8'), /const verificationNote = verificationNoteOf\(steps\)/, 'the row words its own population')
 })
