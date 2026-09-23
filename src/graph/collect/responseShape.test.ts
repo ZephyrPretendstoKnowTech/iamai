@@ -109,7 +109,7 @@ test('a sign-in page without its value array is a failed read, not history exhau
   const run = (bodies: { value?: unknown; '@odata.nextLink'?: string | null }[]) => {
     let i = 0
     return runLaneB({
-      pageUrl: (before) => (before === null ? 'start' : `lt:${before}`),
+      pageUrl: (through) => (through === null ? 'start' : `le:${through}`),
       windowDays: 30,
       nowMs,
       clock: () => 0,

@@ -30,8 +30,8 @@ export type EvidenceStore = {
 }
 
 export type LaneBDeps = {
-  /** The first page of interactive sign-ins, newest first; with `before`, only those created before it. */
-  pageUrl: (before: string | null) => string
+  /** The first page of interactive sign-ins, newest first; with `through`, only those created at or before it. */
+  pageUrl: (through: string | null) => string
   windowDays: number
   nowMs: number
   clock: () => number
@@ -47,7 +47,6 @@ export type LaneBDeps = {
 type Derivations = Pick<SignInEvidence, 'perUser' | 'policyResults' | 'reportOnlyPolicyIds' | 'blockedToday' | 'usage' | 'aggregates' | 'scenarios'>
 
 const newestFirst = (a: StoredSignIn, b: StoredSignIn): number => (a.createdDateTime < b.createdDateTime ? 1 : a.createdDateTime > b.createdDateTime ? -1 : 0)
-const plus1s = (at: string): string => new Date(Date.parse(at) + 1000).toISOString()
 
 /**
  * Every derivation, fed newest first one second at a time. The records of a
@@ -221,7 +220,8 @@ export async function runLaneB(deps: LaneBDeps): Promise<SignInEvidence> {
         nextLink = body['@odata.nextLink'] ?? null
       } catch (e) {
         // A page that still fails after the request's own retries is read again from
-        // the last whole second folded: a nextLink is not needed to go on. A refusal,
+        // the last whole second folded, at or before it (the records of that second
+        // Graph sends again are dropped as duplicates): a nextLink is not needed to go on. A refusal,
         // a cancelled scan, or SIGN_IN_REANCHOR_MAX failures with no further second
         // folded between them stop the read. A page read again that ends inside the
         // same second (one second holding a page or more) is no progress, so it does
@@ -230,7 +230,7 @@ export async function runLaneB(deps: LaneBDeps): Promise<SignInEvidence> {
         failedAt = fold.frontier
         if (e instanceof SectionDisabledError || deps.signal?.aborted || failures >= SIGN_IN_REANCHOR_MAX) throw e
         fold.discard()
-        next = fold.frontier ? deps.pageUrl(plus1s(fold.frontier)) : firstUrl
+        next = fold.frontier ? deps.pageUrl(fold.frontier) : firstUrl
         stats.reanchors += 1
         continue
       }
@@ -301,8 +301,9 @@ export async function runLaneB(deps: LaneBDeps): Promise<SignInEvidence> {
 
   try {
     let resumed = false
-    // Where the read went back to Graph for the records older than those folded, when it did.
-    let olderBefore: string | null = null
+    // Where the read went back to Graph for the records older than those folded, when it did:
+    // the last second folded, whose records Graph sends again and the fold drops.
+    let olderThrough: string | null = null
     if (meta === null) {
       const end = await graphLoop(deps.pageUrl(null), windowStart, 'fresh')
       if (end === 'time budget') return stopped(end)
@@ -316,8 +317,8 @@ export async function runLaneB(deps: LaneBDeps): Promise<SignInEvidence> {
       resumed = true
       const read = await readSaved(meta)
       if (!read || meta.from > windowStart) {
-        olderBefore = plus1s(fold.frontier ?? meta.to)
-        const older = await graphLoop(deps.pageUrl(olderBefore), windowStart, 'older')
+        olderThrough = fold.frontier ?? meta.to
+        const older = await graphLoop(deps.pageUrl(olderThrough), windowStart, 'older')
         if (older === 'time budget') return stopped(older)
         exhausted ||= older === 'history exhausted'
       }
@@ -330,7 +331,7 @@ export async function runLaneB(deps: LaneBDeps): Promise<SignInEvidence> {
     const reason = exhausted
       ? `the last ${deps.windowDays} days, or less if the tenant keeps fewer`
       : resumed
-        ? `${stats.readFailed ? 'the saved records could not all be read' : 'resumed from the saved records'}: fetched the gap since ${absolute(meta!.to)}${olderBefore ? ` and the records before ${absolute(olderBefore)}` : ''}`
+        ? `${stats.readFailed ? 'the saved records could not all be read' : 'resumed from the saved records'}: fetched the gap since ${absolute(meta!.to)}${olderThrough ? ` and the records before ${absolute(olderThrough)}` : ''}`
         : null
     return result('ok', reason, { from: windowStart, to: nowIso })
   } catch (e) {
