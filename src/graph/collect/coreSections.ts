@@ -96,7 +96,8 @@ export type UnreadSection = {
   /**
    * Some of it arrived and some did not, so the plan is built on less than the
    * tenant holds. A sign-in read stopped short of its minimum ('insufficient')
-   * with a covered window returned those hours: that is a read in part too.
+   * or by an error, with a covered window, returned those hours: that is a read
+   * in part too (readInPart).
    */
   partial: boolean
   /**
@@ -108,10 +109,23 @@ export type UnreadSection = {
   refused: boolean
 }
 
+/**
+ * Whether a read returned some of a section and not all of it: a read marked
+ * partial, or one that stopped after it had covered some hours, short of the
+ * sign-in read's minimum ('insufficient') or on an error (laneBCore.ts keeps
+ * the window it covered on every stop). The one rule for "read in part": the
+ * unread list below and the plan's evidence (roadmap/evidence.ts
+ * sourceUnreadOf) both ask it, so a read cannot be "not read" on Connect and a
+ * short window in the plan.
+ */
+export function readInPart(s: { status: string; coveredWindow?: unknown }): boolean {
+  return s.status === 'partial' || ((s.status === 'error' || s.status === 'insufficient') && !!s.coveredWindow)
+}
+
 /** One unread section, classified once from the state the scan recorded for it. */
 const unreadOf = (source: string, s: { status: string; reason: string | null; coveredWindow?: unknown }): UnreadSection => ({
   source,
-  partial: s.status === 'partial' || (s.status === 'insufficient' && !!s.coveredWindow),
+  partial: readInPart(s),
   refused: isPrivilegeDenial(s.reason),
 })
 

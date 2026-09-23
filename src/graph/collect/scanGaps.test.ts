@@ -11,6 +11,7 @@ import { CORE_SOURCES, coreGaps, unreadSources } from './coreSections.ts'
 import { coreRoleGap, rolesInToken } from './tokenRoles.ts'
 import { READ_EVERYTHING_ROLE, isLicenceGate } from './roles.ts'
 import { fixture } from '../../roadmap/fixtures/index.ts'
+import { sourceUnreadOf } from '../../roadmap/evidence.ts'
 import { planTile } from '../../ui/scan/connectView.ts'
 import type { TenantSnapshot } from './types.ts'
 
@@ -79,6 +80,28 @@ test('every section a scan could not read reaches the list, core or not, gaps or
   assert.deepEqual(unreadSources(s).at(-1), { source: 'signInEvidence', partial: true, refused: false })
   s.sources.signInEvidence = { status: 'insufficient', reason: 'no sign-in records could be read', coveredWindow: null, asOf: s.asOf }
   assert.deepEqual(unreadSources(s).at(-1), { source: 'signInEvidence', partial: false, refused: false }, 'no hours covered: nothing was read')
+})
+
+// Phase 2 review, round 1: Connect's unread list and the plan's evidence
+// (roadmap/evidence.ts sourceUnreadOf) each decided whether the sign-in records
+// were read in part, by two rules. A read interrupted by an error after it had
+// fetched some hours (laneBCore.ts: finalize('error') keeps the window it
+// covered) read "Sign-in records · not read" on Connect while the plan held
+// those hours as a short window. One rule decides both.
+test('a sign-in read that covered some hours is read in part on Connect and a short window in the plan, whatever stopped it', () => {
+  const covered = { from: '2026-09-07T12:00:00Z', to: '2026-09-08T00:00:00Z' }
+  const s = fixtureSnapshot()
+  s.sources.signInEvidence = { status: 'error', reason: 'HTTP 503 ServiceUnavailable', coveredWindow: covered, asOf: s.asOf }
+  assert.deepEqual(unreadSources(s).at(-1), { source: 'signInEvidence', partial: true, refused: false }, 'an interrupted read that returned 12 hours is a read in part')
+  for (const status of ['partial', 'insufficient', 'error', 'disabled'] as const) {
+    for (const window of [covered, null]) {
+      const t = fixtureSnapshot()
+      t.sources.signInEvidence = { status, reason: status === 'disabled' ? REFUSED : 'stopped', coveredWindow: window, asOf: t.asOf }
+      const row = unreadSources(t).find((u) => u.source === 'signInEvidence')
+      assert.ok(row, `${status}, ${window ? 'hours covered' : 'no hours'}: listed as not read in full`)
+      assert.equal(row.partial, sourceUnreadOf(t.sources.signInEvidence) === null, `${status}, ${window ? 'hours covered' : 'no hours'}: Connect and the plan disagree on whether any of it was read`)
+    }
+  }
 })
 
 test('a token without the roles does not start the scan and names the role to ask for; Global Reader, Global Administrator or Security Reader start it; a token without the claim says nothing', () => {
