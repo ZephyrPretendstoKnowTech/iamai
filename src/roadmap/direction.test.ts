@@ -451,7 +451,9 @@ test('NEW-Nadia-D4: a person read on their own after a partial read, seen on an 
   e.individuallyRead = true
   s.sources.signInEvidence = { ...s.sources.signInEvidence, status: 'partial', reason: 'stopped at memory ceiling; covers the most recent 40 h of the requested 30 days' }
   assert.deepEqual(phoneSignInIds(s), [id])
-  assert.equal(phonesToday(f), fillText(W.questions.phones.today, { n: 1 }))
+  // Counted, and — the read being partial — said as a count of the part that
+  // was read (NEW-Nadia-D4 review; the test below).
+  assert.equal(phonesToday(f), fillText(W.questions.phones.todayPartial, { n: 1 }))
 })
 
 test('NEW-Nadia-D4: over a sign-in read that stopped short, the device question never says no phone or no unidentified computer was seen', () => {
@@ -473,8 +475,38 @@ test('NEW-Nadia-D4: over a sign-in read that stopped short, the device question 
   s.sources.signInEvidence = { ...s.sources.signInEvidence, status: 'partial', reason: 'collection interrupted: Graph 503 after retries' }
   assert.equal(phonesToday(f), null)
   assert.equal(computers(), null)
-  // What a short read did see is still said.
+  // What a short read did see is still said, as what the part that was read
+  // showed (the test below).
   const id = Object.keys(s.signInEvidence)[0]
   s.signInEvidence[id].devices = [...(s.signInEvidence[id].devices ?? []), { os: 'Android', at: s.asOf, trust: 'none', managed: null, deviceIds: [], version: null }]
-  assert.equal(phonesToday(f), fillText(W.questions.phones.today, { n: 1 }))
+  assert.equal(phonesToday(f), fillText(W.questions.phones.todayPartial, { n: 1 }))
+})
+
+test('NEW-Nadia-D4 review: over a sign-in read that stopped short, every count the device question states says it is from the part that was read', () => {
+  // The defect: with the flat negatives gone, a short read still stated its
+  // counts as the tenant's — "Today: 3 people signed in from phones." over the
+  // few hours a capped read reached, beside Blocked from company data, where an
+  // undercount argues for blocking; and the computer counts beside Managed,
+  // where it makes enrolment look cheap.
+  const f = fixture('demo')
+  const s = f.snapshot
+  const today = (key: string): string | null => q(stepOf(directionSteps({ snapshot: s, mapping: f.mapping, notAssessed: [], availableGoalIds: [] }), DIRECTION_STEP.devices), key).today
+  const phones = phoneSignInIds(s)!.length
+  const unjoined = s.scenarioEvidence!.unjoinedComputers!.people.length
+  // One person on a registered computer, so both computer counts are stated.
+  s.scenarioEvidence!.registeredComputers = { people: [Object.keys(s.signInEvidence)[0]], count: 1, detail: {} }
+  assert.ok(phones > 0 && unjoined > 0, 'the premise: the demo has phones and unidentified computers to count')
+  // Read whole, the counts are the tenant's.
+  assert.equal(s.sources.signInEvidence.status, 'ok', 'the premise: a whole read')
+  assert.equal(today('phones'), fillText(W.questions.phones.today, { n: phones }))
+  assert.equal(today('computers'), [fillText(W.questions.computers.today, { n: unjoined }), fillText(W.questions.computers.todayRegistered, { n: 1 })].join(' '))
+  for (const [status, reason] of [['partial', 'stopped at memory ceiling; covers the most recent 40 h of the requested 30 days'], ['insufficient', 'stopped at memory ceiling with only 17 h covered (minimum 24 h)']] as const) {
+    s.sources.signInEvidence = { ...s.sources.signInEvidence, status, reason }
+    const computers = today('computers') ?? ''
+    assert.doesNotMatch(computers, /^Today:| Today:/, `${status}: a short read's computer counts stated as the tenant's: ${computers}`)
+    assert.equal(computers, [fillText(W.questions.computers.todayPartial, { n: unjoined }), fillText(W.questions.computers.todayRegisteredPartial, { n: 1 })].join(' '), status)
+    // The phones count is read only over a read MFA Readiness reads (derive/sets.ts phoneSignInIds): partial, not insufficient.
+    if (status === 'partial') assert.equal(today('phones'), fillText(W.questions.phones.todayPartial, { n: phones }))
+    else assert.equal(today('phones'), null)
+  }
 })

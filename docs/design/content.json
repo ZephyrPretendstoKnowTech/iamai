@@ -2707,6 +2707,9 @@
               "todayNone": "Today: every computer sign-in came from a device IAMAI could identify.",
               "todayRegistered": "Today: {n} people signed in from computers registered to the tenant but not joined. Managed means joined and enrolled, so these are in scope for this answer.",
               "todayRegisteredNone": "No sign-ins came from registered-but-unjoined computers.",
+              "$commentTodayPartial": "The two computer counts where the sign-in read was not whole (sources.signInEvidence anything but ok; roadmap/direction.ts deviceQuestions). A read stopped at the memory ceiling or interrupted counts only the hours it reached, and \"Today: 3 people signed in from computers IAMAI could not identify\" stated that as the tenant's number beside a choice to require managed computers, where an undercount makes the requirement look cheaper than it is (NEW-Nadia-D4 review). Each line says it counts only the part that was read.",
+              "todayPartial": "In the part of the sign-in records this scan read, {n} people signed in from computers IAMAI could not identify — not joined, not registered, not compliant, not managed. There may be more.",
+              "todayRegisteredPartial": "In the part of the sign-in records this scan read, {n} people signed in from computers registered to the tenant but not joined. There may be more. Managed means joined and enrolled, so these are in scope for this answer.",
               "$commentIntuneSeats": "The device question chooses between Managed, Hybrid joined and Left unmanaged, and Managed means joined AND enrolled - which needs an Intune licence per device. The question offered the baseline recommendation and nothing about the tenant, on a tenant holding 300 seats with 41 in use. A reader picking the suggested answer was committing to enrolment without being shown whether the licences for it existed.",
               "intuneSeats": "Intune: {consumed} of {seats} licences in use. Managed means joined and enrolled, so each computer under this answer needs one.",
               "intuneAbsent": "No Intune licences were read in this tenant. Managed means joined and enrolled, and enrollment needs them."
@@ -2721,6 +2724,8 @@
               },
               "today": "Today: {n} people signed in from phones.",
               "todayNone": "Today: no phone sign-ins were seen.",
+              "$commentTodayPartial": "The phone count where the sign-in read was not whole (sources.signInEvidence partial; roadmap/direction.ts deviceQuestions). A read stopped at the memory ceiling or interrupted reaches only its most recent hours and the people read on their own, and \"Today: 3 people signed in from phones.\" stated that as the tenant's number beside Blocked from company data, where an undercount argues for blocking (NEW-Nadia-D4 review). It says it counts only the part that was read.",
+              "todayPartial": "In the part of the sign-in records this scan read, {n} people signed in from phones. There may be more.",
               "note": "Blocked from company data adds a policy of its own, Keep Company Data Off Phones, with its own report-only week and two tests from a phone before it is enforced."
             },
             "deviceExceptions": {
