@@ -4,7 +4,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixtureBaseline, fixtureSnapshot } from '../testing/uiSnapshot.ts'
-import { baselineStrengths } from '../roadmap/fixtures/index.ts'
 import { computeCoverage } from './coverage.ts'
 import { buildStrengthLookup } from './strength.ts'
 import type { GroupMembers } from './population.ts'
@@ -87,10 +86,6 @@ test('one admin population: Findings, step populations, readiness and the admin 
   // the pinned administrators' policy does not name either: that policy lists
   // Directory Readers among its 46 roles, and the step is written from it (q-pin).
   s.roles.active['u-2'] = ['790c1fb9-7f7d-4f88-86a1-ef1f95c05c1b'] // Message Center Reader
-  // The administrators' step is written from the pinned policy (q-pin), which
-  // asks for the baseline's own strength: this tenant has made its copy, as the
-  // fixtures' tenants have, so the step has a target to read the admins against.
-  s.config.authStrengths!.rows = [...(s.config.authStrengths?.rows ?? []), ...baselineStrengths('exclusions')]
   const admins = adminUserIds(s.roles)
   assert.deepEqual([...admins], ['u-1'])
   const viability = buildViabilityInputs(s, s.asOf).map(scoreMfaViability)
