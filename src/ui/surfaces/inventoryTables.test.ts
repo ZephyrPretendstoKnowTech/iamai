@@ -5,7 +5,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
-import { appsModel, authStrengthsModel, capabilitiesModel, devicesModel, groupsModel, inventoryTables, licencesModel, locationsModel, policyFactsOf, referencedGroupsOf, registrationModel, rolesModel, securityDefaultsOf, signInModels } from './inventoryTables.ts'
+import { appsModel, authMethodsModel, authStrengthsModel, capabilitiesModel, devicesModel, groupsModel, inventoryTables, licencesModel, locationsModel, methodTargetGroupsOf, policiesModel, policyFactsOf, referencedGroupsOf, registrationModel, rolesModel, securityDefaultsOf, signInModels } from './inventoryTables.ts'
 import { buildNameDirectory } from '../../names.ts'
 import { app, pages } from '../../content/content.ts'
 import { INVENTORY as C } from '../../copy/inventory.ts'
@@ -162,4 +162,37 @@ test('a group whose read failed is not read, never 0 members', () => {
   assert.ok(column(csv, C.groups.columns.members).every((v) => v === notReadWord), 'no measured-looking count of a group nobody read')
   const read = inventoryTables(f.snapshot, f.groups).find((t) => t.id === 'groups')!
   assert.ok(column(read, C.groups.columns.members).some((v) => /^\d/.test(String(v))), 'a group the plan read has its count')
+})
+
+test('a group, a named location or a strength without a name is named by its kind, never as an account', () => {
+  const f = fixture('demo-week2')
+  const group = [...f.groups.keys()].find((id) => /break/i.test(f.groups.get(id)!.displayName ?? ''))!
+  const loc = 'aa0e7c6a-1111-4222-8333-444455556666'
+  const strength = 'bb0e7c6a-1111-4222-8333-444455556666'
+  const policy = {
+    id: 'p-country-block',
+    displayName: 'Country block',
+    state: 'enabled',
+    conditions: { users: { includeUsers: ['All'], excludeGroups: [group] }, applications: { includeApplications: ['All'] }, locations: { includeLocations: ['All'], excludeLocations: [loc] }, clientAppTypes: ['all'] },
+    grantControls: { operator: 'OR', builtInControls: [], authenticationStrength: { id: strength } },
+  }
+  const s = failed(failed(f.snapshot, 'namedLocations', 'disabled', 'access denied (403)'), 'authStrengths', 'disabled', 'access denied (403)')
+  // No group read has come back: the directory has no name for the group.
+  const names = buildNameDirectory(s)
+  const m = policiesModel(s, policyFactsOf(s, [policy]), names)
+  const cell = (key: string) => m.columns.find((c) => c.key === key)!.cell(m.rows[0])
+  assert.equal(cell('exclusions'), app.inventory.unnamedGroup)
+  assert.equal(cell('conditions'), C.policies.locations(`all except ${app.inventory.locationNotRead}`))
+  assert.equal(cell('grant'), C.policies.require(C.policies.strength(app.inventory.strengthNotRead)))
+  for (const key of ['exclusions', 'conditions', 'grant']) assert.doesNotMatch(String(cell(key)), /account/)
+  // A method scoped to a group: the page reads that group's name too, and never calls it an account.
+  const scoped = structuredClone(f.snapshot)
+  const fido = (scoped.config.authMethodsPolicy.rows[0] as { authenticationMethodConfigurations: { id: string; includeTargets: unknown[] }[] }).authenticationMethodConfigurations.find((c) => c.id.toLowerCase() === 'fido2')!
+  fido.includeTargets = [{ id: group, targetType: 'group' }]
+  assert.ok(methodTargetGroupsOf(scoped).includes(group), 'the page reads the method target group')
+  const methods = authMethodsModel(scoped, buildNameDirectory(scoped))
+  const targets = methods.columns.find((c) => c.key === 'targets')!
+  assert.equal(targets.cell(methods.rows.find((r) => r.id.toLowerCase() === 'fido2')!), app.inventory.unnamedGroup)
+  assert.equal(targets.cell(authMethodsModel(scoped, buildNameDirectory(scoped, f.groups)).rows.find((r) => r.id.toLowerCase() === 'fido2')!), f.groups.get(group)!.displayName)
+  assert.match(readFileSync('src/ui/surfaces/InventoryPage.tsx', 'utf8'), /methodTargetGroupsOf\(snapshot\)/)
 })

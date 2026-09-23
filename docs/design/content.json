@@ -3058,7 +3058,13 @@
         "$commentHiddenEligibleUnread": "The Roles tab's note on the built-in roles it hides, where the eligible assignments were not read for a reason other than a licence (config pimEligibility refused or failed). The note said those roles had \"no holder\", and on a tenant licensed for PIM an eligible Global Administrator is the ordinary case.",
         "hiddenNoteEligibleUnread": "{n} built-in roles hidden: no active holder, or held only by services. Eligible holders were not read.",
         "$commentAppsNone": "The Apps table where the app sign-in summary was read and lists nothing. It said \"No app sign-in summary is available on this licence.\" whatever the summary's status, blaming the licence on a P1 tenant whose read failed with a 500.",
-        "appsNone": "The app sign-in summary the scan read lists no sign-ins."
+        "appsNone": "The app sign-in summary the scan read lists no sign-ins.",
+        "$commentUnnamedObjects": "How the Inventory names a group, a named location or an authentication strength the directory holds no name for, by its kind (ui/surfaces/inventoryTables.ts objectLabels). Every one read \"an unnamed account\": a method scoped to the emergency-access group read \"Passkey or FIDO2 security key | enabled | an unnamed account\", and a country block read \"locations: all except an unnamed account\" on a scan that could not read named locations. Plainly, never as a phrase about IAMAI (names.ts, walk-51 item 4); a location or strength whose section was not read says so.",
+        "unnamedGroup": "an unnamed group",
+        "unnamedLocation": "an unnamed location",
+        "locationNotRead": "a named location that was not read",
+        "unnamedStrength": "an unnamed authentication strength",
+        "strengthNotRead": "an authentication strength that was not read"
       }
     }
   },
