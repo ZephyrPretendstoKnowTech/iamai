@@ -7,7 +7,10 @@
 // "enabledForReportingButNotEnforced", "ServerAd") and read a compliance Graph
 // did not report as "no", while the surface wrote words under the same file
 // names. Pure: no DOM, no network.
-import type { DeviceRow, TenantSnapshot, UserRow } from '../../graph/collect/types.ts'
+import type { ConfigSectionKey, DeviceRow, SourceKey, TenantSnapshot, UserRow } from '../../graph/collect/types.ts'
+import { CONFIG_KEYS, sectionHasData } from '../../graph/collect/coreSections.ts'
+import { isLicenceGate } from '../../graph/collect/roles.ts'
+import { securityDefaultsState } from '../../derive/readinessContext.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import type { PolicyFacts } from '../../coverage/types.ts'
 import type { ResolvedObject } from '../../graph/collect/onDemand.ts'
@@ -24,7 +27,8 @@ import { ROLE_TEMPLATES, coversAdminSet, heldOnlyByServices, roleLabel, roleName
 import productNames from '../../../data/product-names.json' with { type: 'json' }
 import { INVENTORY as C, combinationName, methodName, protocolName, trustTypeName } from '../../copy/inventory.ts'
 import { ACTIVITY_STATE, METHOD_TIER, MFA_STATE } from '../../copy/definitions.ts'
-import { app } from '../../content/content.ts'
+import { app, pages } from '../../content/content.ts'
+import { fillText } from '../../content/render.ts'
 import { absoluteDate } from '../format.ts'
 
 /** A table as a file: what the Export CSV card downloads. */
@@ -50,6 +54,10 @@ export type InventoryModel<R> = {
   columns: InventoryColumn<R>[]
   rowKey: (r: R) => string
   empty?: string
+  /** Said in place of the rows where the scan got nothing out of the table's section; the Export offers no file then. */
+  notRead?: string | null
+  /** Said over the rows where the section was read only in part. */
+  note?: string | null
 }
 
 /** The file a model writes: every column with a cell, hidden ones included, in the model's order. */
@@ -59,6 +67,55 @@ export function tableOf<R>(m: InventoryModel<R>): InventoryTable {
 
 type Raw = Record<string, unknown>
 const str = (v: unknown): string => (typeof v === 'string' ? v : v == null ? '' : String(v))
+
+// ---------- What the scan read of a section ----------
+
+const W = app.inventory
+/** A cell whose own source the scan did not read. */
+const NOT_READ = (pages.connect as unknown as { scan: { gaps: { notRead: string } } }).scan.gaps.notRead
+
+type SectionKey = ConfigSectionKey | SourceKey
+function stateOf(snapshot: TenantSnapshot, key: SectionKey): { status: string; reason: string | null } | undefined {
+  return (CONFIG_KEYS as string[]).includes(key) ? snapshot.config?.[key as ConfigSectionKey] : snapshot.sources?.[key as SourceKey]
+}
+const reasonOf = (s: { reason: string | null } | undefined): string | null => {
+  const r = (s?.reason ?? '').trim().replace(/[.\s]+$/, '')
+  return r === '' ? null : r
+}
+
+/**
+ * What a table says in place of its rows where the scan got nothing out of its
+ * section (coreSections.ts sectionHasData, the one test): the section's own
+ * reason, never a zero, an "off", a "none" or an empty list. Null where it did.
+ */
+export function notReadLine(snapshot: TenantSnapshot, key: SectionKey): string | null {
+  if (sectionHasData(snapshot, key)) return null
+  const s = stateOf(snapshot, key)
+  const reason = reasonOf(s)
+  if (reason === null) return W.notReadNoReason
+  return fillText(s?.status === 'insufficient' ? W.tooLittle : W.notRead, { reason })
+}
+
+/** The line over a table whose section was read in part; a licence gate is not a shortfall (coreSections.ts unreadSources). */
+export function partlyReadLine(snapshot: TenantSnapshot, key: SectionKey): string | null {
+  const s = stateOf(snapshot, key)
+  if (s?.status !== 'partial' || isLicenceGate(s.reason)) return null
+  const reason = reasonOf(s)
+  return reason === null ? W.partlyReadNoReason : fillText(W.partlyRead, { reason })
+}
+
+/** A table of one section: its rows only where the scan got data out of it. */
+function readOf<M extends { rows: unknown[]; empty?: string; notRead?: string | null; note?: string | null }>(snapshot: TenantSnapshot, key: SectionKey, m: M): M {
+  const notRead = notReadLine(snapshot, key)
+  return notRead === null ? { ...m, notRead: null, note: partlyReadLine(snapshot, key) } : { ...m, rows: [], notRead, empty: notRead, note: null }
+}
+
+/** Security defaults as the scan read them (derive/readinessContext.ts securityDefaultsState): on, off, or not read with the section's reason. */
+export function securityDefaultsOf(snapshot: TenantSnapshot): { state: boolean | null; word: string; reason: string | null } {
+  const A = C.authentication
+  const state = securityDefaultsState(snapshot)
+  return { state, word: state === null ? NOT_READ : state ? A.on : A.off, reason: state === null ? reasonOf(snapshot.config?.securityDefaults) : null }
+}
 
 // ---------- Policies ----------
 
@@ -161,9 +218,9 @@ function sessionSummary(f: PolicyFacts): string {
 
 const yesNo = (v: boolean): string => (v ? C.devices.yes : C.devices.no)
 
-export function policiesModel(facts: PolicyFacts[], names: NameDirectory): InventoryModel<PolicyFacts> {
+export function policiesModel(snapshot: TenantSnapshot, facts: PolicyFacts[], names: NameDirectory): InventoryModel<PolicyFacts> {
   const P = C.policies
-  return {
+  return readOf(snapshot, 'caPolicies', {
     id: 'policies',
     label: C.tabs.policies,
     csvName: 'iamai-policies.csv',
@@ -181,7 +238,7 @@ export function policiesModel(facts: PolicyFacts[], names: NameDirectory): Inven
       { key: 'grant', header: P.columns.grant, cell: (r) => grantSummary(r, names.label) },
       { key: 'session', header: P.columns.session, cell: (r) => sessionSummary(r) },
     ],
-  }
+  })
 }
 
 // ---------- Named locations ----------
@@ -199,7 +256,7 @@ export function locationsModel(snapshot: TenantSnapshot, facts: PolicyFacts[]): 
     const usedBy = facts.filter((f) => f.locations && (f.locations.include.has(id) || f.locations.exclude.has(id))).length
     return { id, name: str(l.displayName ?? id), type: isIp ? L.ip : L.country, trusted: l.isTrusted === true, ranges, usedBy }
   })
-  return {
+  return readOf(snapshot, 'namedLocations', {
     id: 'locations',
     label: C.tabs.locations,
     csvName: 'iamai-named-locations.csv',
@@ -213,7 +270,7 @@ export function locationsModel(snapshot: TenantSnapshot, facts: PolicyFacts[]): 
       { key: 'ranges', header: L.columns.ranges, cell: (r) => r.ranges },
       { key: 'usedBy', header: L.columns.usedBy, sort: (r) => r.usedBy, cell: (r) => L.usedBy(r.usedBy) },
     ],
-  }
+  })
 }
 
 // ---------- Authentication ----------
@@ -234,7 +291,7 @@ export function authMethodsModel(snapshot: TenantSnapshot, names: NameDirectory)
     const t = targets.map((x) => (String(x.id) === 'all_users' ? A.allUsers : names.label(str(x.id)))).join(', ')
     return { id: str(m.id), enabled: m.state === 'enabled', targets: t || A.targets(0) }
   })
-  return {
+  return readOf(snapshot, 'authMethodsPolicy', {
     id: 'authentication',
     label: C.tabs.authentication,
     csvName: 'iamai-auth-methods.csv',
@@ -246,7 +303,7 @@ export function authMethodsModel(snapshot: TenantSnapshot, names: NameDirectory)
       { key: 'state', header: A.methodColumns.state, sort: (r) => (r.enabled ? 0 : 1), cell: (r) => (r.enabled ? A.enabled : A.disabled) },
       { key: 'targets', header: A.methodColumns.targets, cell: (r) => r.targets },
     ],
-  }
+  })
 }
 
 export type StrengthRow = { id: string; name: string; builtIn: boolean; combos: string }
@@ -259,7 +316,7 @@ export function authStrengthsModel(snapshot: TenantSnapshot): InventoryModel<Str
     builtIn: s.policyType === 'builtIn',
     combos: (Array.isArray(s.allowedCombinations) ? s.allowedCombinations : []).map((c) => combinationName(String(c))).join(', '),
   }))
-  return {
+  return readOf(snapshot, 'authStrengths', {
     id: 'authStrengths',
     label: A.strengths,
     csvName: 'iamai-auth-strengths.csv',
@@ -270,7 +327,7 @@ export function authStrengthsModel(snapshot: TenantSnapshot): InventoryModel<Str
       { key: 'type', header: A.strengthColumns.type, sort: (r) => (r.builtIn ? 0 : 1), cell: (r) => (r.builtIn ? A.builtIn : A.custom) },
       { key: 'combos', header: A.strengthColumns.combinations, cell: (r) => r.combos },
     ],
-  }
+  })
 }
 
 export type RegistrationMeasure = { measure: string; count: number }
@@ -286,7 +343,7 @@ export function registrationModel(snapshot: TenantSnapshot): InventoryModel<Regi
     { measure: A.passwordless, count: reg.filter((r) => r.isPasswordlessCapable).length },
     ...[...byMethod.entries()].sort((a, b) => b[1] - a[1]).map(([m, n]) => ({ measure: A.byMethod(methodName(m)), count: n })),
   ]
-  return {
+  return readOf(snapshot, 'registrationDetails', {
     id: 'registration',
     label: A.registration,
     csvName: 'iamai-registration.csv',
@@ -296,7 +353,7 @@ export function registrationModel(snapshot: TenantSnapshot): InventoryModel<Regi
       { key: 'measure', header: A.regColumns.measure, cell: (r) => r.measure },
       { key: 'users', header: A.regColumns.users, sort: (r) => r.count, cell: (r) => r.count },
     ],
-  }
+  })
 }
 
 // ---------- People ----------
@@ -319,7 +376,7 @@ export function peopleModel(snapshot: TenantSnapshot, names: NameDirectory, viab
   const P = C.people
   const rows: PersonRow[] = snapshot.users.map((u) => ({ user: u, v: viability.get(u.id), roles: (snapshot.roles.active[u.id] ?? []).map(roleLabel).join(', '), licence: licenceTier(u) }))
   const type = (u: UserRow): string => (u.userType === 'guest' ? P.guest : P.member)
-  return {
+  return readOf(snapshot, 'users', {
     id: 'people',
     label: C.tabs.people,
     csvName: 'iamai-people.csv',
@@ -339,7 +396,7 @@ export function peopleModel(snapshot: TenantSnapshot, names: NameDirectory, viab
       { key: 'licence', header: P.columns.licence, sort: (r) => r.licence, cell: (r) => r.licence },
       { key: 'roles', header: P.columns.roles, sort: (r) => r.roles, cell: (r) => r.roles || P.noRoles },
     ],
-  }
+  })
 }
 
 // ---------- Groups ----------
@@ -395,6 +452,10 @@ export function groupsModel(referenced: Map<string, { include: string[]; exclude
 // ---------- Devices ----------
 
 export function devicesModel(snapshot: TenantSnapshot, names: NameDirectory): InventoryModel<DeviceRow> & { registrations: (r: DeviceRow) => string } {
+  return readOf(snapshot, 'devices', devicesTable(snapshot, names))
+}
+
+function devicesTable(snapshot: TenantSnapshot, names: NameDirectory): InventoryModel<DeviceRow> & { registrations: (r: DeviceRow) => string } {
   const D = C.devices
   const yn = (v: boolean | null) => (v === null ? D.unknown : v ? D.yes : D.no)
   // A person by the one rule for naming a person (names.ts personLabels), a
@@ -457,7 +518,7 @@ export function roleHoldersOf(snapshot: TenantSnapshot): Set<string> {
   return holders
 }
 
-export function rolesModel(snapshot: TenantSnapshot, names: NameDirectory, resolved: Map<string, ResolvedObject> | null = null, showAll = false): InventoryModel<RoleRow> & { hidden: number } {
+export function rolesModel(snapshot: TenantSnapshot, names: NameDirectory, resolved: Map<string, ResolvedObject> | null = null, showAll = false): InventoryModel<RoleRow> & { hiddenNote: string | null } {
   const R = C.roles
   const byRole = new Map<string, { active: Set<string>; eligible: Set<string> }>()
   const add = (src: Record<string, string[]>, key: 'active' | 'eligible') => {
@@ -496,20 +557,27 @@ export function rolesModel(snapshot: TenantSnapshot, names: NameDirectory, resol
     }
   })
   const hidden = ROLE_TEMPLATES.filter((r) => !byRole.has(r.templateId)).length + [...byRole.keys()].filter(serviceOnly).length
-  return {
+  // Eligible assignments refused or failed, where a licence allows them: the
+  // eligible holders are not known, so no role is said to have none.
+  const eligibility = snapshot.config?.pimEligibility
+  const eligibleUnread = !sectionHasData(snapshot, 'pimEligibility') && !isLicenceGate(eligibility?.reason)
+  const model: InventoryModel<RoleRow> & { hiddenNote: string | null } = readOf(snapshot, 'roleAssignments', {
     id: 'roles',
     label: C.tabs.roles,
     csvName: 'iamai-roles.csv',
     rows,
-    rowKey: (r) => r.id,
+    rowKey: (r: RoleRow) => r.id,
     empty: R.empty,
-    hidden,
+    hiddenNote: null as string | null,
     columns: [
-      { key: 'role', header: R.columns.role, sort: (r) => r.name.toLowerCase(), cell: (r) => r.name },
-      { key: 'active', header: R.columns.active, sort: (r) => r.activeN, cell: (r) => r.active || '—' },
-      { key: 'eligible', header: R.columns.eligible, cell: (r) => r.eligible || '—' },
+      { key: 'role', header: R.columns.role, sort: (r: RoleRow) => r.name.toLowerCase(), cell: (r: RoleRow) => r.name },
+      { key: 'active', header: R.columns.active, sort: (r: RoleRow) => r.activeN, cell: (r: RoleRow) => r.active || '—' },
+      { key: 'eligible', header: R.columns.eligible, cell: (r: RoleRow) => (eligibleUnread ? NOT_READ : r.eligible || '—') },
     ],
-  }
+  })
+  // The built-in roles left out, said only where the assignments were read.
+  model.hiddenNote = model.notRead !== null || showAll || hidden === 0 ? null : eligibleUnread ? fillText(W.hiddenNoteEligibleUnread, { n: hidden }) : R.hiddenNote(hidden)
+  return model
 }
 
 // ---------- Licensing ----------
@@ -532,7 +600,7 @@ export function licencesModel(snapshot: TenantSnapshot): InventoryModel<LicenceR
       caps: unlocked.join(', ') || L.none,
     }
   })
-  return {
+  return readOf(snapshot, 'subscribedSkus', {
     id: 'licensing',
     label: C.tabs.licensing,
     csvName: 'iamai-licences.csv',
@@ -545,14 +613,15 @@ export function licencesModel(snapshot: TenantSnapshot): InventoryModel<LicenceR
       { key: 'consumed', header: L.columns.consumed, sort: (r) => r.consumed, cell: (r) => r.consumed },
       { key: 'caps', header: L.columns.capabilities, cell: (r) => r.caps },
     ],
-  }
+  })
 }
 
 export type CapabilityRow = { id: string; name: string; enabled: boolean; seats: number; consumed: number }
 
 export function capabilitiesModel(snapshot: TenantSnapshot): InventoryModel<CapabilityRow> {
   const L = C.licensing
-  return {
+  // The capabilities are derived from the licences (licensing/capabilities.ts): a licence read that failed leaves every one unknown, never unlicensed.
+  return readOf(snapshot, 'subscribedSkus', {
     id: 'capabilities',
     label: L.summary,
     csvName: 'iamai-capabilities.csv',
@@ -562,7 +631,7 @@ export function capabilitiesModel(snapshot: TenantSnapshot): InventoryModel<Capa
       { key: 'capability', header: L.capColumns.capability, cell: (r) => r.name },
       { key: 'seats', header: L.capColumns.seats, cell: (r) => (r.enabled ? L.seats(r.seats, r.consumed) : L.notLicensed) },
     ],
-  }
+  })
 }
 
 // ---------- Apps ----------
@@ -577,8 +646,13 @@ export function appsModel(snapshot: TenantSnapshot, names: NameDirectory): Inven
     const last = (s.lastSignInActivity as Raw | undefined)?.lastSignInDateTime
     if (appId && typeof last === 'string') lastSpByApp.set(appId, last)
   }
+  // Each column says what its own source read: the sign-in counts are the
+  // summary's, the last activity the service principals'.
+  const summaryRead = sectionHasData(snapshot, 'appSignInSummary')
+  const spRead = sectionHasData(snapshot, 'spActivity')
+  if (!spRead) lastSpByApp.clear()
   const byApp = new Map<string, AppRow>()
-  for (const r of snapshot.appSignInSummary as Raw[]) {
+  for (const r of (summaryRead ? snapshot.appSignInSummary : []) as Raw[]) {
     const appId = str(r.appId)
     const name = typeof r.appDisplayName === 'string' ? r.appDisplayName : names.label(appId)
     const row = byApp.get(appId) ?? { id: appId || name, app: name, signIns: 0, lastSp: lastSpByApp.get(appId) ?? null }
@@ -588,17 +662,23 @@ export function appsModel(snapshot: TenantSnapshot, names: NameDirectory): Inven
   for (const [appId, last] of lastSpByApp) {
     if (!byApp.has(appId)) byApp.set(appId, { id: appId, app: names.label(appId), signIns: 0, lastSp: last })
   }
+  const rows = [...byApp.values()]
+  const summary = notReadLine(snapshot, 'appSignInSummary')
+  const notRead = summary !== null && !spRead ? summary : null
   return {
     id: 'apps',
     label: C.tabs.apps,
     csvName: 'iamai-apps.csv',
-    rows: [...byApp.values()],
+    rows,
     rowKey: (r) => r.id,
-    empty: A.empty,
+    // A summary that was read and lists nothing is not a licence: the licence, where it is the reason, is in the not-read line.
+    empty: summary ?? W.appsNone,
+    notRead,
+    note: notRead !== null || rows.length === 0 ? null : (summary ?? partlyReadLine(snapshot, 'appSignInSummary') ?? notReadLine(snapshot, 'spActivity')),
     columns: [
       { key: 'app', header: A.columns.app, sort: (r) => r.app.toLowerCase(), cell: (r) => r.app },
-      { key: 'signIns', header: A.columns.signIns, sort: (r) => r.signIns, cell: (r) => r.signIns },
-      { key: 'lastSp', header: A.columns.lastSp, sort: (r) => r.lastSp ?? '', cell: (r) => (r.lastSp ? absoluteDate(r.lastSp) : '—') },
+      { key: 'signIns', header: A.columns.signIns, sort: (r) => r.signIns, cell: (r) => (summaryRead ? r.signIns : NOT_READ) },
+      { key: 'lastSp', header: A.columns.lastSp, sort: (r) => r.lastSp ?? '', cell: (r) => (!spRead ? NOT_READ : r.lastSp ? absoluteDate(r.lastSp) : '—') },
     ],
   }
 }
@@ -644,14 +724,23 @@ export type PeopleListRow = { key: string; label: string; ids: string[] }
 /** The sign-in tables: what the records the scan collected say, counted. */
 export function signInModels(snapshot: TenantSnapshot, names: NameDirectory) {
   const S = C.signIns
-  const agg = snapshot.evidenceAggregates ?? null
-  const usage = snapshot.evidenceUsage
+  const notRead = notReadLine(snapshot, 'signInEvidence')
+  const agg = notRead === null ? (snapshot.evidenceAggregates ?? null) : null
+  const usage = notRead === null ? snapshot.evidenceUsage : null
+  // "nobody" only over records read in full: a partial read saw no one in what it read.
+  const complete = snapshot.sources.signInEvidence?.status === 'ok'
   const list = (ids: string[]) => ids.map(names.label).join('; ')
   const peopleColumn = (header: string): InventoryColumn<PeopleListRow> => ({ key: 'people', header, cell: (r) => list(r.ids) })
   return {
+    /** Said in place of every table where the scan got none of the records. */
+    notRead,
+    /** Said over the tables where the records were read in part. */
+    note: partlyReadLine(snapshot, 'signInEvidence'),
+    /** A list of people as a row shows it: three names at most (the row budget), and never "nobody" over records not read. */
+    people: (ids: string[]): string => (ids.length === 0 ? (complete ? S.nobody : W.noneSeen) : ids.length <= 3 ? ids.map(names.label).join(', ') : S.morePeople(ids.slice(0, 3).map(names.label), ids.length - 3)),
     byClientApp: countModel('signInsByClientApp', S.byClientApp, 'iamai-signins-by-client-app.csv', agg?.byClientApp ?? {}, S.columns.count),
     byProtocol: countModel('signInsByProtocol', S.byProtocol, 'iamai-signins-by-protocol.csv', Object.fromEntries(Object.entries(agg?.byProtocol ?? {}).map(([k, v]) => [protocolName(k), v])), S.columns.count),
-    byCountry: countModel('signins', C.tabs.signIns, 'iamai-signins-by-country.csv', agg?.byCountry ?? {}, S.columns.users),
+    byCountry: { ...countModel('signins', C.tabs.signIns, 'iamai-signins-by-country.csv', agg?.byCountry ?? {}, S.columns.users), notRead },
     olderMethods: usage
       ? ({
           id: 'olderMethods',
@@ -670,7 +759,7 @@ export function signInModels(snapshot: TenantSnapshot, names: NameDirectory) {
       id: 'blockedToday',
       label: S.blockedToday,
       csvName: 'iamai-blocked-today.csv',
-      rows: snapshot.blockedToday.map((b) => ({ key: b.policyId, label: b.displayName ?? (b.policyId === 'unknown' ? S.noPolicy : names.label(b.policyId)), ids: b.userIds })),
+      rows: (notRead === null ? snapshot.blockedToday : []).map((b) => ({ key: b.policyId, label: b.displayName ?? (b.policyId === 'unknown' ? S.noPolicy : names.label(b.policyId)), ids: b.userIds })),
       rowKey: (r) => r.key,
       columns: [{ key: 'policy', header: S.blockedColumns.policy, cell: (r) => r.label }, peopleColumn(S.blockedColumns.users)],
     } satisfies InventoryModel<PeopleListRow>,
@@ -687,24 +776,26 @@ export function signInModels(snapshot: TenantSnapshot, names: NameDirectory) {
 export function inventoryTables(snapshot: TenantSnapshot, groups: GroupMembers = new Map()): InventoryTable[] {
   const names = buildNameDirectory(snapshot, groups)
   const facts = policyFactsOf(snapshot)
+  // A table whose section the scan did not read is offered as no file: a
+  // header with no rows reads as "no devices", "no sign-ins" (Export finding 17).
+  const offer = <R,>(m: InventoryModel<R>): InventoryTable[] => (m.notRead ? [] : [tableOf(m)])
   return [
-    tableOf(policiesModel(facts, names)),
-    tableOf(locationsModel(snapshot, facts)),
-    tableOf(authMethodsModel(snapshot, names)),
-    tableOf(peopleModel(snapshot, names)),
-    tableOf(groupsModel(referencedGroupsOf(facts), groupEntriesOf(groups), names)),
-    tableOf(devicesModel(snapshot, names)),
-    tableOf(rolesModel(snapshot, names)),
-    tableOf(appsModel(snapshot, names)),
-    tableOf(licencesModel(snapshot)),
-    tableOf(signInModels(snapshot, names).byCountry),
+    ...offer(policiesModel(snapshot, facts, names)),
+    ...offer(locationsModel(snapshot, facts)),
+    ...offer(authMethodsModel(snapshot, names)),
+    ...offer(peopleModel(snapshot, names)),
+    ...offer(groupsModel(referencedGroupsOf(facts), groupEntriesOf(groups), names)),
+    ...offer(devicesModel(snapshot, names)),
+    ...offer(rolesModel(snapshot, names)),
+    ...offer(appsModel(snapshot, names)),
+    ...offer(licencesModel(snapshot)),
+    ...offer(signInModels(snapshot, names).byCountry),
   ]
 }
 
 // MFA Readiness, as CSV: the same columns the page's table shows, whole (the
 // page's own Export CSV writes what is on screen, which is the filtered set).
 import { readinessView } from '../../derive/mfaReadiness.ts'
-import { pages } from '../../content/content.ts'
 import { rowCells } from './readinessCells.ts'
 export function readinessTable(snapshot: TenantSnapshot, mapping: { breakGlassUserIds: readonly string[]; serviceAccountUserIds: readonly string[] } = { breakGlassUserIds: [], serviceAccountUserIds: [] }): InventoryTable {
   // The same cells the MFA Readiness table renders (readinessCells.ts): a row's CSV equals its screen.

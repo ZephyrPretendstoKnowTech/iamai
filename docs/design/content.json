@@ -3044,7 +3044,21 @@
           "workload": "Workload identities",
           "agents": "AI agents",
           "azureManagement": "Azure management"
-        }
+        },
+        "$commentNotRead": "What an Inventory table says in place of its rows where the scan got nothing out of its section (graph/collect/coreSections.ts sectionHasData: a refusal, an error, a licence gate, or a section the scan lacks), with the section's own reason. The tables drew such a section as a finding: \"Security defaults: off\", every capability \"not licensed\", 0 MFA-capable, \"No devices are registered.\", \"No named locations exist yet.\" and \"135 built-in roles hidden: no holder\", on scans where Connect listed the section as not read. The Export CSV card offers no file for such a table. A cell whose own source was not read says pages.connect.scan.gaps.notRead.",
+        "notRead": "Not read in this scan: {reason}.",
+        "notReadNoReason": "Not read in this scan.",
+        "$commentTooLittle": "The sign-in records where the read stopped short of the minimum it needs (graph/collect/laneBCore.ts, status insufficient): some records came back, so \"not read\" would be false, and too few to count from.",
+        "tooLittle": "Too little of this was read in this scan to count from: {reason}.",
+        "$commentPartlyRead": "The line over a table whose section the scan read only in part (status partial and not a licence gate, as Connect's unread list reads it). The Sign-in countries tab said \"nobody\" used device-code sign-in over a read that covered 52 hours of the 30 days asked for, and never said the read stopped short.",
+        "partlyRead": "Partly read in this scan: {reason}.",
+        "partlyReadNoReason": "Partly read in this scan.",
+        "$commentNoneSeen": "An older sign-in method no record showed, where the sign-in records were read only in part: \"nobody\" there claimed what the records not read could contradict.",
+        "noneSeen": "none seen in the records read",
+        "$commentHiddenEligibleUnread": "The Roles tab's note on the built-in roles it hides, where the eligible assignments were not read for a reason other than a licence (config pimEligibility refused or failed). The note said those roles had \"no holder\", and on a tenant licensed for PIM an eligible Global Administrator is the ordinary case.",
+        "hiddenNoteEligibleUnread": "{n} built-in roles hidden: no active holder, or held only by services. Eligible holders were not read.",
+        "$commentAppsNone": "The Apps table where the app sign-in summary was read and lists nothing. It said \"No app sign-in summary is available on this licence.\" whatever the summary's status, blaming the licence on a P1 tenant whose read failed with a 500.",
+        "appsNone": "The app sign-in summary the scan read lists no sign-ins."
       }
     }
   },

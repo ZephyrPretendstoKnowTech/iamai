@@ -114,7 +114,19 @@ export type AppWords = {
     held: { heading: string; lead: string }
   }
   how: Record<string, string> & { limitsList: string[]; lanes: Record<string, string>; columns: Record<string, string> }
-  inventory: { caps: Record<string, string>; workloadNames: Record<string, string> }
+  /** The Inventory's words (ui/surfaces/inventoryTables.ts): capability and workload names, and what a table says of a section the scan did not read in full. */
+  inventory: {
+    caps: Record<string, string>
+    workloadNames: Record<string, string>
+    notRead: string
+    notReadNoReason: string
+    tooLittle: string
+    partlyRead: string
+    partlyReadNoReason: string
+    noneSeen: string
+    hiddenNoteEligibleUnread: string
+    appsNone: string
+  }
   picker: { placeholder: string; remove: string; searching: string; noMatches: string; typeToSearch: string; suggestions: string; results: string; done: string; matched: string; choose: string }
 }
 export const app = content.pages.app as unknown as AppWords
