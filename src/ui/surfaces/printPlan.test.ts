@@ -765,3 +765,11 @@ test('the Plan numbers each section as the print and the exports do, on every vi
   assert.match(screen, /number=\{groupNumberOf\(g, sectionNumbers\)\}/, 'a section heading on the Plan shows no number')
   assert.match(screen, /<span className="plan-group-number">\{number\}<\/span>/, 'the heading does not draw the number')
 })
+
+test('the print hands each step its own object task\'s saved answer, as the Plan does', () => {
+  // A policy that makes its own object (6.3's countries location) draws that
+  // task's picker from the saved decision under the task's id. Without it the
+  // printed picker read "Not saved yet" over a saved list (Stage 3 merge).
+  const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
+  assert.ok(print.includes('objectTask={s.objectTask ? { saved: decisions[s.objectTask.id] ?? null } : undefined}'), 'the print draws a step without its object task\'s saved answer')
+})
