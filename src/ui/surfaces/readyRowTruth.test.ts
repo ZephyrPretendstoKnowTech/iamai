@@ -113,9 +113,20 @@ test('a correction that changes anything other than exclusions is still held by 
   // The large tenant's compliant-device policy, already enforced, with device
   // readiness at 29% against the 80% its own step asks for: the change is not
   // bounded, so nothing about it moves (roadmap/readinessGate.test.ts case 1).
+  //
+  // The change is one the policy really owes: it also leaves SharePoint Online
+  // out of the Office 365 it targets, which the baseline's does not. As shipped,
+  // the enforced policy already holds everything the step writes, and its
+  // update is empty rather than the Target resources patch identical to what it
+  // holds that this case used to rest on (R4-11, generate.ts settleSections).
   const f = withFoundationSettled(curatedFixture('large'))
   const ca = f.snapshot.config.caPolicies!
-  const rows = (ca.rows as Row[]).map((p) => (/Compliant device for Office/.test(String(p.displayName)) ? { ...p, state: 'enabled' } : p))
+  const rows = (ca.rows as Row[]).map((p) => {
+    if (!/Compliant device for Office/.test(String(p.displayName))) return p
+    if (p.displayName !== 'Core - Grant - Compliant device for Office') return { ...p, state: 'enabled' }
+    const conditions = (p.conditions ?? {}) as Row
+    return { ...p, state: 'enabled', conditions: { ...conditions, applications: { ...(conditions.applications as Row), excludeApplications: ['00000003-0000-0ff1-ce00-000000000000'] } } }
+  })
   const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows } } } as typeof f.snapshot
   const r = runFixture({ ...f, snapshot }, { snapshot } as never)
   const step = r.steps.find((s) => s.id === DEVICE)!

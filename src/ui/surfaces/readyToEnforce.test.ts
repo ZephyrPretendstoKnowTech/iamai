@@ -811,7 +811,17 @@ test('007.7c: a correction to a policy the tenant already enforces is put back b
   // correction submitting no state at all. Telling the operator to put the whole
   // policy into report-only would weaken an active control in answer to a change
   // that never turned it on, and would leave the corrected setting in place.
-  const c = laterScan({ edit: (row) => { row.state = 'enabled' } })
+  //
+  // The correction is one the policy really owes: it has also lost one of the
+  // resources the step targets. This case used to rest on the policy as the step
+  // left it, whose remaining "correction" was a Target resources patch identical
+  // to what it held; an enforced policy's update no longer carries a section the
+  // policy already holds (R4-11, generate.ts settleSections), so that one is gone.
+  const c = laterScan({ edit: (row) => {
+    row.state = 'enabled'
+    const apps = (row.conditions as Row).applications as Row
+    apps.includeApplications = (apps.includeApplications as string[]).slice(0, -1)
+  } })
   assert.equal(c.step.state.lifecycle, 'enforced')
   const ops = operationsOf(c.step)
   assert.ok(ops.length > 0, 'the correction is still handed over')
