@@ -703,8 +703,8 @@ try {
   const blankCells = await evaluate(`[...document.querySelectorAll('main.page .plan-row:not([data-compact])')].filter((r) => ((r.querySelector('.when') || {}).textContent || '').trim() === '' || ((r.querySelector('.who') || {}).textContent || '').trim() === '').map((r) => ((r.querySelector('.step-title') || {}).textContent || '').trim())`)
   check('Plan: no row leaves When or Impact blank', blankCells.length === 0, JSON.stringify(blankCells.slice(0, 3)))
   // The first row whose step draws the task anatomy (About this Step, Tasks
-  // Remaining, Implementation Tasks, Completion Criteria) outside the two pinned
-  // groups: every step that carries work draws it now (owner, 2026-09-19), and the
+  // Remaining, Implementation Tasks, Completion Criteria) outside Emergency Access and
+  // Direction: every step that carries work draws it now (owner, 2026-09-19), and the
   // Direction decision steps draw their own (About this Step, Questions, Completion
   // Criteria), so those members are the ones skipped.
   const ownAnatomy = STEP_GROUPS.filter((g) => g.anatomy === 'decision' || g.key === 'emergency-access').flatMap((g) => g.members)

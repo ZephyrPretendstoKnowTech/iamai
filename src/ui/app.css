@@ -1869,12 +1869,18 @@ footer.app a {
 .plan-group:first-child {
   margin-top: 0;
 }
+/* The whole heading line is the fold control's hit area (owner, roadmap flow
+   V2: selecting a collapsed section opens it): the toggle's box is stretched
+   over the head (.plan-group-toggle::after), so the head is its containing
+   block and shows the pointer. */
 .plan-group-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 16px;
   align-items: center;
   padding: 15px 0 10px;
+  position: relative;
+  cursor: pointer;
 }
 .plan-group-head h2 {
   font-size: var(--d-15);
@@ -1909,13 +1915,8 @@ footer.app a {
   line-height: 1;
   cursor: pointer;
 }
-/* The whole heading line is the fold control's hit area (owner, roadmap flow
-   V2: selecting a collapsed section opens it). The button stays the one tab
-   stop and the one accessible name; its box is stretched over the head. */
-.plan-group-head {
-  position: relative;
-  cursor: pointer;
-}
+/* The button stays the one tab stop and the one accessible name; its box is
+   stretched over the whole heading line. */
 .plan-group-toggle::after {
   content: '';
   position: absolute;

@@ -1,6 +1,6 @@
 // Decide Your Tenant's Direction (docs/plans/direction-spec.md): the Plan's
-// second pinned group. Four decision steps, answers only; nothing changes in
-// Entra.
+// second section, and with Emergency Access the plan's foundation. Four
+// decision steps, answers only; nothing changes in Entra.
 //
 //   D1 s-direction-use        Confirm What You Use
 //   D2 s-direction-accounts   Identify Service and Shared Accounts

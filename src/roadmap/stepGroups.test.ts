@@ -55,7 +55,7 @@ test('groupOf, isGroupMember and usesTaskAnatomy answer by id', () => {
     assert.equal(taskHeadingsOf(id), TASK_HEAD, id)
     assert.equal(decisionHeadingsOf(id), null, id)
   }
-  // A step outside the two pinned groups is in one of the rollout's own groups,
+  // A step outside Emergency Access and Direction (the foundation) is in one of the rollout's own groups,
   // and every one of those groups draws the task anatomy too (owner, 2026-09-19:
   // every step that carries work reads the same way; step-redundancy-analysis.md
   // finding 15). The registry answers it once, for the board and the interior.

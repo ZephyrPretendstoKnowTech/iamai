@@ -31,8 +31,8 @@ test('a shared reference with an unfilled variable is a hole in the line that na
 
 test('a policy already in report-only dates its Report-only line from the scan', () => {
   // Week two: the policy names nothing this tenant lacks, so it is datable.
-  // With the plan's foundation settled (roadmap/foundations.ts): until both
-  // pinned groups are, every policy step is held and the plan dates nothing.
+  // With the plan's foundation settled (roadmap/foundations.ts): until Emergency Access and
+  // Direction are, every policy step is held and the plan dates nothing.
   const f = withFoundationSettled(fixture('demo-week2'))
   const r = runFixture(f)
   const step = r.steps.find((s) => s.goalId === 'block-auth-transfer')!
