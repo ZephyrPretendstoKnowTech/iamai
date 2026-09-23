@@ -14,7 +14,7 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { signInsNeedP1 } from '../../derive/readinessContext.ts'
 import { signInProofRead } from '../../scoring/fromSnapshot.ts'
 import { cohortWords } from '../../derive/whoLine.ts'
-import { checkWords, goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, summaryLine, unreadMethodsWords, whyLine, countedLine, scopeWords, panelMethods } from './readinessCells.ts'
+import { checkWords, goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, summaryLine, unreadMethodsWords, whyLine, countedLine, scopeWords, panelMethods, groupBodyLine } from './readinessCells.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { stepMfaHold } from '../../derive/stepMfaReadiness.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
@@ -319,5 +319,16 @@ test('a key that shares an approved model’s name but not its AAGUID says which
       })
     }
     assert.ok(seen > 0, `the premise: ${name} holds a key named like an approved model with another AAGUID`)
+  }
+})
+
+test('the Confirm it group never tells somebody to remove a method before they have registered its replacement', () => {
+  for (const seen of ['windows', 'mac', 'both', 'none'] as const) {
+    const body = groupBodyLine('confirm', seen) ?? ''
+    assert.ok(body.length > 0)
+    const register = body.search(/register/i)
+    const remove = body.search(/remov/i)
+    assert.ok(remove === -1 || (register !== -1 && register < remove), body)
+    assert.doesNotMatch(body, /remove the old method and register again/)
   }
 })
