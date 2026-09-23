@@ -475,3 +475,16 @@ test('a list of names never spends its room on "and 1 other": a fourth name is s
   assert.equal(firstThree(['A', 'B', 'C', 'D', 'E']), 'A, B, C and 2 others')
   assert.equal(firstThree(['A', 'B', 'C']), 'A, B, C')
 })
+
+test('People: the Name cell does not repeat the sign-in address the next column prints', () => {
+  const s = fixture('hostile').snapshot
+  assert.ok(s.users.some((a) => a.displayName && s.users.some((b) => b.id !== a.id && b.displayName === a.displayName)), 'hostile shares a display name')
+  const m = peopleModel(s, buildNameDirectory(s))
+  const name = m.columns.find((c) => c.key === 'name')!
+  const upn = m.columns.find((c) => c.key === 'upn')!
+  for (const r of m.rows) {
+    const u = String(upn.cell(r))
+    if (u) assert.ok(!String(name.cell(r)).includes(u), `${name.cell(r)} | ${u}`)
+    if (r.user.displayName) assert.equal(name.cell(r), r.user.displayName)
+  }
+})
