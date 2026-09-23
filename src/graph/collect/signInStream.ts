@@ -307,6 +307,8 @@ export async function runLaneB(deps: LaneBDeps): Promise<SignInEvidence> {
 
   try {
     let resumed = false
+    // Where the read went back to Graph for the records older than those folded, when it did.
+    let olderBefore: string | null = null
     if (meta === null) {
       const end = await graphLoop(deps.pageUrl(null), windowStart, 'fresh')
       if (end === 'time budget') return stopped(end)
@@ -320,7 +322,8 @@ export async function runLaneB(deps: LaneBDeps): Promise<SignInEvidence> {
       resumed = true
       const read = await readSaved(meta)
       if (!read || meta.from > windowStart) {
-        const older = await graphLoop(deps.pageUrl(plus1s(fold.frontier ?? meta.to)), windowStart, 'older')
+        olderBefore = plus1s(fold.frontier ?? meta.to)
+        const older = await graphLoop(deps.pageUrl(olderBefore), windowStart, 'older')
         if (older === 'time budget') return stopped(older)
         exhausted ||= older === 'history exhausted'
       }
@@ -328,10 +331,12 @@ export async function runLaneB(deps: LaneBDeps): Promise<SignInEvidence> {
     fold.close()
     await save([], { from: windowStart, to: nowIso })
     if (writable) await store.expire(windowStart).catch(() => {})
+    // A resumed read says what it fetched: the gap, and the older records when
+    // the saved ones did not reach the window's start or could not all be read.
     const reason = exhausted
       ? `the last ${deps.windowDays} days, or less if the tenant keeps fewer`
       : resumed
-        ? `resumed from the saved records: fetched the gap since ${absolute(meta!.to)}`
+        ? `${stats.readFailed ? 'the saved records could not all be read' : 'resumed from the saved records'}: fetched the gap since ${absolute(meta!.to)}${olderBefore ? ` and the records before ${absolute(olderBefore)}` : ''}`
         : null
     return result('ok', reason, { from: windowStart, to: nowIso })
   } catch (e) {
