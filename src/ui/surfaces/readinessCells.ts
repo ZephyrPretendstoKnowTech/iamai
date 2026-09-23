@@ -529,5 +529,6 @@ export function rowCells(r: ReadinessRow): string[] {
   const quiet = [...(shown.noPhone ? [T.chip.noPhone] : []), ...(shown.chips.length === 0 && r.state !== null && noDevicesWord(r) ? [noDevicesWord(r)] : [])]
   const devices = [...shown.chips.map((c) => `${c.os}: ${c.word}`), ...quiet].join('; ')
   const state = r.state !== null ? stateTitle(r.state) : r.explained ? T.counted[r.explained] : r.kind !== 'person' ? (T.show[r.kind] ?? r.kind) : ''
-  return [roleWord(r), devices, methodsCell(r).main, state, nextCell(r)]
+  // The methods cell with the note the screen shows under it (methodsLine).
+  return [roleWord(r), devices, methodsLine(r), state, nextCell(r)]
 }
