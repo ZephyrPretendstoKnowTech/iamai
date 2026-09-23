@@ -596,3 +596,24 @@ test('the role state says it read the roles active in this sign-in, and when an 
   assert.doesNotMatch(t.note ?? '', /^(Activate|Choose|Sign in|Ask)\b|\byou should\b/, 'a statement, not an instruction')
   assert.ok(tileStrings(t).includes(t.note ?? ''), 'the tile draws it')
 })
+
+// Phase 2 audit (Connect): with every stage done the strip said "Tenant,
+// baseline and scan are ready." above a scan that listed sections it did not
+// read in full, or said MFA readiness was not measured. The strip is a
+// projection of the stages, so it now carries the scan's own caveat.
+test('the ready strip carries the complete scan’s own caveat instead of saying the scan is ready', () => {
+  const t1 = accountTile({ tenant, upn, role: 'Global Reader' })
+  const t2 = baselineTile({ name: 'Jon Hope — Defense in Depth', policyCount: 38, loading: null, update: null, stepsFor })
+  const t4 = planTile({ kind: 'ready', at: full.asOf, counts: { steps: 33, completed: 8 } })
+  const clean = scanTile({ kind: 'complete', at: full.asOf })
+  assert.deepEqual(connectStatus([true, true, true, true], [t1, t2, clean, t4]), { tone: 'done', title: 'Ready to plan', text: 'Tenant, baseline and scan are ready.' })
+  const unread = scanTile({ kind: 'complete', at: full.asOf, unread: [{ source: 'authMethods', partial: true, refused: false }] })
+  const withUnread = connectStatus([true, true, true, true], [t1, t2, unread, t4])
+  assert.equal(withUnread.title, 'Ready to plan', 'the plan was built')
+  assert.equal(withUnread.text, unread.lead, 'the strip says what the scan step says')
+  const degraded = scanTile({ kind: 'complete', at: full.asOf, degraded: true })
+  assert.equal(connectStatus([true, true, true, true], [t1, t2, degraded, t4]).text, 'Sign-in proof not read · MFA readiness not measured')
+  const both = scanTile({ kind: 'complete', at: full.asOf, degraded: true, unread: [{ source: 'devices', partial: false, refused: false }] })
+  assert.equal(connectStatus([true, true, true, true], [t1, t2, both, t4]).text, `${both.lead} ${both.note}`)
+  for (const s of [withUnread, connectStatus([true, true, true, true], [t1, t2, both, t4])]) assert.doesNotMatch(s.text, /scan are ready/)
+})
