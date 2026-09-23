@@ -306,15 +306,15 @@ test('tile 3, finished with gaps: the unread rows, one ask for Global Reader wit
 // Phase 2 audit (Connect): every unread section was said to be unread "with
 // this account", and the gaps tile asked for Global Reader and offered another
 // account whatever the reason. A read Microsoft throttled, or one the sign-in
-// read stopped at its memory ceiling, is not the account's doing: a Global
+// read stopped at a time budget, is not the account's doing: a Global
 // Reader was told to ask for Global Reader. Only a refusal (roles.ts
 // isPrivilegeDenial) names this account and carries the ask, in both states.
 test('a section Microsoft did not return in full is not blamed on the account; only a refusal names this account and asks for Global Reader', () => {
   const said = (t: ScanTile): string => tileStrings(t).join('\n')
   const small = fixture('small').snapshot
-  // The sign-in read stopped at the memory ceiling with 9 hours of records (laneBCore.ts 'insufficient').
+  // The sign-in read stopped at a time budget with 9 hours of records (signInStream.ts 'insufficient').
   const ceiling = structuredClone(small)
-  ceiling.sources.signInEvidence = { status: 'insufficient', reason: 'stopped at memory ceiling with only 9 h covered (minimum 24 h)', coveredWindow: { from: '2026-09-07T15:00:00Z', to: '2026-09-08T00:00:00Z' }, asOf: ceiling.asOf }
+  ceiling.sources.signInEvidence = { status: 'insufficient', reason: 'stopped at time budget with only 9 h covered (minimum 24 h)', coveredWindow: { from: '2026-09-07T15:00:00Z', to: '2026-09-08T00:00:00Z' }, asOf: ceiling.asOf }
   const stopped = scanTile({ kind: 'gaps', gaps: coreGaps(ceiling), unread: unreadSources(ceiling), lastScan: null })
   assert.deepEqual(stopped.rows, [{ name: 'Sign-in records', value: 'partly read' }], 'nine hours of records is a read in part, not nothing')
   assert.doesNotMatch(said(stopped), /this account|Global Reader/, 'a read stopped short is not blamed on the account')

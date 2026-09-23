@@ -76,7 +76,7 @@ test('every section a scan could not read reaches the list, core or not, gaps or
     { source: 'devices', partial: false, refused: false },
   ])
   // A sign-in read stopped short of its minimum with some hours covered returned those hours: read in part.
-  s.sources.signInEvidence = { status: 'insufficient', reason: 'stopped at memory ceiling with only 9 h covered (minimum 24 h)', coveredWindow: { from: '2026-09-07T15:00:00Z', to: '2026-09-08T00:00:00Z' }, asOf: s.asOf }
+  s.sources.signInEvidence = { status: 'insufficient', reason: 'stopped at time budget with only 9 h covered (minimum 24 h)', coveredWindow: { from: '2026-09-07T15:00:00Z', to: '2026-09-08T00:00:00Z' }, asOf: s.asOf }
   assert.deepEqual(unreadSources(s).at(-1), { source: 'signInEvidence', partial: true, refused: false, coveredHours: 9 }, 'the hours it covered, from its covered window')
   s.sources.signInEvidence = { status: 'insufficient', reason: 'no sign-in records could be read', coveredWindow: null, asOf: s.asOf }
   assert.deepEqual(unreadSources(s).at(-1), { source: 'signInEvidence', partial: false, refused: false }, 'no hours covered: nothing was read')

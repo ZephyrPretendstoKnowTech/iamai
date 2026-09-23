@@ -7,7 +7,8 @@ import assert from 'node:assert/strict'
 import { GraphRequestError, GraphResponseShapeError, graphPaged, graphRequest } from './http.ts'
 import { collectConfigSection, collectMethodsForUsers } from './collectors.ts'
 import { COLLECTOR_REGISTRY } from './registry.ts'
-import { runLaneB } from './laneBCore.ts'
+import { runLaneB } from './signInStream.ts'
+import { discardStore } from '../../testing/memoryEvidenceStore.ts'
 
 const tokens = { get: () => 't', refresh: async () => 't' }
 const URL0 = 'https://graph.microsoft.com/v1.0/x'
@@ -108,13 +109,12 @@ test('a sign-in page without its value array is a failed read, not history exhau
   const run = (bodies: { value?: unknown; '@odata.nextLink'?: string | null }[]) => {
     let i = 0
     return runLaneB({
-      startUrl: 'page-0',
+      pageUrl: (before) => (before === null ? 'start' : `lt:${before}`),
       windowDays: 30,
       nowMs,
       clock: () => 0,
       fetchPage: () => Promise.resolve(bodies[Math.min(i++, bodies.length - 1)] as { value?: unknown[] }),
-      loadCache: () => Promise.resolve(null),
-      saveCache: () => Promise.resolve(),
+      store: discardStore(),
     })
   }
   assert.equal((await run([{ value: [] }])).status, 'ok', 'a real empty history is complete')
