@@ -5,6 +5,8 @@
 //
 // Pure: no DOM, no network.
 import type { Step } from '../../roadmap/types.ts'
+import type { TenantSnapshot } from '../../graph/collect/types.ts'
+import { conditionalAccessLicenceLine } from '../../derive/notLicensed.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { stepBodyOf } from './stepBody.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -36,4 +38,17 @@ export function completedLinesOf(rows: readonly Step[], board: PrintBoard, stepC
     const warnings = [...body.readiness.tiles, ...body.readiness.satisfied].filter((t) => t.tone === 'warn')
     return { id: s.id, title: contentTitle(s), label: lane.label, warnings }
   })
+}
+
+/**
+ * Whether the document is a plan at all. Without Entra ID P1 no Conditional
+ * Access policy can exist, the engine builds no steps, and the Plan renders one
+ * sentence rather than an empty board (owner, 2026-09-19/20; Plan.tsx). The
+ * print states that same sentence (derive/notLicensed.ts
+ * conditionalAccessLicenceLine) and nothing else: it had printed a dated
+ * rollout plan with Cleanup instructions for a tenant IAMAI gives no plan.
+ * Null where the tenant holds P1, or where the caller passed no scan.
+ */
+export function noPlanLine(tenant: Pick<TenantSnapshot, 'capabilities'> | null | undefined): string | null {
+  return tenant ? conditionalAccessLicenceLine(tenant) : null
 }

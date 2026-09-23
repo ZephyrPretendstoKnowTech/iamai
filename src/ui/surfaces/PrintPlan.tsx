@@ -26,7 +26,8 @@ import { contentTitle } from '../../content/stepTitle.ts'
 import { LANE_ORDER } from './planLanes.ts'
 import { boardHolds, boardReadingsOf, doesntApplyView, laneViewOf, laneWordOf, prerequisiteLabelFor, readinessBlockersOf } from './planBoard.ts'
 import type { LaneView } from './stepContract.ts'
-import { completedLinesOf } from './printPlan.ts'
+import { completedLinesOf, noPlanLine } from './printPlan.ts'
+import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { PrintBoard } from './printPlan.ts'
 
 // The step body prints through the one renderer the screen uses (ContentStep,
@@ -63,6 +64,7 @@ export function PrintPlan({
   goalMap,
   stepCtx,
   answers = null,
+  tenant = null,
 }: {
   tenantName: string
   baselineLabel: string
@@ -90,9 +92,39 @@ export function PrintPlan({
   stepCtx: (step: Step) => StepVarContext
   /** The emergency-access attestations, so a Cleanup row the Plan calls In place is not Ready here (roadmap/cleanupDone.ts). */
   answers?: { signInMonitoring: boolean | null } | null
+  /**
+   * The scan's licences, so a tenant IAMAI gives no plan (no Entra ID P1) prints
+   * the Plan's one sentence instead of a plan (printPlan.ts noPlanLine). The
+   * caller passes the scanned snapshot; absent, the document cannot know.
+   */
+  tenant?: Pick<TenantSnapshot, 'capabilities'> | null
 }) {
   void baselinePin
   const today = absoluteDate(new Date().toISOString())
+  // No Entra ID P1: the Plan renders one sentence and no plan (owner,
+  // 2026-09-19/20), so the document is the cover's identity and that sentence.
+  // Nothing after it is drawn: no count, no finish, no phase and no Cleanup.
+  const licenceLine = noPlanLine(tenant)
+  if (licenceLine) return createPortal(
+    <div className="print-plan">
+      <div className="print-running">{fillText(C.runningHeader, { tenant: tenantName, date: today })}</div>
+      <section className="print-cover">
+        <BrandMark size={56} />
+        <h1>{fillText(C.title, { tenant: tenantName })}</h1>
+        <dl>
+          <dt>{C.cover.tenant}</dt>
+          <dd>{tenantName}</dd>
+          <dt>{C.cover.scanned}</dt>
+          <dd>{absoluteDate(scanAt)}</dd>
+          <dt>{C.cover.baseline}</dt>
+          <dd>{baselineLabel}</dd>
+        </dl>
+        <p className="print-statement">{licenceLine}</p>
+        <p className="muted">{fillText(C.cover.prepared, { by: operator })}</p>
+      </section>
+    </div>,
+    document.body,
+  )
   // The lane engine's reading over the whole plan, the Cleanup rows included,
   // built by the one construction the Plan builds its rows with (planBoard.ts
   // boardReadingsOf, R4-22): every printed state word is a lane word (A1c,
