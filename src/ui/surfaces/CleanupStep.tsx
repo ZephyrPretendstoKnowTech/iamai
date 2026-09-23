@@ -39,7 +39,11 @@ function todayDate(): string {
 export function CleanupBody({ phase, row, status, onScan, onClose, onDone }: {
   phase: CleanupPhase
   row: CleanupPhase['rows'][number]
-  status: { word: string; tone: StatusTone }
+  /**
+   * The row's lane label and tone, and, where the caller draws no row above the
+   * body (the printed plan), what the board says it waits for (LaneView.waitingFor).
+   */
+  status: { word: string; tone: StatusTone; waitingFor?: string | null }
   /** The live controls; absent when printing. */
   onScan?: () => void
   onClose?: () => void
@@ -111,7 +115,7 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone }: {
     // so it draws no track and no rail — the frame is the same, the step
     // activates less of it.
     <article className="step panel panel-key" data-step-id={row.kind === 'drill' ? 'cleanup-drill' : undefined}>
-      <StepHead title={entry.title} badge={status.word} tone={status.tone} />
+      <StepHead title={entry.title} badge={status.word} tone={status.tone} sub={status.waitingFor ? <p className="reason">{status.waitingFor}</p> : null} />
       <div className={`step-body${row.kind === 'drill' ? ' has-rail' : ''}`}>
         <div className="step-main">
       {/* The same sections, in the same order, under the same headings as a step

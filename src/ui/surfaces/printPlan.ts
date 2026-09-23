@@ -110,3 +110,17 @@ export function coverDatesOf(start: string, finish: Pick<PlanFinish, 'finish' | 
   if (finish.finish !== null) return dateRange(start, finish.finish)
   return finish.held && constraint.length > 0 ? `${absoluteDate(start)} · ${constraint}` : absoluteDate(start)
 }
+
+/**
+ * A printed Cleanup row's head: its lane label, tone and what the board says it
+ * waits for (planBoard.ts laneViewOf, the LaneView the Plan's row reads). On
+ * screen the row carries that wait above the opened body; the print has no row,
+ * so it printed "On Hold" and then the full procedure, without saying the row
+ * waits for the security rollout or for Configure Passkey Authentication.
+ */
+export function cleanupHeadsOf<R extends { kind: string }>(rows: readonly R[], laneOf: (id: string) => LaneView): { row: R; kind: string; word: string; tone: LaneView['tone']; waitingFor: string | null }[] {
+  return rows.map((row) => {
+    const lane = laneOf(`cleanup-${row.kind}`)
+    return { row, kind: row.kind, word: lane.label, tone: lane.tone, waitingFor: lane.waitingFor ?? null }
+  })
+}

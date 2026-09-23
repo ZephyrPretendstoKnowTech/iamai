@@ -23,7 +23,7 @@ import { completedRows, deferredRows, floorRows, openDoneRows, phaseRows, planPh
 import { contentTitle } from '../../content/stepTitle.ts'
 import { boardHolds, boardReadingsOf, doesntApplyView, laneViewOf, laneWordOf, prerequisiteLabelFor, readinessBlockersOf } from './planBoard.ts'
 import type { LaneView } from './stepContract.ts'
-import { completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, laneGroupsOf, noPlanLine, postureOf } from './printPlan.ts'
+import { cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, laneGroupsOf, noPlanLine, postureOf } from './printPlan.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { PrintBoard } from './printPlan.ts'
 
@@ -395,15 +395,13 @@ export function PrintPlan({
       {schedule.cleanup && (
         <section className="print-page">
           <h2>{cannotFinish ? phases.last : fillText(phases.heading, { name: phases.last, start: absoluteDate(schedule.cleanup.start), end: absoluteDate(schedule.cleanup.end) })}</h2>
-          {schedule.cleanup.rows.map((r) => {
-            // The row's head says its lane (planBoard.ts laneViewOf), as the Plan's row does.
-            const lane = laneOf(`cleanup-${r.kind}`)
-            return (
-              <article key={r.kind} className="print-step">
-                <CleanupBody phase={schedule.cleanup!} row={r} status={{ word: lane.label, tone: lane.tone }} />
-              </article>
-            )
-          })}
+          {cleanupHeadsOf(schedule.cleanup.rows, laneOf).map((h) => (
+            // The row's head says its lane and what it waits for (printPlan.ts
+            // cleanupHeadsOf over planBoard.ts laneViewOf), as the Plan's row does.
+            <article key={h.kind} className="print-step">
+              <CleanupBody phase={schedule.cleanup!} row={h.row} status={{ word: h.word, tone: h.tone, waitingFor: h.waitingFor }} />
+            </article>
+          ))}
         </section>
       )}
     </div>,
