@@ -26,7 +26,7 @@ import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
 import type { StepBody } from './stepBody.ts'
-import { membersOf } from '../../roadmap/stepGroups.ts'
+import { groupOf, membersOf } from '../../roadmap/stepGroups.ts'
 import { rowWho } from './rowWho.ts'
 import { cleanupEntry, cleanupExportViews } from './cleanupExport.ts'
 import { stepExportView } from './stepExport.ts'
@@ -43,7 +43,7 @@ import { readFileSync } from 'node:fs'
 const FREE_TIER = /const FREE_TIER_LADDER = true/.test(readFileSync('src/roadmap/generate.ts', 'utf8'))
 const dormant = { skip: FREE_TIER ? false : 'dormant with FREE_TIER_LADDER (src/roadmap/generate.ts)' }
 
-/** The group's eight listed members, in registry order (roadmap/stepGroups.ts). */
+/** The spec's eight steps (docs/plans/ongoing-spec.md), in its order. The roadmap flow keeps the Cleanup rows here and moves the other four up (roadmap/stepGroups.ts). */
 const ONGOING = [
   's-goal-admin-portals-protected',
   's-goal-inforcer-mfa',
@@ -133,8 +133,10 @@ function checkedOn(stepId: string): string {
 // The group itself
 // ---------------------------------------------------------------------------
 
-test('the group lists its eight members in the spec order, and takes every unclaimed step', () => {
-  assert.deepEqual([...membersOf('ongoing')], ONGOING)
+test('the spec’s eight steps sit where the roadmap flow places them, and Ongoing takes every unclaimed step', () => {
+  assert.deepEqual(ONGOING.map((id) => groupOf(id)?.key), ['remaining-doors', 'extend-mfa', 'prepare', 'prepare', 'ongoing', 'ongoing', 'ongoing', 'ongoing'])
+  assert.deepEqual([...membersOf('ongoing')], ['cleanup-alerting', 'cleanup-hardening', 'cleanup-namedExclusions', 'cleanup-consolidation', 'cleanup-naming'])
+  assert.equal(groupOf('s-something-nobody-placed')?.key, 'ongoing')
 })
 
 // ---------------------------------------------------------------------------
@@ -426,9 +428,12 @@ test('E3: the template says to test the exclusions, not only to preserve them', 
   assert.ok(lines.some((l) => /exclude the emergency access accounts/.test(l) && /report-only policy blocks nobody/.test(l)), lines.join('\n'))
 })
 
-test('E4: the template says to disable rather than delete when rolling back', () => {
+test('E4: the template says to set the policy back to Report-only, never Off and never deleted, when rolling back', () => {
+  // Owner, 2026-09-23: a revert goes to Report-only, and the policy is switched
+  // on from there when the data supports it.
   const lines = reviewSteps('demo')
-  assert.ok(lines.some((l) => /disable the policy rather than delete it/.test(l) && /30 days/.test(l)), lines.join('\n'))
+  assert.ok(lines.some((l) => /set the policy back to Report-only rather than delete it/.test(l) && /30 days/.test(l)), lines.join('\n'))
+  assert.ok(!lines.some((l) => /disable the policy/i.test(l)), lines.join('\n'))
 })
 
 test('E5: Completion Criteria says what the record is held against, and what reopens it', () => {

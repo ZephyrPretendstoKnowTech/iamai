@@ -163,8 +163,8 @@ test('every copy box on both fixtures is followed by the adapt line, and it appe
 // A partly covered goal's step names the tenant's policy as the one to change,
 // and its row reads Blocked · <date> or Ready · now, never Blocked · now.
 test('GetIAMAI: with a Windows-only token-protection policy on, the step names that policy and its blocked row carries a date', () => {
-  // With the plan's foundation settled (roadmap/foundations.ts): until both
-  // pinned groups are, every policy step is held and its row reads no day.
+  // With the plan's foundation settled (roadmap/foundations.ts): until Emergency Access
+  // and Direction are, every policy step is held and its row reads no day.
   const f = withFoundationSettled(fixture('getiamai'))
   const exclusions = f.mapping.records['__globalExclusion']?.resolvedId
   const policy = {

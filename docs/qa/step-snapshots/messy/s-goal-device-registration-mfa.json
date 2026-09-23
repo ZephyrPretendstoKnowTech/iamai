@@ -1,10 +1,10 @@
 {
-  "lane": "Up Next",
+  "lane": "On Hold",
   "substatus": null,
-  "reason": "after: Configure Emergency Exclusions",
+  "reason": "Baseline references an unmapped group",
   "fact": null,
-  "badge": "Up Next",
-  "bar": "After Prepare Emergency Access Accounts",
+  "badge": "On Hold",
+  "bar": "Baseline references an unmapped group",
   "rail": "After prerequisites",
   "headings": [
     "About this Step",
@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "At least 78% MFA-ready"
+      "state": "10% ready for Modern MFA + TAP"
     },
     {
       "label": "Affected people",
@@ -24,6 +24,10 @@
     {
       "label": "Configure Emergency Exclusions",
       "state": "Prerequisite · To do"
+    },
+    {
+      "label": "Baseline mapping",
+      "state": "Baseline references an unmapped group"
     },
     {
       "label": "Prepare Emergency Access Accounts",

@@ -20,7 +20,8 @@ import { PASSKEY_SETTINGS_STEP_ID } from '../../roadmap/passkeySettings.ts'
 // readiness threshold, the report-only window and named evidence are evidence
 // gates on enforcement (a started policy behind one waits On Hold, or reads
 // Ready · Observing where the gate can be reviewed now, and its report-only
-// creation is not gated); an unwritable
+// creation is not gated, save a compliant-device create the readiness threshold
+// holds too, `holdsCreate`); an unwritable
 // policy is an observed blocker; a prerequisite is a step edge.
 //
 // The schedule is not an input. A step's phase, its wave and its dates are a
@@ -42,7 +43,7 @@ import type { LaneRow } from '../../actionability/sorting.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { FOUNDATION_WAIT, isHeld } from '../../roadmap/holds.ts'
 import { driftOutcomeOf } from '../../roadmap/tracking.ts'
-import { submitsEnforcementOnly, switchedOffPolicy, unavailableReason, implementationOffered, operationsOf, enforcesOnRun } from '../../roadmap/operations.ts'
+import { submitsEnforcementOnly, switchedOffPolicies, unavailableReason, implementationOffered, operationsOf, enforcesOnRun, createWaitsOnReadiness } from '../../roadmap/operations.ts'
 import { GATING_SUBJECTS, blockerStepId } from '../../roadmap/blockerSteps.ts'
 import { observationWindowDays, readyBasis, readyWhen } from '../../derive/readyWhen.ts'
 import { planStateOf } from './planState.ts'
@@ -129,13 +130,17 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
   // A policy this plan tagged that the tenant switched off exists: its lifecycle
   // reads not-deployed because a disabled policy enforces nothing, and the board
   // read "Ready · Create" over a step whose own words said the policy is already
-  // there and turning it back on is the change, not a new policy (Jordan D6). The
+  // there and setting it to Report-only is the change, not a new policy (Jordan D6). The
   // next action corrects it.
-  const switchedOff = policy && !done && switchedOffPolicy(step) !== null
+  const switchedOff = policy && !done && switchedOffPolicies(step).length > 0
   const exists = policy ? (lifecycle !== null && lifecycle !== 'not-deployed') || switchedOff : emergency ? emergency.accounts.length > 0 : done
   const blockers: ObservedBlocker[] = []
   const gates: EvidenceGate[] = []
   const waitsOn: ObservedEdge[] = []
+  // The readiness threshold holds a compliant-device policy's report-only
+  // preparation: its create, or, found switched off, its Report-only patch
+  // (roadmap/operations.ts createWaitsOnReadiness).
+  const holdsCreate = policy && (!exists || switchedOff) && createWaitsOnReadiness(step)
   const conflict = step.state.condition === 'baseline-conflict'
   if (conflict) blockers.push({ kind: 'sourceConflict', id: step.state.conflictSource ?? 'baseline-conflict' })
   // Drift is a policy a person has to look at, or one the plan's own update
@@ -169,12 +174,14 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
       // The emergency gate held a policy's enforcement and never its report-only
       // preparation (A3 B3) — except where the wait is the plan's foundation
       // (roadmap/foundations.ts; owner, 2026-09-19), which holds the step's own
-      // next action, so no policy reads Ready while a pinned group is unsettled.
+      // next action, so no policy reads Ready while Emergency Access or Direction is unsettled.
       const on: Action = policy && GATE.has(b.stepId) && b.label !== FOUNDATION_WAIT ? 'enforce' : action
       if (!graphGates(step.id, b.stepId, on)) waitsOn.push({ step: b.stepId, action: on, milestone: 'complete' })
     }
     else if (b.kind === 'readiness' && b.label === 'session-loop' && exists) blockers.push({ kind: 'fact', id: 'fact:session-loop' })
-    else if (b.kind === 'readiness' && b.binding) gates.push({ id: `evidence:readiness:${b.label}`, satisfied: false, minDays: null, reason: b.binding })
+    // The readiness threshold holds a compliant-device policy's create as well as its
+    // enforcement (roadmap/operations.ts createWaitsOnReadiness; owner, 2026-09-23).
+    else if (b.kind === 'readiness' && b.binding) gates.push({ id: `evidence:readiness:${b.label}`, satisfied: false, minDays: null, reason: b.binding, ...(b.label === 'readiness' && holdsCreate ? { holdsCreate } : {}) })
     // A tenant fact this scan could not read — a group a policy names whose
     // members nobody could list — holds the step; it is not a gate the policy
     // earns by being watched (§8.4: a fact still to be established holds).
@@ -191,7 +198,7 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
     }
   }
   if (policy && open && step.action.readinessGate && !gates.some((g) => g.id.startsWith('evidence:readiness:'))) {
-    gates.push({ id: 'evidence:readiness:threshold', satisfied: false, minDays: null, reason: null })
+    gates.push({ id: 'evidence:readiness:threshold', satisfied: false, minDays: null, reason: null, ...(holdsCreate ? { holdsCreate } : {}) })
   }
   // The report-only window: both of tracking's gates close before enforcement
   // (derive/readyWhen.ts), and the window's length is the gate's time part.
@@ -391,8 +398,8 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
   for (const step of steps) {
     const reading = out.get(step.id)
     // A policy waiting on the plan's foundation (roadmap/foundations.ts) is not
-    // promoted back into Ready by any of the readings below: the two pinned
-    // groups come first, and that is the whole of the rule.
+    // promoted back into Ready by any of the readings below: Emergency Access
+    // and Direction come first, and that is the whole of the rule.
     const gated = step.blockers.some((b) => b.label === FOUNDATION_WAIT)
     // Reviewing an unread or unsupported configuration is available now; this
     // does not clear the engine's blockers or enable generated write operations.
@@ -433,11 +440,12 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
   // One wait, said once (docs/plans/step-redundancy-analysis.md finding 3), on
   // the reading the second tile producer reads. A policy held by "Define the
   // Trusted Network" AND by "Waiting on your direction: Decide Where People Sign
-  // In From" said one thing twice, in two vocabularies: the trusted network is
-  // what that answer is for, and the step is where it gets made. The nearest
-  // cause is the step; the answer behind it is that step's own wait to show. The
-  // row's `reason` is untouched, so no row changes lane, label or order, and a
-  // row whose stated reason IS the answer still says it — once.
+  // In From" (the label then) said one thing twice, in two vocabularies: the
+  // trusted network is what that answer is for, and the step is where it gets
+  // made. The nearest cause is the step; the answer behind it is that step's
+  // own wait to show. The row's `reason` is untouched, so no row changes lane,
+  // label or order, and a row whose stated reason IS the answer still says it
+  // — once.
   //
   // The relay is by question, not by Direction step (direction.ts
   // directionWaitRelayed): a device policy's own computers-and-phones wait is

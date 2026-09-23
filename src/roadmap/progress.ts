@@ -122,7 +122,7 @@ export function applyProgress(
   // carries no wait on a Direction answer, and the schedule and tracking never
   // read one.
   gateOnDirection(steps)
-  // No policy step runs ahead of the two pinned groups (roadmap/foundations.ts;
+  // No policy step runs ahead of Emergency Access and Direction (roadmap/foundations.ts;
   // owner, 2026-09-19). After the per-answer gating, so a policy that already
   // waits on a Direction step keeps the wait it has.
   gateOnFoundations(steps)

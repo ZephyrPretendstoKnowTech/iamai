@@ -9,7 +9,7 @@ import { schedulingWords, structuralWords } from '../content/content.ts'
 // the step stays in its numbered phase, dated after the step it waits on. What
 // withdraws a step is what the plan cannot schedule — and, since 2026-09-19, the
 // plan's own foundation: a policy step waiting on Establish Emergency Access or
-// Decide Your Tenant's Direction is held, not sequenced (roadmap/foundations.ts),
+// Define Your Rollout Scope is held, not sequenced (roadmap/foundations.ts),
 // so the cases below settle the foundation before they ask what a dated step
 // reads.
 import { test } from 'node:test'
@@ -227,7 +227,9 @@ test('Step 4 E: once the exclusions group is answered the same policy is Ready t
 // ---- the calendar books the canonical event ----
 
 test('C5: the calendar books a readiness-gated create on its report-only creation day, in the Plan rail’s words, and dates no enforcement', () => {
-  const p = planOf(fixture('small'))
+  // Curated: small's device-registration step is written from the pinned policy
+  // (q-pin), which names a group of the author's this baseline has not settled.
+  const p = planOf(curatedFixture('small'))
   const s = stepOf(p, 's-goal-device-registration-mfa')
   assert.ok(isHeld(s), 'the premise: a readiness threshold holds it')
   const event = scheduledEventOf(s)
@@ -267,9 +269,10 @@ test('Step 4: the row, the group, the step, the print and the calendar read one 
       assert.equal(booked(p, s.id), scheduledEventOf(s) !== null, `${where}: the calendar and the step's scheduling result disagree about its day`)
     }
   }
-  // The printed plan draws the Plan's own rows and states the Plan's own length.
+  // The printed plan draws the board's own rows (printPlan.ts printSectionsOf),
+  // dates its timeline by the Plan's own phase rule and states the Plan's own length.
   const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
-  for (const read of ['undatedRows(', 'phaseRows(', 'floorRows(', 'planFinish(', 'planWeeks(finish, schedule)', 'finish.held']) assert.ok(print.includes(read), `the print no longer reads ${read}`)
+  for (const read of ['printSectionsOf(board)', 'phaseRows(', 'planFinish(', 'planWeeks(finish, schedule)', 'finish.held']) assert.ok(print.includes(read), `the print no longer reads ${read}`)
   // The screen draws lanes (S3, planLanes.ts) and reads the same length and the same hold; its rows' dates read the same scheduling result (planBoard.ts boardWhenOf).
   const screen = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
   // The lanes through the one board construction (planBoard.ts boardReadingsOf, R4-22).
@@ -497,24 +500,29 @@ test('Step 4: no row says now unless the step is work a person can do today', ()
 // ---- a Direction answer holds the step (owner, 2026-09-19) ----
 
 test('Step 4: on the demo first visit a policy waiting only on a Direction answer is undated in the row, the schedule and the calendar; approving that step dates it', () => {
-  const DEVICE = 's-goal-require-managed-device'
+  // The security-info registration policy waits on one Direction step and, on the
+  // demo, on MFA readiness for its turn-on only. It was the managed-device policy,
+  // whose create now waits on device readiness as well (operations.ts
+  // createWaitsOnReadiness; owner, 2026-09-23), so approving its Direction step no
+  // longer dates it.
+  const STEP = 's-goal-register-info-protected'
   const d = demoTenant(false)
   const f: Fixture = { ...fixture('demo'), snapshot: d.snapshot, mapping: d.mapping, planId: planIdFor(DEMO_TENANT_ID) }
   const first = planOf(f)
-  const waiting = stepOf(first, DEVICE)
-  assert.deepEqual(waiting.blockers.map(directionBlockerStep).filter((id) => id !== null), [DIRECTION_STEP.devices], 'the premise: it waits on Decide How People and Devices Sign In')
+  const waiting = stepOf(first, STEP)
+  assert.deepEqual(waiting.blockers.map(directionBlockerStep).filter((id) => id !== null), [DIRECTION_STEP.devices], 'the premise: it waits on Decide How and Where People Sign In, which asks the office network (Stage 3)')
   assert.ok(isHeld(waiting), 'the wait holds it')
   assert.equal(scheduleOf(waiting).class, 'waiting')
   assert.equal(scheduleOf(waiting).at, null, 'the schedule gives it no day')
   assert.equal(waiting.reportOnlyAt, null, 'not even its report-only creation')
-  assert.equal(phased(first).has(DEVICE), false, 'it sits in no numbered phase')
+  assert.equal(phased(first).has(STEP), false, 'it sits in no numbered phase')
   assert.doesNotMatch(rowWhen(waiting), YEAR, `the row dates it (${rowWhen(waiting)})`)
   assert.equal(nextMilestone(waiting).at, null, 'its next milestone has no day')
   assert.equal(scheduledEventOf(waiting), null)
-  assert.equal(booked(first, DEVICE), false, 'the calendar books nothing for it')
+  assert.equal(booked(first, STEP), false, 'the calendar books nothing for it')
   // Approved, the wait is gone and the plan dates its report-only creation again.
   const approved = planOf(withDirectionApproved(f, [DIRECTION_STEP.devices]))
-  const dated = stepOf(approved, DEVICE)
+  const dated = stepOf(approved, STEP)
   assert.equal(dated.blockers.some((b) => directionBlockerStep(b) !== null), false, 'the premise: nothing waits on Direction')
   assert.equal(scheduleOf(dated).class, 'scheduled')
   assert.ok(scheduleOf(dated).at !== null, 'the schedule gives it a day')
@@ -527,7 +535,7 @@ test('Step 4: on the demo first visit a policy waiting only on a Direction answe
   const released = structuredClone(dated)
   released.blockers = released.blockers.filter((b) => b.label !== FOUNDATION_WAIT)
   assert.equal(nextMilestone(released).at, scheduleOf(released).at, 'its next milestone is that day')
-  assert.ok(booked(approved, DEVICE), 'and the calendar books it')
+  assert.ok(booked(approved, STEP), 'and the calendar books it')
   // The rollout's estimate is the schedule as drawn before anything was withdrawn: the wait does not move it.
   assert.equal(first.r.schedule.estimate?.targetEnd, approved.r.schedule.estimate?.targetEnd)
 })

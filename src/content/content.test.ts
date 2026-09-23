@@ -154,12 +154,6 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.pages.plan.blocked.devicePlan',
   // A Direction step with an answer nobody has approved (roadmap/direction.ts): its row reason.
   '.pages.plan.blocked.direction',
-  '.pages.plan.howTo.items[0]',
-  '.pages.plan.howTo.items[1]',
-  '.pages.plan.howTo.items[2]',
-  '.pages.plan.howTo.items[3]',
-  '.pages.plan.howTo.items[4]',
-  '.pages.plan.howTo.items[5]',
   '.pages.plan.settings.cancelFreeze',
   '.pages.plan.settings.communications',
   '.pages.plan.settings.freezeSaved',

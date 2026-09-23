@@ -210,8 +210,8 @@ test('no usable exclusions group: the step is partly in place, held on the exclu
   // of that is an owner-confirmed exclusions group any more.
   // On the curated baseline: the token policy's window is earned there and nothing
   // else holds it, so the exclusions group is the one thing the answer takes away.
-  // With the plan's foundation settled (roadmap/foundations.ts): until both
-  // pinned groups are, every policy is held and nothing is Ready to enforce.
+  // With the plan's foundation settled (roadmap/foundations.ts): until Emergency Access and
+  // Direction are, every policy is held and nothing is Ready to enforce.
   const answered = withFoundationSettled(curatedFixture('demo-week2'))
   const f = noExclusionsAnswer(answered)
   const run = runFixture(f, { mapping: f.mapping })

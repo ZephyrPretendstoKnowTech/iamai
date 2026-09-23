@@ -1,9 +1,10 @@
 // The Plan's step groups: a named run of existing steps the board draws
-// together, above its lanes when the group is pinned (Plan.tsx, planBoard.ts
-// partitionPinnedGroups).
+// together as one section (Plan.tsx, planBoard.ts allWorkGroups and groupsFor).
+// Sections never move (owner, roadmap flow V2): the order of this registry is
+// the order on screen, in every tab, from the first scan to the last.
 //
-// This is the one place a group's membership, order, pinning, title keys and
-// anatomy live. Adding a group is adding an entry here and its two title keys
+// This is the one place a group's membership, order, title keys and anatomy
+// live. Adding a group is adding an entry here and its two title keys
 // under pages.app.plan.groups in content.json; nothing else names a group's ids.
 //
 // Only membership is here. What a member *means* (the emergency gate, the
@@ -20,7 +21,7 @@
  * `task`: About this Step, Tasks Remaining, Implementation Tasks, Completion
  * Criteria (Establish Emergency Access). `decision`: About this Step, Questions,
  * Completion Criteria, and no Implementation, because nothing is built
- * (Decide Your Tenant's Direction, docs/plans/direction-spec.md).
+ * (Define Your Rollout Scope, the Direction steps: docs/plans/direction-spec.md).
  *
  * `null` is the third answer: the member draws the step's own default headings,
  * exactly as an ungrouped step did before there was a group around it. No entry
@@ -54,8 +55,6 @@ export type StepGroup = {
    * the last: a step nobody placed is ongoing work until somebody places it.
    */
   catchAll?: boolean
-  /** Drawn above the lanes, out of the tabs, until every member is Completed. */
-  pinned: boolean
   /** Which headings the members draw (GroupAnatomy), or null for the step's own defaults. */
   anatomy: GroupAnatomy | null
 }
@@ -72,7 +71,6 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     titleKey: 'pages.app.plan.groups.emergencyAccess.title',
     completedTitleKey: 'pages.app.plan.groups.emergencyAccess.completedTitle',
     members: ['s-prereq-break-glass', 's-prereq-exclusion-group', 's-prereq-passkey-settings', 'cleanup-drill'],
-    pinned: true,
     anatomy: 'task',
   },
   {
@@ -80,110 +78,100 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     titleKey: 'pages.app.plan.groups.direction.title',
     completedTitleKey: 'pages.app.plan.groups.direction.completedTitle',
     members: DIRECTION_STEP_IDS,
-    pinned: true,
     anatomy: 'decision',
   },
-  // ---- the objects the Direction answers ask for ----
-  // An object step here exists because a Direction answer says it should: the
-  // trusted network, the allowed-countries location and the service accounts
-  // group are the DOING of an answer saved two groups above, and they used to
-  // sit among the policies that reference them. Straight after Direction the
-  // plan reads decide → make the things → roll out the policies, and a policy
-  // group holds policies (owner, 2026-09-20).
+  // ---- the rollout, in the eight sections of the roadmap flow ----
+  // docs/plans/roadmap-flow/v1-proposal-full.md section 2 sets the order and
+  // the membership, V2 the names (owner, 2026-09-23). The order is the one in
+  // which no step waits on a row drawn below it: every section after Direction
+  // waits only on sections above it, except two hand-offs that each stay inside
+  // one section (Turn Off Security Defaults with the four core policies; Give
+  // Shared Devices Their Own Policy with the two policies it carves out of).
+  // stepGroups.test.ts checks both, over the dependency graph and over the
+  // boards the fixtures build.
   //
-  // Only objects an answer creates. `s-prereq-per-user-mfa` and
-  // `s-prereq-security-defaults` are tenant settings to retire rather than
-  // objects to build, and the emergency prerequisites are the foundation's own
-  // — all three stay where they are. `s-prereq-auth-strength` stays with the
-  // admin policies that require it: it is the pinned baseline's demand, not an
-  // answer's.
-  {
-    key: 'prepare-objects',
-    titleKey: 'pages.app.plan.groups.prepareObjects.title',
-    completedTitleKey: 'pages.app.plan.groups.prepareObjects.completedTitle',
-    members: ['s-prereq-trusted-location', 's-prereq-service-accounts-group'],
-    pinned: false,
-    anatomy: 'task',
-  },
-  // ---- the rollout's own runs, drawn inside the lane tabs ----
-  // Their order is the build order docs/plans/v1-step-map.md §3 sets (the
-  // waves), collapsed to the fewest runs that still read as one job each: a
-  // numbered list stops helping somewhere past seven rows, and nine waves as
-  // nine headings is a table of contents, not a plan. The waves themselves stay
-  // the engine's sequencing and are not drawn; a group is only a heading.
-  //
-  // A member id is listed once, in the order its group draws it. Membership is
-  // the whole of what an entry decides — nothing here says when a step is
-  // ready, who it touches or what it builds.
-  //
-  // Every id here is one the engine can generate. A listed id that nothing
-  // produces is a step the group promises and never draws, and it is read as a
-  // real step by anyone auditing the board: docs/plans/step-redundancy-analysis.md
-  // finding 4 found five of them, all removed —
+  // A member id is listed once, in the order its section draws it. Membership is
+  // the whole of what an entry decides: nothing here says when a step is ready,
+  // who it touches or what it builds. Every buildable step is listed by name,
+  // the ones only an uploaded baseline builds included, so no step reaches the
+  // catch-all by accident (stepGroups.test.ts). The ids nothing builds stay out:
   //   s-prereq-device-plan            replaced by D3 (its answer keys survive as D3's storage)
   //   s-question-travel               trip operations are hidden for V1
-  //   s-goal-mobile-app-protection    goal absent from the pinned baseline and not on the floor
-  //   s-goal-azure-management-mfa     the same
   //   s-goal-unmanaged-browser        never an id at all: `unmanaged-browser` is the CONTENT
   //                                   entry two goals merge into (content.json mergesGoals,
   //                                   coverage/goalIdentity.ts MERGE_ANCHOR), so the only id
   //                                   the engine can build is s-goal-byod-session-controls.
+  //
+  // Two rows hold an interim place until the merge lands (Stage 4): each
+  // medium-risk step straight after its high partner. Stage 3 landed the other
+  // two: Decide Where People Sign In From joined Decide How and Where People
+  // Sign In, and the countries location is Block Sign-ins From Countries Not
+  // Allowed's own first task, so neither is a row here.
+  //
+  // People first, then objects: the dormant accounts drop out of every count,
+  // the admin account you keep is the one your passkey goes on, and the campaign
+  // cannot start without that passkey. The objects take minutes; the campaign is
+  // the plan's longest wait. No policy here changes how anyone signs in.
   {
-    key: 'close-doors',
-    titleKey: 'pages.app.plan.groups.closeDoors.title',
-    completedTitleKey: 'pages.app.plan.groups.closeDoors.completedTitle',
-    members: ['s-goal-block-legacy-auth', 's-goal-block-device-code', 's-goal-block-auth-transfer', 's-goal-block-unsupported-platforms'],
-    pinned: false,
+    key: 'prepare',
+    titleKey: 'pages.app.plan.groups.prepare.title',
+    completedTitleKey: 'pages.app.plan.groups.prepare.completedTitle',
+    members: ['s-check-dormant-accounts', 's-check-separate-admin-accounts', 's-ladder-operator-passkey', 's-verify-mfa', 's-prereq-auth-strength', 's-prereq-trusted-location', 's-prereq-service-accounts-group'],
     anatomy: 'task',
   },
+  // The four policies that replace security defaults, then the switch itself:
+  // with security defaults on, every other policy's turn-on waits on it, so
+  // these come first. Finish Moving Off Per-User MFA starts once MFA for
+  // everyone is on, and sits at the end of the section, under the
+  // security-defaults switch.
   {
-    key: 'protect-admins',
-    titleKey: 'pages.app.plan.groups.protectAdmins.title',
-    completedTitleKey: 'pages.app.plan.groups.protectAdmins.completedTitle',
-    members: ['s-ladder-operator-passkey', 's-prereq-auth-strength', 's-goal-admins-phishing-resistant', 's-goal-admin-session', 's-goal-pim-activation-reauth'],
-    pinned: false,
-    anatomy: 'task',
-  },
-  {
-    key: 'mfa-everyone',
+    key: 'core',
     titleKey: 'pages.app.plan.groups.mfaEveryone.title',
     completedTitleKey: 'pages.app.plan.groups.mfaEveryone.completedTitle',
-    members: ['s-goal-register-info-protected', 's-goal-device-registration-mfa', 's-verify-mfa', 's-prereq-security-defaults', 's-goal-mfa-all-users', 's-goal-guests-mfa', 's-prereq-per-user-mfa'],
-    pinned: false,
+    members: ['s-goal-block-legacy-auth', 's-goal-block-device-code', 's-goal-admins-phishing-resistant', 's-goal-mfa-all-users', 's-prereq-security-defaults', 's-prereq-per-user-mfa'],
     anatomy: 'task',
   },
+  // Where MFA does not reach yet: registering a method or a device, guests, role
+  // activation, the consoles that manage the tenant, and the sign-ins Entra
+  // flags as risky.
   {
-    key: 'where-people-sign-in',
-    titleKey: 'pages.app.plan.groups.whereSignIn.title',
-    completedTitleKey: 'pages.app.plan.groups.whereSignIn.completedTitle',
-    members: ['s-goal-geo-restriction', 's-goal-service-accounts-trusted-network', 's-goal-workload-identity-block'],
-    pinned: false,
+    key: 'extend-mfa',
+    titleKey: 'pages.app.plan.groups.extendMfa.title',
+    completedTitleKey: 'pages.app.plan.groups.extendMfa.completedTitle',
+    members: ['s-goal-register-info-protected', 's-goal-device-registration-mfa', 's-goal-guests-mfa', 's-goal-pim-activation-reauth', 's-goal-inforcer-mfa', 's-goal-sign-in-risk', 's-goal-sign-in-risk-medium', 's-goal-user-risk', 's-goal-user-risk-medium', 's-goal-azure-management-mfa'],
     anatomy: 'task',
   },
+  // What nobody should legitimately use: a sign-in flow, a platform, a place,
+  // a service account from outside the office, the sync account from another
+  // address. The admin portals block is hidden from every screen
+  // (customerPlanSteps); released, this is its place.
   {
-    key: 'devices',
-    titleKey: 'pages.app.plan.groups.devices.title',
-    completedTitleKey: 'pages.app.plan.groups.devices.completedTitle',
-    members: ['s-goal-require-managed-device', 's-goal-intune-enrollment-reauth', 's-ladder-phone-access-restriction', 's-shared-devices'],
-    pinned: false,
+    key: 'remaining-doors',
+    titleKey: 'pages.app.plan.groups.closeDoors.title',
+    completedTitleKey: 'pages.app.plan.groups.closeDoors.completedTitle',
+    members: ['s-goal-block-auth-transfer', 's-goal-block-unsupported-platforms', 's-goal-geo-restriction', 's-goal-service-accounts-trusted-network', 's-goal-workload-identity-block', 's-goal-admin-portals-protected'],
     anatomy: 'task',
   },
+  // The changes to every person's day come last. The two session steps name
+  // each other, admins first; shared devices sit with the two policies they
+  // wait on and hold; enrolment is protected before a managed device is
+  // required, and token protection needs that device. The two rows only an
+  // uploaded baseline builds come at the end, so they renumber nothing.
   {
-    key: 'risk-and-sessions',
-    titleKey: 'pages.app.plan.groups.riskAndSessions.title',
-    completedTitleKey: 'pages.app.plan.groups.riskAndSessions.completedTitle',
-    members: ['s-goal-sign-in-risk', 's-goal-user-risk', 's-goal-sign-in-risk-medium', 's-goal-user-risk-medium', 's-goal-all-users-no-persistence', 's-goal-token-protection'],
-    pinned: false,
+    key: 'devices-sessions',
+    titleKey: 'pages.app.plan.groups.devicesSessions.title',
+    completedTitleKey: 'pages.app.plan.groups.devicesSessions.completedTitle',
+    members: ['s-goal-admin-session', 's-goal-all-users-no-persistence', 's-goal-intune-enrollment-reauth', 's-goal-require-managed-device', 's-shared-devices', 's-ladder-phone-access-restriction', 's-goal-token-protection', 's-goal-mobile-app-protection', 's-goal-byod-session-controls'],
     anatomy: 'task',
   },
+  // Care after the rollout: nothing above waits on it.
   {
     key: 'ongoing',
     titleKey: 'pages.app.plan.groups.ongoing.title',
     completedTitleKey: 'pages.app.plan.groups.ongoing.completedTitle',
-    members: ['s-goal-admin-portals-protected', 's-goal-inforcer-mfa', 's-check-dormant-accounts', 's-check-separate-admin-accounts', 'cleanup-alerting', 'cleanup-hardening', 'cleanup-consolidation', 'cleanup-naming'],
+    members: ['cleanup-alerting', 'cleanup-hardening', 'cleanup-namedExclusions', 'cleanup-consolidation', 'cleanup-naming'],
     memberPrefixes: ['s-review-baseline-'],
     catchAll: true,
-    pinned: false,
     anatomy: 'task',
   },
 ]
@@ -269,6 +257,23 @@ export function groupTotals(stepIds: readonly string[], groups: readonly StepGro
   return out
 }
 
+/**
+ * The number each section shows, keyed by group key: its place among the
+ * sections a row set has a row in, in registry order, counting from 1.
+ *
+ * It counts the way `groupPositions` counts rows: the board's sections and not
+ * the registry's places, so a section this tenant has no row in leaves no gap.
+ * Handed the board's WHOLE row set, the number stays put while a tab or a focus
+ * filters rows, and a row reads `<section>.<row>` wherever the plan leaves the
+ * screen (planBoard.ts boardOrderOf: the printed plan and the exports).
+ */
+export function sectionPositions(stepIds: readonly string[], groups: readonly StepGroup[] = STEP_GROUPS): ReadonlyMap<string, number> {
+  const present = new Set(stepIds.map((id) => groupOf(id, groups)?.key))
+  const out = new Map<string, number>()
+  for (const g of groups) if (present.has(g.key)) out.set(g.key, out.size + 1)
+  return out
+}
+
 /** Whether a step is in any group, or in the group `key` when one is named. */
 export function isGroupMember(stepId: string, key?: string, groups: readonly StepGroup[] = STEP_GROUPS): boolean {
   const g = groupOf(stepId, groups)
@@ -294,6 +299,3 @@ export function usesTaskAnatomy(stepId: string, groups: readonly StepGroup[] = S
 export function usesDecisionAnatomy(stepId: string, groups: readonly StepGroup[] = STEP_GROUPS): boolean {
   return anatomyOf(stepId, groups) === 'decision'
 }
-
-/** The pinned groups, in registry order. */
-export const pinnedGroups = (groups: readonly StepGroup[] = STEP_GROUPS): StepGroup[] => groups.filter((g) => g.pinned)

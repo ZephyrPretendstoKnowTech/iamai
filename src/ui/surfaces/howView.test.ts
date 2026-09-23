@@ -115,6 +115,19 @@ test('How’s migration-state check says why the migration matters, and where pe
   assert.match(row.why, /migration/)
   const title = (stepById['s-prereq-per-user-mfa'] as unknown as { title: string }).title
   assert.ok(row.why.includes(title), `the why names the step that reads per-user MFA: ${title}`)
+  // The step is built only when an account still has per-user MFA on, its
+  // state was not read, or the directory read was partial
+  // (roadmap/manualWork.ts perUserMfaReading), so the why never sends the
+  // reader to it as though it were always there, and names all three.
+  assert.doesNotMatch(row.why, new RegExp(`is read on ${title}`), row.why)
+  assert.match(row.why, /read on every scan/, row.why)
+  assert.match(row.why, /only while an account has it on, its state went unread, or the directory read was incomplete/, row.why)
+  // What is read and when the step is on the plan are two sentences: as one it
+  // ran to 47 words on How and on the emergency-access check row, and the
+  // second alone ran to 31, over the walk's 25-word heuristic.
+  assert.match(row.why, new RegExp(`is read on every scan\\. The plan carries ${title} only while `), row.why)
+  const second = row.why.slice(row.why.indexOf('The plan carries'))
+  assert.ok(second.split(/\s+/).filter(Boolean).length <= 25, `${second.split(/\s+/).filter(Boolean).length} words: ${second}`)
 })
 
 // Two emergency-access checks pass on the operator's own answer, and IAMAI reads

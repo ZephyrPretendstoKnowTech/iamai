@@ -63,7 +63,7 @@ export type UserRow = {
   /** Latest interactive attempt. This can be a failure and must never be used as successful activity. */
   lastSignInAttempt?: string | null
   lastSuccessfulSignIn: string | null
-  /** True only when signInActivity itself was returned for this user. */
+  /** True when the directory read selected signInActivity and succeeded. Graph omits the property for an account that never signed in or last signed in before April 2020, so on that read its absence means "no sign-in on record", and lastSuccessfulSignIn is null (collectors.ts mapUser). */
   successfulSignInActivityRead?: boolean
   accountEnabled: boolean | null
   /** The primary SMTP address; a mailbox with no plans and no sign-in is a shared mailbox, not a person (prompt 46 §8.1). */

@@ -1,4 +1,4 @@
-// The "Respond to Risk and Limit Sessions" group, taken to the V1 standard:
+// The "Respond to Risk and Limit Sessions" steps, taken to the V1 standard:
 // docs/plans/risk-and-sessions-spec.md holds the outcome, the Microsoft Learn
 // page behind every technical claim and the date it was checked. One test per
 // acceptance item in that spec.
@@ -24,7 +24,7 @@ import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
 import type { StepBody } from './stepBody.ts'
-import { membersOf } from '../../roadmap/stepGroups.ts'
+import { groupOf } from '../../roadmap/stepGroups.ts'
 import pinned from '../../../baselines/jhope188-conditionalaccesspolicies.pinned.json' with { type: 'json' }
 import { policyFacts } from '../../coverage/facts.ts'
 import { portalLines } from '../../roadmap/portalLines.ts'
@@ -34,7 +34,7 @@ import { stepArtifactLines } from '../../roadmap/artifactLines.ts'
 import type { ExportStep } from '../../roadmap/types.ts'
 import type { MappingState } from '../../mapping/types.ts'
 
-/** The group's six members, in registry order (roadmap/stepGroups.ts). */
+/** The spec's six steps (docs/plans/risk-and-sessions-spec.md), in its order. The roadmap flow puts the risk steps in Extend MFA Coverage and the session steps in Limit Sessions and Require Healthy Devices (roadmap/stepGroups.ts). */
 const RISK_AND_SESSIONS = [
   's-goal-sign-in-risk',
   's-goal-user-risk',
@@ -171,8 +171,8 @@ const SESSIONS = 's-goal-all-users-no-persistence'
 const SESSIONS_PKG = 's-goal-session-lifetime'
 const TOKEN_PROTECTION = 's-goal-token-protection'
 
-test('the group is the six members the spec takes', () => {
-  assert.deepEqual([...membersOf('risk-and-sessions')], RISK_AND_SESSIONS)
+test('the spec’s six steps sit where the roadmap flow places them', () => {
+  assert.deepEqual(RISK_AND_SESSIONS.map((id) => groupOf(id)?.key), ['extend-mfa', 'extend-mfa', 'extend-mfa', 'extend-mfa', 'devices-sessions', 'devices-sessions'])
 })
 
 test('S1: every member reads the same About sentence on screen, in the export and in the prompt pack', () => {

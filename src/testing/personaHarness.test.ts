@@ -23,7 +23,7 @@ import { runFixture } from '../roadmap/fixtures/run.ts'
 import { pinnedPackage } from '../baseline/pinned.ts'
 import { appliedMapping } from '../ui/surfaces/pickerRows.ts'
 import { customerPlanSteps } from '../ui/surfaces/customerPlanSteps.ts'
-import { boardOf } from '../ui/surfaces/planBoard.ts'
+import { allWorkGroups, boardOf } from '../ui/surfaces/planBoard.ts'
 import { badgeLabel } from '../ui/surfaces/stepContract.ts'
 import { contentTitle } from '../content/stepTitle.ts'
 import { facts } from '../derive/facts.ts'
@@ -116,6 +116,11 @@ test('the board a persona reads is the board the Plan draws: its rows, their tit
   const drawn = rows.filter((row) => row.tab !== 'none' && row.tab !== 'doesntApply')
   // Every row the board has, once, each with the title and the lane the board gives it.
   assert.deepEqual(drawn.map((row) => row.id).sort(), board.rows.map((row) => row.item.id).sort())
+  // In the order the Plan opens on: All work, section by section (owner, roadmap flow V2).
+  const items = board.rows.map((row) => row.item)
+  const sections = allWorkGroups(items, items)
+  assert.deepEqual(drawn.map((row) => row.id), sections.flatMap((g) => g.items.map((i) => i.id)), 'the harness reads the rows in an order the Plan does not draw')
+  assert.deepEqual([...new Set(drawn.map((row) => row.group))], sections.map((g) => g.label), 'the harness names a section the Plan does not draw')
   for (const row of drawn) {
     const b = board.rows.find((x) => x.item.id === row.id)!
     assert.equal(row.title, b.item.title, `${row.id}: the harness titles a row another way`)

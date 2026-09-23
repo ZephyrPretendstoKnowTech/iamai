@@ -576,21 +576,21 @@ test('013.H: an unanswered decision leaves the work it holds in the printed plan
 
 test('013.H: the document reads the Plan’s row rule and writes none of its own', () => {
   const src = readFileSync(new URL('./PrintPlan.tsx', import.meta.url), 'utf8')
-  assert.match(src, /import \{[^}]*\bfloorRows\b[^}]*\} from '\.\/planRows\.ts'/, 'the print derives its own group')
-  // The undated group and the phases both read the board's hold (planBoard.ts
-  // boardHolds, owner decision 2): a step the board holds prints undated, never
-  // under a phase's dates, and the print decides no hold of its own.
-  assert.match(src, /undatedRows\(steps, phaseList, boardHeld\)/, 'the print does not read the undated group')
+  // The document prints the board's rows in the board's sections (printPlan.ts
+  // printSectionsOf, roadmap flow V1 decision 8), and decides no grouping of its
+  // own. Its timeline dates each phase by the Plan's own phase rule, reading the
+  // board's hold (planBoard.ts boardHolds, owner decision 2): a step the board
+  // holds is dated under no phase, and the print decides no hold of its own.
+  assert.match(src, /const sections = printSectionsOf\(board\)/, 'the print groups its rows itself')
   assert.match(src, /planPhases\(schedule\)/, 'the print does not read the Plan’s phases')
-  assert.match(src, /floorRows\(steps\)/, 'the print does not decide alone which rows are the floor')
   assert.match(src, /phaseRows\(steps, w, boardHeld\)/, 'the print decides a numbered phase’s rows itself')
   assert.match(src, /const boardHeld = \(s: Step\): boolean => boardHolds\(s, laneOf\(s\.id\)\)/, 'the print decides for itself which steps are held')
-  // All three printed step sections — the phases, the undated group and the
-  // floor group (task 025) — use the screen's own step body, which is what
-  // withholds the implementation, the dates, the announcement and the rollback.
-  assert.equal(src.match(/<ContentStep step=\{s\}/g)?.length, 3, 'a printed step section builds a body of its own')
+  // Every printed step uses the screen's own step body, which is what withholds
+  // the implementation, the dates, the announcement and the rollback: there is
+  // one place the document draws a step in full (task 025).
+  assert.equal(src.match(/<ContentStep step=\{s\}/g)?.length, 1, 'a printed step builds a body of its own')
   // And the Plan draws the same steps, in lanes (S3, planLanes.ts): every step
-  // the print's three sections carry has a lane reading, and the Plan derives no
+  // the print's timeline dates has a lane reading, and the Plan derives no
   // phase, undated or floor grouping of its own.
   const plan = readFileSync(new URL('./Plan.tsx', import.meta.url), 'utf8')
   // The Plan reads the engine through the one board construction (R4-22), which
@@ -664,8 +664,8 @@ test('R4-22: the Export page, the print, Connect and the Plan read the board thr
   const read = (p: string): string => readFileSync(new URL(p, import.meta.url), 'utf8').replace(/\/\/[^\n]*/g, '')
   for (const [file, call] of [
     ['./Plan.tsx', 'boardOf(c.steps, cleanupPhase, answers)'],
-    ['./PrintPlan.tsx', 'boardReadingsOf(steps, schedule.cleanup, answers)'],
-    ['./Export.tsx', 'boardReadingsOf(steps, schedule.cleanup, data.mapping?.breakGlassAnswers ?? null)'],
+    ['./PrintPlan.tsx', 'boardOf(steps, schedule.cleanup, answers)'],
+    ['./Export.tsx', 'boardOf(steps, schedule.cleanup, data.mapping?.breakGlassAnswers ?? null)'],
     // Connect's counts are derive/facts.ts stepFacts, which counts the board's rows.
     ['./Connect.tsx', 'stepFacts(computed.steps, computed.schedule.cleanup ?? null, cleanupAnswers)'],
     ['../../derive/facts.ts', 'boardReadingsOf(steps, cleanup, answers)'],

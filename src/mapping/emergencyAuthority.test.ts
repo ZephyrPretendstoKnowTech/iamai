@@ -60,7 +60,7 @@ test('3+9. before confirmation the recommendation is inert; after it, the confir
   // The small tenant whose policies carve out its break-glass group: the plan's
   // gate is then the exclusions group, and what waits on the emergency
   // prerequisite is what that prerequisite itself holds.
-  // Decide Your Tenant's Direction approved, so what a policy waits on is the
+  // Define Your Rollout Scope approved, so what a policy waits on is the
   // emergency prerequisite alone: unapproved, the plan's foundation holds every
   // policy behind the Direction step too (roadmap/foundations.ts).
   const f = withDirectionApproved(withBreakGlassCarveOut(fixture('small')))
@@ -93,7 +93,7 @@ test('3+9. before confirmation the recommendation is inert; after it, the confir
   assert.ok(!failingFixes(r1).includes('second-account'), 'the confirmed set satisfies bg.count')
   assert.ok(offeredPolicies(r1).length > 0, 'confirming is what unblocks the work')
   // Nothing waits on the prerequisite's own verdict once it is met. What a policy
-  // still carries on that step is the plan's foundation — the two pinned groups
+  // still carries on that step is the plan's foundation — Emergency Access and Direction
   // are not finished, and that is the whole plan's sequencing (roadmap/foundations.ts).
   for (const id of heldByEmergency(r1)) {
     const s = r1.steps.find((x) => x.id === id)!

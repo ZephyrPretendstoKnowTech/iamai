@@ -208,19 +208,27 @@ test('the create prepares the context only where there is none, before the polic
   assert.ok(createArm.indexOf('Assert-ContextCanonical (Get-Context)') >= 0 && createArm.indexOf('Assert-ContextCanonical (Get-Context)') < createArm.indexOf('-Method POST'), `Create posts the policy before it checks the context:\n${createArm}`)
 })
 
-// R4-18, secondary. On a plan whose PIM policy is the goal's own template
-// (built-in MFA, so no strength resolved for the package's strength grant), the
-// planning preview's settings read "Grant → Require authentication strength:
-// Multifactor authentication": a strength IAMAI did not resolve, named as
-// Microsoft's built-in one, beside a procedure asking for "IAMAI-resolved
-// target strength". The preview states the requirement and names no strength —
-// not its ‹…› stand-in either, which is a placeholder the portal of a held step
-// never carries (ui/surfaces/stepResources.test.ts).
+// R4-18, secondary. On a plan whose PIM policy had no strength resolved for the
+// package's strength grant, the planning preview's settings read "Grant →
+// Require authentication strength: Multifactor authentication": a strength IAMAI
+// did not resolve, named as Microsoft's built-in one, beside a procedure asking
+// for "IAMAI-resolved target strength". The preview names no strength it did
+// not resolve — not its ‹…› stand-in either, which is a placeholder the portal
+// of a held step never carries (ui/surfaces/stepResources.test.ts).
+//
+// That plan's PIM policy was the goal's own template (built-in MFA). A goal the
+// pinned map holds is written from the pinned policy now (q-pin), so the strength
+// goes unresolved the way it does in a real tenant: nothing there answers the
+// baseline's own strength yet.
 test('the preview names no strength IAMAI did not resolve', () => {
-  const { body, ctx, step } = pimOn(withFoundationSettled(structuredClone(fixture('mid'))))
+  const f = structuredClone(fixture('mid'))
+  const strengths = f.snapshot.config.authStrengths as { rows: { policyType?: string }[] }
+  strengths.rows = strengths.rows.filter((r) => r.policyType === 'builtIn')
+  const { body, ctx, step } = pimOn(withFoundationSettled(f))
   assert.equal(packageBindings(step, ctx, body.contract)['authStrength.target.id'], undefined, 'the premise: the strength is unresolved here')
   const portal = channelText(body, 'portal')
-  assert.match(portal, /^- Grant → Require authentication strength$/m)
+  assert.match(portal, /Require authentication strength/, 'the procedure still states the requirement')
+  assert.doesNotMatch(portal, /^- Grant → Require authentication strength: /m)
   assert.doesNotMatch(portal, /Multifactor authentication|‹authentication strength›/)
 })
 

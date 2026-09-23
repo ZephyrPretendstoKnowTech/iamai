@@ -27,7 +27,7 @@ import { BREAK_GLASS_STEP_ID } from '../../../../src/roadmap/stepIds.ts'
 import type { StepDecisionInput } from '../../../../src/roadmap/decisions.ts'
 import { directionAnswerComplete, directionDecisionOf } from '../../../../src/roadmap/directionAnswers.ts'
 import type { DirectionAnswer } from '../../../../src/roadmap/directionAnswers.ts'
-import { asideGroupsFor, BOARD, boardOf, groupsFor, LANES } from '../../../../src/ui/surfaces/planBoard.ts'
+import { allWorkGroups, BOARD, boardOf, TAB_OF } from '../../../../src/ui/surfaces/planBoard.ts'
 import type { Board } from '../../../../src/ui/surfaces/planBoard.ts'
 import { badgeLabel } from '../../../../src/ui/surfaces/stepContract.ts'
 import { stepOperations } from '../../../../src/ui/surfaces/stepJson.ts'
@@ -215,13 +215,12 @@ export type BoardRow = {
  * Every row in the order the board shows it, with the title and the lane word a
  * person reads.
  *
- * It used to say that and return `r.steps` in plan order, which is not the
- * order anything renders: the board draws three tabs, and inside each the rows
- * come out in their group's registry order (planBoard.ts groupsFor). A persona
- * reading this saw a step above its own prerequisite and filed it, and on the
- * board the two are in different tabs with the prerequisite first. So this
- * builds the board's rows and walks them tab by tab, group by group, exactly as
- * the page does, and names the tab and the group it found each row under.
+ * The Plan opens on All work (owner, roadmap flow V2): every section in its
+ * registry place, whole, finished ones collapsed there (planBoard.ts
+ * allWorkGroups). So this walks All work section by section, exactly as the
+ * page does, and names the section each row is under (`group`) and the lane tab
+ * that would also show it (`tab`: ready, upNext or onHold, or completed and
+ * deferred for finished work, which no lane tab draws inside its panel).
  */
 export function lanes(t: Tenant, r: FixtureRun): BoardRow[] {
   zoned(t)
@@ -229,17 +228,14 @@ export function lanes(t: Tenant, r: FixtureRun): BoardRow[] {
   const rows = new Map(board.rows.map((row) => [row.item.id, row]))
   const items = board.rows.map((row) => row.item)
   const out: BoardRow[] = []
-  const push = (tab: string, groups: ReturnType<typeof groupsFor>): void => {
-    for (const group of groups) {
-      for (const item of group.items) {
-        const row = rows.get(item.id)
-        if (!row) continue
-        out.push({ id: item.id, title: item.title, step: row.step, cleanup: row.cleanup ? row.cleanup.row.kind : null, lane: row.reading.lane, substatus: row.lane.substatus, tab, group: group.label })
-      }
+  for (const group of allWorkGroups(items, items)) {
+    for (const item of group.items) {
+      const row = rows.get(item.id)
+      if (!row) continue
+      const tab = TAB_OF[row.reading.lane] ?? (row.reading.lane === 'Completed' ? 'completed' : 'deferred')
+      out.push({ id: item.id, title: item.title, step: row.step, cleanup: row.cleanup ? row.cleanup.row.kind : null, lane: row.reading.lane, substatus: row.lane.substatus, tab, group: group.label })
     }
   }
-  for (const tab of LANES) push(tab, groupsFor(tab, items))
-  push('completed', asideGroupsFor(items))
   // Anything the tabs did not draw is still reported, after the rows, so a
   // reading of this is never quietly short of a step.
   //
@@ -597,7 +593,7 @@ export function configurePasskeys(t: Tenant): Tenant {
 export const settleFoundations = (t: Tenant): Tenant => configurePasskeys(prepareEmergencyAccess(t))
 
 /**
- * The person works through Decide Your Tenant's Direction and presses Approve
+ * The person works through Define Your Rollout Scope and presses Approve
  * answers on each of the three steps without changing a tile.
  *
  * What that saves is what the screen's draft starts from: every question's

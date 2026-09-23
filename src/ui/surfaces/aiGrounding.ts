@@ -43,7 +43,7 @@ import { CONTRACT } from './stepContract.ts'
 import { enforcedUnwatched } from './doneWhen.ts'
 import type { LaneView, PrerequisiteLabel, StepContract } from './stepContract.ts'
 import { implementationOffered } from './stepJson.ts'
-import { submitsEnforcementOnly, unavailableReason } from '../../roadmap/operations.ts'
+import { createWaitsOnReadiness, submitsEnforcementOnly, toReportOnly } from '../../roadmap/operations.ts'
 import { incompleteFieldsOf, plannedOperationsOf, policyBodiesOfChannel } from './stepPackage.ts'
 import { plannedPortalLines, portalNamesFor } from './stepPortal.ts'
 import { tenantNameOf } from './stepVars.ts'
@@ -154,8 +154,14 @@ export function aiGroundingText(i: GroundingInput, own = ''): string {
     // briefing stated "→ New policy, Name: …, Description: [IAMAI:plan-…]" beside
     // a step saying the policy is there and switched off (Jordan D6). Following
     // it makes a second policy.
-    const switchedOff = unavailableReason(i.step) === 'switched-off'
-    const lines = (!offered && turnOnOnly) || switchedOff ? [] : plannedPortalLines(i.step, offered ? names : { ...names, withholdTurnOn: true }, selected) ?? []
+    const switchedOff = toReportOnly(i.step).length > 0
+    // Nor is a create the readiness threshold holds with its turn-on: in
+    // report-only a policy that requires a compliant device can prompt for a
+    // certificate, so its creation waits (operations.ts createWaitsOnReadiness;
+    // owner, 2026-09-23). The briefing stated "→ New policy … Enable policy:
+    // Report-only → Create" under What remains saying the creation waits.
+    const createWaits = createWaitsOnReadiness(i.step)
+    const lines = (!offered && turnOnOnly) || switchedOff || createWaits ? [] : plannedPortalLines(i.step, offered ? names : { ...names, withholdTurnOn: true }, selected) ?? []
     intended.push(...lines)
     if (lines.length > 0 && !offered) intended.push(W.proposed)
     const open = [...new Set(plannedOperationsOf(i.step).flatMap((op) => [...incompleteFieldsOf(i.step, op)]))].sort()
