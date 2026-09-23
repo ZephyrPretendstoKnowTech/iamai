@@ -102,7 +102,8 @@ export async function readTargeted(
     try {
       // Every page of their records to the start of the window, following nextLink: a busy person has more than one page.
       const raw = await graphPaged(ctx.tokens, targetedReadUrl(BETA, id, windowStart, coveredFrom), { ...SIGN_IN_READ, signal: ctx.signal, wait: ctx.wait })
-      const rows = raw.map(mapRow).filter((r): r is StoredSignIn => r !== null)
+      // The read asks for createdDateTime le coveredFrom: a record at or after it is the bulk read's, folded already.
+      const rows = raw.map(mapRow).filter((r): r is StoredSignIn => r !== null && Date.parse(r.createdDateTime) < Date.parse(coveredFrom))
       mergeTargeted(perUser, id, rows)
       read += 1
     } catch {
