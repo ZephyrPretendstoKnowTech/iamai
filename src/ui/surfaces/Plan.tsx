@@ -17,7 +17,8 @@ import type { OwnerConfirmation, StepDecision, StepDecisionInput } from '../../r
 import { MFA_FOLLOW_UP_KEY, SPECIAL_CARE_STEP_ID } from '../../roadmap/answers.ts'
 import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
-import { CleanupBody, cleanupEntry, cleanupWhen } from './CleanupStep.tsx'
+import { CleanupBody, cleanupEntry } from './CleanupStep.tsx'
+import { cleanupWhenOf } from './cleanupExport.ts'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import { planFinish, planLengthSentence, projectedFinish } from '../../derive/finish.ts'
 import { startControl } from '../../derive/planHeader.ts'
@@ -585,7 +586,7 @@ function CleanupRow({ phase, row, number, answers, open, onToggle, onScan, onDon
       {/* The one row shape the Plan draws (StepSections.tsx PlanRow), not one per kind of row. */}
       {/* A completed row's When is the placeholder, as every finished row's is (planBoard.ts boardWhen). */}
       {/* A Cleanup row is held by the same engine and says what holds it the same way. */}
-      <PlanRow lane={lane.label} tone={lane.tone} number={number} title={entry.title} waitingFor={lane.waitingFor} who={who} when={cleanupWhen(row, undated, lane.lane === 'Completed', lane.lane === 'Ready' && lane.substatus === 'Review')} open={open} onToggle={onToggle} />
+      <PlanRow lane={lane.label} tone={lane.tone} number={number} title={entry.title} waitingFor={lane.waitingFor} who={who} when={cleanupWhenOf(row, undated, lane)} open={open} onToggle={onToggle} />
       {open && <CleanupBody phase={phase} row={row} status={status} onScan={() => (onScan ? onScan(returnToStep(`cleanup-${row.kind}`)) : (window.location.hash = '#/connect'))} onClose={onToggle} onDone={onDone} />}
     </>
   )

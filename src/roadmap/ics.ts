@@ -3,7 +3,6 @@
 // one per Cleanup row on its day (E4). Pure; the file is built in the browser.
 import { app } from '../content/content.ts'
 import { calendarDay } from '../copy/dates.ts'
-import { planFinish } from '../derive/finish.ts'
 import { cleanupArtifactLines, stepArtifactLines } from './artifactLines.ts'
 import { estimatedDay, scheduledEventOf, shownDay } from './stepSchedule.ts'
 import type { ScheduledTransition } from './stepSchedule.ts'
@@ -113,10 +112,11 @@ export function buildIcs(steps: Step[], tenantName: string, planId: string, view
   }
   // Cleanup rows are calendar entries on their day (E4); a row marked done is finished, like a done step.
   // Cleanup follows the last enforcement, so while work the plan requires is held
-  // its days are dated after a rollout that cannot finish, and it books nothing.
-  const cleanupUndated = planFinish(steps).held
+  // its days are dated after a rollout that cannot finish, and it books nothing:
+  // the row's own `undated`, the reading the Export page built its view from
+  // (stepExport.ts exportCleanupViewsOf), not a second reading of the steps.
   for (const c of cleanup) {
-    if (c.done || cleanupUndated) continue
+    if (c.done || c.undated) continue
     lines.push('BEGIN:VEVENT')
     lines.push(`UID:${planId}-cleanup-${c.kind}@iamai`)
     lines.push(stamp())

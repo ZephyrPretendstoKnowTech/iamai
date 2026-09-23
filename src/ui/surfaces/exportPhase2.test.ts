@@ -26,7 +26,8 @@ import { unavailableReason } from '../../roadmap/operations.ts'
 import { copyBoxes, exportAnnouncementOf, exportCleanupViewsOf, exportHoldOf, exportViewsOf } from './stepExport.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { PROMPTS } from '../../copy/comms.ts'
-import { cleanupWhen } from './cleanupExport.ts'
+import { cleanupWhenOf } from './cleanupExport.ts'
+import { isHeld } from '../../roadmap/holds.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { exportText, runbookRedaction } from '../exportGuard.ts'
@@ -132,8 +133,8 @@ test('the pack and the bundle say a Cleanup row\'s When as the board reads it, a
       if (!c) continue
       const reading = p.board.readings.get(`cleanup-${phaseRow.kind}`)!
       const lane = laneViewOf(reading, p.board.titleOf)
-      // The Plan's CleanupRow reads exactly this (Plan.tsx).
-      const board = cleanupWhen(phaseRow, finish.held, lane.lane === 'Completed', lane.lane === 'Ready' && lane.substatus === 'Review')
+      // The Plan's CleanupRow reads exactly this (Plan.tsx), through the one helper.
+      const board = cleanupWhenOf(phaseRow, finish.held, lane)
       const where = `${name}/${c.kind}`
       assert.equal(c.when, board, `${where}: the export's When is the board's`)
       assert.ok(pack[0].prompt.includes(`${c.title} (${board}).`), `${where}: the pack's block reads "${board}"`)
@@ -150,6 +151,30 @@ test('the pack and the bundle say a Cleanup row\'s When as the board reads it, a
 test('the Export page builds its Cleanup views off the board', () => {
   const page = readFileSync(new URL('./Export.tsx', import.meta.url), 'utf8').replace(/\/\/[^\n]*/g, '')
   assert.match(page, /const cleanupViews = exportCleanupViewsOf\(board, steps, schedule\.cleanup\)/)
+})
+
+// A Cleanup row's When has one producer (cleanupExport.ts cleanupWhenOf): the
+// Plan's CleanupRow mapped the lane to its flags inline while the exports
+// repeated the same mapping, the drift finding 3 was about.
+test('the Plan\'s Cleanup row and the exports read a Cleanup row\'s When from one helper', () => {
+  const plan = readFileSync(new URL('./Plan.tsx', import.meta.url), 'utf8').replace(/\/\/[^\n]*/g, '')
+  assert.match(plan, /when=\{cleanupWhenOf\(row, undated, lane\)\}/, 'the Plan\'s Cleanup row does not read the one When helper')
+  assert.doesNotMatch(plan, /cleanupWhen\(row, undated/, 'the Plan maps the lane to the When flags itself')
+  const exports = readFileSync(new URL('./cleanupExport.ts', import.meta.url), 'utf8')
+  assert.equal(exports.split("lane === 'Completed'").length - 1, 1, 'the lane-to-When mapping is written more than once')
+})
+
+// The calendar books a Cleanup row from the view the Export page built (its
+// `undated`), not from a second reading of the plan's steps.
+test('the calendar books a Cleanup row only where its export view is dated', () => {
+  const p = exportPage(fixture('demo'))
+  assert.ok(p.cleanup.length > 0 && p.cleanup.every((c) => c.undated), 'the premise: the demo plan cannot finish, so its Cleanup rows are undated')
+  const open = p.r.steps.filter((s) => !isHeld(s))
+  assert.equal(planFinish(open, p.r.schedule.cleanup?.end ?? null).held, false, 'the premise: the steps handed in hold nothing')
+  assert.ok(!buildIcs(open, 'Tenant', 'plan-c', p.view, p.cleanup).includes('-cleanup-'), 'an undated Cleanup row is booked')
+  const dated = p.cleanup.map((c) => ({ ...c, undated: false }))
+  const ics = buildIcs(p.r.steps, 'Tenant', 'plan-c', p.view, dated)
+  for (const c of dated) if (!c.done) assert.ok(ics.includes(`UID:plan-c-cleanup-${c.kind}@iamai`), `${c.kind}: a dated row is not booked`)
 })
 
 // Finding 4 (severity 3). On the public demo Require MFA for Guests is Ready ·
