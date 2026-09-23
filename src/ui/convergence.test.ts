@@ -302,7 +302,7 @@ test('How still derives its permission and read truth from the runtime registrie
   // permission set the product does not actually request.
   assert.match(HOW, /import \{ COLLECTOR_REGISTRY \} from '\.\.\/\.\.\/graph\/collect\/registry\.ts'/)
   // The checks are the rule registry, drawn through the page's view model (howView.ts).
-  assert.match(HOW, /import \{ howCheckTables \} from '\.\/howView\.ts'/)
+  assert.match(HOW, /import \{ howCheckTables[,} ][^\n]*from '\.\/howView\.ts'/)
   assert.match(text('src/ui/surfaces/howView.ts'), /REGISTRY\.filter/)
   assert.match(HOW, /import \{ scopeRows \} from '\.\.\/PermissionsDisclosure\.tsx'/)
   assert.match(HOW, /rows=\{permissions\}/)

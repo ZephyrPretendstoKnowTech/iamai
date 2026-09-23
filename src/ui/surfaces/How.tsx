@@ -12,7 +12,7 @@
 import { useEffect, useRef } from 'react'
 import { COLLECTOR_REGISTRY } from '../../graph/collect/registry.ts'
 import type { CollectorSpec } from '../../graph/collect/registry.ts'
-import { howCheckTables } from './howView.ts'
+import { howCheckTables, howLimits } from './howView.ts'
 import type { HowCheckRow } from './howView.ts'
 import { scopeRows } from '../PermissionsDisclosure.tsx'
 import { PERMISSIONS, SIGN_IN_SCOPES } from '../../copy/permissions.ts'
@@ -181,7 +181,7 @@ export function How() {
 
       <h2>{C.limits}</h2>
       <ul className="sections">
-        {C.limitsList.map((l, i) => (
+        {howLimits().map((l, i) => (
           <li key={i}>{l}</li>
         ))}
         {/* The last line: one of the two places the feedback address appears (the other is the error page). */}

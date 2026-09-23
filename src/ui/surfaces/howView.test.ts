@@ -1,9 +1,9 @@
 // What How IAMAI works says, read from the tables the page draws (howView.ts).
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { howCheckTables } from './howView.ts'
+import { howCheckTables, howLimits } from './howView.ts'
 import { EVALUATED_SUBJECTS } from '../../validation/report.ts'
-import { engine, stepById } from '../../content/content.ts'
+import { app, engine, pages, stepById } from '../../content/content.ts'
 import { REGISTRY } from '../../validation/rules.ts'
 import type { RuleResult } from '../../validation/rules.ts'
 import { emergencyTierOf } from '../../validation/emergencyTiers.ts'
@@ -112,4 +112,15 @@ test('How says which emergency-access checks are the operator’s confirmation, 
   assert.ok(licence)
   assert.match(licence.what, /mailbox/)
   assert.doesNotMatch(licence.what, /daily use|unless something needs one/)
+})
+
+// Connect's scan tile lists five limitations, then sends the reader to How for
+// "its limits in full"; How's Limits held five different lines and none of
+// Connect's (Phase 2 audit, How and Connect).
+test('How’s Limits hold every limitation Connect lists before sending the reader there', () => {
+  const connect = (pages.connect as unknown as { scan: { limits: string[]; limitsMore: string } }).scan
+  assert.match(connect.limitsMore, /in full/)
+  const limits = howLimits()
+  for (const line of connect.limits) assert.ok(limits.includes(line), `How's Limits leave out Connect's "${line.slice(0, 60)}…"`)
+  for (const line of app.how.limitsList) assert.ok(limits.includes(line), `How's Limits leave out its own "${line.slice(0, 60)}…"`)
 })
