@@ -209,7 +209,8 @@ test('GetIAMAI: the prompt renders in full, the Doesn\'t-apply group holds only 
   const prompt = fillText(shared.doesntApplyPrompt, { tenant: 'GetIAMAI' })
   assert.equal(prompt, shared.doesntApplyPrompt.replace('{tenant}', 'GetIAMAI'), 'the prompt in full, the tenant filled')
   assert.ok(!/\{[a-zA-Z]+\}/.test(prompt))
-  assert.deepEqual(r.steps.filter((s) => s.doesntApply).map((s) => s.id), ['s-prereq-service-accounts-group'], 'the confirmed no-service-accounts prerequisite remains visible as not applicable; licence exclusions do not join it')
+  // Security defaults never seen on, and everyone working remotely, do not apply either (Stage 3, V1 decision 6).
+  assert.deepEqual(r.steps.filter((s) => s.doesntApply).map((s) => s.id).sort(), ['s-prereq-security-defaults', 's-prereq-service-accounts-group', 's-prereq-trusted-location'], 'the confirmed no-service-accounts prerequisite remains visible as not applicable; licence exclusions do not join it')
   // Over the goals this baseline holds: an absent goal never renders (walk-51 item 9).
   const licenceGoals = r.coverage.results.filter((x) => x.status === 'not-applicable' && x.applicability && / licence$/.test(x.applicability.reason) && goalInMap(PINNED_GOAL_MAP, x.goal.id)).map((x) => x.goal.id)
   assert.ok(licenceGoals.length >= 1, `licence-facet goals the baseline holds (${licenceGoals.join(', ')})`)
