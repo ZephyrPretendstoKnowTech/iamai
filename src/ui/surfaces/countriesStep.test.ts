@@ -13,7 +13,7 @@ import { stepIdForGoal, REPAIR_STEP_ALIASES, PREREQ_STEP_ID } from '../../roadma
 import { canonicalBlockerStepId } from '../../roadmap/blockerSteps.ts'
 import { isHeld } from '../../roadmap/holds.ts'
 import type { Step } from '../../roadmap/types.ts'
-import { laneReadings } from './planLanes.ts'
+import { laneReadings, observe } from './planLanes.ts'
 import { planStateOf } from './planState.ts'
 import { objectTaskBodyOf, stepBodyOf } from './stepBody.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -86,16 +86,36 @@ test('the lockout checks show on 6.3, and a blocking one holds its turn-on, neve
   }
   // A blocking check (an empty confirmed list) holds the turn-on as it held the
   // location step, as a gate: the create in report-only is not held, and 6.3
-  // never reads Completed over it.
+  // never reads Completed over it. An empty list is also no work country saved,
+  // so the step reads its question first (Ready · Decision), and the gate waits
+  // behind it on the turn-on.
   const f = withFoundationSettled(curatedFixture('getiamai'))
   const r = runFixture({ ...f, mapping: { ...f.mapping, allowedCountries: [], wizardAnswered: { ...f.mapping.wizardAnswered, countries: true } } })
   const geo = geoOf(r.steps)
   assert.ok((geo.configurationFindings ?? []).some((c) => c.key.startsWith('cty.atLeastOne:') && c.outcome === 'fail'), 'the premise: the empty list fails its blocking check')
   assert.ok(geo.blockers.some((b) => b.kind === 'readiness' && b.label === 'countries-unsafe' && typeof b.binding === 'string' && b.binding.length > 0), 'the blocking check does not hold the turn-on')
   assert.ok(!geo.blockedBy.includes(GEO), 'and it is no wait on itself')
+  const observed = observe(geo, new Map(r.steps.map((s) => [s.id, s])))
+  assert.ok((observed.gates ?? []).some((g) => g.id === 'evidence:readiness:countries-unsafe'), 'the hold is not a gate on the turn-on')
+  assert.ok(!(observed.blockers ?? []).some((b) => b.id.includes('countries-unsafe')), 'the hold blocks the report-only create')
   const reading = laneReadings(r.steps, [], r.input.mapping).get(GEO)!
-  assert.ok(reading.gates.some((g) => g.id === 'evidence:readiness:countries-unsafe'), 'the hold is not a gate on the turn-on')
-  assert.notEqual(reading.lane, 'Completed')
+  assert.deepEqual([reading.lane, reading.substatus], ['Ready', 'Decision'], 'the question does not come first')
+})
+
+test('with an empty confirmed list, 6.3 still asks for its work countries, and the hold on its turn-on names the location task', () => {
+  const f = withFoundationSettled(curatedFixture('getiamai'))
+  const r = runFixture({ ...f, mapping: { ...f.mapping, allowedCountries: [], wizardAnswered: { ...f.mapping.wizardAnswered, countries: true } } })
+  const geo = geoOf(r.steps)
+  const hold = geo.blockers.find((b) => b.kind === 'readiness' && b.label === 'countries-unsafe')
+  assert.ok(hold, 'the premise: the empty list holds the turn-on')
+  // No work country is saved, so the question comes first, as it does with no list at all.
+  assert.equal(geo.state.condition, 'needs-decision', 'the countries check raised the question to Blocked')
+  assert.equal(planStateOf(geo, isHeld(geo)).word, 'Needs decision')
+  // The hold names what 6.3 does first as its task, never the step it used to be (D3).
+  const TASK_TITLE = 'Set up the allowed countries location'
+  assert.ok(hold.kind === 'readiness' && typeof hold.binding === 'string' && hold.binding.includes(TASK_TITLE), `the hold reads: ${hold.kind === 'readiness' ? hold.binding : ''}`)
+  const said = [geo.blockedReason ?? '', ...geo.blockers.map((b) => ('binding' in b && typeof b.binding === 'string' ? b.binding : ''))]
+  for (const line of said) assert.ok(!line.includes(RETIRED_TITLE), `names the retired step: ${line}`)
 })
 
 test('with an empty countries list, no step but 6.3 is held by it or waits on it', () => {
