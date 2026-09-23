@@ -48,7 +48,7 @@ export const RULE_TO_FIX: Record<string, string> = {
  * exclusions-group member checks tell an operator to confirm an account IAMAI is
  * recommending before removing it, rather than to remove it outright.
  */
-export const ALTERNATE_FIXES = new Set(['members-only-emergency-unconfirmed', 'no-admin-members-unconfirmed'])
+export const ALTERNATE_FIXES = new Set(['members-only-emergency-unconfirmed', 'no-admin-members-unconfirmed', 'not-security-group', 'group-licensed'])
 
 /**
  * Rules that carry no checkFixes template — informational notes, per-user-MFA

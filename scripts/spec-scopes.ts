@@ -12,6 +12,6 @@ console.log('| Lane | Need | Endpoint | API | Scopes | Least role | Gate |')
 console.log('|---|---|---|---|---|---|---|')
 for (const s of COLLECTOR_REGISTRY) {
   console.log(
-    `| ${s.lane} | ${s.purpose} | \`${s.endpoint}\` | ${s.version} | ${s.scopes.join(' ')} | ${[...new Set(s.scopes.map((sc) => ROLE_FOR_SCOPE[sc]?.least).filter(Boolean))].join(' + ')} | ${s.gate} |`,
+    `| ${s.lane} | ${s.purpose} | ${[s.endpoint, ...(s.alsoReads ?? [])].map((e) => `\`${e}\``).join(', ')} | ${s.version} | ${s.scopes.join(' ')} | ${[...new Set(s.scopes.map((sc) => ROLE_FOR_SCOPE[sc]?.least).filter(Boolean))].join(' + ')} | ${s.gate} |`,
   )
 }

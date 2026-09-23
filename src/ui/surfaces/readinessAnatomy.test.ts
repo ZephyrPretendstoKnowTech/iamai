@@ -126,7 +126,7 @@ test('the answer is one panel: the sentence, the Seamless goal, the change since
     at = next
   }
   assert.equal(W.summary, '{ready} of {cohort} are ready for phishing-resistant sign-in.', 'the counted are named as one cohort: people, and guests beside them')
-  assert.match(SURFACE, /const ready = counts\.ready \+ counts\.seamless/, 'Seamless is not counted as Ready in the sentence')
+  assert.match(CELLS, /const ready = counted\.filter\(\(r\) => r\.state === 'ready' \|\| r\.state === 'seamless'\)\.length/, 'Seamless is not counted as Ready in the sentence (summaryLine)')
   assert.match(cssRule('.readiness-answer .answer-top'), /display: flex/)
   assert.match(packRule('.answer-top'), /display:flex/)
   assert.doesNotMatch(SURFACE, /summary-stat|progress-strip|group-tile|RungBadge|rung-badge/, 'a count card, a strip or a rung badge came back')
@@ -337,7 +337,7 @@ test('the words that name a computer’s built-in option follow the computers se
     // The smoke's opening words, and the phone passkey, hold whatever the computers.
     assert.match(lead, /^Phishing-resistant sign-in for everyone, and seamless where the device allows it: a passkey on the phone/)
     assert.match(method, /A passkey in Microsoft Authenticator signs them in on their phone and from any computer\./)
-    assert.match(device, /On a phone that is a passkey in Microsoft Authenticator/)
+    assert.match(device, /Where the step is a setup, on a phone it is a passkey in Microsoft Authenticator/)
     // Windows Hello only where a Windows computer signs in; the Mac's option only where a Mac does.
     for (const [words, where] of [[lead, 'lead'], [method, 'Needs a method'], [device, 'Needs a device']] as const) {
       if (c === 'windows' || c === 'both') assert.match(words, /Windows Hello/, `${c}: the ${where} words don't name Windows Hello`)
@@ -350,8 +350,9 @@ test('the words that name a computer’s built-in option follow the computers se
   assert.equal(groupBodyLine('seamless', 'mac'), null)
   // The page reads the tenant's computers once, and uses them for the lead and the next group's body.
   assert.match(SURFACE, /const seen = computersSeen\(view\.rows\)/)
-  assert.match(SURFACE, /<p className="line intro">\{leadLine\(seen\)\}<\/p>/)
-  assert.match(SURFACE, /const body = groupBodyLine\(state, seen\)/)
+  // With whether a synced passkey would be offered at all (readinessPhase2.test.ts).
+  assert.match(SURFACE, /<p className="line intro">\{leadLine\(seen, offersSynced\)\}<\/p>/)
+  assert.match(SURFACE, /const body = groupBodyLine\(state, seen, offersSynced\)/)
   assert.match(SURFACE, /\{isNext && body && \(\s*<div className="next-body">\s*<p>\{body\}<\/p>/)
   assert.doesNotMatch(SURFACE, /T\.lead|G\.body/, 'the page reads a Windows-only sentence directly')
 })

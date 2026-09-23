@@ -68,12 +68,17 @@ export function tenantSetupChecks(snapshot: TenantSnapshot, view: ReadinessView)
   // (owner decision, 2026-09-18: no Intune permission): somebody signing in with it on
   // a Windows computer proves it is switched on here; joined computers where nobody
   // does are a thing to confirm, never a failure; no joined computer, nothing to do.
+  // "No joined computer" is the device directory's answer, read in full: a joined
+  // computer is always in it. A directory not read, or sign-in records not read
+  // where it holds joined ones, leaves the check unknown, never done.
   const devices = rows.filter((r) => r.state !== null).flatMap((r) => r.readiness?.devices ?? [])
   const seen = devices.some((d) => d.os === 'Windows' && d.proof?.cls === 'windowsHello')
-  const joined = devices.some((d) => d.os === 'Windows' && (d.trust === 'joined' || d.trust === 'hybrid'))
+  const joined = devices.some((d) => d.os === 'Windows' && (d.trust === 'joined' || d.trust === 'hybrid')) || ctx.windowsDirectory === 'joined'
+  const noneJoined = ctx.windowsDirectory === 'none' || ctx.windowsDirectory === 'notJoined'
   if (seen) checks.push({ key: 'windowsHello', outcome: 'pass', affects: 0, reason: 'seen' })
-  else if (joined) checks.push({ key: 'windowsHello', outcome: 'unknown', affects: 0, reason: 'notSeen' })
-  else checks.push({ key: 'windowsHello', outcome: 'pass', affects: 0, reason: 'noJoined' })
+  else if (joined) checks.push({ key: 'windowsHello', outcome: 'unknown', affects: 0, reason: ctx.signInsRead ? 'notSeen' : 'signInsUnread' })
+  else if (noneJoined) checks.push({ key: 'windowsHello', outcome: 'pass', affects: 0, reason: 'noJoined' })
+  else checks.push({ key: 'windowsHello', outcome: 'unknown', affects: 0, reason: 'unread' })
   // 5. Temporary Access Pass, for somebody with no method at all.
   const tap = methodConfig(snapshot, 'temporaryaccesspass')
   const tapOutcome: SetupOutcome = !tap.read ? 'unknown' : tap.state === 'enabled' ? 'pass' : 'fail'
@@ -83,7 +88,8 @@ export function tenantSetupChecks(snapshot: TenantSnapshot, view: ReadinessView)
   const migOutcome: SetupOutcome = mig === undefined ? 'unknown' : mig === null || mig === 'migrationComplete' ? 'pass' : 'fail'
   checks.push({ key: 'migration', outcome: migOutcome, affects: 0, reason: mig === undefined ? 'methodsPolicyUnread' : mig === null ? 'noState' : null })
   // 7. Emergency Access Step 3's passkey settings are the tenant's: keys are checked against them.
-  checks.push({ key: 'step3', outcome: ctx.step3.applied ? 'pass' : 'note', affects: 0, reason: null })
+  // Not applied yet, it is a thing to do, not a completed check: the models tile says so, once.
+  if (ctx.step3.applied) checks.push({ key: 'step3', outcome: 'pass', affects: 0, reason: null })
   // 8. Attestation's consequence: never a failure.
   checks.push({ key: 'attestation', outcome: p.attestation === true ? 'note' : 'pass', affects: 0, reason: null })
   return checks
@@ -113,4 +119,15 @@ export function nextCheck(view: ReadinessView, checks: readonly SetupCheck[]): N
   if (largest) return { kind: 'group', state: largest.state }
   if (setup) return { kind: 'setup', check: setup }
   return { kind: 'none' }
+}
+
+/**
+ * The next check on a page opened from a Plan step (`ids` the people it is
+ * scoped to; undefined on the tenant's own page). Where this scan could not
+ * settle who the step's people are (`ids` null), there is none: the tenant's
+ * largest group is not that step's next check, and a guest step's page led with
+ * the employees' passkey set-up.
+ */
+export function stepNextCheck(view: ReadinessView, checks: readonly SetupCheck[], ids: readonly string[] | null | undefined): NextCheck {
+  return ids === null ? { kind: 'none' } : nextCheck(view, checks)
 }

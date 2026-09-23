@@ -30,19 +30,19 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { BaselineResult } from '../baseline.ts'
 import { DEFAULT_SHOW, EXPLAINED, GROUP_ORDER, SHOW_KEYS, SUB_GROUP_AT, readinessView, showKeyOf, shows, subGroupsOf } from '../../derive/mfaReadiness.ts'
 import type { ReadinessRow, ShowKey, SubGroup, SubGroupBy } from '../../derive/mfaReadiness.ts'
-import { nextCheck, remainingChecks, tenantSetupChecks } from '../../derive/readinessSetup.ts'
+import { remainingChecks, stepNextCheck, tenantSetupChecks } from '../../derive/readinessSetup.ts'
 import type { SetupCheck } from '../../derive/readinessSetup.ts'
 import { progressOf } from '../../derive/readinessProgress.ts'
 import { GUEST_STEP_ID, guestReadingOf } from '../../derive/guestReadiness.ts'
 import { stepMfaHold } from '../../derive/stepMfaReadiness.ts'
 import { KINDS } from '../../derive/ladder.ts'
-import { READINESS_STATES, isReady } from '../../scoring/phishingResistant.ts'
+import { READINESS_STATES, isReady, syncedPasskeyOffered } from '../../scoring/phishingResistant.ts'
 import type { ReadinessState } from '../../scoring/phishingResistant.ts'
 import { app, pages, shared } from '../../content/content.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { fillText } from '../../content/render.ts'
 import { monthDay } from '../../copy/dates.ts'
-import { checkWords, deviceChips, listWords, methodsCell, needsActionWords, nextCell, noDevicesWord, osWord, panelDevices, panelMethods, rowCells, rowNote, searchText, signInsUnavailableFor, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine } from './readinessCells.ts'
+import { checkWords, deviceChips, methodsCell, needsActionWords, nextCell, noDevicesWord, panelDevices, panelMethods, rowCells, rowNote, searchText, signInsUnavailableFor, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine, railRemaining, panelNoDevices, panelNoMethods, summaryLine, unreadMethodsWords, countedLine, scopeWords, noRecordsWords, guestTrustWords, evidenceWords, countedKindWords, subDevicesTitle } from './readinessCells.ts'
 import type { PanelItem } from './readinessCells.ts'
 import { READINESS_CSV } from './inventoryTables.ts'
 import { useAppliedMapping, usePlanData } from './planData.ts'
@@ -109,8 +109,12 @@ const CHECK_STEP: Partial<Record<SetupCheck['key'], string>> = { passkeyOn: 's-p
 const SETUP_STEP = 's-verify-mfa'
 const PANEL_ID = 'readiness-panel'
 
-/** The Plan step this page is scoped to: the people it is waiting on, or null where this scan could not settle who. */
-type PlanContext = { title: string; stepId: string; ids: string[] | null }
+/**
+ * The Plan step this page is scoped to: the people it is waiting on where it holds
+ * on them (`held`), the people it covers where it holds on nobody, or null where
+ * this scan could not settle who.
+ */
+type PlanContext = { title: string; stepId: string; ids: string[] | null; held: boolean }
 
 export function MfaReadiness({ scan: lastScan, baseline }: { scan: { snapshot: TenantSnapshot; at: string } | null; baseline: BaselineResult | null }) {
   const [stepId, setStepId] = useState<string | null>(() => stepFromReadinessHash(window.location.hash))
@@ -127,7 +131,7 @@ export function MfaReadiness({ scan: lastScan, baseline }: { scan: { snapshot: T
   const step = stepId === null ? null : (steps.find((s) => s.id === stepId) ?? null)
   const hold = step && data.computed ? stepMfaHold(step, scored) : null
   const cohort = step?.preparation?.ids ?? step?.methodPreparation?.ids ?? null
-  const context: PlanContext | null = step && (hold || cohort || step.id === SETUP_STEP) ? { title: contentTitle(step), stepId: step.id, ids: hold ? hold.ids : (cohort ?? reached(step)?.ids ?? null) } : null
+  const context: PlanContext | null = step && (hold || cohort || step.id === SETUP_STEP) ? { title: contentTitle(step), stepId: step.id, ids: hold ? hold.ids : (cohort ?? reached(step)?.ids ?? null), held: hold !== null } : null
   const stepIds = new Set(steps.map((s) => s.id))
   const guestStep = steps.find((s) => s.id === GUEST_STEP_ID) ?? null
   return <ReadinessPage snapshot={lastScan?.snapshot ?? null} context={context} planSteps={stepIds} guestStep={guestStep} />
@@ -250,23 +254,27 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
   const counted = view.rows.filter((r) => r.state !== null && inScope(r))
   const counts = Object.fromEntries(READINESS_STATES.map((s) => [s, counted.filter((r) => r.state === s).length])) as Record<ReadinessState, number>
   // Scoped to the Plan step's people where the page was opened from one. Guests
-  // are counted with everyone else and named beside the people (owner, 2026-09-19).
+  // are counted with everyone else and named beside the people (owner, 2026-09-19;
+  // summaryLine and countedLine name them).
   const active = counted.length
-  const cohort = cohortWords(active, counted.filter((r) => r.guest).length)
-  const ready = counts.ready + counts.seamless
   // The one proof-read check Connect and the Plan's gate make (scoring/fromSnapshot.ts): records read AND carrying
-  // proof. A scan that holds no proof is unmeasured, never "0 of N".
+  // proof. A scan that holds no proof, or nobody could be judged in, is unmeasured, never "0 of N" (summaryLine).
   // Without Entra ID P1 there are no sign-in records to read: said here, once, not on every row (owner item 4).
   // With nobody countable AND no P1, "No active people to count" states a count
   // the scan never took: Graph withholds signInActivity without P1, so nobody
   // could be placed inside or outside the window (V1 audit S4-21).
-  const summary = active === 0 ? (signInsNeedP1(snapshot) ? T.summaryNoneNoP1 : T.summaryNone) : signInsNeedP1(snapshot) ? fillText(T.summaryNoP1, { cohort }) : !signInProofRead(snapshot) ? fillText(T.summaryUnmeasured, { cohort }) : fillText(T.summary, { ready, cohort })
+  const summary = summaryLine(counted, { needP1: signInsNeedP1(snapshot), proofRead: signInProofRead(snapshot) })
+  // The footer's counted line, which says nothing where nobody's activity was read.
+  const footerCounted = countedLine(counted, { needP1: signInsNeedP1(snapshot), activityUnread: view.explained.unread })
   const goal = goalLine(counted)
   // The computers the tenant signs in from choose the words that name a built-in option: no Windows Hello for a Mac-only tenant.
   const seen = computersSeen(view.rows)
+  // Nor a synced passkey on the Mac where no row would offer one (attestation, an allow list, or Step 3 to come).
+  const offersSynced = syncedPasskeyOffered(view.context)
   // Scoped from a Plan step, the next check counts that step's people, not the tenant's.
   const scopedView = context ? { ...view, rows: view.rows.filter(inScope), counts } : { ...view, counts }
-  const next = nextCheck(scopedView, context ? tenantSetupChecks(snapshot, scopedView) : checks)
+  // Opened from a step whose people this scan could not settle, no tenant-wide group is put forward as its next check.
+  const next = stepNextCheck(scopedView, context ? tenantSetupChecks(snapshot, scopedView) : checks, context ? context.ids : undefined)
   const remaining = remainingChecks(checks)
   const done = checks.filter((c) => c.outcome === 'pass' || c.outcome === 'note')
   const matches = (r: ReadinessRow): boolean => inScope(r) && shows(r, show, view.lapsing) && (!q || searchText(r).includes(q))
@@ -356,7 +364,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
       </p>
     ) : null
   const subTitle = (g: SubGroup): string =>
-    g.admins ? T.sub.admins : groupBy === 'devices' ? (g.platforms.length > 0 ? listWords(g.platforms.map(osWord)) : T.sub.noDevices) : (g.department ?? T.sub.noDepartment)
+    g.admins ? T.sub.admins : groupBy === 'devices' ? subDevicesTitle(g) : (g.department ?? T.sub.noDepartment)
   const groupBody = (state: ReadinessState, rows: ReadinessRow[]): ReactNode => {
     if (rows.length <= SUB_GROUP_AT) return <div className="readiness-rows">{head}{rows.map(rowView)}</div>
     const subs = subGroupsOf(rows, groupBy)
@@ -404,7 +412,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
     const G = state === 'unknown' && rows.every(signInsUnavailableFor) ? T.groupNoP1 : T.groups[state]
     const isNext = state === lead && show !== 'lapsing'
     const quiet = isReady(state)
-    const body = groupBodyLine(state, seen)
+    const body = groupBodyLine(state, seen, offersSynced)
     // The group's title is in its summary, which heading navigation can't reach: a visually hidden heading
     // before each group names it for a screen reader (owner, 2026-09-19).
     return (
@@ -485,10 +493,10 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
   return (
     <section className="surface readiness">
       {heading}
-      <p className="line intro">{leadLine(seen)}</p>
+      <p className="line intro">{leadLine(seen, offersSynced)}</p>
       {context && (
         <p className="line scope-line">
-          {context.ids === null ? fillText(T.planContext.unknown, { step: context.title }) : fillText(T.planContext.filtered, { cohort: scopedCohort, step: context.title })}{' '}
+          {scopeWords(context, scopedCohort)}{' '}
           {uncountedInScope > 0 && <>{fillText(T.planContext.uncounted, { n: uncountedInScope })}{' '}</>}
           <a href={stepHref(context.stepId)}>{T.planContext.back}</a>
         </p>
@@ -592,15 +600,12 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
           <section className="readiness-tile panel" aria-labelledby="readiness-setup">
             <h3 id="readiness-setup">{T.rail.setup}</h3>
             <p className="remain">{remaining.length > 0 ? fillText(T.rail.remaining, { n: remaining.length }) : T.rail.nothing}</p>
-            {remaining[0] && (
-              <>
-                <p className="check">{checkWords(remaining[0]).line}</p>
-                {setupNext && setupNext.key === remaining[0].key ? <p>{T.rail.shownAbove}</p> : checkWords(remaining[0]).text && <p>{checkWords(remaining[0]).text}</p>}
-                {remaining.slice(1).map((c) => (
-                  <p key={c.key} className="check">{checkWords(c).line}</p>
-                ))}
-              </>
-            )}
+            {railRemaining(remaining, setupNext?.key ?? null).map((c) => (
+              <Fragment key={c.key}>
+                <p className="check">{c.line}</p>
+                {c.text && <p>{c.text}</p>}
+              </Fragment>
+            ))}
             <details open={remaining.length === 0 || undefined}>
               <summary>{fillText(T.rail.completed, { n: done.length })}</summary>
               <ul>
@@ -641,7 +646,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
                 <div key={k} style={{ display: 'contents' }}>
                   <dt>{view.facts.kinds[k]}</dt>
                   <dd>
-                    <a href={readinessHref(k)}>{Cnt[k]}</a>
+                    <a href={readinessHref(k)}>{countedKindWords(k, view.facts.kinds[k])}</a>
                   </dd>
                 </div>
               ))}
@@ -652,7 +657,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
             <section className="readiness-tile panel" aria-labelledby="readiness-guests">
               <h3 id="readiness-guests">{G.title}</h3>
               <p>{fillText(G.count, { n: guests.active })}</p>
-              <p>{guests.trust === 'on' ? G.trustOn : guests.trust === 'off' ? G.trustOff : G.trustUnknown}</p>
+              <p>{guestTrustWords(guests.trust)}</p>
               {guests.policy !== 'absent' && (
                 <p>
                   {guests.policy === 'inPlace' ? G.policyInPlace : G.policyNotInPlace}{' '}
@@ -665,9 +670,10 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
 
           <section className="readiness-tile panel" aria-labelledby="readiness-evidence">
             <h3 id="readiness-evidence">{T.rail.evidence}</h3>
+            {!covered && <p>{noRecordsWords(source)}</p>}
             <dl className="ledger-list">
-              {covered ? (
-                partial ? (
+              {covered &&
+                (partial ? (
                   <div style={{ display: 'contents' }}>
                     <dt>{days}</dt>
                     <dd>{fillText(T.evidence.partial, { from: monthDay(covered.from), to: monthDay(covered.to) })}</dd>
@@ -677,32 +683,12 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
                     <dt>{days}</dt>
                     <dd>{fillText(T.evidence.full, { from: monthDay(covered.from), to: monthDay(covered.to) })}</dd>
                   </div>
-                )
-              ) : (
-                <div style={{ display: 'contents' }}>
-                  <dt>0</dt>
-                  <dd>{source?.reason && source.status !== 'ok' ? fillText(app.readiness.lineNoRecordsReason, { reason: source.reason }) : T.evidence.none}</dd>
-                </div>
-              )}
-              {(source?.targeted?.read ?? 0) > 0 && (
-                <div style={{ display: 'contents' }}>
-                  <dt>{source?.targeted?.read}</dt>
-                  <dd>{T.evidence.individually}</dd>
-                </div>
-              )}
-              {notCovered > 0 && (
-                <div style={{ display: 'contents' }}>
-                  <dt>{notCovered}</dt>
-                  <dd>{T.evidence.notCovered}</dd>
-                </div>
-              )}
-              {unreadMethods > 0 && (
-                <div style={{ display: 'contents' }}>
-                  <dt>{unreadMethods}</dt>
-                  <dd>{T.evidence.unreadMethods}</dd>
-                </div>
-              )}
+                ))}
             </dl>
+            {/* Each count in its own sentence, so a count of one reads as one. */}
+            {(source?.targeted?.read ?? 0) > 0 && <p>{evidenceWords('individually', source?.targeted?.read ?? 0)}</p>}
+            {notCovered > 0 && <p>{evidenceWords('notCovered', notCovered)}</p>}
+            {unreadMethods > 0 && <p>{unreadMethodsWords(snapshot, unreadMethods)}</p>}
             {(notCovered > 0 || unreadMethods > 0) && (
               <p>
                 <Button variant="secondary" onClick={() => again.run(scan(readinessHref(show)))}>
@@ -716,7 +702,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
       </div>
 
       <div className="footer-note">
-        <span>{fillText(T.footer.counted, { cohort })}</span>
+        {footerCounted && <span>{footerCounted}</span>}
         <span>{T.footer.plan}</span>
         <a href="#/inventory">{T.inventory}</a>
       </div>
@@ -748,11 +734,11 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
           </section>
           <section>
             <h3>{T.panel.devices}</h3>
-            {panelList(panelDevices(openRow), T.panel.noDevices)}
+            {panelList(panelDevices(openRow), panelNoDevices(openRow))}
           </section>
           <section>
             <h3>{T.panel.methods}</h3>
-            {panelList(panelMethods(openRow), T.panel.noneRegistered)}
+            {panelList(panelMethods(openRow), panelNoMethods(openRow))}
           </section>
         </aside>
       )}
