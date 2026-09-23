@@ -75,7 +75,9 @@
       "strandedAfterLocked": "The passkey settings are applied. IAMAI could not judge the passkeys on {count}: {names}, and cannot confirm another way in for them (for an administrator, another phishing-resistant method). Have each sign in with their passkey now; where it no longer works, register an approved passkey for that account.",
       "withheld": "Key restrictions stay off for now: they would lock out {count} — {names}. Every passkey those accounts hold is one the allow list would stop, or one IAMAI could not judge, and none has another way in that IAMAI can confirm (for an administrator, another phishing-resistant method). Register an approved passkey for each, then scan again: the restrictions are offered once nobody would be locked out.",
       "withheldTask": "Key restrictions are not part of this change yet: {count} would be locked out by them. Prepare affected passkeys says who and what to do first.",
-      "keptMany": "another sign-in method ({methods})"
+      "keptMany": "another sign-in method ({methods})",
+      "$commentUnread": "Prepare affected passkeys where the scan did not read everything the planned settings reach and, in what it did read, found no passkey they stop (ui/surfaces/emergencyPasskeyTasks.ts). {unread} is what it did not read, the same sentences the Existing passkeys affected tile shows under Could not verify (roadmap/passkeyCompatibility.ts coverage). The task said \"No existing passkey is affected by the planned settings\" there: on a tenant where no account's registered methods were read, and wherever the passkey settings themselves were not read, under a tile reading Could not verify.",
+      "unread": "IAMAI could not tell whether the planned settings stop any existing passkey. {unread} Keep the existing working method available while preparing an account."
     },
     "changeRemoves": "This change removes {removed} from the policy's exclusions. If the policy is On, it applies to them as soon as you save.",
     "changeRemovesGuests": "guest or external users",

@@ -329,3 +329,42 @@ test('an administrator whose only phishing-resistant method is an unjudged passk
   assert.doesNotMatch(apply, RESTRICTION, `the allow list is handed over with admins it would lock out:\n${apply}`)
   assert.doesNotMatch(task(projected, 'prepare-affected-passkeys').steps[0], /none is locked out/)
 })
+
+// Nobody found affected in what was read is not nobody affected. Prepare
+// affected passkeys said "No existing passkey is affected by the planned
+// settings" on hostile, where not one account's registered methods were read,
+// and on every tenant whose passkey settings were not read — under the tile
+// "Existing passkeys affected · Could not verify". It now says what it did not
+// read; the all-clear is kept for a tenant read in full.
+const ALL_CLEAR = 'No existing passkey is affected by the planned settings. Keep the existing working method available while preparing an account.'
+function prepareLead(name: 'hostile' | 'getiamai', change: (snapshot: TenantSnapshot) => void = () => {}) {
+  const value = structuredClone(fixture(name))
+  change(value.snapshot)
+  const run = runFixture(value)
+  const step = run.steps.find(row => row.id === 's-prereq-passkey-settings')!
+  const ctx: StepVarContext = { snapshot: value.snapshot, mapping: value.mapping, nameOf: id => run.input.names!.label(id), signature: 'IT', operatorId: value.operatorId, now: value.snapshot.asOf, groups: value.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
+  const prepare = task(emergencyPasskeyTasksOf(step, ctx), 'prepare-affected-passkeys')
+  return { lead: prepare.steps[0], text: emergencyTaskText(prepare, prepare.defaultVariantId), tile: step.configurationFindings?.find(f => f.key === 'affected-passkeys') }
+}
+
+test('an impact IAMAI could not read is never an all-clear: the task says what it did not read', () => {
+  const cases: [string, ReturnType<typeof prepareLead>, RegExp][] = [
+    // hostile: no account's registered methods were read.
+    ['registered methods unread', prepareLead('hostile'), /Some users’ registered authentication methods were not readable\./],
+    // The passkey settings source itself unread.
+    ['passkey settings unread', prepareLead('getiamai', s => { s.config.authMethodsPolicy = { status: 'error', reason: 'Forbidden', rows: [] } }), /The current and intended passkey configuration could not be compared exactly\./],
+    // One account's methods unread in a tenant otherwise read in full.
+    ['one account’s methods unread', prepareLead('getiamai', s => { s.authMethods[s.users[0].id] = 'unknown' as never }), /Some users’ registered authentication methods were not readable\./],
+  ]
+  for (const [label, { lead, text, tile }, unread] of cases) {
+    assert.equal(tile?.value, 'Could not verify', `${label}: the premise is a tile that could not verify the impact`)
+    assert.doesNotMatch(text, /No existing passkey is affected/, `${label}: an all-clear over what was not read:\n${text}`)
+    assert.match(lead, /^IAMAI could not tell whether the planned settings stop any existing passkey\. /, `${label}: ${lead}`)
+    assert.match(lead, unread, `${label}: what was not read is not named: ${lead}`)
+    assert.match(lead, /Keep the existing working method available while preparing an account\.$/, `${label}: ${lead}`)
+  }
+  // A tenant read in full with nothing affected reads as it did.
+  const full = prepareLead('getiamai')
+  assert.notEqual(full.tile?.value, 'Could not verify', 'the premise: getiamai is read in full')
+  assert.equal(full.lead, ALL_CLEAR)
+})
