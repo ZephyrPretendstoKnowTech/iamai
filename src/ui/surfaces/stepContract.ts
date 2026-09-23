@@ -363,7 +363,7 @@ export type ContractAction = {
    * What has to clear before that action can be taken, where the action IS the
    * wait: Foundation B's own gate (roadmap/lifecycle.ts nextMilestone
    * `gatedBy`), said in the words the board already shows for it where a board
-   * handed its reading down ("Waiting on your direction", "After Prepare
+   * handed its reading down ("Waiting on your answers", "After Prepare
    * Emergency Access Accounts"; planBoard.ts laneTailOf reads the same blocker),
    * and in the engine's own words otherwise.
    *
@@ -1105,7 +1105,7 @@ function fixOf(step: Step, cs: Record<string, unknown> | undefined, ex: Record<s
   // Accounts Group for D2's service accounts — already states that wait. The
   // answer behind it is that step's own, and that step shows it. Saying both
   // gave a policy "Prerequisite · To do: Define the Trusted Network" and
-  // "Waiting on your direction: Decide Where People Sign In From" side by side:
+  // "Waiting on your answers: Decide Where People Sign In From" side by side:
   // one fact in two vocabularies, and the nearest cause is the step.
   const relayed = new Set(out.flatMap((f) => {
     const [kind, ...rest] = f.key.split(':')

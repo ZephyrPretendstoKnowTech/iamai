@@ -26,7 +26,7 @@
 // is not in that graph — nothing in Entra changes on it — so the wait is the
 // `decision` blocker a policy waiting on a Direction answer has always carried
 // (direction.ts gateOnDirection), which holds the step the same way and reads as
-// Waiting on your direction.
+// Waiting on your answers.
 //
 // Not gated: the members of the two groups themselves, anything that is not a
 // policy step (a prerequisite, a check, a Cleanup or campaign row, a baseline

@@ -4,7 +4,7 @@
   "reason": "after: Confirm What You Use",
   "fact": "Report-only",
   "badge": "On Hold",
-  "bar": "Waiting on your direction",
+  "bar": "Waiting on your answers",
   "rail": "Not scheduled",
   "headings": [
     "About this Step",
@@ -19,7 +19,7 @@
     },
     {
       "label": "Confirm What You Use",
-      "state": "Waiting on your direction"
+      "state": "Waiting on your answers"
     }
   ],
   "channels": [
