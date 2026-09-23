@@ -519,19 +519,22 @@ function answerVars(ctx: StepVarContext, v: Record<string, unknown>): Record<str
 }
 
 /**
- * Whether this step reaches the signed-in account. A step with no policy of its
- * own answers from its reach (derive/population.ts reached) where that reach is
- * established. Anywhere else the step's own answer stands (generate.ts
- * includesOperator): an open policy's, and a delivered step's whose policies'
- * scope could not be settled, where the delivering policies were asked about
- * this one account and an answer they could not give counts as reaching it.
- * A delivered step decided this from the goal's people, a list nothing measured
- * for the policies that deliver it: "Your account is in scope" stood under "IAMAI
- * cannot establish exactly who this reaches".
+ * Whether this step reaches the signed-in account. An open policy answers for
+ * itself (generate.ts includesOperator). A step with no policy of its own
+ * answers from its reach (derive/population.ts reached), the one its cards
+ * read: the people it lists, or, while the tenant's policies deliver it, their
+ * own scope. Where that delivered reach is not established, the delivering
+ * policies were asked about this one account (generate.ts
+ * deliveredReachesOperator), and an answer they could not give counts as
+ * reaching it. A delivered step decided this from the goal's people, a list
+ * nothing measured for the policies that deliver it: "Your account is in scope"
+ * stood under "IAMAI cannot establish exactly who this reaches".
  */
 function operatorInScope(step: Step, operatorId: string): boolean {
-  const reach = effectsOf(step) === null ? reached(step) : null
-  return reach !== null && reach !== undefined ? reach.ids.includes(operatorId) : step.includesOperator === true
+  if (effectsOf(step) !== null) return step.includesOperator === true
+  const reach = reached(step)
+  if (reach === null) return step.deliveredReachesOperator === true
+  return (reach?.ids ?? []).includes(operatorId)
 }
 
 function operatorSignIns(snapshot: TenantSnapshot, operatorId: string): number | undefined {
