@@ -2986,7 +2986,11 @@
         "$comment": "The MFA Readiness surface's own words (task 012); pages.app.today until it was renamed."
       },
       "export": {
-        "couldNotRead": "could not read the plan file",
+        "couldNotRead": "The plan file could not be read. Nothing was loaded.",
+        "$commentPlanFileRefusal": "Why a plan file did not load, by the kind roadmap/plan.ts parsePlanFile reads (planFileRefusal). The page showed the parser's own message instead: a lowercase fragment, \"update the app\" for a web page, and the loaded file's text echoed back (Phase 2 export finding 14).",
+        "planFileNotPlan": "This file is not an IAMAI plan file. Nothing was loaded.",
+        "planFileDamaged": "This plan file is damaged or incomplete, so it could not be read. Nothing was loaded.",
+        "planFileNewer": "This plan file was saved by a newer version of IAMAI than this page, so it could not be read. Nothing was loaded.",
         "planTenantUnknown": "This plan file does not say which tenant it was made for, so it cannot be loaded into {current} safely. Nothing was loaded.",
         "planFromAnotherTenant": "This plan was made for {planTenant}, and you are connected to {current}. Nothing was loaded. Open it while connected to {madeFor}.",
         "anotherTenant": "another tenant",

@@ -27,7 +27,7 @@ import type { PlanComputed } from './planData.ts'
 import { inventoryTables, readinessTable } from './inventoryTables.ts'
 import { notPeopleIds } from '../../derive/sets.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
-import { buildPlanFile, makeCheckpoint, parsePlanFile, sameBaselineSource } from '../../roadmap/plan.ts'
+import { buildPlanFile, makeCheckpoint, parsePlanFile, planFileRefusal, sameBaselineSource } from '../../roadmap/plan.ts'
 import { baselineContentHash } from '../../baseline/contentHash.ts'
 import type { Checkpoint } from '../../roadmap/plan.ts'
 import { decisionsOf } from '../../roadmap/progress.ts'
@@ -185,12 +185,14 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   const loadPlan = async (files: FileList | null): Promise<void> => {
     if (!files || files.length === 0) return
     setExportError(null)
-    try { await loadPlanInner(files) } catch { setExportError(A.couldNotRead) } finally { if (fileInput.current) fileInput.current.value = '' }
+    try { await loadPlanInner(files) } catch { setExportError(planFileRefusal(null)) } finally { if (fileInput.current) fileInput.current.value = '' }
   }
   const loadPlanInner = async (files: FileList): Promise<void> => {
-    const { plan, error } = parsePlanFile(await files[0].text())
+    // Why it did not load, in the page's words (roadmap/plan.ts planFileRefusal):
+    // never the parser's message, which can carry the file's own text.
+    const { plan, kind } = parsePlanFile(await files[0].text())
     if (!plan) {
-      setExportError(error ?? A.couldNotRead)
+      setExportError(planFileRefusal(kind))
       return
     }
     // The tenant check runs before anything is persisted (planTenant.test.ts).
