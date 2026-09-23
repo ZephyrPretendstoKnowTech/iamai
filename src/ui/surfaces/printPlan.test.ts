@@ -19,11 +19,12 @@ import { notPeopleIds } from '../../derive/sets.ts'
 import { activePeopleIds } from '../../derive/population.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { customerPlanSteps } from './customerPlanSteps.ts'
-import { boardOf } from './planBoard.ts'
+import { boardHolds, boardOf } from './planBoard.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { completedRows, deferredRows, doesntApplyRows, floorRows, openDoneRows } from './planRows.ts'
-import { cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, laneGroupsOf, noPlanLine, postureOf } from './printPlan.ts'
+import { completedRows, deferredRows, doesntApplyRows, floorRows, openDoneRows, phaseRows, planPhases } from './planRows.ts'
+import { cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, laneGroupsOf, noPlanLine, phaseDatesOf, postureOf } from './printPlan.ts'
+import { scheduleOf, scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { absoluteDate, dateRange } from '../../copy/dates.ts'
 import { stepFacts } from '../../derive/facts.ts'
@@ -284,4 +285,29 @@ test('a printed Cleanup row says what the board says it waits for', () => {
   assert.match(print, /cleanupHeadsOf\(schedule\.cleanup\.rows, laneOf\)/, 'the print words the Cleanup heads itself')
   assert.match(print, /status=\{\{ word: h\.word, tone: h\.tone, waitingFor: h\.waitingFor \}\}/, 'the Cleanup body is not handed the wait')
   assert.match(readFileSync('src/ui/surfaces/CleanupStep.tsx', 'utf8'), /sub=\{status\.waitingFor \? <p className="reason">\{status\.waitingFor\}<\/p> : null\}/, 'the Cleanup body does not draw the wait under its title')
+})
+
+// ---- A phase's printed dates are the days its rows state ----
+
+test('a printed phase is dated by the days its rows state, never by a forecast enforcement no row states', () => {
+  // Large after the recovery test: every row of Phases 1-3 reads Ready · Create
+  // with the day it is created in report-only, but the phases printed
+  // "Aug 31, 2026 → Oct 13 / Nov 3 / Nov 24, 2026": each wave's own forecast
+  // enforcement window, a day no step and no board row states.
+  const p = plan('large', { stage: 'recovered' })
+  const held = (s: Step): boolean => boardHolds(s, p.board.laneOf(s.id))
+  const phases = planPhases(p.schedule).map((w) => ({ w, rows: phaseRows(p.steps, w, held) })).filter((x) => x.rows.length > 0)
+  assert.ok(phases.some((x) => x.w.wave > 0 && x.rows.every((s) => scheduleOf(s).enforcement === 'forecast')), 'the premise: a phase of report-only creates with forecast enforcements')
+  for (const { w, rows } of phases) {
+    const stated = rows.map(scheduledEventOf).filter((e) => e !== null)
+    const printed = phaseDatesOf(rows)
+    if (stated.length === 0) { assert.equal(printed, null, `phase ${w.wave} is dated though no row states a day`); continue }
+    const start = stated.map((e) => e.start).sort()[0]
+    const end = stated.map((e) => e.end).sort().at(-1)!
+    assert.equal(printed, absoluteDate(start) === absoluteDate(end) ? absoluteDate(start) : dateRange(start, end), `phase ${w.wave}: the printed dates are not the days its rows state`)
+  }
+  assert.equal(phases.some((x) => (phaseDatesOf(x.rows) ?? '').includes('Nov 24, 2026')), false, 'a phase still ends on the forecast Nov 24')
+  const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
+  assert.equal(/w\.days === 0 \? absoluteDate\(w\.start\) : dateRange\(w\.start, w\.end\)/.test(print), false, 'the print still dates a phase by the wave\'s own window')
+  assert.match(print, /phaseDatesOf\(phaseSteps\(w\)\)/, 'the print does not date a phase by its rows')
 })

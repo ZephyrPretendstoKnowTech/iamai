@@ -14,6 +14,7 @@ import { doesntApplyRows } from './planRows.ts'
 import { FINISH } from '../../copy/statements.ts'
 import type { PlanFinish } from '../../derive/finish.ts'
 import { absoluteDate, dateRange } from '../../copy/dates.ts'
+import { scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import { stepBodyOf } from './stepBody.ts'
 import type { StepVarContext } from './stepVars.ts'
 import type { LaneView, PrerequisiteBlocker, PrerequisiteLabel, ReadinessTile } from './stepContract.ts'
@@ -123,4 +124,25 @@ export function cleanupHeadsOf<R extends { kind: string }>(rows: readonly R[], l
     const lane = laneOf(`cleanup-${row.kind}`)
     return { row, kind: row.kind, word: lane.label, tone: lane.tone, waitingFor: lane.waitingFor ?? null }
   })
+}
+
+/**
+ * A printed phase's dates: from the first to the last day its rows state, each
+ * row's one dated event (roadmap/stepSchedule.ts scheduledEventOf, the day the
+ * row, the rail and the calendar give it), and one date where that is a single
+ * day. Null where no row states a day. The phase's own range is the wave's
+ * forecast window widened by its rows' spans, which run to a forecast
+ * enforcement: large's phases printed "Aug 31, 2026 → Nov 24, 2026" over rows
+ * that each state only the day they are created in report-only.
+ */
+export function phaseDatesOf(rows: readonly Step[]): string | null {
+  let start: string | null = null
+  let end: string | null = null
+  for (const e of rows.map(scheduledEventOf)) {
+    if (e === null) continue
+    if (start === null || Date.parse(e.start) < Date.parse(start)) start = e.start
+    if (end === null || Date.parse(e.end) > Date.parse(end)) end = e.end
+  }
+  if (start === null || end === null) return null
+  return absoluteDate(start) === absoluteDate(end) ? absoluteDate(start) : dateRange(start, end)
 }
