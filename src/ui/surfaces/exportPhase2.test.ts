@@ -450,6 +450,14 @@ test('the bundle\'s tenant profile draws no count from a section the scan did no
   assert.equal(sectionHasData(mid.f.snapshot, 'registrationDetails'), true, 'the premise: mid read them')
   const read = groundingBundle({ view: mid.view, tenant: 'Tenant', snapshot: mid.f.snapshot, coverage: mid.r.coverage, steps: mid.r.steps, schedule: mid.r.schedule, redacted: false, generated: 'today', cleanup: mid.cleanup }).profile as Record<string, unknown>
   assert.equal(typeof read.registrationMfaCapable, 'number')
+  assert.equal(typeof read.admins, 'number')
+  // The admin count too: a refused role read drew 0 admins. No fixture refuses
+  // it, so the same mid scan is read with its role assignments refused.
+  const refused = structuredClone(mid.f.snapshot)
+  refused.config.roleAssignments = { ...refused.config.roleAssignments!, status: 'error', rows: [] }
+  assert.equal(sectionHasData(refused, 'roleAssignments'), false, 'the premise: role assignments were not read')
+  const noRoles = groundingBundle({ view: mid.view, tenant: 'Tenant', snapshot: refused, coverage: mid.r.coverage, steps: mid.r.steps, schedule: mid.r.schedule, redacted: false, generated: 'today', cleanup: mid.cleanup }).profile as Record<string, unknown>
+  assert.equal(noRoles.admins, null, `an admin count over an unread section: ${noRoles.admins}`)
 })
 
 // Finding 18 (severity 1, reproduced). AI Info's package words doubled the full
