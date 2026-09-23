@@ -502,8 +502,11 @@ export function reportOnlyIdsFold(): RowFold<string[]> {
   }
 }
 
-/** A result that shows the policy enforced: it applied and passed, or applied and blocked. */
-export const isEnforcedResult = (r: string | undefined): boolean => r === 'success' || r === 'failure'
+/** A result that shows the policy enforced: it applied and passed, or applied and blocked (RESULT_CLASS). */
+export const isEnforcedResult = (r: string | undefined): boolean => {
+  const cls = r && Object.hasOwn(RESULT_CLASS, r) ? RESULT_CLASS[r] : undefined
+  return cls === 'enforcedSuccess' || cls === 'enforcedFailure'
+}
 
 /**
  * The last record that shows each policy *enforced*. A report-only record
