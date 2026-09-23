@@ -162,7 +162,7 @@ test('no write scope is requested, and no public surface names one', () => {
 test('How generates its permissions, reads and checks from the registries', () => {
   assert.match(HOW, /scopeRows\(\)/, 'the permissions are generated from GRAPH_SCOPES')
   assert.match(HOW, /COLLECTOR_REGISTRY\.filter/, 'the reads are the collector registry')
-  assert.match(HOW, /REGISTRY\.filter/, 'the checks are the rule registry')
+  assert.match(read('src/ui/surfaces/howView.ts'), /REGISTRY\.filter/, 'the checks are the rule registry')
   // No literal endpoint, scope or check written into the page.
   for (const literal of ['https://graph.microsoft.com', '/v1.0/', 'Policy.Read.All', 'Directory.Read.All']) {
     assert.ok(!HOW.includes(literal), `How writes ${literal} down instead of reading it from the registry`)

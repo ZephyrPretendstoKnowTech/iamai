@@ -12,11 +12,11 @@
 import { useEffect, useRef } from 'react'
 import { COLLECTOR_REGISTRY } from '../../graph/collect/registry.ts'
 import type { CollectorSpec } from '../../graph/collect/registry.ts'
-import { REGISTRY, ruleText, citationFor } from '../../validation/rules.ts'
-import type { RuleSubject, RuleSeverity } from '../../validation/rules.ts'
+import { howCheckTables } from './howView.ts'
+import type { HowCheckRow } from './howView.ts'
 import { scopeRows } from '../PermissionsDisclosure.tsx'
 import { PERMISSIONS, SIGN_IN_SCOPES } from '../../copy/permissions.ts'
-import { SEVERITY, SUBJECT, NEED_LABEL, CITATION, FIELD_PRACTICE } from '../../copy/validation.ts'
+import { CITATION } from '../../copy/validation.ts'
 import { PACKAGE } from '../../copy/inventory.ts'
 import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
@@ -39,7 +39,7 @@ const BUILD_COMMIT = typeof __BUILD_COMMIT__ === 'string' ? __BUILD_COMMIT__ : '
 const BUILD_DATE = typeof __BUILD_DATE__ === 'string' ? __BUILD_DATE__ : ''
 const READS = app.how
 
-const SEVERITY_CHIP: Record<RuleSeverity, ChipStatus> = { blocker: 'blocked', warning: 'warning', note: 'neutral' }
+const SEVERITY_CHIP: Record<HowCheckRow['severity'], ChipStatus> = { blocker: 'blocked', warning: 'warning', note: 'neutral', housekeeping: 'neutral' }
 
 export function How() {
   const packageHeading = useRef<HTMLHeadingElement>(null)
@@ -62,7 +62,7 @@ export function How() {
   }, [])
   const permissions = scopeRows().filter((r) => !SIGN_IN_SCOPES.includes(r.scope) && r.usedBy.length > 0)
   const lanes: CollectorSpec['lane'][] = ['0', 'A', 'B', 'on-demand']
-  const subjects = [...new Set(REGISTRY.map((r) => r.subject))] as RuleSubject[]
+  const checkTables = howCheckTables()
 
   return (
     <section className="surface how">
@@ -115,18 +115,20 @@ export function How() {
       <details className="how-reference">
       <summary>{C.checks}</summary>
       <p className="reason">{C.checksIntro}</p>
-      {subjects.map((subject) => (
+      {/* The subjects a plan evaluates and the static rules it runs, from the
+          registries (howView.ts): never a check no plan runs. */}
+      {checkTables.map((table) => (
         <DataTable
             panel
-            key={subject}
-            caption={SUBJECT[subject] ?? subject}
-            rows={REGISTRY.filter((r) => r.subject === subject)}
+            key={table.key}
+            caption={table.caption}
+            rows={table.rows}
             rowKey={(r) => r.id}
             columns={[
-              { key: 'what', header: 'What it looks for', minWidth: '16rem', render: (r) => ruleText(r.id).what },
-              { key: 'severity', header: 'If it fails', render: (r) => <Chip status={SEVERITY_CHIP[r.severity]}>{SEVERITY[r.severity]}</Chip> },
-              { key: 'why', header: 'Why it matters', minWidth: '18rem', render: (r) => ruleText(r.id).why },
-              { key: 'needs', header: 'Needs', minWidth: '12rem', render: (r) => (r.needs.length === 0 ? 'nothing' : r.needs.map((n) => NEED_LABEL[n] ?? n).join(', ')) },
+              { key: 'what', header: 'What it looks for', minWidth: '16rem', render: (r) => r.what },
+              { key: 'severity', header: 'If it fails', render: (r) => <Chip status={SEVERITY_CHIP[r.severity]}>{r.severityLabel}</Chip> },
+              { key: 'why', header: 'Why it matters', minWidth: '18rem', render: (r) => r.why },
+              { key: 'needs', header: 'Needs', minWidth: '12rem', render: (r) => r.needs },
               {
                 key: 'source',
                 header: CITATION.source,
@@ -136,11 +138,11 @@ export function How() {
                 // or a Graph path, which is right for those and wrong for this.
                 minWidth: '12rem',
                 render: (r) => {
-                  const c = citationFor(r.id)
-                  if (!c || c === FIELD_PRACTICE) return CITATION.fieldPracticeShort
+                  if (!r.source) return null
+                  if (r.source.url === null) return r.source.label
                   return (
-                    <a href={c.url} target="_blank" rel="noopener noreferrer">
-                      {c.label}
+                    <a href={r.source.url} target="_blank" rel="noopener noreferrer">
+                      {r.source.label}
                     </a>
                   )
                 },

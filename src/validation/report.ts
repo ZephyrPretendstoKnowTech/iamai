@@ -91,6 +91,18 @@ export function toValidationResult(results: RuleResult[], checkedAt = new Date()
   }
 }
 
+/**
+ * The rule subjects a plan evaluates (roadmap/generate.ts, through `reportFor`
+ * and `breakGlassReport`), in the order How lists them. `reportFor` takes only
+ * these, so the list cannot fall behind the engine: a subject the plan starts
+ * evaluating has to be added here first, and How lists it from here.
+ *
+ * The registry also holds the pilot-group and authentication-strength rules,
+ * which nothing evaluates; How listed them as checks IAMAI runs (Phase 2 audit).
+ */
+export const EVALUATED_SUBJECTS = ['breakGlass', 'exclusionGroup', 'trustedLocation', 'allowedCountries', 'serviceAccount'] as const satisfies readonly RuleSubject[]
+export type EvaluatedSubject = (typeof EVALUATED_SUBJECTS)[number]
+
 /** Every subject the plan gates on, with the rule results behind it. */
 export type SubjectReport = {
   subject: RuleSubject
@@ -113,7 +125,7 @@ function labelOf(ctx: ValidationContext, target: unknown): string {
   return g?.displayName ?? g?.groupId ?? g?.id ?? ''
 }
 
-export function reportFor(subject: RuleSubject, targets: unknown[], ctx: ValidationContext): SubjectReport {
+export function reportFor(subject: EvaluatedSubject, targets: unknown[], ctx: ValidationContext): SubjectReport {
   const perTarget = targets.map((target) => ({ target, label: labelOf(ctx, target), results: evaluateSubject(subject, target, ctx) }))
   const all = perTarget.flatMap((t) => t.results)
   return {
@@ -221,8 +233,4 @@ export function exclusionGroupFindings(entry: GroupFacts | null, i: ValidationIn
 
 export function trustedLocationFindings(location: unknown, i: ValidationInputs): ValidationResult {
   return toValidationResult(evaluateSubject('trustedLocation', location, buildContext(i)))
-}
-
-export function pilotGroupFindings(entry: GroupFacts | null, i: ValidationInputs): ValidationResult {
-  return toValidationResult(evaluateSubject('pilotGroup', entry, buildContext(i)))
 }

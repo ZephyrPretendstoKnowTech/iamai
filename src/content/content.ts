@@ -113,7 +113,13 @@ export type AppWords = {
     /** The undated group the document prints after the phases, as the Plan draws it (planRows.ts). */
     held: { heading: string; lead: string }
   }
-  how: Record<string, string> & { limitsList: string[]; lanes: Record<string, string>; columns: Record<string, string> }
+  how: Record<string, string> & {
+    limitsList: string[]
+    lanes: Record<string, string>
+    columns: Record<string, string>
+    /** The static rules on the tenant's own policies (roadmap/staticRules.ts), one row per engine.staticRules key. */
+    staticChecks: { caption: string; severity: string; rows: Record<string, { what: string; why: string }> }
+  }
   inventory: { caps: Record<string, string>; workloadNames: Record<string, string> }
   picker: { placeholder: string; remove: string; searching: string; noMatches: string; typeToSearch: string; suggestions: string; results: string; done: string; matched: string; choose: string }
 }
