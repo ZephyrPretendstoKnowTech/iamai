@@ -136,8 +136,10 @@ export function ifWrongLineFor(step: Step, cs: Record<string, unknown>, ex: Reco
   //
   // What replaces it is decided by the patch, never by update mode alone. The
   // one update whose inverse is report-only is the state-only enforcement: it
-  // turned the policy on and touched nothing else, so switching it back off puts
-  // the tenant exactly where it was. Every other update changed a setting —
+  // turned the policy on and touched nothing else, so setting it back to
+  // report-only puts the tenant exactly where it was — never Off (owner,
+  // 2026-09-23): a policy left in report-only keeps collecting the sign-in data
+  // its next turn-on is judged by. Every other update changed a setting —
   // including a correction to a policy the tenant already enforces — and the way
   // back from those is to restore the settings the step shows above the line.
   // Report-only would be the wrong instruction twice over there: it weakens a
