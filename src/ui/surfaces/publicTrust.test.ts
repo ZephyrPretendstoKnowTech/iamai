@@ -345,4 +345,7 @@ test('How names every non-Microsoft host the app contacts, and that no tenant da
   assert.ok(others.length > 0)
   for (const host of others) assert.ok(hosting.includes(host), `How's hosting statement does not name ${host}`)
   assert.match(hosting, /no tenant data/i, 'it does not say what the GitHub requests carry')
+  // "reads the changed files when there are" left "there are" with nothing to
+  // refer to (Phase 2 review, round 2).
+  assert.match(hosting, /when there are changes, reads the changed files/, 'it says when the changed files are read')
 })
