@@ -70,10 +70,12 @@ export const SCOPE_COPY: Record<string, ScopeCopy> = {
     consentReads: "People, groups, devices, licences, the tenant's name",
   },
   'AuditLog.Read.All': {
-    reads: 'Interactive sign-in records for the last 30 days, and the report of which sign-in methods each person has registered.',
+    // The directory audit events are read with the sign-in records on every scan
+    // (graph/collect/laneB.ts); both rows named the sign-in records only (Phase 2 audit).
+    reads: "Interactive sign-in records and directory audit events for the last 30 days, when each account last signed in, and the report of which sign-in methods each person has registered. From an audit event IAMAI keeps what happened, when, its result and the objects it changed.",
     without: 'No predicted impact and no verification. Steps could still be listed, and none of them could be backed by evidence.',
     consentName: 'Read audit log data',
-    consentReads: 'Sign-in records for the last 30 days',
+    consentReads: 'Sign-in records and directory audit events for the last 30 days',
   },
   'RoleManagement.Read.Directory': {
     reads: 'Which accounts hold which directory roles, and which roles are assigned through Privileged Identity Management rather than permanently.',
