@@ -6,6 +6,7 @@
 // Pure: no DOM, no network. Runs in Node tests and in the browser.
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import type { CleanupExport } from '../../roadmap/types.ts'
+import type { LaneView } from './stepContract.ts'
 import { app, cleanup as cleanupContent, pages, schedulingWords } from '../../content/content.ts'
 import { fillText, missingVars } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
@@ -83,8 +84,22 @@ export function cleanupEvidenceLines(phase: CleanupPhase, row: CleanupPhase['row
   ].filter((line): line is string => typeof line === 'string' && line.length > 0)
 }
 
+/**
+ * The board's reading of the Cleanup rows, for an export: whether the plan can
+ * finish (`undated`: derive/finish.ts planFinish held) and each row's lane
+ * (by its board id, `cleanup-<kind>`). The Plan's CleanupRow reads the same two
+ * facts for its When column.
+ */
+export type CleanupBoardRead = { undated: boolean; laneOf: (id: string) => LaneView | null }
+
+/** The row's When column on the board, from its reading (the Plan's CleanupRow reads it the same way). */
+export function cleanupWhenOnBoard(row: CleanupPhase['rows'][number], read: CleanupBoardRead | null): string {
+  const lane = read?.laneOf(`cleanup-${row.kind}`) ?? null
+  return cleanupWhen(row, read?.undated ?? false, lane?.lane === 'Completed', lane?.lane === 'Ready' && lane.substatus === 'Review')
+}
+
 /** The row as the screen says it, for an export (a line with a hole is dropped, as on screen). */
-export function cleanupExportView(phase: CleanupPhase, row: CleanupPhase['rows'][number]): CleanupExport | null {
+export function cleanupExportView(phase: CleanupPhase, row: CleanupPhase['rows'][number], read: CleanupBoardRead | null = null): CleanupExport | null {
   const entry = cleanupEntry(row.kind)
   if (!entry) return null
   const ex = cleanupVars(phase, row)
@@ -95,11 +110,15 @@ export function cleanupExportView(phase: CleanupPhase, row: CleanupPhase['rows']
   const whatToDo = row.kind === 'drill'
     ? [...emergencyVerificationTasksOf(phase).tasks.flatMap(task => [`${task.title}${task.targetUpn ? ` — ${task.targetUpn}` : ''}`, ...task.steps]), 'Emergency recovery procedure', ...EMERGENCY_RECOVERY_PROCEDURE].map(line => line.replace(/\*\*/g, ''))
     : entry.whatToDo.filter(whole).map((l) => fillText(l, ex))
-  return { kind: row.kind, day: row.day, done: row.done, title: entry.title, manualEvidence: cleanupEvidenceLines(phase, row), why: fillText(entry.why, ex), whatToDo, doneWhen: entry.doneWhen.filter(whole).map((l) => fillText(l, ex)) }
+  return { kind: row.kind, day: row.day, done: row.done, title: entry.title, when: cleanupWhenOnBoard(row, read), undated: read?.undated ?? false, manualEvidence: cleanupEvidenceLines(phase, row), why: fillText(entry.why, ex), whatToDo, doneWhen: entry.doneWhen.filter(whole).map((l) => fillText(l, ex)) }
 }
 
-/** Every Cleanup row as words, in render order; none when the phase has nothing to say. */
-export function cleanupExportViews(phase: CleanupPhase | null | undefined): CleanupExport[] {
+/**
+ * Every Cleanup row as words, in render order; none when the phase has nothing
+ * to say. `read` is the board's reading (stepExport.ts exportCleanupViewsOf
+ * builds it for the Export page); without one a row reads its planned day.
+ */
+export function cleanupExportViews(phase: CleanupPhase | null | undefined, read: CleanupBoardRead | null = null): CleanupExport[] {
   if (!phase) return []
-  return phase.rows.map((r) => cleanupExportView(phase, r)).filter((v): v is CleanupExport => v !== null)
+  return phase.rows.map((r) => cleanupExportView(phase, r, read)).filter((v): v is CleanupExport => v !== null)
 }
