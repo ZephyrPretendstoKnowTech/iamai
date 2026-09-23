@@ -42,7 +42,7 @@ import { app, pages, shared } from '../../content/content.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { fillText } from '../../content/render.ts'
 import { monthDay } from '../../copy/dates.ts'
-import { checkWords, deviceChips, listWords, methodsCell, needsActionWords, nextCell, noDevicesWord, osWord, panelDevices, panelMethods, rowCells, rowNote, searchText, signInsUnavailableFor, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine, railRemaining } from './readinessCells.ts'
+import { checkWords, deviceChips, listWords, methodsCell, needsActionWords, nextCell, noDevicesWord, osWord, panelDevices, panelMethods, rowCells, rowNote, searchText, signInsUnavailableFor, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine, railRemaining, panelNoDevices } from './readinessCells.ts'
 import type { PanelItem } from './readinessCells.ts'
 import { READINESS_CSV } from './inventoryTables.ts'
 import { useAppliedMapping, usePlanData } from './planData.ts'
@@ -745,7 +745,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
           </section>
           <section>
             <h3>{T.panel.devices}</h3>
-            {panelList(panelDevices(openRow), T.panel.noDevices)}
+            {panelList(panelDevices(openRow), panelNoDevices(openRow))}
           </section>
           <section>
             <h3>{T.panel.methods}</h3>
