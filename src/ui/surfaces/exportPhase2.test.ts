@@ -6,9 +6,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { fixture } from '../../roadmap/fixtures/index.ts'
+import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import type { Fixture, FixtureName } from '../../roadmap/fixtures/index.ts'
-import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withDirectionApproved } from '../../roadmap/fixtures/run.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
 import { scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import type { Step } from '../../roadmap/types.ts'
@@ -220,4 +220,24 @@ test('an export\'s What to do carries no clause cut from its sentence and no bar
       }
     }
   }
+})
+
+// Finding 12 (severity 2). A policy ready to enforce read "The plan turns it on
+// on Sep 23, 2026, which leaves …": a doubled word, and the plan named as the
+// one that turns the policy on. The admin turns it on; the plan dates it.
+test('a scheduled turn-on names the plan as what dates it, never as what turns it on, and doubles no word', () => {
+  const ENFORCE_READY = /^The evidence for this policy is complete, so it is ready to be turned on\./
+  let scheduled = 0
+  for (const f of [withDirectionApproved(curatedFixture('demo-week2')), fixture('mid'), fixture('demo')]) {
+    const p = exportPage(f)
+    for (const step of p.r.steps) {
+      const v = p.view(step)
+      for (const line of [...v.whatToDo, v.next ?? '']) {
+        if (ENFORCE_READY.test(line)) scheduled++
+        assert.doesNotMatch(line, /\bon on\b/, `${f.name}/${step.id}: a doubled word: ${line}`)
+        assert.doesNotMatch(line, /The plan turns/, `${f.name}/${step.id}: the plan as the actor: ${line}`)
+      }
+    }
+  }
+  assert.ok(scheduled > 0, 'the premise: a turn-on the plan dates')
 })
