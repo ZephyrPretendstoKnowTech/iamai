@@ -185,7 +185,7 @@ export function withDirectionApproved(f: Fixture, ids: readonly DirectionStepId[
  * emergency account, a recovery sign-in this scan can see, and the two answers
  * that step asks — and every Decide Your Tenant's Direction answer approved.
  *
- * Until both pinned groups are settled no policy step is Ready and none is
+ * Until Emergency Access and Direction are settled no policy step is Ready and none is
  * dated, so a case about what a policy does, when it is dated or what it hands
  * over starts here, or it is testing the gate instead. It is the completion the
  * demo-week2 fixture builds into its own snapshot, over any fixture.

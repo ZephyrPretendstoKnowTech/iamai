@@ -10,8 +10,11 @@ import { countryName } from '../../mapping/countries.ts'
 import { answerOf, devicePlanOf, effectLine, travelCountriesOf } from '../../roadmap/answers.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { HEAD, taskHeadingsOf } from './stepHeadings.ts'
-import { app } from '../../content/content.ts'
+import { app, structuralWords } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
+import { reportOnlyPatchesOf, toReportOnly } from '../../roadmap/operations.ts'
+import type { PolicyOperation } from '../../roadmap/types.ts'
+import { powershellFor } from './stepPowerShell.ts'
 
 /**
  * Where a lifecycle resource would print a value IAMAI does not hold: U+E000, the
@@ -131,6 +134,62 @@ export function emailResource(step: Step, ctx: StepVarContext, why: string): Art
 export function mfaPreparationEmail(ctx: StepVarContext): Artifact {
   const text = EMAILS.mfaPreparation.map((m) => (m.heading ? `${m.heading}\n` : '') + message(m.subject, m.paragraphs, ctx)).join('\n\n')
   return { id: 'email', form: 'markdown', lines: [], text: () => text, note: null }
+}
+
+/**
+ * The policies this plan tracks that the tenant has switched off, set to
+ * Report-only (operations.ts toReportOnly): for each, open the one that is
+ * there, check it, set Enable policy to Report-only
+ * (pages.app.plan.switchedOffSteps); then scan, once
+ * (pages.app.plan.switchedOffRescan). Never On, and never a second policy; the
+ * step's ordinary report-only watch decides the turn-on after the next scan.
+ * A pair's member already in report-only or on is not named. Null on every
+ * other step.
+ */
+export function switchedOffLines(step: Step, tenant: string): string[] | null {
+  const off = toReportOnly(step)
+  if (off.length === 0) return null
+  return [
+    ...off.flatMap((p) => structuralWords.switchedOffSteps.map((line) => fillText(line, { policy: p.name, id: p.id, tenant }))),
+    fillText(structuralWords.switchedOffRescan, { tenant }),
+  ]
+}
+
+const GRAPH = 'https://graph.microsoft.com/v1.0'
+
+/**
+ * The Graph request a step with policies found Off hands over: the one-field
+ * patch to each (operations.ts reportOnlyPatchesOf). One policy is its own
+ * PATCH; a pair's two are one Graph batch of the two PATCHes, the form the
+ * pair's own JSON takes, and never a create. `requests` is what the batch
+ * sends, one per policy, as the AI Info briefing names them.
+ */
+export function switchedOffRequest(step: Step, ctx: StepVarContext): { ops: PolicyOperation[]; text: string; note: string; requests: { method: string; endpoint: string }[] } | null {
+  const ops = reportOnlyPatchesOf(step, (ctx.snapshot.config.caPolicies?.rows ?? []) as unknown[])
+  if (ops.length === 0) return null
+  const url = (op: PolicyOperation): string => `/identity/conditionalAccess/policies/${op.policyId}`
+  const requests = ops.map((op) => ({ method: 'PATCH', endpoint: `${GRAPH}${url(op)}` }))
+  if (ops.length === 1) return { ops, text: JSON.stringify(ops[0].body, null, 2), note: `PATCH ${requests[0].endpoint}`, requests }
+  const batch = { requests: ops.map((op, i) => ({ id: String(i + 1), method: 'PATCH', url: url(op), headers: { 'Content-Type': 'application/json' }, body: op.body })) }
+  return { ops, text: JSON.stringify(batch, null, 2), note: `POST ${GRAPH}/$batch`, requests }
+}
+
+/**
+ * The channels a step with policies found Off draws, all saying the same
+ * change: the portal lines, and the patches as JSON and as PowerShell. Empty
+ * on every other step. Where the scan does not hold a policy's own object the
+ * patch cannot be stated, and the JSON and PowerShell fall back to inspecting it.
+ */
+export function switchedOffResources(step: Step, ctx: StepVarContext, tenant: string): Artifact[] {
+  const lines = switchedOffLines(step, tenant)
+  if (lines === null) return []
+  const out: Artifact[] = [{ id: 'portal', form: 'list', lines, text: () => lines.map((line, i) => `${i + 1}. ${line}`).join('\n'), note: null }]
+  const request = switchedOffRequest(step, ctx)
+  if (request === null) return out
+  const ps = powershellFor(request.ops)
+  out.push({ id: 'ps', form: 'code', lines: [], text: () => ps, note: null })
+  out.push({ id: 'json', form: 'code', lines: [], text: () => request.text, note: request.note })
+  return out
 }
 
 /** Read-only portal work when an executable policy target is not yet resolved. */

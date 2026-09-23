@@ -20,7 +20,7 @@ import { readinessPercent } from '../../roadmap/readiness.ts'
 
 const setUp = (curated = false) => {
   // The curated run also settles the plan's foundation (roadmap/foundations.ts):
-  // until both pinned groups are, every policy is held and the email has no day.
+  // until Emergency Access and Direction are, every policy is held and the email has no day.
   const f = curated ? withFoundationSettled(curatedFixture('demo-week2')) : fixture('demo-week2')
   const r = runFixture(f)
   const dates = planDates(r.steps, r.schedule.start)

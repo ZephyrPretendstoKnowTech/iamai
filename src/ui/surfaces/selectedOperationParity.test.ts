@@ -34,7 +34,7 @@ type Opened = { step: Step; ctx: StepVarContext; lane: LaneView }
 const plans = new Map<string, { steps: Step[]; open: (s: Step) => Opened }>()
 /**
  * `settled` settles the plan's foundation (fixtures/run.ts withFoundationSettled):
- * until both pinned groups are settled a policy step hands nothing over, so a
+ * until Emergency Access and Direction are settled a policy step hands nothing over, so a
  * case about what its artifacts say starts there (roadmap/foundations.ts).
  */
 function planOf(name: FixtureName, settled = false): { steps: Step[]; open: (s: Step) => Opened } {
