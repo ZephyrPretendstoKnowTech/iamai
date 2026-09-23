@@ -395,6 +395,49 @@ test('a masked calendar masks every address, however it folds, and keeps the pas
   assert.ok(!text.includes('0d5c1a2b-1111-4222-8333-944455556666'), `a tenant id is kept: ${text}`)
 })
 
+// Finding 10, the masking's own promise (redact.ts): a placeholder is stable
+// within one text, so the correlations in it survive. Masked line by line, each
+// entry numbered its own placeholders: on demo "sign in as upn-1@redacted" was
+// the second emergency account in one entry, the first in the next and an
+// ordinary account in a third, and guid-0001 was four objects. A runbook that
+// names one placeholder for two accounts tells the reader to sign in as the
+// wrong one.
+test('a masked calendar gives one account one placeholder, and one placeholder one account, across the whole file', () => {
+  const ADDRESS = /[A-Za-z0-9._%+'-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g
+  const MASKED = /upn-\d+@redacted/g
+  const GUID = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi
+  const GUID_MASKED = /guid-\d{4}|\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi
+  for (const name of ['demo', 'messy'] as FixtureName[]) {
+    const p = exportPage(fixture(name))
+    const ics = buildIcs(p.r.steps, 'Tenant', 'plan-mask', p.view, p.cleanup)
+    const source = ics.replace(/\r?\n[ \t]/g, '').split(/\r?\n/)
+    const masked = exportText('plan.ics', ics, runbookRedaction(p.f.mapping)).replace(/\r?\n[ \t]/g, '').split(/\r?\n/)
+    assert.equal(masked.length, source.length, `${name}: masking changed the file's lines`)
+    const to = new Map<string, Set<string>>()
+    const from = new Map<string, Set<string>>()
+    const pair = (raw: string, mask: string): void => {
+      const key = raw.toLowerCase()
+      to.set(key, (to.get(key) ?? new Set()).add(mask))
+      from.set(mask, (from.get(mask) ?? new Set()).add(key))
+    }
+    let paired = 0
+    source.forEach((line, i) => {
+      const raws = line.match(ADDRESS) ?? []
+      const masks = masked[i].match(MASKED) ?? []
+      assert.equal(masks.length, raws.length, `${name}: a line whose addresses and placeholders differ in number: ${masked[i]}`)
+      raws.forEach((raw, k) => pair(raw, masks[k]))
+      const ids = line.replace(ADDRESS, ' ').match(GUID) ?? []
+      const idMasks = masked[i].replace(MASKED, ' ').match(GUID_MASKED) ?? []
+      assert.equal(idMasks.length, ids.length, `${name}: a line whose IDs and placeholders differ in number: ${masked[i]}`)
+      ids.forEach((raw, k) => pair(raw, idMasks[k].toLowerCase()))
+      paired += raws.length + ids.length
+    })
+    for (const [raw, masks] of to) assert.equal(masks.size, 1, `${name}: ${raw} is masked as ${[...masks].join(', ')}`)
+    for (const [mask, raws] of from) assert.equal(raws.size, 1, `${name}: ${mask} stands for ${raws.size} different accounts or objects`)
+    assert.ok(paired > 0 && [...from.keys()].some((m) => m.startsWith('upn-')), `${name}: the premise, a calendar that names an account`)
+  }
+})
+
 test('the calendar and prompt cards say the file masks sign-in addresses and IDs and keeps names', () => {
   const cards = (pages.export as unknown as { cards: Record<'calendar' | 'prompts', [string, string, string]> }).cards
   for (const card of [cards.calendar[1], cards.prompts[1]]) assert.match(card, /sign-in addresses and object IDs are masked; names are not\./, card)
