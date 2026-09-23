@@ -224,6 +224,26 @@ test('Step 4: a waiting account asks for a sign-in since the most recent change,
   assert.equal(JSON.parse(emergencyVerificationJson(phase)).accounts.find((account: { id: string }) => account.id === second).result, lines.join('\n'))
 })
 
+// "Last sign-in" read passkey sign-ins only. A password, Temporary Access Pass or
+// Authenticator sign-in after the change was left out, so the card named an
+// older passkey sign-in, or "none seen", over a sign-in the scan had read, and
+// sent the reader to log lag instead of to the method used (review, 2026-09-23).
+test('Step 4: the last sign-in is the account’s last sign-in, and one after the change that was not a passkey sign-in says so', () => {
+  const value = oneAccountWaiting()
+  const [, second] = value.mapping.breakGlassUserIds
+  const detailOf = () => recoveryOf(value).tiles.find(tile => tile.key === 'recovery-sign-ins')!.detail!.split('\n')
+  const head = ['Sign in with this account’s passkey since the most recent change.', 'Last change: Aug 21, 2026, 3:25 AM GMT+10']
+  // A sign-in after the change (Aug 21, 3:25 AM) that did not use the passkey.
+  value.snapshot.signInEvidence[second] = { ...value.snapshot.signInEvidence[second]!, lastSignIn: '2026-08-21T10:00:00.000Z' }
+  assert.deepEqual(detailOf(), [...head, 'Last sign-in: Aug 21, 2026, 8:00 PM GMT+10', 'That sign-in did not succeed with a passkey.'])
+  // No passkey sign-in in the window at all: the sign-in the scan read is still the last one seen.
+  value.snapshot.signInEvidence[second]!.recoveryCandidates = []
+  assert.deepEqual(detailOf(), [...head, 'Last sign-in: Aug 21, 2026, 8:00 PM GMT+10', 'That sign-in did not succeed with a passkey.'])
+  // A sign-in before the change needs no reason: the dates show it.
+  value.snapshot.signInEvidence[second]!.lastSignIn = '2026-08-19T00:00:00.000Z'
+  assert.deepEqual(detailOf(), [...head, 'Last sign-in: Aug 19, 2026, 10:00 AM GMT+10'])
+})
+
 test('no channel of any emergency step asks for a sign-in after a date', () => {
   const after = /passkey after|did not count|after [A-Z][a-z]{2} \d{1,2}, \d{4}/
   const runs: [string, Fixture][] = [...FIXTURES.map((name): [string, Fixture] => [name, structuredClone(fixture(name))]), ['one account waiting', oneAccountWaiting()]]

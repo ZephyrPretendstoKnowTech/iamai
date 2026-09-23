@@ -241,7 +241,7 @@ test('Step 4 says what it is waiting on: a sign-in since the most recent change,
   const changed = { at: start, changeObserved: true }
   const readingsOf = (...seen: typeof candidate[]) => recoveryCandidateReadings({ ...f.snapshot, signInEvidence: { ...f.snapshot.signInEvidence, [id]: { ...f.snapshot.signInEvidence[id]!, recoveryCandidates: seen } } }, id, '2026-09-18T19:00:00Z', start)
   const before = { ...candidate, at: '2026-09-18T16:02:21Z', authenticationAt: '2026-09-18T16:02:21Z', resourceTenantId: f.snapshot.tenantId }
-  const line = recoveryWaitingLine(changed, readingsOf(before), 'America/Chicago')
+  const line = recoveryWaitingLine(changed, readingsOf(before), null, 'America/Chicago')
   assert.deepEqual(line.split('\n'), [
     'Sign in with this account’s passkey since the most recent change.',
     'Last change: Sep 18, 2026, 1:37 PM CDT',
@@ -250,14 +250,14 @@ test('Step 4 says what it is waiting on: a sign-in since the most recent change,
   // The dates show why that sign-in did not count; the line does not say it again.
   assert.doesNotMatch(line, /did not count|predates| after /)
   assert.doesNotMatch(line, /Follow Verify emergency sign-in/, 'the tile adds the action once')
-  assert.equal(recoveryWaitingLine(changed, [], 'UTC'), 'Sign in with this account’s passkey since the most recent change.\nLast change: Sep 18, 2026, 6:37 PM UTC\nLast sign-in: none seen')
+  assert.equal(recoveryWaitingLine(changed, [], null, 'UTC'), 'Sign in with this account’s passkey since the most recent change.\nLast change: Sep 18, 2026, 6:37 PM UTC\nLast sign-in: none seen')
   // A start IAMAI did not see change (where the audit log began) is not called a change.
-  assert.equal(recoveryWaitingLine({ at: start, changeObserved: false }, [], 'UTC'), 'Sign in with this account’s passkey since the most recent change.\nNo change seen since: Sep 18, 2026, 6:37 PM UTC\nLast sign-in: none seen')
-  assert.equal(recoveryWaitingLine(null, [], 'UTC'), 'Sign in with this account’s passkey once the configuration checks pass.')
+  assert.equal(recoveryWaitingLine({ at: start, changeObserved: false }, [], null, 'UTC'), 'Sign in with this account’s passkey since the most recent change.\nNo change seen since: Sep 18, 2026, 6:37 PM UTC\nLast sign-in: none seen')
+  assert.equal(recoveryWaitingLine(null, [], null, 'UTC'), 'Sign in with this account’s passkey once the configuration checks pass.')
   // A sign-in after the change that still did not count is one the dates cannot
   // explain, so its reason stays, on a line of its own.
   const later = { ...before, at: '2026-09-18T18:50:00Z', authenticationAt: '2026-09-18T18:50:00Z', success: false }
-  assert.deepEqual(recoveryWaitingLine(changed, readingsOf(before, later), 'America/Chicago').split('\n'), [
+  assert.deepEqual(recoveryWaitingLine(changed, readingsOf(before, later), null, 'America/Chicago').split('\n'), [
     'Sign in with this account’s passkey since the most recent change.',
     'Last change: Sep 18, 2026, 1:37 PM CDT',
     'Last sign-in: Sep 18, 2026, 1:50 PM CDT',
@@ -268,8 +268,8 @@ test('Step 4 says what it is waiting on: a sign-in since the most recent change,
 test('with no display time zone set, Step 4 times read in the browser’s zone, not UTC', () => {
   const browser = Intl.DateTimeFormat().resolvedOptions().timeZone
   const start = { at: '2026-09-18T16:37:21.751Z', changeObserved: true }
-  assert.equal(recoveryWaitingLine(start, [], null), recoveryWaitingLine(start, [], browser))
-  assert.match(recoveryWaitingLine(start, [], 'Australia/Sydney'), /^Last change: Sep 19, 2026, 2:37 AM GMT\+10$/m)
+  assert.equal(recoveryWaitingLine(start, [], null, null), recoveryWaitingLine(start, [], null, browser))
+  assert.match(recoveryWaitingLine(start, [], null, 'Australia/Sydney'), /^Last change: Sep 19, 2026, 2:37 AM GMT\+10$/m)
 })
 
 // A mature tenant: emergency access set up long ago, nothing relevant in the
