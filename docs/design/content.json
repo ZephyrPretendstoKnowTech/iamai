@@ -2829,41 +2829,38 @@
           "createNowShow": "Show them"
         },
         "groups": {
+          "$comment": "The Plan's eight sections, in the order the board draws them (roadmap/stepGroups.ts STEP_GROUPS; order and membership from the roadmap flow V1 proposal section 2, names from V2, owner 2026-09-23). Every title but the catch-all, Ongoing Checks and Cleanup, follows one convention: Title Case, an imperative verb, a technical object, three to six words.",
           "emergencyAccess": {
             "title": "Establish Emergency Access",
             "completedTitle": "Establish Emergency Access"
           },
+          "$commentDirection": "Section 2 (owner, roadmap flow V2 decision A): was Decide Your Tenant's Direction. Its answers decide which rows the plan holds and who each policy carves out, so the title names the scope they set. The code still calls these the Direction steps.",
           "direction": {
-            "title": "Decide Your Tenant's Direction",
-            "completedTitle": "Decide Your Tenant's Direction"
+            "title": "Define Your Rollout Scope",
+            "completedTitle": "Define Your Rollout Scope"
           },
-          "prepareObjects": {
-            "title": "Prepare the Groups and Locations",
-            "completedTitle": "Prepare the Groups and Locations"
-          },
-          "closeDoors": {
-            "title": "Close the Doors Nobody Should Use",
-            "completedTitle": "Close the Doors Nobody Should Use"
-          },
-          "protectAdmins": {
-            "title": "Protect Your Administrators",
-            "completedTitle": "Protect Your Administrators"
+          "$commentPrepare": "Section 3 (roadmap flow V2): the accounts and objects the policies below rely on, people first and then objects, drawn above those policies. A create waits only on the object it names (for example the authentication strength), never on this section being finished: section position gates nothing (pages.plan.howTo.$commentIntro). It replaced Prepare the Groups and Locations, which no longer fits a section that also holds the dormant accounts, the admin accounts, your own passkey and the MFA campaign.",
+          "prepare": {
+            "title": "Prepare Accounts and Objects",
+            "completedTitle": "Prepare Accounts and Objects"
           },
           "mfaEveryone": {
             "title": "Turn On MFA for Everyone",
             "completedTitle": "Turn On MFA for Everyone"
           },
-          "whereSignIn": {
-            "title": "Control Where People Sign In From",
-            "completedTitle": "Control Where People Sign In From"
+          "$commentExtendMfa": "Section 5 (roadmap flow V2): where MFA does not reach yet once section 4 is on, from sign-in method registration to the sign-ins Entra flags as risky. Named for what every tenant sees; the risk rows need Entra ID P2.",
+          "extendMfa": {
+            "title": "Extend MFA Coverage",
+            "completedTitle": "Extend MFA Coverage"
           },
-          "devices": {
-            "title": "Require Healthy Devices",
-            "completedTitle": "Require Healthy Devices"
+          "closeDoors": {
+            "title": "Close the Doors Nobody Should Use",
+            "completedTitle": "Close the Doors Nobody Should Use"
           },
-          "riskAndSessions": {
-            "title": "Respond to Risk and Limit Sessions",
-            "completedTitle": "Respond to Risk and Limit Sessions"
+          "$commentDevicesSessions": "Section 7 (roadmap flow V2): both halves are earlier section titles (Respond to Risk and Limit Sessions; Require Healthy Devices), in the order the section runs, sessions first.",
+          "devicesSessions": {
+            "title": "Limit Sessions and Require Healthy Devices",
+            "completedTitle": "Limit Sessions and Require Healthy Devices"
           },
           "ongoing": {
             "title": "Ongoing Checks and Cleanup",
@@ -2871,7 +2868,7 @@
           }
         },
         "direction": {
-          "$comment": "Decide Your Tenant's Direction (docs/plans/direction-spec.md): four decision steps, answers only. Question words, options and evidence lines; roadmap/direction.ts fills them.",
+          "$comment": "Define Your Rollout Scope, the Direction steps (docs/plans/direction-spec.md): four decision steps, answers only. Question words, options and evidence lines; roadmap/direction.ts fills them.",
           "headings": {
             "why": "About this Step",
             "questions": "Questions",
@@ -2880,7 +2877,8 @@
           "notSure": "Not sure? Keep the suggestion. You can change it any time.",
           "approve": "Approve answers",
           "done": "Every answer is approved.",
-          "waiting": "Waiting on your direction",
+          "$commentWaiting": "The row label and Readiness tile of a policy held on a Direction answer nobody has approved (ui/surfaces/planBoard.ts). Owner, roadmap flow V2 decision A: it read 'Waiting on your direction' until section 2 became Define Your Rollout Scope; the wait is on the person's answers.",
+          "waiting": "Waiting on your answers",
           "waitingNote": "Answer it in {step}.",
           "answeredIn": "Answered in {step}",
           "notAnswered": "Not answered yet: the suggestion is {answer}.",

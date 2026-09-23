@@ -70,7 +70,7 @@ export const BLOCKED_REASON = {
   exclusionsGroup: BLOCKED.exclusionsGroup,
   /** The device decision nobody has made (roadmap/generate.ts): the step waits on a person, not on work. */
   devicePlan: BLOCKED.devicePlan,
-  /** A Decide Your Tenant's Direction step with an answer nobody has approved (roadmap/direction.ts): it waits on a person, not on work. */
+  /** A Define Your Rollout Scope step with an answer nobody has approved (roadmap/direction.ts): it waits on a person, not on work. */
   direction: BLOCKED.direction,
   /**
    * What holds a policy Foundation A cannot write when no step of the plan is what

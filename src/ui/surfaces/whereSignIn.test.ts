@@ -1,4 +1,4 @@
-// The "Control Where People Sign In From" group, taken to the V1 standard:
+// The "Control Where People Sign In From" steps, taken to the V1 standard:
 // docs/plans/where-people-sign-in-spec.md holds the outcome, the Microsoft Learn
 // page behind every technical claim and the date it was checked. One test per
 // acceptance item in that spec.
@@ -25,17 +25,17 @@ import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { stepExportView } from './stepExport.ts'
 import type { StepBody } from './stepBody.ts'
-import { membersOf } from '../../roadmap/stepGroups.ts'
+import { groupOf } from '../../roadmap/stepGroups.ts'
 import type { MappingState } from '../../mapping/types.ts'
 
-/** The group's three policy members, in registry order (roadmap/stepGroups.ts). */
+/** The spec's three policy steps (docs/plans/where-people-sign-in-spec.md), in its order. */
 const WHERE_SIGN_IN = [
   's-goal-geo-restriction',
   's-goal-service-accounts-trusted-network',
   's-goal-workload-identity-block',
 ]
 
-/** The three objects a Direction answer asks for, which now sit in their own group straight after Direction (owner, 2026-09-20). */
+/** The three objects a Direction answer asks for, drawn among the objects above the policies (owner, 2026-09-20; roadmap flow section 3). A policy's create waits only on the object it names. */
 const PREPARE_OBJECTS = [
   's-prereq-trusted-location',
   's-prereq-allowed-countries',
@@ -115,11 +115,11 @@ function checkedOn(stepId: string): string {
 // The group itself
 // ---------------------------------------------------------------------------
 
-test('the group draws its three policies in the spec order, and the objects they reference are the group before it', () => {
-  assert.deepEqual([...membersOf('where-people-sign-in')], WHERE_SIGN_IN)
-  assert.deepEqual([...membersOf('prepare-objects')], PREPARE_OBJECTS)
-  // The spec's six steps are still the same six steps, read in the same order:
-  // the objects first, then the policies that reference them.
+test('the spec’s three policies close the doors, and the objects they reference are drawn above the policies', () => {
+  assert.deepEqual(WHERE_SIGN_IN.map((id) => groupOf(id)?.key), ['remaining-doors', 'remaining-doors', 'remaining-doors'])
+  assert.deepEqual(PREPARE_OBJECTS.map((id) => groupOf(id)?.key), ['prepare', 'prepare', 'prepare'])
+  // The spec's six steps are still the same six steps: the objects drawn
+  // above the policies that reference them.
   assert.deepEqual([...PREPARE_OBJECTS, ...WHERE_SIGN_IN].sort(), ['s-goal-geo-restriction', 's-goal-service-accounts-trusted-network', 's-goal-workload-identity-block', 's-prereq-allowed-countries', 's-prereq-service-accounts-group', 's-prereq-trusted-location'])
 })
 

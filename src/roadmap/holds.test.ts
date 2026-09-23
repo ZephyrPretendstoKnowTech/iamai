@@ -9,7 +9,7 @@ import { schedulingWords, structuralWords } from '../content/content.ts'
 // the step stays in its numbered phase, dated after the step it waits on. What
 // withdraws a step is what the plan cannot schedule — and, since 2026-09-19, the
 // plan's own foundation: a policy step waiting on Establish Emergency Access or
-// Decide Your Tenant's Direction is held, not sequenced (roadmap/foundations.ts),
+// Define Your Rollout Scope is held, not sequenced (roadmap/foundations.ts),
 // so the cases below settle the foundation before they ask what a dated step
 // reads.
 import { test } from 'node:test'

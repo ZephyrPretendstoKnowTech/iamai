@@ -1,4 +1,4 @@
-// Decide Your Tenant's Direction (roadmap/direction.ts, directionAnswers.ts):
+// Define Your Rollout Scope (roadmap/direction.ts, directionAnswers.ts):
 // the four steps' questions, their suggestions, where their answers are stored,
 // completion, and reopening (docs/plans/direction-spec.md).
 import { test } from 'node:test'
@@ -246,7 +246,7 @@ test('(g) the retired steps are gone as rows, and D3 shows even with no device s
   for (const id of Object.values(DIRECTION_STEP)) assert.ok(ids.includes(id), id)
 })
 
-test('(e) a policy with an unanswered Direction dependency is held Waiting on your direction; one with none is not', async () => {
+test('(e) a policy with an unanswered Direction dependency is held Waiting on your answers; one with none is not', async () => {
   const { laneReadings } = await import('../ui/surfaces/planLanes.ts')
   const { laneViewOf, readinessBlockersOf } = await import('../ui/surfaces/planBoard.ts')
   const f = fixture('demo')
@@ -260,6 +260,8 @@ test('(e) a policy with an unanswered Direction dependency is held Waiting on yo
   assert.deepEqual(device.blockers.filter((b) => b.kind === 'decision').map((b) => b.label), [`direction:${DIRECTION_STEP.devices}`])
   const reading = readings.get(device.id)!
   assert.equal(reading.lane, 'On Hold')
+  // The row names what it waits on, the person's answers (owner, roadmap flow V2 decision A: the section is Define Your Rollout Scope).
+  assert.equal(W.waiting, 'Waiting on your answers')
   assert.equal(laneViewOf(reading, titleOf).tail, W.waiting)
   const tile = readinessBlockersOf(reading, titleOf).find((b) => b.id === DIRECTION_STEP.devices)!
   assert.equal(tile.label, W.waiting)

@@ -208,7 +208,7 @@ test('D2: steps keep supported channels across actions and omit permanently unsu
   let missing = 0
   for (const name of ['demo', 'mid'] as const) {
     for (const [id, b] of bodiesOf(fixture(name))) {
-      // A decision-anatomy step (Decide Your Tenant's Direction) builds nothing and draws no Implementation (owner, 2026-09-19).
+      // A decision-anatomy step (Define Your Rollout Scope) builds nothing and draws no Implementation (owner, 2026-09-19).
       if (usesDecisionAnatomy(id)) { assert.equal(b.showImplementation, false, `${name}/${id}`); continue }
       assert.equal(b.showImplementation, true, `${name}/${id}: the Implementation region is hidden`)
       assert.ok(b.artifacts.some((a) => a.id === 'ai'), `${name}/${id}: AI briefing is missing`)

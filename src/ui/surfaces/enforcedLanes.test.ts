@@ -87,7 +87,7 @@ const stepOf = (run: ReturnType<typeof runFixture>, id: string): Step => {
 test('U21: an enforced policy with a resolved correction waits on the plan’s foundation, and is Ready to Correct once it is settled', () => {
   // U21 said such a correction is Ready on the demo Initial scan. The owner's
   // 2026-09-19 rule supersedes that: no policy step reads Ready until Establish
-  // Emergency Access and Decide Your Tenant's Direction are settled
+  // Emergency Access and Define Your Rollout Scope are settled
   // (roadmap/foundations.ts). What U21 still holds is everything else — the
   // drift is read, the correction is built, the operations are untouched, and the
   // export says the same state as the board.

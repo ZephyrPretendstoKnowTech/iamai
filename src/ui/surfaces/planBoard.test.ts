@@ -120,7 +120,7 @@ test('with Emergency Access finished, section 1 stays first and collapses to one
   // keeps its place and folds to its title and one line.
   const items = [...EMERGENCY_STEP_IDS.map((id) => row(id, 'Completed')), row('s-direction-use', 'Ready'), row('s-direction-accounts', 'Completed'), row('s-goal-block-legacy-auth', 'Up Next')]
   const drawn = allWorkGroups(items, items)
-  assert.deepEqual(drawn.map((g) => g.key), [`${ALL_WORK_TAB}-emergency-access`, `${ALL_WORK_TAB}-direction`, `${ALL_WORK_TAB}-close-doors`], 'a section moved')
+  assert.deepEqual(drawn.map((g) => g.key), [`${ALL_WORK_TAB}-emergency-access`, `${ALL_WORK_TAB}-direction`, `${ALL_WORK_TAB}-core`], 'a section moved')
   const [emergency, direction] = drawn
   assert.equal(emergency.closed, true, 'the finished section is drawn open')
   assert.equal(emergency.label, groupTitleOf(STEP_GROUPS[0], true))

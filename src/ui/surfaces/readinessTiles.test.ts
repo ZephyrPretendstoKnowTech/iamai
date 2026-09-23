@@ -189,7 +189,7 @@ test('a card is headed by what is being waited on, with its state beneath', () =
   assert.ok(waits.length > 1, 'the premise: this step waits on more than one thing')
   assert.equal(new Set(waits.map((t) => t.label)).size, waits.length, 'two cards are headed the same')
   for (const t of waits) {
-    assert.match(t.value, /^(?:Prerequisite\b|Baseline mapping$|Waiting on your direction$)/, `${t.key}: the check is not a state`)
+    assert.match(t.value, /^(?:Prerequisite\b|Baseline mapping$|Waiting on your answers$)/, `${t.key}: the check is not a state`)
     assert.notEqual(t.label, t.value, `${t.key}: the heading and the check say the same thing`)
     assert.ok(t.link, `${t.key}: the card does not open what it names`)
   }

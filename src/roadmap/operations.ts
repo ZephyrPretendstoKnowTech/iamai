@@ -1270,8 +1270,8 @@ export function awaitsWorkflowRecord(step: PolicyStep): boolean {
  * rings and schedule read the same answer the finished plan does.
  *
  * The plan's foundation is a separate wait and is untouched by this: no policy
- * step is Ready until Establish Emergency Access and Decide Your Tenant's
- * Direction are settled (roadmap/foundations.ts).
+ * step is Ready until Establish Emergency Access and Define Your Rollout
+ * Scope are settled (roadmap/foundations.ts).
  */
 export function enforcementHeld(step: PolicyStep): boolean {
   return step.action.readinessGate !== undefined && step.status !== 'done' && step.status !== 'skipped' && !addsExclusionsToEnforced(step)

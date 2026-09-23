@@ -1,4 +1,4 @@
-// Decide Your Tenant's Direction (docs/plans/direction-spec.md): the Plan's
+// Define Your Rollout Scope (docs/plans/direction-spec.md): the Plan's
 // second section, and with Emergency Access the plan's foundation. Four
 // decision steps, answers only; nothing changes in Entra.
 //
@@ -25,7 +25,7 @@
 // A policy waits only on the answers it depends on (`gateOnDirection`): until
 // they are saved it carries a decision blocker naming the Direction step, which
 // holds it undated (roadmap/holds.ts) and the lane engine reads as On Hold ·
-// Waiting on your direction (ui/surfaces/planLanes.ts observe). A policy that
+// Waiting on your answers (ui/surfaces/planLanes.ts observe). A policy that
 // depends on no answer is unaffected.
 //
 // Pure: no DOM, no network.
@@ -428,7 +428,7 @@ export function directionDependenciesOf(step: Pick<Step, 'goalId' | 'baselineRev
  * Per-answer gating (owner decision 3): every open step whose policy depends on
  * a Direction answer nobody has saved waits on the Direction step that asks it,
  * as a decision blocker the lane engine holds the step on (planLanes.ts
- * observe) and the row reads as Waiting on your direction. A policy already
+ * observe) and the row reads as Waiting on your answers. A policy already
  * enforced is not held by it: the engine asks its questions there instead. A dependency the plan
  * does not ask (a service this baseline has nothing for) waits on nothing, and
  * a step that depends on no answer is left exactly as it was.
@@ -446,7 +446,7 @@ export function gateOnDirection(steps: Step[]): void {
     // The wait holds the step (holds.ts; owner, 2026-09-19): it is undated until
     // the answer is approved, like every other hold. The schedule withdraws it once
     // the plan is finished (forecast.ts settleForecast, which runs after this), and
-    // the lane engine reads it as Waiting on your direction (planLanes.ts observe).
+    // the lane engine reads it as Waiting on your answers (planLanes.ts observe).
     // Its reason names the Direction step, in the shape a wait on another step reads.
     for (const id of waiting) step.blockers.push({ kind: 'decision', label: `${DIRECTION_BLOCKER}${id}`, binding: BLOCKED_REASON.after(directionTitleOf(id)) })
     // A step that waits is not Ready (lifecycle.ts conditionFor): it reads

@@ -778,7 +778,7 @@ export function buildFixture(spec: Spec): Fixture {
     // answered has no plan to show, and the sample is not a place to teach
     // otherwise.
     records: { [EXCLUSIONS_RECORD_KEY]: { ...exclusionsGroupRecord(undefined, exclusionGroup), resolvedName: 'Core - Exclusions' } },
-    // The demo's first visit has answered none of Decide Your Tenant's Direction
+    // The demo's first visit has answered none of Define Your Rollout Scope
     // (roadmap/direction.ts): its countries, network and service accounts show as
     // suggestions until the visitor approves them. Week two approved them.
     wizardAnswered: { breakGlass: true, globalExclusion: true, countries: demoConfirmed, trustedLocations: demoConfirmed, serviceAccounts: demoConfirmed, timeZone: true, applicability: true },
@@ -843,7 +843,7 @@ export function buildFixture(spec: Spec): Fixture {
     if (printerId !== null) decisions[stepIdForGoal('block-legacy-auth')] = { option: `Yes: add: ${printerId}; the service-accounts group carries them`, at: NOW }
     // Nobody uses device code sign-in (B7): the enforced block's conditional input is saved.
     decisions[stepIdForGoal('block-device-code')] = { option: 'None', at: NOW }
-    // Decide Your Tenant's Direction, approved in week one with the answers this
+    // Define Your Rollout Scope, approved in week one with the answers this
     // demo already assumes (roadmap/direction.ts): the services as the scan saw
     // them, the printer, no device code, partners excluded, no external method;
     // the service accounts as confirmed and the shared-device accounts as

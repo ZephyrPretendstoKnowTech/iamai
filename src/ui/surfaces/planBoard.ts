@@ -511,7 +511,7 @@ export function waitingForOf(r: LaneReading, titleOf: (id: string) => string | n
   return label === BOARD.lanes.onHold || label === BOARD.lanes.upNext ? unsaved() : label
 }
 
-/** Held on a Direction answer nobody has saved (roadmap/direction.ts): the row reads Waiting on your direction, whichever of the four steps asks it. */
+/** Held on a Direction answer nobody has saved (roadmap/direction.ts): the row reads Waiting on your answers, whichever of the four steps asks it. */
 const waitsOnDirection = (r: LaneReading): boolean => r.reason?.kind === 'decision' && isDirectionStep(r.reason.id)
 
 /**
