@@ -260,13 +260,19 @@ export function deviceChips(r: ReadinessRow): { chips: Chip[]; noPhone: boolean 
   return { chips, noPhone: rd.devices.length > 0 && !rd.devices.some((d) => d.type === 'phone') }
 }
 
+/** The phishing-resistant methods held that today's settings don't allow: the Methods cell's main words leave them out. */
+const heldNotAllowed = (r: ReadinessRow): MethodClass[] => {
+  const rd = r.readiness
+  return rd && r.methods ? r.methods.filter((c) => isQualifying(c) && !rd.qualifying.includes(c)) : []
+}
+
 /** The Methods cell: the phishing-resistant methods held, or what is held instead. */
 export function methodsCell(r: ReadinessRow): { main: string; note: string } {
   if (r.methods === null) return { main: T.methods.unread, note: '' }
   const rd = r.readiness
   // Usable now where the readiness says so: a passkey the settings don't allow is not a method the person can use.
   const qualifying = rd ? rd.qualifying : r.methods.filter(isQualifying)
-  const blocked = rd ? r.methods.filter((c) => isQualifying(c) && !rd.qualifying.includes(c)) : []
+  const blocked = heldNotAllowed(r)
   const others = r.methods.filter((c) => !isQualifying(c))
   const main = qualifying.length > 0 ? listWords(qualifying.map(classWord)) : others.length > 0 ? fillText(T.methods.only, { method: listWords(others.map(classWord)) }) : T.methods.none
   if (blocked.length > 0) return { main, note: fillText(T.methods.notAllowed, { method: listWords(blocked.map(classWord)) }) }
@@ -280,6 +286,18 @@ export function methodsCell(r: ReadinessRow): { main: string; note: string } {
   if (unused) return { main, note: unused.unused === 'stale' && unused.lastUsed ? fillText(T.unusedKey.stale, { date: monthDay(unused.lastUsed) }) : T.unusedKey.never }
   const note = !last ? '' : last.retained ? fillText(T.beforeWindow, { date: monthDay(last.at) }) : isReadyState(rd.state) && rd.readyUntil ? fillText(T.readyUntil, { date: monthDay(rd.readyUntil) }) : fillText(T.lastConfirmed, { date: monthDay(last.at) })
   return { main, note }
+}
+
+/**
+ * The Methods cell in one line, for a table that draws no note (the Inventory's
+ * Accounts table and its CSV): the main words, and a held method today's
+ * settings don't allow, which the main words leave out. The cell read
+ * "Authenticator only" for a person holding a passkey. The cell's other notes
+ * (a date, leave) stay MFA Readiness's own.
+ */
+export function methodsLine(r: ReadinessRow): string {
+  const c = methodsCell(r)
+  return heldNotAllowed(r).length > 0 ? `${c.main} · ${c.note}` : c.main
 }
 
 const isReadyState = (s: ReadinessState): boolean => s === 'ready' || s === 'seamless'
@@ -511,5 +529,6 @@ export function rowCells(r: ReadinessRow): string[] {
   const quiet = [...(shown.noPhone ? [T.chip.noPhone] : []), ...(shown.chips.length === 0 && r.state !== null && noDevicesWord(r) ? [noDevicesWord(r)] : [])]
   const devices = [...shown.chips.map((c) => `${c.os}: ${c.word}`), ...quiet].join('; ')
   const state = r.state !== null ? stateTitle(r.state) : r.explained ? T.counted[r.explained] : r.kind !== 'person' ? (T.show[r.kind] ?? r.kind) : ''
-  return [roleWord(r), devices, methodsCell(r).main, state, nextCell(r)]
+  // The methods cell with the note the screen shows under it (methodsLine).
+  return [roleWord(r), devices, methodsLine(r), state, nextCell(r)]
 }

@@ -16,6 +16,7 @@ import { CONSENT_SCREEN_ORDER, SCOPE_COPY, SIGN_IN_SCOPES, consentRows } from '.
 import { app, pages } from '../../content/content.ts'
 import { signInTile, stages } from '../scan/connectView.ts'
 import { findingsIn, loadFingerprints } from '../../../scripts/tenant-guard.mjs'
+import { REQUEST_HOSTS } from '../../../scripts/csp.ts'
 
 const read = (p: string): string => readFileSync(p, 'utf8')
 const CONNECT = read('src/ui/surfaces/Connect.tsx')
@@ -161,8 +162,8 @@ test('no write scope is requested, and no public surface names one', () => {
 // can quietly disagree with what the tool actually does.
 test('How generates its permissions, reads and checks from the registries', () => {
   assert.match(HOW, /scopeRows\(\)/, 'the permissions are generated from GRAPH_SCOPES')
-  assert.match(HOW, /COLLECTOR_REGISTRY\.filter/, 'the reads are the collector registry')
-  assert.match(HOW, /REGISTRY\.filter/, 'the checks are the rule registry')
+  assert.match(read('src/ui/surfaces/howView.ts'), /COLLECTOR_REGISTRY\.filter/, 'the reads are the collector registry')
+  assert.match(read('src/ui/surfaces/howView.ts'), /REGISTRY\.filter/, 'the checks are the rule registry')
   // No literal endpoint, scope or check written into the page.
   for (const literal of ['https://graph.microsoft.com', '/v1.0/', 'Policy.Read.All', 'Directory.Read.All']) {
     assert.ok(!HOW.includes(literal), `How writes ${literal} down instead of reading it from the registry`)
@@ -332,4 +333,19 @@ test('Connect renders the baseline source and version from the loaded package, n
   // No commit, repository or date written into the component by hand.
   assert.doesNotMatch(pin, /[0-9a-f]{7,40}/, 'a revision is hardcoded beside the one the package carries')
   assert.doesNotMatch(pin, /\d{4}-\d{2}-\d{2}/, 'a date is hardcoded beside the pinned index’s own')
+})
+
+// Connect asks GitHub whether the baseline's author has published changes
+// (ui/baseline.ts checkAuthorHead and baselineReview) from the administrator's
+// browser. How's "Where it runs" named Cloudflare's beacon and never the one
+// other third party the app itself contacts (Phase 2 audit, How).
+test('How names every non-Microsoft host the app contacts, and that no tenant data goes to it', () => {
+  const hosting = (app.how as Record<string, string>).hostingBody
+  const others = REQUEST_HOSTS.filter((h) => !/microsoft(online)?\.com$/.test(h))
+  assert.ok(others.length > 0)
+  for (const host of others) assert.ok(hosting.includes(host), `How's hosting statement does not name ${host}`)
+  assert.match(hosting, /no tenant data/i, 'it does not say what the GitHub requests carry')
+  // "reads the changed files when there are" left "there are" with nothing to
+  // refer to (Phase 2 review, round 2).
+  assert.match(hosting, /when there are changes, reads the changed files/, 'it says when the changed files are read')
 })

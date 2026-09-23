@@ -347,7 +347,7 @@ test('the trust row names read-only, browser-local handling and the public sourc
   const said = TRUST.map((t) => `${t.title} ${t.body}`).join(' ')
   assert.match(said, /does not change your tenant|read-only/i, 'read-only, in terms of the permission set')
   assert.match(said, /browser/, 'where the tenant data is')
-  assert.match(said, /does not upload your scan to its own server/i, 'and where it is not')
+  assert.match(said, /has no server, so your scan is not uploaded anywhere/i, 'and where it is not')
   assert.ok(
     TRUST.some((t) => t.href === REPO),
     'the source claim links to the repository',
@@ -693,4 +693,17 @@ test('the built page, with its stylesheet, renders the tokens: the primary butto
       // Chrome's profile lock outlives the process on Windows for a moment; the temp dir is the OS's to clean.
     }
   }
+})
+
+// Three home lines overstated the product (Phase 2 audit, How): approving IAMAI
+// does add an enterprise application to the tenant; "its own server" suggested
+// IAMAI has one, which How says it does not; and "the default" offered a choice
+// of baseline the product does not have (custom packages are off).
+test('the home page says what approving IAMAI adds, that it has no server, and which baseline it plans against', () => {
+  const said = TRUST.map((t) => `${t.title} ${t.body}`).join(' ')
+  assert.match(said, /enterprise application/, 'approving IAMAI adds an enterprise application, and the row says so')
+  assert.doesNotMatch(said, /its own server/, 'a server of its own is implied')
+  assert.match(said, /no server/)
+  assert.doesNotMatch(H.baseline as string, /\bdefault\b/i, 'the baseline is offered as a default among choices')
+  assert.ok(html.includes(esc(H.baseline as string)), 'the generated home page carries the words')
 })

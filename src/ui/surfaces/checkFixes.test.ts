@@ -5,7 +5,10 @@
 // count line equals the number of fail results; a passing check renders nothing.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { allFixtures } from '../../roadmap/fixtures/index.ts'
+import { allFixtures, fixture } from '../../roadmap/fixtures/index.ts'
+import { buildContext, reportFor } from '../../validation/report.ts'
+import { stepChecks } from '../../validation/checkFixes.ts'
+import type { GroupFacts } from '../../validation/rules.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -63,4 +66,33 @@ test('every failing check renders a complete fix line on the demo and GetIAMAI s
   }
   assert.ok(failsSeen > 0, `some checks fail across the two snapshots (saw ${failsSeen})`)
   assert.ok(passesSeen > 0, 'a passing check is counted in total and renders no fix line')
+})
+
+// xg.notDynamic fails for three facts: a group that is not security-enabled, a
+// dynamic rule, and an assigned licence. Every failure rendered the one
+// "not-dynamic" line, so an assigned group whose only fault was a licence was
+// told "The group is dynamic; recreate it with assigned membership." (Phase 2
+// audit, How and Configure Emergency Exclusions).
+test('the exclusions-group fix line names the fact the group check found', () => {
+  const f = fixture('mid')
+  const run = runFixture(f)
+  const bg = run.input.mapping.breakGlassUserIds
+  const templates = (stepById['s-prereq-exclusion-group'] as unknown as { whatToDo: { checkFixes: Record<string, string> } }).whatToDo.checkFixes
+  const linesFor = (edit: Partial<GroupFacts>): string[] => {
+    const entry: GroupFacts = { groupId: 'g-excl', displayName: 'Emergency Exclusions', membershipRule: null, mailEnabled: false, securityEnabled: true, groupTypes: [], assignedLicenseSkuIds: [], memberIds: [...bg], memberCount: bg.length, sampled: false, directMembers: 'complete', directMemberIds: [...bg], ...edit }
+    const report = reportFor('exclusionGroup', [entry], buildContext({ snapshot: f.snapshot, state: run.input.mapping, groupMembers: [entry] }))
+    return stepChecks(report).items.filter((i) => i.fix !== 'excluded-from-every-policy').map((i) => fillText(templates[i.fix] ?? `(no template for ${i.fix})`, i.values))
+  }
+  const licensed = linesFor({ assignedLicenseSkuIds: ['c7df2760-2c81-4ef7-b578-5b5392b571df'] })
+  assert.equal(licensed.length, 1, licensed.join(' | '))
+  assert.doesNotMatch(licensed[0], /dynamic/i, 'a licensed assigned group is told it is dynamic')
+  assert.match(licensed[0], /licen/i)
+  const dynamic = linesFor({ membershipRule: 'user.department -eq "IT"', groupTypes: ['DynamicMembership'] })
+  assert.match(dynamic.join(' '), /dynamic/i)
+  const notSecurity = linesFor({ securityEnabled: false })
+  assert.equal(notSecurity.length, 1, notSecurity.join(' | '))
+  assert.doesNotMatch(notSecurity[0], /dynamic/i, 'a group that is not security-enabled is told it is dynamic')
+  assert.match(notSecurity[0], /security-enabled/)
+  const mail = linesFor({ mailEnabled: true })
+  assert.doesNotMatch(mail.join(' '), /licen/i, 'a mail-enabled group is told it is licensed')
 })

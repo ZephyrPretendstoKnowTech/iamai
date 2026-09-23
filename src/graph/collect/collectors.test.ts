@@ -6,6 +6,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { collectConfigSection, collectMethodsForUsers, collectRegistrationForUsers, collectUsers, registrationGaps } from './collectors.ts'
 import { RETRY_MAX_5XX } from './constants.ts'
+import { COLLECTOR_REGISTRY } from './registry.ts'
 
 const tokens = { get: () => 't', refresh: async () => 't' }
 const ctx = { tokens, signal: new AbortController().signal } as unknown as Parameters<typeof collectConfigSection>[0]
@@ -328,4 +329,41 @@ test('a refused registration fallback leaves the people unknown and never fails 
   } finally {
     globalThis.fetch = original
   }
+})
+
+// Phase 2 review: the Cross-tenant access row's endpoint became prose naming the
+// /default and /partners reads, and CONFIG_ENDPOINTS built the lane-0 request URL
+// from it, so every real scan asked Graph for "…crossTenantAccessPolicy, /policies/…"
+// and the section failed. A row a collector builds a URL from holds one path each.
+test('every registry path a collector builds a request from is one Graph path', () => {
+  const built = COLLECTOR_REGISTRY.filter((s) => (s.lane === '0' && s.configKey) || s.name === 'Passkey configuration' || s.name === 'Directory audit events')
+  assert.ok(built.length > 10)
+  for (const s of built) {
+    for (const path of [s.endpoint, s.fallbackEndpoint, ...(s.alsoReads ?? [])]) {
+      if (path === undefined) continue
+      // One path: no space, and no second path after a comma ($select lists have commas).
+      assert.match(path, /^\/\S+$/, `${s.name}: ${path}`)
+      assert.ok(!path.includes(',/'), `${s.name}: ${path}`)
+    }
+  }
+})
+
+test('the cross-tenant collector requests its registry row\'s path and the paths the row says it also reads, and nothing else', async () => {
+  const spec = COLLECTOR_REGISTRY.find((s) => s.configKey === 'crossTenantAccess')!
+  const requested: string[] = []
+  const original = globalThis.fetch
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const path = new URL(String(input)).pathname.replace(/^\/v1\.0/, '')
+    requested.push(path)
+    if (path.endsWith('/partners')) return new Response(JSON.stringify({ value: [] }), { status: 200 })
+    return new Response(JSON.stringify({ id: path }), { status: 200 })
+  }) as typeof fetch
+  try {
+    const section = await collectConfigSection(ctx, 'crossTenantAccess')
+    assert.equal(section.status, 'ok')
+  } finally {
+    globalThis.fetch = original
+  }
+  assert.deepEqual(requested, [spec.endpoint, ...(spec.alsoReads ?? [])])
+  assert.equal(spec.alsoReads?.length, 2)
 })

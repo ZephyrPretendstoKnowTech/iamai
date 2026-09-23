@@ -1,7 +1,7 @@
 // Applicability facets (intents.md §9): auto-detected from usage signals in
 // the snapshot; Mapping overrides win (stub until prompt 06 — defaults to
 // auto). Off facets → not-applicable, never scored, never "accepted risk".
-import { app } from '../content/content.ts'
+import { workflowWords } from '../content/content.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 
 export type Facet =
@@ -54,7 +54,7 @@ export function detectFacets(snapshot: TenantSnapshot, overrides: FacetOverrides
   }
   for (const [facet, spec] of Object.entries(FACET_APPS) as [Facet, NonNullable<(typeof FACET_APPS)[Facet]>][]) {
     const seen = seenInUsage(snapshot, spec.ids, spec.namePattern)
-    auto(facet, true, seen ? 'sign-in activity observed' : `no sign-in activity for ${app.inventory.workloadNames[facet] ?? facet}`)
+    auto(facet, true, seen ? 'sign-in activity observed' : `no sign-in activity for ${(workflowWords.names as Record<string, string>)[facet] ?? facet}`)
     out[facet].observedUsage = seen
   }
   auto(

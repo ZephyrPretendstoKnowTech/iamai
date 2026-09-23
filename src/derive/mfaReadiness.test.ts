@@ -16,7 +16,7 @@ import { DEFAULT_SHOW, EXPLAINED, GROUP_ORDER, SHOW_KEYS, SUB_GROUP_AT, readines
 import { stepMfaHold } from './stepMfaReadiness.ts'
 import { KINDS } from './ladder.ts'
 import { READINESS_STATES, isReady } from '../scoring/phishingResistant.ts'
-import { deviceChips, methodsCell, nextCell, rowCells, stateTitle, whyLine } from '../ui/surfaces/readinessCells.ts'
+import { deviceChips, methodsCell, methodsLine, nextCell, rowCells, stateTitle, whyLine } from '../ui/surfaces/readinessCells.ts'
 import { pages } from '../content/content.ts'
 
 const T = pages.readiness as unknown as { show: Record<string, string>; counted: Record<string, string> }
@@ -209,4 +209,20 @@ test('the worklist groups by state in the worklist order, admins lead each sub-g
     }
   }
   assert.ok(split > 0, 'the large fixture has a group above the sub-group size: the premise is untested')
+})
+
+// The CSV's methods cell is the screen's: a passkey the person holds that
+// today's passkey settings do not allow is noted under the cell on the page,
+// and the CSV wrote the main words alone ("Authenticator only"), so the file
+// said the person holds no passkey (Phase 2 review, Inventory and Export).
+test('the CSV methods cell carries the note the screen shows under it', () => {
+  let noted = 0
+  for (const f of allFixtures()) {
+    const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
+    for (const r of v.rows) {
+      assert.equal(rowCells(r)[2], methodsLine(r), r.user.id)
+      if (methodsLine(r) !== methodsCell(r).main) noted++
+    }
+  }
+  assert.ok(noted > 0, 'the premise: some fixture holds a passkey its settings do not allow')
 })

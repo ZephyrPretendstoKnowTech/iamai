@@ -14,8 +14,8 @@
 // the destination with what the sample tenant produced. Signed in: Signed in,
 // Baseline, Scan (the limitations, then the scan in exactly one of its states:
 // complete, finished with gaps, not started for want of a role, scanning, or
-// ready for the first scan) and the destination (ready, the last full plan after
-// a scan with gaps, or waiting for the scan).
+// ready for the first scan) and the destination (ready, the last full plan while
+// the current scan has none, no plan to offer, or waiting for the scan).
 //
 // The progression is Microsoft tenant → Baseline → Tenant scan → Plan, and the
 // four stages are not four equally loud tiles (task 016): stages() reads which
@@ -38,7 +38,7 @@ import { authReady, getGraphToken } from '../../graph/auth.ts'
 import type { SignInError } from '../../graph/authError.ts'
 import { READ_EVERYTHING_ROLE } from '../../graph/collect/roles.ts'
 import type { TokenSource } from '../../graph/collect/runScan.ts'
-import { GLOBAL_ADMINISTRATOR, coreRoleGap, rolesInToken } from '../../graph/collect/tokenRoles.ts'
+import { GLOBAL_ADMINISTRATOR, coreRoleGap, holdsReadEverything, rolesInToken } from '../../graph/collect/tokenRoles.ts'
 import type { BaselineFile } from '../../baseline/index.ts'
 import { app } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
@@ -62,11 +62,13 @@ import { ScanBar, ScanDevTools, laneOf } from '../scan/ScanProgress.tsx'
 import { chooseBaseline, scan as runScan, signIn, signInAnother, signOut, stopScan } from '../actions.ts'
 import { useAction } from '../useAction.ts'
 import { useSession } from '../session.ts'
-import { W, accountTile, baselineTile, connectStatus, planTile, sampleTile, scanTile, signInTile, stages } from '../scan/connectView.ts'
-import type { Action, BaselinePin, BaselineUpdate, ConnectStatus, PlanInput, PlanTile, ScanCounts, ScanInput, ScanTile, Stage, Tone } from '../scan/connectView.ts'
+import { W, accountTile, baselineTile, connectStatus, planInputOf, planTile, sampleTile, scanTile, signInTile, stages } from '../scan/connectView.ts'
+import type { Action, BaselinePin, BaselineUpdate, ConnectStatus, PlanInput, PlanTile, ScanCounts, ScanDoes, ScanInput, ScanTile, Stage, Tone } from '../scan/connectView.ts'
 import { facts, stepFacts } from '../../derive/facts.ts'
 import { unreadSources } from '../../graph/collect/coreSections.ts'
 import { signInProofRead } from '../../scoring/fromSnapshot.ts'
+import { operatorUserId } from '../../derive/operator.ts'
+import { conditionalAccessLicenceLine } from '../../derive/notLicensed.ts'
 import { usePlanData } from './planData.ts'
 
 const C = app.connect
@@ -274,6 +276,18 @@ function ScanTileView({ tile, upn, bar, actions, note, stage }: { tile: ScanTile
           ))}
         </ul>
       )}
+      {tile.more && (
+        <>
+          <p>{tile.more.lead}</p>
+          <ul className="tile-rows">
+            {tile.more.rows.map((r) => (
+              <li key={r.name}>
+                <span>{r.name}</span> <span>{r.value}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       {tile.ask && (
         <p className="quiet">
           {roleSpan(tile.ask)}{' '}
@@ -344,6 +358,8 @@ function Destination({ tile, actions }: { tile: PlanTile; actions: ReactNode }) 
 function SignedOut({ error, baseline, baselineRestoreError, authorUpdate }: BaselineProps & { error: SignInError | null }) {
   // The redirect takes seconds to start; the button must not look inert.
   const [opening, setOpening] = useState(false)
+  // The baseline load in flight: the page's, so the strip and the step read one state.
+  const [baselineBusy, setBaselineBusy] = useState<string | null>(null)
   // MSAL is warming: until it is ready the button carries a spinner but stays
   // clickable; a click made now is queued and fires the moment it is ready, so
   // the first click always lands (prompt 50.1 item 7).
@@ -383,7 +399,7 @@ function SignedOut({ error, baseline, baselineRestoreError, authorUpdate }: Base
   // stage anyone has finished until a tenant is behind it.
   const done = [false, false, false, false]
   const [s1, s2, s3] = stages(done)
-  const t2 = baselineStrings(baseline)
+  const t2 = baselineStrings(baseline, baselineBusy)
   return (
     <>
       <StatusStrip status={connectStatus(done, [t1, t2, t3, t4])} />
@@ -418,7 +434,7 @@ function SignedOut({ error, baseline, baselineRestoreError, authorUpdate }: Base
             <p className="quiet">{t1.permissions.removal}</p>
           </details>
         </Step>
-        <BaselineTile baseline={baseline} restoreError={baselineRestoreError} locked={false} authorUpdate={authorUpdate} stage={s2} />
+        <BaselineTile baseline={baseline} restoreError={baselineRestoreError} locked={false} authorUpdate={authorUpdate} stage={s2} busy={baselineBusy} setBusy={setBaselineBusy} />
         <ScanTileView tile={t3} upn={null} actions={null} stage={s3} />
       </Flow>
       <Destination tile={t4} actions={<Act action={t4.actions[0]} href={demoUrl()} />} />
@@ -446,8 +462,8 @@ function baselinePin(baseline: BaselineResult | null): BaselinePin | null {
   return { repo: `${owner}/${repo}`, url: `https://github.com/${owner}/${repo}`, commit, readAt: PINNED_BASELINE.generatedAt }
 }
 
-function baselineStrings(baseline: BaselineResult | null): { title: string; state: string; tone: Tone } {
-  const t = baselineTile({ name: baseline?.source ?? null, policyCount: baseline?.pkg.policies.length ?? 0, version: baseline?.origin.kind === 'upload' ? 'uploaded' : 'pinned', loading: null, update: null, stepsFor: () => [] })
+function baselineStrings(baseline: BaselineResult | null, loading: string | null): { title: string; state: string; tone: Tone } {
+  const t = baselineTile({ name: baseline?.source ?? null, policyCount: baseline?.pkg.policies.length ?? 0, version: baseline?.origin.kind === 'upload' ? 'uploaded' : 'pinned', loading, update: null, stepsFor: () => [] })
   return { title: t.title, state: t.state, tone: t.tone }
 }
 
@@ -465,6 +481,8 @@ function SignedIn({
 }) {
   // The scan in flight, wherever it was started (ui/session.ts): tile 3 shows it.
   const { scan: runner, getToken } = useSession()
+  // The baseline load in flight: the page's, so the strip and the step read one state.
+  const [baselineBusy, setBaselineBusy] = useState<string | null>(null)
   const scanning = runner.state === 'running' || runner.state === 'paused'
   // What an action reported, rendered in the tile that pressed it (ui/useAction.ts).
   const tile1 = useAction()
@@ -487,6 +505,10 @@ function SignedIn({
     }
   }, [getToken, account.homeAccountId])
   const roleGap = runner.roleGap ?? coreRoleGap(roleIds)
+  // Whether the account's roles read every section, once the token is read: null
+  // until the silent read returns (or when it cannot), so the Global Reader ask is
+  // never drawn for a Global Reader and then withdrawn (connectView.ts askFor).
+  const readsEverything = roleIds === null ? null : holdsReadEverything(roleIds)
   const tenant = tenantName ?? account.username
   const upn = account.username
   // A first scan stays here and offers the plan; Scan again returns to the Plan when it lands (target-state §2).
@@ -503,17 +525,19 @@ function SignedIn({
     : scanning
       ? { kind: 'scanning', lane: laneOf(runner).lane, elapsed: elapsedLabel(runner.startedAt ?? runner.nowTick, runner.nowTick) }
       : runner.gaps.length > 0
-        ? { kind: 'gaps', unread: runner.unread, lastScan }
+        ? { kind: 'gaps', gaps: runner.gaps, unread: runner.unread, lastScan, readsEverything }
         : lastScan
           ? // What the scan it names did not read in full, from that scan's own
             // snapshot, the way `degraded` is: a stored scan restored on the next
             // visit says the same thing it said the day it ran (S4-7, S4-8).
-            { kind: 'complete', at: lastScan.at, degraded: !signInProofRead(lastScan.snapshot), unread: unreadSources(lastScan.snapshot) }
+            // A refused section asks for no role the token already holds, and is
+            // this account's only when the scan's own /me row is this account.
+            { kind: 'complete', at: lastScan.at, degraded: !signInProofRead(lastScan.snapshot), unread: unreadSources(lastScan.snapshot), readsEverything, byThisAccount: operatorUserId(lastScan.snapshot) === account.localAccountId }
           : { kind: 'ready' }
-  // The plan follows: it is ready after a complete scan (its step counts the way
-  // the Plan header counts them, once the plan has computed; read-only, so
-  // opening Connect never creates or touches the plan record), the last full
-  // plan stays after a scan with gaps, and otherwise it waits for the scan.
+  // The plan follows a complete scan (its step counts the way the Plan header
+  // counts them, once the plan has computed; read-only, so opening Connect never
+  // creates or touches the plan record). Which state the destination is in is
+  // planInputOf's, below.
   const planScan = scanInput.kind === 'complete' ? lastScan : null
   const plan = usePlanData(planScan, baseline, true)
   const computed = plan.computed
@@ -539,41 +563,35 @@ function SignedIn({
     if (!snapshot || !mapping || !steps || !baseline) return null
     return { people: facts(snapshot, mapping).active, policies: baseline.pkg.policies.length, steps: steps.steps }
   }, [snapshot, mapping, steps?.steps, baseline])
-  const t3 = scanTile(scanInput.kind === 'complete' ? { ...scanInput, counts: scanCounts } : scanInput)
-  const planInput: PlanInput =
-    scanInput.kind === 'complete' && lastScan
-      ? { kind: 'ready', at: lastScan.at, counts: laneTileCounts }
-      : scanInput.kind === 'gaps' && lastScan
-        ? { kind: 'last', at: lastScan.at }
-        : { kind: 'waiting' }
+  // The destination reads what the Plan page would draw (connectView.ts
+  // planInputOf): that page's own no-plan gate, the baseline it computes
+  // against, and the stored plan it opens whatever a newer scan is doing.
+  const noPlan = lastScan ? conditionalAccessLicenceLine(lastScan.snapshot) : null
+  const planInput: PlanInput = planInputOf({ scan: scanInput.kind, lastScan, baselineLoaded: baseline !== null, noPlan, counts: laneTileCounts })
+  // The scan's counts sit beside a plan that is ready and nowhere else: a tenant
+  // the Plan page offers no plan has no steps to count, and its "active people"
+  // would be counted over activity its licence withheld.
+  const t3 = scanTile(scanInput.kind === 'complete' ? { ...scanInput, counts: planInput.kind === 'ready' ? scanCounts : null } : scanInput)
   const t4 = planTile(planInput)
   // The progression, from the tiles themselves: a tenant is connected, a
   // baseline is loaded, the scan is complete, and the plan is ready. The first
   // one that is not finished is the one with the next action.
   const done = [true, baseline !== null, scanInput.kind === 'complete', planInput.kind === 'ready']
   const [s1, s2, s3] = stages(done)
-  const scanActions = (): ReactNode => {
-    switch (t3.kind) {
-      case 'complete':
-        return <Act action={t3.actions[0]} onClick={() => start(false)} />
-      case 'gaps':
-        return (
-          <>
-            <Act action={t3.actions[0]} onClick={() => tile3.run(signInAnother())} />
-            <Act action={t3.actions[1]} onClick={() => start(false)} />
-          </>
-        )
-      case 'role':
-        return <Act action={t3.actions[0]} onClick={() => tile3.run(signInAnother())} />
-      case 'scanning':
-        return <Act action={t3.actions[0]} onClick={stopScan} />
-      default:
-        return <Act action={t3.actions[0]} onClick={() => start(true)} />
-    }
+  // The Scan step's buttons are the ones its state returns, each wired by what
+  // it does (connectView.ts ScanDoes), never by its place in the list: the gaps
+  // state offers another account only where a section was refused, so its
+  // second button is not always there.
+  const scanDoes: Record<ScanDoes, () => void> = {
+    scan: () => start(true),
+    scanAgain: () => start(false),
+    signInAnother: () => tile3.run(signInAnother()),
+    stop: stopScan,
   }
+  const scanActions: ReactNode = t3.actions.map((a) => <Act key={a.label} action={a} onClick={scanDoes[a.does]} />)
   return (
     <>
-      <StatusStrip status={connectStatus(done, [t1, baselineStrings(baseline), t3, t4])} />
+      <StatusStrip status={connectStatus(done, [t1, baselineStrings(baseline, baselineBusy), t3, t4])} />
       <Flow>
         <Step
           n={1}
@@ -597,7 +615,7 @@ function SignedIn({
           <p className="quiet">{t1.note}</p>
           {tile1.error && <p className="quiet" role="status">{tile1.error}</p>}
         </Step>
-        <BaselineTile baseline={baseline} restoreError={baselineRestoreError} locked={scanning} authorUpdate={authorUpdate} stage={s2} />
+        <BaselineTile baseline={baseline} restoreError={baselineRestoreError} locked={scanning} authorUpdate={authorUpdate} stage={s2} busy={baselineBusy} setBusy={setBaselineBusy} />
         <ScanTileView
           tile={t3}
           upn={upn}
@@ -609,7 +627,7 @@ function SignedIn({
               {tile3.error && <p className="quiet" role="status">{tile3.error}</p>}
             </>
           }
-          actions={scanActions()}
+          actions={scanActions}
         />
       </Flow>
       <Destination tile={t4} actions={t4.actions.map((a) => <Act key={a.label} action={a} href={PLAN_HREF} />)} />
@@ -624,8 +642,11 @@ function SignedIn({
  * one runtime network call and its compare both fail closed, so the line never
  * appears without real changes behind it.
  */
-function useAuthorUpdate(mock: BaselineUpdate | null | undefined): BaselineUpdate | null {
+function useAuthorUpdate(mock: BaselineUpdate | null | undefined): { update: BaselineUpdate | null; unchecked: boolean } {
   const [update, setUpdate] = useState<BaselineUpdate | null>(null)
+  // The check could not run (no network, GitHub's rate limit): the disclosure
+  // says so, because silence here reads exactly like "no update".
+  const [unchecked, setUnchecked] = useState(false)
   useEffect(() => {
     if (mock) {
       setUpdate(mock)
@@ -633,6 +654,7 @@ function useAuthorUpdate(mock: BaselineUpdate | null | undefined): BaselineUpdat
     }
     let live = true
     void checkAuthorHead().then(async (head) => {
+      if (live && !head.checked) setUnchecked(true)
       if (!live || !head.updated || !head.head || !head.date) return
       const review = await baselineReview(head.head)
       // An incomplete review still renders: a compare IAMAI could not finish is
@@ -644,26 +666,30 @@ function useAuthorUpdate(mock: BaselineUpdate | null | undefined): BaselineUpdat
       live = false
     }
   }, [mock])
-  return update
+  return { update, unchecked }
 }
 
 /**
  * Tile 2, in both states: the baseline's name and count as its state, the
  * approved sentences, the author-update rows (added / removed / changed ·
- * policy · the step that changes), and Change baseline, which opens the picker
- * with two choices. The default loads itself when nothing is saved, and says
+ * policy · the step that changes), and the view model's one button, which loads
+ * the pinned baseline while nothing is loaded (the picker with two choices is
+ * reserved for V2). The default loads itself when nothing is saved, and says
  * so: a default nobody picked is not a choice to record against the tenant.
  */
 // The tile asks; the action reads the package, makes it the tenant's and
 // records a pick (ui/actions.ts). Reading it there and not here is what lets
 // Sign out and Forget this tenant take an unfinished read with them: a package
 // that arrives after either action is applied to nothing and stored nowhere.
-function BaselineTile({ baseline, restoreError, locked, authorUpdate, stage }: { baseline: BaselineResult | null; restoreError: string | null; locked: boolean; authorUpdate?: BaselineUpdate | null; stage: Stage }) {
+// The load in flight (`busy`) is the page's, not the tile's: the status strip
+// reads the same baselineTile() state the step draws (Phase 2 audit: the step
+// said "loading" while the strip said "none loaded").
+function BaselineTile({ baseline, restoreError, locked, authorUpdate, stage, busy, setBusy }: { baseline: BaselineResult | null; restoreError: string | null; locked: boolean; authorUpdate?: BaselineUpdate | null; stage: Stage; busy: string | null; setBusy: (busy: string | null) => void }) {
   const [open, setOpen] = useState(false)
-  const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const loadingRef = useRef(false)
-  const update = useAuthorUpdate(authorUpdate)
+  const author = useAuthorUpdate(authorUpdate)
+  const update = author.update
 
   const loadPinned = async (chosen: boolean) => {
     if (loadingRef.current) return
@@ -708,7 +734,7 @@ function BaselineTile({ baseline, restoreError, locked, authorUpdate, stage }: {
   const policies = baseline?.pkg.policies ?? []
   const goalMap = baseline?.goalMap ?? PINNED_GOAL_MAP
   const stepsFor = (change: PolicyChange): string[] => stepsForChange(change, goalMap)
-  const t2 = baselineTile({ name: baseline?.source ?? null, policyCount: policies.length, version: baseline?.origin.kind === 'upload' ? 'uploaded' : 'pinned', pin: baselinePin(baseline), loading: busy, update, stepsFor })
+  const t2 = baselineTile({ name: baseline?.source ?? null, policyCount: policies.length, version: baseline?.origin.kind === 'upload' ? 'uploaded' : 'pinned', pin: baselinePin(baseline), loading: busy, update, updateUnchecked: author.unchecked, stepsFor })
   return (
     <Step
       n={2}
@@ -717,19 +743,20 @@ function BaselineTile({ baseline, restoreError, locked, authorUpdate, stage }: {
       tone={t2.tone}
       stage={stage}
       actions={
-        !busy && !baseline && (
-          /* Held while a scan runs: the baseline it reads against must not change under it. */
-          <Button variant="secondary" disabled={locked} onClick={() => void loadPinned(true)}>
-            Load Defense in Depth
+        // Load, while nothing is loaded or loading (connectView.ts baselineTile).
+        // Held while a scan runs: the baseline it reads against must not change under it.
+        t2.actions.map((a) => (
+          <Button key={a.label} variant={a.weight} disabled={locked} onClick={() => void loadPinned(true)}>
+            {a.label}
           </Button>
-        )
+        ))
       }
     >
       {/* The pack nests the package's own card inside the step: its name, a
           quiet source line, and the copy that says what a baseline is. */}
       {t2.card && (
         <div className="baseline-card">
-          <strong className="baseline-name">{baseline?.origin.kind === 'upload' ? t2.card.name : 'Defense in Depth — Maintained by Jon Hope'}</strong>
+          <strong className="baseline-name">{t2.card.name}</strong>
           <p className="baseline-source">{t2.card.source}</p>
           {t2.card.paragraphs.map((text) => (
             <p key={text}>{text.split('ConditionalAccess.Tech').map((part, i) => <span key={i}>{i > 0 && <a href="https://conditionalaccess.tech" target="_blank" rel="noopener noreferrer">ConditionalAccess.Tech</a>}{part}</span>)}</p>
@@ -750,6 +777,7 @@ function BaselineTile({ baseline, restoreError, locked, authorUpdate, stage }: {
             </p>
           )}
           {t2.source.version && <p className="quiet">{t2.source.version}</p>}
+          {t2.source.unchecked && <p className="quiet">{t2.source.unchecked}</p>}
         </details>
       )}
       {t2.paragraphs.map((text) => (

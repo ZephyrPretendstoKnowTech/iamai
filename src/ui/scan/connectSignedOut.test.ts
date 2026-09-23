@@ -8,7 +8,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { GRAPH_SCOPES } from '../../graph/scopes.ts'
 import { SIGN_IN_SCOPES } from '../../copy/permissions.ts'
-import { classifyAuthError } from '../../graph/authError.ts'
+import { authErrorOf, classifyAuthError } from '../../graph/authError.ts'
 import { demoFacts } from '../demoFacts.ts'
 import { facts as factsOf } from '../../derive/facts.ts'
 import { demoTenant } from '../demo.ts'
@@ -132,11 +132,11 @@ test('a sign-in error is one of three states from the MSAL error code: admin app
   onlyItsOwn('cancelled', x)
 })
 
-test('tile 3 signed out: Scan after sign-in · about a minute for a small tenant, the limitations, no beats, no read-only line, no button, no state colour', () => {
+test('tile 3 signed out: Scan after sign-in, the limitations, no beats, no read-only line, no button, no state colour', () => {
   const t = scanTile({ kind: 'sample' })
   assert.equal(t.n, 3)
   assert.equal(t.title, 'Scan')
-  assert.equal(t.state, 'after sign-in · about a minute for a small tenant')
+  assert.equal(t.state, 'after sign-in')
   assert.equal(t.tone, null)
   assert.ok(!('beats' in t), 'no beats signed out either')
   assert.ok(!/\bReads\b|\bCompares\b|\bWrites\b|your tenant/.test(tileStrings(t).join('\n')), 'no Reads / Compares / Writes line')
@@ -170,4 +170,20 @@ test("tile 4 signed out: Plan after the scan, the sample tenant's four facts com
   assert.equal(planTile({ kind: 'sample', facts: null }).facts, undefined, 'the facts wait for the fixture; nothing is typed in')
   const text = tileStrings(t).join('\n')
   for (const s of ['Open the plan →', 'Open the last full plan', 'from the scan', 'Try it with sample data', 'licence']) assert.ok(!text.includes(s), `the sample tile must not render "${s}"`)
+})
+
+// Phase 2 audit (Connect): a sign-in failure whose error carried no message
+// (MSAL leaves errorMessage empty when the server sends no description) read
+// "Microsoft answered:" and nothing after it, and dropped the error code, the
+// one fact that would have helped. The code stands in; with nothing at all to
+// quote there is no "Microsoft answered" line.
+test('a sign-in failure with no message quotes the error code, and with nothing to quote draws no "Microsoft answered"', () => {
+  const coded = classifyAuthError(authErrorOf({ errorCode: 'server_error', errorMessage: '', message: '' }))
+  assert.deepEqual(coded, { kind: 'failed', message: 'server_error' })
+  assert.equal(signInTile({ error: coded }).lead, 'Microsoft answered: server_error')
+  // MSAL's own message stands in for an empty errorMessage before the code does.
+  assert.deepEqual(classifyAuthError(authErrorOf({ errorCode: 'server_error', errorMessage: '', message: 'server_error: the service is busy' })), { kind: 'failed', message: 'server_error: the service is busy' })
+  const blank = signInTile({ error: classifyAuthError({ code: '', message: '' }) })
+  assert.equal(blank.lead, null, 'no colon introducing nothing')
+  assert.equal(blank.state, 'sign-in did not complete')
 })

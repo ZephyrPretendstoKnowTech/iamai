@@ -370,7 +370,7 @@ try {
   await send('Page.navigate', { url: `${BASE}&state=noScan#/connect` })
   await sleep(1200)
   t = await text()
-  check('Connect (no scan): Scan tenant and the ten-minute line', /Scan tenant/.test(t) && /About ten minutes\. The scan is processed in this browser; nothing is uploaded to IAMAI\./.test(t))
+  check('Connect (no scan): Scan tenant and the in-browser line', /Scan tenant/.test(t) && /The scan is processed in this browser; nothing is uploaded to IAMAI\./.test(t))
   check('Connect (no scan): nothing about a plan yet', !/Open the plan/.test(t))
   await send('Page.navigate', { url: `${BASE}&state=scanning#/connect` })
   await sleep(1200)
@@ -504,7 +504,7 @@ try {
   // would otherwise be asked what the loading line says.
   await waitFor(HOW_DRAWN)
   t = await text()
-  check('How IAMAI works: the reference page renders with its sections', /How IAMAI works/.test(t) && /Permissions/.test(t) && /What IAMAI reads/.test(t) && /Every check/.test(t) && /Baseline Packages/.test(t) && /Limits/.test(t))
+  check('How IAMAI works: the reference page renders with its sections', /How IAMAI works/.test(t) && /Permissions/.test(t) && /What IAMAI reads/.test(t) && /Every check/.test(t) && /Baseline packages/.test(t) && /Limits/.test(t))
   check('How: the old reference routes redirect here', (await (async () => { await send('Page.navigate', { url: `${BASE}#/checks` }); await sleep(600); return await waitFor(`location.hash === '#/how'`) })()))
 
 
@@ -826,8 +826,14 @@ try {
   await sleep(1500)
   check('Scan with gaps: the tile says so and builds no plan', await waitFor(`/finished with gaps · no plan built/.test(document.body.innerText)`))
   t = await text()
-  check('Scan with gaps: the unread sections are rows marked not read', /Conditional Access policies\s*not read/.test(t) && /Sign-in records\s*not read/.test(t))
-  check('Scan with gaps: the one ask is Global Reader, read-only', /Ask whoever administers the tenant for Global Reader; it reads every section and writes nothing\./.test(t) && !/Security Reader|Reports Reader/.test(t))
+  check('Scan with gaps: the unread sections are rows marked not read, and the refused one says so', /Conditional Access policies\s*not read/.test(t) && /Sign-in records\s*refused to this account/.test(t))
+  // The mock signs in as a Global Administrator (ui/App.tsx): Graph refusing such
+  // an account is not for want of a role, so the tile asks for none
+  // (tokenRoles.ts holdsReadEverything), and it names no other role.
+  check('Scan with gaps: a Global Administrator is asked for no role it already holds', await waitFor(`/refused to this account/.test(document.body.innerText) && !/Ask whoever administers the tenant/.test(document.body.innerText)`) && !/Security Reader|Reports Reader/.test(t))
+  // Nor another account: another role reads nothing more for it, so Scan again
+  // leads (connectView.ts scanTile, the gaps state). Tile 1 keeps its own.
+  check('Scan with gaps: a Global Administrator is offered Scan again alone', await evaluate(`(() => { const step = [...document.querySelectorAll('main.page .connect-step')].find((s) => /finished with gaps/.test(s.textContent || '')); const b = step ? [...step.querySelectorAll('.connect-step-actions button')] : []; return b.length === 1 && (b[0].textContent || '').trim() === 'Scan again' && /btn-primary/.test(b[0].className) })()`))
   check('Scan with gaps: the last full plan stays open', /Open the last full plan \([A-Z][a-z]{2} \d+\)/.test(t) && !/Open the plan →/.test(t))
 
   check('No page threw', consoleErrors.filter((e) => !/authmethods|Not signed in|favicon/.test(e)).length === 0, consoleErrors.filter((e) => !/authmethods|Not signed in|favicon/.test(e)).slice(0, 2).join(' | '))
@@ -856,7 +862,7 @@ try {
   await evaluate(`[...document.querySelectorAll('details.how-reference > summary')].find((s) => /Every check/.test(s.textContent)).click()`)
   check('Checks: the disclosure opens the registry', await waitFor(`/Field practice/.test(document.body.innerText)`))
   t = await text()
-  check('Checks: the reference page lists the registry by subject', /Every check IAMAI runs/.test(t) && /Emergency access accounts/.test(t) && /The exclusions group/.test(t))
+  check('Checks: the reference page lists the registry by subject', t.includes(CONTENT_PAGES.app.how.checksIntro) && /Emergency access accounts/.test(t) && /The exclusions group/.test(t))
   check('Checks: the severities render', /Must fix/.test(t) && /Recommended/.test(t) && /Note/.test(t))
   check('Checks: a break-glass rule is on the page in plain language', /Global Administrator is assigned permanently and active/.test(t))
   // Every check names its source, and the ones nobody documents say so (audit-program 6).
