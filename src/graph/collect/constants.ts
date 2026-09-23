@@ -2,6 +2,8 @@
 export const EVIDENCE_WINDOW_DAYS = 30
 export const ROW_MEMORY_CEILING = 50_000
 export const MIN_COVERAGE_HOURS = 24
+/** Saved sign-in records read back per batch (cache.ts evidenceStore); a batch ends on a whole second, so it can hold a few more. */
+export const CACHE_READ_BATCH = 1_000
 export const SLOW_THRESHOLD_MS = 15_000
 export const PAGE_ABORT_MS = 125_000
 export const LANE_A_ABORT_MS = 30_000
