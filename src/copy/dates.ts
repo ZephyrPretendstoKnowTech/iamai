@@ -64,6 +64,20 @@ export function absoluteDate(iso: string): string {
 }
 
 /**
+ * "2026-09-10": the calendar day `absoluteDate` states for the same instant, in
+ * the display time zone; a date-only string is its own day. The calendar's
+ * all-day entries book this day. They took the instant's UTC date, so east of
+ * UTC a turn-on at 09:00 was booked on the day before the one the board, the
+ * rail and the Dates line state, and west of UTC the day after.
+ */
+export function calendarDay(iso: string): string {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso
+  const parts = formatter('calendarDay', 'en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(iso))
+  const part = (type: Intl.DateTimeFormatPartTypes): string => parts.find((p) => p.type === type)?.value ?? ''
+  return `${part('year')}-${part('month')}-${part('day')}`
+}
+
+/**
  * "Monday, September 28" in the display time zone: the long form, for emails
  * only (walk-51 item 5). In the display time zone like every other date here, so
  * it never falls a day either side of the short form from the same instant.

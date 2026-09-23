@@ -36,7 +36,7 @@ import { planFinish, planWeeks } from '../derive/finish.ts'
 import { headerLine1 } from '../derive/planHeader.ts'
 import { FINISH } from '../copy/statements.ts'
 import { readyWhen } from '../derive/readyWhen.ts'
-import { absoluteDate } from '../copy/dates.ts'
+import { absoluteDate, calendarDay } from '../copy/dates.ts'
 import { contentStepFor } from '../content/stepTitle.ts'
 import { rowReason, rowWhen, rowWhenWraps } from '../ui/surfaces/rowWhen.ts'
 import { datesLineFor, stepExportView, stepLines } from '../ui/surfaces/stepExport.ts'
@@ -95,8 +95,9 @@ function createdOnly(p: Plan, s: Step): void {
   // The calendar and the Dates line book the same creation day and nothing of the enforcement.
   const entry = p.ics.split('BEGIN:VEVENT').find((x) => x.includes(`-${s.id}@iamai`))
   assert.ok(entry, `${where}: no calendar entry for its report-only creation`)
-  assert.ok(entry.includes(`DTSTART;VALUE=DATE:${sch.at!.slice(0, 10).replace(/-/g, '')}`), `${where}: the calendar books another day`)
-  assert.ok(entry.includes(`DTEND;VALUE=DATE:${new Date(Date.parse(sch.at!) + 86_400_000).toISOString().slice(0, 10).replace(/-/g, '')}`), `${where}: the creation is one day`)
+  const created = calendarDay(sch.at!)
+  assert.ok(entry.includes(`DTSTART;VALUE=DATE:${created.replace(/-/g, '')}`), `${where}: the calendar books another day`)
+  assert.ok(entry.includes(`DTEND;VALUE=DATE:${new Date(Date.parse(`${created}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10).replace(/-/g, '')}`), `${where}: the creation is one day`)
   assert.equal(datesLineFor(s, (contentStepFor(s) ?? {}) as Record<string, unknown>), '{datesDeploy}', `${where}: the Dates line`)
 }
 
@@ -233,9 +234,11 @@ test('C5: the calendar books a readiness-gated create on its report-only creatio
   assert.equal(scheduleOf(s).enforcement, 'gated')
   const entries = p.ics.replace(/\r\n /g, '').split('BEGIN:VEVENT').filter((x) => x.includes(`-${s.id}@iamai`))
   assert.equal(entries.length, 1, 'one entry for the step')
-  const day = s.reportOnlyAt!.slice(0, 10).replace(/-/g, '')
+  // The creation day as the board states it, in the display zone (copy/dates.ts calendarDay).
+  const created = calendarDay(s.reportOnlyAt!)
+  const day = created.replace(/-/g, '')
   assert.ok(entries[0].includes(`DTSTART;VALUE=DATE:${day}`), 'on its creation day')
-  assert.ok(entries[0].includes(`DTEND;VALUE=DATE:${new Date(Date.parse(s.reportOnlyAt!) + 86_400_000).toISOString().slice(0, 10).replace(/-/g, '')}`), 'for that one day')
+  assert.ok(entries[0].includes(`DTEND;VALUE=DATE:${new Date(Date.parse(`${created}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10).replace(/-/g, '')}`), 'for that one day')
   // A day the board reads as an estimate is booked as one (R4-34): the summary ends on it.
   assert.match(entries[0], /SUMMARY:[^\r\n]* · Create in report-only(?: · Est\. [^\r\n]*)?\r?\n/, 'named for what the day is for')
   assert.doesNotMatch(entries[0], /Turn the policy on/, 'no enforcement named')

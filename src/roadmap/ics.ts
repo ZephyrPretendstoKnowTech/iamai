@@ -2,6 +2,7 @@
 // the step's one scheduling result (roadmap/stepSchedule.ts scheduledEventOf), and
 // one per Cleanup row on its day (E4). Pure; the file is built in the browser.
 import { app } from '../content/content.ts'
+import { calendarDay } from '../copy/dates.ts'
 import { planFinish } from '../derive/finish.ts'
 import { cleanupArtifactLines, stepArtifactLines } from './artifactLines.ts'
 import { estimatedDay, scheduledEventOf, shownDay } from './stepSchedule.ts'
@@ -11,8 +12,16 @@ import type { CleanupExport, Step, StepView } from './types.ts'
 /** What a scheduled day is for, in the Plan rail's own words (pages.app.plan.stepContract.railTransition). */
 const TRANSITION = (app.plan as unknown as { stepContract: { railTransition: Partial<Record<ScheduledTransition, string>> } }).stepContract.railTransition
 
-function icsDate(iso: string): string {
-  return iso.slice(0, 10).replace(/-/g, '')
+/** A calendar day ("2026-09-22") as an all-day DATE value. */
+function icsDate(day: string): string {
+  return day.replace(/-/g, '')
+}
+
+/** The calendar day after `day`: an all-day entry's end is exclusive. */
+function dayAfter(day: string): string {
+  const d = new Date(`${day}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + 1)
+  return d.toISOString().slice(0, 10)
 }
 
 function escape(text: string): string {
@@ -68,12 +77,14 @@ export function buildIcs(steps: Step[], tenantName: string, planId: string, view
     // was booked for Aug 31, its cutover instructions as the entry, under a row
     // that read "After prerequisites" (R4-21).
     if (v.undated) continue
-    const endExclusive = new Date(Date.parse(event.end) + 86_400_000).toISOString()
     lines.push('BEGIN:VEVENT')
     lines.push(`UID:${planId}-${s.id}@iamai`)
     lines.push(stamp())
-    lines.push(`DTSTART;VALUE=DATE:${icsDate(event.start)}`)
-    lines.push(`DTEND;VALUE=DATE:${icsDate(endExclusive)}`)
+    // The days the board, the rail and the Dates line state: the event's
+    // instants in the plan's display zone (copy/dates.ts calendarDay), never
+    // their UTC dates (Phase 2 export finding 1).
+    lines.push(`DTSTART;VALUE=DATE:${icsDate(calendarDay(event.start))}`)
+    lines.push(`DTEND;VALUE=DATE:${icsDate(dayAfter(calendarDay(event.end)))}`)
     // What the day is for, as the Plan rail says it: its transition's words where
     // the board's row hands that operation over today (the export view's
     // `operation`, read off the board), or the step's lane label otherwise (A1c):
@@ -109,8 +120,9 @@ export function buildIcs(steps: Step[], tenantName: string, planId: string, view
     lines.push('BEGIN:VEVENT')
     lines.push(`UID:${planId}-cleanup-${c.kind}@iamai`)
     lines.push(stamp())
-    lines.push(`DTSTART;VALUE=DATE:${icsDate(c.day)}`)
-    lines.push(`DTEND;VALUE=DATE:${icsDate(new Date(Date.parse(c.day) + 86_400_000).toISOString())}`)
+    // The row's day as its When column states it (cleanupExport.ts cleanupWhen reads the date part).
+    lines.push(`DTSTART;VALUE=DATE:${icsDate(c.day.slice(0, 10))}`)
+    lines.push(`DTEND;VALUE=DATE:${icsDate(dayAfter(c.day.slice(0, 10)))}`)
     lines.push(fold(`SUMMARY:${escape(c.title)}`))
     lines.push(fold(`DESCRIPTION:${escape(cleanupArtifactLines(c).join('\n'))}`))
     lines.push('END:VEVENT')
