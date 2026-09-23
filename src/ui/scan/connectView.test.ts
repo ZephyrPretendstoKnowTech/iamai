@@ -734,3 +734,21 @@ test('the scan age is English inside English sentences, whatever the browser loc
     ;(Intl as unknown as { RelativeTimeFormat: typeof Real }).RelativeTimeFormat = Real
   }
 })
+
+// Phase 2 audit (Connect): an author change to a setting the baseline model
+// does not represent opened its line with the raw Graph path
+// ("conditions.times.included: outside what IAMAI's baseline model reads…"),
+// a key where a sentence should start. The sentence now leads with words and
+// keeps the path, the one precise name the setting has, as a detail.
+test('an unreviewed author change leads with words and keeps the Graph path as a detail', () => {
+  const t = baselineTile({
+    name: 'x',
+    policyCount: 1,
+    loading: null,
+    update: { date: '2026-09-20T00:00:00Z', changes: [change({ kind: 'unknown', newName: 'IAC - X', unreviewed: ['conditions.times.included'], reason: 'unmodelledField' })] },
+    stepsFor,
+  })
+  const [line] = t.update?.rows[0].deltas ?? []
+  assert.equal(line, "A setting IAMAI's baseline model does not read changed (conditions.times.included), so this change is not reviewed.")
+  assert.doesNotMatch(line ?? '', /^[a-z]+[A-Z.]/, 'no line opens on a raw key')
+})
