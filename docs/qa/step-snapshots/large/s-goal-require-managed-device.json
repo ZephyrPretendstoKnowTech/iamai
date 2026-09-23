@@ -1,11 +1,11 @@
 {
-  "lane": "On Hold",
+  "lane": "Completed",
   "substatus": null,
-  "reason": "when device readiness reaches 80% (now 29%)",
-  "fact": "Report-only",
-  "badge": "On Hold",
-  "bar": "Waiting on your direction",
-  "rail": "Not scheduled",
+  "reason": "Satisfied by Core - Extra 11 - Grant - Compliant device for Office — no change needed",
+  "fact": "Enforced",
+  "badge": "Completed",
+  "bar": "Enforced",
+  "rail": "Completed",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -14,16 +14,12 @@
   ],
   "tiles": [
     {
-      "label": "Threshold",
-      "state": "29% of people on a compliant device"
+      "label": "Readiness",
+      "state": "1,210 of 4,169 people in scope"
     },
     {
-      "label": "Decide How People and Devices Sign In",
-      "state": "Waiting on your direction"
-    },
-    {
-      "label": "Configure Passkey Authentication",
-      "state": "Prerequisite · To do"
+      "label": "Verify Emergency Access",
+      "state": "Prerequisite · Waiting"
     }
   ],
   "channels": [
@@ -32,5 +28,5 @@
     "JSON",
     "AI Info"
   ],
-  "when": "After prerequisites"
+  "when": "Aug 28, 2026"
 }
