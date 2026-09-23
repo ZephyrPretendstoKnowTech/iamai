@@ -227,6 +227,11 @@ test('the other readings of a policy found Off say Report-only too, and never On
   // instructions below it there were the create procedure: following them
   // built a second policy beside the one that is Off.
   assert.doesNotMatch(CONTRACT.foundTaggedDisabled, /instructions below/, CONTRACT.foundTaggedDisabled)
+  // And no completion says it is finished when the policy is "on again": a
+  // switched-off step finishes on its own end state, after the report-only
+  // watch (stepContract.ts doneWhenOf), and a line that says otherwise is one
+  // the next change could draw.
+  assert.equal(Object.hasOwn(CONTRACT, 'doneSwitchedOn'), false, 'pages.app.plan.stepContract.doneSwitchedOn is still in the content')
 })
 
 const GUESTS = 's-goal-guests-mfa'
