@@ -867,7 +867,8 @@ test('the finished reading reads a count with its thousands separator', () => {
   const tile = [...readinessOf(step, stepContract(step, short.ctx)).tiles, ...readinessOf(step, stepContract(step, short.ctx)).satisfied].find((x) => x.key === FINISHED_READING) as { value: string; note: string | null } | undefined
   assert.ok(tile, 'the premise: the finished reading is drawn')
   assert.match(tile.value, /^3,569 of 4,900 /, tile.value)
-  assert.match(String(tile.note), /holds enforcement until MFA readiness reaches 90%; it is 73% now\./, String(tile.note))
+  // 3,569 of 4,900 is 72.8%: a gate is met at its threshold, never at a reading rounded up to it (roadmap/methodReadiness.ts).
+  assert.match(String(tile.note), /holds enforcement until MFA readiness reaches 90%; it is 72% now\./, String(tile.note))
   assert.doesNotMatch(String(tile.note), /cannot measure/, String(tile.note))
 })
 
