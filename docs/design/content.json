@@ -982,6 +982,8 @@
       },
       "summaryLabel": "Readiness answer",
       "summary": "{ready} of {cohort} are ready for phishing-resistant sign-in.",
+      "$commentSummaryWithGuests": "People and guests counted together. \"4 of 29 people and 1 guest are ready\" read as if the guest were ready too. The whole count follows \"of\"; the guests stay named beside the people (owner, 2026-09-19).",
+      "summaryWithGuests": "{ready} of {total} are ready for phishing-resistant sign-in: {cohort}.",
       "summaryNone": "No active people to count.",
       "summaryNoneNoP1": "Nobody can be counted: sign-in records need Microsoft Entra ID P1, which this tenant doesn’t have, so this scan read nobody’s activity.",
       "summaryUnmeasured": "Readiness not measured for {cohort}: this scan holds no sign-in proof.",

@@ -26,6 +26,7 @@ type ByComputers = Record<ComputersSeen, string>
 type Words = {
   lead: ByComputers
   summary: string
+  summaryWithGuests: string
   summaryNone: string
   summaryNoneNoP1: string
   summaryNoP1: string
@@ -181,6 +182,9 @@ export function summaryLine(counted: readonly ReadinessRow[], reads: { needP1: b
   if (!reads.proofRead) return fillText(T.summaryUnmeasured, { cohort })
   if (counted.every((r) => r.state === 'unknown')) return fillText(T.summaryNotJudged, { cohort })
   const ready = counted.filter((r) => r.state === 'ready' || r.state === 'seamless').length
+  // People and guests together: the whole count follows "of", so "4 of 29 people and 1 guest are ready" can't read as the guest being ready.
+  const guests = counted.filter((r) => r.guest).length
+  if (guests > 0 && guests < active) return fillText(T.summaryWithGuests, { ready, total: active, cohort })
   return fillText(T.summary, { ready, cohort })
 }
 

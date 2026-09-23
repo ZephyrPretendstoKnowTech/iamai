@@ -19,6 +19,7 @@ import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { stepMfaHold } from '../../derive/stepMfaReadiness.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { readinessTable } from './inventoryTables.ts'
+import { RE } from '../../content/contentChecks.ts'
 import { sourceReadFix } from '../../roadmap/readiness.ts'
 
 const R = pages.readiness as unknown as { checks: Record<string, Record<string, string>>; rail: { shownAbove: string } }
@@ -105,7 +106,7 @@ test('a headline over people nobody could judge is not a measured "0 of N are re
   assert.equal(goalLine(counted), '', 'nor does the second line say nobody is seamless over people it could not judge')
   // The shipped demo still states its measured answer.
   const demo = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.filter((r) => r.state !== null)
-  assert.match(summaryLine(demo, { needP1: signInsNeedP1(f.snapshot), proofRead: signInProofRead(f.snapshot) }), /^\d+ of .* ready for phishing-resistant sign-in\.$/)
+  assert.match(summaryLine(demo, { needP1: signInsNeedP1(f.snapshot), proofRead: signInProofRead(f.snapshot) }), RE.readinessSummary, 'the measured answer')
   assert.notEqual(goalLine(demo), '')
   assert.match(page(), /const summary = summaryLine\(counted, \{ needP1: signInsNeedP1\(snapshot\), proofRead: signInProofRead\(snapshot\) \}\)/)
 })
@@ -331,4 +332,28 @@ test('the Confirm it group never tells somebody to remove a method before they h
     assert.ok(remove === -1 || (register !== -1 && register < remove), body)
     assert.doesNotMatch(body, /remove the old method and register again/)
   }
+})
+
+test('the headline puts the whole count after "of", so it never reads as if the guests are ready', () => {
+  const f = fixture('demo')
+  const counted = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.filter((r) => r.state !== null)
+  const guests = counted.filter((r) => r.guest).length
+  assert.ok(guests > 0 && guests < counted.length, 'the premise: people and guests are counted')
+  const line = summaryLine(counted, { needP1: false, proofRead: true })
+  const ready = counted.filter((r) => r.state === 'ready' || r.state === 'seamless').length
+  assert.equal(line, fillText(S.summaryWithGuests, { ready, total: counted.length, cohort: cohortWords(counted.length, guests) }))
+  assert.doesNotMatch(line, /people and \d+ guests? (is|are) ready/, line)
+  // The walk and the smoke read it: the total is the count after "of".
+  const m = line.match(RE.readinessSummary)
+  assert.ok(m, line)
+  assert.equal(Number(m[2]) + Number(m[3] ?? 0), counted.length)
+  const smoke = readFileSync('scripts/smoke.mjs', 'utf8')
+  const lit = (smoke.match(/const SUMMARY_LINE = (\/.*\/)\n/) ?? [])[1]
+  assert.ok(lit)
+  const sm = line.match(new RegExp(lit.slice(1, -1)))
+  assert.ok(sm, 'the smoke reads it')
+  assert.equal(Number(sm[2]) + Number(sm[3] ?? 0), counted.length, 'and adds up the same total')
+  // Without guests, or with guests only, the sentence is the one it always was.
+  const people = counted.filter((r) => !r.guest)
+  assert.equal(summaryLine(people, { needP1: false, proofRead: true }), fillText(S.summary, { ready: people.filter((r) => r.state === 'ready' || r.state === 'seamless').length, cohort: cohortWords(people.length, 0) }))
 })
