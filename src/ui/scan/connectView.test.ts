@@ -638,3 +638,18 @@ test('the scan counts are counted words: one reads as one, and a large count car
     { value: '36', label: 'plan steps' },
   ])
 })
+
+// Phase 2 audit (Connect): the baseline says IAMAI "tells you when he updates
+// it", and a check that could not run (GitHub's unauthenticated rate limit, no
+// network) folded into "no update": nothing seen, said over a read that failed.
+// The disclosure now says the check could not be made.
+test('an author check that could not run says so in the source disclosure, never reads as no update', () => {
+  const pin = { repo: 'Jhope188/ConditionalAccessPolicies', url: 'https://github.com/Jhope188/ConditionalAccessPolicies', commit: '90d9b890c4b9af2ac4bc02d97c06bf8900064b4c', readAt: '2026-09-08T04:02:40.518Z' }
+  const unknown = baselineTile({ name: 'Jon Hope — Defense in Depth', policyCount: 38, pin, loading: null, update: null, updateUnchecked: true, stepsFor })
+  assert.equal(unknown.source?.unchecked, "The check for an update in the author's repository could not run just now, so IAMAI cannot say whether he has changed it since.")
+  assert.equal(baselineTile({ name: 'Jon Hope — Defense in Depth', policyCount: 38, pin, loading: null, update: null, stepsFor }).source?.unchecked, null, 'a check that ran says nothing more')
+  assert.equal(baselineTile({ name: 'Uploaded package', policyCount: 3, version: 'uploaded', loading: null, update: null, updateUnchecked: true, stepsFor }).source?.unchecked, null, 'an uploaded package has no author check')
+  const CONNECT = readFileSync('src/ui/surfaces/Connect.tsx', 'utf8')
+  assert.match(CONNECT, /updateUnchecked: author\.unchecked/, 'Connect hands the tile the check that could not run')
+  assert.match(CONNECT, /t2\.source\.unchecked &&/, 'Connect draws the line')
+})
