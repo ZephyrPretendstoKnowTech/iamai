@@ -76,12 +76,16 @@ function apply(content: string, d: Disposition): string {
  * The text a file carries, by its grammar. A calendar is unfolded before it is
  * masked and folded again after: masked as folded, an address split across a
  * fold kept its halves ("bg1@messy-fixture.onmicrosoft.com" whole in a masked
- * file, "upn-1@redactedsoft.com" half masked; Phase 2 export finding 10). Pure.
+ * file, "upn-1@redactedsoft.com" half masked; Phase 2 export finding 10). The
+ * whole file is masked in one pass, so a placeholder names one account across
+ * it (redact.ts): masked line by line, "upn-1@redacted" was one emergency
+ * account in one entry, the other in the next and an ordinary account in a
+ * third. Pure.
  */
 export function exportText(name: string, content: string, d: Disposition): string {
   if (!d.redact || !/\.ics$/i.test(name)) return apply(content, d)
-  const lines = content.replace(/\r?\n[ \t]/g, '').split(/\r?\n/)
-  return lines.map((line) => foldIcsLine(apply(line, d))).join('\r\n')
+  const unfolded = content.replace(/\r?\n[ \t]/g, '')
+  return apply(unfolded, d).split(/\r?\n/).map(foldIcsLine).join('\r\n')
 }
 
 /** Preserve the file grammar so sample downloads still open in their intended tools. */
