@@ -37,7 +37,7 @@ const BUILDABLE = new Set(['ok', 'partial'])
  * A refusal, an error, a licence gate or a section the scan lacks is no reading,
  * and the surface says the section was not read instead of drawing a zero.
  */
-export function sectionHasData(snapshot: TenantSnapshot, key: ConfigSectionKey | SourceKey): boolean {
+export function sectionHasData(snapshot: Pick<TenantSnapshot, 'config' | 'sources'>, key: ConfigSectionKey | SourceKey): boolean {
   const s = (CONFIG_KEYS as string[]).includes(key) ? snapshot.config?.[key as ConfigSectionKey] : snapshot.sources?.[key as SourceKey]
   return BUILDABLE.has(s?.status ?? '')
 }

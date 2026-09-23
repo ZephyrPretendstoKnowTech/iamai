@@ -42,7 +42,7 @@ import { app, pages, shared } from '../../content/content.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { fillText } from '../../content/render.ts'
 import { monthDay } from '../../copy/dates.ts'
-import { checkWords, deviceChips, listWords, methodsCell, needsActionWords, nextCell, noDevicesWord, osWord, panelDevices, panelMethods, rowCells, rowNote, searchText, signInsUnavailableFor, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine, railRemaining, panelNoDevices, panelNoMethods, summaryLine, unreadMethodsWords, countedLine, scopeWords, noRecordsWords } from './readinessCells.ts'
+import { checkWords, deviceChips, listWords, methodsCell, needsActionWords, nextCell, noDevicesWord, osWord, panelDevices, panelMethods, rowCells, rowNote, searchText, signInsUnavailableFor, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine, railRemaining, panelNoDevices, panelNoMethods, summaryLine, unreadMethodsWords, countedLine, scopeWords, noRecordsWords, guestTrustWords } from './readinessCells.ts'
 import type { PanelItem } from './readinessCells.ts'
 import { READINESS_CSV } from './inventoryTables.ts'
 import { useAppliedMapping, usePlanData } from './planData.ts'
@@ -656,7 +656,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
             <section className="readiness-tile panel" aria-labelledby="readiness-guests">
               <h3 id="readiness-guests">{G.title}</h3>
               <p>{fillText(G.count, { n: guests.active })}</p>
-              <p>{guests.trust === 'on' ? G.trustOn : guests.trust === 'off' ? G.trustOff : G.trustUnknown}</p>
+              <p>{guestTrustWords(guests.trust)}</p>
               {guests.policy !== 'absent' && (
                 <p>
                   {guests.policy === 'inPlace' ? G.policyInPlace : G.policyNotInPlace}{' '}
