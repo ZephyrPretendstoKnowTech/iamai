@@ -61,7 +61,7 @@ type Words = {
     limitsLink: string
     meta: { people: string; policies: string; steps: string }
     complete: { state: string; again: string; degraded: string; unread: string }
-    gaps: { state: string; lead: string; leadFirst: string; notRead: string; partlyRead: string; refused: string; others: string; ask: string; learn: { label: string; url: string } }
+    gaps: { state: string; lead: string; leadFirst: string; notRead: string; partlyRead: string; refused: string; refusedThatAccount: string; others: string; ask: string; learn: { label: string; url: string } }
     role: { state: string; lead: string; row: string; ask: string; note: string }
     ready: { state: string; note: string; start: string }
     scanning: { state: string; stop: string }
@@ -371,8 +371,11 @@ export type ScanInput =
    * (tokenRoles.ts holdsReadEverything). True, a refusal is not for want of a role;
    * null or absent, the roles are not known yet (the token is read after the first
    * render) or the token carries none. Only false asks for a role.
+   * `byThisAccount`: the scan's own /me row (derive/operator.ts) is the account
+   * signed in now. A stored scan may be another account's, so only then is a
+   * refusal said to be this account's; absent, it is the scan's.
    */
-  | { kind: 'complete'; at: string; now?: number; counts?: ScanCounts | null; degraded?: boolean; unread?: UnreadSection[]; readsEverything?: boolean | null }
+  | { kind: 'complete'; at: string; now?: number; counts?: ScanCounts | null; degraded?: boolean; unread?: UnreadSection[]; readsEverything?: boolean | null; byThisAccount?: boolean }
   /**
    * `gaps`: the core sections a plan cannot be built without (coreSections.ts
    * coreGaps), the one reason no plan was built; `unread` is every section the
@@ -442,8 +445,11 @@ export function scanTile(input: ScanInput): ScanTile {
   // two are different problems to take to whoever administers the tenant. A
   // section Graph refused the account says that, and only a refusal is laid at
   // the account's door: an error, a throttled read or a read stopped short is
-  // not something another account or role would change (coreSections.ts).
-  const unreadRow = (u: UnreadSection): { name: string; value: string } => ({ name: sectionLabel(u.source), value: u.partial ? S.gaps.partlyRead : u.refused ? S.gaps.refused : S.gaps.notRead })
+  // not something another account or role would change (coreSections.ts). The
+  // gaps state is the scan this account just ran; a complete scan may be a stored
+  // one another account ran, so it names this account only when it is this one's.
+  const thisAccount = input.kind !== 'complete' || input.byThisAccount === true
+  const unreadRow = (u: UnreadSection): { name: string; value: string } => ({ name: sectionLabel(u.source), value: u.partial ? S.gaps.partlyRead : u.refused ? (thisAccount ? S.gaps.refused : S.gaps.refusedThatAccount) : S.gaps.notRead })
   // The Global Reader ask, and its Microsoft link, where a row is a refusal and
   // nowhere else, and only to an account whose active roles were read and do not
   // read every section: Graph refusing a Global Reader is not for want of a role,
