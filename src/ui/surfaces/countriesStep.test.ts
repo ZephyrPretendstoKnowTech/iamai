@@ -56,6 +56,9 @@ test('6.3 is Ready or Up Next, never On Hold on a missing object it makes itself
       assert.ok(!reading.blockers.some((b) => b.kind === 'missingObject'), `${name}/${label}: ${reading.lane} · missingObject`)
       assert.ok(!geo.blockedBy.includes(GEO), `${name}/${label}: 6.3 waits on itself`)
       assert.ok(!reading.blockers.some((b) => b.id === GEO), `${name}/${label}: 6.3 waits on itself`)
+      // Nor on the location as a step of its own, as it did before Stage 3.
+      assert.ok(!geo.blockedBy.includes(LOCATION), `${name}/${label}: 6.3 waits on the location step`)
+      assert.ok(!reading.blockers.some((b) => b.id === LOCATION), `${name}/${label}: 6.3's reading waits on the location step`)
       if (label === 'settled') assert.ok(reading.lane === 'Ready' || reading.lane === 'Up Next', `${name}/${label}: ${reading.lane} · ${reading.reason?.kind}:${reading.reason?.id}`)
     }
   }
