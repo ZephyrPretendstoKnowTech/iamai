@@ -131,3 +131,27 @@ export function rescanLinesOf(step: Step, cs: ContentStepLike): { steps: string[
   const strings = (xs: unknown): string[] => (Array.isArray(xs) ? xs.filter((x): x is string => typeof x === 'string') : [])
   return { steps: strings(rescan.steps), generic: strings(rescan.generic) }
 }
+
+/**
+ * The step's preparation lines where they stand in for its portal channel
+ * (content `preparation`), with the names the plan expects for a pair it cannot
+ * match; null where they do not stand in. One rule for the opened step's portal
+ * channel (stepBody.ts) and the export view every artifact reads
+ * (stepExport.ts): a policy step's preparation stands in while a reason holds
+ * the policy or nothing else drew a portal; the passkey settings step's only
+ * where nothing else did.
+ *
+ * The export carried the package preview's create instead, so on the public demo
+ * the calendar, the prompt pack, the bundle and AI Info's What remains said
+ * "Create the two guest policies separately" with ‹guests policy name›
+ * placeholders, beside existing guest coverage the step said to compare first,
+ * while the opened step's portal said to review the pair (Phase 2 export
+ * finding 4).
+ */
+export function preparationLines(step: Step, cs: { preparation?: unknown; kind?: unknown } | undefined, portalProduced: boolean): string[] | null {
+  if (!cs || !Array.isArray(cs.preparation)) return null
+  const reason = cs.kind === 'policy' ? unavailableReason(step) : null
+  const stands = step.id === 's-prereq-passkey-settings' ? !portalProduced : reason !== null || !portalProduced
+  if (!stands) return null
+  return [...cs.preparation.filter((line: unknown): line is string => typeof line === 'string'), ...(step.action.unmatchedPair ? step.action.portalSteps : [])]
+}

@@ -16,7 +16,7 @@ import { SHARED_REF_KEYS, fillText, ifWrongFor, listCountVars, whatToDoFor, whol
 import { stepVars, withoutScheduleDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor, unwrittenCorrectionLines } from './stepPortal.ts'
-import { instructionsHeld, rescanLinesOf, wholeLines } from './stepInstructions.ts'
+import { instructionsHeld, preparationLines, rescanLinesOf, wholeLines } from './stepInstructions.ts'
 import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, proceduresAreReference, stepContract } from './stepContract.ts'
 import type { LaneView, StepContract } from './stepContract.ts'
 import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, previewNoteLines, selectedPolicyBodiesOf, entraWithSettings } from './stepPackage.ts'
@@ -437,7 +437,11 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
     if (entra) {
       hasPackagePortal = true
       lines.splice(0)
-      lines.push(...(projectedEntra ? entraWithSettings(entra.text, step, ctx, contract, preview ?? projection) : entra.text).replace(/\*\*(.*?)\*\*/g, '$1').split(/\r?\n/).map(line => line.trim()).filter(Boolean), ...(preview ? previewNoteLines(step, contract, preview.hold) : []))
+      // The portal channel the opened step draws: its preparation where that
+      // stands in for the package's procedure (stepInstructions.ts
+      // preparationLines), else the package's own.
+      const preparation = preparationLines(step, cs, true)
+      lines.push(...(preparation ?? [...(projectedEntra ? entraWithSettings(entra.text, step, ctx, contract, preview ?? projection) : entra.text).replace(/\*\*(.*?)\*\*/g, '$1').split(/\r?\n/).map(line => line.trim()).filter(Boolean), ...(preview ? previewNoteLines(step, contract, preview.hold) : [])]))
     }
   }
   // A policy the tenant has switched off inspects the one that is there, in
