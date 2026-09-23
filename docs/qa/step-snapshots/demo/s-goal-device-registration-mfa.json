@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "At least 27% MFA-ready"
+      "state": "At least 27% ready for Modern MFA + TAP"
     },
     {
       "label": "Baseline mapping",

@@ -4,7 +4,7 @@
   "reason": "after: Prepare Emergency Access Accounts",
   "fact": "Report-only",
   "badge": "On Hold",
-  "bar": "Observing",
+  "bar": "when admin readiness reaches 100% (now 66%)",
   "rail": "Not scheduled",
   "headings": [
     "About this Step",

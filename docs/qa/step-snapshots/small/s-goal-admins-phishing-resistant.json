@@ -20,6 +20,10 @@
     {
       "label": "Configure Passkey Authentication",
       "state": "Prerequisite · To do"
+    },
+    {
+      "label": "Before turning on",
+      "state": "Your safe way in"
     }
   ],
   "channels": [
