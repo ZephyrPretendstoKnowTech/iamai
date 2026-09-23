@@ -312,10 +312,10 @@ test('tile 3, finished with gaps: the unread rows, one ask for Global Reader wit
 test('a section Microsoft did not return in full is not blamed on the account; only a refusal names this account and asks for Global Reader', () => {
   const said = (t: ScanTile): string => tileStrings(t).join('\n')
   const small = fixture('small').snapshot
-  // The sign-in read stopped at the memory ceiling with 9 hours of records (laneBCore.ts 'insufficient').
-  const ceiling = structuredClone(small)
-  ceiling.sources.signInEvidence = { status: 'insufficient', reason: 'stopped at memory ceiling with only 9 h covered (minimum 24 h)', coveredWindow: { from: '2026-09-07T15:00:00Z', to: '2026-09-08T00:00:00Z' }, asOf: ceiling.asOf }
-  const stopped = scanTile({ kind: 'gaps', gaps: coreGaps(ceiling), unread: unreadSources(ceiling), lastScan: null })
+  // The sign-in read stopped at a time budget with 9 hours of records (signInStream.ts 'insufficient').
+  const short = structuredClone(small)
+  short.sources.signInEvidence = { status: 'insufficient', reason: 'stopped at time budget with only 9 h covered (minimum 24 h)', coveredWindow: { from: '2026-09-07T15:00:00Z', to: '2026-09-08T00:00:00Z' }, asOf: short.asOf }
+  const stopped = scanTile({ kind: 'gaps', gaps: coreGaps(short), unread: unreadSources(short), lastScan: null })
   assert.deepEqual(stopped.rows, [{ name: 'Sign-in records', value: 'partly read' }], 'nine hours of records is a read in part, not nothing')
   assert.doesNotMatch(said(stopped), /this account|Global Reader/, 'a read stopped short is not blamed on the account')
   assert.equal(stopped.ask, undefined)
@@ -327,7 +327,7 @@ test('a section Microsoft did not return in full is not blamed on the account; o
   // states the hours read against that minimum, a fact and no remedy.
   assert.equal(stopped.note, 'A plan needs at least 24 hours of sign-in records, and the records IAMAI read cover 9 of them.')
   assert.ok(tileStrings(stopped).includes(stopped.note ?? ''), 'the tile draws it')
-  const hour = structuredClone(ceiling)
+  const hour = structuredClone(short)
   hour.sources.signInEvidence = { ...hour.sources.signInEvidence, coveredWindow: { from: '2026-09-07T23:00:00Z', to: '2026-09-08T00:00:00Z' } }
   assert.equal(scanTile({ kind: 'gaps', gaps: coreGaps(hour), unread: unreadSources(hour), lastScan: null }).note, 'A plan needs at least 24 hours of sign-in records, and the records IAMAI read cover 1 of them.', 'one hour reads as one')
   // Microsoft throttled the read and the retries ran out.

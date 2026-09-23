@@ -39,7 +39,6 @@ export type ConfigSectionKey =
   | 'subscribedSkus'
   | 'organization'
   | 'me'
-  | 'meMemberOf'
 
 export type ConfigSection = {
   status: 'ok' | 'partial' | 'disabled' | 'error'
@@ -130,7 +129,10 @@ export type UserEvidence = {
   proofs?: ProofRecord[]
   /** Minimal, event-addressable evidence for the emergency recovery drill.
    * This deliberately omits IP address, device identifiers, tokens and the
-   * full authentication-details payload. */
+   * full authentication-details payload. The newest
+   * RECOVERY_CANDIDATES_PER_PERSON (constants.ts), and the newest that can be a
+   * recovery test (laneBCore.ts whyNotRecoveryTest) when it is older than those,
+   * newest first. */
   recoveryCandidates?: RecoverySignInCandidate[]
   /** The platform families this account signed in from successfully, latest per family. */
   platforms?: PlatformSeen[]
