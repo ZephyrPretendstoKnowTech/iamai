@@ -7,7 +7,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readInTimeBatches } from './timeBatches.ts'
-import { StorageBlockedError, evidenceStore, withinOpenTimeout } from './cache.ts'
+import { StorageBlockedError, evidenceStore, openRefused, withinOpenTimeout } from './cache.ts'
 import { CACHE_READ_BATCH } from './constants.ts'
 import { newestFirst, rangeCursor } from '../../testing/memoryEvidenceStore.ts'
 import type { StoredSignIn } from './types.ts'
@@ -74,15 +74,24 @@ test('an empty range reads no batch', async () => {
   assert.deepEqual(batches, [])
 })
 
-test('an open whose upgrade has not started in time is held by another tab; one whose upgrade is running is waited for', async () => {
-  await assert.rejects(withinOpenTimeout(new Promise<never>(() => {}), () => false, 10), StorageBlockedError)
+test('an open still pending when its time is up is refused only while an older tab blocks it', () => {
+  // idb's `blocked`: a tab on an older version did not close for the upgrade, which cannot start.
+  assert.equal(openRefused({ blocked: true, upgradeStarted: false }), true)
+  // Only slow: nothing reported blocking it (a busy device), so it is waited for.
+  assert.equal(openRefused({ blocked: false, upgradeStarted: false }), false)
   // The version 8 index is built over every saved record inside the upgrade: 2.9 s for 150,000 in Chrome, more on a slower device.
-  let started = false
-  const upgrading = new Promise<string>((resolve) => {
-    setTimeout(() => (started = true), 2)
-    setTimeout(() => resolve('open'), 40)
-  })
-  assert.equal(await withinOpenTimeout(upgrading, () => started, 10), 'open')
+  assert.equal(openRefused({ blocked: false, upgradeStarted: true }), false)
+  // Blocked, then the older tab closed and the upgrade began.
+  assert.equal(openRefused({ blocked: true, upgradeStarted: true }), false)
+})
+
+test('the open is refused at its time only when an older tab blocks it; a slow or upgrading open is waited for', async () => {
+  const opensAt = (ms: number): Promise<string> => new Promise((resolve) => setTimeout(() => resolve('open'), ms))
+  await assert.rejects(withinOpenTimeout(opensAt(40), () => ({ blocked: true, upgradeStarted: false }), 10), StorageBlockedError)
+  assert.equal(await withinOpenTimeout(opensAt(40), () => ({ blocked: false, upgradeStarted: false }), 10), 'open', 'no tab reported blocking it')
+  const progress = { blocked: false, upgradeStarted: false }
+  setTimeout(() => (progress.upgradeStarted = true), 2)
+  assert.equal(await withinOpenTimeout(opensAt(40), () => progress, 10), 'open', 'its upgrade is running')
 })
 
 test('without IndexedDB the store degrades to no saved records, never to a failed scan', async () => {
