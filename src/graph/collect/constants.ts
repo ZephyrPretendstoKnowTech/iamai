@@ -1,9 +1,18 @@
 // Named constants from docs/design/collection.md — single source of truth.
 export const EVIDENCE_WINDOW_DAYS = 30
-export const ROW_MEMORY_CEILING = 50_000
 export const MIN_COVERAGE_HOURS = 24
 /** Saved sign-in records read back per batch (cache.ts evidenceStore); a batch ends on a whole second, so it can hold a few more. */
 export const CACHE_READ_BATCH = 1_000
+/** Sign-in records per Graph page ($top). Graph allows 1,000; 200 is the size proven live. */
+export const SIGN_IN_PAGE_SIZE = 200
+/**
+ * How far above the oldest folded second a record id is remembered, so a record
+ * Graph sends twice (a page boundary, or the second a continued read starts
+ * again from) is folded once.
+ */
+export const DEDUP_HORIZON_MS = 2_000
+/** The most records of one second held back before they are folded; a bigger second is folded in parts (LaneBStats.tieOverflow). */
+export const SIGN_IN_TIE_GROUP_MAX = 5_000
 export const SLOW_THRESHOLD_MS = 15_000
 export const PAGE_ABORT_MS = 125_000
 export const LANE_A_ABORT_MS = 30_000

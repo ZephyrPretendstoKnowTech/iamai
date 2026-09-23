@@ -158,48 +158,6 @@ export async function saveGroupMembersCache(entry: GroupMembersCacheEntry): Prom
   }
 }
 
-export async function loadEvidenceCache(
-  tenantId: string,
-  expectedSchema?: number,
-): Promise<{ meta: EvidenceCacheMeta; rows: StoredSignIn[] } | null> {
-  try {
-    const d = await db()
-    const meta = await d.get('evidence-meta', tenantId)
-    if (!meta) return null
-    // A stale schema is discarded before its rows are loaded.
-    if (expectedSchema !== undefined && meta.schema !== expectedSchema) return null
-    const rows = await d.getAllFromIndex('signin-rows', 'byTenant', tenantId)
-    return { meta, rows }
-  } catch {
-    return null
-  }
-}
-
-export async function saveEvidenceCache(
-  tenantId: string,
-  covered: { from: string; to: string },
-  rows: StoredSignIn[],
-  schema: number,
-): Promise<void> {
-  try {
-    const d = await db()
-    const tx = d.transaction(['signin-rows', 'evidence-meta'], 'readwrite')
-    const store = tx.objectStore('signin-rows')
-    let cursor = await store.index('byTenant').openCursor(tenantId)
-    while (cursor) {
-      await cursor.delete()
-      cursor = await cursor.continue()
-    }
-    for (const row of rows) {
-      await store.put({ ...row, tenantId })
-    }
-    await tx.objectStore('evidence-meta').put({ tenantId, covered, asOf: new Date().toISOString(), schema })
-    await tx.done
-  } catch {
-    // Cache is an optimization; losing it must never fail the scan.
-  }
-}
-
 /** Every saved sign-in record of one tenant: its primary keys [tenantId, id]. */
 const tenantRows = (tenantId: string): IDBKeyRange => IDBKeyRange.bound([tenantId], [tenantId, []])
 

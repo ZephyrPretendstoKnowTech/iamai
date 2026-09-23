@@ -1,11 +1,14 @@
-// Lane B core tests (prompt 02): window cutoff, time budget, memory ceiling,
-// coverage labelling incl. insufficient, newest-gap-first resume, and each
-// derived table. All I/O is injected — no fetch, no IndexedDB.
+// Lane B core tests (prompt 02): window cutoff, time budget, coverage
+// labelling incl. insufficient, newest-gap-first resume, and each derived
+// table. All I/O is injected — no fetch, no IndexedDB. The streaming read at
+// scale is laneBStream.test.ts.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { aggregate, deriveAggregates, deriveBlockedToday, derivePolicyResults, deriveReportOnlyPolicyIds, deriveUsageSignals, mapRecoveryAudit, mapRow, recoveryAuditRequest, runLaneB } from './laneBCore.ts'
+import { aggregate, deriveAggregates, deriveBlockedToday, derivePolicyResults, deriveReportOnlyPolicyIds, deriveUsageSignals, mapRecoveryAudit, mapRow, recoveryAuditRequest } from './laneBCore.ts'
+import { runLaneB } from './signInStream.ts'
+import type { LaneBDeps } from './signInStream.ts'
 import { deriveScenarioEvidence } from '../../derive/evidence.ts'
-import type { LaneBDeps } from './laneBCore.ts'
+import { memoryEvidenceStore } from '../../testing/memoryEvidenceStore.ts'
 import type { StoredSignIn } from './types.ts'
 
 const NOW = Date.parse('2026-08-26T00:00:00Z')
@@ -30,16 +33,16 @@ function row(over: Partial<StoredSignIn> & { hoursAgo: number }): StoredSignIn {
 
 type Page = { value: StoredSignIn[]; next?: boolean }
 
-function deps(pages: Page[], over: Partial<LaneBDeps> = {}): LaneBDeps & { saved: { covered: unknown; rows: StoredSignIn[] }[] } {
+function deps(pages: Page[], over: Partial<LaneBDeps> = {}): LaneBDeps & { store: ReturnType<typeof memoryEvidenceStore> } {
   let clockMs = 0
   let i = 0
-  const saved: { covered: unknown; rows: StoredSignIn[] }[] = []
-  const d: LaneBDeps & { saved: typeof saved } = {
-    startUrl: 'page-0',
+  const store = memoryEvidenceStore()
+  const d = {
+    pageUrl: (before: string | null) => (before === null ? 'start' : `lt:${before}`),
     windowDays: 30,
     nowMs: NOW,
     clock: () => clockMs,
-    fetchPage: (url) => {
+    fetchPage: (url: string) => {
       void url
       clockMs += over.budgetMs !== undefined ? 60 : 1
       const page = pages[i] ?? { value: [] }
@@ -49,15 +52,11 @@ function deps(pages: Page[], over: Partial<LaneBDeps> = {}): LaneBDeps & { saved
         '@odata.nextLink': page.next ? `page-${i}` : null,
       })
     },
-    loadCache: () => Promise.resolve(null),
-    saveCache: (covered, rows) => {
-      saved.push({ covered, rows })
-      return Promise.resolve()
-    },
-    saved,
+    store,
+    signal: new AbortController().signal,
     ...over,
   }
-  return d
+  return d as LaneBDeps & { store: typeof store }
 }
 
 test('window cutoff: stops when a page reaches past the window start; covered = full window', async () => {
@@ -69,7 +68,8 @@ test('window cutoff: stops when a page reaches past the window start; covered = 
   assert.equal(r.status, 'ok')
   assert.equal(r.rows, 3)
   assert.equal(r.covered?.from, iso(30 * 24))
-  assert.equal(d.saved.length, 1)
+  assert.deepEqual(d.store.covered, { from: iso(30 * 24), to: iso(0) }, 'the saved span is the whole window')
+  assert.equal(d.store.rows.size, 3, 'the record older than the window is not saved')
 })
 
 test('history exhausted inside the window is ok with a retention note', async () => {
@@ -117,40 +117,22 @@ test('insufficient: budget stop with under 24 h covered', async () => {
   assert.match(r.reason ?? '', /minimum 24 h/)
 })
 
-test('memory ceiling: stop is labelled; nothing overwrites a null cache save rule', async () => {
-  const pages = Array.from({ length: 5 }, () => ({
-    value: [row({ hoursAgo: 40 }), row({ hoursAgo: 41 })],
-    next: true,
-  }))
-  const r = await runLaneB(deps(pages, { rowCeiling: 3 }))
-  assert.equal(r.status, 'partial')
-  assert.match(r.reason ?? '', /memory ceiling/)
-})
-
-test('resume newest-gap-first: stops at the cached boundary and merges', async () => {
+test('resume newest-gap-first: stops at the saved boundary and merges', async () => {
   const cachedRow = row({ id: 'cached-1', hoursAgo: 100, userId: 'user-2' })
-  const d = deps(
-    [
-      // Gap rows newer than the cached covered.to (48 h ago), then one older row
-      // that crosses the boundary and stops the fetch.
-      { value: [row({ id: 'new-1', hoursAgo: 2 }), row({ id: 'old-1', hoursAgo: 50 })], next: true },
-    ],
-    {
-      loadCache: () =>
-        Promise.resolve({
-          covered: { from: iso(30 * 24), to: iso(48) },
-          rows: [cachedRow],
-        }),
-    },
-  )
-  const r = await runLaneB(d)
+  const d = deps([
+    // Gap rows newer than the saved covered.to (48 h ago), then one older row
+    // that crosses the boundary and stops the fetch.
+    { value: [row({ id: 'new-1', hoursAgo: 2 }), row({ id: 'old-1', hoursAgo: 50 })], next: true },
+  ])
+  const store = memoryEvidenceStore({ meta: { from: iso(30 * 24), to: iso(48) }, rows: [cachedRow] })
+  const r = await runLaneB({ ...d, store })
   assert.equal(r.status, 'ok')
   assert.match(r.reason ?? '', /resumed from the saved records/)
   assert.equal(r.covered?.from, iso(30 * 24))
-  // cached row + both fetched rows survive the merge
+  // saved row + both fetched rows are folded
   assert.equal(r.rows, 3)
-  assert.equal(d.saved.length, 1)
-  assert.equal(d.saved[0].rows.length, 3)
+  assert.deepEqual(store.covered, { from: iso(30 * 24), to: iso(0) })
+  assert.deepEqual([...store.rows.keys()].sort(), ['cached-1', 'new-1', 'old-1'])
 })
 
 test('derived: per-user aggregate keeps the latest MFA success', () => {

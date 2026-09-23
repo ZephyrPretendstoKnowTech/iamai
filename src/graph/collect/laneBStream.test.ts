@@ -1,0 +1,315 @@
+// The streaming sign-in read (signInStream.ts) at scale: a tenant with far more
+// sign-ins than the old 50,000-record ceiling gets the whole 30-day window, the
+// read holds a bounded number of records whatever the tenant's size, its
+// derivations equal a straight fold over every record, and a read that stops,
+// or a store that fails, is continued or worked around by the next scan
+// without a record counted twice.
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
+import { runLaneB } from './signInStream.ts'
+import type { EvidenceStore, LaneBDeps } from './signInStream.ts'
+import { aggregateFold, aggregatesFold, blockedTodayFold, derivePolicyResults, lastEnforcedOf, mapRow, policyResultsFold, reportOnlyIdsFold, targetedReadCandidates, usageFold } from './laneBCore.ts'
+import type { SignInEvidence } from './laneBCore.ts'
+import { SIGN_IN_PAGE_SIZE } from './constants.ts'
+import { SectionDisabledError } from './http.ts'
+import { scenarioFold } from '../../derive/evidence.ts'
+import { foldAll } from '../../derive/rowFold.ts'
+import { discardStore, memoryEvidenceStore } from '../../testing/memoryEvidenceStore.ts'
+import { RUN, fakeGraph, firstIndexAtOrBefore, rowTimeMs, whole } from '../../testing/signInSynth.ts'
+import type { StoredSignIn } from './types.ts'
+
+const NOW = Date.parse('2026-09-01T00:00:00Z')
+const HOUR = 3_600_000
+const DAY = 24 * HOUR
+const iso = (ms: number): string => new Date(ms).toISOString()
+const windowStartOf = (nowMs: number): string => iso(nowMs - 30 * DAY)
+
+type Fake = { pageUrl: (before: string | null) => string; fetchPage: LaneBDeps['fetchPage'] }
+const read = (fake: Fake, store: EvidenceStore, over: Partial<LaneBDeps> = {}): Promise<SignInEvidence> =>
+  runLaneB({ pageUrl: fake.pageUrl, windowDays: 30, nowMs: NOW, clock: () => 0, fetchPage: fake.fetchPage, store, signal: new AbortController().signal, ...over })
+
+const DERIVED = ['perUser', 'policyResults', 'reportOnlyPolicyIds', 'blockedToday', 'usage', 'aggregates', 'scenarios'] as const
+const derived = (r: Pick<SignInEvidence, (typeof DERIVED)[number]>) => Object.fromEntries(DERIVED.map((k) => [k, r[k]]))
+
+/**
+ * The derivations as a straight fold over every record, in the order given: one
+ * pass for all but the policy results, which take the last enforced record
+ * from a first pass over the same records (derivePolicyResults' own rule).
+ */
+function straightFold(records: () => Iterable<StoredSignIn>) {
+  const perUser = aggregateFold()
+  const reportOnly = reportOnlyIdsFold()
+  const blocked = blockedTodayFold()
+  const usage = usageFold()
+  const aggregates = aggregatesFold()
+  const scenarios = scenarioFold(null)
+  let rows = 0
+  for (const row of records()) {
+    rows += 1
+    for (const fold of [perUser, reportOnly, blocked, usage, aggregates, scenarios]) fold.add(row)
+  }
+  const last = lastEnforcedOf(records())
+  const policyResults = foldAll(policyResultsFold((id) => last.get(id)), records())
+  return { rows, derived: { perUser: perUser.finish(), policyResults, reportOnlyPolicyIds: reportOnly.finish(), blockedToday: blocked.finish(), usage: usage.finish(), aggregates: aggregates.finish(), scenarios: scenarios.finish() } }
+}
+
+/**
+ * Order-free form: arrays sorted, keys sorted. A resumed read folds saved
+ * records in the store's order within a second (by id), a fresh one in Graph's;
+ * nobody signs in twice in one second in these tenants, so only the order of
+ * people in a list can differ.
+ */
+function canonical(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(canonical).sort((a, b) => (JSON.stringify(a) < JSON.stringify(b) ? -1 : JSON.stringify(a) > JSON.stringify(b) ? 1 : 0))
+  if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).sort(([a], [b]) => (a < b ? -1 : 1)).map(([k, x]) => [k, canonical(x)]))
+  return v
+}
+
+test('a tenant with 311,040 sign-ins in 30 days gets the whole window, holding at most two pages of records at once', async () => {
+  const fake = fakeGraph({ seed: 1, anchorMs: NOW, nowMs: NOW })
+  const r = await read(fake, discardStore())
+  const windowStart = windowStartOf(NOW)
+  assert.equal(r.status, 'ok')
+  assert.deepEqual(r.covered, { from: windowStart, to: iso(NOW) })
+  assert.equal(r.reason, null)
+  assert.equal(r.rows, 311_040, 'every sign-in in the window, six times the old ceiling')
+  assert.equal(r.stats?.disorder, 0)
+  assert.equal(r.stats?.duplicates, 0)
+  assert.ok((r.stats?.maxResidentRows ?? Infinity) <= 2 * SIGN_IN_PAGE_SIZE, `held ${r.stats?.maxResidentRows} records at once`)
+  assert.equal(fake.urls.length, Math.floor(311_040 / SIGN_IN_PAGE_SIZE) + 1, 'no page is asked for after the one that reached past the window start')
+  const expected = straightFold(() => fake.rowsInWindow(windowStart))
+  assert.equal(expected.rows, r.rows)
+  assert.deepStrictEqual(derived(r), expected.derived)
+})
+
+test('the read holds no record: 311,040 sign-ins are read inside a 128 MB heap', () => {
+  const probe = fileURLToPath(new URL('../../testing/laneBHeapProbe.ts', import.meta.url))
+  const out = spawnSync(process.execPath, ['--max-old-space-size=128', probe], { encoding: 'utf8' })
+  assert.equal(out.status, 0, out.stderr)
+  const result = JSON.parse(out.stdout.trim().split('\n').pop() as string) as { status: string; rows: number; maxResidentRows: number }
+  assert.equal(result.status, 'ok')
+  assert.equal(result.rows, 311_040)
+  assert.ok(result.maxResidentRows <= 2 * SIGN_IN_PAGE_SIZE, `held ${result.maxResidentRows}`)
+})
+
+test('a second scan fetches only the gap, reads the rest from the saved records, and folds each record once', async () => {
+  const o = { seed: 3, anchorMs: NOW, spacingS: 390 }
+  const now1 = NOW - 6 * HOUR
+  const store = memoryEvidenceStore()
+  const r1 = await read(fakeGraph({ ...o, nowMs: now1 }), store, { nowMs: now1 })
+  assert.equal(r1.status, 'ok')
+  assert.deepEqual(store.covered, { from: windowStartOf(now1), to: iso(now1) })
+
+  // Six hours later. Graph now also holds a record older than the saved span's
+  // end that arrived late, and sends one saved record with a changed field.
+  const gap = firstIndexAtOrBefore(o, now1)
+  const lateAt = whole(rowTimeMs(o, gap + 12) + 7_000)
+  const late = { id: 'late-arrival', createdDateTime: lateAt, userId: 'late-person', status: { errorCode: 0 }, appId: 'c0ffee00-0000-4000-a000-0000000000aa', appDisplayName: 'Late App' }
+  const changed = gap + 7
+  const fake = fakeGraph({
+    ...o,
+    nowMs: NOW,
+    insert: [{ at: gap + 12, raw: late }],
+    variant: (k, raw) => {
+      if (k !== changed) return
+      raw.appId = 'c0ffee00-0000-4000-a000-0000000000bb'
+      raw.appDisplayName = 'Renamed App'
+    },
+  })
+  assert.equal(store.rows.has(fake.rowsInWindow(windowStartOf(NOW)).next().value!.id), false, 'the newest record is not saved yet')
+  const r2 = await read(fake, store)
+  assert.equal(r2.status, 'ok')
+  assert.match(r2.reason ?? '', /resumed from the saved records/)
+  assert.ok(fake.urls.length <= Math.ceil(gap / SIGN_IN_PAGE_SIZE) + 1, `fetched ${fake.urls.length} pages for a gap of ${gap} records`)
+  assert.deepEqual(fake.urls, ['start'], 'the saved span reaches the window start, so nothing older is fetched')
+  const expected = straightFold(() => fake.rowsInWindow(windowStartOf(NOW)))
+  assert.equal(r2.rows, expected.rows, 'each record once: the late arrival and the saved record Graph sent again included')
+  assert.deepStrictEqual(canonical(derived(r2)), canonical(expected.derived))
+  assert.equal(r2.scenarios.nonMicrosoftApps.detail['Renamed App'], 1, "the fetched copy wins over the saved one")
+  assert.equal(r2.scenarios.nonMicrosoftApps.detail['Late App'], 1)
+  assert.deepEqual(store.covered, { from: windowStartOf(NOW), to: iso(NOW) })
+  assert.ok([...store.rows.values()].every((row) => row.createdDateTime >= windowStartOf(NOW)), 'nothing older than the window stays saved')
+})
+
+test('a read that stops is continued by the next scan from where it stopped', async () => {
+  const o = { seed: 4, anchorMs: NOW, spacingS: 390 }
+  const now1 = NOW - HOUR
+  const store = memoryEvidenceStore()
+  const r1 = await read(fakeGraph({ ...o, nowMs: now1, failOn: (_url, n) => n > 60 }), store, { nowMs: now1 })
+  assert.equal(r1.status, 'partial')
+  assert.match(r1.reason ?? '', /^collection interrupted: /)
+  const frontier = r1.covered!.from
+  // Sixty pages end on the last record of a second: that second was being read, and is not folded.
+  const lastRead = firstIndexAtOrBefore(o, now1) + 60 * SIGN_IN_PAGE_SIZE - 1
+  assert.equal(lastRead % RUN, RUN - 1)
+  assert.equal(r1.rows, 60 * SIGN_IN_PAGE_SIZE - RUN)
+  assert.equal(frontier, whole(rowTimeMs(o, lastRead - RUN)), 'the span starts at the last whole second folded')
+  assert.deepEqual(store.covered, { from: frontier, to: iso(now1) }, 'the saved span ends where the read stopped')
+
+  const fake = fakeGraph({ ...o, nowMs: NOW })
+  const r2 = await read(fake, store)
+  assert.equal(r2.status, 'ok')
+  assert.equal(fake.urls[0], 'start')
+  const older = fake.urls.find((u) => u.startsWith('lt:'))
+  assert.ok(older, 'the older records are fetched from where the saved span ends')
+  const olderFrom = older.slice(3).split('#')[0]
+  assert.ok(olderFrom > frontier && Date.parse(olderFrom) <= Date.parse(frontier) + o.spacingS * 1000 + 1000, `${olderFrom} starts within a second of the span's end`)
+  assert.equal(fake.urls.indexOf(older), 1, 'one page for the gap, then the older records')
+  const expected = straightFold(() => fake.rowsInWindow(windowStartOf(NOW)))
+  assert.equal(r2.rows, expected.rows, 'the second the first read stopped in is counted once')
+  assert.deepStrictEqual(canonical(derived(r2)), canonical(expected.derived))
+  assert.deepEqual(store.covered, { from: windowStartOf(NOW), to: iso(NOW) })
+})
+
+test('a partial span saved before the streaming read is continued the same way', async () => {
+  // The old read saved a stopped read's records whole, the second it stopped in
+  // possibly short of a record: it stopped at a page boundary.
+  const o = { seed: 5, anchorMs: NOW, spacingS: 390 }
+  const now1 = NOW - 2 * HOUR
+  const from = whole(rowTimeMs(o, 9_000))
+  const records = [...fakeGraph({ ...o, nowMs: now1 }).rowsInWindow(from)]
+  const saved = records.filter((r, i) => !(r.createdDateTime === from && i === records.length - 1))
+  const store = memoryEvidenceStore({ meta: { from, to: iso(now1) }, rows: saved })
+  const fake = fakeGraph({ ...o, nowMs: NOW })
+  const r = await read(fake, store)
+  assert.equal(r.status, 'ok')
+  const expected = straightFold(() => fake.rowsInWindow(windowStartOf(NOW)))
+  assert.equal(r.rows, expected.rows)
+  assert.deepStrictEqual(canonical(derived(r)), canonical(expected.derived))
+})
+
+test('statuses and reasons: an interrupted read, a time budget and a disabled read say what they said before', async () => {
+  const o = { seed: 6, anchorMs: NOW, spacingS: 390 }
+  const early = await read(fakeGraph({ ...o, nowMs: NOW, failOn: (_url, n) => n > 2 }), memoryEvidenceStore())
+  assert.equal(early.status, 'error', 'under 24 h read')
+  assert.equal(early.reason, 'The network connection was lost.')
+  const later = await read(fakeGraph({ ...o, nowMs: NOW, failOn: (_url, n) => n > 10 }), memoryEvidenceStore())
+  assert.equal(later.status, 'partial')
+  assert.equal(later.reason, 'collection interrupted: The network connection was lost.')
+
+  let clock = 0
+  const slow = fakeGraph({ ...o, nowMs: NOW })
+  const tick: LaneBDeps['fetchPage'] = (url) => {
+    clock += 1_000
+    return slow.fetchPage(url)
+  }
+  const budget = await read({ pageUrl: slow.pageUrl, fetchPage: tick }, memoryEvidenceStore(), { clock: () => clock, budgetMs: 5_500 })
+  const hours = Math.floor((NOW - Date.parse(budget.covered!.from)) / HOUR)
+  assert.equal(budget.status, 'partial')
+  assert.equal(budget.reason, `stopped at time budget; covers the most recent ${hours} h of the requested 30 days`)
+  clock = 0
+  const short = await read({ pageUrl: slow.pageUrl, fetchPage: tick }, memoryEvidenceStore(), { clock: () => clock, budgetMs: 500 })
+  assert.equal(short.status, 'insufficient')
+  assert.match(short.reason ?? '', /^stopped at time budget with only \d+ h covered \(minimum 24 h\)$/)
+
+  const disabled = await read(fakeGraph({ ...o, nowMs: NOW, failOn: () => new SectionDisabledError('Sign-in logs need Microsoft Entra ID P1 or P2.') }), memoryEvidenceStore())
+  assert.equal(disabled.status, 'disabled')
+  assert.equal(disabled.reason, 'Sign-in logs need Microsoft Entra ID P1 or P2.')
+  assert.equal(disabled.covered, null)
+})
+
+test('saved records that cannot be read are fetched from Graph instead, from the last second folded', async () => {
+  const o = { seed: 7, anchorMs: NOW, spacingS: 390 }
+  const now1 = NOW - HOUR
+  const store = memoryEvidenceStore({ failReadAfterBatches: 2 })
+  assert.equal((await read(fakeGraph({ ...o, nowMs: now1 }), store, { nowMs: now1 })).status, 'ok')
+  const fake = fakeGraph({ ...o, nowMs: NOW })
+  const r = await read(fake, store)
+  assert.equal(r.status, 'ok')
+  assert.equal(r.stats?.readFailed, true)
+  assert.ok(r.stats!.savedRows >= 2_000, 'two batches were read before the store failed')
+  assert.match(fake.urls[1] ?? '', /^lt:/, 'Graph is read from where the saved records stopped')
+  const expected = straightFold(() => fake.rowsInWindow(windowStartOf(NOW)))
+  assert.equal(r.rows, expected.rows)
+  assert.deepStrictEqual(canonical(derived(r)), canonical(expected.derived))
+})
+
+test('a store that refuses a write (a full disk) stops saving, and the read still completes', async () => {
+  const o = { seed: 8, anchorMs: NOW, spacingS: 390 }
+  const store = memoryEvidenceStore({ refuseFromWrite: 50 })
+  const fake = fakeGraph({ ...o, nowMs: NOW })
+  const r = await read(fake, store)
+  assert.equal(r.status, 'ok')
+  const expected = straightFold(() => fake.rowsInWindow(windowStartOf(NOW)))
+  assert.deepStrictEqual(derived(r), expected.derived)
+  assert.equal(store.counts.writesAfterRefusal, 0, 'nothing is written after the refusal')
+  assert.equal(r.stats?.refusedWrites, 1)
+  assert.ok(store.covered && store.covered.from > windowStartOf(NOW) && store.covered.to === iso(NOW), 'the saved span stays at the last write that succeeded')
+})
+
+test('a record Graph sends twice is folded once; a record newer than those already folded is counted as out of order', async () => {
+  const o = { seed: 9, anchorMs: NOW, spacingS: 390 }
+  const twice = fakeGraph({ ...o, nowMs: NOW, repeatRow: SIGN_IN_PAGE_SIZE - 1 })
+  const r = await read(twice, discardStore())
+  assert.equal(r.stats?.duplicates, 1)
+  assert.deepStrictEqual(derived(r), straightFold(() => twice.rowsInWindow(windowStartOf(NOW))).derived)
+
+  const newer = { id: 'out-of-order', createdDateTime: whole(rowTimeMs(o, 100)), userId: 'late-person', status: { errorCode: 0 } }
+  const disordered = fakeGraph({ ...o, nowMs: NOW, insert: [{ at: 3 * SIGN_IN_PAGE_SIZE + 50, raw: newer }] })
+  const d = await read(disordered, discardStore())
+  assert.equal(d.status, 'ok')
+  assert.equal(d.stats?.disorder, 1)
+  assert.equal(d.rows, straightFold(() => disordered.rowsInWindow(windowStartOf(NOW))).rows, 'it is still folded')
+})
+
+test('a person whose only sign-in is in the second the read stopped in is left out, and read on their own (MFA Readiness)', async () => {
+  const at = (h: number) => iso(NOW - h * HOUR)
+  const rec = (id: string, userId: string, h: number) => ({ id, createdDateTime: at(h), userId, status: { errorCode: 0 } })
+  const pages = [
+    [rec('a', 'person-a', 1), rec('b', 'person-b', 20)],
+    [rec('c', 'person-c', 30), rec('x', 'person-x', 40)],
+  ]
+  let n = 0
+  const fetchPage: LaneBDeps['fetchPage'] = async () => {
+    const page = pages[n++]
+    if (!page) throw new Error('The network connection was lost.')
+    return { value: page, '@odata.nextLink': `page-${n}` }
+  }
+  const r = await read({ pageUrl: () => 'start', fetchPage }, discardStore())
+  assert.equal(r.status, 'partial')
+  assert.equal(r.covered?.from, at(30), 'the span ends at the last whole second folded')
+  assert.equal(r.perUser['person-x'], undefined, 'the second being read is not folded')
+  const users = [{ id: 'person-x', lastSuccessfulSignIn: at(40), accountEnabled: true }, { id: 'person-a', lastSuccessfulSignIn: at(1), accountEnabled: true }]
+  const methods = { 'person-x': [{ kind: 'passkey' }], 'person-a': [{ kind: 'passkey' }] }
+  assert.deepEqual(targetedReadCandidates(users, methods, r.covered, windowStartOf(NOW)), ['person-x'])
+
+  const whole30 = await read(fakeGraph({ seed: 10, anchorMs: NOW, nowMs: NOW, spacingS: 390 }), discardStore())
+  assert.equal(whole30.status, 'ok')
+  assert.deepEqual(targetedReadCandidates(users, methods, whole30.covered, windowStartOf(NOW)), [], 'a complete read leaves nobody to read on their own')
+})
+
+test('policy results from the stream equal the two-pass derivation, with ties and seconds split across pages', async () => {
+  const results = ['success', 'failure', 'reportOnlySuccess', 'reportOnlyFailure', 'reportOnlyInterrupted', 'reportOnlyNotApplied', 'notApplied']
+  for (let seed = 1; seed <= 50; seed++) {
+    let s = seed
+    const rnd = () => ((s = Math.imul(s ^ (s >>> 15), 0x2c1b3c6d) + 0x6d2b79f5), ((s >>> 0) % 10_000) / 10_000)
+    const rows: Record<string, unknown>[] = []
+    let t = NOW - 1000
+    while (rows.length < 500) {
+      const tie = 1 + Math.floor(rnd() * 6)
+      for (let i = 0; i < tie && rows.length < 500; i++) {
+        rows.push({
+          id: `s${seed}-r${rows.length}`,
+          createdDateTime: whole(t),
+          userId: `person-${Math.floor(rnd() * 40)}`,
+          status: { errorCode: 0 },
+          conditionalAccessStatus: 'success',
+          appliedConditionalAccessPolicies: Array.from({ length: 1 + Math.floor(rnd() * 3) }, () => ({ id: `p${Math.floor(rnd() * 4)}`, result: results[Math.floor(rnd() * results.length)] })),
+        })
+      }
+      t -= 1000 * (1 + Math.floor(rnd() * 3600))
+    }
+    const pageSize = 7
+    const fetchPage: LaneBDeps['fetchPage'] = async (url) => {
+      const offset = url === 'start' ? 0 : Number(url)
+      return { value: rows.slice(offset, offset + pageSize), '@odata.nextLink': offset + pageSize < rows.length ? String(offset + pageSize) : null }
+    }
+    const r = await read({ pageUrl: () => 'start', fetchPage }, discardStore())
+    const mapped = rows.map(mapRow) as StoredSignIn[]
+    assert.equal(r.status, 'ok')
+    assert.deepStrictEqual(r.policyResults, derivePolicyResults(mapped), `seed ${seed}`)
+    assert.deepStrictEqual(derived(r), straightFold(() => mapped).derived, `seed ${seed}`)
+  }
+})

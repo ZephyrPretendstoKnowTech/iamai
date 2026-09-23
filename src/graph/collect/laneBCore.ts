@@ -1,16 +1,7 @@
-// Lane B core (docs/design/collection.md §2–§4, §12): all logic, no I/O.
-// The fetch, cache, and clock are injected so Node tests can drive window
-// cutoff, budgets, coverage labelling, and resume without a browser.
-// Raw rows never leave this module except through the injected cache.
-import {
-  MIN_COVERAGE_HOURS,
-  ROW_MEMORY_CEILING,
-  SLOW_THRESHOLD_MS,
-} from './constants.ts'
-import { GraphResponseShapeError, SectionDisabledError } from './http.ts'
+// Lane B core (docs/design/collection.md §2–§4, §12): the record shape and the
+// derivations, all logic, no I/O. The read that feeds them is signInStream.ts.
+// Raw rows never leave the worker except through the saved records (cache.ts).
 import { COLLECTOR_REGISTRY } from './registry.ts'
-import { absolute } from '../../copy/dates.ts'
-import { deriveScenarioEvidence } from '../../derive/evidence.ts'
 import type { ScenarioEvidence } from '../../derive/evidence.ts'
 import { foldAll } from '../../derive/rowFold.ts'
 import type { RowFold } from '../../derive/rowFold.ts'
@@ -54,9 +45,20 @@ export type SignInEvidence = {
   scenarios: ScenarioEvidence
   recoveryAudits?: import('./types.ts').RecoveryDirectoryAudit[]
   recoveryAuditSource?: import('./types.ts').SourceState
+  /** How the read went (signInStream.ts). The worker copies named fields, so these never reach the snapshot. */
+  stats?: LaneBStats
 }
 
 export type LaneBProgress = { pages: number; rows: number; ms: number; oldest: string | null }
+
+/**
+ * What one read did: Graph pages fetched, saved records read back, records
+ * folded, the most records held at once (a page, the open second and the
+ * overlap), and the irregular cases it absorbed — records newer than ones
+ * already folded, records sent twice, seconds too large to hold whole, saves
+ * the store refused, a saved read that failed, and failed pages read again.
+ */
+export type LaneBStats = { pages: number; savedRows: number; folded: number; maxResidentRows: number; disorder: number; duplicates: number; tieOverflow: number; refusedWrites: number; readFailed: boolean; reanchors: number }
 
 /**
  * Microsoft Entra keeps directory audit logs for 30 days on P1/P2; Graph rejects
@@ -618,159 +620,9 @@ export function blockedTodayFold(): RowFold<BlockedTodayEntry[]> {
   }
 }
 
-export type LaneBDeps = {
-  startUrl: string
-  windowDays: number
-  nowMs: number
-  clock: () => number
-  fetchPage: (url: string) => Promise<{ value?: unknown[]; '@odata.nextLink'?: string | null }>
-  loadCache: () => Promise<{ covered: { from: string; to: string }; rows: StoredSignIn[] } | null>
-  saveCache: (covered: { from: string; to: string }, rows: StoredSignIn[]) => Promise<void>
-  budgetMs?: number
-  rowCeiling?: number
-  slowThresholdMs?: number
-  onPage?: (p: LaneBProgress) => void
-  onSlow?: () => void
-}
-
-// §12 newest-gap-first: when the cache covers from the window start up to some
-// point, only the gap since that point is fetched; an incomplete cache means
-// paging continues past the overlap (merge is by id, overlap is harmless).
-export async function runLaneB(deps: LaneBDeps): Promise<SignInEvidence> {
-  // No wall-clock stop by default: the read runs to the end of the window (owner item 4,
-  // 2026-09-19). A caller may still pass one; the row ceiling guards memory.
-  const budgetMs = deps.budgetMs ?? Number.POSITIVE_INFINITY
-  const rowCeiling = deps.rowCeiling ?? ROW_MEMORY_CEILING
-  const slowThresholdMs = deps.slowThresholdMs ?? SLOW_THRESHOLD_MS
-  const nowIso = new Date(deps.nowMs).toISOString()
-  const windowStart = new Date(deps.nowMs - deps.windowDays * 86_400_000).toISOString()
-
-  const cached = await deps.loadCache()
-  const cachedRowsInWindow = (cached?.rows ?? []).filter((r) => r.createdDateTime >= windowStart)
-  const cacheCoversTail = cached !== null && cached.covered.from <= windowStart
-  const stopBoundary = cacheCoversTail ? cached.covered.to : windowStart
-
-  const fetched = new Map<string, StoredSignIn>()
-  let pages = 0
-  let oldestFetched: string | null = null
-  let next: string | null = deps.startUrl
-  let stop: 'boundary' | 'history exhausted' | 'time budget' | 'memory ceiling' | null = null
-  const wallStart = deps.clock()
-  let slowSignalled = false
-
-  const finalize = async (
-    status: SignInEvidence['status'],
-    reason: string | null,
-    natural: boolean,
-  ): Promise<SignInEvidence> => {
-    let contiguous: StoredSignIn[]
-    let covered: SignInEvidence['covered']
-    if (natural) {
-      const merged = new Map(cachedRowsInWindow.map((r) => [r.id, r] as const))
-      for (const [id, row] of fetched) merged.set(id, row)
-      contiguous = [...merged.values()]
-      covered = { from: windowStart, to: nowIso }
-    } else if (oldestFetched !== null) {
-      contiguous = [...fetched.values()]
-      covered = { from: oldestFetched, to: nowIso }
-    } else {
-      contiguous = []
-      covered = null
-    }
-    if (covered && (natural || cached === null)) {
-      await deps.saveCache(covered, contiguous)
-    }
-    return {
-      status,
-      reason,
-      covered,
-      rows: contiguous.length,
-      perUser: aggregate(contiguous),
-      policyResults: derivePolicyResults(contiguous),
-      reportOnlyPolicyIds: deriveReportOnlyPolicyIds(contiguous),
-      blockedToday: deriveBlockedToday(contiguous),
-      usage: deriveUsageSignals(contiguous),
-      aggregates: deriveAggregates(contiguous),
-      scenarios: deriveScenarioEvidence(contiguous),
-    }
-  }
-
-  try {
-    while (next) {
-      if (deps.clock() - wallStart > budgetMs) {
-        stop = 'time budget'
-        break
-      }
-      if (fetched.size >= rowCeiling) {
-        stop = 'memory ceiling'
-        break
-      }
-      const t0 = deps.clock()
-      const body = await deps.fetchPage(next)
-      const ms = Math.round(deps.clock() - t0)
-      if (ms > slowThresholdMs && !slowSignalled) {
-        slowSignalled = true
-        deps.onSlow?.()
-      }
-      pages += 1
-      // A page without its value array is a failed read, never the end of history.
-      if (!Array.isArray(body.value)) throw new GraphResponseShapeError('sign-in page without a value array')
-      const value = body.value
-      let pageOldest: string | null = null
-      for (const raw of value) {
-        const row = mapRow(raw)
-        if (!row) continue
-        pageOldest = row.createdDateTime
-        if (row.createdDateTime < windowStart) continue
-        fetched.set(row.id, row)
-        if (oldestFetched === null || row.createdDateTime < oldestFetched) {
-          oldestFetched = row.createdDateTime
-        }
-      }
-      deps.onPage?.({ pages, rows: fetched.size, ms, oldest: pageOldest })
-      if (pageOldest !== null && pageOldest < stopBoundary) {
-        stop = 'boundary'
-        break
-      }
-      next = body['@odata.nextLink'] ?? null
-      if (!next) stop = 'history exhausted'
-    }
-
-    if (stop === 'boundary' || stop === 'history exhausted') {
-      const reason =
-        stop === 'history exhausted'
-          ? `the last ${deps.windowDays} days, or less if the tenant keeps fewer`
-          : cacheCoversTail
-            ? `resumed from the saved records: fetched the gap since ${absolute(cached!.covered.to)}`
-            : null
-      return await finalize('ok', reason, true)
-    }
-    const coveredHours = oldestFetched ? (deps.nowMs - Date.parse(oldestFetched)) / 3_600_000 : 0
-    if (coveredHours >= MIN_COVERAGE_HOURS) {
-      return await finalize(
-        'partial',
-        `stopped at ${stop}; covers the most recent ${Math.floor(coveredHours)} h of the requested ${deps.windowDays} days`,
-        false,
-      )
-    }
-    return await finalize(
-      'insufficient',
-      `stopped at ${stop} with only ${Math.floor(coveredHours)} h covered (minimum ${MIN_COVERAGE_HOURS} h)`,
-      false,
-    )
-  } catch (e) {
-    if (e instanceof SectionDisabledError) return finalize('disabled', e.message, false)
-    const reason = e instanceof Error ? e.message : String(e)
-    if (oldestFetched && (deps.nowMs - Date.parse(oldestFetched)) / 3_600_000 >= MIN_COVERAGE_HOURS) {
-      return await finalize('partial', `collection interrupted: ${reason}`, false)
-    }
-    return await finalize('error', reason, false)
-  }
-}
-
 // ---- MFA Readiness's targeted reads (prompt 62) ----
 //
-// A partial bulk read (the row ceiling or the time budget) leaves out whoever
+// A partial bulk read (an interrupted read or a time budget) leaves out whoever
 // signed in only before the rows it reached. That gap matters only for people
 // who hold a phishing-resistant method: without one, a person's state does not
 // depend on the logs. Those people get one small read each, under a budget, and
