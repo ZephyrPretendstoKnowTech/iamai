@@ -23,7 +23,9 @@ import { BOARD, boardReadingsOf, laneViewFor, laneViewOf, prerequisiteLabelFor, 
 import { stepArtifactLines } from '../../roadmap/artifactLines.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { unavailableReason } from '../../roadmap/operations.ts'
-import { exportCleanupViewsOf, exportHoldOf, exportViewsOf } from './stepExport.ts'
+import { copyBoxes, exportAnnouncementOf, exportCleanupViewsOf, exportHoldOf, exportViewsOf } from './stepExport.ts'
+import { contentTitle } from '../../content/stepTitle.ts'
+import { PROMPTS } from '../../copy/comms.ts'
 import { cleanupExportViews, cleanupWhen } from './cleanupExport.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -444,4 +446,33 @@ test('the masked bundle names none of the groups the plan loaded or the tenant\'
   const readme = (bundle._readme as string[]).join(' ')
   const keys = new Set(Object.keys((bundle.plan as { steps: Record<string, unknown>[] }).steps[0]!))
   for (const field of ['rings', 'evidence']) if (!keys.has(field)) assert.doesNotMatch(readme, new RegExp(`\b${field}\b`), `the readme lists ${field}, which no step carries`)
+})
+
+// Finding 5 (severity 2). The pack's Rewrite and Translate prompts carried the
+// engine's own draft of the first step that had one, labelled as about the
+// whole plan: "No announcement needed: nobody is affected." for a policy whose
+// export said it reaches 246 people, and later a different email from the one
+// the opened step's Tell your people box shows. The pack offers the screen's
+// email, for the step it belongs to, or no announcement prompt at all.
+test('the pack\'s announcement prompts carry the email the opened step shows, named for its step', () => {
+  let offered = 0
+  for (const f of [fixture('demo'), fixture('mid'), withDirectionApproved(curatedFixture('demo-week2'))]) {
+    const p = exportPage(f)
+    const announcement = exportAnnouncementOf(p.r.steps, p.held, p.ctxOf)
+    const pack = promptPack({ view: p.view, tenant: 'Tenant', steps: p.r.steps, schedule: p.r.schedule, changeRecord: '', announcement, cleanup: p.cleanup })
+    const items = pack.filter((item) => item.prompt.includes('No announcement needed') || item.title === PROMPTS.pack.rewrite)
+    const source = p.r.steps.find((s) => !p.held(s) && copyBoxes(s, p.ctxOf(s)).some((b) => b.kind === 'comms'))
+    if (source === undefined) {
+      assert.equal(announcement, null, `${f.name}: an announcement where no step shows an email`)
+      assert.equal(items.length, 0, `${f.name}: an announcement prompt with no email behind it`)
+      continue
+    }
+    const email = copyBoxes(source, p.ctxOf(source)).find((b) => b.kind === 'comms')!.text
+    const drafts = pack.filter((item) => item.prompt.includes(email))
+    assert.equal(drafts.length, 2, `${f.name}: the rewrite and translate prompts carry the screen's email for ${source.id}`)
+    for (const item of drafts) assert.equal(item.scope, contentTitle(source), `${f.name}/${item.title}: the prompt names no step`)
+    for (const item of pack) assert.doesNotMatch(item.prompt, /No announcement needed/, `${f.name}/${item.title}: the engine's draft`)
+    offered++
+  }
+  assert.ok(offered > 0, 'the premise: a step that shows an email')
 })

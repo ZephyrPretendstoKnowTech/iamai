@@ -265,7 +265,7 @@ export function exportViewsOf(board: Pick<BoardReadings, 'readings' | 'titleOf'>
  * The board's hold on each step (planBoard.ts boardHolds), on the board
  * `exportViewsOf` reads: what the Export page's plan-wide dates
  * (stepVars.ts planDates) and the prompt pack's announcement
- * (roadmap/prompts.ts announcementDraft) ask before any view exists, so that a
+ * (exportAnnouncementOf) ask before any view exists, so that a
  * step the board holds lends neither its turn-on day (owner decision 2). The
  * page built the board twice per render, once here and once for its views,
  * from the same arguments; it builds it once now and hands it to both.
@@ -694,7 +694,7 @@ export type CommsView = { salutation: string; body: string; extra: string[]; sig
  * withholding an enforcement date the email underneath commits to. Once
  * Foundation B's evidence has earned the date the email states it plainly, with
  * nothing added — the same words the prompt pack's draft carries
- * (roadmap/prompts.ts `announcementDraft`).
+ * (`exportAnnouncementOf`).
  */
 export function commsFor(cs: Record<string, unknown>, ex: Record<string, unknown>, step: Step): CommsView | null {
   const comms = (cs.comms ?? null) as Record<string, unknown> | null
@@ -796,6 +796,25 @@ export function stepLines(step: Step, ctx: StepVarContext): string[] {
   const comms = commsFor(cs, ex, step)
   if (comms) out.push(comms.salutation, comms.body, ...comms.extra, comms.signature)
   return out
+}
+
+/**
+ * The announcement the prompt pack offers to rewrite and translate: the Tell your
+ * people email of the first step, in plan order, that shows one (`copyBoxes`,
+ * the screen's own box) and that the board does not hold (`held`: a held step
+ * carries no date anywhere, owner decision 2), named by that step's title. Null
+ * where no step shows an email, and the pack then offers no announcement prompt.
+ * It took the generator's draft instead, which could read "No announcement
+ * needed: nobody is affected." over a policy reaching 246 people (Phase 2 export
+ * finding 5).
+ */
+export function exportAnnouncementOf(steps: readonly Step[], held: (s: Step) => boolean, ctxOf: (s: Step) => StepVarContext): { step: string; text: string } | null {
+  for (const step of steps) {
+    if (held(step)) continue
+    const email = copyBoxes(step, ctxOf(step)).find((b) => b.kind === 'comms')
+    if (email) return { step: contentTitle(step), text: email.text }
+  }
+  return null
 }
 
 /** The step's copy boxes as the screen renders them: Tell your people, For the help desk, For your manager, each followed by the adapt line. */

@@ -234,9 +234,8 @@ export type ForecastPlacement = {
  * milestone, no surface dates this step from them, and the calendar needs one to
  * book the review entry on the review day (roadmap/ics.ts).
  *
- * Its dated announcement draft goes too. `Step.comms` is the text the prompt pack
- * hands to a model (roadmap/prompts.ts `announcementDraft`) with the projected
- * day already written into it, and the same absence closes the screen's Tell
+ * Its dated announcement draft goes too. `Step.comms` is the generator's draft
+ * with the projected day already written into it, and the same absence closes the screen's Tell
  * your people box and every copy of it: with no events there is no `{enforceLong}`
  * to fill, and a template with an unfillable hole renders nothing at all
  * (ui/surfaces/stepExport.ts `commsFor`). An email is the one artifact IAMAI

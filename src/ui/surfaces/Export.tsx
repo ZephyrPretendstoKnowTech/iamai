@@ -35,7 +35,7 @@ import type { PlanDecisions } from '../../roadmap/progress.ts'
 import { planIdFor } from '../../roadmap/generate.ts'
 import { summarizeTenant } from '../../scoring/mfaViability.ts'
 import { facts } from '../../derive/facts.ts'
-import { announcementDraft, groundingBundle, promptPack, promptPackMarkdown } from '../../roadmap/prompts.ts'
+import { groundingBundle, promptPack, promptPackMarkdown } from '../../roadmap/prompts.ts'
 import type { PackItem } from '../../roadmap/prompts.ts'
 import { importPlanRecords } from '../../graph/collect/cache.ts'
 import { REDACTED, exportClipboard, exportDownload, exportPrint, runbookRedaction, unredactedFrom } from '../exportGuard.ts'
@@ -43,7 +43,7 @@ import { GROUNDING } from '../../copy/comms.ts'
 import { absoluteDate, toCsv } from '../format.ts'
 import { Button, Callout, Card, PageTip } from '../components/index.ts'
 import { PrintPlan } from './PrintPlan.tsx'
-import { exportCleanupViewsOf, exportHoldOf, exportViewsOf } from './stepExport.ts'
+import { exportAnnouncementOf, exportCleanupViewsOf, exportHoldOf, exportViewsOf } from './stepExport.ts'
 import { boardReadingsOf } from './planBoard.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -251,7 +251,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   const cleanupViews = exportCleanupViewsOf(board, steps, schedule.cleanup)
   const getPack = (): PackItem[] => {
     if (packCache.current?.plan === c) return packCache.current.pack
-    const built = promptPack({ view, tenant: tenantName, steps, schedule, changeRecord: '', announcement: announcementDraft(steps, held), cleanup: cleanupViews })
+    const built = promptPack({ view, tenant: tenantName, steps, schedule, changeRecord: '', announcement: exportAnnouncementOf(steps, held, stepCtx), cleanup: cleanupViews })
     packCache.current = { plan: c, pack: built }
     return built
   }

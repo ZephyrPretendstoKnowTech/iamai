@@ -41,14 +41,14 @@ import { effectsOf } from '../../roadmap/strand.ts'
 import { readyWhen } from '../../derive/readyWhen.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
-import { announcementDraft, groundingBundle, promptPack, stepContext } from '../../roadmap/prompts.ts'
+import { groundingBundle, promptPack, stepContext } from '../../roadmap/prompts.ts'
 import { findTaggedPolicies } from '../../roadmap/generate.ts'
 import { absoluteDate, longDate } from '../../copy/dates.ts'
-import { contentStepFor } from '../../content/stepTitle.ts'
+import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { content } from '../../content/content.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { stepContract } from './stepContract.ts'
-import { stepExportView, commsFor, copyBoxes, datesLineFor, ifWrongLineFor, stepLines } from './stepExport.ts'
+import { stepExportView, commsFor, copyBoxes, datesLineFor, exportAnnouncementOf, ifWrongLineFor, stepLines } from './stepExport.ts'
 import { policyJsonText, jsonOffered, stepOperations, createsNewPolicy } from './stepJson.ts'
 import { powershellFor } from './stepPowerShell.ts'
 import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
@@ -497,29 +497,24 @@ test('004.16: what the screen copies and what the exports render is the one emai
 })
 
 test('004.17: the prompt pack’s draft announcement carries the same qualification the screen does', () => {
-  const r = runFixture(fixture(FIXTURE))
-  const steps = r.steps
-  const source = steps.find((s) => s.comms)!
-  // The draft the pack sends is the first step's, and that step's enforcement
-  // is not one Foundation B has earned — including the case the schedule never
-  // placed, which has no enforcement instant of its own and whose draft is
-  // dated from the plan's start all the same.
-  assert.equal(source.state.lifecycle, 'not-deployed')
-  assert.notEqual(enforcementTiming(source).basis, 'committed', 'the draft the pack sends states a date Foundation B has earned')
-  const draft = announcementDraft(steps)
-  assert.ok(draft, 'the pack has no draft to send')
-  // The draft the generator wrote is unchanged apart from the paragraph that
-  // says what its date is worth, and that paragraph sits under the one naming
-  // the day and above the sign-off.
-  const parts = draft!.split('\n\n')
-  assert.equal(parts[2], FORECAST_NOTE, draft!)
-  assert.deepEqual([...parts.slice(0, 2), ...parts.slice(3)], source.comms!.split('\n\n'), 'the draft says something other than what the step wrote')
+  // The draft the pack sends is the screen's own Tell your people box
+  // (stepExport.ts exportAnnouncementOf, Phase 2 export finding 5), so the
+  // paragraph that says what its date is worth travels with it.
+  const { step, ctx, steps } = canonical()
+  const box = copyBoxes(step, ctx).find((b) => b.kind === 'comms')
+  assert.ok(box && box.text.includes(FORECAST_NOTE), 'the premise: the screen qualifies the date')
+  const draft = exportAnnouncementOf([step], () => false, () => ctx)
+  assert.deepEqual(draft, { step: contentTitle(step), text: box!.text }, 'the draft is not the screen\'s email')
   // And the pack a person actually copies carries it, in both prompts built
-  // from the draft (rewrite, translate) — not only in the facts block.
-  const pack = promptPack({ view: (st: Step) => stepExportView(st, canonical().ctx), tenant: 'Fixture tenant', steps, schedule: r.schedule, changeRecord: '', announcement: draft })
-  const carrying = pack.filter((p) => p.prompt.includes(source.comms!.split('\n\n')[1]))
-  assert.ok(carrying.length >= 2, `the pack builds ${carrying.length} prompts from the draft`)
-  for (const p of carrying) assert.ok(p.prompt.includes(FORECAST_NOTE), `${p.title}: the prompt hands a model a projected date as a commitment`)
+  // from the draft (rewrite, translate), each named for the step.
+  const r = runFixture(fixture(FIXTURE))
+  const pack = promptPack({ view: (st: Step) => stepExportView(st, ctx), tenant: 'Fixture tenant', steps, schedule: r.schedule, changeRecord: '', announcement: draft })
+  const carrying = pack.filter((p) => p.prompt.includes(box!.text))
+  assert.equal(carrying.length, 2, `the pack builds ${carrying.length} prompts from the draft`)
+  for (const p of carrying) {
+    assert.ok(p.prompt.includes(FORECAST_NOTE), `${p.title}: the prompt hands a model a projected date as a commitment`)
+    assert.equal(p.scope, contentTitle(step), `${p.title}: the prompt names no step`)
+  }
 })
 
 test('004.18: an enforcement Foundation B has earned is stated plainly — the qualification is not added to every message', () => {
@@ -530,8 +525,6 @@ test('004.18: an enforcement Foundation B has earned is stated plainly — the q
   const committed = r.steps.find((s) => s.comms && enforcementTiming(s).basis === 'committed')
   assert.ok(committed, `${FIXTURE} no longer carries a step with an earned enforcement and a draft`)
   assert.ok(committed!.state.lifecycle === 'ready-to-enforce' || committed!.state.lifecycle === 'enforced')
-  assert.equal(announcementDraft([committed!]), committed!.comms, 'a committed enforcement is downgraded to a target')
-  assert.ok(!announcementDraft([committed!])!.includes(FORECAST_NOTE))
   // The screen reads the same authority. Same content, same tenant values, only
   // the step whose lifecycle classifies the date changed — and the paragraph
   // goes away.
@@ -560,10 +553,11 @@ test('004.19: across every fixture, a message names a projected enforcement date
       }
       assert.equal(qualified, enforcementTiming(s).basis !== 'committed', `${f.name}/${s.id}: the email and roadmap/forecast.ts disagree about what the date is worth`)
     }
-    // The draft the pack would send, on the same terms.
-    const draft = announcementDraft(r.steps)
-    const source = r.steps.find((s) => s.comms)
+    // The draft the pack would send is one of those emails (stepExport.ts
+    // exportAnnouncementOf), so it is on the same terms.
+    const draft = exportAnnouncementOf(r.steps, () => false, () => ctx)
+    const source = r.steps.find((s) => copyBoxes(s, ctx).some((b) => b.kind === 'comms'))
     if (draft === null || source === undefined) continue
-    assert.equal(draft.includes(FORECAST_NOTE), enforcementTiming(source).basis !== 'committed' && source.comms!.split('\n\n').length >= 3, `${f.name}: the pack’s draft and roadmap/forecast.ts disagree`)
+    assert.equal(draft.text, copyBoxes(source, ctx).find((b) => b.kind === 'comms')!.text, `${f.name}: the pack’s draft is not the screen’s email`)
   }
 })
