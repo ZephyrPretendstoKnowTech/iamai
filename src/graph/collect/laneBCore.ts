@@ -12,7 +12,9 @@ import { COLLECTOR_REGISTRY } from './registry.ts'
 import { absolute } from '../../copy/dates.ts'
 import { deriveScenarioEvidence } from '../../derive/evidence.ts'
 import type { ScenarioEvidence } from '../../derive/evidence.ts'
-import { GENERIC_MFA, PLATFORMS, isPhishingResistantKind, latestProofs, readSignIn } from '../../scoring/phishingResistant.ts'
+import { foldAll } from '../../derive/rowFold.ts'
+import type { RowFold } from '../../derive/rowFold.ts'
+import { GENERIC_MFA, PLATFORMS, foldProof, isPhishingResistantKind, latestProofs, readSignIn } from '../../scoring/phishingResistant.ts'
 import type { ProofRecord } from '../../scoring/phishingResistant.ts'
 import type {
   BlockedTodayEntry,
@@ -196,7 +198,7 @@ function networkLabels(r: Record<string, unknown>): Pick<StoredSignIn, 'namedLoc
 
 // Inventory counts (prompt 10 §B): by client app, by protocol, by country
 // (distinct users). Counts only — no raw rows leave the worker.
-export function deriveAggregates(rows: Iterable<StoredSignIn>): EvidenceAggregates {
+export function aggregatesFold(): RowFold<EvidenceAggregates> {
   const byClientApp: Record<string, number> = {}
   const byProtocol: Record<string, number> = {}
   const byCountryUsers: Record<string, Set<string>> = {}
@@ -204,20 +206,28 @@ export function deriveAggregates(rows: Iterable<StoredSignIn>): EvidenceAggregat
   const users = new Set<string>()
   const byWeekdayHour = Array.from({ length: 168 }, () => 0)
   let total = 0
-  for (const row of rows) {
-    total += 1
-    if (row.userId) users.add(row.userId)
-    const t = new Date(row.createdDateTime)
-    if (!Number.isNaN(t.getTime())) byWeekdayHour[t.getUTCDay() * 24 + t.getUTCHours()] += 1
-    const client = row.clientAppUsed || 'Unknown'
-    byClientApp[client] = (byClientApp[client] ?? 0) + 1
-    const proto = row.authenticationProtocol || 'none'
-    byProtocol[proto] = (byProtocol[proto] ?? 0) + 1
-    if (row.country && row.userId) (byCountryUsers[row.country] ??= new Set()).add(row.userId)
-    if (row.country) signInsByCountry[row.country] = (signInsByCountry[row.country] ?? 0) + 1
+  return {
+    add(row) {
+      total += 1
+      if (row.userId) users.add(row.userId)
+      const t = new Date(row.createdDateTime)
+      if (!Number.isNaN(t.getTime())) byWeekdayHour[t.getUTCDay() * 24 + t.getUTCHours()] += 1
+      const client = row.clientAppUsed || 'Unknown'
+      byClientApp[client] = (byClientApp[client] ?? 0) + 1
+      const proto = row.authenticationProtocol || 'none'
+      byProtocol[proto] = (byProtocol[proto] ?? 0) + 1
+      if (row.country && row.userId) (byCountryUsers[row.country] ??= new Set()).add(row.userId)
+      if (row.country) signInsByCountry[row.country] = (signInsByCountry[row.country] ?? 0) + 1
+    },
+    finish() {
+      const byCountry = Object.fromEntries(Object.entries(byCountryUsers).map(([c, s]) => [c, s.size]))
+      return { total, distinctUsers: users.size, byClientApp, byProtocol, byCountry, signInsByCountry, byWeekdayHour }
+    },
   }
-  const byCountry = Object.fromEntries(Object.entries(byCountryUsers).map(([c, s]) => [c, s.size]))
-  return { total, distinctUsers: users.size, byClientApp, byProtocol, byCountry, signInsByCountry, byWeekdayHour }
+}
+
+export function deriveAggregates(rows: Iterable<StoredSignIn>): EvidenceAggregates {
+  return foldAll(aggregatesFold(), rows)
 }
 
 // Graph reports "Exchange ActiveSync" (with a space) in clientAppUsed; the
@@ -242,7 +252,7 @@ const LEGACY_CLIENT_APPS = new Set([
 
 // Block-goal evidence (roadmap.md §5): who used legacy protocols, device-code
 // flow, or authentication transfer inside the window.
-export function deriveUsageSignals(rows: Iterable<StoredSignIn>): import('./types.ts').EvidenceUsage {
+export function usageFold(): RowFold<import('./types.ts').EvidenceUsage> {
   const mk = () => ({ count: 0, users: new Set<string>(), byDetail: {} as Record<string, number> })
   const legacy = mk()
   const device = mk()
@@ -254,22 +264,30 @@ export function deriveUsageSignals(rows: Iterable<StoredSignIn>): import('./type
     if (row.userId) sig.users.add(row.userId)
     sig.byDetail[detail] = (sig.byDetail[detail] ?? 0) + 1
   }
-  for (const row of rows) {
-    const client = (row.clientAppUsed ?? '').toLowerCase()
-    if (LEGACY_CLIENT_APPS.has(client)) hit(legacy, row, row.clientAppUsed ?? 'legacy')
-    if (row.authenticationProtocol === 'deviceCode') hit(device, row, 'deviceCode')
-    if (row.originalTransferMethod && row.originalTransferMethod !== 'none') {
-      hit(transfer, row, row.originalTransferMethod)
-    }
-    // Risk is the higher of the two verdicts Identity Protection puts on a
-    // sign-in (prompt 47 item 6): a risk policy affects the people these
-    // sign-ins belong to and nobody else.
-    const level = riskLevelOf(row)
-    if (level === 'high') hit(riskHigh, row, row.riskLevelDuringSignIn === 'high' ? 'during sign-in' : 'aggregated')
-    if (level === 'medium') hit(riskMedium, row, row.riskLevelDuringSignIn === 'medium' ? 'during sign-in' : 'aggregated')
+  return {
+    add(row) {
+      const client = (row.clientAppUsed ?? '').toLowerCase()
+      if (LEGACY_CLIENT_APPS.has(client)) hit(legacy, row, row.clientAppUsed ?? 'legacy')
+      if (row.authenticationProtocol === 'deviceCode') hit(device, row, 'deviceCode')
+      if (row.originalTransferMethod && row.originalTransferMethod !== 'none') {
+        hit(transfer, row, row.originalTransferMethod)
+      }
+      // Risk is the higher of the two verdicts Identity Protection puts on a
+      // sign-in (prompt 47 item 6): a risk policy affects the people these
+      // sign-ins belong to and nobody else.
+      const level = riskLevelOf(row)
+      if (level === 'high') hit(riskHigh, row, row.riskLevelDuringSignIn === 'high' ? 'during sign-in' : 'aggregated')
+      if (level === 'medium') hit(riskMedium, row, row.riskLevelDuringSignIn === 'medium' ? 'during sign-in' : 'aggregated')
+    },
+    finish() {
+      const out = (sig: ReturnType<typeof mk>) => ({ count: sig.count, userIds: [...sig.users], byDetail: sig.byDetail })
+      return { legacyAuth: out(legacy), deviceCode: out(device), authTransfer: out(transfer), riskHigh: out(riskHigh), riskMedium: out(riskMedium) }
+    },
   }
-  const out = (sig: ReturnType<typeof mk>) => ({ count: sig.count, userIds: [...sig.users], byDetail: sig.byDetail })
-  return { legacyAuth: out(legacy), deviceCode: out(device), authTransfer: out(transfer), riskHigh: out(riskHigh), riskMedium: out(riskMedium) }
+}
+
+export function deriveUsageSignals(rows: Iterable<StoredSignIn>): import('./types.ts').EvidenceUsage {
+  return foldAll(usageFold(), rows)
 }
 
 const RISK_RANK: Record<string, number> = { none: 0, low: 1, medium: 2, high: 3 }
@@ -292,10 +310,14 @@ export { GENERIC_MFA }
 // with a named step is not an MFA success, and a sign-in proves the method it
 // used and no other.
 export function aggregate(rows: Iterable<StoredSignIn>): Record<string, UserEvidence> {
+  return foldAll(aggregateFold(), rows)
+}
+
+export function aggregateFold(): RowFold<Record<string, UserEvidence>> {
   const perUser: Record<string, UserEvidence> = {}
   // Proof is kept per method class and platform family, never in one slot: a
   // later Authenticator sign-in cannot hide an earlier passkey one.
-  const proofs = new Map<string, ProofRecord[]>()
+  const proofs = new Map<string, Map<string, ProofRecord>>()
   const platforms = new Map<string, Map<string, string>>()
   // Per person and platform family: the devices seen, for MFA Readiness (prompt 62).
   const devices = new Map<string, Map<string, DeviceSeen>>()
@@ -310,82 +332,92 @@ export function aggregate(rows: Iterable<StoredSignIn>): Record<string, UserEvid
   // "MFA completed an hour ago" beside it (derive/ladder.ts rungOf).
   const named = new Map<string, { at: string; method: string }>()
   const generic = new Map<string, { at: string; method: string }>()
-  for (const row of rows) {
-    if (!row.userId) continue
-    const u = (perUser[row.userId] ??= { signInCount: 0, lastSignIn: null, lastMfaSuccess: null, countries: [] })
-    u.signInCount += 1
-    if (row.country && !u.countries?.includes(row.country)) (u.countries ??= []).push(row.country)
-    const at = row.createdDateTime
-    if (u.lastSignIn === null || at > u.lastSignIn) u.lastSignIn = at
-    const read = readSignIn(row)
-    const freshStep = (row.authenticationDetails ?? []).find((detail) => {
-      if (detail?.succeeded !== true || typeof detail.authenticationMethod !== 'string') return false
-      if (!/passkey|fido|security key/i.test(detail.authenticationMethod)) return false
-      return !/previously satisfied|satisfied by token/i.test(detail.authenticationStepResultDetail ?? '')
-    })
-    if (read.proof?.cls === 'passkey') {
-      const candidate = {
-        schema: 1 as const,
-        eventId: row.id,
-        userId: row.userId,
-        at: row.createdDateTime,
-        success: row.status?.errorCode === 0,
-        isInteractive: typeof row.isInteractive === 'boolean' ? row.isInteractive : null,
-        appId: row.appId ?? null,
-        resourceId: row.resourceId ?? null,
-        app: row.appDisplayName ?? null,
-        resource: row.resourceDisplayName ?? null,
-        method: 'Passkey (FIDO2)',
-        authenticationAt: freshStep?.authenticationStepDateTime ?? null,
-        resourceTenantId: row.resourceTenantId ?? null,
-        freshMethod: freshStep ? true : (Array.isArray(row.authenticationDetails) ? false : null),
+  return {
+    add(row) {
+      if (!row.userId) return
+      const u = (perUser[row.userId] ??= { signInCount: 0, lastSignIn: null, lastMfaSuccess: null, countries: [] })
+      u.signInCount += 1
+      if (row.country && !u.countries?.includes(row.country)) (u.countries ??= []).push(row.country)
+      const at = row.createdDateTime
+      if (u.lastSignIn === null || at > u.lastSignIn) u.lastSignIn = at
+      const read = readSignIn(row)
+      const freshStep = (row.authenticationDetails ?? []).find((detail) => {
+        if (detail?.succeeded !== true || typeof detail.authenticationMethod !== 'string') return false
+        if (!/passkey|fido|security key/i.test(detail.authenticationMethod)) return false
+        return !/previously satisfied|satisfied by token/i.test(detail.authenticationStepResultDetail ?? '')
+      })
+      if (read.proof?.cls === 'passkey') {
+        const candidate = {
+          schema: 1 as const,
+          eventId: row.id,
+          userId: row.userId,
+          at: row.createdDateTime,
+          success: row.status?.errorCode === 0,
+          isInteractive: typeof row.isInteractive === 'boolean' ? row.isInteractive : null,
+          appId: row.appId ?? null,
+          resourceId: row.resourceId ?? null,
+          app: row.appDisplayName ?? null,
+          resource: row.resourceDisplayName ?? null,
+          method: 'Passkey (FIDO2)',
+          authenticationAt: freshStep?.authenticationStepDateTime ?? null,
+          resourceTenantId: row.resourceTenantId ?? null,
+          freshMethod: freshStep ? true : (Array.isArray(row.authenticationDetails) ? false : null),
+        }
+        let list = recovery.get(row.userId)
+        if (!list) recovery.set(row.userId, (list = []))
+        list.push(candidate)
       }
-      recovery.set(row.userId, [...(recovery.get(row.userId) ?? []), candidate])
-    }
-    if (read.mfa) {
-      const into = read.mfa === GENERIC_MFA ? generic : named
-      const held = into.get(row.userId)
-      if (held === undefined || at > held.at) into.set(row.userId, { at, method: read.mfa })
-    }
-    if (read.proof) proofs.set(row.userId, [...(proofs.get(row.userId) ?? []), read.proof])
-    if (read.platform) {
-      const seen = platforms.get(row.userId) ?? new Map<string, string>()
-      if (!seen.has(read.platform) || at > (seen.get(read.platform) as string)) seen.set(read.platform, at)
-      platforms.set(row.userId, seen)
-      const byOs = devices.get(row.userId) ?? new Map<string, DeviceSeen>()
-      const d = byOs.get(read.platform) ?? { os: read.platform, at, trust: null, managed: null, deviceIds: [], version: null }
-      if (at >= d.at) {
-        d.at = at
-        if (row.osVersion) d.version = row.osVersion
+      if (read.mfa) {
+        const into = read.mfa === GENERIC_MFA ? generic : named
+        const held = into.get(row.userId)
+        if (held === undefined || at > held.at) into.set(row.userId, { at, method: read.mfa })
       }
-      if (TRUST_RANK[row.trustType ?? ''] > TRUST_RANK[d.trust ?? '']) d.trust = row.trustType ?? null
-      if (typeof row.isManaged === 'boolean') d.managed = (d.managed ?? false) || row.isManaged
-      if (row.deviceId && !d.deviceIds.includes(row.deviceId) && d.deviceIds.length < 5) d.deviceIds.push(row.deviceId)
-      byOs.set(read.platform, d)
-      devices.set(row.userId, byOs)
-      if (row.trustedLocation) trusted.add(row.userId)
-    }
-    if (row.status?.errorCode === 0 && row.appDisplayName) {
-      const set = apps.get(row.userId) ?? new Set<string>()
-      if (set.size < 8) set.add(row.appDisplayName)
-      apps.set(row.userId, set)
-    }
+      if (read.proof) {
+        let held = proofs.get(row.userId)
+        if (!held) proofs.set(row.userId, (held = new Map()))
+        foldProof(held, read.proof)
+      }
+      if (read.platform) {
+        const seen = platforms.get(row.userId) ?? new Map<string, string>()
+        if (!seen.has(read.platform) || at > (seen.get(read.platform) as string)) seen.set(read.platform, at)
+        platforms.set(row.userId, seen)
+        const byOs = devices.get(row.userId) ?? new Map<string, DeviceSeen>()
+        const d = byOs.get(read.platform) ?? { os: read.platform, at, trust: null, managed: null, deviceIds: [], version: null }
+        if (at >= d.at) {
+          d.at = at
+          if (row.osVersion) d.version = row.osVersion
+        }
+        if (TRUST_RANK[row.trustType ?? ''] > TRUST_RANK[d.trust ?? '']) d.trust = row.trustType ?? null
+        if (typeof row.isManaged === 'boolean') d.managed = (d.managed ?? false) || row.isManaged
+        if (row.deviceId && !d.deviceIds.includes(row.deviceId) && d.deviceIds.length < 5) d.deviceIds.push(row.deviceId)
+        byOs.set(read.platform, d)
+        devices.set(row.userId, byOs)
+        if (row.trustedLocation) trusted.add(row.userId)
+      }
+      if (row.status?.errorCode === 0 && row.appDisplayName) {
+        const set = apps.get(row.userId) ?? new Set<string>()
+        if (set.size < 8) set.add(row.appDisplayName)
+        apps.set(row.userId, set)
+      }
+    },
+    finish() {
+      // The method the person proved outlives every later record that names none,
+      // in whatever order the rows arrived; a generic record stands alone only when
+      // no record in the window named a method.
+      for (const [id, u] of Object.entries(perUser)) {
+        u.lastMfaSuccess = named.get(id) ?? generic.get(id) ?? null
+        u.proofs = [...(proofs.get(id)?.values() ?? [])].sort((a, b) => (a.cls < b.cls ? -1 : a.cls > b.cls ? 1 : (a.os ?? '') < (b.os ?? '') ? -1 : 1))
+        u.recoveryCandidates = (recovery.get(id) ?? []).sort((a, b) => b.at.localeCompare(a.at))
+        const seen = platforms.get(id)
+        u.platforms = PLATFORMS.filter((os) => seen?.has(os)).map((os) => ({ os, at: seen?.get(os) as string }))
+        const byOs = devices.get(id)
+        u.devices = PLATFORMS.filter((os) => byOs?.has(os)).map((os) => byOs?.get(os) as DeviceSeen)
+        u.apps = [...(apps.get(id) ?? [])].sort()
+        u.trustedLocationSeen = trusted.has(id)
+      }
+      return perUser
+    },
   }
-  // The method the person proved outlives every later record that names none,
-  // in whatever order the rows arrived; a generic record stands alone only when
-  // no record in the window named a method.
-  for (const [id, u] of Object.entries(perUser)) {
-    u.lastMfaSuccess = named.get(id) ?? generic.get(id) ?? null
-    u.proofs = latestProofs(proofs.get(id) ?? []).sort((a, b) => (a.cls < b.cls ? -1 : a.cls > b.cls ? 1 : (a.os ?? '') < (b.os ?? '') ? -1 : 1))
-    u.recoveryCandidates = (recovery.get(id) ?? []).sort((a, b) => b.at.localeCompare(a.at))
-    const seen = platforms.get(id)
-    u.platforms = PLATFORMS.filter((os) => seen?.has(os)).map((os) => ({ os, at: seen?.get(os) as string }))
-    const byOs = devices.get(id)
-    u.devices = PLATFORMS.filter((os) => byOs?.has(os)).map((os) => byOs?.get(os) as DeviceSeen)
-    u.apps = [...(apps.get(id) ?? [])].sort()
-    u.trustedLocationSeen = trusted.has(id)
-  }
-  return perUser
 }
 
 const RESULT_CLASS: Record<string, PolicyResultClass> = {
@@ -416,123 +448,164 @@ const CLASSES: PolicyResultClass[] = [
  * reportOnlyRecords). Sorted, one id each.
  */
 export function deriveReportOnlyPolicyIds(rows: Iterable<StoredSignIn>): string[] {
+  return foldAll(reportOnlyIdsFold(), rows)
+}
+
+export function reportOnlyIdsFold(): RowFold<string[]> {
   const ids = new Set<string>()
+  return {
+    add(row) {
+      for (const applied of row.appliedConditionalAccessPolicies ?? []) {
+        if (applied.id && applied.result?.startsWith('reportOnly')) ids.add(applied.id)
+      }
+    },
+    finish: () => [...ids].sort(),
+  }
+}
+
+/** A result that shows the policy enforced: it applied and passed, or applied and blocked. */
+export const isEnforcedResult = (r: string | undefined): boolean => r === 'success' || r === 'failure'
+
+/**
+ * The last record that shows each policy *enforced*. A report-only record
+ * older than that belongs to an episode the tenant ended by turning the policy
+ * on, and the readiness clock does not start there: the window a policy is
+ * being watched over now runs from the report-only records it has made since
+ * it last came off. Counting from the first episode gave the current one a
+ * window it had not served and a coverage it had not earned — last month's
+ * report-only successes completing this month's, with the enforced weeks in
+ * between paying for the days.
+ */
+export function lastEnforcedOf(rows: Iterable<StoredSignIn>): Map<string, string> {
+  const lastEnforced = new Map<string, string>()
   for (const row of rows) {
     for (const applied of row.appliedConditionalAccessPolicies ?? []) {
-      if (applied.id && applied.result?.startsWith('reportOnly')) ids.add(applied.id)
+      if (!applied.id || !isEnforcedResult(applied.result)) continue
+      const at = lastEnforced.get(applied.id)
+      if (at === undefined || row.createdDateTime > at) lastEnforced.set(applied.id, row.createdDateTime)
     }
   }
-  return [...ids].sort()
+  return lastEnforced
 }
 
 // Per-policy applied results across the covered window.
 export function derivePolicyResults(rows: Iterable<StoredSignIn>): PolicyAppliedResult[] {
   const all = [...rows]
-  // The last record that shows each policy *enforced*. A report-only record
-  // older than that belongs to an episode the tenant ended by turning the policy
-  // on, and the readiness clock does not start there: the window a policy is
-  // being watched over now runs from the report-only records it has made since
-  // it last came off. Counting from the first episode gave the current one a
-  // window it had not served and a coverage it had not earned — last month's
-  // report-only successes completing this month's, with the enforced weeks in
-  // between paying for the days.
-  const lastEnforced = new Map<string, string>()
-  for (const row of all) {
-    for (const applied of row.appliedConditionalAccessPolicies ?? []) {
-      const cls = applied.result ? RESULT_CLASS[applied.result] : undefined
-      if (!applied.id || (cls !== 'enforcedFailure' && cls !== 'enforcedSuccess')) continue
-      const at = lastEnforced.get(applied.id)
-      if (at === undefined || row.createdDateTime > at) lastEnforced.set(applied.id, row.createdDateTime)
-    }
-  }
+  const lastEnforced = lastEnforcedOf(all)
+  return foldAll(policyResultsFold((id) => lastEnforced.get(id)), all)
+}
+
+/**
+ * Per-policy applied results, one record at a time. `cutoffOf` answers when the
+ * policy was last seen enforced (`lastEnforcedOf`): the array form reads every
+ * record first, and the sign-in read, which folds newest first, knows it from
+ * the records it has already folded.
+ */
+export function policyResultsFold(cutoffOf: (policyId: string) => string | undefined): RowFold<PolicyAppliedResult[]> {
   const byPolicy = new Map<string, { displayName: string | null; sets: Record<PolicyResultClass, Set<string>>; counts: Record<PolicyResultClass, number>; byDay: Map<string, { failures: number; users: Set<string> }>; reportOnlyByDay: Map<string, number>; reportOnlyLastSeen: Map<string, string>; firstReportOnly: string | null }>()
-  for (const row of all) {
-    for (const applied of row.appliedConditionalAccessPolicies ?? []) {
-      const cls = applied.result ? RESULT_CLASS[applied.result] : undefined
-      if (!cls || !applied.id) continue
-      let entry = byPolicy.get(applied.id)
-      if (!entry) {
-        entry = {
-          displayName: applied.displayName ?? null,
-          sets: Object.fromEntries(CLASSES.map((c) => [c, new Set<string>()])) as Record<PolicyResultClass, Set<string>>,
-          counts: Object.fromEntries(CLASSES.map((c) => [c, 0])) as Record<PolicyResultClass, number>,
-          byDay: new Map(),
-          reportOnlyByDay: new Map(),
-          reportOnlyLastSeen: new Map(),
-          firstReportOnly: null,
+  return {
+    add(row) {
+      for (const applied of row.appliedConditionalAccessPolicies ?? []) {
+        const cls = applied.result ? RESULT_CLASS[applied.result] : undefined
+        if (!cls || !applied.id) continue
+        let entry = byPolicy.get(applied.id)
+        if (!entry) {
+          entry = {
+            displayName: applied.displayName ?? null,
+            sets: Object.fromEntries(CLASSES.map((c) => [c, new Set<string>()])) as Record<PolicyResultClass, Set<string>>,
+            counts: Object.fromEntries(CLASSES.map((c) => [c, 0])) as Record<PolicyResultClass, number>,
+            byDay: new Map(),
+            reportOnlyByDay: new Map(),
+            reportOnlyLastSeen: new Map(),
+            firstReportOnly: null,
+          }
+          byPolicy.set(applied.id, entry)
         }
-        byPolicy.set(applied.id, entry)
-      }
-      entry.counts[cls] += 1
-      if (row.userId) entry.sets[cls].add(row.userId)
-      // A report-only result made since the policy last came off dates the
-      // policy in report-only on that day; the earliest one is where the
-      // readiness clock starts (tracking.ts), and the same records dated are
-      // what lets a gate judging one window tell them from the ones the same
-      // collection holds from outside it (types.ts `reportOnlyDated`). A day per
-      // record and a day per person: what a gate asks is how many records the
-      // window holds and who has been seen in it, never who signed in on a
-      // particular morning.
-      const off = lastEnforced.get(applied.id)
-      if (cls.startsWith('reportOnly') && (off === undefined || row.createdDateTime > off)) {
-        if (entry.firstReportOnly === null || row.createdDateTime < entry.firstReportOnly) entry.firstReportOnly = row.createdDateTime
-        const day = row.createdDateTime.slice(0, 10)
-        entry.reportOnlyByDay.set(day, (entry.reportOnlyByDay.get(day) ?? 0) + 1)
-        if (row.userId) {
-          const last = entry.reportOnlyLastSeen.get(row.userId)
-          if (last === undefined || day > last) entry.reportOnlyLastSeen.set(row.userId, day)
+        entry.counts[cls] += 1
+        if (row.userId) entry.sets[cls].add(row.userId)
+        // A report-only result made since the policy last came off dates the
+        // policy in report-only on that day; the earliest one is where the
+        // readiness clock starts (tracking.ts), and the same records dated are
+        // what lets a gate judging one window tell them from the ones the same
+        // collection holds from outside it (types.ts `reportOnlyDated`). A day per
+        // record and a day per person: what a gate asks is how many records the
+        // window holds and who has been seen in it, never who signed in on a
+        // particular morning.
+        const off = cutoffOf(applied.id)
+        if (cls.startsWith('reportOnly') && (off === undefined || row.createdDateTime > off)) {
+          if (entry.firstReportOnly === null || row.createdDateTime < entry.firstReportOnly) entry.firstReportOnly = row.createdDateTime
+          const day = row.createdDateTime.slice(0, 10)
+          entry.reportOnlyByDay.set(day, (entry.reportOnlyByDay.get(day) ?? 0) + 1)
+          if (row.userId) {
+            const last = entry.reportOnlyLastSeen.get(row.userId)
+            if (last === undefined || day > last) entry.reportOnlyLastSeen.set(row.userId, day)
+          }
         }
+        if (cls === 'enforcedFailure' || cls === 'reportOnlyFailure' || cls === 'reportOnlyInterrupted') {
+          const day = row.createdDateTime.slice(0, 10)
+          const d = entry.byDay.get(day) ?? { failures: 0, users: new Set<string>() }
+          d.failures += 1
+          if (row.userId) d.users.add(row.userId)
+          entry.byDay.set(day, d)
+        }
+        if (!entry.displayName && applied.displayName) entry.displayName = applied.displayName
       }
-      if (cls === 'enforcedFailure' || cls === 'reportOnlyFailure' || cls === 'reportOnlyInterrupted') {
-        const day = row.createdDateTime.slice(0, 10)
-        const d = entry.byDay.get(day) ?? { failures: 0, users: new Set<string>() }
-        d.failures += 1
-        if (row.userId) d.users.add(row.userId)
-        entry.byDay.set(day, d)
-      }
-      if (!entry.displayName && applied.displayName) entry.displayName = applied.displayName
-    }
+    },
+    finish() {
+      return [...byPolicy.entries()]
+        .map(([policyId, e]) => ({
+          policyId,
+          displayName: e.displayName,
+          counts: e.counts,
+          affectedUserIds: Object.fromEntries(CLASSES.map((c) => [c, [...e.sets[c]]])) as Record<PolicyResultClass, string[]>,
+          byDay: Object.fromEntries([...e.byDay.entries()].map(([day, d]) => [day, { failures: d.failures, userIds: [...d.users] }])),
+          reportOnlyDated: { signInsByDay: [...e.reportOnlyByDay.entries()].map(([day, signIns]) => ({ day, signIns })), lastSeenByUser: Object.fromEntries(e.reportOnlyLastSeen) },
+          firstReportOnlyAt: e.firstReportOnly,
+        }))
+        .sort((a, b) => {
+          const total = (r: PolicyAppliedResult) => CLASSES.reduce((n, c) => n + r.counts[c], 0)
+          return total(b) - total(a)
+        })
+    },
   }
-  return [...byPolicy.entries()]
-    .map(([policyId, e]) => ({
-      policyId,
-      displayName: e.displayName,
-      counts: e.counts,
-      affectedUserIds: Object.fromEntries(CLASSES.map((c) => [c, [...e.sets[c]]])) as Record<PolicyResultClass, string[]>,
-      byDay: Object.fromEntries([...e.byDay.entries()].map(([day, d]) => [day, { failures: d.failures, userIds: [...d.users] }])),
-      reportOnlyDated: { signInsByDay: [...e.reportOnlyByDay.entries()].map(([day, signIns]) => ({ day, signIns })), lastSeenByUser: Object.fromEntries(e.reportOnlyLastSeen) },
-      firstReportOnlyAt: e.firstReportOnly,
-    }))
-    .sort((a, b) => {
-      const total = (r: PolicyAppliedResult) => CLASSES.reduce((n, c) => n + r.counts[c], 0)
-      return total(b) - total(a)
-    })
 }
 
 // Users whose most recent sign-in in the window failed CA, by failing policy.
 export function deriveBlockedToday(rows: Iterable<StoredSignIn>): BlockedTodayEntry[] {
-  const latestByUser = new Map<string, StoredSignIn>()
-  for (const row of rows) {
-    if (!row.userId) continue
-    const cur = latestByUser.get(row.userId)
-    if (!cur || row.createdDateTime > cur.createdDateTime) latestByUser.set(row.userId, row)
+  return foldAll(blockedTodayFold(), rows)
+}
+
+/** Per person, only what their latest record says: when, and the policies it failed (null where CA did not fail it). No record is kept. */
+export function blockedTodayFold(): RowFold<BlockedTodayEntry[]> {
+  const latestByUser = new Map<string, { at: string; failing: { id?: string; displayName?: string }[] | null }>()
+  return {
+    add(row) {
+      if (!row.userId) return
+      const cur = latestByUser.get(row.userId)
+      if (cur && !(row.createdDateTime > cur.at)) return
+      const failing = row.conditionalAccessStatus !== 'failure'
+        ? null
+        : (row.appliedConditionalAccessPolicies ?? []).filter((p) => p.result === 'failure' && p.id).map((p) => ({ id: p.id, displayName: p.displayName }))
+      latestByUser.set(row.userId, { at: row.createdDateTime, failing })
+    },
+    finish() {
+      const byPolicy = new Map<string, { displayName: string | null; userIds: Set<string> }>()
+      for (const [userId, latest] of latestByUser) {
+        if (latest.failing === null) continue
+        const targets = latest.failing.length > 0 ? latest.failing : [{ id: 'unknown', displayName: null as string | null }]
+        for (const p of targets) {
+          const key = p.id ?? 'unknown'
+          const entry = byPolicy.get(key) ?? { displayName: p.displayName ?? null, userIds: new Set<string>() }
+          entry.userIds.add(userId)
+          if (!entry.displayName && p.displayName) entry.displayName = p.displayName
+          byPolicy.set(key, entry)
+        }
+      }
+      return [...byPolicy.entries()]
+        .map(([policyId, e]) => ({ policyId, displayName: e.displayName, userIds: [...e.userIds] }))
+        .sort((a, b) => b.userIds.length - a.userIds.length)
+    },
   }
-  const byPolicy = new Map<string, { displayName: string | null; userIds: Set<string> }>()
-  for (const [userId, row] of latestByUser) {
-    if (row.conditionalAccessStatus !== 'failure') continue
-    const failing = (row.appliedConditionalAccessPolicies ?? []).filter((p) => p.result === 'failure' && p.id)
-    const targets = failing.length > 0 ? failing : [{ id: 'unknown', displayName: null as string | null }]
-    for (const p of targets) {
-      const key = p.id ?? 'unknown'
-      const entry = byPolicy.get(key) ?? { displayName: p.displayName ?? null, userIds: new Set<string>() }
-      entry.userIds.add(userId)
-      if (!entry.displayName && p.displayName) entry.displayName = p.displayName
-      byPolicy.set(key, entry)
-    }
-  }
-  return [...byPolicy.entries()]
-    .map(([policyId, e]) => ({ policyId, displayName: e.displayName, userIds: [...e.userIds] }))
-    .sort((a, b) => b.userIds.length - a.userIds.length)
 }
 
 export type LaneBDeps = {
