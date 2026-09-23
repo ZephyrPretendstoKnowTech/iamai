@@ -110,14 +110,15 @@ export function PrintPlan({
   const today = absoluteDate(new Date().toISOString())
   // No Entra ID P1: the Plan renders one sentence and no plan (owner,
   // 2026-09-19/20), so the document is the cover's identity and that sentence.
-  // Nothing after it is drawn: no count, no finish, no phase and no Cleanup.
+  // Nothing after it is drawn: no count, no finish, no phase and no Cleanup,
+  // and it is not titled a plan.
   const licenceLine = noPlanLine(tenant)
   if (licenceLine) return createPortal(
     <div className="print-plan">
-      <div className="print-running">{fillText(C.runningHeader, { tenant: tenantName, date: today })}</div>
+      <div className="print-running">{fillText(C.runningHeaderNoPlan, { tenant: tenantName, date: today })}</div>
       <section className="print-cover">
         <BrandMark size={56} />
-        <h1>{fillText(C.title, { tenant: tenantName })}</h1>
+        <h1>{fillText(C.titleNoPlan, { tenant: tenantName })}</h1>
         <dl>
           <dt>{C.cover.tenant}</dt>
           <dd>{tenantName}</dd>
