@@ -366,7 +366,7 @@ test('tile 3, not started: the account, one row asking for Global Reader, Sign i
   beatsOf(t)
   assert.equal(t.state, "not started · this account can't read the tenant")
   assert.equal(t.tone, 'stop')
-  assert.equal(t.lead, 'alex@example.com holds none of the roles that read Conditional Access policies, people and sign-in records.')
+  assert.equal(t.lead, 'alex@example.com has no active role that reads Conditional Access policies, people and sign-in records.')
   assert.deepEqual(t.rows, [{ name: 'Everything IAMAI needs, read-only', value: 'ask for Global Reader' }])
   assert.deepEqual(t.actions, [{ label: 'Sign in with another account', weight: 'primary' }])
   scanOnlyItsOwn(t)
@@ -579,4 +579,20 @@ test('the limitations state what the records cannot show, and set no report-only
   for (const l of lines) assert.doesNotMatch(l, /keep new blocks in report-only|across a full cycle/, l)
   // The same lines on the signed-in tile: one source.
   assert.deepEqual(scanTile({ kind: 'ready' }).limits.lines, lines)
+})
+
+// Phase 2 audit (Connect): the role state read the token's active roles (wids)
+// and said the account "holds none of the roles", so an admin whose Global
+// Reader is eligible in Privileged Identity Management, and not yet activated,
+// was told to ask for a role they already hold. The tile now says what it read:
+// the roles active in this sign-in, and when an eligible one counts. A fact,
+// not a new instruction.
+test('the role state says it read the roles active in this sign-in, and when an eligible role counts', () => {
+  const gap = coreRoleGap(rolesInToken(noRolesToken()))
+  assert.ok(gap)
+  const t = scanTile({ kind: 'role', upn, gap })
+  assert.equal(t.lead, 'alex@example.com has no active role that reads Conditional Access policies, people and sign-in records.')
+  assert.equal(t.note, 'IAMAI reads the roles active in this sign-in. A role eligible in Privileged Identity Management counts once it is activated and the account signs in again.')
+  assert.doesNotMatch(t.note ?? '', /^(Activate|Choose|Sign in|Ask)\b|\byou should\b/, 'a statement, not an instruction')
+  assert.ok(tileStrings(t).includes(t.note ?? ''), 'the tile draws it')
 })
