@@ -291,7 +291,10 @@ export function tenantStateOf(steps: readonly Step[], rows: readonly LaneRowInpu
   const conds = graphConditions(byId, answers)
   return [
     { steps: observed, conditions: conds, prerequisites: prerequisites(byId, conds) },
-    { deferred: steps.filter((s) => s.status === 'skipped').map((s) => s.id) },
+    // Deferred is the person's choice to put a step off. A step that does not
+    // apply here is set aside too (its status reads skipped), but nobody
+    // deferred it: it is complete to the engine (`observe`), never Deferred.
+    { deferred: steps.filter((s) => s.status === 'skipped' && s.doesntApply == null).map((s) => s.id) },
   ]
 }
 
