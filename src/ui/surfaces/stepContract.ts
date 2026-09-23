@@ -735,7 +735,7 @@ function foundOf(step: Step, tenant: string, said: string | null, routeStart: St
   // the card is ('gate'), under the readiness label: the security-defaults line
   // and the short-reading note share that label and are not the threshold, and
   // the export reads the threshold from this one finding (stepExport.ts).
-  if (gate && step.status !== 'done' && step.status !== 'skipped') out.push({ ...found('readiness', readinessSentence(step, gate, routeStart)), key: 'gate' })
+  if (gate && step.status !== 'done' && step.status !== 'skipped') out.push(found('gate', readinessSentence(step, gate, routeStart)))
   // And on a step that has finished short of it, where the gate is already gone.
   else { const short = shortReadingOf(step); if (short !== null) out.push(found('readiness', short.note)) }
   // A policy this plan tagged, switched off, on a step that is proposing to

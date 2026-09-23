@@ -1842,6 +1842,8 @@
           "foundLabel": {
             "$comment": "The key over each finding card (task 035; docs/design/approved/plan-step-v1.html `.finding .k`). It names which KIND of finding this is — the classification stepContract.ts foundOf already makes when it builds the list — and never restates the finding's own sentence.",
             "readiness": "Readiness",
+            "$commentGate": "The turn-on threshold's finding (stepContract.ts foundOf), keyed as the Threshold card is so the export reads it by its key; the same Readiness label as the other readiness findings.",
+            "gate": "Readiness",
             "in-place": "Existing coverage",
             "observation": "New evidence",
             "differs": "Not as asked",
