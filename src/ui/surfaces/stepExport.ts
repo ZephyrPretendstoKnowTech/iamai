@@ -16,8 +16,8 @@ import { SHARED_REF_KEYS, fillText, ifWrongFor, listCountVars, whatToDoFor, whol
 import { stepVars, withoutScheduleDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor, unwrittenCorrectionLines } from './stepPortal.ts'
-import { instructionsHeld, preparationLines, rescanLinesOf, wholeLines } from './stepInstructions.ts'
-import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, proceduresAreReference, stepContract } from './stepContract.ts'
+import { instructionsHeld, preparationLines, preparesWhileCreateWaits, rescanLinesOf, wholeLines } from './stepInstructions.ts'
+import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, proceduresAreReference, readinessHeldLine, stepContract } from './stepContract.ts'
 import type { LaneView, PrerequisiteLabel, StepContract } from './stepContract.ts'
 import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, previewNoteLines, selectedPolicyBodiesOf, entraWithSettings } from './stepPackage.ts'
 import { projectSafely } from '../../content/implementation/project.ts'
@@ -432,7 +432,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   else if (emergencyUnsafe) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.emergencyUnsafe), { tenant: String(ex.tenant ?? '') }))
   else if (emergencyUnproven) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.emergencyUnproven), { tenant: String(ex.tenant ?? '') }))
   else if (escapeHatch) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.escapeHatchHeld), { tenant: String(ex.tenant ?? ''), steps: heldByTitle(step) }))
-  else if (readinessHeld) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.readinessHeld), { tenant: String(ex.tenant ?? ''), ...(step.action.readinessGate ?? {}) }))
+  else if (readinessHeld) lines.push(readinessHeldLine(step, String(ex.tenant ?? '')))
   // A goal the tenant already delivers says *which* policy delivers it, in the
   // artifacts as on the screen. The line used to be the bare "nothing to
   // create", which is also the contract's action and is unshifted in front of
@@ -490,8 +490,13 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // pasted into an assistant, which would then confidently instruct the
   // duplicate this whole reason exists to prevent.
   const switchedOff = cs.kind === 'policy' && toReportOnly(step).length > 0
+  // A create that waits on device readiness carries its preparation there
+  // instead, as the screen's Entra tab does (stepInstructions.ts
+  // preparesWhileCreateWaits): the contract's action, why the create waits,
+  // leads, and the content's "before" lines follow it.
+  const preparation = preparesWhileCreateWaits(step, cs) ? wholeLines(w.before, ex) : []
   if (switchedOff) lines.splice(0, lines.length, ...(switchedOffLines(step, String(ex.tenant ?? '')) ?? policyInspectionLines(step)))
-  else if (!conflicted && !inPlace && !hasPackagePortal && cs.kind === 'policy' && !(portal?.length && implementationIsCurrent(step))) lines.splice(0, lines.length, ...policyInspectionLines(step))
+  else if (preparation.length > 0 || (!conflicted && !inPlace && !hasPackagePortal && cs.kind === 'policy' && !(portal?.length && implementationIsCurrent(step)))) lines.splice(0, lines.length, ...(preparation.length > 0 ? preparation : policyInspectionLines(step)))
   // The correction a person owes in a part IAMAI does not write, as the screen's
   // portal carries it (stepPortal.ts unwrittenCorrectionLines), once.
   if (cs.kind === 'policy') {

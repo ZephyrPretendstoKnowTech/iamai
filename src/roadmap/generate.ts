@@ -3,7 +3,7 @@ import { emergencyAccountPreparationComplete, emergencyAccountPreparationOf } fr
 import { followUpIdsOf, settleFollowUp } from './followUp.ts'
 import { addWorkflowSteps } from './workflows.ts'
 import { directionSteps } from './direction.ts'
-import { applyManualReviews } from './manualWork.ts'
+import { applyManualReviews, perUserMfaReading } from './manualWork.ts'
 // Step generation (roadmap.md §1–§6; 2026-08-27 redesign: collapsed phase 0,
 // per-tenant impact, safe-today lane, handle-with-care gating, comms drafts,
 // operator self-safety, Learn links, auto-scheduling). Pure.
@@ -1383,8 +1383,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     steps.push(s)
   }
   // Per-user MFA still on (migration not complete): a conflict named up front (roadmap-v2.md §7, messy).
+  // Built only when needed (v2-research/peruser.md): a clean read — every
+  // account's per-user state read, none Enabled or Enforced — has nothing for
+  // the step to do, the way the service-accounts group step is built only when
+  // its condition holds. An absent reading, an unknown account or a partial
+  // Users read keeps it: unknown is never hidden (manualWork.ts perUserMfaReading).
   const methodsPolicy = (snapshot.config.authMethodsPolicy?.rows?.[0] ?? null) as { policyMigrationState?: string } | null
-  if (canUseConditionalAccess) {
+  if (canUseConditionalAccess && !perUserMfaReading(snapshot).clean) {
     const s = prereq('s-prereq-per-user-mfa')
     s.readiness.lines = [`Authentication methods migration: ${methodsPolicy?.policyMigrationState ?? 'not read'}. Legacy per-user MFA states require a separate check in Entra.`]
     steps.push(s)
