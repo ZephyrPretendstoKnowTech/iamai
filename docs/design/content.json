@@ -719,6 +719,10 @@
           "state": "last full plan · {date}",
           "open": "Open the last full plan ({date})"
         },
+        "none": {
+          "$comment": "Phase 2 audit (Connect): a tenant without Entra ID P1 read \"ready · 2 steps\" and Ready to plan here while the Plan page offers it no plan at all. The destination now reads the Plan page's own gate (connectView.ts planInputOf over derive/notLicensed.ts conditionalAccessLicenceLine): this state word, and that page's own sentence as the lead, with no counts and no way on.",
+          "state": "no plan to offer"
+        },
         "waiting": {
           "state": "after the scan"
         },

@@ -14,8 +14,8 @@
 // the destination with what the sample tenant produced. Signed in: Signed in,
 // Baseline, Scan (the limitations, then the scan in exactly one of its states:
 // complete, finished with gaps, not started for want of a role, scanning, or
-// ready for the first scan) and the destination (ready, the last full plan after
-// a scan with gaps, or waiting for the scan).
+// ready for the first scan) and the destination (ready, the last full plan while
+// the current scan has none, no plan to offer, or waiting for the scan).
 //
 // The progression is Microsoft tenant → Baseline → Tenant scan → Plan, and the
 // four stages are not four equally loud tiles (task 016): stages() reads which
@@ -62,11 +62,12 @@ import { ScanBar, ScanDevTools, laneOf } from '../scan/ScanProgress.tsx'
 import { chooseBaseline, scan as runScan, signIn, signInAnother, signOut, stopScan } from '../actions.ts'
 import { useAction } from '../useAction.ts'
 import { useSession } from '../session.ts'
-import { W, accountTile, baselineTile, connectStatus, planTile, sampleTile, scanTile, signInTile, stages } from '../scan/connectView.ts'
+import { W, accountTile, baselineTile, connectStatus, planInputOf, planTile, sampleTile, scanTile, signInTile, stages } from '../scan/connectView.ts'
 import type { Action, BaselinePin, BaselineUpdate, ConnectStatus, PlanInput, PlanTile, ScanCounts, ScanInput, ScanTile, Stage, Tone } from '../scan/connectView.ts'
 import { facts, stepFacts } from '../../derive/facts.ts'
 import { unreadSources } from '../../graph/collect/coreSections.ts'
 import { signInProofRead } from '../../scoring/fromSnapshot.ts'
+import { conditionalAccessLicenceLine } from '../../derive/notLicensed.ts'
 import { usePlanData } from './planData.ts'
 import { laneCountsOf } from './planLanes.ts'
 import { boardReadingsOf } from './planBoard.ts'
@@ -512,10 +513,10 @@ function SignedIn({
             // visit says the same thing it said the day it ran (S4-7, S4-8).
             { kind: 'complete', at: lastScan.at, degraded: !signInProofRead(lastScan.snapshot), unread: unreadSources(lastScan.snapshot) }
           : { kind: 'ready' }
-  // The plan follows: it is ready after a complete scan (its step counts the way
-  // the Plan header counts them, once the plan has computed; read-only, so
-  // opening Connect never creates or touches the plan record), the last full
-  // plan stays after a scan with gaps, and otherwise it waits for the scan.
+  // The plan follows a complete scan (its step counts the way the Plan header
+  // counts them, once the plan has computed; read-only, so opening Connect never
+  // creates or touches the plan record). Which state the destination is in is
+  // planInputOf's, below.
   const planScan = scanInput.kind === 'complete' ? lastScan : null
   const plan = usePlanData(planScan, baseline, true)
   const computed = plan.computed
@@ -541,13 +542,15 @@ function SignedIn({
     if (!snapshot || !mapping || !steps || !baseline) return null
     return { people: facts(snapshot, mapping).active, policies: baseline.pkg.policies.length, steps: steps.steps }
   }, [snapshot, mapping, steps?.steps, baseline])
-  const t3 = scanTile(scanInput.kind === 'complete' ? { ...scanInput, counts: scanCounts } : scanInput)
-  const planInput: PlanInput =
-    scanInput.kind === 'complete' && lastScan
-      ? { kind: 'ready', at: lastScan.at, counts: laneTileCounts }
-      : scanInput.kind === 'gaps' && lastScan
-        ? { kind: 'last', at: lastScan.at }
-        : { kind: 'waiting' }
+  // The destination reads what the Plan page would draw (connectView.ts
+  // planInputOf): that page's own no-plan gate, the baseline it computes
+  // against, and the stored plan it opens whatever a newer scan is doing.
+  const noPlan = lastScan ? conditionalAccessLicenceLine(lastScan.snapshot) : null
+  const planInput: PlanInput = planInputOf({ scan: scanInput.kind, lastScan, baselineLoaded: baseline !== null, noPlan, counts: laneTileCounts })
+  // The scan's counts sit beside a plan that is ready and nowhere else: a tenant
+  // the Plan page offers no plan has no steps to count, and its "active people"
+  // would be counted over activity its licence withheld.
+  const t3 = scanTile(scanInput.kind === 'complete' ? { ...scanInput, counts: planInput.kind === 'ready' ? scanCounts : null } : scanInput)
   const t4 = planTile(planInput)
   // The progression, from the tiles themselves: a tenant is connected, a
   // baseline is loaded, the scan is complete, and the plan is ready. The first

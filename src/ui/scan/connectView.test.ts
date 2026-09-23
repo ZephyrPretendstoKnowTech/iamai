@@ -12,7 +12,7 @@ import { gapsSnapshot, noRolesToken } from '../../testing/gapsFixture.ts'
 import { coreRoleGap, rolesInToken } from '../../graph/collect/tokenRoles.ts'
 import { CONFIG_KEYS, SOURCE_KEYS, unreadSources } from '../../graph/collect/coreSections.ts'
 import { app, pages } from '../../content/content.ts'
-import { accountTile, baselineTile, planTile, scanTile, tileStrings } from './connectView.ts'
+import { accountTile, baselineTile, connectStatus, planInputOf, planTile, scanTile, tileStrings } from './connectView.ts'
 import type { PlanTile, ScanTile } from './connectView.ts'
 import type { PolicyChange } from '../../derive/baselineDiff.ts'
 import { absoluteDate } from '../../copy/dates.ts'
@@ -21,6 +21,8 @@ import { READINESS_STATES } from '../../scoring/phishingResistant.ts'
 import { factsOf } from '../../derive/facts.ts'
 import { readinessView } from '../../derive/mfaReadiness.ts'
 import { fixture } from '../../roadmap/fixtures/index.ts'
+import { conditionalAccessLicenceLine } from '../../derive/notLicensed.ts'
+import { readFileSync } from 'node:fs'
 
 const upn = 'alex@example.com'
 const tenant = 'Contoso Pty Ltd'
@@ -367,6 +369,7 @@ test('tile 3, scanning: one line with the elapsed time, Stop (tertiary), no stat
 // The strings that belong to one Plan state and no other.
 const PLAN_OWN: Record<PlanTile['kind'], string[]> = {
   ready: ['from the scan', 'Open the plan →'],
+  none: ['no plan to offer'],
   last: ['last full plan · ', 'Open the last full plan'],
   waiting: [],
   sample: ['What the sample tenant produced', 'already in place', 'Open the sample plan'],
@@ -466,4 +469,44 @@ test("the page renders the scan's age from the one stored timestamp: Scan says c
   const planWords = JSON.stringify(pages.plan)
   assert.ok(!/\{tenant\}|\{age\}/.test(planWords))
   assert.ok(!('line2' in (pages.plan as Record<string, unknown>)), 'pages.plan.line2 was retired')
+})
+
+// Phase 2 audit (Connect): the Plan destination was 'ready' whenever the scan
+// was complete. A tenant without Entra ID P1 read "ready · 2 steps" and "Ready
+// to plan" over a Plan page that offers no plan at all (the two steps were
+// Cleanup rows of a plan that is never drawn), with "0 active people" beside it
+// over sign-in activity the licence withheld; a stored scan whose baseline
+// could not be restored read ready over a Plan page that cannot compute; and a
+// rescan, or an account without a reading role, hid a stored plan the Plan tab
+// still opens. The destination now reads what the Plan page would draw.
+test('the Plan destination is ready only when the Plan page draws a plan: no plan to offer without Entra ID P1, waiting without a baseline, the last full plan while a new scan has none', () => {
+  const micro = fixture('micro').snapshot
+  const at = micro.asOf
+  const noPlan = conditionalAccessLicenceLine(micro)
+  assert.ok(noPlan, 'the premise: the Plan page offers this tenant no plan')
+  const input = planInputOf({ scan: 'complete', lastScan: { at }, baselineLoaded: true, noPlan, counts: { steps: 2, completed: 0 } })
+  assert.deepEqual(input, { kind: 'none', lead: noPlan })
+  const none = planTile(input)
+  assert.equal(none.state, 'no plan to offer')
+  assert.equal(none.lead, noPlan, "the Plan page's own sentence, from its own gate")
+  assert.equal(none.tone, null)
+  assert.deepEqual(none.actions, [], 'no way into a plan that does not exist')
+  assert.doesNotMatch(tileStrings(none).join('\n'), /\d+ steps|Open the plan|Built from this scan|ready/)
+  planOnlyItsOwn(none)
+  // The strip follows the destination: a plan that does not exist is not ready to plan.
+  const strip = connectStatus([true, true, true, planTile(input).kind === 'ready'], [{ title: 'Signed in', state: 'x', tone: 'done' }, { title: 'Baseline', state: 'selected', tone: 'done' }, { title: 'Scan', state: 'complete', tone: 'done' }, none])
+  assert.notEqual(strip.title, 'Ready to plan')
+  // Without a baseline the Plan page cannot compute: the destination waits, it does not offer the plan.
+  assert.deepEqual(planInputOf({ scan: 'complete', lastScan: { at }, baselineLoaded: false, noPlan: null, counts: null }), { kind: 'waiting' })
+  assert.deepEqual(planInputOf({ scan: 'complete', lastScan: { at }, baselineLoaded: true, noPlan: null, counts: { steps: 33, completed: 8 } }), { kind: 'ready', at, counts: { steps: 33, completed: 8 } })
+  // A stored plan stays open while a new scan runs, ends with gaps, or cannot start.
+  for (const scan of ['scanning', 'role', 'gaps'] as const) assert.deepEqual(planInputOf({ scan, lastScan: { at }, baselineLoaded: true, noPlan: null, counts: null }), { kind: 'last', at }, scan)
+  assert.deepEqual(planInputOf({ scan: 'gaps', lastScan: null, baselineLoaded: true, noPlan: null, counts: null }), { kind: 'waiting' }, 'nothing stored: nothing to open')
+  assert.deepEqual(planInputOf({ scan: 'ready', lastScan: null, baselineLoaded: true, noPlan: null, counts: null }), { kind: 'waiting' })
+  // Connect wires it: the destination from planInputOf over the Plan page's own
+  // gate, and the scan's counts ("0 active people", "2 plan steps") only beside a plan that is ready.
+  const CONNECT = readFileSync('src/ui/surfaces/Connect.tsx', 'utf8')
+  assert.match(CONNECT, /const noPlan = lastScan \? conditionalAccessLicenceLine\(lastScan\.snapshot\) : null/)
+  assert.match(CONNECT, /const planInput: PlanInput = planInputOf\(/)
+  assert.match(CONNECT, /counts: planInput\.kind === 'ready' \? scanCounts : null/)
 })

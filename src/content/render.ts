@@ -830,6 +830,8 @@ export function renderPages(): string {
           acts(cx.plan.ready.open),
       ) +
       tileHtml(4, cx.plan.title, fill(cx.plan.last.state, { date: 'Sep 2' }), acts(fill(cx.plan.last.open, { date: 'Sep 2' }))) +
+      // A tenant the Plan page offers no plan (no Entra ID P1): its own sentence, no counts, no way on.
+      tileHtml(4, cx.plan.title, cx.plan.none.state, '') +
       tileHtml(4, cx.plan.title, cx.plan.waiting.state, ''),
   )
   const si = cx.signIn
