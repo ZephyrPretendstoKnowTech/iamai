@@ -1351,7 +1351,15 @@ function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<str
     }
     return own.length > 0 ? own : [fillText(CONTRACT.doneSatisfied, { tenant })]
   }
-  if (step.state.condition === 'needs-decision') return cs?.kind !== 'policy' && own.length > 0 ? own : [CONTRACT.doneDecision]
+  if (step.state.condition === 'needs-decision') {
+    if (cs?.kind !== 'policy' && own.length > 0) return own
+    // A policy that makes an object itself asks the answer the object is made
+    // from (Stage 3: the work countries, on the countries policy), and it still
+    // finishes on its own outcome once that is saved: the policy's end state
+    // stays under the answer, as the step's completion said before it asked one.
+    const end = step.objectTask !== undefined && typeof cs?.doneEnd === 'string' && whole(cs.doneEnd, ex) ? [fillText(cs.doneEnd, ex)] : []
+    return [CONTRACT.doneDecision, ...end]
+  }
   if (reason !== null) {
     // A held policy still finishes where every policy finishes: what clears the
     // hold comes first, then the control's end state (the approved design's held
@@ -1522,7 +1530,8 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     whatToDo,
     fix,
     enforcementWaits: enforcementWaitsOf(step),
-    doneWhen: [...objectTaskDoneWhen(task, ex), ...doneWhenOf(step, reason, cs, ex, fix, tenant, ctx.mapping)],
+    // A step set aside has nothing left to finish, its object's task included.
+    doneWhen: [...(step.state.setAside ? [] : objectTaskDoneWhen(task, ex)), ...doneWhenOf(step, reason, cs, ex, fix, tenant, ctx.mapping)],
     members,
     multiPolicy: members.length > 1,
     existing: existingOf(step),

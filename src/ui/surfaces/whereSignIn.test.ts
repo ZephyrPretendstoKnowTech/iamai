@@ -259,13 +259,8 @@ test('G5: help desk says this policy does not reach a service principal, and nam
 })
 
 test('G6: the held step’s Completion Criteria is this step’s outcome, on screen and on both scans', () => {
-  // Since Stage 3 the step asks the work countries itself, and while they are
-  // unsaved (the demo's first visit) its completion is that answer. With them
-  // saved, the held step finishes on its own outcome, on both scans.
-  const demo = fixture('demo').mapping
-  const withCountries = { ...demo, workCountriesConfirmed: true, wizardAnswered: { ...demo.wizardAnswered, countries: true } }
   for (const f of ['demo', 'demo-week2'] as const) {
-    const done = bodiesOf(f, f === 'demo' ? withCountries : undefined).get('s-goal-geo-restriction')!.contract.doneWhen
+    const done = bodiesOf(f).get('s-goal-geo-restriction')!.contract.doneWhen
     assert.ok(done.some((l: string) => /^Nobody signs in to .+ from a country that is not on the approved list/.test(l)), `${f}: ${done.join('\n')}`)
     assert.ok(!done.some((l: string) => /blocking sign-ins from countries not in the allowed list/.test(l)), `${f}: ${done.join('\n')}`)
   }
