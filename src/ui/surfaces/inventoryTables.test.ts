@@ -11,7 +11,7 @@ import { portalName } from '../../roadmap/portalLines.ts'
 import { readinessView } from '../../derive/mfaReadiness.ts'
 import { methodsCell } from './readinessCells.ts'
 import { buildNameDirectory } from '../../names.ts'
-import { app, engine, pages } from '../../content/content.ts'
+import { app, engine, pages, workflowWords } from '../../content/content.ts'
 import { INVENTORY as C } from '../../copy/inventory.ts'
 import { MFA_STATE } from '../../copy/definitions.ts'
 import { fillText } from '../../content/render.ts'
@@ -405,4 +405,15 @@ test('an Apps column whose own source was not read says not read on screen as in
   const partial = structuredClone(fixture('demo').snapshot)
   partial.sources.appSignInSummary = { ...partial.sources.appSignInSummary, status: 'partial', reason: 'stopped at the page limit' }
   assert.equal(appsModel(partial, buildNameDirectory(partial)).note, fillText(W.columnPartlyRead, { column: C.apps.columns.signIns, reason: 'stopped at the page limit' }))
+})
+
+test('each Detected workloads row is named as Direction names the service its word reads', () => {
+  const demo = fixture('demo').snapshot
+  const m = workloadsModel(demo)
+  const name = m.columns.find((c) => c.key === 'workload')!
+  const direction = workflowWords.names as Record<string, string>
+  for (const r of m.rows) assert.equal(name.cell(r), direction[r.facet], r.facet)
+  // The word on this row is whether an account holds the Directory Synchronization Accounts role: it is not workload identities.
+  assert.equal(name.cell(m.rows.find((r) => r.facet === 'workload')!), 'Directory synchronization')
+  assert.equal((app.inventory as unknown as Record<string, unknown>).workloadNames, undefined, 'one map of service names')
 })

@@ -2551,6 +2551,7 @@
           "why": "Your plan should cover the services this tenant uses. Activity helps IAMAI find them, but a quiet service may still need protection.",
           "instructions": "Review these services. Services found in use are selected for your confirmation. Add anything the scan missed; leave uncertain answers as Not sure.",
           "done": "You have confirmed which listed services are in use.",
+          "$commentNames": "The one name of each service, read by Direction's Confirm What You Use, the review rows, the Inventory's Detected workloads table and the engine's facet reasons (coverage/applicability.ts). The Inventory kept a second map that named the Directory Synchronization Accounts reading \"Workload identities\", so demo read \"Workload identities | seen in use\" where the scan saw only an account holding the sync role.",
           "names": {
             "sharepoint": "SharePoint and OneDrive",
             "avd": "Azure Virtual Desktop",
@@ -3038,17 +3039,6 @@
           "globalSecureAccess": "Global Secure Access",
           "defenderForCloudApps": "Defender for Cloud Apps",
           "purviewInsiderRisk": "Purview Insider Risk"
-        },
-        "workloadNames": {
-          "avd": "Azure Virtual Desktop",
-          "copilot": "Microsoft 365 Copilot",
-          "azureDevOps": "Azure DevOps",
-          "intune": "Intune",
-          "sharepoint": "SharePoint",
-          "workload": "Workload identities",
-          "agents": "AI agents",
-          "azureManagement": "Azure management",
-          "inforcer": "Inforcer"
         },
         "$commentNotRead": "What an Inventory table says in place of its rows where the scan got nothing out of its section (graph/collect/coreSections.ts sectionHasData: a refusal, an error, a licence gate, or a section the scan lacks), with the section's own reason. The tables drew such a section as a finding: \"Security defaults: off\", every capability \"not licensed\", 0 MFA-capable, \"No devices are registered.\", \"No named locations exist yet.\" and \"135 built-in roles hidden: no holder\", on scans where Connect listed the section as not read. The Export CSV card offers no file for such a table. A cell whose own source was not read says pages.connect.scan.gaps.notRead.",
         "notRead": "Not read in this scan: {reason}.",
