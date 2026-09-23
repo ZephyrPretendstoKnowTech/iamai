@@ -602,8 +602,15 @@ export function boardWhenOf(step: Step, waveStart: string | null = null, read: L
   // day: follow it on the day it names and the tenant's own protection comes
   // off before its replacements are ready. A row the board holds has no day.
   // Not On Hold · Observing, which is a healthy wait with a day of its own: the
-  // report-only window closes on a date and the column says which.
-  if (read !== null && read.lane === 'On Hold' && read.substatus === null && step.blockedBy.length === 0) return schedulingWords.waiting
+  // report-only window closes on a date and the column says which. Observing is
+  // that row's reason (BOARD.blockers.evidence, the lane tail), never its
+  // substatus: the lane engine gives an On Hold row no substatus at all, so the
+  // substatus test excluded nothing, and a report-only policy still being
+  // watched read "After prerequisites" wherever the roadmap recorded no wait of
+  // its own on it — the same policy read its review day on a tenant where it
+  // did. Every row the engine files On Hold behind something else still reads
+  // no day.
+  if (read !== null && read.lane === 'On Hold' && read.substatus === null && read.tail !== BOARD.blockers.evidence && step.blockedBy.length === 0) return schedulingWords.waiting
   return step.manualReview || step.directionQuestions ? fillText(schedulingWords.estimate, { date: result }) : result
 }
 
