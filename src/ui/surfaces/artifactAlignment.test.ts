@@ -463,7 +463,8 @@ test('013.G: every export the page offers goes through the guard, and only the t
   for (const artifact of ['.ics', 'text/csv', 'text/markdown']) {
     const line = src.split('\n').find((l) => l.includes(artifact) && l.includes('exportDownload'))
     assert.ok(line, `the page no longer downloads ${artifact}`)
-    assert.match(line!, artifact === 'text/csv' ? /unredactedFrom\('inventory-csv'\)/ : /REDACTED/, `${artifact} leaves without its declared export policy`)
+    // The calendar and the pack are runbooks: redacted, with the passkey model AAGUIDs kept (exportGuard.ts runbookRedaction).
+    assert.match(line!, artifact === 'text/csv' ? /unredactedFrom\('inventory-csv'\)/ : /REDACTED|runbookRedaction\(data\.mapping\)/, `${artifact} leaves without its declared export policy`)
   }
 })
 

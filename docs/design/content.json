@@ -1446,7 +1446,7 @@
         ],
         "calendar": [
           "Calendar",
-          "Every scheduled step as a calendar entry, with its portal path and its done-when lines.",
+          "Every scheduled step as a calendar entry, with its portal path and its done-when lines. In the file, sign-in addresses and object IDs are masked; names are not.",
           "Download calendar (ICS)"
         ],
         "planFile": [
@@ -1461,7 +1461,7 @@
         ],
         "prompts": [
           "Prompts for your own assistant",
-          "One file of prompts, grounded in this plan, for your own assistant.",
+          "One file of prompts, grounded in this plan, for your own assistant. In the file and in each copied prompt, sign-in addresses and object IDs are masked; names are not.",
           "Download every prompt · See the prompts"
         ],
         "bundle": [

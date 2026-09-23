@@ -18,6 +18,9 @@ import { redactIdentifiers } from '../redact.ts'
 import { isDemo } from './demoMode.ts'
 import { app } from '../content/content.ts'
 import { foldIcsLine } from '../roadmap/ics.ts'
+import { requiredModels } from '../roadmap/passkeySettings.ts'
+import { AUTHENTICATOR_AAGUIDS, WINDOWS_HELLO_AAGUIDS } from '../scoring/phishingResistant.ts'
+import type { MappingState } from '../mapping/types.ts'
 
 /**
  * The surfaces allowed to export without redaction. Each value names a place in
@@ -43,7 +46,8 @@ import { foldIcsLine } from '../roadmap/ics.ts'
  */
 export type UnredactedSurface = 'grounding-bundle' | 'print-document' | 'plan-file' | 'implementation-artifact' | 'inventory-csv'
 
-export type Disposition = { redact: true } | { redact: false; surface: UnredactedSurface }
+/** `keep`: GUIDs a redacted export leaves as they are, because they are vendor constants and not tenant data (`runbookRedaction`). */
+export type Disposition = { redact: true; keep?: ReadonlySet<string> } | { redact: false; surface: UnredactedSurface }
 
 /** Redacted, which is what almost every caller wants. */
 export const REDACTED: Disposition = { redact: true }
@@ -51,8 +55,33 @@ export const REDACTED: Disposition = { redact: true }
 /** Names in full, only from a surface that warns first. */
 export const unredactedFrom = (surface: UnredactedSurface): Disposition => ({ redact: false, surface })
 
+/**
+ * The redaction the Export page's runbooks take (the calendar and the prompt
+ * pack): sign-in addresses and object IDs masked, as REDACTED masks them, and
+ * the passkey model AAGUIDs left as they are. Those are vendor constants the
+ * approved-model list names (Emergency Access Step 3, Microsoft Authenticator,
+ * Windows Hello), not tenant data, and the runbook's allow-list step read
+ * "YubiKey 5 Series (guid-0002)" with them masked (Phase 2 export finding 10).
+ */
+export function runbookRedaction(mapping: MappingState | null | undefined): Disposition {
+  const keep = new Set([...AUTHENTICATOR_AAGUIDS, ...WINDOWS_HELLO_AAGUIDS, ...requiredModels(mapping ?? undefined).map((m) => m.aaguid)].map((id) => id.toLowerCase()))
+  return { redact: true, keep }
+}
+
 function apply(content: string, d: Disposition): string {
-  return d.redact ? redactIdentifiers(content) : content
+  return d.redact ? redactIdentifiers(content, d.keep) : content
+}
+
+/**
+ * The text a file carries, by its grammar. A calendar is unfolded before it is
+ * masked and folded again after: masked as folded, an address split across a
+ * fold kept its halves ("bg1@messy-fixture.onmicrosoft.com" whole in a masked
+ * file, "upn-1@redactedsoft.com" half masked; Phase 2 export finding 10). Pure.
+ */
+export function exportText(name: string, content: string, d: Disposition): string {
+  if (!d.redact || !/\.ics$/i.test(name)) return apply(content, d)
+  const lines = content.replace(/\r?\n[ \t]/g, '').split(/\r?\n/)
+  return lines.map((line) => foldIcsLine(apply(line, d))).join('\r\n')
 }
 
 /** Preserve the file grammar so sample downloads still open in their intended tools. */
@@ -85,7 +114,8 @@ export function watermarkDemoFile(name: string, content: string): string {
 
 /** Save a file. The only place in the app that creates a download. */
 export function exportDownload(name: string, content: string, type: string, d: Disposition): void {
-  const body = isDemo() ? watermarkDemoFile(name, apply(content, d)) : apply(content, d)
+  const text = exportText(name, content, d)
+  const body = isDemo() ? watermarkDemoFile(name, text) : text
   const url = URL.createObjectURL(new Blob([body], { type }))
   const a = document.createElement('a')
   a.href = url

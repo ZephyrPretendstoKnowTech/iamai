@@ -51,7 +51,8 @@ test('every export path goes through the guard', () => {
 test('the guard is the only thing that redacts, and it always does by default', () => {
   const guard = readFileSync(GUARD, 'utf8')
   assert.match(guard, /redactIdentifiers/, 'the guard does not redact at all')
-  assert.match(guard, /d\.redact \? redactIdentifiers\(content\) : content/, 'the guard no longer redacts on the default branch')
+  // `d.keep` is the vendor constants a runbook's redaction leaves (runbookRedaction); REDACTED has none.
+  assert.match(guard, /d\.redact \? redactIdentifiers\(content, d\.keep\) : content/, 'the guard no longer redacts on the default branch')
   // No optional or defaulted disposition: omitting it has to be a compile error,
   // not a silent fallthrough to whichever branch the author assumed.
   assert.doesNotMatch(guard, /d\s*:\s*Disposition\s*=/, 'the disposition has a default, so an export can omit the decision')
