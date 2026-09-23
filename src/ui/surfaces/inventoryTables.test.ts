@@ -476,7 +476,11 @@ test("Detected workloads shows the answer saved in Direction beside the scan's r
   assert.equal(cell('sharepoint'), D.questions.serviceOptions.yes)
   assert.equal(cell('inforcer'), D.questions.serviceOptions.no, 'an answer saved before workflowAnswers existed')
   assert.equal(cell('azureManagement'), '—', 'not sure is no answer')
-  assert.equal(cell('copilot'), '—')
+  // Confirm What You Use asks only about its own services: "—" under its name would read as a question left unanswered.
+  const notAsked = (app.inventory as unknown as Record<string, string>).notAsked
+  assert.ok(notAsked, 'a word for a service the step never asks about')
+  for (const facet of ['copilot', 'azureDevOps', 'agents', 'intune']) assert.equal(cell(facet), notAsked, facet)
+  assert.equal(cell('workload'), '—', 'a service the step asks about, with no answer saved')
   // The answers read the Plan's own mapping, the one MFA Readiness reads; while it loads the column says so.
   const pending = workloadsModel(demo)
   assert.equal(pending.columns.find((c) => c.key === 'answer')!.cell(pending.rows[0]), '…')
