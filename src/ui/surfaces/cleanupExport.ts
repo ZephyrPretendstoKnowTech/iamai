@@ -37,6 +37,9 @@ export function cleanupVars(phase: CleanupPhase, row: CleanupPhase['rows'][numbe
   return { ...row.lists, ...(phase.convention ? { convention: phase.convention } : {}) }
 }
 
+/** The day a Cleanup row was marked done, as the board prints a day: the one reading of `row.done` as a date, which "done <date>" and a finished row's compact line both show. */
+const doneDay = (done: string): string => absoluteDate(done.slice(0, 10))
+
 /**
  * The row's date column: the day it was marked done, else its planned day — and
  * nothing while the plan cannot finish (`undated`, derive/finish.ts heldRequired):
@@ -45,7 +48,7 @@ export function cleanupVars(phase: CleanupPhase, row: CleanupPhase['rows'][numbe
  */
 export function cleanupWhen(row: CleanupPhase['rows'][number], undated = false, completed = false, readyReview = false): string {
   // Never blank (owner, 2026-09-11): an undated row reads the When column's placeholder (A1b: a day, or the placeholder).
-  return row.done ? fillText(A.cleanupDoneRow, { date: absoluteDate(row.done.slice(0, 10)) }) : completed ? schedulingWords.done : undated && readyReview ? schedulingWords.reviewNow : undated ? (pages.plan as unknown as { when: { afterPrerequisites: string } }).when.afterPrerequisites : absoluteDate(row.day.slice(0, 10))
+  return row.done ? fillText(A.cleanupDoneRow, { date: doneDay(row.done) }) : completed ? schedulingWords.done : undated && readyReview ? schedulingWords.reviewNow : undated ? (pages.plan as unknown as { when: { afterPrerequisites: string } }).when.afterPrerequisites : absoluteDate(row.day.slice(0, 10))
 }
 
 /** Recorded checks remain evidence, never a substitute for current completion. */
@@ -96,9 +99,16 @@ export type CleanupBoardRead = { undated: boolean; laneOf: (id: string) => LaneV
  * The row's When column from the board's lane for it: the one mapping of a lane
  * to cleanupWhen's flags, read by the Plan's CleanupRow and by every export
  * (cleanupWhenOnBoard), so the screen and a file cannot say two Whens.
+ *
+ * `compact` is the Plan's one-line finished row (planBoard.ts drawsCompact): it
+ * shows the day a Completed row was marked done, as a date, and nothing where
+ * none was recorded or the row was deferred — never a word in a date's place,
+ * as a step's compact line does (finishedDayOf).
  */
-export function cleanupWhenOf(row: CleanupPhase['rows'][number], undated: boolean, lane: LaneView | null): string {
-  return cleanupWhen(row, undated, lane?.lane === 'Completed', lane?.lane === 'Ready' && lane.substatus === 'Review')
+export function cleanupWhenOf(row: CleanupPhase['rows'][number], undated: boolean, lane: LaneView | null, compact = false): string {
+  const completed = lane?.lane === 'Completed'
+  if (compact) return completed && row.done ? doneDay(row.done) : ''
+  return cleanupWhen(row, undated, completed, lane?.lane === 'Ready' && lane.substatus === 'Review')
 }
 
 /** The row's When column on the board, from its reading (the Plan's CleanupRow reads cleanupWhenOf too). */

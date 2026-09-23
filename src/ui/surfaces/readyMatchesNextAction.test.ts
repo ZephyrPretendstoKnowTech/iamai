@@ -31,8 +31,8 @@ function open(f: ReturnType<typeof fixture>, id: string) {
 }
 
 test('a report-only create waiting only on values reads Ready on the board, the screen and the export, and says values stand between it and Copy', () => {
-  // With the plan's foundation settled (roadmap/foundations.ts): until both
-  // pinned groups are, every policy step is held and the plan dates nothing.
+  // With the plan's foundation settled (roadmap/foundations.ts): until Emergency Access
+  // and Direction are, every policy step is held and the plan dates nothing.
   const small = withFoundationSettled(fixture('small'))
   const mid = withFoundationSettled(fixture('mid'))
   for (const [f, id] of [[small, 's-goal-all-users-no-persistence'], [mid, 's-goal-all-users-no-persistence'], [mid, 's-goal-pim-activation-reauth'], [mid, 's-goal-user-risk']] as const) {

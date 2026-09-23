@@ -18,6 +18,7 @@ import type { PlanComputed } from './planData.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { doesntApplyRows } from './planRows.ts'
 import { notLicensedNote, notLicensedRows, notLicensedSummary } from '../../derive/notLicensed.ts'
+import { notInPlanRows, notInPlanSummary } from '../../derive/notInPlan.ts'
 
 type FooterWords = { inPlace: string; doesntApply: string; doesntApplyRow: string; housekeeping: string; notInBaseline: string; notInBaselineKeep: string }
 const F = (pages.plan as { footer: FooterWords }).footer
@@ -32,6 +33,9 @@ export function PlanFooter({ computed, nameOf, onPutBack }: { computed: PlanComp
   // The licence ladder as rows (prompt 52 Part 3): the content step's title and
   // the licence it needs, one sentence under the group, never a tier's benefits.
   const notLicensed = notLicensedRows(computed.coverage, computed.goalMap)
+  // The baseline's policies nothing above or on the board names (missing-seven.md,
+  // decision C), so a finished plan never reads as the whole baseline.
+  const notInPlan = notInPlanRows(computed.baselinePolicies, computed.steps, computed.coverage, computed.goalMap)
   const clean = (s: string): string => s.replace(/\*\*/g, '').replace(/\*/g, '')
   const org = computed.coverage.organisation
   // Housekeeping (§5): a policy not in the baseline, a name off the convention,
@@ -68,6 +72,16 @@ export function PlanFooter({ computed, nameOf, onPutBack }: { computed: PlanComp
             ))}
           </ul>
           <p className="reason">{notLicensedNote()}</p>
+        </details>
+      )}
+      {notInPlan.length > 0 && (
+        <details>
+          <summary>{notInPlanSummary(notInPlan)}</summary>
+          <ul className="sections">
+            {notInPlan.map((r) => (
+              <li key={r.policy}>{r.text}</li>
+            ))}
+          </ul>
         </details>
       )}
       {housekeeping.length > 0 && (

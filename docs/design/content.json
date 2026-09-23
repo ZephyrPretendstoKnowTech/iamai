@@ -848,15 +848,8 @@
       },
       "howTo": {
         "link": "How to use this plan",
-        "items": [
-          "Start with Ready and open a step to see its findings, instructions and next action. Save your choices, make the changes in Entra or the service named in the instructions, then scan again to check the result. Record any hands-on test the step asks for. Estimated dates adjust as the plan changes.",
-          "Ready: You can take the next action now.",
-          "Up Next: Complete the linked Ready prerequisites first.",
-          "On Hold: Open the step to see the prerequisite, date or missing evidence it is waiting for.",
-          "Completed: The required outcome has been verified or recorded. New configuration changes can reopen it.",
-          "Deferred: You set the work aside. It does not satisfy another step’s prerequisite."
-        ],
-        "intro": "Start with Ready and open a step to see its findings, instructions and next action. Save your choices, make the changes in Entra or the service named in the instructions, then scan again to check the result. Record any hands-on test the step asks for. Estimated dates adjust as the plan changes.",
+        "$commentIntro": "Where to start, and what can be done at once (owner, roadmap flow V2 decision H): the plan lets every policy that can be written be created in report-only on the same day once Emergency Access and the rollout answers are done, and orders only the turn-on. The All work view reads top to bottom, so this says the creates need not wait for the sections above them, and that a turn-on waits on its own row reading Ready · Ready to enforce, never on its section's place: section position gates nothing (V2 research), and a later section's policy can be ready to enforce while an earlier section is on hold. The legend below is the lane words' one explanation; the intro and legend replaced an items list that repeated both.",
+        "intro": "Start at the top of All work and open a step to see its findings, instructions and next action. Once the first two sections are done, every policy marked Ready · Create can be created in report-only straight away. Turn each one on when its own row reads Ready · Ready to enforce. Save your choices, make the changes in Entra or the service named in the instructions, then scan again to check the result. Record any hands-on test the step asks for. Estimated dates adjust as the plan changes.",
         "legend": [
           {
             "label": "Ready",
@@ -987,7 +980,30 @@
         "notInBaseline": "{policy}: not in the baseline · {verdict}",
         "notInBaselineKeep": "fine to keep",
         "notInBaselineReview": "review",
-        "rename": "{policy}: off the tenant's naming convention · proposed {proposed}"
+        "rename": "{policy}: off the tenant's naming convention · proposed {proposed}",
+        "$commentNotInPlan": "The collapsed group beside Not licensed (derive/notInPlan.ts, PlanFooter.tsx): every policy of the loaded baseline that nothing else on the Plan names (no step, no Not licensed row, no review row), so a finished plan never reads as the whole baseline (docs/plans/roadmap-flow/v2-research/missing-seven.md, decision C). {n} is the number of rows.",
+        "notInPlan": "In the baseline, not in this plan ({n})",
+        "$commentNotInPlanRow": "One row of that group: the baseline policy's own display name, then its reason from notInPlanReason.",
+        "notInPlanRow": "{policy}: {reason}",
+        "notInPlanReason": {
+          "$comment": "Why a baseline policy is in no step (derive/notInPlan.ts picks one by the policy's own name; a policy with no words of its own reads generic). {step} is a step's title from the content file, never its number, because the numbers move. Drafts from missing-seven.md, for the owner's eye.",
+          "$commentRiskyRegistration": "The P2 block on risky people registering security information: a standing control the plan does not build yet (a v1.1 step after the risk remediation steps).",
+          "riskyRegistration": "Blocks people flagged as risky from adding sign-in methods. Needs Entra ID P2. Not in this plan yet.",
+          "$commentExternalMfaRisk": "The external authentication methods companion of the high-risk remediation policy, scoped to the external MFA group. {step} is the high-risk remediation step's title.",
+          "externalMfaRisk": "A version of {step} for people who sign in with an external MFA provider such as Duo. Only needed if you use one.",
+          "$commentLockdown": "The two ZTCA AllApps blocks: incident-response kill switches, created ahead and never switched on (the lockdown kit, v1.1).",
+          "lockdown": "An emergency lockdown switch for a major breach, built ahead and kept off. Not a day-to-day control.",
+          "$commentPasskeyRegistration": "The passkey registration policy as exported targets the register-device action on iOS; its author confirmed that was a mistake. {step} is the registration-protection step's title.",
+          "passkeyRegistration": "Jon's export targets device registration on iPhones only, which he confirmed was a mistake. What it was meant to do is {step}.",
+          "$commentAdminGroupPasskeys": "The passkey policy for the admin group: the same strength as the admin phishing-resistant policy, scoped to a group instead of roles. {step} is that step's title.",
+          "adminGroupPasskeys": "The same requirement as {step}, aimed at a group of admin accounts instead of admin roles.",
+          "$commentEmergencyAccount": "The trusted-locations policy that names one emergency account: IAMAI keeps emergency accounts out of every policy through the exclusions group instead. {step} is the emergency access group's title.",
+          "emergencyAccount": "Limits one emergency account outside the office network. This plan keeps emergency accounts out of every policy instead ({step}).",
+          "$commentBlockedCountries": "The NoExclusions countries variant, which the plan never considers (generate.ts): it blocks a named list of countries, where the geo step allows only the named ones. {step} is the geo step's title.",
+          "blockedCountries": "Blocks a named list of countries. This plan uses {step} instead, which allows only the countries you name.",
+          "$commentGeneric": "Any other baseline policy no step, Not licensed row or review row names on this tenant.",
+          "generic": "No step in this plan covers it for this tenant."
+        }
       },
       "startControl": "Start the plan",
       "line1Started": "{steps} steps · {done} done · started {start} · finishes {finish}",
@@ -1771,11 +1787,20 @@
         "$commentNoOperationHeld": "\"This step has no policy for IAMAI to write in this plan. Scan again to rebuild it.\" was said over an update with nothing in it, because the tenant's policy already holds every section the step writes (Action.nothingOwed). Both halves were false: the policy is there, and every scan rebuilt the same empty update. Following the plan reaches it: the demo tenants' compliant-device policy, enforced as the step asked, is then read as narrower than the baseline in its device platforms. It names the policy, so the reader can check IAMAI matched the right one, and says nothing is coming; no rescan is promised, because none changes it. noOperationHeldGap follows where the goal is still short in a condition, which no update writes: {gaps} is the classifier's own sentence (engine.coverage.reason.conditionsNarrower), one per policy, joined with semicolons. noOperation stays for a step with no operations at all, such as one loaded from an older plan file, where a scan does rebuild it.",
         "noOperationHeld": "Everything this step writes is already in {policy}, so IAMAI has nothing to submit here.",
         "noOperationHeldGap": "Outside what an update writes, {gaps}.",
-        "$commentSwitchedOff": "A policy this plan is tracking that the tenant has switched off is not a policy to create: it exists, and creating one makes a second. `claimedPolicy` will not take a disabled policy as the live one, so the step fell through to \"Create the policy in Report-only\" on a policy already sitting in the tenant. It reproduces whenever somebody switches a policy off after it breaks something. IAMAI writes nothing, so the instruction is the portal one; and turning a policy on enforces, so a step whose readiness threshold is unmet says that instead and withholds this.",
-        "switchedOff": "{policy} is already in {tenant} and switched off. Turning it back on is the change here, not a new policy: open it in the Entra admin center, check its settings still match this step, and set Enable policy to On.",
-        "$commentSwitchedOffWaits": "Turning a switched-off policy back on enforces it the moment it is saved, so it waits for the plan's own prerequisites of enforcement (roadmap/enforceWaits.ts) like every other turn-on: \"set Enable policy to On\" was said over a tenant whose recovery test was undone or whose security defaults were on.",
-        "switchedOffWaitsOne": "{policy} is already in {tenant} and switched off. Turning it back on is the change here, not a new policy, and it waits until {items} is finished: leave it off until then.",
-        "switchedOffWaitsMany": "{policy} is already in {tenant} and switched off. Turning it back on is the change here, not a new policy, and it waits until {items} are finished: leave it off until then.",
+        "$commentSwitchedOff": "A policy this plan is tracking that the tenant has switched off is not a policy to create: it exists, and creating one makes a second. `claimedPolicy` will not take a disabled policy as the live one, so the step fell through to \"Create the policy in Report-only\" on a policy already sitting in the tenant. It reproduces whenever somebody switches a policy off after it breaks something, and on an inherited tenant that arrives with one off. The change is Report-only, never straight to On (owner, 2026-09-23: \"We only want one set of report-only. If someone has to revert and turns it off, we should advise placing it to Report-only, and then they switch it on when they are ready and data supports it.\"). It said \"set Enable policy to On\", which enforces the moment it is saved with no report-only watch before it. Report-only denies nobody, so nothing the plan waits on before a turn-on holds this; the next scan finds the policy in Report-only and the step's ordinary watch and readiness gates decide the turn-on.",
+        "switchedOff": "{policy} is already in {tenant} and switched off. Setting it to Report-only is the change here, not a new policy and not On: open it in the Entra admin center, check its settings still match this step, and set Enable policy to Report-only. IAMAI then watches it there, and this step says when it can be turned on.",
+        "$commentSwitchedOffMany": "switchedOff for a step the baseline implements with two policies when both are switched off (ui/surfaces/stepContract.ts reasonLine; {policies} is their names, listed). A pair with one member Off reads switchedOff, naming that member. Read off the step's own policy alone, a pair was never read as switched off: with one member Off it handed over a batch that created both guest policies again, and once its gates cleared a PATCH that took the Off one straight to On; with both Off it said to create the two guest policies.",
+        "switchedOffMany": "{policies} are already in {tenant} and switched off. Setting each to Report-only is the change here, not new policies and not On: open each in the Entra admin center, check its settings still match this step, and set Enable policy to Report-only. IAMAI then watches them there, and this step says when they can be turned on.",
+        "$commentSwitchedOffSteps": "The portal procedure for each policy this plan tracks that the tenant has switched off (ui/surfaces/stepResources.ts switchedOffLines): the Entra channel, the Implementation Task drawn from it and the exports. A pair with both members Off repeats these lines for each, then switchedOffRescan once. It used to be the inspection lines, \"check its assignments, conditions, access controls and state\", with no instruction for the state itself. The JSON and PowerShell channels carry the same change as a one-field patch, state enabledForReportingButNotEnforced, to each policy's own id.",
+        "switchedOffSteps": [
+          "Open Entra admin center → Entra ID → Conditional Access → Policies, and open “{policy}” ({id}). It belongs to this step and is switched off: do not create another.",
+          "Check its assignments, conditions and access controls still match this step.",
+          "Set Enable policy to Report-only and select Save. Not On: a policy that was switched off goes back through Report-only, and this step says when it can be turned on."
+        ],
+        "$commentSwitchedOffRescan": "The last line of the switched-off procedure (ui/surfaces/stepResources.ts switchedOffLines), said once after every switched-off policy's own lines (switchedOffSteps). It was the last entry of switchedOffSteps and said \"finds it in Report-only\", which a pair with both members Off would have read twice, about one policy.",
+        "switchedOffRescan": "Scan {tenant} again: the next scan reads the change, and IAMAI watches in Report-only from there.",
+        "$commentSwitchedOffTask": "The Implementation Task's title on a switched-off policy (ui/surfaces/policyTasks.ts taskTitle), and the value of its Implementation readiness tile (stepContract.ts implementationTile). The operation the engine still resolves for the step is a create, so the task was titled \"Create the policy in Report-only\" over a procedure that opens the policy that is there, and the tile read \"Unavailable\" over the procedure the step hands over.",
+        "switchedOffTask": "Set the policy to Report-only",
         "manualCorrection": "IAMAI does not write this change: the policy is not what the plan asked for in {fields}. Correct it in the Entra admin center, then scan {tenant} again.",
         "emergencyUnsafe": "This policy would apply to {tenant}'s emergency access accounts. IAMAI writes nothing until the exclusions group carves them out: fix the exclusions-group step, then scan again.",
         "emergencyUnproven": "IAMAI cannot prove this policy leaves {tenant}'s emergency access accounts out of scope, because it could not read who is in the group the policy excludes. Nothing is offered on a reading that did not finish: scan again.",
@@ -1980,10 +2005,10 @@
             "workload": "workload identities"
           },
           "$commentFoundDiffers": "The deployed policy is not what this step asked for, in a part IAMAI writes. The comparison existed and its answer was discarded after deciding readiness, so a policy built with a narrowing condition left at Configure: No — the trap the step's own procedure warns about — rendered identically to one built exactly right.",
-          "$commentFoundTaggedDisabled": "A tenant IAMAI has planned before arrives carrying policies with IAMAI's own plan tag, and one of them is switched off. The engine matches it (tracking.matchedBy is a tag, tracking.state is disabled) and then ignores it, because a disabled policy cannot be the step's live policy — so the step proposed a second policy of the same name, the operator built it, two policies then carried the tag for one step, and the step could never finish. The proposal no longer suffixes around the step's own policy, and the finding says what is there.",
+          "$commentFoundTaggedDisabled": "A tenant IAMAI has planned before arrives carrying policies with IAMAI's own plan tag, and one of them is switched off. The engine matches it (tracking.matchedBy is a tag, tracking.state is disabled) and then ignores it, because a disabled policy cannot be the step's live policy — so the step proposed a second policy of the same name, the operator built it, two policies then carried the tag for one step, and the step could never finish. The proposal no longer suffixes around the step's own policy, and the finding says what is there. It renders only where another reason holds the step first, and it ended \"or follow the instructions below and leave it switched off\": there, the instructions below were the create procedure, so following them built a second policy beside the one that is Off. The step's own procedure for that policy is now the Report-only one, and the finding no longer points anywhere else.",
           "$commentInventoryNames": "The Guest Directory tile joined its note and its names with newlines and nothing between them, so on a tenant with one guest the tile read as two sentences and then a person's name on a line of its own, with nothing saying what the name was. A list says it is a list.",
           "inventoryNames": "The accounts, as the directory names them:",
-          "foundTaggedDisabled": "{policy} already carries this step's tag in {tenant} and is switched off, so it is doing nothing today. IAMAI does not turn a policy on: review its settings in the Entra admin center and enable it there if it is the one you want, or follow the instructions below and leave it switched off.",
+          "foundTaggedDisabled": "{policy} already carries this step's tag in {tenant} and is switched off, so it is doing nothing today. IAMAI does not turn a policy on: review its settings in the Entra admin center and, if it is the one you want, set Enable policy to Report-only there, not On.",
           "foundDiffers": "{policy} is deployed, but not as this step asked: {fields} differ from the target above. Compare them in the Entra admin center, or re-run this step's instructions to write the intended settings.",
           "$commentFoundWatched": "A step IAMAI WATCHED move is not a report of coverage that was already there (stepContract.ts foundOf, observation.ts since === 'observed-change'). Saying \"already delivered ... so there is nothing to create\" on the step somebody has just created, watched for a week and enforced erases their work and describes it as a policy they never needed to build.",
           "$commentFoundInherited": "A tenant IAMAI has planned before arrives carrying policies with IAMAI's own tag, and the step said \"Already delivered by X, so there is nothing to create\" — the wording for coverage somebody else put there. Neither half of the existing pair fits. The first version of this said the policy was written \"before IAMAI's first scan\", which IAMAI cannot know and which its own record disproved: a reader found it on a policy recorded ABSENT on three consecutive scans and watched appearing on the fourth, eight days after the first scan, with `neverObserved` set. What the tag proves is authorship, not a date, so that is all it now says. `neverObserved` cannot rescue the date either: it is set both for a policy the first scan found enforced and for one deployed straight to enforced under the watch. Where IAMAI watched a rollout go On with no report-only period (observation.ts skippedWindow), the Readiness tile (stepContract.foundEnforcedUnwatched) says so in its own words beside this line.",
@@ -2006,7 +2031,6 @@
           "doneEmergency": "Every emergency access account is provably out of scope of this policy.",
           "$commentDoneOperationCovered": "\"A scan rebuilds this step with a policy IAMAI can write\" was the completion on fourteen rows across five tenants whose goal is ALREADY ENFORCED by a policy the step names (Step.satisfiedBy). No scan can meet it — there is nothing to rebuild — so those rows could not be finished and could not be declined: an operator scanned, read the same page, and left them open for the life of the plan. It reads as doneBlocked does, because it is the same completion, plus the decline path — which is the half nobody could find.",
           "doneOperation": "A scan rebuilds this step with a policy IAMAI can write.",
-          "doneSwitchedOn": "The policy is on again and a later scan finds it enabled, with the settings this step asks for.",
           "doneOperationCovered": "Everything Readiness lists is cleared, or you record that this step does not apply here.",
           "$commentDoneOperationHeld": "\"A scan rebuilds this step with a policy IAMAI can write\" was the completion of an update the tenant's policy already holds in full (Action.nothingOwed). No scan could meet it: each rebuilt the same empty update. What finishes the step is the goal in place, which here takes a change IAMAI does not write, or the operator recording that the step does not apply, the decline path doneOperationCovered names too.",
           "doneOperationHeld": "A later scan finds the goal in place, or you record that this step does not apply here.",
@@ -2667,7 +2691,7 @@
             "Check the policies already here, and exclude the emergency access accounts from anything that blocks or restricts sign-in. A report-only policy blocks nobody and needs no exclusion.",
             "Create it in report-only, leave it there for a week, and read the sign-in logs before you turn it on.",
             "Test the exclusions as well as the rule: another policy can still ask an excluded person for MFA.",
-            "To back a change out, disable the policy rather than delete it; a deleted one can be restored for 30 days and no longer.",
+            "To back a change out, set the policy back to Report-only rather than delete it; a deleted one can be restored for 30 days and no longer.",
             "Confirm that the intended access works and unwanted access is blocked. Record the review below only after you have validated the control; IAMAI does not verify completion of this manual step."
           ],
           "reviewDone": "You have reviewed the policy for this tenant, made any necessary changes, and tested the intended access and restrictions. IAMAI holds that record against the version you read, and asks again when the policy or the objects it names change.",
@@ -2773,6 +2797,8 @@
           "completed": "Completed",
           "finish": "Estimated finish",
           "all": "Show the full plan",
+          "$commentCreate": "The view the line above the board opens (pages.app.plan.board.createNow): the policies ready to create in report-only now, in section order. Read after \"Showing\".",
+          "create": "policies ready to create in report-only",
           "filter": "Showing {view}",
           "finishUnknown": "Depends on open work"
         },
@@ -2783,9 +2809,20 @@
           "notAssessed": "Baseline policies"
         },
         "board": {
-          "$comment": "The Plan board's fourth tab and the heading line it draws (src/ui/surfaces/planBoard.ts). The three lane tabs and the two toggles say their words in pages.plan.lanes; these two belong to the tab that shows whole groups instead of one lane.",
+          "$comment": "The Plan board's All work tab and the heading line a section draws there (src/ui/surfaces/planBoard.ts groupSummary). The three lane tabs and the two toggles say their words in pages.plan.lanes; these belong to the tab that shows whole sections instead of one lane.",
           "allWork": "All work",
-          "groupCompleted": "{done} of {total} completed"
+          "$commentGroupCompleted": "A finished section of one row, collapsed in place: \"1 of 1 completed\" rather than \"All 1 completed\".",
+          "groupCompleted": "{done} of {total} completed",
+          "$commentGroupRemaining": "An open section's heading line on All work (owner, roadmap flow V2 decision B): what is left to do, because that is what a person acts on. A Completed or Deferred row is not left to do; {total} is every row the section has.",
+          "groupRemaining": "{remaining} of {total} remaining",
+          "$commentGroupAllCompleted": "A finished section collapses in place to one line, its title and this (owner, roadmap flow V2 decision B). Selecting it opens it.",
+          "groupAllCompleted": "All {total} completed",
+          "$commentGroupFinished": "A section with nothing left to do where some rows were deferred: it collapses like a completed one, and says how much of it was deferred rather than claiming all of it completed.",
+          "groupFinished": "{done} of {total} completed, {deferred} deferred",
+          "$commentCreateNow": "The line above the board (owner, roadmap flow V2 decision H, tried as a visible line): how many policies can be created in report-only today, counted off the board's Ready · Create rows of Conditional Access work, so it never counts a policy the board holds and names none. Drawn only while there are such rows.",
+          "createNow": "{n} policies are ready to create in report-only now.",
+          "$commentCreateNowShow": "The line's control: it shows exactly the policies the line counted (pages.app.plan.summary.create).",
+          "createNowShow": "Show them"
         },
         "groups": {
           "emergencyAccess": {
@@ -3012,7 +3049,7 @@
           }
         },
         "$commentNoOperationDisabled": "\"This step has no policy for IAMAI to write in this plan. Scan again to rebuild it.\" was said over a step whose policy EXISTS in the tenant and is switched off - the step was tracking it, state disabled, on both the latest scan and the one before. So the sentence was false and its remedy did nothing: a reader scanned three times, got byte-identical output, and stopped. Said where every policy this step tracks is disabled.",
-        "noOperationDisabled": "A policy for this step already exists in {tenant} and is switched off, so there is nothing for IAMAI to create. Turning it on is a change in the Entra admin center; if it has not been watched in Report-only, set it there first. Scan again once it is on.",
+        "noOperationDisabled": "A policy for this step already exists in {tenant} and is switched off, so there is nothing for IAMAI to create. Set Enable policy to Report-only in the Entra admin center, not On: IAMAI watches it there, and this step says when it can be turned on. Scan again once it is in Report-only.",
         "$commentEnforceOutstanding": "The enforce checklist is headed \"Do not turn it on unless all of these are true now\" and lists three conditions, authored identically in forty-odd packages. It never carried the step own unresolved prerequisites - so a tenant with security defaults still ON had a tile reading \"Turn Off Security Defaults - Prerequisite - Waiting\" four lines above a checklist that did not mention them, on a policy the security-defaults step names as one of its four replacements. Eight policies were enforced into a state the product itself calls unsupported and irreversible. Spliced into the list rather than authored per package, so every package gets it and none can be missed.",
         "$commentEnforceOutstanding": "This was spliced INTO the checklist, under the line \"Do not turn it on unless all of these are true now\" - so a list of conditions that must be true opened with a sentence saying something is not finished. Two readers hit it independently; one followed it literally and enforced ten policies with the prerequisite unmet. It now stands above the checklist as the stop it is, and says plainly not to continue.",
         "enforceOutstanding": "Stop: {items} is not finished, and this policy is part of it. Leave this policy in Report-only until it is.",
@@ -3422,7 +3459,7 @@
         "label": "If a change locks you out",
         "steps": [
           "Sign in with one of the emergency accounts above, in a private browser window.",
-          "Entra admin center → Entra ID → Conditional Access → Policies → open the policy that changed today → Enable policy: Report-only (or Off) → Save. It applies within minutes.",
+          "Entra admin center → Entra ID → Conditional Access → Policies → open the policy that changed today → Enable policy: Report-only → Save. It applies within minutes.",
           "If the portal itself is blocked: sign in from a device and network the policies trust (a managed laptop on the office network), or from any device run Connect-MgGraph -Scopes Policy.ReadWrite.ConditionalAccess and then Update-MgIdentityConditionalAccessPolicy -ConditionalAccessPolicyId <id> -State enabledForReportingButNotEnforced.",
           "If no route works, Microsoft support can help; they will ask for the tenant id: {tenantId}."
         ]

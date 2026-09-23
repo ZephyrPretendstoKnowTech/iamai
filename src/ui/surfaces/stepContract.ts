@@ -29,12 +29,12 @@ import { appearedEnforced, dimensionWords, watchedArrive } from '../../roadmap/o
 import type { Condition, Lifecycle, Milestone } from '../../roadmap/lifecycle.ts'
 import { heldForReview, nextMilestone, reviewCauses } from '../../roadmap/lifecycle.ts'
 import type { PolicyHold, UnavailableReason } from '../../roadmap/operations.ts'
-import { awaitsWorkflowRecord, enforcesOnRun, implementationOffered, isPreserved, operationsOf, policyHold, switchedOffPolicy, unavailableReason, strengthNameIn } from '../../roadmap/operations.ts'
+import { awaitsWorkflowRecord, enforcesOnRun, implementationOffered, isPreserved, operationsOf, policyHold, switchedOffPolicies, unavailableReason, strengthNameIn } from '../../roadmap/operations.ts'
 import { requiredMembers } from '../../roadmap/tracking.ts'
 import { unreadLine } from '../../roadmap/evidence.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
 import { IMPACT, populationLine } from '../../derive/whoLine.ts'
-import { app, cleanup, directionWords, engine, pages, shared, stepById, schedulingWords } from '../../content/content.ts'
+import { app, cleanup, directionWords, engine, pages, shared, stepById, schedulingWords, structuralWords } from '../../content/content.ts'
 import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
 import { directionBlockerStep, directionStepsAnswering, directionTitleOf } from '../../roadmap/direction.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
@@ -198,8 +198,6 @@ type ContractWords = {
   doneOperationCovered: string
   /** An update the tenant's policy already holds in full (types.ts Action.nothingOwed): the goal in place, or declined. */
   doneOperationHeld: string
-  /** A policy the tenant switched off: its end state is being on again, not being built (roadmap/operations.ts switchedOffPolicy). */
-  doneSwitchedOn: string
   doneManual: string
   doneVerify: string
   doneDeploy: string
@@ -636,14 +634,13 @@ function reasonLine(step: Step, reason: UnavailableReason, tenant: string, exclu
     case 'readiness-unmet':
       return fillText(app.plan.readinessHeld, { tenant, ...(step.action.readinessGate ?? {}) })
     case 'switched-off': {
-      // Turning it back on enforces it the moment it is saved, so it waits for
-      // the plan's own prerequisites of enforcement like every other turn-on
-      // (roadmap/enforceWaits.ts): the recovery test, and security defaults off.
-      const waits = step.action.enforceWaitsOn ?? []
-      const policy = switchedOffPolicy(step)?.name ?? ''
-      return waits.length === 0
-        ? fillText(app.plan.switchedOff, { tenant, policy })
-        : fillText(waits.length === 1 ? app.plan.switchedOffWaitsOne : app.plan.switchedOffWaitsMany, { tenant, policy, items: list(waits.map((w) => w.title)) })
+      // Set to Report-only, never straight to On (owner, 2026-09-23). Report-only
+      // denies nobody, so the plan's own prerequisites of enforcement
+      // (roadmap/enforceWaits.ts) and its readiness threshold hold the turn-on
+      // that follows the step's report-only watch, and never this. A pair names
+      // the members that are Off, and only those.
+      const off = switchedOffPolicies(step).map((p) => p.name)
+      return off.length > 1 ? fillText(app.plan.switchedOffMany, { tenant, policies: list(off) }) : fillText(app.plan.switchedOff, { tenant, policy: off[0] ?? '' })
     }
     case 'baseline-conflict':
       // Foundation B's own milestone for a baseline that contradicts itself. The
@@ -653,8 +650,12 @@ function reasonLine(step: Step, reason: UnavailableReason, tenant: string, exclu
   }
 }
 
-/** What clears this reason, said as a completion rather than as an instruction. */
-function doneForReason(step: Step, reason: UnavailableReason, tenant: string): string {
+/**
+ * What clears this reason, said as a completion rather than as an instruction.
+ * Never a switched-off policy's: it is a policy IAMAI will write, set to
+ * Report-only and then on, so it finishes on its own end state (`doneWhenOf`).
+ */
+function doneForReason(step: Step, reason: Exclude<UnavailableReason, 'switched-off'>, tenant: string): string {
   switch (reason) {
     case 'missing-object': {
       // Two ways to stop waiting, because there are two things to wait on: the
@@ -694,10 +695,6 @@ function doneForReason(step: Step, reason: UnavailableReason, tenant: string): s
       return fillText(CONTRACT.doneEscapeHatch, { steps: heldByTitle(step), tenant })
     case 'readiness-unmet':
       return fillText(CONTRACT.doneReadiness, { ...(step.action.readinessGate ?? {}) })
-    case 'switched-off':
-      // Its own end state: the policy is there, so what finishes this step is
-      // that it is on again and watched, not that one gets built.
-      return CONTRACT.doneSwitchedOn
     case 'baseline-conflict':
       return CONTRACT.doneConflict
   }
@@ -749,7 +746,7 @@ function foundOf(step: Step, tenant: string, said: string | null, routeStart: St
   // the match was by tag, and the state.
   const tag = step.tracking
   // Not where the step's own reason already says it (unavailable `switched-off`):
-  // that line says turning it back on is the change, and this one said "or
+  // that line says setting it to Report-only is the change, and this one said "or
   // follow the instructions below and leave it switched off" over no
   // instructions — two sources for one fact, disagreeing (Jordan D6).
   if (tag && tag.state === 'disabled' && tag.matchedBy === 'tag' && tag.policyName && !isPreserved(step) && unavailableReason(step) !== 'switched-off') {
@@ -1294,8 +1291,9 @@ function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<str
     //
     // A policy IAMAI will write finishes on its end state alone (owner,
     // 2026-09-11): what clears the hold is already Fix before continuing's, and
-    // Done when is the completion, not a second copy of the blocker.
-    if (NO_POLICY_REASONS.has(reason) || (step.kind !== 'create' && step.kind !== 'adjust')) return [doneForReason(step, reason, tenant)]
+    // Done when is the completion, not a second copy of the blocker. A
+    // switched-off policy is one of those (only a create or an adjust reads it).
+    if (reason !== 'switched-off' && (NO_POLICY_REASONS.has(reason) || (step.kind !== 'create' && step.kind !== 'adjust'))) return [doneForReason(step, reason, tenant)]
     // The end state is the step's own sentence where its content entry states one
     // (steps[].doneEnd, B8), else the shared one.
     return [fillText(typeof cs?.doneEnd === 'string' ? cs.doneEnd : CONTRACT.doneHeldEnd, { tenant })]
@@ -2396,7 +2394,10 @@ function implementationTile(c: StepContract): ReadinessTile | null {
   const t = R().tiles
   if (c.fix.length > 0 || c.implementation.offered || c.implementation.reason === null) return null
   if (c.state.satisfied || c.state.setAside || c.state.condition === 'baseline-conflict' || c.state.condition === 'needs-decision' || c.state.condition === 'review-required') return null
-  return { key: 'implementation', label: t.implementation, tone: 'warn', value: t.unavailable, note: c.implementation.because }
+  // A policy the tenant switched off has one thing to do, and the step hands it
+  // over on every channel: "Unavailable" over that procedure said the opposite.
+  const value = c.implementation.reason === 'switched-off' ? structuralWords.switchedOffTask : t.unavailable
+  return { key: 'implementation', label: t.implementation, tone: 'warn', value, note: c.implementation.because }
 }
 
 /**

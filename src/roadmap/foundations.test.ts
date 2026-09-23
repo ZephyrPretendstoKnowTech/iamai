@@ -1,5 +1,5 @@
 // The foundation gate (roadmap/foundations.ts; owner, 2026-09-19): no policy
-// step reads Ready until both pinned groups are settled — Establish Emergency
+// step reads Ready until Emergency Access and Direction are settled — Establish Emergency
 // Access complete, and every Decide Your Tenant's Direction answer approved.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
@@ -17,7 +17,7 @@ const POLICY: readonly Step['kind'][] = ['create', 'adjust', 'enforce']
 const open = (s: Step): boolean => s.status !== 'done' && s.status !== 'skipped' && s.doesntApply == null
 const policySteps = (steps: readonly Step[]): Step[] => steps.filter((s) => POLICY.includes(s.kind) && open(s))
 
-test('the foundation is the two pinned groups, Emergency Access first', () => {
+test('the foundation is Emergency Access and Direction, Emergency Access first', () => {
   assert.deepEqual(FOUNDATION_STEP_IDS, [...membersOf(EMERGENCY_ACCESS_GROUP), ...membersOf(DIRECTION_GROUP)])
   for (const id of FOUNDATION_STEP_IDS) assert.equal(isFoundationStep(id), true, id)
   assert.equal(isFoundationStep('s-goal-admin-session'), false)

@@ -488,8 +488,8 @@ test('screen, export and prompt all carry the conflict and none carries an imple
 // ---- 8: one conflicted goal is not a broken plan ----
 
 test('the rest of the plan keeps its implementations, its states and its dates', () => {
-  // With the plan's foundation settled (roadmap/foundations.ts): until both
-  // pinned groups are, every policy step is held and the plan dates nothing.
+  // With the plan's foundation settled (roadmap/foundations.ts): until Emergency Access and
+  // Direction are, every policy step is held and the plan dates nothing.
   const { r, step, ctx } = run(withFoundationSettled(withMatchingTenantPolicy()))
   const others = r.steps.filter((s) => s.id !== step.id)
   assert.ok(others.length > 10, `the plan still has its other steps (${others.length})`)
