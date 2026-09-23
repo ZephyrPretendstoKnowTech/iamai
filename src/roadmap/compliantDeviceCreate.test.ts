@@ -10,7 +10,7 @@ import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import type { Fixture } from './fixtures/index.ts'
 import { runFixture, withFoundationSettled } from './fixtures/run.ts'
-import { createWaitsOnReadiness, implementationOffered, unavailableReason } from './operations.ts'
+import { createWaitsOnReadiness, implementationOffered, switchedOffPolicies, toReportOnly, unavailableReason } from './operations.ts'
 import { scheduleOf } from './stepSchedule.ts'
 import { boardReadingsOf, laneLabelOf, holdLabelOf, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from '../ui/surfaces/planBoard.ts'
 import { laneReadings } from '../ui/surfaces/planLanes.ts'
@@ -189,4 +189,65 @@ test('demo: once device readiness is met the opened step hands the create over a
   const entra = body.artifacts.find((a) => a.id === 'portal')?.text() ?? ''
   assert.match(entra, /New policy/, 'the Entra procedure creates it')
   assert.match(body.artifacts.find((a) => a.id === 'json')?.text() ?? '', /enabledForReportingButNotEnforced/, 'the JSON is the report-only create')
+})
+
+/**
+ * The demo tenant holding this plan's own Require a Managed Device policy,
+ * switched off: the body IAMAI's create would submit, tag and all, found by the
+ * scan with Enable policy Off. `ready` decides device readiness.
+ */
+function managedDeviceOff(ready: boolean): Fixture {
+  const f = withFoundationSettled(fixture('demo'))
+  const seed = runFixture(devicesReady(f)).steps.find((s) => s.id === DEVICE)!
+  const op = seed.action.resolution?.policies.find((o) => o.mode === 'create')
+  assert.ok(op, 'the premise: the plan would create the policy')
+  const snapshot = structuredClone(f.snapshot)
+  snapshot.config.caPolicies!.rows = [...(snapshot.config.caPolicies!.rows ?? []), { id: 'e5d0d3c6-0b6e-4a2e-9a3f-9c4b7a1d0d0f', createdDateTime: f.snapshot.asOf, modifiedDateTime: f.snapshot.asOf, ...(op.body as Record<string, unknown>), state: 'disabled' }]
+  const off = { ...f, snapshot }
+  return ready ? devicesReady(off) : off
+}
+
+/** The switched-off instruction, in the portal's words. */
+const REPORT_ONLY = /set Enable policy to Report-only/i
+
+test('demo: Require a Managed Device found Off is not told to go to Report-only while device readiness is unmet', () => {
+  const f = managedDeviceOff(false)
+  const { r, label, ctx } = run(f)
+  const step = r.steps.find((s) => s.id === DEVICE)!
+  const gate = step.action.readinessGate
+  assert.ok(gate && /device readiness/.test(gate.measure), 'the premise: device readiness is unmet')
+  assert.ok(switchedOffPolicies(step).length > 0, 'the premise: the scan finds the policy Off')
+  assert.equal(createWaitsOnReadiness(step), true, 'its Report-only patch waits on the same gate as the create')
+  assert.equal(unavailableReason(step), 'readiness-unmet')
+  assert.deepEqual(toReportOnly(step), [], 'no channel hands over the Report-only patch')
+  // Whichever reason the step reads: a missing object outranks the switched-off reason, and the patch still waits.
+  const missing = { ...step, action: { ...step.action, missing: [{ token: 'probe', stepId: null }] } }
+  assert.equal(unavailableReason(missing), 'missing-object')
+  assert.deepEqual(toReportOnly(missing), [])
+  assert.equal(label(step), 'On Hold', 'never Ready · Correct')
+  const contract = stepContract(step, ctx)
+  assert.doesNotMatch(contract.whatToDo.text, REPORT_ONLY, contract.whatToDo.text)
+  assert.ok(!contract.implementation.offered && contract.implementation.because?.startsWith(CERTIFICATE), contract.implementation.offered ? 'offered' : String(contract.implementation.because))
+  const { body, whatToDo } = opened(f)
+  for (const a of body.artifacts) assert.doesNotMatch(a.text(), REPORT_ONLY, `the ${a.id} tab says to set it to Report-only`)
+  assert.doesNotMatch(whatToDo.join('\n'), REPORT_ONLY, 'the export says to set it to Report-only')
+  assert.ok(whatToDo.some((l) => l.startsWith(CERTIFICATE)), whatToDo.join(' | '))
+})
+
+test('demo: once device readiness is met, Require a Managed Device found Off is told to go to Report-only', () => {
+  const f = managedDeviceOff(true)
+  const { r, label, ctx } = run(f)
+  const step = r.steps.find((s) => s.id === DEVICE)!
+  assert.equal(step.action.readinessGate, undefined, 'the premise: readiness is met')
+  assert.ok(switchedOffPolicies(step).length > 0, 'the premise: the scan finds the policy Off')
+  assert.equal(createWaitsOnReadiness(step), false)
+  assert.equal(unavailableReason(step), 'switched-off')
+  assert.ok(toReportOnly(step).length > 0)
+  const missing = { ...step, action: { ...step.action, missing: [{ token: 'probe', stepId: null }] } }
+  assert.ok(toReportOnly(missing).length > 0, 'behind a missing object too')
+  assert.equal(label(step), 'Ready · Correct')
+  assert.match(stepContract(step, ctx).whatToDo.text, REPORT_ONLY)
+  const { body, whatToDo } = opened(f)
+  assert.match(body.artifacts.find((a) => a.id === 'portal')?.text() ?? '', REPORT_ONLY)
+  assert.match(whatToDo.join('\n'), REPORT_ONLY)
 })
