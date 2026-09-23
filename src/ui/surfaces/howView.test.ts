@@ -115,12 +115,13 @@ test('How’s migration-state check says why the migration matters, and where pe
   assert.match(row.why, /migration/)
   const title = (stepById['s-prereq-per-user-mfa'] as unknown as { title: string }).title
   assert.ok(row.why.includes(title), `the why names the step that reads per-user MFA: ${title}`)
-  // The step is built only when an account still has per-user MFA on or its
-  // state was not read (roadmap/manualWork.ts perUserMfaReading), so the why
-  // never sends the reader to it as though it were always there.
+  // The step is built only when an account still has per-user MFA on, its
+  // state was not read, or the directory read was partial
+  // (roadmap/manualWork.ts perUserMfaReading), so the why never sends the
+  // reader to it as though it were always there, and names all three.
   assert.doesNotMatch(row.why, new RegExp(`is read on ${title}`), row.why)
   assert.match(row.why, /read on every scan/, row.why)
-  assert.match(row.why, /only while an account still has it on or its state could not be read/, row.why)
+  assert.match(row.why, /only while an account still has it on, its state could not be read, or the scan's read of the directory was incomplete/, row.why)
 })
 
 // Two emergency-access checks pass on the operator's own answer, and IAMAI reads
