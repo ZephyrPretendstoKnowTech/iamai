@@ -36,8 +36,9 @@ export const POLICY_UNOBSERVED: string = (content.shared as unknown as { policyD
  * IAMAI watched no report-only period for any of the step's policies: every
  * member was first seen already enforced (observation.ts `neverObserved`, which
  * covers both a policy the first scan found on and one that appeared on after a
- * scan recorded it absent, and travels with the object). A step with no policy
- * member is not this.
+ * scan recorded it absent, and travels with the object), and no scan's sign-in
+ * records showed it in report-only since. A step with no policy member is not
+ * this.
  *
  * Not "no member has a report-only date" (tracking.ts `reportOnlyAt`): that date
  * is kept only while the policy is IN report-only, and a policy IAMAI watched
@@ -48,6 +49,36 @@ export const POLICY_UNOBSERVED: string = (content.shared as unknown as { policyD
 function reportOnlyUnwatched(step: Step): boolean {
   const observed = step.state.members
   return observed.length > 0 && observed.every((m) => m.change.latest.neverObserved === true)
+}
+
+/**
+ * A finished policy this plan owns that went live with no report-only period
+ * IAMAI watched (owner decision 3, 2026-09-22; R4-12): the Enforced outcome
+ * (the plan's tag on a satisfying policy, `inPlace` false, and the policy on,
+ * as stepContract.ts stageOf reads it) where IAMAI watched every policy member
+ * go On from not applying to anybody, with no report-only state between
+ * (observation.ts `skippedWindow`): not deployed at the scan before, or Off on
+ * the same object after a scan that recorded it not deployed, and the scan's
+ * sign-in records show no report-only result for it. It stays
+ * Completed, with a warning tile that says so and the check after the change
+ * kept (stepContract.ts unwatchedTile, doneWhenOf).
+ *
+ * Built straight to On, policies on the pinned baseline filed under Completed
+ * with "The scan found the assessed configuration in place." and nothing else,
+ * and the one note saying nobody had watched them sat under New evidence.
+ *
+ * Not the reading above (`neverObserved`), which a first scan sets on every
+ * policy it finds On: a policy this plan built and watched through report-only
+ * is first seen On (or Off, after an incident) from a second browser or after
+ * Forget, and IAMAI cannot know that it skipped anything. Not a policy the
+ * tenant already had (In place): nothing went live under this plan there. Not
+ * a policy whose completion is its
+ * configuration, which is not evaluated in report-only, so no window was part of
+ * its rollout to miss.
+ */
+export function enforcedUnwatched(step: Step): boolean {
+  const s = step.state
+  return s.satisfied && !s.inPlace && s.lifecycle === 'enforced' && stepEvidenceStrategy(step) !== 'configuration' && s.members.length > 0 && s.members.every((m) => m.change.latest.skippedWindow === true)
 }
 
 export function doneWhenTemplates(step: Step, doneWhen: unknown[], mapping?: Pick<MappingState, 'trustedLocationIds' | 'wizardAnswered' | 'assumed'>): unknown[] {

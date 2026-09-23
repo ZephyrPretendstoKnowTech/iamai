@@ -35,7 +35,7 @@ import { stepVars, withoutScheduleDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { portalNamesFor, unwrittenCorrectionLines } from './stepPortal.ts'
 import { rescanLinesOf, stepInstructions, wholeLines } from './stepInstructions.ts'
-import { CONTRACT, eyebrowOf, implementationEmptyOf, implementationIsCurrent, proceduresAreReference, railOf, readinessOf, stepContract } from './stepContract.ts'
+import { CONTRACT, SETTLED_FINDINGS, eyebrowOf, implementationEmptyOf, implementationIsCurrent, isReadinessWork, proceduresAreReference, railOf, readinessOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
 import { boardHolds, laneViewAlone } from './planBoard.ts'
 import { DECISION_HEAD, HEAD, taskHeadingsOf } from './stepHeadings.ts'
@@ -518,9 +518,15 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // a value IAMAI does not hold. None of them is ever offered an artifact.
   const hold = packaged ? (projection?.hold ?? null) : null
   const heldBox = (key: string): ImplementationEmpty => ({ key, tone: 'warn', title: W.empty[key][0], text: W.empty[key][1] })
+  // The open Readiness work a delivered step still waits on: the cards that
+  // are work (stepContract.ts isReadinessWork, never the people card), less a
+  // fact the finished step states and nothing in Readiness can clear (a policy
+  // that went live unwatched, a tenant's own policy that differs from the
+  // baseline's, a baseline grant below the goal's floor: SETTLED_FINDINGS).
+  const openWork = readiness.tiles.filter((t) => isReadinessWork(t) && !SETTLED_FINDINGS.has(t.key)).length
   const empty: ImplementationEmpty =
     hold === null
-      ? implementationEmptyOf(contract, readiness.tiles.length)
+      ? implementationEmptyOf(contract, openWork)
       : hold.pendingPrerequisites.length > 0
         ? heldBox('confirmationsPending')
         : hold.unknownMismatches.length > 0

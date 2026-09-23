@@ -45,7 +45,7 @@ import type { LaneReading, LaneRowInput } from './planLanes.ts'
 import type { LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
 import { estimatedDay, scheduleOf } from '../../roadmap/stepSchedule.ts'
 import type { StepSchedule } from '../../roadmap/stepSchedule.ts'
-import { contentTitle } from '../../content/stepTitle.ts'
+import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import { cleanupComplete } from '../../roadmap/cleanupDone.ts'
 import { cleanupEntry } from './cleanupExport.ts'
@@ -328,6 +328,58 @@ export function boardReadingsOf(
 
 /** The board's reading of a whole plan (boardReadingsOf): every row's lane reading, the title each names a prerequisite by, and the Cleanup rows it draws. */
 export type BoardReadings = { readings: Map<string, LaneReading>; titleOf: (id: string) => string | null; cleanupRows: BoardCleanupRow[] }
+
+/** One row of the board before a tab, a focus or a group places it: the item the tabs group, its reading and lane view, and the step or Cleanup row it draws. */
+export type BoardRow = { item: BoardItem; reading: LaneReading; lane: LaneView; step: Step | null; cleanup: BoardCleanupRow | null }
+
+/** The board every surface reads (`boardOf`): its readings, and the rows the Plan draws from them. */
+export type Board = BoardReadings & {
+  /** Every row the board draws: the steps in plan order, then the Cleanup rows. */
+  rows: readonly BoardRow[]
+  /** A row's lane view; `Doesn't apply` where the engine gives the row no reading. */
+  laneOf: (id: string) => LaneView
+  /** A row's prerequisites, for the opened step's Readiness tiles. */
+  blockersOf: (id: string) => PrerequisiteBlocker[]
+  /** A prerequisite tile's label: the prerequisite's own lane (decision 12). */
+  prerequisiteLabel: PrerequisiteLabel
+  /** What the enforce checklist's own conditions wait on that is not a prerequisite of a step's next action: the drill while it is incomplete, by title. */
+  enforceWaits: readonly string[]
+}
+
+/**
+ * The board's rows, built once from its readings (boardReadingsOf): the item the
+ * tabs and groups place, with the lane view the row and the opened step read.
+ * The Plan built these rows inline, so the persona harness kept its own copy of
+ * the construction, and that copy drifted more than once (it left the Cleanup
+ * rows out, titled rows with the engine's goal statement, and grouped by the
+ * engine's kind). Every reader takes them from here.
+ */
+export function boardOf(steps: readonly Step[], cleanup: CleanupPhase | null | undefined, answers: { signInMonitoring: boolean | null } | null | undefined): Board {
+  const board = boardReadingsOf(steps, cleanup, answers)
+  const { readings, titleOf, cleanupRows } = board
+  const rows: BoardRow[] = []
+  for (const step of steps) {
+    const reading = readings.get(step.id)
+    if (!reading) continue
+    const lane = laneViewOf(reading, titleOf)
+    rows.push({ item: { id: step.id, title: contentTitle(step), lane: reading.lane, laneLabel: lane.label, workType: workTypeOf(step.id, (contentStepFor(step) as { kind?: string } | undefined)?.kind ?? null), order: reading.order }, reading, lane, step, cleanup: null })
+  }
+  for (const row of cleanupRows) {
+    const entry = cleanupEntry(row.row.kind)
+    const reading = readings.get(row.id)
+    if (!entry || !reading) continue
+    const lane = laneViewOf(reading, titleOf)
+    rows.push({ item: { id: row.id, title: entry.title, lane: reading.lane, laneLabel: lane.label, workType: 'setup', order: reading.order }, reading, lane, step: null, cleanup: row })
+  }
+  return {
+    ...board,
+    rows,
+    laneOf: (id) => { const r = readings.get(id); return r ? laneViewOf(r, titleOf) : doesntApplyView() },
+    blockersOf: (id) => readinessBlockersOf(readings.get(id), titleOf),
+    prerequisiteLabel: prerequisiteLabelFor(readings),
+    enforceWaits: cleanupRows.filter((r) => r.row.kind === 'drill' && !r.complete).map((r) => cleanupEntry(r.row.kind)?.title).filter((x): x is string => typeof x === 'string' && x.length > 0),
+  }
+}
 
 /**
  * The lane view of one step, read off a board (boardReadingsOf): the lane its

@@ -192,7 +192,8 @@ test('the status zone consumes the one lane reading and computes nothing', () =>
   // The Plan hands the row the board's one state reading (planBoard.ts
   // laneViewOf, A1b decision 1) and the row renders the label it is given, over
   // the one tenant fact (decision 2). The row must not be able to disagree with the step.
-  assert.match(PLAN, /const laneView = laneViewOf\(reading, titleOf\)/, 'the Plan row no longer reads the one lane reading')
+  // The row's lane view is boardOf's laneViewOf(reading, titleOf), built once (planBoard.ts).
+  assert.match(PLAN, /for \(const \{ step, reading, lane: laneView \} of board\.rows\)/, 'the Plan row no longer reads the one lane reading')
   assert.match(PLAN, /lane=\{lane\.label\}\n\s*tone=\{lane\.tone\}/, 'the row is no longer handed the lane label and tone')
   assert.match(PLAN, /chip=\{factOf\(step\)\}/, 'the row chip is no longer the one tenant fact')
   // Nothing in the row markup reads a step, a lifecycle, a condition or a date.
@@ -258,8 +259,9 @@ test('the lane order and grouping are still the engine\'s, not the row\'s', () =
   // restoration changed where a row's facts sit, not which rows exist or what
   // order they come in.
   // Through the one board construction (planBoard.ts boardReadingsOf, R4-22).
-  assert.match(PLAN, /const \{ readings, titleOf, cleanupRows \} = boardReadingsOf\(c\.steps, /)
-  assert.match(PLAN, /order: reading\.order,/)
+  assert.match(PLAN, /const board = boardOf\(c\.steps, cleanupPhase, answers\)\n\s*const \{ readings, titleOf, cleanupRows, prerequisiteLabel, enforceWaits \} = board/)
+  // The row order is the engine's, set where the rows are built (planBoard.ts boardOf).
+  assert.match(readFileSync(new URL('./planBoard.ts', import.meta.url), 'utf8'), /order: reading\.order/)
   // No sorting, filtering or grouping in the row component.
   for (const forbidden of ['.sort(', '.filter(', '.slice(']) {
     assert.equal(ROW.includes(forbidden), false, `the row ${forbidden} its own content instead of rendering what the plan gave it`)

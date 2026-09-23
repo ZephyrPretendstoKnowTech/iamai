@@ -232,6 +232,14 @@ export function recoveryPasskeyCandidateSet(snapshot: TenantSnapshot, accountId:
   return ids.length ? { state: 'complete', ids, reason: 'Every potentially usable registered passkey is known and compliant.' } : { state: 'incompatible', ids: [], reason: 'No registered passkey is usable under the current and intended configuration.' }
 }
 
+/**
+ * The projection's `coverage` where some account's registered methods were not
+ * read: the Existing passkeys affected tile shows it under Could not verify, and
+ * Prepare affected passkeys repeats it beside whatever it names from the rest
+ * (ui/surfaces/emergencyPasskeyTasks.ts). One sentence, read from here by both.
+ */
+export const REGISTERED_METHODS_UNREAD = 'Some users’ registered authentication methods were not readable.'
+
 /** Registered methods that are usable now and not under the exact proposed target. */
 export function affectedPasskeysByProposedChange(snapshot: TenantSnapshot, mapping?: MappingState, groups: GroupMembers = new Map()): AffectedPasskeyProjection {
   const reading = passkeyReadingOf(snapshot, mapping)
@@ -244,7 +252,7 @@ export function affectedPasskeysByProposedChange(snapshot: TenantSnapshot, mappi
   for (const user of snapshot.users) {
     const accountId = user.id
     const methods = snapshot.authMethods[accountId]
-    if (!Array.isArray(methods)) { coverage.add('Some users’ registered authentication methods were not readable.'); continue }
+    if (!Array.isArray(methods)) { coverage.add(REGISTERED_METHODS_UNREAD); continue }
     const keys = methods.filter(isPasskey)
     if (!keys.length) continue
     const states = keys.map(method => {

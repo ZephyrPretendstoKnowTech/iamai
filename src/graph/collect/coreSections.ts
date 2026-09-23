@@ -31,6 +31,17 @@ export type CoreGap = {
  */
 const BUILDABLE = new Set(['ok', 'partial'])
 
+/**
+ * Whether the scan got data out of a section, whole or in part: the one test a
+ * surface asks before it draws a count, an empty list, "off" or "none" from it.
+ * A refusal, an error, a licence gate or a section the scan lacks is no reading,
+ * and the surface says the section was not read instead of drawing a zero.
+ */
+export function sectionHasData(snapshot: TenantSnapshot, key: ConfigSectionKey | SourceKey): boolean {
+  const s = (CONFIG_KEYS as string[]).includes(key) ? snapshot.config?.[key as ConfigSectionKey] : snapshot.sources?.[key as SourceKey]
+  return BUILDABLE.has(s?.status ?? '')
+}
+
 function stateOf(snapshot: TenantSnapshot, source: CoreSource): { status: string; reason: string | null } | null {
   if (source === 'config:caPolicies') {
     const s = snapshot.config?.caPolicies

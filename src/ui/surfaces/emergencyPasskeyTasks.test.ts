@@ -329,3 +329,101 @@ test('an administrator whose only phishing-resistant method is an unjudged passk
   assert.doesNotMatch(apply, RESTRICTION, `the allow list is handed over with admins it would lock out:\n${apply}`)
   assert.doesNotMatch(task(projected, 'prepare-affected-passkeys').steps[0], /none is locked out/)
 })
+
+// Nobody found affected in what was read is not nobody affected. Prepare
+// affected passkeys said "No existing passkey is affected by the planned
+// settings" on hostile, where not one account's registered methods were read,
+// and on every tenant whose passkey settings were not read — under the tile
+// "Existing passkeys affected · Could not verify". It now says what it did not
+// read; the all-clear is kept for a tenant read in full.
+const ALL_CLEAR = 'No existing passkey is affected by the planned settings. Keep the existing working method available while preparing an account.'
+function prepareLead(name: 'hostile' | 'getiamai', change: (snapshot: TenantSnapshot) => void = () => {}) {
+  const value = structuredClone(fixture(name))
+  change(value.snapshot)
+  const run = runFixture(value)
+  const step = run.steps.find(row => row.id === 's-prereq-passkey-settings')!
+  const ctx: StepVarContext = { snapshot: value.snapshot, mapping: value.mapping, nameOf: id => run.input.names!.label(id), signature: 'IT', operatorId: value.operatorId, now: value.snapshot.asOf, groups: value.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
+  const prepare = task(emergencyPasskeyTasksOf(step, ctx), 'prepare-affected-passkeys')
+  return { lead: prepare.steps[0], text: emergencyTaskText(prepare, prepare.defaultVariantId), tile: step.configurationFindings?.find(f => f.key === 'affected-passkeys') }
+}
+
+test('an impact IAMAI could not read is never an all-clear: the task says what it did not read', () => {
+  const cases: [string, ReturnType<typeof prepareLead>, RegExp][] = [
+    // hostile: no account's registered methods were read.
+    ['registered methods unread', prepareLead('hostile'), /Some users’ registered authentication methods were not readable\./],
+    // The passkey settings source itself unread.
+    ['passkey settings unread', prepareLead('getiamai', s => { s.config.authMethodsPolicy = { status: 'error', reason: 'Forbidden', rows: [] } }), /The current and intended passkey configuration could not be compared exactly\./],
+    // One account's methods unread in a tenant otherwise read in full.
+    ['one account’s methods unread', prepareLead('getiamai', s => { s.authMethods[s.users[0].id] = 'unknown' as never }), /Some users’ registered authentication methods were not readable\./],
+  ]
+  for (const [label, { lead, text, tile }, unread] of cases) {
+    assert.equal(tile?.value, 'Could not verify', `${label}: the premise is a tile that could not verify the impact`)
+    assert.doesNotMatch(text, /No existing passkey is affected/, `${label}: an all-clear over what was not read:\n${text}`)
+    assert.match(lead, /^IAMAI could not tell whether the planned settings stop any existing passkey\. /, `${label}: ${lead}`)
+    assert.match(lead, unread, `${label}: what was not read is not named: ${lead}`)
+    assert.match(lead, /Keep the existing working method available while preparing an account\.$/, `${label}: ${lead}`)
+  }
+  // A tenant read in full with nothing affected reads as it did.
+  const full = prepareLead('getiamai')
+  assert.notEqual(full.tile?.value, 'Could not verify', 'the premise: getiamai is read in full')
+  assert.equal(full.lead, ALL_CLEAR)
+})
+
+// Nor is what was read everything where some accounts' registered methods were
+// not. Each reading of the first line names what the scan found in what it read.
+// On small with every other account's methods unread, it still said "Each keeps
+// Microsoft Authenticator, so none is locked out", under a tile reading
+// "Existing passkeys affected · Could not verify", and said nothing of what it
+// had not read. Every reading now says so, in the tile's own sentence
+// (roadmap/passkeyCompatibility.ts REGISTERED_METHODS_UNREAD).
+const UNREAD_ALSO = / Some users’ registered authentication methods were not readable\. The planned settings may stop passkeys on those accounts too\.$/
+/** Every account's registered methods unread but those of the accounts named. */
+function unreadBut(snapshot: TenantSnapshot, keep: readonly string[]): void {
+  for (const user of snapshot.users) if (!keep.includes(user.id)) snapshot.authMethods[user.id] = 'unknown' as never
+}
+/** The tenant as the step's target would leave it: the planned passkey settings applied. */
+function applyTarget(snapshot: TenantSnapshot, name: 'midflight' | 'small'): void {
+  const target = passkeyReadingOf(snapshot, structuredClone(fixture(name)).mapping).resolution
+  assert.ok(target && target.kind === 'target', 'the premise: the step resolves a target')
+  const row = snapshot.config.authMethodsPolicy!.rows[0] as { authenticationMethodConfigurations?: Record<string, unknown>[]; fido2Configuration?: unknown }
+  row.authenticationMethodConfigurations = (row.authenticationMethodConfigurations ?? []).map(c => String(c.id).toLowerCase() === 'fido2' ? { ...target.target, id: c.id } : c)
+  if (row.fido2Configuration) row.fido2Configuration = { ...target.target }
+}
+/**
+ * Each named account also holds a passkey the planned list allows, so it keeps a
+ * passkey. With `stopped`, the passkey nobody could judge becomes one of a known
+ * model the list stops: the account is affected, not unjudged.
+ */
+function withAllowedKey(snapshot: TenantSnapshot, ids: readonly string[], stopped: boolean): void {
+  const key = (id: string, aaGuid: string) => ({ kind: 'fido2', id, aaGuid, passkeyType: 'deviceBound', attestationLevel: 'attested' })
+  for (const id of ids) {
+    const methods = (snapshot.authMethods[id] as { kind: string }[]).filter(m => !stopped || (m.kind !== 'passkey' && m.kind !== 'fido2'))
+    snapshot.authMethods[id] = [...methods, ...(stopped ? [key('stopped', '00000000-0000-4000-8000-000000000001')] : []), key('allowed', PASSKEY_TARGET_AAGUIDS[2])] as never
+  }
+}
+
+test('every reading of Prepare affected passkeys says so where some accounts’ registered methods were not read', () => {
+  const readings: [string, 'midflight' | 'small', (snapshot: TenantSnapshot, ids: string[]) => void, RegExp][] = [
+    ['stranded', 'small', () => {}, /^An allow list stops every passkey it does not name\. .*Each keeps Microsoft Authenticator, so none is locked out/],
+    ['withheld', 'midflight', () => {}, /^Key restrictions stay off for now: they would lock out 1 account/],
+    ['applied, each keeps a way in', 'small', s => applyTarget(s, 'small'), /^The passkey settings are applied\. .*each keeps Microsoft Authenticator if it does not\.$/],
+    ['applied, one without a way in', 'midflight', s => applyTarget(s, 'midflight'), /^The passkey settings are applied\. .*cannot confirm another way in for them/],
+    ['affected accounts', 'small', (s, ids) => withAllowedKey(s, ids, true), /^Keep the existing working method available while preparing each affected account: \*\*/],
+    ['could not judge', 'small', (s, ids) => withAllowedKey(s, ids, false), /^IAMAI could not tell whether the planned settings affect the passkeys on 4 accounts, because it could not read their key model\./],
+  ]
+  for (const [label, name, change, reading] of readings) {
+    const read = task(onMidflight(change, name).projected, 'prepare-affected-passkeys').steps[0]
+    assert.match(read, reading, `${label}: the premise is this reading, read in full: ${read}`)
+    assert.doesNotMatch(read, /not readable/, `${label}: read in full, nothing is said to be unread: ${read}`)
+    const { projected, reading: restriction, upn } = onMidflight((snapshot, ids) => { change(snapshot, ids); unreadBut(snapshot, ids) }, name)
+    const lead = task(projected, 'prepare-affected-passkeys').steps[0]
+    // What was read is said as before, every account it names still named…
+    assert.ok(lead.startsWith(read), `${label}: what was read is no longer said as it was:\n${read}\n${lead}`)
+    if (label === 'stranded') {
+      assert.equal(restriction.stranded.length, 4, 'the premise: the four accounts whose passkeys nobody could judge')
+      for (const id of restriction.stranded) assert.ok(lead.includes(upn(id)), `${upn(id)} is not named: ${lead}`)
+    }
+    // …and then that it is not everything.
+    assert.match(lead, UNREAD_ALSO, `${label}: an unread tenant reads as complete: ${lead}`)
+  }
+})

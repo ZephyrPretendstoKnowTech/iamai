@@ -1,8 +1,9 @@
-// R4-11, the path the review of fix/patch found (docs/qa/night/personas/review-patch-2.ts).
+// R4-11, the path the review of fix/patch found (docs/qa/night/personas/review-patch-2.ts),
+// and patch Q3, which found what was wrong underneath it.
 //
 // On the demo tenants the compliant-device step creates its policy with the
 // device decision's platforms left out (phones), the person turns it on as the
-// step asks, and on the next scan coverage reads that policy as applying only
+// step asks, and on the next scan coverage read that policy as applying only
 // under narrower conditions than the baseline: device platforms. A condition
 // has no section an update writes (generate.ts CHANGED_SECTION), and the policy
 // already holds every section this step does write, so the update came out as
@@ -10,43 +11,57 @@
 // policy for IAMAI to write in this plan. Scan Contoso Pty Ltd again to rebuild
 // it.", with the Done-when "A scan rebuilds this step with a policy IAMAI can
 // write." and the row reason "until a scan rebuilds this step". All three were
-// false: the policy is there, and every scan rebuilt the same `{}`. A tenant
-// whose own compliant-device policy leaves phones out, as its device decision
-// does, has the same step on its first scan. (Without that decision the same
-// policy is not what the plan asks for in its device platforms, and the step
-// says a person corrects it: 'manual-correction', which promises no rebuild.)
+// false: the policy is there, and every scan rebuilt the same `{}`.
 //
-// The step now names the policy, says there is nothing to submit, names the
-// gap no update writes, and promises no rescan — on the screen, on the row and
-// in the exports, which read the screen's reason line.
+// R4-11 made the step name the policy, say there is nothing to submit, name the
+// gap no update writes, and promise no rescan. Patch Q3: the gap itself was
+// false. The phones-out answer is IAMAI's own suggestion, recorded by the
+// person, and the policy did exactly what the step built; coverage judged it
+// against the baseline as the author wrote it rather than as the recorded answer
+// narrowed it, so the plan's own policy sat On Hold as "Needs correction" and
+// could only finish by being declined. Coverage now reads where a policy applies
+// against the baseline with the recorded answers applied (coverage.ts
+// recordedReference, roadmap/deviations.ts applyDeviations), and the policy is
+// the goal delivered, with the narrowing still named in the goal's statement. A
+// narrowing nobody recorded is still a gap. The words for an update the policy
+// holds in full are still held below, over the reading that used to reach them.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from './fixtures/index.ts'
+import { fixture, curatedFixture } from './fixtures/index.ts'
 import type { Fixture } from './fixtures/index.ts'
 import { runFixture, withDirectionApproved, withFoundationSettled } from './fixtures/run.ts'
 import type { FixtureRun } from './fixtures/run.ts'
 import { implementationOffered, unavailableReason } from './operations.ts'
 import { excludedPlatforms } from './deviations.ts'
+import { QUESTION_STEP, answerKey } from './answers.ts'
 import { BLOCKED_REASON } from '../copy/reasons.ts'
 import { stepContract } from '../ui/surfaces/stepContract.ts'
 import { stepExportView } from '../ui/surfaces/stepExport.ts'
+import { statusOf } from '../ui/surfaces/statusWord.ts'
+import { laneReadings } from '../ui/surfaces/planLanes.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 import type { Step } from './types.ts'
 
 const DEVICE = 's-goal-require-managed-device'
 const POLICY = 'c0100000-0000-4000-8000-0000000000d1'
 const REBUILD = /rebuild/i
+/** The goal statement's own words for a narrowing the person chose (content.json engine.coverage.statement.conditionsRecorded). */
+const CHOSEN = /narrower conditions than the baseline by your choice: device platforms/
 
 type Row = Record<string, unknown> & { conditions?: Record<string, unknown> }
 
-/** The tenant with `row` among its policies, scanned. */
-function scanned(f: Fixture, row: Row): { f: Fixture; r: FixtureRun; step: Step; ctx: StepVarContext } {
+/**
+ * The tenant with `row` among its policies, scanned. `planned` is the mapping
+ * the step is built from where it differs from the one coverage reads (the
+ * held-words test below only).
+ */
+function scanned(f: Fixture, row: Row, planned: Fixture['mapping'] = f.mapping): { f: Fixture; r: FixtureRun; step: Step; ctx: StepVarContext } {
   const ca = f.snapshot.config.caPolicies!
   const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows: [...ca.rows, row] } } } as Fixture['snapshot']
   const t = { ...f, snapshot }
-  const r = runFixture(t, { snapshot, mapping: f.mapping } as never)
+  const r = runFixture(t, { snapshot, mapping: planned } as never)
   const step = r.steps.find((s) => s.id === DEVICE)!
-  const ctx: StepVarContext = { snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming }
+  const ctx: StepVarContext = { snapshot, mapping: planned, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming }
   return { f: t, r, step, ctx }
 }
 
@@ -56,6 +71,17 @@ function created(f: Fixture): Row {
   const op = step?.action.resolution?.policies.find((o) => o.mode === 'create')
   assert.ok(op, 'the device step creates its policy on this tenant')
   return structuredClone(op.body) as Row
+}
+
+/** The same decision with phones kept in the policy (enrolled in Intune): nobody recorded leaving them out. */
+function phonesIn(f: Fixture): Fixture {
+  const questionAnswers = { ...f.mapping.questionAnswers, [answerKey(QUESTION_STEP.devices, 'phoneManagement')]: 'enrolled' }
+  return { ...f, mapping: { ...f.mapping, questionAnswers } }
+}
+
+/** A policy the tenant's technician wrote: the step's body with its own name and these platforms. */
+function tenantOwn(body: Row, platforms: { includePlatforms: string[]; excludePlatforms: string[] }): Row {
+  return { ...body, id: POLICY, displayName: 'Contoso - Compliant device, computers', description: '', state: 'enabled', conditions: { ...(body.conditions ?? {}), platforms } }
 }
 
 /** What the step says about itself: the reason line, the completion, the row, and the export's next lines. */
@@ -94,24 +120,76 @@ function assertHeld(run: ReturnType<typeof scanned>, name: string, label: string
   assert.ok(s.exported.includes(s.because), `${label}: the export reads the screen's reason line`)
 }
 
-test('R4-11: the demo\'s device policy, turned on as the step asked, is not a step a scan rebuilds', () => {
+/** The goal delivered as decided: Completed, nothing handed over, and the statement names the narrowing. */
+function assertDelivered(run: ReturnType<typeof scanned>, word: string, label: string): void {
+  const cov = run.r.coverage.results.find((x) => x.goal.id === run.step.goalId)!
+  assert.ok(!cov.reasons.some((x) => x.kind === 'conditions-narrower'), `${label}: the recorded narrowing reads as a gap: ${JSON.stringify(cov.reasons.map((x) => x.detail))}`)
+  assert.equal(cov.status, 'enforced', label)
+  assert.match(cov.statement, CHOSEN, `${label}: the goal statement no longer names the narrowing: ${cov.statement}`)
+  assert.equal(run.step.status, 'done', `${label}: the step is not finished`)
+  assert.equal(statusOf(run.step).word, word, `${label}: status word`)
+  assert.equal(laneReadings(run.r.steps).get(DEVICE)?.lane, 'Completed', `${label}: the board does not put it under Completed`)
+  assert.deepEqual(run.step.action.resolution?.policies ?? [], [], `${label}: something is submitted`)
+  assert.equal(implementationOffered(run.step), false, `${label}: work is handed over`)
+  const s = said(run)
+  assert.doesNotMatch([s.because, s.doneWhen, s.exported].join(' '), REBUILD, `${label}: a rescan is promised`)
+}
+
+test('patch Q3: the demo\'s device policy, turned on as the step built it with phones left out as decided, is Completed', () => {
   // The device decision (IAMAI's own suggestion) leaves phones out of the policy.
-  const f = withDirectionApproved(fixture('demo-week2'))
-  assert.deepEqual(excludedPlatforms(f.mapping), ['android', 'iOS'], 'premise: the decision leaves phones out')
-  const body = created(f)
-  assert.deepEqual((body.conditions?.platforms as { excludePlatforms?: string[] } | undefined)?.excludePlatforms, ['android', 'iOS'], 'premise: the step writes the decision')
-  // The person built it, turned it on, and scanned again.
-  const run = scanned(f, { ...body, id: POLICY, state: 'enabled', createdDateTime: f.snapshot.asOf, modifiedDateTime: f.snapshot.asOf })
-  assertHeld(run, String(body.displayName), 'the plan\'s own policy')
+  // Both demo tenants, on the pin and on its curated reading.
+  for (const [label, f] of [
+    ['demo-week2', withDirectionApproved(fixture('demo-week2'))],
+    ['demo-week2 (curated)', withDirectionApproved(curatedFixture('demo-week2'))],
+    ['demo', withFoundationSettled(fixture('demo'))],
+    ['demo (curated)', withFoundationSettled(curatedFixture('demo'))],
+  ] as const) {
+    assert.deepEqual(excludedPlatforms(f.mapping), ['android', 'iOS'], `${label}: premise: the decision leaves phones out`)
+    const body = created(f)
+    assert.deepEqual((body.conditions?.platforms as { excludePlatforms?: string[] } | undefined)?.excludePlatforms, ['android', 'iOS'], `${label}: premise: the step writes the decision`)
+    // The person built it, turned it on, and scanned again: the plan's own policy, enforced.
+    const run = scanned(f, { ...body, id: POLICY, state: 'enabled', createdDateTime: f.snapshot.asOf, modifiedDateTime: f.snapshot.asOf })
+    assert.equal(run.step.state.lifecycle, 'enforced', `${label}: premise: enforced`)
+    assertDelivered(run, 'Enforced', label)
+  }
 })
 
-test('R4-11: a tenant\'s own enforced compliant-device policy that leaves phones out, as decided, says the same on its first scan', () => {
+test('patch Q3: a tenant\'s own enforced compliant-device policy that leaves phones out, as decided, is the goal in place on its first scan', () => {
+  const f = withDirectionApproved(fixture('demo-week2'))
+  const run = scanned(f, tenantOwn(created(f), { includePlatforms: ['all'], excludePlatforms: ['android', 'iOS'] }))
+  assertDelivered(run, 'In place', 'the tenant\'s own policy')
+})
+
+test('patch Q3: a platform narrowing nobody recorded is still a gap', () => {
   const f = withDirectionApproved(fixture('demo-week2'))
   const body = created(f)
-  const name = 'Contoso - Compliant device, computers'
-  const conditions = { ...(body.conditions ?? {}), platforms: { includePlatforms: ['all'], excludePlatforms: ['android', 'iOS'] } }
-  const run = scanned(f, { ...body, id: POLICY, displayName: name, description: '', state: 'enabled', conditions, createdDateTime: f.snapshot.asOf, modifiedDateTime: f.snapshot.asOf })
-  assertHeld(run, name, 'the tenant\'s own policy')
+  const gap = (run: ReturnType<typeof scanned>, label: string): void => {
+    const cov = run.r.coverage.results.find((x) => x.goal.id === run.step.goalId)!
+    assert.notEqual(cov.status, 'enforced', label)
+    assert.ok(cov.reasons.some((x) => x.kind === 'conditions-narrower' && /device platforms/.test(x.detail)), `${label}: the narrowing is not the stated gap: ${JSON.stringify(cov.reasons.map((x) => x.detail))}`)
+    assert.doesNotMatch(cov.statement, CHOSEN, `${label}: a narrowing nobody chose is called the person's choice`)
+    assert.notEqual(run.step.status, 'done', `${label}: the step reads finished`)
+    assert.notEqual(laneReadings(run.r.steps).get(DEVICE)?.lane, 'Completed', label)
+  }
+  // Phones kept in by the decision: the same phones-out policy leaves out people's phones nobody chose to leave out.
+  const kept = phonesIn(f)
+  assert.deepEqual(excludedPlatforms(kept.mapping), [], 'premise: nobody recorded leaving phones out')
+  gap(scanned(kept, tenantOwn(body, { includePlatforms: ['all'], excludePlatforms: ['android', 'iOS'] })), 'phones kept in')
+  // Phones out as recorded, and computers left out too: narrower than the answer.
+  gap(scanned(f, tenantOwn(body, { includePlatforms: ['all'], excludePlatforms: ['android', 'iOS', 'macOS'] })), 'macOS left out as well')
+})
+
+test('R4-11: an update the policy already holds in full, short of the goal in a condition, says so and promises no rescan', () => {
+  // Coverage now reads the recorded answer (patch Q3), so no scan of the demo
+  // reaches this: the reading that used to is kept here, a coverage that judged
+  // the phones-out policy against the baseline as the author wrote it (the
+  // decision's answers left out of what coverage reads) beside the step built
+  // from them. The words must stay true for any gap no update writes.
+  const f = withDirectionApproved(fixture('demo-week2'))
+  const body = created(f)
+  const unread = { ...f, mapping: { ...f.mapping, questionAnswers: Object.fromEntries(Object.entries(f.mapping.questionAnswers ?? {}).filter(([k]) => !k.startsWith(`${QUESTION_STEP.devices}:`))) } }
+  const run = scanned(unread, { ...body, id: POLICY, state: 'enabled', createdDateTime: f.snapshot.asOf, modifiedDateTime: f.snapshot.asOf }, f.mapping)
+  assertHeld(run, String(body.displayName), 'the plan\'s own policy')
 })
 
 test('a step with no operations at all still asks for the scan that rebuilds it', () => {
