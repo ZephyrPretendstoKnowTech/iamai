@@ -676,7 +676,8 @@
           "state": "complete · {age}",
           "again": "Scan again",
           "degraded": "Sign-in proof not read · MFA readiness not measured",
-          "unread": "{n} sections were not read in full. The plan is built from what IAMAI did read, so check these before you act on it."
+          "$commentUnread": "Phase 2 review, round 2: the status strip carries this lead when every stage is done (connectView.ts connectStatus), and it ended \"so check these before you act on it\": in the strip, \"these\" pointed at rows drawn only in the Scan step, and with one section it counted one as many. The demo scan reads one section in part, so every beta visitor read it. It now names where the list is and reads the same with any count.",
+          "unread": "{n} sections were not read in full. The plan is built from what IAMAI did read, so check what is listed under Scan before you act on it."
         },
         "gaps": {
           "state": "finished with gaps · no plan built",
