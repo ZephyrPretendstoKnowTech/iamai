@@ -36,8 +36,9 @@ export const POLICY_UNOBSERVED: string = (content.shared as unknown as { policyD
  * IAMAI watched no report-only period for any of the step's policies: every
  * member was first seen already enforced (observation.ts `neverObserved`, which
  * covers both a policy the first scan found on and one that appeared on after a
- * scan recorded it absent, and travels with the object). A step with no policy
- * member is not this.
+ * scan recorded it absent, and travels with the object), and no scan's sign-in
+ * records showed it in report-only since. A step with no policy member is not
+ * this.
  *
  * Not "no member has a report-only date" (tracking.ts `reportOnlyAt`): that date
  * is kept only while the policy is IN report-only, and a policy IAMAI watched
