@@ -130,8 +130,9 @@ test('the row, the badge, the bar and the rail derive from one lane reading on e
           break
       }
       // The rail: a day the plan schedules, or the placeholder (content review R1); never another word.
+      // A day the board reads as an estimate is one on the rail too, in the When column's words (R4-34).
       const rail = railOf(c)
-      assert.ok(DAY.test(rail.metric) || rail.metric === 'Not scheduled' || (lane.lane === 'Ready' && lane.substatus === 'Review' && rail.metric === 'Review now') || (lane.lane === 'Completed' && rail.metric === 'Completed'), `${where}: the rail says "${rail.metric}" beside a row reading "${lane.label}"`)
+      assert.ok(DAY.test(rail.metric.replace(/^Est\. /, '')) || rail.metric === 'Not scheduled' || (lane.lane === 'Ready' && lane.substatus === 'Review' && rail.metric === 'Review now') || (lane.lane === 'Completed' && rail.metric === 'Completed'), `${where}: the rail says "${rail.metric}" beside a row reading "${lane.label}"`)
       if (lane.lane !== 'Completed' && !(lane.lane === 'Ready' && lane.substatus === 'Review') && c.milestone.at === null && !(c.schedule && c.schedule.at !== null && (c.schedule.class === 'scheduled' || c.schedule.class === 'observing')) && !(c.scheduledOn && lane.lane === 'Ready')) assert.equal(rail.metric, 'Not scheduled', `${where}: an undated step's rail is not the placeholder`)
       // The When column: a day or the placeholder.
       const when = boardWhenOf(step, waveStartOf(step), lane)

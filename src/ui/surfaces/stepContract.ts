@@ -51,7 +51,7 @@ import { badgeOf, planStateOf } from './planState.ts'
 import type { PlanStateKind } from './planState.ts'
 import { GATING_SUBJECTS, blockerStepId } from '../../roadmap/blockerSteps.ts'
 import { POLICY_VERIFY_AFTER, doneWhenTemplates } from './doneWhen.ts'
-import { scheduleOf } from '../../roadmap/stepSchedule.ts'
+import { estimatedDay, scheduleOf } from '../../roadmap/stepSchedule.ts'
 import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
 import type { StepSchedule } from '../../roadmap/stepSchedule.ts'
 import { heldByTitle, missingObjects, waitKindOf, waitingLine } from './stepJson.ts'
@@ -517,6 +517,11 @@ export type StepContract = {
    * decision 2, 2026-09-22).
    */
   undated: boolean
+  /**
+   * The day the plan gives the step is an estimate (roadmap/stepSchedule.ts
+   * estimatedDay): the rail says "Est." before it, as the board's When does.
+   */
+  estimate: boolean
   /** True for a step that delivers a policy: it keeps its Implementation region even with nothing to offer, where a decision or a check draws none. */
   policy: boolean
   /** Emergency-access hardening outstanding on this step, apart from what holds the rollout; null elsewhere. */
@@ -1416,6 +1421,7 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     scheduledOn: undated ? null : (ctx.scheduledOn ?? null),
     schedule: step.scheduled ? scheduleOf(step) : null,
     undated,
+    estimate: estimatedDay(step),
     policy: step.kind === 'create' || step.kind === 'adjust',
     hardening: hardeningOf(step, cs, ex),
     emergencySlots: emergencySlotsOf(step, cs, ex, ctx.nameOf),
@@ -2533,13 +2539,17 @@ export function railOf(c: StepContract, actionText: string | null = null): { met
   // Aug 31 here under a row that read "After prerequisites" (R4-21).
   if (c.undated) return { metric: schedulingWords.waiting, sub }
   // A day the plan schedules (roadmap/stepSchedule.ts) is the metric — the same
-  // result the row's When and its phase read.
+  // result the row's When and its phase read. A day that is an estimate says so,
+  // in the When column's own words: the rail read a bare "Aug 31, 2026" under a
+  // row reading "Est. Aug 31, 2026", and a day that moves with the work it waits
+  // on read as a deadline (R4-34).
+  const day = (at: string): string => (c.estimate ? fillText(schedulingWords.estimate, { date: absoluteDate(at) }) : absoluteDate(at))
   const s = c.schedule ?? null
-  if (s !== null && (s.class === 'scheduled' || s.class === 'observing') && s.at !== null) return { metric: absoluteDate(s.at), sub }
-  if (m.at !== null) return { metric: absoluteDate(m.at), sub }
+  if (s !== null && (s.class === 'scheduled' || s.class === 'observing') && s.at !== null) return { metric: day(s.at), sub }
+  if (m.at !== null) return { metric: day(m.at), sub }
   // Work the Plan schedules in a phase, with no dated milestone of its own, reads
   // the day its row's When reads.
-  if (c.scheduledOn && l?.lane === 'Ready') return { metric: absoluteDate(c.scheduledOn), sub }
+  if (c.scheduledOn && l?.lane === 'Ready') return { metric: day(c.scheduledOn), sub }
   if (l?.lane === 'Ready' && l.substatus === 'Review') return { metric: schedulingWords.reviewNow, sub }
   return { metric: NO_DATE, sub }
 }

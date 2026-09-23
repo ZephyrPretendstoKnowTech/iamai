@@ -94,8 +94,10 @@ test('a dated row’s rail is the day the plan schedules, and its When column re
       if (!label || !reading || !/\d{4}$/.test(label) || step.scheduled?.at == null) continue
       const lane = laneViewOf(reading, titleOf)
       const rail = railOf(stepContract(step, ctx, undefined, lane))
-      // Every dated row's rail is its day, a decision's included (content review R1).
-      assert.equal(rail.metric, absoluteDate(step.scheduled.at), `${run.f.name}/${step.id}: the row reads ${label} and the rail ${rail.metric}`)
+      // Every dated row's rail is its day, a decision's included (content review R1),
+      // and an estimate on the rail wherever the row reads one (R4-34): the rail
+      // reads what the row reads.
+      assert.equal(rail.metric, label, `${run.f.name}/${step.id}: the row reads ${label} and the rail ${rail.metric}`)
       assert.equal(label.replace(/^Est\. /, ''), absoluteDate(step.scheduled.at), `${run.f.name}/${step.id}: the row's day is not the scheduled day`)
       checked += 1
     }

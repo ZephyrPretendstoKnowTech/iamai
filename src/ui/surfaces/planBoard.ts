@@ -43,7 +43,7 @@ import type { PlanStateFacts } from './planState.ts'
 import { laneReadings } from './planLanes.ts'
 import type { LaneReading, LaneRowInput } from './planLanes.ts'
 import type { LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
-import { scheduleOf } from '../../roadmap/stepSchedule.ts'
+import { estimatedDay, scheduleOf } from '../../roadmap/stepSchedule.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import { cleanupComplete } from '../../roadmap/cleanupDone.ts'
@@ -613,7 +613,7 @@ export function boardWhenOf(step: Step, waveStart: string | null = null, read: L
   // did. Every row the engine files On Hold behind something else still reads
   // no day.
   if (read !== null && read.lane === 'On Hold' && read.substatus === null && read.tail !== BOARD.blockers.evidence && step.blockedBy.length === 0) return schedulingWords.waiting
-  return step.manualReview || step.directionQuestions ? fillText(schedulingWords.estimate, { date: result }) : result
+  return estimatedDay(step) ? fillText(schedulingWords.estimate, { date: result }) : result
 }
 
 /**

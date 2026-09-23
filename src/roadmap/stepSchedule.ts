@@ -211,6 +211,18 @@ export function scheduleOf(step: Step): StepSchedule {
   return stepScheduleOf(step, step.scheduled?.basis ?? null)
 }
 
+/**
+ * The day the plan gives a step is an estimate: the step is a person's review
+ * (`manualReview`) or a Direction step's questions (`directionQuestions`), and
+ * nothing in the tenant settles when either is done. The board's When column
+ * says so ("Est. {date}", pages.plan.when.estimate; ui/surfaces/planBoard.ts
+ * boardWhenOf), and the opened step's rail says it in the same words
+ * (ui/surfaces/stepContract.ts railOf).
+ */
+export function estimatedDay(step: Pick<Step, 'manualReview' | 'directionQuestions'>): boolean {
+  return Boolean(step.manualReview || step.directionQuestions)
+}
+
 /** A step's one dated event, as an export books it: what the day is for, and the days it spans. */
 export type ScheduledEvent = { transition: ScheduledTransition; start: string; end: string }
 

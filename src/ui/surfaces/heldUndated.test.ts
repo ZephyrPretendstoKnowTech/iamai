@@ -25,6 +25,7 @@ import type { Step } from '../../roadmap/types.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { schedulingWords } from '../../content/content.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
+import { fillText } from '../../content/render.ts'
 import { boardHolds, boardReadingsOf, boardWhenOf, laneViewFor, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from './planBoard.ts'
 import { phaseRows, planPhases, undatedRows } from './planRows.ts'
 import { stepBodyOf } from './stepBody.ts'
@@ -81,10 +82,11 @@ test('a step the board holds carries no date on any surface, and every step it d
       const body = stepBodyOf(step, ctxOf(step), { lane, blockers: readinessBlockersOf(board.readings.get(step.id), board.titleOf), prerequisiteLabel: prerequisiteLabelFor(board.readings) })
       const booked = ics.includes(`UID:plan-held-${step.id}@iamai`)
       if (!isHeld(step)) {
-        // Unheld work keeps its day exactly: the calendar books what the schedule dates, and the rail reads that day.
+        // Unheld work keeps its day exactly: the calendar books what the schedule dates, and the rail reads that day
+        // (as an estimate where the board reads it as one: the test below).
         const s = step.scheduled
         if (scheduledEventOf(step) !== null) { kept++; assert.ok(booked, `${where}: an unheld step lost its calendar entry`) }
-        if (s && (s.class === 'scheduled' || s.class === 'observing') && s.at !== null && lane.lane !== 'Completed') assert.equal(body.rail.metric, absoluteDate(s.at), `${where}: an unheld step lost its rail date`)
+        if (s && (s.class === 'scheduled' || s.class === 'observing') && s.at !== null && lane.lane !== 'Completed') assert.ok([absoluteDate(s.at), fillText(schedulingWords.estimate, { date: absoluteDate(s.at) })].includes(body.rail.metric), `${where}: an unheld step lost its rail date: ${body.rail.metric}`)
         continue
       }
       held++
@@ -118,4 +120,33 @@ test('a step the board holds carries no date on any surface, and every step it d
     }
   }
   assert.ok(held > 0 && heldScheduled > 0 && kept > 0, `the premise: held ${held}, held with a scheduled day ${heldScheduled}, unheld and booked ${kept}`)
+})
+
+// R4-34 (Marcus D7): "the milestone date recedes as you make progress, and is
+// never labelled". With held steps undated (above), the days left on the rail
+// are unheld work's. The board already marks the ones that are estimates — a
+// person's review, a Direction step's questions: nothing in the tenant settles
+// when either is done — "Est. Aug 31, 2026" (roadmap/stepSchedule.ts
+// estimatedDay). The opened step's rail read the same day bare, as a deadline,
+// under that row. It now says it in the same words.
+test('where the board reads a day as an estimate, the opened step\'s rail says Est. too', () => {
+  const EST = schedulingWords.estimate.split('{')[0]
+  let estimates = 0
+  for (const [name, make] of [...CASES, ['demo-week2', () => fixture('demo-week2')]] as [string, () => Fixture][]) {
+    const f = make()
+    const r = runFixture(f, {}, null, f.snapshot.asOf)
+    const board = boardReadingsOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
+    const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot)
+    for (const step of r.steps) {
+      const lane = laneViewFor(step, board)
+      const when = boardWhenOf(step, waveStartOf(step), lane)
+      if (!when.startsWith(EST)) continue
+      const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: step.reportOnlyAt ?? null, scheduledOn: waveStartOf(step), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
+      const body = stepBodyOf(step, ctx, { lane, blockers: readinessBlockersOf(board.readings.get(step.id), board.titleOf), prerequisiteLabel: prerequisiteLabelFor(board.readings) })
+      if (!DATE.test(body.rail.metric)) continue
+      estimates++
+      assert.equal(body.rail.metric, when, `${name}/${step.id}: the rail reads ${body.rail.metric} under a row reading ${when}`)
+    }
+  }
+  assert.ok(estimates > 0, 'the premise: a dated row the board reads as an estimate')
 })
