@@ -78,6 +78,7 @@ type Words = {
   checks: Record<string, Record<string, string>>
   rail: { shownAbove: string }
   evidence: { unreadMethods: string; unreadMethodsRefused: string }
+  footer: { counted: string }
   counted: Record<Explained | Kind | 'dormantLink', string>
   admin: string
   guest: string
@@ -179,6 +180,16 @@ export function summaryLine(counted: readonly ReadinessRow[], reads: { needP1: b
   if (counted.every((r) => r.state === 'unknown')) return fillText(T.summaryNotJudged, { cohort })
   const ready = counted.filter((r) => r.state === 'ready' || r.state === 'seamless').length
   return fillText(T.summary, { ready, cohort })
+}
+
+/**
+ * The footer's counted line. Empty where nobody is counted because nobody's
+ * activity was read (no Entra ID P1, or activity not read): "the 0 people who
+ * signed in" would be a measured zero the headline has just said was never taken.
+ */
+export function countedLine(counted: readonly ReadinessRow[], reads: { needP1: boolean; activityUnread: number }): string {
+  if (counted.length === 0 && (reads.needP1 || reads.activityUnread > 0)) return ''
+  return fillText(T.footer.counted, { cohort: cohortWords(counted.length, counted.filter((r) => r.guest).length) })
 }
 
 /** A device's name with its version where the record gave one: Windows 10, iOS 17; otherwise the family's word. */

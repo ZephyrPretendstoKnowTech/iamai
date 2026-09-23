@@ -42,7 +42,7 @@ import { app, pages, shared } from '../../content/content.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { fillText } from '../../content/render.ts'
 import { monthDay } from '../../copy/dates.ts'
-import { checkWords, deviceChips, listWords, methodsCell, needsActionWords, nextCell, noDevicesWord, osWord, panelDevices, panelMethods, rowCells, rowNote, searchText, signInsUnavailableFor, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine, railRemaining, panelNoDevices, panelNoMethods, summaryLine, unreadMethodsWords } from './readinessCells.ts'
+import { checkWords, deviceChips, listWords, methodsCell, needsActionWords, nextCell, noDevicesWord, osWord, panelDevices, panelMethods, rowCells, rowNote, searchText, signInsUnavailableFor, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine, railRemaining, panelNoDevices, panelNoMethods, summaryLine, unreadMethodsWords, countedLine } from './readinessCells.ts'
 import type { PanelItem } from './readinessCells.ts'
 import { READINESS_CSV } from './inventoryTables.ts'
 import { useAppliedMapping, usePlanData } from './planData.ts'
@@ -250,9 +250,9 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
   const counted = view.rows.filter((r) => r.state !== null && inScope(r))
   const counts = Object.fromEntries(READINESS_STATES.map((s) => [s, counted.filter((r) => r.state === s).length])) as Record<ReadinessState, number>
   // Scoped to the Plan step's people where the page was opened from one. Guests
-  // are counted with everyone else and named beside the people (owner, 2026-09-19).
+  // are counted with everyone else and named beside the people (owner, 2026-09-19;
+  // summaryLine and countedLine name them).
   const active = counted.length
-  const cohort = cohortWords(active, counted.filter((r) => r.guest).length)
   // The one proof-read check Connect and the Plan's gate make (scoring/fromSnapshot.ts): records read AND carrying
   // proof. A scan that holds no proof, or nobody could be judged in, is unmeasured, never "0 of N" (summaryLine).
   // Without Entra ID P1 there are no sign-in records to read: said here, once, not on every row (owner item 4).
@@ -260,6 +260,8 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
   // the scan never took: Graph withholds signInActivity without P1, so nobody
   // could be placed inside or outside the window (V1 audit S4-21).
   const summary = summaryLine(counted, { needP1: signInsNeedP1(snapshot), proofRead: signInProofRead(snapshot) })
+  // The footer's counted line, which says nothing where nobody's activity was read.
+  const footerCounted = countedLine(counted, { needP1: signInsNeedP1(snapshot), activityUnread: view.explained.unread })
   const goal = goalLine(counted)
   // The computers the tenant signs in from choose the words that name a built-in option: no Windows Hello for a Mac-only tenant.
   const seen = computersSeen(view.rows)
@@ -712,7 +714,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
       </div>
 
       <div className="footer-note">
-        <span>{fillText(T.footer.counted, { cohort })}</span>
+        {footerCounted && <span>{footerCounted}</span>}
         <span>{T.footer.plan}</span>
         <a href="#/inventory">{T.inventory}</a>
       </div>
