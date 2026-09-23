@@ -61,6 +61,7 @@ export async function collectSignInEvidence(
     clock: () => performance.now(),
     fetchPage: (url) => graphRequest(ctx.tokens, url, { ...SIGN_IN_READ, signal: ctx.signal, wait: ctx.wait }),
     store,
+    tenantId: opts.tenantId,
     signal: ctx.signal,
     onPage: opts.onPage,
     onSlow: opts.onSlow,

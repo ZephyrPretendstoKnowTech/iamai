@@ -26,7 +26,8 @@ export const SIGN_IN_REANCHOR_MAX = 3
  * are read (Step 4), and they sign in a few times a month; without a cap, a
  * tenant where everyone signs in with a passkey would carry one per sign-in
  * into the snapshot. The newest that can be a recovery test is kept beside
- * them when it is older (laneBCore.ts aggregateFold).
+ * them when it is older, one per resource tenant where the tenant read is not
+ * known (laneBCore.ts aggregateFold, whyNotRecoveryTest).
  */
 export const RECOVERY_CANDIDATES_PER_PERSON = 20
 export const SLOW_THRESHOLD_MS = 15_000
