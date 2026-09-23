@@ -1326,8 +1326,10 @@
           "seen": "Windows Hello for Business is working here: people sign in with it",
           "notSeen": "Windows Hello for Business isn’t seen working yet. Confirm it’s turned on in Intune: Devices, Enrollment, Windows Hello for Business.",
           "noJoined": "No joined Windows computers seen, so Windows Hello for Business doesn’t apply yet",
-          "$commentUnread": "The device directory wasn't read, or it holds joined Windows computers and no sign-in record was read. The check was filed as done under noJoined there, over a read that failed.",
-          "unread": "Whether Windows Hello for Business works here isn’t known: this scan couldn’t read the computers people sign in from"
+          "$commentUnread": "The device directory wasn't read in full, so an absent joined computer settles nothing. The check was filed as done under noJoined there, over a read that failed.",
+          "unread": "Whether Windows Hello for Business works here isn’t known: this scan couldn’t read the device directory in full",
+          "$commentSignInsUnread": "The device directory was read and holds joined Windows computers, but no sign-in record was read, so nobody could be seen signing in with Windows Hello. It shared unread's words, which read as if the directory had failed.",
+          "signInsUnread": "Whether Windows Hello for Business works here isn’t known: no sign-in records were read"
         },
         "tap": {
           "pass": "Temporary Access Pass is enabled",
