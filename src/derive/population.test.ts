@@ -254,6 +254,26 @@ test('turning a policy on does not move its reach, and "Who it misses" counts on
   assert.match(populationLine(reached(step)!), /covers 280 enabled/, 'and the tile reads the same reach')
 })
 
+// A tenant policy on mid that delivers its goal, excluding one more group: one
+// the scan read only a sample of (over the member cap), or one it read in full.
+// Read in full the group holds the emergency accounts and nobody else, so the
+// policy's reach is exactly what it was without it.
+function deliveredWithGroup(policyName: string, stepId: string, sampled: boolean) {
+  const GROUP = '7e5b6c1a-0000-4000-8000-00000000c0de'
+  const f = structuredClone(withFoundationSettled(fixture('mid')))
+  const policy = f.snapshot.config.caPolicies.rows.find((p) => (p as { displayName?: string }).displayName === policyName) as { conditions: { users: { excludeGroups?: string[] } } } | undefined
+  assert.ok(policy, `the premise: mid has "${policyName}"`)
+  policy.conditions.users.excludeGroups = [...(policy.conditions.users.excludeGroups ?? []), GROUP]
+  const members = [...f.mapping.breakGlassUserIds]
+  f.groups.set(GROUP, { memberIds: members, directMemberIds: members, memberCount: sampled ? 30_000 : members.length, sampled, displayName: 'Contractors' } as never)
+  const r = runFixture(f)
+  const step = r.steps.find((s) => s.id === stepId)!
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+  const body = stepBodyOf(step, ctx)
+  const tiles = [...body.readiness.tiles, ...body.readiness.satisfied]
+  return { f, step, ctx, body, tiles, people: tiles.find((t) => t.key === 'people'), found: body.contract.found, row: rowWho(step), exported: stepExportView(step, ctx).population }
+}
+
 // R4-30's residual (population Q1). On mid the tenant's own "Core - Grant - MFA
 // for all users" delivers the goal, and it also excludes a group the scan could
 // not read in full (over the member cap, so only a sample of its members came
@@ -267,26 +287,7 @@ test('turning a policy on does not move its reach, and "Who it misses" counts on
 // an open policy's does, and nothing on the step counts people it did not
 // measure.
 test('a delivered step whose delivering policy\'s scope cannot be settled says its reach is not established, and counts nobody', () => {
-  const STEP = 's-goal-mfa-all-users'
-  const POLICY = 'Core - Grant - MFA for all users'
-  const GROUP = '7e5b6c1a-0000-4000-8000-00000000c0de'
-  const base = withFoundationSettled(fixture('mid'))
-  const scan = (sampled: boolean) => {
-    const f = structuredClone(base)
-    const policy = f.snapshot.config.caPolicies.rows.find((p) => (p as { displayName?: string }).displayName === POLICY) as { conditions: { users: { excludeGroups?: string[] } } } | undefined
-    assert.ok(policy, 'the premise: mid has an all-users MFA policy')
-    policy.conditions.users.excludeGroups = [...(policy.conditions.users.excludeGroups ?? []), GROUP]
-    // Read in full it holds the emergency accounts and nobody else, so the
-    // policy's reach is exactly what it was without it.
-    const members = [...f.mapping.breakGlassUserIds]
-    f.groups.set(GROUP, { memberIds: members, directMemberIds: members, memberCount: sampled ? 30_000 : members.length, sampled, displayName: 'Contractors' } as never)
-    const r = runFixture(f)
-    const step = r.steps.find((s) => s.id === STEP)!
-    const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
-    const body = stepBodyOf(step, ctx)
-    const tiles = [...body.readiness.tiles, ...body.readiness.satisfied]
-    return { step, tiles, people: tiles.find((t) => t.key === 'people'), found: body.contract.found, row: rowWho(step), exported: stepExportView(step, ctx).population }
-  }
+  const scan = (sampled: boolean) => deliveredWithGroup('Core - Grant - MFA for all users', 's-goal-mfa-all-users', sampled)
 
   const unread = scan(true)
   assert.equal(unread.step.status, 'done', 'the premise: the tenant\'s policy delivers the goal')
@@ -302,6 +303,31 @@ test('a delivered step whose delivering policy\'s scope cannot be settled says i
   const read = scan(false)
   assert.equal(read.step.state.satisfied, true, 'the premise: still delivered')
   assert.match(read.people?.value ?? '', /covers 283 enabled/, `the policy's own reach once its scope is settled: ${JSON.stringify(read.people)}`)
+})
+
+// The card above is a statement of fact, not work. It is unresolved, so it
+// stood among the Readiness tiles, and implementationEmptyOf counted every
+// unresolved tile on a delivered step as work still to clear: "Block Legacy
+// Authentication", Completed, turned from "No implementation needed" into
+// "Waiting on Readiness / Clear what Readiness lists first." — a new
+// instruction on a finished step, and one nobody can carry out. IAMAI never
+// reads an over-cap group in full, and the only lever an administrator has is
+// the policy's exclusion, which here holds the emergency accounts. The
+// all-users MFA step above did not show it: its method readiness already reads
+// "Not measured" in the same state, and that tile is open Readiness of its own.
+test('a delivered step whose reach is not established is not handed Readiness work to clear', () => {
+  const unread = deliveredWithGroup('Core - Block - Legacy authentication', 's-goal-block-legacy-auth', true)
+  assert.equal(unread.step.status, 'done', 'the premise: the tenant\'s policy delivers the goal')
+  assert.equal(unread.step.state.satisfied, true, 'the premise: delivered')
+  assert.equal(unread.people?.value, CONTRACT.readiness.tiles.peopleUnknown, `the premise: the reach is not established: ${JSON.stringify(unread.people)}`)
+  assert.deepEqual(unread.body.readiness.tiles.map((t) => t.key), ['people'], 'the premise: the reach is the only thing Readiness lists')
+  assert.equal(unread.body.empty.key, 'inPlace', `a Completed step is told to clear what nobody can clear: ${JSON.stringify(unread.body.empty)}`)
+  assert.equal(unread.body.empty.title, CONTRACT.implementation.empty.inPlace[0])
+
+  // The same step with the group read says the same: nothing to implement.
+  const read = deliveredWithGroup('Core - Block - Legacy authentication', 's-goal-block-legacy-auth', false)
+  assert.equal(read.step.status, 'done', 'the premise: still delivered')
+  assert.equal(read.body.empty.key, 'inPlace')
 })
 
 // One number format (copy/statements.ts figure). The thousands separator was
