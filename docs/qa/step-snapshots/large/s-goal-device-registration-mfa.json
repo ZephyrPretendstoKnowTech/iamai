@@ -1,11 +1,11 @@
 {
-  "lane": "Up Next",
+  "lane": "On Hold",
   "substatus": null,
-  "reason": "when MFA readiness reaches 90% (now 73%)",
+  "reason": "Baseline references an unmapped group",
   "fact": null,
-  "badge": "Up Next",
-  "bar": "After Configure Passkey Authentication",
-  "rail": "Est. Aug 31, 2026",
+  "badge": "On Hold",
+  "bar": "Baseline references an unmapped group",
+  "rail": "After prerequisites",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -15,11 +15,19 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "73% MFA-ready"
+      "state": "14% ready for Modern MFA + TAP"
+    },
+    {
+      "label": "Baseline mapping",
+      "state": "Baseline references an unmapped group"
     },
     {
       "label": "Configure Passkey Authentication",
       "state": "Prerequisite · To do"
+    },
+    {
+      "label": "Exclusions",
+      "state": "Not met"
     },
     {
       "label": "Enrollment workflows",
@@ -32,5 +40,5 @@
     "JSON",
     "AI Info"
   ],
-  "when": "Est. Aug 31, 2026"
+  "when": "After prerequisites"
 }

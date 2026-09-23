@@ -762,10 +762,12 @@ try {
   // foundation (owner, 2026-09-19) is Up Next or On Hold, not Ready.
   for (const lane of LANES) {
     await showLane(lane)
-    const found = await evaluate(`(async () => { const wait=(ms)=>new Promise(r=>setTimeout(r,ms)); for (const r of [...document.querySelectorAll('main.page .plan-row')]) { r.click(); await wait(140); if (document.querySelector('main.page a[href^="#/readiness/step/"]')) return true; r.click(); await wait(40); } return false })()`)
+    // A step that counts its people. A step whose requirement this scan cannot
+    // read yet (a strength the tenant has not made) links too, and says so.
+    const found = await evaluate(`(async () => { const wait=(ms)=>new Promise(r=>setTimeout(r,ms)); const counts = () => [...document.querySelectorAll('main.page a[href^="#/readiness/step/"]')].some((a) => /not yet confirmed ready for this sign-in requirement/.test((a.closest('p') || a).textContent)); for (const r of [...document.querySelectorAll('main.page .plan-row')]) { r.click(); await wait(140); if (counts()) return true; r.click(); await wait(40); } return false })()`)
     if (found) break
   }
-  const handoff = await evaluate(`(() => { const a = document.querySelector('main.page a[href^="#/readiness/step/"]'); if (!a) return null; const line = a.closest('p'); return { href: a.getAttribute('href'), text: (line ? line.textContent : a.textContent).replace(/\\s+/g, ' ').trim() } })()`)
+  const handoff = await evaluate(`(() => { const links = [...document.querySelectorAll('main.page a[href^="#/readiness/step/"]')]; const a = links.find((x) => /not yet confirmed ready for this sign-in requirement/.test((x.closest('p') || x).textContent)) || links[0]; if (!a) return null; const line = a.closest('p'); return { href: a.getAttribute('href'), text: (line ? line.textContent : a.textContent).replace(/\\s+/g, ' ').trim() } })()`)
   check('Plan: a step held on its own sign-in requirement links to MFA Readiness', !!handoff && /not yet confirmed ready for this sign-in requirement/.test(handoff.text), handoff && handoff.text)
   if (handoff) {
     const wanted = Number((handoff.text.match(/^(\d+)/) ?? [])[1] ?? NaN)

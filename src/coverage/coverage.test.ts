@@ -3,6 +3,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { CATALOGUE, computeCoverage } from './coverage.ts'
+import { PINNED_GOAL_MAP } from '../roadmap/goalMap.ts'
+import { PINNED } from '../baseline/pinned.ts'
 import type { CoverageInput } from './coverage.ts'
 import { buildStrengthLookup } from './strength.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
@@ -425,6 +427,11 @@ test('a goal\'s own template, switched on where the baseline holds no policy for
   // already had, a correction that could never finish the step. Where no
   // baseline policy stands for the goal, its template is the reference
   // (coverage.ts), and a policy equal to the reference is never narrower.
+  //
+  // A goal the pinned map holds is written from the pinned policy wherever the
+  // package lacks one (q-pin), so the template is the reference only for a goal
+  // the map does not hold: here, a map that holds none. Under the pinned map the
+  // same is true of the pinned policies, below.
   const on = { enabled: true, seats: 10, consumed: 0 }
   const snapshot = mkSnapshot({ capabilities: { entraP1: on, entraP2: on, intune: on, workloadIdPremium: on, globalSecureAccess: on, defenderForCloudApps: on, purviewInsiderRisk: on, pim: on } })
   const judged: string[] = []
@@ -433,11 +440,25 @@ test('a goal\'s own template, switched on where the baseline holds no policy for
     const impl = g.implementations[0]
     if (impl?.kind !== 'ca') continue
     const tenant = { ...structuredClone(impl.template), id: `tenant-${g.id}`, state: 'enabled' }
-    const own = goal(run([tenant], { snapshot }), g.id).candidates.find((c) => c.policyId === tenant.id)
+    const own = goal(run([tenant], { snapshot, goalMap: {} }), g.id).candidates.find((c) => c.policyId === tenant.id)
     if (!own) continue
     judged.push(g.id)
     if (own.caveats.includes('apps-narrower')) narrower.push(g.id)
   }
   assert.ok(judged.includes('token-protection') && judged.includes('require-managed-device'), `the goals the defect was found on were not judged: ${judged.join(', ')}`)
   assert.deepEqual(narrower, [], 'a policy exactly as the goal\'s own template writes it reads as covering fewer applications than the goal')
+  const pinnedJudged: string[] = []
+  const pinnedNarrower: string[] = []
+  for (const [goalId, keys] of Object.entries(PINNED_GOAL_MAP)) {
+    if (keys.length !== 1) continue
+    const source = PINNED.policies.find((p) => (p.id ?? p.displayName) === keys[0])
+    if (!source) continue
+    const tenant = { ...structuredClone(source), id: `tenant-${goalId}`, state: 'enabled' } as unknown as P
+    const own = goal(run([tenant], { snapshot }), goalId).candidates.find((c) => c.policyId === tenant.id)
+    if (!own) continue
+    pinnedJudged.push(goalId)
+    if (own.caveats.includes('apps-narrower')) pinnedNarrower.push(goalId)
+  }
+  assert.ok(pinnedJudged.includes('token-protection'), `the pinned token-protection policy was not judged: ${pinnedJudged.join(', ')}`)
+  assert.deepEqual(pinnedNarrower, [], 'a policy exactly as the pinned policy writes it reads as covering fewer applications than the goal')
 })

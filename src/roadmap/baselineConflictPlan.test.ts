@@ -92,6 +92,28 @@ function withMatchingTenantPolicy(): Fixture {
   return f
 }
 
+/** The name of the admin-portal policy a custom package carries of its own. */
+const OWN_ADMIN_PORTAL_POLICY = 'Custom - Require MFA - Admin portals'
+
+/**
+ * The same fixture on a package that carries an admin-portal policy of its own,
+ * under its own id: a custom baseline that holds the goal without the policy the
+ * review read. Its users are the package's own, so its exclusion is the one the
+ * package already reads.
+ */
+function withOwnAdminPortalPolicy(f: Fixture): Fixture {
+  const first = f.baseline.policies[0] as unknown as { conditions: { users: unknown }; placeholders?: Record<string, string> }
+  const own = {
+    id: '0000a110-0000-4000-8000-000000000001',
+    displayName: OWN_ADMIN_PORTAL_POLICY,
+    state: 'enabled',
+    placeholders: first.placeholders,
+    conditions: { users: first.conditions.users, applications: { includeApplications: ['MicrosoftAdminPortals'] }, clientAppTypes: ['all'] },
+    grantControls: { operator: 'OR', builtInControls: ['mfa'] },
+  }
+  return { ...f, baseline: { ...f.baseline, policies: [...f.baseline.policies, own] as typeof f.baseline.policies } }
+}
+
 /** A role that is not Global Administrator: sparing one role is not sparing the administrators. */
 const PRIVILEGED_AUTH_ROLE = '7be44c8a-adaf-4e2a-84d6-ab2649e08a13'
 /** A group and an account a revising author might name. Neither says anything about admin roles. */
@@ -373,16 +395,17 @@ test('the collapsed row reads the baseline conflict and no rollout date', () => 
 
 test('a tenant planning against a package without the reviewed source plans the goal normally', () => {
   // These fixtures stand in for a custom baseline: the same pinned goal map,
-  // planned against a package that does not carry the policy the review read.
-  // There is no source there to define the goal twice, so there is nothing to
-  // report about it — the goal is planned from its own template like any other,
-  // and what holds it is the tenant's own readiness, said in the tenant's words.
+  // planned against a package that does not carry the policy the review read and
+  // carries an admin-portal policy of its own. There is no source there to define
+  // the goal twice, so there is nothing to report about it — the goal is planned
+  // from the package's own policy like any other, and what holds it is the
+  // tenant's own readiness, said in the tenant's words.
   // Asked for by name. Every fixture but the demo is built on the synthetic
   // baseline (fixtures/index.ts buildFixture), so today this states the premise
   // this test needs rather than changing it, and the premise stays put if those
   // fixtures are ever moved to the pin.
   for (const name of ['small', 'hostile'] as const) {
-    const f = withSyntheticBaseline(fixture(name))
+    const f = withOwnAdminPortalPolicy(withSyntheticBaseline(fixture(name)))
     assert.equal(
       f.baseline.policies.some((p) => String((p as { id?: unknown }).id ?? '').toLowerCase() === SOURCE),
       false,
@@ -393,10 +416,28 @@ test('a tenant planning against a package without the reviewed source plans the 
     const step = r.steps.find((s) => s.goalId === GOAL)
     assert.ok(step, `${name}: the goal is still planned`)
     const s = step as Step
+    assert.equal(s.action.resolution?.policies[0]?.sourceName, OWN_ADMIN_PORTAL_POLICY, `${name}: the goal is planned from the package's own policy`)
     assert.equal(typeof s.action.json, 'string', `${name}: no policy body was written for a goal nothing contradicts`)
     assert.notEqual(s.state.lifecycle, null, `${name}: the step lost its rollout stage`)
     assert.notEqual(s.blockedReason, BLOCKED_REASON.baseline, `${name}: the row blamed a baseline that says nothing about this goal`)
     assert.equal(baselineConflictWords(s), null, `${name}: the step carries a contradiction its own source does not have`)
+  }
+})
+
+test('a package with no policy of its own for the goal is planned from the reviewed source, and so carries its contradiction', () => {
+  // The pinned baseline wins (q-pin): a goal the pinned map holds that the
+  // package carries no policy for is written from the pinned policy, never from
+  // the goal's own template. The contradiction belongs to that source, so it
+  // comes with it — never from the map alone: the step names the source it is
+  // planned from as the one the review read.
+  for (const name of ['small', 'hostile'] as const) {
+    const r = runFixture(withSyntheticBaseline(fixture(name)))
+    const step = r.steps.find((s) => s.goalId === GOAL)
+    assert.ok(step, `${name}: the goal is planned`)
+    assert.equal(inBaselineConflict(step), true, `${name}: a goal written from the reviewed source planned as though nothing contradicts it`)
+    assert.equal(step.state.conflictSource, SOURCE)
+    assert.equal(step.action.json, null, `${name}: a body was written from a source that defines the goal two ways`)
+    assert.notEqual(baselineConflictWords(step), null)
   }
 })
 

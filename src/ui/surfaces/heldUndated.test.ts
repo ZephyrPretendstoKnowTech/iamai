@@ -501,12 +501,15 @@ test('a device line names no MFA day where Require MFA for Everyone has none, an
 // (a turn-on day is caught by the Up Next rule too), so it is forged: a create
 // sequenced on Up Next behind two waits, read On Hold, not Observing.
 test('an On Hold row, not Observing, carries no day whatever waits the roadmap records on the step itself', () => {
-  const f = fixture('mid')
+  // small's administrators step: mid's admin-portal create was this row until the
+  // step was written from the pinned policy (q-pin), whose source contradicts
+  // itself, so that step holds on the baseline instead.
+  const f = fixture('small')
   const r = runFixture(f, {}, null, f.snapshot.asOf)
   const board = boardReadingsOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
-  const step = r.steps.find((s) => s.id === 's-goal-admin-portals-protected')!
+  const step = r.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!
   const read = laneViewFor(step, board)
-  const where = `mid/${step.id}`
+  const where = `small/${step.id}`
   // The premise: a create with a day, sequenced behind waits the roadmap records on it, and not held on the board.
   assert.ok(step.blockedBy.length > 0, `${where}: the premise, the roadmap records a wait on it`)
   assert.equal(scheduleOf(step).transition, 'createReportOnly', `${where}: the premise, its day is a create, not a turn-on`)
