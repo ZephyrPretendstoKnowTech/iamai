@@ -26,7 +26,7 @@ import { announcementDraft, groundingBundle } from '../../roadmap/prompts.ts'
 import { scheduleOf, scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { absoluteDate } from '../../copy/dates.ts'
-import { engine, schedulingWords, stepById } from '../../content/content.ts'
+import { engine, schedulingWords, shared, stepById } from '../../content/content.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { fillText, listCountVars } from '../../content/render.ts'
 import { BOARD, boardHolds, boardReadingsOf, boardWhenOf, laneViewFor, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from './planBoard.ts'
@@ -375,12 +375,17 @@ test('the Plan, the Export page and the step snapshots read the plan-wide dates 
 // report-only" on Aug 31 with no mark - a day that moves with a person's review
 // or a Direction answer, stated as a deadline. Every surface that prints such a
 // day now prints it as the board does (roadmap/stepSchedule.ts shownDay).
-test('a day the board reads as an estimate is never printed bare: the lead, the Next line, the Dates line and the calendar', () => {
+//
+// "Est." is a column label, and it read badly inside a sentence: "Create the
+// policy in report-only on Est. Aug 31, 2026; …", "Report-only from Est. Aug 31,
+// 2026 · …". A label keeps it (the When cell, the rail, the observation tile,
+// the calendar's SUMMARY); a sentence says the same day in a sentence's words
+// (shared.dates.estimatedInSentence), from the same formatter.
+test('a day the board reads as an estimate is never printed bare: a sentence says it in its own words, the calendar\'s summary as the row does', () => {
   const EST = schedulingWords.estimate.split('{')[0]
-  /** True where `day` appears in `text` without the estimate words in front of it. */
-  const bare = (text: string, day: string): boolean => text.split(day).slice(0, -1).some((before) => !before.endsWith(EST))
   let estimates = 0
   let booked = 0
+  let sentences = 0
   for (const [name, make] of [...CASES, ['demo-week2, Direction approved', () => withDirectionApproved(curatedFixture('demo-week2'))]] as [string, () => Fixture][]) {
     const f = make()
     const r = runFixture(f, {}, null, f.snapshot.asOf)
@@ -399,8 +404,15 @@ test('a day the board reads as an estimate is never printed bare: the lead, the 
       const where = `${name}/${step.id}`
       const body = stepBodyOf(step, ctxOf(step), { lane, blockers: readinessBlockersOf(board.readings.get(step.id), board.titleOf), prerequisiteLabel: prerequisiteLabelFor(board.readings) })
       const v = view(step)
-      for (const [what, text] of [['lead', body.contract.milestone.label], ['Next line', body.contract.milestone.line], ['What to do', body.contract.whatToDo.text], ['Dates line', v.dates], ['export Next line', v.next]] as [string, string | null][]) {
-        if (text !== null) assert.equal(bare(text, day), false, `${where}: the ${what} reads ${day} bare under a row reading ${when}: "${text}"`)
+      const ex = body.ex as Record<string, unknown>
+      const who = ((contentStepFor(step) ?? {}) as { who?: Record<string, unknown> }).who
+      const whoLines = who ? whoEvidenceLines(who, ex).map((l): [string, string] => ['who-line', fillText(l, listCountVars(l, ex) as Record<string, unknown>)]) : []
+      for (const [what, text] of [['lead', body.contract.milestone.label], ['Next line', body.contract.milestone.line], ['What to do', body.contract.whatToDo.text], ['Dates line', v.dates], ['export Next line', v.next], ...whoLines] as [string, string | null][]) {
+        if (text === null || !text.includes(day)) continue
+        sentences++
+        assert.ok(!text.includes(when), `${where}: the ${what} reads the label "${when}" inside a sentence: "${text}"`)
+        const inSentence = fillText((shared as unknown as { dates: { estimatedInSentence: string } }).dates.estimatedInSentence, { date: day })
+        assert.ok(!text.split(inSentence).join('').includes(day), `${where}: the ${what} reads ${day} bare under a row reading ${when}: "${text}"`)
       }
       const entry = ics.split('BEGIN:VEVENT').find((e) => e.includes(`UID:plan-est-${step.id}@iamai`))
       if (entry === undefined) continue
@@ -409,7 +421,7 @@ test('a day the board reads as an estimate is never printed bare: the lead, the 
       assert.ok(summary.includes(fillText(schedulingWords.estimate, { date: absoluteDate(scheduledEventOf(step)!.start) }).replace(/,/g, '\\,')), `${where}: the calendar books an estimated day as a fixed one: ${summary}`)
     }
   }
-  assert.ok(estimates > 0 && booked > 0, `the premise: rows the board reads as an estimate (${estimates}), booked in the calendar (${booked})`)
+  assert.ok(estimates > 0 && booked > 0 && sentences > 0, `the premise: rows the board reads as an estimate (${estimates}), booked in the calendar (${booked}), with the day in a sentence (${sentences})`)
 })
 
 // The plan-wide MFA day (stepVars.ts mfaEnforce) fell back to the plan's first

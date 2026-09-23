@@ -1224,7 +1224,7 @@ function actionOf(step: Step, reason: UnavailableReason | null, milestone: Contr
  */
 function milestoneSentence(m: Pick<ContractMilestone, 'kind' | 'label' | 'at'>, estimate: boolean): string {
   if (m.kind !== 'observe') return m.label
-  return m.at ? fillText(MILESTONE.observeUntil, { date: shownDay(m.at, estimate) }) : MILESTONE.observe
+  return m.at ? fillText(MILESTONE.observeUntil, { date: shownDay(m.at, estimate, 'sentence') }) : MILESTONE.observe
 }
 
 /** The reasons that leave no policy IAMAI can write, so no end state to state. */
@@ -1393,7 +1393,7 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
   const carriesDate = m.at !== null && sentence.includes(absoluteDate(m.at))
   const milestone: ContractMilestone = {
     ...bare,
-    line: m.at === null || whatToDo.text === sentence ? null : carriesDate ? fillText(CONTRACT.next, { label: sentence }) : fillText(CONTRACT.nextOn, { label: sentence, date: shownDay(m.at, estimatedDay(step)) }),
+    line: m.at === null || whatToDo.text === sentence ? null : carriesDate ? fillText(CONTRACT.next, { label: sentence }) : fillText(CONTRACT.nextOn, { label: sentence, date: shownDay(m.at, estimatedDay(step), 'sentence') }),
   }
   const fix = fixOf(step, cs, ex, exclusionsUnconfirmed)
   const members = membersOf(step)
@@ -2154,7 +2154,7 @@ function stateTile(step: Step, c: StepContract, setupAfterEnforcement = false): 
   // and a tenant where four hundred people had been stopped said the same.
   if (c.milestone.kind === 'observe') {
     const why = c.milestone.at ? notes.observationDateNote : (step.evidence.lines[0] ?? notes.observationNote)
-    return { key: 'observation', label: t.observation, tone: 'wait', value: c.milestone.at ? fillText(t.observationUntil, { date: shownDay(c.milestone.at, c.estimate) }) : s.stage, note: why }
+    return { key: 'observation', label: t.observation, tone: 'wait', value: c.milestone.at ? fillText(t.observationUntil, { date: shownDay(c.milestone.at, c.estimate, 'label') }) : s.stage, note: why }
   }
   return null
 }
@@ -2673,7 +2673,7 @@ export function railOf(c: StepContract, actionText: string | null = null): { met
   // in the When column's own words: the rail read a bare "Aug 31, 2026" under a
   // row reading "Est. Aug 31, 2026", and a day that moves with the work it waits
   // on read as a deadline (R4-34).
-  const day = (at: string): string => shownDay(at, c.estimate)
+  const day = (at: string): string => shownDay(at, c.estimate, 'label')
   const s = c.schedule ?? null
   if (s !== null && (s.class === 'scheduled' || s.class === 'observing') && s.at !== null) return { metric: day(s.at), sub }
   if (m.at !== null) return { metric: day(m.at), sub }

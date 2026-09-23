@@ -126,7 +126,7 @@ test('Step 5: a held step still handing over its report-only create says to crea
   const regDay = reg.scheduled && scheduleOf(reg).class === 'scheduled' ? scheduleOf(reg).at : null
   const gate = { measure: reg.action.readinessGate!.measure, threshold: reg.action.readinessGate!.threshold }
   // The day as the board's row reads it: an estimate where the step's day is one (R4-34).
-  assert.equal(stepContract(reg, g.ctx(reg)).whatToDo.text, regDay ? fillText(engine.milestone.prepareScheduled, { ...gate, date: shownDay(regDay, estimatedDay(reg)) }) : fillText(engine.milestone.prepareHeld, gate))
+  assert.equal(stepContract(reg, g.ctx(reg)).whatToDo.text, regDay ? fillText(engine.milestone.prepareScheduled, { ...gate, date: shownDay(regDay, estimatedDay(reg), 'sentence') }) : fillText(engine.milestone.prepareHeld, gate))
 })
 
 // ---- 2. Impact is who the step reaches ----

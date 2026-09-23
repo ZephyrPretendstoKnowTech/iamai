@@ -30,6 +30,10 @@
       "sentence": "On your phone, {phones}; on your computer, {computers}.",
       "sentencePhones": "On your phone, {phones}."
     },
+    "dates": {
+      "$commentEstimatedInSentence": "A day the plan gives a step that is an estimate (a person's review, a Direction step's questions: roadmap/stepSchedule.ts estimatedDay), where it sits inside a sentence: the lead, the Next line, the Dates line, a who-line. The board's label, pages.plan.when.estimate ('Est. {date}'), stays wherever a label is shown - the When cell, the rail, the observation tile, the calendar's summary; inside a sentence it read 'Create the policy in report-only on Est. Aug 31, 2026'. One formatter reads both (stepSchedule.ts shownDay).",
+      "estimatedInSentence": "{date} (estimated)"
+    },
     "scanControl": "Scan to update the plan",
     "doesntApplyControl": "Doesn't apply here",
     "doesntApplyPrompt": "Why does this not apply to {tenant}? One line; it goes on the plan.",
