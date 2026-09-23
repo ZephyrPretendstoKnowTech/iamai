@@ -559,8 +559,11 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   if (objectTaskLeads(step)) {
     const task = stepExportView(step.objectTask!, ctx).whatToDo
     const head = [action, gate].filter((l): l is string => l !== null && l.trim().length > 0)
-    const ordered = [...new Set([...head, ...task, ...lines])]
-    lines.splice(0, lines.length, ...ordered)
+    // Only the action and its gate are dropped where they repeat: the task's and
+    // the policy's own lines stay word for word, a repeated line included.
+    const rest = [...lines]
+    for (const h of head) { const at = rest.indexOf(h); if (at >= 0) rest.splice(at, 1) }
+    lines.splice(0, lines.length, ...head, ...task.filter((l) => !head.includes(l)), ...rest)
   }
   // The completion, from the contract, for every step. Nothing here implies the
   // policy can be rolled out while it cannot be written: where a reason holds
