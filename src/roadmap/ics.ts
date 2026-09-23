@@ -82,7 +82,7 @@ export function buildIcs(steps: Step[], tenantName: string, planId: string, view
     // reads it in (stepSchedule.ts shownDay): the calendar booked Protect Sign-in
     // Method Registration's report-only create on Aug 31 as a fixed day under a
     // row reading "Est. Aug 31, 2026" (R4-34).
-    const estimate = estimatedDay(s) ? shownDay(event.start, true) : null
+    const estimate = estimatedDay(s) ? shownDay(event.start, true, 'label') : null
     lines.push(fold(`SUMMARY:${escape([v.title, action, estimate].filter((x): x is string => typeof x === 'string' && x.length > 0).join(' · '))}`))
     // The calendar entry is the runbook: what the step says on screen, in the
     // order the screen states it (roadmap/artifactLines.ts). Where it is, what

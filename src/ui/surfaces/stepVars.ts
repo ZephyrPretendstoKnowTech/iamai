@@ -142,7 +142,7 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // them render nothing rather than the goal's people (Foundation A).
   const view = stepPopulation(step)
   const estimate = estimatedDay(step)
-  const planned = (iso: string | null | undefined): string | undefined => (iso ? shownDay(iso, estimate) : undefined)
+  const planned = (iso: string | null | undefined): string | undefined => (iso ? shownDay(iso, estimate, 'sentence') : undefined)
   const ev = step.events
   const enforce = ev?.enforce
   const announce = ev?.announce
@@ -173,7 +173,8 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     // A day the plan gives a step that is an estimate says so, as the board's
     // row does (roadmap/stepSchedule.ts shownDay): the Dates line read
     // "Report-only from Aug 31, 2026" under a row reading "Est. Aug 31, 2026"
-    // (R4-34). The long form is an email's, which already qualifies a day the
+    // (R4-34). These days sit inside sentences, so they take the sentence form,
+    // "Aug 31, 2026 (estimated)". The long form is an email's, which already qualifies a day the
     // plan projects (stepExport.ts commsFor), and a day the scan read is no estimate.
     enforce: planned(enforce?.at),
     enforceLong: long(enforce?.at),

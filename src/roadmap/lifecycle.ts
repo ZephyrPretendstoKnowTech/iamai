@@ -400,7 +400,7 @@ export function nextMilestone(step: Step, opts: { undated?: boolean } = {}): Mil
     const scheduled = step.scheduled ? scheduleOf(step) : null
     if (!undated && scheduled?.class === 'scheduled' && scheduled.transition === 'createReportOnly' && scheduled.at !== null) {
       // A day that is an estimate says so, as the board's row does (stepSchedule.ts shownDay).
-      const date = shownDay(scheduled.at, estimatedDay(step))
+      const date = shownDay(scheduled.at, estimatedDay(step), 'sentence')
       const label = gate ? fillText(MILESTONE.prepareScheduled, { date, measure: gate.measure, threshold: gate.threshold }) : fillText(MILESTONE.prepareScheduledOther, { date })
       return { kind: 'deploy', label, at: scheduled.at, gatedBy: null }
     }
@@ -447,8 +447,8 @@ export function nextMilestone(step: Step, opts: { undated?: boolean } = {}): Mil
     const label = !later
       ? MILESTONE.enforce
       : days > 0
-        ? fillText(MILESTONE.enforceScheduled, { date: shownDay(at, estimatedDay(step)), days: String(days) })
-        : fillText(MILESTONE.enforceScheduledOther, { date: shownDay(at, estimatedDay(step)) })
+        ? fillText(MILESTONE.enforceScheduled, { date: shownDay(at, estimatedDay(step), 'sentence'), days: String(days) })
+        : fillText(MILESTONE.enforceScheduledOther, { date: shownDay(at, estimatedDay(step), 'sentence') })
     return { kind: 'enforce', label, at, gatedBy: null }
   }
   if (s.lifecycle === 'report-only') {
@@ -463,7 +463,7 @@ export function nextMilestone(step: Step, opts: { undated?: boolean } = {}): Mil
     const closed = readyOn !== null && step.tracking?.noticedAt != null && Date.parse(readyOn) <= Date.parse(step.tracking.noticedAt)
     const at = closed || undated ? null : readyOn
     const label =
-      s.observation && historyReset(s.observation) ? s.observation.note : closed ? MILESTONE.observeRecords : at ? fillText(MILESTONE.observeUntil, { date: shownDay(at, estimatedDay(step)) }) : MILESTONE.observe
+      s.observation && historyReset(s.observation) ? s.observation.note : closed ? MILESTONE.observeRecords : at ? fillText(MILESTONE.observeUntil, { date: shownDay(at, estimatedDay(step), 'sentence') }) : MILESTONE.observe
     return { kind: 'observe', label, at, gatedBy: null }
   }
   if (s.condition === 'needs-decision') return { kind: 'decide', label: MILESTONE.decide, at: null, gatedBy: step.blockedReason }
