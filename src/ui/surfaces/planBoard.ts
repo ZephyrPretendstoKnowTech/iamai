@@ -1105,26 +1105,20 @@ export type BoardSection = { key: string | null; number: number | null; group: B
  * whole plan off the screen: the printed plan and the exports (roadmap flow V1
  * decision 8: they use the screen's sections and numbers).
  *
- * They are All work's own groups (`allWorkGroups`) with every finished section
- * included, so a section's rows, their order, its title and its line are the
- * ones the board draws, and nothing here decides them again. Each stands in its
- * registry place, finished or not: sections never move (owner, roadmap flow V2),
- * and a finished one folds where it is rather than sinking below the rest.
- * Handed the board's WHOLE row set. Pure.
+ * They are All work's own groups (`allWorkGroups`), drawn whole over the whole
+ * board, so a section's rows, their order, its title and its line are the ones
+ * the board draws, and nothing here decides them again. Each stands in its
+ * registry place, finished or not: sections never move (owner, roadmap flow V2).
+ * A section is finished where All work draws it closed: nothing left to do in
+ * it, whether its rows were completed or some were deferred. Handed the board's
+ * WHOLE row set. Pure.
  */
 export function boardSectionsOf(items: readonly BoardItem[], groups: readonly StepGroup[] = STEP_GROUPS): BoardSection[] {
-  const { active, completed } = allWorkGroups(items, { completed: true, open: null }, groups)
   const numbers = sectionNumbersOf(items, groups)
-  const place = (g: BoardGroup): number => {
-    const at = groups.findIndex((x) => x.key === groupKeyOf(g, groups))
-    return at === -1 ? groups.length : at
-  }
-  return [...active.map((group) => ({ group, finished: false })), ...completed.map((group) => ({ group, finished: true }))]
-    .sort((a, b) => place(a.group) - place(b.group))
-    .map(({ group, finished }) => {
-      const key = groupKeyOf(group, groups)
-      return { key, number: key === null ? null : numbers.get(key) ?? null, group, finished }
-    })
+  return allWorkGroups(items, items, groups).map((group) => {
+    const key = groupKeyOf(group, groups)
+    return { key, number: key === null ? null : numbers.get(key) ?? null, group, finished: group.closed }
+  })
 }
 
 /**
