@@ -15,15 +15,16 @@ import { fillText } from '../../content/render.ts'
 import { REDACTED, exportDownload } from '../exportGuard.ts'
 import { Button } from '../components/index.ts'
 import type { PlanComputed } from './planData.ts'
+import type { MappingState } from '../../mapping/types.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
-import { doesntApplyRows } from './planRows.ts'
+import { canPutBack, doesntApplyRows } from './planRows.ts'
 import { notLicensedNote, notLicensedRows, notLicensedSummary } from '../../derive/notLicensed.ts'
 import { notInPlanRows, notInPlanSummary } from '../../derive/notInPlan.ts'
 
 type FooterWords = { inPlace: string; doesntApply: string; doesntApplyRow: string; doesntApplyScanRow: string; housekeeping: string; notInBaseline: string; notInBaselineKeep: string }
 const F = (pages.plan as { footer: FooterWords }).footer
 
-export function PlanFooter({ computed, nameOf, onPutBack }: { computed: PlanComputed; nameOf: (id: string) => string; onPutBack: (stepId: string) => void }) {
+export function PlanFooter({ computed, mapping, nameOf, onPutBack }: { computed: PlanComputed; mapping: MappingState | null; nameOf: (id: string) => string; onPutBack: (stepId: string) => void }) {
   void nameOf
   // The steps the person said do not apply here (mapping.notApplicable), with
   // the reason as given and a way back; the engine's own not-applicable goals follow.
@@ -54,9 +55,9 @@ export function PlanFooter({ computed, nameOf, onPutBack }: { computed: PlanComp
           <ul className="sections">
             {said.map((s) => (
               <li key={s.id}>
-                {/* The scan's own reading (Step.doesntApplyByScan) is not something the person said, and there is no answer of theirs to put back. */}
+                {/* The scan's own reading (Step.doesntApplyByScan) is not something the person said. Put back only where a person's reason is saved to take back (planRows.ts canPutBack). */}
                 {fillText(s.doesntApplyByScan ? F.doesntApplyScanRow : F.doesntApplyRow, { stepTitle: contentTitle(s), reason: s.doesntApply })}{' '}
-                {!s.doesntApplyByScan && (
+                {canPutBack(s, mapping) && (
                   <Button variant="tertiary" onClick={() => onPutBack(s.id)}>
                     {app.plan.putBack}
                   </Button>

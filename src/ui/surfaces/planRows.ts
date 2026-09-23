@@ -14,6 +14,7 @@
 //
 // Pure: no DOM, no network.
 import type { Step } from '../../roadmap/types.ts'
+import type { MappingState } from '../../mapping/types.ts'
 import type { WaveSchedule } from '../../roadmap/schedule.ts'
 import { scheduleOf } from '../../roadmap/stepSchedule.ts'
 import { inWave } from '../../derive/phases.ts'
@@ -95,6 +96,21 @@ export function deferredRows(steps: readonly Step[], laneOf: (id: string) => { l
  */
 export function doesntApplyRows(steps: readonly Step[]): Step[] {
   return steps.filter((s) => typeof s.doesntApply === 'string' && s.doesntApply.length > 0)
+}
+
+/**
+ * Whether a Doesn't apply row can be put back: only where a person said the
+ * step does not apply (mapping.notApplicable holds their reason), because Put
+ * back takes that reason away. A row the plan set aside itself has nothing
+ * there to take back: the scan's own reading (Step.doesntApplyByScan), or an
+ * answer given elsewhere — Define the Trusted Network on a remote tenant, the
+ * service accounts group with none selected, shared devices with no shared
+ * accounts. Its Put back did nothing and the row stayed, so it is not drawn.
+ */
+export function canPutBack(step: Step, mapping: Pick<MappingState, 'notApplicable'> | null): boolean {
+  if (step.doesntApplyByScan) return false
+  const said = mapping?.notApplicable?.[step.id]
+  return typeof said === 'string' && said.trim().length > 0
 }
 
 /**

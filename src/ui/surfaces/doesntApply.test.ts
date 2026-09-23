@@ -4,6 +4,7 @@
 // on a foundation.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import type { MappingState } from '../../mapping/types.ts'
@@ -85,4 +86,32 @@ test('with a network selected the original completion stands', () => {
   const mapping = { ...f.mapping, trustedLocationIds: ['a-location-id'] }
   const ctx = { snapshot: f.snapshot, mapping, groups: f.groups, nameOf: (id: string) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: null } as unknown as StepVarContext
   assert.match(stepContract(step, ctx).doneWhen.join(String.fromCharCode(10)), /marked as trusted/)
+})
+
+// Put back takes back a reason a person gave (mapping.notApplicable). A row the
+// plan set aside itself has no such reason: Define the Trusted Network on a
+// remote tenant, the service accounts group with none selected, shared devices
+// with no shared accounts. Its Put back removed nothing, and the row stayed.
+test('Put back is drawn only on a row a person said does not apply', async () => {
+  const { canPutBack, doesntApplyRows } = await import('./planRows.ts')
+  // A person's answer: it can be taken back.
+  const f = fixture('demo')
+  const said: MappingState = { ...f.mapping, notApplicable: { [ID]: REASON } }
+  const saidStep = runFixture({ ...f, mapping: said }, { mapping: said }).steps.find((s) => s.id === ID)!
+  assert.equal(canPutBack(saidStep, said), true, 'a person\'s answer cannot be put back')
+  // The plan's own: nothing to take back, on every fixture that sets a step aside itself.
+  let engine = 0
+  for (const name of ['demo-week2', 'mid', 'large', 'midflight', 'messy', 'hostile', 'small'] as const) {
+    const g = fixture(name)
+    for (const s of doesntApplyRows(runFixture(g).steps)) {
+      if (g.mapping.notApplicable?.[s.id] !== undefined) continue
+      engine++
+      assert.equal(canPutBack(s, g.mapping), false, `${name}/${s.id}: a Put back that takes nothing back`)
+    }
+  }
+  assert.ok(engine > 0, 'the premise: a fixture sets a step aside itself')
+  // The footer draws the button only where it can put the row back.
+  const footer = readFileSync(new URL('./PlanFooter.tsx', import.meta.url), 'utf8')
+  assert.match(footer, /\{canPutBack\(s, mapping\) && \(/, 'the footer draws Put back on every row')
+  assert.match(readFileSync(new URL('./Plan.tsx', import.meta.url), 'utf8'), /<PlanFooter computed=\{c\} mapping=\{data\.mapping\}/, 'the Plan hands the footer no saved answers')
 })
