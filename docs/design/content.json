@@ -3072,15 +3072,7 @@
         "strengthNotRead": "an authentication strength that was not read",
         "$commentTargetsExcept": "The Authentication tab's Targets cell where a method excludes groups (the method's excludeTargets, as Graph returns them): {include} is the targets it reaches, {exclude} the groups it leaves out. The cell read only the included targets, so a passkey method for all users that excluded the emergency-access group read \"All users\" while Emergency Access, reading the same policy, said those accounts could not use a passkey.",
         "targetsExcept": "{include} except {exclude}",
-        "$commentPolicyRow": "What a Policies row states that it left out (ui/surfaces/inventoryTables.ts policiesModel), from facts the coverage engine already reads (coverage/facts.ts). The row read the opposite of what several pinned-baseline policies do: \"platforms: all\" for a block that excludes Android, iOS, Windows and macOS, \"All apps\" for a policy excluding an app, \"—\" for sign-in every time and for a terms-of-use grant, a device filter without its mode, \"—\" under Exclusions for a policy excluding the Directory Synchronization Accounts role, and \"guests\" for one excluding only service providers. {include} except {exclude} is targetsExcept.",
-        "guestTypes": {
-          "internalGuest": "local guests",
-          "b2bCollaborationGuest": "B2B collaboration guests",
-          "b2bCollaborationMember": "B2B collaboration members",
-          "b2bDirectConnectUser": "B2B direct connect accounts",
-          "otherExternalUser": "other external accounts",
-          "serviceProvider": "service providers"
-        },
+        "$commentPolicyRow": "What a Policies row states that it left out (ui/surfaces/inventoryTables.ts policiesModel), from facts the coverage engine already reads (coverage/facts.ts). The row read the opposite of what several pinned-baseline policies do: \"platforms: all\" for a block that excludes Android, iOS, Windows and macOS, \"All apps\" for a policy excluding an app, \"—\" for sign-in every time and for a terms-of-use grant, a device filter without its mode, \"—\" under Exclusions for a policy excluding the Directory Synchronization Accounts role, and \"guests\" for one excluding only service providers. {include} except {exclude} is targetsExcept; a guest or external type, a platform, a client app type, a flow and a user action are named as the portal names them (roadmap/portalLines.ts portalName).",
         "deviceFilterInclude": "device filter (matching devices only)",
         "deviceFilterExclude": "device filter (matching devices left out)",
         "termsOfUse": "terms of use",
