@@ -77,9 +77,13 @@ const str = (v: unknown): string => (typeof v === 'string' ? v : v == null ? '' 
 /** A cell as the screen shows it: a count as every surface prints one ("58,800"); the CSV keeps the number. */
 export const shownCell = (v: string | number): string => (typeof v === 'number' ? figure(v) : v)
 
-/** A list of names in a row: three at most on screen (the row budget), and a count of the rest. */
+/**
+ * A list of names in a row: three on screen (the row budget) and a count of the
+ * rest, or all four where the rest is one: "and 1 other" takes the room the
+ * name would.
+ */
 export function firstThree(labels: string[]): string {
-  return labels.length <= 3 ? labels.join(', ') : C.signIns.morePeople(labels.slice(0, 3), labels.length - 3)
+  return labels.length <= 4 ? labels.join(', ') : C.signIns.morePeople(labels.slice(0, 3), labels.length - 3)
 }
 
 // ---------- What the scan read of a section ----------
