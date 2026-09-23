@@ -440,7 +440,10 @@ test('a detected candidate is not a persisted decision, and the step creates no 
   // The picker writes through the Plan's own handler, which is the mapping's
   // persistence path. The step neither writes nor invents one.
   assert.match(CONTENT_STEP, /onDecide\?: \(decision: StepDecisionInput\) => void/, 'the step no longer takes the persistence handler')
-  assert.match(CONTENT_STEP, /<Decision (?:key=\{step\.id\} )?d=\{d\} ex=\{ex\} saved=\{decision\} onDecide=\{onDecide\}/, 'the decision primitive is not handed the saved decision and the handler')
+  // Where the step makes an object itself and asks nothing of its own, the
+  // object's picker is the one decision (stepBody.ts taskDecision; Stage 3),
+  // handed that object's saved decision and the Plan's own handler.
+  assert.match(CONTENT_STEP, /<Decision (?:key=\{step\.id\} )?d=\{taskDecision\?\.d \?\? d\} ex=\{taskDecision\?\.ex \?\? ex\} saved=\{taskDecision \? objectTask\?\.saved \?\? null : decision\} onDecide=\{taskDecision \? objectTask\?\.onDecide : onDecide\}/, 'the decision primitive is not handed the saved decision and the handler')
   for (const forbidden of ['localStorage', 'indexedDB', 'putMapping', 'saveMapping', 'new Map()']) {
     assert.equal(CONTENT_STEP.includes(forbidden), false, `the step persists a decision itself: ${forbidden}`)
   }

@@ -399,7 +399,7 @@ test('11: geo policy: allowlist style chosen by data, NoExclusions dropped', () 
   assert.deepEqual((JSON.parse(carried)[0].body.conditions as { locations: unknown }).locations, { includeLocations: ['All'] })
 })
 
-test('12: answered Countries with no matching tenant location → phase-0 step creates it and gates the geo policy', () => {
+test('12: answered Countries with no matching tenant location → the countries policy creates it as its own first task', () => {
   const allow = mkPolicy({
     displayName: 'Countries - allow list',
     conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'], locations: { includeLocations: ['All'], excludeLocations: ['loc-allowed'] } },
@@ -410,10 +410,12 @@ test('12: answered Countries with no matching tenant location → phase-0 step c
   mapping.wizardAnswered = { countries: true }
   const { input } = build({ baselinePolicies: [allow], mapping })
   const steps = generateRoadmap(input).steps
-  const create = steps.find((s) => s.id === 's-prereq-allowed-countries')
-  assert.ok(create && create.phase === 0)
+  // Not a step of its own since Stage 3: the countries policy carries it, and waits on nothing for it.
+  assert.equal(steps.some((s) => s.id === 's-prereq-allowed-countries'), false)
   const step = stepFor(steps, 'geo-restriction')
-  assert.ok(step.blockedBy.includes('s-prereq-allowed-countries'))
+  assert.equal(step.objectTask?.id, 's-prereq-allowed-countries')
+  assert.equal(step.objectTask?.state.satisfied, false, 'no tenant location matches: the task is open')
+  assert.ok(!step.blockedBy.includes('s-prereq-allowed-countries') && !step.blockedBy.includes(step.id))
 })
 
 test('13: confirmed service accounts with no group → phase-0 step creates the group', () => {

@@ -38,8 +38,6 @@ export function usability100(stage: Usability100Stage): Fixture {
         avd: stage === 'specialist' ? 'yes' : 'no', agents: stage === 'specialist' ? 'yes' : 'no',
         inforcer: stage === 'specialist' ? 'yes' : 'no', copilot: 'no', azureDevOps: 'no',
       } },
-      // Direction's one question the older steps never asked (roadmap/direction.ts).
-      's-direction-use': { at: f.snapshot.asOf, answers: { externalMethods: 'no' } },
       [QUESTION_STEP.devices]: { at: f.snapshot.asOf,
         option: questionOptions(QUESTION_STEP.devices, 'decision')[1],
         answers: { Computers: questionOptions(QUESTION_STEP.devices, 'question')[0] },

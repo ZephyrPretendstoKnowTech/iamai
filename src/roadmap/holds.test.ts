@@ -437,7 +437,8 @@ test('Step 4 correction 4: a step waiting on a held step is held too; waiting on
   // again (roadmap/foundations.ts): A is an object the schedule dates, B a policy
   // dated after it.
   const g = planOf(withDirectionApproved(curatedFixture('demo-week2')))
-  const a = stepOf(g, 's-prereq-allowed-countries')
+  // (The allowed-countries location was A; since Stage 3 it is the countries policy's own task.)
+  const a = stepOf(g, 's-prereq-service-accounts-group')
   const b = stepOf(g, 's-goal-block-unsupported-platforms')
   b.blockers.push({ kind: 'step', stepId: a.id, label: 'create-object' })
   markHoldChains(g.r.steps)
@@ -509,7 +510,7 @@ test('Step 4: on the demo first visit a policy waiting only on a Direction answe
   const f: Fixture = { ...fixture('demo'), snapshot: d.snapshot, mapping: d.mapping, planId: planIdFor(DEMO_TENANT_ID) }
   const first = planOf(f)
   const waiting = stepOf(first, STEP)
-  assert.deepEqual(waiting.blockers.map(directionBlockerStep).filter((id) => id !== null), [DIRECTION_STEP.locations], 'the premise: it waits on Decide Where People Sign In From')
+  assert.deepEqual(waiting.blockers.map(directionBlockerStep).filter((id) => id !== null), [DIRECTION_STEP.devices], 'the premise: it waits on Decide How and Where People Sign In, which asks the office network (Stage 3)')
   assert.ok(isHeld(waiting), 'the wait holds it')
   assert.equal(scheduleOf(waiting).class, 'waiting')
   assert.equal(scheduleOf(waiting).at, null, 'the schedule gives it no day')
@@ -520,7 +521,7 @@ test('Step 4: on the demo first visit a policy waiting only on a Direction answe
   assert.equal(scheduledEventOf(waiting), null)
   assert.equal(booked(first, STEP), false, 'the calendar books nothing for it')
   // Approved, the wait is gone and the plan dates its report-only creation again.
-  const approved = planOf(withDirectionApproved(f, [DIRECTION_STEP.locations]))
+  const approved = planOf(withDirectionApproved(f, [DIRECTION_STEP.devices]))
   const dated = stepOf(approved, STEP)
   assert.equal(dated.blockers.some((b) => directionBlockerStep(b) !== null), false, 'the premise: nothing waits on Direction')
   assert.equal(scheduleOf(dated).class, 'scheduled')

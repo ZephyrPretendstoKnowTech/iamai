@@ -66,7 +66,7 @@ import { eventsFor, nobodyAffected as nobodyAffectedBy } from './timing.ts'
 import { MANAGER, MANAGER_BY_CONTROL, MANAGER_BY_GOAL } from '../copy/plain.ts'
 import { contentTitle } from '../content/stepTitle.ts'
 import { settleEnforceWaits } from './enforceWaits.ts'
-import { app, engine, shared, stepById } from '../content/content.ts'
+import { app, directionWords, engine, shared, stepById } from '../content/content.ts'
 import { countryName as countryLabel } from '../mapping/countries.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
@@ -298,6 +298,14 @@ export type RoadmapInput = {
    * every recommendation outstanding now (validation/emergencyTiers.ts).
    */
   hardeningDeferral?: { at: string; basis: string } | null
+  /**
+   * When a scan of this plan first read security defaults on
+   * (PlanDecisions.securityDefaultsSeenOnAt, progress.ts
+   * securityDefaultsSeenOnAtOf); null or absent where no scan has. Turn Off
+   * Security Defaults reads Completed once they are off only where this plan saw
+   * them on, and Doesn't apply where it never did (V1 decision 6).
+   */
+  securityDefaultsSeenOnAt?: string | null
 }
 
 export type RoadmapResult = {
@@ -1156,9 +1164,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // create instructions while the tenant has no IP named location, In place once
   // one exists (the picker says which of them are the team's own).
   //
-  // It is the DOING of Decide Where People Sign In From's office-network answer,
-  // and it says so: direction.ts ANSWERED_IN swaps its decision control for the
-  // "Answered in Decide Where People Sign In From" panel. So it does not ask the
+  // It is the DOING of the office-network answer (Decide How and Where People
+  // Sign In since Stage 3), and it says so: direction.ts ANSWERED_IN swaps its
+  // decision control for the "Answered in" panel. So it does not ask the
   // question again. Until that answer is saved this step's tile used to read
   // "Trusted Network: Choose your office networks", with the detail "Select your
   // office networks or confirm that everyone is remote" — word for word the
@@ -1197,6 +1205,17 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       ...stateFields(snapshot.config.namedLocations?.status === 'ok' && mapping.wizardAnswered.trustedLocations === true && mapping.assumed?.trustedLocations !== 'detected' && (mapping.trustedLocationIds.length === 0 || ipLocations.length === mapping.trustedLocationIds.length) ? { satisfied: true, inPlace: true } : {}),
       deliveredBy: ipLocations.map((l) => l.displayName ?? l.id ?? '').filter((n) => n.length > 0),
     })
+    // Everyone works remotely: there is no network to define, so the step does
+    // not apply (V1 decision 6), with the answer as its reason. It was Completed,
+    // a row claiming work nobody did. The policies that read a trusted location
+    // treat it as done (below: rule 1 and the named dependencies), so a remote
+    // tenant keeps every hold it had and waits on nothing that does not apply.
+    // Only the person's own saved answer says remote; nothing assumes it.
+    if (networkConfirmed && mapping.trustedLocationIds.length === 0) {
+      const network = steps[steps.length - 1]
+      network.doesntApply = directionWords.questions.officeNetwork.options.remote
+      setState(network, { setAside: true, satisfied: false, inPlace: false })
+    }
   }
 
   // The baseline's own authentication strength (task 022 correction). Jon Hope's
@@ -1225,9 +1244,17 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     steps.push(s)
   }
 
-  // Allowed countries (prompt 16 §4): the named location is created in phase
-  // 0 unless the tenant already has one with exactly that list.
+  // Allowed countries (prompt 16 §4): the named location is created unless the
+  // tenant already has one with exactly that list.
+  //
+  // It is not a step of the plan (roadmap-flow Stage 3, V1 decision 5): Block
+  // Sign-ins From Countries Not Allowed is its only reader, and makes it as its
+  // own task — pick the work countries, create or correct the location, create
+  // the policy in report-only, turn it on. The reading is built here exactly as
+  // the location step's was, and handed to that step below (Step.objectTask),
+  // which draws it with the location's own content, package and picker.
   const countriesStepId = PREREQ_STEP_ID.allowedCountries
+  let countriesTask: Step | null = null
   if (canUseConditionalAccess && input.coverage.results.some((r) => r.goal.id === 'geo-restriction' && r.status !== 'licence-limited')) {
     const proposed = proposedObjectNames(naming).allowedCountries
     const needsWorkCountryReview = mapping.workCountriesConfirmed !== true && travelCountriesOf(mapping).some(country => mapping.allowedCountries.includes(country))
@@ -1238,7 +1265,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       s.blockers = [{ kind: 'decision', label: 'work-countries-review', binding: 'Confirm Work Countries: this older plan combined work and travel countries.' }]
       setState(s, { condition: 'needs-decision' })
     }
-    steps.push(s)
+    countriesTask = s
   }
   // Confirmed service accounts with no group holding them (prompt 16 §3).
   const saStepId = PREREQ_STEP_ID.serviceAccountsGroup
@@ -1367,8 +1394,19 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   if (canUseConditionalAccess) {
     const s = prereq('s-prereq-security-defaults')
     if (snapshot.config.securityDefaults?.status === 'ok' && secDefaults?.isEnabled === false) {
-      setState(s, { satisfied: true, inPlace: true })
-      s.deliveredBy = ['Security Defaults is disabled in the scanned tenant configuration.']
+      // Off, and no scan of this plan ever read them on: there was nothing to
+      // turn off, so the row does not claim the work as Completed (V1 decision
+      // 6); it sits in the footer as every Doesn't apply step does. Nothing is
+      // held behind it: rule 3 below reads the scan, not this step, and the
+      // sd-enabled edges resolve not applicable (graphConditions.ts).
+      if (!input.securityDefaultsSeenOnAt) {
+        s.doesntApply = app.plan.securityDefaultsNeverOn
+        s.doesntApplyByScan = true
+        setState(s, { setAside: true })
+      } else {
+        setState(s, { satisfied: true, inPlace: true })
+        s.deliveredBy = ['Security Defaults is disabled in the scanned tenant configuration.']
+      }
     } else if (snapshot.config.securityDefaults?.status === 'ok' && secDefaults?.isEnabled === true) {
       // The invariant this step owns, checked against what the tenant actually
       // holds. The plan says it in its own voice — "nothing in this plan
@@ -1530,7 +1568,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   if (gate === null && geStep && geStep.status !== 'done') gate = gateFor('exclusionGroup')
   // The step has to exist before the goal loop so a held step can name it; the
   // count of what it holds is filled in once the goal steps are known.
-  attachConfigurationFindings(steps, validationReports)
+  // The countries list's checks wait for the step that now carries them (the
+  // countries policy, built in the goal loop below; Stage 3).
+  attachConfigurationFindings(steps, validationReports.filter((r) => r.subject !== 'allowedCountries'))
   if (bgStep && bgReport) bgStep.configurationFindings = journeyAccountFindings(bgReport, snapshot, mapping, input.groupMembers)
   if (geStep) {
     const savedExclusions = operatorExclusionsDecision(mapping)
@@ -1671,6 +1711,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const blockers: Blocker[] = []
     const unblockNotes: string[] = []
     const blockByStep = (id: string, label: string): void => {
+      // An object this step makes itself is its own task, not a wait (Stage 3:
+      // the countries policy makes the countries location).
+      if (id === stepId) return
       if (blockedBy.includes(id)) return
       blockedBy.push(id)
       blockers.push({ kind: 'step', stepId: id, label })
@@ -2013,10 +2056,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
 
     // Named dependencies (prompt 12 §B).
     if (!state.satisfied) {
-      if (goal.id === 'register-info-protected' && steps.some((s) => s.id === locStepId && s.status !== 'done') && !doesntApply(locStepId)) blockByStep(locStepId, 'trusted-location')
-      if (goal.id === 'geo-restriction') {
-        if (steps.some((s) => s.id === countriesStepId)) blockByStep(countriesStepId, 'create-object')
-      }
+      if (goal.id === 'register-info-protected' && steps.some((s) => s.id === locStepId && s.status !== 'done' && s.doesntApply == null) && !doesntApply(locStepId)) blockByStep(locStepId, 'trusted-location')
       // Every policy that requires the baseline's own custom strength waits on
       // the step that creates it — read off the step's own missing list, so the
       // dependency is the same fact the body already reports and never a second
@@ -2024,7 +2064,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       if ((action.missing ?? []).some((m) => m.stepId === strengthStepId) && steps.some((x) => x.id === strengthStepId)) blockByStep(strengthStepId, 'create-object')      // The service-accounts block names the group and the trusted network (E9): it waits on both.
       if (goal.id === SERVICE_ACCOUNTS_TRUSTED_GOAL) {
         if (steps.some((s) => s.id === saStepId)) blockByStep(saStepId, 'create-object')
-        if (steps.some((s) => s.id === locStepId && s.status !== 'done') && !doesntApply(locStepId)) blockByStep(locStepId, 'trusted-location')
+        if (steps.some((s) => s.id === locStepId && s.status !== 'done' && s.doesntApply == null) && !doesntApply(locStepId)) blockByStep(locStepId, 'trusted-location')
       }
     }
 
@@ -2820,29 +2860,82 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // shows that prerequisite, and "when 1 trusted location exist (now 0)" beside
     // it is the same sentence again (docs/plans/step-redundancy-analysis.md
     // finding 3).
-    const locationStepToDo = steps.some((s) => s.id === locStepId && s.status !== 'done')
+    // A network step that does not apply (everyone remote) is not work to do:
+    // it counts as done here, so the tenant with no trusted location keeps the
+    // hold (V1 decision 6).
+    const locationStepToDo = steps.some((s) => s.id === locStepId && s.status !== 'done' && s.doesntApply == null)
     if (trustedLocationCount === 0 && !doesntApply(locStepId) && !locationStepToDo) blockLate(registrationStep, 'registration-no-trusted-location', BLOCKED_REASON.exist(1, 'trusted location', 0))
   }
 
+  // The countries location, as the countries policy's own first task (Stage 3,
+  // V1 decision 5). The step carries the location's reading for the screen
+  // (Step.objectTask) and asks the work countries itself: until at least one is
+  // saved by a person it reads Needs decision, as the location step and the
+  // Direction question it came from both did. The picker keeps saving under the
+  // location's old id (decisions.ts DECISION_STEPS.countries). An older plan
+  // that mixed work and travel countries asks for them again, as before.
+  const geoStep = steps.find((s) => s.goalId === 'geo-restriction' && s.id === idFor('goal', 'geo-restriction')) ?? null
+  if (geoStep && countriesTask) {
+    geoStep.objectTask = countriesTask
+    const workCountriesSaved = mapping.allowedCountries.length > 0 && (mapping.workCountriesConfirmed === true || (mapping.wizardAnswered.countries === true && mapping.assumed?.countries !== 'detected'))
+    const open = geoStep.status !== 'done' && geoStep.status !== 'skipped' && !geoStep.state.satisfied && !geoStep.state.setAside && geoStep.state.lifecycle !== 'enforced'
+    const review = countriesTask.blockers.find((b) => b.label === 'work-countries-review')
+    if (open && (!workCountriesSaved || review)) {
+      geoStep.blockers.push(review ?? { kind: 'decision', label: 'work-countries', binding: BLOCKED_REASON.workCountries })
+      setState(geoStep, { condition: 'needs-decision' })
+    }
+  }
+  // Its checks are 6.3's (blockerSteps.ts attachConfigurationFindings, through
+  // the location's old repair id). Only the blocking one, a list with no
+  // country in it (cty.atLeastOne), keeps it from reading Completed and holds
+  // its turn-on (countries-unsafe, below). The three warnings — the countries
+  // people sign in from, your own, unknown countries — draw as Needs
+  // Correction and hold nothing in v1.0 (owner, 2026-09-23; gating the turn-on
+  // on the first two is on docs/plans/roadmap-flow/v1.1-list.md).
+  attachConfigurationFindings(steps, validationReports.filter((r) => r.subject === 'allowedCountries'))
+
   // 2. No country block before the operator's own recent countries are in the
   // allow list, and before the list itself passes its checks.
+  //
+  // Only a policy that names the countries location can be hurt by a bad list
+  // (Stage 3): by its resolved id, or — while there is none yet — by the
+  // reference the countries step makes (resolvePolicy.ts: its maker is 6.3). It held every policy that names any place — registration protection,
+  // which names only the trusted network, waited on the countries step with an
+  // empty list — and a list of countries changes nothing those policies do.
+  // On the countries policy itself, which makes the list, it holds the turn-on
+  // and never the report-only creation, and it is no wait on itself.
   const countriesReport = validationReports.find((r) => r.subject === 'allowedCountries')
   if (countriesReport && countriesReport.blocking.length > 0) {
-    // Which steps a bad country list can hurt is the policies' own answer: the
-    // ones that will name a place. A step with no policy of its own — one
-    // already in place, the enforce step — is read by its goal's family, as it
-    // always was (roadmap/strand.ts familyReading).
+    const locationId = countriesLocationId?.toLowerCase() ?? null
+    const namesCountriesLocation = (s: Step): boolean =>
+      (s.action.missing ?? []).some((m) => m.token === '{allowedCountriesLocation}' || (geoStep !== null && m.stepId === geoStep.id)) ||
+      (locationId !== null && (s.action.resolution?.policies ?? []).some((o) => JSON.stringify((o.body as { conditions?: { locations?: unknown } } | undefined)?.conditions?.locations ?? null).toLowerCase().includes(locationId)))
     for (const s of steps) {
-      const effects = effectsOf(s)
-      const namesAPlace = effects !== null ? effects.some((e) => e.usesLocations) : familyReading(s) === 'location'
-      if (namesAPlace) blockLate(s, 'countries-unsafe', null, canonicalBlockerStepId('allowedCountries'))
+      if (s.id === geoStep?.id) {
+        if (s.state.satisfied || s.state.setAside) continue
+        // What the turn-on waits for is the step's own location task, named by
+        // the title its task list shows: the location is no step of the plan
+        // any more, and its old title named one (D3).
+        const taskTitle = stepById[countriesStepId]?.taskTitle
+        if (!s.blockers.some((b) => b.kind === 'readiness' && b.label === 'countries-unsafe')) {
+          s.blockers.push({ kind: 'readiness', label: 'countries-unsafe', binding: taskTitle ? BLOCKED_REASON.after(taskTitle) : BLOCKED_REASON.workCountries })
+        }
+        // While no work country is saved the step's question comes first (it
+        // reads Needs decision above), as it does with no list at all: an empty
+        // list is that same unanswered question, not a second, blocked state.
+        if (s.state.condition !== 'needs-decision') raiseCondition(s, 'blocked')
+      } else if (namesCountriesLocation(s)) blockLate(s, 'countries-unsafe', null, geoStep?.id ?? canonicalBlockerStepId('allowedCountries'))
     }
   }
 
   // 3. Security defaults come off before any Conditional Access policy: with
   // them on, a policy can be created and cannot be turned on.
+  // It reads the scan, never the step: on, or not read, holds; read off holds
+  // nothing, whatever the step's row says — Completed on a plan that saw them
+  // on, Doesn't apply on one that never did (V1 decision 6).
   const secDefaultsStep = steps.find((s) => s.id === 's-prereq-security-defaults')
-  if (secDefaultsStep && !secDefaultsStep.state.satisfied) {
+  const secDefaultsReadOff = snapshot.config.securityDefaults?.status === 'ok' && secDefaults?.isEnabled === false
+  if (secDefaultsStep && !secDefaultsReadOff) {
     for (const s of steps) {
       if (s.kind !== 'create' && s.kind !== 'adjust') continue
       blockLate(s, 'security-defaults-first', null, secDefaultsStep.id)

@@ -1394,7 +1394,8 @@ async function walkFixture(fx) {
         // the step's own controls, so the rows before and after it are compared.
         if (fx.name.startsWith('demo')) {
           const week2 = fx.week2 === true
-          if (/Allowed Countries Location/.test(title)) {
+          // The countries picker is Block Sign-ins From Countries Not Allowed's first task since Stage 3 (the location step is its task, not a step).
+          if (/^Block Sign-ins From Countries Not Allowed$/.test(title)) {
             const choices = await evaluate(`(() => {
               const r = document.querySelector('main.page .step-body .decision'); if (!r) return null
               const group = (label) => [...r.querySelectorAll('[role=group][aria-labelledby]')].find(e => document.getElementById(e.getAttribute('aria-labelledby'))?.textContent.trim() === label)

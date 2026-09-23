@@ -36,7 +36,11 @@ import { absolute, setDisplayTimeZone } from '../copy/dates.ts'
 // runs in one process, so the zone goes back after every test.
 afterEach(() => setDisplayTimeZone(null))
 
-const LOCATIONS = 's-direction-locations'
+// The office network is the Direction question that takes a list (the trusted
+// locations picked with "office") since work countries moved to the countries
+// step (Stage 3); it is asked on Decide How and Where People Sign In.
+const DEVICES = 's-direction-devices'
+const PICKED = ['trusted-location-under-test']
 
 test('a persona tenant runs on the baseline the product ships, unless it asks for the fixture\'s', (ctx) => {
   ctx.mock.method(console, 'warn', () => {})
@@ -74,12 +78,11 @@ test('the plan is derived from the mapping the product derives it from, and savi
   // decide() saves a decision and does not write it back into the stored
   // record, which re-applied every earlier decision over itself.
   const r = plan(t)
-  const q = r.steps.find((s) => s.id === LOCATIONS)!.directionQuestions!.find((x) => x.key === 'workCountries')!
-  const values = Object.fromEntries(r.steps.find((s) => s.id === LOCATIONS)!.directionQuestions!.map((x) => [x.key, x.saved ?? x.suggested]))
-  const t2 = decide(t, LOCATIONS, answers({ ...values, workCountries: { value: q.suggested.value, picked: ['FJ'] } }))
+  const values = Object.fromEntries(r.steps.find((s) => s.id === DEVICES)!.directionQuestions!.map((x) => [x.key, x.saved ?? x.suggested]))
+  const t2 = decide(t, DEVICES, answers({ ...values, officeNetwork: { value: 'office', picked: PICKED } }))
   assert.deepEqual(t2.mapping, t.mapping, 'saving a decision rewrote the stored mapping record')
   assert.deepEqual(plan(t2).input.mapping, mappingOf(t2))
-  assert.deepEqual(plan(t2).steps.find((s) => s.id === LOCATIONS)!.directionQuestions!.find((x) => x.key === 'workCountries')!.saved?.picked, ['FJ'])
+  assert.deepEqual(plan(t2).steps.find((s) => s.id === DEVICES)!.directionQuestions!.find((x) => x.key === 'officeNetwork')!.saved?.picked, PICKED)
 })
 
 test('Approve answers keeps an answer the person saved', () => {
@@ -87,13 +90,13 @@ test('Approve answers keeps an answer the person saved', () => {
   // screen's Approve saves what its draft holds, which starts from the saved one.
   const t = tenant('mid')
   const r = plan(t)
-  const step = r.steps.find((s) => s.id === LOCATIONS)!
+  const step = r.steps.find((s) => s.id === DEVICES)!
   const values = Object.fromEntries(step.directionQuestions!.map((x) => [x.key, x.saved ?? x.suggested]))
-  const suggested = step.directionQuestions!.find((x) => x.key === 'workCountries')!.suggested
-  assert.notDeepEqual(suggested.picked, ['FJ'])
-  const saved = decide(t, LOCATIONS, answers({ ...values, workCountries: { value: suggested.value, picked: ['FJ'] } }))
+  const suggested = step.directionQuestions!.find((x) => x.key === 'officeNetwork')!.suggested
+  assert.notDeepEqual(suggested.picked, PICKED)
+  const saved = decide(t, DEVICES, answers({ ...values, officeNetwork: { value: 'office', picked: PICKED } }))
   const approved = acceptDirection(saved, plan(saved))
-  assert.deepEqual(plan(approved).steps.find((s) => s.id === LOCATIONS)!.directionQuestions!.find((x) => x.key === 'workCountries')!.saved?.picked, ['FJ'])
+  assert.deepEqual(plan(approved).steps.find((s) => s.id === DEVICES)!.directionQuestions!.find((x) => x.key === 'officeNetwork')!.saved?.picked, PICKED)
 })
 
 test('no step the product withholds from every customer surface reaches a persona', () => {
@@ -223,13 +226,14 @@ test('the recovery test can be recorded, and with it the policies ready to enfor
 test('Approve answers is pressed only where the screen lets it be pressed', () => {
   // Approve is disabled while a question that takes a list has none
   // (directionAnswerComplete). acceptDirection saved such a step anyway: a
-  // countries question with no country suggested was approved as none.
+  // countries question with no country suggested was approved as none. The
+  // office network's "trusted locations" answer takes a list the same way.
   const t = tenant('mid')
   const r = plan(t)
-  const incomplete = { ...r, steps: r.steps.map((s) => (s.id !== LOCATIONS ? s : { ...s, directionQuestions: s.directionQuestions!.map((q) => (q.key !== 'workCountries' ? q : { ...q, saved: null, suggested: { value: q.suggested.value, picked: [] } })) })) }
-  const q = incomplete.steps.find((s) => s.id === LOCATIONS)!.directionQuestions!.find((x) => x.key === 'workCountries')!
-  assert.equal(directionAnswerComplete(q, q.suggested), false, 'an empty countries answer is approvable: this proves nothing')
+  const incomplete = { ...r, steps: r.steps.map((s) => (s.id !== DEVICES ? s : { ...s, directionQuestions: s.directionQuestions!.map((q) => (q.key !== 'officeNetwork' ? q : { ...q, saved: null, suggested: { value: 'office', picked: [] } })) })) }
+  const q = incomplete.steps.find((s) => s.id === DEVICES)!.directionQuestions!.find((x) => x.key === 'officeNetwork')!
+  assert.equal(directionAnswerComplete(q, q.suggested), false, 'an empty trusted-locations answer is approvable: this proves nothing')
   const approved = acceptDirection(t, incomplete)
-  assert.equal(approved.decisions?.[LOCATIONS], undefined, 'the harness approved a step whose Approve button is disabled')
+  assert.equal(approved.decisions?.[DEVICES], undefined, 'the harness approved a step whose Approve button is disabled')
   assert.ok(approved.decisions?.['s-direction-use'], 'the steps that could be approved were not')
 })

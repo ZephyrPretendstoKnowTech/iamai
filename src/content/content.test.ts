@@ -143,6 +143,7 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // for a group the scan could not read (copy/reasons.ts BLOCKED_REASON).
   '.pages.plan.blocked.manualCorrection',
   '.pages.plan.blocked.unverifiedExclusion',
+  '.pages.plan.blocked.workCountries',
   // The authentication methods policy the scan could not read (A5, copy/reasons.ts BLOCKED_REASON).
   '.pages.plan.blocked.methodsPolicyUnread',
   // The dormant-accounts step held where no account's sign-in activity was read (R4-49,

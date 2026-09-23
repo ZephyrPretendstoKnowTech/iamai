@@ -19,9 +19,11 @@ const STEP_OF: Record<keyof ProposedObjectNames, string> = {
 }
 
 /** The plan's proposed names: each prerequisite step's own, else the engine's proposal for the convention. */
-export function planProposedNames(steps: readonly Pick<Step, 'id' | 'naming'>[], naming: NamingConvention | undefined): ProposedObjectNames {
+export function planProposedNames(steps: readonly (Pick<Step, 'id' | 'naming'> & { objectTask?: Pick<Step, 'id' | 'naming'> })[], naming: NamingConvention | undefined): ProposedObjectNames {
   const fallback = proposedObjectNames(naming ?? null)
-  const of = (key: keyof ProposedObjectNames): string => steps.find((s) => s.id === STEP_OF[key])?.naming?.proposed ?? fallback[key].name
+  // An object a step makes itself is that step's task (Step.objectTask; Stage 3: the countries location), and names itself there.
+  const all = steps.flatMap((s) => (s.objectTask ? [s, s.objectTask] : [s]))
+  const of = (key: keyof ProposedObjectNames): string => all.find((s) => s.id === STEP_OF[key])?.naming?.proposed ?? fallback[key].name
   return { exclusionsGroup: of('exclusionsGroup'), serviceAccountsGroup: of('serviceAccountsGroup'), trustedLocation: of('trustedLocation'), allowedCountries: of('allowedCountries') }
 }
 

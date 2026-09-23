@@ -12,7 +12,7 @@ import type { BoardItem } from '../ui/surfaces/planBoard.ts'
 import { DECISION_HEAD, TASK_HEAD, decisionHeadingsOf, taskHeadingsOf } from '../ui/surfaces/stepHeadings.ts'
 import { PINNED_GOAL_MAP, goalInMap, goalMapFor } from './goalMap.ts'
 import { isFloorGoal } from './floor.ts'
-import { BREAK_GLASS_STEP_ID, EXCLUSION_GROUP_STEP_ID, PREREQ_STEP_ID, SEPARATE_ADMIN_ACCOUNTS_STEP_ID, stepIdForGoal } from './stepIds.ts'
+import { BREAK_GLASS_STEP_ID, EXCLUSION_GROUP_STEP_ID, OBJECT_TASK, PREREQ_STEP_ID, SEPARATE_ADMIN_ACCOUNTS_STEP_ID, objectTaskOwner, stepIdForGoal } from './stepIds.ts'
 import { CONTENT_ALIAS } from '../content/stepTitle.ts'
 import { content, stepById, steps as contentSteps } from '../content/content.ts'
 import goalsData from '../../data/goals.json' with { type: 'json' }
@@ -39,7 +39,7 @@ const pinnedPolicies = pinnedBaseline.policies as unknown as CaPolicy[]
 
 const EA_TITLE = 'pages.app.plan.groups.emergencyAccess.title'
 const EA = ['s-prereq-break-glass', 's-prereq-exclusion-group', 's-prereq-passkey-settings', 'cleanup-drill']
-const DIRECTION = ['s-direction-use', 's-direction-accounts', 's-direction-devices', 's-direction-locations']
+const DIRECTION = ['s-direction-use', 's-direction-accounts', 's-direction-devices']
 const item = (id: string, lane: BoardItem['lane'] = 'Ready'): BoardItem => ({ id, title: id, lane, laneLabel: lane, workType: 'setup', order: 0 })
 
 test('the registry lists the four Emergency Access steps in order, first, with the task anatomy', () => {
@@ -148,13 +148,14 @@ test('no group lists a step the board can never draw', () => {
 })
 
 // The roadmap flow's outline (docs/plans/roadmap-flow/v1-proposal-full.md
-// section 2), with V2's names (owner, 2026-09-23). Four rows hold an interim
-// place until Stages 3 and 4 merge them: Decide Where People Sign In From as
-// 2.4, the countries location as 3.8, each medium-risk step after its partner.
+// section 2), with V2's names (owner, 2026-09-23). Two rows hold an interim
+// place until Stage 4 merges them: each medium-risk step after its partner.
+// Stage 3 merged the other two: Direction has three steps, and the countries
+// location is Block Sign-ins From Countries Not Allowed's own first task.
 const OUTLINE: readonly [key: string, title: string, members: readonly string[]][] = [
   ['emergency-access', 'Establish Emergency Access', EA],
   ['direction', 'Define Your Rollout Scope', DIRECTION],
-  ['prepare', 'Prepare Accounts and Objects', ['s-check-dormant-accounts', 's-check-separate-admin-accounts', 's-ladder-operator-passkey', 's-verify-mfa', 's-prereq-auth-strength', 's-prereq-trusted-location', 's-prereq-service-accounts-group', 's-prereq-allowed-countries']],
+  ['prepare', 'Prepare Accounts and Objects', ['s-check-dormant-accounts', 's-check-separate-admin-accounts', 's-ladder-operator-passkey', 's-verify-mfa', 's-prereq-auth-strength', 's-prereq-trusted-location', 's-prereq-service-accounts-group']],
   ['core', 'Turn On MFA for Everyone', ['s-goal-block-legacy-auth', 's-goal-block-device-code', 's-goal-admins-phishing-resistant', 's-goal-mfa-all-users', 's-prereq-security-defaults', 's-prereq-per-user-mfa']],
   ['extend-mfa', 'Extend MFA Coverage', ['s-goal-register-info-protected', 's-goal-device-registration-mfa', 's-goal-guests-mfa', 's-goal-pim-activation-reauth', 's-goal-inforcer-mfa', 's-goal-sign-in-risk', 's-goal-sign-in-risk-medium', 's-goal-user-risk', 's-goal-user-risk-medium', 's-goal-azure-management-mfa']],
   ['remaining-doors', 'Close the Doors Nobody Should Use', ['s-goal-block-auth-transfer', 's-goal-block-unsupported-platforms', 's-goal-geo-restriction', 's-goal-service-accounts-trusted-network', 's-goal-workload-identity-block', 's-goal-admin-portals-protected']],
@@ -214,7 +215,7 @@ test('a number is a place among the group’s own rows, in registry order, and t
   assert.equal(positionInGroup('s-goal-nobody-placed-this'), null, 'a catch-all member has no registry position either')
 })
 
-test('(a) Define Your Rollout Scope (the Direction steps) is the second section: its four steps in order, with the decision anatomy', () => {
+test('(a) Define Your Rollout Scope (the Direction steps) is the second section: its three steps in order, with the decision anatomy', () => {
   assert.equal(STEP_GROUPS[1].key, DIRECTION_GROUP, 'Direction is not right after Emergency Access')
   assert.deepEqual([...membersOf(DIRECTION_GROUP)], DIRECTION)
   const g = groupOf('s-direction-devices')!
@@ -299,13 +300,14 @@ const LISTED: readonly string[] = STEP_GROUPS.flatMap((g) => [...g.members])
  * The graph's nodes the plan never draws, at the row that asks their question:
  * the usage and device questions are Direction's (directionAnswers.ts
  * DIRECTION_QUESTIONS), and the travel answer is stored on the countries
- * location (answers.ts QUESTION_STEP), the step the graph has it wait on.
+ * location (answers.ts QUESTION_STEP), which since Stage 3 is the countries
+ * policy's own task (stepIds.ts OBJECT_TASK), so it is asked on that row.
  */
 const ASKED_AT: Readonly<Record<string, string>> = {
   's-question-mail-devices': DIRECTION_QUESTIONS.mailDevices.step,
   's-question-partner': DIRECTION_QUESTIONS.partner.step,
   's-prereq-device-plan': DIRECTION_QUESTIONS.computers.step,
-  's-question-travel': QUESTION_STEP.travel,
+  's-question-travel': objectTaskOwner(QUESTION_STEP.travel) ?? QUESTION_STEP.travel,
 }
 
 /**
@@ -426,7 +428,9 @@ test('every step the engine can build is listed by a section, so none reaches On
   const goals = (goalsData.goals as { id: string }[]).map((g) => g.id).filter((id) => !mergedAway.has(id)).map(stepIdForGoal)
   // The steps generate.ts builds by name: a literal id, or one of its constants.
   const named = [...generate.matchAll(/prereq\('([^']+)'/g)].map((m) => m[1])
-  const constants = [BREAK_GLASS_STEP_ID, EXCLUSION_GROUP_STEP_ID, PREREQ_STEP_ID.trustedLocation, PREREQ_STEP_ID.authStrength, PREREQ_STEP_ID.allowedCountries, PREREQ_STEP_ID.serviceAccountsGroup, SEPARATE_ADMIN_ACCOUNTS_STEP_ID, PASSKEY_SETTINGS_STEP_ID, OPERATOR_PASSKEY_STEP_ID]
+  // The countries location is not among them: since Stage 3 it is a task of the
+  // countries policy (stepIds.ts OBJECT_TASK), and no tenant builds it as a step.
+  const constants = [BREAK_GLASS_STEP_ID, EXCLUSION_GROUP_STEP_ID, PREREQ_STEP_ID.trustedLocation, PREREQ_STEP_ID.authStrength, PREREQ_STEP_ID.serviceAccountsGroup, SEPARATE_ADMIN_ACCOUNTS_STEP_ID, PASSKEY_SETTINGS_STEP_ID, OPERATOR_PASSKEY_STEP_ID]
   const cleanup = cleanupRows({ emergencyAccounts: ['a'], renames: ['b'], overlaps: ['c'], hardening: ['d'], namedExclusions: ['e'] }).map((r) => `cleanup-${r.kind}`)
   // And whatever the tenants actually build.
   const built = SCENARIOS.flatMap((s) => runOf(s).steps.map((x) => x.id))
@@ -441,4 +445,6 @@ test('every step the engine can build is listed by a section, so none reaches On
   const unlisted = [...new Set([...goals, ...named, ...constants, ...DIRECTION_STEP_IDS, ...cleanup, ...built])]
     .filter((id) => !id.startsWith('s-review-baseline-') && !ladder.has(id) && !LISTED.includes(id))
   assert.deepEqual(unlisted, [], 'a step the engine builds is placed only by the catch-all')
+  // An object task is drawn on its step's row: no tenant builds it as a row of its own.
+  for (const task of Object.values(OBJECT_TASK)) assert.equal(built.includes(task), false, `${task}: an object task is built as a step`)
 })

@@ -176,8 +176,8 @@ export function finishedRowsOf(section: Pick<PrintSection, 'rows'>, board: Print
  * doesntApplyRows), each worded as the footer words it, with the reason given.
  */
 export function doesntApplyLinesOf(steps: readonly Step[]): string[] {
-  const row = (pages.plan as { footer: { doesntApplyRow: string } }).footer.doesntApplyRow
-  return doesntApplyRows(steps).map((s) => fillText(row, { stepTitle: contentTitle(s), reason: s.doesntApply ?? '' }))
+  const { doesntApplyRow, doesntApplyScanRow } = (pages.plan as { footer: { doesntApplyRow: string; doesntApplyScanRow: string } }).footer
+  return doesntApplyRows(steps).map((s) => fillText(s.doesntApplyByScan ? doesntApplyScanRow : doesntApplyRow, { stepTitle: contentTitle(s), reason: s.doesntApply ?? '' }))
 }
 
 /**

@@ -23,6 +23,9 @@ import { initialDomain } from '../../validation/rules.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { fillText, whatToDoFor } from '../../content/render.ts'
+import { directionWords } from '../../content/content.ts'
+import { suggestCountries } from '../../mapping/countries.ts'
+import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { baselineConflictWords } from '../../roadmap/baselineConflict.ts'
 import { toReportOnly, unavailableReason } from '../../roadmap/operations.ts'
 import { stepContext } from '../../roadmap/prompts.ts'
@@ -35,13 +38,14 @@ import { stepVars, withoutScheduleDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { portalNamesFor, unwrittenCorrectionLines } from './stepPortal.ts'
 import { preparationLines, preparesWhileCreateWaits, rescanLinesOf, stepInstructions, wholeLines } from './stepInstructions.ts'
-import { CONTRACT, SETTLED_FINDINGS, eyebrowOf, implementationEmptyOf, implementationIsCurrent, isReadinessWork, proceduresAreReference, railOf, readinessOf, stepContract } from './stepContract.ts'
+import { CONTRACT, SETTLED_FINDINGS, eyebrowOf, implementationEmptyOf, implementationIsCurrent, isReadinessWork, objectTaskLeads, proceduresAreReference, railOf, readinessOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
 import { boardHolds, laneViewAlone } from './planBoard.ts'
 import { DECISION_HEAD, HEAD, taskHeadingsOf } from './stepHeadings.ts'
 import { usesDecisionAnatomy } from '../../roadmap/stepGroups.ts'
 import { directionMilestoneAction } from '../../roadmap/directionAnswers.ts'
 import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
+import type { WhoBlock } from './whoBlocks.ts'
 import { BASELINE_COMMIT, artifactText, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageRuntime, packageSourceLine, packageStateOf, planningPreview, reviewedPackageFor, setupAfterEnforcementOf, sourceCheckedLine, entraWithSettings, jsonWithPlanTag } from './stepPackage.ts'
 import { lifecycleResources, policyInspectionLines, resourceChannelAllowed, inspectionResource, emailResource, mfaPreparationEmail, deviceSetupResource, namedPortalResource, switchedOffRequest, switchedOffResources, withWorkflowVerification } from './stepResources.ts'
 import { projectSafely, projectExplanation, readinessSafely, troubleshootingSafely } from '../../content/implementation/project.ts'
@@ -162,8 +166,77 @@ export type StepBodyOptions = {
   enforceWaits?: readonly string[]
 }
 
-/** The opened step's body: every value the component draws, decided once here. */
+/**
+ * The opened step's body: every value the component draws, decided once here.
+ *
+ * A step that makes an object itself (roadmap-flow Stage 3; Step.objectTask —
+ * the countries location, on Block Sign-ins From Countries Not Allowed) draws
+ * that object as its first task, in the one frame: the object's picker where
+ * the step asks nothing of its own, the object's who-lines after the step's,
+ * its risks before the step's, and — while the object is still to be made —
+ * the object's own Implementation (its package's channels, its procedure as the
+ * first Implementation Task) ahead of the policy's. Every word is the object's
+ * own content entry and package, read under its old id (objectTaskBodyOf); its
+ * About sentence and its completion lines are the contract's (stepContract.ts),
+ * so the export and the print read them too.
+ */
 export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
+  const own = ownBodyOf(step, ctx, o)
+  const task = objectTaskBodyOf(step, ctx)
+  return task === null ? own : withObjectTask(step, own, task, ctx)
+}
+
+/** The body of the object a step makes itself, folded into the step's own (stepBodyOf). */
+function withObjectTask(step: Step, own: StepBody, task: StepBody, ctx: StepVarContext): StepBody {
+  const taskStep = step.objectTask!
+  // While the object is still to be made it is the step's next task, so its
+  // Implementation leads (the policy's own procedure follows as the next task),
+  // and the exports put its lines first the same way (stepContract.ts
+  // objectTaskLeads).
+  const leads = objectTaskLeads(step)
+  // The object's picker, saved under its own id, where the step asks nothing of its own.
+  const taskDecision = !own.decides && task.decides ? { d: pickerWordsOf(taskStep, task.d, ctx), ex: task.ex, stepId: taskStep.id } : null
+  const taskLead: WhoBlock[] = task.lead ? [{ key: `${taskStep.id}:lead`, lead: task.lead, names: [] }] : []
+  const risks = (cs: Record<string, any>): unknown[] => (Array.isArray(cs?.more?.risks) ? cs.more.risks : [])
+  const tasks = leads && task.emergencyAccountTasks
+    // The object's task keeps its own words under an id of its own, so the task
+    // selector never confuses it with the policy's procedure.
+    ? { ...task.emergencyAccountTasks, tasks: [...task.emergencyAccountTasks.tasks.map((t) => ({ ...t, id: `${taskStep.id}:${t.id}` })), ...(own.emergencyAccountTasks?.tasks ?? [])], recommendedTaskId: task.emergencyAccountTasks.tasks[0] ? `${taskStep.id}:${task.emergencyAccountTasks.tasks[0].id}` : null, printAll: true }
+    : own.emergencyAccountTasks
+  return {
+    ...own,
+    cs: { ...own.cs, more: { ...(own.cs.more ?? {}), risks: [...risks(task.cs), ...risks(own.cs)] } },
+    decides: own.decides || taskDecision !== null,
+    taskDecision,
+    whoInline: [...own.whoInline, ...taskLead, ...task.whoInline],
+    whoHeld: [...own.whoHeld, ...task.whoHeld],
+    whoFull: [...own.whoFull, ...taskLead, ...task.whoFull],
+    showWho: own.showWho || task.showWho,
+    hasEvidence: own.hasEvidence || task.hasEvidence,
+    emergencyAccountTasks: tasks,
+    ...(leads
+      ? { artifacts: task.artifacts, packaged: task.packaged, previewNote: task.previewNote, notes: task.notes, empty: task.empty, sourceLine: task.sourceLine, showImplementation: task.showImplementation || own.showImplementation, scenarios: [...task.scenarios, ...own.scenarios] }
+      : {}),
+  }
+}
+
+/**
+ * The words an object task's picker keeps from the Direction question it used
+ * to be (Stage 3): the countries location's picker is the work countries
+ * question Direction asked, so that question's label heads it and its seen
+ * line sits under it where the scan saw sign-in countries, word for word
+ * (pages.app.plan.direction.questions.workCountries). The picker still saves
+ * under its own label; only what it is headed with changes.
+ */
+function pickerWordsOf(taskStep: Step, d: StepBody['d'], ctx: StepVarContext): StepBody['d'] {
+  if (taskStep.id !== PREREQ_STEP_ID.allowedCountries || !d) return d
+  const Q = directionWords.questions.workCountries
+  const seen = suggestCountries(ctx.snapshot).countries.filter((c) => c.users > 0).map((c) => c.code)
+  return { ...d, heading: Q.label, ...(seen.length > 0 ? { text: fillText(Q.seen, { countries: seen.join(', ') }) } : {}) }
+}
+
+/** The step's own body, before the object it makes itself is folded in (stepBodyOf). */
+function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   const lane = o.lane ?? null
   const blockers = o.blockers ?? NO_BLOCKERS
   const prerequisiteLabel = o.prerequisiteLabel ?? null
@@ -612,6 +685,8 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
     readiness,
     allTiles,
     decides,
+    /** The object's picker the step draws as its own (withObjectTask): its content block, its vars and the id it saves under. */
+    taskDecision: null as { d: Record<string, any>; ex: Ex; stepId: string } | null,
     createIfNeeded,
     creates,
     ownSteps,
@@ -631,7 +706,20 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   }
 }
 
-export type StepBody = ReturnType<typeof stepBodyOf>
+export type StepBody = ReturnType<typeof ownBodyOf>
+
+/**
+ * The body of the object a step makes itself, as its own task (roadmap-flow
+ * Stage 3; Step.objectTask): the countries location, on Block Sign-ins From
+ * Countries Not Allowed. It is the location step's own body — its content
+ * entry, its implementation-content package, its picker and its completion —
+ * worked out the one way every step's is, under the location's old id, so the
+ * countries step draws the location's words exactly as the location step drew
+ * them. Null for a step that makes no object of its own.
+ */
+export function objectTaskBodyOf(step: Step, ctx: StepVarContext): StepBody | null {
+  return step.objectTask ? ownBodyOf(step.objectTask, ctx) : null
+}
 
 /**
  * The section headings the opened step draws, in the order the component draws

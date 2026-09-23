@@ -43,14 +43,60 @@ export function packageDirs(root: string = LIBRARY_ROOT): string[] {
   return out
 }
 
+/** One package as its folder holds it: its META as JSON text and its blocks' file. */
+export type PackageSource = { dir: string; metaJson: string; content: string }
+
+/** A task a package folds in (META `tasks`): the prefix its blocks carry in the package's content file, and its own META, whole. */
+type PackageTask = { blockPrefix: string; meta: Record<string, unknown> }
+
+const BLOCK_BEGIN = '@@IAMAI-BEGIN '
+const BLOCK_END = '@@IAMAI-END'
+
+/**
+ * The packages one folder holds: the folder's own, and each task it folds in
+ * (roadmap-flow Stage 3). A step that makes an object itself carries that
+ * object's package as a task — the countries block's folder holds the countries
+ * location's package first, its META whole under `tasks` and its blocks under
+ * their prefix (`location/entra.create`) — so the step's implementation content
+ * is one folder, in task order. Each task compiles exactly as it did as a
+ * package of its own: its META as written and its blocks with the prefix
+ * dropped, so the registry holds the same two packages, byte for byte, and the
+ * runtime finds each under its own step id. A folder with no tasks is one package.
+ */
+export function packageSources(dir: string): PackageSource[] {
+  const metaText = readFileSync(join(dir, 'META.json'), 'utf8')
+  const meta = JSON.parse(metaText) as Record<string, unknown> & { contentFile?: string; tasks?: PackageTask[] }
+  const content = readFileSync(join(dir, meta.contentFile ?? 'CONTENT.md'), 'utf8')
+  const tasks = Array.isArray(meta.tasks) ? meta.tasks : []
+  if (tasks.length === 0) return [{ dir, metaJson: metaText, content }]
+  const own: string[] = []
+  const theirs: string[][] = tasks.map(() => [])
+  let into: string[] = own
+  for (const line of content.split(/\r?\n/)) {
+    if (line.startsWith(BLOCK_BEGIN)) {
+      const header = JSON.parse(line.slice(BLOCK_BEGIN.length)) as { id?: unknown }
+      const at = tasks.findIndex((t) => typeof header.id === 'string' && header.id.startsWith(t.blockPrefix))
+      into = at < 0 ? own : theirs[at]
+      into.push(at < 0 ? line : BLOCK_BEGIN + JSON.stringify({ ...header, id: String(header.id).slice(tasks[at].blockPrefix.length) }))
+      continue
+    }
+    into.push(line)
+    if (line === BLOCK_END) into = own
+  }
+  const { tasks: _tasks, ...ownMeta } = meta
+  void _tasks
+  return [
+    { dir, metaJson: JSON.stringify(ownMeta), content: own.join('\n') },
+    ...tasks.map((t, i) => ({ dir, metaJson: JSON.stringify(t.meta), content: theirs[i].join('\n') })),
+  ]
+}
+
 /** The library compiled: the packages the Plan registers, by step id, and the ones that describe no content step. */
 export function compileLibrary(root: string = LIBRARY_ROOT): { registered: LibraryPackage[]; notSteps: LibraryPackage[] } {
   const registered: LibraryPackage[] = []
   const notSteps: LibraryPackage[] = []
-  for (const dir of packageDirs(root)) {
-    const metaJson = readFileSync(join(dir, 'META.json'), 'utf8')
-    const contentFile = (JSON.parse(metaJson) as { contentFile?: string }).contentFile ?? 'CONTENT.md'
-    const { pkg, withheld, source, errors } = compileLibraryPackage(metaJson, readFileSync(join(dir, contentFile), 'utf8'))
+  for (const { dir, metaJson, content: contentMd } of packageDirs(root).flatMap(packageSources)) {
+    const { pkg, withheld, source, errors } = compileLibraryPackage(metaJson, contentMd)
     const content = contentStepForPackage(pkg.meta.stepId)
     // The members its step implements are the pinned policies its content step's goals map to.
     const authority = pkg.meta.baselineAuthority

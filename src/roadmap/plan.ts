@@ -138,11 +138,14 @@ export function trimCheckpoints<T>(checkpoints: T[]): T[] {
  * criteria, the engine's portal steps — because no v3 surface renders them and
  * their vocabulary is the contract's forbidden list. The file still reads on its
  * own (title, status, dates, who) and loads back exactly as before: only the
- * decisions block is trusted on load.
+ * decisions block is trusted on load. A step's object task (Step.objectTask, the
+ * countries location 6.3 makes first) is left out: it is derived again on every
+ * load, and whole it would carry the step it used to be, by that step's title.
  */
 export function fileStep(s: Step): Step {
   return {
     ...s,
+    objectTask: undefined,
     guidance: undefined,
     directionQuestions: undefined,
     comms: null,

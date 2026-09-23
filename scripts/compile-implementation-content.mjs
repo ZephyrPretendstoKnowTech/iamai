@@ -15,7 +15,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { spawnSync } from 'node:child_process';
 import { PackageError, bindingsUsed, maskJsonTemplate, normalizePackage, packageWarnings, parseBlocks, validatePackage } from '../src/content/implementation/protocol.ts';
-import { LIBRARY_ROOT, compileLibrary, libraryIndexOf, registryOf } from '../src/content/implementation/library.ts';
+import { LIBRARY_ROOT, compileLibrary, libraryIndexOf, packageSources, registryOf } from '../src/content/implementation/library.ts';
 import { stateCompatibility, stepClassOf } from '../src/content/implementation/states.ts';
 import { driftOf } from '../src/content/implementation/drift.ts';
 import { contentStepForPackage } from '../src/content/stepTitle.ts';
@@ -126,12 +126,17 @@ if (args[0] === '--validate-library') {
     const rel = path.relative(root, dir).replaceAll('\\', '/');
     const metaPath = path.join(dir, 'META.json');
     if (!fs.existsSync(metaPath)) { results.push({ package: rel, errors: ['no META.json (a timestamped META file needs its canonical name)'], warnings: [], pin: null }); continue; }
-    let meta, blocks;
-    try { meta = JSON.parse(fs.readFileSync(metaPath, 'utf8')); } catch (e) { results.push({ package: rel, errors: [`META.json does not parse: ${e.message}`], warnings: [], pin: null }); continue; }
-    try { blocks = parseBlocks(fs.readFileSync(path.join(dir, meta.contentFile || 'CONTENT.md'), 'utf8')); } catch (e) { results.push({ package: rel, errors: [`CONTENT.md: ${e.message}`], warnings: [], pin: null }); continue; }
-    const normal = normalizePackage(meta, blocks);
-    const pkg = { meta: normal.meta, blocks: normal.blocks };
-    results.push({ package: meta.stepId ?? rel, errors: validatePackage(pkg), warnings: packageWarnings(pkg), pin: meta.baselineAuthority?.pinCommit ?? null, normalized: normal.normalized, pkg });
+    // A folder that folds a task in (META `tasks`, library.ts packageSources) holds one package per task.
+    let sources;
+    try { sources = packageSources(dir); } catch (e) { results.push({ package: rel, errors: [`META.json does not parse: ${e.message}`], warnings: [], pin: null }); continue; }
+    for (const source of sources) {
+      const meta = JSON.parse(source.metaJson);
+      let blocks;
+      try { blocks = parseBlocks(source.content); } catch (e) { results.push({ package: meta.stepId ?? rel, errors: [`CONTENT.md: ${e.message}`], warnings: [], pin: null }); continue; }
+      const normal = normalizePackage(meta, blocks);
+      const pkg = { meta: normal.meta, blocks: normal.blocks };
+      results.push({ package: meta.stepId ?? rel, errors: validatePackage(pkg), warnings: packageWarnings(pkg), pin: meta.baselineAuthority?.pinCommit ?? null, normalized: normal.normalized, pkg });
+    }
   }
   const passed = results.filter((r) => r.errors.length === 0);
   const byFeature = {};
@@ -176,10 +181,13 @@ if (args[0] === '--validate-library') {
 }
 
 const packageDir = path.resolve(args[0]);
-const meta = readJson(path.join(packageDir, 'META.json'));
+// The folder's own package; a task it folds in (library.ts packageSources) is
+// linted through --validate-library, which reads every package a folder holds.
+const own = packageSources(packageDir)[0];
+const meta = JSON.parse(own.metaJson);
 const contentPath = path.join(packageDir, meta.contentFile || 'CONTENT.md');
 let blocks;
-try { blocks = parseBlocks(fs.readFileSync(contentPath, 'utf8')); }
+try { blocks = parseBlocks(own.content); }
 catch (e) { if (e instanceof PackageError) fail(e.message); throw e; }
 const bindingsArg = args.indexOf('--bindings');
 const bindingValues = bindingsArg >= 0 ? readJson(path.resolve(args[bindingsArg + 1])) : null;
@@ -190,7 +198,7 @@ function lint() {
   const errors = validatePackage(pkg);
   if (errors.length > 0) fail(errors.join('\n'));
   for (const w of packageWarnings(pkg)) console.log(`WARN: ${w}`);
-  const used = new Set(bindingsUsed(fs.readFileSync(contentPath, 'utf8')));
+  const used = new Set(bindingsUsed(own.content));
   if (bindingValues) {
     for (const [id, b] of Object.entries(blocks)) {
       if (b.meta.format !== 'json-template') continue;

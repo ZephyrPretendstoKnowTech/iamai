@@ -21,7 +21,7 @@ import { fillText } from '../content/render.ts'
 
 const CRITICAL = engine.critical
 import { absoluteDate } from '../copy/dates.ts'
-import { unavailableReason } from './operations.ts'
+import { awaitsOwnObject, unavailableReason } from './operations.ts'
 import type { PolicyEffect } from './operations.ts'
 import { analysisUnknown, effectsOf, familyReading, policiesOverlap } from './strand.ts'
 import type { Step } from './types.ts'
@@ -342,9 +342,13 @@ export function nextWorkingDay(fromIso: string): string {
  * the thing it waits on is done (roadmap/operations.ts unavailableReason). Every
  * other step is scheduled as before.
  */
-const nothingToRun = (s: Step): boolean => unavailableReason(s) !== null
+const nothingToRun = (s: Step): boolean => unavailableReason(s) !== null && !awaitsOwnObject(s)
 const isWork = (s: Step): boolean => s.status !== 'done' && s.status !== 'skipped' && !nothingToRun(s)
-const isEnforcement = (s: Step): boolean => isWork(s) && (s.kind === 'create' || s.kind === 'adjust' || s.kind === 'enforce')
+// A step whose next task is the object it makes itself (operations.ts
+// awaitsOwnObject) is placed as that task, on day 0, the way the object's own
+// step was; its policy is placed once the object exists and the policy can be
+// written (Stage 3).
+const isEnforcement = (s: Step): boolean => isWork(s) && (s.kind === 'create' || s.kind === 'adjust' || s.kind === 'enforce') && !awaitsOwnObject(s)
 
 /** ISO week key (Monday-based) for the weekly cap. */
 function weekKey(iso: string): string {
@@ -387,7 +391,6 @@ export function dependencyGraph(steps: Step[]): Record<string, Dependency[]> {
   const breakGlass = steps.find((s) => s.id === 's-prereq-break-glass' && isWork(s))
   const verify = steps.find((s) => s.kind === 'verify' && isWork(s))
   const location = steps.find((s) => s.id === 's-prereq-trusted-location' && isWork(s))
-  const countries = steps.find((s) => s.id === 's-prereq-allowed-countries' && isWork(s))
   const work = steps.filter(isWork)
   for (const s of work) {
     for (const b of s.blockedBy) {
@@ -415,8 +418,8 @@ export function dependencyGraph(steps: Step[]): Record<string, Dependency[]> {
     if (asksForMethod && verify) add(s, { stepId: verify.id, kind: 'hard', reason: 'registration' })
     // A policy that names where people may sign in from waits for the place to exist.
     if (usesLocations) {
+      // The countries location is the countries policy's own first task since Stage 3, never a step to wait on.
       if (location) add(s, { stepId: location.id, kind: 'hard', reason: 'named-location' })
-      if (countries) add(s, { stepId: countries.id, kind: 'hard', reason: 'named-location' })
     }
   }
   // Soft: the same people prompted by two steps of different classes in the same week.

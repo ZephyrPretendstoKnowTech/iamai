@@ -1280,7 +1280,7 @@
     {
       "stepId": "s-prereq-allowed-countries",
       "title": "Create or Correct Allowed Countries Location",
-      "packagePath": "docs/implementation-content/s-prereq-allowed-countries/",
+      "packagePath": "docs/implementation-content/s-goal-geo-restriction/",
       "relationship": "prerequisite",
       "status": "SELF-VERIFIED",
       "validationResult": "parts-withheld",

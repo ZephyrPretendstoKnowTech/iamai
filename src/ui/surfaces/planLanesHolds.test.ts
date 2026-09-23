@@ -348,3 +348,48 @@ test('a report-only policy held on its readiness threshold names the threshold, 
   assert.equal(reading.reason?.id, 'evidence:observation', 'the premise: only the window holds it')
   assert.equal(laneViewOf(reading, () => null).waitingFor, BOARD.blockers.evidence)
 })
+
+// Stage 3 (V1 decision 6). Turn Off Security Defaults read Completed on a tenant
+// where security defaults were already off at the first scan: a row claiming
+// work nobody did. The plan records the day a scan first read them on
+// (PlanDecisions.securityDefaultsSeenOnAt); with that day the step is Completed,
+// without it it does not apply. Either way no policy is held behind it: the
+// engine's hold reads the scan, never the row.
+test('security defaults: seen on then off reads Completed; never seen on reads Doesn\'t apply and holds no policy', () => {
+  const SD = 's-prereq-security-defaults'
+  const never = runFixture(fixture('small'))
+  const off = never.steps.find((s) => s.id === SD)
+  assert.ok(off, 'the premise: small reads security defaults off and carries the step')
+  assert.equal(typeof off.doesntApply, 'string', 'never seen on: Doesn\'t apply')
+  assert.equal(off.doesntApplyByScan, true, 'the scan says so, not a person')
+  assert.deepEqual(never.steps.filter((s) => s.blockers.some((b) => b.label === 'security-defaults-first')).map((s) => s.id), [], 'no policy is held by it')
+  assert.equal(laneReadings(never.steps).has(SD), false, 'it is not a row: the footer draws it')
+  const seen = runFixture(fixture('small'), { securityDefaultsSeenOnAt: '2026-08-20T00:00:00.000Z' })
+  const done = seen.steps.find((s) => s.id === SD)!
+  assert.equal(done.doesntApply ?? null, null, 'seen on by this plan: not Doesn\'t apply')
+  assert.equal(laneReadings(seen.steps).get(SD)?.lane, 'Completed', 'seen on, now off: Completed')
+  assert.deepEqual(seen.steps.filter((s) => s.blockers.some((b) => b.label === 'security-defaults-first')).map((s) => s.id), [], 'and still holds nothing')
+})
+
+// Stage 3 (V1 decision 6). "Everyone works remotely" made Define the Trusted
+// Network read Completed: there is no network to define, so it does not apply.
+// Protect Sign-in Method Registration waits for a trusted location to mean
+// something, and that hold read "is the network step done?": a Doesn't apply
+// step is not done, so the hold went — on exactly the tenants that have no
+// trusted location at all. It treats Doesn't apply as done, and nothing waits on
+// a step that does not apply.
+test('a remote tenant: Define the Trusted Network reads Doesn\'t apply, and 5.1 keeps its no-trusted-location hold', () => {
+  const NETWORK = 's-prereq-trusted-location'
+  const f = fixture('small')
+  assert.equal(f.mapping.trustedLocationIds.length, 0, 'the premise: small answered that everyone works remotely')
+  assert.equal(f.mapping.wizardAnswered.trustedLocations, true, 'the premise: the answer is saved')
+  const r = runFixture(f)
+  const network = r.steps.find((s) => s.id === NETWORK)!
+  assert.equal(network.doesntApply, directionWords.questions.officeNetwork.options.remote, 'the answer is the reason')
+  assert.equal(laneReadings(r.steps).has(NETWORK), false, 'it is not a row: the footer draws it')
+  const registration = r.steps.find((s) => s.goalId === 'register-info-protected')!
+  assert.ok(registration.blockers.some((b) => b.label === 'registration-no-trusted-location'), '5.1 keeps its hold')
+  assert.ok(!registration.blockedBy.includes(NETWORK), 'and waits on no step that does not apply')
+  const sa = r.steps.find((s) => s.goalId === 'service-accounts-trusted-network')
+  if (sa) assert.ok(!sa.blockedBy.includes(NETWORK), 'nor does the service accounts block')
+})

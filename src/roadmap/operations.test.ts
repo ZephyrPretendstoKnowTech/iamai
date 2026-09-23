@@ -6,7 +6,7 @@ import { readyEvidence } from './fixtures/readyEvidence.ts'
 // and an operation that does not say exactly one thing is no operation at all.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { finalTargets, hasMalformedOperations, isPreserved, isValidOperation, operationsOf, implementationOffered, policyResult, unavailableReason, validOperations } from './operations.ts'
+import { awaitsOwnObject, finalTargets, hasMalformedOperations, isPreserved, isValidOperation, operationsOf, implementationOffered, policyResult, unavailableReason, validOperations } from './operations.ts'
 import { policyVerdict, promptsPeople, stepAccountVerdict, wouldStrand } from './strand.ts'
 import { batchClassOf, dependencyGraph, observationDaysFor } from './schedule.ts'
 import { nobodyAffected, noticeDaysFor } from './timing.ts'
@@ -163,7 +163,8 @@ test('a step the plan cannot write is not scheduled, and the rest of the plan is
   const f = withRecoveryTested(withFoundationSettled(fixture('demo-week2')))
   const r = runFixture(f)
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming }
-  const held = r.steps.filter((s) => (s.kind === 'create' || s.kind === 'adjust') && unavailableReason(s) !== null)
+  // Not one whose only missing object is its own task: that is placed now (awaitsOwnObject; Stage 3).
+  const held = r.steps.filter((s) => (s.kind === 'create' || s.kind === 'adjust') && unavailableReason(s) !== null && !awaitsOwnObject(s))
   assert.ok(held.length >= 2, `the demo holds policies it cannot write yet (${held.length})`)
   for (const s of held) {
     // In no wave at all — the Plan renders it in its own undated group — and so

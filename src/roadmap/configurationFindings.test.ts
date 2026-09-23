@@ -20,7 +20,9 @@ test('invalid office configuration stays on its canonical task and old repair li
   assert.equal(step.configurationFindings?.at(-1)?.label, 'Whole-Internet Range')
   assert.equal(step.configurationFindings?.at(-1)?.detail, `Office: ${finding.finding}`)
   assert.equal(stepFromPlanHash('#/plan/s-blocker-trusted-location'), step.id)
-  assert.equal(canonicalBlockerStepId('allowedCountries'), 's-prereq-allowed-countries')
+  // The countries list's checks are the countries policy's since Stage 3: it makes the location as its own task.
+  assert.equal(canonicalBlockerStepId('allowedCountries'), 's-goal-geo-restriction')
+  assert.equal(stepFromPlanHash('#/plan/s-prereq-allowed-countries'), 's-goal-geo-restriction')
 })
 
 test('method enrollment does not invalidate an existing strength object or create a duplicate repair task', () => {

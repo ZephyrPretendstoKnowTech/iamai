@@ -941,6 +941,8 @@
         "baseline": "the baseline defines this policy two ways",
         "exclusionsGroup": "until you choose the exclusions group",
         "devicePlan": "until phones and computers are decided",
+        "$commentWorkCountries": "What holds Block Sign-ins From Countries Not Allowed while no work country is saved (roadmap-flow Stage 3, V1 decision 5): the countries step asks them itself with its picker, where Direction asked them before and the row read Waiting on your direction. It waits on a person, not on work.",
+        "workCountries": "until the work countries are saved",
         "direction": "until every answer is approved",
         "unsettled": "until the groups the source policy leaves out are identified",
         "sourceMapping": "Baseline references an unmapped group",
@@ -972,6 +974,8 @@
         "inPlace": "Already in place ({n})",
         "doesntApply": "Doesn't apply here ({n})",
         "doesntApplyRow": "{stepTitle}: you said: {reason}",
+        "$commentDoesntApplyScanRow": "A Doesn't apply here row the scan decided rather than a person (Step.doesntApplyByScan: Turn Off Security Defaults on a plan that never read them on, Stage 3). The you-said row put the plan's own reading in the person's mouth, and its Put back had no answer to take back.",
+        "doesntApplyScanRow": "{stepTitle}: {reason}",
         "notLicensed": "Not licensed ({n})",
         "notLicensedRow": "{stepTitle}: needs a licence this tenant does not hold: {licence}",
         "notLicensedNote": "The baseline includes these, and this tenant's licences don't cover them, so they aren't in this plan. A finished plan puts the baseline in place as far as those licences reach, not all of it. Nothing in the plan waits on these.",
@@ -2868,7 +2872,7 @@
           }
         },
         "direction": {
-          "$comment": "Define Your Rollout Scope, the Direction steps (docs/plans/direction-spec.md): four decision steps, answers only. Question words, options and evidence lines; roadmap/direction.ts fills them.",
+          "$comment": "Define Your Rollout Scope, the Direction steps (docs/plans/direction-spec.md): three decision steps, answers only. Question words, options and evidence lines; roadmap/direction.ts fills them.",
           "headings": {
             "why": "About this Step",
             "questions": "Questions",
@@ -2901,14 +2905,10 @@
               "milestoneAction": "Approving these answers takes these accounts out of the people counts and gives them their own rules."
             },
             "devices": {
-              "title": "Decide How People and Devices Sign In",
-              "why": "Choose where your devices are heading. It's fine if today looks different: the plan prepares the gap before anything is enforced.",
-              "milestoneAction": "Approving these answers decides which device policies your plan contains."
-            },
-            "locations": {
-              "title": "Decide Where People Sign In From",
-              "why": "Tell us where your people work from. This sets which countries are allowed and which network counts as the office.",
-              "milestoneAction": "Approving these answers defines the office network and the countries your policies allow."
+              "$comment": "Stage 3 (roadmap-flow V1 decision 3): today's devices step plus the office network question from Decide Where People Sign In From, which is no longer drawn. Its title is the V1 outline's name for the merged step. why and milestoneAction are the two steps' words combined as they were; the only edit is the countries clause each carried (\"which countries are allowed and\", \"and the countries your policies allow\"), false once work countries moved to Block Sign-ins From Countries Not Allowed.",
+              "title": "Decide How and Where People Sign In",
+              "why": "Choose where your devices are heading. It's fine if today looks different: the plan prepares the gap before anything is enforced. Tell us where your people work from. This sets which network counts as the office.",
+              "milestoneAction": "Approving these answers decides which device policies your plan contains. Approving these answers defines the office network."
             }
           },
           "questions": {
@@ -2961,15 +2961,6 @@
               "seen": "{n} service-provider accounts signed in to this tenant.",
               "notSeen": "No service-provider sign-ins in the last 30 days."
             },
-            "externalMethods": {
-              "label": "External authentication methods (a third-party MFA provider)",
-              "options": {
-                "yes": "Yes",
-                "no": "No"
-              },
-              "seen": "The authentication methods policy has an external method enabled.",
-              "notSeen": "The authentication methods policy has no external method enabled."
-            },
             "accountOptions": {
               "none": "None",
               "some": "Pick accounts"
@@ -3017,13 +3008,6 @@
               "todayPartial": "In the part of the sign-in records this scan read, {n} people signed in from phones. There may be more.",
               "note": "Blocked from company data adds a policy of its own, Keep Company Data Off Phones, with its own report-only week and two tests from a phone before it is enforced."
             },
-            "deviceExceptions": {
-              "label": "Devices that can't meet the rule (kiosks, lab machines)",
-              "options": {
-                "none": "None",
-                "some": "Some"
-              }
-            },
             "officeNetwork": {
               "label": "The office network",
               "options": {
@@ -3037,16 +3021,10 @@
               "$commentUnused": "A saved answer of \"Everyone works remotely\" sat beside the evidence line \"1 named location is marked trusted\" with nothing connecting them. The evidence is true and argues for the OPPOSITE answer, and the suggestion was in fact office - so a careful reader met a contradiction on one line and no way to tell which half to believe. The downstream prerequisite step already says this well (\"The scan read a trusted named location this answer leaves out: Head office\"); the question that SETS the answer said nothing. Said only where the saved answer is remote and the scan read a trusted location.",
               "savedRemoteUnused": "This answer leaves {n} of them unused; nothing location-based will apply."
             },
+            "$commentWorkCountries": "The work countries question, asked since Stage 3 on Block Sign-ins From Countries Not Allowed rather than in Direction. Its words are kept here as Direction wrote them: the label heads that step's countries picker, and the seen line sits under it where the scan saw sign-in countries (ui/surfaces/stepBody.ts withObjectTask).",
             "workCountries": {
               "label": "Work countries",
               "seen": "Sign-ins in the last 30 days came from {countries}."
-            },
-            "travel": {
-              "label": "Travel outside those countries",
-              "options": {
-                "allowed": "Allowed, with notice (a temporary travellers group)",
-                "never": "Never"
-              }
             }
           }
         },
@@ -3058,7 +3036,9 @@
         "enforceOutstandingMany": "Stop: these are not finished, and this policy is part of them: {items}. Leave this policy in Report-only until they are.",
         "$commentSecurityDefaultsCoexist": "The plan states its own ordering invariant on this step - \"security defaults must be off before the policies replacing them can take over, and once these policies exist you cannot turn security defaults back on... That is why nothing in this plan enforces before this step.\" A reader enforced eight policies with security defaults still on, swept all thirty-three steps, and found no warning anywhere; the board read Completed and the tile said \"IAMAI watched it get there.\" The step that owns the invariant is the one place that must notice it has been broken.",
         "$commentSecurityDefaultsCoexistPointer": "It ended \"and this is the step that turns them off\", which reads as the way out. On the tenant where it fired the plan's own MFA policy was still held below its threshold, and turning security defaults off then removes the MFA they require from everybody (Sam D2). The step turns them off only once the replacements can go On in the same change window, and the line says that instead.",
-        "securityDefaultsCoexist": "{n} Conditional Access policies are enforced in this tenant while security defaults are still on, which Microsoft does not support. Do not turn security defaults off to settle it: this step does that only once the policies that replace them can go On in the same change window."
+        "securityDefaultsCoexist": "{n} Conditional Access policies are enforced in this tenant while security defaults are still on, which Microsoft does not support. Do not turn security defaults off to settle it: this step does that only once the policies that replace them can go On in the same change window.",
+        "$commentSecurityDefaultsNeverOn": "Turn Off Security Defaults read Completed on a tenant whose security defaults were already off when this plan first scanned it: a row claiming work nobody did (roadmap-flow V1 decision 6, Stage 3). The plan records the day a scan first read them on (PlanDecisions.securityDefaultsSeenOnAt); where there is none the step does not apply, and this is the reason the Doesn't apply here footer states for it. The scan says so, not a person, so it is drawn without the you-said prefix (pages.plan.footer.doesntApplyScanRow).",
+        "securityDefaultsNeverOn": "No scan of this plan has read security defaults on, so there is nothing to turn off."
       },
       "readiness": {
         "$commentLineNoRecordsReason": "It read \"no sign-in records ({reason})\" beside a count of 0, and the reason often said the same thing or carried its own parentheses. One sentence now, and a reason that only restates it is left out.",

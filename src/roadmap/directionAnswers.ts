@@ -7,11 +7,16 @@
 // (decisions.ts applyStepDecisions) expands it here into the decisions the
 // retired and object steps have always saved — `s-confirm-workloads` for the
 // services, `s-goal-block-legacy-auth` for the mail-sending devices, the
-// pickers' own steps for the accounts, networks and countries — so every
-// reader downstream keeps reading exactly the values it read before, and an
-// answer saved before Direction existed still reads as saved. Only the three
-// questions nothing asked before (external methods, device exceptions, travel)
-// persist under the Direction step's own id: questionAnswers['s-direction-…:<key>'].
+// pickers' own steps for the accounts and networks — so every reader
+// downstream keeps reading exactly the values it read before, and an answer
+// saved before Direction existed still reads as saved.
+//
+// Each answer is written under the key it is read from, whichever Direction
+// step asks it (roadmap-flow Stage 3). The office network's own answer lives
+// under `s-direction-locations`, a storage id and not a drawn step since the
+// office network question joined Decide How and Where People Sign In: it was
+// written under the id of the step being approved and read from
+// s-direction-locations only, so it was lost and that step never completed.
 //
 // Reading goes the other way: `savedAnswerOf` reads a question's saved answer
 // from the applied mapping, wherever it was saved from. A legacy "unsure" is
@@ -31,8 +36,15 @@ export const DIRECTION_STEP = {
   use: DIRECTION_STEP_IDS[0],
   accounts: DIRECTION_STEP_IDS[1],
   devices: DIRECTION_STEP_IDS[2],
-  locations: DIRECTION_STEP_IDS[3],
 } as const
+
+/**
+ * Where the office network's own answer is stored: the id of the Direction step
+ * that asked it until Stage 3 (Decide Where People Sign In From). It is a
+ * storage id only — no step with this id is drawn — and a decision saved under
+ * it still expands like a Direction step's (expandDirectionDecisions).
+ */
+export const DIRECTION_LOCATIONS_STORAGE = 's-direction-locations'
 export type DirectionStepId = (typeof DIRECTION_STEP_IDS)[number]
 
 export const isDirectionStep = (id: string): id is DirectionStepId => (DIRECTION_STEP_IDS as readonly string[]).includes(id)
@@ -63,13 +75,17 @@ export const SERVICE_KEYS = ['avd', 'sharepoint', 'azureManagement', 'inforcer',
 /** One answer: the option's value, and the ids picked where the option takes a list. */
 export type DirectionAnswer = { value: string; picked: string[] }
 
-/** A question's key: `service:<facet>` for a D1 service, else its own name. */
+/**
+ * A question's key: `service:<facet>` for a D1 service, else its own name.
+ * Retired in Stage 3 (roadmap-flow V1 decision 4): external methods, device
+ * exceptions and travel, which nothing read; work countries moved to the
+ * countries step (6.3), which asks them with its own picker.
+ */
 export type DirectionQuestionKey =
   | `service:${string}`
-  | 'mailDevices' | 'deviceCode' | 'partner' | 'externalMethods'
+  | 'mailDevices' | 'deviceCode' | 'partner'
   | 'serviceAccounts' | 'sharedDevices'
-  | 'computers' | 'phones' | 'deviceExceptions'
-  | 'officeNetwork' | 'workCountries' | 'travel'
+  | 'computers' | 'phones' | 'officeNetwork'
 
 /**
  * The alias table: each question, the Direction step that asks it, and where
@@ -81,15 +97,11 @@ export const DIRECTION_QUESTIONS: Readonly<Record<Exclude<DirectionQuestionKey, 
   mailDevices: { step: DIRECTION_STEP.use, storedAs: `questionAnswers['${QUESTION_STEP.mailDevices}:<decision label>']` },
   deviceCode: { step: DIRECTION_STEP.use, storedAs: `questionAnswers['${QUESTION_STEP.deviceCode}:<decision label>']` },
   partner: { step: DIRECTION_STEP.use, storedAs: `questionAnswers['${QUESTION_STEP.partner}:<question label>']` },
-  externalMethods: { step: DIRECTION_STEP.use, storedAs: `questionAnswers['${DIRECTION_STEP.use}:externalMethods']` },
   serviceAccounts: { step: DIRECTION_STEP.accounts, storedAs: 'serviceAccountUserIds, wizardAnswered.serviceAccounts' },
   sharedDevices: { step: DIRECTION_STEP.accounts, storedAs: 'sharedDeviceUserIds' },
   computers: { step: DIRECTION_STEP.devices, storedAs: `questionAnswers['${QUESTION_STEP.devices}:${DEVICE_ANSWER_KEYS.computers}']` },
   phones: { step: DIRECTION_STEP.devices, storedAs: `questionAnswers['${QUESTION_STEP.devices}:${DEVICE_ANSWER_KEYS.phoneManagement}'], [...:${DEVICE_ANSWER_KEYS.phoneAppProtection}]` },
-  deviceExceptions: { step: DIRECTION_STEP.devices, storedAs: `questionAnswers['${DIRECTION_STEP.devices}:deviceExceptions']` },
-  officeNetwork: { step: DIRECTION_STEP.locations, storedAs: 'trustedLocationIds, wizardAnswered.trustedLocations' },
-  workCountries: { step: DIRECTION_STEP.locations, storedAs: 'allowedCountries, workCountriesConfirmed' },
-  travel: { step: DIRECTION_STEP.locations, storedAs: `questionAnswers['${DIRECTION_STEP.locations}:travel']` },
+  officeNetwork: { step: DIRECTION_STEP.devices, storedAs: `trustedLocationIds, wizardAnswered.trustedLocations, questionAnswers['${DIRECTION_LOCATIONS_STORAGE}:officeNetwork']` },
 }
 
 /** What approving a Direction step's answers does, in its own written words (pages.app.plan.direction.steps.<key>.milestoneAction); null for any other step. */
@@ -104,24 +116,18 @@ export function directionStepOf(key: DirectionQuestionKey): DirectionStepId {
   return DIRECTION_QUESTIONS[key.startsWith('service:') ? 'service' : (key as keyof typeof DIRECTION_QUESTIONS)].step
 }
 
-/** The questions only Direction asks, stored under the Direction step's own id. */
-const OWN: Readonly<Partial<Record<DirectionQuestionKey, readonly string[]>>> = {
-  externalMethods: ['no', 'yes'],
-  deviceExceptions: ['none', 'some'],
-  travel: ['allowed', 'never'],
-}
 /**
- * The office network's three answers, persisted under the Direction step's own
- * id *as well as* the trusted-location decision (owner, 2026-09-20). It is not
- * in OWN, because OWN means "only Direction asks this" and reads nothing else:
- * an answer saved before Direction existed still has to read. The legacy
+ * The office network's three answers, persisted under its own storage id
+ * (DIRECTION_LOCATIONS_STORAGE) *as well as* the trusted-location decision
+ * (owner, 2026-09-20): an answer saved before Direction existed still has to
+ * read. The legacy
  * decision cannot tell "we have an office, it is not in Entra yet" from "nobody
  * has answered" — both are the office-network option with nothing picked — so
  * the own key carries the answer and the legacy reading remains the fallback.
  */
 const OFFICE_NETWORK = ['office', 'notInEntra', 'remote'] as const
 
-type Mapping = Pick<MappingState, 'questionAnswers' | 'workflowAnswers' | 'facetOverrides' | 'serviceAccountUserIds' | 'sharedDeviceUserIds' | 'wizardAnswered' | 'assumed' | 'trustedLocationIds' | 'allowedCountries' | 'workCountriesConfirmed'>
+type Mapping = Pick<MappingState, 'questionAnswers' | 'workflowAnswers' | 'facetOverrides' | 'serviceAccountUserIds' | 'sharedDeviceUserIds' | 'wizardAnswered' | 'assumed' | 'trustedLocationIds'>
 
 const answer = (value: string, picked: readonly string[] = []): DirectionAnswer => ({ value, picked: [...picked] })
 /** A picker's own answer was saved by a person, never by the detected pass (pickerRows.ts defaultDecisions). */
@@ -151,11 +157,6 @@ export function savedAnswerOf(key: DirectionQuestionKey, m: Mapping): DirectionA
     const override = m.facetOverrides?.[facet as keyof typeof m.facetOverrides]
     return override ? answer(override.on ? 'yes' : 'no') : null
   }
-  const own = OWN[key]
-  if (own) {
-    const value = m.questionAnswers?.[answerKey(directionStepOf(key), key)]
-    return typeof value === 'string' && own.includes(value) ? answer(value) : null
-  }
   switch (key) {
     case 'mailDevices': {
       const a = answerOf(m, QUESTION_STEP.mailDevices, 'decision')
@@ -182,12 +183,10 @@ export function savedAnswerOf(key: DirectionQuestionKey, m: Mapping): DirectionA
       return p === null ? null : answer(p)
     }
     case 'officeNetwork': {
-      const own = m.questionAnswers?.[answerKey(DIRECTION_STEP.locations, 'officeNetwork')]
+      const own = m.questionAnswers?.[answerKey(DIRECTION_LOCATIONS_STORAGE, 'officeNetwork')]
       if (typeof own === 'string' && (OFFICE_NETWORK as readonly string[]).includes(own)) return own === 'office' ? answer('office', m.trustedLocationIds) : answer(own)
       return confirmed(m, 'trustedLocations') ? (m.trustedLocationIds.length > 0 ? answer('office', m.trustedLocationIds) : answer('remote')) : null
     }
-    case 'workCountries':
-      return (m.workCountriesConfirmed === true || confirmed(m, 'countries')) && m.allowedCountries.length > 0 ? answer('some', m.allowedCountries.map((c) => c.toUpperCase())) : null
     default:
       return null
   }
@@ -202,7 +201,7 @@ export function savedAnswerOf(key: DirectionQuestionKey, m: Mapping): DirectionA
  * behalf reads the same rule.
  */
 export function directionAnswerComplete(q: Pick<DirectionQuestion, 'control' | 'pickedWith'>, a: DirectionAnswer): boolean {
-  return q.control === 'countries' || (q.pickedWith !== null && a.value === q.pickedWith) ? a.picked.length > 0 : true
+  return q.pickedWith !== null && a.value === q.pickedWith ? a.picked.length > 0 : true
 }
 
 /** The answers a Direction step's Approve writes: every question at once, the picked ids beside each, a service's evidence basis beside it. */
@@ -230,11 +229,13 @@ export function answersOfDecision(d: Pick<StepDecision, 'answers'> | null | unde
 /**
  * A Direction step's saved decision as the decisions its answers have always
  * been saved as (the alias table above), in the order they apply: the legacy
- * steps' decisions, then the Direction step's own for the questions only it
- * asks. `previous` is every saved decision, so a legacy decision's other parts
- * (a saved network draft, the recurring travel countries) are kept.
+ * steps' decisions, then the answer only Direction stores, under the storage
+ * id it is read from (the office network's own answer, under
+ * DIRECTION_LOCATIONS_STORAGE, whichever step asked it). `previous` is every
+ * saved decision, so a legacy decision's other parts (a saved network draft)
+ * are kept.
  */
-export function legacyDecisionsOf(stepId: DirectionStepId, d: StepDecision, previous: Readonly<Record<string, StepDecision>> = {}): [string, StepDecision][] {
+export function legacyDecisionsOf(_stepId: DirectionStepId | typeof DIRECTION_LOCATIONS_STORAGE, d: StepDecision, previous: Readonly<Record<string, StepDecision>> = {}): [string, StepDecision][] {
   const answers = answersOfDecision(d)
   const at = d.at
   const out: [string, StepDecision][] = []
@@ -250,7 +251,7 @@ export function legacyDecisionsOf(stepId: DirectionStepId, d: StepDecision, prev
       services[facet] = a.value
       const basis = d.answers?.[`${key}:basis`]
       if (typeof basis === 'string') services[`evidence:${facet}`] = basis
-    } else if (OWN[key as DirectionQuestionKey]?.includes(a.value)) own[key] = a.value
+    }
   }
   if (Object.keys(services).length > 0) out.push([WORKFLOW_DECISION_STEP, { answers: { ...(previous[WORKFLOW_DECISION_STEP]?.answers ?? {}), ...services }, at }])
   const mail = answers.mailDevices
@@ -296,12 +297,8 @@ export function legacyDecisionsOf(stepId: DirectionStepId, d: StepDecision, prev
     const kept = previous[PREREQ_STEP_ID.trustedLocation]?.answers
     out.push([PREREQ_STEP_ID.trustedLocation, { picked: network.value === 'office' ? network.picked : [], option: remote ? 'remote' : 'office-network', ...(kept ? { answers: kept } : {}), at }])
   }
-  const countries = answers.workCountries
-  if (countries && countries.picked.length > 0) {
-    const kept = previous[PREREQ_STEP_ID.allowedCountries]?.answers
-    out.push([PREREQ_STEP_ID.allowedCountries, { picked: countries.picked.map((c) => c.toUpperCase()), ...(kept ? { answers: kept } : {}), at }])
-  }
-  if (Object.keys(own).length > 0) out.push([stepId, { answers: own, at }])
+  // Under the key it is read from (savedAnswerOf), never the approving step's.
+  if (Object.keys(own).length > 0) out.push([DIRECTION_LOCATIONS_STORAGE, { answers: own, at }])
   return out
 }
 
@@ -315,7 +312,9 @@ export function expandDirectionDecisions(stepDecisions: Readonly<Record<string, 
   const out: [string, StepDecision][] = []
   for (const [id, d] of Object.entries(stepDecisions)) {
     if (!d) continue
-    if (isDirectionStep(id)) out.push(...legacyDecisionsOf(id, d, stepDecisions))
+    // The drawn steps and the office network's storage id, whose decision an
+    // older save may hold whole (DIRECTION_LOCATIONS_STORAGE).
+    if (isDirectionStep(id) || id === DIRECTION_LOCATIONS_STORAGE) out.push(...legacyDecisionsOf(id, d, stepDecisions))
     else out.push([id, d])
   }
   return out

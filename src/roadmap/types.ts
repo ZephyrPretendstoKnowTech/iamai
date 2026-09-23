@@ -530,12 +530,12 @@ export type Blocker =
  * One Direction question (roadmap/direction.ts): its answer as saved, or null;
  * the suggestion the scan, the baseline or the safe default pre-fills; and the
  * one line of evidence behind the suggestion. `pickedWith` is the option whose
- * answer carries a list (accounts, locations, countries).
+ * answer carries a list (accounts or locations).
  */
 export type DirectionQuestion = {
   key: string
   label: string
-  control: 'choice' | 'accounts' | 'locations' | 'countries'
+  control: 'choice' | 'accounts' | 'locations'
   options: { value: string; label: string }[]
   pickedWith: string | null
   suggested: { value: string; picked: string[] }
@@ -712,6 +712,22 @@ export type Step = {
   skipReason: string | null
   /** The person's reason this step does not apply here (mapping.notApplicable): the step sits in the footer's Doesn't apply here group. */
   doesntApply?: string | null
+  /**
+   * True where the scan, not a person, says the step does not apply (Turn Off
+   * Security Defaults on a plan that never read them on): the footer states the
+   * reason as the plan's reading instead of "you said", and offers no Put back,
+   * because no answer of anybody's put it there.
+   */
+  doesntApplyByScan?: true
+  /**
+   * The object this step makes itself, as its own task (roadmap-flow Stage 3;
+   * stepIds.ts OBJECT_TASK): the countries location, on Block Sign-ins From
+   * Countries Not Allowed. It is the reading the location's own step carried —
+   * its state, its proposed name, what the scan matched — under that step's old
+   * id, so the screen draws it with the location's content, implementation and
+   * picker. It is not a step of the plan: no board, schedule or lane reads it.
+   */
+  objectTask?: Step
   /**
    * The gap a partly-in-place or below-baseline goal leaves, as the clause a
    * plan row shows: "sessions expire every 168h, baseline wants 4h". Null when
