@@ -125,9 +125,11 @@ export function openDoneRows(steps: readonly Step[], laneOf: (id: string) => { l
  * where the row is drawn, because a floor step under a numbered phase reads as
  * the baseline author's work. A schedule may still carry the step's id; the
  * group is where it renders, on the screen and in the printed document alike.
+ * A floor step the person said does not apply is in the Doesn't apply list
+ * (doesntApplyRows), and the floor's group does not draw it a second time.
  */
 export function floorRows(steps: readonly Step[]): Step[] {
-  return steps.filter((s) => s.floor === true && s.status !== 'done')
+  return steps.filter((s) => s.floor === true && s.status !== 'done' && !s.doesntApply)
 }
 
 /**
