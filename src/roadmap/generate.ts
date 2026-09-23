@@ -2924,7 +2924,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         key: 'activity-unread',
         label: engine.readiness.activityUnreadLabel,
         value: engine.readiness.activityUnreadValue,
-        detail: fillText(engine.readiness.activityUnread, { n: unread.length, total: enabledUsers(snapshot, notPeopleIds(mapping)).length, reason: users?.reason ?? users?.status, fix: sourceReadFix('users', snapshot) }),
+        detail: fillText(engine.readiness.activityUnread, { n: unread.length, total: enabledUsers(snapshot, notPeopleIds(mapping)).length, reason: users?.reason ?? users?.status, fix: sourceReadFix('users', snapshot, 'entraP1') }),
         outcome: 'unknown',
       }]
       if (remaining.length === 0) {
