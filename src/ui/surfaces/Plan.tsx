@@ -277,7 +277,8 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // followOpenStep, owner, roadmap flow V2): the view the person is on, where
   // it draws the step; otherwise All work, where every row is, with the focus
   // cleared, the step's section open (groupClosed) and the page moved to it.
-  const follow = open !== null ? followOpenStep(open, shown) : null
+  // A step with no row on the board (marked Doesn't apply here) moves nothing.
+  const follow = open !== null ? followOpenStep(open, shown, items) : null
   const onFollow = (follow: BoardTab): void => { setSummaryFilter(null); setTab(follow); setFocus(NO_FOCUS); setToggled({}); moveTo.current = open }
   // The open step's lane as the board reads it, Cleanup rows included.
   const openLane = open !== null ? items.find((i) => i.id === open)?.lane : undefined
@@ -285,18 +286,26 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // answered) and the view no longer draws it: keep the tab and press the
   // toggle that shows it, or follow it to its new lane's tab (planBoard.ts
   // followLaneChange), as the board did before roadmap flow V2. All work only
-  // where that still leaves it off screen, such as a tile's list.
+  // where that still leaves it off screen, such as a tile's list. A step that
+  // left the board (marked Doesn't apply here: the footer holds it) is drawn by
+  // no view, so the view, its focus, its folds and the scroll stay as they are.
   const onMoved = (): void => {
     const lane = openLane
-    const keep = lane !== undefined && summaryFilter === null ? followLaneChange(lane, tab, focus) : null
+    if (lane === undefined) return
+    const keep = summaryFilter === null ? followLaneChange(lane, tab, focus) : null
     if (keep !== null && applyFocus(items, keep.tab, keep.focus).some((i) => i.id === open)) { setTab(keep.tab); setFocus(keep.focus) } else onFollow(ALL_WORK_TAB)
   }
   // On the view that draws it, a link lets go of the fold the person put over
   // the step's section (planBoard.ts releaseFor): a step opened inside a folded
   // section opened out of sight. Each group is keyed by the scope it is drawn
-  // under, as drawGroup keys it.
+  // under, as drawGroup keys it. A link to a step with no row moves nothing:
+  // the page would wait for that row and jump to it once it was put back.
   const drawn = [...groups.map((g) => [tab, g] as const), ...aside.map((g) => ['aside', g] as const)]
-  const onShow = (): void => { if (open !== null) setToggled((t) => releaseFor(t, open, drawn)); moveTo.current = open }
+  const onShow = (): void => {
+    if (open === null || openLane === undefined) return
+    setToggled((t) => releaseFor(t, open, drawn))
+    moveTo.current = open
+  }
   // The header's four tiles (A1b decision 11): every step (the one denominator,
   // derive/facts.ts, which the board's rows equal), the Completed lane counted
   // off the board's own rows, the projected finish (A2 fills it; the placeholder
