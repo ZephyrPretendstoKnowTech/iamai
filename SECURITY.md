@@ -84,8 +84,8 @@ The app contacts four hosts:
 |---|---|
 | `login.microsoftonline.com` | Microsoft sign-in (MSAL, authorization code flow with PKCE) |
 | `graph.microsoft.com` | The tenant's data, read with the signed-in account's token |
-| `api.github.com` | Whether the default baseline's repository has a commit newer than the pinned one (checked from Connect), and that commit's file list when you review an update |
-| `raw.githubusercontent.com` | The changed baseline files at the commit under review, only when you review an update |
+| `api.github.com` | Whether the default baseline's repository has a commit newer than the pinned one (checked from Connect), and, when it has, that commit's file list |
+| `raw.githubusercontent.com` | The changed baseline files at that newer commit, read from Connect as soon as the repository has one |
 
 The two GitHub requests are unauthenticated reads of a public repository and carry no
 tenant data. The plan itself is built from the reviewed baseline copy bundled in the build
