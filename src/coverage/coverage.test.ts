@@ -426,7 +426,7 @@ test('a goal\'s own template, switched on where the baseline holds no policy for
   // baseline policy stands for the goal, its template is the reference
   // (coverage.ts), and a policy equal to the reference is never narrower.
   const on = { enabled: true, seats: 10, consumed: 0 }
-  const snapshot = mkSnapshot({ capabilities: { entraP1: on, entraP2: on, intune: on, workloadIdPremium: on, globalSecureAccess: on, defenderForCloudApps: on, purviewInsiderRisk: on } })
+  const snapshot = mkSnapshot({ capabilities: { entraP1: on, entraP2: on, intune: on, workloadIdPremium: on, globalSecureAccess: on, defenderForCloudApps: on, purviewInsiderRisk: on, pim: on } })
   const judged: string[] = []
   const narrower: string[] = []
   for (const g of CATALOGUE) {
