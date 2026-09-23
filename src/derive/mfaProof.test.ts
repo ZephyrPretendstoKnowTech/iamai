@@ -217,7 +217,8 @@ test('every state, from the sign-in rows to the partition, MFA Readiness and the
   const admins = [...adminUserIds(s.roles)].filter((id) => l.viability.has(id))
   const r = readinessFor('admins-phishing-resistant', admins, viability, s)
   const ready = admins.filter((id) => adminReady(l.viability.get(id)!)).length
-  assert.equal(r.percent, Math.round((ready / admins.length) * 100), 'the admin percentage is the Ready state, counted once')
+  // Rounded down, never up to a number it has not reached (R4-14, readiness.ts readinessPercent).
+  assert.equal(r.percent, Math.floor((ready / admins.length) * 100), 'the admin percentage is the Ready state, counted once')
   assert.ok(admins.includes(ids.ready), 'the proven key holder is one of the admins it counts')
   assert.ok(ready > 0)
 })

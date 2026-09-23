@@ -362,11 +362,12 @@ export function methodReadiness(family: Readiness['family'], preparation: Method
         // Then, straight after it, how many of the people it did not count
         // would be counted if the tenant allowed what they registered — the
         // reason the engine has (MethodPreparation.offIds) and the reader could
-        // not see — and last, the people it could not judge.
+        // not see — and last, the people it could not judge. Numbers, not strings:
+        // fillText prints a count with its thousands separator.
         : [[
-          fillText(W.methodLine, { ready: String(readyIds.length), total: String(ids.length) }),
-          offIds.length === 0 ? null : fillText(offIds.length === short ? W.methodLineOffAll : W.methodLineOff, { off: String(offIds.length), short: String(short) }),
-          staleIds.length > 0 ? fillText(W.methodLineStale, { unknown: String(unknownIds.length), stale: String(staleIds.length) })
-            : unknownIds.length > 0 ? fillText(W.methodLineUnknown, { unknown: String(unknownIds.length) }) : null,
+          fillText(W.methodLine, { ready: readyIds.length, total: ids.length }),
+          offIds.length === 0 ? null : fillText(offIds.length === short ? W.methodLineOffAll : W.methodLineOff, { off: offIds.length, short }),
+          staleIds.length > 0 ? fillText(W.methodLineStale, { unknown: unknownIds.length, stale: staleIds.length })
+            : unknownIds.length > 0 ? fillText(W.methodLineUnknown, { unknown: unknownIds.length }) : null,
         ].filter((x): x is string => x !== null).join(' ')] }
 }

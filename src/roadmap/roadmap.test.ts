@@ -263,7 +263,7 @@ test('5: MFA step with 6 of 9 in-scope accounts prepared → blocked with the un
   const { input } = build({ baselinePolicies: [baseline], ready: 6 })
   const step = stepFor(generateRoadmap(input).steps, 'mfa-all-users')
   assert.equal(step.status, 'blocked')
-  assert.ok(step.blockers.some((b) => typeof b.binding === 'string' && b.binding.includes('67%') && b.binding.includes('90%')))
+  assert.ok(step.blockers.some((b) => typeof b.binding === 'string' && b.binding.includes('66%') && b.binding.includes('90%')), '6 of 9 is 66.7%, read down to 66% (R4-14)')
 })
 
 test('6: re-scan matching — report-only, then exit criterion, then enabled', () => {
