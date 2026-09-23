@@ -34,7 +34,7 @@ import { ifWrongLineFor, stepExportView } from './stepExport.ts'
 import { stepVars, withoutScheduleDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { portalNamesFor, unwrittenCorrectionLines } from './stepPortal.ts'
-import { preparationLines, rescanLinesOf, stepInstructions, wholeLines } from './stepInstructions.ts'
+import { preparationLines, preparesWhileCreateWaits, rescanLinesOf, stepInstructions, wholeLines } from './stepInstructions.ts'
 import { CONTRACT, SETTLED_FINDINGS, eyebrowOf, implementationEmptyOf, implementationIsCurrent, isReadinessWork, proceduresAreReference, railOf, readinessOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
 import { boardHolds, laneViewAlone } from './planBoard.ts'
@@ -454,7 +454,12 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
     produced.push(deviceSetupResource(ctx))
   }
   if (supported.has('portal') && !produced.some(a => a.id === 'portal')) {
-    const lines = portalLines.length ? portalLines : policyInspectionLines(step)
+    // A create that waits on device readiness hands over its preparation, the
+    // content's "before" lines, where another held policy is inspected
+    // (stepInstructions.ts preparesWhileCreateWaits), and the Implementation
+    // Task drawn from this tab is that preparation.
+    const preparation = preparesWhileCreateWaits(step, cs) ? before : []
+    const lines = portalLines.length ? portalLines : preparation.length ? preparation : policyInspectionLines(step)
     produced.push({ id: 'portal', form: 'list', lines, text: () => lines.map((line, i) => `${i + 1}. ${line}`).join('\n'), note: null })
   }
   // A part of the policy IAMAI does not write that the scan found is not what the

@@ -196,8 +196,9 @@ test('s-goal-require-managed-device: the threshold says what it measures, Entra 
   assert.doesNotMatch(packageOf(DEVICE).blocks['entra.create'].text, /canonical|STEP\.md|IAMAI-resolved|hybrid Azure AD/)
   // On the demo the step is On Hold with nothing deployed, and its create waits
   // on device readiness (owner decision D, 2026-09-23; roadmap/compliantDeviceCreate.test.ts):
-  // Entra draws no create.
+  // Entra draws the Intune preparation that readiness depends on, and no create.
   const b = bodyOf('demo', DEVICE)
+  assert.match(drawn(b, 'portal'), /Mark devices with no compliance policy assigned as: Not compliant/)
   assert.doesNotMatch(drawn(b, 'portal'), /New policy/)
   // The demo carries each person's devices since 95228ecc (withDeviceFacts), which moved the compliant share; the script account left the people counted in 8b71ec1a (29% -> 30%).
   assert.equal(b.readiness.tiles.find((t) => t.key === 'gate')?.value, '30% of people on a compliant device')
