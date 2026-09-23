@@ -476,6 +476,16 @@ export type StepContract = {
   inventory?: ContractInventory | null
   whatToDo: ContractAction
   fix: ContractFix[]
+  /**
+   * What holds only the turn-on while the step's next action is its report-only
+   * create (enforcementWaitsOf): never in `fix`, because readiness gates the
+   * enforcement and not the create (owner, 2026-09-11). One list, read by the
+   * Readiness cards ("Before turning on") and by the export view every artifact
+   * reads (stepExport.ts `beforeTurnOn`), so no channel drops a wait the screen
+   * states (R4-31). Empty once the turn-on is the next action: the same waits
+   * are then in `fix`.
+   */
+  enforcementWaits: ContractFix[]
   doneWhen: string[]
   members: ContractMember[]
   /** True when the step delivers more than one policy, so the members must be shown apart. */
@@ -930,14 +940,16 @@ function waitTextOf(b: Step['blockers'][number]): string | null {
  * MFA threshold on its card and nothing about the Temporary Access Pass it
  * cannot be turned on without — the engine held both, and the pass appeared
  * only once the policy had been built (R4-31, Marcus D12). The threshold is its
- * own card and is not repeated here.
+ * own card and is not repeated here. stepContract asks once, for
+ * `StepContract.enforcementWaits`: worked out inside the card builder, every
+ * export and the AI Info briefing (which read the contract) still left them out.
  */
 function enforcementWaitsOf(step: Step): ContractFix[] {
   if (step.state.condition === 'baseline-conflict') return []
   const threshold = thresholdBinding(step)
   const waits = step.blockers.filter((b) => b.kind === 'readiness' && !isThresholdWait(b, threshold))
-  // The schedule is asked only where there is a wait to state: readinessOf runs
-  // for every step on every render, and most hold no readiness wait at all.
+  // The schedule is asked only where there is a wait to state: the contract is
+  // built for every step on every render, and most hold no readiness wait at all.
   if (waits.length === 0 || scheduleOf(step).transition !== 'createReportOnly') return []
   const out: ContractFix[] = []
   for (const b of waits) {
@@ -1354,6 +1366,7 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     inventory,
     whatToDo,
     fix,
+    enforcementWaits: enforcementWaitsOf(step),
     doneWhen: doneWhenOf(step, reason, cs, ex, fix, tenant, ctx.mapping),
     members,
     multiPolicy: members.length > 1,
@@ -2221,8 +2234,8 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
   // "Prerequisites", "when 1 trusted location exists (now 0)" on a step that
   // says to create the policy today read as the create's own prerequisite —
   // the claim the owner rule took out of Fix (2026-09-11) — so the card says
-  // what it holds.
-  const waits = fixTiles(enforcementWaitsOf(step), prerequisiteLabel).map((t): ReadinessTile => ({ ...t, label: R().tiles.beforeTurnOn, tone: 'wait' }))
+  // what it holds. The contract's one list, which the exports read too.
+  const waits = fixTiles(c.enforcementWaits, prerequisiteLabel).map((t): ReadinessTile => ({ ...t, label: R().tiles.beforeTurnOn, tone: 'wait' }))
   const present = new Set<string>([...facts.map((t) => t.key), ...fixes.map((t) => t.key), ...waits.map((t) => t.key)])
   const lead = facts.filter(unresolved)
   const effectiveBlockers = configuration.length ? blockers.filter(b => !/passkey.*(?:review|settings)|profile.*review/i.test(b.label)) : blockers

@@ -829,6 +829,15 @@ export type ExportStep = {
   whatToDo: string[]
   /** What must be cleared before this step can move (never a passed check); empty where nothing holds it. */
   fix: string[]
+  /**
+   * What holds only the turn-on of a policy whose next action is its report-only
+   * create (ui/surfaces/stepContract.ts `enforcementWaits`): never in `fix`,
+   * because readiness gates the enforcement and not the create (owner,
+   * 2026-09-11). The screen draws them as "Before turning on" cards; an export
+   * that read `fix` alone left out the Temporary Access Pass a registration
+   * policy cannot be turned on without (R4-31). Empty on every other step.
+   */
+  beforeTurnOn: string[]
   doneWhen: string[]
   ifWrong: string | null
   dates: string | null

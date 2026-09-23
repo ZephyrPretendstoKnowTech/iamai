@@ -261,6 +261,7 @@ export function groundingBundle(args: { view: StepView; tenant: string; snapshot
       population: v.population,
       whatToDo: v.whatToDo,
       fix: v.fix,
+      beforeTurnOn: v.beforeTurnOn,
       doneWhen: v.doneWhen,
       dates: v.dates,
       ifWrong: v.ifWrong,

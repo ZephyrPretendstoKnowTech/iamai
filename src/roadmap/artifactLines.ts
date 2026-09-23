@@ -20,7 +20,7 @@ import { content } from '../content/content.ts'
 import type { CleanupExport, ExportStep } from './types.ts'
 
 type Headings = { why: string; who: string; whatToDo: string; dates: string; doneWhen: string; ifWrong: string }
-const SC = (content.pages.app as unknown as { plan: { stepContract: { headings: Headings; fixHeading: string } } }).plan.stepContract
+const SC = (content.pages.app as unknown as { plan: { stepContract: { headings: Headings; fixHeading: string; readiness: { tiles: { beforeTurnOn: string } } } } }).plan.stepContract
 const HEAD = SC.headings
 
 
@@ -62,6 +62,12 @@ export function stepArtifactLines(v: ExportStep): string[] {
     // as Blocked left this browser as a run of portal steps with nothing saying
     // it could not be done today.
     section(SC.fixHeading, v.fix),
+    // What holds only the turn-on, under the label the Readiness card carries:
+    // never under the Fix heading, which would claim the create is blocked
+    // (owner, 2026-09-11), and never dropped, which left the calendar entry, the
+    // prompt pack and the AI Info briefing without the Temporary Access Pass the
+    // screen says the policy cannot be turned on without (R4-31).
+    section(SC.readiness.tiles.beforeTurnOn, v.beforeTurnOn),
     v.dates === null ? null : `${HEAD.dates}: ${v.dates}`,
     section(HEAD.doneWhen, v.doneWhen),
     section('Workflow Check', v.manualEvidence ?? []),
