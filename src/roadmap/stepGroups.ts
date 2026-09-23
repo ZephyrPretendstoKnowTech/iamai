@@ -110,7 +110,7 @@ export const STEP_GROUPS: readonly StepGroup[] = [
   // People first, then objects: the dormant accounts drop out of every count,
   // the admin account you keep is the one your passkey goes on, and the campaign
   // cannot start without that passkey. The objects take minutes; the campaign is
-  // the plan's longest wait. Nothing here changes how anyone signs in.
+  // the plan's longest wait. No policy here changes how anyone signs in.
   {
     key: 'prepare',
     titleKey: 'pages.app.plan.groups.prepare.title',
