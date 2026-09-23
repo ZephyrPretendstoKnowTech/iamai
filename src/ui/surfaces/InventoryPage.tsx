@@ -448,7 +448,7 @@ function AppsTab({ snapshot, names }: { snapshot: TenantSnapshot; names: NameDir
         caption={A.facets}
         render={{
           detected: (r) => (
-            <Chip status={r.seen ? 'done' : 'neutral'} title={r.reason}>
+            <Chip status={r.seen ? 'done' : 'neutral'} title={r.reason ?? undefined}>
               {detected(r)}
             </Chip>
           ),
