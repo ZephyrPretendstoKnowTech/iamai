@@ -240,6 +240,22 @@ export function exportViewsOf(
   return (s) => stepExportView(s, ctxOf(s), laneViewFor(s, board))
 }
 
+/**
+ * The board's hold on each step (planBoard.ts boardHolds), on the board
+ * `exportViewsOf` reads: what the Export page's plan-wide dates
+ * (stepVars.ts planDates) and the prompt pack's announcement
+ * (roadmap/prompts.ts announcementDraft) ask before any view exists, so that a
+ * step the board holds lends neither its turn-on day (owner decision 2).
+ */
+export function exportHoldOf(
+  steps: readonly Step[],
+  cleanup: CleanupPhase | null | undefined,
+  answers: { signInMonitoring: boolean | null } | null | undefined,
+): (s: Step) => boolean {
+  const board = boardReadingsOf(steps, cleanup, answers)
+  return (s) => boardHolds(s, laneViewFor(s, board))
+}
+
 export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView | null = null): ExportStep {
   const cs = contentStepFor(step) as Record<string, any> | undefined
   // The frozen Step Contract, once, for every step. It is read and never

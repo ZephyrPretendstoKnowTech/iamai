@@ -113,8 +113,11 @@ const PARA = '\n\n'
  * (stepExport.ts `commsFor`). A step with no announcement to make ("nobody is
  * affected") names no day and gains no paragraph.
  */
-export function announcementDraft(steps: readonly Step[]): string | null {
-  const step = steps.find((s) => s.comms)
+export function announcementDraft(steps: readonly Step[], held: (s: Step) => boolean = () => false): string | null {
+  // Never a step the board holds (`held`: ui/surfaces/planBoard.ts boardHolds,
+  // read by the caller): the generator's draft names its turn-on day, and a
+  // held step carries no date anywhere (owner decision 2, 2026-09-22).
+  const step = steps.find((s) => s.comms && !held(s))
   const draft = step?.comms ?? null
   if (step === undefined || draft === null) return null
   const parts = draft.split(PARA)
