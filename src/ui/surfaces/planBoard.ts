@@ -27,7 +27,7 @@ import { schedulingWords } from '../../content/content.ts'
 // Nothing here reads a title to decide anything. A grouping built out of
 // `title.includes('MFA')` is a classifier nobody maintains and that silently
 // mis-files the first step somebody renames.
-import type { Step } from '../../roadmap/types.ts'
+import type { ExportOrder, Step } from '../../roadmap/types.ts'
 import type { HoldBlocker, Lane, Substatus } from '../../actionability/lanes.ts'
 import type { StatusTone } from '../components/index.ts'
 import { content, directionWords, pages } from '../../content/content.ts'
@@ -1020,6 +1020,30 @@ export function boardSectionsOf(items: readonly BoardItem[], groups: readonly St
       const key = groupKeyOf(group, groups)
       return { key, number: key === null ? null : numbers.get(key) ?? null, group, finished }
     })
+}
+
+/**
+ * The board's order and numbers as an export lists steps (roadmap/types.ts
+ * ExportOrder; roadmap flow V1 decision 8): the rows section by section in the
+ * board's order (`boardSectionsOf`), each numbered `<section>.<row>` from the
+ * numbers the board shows (`sectionNumbersOf`, `rowNumbersOf`). The calendar
+ * and the plan file listed steps in the engine's order, with no number, so a
+ * step the Plan draws second in its third section was an export's fourteenth.
+ * Handed the board's WHOLE row set. Pure.
+ */
+export function boardOrderOf(items: readonly BoardItem[], groups: readonly StepGroup[] = STEP_GROUPS): ExportOrder {
+  const rows = rowNumbersOf(items, groups)
+  const numbered = new Map<string, string>()
+  const ids: string[] = []
+  for (const s of boardSectionsOf(items, groups)) {
+    for (const i of s.group.items) {
+      ids.push(i.id)
+      const row = rows.get(i.id)
+      if (s.number !== null && row !== undefined) numbered.set(i.id, `${s.number}.${row}`)
+    }
+  }
+  const rank = new Map(ids.map((id, at) => [id, at]))
+  return { ids, rankOf: (id) => rank.get(id) ?? ids.length, numberOf: (id) => numbered.get(id) ?? null }
 }
 
 /**

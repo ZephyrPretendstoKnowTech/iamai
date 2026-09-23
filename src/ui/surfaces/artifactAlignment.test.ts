@@ -665,7 +665,7 @@ test('R4-22: the Export page, the print, Connect and the Plan read the board thr
   for (const [file, call] of [
     ['./Plan.tsx', 'boardOf(c.steps, cleanupPhase, answers)'],
     ['./PrintPlan.tsx', 'boardOf(steps, schedule.cleanup, answers)'],
-    ['./Export.tsx', 'boardReadingsOf(steps, schedule.cleanup, data.mapping?.breakGlassAnswers ?? null)'],
+    ['./Export.tsx', 'boardOf(steps, schedule.cleanup, data.mapping?.breakGlassAnswers ?? null)'],
     // Connect's counts are derive/facts.ts stepFacts, which counts the board's rows.
     ['./Connect.tsx', 'stepFacts(computed.steps, computed.schedule.cleanup ?? null, cleanupAnswers)'],
     ['../../derive/facts.ts', 'boardReadingsOf(steps, cleanup, answers)'],

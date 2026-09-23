@@ -1,6 +1,6 @@
 // The Export page's artifacts against the board they speak for (Phase 2 audit,
 // export surface). Each test builds the page's views exactly as Export.tsx does
-// (boardReadingsOf once, exportHoldOf, planDates with the hold, exportViewsOf)
+// (boardOf once, exportHoldOf, planDates with the hold, exportViewsOf)
 // and asserts what the artifact says: the calendar entry, the prompt pack and
 // the grounding bundle.
 import { test } from 'node:test'
@@ -12,14 +12,15 @@ import { runFixture, withDirectionApproved } from '../../roadmap/fixtures/run.ts
 import { buildIcs } from '../../roadmap/ics.ts'
 import { scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import { nextMilestone } from '../../roadmap/lifecycle.ts'
-import { parsePlanFile, planFileRefusal, sameBaselineSource } from '../../roadmap/plan.ts'
+import { buildPlanFile, parsePlanFile, planFileRefusal, sameBaselineSource } from '../../roadmap/plan.ts'
 import type { PlanFileProblem } from '../../roadmap/plan.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { app, pages } from '../../content/content.ts'
 import { planFinish, planLengthSentence } from '../../derive/finish.ts'
 import { groundingBundle, promptPack } from '../../roadmap/prompts.ts'
 import { absoluteDate, setDisplayTimeZone } from '../../copy/dates.ts'
-import { BOARD, boardReadingsOf, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf } from './planBoard.ts'
+import { BOARD, boardOf, boardOrderOf, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, rowNumbersOf, sectionNumbersOf } from './planBoard.ts'
+import { groupOf } from '../../roadmap/stepGroups.ts'
 import { stepArtifactLines } from '../../roadmap/artifactLines.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { stepContract } from './stepContract.ts'
@@ -45,7 +46,7 @@ const RAIL_WORDS = Object.entries(RAIL).filter(([k]) => !k.startsWith('$')).map(
 /** The Export page's reading of one fixture, built the way Export.tsx builds it. */
 function exportPage(f: Fixture) {
   const r = runFixture(f, {}, null, f.snapshot.asOf)
-  const board = boardReadingsOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
+  const board = boardOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
   const held = exportHoldOf(board)
   const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot, held)
   const ctxOf = (s: Step): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: s.reportOnlyAt ?? null, groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming })
@@ -633,4 +634,47 @@ test('the pack\'s announcement prompts carry the email the opened step shows, na
     offered++
   }
   assert.ok(offered > 0, 'the premise: a step that shows an email')
+})
+
+// ---- The board's order and numbers (roadmap flow Stage 5, V1 decision 8) ----
+
+test('the calendar and the plan file list steps in the board\'s order, each numbered by its section and row', () => {
+  // Each listed steps in the engine's order, with no number: a step the Plan
+  // shows as the second row of its third section was the fourteenth entry of
+  // the calendar and the plan file, and nothing said where it sat on the board.
+  for (const [name, f] of [['demo', fixture('demo')], ['mid', fixture('mid')], ['getiamai (curated, Direction approved)', withDirectionApproved(curatedFixture('getiamai'))]] as [string, Fixture][]) {
+    const page = exportPage(f)
+    const items = page.board.rows.map((r) => r.item)
+    // The board's order: its sections in the registry's order, each section's rows by the number the board shows.
+    const rows = rowNumbersOf(items)
+    const sections = sectionNumbersOf(items)
+    const sectionOf = (id: string): number => sections.get(groupOf(id)?.key ?? '') ?? Number.MAX_SAFE_INTEGER
+    const expected = items.map((i) => i.id).sort((a, b) => sectionOf(a) - sectionOf(b) || rows.get(a)! - rows.get(b)!)
+    const order = boardOrderOf(items)
+    assert.deepEqual(order.ids, expected, `${name}: the export order is not the board's`)
+    for (const id of expected) assert.equal(order.numberOf(id), `${sectionOf(id)}.${rows.get(id)}`, `${name}/${id}: numbered otherwise than its section and row`)
+    // The calendar: one entry per dated row, in the board's order, each titled after its number.
+    const ics = buildIcs(page.r.steps, 'Tenant', 'plan', page.view, page.cleanup, order).replace(/\r\n /g, '')
+    const events = ics.split('BEGIN:VEVENT').slice(1).map((e) => ({ id: /UID:plan-(.+)@iamai/.exec(e)![1], summary: /SUMMARY:(.*)/.exec(e)![1] }))
+    assert.ok(events.length >= 3, `${name}: the premise: the calendar books several rows`)
+    assert.deepEqual(events.map((e) => e.id), expected.filter((id) => events.some((e) => e.id === id)), `${name}: the calendar lists its entries in another order than the board`)
+    for (const e of events) assert.ok(e.summary.startsWith(`${order.numberOf(e.id)} `), `${name}/${e.id}: the calendar entry is not numbered as the board numbers it: ${e.summary}`)
+    // Unordered, the calendar is what it was: the engine's order, no numbers.
+    const plain = buildIcs(page.r.steps, 'Tenant', 'plan', page.view, page.cleanup).replace(/\r\n /g, '')
+    assert.equal(/SUMMARY:\d+\.\d+ /.test(plain), false, `${name}: a calendar built without the board's order still numbers its entries`)
+    // The plan file: every step, the board's rows first in the board's order, each carrying its number.
+    const file = buildPlanFile({ planId: f.planId, snapshot: f.snapshot, operator: { userId: f.operatorId, userPrincipalName: 'operator@example.test' }, baselineSource: { kind: 'github', owner: 'o', repo: 'r', commit: 'c' }, mapping: f.mapping, steps: page.r.steps, checkpoints: [], order })
+    const ids = file.steps.map((s) => s.id)
+    assert.deepEqual([...ids].sort(), page.r.steps.map((s) => s.id).sort(), `${name}: the plan file lost or doubled a step`)
+    const onBoard = ids.filter((id) => expected.includes(id))
+    assert.deepEqual(onBoard, expected.filter((id) => ids.includes(id)), `${name}: the plan file lists its steps in another order than the board`)
+    assert.deepEqual(ids.slice(0, onBoard.length), onBoard, `${name}: a step the board draws no row for comes before a board row`)
+    for (const s of file.steps) assert.equal(s.number, order.numberOf(s.id) ?? undefined, `${name}/${s.id}: the plan file numbers the step otherwise than the board`)
+    assert.equal(Object.keys(file.steps[0])[0], 'number', `${name}: the number is not the first thing a reader of the file sees on a step`)
+  }
+  // The Export page hands both artifacts the board's order, read off the one board it builds.
+  const src = readFileSync('src/ui/surfaces/Export.tsx', 'utf8')
+  assert.match(src, /const order = boardOrderOf\(board\.rows\.map\(\(r\) => r\.item\)\)/, 'the Export page orders the exports itself')
+  assert.match(src, /buildIcs\(steps, tenantName, planId, view, cleanupViews, order\)/, 'the calendar is not handed the board\'s order')
+  assert.match(src, /buildPlanFile\(\{[^}]*\border\b/, 'the plan file is not handed the board\'s order')
 })
