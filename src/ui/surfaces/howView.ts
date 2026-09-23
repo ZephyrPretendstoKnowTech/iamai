@@ -87,8 +87,8 @@ export function howLimits(): string[] {
   return [...connect, ...app.how.limitsList, (pages.how as Record<string, string>).noAi]
 }
 
-/** One row of "What IAMAI reads". */
-export type HowReadRow = { name: string; endpoint: string; version: CollectorSpec['version']; scopes: string; conditions: string; why: string }
+/** One row of "What IAMAI reads"; `endpoints` is the registry's path, then the paths it also reads. */
+export type HowReadRow = { name: string; endpoints: string[]; version: CollectorSpec['version']; scopes: string; conditions: string; why: string }
 export type HowReadTable = { lane: CollectorSpec['lane']; caption: string; rows: HowReadRow[] }
 
 const LANES: CollectorSpec['lane'][] = ['0', 'A', 'B', 'on-demand']
@@ -126,7 +126,7 @@ export function howReadTables(): HowReadTable[] {
     caption: app.how.lanes[lane],
     rows: COLLECTOR_REGISTRY.filter((s) => s.lane === lane).map((s) => ({
       name: s.name,
-      endpoint: s.endpoint,
+      endpoints: [s.endpoint, ...(s.alsoReads ?? [])],
       version: s.version,
       scopes: s.scopes.join(', '),
       conditions: conditionsOf(s),

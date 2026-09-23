@@ -100,7 +100,7 @@ export function How() {
               // would push a six-column table past any screen — but not into
               // slivers: the floor keeps a short path on one or two lines and
               // lets the panel's own scroll handle the long ones.
-              { key: 'endpoint', header: READS.columns.endpoint, minWidth: '15rem', render: (s) => <code>{s.endpoint}</code> },
+              { key: 'endpoint', header: READS.columns.endpoint, minWidth: '15rem', render: (s) => s.endpoints.map((e) => <div key={e}><code>{e}</code></div>) },
               { key: 'version', header: READS.columns.api, render: (s) => <Chip status="neutral">{s.version}</Chip> },
               { key: 'scopes', header: READS.columns.permissions, render: (s) => s.scopes },
               { key: 'gate', header: READS.columns.gate, minWidth: '12rem', render: (s) => s.conditions },
