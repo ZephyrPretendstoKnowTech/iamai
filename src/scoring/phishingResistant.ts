@@ -348,7 +348,7 @@ export type NextAction =
   | { kind: 'seamless'; os: Platform; option: SignInOption }
   | { kind: 'setUp'; option: SignInOption; os: Platform | null }
   | { kind: 'updateOs'; os: Platform }
-  | { kind: 'restore'; cls: MethodClass }
+  | { kind: 'restore'; cls: MethodClass; lastSeen: string }
   | { kind: 'confirm'; cls: MethodClass; os: Platform | null }
   | { kind: 'returnConfirm' }
   | { kind: 'addDevice'; os: Platform; option: SignInOption }
@@ -857,7 +857,7 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
       : null
     if (blocked) return { ...base, ...common, devices, state: 'blocked', blocked, next: { kind: 'waitSetup', reason: blocked } }
     const onlyOffList = credentials.some((c) => c.cls === 'passkey' && c.allowedNow === 'no')
-    const next: NextAction = lost.length > 0 && !onlyOffList ? { kind: 'restore', cls: lost[0].cls } : { kind: 'setUp', ...firstSetUp() }
+    const next: NextAction = lost.length > 0 && !onlyOffList ? { kind: 'restore', cls: lost[0].cls, lastSeen: lost[0].lastSeen } : { kind: 'setUp', ...firstSetUp() }
     return { ...base, ...common, devices, state: 'method', next }
   }
 

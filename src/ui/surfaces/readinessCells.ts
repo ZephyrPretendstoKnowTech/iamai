@@ -281,7 +281,8 @@ export function nextWords(n: NextAction): string {
     case 'seamless': return fillText(N.seamless, { option: T.options[n.option], device: deviceNoun(n.os) })
     case 'setUp': return fillText(N.setUp, { option: T.options[n.option] })
     // Method names keep their capitals mid-sentence (Windows Hello for Business, never "windows hello").
-    case 'restore': return fillText(N.restore, { method: T.methodsInline[n.cls] })
+    // A removed method can't be restored in Entra: it is set up again, and the row says when it was last seen.
+    case 'restore': return fillText(N.restore, { method: T.methodsInline[n.cls], date: monthDay(n.lastSeen) })
     case 'confirm': return n.os ? fillText(N.confirmOn, { method: T.methodsInline[n.cls], device: deviceNoun(n.os) }) : fillText(N.confirm, { method: T.methodsInline[n.cls] })
     case 'returnConfirm': return N.returnConfirm
     case 'addDevice': return fillText(N.addDevice, { option: T.options[n.option], device: deviceNoun(n.os) })

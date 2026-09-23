@@ -364,7 +364,7 @@ test('a retained strong method that disappears is detected, and a failed read ne
   const r = personReadiness(input({ methods: m('microsoftAuthenticator'), history: h2.people[id], platforms: ['iOS'] }))
   assert.equal(r.state, 'method')
   assert.deepEqual(r.lost, [{ cls: 'passkey', lastSeen: AT }])
-  assert.deepEqual(r.next, { kind: 'restore', cls: 'passkey' })
+  assert.deepEqual(r.next, { kind: 'restore', cls: 'passkey', lastSeen: AT })
 })
 
 // ---------------------------------------------------------- one derivation
