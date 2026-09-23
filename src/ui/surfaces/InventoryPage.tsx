@@ -2,7 +2,9 @@
 // analysis; every table exports CSV and says where its data comes from. Every
 // table is a model from inventoryTables.ts, the same one the Export CSV card
 // writes: this page adds chips, links and tooltips around the model's words and
-// builds no cell of its own.
+// builds no cell of its own. One table carries something besides the scan: the
+// Detected workloads table shows the answer saved in Direction beside the
+// scan's reading of each service.
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
@@ -50,6 +52,7 @@ import {
   workloadsModel,
 } from './inventoryTables.ts'
 import type { GroupEntry, InventoryModel } from './inventoryTables.ts'
+import { useAppliedMapping } from './planData.ts'
 
 type Raw = Record<string, unknown>
 
@@ -432,7 +435,9 @@ function AppsTab({ snapshot, names }: { snapshot: TenantSnapshot; names: NameDir
   const A = C.apps
   const apps = appsModel(snapshot, names)
   const lastSp = cellOf(apps, 'lastSp')
-  const workloads = workloadsModel(snapshot)
+  // The Plan's mapping, the one MFA Readiness reads: the answers saved in Direction, shown beside the scan's reading.
+  const mapping = useAppliedMapping(snapshot)
+  const workloads = workloadsModel(snapshot, mapping)
   const detected = cellOf(workloads, 'detected')
   return (
     <div>
