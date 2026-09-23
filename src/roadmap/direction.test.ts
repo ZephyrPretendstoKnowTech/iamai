@@ -7,7 +7,7 @@ import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { directionSteps, nextDirectionStep } from './direction.ts'
 import type { DirectionInput } from './direction.ts'
-import { DIRECTION_STEP, answersOfDecision, directionDecisionOf, legacyDecisionsOf, savedAnswerOf } from './directionAnswers.ts'
+import { DIRECTION_LOCATIONS_STORAGE, DIRECTION_STEP, answersOfDecision, directionDecisionOf, legacyDecisionsOf, savedAnswerOf } from './directionAnswers.ts'
 import type { DirectionAnswer } from './directionAnswers.ts'
 import { applyStepDecisions } from './decisions.ts'
 import type { StepDecision } from './decisions.ts'
@@ -57,16 +57,14 @@ test('(b) with no signal every suggestion is the safe default, and says it is on
     assert.equal(x.suggested.value, 'yes', `${x.key}: a service keeps its policy`)
     assert.equal(x.evidence, W.defaultEvidence, x.key)
   }
-  assert.deepEqual([q(use, 'mailDevices').suggested.value, q(use, 'deviceCode').suggested.value, q(use, 'partner').suggested.value, q(use, 'externalMethods').suggested.value], ['none', 'unused', 'no', 'no'], 'no exception is granted')
-  for (const key of ['mailDevices', 'deviceCode', 'partner', 'externalMethods']) assert.equal(q(use, key).evidence, W.defaultEvidence, key)
-  const devices = stepOf(steps, DIRECTION_STEP.devices)
-  assert.equal(q(devices, 'deviceExceptions').suggested.value, 'none')
-  assert.equal(q(devices, 'deviceExceptions').evidence, W.defaultEvidence)
+  assert.deepEqual([q(use, 'mailDevices').suggested.value, q(use, 'deviceCode').suggested.value, q(use, 'partner').suggested.value], ['none', 'unused', 'no'], 'no exception is granted')
+  for (const key of ['mailDevices', 'deviceCode', 'partner']) assert.equal(q(use, key).evidence, W.defaultEvidence, key)
   // A tenant with no trusted named location is not thereby all-remote, and the
   // scan reads nothing either way (owner, 2026-09-20): the safe default is the
-  // one that keeps Define the Trusted Network on the plan.
-  assert.equal(q(stepOf(steps, DIRECTION_STEP.locations), 'officeNetwork').suggested.value, 'notInEntra')
-  assert.equal(q(stepOf(steps, DIRECTION_STEP.locations), 'officeNetwork').evidence, W.defaultEvidence)
+  // one that keeps Define the Trusted Network on the plan. Asked on D3 since
+  // Stage 3.
+  assert.equal(q(stepOf(steps, DIRECTION_STEP.devices), 'officeNetwork').suggested.value, 'notInEntra')
+  assert.equal(q(stepOf(steps, DIRECTION_STEP.devices), 'officeNetwork').evidence, W.defaultEvidence)
 })
 
 test('(b) a what-you-use question takes today\'s state; a how-it-should-work question takes the baseline\'s, today beside it', () => {
@@ -103,10 +101,6 @@ test('(b) a what-you-use question takes today\'s state; a how-it-should-work que
   assert.ok(q(devices, 'computers').evidence.startsWith(W.baselineEvidence), q(devices, 'computers').evidence)
   assert.match(q(devices, 'computers').evidence, /Intune: [0-9]+ of [0-9]+ licences in use/)
   assert.match(q(devices, 'computers').today ?? '', /^Today: /)
-  // D4: travel is the baseline's; work countries are where sign-ins came from.
-  const locations = stepOf(steps, DIRECTION_STEP.locations)
-  assert.equal(q(locations, 'travel').suggested.value, 'allowed')
-  assert.ok(q(locations, 'workCountries').suggested.picked.length > 0)
 })
 
 test('(c) Approve answers saves to the keys the answers have always lived under', () => {
@@ -117,12 +111,10 @@ test('(c) Approve answers saves to the keys the answers have always lived under'
   const steps = stepsOf(f)
   const use = stepOf(steps, DIRECTION_STEP.use)
   const devices = stepOf(steps, DIRECTION_STEP.devices)
-  const locations = stepOf(steps, DIRECTION_STEP.locations)
   const printer = f.snapshot.users[1].id
   const decisions: Record<string, StepDecision> = {
     [DIRECTION_STEP.use]: approve(use, { 'service:sharepoint': { value: 'no', picked: [] }, mailDevices: { value: 'some', picked: [printer] }, deviceCode: { value: 'unused', picked: [] }, partner: { value: 'yes', picked: [] } }),
-    [DIRECTION_STEP.devices]: approve(devices, { computers: { value: 'hybrid', picked: [] }, phones: { value: 'blocked', picked: [] } }),
-    [DIRECTION_STEP.locations]: approve(locations, { officeNetwork: { value: 'remote', picked: [] }, workCountries: { value: 'some', picked: ['AU', 'NZ'] }, travel: { value: 'never', picked: [] } }),
+    [DIRECTION_STEP.devices]: approve(devices, { computers: { value: 'hybrid', picked: [] }, phones: { value: 'blocked', picked: [] }, officeNetwork: { value: 'remote', picked: [] } }),
   }
   const m = applyStepDecisions(f.mapping, decisions)
   assert.equal(m.workflowAnswers?.sharepoint, 'no')
@@ -136,13 +128,10 @@ test('(c) Approve answers saves to the keys the answers have always lived under'
   assert.equal(devicePlanOf(m)?.noWorkPhones, true)
   assert.equal(m.wizardAnswered.trustedLocations, true)
   assert.deepEqual(m.trustedLocationIds, [])
-  assert.deepEqual(m.allowedCountries, ['AU', 'NZ'])
-  assert.equal(m.workCountriesConfirmed, true)
-  assert.equal(m.questionAnswers?.[answerKey(DIRECTION_STEP.locations, 'travel')], 'never')
-  assert.equal(m.questionAnswers?.[answerKey(DIRECTION_STEP.use, 'externalMethods')], 'no')
+  assert.equal(m.questionAnswers?.[answerKey(DIRECTION_LOCATIONS_STORAGE, 'officeNetwork')], 'remote', 'the office network answer, under the key it is read from')
   // And the steps read those answers back as approved.
   const after = stepsOf({ ...f, mapping: m })
-  for (const id of [DIRECTION_STEP.use, DIRECTION_STEP.devices, DIRECTION_STEP.locations]) assert.equal(stepOf(after, id).status, 'done', id)
+  for (const id of [DIRECTION_STEP.use, DIRECTION_STEP.devices]) assert.equal(stepOf(after, id).status, 'done', id)
   assert.equal(q(stepOf(after, DIRECTION_STEP.use), 'service:sharepoint').saved?.value, 'no')
 })
 
@@ -221,14 +210,15 @@ test('the demo: its first visit answers none of Direction; week two approved it,
   }
   const week2 = fixture('demo-week2')
   const second = runFixture({ ...week2, mapping: applyStepDecisions(week2.mapping, week2.decisions ?? {}) }).steps
-  for (const id of [DIRECTION_STEP.use, DIRECTION_STEP.accounts, DIRECTION_STEP.locations]) assert.equal(stepOf(second, id).status, 'done', `${id}: approved in week one`)
+  for (const id of [DIRECTION_STEP.use, DIRECTION_STEP.accounts]) assert.equal(stepOf(second, id).status, 'done', `${id}: approved in week one`)
   assert.notEqual(stepOf(second, DIRECTION_STEP.devices).status, 'done', 'the device decision stays open, as it always has on the demo')
   // The answers are the ones the demo already assumed.
   const use = stepOf(second, DIRECTION_STEP.use)
   assert.equal(q(use, 'partner').saved?.value, 'yes')
   assert.equal(q(use, 'deviceCode').saved?.value, 'unused')
   assert.equal(q(use, 'mailDevices').saved?.value, 'some')
-  assert.deepEqual(q(stepOf(second, DIRECTION_STEP.locations), 'workCountries').saved?.picked, week2.mapping.allowedCountries)
+  // Everyone remote, saved in week one; D3 stays open on its device answers.
+  assert.equal(q(stepOf(second, DIRECTION_STEP.devices), 'officeNetwork').saved?.value, 'remote')
 })
 
 test('(g) the retired steps are gone as rows, and D3 shows even with no device sign-ins', () => {
@@ -263,10 +253,11 @@ test('(e) a policy with an unanswered Direction dependency is held Waiting on yo
   assert.equal(laneViewOf(reading, titleOf).tail, W.waiting)
   const tile = readinessBlockersOf(reading, titleOf).find((b) => b.id === DIRECTION_STEP.devices)!
   assert.equal(tile.label, W.waiting)
-  assert.equal(tile.title, 'Decide How People and Devices Sign In', 'the tile names, and links to, the Direction step')
-  // geo-restriction waits on both D1 (partner) and D4 (countries, travel).
+  assert.equal(tile.title, 'Decide How and Where People Sign In', 'the tile names, and links to, the Direction step')
+  // geo-restriction waits on D1 (partner) alone: its countries are its own
+  // step's picker, and travel was retired (Stage 3).
   const geo = r.steps.find((s) => s.goalId === 'geo-restriction')
-  if (geo) assert.deepEqual(geo.blockers.filter((b) => b.kind === 'decision').map((b) => b.label).sort(), [`direction:${DIRECTION_STEP.locations}`, `direction:${DIRECTION_STEP.use}`])
+  if (geo) assert.deepEqual(geo.blockers.filter((b) => b.kind === 'decision' && b.label.startsWith('direction:')).map((b) => b.label).sort(), [`direction:${DIRECTION_STEP.use}`])
   // A policy that depends on no answer is untouched.
   for (const goal of ['mfa-all-users', 'admins-phishing-resistant', 'block-auth-transfer']) {
     const s = r.steps.find((x) => x.goalId === goal)
@@ -280,7 +271,7 @@ test('(e) a policy with an unanswered Direction dependency is held Waiting on yo
   assert.notEqual(readings.get(code.id)?.lane, 'On Hold')
   assert.ok((code.unsavedInputs ?? []).length > 0, 'it still asks its question until it is answered')
   // Saving the one answer it depends on releases it; the rest of D1 can stay open.
-  const saved = applyStepDecisions(f.mapping, { [DIRECTION_STEP.devices]: { ...directionDecisionOf({ computers: { value: 'managed', picked: [] }, phones: { value: 'apps', picked: [] }, deviceExceptions: { value: 'none', picked: [] } }), at: AT } })
+  const saved = applyStepDecisions(f.mapping, { [DIRECTION_STEP.devices]: { ...directionDecisionOf({ computers: { value: 'managed', picked: [] }, phones: { value: 'apps', picked: [] }, officeNetwork: { value: 'notInEntra', picked: [] } }), at: AT } })
   const after = runFixture({ ...f, mapping: saved }).steps
   const released = after.find((s) => s.goalId === 'require-managed-device')!
   assert.ok(!released.blockers.some((b) => b.kind === 'decision' && b.label.startsWith('direction:')))
@@ -316,12 +307,12 @@ test('Direction polish: evidence is content sentences, the eyebrow is a decision
   // The eyebrow reads Decision step, not Check step.
   assert.equal(use.guidance?.kind, 'decision')
   assert.equal(eyebrowOf({ state: use.state } as never, use.guidance!.kind), 'Decision step')
-  // Approving D1 moves to D2; with D2 and D3 answered too, D4 is next, and from D4 back to the first open one.
+  // Approving D1 moves to D2; with D2 answered too, D3 is next, and from D3 back to the first open one.
   assert.equal(nextDirectionStep(DIRECTION_STEP.use, steps), DIRECTION_STEP.accounts)
   const answered = (id: string): Step => ({ ...stepOf(steps, id), directionQuestions: stepOf(steps, id).directionQuestions!.map((x) => ({ ...x, saved: x.suggested, needsReview: false })) })
-  const later = steps.map((s) => s.id === DIRECTION_STEP.accounts || s.id === DIRECTION_STEP.devices ? answered(s.id) : s)
-  assert.equal(nextDirectionStep(DIRECTION_STEP.use, later), DIRECTION_STEP.locations)
-  assert.equal(nextDirectionStep(DIRECTION_STEP.locations, later), DIRECTION_STEP.use)
+  const later = steps.map((s) => s.id === DIRECTION_STEP.accounts ? answered(s.id) : s)
+  assert.equal(nextDirectionStep(DIRECTION_STEP.use, later), DIRECTION_STEP.devices)
+  assert.equal(nextDirectionStep(DIRECTION_STEP.devices, later), DIRECTION_STEP.use)
   const all = steps.map((s) => answered(s.id))
   assert.equal(nextDirectionStep(DIRECTION_STEP.use, all), null, 'nothing open: the page stays')
   assert.equal(nextDirectionStep('s-goal-admin-mfa', steps), null, 'only a Direction step moves the page')
@@ -344,7 +335,7 @@ test('the office network has a third answer, and answering it keeps the trusted-
 
   const apply = (value: string) => {
     const decision = directionDecisionOf({ officeNetwork: { value, picked: [] } })
-    const legacy = legacyDecisionsOf(DIRECTION_STEP.locations, { ...decision, at: AT } as never)
+    const legacy = legacyDecisionsOf(DIRECTION_STEP.devices, { ...decision, at: AT } as never)
     return Object.fromEntries(legacy)
   }
 
@@ -508,5 +499,44 @@ test('NEW-Nadia-D4 review: over a sign-in read that stopped short, every count t
     // The phones count is read only over a read MFA Readiness reads (derive/sets.ts phoneSignInIds): partial, not insufficient.
     if (status === 'partial') assert.equal(today('phones'), fillText(W.questions.phones.todayPartial, { n: phones }))
     else assert.equal(today('phones'), null)
+  }
+})
+
+// Stage 3 (roadmap-flow V1 decisions 3 and 4). Direction is three steps: the
+// office network joins the devices step, work countries move to the countries
+// step (6.3), and the three questions nothing read are retired.
+test('Direction shows three steps: 2.3 asks the office network, and the retired questions are gone', async () => {
+  const { isGroupMember, DIRECTION_GROUP } = await import('./stepGroups.ts')
+  const { curatedFixture } = await import('./fixtures/index.ts')
+  const { withFoundationSettled } = await import('./fixtures/run.ts')
+  const steps = stepsOf(fixture('demo'))
+  assert.deepEqual(steps.map((s) => s.id), ['s-direction-use', 's-direction-accounts', 's-direction-devices'])
+  const keys = steps.flatMap((s) => (s.directionQuestions ?? []).map((x) => x.key))
+  for (const retired of ['externalMethods', 'deviceExceptions', 'travel', 'workCountries']) assert.ok(!keys.includes(retired as never), `${retired} is still asked`)
+  const devices = stepOf(steps, 's-direction-devices')
+  assert.deepEqual(devices.directionQuestions!.map((x) => x.key), ['computers', 'phones', 'officeNetwork'])
+  assert.equal(devices.title, 'Decide How and Where People Sign In')
+  // The plan draws the same three, on the tenant closest to the owner's.
+  const plan = runFixture(withFoundationSettled(curatedFixture('getiamai'))).steps
+  assert.deepEqual(plan.filter((s) => isGroupMember(s.id, DIRECTION_GROUP)).map((s) => s.id), ['s-direction-use', 's-direction-accounts', 's-direction-devices'])
+  assert.ok(!plan.some((s) => s.id === 's-direction-locations'), 'the storage id is not a drawn step')
+})
+
+// The writer bug (roadmap-flow proposal, section 7): approving the step that
+// asks the office network saved it under that step's own id, and the answer is
+// read from s-direction-locations only — so "we have one, not in Entra yet" and
+// "everyone is remote" were lost, and the step never completed.
+test('approving 2.3 saves the office network answer under the key it is read from, reads it back, and completes 2.3', () => {
+  for (const value of ['notInEntra', 'remote']) {
+    const f = fixture('demo')
+    f.mapping.questionAnswers = {}
+    const devices = stepOf(stepsOf(f), 's-direction-devices')
+    const answers = Object.fromEntries([...devices.directionQuestions!.map((x) => [x.key, x.saved ?? x.suggested] as const), ['officeNetwork', { value, picked: [] }] as const])
+    const m = applyStepDecisions(f.mapping, { 's-direction-devices': { ...directionDecisionOf(answers), at: AT } })
+    assert.equal(m.questionAnswers?.['s-direction-locations:officeNetwork'], value, `${value}: written under the key it is read from`)
+    assert.equal(savedAnswerOf('officeNetwork', m)?.value, value, `${value}: read back`)
+    const after = stepOf(stepsOf({ ...f, mapping: m }), 's-direction-devices')
+    assert.equal(q(after, 'officeNetwork').saved?.value, value, `${value}: the question shows it saved`)
+    assert.equal(after.status, 'done', `${value}: 2.3 completes`)
   }
 })

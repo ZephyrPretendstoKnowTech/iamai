@@ -598,7 +598,7 @@ export const settleFoundations = (t: Tenant): Tenant => configurePasskeys(prepar
 
 /**
  * The person works through Decide Your Tenant's Direction and presses Approve
- * answers on each of the four steps without changing a tile.
+ * answers on each of the three steps without changing a tile.
  *
  * What that saves is what the screen's draft starts from: every question's
  * SAVED answer where it has one, else its suggestion (DirectionQuestions.tsx,
@@ -633,7 +633,7 @@ export function acceptDirection(t: Tenant, r: FixtureRun): Tenant {
   return next
 }
 
-/** The foundation and the four Direction answers: everything the plan waits on before any policy may be written. */
+/** The foundation and the three Direction steps' answers: everything the plan waits on before any policy may be written. */
 export function settleAll(t: Tenant): Tenant {
   const settled = settleFoundations(t)
   return acceptDirection(settled, plan(settled))

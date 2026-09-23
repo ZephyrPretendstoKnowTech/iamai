@@ -78,7 +78,8 @@ test('a question is drawn as an Emergency Access subject card, in that card’s 
 
 test('a step whose question moved says where it is answered now, with the answer and a link', () => {
   const { f, ctx } = setup()
-  assert.deepEqual(Object.keys(ANSWERED_IN).sort(), [PREREQ_STEP_ID.allowedCountries, PREREQ_STEP_ID.serviceAccountsGroup, PREREQ_STEP_ID.trustedLocation, 's-goal-block-device-code', 's-goal-block-legacy-auth', 's-goal-guests-mfa', 's-shared-devices'].sort())
+  // The countries step asks its own work countries since Stage 3: nothing about it is answered in Direction.
+  assert.deepEqual(Object.keys(ANSWERED_IN).sort(), [PREREQ_STEP_ID.serviceAccountsGroup, PREREQ_STEP_ID.trustedLocation, 's-goal-block-device-code', 's-goal-block-legacy-auth', 's-goal-guests-mfa', 's-shared-devices'].sort())
   f.mapping.questionAnswers = {}
   const open = answeredInOf('s-goal-block-device-code', { ...ctx, mapping: f.mapping })!
   assert.equal(open.step, DIRECTION_STEP.use)
@@ -87,9 +88,10 @@ test('a step whose question moved says where it is answered now, with the answer
   const saved = applyStepDecisions(f.mapping, { [DIRECTION_STEP.use]: { ...directionDecisionOf({ deviceCode: { value: 'used', picked: [] } }), at: f.snapshot.asOf } })
   const answered = answeredInOf('s-goal-block-device-code', { ...ctx, mapping: saved })!
   assert.deepEqual(answered.lines.map((l) => [l.label, l.value, l.saved]), [[W.questions.deviceCode.label, 'In use', true]])
-  const countries = answeredInOf(PREREQ_STEP_ID.allowedCountries, ctx)!
-  assert.equal(countries.step, DIRECTION_STEP.locations)
-  assert.deepEqual(countries.lines.map((l) => l.key), ['workCountries', 'travel'])
+  assert.equal(answeredInOf(PREREQ_STEP_ID.allowedCountries, ctx), null)
+  const network = answeredInOf(PREREQ_STEP_ID.trustedLocation, ctx)!
+  assert.equal(network.step, DIRECTION_STEP.devices, 'the office network is answered on D3 now')
+  assert.deepEqual(network.lines.map((l) => l.key), ['officeNetwork'])
   assert.equal(answeredInOf('s-goal-mfa-all-users', ctx), null)
   // The step draws it in place of its old picker.
   assert.match(CONTENT_STEP, /\{ANSWERED_IN\[step\.id\] \? <AnsweredInDirection stepId=\{step\.id\} ctx=\{ctx\} \/> :/)
@@ -97,7 +99,7 @@ test('a step whose question moved says where it is answered now, with the answer
   assert.match(QUESTIONS, /href=\{returnToStep\(answered\.step\)\}/)
 })
 
-test('the Trusted Network step does not ask what Decide Where People Sign In From asks', () => {
+test('the Trusted Network step does not ask what Decide How and Where People Sign In asks', () => {
   // The owner's own example (docs/plans/step-redundancy-analysis.md finding 2).
   // This step is the doing of D4's office-network answer and says so through the
   // "Answered in" panel; it used to draw a tile beside that panel reading
@@ -110,7 +112,7 @@ test('the Trusted Network step does not ask what Decide Where People Sign In Fro
   assert.deepEqual(open.configurationFindings ?? [], [], 'the step asks the question again')
   // It still says where the answer lives, and what it is so far.
   const panel = answeredInOf(PREREQ_STEP_ID.trustedLocation, { snapshot: f.snapshot, mapping: unanswered, nameOf: (id: string) => id })!
-  assert.equal(panel.title, 'Decide Where People Sign In From')
+  assert.equal(panel.title, 'Decide How and Where People Sign In')
   assert.deepEqual(panel.lines.map((l) => l.key), ['officeNetwork'])
 
   // Answered, the tile is about the tenant's objects rather than the question,
@@ -151,7 +153,6 @@ test('the six text fixes the owner approved on the frozen steps, 2026-09-20', ()
   const service = use.find((q) => q.key.startsWith('service:'))
   if (service) assert.deepEqual(service.options.map((o) => o.value), ['yes', 'no'], 'the premise: a service question reads Yes/No')
   assert.deepEqual(pair('partner'), ['yes', 'no'])
-  assert.deepEqual(pair('externalMethods'), ['yes', 'no'])
 
   // 4. The bare date under NEXT MILESTONE now carries the step's own written
   //    sentence, saying what approving its answers does — the one thing the

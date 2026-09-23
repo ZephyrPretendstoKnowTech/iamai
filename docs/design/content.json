@@ -2832,7 +2832,7 @@
           }
         },
         "direction": {
-          "$comment": "Decide Your Tenant's Direction (docs/plans/direction-spec.md): four decision steps, answers only. Question words, options and evidence lines; roadmap/direction.ts fills them.",
+          "$comment": "Decide Your Tenant's Direction (docs/plans/direction-spec.md): three decision steps, answers only. Question words, options and evidence lines; roadmap/direction.ts fills them.",
           "headings": {
             "why": "About this Step",
             "questions": "Questions",
@@ -2864,14 +2864,10 @@
               "milestoneAction": "Approving these answers takes these accounts out of the people counts and gives them their own rules."
             },
             "devices": {
-              "title": "Decide How People and Devices Sign In",
-              "why": "Choose where your devices are heading. It's fine if today looks different: the plan prepares the gap before anything is enforced.",
-              "milestoneAction": "Approving these answers decides which device policies your plan contains."
-            },
-            "locations": {
-              "title": "Decide Where People Sign In From",
-              "why": "Tell us where your people work from. This sets which countries are allowed and which network counts as the office.",
-              "milestoneAction": "Approving these answers defines the office network and the countries your policies allow."
+              "$comment": "Stage 3 (roadmap-flow V1 decision 3): today's devices step plus the office network question from Decide Where People Sign In From, which is no longer drawn. Its title is the V1 outline's name for the merged step. why and milestoneAction are the two steps' words combined as they were; the only edit is the countries clause each carried (\"which countries are allowed and\", \"and the countries your policies allow\"), false once work countries moved to Block Sign-ins From Countries Not Allowed.",
+              "title": "Decide How and Where People Sign In",
+              "why": "Choose where your devices are heading. It's fine if today looks different: the plan prepares the gap before anything is enforced. Tell us where your people work from. This sets which network counts as the office.",
+              "milestoneAction": "Approving these answers decides which device policies your plan contains. Approving these answers defines the office network."
             }
           },
           "questions": {
@@ -2924,15 +2920,6 @@
               "seen": "{n} service-provider accounts signed in to this tenant.",
               "notSeen": "No service-provider sign-ins in the last 30 days."
             },
-            "externalMethods": {
-              "label": "External authentication methods (a third-party MFA provider)",
-              "options": {
-                "yes": "Yes",
-                "no": "No"
-              },
-              "seen": "The authentication methods policy has an external method enabled.",
-              "notSeen": "The authentication methods policy has no external method enabled."
-            },
             "accountOptions": {
               "none": "None",
               "some": "Pick accounts"
@@ -2980,13 +2967,6 @@
               "todayPartial": "In the part of the sign-in records this scan read, {n} people signed in from phones. There may be more.",
               "note": "Blocked from company data adds a policy of its own, Keep Company Data Off Phones, with its own report-only week and two tests from a phone before it is enforced."
             },
-            "deviceExceptions": {
-              "label": "Devices that can't meet the rule (kiosks, lab machines)",
-              "options": {
-                "none": "None",
-                "some": "Some"
-              }
-            },
             "officeNetwork": {
               "label": "The office network",
               "options": {
@@ -2999,17 +2979,6 @@
               "note": "Answering that it is not in Entra yet keeps Define the Trusted Network on your plan, where you name the office and its approved public ranges. IAMAI does not read sign-in addresses, so it cannot suggest them.",
               "$commentUnused": "A saved answer of \"Everyone works remotely\" sat beside the evidence line \"1 named location is marked trusted\" with nothing connecting them. The evidence is true and argues for the OPPOSITE answer, and the suggestion was in fact office - so a careful reader met a contradiction on one line and no way to tell which half to believe. The downstream prerequisite step already says this well (\"The scan read a trusted named location this answer leaves out: Head office\"); the question that SETS the answer said nothing. Said only where the saved answer is remote and the scan read a trusted location.",
               "savedRemoteUnused": "This answer leaves {n} of them unused; nothing location-based will apply."
-            },
-            "workCountries": {
-              "label": "Work countries",
-              "seen": "Sign-ins in the last 30 days came from {countries}."
-            },
-            "travel": {
-              "label": "Travel outside those countries",
-              "options": {
-                "allowed": "Allowed, with notice (a temporary travellers group)",
-                "never": "Never"
-              }
             }
           }
         },
