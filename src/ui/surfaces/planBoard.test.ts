@@ -337,9 +337,11 @@ test('the board decides no lane: it reads planLanes.ts and re-derives nothing', 
   const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
   // Through the one board construction every surface reads (R4-22: the Export
   // page built its own readings without the Cleanup rows and stated other lanes).
-  assert.match(plan, /const \{ readings, titleOf, cleanupRows \} = boardReadingsOf\(c\.steps, /, 'the Plan no longer reads the engine for its lanes')
-  assert.match(plan, /lane: reading\.lane,/, 'a row carries a lane the engine did not read')
-  assert.match(plan, /const laneView = laneViewOf\(reading, titleOf\)/, 'the board no longer reads the one lane view')
+  assert.match(plan, /const board = boardOf\(c\.steps, cleanupPhase, answers\)\n\s*const \{ readings, titleOf, cleanupRows, prerequisiteLabel, enforceWaits \} = board/, 'the Plan no longer reads the engine for its lanes')
+  // Its rows are built once, on the engine's readings (planBoard.ts boardOf).
+  const producer = readFileSync('src/ui/surfaces/planBoard.ts', 'utf8')
+  assert.match(producer, /lane: reading\.lane,/, 'a row carries a lane the engine did not read')
+  assert.match(producer, /const lane = laneViewOf\(reading, titleOf\)/, 'the board no longer reads the one lane view')
   assert.equal(plan.includes('planStateOf('), false, 'the Plan reads the legacy presentation state beside the lane (A1b)')
   assert.equal(plan.includes('phaseRows('), false, 'the Plan still groups by phase')
   assert.equal(plan.includes('undatedRows('), false, 'the Plan still draws the undated group')

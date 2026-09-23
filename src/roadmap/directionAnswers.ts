@@ -195,6 +195,16 @@ export function savedAnswerOf(key: DirectionQuestionKey, m: Mapping): DirectionA
 
 // ---- the Direction decision, as saved ----
 
+/**
+ * Whether a question's answer can be approved: an answer that carries a list
+ * carries at least one item. Approve answers is disabled until every question on
+ * the step passes (DirectionQuestions.tsx); anything that approves on a person's
+ * behalf reads the same rule.
+ */
+export function directionAnswerComplete(q: Pick<DirectionQuestion, 'control' | 'pickedWith'>, a: DirectionAnswer): boolean {
+  return q.control === 'countries' || (q.pickedWith !== null && a.value === q.pickedWith) ? a.picked.length > 0 : true
+}
+
 /** The answers a Direction step's Approve writes: every question at once, the picked ids beside each, a service's evidence basis beside it. */
 export function directionDecisionOf(answers: Readonly<Record<string, DirectionAnswer>>, basis: Readonly<Record<string, string>> = {}): StepDecisionInput {
   const out: Record<string, string> = {}

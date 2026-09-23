@@ -377,9 +377,10 @@ test('a tenant planning against a package without the reviewed source plans the 
   // There is no source there to define the goal twice, so there is nothing to
   // report about it — the goal is planned from its own template like any other,
   // and what holds it is the tenant's own readiness, said in the tenant's words.
-  // Asked for by name. These two used to carry a synthetic baseline because every
-  // fixture but the demo did; every fixture is on the pin now, so the premise
-  // this test needs is stated rather than inherited.
+  // Asked for by name. Every fixture but the demo is built on the synthetic
+  // baseline (fixtures/index.ts buildFixture), so today this states the premise
+  // this test needs rather than changing it, and the premise stays put if those
+  // fixtures are ever moved to the pin.
   for (const name of ['small', 'hostile'] as const) {
     const f = withSyntheticBaseline(fixture(name))
     assert.equal(

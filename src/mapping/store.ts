@@ -44,5 +44,8 @@ export function toCoverageMapping(state: MappingState, exclusionsGroupId: string
     exclusionGroups,
     exclusionsGroupId,
     serviceAccountUsers: [...state.serviceAccountUserIds],
+    // The recorded answers the step's policy is built from, so coverage judges a
+    // policy against the baseline as they narrowed it (coverage.ts recordedReference).
+    ...(state.questionAnswers !== undefined ? { questionAnswers: { ...state.questionAnswers } } : {}),
   }
 }

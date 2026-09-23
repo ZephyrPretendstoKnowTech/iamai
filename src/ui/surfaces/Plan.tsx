@@ -25,10 +25,9 @@ import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { Button, Callout, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { ALL_WORK_TAB, BOARD, LANES, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardHolds, boardReadingsOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupSummary, groupTotalsOf, groupsFor, laneViewFor, laneViewOf, partitionPinnedGroups, pinnedBoardGroups, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, splitPinned, waveStartOf, workTypeOf } from './planBoard.ts'
+import { ALL_WORK_TAB, BOARD, LANES, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupSummary, groupTotalsOf, groupsFor, laneViewFor, laneViewOf, partitionPinnedGroups, pinnedBoardGroups, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, splitPinned, waveStartOf } from './planBoard.ts'
 import type { BoardGroup, BoardItem, BoardTab, Focus, LaneTab, WorkType } from './planBoard.ts'
 import { TAB_OF } from './planBoard.ts'
-import { contentStepFor } from '../../content/stepTitle.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
 import { rowWho } from './rowWho.ts'
@@ -191,14 +190,15 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // deferred one. The one construction every surface that states a lane reads
   // (planBoard.ts boardReadingsOf): the printed plan, the Export page and
   // Connect's tile read exactly these readings and titles (R4-22).
-  const { readings, titleOf, cleanupRows } = boardReadingsOf(c.steps, cleanupPhase, answers)
+  // The board's rows, built once (planBoard.ts boardOf): the persona harness
+  // reads the same construction, so its board cannot drift from this one.
+  const board = boardOf(c.steps, cleanupPhase, answers)
+  const { readings, titleOf, cleanupRows, prerequisiteLabel, enforceWaits } = board
   // The plan-wide dates the step variables read (the campaign's enrol-by, the
   // MFA enforcement day, the campaign's window); the operator's own account is resolved above, once.
   // A step the board holds lends none of them its turn-on day (planBoard.ts boardHolds; owner decision 2).
-  const dates = planDates(c.steps, c.schedule.start, c.coverage.organisation.naming, scan.snapshot, (s) => boardHolds(s, laneViewFor(s, { readings, titleOf })))
+  const dates = planDates(c.steps, c.schedule.start, c.coverage.organisation.naming, scan.snapshot, (s) => boardHolds(s, laneViewFor(s, board)))
   const rowSteps = c.steps.filter((s) => readings.has(s.id))
-  // A prerequisite tile's label is the prerequisite's own lane (decision 12).
-  const prerequisiteLabel = prerequisiteLabelFor(readings)
   // The number each row shows in its group's list (planBoard.ts rowNumbersOf),
   // taken over every row the board has before a tab or a focus filters one out:
   // a step's number is its place in its group, not its place in what is on
@@ -210,7 +210,6 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // name and found none. The engine does hold every policy's ENFORCEMENT on
   // the drill; a policy being created today is not enforcing today, so it is
   // not in that step's blockers, and the checklist is about the day it will be.
-  const enforceWaits = cleanupRows.filter((r) => r.row.kind === 'drill' && !r.complete).map((r) => cleanupEntry(r.row.kind)?.title).filter((x): x is string => typeof x === 'string' && x.length > 0)
   const rowNumbers = rowNumbersOf([...rowSteps, ...cleanupRows])
   // How many rows each group has on the whole board, for the group's one
   // supporting line: "3 of 6 steps" where a tab left three of them, so the
@@ -221,21 +220,12 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // Built once, in the engine's order, with the lane the engine read for each
   // row. `renderById` holds the ONE renderer for each row, so a tab can only
   // choose where a row goes, never what it says.
-  const items: BoardItem[] = []
+  const items: BoardItem[] = board.rows.map((r) => r.item)
   const renderById = new Map<string, () => ReactNode>()
-  for (const step of rowSteps) {
-    const reading = readings.get(step.id)!
+  for (const { step, reading, lane: laneView } of board.rows) {
+    if (step === null) continue
     // The one state reading (planBoard.ts laneViewOf, A1b decision 1): the row's
     // label and tone, and the opened step's badge, bar and rail.
-    const laneView = laneViewOf(reading, titleOf)
-    items.push({
-      id: step.id,
-      title: contentTitle(step),
-      lane: reading.lane,
-      laneLabel: laneView.label,
-      workType: workTypeOf(step.id, (contentStepFor(step) as { kind?: string } | undefined)?.kind ?? null),
-      order: reading.order,
-    })
     // The board's reading of the timing column (planBoard.ts `boardWhenOf`): the
     // row's own value — a date, or the placeholder — held back exactly where
     // roadmap/holds.ts says the step is held. The phase is a secondary
@@ -246,18 +236,9 @@ export function Plan({ scan: lastScan, baseline, account }: {
   }
 
   if (cleanupPhase) {
-    for (const { row: r, id, complete } of cleanupRows) {
-      const entry = cleanupEntry(r.kind)!
-      const reading = readings.get(id)!
-      const laneView = laneViewOf(reading, titleOf)
-      items.push({
-        id,
-        title: entry.title,
-        lane: reading.lane,
-        laneLabel: laneView.label,
-        workType: 'setup',
-        order: reading.order,
-      })
+    for (const { cleanup, lane: laneView } of board.rows) {
+      if (cleanup === null) continue
+      const { row: r, id } = cleanup
       renderById.set(id, () => <CleanupRow key={r.kind} phase={cleanupPhase} row={r} number={rowNumbers.get(id) ?? null} answers={answers} open={open === id} onToggle={() => openStep(id)} onScan={onScan} onDone={(date, ids, evidence) => data.markCleanupDone(r.kind, date, ids, evidence)} undated={cannotFinish} lane={laneView} />)
     }
   }

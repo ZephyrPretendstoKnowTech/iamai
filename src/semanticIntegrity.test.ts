@@ -407,6 +407,10 @@ test('042.10: every readiness cell is the row it was rendered from, on screen an
 // ---- 11. unknown does not become safe through a presentation fallback ----
 
 test('042.11: an unmeasured fact is stated as unmeasured, never as a zero or a pass', () => {
+  // A delivered step's reach is the delivering policies' own, and unsettled the
+  // same way an open policy's is (deliveredUnsettledCase): the corpus has one,
+  // or every line below says nothing about it.
+  assert.ok(stepsIn('unknownReach').some(({ step }) => step.state.satisfied && step.status === 'done'), 'no delivered step with an unsettled reach in the corpus')
   for (const { c, step } of stepsIn('unknownReach')) {
     const ctx = ctxFor(c, step)
     const contract = stepContract(step, ctx)
@@ -578,8 +582,10 @@ test('042.15: no surface re-derives a fact that has an authority', () => {
   // the completion itself is where that starts.
   const board = read('src/ui/surfaces/planBoard.ts')
   assert.ok(board.includes('cleanupComplete('), 'the board construction does not read the one Cleanup completion')
-  for (const [name, src, word] of [['Plan', plan, 'laneViewOf('], ['PrintPlan', print, 'laneViewOf(']] as const) {
-    assert.ok(src.includes('boardReadingsOf('), `${name} does not read the one board construction`)
+  // The Plan's Cleanup rows carry the lane view boardOf built (planBoard.ts).
+  for (const [name, src, word] of [['Plan', plan, 'board.rows'], ['PrintPlan', print, 'laneViewOf(']] as const) {
+    // The Plan reads it through boardOf, which is built on it (planBoard.ts).
+    assert.ok(src.includes('boardReadingsOf(') || src.includes('boardOf('), `${name} does not read the one board construction`)
     assert.equal(src.includes('cleanupComplete('), false, `${name} decides a Cleanup row's completion itself`)
     assert.ok(src.includes(word), `${name} does not read the one Cleanup status word`)
     assert.equal(/word: 'In place'|word: 'Ready'/.test(src), false, `${name} writes a status word into its own JSX`)

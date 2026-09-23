@@ -14,7 +14,7 @@ import type { BaselinePackage } from '../baseline/types.ts'
 import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
 import { PLACEHOLDER_STEP, implementable, resolveTenantPolicy, tenantObjectsOf, unmatchedStrengths } from './resolvePolicy.ts'
-import { effectOf, emergencyExposureOf, enforcementHeld, isOpenPolicy, isValidOperation, operationsOf, stepEffects, strengthLookupOf, submitsEnforcement, tenantStrengthsOf, validOperations, unavailableReason } from './operations.ts'
+import { accountApplicability, effectOf, emergencyExposureOf, enforcementHeld, isOpenPolicy, isValidOperation, operationsOf, stepEffects, strengthLookupOf, submitsEnforcement, tenantStrengthsOf, validOperations, unavailableReason } from './operations.ts'
 import type { PolicyEffect } from './operations.ts'
 import type { GrantFloor } from '../coverage/types.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
@@ -44,9 +44,10 @@ import { BASELINE_CONFLICT, baselineConflicts } from './baselineConflict.ts'
 import type { TemplateBody, TemplatePlaceholder, TemplateValues } from './template.ts'
 import { policyFacts } from '../coverage/facts.ts'
 import { PINNED_GOAL_MAP, goalInMap, policyKey } from './goalMap.ts'
-import { memberKeyOf, sameDimension } from './observation.ts'
+import { COVERAGE_JUDGED, memberKeyOf, sameDimension, unwrittenDifferences } from './observation.ts'
 import type { GoalMap } from './goalMap.ts'
 import type { StrengthLookup } from '../coverage/strength.ts'
+import { satisfiesFloor } from '../coverage/strength.ts'
 import type { CoverageReport, Goal, GoalResult } from '../coverage/types.ts'
 import { ownCandidate } from '../coverage/coverage.ts'
 import { resolvePopulation } from '../coverage/population.ts'
@@ -702,10 +703,15 @@ function changedSections(result: GoalResult): Set<ChangedSection> {
  * correction owed, and where nothing else is owed the update is the switch
  * alone.
  *
- * Never for a policy the goal reads below its floor (`belowFloor`, coverage's
- * `meetsFloor`): its grant is the finding (gap 4), and a grant the plan cannot
- * raise is not turned on by this rule. A report-only policy of that kind keeps
- * the update it had.
+ * Also for a policy the goal reads below its floor (`belowFloor`, coverage's
+ * `meetsFloor`) once it holds the grant the plan writes. It was held back: its
+ * grant was the finding (gap 4), and the "correction" it kept was that same
+ * grant, so the pinned baseline's admin policy, built exactly as written, was
+ * handed its own grant on every scan and never the switch (R4-11 on the pin).
+ * The pinned baseline wins (owner, 2026-09-22): it is turned on as written, and
+ * the step states that its grant is weaker than the goal's floor
+ * (Action.belowGoalFloor). A below-floor policy that does not yet hold the plan's
+ * grant still takes the correction first.
  *
  * An enforced policy is read the same way, with no switch to offer: a section it
  * already holds is not submitted. It used to stay, and the update was a
@@ -738,7 +744,7 @@ function settleSections(sections: Set<ChangedSection>, built: Action, current: R
     return !(updates.length > 0 && updates.every((u) => sameDimension(at(u.body), at(u.held))))
   })
   const reportOnly = updates.some((u) => u.held.state === 'enabledForReportingButNotEnforced')
-  const switchable = reportOnly && !updates.some((u) => belowFloor(u.id))
+  const switchable = reportOnly
   if (owed.length === 0 && switchable) {
     sections.clear()
     sections.add('state')
@@ -1716,12 +1722,27 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       const policies = !own ? [] : stepSources.length > 0 ? stepPolicies() : templatePolicy()
       const would = policies.length === 1 ? buildCreateAction(named(policies, proposedPolicyName(goal, naming)), mapping, planId, stepId, goal.id) : null
       const intended = would && (would.missing ?? []).length === 0 ? would.resolution?.policies[0]?.body : undefined
+      // A policy the tenant wrote delivers the goal: where it is not the policy
+      // the plan would write, in the parts coverage does not judge, the step says
+      // so and asks nothing (owner, 2026-09-22; Action.ownPolicyDiffers). One
+      // delivering policy, and a plan policy that resolves, or nothing is said.
+      const delivering = result.satisfaction?.policyIds ?? []
+      let ownPolicyDiffers: Action['ownPolicyDiffers'] | undefined
+      if (!own && delivering.length === 1) {
+        const theirs = (snapshot.config.caPolicies.rows as RawPolicy[]).find((p) => String(p.id) === delivering[0])
+        const mine = stepSources.length > 0 ? stepPolicies() : templatePolicy()
+        const plan = theirs && mine.length === 1 ? buildCreateAction(named(mine, proposedPolicyName(goal, naming)), mapping, planId, stepId, goal.id) : null
+        const body = plan && (plan.missing ?? []).length === 0 ? plan.resolution?.policies[0]?.body : undefined
+        const dimensions = body && theirs ? unwrittenDifferences(body as Record<string, unknown>, null, theirs as Record<string, unknown>, COVERAGE_JUDGED) : []
+        if (theirs && dimensions.length > 0) ownPolicyDiffers = { policyName: String(theirs.displayName ?? theirs.id), dimensions }
+      }
       action = {
         kind: 'create',
         summary: [],
         json: null,
         portalSteps: [],
         ...(intended ? { intended } : {}),
+        ...(ownPolicyDiffers ? { ownPolicyDiffers } : {}),
       }
     } else if (result.status === 'unknown') {
       // Coverage could not settle the goal: a live policy that stands for it
@@ -2159,12 +2180,32 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // population minus the plan's exclusions, so enforcing a policy the plan had
     // just watched in report-only moved its tile from "covers 283 enabled" to
     // "covers 279 enabled" with the policy unchanged. Null where their scope
-    // cannot be settled: the step then keeps the goal's population, as before.
+    // cannot be settled, and carried as null: that reach is not established,
+    // and nothing stands in for it (Foundation A). The step kept the goal's
+    // population there, a count nothing measured for those policies, which
+    // moved to their real reach the scan the group was read. Undefined where no
+    // tenant policy delivers the goal: there is no scope to read.
     // Its own field, never `cohort`: a delivered step reopened later in this
     // run (an unestablished Inforcer application, a workload identity) is an
     // open policy again, and its cohort is its own operation's scope or nothing.
-    const deliveredReach = cohort === null && deliveringEffects !== null && deliveringEffects.length > 0 ? cohortFor(deliveringEffects) : null
-    const reach = cohort ?? deliveredReach
+    const deliveredReach = cohort === null && deliveringEffects !== null && deliveringEffects.length > 0 ? cohortFor(deliveringEffects) : undefined
+    const reach = cohort ?? deliveredReach ?? null
+    // Whether the delivering policies reach the signed-in account, asked of
+    // them for this one account where their reach as a whole is not established
+    // (deliveredReach null), from the same user scope. An answer they cannot
+    // give counts as reaching it, the convention an open policy follows above;
+    // a group read in full that excludes the account still settles it. The
+    // operator line reads it on a step still delivered when it is read
+    // (ui/surfaces/stepVars.ts operatorInScope, through derive/population.ts
+    // reached). It is its own field, never `includesOperator`: that one decides
+    // the operator's safety verdict and reads the people the step lists, and a
+    // step this run reopens later keeps its deliveredReach. Read there, the
+    // guests step, reopened as a policy to create, took the reach of the
+    // policies that had delivered it, said the signed-in member account was in
+    // scope, and on small was given a stranding verdict it never had.
+    const deliveredReachesOperator = deliveredReach === null && operatorId !== null
+      ? (deliveringEffects ?? []).some((e) => accountApplicability(e.scope, operatorId, snapshot as never, strandContext) !== 'out')
+      : undefined
     // The denominator. A goal can be delivered and still reach a fraction of the
     // tenant: a policy excluding a group that holds 116 of 122 accounts delivers
     // it for six people, and the step said "already delivered, so there is
@@ -2396,6 +2437,20 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       action = { ...action, widerThan: impl.expectedWho.kind }
     }
     if (readinessGate) action = { ...action, readinessGate }
+    // What the plan writes, against the goal's own grant floor: the pinned
+    // baseline can ask for less than the goal it is filed under, and the step
+    // says so (Action.belowGoalFloor). One policy, and a grant floor, or nothing.
+    {
+      const floorGrant = goal.implementations[0]?.floor.grant
+      const writes = (action.resolution?.policies ?? []).map((o) => (o.mode === 'create' ? o.body : o.intent ?? null)).filter((b): b is Record<string, unknown> => b !== null && typeof b === 'object')
+      if (floorGrant !== undefined && writes.length === 1 && (kind === 'create' || kind === 'adjust')) {
+        const facts = policyFacts(writes[0], input.strengths)
+        if (!satisfiesFloor(facts.grant, facts.session, { grant: floorGrant })) {
+          const grant = (writes[0].grantControls ?? {}) as { authenticationStrength?: { id?: string } | null; builtInControls?: string[] }
+          action = { ...action, belowGoalFloor: { strengthId: grant.authenticationStrength?.id ?? null, builtIn: grant.builtInControls ?? [], floor: floorGrant } }
+        }
+      }
+    }
     if (enforcedBelowReadiness) action = { ...action, enforcedBelowReadiness }
 
     steps.push({
@@ -2412,7 +2467,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       unblockNotes,
       population: pop,
       ...(cohort !== null ? { cohort: { ...cohort } } : {}),
-      ...(deliveredReach !== null ? { deliveredReach: { ...deliveredReach } } : {}),
+      ...(deliveredReach !== undefined ? { deliveredReach: deliveredReach === null ? null : { ...deliveredReach } } : {}),
+      ...(deliveredReachesOperator !== undefined ? { deliveredReachesOperator } : {}),
       ...(coverageShortfall !== null ? { coverageShortfall } : {}),
       readiness,
       ...(policyPreparation ? { methodPreparation: policyPreparation } : {}),
@@ -2924,7 +2980,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         key: 'activity-unread',
         label: engine.readiness.activityUnreadLabel,
         value: engine.readiness.activityUnreadValue,
-        detail: fillText(engine.readiness.activityUnread, { n: unread.length, total: enabledUsers(snapshot, notPeopleIds(mapping)).length, reason: users?.reason ?? users?.status, fix: sourceReadFix('users', snapshot) }),
+        detail: fillText(engine.readiness.activityUnread, { n: unread.length, total: enabledUsers(snapshot, notPeopleIds(mapping)).length, reason: users?.reason ?? users?.status, fix: sourceReadFix('users', snapshot, 'entraP1') }),
         outcome: 'unknown',
       }]
       if (remaining.length === 0) {
