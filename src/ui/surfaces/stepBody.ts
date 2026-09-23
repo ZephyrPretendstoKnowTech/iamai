@@ -35,7 +35,7 @@ import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { portalNamesFor, unwrittenCorrectionLines } from './stepPortal.ts'
 import { rescanLinesOf, stepInstructions, wholeLines } from './stepInstructions.ts'
-import { CONTRACT, eyebrowOf, implementationEmptyOf, implementationIsCurrent, proceduresAreReference, railOf, readinessOf, stepContract } from './stepContract.ts'
+import { CONTRACT, eyebrowOf, implementationEmptyOf, implementationIsCurrent, isReadinessWork, proceduresAreReference, railOf, readinessOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
 import { laneViewAlone } from './planBoard.ts'
 import { DECISION_HEAD, HEAD, taskHeadingsOf } from './stepHeadings.ts'
@@ -513,12 +513,9 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // a value IAMAI does not hold. None of them is ever offered an artifact.
   const hold = packaged ? (projection?.hold ?? null) : null
   const heldBox = (key: string): ImplementationEmpty => ({ key, tone: 'warn', title: W.empty[key][0], text: W.empty[key][1] })
-  // The open Readiness work, which a delivered step still waits on. The people
-  // card is not work: unresolved, it says the reach is not established (a group
-  // the scan read only a sample of), which nobody can clear, and counted here it
-  // turned a Completed step's "No implementation needed" into "Waiting on
-  // Readiness / Clear what Readiness lists first."
-  const openWork = readiness.tiles.filter((t) => t.key !== 'people').length
+  // The open Readiness work, which a delivered step still waits on: the cards
+  // that are work (stepContract.ts isReadinessWork), never the people card.
+  const openWork = readiness.tiles.filter(isReadinessWork).length
   const empty: ImplementationEmpty =
     hold === null
       ? implementationEmptyOf(contract, openWork)
