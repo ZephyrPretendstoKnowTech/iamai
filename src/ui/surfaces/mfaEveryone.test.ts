@@ -12,6 +12,7 @@
 import { execSync } from 'node:child_process'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { personLabels } from '../../names.ts'
 import { shared, stepById } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import registry from '../../content/implementation/registry.generated.json' with { type: 'json' }
@@ -650,7 +651,9 @@ test('G12: on a partial read the per-user MFA tile names what it read and counts
   // Every state read: the names alone, as before.
   f.snapshot.perUserMfa = Object.fromEntries(users.map((u, i) => [u.id, { state: i < 3 ? 'enforced' : 'disabled', reason: null }])) as typeof f.snapshot.perUserMfa
   const all = runFixture(f).steps.find((s) => s.id === PER_USER)?.configurationFindings?.find((x) => x.key === 'per-user-mfa')
-  assert.equal(all?.detail, users.slice(0, 3).map((u) => u.displayName).join(', '))
+  // Each by the one naming rule (names.ts personLabels): a display name another account shares carries its address.
+  const labels = personLabels(users)
+  assert.equal(all?.detail, users.slice(0, 3).map((u) => labels.get(u.id)).join(', '))
 })
 
 // The step's action said "IAMAI cannot read those states, so it cannot list the
