@@ -12,6 +12,7 @@ import { runFixture, withDirectionApproved } from '../../roadmap/fixtures/run.ts
 import { buildIcs } from '../../roadmap/ics.ts'
 import { scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import { nextMilestone } from '../../roadmap/lifecycle.ts'
+import { sameBaselineSource } from '../../roadmap/plan.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { app, pages } from '../../content/content.ts'
 import { planFinish, planLengthSentence } from '../../derive/finish.ts'
@@ -335,4 +336,22 @@ test('a masked calendar masks every address, however it folds, and keeps the pas
 test('the calendar and prompt cards say the file masks sign-in addresses and IDs and keeps names', () => {
   const cards = (pages.export as unknown as { cards: Record<'calendar' | 'prompts', [string, string, string]> }).cards
   for (const card of [cards.calendar[1], cards.prompts[1]]) assert.match(card, /sign-in addresses and object IDs are masked; names are not\./, card)
+})
+
+// Finding 16 (severity 2). A plan file saved against the pinned baseline is
+// refused once the pin moves, and the refusal said "Load the matching baseline
+// on Connect before importing it": Connect loads only the current pin or an
+// upload, and an upload never matches a saved GitHub source (roadmap/plan.ts
+// sameBaselineSource). The refusal states what is true and names no action the
+// product cannot take.
+test('a plan file saved against another baseline is refused with what is true, and no instruction the product cannot follow', () => {
+  const pinned = { kind: 'github' as const, owner: 'o', repo: 'r', commit: 'a'.repeat(40) }
+  const moved = { ...pinned, commit: 'b'.repeat(40) }
+  const uploaded = { kind: 'upload' as const, fileName: 'baseline.zip', contentHash: 'h' }
+  assert.equal(sameBaselineSource(pinned, moved), false, 'the premise: the pin moved')
+  assert.equal(sameBaselineSource(pinned, uploaded), false, 'the premise: an upload of the same files is not the saved source')
+  const refusal = (app as unknown as { export: { importBaselineMismatch: string } }).export.importBaselineMismatch
+  assert.doesNotMatch(refusal, /\bLoad\b|\bon Connect\b/, `the refusal instructs an action Connect does not offer: ${refusal}`)
+  assert.match(refusal, /different baseline/, refusal)
+  assert.match(refusal, /has not been changed\./, refusal)
 })
