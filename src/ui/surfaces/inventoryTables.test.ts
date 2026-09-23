@@ -510,3 +510,23 @@ test('a Policies row names risk levels as the portal does, not by their keys', (
   assert.ok(conditions.includes(C.policies.userRisk(portalName('risk', 'high')!)), conditions)
   assert.doesNotMatch(conditions, /: (high|medium)\b/)
 })
+
+test('the Microsoft Authenticator targets say the authentication mode each carries, by the portal name', () => {
+  const W = app.inventory as unknown as Record<string, string>
+  const s = structuredClone(fixture('demo').snapshot)
+  const configs = (s.config.authMethodsPolicy.rows[0] as { authenticationMethodConfigurations: { id: string; includeTargets: unknown[] }[] }).authenticationMethodConfigurations
+  const authenticator = configs.find((c) => c.id.toLowerCase() === 'microsoftauthenticator')!
+  const cell = () => {
+    const m = authMethodsModel(s, buildNameDirectory(s))
+    return m.columns.find((c) => c.key === 'targets')!.cell(m.rows.find((r) => r.id.toLowerCase() === 'microsoftauthenticator')!)
+  }
+  authenticator.includeTargets = [{ id: 'all_users', authenticationMode: 'push' }]
+  assert.equal(cell(), fillText(W.authenticatorMode, { target: C.authentication.allUsers, mode: 'Push' }))
+  authenticator.includeTargets = [{ id: 'all_users', authenticationMode: 'deviceBasedPush' }]
+  assert.equal(cell(), fillText(W.authenticatorMode, { target: C.authentication.allUsers, mode: 'Passwordless' }))
+  authenticator.includeTargets = [{ id: 'all_users', authenticationMode: 'any' }]
+  assert.equal(cell(), fillText(W.authenticatorMode, { target: C.authentication.allUsers, mode: 'Any' }))
+  // A method with no mode is drawn as before.
+  const fido = authMethodsModel(s, buildNameDirectory(s))
+  assert.equal(fido.columns.find((c) => c.key === 'targets')!.cell(fido.rows.find((r) => r.id.toLowerCase() === 'fido2')!), C.authentication.allUsers)
+})

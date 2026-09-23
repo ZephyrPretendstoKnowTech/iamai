@@ -374,8 +374,13 @@ export function authMethodsModel(snapshot: TenantSnapshot, names: NameDirectory,
   const A = C.authentication
   const o = objectLabels(snapshot, names, groupsPending)
   const target = (x: Raw): string => (str(x.id) === 'all_users' ? A.allUsers : isGroupTarget(x) ? o.group(str(x.id)) : names.label(str(x.id)))
+  // Microsoft Authenticator's targets carry an authentication mode (push, passwordless or any), named as the portal names it.
+  const included = (x: Raw): string => {
+    const mode = typeof x.authenticationMode === 'string' ? (portalName('authenticatorMode', x.authenticationMode) ?? x.authenticationMode) : null
+    return mode === null ? target(x) : fillText(W.authenticatorMode, { target: target(x), mode })
+  }
   const rows: MethodRow[] = methodConfigsOf(snapshot).map((m) => {
-    const t = targetsOf(m, 'includeTargets').map(target).join(', ')
+    const t = targetsOf(m, 'includeTargets').map(included).join(', ')
     // The groups the method leaves out, as Graph returns them: "All users" alone would read as everyone.
     const except = targetsOf(m, 'excludeTargets').map(target).join(', ')
     const include = t || A.targets(0)
