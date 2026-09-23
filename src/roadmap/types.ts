@@ -530,12 +530,12 @@ export type Blocker =
  * One Direction question (roadmap/direction.ts): its answer as saved, or null;
  * the suggestion the scan, the baseline or the safe default pre-fills; and the
  * one line of evidence behind the suggestion. `pickedWith` is the option whose
- * answer carries a list (accounts, locations, countries).
+ * answer carries a list (accounts or locations).
  */
 export type DirectionQuestion = {
   key: string
   label: string
-  control: 'choice' | 'accounts' | 'locations' | 'countries'
+  control: 'choice' | 'accounts' | 'locations'
   options: { value: string; label: string }[]
   pickedWith: string | null
   suggested: { value: string; picked: string[] }

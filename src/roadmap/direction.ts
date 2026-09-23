@@ -45,7 +45,6 @@ import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
 import { detectServiceAccounts } from '../mapping/serviceAccounts.ts'
 import { personLabels } from '../names.ts'
-import { countryName } from '../mapping/countries.ts'
 import { sharedDeviceUsers } from '../derive/sharedDevices.ts'
 import { phoneSignInIds } from '../derive/sets.ts'
 import { setState } from './lifecycle.ts'
@@ -346,13 +345,12 @@ export function directionSteps(input: DirectionInput): Step[] {
 
 /**
  * An answer as the page says it: its option's label, and for an answer that
- * carries a list, the names picked (accounts, locations, countries), through
+ * carries a list, the names picked (accounts or locations), through
  * `nameOf`. A list answer with nothing picked reads None.
  */
 export function answerTextOf(q: Pick<DirectionQuestion, 'options' | 'pickedWith' | 'control'>, a: { value: string; picked: readonly string[] }, nameOf: (id: string) => string): string {
   const option = q.options.find((o) => o.value === a.value)?.label ?? null
   const names = a.picked.map(nameOf).join(', ')
-  if (q.control === 'countries') return names || W.none
   if (q.pickedWith !== null && a.value === q.pickedWith) return names || W.none
   return option ?? a.value
 }
@@ -411,7 +409,7 @@ export function answeredInOf(stepId: string, ctx: { snapshot: TenantSnapshot; ma
   const questions = directionSteps({ snapshot: ctx.snapshot, mapping: ctx.mapping, notAssessed: [], availableGoalIds: [], nameOf: ctx.nameOf }).flatMap((s) => s.directionQuestions ?? [])
   const locations = new Map((ctx.snapshot.config.namedLocations?.rows ?? []).map((raw) => raw as { id?: string; displayName?: string }).filter((l) => typeof l.id === 'string').map((l) => [l.id as string, l.displayName ?? (l.id as string)]))
   const lines = keys.map((key) => questions.find((q) => q.key === key)).filter((q): q is DirectionQuestion => q !== undefined).map((q) => {
-    const nameOf = q.control === 'countries' ? countryName : q.control === 'locations' ? (id: string) => locations.get(id) ?? id : ctx.nameOf
+    const nameOf = q.control === 'locations' ? (id: string) => locations.get(id) ?? id : ctx.nameOf
     const value = answerTextOf(q, q.saved ?? q.suggested, nameOf)
     return { key: q.key, label: q.label, value: q.saved ? value : fillText(W.notAnswered, { answer: value }), saved: q.saved !== null }
   })
