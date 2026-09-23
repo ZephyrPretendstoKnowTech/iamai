@@ -2991,6 +2991,25 @@
         "reads": "What IAMAI reads",
         "checks": "Every check",
         "checksIntro": "Every check IAMAI runs, generated from the rules the code runs from.",
+        "$commentStaticChecks": "Phase 2 audit (How): the checks src/roadmap/staticRules.ts runs on the tenant's own Conditional Access policies, one row per engine.staticRules template (src/ui/surfaces/howView.test.ts holds the two key sets equal). A failure is a line in the Plan's Housekeeping list, never a held step, so the chip says Housekeeping. How listed only the rule registry, which left these out while listing pilot-group and authentication-strength rules no plan evaluates.",
+        "staticChecks": {
+          "caption": "The tenant's own policies",
+          "severity": "Housekeeping",
+          "rows": {
+            "blockDependency": {
+              "what": "A policy that blocks every resource excludes the sign-in dependencies, unless a client-app, authentication-flow, platform, device-filter or location condition already keeps it off registration and enrollment sign-ins.",
+              "why": "Without those exclusions, registration and enrollment break."
+            },
+            "appProtectionManaged": {
+              "what": "A policy that requires an approved app targets unmanaged devices only.",
+              "why": "Otherwise the requirement reaches managed devices as well as personal ones."
+            },
+            "autopilot": {
+              "what": "A policy that requires a compliant device over all resources or Office 365, when the sign-in records show technician tools used from devices that are not compliant.",
+              "why": "New-device enrollment stops without the Autopilot carve-out."
+            }
+          }
+        },
         "packages": "Baseline packages",
         "limits": "Limits",
         "limitsList": [
