@@ -16,7 +16,7 @@ import { PREREQ_STEP_ID, stepIdForGoal } from '../generate.ts'
 import { BREAK_GLASS_STEP_ID } from '../stepIds.ts'
 import { questionLabels } from '../decisions.ts'
 import type { StepDecision } from '../decisions.ts'
-import { DIRECTION_STEP, SERVICE_KEYS, directionDecisionOf } from '../directionAnswers.ts'
+import { DIRECTION_LOCATIONS_STORAGE, DIRECTION_STEP, SERVICE_KEYS, directionDecisionOf } from '../directionAnswers.ts'
 import { serviceReading } from '../workflows.ts'
 import { sharedDeviceUsers } from '../../derive/sharedDevices.ts'
 import { pinnedPackage } from '../../baseline/pinned.ts'
@@ -845,10 +845,13 @@ export function buildFixture(spec: Spec): Fixture {
     decisions[stepIdForGoal('block-device-code')] = { option: 'None', at: NOW }
     // Decide Your Tenant's Direction, approved in week one with the answers this
     // demo already assumes (roadmap/direction.ts): the services as the scan saw
-    // them, the printer, no device code, partners excluded, no external method;
-    // the service accounts as confirmed and the shared-device accounts as
-    // detected; everyone remote, the allowed countries, travel allowed. The
-    // device answers (D3) stay open, as the device decision always has here.
+    // them, the printer, no device code, partners excluded; the service accounts
+    // as confirmed and the shared-device accounts as detected; everyone remote.
+    // The device answers (D3) stay open, as the device decision always has here,
+    // so the office network answer is saved under its own storage id, which a
+    // saved decision still expands (directionAnswers.ts
+    // DIRECTION_LOCATIONS_STORAGE). The allowed countries are the countries
+    // step's own picker decision above.
     const services = serviceReading(snapshot, [], [])
     const answer = (value: string, picked: readonly string[] = []) => ({ value, picked: [...picked] })
     decisions[DIRECTION_STEP.use] = { ...directionDecisionOf({
@@ -856,17 +859,14 @@ export function buildFixture(spec: Spec): Fixture {
       mailDevices: printerId !== null ? answer('some', [printerId]) : answer('none'),
       deviceCode: answer('unused'),
       partner: answer('yes'),
-      externalMethods: answer('no'),
     }, Object.fromEntries(SERVICE_KEYS.map((key) => { const s = services.signal(key); return [`service:${key}`, s.used ? 'present' : s.complete ? 'absent' : 'unread'] }))), at: NOW }
     const shared = sharedDeviceUsers(snapshot).map((u) => u.id).filter((id) => !bgIds.includes(id))
     decisions[DIRECTION_STEP.accounts] = { ...directionDecisionOf({
       serviceAccounts: mapping.serviceAccountUserIds.length > 0 ? answer('some', mapping.serviceAccountUserIds) : answer('none'),
       sharedDevices: shared.length > 0 ? answer('some', shared) : answer('none'),
     }), at: NOW }
-    decisions[DIRECTION_STEP.locations] = { ...directionDecisionOf({
+    decisions[DIRECTION_LOCATIONS_STORAGE] = { ...directionDecisionOf({
       officeNetwork: mapping.trustedLocationIds.length > 0 ? answer('office', mapping.trustedLocationIds) : answer('remote'),
-      workCountries: answer('some', mapping.allowedCountries),
-      travel: answer('allowed'),
     }), at: NOW }
     // The emergency accounts signed in ten days before the scan (E3): on day one
     // the emergency-access step asks who and why; by week two the technician

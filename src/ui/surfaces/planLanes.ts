@@ -46,7 +46,7 @@ import { submitsEnforcementOnly, switchedOffPolicy, unavailableReason, implement
 import { GATING_SUBJECTS, blockerStepId } from '../../roadmap/blockerSteps.ts'
 import { observationWindowDays, readyBasis, readyWhen } from '../../derive/readyWhen.ts'
 import { planStateOf } from './planState.ts'
-import { directionBlockerStep, directionStepsAnswering } from '../../roadmap/direction.ts'
+import { directionBlockerStep, directionWaitRelayed } from '../../roadmap/direction.ts'
 import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
 import type { PlanState } from './planState.ts'
 
@@ -433,10 +433,15 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
   // cause is the step; the answer behind it is that step's own wait to show. The
   // row's `reason` is untouched, so no row changes lane, label or order, and a
   // row whose stated reason IS the answer still says it — once.
-  for (const reading of out.values()) {
-    const relayed = new Set(reading.blockers.flatMap((b) => (b.kind === 'step' || b.kind === 'suspendedPrerequisite' ? [...directionStepsAnswering(b.id)] : [])))
-    if (relayed.size === 0) continue
-    reading.blockers = reading.blockers.filter((b) => !(b.kind === 'decision' && relayed.has(b.id)))
+  //
+  // The relay is by question, not by Direction step (direction.ts
+  // directionWaitRelayed): a device policy's own computers-and-phones wait is
+  // not Define the Trusted Network's to carry.
+  for (const [id, reading] of out) {
+    const via = reading.blockers.flatMap((b) => (b.kind === 'step' || b.kind === 'suspendedPrerequisite' ? [b.id] : []))
+    if (via.length === 0) continue
+    const step = byId.get(id) ?? null
+    reading.blockers = reading.blockers.filter((b) => !(b.kind === 'decision' && isDirectionStep(b.id) && directionWaitRelayed(step, via, b.id)))
   }
   for (const row of rows) { const reading = out.get(row.id); if (reading?.lane === 'Ready') reading.substatus = 'Review' }
   const rolloutPending = steps.some(step => POLICY.includes(step.kind) && step.status !== 'done' && step.status !== 'skipped' && !step.doesntApply)

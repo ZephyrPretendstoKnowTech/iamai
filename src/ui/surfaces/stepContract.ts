@@ -36,7 +36,7 @@ import { reached, stepPopulation } from '../../derive/population.ts'
 import { IMPACT, populationLine } from '../../derive/whoLine.ts'
 import { app, cleanup, directionWords, engine, pages, shared, stepById, schedulingWords } from '../../content/content.ts'
 import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
-import { directionBlockerStep, directionStepsAnswering, directionTitleOf } from '../../roadmap/direction.ts'
+import { directionBlockerStep, directionStepsAnswering, directionTitleOf, directionWaitRelayed } from '../../roadmap/direction.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { CAMPAIGN_STEP_ID } from '../../roadmap/followUp.ts'
 import { effectsOf } from '../../roadmap/strand.ts'
@@ -1107,11 +1107,12 @@ function fixOf(step: Step, cs: Record<string, unknown> | undefined, ex: Record<s
   // gave a policy "Prerequisite · To do: Define the Trusted Network" and
   // "Waiting on your direction: Decide Where People Sign In From" side by side:
   // one fact in two vocabularies, and the nearest cause is the step.
-  const relayed = new Set(out.flatMap((f) => {
+  // By question, not by Direction step (direction.ts directionWaitRelayed).
+  const via = out.flatMap((f) => {
     const [kind, ...rest] = f.key.split(':')
-    return kind === 'step' || kind === 'missing' ? [...directionStepsAnswering(rest.join(':'))] : []
-  }))
-  const stated = relayed.size === 0 ? out : out.filter((f) => !(f.key.startsWith('direction:') && relayed.has(f.key.slice('direction:'.length))))
+    return kind === 'step' || kind === 'missing' ? [rest.join(':')] : []
+  })
+  const stated = via.length === 0 ? out : out.filter((f) => !(f.key.startsWith('direction:') && directionWaitRelayed(step, via, f.key.slice('direction:'.length))))
   // One line per fact: two blockers naming the same prerequisite are one fix. The
   // checks are exempt — two accounts failing the same rule are two facts, and the
   // step's own line for each names which account it is about.

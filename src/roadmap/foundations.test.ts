@@ -28,7 +28,7 @@ test('demo first visit: neither group is settled, and no policy step is Ready', 
   assert.equal(foundationsSettled(r.steps), false)
   assert.deepEqual(
     unsettledFoundations(r.steps).map((s) => s.id),
-    ['s-prereq-break-glass', 's-prereq-exclusion-group', 's-prereq-passkey-settings', 's-direction-use', 's-direction-accounts', 's-direction-devices', 's-direction-locations'],
+    ['s-prereq-break-glass', 's-prereq-exclusion-group', 's-prereq-passkey-settings', 's-direction-use', 's-direction-accounts', 's-direction-devices'],
   )
   const readings = laneReadings(r.steps, [], r.input.mapping)
   const policy = policySteps(r.steps)

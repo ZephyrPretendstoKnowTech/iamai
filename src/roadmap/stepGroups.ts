@@ -63,8 +63,8 @@ export type StepGroup = {
 export const EMERGENCY_ACCESS_GROUP = 'emergency-access'
 export const DIRECTION_GROUP = 'direction'
 
-/** The four Direction steps, in the order the group draws them (roadmap/direction.ts builds them). */
-export const DIRECTION_STEP_IDS = ['s-direction-use', 's-direction-accounts', 's-direction-devices', 's-direction-locations'] as const
+/** The three Direction steps, in the order the group draws them (roadmap/direction.ts builds them). */
+export const DIRECTION_STEP_IDS = ['s-direction-use', 's-direction-accounts', 's-direction-devices'] as const
 
 export const STEP_GROUPS: readonly StepGroup[] = [
   {

@@ -1,11 +1,18 @@
 // Decide Your Tenant's Direction (docs/plans/direction-spec.md): the Plan's
-// second pinned group. Four decision steps, answers only; nothing changes in
+// second pinned group. Three decision steps, answers only; nothing changes in
 // Entra.
 //
 //   D1 s-direction-use        Confirm What You Use
 //   D2 s-direction-accounts   Identify Service and Shared Accounts
-//   D3 s-direction-devices    Decide How People and Devices Sign In
-//   D4 s-direction-locations  Decide Where People Sign In From
+//   D3 s-direction-devices    Decide How and Where People Sign In
+//
+// Stage 3 (docs/plans/roadmap-flow, V1 decisions 3 and 4): the office network
+// question joined D3 from Decide Where People Sign In From, whose id stays only
+// as the office network answer's storage key (directionAnswers.ts
+// DIRECTION_LOCATIONS_STORAGE); work countries moved to Block Sign-ins From
+// Countries Not Allowed, which asks them with its own picker; external
+// methods, device exceptions and travel were retired, because nothing read
+// their answers.
 //
 // Every question has a suggestion and nothing is hidden on evidence alone:
 //   * a "what you use" question is pre-filled with today's state, from the scan;
@@ -38,7 +45,7 @@ import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
 import { detectServiceAccounts } from '../mapping/serviceAccounts.ts'
 import { personLabels } from '../names.ts'
-import { countryName, suggestCountries } from '../mapping/countries.ts'
+import { countryName } from '../mapping/countries.ts'
 import { sharedDeviceUsers } from '../derive/sharedDevices.ts'
 import { phoneSignInIds } from '../derive/sets.ts'
 import { setState } from './lifecycle.ts'
@@ -126,14 +133,21 @@ function useQuestions(ctx: Context, services: { keys: string[]; signal: (key: st
     suggested: answer(partners !== null && partners.count > 0 ? 'yes' : 'no'),
     evidence: partners === null || !signInsRead(snapshot) ? W.defaultEvidence : partners.count > 0 ? fillText(Q.partner.seen, { n: partners.people.length || partners.count }) : Q.partner.notSeen,
   }))
-  const methods = snapshot.config.authMethodsPolicy?.status === 'ok' ? (snapshot.config.authMethodsPolicy.rows ?? []) : null
-  const external = methods === null ? null : methods.some((row) => ((row as { authenticationMethodConfigurations?: { '@odata.type'?: string; state?: string }[] }).authenticationMethodConfigurations ?? []).some((c) => /externalAuthenticationMethod/i.test(c['@odata.type'] ?? '') && c.state === 'enabled'))
-  out.push(question('externalMethods', ctx, {
-    label: Q.externalMethods.label, control: 'choice', options: optionsOf(Q.externalMethods.options),
-    suggested: answer(external ? 'yes' : 'no'),
-    evidence: external === null ? W.defaultEvidence : external ? Q.externalMethods.seen : Q.externalMethods.notSeen,
-  }))
   return out
+}
+
+/**
+ * Whether the authentication methods policy the scan read has an external
+ * authentication method (a third-party MFA provider) enabled; null where the
+ * policy was not read.
+ *
+ * Confirm What You Use asked about this until Stage 3 retired the question
+ * (roadmap-flow V1 decision 4: nothing read its answer). The detection is kept,
+ * unasked, because a later release may need it.
+ */
+export function externalMethodsEnabled(snapshot: Pick<TenantSnapshot, 'config'>): boolean | null {
+  const methods = snapshot.config.authMethodsPolicy?.status === 'ok' ? (snapshot.config.authMethodsPolicy.rows ?? []) : null
+  return methods === null ? null : methods.some((row) => ((row as { authenticationMethodConfigurations?: { '@odata.type'?: string; state?: string }[] }).authenticationMethodConfigurations ?? []).some((c) => /externalAuthenticationMethod/i.test(c['@odata.type'] ?? '') && c.state === 'enabled'))
 }
 
 // ---- D2 Identify Service and Shared Accounts ----
@@ -159,7 +173,7 @@ function accountQuestions(ctx: Context, nameOf: (id: string) => string): Directi
   ]
 }
 
-// ---- D3 Decide How People and Devices Sign In ----
+// ---- D3 Decide How and Where People Sign In ----
 
 /**
  * What the Managed answer costs in licences, where the scan read them.
@@ -225,22 +239,21 @@ function deviceQuestions(ctx: Context): DirectionQuestion[] {
       // which the question never said (owner, 2026-09-20).
       note: Q.phones.note,
     }),
-    question('deviceExceptions', ctx, {
-      label: Q.deviceExceptions.label, control: 'choice', options: optionsOf(Q.deviceExceptions.options),
-      suggested: answer('none'), evidence: W.defaultEvidence,
-    }),
+    officeNetworkQuestion(ctx),
   ]
 }
 
-// ---- D4 Decide Where People Sign In From ----
-
-function locationQuestions(ctx: Context): DirectionQuestion[] {
-  const { snapshot, mapping } = ctx
+/**
+ * The office network, asked beside the device questions that use it (Stage 3,
+ * V1 decision 3: it came from Decide Where People Sign In From). Its answer is
+ * still stored under that step's old id (directionAnswers.ts
+ * DIRECTION_LOCATIONS_STORAGE).
+ */
+function officeNetworkQuestion(ctx: Context): DirectionQuestion {
+  const { snapshot } = ctx
   const read = snapshot.config.namedLocations?.status === 'ok'
   const trusted = read ? (snapshot.config.namedLocations.rows ?? []).map((raw) => raw as { id?: string; isTrusted?: boolean; '@odata.type'?: string }).filter((l) => typeof l.id === 'string' && l.isTrusted === true && String(l['@odata.type'] ?? '').includes('ipNamedLocation')).map((l) => l.id as string) : []
-  const seen = suggestCountries(snapshot).countries.filter((c) => c.users > 0).map((c) => c.code)
-  const countries = seen.length > 0 ? seen : mapping.allowedCountries.map((c) => c.toUpperCase())
-  return [
+  return (
     question('officeNetwork', ctx, {
       label: Q.officeNetwork.label, control: 'locations', options: optionsOf(Q.officeNetwork.options), pickedWith: 'office',
       // A tenant with no trusted named location is not thereby all-remote, and
@@ -263,17 +276,8 @@ function locationQuestions(ctx: Context): DirectionQuestion[] {
           : null,
       ].filter((line): line is string => line !== null).join(' '),
       note: Q.officeNetwork.note,
-    }),
-    question('workCountries', ctx, {
-      label: Q.workCountries.label, control: 'countries', options: [], pickedWith: 'some',
-      suggested: answer('some', countries),
-      evidence: seen.length > 0 ? fillText(Q.workCountries.seen, { countries: seen.join(', ') }) : W.defaultEvidence,
-    }),
-    question('travel', ctx, {
-      label: Q.travel.label, control: 'choice', options: optionsOf(Q.travel.options),
-      suggested: answer('allowed'), evidence: W.baselineEvidence,
-    }),
-  ]
+    })
+  )
 }
 
 // ---- the steps ----
@@ -282,7 +286,6 @@ const STEP_WORDS: Readonly<Record<DirectionStepId, { title: string; why: string 
   [DIRECTION_STEP.use]: W.steps.use,
   [DIRECTION_STEP.accounts]: W.steps.accounts,
   [DIRECTION_STEP.devices]: W.steps.devices,
-  [DIRECTION_STEP.locations]: W.steps.locations,
 }
 
 /** A Direction step's title (content.json pages.app.plan.direction.steps). */
@@ -325,7 +328,7 @@ export type DirectionInput = {
   approvedAt?: Readonly<Partial<Record<DirectionStepId, string>>>
 }
 
-/** The four Direction steps, built from the snapshot and the saved answers. */
+/** The three Direction steps, built from the snapshot and the saved answers. */
 export function directionSteps(input: DirectionInput): Step[] {
   const ctx = { snapshot: input.snapshot, mapping: input.mapping }
   const services = serviceReading(input.snapshot, input.notAssessed, input.availableGoalIds)
@@ -336,7 +339,6 @@ export function directionSteps(input: DirectionInput): Step[] {
     directionStep(DIRECTION_STEP.use, useQuestions(ctx, services), at(DIRECTION_STEP.use)),
     directionStep(DIRECTION_STEP.accounts, accountQuestions(ctx, nameOf), at(DIRECTION_STEP.accounts)),
     directionStep(DIRECTION_STEP.devices, deviceQuestions(ctx), at(DIRECTION_STEP.devices)),
-    directionStep(DIRECTION_STEP.locations, locationQuestions(ctx), at(DIRECTION_STEP.locations)),
   ]
 }
 
@@ -362,7 +364,6 @@ export function answerTextOf(q: Pick<DirectionQuestion, 'options' | 'pickedWith'
  */
 export const ANSWERED_IN: Readonly<Record<string, readonly DirectionQuestionKey[]>> = {
   [PREREQ_STEP_ID.trustedLocation]: ['officeNetwork'],
-  [PREREQ_STEP_ID.allowedCountries]: ['workCountries', 'travel'],
   [PREREQ_STEP_ID.serviceAccountsGroup]: ['serviceAccounts'],
   's-shared-devices': ['sharedDevices'],
   [QUESTION_STEP.mailDevices]: ['mailDevices'],
@@ -378,6 +379,23 @@ export const ANSWERED_IN: Readonly<Record<string, readonly DirectionQuestionKey[
  */
 export function directionStepsAnswering(stepId: string): readonly string[] {
   return [...new Set((ANSWERED_IN[stepId] ?? []).map(directionStepOf))]
+}
+
+/**
+ * Whether the steps a step waits on (`via`) already carry its wait on the
+ * Direction step `direction` (docs/plans/step-redundancy-analysis.md finding
+ * 3): every question the step itself waits on there is one those steps ask
+ * (ANSWERED_IN), so the nearest cause — the step that makes what the answer
+ * chooses — says it, once. By question, not by Direction step (Stage 3):
+ * Decide How and Where People Sign In asks the devices and the office network,
+ * and Define the Trusted Network carries only the office network, so a device
+ * policy's own computers-and-phones wait is not its to carry.
+ */
+export function directionWaitRelayed(step: Pick<Step, 'goalId' | 'baselineReviewSource'> | null, via: readonly string[], direction: string): boolean {
+  const carried = new Set(via.flatMap((id) => [...(ANSWERED_IN[id] ?? [])]))
+  if (carried.size === 0) return false
+  const mine = (step ? directionDependenciesOf(step) : []).filter((k) => directionStepOf(k) === direction)
+  return mine.length > 0 ? mine.every((k) => carried.has(k)) : [...carried].some((k) => directionStepOf(k) === direction)
 }
 
 export type AnsweredIn = { step: DirectionStepId; title: string; lines: { key: string; label: string; value: string; saved: boolean }[] }
@@ -408,10 +426,12 @@ const GOAL_DEPENDS: Readonly<Record<string, readonly DirectionQuestionKey[]>> = 
   'block-legacy-auth': ['mailDevices'],
   'block-device-code': ['deviceCode'],
   'guests-mfa': ['partner'],
-  'geo-restriction': ['partner', 'workCountries', 'travel'],
+  // Work countries are asked on the countries step itself (6.3), which holds its
+  // own decision until one is saved; travel was retired (Stage 3).
+  'geo-restriction': ['partner'],
   'service-accounts-trusted-network': ['serviceAccounts', 'officeNetwork'],
   'register-info-protected': ['officeNetwork'],
-  ...Object.fromEntries([...DEVICE_GOALS].map((g) => [g, ['computers', 'phones', 'deviceExceptions'] as const])),
+  ...Object.fromEntries([...DEVICE_GOALS].map((g) => [g, ['computers', 'phones'] as const])),
 }
 /** A goal whose applicability is a D1 service depends on that service's answer. */
 const SERVICE_GOAL: ReadonlyMap<string, string> = new Map(goals.goals.filter((g) => typeof g.applicability === 'string' && (SERVICE_KEYS as readonly string[]).includes(String(g.applicability))).map((g) => [g.id, String(g.applicability)]))

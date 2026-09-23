@@ -1142,9 +1142,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // create instructions while the tenant has no IP named location, In place once
   // one exists (the picker says which of them are the team's own).
   //
-  // It is the DOING of Decide Where People Sign In From's office-network answer,
-  // and it says so: direction.ts ANSWERED_IN swaps its decision control for the
-  // "Answered in Decide Where People Sign In From" panel. So it does not ask the
+  // It is the DOING of the office-network answer (Decide How and Where People
+  // Sign In since Stage 3), and it says so: direction.ts ANSWERED_IN swaps its
+  // decision control for the "Answered in" panel. So it does not ask the
   // question again. Until that answer is saved this step's tile used to read
   // "Trusted Network: Choose your office networks", with the detail "Select your
   // office networks or confirm that everyone is remote" — word for word the

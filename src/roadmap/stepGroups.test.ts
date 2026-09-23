@@ -26,7 +26,7 @@ const pinnedPolicies = pinnedBaseline.policies as unknown as CaPolicy[]
 
 const EA_TITLE = 'pages.app.plan.groups.emergencyAccess.title'
 const EA = ['s-prereq-break-glass', 's-prereq-exclusion-group', 's-prereq-passkey-settings', 'cleanup-drill']
-const DIRECTION = ['s-direction-use', 's-direction-accounts', 's-direction-devices', 's-direction-locations']
+const DIRECTION = ['s-direction-use', 's-direction-accounts', 's-direction-devices']
 const item = (id: string, lane: BoardItem['lane'] = 'Ready'): BoardItem => ({ id, title: id, lane, laneLabel: lane, workType: 'setup', order: 0 })
 
 test('the registry lists the four Emergency Access steps in order, pinned, with the task anatomy', () => {
@@ -173,7 +173,7 @@ test('a number is a place among the group’s own rows, in registry order, and t
   assert.equal(positionInGroup('s-goal-nobody-placed-this'), null, 'a catch-all member has no registry position either')
 })
 
-test("(a) Decide Your Tenant's Direction is the second pinned group: its four steps in order, with the decision anatomy", () => {
+test("(a) Decide Your Tenant's Direction is the second pinned group: its three steps in order, with the decision anatomy", () => {
   assert.deepEqual(pinnedGroups().map((g) => g.key), [EMERGENCY_ACCESS_GROUP, DIRECTION_GROUP], 'pinned right after Emergency Access')
   assert.deepEqual([...membersOf(DIRECTION_GROUP)], DIRECTION)
   const g = groupOf('s-direction-devices')!
