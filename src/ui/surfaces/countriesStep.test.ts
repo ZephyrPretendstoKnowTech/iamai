@@ -18,7 +18,9 @@ import { planStateOf } from './planState.ts'
 import { objectTaskBodyOf, stepBodyOf } from './stepBody.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { applyStepDecisions } from '../../roadmap/decisions.ts'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
+import { packageSources } from '../../content/implementation/library.ts'
+import registry from '../../content/implementation/registry.generated.json' with { type: 'json' }
 
 const GEO = stepIdForGoal('geo-restriction')
 const LOCATION = PREREQ_STEP_ID.allowedCountries
@@ -150,3 +152,19 @@ test('6.3 draws the location as its own task in its one frame: the picker saved 
   assert.notEqual(geoOf(runFixture(saved).steps).state.condition, 'needs-decision', 'saving a country under the location id does not release it')
 })
 
+
+test('the countries location package is folded into the countries block package, tasks first, and compiles to the same two packages', () => {
+  const dir = 'docs/implementation-content/s-goal-geo-restriction/s-goal-geo-restriction'
+  assert.equal(existsSync('docs/implementation-content/s-prereq-allowed-countries'), false, 'the location still has a package folder of its own')
+  const meta = JSON.parse(readFileSync(`${dir}/META.json`, 'utf8')) as { tasks?: { blockPrefix: string; meta: { stepId: string } }[] }
+  assert.equal(meta.tasks?.[0]?.meta.stepId, LOCATION, 'the location is not the first task')
+  const first = /@@IAMAI-BEGIN (\{.*\})/.exec(readFileSync(`${dir}/CONTENT.md`, 'utf8'))?.[1]
+  assert.ok(first && (JSON.parse(first) as { id: string }).id.startsWith(meta.tasks![0].blockPrefix), 'the location blocks do not come first')
+  assert.ok(readFileSync(`${dir}/STEP.md`, 'utf8').indexOf('# Task 1 — Create or Correct Allowed Countries Location') < readFileSync(`${dir}/STEP.md`, 'utf8').indexOf('# Task 2 — Block Sign-ins From Countries Not Allowed'))
+  // The registry pipeline compiles the folder to the two packages the runtime reads, each under its own step id.
+  assert.deepEqual(packageSources(dir).map((s) => (JSON.parse(s.metaJson) as { stepId: string }).stepId), [GEO, LOCATION])
+  const packages = (registry as unknown as { packages: Record<string, { blocks: Record<string, unknown> }> }).packages
+  assert.ok(packages[LOCATION]?.blocks['entra.create'], 'the location package is not in the registry under its own id')
+  assert.ok(packages[GEO]?.blocks['entra.create'], 'the countries block package lost its own blocks')
+  assert.equal(Object.keys(packages[GEO].blocks).some((id) => id.startsWith('location/')), false, 'the location blocks leaked into the policy package')
+})
