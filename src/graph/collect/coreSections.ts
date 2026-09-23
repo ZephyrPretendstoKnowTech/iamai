@@ -56,6 +56,24 @@ export function partlyRead(snapshot: TenantSnapshot, key: ConfigSectionKey | Sou
   return s?.status === 'partial' && !readAsFarAsLicensed(s)
 }
 
+/**
+ * A section read in full: `ok`, the one status that means read. A section read
+ * in part, whatever the reason, is not: "nobody" said over it is a claim about
+ * rows the scan never saw.
+ */
+export function readInFull(snapshot: TenantSnapshot, key: ConfigSectionKey | SourceKey): boolean {
+  return sectionState(snapshot, key)?.status === 'ok'
+}
+
+/**
+ * A section the scan got no data out of for a reason other than a licence: a
+ * refusal, an error, or a section the scan lacks. What it holds is not known,
+ * where a licence gate means there was nothing to read.
+ */
+export function notReadDespiteLicence(snapshot: TenantSnapshot, key: ConfigSectionKey | SourceKey): boolean {
+  return !sectionHasData(snapshot, key) && !isLicenceGate(sectionState(snapshot, key)?.reason)
+}
+
 function stateOf(snapshot: TenantSnapshot, source: CoreSource): { status: string; reason: string | null } | null {
   if (source === 'config:caPolicies') {
     const s = snapshot.config?.caPolicies

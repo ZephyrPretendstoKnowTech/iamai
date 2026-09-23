@@ -8,8 +8,7 @@
 // did not report as "no", while the surface wrote words under the same file
 // names. Pure: no DOM, no network.
 import type { ConfigSectionKey, DeviceRow, SourceKey, TenantSnapshot, UserRow } from '../../graph/collect/types.ts'
-import { partlyRead, sectionHasData, sectionState } from '../../graph/collect/coreSections.ts'
-import { isLicenceGate } from '../../graph/collect/roles.ts'
+import { notReadDespiteLicence, partlyRead, readInFull, sectionHasData, sectionState } from '../../graph/collect/coreSections.ts'
 import { securityDefaultsState } from '../../derive/readinessContext.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import type { PolicyFacts } from '../../coverage/types.ts'
@@ -666,8 +665,7 @@ export function rolesModel(snapshot: TenantSnapshot, names: NameDirectory, resol
   }
   // Eligible assignments refused or failed, where a licence allows them: the
   // eligible holders are not known, so no role is said to have none.
-  const eligibility = snapshot.config?.pimEligibility
-  const eligibleUnread = !sectionHasData(snapshot, 'pimEligibility') && !isLicenceGate(eligibility?.reason)
+  const eligibleUnread = notReadDespiteLicence(snapshot, 'pimEligibility')
   const ids = showAll ? new Set([...ROLE_TEMPLATES.map((r) => r.templateId), ...byRole.keys()]) : new Set([...byRole.keys()].filter((id) => !serviceOnly(id)))
   const rows: RoleRow[] = [...ids].map((id) => {
     const e = byRole.get(id) ?? { active: new Set<string>(), eligible: new Set<string>() }
@@ -835,14 +833,9 @@ export function workloadsModel(snapshot: TenantSnapshot, mapping: MappingState |
   const A = C.apps
   const reading = serviceReading(snapshot, [], [])
   const licencesRead = sectionHasData(snapshot, 'subscribedSkus')
-  // Why a reading says nothing the scan saw: each section it reads that the scan did not read in full.
-  const shortfall = (keys: SectionKey[]): string | null => {
-    const line = (k: SectionKey): string => {
-      const reason = reasonOf(sectionState(snapshot, k))
-      return notReadLine(snapshot, k) ?? (reason === null ? W.partlyReadNoReason : fillText(W.partlyRead, { reason }))
-    }
-    return [...new Set(keys.filter((k) => sectionState(snapshot, k)?.status !== 'ok').map(line))].join(' ') || null
-  }
+  // Why a reading says nothing the scan saw: each section it reads that the scan did not read, or read in part, by the tables' own lines (a licence gate is not a shortfall).
+  const shortfall = (keys: SectionKey[]): string | null =>
+    [...new Set(keys.map((k) => notReadLine(snapshot, k) ?? partlyReadLine(snapshot, k)).filter((l): l is string => l !== null))].join(' ') || null
   const answerOf = (facet: string): string => {
     if (mapping === null) return '…'
     const saved = savedAnswerOf(`service:${facet}`, mapping)
@@ -900,7 +893,7 @@ export function signInModels(snapshot: TenantSnapshot, names: NameDirectory) {
   const agg = notRead === null ? (snapshot.evidenceAggregates ?? null) : null
   const usage = notRead === null ? snapshot.evidenceUsage : null
   // "nobody" only over records read in full: a partial read saw no one in what it read.
-  const complete = snapshot.sources.signInEvidence?.status === 'ok'
+  const complete = readInFull(snapshot, 'signInEvidence')
   const list = (ids: string[]) => ids.map(names.label).join('; ')
   const peopleColumn = (header: string): InventoryColumn<PeopleListRow> => ({ key: 'people', header, cell: (r) => list(r.ids) })
   return {
