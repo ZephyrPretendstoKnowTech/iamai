@@ -598,3 +598,10 @@ test('the Roles note says no role has "no holder" over assignments read only in 
   eligible.config.pimEligibility = { ...(eligible.config.pimEligibility ?? { rows: [] }), status: 'partial', reason: 'Request failed (500) on page 2' }
   assert.equal(rolesModel(eligible, buildNameDirectory(eligible)).hiddenNote, null)
 })
+
+test('an Inventory tab badge prints its count as the tables do, with separators', () => {
+  // large: "Accounts4902" and "Devices2695" beside tables printing "4,920 (4,900 assigned)" and "58,800".
+  const page = readFileSync('src/ui/surfaces/InventoryPage.tsx', 'utf8')
+  assert.match(page, /const badge = \([^)]*\): string \| undefined => \(sectionHasData\(snapshot, key\) \? figure\(n\) : undefined\)/)
+  assert.equal(shownCell(4902), '4,902')
+})
