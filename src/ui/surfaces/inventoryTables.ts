@@ -248,8 +248,9 @@ function conditionsSummary(f: PolicyFacts, location: (id: string) => string): st
         `${[...f.locations.include].map(loc).join(', ') || 'any'}${f.locations.exclude.size > 0 ? ` except ${[...f.locations.exclude].map(loc).join(', ')}` : ''}`,
       ),
     )
-  if (f.signInRisk.size > 0) bits.push(P.signInRisk([...f.signInRisk].join(', ')))
-  if (f.userRisk.size > 0) bits.push(P.userRisk([...f.userRisk].join(', ')))
+  const risk = (levels: Set<string>): string => [...levels].map((r) => portalName('risk', r) ?? r).join(', ')
+  if (f.signInRisk.size > 0) bits.push(P.signInRisk(risk(f.signInRisk)))
+  if (f.userRisk.size > 0) bits.push(P.userRisk(risk(f.userRisk)))
   if (f.flows.size > 0) bits.push(P.flows([...f.flows].map((t) => portalName('flow', t) ?? t).join(', ')))
   if (f.deviceFilter) bits.push(f.deviceFilter.mode === 'exclude' ? W.deviceFilterExclude : W.deviceFilterInclude)
   return bits.join(' · ') || '—'

@@ -96,12 +96,12 @@ const USER_ACTION_LABEL: Record<string, string> = { 'urn:user:registersecurityin
 
 /**
  * A Graph value as the portal names it — a platform, a client app type, an
- * authentication flow, a guest or external type, a user action — or null where
+ * authentication flow, a guest or external type, a user action, a risk level — or null where
  * the portal has no name IAMAI holds. The one map: these lines and the
  * Inventory's rows (ui/surfaces/inventoryTables.ts) both read it.
  */
-export function portalName(kind: 'platform' | 'clientApp' | 'flow' | 'guestType' | 'userAction', value: string): string | null {
-  const map = { platform: PLATFORM_LABEL, clientApp: CLIENT_APP_LABEL, flow: FLOW_LABEL, guestType: GUEST_TYPE_LABEL, userAction: USER_ACTION_LABEL }[kind]
+export function portalName(kind: 'platform' | 'clientApp' | 'flow' | 'guestType' | 'userAction' | 'risk', value: string): string | null {
+  const map = { platform: PLATFORM_LABEL, clientApp: CLIENT_APP_LABEL, flow: FLOW_LABEL, guestType: GUEST_TYPE_LABEL, userAction: USER_ACTION_LABEL, risk: RISK_LABEL }[kind]
   return map[lc(value)] ?? null
 }
 

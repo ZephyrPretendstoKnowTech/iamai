@@ -501,3 +501,12 @@ test('a Policies row names the guest or external types a policy includes, as it 
   assert.equal(users('every-guest'), C.policies.guests)
   assert.match(readFileSync('src/ui/surfaces/InventoryPage.tsx', 'utf8'), /includedGuestsWords\(r\)/, 'the Include line names them too')
 })
+
+test('a Policies row names risk levels as the portal does, not by their keys', () => {
+  const s = fixture('demo').snapshot
+  const m = policiesModel(s, policyFactsOf(s, [{ id: 'risk', displayName: 'risk', state: 'enabled', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'], signInRiskLevels: ['high', 'medium'], userRiskLevels: ['high'] }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } }]), buildNameDirectory(s))
+  const conditions = String(m.columns.find((c) => c.key === 'conditions')!.cell(m.rows[0]))
+  assert.ok(conditions.includes(C.policies.signInRisk(`${portalName('risk', 'high')}, ${portalName('risk', 'medium')}`)), conditions)
+  assert.ok(conditions.includes(C.policies.userRisk(portalName('risk', 'high')!)), conditions)
+  assert.doesNotMatch(conditions, /: (high|medium)\b/)
+})
