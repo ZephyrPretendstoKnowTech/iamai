@@ -205,6 +205,28 @@ test('the cover\'s Completed and To do lists are the rows the header counts, Cle
     assert.equal(posture.completed.length, facts.done, `${name}: the cover lists ${posture.completed.length} Completed under a header of ${facts.done} in place`)
     assert.equal(posture.completed.length + posture.toDo.length, facts.steps, `${name}: the cover lists ${posture.completed.length + posture.toDo.length} rows under a header of ${facts.steps} steps`)
   }
+  // Deferred: the board reads a deferred policy the tenant already enforces as
+  // Completed (a terminal outcome reached comes before a deferral,
+  // actionability/lanes.ts), and the header's count dropped every deferred step.
+  // Mid after the recovery test with every remaining step deferred printed
+  // "15 steps · 13 in place" over Completed (15) and To do (2): 17 rows. The
+  // header counts the board's rows, as the Plan's Completed tile does.
+  const openOf = (steps: readonly Step[]) => steps.filter((s) => s.status !== 'done' && s.status !== 'skipped')
+  const deferrableOf = (steps: readonly Step[]) => openOf(steps).filter((s) => (contentStepFor(s) as { skip?: boolean } | undefined)?.skip === true)
+  for (const [name, stage] of [['mid', 'recovered'], ['large', undefined], ['small', 'recovered'], ['demo', undefined], ['midflight', undefined]] as [FixtureName, Stage | undefined][]) {
+    const pre = plan(name, { stage }).steps
+    for (const [which, skips] of [['every deferrable step', deferrableOf(pre).map((s) => s.id)], ['every remaining step', openOf(pre).map((s) => s.id)]] as [string, string[]][]) {
+      const p = plan(name, { stage, skips })
+      const facts = stepFacts(p.steps, p.schedule.cleanup, p.answers)
+      const posture = postureOf([...p.steps.map((s) => s.id), ...p.board.cleanupRows.map((r) => r.id)], p.board.laneOf, p.board.titleOf)
+      const label = `${name} with ${which} deferred`
+      assert.equal(posture.completed.length, facts.done, `${label}: the cover lists ${posture.completed.length} Completed under a header of ${facts.done} in place`)
+      assert.equal(posture.completed.length + posture.toDo.length, facts.steps, `${label}: the cover lists ${posture.completed.length + posture.toDo.length} rows under a header of ${facts.steps} steps`)
+      // The Plan's Completed tile: the Completed lane over every row not Deferred (Plan.tsx progressTiles).
+      const items = p.board.rows.map((r) => r.item)
+      assert.deepEqual([facts.done, facts.steps], [items.filter((i) => i.lane === 'Completed').length, items.filter((i) => i.lane !== 'Deferred').length], `${label}: the header and the Plan's Completed tile count different rows`)
+    }
+  }
   const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
   assert.match(print, /postureOf\(\[\.\.\.steps\.map\(\(s\) => s\.id\), \.\.\.cleanupRows\.map\(\(r\) => r\.id\)\], laneOf, laneTitleOf\)/, 'the cover builds its lists from something other than the board')
 })
