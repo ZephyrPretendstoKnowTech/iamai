@@ -33,6 +33,7 @@ import { ACTIVITY_STATE, MFA_STATE } from '../../copy/definitions.ts'
 import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { absoluteDate } from '../format.ts'
+import { figure } from '../../copy/statements.ts'
 
 /** A table as a file: what the Export CSV card downloads. */
 export type InventoryTable = { id: string; label: string; csvName: string; header: string[]; rows: (string | number)[][] }
@@ -70,6 +71,14 @@ export function tableOf<R>(m: InventoryModel<R>): InventoryTable {
 
 type Raw = Record<string, unknown>
 const str = (v: unknown): string => (typeof v === 'string' ? v : v == null ? '' : String(v))
+
+/** A cell as the screen shows it: a count as every surface prints one ("58,800"); the CSV keeps the number. */
+export const shownCell = (v: string | number): string => (typeof v === 'number' ? figure(v) : v)
+
+/** A list of names in a row: three at most on screen (the row budget), and a count of the rest. */
+export function firstThree(labels: string[]): string {
+  return labels.length <= 3 ? labels.join(', ') : C.signIns.morePeople(labels.slice(0, 3), labels.length - 3)
+}
 
 // ---------- What the scan read of a section ----------
 
@@ -507,7 +516,7 @@ export function groupsModel(referenced: Map<string, { include: string[]; exclude
       id,
       name: g?.displayName ?? group(id),
       // A read that failed, or a group nobody read, has no count: its members are not read, never 0.
-      members: groups === null ? '…' : g && g.read ? (g.sampled ? G.sampled(g.memberCount) : String(g.memberCount)) : NOT_READ,
+      members: groups === null ? '…' : g && g.read ? (g.sampled ? G.sampled(g.memberCount) : figure(g.memberCount)) : NOT_READ,
       membership: g && g.read ? (g.membershipRule ? G.dynamic : G.assigned) : G.unknown,
       policies: [...refs.include.map(G.include), ...refs.exclude.map(G.exclude)].join('; '),
     }
@@ -583,7 +592,8 @@ function devicesTable(snapshot: TenantSnapshot, names: NameDirectory): Inventory
 
 // ---------- Roles ----------
 
-export type RoleRow = { id: string; name: string; privileged: boolean; active: string; eligible: string; activeN: number }
+/** A role's holders: every one in the CSV cell, three and a count of the rest where the screen shows them. */
+export type RoleRow = { id: string; name: string; privileged: boolean; active: string; eligible: string; activeShown: string; eligibleShown: string; activeN: number }
 
 /**
  * The roles table. Holders that are not people are named from `resolved` (the
@@ -623,6 +633,10 @@ export function rolesModel(snapshot: TenantSnapshot, names: NameDirectory, resol
     const e = byRole.get(id)
     return e !== undefined && roleTemplate(id) !== undefined && heldOnlyByServices([...e.active, ...e.eligible], kindOf)
   }
+  // Eligible assignments refused or failed, where a licence allows them: the
+  // eligible holders are not known, so no role is said to have none.
+  const eligibility = snapshot.config?.pimEligibility
+  const eligibleUnread = !sectionHasData(snapshot, 'pimEligibility') && !isLicenceGate(eligibility?.reason)
   const ids = showAll ? new Set([...ROLE_TEMPLATES.map((r) => r.templateId), ...byRole.keys()]) : new Set([...byRole.keys()].filter((id) => !serviceOnly(id)))
   const rows: RoleRow[] = [...ids].map((id) => {
     const e = byRole.get(id) ?? { active: new Set<string>(), eligible: new Set<string>() }
@@ -631,16 +645,14 @@ export function rolesModel(snapshot: TenantSnapshot, names: NameDirectory, resol
       // A role the catalogue and the scan cannot name is labelled by who holds it, never by an id (ux-review-05 §7).
       name: roleName(id) ?? (e.active.size + e.eligible.size > 0 ? R.usedBy([...e.active, ...e.eligible].slice(0, 2).map(holder).join(', ')) : roleLabel(id)),
       privileged: roleTemplate(id)?.privileged ?? false,
-      active: [...e.active].map(holder).join(', '),
-      eligible: [...e.eligible].map(holder).join(', '),
+      active: [...e.active].map(holder).join(', ') || '—',
+      eligible: eligibleUnread ? NOT_READ : [...e.eligible].map(holder).join(', ') || '—',
+      activeShown: firstThree([...e.active].map(holder)) || '—',
+      eligibleShown: eligibleUnread ? NOT_READ : firstThree([...e.eligible].map(holder)) || '—',
       activeN: e.active.size,
     }
   })
   const hidden = ROLE_TEMPLATES.filter((r) => !byRole.has(r.templateId)).length + [...byRole.keys()].filter(serviceOnly).length
-  // Eligible assignments refused or failed, where a licence allows them: the
-  // eligible holders are not known, so no role is said to have none.
-  const eligibility = snapshot.config?.pimEligibility
-  const eligibleUnread = !sectionHasData(snapshot, 'pimEligibility') && !isLicenceGate(eligibility?.reason)
   const model: InventoryModel<RoleRow> & { hiddenNote: string | null } = readOf(snapshot, 'roleAssignments', {
     id: 'roles',
     label: C.tabs.roles,
@@ -651,8 +663,8 @@ export function rolesModel(snapshot: TenantSnapshot, names: NameDirectory, resol
     hiddenNote: null as string | null,
     columns: [
       { key: 'role', header: R.columns.role, sort: (r: RoleRow) => r.name.toLowerCase(), cell: (r: RoleRow) => r.name },
-      { key: 'active', header: R.columns.active, sort: (r: RoleRow) => r.activeN, cell: (r: RoleRow) => r.active || '—' },
-      { key: 'eligible', header: R.columns.eligible, cell: (r: RoleRow) => (eligibleUnread ? NOT_READ : r.eligible || '—') },
+      { key: 'active', header: R.columns.active, sort: (r: RoleRow) => r.activeN, cell: (r: RoleRow) => r.active },
+      { key: 'eligible', header: R.columns.eligible, cell: (r: RoleRow) => r.eligible },
     ],
   })
   // The built-in roles left out, said only where the assignments were read.
@@ -835,7 +847,7 @@ export function signInModels(snapshot: TenantSnapshot, names: NameDirectory) {
     /** Said over the tables where the records were read in part. */
     note: partlyReadLine(snapshot, 'signInEvidence'),
     /** A list of people as a row shows it: three names at most (the row budget), and never "nobody" over records not read. */
-    people: (ids: string[]): string => (ids.length === 0 ? (complete ? S.nobody : W.noneSeen) : ids.length <= 3 ? ids.map(names.label).join(', ') : S.morePeople(ids.slice(0, 3).map(names.label), ids.length - 3)),
+    people: (ids: string[]): string => (ids.length === 0 ? (complete ? S.nobody : W.noneSeen) : firstThree(ids.map(names.label))),
     byClientApp: countModel('signInsByClientApp', S.byClientApp, 'iamai-signins-by-client-app.csv', agg?.byClientApp ?? {}, S.columns.count),
     byProtocol: countModel('signInsByProtocol', S.byProtocol, 'iamai-signins-by-protocol.csv', Object.fromEntries(Object.entries(agg?.byProtocol ?? {}).map(([k, v]) => [protocolName(k), v])), S.columns.count),
     // A country by its name (mapping/countries.ts countryName), never its ISO code.
