@@ -73,7 +73,7 @@ export type ContentFile = {
   version: number
   shared: Record<string, unknown>
   /** The Plan's group names: the numbered phases, and the floor group (roadmap/floor.ts), which is dated by nothing and named by itself. */
-  phases: { first: string; middle: string; last: string; heading: string; recommended: string }
+  phases: { first: string; middle: string; last: string; heading: string; headingDay: string; recommended: string }
   pages: Record<string, Record<string, unknown>>
   cleanup: Record<string, { title: string; learn: Learn; why: string; whatToDo: string[]; doneWhen: string[] }>
   steps: ContentStep[]

@@ -527,6 +527,8 @@
     "middle": "Phase {n}",
     "last": "Cleanup",
     "heading": "{name} · {start} → {end}",
+    "$commentHeadingDay": "A phase heading whose dates start and end on the same day: one date, never a range from a day to itself (ui/surfaces/printPlan.ts cleanupHeadingOf, the printed Cleanup heading).",
+    "headingDay": "{name} · {date}",
     "recommended": "Microsoft recommended, not in this baseline"
   },
   "pages": {

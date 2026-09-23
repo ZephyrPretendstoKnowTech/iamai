@@ -8,7 +8,7 @@ import type { Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { conditionalAccessLicenceLine } from '../../derive/notLicensed.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
-import { app, pages } from '../../content/content.ts'
+import { app, pages, phases } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { doesntApplyRows } from './planRows.ts'
 import { FINISH } from '../../copy/statements.ts'
@@ -161,4 +161,17 @@ export function verificationNoteOf(steps: readonly Step[]): string {
   const prep = campaign?.preparation
   if (!campaign || !prep) return ''
   return fillText(app.print.verificationNote, { n: prep.missingIds.length, total: prep.ids.length, step: contentTitle(campaign) })
+}
+
+/**
+ * The printed Cleanup heading: the phase name alone while held work dates no
+ * end (derive/finish.ts planFinish), its one day where the phase starts and
+ * ends on the same day, else its range. A range from a day to itself read
+ * "Cleanup · Sep 1, 2026 → Sep 1, 2026".
+ */
+export function cleanupHeadingOf(cleanup: { start: string; end: string }, held: boolean): string {
+  if (held) return phases.last
+  const start = absoluteDate(cleanup.start)
+  const end = absoluteDate(cleanup.end)
+  return start === end ? fillText(phases.headingDay, { name: phases.last, date: start }) : fillText(phases.heading, { name: phases.last, start, end })
 }
