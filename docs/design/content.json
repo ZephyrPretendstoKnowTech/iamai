@@ -494,6 +494,7 @@
     "planPromptTitle": "Explain this plan",
     "proposedNameFollowsConvention": "This follows the convention {tenant} already uses.",
     "proposedNameDocumented": "{tenant}’s own policy names do not agree on one shape, so this is the documented pattern.",
+    "$commentNoTemporaryAccessPass": "The Temporary Access Pass wait on the registration policy (R4-31, Marcus D12). It said \"Turn on a Temporary Access Pass first\". The policy shows it at two stages: before its Report-only create, as a \"Before turning on\" card, and after it, as a prerequisite of the turn-on. \"First\" read as a prerequisite of the create, which readiness never gates (owner, 2026-09-11: readiness gates enforcement, not creation). The pass holds only the turn-on, and the sentence now says so at both stages.",
     "noTemporaryAccessPass": "Turn on a Temporary Access Pass before this policy is turned on: Entra ID → Authentication methods → Policies → Temporary Access Pass, enabled and scoped to the people who need one. This policy asks for MFA in order to register MFA, so somebody who has no method yet has no way in without a pass. No step of this plan creates it for you.",
     "sessionLoopReview": "Review MFA for this sign-in before enabling Every time. The intended policy has no MFA grant; without an applicable MFA requirement, repeated sign-in prompts can loop. Keep this policy in Report-only while the policy design is reviewed. More observation time will not resolve this configuration issue.",
     "sessionLoopHold": "Review MFA before enabling Every time",
