@@ -629,7 +629,9 @@ try {
   check('Plan: at phone width, All work’s sections and finished rows fit the page', !!phone && phone.heads >= 1 && phone.headsFit && phone.rowsFit && phone.board && phone.closedOneLine, JSON.stringify(phone))
   // Decision H, tried as a visible line: while the board has policies at
   // Ready · Create, one line above the board counts them (a count, never a
-  // name) and its control shows exactly those rows.
+  // name) and its control shows exactly those rows. This tenant may draw no
+  // line; the demo's Follow-up scan with Direction approved always does, and
+  // is where the line is checked for certain (below).
   const createLine = await evaluate(`((document.querySelector('main.page .plan-create-now') || {}).textContent || '').trim()`)
   if (createLine) {
     const n = Number((/^(\d+) polic/.exec(createLine) || [])[1])
@@ -639,8 +641,6 @@ try {
     check('Plan: the line above the board counts the policies ready to create in report-only, and shows exactly them', /^\d+ polic(y is|ies are) ready to create in report-only now\. Show them$/.test(createLine) && createRows.length === n && createRows.every((l) => l === 'Ready · Create'), `${createLine} | ${JSON.stringify(createRows.slice(0, 4))}`)
     await clickText('/^Show the full plan$/')
     await sleep(200)
-  } else {
-    check('Plan: no line above the board where no policy is ready to create', true)
   }
   // A step opened from a link keeps the tab where the tab shows it, and
   // otherwise opens on All work in its own section, with the page moved to it
@@ -1349,6 +1349,31 @@ try {
     `day one: "${day1Header}" -> week two: "${demoWeek2Header}"`,
   )
   await evaluate(`(() => { const t = [...document.querySelectorAll('main.page .plan-row .step-title')].find((x) => x.textContent.trim() === ${INTUNE}); const r = t && t.closest('.plan-row'); if (r && r.getAttribute('aria-expanded') === 'true') r.click(); return true })()`)
+  // Decision H's line where the board draws it (roadmap flow V2): the Follow-up
+  // scan with its last Direction step approved has policies at Ready · Create.
+  // The line above the board counts them — a count, never a name — and Show
+  // them lists exactly those rows. The Plan section's tenants draw no line, so
+  // this is the check that exercises it.
+  await evaluate(`location.hash = '#/plan/s-direction-devices'`)
+  const devicesOpen = await waitFor(`!!document.querySelector('main.page .plan-row[data-step="s-direction-devices"][aria-expanded="true"]') && !!document.querySelector('main.page .step-body .direction-section')`, 6000)
+  const devicesApproved = devicesOpen && (await clickText(`/^${CONTENT_PAGES.app.plan.direction.approve}$/`, 'main.page .step-body .direction-section'))
+  const createLineOf = `((document.querySelector('main.page .plan-create-now') || {}).textContent || '').trim()`
+  const createDrawn = devicesApproved && (await waitFor(`/^[0-9]+ polic(y is|ies are) ready to create in report-only now[.] Show them$/.test(${createLineOf})`, 8000))
+  const createText = await evaluate(createLineOf)
+  const createCount = Number((/^(\d+) polic/.exec(createText) || [])[1])
+  let createShown = []
+  if (createDrawn) {
+    await clickText('/^Show them$/', 'main.page .plan-create-now')
+    await waitFor(`/^Showing policies ready to create in report-only/.test(((document.querySelector('main.page p.actions strong') || {}).textContent || '').trim())`, 4000)
+    createShown = await evaluate(`[...document.querySelectorAll('main.page .plan-board .plan-row')].map((r) => ({ lane: ((r.querySelector('.lane') || {}).textContent || '').trim(), step: r.dataset.step || '' }))`)
+  }
+  check(
+    'Demo: with Direction approved, the line above the board counts the policies ready to create in report-only, and Show them lists exactly them',
+    createDrawn && createCount > 0 && createShown.length === createCount && createShown.every((r) => r.lane === 'Ready · Create') && (await evaluate(createLineOf)) === '',
+    `open ${devicesOpen}, approved ${devicesApproved}, line "${createText}", shown ${JSON.stringify(createShown.slice(0, 6))}`,
+  )
+  if (createDrawn) await clickText('/^Show the full plan$/')
+  await sleep(200)
   // Scan again only ever moves forward; the way back to the initial scan is the
   // banner's selector, which names the snapshot it selects.
   await demoScanAgain()
