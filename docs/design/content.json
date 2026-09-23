@@ -1079,13 +1079,14 @@
           "body": "Ask each person to sign in once with the method named on their row. If the phone or computer holding it was replaced, they register a new method first, then remove the old one."
         },
         "device": {
-          "title": "Add a passkey to the device they use",
+          "$commentTitle": "It read \"Add a passkey to the device they use\" over rows whose step is to sign in once with the passkey they already hold. The title names the gap; each row names its step.",
+          "title": "Cover the device that signs in without it",
           "why": "Confirmed on one device, but another signs in without it",
           "body": {
-            "windows": "Each sets up the option named on their row, on the device that still signs in without it. On a phone that is a passkey in Microsoft Authenticator; on a joined computer, Windows Hello for Business.",
-            "mac": "Each sets up the option named on their row, on the device that still signs in without it. On a phone that is a passkey in Microsoft Authenticator; on a Mac, a synced passkey where passkey settings allow it.",
-            "both": "Each sets up the option named on their row, on the device that still signs in without it. On a phone that is a passkey in Microsoft Authenticator. On a joined Windows computer it is Windows Hello for Business; on a Mac, a synced passkey where allowed.",
-            "none": "Each sets up the option named on their row, on the device that still signs in without it. On a phone that is a passkey in Microsoft Authenticator."
+            "windows": "Each takes the step named on their row, on the device that still signs in without it. On a phone that is a passkey in Microsoft Authenticator; on a joined computer, Windows Hello for Business.",
+            "mac": "Each takes the step named on their row, on the device that still signs in without it. On a phone that is a passkey in Microsoft Authenticator; on a Mac, a synced passkey where passkey settings allow it.",
+            "both": "Each takes the step named on their row, on the device that still signs in without it. On a phone that is a passkey in Microsoft Authenticator. On a joined Windows computer it is Windows Hello for Business; on a Mac, a synced passkey where allowed.",
+            "none": "Each takes the step named on their row, on the device that still signs in without it. On a phone that is a passkey in Microsoft Authenticator."
           }
         },
         "unknown": {
