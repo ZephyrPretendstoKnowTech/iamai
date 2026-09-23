@@ -59,8 +59,8 @@ export type StepFacts = { steps: number; done: number }
  * 17. Now the rows are counted where they are drawn.
  *
  * A Cleanup row is in place exactly when the row itself reads In place: the
- * board completes it by `roadmap/cleanupDone.ts` `cleanupComplete(row,
- * answers)`, not `row.done`, because the emergency-access sign-in-monitoring
+ * board completes it by `roadmap/cleanupDone.ts` `cleanupComplete` over the
+ * row and `answers`, not `row.done`, because the emergency-access sign-in-monitoring
  * attestation completes the alerting row without recording a date (task 042
  * correction 1). `answers` is the mapping's `breakGlassAnswers`, and it is
  * required so that a caller decides rather than forgets; absent or null is
