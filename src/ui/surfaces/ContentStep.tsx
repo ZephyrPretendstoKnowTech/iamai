@@ -499,7 +499,7 @@ export function ContentStep({
             a person has (Foundation C). */}
         <StepActionColumn rail={displayRail}>
           {/* A question that moved to Decide Your Tenant's Direction is answered there; this step says where, and what (roadmap/direction.ts ANSWERED_IN). */}
-          {ANSWERED_IN[step.id] ? <AnsweredInDirection stepId={step.id} ctx={ctx} /> : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && <Decision key={step.id} d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} />}
+          {ANSWERED_IN[step.id] ? <AnsweredInDirection stepId={step.id} ctx={ctx} /> : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && <Decision key={step.id} d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} printing={printing} />}
           {step.id === SPECIAL_CARE_STEP_ID && (followUp || printing) && <FollowUpDecision key={`${step.id}:follow-up`} step={step} ctx={ctx} saved={followUp?.saved ?? null} onDecide={followUp?.onDecide} printing={printing} />}
           {/* The one thing a scan cannot see, recorded where every other control
               on a step is (owner, 2026-09-20). It used to stand in the main
@@ -1033,11 +1033,11 @@ function ReasonForm({ body, label, placeholder, cancel, confirm, multiline = fal
   )
 }
 
-function Decision(props: { d: Record<string, any>; ex: Ex; saved: StepDecision | null; onDecide?: (decision: StepDecisionInput) => void; stepId: string; ctx: StepVarContext }) {
+function Decision(props: { d: Record<string, any>; ex: Ex; saved: StepDecision | null; onDecide?: (decision: StepDecisionInput) => void; stepId: string; ctx: StepVarContext; printing?: boolean }) {
   return <div className="decision-form"><SingleDecision {...props} /></div>
 }
 
-function SingleDecision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<string, any>; ex: Ex; saved: StepDecision | null; onDecide?: (decision: StepDecisionInput) => void; stepId: string; ctx: StepVarContext }) {
+function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false }: { d: Record<string, any>; ex: Ex; saved: StepDecision | null; onDecide?: (decision: StepDecisionInput) => void; stepId: string; ctx: StepVarContext; printing?: boolean }) {
   // The typeahead (target-state §6.4): empty, it lists the objects the scan
   // nominated with their signal text, ticked by default as chips; typing filters
   // every object of the kind in the tenant by name and UPN; the chips are the
@@ -1069,7 +1069,10 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<str
   // A match the scan made unambiguously opens as a chip saying so (U24); it is the
   // plan's decision only once Save writes it, so the step still reads Decision.
   const initial = initialPicked(ex, key, saved, ids, single)
-  const initialIds = isExclusionsGroup ? (savedExclusionsGroup ? [savedExclusionsGroup.id] : []) : initial.picked
+  // On paper a picker's own default is not an answer anybody gave (pickerRows.ts
+  // initialPicked `defaulted`): the printed plan had listed every nominated
+  // person under People Needing Help while the saved list held one.
+  const initialIds = isExclusionsGroup ? (savedExclusionsGroup ? [savedExclusionsGroup.id] : []) : printing && initial.defaulted ? [] : initial.picked
   const [chips, setChips] = useState<PickerOption[]>(() => initialIds.map((id) => isExclusionsGroup ? optionOf(id) : (initial.matched.includes(id) ? { ...optionOf(id), badge: app.picker.matched } : optionOf(id))))
   const isNetwork = stepId === 's-prereq-trusted-location'
   const [remote, setRemote] = useState(isNetwork && saved?.picked?.length === 0 && saved?.option !== 'office-network')

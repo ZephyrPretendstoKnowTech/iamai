@@ -3,6 +3,7 @@
 import { Fragment } from 'react'
 import { createPortal } from 'react-dom'
 import type { Step } from '../../roadmap/types.ts'
+import type { StepDecision } from '../../roadmap/decisions.ts'
 import type { Schedule } from '../../roadmap/schedule.ts'
 import type { CoverageReport } from '../../coverage/types.ts'
 import { waveLabels } from '../../derive/phases.ts'
@@ -61,6 +62,7 @@ export function PrintPlan({
   stepCtx,
   answers = null,
   tenant = null,
+  decisions = null,
 }: {
   tenantName: string
   baselineLabel: string
@@ -92,6 +94,12 @@ export function PrintPlan({
    * caller passes the scanned snapshot; absent, the document cannot know.
    */
   tenant?: Pick<TenantSnapshot, 'capabilities'> | null
+  /**
+   * The plan record's saved step decisions, by step id, as the Plan hands each
+   * opened step its own (Plan.tsx `data.stepDecisions`). Absent, a printed
+   * picker states no answer rather than its own suggestions.
+   */
+  decisions?: Readonly<Record<string, StepDecision>> | null
 }) {
   void baselinePin
   const today = absoluteDate(new Date().toISOString())
@@ -319,7 +327,7 @@ export function PrintPlan({
           {phaseDatesOf(phaseSteps(w)) && <p className="muted">{phaseDatesOf(phaseSteps(w))}</p>}
           {phaseSteps(w).map((s) => (
             <article key={s.id} className="print-step">
-              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} lane={laneOf(s.id)} blockers={blockersOf(s)} prerequisiteLabel={prerequisiteLabel} printing />
+              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} lane={laneOf(s.id)} blockers={blockersOf(s)} prerequisiteLabel={prerequisiteLabel} decision={decisions?.[s.id] ?? null} printing />
             </article>
           ))}
         </section>
@@ -333,7 +341,7 @@ export function PrintPlan({
           <h2>{laneWordOf(g.lane)}</h2>
           {g.rows.map((s) => (
             <article key={s.id} className="print-step">
-              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} lane={laneOf(s.id)} blockers={blockersOf(s)} prerequisiteLabel={prerequisiteLabel} printing />
+              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} lane={laneOf(s.id)} blockers={blockersOf(s)} prerequisiteLabel={prerequisiteLabel} decision={decisions?.[s.id] ?? null} printing />
             </article>
           ))}
         </section>
@@ -346,7 +354,7 @@ export function PrintPlan({
           <h2>{phases.recommended}</h2>
           {floor.map((s) => (
             <article key={s.id} className="print-step">
-              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} lane={laneOf(s.id)} blockers={blockersOf(s)} prerequisiteLabel={prerequisiteLabel} printing />
+              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} lane={laneOf(s.id)} blockers={blockersOf(s)} prerequisiteLabel={prerequisiteLabel} decision={decisions?.[s.id] ?? null} printing />
             </article>
           ))}
         </section>

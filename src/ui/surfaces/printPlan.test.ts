@@ -20,7 +20,8 @@ import { activePeopleIds } from '../../derive/population.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { customerPlanSteps } from './customerPlanSteps.ts'
 import { boardHolds, boardOf } from './planBoard.ts'
-import { planDates } from './stepVars.ts'
+import { planDates, stepVars } from './stepVars.ts'
+import { initialPicked } from './pickerRows.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { completedRows, deferredRows, doesntApplyRows, floorRows, openDoneRows, phaseRows, planPhases } from './planRows.ts'
 import { cleanupHeadingOf, cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, laneGroupsOf, noPlanLine, phaseDatesOf, postureOf, verificationNoteOf } from './printPlan.ts'
@@ -360,4 +361,29 @@ test('the cover, the timeline and the Cleanup heading state nothing empty and no
   assert.match(print, /toDoNames\.length > 0 \? toDoNames\.join\(', '\) : C\.posture\.none/, 'an empty To do list is printed after its colon')
   assert.match(print, /\{waves\.length > 0 && \(\n\s*<section className="print-page">\n\s*<h2>\{C\.summary\}<\/h2>/, 'the timeline prints with no phase in it')
   assert.match(print, /cleanupHeadingOf\(schedule\.cleanup, cannotFinish\)/, 'the Cleanup heading is worded in the print')
+})
+
+// ---- A saved decision prints as saved; an unsaved one prints no suggestion as the answer ----
+
+test('the printed step reads the saved decision, and never prints a picker\'s own suggestions as the list nobody saved', () => {
+  // Demo, Prepare Your Team for MFA: the operator saved 1 of the 11 people
+  // nominated for help. The print handed ContentStep no decision, so the picker
+  // opened on its own default, every nominated person, and printed all eleven
+  // under "People Needing Help".
+  const p = plan('demo')
+  const campaign = byId(p.steps, 's-verify-mfa')
+  const ex = stepVars(campaign, p.ctx(campaign)) as Record<string, unknown>
+  const key = typeof ex.pickerKey === 'string' ? ex.pickerKey : 'specialCareIds'
+  const ids = (ex[`${key}Ids`] ?? ex[key]) as string[] | undefined
+  assert.ok(Array.isArray(ids) && ids.length > 1, `the premise: the campaign nominates people for help (${key})`)
+  // Nothing saved: the chips are the picker's own default, which a document may not state as the answer.
+  assert.equal(initialPicked(ex, key, null, ids, false).defaulted, true, 'the picker\'s own default is not marked as one')
+  // Saved: the saved people, and not a default.
+  const saved = initialPicked(ex, key, { picked: ids.slice(0, 1) }, ids, false)
+  assert.deepEqual(saved, { picked: ids.slice(0, 1), matched: [] })
+  const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
+  assert.equal(print.match(/decision=\{decisions\?\.\[s\.id\] \?\? null\}/g)?.length, 3, 'a printed step section does not read the saved decision')
+  const body = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
+  assert.match(body, /<Decision key=\{step\.id\} d=\{d\} ex=\{ex\} saved=\{decision\} onDecide=\{onDecide\} stepId=\{step\.id\} ctx=\{ctx\} printing=\{printing\} \/>/, 'the decision is not told it is printing')
+  assert.match(body, /printing && initial\.defaulted \? \[\] : initial\.picked/, 'a printed picker states its own default as the answer')
 })
