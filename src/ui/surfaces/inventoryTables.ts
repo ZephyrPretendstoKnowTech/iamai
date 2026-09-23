@@ -427,7 +427,8 @@ export function groupsModel(referenced: Map<string, { include: string[]; exclude
     return {
       id,
       name: g?.displayName ?? names.label(id),
-      members: g ? (g.sampled ? G.sampled(g.memberCount) : String(g.memberCount)) : groups === null ? '…' : G.unknown,
+      // A read that failed, or a group nobody read, has no count: its members are not read, never 0.
+      members: groups === null ? '…' : g && g.read ? (g.sampled ? G.sampled(g.memberCount) : String(g.memberCount)) : NOT_READ,
       membership: g && g.read ? (g.membershipRule ? G.dynamic : G.assigned) : G.unknown,
       policies: [...refs.include.map(G.include), ...refs.exclude.map(G.exclude)].join('; '),
     }

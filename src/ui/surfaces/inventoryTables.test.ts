@@ -5,7 +5,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
-import { appsModel, authStrengthsModel, capabilitiesModel, devicesModel, inventoryTables, licencesModel, locationsModel, registrationModel, rolesModel, securityDefaultsOf, signInModels } from './inventoryTables.ts'
+import { appsModel, authStrengthsModel, capabilitiesModel, devicesModel, groupsModel, inventoryTables, licencesModel, locationsModel, policyFactsOf, referencedGroupsOf, registrationModel, rolesModel, securityDefaultsOf, signInModels } from './inventoryTables.ts'
 import { buildNameDirectory } from '../../names.ts'
 import { app, pages } from '../../content/content.ts'
 import { INVENTORY as C } from '../../copy/inventory.ts'
@@ -145,4 +145,21 @@ test('sign-in records: a licence gate says so, a partial read says so, and "nobo
   const full = fixture('demo').snapshot
   assert.equal(signInModels(full, buildNameDirectory(full)).people([]), C.signIns.nobody, 'a full read that saw no one says nobody')
   assert.doesNotMatch(C.signIns.distinctUsersTip.text, /30 days/, 'the window is the one the line above names')
+})
+
+test('a group whose read failed is not read, never 0 members', () => {
+  const f = fixture('messy')
+  const facts = policyFactsOf(f.snapshot)
+  const referenced = referencedGroupsOf(facts)
+  const [id] = [...referenced.keys()]
+  const names = buildNameDirectory(f.snapshot)
+  // The page's own read failed (a deleted, refused or unreadable group): what its catch records.
+  const m = groupsModel(referenced, [{ groupId: id, displayName: null, memberCount: 0, sampled: false, membershipRule: null, read: false }], names)
+  const row = m.rows.find((r) => r.id === id)!
+  assert.equal(m.columns.find((c) => c.key === 'members')!.cell(row), notReadWord)
+  // The Export's groups are the plan's: a group the plan did not read is not read there either.
+  const csv = inventoryTables(f.snapshot, new Map()).find((t) => t.id === 'groups')!
+  assert.ok(column(csv, C.groups.columns.members).every((v) => v === notReadWord), 'no measured-looking count of a group nobody read')
+  const read = inventoryTables(f.snapshot, f.groups).find((t) => t.id === 'groups')!
+  assert.ok(column(read, C.groups.columns.members).some((v) => /^\d/.test(String(v))), 'a group the plan read has its count')
 })

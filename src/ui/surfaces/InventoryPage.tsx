@@ -106,6 +106,7 @@ export function InventoryPage({ snapshot }: { snapshot: TenantSnapshot }) {
         try {
           out.push(await getGroupMembers(snapshot.tenantId, id))
         } catch {
+          // A read that failed (a deleted, refused or unreadable group) carries no date: the Groups tab says its members were not read.
           out.push({ tenantId: snapshot.tenantId, groupId: id, displayName: null, membershipRule: null, memberIds: [], memberCount: 0, sampled: false, asOf: '' })
         }
       }
