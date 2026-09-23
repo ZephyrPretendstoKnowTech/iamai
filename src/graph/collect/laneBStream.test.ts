@@ -347,6 +347,38 @@ test('a page that fails is read again from the last whole second folded, and thr
   assert.equal(stopped.stats?.reanchors, 2)
 })
 
+test('a page read again that folds no further second does not reset the failures: a second of more than a page with a failing next page stops the read', async () => {
+  // Five seconds of one record, then 450 records in one second, then older ones.
+  const T = NOW - 2 * HOUR
+  const rec = (id: string, ms: number) => ({ id, createdDateTime: whole(ms), userId: `person-${id}`, status: { errorCode: 0 } })
+  const rows = [
+    ...Array.from({ length: 5 }, (_, i) => rec(`new-${i}`, T + (5 - i) * 1000)),
+    ...Array.from({ length: 450 }, (_, i) => rec(`tie-${i}`, T)),
+    ...Array.from({ length: 100 }, (_, i) => rec(`old-${i}`, T - (i + 1) * 60_000)),
+  ]
+  const cancel = new AbortController()
+  const urls: string[] = []
+  const fetchPage: LaneBDeps['fetchPage'] = async (url) => {
+    urls.push(url)
+    // A guard for the read that never ends: the scan is cancelled.
+    if (urls.length > 30) {
+      cancel.abort()
+      throw new DOMException('The scan was cancelled.', 'AbortError')
+    }
+    const [base, offset] = url.split('#')
+    if (offset !== undefined) throw new Error('The network connection was lost.')
+    const below = base === 'start' ? Number.POSITIVE_INFINITY : Date.parse(base.slice(3))
+    return { value: rows.filter((r) => Date.parse(r.createdDateTime) < below).slice(0, SIGN_IN_PAGE_SIZE), '@odata.nextLink': `${base}#${SIGN_IN_PAGE_SIZE}` }
+  }
+  const r = await read({ pageUrl: (before) => (before === null ? 'start' : `lt:${before}`), fetchPage }, discardStore(), { signal: cancel.signal })
+  const again = `lt:${iso(T + 2000)}`
+  assert.deepEqual(urls, ['start', 'start#200', again, `${again}#200`, again, `${again}#200`], 'three failures with no second folded between them')
+  assert.equal(r.stats?.reanchors, 2)
+  assert.equal(r.status, 'error')
+  assert.equal(r.reason, 'The network connection was lost.')
+  assert.equal(r.covered?.from, whole(T + 1000), 'the last whole second folded')
+})
+
 test('a cancelled scan and a refused read are not read again', async () => {
   const o = { seed: 12, anchorMs: NOW, spacingS: 390 }
   const cancel = new AbortController()

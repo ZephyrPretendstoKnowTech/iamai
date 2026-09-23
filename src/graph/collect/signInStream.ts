@@ -202,7 +202,9 @@ export async function runLaneB(deps: LaneBDeps): Promise<SignInEvidence> {
    */
   const graphLoop = async (firstUrl: string, boundary: string, mode: 'fresh' | 'new' | 'older'): Promise<'boundary' | 'history exhausted' | 'time budget'> => {
     let next: string | null = firstUrl
+    // Failures since the read last folded a further second, and the frontier the last one left.
     let failures = 0
+    let failedAt: string | null = null
     while (next) {
       if (deps.clock() - wallStart > budgetMs) return 'time budget'
       const t0 = deps.clock()
@@ -224,15 +226,18 @@ export async function runLaneB(deps: LaneBDeps): Promise<SignInEvidence> {
       } catch (e) {
         // A page that still fails after the request's own retries is read again from
         // the last whole second folded: a nextLink is not needed to go on. A refusal,
-        // a cancelled scan, or SIGN_IN_REANCHOR_MAX failures in a row stop the read.
+        // a cancelled scan, or SIGN_IN_REANCHOR_MAX failures with no further second
+        // folded between them stop the read. A page read again that ends inside the
+        // same second (one second holding a page or more) is no progress, so it does
+        // not reset the count, or the read would go round that second forever.
         failures += 1
+        failedAt = fold.frontier
         if (e instanceof SectionDisabledError || deps.signal?.aborted || failures >= SIGN_IN_REANCHOR_MAX) throw e
         fold.discard()
         next = fold.frontier ? deps.pageUrl(plus1s(fold.frontier)) : firstUrl
         stats.reanchors += 1
         continue
       }
-      failures = 0
       // Graph returns newest first; a stable sort keeps its order within a second.
       const rows = value.map(mapRow).filter((r): r is StoredSignIn => r !== null).sort(newestFirst)
       const pageOldest = rows.length > 0 ? rows[rows.length - 1].createdDateTime : null
@@ -243,6 +248,7 @@ export async function runLaneB(deps: LaneBDeps): Promise<SignInEvidence> {
         if (mode === 'new' && row.createdDateTime <= boundary) overlap.set(row.id, row)
         else fold.push(row)
       }
+      if (failures > 0 && fold.frontier !== failedAt) failures = 0
       await save(inWindow, mode === 'new' ? null : frontierSpan())
       resident(rows.length)
       deps.onPage?.({ pages: stats.pages, rows: fold.counts.folded, ms, oldest: fold.frontier ?? pageOldest })

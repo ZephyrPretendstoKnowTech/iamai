@@ -15,7 +15,8 @@ export const DEDUP_HORIZON_MS = 2_000
 export const SIGN_IN_TIE_GROUP_MAX = 5_000
 /**
  * A sign-in page that still fails after its own retries is read again from the
- * last whole second folded; this many failures in a row stop the read.
+ * last whole second folded; this many failures with no further second folded
+ * between them stop the read.
  */
 export const SIGN_IN_REANCHOR_MAX = 3
 /**
