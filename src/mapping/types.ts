@@ -96,6 +96,12 @@ export type MappingState = {
    * and the campaign stays open.
    */
   specialCareConfirmed?: string[] | null
+  /**
+   * The campaign's people a person marked "Turn on without them for now" (owner
+   * decision 9): someone on leave need not hold every policy that waits on the
+   * campaign. Written only by that picker's Save (roadmap/followUp.ts).
+   */
+  mfaFollowUpIds?: string[]
   trustedLocationIds: string[]
   serviceAccountsGroupId: string | null
   /** Accounts confirmed as service accounts (prompt 16 §3); rejected ones
