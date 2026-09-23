@@ -126,7 +126,7 @@ test('the answer is one panel: the sentence, the Seamless goal, the change since
     at = next
   }
   assert.equal(W.summary, '{ready} of {cohort} are ready for phishing-resistant sign-in.', 'the counted are named as one cohort: people, and guests beside them')
-  assert.match(SURFACE, /const ready = counts\.ready \+ counts\.seamless/, 'Seamless is not counted as Ready in the sentence')
+  assert.match(CELLS, /const ready = counted\.filter\(\(r\) => r\.state === 'ready' \|\| r\.state === 'seamless'\)\.length/, 'Seamless is not counted as Ready in the sentence (summaryLine)')
   assert.match(cssRule('.readiness-answer .answer-top'), /display: flex/)
   assert.match(packRule('.answer-top'), /display:flex/)
   assert.doesNotMatch(SURFACE, /summary-stat|progress-strip|group-tile|RungBadge|rung-badge/, 'a count card, a strip or a rung badge came back')

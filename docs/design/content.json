@@ -985,6 +985,8 @@
       "summaryNone": "No active people to count.",
       "summaryNoneNoP1": "Nobody can be counted: sign-in records need Microsoft Entra ID P1, which this tenant doesn’t have, so this scan read nobody’s activity.",
       "summaryUnmeasured": "Readiness not measured for {cohort}: this scan holds no sign-in proof.",
+      "$commentSummaryNotJudged": "Everyone counted is Unknown, though the sign-in proof was read: their method lists were refused, say. \"0 of 30 are ready\" put an unread count in the shape of a measurement. Each row says what was missing.",
+      "summaryNotJudged": "Readiness not measured for {cohort}: this scan couldn’t read what it depends on.",
       "summaryNoP1": "Readiness can’t be measured for {cohort}: sign-in records need Microsoft Entra ID P1, which this tenant doesn’t have.",
       "groupNoP1": {
         "$comment": "The Unknown group's words where everyone in it is unconfirmed only because the tenant has no Entra ID P1 (summaryNoP1 says why, once).",
