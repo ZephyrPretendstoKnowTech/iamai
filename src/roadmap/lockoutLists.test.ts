@@ -59,13 +59,17 @@ test('step 15 names the admins not yet Ready for phishing-resistant MFA on the d
   // plan is holding the enforcement behind the very readiness these admins are
   // short of (roadmap/operations.ts readinessGate): the demo's admins are 66% of
   // the way to the 100% the step asks for, so nothing about it is dated and the
-  // line does not render. The list itself is unchanged, and the row says what it
-  // is waiting for.
+  // line renders its undated form (who.evidenceUndated): the admins, and no day
+  // to get them Ready before. The list itself is unchanged, and the row says
+  // what it is waiting for.
   const lines = stepLines(s, ctxFor(f, r))
   // Two of three is 66.7%, read down to 66% (R4-14: a reading is never rounded up to a number it has not reached).
   assert.equal(s.action.readinessGate?.value, '66%', 'the step waits on admin readiness')
   assert.ok(!s.events, 'so nothing about it is dated')
-  assert.deepEqual(lines.filter((l) => /not yet Ready for phishing-resistant MFA/.test(l)), [], 'and a line that names a deadline does not invent one')
+  const named = lines.filter((l) => /not yet Ready for phishing-resistant MFA/.test(l))
+  assert.equal(named.length, 1, 'the admins are named once')
+  assert.doesNotMatch(named[0]!, /before|\d{4}/, 'and a line that names a deadline does not invent one')
+  for (const admin of ex.adminsWithout) assert.ok(named[0]!.includes(admin), `${admin} is not named`)
   assert.ok(s.blockers.some((b) => b.binding === 'when admin readiness reaches 100% (now 66%)'), JSON.stringify(s.blockers))
   // With the prerequisite met the enforcement is dated again, and the line comes
   // back counting whatever list is left.

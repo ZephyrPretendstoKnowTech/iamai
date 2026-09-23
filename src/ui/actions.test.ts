@@ -285,7 +285,7 @@ test('the Scan tile names what the scan it shows could not read, from that scanâ
   // Read from lastScan.snapshot the way `degraded` is, so a stored scan restored
   // on the next visit says the same thing it said the day it ran.
   assert.match(src, /kind: 'complete',[^}]*unread: unreadSources\(lastScan\.snapshot\)/)
-  assert.match(src, /kind: 'gaps', unread: runner\.unread/, 'a scan with gaps stored no snapshot: its list is the one the scan produced')
+  assert.match(src, /kind: 'gaps', gaps: runner\.gaps, unread: runner\.unread/, 'a scan with gaps stored no snapshot: its list is the one the scan produced')
 })
 
 /** Every non-test source file under a directory. */

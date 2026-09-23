@@ -54,15 +54,31 @@ const rolesFor = (scope: string): string[] => {
   return r ? [r.least, ...r.also] : []
 }
 
-/** Which core sections the held roles cannot read, and what to ask for; null when the scan can start. */
-export function coreRoleGap(roleIds: string[] | null): RoleGap | null {
-  if (roleIds === null) return null
+const holdsIn = (roleIds: string[]): ((role: string) => boolean) => {
   const held = new Set(roleIds.map((r) => r.toLowerCase()))
-  const holds = (role: string): boolean => {
+  return (role) => {
     const id = ROLE_TEMPLATE_IDS[role]
     return id !== undefined && held.has(id)
   }
-  if (holds(READ_EVERYTHING_ROLE) || holds(GLOBAL_ADMINISTRATOR)) return null
+}
+
+/**
+ * Whether the token's active roles read everything IAMAI needs: Global Reader
+ * or Global Administrator. The scan starts on it (coreRoleGap), and a section
+ * Graph then refuses such an account is not for want of a role, so Connect
+ * asks for none (connectView.ts scanTile). False when the token has no claim.
+ */
+export function holdsReadEverything(roleIds: string[] | null): boolean {
+  if (roleIds === null) return false
+  const holds = holdsIn(roleIds)
+  return holds(READ_EVERYTHING_ROLE) || holds(GLOBAL_ADMINISTRATOR)
+}
+
+/** Which core sections the held roles cannot read, and what to ask for; null when the scan can start. */
+export function coreRoleGap(roleIds: string[] | null): RoleGap | null {
+  if (roleIds === null) return null
+  if (holdsReadEverything(roleIds)) return null
+  const holds = holdsIn(roleIds)
   const sources: CoreSource[] = []
   const missing: string[] = []
   for (const source of CORE_SOURCES) {

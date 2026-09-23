@@ -10,9 +10,11 @@
 // - Tenant and scope: the tenant, the scan it rests on, who the step reaches, and
 //   the people and accounts the step names (each with its id where the step holds
 //   the ids beside the names);
-// - What IAMAI observed: the contract's findings, the policies the step tracks, the
-//   tenant policies already delivering the goal, and the tenant policy a correction
-//   changes with its state, the fields that differ and the exclusions it removes;
+// - What IAMAI observed: the contract's findings, a finished policy that went live
+//   with no report-only period IAMAI watched (said on the step by its Readiness tile,
+//   never under What IAMAI found), the policies the step tracks, the tenant policies
+//   already delivering the goal, and the tenant policy a correction changes with its
+//   state, the fields that differ and the exclusions it removes;
 // - Intended result: the settings of every policy the step resolves, translated from
 //   the body its package's JSON sends where it sends one (stepPackage.ts
 //   selectedPolicyBodiesOf), so the briefing never states a setting the JSON does not;
@@ -38,6 +40,7 @@ import { contentTitle } from '../../content/stepTitle.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { stepExportView } from './stepExport.ts'
 import { CONTRACT } from './stepContract.ts'
+import { enforcedUnwatched } from './doneWhen.ts'
 import type { LaneView, StepContract } from './stepContract.ts'
 import { implementationOffered } from './stepJson.ts'
 import { submitsEnforcementOnly, unavailableReason } from '../../roadmap/operations.ts'
@@ -219,8 +222,14 @@ export function aiGroundingText(i: GroundingInput, own = ''): string {
   const currentName = text('policy.current.displayName')
   const currentId = text('policy.current.id')
   const currentState = text('policy.current.state')
+  // A finished policy that went live with no report-only period IAMAI watched
+  // (owner decision 3). The step says it once, on its Readiness tile, and leaves
+  // it out of What IAMAI found; this briefing reads the findings and no tile, so
+  // it said only "IAMAI watched it get there" and an assistant read the rollout
+  // as watched. The tile's own words, once.
+  const unwatched = enforcedUnwatched(i.step) ? [`${CONTRACT.readiness.tiles.observation}: ${CONTRACT.foundEnforcedUnwatched}`] : []
   section(S.observed, [
-    ...labelled(W.observed, c.found.map((f) => `${f.label}: ${f.text}`)),
+    ...labelled(W.observed, [...c.found.map((f) => `${f.label}: ${f.text}`), ...unwatched]),
     ...labelled(W.members, c.members.map((m) => m.line)),
     ...(c.existing !== null ? labelled(W.existing, c.existing.names) : []),
     ...(c.policy

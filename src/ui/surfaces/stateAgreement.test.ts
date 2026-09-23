@@ -50,7 +50,7 @@ function boardOf(run: ReturnType<typeof runFixture>, f: Fixture): (s: Step) => L
  * compared a builder with itself.
  */
 const exportOf = (run: ReturnType<typeof runFixture>, f: Fixture, ctx: StepVarContext): ((s: Step) => ReturnType<typeof stepExportView>) =>
-  exportViewsOf(run.steps, run.schedule.cleanup, f.mapping.breakGlassAnswers ?? null, () => ctx)
+  exportViewsOf(boardReadingsOf(run.steps, run.schedule.cleanup, f.mapping.breakGlassAnswers ?? null), () => ctx)
 const RETIRED = /\b(Blocked|Held|Needs attention|Skipped|Set aside|Healthy)\b/
 
 // ---- 1. export state line = badge, on every demo step (A3 B1) ----

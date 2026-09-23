@@ -27,7 +27,7 @@ import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
 import { contentStepFor, contentStepForPackage } from '../../content/stepTitle.ts'
 import { EMERGENCY_ACCESS_GROUP, isGroupMember, usesTaskAnatomy } from '../../roadmap/stepGroups.ts'
 import { enforcesByStateOnly, stepOperations } from './stepJson.ts'
-import { CONTRACT, FINISHED_READING, isReadinessWork } from './stepContract.ts'
+import { CONTRACT, FINISHED_FINDINGS, isReadinessWork } from './stepContract.ts'
 import { app } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { list } from '../../copy/statements.ts'
@@ -284,8 +284,13 @@ export function policyBarOf(subjects: readonly EmergencySubjectTile[]): string {
   // What a finished rollout left behind is a finding, not a task: the policy is
   // on, and nothing on this step moves the number (stepContract.ts
   // `shortReadingOf`). "Complete the next task shown for each item" promised an
-  // action no card on the step offers.
-  if (open.every((subject) => subject.key === FINISHED_READING)) return 'Every task on this step is complete, and it left something behind.'
+  // action no card on the step offers. A policy that went live with no
+  // report-only period IAMAI watched is the same kind of finding (owner
+  // decision 3): nothing on the step can make that window have happened. So is
+  // a tenant's own policy that differs from the baseline's, and a baseline
+  // grant below the goal's floor: stated, never asked to change (owner,
+  // 2026-09-22).
+  if (open.every((subject) => FINISHED_FINDINGS.has(subject.key))) return 'Every task on this step is complete, and it left something behind.'
   return 'Complete the next task shown for each item.'
 }
 

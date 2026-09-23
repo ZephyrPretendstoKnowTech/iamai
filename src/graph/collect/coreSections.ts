@@ -8,7 +8,7 @@
 // back — but it is never counted as read: `unreadSources()` names it, and
 // Connect lists it under every finished scan, complete or not.
 // Pure; the runner (ui/scan/useScanRunner.ts) decides from it.
-import { isLicenceGate, rolesForSource } from './roles.ts'
+import { isLicenceGate, isPrivilegeDenial, rolesForSource } from './roles.ts'
 import type { ConfigSectionKey, SourceKey, TenantSnapshot } from './types.ts'
 
 export const CORE_SOURCES = ['config:caPolicies', 'users', 'signInEvidence'] as const
@@ -37,7 +37,7 @@ const BUILDABLE = new Set(['ok', 'partial'])
  * A refusal, an error, a licence gate or a section the scan lacks is no reading,
  * and the surface says the section was not read instead of drawing a zero.
  */
-export function sectionHasData(snapshot: TenantSnapshot, key: ConfigSectionKey | SourceKey): boolean {
+export function sectionHasData(snapshot: Pick<TenantSnapshot, 'config' | 'sources'>, key: ConfigSectionKey | SourceKey): boolean {
   const s = (CONFIG_KEYS as string[]).includes(key) ? snapshot.config?.[key as ConfigSectionKey] : snapshot.sources?.[key as SourceKey]
   return BUILDABLE.has(s?.status ?? '')
 }
@@ -93,15 +93,57 @@ const readAsFarAsLicensed = (s: { status: string; reason: string | null }): bool
 export type UnreadSection = {
   /** The registry key, which carries the section's label (pages.app.scan.sections). */
   source: string
-  /** Some of it arrived and some did not, so the plan is built on less than the tenant holds. */
+  /**
+   * Some of it arrived and some did not, so the plan is built on less than the
+   * tenant holds. A sign-in read stopped short of its minimum ('insufficient')
+   * or by an error, with a covered window, returned those hours: that is a read
+   * in part too (readInPart).
+   */
   partial: boolean
+  /**
+   * Graph refused the signed-in account (roles.ts isPrivilegeDenial): the one
+   * reason another account or role could change. An error, a throttled read or
+   * a read stopped short is not the account's doing, and Connect never says it
+   * is. A section the scan lacks altogether has no reason, and is not a refusal.
+   */
+  refused: boolean
+  /**
+   * A read stopped short of its minimum with some hours covered (the sign-in
+   * records, 'insufficient' or an error: readInPart): how many whole hours its
+   * covered window holds. Absent for every other section and state.
+   */
+  coveredHours?: number
+}
+
+/**
+ * Whether a read returned some of a section and not all of it: a read marked
+ * partial, or one that stopped after it had covered some hours, short of the
+ * sign-in read's minimum ('insufficient') or on an error (laneBCore.ts keeps
+ * the window it covered on every stop). The one rule for "read in part": the
+ * unread list below and the plan's evidence (roadmap/evidence.ts
+ * sourceUnreadOf) both ask it, so a read cannot be "not read" on Connect and a
+ * short window in the plan.
+ */
+export function readInPart(s: { status: string; coveredWindow?: unknown }): boolean {
+  return s.status === 'partial' || ((s.status === 'error' || s.status === 'insufficient') && !!s.coveredWindow)
+}
+
+/** One unread section, classified once from the state the scan recorded for it. */
+const unreadOf = (source: string, s: { status: string; reason: string | null; coveredWindow?: { from: string; to: string } | null }): UnreadSection => {
+  const out: UnreadSection = { source, partial: readInPart(s), refused: isPrivilegeDenial(s.reason) }
+  // Stopped short of the minimum with a window: the hours it holds, which the
+  // collector's own stop rule measured the same way (laneBCore.ts: now back to
+  // the oldest record read).
+  if (out.partial && s.status !== 'partial' && s.coveredWindow) out.coveredHours = Math.floor((Date.parse(s.coveredWindow.to) - Date.parse(s.coveredWindow.from)) / 3_600_000)
+  return out
 }
 
 /**
  * Every section the scan did not read in full (a refusal, an error, or a read
  * that returned only part of the section — never a licence gate), in scan
- * order: the configuration sections, then the sources. A core section the scan
- * lacks altogether counts; any other missing key does not.
+ * order: the configuration sections, then the sources, then the directory
+ * audit read. A core section the scan lacks altogether counts; any other
+ * missing key does not.
  *
  * `ok` is the only status that means read. `partial` is reported here for both
  * the configuration sections and the sources, marked as such, because a section
@@ -114,22 +156,28 @@ export function unreadSources(snapshot: TenantSnapshot): UnreadSection[] {
     const s = snapshot.config?.[key]
     const source = `config:${key}`
     if (!s) {
-      if ((CORE_SOURCES as readonly string[]).includes(source)) out.push({ source, partial: false })
+      if ((CORE_SOURCES as readonly string[]).includes(source)) out.push({ source, partial: false, refused: false })
       continue
     }
     if (s.status === 'ok') continue
     if (readAsFarAsLicensed(s)) continue
-    out.push({ source, partial: s.status === 'partial' })
+    out.push(unreadOf(source, s))
   }
   for (const key of SOURCE_KEYS) {
     const s = snapshot.sources?.[key]
     if (!s) {
-      if ((CORE_SOURCES as readonly string[]).includes(key)) out.push({ source: key, partial: false })
+      if ((CORE_SOURCES as readonly string[]).includes(key)) out.push({ source: key, partial: false, refused: false })
       continue
     }
     if (s.status === 'ok') continue
     if (readAsFarAsLicensed(s)) continue
-    out.push({ source: key, partial: s.status === 'partial' })
+    out.push(unreadOf(key, s))
   }
+  // The directory audit read beside the sign-in records (laneB.ts), stored apart
+  // from them: every automatic recovery-test check needs it, so a scan that
+  // tried it and failed says so like any other section. A snapshot from before
+  // the read existed recorded no state for it, and is not said to have failed.
+  const audit = snapshot.recoveryAuditSource
+  if (audit && audit.status !== 'ok' && !readAsFarAsLicensed(audit)) out.push(unreadOf('recoveryAudit', audit))
   return out
 }

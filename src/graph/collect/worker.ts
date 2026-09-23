@@ -356,6 +356,7 @@ async function run(tenantId: string, licenceOverride?: LicenceProfile): Promise<
     snapshot.recoveryDirectoryAudits = evidence.recoveryAudits ?? []
     snapshot.recoveryAuditSource = evidence.recoveryAuditSource
     snapshot.evidencePolicyResults = evidence.policyResults
+    snapshot.evidenceReportOnlyPolicyIds = evidence.reportOnlyPolicyIds
     snapshot.blockedToday = evidence.blockedToday
     snapshot.evidenceUsage = evidence.usage
     snapshot.evidenceAggregates = evidence.aggregates

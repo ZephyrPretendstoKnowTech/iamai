@@ -235,6 +235,10 @@ const VERB_RE = new RegExp(`(?<![\\w-])(${Object.keys(SINGULAR_VERB).join('|')})
 // place · cannot finish until 16 steps wait" is two clauses, and the count in the
 // first does not conjugate the verb of the second.
 const SUBJECT_RE = new RegExp(`(?<![\\d,.])\\b1 (?:of them|(?:[A-Za-z-]+ )?(?:${[...new Set(Object.values(SINGULAR))].join('|')})|[A-Za-z-]+)(?= )([^.;:·]*)`, 'g')
+// A verb a modal, an auxiliary, "not" or "to" governs keeps its base form: "1
+// section could not be read", "1 person needs to register". The count's verb is
+// the modal, which does not bend (Phase 2 audit: "could not be reads").
+const GOVERNED_RE = /\b(?:be|been|being|can|cannot|could|will|would|may|might|must|shall|should|not|to)\s+$/i
 
 function pluralise(text: string): string {
   // The noun a count governs is the word after it, or the word after one
@@ -254,13 +258,16 @@ function pluralise(text: string): string {
     // cohortWords). Its noun is singular; the verb stays with the whole subject.
     if (/^ and \d/.test(rest) || /\d[\d,]* [A-Za-z-]+ and $/.test(whole.slice(0, offset))) return m
     let first = true
+    // The first verb sat under a modal or "to": so does one joined to it by "and" ("can hold and use").
+    let governed = false
     const conjugated = rest.replace(VERB_RE, (v, _w, offset: number) => {
       const before = rest.slice(0, offset)
       // Only a verb directly after the subject, or joined to the first by "and".
       const joined = / and $/.test(before)
       if (first || joined) {
+        if (first) governed = GOVERNED_RE.test(before)
         first = false
-        return SINGULAR_VERB[v] ?? v
+        return governed ? v : (SINGULAR_VERB[v] ?? v)
       }
       return v
     })
@@ -772,6 +779,8 @@ export function renderPages(): string {
           `<p class="sub">Jhope188/ConditionalAccessPolicies</p>` +
           p(cx.baseline.sourceVersion, { commit: '90d9b89', date: 'Sep 8, 2026' }, 'sub') +
           p(cx.baseline.sourceUploaded, {}, 'sub') +
+          // The author check that could not run says so, rather than reading as no update.
+          p(cx.baseline.updateUnknown, {}, 'sub') +
           '</details>' +
           // The author's update, one row per evolving source policy (task 021):
           // the change word, the policy, what it was called, what materially
@@ -789,7 +798,8 @@ export function renderPages(): string {
           `<details open><summary>${fill(cx.baseline.updatedPartial, { date: 'Sep 3, 2026' })}</summary><p class="sub">${esc(cx.baseline.incomplete)}</p></details>` +
           sub('The field names a review row can carry:', esc(Object.values(cx.baseline.diffFields as Record<string, string>).join(' · '))) +
           sub(fill(cx.baseline.loading, { source: exT.baselineName }), '·', esc(cx.baseline.none)) +
-          acts(cx.baseline.change) +
+          // Load while nothing is loaded (connectView.ts baselineTile); Change baseline is the V2 picker's.
+          acts(cx.baseline.load, cx.baseline.change) +
           sub(btn(cx.baseline.howToMakeOne)),
       ) +
       // 3 Scan: the limitations, then the scan in one of its states; the age is the one stored timestamp's.
@@ -799,7 +809,7 @@ export function renderPages(): string {
         fill(cx.scan.complete.state, { age: '57 minutes ago' }),
         // The compact counts the complete scan produced (task 032), each from the
         // authority that already owns it.
-        li(`<b>18</b> ${esc(cx.scan.meta.people)}`, `<b>38</b> ${esc(cx.scan.meta.policies)}`, `<b>27</b> ${esc(cx.scan.meta.steps)}`) +
+        li(fill(cx.scan.meta.people, { n: 18 }), fill(cx.scan.meta.policies, { n: 38 }), fill(cx.scan.meta.steps, { n: 27 })) +
           `<details open><summary>${esc(cx.scan.limitsSummary)}</summary>` +
           ul(cx.scan.limits, {}) +
           sub(esc(cx.scan.limitsMore), `<a>${esc(cx.scan.limitsLink)}</a>`) +
@@ -810,13 +820,18 @@ export function renderPages(): string {
         3,
         cx.scan.title,
         cx.scan.gaps.state,
-        p(cx.scan.gaps.lead, { n: 3 }) +
-          p(cx.scan.gaps.leadFirst, { n: 3 }, 'sub') +
-          li(`Conditional Access policies · ${esc(cx.scan.gaps.notRead)}`, `Named locations · ${esc(cx.scan.gaps.notRead)}`) +
+        p(cx.scan.gaps.lead, { n: 2 }) +
+          p(cx.scan.gaps.leadFirst, { n: 2 }, 'sub') +
+          li(`Conditional Access policies · ${esc(cx.scan.gaps.notRead)}`, `Sign-in records · ${esc(cx.scan.gaps.refused)}`) +
+          // Where the sign-in read stopped short of its minimum with some hours read (connectView.ts, the gaps state).
+          p(cx.scan.gaps.shortWindow, { minimum: 24, hours: 9 }, 'sub') +
+          // The unread sections a plan can be built without, apart from the ones that stopped it.
+          p(cx.scan.gaps.others, { n: 1 }) +
+          li(`Named locations · ${esc(cx.scan.gaps.notRead)}`) +
           sub(fill(cx.scan.gaps.ask, { role: 'Global Reader' }), `<a>${esc(cx.scan.gaps.learn.label)}</a>`) +
           acts(cx.account.signInAnother, cx.scan.complete.again),
       ) +
-      tileHtml(3, cx.scan.title, cx.scan.role.state, p(cx.scan.role.lead, { upn: exT.upn, sections: 'Conditional Access policies, people and sign-in records' }) + li(`${esc(cx.scan.role.row)} · ${fill(cx.scan.role.ask, { role: 'Global Reader' })}`) + acts(cx.account.signInAnother)) +
+      tileHtml(3, cx.scan.title, cx.scan.role.state, p(cx.scan.role.lead, { upn: exT.upn, sections: 'Conditional Access policies, people and sign-in records' }) + p(cx.scan.role.note, {}, 'sub') + li(`${esc(cx.scan.role.row)} · ${fill(cx.scan.role.ask, { role: 'Global Reader' })}`) + acts(cx.account.signInAnother)) +
       tileHtml(3, cx.scan.title, cx.scan.ready.state, p(cx.scan.ready.note, {}) + acts(cx.scan.ready.start)) +
       tileHtml(3, cx.scan.title, fill(cx.scan.scanning.state, { lane: 'reading sign-in records', elapsed: '8s' }), acts(cx.scan.scanning.stop)) +
       // 4 Plan: ready after a complete scan, the last full plan after one with gaps, waiting otherwise.
@@ -830,6 +845,8 @@ export function renderPages(): string {
           acts(cx.plan.ready.open),
       ) +
       tileHtml(4, cx.plan.title, fill(cx.plan.last.state, { date: 'Sep 2' }), acts(fill(cx.plan.last.open, { date: 'Sep 2' }))) +
+      // A tenant the Plan page offers no plan (no Entra ID P1): its own sentence, no counts, no way on.
+      tileHtml(4, cx.plan.title, cx.plan.none.state, '') +
       tileHtml(4, cx.plan.title, cx.plan.waiting.state, ''),
   )
   const si = cx.signIn

@@ -15,7 +15,7 @@ import { applySkips } from '../../roadmap/progress.ts'
 import { cleanupComplete } from '../../roadmap/cleanupDone.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { app, shared } from '../../content/content.ts'
-import { BOARD, SUBSTATUS_WORD, WHEN, boardReadingsOf, boardReasonOf, boardWhenOf, doesntApplyView, groupsFor, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from './planBoard.ts'
+import { BOARD, SUBSTATUS_WORD, WHEN, boardHolds, boardReadingsOf, boardReasonOf, boardWhenOf, doesntApplyView, groupsFor, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from './planBoard.ts'
 import type { BoardItem } from './planBoard.ts'
 import { laneReadings } from './planLanes.ts'
 import type { LaneReading } from './planLanes.ts'
@@ -108,7 +108,10 @@ test('the row, the badge, the bar and the rail derive from one lane reading on e
       const chip = factOf(step)
       assert.ok(chip === null || FACTS.has(chip), `${where}: the chip reads "${chip}"`)
       // The badge is the row's label.
-      const c = stepContract(step, ctx, undefined, lane)
+      // With the board's hold, as the step body builds it (stepBody.ts): the rail
+      // checked below is the one the product draws for a held row.
+      const held = boardHolds(step, lane)
+      const c = stepContract(step, ctx, undefined, lane, undefined, held)
       assert.equal(badgeLabel(c), lane.label, `${where}: the badge says "${badgeLabel(c)}" and the row "${lane.label}"`)
       assert.equal(c.state.fact, chip, `${where}: the badge's fact is not the row's chip`)
       // The bar is keyed by the lane.
@@ -130,11 +133,14 @@ test('the row, the badge, the bar and the rail derive from one lane reading on e
           break
       }
       // The rail: a day the plan schedules, or the placeholder (content review R1); never another word.
+      // A day the board reads as an estimate is one on the rail too, in the When column's words (R4-34).
+      // A row the board holds reads "After prerequisites" there, and nothing else (owner decision 2).
       const rail = railOf(c)
-      assert.ok(DAY.test(rail.metric) || rail.metric === 'Not scheduled' || (lane.lane === 'Ready' && lane.substatus === 'Review' && rail.metric === 'Review now') || (lane.lane === 'Completed' && rail.metric === 'Completed'), `${where}: the rail says "${rail.metric}" beside a row reading "${lane.label}"`)
-      if (lane.lane !== 'Completed' && !(lane.lane === 'Ready' && lane.substatus === 'Review') && c.milestone.at === null && !(c.schedule && c.schedule.at !== null && (c.schedule.class === 'scheduled' || c.schedule.class === 'observing')) && !(c.scheduledOn && lane.lane === 'Ready')) assert.equal(rail.metric, 'Not scheduled', `${where}: an undated step's rail is not the placeholder`)
-      // The When column: a day or the placeholder.
       const when = boardWhenOf(step, waveStartOf(step), lane)
+      if (held) assert.equal(rail.metric, when, `${where}: the rail says "${rail.metric}" under a held row reading "${when}"`)
+      assert.ok(DAY.test(rail.metric.replace(/^Est\. /, '')) || rail.metric === 'Not scheduled' || (held && rail.metric === schedulingWords.waiting) || (lane.lane === 'Ready' && lane.substatus === 'Review' && rail.metric === 'Review now') || (lane.lane === 'Completed' && rail.metric === 'Completed'), `${where}: the rail says "${rail.metric}" beside a row reading "${lane.label}"`)
+      if (!held && lane.lane !== 'Completed' && !(lane.lane === 'Ready' && lane.substatus === 'Review') && c.milestone.at === null && !(c.schedule && c.schedule.at !== null && (c.schedule.class === 'scheduled' || c.schedule.class === 'observing')) && !(c.scheduledOn && lane.lane === 'Ready')) assert.equal(rail.metric, 'Not scheduled', `${where}: an undated step's rail is not the placeholder`)
+      // The When column: a day or the placeholder.
       assert.ok(['Not scheduled', 'Review now', 'Decide now', 'After prerequisites', 'After review', 'Already in place'].includes(when) || /^(?:Est\. )?[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(when), `${where}: When reads "${when}"`)
       // Only where the board also reads the row Completed: a step whose own status
       // is `done` while its lane still has work for it is not a finished row.
