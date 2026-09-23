@@ -21,7 +21,7 @@ import type { Step } from '../../roadmap/types.ts'
 import { customerPlanSteps } from './customerPlanSteps.ts'
 import { boardHolds, boardOf } from './planBoard.ts'
 import { planDates, stepVars } from './stepVars.ts'
-import { initialPicked } from './pickerRows.ts'
+import { initialPicked, printedDefaultLine } from './pickerRows.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { completedRows, deferredRows, doesntApplyRows, floorRows, openDoneRows, phaseRows, planPhases } from './planRows.ts'
 import { cleanupHeadingOf, cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, holdsOf, laneGroupsOf, noPlanLine, phaseDatesOf, postureOf, verificationNoteOf } from './printPlan.ts'
@@ -432,8 +432,19 @@ test('the printed step reads the saved decision, and never prints a picker\'s ow
   const saved = initialPicked(ex, key, { picked: ids.slice(0, 1) }, ids, false)
   assert.deepEqual(saved, { picked: ids.slice(0, 1), matched: [] })
   const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
-  assert.equal(print.match(/decision=\{decisions\?\.\[s\.id\] \?\? null\}/g)?.length, 3, 'a printed step section does not read the saved decision')
+  assert.equal(print.match(/decision=\{decisions\[s\.id\] \?\? null\}/g)?.length, 3, 'a printed step section does not read the saved decision')
+  // The saved decisions reach the document: the prop is required, and the
+  // Export page passes the plan record's. Unwired, a saved 1-of-11 support list
+  // printed as an empty "People Needing Help".
+  assert.ok(/\n\s+decisions: Readonly<Record<string, StepDecision>>\n/.test(print), 'the document can be mounted without the saved decisions')
+  assert.equal(mountOf('decisions'), 'decisions={data.stepDecisions}', 'the Export page does not hand the printed plan the saved decisions')
+  // Nothing saved: the paper says the chips are IAMAI's suggestion and not
+  // saved, rather than an empty heading or the suggestion as the answer.
+  const names = ids.map((id) => p.ctx(campaign).nameOf(id))
+  assert.equal(printedDefaultLine(names), `Suggested by IAMAI, not saved yet: ${names.join(', ')}`)
+  assert.equal(printedDefaultLine([]), 'Not saved yet.', 'a picker with nothing to suggest prints an empty heading')
   const body = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
   assert.match(body, /<Decision key=\{step\.id\} d=\{d\} ex=\{ex\} saved=\{decision\} onDecide=\{onDecide\} stepId=\{step\.id\} ctx=\{ctx\} printing=\{printing\} \/>/, 'the decision is not told it is printing')
-  assert.match(body, /printing && initial\.defaulted \? \[\] : initial\.picked/, 'a printed picker states its own default as the answer')
+  assert.match(body, /printing && initial\.defaulted && !isExclusionsGroup\n?\s*\? <p className="reason">\{printedDefaultLine\(chips\.map\(\(c\) => c\.name\)\)\}<\/p>/, 'a printed picker with nothing saved does not say so')
+  assert.equal(/printing && initial\.defaulted \? \[\]/.test(body), false, 'a printed picker drops its suggestion and prints an empty heading')
 })

@@ -62,7 +62,7 @@ export function PrintPlan({
   stepCtx,
   answers = null,
   tenant,
-  decisions = null,
+  decisions,
 }: {
   tenantName: string
   baselineLabel: string
@@ -98,10 +98,13 @@ export function PrintPlan({
   tenant: Pick<TenantSnapshot, 'capabilities'>
   /**
    * The plan record's saved step decisions, by step id, as the Plan hands each
-   * opened step its own (Plan.tsx `data.stepDecisions`). Absent, a printed
-   * picker states no answer rather than its own suggestions.
+   * opened step its own (Plan.tsx `data.stepDecisions`). Required: while it
+   * was optional the Export page mounted the document without it, and a saved
+   * support list printed as an empty People Needing Help. A picker nobody
+   * saved prints as IAMAI's suggestion, not saved (pickerRows.ts
+   * printedDefaultLine).
    */
-  decisions?: Readonly<Record<string, StepDecision>> | null
+  decisions: Readonly<Record<string, StepDecision>>
 }) {
   void baselinePin
   const today = absoluteDate(new Date().toISOString())
@@ -331,7 +334,7 @@ export function PrintPlan({
           {phaseDatesOf(phaseSteps(w)) && <p className="muted">{phaseDatesOf(phaseSteps(w))}</p>}
           {phaseSteps(w).map((s) => (
             <article key={s.id} className="print-step">
-              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} lane={laneOf(s.id)} blockers={blockersOf(s)} prerequisiteLabel={prerequisiteLabel} decision={decisions?.[s.id] ?? null} printing />
+              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} lane={laneOf(s.id)} blockers={blockersOf(s)} prerequisiteLabel={prerequisiteLabel} decision={decisions[s.id] ?? null} printing />
             </article>
           ))}
         </section>
@@ -345,7 +348,7 @@ export function PrintPlan({
           <h2>{laneWordOf(g.lane)}</h2>
           {g.rows.map((s) => (
             <article key={s.id} className="print-step">
-              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} lane={laneOf(s.id)} blockers={blockersOf(s)} prerequisiteLabel={prerequisiteLabel} decision={decisions?.[s.id] ?? null} printing />
+              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} lane={laneOf(s.id)} blockers={blockersOf(s)} prerequisiteLabel={prerequisiteLabel} decision={decisions[s.id] ?? null} printing />
             </article>
           ))}
         </section>
@@ -358,7 +361,7 @@ export function PrintPlan({
           <h2>{phases.recommended}</h2>
           {floor.map((s) => (
             <article key={s.id} className="print-step">
-              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} lane={laneOf(s.id)} blockers={blockersOf(s)} prerequisiteLabel={prerequisiteLabel} decision={decisions?.[s.id] ?? null} printing />
+              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} lane={laneOf(s.id)} blockers={blockersOf(s)} prerequisiteLabel={prerequisiteLabel} decision={decisions[s.id] ?? null} printing />
             </article>
           ))}
         </section>

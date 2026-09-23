@@ -23,7 +23,7 @@ import type { DirectoryEvidence } from '../../mapping/safetyChoice.ts'
 import type { StepDecision } from '../../roadmap/decisions.ts'
 import { contentLists } from '../../derive/contentLists.ts'
 import { fillText, missingVars } from '../../content/render.ts'
-import { engine, shared } from '../../content/content.ts'
+import { app, engine, shared } from '../../content/content.ts'
 
 export type PickerContext = {
   snapshot: TenantSnapshot
@@ -95,6 +95,18 @@ export function initialPicked(ex: Readonly<Record<string, unknown>>, key: string
   // it, so it is a suggestion (`defaulted`), which a printed plan never states
   // as the answer (ContentStep.tsx SingleDecision).
   return { picked: single ? ids.slice(0, 1) : [...ids], matched: [], defaulted: true }
+}
+
+/**
+ * What a printed picker states where nothing is saved (`initialPicked`
+ * `defaulted`): the chips the picker opens with, named as IAMAI's suggestion
+ * and not saved, or that nothing is saved where it suggests nobody. The print
+ * had listed the suggestion under the decision's heading as if it were the
+ * answer, and then, with the suggestion dropped, printed the heading over
+ * nothing.
+ */
+export function printedDefaultLine(names: readonly string[]): string {
+  return names.length > 0 ? fillText(app.print.pickerSuggested, { names: [...names] }) : app.print.pickerNotSaved
 }
 
 /**

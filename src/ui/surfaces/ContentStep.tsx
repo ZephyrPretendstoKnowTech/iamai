@@ -43,7 +43,7 @@ import { app, content, workflowWords } from '../../content/content.ts'
 import { fillText, whole, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
 import { Button, Callout, Icon, Picker, TabList, onePanelProps } from '../components/index.ts'
 import type { PickerOption } from '../components/index.ts'
-import { exclusionsPickerLabel, filterPickerObjects, initialPicked, matchedNoteOf, pickerUniverse } from './pickerRows.ts'
+import { exclusionsPickerLabel, filterPickerObjects, initialPicked, matchedNoteOf, pickerUniverse, printedDefaultLine } from './pickerRows.ts'
 import type { PickerObject } from './pickerRows.ts'
 import { answerParts, answerText, optionsOf, questionFor, valueSource } from './stepQuestion.ts'
 import type { QuestionOption } from './stepQuestion.ts'
@@ -1069,10 +1069,7 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false 
   // A match the scan made unambiguously opens as a chip saying so (U24); it is the
   // plan's decision only once Save writes it, so the step still reads Decision.
   const initial = initialPicked(ex, key, saved, ids, single)
-  // On paper a picker's own default is not an answer anybody gave (pickerRows.ts
-  // initialPicked `defaulted`): the printed plan had listed every nominated
-  // person under People Needing Help while the saved list held one.
-  const initialIds = isExclusionsGroup ? (savedExclusionsGroup ? [savedExclusionsGroup.id] : []) : printing && initial.defaulted ? [] : initial.picked
+  const initialIds = isExclusionsGroup ? (savedExclusionsGroup ? [savedExclusionsGroup.id] : []) : initial.picked
   const [chips, setChips] = useState<PickerOption[]>(() => initialIds.map((id) => isExclusionsGroup ? optionOf(id) : (initial.matched.includes(id) ? { ...optionOf(id), badge: app.picker.matched } : optionOf(id))))
   const isNetwork = stepId === 's-prereq-trusted-location'
   const [remote, setRemote] = useState(isNetwork && saved?.picked?.length === 0 && saved?.option !== 'office-network')
@@ -1152,8 +1149,14 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false 
             plan already holds — every active admin, everyone with no method,
             everyone on SMS alone (derive/contentLists.ts specialCareIds) —
             and somebody added by hand changes who the plan says needs help,
-            which is a number other steps read (owner, 2026-09-22). */}
-        {(hasPicker || isNetwork) && !remote && <Picker labelledBy={`${base}-decision`} selected={chips} options={results} suggestions={isNetwork ? nominated.slice(0, 3) : nominated} onChange={setChips} onSearch={setQuery} single={single} readOnly={stepId === SPECIAL_CARE_STEP_ID} />}
+            which is a number other steps read (owner, 2026-09-22).
+            On paper, a picker nobody saved (pickerRows.ts initialPicked
+            `defaulted`) says its chips are IAMAI's suggestion and not saved
+            (printedDefaultLine): it had printed them as the answer, and then
+            the heading over nothing. */}
+        {(hasPicker || isNetwork) && !remote && (printing && initial.defaulted && !isExclusionsGroup
+          ? <p className="reason">{printedDefaultLine(chips.map((c) => c.name))}</p>
+          : <Picker labelledBy={`${base}-decision`} selected={chips} options={results} suggestions={isNetwork ? nominated.slice(0, 3) : nominated} onChange={setChips} onSearch={setQuery} single={single} readOnly={stepId === SPECIAL_CARE_STEP_ID} />)}
         {isNetwork && !remote && chips.length === 0 && <div className="decision-fields">
           {universe.length === 0 && <p className="reason">{ctx.snapshot.config.namedLocations?.status === 'ok' ? 'No IP named locations were found in this scan.' : 'Named locations could not be fully read. Scan again to load existing office networks.'}</p>}
           <div className="decision-field"><label htmlFor={`${base}-network-name`}><strong>Office Network Name</strong></label><input type="text" id={`${base}-network-name`} value={networkName} onChange={e => setNetworkName(e.target.value)} /></div>
