@@ -152,6 +152,47 @@ test('6.3 draws the location as its own task in its one frame: the picker saved 
   assert.notEqual(geoOf(runFixture(saved).steps).state.condition, 'needs-decision', 'saving a country under the location id does not release it')
 })
 
+/** The retired step's title: nothing may name it as a step (D3). */
+const RETIRED_TITLE = 'Create or Correct Allowed Countries Location'
+
+/** 6.3 as the Plan draws it on getiamai, curated, the foundation settled and Direction approved: the board's lane, blockers and labels (as step-snapshots do). */
+async function geoOnBoard() {
+  const { withDirectionApproved } = await import('../../roadmap/fixtures/run.ts')
+  const { boardHolds, boardReadingsOf, laneViewFor, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } = await import('./planBoard.ts')
+  const { planDates } = await import('./stepVars.ts')
+  const f = withDirectionApproved(withFoundationSettled(curatedFixture('getiamai')))
+  const r = runFixture(f, {}, null, f.snapshot.asOf)
+  const board = boardReadingsOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
+  const prerequisiteLabel = prerequisiteLabelFor(board.readings)
+  const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot, (s) => boardHolds(s, laneViewFor(s, board)))
+  const geo = geoOf(r.steps)
+  const lane = laneViewFor(geo, board)
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: r.input.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: geo.reportOnlyAt ?? null, scheduledOn: waveStartOf(geo), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
+  const body = stepBodyOf(geo, ctx, { lane, blockers: readinessBlockersOf(board.readings.get(GEO), board.titleOf), prerequisiteLabel })
+  return { f, r, board, geo, lane, ctx, body, prerequisiteLabel }
+}
+
+test('6.3 offers its location task as its implementation: no Unavailable tile or card, and its next line and action name the task', async () => {
+  const { geo, ctx, body } = await geoOnBoard()
+  assert.equal(geo.objectTask?.state.satisfied, false, 'the premise: getiamai has no countries location yet')
+  assert.equal(body.contract.implementation.offered, false, 'the premise: the policy itself cannot be written before its location exists')
+  // Tasks Remaining (the Readiness tiles) and the Implementation box.
+  assert.ok(!body.readiness.tiles.some((t) => t.key === 'implementation'), body.readiness.tiles.map((t) => `${t.label} · ${t.value}`).join(' | '))
+  assert.notEqual(body.empty.key, 'unavailable', 'the Implementation box reads Unavailable')
+  // The next line names the location task, by the task's own title.
+  const task = objectTaskBodyOf(geo, ctx)!
+  const TASK_TITLE = String((task.cs as { taskTitle?: string }).taskTitle)
+  assert.equal(TASK_TITLE, 'Set up the allowed countries location', 'the premise: the title the task list shows')
+  assert.ok(body.contract.milestone.line?.includes(TASK_TITLE), `the next line: ${body.contract.milestone.line}`)
+  // What to do is the task's own action; the implementation's because names the task.
+  assert.equal(body.contract.whatToDo.text, task.contract.whatToDo.text)
+  assert.equal(body.contract.whatToDo.text, 'Create the countries named location the country rule reads, holding exactly the countries people work from.')
+  const because = body.contract.implementation.offered ? null : body.contract.implementation.because
+  assert.ok(because?.includes(TASK_TITLE), `the implementation's because: ${because}`)
+  // Nothing on the opened step names the retired step (D3).
+  const said = [body.contract.whatToDo.text, body.contract.milestone.label, body.contract.milestone.line ?? '', because ?? '', ...body.readiness.tiles.flatMap((t) => [t.label, t.value, t.note ?? ''])]
+  for (const line of said) assert.ok(!line.includes(RETIRED_TITLE), `names the retired step: ${line}`)
+})
 
 test('the countries location package is folded into the countries block package, tasks first, and compiles to the same two packages', () => {
   const dir = 'docs/implementation-content/s-goal-geo-restriction/s-goal-geo-restriction'

@@ -108,7 +108,7 @@ test('the How page\'s check rows carry no forbidden-everywhere string', () => {
 // A policy step's JSON waits on every object the body names; the translator
 // never drops one silently. GetIAMAI's countries policy names the baseline's
 // location; with no such location in the tenant it offers no JSON and names the
-// step that creates one; with the tenant's own countries location, its JSON
+// task that creates one; with the tenant's own countries location, its JSON
 // carries excludeLocations with that id.
 test('GetIAMAI: the countries block waits on the allowed-countries location, then carries it', () => {
   const f = fixture('getiamai')
@@ -117,7 +117,8 @@ test('GetIAMAI: the countries block waits on the allowed-countries location, the
   assert.equal(without.action.json, null, 'no body at all while the location is missing')
   assert.equal(jsonOffered(without), false, 'no JSON is offered while the location is missing')
   const names = missingObjects(without).map((m) => m.title)
-  assert.ok(names.includes('Create or Correct Allowed Countries Location'), `names the step that creates it (${names.join(', ')})`)
+  // The countries policy makes the location itself (Stage 3): it names that task, by the title its task list shows.
+  assert.deepEqual(names, ['Set up the allowed countries location'], 'names the task that creates it')
   // The tenant's own countries location, matching the allowed list.
   const location = { '@odata.type': '#microsoft.graph.countryNamedLocation', id: 'loc-au', displayName: 'Allowed countries', countriesAndRegions: ['AU'], includeUnknownCountriesAndRegions: false, countryLookupMethod: 'clientIpAddress' }
   const named = f.snapshot.config.namedLocations ?? { status: 'ok', reason: null, rows: [] }

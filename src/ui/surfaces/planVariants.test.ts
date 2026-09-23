@@ -57,7 +57,7 @@ import { observationsOf, requiredMembers } from '../../roadmap/tracking.ts'
 import { scannedAt } from '../../roadmap/fixtures/records.ts'
 import { heldForReview } from '../../roadmap/lifecycle.ts'
 import type { Condition, Lifecycle } from '../../roadmap/lifecycle.ts'
-import { implementationOffered, isPreserved, operationsOf, policyHold, unavailableReason } from '../../roadmap/operations.ts'
+import { awaitsOwnObject, implementationOffered, isPreserved, operationsOf, policyHold, unavailableReason } from '../../roadmap/operations.ts'
 import { CONTRACT, railOf, readinessOf, stepContract, stepTrack } from './stepContract.ts'
 import { isHeld } from '../../roadmap/holds.ts'
 import type { StepContract } from './stepContract.ts'
@@ -459,10 +459,15 @@ const INVENTORY: string[] = [
   // reports the coexistence when policies are enforced while defaults are on.
   'object · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · found · no-fix · one-policy · who-none',
   // The countries policy making its own location first (Stage 3): nothing holds
-  // it, its next task is the location, and its policy waits for that object.
-  'policy · create · not-deployed · healthy · open · do:resolve · track · no-implementation · no-found · no-fix · one-policy · who-unknown', // demo-week2+settled/s-goal-geo-restriction
-  // And asking for its work countries, before which nothing of it can be written.
-  'policy · create · not-deployed · needs-decision · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown', // demo/s-goal-geo-restriction
+  // it, its next task is the location, which it offers as its action, and its
+  // policy waits for that object.
+  'policy · create · not-deployed · healthy · open · do:deploy · track · no-implementation · no-found · no-fix · one-policy · who-unknown', // demo-week2+settled/s-goal-geo-restriction
+  // And asking for its work countries, before which nothing of it can be written:
+  // the question is its action, as it is on every step that asks one.
+  'policy · create · not-deployed · needs-decision · open · do:decide · track · no-implementation · no-found · fix · one-policy · who-unknown', // demo/s-goal-geo-restriction
+  // Where it also names an object another step makes, that object holds it, and
+  // the reason it is held stays its action.
+  'policy · create · not-deployed · needs-decision · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown',
   // The High user-risk create written from the pinned policy (q-pin), not the
   // goal's template: an account's own risk is not a reach the scan holds.
   'policy · create · not-deployed · blocked · open · do:resolve · track · implementation · no-found · fix · one-policy · who-unknown', // mid+curated/s-goal-user-risk
@@ -541,9 +546,12 @@ test('§3 every step’s action mode is the authorities’ own answer, never the
     // policy cannot be written is `resolve` even when its status has run ahead;
     // a goal already delivered is `preserve` and never `deploy`; a question
     // waiting on a person is `decide` and never an instruction.
+    // An object the step makes itself is no reason to stop (Stage 3): it is the
+    // step's own next task, so the step reads on as a policy nothing holds.
+    const ownTask = step.objectTask !== undefined && awaitsOwnObject(step)
     const expected =
       step.state.setAside ? 'restore'
-        : unavailableReason(step) !== null ? 'resolve'
+        : unavailableReason(step) !== null && !ownTask ? 'resolve'
           : isPreserved(step) ? 'preserve'
             : step.state.satisfied ? 'preserve'
               : step.state.condition === 'needs-decision' ? 'decide'
