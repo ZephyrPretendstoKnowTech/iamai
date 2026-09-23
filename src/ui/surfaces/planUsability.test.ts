@@ -209,7 +209,8 @@ test('the Plan header offers four useful filters and an estimated finish, keepin
   assert.match(plan, /onClick=\{t\.select\}/)
   assert.match(plan, /aria-label=\{`\$\{t\.label\}: \$\{t\.value\}`\}/)
   assert.match(plan, /aria-expanded=\{showHow\} aria-controls=\{PLAN_HOW_ID\}/)
-  assert.match(plan, /projectedFinish\(finish\.finish, c\.schedule\.estimate\?\.targetEnd \?\? null\)/)
+  // The estimate a surface may state (derive/finish.ts statedEstimate), which the printed cover reads too.
+  assert.match(plan, /projectedFinish\(finish\.finish, statedEstimate\(c\.steps, finish, c\.schedule\)\)/)
   assert.match(plan, /c\.schedule\.derivation\.criticalPath, \.\.\.c\.schedule\.derivation\.relaxed/)
   assert.match(plan, /data\.setFreeze\(freezeInput\.freeze\)/)
   assert.match(plan, /freezeInput\.reason === 'needsTo' \? PP\.settings\.freezeNeedsTo : PP\.settings\.freezeOrder/)

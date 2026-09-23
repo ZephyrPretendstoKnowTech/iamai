@@ -751,6 +751,8 @@
       "line1": "{steps} steps · {inPlace} in place · finishes {finish} at pace · {weeks}",
       "line1Committed": "{steps} steps · {inPlace} in place · finishes {finish} at pace · committed {committed} · {weeks}",
       "line1CannotFinish": "{steps} steps · {inPlace} in place · cannot finish until {blocker}",
+      "$commentLine1Undated": "The header line where nothing holds the plan and nothing still open is dated (derive/finish.ts statedEstimate, derive/planHeader.ts): every step the schedule's estimate measured is done or deferred, so no finish is stated. The printed cover reads it.",
+      "line1Undated": "{steps} steps · {inPlace} in place",
       "lengthTip": "The plan is {weeks} because {constraint}.",
       "lengthTipEstimate": "Once nothing is held, the plan is about {weeks} because {constraint}.",
       "now": "now",

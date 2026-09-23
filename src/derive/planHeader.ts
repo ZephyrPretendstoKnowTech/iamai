@@ -29,7 +29,7 @@ export type HeaderInput = {
   startedFrom: string | null
 }
 
-type PlanCopy = { line1: string; line1Committed: string; line1CannotFinish: string; line1Started: string; startControl: string }
+type PlanCopy = { line1: string; line1Committed: string; line1CannotFinish: string; line1Undated: string; line1Started: string; startControl: string }
 const copy = (): PlanCopy => pages.plan as unknown as PlanCopy
 
 /** The first header line, in the branch the plan is in. */
@@ -40,6 +40,9 @@ export function headerLine1(i: HeaderInput): string {
   // The same estimate / committed pair the Plan's Projected finish tile shows (derive/finish.ts projectedFinish).
   const pair = projectedFinish(i.finish, i.estimate ?? null)
   const shown = pair.estimate ?? i.finish
+  // Nothing dates the plan and nothing holds it (derive/finish.ts statedEstimate):
+  // the counts alone, never "cannot finish until" with no clause after it.
+  if (shown === null && i.constraint.length === 0) return fillText(P.line1Undated, { steps: i.steps, inPlace: i.inPlace })
   if (shown === null) return fillText(P.line1CannotFinish, { steps: i.steps, inPlace: i.inPlace, weeks: i.weeks, blocker: i.constraint })
   if (i.startedFrom !== null) return fillText(P.line1Started, { steps: i.steps, done: i.inPlace, start: absoluteDate(i.startedFrom), finish: absoluteDate(shown) })
   if (pair.estimate !== null && pair.committed !== null) return fillText(P.line1Committed, { steps: i.steps, inPlace: i.inPlace, finish: absoluteDate(pair.estimate), committed: absoluteDate(pair.committed), weeks: i.weeks })

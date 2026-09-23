@@ -13,6 +13,7 @@ import { fillText } from '../../content/render.ts'
 import { doesntApplyRows } from './planRows.ts'
 import { FINISH } from '../../copy/statements.ts'
 import type { PlanFinish } from '../../derive/finish.ts'
+import { absoluteDate, dateRange } from '../../copy/dates.ts'
 import { stepBodyOf } from './stepBody.ts'
 import type { StepVarContext } from './stepVars.ts'
 import type { LaneView, PrerequisiteBlocker, PrerequisiteLabel, ReadinessTile } from './stepContract.ts'
@@ -96,4 +97,16 @@ export function doesntApplyLinesOf(steps: readonly Step[]): string[] {
  */
 export function constraintOf(finish: PlanFinish, titleOf: (id: string) => string): string {
   return [FINISH.waiting(finish.waiting), FINISH.unwritable(finish.unwritable.count, finish.unwritable.waitsOn.map(titleOf), finish.unwritable.named)].filter((c) => c.length > 0).join(' · ')
+}
+
+/**
+ * The cover's Plan dates: the start to the finish the calendar sets; the start
+ * and what holds the plan while anything required is held; the start alone
+ * where nothing open is dated. It used to fall back to `schedule.targetEnd`,
+ * the end the generator drew before the operator's deferrals, so a plan whose
+ * remaining dated work was all deferred printed an end from work nobody will do.
+ */
+export function coverDatesOf(start: string, finish: Pick<PlanFinish, 'finish' | 'held'>, constraint: string): string {
+  if (finish.finish !== null) return dateRange(start, finish.finish)
+  return finish.held && constraint.length > 0 ? `${absoluteDate(start)} · ${constraint}` : absoluteDate(start)
 }
