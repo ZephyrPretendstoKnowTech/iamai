@@ -373,8 +373,9 @@ test('the cross-tenant collector requests its registry row\'s path and the paths
 })
 
 // Graph leaves signInActivity out of a user it returns when that account has
-// never signed in (https://learn.microsoft.com/graph/api/resources/user). On a
-// read that selected it and succeeded, a missing property is "never signed in",
+// never signed in, or last signed in before April 2020
+// (https://learn.microsoft.com/graph/api/resources/user). On a read that
+// selected it and succeeded, a missing property is "no sign-in on record",
 // never "not read" (v2-research/dormant.md §5).
 test('a successful read marks sign-in activity read for every account, including one Graph returns without signInActivity', async () => {
   const result = await withFetch({

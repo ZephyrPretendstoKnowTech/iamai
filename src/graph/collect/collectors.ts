@@ -254,10 +254,12 @@ function mapRegistration(raw: unknown): RegistrationRow {
 
 // `activityRead` is whether this read selected signInActivity and succeeded.
 // On such a read Graph leaves the property out for an account that never
-// signed in (https://learn.microsoft.com/graph/api/resources/user), so its
-// absence is "never signed in", read like every other account. Judged per row
-// instead, those accounts read as "not read" and left the dormant step on
-// every real tenant (docs/plans/roadmap-flow/v2-research/dormant.md §5).
+// signed in, and for one that last signed in before April 2020
+// (https://learn.microsoft.com/graph/api/resources/user), so its absence is
+// "no sign-in on record": read like every other account, with no last sign-in.
+// Both kinds are dormant. Judged per row instead, those accounts read as "not
+// read" and left the dormant step on every real tenant
+// (docs/plans/roadmap-flow/v2-research/dormant.md §5).
 function mapUser(raw: unknown, activityRead: boolean): UserRow {
   const u = raw as Record<string, unknown>
   const activity = (u.signInActivity ?? null) as Record<string, unknown> | null
