@@ -4,7 +4,7 @@
 // scale is laneBStream.test.ts.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { aggregate, deriveAggregates, deriveBlockedToday, derivePolicyResults, deriveReportOnlyPolicyIds, deriveUsageSignals, mapRecoveryAudit, mapRow, recoveryAuditRequest } from './laneBCore.ts'
+import { aggregate, deriveAggregates, deriveBlockedToday, derivePolicyResults, deriveReportOnlyPolicyIds, deriveUsageSignals, lastEnforcedOf, mapRecoveryAudit, mapRow, noteEnforced, recoveryAuditRequest } from './laneBCore.ts'
 import { runLaneB } from './signInStream.ts'
 import type { LaneBDeps } from './signInStream.ts'
 import { deriveScenarioEvidence } from '../../derive/evidence.ts'
@@ -295,6 +295,17 @@ test('each person keeps only the newest passkey sign-ins as recovery candidates,
   // Within one second, the first records seen are kept, as a sort of every candidate would keep them.
   const tied = Array.from({ length: 2 * n + 3 }, (_, i) => passkey(`tie-${i}`, 5))
   assert.deepEqual(aggregate(tied).account.recoveryCandidates!.map((c) => c.eventId), tied.slice(0, n).map((r) => r.id))
+})
+
+test('noteEnforced keeps the latest enforced record per policy, in any order, and is lastEnforcedOf a record at a time', () => {
+  const applied = (hoursAgo: number, result: string) => row({ hoursAgo, appliedConditionalAccessPolicies: [{ id: 'p1', result }, { id: 'p2', result: 'reportOnlySuccess' }] })
+  const rows = [applied(30, 'success'), applied(5, 'failure'), applied(2, 'reportOnlyFailure'), applied(12, 'success')]
+  for (const order of [rows, [...rows].reverse()]) {
+    const held = new Map<string, string>()
+    for (const r of order) noteEnforced(held, r)
+    assert.deepEqual([...held], [['p1', iso(5)]], 'report-only results are not enforced')
+    assert.deepEqual(held, lastEnforcedOf(order))
+  }
 })
 
 test('the recovery audit read stays inside Entra directory-audit retention (30 days)', () => {

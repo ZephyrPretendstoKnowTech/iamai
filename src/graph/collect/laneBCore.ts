@@ -504,14 +504,17 @@ export const isEnforcedResult = (r: string | undefined): boolean => r === 'succe
  */
 export function lastEnforcedOf(rows: Iterable<StoredSignIn>): Map<string, string> {
   const lastEnforced = new Map<string, string>()
-  for (const row of rows) {
-    for (const applied of row.appliedConditionalAccessPolicies ?? []) {
-      if (!applied.id || !isEnforcedResult(applied.result)) continue
-      const at = lastEnforced.get(applied.id)
-      if (at === undefined || row.createdDateTime > at) lastEnforced.set(applied.id, row.createdDateTime)
-    }
-  }
+  for (const row of rows) noteEnforced(lastEnforced, row)
   return lastEnforced
+}
+
+/** lastEnforcedOf's rule for one record: the sign-in read (signInStream.ts) keeps it as it folds. */
+export function noteEnforced(lastEnforced: Map<string, string>, row: StoredSignIn): void {
+  for (const applied of row.appliedConditionalAccessPolicies ?? []) {
+    if (!applied.id || !isEnforcedResult(applied.result)) continue
+    const at = lastEnforced.get(applied.id)
+    if (at === undefined || row.createdDateTime > at) lastEnforced.set(applied.id, row.createdDateTime)
+  }
 }
 
 // Per-policy applied results across the covered window.

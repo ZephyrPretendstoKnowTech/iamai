@@ -16,7 +16,7 @@ import { DEDUP_HORIZON_MS, MIN_COVERAGE_HOURS, SIGN_IN_PAGE_SIZE, SIGN_IN_REANCH
 import { GraphResponseShapeError, SectionDisabledError } from './http.ts'
 import { absolute } from '../../copy/dates.ts'
 import { scenarioFold } from '../../derive/evidence.ts'
-import { aggregateFold, aggregatesFold, blockedTodayFold, isEnforcedResult, mapRow, policyResultsFold, reportOnlyIdsFold, usageFold } from './laneBCore.ts'
+import { aggregateFold, aggregatesFold, blockedTodayFold, mapRow, noteEnforced, policyResultsFold, reportOnlyIdsFold, usageFold } from './laneBCore.ts'
 import type { LaneBProgress, LaneBStats, SignInEvidence } from './laneBCore.ts'
 import type { StoredSignIn } from './types.ts'
 
@@ -84,13 +84,7 @@ export function evidenceFold(compliantOwners: ReadonlySet<string> | null = null)
   const close = (): void => {
     if (open.length === 0) return
     const at = open[0].createdDateTime
-    for (const row of open) {
-      for (const applied of row.appliedConditionalAccessPolicies ?? []) {
-        if (!applied.id || !isEnforcedResult(applied.result)) continue
-        const held = running.get(applied.id)
-        if (held === undefined || row.createdDateTime > held) running.set(applied.id, row.createdDateTime)
-      }
-    }
+    for (const row of open) noteEnforced(running, row)
     for (const row of open) {
       for (const reducer of reducers) reducer.add(row)
       recent.set(row.id, Date.parse(row.createdDateTime))
