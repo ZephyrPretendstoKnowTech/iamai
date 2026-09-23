@@ -6,7 +6,7 @@ import { calendarDay } from '../copy/dates.ts'
 import { cleanupArtifactLines, stepArtifactLines } from './artifactLines.ts'
 import { estimatedDay, scheduledEventOf, shownDay } from './stepSchedule.ts'
 import type { ScheduledTransition } from './stepSchedule.ts'
-import type { CleanupExport, Step, StepView } from './types.ts'
+import type { CleanupExport, ExportOrder, Step, StepView } from './types.ts'
 
 /** What a scheduled day is for, in the Plan rail's own words (pages.app.plan.stepContract.railTransition). */
 const TRANSITION = (app.plan as unknown as { stepContract: { railTransition: Partial<Record<ScheduledTransition, string>> } }).stepContract.railTransition
@@ -58,10 +58,50 @@ export function foldIcsLine(line: string): string {
 
 const fold = foldIcsLine
 
-export function buildIcs(steps: Step[], tenantName: string, planId: string, view: StepView, cleanup: CleanupExport[] = []): string {
+/**
+ * The calendar. `order` is the Plan board's (ui/surfaces/planBoard.ts
+ * boardOrderOf; roadmap flow V1 decision 8): the entries follow the board's
+ * sections and rows, a Cleanup row where the board draws it, and each entry's
+ * title opens with the number its row has there ("3.2"). Without it the entries
+ * are the steps in the engine's order, then the Cleanup rows, unnumbered. The
+ * days are the schedule's either way: the order moves no date.
+ */
+export function buildIcs(steps: Step[], tenantName: string, planId: string, view: StepView, cleanup: CleanupExport[] = [], order: ExportOrder | null = null): string {
   const lines: string[] = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//IAMAI//Conditional Access rollout plan//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', fold(`X-WR-CALNAME:${escape(`${tenantName} Conditional Access rollout`)}`)]
   const stamp = (): string => `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)}Z`
-  for (const s of steps) {
+  // An entry's title after the number its row has on the board, where the board numbers it.
+  const numbered = (id: string, title: string): string => {
+    const n = order?.numberOf(id) ?? null
+    return n === null ? title : `${n} ${title}`
+  }
+  // Cleanup rows are calendar entries on their day (E4); a row marked done is finished, like a done step.
+  // Cleanup follows the last enforcement, so while work the plan requires is held
+  // its days are dated after a rollout that cannot finish, and it books nothing:
+  // the row's own `undated`, the reading the Export page built its view from
+  // (stepExport.ts exportCleanupViewsOf), not a second reading of the steps.
+  const bookCleanup = (c: CleanupExport): void => {
+    if (c.done || c.undated) return
+    lines.push('BEGIN:VEVENT')
+    lines.push(`UID:${planId}-cleanup-${c.kind}@iamai`)
+    lines.push(stamp())
+    // The row's day as its When column states it (cleanupExport.ts cleanupWhen reads the date part).
+    lines.push(`DTSTART;VALUE=DATE:${icsDate(c.day.slice(0, 10))}`)
+    lines.push(`DTEND;VALUE=DATE:${icsDate(dayAfter(c.day.slice(0, 10)))}`)
+    lines.push(fold(`SUMMARY:${escape(numbered(`cleanup-${c.kind}`, c.title))}`))
+    lines.push(fold(`DESCRIPTION:${escape(cleanupArtifactLines(c).join('\n'))}`))
+    lines.push('END:VEVENT')
+  }
+  const entries: ({ id: string; step: Step; row: null } | { id: string; step: null; row: CleanupExport })[] = [
+    ...steps.map((s) => ({ id: s.id, step: s, row: null })),
+    ...cleanup.map((c) => ({ id: `cleanup-${c.kind}`, step: null, row: c })),
+  ]
+  if (order) entries.sort((a, b) => order.rankOf(a.id) - order.rankOf(b.id))
+  for (const entry of entries) {
+    if (entry.row !== null) {
+      bookCleanup(entry.row)
+      continue
+    }
+    const s = entry.step
     // The step's one dated event (roadmap/stepSchedule.ts): the day its next
     // milestone is placed on and what that day is for — report-only creation (a
     // readiness-gated create included; its enforcement stays undated), a change, an
@@ -103,7 +143,7 @@ export function buildIcs(steps: Step[], tenantName: string, planId: string, view
     // Method Registration's report-only create on Aug 31 as a fixed day under a
     // row reading "Est. Aug 31, 2026" (R4-34).
     const estimate = estimatedDay(s) ? shownDay(event.start, true, 'label') : null
-    lines.push(fold(`SUMMARY:${escape([v.title, action, estimate].filter((x): x is string => typeof x === 'string' && x.length > 0).join(' · '))}`))
+    lines.push(fold(`SUMMARY:${escape(numbered(s.id, [v.title, action, estimate].filter((x): x is string => typeof x === 'string' && x.length > 0).join(' · ')))}`))
     // The calendar entry is the runbook: what the step says on screen, in the
     // order the screen states it (roadmap/artifactLines.ts). Where it is, what
     // comes next, who it reaches, its portal path, what is holding it, its
@@ -113,23 +153,6 @@ export function buildIcs(steps: Step[], tenantName: string, planId: string, view
     // step booked into a person's calendar read as work for that day with the
     // prerequisite it waits on named nowhere in the file.
     lines.push(fold(`DESCRIPTION:${escape(stepArtifactLines(v).join('\n'))}`))
-    lines.push('END:VEVENT')
-  }
-  // Cleanup rows are calendar entries on their day (E4); a row marked done is finished, like a done step.
-  // Cleanup follows the last enforcement, so while work the plan requires is held
-  // its days are dated after a rollout that cannot finish, and it books nothing:
-  // the row's own `undated`, the reading the Export page built its view from
-  // (stepExport.ts exportCleanupViewsOf), not a second reading of the steps.
-  for (const c of cleanup) {
-    if (c.done || c.undated) continue
-    lines.push('BEGIN:VEVENT')
-    lines.push(`UID:${planId}-cleanup-${c.kind}@iamai`)
-    lines.push(stamp())
-    // The row's day as its When column states it (cleanupExport.ts cleanupWhen reads the date part).
-    lines.push(`DTSTART;VALUE=DATE:${icsDate(c.day.slice(0, 10))}`)
-    lines.push(`DTEND;VALUE=DATE:${icsDate(dayAfter(c.day.slice(0, 10)))}`)
-    lines.push(fold(`SUMMARY:${escape(c.title)}`))
-    lines.push(fold(`DESCRIPTION:${escape(cleanupArtifactLines(c).join('\n'))}`))
     lines.push('END:VEVENT')
   }
   lines.push('END:VCALENDAR')

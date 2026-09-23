@@ -43,7 +43,7 @@ import { absoluteDate, toCsv } from '../format.ts'
 import { Button, Callout, Card, PageTip } from '../components/index.ts'
 import { PrintPlan } from './PrintPlan.tsx'
 import { exportAnnouncementOf, exportCleanupViewsOf, exportHoldOf, exportViewsOf } from './stepExport.ts'
-import { boardReadingsOf } from './planBoard.ts'
+import { boardOf, boardOrderOf } from './planBoard.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 
@@ -170,7 +170,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
     // An uploaded baseline is recorded as an upload, not attributed to the author.
     const baselineSource = await planBaselineSource(baseline)
     // The saved checkpoints travel (each Cleanup row's Done is one, E3), then this save's own.
-    const file = buildPlanFile({ decisions: data.recordForExport ?? undefined, planId, snapshot, operator, baselineSource, mapping: data.mapping, steps, checkpoints: [...(data.checkpoints as Checkpoint[]), checkpoint], schedule: { startDate: data.startDate ?? schedule.start, band: data.band ?? undefined, freeze: data.freeze }, stepDecisions: data.stepDecisions, confirmations: data.confirmations, startedAt: data.startedAt ?? undefined, signature: data.signature })
+    const file = buildPlanFile({ decisions: data.recordForExport ?? undefined, planId, snapshot, operator, baselineSource, mapping: data.mapping, steps, order, checkpoints: [...(data.checkpoints as Checkpoint[]), checkpoint], schedule: { startDate: data.startDate ?? schedule.start, band: data.band ?? undefined, freeze: data.freeze }, stepDecisions: data.stepDecisions, confirmations: data.confirmations, startedAt: data.startedAt ?? undefined, signature: data.signature })
     // The person's own working state, to load back on this tenant: names in full (the card says so).
     exportDownload(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.json`, JSON.stringify(file, null, 2), 'application/json', unredactedFrom('plan-file'))
   }
@@ -230,8 +230,12 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   // the same variables the Plan builds for a step, then the same view. A step
   // the board holds lends no day to the plan-wide dates or the announcement
   // (stepExport.ts exportHoldOf; owner decision 2).
-  // The board, built once (planBoard.ts boardReadingsOf): the hold and the views read it.
-  const board = boardReadingsOf(steps, schedule.cleanup, data.mapping?.breakGlassAnswers ?? null)
+  // The board, built once (planBoard.ts boardOf, on boardReadingsOf): the hold and the views read it.
+  const board = boardOf(steps, schedule.cleanup, data.mapping?.breakGlassAnswers ?? null)
+  // The board's order and numbers (planBoard.ts boardOrderOf; roadmap flow V1
+  // decision 8): the calendar and the plan file list steps as the Plan draws
+  // them, each numbered by its section and row. The dates stay the schedule's.
+  const order = boardOrderOf(board.rows.map((r) => r.item))
   const held = exportHoldOf(board)
   const dates = planDates(steps, schedule.start, coverage.organisation.naming, snapshot, held)
   const stepCtx = (s: typeof steps[number]): StepVarContext => ({ snapshot, mapping: data.mapping ?? ({ breakGlassUserIds: [], serviceAccountUserIds: [] } as never), nameOf, signature: data.signature, operatorId, now: snapshot.asOf, ...dates, reportOnlyAt: s.reportOnlyAt ?? null, groups: data.groups, directory: data.directory, naming: coverage.organisation.naming })
@@ -322,7 +326,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
         <Card className="export-card" title={P.cards.calendar[0]}>
           <p className="reason">{P.cards.calendar[1]}</p>
           <p className="actions">
-            <Button variant="secondary" onClick={() => exportDownload(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.ics`, buildIcs(steps, tenantName, planId, view, cleanupViews), 'text/calendar', runbookRedaction(data.mapping))}>
+            <Button variant="secondary" onClick={() => exportDownload(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.ics`, buildIcs(steps, tenantName, planId, view, cleanupViews, order), 'text/calendar', runbookRedaction(data.mapping))}>
               {buttons('calendar')[0]}
             </Button>
           </p>
