@@ -50,6 +50,7 @@ import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import { cleanupComplete } from '../../roadmap/cleanupDone.ts'
 import { cleanupEntry } from './cleanupExport.ts'
 import { cleanupTitleOf } from './stepContract.ts'
+import { sectionPositions } from '../../roadmap/stepGroups.ts'
 
 /** The When column's placeholder where a row has no date (A1b: a date, or this), and the Up Next label's tail words. */
 export const WHEN = (pages.plan as unknown as { when: { none: string; after: string; afterPrerequisites: string } }).when
@@ -984,6 +985,41 @@ export function asideGroupsFor(items: readonly BoardItem[]): BoardGroup[] {
  */
 export function rowNumbersOf(items: readonly Pick<BoardItem, 'id'>[], groups: readonly StepGroup[] = STEP_GROUPS): ReadonlyMap<string, number> {
   return groupPositions(items.map((i) => i.id), groups)
+}
+
+/** The number each section shows over the board's WHOLE row set (stepGroups.ts sectionPositions), keyed by registry key. */
+export function sectionNumbersOf(items: readonly Pick<BoardItem, 'id'>[], groups: readonly StepGroup[] = STEP_GROUPS): ReadonlyMap<string, number> {
+  return sectionPositions(items.map((i) => i.id), groups)
+}
+
+/** One section of the board as All work draws it whole: the drawn group, its registry key and number, and whether the board reads it finished. */
+export type BoardSection = { key: string | null; number: number | null; group: BoardGroup; finished: boolean }
+
+/**
+ * The board's sections in the board's order, for a surface that states the
+ * whole plan off the screen: the printed plan and the exports (roadmap flow V1
+ * decision 8: they use the screen's sections and numbers).
+ *
+ * They are All work's own groups (`allWorkGroups`) with every finished section
+ * included, so a section's rows, their order, its title and its line are the
+ * ones the board draws, and nothing here decides them again. Each stands in its
+ * registry place, finished or not: sections never move (owner, roadmap flow V2),
+ * and a finished one folds where it is rather than sinking below the rest.
+ * Handed the board's WHOLE row set. Pure.
+ */
+export function boardSectionsOf(items: readonly BoardItem[], groups: readonly StepGroup[] = STEP_GROUPS): BoardSection[] {
+  const { active, completed } = allWorkGroups(items, { completed: true, open: null }, groups)
+  const numbers = sectionNumbersOf(items, groups)
+  const place = (g: BoardGroup): number => {
+    const at = groups.findIndex((x) => x.key === groupKeyOf(g, groups))
+    return at === -1 ? groups.length : at
+  }
+  return [...active.map((group) => ({ group, finished: false })), ...completed.map((group) => ({ group, finished: true }))]
+    .sort((a, b) => place(a.group) - place(b.group))
+    .map(({ group, finished }) => {
+      const key = groupKeyOf(group, groups)
+      return { key, number: key === null ? null : numbers.get(key) ?? null, group, finished }
+    })
 }
 
 /**

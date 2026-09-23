@@ -19,12 +19,13 @@ import { notPeopleIds } from '../../derive/sets.ts'
 import { activePeopleIds } from '../../derive/population.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { customerPlanSteps } from './customerPlanSteps.ts'
-import { boardHolds, boardOf } from './planBoard.ts'
+import { allWorkGroups, boardHolds, boardOf, groupKeyOf, groupSummary, rowNumbersOf } from './planBoard.ts'
+import { DIRECTION_GROUP, STEP_GROUPS, groupOf } from '../../roadmap/stepGroups.ts'
 import { planDates, stepVars } from './stepVars.ts'
 import { initialPicked, printedDefaultLine } from './pickerRows.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { completedRows, deferredRows, doesntApplyRows, floorRows, openDoneRows, phaseRows, planPhases } from './planRows.ts'
-import { cleanupHeadingOf, cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, holdsOf, laneGroupsOf, noPlanLine, phaseDatesOf, postureOf, verificationDatesOf, verificationNoteOf } from './printPlan.ts'
+import { completedRows, deferredRows, doesntApplyRows, floorRows, phaseRows, planPhases } from './planRows.ts'
+import { cleanupDatesOf, cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, finishedWarningsOf, holdsOf, noPlanLine, phaseDatesOf, postureOf, printSectionsOf, verificationDatesOf, verificationNoteOf } from './printPlan.ts'
 import { scheduleOf, scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { absolute, absoluteDate, dateRange, setDisplayTimeZone } from '../../copy/dates.ts'
@@ -94,10 +95,12 @@ test('a finished policy prints the warnings its opened step keeps: enforced belo
   assert.ok(hostileSaid.some((w) => w.startsWith('Verify Emergency Access:')), `the recovery test it went ahead of is not printed: ${hostileSaid.join(' | ')}`)
   // A finished step with nothing to warn about prints its line alone.
   for (const l of lines) for (const t of l.warnings) assert.equal(t.tone, 'warn', `${l.id}: a tile that is not a warning printed under a finished step`)
-  // The document draws these lines, and nothing of its own beside them.
+  // The document draws these lines, and nothing of its own beside them: a
+  // Completed row of an open section, and the Completed rows of a finished one.
   const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
-  assert.match(print, /completedLinesOf\(done, printBoard, stepCtx\)/, 'the Completed section does not read the warnings a finished step keeps')
-  assert.match(print, /l\.warnings\.map\(/, 'the Completed section drops the warnings it read')
+  assert.match(print, /completedLinesOf\(\[s\], printBoard, stepCtx\)/, 'a Completed row does not read the warnings a finished step keeps')
+  assert.match(print, /finishedWarningsOf\(sec, printBoard, stepCtx\)/, 'a finished section does not read the warnings its finished steps keep')
+  assert.match(print, /warnings\.map\(/, 'a Completed line drops the warnings it read')
 })
 
 // ---- No Entra ID P1: no plan on paper either ----
@@ -186,12 +189,12 @@ test('Completed on paper is the board\'s Completed lane, and a delivered step th
   assert.equal(legacy.status, 'done', 'the premise: the policy is delivered')
   assert.equal(p.board.laneOf(legacy.id).label, 'Ready · Decision', 'the premise: the board still has a decision for it')
   assert.equal(completedRows(p.steps, p.board.laneOf).some((s) => s.id === legacy.id), false, 'a step the board reads Ready is listed as Completed')
-  assert.ok(openDoneRows(p.steps, p.board.laneOf).some((s) => s.id === legacy.id), 'the delivered step with an open decision prints nowhere in full')
-  const groups = laneGroupsOf(openDoneRows(p.steps, p.board.laneOf), p.board.laneOf)
-  assert.ok(groups.some((g) => g.lane === 'Ready' && g.rows.some((s) => s.id === legacy.id)), 'it does not print under its own lane')
+  // It prints in full, in its own section, under the lane the board reads (printPlan.ts printSectionsOf).
+  const row = printSectionsOf(p.board).flatMap((s) => s.rows).find((r) => r.id === legacy.id)
+  assert.equal(row?.print, 'body', 'the delivered step with an open decision prints nowhere in full')
+  assert.equal(row?.lane.label, p.board.laneOf(legacy.id).label, 'it does not print under its own lane')
   const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
-  assert.match(print, /\.\.\.openDoneRows\(steps, laneOf\)/, 'the print does not draw the delivered steps the board still has work for')
-  assert.match(print, /const done = completedRows\(steps, laneOf\)/, 'the Completed section decides Completed itself')
+  assert.match(print, /const done = completedRows\(steps, laneOf\)/, 'the timeline decides Completed itself')
 })
 
 test('the cover\'s Completed and To do lists are the rows the header counts, Cleanup included', () => {
@@ -279,9 +282,9 @@ test('a deferred floor step prints once, in the Deferred list, never in full und
   assert.equal(p.board.laneOf(floorStep.id).lane, 'Deferred', 'the premise: the board reads it Deferred')
   const deferred = deferredRows(p.steps, p.board.laneOf)
   for (const id of ['s-goal-register-info-protected', 's-goal-block-auth-transfer']) assert.ok(deferred.some((s) => s.id === id), `${id} is not in the Deferred list`)
-  // The floor group the print draws is floorRows less the rows it lists as lines (PrintPlan.tsx).
+  // The document prints the deferred floor step as its line, in its section (printPlan.ts printSectionsOf).
   const deferredIds = new Set(deferred.map((s) => s.id))
-  assert.equal(floorRows(p.steps).filter((s) => !deferredIds.has(s.id)).some((s) => s.id === floorStep.id), false, 'the deferred floor step still prints in the floor\'s group')
+  assert.equal(printSectionsOf(p.board).flatMap((s) => s.rows).find((r) => r.id === floorStep.id)?.print, 'line', 'the deferred floor step still prints in full')
   // Every step the board reads Deferred is in the list, and nothing else is.
   const boardDeferred = p.steps.filter((s) => !s.doesntApply && p.board.laneOf(s.id).lane === 'Deferred').map((s) => s.id).sort()
   assert.deepEqual([...deferredIds].sort(), boardDeferred, 'the Deferred list and the board\'s Deferred lane differ')
@@ -301,10 +304,10 @@ test('a deferred floor step prints once, in the Deferred list, never in full und
     assert.ok(listedDone.has(s.id), `${s.id} is not listed under Completed, where the board reads it`)
     assert.equal(listedDeferred.has(s.id), false, `${s.id} is listed under Completed and again under Deferred`)
   }
-  // No row the document lists as a line, Completed or Deferred, prints in full elsewhere.
+  // No row the document lists as a line, Completed or Deferred, is dated under a phase of the timeline.
   const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
   assert.match(print, /const listed = new Set\(\[\.\.\.done, \.\.\.deferred\]\.map\(\(s\) => s\.id\)\)/, 'the print decides for itself which rows it lists as lines')
-  assert.equal(print.match(/\.filter\(notListed\)/g)?.length, 3, 'a phase, the undated rows or the floor\'s group prints a row the document lists as a line')
+  assert.equal(print.match(/\.filter\(notListed\)/g)?.length, 1, 'the timeline dates a row the document prints as a line')
 })
 
 // ---- What holds the plan, on the cover ----
@@ -401,7 +404,7 @@ test('a printed Cleanup row says what the board says it waits for', () => {
   assert.match(drill.waitingFor ?? '', /Configure Passkey Authentication/, `the drill's wait: ${drill.waitingFor}`)
   assert.match(alerting.waitingFor ?? '', /security rollout/, `the alerting row's wait: ${alerting.waitingFor}`)
   const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
-  assert.match(print, /cleanupHeadsOf\(schedule\.cleanup\.rows, laneOf\)/, 'the print words the Cleanup heads itself')
+  assert.match(print, /cleanupHeadsOf\(schedule\.cleanup\?\.rows \?\? \[\], laneOf\)/, 'the print words the Cleanup heads itself')
   assert.match(print, /status=\{\{ word: h\.word, tone: h\.tone, waitingFor: h\.waitingFor \}\}/, 'the Cleanup body is not handed the wait')
   assert.match(readFileSync('src/ui/surfaces/CleanupStep.tsx', 'utf8'), /sub=\{status\.waitingFor \? <p className="reason">\{status\.waitingFor\}<\/p> : null\}/, 'the Cleanup body does not draw the wait under its title')
 })
@@ -504,17 +507,19 @@ test('the drill\'s recovery procedure dates the scan in the plan\'s format and d
 
 // ---- No empty list after a colon, no empty table, no same-day range ----
 
-test('the cover, the timeline and the Cleanup heading state nothing empty and no range of one day', () => {
+test('the cover, the timeline and the Cleanup dates state nothing empty and no range of one day', () => {
   // "To do (0):" with nothing after the colon, a Timeline table with only its
-  // header, and "Cleanup · Sep 1, 2026 → Sep 1, 2026".
+  // header, and "Cleanup · Sep 1, 2026 → Sep 1, 2026". The Cleanup phase's
+  // dates are the timeline's Cleanup row now: its rows print in their sections.
   const day = '2026-09-01T09:00:00.000Z'
-  assert.equal(cleanupHeadingOf({ start: day, end: '2026-09-01T17:00:00.000Z' }, false), `Cleanup · ${absoluteDate(day)}`)
-  assert.equal(cleanupHeadingOf({ start: day, end: '2026-09-23T00:00:00.000Z' }, false), `Cleanup · ${absoluteDate(day)} → ${absoluteDate('2026-09-23T00:00:00.000Z')}`)
-  assert.equal(cleanupHeadingOf({ start: day, end: day }, true), 'Cleanup', 'held work dates no Cleanup')
+  assert.equal(cleanupDatesOf({ start: day, end: '2026-09-01T17:00:00.000Z' }, false), absoluteDate(day))
+  assert.equal(cleanupDatesOf({ start: day, end: '2026-09-23T00:00:00.000Z' }, false), `${absoluteDate(day)} → ${absoluteDate('2026-09-23T00:00:00.000Z')}`)
+  assert.equal(cleanupDatesOf({ start: day, end: day }, true), null, 'held work dates no Cleanup')
   const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
   assert.match(print, /toDoNames\.length > 0 \? toDoNames\.join\(', '\) : C\.posture\.none/, 'an empty To do list is printed after its colon')
-  assert.match(print, /\{waves\.length > 0 && \(\n\s*<section className="print-page">\n\s*<h2>\{C\.summary\}<\/h2>/, 'the timeline prints with no phase in it')
-  assert.match(print, /cleanupHeadingOf\(schedule\.cleanup, cannotFinish\)/, 'the Cleanup heading is worded in the print')
+  assert.match(print, /const timeline = waves\.length > 0 \|\| schedule\.cleanup != null/, 'the timeline prints with no phase and no Cleanup in it')
+  assert.match(print, /\{timeline && \(\n\s*<section className="print-page">\n\s*<h2>\{C\.summary\}<\/h2>/, 'the timeline prints with no phase in it')
+  assert.match(print, /<td>\{phases\.last\}<\/td>\n\s*<td>\{cleanupDatesOf\(schedule\.cleanup, cannotFinish\)\}<\/td>/, 'the Cleanup phase is dated in the print by something else')
 })
 
 // ---- A saved decision prints as saved; an unsaved one prints no suggestion as the answer ----
@@ -536,7 +541,7 @@ test('the printed step reads the saved decision, and never prints a picker\'s ow
   const saved = initialPicked(ex, key, { picked: ids.slice(0, 1) }, ids, false)
   assert.deepEqual(saved, { picked: ids.slice(0, 1), matched: [] })
   const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
-  assert.equal(print.match(/decision=\{decisions\[s\.id\] \?\? null\}/g)?.length, 3, 'a printed step section does not read the saved decision')
+  assert.equal(print.match(/decision=\{decisions\[s\.id\] \?\? null\}/g)?.length, 1, 'a printed step does not read the saved decision')
   // The saved decisions reach the document: the prop is required, and the
   // Export page passes the plan record's. Unwired, a saved 1-of-11 support list
   // printed as an empty "People Needing Help".
@@ -551,4 +556,109 @@ test('the printed step reads the saved decision, and never prints a picker\'s ow
   assert.match(body, /<Decision key=\{step\.id\} d=\{d\} ex=\{ex\} saved=\{decision\} onDecide=\{onDecide\} stepId=\{step\.id\} ctx=\{ctx\} printing=\{printing\} \/>/, 'the decision is not told it is printing')
   assert.match(body, /printing && initial\.defaulted && !isExclusionsGroup\n?\s*\? <p className="reason">\{printedDefaultLine\(chips\.map\(\(c\) => c\.name\)\)\}<\/p>/, 'a printed picker with nothing saved does not say so')
   assert.equal(/printing && initial\.defaulted \? \[\]/.test(body), false, 'a printed picker drops its suggestion and prints an empty heading')
+})
+
+// ---- The board's sections, order and numbers (roadmap flow Stage 5, V1 decision 8) ----
+
+type Plan = ReturnType<typeof plan>
+/**
+ * The tenants Stage 5 is read on, each built once: getiamai curated with its
+ * foundation settled and Direction approved, and the fixtures as scanned.
+ */
+const stage5 = (() => {
+  let built: [string, Plan][] | null = null
+  return (): [string, Plan][] => (built ??= [
+    ['getiamai (curated, foundation settled)', plan('getiamai', { curated: true, stage: 'foundation' })],
+    ...(['demo', 'demo-week2', 'small', 'mid', 'large', 'messy', 'midflight'] as FixtureName[]).map((n): [string, Plan] => [n, plan(n)]),
+  ])
+})()
+
+test('the printed plan prints the board\'s sections, in the board\'s order, under the board\'s titles and numbers', () => {
+  // It grouped rows by phase and lane (Preparation, Phase 1…, Ready, On Hold,
+  // Completed, Deferred, Cleanup): a plan taken to paper read in another order,
+  // under other headings, from the Plan it was printed from.
+  for (const [name, p] of stage5()) {
+    const items = p.board.rows.map((r) => r.item)
+    // The board's sections: the registry's order, every section the board has a row in.
+    const expected = STEP_GROUPS.map((g) => g.key).filter((k) => items.some((i) => groupOf(i.id)?.key === k))
+    const printed = printSectionsOf(p.board)
+    assert.deepEqual(printed.map((s) => s.key), expected, `${name}: the printed sections are not the board's, in its order`)
+    assert.deepEqual(printed.map((s) => s.number), expected.map((_, i) => i + 1), `${name}: the sections are not numbered 1 to n in the board's order`)
+    // Each under the heading and the line the board's All work draws it with.
+    const { active, completed } = allWorkGroups(items, { completed: true, open: null })
+    for (const g of [...active, ...completed]) {
+      const s = printed.find((x) => x.key === groupKeyOf(g))
+      assert.ok(s, `${name}: the board draws ${g.label} and the print does not`)
+      assert.equal(s.title, g.label, `${name}: the print titles ${s.key} otherwise than the board`)
+      assert.equal(s.summary, groupSummary(g), `${name}: the print counts ${s.key} otherwise than the board`)
+    }
+  }
+  const demo = stage5().find(([n]) => n === 'demo')![1]
+  assert.ok(printSectionsOf(demo.board).length >= 5, 'the premise: the demo prints most of the plan\'s sections')
+  // The document draws these sections and no phase or lane grouping of its own.
+  const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
+  assert.match(print, /const sections = printSectionsOf\(board\)/, 'the print does not read the board\'s sections')
+  assert.equal(print.includes('laneGroupsOf('), false, 'the print still groups rows by lane')
+  assert.equal(print.includes('<h2>{waveTitle(w)}</h2>'), false, 'the print still prints a section per phase')
+})
+
+test('every printed row carries the number its board row shows, and every board row prints once, in its own section', () => {
+  for (const [name, p] of stage5()) {
+    // The Plan's numbers, built as Plan.tsx builds them: every row the board has and the Cleanup rows.
+    const rowSteps = p.steps.filter((s) => p.board.readings.has(s.id))
+    const numbers = rowNumbersOf([...rowSteps, ...p.board.cleanupRows])
+    const printed = printSectionsOf(p.board)
+    const rows = printed.flatMap((s) => s.rows)
+    assert.deepEqual(rows.map((r) => r.id).sort(), p.board.rows.map((r) => r.item.id).sort(), `${name}: the print carries other rows than the board`)
+    assert.equal(new Set(rows.map((r) => r.id)).size, rows.length, `${name}: a row prints twice`)
+    for (const s of printed) {
+      for (const r of s.rows) {
+        assert.equal(r.number, numbers.get(r.id), `${name}/${r.id}: printed as ${r.number}, numbered ${numbers.get(r.id)} on the board`)
+        assert.equal(groupOf(r.id)?.key, s.key, `${name}/${r.id}: printed under another section than the board's`)
+      }
+      assert.deepEqual(s.rows.map((r) => r.number), s.rows.map((_, i) => i + 1), `${name}/${s.key}: the rows are not in the board's order`)
+    }
+  }
+})
+
+test('a finished row prints as its line, and work still to do prints in full, in its section', () => {
+  // Midflight: Block Legacy Authentication is enforced (status done) but its
+  // mail-sending-devices input was never saved, so the board reads it
+  // "Ready · Decision": it prints in full, where the open question is stated.
+  const p = plan('midflight')
+  const rows = printSectionsOf(p.board).flatMap((s) => s.rows)
+  const legacy = rows.find((r) => r.id === 's-goal-block-legacy-auth')
+  assert.ok(legacy && legacy.step?.status === 'done', 'the premise: the policy is delivered')
+  assert.equal(legacy.lane.label, 'Ready · Decision', 'the premise: the board still has a decision for it')
+  assert.equal(legacy.print, 'body', 'a delivered step the board still has work for prints as a line')
+  for (const r of rows) assert.equal(r.print, r.lane.lane === 'Completed' || r.lane.lane === 'Deferred' ? 'line' : 'body', `${r.id}: ${r.lane.label} prints as ${r.print}`)
+  // A deferred step prints once, as its line, never in full with a date and live instructions.
+  const d = plan('midflight', { stage: 'foundation', skips: ['s-goal-register-info-protected', 's-goal-block-auth-transfer'] })
+  const deferred = printSectionsOf(d.board).flatMap((s) => s.rows).filter((r) => r.lane.lane === 'Deferred')
+  assert.deepEqual(deferred.map((r) => r.id).sort(), ['s-goal-block-auth-transfer', 's-goal-register-info-protected'], 'the deferred steps are not the ones the board reads Deferred')
+  for (const r of deferred) assert.equal(r.print, 'line', `${r.id}: a deferred step prints in full`)
+})
+
+test('a finished section prints as one line: its number, the board\'s finished title and what became of it', () => {
+  // getiamai with Direction approved: every Direction step is Completed, and
+  // the board folds the section to its finished title and one line.
+  const p = stage5()[0][1]
+  const printed = printSectionsOf(p.board)
+  const direction = printed.find((s) => s.key === DIRECTION_GROUP)
+  assert.ok(direction && direction.rows.every((r) => r.lane.lane === 'Completed'), 'the premise: every Direction step is Completed')
+  const items = p.board.rows.map((r) => r.item)
+  const g = allWorkGroups(items, { completed: true, open: null }).completed.find((x) => groupKeyOf(x) === DIRECTION_GROUP)
+  assert.ok(g, 'the premise: the board reads the section finished')
+  assert.equal(direction.finished, true, 'the print reads a finished section as open')
+  assert.equal(direction.line, `${g.label} · ${groupSummary(g)}`, 'the finished section\'s line is not the board\'s title and summary')
+  assert.match(direction.line ?? '', /completed/, `the line says nothing of the section being done: ${direction.line}`)
+  // An open section prints its heading and its rows, never a finished line.
+  for (const s of printed.filter((x) => !x.finished)) assert.equal(s.line, null, `${s.key}: an open section prints as a finished line`)
+  // No finished step's warning is lost with its row: a finished section prints
+  // the Completed lines that carry one under its line (printPlan.ts finishedWarningsOf).
+  const warned = finishedWarningsOf(direction, p.printBoard, p.ctx)
+  assert.deepEqual(warned, completedLinesOf(direction.rows.filter((r) => r.lane.lane === 'Completed').flatMap((r) => (r.step ? [r.step] : [])), p.printBoard, p.ctx).filter((l) => l.warnings.length > 0))
+  const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
+  assert.match(print, /sec\.line !== null \? \(/, 'the print does not draw a finished section as its line')
+  assert.match(print, /finishedWarningsOf\(sec, printBoard, stepCtx\)/, 'a finished section drops the warnings its Completed steps keep')
 })
