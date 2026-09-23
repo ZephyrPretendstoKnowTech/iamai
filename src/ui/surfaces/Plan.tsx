@@ -55,7 +55,7 @@ type PlanPage = {
   settings: { h3: string; start: string; planStarts: string; firstDeployment: string; firstDeploymentNote: string; workdays: string; workdaysWeek: string; workdaysWith: string; freeze: string; freezeFrom: string; freezeTo: string; freezeNote: string; freezeNeedsTo: string; freezeOrder: string; timezone: string; signature: string; scheduling: string; communications: string; saveFreeze: string; removeFreeze: string; cancelFreeze: string; freezeSaved: string; close: string }
   blocked: { after: string }
   progress: { label: string; steps: string; completed: string; projectedFinish: string; atPace: string; committed: string; started: string; none: string }
-  howTo: { link: string; items: string[]; intro?: string; legend?: { label: string; description: string }[] }
+  howTo: { link: string; intro: string; legend?: { label: string; description: string }[] }
 }
 const PP = pages.plan as unknown as PlanPage
 const S = app.shell
@@ -392,7 +392,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
       </p>
       {showHow && (
         <div className="plan-how no-print" id={PLAN_HOW_ID}>
-          <p>{PP.howTo.intro ?? PP.howTo.items[0]}</p>
+          <p>{PP.howTo.intro}</p>
           <hr />
           <h3>Legend</h3>
           <dl className="plan-legend">{PP.howTo.legend?.map((item) => <div key={item.label}><dt>{item.label}</dt><dd>{item.description}</dd></div>)}</dl>

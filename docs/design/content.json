@@ -848,15 +848,8 @@
       },
       "howTo": {
         "link": "How to use this plan",
-        "items": [
-          "Start with Ready and open a step to see its findings, instructions and next action. Save your choices, make the changes in Entra or the service named in the instructions, then scan again to check the result. Record any hands-on test the step asks for. Estimated dates adjust as the plan changes.",
-          "Ready: You can take the next action now.",
-          "Up Next: Complete the linked Ready prerequisites first.",
-          "On Hold: Open the step to see the prerequisite, date or missing evidence it is waiting for.",
-          "Completed: The required outcome has been verified or recorded. New configuration changes can reopen it.",
-          "Deferred: You set the work aside. It does not satisfy another step’s prerequisite."
-        ],
-        "intro": "Start with Ready and open a step to see its findings, instructions and next action. Save your choices, make the changes in Entra or the service named in the instructions, then scan again to check the result. Record any hands-on test the step asks for. Estimated dates adjust as the plan changes.",
+        "$commentIntro": "Where to start, and what can be done at once (owner, roadmap flow V2 decision H): the plan lets every policy that can be written be created in report-only on the same day once Emergency Access and the rollout answers are done, and orders only the turn-on. The All work view reads top to bottom, so this says the creates need not wait for the sections above them. The legend below is the lane words' one explanation; the intro and legend replaced an items list that repeated both.",
+        "intro": "Start at the top of All work and open a step to see its findings, instructions and next action. Once the first two sections are done, every policy marked Ready · Create can be created in report-only straight away; turning each one on follows the order of its own section. Save your choices, make the changes in Entra or the service named in the instructions, then scan again to check the result. Record any hands-on test the step asks for. Estimated dates adjust as the plan changes.",
         "legend": [
           {
             "label": "Ready",
