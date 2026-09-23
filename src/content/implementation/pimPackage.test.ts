@@ -396,5 +396,8 @@ test('the plan’s own policy on its own context keeps the name the create propo
 test('an enforced step with no setup after enforcement keeps its own review words', () => {
   const { step, body } = pimOn(enforcedOn('s-goal-device-registration-mfa'), 's-goal-device-registration-mfa')
   assert.equal(step.manualReview?.readyToConfirm, true, 'the premise: only the workflow record is left')
-  assert.match(body.allTiles.find((t) => t.key === 'review')?.note ?? '', /IAMAI is finished with it/)
+  const note = body.allTiles.find((t) => t.key === 'review')?.note ?? ''
+  // Its own review words (donewhen): what the scan confirmed, never that IAMAI is finished with it.
+  assert.match(note, /^The scan found the policy enforced, with the assessed configuration in place./, note)
+  assert.doesNotMatch(note, /PIM/, note)
 })

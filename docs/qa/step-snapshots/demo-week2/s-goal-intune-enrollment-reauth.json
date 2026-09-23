@@ -28,10 +28,6 @@
     {
       "label": "Confirm What You Use",
       "state": "Waiting on your direction"
-    },
-    {
-      "label": "Tenant fact",
-      "state": "Tenant fact"
     }
   ],
   "channels": [
