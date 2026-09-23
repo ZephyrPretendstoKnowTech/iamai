@@ -69,7 +69,7 @@ test('readiness holds enforcement and not report-only creation; a missing object
   assert.ok(decision)
   assert.equal(nextSafeAction(decision.step).kind, 'decide')
   // A report-only policy mid-window: verifying is due now, enforcement is not.
-  // On a plan whose foundation is settled: until both pinned groups are, what
+  // On a plan whose foundation is settled: until Emergency Access and Direction are, what
   // holds every policy is the gate (roadmap/foundations.ts), which is a
   // different answer and the one the first case above already makes.
   assert.deepEqual(nextSafeAction(find('demo-week2-settled', 's-goal-block-auth-transfer')), { kind: 'observe', executable: true, blockedBy: 'observation-incomplete', enforceable: false })

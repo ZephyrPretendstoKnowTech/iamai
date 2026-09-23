@@ -47,7 +47,7 @@ export type HoldKind = 'unavailable' | 'readiness' | 'prerequisite' | 'decision'
 
 /**
  * The label a wait on the plan's foundation carries (roadmap/foundations.ts
- * gateOnFoundations): the two pinned groups, Establish Emergency Access and
+ * gateOnFoundations): the foundation, Establish Emergency Access and
  * Decide Your Tenant's Direction.
  *
  * It is the one wait on another step that is a hold whatever that step's own

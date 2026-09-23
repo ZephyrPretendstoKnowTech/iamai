@@ -43,7 +43,7 @@ import { CONTRACT } from './stepContract.ts'
 import { enforcedUnwatched } from './doneWhen.ts'
 import type { LaneView, PrerequisiteLabel, StepContract } from './stepContract.ts'
 import { implementationOffered } from './stepJson.ts'
-import { submitsEnforcementOnly, unavailableReason } from '../../roadmap/operations.ts'
+import { submitsEnforcementOnly, toReportOnly } from '../../roadmap/operations.ts'
 import { incompleteFieldsOf, plannedOperationsOf, policyBodiesOfChannel } from './stepPackage.ts'
 import { plannedPortalLines, portalNamesFor } from './stepPortal.ts'
 import { tenantNameOf } from './stepVars.ts'
@@ -154,7 +154,7 @@ export function aiGroundingText(i: GroundingInput, own = ''): string {
     // briefing stated "→ New policy, Name: …, Description: [IAMAI:plan-…]" beside
     // a step saying the policy is there and switched off (Jordan D6). Following
     // it makes a second policy.
-    const switchedOff = unavailableReason(i.step) === 'switched-off'
+    const switchedOff = toReportOnly(i.step).length > 0
     const lines = (!offered && turnOnOnly) || switchedOff ? [] : plannedPortalLines(i.step, offered ? names : { ...names, withholdTurnOn: true }, selected) ?? []
     intended.push(...lines)
     if (lines.length > 0 && !offered) intended.push(W.proposed)
