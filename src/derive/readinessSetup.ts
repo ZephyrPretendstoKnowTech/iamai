@@ -120,3 +120,14 @@ export function nextCheck(view: ReadinessView, checks: readonly SetupCheck[]): N
   if (setup) return { kind: 'setup', check: setup }
   return { kind: 'none' }
 }
+
+/**
+ * The next check on a page opened from a Plan step (`ids` the people it is
+ * scoped to; undefined on the tenant's own page). Where this scan could not
+ * settle who the step's people are (`ids` null), there is none: the tenant's
+ * largest group is not that step's next check, and a guest step's page led with
+ * the employees' passkey set-up.
+ */
+export function stepNextCheck(view: ReadinessView, checks: readonly SetupCheck[], ids: readonly string[] | null | undefined): NextCheck {
+  return ids === null ? { kind: 'none' } : nextCheck(view, checks)
+}
