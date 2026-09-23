@@ -47,6 +47,7 @@ import {
   groupTitleOf,
   rowNumbersOf,
   sectionProgressOf,
+  togglesOf,
   nothingReadyLine,
 } from './planBoard.ts'
 import type { BoardItem, LaneTab } from './planBoard.ts'
@@ -569,16 +570,38 @@ test('a section heading on All work says what is left, and a finished one what b
   assert.equal(BOARD.allWorkTab, 'All work')
 })
 
-test('the fourth tab shows every lane and neither toggle hides a row inside a group', () => {
-  for (const name of FIXTURES) {
+test('Show completed and Show deferred start pressed on All work, and turning one off hides that work there; a lane tab keeps them off until pressed', () => {
+  // Owner, roadmap flow V2: the two toggles stay until the finished product has
+  // been seen. All work shows finished work in its sections by default, and a
+  // toggle turned off hides it; a lane tab keeps its own behaviour, the
+  // finished work drawn after the panel only while a toggle is pressed.
+  assert.deepEqual(togglesOf(NO_FOCUS, ALL_WORK_TAB), { completed: true, deferred: true }, 'All work does not show finished work by default')
+  for (const tab of LANES) assert.deepEqual(togglesOf(NO_FOCUS, tab), { completed: false, deferred: false }, `${tab} shows finished work by default`)
+  // A press is the person's, and it holds whichever tab is showing.
+  assert.deepEqual(togglesOf({ ...NO_FOCUS, showCompleted: false }, ALL_WORK_TAB), { completed: false, deferred: true })
+  assert.deepEqual(togglesOf({ ...NO_FOCUS, showDeferred: true }, 'ready'), { completed: false, deferred: true })
+  let finished = 0
+  for (const name of [...FIXTURES, 'demo-week2'] as const) {
     const items = itemsFor(name)
-    // Nothing a lane tab or a toggle would drop: All work is the whole row set.
-    assert.deepEqual(ids(applyFocus(items, ALL_WORK_TAB, NO_FOCUS)).sort(), ids(items).sort(), `${name}: the fourth tab filtered by lane`)
-    assert.deepEqual(ids(applyFocus(items, ALL_WORK_TAB, ALL)).sort(), ids(items).sort(), `${name}: the toggles changed what the fourth tab shows`)
+    finished += items.filter((i) => i.lane === 'Completed' || i.lane === 'Deferred').length
+    // Unpressed by anyone, All work is the whole row set.
+    assert.deepEqual(ids(applyFocus(items, ALL_WORK_TAB, NO_FOCUS)).sort(), ids(items).sort(), `${name}: All work filtered by lane`)
+    // Turned off, each toggle hides its own work and nothing else.
+    assert.deepEqual(ids(applyFocus(items, ALL_WORK_TAB, { ...NO_FOCUS, showCompleted: false })).sort(), ids(items.filter((i) => i.lane !== 'Completed')).sort(), `${name}: Show completed off did not hide exactly the completed rows`)
+    assert.deepEqual(ids(applyFocus(items, ALL_WORK_TAB, { ...NO_FOCUS, showDeferred: false })).sort(), ids(items.filter((i) => i.lane !== 'Deferred')).sort(), `${name}: Show deferred off did not hide exactly the deferred rows`)
+    // A section whose rows were all completed is not drawn with Show completed off.
+    const hidden = allWorkGroups(applyFocus(items, ALL_WORK_TAB, { ...NO_FOCUS, showCompleted: false }), items)
+    for (const g of hidden) assert.ok(g.items.every((i) => i.lane !== 'Completed'), `${name}/${g.key}: a completed row is drawn with Show completed off`)
     // Search and work type are still filters over it.
     for (const i of applyFocus(items, ALL_WORK_TAB, { ...NO_FOCUS, workType: 'ca' })) assert.equal(i.workType, 'ca', `${name}/${i.id}: the Work type filter let another kind through`)
     assert.deepEqual(applyFocus(items, ALL_WORK_TAB, { ...NO_FOCUS, search: 'zzzzz-not-a-title' }), [], `${name}: search matched something no title contains`)
   }
+  assert.ok(finished > 0, 'no fixture has finished work, so this proves little')
+  // The controls say the state the board is drawn with, not the saved press alone.
+  const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
+  assert.match(plan, /const shows = togglesOf\(focus, tab\)/, 'the toggles do not read the tab\'s default')
+  assert.match(plan, /aria-pressed=\{shows\.completed\}/)
+  assert.match(plan, /aria-pressed=\{shows\.deferred\}/)
 })
 
 test('the board vocabulary is one record, and All work is the leftmost tab and the one the Plan opens on', () => {

@@ -593,6 +593,10 @@ try {
   const FINISHED_RE = /^(All \d+ completed|1 of 1 completed|\d+ of \d+ completed, \d+ deferred)$/
   check('Plan: every section on All work says what is left of it, or collapses to what became of it', Array.isArray(allWorkMeta) && allWorkMeta.length >= 3 && allWorkMeta.every((g) => (g.closed ? FINISHED_RE.test(g.meta) && g.hidden : /^\d+ of \d+ remaining$/.test(g.meta) || FINISHED_RE.test(g.meta))), JSON.stringify(allWorkMeta.slice(0, 4)))
   check('Plan: nothing is drawn above the tabs or below the board as a section of its own', (await evaluate(`document.querySelectorAll('main.page .plan-board-foundation').length`)) === 0)
+  // The two toggles stay (owner, roadmap flow V2) and start pressed on All work,
+  // where finished work sits compactly in its own section; a lane tab keeps them
+  // unpressed until a person presses one (checked on Ready below).
+  check('Plan: on All work, Show completed and Show deferred start pressed', /^Show completed=\d+\/true \| Show deferred=\d+\/true$/.test(await evaluate(`[...document.querySelectorAll('main.page .plan-controls .focus')].map((b) => (b.textContent || '').replace((b.querySelector('.count') || {}).textContent || '', '').trim() + '=' + ((b.querySelector('.count') || {}).textContent || '') + '/' + b.getAttribute('aria-pressed')).join(' | ')`)))
   const allWorkLanes = await evaluate(`[...document.querySelectorAll('main.page .plan-group')].map((g) => new Set([...g.querySelectorAll('.plan-row .lane')].map((e) => (e.textContent || '').trim().split(' · ')[0])).size)`)
   check('Plan: a group on All work is the whole group, not one lane of it', Array.isArray(allWorkLanes) && allWorkLanes.some((n) => n > 1), JSON.stringify(allWorkLanes))
   await showLane('Ready')
