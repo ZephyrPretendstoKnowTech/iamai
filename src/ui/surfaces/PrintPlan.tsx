@@ -21,12 +21,11 @@ import { fillText } from '../../content/render.ts'
 import { goalInMap } from '../../roadmap/goalMap.ts'
 import type { GoalMap } from '../../roadmap/goalMap.ts'
 import { notLicensedPrintLine, notLicensedRows } from '../../derive/notLicensed.ts'
-import { completedRows, deferredRows, floorRows, phaseRows, planPhases, stepListOf, undatedRows } from './planRows.ts'
+import { completedRows, deferredRows, floorRows, openDoneRows, phaseRows, planPhases, stepListOf, undatedRows } from './planRows.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
-import { LANE_ORDER } from './planLanes.ts'
 import { boardHolds, boardReadingsOf, doesntApplyView, laneViewOf, laneWordOf, prerequisiteLabelFor, readinessBlockersOf } from './planBoard.ts'
 import type { LaneView } from './stepContract.ts'
-import { completedLinesOf, noPlanLine } from './printPlan.ts'
+import { completedLinesOf, laneGroupsOf, noPlanLine, postureOf } from './printPlan.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { PrintBoard } from './printPlan.ts'
 
@@ -130,7 +129,7 @@ export function PrintPlan({
   // boardReadingsOf, R4-22): every printed state word is a lane word (A1c,
   // decision 1) — the badge, the bar, the rail, the Readiness tiles and the
   // Cleanup rows' heads all read this one reading.
-  const { readings, titleOf: laneTitleOf } = boardReadingsOf(steps, schedule.cleanup, answers)
+  const { readings, titleOf: laneTitleOf, cleanupRows } = boardReadingsOf(steps, schedule.cleanup, answers)
   const laneOf = (id: string): LaneView => {
     const r = readings.get(id)
     return r ? laneViewOf(r, laneTitleOf) : doesntApplyView()
@@ -139,7 +138,8 @@ export function PrintPlan({
   const blockersOf = (s: Step) => readinessBlockersOf(readings.get(s.id), laneTitleOf)
   // The same three the printed step bodies read, handed to the print's own view (printPlan.ts).
   const printBoard: PrintBoard = { laneOf, blockersOf, prerequisiteLabel }
-  const done = completedRows(steps)
+  // Completed is the board's lane (planRows.ts completedRows), never Step.status.
+  const done = completedRows(steps, laneOf)
   // A numbered phase's rows, the undated group and the floor group, all read
   // from the Plan's own rules (planRows.ts) and none of them recomputed here.
   //
@@ -163,11 +163,14 @@ export function PrintPlan({
   // Security Defaults printed inside the Preparation phase, Aug 31 - Sep 28,
   // while its row read "After prerequisites" (R4-21).
   const boardHeld = (s: Step): boolean => boardHolds(s, laneOf(s.id))
-  const held = undatedRows(steps, phaseList, boardHeld).filter(notDeferred)
+  // With them, a delivered step the board still has work for (planRows.ts
+  // openDoneRows): no phase draws a done step, and its body is where the open
+  // question is stated.
+  const held = [...undatedRows(steps, phaseList, boardHeld), ...openDoneRows(steps, laneOf)].filter(notDeferred)
   // The undated rows under their own lane's word (A1c): the phase is a projection
   // the document may keep, and a step no phase dates is grouped by the state the
   // Plan shows for it, never under a heading of the document's own.
-  const heldByLane = LANE_ORDER.map((lane) => ({ lane, rows: held.filter((s) => laneOf(s.id).lane === lane) })).filter((g) => g.rows.length > 0)
+  const heldByLane = laneGroupsOf(held, laneOf)
   const floor = floorRows(steps).filter(notDeferred)
   const phaseSteps = (w: Schedule['waves'][number]): Step[] => phaseRows(steps, w, boardHeld).filter(notDeferred)
   const waves = phaseList.filter((w) => phaseSteps(w).length > 0)
@@ -183,8 +186,11 @@ export function PrintPlan({
   // one-line header, and no pace, baseline pin or pace sentence.
   // Every step is named by the one content title (content/stepTitle.ts), as the
   // board and the opened step name it (R4-40, R4-47).
-  const inPlaceNames = done.map((s) => contentTitle(s))
-  const toDoNames = steps.filter((s) => s.status !== 'done' && s.status !== 'skipped').map((s) => contentTitle(s))
+  // The lists are the board's rows, the Cleanup rows included, by the lane it
+  // reads for each (printPlan.ts postureOf): the rows the header counts.
+  const posture = postureOf([...steps.map((s) => s.id), ...cleanupRows.map((r) => r.id)], laneOf, laneTitleOf)
+  const inPlaceNames = posture.completed
+  const toDoNames = posture.toDo
   // Over the goals the baseline holds: an absent goal never renders (walk-51 item 9).
   // Not licensed is its own count and sentence (§5), not a name in this list.
   const doesntApplyNames = coverage.results.filter((r) => goalInMap(goalMap, r.goal.id) && r.status === 'not-applicable').map((r) => contentTitle({ id: r.goal.id, goalId: r.goal.id, title: r.goal.shortName || r.goal.name }))
