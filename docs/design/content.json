@@ -4415,6 +4415,10 @@
       },
       "who": {
         "lead": "{active} active people · {admins} admins · {guests} guests",
+        "evidenceUndated": {
+          "$comment": "The evidence lines that name the turn-on day ({enforce}), without it, keyed by the dated line's place in evidence: for a step that carries no such day - held on the board (owner decision 2, 2026-09-22), held by the roadmap, or finished - whose people the scan still read. Each keeps the rest of its dated line and says no more than it did (stepExport.ts whoEvidenceLines).",
+          "1": "{n} people have no method and will be stopped until they register one: {list:noMethod}"
+        },
         "evidence": [
           "This policy uses Require multifactor authentication. Stronger method requirements belong to the separate policies that select an authentication strength.",
           "{n} people have no method and will be stopped; register before {enforce}: {list:noMethod}",
@@ -4509,6 +4513,11 @@
       },
       "who": {
         "lead": "{admins} people hold an admin role",
+        "evidenceUndated": {
+          "$comment": "The evidence lines that name the turn-on day ({enforce}), without it, keyed by the dated line's place in evidence: for a step that carries no such day - held on the board (owner decision 2, 2026-09-22), held by the roadmap, or finished - whose people the scan still read. Each keeps the rest of its dated line and says no more than it did (stepExport.ts whoEvidenceLines).",
+          "1": "{n} admins are not yet Ready for phishing-resistant MFA; get each Ready: {list:adminsWithout}",
+          "2": "{adminsWithoutCount} admins are not yet Ready for phishing-resistant MFA; get each Ready."
+        },
         "evidence": [
           "No session control here on purpose: the baseline keeps sign-in frequency and persistence in their own policies (Shorten Admin Sessions, Limit How Long Sessions Last).",
           "{n} admins are not yet Ready for phishing-resistant MFA; get each Ready before {enforce}: {list:adminsWithout}",
@@ -4952,6 +4961,10 @@
       },
       "who": {
         "lead": "{active} active people",
+        "evidenceUndated": {
+          "$comment": "The evidence lines that name the turn-on day ({enforce}), without it, keyed by the dated line's place in evidence: for a step that carries no such day - held on the board (owner decision 2, 2026-09-22), held by the roadmap, or finished - whose people the scan still read. Each keeps the rest of its dated line and says no more than it did (stepExport.ts whoEvidenceLines).",
+          "0": "{n} accounts signed in by a legacy protocol since {from}; fix each: {list:legacyUsers}"
+        },
         "evidence": [
           "{n} accounts signed in by a legacy protocol since {from}: fix before {enforce}: {list:legacyUsers}",
           "{existingCoverage}"
@@ -5052,6 +5065,10 @@
       },
       "who": {
         "lead": "{active} active people",
+        "evidenceUndated": {
+          "$comment": "The evidence lines that name the turn-on day ({enforce}), without it, keyed by the dated line's place in evidence: for a step that carries no such day - held on the board (owner decision 2, 2026-09-22), held by the roadmap, or finished - whose people the scan still read. Each keeps the rest of its dated line and says no more than it did (stepExport.ts whoEvidenceLines).",
+          "0": "{deviceCodeCount} device-code sign-ins since {from} by {list:deviceCodeUsers}; usually a script or a TV app; move each."
+        },
         "evidence": [
           "{deviceCodeCount} device-code sign-ins since {from} by {list:deviceCodeUsers}; usually a script or a TV app; move each before {enforce}.",
           "{existingCoverage}"
@@ -5233,6 +5250,10 @@
       },
       "who": {
         "lead": "{active} active people",
+        "evidenceUndated": {
+          "$comment": "The evidence lines that name the turn-on day ({enforce}), without it, keyed by the dated line's place in evidence: for a step that carries no such day - held on the board (owner decision 2, 2026-09-22), held by the roadmap, or finished - whose people the scan still read. Each keeps the rest of its dated line and says no more than it did (stepExport.ts whoEvidenceLines).",
+          "0": "{n} people signed in from outside {countries} since {from}; a travel exception or a country to add: {list:outsideUsers}"
+        },
         "evidence": [
           "{n} people signed in from outside {countries} since {from}; a travel exception or a country to add before {enforce}: {list:outsideUsers}",
           "{n} service-provider sign-ins from {partners} partner tenants outside {countries}: decide how the partner decision and exclusions should treat them.",
@@ -5448,6 +5469,10 @@
       },
       "who": {
         "lead": "{active} active people",
+        "evidenceUndated": {
+          "$comment": "The evidence lines that name the turn-on day ({enforce}), without it, keyed by the dated line's place in evidence: for a step that carries no such day - held on the board (owner decision 2, 2026-09-22), held by the roadmap, or finished - whose people the scan still read. Each keeps the rest of its dated line and says no more than it did (stepExport.ts whoEvidenceLines).",
+          "0": "{n} people signed in from a device Entra does not manage since {from}; they see the limited experience under this policy: {list:unmanagedUsers}"
+        },
         "evidence": [
           "{n} people signed in from a device Entra does not manage since {from}; they will see the limited experience from {enforce}: {list:unmanagedUsers}",
           "{n} people signed in only from managed devices and notice nothing.",
@@ -5545,6 +5570,10 @@
       },
       "who": {
         "lead": "{active} active people · device readiness {readiness}, the plan waits for 80%",
+        "evidenceUndated": {
+          "$comment": "The evidence lines that name the turn-on day ({enforce}), without it, keyed by the dated line's place in evidence: for a step that carries no such day - held on the board (owner decision 2, 2026-09-22), held by the roadmap, or finished - whose people the scan still read. Each keeps the rest of its dated line and says no more than it did (stepExport.ts whoEvidenceLines).",
+          "0": "{n} people signed in from devices that are neither compliant nor Microsoft Entra hybrid joined; enroll the device or review its access: {list:unmanagedUsers}"
+        },
         "evidence": [
           "{n} people signed in from devices that are neither compliant nor Microsoft Entra hybrid joined; enroll the device or review its access before {enforce}: {list:unmanagedUsers}",
           "{name} signed in from a browser without device claims on a compliant device, so investigate the browser/device claim path and the actual policy result.",
@@ -5971,6 +6000,10 @@
       },
       "who": {
         "lead": "{active} active people",
+        "evidenceUndated": {
+          "$comment": "The evidence lines that name the turn-on day ({enforce}), without it, keyed by the dated line's place in evidence: for a step that carries no such day - held on the board (owner decision 2, 2026-09-22), held by the roadmap, or finished - whose people the scan still read. Each keeps the rest of its dated line and says no more than it did (stepExport.ts whoEvidenceLines).",
+          "0": "{n} people use Outlook, Teams or OneDrive on Windows devices that are neither joined nor registered; this policy may block them until the device is registered: {list:unboundUsers}"
+        },
         "evidence": [
           "{n} people use Outlook, Teams or OneDrive on Windows devices that are neither joined nor registered; they may be blocked from {enforce} until the device is registered: {list:unboundUsers}",
           "What this policy does not reach is covered elsewhere or not at all: Block Unsupported Device Platforms turns away the platforms it cannot protect, and Require a Managed Device covers the ones it can.",
@@ -6135,6 +6168,10 @@
       },
       "who": {
         "lead": "{active} active people",
+        "evidenceUndated": {
+          "$comment": "The evidence lines that name the turn-on day ({enforce}), without it, keyed by the dated line's place in evidence: for a step that carries no such day - held on the board (owner decision 2, 2026-09-22), held by the roadmap, or finished - whose people the scan still read. Each keeps the rest of its dated line and says no more than it did (stepExport.ts whoEvidenceLines).",
+          "0": "{n} people signed in from browsers on unmanaged devices since {from}; under this policy their browser sessions stop persisting and re-authenticate every {wanted}: {list:browserUsers}"
+        },
         "evidence": [
           "{n} people signed in from browsers on unmanaged devices since {from}; from {enforce} their browser sessions stop persisting and re-authenticate every {wanted}: {list:browserUsers}",
           "This policy is about everyone's browser, and only the browser: it reaches nothing outside it while the Client apps condition names Browser.",
