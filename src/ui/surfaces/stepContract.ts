@@ -855,8 +855,13 @@ function whoOf(step: Step, ctx: StepVarContext): ContractWho | null {
   if (pop === null) {
     const source = ctx.snapshot.sources.users
     const missing = [...new Set((step.action.missing ?? []).map(m => m.stepId ? stepById[m.stepId]?.title : null).filter(Boolean))]
+    // A step with no policy of its own is unsettled only where the tenant's
+    // policies deliver it and their scope could not be read (derive/population.ts
+    // reached): the reason is the scan's, never the plan's own missing
+    // references, which that policy does not wait on. It read the goal's people.
     const text = source && source.status !== 'ok'
       ? `Directory read incomplete${source.reason ? `: ${source.reason}` : '.'}`
+      : effectsOf(step) === null ? CONTRACT.whoUnknown
       : missing.length ? `Policy scope awaits: ${missing.join('; ')}.`
       : step.goalId === 'guests-mfa' ? 'Exact guest-policy reach needs the external-user type, home organization and applicable exclusions for each account.'
       : 'Policy applicability is not fully resolved. Review the named policy assignments and prerequisites on this step.'

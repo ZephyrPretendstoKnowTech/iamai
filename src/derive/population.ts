@@ -112,10 +112,12 @@ export type StepPopulationView = {
  * not move its reach (R4-30). It read the goal's population whenever the step
  * was done, and a policy the plan had watched in report-only covering 283
  * covered 279 the scan after it was enforced, unchanged. Where their scope could
- * not be settled the step keeps the goal's population, as it did.
+ * not be settled it is null, as an open policy's is. It kept the goal's
+ * population there, a count nothing measured for those policies, which moved to
+ * their real reach the scan the group was read, the policy unchanged.
  */
 export function reached(step: Step): StepPopulation | null {
-  if (effectsOf(step) === null) return step.state?.satisfied === true && step.deliveredReach ? step.deliveredReach : step.population
+  if (effectsOf(step) === null) return step.state?.satisfied === true && step.deliveredReach !== undefined ? step.deliveredReach : step.population
   return step.cohort ?? null
 }
 
