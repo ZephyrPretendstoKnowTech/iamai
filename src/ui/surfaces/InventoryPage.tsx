@@ -1,30 +1,47 @@
 // Inventory: the data as found (prompt 10 §B). Read-only DataTables, no
-// analysis; every table exports CSV and says where its data comes from.
+// analysis; every table exports CSV and says where its data comes from. Every
+// table is a model from inventoryTables.ts, the same one the Export CSV card
+// writes: this page adds chips, links and tooltips around the model's words and
+// builds no cell of its own.
 import { useEffect, useMemo, useState } from 'react'
-import type { TenantSnapshot, UserRow } from '../../graph/collect/types.ts'
-import { getGroupMembers } from '../../graph/collect/onDemand.ts'
-import type { GroupMembersCacheEntry } from '../../graph/collect/cache.ts'
-import { policyFacts } from '../../coverage/facts.ts'
-import type { PolicyFacts } from '../../coverage/types.ts'
-import { buildStrengthLookup } from '../../coverage/strength.ts'
-import { detectFacets } from '../../coverage/applicability.ts'
-import { CAPABILITIES, deriveTenantCapabilities, deriveUserCapabilities } from '../../licensing/capabilities.ts'
-import { buildNameDirectory } from '../../names.ts'
-import { ROLE_TEMPLATES, coversAdminSet, roleLabel, roleName, roleTemplate, heldOnlyByServices } from '../../roles.ts'
-import { resolveObjects } from '../../graph/collect/onDemand.ts'
+import type { ReactNode } from 'react'
+import type { TenantSnapshot } from '../../graph/collect/types.ts'
+import { getGroupMembers, resolveObjects } from '../../graph/collect/onDemand.ts'
 import type { ResolvedObject } from '../../graph/collect/onDemand.ts'
-import productNames from '../../../data/product-names.json' with { type: 'json' }
-import { buildViabilityInputs } from '../../scoring/fromSnapshot.ts'
-import { scoreMfaViability } from '../../scoring/mfaViability.ts'
+import type { GroupMembersCacheEntry } from '../../graph/collect/cache.ts'
+import type { PolicyFacts } from '../../coverage/types.ts'
+import { buildNameDirectory } from '../../names.ts'
+import type { NameDirectory } from '../../names.ts'
+import { coversAdminSet, roleLabel } from '../../roles.ts'
 import type { MfaViability } from '../../scoring/mfaViability.ts'
-import { INVENTORY as C, combinationName, methodName, migrationName, protocolName, trustTypeName } from '../../copy/inventory.ts'
-import { app } from '../../content/content.ts'
-
-const LICENSING = app.inventory
-import { ACTIVITY_STATE, METHOD_TIER, MFA_STATE, TILE } from '../../copy/definitions.ts'
+import { INVENTORY as C, migrationName } from '../../copy/inventory.ts'
+import { TILE } from '../../copy/definitions.ts'
 import { absoluteDate, relative } from '../format.ts'
 import { Button, Chip, DataTable, EmptyState, InfoTip, Tabs } from '../components/index.ts'
 import type { ChipStatus, Column } from '../components/index.ts'
+import {
+  appsModel,
+  authMethodsModel,
+  authMethodsPolicyOf,
+  authStrengthsModel,
+  capabilitiesModel,
+  devicesModel,
+  groupsModel,
+  licencesModel,
+  locationsModel,
+  peopleModel,
+  policiesModel,
+  policyFactsOf,
+  referencedGroupsOf,
+  registrationModel,
+  roleHoldersOf,
+  rolesModel,
+  signInModels,
+  usersDetail,
+  viabilityOf,
+  workloadsModel,
+} from './inventoryTables.ts'
+import type { GroupEntry, InventoryModel } from './inventoryTables.ts'
 
 type Raw = Record<string, unknown>
 
@@ -42,23 +59,37 @@ function Heading({ text, source }: { text: string; source: keyof typeof C.source
   )
 }
 
+/**
+ * A model drawn as a table: every column's header, sort and CSV cell are the
+ * model's; `render` only dresses a cell's words (a chip, a tooltip, a date
+ * shown relative to today).
+ */
+function ModelTable<R>({
+  model,
+  render = {},
+  caption,
+  expand,
+  initialSort,
+}: {
+  model: InventoryModel<R>
+  render?: Partial<Record<string, (r: R) => ReactNode>>
+  caption?: ReactNode
+  expand?: (r: R) => ReactNode
+  initialSort?: { key: string; dir: 1 | -1 }
+}) {
+  const columns: Column<R>[] = model.columns.map((c) => ({ key: c.key, header: c.header, csv: c.cell, sortValue: c.sort, hidden: c.hidden, minWidth: c.minWidth, render: render[c.key] ?? c.cell }))
+  return <DataTable panel rows={model.rows} columns={columns} rowKey={model.rowKey} csvName={model.csvName} empty={model.empty} caption={caption} expand={expand} initialSort={initialSort} />
+}
+
+/** A model's cell words for one column. */
+const cellOf = <R,>(model: InventoryModel<R>, key: string) => model.columns.find((c) => c.key === key)!.cell
+
 export function InventoryPage({ snapshot }: { snapshot: TenantSnapshot }) {
   const [groups, setGroups] = useState<GroupMembersCacheEntry[] | null>(null)
 
   const policies = useMemo(() => (snapshot.config.caPolicies?.rows ?? []) as Raw[], [snapshot])
-  const strengths = useMemo(() => buildStrengthLookup(snapshot.config.authStrengths?.rows ?? []), [snapshot])
-  const facts = useMemo(
-    () => policies.map((p) => ({ raw: p, facts: policyFacts(p, strengths, snapshot.microsoftManagedPolicyIds.includes(String(p.id ?? ''))) })),
-    [policies, strengths, snapshot],
-  )
-  const referencedGroups = useMemo(() => {
-    const map = new Map<string, { include: string[]; exclude: string[] }>()
-    for (const { facts: f } of facts) {
-      for (const g of f.who.groups) (map.get(g) ?? map.set(g, { include: [], exclude: [] }).get(g)!).include.push(f.name)
-      for (const g of f.whoNot.groups) (map.get(g) ?? map.set(g, { include: [], exclude: [] }).get(g)!).exclude.push(f.name)
-    }
-    return map
-  }, [facts])
+  const facts = useMemo(() => policyFactsOf(snapshot, policies), [policies, snapshot])
+  const referencedGroups = useMemo(() => referencedGroupsOf(facts), [facts])
 
   useEffect(() => {
     let cancelled = false
@@ -79,9 +110,12 @@ export function InventoryPage({ snapshot }: { snapshot: TenantSnapshot }) {
   }, [referencedGroups, snapshot.tenantId])
 
   const names = useMemo(() => buildNameDirectory(snapshot, groups ?? []), [snapshot, groups])
-  const viability = useMemo(() => buildViabilityInputs(snapshot, snapshot.asOf).map(scoreMfaViability), [snapshot])
-  const viabilityById = useMemo(() => new Map(viability.map((v) => [v.userId, v])), [viability])
-  const userById = useMemo(() => new Map(snapshot.users.map((u) => [u.id, u])), [snapshot])
+  const viability = useMemo(() => viabilityOf(snapshot), [snapshot])
+  // A read that did not come back carries no date (the catch above).
+  const groupEntries = useMemo<GroupEntry[] | null>(
+    () => groups?.map((g) => ({ groupId: g.groupId, displayName: g.displayName, memberCount: g.memberCount, sampled: g.sampled, membershipRule: g.membershipRule, read: g.asOf !== '' })) ?? null,
+    [groups],
+  )
 
   return (
     <div>
@@ -90,9 +124,9 @@ export function InventoryPage({ snapshot }: { snapshot: TenantSnapshot }) {
           { id: 'policies', label: C.tabs.policies, badge: policies.length, render: () => <PoliciesTab facts={facts} names={names} /> },
           { id: 'locations', label: C.tabs.locations, render: () => <LocationsTab snapshot={snapshot} facts={facts} /> },
           { id: 'authentication', label: C.tabs.authentication, render: () => <AuthenticationTab snapshot={snapshot} names={names} /> },
-          { id: 'people', label: C.tabs.people, badge: snapshot.users.length, render: () => <PeopleTab snapshot={snapshot} viabilityById={viabilityById} names={names} referenced={referencedGroups} groups={groups} /> },
-          { id: 'groups', label: C.tabs.groups, badge: referencedGroups.size, render: () => <PeopleTab snapshot={snapshot} viabilityById={viabilityById} names={names} referenced={referencedGroups} groups={groups} showGroups /> },
-          { id: 'devices', label: C.tabs.devices, badge: snapshot.devices.length, render: () => <DevicesTab snapshot={snapshot} userById={userById} names={names} /> },
+          { id: 'people', label: C.tabs.people, badge: snapshot.users.length, render: () => <PeopleTab snapshot={snapshot} names={names} viability={viability} /> },
+          { id: 'groups', label: C.tabs.groups, badge: referencedGroups.size, render: () => <GroupsTab referenced={referencedGroups} groups={groupEntries} names={names} /> },
+          { id: 'devices', label: C.tabs.devices, badge: snapshot.devices.length, render: () => <DevicesTab snapshot={snapshot} names={names} /> },
           { id: 'roles', label: C.tabs.roles, render: () => <RolesTab snapshot={snapshot} names={names} /> },
           { id: 'apps', label: C.tabs.apps, render: () => <AppsTab snapshot={snapshot} names={names} /> },
           { id: 'licensing', label: C.tabs.licensing, render: () => <LicensingTab snapshot={snapshot} /> },
@@ -112,137 +146,27 @@ const STATE_CHIP: Record<PolicyFacts['state'], ChipStatus> = {
   unknown: 'warning',
 }
 
-function usersSummary(f: PolicyFacts): string {
+function PoliciesTab({ facts, names }: { facts: PolicyFacts[]; names: NameDirectory }) {
   const P = C.policies
-  const bits: string[] = []
-  if (f.who.all) bits.push(P.allUsers)
-  if (f.who.groups.size > 0) bits.push(P.groups(f.who.groups.size))
-  if (f.who.roles.size > 0) bits.push(coversAdminSet(f.who.roles) ? P.allAdminRoles(f.who.roles.size) : P.roles(f.who.roles.size))
-  if (f.who.users.size > 0) bits.push(P.users(f.who.users.size))
-  if (f.who.guests !== null && !f.who.all) bits.push(P.guests)
-  if (f.workload) bits.push(P.workload(f.workload.sps.size))
-  return bits.join(', ') || P.none
-}
-
-/** The Exclusions column (E5): the groups and users the policy excludes, by name; guests when the whole type is. */
-export function exclusionsSummary(f: PolicyFacts, label: (id: string) => string): string {
-  const P = C.policies
-  const bits = [...[...f.whoNot.groups].map(label), ...[...f.whoNot.users].map(label)]
-  if (f.whoNot.guests) bits.push(P.guests)
-  return bits.join(', ') || '—'
-}
-
-// Tooltip for the Users column: the names behind the counts.
-function usersDetail(f: PolicyFacts, label: (id: string) => string): string {
-  const parts: string[] = []
-  if (f.who.users.size > 0) parts.push([...f.who.users].map(label).join(', '))
-  if (f.who.groups.size > 0) parts.push([...f.who.groups].map(label).join(', '))
-  if (f.who.roles.size > 0 && !coversAdminSet(f.who.roles)) parts.push([...f.who.roles].map(roleLabel).join(', '))
-  return parts.join('\n')
-}
-
-function appsSummary(f: PolicyFacts): string {
-  const P = C.policies
-  const bits: string[] = []
-  if (f.apps.all) bits.push(P.allApps)
-  if (f.apps.office365) bits.push(P.office365)
-  if (f.apps.adminPortals) bits.push(P.adminPortals)
-  if (f.apps.ids.size > 0) bits.push(P.apps(f.apps.ids.size))
-  for (const a of f.apps.userActions) bits.push(P.userActions(a))
-  if (f.apps.authContexts.size > 0) bits.push(P.authContexts(f.apps.authContexts.size))
-  return bits.join(', ') || P.none
-}
-
-function conditionsSummary(f: PolicyFacts, label: (id: string) => string): string {
-  const P = C.policies
-  const bits: string[] = []
-  if (f.clientApps.size > 0 && !f.clientApps.has('all')) bits.push(P.clientApps([...f.clientApps].join(', ')))
-  if (f.platforms) bits.push(P.platforms([...f.platforms.include].join(', ') || 'any'))
-  const loc = (id: string) => (id.toLowerCase() === 'all' ? 'all' : id.toLowerCase() === 'alltrusted' ? 'all trusted' : label(id))
-  if (f.locations)
-    bits.push(
-      P.locations(
-        `${[...f.locations.include].map(loc).join(', ') || 'any'}${f.locations.exclude.size > 0 ? ` except ${[...f.locations.exclude].map(loc).join(', ')}` : ''}`,
-      ),
-    )
-  if (f.signInRisk.size > 0) bits.push(P.signInRisk([...f.signInRisk].join(', ')))
-  if (f.userRisk.size > 0) bits.push(P.userRisk([...f.userRisk].join(', ')))
-  if (f.flows.size > 0) bits.push(P.flows([...f.flows].join(', ')))
-  if (f.deviceFilter) bits.push(P.deviceFilter)
-  return bits.join(' · ') || '—'
-}
-
-const CONTROL_WORDS: Record<string, string> = {
-  mfa: 'MFA',
-  compliantDevice: 'compliant device',
-  domainJoinedDevice: 'hybrid-joined device',
-  approvedApplication: 'approved app',
-  compliantApplication: 'app protection policy',
-  passwordChange: 'password change',
-}
-
-function grantSummary(f: PolicyFacts, label: (id: string) => string): string {
-  const P = C.policies
-  if (!f.grant) return '—'
-  if (f.grant.controls.has('block')) return P.block
-  const controls = [...f.grant.controls].filter((c) => c !== 'mfa' || !f.grant?.strengthId)
-  const bits = controls.map((c) => CONTROL_WORDS[c] ?? c)
-  if (f.grant.strengthId) bits.push(P.strength(label(f.grant.strengthId)))
-  return bits.length > 0 ? P.require(bits.join(f.grant.operator === 'AND' ? ' and ' : ' or ')) : '—'
-}
-
-function sessionSummary(f: PolicyFacts): string {
-  const P = C.policies
-  const bits: string[] = []
-  if (f.session.signInFrequencyHours !== null) bits.push(P.signInFrequency(f.session.signInFrequencyHours))
-  if (f.session.persistentBrowser) bits.push(P.persist(f.session.persistentBrowser))
-  if (f.session.secureSignInSession) bits.push(P.tokenProtection)
-  if (f.session.cloudAppSecurity) bits.push(P.cloudAppSecurity)
-  if (f.session.appEnforced) bits.push(P.appEnforced)
-  return bits.join(' · ') || '—'
-}
-
-function PoliciesTab({ facts, names }: { facts: { raw: Raw; facts: PolicyFacts }[]; names: ReturnType<typeof buildNameDirectory> }) {
-  const P = C.policies
-  const rows = facts.map((x) => x.facts)
-  const columns: Column<PolicyFacts>[] = [
-    {
-      key: 'name',
-      header: P.columns.name,
-      sortValue: (r) => r.name.toLowerCase(),
-      csv: (r) => r.name,
-      render: (r) => (
-        <>
-          {r.name} {r.isMicrosoftManaged && <Chip status="neutral">{P.microsoftManaged}</Chip>}
-        </>
-      ),
-    },
-    {
-      key: 'state',
-      header: P.columns.state,
-      sortValue: (r) => r.state,
-      csv: (r) => P.state[r.state],
-      render: (r) => <Chip status={STATE_CHIP[r.state]}>{P.state[r.state]}</Chip>,
-    },
-    { key: 'users', header: P.columns.users, csv: (r) => usersSummary(r), render: (r) => <span title={usersDetail(r, names.label) || undefined}>{usersSummary(r)}</span> },
-    { key: 'exclusions', header: P.columns.exclusions, csv: (r) => exclusionsSummary(r, names.label), render: (r) => exclusionsSummary(r, names.label) },
-    { key: 'apps', header: P.columns.apps, csv: (r) => appsSummary(r), render: (r) => appsSummary(r) },
-    { key: 'conditions', header: P.columns.conditions, csv: (r) => conditionsSummary(r, names.label), render: (r) => conditionsSummary(r, names.label) },
-    { key: 'grant', header: P.columns.grant, csv: (r) => grantSummary(r, names.label), render: (r) => grantSummary(r, names.label) },
-    { key: 'session', header: P.columns.session, csv: (r) => sessionSummary(r), render: (r) => sessionSummary(r) },
-  ]
+  const model = policiesModel(facts, names)
+  const users = cellOf(model, 'users')
   const list = (ids: Iterable<string>) => [...ids].map(names.label).join(', ')
   const roleList = (ids: Set<string>) => (coversAdminSet(ids) ? P.allAdminRoles(ids.size) : [...ids].map(roleLabel).join(', '))
   return (
     <div>
       <Heading text={C.tabs.policies} source="policies" />
-      <DataTable
-        panel
-        rows={rows}
-        columns={columns}
-        rowKey={(r) => r.id || r.name}
-        csvName="iamai-policies.csv"
-        empty={P.empty}
+      <ModelTable
+        model={model}
+        render={{
+          name: (r) => (
+            <>
+              {r.name} {r.isMicrosoftManaged && <Chip status="neutral">{P.microsoftManaged}</Chip>}
+            </>
+          ),
+          state: (r) => <Chip status={STATE_CHIP[r.state]}>{P.state[r.state]}</Chip>,
+          // Tooltip for the Users column: the names behind the counts.
+          users: (r) => <span title={usersDetail(r, names.label) || undefined}>{users(r)}</span>,
+        }}
         expand={(r) => (
           <div className="sub">
             <div>
@@ -260,34 +184,17 @@ function PoliciesTab({ facts, names }: { facts: { raw: Raw; facts: PolicyFacts }
 
 // ---------- Named locations ----------
 
-function LocationsTab({ snapshot, facts }: { snapshot: TenantSnapshot; facts: { raw: Raw; facts: PolicyFacts }[] }) {
+function LocationsTab({ snapshot, facts }: { snapshot: TenantSnapshot; facts: PolicyFacts[] }) {
   const L = C.locations
-  type Row = { id: string; name: string; type: string; trusted: boolean; ranges: string; usedBy: number }
-  const rows: Row[] = ((snapshot.config.namedLocations?.rows ?? []) as Raw[]).map((l) => {
-    const id = String(l.id ?? '')
-    const isIp = String(l['@odata.type'] ?? '').includes('ipNamedLocation')
-    const ranges = isIp
-      ? (Array.isArray(l.ipRanges) ? l.ipRanges : []).map((r) => String((r as Raw).cidrAddress ?? '')).filter(Boolean).join(', ')
-      : (Array.isArray(l.countriesAndRegions) ? l.countriesAndRegions : []).map(String).join(', ')
-    const usedBy = facts.filter((f) => f.facts.locations && (f.facts.locations.include.has(id) || f.facts.locations.exclude.has(id))).length
-    return { id, name: String(l.displayName ?? id), type: isIp ? L.ip : L.country, trusted: l.isTrusted === true, ranges, usedBy }
-  })
   return (
     <div>
       <Heading text={C.tabs.locations} source="locations" />
-      <DataTable
-        panel
-        rows={rows}
-        rowKey={(r) => r.id}
-        csvName="iamai-named-locations.csv"
-        empty={L.empty}
-        columns={[
-          { key: 'name', header: L.columns.name, sortValue: (r) => r.name.toLowerCase(), csv: (r) => r.name, render: (r) => r.name },
-          { key: 'type', header: L.columns.type, sortValue: (r) => r.type, csv: (r) => r.type, render: (r) => r.type },
-          { key: 'trusted', header: L.columns.trusted, sortValue: (r) => (r.trusted ? 0 : 1), csv: (r) => (r.trusted ? L.trusted : L.notTrusted), render: (r) => <Chip status={r.trusted ? 'done' : 'neutral'}>{r.trusted ? L.trusted : L.notTrusted}</Chip> },
-          { key: 'ranges', header: L.columns.ranges, csv: (r) => r.ranges, render: (r) => <span className="mono">{r.ranges}</span> },
-          { key: 'usedBy', header: L.columns.usedBy, sortValue: (r) => r.usedBy, csv: (r) => r.usedBy, render: (r) => L.usedBy(r.usedBy) },
-        ]}
+      <ModelTable
+        model={locationsModel(snapshot, facts)}
+        render={{
+          trusted: (r) => <Chip status={r.trusted ? 'done' : 'neutral'}>{r.trusted ? L.trusted : L.notTrusted}</Chip>,
+          ranges: (r) => <span className="mono">{r.ranges}</span>,
+        }}
       />
     </div>
   )
@@ -295,37 +202,11 @@ function LocationsTab({ snapshot, facts }: { snapshot: TenantSnapshot; facts: { 
 
 // ---------- Authentication ----------
 
-function AuthenticationTab({ snapshot, names }: { snapshot: TenantSnapshot; names: ReturnType<typeof buildNameDirectory> }) {
+function AuthenticationTab({ snapshot, names }: { snapshot: TenantSnapshot; names: NameDirectory }) {
   const A = C.authentication
-  const policy = ((snapshot.config.authMethodsPolicy?.rows ?? [])[0] ?? null) as Raw | null
-  const configs = (Array.isArray(policy?.authenticationMethodConfigurations) ? policy!.authenticationMethodConfigurations : []) as Raw[]
-  type MethodRow = { id: string; state: string; targets: string }
-  const methodRows: MethodRow[] = configs.map((m) => {
-    const targets = (Array.isArray(m.includeTargets) ? m.includeTargets : []) as Raw[]
-    const t = targets.map((x) => (String(x.id) === 'all_users' ? A.allUsers : names.label(String(x.id ?? '')))).join(', ')
-    return { id: String(m.id ?? ''), state: String(m.state ?? ''), targets: t || A.targets(0) }
-  })
+  const policy = authMethodsPolicyOf(snapshot)
   const campaign = ((policy?.registrationEnforcement as Raw | undefined)?.authenticationMethodsRegistrationCampaign ?? null) as Raw | null
   const migration = typeof policy?.policyMigrationState === 'string' ? policy.policyMigrationState : null
-
-  type StrengthRow = { id: string; name: string; type: string; combos: string }
-  const strengthRows: StrengthRow[] = ((snapshot.config.authStrengths?.rows ?? []) as Raw[]).map((s) => ({
-    id: String(s.id ?? ''),
-    name: String(s.displayName ?? s.id ?? ''),
-    type: s.policyType === 'builtIn' ? A.builtIn : A.custom,
-    combos: (Array.isArray(s.allowedCombinations) ? s.allowedCombinations : []).map((c) => combinationName(String(c))).join(', '),
-  }))
-
-  const reg = snapshot.registrationDetails
-  const byMethod = new Map<string, number>()
-  for (const r of reg) for (const m of r.methodsRegistered) byMethod.set(m, (byMethod.get(m) ?? 0) + 1)
-  type RegRow = { measure: string; users: number }
-  const regRows: RegRow[] = [
-    { measure: A.capable, users: reg.filter((r) => r.isMfaCapable).length },
-    { measure: A.registered, users: reg.filter((r) => r.isMfaRegistered).length },
-    { measure: A.passwordless, users: reg.filter((r) => r.isPasswordlessCapable).length },
-    ...[...byMethod.entries()].sort((a, b) => b[1] - a[1]).map(([m, n]) => ({ measure: A.byMethod(methodName(m)), users: n })),
-  ]
   const secDefaults = ((snapshot.config.securityDefaults?.rows ?? [])[0] ?? null) as Raw | null
 
   return (
@@ -333,18 +214,7 @@ function AuthenticationTab({ snapshot, names }: { snapshot: TenantSnapshot; name
       <Heading text={C.tabs.authentication} source="authentication" />
       {policy ? (
         <>
-          <DataTable
-            panel
-            caption={A.methods}
-            rows={methodRows}
-            rowKey={(r) => r.id}
-            csvName="iamai-auth-methods.csv"
-            columns={[
-              { key: 'method', header: A.methodColumns.method, sortValue: (r) => methodName(r.id), csv: (r) => methodName(r.id), render: (r) => methodName(r.id) },
-              { key: 'state', header: A.methodColumns.state, sortValue: (r) => r.state, csv: (r) => r.state, render: (r) => <Chip status={r.state === 'enabled' ? 'done' : 'neutral'}>{r.state === 'enabled' ? A.enabled : A.disabled}</Chip> },
-              { key: 'targets', header: A.methodColumns.targets, csv: (r) => r.targets, render: (r) => r.targets },
-            ]}
-          />
+          <ModelTable model={authMethodsModel(snapshot, names)} caption={A.methods} render={{ state: (r) => <Chip status={r.enabled ? 'done' : 'neutral'}>{r.enabled ? A.enabled : A.disabled}</Chip> }} />
           <p className="reason">
             {campaign && A.campaignState(String(campaign.state ?? 'unknown'))}
             {migration && ` · ${A.migration(migrationName(migration))}`}
@@ -354,34 +224,23 @@ function AuthenticationTab({ snapshot, names }: { snapshot: TenantSnapshot; name
         <p className="reason">{A.empty}</p>
       )}
 
-      <DataTable
-        panel
+      <ModelTable
+        model={authStrengthsModel(snapshot)}
         caption={A.strengths}
-        rows={strengthRows}
-        rowKey={(r) => r.id}
-        csvName="iamai-auth-strengths.csv"
-        columns={[
-          { key: 'name', header: A.strengthColumns.name, sortValue: (r) => r.name.toLowerCase(), csv: (r) => r.name, render: (r) => r.name },
-          { key: 'type', header: A.strengthColumns.type, sortValue: (r) => r.type, csv: (r) => r.type, render: (r) => <Chip status={r.type === A.builtIn ? 'neutral' : 'ready'}>{r.type}</Chip> },
-          { key: 'combos', header: A.strengthColumns.combinations, csv: (r) => r.combos, render: (r) => <span className="sub">{r.combos}</span> },
-        ]}
+        render={{
+          type: (r) => <Chip status={r.builtIn ? 'neutral' : 'ready'}>{r.builtIn ? A.builtIn : A.custom}</Chip>,
+          combos: (r) => <span className="sub">{r.combos}</span>,
+        }}
       />
 
-      <DataTable
-        panel
+      <ModelTable
+        model={registrationModel(snapshot)}
         caption={
           <>
             {A.registration}
             <InfoTip title={TILE.registration.title} text={TILE.registration.text} />
           </>
         }
-        rows={regRows}
-        rowKey={(r) => r.measure}
-        csvName="iamai-registration.csv"
-        columns={[
-          { key: 'measure', header: A.regColumns.measure, csv: (r) => r.measure, render: (r) => r.measure },
-          { key: 'users', header: A.regColumns.users, sortValue: (r) => r.users, csv: (r) => r.users, render: (r) => r.users },
-        ]}
       />
 
       <p className="reason">
@@ -391,170 +250,72 @@ function AuthenticationTab({ snapshot, names }: { snapshot: TenantSnapshot; name
   )
 }
 
-// ---------- People and groups ----------
+// ---------- People ----------
 
-function licenceTier(u: UserRow): string {
-  const caps = deriveUserCapabilities(u.assignedPlans)
-  if (caps.has('entraP2')) return C.people.p2
-  if (caps.has('entraP1')) return C.people.p1
-  return C.people.free
-}
-
-function PeopleTab({
-  snapshot,
-  viabilityById,
-  names,
-  referenced,
-  groups,
-  showGroups = false,
-}: {
-  snapshot: TenantSnapshot
-  viabilityById: Map<string, MfaViability>
-  names: ReturnType<typeof buildNameDirectory>
-  referenced: Map<string, { include: string[]; exclude: string[] }>
-  groups: GroupMembersCacheEntry[] | null
-  /** L3: true when rendering as the Groups tab rather than the People tab. */
-  showGroups?: boolean
-}) {
+function PeopleTab({ snapshot, names, viability }: { snapshot: TenantSnapshot; names: NameDirectory; viability: Map<string, MfaViability> }) {
   const P = C.people
-  const G = C.groups
-  type Row = UserRow & { v: MfaViability | undefined; roles: string }
-  const rows: Row[] = snapshot.users.map((u) => ({
-    ...u,
-    v: viabilityById.get(u.id),
-    roles: (snapshot.roles.active[u.id] ?? []).map(roleLabel).join(', '),
-  }))
-  const usersTable = () => (
+  return (
     <div>
       <Heading text={C.tabs.people} source="people" />
-      <DataTable
-        panel
-        rows={rows}
-        rowKey={(r) => r.id}
-        csvName="iamai-people.csv"
-        empty={P.empty}
-        columns={[
-          { key: 'name', header: P.columns.name, sortValue: (r) => (r.displayName ?? '').toLowerCase(), csv: (r) => r.displayName ?? '', render: (r) => r.displayName ?? '—' },
-          { key: 'upn', header: P.columns.upn, sortValue: (r) => (r.userPrincipalName ?? '').toLowerCase(), csv: (r) => r.userPrincipalName ?? '', render: (r) => <span className="sub">{r.userPrincipalName}</span> },
-          {
-            key: 'type',
-            header: P.columns.type,
-            sortValue: (r) => `${r.userType}${r.accountEnabled === false ? ' disabled' : ''}`,
-            csv: (r) => (r.accountEnabled === false ? `${r.userType} · ${P.signInDisabled}` : r.userType),
-            // A sign-in-disabled account (a shared mailbox, a resource) is listed here with its tag, and counted as a person nowhere.
-            render: (r) => (
-              <>
-                {r.userType === 'guest' ? <Chip>{P.guest}</Chip> : P.member}
-                {r.accountEnabled === false && <> <Chip status="neutral">{P.signInDisabled}</Chip></>}
-              </>
-            ),
-          },
-          { key: 'activity', header: P.columns.activity, sortValue: (r) => r.v?.activity ?? '', csv: (r) => (r.v ? ACTIVITY_STATE[r.v.activity].title : ''), render: (r) => (r.v ? ACTIVITY_STATE[r.v.activity].title : '—') },
-          { key: 'mfa', header: P.columns.mfa, sortValue: (r) => r.v?.mfa ?? '', csv: (r) => (r.v ? MFA_STATE[r.v.mfa].title : ''), render: (r) => (r.v ? MFA_STATE[r.v.mfa].title : '—') },
-          { key: 'method', header: P.columns.method, sortValue: (r) => r.v?.strongestMethod ?? '', csv: (r) => (r.v ? METHOD_TIER[r.v.strongestMethod].title : ''), render: (r) => (r.v && r.v.strongestMethod !== 'none' ? METHOD_TIER[r.v.strongestMethod].title : '—') },
-          { key: 'licence', header: P.columns.licence, sortValue: (r) => licenceTier(r), csv: (r) => licenceTier(r), render: (r) => licenceTier(r) },
-          { key: 'roles', header: P.columns.roles, sortValue: (r) => r.roles, csv: (r) => r.roles, render: (r) => r.roles || P.noRoles },
-        ]}
+      <ModelTable
+        model={peopleModel(snapshot, names, viability)}
+        render={{
+          upn: (r) => <span className="sub">{r.user.userPrincipalName}</span>,
+          // A sign-in-disabled account (a shared mailbox, a resource) is listed here with its tag, and counted as a person nowhere.
+          type: (r) => (
+            <>
+              {r.user.userType === 'guest' ? <Chip>{P.guest}</Chip> : P.member}
+              {r.user.accountEnabled === false && (
+                <>
+                  {' '}
+                  <Chip status="neutral">{P.signInDisabled}</Chip>
+                </>
+              )}
+            </>
+          ),
+        }}
       />
     </div>
   )
-  type GroupRow = { id: string; name: string; members: string; dynamic: string; policies: string }
-  const groupRows: GroupRow[] = [...referenced.entries()].map(([id, refs]) => {
-    const g = groups?.find((x) => x.groupId === id)
-    return {
-      id,
-      name: g?.displayName ?? names.label(id),
-      members: g ? (g.sampled ? G.sampled(g.memberCount) : String(g.memberCount)) : '…',
-      dynamic: g && g.asOf ? (g.membershipRule ? G.dynamic : G.assigned) : G.unknown,
-      policies: [...refs.include.map(G.include), ...refs.exclude.map(G.exclude)].join('; '),
-    }
-  })
-  const groupsTable = () => (
+}
+
+// ---------- Groups ----------
+
+// L3: Groups used to be a sub-tab of People, a tab strip inside a tab strip. It is its own tab.
+function GroupsTab({ referenced, groups, names }: { referenced: Map<string, { include: string[]; exclude: string[] }>; groups: GroupEntry[] | null; names: NameDirectory }) {
+  const G = C.groups
+  return (
     <div>
       <Heading text={C.tabs.groups} source="groups" />
       {groups === null && <p className="reason">{G.loading}</p>}
-      <DataTable
-        panel
-        rows={groupRows}
-        rowKey={(r) => r.id}
-        csvName="iamai-groups.csv"
-        empty={G.empty}
-        columns={[
-          { key: 'name', header: G.columns.name, sortValue: (r) => r.name.toLowerCase(), csv: (r) => r.name, render: (r) => r.name },
-          { key: 'members', header: G.columns.members, csv: (r) => r.members, render: (r) => r.members },
-          { key: 'dynamic', header: G.columns.dynamic, csv: (r) => r.dynamic, render: (r) => r.dynamic },
-          { key: 'policies', header: G.columns.policies, csv: (r) => r.policies, render: (r) => <span className="sub">{r.policies}</span> },
-        ]}
-      />
+      <ModelTable model={groupsModel(referenced, groups, names)} render={{ policies: (r) => <span className="sub">{r.policies}</span> }} />
     </div>
   )
-  // L3: Groups used to be a sub-tab here, a tab strip inside a tab strip. It is
-  // its own tab now; `showGroups` picks which half of this component renders.
-  return showGroups ? groupsTable() : usersTable()
 }
 
 // ---------- Devices ----------
 
-function DevicesTab({ snapshot, userById, names }: { snapshot: TenantSnapshot; userById: Map<string, UserRow>; names: ReturnType<typeof buildNameDirectory> }) {
+function DevicesTab({ snapshot, names }: { snapshot: TenantSnapshot; names: NameDirectory }) {
   const D = C.devices
-  const yn = (v: boolean | null) => (v === null ? D.unknown : v ? D.yes : D.no)
-  // A person by the one rule for naming a person (names.ts personLabels), as the
-  // devices CSV names the same owners (inventoryTables.ts): a display name another
-  // account shares carries its sign-in address. Both lists used to read the bare
-  // display name, and the registrant list, which drops a repeated entry, folded
-  // two people of one name into one.
-  const person = (id: string): string | null => (userById.has(id) ? names.label(id) : null)
-  const owner = (ids: string[]) => ids.map(person).filter(Boolean).join(', ')
-  // Authenticator registrations by device name (ux-review-03 §A6): the name
-  // is a model code, so every account with the same name is listed.
-  const byDeviceName = useMemo(() => {
-    const map = new Map<string, string[]>()
-    for (const [userId, methods] of Object.entries(snapshot.authMethods)) {
-      if (methods === 'unknown') continue
-      for (const m of methods) {
-        if (m.kind !== 'microsoftAuthenticator' || !m.displayName) continue
-        const who = person(userId)
-        if (!who) continue
-        const list = map.get(m.displayName) ?? []
-        if (!list.includes(who)) list.push(who)
-        map.set(m.displayName, list)
-      }
-    }
-    return map
-  }, [snapshot, userById, names])
-  const registrations = (name: string | null) => (name ? (byDeviceName.get(name) ?? []).join(', ') : '')
+  const model = useMemo(() => devicesModel(snapshot, names), [snapshot, names])
+  const compliant = cellOf(model, 'compliant')
   return (
     <div>
       <Heading text={C.tabs.devices} source="devices" />
-      <DataTable
-        panel
-        rows={snapshot.devices}
-        rowKey={(r) => r.id}
-        csvName="iamai-devices.csv"
-        empty={D.empty}
-        columns={[
-          { key: 'name', header: D.columns.name, sortValue: (r) => (r.displayName ?? '').toLowerCase(), csv: (r) => r.displayName ?? '', render: (r) => r.displayName ?? '—' },
-          { key: 'os', header: D.columns.os, sortValue: (r) => r.operatingSystem ?? '', csv: (r) => r.operatingSystem ?? '', render: (r) => r.operatingSystem ?? D.unknown },
-          { key: 'trust', header: D.columns.trust, sortValue: (r) => r.trustType ?? '', csv: (r) => (r.trustType ? trustTypeName(r.trustType) : ''), render: (r) => (r.trustType ? trustTypeName(r.trustType) : D.unknown) },
-          { key: 'compliant', header: D.columns.compliant, sortValue: (r) => (r.isCompliant ? 0 : 1), csv: (r) => yn(r.isCompliant), render: (r) => <Chip status={r.isCompliant ? 'done' : 'neutral'}>{yn(r.isCompliant)}</Chip> },
-          { key: 'managed', header: D.columns.managed, sortValue: (r) => (r.isManaged ? 0 : 1), csv: (r) => yn(r.isManaged), render: (r) => yn(r.isManaged) },
-          { key: 'last', header: D.columns.lastSignIn, sortValue: (r) => r.approximateLastSignIn ?? '', csv: (r) => (r.approximateLastSignIn ? absoluteDate(r.approximateLastSignIn) : ''), render: (r) => (r.approximateLastSignIn ? <span title={absoluteDate(r.approximateLastSignIn)}>{relative(r.approximateLastSignIn)}</span> : D.unknown) },
-          { key: 'owner', header: D.columns.owner, csv: (r) => owner(r.ownerIds), render: (r) => owner(r.ownerIds) || D.unknown },
-          {
-            key: 'authenticator',
-            header: D.columns.authenticator,
-            minWidth: '18rem',
-            csv: (r) => registrations(r.displayName),
-            render: (r) =>
-              registrations(r.displayName) ? (
-                <>
-                  {registrations(r.displayName)} <InfoTip title={D.sameDevice.title} text={D.sameDevice.text} />
-                </>
-              ) : (
-                D.unknown
-              ),
-          },
-        ]}
+      <ModelTable
+        model={model}
+        render={{
+          compliant: (r) => <Chip status={r.isCompliant ? 'done' : 'neutral'}>{compliant(r)}</Chip>,
+          last: (r) => (r.approximateLastSignIn ? <span title={absoluteDate(r.approximateLastSignIn)}>{relative(r.approximateLastSignIn)}</span> : D.unknown),
+          authenticator: (r) =>
+            model.registrations(r) ? (
+              <>
+                {model.registrations(r)} <InfoTip title={D.sameDevice.title} text={D.sameDevice.text} />
+              </>
+            ) : (
+              D.unknown
+            ),
+        }}
       />
     </div>
   )
@@ -562,32 +323,15 @@ function DevicesTab({ snapshot, userById, names }: { snapshot: TenantSnapshot; u
 
 // ---------- Roles ----------
 
-function RolesTab({ snapshot, names }: { snapshot: TenantSnapshot; names: ReturnType<typeof buildNameDirectory> }) {
+function RolesTab({ snapshot, names }: { snapshot: TenantSnapshot; names: NameDirectory }) {
   const R = C.roles
   const [showAll, setShowAll] = useState(false)
   const [resolved, setResolved] = useState<Map<string, ResolvedObject> | null>(null)
-  const byRole = useMemo(() => {
-    const map = new Map<string, { active: Set<string>; eligible: Set<string> }>()
-    const add = (src: Record<string, string[]>, key: 'active' | 'eligible') => {
-      for (const [holderId, roles] of Object.entries(src)) {
-        for (const role of roles) {
-          const id = role.toLowerCase()
-          const e = map.get(id) ?? { active: new Set<string>(), eligible: new Set<string>() }
-          e[key].add(holderId)
-          map.set(id, e)
-        }
-      }
-    }
-    add(snapshot.roles.active, 'active')
-    add(snapshot.roles.eligible, 'eligible')
-    return map
-  }, [snapshot])
+  const holders = useMemo(() => roleHoldersOf(snapshot), [snapshot])
 
   // Holders that are not users (groups, service principals) get their name
   // and kind on demand.
   useEffect(() => {
-    const holders = new Set<string>()
-    for (const e of byRole.values()) for (const id of [...e.active, ...e.eligible]) holders.add(id)
     const unknown = names.unknown(holders)
     if (unknown.length === 0) {
       setResolved(new Map())
@@ -600,67 +344,29 @@ function RolesTab({ snapshot, names }: { snapshot: TenantSnapshot; names: Return
     return () => {
       cancelled = true
     }
-  }, [byRole, names])
+  }, [holders, names])
 
-  const holder = (id: string): string => {
-    const o = resolved?.get(id)
-    if (o) return o.kind === 'servicePrincipal' ? R.service(o.displayName) : o.displayName
-    return names.label(id)
-  }
-  type Row = { id: string; name: string; privileged: boolean; active: string; eligible: string; activeN: number; held: boolean }
-  // A built-in role held only by service principals is hidden by default (prompt 46 item 25).
-  const kindOf = (id: string): string | null => resolved?.get(id)?.kind ?? null
-  const serviceOnly = (id: string): boolean => {
-    const e = byRole.get(id)
-    return e !== undefined && roleTemplate(id) !== undefined && heldOnlyByServices([...e.active, ...e.eligible], kindOf)
-  }
-  const ids = showAll ? new Set([...ROLE_TEMPLATES.map((r) => r.templateId), ...byRole.keys()]) : new Set([...byRole.keys()].filter((id) => !serviceOnly(id)))
-  const rows: Row[] = [...ids].map((id) => {
-    const e = byRole.get(id) ?? { active: new Set<string>(), eligible: new Set<string>() }
-    return {
-      id,
-      // A role the catalogue and the scan cannot name is labelled by who holds it, never by an id (ux-review-05 §7).
-      name: roleName(id) ?? (e.active.size + e.eligible.size > 0 ? R.usedBy([...e.active, ...e.eligible].slice(0, 2).map(holder).join(', ')) : roleLabel(id)),
-      privileged: roleTemplate(id)?.privileged ?? false,
-      active: [...e.active].map(holder).join(', '),
-      eligible: [...e.eligible].map(holder).join(', '),
-      activeN: e.active.size,
-      held: e.active.size + e.eligible.size > 0,
-    }
-  })
-  const hidden = ROLE_TEMPLATES.filter((r) => !byRole.has(r.templateId)).length + [...byRole.keys()].filter(serviceOnly).length
+  const model = rolesModel(snapshot, names, resolved, showAll)
   return (
     <div>
       <Heading text={C.tabs.roles} source="roles" />
       <p className="reason">
         {resolved === null && `${R.resolving} `}
-        {!showAll && hidden > 0 && `${R.hiddenNote(hidden)} `}
+        {!showAll && model.hidden > 0 && `${R.hiddenNote(model.hidden)} `}
         <Button size="sm" variant="tertiary" onClick={() => setShowAll((v) => !v)}>
           {showAll ? R.showHeld : R.showAll}
         </Button>
       </p>
-      <DataTable
-        panel
-        rows={rows}
-        rowKey={(r) => r.id}
-        csvName="iamai-roles.csv"
-        empty={R.empty}
+      <ModelTable
+        model={model}
         initialSort={{ key: 'active', dir: -1 }}
-        columns={[
-          {
-            key: 'role',
-            header: R.columns.role,
-            sortValue: (r) => r.name.toLowerCase(),
-            csv: (r) => r.name,
-            render: (r) => (
-              <>
-                {r.name} {r.privileged && <Chip status="warning">{R.privileged}</Chip>}
-              </>
-            ),
-          },
-          { key: 'active', header: R.columns.active, sortValue: (r) => r.activeN, csv: (r) => r.active, render: (r) => r.active || '—' },
-          { key: 'eligible', header: R.columns.eligible, csv: (r) => r.eligible, render: (r) => r.eligible || '—' },
-        ]}
+        render={{
+          role: (r) => (
+            <>
+              {r.name} {r.privileged && <Chip status="warning">{R.privileged}</Chip>}
+            </>
+          ),
+        }}
       />
     </div>
   )
@@ -670,131 +376,54 @@ function RolesTab({ snapshot, names }: { snapshot: TenantSnapshot; names: Return
 
 function LicensingTab({ snapshot }: { snapshot: TenantSnapshot }) {
   const L = C.licensing
-  const skus = (snapshot.config.subscribedSkus?.rows ?? []) as Raw[]
-  const friendly = productNames.products as Record<string, string>
-  type Row = { id: string; sku: string; name: string; seats: number; consumed: number; caps: string }
-  const all: Row[] = skus.map((s) => {
-    const caps = deriveTenantCapabilities([s])
-    const unlocked = CAPABILITIES.filter((c) => caps[c].enabled).map((c) => LICENSING.caps[c] ?? c)
-    const sku = String(s.skuPartNumber ?? s.skuId ?? '')
-    return {
-      id: String(s.skuId ?? s.skuPartNumber ?? ''),
-      sku,
-      name: friendly[sku.toUpperCase()] ?? sku,
-      seats: Number((s.prepaidUnits as Raw | undefined)?.enabled ?? 0),
-      consumed: Number(s.consumedUnits ?? 0),
-      caps: unlocked.join(', ') || L.none,
-    }
-  })
-  const rows = all
   return (
     <div>
       <Heading text={C.tabs.licensing} source="licensing" />
-      <DataTable
-        panel
-        rows={rows}
-        rowKey={(r) => r.id}
-        csvName="iamai-licences.csv"
-        empty={L.empty}
-        columns={[
-          {
-            key: 'sku',
-            header: L.columns.sku,
-            sortValue: (r) => r.name.toLowerCase(),
-            csv: (r) => (r.name === r.sku ? r.sku : `${r.name} (${r.sku})`),
-            render: (r) => (
-              <>
-                {r.name}
-                {r.name !== r.sku && (
-                  <>
-                    <br />
-                    <span className="sub muted">{r.sku}</span>
-                  </>
-                )}
-              </>
-            ),
-          },
-          { key: 'seats', header: L.columns.seats, sortValue: (r) => r.seats, csv: (r) => r.seats, render: (r) => r.seats },
-          { key: 'consumed', header: L.columns.consumed, sortValue: (r) => r.consumed, csv: (r) => r.consumed, render: (r) => r.consumed },
-          { key: 'caps', header: L.columns.capabilities, csv: (r) => r.caps, render: (r) => r.caps },
-        ]}
+      <ModelTable
+        model={licencesModel(snapshot)}
+        render={{
+          sku: (r) => (
+            <>
+              {r.name}
+              {r.name !== r.sku && (
+                <>
+                  <br />
+                  <span className="sub muted">{r.sku}</span>
+                </>
+              )}
+            </>
+          ),
+        }}
       />
-      <DataTable
-        panel
-        caption={L.summary}
-        rows={CAPABILITIES.map((c) => ({ id: c, name: LICENSING.caps[c] ?? c, enabled: snapshot.capabilities[c].enabled, seats: snapshot.capabilities[c].seats, consumed: snapshot.capabilities[c].consumed }))}
-        rowKey={(r) => r.id}
-        csvName="iamai-capabilities.csv"
-        columns={[
-          { key: 'capability', header: L.capColumns.capability, csv: (r) => r.name, render: (r) => r.name },
-          { key: 'seats', header: L.capColumns.seats, csv: (r) => (r.enabled ? L.seats(r.seats, r.consumed) : L.notLicensed), render: (r) => (r.enabled ? L.seats(r.seats, r.consumed) : L.notLicensed) },
-        ]}
-      />
+      <ModelTable model={capabilitiesModel(snapshot)} caption={L.summary} />
     </div>
   )
 }
 
 // ---------- Apps ----------
 
-function AppsTab({ snapshot, names }: { snapshot: TenantSnapshot; names: ReturnType<typeof buildNameDirectory> }) {
+function AppsTab({ snapshot, names }: { snapshot: TenantSnapshot; names: NameDirectory }) {
   const A = C.apps
-  const summary = snapshot.appSignInSummary as Raw[]
-  const sp = snapshot.spActivity as Raw[]
-  const lastSpByApp = new Map<string, string>()
-  for (const s of sp) {
-    const appId = String(s.appId ?? '')
-    const last = (s.lastSignInActivity as Raw | undefined)?.lastSignInDateTime
-    if (appId && typeof last === 'string') lastSpByApp.set(appId, last)
-  }
-  type Row = { id: string; app: string; signIns: number; lastSp: string | null }
-  const byApp = new Map<string, Row>()
-  for (const r of summary) {
-    const appId = String(r.appId ?? '')
-    const name = typeof r.appDisplayName === 'string' ? r.appDisplayName : names.label(appId)
-    const n = Number(r.signInCount ?? 0)
-    const row = byApp.get(appId) ?? { id: appId || name, app: name, signIns: 0, lastSp: lastSpByApp.get(appId) ?? null }
-    row.signIns += n
-    byApp.set(appId, row)
-  }
-  for (const [appId, last] of lastSpByApp) {
-    if (!byApp.has(appId)) byApp.set(appId, { id: appId, app: names.label(appId), signIns: 0, lastSp: last })
-  }
-  const facets = detectFacets(snapshot)
+  const workloads = workloadsModel(snapshot)
+  const detected = cellOf(workloads, 'detected')
   return (
     <div>
       <Heading text={C.tabs.apps} source="apps" />
-      <DataTable
-        panel
-        rows={[...byApp.values()]}
-        rowKey={(r) => r.id}
-        csvName="iamai-apps.csv"
-        empty={A.empty}
+      <ModelTable
+        model={appsModel(snapshot, names)}
         initialSort={{ key: 'signIns', dir: -1 }}
-        columns={[
-          { key: 'app', header: A.columns.app, sortValue: (r) => r.app.toLowerCase(), csv: (r) => r.app, render: (r) => r.app },
-          { key: 'signIns', header: A.columns.signIns, sortValue: (r) => r.signIns, csv: (r) => r.signIns, render: (r) => r.signIns },
-          { key: 'lastSp', header: A.columns.lastSp, sortValue: (r) => r.lastSp ?? '', csv: (r) => (r.lastSp ? absoluteDate(r.lastSp) : ''), render: (r) => (r.lastSp ? <span title={absoluteDate(r.lastSp)}>{relative(r.lastSp)}</span> : '—') },
-        ]}
+        render={{ lastSp: (r) => (r.lastSp ? <span title={absoluteDate(r.lastSp)}>{relative(r.lastSp)}</span> : '—') }}
       />
-      <DataTable
-        panel
+      <ModelTable
+        model={workloads}
         caption={A.facets}
-        rows={Object.entries(facets).map(([facet, f]) => ({ facet, name: app.inventory.workloadNames[facet] ?? facet, on: f.on, reason: f.reason }))}
-        rowKey={(r) => r.facet}
-        csvName="iamai-workloads.csv"
-        columns={[
-          { key: 'workload', header: A.facetColumns.workload, csv: (r) => r.name, render: (r) => r.name },
-          {
-            key: 'detected',
-            header: A.facetColumns.detected,
-            csv: (r) => (r.on ? A.on : A.off),
-            render: (r) => (
-              <Chip status={r.on ? 'done' : 'neutral'} title={r.reason}>
-                {r.on ? A.on : A.off}
-              </Chip>
-            ),
-          },
-        ]}
+        render={{
+          detected: (r) => (
+            <Chip status={r.on ? 'done' : 'neutral'} title={r.reason}>
+              {detected(r)}
+            </Chip>
+          ),
+        }}
       />
     </div>
   )
@@ -802,30 +431,14 @@ function AppsTab({ snapshot, names }: { snapshot: TenantSnapshot; names: ReturnT
 
 // ---------- Sign-in records ----------
 
-function SignInsTab({ snapshot, names }: { snapshot: TenantSnapshot; names: ReturnType<typeof buildNameDirectory> }) {
+function SignInsTab({ snapshot, names }: { snapshot: TenantSnapshot; names: NameDirectory }) {
   const S = C.signIns
   const src = snapshot.sources.signInEvidence
   const agg = snapshot.evidenceAggregates ?? null
-  type CountRow = { key: string; count: number }
-  const table = (title: string, data: Record<string, number>, header: string, csv: string) => (
-    <>
-      <DataTable
-        panel
-        caption={title}
-        rows={Object.entries(data).map(([key, count]) => ({ key, count }))}
-        rowKey={(r) => r.key}
-        csvName={csv}
-        initialSort={{ key: 'count', dir: -1 }}
-        columns={[
-          { key: 'key', header: S.columns.key, sortValue: (r: CountRow) => r.key, csv: (r: CountRow) => r.key, render: (r: CountRow) => r.key },
-          { key: 'count', header, sortValue: (r: CountRow) => r.count, csv: (r: CountRow) => r.count, render: (r: CountRow) => r.count },
-        ]}
-      />
-    </>
-  )
-  const usage = snapshot.evidenceUsage
+  const m = signInModels(snapshot, names)
   // Three names at most per row: a long list is a count with the first three (row budget).
   const people = (ids: string[]) => (ids.length === 0 ? S.nobody : ids.length <= 3 ? ids.map(names.label).join(', ') : S.morePeople(ids.slice(0, 3).map(names.label), ids.length - 3))
+  const count = { initialSort: { key: 'count', dir: -1 as const } }
   return (
     <div>
       <Heading text={C.tabs.signIns} source="signIns" />
@@ -835,37 +448,11 @@ function SignInsTab({ snapshot, names }: { snapshot: TenantSnapshot; names: Retu
             {S.window(absoluteDate(src.coveredWindow.from), absoluteDate(src.coveredWindow.to), agg.total)} · {S.distinctUsers(agg.distinctUsers)}
             <InfoTip title={S.distinctUsersTip.title} text={S.distinctUsersTip.text} />
           </p>
-          {table(S.byClientApp, agg.byClientApp, S.columns.count, 'iamai-signins-by-client-app.csv')}
-          {table(S.byProtocol, Object.fromEntries(Object.entries(agg.byProtocol).map(([k, v]) => [protocolName(k), v])), S.columns.count, 'iamai-signins-by-protocol.csv')}
-          {table(S.byCountry, agg.byCountry, S.columns.users, 'iamai-signins-by-country.csv')}
-          {usage && (
-            <DataTable
-              panel
-              caption={S.olderMethods}
-              rows={[
-                { method: S.legacy, ids: usage.legacyAuth.userIds },
-                { method: S.deviceCode, ids: usage.deviceCode.userIds },
-                { method: S.authTransfer, ids: usage.authTransfer.userIds },
-              ]}
-              rowKey={(r) => r.method}
-              csvName="iamai-older-sign-in-methods.csv"
-              columns={[
-                { key: 'method', header: S.usageColumns.method, csv: (r) => r.method, render: (r) => r.method },
-                { key: 'people', header: S.usageColumns.people, csv: (r) => r.ids.map(names.label).join('; '), render: (r) => people(r.ids) },
-              ]}
-            />
-          )}
-          <DataTable
-            panel
-            caption={S.blockedToday}
-            rows={snapshot.blockedToday}
-            rowKey={(r) => r.policyId}
-            csvName="iamai-blocked-today.csv"
-            columns={[
-              { key: 'policy', header: S.blockedColumns.policy, csv: (r) => r.displayName ?? r.policyId, render: (r) => r.displayName ?? (r.policyId === 'unknown' ? S.noPolicy : names.label(r.policyId)) },
-              { key: 'users', header: S.blockedColumns.users, csv: (r) => r.userIds.map(names.label).join('; '), render: (r) => people(r.userIds) },
-            ]}
-          />
+          <ModelTable model={m.byClientApp} caption={S.byClientApp} {...count} />
+          <ModelTable model={m.byProtocol} caption={S.byProtocol} {...count} />
+          <ModelTable model={m.byCountry} caption={S.byCountry} {...count} />
+          {m.olderMethods && <ModelTable model={m.olderMethods} caption={S.olderMethods} render={{ people: (r) => people(r.ids) }} />}
+          <ModelTable model={m.blockedToday} caption={S.blockedToday} render={{ people: (r) => people(r.ids) }} />
         </>
       ) : (
         <EmptyState icon="chart" text={S.noWindow} />

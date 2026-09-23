@@ -330,7 +330,8 @@ test('Export still exports what it exported, from the same authorities', () => {
 
 test('Inventory still reads the same population, with the same filters and the same identity', () => {
   assert.match(INVENTORY, /snapshot\.config\.caPolicies\?\.rows \?\? \[\]/)
-  assert.match(INVENTORY, /snapshot\.users\.map\(\(u\) => \[u\.id, u\]\)/)
+  // Every account the scan read is a People row, in the one model the tab draws and the Export writes.
+  assert.match(text('src/ui/surfaces/inventoryTables.ts'), /rows: PersonRow\[\] = snapshot\.users\.map\(\(u\) =>/)
   assert.match(INVENTORY, /getGroupMembers\(snapshot\.tenantId, id\)/)
   // The ten tabs, in the order the surface has always shown them.
   const tabs = [...INVENTORY.matchAll(/\{ id: '([a-z-]+)', label: C\.tabs\./g)].map((m) => m[1])
