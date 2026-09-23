@@ -587,7 +587,8 @@ try {
   // All work: an open section says what is left of it, a finished one is one
   // collapsed line in its own place (owner, roadmap flow V2 decision B), and a
   // section there is whole: it holds rows of more than one lane, which no lane
-  // tab can.
+  // tab can. This tenant has no finished section, so the collapsed line is
+  // checked on the demo's Follow-up scan, at both widths (below).
   await showLane('All work')
   const allWorkMeta = await evaluate(`[...document.querySelectorAll('main.page .plan-group')].map((g) => ({ meta: ((g.querySelector('.plan-group-meta') || {}).textContent || '').trim(), closed: g.classList.contains('closed'), hidden: !!(g.querySelector('.plan-group-rows') || {}).hidden }))`)
   const FINISHED_RE = /^(All \d+ completed|1 of 1 completed|\d+ of \d+ completed, \d+ deferred)$/
@@ -620,13 +621,14 @@ try {
   check('Plan: a group on All work is the whole group, not one lane of it', Array.isArray(allWorkLanes) && allWorkLanes.some((n) => n > 1), JSON.stringify(allWorkLanes))
   // At phone width (390px) All work's section lines and compact rows stay on
   // the page, and the board widens nothing (owner, roadmap flow V2: check the
-  // view at desktop and mobile width).
+  // view at desktop and mobile width). A collapsed section at this width is
+  // checked on the demo's Follow-up scan, which has one.
   await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true })
   await sleep(400)
-  const phone = await evaluate(`(() => { const fits = (e) => { const b = e.getBoundingClientRect(); return b.left >= -1 && b.right <= innerWidth + 1 }; const heads = [...document.querySelectorAll('main.page .plan-group-head')]; const rows = [...document.querySelectorAll('main.page .plan-row[data-compact]')].filter((r) => r.offsetParent !== null); const board = document.querySelector('main.page .plan-board'); return { heads: heads.length, headsFit: heads.every(fits), rows: rows.length, rowsFit: rows.every(fits), board: board ? board.scrollWidth <= board.clientWidth + 1 : false, closedOneLine: [...document.querySelectorAll('main.page .plan-group.closed .plan-group-lead')].every((l) => l.getBoundingClientRect().height < 80) } })()`)
+  const phone = await evaluate(`(() => { const fits = (e) => { const b = e.getBoundingClientRect(); return b.left >= -1 && b.right <= innerWidth + 1 }; const heads = [...document.querySelectorAll('main.page .plan-group-head')]; const rows = [...document.querySelectorAll('main.page .plan-row[data-compact]')].filter((r) => r.offsetParent !== null); const board = document.querySelector('main.page .plan-board'); return { heads: heads.length, headsFit: heads.every(fits), rows: rows.length, rowsFit: rows.every(fits), board: board ? board.scrollWidth <= board.clientWidth + 1 : false } })()`)
   await send('Emulation.clearDeviceMetricsOverride')
   await sleep(400)
-  check('Plan: at phone width, All work’s sections and finished rows fit the page', !!phone && phone.heads >= 1 && phone.headsFit && phone.rowsFit && phone.board && phone.closedOneLine, JSON.stringify(phone))
+  check('Plan: at phone width, All work’s sections and finished rows fit the page', !!phone && phone.heads >= 1 && phone.headsFit && phone.rowsFit && phone.board, JSON.stringify(phone))
   // Decision H, tried as a visible line: while the board has policies at
   // Ready · Create, one line above the board counts them (a count, never a
   // name) and its control shows exactly those rows. This tenant may draw no
@@ -1349,6 +1351,49 @@ try {
     `day one: "${day1Header}" -> week two: "${demoWeek2Header}"`,
   )
   await evaluate(`(() => { const t = [...document.querySelectorAll('main.page .plan-row .step-title')].find((x) => x.textContent.trim() === ${INTUNE}); const r = t && t.closest('.plan-row'); if (r && r.getAttribute('aria-expanded') === 'true') r.click(); return true })()`)
+  // A finished section, drawn (roadmap flow V2 decision B): the Follow-up scan
+  // has Emergency Access finished, so All work's first section is one collapsed
+  // line in its own place — its title and "All 4 completed" — with its rows
+  // hidden. None of the Plan section's tenants has a finished section, so this
+  // is where the collapsed line is checked on screen, at 1440px and at 390px.
+  // The whole heading line is the fold's hit area: a real press on the title's
+  // words, away from the button's own box, opens it and a second folds it.
+  await showLane('All work')
+  const sectionOne = `(() => { const g = document.querySelector('main.page .plan-board .plan-group'); if (!g) return null; const lead = g.querySelector('.plan-group-lead'); const head = g.querySelector('.plan-group-head'); const rows = g.querySelector('.plan-group-rows'); const b = head ? head.getBoundingClientRect() : null; return { width: innerWidth, closed: g.classList.contains('closed'), title: ((g.querySelector('h2') || {}).textContent || '').trim(), meta: ((g.querySelector('.plan-group-meta') || {}).textContent || '').trim(), hidden: !!(rows && rows.hidden), lead: lead ? Math.round(lead.getBoundingClientRect().height) : -1, fits: !!b && b.left >= -1 && b.right <= innerWidth + 1, expanded: (g.querySelector('.plan-group-toggle') || { getAttribute: () => null }).getAttribute('aria-expanded') } })()`
+  const pressSectionOneTitle = async () => {
+    const at = await evaluate(`(() => { const g = document.querySelector('main.page .plan-board .plan-group'); const h = g && g.querySelector('h2'); const btn = g && g.querySelector('.plan-group-toggle'); if (!h || !btn) return null; h.scrollIntoView({ block: 'center' }); const range = document.createRange(); range.selectNodeContents(h); const line = range.getClientRects()[0]; if (!line) return null; const x = line.left + Math.min(line.width / 2, 60); const y = line.top + line.height / 2; const bb = btn.getBoundingClientRect(); return { x, y, offButton: x < bb.left || x > bb.right || y < bb.top || y > bb.bottom } })()`)
+    if (!at) return null
+    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at.x, y: at.y })
+    await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: at.x, y: at.y, button: 'left', clickCount: 1 })
+    await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: at.x, y: at.y, button: 'left', clickCount: 1 })
+    await sleep(250)
+    return { offButton: at.offButton, ...(await evaluate(sectionOne)) }
+  }
+  const EA_TITLE = CONTENT_PAGES.app.plan.groups.emergencyAccess.completedTitle
+  const EA_DONE = CONTENT_PAGES.app.plan.board.groupAllCompleted.replace('{total}', '4')
+  const collapsedLine = (s) => !!s && s.closed && s.title === EA_TITLE && s.meta === EA_DONE && s.hidden && s.expanded === 'false' && s.lead > 0 && s.lead < 80 && s.fits
+  const openedByTitle = (s) => !!s && s.offButton && !s.closed && !s.hidden && s.expanded === 'true'
+  const foldedByTitle = (s) => !!s && s.offButton && s.closed && s.hidden
+  const deskSection = await evaluate(sectionOne)
+  await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true })
+  await sleep(400)
+  const phoneSection = await evaluate(sectionOne)
+  const phoneOpened = await pressSectionOneTitle()
+  const phoneFolded = await pressSectionOneTitle()
+  await send('Emulation.clearDeviceMetricsOverride')
+  await sleep(400)
+  const deskOpened = await pressSectionOneTitle()
+  const deskFolded = await pressSectionOneTitle()
+  check(
+    'Demo: with Emergency Access finished, All work’s first section is one collapsed line, "All 4 completed", at 1440px and 390px',
+    collapsedLine(deskSection) && deskSection.width >= 1200 && collapsedLine(phoneSection) && phoneSection.width === 390,
+    JSON.stringify({ deskSection, phoneSection }),
+  )
+  check(
+    'Demo: a press on the collapsed section’s title, not its button, opens it and a second folds it, at 390px and 1440px',
+    openedByTitle(phoneOpened) && foldedByTitle(phoneFolded) && openedByTitle(deskOpened) && foldedByTitle(deskFolded),
+    JSON.stringify({ phoneOpened, phoneFolded, deskOpened, deskFolded }),
+  )
   // Decision H's line where the board draws it (roadmap flow V2): the Follow-up
   // scan with its last Direction step approved has policies at Ready · Create.
   // The line above the board counts them — a count, never a name — and Show
