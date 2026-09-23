@@ -283,6 +283,9 @@ function grantLine(f: PolicyFacts, ctx: PortalContext, override?: GrantOverride)
   const controls = new Set([...f.grant.controls].map(lc))
   if (controls.has('block')) return 'Grant → Block access'
   const reqs: string[] = []
+  // Risk remediation first, as the portal lists it: selecting it selects the
+  // authentication strength beside it. It had no label and was dropped.
+  if (controls.has('riskremediation')) reqs.push('Require risk remediation')
   // A strength nothing names is written by the id the request carries, and
   // never by a name. The fallback here was "Multifactor authentication", which
   // is not a generic phrase: it is the display name of Microsoft's built-in
