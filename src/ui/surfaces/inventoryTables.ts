@@ -8,7 +8,7 @@
 // did not report as "no", while the surface wrote words under the same file
 // names. Pure: no DOM, no network.
 import type { ConfigSectionKey, DeviceRow, SourceKey, TenantSnapshot, UserRow } from '../../graph/collect/types.ts'
-import { CONFIG_KEYS, sectionHasData } from '../../graph/collect/coreSections.ts'
+import { partlyRead, sectionHasData, sectionState } from '../../graph/collect/coreSections.ts'
 import { isLicenceGate } from '../../graph/collect/roles.ts'
 import { securityDefaultsState } from '../../derive/readinessContext.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
@@ -87,9 +87,6 @@ const W = app.inventory
 const NOT_READ = (pages.connect as unknown as { scan: { gaps: { notRead: string } } }).scan.gaps.notRead
 
 type SectionKey = ConfigSectionKey | SourceKey
-function stateOf(snapshot: TenantSnapshot, key: SectionKey): { status: string; reason: string | null } | undefined {
-  return (CONFIG_KEYS as string[]).includes(key) ? snapshot.config?.[key as ConfigSectionKey] : snapshot.sources?.[key as SourceKey]
-}
 const reasonOf = (s: { reason: string | null } | undefined): string | null => {
   const r = (s?.reason ?? '').trim().replace(/[.\s]+$/, '')
   return r === '' ? null : r
@@ -102,17 +99,16 @@ const reasonOf = (s: { reason: string | null } | undefined): string | null => {
  */
 export function notReadLine(snapshot: TenantSnapshot, key: SectionKey): string | null {
   if (sectionHasData(snapshot, key)) return null
-  const s = stateOf(snapshot, key)
+  const s = sectionState(snapshot, key)
   const reason = reasonOf(s)
   if (reason === null) return W.notReadNoReason
   return fillText(s?.status === 'insufficient' ? W.tooLittle : W.notRead, { reason })
 }
 
-/** The line over a table whose section was read in part; a licence gate is not a shortfall (coreSections.ts unreadSources). */
+/** The line over a table whose section was read in part (coreSections.ts partlyRead): a licence gate is not a shortfall. */
 export function partlyReadLine(snapshot: TenantSnapshot, key: SectionKey): string | null {
-  const s = stateOf(snapshot, key)
-  if (s?.status !== 'partial' || isLicenceGate(s.reason)) return null
-  const reason = reasonOf(s)
+  if (!partlyRead(snapshot, key)) return null
+  const reason = reasonOf(sectionState(snapshot, key))
   return reason === null ? W.partlyReadNoReason : fillText(W.partlyRead, { reason })
 }
 

@@ -38,8 +38,22 @@ const BUILDABLE = new Set(['ok', 'partial'])
  * and the surface says the section was not read instead of drawing a zero.
  */
 export function sectionHasData(snapshot: TenantSnapshot, key: ConfigSectionKey | SourceKey): boolean {
-  const s = (CONFIG_KEYS as string[]).includes(key) ? snapshot.config?.[key as ConfigSectionKey] : snapshot.sources?.[key as SourceKey]
-  return BUILDABLE.has(s?.status ?? '')
+  return BUILDABLE.has(sectionState(snapshot, key)?.status ?? '')
+}
+
+/** A section as the scan left it, a configuration section or a source; undefined where the scan lacks it. */
+export function sectionState(snapshot: TenantSnapshot, key: ConfigSectionKey | SourceKey): { status: string; reason: string | null } | undefined {
+  return (CONFIG_KEYS as string[]).includes(key) ? snapshot.config?.[key as ConfigSectionKey] : snapshot.sources?.[key as SourceKey]
+}
+
+/**
+ * A section read in part for a reason other than a licence: the one test of
+ * "partly read", which `unreadSources()` marks partial and a surface says over
+ * the rows it did get. A licence that withheld part of a section is not one.
+ */
+export function partlyRead(snapshot: TenantSnapshot, key: ConfigSectionKey | SourceKey): boolean {
+  const s = sectionState(snapshot, key)
+  return s?.status === 'partial' && !readAsFarAsLicensed(s)
 }
 
 function stateOf(snapshot: TenantSnapshot, source: CoreSource): { status: string; reason: string | null } | null {
