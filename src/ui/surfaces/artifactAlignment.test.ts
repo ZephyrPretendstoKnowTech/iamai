@@ -666,13 +666,6 @@ test('R4-22: the Export page, the print, Connect and the Plan read the board thr
   assert.equal(read('./Export.tsx').includes('stepExportView('), false, 'the Export page builds an export view of its own beside exportViewsOf')
 })
 
-/** The calendar entry the Export page's view writes for one step, unfolded (RFC 5545 folds long lines). */
-function calendarEntry(run: FixtureRun, view: (s: Step) => ReturnType<typeof stepExportView>, step: Step): string {
-  const entry = buildIcs(run.steps, 'Tenant', run.input.planId, view).split('BEGIN:VEVENT').find((x) => x.includes(`-${step.id}@iamai`))
-  assert.ok(entry, `the premise: the calendar carries ${step.id}`)
-  return entry.replace(/\r\n /g, '')
-}
-
 test('R4-22: a step the board holds behind the drill exports the board\'s lane, not the one without it', () => {
   // mid, first scan: Register Your Own Passkey waits on Verify Emergency
   // Access (the drill, a Cleanup row). The board holds it On Hold; the Export
@@ -702,7 +695,7 @@ test('R4-22: a step the board holds behind the drill exports the board\'s lane, 
 // validator found the same shape on getiamai settled, deployed and eight days
 // on (seven policies, Block Legacy Authentication among them;
 // docs/qa/night/personas/prints-r422-getiamai.ts).
-test('R4-22: a policy the board holds behind the drill goes into the calendar as the board says it, never Ready to enforce', () => {
+test('R4-22: a policy the board holds behind the drill is exported as the board says it, never Ready to enforce, and booked on no day', () => {
   const f = withFoundationSettled(fixture('demo-week2'))
   const run = runFixture(f)
   const step = run.steps.find((s) => s.id === 's-goal-token-protection')!
@@ -718,8 +711,13 @@ test('R4-22: a policy the board holds behind the drill goes into the calendar as
   const view = exportViewsOf(run.steps, run.schedule.cleanup, answers, ctx)
   assert.equal(view(step).state, laneViewFor(step, board).label, 'the export states a lane the board does not')
   assert.equal(view(step).state, 'Up Next')
-  const entry = calendarEntry(run, view, step)
-  const description = entry.split('\r\n').find((l) => l.startsWith('DESCRIPTION:')) ?? ''
-  assert.ok(description.includes('\\nUp Next\\n'), 'the runbook does not state the board\'s lane')
-  assert.equal(entry.includes('Ready to enforce'), false, 'the runbook calls a policy the board holds behind the drill Ready to enforce')
+  // The runbook every flat artifact carries (the calendar entry's description,
+  // the prompt pack's step block) states the board's lane, never Ready to enforce.
+  const runbook = stepArtifactLines(view(step))
+  assert.ok(runbook.includes('Up Next'), 'the runbook does not state the board\'s lane')
+  assert.equal(runbook.join('\n').includes('Ready to enforce'), false, 'the runbook calls a policy the board holds behind the drill Ready to enforce')
+  // Its day is the turn-on, which the drill holds (owner decision 6), so the
+  // board reads "After prerequisites" and the calendar books nothing for it
+  // (owner decision 2, R4-55): the entry it used to get was dated on the turn-on.
+  assert.equal(buildIcs(run.steps, 'Tenant', run.input.planId, view).includes(`-${step.id}@iamai`), false, 'a policy whose turn-on the drill holds is booked into the calendar')
 })

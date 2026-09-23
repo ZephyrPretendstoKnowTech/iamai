@@ -44,6 +44,7 @@ import { laneReadings } from './planLanes.ts'
 import type { LaneReading, LaneRowInput } from './planLanes.ts'
 import type { LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
 import { estimatedDay, scheduleOf } from '../../roadmap/stepSchedule.ts'
+import type { StepSchedule } from '../../roadmap/stepSchedule.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import { cleanupComplete } from '../../roadmap/cleanupDone.ts'
@@ -548,12 +549,25 @@ const WHEN_WORDS = pages.plan as { now: string; readyNow: string; readyOn: strin
 const READY_ON_PREFIX = WHEN_WORDS.readyOn.split('{')[0]
 
 /**
+ * Whether the day the step's scheduling result carries is a policy's turn-on:
+ * the enforcement of a policy watched in report-only, or a change to a policy
+ * the tenant has that is not on yet. A change to a policy already on is a
+ * correction, which no turn-on prerequisite holds (roadmap/operations.ts
+ * `prerequisite-unmet`).
+ */
+function turnsOn(step: Step, scheduled: StepSchedule | null): boolean {
+  if (scheduled === null) return false
+  return scheduled.transition === 'enforce' || (scheduled.transition === 'change' && step.state.lifecycle !== 'enforced')
+}
+
+/**
  * The board's timing column for one step: the row's own value (rowWhen.ts)
  * where it is a day, else the day the plan's one scheduling result gives the
  * step (roadmap/stepSchedule.ts) — for preparation work the first day of its
  * phase, `waveStart` — else the placeholder. A step sequenced after another
- * keeps its date; a held step has no scheduled day and reads the placeholder.
- * The board infers nothing about holds from a step's lane or the group it sits in.
+ * keeps its date, unless the day is a policy's turn-on; a held step has no
+ * scheduled day and reads the placeholder (owner decisions 2 and 6, 2026-09-22,
+ * the hold rule below).
  */
 /** `read`: the board's own reading, or null where the caller has none and the
  *  single-step fallback stands in. The fallback runs the engine over one step, so
@@ -611,8 +625,22 @@ export function boardWhenOf(step: Step, waveStart: string | null = null, read: L
   // watched read "After prerequisites" wherever the roadmap recorded no wait of
   // its own on it — the same policy read its review day on a tenant where it
   // did. Every row the engine files On Hold behind something else still reads
-  // no day.
-  if (read !== null && read.lane === 'On Hold' && read.substatus === null && read.tail !== BOARD.blockers.evidence && step.blockedBy.length === 0) return schedulingWords.waiting
+  // no day, whatever waits the roadmap records on the step itself: owner
+  // decision 2 (2026-09-22) keeps the sequencing ruling's dates for work
+  // nothing holds, and On Hold is the lane engine holding it.
+  //
+  // A turn-on is held by every prerequisite the board shows (owner decision 6,
+  // roadmap/enforceWaits.ts), so a row whose day is the turn-on reads no day
+  // on either waiting lane - Up Next as much as On Hold. Require Token
+  // Protection on Windows, ready to enforce behind Verify Emergency Access
+  // (demo week two, the recovery test not yet run), read "Sep 14, 2026" under
+  // "Up Next · After Verify Emergency Access", while its own milestone said it
+  // stays in Report-only until that test is finished; the export's Dates line
+  // read "Announce Sep 7, 2026 · Change Sep 14, 2026" and the calendar booked
+  // "Turn the policy on" for the day (R4-55). A day for a create, a preparation
+  // or a check still stands on Up Next: that work waits on nothing held.
+  if (read !== null && read.lane === 'On Hold' && read.substatus === null && read.tail !== BOARD.blockers.evidence) return schedulingWords.waiting
+  if (read !== null && (read.lane === 'Up Next' || read.lane === 'On Hold') && turnsOn(step, scheduled)) return schedulingWords.waiting
   return estimatedDay(step) ? fillText(schedulingWords.estimate, { date: result }) : result
 }
 
