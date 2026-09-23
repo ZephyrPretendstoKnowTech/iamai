@@ -24,7 +24,7 @@ import { planDates, stepVars } from './stepVars.ts'
 import { initialPicked, printedDefaultLine } from './pickerRows.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { completedRows, deferredRows, doesntApplyRows, floorRows, openDoneRows, phaseRows, planPhases } from './planRows.ts'
-import { cleanupHeadingOf, cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, holdsOf, laneGroupsOf, noPlanLine, phaseDatesOf, postureOf, verificationNoteOf } from './printPlan.ts'
+import { cleanupHeadingOf, cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, holdsOf, laneGroupsOf, noPlanLine, phaseDatesOf, postureOf, verificationDatesOf, verificationNoteOf } from './printPlan.ts'
 import { scheduleOf, scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { absolute, absoluteDate, dateRange, setDisplayTimeZone } from '../../copy/dates.ts'
@@ -463,6 +463,26 @@ test('the registration window\'s row states the people the window is sized for, 
   assert.equal(/have no usable/.test(unread), false, `the note states an absence nobody read: ${unread}`)
   // One person still reads as one.
   assert.equal(verificationNoteOf([{ ...campaign, preparation: { ...prep, ids: prep.ids.slice(0, 3), missingIds: prep.missingIds.slice(0, 1) } }]), '1 of 3 people in Prepare Your Team for MFA is not yet shown to have a usable registered MFA method.')
+})
+
+test('the registration window\'s row states no dates while the board holds the campaign step', () => {
+  // Large, first scan: Prepare Your Team for MFA is On Hold on the board, and
+  // the timeline still printed "Registration and verification window · 28 days
+  // | Aug 31, 2026 → Sep 28, 2026". A step the board holds carries no date
+  // anywhere (owner decision 2, 2026-09-22; planBoard.ts boardHolds).
+  for (const name of ['large', 'messy'] as FixtureName[]) {
+    const p = plan(name)
+    const campaign = byId(p.steps, 's-verify-mfa')
+    assert.ok(p.schedule.verification.days > 0, `${name}: the premise: the timeline prints the window`)
+    assert.ok(boardHolds(campaign, p.board.laneOf(campaign.id)), `${name}: the premise: the board holds the campaign step`)
+    assert.equal(verificationDatesOf(p.steps, p.schedule.verification, p.board.laneOf), null, `${name}: the window is dated while its step is held`)
+  }
+  // Mid after the recovery test: the campaign step is not held, and the window keeps its dates.
+  const mid = plan('mid', { stage: 'recovered' })
+  const campaign = byId(mid.steps, 's-verify-mfa')
+  assert.ok(mid.schedule.verification.days > 0 && !boardHolds(campaign, mid.board.laneOf(campaign.id)), 'the premise: mid prints the window and the board does not hold the campaign step')
+  assert.equal(verificationDatesOf(mid.steps, mid.schedule.verification, mid.board.laneOf), dateRange(mid.schedule.verification.start, mid.schedule.verification.end))
+  assert.match(readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8'), /verificationDatesOf\(steps, schedule\.verification, laneOf\)/, 'the window row dates itself')
 })
 
 // ---- Every printed date in the plan's format and zone ----
