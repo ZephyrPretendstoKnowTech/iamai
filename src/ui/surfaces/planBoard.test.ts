@@ -726,6 +726,14 @@ test('a step finished, deferred or moved while open keeps the tab the person is 
   assert.match(plan, /applyFocus\(items, keep\.tab, keep\.focus\)\.some\(\(i\) => i\.id === open\)\) \{ setTab\(keep\.tab\); setFocus\(keep\.focus\) \} else onFollow\(ALL_WORK_TAB\)/)
 })
 
+test('a row press is never a link, so it does not move the page to its row', () => {
+  // A hash link to the step already open changes nothing, so the effect that
+  // reads and clears `linked` never ran; the next ordinary row press then read
+  // as a link and scrolled the page to that row. A row press clears it first.
+  const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
+  assert.match(plan, /const openStep = \(id: string \| null\): void => \{\s*linked\.current = false/, 'a row press after a link to the open step reads as a link')
+})
+
 test('a header tile draws one list in section order: each section heading once, and each row once', () => {
   // The Needs your input, Observing and Completed tiles filter the one list.
   // They used to draw it lane by lane, so a section with rows in three lanes
