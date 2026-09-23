@@ -410,7 +410,7 @@ test('a step whose own tagged policy is switched off proposes no duplicate, and 
   assert.ok(rendered.includes(String(step.tracking?.policyName)), 'nothing on the step names the policy that is already there')
 
   // Said once, by the step's own reason: the policy is there, switched off, and
-  // turning it back on is the change. The tagged-disabled finding said the same
+  // setting it to Report-only is the change. The tagged-disabled finding said the same
   // and "or follow the instructions below and leave it switched off" over no
   // instructions — two sources for one fact, disagreeing (Jordan D6) — so it
   // stands down where the reason says it.

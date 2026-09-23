@@ -198,8 +198,6 @@ type ContractWords = {
   doneOperationCovered: string
   /** An update the tenant's policy already holds in full (types.ts Action.nothingOwed): the goal in place, or declined. */
   doneOperationHeld: string
-  /** A policy the tenant switched off: its end state is being on again, not being built (roadmap/operations.ts switchedOffPolicy). */
-  doneSwitchedOn: string
   doneManual: string
   doneVerify: string
   doneDeploy: string
@@ -652,8 +650,12 @@ function reasonLine(step: Step, reason: UnavailableReason, tenant: string, exclu
   }
 }
 
-/** What clears this reason, said as a completion rather than as an instruction. */
-function doneForReason(step: Step, reason: UnavailableReason, tenant: string): string {
+/**
+ * What clears this reason, said as a completion rather than as an instruction.
+ * Never a switched-off policy's: it is a policy IAMAI will write, set to
+ * Report-only and then on, so it finishes on its own end state (`doneWhenOf`).
+ */
+function doneForReason(step: Step, reason: Exclude<UnavailableReason, 'switched-off'>, tenant: string): string {
   switch (reason) {
     case 'missing-object': {
       // Two ways to stop waiting, because there are two things to wait on: the
@@ -693,10 +695,6 @@ function doneForReason(step: Step, reason: UnavailableReason, tenant: string): s
       return fillText(CONTRACT.doneEscapeHatch, { steps: heldByTitle(step), tenant })
     case 'readiness-unmet':
       return fillText(CONTRACT.doneReadiness, { ...(step.action.readinessGate ?? {}) })
-    case 'switched-off':
-      // Its own end state: the policy is there, so what finishes this step is
-      // that it is on again and watched, not that one gets built.
-      return CONTRACT.doneSwitchedOn
     case 'baseline-conflict':
       return CONTRACT.doneConflict
   }
@@ -1293,8 +1291,9 @@ function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<str
     //
     // A policy IAMAI will write finishes on its end state alone (owner,
     // 2026-09-11): what clears the hold is already Fix before continuing's, and
-    // Done when is the completion, not a second copy of the blocker.
-    if (NO_POLICY_REASONS.has(reason) || (step.kind !== 'create' && step.kind !== 'adjust')) return [doneForReason(step, reason, tenant)]
+    // Done when is the completion, not a second copy of the blocker. A
+    // switched-off policy is one of those (only a create or an adjust reads it).
+    if (reason !== 'switched-off' && (NO_POLICY_REASONS.has(reason) || (step.kind !== 'create' && step.kind !== 'adjust'))) return [doneForReason(step, reason, tenant)]
     // The end state is the step's own sentence where its content entry states one
     // (steps[].doneEnd, B8), else the shared one.
     return [fillText(typeof cs?.doneEnd === 'string' ? cs.doneEnd : CONTRACT.doneHeldEnd, { tenant })]
