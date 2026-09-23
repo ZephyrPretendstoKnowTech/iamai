@@ -419,7 +419,7 @@ Other fields `decisionsOf` drops on load: a legacy `steps` blob. Only its skips 
 - **`MappingState`:** version field **not found**.
   - On read, `store.ts:17` merges over `emptyMappingState`.
   - It then runs `emergencyChoice.ts:88-97 migrateEmergencySelection`: without `assumed.breakGlass === 'confirmed'`, `breakGlassUserIds` move to `breakGlassPriorIds`. This is idempotent.
-- **IndexedDB schema:** version 7, upgrade blocks only (§1.1).
+- **IndexedDB schema:** version 8, upgrade blocks only (§1.1). Version 8 adds the `byTenantTime` index on `signin-rows`.
 - **Plan file:** `PLAN_SCHEMA_VERSION = 2` (`plan.ts:12`). Older files are upgraded by `plan.ts:261-296 upgradePlanFile` / `upgradeStep`.
 
 ### 3.4 Redaction
@@ -488,7 +488,7 @@ Tests named for this path (not read): `src/roadmap/plan.test.ts`, `src/roadmap/p
 | Action | Control | What it does to stored data | What it does in memory |
 |---|---|---|---|
 | **Sign out** | Account menu (`AppShell.tsx`) → `ui/actions.ts:189-195 signOut` | IndexedDB untouched: the plan, mapping and all other rows stay. MSAL sessionStorage keys removed (`msal.ts:93` → `:103-109`), then `logoutRedirect`. localStorage keys and `iamai.preloadReloaded` untouched. | `endTenantTurn()`; the session drops account, tenantName, lastScan, scan, baseline, demoWeek2. `usePlanData` clears `mapping` / `saved` / groups when `snapshot` goes null (`planData.ts:164-175`). |
-| **Forget this tenant** | Account menu item (`AppShell.tsx:165`, `SHELL.forgetTooltip`) → `actions.ts:207-221 forgetTenant` | Waits for any in-flight baseline save, then `cache.ts:258-275 forgetTenant(tenantId)` deletes that tenant's rows from all seven stores in one transaction (index cursors for `signin-rows` / `group-members`, key deletes for the others). Other tenants' rows are untouched. MSAL sessionStorage is **not** cleared by this action (no non-test caller of `graph/auth.ts:38 clearAuthCache` found). Web storage untouched. Rejects if the store cannot be cleared. | `endTenantTurn()` first; the session drops lastScan, scan, baseline, demoWeek2; still signed in; navigates to `#/connect`. |
+| **Forget this tenant** | Account menu item (`AppShell.tsx:165`, `SHELL.forgetTooltip`) → `actions.ts:207-221 forgetTenant` | Waits for any in-flight baseline save, then `cache.ts:258-275 forgetTenant(tenantId)` deletes that tenant's rows from all seven stores in one transaction (a key-range delete for `signin-rows`, an index cursor for `group-members`, key deletes for the others). Other tenants' rows are untouched. MSAL sessionStorage is **not** cleared by this action (no non-test caller of `graph/auth.ts:38 clearAuthCache` found). Web storage untouched. Rejects if the store cannot be cleared. | `endTenantTurn()` first; the session drops lastScan, scan, baseline, demoWeek2; still signed in; navigates to `#/connect`. |
 
 - **Demo:** the Account menu is not rendered in demo mode (`AppShell.tsx:294`, `signedIn && !isDemo()`), so Forget is not offered there.
 - **Demo snapshots row:** `forgetTenant` deletes exact keys only, so it would not delete the `demo-sample-tenant#snapshots` row.

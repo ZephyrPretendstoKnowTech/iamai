@@ -4,6 +4,8 @@
 // thread. Every call is failure-tolerant: a broken/unavailable IndexedDB
 // degrades to "no cache", never to a scan failure.
 import { reportStorageIssue } from './storageIssues.ts'
+import { CACHE_READ_BATCH } from './constants.ts'
+import { readInTimeBatches } from './timeBatches.ts'
 import { openDB } from 'idb'
 import type { DBSchema, IDBPDatabase } from 'idb'
 import type { StoredSignIn } from './types.ts'
@@ -45,7 +47,7 @@ interface IamaiDB extends DBSchema {
   'signin-rows': {
     key: [string, string]
     value: StoredSignIn & { tenantId: string }
-    indexes: { byTenant: string }
+    indexes: { byTenant: string; byTenantTime: [string, string] }
   }
   'evidence-meta': {
     key: string
@@ -85,8 +87,8 @@ export class StorageBlockedError extends Error {
 }
 
 function db(): Promise<IDBPDatabase<IamaiDB>> {
-  dbPromise ??= openDB<IamaiDB>('iamai', 7, {
-    upgrade(d, oldVersion) {
+  dbPromise ??= openDB<IamaiDB>('iamai', 8, {
+    upgrade(d, oldVersion, _newVersion, tx) {
       if (oldVersion < 1) {
         const rows = d.createObjectStore('signin-rows', { keyPath: ['tenantId', 'id'] })
         rows.createIndex('byTenant', 'tenantId')
@@ -108,6 +110,10 @@ function db(): Promise<IDBPDatabase<IamaiDB>> {
       // Version 7 (prompt 23): the store was first declared under version 6 without a
       // bump, so browsers already at 6 never got it and every baseline save failed silently.
       if (!d.objectStoreNames.contains('baseline')) d.createObjectStore('baseline', { keyPath: 'tenantId' })
+      // Version 8: the sign-in read folds saved records newest first, a batch at a
+      // time (evidenceStore), so they are indexed by tenant and time.
+      const rows = tx.objectStore('signin-rows')
+      if (!rows.indexNames.contains('byTenantTime')) rows.createIndex('byTenantTime', ['tenantId', 'createdDateTime'])
     },
   })
   // Another tab on an older schema blocks the upgrade, and every read would
@@ -191,6 +197,94 @@ export async function saveEvidenceCache(
     await tx.done
   } catch {
     // Cache is an optimization; losing it must never fail the scan.
+  }
+}
+
+/** Every saved sign-in record of one tenant: its primary keys [tenantId, id]. */
+const tenantRows = (tenantId: string): IDBKeyRange => IDBKeyRange.bound([tenantId], [tenantId, []])
+
+/**
+ * One tenant's saved sign-in records, as the streaming read uses them
+ * (signInStream.ts EvidenceStore). The meta's `covered` is the one contiguous
+ * span every saved record inside it belongs to; a write puts records and meta
+ * in one transaction, so a meta never claims a record that was not written.
+ * Nothing here fails a scan: a store that cannot answer reads as no saved
+ * records, and a write it refuses turns saving off for the rest of the scan.
+ */
+export function evidenceStore(tenantId: string, schema: number, signal?: AbortSignal) {
+  return {
+    async meta(): Promise<EvidenceCacheMeta | null> {
+      try {
+        return (await (await db()).get('evidence-meta', tenantId)) ?? null
+      } catch {
+        return null
+      }
+    },
+    /** The records in [from, to], newest first, in whole-second batches. Throws when the store cannot be read. */
+    async read(range: { from: string; to: string }, onBatch: (rows: StoredSignIn[]) => void): Promise<void> {
+      const d = await db()
+      await readInTimeBatches(
+        (upper) =>
+          d
+            .transaction('signin-rows')
+            .store.index('byTenantTime')
+            .openCursor(IDBKeyRange.bound([tenantId, range.from], [tenantId, upper ?? range.to], false, upper !== null), 'prev'),
+        CACHE_READ_BATCH,
+        onBatch,
+      )
+    },
+    /** Puts the records, and the meta when `covered` is given, together or not at all. False when nothing was written. */
+    async write(rows: readonly StoredSignIn[], covered: { from: string; to: string } | null): Promise<boolean> {
+      if (signal?.aborted) return false
+      try {
+        const d = await db()
+        const tx = d.transaction(['signin-rows', 'evidence-meta'], 'readwrite')
+        const pending: Promise<unknown>[] = []
+        try {
+          const store = tx.objectStore('signin-rows')
+          for (const row of rows) pending.push(store.put({ ...row, tenantId }))
+          if (covered) pending.push(tx.objectStore('evidence-meta').put({ tenantId, covered, asOf: new Date().toISOString(), schema }))
+          await Promise.all([...pending, tx.done])
+          return true
+        } catch {
+          // A full disk (QuotaExceededError) or a record the store cannot hold: the
+          // transaction is abandoned whole, and the records already saved stay as they were.
+          for (const p of pending) p.catch(() => {})
+          try { tx.abort() } catch { /* A failed request may already have aborted it. */ }
+          await tx.done.catch(() => {})
+          return false
+        }
+      } catch {
+        return false
+      }
+    },
+    /** Deletes the tenant's saved records and meta: a read that starts over must not later read old records as saved. */
+    async reset(): Promise<boolean> {
+      try {
+        const d = await db()
+        const tx = d.transaction(['signin-rows', 'evidence-meta'], 'readwrite')
+        await Promise.all([tx.objectStore('signin-rows').delete(tenantRows(tenantId)), tx.objectStore('evidence-meta').delete(tenantId), tx.done])
+        return true
+      } catch {
+        return false
+      }
+    },
+    /** Deletes the tenant's saved records older than `before`; ones left behind wait for the next scan. */
+    async expire(before: string): Promise<void> {
+      try {
+        const d = await db()
+        const tx = d.transaction('signin-rows', 'readwrite')
+        // A key cursor cannot delete, so each record goes by its primary key.
+        let cursor = await tx.store.index('byTenantTime').openKeyCursor(IDBKeyRange.bound([tenantId, ''], [tenantId, before], false, true))
+        while (cursor) {
+          await tx.store.delete(cursor.primaryKey)
+          cursor = await cursor.continue()
+        }
+        await tx.done
+      } catch {
+        // Older records are never read (the read's range starts at the window).
+      }
+    },
   }
 }
 
@@ -287,13 +381,12 @@ export async function forgetTenant(tenantId: string): Promise<void> {
   reportStorageIssue(tenantId, 'mapping', false)
   const d = await db()
   const tx = d.transaction(['signin-rows', 'evidence-meta', 'group-members', 'mapping', 'plan', 'snapshot', 'baseline'], 'readwrite')
-  for (const storeName of ['signin-rows', 'group-members'] as const) {
-    const store = tx.objectStore(storeName)
-    let cursor = await store.index('byTenant').openCursor(tenantId)
-    while (cursor) {
-      await cursor.delete()
-      cursor = await cursor.continue()
-    }
+  await tx.objectStore('signin-rows').delete(tenantRows(tenantId))
+  const groups = tx.objectStore('group-members')
+  let cursor = await groups.index('byTenant').openCursor(tenantId)
+  while (cursor) {
+    await cursor.delete()
+    cursor = await cursor.continue()
   }
   await tx.objectStore('evidence-meta').delete(tenantId)
   await tx.objectStore('mapping').delete(tenantId)
