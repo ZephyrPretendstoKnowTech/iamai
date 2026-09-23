@@ -213,6 +213,21 @@ test('a blocker heads its card with its subject and states the binding beneath',
   }
 })
 
+test('a tenant fact the step’s own blocker already states is that one card, not a second bare one', () => {
+  // The board reads a tenant-fact hold as the blocker `fact:<label>`, and the
+  // step's own blocker already heads a card with its subject and sentence. The
+  // fact was drawn again as its bare kind — "Tenant fact · Tenant fact", nothing
+  // beneath — here beside the session-loop wait on Intune enrollment, and on the
+  // PIM create held on an authentication context another policy targets
+  // (R4-18 review; content/implementation/pimPackage.test.ts).
+  const { step, c, blockers, reading } = opened('demo-week2', 's-goal-intune-enrollment-reauth')
+  assert.ok(reading.blockers.some((b) => b.kind === 'fact' && b.id === 'fact:session-loop'), 'the premise: the step holds on a tenant fact')
+  const r = readinessOf(step, c, blockers)
+  const tiles = [...r.tiles, ...r.satisfied]
+  assert.ok(tiles.some((t) => t.key === 'readiness:session-loop'), 'the premise: the step’s own blocker heads a card')
+  assert.deepEqual(tiles.filter((t) => t.value === BOARD.blockers.fact).map((t) => `${t.label} · ${t.value} · ${t.note ?? ''}`), [])
+})
+
 test('a count of one bends the verb a binding uses', () => {
   // "when 1 Temporary Access Pass policy exist (now 0)" — the pluraliser bends
   // the verb after a count, and `exist` was missing from its table.
