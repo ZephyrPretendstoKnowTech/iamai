@@ -594,6 +594,14 @@ try {
   const FINISHED_RE = /^(All \d+ completed|1 of 1 completed|\d+ of \d+ completed, \d+ deferred)$/
   check('Plan: every section on All work says what is left of it, or collapses to what became of it', Array.isArray(allWorkMeta) && allWorkMeta.length >= 3 && allWorkMeta.every((g) => (g.closed ? FINISHED_RE.test(g.meta) && g.hidden : /^\d+ of \d+ remaining$/.test(g.meta) || FINISHED_RE.test(g.meta))), JSON.stringify(allWorkMeta.slice(0, 4)))
   check('Plan: nothing is drawn above the tabs or below the board as a section of its own', (await evaluate(`document.querySelectorAll('main.page .plan-board-foundation').length`)) === 0)
+  // The sections read in the roadmap flow's order, each by its own name
+  // (roadmap/stepGroups.ts STEP_GROUPS, the names from content.json): a heading
+  // out of that order, or one the registry does not name, is a section drawn
+  // in the wrong place.
+  const SECTION_TITLES = STEP_GROUPS.map((g) => g.titleKey.split('.').slice(1).reduce((at, k) => at?.[k], CONTENT_PAGES))
+  const sectionHeads = await evaluate(`[...document.querySelectorAll('main.page .plan-board .plan-group h2')].map((h) => (h.textContent || '').trim())`)
+  const sectionAt = Array.isArray(sectionHeads) ? sectionHeads.map((h) => SECTION_TITLES.indexOf(h)) : []
+  check('Plan: All work draws its sections in the roadmap flow’s order, by their own names', sectionAt.length >= 3 && sectionAt.every((i, k) => i >= 0 && (k === 0 || i > sectionAt[k - 1])), JSON.stringify(sectionHeads))
   // The two toggles stay (owner, roadmap flow V2) and start pressed on All work,
   // where finished work sits compactly in its own section; a lane tab keeps them
   // unpressed until a person presses one (checked on Ready below).
