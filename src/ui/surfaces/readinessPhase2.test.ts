@@ -567,3 +567,22 @@ test('the Not counted tile names one account of a kind in the singular: never "1
   }
   assert.match(page(), /countedKindWords\(k, view\.facts\.kinds\[k\]\)/)
 })
+
+test('the readiness page contract allows every group summary and every Not counted kind the page draws', () => {
+  // scripts/walk.mjs diffContract reports each summary and link missing from the
+  // contract's allow list as a P1, so the contract carries the page's own words.
+  type Contract = { id: string; allow: { summaries: string[]; links: string[] } }
+  const contract = (JSON.parse(readFileSync('docs/qa/page-contracts.json', 'utf8')) as { surfaces: Contract[] }).surfaces.find((c) => c.id === 'readiness')
+  assert.ok(contract)
+  const allowed = (item: string, allow: string[]): boolean => allow.some((a) => (a.startsWith('re:') ? new RegExp(a.slice(3)).test(item) : a === item))
+  const label = (pages.readiness as unknown as { nextLabel: string }).nextLabel
+  for (const [k, g] of Object.entries(G)) {
+    // The summary as the walk reads it: the next-check label where it is the next check, the title, the why and the count.
+    for (const item of [`${g.title}${g.why}3`, `${label}${g.title}${g.why}12`]) assert.ok(allowed(item, contract.allow.summaries), `${k}: "${item}"`)
+  }
+  const kinds = CNT as unknown as Record<string, string> & { one: Record<string, string> }
+  for (const [k, one] of Object.entries(kinds.one)) {
+    assert.ok(allowed(one, contract.allow.links), `${k}: one of a kind, "${one}"`)
+    assert.ok(allowed(kinds[k], contract.allow.links), `${k}: "${kinds[k]}"`)
+  }
+})
