@@ -20,6 +20,7 @@ import { exclusionsGroupPolicies, groupLookup } from '../validation/exclusionsGr
 import { displayZone } from '../copy/dates.ts'
 import { list } from '../copy/statements.ts'
 import { app } from '../content/content.ts'
+import { fillText } from '../content/render.ts'
 
 // A failing finding's value. "Needs attention" is a retired state word
 // (oneProducer.test, stateAgreement.test); the Plan's own word for a fact that
@@ -35,12 +36,37 @@ function recoveryTime(iso: string, timeZone: string | null | undefined): string 
   try { return new Intl.DateTimeFormat('en-US', { ...options, timeZone: displayZone(timeZone) }).format(new Date(iso)) }
   catch { return new Intl.DateTimeFormat('en-US', { ...options, timeZone: 'UTC' }).format(new Date(iso)) }
 }
-/** What Step 4 is waiting on for one account: a passkey sign-in after the
- * configuration start, and why the latest sign-in seen did not count. */
-export function recoveryWaitingLine(configuredAt: string | null, readings: readonly RecoveryCandidateReading[], timeZone: string | null | undefined): string {
-  const waiting = configuredAt ? `Sign in with this account’s passkey after ${recoveryTime(configuredAt, timeZone)}.` : 'Sign in with this account’s passkey once the configuration checks pass.'
-  const latest = [...readings].sort((a, b) => Date.parse(b.candidate.at) - Date.parse(a.candidate.at))[0]
-  return latest && !latest.qualifies && latest.reason ? `${waiting} Last sign-in seen ${recoveryTime(latest.candidate.at, timeZone)} did not count: ${latest.reason}` : waiting
+const RECOVERY_SIGN_IN = (app.plan as unknown as { recoverySignIn: Record<'since' | 'sinceNone' | 'lastChange' | 'noChangeSince' | 'lastSignIn' | 'lastSignInNone' | 'notPasskey' | 'recordPending' | 'unconfigured', string> }).recoverySignIn
+/** Where an account's recovery baseline starts, and whether that is a change
+ * IAMAI read in the audit log or only where the log began (cleanupDone.ts recoveryEvidenceOf). */
+export type RecoveryBaseline = { at: string; changeObserved: boolean }
+/** What Step 4 is waiting on for one account, one line each (pages.app.plan.recoverySignIn):
+ * a passkey sign-in since the most recent change, then the date of that change
+ * and of the latest sign-in seen. It said "after {date}", a time already past
+ * (owner, 2026-09-23). The two dates show why a sign-in from before the change
+ * did not count; a later one that did not count keeps its reason, which no date shows.
+ * A start IAMAI did not see change is not called one: it reads "No change seen since".
+ * The last sign-in is the account's last sign-in of any kind (`lastSignIn`,
+ * UserEvidence.lastSignIn), not only its latest passkey sign-in (`readings`):
+ * a password or Authenticator sign-in after the change is the one a reader needs
+ * to see, with the reason it did not count. A passkey sign-in that already counts
+ * but is not recorded yet asks for a scan, since the dates alone read as done. */
+export function recoveryWaitingLine(baseline: RecoveryBaseline | null, readings: readonly RecoveryCandidateReading[], lastSignIn: string | null | undefined, timeZone: string | null | undefined): string {
+  if (!baseline) return RECOVERY_SIGN_IN.unconfigured
+  const configuredAt = baseline.at
+  const latest = readings.filter(reading => Number.isFinite(Date.parse(reading.candidate.at))).sort((a, b) => Date.parse(b.candidate.at) - Date.parse(a.candidate.at))[0]
+  // A later sign-in than every passkey sign-in read is one that did not succeed with a passkey.
+  const other = lastSignIn && Number.isFinite(Date.parse(lastSignIn)) && (!latest || Date.parse(lastSignIn) > Date.parse(latest.candidate.at)) ? lastSignIn : null
+  const lastAt = other ?? latest?.candidate.at
+  const afterChange = !!lastAt && Date.parse(lastAt) > Date.parse(configuredAt)
+  const pending = readings.some(reading => reading.qualifies)
+  const reason = pending ? RECOVERY_SIGN_IN.recordPending : !afterChange ? null : other ? RECOVERY_SIGN_IN.notPasskey : latest && !latest.qualifies ? latest.reason : null
+  return [
+    baseline.changeObserved ? RECOVERY_SIGN_IN.since : RECOVERY_SIGN_IN.sinceNone,
+    fillText(baseline.changeObserved ? RECOVERY_SIGN_IN.lastChange : RECOVERY_SIGN_IN.noChangeSince, { date: recoveryTime(configuredAt, timeZone) }),
+    lastAt ? fillText(RECOVERY_SIGN_IN.lastSignIn, { date: recoveryTime(lastAt, timeZone) }) : RECOVERY_SIGN_IN.lastSignInNone,
+    ...(reason ? [reason] : []),
+  ].join('\n')
 }
 const link = (id: string, label: string) => ({ href: '#/plan/' + id, label })
 const clean = (s: string) => s.replace(/[\r\n]+/g, ' ').trim()
@@ -539,7 +565,7 @@ export function journeyRecoveryFindings(report: SubjectReport, snapshot: TenantS
   const finalPolicy = journeyPasskeyFindings(snapshot, mapping, groups).filter(finding => finding.key === 'registration' || finding.key === 'protection')
   const ids = mapping.breakGlassUserIds
   const tests = ids.map(id => {
-    const { basis, configuredAt, context } = recoveryEvidenceOf(snapshot, mapping, groups, records, now, id)
+    const { basis, configuredAt, changeObserved, context } = recoveryEvidenceOf(snapshot, mapping, groups, records, now, id)
     const { readings } = context
     const source = context.signInSource!
     const date = basis ? latestRecoveryTest(id, records, now, basis, context) : null
@@ -551,7 +577,7 @@ export function journeyRecoveryFindings(report: SubjectReport, snapshot: TenantS
         : 'Sign in with the prepared passkey'
     const value = current ? verifiedAt!
       : sourceFailure ? source.reason ?? String(source.status)
-        : recoveryWaitingLine(configuredAt, readings, mapping.displayTimeZone)
+        : recoveryWaitingLine(configuredAt ? { at: configuredAt, changeObserved } : null, readings, snapshot.signInEvidence[id]?.lastSignIn, mapping.displayTimeZone)
     return { label: accountLabel(snapshot, id), action, value, current }
   })
   const configurationParts = [accounts, exclusions, method, ...finalPolicy]
@@ -594,10 +620,9 @@ export function journeyRecoveryFindings(report: SubjectReport, snapshot: TenantS
   }
   const showSignInRows = configurationOutcome === 'pass' || snapshot.sources.signInEvidence?.status !== 'ok'
   const signInFinding: ConfigurationFinding = { key: 'recovery-sign-ins', label: 'Sign-in evidence', value: !ids.length ? 'Select emergency accounts' : confirmationPassed ? 'Verified' : 'Evidence needed', outcome: confirmationPassed ? 'pass' : 'unknown', detail: '', items: showSignInRows ? tests.map(({ label, action, value, current }, index) => ({ label: action, factLabel: action, value, subjectId: ids[index], subjectLabel: label, accountId: ids[index], outcome: current ? 'pass' as const : 'unknown' as const, issueKeys: [`recovery-sign-in:${ids[index].toLowerCase()}`] })) : [] }
-  const confirmation: ConfigurationFinding = { key: 'recovery-confirmation', label: 'Verification results', value: confirmationPassed ? 'Passed' : 'Verification needed', outcome: confirmationPassed ? 'pass' : configurationOutcome === 'fail' ? 'fail' : 'unknown', detail: '', items: [] }
-  return [
-    configuration,
-    signInFinding,
-    confirmation,
-  ]
+  // Two findings, not three. A third, "Verification results", said Passed or
+  // Verification needed: the Sign-in evidence verdict under another name, and a
+  // failure that was the Configuration finding's. The owner removed it
+  // (2026-09-23): the account cards already say who still has to sign in.
+  return [configuration, signInFinding]
 }

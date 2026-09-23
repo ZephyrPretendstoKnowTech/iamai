@@ -1,0 +1,484 @@
+<title>Roadmap Flow Proposal V2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Serif:wght@600;700&display=swap">
+<style>
+:root {
+  --canvas: #f7f4ee; --surface: #fffdf9; --surface-2: #f0ece5; --line: #d8d3c9; --line-strong: #c1bcb3;
+  --text: #1d2528; --text-2: #4e5b5d; --text-3: #6f7979;
+  --brand: #0c6a64; --brand-soft: #ddefea; --brand-soft-text: #07534f;
+  --attention: #895b17; --attention-soft: #f6ead3; --good: #2a7456; --good-soft: #dcefe4;
+  --danger: #a74646; --danger-soft: #f6e1e1; --moved: #5b5198; --moved-soft: #e9e6f5; --code: #eeeae3;
+  --serif: 'IBM Plex Serif', Georgia, 'Times New Roman', serif;
+  --sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --canvas: #0d1117; --surface: #151c25; --surface-2: #111821; --line: #2b3745; --line-strong: #3a4858;
+    --text: #f2f5f7; --text-2: #c7d0d8; --text-3: #93a0ab;
+    --brand: #58c8bc; --brand-soft: #173a3d; --brand-soft-text: #dffff9;
+    --attention: #e3b35b; --attention-soft: #3a2f1a; --good: #79d7a6; --good-soft: #17352a;
+    --danger: #e88a8a; --danger-soft: #3d2021; --moved: #b3a9ef; --moved-soft: #2a2745; --code: #0a0f15;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --canvas: #0d1117; --surface: #151c25; --surface-2: #111821; --line: #2b3745; --line-strong: #3a4858;
+  --text: #f2f5f7; --text-2: #c7d0d8; --text-3: #93a0ab;
+  --brand: #58c8bc; --brand-soft: #173a3d; --brand-soft-text: #dffff9;
+  --attention: #e3b35b; --attention-soft: #3a2f1a; --good: #79d7a6; --good-soft: #17352a;
+  --danger: #e88a8a; --danger-soft: #3d2021; --moved: #b3a9ef; --moved-soft: #2a2745; --code: #0a0f15;
+}
+* { box-sizing: border-box; }
+body { background: var(--canvas); color: var(--text); font: 15px/1.6 var(--sans); padding-inline: 16px; padding-block: 0 64px; }
+.wrap { max-width: 880px; margin: 0 auto; }
+a { color: var(--brand); text-underline-offset: 2px; }
+a:focus-visible, summary:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 3px; }
+code { font: 0.86em/1.4 var(--mono); background: var(--code); padding: 1px 5px; border-radius: 4px; }
+header.mast { padding-block: 40px 20px; border-bottom: 1px solid var(--line); }
+.eyebrow { font: 600 11px/1.2 var(--sans); letter-spacing: 0.12em; text-transform: uppercase; color: var(--brand); }
+h1 { font: 700 clamp(28px, 5vw, 38px)/1.15 var(--serif); margin: 10px 0 12px; text-wrap: balance; }
+.lead { font-size: 17px; color: var(--text-2); max-width: 68ch; margin: 0; }
+.status { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; align-items: center; }
+.pill { font: 600 12px/1 var(--sans); padding: 6px 10px; border-radius: 999px; background: var(--attention-soft); color: var(--attention); }
+.pill.brand { background: var(--brand-soft); color: var(--brand-soft-text); }
+.pill.link { background: var(--surface); border: 1px solid var(--line); }
+.pill.link a { text-decoration: none; }
+nav.toc { margin-block: 20px 8px; font-size: 14px; display: flex; flex-wrap: wrap; gap: 6px 14px; }
+nav.toc a { color: var(--text-2); text-decoration: none; border-bottom: 1px solid var(--line-strong); }
+nav.toc a:hover { color: var(--brand); border-color: var(--brand); }
+section { padding-block: 32px 8px; }
+h2 { font: 700 24px/1.25 var(--serif); margin: 0 0 6px; text-wrap: balance; }
+h2 + .sub { color: var(--text-2); margin: 0 0 18px; max-width: 68ch; }
+h3 { font: 600 17px/1.3 var(--serif); margin: 0; }
+p { max-width: 70ch; }
+.changes { list-style: none; padding: 0; margin: 20px 0 0; display: grid; gap: 8px; }
+.changes li { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; font-size: 14.5px; }
+.changes b { font-weight: 600; }
+
+/* Answers to the review */
+.answers { display: grid; gap: 12px; }
+.ans { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.ans-q { padding: 12px 16px; background: var(--surface-2); border-bottom: 1px solid var(--line); font-size: 14px; color: var(--text-2); display: grid; grid-template-columns: auto 1fr; gap: 10px; }
+.ans-q .qn { font: 600 13px/1.5 var(--mono); color: var(--brand); }
+.ans-q q { font-style: italic; quotes: "“" "”"; }
+.ans-a { padding: 12px 16px 14px; display: grid; gap: 8px; }
+.ans-a p { margin: 0; }
+.ans-a ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.verdict { display: inline-block; font: 600 11px/1 var(--sans); padding: 5px 8px; border-radius: 5px; letter-spacing: 0.03em; background: var(--good-soft); color: var(--good); margin-right: 6px; vertical-align: 1px; }
+.verdict.warn { background: var(--attention-soft); color: var(--attention); }
+.verdict.later { background: var(--surface-2); color: var(--text-3); border: 1px solid var(--line); }
+.verdict.bug { background: var(--danger-soft); color: var(--danger); }
+.src { font-size: 12.5px; color: var(--text-3); }
+
+/* Decisions */
+ol.decisions { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+ol.decisions li { display: grid; grid-template-columns: 34px 1fr auto; gap: 4px 12px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.dn { font: 600 14px/1.5 var(--mono); color: var(--brand); }
+.dt { margin: 0; }
+.dt b { font-weight: 600; }
+.rec { font: 600 12px/1 var(--sans); padding: 6px 10px; border-radius: 999px; background: var(--good-soft); color: var(--good); white-space: nowrap; }
+.rec.warn { background: var(--attention-soft); color: var(--attention); }
+.scope { grid-column: 2 / -1; font-size: 13px; color: var(--text-3); }
+@media (max-width: 560px) { ol.decisions li { grid-template-columns: 28px 1fr; } .rec { grid-column: 2; justify-self: start; } }
+
+/* Board */
+.board { display: grid; gap: 14px; }
+.sect { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.sect-head { padding: 14px 18px 10px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; border-bottom: 1px solid var(--line); }
+.sect-head .num { font: 600 12px/1 var(--mono); color: var(--brand); letter-spacing: 0.06em; }
+.sect-head h3 { font-size: 19px; }
+.namefrom { font-size: 12px; color: var(--text-3); margin-left: auto; }
+.namefrom b { font-weight: 600; color: var(--text-2); }
+.rows { margin: 0; padding: 0; list-style: none; }
+.rows li { display: grid; grid-template-columns: 44px 1fr; gap: 2px 10px; padding: 8px 18px; border-bottom: 1px solid var(--line); font-size: 14.5px; }
+.rows li:last-child { border-bottom: 0; }
+.rows .i { font: 600 13px/1.6 var(--mono); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.rows .t { font-weight: 600; }
+.rows .d { grid-column: 2; font-size: 13.5px; color: var(--text-2); }
+.tags { display: inline-flex; flex-wrap: wrap; gap: 6px; margin-left: 6px; vertical-align: 1px; }
+.tag { font: 600 11px/1 var(--sans); padding: 4px 7px; border-radius: 5px; letter-spacing: 0.02em; }
+.tag.merged { background: var(--brand-soft); color: var(--brand-soft-text); }
+.tag.cond { background: var(--surface-2); color: var(--text-3); border: 1px solid var(--line); }
+.tag.new { background: var(--attention-soft); color: var(--attention); }
+.counts { font-size: 12.5px; color: var(--text-3); padding: 8px 18px 10px; background: var(--surface-2); border-top: 1px solid var(--line); }
+
+/* View mock */
+.mock { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.mock-tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 14px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
+.mtab { font: 600 13px/1 var(--sans); padding: 8px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--text-2); }
+.mtab.on { background: var(--brand); color: var(--surface); border-color: var(--brand); }
+.mtog { margin-left: auto; font-size: 12.5px; color: var(--text-3); display: flex; gap: 12px; align-items: center; }
+.mrow { display: grid; grid-template-columns: 24px 1fr auto; gap: 10px; padding: 11px 14px; border-bottom: 1px solid var(--line); align-items: baseline; font-size: 14px; }
+.mrow:last-child { border-bottom: 0; }
+.mrow .c { color: var(--text-3); font-family: var(--mono); font-size: 12px; }
+.mrow .h { font-family: var(--serif); font-weight: 700; font-size: 16px; }
+.mrow .r { font-size: 12.5px; color: var(--text-3); white-space: nowrap; }
+.mrow.done .h { color: var(--text-2); }
+.mrow.step { padding-left: 38px; }
+.mrow.step.done { color: var(--text-3); }
+.mrow.step .h { font-family: var(--sans); font-size: 14px; font-weight: 600; }
+
+/* Multi-policy mock */
+.policies { display: grid; gap: 0; }
+.pol { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.pol:last-child { border-bottom: 0; }
+.pol .pn { font-weight: 600; font-size: 14px; }
+.pol .ps { font: 600 11px/1 var(--sans); padding: 5px 8px; border-radius: 5px; background: var(--brand-soft); color: var(--brand-soft-text); align-self: center; }
+.pol .ps.none { background: var(--surface-2); color: var(--text-3); border: 1px solid var(--line); }
+.bar { grid-column: 1 / -1; height: 6px; background: var(--surface-2); border-radius: 99px; overflow: hidden; border: 1px solid var(--line); }
+.bar i { display: block; height: 100%; background: var(--brand); border-radius: 99px; }
+.pol .pd { grid-column: 1 / -1; font-size: 12.5px; color: var(--text-3); }
+
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+th { font: 600 12px/1.3 var(--sans); letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-3); background: var(--surface-2); }
+tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tbl.wide table { min-width: 620px; }
+.plan { display: grid; gap: 10px; }
+.day { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; display: grid; grid-template-columns: 90px 1fr; gap: 10px; }
+.day .dd { font: 600 13px/1.5 var(--mono); color: var(--brand); }
+.day ul { margin: 0; padding-left: 18px; font-size: 14px; }
+.note { font-size: 13.5px; color: var(--text-3); }
+footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 13px; color: var(--text-3); }
+@media (max-width: 560px) { .day { grid-template-columns: 1fr; } .namefrom { margin-left: 0; width: 100%; } }
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <div class="eyebrow">IAMAI Planner · Roadmap flow · Version 2</div>
+  <h1>Your review, answered, and what V2 changes</h1>
+  <p class="lead">Each of your points is answered below with what I checked and what I'd do. V1 stays exactly as you reviewed it; this is a separate version. Nothing is built until you approve.</p>
+  <div class="status"><span class="pill">Awaiting your approval</span><span class="pill link">Compare: <a href="https://claude.ai/artifact/QWrRqq9wp3c3tXnWNTnocP">V1 proposal</a></span><span class="pill brand">Saved in the repo: docs/plans/roadmap-flow/</span></div>
+  <ul class="changes">
+    <li><b>Show completed and Show deferred stay.</b> All work moves to the left of the tabs and opens first.</li>
+    <li><b>Section names follow your convention:</b> four existing titles reused, four new ones in the same technical tone. Section 2 becomes <i>Define Your Rollout Scope</i>.</li>
+    <li><b>An open section shows how much is left</b> (“2 of 6 remaining”). A finished section collapses to one line.</li>
+    <li><b>No data migration.</b> You're the only user and will start from a fresh scan, so the carry-over work and old decision 9 are gone. That makes stages 3 and 4 faster.</li>
+    <li><b>A v1.0 / v1.1 line for Monday:</b> what fits this week, and what waits.</li>
+    <li><b>Three bugs, one gap and a correction the checks turned up.</b> See <a href="#missing">What you might be missing</a>.</li>
+  </ul>
+</header>
+
+<nav class="toc" aria-label="Contents">
+  <a href="#answers">Your points</a>
+  <a href="#decisions">Decisions left</a>
+  <a href="#view">The view</a>
+  <a href="#roadmap">The roadmap</a>
+  <a href="#multi">Two-policy steps</a>
+  <a href="#missing">What you might be missing</a>
+  <a href="#scope">v1.0 and v1.1</a>
+  <a href="#week">The week</a>
+</nav>
+
+<section id="answers">
+  <h2>Your points, answered</h2>
+  <p class="sub">Each answer rests on a check of the code, the 13 test tenants, Jon's repository, or Microsoft Learn. The full reports are saved with the proposal.</p>
+  <div class="answers">
+
+    <article class="ans">
+      <div class="ans-q"><span class="qn">1</span><span><q>Hold off on removing Show completed and Show deferred… move All Work to the left side.</q></span></div>
+      <div class="ans-a"><p><span class="verdict">Done in V2</span>Both toggles stay until you've seen the finished product. Tabs read <b>All work | Ready | Up Next | On Hold</b>, with All work selected when the page opens.</p></div>
+    </article>
+
+    <article class="ans">
+      <div class="ans-q"><span class="qn">2</span><span><q>I wouldn't change the naming… reuse existing names when possible… it should still sound technical.</q></span></div>
+      <div class="ans-a">
+        <p><span class="verdict">Done in V2</span>Your titles share one pattern: Title Case, an imperative verb, a technical object, 3–6 words (Establish, Close, Turn On, Require, Limit). V2 reuses four of them outright and builds the other four from the same parts. See <a href="#roadmap">the roadmap</a>.</p>
+        <p><b>Is 8 too many?</b> I checked every way to reach 7. Merging any two policy sections gives one of 9–10 rows that mixes “require MFA” with “block”. Merging among sections 1–3 breaks their own rules (Direction changes nothing in Entra; Emergency Access has its own anatomy). 8 is the fewest where no section passes 7 rows on any tenant. And after the first sitting, sections 1 and 2 collapse to one line each, so a working admin sees six open headings.</p>
+      </div>
+    </article>
+
+    <article class="ans">
+      <div class="ans-q"><span class="qn">4</span><span><q>Does Jon Hope have something in his baseline for how he suggests handling traveling users?</q></span></div>
+      <div class="ans-a">
+        <p><span class="verdict">Checked: retiring it weakens nothing</span>In his documentation, yes; in his policies, no.</p>
+        <ul>
+          <li>His naming guide describes a <code>CA-TravelingUsers</code> group, temporarily excluded from location-block policies. It's an example of a group to create, and no exported policy uses it.</li>
+          <li>His countries policy has no travel placeholder. Its only mapped objects are your exclusions group and the allowed countries. It excludes two other groups that even his own README doesn't name. IAMAI Planner leaves those out of the written policy by the V1 rule you approved, and you can map one to a travellers group of your own in Baseline mappings.</li>
+          <li>The Direction travel answer is read by nothing. I switched it between “allowed” and “never” on all nine test tenants and no step changed. Its option text also promises “a temporary travellers group” that the plan never creates.</li>
+        </ul>
+        <p>What IAMAI Planner does for travel today stays: the staff email asks people to tell IT before travelling, and the countries step's help-desk guidance is to add the country to the allowed list for the trip's dates, never exclude the person. That's stricter than Jon's group, so the baseline isn't weakened.</p>
+        <p class="src">Sources: Jon's README L524 and L543–551 at commit 90d9b89; pinned.json 1173–1199; interpretation.json 160–168.</p>
+      </div>
+    </article>
+
+    <article class="ans">
+      <div class="ans-q"><span class="qn">6</span><span><q>Trusted network still needs to ask… We shouldn't assume they do or do not have a network.</q></span></div>
+      <div class="ans-a"><p><span class="verdict">Agree, and it already works that way</span>The office network question is always asked, in the merged 2.3. It is never pre-set to “Everyone works remotely”. With a trusted IP range in Entra, it suggests that network. With none, it suggests “we have one but it isn't in Entra yet”, which keeps Define the Trusted Network on the plan (your 2026-09-20 rule). The row only reads Doesn't apply when you choose “remote” yourself. No change needed.</p></div>
+    </article>
+
+    <article class="ans">
+      <div class="ans-q"><span class="qn">7</span><span><q>Interested to see how you present this, with the progress bar at the top of each step with more than one policy.</q></span></div>
+      <div class="ans-a"><p><span class="verdict warn">Proposed, see the mock</span>Today a two-policy step has no per-policy strip at the top. V2 proposes one line per policy, each with its state and its own report-only bar. <a href="#multi">See the mock</a>. Require MFA for Guests gets the same strip.</p></div>
+    </article>
+
+    <article class="ans">
+      <div class="ans-q"><span class="qn">9</span><span><q>Nobody besides me is using this tool… no credence or time spent on converting old data.</q></span></div>
+      <div class="ans-a"><p><span class="verdict">Done in V2</span>The carry-over section and old decision 9 are gone. Merged and retired steps simply disappear, and your next scan builds a fresh plan. This removes the risk-record move and the countries-choice handling from stages 3 and 4.</p></div>
+    </article>
+
+    <article class="ans">
+      <div class="ans-q"><span class="qn">View</span><span><q>Make sure the Ready, Up Next, and On Hold tabs still work… the entire section shrunken to just the section with a 0 / x remaining.</q></span></div>
+      <div class="ans-a">
+        <p><span class="verdict">Done in V2</span>The three tabs stay as filters on the same list, with the same headings, order and numbers. A section with nothing in that tab hides.</p>
+        <p>I took your remaining-count idea and pushed it slightly. An open section's header says what's <i>left</i> (“2 of 6 remaining”), because that's what you act on. A finished section collapses to one line: “Establish Emergency Access · All 4 completed”. Inside an open section, finished steps shrink to one quiet line. <a href="#view">See the mock</a>.</p>
+      </div>
+    </article>
+
+    <article class="ans">
+      <div class="ans-q"><span class="qn">§3 §5</span><span><q>Section 3 and 5 are heavy. Any chance we can shrink it? We can ONLY shrink it if… no circumstance where value is lost.</q></span></div>
+      <div class="ans-a">
+        <p><span class="verdict warn">Keep both as they are</span>Every candidate loses something, so by your rule they stay.</p>
+        <ul>
+          <li><b>Section 5 is only heavy on paper.</b> On every P1 (Business Premium-shaped) tenant it's 3 rows: registration, device registration, guests. Five of its eight listed rows are P2-only or conditional. On P2 it's 6.</li>
+          <li><b>Section 3 really is 5–7 rows</b>, but each candidate to shrink it fails:
+            <ul>
+              <li>Folding your own passkey into the campaign would let you be “marked” past it by the follow-up list. Today it's a hard prerequisite.</li>
+              <li>Merging dormant with separate admin accounts joins two different jobs, so one waits on the slower.</li>
+              <li>Moving the authentication strength, trusted network or service accounts group next to a policy puts it below other policies that need it.</li>
+              <li>Merging the two registration steps gives one row that's half ready and half held: two thresholds and six checks.</li>
+            </ul>
+          </li>
+          <li>The real shrinking comes from what you already approved: the countries merge, the risk merges, and Doesn't apply rows.</li>
+        </ul>
+      </div>
+    </article>
+
+    <article class="ans">
+      <div class="ans-q"><span class="qn">3.1</span><span><q>Maybe 3.1 can present a list of active accounts… with no sign-in logs in 30 days… If more than 30 minutes, v1.1.</q></span></div>
+      <div class="ans-a">
+        <p><span class="verdict later">Smart list: v1.1</span>The basic list already exists. It covers enabled people with no successful sign-in in 90 days, and leaves out disabled accounts, confirmed service accounts, mailbox-like accounts, Teams Rooms and shared devices, and emergency accounts. It shows as one sentence of names, so a real grouped table is the upgrade: admins, never signed in, 90+ days oldest first, guests, and new accounts marked “not yet claimed”. That's about 3–4 hours, so v1.1.</p>
+        <p><b>Why 90 days, not 30:</b> Microsoft suggests 90–180 days. At 30 days the list balloons: large goes from 731 to 2,081 accounts, 42% of the directory. And the directory's own last-sign-in date is better than 30 days of logs, because it includes background sign-ins by Outlook and Teams.</p>
+        <p><span class="verdict bug">Bug found, fix in v1.0</span>On a real tenant, accounts that have <i>never</i> signed in are hidden. Graph omits sign-in activity for them, and IAMAI Planner reads that as “couldn't read”. So the step can say “no outstanding dormant accounts” while nine exist. It's a 20–30 minute fix. It also makes MFA Readiness show these accounts as “never signed in” instead of “unknown”, which is more accurate.</p>
+        <p class="src">Microsoft Learn: signInActivity; howto-manage-inactive-user-accounts. Code: collectors.ts:258, sets.ts:166–168, 245.</p>
+      </div>
+    </article>
+
+    <article class="ans">
+      <div class="ans-q"><span class="qn">4.6</span><span><q>Per-User MFA… Could we just straight up delete 4.6, and if not, present it only if necessary?</q></span></div>
+      <div class="ans-a">
+        <p><span class="verdict">Show only when needed</span>Don't delete it. It's the only place each account's per-user state is judged, and it carries the safety rule “disable per-user MFA on the day Require MFA for Everyone enforces, not before” plus the app-password warning.</p>
+        <p>The scan already reads every account's per-user state reliably, and marks a failed read as unknown. So the step can appear only when an account has per-user MFA on, or when the read couldn't finish. Unknown still shows it; we never hide it on a guess. On a clean modern tenant it simply never appears. Build: 30–40 minutes, just over your line. <b>Decision below.</b></p>
+      </div>
+    </article>
+
+    <article class="ans">
+      <div class="ans-q"><span class="qn">Licence</span><span><q>“Your tenant has x licensing, which means y features have been excluded…” so they don't think they are 100% compliant to Jon's baseline.</q></span></div>
+      <div class="ans-a">
+        <p><span class="verdict warn">Mostly exists; the wording is wrong</span>Every P1 tenant already gets a collapsed <b>Not licensed (n)</b> group at the bottom of the Plan. It lists each baseline control the licences don't cover and the licence it needs (e.g. the risk policies and PIM activation need P2). What's wrong is its note: “Nothing in the plan waits on these”. That reassures, and nothing says a finished plan isn't the whole baseline. The Completed tile reads “36 / 36”.</p>
+        <p><b>v1.0 (about 15 minutes):</b> reword the two existing sentences to say it plainly, for example: “The baseline includes these, and this tenant's licences don't cover them, so they aren't in this plan. A finished plan puts the baseline in place as far as those licences reach, not all of it.”</p>
+        <p><b>v1.1:</b> a “Not licensed (n)” line under the Completed tile, the why and a Learn link on each row, a count fix (it shows 6 where it should show 7 on P1), and matching lines on How and Connect.</p>
+      </div>
+    </article>
+
+    <article class="ans">
+      <div class="ans-q"><span class="qn">RO</span><span><q>Is there a way where we help the users create ALL of the policies in report-only immediately?… Or is the artificial boundary… beneficial?</q></span></div>
+      <div class="ans-a">
+        <p><span class="verdict">The engine already does this</span>Section position gates nothing. Once Emergency Access and Direction are done, every policy that can be written is <b>Ready · Create on the same day</b>: 13 of 14 on the test tenant closest to yours. The 14th is the countries policy, which waits only on its own location, a few minutes' work. Turn-on is what's ordered, by the emergency drill, the MFA campaign and readiness. So the plan is already “create everything now, turn on in order”. It just doesn't say so, and a top-to-bottom All work view would make it look sequential.</p>
+        <p><b>v1.0:</b> say it in one sentence in the Plan's how-to. <b>v1.1:</b> a visible “N policies ready to create in report-only” line. A single “create everything” script is 3–5 hours, because re-running a half-finished bundle would create duplicates, so it needs an existence check first.</p>
+        <p><b>Keep the two real boundaries.</b> Nothing is created before Emergency Access, because 18 policies need the exclusions group. Nothing is created before Direction, because its answers change who a policy covers, and a later change restarts that policy's report-only window and throws the early data away.</p>
+        <p><b>Two caveats from Microsoft:</b></p>
+        <ul>
+          <li>Report-only policies that require a compliant device can repeatedly prompt Mac, iPhone and Android users to pick a certificate. <b>This already happens today</b> with Require a Managed Device on day one. Decision below.</li>
+          <li>Registration (“user action”) policies collect nothing in report-only, so creating them early gains no data, though it does no harm. Entra keeps sign-ins for 30 days, so creating more than a month before turn-on gains nothing either.</li>
+        </ul>
+        <p class="src">Microsoft Learn: concept-conditional-access-report-only; reference-reports-data-retention; managed-policies. Code: foundations.ts, lanes.ts:14–17, schedule.ts:571–584.</p>
+      </div>
+    </article>
+
+  </div>
+</section>
+
+<section id="decisions">
+  <h2>Decisions left</h2>
+  <p class="sub">Eight. Six are yes/no with my recommendation. Answering “all recommended” is fine.</p>
+  <ol class="decisions">
+    <li><span class="dn">A</span><p class="dt"><b>Section 2's name.</b> <i>Define Your Rollout Scope</i> (it names what the answers do: they decide which rows exist and who's carved out), or <i>Confirm How Your Tenant Works</i>, or <i>Set Your Rollout Direction</i>. The row label “Waiting on your direction” would become “Waiting on your answers” to match.</p><span class="rec">Define Your Rollout Scope</span><span class="scope">v1.0 · Stage 2</span></li>
+    <li><span class="dn">B</span><p class="dt"><b>Section headers count what's left</b> (“2 of 6 remaining”), and a finished section collapses to one line (“All 4 completed”).</p><span class="rec">Yes</span><span class="scope">v1.0 · Stage 1</span></li>
+    <li><span class="dn">C</span><p class="dt"><b>Seven of Jon's 38 policies appear nowhere, on any licence:</b> RiskyUsers-RegisterSecurityInfo, EAM High-Risk Users, the two ZTCA block policies, the two passkey policies, and BreakGlass-TrustedLocations. List them in the footer under “In the baseline, not in this plan”, each with its reason (e.g. “an incident-response kill switch, not a standing control”), so a finished plan never implies the whole baseline.</p><span class="rec warn">Yes, reasons need your eye</span><span class="scope">v1.0 wording · reasons from you</span></li>
+    <li><span class="dn">D</span><p class="dt"><b>Mac, iPhone and Android certificate prompts</b> from Require a Managed Device in report-only. Either show Microsoft's warning on that step, or hold the create until devices are enrolled. Excluding Macs during report-only and adding them back later would restart the window, so that's not a fix.</p><span class="rec warn">Warn now; revisit hold</span><span class="scope">v1.1 (30–60 min)</span></li>
+    <li><span class="dn">E</span><p class="dt"><b>Per-user MFA shows only when needed</b> (4.6). 30–40 minutes, just over your line.</p><span class="rec">Include in v1.0</span><span class="scope">v1.0 if time allows</span></li>
+    <li><span class="dn">F</span><p class="dt"><b>Fix the never-signed-in bug</b> in the dormant step. MFA Readiness then shows those accounts as “never signed in” instead of “unknown”.</p><span class="rec">Yes</span><span class="scope">v1.0 (20–30 min)</span></li>
+    <li><span class="dn">G</span><p class="dt"><b>Reword the Not licensed note and the printed line</b> so a finished plan says it covers the baseline as far as your licences reach.</p><span class="rec">Yes</span><span class="scope">v1.0 (15 min)</span></li>
+    <li><span class="dn">H</span><p class="dt"><b>Say “create every Ready policy in report-only that day”</b> in the Plan's how-to.</p><span class="rec">Yes</span><span class="scope">v1.0 (10 min, part of Stage 1)</span></li>
+  </ol>
+  <p class="note">Unchanged from V1 and already approved: decisions 3 (Direction to three steps), 4 (retire three unread questions), 5 (countries as one step), 6 (the two Doesn't apply readings), 7 (risk pairs) and 8 (print and exports).</p>
+</section>
+
+<section id="view">
+  <h2>The view</h2>
+  <p class="sub">What the top of the Plan looks like after Stage 1, on a tenant partway through: Emergency Access finished, section 2 answered, section 3 underway.</p>
+  <div class="mock" aria-label="Mock of the Plan board">
+    <div class="mock-tabs"><span class="mtab on">All work</span><span class="mtab">Ready</span><span class="mtab">Up Next</span><span class="mtab">On Hold</span><span class="mtog">Show completed · Show deferred</span></div>
+    <div class="mrow done"><span class="c">1</span><span class="h">Establish Emergency Access</span><span class="r">All 4 completed ›</span></div>
+    <div class="mrow done"><span class="c">2</span><span class="h">Define Your Rollout Scope</span><span class="r">All 3 completed ›</span></div>
+    <div class="mrow"><span class="c">3</span><span class="h">Prepare Accounts and Objects</span><span class="r">4 of 6 remaining</span></div>
+    <div class="mrow step done"><span class="c">3.1</span><span class="h">Disable or Confirm Dormant Accounts</span><span class="r">Completed · Sep 22</span></div>
+    <div class="mrow step done"><span class="c">3.2</span><span class="h">Use Separate Accounts for Admin Work</span><span class="r">Completed · Sep 22</span></div>
+    <div class="mrow step"><span class="c">3.3</span><span class="h">Register Your Own Passkey</span><span class="r">Ready</span></div>
+    <div class="mrow step"><span class="c">3.4</span><span class="h">Prepare Your Team for MFA</span><span class="r">Up Next · after 3.3</span></div>
+    <div class="mrow"><span class="c">4</span><span class="h">Turn On MFA for Everyone</span><span class="r">6 of 6 remaining</span></div>
+  </div>
+  <p class="note">With Show completed off, the finished lines hide the way they do today; the toggles stay until you've seen this built. The numbers never shift between tabs.</p>
+</section>
+
+<section id="roadmap">
+  <h2>The roadmap, with names in your convention</h2>
+  <p class="sub">Same eight sections, order and membership as V1. Only the names changed. Row counts are for a P1 (Business Premium-shaped) test tenant and a P2 one, after every stage.</p>
+  <div class="board">
+    <article class="sect"><div class="sect-head"><span class="num">1</span><h3>Establish Emergency Access</h3><span class="namefrom"><b>Existing title</b></span></div>
+      <ul class="rows">
+        <li><span class="i">1.1</span><span class="t">Prepare Emergency Access Accounts</span></li>
+        <li><span class="i">1.2</span><span class="t">Configure Emergency Exclusions</span></li>
+        <li><span class="i">1.3</span><span class="t">Configure Passkey Authentication</span></li>
+        <li><span class="i">1.4</span><span class="t">Verify Emergency Access</span></li>
+      </ul><div class="counts">P1: 4 rows · P2: 4 rows</div></article>
+
+    <article class="sect"><div class="sect-head"><span class="num">2</span><h3>Define Your Rollout Scope</h3><span class="namefrom"><b>New</b> · was Decide Your Tenant's Direction</span></div>
+      <ul class="rows">
+        <li><span class="i">2.1</span><span class="t">Confirm What You Use</span><span class="d">External methods question retired.</span></li>
+        <li><span class="i">2.2</span><span class="t">Identify Service and Shared Accounts</span></li>
+        <li><span class="i">2.3</span><span class="t">Decide How and Where People Sign In <span class="tags"><span class="tag merged">Merged</span></span></span><span class="d">Computers, phones and the office network. Travel and device exceptions retired.</span></li>
+      </ul><div class="counts">P1: 3 · P2: 3</div></article>
+
+    <article class="sect"><div class="sect-head"><span class="num">3</span><h3>Prepare Accounts and Objects</h3><span class="namefrom"><b>New</b> · from Prepare the Groups and Locations</span></div>
+      <ul class="rows">
+        <li><span class="i">3.1</span><span class="t">Disable or Confirm Dormant Accounts</span></li>
+        <li><span class="i">3.2</span><span class="t">Use Separate Accounts for Admin Work</span></li>
+        <li><span class="i">3.3</span><span class="t">Register Your Own Passkey</span></li>
+        <li><span class="i">3.4</span><span class="t">Prepare Your Team for MFA</span></li>
+        <li><span class="i">3.5</span><span class="t">Create the Baseline's Authentication Strength</span></li>
+        <li><span class="i">3.6</span><span class="t">Define the Trusted Network <span class="tags"><span class="tag cond">Doesn't apply if you answer “remote”</span></span></span></li>
+        <li><span class="i">3.7</span><span class="t">Create or Correct Service Accounts Group <span class="tags"><span class="tag cond">Only with service accounts</span></span></span></li>
+      </ul><div class="counts">P1: 5–7 · P2: 6. “Groups and Locations” no longer fits: after the countries merge, and on remote tenants, the section holds no location.</div></article>
+
+    <article class="sect"><div class="sect-head"><span class="num">4</span><h3>Turn On MFA for Everyone</h3><span class="namefrom"><b>Existing title</b></span></div>
+      <ul class="rows">
+        <li><span class="i">4.1</span><span class="t">Block Legacy Authentication</span></li>
+        <li><span class="i">4.2</span><span class="t">Block Device Code Sign-in</span></li>
+        <li><span class="i">4.3</span><span class="t">Require Phishing-Resistant MFA for Admins</span></li>
+        <li><span class="i">4.4</span><span class="t">Require MFA for Everyone</span></li>
+        <li><span class="i">4.5</span><span class="t">Turn Off Security Defaults <span class="tags"><span class="tag cond">Doesn't apply if never on</span></span></span></li>
+        <li><span class="i">4.6</span><span class="t">Finish Moving Off Per-User MFA <span class="tags"><span class="tag new">Only when needed (decision E)</span></span></span></li>
+      </ul><div class="counts">P1: 5–6 · P2: 5. The title fits: legacy authentication and device code are the two ways around MFA, and these four policies are exactly what replaces security defaults. Alternative if you prefer: “Turn On the Core Protections”.</div></article>
+
+    <article class="sect"><div class="sect-head"><span class="num">5</span><h3>Extend MFA Coverage</h3><span class="namefrom"><b>New</b></span></div>
+      <ul class="rows">
+        <li><span class="i">5.1</span><span class="t">Protect Sign-in Method Registration</span></li>
+        <li><span class="i">5.2</span><span class="t">Require MFA to Register a Device</span></li>
+        <li><span class="i">5.3</span><span class="t">Require MFA for Guests</span></li>
+        <li><span class="i">5.4</span><span class="t">Require MFA at Every Role Activation <span class="tags"><span class="tag cond">P2</span></span></span></li>
+        <li><span class="i">5.5</span><span class="t">Require MFA for Inforcer Access <span class="tags"><span class="tag cond">Only if used</span></span></span></li>
+        <li><span class="i">5.6</span><span class="t">Challenge Risky Sign-ins <span class="tags"><span class="tag merged">Two policies</span><span class="tag cond">P2</span></span></span></li>
+        <li><span class="i">5.7</span><span class="t">Remediate Risky Users <span class="tags"><span class="tag merged">Two policies</span><span class="tag cond">P2</span></span></span></li>
+        <li><span class="i">5.8</span><span class="t">Require MFA for Azure Management <span class="tags"><span class="tag cond">Uploaded baseline only</span></span></span></li>
+      </ul><div class="counts">P1: 3 · P2: 6. V1 called it “Extend MFA and Respond to Risk”, but no P1 tenant sees a risk row, so the name now covers what everyone sees.</div></article>
+
+    <article class="sect"><div class="sect-head"><span class="num">6</span><h3>Close the Doors Nobody Should Use</h3><span class="namefrom"><b>Existing title</b></span></div>
+      <ul class="rows">
+        <li><span class="i">6.1</span><span class="t">Block Authentication Transfer</span></li>
+        <li><span class="i">6.2</span><span class="t">Block Unsupported Device Platforms</span></li>
+        <li><span class="i">6.3</span><span class="t">Block Sign-ins From Countries Not Allowed <span class="tags"><span class="tag merged">Merged</span></span></span><span class="d">Pick work countries, create the location, create the policy in report-only, turn it on.</span></li>
+        <li><span class="i">6.4</span><span class="t">Restrict Service Accounts to the Trusted Network <span class="tags"><span class="tag cond">Only with service accounts</span></span></span></li>
+        <li><span class="i">6.5</span><span class="t">Restrict the Directory Sync Service Principal to Its Address <span class="tags"><span class="tag cond">Workload ID licence</span></span></span></li>
+      </ul><div class="counts">P1: 3–4 · P2: 4</div></article>
+
+    <article class="sect"><div class="sect-head"><span class="num">7</span><h3>Limit Sessions and Require Healthy Devices</h3><span class="namefrom"><b>New</b> · joins two existing titles</span></div>
+      <ul class="rows">
+        <li><span class="i">7.1</span><span class="t">Shorten Admin Sessions</span></li>
+        <li><span class="i">7.2</span><span class="t">Limit How Long Sessions Last</span></li>
+        <li><span class="i">7.3</span><span class="t">Require a Fresh Sign-in for Intune Enrollment</span></li>
+        <li><span class="i">7.4</span><span class="t">Require a Managed Device Outside the Office</span></li>
+        <li><span class="i">7.5</span><span class="t">Give Shared Devices Their Own Policy <span class="tags"><span class="tag cond">Only with shared accounts</span></span></span></li>
+        <li><span class="i">7.6</span><span class="t">Keep Company Data Off Phones <span class="tags"><span class="tag cond">Only if phones are blocked</span></span></span></li>
+        <li><span class="i">7.7</span><span class="t">Require Token Protection on Windows</span></li>
+        <li><span class="i">7.8–7.9</span><span class="t">App protection on phones; browser sessions on unmanaged devices <span class="tags"><span class="tag cond">Uploaded baseline only</span></span></span></li>
+      </ul><div class="counts">P1: 3–6 · P2: 6. Both halves are your existing wording, in the order the section runs (sessions first). Alternative: “Secure Devices and Sessions”.</div></article>
+
+    <article class="sect"><div class="sect-head"><span class="num">8</span><h3>Ongoing Checks and Cleanup</h3><span class="namefrom"><b>Existing title</b></span></div>
+      <ul class="rows">
+        <li><span class="i">8.1</span><span class="t">Alert on Emergency Account Sign-ins</span></li>
+        <li><span class="i">8.2–8.3</span><span class="t">Harden Emergency Access; Remove Emergency Accounts Excluded by Name <span class="tags"><span class="tag cond">When needed</span></span></span></li>
+        <li><span class="i">8.4</span><span class="t">Review Overlapping Policies</span></li>
+        <li><span class="i">8.5</span><span class="t">Align Policy Names</span></li>
+        <li><span class="i">8.6+</span><span class="t">A review row per baseline policy the plan has no goal for</span></li>
+      </ul><div class="counts">P1: 2–3 · P2: 3</div></article>
+  </div>
+
+  <div class="tbl wide" style="margin-top:18px"><table>
+    <thead><tr><th>Test tenant</th><th class="num">1</th><th class="num">2</th><th class="num">3</th><th class="num">4</th><th class="num">5</th><th class="num">6</th><th class="num">7</th><th class="num">8</th><th class="num">Rows</th></tr></thead>
+    <tbody>
+      <tr><td>P1, closest to yours (remote)</td><td class="num">4</td><td class="num">3</td><td class="num">5</td><td class="num">5</td><td class="num">3</td><td class="num">3</td><td class="num">5</td><td class="num">2</td><td class="num">30</td></tr>
+      <tr><td>P1 demo (Business Premium shape)</td><td class="num">4</td><td class="num">3</td><td class="num">7</td><td class="num">5</td><td class="num">3</td><td class="num">4</td><td class="num">6</td><td class="num">3</td><td class="num">35</td></tr>
+      <tr><td>P1, security defaults on</td><td class="num">4</td><td class="num">3</td><td class="num">5</td><td class="num">6</td><td class="num">3</td><td class="num">3</td><td class="num">3</td><td class="num">3</td><td class="num">30</td></tr>
+      <tr><td>P2 (mid)</td><td class="num">4</td><td class="num">3</td><td class="num">6</td><td class="num">5</td><td class="num">6</td><td class="num">4</td><td class="num">6</td><td class="num">3</td><td class="num">37</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="multi">
+  <h2>A step with two policies</h2>
+  <p class="sub">Proposed for Stage 4. One line per policy at the top of the step, above Tasks Remaining, each with its own state and report-only bar. The two policies move independently: one can be on while the other is still being watched.</p>
+  <div class="mock">
+    <div class="mrow"><span class="c">5.6</span><span class="h">Challenge Risky Sign-ins</span><span class="r">Ready · Turn on</span></div>
+    <div class="policies">
+      <div class="pol"><span class="pn">High sign-in risk · CA - Require - High sign-in risk</span><span class="ps">Report-only · ready to turn on</span><span class="bar"><i style="width:100%"></i></span><span class="pd">Watched 7 of 7 days · 0 people it would have stopped</span></div>
+      <div class="pol"><span class="pn">Medium sign-in risk · CA - Require - Medium sign-in risk</span><span class="ps">Report-only</span><span class="bar"><i style="width:43%"></i></span><span class="pd">Watched 3 of 7 days · turns on after the high-risk policy</span></div>
+    </div>
+  </div>
+  <p class="note">Illustrative numbers. Require MFA for Guests, which already carries two policies, gets the same strip.</p>
+</section>
+
+<section id="missing">
+  <h2>What you might be missing</h2>
+  <p class="sub">What the checks turned up that the proposal alone wouldn't show you.</p>
+  <div class="answers">
+    <article class="ans"><div class="ans-a"><p><span class="verdict bug">Bug</span><b>Never-signed-in accounts are hidden on real tenants.</b> The dormant step can say “no outstanding dormant accounts” while several exist, so the dormant step isn't to be trusted until it's fixed. Fix in v1.0 (decision F).</p></div></article>
+    <article class="ans"><div class="ans-a"><p><span class="verdict warn">Gap</span><b>Seven of Jon's 38 policies appear nowhere</b>, on any licence: not as a step, not in Not licensed, not as a review row. On a fully licensed tenant, finishing the plan would still imply the whole baseline. (Decision C.)</p></div></article>
+    <article class="ans"><div class="ans-a"><p><span class="verdict warn">Already live</span><b>Macs, iPhones and Android phones get certificate prompts</b> from the report-only Require a Managed Device policy, which is created on day one. (Decision D.)</p></div></article>
+    <article class="ans"><div class="ans-a"><p><span class="verdict warn">Paused</span><b>Correctness fixes paused this morning for the flow work</b> should still land in v1.0:</p><ul><li>Off policies go to Report-only, never straight On.</li><li>The High user risk step's portal instructions give a different grant from your pinned baseline.</li><li>Large tenants hit the 50,000 sign-in ceiling and get no plan at all. This fix is being built now.</li></ul></div></article>
+    <article class="ans"><div class="ans-a"><p><span class="verdict later">Worth a look</span><b>The When column.</b> Nearly every Ready row shows today's date, because every create is on day one. With All work as the default, that column doesn't order anything. It could say “Now” for creates and show dates only for turn-ons. Not in V1 or V2; tell me if you want it scoped.</p></div></article>
+    <article class="ans"><div class="ans-a"><p><span class="verdict later">v1.1</span><b>Partial P2 seats.</b> A tenant with P2 for half its people gets the risk policies planned for everyone; only Inventory shows the seat count. <b>Hybrid tenants:</b> the dormant step says disable in Entra, but a synced account is disabled in Active Directory.</p></div></article>
+    <article class="ans"><div class="ans-a"><p><span class="verdict">Correction to V1</span>V1 said Require MFA to Register a Device doesn't wait on the MFA campaign. It does, through its readiness gate. The order doesn't change, because the campaign sits in section 3.</p></div></article>
+  </div>
+</section>
+
+<section id="scope">
+  <h2>v1.0 and v1.1</h2>
+  <div class="tbl wide"><table>
+    <thead><tr><th>v1.0 (by Monday)</th><th>v1.1 (after launch)</th></tr></thead>
+    <tbody>
+      <tr><td>Stage 1: the view (All work first, collapsing, remaining counts)</td><td>Remove Show completed and Show deferred, once you've seen it</td></tr>
+      <tr><td>Stage 2: the order and names</td><td>The dormant smart list (3–4 h)</td></tr>
+      <tr><td>Stage 3: Direction to three steps; countries as one step; the Doesn't apply readings</td><td>Not licensed line under the Completed tile, a why on each row, How and Connect lines</td></tr>
+      <tr><td>Stage 4: the risk pairs and the two-policy strip</td><td>“N ready to create in report-only” line; the create-everything script (3–5 h)</td></tr>
+      <tr><td>Stage 5: print and exports</td><td>Mac certificate warning on the managed-device step</td></tr>
+      <tr><td>Dormant never-signed-in fix · Not licensed wording · create-early sentence · per-user MFA only when needed (if time allows)</td><td>Partial P2 seats · hybrid disable path · the When column</td></tr>
+      <tr><td>The paused correctness fixes (Off → Report-only, the pinned grant) and the large-tenant sign-in read</td><td></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="week">
+  <h2>The week</h2>
+  <p class="sub">A plan, not a promise. Each stage ships only when its acceptance is on screen, a test asserts it, and CI is green. If Friday slips, Stage 4 moves to v1.1 and nothing else waits on it.</p>
+  <div class="plan">
+    <div class="day"><span class="dd">Wed</span><ul><li>Stage 1 (the view) and Stage 2 (order and names), once you approve</li></ul></div>
+    <div class="day"><span class="dd">Thu</span><ul><li>Stage 3 (Direction, countries, Doesn't apply)</li><li>The small v1.0 fixes (dormant, licence wording, create-early sentence, per-user MFA)</li></ul></div>
+    <div class="day"><span class="dd">Fri</span><ul><li>Stage 4 (the risk pairs and the two-policy strip)</li><li>Stage 5 (print and exports)</li></ul></div>
+    <div class="day"><span class="dd">Sat–Sun</span><ul><li>The paused correctness fixes</li><li>Merge the sign-in read</li><li>A full walk of the Plan as each persona</li><li>Your look at the finished product</li></ul></div>
+    <div class="day"><span class="dd">Mon</span><ul><li>Deploy v1.0</li></ul></div>
+  </div>
+</section>
+
+<footer>
+  Version 2, 2026-09-23. V1 is unchanged at its own link and saved in the repository with your review, verbatim (docs/plans/roadmap-flow/). V2 comes from six checks against the code, the 13 test tenants, Jon Hope's repository at the pinned commit, and Microsoft Learn: travel, the dormant list, per-user MFA, licensing, report-only creation, and section names and weight.
+</footer>
+
+</div>
