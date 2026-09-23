@@ -23,6 +23,7 @@ import { STEP_GROUPS, groupOf } from '../../roadmap/stepGroups.ts'
 import {
   ALL_WORK_TAB,
   BOARD,
+  DEFAULT_TAB,
   LANES,
   TABS,
   allWorkGroups,
@@ -570,10 +571,13 @@ test('the fourth tab shows every lane and neither toggle hides a row inside a gr
   }
 })
 
-test('the board vocabulary is one record, and Ready is the default tab', () => {
-  assert.deepEqual([...LANES], ['ready', 'upNext', 'onHold'], 'the tab order moved')
-  assert.deepEqual([...TABS], ['ready', 'upNext', 'onHold', ALL_WORK_TAB], 'the four tabs moved')
-  assert.equal(LANES[0], 'ready', 'Ready is no longer the default')
+test('the board vocabulary is one record, and All work is the leftmost tab and the one the Plan opens on', () => {
+  // Owner, 2026-09-23 (roadmap flow V2): the default view is leftmost, as a
+  // default view usually is, and the lane tabs are filters a person chooses.
+  assert.deepEqual([...LANES], ['ready', 'upNext', 'onHold'], 'the lane order moved')
+  assert.deepEqual([...TABS], [ALL_WORK_TAB, 'ready', 'upNext', 'onHold'], 'All work is not the leftmost tab')
+  assert.equal(DEFAULT_TAB, ALL_WORK_TAB, 'the Plan does not open on All work')
+  assert.match(readFileSync('src/ui/surfaces/Plan.tsx', 'utf8'), /useState<BoardTab>\(DEFAULT_TAB\)/, 'the Plan opens on a tab of its own choosing')
   assert.deepEqual(Object.values(BOARD.lanes), ['Ready', 'Up Next', 'On Hold', 'Completed', 'Deferred', "Doesn't apply"])
   assert.deepEqual(Object.keys(BOARD.type), TYPE_ORDER, 'the work-type labels and the work-type order disagree')
   assert.equal(BOARD.showCompleted, 'Show completed')

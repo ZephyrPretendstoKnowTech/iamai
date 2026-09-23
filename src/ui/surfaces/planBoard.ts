@@ -77,25 +77,31 @@ export const LANE_TONE: Readonly<Record<Lane, StatusTone>> = { Ready: 'ok', 'Up 
  */
 export type StatusFacts = PlanStateFacts
 
-/** The three lane tabs, in the order the control offers them. Ready is the default. */
+/** The three lane tabs, in the order the control offers them after All work. */
 export const LANES = ['ready', 'upNext', 'onHold'] as const
 export type LaneTab = (typeof LANES)[number]
 
 /**
- * The fourth tab (owner, 2026-09-20), which is not a lane.
+ * The tab that is not a lane (owner, 2026-09-20), and the one the Plan opens on
+ * (owner, 2026-09-23).
  *
  * The three lane tabs answer "what can I do now"; this one answers "where is
- * this group up to". It lists every group with unfinished work, whole — all of
- * that group's rows, completed ones included, in the group's own order — so a
- * run of work can be read as a run rather than as three slices of itself. A
- * group whose rows are all Completed is not in the list: it folds into the
- * aside under its completed title, the way a finished pinned group always has.
+ * this section up to". It lists every section, whole — all of its rows, finished
+ * ones included, in the section's own order — so a run of work reads as a run
+ * rather than as three slices of itself.
  */
 export const ALL_WORK_TAB = 'allWork'
 export type BoardTab = LaneTab | typeof ALL_WORK_TAB
 
-/** The four tabs the board offers, in the order the strip draws them. */
-export const TABS: readonly BoardTab[] = [...LANES, ALL_WORK_TAB]
+/**
+ * The four tabs the board offers, in the order the strip draws them: All work
+ * leftmost, because it is the default view and a default view sits first
+ * (owner, 2026-09-23), then the three lanes as filters a person chooses.
+ */
+export const TABS: readonly BoardTab[] = [ALL_WORK_TAB, ...LANES]
+
+/** The tab the Plan opens on: All work, the whole plan in section order. */
+export const DEFAULT_TAB: BoardTab = ALL_WORK_TAB
 
 /** The tab a lane is drawn under; Completed and Deferred are toggles, not tabs. */
 export const TAB_OF: Readonly<Record<Lane, LaneTab | null>> = { Ready: 'ready', 'Up Next': 'upNext', 'On Hold': 'onHold', Completed: null, Deferred: null }
