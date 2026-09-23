@@ -7,6 +7,14 @@
 import { count, list } from './statements.ts'
 import { methodName } from './inventory.ts'
 import { BREAK_GLASS_DRILL_DAYS } from '../roadmap/constants.ts'
+import { cleanup, stepById } from '../content/content.ts'
+
+/**
+ * The titles rule copy names steps by, from content: a copy written here would
+ * go stale when content renames the step (Phase 2 review).
+ */
+const DRILL_TITLE = cleanup.drill.title
+const PER_USER_MFA_TITLE = (stepById['s-prereq-per-user-mfa'] as unknown as { title: string }).title
 
 export const SEVERITY = {
   blocker: 'Must fix',
@@ -78,7 +86,7 @@ export const NEED_LABEL: Record<string, string> = {
   // The Cleanup drill row's records (roadmap/cleanupDone.ts), which bg.drilled and
   // bg.lastSignIn read. Always there to read, so never a missing need; How's Needs
   // column said "the user list" for a check that reads these (Phase 2 audit).
-  recoveryTests: 'the recovery tests recorded on Verify Emergency Access',
+  recoveryTests: `the recovery tests recorded on ${DRILL_TITLE}`,
 }
 
 export const UNKNOWN = {
@@ -263,9 +271,9 @@ export const RULE_TEXT: Record<string, { what: string; why: string; label?: stri
   'bg.perUserMfaOff': {
     what: 'The tenant has finished migrating to the authentication methods policy.',
     // What the rule reads is the migration state. The why was about per-user MFA
-    // prompting, a fact this check never reads; Finish Moving Off Per-User MFA
+    // prompting, a fact this check never reads; the s-prereq-per-user-mfa step
     // reads each account's own state (roadmap/manualWork.ts) (Phase 2 audit).
-    why: "Until the migration finishes, the legacy settings still decide which methods are offered. Each account's own per-user MFA state, the emergency accounts' included, is read on Finish Moving Off Per-User MFA.",
+    why: `Until the migration finishes, the legacy settings still decide which methods are offered. Each account's own per-user MFA state, the emergency accounts' included, is read on ${PER_USER_MFA_TITLE}.`,
   },
   'bg.noLicenceNeeded': {
     // What the rule reads: an enabled mailbox service plan (rules.ts MAILBOX_PLANS).
