@@ -4,7 +4,7 @@
   "reason": "when admin readiness reaches 100% (now 33%)",
   "fact": "Report-only",
   "badge": "On Hold",
-  "bar": "Observing",
+  "bar": "when admin readiness reaches 100% (now 33%)",
   "rail": "Not scheduled",
   "headings": [
     "About this Step",

@@ -4,7 +4,7 @@
   "reason": "after: Configure Emergency Exclusions",
   "fact": "Report-only",
   "badge": "On Hold",
-  "bar": "Observing",
+  "bar": "when admin readiness reaches 100% (now 16%)",
   "rail": "Not scheduled",
   "headings": [
     "About this Step",

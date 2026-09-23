@@ -20,6 +20,18 @@
     {
       "label": "Configure Passkey Authentication",
       "state": "Prerequisite · To do"
+    },
+    {
+      "label": "Before turning on",
+      "state": "Temporary Access Pass"
+    },
+    {
+      "label": "Before turning on",
+      "state": "People without a method"
+    },
+    {
+      "label": "Before turning on",
+      "state": "Trusted network"
     }
   ],
   "channels": [

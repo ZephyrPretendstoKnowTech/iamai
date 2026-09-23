@@ -14,6 +14,10 @@
   ],
   "tiles": [
     {
+      "label": "Verify Emergency Access",
+      "state": "Prerequisite · Waiting"
+    },
+    {
       "label": "Configure Passkey Authentication",
       "state": "Prerequisite · Waiting"
     }

@@ -20,6 +20,14 @@
     {
       "label": "Prepare Emergency Access Accounts",
       "state": "Prerequisite · To do"
+    },
+    {
+      "label": "Before turning on",
+      "state": "Temporary Access Pass"
+    },
+    {
+      "label": "Before turning on",
+      "state": "Trusted network"
     }
   ],
   "channels": [
