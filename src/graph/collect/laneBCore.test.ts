@@ -39,7 +39,7 @@ function deps(pages: Page[], over: Partial<LaneBDeps> = {}): LaneBDeps & { store
   let i = 0
   const store = memoryEvidenceStore()
   const d = {
-    pageUrl: (before: string | null) => (before === null ? 'start' : `lt:${before}`),
+    pageUrl: (through: string | null) => (through === null ? 'start' : `le:${through}`),
     windowDays: 30,
     nowMs: NOW,
     clock: () => clockMs,

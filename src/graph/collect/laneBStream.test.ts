@@ -9,6 +9,7 @@ import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { runLaneB } from './signInStream.ts'
+import { signInPageUrl } from './laneB.ts'
 import type { EvidenceStore, LaneBDeps } from './signInStream.ts'
 import { aggregateFold, aggregatesFold, blockedTodayFold, derivePolicyResults, lastEnforcedOf, mapRow, policyResultsFold, reportOnlyIdsFold, targetedReadCandidates, usageFold } from './laneBCore.ts'
 import type { SignInEvidence } from './laneBCore.ts'
@@ -166,13 +167,48 @@ test('a read that stops is continued by the next scan from where it stopped', as
   assert.equal(r2.status, 'ok')
   assert.match(r2.reason ?? '', /^resumed from the saved records: fetched the gap since .+ and the records before .+$/, 'the reason names the older records fetched too')
   assert.equal(fake.urls[0], 'start')
-  const older = fake.urls.find((u) => u.startsWith('lt:'))
+  const older = fake.urls.find((u) => u.startsWith('le:'))
   assert.ok(older, 'the older records are fetched from where the saved span ends')
   const olderFrom = older.slice(3).split('#')[0]
-  assert.ok(olderFrom > frontier && Date.parse(olderFrom) <= Date.parse(frontier) + o.spacingS * 1000 + 1000, `${olderFrom} starts within a second of the span's end`)
+  assert.equal(olderFrom, whole(Date.parse(frontier) + o.spacingS * 1000), "from the last second folded, the one after the span's oldest (whose records were still being read)")
   assert.equal(fake.urls.indexOf(older), 1, 'one page for the gap, then the older records')
   const expected = straightFold(() => fake.rowsInWindow(windowStartOf(NOW)))
   assert.equal(r2.rows, expected.rows, 'the second the first read stopped in is counted once')
+  assert.deepStrictEqual(canonical(derived(r2)), canonical(expected.derived))
+  assert.deepEqual(store.covered, { from: windowStartOf(NOW), to: iso(NOW) })
+})
+
+/**
+ * Graph as its signIn resource documents it: createdDateTime filters with eq,
+ * le and ge only, and any other operator is refused. The real page URLs
+ * (laneB.ts signInPageUrl) are read, and the pages come from `fake`.
+ */
+const documentedFilters = (fake: ReturnType<typeof fakeGraph>): Fake => ({
+  pageUrl: signInPageUrl,
+  fetchPage: async (url) => {
+    if (!url.startsWith('https://')) return fake.fetchPage(url) // a nextLink
+    const filter = new URL(url).searchParams.get('$filter') ?? ''
+    const clause = /createdDateTime (\w+) (\S+)/.exec(filter)
+    if (clause && !['eq', 'le', 'ge'].includes(clause[1])) throw new Error(`Invalid filter clause: '${clause[1]}' is not supported on createdDateTime.`)
+    return fake.fetchPage(clause ? `${clause[1]}:${clause[2]}` : 'start')
+  },
+})
+
+test('a read that stops is finished by the next scan when Graph accepts only the documented createdDateTime filters', async () => {
+  const o = { seed: 13, anchorMs: NOW, spacingS: 390 }
+  const now1 = NOW - HOUR
+  const store = memoryEvidenceStore()
+  const r1 = await read(documentedFilters(fakeGraph({ ...o, nowMs: now1, failOn: (_url, n) => n > 60 })), store, { nowMs: now1 })
+  assert.equal(r1.status, 'partial')
+  assert.equal(r1.reason, 'collection interrupted: The network connection was lost.', 'the page read again is accepted, so the reason is the network failure')
+  assert.equal(r1.stats?.reanchors, 2)
+
+  const fake = fakeGraph({ ...o, nowMs: NOW })
+  const r2 = await read(documentedFilters(fake), store)
+  assert.equal(r2.status, 'ok', r2.reason ?? '')
+  assert.match(r2.reason ?? '', /^resumed from the saved records: fetched the gap since .+ and the records before .+$/)
+  const expected = straightFold(() => fake.rowsInWindow(windowStartOf(NOW)))
+  assert.equal(r2.rows, expected.rows)
   assert.deepStrictEqual(canonical(derived(r2)), canonical(expected.derived))
   assert.deepEqual(store.covered, { from: windowStartOf(NOW), to: iso(NOW) })
 })
@@ -235,7 +271,7 @@ test('saved records that cannot be read are fetched from Graph instead, from the
   assert.equal(r.stats?.readFailed, true)
   assert.match(r.reason ?? '', /^the saved records could not all be read: fetched the gap since .+ and the records before .+$/, 'the reason says Graph was read for what the store could not give')
   assert.ok(r.stats!.savedRows >= 2_000, 'two batches were read before the store failed')
-  assert.match(fake.urls[1] ?? '', /^lt:/, 'Graph is read from where the saved records stopped')
+  assert.match(fake.urls[1] ?? '', /^le:/, 'Graph is read from where the saved records stopped')
   const expected = straightFold(() => fake.rowsInWindow(windowStartOf(NOW)))
   assert.equal(r.rows, expected.rows)
   assert.deepStrictEqual(canonical(derived(r)), canonical(expected.derived))
@@ -353,11 +389,11 @@ test('a page that fails is read again from the last whole second folded, and thr
   assert.equal(r.status, 'ok')
   assert.equal(r.stats?.reanchors, 2)
   assert.equal(flaky.urls[39], `start#${39 * SIGN_IN_PAGE_SIZE}`)
-  assert.match(flaky.urls[40], /^lt:/)
+  assert.match(flaky.urls[40], /^le:/)
   assert.equal(flaky.urls[41], flaky.urls[40], 'both reads again start from the same second')
   const second = flaky.urls[40].slice(3)
   const last39 = 39 * SIGN_IN_PAGE_SIZE - 1
-  assert.equal(second, iso(rowTimeMs(o, last39 - (last39 % RUN) - 1) + 1000), 'a second after the last whole second folded')
+  assert.equal(second, whole(rowTimeMs(o, last39 - (last39 % RUN) - 1)), 'at or before the last whole second folded')
   assert.deepStrictEqual(derived(r), straightFold(() => flaky.rowsInWindow(windowStartOf(NOW))).derived)
 
   const down = fakeGraph({ ...o, nowMs: NOW, failOn: (_url, n) => (n >= 40 ? new Error(`failure ${n}`) : null) })
@@ -387,11 +423,11 @@ test('a page read again that folds no further second does not reset the failures
     }
     const [base, offset] = url.split('#')
     if (offset !== undefined) throw new Error('The network connection was lost.')
-    const below = base === 'start' ? Number.POSITIVE_INFINITY : Date.parse(base.slice(3))
-    return { value: rows.filter((r) => Date.parse(r.createdDateTime) < below).slice(0, SIGN_IN_PAGE_SIZE), '@odata.nextLink': `${base}#${SIGN_IN_PAGE_SIZE}` }
+    const through = base === 'start' ? Number.POSITIVE_INFINITY : Date.parse(base.slice(3))
+    return { value: rows.filter((r) => Date.parse(r.createdDateTime) <= through).slice(0, SIGN_IN_PAGE_SIZE), '@odata.nextLink': `${base}#${SIGN_IN_PAGE_SIZE}` }
   }
-  const r = await read({ pageUrl: (before) => (before === null ? 'start' : `lt:${before}`), fetchPage }, discardStore(), { signal: cancel.signal })
-  const again = `lt:${iso(T + 2000)}`
+  const r = await read({ pageUrl: (through) => (through === null ? 'start' : `le:${through}`), fetchPage }, discardStore(), { signal: cancel.signal })
+  const again = `le:${whole(T + 1000)}`
   assert.deepEqual(urls, ['start', 'start#200', again, `${again}#200`, again, `${again}#200`], 'three failures with no second folded between them')
   assert.equal(r.stats?.reanchors, 2)
   assert.equal(r.status, 'error')

@@ -5,8 +5,8 @@
 // same record (same id, same time) exists for every scan of the same anchor.
 //
 // fakeGraph answers the page URLs runLaneB asks for: 'start' (the newest
-// first) or 'lt:<iso>' (those created before it), with '#<index>' for the
-// pages after the first, as Graph's nextLink does.
+// first) or 'le:<iso>' (those created at or before it), with '#<index>' for
+// the pages after the first, as Graph's nextLink does.
 import firstParty from '../../data/first-party-apps.json' with { type: 'json' }
 import { mapRow } from '../graph/collect/laneBCore.ts'
 import { SIGN_IN_PAGE_SIZE } from '../graph/collect/constants.ts'
@@ -33,8 +33,6 @@ const spacingMs = (o: SynthOpts): number => (o.spacingS ?? 25) * 1000
 const top = (o: SynthOpts): number => Math.floor(o.anchorMs / 1000) * 1000 - 1000
 export const rowTimeMs = (o: SynthOpts, k: number): number => top(o) - Math.floor(k / RUN) * spacingMs(o)
 export const whole = (ms: number): string => new Date(ms).toISOString().replace('.000Z', 'Z')
-/** The first record created before `ms`. */
-export const firstIndexBefore = (o: SynthOpts, ms: number): number => (top(o) < ms ? 0 : RUN * (Math.floor((top(o) - ms) / spacingMs(o)) + 1))
 /** The first record created at or before `ms`. */
 export const firstIndexAtOrBefore = (o: SynthOpts, ms: number): number => (top(o) <= ms ? 0 : RUN * Math.ceil((top(o) - ms) / spacingMs(o)))
 
@@ -144,23 +142,23 @@ export function fakeGraph(o: FakeGraphOpts) {
     o.variant?.(k, r)
     return r
   }
-  const insertsAt = (k: number, below: number | null): Record<string, unknown>[] =>
-    (o.insert ?? []).filter((x) => x.at === k && Date.parse(x.raw.createdDateTime as string) <= o.nowMs && (below === null || Date.parse(x.raw.createdDateTime as string) < below)).map((x) => x.raw)
+  const insertsAt = (k: number, through: number | null): Record<string, unknown>[] =>
+    (o.insert ?? []).filter((x) => x.at === k && Date.parse(x.raw.createdDateTime as string) <= o.nowMs && (through === null || Date.parse(x.raw.createdDateTime as string) <= through)).map((x) => x.raw)
   return {
     urls,
-    pageUrl: (before: string | null): string => (before === null ? 'start' : `lt:${before}`),
+    pageUrl: (through: string | null): string => (through === null ? 'start' : `le:${through}`),
     async fetchPage(url: string): Promise<{ value: unknown[]; '@odata.nextLink': string | null }> {
       urls.push(url)
       const failure = o.failOn?.(url, urls.length)
       if (failure instanceof Error) throw failure
       if (failure) throw new Error('The network connection was lost.')
       const [base, offset] = url.split('#')
-      const below = base === 'start' ? null : Date.parse(base.slice(3))
-      const start = offset !== undefined ? Number(offset) : below === null ? first : Math.max(first, firstIndexBefore(o, below))
+      const through = base === 'start' ? null : Date.parse(base.slice(3))
+      const start = offset !== undefined ? Number(offset) : through === null ? first : Math.max(first, firstIndexAtOrBefore(o, through))
       const value: unknown[] = []
       if (o.repeatRow !== undefined && offset !== undefined && start - 1 === o.repeatRow) value.push(raw(o.repeatRow))
       const stop = Math.min(start + pageSize, end)
-      for (let k = start; k < stop; k++) value.push(...insertsAt(k, below), raw(k))
+      for (let k = start; k < stop; k++) value.push(...insertsAt(k, through), raw(k))
       return { value, '@odata.nextLink': stop < end ? `${base}#${stop}` : null }
     },
     /** The records this fake holds from now back to `windowStart`, mapped, in the order it serves them. */

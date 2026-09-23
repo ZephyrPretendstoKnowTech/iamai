@@ -23,10 +23,14 @@ export type SignInCtx = { tokens: TokenSource; signal: AbortSignal; wait?: (ms: 
  */
 export const SIGN_IN_READ = { abortMs: PAGE_ABORT_MS, attempts429: SIGN_IN_RETRY_MAX_429, attempts5xx: SIGN_IN_RETRY_MAX_5XX } as const
 
-/** The first page of interactive sign-ins, newest first; with `before`, only those created before it (a continued read). */
-export function signInPageUrl(before: string | null): string {
+/**
+ * The first page of interactive sign-ins, newest first; with `through`, only
+ * those created at or before it (a continued read). `le`, because Graph
+ * documents only eq, le and ge on a sign-in's createdDateTime.
+ */
+export function signInPageUrl(through: string | null): string {
   const lambda = "signInEventTypes/any(t: t eq 'interactiveUser')"
-  const filter = before === null ? lambda : `createdDateTime lt ${before} and ${lambda}`
+  const filter = through === null ? lambda : `createdDateTime le ${through} and ${lambda}`
   return `${BETA}/auditLogs/signIns?$filter=${encodeURIComponent(filter)}&$top=${SIGN_IN_PAGE_SIZE}`
 }
 
