@@ -13,7 +13,7 @@ import { dimensionWords } from '../../roadmap/observation.ts'
 import { content } from '../../content/content.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { SHARED_REF_KEYS, fillText, ifWrongFor, listCountVars, whatToDoFor, whole } from '../../content/render.ts'
-import { stepVars } from './stepVars.ts'
+import { stepVars, withoutScheduleDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor, unwrittenCorrectionLines } from './stepPortal.ts'
 import { instructionsHeld, rescanLinesOf, wholeLines } from './stepInstructions.ts'
@@ -21,7 +21,8 @@ import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, proceduresAreRef
 import type { LaneView, StepContract } from './stepContract.ts'
 import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, previewNoteLines, selectedPolicyBodiesOf, entraWithSettings } from './stepPackage.ts'
 import { projectSafely } from '../../content/implementation/project.ts'
-import { SUBSTATUS_WORD, boardReadingsOf, laneViewAlone, laneViewFor, laneWordOf } from './planBoard.ts'
+import { SUBSTATUS_WORD, boardHolds, laneViewAlone, laneViewFor, laneWordOf } from './planBoard.ts'
+import type { BoardReadings } from './planBoard.ts'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import { createsNewPolicy, enforcesByStateOnly, updatesExistingPolicy, heldByTitle, implementationOffered, waitingLine } from './stepJson.ts'
 import { awaitingDeployment, enforcementUnearned, forecastEnforcement } from '../../roadmap/forecast.ts'
@@ -220,9 +221,10 @@ function gateLine(gatedBy: string | null): string | null {
 
 /**
  * The Export page's view of every step — the one its calendar, grounding
- * bundle and prompt pack read — each under the lane the board reads it in
- * (planBoard.ts boardReadingsOf, the one construction the Plan builds its rows
- * with, Cleanup rows and all).
+ * bundle and prompt pack read — each under the lane the board reads it in.
+ * `board` is planBoard.ts boardReadingsOf, the one construction the Plan builds
+ * its rows with, Cleanup rows and all; the page builds it once and hands the
+ * same board to this and to `exportHoldOf`.
  *
  * The page built its own lane readings, with no Cleanup rows, so the
  * emergency-access drill did not exist there. A policy the board held Up Next
@@ -230,14 +232,21 @@ function gateLine(gatedBy: string | null): string | null {
  * enforce", beside the very guard that said not to turn it on until emergency
  * access was tested (R4-22). The page calls this, and the tests call this.
  */
-export function exportViewsOf(
-  steps: readonly Step[],
-  cleanup: CleanupPhase | null | undefined,
-  answers: { signInMonitoring: boolean | null } | null | undefined,
-  ctxOf: (s: Step) => StepVarContext,
-): (s: Step) => ExportStep {
-  const board = boardReadingsOf(steps, cleanup, answers)
+export function exportViewsOf(board: Pick<BoardReadings, 'readings' | 'titleOf'>, ctxOf: (s: Step) => StepVarContext): (s: Step) => ExportStep {
   return (s) => stepExportView(s, ctxOf(s), laneViewFor(s, board))
+}
+
+/**
+ * The board's hold on each step (planBoard.ts boardHolds), on the board
+ * `exportViewsOf` reads: what the Export page's plan-wide dates
+ * (stepVars.ts planDates) and the prompt pack's announcement
+ * (roadmap/prompts.ts announcementDraft) ask before any view exists, so that a
+ * step the board holds lends neither its turn-on day (owner decision 2). The
+ * page built the board twice per render, once here and once for its views,
+ * from the same arguments; it builds it once now and hands it to both.
+ */
+export function exportHoldOf(board: Pick<BoardReadings, 'readings' | 'titleOf'>): (s: Step) => boolean {
+  return (s) => boardHolds(s, laneViewFor(s, board))
 }
 
 export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView | null = null): ExportStep {
@@ -252,7 +261,14 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // No lane handed down is a step read with nothing around it (planBoard.ts
   // laneViewAlone); the Export page hands down the board's (exportViewsOf).
   const laneView = lane ?? laneViewAlone(step)
-  const contract = stepContract(step, ctx, undefined, laneView)
+  // Whether the board holds the step (planBoard.ts boardHolds), on the reading
+  // handed down: a held step carries no date in any artifact — no Dates line, no
+  // Next line, no day in its words, and no calendar entry (owner decision 2,
+  // 2026-09-22). The export of a policy whose turn-on the board held read
+  // "Announce Sep 20, 2026 · Change Sep 21, 2026" under a row reading "After
+  // prerequisites" (R4-55).
+  const undated = boardHolds(step, lane)
+  const contract = stepContract(step, ctx, undefined, laneView, undefined, undated)
   const shell = {
     state: badgeLabel(contract),
     manualEvidence: manualEvidenceLines(step, ctx),
@@ -276,6 +292,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
     // one list, apart from `fix`: the create is not blocked by any of it (R4-31).
     beforeTurnOn: contract.enforcementWaits.map((f) => f.text),
     implementation: contract.implementation.offered,
+    undated,
   }
   if (!cs) {
     // No content entry at all. Every step the plan draws has one now (task 011),
@@ -284,7 +301,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
     // finish it — and none of the engine's prose, exactly as the screen does.
     return { title: contentTitle(step), why: contract.why, ...shell, whatToDo: [contract.whatToDo.text, gateLine(contract.whatToDo.gatedBy)].filter((l): l is string => l !== null), doneWhen: contract.doneWhen, ifWrong: null, dates: null }
   }
-  const ex = stepVars(step, ctx)
+  const ex = undated ? withoutScheduleDates(stepVars(step, ctx), step, ctx) : stepVars(step, ctx)
   const names = portalNamesFor(ctx, ex, contentTitle(step))
   // The settings the lines state are the ones the step's package selects for its JSON
   // (stepPackage.ts selectedPolicyBodiesOf), read only where the lines are handed over.
@@ -462,7 +479,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
     whatToDo: namedPortalResource({ id: 'portal', form: 'list', lines, text: () => lines.join('\n'), note: null }, ctx).lines,
     doneWhen,
     ifWrong: ((line) => (reason === null && line && whole(line, ex) ? fillText(line, ex) : null))(ifWrongLineFor(step, cs, ex)),
-    dates: reason === null && whole(datesLineFor(step, cs), ex) && datesLineFor(step, cs) ? fillText(datesLineFor(step, cs), ex) : null,
+    dates: !undated && reason === null && whole(datesLineFor(step, cs), ex) && datesLineFor(step, cs) ? fillText(datesLineFor(step, cs), ex) : null,
   }
 }
 
@@ -534,7 +551,8 @@ export function whoEvidenceLines(who: Record<string, unknown>, ex: Record<string
   let unresolved = false
   const coverage = String((content.shared as Record<string, unknown>).existingCoverage)
   for (const [k, v] of Object.entries(who)) {
-    if (['$comment', 'lead', 'leadWhen', 'leadUndated', 'groups', 'adminsNote', 'timeline', 'overlap'].includes(k)) continue
+    // A key ending in Undated holds another key's undated forms (below), never lines of its own.
+    if (k.startsWith('$comment') || k.endsWith('Undated') || ['lead', 'leadWhen', 'groups', 'adminsNote', 'timeline', 'overlap'].includes(k)) continue
     // A licence caveat has no placeholders, so `whole()` can never gate it: it
     // was drawn on every tenant, seven of eight of which hold Entra ID P1, which
     // made the one honest sentence about the licence carry no information at all
@@ -545,7 +563,17 @@ export function whoEvidenceLines(who: Record<string, unknown>, ex: Record<string
       continue
     }
     const arr = Array.isArray(v) ? (v as string[]) : typeof v === 'string' ? [v] : []
-    for (let line of arr) {
+    // The undated forms of this key's lines, by the line's place (who.<key>Undated):
+    // a line that names the day the plan turns the policy on, without that day.
+    // A step carries no such day where the board holds it (owner decision 2,
+    // 2026-09-22), where the roadmap holds it or where it is finished, and the
+    // dated line then could not be completed: it took its people with it, or
+    // said IAMAI could not finish the line though the scan read every person in
+    // it. The undated form keeps the rest of the line, so it completes exactly
+    // where the day was the only hole.
+    const undatedForms = (who[`${k}Undated`] ?? null) as Record<string, unknown> | null
+    for (const [i, raw] of arr.entries()) {
+      let line = raw
       if (line === '{existingCoverage}') {
         if (!truthy(ex.existingPolicies)) continue
         line = coverage
@@ -556,6 +584,8 @@ export function whoEvidenceLines(who: Record<string, unknown>, ex: Record<string
       // The existing-coverage line reads the plan, not the tenant's people; the
       // licence caveat is a reading of what the scan was allowed to see.
       const reading = line !== coverage && (readsTenant(line) || k === 'licenceNote')
+      const undated = undatedForms?.[String(i)]
+      if (!whole(line, listCountVars(line, ex) as Record<string, unknown>) && typeof undated === 'string' && whole(undated, listCountVars(undated, ex) as Record<string, unknown>)) line = undated
       if (!whole(line, listCountVars(line, ex) as Record<string, unknown>)) {
         // A claim whose people are already on the page — its list has them — and
         // whose sentence still cannot be completed is the R4 case: the evidence

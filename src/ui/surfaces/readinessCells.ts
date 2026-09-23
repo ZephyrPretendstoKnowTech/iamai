@@ -6,14 +6,19 @@
 // Every fact here is scoring/phishingResistant.ts `personReadiness`, carried on
 // the row; this module only chooses its words. The words are pages.readiness.
 // Pure.
-import type { Explained, ReadinessRow } from '../../derive/mfaReadiness.ts'
+import type { Explained, ReadinessRow, SubGroup } from '../../derive/mfaReadiness.ts'
+import { devicesUnread } from '../../derive/mfaReadiness.ts'
 import type { Kind } from '../../derive/ladder.ts'
-import type { SetupCheck } from '../../derive/readinessSetup.ts'
+import type { SetupCheck, SetupKey } from '../../derive/readinessSetup.ts'
 import { AUTHENTICATOR_AAGUIDS, isQualifying } from '../../scoring/phishingResistant.ts'
 import type { CredentialReading, DeviceReading, MethodClass, NextAction, Platform, ReadinessState, SignInOption } from '../../scoring/phishingResistant.ts'
-import { pages } from '../../content/content.ts'
+import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { monthDay } from '../../copy/dates.ts'
+import { cohortWords } from '../../derive/whoLine.ts'
+import { registrationRefusal } from '../../derive/readinessContext.ts'
+import type { TenantSnapshot } from '../../graph/collect/types.ts'
+import type { GuestMfaTrust } from '../../derive/guestReadiness.ts'
 
 /** The computers seen in the tenant: they choose the words that name a computer's built-in option (owner, 2026-09-19). */
 export type ComputersSeen = 'windows' | 'mac' | 'both' | 'none'
@@ -22,6 +27,13 @@ type ByComputers = Record<ComputersSeen, string>
 
 type Words = {
   lead: ByComputers
+  summary: string
+  summaryWithGuests: string
+  summaryNone: string
+  summaryNoneNoP1: string
+  summaryNoP1: string
+  summaryUnmeasured: string
+  summaryNotJudged: string
   seamlessLine: string
   seamlessNone: string
   seamlessNotPossible: string
@@ -31,7 +43,7 @@ type Words = {
   show: Record<string, string>
   groups: Record<ReadinessState, { title: string; why: string; body?: string | ByComputers }>
   chip: Record<'seamless' | 'confirmed' | 'covered' | 'notConfirmed' | 'notSetUp' | 'noPasskey' | 'blocked' | 'unread' | 'noPhone', string>
-  sub: { noDevices: string }
+  sub: { noDevices: string; noDevicesUnread: string }
   notReadCount: string
   methods: Record<MethodClass | 'none' | 'unread' | 'only' | 'notAllowed', string>
   lastConfirmed: string
@@ -41,11 +53,13 @@ type Words = {
   unusedKey: { never: string; stale: string }
   options: Record<SignInOption, string>
   next: {
-    none: string; seamless: string; setUp: string; restore: string; confirm: string; returnConfirm: string; guest: string; addDevice: string; updateOs: string; confirmOn: string; replaceKey: string
+    none: string; seamless: string; setUp: string; restore: string; confirm: string; returnConfirm: string; guest: string; guestHasAuthenticator: string; addDevice: string; updateOs: string; confirmOn: string; replaceKey: string
     waitSetup: Record<string, string>; rescan: Record<string, string>
   }
   notes: { automated: string; onLeave: string }
   panel: {
+    noDevices: string
+    noneRegistered: string
     best: string
     now: string
     allowed: string
@@ -62,10 +76,16 @@ type Words = {
     unused: { never: string; stale: string }
     retained: string
     unlisted: string
+    twin: string
     why: Record<string, string>
   }
   checks: Record<string, Record<string, string>>
-  counted: Record<Explained | Kind | 'dormantLink', string>
+  rail: { shownAbove: string }
+  evidence: { none: string; unreadMethods: string; unreadMethodsRefused: string; notCovered: string; individually: string }
+  footer: { counted: string }
+  planContext: { filtered: string; covers: string; unknown: string }
+  guests: { trustOn: string; trustOff: string; trustUnknown: string; trustNotReported: string }
+  counted: Record<Explained | Kind | 'dormantLink', string> & { one: Record<Kind, string> }
   admin: string
   guest: string
   and: string
@@ -111,15 +131,23 @@ export function computersSeen(rows: readonly ReadinessRow[]): ComputersSeen {
   return windows && mac ? 'both' : windows ? 'windows' : mac ? 'mac' : 'none'
 }
 
+/**
+ * The words for the computers seen. Where no synced passkey would be offered
+ * (scoring/phishingResistant.ts syncedPasskeyOffered: attestation on, an allow
+ * list, or Step 3's models to come), a Mac's words are the words for no built-in
+ * option, and Windows and Mac together read as Windows.
+ */
+const wordsFor = (seen: ComputersSeen, synced: boolean): ComputersSeen => (synced ? seen : seen === 'mac' ? 'none' : seen === 'both' ? 'windows' : seen)
+
 /** The page's opening line, in the words for the computers seen. */
-export function leadLine(seen: ComputersSeen): string {
-  return T.lead[seen]
+export function leadLine(seen: ComputersSeen, synced = true): string {
+  return T.lead[wordsFor(seen, synced)]
 }
 
 /** A group's body under its summary, where it has one, in the words for the computers seen. */
-export function groupBodyLine(state: ReadinessState, seen: ComputersSeen): string | null {
+export function groupBodyLine(state: ReadinessState, seen: ComputersSeen, synced = true): string | null {
   const body = T.groups[state].body
-  return body === undefined ? null : typeof body === 'string' ? body : body[seen]
+  return body === undefined ? null : typeof body === 'string' ? body : body[wordsFor(seen, synced)]
 }
 
 /**
@@ -137,6 +165,8 @@ export function groupBodyLine(state: ReadinessState, seen: ComputersSeen): strin
 export function goalLine(counted: readonly ReadinessRow[]): string {
   const seamless = counted.filter((r) => r.state === 'seamless').length
   if (seamless > 0) return fillText(T.seamlessLine, { seamless })
+  // Nobody could be judged: "nobody is seamless yet" would be a finding about people the headline has just said it could not measure.
+  if (counted.length > 0 && counted.every((r) => r.state === 'unknown')) return ''
   // Both sentences below name a cause the DEVICE records carry. With no device
   // record read for anybody there is no cause to name, and "everyone signs in
   // from a device with no built-in option" asserted an absence the page had just
@@ -146,6 +176,47 @@ export function goalLine(counted: readonly ReadinessRow[]): string {
   // A person can become Seamless only when every device they use is, or could be: one personal PC rules them out.
   const couldBe = counted.some((r) => { const devices = r.readiness?.devices ?? []; return devices.length > 0 && devices.every((d) => d.seamless || (d.builtIn && d.possible !== 'no')) })
   return couldBe ? T.seamlessNone : T.seamlessNotPossible
+}
+
+/**
+ * The answer's headline over the people it counts. A scan that holds no sign-in
+ * proof, or a tenant without Entra ID P1, is unmeasured, never "0 of N"; so is a
+ * scan where everybody counted is Unknown (their method lists refused, say),
+ * whatever proof it read: a count nobody could be judged for is not a zero.
+ */
+export function summaryLine(counted: readonly ReadinessRow[], reads: { needP1: boolean; proofRead: boolean }): string {
+  const active = counted.length
+  // Guests are counted with everyone else and named beside the people (owner, 2026-09-19).
+  const cohort = cohortWords(active, counted.filter((r) => r.guest).length)
+  if (active === 0) return reads.needP1 ? T.summaryNoneNoP1 : T.summaryNone
+  if (reads.needP1) return fillText(T.summaryNoP1, { cohort })
+  if (!reads.proofRead) return fillText(T.summaryUnmeasured, { cohort })
+  if (counted.every((r) => r.state === 'unknown')) return fillText(T.summaryNotJudged, { cohort })
+  const ready = counted.filter((r) => r.state === 'ready' || r.state === 'seamless').length
+  // People and guests together: the whole count follows "of", so "4 of 29 people and 1 guest are ready" can't read as the guest being ready.
+  const guests = counted.filter((r) => r.guest).length
+  if (guests > 0 && guests < active) return fillText(T.summaryWithGuests, { ready, total: active, cohort })
+  return fillText(T.summary, { ready, cohort })
+}
+
+/**
+ * The footer's counted line. Empty where nobody is counted because nobody's
+ * activity was read (no Entra ID P1, or activity not read): "the 0 people who
+ * signed in" would be a measured zero the headline has just said was never taken.
+ */
+export function countedLine(counted: readonly ReadinessRow[], reads: { needP1: boolean; activityUnread: number }): string {
+  if (counted.length === 0 && (reads.needP1 || reads.activityUnread > 0)) return ''
+  return fillText(T.footer.counted, { cohort: cohortWords(counted.length, counted.filter((r) => r.guest).length) })
+}
+
+/**
+ * The scope line where the page was opened from a Plan step: the people it is
+ * waiting on where it holds on them, the people it covers where it holds on
+ * nobody (a campaign), or that this scan could not work out who.
+ */
+export function scopeWords(context: { title: string; ids: readonly string[] | null; held: boolean }, cohort: string): string {
+  if (context.ids === null) return fillText(T.planContext.unknown, { step: context.title })
+  return fillText(context.held ? T.planContext.filtered : T.planContext.covers, { cohort, step: context.title })
 }
 
 /** A device's name with its version where the record gave one: Windows 10, iOS 17; otherwise the family's word. */
@@ -221,7 +292,8 @@ export function nextWords(n: NextAction): string {
     case 'seamless': return fillText(N.seamless, { option: T.options[n.option], device: deviceNoun(n.os) })
     case 'setUp': return fillText(N.setUp, { option: T.options[n.option] })
     // Method names keep their capitals mid-sentence (Windows Hello for Business, never "windows hello").
-    case 'restore': return fillText(N.restore, { method: T.methodsInline[n.cls] })
+    // A removed method can't be restored in Entra: it is set up again, and the row says when it was last seen.
+    case 'restore': return fillText(N.restore, { method: T.methodsInline[n.cls], date: monthDay(n.lastSeen) })
     case 'confirm': return n.os ? fillText(N.confirmOn, { method: T.methodsInline[n.cls], device: deviceNoun(n.os) }) : fillText(N.confirm, { method: T.methodsInline[n.cls] })
     case 'returnConfirm': return N.returnConfirm
     case 'addDevice': return fillText(N.addDevice, { option: T.options[n.option], device: deviceNoun(n.os) })
@@ -257,10 +329,25 @@ export function needsActionWords(counted: readonly ReadinessRow[]): string {
   return unread > 0 ? `${line}, ${T.notReadCount.replace('{n}', String(unread))}` : line
 }
 
+// No device is "not seen" where the records it would be seen in were not read
+// (derive/mfaReadiness.ts devicesUnread): the tenant's sign-in records, whatever
+// else the person is unknown for (a method list refused leaves them unknown for
+// that, and their sign-ins unread too).
+
 /** The devices cell where no device was seen: not read, nothing (the page says why), or no sign-in in 30 days. */
 export function noDevicesWord(r: ReadinessRow): string {
   if (signInsUnavailableFor(r)) return ''
-  return r.readiness?.unknown === 'signIns' ? T.chip.unread : T.sub.noDevices
+  return devicesUnread(r) ? T.chip.unread : T.sub.noDevices
+}
+
+/** The person panel's devices where none was seen: not read, or no sign-in in 30 days. */
+export function panelNoDevices(r: ReadinessRow): string {
+  return devicesUnread(r) ? T.chip.unread : T.panel.noDevices
+}
+
+/** A devices sub-group's title: its platforms, or for people with none, whether their sign-ins were read. */
+export function subDevicesTitle(g: Pick<SubGroup, 'platforms' | 'unread'>): string {
+  return g.platforms.length > 0 ? listWords(g.platforms.map(osWord)) : g.unread ? T.sub.noDevicesUnread : T.sub.noDevices
 }
 
 /** The next actions that ask a person to set up a passkey or another built-in method. */
@@ -271,8 +358,9 @@ export function nextCell(r: ReadinessRow): string {
   const rd = r.readiness
   if (!rd || r.state === null) return ''
   // A guest is in the campaign (owner, 2026-09-19): Microsoft Authenticator works
-  // for them and a passkey does not yet, so a guest is never asked to set one up.
-  if (r.guest && GUEST_SETUP.has(rd.next.kind)) return T.next.guest
+  // for them and a passkey does not yet, so a guest is never asked to set one up;
+  // one who already holds Authenticator is told what they use, never to set it up again.
+  if (r.guest && GUEST_SETUP.has(rd.next.kind)) return (r.methods ?? []).includes('authenticator') ? T.next.guestHasAuthenticator : T.next.guest
   // Records the tenant can't provide: nothing for this person to do, and the page says why once.
   if (signInsUnavailableFor(r)) return T.next.none
   if (rd.next.kind === 'none') return rd.recommended && !r.guest ? nextWords(rd.recommended) : T.next.none
@@ -292,7 +380,11 @@ export function panelDevices(r: ReadinessRow): PanelItem[] {
   return (r.readiness?.devices ?? []).map((d) => {
     const trust = d.trust ?? 'unknown'
     const sub = `${d.type === 'computer' ? P.trust[trust] + ' ' : ''}${fillText(P.lastSeen, { date: monthDay(d.lastSeen) })}`
-    const best = `${T.options[d.best].replace(/^a /, '')}${d.whyNot ? '. ' + P.whyNot[d.whyNot] : ''}`
+    // What is left to set up here is the offer, the option Step 3 keeps; a device already Seamless names what it signs in with:
+    // Windows Hello, or a Mac's Platform SSO, is built into the device it signed in on whatever its join state (seamlessProof).
+    const builtInProof: SignInOption | null = !d.seamless ? null : d.proof?.cls === 'windowsHello' ? 'windowsHello' : d.proof?.cls === 'platformCredential' ? 'platformSso' : null
+    const option = builtInProof ?? (d.seamless ? d.best : d.offer)
+    const best = `${T.options[option].replace(/^a /, '')}${d.whyNot && option === d.best ? '. ' + P.whyNot[d.whyNot] : ''}`
     const now = d.seamless && d.proof ? fillText(P.proofNow.seamless, { date: monthDay(d.proof.at) }) : d.proof ? fillText(P.proofNow.confirmed, { date: monthDay(d.proof.at), method: classWord(d.proof.cls) }) : d.covered ? fillText(P.proofNow.covered, { type: d.type }) : P.proofNow.none
     return { icon: d.type, name: versionWord(d.os, d.version), sub, facts: [[P.best, capital(best)], [P.now, now]] }
   })
@@ -302,7 +394,9 @@ export function panelDevices(r: ReadinessRow): PanelItem[] {
 export function panelMethods(r: ReadinessRow): PanelItem[] {
   const P = T.panel
   return (r.readiness?.credentials ?? []).map((c: CredentialReading) => {
-    const model = c.model ?? (c.aaguid ? fillText(P.unlisted, { aaguid: `${c.aaguid.slice(0, 8)}…` }) : c.name ?? '')
+    const refused = c.afterStep3 === 'no' || c.allowedNow === 'no'
+    // A key named like an approved model on another AAGUID names both, so the name alone never contradicts the list beside it.
+    const model = c.model && c.approvedTwin && c.aaguid && refused ? fillText(P.twin, { model: c.model, aaguid: `${c.aaguid.slice(0, 8)}…`, approved: `${c.approvedTwin.slice(0, 8)}…` }) : c.model ?? (c.aaguid ? fillText(P.unlisted, { aaguid: `${c.aaguid.slice(0, 8)}…` }) : c.name ?? '')
     const allowed = c.afterStep3 !== null ? `${P.verdict[c.allowedNow]}. ${P.step3[c.afterStep3]}.` : `${P.verdict[c.allowedNow]}.`
     const last = c.lastConfirmed ? `${monthDay(c.lastConfirmed.at)}${c.lastConfirmed.os ? `, ${osWord(c.lastConfirmed.os)}` : ''}${c.lastConfirmed.retained ? ` (${P.retained})` : ''}` : P.never
     // Microsoft's last-use date, where it was read: supporting evidence, and the flag for a passkey that may be gone.
@@ -310,6 +404,48 @@ export function panelMethods(r: ReadinessRow): PanelItem[] {
     const facts: [string, string][] = [[P.allowed, allowed], [P.lastConfirmed, last], ...(used ? [[P.lastUsed, used] as [string, string]] : [])]
     return { icon: c.cls === 'passkey' && c.aaguid && !/authenticator/i.test(model) ? 'key' : c.cls === 'windowsHello' || c.cls === 'platformCredential' ? 'computer' : 'phone', name: classWord(c.cls), sub: model, facts }
   })
+}
+
+/**
+ * The evidence tile's line for the method lists that couldn't be read. Where the
+ * registration report was refused, a rescan with the same sign-in reads no more:
+ * the line names the refusal and what reads it, in the Plan's words for the same
+ * source (roadmap/readiness.ts sourceReadFix), never "The next scan retries".
+ */
+export function unreadMethodsWords(snapshot: TenantSnapshot, n: number): string {
+  const refusal = registrationRefusal(snapshot)
+  return refusal ? fillText(T.evidence.unreadMethodsRefused, { ...refusal, n }) : fillText(T.evidence.unreadMethods, { n })
+}
+
+/** A kind's name in the Not counted tile beside its count: one of it named in the singular. */
+export function countedKindWords(k: Kind, n: number): string {
+  return n === 1 ? T.counted.one[k] : T.counted[k]
+}
+
+/** An evidence line with its count in the sentence, so a count of one reads as one. */
+export function evidenceWords(key: 'notCovered' | 'individually', n: number): string {
+  return fillText(T.evidence[key], { n })
+}
+
+/**
+ * The evidence tile's sentence where no sign-in records were read: the source's
+ * reason where it says something the sentence doesn't ("no sign-in records could
+ * be read" only restates it), and no count beside it.
+ */
+export function noRecordsWords(source: { status: string; reason: string | null } | null | undefined): string {
+  const reason = source && source.status !== 'ok' ? source.reason : null
+  return reason && !/sign-in records/i.test(reason) ? fillText(app.readiness.lineNoRecordsReason, { reason }) : T.evidence.none
+}
+
+/** The guests tile's line on cross-tenant MFA trust: on, off, not read, or read without saying. */
+export function guestTrustWords(trust: GuestMfaTrust): string {
+  const G = T.guests
+  return trust === 'on' ? G.trustOn : trust === 'off' ? G.trustOff : trust === 'notReported' ? G.trustNotReported : G.trustUnknown
+}
+
+/** The person panel's methods where none is listed: not read (the row says "Methods not read" too), or none registered. */
+export function panelNoMethods(r: ReadinessRow): string {
+  return r.methods === null ? T.methods.unread : T.panel.noneRegistered
 }
 
 /** Why the person stands where they do, one sentence. */
@@ -323,6 +459,11 @@ export function whyLine(r: ReadinessRow): string {
   // Needs a device names the device the gap is on (a device type with no proof), whatever the next action there is.
   const gap = rd.devices.find((d) => !d.covered)
   if (r.state === 'device' && gap) return fillText(W.device, { device: deviceNoun(gap.os) })
+  // Every usable method registered inside the window: new and not used yet, which is not a method that may be gone.
+  const usable = rd.credentials.filter((c) => c.allowedNow !== 'no')
+  if (r.state === 'confirm' && usable.length > 0 && usable.every((c) => c.createdInWindow && c.created)) {
+    return fillText(W.confirmNew, { date: monthDay(usable.map((c) => c.created as string).sort().pop() as string) })
+  }
   return W[r.state] ?? ''
 }
 
@@ -347,6 +488,20 @@ export function checkWords(c: SetupCheck): { line: string; text: string } {
   if (c.outcome === 'note') return { line: W.note, text: '' }
   if (c.outcome === 'unknown') return { line: W.unknown ?? W.fail, text: '' }
   return { line: W.fail, text: W.failText ?? '' }
+}
+
+/**
+ * The Tenant setup tile's remaining checks, each with its line and its own words
+ * where it fails. Every remaining check carries its instruction: a to-do drawn
+ * without it sends the reader the obvious way, and for the migration the
+ * obvious way removes people's only method (checks.migration.$commentFailText).
+ * The check shown above as the next check says so rather than repeat itself.
+ */
+export function railRemaining(remaining: readonly SetupCheck[], shownAbove: SetupKey | null): { key: SetupKey; line: string; text: string }[] {
+  return remaining.map((c) => {
+    const w = checkWords(c)
+    return { key: c.key, line: w.line, text: c.key === shownAbove ? T.rail.shownAbove : w.text }
+  })
 }
 
 /** The CSV row, in the columns' order after the name: role, devices, methods, state, next step. */

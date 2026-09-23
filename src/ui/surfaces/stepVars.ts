@@ -10,6 +10,7 @@
 // Step the engine already computed (population, names, dates, naming); the
 // content variables are a view over that, not a re-derivation.
 import { operationsOf } from '../../roadmap/operations.ts'
+import { estimatedDay, shownDay } from '../../roadmap/stepSchedule.ts'
 import type { Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { MappingState } from '../../mapping/types.ts'
@@ -105,6 +106,30 @@ export function tenantNameOf(snapshot: TenantSnapshot): string {
 }
 
 /**
+ * A step's variables without the days the plan scheduled for it — its announce
+ * day, its change or enforcement day, and the report-only day it had been placed
+ * on where the scan has not seen it in report-only — for a step the board holds
+ * (planBoard.ts boardHolds; owner decision 2, 2026-09-22: a held step carries no
+ * date anywhere). A line that names one of those days is not drawn, as it is not
+ * drawn on a step the roadmap holds, which carries no events at all
+ * (roadmap/holds.ts): otherwise the email under a held step promises the people
+ * it reaches a day while the row above it reads "After prerequisites". What the
+ * scan read stays — the day the policy went into report-only, the day its
+ * window closes.
+ *
+ * The plan-wide days go too: the day Require MFA for Everyone enforces, the
+ * campaign's enrol-by and window, and the passkey email's day. A held campaign
+ * kept them, and its email told everyone the day sign-in would change under a
+ * row reading "After prerequisites". The device lines were filled from the MFA
+ * day inside stepVars, so they are filled again here from the undated values.
+ */
+export function withoutScheduleDates(v: Record<string, unknown>, step: Step, ctx: StepVarContext): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...v, enforce: undefined, enforceLong: undefined, announce: undefined, mfaEnforce: undefined, mfaEnforceLong: undefined, enrollBy: undefined, enrolWindowDays: undefined, passkeyEnforce: undefined, passkeyEnforceLong: undefined }
+  if (!step.tracking?.reportOnlyAt) out.reportOnly = undefined
+  return Object.assign(out, deviceWords(ctx, out))
+}
+
+/**
  * The values for a content step's variables. Only the keys the step uses are
  * produced (the renderer reads the content step's own example keys); a missing
  * key gates its line off. Lists come as name arrays already resolved.
@@ -116,6 +141,8 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // settled, which leaves every count and name key unset so the lines that name
   // them render nothing rather than the goal's people (Foundation A).
   const view = stepPopulation(step)
+  const estimate = estimatedDay(step)
+  const planned = (iso: string | null | undefined): string | undefined => (iso ? shownDay(iso, estimate, 'sentence') : undefined)
   const ev = step.events
   const enforce = ev?.enforce
   const announce = ev?.announce
@@ -143,14 +170,23 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     signature: ctx.signature,
     // Dates: one short format everywhere (absoluteDate), the long form only for
     // emails (longDate), both from the same instant in the display time zone.
-    enforce: short(enforce?.at),
+    // A day the plan gives a step that is an estimate says so, as the board's
+    // row does (roadmap/stepSchedule.ts shownDay): the Dates line read
+    // "Report-only from Aug 31, 2026" under a row reading "Est. Aug 31, 2026"
+    // (R4-34). These days sit inside sentences, so they take the sentence form,
+    // "Aug 31, 2026 (estimated)". The long form is an email's, which already qualifies a day the
+    // plan projects (stepExport.ts commsFor), and a day the scan read is no estimate.
+    enforce: planned(enforce?.at),
     enforceLong: long(enforce?.at),
-    announce: short(announce?.at),
+    announce: planned(announce?.at),
     // The day Require MFA for Everyone enforces, for the campaign and the device
     // plan (E7); the campaign's window; and what a personal device can still do
     // once devices are required (shared.engine.personalDevices).
-    mfaEnforce: short(ctx.mfaEnforce ?? ctx.firstEnforce),
-    mfaEnforceLong: long(ctx.mfaEnforce ?? ctx.firstEnforce),
+    // planDates gives null where Require MFA for Everyone is held: there is no
+    // day on which anyone will be asked for MFA, and another policy's turn-on is
+    // not one. Only a context with no plan-wide dates at all reads the first enforcement.
+    mfaEnforce: short(ctx.mfaEnforce === undefined ? ctx.firstEnforce : ctx.mfaEnforce),
+    mfaEnforceLong: long(ctx.mfaEnforce === undefined ? ctx.firstEnforce : ctx.mfaEnforce),
     enrolWindowDays: ctx.enrolWindowDays ?? undefined,
     personalDevicesClause: ctx.unmanagedBrowserOnPlan === undefined ? undefined : ctx.unmanagedBrowserOnPlan ? engine.personalDevices.browserLimited : engine.personalDevices.blocked,
     // Require MFA for Everyone already in place: the campaign email is the passkey
@@ -160,7 +196,7 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     passkeyEnforceLong: long(ctx.passkeyEnforce),
     // A policy already in report-only has its date from the scan (tracking), not
     // from the schedule, which only dates the policies the plan creates.
-    reportOnly: short(step.tracking?.reportOnlyAt ?? ctx.reportOnlyAt),
+    reportOnly: step.tracking?.reportOnlyAt ? short(step.tracking.reportOnlyAt) : planned(ctx.reportOnlyAt),
     // The proposed policy name, in the tenant's convention.
     policyName: step.naming?.proposed,
     proposedName: step.naming?.proposed,
@@ -503,19 +539,33 @@ function answerVars(ctx: StepVarContext, v: Record<string, unknown>): Record<str
   const unjoined = ev?.unjoinedComputers?.people ?? []
   out.phoneUsers = phones.map(ctx.nameOf)
   out.unjoinedUsers = unjoined.map(ctx.nameOf)
-  const plan = devicePlanOf(m)
-  if (plan) {
-    const W = shared.devicePlan as DevicePlanWords
-    const phoneWords = fillText(W.phone[plan.phones], v)
-    const computerWords = plan.computers ? fillText(W.computer[plan.computers], v) : null
-    // One line per person (the name and the device); the instruction once, in the list's lead.
-    const lines: string[] = phones.map((id) => fillText(W.personLine, { name: ctx.nameOf(id), device: W.phoneWord }))
-    if (computerWords) for (const id of unjoined) lines.push(fillText(W.personLine, { name: ctx.nameOf(id), device: W.computerWord }))
-    out.deviceLines = lines
-    out.deviceIntro = computerWords ? fillText(W.intro, { phones: phoneWords, computers: computerWords }) : fillText(W.introPhones, { phones: phoneWords })
-    out.deviceSentence = computerWords ? fillText(W.sentence, { phones: phoneWords, computers: computerWords }) : fillText(W.sentencePhones, { phones: phoneWords })
+  return Object.assign(out, deviceWords(ctx, v))
+}
+
+/**
+ * The device decision's words, once it is made: one device line per person, the
+ * list's lead and the campaign email's sentence (shared.devicePlan), filled from
+ * `v`. Enrolled phones are told to enrol before the day Require MFA for Everyone
+ * enforces; where there is no such day - that policy held, or the step held
+ * (withoutScheduleDates) - they read the same instruction without it
+ * (shared.devicePlan.phone.enrolUndated), never "…app before.".
+ */
+function deviceWords(ctx: StepVarContext, v: Record<string, unknown>): Record<string, unknown> {
+  const plan = devicePlanOf(ctx.mapping)
+  if (!plan) return {}
+  const W = shared.devicePlan as DevicePlanWords
+  const phones = phoneSignInIds(ctx.snapshot) ?? []
+  const unjoined = ctx.snapshot.scenarioEvidence?.unjoinedComputers?.people ?? []
+  const phoneWords = fillText(plan.phones === 'enrol' && v.mfaEnforce === undefined ? W.phone.enrolUndated : W.phone[plan.phones], v)
+  const computerWords = plan.computers ? fillText(W.computer[plan.computers], v) : null
+  // One line per person (the name and the device); the instruction once, in the list's lead.
+  const lines: string[] = phones.map((id) => fillText(W.personLine, { name: ctx.nameOf(id), device: W.phoneWord }))
+  if (computerWords) for (const id of unjoined) lines.push(fillText(W.personLine, { name: ctx.nameOf(id), device: W.computerWord }))
+  return {
+    deviceLines: lines,
+    deviceIntro: computerWords ? fillText(W.intro, { phones: phoneWords, computers: computerWords }) : fillText(W.introPhones, { phones: phoneWords }),
+    deviceSentence: computerWords ? fillText(W.sentence, { phones: phoneWords, computers: computerWords }) : fillText(W.sentencePhones, { phones: phoneWords }),
   }
-  return out
 }
 
 /**
@@ -554,20 +604,27 @@ const EMPTY_SCAN = { config: {} } as unknown as TenantSnapshot
  * MFA for Everyone enforces, the campaign's window from the plan's start to
  * that enrol-by, and whether the unmanaged-browser step is on the plan.
  */
-export function planDates(steps: readonly Step[], scheduleStart: string, naming?: NamingConvention, snapshot?: TenantSnapshot): Pick<StepVarContext, 'firstEnforce' | 'mfaEnforce' | 'enrolWindowDays' | 'unmanagedBrowserOnPlan' | 'mfaInPlace' | 'passkeyPolicy' | 'passkeyEnforce' | 'proposed' | 'peoplePolicies'> {
-  const firstEnforce = steps.map((s) => s.events?.enforce?.at).filter((x): x is string => typeof x === 'string').sort()[0] ?? null
+export function planDates(steps: readonly Step[], scheduleStart: string, naming?: NamingConvention, snapshot?: TenantSnapshot, held: (s: Step) => boolean = () => false): Pick<StepVarContext, 'firstEnforce' | 'mfaEnforce' | 'enrolWindowDays' | 'unmanagedBrowserOnPlan' | 'mfaInPlace' | 'passkeyPolicy' | 'passkeyEnforce' | 'proposed' | 'peoplePolicies'> {
+  // `held`: the board's hold (planBoard.ts boardHolds, read by the caller that
+  // holds the board). A step the board holds carries no date anywhere (owner
+  // decision 2, 2026-09-22), so its turn-on is no other step's date either: not
+  // the campaign's enrol-by, not the day Prepare Your Team says Require MFA for
+  // Everyone is planned for, not the passkey email's day. These days were read
+  // off every step's events and asked only the roadmap's hold.
+  const dated = steps.filter((s) => !held(s))
+  const firstEnforce = dated.map((s) => s.events?.enforce?.at).filter((x): x is string => typeof x === 'string').sort()[0] ?? null
   const mfa = steps.find((s) => s.goalId === 'mfa-all-users' && s.kind !== 'verify')
   // The MFA policy's own day, and only its own: while something holds it there is
   // no day on which people will be asked for MFA, and another policy's is not one
-  // (roadmap/holds.ts). The first enforcement stands in only where there is no MFA
-  // step to have a day.
-  const mfaEnforce = mfa && isHeld(mfa) ? null : (mfa?.events?.enforce?.at ?? firstEnforce)
+  // (roadmap/holds.ts; the board's hold as much as the roadmap's). The first
+  // enforcement stands in only where there is no MFA step to have a day.
+  const mfaEnforce = mfa && (isHeld(mfa) || held(mfa)) ? null : (mfa?.events?.enforce?.at ?? firstEnforce)
   const enrolWindowDays = firstEnforce ? Math.max(1, Math.ceil((Date.parse(firstEnforce) - Date.parse(scheduleStart)) / 86_400_000)) : null
   const unmanagedBrowserOnPlan = steps.some((s) => (s.goalId === 'block-downloads-unmanaged' || s.goalId === 'byod-session-controls') && s.status !== 'skipped')
   // Require MFA for Everyone in place: the campaign's email is the passkey version,
   // and names the first policy still to enforce that needs a passkey, by its date.
   const mfaInPlace = mfa?.status === 'done'
-  const passkey = steps
+  const passkey = dated
     // Whether a policy needs a passkey is the policy's own answer, measured
     // against what this tenant says the strength allows. Without the scan only
     // Microsoft's own strengths can be read, and a tenant strength nobody can

@@ -6,13 +6,13 @@
 // keeps the day it was finished, which is in the past by design.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from '../../roadmap/fixtures/index.ts'
+import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import type { Fixture, FixtureName } from '../../roadmap/fixtures/index.ts'
-import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withDirectionApproved, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import { schedulingWords } from '../../content/content.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import type { Step } from '../../roadmap/types.ts'
-import { boardWhenOf, laneViewFor, waveStartOf } from './planBoard.ts'
+import { BOARD, boardReadingsOf, boardWhenOf, laneViewFor, waveStartOf } from './planBoard.ts'
 import { laneReadings } from './planLanes.ts'
 import { cleanupComplete } from '../../roadmap/cleanupDone.ts'
 import { cleanupEntry } from './cleanupExport.ts'
@@ -157,7 +157,8 @@ test('the When column never dates a row the board holds, and never calls a row f
       const lane = laneViewFor(step, { readings, titleOf })
       const when = boardWhenOf(step, waveStartOf(step), lane)
       const dated = /[0-9]{4}$/.test(when)
-      if (lane.lane === 'On Hold' && lane.substatus === null && step.blockedBy.length === 0 && step.status !== 'skipped') { held++; assert.equal(dated, false, `${name}/${step.id}: held row dated ${when}`) }
+      // On Hold · Observing is a report-only window with a day of its own (the test below).
+      if (lane.lane === 'On Hold' && lane.substatus === null && lane.tail !== BOARD.blockers.evidence && step.blockedBy.length === 0 && step.status !== 'skipped') { held++; assert.equal(dated, false, `${name}/${step.id}: held row dated ${when}`) }
       if (step.status === 'done' && lane.lane !== 'Completed') { live++; assert.notEqual(when, schedulingWords.done, `${name}/${step.id}`); assert.equal(dated, false, `${name}/${step.id}: unfinished row dated ${when}`) }
     }
   }
@@ -179,5 +180,26 @@ test('a Ready row with a decision open and no scheduled day says the decision is
       if (lane.lane !== 'Ready' || lane.substatus !== 'Decision') continue
       assert.notEqual(boardWhenOf(step, waveStartOf(step), lane), schedulingWords.none, `${name}/${step.id}`)
     }
+  }
+})
+
+// On Hold · Observing is a report-only policy still being watched: a healthy
+// wait whose window closes on a day, and the When column names that day. The
+// hold rule meant to leave it out tested the lane's substatus, which the lane
+// engine never sets on an On Hold row — Observing is the row's reason — so the
+// same watched policy read its review day where the roadmap recorded a wait on
+// it (security defaults on) and "After prerequisites" where it recorded none
+// (the recovery test not yet run): one window, two answers, decided by a
+// prerequisite of its turn-on that the review does not wait for.
+test('a report-only policy the board files On Hold · Observing reads its review day, whatever else holds its turn-on', () => {
+  const noDrill = (f: Fixture): Fixture => ({ ...f, checkpoints: (f.checkpoints ?? []).filter((c) => (c as { cleanup?: string }).cleanup !== 'drill') })
+  const f = noDrill(withDirectionApproved(curatedFixture('demo-week2')))
+  const r = runFixture(f)
+  const board = boardReadingsOf(r.steps, r.schedule.cleanup, null)
+  const watched = r.steps.filter((s) => { const l = laneViewFor(s, board); return l.lane === 'On Hold' && l.tail === BOARD.blockers.evidence && s.scheduled?.class === 'observing' && s.blockedBy.length === 0 })
+  assert.ok(watched.length > 0, 'the premise: a watched policy On Hold · Observing with no wait of its own on the roadmap')
+  for (const s of watched) {
+    const at = s.scheduled!.at!
+    assert.equal(boardWhenOf(s, waveStartOf(s), laneViewFor(s, board)), absoluteDate(at), `${s.id}: the review day, not "After prerequisites"`)
   }
 })
