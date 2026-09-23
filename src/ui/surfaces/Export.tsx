@@ -379,6 +379,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
           stepCtx={stepCtx}
           answers={data.mapping?.breakGlassAnswers ?? null}
           tenant={snapshot}
+          decisions={data.stepDecisions}
         />
       )}
     </section>

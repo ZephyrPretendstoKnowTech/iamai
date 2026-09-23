@@ -3038,7 +3038,11 @@
         "observation": "Observation window · {days} days",
         "observationText": "Policies that support report-only can collect evidence at the same time. User-action policies also need direct workflow tests.",
         "$commentVerificationNote": "The verification window row’s third column: the people the window is sized for (roadmap/generate.ts registrationWindow, five a working day), which are the campaign step’s people not yet shown to have a usable registered MFA method (its preparation.missingIds), of everyone that step prepares. It used to count derive/facts.ts notReady, readiness to the phishing-resistant standard: a different population beside a window sized for this one (messy: one working day beside 104 of 106 people). Those people include the ones whose registration could not be read (preparation.unknownIds), so it says they are not shown to have a method, never that they have none: \"have no usable registered MFA method yet\" printed 34 of 34 on a tenant whose registration details were refused, in the document whose Completed section says readiness was not measured. The row prints only while someone is still to set up, so there is no everyone-ready variant.",
-        "verificationNote": "{n} of {total} people in {step} are not yet shown to have a usable registered MFA method."
+        "verificationNote": "{n} of {total} people in {step} are not yet shown to have a usable registered MFA method.",
+        "$commentPickerSuggested": "A printed decision picker where nothing is saved (ui/surfaces/pickerRows.ts initialPicked `defaulted`, printedDefaultLine): the chips the screen opens with are IAMAI's suggestion, which Save would write, and nobody has saved them. The print had listed them under the decision's heading as if they were the answer (all eleven suggested people under People Needing Help while the saved list held one), and then, with them dropped, printed the heading over nothing.",
+        "pickerSuggested": "Suggested by IAMAI, not saved yet: {list:names}",
+        "$commentPickerNotSaved": "The same printed picker where IAMAI suggests nobody and nothing is saved, so the decision's heading is never printed over nothing.",
+        "pickerNotSaved": "Not saved yet."
       },
       "how": {
         "h1": "How IAMAI works",
