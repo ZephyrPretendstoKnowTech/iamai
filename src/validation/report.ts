@@ -12,6 +12,7 @@ import { emergencySelection } from '../mapping/emergencyChoice.ts'
 import { evaluateSubject, isBlocking } from './rules.ts'
 import type { GroupFacts, RuleResult, RuleSubject, ValidationContext } from './rules.ts'
 import { HOUSEKEEPING } from '../copy/validation.ts'
+import { personLabels } from '../names.ts'
 
 export type ValidationInputs = {
   snapshot: TenantSnapshot
@@ -36,8 +37,11 @@ export function buildContext(i: ValidationInputs): ValidationContext {
   // set any rule approves, excludes or counts.
   const sel = emergencySelection({ snapshot: i.snapshot, mapping: i.state })
   const confirmed = new Set(i.state.breakGlassUserIds.map((id) => id.toLowerCase()))
+  // The one naming rule, once per context (names.ts personLabels).
+  let labels: Map<string, string> | null = null
   return {
     snapshot: i.snapshot,
+    personLabel: (id: string): string | null => (labels ??= personLabels(i.snapshot.users)).get(id) ?? null,
     mapping: i.state,
     tenantPolicies: i.snapshot.config.caPolicies?.rows ?? [],
     groupMembers: i.groupMembers ?? [],
@@ -98,17 +102,19 @@ export type SubjectReport = {
   notRun: RuleResult[]
 }
 
-function labelOf(snapshot: TenantSnapshot, target: unknown): string {
+function labelOf(ctx: ValidationContext, target: unknown): string {
+  const snapshot = ctx.snapshot
   if (typeof target === 'string') {
+    // By the one naming rule (names.ts): a display name another account shares carries its address.
     const u = snapshot.users.find((x) => x.id === target)
-    return u?.displayName ?? u?.userPrincipalName ?? target
+    return (ctx.personLabel ? ctx.personLabel(target) : personLabels(snapshot.users).get(target) ?? null) ?? u?.userPrincipalName ?? target
   }
   const g = target as { displayName?: string | null; groupId?: string; id?: string } | null
   return g?.displayName ?? g?.groupId ?? g?.id ?? ''
 }
 
 export function reportFor(subject: RuleSubject, targets: unknown[], ctx: ValidationContext): SubjectReport {
-  const perTarget = targets.map((target) => ({ target, label: labelOf(ctx.snapshot, target), results: evaluateSubject(subject, target, ctx) }))
+  const perTarget = targets.map((target) => ({ target, label: labelOf(ctx, target), results: evaluateSubject(subject, target, ctx) }))
   const all = perTarget.flatMap((t) => t.results)
   return {
     subject,
