@@ -81,9 +81,9 @@ function vars(key: string, rows: string[], ids: string[], ticked: string[], matc
  * unambiguous match (`<key>Matched`) — pre-filled and never written: only Save
  * writes a decision, so the step goes on waiting on it; else the picker's own
  * default. `matched` names the pre-filled ids, so the chip can say IAMAI put
- * it there.
+ * it there; `defaulted` marks the picker's own default, which nobody chose.
  */
-export function initialPicked(ex: Readonly<Record<string, unknown>>, key: string | null, saved: Pick<StepDecision, 'picked'> | null, ids: readonly string[], single: boolean): { picked: string[]; matched: string[] } {
+export function initialPicked(ex: Readonly<Record<string, unknown>>, key: string | null, saved: Pick<StepDecision, 'picked'> | null, ids: readonly string[], single: boolean): { picked: string[]; matched: string[]; defaulted?: true } {
   if (saved?.picked) return { picked: saved.picked, matched: [] }
   const ticked = key ? ex[`${key}Ticked`] : undefined
   const matched = key ? ex[`${key}Matched`] : undefined
@@ -91,7 +91,10 @@ export function initialPicked(ex: Readonly<Record<string, unknown>>, key: string
     if (ticked.length === 0 && Array.isArray(matched) && matched.length === 1) return { picked: [String(matched[0])], matched: [String(matched[0])] }
     return { picked: ticked as string[], matched: [] }
   }
-  return { picked: single ? ids.slice(0, 1) : [...ids], matched: [] }
+  // The picker's own default: nobody saved it and the plan holds no value for
+  // it, so it is a suggestion (`defaulted`), which a printed plan never states
+  // as the answer (ContentStep.tsx SingleDecision).
+  return { picked: single ? ids.slice(0, 1) : [...ids], matched: [], defaulted: true }
 }
 
 /**
