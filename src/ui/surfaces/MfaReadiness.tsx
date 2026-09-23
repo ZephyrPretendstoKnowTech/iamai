@@ -42,7 +42,7 @@ import { app, pages, shared } from '../../content/content.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { fillText } from '../../content/render.ts'
 import { monthDay } from '../../copy/dates.ts'
-import { checkWords, deviceChips, listWords, methodsCell, needsActionWords, nextCell, noDevicesWord, osWord, panelDevices, panelMethods, rowCells, rowNote, searchText, signInsUnavailableFor, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine, railRemaining, panelNoDevices, panelNoMethods, summaryLine, unreadMethodsWords, countedLine } from './readinessCells.ts'
+import { checkWords, deviceChips, listWords, methodsCell, needsActionWords, nextCell, noDevicesWord, osWord, panelDevices, panelMethods, rowCells, rowNote, searchText, signInsUnavailableFor, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine, railRemaining, panelNoDevices, panelNoMethods, summaryLine, unreadMethodsWords, countedLine, scopeWords } from './readinessCells.ts'
 import type { PanelItem } from './readinessCells.ts'
 import { READINESS_CSV } from './inventoryTables.ts'
 import { useAppliedMapping, usePlanData } from './planData.ts'
@@ -109,8 +109,12 @@ const CHECK_STEP: Partial<Record<SetupCheck['key'], string>> = { passkeyOn: 's-p
 const SETUP_STEP = 's-verify-mfa'
 const PANEL_ID = 'readiness-panel'
 
-/** The Plan step this page is scoped to: the people it is waiting on, or null where this scan could not settle who. */
-type PlanContext = { title: string; stepId: string; ids: string[] | null }
+/**
+ * The Plan step this page is scoped to: the people it is waiting on where it holds
+ * on them (`held`), the people it covers where it holds on nobody, or null where
+ * this scan could not settle who.
+ */
+type PlanContext = { title: string; stepId: string; ids: string[] | null; held: boolean }
 
 export function MfaReadiness({ scan: lastScan, baseline }: { scan: { snapshot: TenantSnapshot; at: string } | null; baseline: BaselineResult | null }) {
   const [stepId, setStepId] = useState<string | null>(() => stepFromReadinessHash(window.location.hash))
@@ -127,7 +131,7 @@ export function MfaReadiness({ scan: lastScan, baseline }: { scan: { snapshot: T
   const step = stepId === null ? null : (steps.find((s) => s.id === stepId) ?? null)
   const hold = step && data.computed ? stepMfaHold(step, scored) : null
   const cohort = step?.preparation?.ids ?? step?.methodPreparation?.ids ?? null
-  const context: PlanContext | null = step && (hold || cohort || step.id === SETUP_STEP) ? { title: contentTitle(step), stepId: step.id, ids: hold ? hold.ids : (cohort ?? reached(step)?.ids ?? null) } : null
+  const context: PlanContext | null = step && (hold || cohort || step.id === SETUP_STEP) ? { title: contentTitle(step), stepId: step.id, ids: hold ? hold.ids : (cohort ?? reached(step)?.ids ?? null), held: hold !== null } : null
   const stepIds = new Set(steps.map((s) => s.id))
   const guestStep = steps.find((s) => s.id === GUEST_STEP_ID) ?? null
   return <ReadinessPage snapshot={lastScan?.snapshot ?? null} context={context} planSteps={stepIds} guestStep={guestStep} />
@@ -489,7 +493,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
       <p className="line intro">{leadLine(seen)}</p>
       {context && (
         <p className="line scope-line">
-          {context.ids === null ? fillText(T.planContext.unknown, { step: context.title }) : fillText(T.planContext.filtered, { cohort: scopedCohort, step: context.title })}{' '}
+          {scopeWords(context, scopedCohort)}{' '}
           {uncountedInScope > 0 && <>{fillText(T.planContext.uncounted, { n: uncountedInScope })}{' '}</>}
           <a href={stepHref(context.stepId)}>{T.planContext.back}</a>
         </p>

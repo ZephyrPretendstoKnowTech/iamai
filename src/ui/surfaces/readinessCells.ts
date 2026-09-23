@@ -79,6 +79,7 @@ type Words = {
   rail: { shownAbove: string }
   evidence: { unreadMethods: string; unreadMethodsRefused: string }
   footer: { counted: string }
+  planContext: { filtered: string; covers: string; unknown: string }
   counted: Record<Explained | Kind | 'dormantLink', string>
   admin: string
   guest: string
@@ -190,6 +191,16 @@ export function summaryLine(counted: readonly ReadinessRow[], reads: { needP1: b
 export function countedLine(counted: readonly ReadinessRow[], reads: { needP1: boolean; activityUnread: number }): string {
   if (counted.length === 0 && (reads.needP1 || reads.activityUnread > 0)) return ''
   return fillText(T.footer.counted, { cohort: cohortWords(counted.length, counted.filter((r) => r.guest).length) })
+}
+
+/**
+ * The scope line where the page was opened from a Plan step: the people it is
+ * waiting on where it holds on them, the people it covers where it holds on
+ * nobody (a campaign), or that this scan could not work out who.
+ */
+export function scopeWords(context: { title: string; ids: readonly string[] | null; held: boolean }, cohort: string): string {
+  if (context.ids === null) return fillText(T.planContext.unknown, { step: context.title })
+  return fillText(context.held ? T.planContext.filtered : T.planContext.covers, { cohort, step: context.title })
 }
 
 /** A device's name with its version where the record gave one: Windows 10, iOS 17; otherwise the family's word. */
