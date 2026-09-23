@@ -485,8 +485,8 @@ export function peopleModel(snapshot: TenantSnapshot, names: NameDirectory, viab
     rowKey: (r) => r.user.id,
     empty: P.empty,
     columns: [
-      // A person by the one rule for naming a person (names.ts personLabels): a display name another account shares carries its sign-in address.
-      { key: 'name', header: P.columns.name, sort: (r) => names.label(r.user.id).toLowerCase(), cell: (r) => names.label(r.user.id) },
+      // The display name alone, as MFA Readiness's Name column: the Sign-in address column beside it tells two accounts of one name apart, and the Type column marks a guest. names.label, where the directory has no display name.
+      { key: 'name', header: P.columns.name, sort: (r) => (r.user.displayName || names.label(r.user.id)).toLowerCase(), cell: (r) => r.user.displayName || names.label(r.user.id) },
       { key: 'upn', header: P.columns.upn, sort: (r) => (r.user.userPrincipalName ?? '').toLowerCase(), cell: (r) => r.user.userPrincipalName ?? '' },
       // A sign-in-disabled account (a shared mailbox, a resource) is listed here with its tag, and counted as a person nowhere.
       { key: 'type', header: P.columns.type, sort: (r) => `${r.user.userType}${r.user.accountEnabled === false ? ' disabled' : ''}`, cell: (r) => (r.user.accountEnabled === false ? `${type(r.user)} · ${P.signInDisabled}` : type(r.user)) },
