@@ -1,0 +1,533 @@
+<title>Roadmap Flow Proposal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Serif:wght@600;700&display=swap">
+<style>
+:root {
+  --canvas: #f7f4ee;
+  --surface: #fffdf9;
+  --surface-2: #f0ece5;
+  --line: #d8d3c9;
+  --line-strong: #c1bcb3;
+  --text: #1d2528;
+  --text-2: #4e5b5d;
+  --text-3: #6f7979;
+  --brand: #0c6a64;
+  --brand-2: #18847a;
+  --brand-soft: #ddefea;
+  --brand-soft-text: #07534f;
+  --attention: #895b17;
+  --attention-soft: #f6ead3;
+  --good: #2a7456;
+  --good-soft: #dcefe4;
+  --moved: #5b5198;
+  --moved-soft: #e9e6f5;
+  --code: #eeeae3;
+  --serif: 'IBM Plex Serif', Georgia, 'Times New Roman', serif;
+  --sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --canvas: #0d1117;
+    --surface: #151c25;
+    --surface-2: #111821;
+    --line: #2b3745;
+    --line-strong: #3a4858;
+    --text: #f2f5f7;
+    --text-2: #c7d0d8;
+    --text-3: #93a0ab;
+    --brand: #58c8bc;
+    --brand-2: #78d9ce;
+    --brand-soft: #173a3d;
+    --brand-soft-text: #dffff9;
+    --attention: #e3b35b;
+    --attention-soft: #3a2f1a;
+    --good: #79d7a6;
+    --good-soft: #17352a;
+    --moved: #b3a9ef;
+    --moved-soft: #2a2745;
+    --code: #0a0f15;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --canvas: #0d1117;
+  --surface: #151c25;
+  --surface-2: #111821;
+  --line: #2b3745;
+  --line-strong: #3a4858;
+  --text: #f2f5f7;
+  --text-2: #c7d0d8;
+  --text-3: #93a0ab;
+  --brand: #58c8bc;
+  --brand-2: #78d9ce;
+  --brand-soft: #173a3d;
+  --brand-soft-text: #dffff9;
+  --attention: #e3b35b;
+  --attention-soft: #3a2f1a;
+  --good: #79d7a6;
+  --good-soft: #17352a;
+  --moved: #b3a9ef;
+  --moved-soft: #2a2745;
+  --code: #0a0f15;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--canvas);
+  color: var(--text);
+  font: 15px/1.6 var(--sans);
+  padding-inline: 16px;
+  padding-block: 0 64px;
+}
+.wrap { max-width: 880px; margin: 0 auto; }
+a { color: var(--brand); text-underline-offset: 2px; }
+a:focus-visible, summary:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 3px; }
+code { font: 0.86em/1.4 var(--mono); background: var(--code); padding: 1px 5px; border-radius: 4px; }
+
+/* Masthead */
+header.mast { padding-block: 40px 20px; border-bottom: 1px solid var(--line); }
+.eyebrow { font: 600 11px/1.2 var(--sans); letter-spacing: 0.12em; text-transform: uppercase; color: var(--brand); }
+h1 { font: 700 clamp(28px, 5vw, 38px)/1.15 var(--serif); margin: 10px 0 12px; text-wrap: balance; }
+.lead { font-size: 17px; color: var(--text-2); max-width: 68ch; margin: 0; }
+.status { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.pill { font: 600 12px/1 var(--sans); padding: 6px 10px; border-radius: 999px; background: var(--attention-soft); color: var(--attention); }
+.pill.brand { background: var(--brand-soft); color: var(--brand-soft-text); }
+
+/* Figures */
+.figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-block: 24px 8px; }
+.fig { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.fig .k { font: 600 11px/1.3 var(--sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); }
+.fig .v { font: 700 26px/1.2 var(--serif); margin-top: 6px; font-variant-numeric: tabular-nums; }
+.fig .v s { color: var(--text-3); font-weight: 600; font-size: 0.7em; text-decoration-thickness: 1.5px; }
+.fig .n { font-size: 13px; color: var(--text-2); margin-top: 2px; }
+
+nav.toc { margin-block: 20px 8px; font-size: 14px; display: flex; flex-wrap: wrap; gap: 6px 14px; }
+nav.toc a { color: var(--text-2); text-decoration: none; border-bottom: 1px solid var(--line-strong); }
+nav.toc a:hover { color: var(--brand); border-color: var(--brand); }
+
+section { padding-block: 32px 8px; }
+h2 { font: 700 24px/1.25 var(--serif); margin: 0 0 6px; text-wrap: balance; }
+h2 + .sub { color: var(--text-2); margin: 0 0 18px; max-width: 68ch; }
+h3 { font: 600 17px/1.3 var(--serif); margin: 0; }
+p { max-width: 70ch; }
+
+/* Decision list */
+ol.decisions { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+ol.decisions li { display: grid; grid-template-columns: 34px 1fr auto; gap: 4px 12px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.dn { font: 600 14px/1.5 var(--mono); color: var(--brand); }
+.dt { margin: 0; }
+.dt b { font-weight: 600; }
+.rec { font: 600 12px/1 var(--sans); padding: 6px 10px; border-radius: 999px; background: var(--good-soft); color: var(--good); white-space: nowrap; }
+.rec.warn { background: var(--attention-soft); color: var(--attention); }
+.stage { grid-column: 2 / -1; font-size: 13px; color: var(--text-3); }
+@media (max-width: 560px) {
+  ol.decisions li { grid-template-columns: 28px 1fr; }
+  .rec { grid-column: 2; justify-self: start; }
+}
+.notrec { margin-top: 14px; font-size: 14px; color: var(--text-2); }
+
+/* The view */
+ul.points { padding: 0; margin: 0; list-style: none; display: grid; gap: 12px; }
+ul.points li { border-left: 3px solid var(--brand-soft); padding-left: 14px; }
+ul.points li b { display: block; font-weight: 600; }
+.why { color: var(--text-2); }
+.why::before { content: "Why: "; font-weight: 600; color: var(--text); }
+
+/* Board sections, drawn like the Plan */
+.board { display: grid; gap: 18px; }
+.sect { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.sect-head { padding: 16px 18px 12px; border-bottom: 1px solid var(--line); display: grid; gap: 4px; }
+.sect-head .num { font: 600 12px/1 var(--mono); color: var(--brand); letter-spacing: 0.06em; }
+.sect-head h3 { font-size: 20px; }
+.sect-head .tagline { color: var(--text-2); font-size: 14px; }
+.rows { margin: 0; padding: 0; list-style: none; }
+.rows li { display: grid; grid-template-columns: 44px 1fr; gap: 2px 10px; padding: 10px 18px; border-bottom: 1px solid var(--line); }
+.rows li:last-child { border-bottom: 0; }
+.rows .i { font: 600 13px/1.5 var(--mono); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.rows .t { font-weight: 600; }
+.rows .d { grid-column: 2; font-size: 13.5px; color: var(--text-2); }
+.tags { display: inline-flex; flex-wrap: wrap; gap: 6px; margin-left: 6px; vertical-align: 1px; }
+.tag { font: 600 11px/1 var(--sans); padding: 4px 7px; border-radius: 5px; letter-spacing: 0.02em; }
+.tag.moved { background: var(--moved-soft); color: var(--moved); }
+.tag.merged { background: var(--brand-soft); color: var(--brand-soft-text); }
+.tag.cond { background: var(--surface-2); color: var(--text-3); border: 1px solid var(--line); }
+.tag.same { background: var(--good-soft); color: var(--good); }
+.argue { padding: 14px 18px 16px; background: var(--surface-2); border-top: 1px solid var(--line); display: grid; gap: 10px; }
+.argue p { margin: 0; font-size: 14.5px; }
+.argue .lbl { font: 600 11px/1.2 var(--sans); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); display: block; margin-bottom: 3px; }
+.argue ul { margin: 0; padding-left: 18px; font-size: 14.5px; }
+.personas { display: flex; flex-wrap: wrap; gap: 6px; }
+.persona { font-size: 13px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; }
+.persona b { font-weight: 600; }
+
+/* Tables */
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+th { font: 600 12px/1.3 var(--sans); letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-3); background: var(--surface-2); }
+tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+td .zero { color: var(--good); font-weight: 600; }
+.tbl.wide table { min-width: 640px; }
+
+/* Alternatives */
+ol.alts { padding-left: 22px; margin: 0; display: grid; gap: 12px; }
+ol.alts li::marker { font-family: var(--mono); color: var(--text-3); }
+.verdict { font: 600 11px/1 var(--sans); padding: 4px 7px; border-radius: 5px; margin-left: 6px; background: var(--attention-soft); color: var(--attention); vertical-align: 1px; }
+.verdict.later { background: var(--surface-2); color: var(--text-3); border: 1px solid var(--line); }
+
+/* Stages */
+.stages { display: grid; gap: 12px; counter-reset: st; }
+details.stg { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+details.stg summary { cursor: pointer; padding: 14px 16px; list-style: none; display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; }
+details.stg summary::-webkit-details-marker { display: none; }
+details.stg summary .sn { font: 600 13px/1.5 var(--mono); color: var(--brand); grid-row: span 2; }
+details.stg summary .st { font-weight: 600; }
+details.stg summary .sa { color: var(--text-2); font-size: 14px; }
+details.stg[open] summary { border-bottom: 1px solid var(--line); }
+details.stg .body { padding: 12px 16px 16px; font-size: 14px; }
+details.stg .body ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.note { font-size: 13.5px; color: var(--text-3); }
+footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 13px; color: var(--text-3); }
+@media (prefers-reduced-motion: no-preference) { details.stg[open] .body { animation: open 160ms ease-out; } @keyframes open { from { opacity: 0.4; } to { opacity: 1; } } }
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <div class="eyebrow">IAMAI Planner · Roadmap flow · for your review</div>
+  <h1>A roadmap that reads in the order you do the work</h1>
+  <p class="lead">Nothing is built yet. This is the structure I'd build once you approve it: eight sections instead of ten, finished work collapsing where it is, and no step waiting on anything below it. Content quality (instructions, Readiness wording) comes after this, as you asked.</p>
+  <div class="status"><span class="pill">Awaiting your approval</span><span class="pill brand">Checked against 13 test tenants · 45 variants re-checked</span></div>
+</header>
+
+<div class="figures" role="list">
+  <div class="fig" role="listitem"><div class="k">Sections</div><div class="v"><s>10</s> 8</div><div class="n">each one a stage of the work</div></div>
+  <div class="fig" role="listitem"><div class="k">Rows on your plan</div><div class="v"><s>41</s> 36</div><div class="n">when every stage is done</div></div>
+  <div class="fig" role="listitem"><div class="k">Steps waiting on one below</div><div class="v"><s>2–53</s> 0</div><div class="n">plus 2 designed hand-offs inside one section</div></div>
+  <div class="fig" role="listitem"><div class="k">Default view</div><div class="v" style="font-size:22px"><s>Ready</s> All work</div><div class="n">finished work collapses in place</div></div>
+</div>
+
+<nav class="toc" aria-label="Contents">
+  <a href="#decisions">Your decisions</a>
+  <a href="#view">The view</a>
+  <a href="#roadmap">The roadmap</a>
+  <a href="#compare">Before and after</a>
+  <a href="#merges">Merges</a>
+  <a href="#alternatives">Alternatives</a>
+  <a href="#check">Dependency check</a>
+  <a href="#progress">Saved progress</a>
+  <a href="#stages">Build stages</a>
+</nav>
+
+<section id="decisions">
+  <h2>Your decisions</h2>
+  <p class="sub">Nine calls, each with my recommendation. You can approve the five build stages one at a time. Emergency Access is not touched.</p>
+  <ol class="decisions">
+    <li><span class="dn">1</span><p class="dt"><b>All work is the default view.</b> Sections never move; finished work collapses in place. Show completed and Show deferred are removed.</p><span class="rec">Yes</span><span class="stage">Stage 1</span></li>
+    <li><span class="dn">2</span><p class="dt"><b>Eight sections, in the order below.</b> Four rows that merge only in later stages get a place now, so declining decision 5 or 7 leaves nothing out of place.</p><span class="rec">Yes</span><span class="stage">Stage 2</span></li>
+    <li><span class="dn">3</span><p class="dt"><b>Direction goes from four steps to three.</b> The office network question joins the devices step; the work countries question moves onto the countries step.</p><span class="rec">Yes</span><span class="stage">Stage 3</span></li>
+    <li><span class="dn">4</span><p class="dt"><b>Retire three Direction questions nothing reads:</b> external methods, travel, device exceptions. Each one holds policies until answered, yet no code reads the answer.</p><span class="rec">Yes</span><span class="stage">Stage 3</span></li>
+    <li><span class="dn">5</span><p class="dt"><b>Countries becomes one step:</b> the list, the location and the policy. Its lockout checks and old links move with it.</p><span class="rec">Yes</span><span class="stage">Stage 3</span></li>
+    <li><span class="dn">6</span><p class="dt"><b>Two rows read “Doesn't apply” when nothing was needed:</b> Turn Off Security Defaults when this plan never saw them on, and Define the Trusted Network when everyone works remotely. Needs one new saved fact: the date a scan first read security defaults on.</p><span class="rec">Yes</span><span class="stage">Stage 3</span></li>
+    <li><span class="dn">7</span><p class="dt"><b>Each risk pair becomes one step holding two policies.</b> This edits the baseline goal map, which you own. Each policy keeps its own report-only history.</p><span class="rec warn">Yes, last</span><span class="stage">Stage 4</span></li>
+    <li><span class="dn">8</span><p class="dt"><b>Print and exports use the screen's sections and numbers.</b></p><span class="rec warn">Yes, last</span><span class="stage">Stage 5</span></li>
+    <li><span class="dn">9</span><p class="dt"><b>Choices saved on a step that gets merged away.</b> Countries: the policy step's own choice stands, and a different choice on the old location step is shown once. Risk: the merged step is Deferred or Doesn't apply only if both old steps were.</p><span class="rec">Yes</span><span class="stage">Stages 3 and 4</span></li>
+  </ol>
+  <p class="notrec">Not recommended, though you can still ask: moving the device code question onto Block Device Code; folding Finish Moving Off Per-User MFA into Require MFA for Everyone; merging or removing tabs. The reasons are under <a href="#alternatives">Alternatives</a>.</p>
+</section>
+
+<section id="view">
+  <h2>The view</h2>
+  <p class="sub">What changes on the Plan page before any step moves.</p>
+  <ul class="points">
+    <li><b>All work opens first.</b><span class="why">You said people are less jarred when a shrunken view is something they choose. Jordan sees at a glance that Emergency Access is unfinished; Marcus reads one list top to bottom; Nadia sees the whole journey from the start.</span></li>
+    <li><b>Sections never move.</b> Numbered 1–8, in place from the first scan to the last. Nothing is lifted above the tabs, sunk to the bottom, or hidden.<span class="why"> The countries jump you hit happened because a finished Direction had sunk to the bottom. With Direction fixed at section 2, every “Answered in” link points up, to something already answered.</span></li>
+    <li><b>Finished work shrinks in place.</b> A Completed step becomes one line (number, title, Completed, date); click to open. A fully finished section becomes its heading, e.g. “1. Establish Emergency Access · 4 of 4 completed”. Deferred rows shrink the same way.<span class="why"> You see what's done and what's left in one picture, and done work doesn't fill the page. Sam keeps finished work at hand to re-check; Priya scrolls less.</span></li>
+    <li><b>Show completed and Show deferred go.</b><span class="why"> All work already shows everything, so the two toggles have nothing left to do.</span></li>
+    <li><b>Tabs stay as filters you choose:</b> All work (default), Ready, Up Next, On Hold. Each keeps the same headings, order and numbers; a section with nothing in that tab hides; numbers never shift, so a gap means the row is in another tab.<span class="why"> Up Next versus On Hold is a distinction you decided on (waiting for a step above, versus held on a person or on evidence). With the new order, an Up Next row's reason always points up the page.</span></li>
+    <li><b>Opening a step from a link or tile</b> keeps you on your tab if the step is in it; otherwise it switches to All work and scrolls to the step.<span class="why"> Today it drops you into the step's lane tab, which is the disjointed feeling you described.</span></li>
+    <li><b>Header tiles</b> filter the one list, so each section heading appears once.<span class="why"> Today a tile can draw the same heading three times, once per lane.</span></li>
+  </ul>
+  <p class="note">I read “minimized tabs for items already completed” as completed items shown minimized inside All work, not as a separate Completed tab.</p>
+</section>
+
+<section id="roadmap">
+  <h2>The proposed roadmap</h2>
+  <p class="sub">Drawn the way the Plan draws it. Tags say where a step came from. Under each section, the argument for its place and who it helps. <i>Only when</i> rows appear on some tenants only; your board numbers only the rows you have.</p>
+  <div class="board">
+
+    <article class="sect">
+      <div class="sect-head"><span class="num">SECTION 1</span><h3>Establish Emergency Access</h3><span class="tagline">Make sure you can always get back in.</span></div>
+      <ul class="rows">
+        <li><span class="i">1.1</span><span class="t">Prepare Emergency Access Accounts <span class="tags"><span class="tag same">Unchanged</span></span></span></li>
+        <li><span class="i">1.2</span><span class="t">Configure Emergency Exclusions</span></li>
+        <li><span class="i">1.3</span><span class="t">Configure Passkey Authentication</span></li>
+        <li><span class="i">1.4</span><span class="t">Verify Emergency Access</span></li>
+      </ul>
+      <div class="argue">
+        <p><span class="lbl">Why first</span>It waits on nothing and unblocks the most: every policy's turn-on waits on 1.1 and 1.4; 18 policies can't be created until 1.2 exists; your own passkey needs 1.3 and 1.4; and 2.2 leaves the emergency accounts out of its service-account suggestions.</p>
+        <div class="personas"><span class="persona"><b>Jordan</b> can't reach a policy before there's a way back in.</span></div>
+      </div>
+    </article>
+
+    <article class="sect">
+      <div class="sect-head"><span class="num">SECTION 2</span><h3>Decide Your Tenant's Direction</h3><span class="tagline">Answer the questions that decide what your plan contains.</span></div>
+      <ul class="rows">
+        <li><span class="i">2.1</span><span class="t">Confirm What You Use</span><span class="d">Services, mail-sending devices, device code, partner accounts. The external methods question is retired.</span></li>
+        <li><span class="i">2.2</span><span class="t">Identify Service and Shared Accounts <span class="tags"><span class="tag same">Unchanged</span></span></span></li>
+        <li><span class="i">2.3</span><span class="t">Decide How and Where People Sign In <span class="tags"><span class="tag merged">Merged</span></span></span><span class="d">Computers, phones, office network. Absorbs Decide How People and Devices Sign In plus the office network question from Decide Where People Sign In From. Device exceptions is retired.</span></li>
+      </ul>
+      <div class="argue">
+        <p><span class="lbl">The rule</span>Direction asks how your organisation works: facts the scan can only suggest, that several steps need or that decide which steps you get. A setting you pick while building one object is asked on that object's step. A question nothing reads is retired.</p>
+        <ul><li>Work countries is the list you select when you create the countries location, and only the countries policy reads it, so it moves to 6.3.</li><li>The office network is read by four steps, so it stays in Direction.</li></ul>
+        <p><span class="lbl">Why second</span>It waits only on 1.1. No policy is Ready until Direction is answered, and its answers decide which rows exist (services, phones, office network), so answering first keeps rows that don't apply off your plan. Three steps, each one sitting.</p>
+        <div class="personas"><span class="persona"><b>Marcus</b> and <b>Priya</b> answer once, up front.</span><span class="persona"><b>Nadia</b> is asked about countries where she builds them.</span></div>
+      </div>
+    </article>
+
+    <article class="sect">
+      <div class="sect-head"><span class="num">SECTION 3</span><h3>Prepare Before Any Policy</h3><span class="tagline">People first, then the objects the policies need. Nothing here changes how anyone signs in.</span></div>
+      <ul class="rows">
+        <li><span class="i">3.1</span><span class="t">Disable or Confirm Dormant Accounts <span class="tags"><span class="tag moved">Moved from Ongoing</span></span></span></li>
+        <li><span class="i">3.2</span><span class="t">Use Separate Accounts for Admin Work <span class="tags"><span class="tag moved">Moved from Ongoing</span></span></span></li>
+        <li><span class="i">3.3</span><span class="t">Register Your Own Passkey <span class="tags"><span class="tag moved">Moved from Protect Your Administrators</span></span></span></li>
+        <li><span class="i">3.4</span><span class="t">Prepare Your Team for MFA <span class="tags"><span class="tag moved">Moved from Turn On MFA for Everyone</span></span></span></li>
+        <li><span class="i">3.5</span><span class="t">Create the Baseline's Authentication Strength <span class="tags"><span class="tag moved">Moved from Protect Your Administrators</span></span></span></li>
+        <li><span class="i">3.6</span><span class="t">Define the Trusted Network</span></li>
+        <li><span class="i">3.7</span><span class="t">Create or Correct Service Accounts Group <span class="tags"><span class="tag cond">Only when 2.2 names service accounts</span></span></span></li>
+      </ul>
+      <div class="argue">
+        <p><span class="lbl">Why here</span>Nothing here waits on anything below it, and every policy below depends on it: the campaign (3.4) holds the turn-on of 7 policies and every MFA, guest and admin readiness gate; the authentication strength (3.5) is needed to create 8 policies; the trusted network (3.6) is read by 4 steps. It keeps your 2026-09-20 rule (decide, make the things, then roll out) and applies it to the two things that broke it: the strength sat among the admin policies, and the campaign sat among the MFA policies that wait on it.</p>
+        <p><span class="lbl">Order inside</span>People first, because the campaign is the longest wait in the plan and the objects take minutes. Dormant accounts first, since a disabled account drops out of every people count. Separate admin accounts next: three admin policies point to it, and your passkey belongs on the admin account you keep. Your passkey before the campaign, which can't start without it.</p>
+        <div class="personas"><span class="persona"><b>Marcus</b> meets the campaign in section 3, not section 5 after the policies that wait on it.</span><span class="persona"><b>Jordan</b> can't turn on admin MFA ahead of the campaign that makes it safe.</span><span class="persona"><b>Nadia</b>'s never-signed-in accounts are dealt with before anyone counts people.</span></div>
+      </div>
+    </article>
+
+    <article class="sect">
+      <div class="sect-head"><span class="num">SECTION 4</span><h3>Turn On the Core Protections</h3><span class="tagline">The four policies that replace security defaults, and the two settings they retire.</span></div>
+      <ul class="rows">
+        <li><span class="i">4.1</span><span class="t">Block Legacy Authentication <span class="tags"><span class="tag moved">Moved from Close the Doors</span></span></span></li>
+        <li><span class="i">4.2</span><span class="t">Block Device Code Sign-in <span class="tags"><span class="tag moved">Moved from Close the Doors</span></span></span></li>
+        <li><span class="i">4.3</span><span class="t">Require Phishing-Resistant MFA for Admins <span class="tags"><span class="tag moved">Moved from Protect Your Administrators</span></span></span></li>
+        <li><span class="i">4.4</span><span class="t">Require MFA for Everyone</span></li>
+        <li><span class="i">4.5</span><span class="t">Turn Off Security Defaults</span><span class="d">Open while security defaults are on; Completed once switched off; Doesn't apply if this plan never saw them on. Once 4.1–4.4 are watched and ready, switch defaults off and turn those four on in the same sitting.</span></li>
+        <li><span class="i">4.6</span><span class="t">Finish Moving Off Per-User MFA</span><span class="d">Starts once 4.4 is on; nothing waits on it.</span></li>
+      </ul>
+      <div class="argue">
+        <p><span class="lbl">Why here</span>Microsoft won't let a Conditional Access policy be turned on while security defaults are on, so in a tenant with them on, every other policy's turn-on waits on 4.5. These four are exactly what the dependency graph makes 4.5 wait for. Putting them first is the only order in which no later policy waits on a step below it. It's also Jon's Foundation layer, and it keeps his one rule: MFA for everyone is the last policy of that phase.</p>
+        <div class="personas"><span class="persona"><b>Sam</b> (security defaults on): the switch-off happens in one place, not with eight policies across three sections waiting on section 5.</span><span class="persona"><b>Jordan</b>: the lockout-capable policies sit below the campaign and emergency access that make them safe.</span><span class="persona"><b>You</b>: with defaults already off, it still reads as the four protections every tenant needs first.</span></div>
+      </div>
+    </article>
+
+    <article class="sect">
+      <div class="sect-head"><span class="num">SECTION 5</span><h3>Extend MFA and Respond to Risk</h3><span class="tagline">The places MFA at sign-in doesn't reach yet.</span></div>
+      <ul class="rows">
+        <li><span class="i">5.1</span><span class="t">Protect Sign-in Method Registration</span></li>
+        <li><span class="i">5.2</span><span class="t">Require MFA to Register a Device</span></li>
+        <li><span class="i">5.3</span><span class="t">Require MFA for Guests</span></li>
+        <li><span class="i">5.4</span><span class="t">Require MFA at Every Role Activation <span class="tags"><span class="tag moved">Moved from Protect Your Administrators</span><span class="tag cond">Entra ID P2</span></span></span></li>
+        <li><span class="i">5.5</span><span class="t">Require MFA for Inforcer Access <span class="tags"><span class="tag moved">Moved from Ongoing</span><span class="tag cond">Only when 2.1 says Inforcer is used</span></span></span></li>
+        <li><span class="i">5.6</span><span class="t">Challenge Risky Sign-ins <span class="tags"><span class="tag merged">Merged</span><span class="tag cond">P2</span></span></span><span class="d">High and medium sign-in risk: two policies, one step.</span></li>
+        <li><span class="i">5.7</span><span class="t">Remediate Risky Users <span class="tags"><span class="tag merged">Merged</span><span class="tag cond">P2</span></span></span><span class="d">High and medium user risk: two policies, one step.</span></li>
+        <li><span class="i">5.8</span><span class="t">Require MFA for Azure Management <span class="tags"><span class="tag cond">Only with an uploaded baseline that has it</span></span></span></li>
+      </ul>
+      <div class="argue">
+        <p><span class="lbl">Why here</span>Once MFA is on at sign-in, these are the gaps: registering a method, registering a device, guests, role activation, the consoles that manage the tenant, and sign-ins Entra flags as risky. Every one waits on security defaults being off, so it must sit below section 4.</p>
+        <p><span class="lbl">Why risk here, not last</span>Risk policies act only on sign-ins Entra flags, and after the campaign every flagged person can clear the flag with their own MFA. Devices and sessions change everyone's day, so they come later.</p>
+        <div class="personas"><span class="persona"><b>Priya</b> gets one heading for “MFA wherever it's still missing”, and four near-identical risk rows become two.</span><span class="persona"><b>Nadia</b> meets each idea right after the one it builds on.</span></div>
+      </div>
+    </article>
+
+    <article class="sect">
+      <div class="sect-head"><span class="num">SECTION 6</span><h3>Close the Remaining Doors</h3><span class="tagline">Block what nobody should legitimately use.</span></div>
+      <ul class="rows">
+        <li><span class="i">6.1</span><span class="t">Block Authentication Transfer <span class="tags"><span class="tag moved">Moved from Close the Doors</span></span></span></li>
+        <li><span class="i">6.2</span><span class="t">Block Unsupported Device Platforms <span class="tags"><span class="tag moved">Moved from Close the Doors</span></span></span></li>
+        <li><span class="i">6.3</span><span class="t">Block Sign-ins From Countries Not Allowed <span class="tags"><span class="tag merged">Merged</span></span></span><span class="d">Four tasks in portal order: pick your work countries, create or correct the countries location, create the policy in report-only, turn it on. Absorbs Create or Correct Allowed Countries Location, the work countries question and the location's three lockout checks.</span></li>
+        <li><span class="i">6.4</span><span class="t">Restrict Service Accounts to the Trusted Network <span class="tags"><span class="tag cond">Only with service accounts</span></span></span></li>
+        <li><span class="i">6.5</span><span class="t">Restrict the Directory Sync Service Principal to Its Address <span class="tags"><span class="tag cond">Workload ID licence only</span></span></span></li>
+      </ul>
+      <div class="argue">
+        <p><span class="lbl">Why here</span>All five block something nobody should use: a sign-in flow, a platform, a location, a service account from outside the office, or the sync account from another address. Nothing waits on them. They come after section 5 because a gap in MFA coverage is the bigger exposure; they don't depend on section 5, so on a tenant without security defaults they show Ready as early as they're allowed.</p>
+        <div class="personas"><span class="persona"><b>You</b>: the countries question, the location and the policy are one step. This is the jump you flagged.</span><span class="persona"><b>Marcus</b>: one step, tasks in the order the portal needs them.</span></div>
+      </div>
+    </article>
+
+    <article class="sect">
+      <div class="sect-head"><span class="num">SECTION 7</span><h3>Secure Devices and Sessions</h3><span class="tagline">The changes that touch everyone's day, last among the policies.</span></div>
+      <ul class="rows">
+        <li><span class="i">7.1</span><span class="t">Shorten Admin Sessions <span class="tags"><span class="tag moved">Moved from Protect Your Administrators</span></span></span></li>
+        <li><span class="i">7.2</span><span class="t">Limit How Long Sessions Last <span class="tags"><span class="tag moved">Moved from Respond to Risk and Limit Sessions</span></span></span></li>
+        <li><span class="i">7.3</span><span class="t">Require a Fresh Sign-in for Intune Enrollment</span></li>
+        <li><span class="i">7.4</span><span class="t">Require a Managed Device Outside the Office</span></li>
+        <li><span class="i">7.5</span><span class="t">Give Shared Devices Their Own Policy <span class="tags"><span class="tag cond">Only when 2.2 names shared accounts</span></span></span><span class="d">Once 7.2 and 7.4 are created, carve out the shared accounts, then turn 7.2 and 7.4 on.</span></li>
+        <li><span class="i">7.6</span><span class="t">Keep Company Data Off Phones <span class="tags"><span class="tag cond">Only when 2.3 says phones are blocked</span></span></span></li>
+        <li><span class="i">7.7</span><span class="t">Require Token Protection on Windows <span class="tags"><span class="tag moved">Moved from Respond to Risk and Limit Sessions</span></span></span></li>
+        <li><span class="i">7.8</span><span class="t">Require App Protection on Phones <span class="tags"><span class="tag cond">Only with an uploaded baseline that has it</span></span></span></li>
+        <li><span class="i">7.9</span><span class="t">Limit Browser Sessions on Unmanaged Devices <span class="tags"><span class="tag cond">Only with an uploaded baseline that has it</span></span></span></li>
+      </ul>
+      <div class="argue">
+        <p><span class="lbl">Why last among the policies</span>Browser sessions stop staying signed in, and unmanaged computers are blocked outside the office. These affect everyone, so they come after everything that touches only some people.</p>
+        <p><span class="lbl">Order inside</span>The two session steps name each other, so they sit together, admins first. Shared devices (7.5) must sit with 7.2 and 7.4, because it waits for both to be created and both wait on it before turn-on. Enrolment (7.3) is protected before a managed device is required (7.4). Token protection (7.7) comes after 7.4, because it only works on registered Windows devices.</p>
+        <div class="personas"><span class="persona"><b>Jordan</b>: the widest changes come last.</span><span class="persona"><b>Sam</b>: the shared-devices hand-off happens inside one section.</span><span class="persona"><b>Nadia</b>: sessions explained once, for admins and everyone.</span></div>
+      </div>
+    </article>
+
+    <article class="sect">
+      <div class="sect-head"><span class="num">SECTION 8</span><h3>Ongoing Checks and Cleanup</h3><span class="tagline">Care after the rollout; nothing above waits on it.</span></div>
+      <ul class="rows">
+        <li><span class="i">8.1</span><span class="t">Alert on Emergency Account Sign-ins</span></li>
+        <li><span class="i">8.2</span><span class="t">Harden Emergency Access <span class="tags"><span class="tag cond">When it was deferred</span></span></span></li>
+        <li><span class="i">8.3</span><span class="t">Remove Emergency Accounts Excluded by Name <span class="tags"><span class="tag cond">When found</span></span></span></li>
+        <li><span class="i">8.4</span><span class="t">Review Overlapping Policies</span></li>
+        <li><span class="i">8.5</span><span class="t">Align Policy Names</span></li>
+        <li><span class="i">8.6+</span><span class="t">One review row per baseline policy the plan has no goal for</span><span class="d">For example, MFA for the baseline's Azure application scope.</span></li>
+      </ul>
+      <div class="argue">
+        <p><span class="lbl">Why last</span>Dormant accounts and separate admin accounts moved up, because they belong before the policies, not after. What remains is genuinely ongoing.</p>
+      </div>
+    </article>
+
+  </div>
+  <p class="note">Footer: <b>Doesn't apply here (n)</b>, collapsed as today. The six free-tier ladder rows are left unplaced on purpose: they're only built without P1, and that path is switched off.</p>
+</section>
+
+<section id="compare">
+  <h2>Before and after</h2>
+  <div class="tbl wide"><table>
+    <thead><tr><th></th><th>Today</th><th>Proposed</th></tr></thead>
+    <tbody>
+      <tr><td>Sections</td><td>10</td><td>8</td></tr>
+      <tr><td>Rows on your plan</td><td>41</td><td>36 (37 if Turn Off Security Defaults kept its row; 2 more if the risk pairs stayed separate). After Stage 2 alone it's still 41, only moved.</td></tr>
+      <tr><td>Rows per section, your plan</td><td>4 · 2 · 4 · 5 · 7 · 1 · 2 · 6 · 6 · 4</td><td>4 · 3 · 6 · 5 · 6 · 3 · 5 · 4</td></tr>
+      <tr><td>Direction</td><td>4 steps, 12 questions</td><td>3 steps, 8 questions</td></tr>
+      <tr><td>Default view</td><td>Ready</td><td>All work</td></tr>
+      <tr><td>Board controls</td><td>4 tabs, 2 toggles, search, work type</td><td>4 tabs, search, work type</td></tr>
+      <tr><td>Finished sections</td><td>Sink to the bottom, or vanish unless Show completed is on</td><td>Stay where they are, collapsed</td></tr>
+      <tr><td>Steps waiting on something below (13 tenants)</td><td>2 to 53</td><td><span class="zero">0</span>, plus 2 designed hand-offs</td></tr>
+      <tr><td>Countries work</td><td>3 places: Direction, Prepare, Control Where</td><td>1 step (6.3)</td></tr>
+      <tr><td>Steps that fall into Ongoing because nothing places them</td><td>4 today, 3 more with an uploaded baseline</td><td><span class="zero">0</span>, and a test keeps it there</td></tr>
+      <tr><td>Print and exports</td><td>Each orders steps its own way</td><td>The screen's sections and numbers (Stage 5)</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="merges">
+  <h2>Merges and retirements</h2>
+  <p class="sub">What the admin gains, and what is kept so nothing is lost.</p>
+  <div class="tbl wide"><table>
+    <thead><tr><th>Change</th><th>What you gain</th><th>What is kept</th></tr></thead>
+    <tbody>
+      <tr><td><b>Countries list, location and policy become 6.3</b></td><td>One step, one Entra screen, one sitting, no jump to Direction. The policy is the location's only reader. Your 2026-09-19 V1 step map proposed this too.</td><td>The three lockout checks (seen countries included, your own country included, unknown countries), still holding 6.3's turn-on. A “Needs decision” hold until a work country is saved. Your saved list, the proposed location name, old links.</td></tr>
+      <tr><td><b>Decide Where People Sign In From is folded away</b></td><td>One fewer Direction step; the office network is asked beside the device questions that use it.</td><td>The office network answer, still saved and read under its old key. Stage 3 also fixes a writer bug that would otherwise lose it.</td></tr>
+      <tr><td><b>Retire external methods, travel, device exceptions</b></td><td>Three fewer questions. Each held policies until answered (travel held the countries policy, device exceptions every device policy), yet no code reads the answer.</td><td>Saved answers stay in storage, unread. Nothing gets stricter.</td></tr>
+      <tr><td><b>Risk pairs become 5.6 and 5.7</b></td><td>Four near-identical rows become two.</td><td>Each policy keeps its own report-only window, evidence and turn-on, the way Require MFA for Guests already carries two policies. Old records move to their policy; a policy already in your tenant is still found by its old tag. “Plain MFA first” stays with the high sign-in risk policy.</td></tr>
+      <tr><td><b>Security defaults never seen on, and everyone remote</b></td><td>No row reads Completed when nobody did anything.</td><td>A plan that saw defaults on then off still reads Completed. Both rows stay satisfied underneath, so no policy is held by the new wording.</td></tr>
+      <tr><td><b>Moves only</b></td><td>Each step sits above everything that needs it.</td><td>Step ids, so all saved state.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="alternatives">
+  <h2>Alternatives considered</h2>
+  <p class="sub">Three outlines were drafted independently (your logic, fewest pieces, the personas), then judged and checked for completeness. What lost, and why.</p>
+  <ol class="alts">
+    <li><b>Direction before Emergency Access.</b><span class="verdict">Rejected</span> 2.2 leaves the emergency accounts out of its service-account suggestions; an unused emergency account looks like a service account (no MFA method, never signed in). Your foundation rule also puts lockout prevention first.</li>
+    <li><b>Keep Close the Doors as one section before MFA.</b><span class="verdict">Rejected</span> With security defaults on, every block's turn-on waits on Turn Off Security Defaults, which would sit one or two sections lower: 10–12 waits pointing down on the security-defaults tenant, against 4 same-section hand-offs here.</li>
+    <li><b>Keep Protect Your Administrators.</b><span class="verdict">Rejected</span> On most tenants it would hold 2–3 rows (PIM needs P2, Inforcer is rare), and it separates the two session steps that name each other. “Admins first” survives inside each section: 4.3 before 4.4, 7.1 before 7.2.</li>
+    <li><b>Ten sections.</b><span class="verdict">Rejected</span> Same dependency result with two extra headings of 3–5 rows, and it left separate admin accounts below the admin MFA step that points to it.</li>
+    <li><b>Two Direction steps.</b><span class="verdict">Rejected</span> One step would mix usage questions with picking accounts, and moving the mail-devices question onto Block Legacy Authentication puts it below the service accounts group it feeds.</li>
+    <li><b>Move the device code question onto Block Device Code.</b><span class="verdict later">Not now</span> It's a usage fact read from sign-in records, like its neighbours. It can move later without moving any data.</li>
+    <li><b>Fold Finish Moving Off Per-User MFA into Require MFA for Everyone.</b><span class="verdict later">Not recommended</span> A policy step completes when its policy is on; folding in a tenant setting would keep it open and change what Completed means. It already sits directly below.</li>
+    <li><b>Risk last, after devices</b> (Jon's layer 4).<span class="verdict">Rejected</span> Risk acts only on flagged sign-ins that people can clear with their own MFA; devices and sessions change everyone's day.</li>
+    <li><b>Keep risk with sessions.</b><span class="verdict">Rejected</span> Limit How Long Sessions Last must sit with Require a Managed Device, because shared devices wait on both. Today that's a backward wait between two sections.</li>
+    <li><b>Merge Up Next and On Hold, drop Up Next, or add a Completed tab.</b><span class="verdict later">Deferred</span> Let the flow settle first. With finished work shown in place, a Completed tab adds nothing.</li>
+    <li><b>Follow Jon's layers exactly.</b><span class="verdict">Rejected</span> He publishes four layers and one rule, not a step order (his wiki is empty). Strict layers would put the countries block in the core, where it can't turn on before defaults go off, and risk after devices. His one rule is kept.</li>
+    <li><b>Keep the countries location as its own step in section 3.</b><span class="verdict later">Fallback</span> What you get if you decline decision 5, and where Stage 2 places it meanwhile. The merge is better: the location has one reader, and asking for countries on a different step from the one that uses them is the jump you flagged.</li>
+    <li><b>Security defaults: plans saved before the new record keep Completed.</b><span class="verdict later">Safer variant of decision 6</span> Choose it if you know of a plan that switched defaults off in the last few days; otherwise such a plan reads Doesn't apply. Only a word on a row either way; no policy is affected.</li>
+  </ol>
+</section>
+
+<section id="check">
+  <h2>Dependency check</h2>
+  <p class="sub">Every wait the product itself reads (graph edges with each tenant's conditions, blockers, turn-on waits, Direction answers and “Answered in” links, readiness-gate routes, missing-object makers), counted as distinct pairs where a step waits on one drawn below it.</p>
+  <div class="tbl wide"><table>
+    <thead><tr><th>Tenant</th><th class="num">Today, as drawn</th><th class="num">Proposed</th><th>Designed hand-offs</th></tr></thead>
+    <tbody>
+      <tr><td>getiamai, closest to yours</td><td class="num">11</td><td class="num"><span class="zero">0</span></td><td>0</td></tr>
+      <tr><td>demo</td><td class="num">4</td><td class="num"><span class="zero">0</span></td><td>2 (shared devices)</td></tr>
+      <tr><td>demo week two</td><td class="num">53</td><td class="num"><span class="zero">0</span></td><td>2 (shared devices)</td></tr>
+      <tr><td>small / large / midflight, curated</td><td class="num">15 / 14 / 12</td><td class="num"><span class="zero">0</span></td><td>0</td></tr>
+      <tr><td>small / large / midflight, raw</td><td class="num">2 / 2 / 2</td><td class="num"><span class="zero">0</span></td><td>0</td></tr>
+      <tr><td>mid, curated / raw (P2, shared devices)</td><td class="num">17 / 3</td><td class="num"><span class="zero">0</span></td><td>1</td></tr>
+      <tr><td>messy (security defaults on, Sam's shape)</td><td class="num">20 / 11</td><td class="num"><span class="zero">0</span></td><td>4 (4.1–4.4 with 4.5)</td></tr>
+    </tbody>
+  </table></div>
+  <p>The two hand-offs aren't waits on work further down. Turn Off Security Defaults can only start once 4.1–4.4 are ready, and those can only turn on once defaults are off, so one sitting does both. Shared devices (7.5) does the same for 7.2 and 7.4. A second review ran 45 variants and got the same numbers. It found one case none of the 13 tenants reach: an empty countries list gives every place-naming policy a wait on the countries step. Stage 3 narrows that wait to the policies that name the countries location, and a test covers it.</p>
+</section>
+
+<section id="progress">
+  <h2>Saved progress carries over</h2>
+  <div class="tbl wide"><table>
+    <thead><tr><th>What you saved</th><th>What happens</th></tr></thead>
+    <tbody>
+      <tr><td>Anything on a step that stays</td><td>Untouched. Step ids don't change, so decisions, observation records, evidence and Deferred or Doesn't apply choices stay. Only where a row is drawn changes.</td></tr>
+      <tr><td>Emergency Access</td><td>Nothing changes.</td></tr>
+      <tr><td>Direction answers</td><td>Read from the same keys. Stage 3 also fixes the writer: approving the merged 2.3 would otherwise save the office network answer where nothing reads it.</td></tr>
+      <tr><td>Retired questions</td><td>Saved values stay, unread. A Direction step waiting only on one of them completes, and the policies stop waiting. Nothing gets stricter; nothing you saved is lost.</td></tr>
+      <tr><td>Your countries</td><td>Your list and the picker's decision stay where they are, and 6.3 reads them. Old links open 6.3.</td></tr>
+      <tr><td>Risk records</td><td>Moved once, on load, to each policy inside the merged step, so neither report-only window restarts. A medium policy already in your tenant is still found by its old tag.</td></tr>
+      <tr><td>Security defaults</td><td>One new saved fact: the date a scan first read them on.</td></tr>
+      <tr><td>Row numbers</td><td>These change. Printouts and exports made earlier carry the old numbers; step ids stay the stable identity.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="stages">
+  <h2>Build stages</h2>
+  <p class="sub">Each stage is its own set of commits, pre-push checked, and done only when it shows on screen, a unit test asserts it, and CI is green. Approve them together or one at a time.</p>
+  <div class="stages">
+    <details class="stg"><summary><span class="sn">1</span><span class="st">The view</span><span class="sa">Opens on All work; finished sections collapse in place; the two toggles go.</span></summary>
+      <div class="body"><ul>
+        <li>Board: All work first in the tabs; finished groups stay in place, closed; the pinned-group machinery and a dead sort are removed.</li>
+        <li>Plan page: default tab, foundation blocks and the aside removed, one-line Completed and Deferred rows, header tiles filter one list, opening a step keeps or switches to All work.</li>
+        <li>The how-to text changes from “Start with Ready” to start at the top of All work.</li>
+        <li>Tests, smoke and the persona harness updated to the new view.</li>
+      </ul><p class="note">Acceptance: the Plan opens on All work; with Emergency Access finished, the first line reads “1. Establish Emergency Access · 4 of 4 completed”, collapsed.</p></div></details>
+    <details class="stg"><summary><span class="sn">2</span><span class="st">The order</span><span class="sa">Eight sections; every step placed; two structural tests.</span></summary>
+      <div class="body"><ul>
+        <li>Eight section entries, every buildable step listed by name, including uploaded-baseline rows. Interim places for the four rows that merge later.</li>
+        <li>Test: every wait points up (except the two named hand-offs), across the 13 tenants plus the empty-countries case.</li>
+        <li>Test: nothing lands in Ongoing by accident, including every goal an uploaded baseline can build.</li>
+      </ul><p class="note">Acceptance: your tenant shows sections 1–8 in this order, still 41 rows.</p></div></details>
+    <details class="stg"><summary><span class="sn">3</span><span class="st">Merges and retirements</span><span class="sa">Direction to three steps; countries as one step; the two Doesn't apply readings.</span></summary>
+      <div class="body"><ul>
+        <li>Direction: three steps, three questions retired, answers written where they're read.</li>
+        <li>Countries (6.3): the location becomes the step's own task, its lockout checks move onto it, and a missing object it makes itself is a task, not a wait on itself.</li>
+        <li>The countries-unsafe hold narrows to policies that name the countries location.</li>
+        <li>Security defaults and trusted network Doesn't apply readings, without holding any policy. The dependency playbook diff comes to you.</li>
+      </ul><p class="note">Acceptance: Direction shows three steps; countries is one row that asks, creates the location, then the policy; the empty-list test reads 0.</p></div></details>
+    <details class="stg"><summary><span class="sn">4</span><span class="st">The risk pairs</span><span class="sa">Two steps holding two policies each; histories carried over.</span></summary>
+      <div class="body"><ul>
+        <li>Goal map: both sign-in risk policies under one goal, both user risk under another. That file is yours: you edit it or approve my edit.</li>
+        <li>Records moved once on load; old tags still found; old links open the merged step.</li>
+        <li>The readers that tell high from medium stay per policy.</li>
+      </ul><p class="note">Acceptance: on mid, two risk rows each hold two policies, and neither report-only window restarts.</p></div></details>
+    <details class="stg"><summary><span class="sn">5</span><span class="st">Print and exports</span><span class="sa">Same sections, order and numbers as the screen.</span></summary>
+      <div class="body"><ul>
+        <li>The printed plan prints the eight sections in board order with board numbers, and finished sections as one line.</li>
+        <li>Exports list steps in board order with section numbers. Dates still follow dependencies, which now run top to bottom.</li>
+        <li>I'll bring this stage's exact file list to you before building it, since you review print on paper.</li>
+      </ul></div></details>
+  </div>
+</section>
+
+<footer>
+  Drafted 2026-09-23 from five studies of the current Plan (order mechanics, the full dependency graph, a duplicate-step audit, an admin walkthrough, and Jon Hope's repository) and three independent outlines, judged and completeness-checked. Jon publishes four layers (Foundations, Baseline, Apps/Devices, P2 and Zero Trust) and one rule: MFA for all users is enabled last in Phase 1. This order keeps that rule.
+</footer>
+
+</div>
