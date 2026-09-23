@@ -581,7 +581,8 @@ test('013.H: the document reads the Plan’s row rule and writes none of its own
   const plan = readFileSync(new URL('./Plan.tsx', import.meta.url), 'utf8')
   // The Plan reads the engine through the one board construction (R4-22), which
   // the print, the Export page and Connect read too.
-  assert.match(plan, /const \{ readings, titleOf, cleanupRows \} = boardReadingsOf\(c\.steps, /, 'the Plan no longer reads the engine for its rows')
+  // Through boardOf, the rows built once on that construction (planBoard.ts).
+  assert.match(plan, /const board = boardOf\(c\.steps, cleanupPhase, answers\)\n\s*const \{ readings, titleOf, cleanupRows, prerequisiteLabel, enforceWaits \} = board/, 'the Plan no longer reads the engine for its rows')
   assert.match(plan, /const rowSteps = c\.steps\.filter\(\(s\) => readings\.has\(s\.id\)\)/, 'the Plan decides its rows somewhere else')
   for (const own of ['phaseRows(', 'undatedRows(', 'floorRows(']) assert.equal(plan.includes(own), false, `the Plan still groups by ${own}`)
   for (const c of CASES) {
@@ -648,7 +649,7 @@ test('013.H: the printed document draws every step exactly once, and never dates
 test('R4-22: the Export page, the print, Connect and the Plan read the board through one construction', () => {
   const read = (p: string): string => readFileSync(new URL(p, import.meta.url), 'utf8').replace(/\/\/[^\n]*/g, '')
   for (const [file, call] of [
-    ['./Plan.tsx', 'boardReadingsOf(c.steps, cleanupPhase, answers)'],
+    ['./Plan.tsx', 'boardOf(c.steps, cleanupPhase, answers)'],
     ['./PrintPlan.tsx', 'boardReadingsOf(steps, schedule.cleanup, answers)'],
     ['./Export.tsx', 'exportViewsOf(steps, schedule.cleanup, data.mapping?.breakGlassAnswers ?? null, stepCtx)'],
     ['./Connect.tsx', 'boardReadingsOf(computed.steps, computed.schedule.cleanup, cleanupAnswers)'],

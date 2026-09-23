@@ -268,7 +268,8 @@ test('Step 4: the row, the group, the step, the print and the calendar read one 
   // The screen draws lanes (S3, planLanes.ts) and reads the same length and the same hold; its rows' dates read the same scheduling result (planBoard.ts boardWhenOf).
   const screen = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
   // The lanes through the one board construction (planBoard.ts boardReadingsOf, R4-22).
-  for (const read of ['boardReadingsOf(', 'boardWhenOf(step, waveStart, laneView)', 'planWeeks(finish, c.schedule)', 'finish.held', 'laneViewOf(reading, titleOf)']) assert.ok(screen.includes(read), `the Plan no longer reads ${read}`)
+  // The rows and their lane views are built once (planBoard.ts boardOf, on boardReadingsOf).
+  for (const read of ['boardOf(', 'board.rows', 'boardWhenOf(step, waveStart, laneView)', 'planWeeks(finish, c.schedule)', 'finish.held']) assert.ok(screen.includes(read), `the Plan no longer reads ${read}`)
 })
 
 // ---- the finish ----
