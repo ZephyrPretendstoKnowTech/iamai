@@ -652,10 +652,11 @@
       "scan": {
         "title": "Scan",
         "limitsSummary": "IAMAI limitations",
+        "$commentLimits": "Phase 2 audit (Connect): the third limitation said to keep new blocks in report-only across a full cycle (a quarter, a year) while the plan turns them on after its observation window (7 days, 3 for legacy authentication: roadmap/schedule.ts observationDaysFor), two instructions for one act. It now states the fact, that a shorter report-only window cannot show a longer-cycle job either, and sets no report-only length the plan does not use. Whether to add a check with the owners of those jobs is the owner's decision.",
         "limits": [
           "Direct Send and connector-based SMTP relay do not sign in with user accounts, so these logs do not inventory them. A legacy-authentication block targets password-based sign-ins, not every mail-sending device. Confirm the sending method and test important jobs with their owners.",
           "Authentication that happens outside Entra (federation, third-party MFA, on-premises apps) is recorded as a sign-in but not as what the other system enforced.",
-          "Anything on a longer cycle than the records (the quarterly invoice run, the yearly renewal) has left no evidence yet; keep new blocks in report-only across a full cycle.",
+          "Anything on a longer cycle than the records (the quarterly invoice run, the yearly renewal) has left no evidence yet, and a report-only window shorter than its cycle cannot show it either.",
           "Credentials saved on equipment nobody has touched in years surface the day something blocks them; a walk through the comms room beats any report.",
           "A partner's own tenant enforces for their people; IAMAI sees their sign-ins here, never their controls."
         ],
