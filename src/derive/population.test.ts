@@ -19,6 +19,7 @@ import { validOperations } from '../roadmap/operations.ts'
 import { CONTRACT, stepContract } from '../ui/surfaces/stepContract.ts'
 import { stepBodyOf } from '../ui/surfaces/stepBody.ts'
 import { stepExportView } from '../ui/surfaces/stepExport.ts'
+import { cardWordsOf, policyBarOf, policySubjectsOf, taskSubjectOf } from '../ui/surfaces/policyTasks.ts'
 
 test('the row and the step body read the same population, for every step on every fixture', () => {
   for (const f of allFixtures()) {
@@ -273,7 +274,9 @@ function deliveredWithGroup(policyName: string, stepId: string, sampled: boolean
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
   const body = stepBodyOf(step, ctx)
   const tiles = [...body.readiness.tiles, ...body.readiness.satisfied]
-  return { f, step, ctx, body, tiles, people: tiles.find((t) => t.key === 'people'), found: body.contract.found, row: rowWho(step), exported: stepExportView(step, ctx).population, vars: stepVars(step, ctx) }
+  // The Tasks Remaining cards and the bar under them, as ContentStep.tsx draws them.
+  const cards = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks, taskSubjectOf(step, body.eyebrow, body.title), cardWordsOf(step)?.check ?? null)
+  return { f, step, ctx, body, tiles, people: tiles.find((t) => t.key === 'people'), found: body.contract.found, row: rowWho(step), exported: stepExportView(step, ctx).population, vars: stepVars(step, ctx), cards, bar: policyBarOf(cards) }
 }
 
 // R4-30's residual (population Q1). On mid the tenant's own "Core - Grant - MFA
@@ -305,30 +308,43 @@ test('a delivered step whose delivering policy\'s scope cannot be settled says i
   const read = scan(false)
   assert.equal(read.step.state.satisfied, true, 'the premise: still delivered')
   assert.match(read.people?.value ?? '', /covers 283 enabled/, `the policy's own reach once its scope is settled: ${JSON.stringify(read.people)}`)
+
+  // Not established is not a task (stepContract.ts isReadinessWork): the bar
+  // reads what it reads with the group read. It read "Complete the next task
+  // shown for each item." over a card nobody can complete.
+  assert.equal(read.bar, 'Every task on this step is complete, and it left something behind.', 'the premise: the bar with the group read')
+  assert.equal(unread.bar, read.bar, 'the step is handed a task because its reach is not established')
 })
 
 // The card above is a statement of fact, not work. It is unresolved, so it
-// stood among the Readiness tiles, and implementationEmptyOf counted every
-// unresolved tile on a delivered step as work still to clear: "Block Legacy
-// Authentication", Completed, turned from "No implementation needed" into
-// "Waiting on Readiness / Clear what Readiness lists first." — a new
-// instruction on a finished step, and one nobody can carry out. IAMAI never
-// reads an over-cap group in full, and the only lever an administrator has is
-// the policy's exclusion, which here holds the emergency accounts. The
-// all-users MFA step above did not show it: its method readiness already reads
-// "Not measured" in the same state, and that tile is open Readiness of its own.
+// stood among the Readiness tiles, and both readers of open work counted it:
+// "Block Legacy Authentication", Completed, drew "Complete the next task shown
+// for each item." under a Tasks Remaining that listed only "Affected people ·
+// Not established" (policyTasks.ts policyBarOf, the bar this step draws), and
+// its Implementation box turned from "No implementation needed" into "Waiting
+// on Readiness / Clear what Readiness lists first." — a new instruction on a
+// finished step, and one nobody can carry out. IAMAI never reads an over-cap
+// group in full, and the only lever an administrator has is the policy's
+// exclusion, which here holds the emergency accounts. What counts as work is
+// one answer (stepContract.ts isReadinessWork), and both read it.
 test('a delivered step whose reach is not established is not handed Readiness work to clear', () => {
   const unread = deliveredWithGroup('Core - Block - Legacy authentication', 's-goal-block-legacy-auth', true)
   assert.equal(unread.step.status, 'done', 'the premise: the tenant\'s policy delivers the goal')
   assert.equal(unread.step.state.satisfied, true, 'the premise: delivered')
   assert.equal(unread.people?.value, CONTRACT.readiness.tiles.peopleUnknown, `the premise: the reach is not established: ${JSON.stringify(unread.people)}`)
   assert.deepEqual(unread.body.readiness.tiles.map((t) => t.key), ['people'], 'the premise: the reach is the only thing Readiness lists')
+  assert.equal(unread.bar, 'Every task on this step is complete.', `a Completed step is told to complete a task nobody can: ${JSON.stringify(unread.cards.filter((c) => !c.satisfied))}`)
   assert.equal(unread.body.empty.key, 'inPlace', `a Completed step is told to clear what nobody can clear: ${JSON.stringify(unread.body.empty)}`)
   assert.equal(unread.body.empty.title, CONTRACT.implementation.empty.inPlace[0])
+  // The card itself stays, still saying what it says, where it said it.
+  const card = unread.cards.find((c) => c.key === 'people')
+  assert.equal(card?.satisfied, false, 'the card is not a task, and it is not done either')
+  assert.equal(card?.title, CONTRACT.readiness.tiles.peopleUnknown)
 
-  // The same step with the group read says the same: nothing to implement.
+  // The same step with the group read says the same: nothing to do, nothing to implement.
   const read = deliveredWithGroup('Core - Block - Legacy authentication', 's-goal-block-legacy-auth', false)
   assert.equal(read.step.status, 'done', 'the premise: still delivered')
+  assert.equal(read.bar, 'Every task on this step is complete.')
   assert.equal(read.body.empty.key, 'inPlace')
 })
 
