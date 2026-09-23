@@ -334,9 +334,17 @@ test('a turn-on claims the notice it leaves only while the plan\'s announce day 
 // date of the scheduled instant, while the board, the rail and the Dates line
 // state the day in the plan's display zone. East of UTC a turn-on at 09:00 was
 // booked on the announce day before it; west of UTC a day after it.
+//
+// A span's end is not an instant: it is a schedule day, stored as UTC midnight
+// (schedule.ts addDays/toWeekday), and no surface states it in a zone. Read as
+// an instant in the zone, west of UTC every preparation entry ended a day early
+// (America/Los_Angeles, demo Prepare Emergency Access Accounts: last day Sunday
+// Sep 6 for the schedule's Monday Sep 7), so a span's length depended on the zone.
 test('the calendar books a step on the day the board states, in the plan\'s display zone', () => {
   let differs = 0
   let booked = 0
+  let spans = 0
+  const spanEnds = new Map<string, Set<string>>()
   try {
     for (const zone of ['Australia/Sydney', 'America/Los_Angeles']) {
       setDisplayTimeZone(zone)
@@ -354,7 +362,13 @@ test('the calendar books a step on the day the board states, in the plan\'s disp
           const where = `${zone} ${name}/${step.id}`
           assert.equal(absoluteDate(`${start[1]}-${start[2]}-${start[3]}`), absoluteDate(event.start), `${where}: booked on another day than the one stated`)
           const lastDay = new Date(Date.UTC(Number(end[1]), Number(end[2]) - 1, Number(end[3]) - 1)).toISOString().slice(0, 10)
-          assert.equal(absoluteDate(lastDay), absoluteDate(event.end), `${where}: the entry ends on another day than the one stated`)
+          if (event.end === event.start) {
+            assert.equal(absoluteDate(lastDay), absoluteDate(event.start), `${where}: a one-day entry ends on another day than it starts`)
+            continue
+          }
+          spans++
+          assert.equal(lastDay, event.end.slice(0, 10), `${where}: the span ends on another day than the schedule's`)
+          spanEnds.set(`${name}/${step.id}`, (spanEnds.get(`${name}/${step.id}`) ?? new Set()).add(lastDay))
         }
       }
     }
@@ -362,6 +376,8 @@ test('the calendar books a step on the day the board states, in the plan\'s disp
     setDisplayTimeZone(null)
   }
   assert.ok(booked > 0 && differs > 0, `the premise: an event whose UTC day is not its day in the zone (${differs} of ${booked})`)
+  assert.ok(spans > 0, 'the premise: an entry that spans days')
+  for (const [where, ends] of spanEnds) assert.equal(ends.size, 1, `${where}: the span ends on ${[...ends].join(' or ')} by zone`)
 })
 
 // Finding 15 (severity 2). The plan file leaves unredacted on the strength of
