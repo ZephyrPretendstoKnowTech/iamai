@@ -7,7 +7,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readInTimeBatches } from './timeBatches.ts'
-import { evidenceStore } from './cache.ts'
+import { StorageBlockedError, evidenceStore, withinOpenTimeout } from './cache.ts'
 import { CACHE_READ_BATCH } from './constants.ts'
 import { newestFirst, rangeCursor } from '../../testing/memoryEvidenceStore.ts'
 import type { StoredSignIn } from './types.ts'
@@ -72,6 +72,17 @@ test('both ends of the range are inclusive, and a later batch opens strictly bel
 test('an empty range reads no batch', async () => {
   const { batches } = await readAll(saved(), '2030-01-01T00:00:00Z', '2030-01-02T00:00:00Z', CACHE_READ_BATCH)
   assert.deepEqual(batches, [])
+})
+
+test('an open whose upgrade has not started in time is held by another tab; one whose upgrade is running is waited for', async () => {
+  await assert.rejects(withinOpenTimeout(new Promise<never>(() => {}), () => false, 10), StorageBlockedError)
+  // The version 8 index is built over every saved record inside the upgrade: 2.9 s for 150,000 in Chrome, more on a slower device.
+  let started = false
+  const upgrading = new Promise<string>((resolve) => {
+    setTimeout(() => (started = true), 2)
+    setTimeout(() => resolve('open'), 40)
+  })
+  assert.equal(await withinOpenTimeout(upgrading, () => started, 10), 'open')
 })
 
 test('without IndexedDB the store degrades to no saved records, never to a failed scan', async () => {
