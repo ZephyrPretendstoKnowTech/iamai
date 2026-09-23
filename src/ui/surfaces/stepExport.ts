@@ -320,9 +320,12 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // finished, and holds the enforcement, never the create (owner, 2026-09-11).
   // No export carried it, so the calendar, the pack and the bundle read a clean
   // week of report-only as the finish of a policy the screen said waits for 90%
-  // (Phase 2 export finding 7).
+  // (Phase 2 export finding 7). A policy already on waits for nothing — the
+  // card then states only the count (readinessSentence's own `waiting` test) —
+  // so it is no turn-on wait: demo Require MFA for Everyone, a correction to a
+  // policy already enforced, exported "Before turning on: At least 69% …".
   const readinessGate = step.action.readinessGate
-  const threshold = readinessGate && step.status !== 'done' && step.status !== 'skipped' ? readinessSentence(step, readinessGate, contract.routeStart) : null
+  const threshold = readinessGate && step.status !== 'done' && step.status !== 'skipped' && step.state.lifecycle !== 'enforced' ? readinessSentence(step, readinessGate, contract.routeStart) : null
   const shell = {
     state: badgeLabel(contract),
     manualEvidence: manualEvidenceLines(step, ctx),
