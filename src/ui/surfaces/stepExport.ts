@@ -21,7 +21,7 @@ import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, proceduresAreRef
 import type { LaneView, PrerequisiteLabel, StepContract } from './stepContract.ts'
 import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, previewNoteLines, selectedPolicyBodiesOf, entraWithSettings } from './stepPackage.ts'
 import { projectSafely } from '../../content/implementation/project.ts'
-import { SUBSTATUS_WORD, boardHolds, laneViewAlone, laneViewFor, laneViewOf, laneWordOf, prerequisiteLabelFor } from './planBoard.ts'
+import { BOARD, SUBSTATUS_WORD, boardHolds, laneViewAlone, laneViewFor, laneViewOf, laneWordOf, prerequisiteLabelFor } from './planBoard.ts'
 import type { BoardReadings } from './planBoard.ts'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import type { CleanupExport } from '../../roadmap/types.ts'
@@ -216,10 +216,27 @@ export function manualEvidenceLines(step: Step, ctx: StepVarContext): string[] {
  * The contract's gate as one line: its own words, ended as a sentence so it
  * stands beside the action rather than trailing it. Null where nothing gates
  * the action.
+ *
+ * Only where the gate is the board's own words for a waiting row (the lane's
+ * tail on Up Next or On Hold: "After Configure Passkey Authentication",
+ * "Waiting on your direction"), which the row itself shows. The engine's
+ * milestone clause is not a sentence ("until both policies of the pair can be
+ * matched", "when admin readiness reaches 100% (now 66%)"), and the board's
+ * "Not supported" over a policy already in place is a group label, not an
+ * instruction: every export printed them as What to do lines the opened step
+ * never draws (Phase 2 export finding 13). The reason's own sentence says what
+ * holds such a step, and the Threshold card's sentence travels under Before
+ * turn-on.
  */
-function gateLine(gatedBy: string | null): string | null {
+function gateLine(gatedBy: string | null, lane: LaneView): string | null {
   const gate = (gatedBy ?? '').trim()
   if (gate.length === 0) return null
+  const waiting = lane.lane === 'Up Next' || lane.lane === 'On Hold'
+  if (!waiting || lane.tail === null || gate !== lane.tail || gate === BOARD.blockers.unsupported) return null
+  // A readiness gate's tail is its clause, which the row reads beside the lane
+  // word ("On Hold" · "when admin readiness reaches 100% (now 66%)"): not a line
+  // of its own. The Threshold card's whole sentence is under Before turn-on.
+  if (/^[a-z]/.test(gate)) return null
   return /[.!?]$/.test(gate) ? gate : `${gate}.`
 }
 
@@ -340,7 +357,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
     // so this is a step nothing has words for: the export carries what the
     // contract knows about it — where it is, what to do next and what would
     // finish it — and none of the engine's prose, exactly as the screen does.
-    return { title: contentTitle(step), why: contract.why, ...shell, whatToDo: [contract.whatToDo.text, gateLine(contract.whatToDo.gatedBy)].filter((l): l is string => l !== null), doneWhen: contract.doneWhen, ifWrong: null, dates: null }
+    return { title: contentTitle(step), why: contract.why, ...shell, whatToDo: [contract.whatToDo.text, gateLine(contract.whatToDo.gatedBy, laneView)].filter((l): l is string => l !== null), doneWhen: contract.doneWhen, ifWrong: null, dates: null }
   }
   const ex = undated ? withoutScheduleDates(stepVars(step, ctx), step, ctx) : stepVars(step, ctx)
   const names = portalNamesFor(ctx, ex, contentTitle(step))
@@ -484,7 +501,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // browser handed to a change board read "Clear what this step is waiting on."
   // with no way to find out what that was. The contract's own field, in the
   // contract's own words: nothing is composed and nothing is decided again.
-  const gate = gateLine(contract.whatToDo.gatedBy)
+  const gate = gateLine(contract.whatToDo.gatedBy, laneView)
   if (gate !== null && !lines.includes(gate)) lines.unshift(gate)
   if (action.trim().length > 0 && !lines.includes(action)) lines.unshift(action)
   // The three emergency preparation steps export the task text the screen shows

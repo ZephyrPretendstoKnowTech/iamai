@@ -16,7 +16,7 @@ import { app, pages } from '../../content/content.ts'
 import { planFinish, planLengthSentence } from '../../derive/finish.ts'
 import { groundingBundle, promptPack } from '../../roadmap/prompts.ts'
 import { absoluteDate } from '../../copy/dates.ts'
-import { boardReadingsOf, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf } from './planBoard.ts'
+import { BOARD, boardReadingsOf, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf } from './planBoard.ts'
 import { stepArtifactLines } from '../../roadmap/artifactLines.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { unavailableReason } from '../../roadmap/operations.ts'
@@ -199,4 +199,25 @@ test('every export carries the Threshold card that holds a step\'s turn-on, word
     }
   }
   assert.ok(gated > 0, 'the premise: a Threshold card')
+})
+
+// Finding 13 (severity 2, partly). Every export put the contract's gate under
+// What to do as a line of its own, a line the opened step never draws: the
+// board's "Not supported" for a policy already in place (11 steps), and the
+// engine's milestone clauses cut from their sentence ("until both policies of
+// the pair can be matched.", "when admin readiness reaches 100% (now 66%).").
+// The gate travels only as the board's own words for a waiting row; a reason's
+// own sentence and the Threshold card say the rest.
+test('an export\'s What to do carries no clause cut from its sentence and no bare board label', () => {
+  for (const name of ['demo', 'small', 'mid', 'messy', 'midflight', 'hostile'] as FixtureName[]) {
+    const p = exportPage(fixture(name))
+    for (const step of p.r.steps) {
+      const v = p.view(step)
+      for (const line of v.whatToDo) {
+        const where = `${name}/${step.id} (${v.state})`
+        assert.notEqual(line, `${BOARD.blockers.unsupported}.`, `${where}: "${line}" as an instruction`)
+        assert.doesNotMatch(line, /^[a-z]/, `${where}: a clause cut from its sentence: "${line}"`)
+      }
+    }
+  }
 })
