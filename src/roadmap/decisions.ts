@@ -107,6 +107,14 @@ export type PlanDecisions = {
    * (prompt 50.1 item 2). Absent on older records; set on the next save.
    */
   planCreatedAt?: string
+  /**
+   * When a scan of this plan first read security defaults on (V1 decision 6):
+   * Turn Off Security Defaults reads Completed once they are off only where
+   * this is set, and Doesn't apply where it is not (generate.ts). Like
+   * planCreatedAt, a history no regeneration can repeat; written by the first
+   * scan that reads them on and kept (progress.ts securityDefaultsSeenOnAtOf).
+   */
+  securityDefaultsSeenOnAt?: string
   /** Every picker's saved decision, by step id (prompt 52 Part 3). */
   stepDecisions?: Record<string, StepDecision>
   /** Owner confirmations of the checks IAMAI cannot read, by step id, then by prerequisite id. */

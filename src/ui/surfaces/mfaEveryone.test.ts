@@ -29,6 +29,7 @@ import type { StepBody } from './stepBody.ts'
 import { rowWho } from './rowWho.ts'
 import { membersOf } from '../../roadmap/stepGroups.ts'
 import type { MappingState } from '../../mapping/types.ts'
+import type { RoadmapInput } from '../../roadmap/generate.ts'
 
 /** The group's seven members, in registry order (roadmap/stepGroups.ts). */
 const MFA_EVERYONE = [
@@ -42,11 +43,11 @@ const MFA_EVERYONE = [
 ]
 
 /** Every step's body on a fixture, as the Plan composes it (closeDoors.test.ts bodiesOf). */
-function bodiesOf(name: FixtureName, mapping?: MappingState): Map<string, StepBody> {
+function bodiesOf(name: FixtureName, mapping?: MappingState, over: Partial<RoadmapInput> = {}): Map<string, StepBody> {
   setDisplayTimeZone('UTC')
   try {
     const f: Fixture = mapping ? { ...fixture(name), mapping } : fixture(name)
-    const r = runFixture(f, { mapping: f.mapping }, null, f.snapshot.asOf)
+    const r = runFixture(f, { mapping: f.mapping, ...over }, null, f.snapshot.asOf)
     const readings = laneReadings(r.steps, [])
     const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.title ?? null
     const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot)
@@ -417,8 +418,9 @@ test('F6: help desk says what covers guests after the changeover', () => {
 
 test('F7: the step shows a source line at all, dated', () => {
   assert.equal(checkedOn(SECURITY_DEFAULTS), '2026-09-20')
+  // A plan that saw security defaults on draws the step (V1 decision 6: one that never did reads Doesn't apply, in the footer).
   for (const name of ['demo', 'demo-week2'] as FixtureName[]) {
-    assert.equal(bodiesOf(name).get(SECURITY_DEFAULTS)!.sourceLine, 'Source checked Sep 20, 2026', name)
+    assert.equal(bodiesOf(name, undefined, { securityDefaultsSeenOnAt: '2026-08-01T00:00:00.000Z' }).get(SECURITY_DEFAULTS)!.sourceLine, 'Source checked Sep 20, 2026', name)
   }
 })
 

@@ -19,7 +19,7 @@ import { contentTitle } from '../../content/stepTitle.ts'
 import { doesntApplyRows } from './planRows.ts'
 import { notLicensedNote, notLicensedRows, notLicensedSummary } from '../../derive/notLicensed.ts'
 
-type FooterWords = { inPlace: string; doesntApply: string; doesntApplyRow: string; housekeeping: string; notInBaseline: string; notInBaselineKeep: string }
+type FooterWords = { inPlace: string; doesntApply: string; doesntApplyRow: string; doesntApplyScanRow: string; housekeeping: string; notInBaseline: string; notInBaselineKeep: string }
 const F = (pages.plan as { footer: FooterWords }).footer
 
 export function PlanFooter({ computed, nameOf, onPutBack }: { computed: PlanComputed; nameOf: (id: string) => string; onPutBack: (stepId: string) => void }) {
@@ -50,10 +50,13 @@ export function PlanFooter({ computed, nameOf, onPutBack }: { computed: PlanComp
           <ul className="sections">
             {said.map((s) => (
               <li key={s.id}>
-                {fillText(F.doesntApplyRow, { stepTitle: contentTitle(s), reason: s.doesntApply })}{' '}
-                <Button variant="tertiary" onClick={() => onPutBack(s.id)}>
-                  {app.plan.putBack}
-                </Button>
+                {/* The scan's own reading (Step.doesntApplyByScan) is not something the person said, and there is no answer of theirs to put back. */}
+                {fillText(s.doesntApplyByScan ? F.doesntApplyScanRow : F.doesntApplyRow, { stepTitle: contentTitle(s), reason: s.doesntApply })}{' '}
+                {!s.doesntApplyByScan && (
+                  <Button variant="tertiary" onClick={() => onPutBack(s.id)}>
+                    {app.plan.putBack}
+                  </Button>
+                )}
               </li>
             ))}
           </ul>
