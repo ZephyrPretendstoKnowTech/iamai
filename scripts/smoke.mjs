@@ -603,6 +603,19 @@ try {
   const finishedRows = await evaluate(`[...document.querySelectorAll('main.page .plan-group .plan-row')].filter((r) => /^(Completed|Deferred)$/.test(((r.querySelector('.lane') || {}).textContent || '').trim())).map((r) => ({ compact: r.hasAttribute('data-compact'), who: !!r.querySelector('.who'), chip: !!r.querySelector('.status'), reason: !!r.querySelector('.plan-row-reason'), number: ((r.querySelector('.plan-row-number') || {}).textContent || '').trim(), when: ((r.querySelector('.when') || {}).textContent || '').trim() }))`)
   const DAY_ONLY = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/
   check('Plan: a finished row on All work is one compact line with its number and, where recorded, its day', Array.isArray(finishedRows) && finishedRows.every((r) => r.compact && !r.who && !r.chip && !r.reason && /^\d+$/.test(r.number) && (r.when === '' || DAY_ONLY.test(r.when))), JSON.stringify((finishedRows || []).filter((r) => !(r.compact && !r.who && !r.chip && !r.reason)).slice(0, 3)))
+  // A header tile filters the one list in section order, so each section
+  // heading is drawn once (the tiles used to draw the list lane by lane, one
+  // heading per lane a section had rows in).
+  const tileHeads = []
+  for (const tile of ['Needs your input', 'Observing', 'Completed']) {
+    const pressed = await evaluate(`(() => { const b = [...document.querySelectorAll('main.page .plan-tile-control')].find((x) => (x.getAttribute('aria-label') || '').startsWith(${JSON.stringify(tile + ':')})); if (b) b.click(); return !!b })()`)
+    await sleep(200)
+    const heads = pressed ? await evaluate(`[...document.querySelectorAll('main.page .plan-group h2')].map((h) => (h.textContent || '').trim())`) : []
+    tileHeads.push({ tile, pressed, heads })
+    await clickText('/^Show the full plan$/')
+    await sleep(200)
+  }
+  check('Plan: a header tile draws each section heading once', tileHeads.every((t) => t.pressed && t.heads.length === new Set(t.heads).size), JSON.stringify(tileHeads.filter((t) => !t.pressed || t.heads.length !== new Set(t.heads).size).slice(0, 2)))
   const allWorkLanes = await evaluate(`[...document.querySelectorAll('main.page .plan-group')].map((g) => new Set([...g.querySelectorAll('.plan-row .lane')].map((e) => (e.textContent || '').trim().split(' · ')[0])).size)`)
   check('Plan: a group on All work is the whole group, not one lane of it', Array.isArray(allWorkLanes) && allWorkLanes.some((n) => n > 1), JSON.stringify(allWorkLanes))
   await showLane('Ready')

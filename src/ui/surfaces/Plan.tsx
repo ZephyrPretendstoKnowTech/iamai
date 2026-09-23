@@ -26,7 +26,7 @@ import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { Button, Callout, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { ALL_WORK_TAB, BOARD, DEFAULT_TAB, LANES, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupSummary, groupTotalsOf, groupsFor, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, togglesOf, waveStartOf, drawsCompact, finishedDayOf } from './planBoard.ts'
+import { ALL_WORK_TAB, BOARD, DEFAULT_TAB, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupSummary, groupTotalsOf, groupsFor, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, tileSections, togglesOf, waveStartOf, drawsCompact, finishedDayOf } from './planBoard.ts'
 import type { BoardGroup, BoardItem, BoardTab, Focus, LaneTab, WorkType } from './planBoard.ts'
 import { TAB_OF } from './planBoard.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
@@ -253,12 +253,14 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // All work draws every section whole, in its place, and a finished one
   // collapsed there to its title and one line (planBoard.ts allWorkGroups); it
   // counts each heading over the whole board. A lane tab draws its own lane
-  // under the same headings (groupsFor).
+  // under the same headings (groupsFor). A header tile filters the one list,
+  // in section order, each heading once (tileSections).
   const laneTab: LaneTab | null = tab === ALL_WORK_TAB ? null : tab
-  const groups = summaryFilter ? LANES.flatMap((t) => groupsFor(t, shown)) : laneTab === null ? allWorkGroups(shown, items) : groupsFor(laneTab, shown)
+  const groups = summaryFilter ? tileSections(shown) : laneTab === null ? allWorkGroups(shown, items) : groupsFor(laneTab, shown)
   // On a lane tab, the Completed and Deferred rows the toggles reveal; on All
-  // work every row is already inside its section, so there is no aside at all.
-  const aside = !summaryFilter && laneTab === null ? [] : asideGroupsFor(shown)
+  // work and in a tile's list every row is already inside its section, so
+  // there is no aside at all.
+  const aside = summaryFilter || laneTab === null ? [] : asideGroupsFor(shown)
   // A step opened by its hash — a Readiness tile's link to its prerequisite, a
   // deep link — is drawn under its own lane's tab (planBoard.ts TAB_OF), so the
   // tab follows the step; otherwise the link would open nothing on screen. All
@@ -303,7 +305,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
   }
   const summary = structuralWords.summary
   const licenceLine = conditionalAccessLicenceLine(scan.snapshot)
-  const selectSummary = (filter: typeof summaryFilter): void => { setSummaryFilter(filter); setFocus(NO_FOCUS); setToggled({ 'aside:complete': false }); setOpen(null) }
+  const selectSummary = (filter: typeof summaryFilter): void => { setSummaryFilter(filter); setFocus(NO_FOCUS); setToggled({}); setOpen(null) }
   const progressTiles: { key: string; label: string; value: string | number; sub?: string[]; tip?: string; select?: () => void }[] = [
     { key: 'ready', label: summary.ready, value: counts.lanes.ready, select: () => { selectSummary(null); setTab('ready') } },
     { key: 'input', label: summary.input, value: inputIds.size, select: () => selectSummary('input') },
