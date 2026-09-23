@@ -25,7 +25,7 @@ import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { Button, Callout, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { ALL_WORK_TAB, BOARD, LANES, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardReadingsOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupSummary, groupTotalsOf, groupsFor, laneViewOf, partitionPinnedGroups, pinnedBoardGroups, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, splitPinned, waveStartOf, workTypeOf } from './planBoard.ts'
+import { ALL_WORK_TAB, BOARD, LANES, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardHolds, boardReadingsOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupSummary, groupTotalsOf, groupsFor, laneViewFor, laneViewOf, partitionPinnedGroups, pinnedBoardGroups, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, splitPinned, waveStartOf, workTypeOf } from './planBoard.ts'
 import type { BoardGroup, BoardItem, BoardTab, Focus, LaneTab, WorkType } from './planBoard.ts'
 import { TAB_OF } from './planBoard.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
@@ -155,9 +155,6 @@ export function Plan({ scan: lastScan, baseline, account }: {
 
   const tenantName = (scan.snapshot.config.organization?.rows?.[0] as { displayName?: string } | undefined)?.displayName ?? account.username
   const nameOf = (id: string): string => c.names.label(id)
-  // The plan-wide dates the step variables read (the campaign's enrol-by, the
-  // MFA enforcement day, the campaign's window); the operator's own account is resolved above, once.
-  const dates = planDates(c.steps, c.schedule.start, c.coverage.organisation.naming, scan.snapshot)
   // Cleanup (§5): one row each, dated after the last enforcement; the drill is a
   // Cleanup row and nothing else, so it counts once. The finish is the end of
   // the last phase, Cleanup included (§9).
@@ -195,6 +192,10 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // (planBoard.ts boardReadingsOf): the printed plan, the Export page and
   // Connect's tile read exactly these readings and titles (R4-22).
   const { readings, titleOf, cleanupRows } = boardReadingsOf(c.steps, cleanupPhase, answers)
+  // The plan-wide dates the step variables read (the campaign's enrol-by, the
+  // MFA enforcement day, the campaign's window); the operator's own account is resolved above, once.
+  // A step the board holds lends none of them its turn-on day (planBoard.ts boardHolds; owner decision 2).
+  const dates = planDates(c.steps, c.schedule.start, c.coverage.organisation.naming, scan.snapshot, (s) => boardHolds(s, laneViewFor(s, { readings, titleOf })))
   const rowSteps = c.steps.filter((s) => readings.has(s.id))
   // A prerequisite tile's label is the prerequisite's own lane (decision 12).
   const prerequisiteLabel = prerequisiteLabelFor(readings)

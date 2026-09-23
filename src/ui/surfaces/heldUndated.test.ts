@@ -16,12 +16,13 @@
 // its turn-on day on the board, the rail, the export and the calendar (R4-55).
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import type { Fixture, FixtureName } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withDirectionApproved } from '../../roadmap/fixtures/run.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
 import { stepArtifactLines } from '../../roadmap/artifactLines.ts'
-import { groundingBundle } from '../../roadmap/prompts.ts'
+import { announcementDraft, groundingBundle } from '../../roadmap/prompts.ts'
 import { scheduleOf, scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { absoluteDate } from '../../copy/dates.ts'
@@ -314,4 +315,51 @@ test('a held policy keeps the people its who-line names, without the day and wit
     assert.ok(line, `${name}: the people are gone from the Who section: ${lines.join(' | ')}`)
     assert.doesNotMatch(line!, DATE, `${name}: a day in "${line}"`)
   }
+})
+
+// The plan-wide days one step's words name for another (stepVars.ts planDates)
+// and the prompt pack's announcement (roadmap/prompts.ts announcementDraft)
+// never asked the board. A step the board holds carries no date anywhere (owner
+// decision 2), yet its turn-on could still be the campaign's enrol-by, the day
+// Prepare Your Team says Require MFA for Everyone is planned for, the passkey
+// email's day, or the announcement the pack hands a model. Both now take the
+// board's hold, the way the printed plan's rows do.
+test('a day a held step carries is never another step\'s date, nor the prompt pack\'s announcement', () => {
+  const f = withDirectionApproved(curatedFixture('demo-week2'))
+  const r = runFixture(f, {}, null, f.snapshot.asOf)
+  const dated = r.steps.filter((s) => typeof s.events?.enforce.at === 'string').sort((a, b) => a.events!.enforce.at.localeCompare(b.events!.enforce.at))
+  assert.ok(dated.length >= 2, 'the premise: two dated turn-ons')
+  const first = dated[0]!
+  // The first turn-on, and Require MFA for Everyone's own day where it has one (forged: it is done here).
+  const mfa = r.steps.find((s) => s.goalId === 'mfa-all-users' && s.kind !== 'verify')!
+  const mfaDay = '2026-09-01T00:00:00.000Z'
+  const steps = r.steps.map((s) => (s === mfa ? { ...s, events: { ...first.events!, enforce: { ...first.events!.enforce, at: mfaDay } } } : s))
+  const open = planDates(steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot)
+  assert.equal(open.mfaEnforce, mfaDay, 'the premise: the MFA day is the campaign\'s')
+  const heldIds = new Set([mfa.id, first.id])
+  const held = planDates(steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot, (s) => heldIds.has(s.id))
+  assert.notEqual(held.mfaEnforce, mfaDay, 'Require MFA for Everyone is held, and its day is still the campaign\'s')
+  assert.equal(held.mfaEnforce, null, 'a held MFA policy has no day on which people will be asked for MFA')
+  assert.notEqual(held.firstEnforce, first.events!.enforce.at, 'the first enforcement is a held step\'s')
+  assert.equal(held.firstEnforce, dated.find((s) => !heldIds.has(s.id))!.events!.enforce.at, 'the first enforcement is the first unheld one')
+  // The announcement: the first step with an email, unless the board holds it.
+  const withComms = r.steps.filter((s) => s.comms)
+  assert.ok(withComms.length >= 2, 'the premise: two steps with an announcement')
+  assert.equal(announcementDraft(r.steps)?.startsWith(withComms[0]!.comms!.split('\n\n')[0]!), true, 'the premise: the first one is the draft')
+  const draft = announcementDraft(r.steps, (s) => s.id === withComms[0]!.id)
+  assert.ok(draft !== null && !draft.includes(withComms[0]!.comms!.split('\n\n')[1]!), 'the prompt pack announces a step the board holds')
+  assert.ok(draft!.includes(withComms[1]!.comms!.split('\n\n')[1]!), 'the draft is the first unheld step\'s')
+  assert.equal(announcementDraft(r.steps, () => true), null, 'every step held, and the pack still announces a day')
+})
+
+// The pages hand both of them the board's hold: the Plan (its own board), the
+// Export page (the board its views read) and the committed step snapshots.
+test('the Plan, the Export page and the step snapshots read the plan-wide dates with the board\'s hold', () => {
+  const read = (p: string): string => readFileSync(new URL(p, import.meta.url), 'utf8').replace(/\/\/[^\n]*/g, '')
+  assert.match(read('./Plan.tsx'), /planDates\([^)]*scan\.snapshot, \(s\) => boardHolds\(s, laneViewFor\(s, \{ readings, titleOf \}\)\)\)/, 'the Plan')
+  const exportPage = read('./Export.tsx')
+  assert.match(exportPage, /const held = exportHoldOf\(steps, schedule\.cleanup, data\.mapping\?\.breakGlassAnswers \?\? null\)/, 'the Export page reads the board\'s hold')
+  assert.match(exportPage, /planDates\([^)]*snapshot, held\)/, 'the Export page\'s plan-wide dates')
+  assert.match(exportPage, /announcementDraft\(steps, held\)/, 'the Export page\'s announcement')
+  assert.match(read('../../testing/stepSnapshots.ts'), /planDates\([^)]*f\.snapshot, \(s\) => boardHolds\(s, laneViewFor\(s, board\)\)\)/, 'the step snapshots')
 })
