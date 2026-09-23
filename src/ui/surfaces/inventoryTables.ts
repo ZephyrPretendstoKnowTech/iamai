@@ -19,7 +19,7 @@ import { policyFacts } from '../../coverage/facts.ts'
 import { buildStrengthLookup } from '../../coverage/strength.ts'
 import { detectFacets } from '../../coverage/applicability.ts'
 import { serviceEvidence, serviceReading } from '../../roadmap/workflows.ts'
-import { savedAnswerOf } from '../../roadmap/directionAnswers.ts'
+import { SERVICE_KEYS, savedAnswerOf } from '../../roadmap/directionAnswers.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { portalName } from '../../roadmap/portalLines.ts'
 import { countryName } from '../../mapping/countries.ts'
@@ -826,8 +826,9 @@ export type WorkloadRow = { facet: string; name: string; word: string; seen: boo
  *
  * Beside the reading, the answer saved in Direction's Confirm What You Use
  * (directionAnswers.ts savedAnswerOf, the one reader of it) from the Plan's
- * mapping: Yes or No as Direction words them, "—" where none is saved, and
- * "…" while the mapping loads (null).
+ * mapping: Yes or No as Direction words them, "—" where none is saved, "…"
+ * while the mapping loads (null), and "not asked" for a service the step has
+ * no question for (directionAnswers.ts SERVICE_KEYS).
  */
 export function workloadsModel(snapshot: TenantSnapshot, mapping: MappingState | null = null): InventoryModel<WorkloadRow> {
   const A = C.apps
@@ -837,6 +838,8 @@ export function workloadsModel(snapshot: TenantSnapshot, mapping: MappingState |
   const shortfall = (keys: SectionKey[]): string | null =>
     [...new Set(keys.map((k) => notReadLine(snapshot, k) ?? partlyReadLine(snapshot, k)).filter((l): l is string => l !== null))].join(' ') || null
   const answerOf = (facet: string): string => {
+    // A service Confirm What You Use never asks about: "—" there read as a question left unanswered.
+    if (!(SERVICE_KEYS as readonly string[]).includes(facet)) return W.notAsked
     if (mapping === null) return '…'
     const saved = savedAnswerOf(`service:${facet}`, mapping)
     return saved ? ((directionWords.questions.serviceOptions as Record<string, string>)[saved.value] ?? saved.value) : '—'

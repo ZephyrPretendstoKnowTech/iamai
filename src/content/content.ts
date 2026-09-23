@@ -145,6 +145,7 @@ export type AppWords = {
     workloadSeen: string
     workloadNotSeen: string
     licensed: string
+    notAsked: string
     policiesNone: string
     licencesNone: string
     blockedNone: string
