@@ -116,11 +116,17 @@ export function tenantNameOf(snapshot: TenantSnapshot): string {
  * it reaches a day while the row above it reads "After prerequisites". What the
  * scan read stays — the day the policy went into report-only, the day its
  * window closes.
+ *
+ * The plan-wide days go too: the day Require MFA for Everyone enforces, the
+ * campaign's enrol-by and window, and the passkey email's day. A held campaign
+ * kept them, and its email told everyone the day sign-in would change under a
+ * row reading "After prerequisites". The device lines were filled from the MFA
+ * day inside stepVars, so they are filled again here from the undated values.
  */
-export function withoutScheduleDates(v: Record<string, unknown>, step: Step): Record<string, unknown> {
-  const out: Record<string, unknown> = { ...v, enforce: undefined, enforceLong: undefined, announce: undefined }
+export function withoutScheduleDates(v: Record<string, unknown>, step: Step, ctx: StepVarContext): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...v, enforce: undefined, enforceLong: undefined, announce: undefined, mfaEnforce: undefined, mfaEnforceLong: undefined, enrollBy: undefined, enrolWindowDays: undefined, passkeyEnforce: undefined, passkeyEnforceLong: undefined }
   if (!step.tracking?.reportOnlyAt) out.reportOnly = undefined
-  return out
+  return Object.assign(out, deviceWords(ctx, out))
 }
 
 /**
@@ -175,8 +181,11 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     // The day Require MFA for Everyone enforces, for the campaign and the device
     // plan (E7); the campaign's window; and what a personal device can still do
     // once devices are required (shared.engine.personalDevices).
-    mfaEnforce: short(ctx.mfaEnforce ?? ctx.firstEnforce),
-    mfaEnforceLong: long(ctx.mfaEnforce ?? ctx.firstEnforce),
+    // planDates gives null where Require MFA for Everyone is held: there is no
+    // day on which anyone will be asked for MFA, and another policy's turn-on is
+    // not one. Only a context with no plan-wide dates at all reads the first enforcement.
+    mfaEnforce: short(ctx.mfaEnforce === undefined ? ctx.firstEnforce : ctx.mfaEnforce),
+    mfaEnforceLong: long(ctx.mfaEnforce === undefined ? ctx.firstEnforce : ctx.mfaEnforce),
     enrolWindowDays: ctx.enrolWindowDays ?? undefined,
     personalDevicesClause: ctx.unmanagedBrowserOnPlan === undefined ? undefined : ctx.unmanagedBrowserOnPlan ? engine.personalDevices.browserLimited : engine.personalDevices.blocked,
     // Require MFA for Everyone already in place: the campaign email is the passkey
@@ -529,19 +538,33 @@ function answerVars(ctx: StepVarContext, v: Record<string, unknown>): Record<str
   const unjoined = ev?.unjoinedComputers?.people ?? []
   out.phoneUsers = phones.map(ctx.nameOf)
   out.unjoinedUsers = unjoined.map(ctx.nameOf)
-  const plan = devicePlanOf(m)
-  if (plan) {
-    const W = shared.devicePlan as DevicePlanWords
-    const phoneWords = fillText(W.phone[plan.phones], v)
-    const computerWords = plan.computers ? fillText(W.computer[plan.computers], v) : null
-    // One line per person (the name and the device); the instruction once, in the list's lead.
-    const lines: string[] = phones.map((id) => fillText(W.personLine, { name: ctx.nameOf(id), device: W.phoneWord }))
-    if (computerWords) for (const id of unjoined) lines.push(fillText(W.personLine, { name: ctx.nameOf(id), device: W.computerWord }))
-    out.deviceLines = lines
-    out.deviceIntro = computerWords ? fillText(W.intro, { phones: phoneWords, computers: computerWords }) : fillText(W.introPhones, { phones: phoneWords })
-    out.deviceSentence = computerWords ? fillText(W.sentence, { phones: phoneWords, computers: computerWords }) : fillText(W.sentencePhones, { phones: phoneWords })
+  return Object.assign(out, deviceWords(ctx, v))
+}
+
+/**
+ * The device decision's words, once it is made: one device line per person, the
+ * list's lead and the campaign email's sentence (shared.devicePlan), filled from
+ * `v`. Enrolled phones are told to enrol before the day Require MFA for Everyone
+ * enforces; where there is no such day - that policy held, or the step held
+ * (withoutScheduleDates) - they read the same instruction without it
+ * (shared.devicePlan.phone.enrolUndated), never "…app before.".
+ */
+function deviceWords(ctx: StepVarContext, v: Record<string, unknown>): Record<string, unknown> {
+  const plan = devicePlanOf(ctx.mapping)
+  if (!plan) return {}
+  const W = shared.devicePlan as DevicePlanWords
+  const phones = phoneSignInIds(ctx.snapshot) ?? []
+  const unjoined = ctx.snapshot.scenarioEvidence?.unjoinedComputers?.people ?? []
+  const phoneWords = fillText(plan.phones === 'enrol' && v.mfaEnforce === undefined ? W.phone.enrolUndated : W.phone[plan.phones], v)
+  const computerWords = plan.computers ? fillText(W.computer[plan.computers], v) : null
+  // One line per person (the name and the device); the instruction once, in the list's lead.
+  const lines: string[] = phones.map((id) => fillText(W.personLine, { name: ctx.nameOf(id), device: W.phoneWord }))
+  if (computerWords) for (const id of unjoined) lines.push(fillText(W.personLine, { name: ctx.nameOf(id), device: W.computerWord }))
+  return {
+    deviceLines: lines,
+    deviceIntro: computerWords ? fillText(W.intro, { phones: phoneWords, computers: computerWords }) : fillText(W.introPhones, { phones: phoneWords }),
+    deviceSentence: computerWords ? fillText(W.sentence, { phones: phoneWords, computers: computerWords }) : fillText(W.sentencePhones, { phones: phoneWords }),
   }
-  return out
 }
 
 /**

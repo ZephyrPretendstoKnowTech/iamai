@@ -12,6 +12,8 @@
     "devicePlan": {
       "phone": {
         "enrol": "enroll it in Intune with the Company Portal app before {mfaEnforce}",
+        "$commentEnrolUndated": "The enrol line where Require MFA for Everyone has no turn-on day: that policy held, or the step naming it held (ui/surfaces/stepVars.ts deviceWords). The dated line lost only its day and read '...Company Portal app before.' in the campaign email and its device list.",
+        "enrolUndated": "enroll it in Intune with the Company Portal app",
         "apps": "use supported work apps and follow the company app-protection instructions",
         "none": "no company data on it; work from your computer"
       },

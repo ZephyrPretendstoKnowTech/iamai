@@ -1342,7 +1342,7 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
   // `undated`: the board holds the step (planBoard.ts boardHolds, read by the
   // caller that holds the board). Its words lose the days the plan scheduled for
   // it, and its milestone its day (owner decision 2, 2026-09-22).
-  const ex = vars ?? (undated ? withoutScheduleDates(stepVars(step, ctx), step) : stepVars(step, ctx))
+  const ex = vars ?? (undated ? withoutScheduleDates(stepVars(step, ctx), step, ctx) : stepVars(step, ctx))
   const cs = contentStepFor(step) as Record<string, unknown> | undefined
   const tenant = tenantNameOf(ctx.snapshot)
   // The Plan's one presentation state: the row word, the badge, the bar and the rail read it (planState.ts).
