@@ -132,7 +132,6 @@ export type AppWords = {
     unnamedStrength: string
     strengthNotRead: string
     targetsExcept: string
-    guestTypes: Record<string, string>
     deviceFilterInclude: string
     deviceFilterExclude: string
     termsOfUse: string

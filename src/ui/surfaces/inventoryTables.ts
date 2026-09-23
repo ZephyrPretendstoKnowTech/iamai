@@ -20,6 +20,8 @@ import { policyFacts } from '../../coverage/facts.ts'
 import { buildStrengthLookup } from '../../coverage/strength.ts'
 import { detectFacets } from '../../coverage/applicability.ts'
 import { serviceReading } from '../../roadmap/workflows.ts'
+import { portalName } from '../../roadmap/portalLines.ts'
+import { countryName } from '../../mapping/countries.ts'
 import { buildViabilityInputs } from '../../scoring/fromSnapshot.ts'
 import { scoreMfaViability } from '../../scoring/mfaViability.ts'
 import type { MfaViability } from '../../scoring/mfaViability.ts'
@@ -170,7 +172,7 @@ export function excludedRolesWords(f: PolicyFacts): string[] {
 /** The guest or external types a policy excludes, by name; "guests" only where it excludes every type. */
 export function excludedGuestsWords(f: PolicyFacts): string {
   const types = f.whoNot.guestTypes ?? []
-  return types.length === 0 ? C.policies.guests : types.map((t) => W.guestTypes[t] ?? t).join(', ')
+  return types.length === 0 ? C.policies.guests : types.map((t) => portalName('guestType', t) ?? t).join(', ')
 }
 
 /** The Users column's tooltip: the names behind the counts. */
@@ -189,7 +191,7 @@ function appsSummary(f: PolicyFacts, appName: (id: string) => string | null): st
   if (f.apps.office365) bits.push(P.office365)
   if (f.apps.adminPortals) bits.push(P.adminPortals)
   if (f.apps.ids.size > 0) bits.push(P.apps(f.apps.ids.size))
-  for (const a of f.apps.userActions) bits.push(P.userActions(a))
+  for (const a of f.apps.userActions) bits.push(P.userActions(portalName('userAction', a) ?? a))
   if (f.apps.authContexts.size > 0) bits.push(P.authContexts(f.apps.authContexts.size))
   const include = bits.join(', ') || P.none
   if (f.apps.excludedIds.size === 0) return include
@@ -202,10 +204,12 @@ function appsSummary(f: PolicyFacts, appName: (id: string) => string | null): st
 function conditionsSummary(f: PolicyFacts, location: (id: string) => string): string {
   const P = C.policies
   const bits: string[] = []
-  if (f.clientApps.size > 0 && !f.clientApps.has('all')) bits.push(P.clientApps([...f.clientApps].join(', ')))
+  // Graph's values by the portal's names (roadmap/portalLines.ts portalName), never their keys.
+  if (f.clientApps.size > 0 && !f.clientApps.has('all')) bits.push(P.clientApps([...f.clientApps].map((c) => portalName('clientApp', c) ?? c).join(', ')))
   if (f.platforms) {
-    const include = [...f.platforms.include].join(', ') || 'any'
-    bits.push(P.platforms(f.platforms.exclude.size > 0 ? fillText(W.targetsExcept, { include, exclude: [...f.platforms.exclude].join(', ') }) : include))
+    const platform = (p: string): string => (p.toLowerCase() === 'all' ? 'all' : (portalName('platform', p) ?? p))
+    const include = [...f.platforms.include].map(platform).join(', ') || 'any'
+    bits.push(P.platforms(f.platforms.exclude.size > 0 ? fillText(W.targetsExcept, { include, exclude: [...f.platforms.exclude].map(platform).join(', ') }) : include))
   }
   const loc = (id: string) => (id.toLowerCase() === 'all' ? 'all' : id.toLowerCase() === 'alltrusted' ? 'all trusted' : location(id))
   if (f.locations)
@@ -216,7 +220,7 @@ function conditionsSummary(f: PolicyFacts, location: (id: string) => string): st
     )
   if (f.signInRisk.size > 0) bits.push(P.signInRisk([...f.signInRisk].join(', ')))
   if (f.userRisk.size > 0) bits.push(P.userRisk([...f.userRisk].join(', ')))
-  if (f.flows.size > 0) bits.push(P.flows([...f.flows].join(', ')))
+  if (f.flows.size > 0) bits.push(P.flows([...f.flows].map((t) => portalName('flow', t) ?? t).join(', ')))
   if (f.deviceFilter) bits.push(f.deviceFilter.mode === 'exclude' ? W.deviceFilterExclude : W.deviceFilterInclude)
   return bits.join(' · ') || '—'
 }
@@ -834,7 +838,8 @@ export function signInModels(snapshot: TenantSnapshot, names: NameDirectory) {
     people: (ids: string[]): string => (ids.length === 0 ? (complete ? S.nobody : W.noneSeen) : ids.length <= 3 ? ids.map(names.label).join(', ') : S.morePeople(ids.slice(0, 3).map(names.label), ids.length - 3)),
     byClientApp: countModel('signInsByClientApp', S.byClientApp, 'iamai-signins-by-client-app.csv', agg?.byClientApp ?? {}, S.columns.count),
     byProtocol: countModel('signInsByProtocol', S.byProtocol, 'iamai-signins-by-protocol.csv', Object.fromEntries(Object.entries(agg?.byProtocol ?? {}).map(([k, v]) => [protocolName(k), v])), S.columns.count),
-    byCountry: { ...countModel('signins', C.tabs.signIns, 'iamai-signins-by-country.csv', agg?.byCountry ?? {}, S.columns.users), notRead },
+    // A country by its name (mapping/countries.ts countryName), never its ISO code.
+    byCountry: { ...countModel('signins', C.tabs.signIns, 'iamai-signins-by-country.csv', Object.fromEntries(Object.entries(agg?.byCountry ?? {}).map(([k, v]) => [countryName(k), v])), S.columns.users), notRead },
     olderMethods: usage
       ? ({
           id: 'olderMethods',

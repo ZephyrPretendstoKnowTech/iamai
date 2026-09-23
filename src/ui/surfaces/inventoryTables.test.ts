@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { appsModel, authMethodsModel, authStrengthsModel, capabilitiesModel, devicesModel, groupsModel, inventoryTables, licencesModel, locationsModel, methodTargetGroupsOf, peopleModel, policiesModel, policyFactsOf, referencedGroupsOf, registrationModel, rolesModel, securityDefaultsOf, signInModels, workloadsModel } from './inventoryTables.ts'
 import { serviceReading } from '../../roadmap/workflows.ts'
+import { portalName } from '../../roadmap/portalLines.ts'
 import { readinessView } from '../../derive/mfaReadiness.ts'
 import { methodsCell } from './readinessCells.ts'
 import { buildNameDirectory } from '../../names.ts'
@@ -252,7 +253,7 @@ test('a Policies row states what the policy excludes and every control it carrie
   const m = policiesModel(s, policyFactsOf(s, policies), names)
   const cell = (id: string, key: string) => String(m.columns.find((c) => c.key === key)!.cell(m.rows.find((r) => r.id === id)!))
   assert.match(cell('sync-role', 'exclusions'), /Directory Synchronization Accounts/)
-  assert.equal(cell('providers', 'exclusions'), app.inventory.guestTypes.serviceProvider)
+  assert.equal(cell('providers', 'exclusions'), portalName('guestType', 'serviceProvider'))
   assert.match(cell('platforms', 'conditions'), / except /)
   assert.ok(cell('platforms', 'conditions').includes(app.inventory.deviceFilterExclude), cell('platforms', 'conditions'))
   assert.equal(cell('apps', 'apps'), `${C.policies.allApps} except ${names.label(intuneEnrollment)}`)
@@ -300,4 +301,30 @@ test('People: a person whose methods were not read is not "Possibly broken", and
   const p = peopleModel(mid, buildNameDirectory(mid))
   assert.equal(cell(p, 'mfa', person.id), unreadWord)
   assert.equal(cell(p, 'method', person.id), unreadWord)
+})
+
+test('Policies and sign-in rows name Graph values as the portal does, never by their keys', () => {
+  const s = fixture('demo').snapshot
+  const names = buildNameDirectory(s)
+  const raw = (id: string, conditions: Record<string, unknown>, applications: Record<string, unknown> = { includeApplications: ['All'] }) => ({
+    id,
+    displayName: id,
+    state: 'enabled',
+    conditions: { users: { includeUsers: ['All'] }, applications, clientAppTypes: ['all'], ...conditions },
+    grantControls: { operator: 'OR', builtInControls: ['block'] },
+  })
+  const policies = [
+    raw('legacy', { clientAppTypes: ['exchangeActiveSync', 'other'] }),
+    raw('flows', { authenticationFlows: { transferMethods: 'deviceCodeFlow,authenticationTransfer' } }),
+    raw('platforms', { platforms: { includePlatforms: ['android', 'iOS'] } }),
+    raw('register', {}, { includeApplications: [], includeUserActions: ['urn:user:registersecurityinfo'] }),
+  ]
+  const m = policiesModel(s, policyFactsOf(s, policies), names)
+  const all = m.rows.map((r) => m.columns.map((c) => String(c.cell(r))).join(' | ')).join('\n')
+  for (const key of ['exchangeactivesync', 'deviceCodeFlow', 'authenticationTransfer', 'urn:user:', 'android']) assert.ok(!all.includes(key), `no ${key} in\n${all}`)
+  for (const word of ['Exchange ActiveSync clients', 'Other clients', 'Device code flow', 'Authentication transfer', 'Android', 'iOS', 'Register security information']) assert.ok(all.includes(word), `${word} in\n${all}`)
+  // Countries by name, not by ISO code.
+  const byCountry = signInModels(s, names).byCountry
+  assert.ok(byCountry.rows.length > 0)
+  for (const r of byCountry.rows) assert.doesNotMatch(String(byCountry.columns[0].cell(r)), /^[A-Z]{2}$/)
 })

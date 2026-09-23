@@ -92,6 +92,18 @@ const GUEST_TYPE_LABEL: Record<string, string> = {
 }
 const RISK_LABEL: Record<string, string> = { high: 'High', medium: 'Medium', low: 'Low' }
 const RISK_ORDER = ['high', 'medium', 'low']
+const USER_ACTION_LABEL: Record<string, string> = { 'urn:user:registersecurityinfo': 'Register security information', 'urn:user:registerdevice': 'Register or join devices' }
+
+/**
+ * A Graph value as the portal names it — a platform, a client app type, an
+ * authentication flow, a guest or external type, a user action — or null where
+ * the portal has no name IAMAI holds. The one map: these lines and the
+ * Inventory's rows (ui/surfaces/inventoryTables.ts) both read it.
+ */
+export function portalName(kind: 'platform' | 'clientApp' | 'flow' | 'guestType' | 'userAction', value: string): string | null {
+  const map = { platform: PLATFORM_LABEL, clientApp: CLIENT_APP_LABEL, flow: FLOW_LABEL, guestType: GUEST_TYPE_LABEL, userAction: USER_ACTION_LABEL }[kind]
+  return map[lc(value)] ?? null
+}
 
 function platformList(s: Set<string>, ctx: PortalContext): string {
   return [...s].map((p) => PLATFORM_LABEL[lc(p)] ?? ctx.nameOf(p)).join(', ')
@@ -169,8 +181,8 @@ function usersLine(f: PolicyFacts, ctx: PortalContext): string {
 /** The `Target resources → …` line. */
 function resourcesLine(f: PolicyFacts, ctx: PortalContext): string | null {
   const a = f.apps
-  if (a.userActions.has('urn:user:registersecurityinfo')) return 'Target resources → User actions → Register security information'
-  if (a.userActions.has('urn:user:registerdevice')) return 'Target resources → User actions → Register or join devices'
+  if (a.userActions.has('urn:user:registersecurityinfo')) return `Target resources → User actions → ${USER_ACTION_LABEL['urn:user:registersecurityinfo']}`
+  if (a.userActions.has('urn:user:registerdevice')) return `Target resources → User actions → ${USER_ACTION_LABEL['urn:user:registerdevice']}`
   if (a.authContexts.size > 0) return `Target resources → Authentication context → ${names(a.authContexts, ctx)}`
   // The resources an all-resources policy excludes are part of its target: "All
   // resources" beside a request that excludes Microsoft Intune Enrollment was two
