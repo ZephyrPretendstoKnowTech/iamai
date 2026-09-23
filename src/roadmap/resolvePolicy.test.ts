@@ -27,6 +27,7 @@ import { portalNamesFor, stepPortalLines } from '../ui/surfaces/stepPortal.ts'
 import { implementationOffered, jsonOffered, missingObjects, policyJson, policyJsonText, stepOperations } from '../ui/surfaces/stepJson.ts'
 import { powershellFor } from '../ui/surfaces/stepPowerShell.ts'
 import { enforcementUnearned } from './forecast.ts'
+import { createWaitsOnReadiness } from './operations.ts'
 import type { MappingState } from '../mapping/types.ts'
 import { applyStepDecisions } from './decisions.ts'
 import { applyDeviations } from './deviations.ts'
@@ -340,6 +341,7 @@ test('6: an object the tenant does not have withholds Portal, JSON, PowerShell a
   let gated = 0
   let offered = 0
   let unearned = 0
+  let waitsOnDevices = 0
   for (const { step, portal } of rows) {
     if ((step.action.resolution?.policies.length ?? 0) === 0) continue
     if (missingObjects(step).length > 0) {
@@ -362,6 +364,17 @@ test('6: an object the tenant does not have withholds Portal, JSON, PowerShell a
       assert.equal(jsonOffered(step), false, `${step.id}: no JSON, no PowerShell, no download either`)
       continue
     }
+    // And for the create a readiness threshold holds with its turn-on: a
+    // compliant-device policy prompts for a certificate in report-only, so its
+    // creation waits on device readiness (operations.ts createWaitsOnReadiness;
+    // owner, 2026-09-23). All four channels shut together here too.
+    if (createWaitsOnReadiness(step)) {
+      waitsOnDevices += 1
+      assert.equal(implementationOffered(step), false, `${step.id}: the one gate is shut until devices are ready`)
+      assert.equal(portal, null, `${step.id}: no portal instructions until devices are ready`)
+      assert.equal(jsonOffered(step), false, `${step.id}: no JSON, no PowerShell, no download either`)
+      continue
+    }
     assert.equal(implementationOffered(step), true, `${step.id}: the gate is open`)
     offered += 1
     if (step.action.json) assert.equal(jsonOffered(step), true, `${step.id}: the JSON is offered with it`)
@@ -369,6 +382,7 @@ test('6: an object the tenant does not have withholds Portal, JSON, PowerShell a
   assert.ok(gated >= 2, `more than one gated policy exercised (${gated})`)
   assert.ok(offered >= 5, `more than one offered policy exercised (${offered})`)
   assert.ok(unearned >= 1, `the report-only case exercised (${unearned})`)
+  assert.equal(waitsOnDevices, 1, 'the managed-device create waits on device readiness')
 })
 
 test('6: the countries block waits on the allowed-countries location, and nothing actionable escapes', () => {

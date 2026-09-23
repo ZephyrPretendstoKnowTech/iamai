@@ -6,8 +6,8 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import registry from '../../content/implementation/registry.generated.json' with { type: 'json' }
 import { fixture } from '../../roadmap/fixtures/index.ts'
-import type { FixtureName } from '../../roadmap/fixtures/index.ts'
-import { runFixture } from '../../roadmap/fixtures/run.ts'
+import type { Fixture, FixtureName } from '../../roadmap/fixtures/index.ts'
+import { runFixture, withDevicesReady } from '../../roadmap/fixtures/run.ts'
 import { laneReadings } from './planLanes.ts'
 import { laneViewFor, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from './planBoard.ts'
 import { planDates } from './stepVars.ts'
@@ -34,9 +34,9 @@ const CONFIRM = `Complete ${EXCLUSIONS_TITLE} first. IAMAI found a matching grou
 // so the specs read it from the shared line rather than repeating it nine times.
 const REFUSE_ON = 'Do not choose **On** here: a policy created On applies to everyone it covers from the moment you save, before anyone has seen who it would have stopped — the failure this plan exists to prevent. The script for this step can only create in Report-only.'
 
-/** One step's body on a fixture, as the Plan composes it (sessionAdminContentSpecs.test.ts). */
-function bodyOf(name: FixtureName, stepId: string): StepBody {
-  const f = fixture(name)
+/** One step's body on a fixture, as the Plan composes it (sessionAdminContentSpecs.test.ts), after `adjust` where one is given. */
+function bodyOf(name: FixtureName, stepId: string, adjust: (f: Fixture) => Fixture = (f) => f): StepBody {
+  const f = adjust(fixture(name))
   const r = runFixture(f, {}, null, f.snapshot.asOf)
   const readings = laneReadings(r.steps, [])
   const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.title ?? null
@@ -159,7 +159,7 @@ test('s-goal-sign-in-risk: Entra is one numbered portal procedure naming the str
   assert.equal(words.doneEnd, 'A sign-in {tenant} rates high risk cannot continue until it is answered with a method the selected grant accepts, and the exclusions group is applied.')
 })
 
-test('s-goal-require-managed-device: the threshold says what it measures, Entra is one numbered create procedure, and it is undated while it waits on the device direction', () => {
+test('s-goal-require-managed-device: the threshold says what it measures, the held create draws the Intune preparation and is undated, and the numbered create procedure appears once devices are ready', () => {
   const DEVICE = 's-goal-require-managed-device'
   // Require Healthy Devices D8 (docs/plans/require-healthy-devices-spec.md): the
   // gate counts the active people who own an in-scope compliant device
@@ -188,8 +188,12 @@ test('s-goal-require-managed-device: the threshold says what it measures, Entra 
     },
   ])
   assert.doesNotMatch(packageOf(DEVICE).blocks['entra.create'].text, /canonical|STEP\.md|IAMAI-resolved|hybrid Azure AD/)
-  // On the demo the step is On Hold with nothing deployed: it draws the create procedure after the Intune prerequisite.
+  // On the demo the step is On Hold with nothing deployed, and its create waits
+  // on device readiness (owner decision D, 2026-09-23; roadmap/compliantDeviceCreate.test.ts):
+  // Entra draws the Intune preparation that readiness depends on, and no create.
   const b = bodyOf('demo', DEVICE)
+  assert.match(drawn(b, 'portal'), /Mark devices with no compliance policy assigned as: Not compliant/)
+  assert.doesNotMatch(drawn(b, 'portal'), /New policy/)
   // The demo carries each person's devices since 95228ecc (withDeviceFacts), which moved the compliant share; the script account left the people counted in 8b71ec1a (29% -> 30%).
   assert.equal(b.readiness.tiles.find((t) => t.key === 'gate')?.value, '30% of people on a compliant device')
   const prerequisites = b.readiness.tiles.filter((t) => t.key.includes('step:'))
@@ -206,7 +210,10 @@ test('s-goal-require-managed-device: the threshold says what it measures, Entra 
   // board's When says for a step it holds (owner decision 2, 2026-09-22): it read
   // "Not scheduled" under a row reading "After prerequisites".
   assert.equal(b.rail.metric, 'After prerequisites')
-  const create = authoredParts(drawn(b, 'portal')).find((p) => p.kind === 'list')
+  // With every person on a compliant device it draws the create procedure after the Intune prerequisite.
+  const ready = bodyOf('demo', DEVICE, withDevicesReady)
+  assert.match(drawn(ready, 'portal'), /Mark devices with no compliance policy assigned/)
+  const create = authoredParts(drawn(ready, 'portal')).find((p) => p.kind === 'list')
   assert.ok(create && create.kind === 'list' && create.items[1][0] === 'Name: Core - Require - Compliant device for Office 365.', 'the create procedure names the demo policy')
   // The numbered readiness explanation stays shared (BLOCKED.md). Editorial batch C: the register Why; the held end state is unchanged.
   const words = stepWords('require-managed-device')

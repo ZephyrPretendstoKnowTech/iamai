@@ -252,10 +252,18 @@ function mapRegistration(raw: unknown): RegistrationRow {
   }
 }
 
-function mapUser(raw: unknown): UserRow {
+// `activityRead` is whether this read selected signInActivity and succeeded.
+// On such a read Graph leaves the property out for an account that never
+// signed in, and for one that last signed in before April 2020
+// (https://learn.microsoft.com/graph/api/resources/user), so its absence is
+// "no sign-in on record": read like every other account, with no last sign-in.
+// Both kinds are dormant. Judged per row instead, those accounts read as "not
+// read" and left the dormant step on every real tenant
+// (docs/plans/roadmap-flow/v2-research/dormant.md §5).
+function mapUser(raw: unknown, activityRead: boolean): UserRow {
   const u = raw as Record<string, unknown>
   const activity = (u.signInActivity ?? null) as Record<string, unknown> | null
-  const successfulSignInActivityRead = Object.prototype.hasOwnProperty.call(u, 'signInActivity')
+  const successfulSignInActivityRead = activityRead
   const onPremisesSyncEnabledRead = Object.prototype.hasOwnProperty.call(u, 'onPremisesSyncEnabled')
   const lastSuccessful = typeof activity?.lastSuccessfulSignInDateTime === 'string' ? activity.lastSuccessfulSignInDateTime : null
   const lastAttempt = typeof activity?.lastSignInDateTime === 'string' ? activity.lastSignInDateTime : null
@@ -301,30 +309,32 @@ export async function collectUsers(
   const baseSelect =
     'id,displayName,userPrincipalName,userType,usageLocation,createdDateTime,accountEnabled,mail,assignedPlans,assignedLicenses,onPremisesSyncEnabled,externalUserState,department,jobTitle,officeLocation'
   const select = `${baseSelect},signInActivity`
+  const read = (raw: unknown) => mapUser(raw, true)
+  const unread = (raw: unknown) => mapUser(raw, false)
   if (!opts.includeSignInActivity) {
     const rows = await graphPaged(ctx.tokens, `${V1}/users?$select=${baseSelect}&$top=999`, {
       signal: ctx.signal,
-      onPage: async (page) => onUserPage(page.map(mapUser)),
+      onPage: async (page) => onUserPage(page.map(unread)),
     })
     return {
-      users: rows.map(mapUser),
+      users: rows.map(unread),
       partialReason: `signInActivity ${licenceGateReason('entraP1')}`,
     }
   }
   try {
     const rows = await graphPaged(ctx.tokens, `${V1}/users?$select=${select}&$top=999`, {
       signal: ctx.signal,
-      onPage: async (page) => onUserPage(page.map(mapUser)),
+      onPage: async (page) => onUserPage(page.map(read)),
     })
-    return { users: rows.map(mapUser), partialReason: null }
+    return { users: rows.map(read), partialReason: null }
   } catch (e) {
     if (!(e instanceof SectionDisabledError)) throw e
     const rows = await graphPaged(
       ctx.tokens,
       `${V1}/users?$select=id,displayName,userPrincipalName,userType,usageLocation,createdDateTime,accountEnabled,mail,assignedPlans,assignedLicenses,onPremisesSyncEnabled,externalUserState,department,jobTitle,officeLocation&$top=999`,
-      { signal: ctx.signal, onPage: async (page) => onUserPage(page.map(mapUser)) },
+      { signal: ctx.signal, onPage: async (page) => onUserPage(page.map(unread)) },
     )
-    return { users: rows.map(mapUser), partialReason: `signInActivity unavailable: ${e.message}` }
+    return { users: rows.map(unread), partialReason: `signInActivity unavailable: ${e.message}` }
   }
 }
 

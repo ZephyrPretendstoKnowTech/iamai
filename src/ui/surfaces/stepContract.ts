@@ -29,7 +29,7 @@ import { appearedEnforced, dimensionWords, watchedArrive } from '../../roadmap/o
 import type { Condition, Lifecycle, Milestone } from '../../roadmap/lifecycle.ts'
 import { heldForReview, nextMilestone, reviewCauses } from '../../roadmap/lifecycle.ts'
 import type { PolicyHold, UnavailableReason } from '../../roadmap/operations.ts'
-import { awaitsWorkflowRecord, enforcesOnRun, implementationOffered, isPreserved, operationsOf, policyHold, switchedOffPolicies, unavailableReason, strengthNameIn } from '../../roadmap/operations.ts'
+import { awaitsWorkflowRecord, createWaitsOnReadiness, enforcesOnRun, implementationOffered, isPreserved, operationsOf, policyHold, switchedOffPolicies, unavailableReason, strengthNameIn } from '../../roadmap/operations.ts'
 import { requiredMembers } from '../../roadmap/tracking.ts'
 import { unreadLine } from '../../roadmap/evidence.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
@@ -587,6 +587,16 @@ function heldLine(step: Step): string | null {
   return owed.gaps.length > 0 ? `${lead} ${fillText(app.plan.noOperationHeldGap, { gaps: owed.gaps.join('; ') })}` : lead
 }
 
+/**
+ * Why a readiness threshold withholds this step's implementation: the turn-on,
+ * or — for a policy that requires a compliant device — its report-only create
+ * too, with the certificate prompt that is why (roadmap/operations.ts
+ * createWaitsOnReadiness). The one reading the step and its export both state.
+ */
+export function readinessHeldLine(step: Step, tenant: string): string {
+  return fillText(createWaitsOnReadiness(step) ? app.plan.readinessHeldCreate : app.plan.readinessHeld, { tenant, ...(step.action.readinessGate ?? {}) })
+}
+
 /** The reason line an unavailable policy already shows, filled: Foundation A's answer in the operator's words. */
 function reasonLine(step: Step, reason: UnavailableReason, tenant: string, exclusionsUnconfirmed = false): string {
   switch (reason) {
@@ -632,7 +642,7 @@ function reasonLine(step: Step, reason: UnavailableReason, tenant: string, exclu
     case 'escape-hatch-unverified':
       return fillText(app.plan.escapeHatchHeld, { tenant, steps: heldByTitle(step) })
     case 'readiness-unmet':
-      return fillText(app.plan.readinessHeld, { tenant, ...(step.action.readinessGate ?? {}) })
+      return readinessHeldLine(step, tenant)
     case 'switched-off': {
       // Set to Report-only, never straight to On (owner, 2026-09-23). Report-only
       // denies nobody, so the plan's own prerequisites of enforcement
@@ -749,7 +759,10 @@ function foundOf(step: Step, tenant: string, said: string | null, routeStart: St
   // that line says setting it to Report-only is the change, and this one said "or
   // follow the instructions below and leave it switched off" over no
   // instructions — two sources for one fact, disagreeing (Jordan D6).
-  if (tag && tag.state === 'disabled' && tag.matchedBy === 'tag' && tag.policyName && !isPreserved(step) && unavailableReason(step) !== 'switched-off') {
+  // Nor while the Report-only patch it names waits on device readiness
+  // (roadmap/operations.ts createWaitsOnReadiness): the step's reason says why,
+  // and "set Enable policy to Report-only there" beside it said the opposite.
+  if (tag && tag.state === 'disabled' && tag.matchedBy === 'tag' && tag.policyName && !isPreserved(step) && unavailableReason(step) !== 'switched-off' && !createWaitsOnReadiness(step)) {
     out.push(found('tagged-disabled', fillText(CONTRACT.foundTaggedDisabled, { policy: tag.policyName, tenant })))
   }
   // A goal the tenant already delivers, and *which* policy delivers it. The

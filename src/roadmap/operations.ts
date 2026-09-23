@@ -1149,15 +1149,17 @@ export function switchedOffPolicies(step: PolicyStep): SwitchedOffPolicy[] {
  * which is the create where the policy is not in the tenant yet, and was the
  * create — "Policies > New policy" — beside the policy that is there and Off,
  * so following it built a second one. Report-only denies nobody, so setting
- * the one that is there to it is safe whatever else the step waits on. The
- * reasons above it hand over no procedure for the policy at all.
+ * the one that is there to it is safe whatever else the step waits on, save
+ * the readiness threshold of a policy that requires a compliant device
+ * (`createWaitsOnReadiness`): that patch waits, whichever reason the step
+ * reads. The reasons above it hand over no procedure for the policy at all.
  *
  * Every channel reads this and nothing else to decide it: the portal lines, the
  * Implementation Task, the patches (`reportOnlyPatchesOf`), the exports and AI
  * Info (ui/surfaces/stepResources.ts switchedOffLines).
  */
 export function toReportOnly(step: PolicyStep): SwitchedOffPolicy[] {
-  if (step.status === 'done') return []
+  if (step.status === 'done' || createWaitsOnReadiness(step)) return []
   const reason = unavailableReason(step)
   return reason === 'switched-off' || reason === 'missing-object' ? switchedOffPolicies(step) : []
 }
@@ -1275,6 +1277,49 @@ export function enforcementHeld(step: PolicyStep): boolean {
   return step.action.readinessGate !== undefined && step.status !== 'done' && step.status !== 'skipped' && !addsExclusionsToEnforced(step)
 }
 
+/**
+ * True when the readiness threshold that holds this step's enforcement holds its
+ * report-only preparation too: a policy that requires a compliant device, which
+ * the step would create, or which the tenant has switched off and the step would
+ * set to Report-only (`toReportOnly`).
+ *
+ * A create lands in report-only and denies nobody, which is why a threshold
+ * holds only the turn-on (`policyResult`). This grant is the exception: in
+ * report-only, a policy that requires a compliant device can prompt Mac, iOS
+ * and Android devices to pick a certificate, again and again, until the device
+ * is compliant (https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-report-only;
+ * content shared.certificatePrompt). The owner, 2026-09-23: "Hold the create
+ * for that policy until ready." So it waits on the same gate its turn-on does,
+ * and on nothing new; every other create stays creatable early.
+ *
+ * A policy found Off is the same policy one patch from the same prompts: its
+ * Report-only patch leaves the tenant exactly where the create would have, so
+ * it waits on the same gate, and the step states the same fact (content
+ * readinessHeldCreate). Where the step resolves no create for it (a pair's
+ * member), the member's own update names it, and the tenant's policy it
+ * leaves behind (`target`) says whether it requires a compliant device. Every
+ * other policy found Off is still set to Report-only at once.
+ */
+export function createWaitsOnReadiness(step: PolicyStep): boolean {
+  if (!enforcementHeld(step)) return false
+  const off = new Set(switchedOffPolicies(step).map((p) => p.id))
+  return validOperations(step.action).some((op) => {
+    const after = op.mode === 'create' ? op.body : off.has(op.policyId) && isObject(op.target) ? op.target : null
+    return after !== null && effectOf(after).controls.has('compliantdevice')
+  })
+}
+
+/**
+ * True when that wait is what withholds the step's policy (`policyResult`
+ * `readiness-unmet`): nothing makes the policy unwritable, and the threshold is
+ * all that holds its create. The one reading of "held on device readiness" that
+ * the hold (holds.ts) and the step's preparation (ui/surfaces/stepInstructions.ts
+ * preparesWhileCreateWaits) both make.
+ */
+export function createHeldOnReadiness(step: PolicyStep): boolean {
+  return unavailableReason(step) === 'readiness-unmet' && createWaitsOnReadiness(step)
+}
+
 /** True when the step runs operations and each one only adds exclusions to a policy the tenant already has on, submitting no enforcement of its own. */
 export function addsExclusionsToEnforced(step: PolicyStep): boolean {
   const ops = validOperations(step.action)
@@ -1369,7 +1414,12 @@ export function policyResult(step: PolicyStep): PolicyResult {
   // finds the policy in report-only, and the step's ordinary watch and gates
   // decide when it goes on (`reportOnlyPatchesOf` is the one change every
   // channel hands over).
-  if (switchedOffPolicies(step).length > 0 && step.status !== 'done') return { kind: 'unavailable', reason: 'switched-off' }
+  //
+  // Save for a policy that requires a compliant device, whose report-only
+  // prompts for a certificate (`createWaitsOnReadiness`): its Report-only patch
+  // waits on the readiness threshold as its create does, and the step says so
+  // rather than handing the patch over.
+  if (switchedOffPolicies(step).length > 0 && step.status !== 'done') return { kind: 'unavailable', reason: createWaitsOnReadiness(step) ? 'readiness-unmet' : 'switched-off' }
   // The readiness prerequisite, and the same boundary the escape hatch draws: a
   // threshold the plan itself says to wait for holds every enforcement, and a
   // threshold nothing measured has not been met either. It sits below the
@@ -1389,6 +1439,10 @@ export function policyResult(step: PolicyStep): PolicyResult {
   if (enforcementHeld(step) && validOperations(step.action).some(enforcesOnRun)) {
     return { kind: 'unavailable', reason: 'readiness-unmet' }
   }
+  // The one create the threshold holds as well (`createWaitsOnReadiness`): in
+  // report-only a compliant-device grant prompts for a certificate, so its
+  // creation is not safe preparation, and it waits with the turn-on.
+  if (createWaitsOnReadiness(step)) return { kind: 'unavailable', reason: 'readiness-unmet' }
   const declared = step.action.resolution?.policies ?? []
   const valid = validOperations(step.action)
   // A deployed policy that is not what the plan asked for in a part IAMAI does

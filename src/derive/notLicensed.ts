@@ -3,7 +3,8 @@
 // the step's title and the licence it needs — plus the one sentence under the
 // group and the count the print page carries. The licence ladder: the goals a
 // tenant's tier puts out of reach are listed here, never in the plan, and
-// nothing in the plan waits on them.
+// nothing in the plan waits on them; both sentences say a finished plan is the
+// baseline only as far as the licences reach.
 //
 // Pure: no DOM, no network.
 import { pages, stepById } from '../content/content.ts'
@@ -17,7 +18,8 @@ import { DEVICE_GOALS } from '../roadmap/deviations.ts'
 import { list } from '../copy/statements.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 
-export type NotLicensedRow = { goalId: string; title: string; licence: string; text: string }
+/** One line of the group. `goalIds` are the baseline goals it names: one, or each device goal on the shared device line. */
+export type NotLicensedRow = { goalId: string; goalIds: string[]; title: string; licence: string; text: string }
 
 type FooterCopy = { notLicensed: string; notLicensedRow: string; notLicensedNote: string; notLicensedDevices: string }
 const footer = (): FooterCopy => (pages.plan as { footer: FooterCopy }).footer
@@ -40,7 +42,7 @@ export function notLicensedRows(coverage: CoverageReport, goalMap: GoalMap): Not
     const cs = stepById[r.goal.id] ?? stepById[CONTENT_ALIAS[r.goal.id]]
     const title = cs?.title ?? r.goal.name
     const licence = cs?.licence ?? facetLicence ?? tierName(r.goal.implementations[0]?.tier ?? '')
-    out.push({ goalId: r.goal.id, title, licence, text: fillText(P.notLicensedRow, { stepTitle: title, licence }) })
+    out.push({ goalId: r.goal.id, goalIds: [r.goal.id], title, licence, text: fillText(P.notLicensedRow, { stepTitle: title, licence }) })
   }
   // No Intune licence (E2): the compliant-device, app-protection and
   // Intune-enrolment steps are one shared line, never three, and nothing asks
@@ -50,15 +52,25 @@ export function notLicensedRows(coverage: CoverageReport, goalMap: GoalMap): Not
     const steps = list(devices.map((r) => r.title))
     const first = out.indexOf(devices[0])
     const rest = out.filter((r) => !DEVICE_GOALS.has(r.goalId))
-    rest.splice(first, 0, { goalId: 'devices', title: steps, licence: devices[0].licence, text: fillText(P.notLicensedDevices, { steps }) })
+    rest.splice(first, 0, { goalId: 'devices', goalIds: devices.map((r) => r.goalId), title: steps, licence: devices[0].licence, text: fillText(P.notLicensedDevices, { steps }) })
     return rest
   }
   return out
 }
 
+/**
+ * How many baseline controls the tenant's licences leave out: goals, not lines.
+ * The shared device line names two or three goals, and counting lines said
+ * "Not licensed (6)" over seven (v2-research/licensing.md). The one count the
+ * group's heading and the print page both read.
+ */
+export function notLicensedCount(rows: readonly NotLicensedRow[]): number {
+  return rows.reduce((n, r) => n + r.goalIds.length, 0)
+}
+
 /** "Not licensed (n)" — the collapsed group's one line. */
-export function notLicensedSummary(n: number): string {
-  return fillText(footer().notLicensed, { n })
+export function notLicensedSummary(rows: readonly NotLicensedRow[]): string {
+  return fillText(footer().notLicensed, { n: notLicensedCount(rows) })
 }
 
 /** The one sentence under the group. */
@@ -67,9 +79,9 @@ export function notLicensedNote(): string {
 }
 
 /** The print page's count and sentence (pages.export.printPage1.notLicensed). */
-export function notLicensedPrintLine(n: number): string {
+export function notLicensedPrintLine(rows: readonly NotLicensedRow[]): string {
   const line = (pages.export as { printPage1: { notLicensed: string } }).printPage1.notLicensed
-  return fillText(line, { n })
+  return fillText(line, { n: notLicensedCount(rows) })
 }
 
 /**

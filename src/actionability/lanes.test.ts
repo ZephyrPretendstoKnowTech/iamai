@@ -237,6 +237,37 @@ test('§7 evidence gates: a started policy behind an open gate waits On Hold wit
   assert.equal(read(lane(id, state({ [id]: { exists: true, drift: true, gates: [threshold] } }))), 'Ready · Correct')
 })
 
+// The one exception to "its create is never gated" (owner, 2026-09-23: "Hold the
+// create for that policy until ready"): a report-only policy that requires a
+// compliant device prompts Mac, iOS and Android devices for a certificate, so the
+// readiness gate on its enforcement holds its creation too (`holdsCreate`).
+test('§7 a gate that holds the create: the unstarted policy waits On Hold on it, with the gate as its reason, and is Ready · Create once it closes', () => {
+  const id = 's-goal-require-managed-device'
+  const threshold = { id: 'evidence:readiness:readiness', satisfied: false, minDays: null, reason: 'when device readiness reaches 80% (now 30%)', holdsCreate: true }
+  const held = lane(id, state({ [id]: { exists: false, gates: [threshold] } }))
+  assert.equal(read(held), 'On Hold · evidence:evidence:readiness:readiness')
+  assert.equal(held.reason?.text, threshold.reason)
+  assert.equal(held.nextAction, 'create')
+  assert.equal(read(lane(id, state({ [id]: { exists: false, gates: [{ ...threshold, satisfied: true }] } }))), 'Ready · Create')
+  assert.equal(read(lane(id, state({ [id]: { exists: false, gates: [{ ...threshold, holdsCreate: undefined }] } }))), 'Ready · Create', 'a gate that does not say so gates enforce only')
+  // A blocker the scan found on the step itself binds harder than the gate.
+  assert.equal(read(lane(id, state({ [id]: { exists: false, gates: [threshold], blockers: [{ kind: 'unsupported', id: 'no-operation' }] } }))), 'On Hold · unsupported:no-operation')
+})
+
+// And a policy of that grant found Off: it exists, so its next action is the
+// correction that sets it to Report-only, which prompts exactly as the create
+// would (roadmap/operations.ts createWaitsOnReadiness), so the gate holds it too.
+test("§7 a gate that holds the create holds a started policy's correction to Report-only: On Hold on it, and Ready · Correct once it closes", () => {
+  const id = 's-goal-require-managed-device'
+  const threshold = { id: 'evidence:readiness:readiness', satisfied: false, minDays: null, reason: 'when device readiness reaches 80% (now 30%)', holdsCreate: true }
+  const held = lane(id, state({ [id]: { exists: true, drift: true, gates: [threshold] } }))
+  assert.equal(read(held), 'On Hold · evidence:evidence:readiness:readiness')
+  assert.equal(held.reason?.text, threshold.reason)
+  assert.equal(held.nextAction, 'correct')
+  assert.equal(read(lane(id, state({ [id]: { exists: true, drift: true, gates: [{ ...threshold, satisfied: true }] } }))), 'Ready · Correct')
+  assert.equal(read(lane(id, state({ [id]: { exists: true, drift: true, gates: [{ ...threshold, holdsCreate: undefined }] } }))), 'Ready · Correct', 'a gate that does not say so leaves the correction Ready')
+})
+
 test('§7 an `evidence` or `time/evidence-window` edge is an evidence gate on enforce, never a fact: the started policy waits on it On Hold', () => {
   const id = 's-goal-block-device-code'
   const edges: DependencyData['edges'] = [
