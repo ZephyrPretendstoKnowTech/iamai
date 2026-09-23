@@ -735,7 +735,7 @@ function foundOf(step: Step, tenant: string, said: string | null): ContractFound
   // not reach 38 people" is the same fact as "not deployed", said twice.
   const shortfall = step.coverageShortfall
   if (shortfall && shortfall.people > 0 && step.state.satisfied) {
-    out.push(found('shortfall', fillText(CONTRACT.foundShortfall, { reached: String(shortfall.reached), active: String(shortfall.active), n: String(shortfall.people) })))
+    out.push(found('shortfall', fillText(CONTRACT.foundShortfall, { reached: shortfall.reached, active: shortfall.active, n: shortfall.people })))
   }
   // A create that reaches further than the step's own name (roadmap/generate.ts
   // `widerThan`). The reader is about to build this policy; afterwards is too
