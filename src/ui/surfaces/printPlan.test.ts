@@ -341,9 +341,25 @@ test('the registration window\'s row states the people the window is sized for, 
   const missing = verify.preparation?.missingIds.length ?? 0
   assert.ok(p.schedule.verification.days > 0 && missing === 5, `the premise: messy's window is sized for 5 people (${missing})`)
   const note = verificationNoteOf(p.steps)
-  assert.equal(note, `5 of ${verify.preparation?.ids.length} people in Prepare Your Team for MFA have no usable registered MFA method yet.`)
+  assert.equal(note, `5 of ${verify.preparation?.ids.length} people in Prepare Your Team for MFA are not yet shown to have a usable registered MFA method.`)
   assert.equal(/104|106/.test(note), false, `the note counts another population: ${note}`)
   assert.match(readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8'), /const verificationNote = verificationNoteOf\(steps\)/, 'the row words its own population')
+  // The people the window is sized for include the ones whose registration
+  // could not be read (the campaign's unknownIds are among its missingIds).
+  // Hostile: registration details were refused, nobody could be judged, and the
+  // note said "34 of 34 people … have no usable registered MFA method yet" in
+  // the document whose Completed section says readiness was not measured. It
+  // claims no absence it did not read.
+  const hostile = plan('hostile')
+  const campaign = byId(hostile.steps, 's-verify-mfa')
+  const prep = campaign.preparation
+  assert.ok(prep && prep.readyIds.length === 0 && prep.missingIds.length > 0 && (prep.unknownIds ?? []).length === prep.missingIds.length, 'the premise: hostile\'s window is sized for people whose registration was never read')
+  assert.ok(hostile.schedule.verification.days > 0, 'the premise: hostile prints the window')
+  const unread = verificationNoteOf(hostile.steps)
+  assert.equal(unread, `${prep.missingIds.length} of ${prep.ids.length} people in Prepare Your Team for MFA are not yet shown to have a usable registered MFA method.`)
+  assert.equal(/have no usable/.test(unread), false, `the note states an absence nobody read: ${unread}`)
+  // One person still reads as one.
+  assert.equal(verificationNoteOf([{ ...campaign, preparation: { ...prep, ids: prep.ids.slice(0, 3), missingIds: prep.missingIds.slice(0, 1) } }]), '1 of 3 people in Prepare Your Team for MFA is not yet shown to have a usable registered MFA method.')
 })
 
 // ---- Every printed date in the plan's format and zone ----

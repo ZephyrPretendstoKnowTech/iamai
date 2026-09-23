@@ -153,8 +153,11 @@ export function phaseDatesOf(rows: readonly Step[]): string | null {
  * preparation.missingIds), of everyone that step prepares. It used to state
  * derive/facts.ts notReady, readiness to the phishing-resistant standard, a
  * different population: messy's one-day window sat beside "104 of 106 active
- * people are not Ready yet". Empty where the campaign step or its preparation
- * is absent, and then the row says nothing rather than another count.
+ * people are not Ready yet". Those people include the ones whose registration
+ * could not be read (preparation.unknownIds), so the note says they are not
+ * shown to have a usable method, never that they have none. Empty where the
+ * campaign step or its preparation is absent, and then the row says nothing
+ * rather than another count.
  */
 export function verificationNoteOf(steps: readonly Step[]): string {
   const campaign = steps.find((s) => s.id === 's-verify-mfa')
