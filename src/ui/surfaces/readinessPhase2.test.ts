@@ -262,3 +262,19 @@ test('the footer does not count "the 0 people who signed in" on a tenant whose a
   assert.equal(countedLine(dc, { needP1: false, activityUnread: dv.explained.unread }), fillText(FOOT.counted, { cohort: cohortWords(dc.length, dc.filter((r) => r.guest).length) }))
   assert.match(page(), /countedLine\(counted, \{ needP1: signInsNeedP1\(snapshot\), activityUnread: view\.explained\.unread \}\)/)
 })
+
+test('a guest who already holds Microsoft Authenticator is not told to set it up', () => {
+  let held = 0
+  for (const name of ['demo', 'mid', 'midflight', 'messy'] as const) {
+    const f = fixture(name)
+    for (const r of readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.filter((x) => x.guest && x.state !== null)) {
+      if (!(r.methods ?? []).includes('authenticator')) continue
+      if (!['seamless', 'setUp', 'addDevice', 'updateOs'].includes(r.readiness?.next.kind ?? '')) continue
+      held++
+      assert.equal(nextCell(r), NX.guestHasAuthenticator, `${name}/${r.user.id}`)
+      assert.doesNotMatch(nextCell(r), /Set up Microsoft Authenticator/, `${name}/${r.user.id}`)
+    }
+  }
+  assert.ok(held > 0, 'the premise: guests holding Authenticator were given a set-up step')
+  assert.doesNotMatch(NX.guestHasAuthenticator, /^Set up|Add /, 'a fact, not an instruction')
+})
