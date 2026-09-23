@@ -40,7 +40,7 @@ export type VerifiedRecoveryEvidence = {
   candidateSetBasis?: string
   source?: 'microsoft-graph-signin'
 }
-export type CleanupCheckpoint = { at: string; cleanup: CleanupKind; date: string; basis?: string; accountIds?: string[]; timeZone?: string; outcome?: 'passed' | 'failed'; workflow?: string; purpose?: RecoveryPurpose; tenantId?: string; configurationObservedAt?: string; configurationCheckedThrough?: string; recipient?: string; signInAtByAccount?: Record<string, string>; accountBasis?: Record<string, string>; recoveryEvidence?: Record<string, VerifiedRecoveryEvidence>; recoveryGeneration?: string; candidateSetBasis?: Record<string, string>; replacementPolicyId?: string; retiredPolicyIds?: string[]; coverageVerified?: boolean; replacementBasis?: string; reference?: string; policyNames?: Record<string, string>; consolidationDecision?: 'retire' | 'retain-both'; retainedPolicyIds?: string[]; retainedPolicyBases?: Record<string, string>; rationale?: string; namingChanges?: { id: string; from: string; to: string }[]; toolingVerified?: boolean }
+export type CleanupCheckpoint = { at: string; cleanup: CleanupKind; date: string; basis?: string; accountIds?: string[]; timeZone?: string; outcome?: 'passed' | 'failed'; workflow?: string; purpose?: RecoveryPurpose; tenantId?: string; configurationObservedAt?: string; configurationChangeObserved?: boolean; configurationCheckedThrough?: string; recipient?: string; signInAtByAccount?: Record<string, string>; accountBasis?: Record<string, string>; recoveryEvidence?: Record<string, VerifiedRecoveryEvidence>; recoveryGeneration?: string; candidateSetBasis?: Record<string, string>; replacementPolicyId?: string; retiredPolicyIds?: string[]; coverageVerified?: boolean; replacementBasis?: string; reference?: string; policyNames?: Record<string, string>; consolidationDecision?: 'retire' | 'retain-both'; retainedPolicyIds?: string[]; retainedPolicyBases?: Record<string, string>; rationale?: string; namingChanges?: { id: string; from: string; to: string }[]; toolingVerified?: boolean }
 /** The latest recorded completion per row, as an ISO instant. */
 export type CleanupDone = Partial<Record<CleanupKind, string>>
 /** What the engine reads from the checkpoints: each row's completion, and every drill date ever recorded. */
@@ -200,13 +200,20 @@ export type RecoveryCandidateReading = { candidate: RecoverySignInCandidate; qua
  * Step 4's proof is judged with, sign-in source and candidate set included. A
  * caller that built its own context without them could never see the proof.
  */
-export function recoveryEvidenceOf(snapshot: TenantSnapshot, mapping: MappingState | undefined, groups: GroupMembers | undefined, records: readonly CleanupCheckpoint[], now: string, accountId: string): { basis: string | undefined; configuredAt: string | null; context: RecoveryEvidenceContext } {
+export function recoveryEvidenceOf(snapshot: TenantSnapshot, mapping: MappingState | undefined, groups: GroupMembers | undefined, records: readonly CleanupCheckpoint[], now: string, accountId: string): { basis: string | undefined; configuredAt: string | null; changeObserved: boolean; context: RecoveryEvidenceContext } {
   const basis = recoveryAccountBasis(snapshot, [accountId], mapping, groups)[accountId]
-  const configuredAt = recoveryPreparation(accountId, records, now, basis, snapshot.tenantId)?.configurationObservedAt ?? null
+  const preparation = recoveryPreparation(accountId, records, now, basis, snapshot.tenantId)
+  const configuredAt = preparation?.configurationObservedAt ?? null
+  // Whether that start is a change IAMAI read, or only where the audit log began.
+  // A baseline recorded before the record kept this is a change only where the
+  // audit log this scan read has one at that very time.
+  const changeObserved = !!configuredAt && (preparation?.configurationChangeObserved
+    ?? (!!mapping && recoveryConfigurationChanges(snapshot, mapping, accountId, null, configuredAt).includes(Date.parse(configuredAt))))
   const candidateSet = recoveryPasskeyCandidateSet(snapshot, accountId, mapping, groups ?? new Map())
   return {
     basis,
     configuredAt,
+    changeObserved,
     context: {
       readings: recoveryCandidateReadings(snapshot, accountId, now, configuredAt),
       tenantId: snapshot.tenantId,
@@ -296,18 +303,24 @@ function recoveryConfigurationChanges(snapshot: TenantSnapshot, mapping: Mapping
   })
 }
 
+/** A baseline start, and whether it is a change IAMAI read in the audit log
+ * (CleanupCheckpoint.configurationChangeObserved). */
+type RecoveryAnchor = { at: string; changed: boolean }
+
 /**
  * When the verified recovery configuration has been in place since: the last
  * relevant change in the directory audit log up to `through`, or the start of
  * the audit window when none is recorded. A passkey sign-in after it proves the
  * current configuration, whenever IAMAI happened to scan. Null without a
- * readable audit log.
+ * readable audit log. The start of the window is not a change, so `changed` is
+ * false there: Step 4 then says no change was seen since, never "Last change".
  */
-export function recoveryConfigurationStableSince(snapshot: TenantSnapshot, mapping: MappingState, accountId: string, through: string): string | null {
+function recoveryConfigurationAnchor(snapshot: TenantSnapshot, mapping: MappingState, accountId: string, through: string): RecoveryAnchor | null {
   const window = snapshot.recoveryAuditSource?.status === 'ok' ? snapshot.recoveryAuditSource.coveredWindow : null
   if (!window || !Number.isFinite(Date.parse(window.from)) || !Number.isFinite(Date.parse(through))) return null
-  const since = Math.min(Math.max(Date.parse(window.from), ...recoveryConfigurationChanges(snapshot, mapping, accountId, null, through)), Date.parse(through))
-  return new Date(since).toISOString()
+  const last = Math.max(...recoveryConfigurationChanges(snapshot, mapping, accountId, null, through))
+  const since = Math.min(Math.max(Date.parse(window.from), last), Date.parse(through))
+  return { at: new Date(since).toISOString(), changed: since === last }
 }
 
 /** Readiness for the automatic recovery baseline. Shared controls are evaluated
@@ -365,7 +378,8 @@ export function reconcileAutomaticRecovery(input: AutomaticRecoveryInput): unkno
     if (!preparation || preparation.candidateSetBasis?.[id] !== candidateSetBasis) {
       if (boundary?.workflow === RECOVERY_PREPARATION_WORKFLOW) append({ at, cleanup: 'drill', date: cleanupDateToIso(at), workflow: RECOVERY_INVALIDATION_WORKFLOW, purpose: 'final', tenantId: input.snapshot.tenantId, accountIds: [id] })
       const generation = `recovery:${input.snapshot.tenantId}:${id}:${at}`
-      preparation = { at, cleanup: 'drill', date: cleanupDateToIso(at), workflow: RECOVERY_PREPARATION_WORKFLOW, purpose: 'final', tenantId: input.snapshot.tenantId, accountIds: [id], configurationObservedAt: recoveryConfigurationStableSince(input.snapshot, input.mapping, id, at) ?? at, configurationCheckedThrough: at, accountBasis: { [id]: currentBasis }, candidateSetBasis: { [id]: candidateSetBasis }, recoveryGeneration: generation }
+      const since = recoveryConfigurationAnchor(input.snapshot, input.mapping, id, at)
+      preparation = { at, cleanup: 'drill', date: cleanupDateToIso(at), workflow: RECOVERY_PREPARATION_WORKFLOW, purpose: 'final', tenantId: input.snapshot.tenantId, accountIds: [id], configurationObservedAt: since?.at ?? at, configurationChangeObserved: since?.changed ?? false, configurationCheckedThrough: at, accountBasis: { [id]: currentBasis }, candidateSetBasis: { [id]: candidateSetBasis }, recoveryGeneration: generation }
       append(preparation)
     } else if (preparation.configurationObservedAt) {
       // The anchor as the audit log now reads it, up to when the baseline was set.
@@ -374,12 +388,12 @@ export function reconcileAutomaticRecovery(input: AutomaticRecoveryInput): unkno
       // baseline set at scan time with no proof yet moves back to the last change.
       const checkedThrough = preparation.configurationCheckedThrough ?? preparation.configurationObservedAt
       const late = recoveryConfigurationChanges(input.snapshot, input.mapping, id, preparation.configurationObservedAt, checkedThrough)
-      const earlier = preparation.configurationCheckedThrough ? null : recoveryConfigurationStableSince(input.snapshot, input.mapping, id, checkedThrough)
+      const earlier = preparation.configurationCheckedThrough ? null : recoveryConfigurationAnchor(input.snapshot, input.mapping, id, checkedThrough)
       const proved = records.some(record => record.workflow === RECOVERY_AUTOMATIC_WORKFLOW && record.recoveryEvidence?.[id]?.recoveryGeneration === preparation!.recoveryGeneration)
-      const anchor = late.length ? new Date(Math.max(...late)).toISOString() : earlier && !proved && Date.parse(earlier) < Date.parse(preparation.configurationObservedAt) ? earlier : null
+      const anchor: RecoveryAnchor | null = late.length ? { at: new Date(Math.max(...late)).toISOString(), changed: true } : earlier && !proved && Date.parse(earlier.at) < Date.parse(preparation.configurationObservedAt) ? earlier : null
       if (anchor) {
         if (late.length) append({ at, cleanup: 'drill', date: cleanupDateToIso(at), workflow: RECOVERY_INVALIDATION_WORKFLOW, purpose: 'final', tenantId: input.snapshot.tenantId, accountIds: [id] })
-        preparation = { at, cleanup: 'drill', date: cleanupDateToIso(at), workflow: RECOVERY_PREPARATION_WORKFLOW, purpose: 'final', tenantId: input.snapshot.tenantId, accountIds: [id], configurationObservedAt: anchor, configurationCheckedThrough: checkedThrough, accountBasis: { [id]: currentBasis }, candidateSetBasis: { [id]: candidateSetBasis }, recoveryGeneration: `recovery:${input.snapshot.tenantId}:${id}:${at}` }
+        preparation = { at, cleanup: 'drill', date: cleanupDateToIso(at), workflow: RECOVERY_PREPARATION_WORKFLOW, purpose: 'final', tenantId: input.snapshot.tenantId, accountIds: [id], configurationObservedAt: anchor.at, configurationChangeObserved: anchor.changed, configurationCheckedThrough: checkedThrough, accountBasis: { [id]: currentBasis }, candidateSetBasis: { [id]: candidateSetBasis }, recoveryGeneration: `recovery:${input.snapshot.tenantId}:${id}:${at}` }
         append(preparation)
       }
     }
@@ -390,8 +404,9 @@ export function reconcileAutomaticRecovery(input: AutomaticRecoveryInput): unkno
       // so a passkey sign-in between the change and the scan counts, on this scan.
       append({ at, cleanup: 'drill', date: cleanupDateToIso(at), workflow: RECOVERY_INVALIDATION_WORKFLOW, purpose: 'final', tenantId: input.snapshot.tenantId, accountIds: [id] })
       const generation = `recovery:${input.snapshot.tenantId}:${id}:${at}`
-      const start = recoveryConfigurationStableSince(input.snapshot, input.mapping, id, at) ?? changedAt
-      preparation = { at, cleanup: 'drill', date: cleanupDateToIso(at), workflow: RECOVERY_PREPARATION_WORKFLOW, purpose: 'final', tenantId: input.snapshot.tenantId, accountIds: [id], configurationObservedAt: Date.parse(start) < Date.parse(changedAt) ? changedAt : start, configurationCheckedThrough: at, accountBasis: { [id]: currentBasis }, candidateSetBasis: { [id]: candidateSetBasis }, recoveryGeneration: generation }
+      const since = recoveryConfigurationAnchor(input.snapshot, input.mapping, id, at)
+      const start: RecoveryAnchor = since && Date.parse(since.at) >= Date.parse(changedAt) ? since : { at: changedAt, changed: true }
+      preparation = { at, cleanup: 'drill', date: cleanupDateToIso(at), workflow: RECOVERY_PREPARATION_WORKFLOW, purpose: 'final', tenantId: input.snapshot.tenantId, accountIds: [id], configurationObservedAt: start.at, configurationChangeObserved: start.changed, configurationCheckedThrough: at, accountBasis: { [id]: currentBasis }, candidateSetBasis: { [id]: candidateSetBasis }, recoveryGeneration: generation }
       append(preparation)
     }
     if (source.status !== 'ok') continue

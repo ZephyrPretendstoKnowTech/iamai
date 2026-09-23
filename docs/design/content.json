@@ -1798,9 +1798,11 @@
         },
         "$commentRecoverySignIn": "Verify Emergency Access: what an account's Sign-in evidence card, its print and its exports say while the account waits for a passkey sign-in (src/roadmap/emergencyJourney.ts recoveryWaitingLine).",
         "recoverySignIn": {
-          "$comment": "One line each. The card read “Sign in with this account’s passkey after {date}. Last sign-in seen {date} did not count: …”, which asks for a sign-in at a time already past (owner, 2026-09-23). It asks for a sign-in since the most recent change and lists the two dates that show whether one has happened: the change IAMAI last observed to the account's recovery configuration, and the latest sign-in it read for the account. A reason stays only where the dates cannot show it: a sign-in after the change that still did not qualify.",
+          "$comment": "One line each. The card read “Sign in with this account’s passkey after {date}. Last sign-in seen {date} did not count: …”, which asks for a sign-in at a time already past (owner, 2026-09-23). It asks for a sign-in since the most recent change and lists the two dates that show whether one has happened: when the account's recovery configuration last changed, and the latest sign-in IAMAI read for the account. The first is lastChange only for a change IAMAI read in the directory audit log; where that log shows none it is noChangeSince. A reason stays only where the dates cannot show it: a sign-in after the change that still did not qualify.",
           "since": "Sign in with this account’s passkey since the most recent change.",
           "lastChange": "Last change: {date}",
+          "$commentNoChangeSince": "Where the directory audit log IAMAI read shows no change to the account's recovery configuration, the account's baseline starts where that log begins, about 30 days before the first scan that prepared it, and stays there until a change arrives. That date is not a change: “Last change: {date}” named one on a day nothing changed, which is the usual state of a tenant whose emergency access was set up long ago (review, 2026-09-23). Nothing relevant changed since this date, as far as the log IAMAI read shows.",
+          "noChangeSince": "No change seen since: {date}",
           "lastSignIn": "Last sign-in: {date}",
           "lastSignInNone": "Last sign-in: none seen",
           "$commentUnconfigured": "Before IAMAI has observed a verified configuration there is no change to date, so the line waits for the checks instead.",
