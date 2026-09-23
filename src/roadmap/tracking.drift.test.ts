@@ -376,17 +376,26 @@ test('A5: a report-only policy whose conditions drifted is not offered for enfor
   assert.match(step.state.observation?.note ?? '', /locations/i)
 })
 
-test('R4-10: a token-protection policy without the Cloud PC device filter is told, on the portal and in the export, to put the filter back', () => {
+/** Whether a channel hands over a write: a JSON request body carrying policy settings, or a script run in a mode that changes the policy. */
+const handsOverWrite = (id: string, text: string): boolean =>
+  (id === 'json' && /"(conditions|grantControls|sessionControls)"\s*:/.test(text)) || (id === 'ps' && /-Mode '(Correct|Create|Enforce)'/.test(text))
+
+test('R4-10: a token-protection policy without the Cloud PC device filter is told, on the portal and in the export, to put the filter back, and handed no write for it', () => {
   // R4-10 (B), on the pinned baseline: the week-two demo's token-protection
   // policy in report-only, without the baseline's Cloud PC device filter. The
   // update the step resolves is the turn-on alone, so the filter is a difference
   // that update does not write (observation.unwritten). The step said "a person
   // corrects it in the Entra admin center", while the portal kept to the
-  // observe procedure and no channel named the filter. The package has its own
-  // device-filter correction, but it picks corrections from the fields the
-  // update changes, and the unwritten fields were dropped before it
-  // (ui/surfaces/stepPackage.ts correctionFieldsOf). The product's own words:
+  // observe procedure and no channel named the filter. The product's own words:
   // left at No, Microsoft Entra joined Cloud PCs are blocked.
+  //
+  // Premise corrected on review of 978e15a7. That commit drew the package's own
+  // device-filter correction module for the difference, and with it the
+  // module's JSON and PowerShell: a PATCH that replaces every condition on the
+  // policy, direct exclusions included, under a note that says IAMAI does not
+  // write that part. The portal now carries the correction from the plan's own
+  // policy in the translator's words (stepPortal.ts unwrittenCorrectionLines),
+  // and no channel hands over a write for it.
   const snapshot = structuredClone(ANSWERED.snapshot)
   const row = rowsOf(snapshot).find((p) => p.displayName === TOKEN)!
   assert.ok(conditions(row).devices, 'the premise: the demo policy carries the filter')
@@ -396,11 +405,39 @@ test('R4-10: a token-protection policy without the Cloud PC device filter is tol
   assert.deepEqual(step.state.observation?.unwritten, ['conditions.devices'], 'the premise: the filter is a difference the update does not write')
   const ctx: StepVarContext = { snapshot, mapping: ANSWERED.mapping, nameOf: (id) => run.input.names!.label(id), signature: 'IT', operatorId: ANSWERED.operatorId, now: snapshot.asOf, groups: ANSWERED.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
   const rule = 'device.systemLabels -contains "CloudPC" -and device.trustType -eq "AzureAD"'
-  const portal = stepBodyOf(step, ctx).artifacts.find((a) => a.id === 'portal')?.text() ?? ''
+  const artifacts = stepBodyOf(step, ctx).artifacts
+  const portal = artifacts.find((a) => a.id === 'portal')?.text() ?? ''
   assert.ok(portal.includes(rule), `the portal does not say which filter to set:\n${portal}`)
-  assert.match(portal, /Exclude filtered devices from policy/)
+  assert.match(portal, /Filter for devices → Configure: Yes, then Exclude devices matching/)
+  assert.match(portal, /not what the plan asked for in the device filter/)
   assert.equal(portal.includes(String(shared.changeUntouched)), false, 'the portal tells the operator to leave the missing filter as it is')
+  for (const a of artifacts) assert.equal(handsOverWrite(a.id, a.text()), false, `the ${a.id} channel hands over a write for a part the note says IAMAI does not write:\n${a.text().slice(0, 400)}`)
   assert.ok(stepExportView(step, ctx).whatToDo.some((l) => l.includes(rule)), 'the export says a person corrects the filter and never says to what')
+})
+
+test('a report-only legacy-authentication block with a trusted-location exclusion is told where to look, and handed no checklist that never mentions it', () => {
+  // Review of 978e15a7: the location exclusion, a difference the update does not
+  // write, selected the package's generic whole-conditions correction module.
+  // The observe procedure was replaced by "make sure" client apps, users,
+  // resources, exclusions and grant, then "Leave Enable policy as it is and click
+  // Save. Rescan in IAMAI." It never mentioned locations, so following it could
+  // not close the difference, and AI Info named the module id. The portal now
+  // names Locations in the manual-correction sentence, keeps the observe
+  // procedure, and no channel hands over a write.
+  const snapshot = structuredClone(ANSWERED.snapshot)
+  const row = rowsOf(snapshot).find((p) => p.displayName === LEGACY)!
+  row.state = 'enabledForReportingButNotEnforced'
+  conditions(row).locations = { includeLocations: ['All'], excludeLocations: ['AllTrusted'] }
+  const run = runFixture({ ...ANSWERED, snapshot })
+  const step = stepOf(run, 'block-legacy-auth')
+  assert.deepEqual(step.state.observation?.unwritten, ['conditions.locations'], 'the premise: the location exclusion is a difference the update does not write')
+  const ctx: StepVarContext = { snapshot, mapping: ANSWERED.mapping, nameOf: (id) => run.input.names!.label(id), signature: 'IT', operatorId: ANSWERED.operatorId, now: snapshot.asOf, groups: ANSWERED.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
+  const artifacts = stepBodyOf(step, ctx).artifacts
+  const portal = artifacts.find((a) => a.id === 'portal')?.text() ?? ''
+  assert.match(portal, /not what the plan asked for in locations/, `the portal never names the difference:\n${portal}`)
+  assert.doesNotMatch(portal, /click Save|make sure/i, `the portal hands over a correction that does not mention locations:\n${portal}`)
+  for (const a of artifacts) assert.equal(handsOverWrite(a.id, a.text()), false, `the ${a.id} channel hands over a write for a part the note says IAMAI does not write`)
+  assert.doesNotMatch(artifacts.find((a) => a.id === 'ai')?.text() ?? '', /conditions\.canonical/, 'AI Info names a package module id')
 })
 
 test('a difference the update does not write is never stated as the setting to keep, on any channel', () => {
