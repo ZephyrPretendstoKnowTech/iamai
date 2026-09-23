@@ -3075,7 +3075,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // record and the scan (roadmap/enforceWaits.ts): here, where the drill row
   // and every title exist. It holds the turn-on in every channel
   // (operations.ts `policyResult`, hold `prerequisite-unmet`) and nothing else.
-  settleEnforceWaits(steps, schedule)
+  settleEnforceWaits(steps, schedule, mapping)
   // Static rules on the tenant's own policy JSON (prompt 48 item 5): the ones a
   // plan cannot fix by itself surface as Housekeeping.
   const violations = staticViolations(snapshot.config.caPolicies?.rows ?? [], { technicianToolsOffCompliance: (snapshot.scenarioEvidence?.technicianToolsOffCompliance.count ?? 0) > 0 })

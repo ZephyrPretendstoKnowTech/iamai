@@ -32,19 +32,18 @@ import { PASSKEY_SETTINGS_STEP_ID } from '../../roadmap/passkeySettings.ts'
 //
 // Pure: no DOM, no network.
 import data from '../../actionability/dependency-data.json' with { type: 'json' }
-import { campaignTargetsPasskeys } from '../../roadmap/campaign.ts'
+import { graphConditions } from '../../roadmap/graphConditions.ts'
+import type { PlanAnswers } from '../../roadmap/graphConditions.ts'
 import type { Action, DependencyData, Edge, Milestone } from '../../actionability/parseDependencyDoc.ts'
 import { buildGraph, deriveLanes, nextActionOf } from '../../actionability/lanes.ts'
 import type { Blocker, ConditionState, EvidenceGate, HoldBlocker, Lane, ObservedBlocker, ObservedEdge, OwnerState, PrerequisiteState, StepObservation, Substatus, TenantState } from '../../actionability/lanes.ts'
 import { groupLanes, unlockCounts } from '../../actionability/sorting.ts'
 import type { LaneRow } from '../../actionability/sorting.ts'
 import type { Step } from '../../roadmap/types.ts'
-import type { MappingState } from '../../mapping/types.ts'
 import { FOUNDATION_WAIT, isHeld } from '../../roadmap/holds.ts'
 import { driftOutcomeOf } from '../../roadmap/tracking.ts'
 import { submitsEnforcementOnly, switchedOffPolicy, unavailableReason, implementationOffered, operationsOf, enforcesOnRun } from '../../roadmap/operations.ts'
 import { GATING_SUBJECTS, blockerStepId } from '../../roadmap/blockerSteps.ts'
-import { QUESTION_STEP, answerOf, deviceCodeWorkflowsOf } from '../../roadmap/answers.ts'
 import { observationWindowDays, readyBasis, readyWhen } from '../../derive/readyWhen.ts'
 import { planStateOf } from './planState.ts'
 import { directionBlockerStep, directionStepsAnswering } from '../../roadmap/direction.ts'
@@ -101,7 +100,7 @@ export function laneCountsOf(readings: ReadonlyMap<string, LaneReading>): Record
 }
 
 /** The recorded answers the carve-out conditions resolve from (mapping.questionAnswers). */
-export type PlanAnswers = Pick<MappingState, 'questionAnswers'>
+export type { PlanAnswers }
 
 const POLICY: readonly Step['kind'][] = ['create', 'adjust', 'enforce']
 
@@ -282,56 +281,6 @@ function prerequisites(byId: ReadonlyMap<string, Step>, conds: Readonly<Record<s
   return out
 }
 
-/**
- * One graph condition (A1 §8) as this plan resolves it. A step the person said does
- * not apply resolves its condition not-applicable, and that completes the step
- * (§8.2). The Security Defaults cutover is applicable while the scan's read put its
- * step on the plan; shared devices are applicable while the scan found any; the
- * registration campaign reads its selected method from the package; a carve-out is
- * applicable while its answer put the step on the plan, else the recorded answer
- * says, and an unrecorded one stays unresolved (§8.1: never silently satisfied).
- */
-function conditionOf(name: string, ownedBy: string, byId: ReadonlyMap<string, Step>, answers: PlanAnswers | undefined): ConditionState {
-  const owner = byId.get(ownedBy)
-  if (owner?.doesntApply != null) return 'not-applicable'
-  switch (name) {
-    case 'campaign-targets-passkey': {
-      const passkeys = campaignTargetsPasskeys()
-      return passkeys === null ? 'unresolved' : passkeys ? 'applicable' : 'not-applicable'
-    }
-    case 'sd-enabled': return owner !== undefined && owner.status !== 'done' ? 'applicable' : 'not-applicable'
-    case 'shared-devices-exist': return owner !== undefined ? 'applicable' : 'not-applicable'
-    // Owned by the policy it gates, so the owner being on the plan says nothing: the saved answer does.
-    case 'device-code-workflows-exist': {
-      const inUse = answers ? deviceCodeWorkflowsOf(answers) : null
-      return inUse === null ? 'unresolved' : inUse ? 'applicable' : 'not-applicable'
-    }
-    default: break
-  }
-  if (owner !== undefined) return 'applicable'
-  if (!answers) return 'unresolved'
-  switch (name) {
-    case 'travel-exceptions-allowed': return yesNo(answerOf(answers, QUESTION_STEP.travel, 'question')?.index)
-    case 'partner-accounts-exist': return yesNo(answerOf(answers, QUESTION_STEP.partner, 'question')?.index)
-    case 'mail-devices-incompatible-path': {
-      const a = answerOf(answers, QUESTION_STEP.mailDevices, 'decision')
-      return a === null ? 'unresolved' : a.picked.length > 0 ? 'applicable' : 'not-applicable'
-    }
-    default: return 'unresolved'
-  }
-}
-
-/** A recorded answer's first option is the one that changes nothing (roadmap/answers.ts). */
-function yesNo(index: number | undefined): ConditionState {
-  return index === undefined ? 'unresolved' : index > 0 ? 'applicable' : 'not-applicable'
-}
-
-function conditions(byId: ReadonlyMap<string, Step>, answers: PlanAnswers | undefined): Record<string, ConditionState> {
-  const out: Record<string, ConditionState> = {}
-  for (const c of GRAPH.data.conditions) out[c.name] = conditionOf(c.name, c.ownedBy, byId, answers)
-  return out
-}
-
 /** The engine's inputs for this plan. A graph step this plan does not carry is nothing to do here. */
 export function tenantStateOf(steps: readonly Step[], rows: readonly LaneRowInput[] = [], answers?: PlanAnswers): [TenantState, OwnerState] {
   const byId = new Map(steps.map((s) => [s.id, s]))
@@ -339,7 +288,7 @@ export function tenantStateOf(steps: readonly Step[], rows: readonly LaneRowInpu
   for (const s of GRAPH.data.steps) observed[s.id] = { complete: true }
   for (const s of steps) if (GRAPH.steps.has(s.id)) observed[s.id] = observe(s, byId)
   for (const r of rows) if (GRAPH.steps.has(r.id)) observed[r.id] = { exists: false, complete: r.complete }
-  const conds = conditions(byId, answers)
+  const conds = graphConditions(byId, answers)
   return [
     { steps: observed, conditions: conds, prerequisites: prerequisites(byId, conds) },
     { deferred: steps.filter((s) => s.status === 'skipped').map((s) => s.id) },
