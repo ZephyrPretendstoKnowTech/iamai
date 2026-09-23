@@ -62,3 +62,20 @@ test('steps 15, 23 and 33 name the same people beside the step instead of assumi
   assert.ok(email.includes('sign-ins by your admin account'), 'the admin email names the account the change applies to')
   assert.doesNotMatch(email, /unaffected|separate account/i, 'the admin email no longer assumes the account is separate')
 })
+
+// The review scope counted its accounts by hand: one role holder read "1
+// accounts to review", and a tenant of a thousand "1000 accounts to review"
+// beside counts that carry their separator. It counts through count().
+test('the review scope counts its accounts as count() does', () => {
+  const base = fixture('mid')
+  // One role holder whose methods the scan read, and no other.
+  const admin = Object.keys(base.snapshot.roles.active).find((id) => !base.mapping.breakGlassUserIds.includes(id) && Array.isArray(base.snapshot.authMethods[id]))
+  assert.ok(admin, 'the premise: mid has a role holder with methods read')
+  const f = structuredClone(base)
+  f.snapshot.roles = { active: { [admin]: base.snapshot.roles.active[admin] }, eligible: {} }
+  const s = runFixture(f).steps.find((x) => x.id === SEPARATE_ADMIN_ACCOUNTS_STEP_ID)
+  assert.ok(s, 'the premise: the review is on the plan')
+  const scope = s.configurationFindings?.find((x) => x.key === 'administrator-review-scope')
+  assert.ok(scope, 'the premise: the review carries its scope')
+  assert.equal(scope.value, '1 account to review')
+})
