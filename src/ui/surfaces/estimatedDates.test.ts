@@ -62,7 +62,10 @@ test('a plan started ten working days ago places its unfinished preparation toda
   const then = runFixture(f, { startDate: start, reviewNow: start })
   // The first unfinished preparation step that something dated waits on: a plan
   // carries several, and only one of them has to be the one this case moves.
-  const prepThen = then.steps.filter((s) => s.status !== 'done' && s.scheduled?.class === 'scheduled' && s.scheduled.transition === 'prepare' && s.scheduled.at !== null).find((s) => dependantOf(then.steps, s.id))
+  // Preparation includes the team's MFA campaign (Prepare Your Team for MFA, a
+  // `verify`): since Stage 3 folded the countries location into its policy, it
+  // is the one unfinished preparation a dated change waits on in the demo.
+  const prepThen = then.steps.filter((s) => s.status !== 'done' && s.scheduled?.class === 'scheduled' && (s.scheduled.transition === 'prepare' || s.scheduled.transition === 'verify') && s.scheduled.at !== null).find((s) => dependantOf(then.steps, s.id))
   assert.ok(prepThen, 'the premise: the demo has unfinished preparation work something waits on')
   assert.equal(dayOf(prepThen.scheduled!.at!), dayOf(start), 'the premise: the preparation was scheduled on the start, now in the past')
   const depThen = dependantOf(then.steps, prepThen.id)
