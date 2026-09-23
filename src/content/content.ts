@@ -135,6 +135,7 @@ export type AppWords = {
     unnamedStrength: string
     strengthNotRead: string
     targetsExcept: string
+    authenticatorMode: string
     deviceFilterInclude: string
     deviceFilterExclude: string
     termsOfUse: string
