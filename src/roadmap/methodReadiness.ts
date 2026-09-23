@@ -261,6 +261,6 @@ export function methodReadiness(family: Readiness['family'], preparation: Method
         // count, and a step can print all three (246, 283, 279 on one card).
         : [fillText(
           staleIds.length > 0 ? W.methodLineStale : unknownIds.length > 0 ? W.methodLineUnknown : W.methodLine,
-          { ready: String(readyIds.length), total: String(ids.length), unknown: String(unknownIds.length), stale: String(staleIds.length) },
+          { ready: readyIds.length, total: ids.length, unknown: unknownIds.length, stale: staleIds.length },
         )] }
 }

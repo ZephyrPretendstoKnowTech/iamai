@@ -277,3 +277,27 @@ test('a number prints one way on the row, the tile and every filled line', () =>
   assert.ok(leads.some((l) => l.startsWith('3,032 people with no phishing-resistant method')), JSON.stringify(leads))
   for (const l of leads) assert.doesNotMatch(l, /(?<![\w@.,])\d{4,}(?= )/, `a count without its separator: ${l}`)
 })
+
+// The same format, past two callers that stringified their counts before
+// fillText saw them. On large the method readiness line read "3569 of 4900
+// people in scope of these policies have a registered method" (and "3435 of
+// 4675", "1293") beside tiles reading "4,900"; the "Who it misses" line did the
+// same with every figure it prints. They pass numbers now.
+test('the readiness and "Who it misses" lines carry separators', () => {
+  const f = fixture('large')
+  const r = runFixture(f)
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+  const raw = /(?<![\w@.,])\d{4,}(?= )/
+  const mfa = r.steps.find((s) => s.id === 's-goal-mfa-all-users')
+  assert.ok(mfa, 'the premise: large plans the MFA policy')
+  assert.ok(mfa.readiness.lines.some((l) => /^3,569 of 4,900 people in scope of these policies/.test(l)), JSON.stringify(mfa.readiness.lines))
+  for (const s of r.steps) {
+    for (const l of s.readiness.lines) assert.doesNotMatch(l, raw, `${s.id}: ${l}`)
+    for (const x of stepContract(s, ctx).found) assert.doesNotMatch(x.text, raw, `${s.id}: ${x.text}`)
+  }
+  const missing = { ...mfa, state: { ...mfa.state, satisfied: true }, coverageShortfall: { detail: '', people: 1200, reached: 3700, active: 4900 } }
+  const line = stepContract(missing, ctx).found.find((x) => x.key === 'shortfall')?.text ?? ''
+  assert.match(line, /4,900 people/, line)
+  assert.match(line, /1,200 of them/, line)
+  assert.match(line, /reaches 3,700/, line)
+})
