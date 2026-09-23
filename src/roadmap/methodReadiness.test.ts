@@ -418,7 +418,7 @@ test('R4-41: on a generated plan, the gate names the people holding only a phone
   assert.ok(off.length < short, 'the premise: some of the people not counted registered nothing')
   const line = step.readiness.lines[0]
   // The sentence states the counterfactual it counts (the R4-41 review test above).
-  assert.ok(line.includes(`. ${off.length} of the ${short} people without one would be counted if this tenant's Authentication methods policy allowed the methods they registered.`), line)
+  assert.ok(line.includes(`. ${off.length.toLocaleString('en')} of the ${short.toLocaleString('en')} people without one would be counted if this tenant's Authentication methods policy allowed the methods they registered.`), line)
   // Another step over the same people reads the same people the same way (one reading per person per scan).
   const sibling = run.steps.find((s) => s.id === 's-goal-device-registration-mfa')!
   assert.deepEqual(sibling.methodPreparation!.ids, prep.ids, 'the premise: the same people')
