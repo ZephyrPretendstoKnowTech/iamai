@@ -2180,12 +2180,16 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // population minus the plan's exclusions, so enforcing a policy the plan had
     // just watched in report-only moved its tile from "covers 283 enabled" to
     // "covers 279 enabled" with the policy unchanged. Null where their scope
-    // cannot be settled: the step then keeps the goal's population, as before.
+    // cannot be settled, and carried as null: that reach is not established,
+    // and nothing stands in for it (Foundation A). The step kept the goal's
+    // population there, a count nothing measured for those policies, which
+    // moved to their real reach the scan the group was read. Undefined where no
+    // tenant policy delivers the goal: there is no scope to read.
     // Its own field, never `cohort`: a delivered step reopened later in this
     // run (an unestablished Inforcer application, a workload identity) is an
     // open policy again, and its cohort is its own operation's scope or nothing.
-    const deliveredReach = cohort === null && deliveringEffects !== null && deliveringEffects.length > 0 ? cohortFor(deliveringEffects) : null
-    const reach = cohort ?? deliveredReach
+    const deliveredReach = cohort === null && deliveringEffects !== null && deliveringEffects.length > 0 ? cohortFor(deliveringEffects) : undefined
+    const reach = cohort ?? deliveredReach ?? null
     // The denominator. A goal can be delivered and still reach a fraction of the
     // tenant: a policy excluding a group that holds 116 of 122 accounts delivers
     // it for six people, and the step said "already delivered, so there is
@@ -2447,7 +2451,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       unblockNotes,
       population: pop,
       ...(cohort !== null ? { cohort: { ...cohort } } : {}),
-      ...(deliveredReach !== null ? { deliveredReach: { ...deliveredReach } } : {}),
+      ...(deliveredReach !== undefined ? { deliveredReach: deliveredReach === null ? null : { ...deliveredReach } } : {}),
       ...(coverageShortfall !== null ? { coverageShortfall } : {}),
       readiness,
       ...(policyPreparation ? { methodPreparation: policyPreparation } : {}),

@@ -16,7 +16,9 @@ import { contentStepFor } from '../content/stepTitle.ts'
 import type { Fixture } from '../roadmap/fixtures/index.ts'
 import type { Step } from '../roadmap/types.ts'
 import { validOperations } from '../roadmap/operations.ts'
-import { stepContract } from '../ui/surfaces/stepContract.ts'
+import { CONTRACT, stepContract } from '../ui/surfaces/stepContract.ts'
+import { stepBodyOf } from '../ui/surfaces/stepBody.ts'
+import { stepExportView } from '../ui/surfaces/stepExport.ts'
 
 test('the row and the step body read the same population, for every step on every fixture', () => {
   for (const f of allFixtures()) {
@@ -250,6 +252,56 @@ test('turning a policy on does not move its reach, and "Who it misses" counts on
   const line = stepContract(step, ctx).found.find((x) => x.key === 'shortfall')?.text ?? ''
   assert.match(line, /; 5 of them are excluded from the policy that delivers it, so it reaches 280\.$/, `the two emergency accounts and the three it excludes (${line})`)
   assert.match(populationLine(reached(step)!), /covers 280 enabled/, 'and the tile reads the same reach')
+})
+
+// R4-30's residual (population Q1). On mid the tenant's own "Core - Grant - MFA
+// for all users" delivers the goal, and it also excludes a group the scan could
+// not read in full (over the member cap, so only a sample of its members came
+// back). The step read Completed, and its Affected people card read "246 active
+// people · 13 admins · 12 guests · covers 279 enabled": the goal's population
+// minus the plan's exclusions, a figure IAMAI never measured for this policy,
+// beside a readiness line saying IAMAI cannot measure it. The scan that read
+// the group moved the card to the policy's real reach, "covers 283 enabled",
+// with nothing changed. Unknown is conservative, with no population fallback
+// (Foundation A): the card says the reach is not established and why, the way
+// an open policy's does, and nothing on the step counts people it did not
+// measure.
+test('a delivered step whose delivering policy\'s scope cannot be settled says its reach is not established, and counts nobody', () => {
+  const STEP = 's-goal-mfa-all-users'
+  const POLICY = 'Core - Grant - MFA for all users'
+  const GROUP = '7e5b6c1a-0000-4000-8000-00000000c0de'
+  const base = withFoundationSettled(fixture('mid'))
+  const scan = (sampled: boolean) => {
+    const f = structuredClone(base)
+    const policy = f.snapshot.config.caPolicies.rows.find((p) => (p as { displayName?: string }).displayName === POLICY) as { conditions: { users: { excludeGroups?: string[] } } } | undefined
+    assert.ok(policy, 'the premise: mid has an all-users MFA policy')
+    policy.conditions.users.excludeGroups = [...(policy.conditions.users.excludeGroups ?? []), GROUP]
+    // Read in full it holds the emergency accounts and nobody else, so the
+    // policy's reach is exactly what it was without it.
+    const members = [...f.mapping.breakGlassUserIds]
+    f.groups.set(GROUP, { memberIds: members, directMemberIds: members, memberCount: sampled ? 30_000 : members.length, sampled, displayName: 'Contractors' } as never)
+    const r = runFixture(f)
+    const step = r.steps.find((s) => s.id === STEP)!
+    const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+    const body = stepBodyOf(step, ctx)
+    const tiles = [...body.readiness.tiles, ...body.readiness.satisfied]
+    return { step, tiles, people: tiles.find((t) => t.key === 'people'), found: body.contract.found, row: rowWho(step), exported: stepExportView(step, ctx).population }
+  }
+
+  const unread = scan(true)
+  assert.equal(unread.step.status, 'done', 'the premise: the tenant\'s policy delivers the goal')
+  assert.equal(unread.step.state.satisfied, true, 'the premise: delivered')
+  assert.equal(unread.people?.value, CONTRACT.readiness.tiles.peopleUnknown, `the card claims a reach nobody measured: ${JSON.stringify(unread.people)}`)
+  assert.equal(unread.people?.note, CONTRACT.whoUnknown, 'and says why, in the words an open policy\'s unsettled scope uses')
+  for (const t of unread.tiles) assert.doesNotMatch(`${t.value} ${t.note ?? ''}`, /\d+ active (?:people|person)|covers \d+ enabled/, `${t.label} counts people beside a reach that is not established`)
+  assert.equal(unread.found.some((x) => x.key === 'shortfall'), false, 'no "Who it misses" count from a scope nobody settled')
+  assert.doesNotMatch(unread.row, /\d/, `the row's Impact counts people (${unread.row})`)
+  assert.equal(unread.exported, null, 'the export writes no count either')
+
+  // The scan that reads the group reads the policy's own reach, and only then.
+  const read = scan(false)
+  assert.equal(read.step.state.satisfied, true, 'the premise: still delivered')
+  assert.match(read.people?.value ?? '', /covers 283 enabled/, `the policy's own reach once its scope is settled: ${JSON.stringify(read.people)}`)
 })
 
 // One number format (copy/statements.ts figure). The thousands separator was

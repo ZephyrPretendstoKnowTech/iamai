@@ -762,10 +762,18 @@ export type Step = {
    * The same reading of the tenant policies that deliver the goal, where the
    * scan found it delivered: the accounts their own user scope names, so a
    * policy's reach does not move when it is turned on (R4-30). Read by
-   * derive/population.ts `reached` while the step stays delivered. Absent where
-   * their scope could not be settled; the step then reads `population`, as it did.
+   * derive/population.ts `reached` while the step stays delivered.
+   *
+   * Null where their scope could not be settled (a group the scan could not
+   * read in full, a clause IAMAI could not parse): the reach is not
+   * established, and `reached` says so. The step read `population` there, the
+   * goal's people minus the plan's exclusions, which nothing measured for those
+   * policies: "covers 279 enabled" beside a readiness line saying IAMAI cannot
+   * measure it, and "covers 283 enabled" the scan the group was read, the policy
+   * unchanged. Absent where no tenant policy delivers the goal, so there is no
+   * scope to read; the step then reads `population`.
    */
-  deliveredReach?: StepPopulation
+  deliveredReach?: StepPopulation | null
   /**
    * The one binding reason while blocked (target-state §8.5): at most twelve
    * words, in one of three shapes; null otherwise. The full list is `blockers`.
