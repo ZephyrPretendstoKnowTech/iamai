@@ -645,7 +645,8 @@ test('Implementation is the pack’s pill channels over a fixed preview, or one 
   // The artifacts are their own modules', and nothing is composed in the JSX.
   assert.match(CONTENT_STEP, /policyJsonText\(step\)/)
   assert.match(CONTENT_STEP, /powershellFor\(stepOperations\(step\)\)/)
-  assert.match(CONTENT_STEP, /stepContext\(step, \(s\) => stepExportView\(s, ctx, laneView\)\)/, 'AI Info is not the step context the prompts ground themselves in')
+  // With the board's route start the export view reads (stepExport.ts stepExportView).
+  assert.match(CONTENT_STEP, /stepContext\(step, \(s\) => stepExportView\(s, ctx, laneView(?:, prerequisiteLabel\?\.startOf)?\)\)/, 'AI Info is not the step context the prompts ground themselves in')
   for (const forbidden of ['JSON.stringify', 'conditions:', 'grantControls', 'displayName:']) {
     assert.equal(CONTENT_STEP.includes(forbidden), false, `the surface builds ${forbidden}; policy JSON is not composed in presentation`)
   }

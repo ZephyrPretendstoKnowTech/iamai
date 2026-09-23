@@ -210,7 +210,10 @@ test('the Plan header offers four useful filters and an estimated finish, keepin
   assert.match(plan, /aria-label=\{`\$\{t\.label\}: \$\{t\.value\}`\}/)
   assert.match(plan, /aria-expanded=\{showHow\} aria-controls=\{PLAN_HOW_ID\}/)
   assert.match(plan, /projectedFinish\(finish\.finish, c\.schedule\.estimate\?\.targetEnd \?\? null\)/)
-  assert.match(plan, /c\.schedule\.derivation\.criticalPath, \.\.\.c\.schedule\.derivation\.relaxed/)
+  // The tip is the one plan-length sentence (derive/finish.ts), which states the
+  // schedule's critical path and what it relaxed once nothing is held.
+  assert.match(plan, /planLengthSentence\(finish, c\.schedule\)/)
+  assert.match(readFileSync('src/derive/finish.ts', 'utf8'), /schedule\.derivation\.criticalPath, \.\.\.schedule\.derivation\.relaxed/)
   assert.match(plan, /data\.setFreeze\(freezeInput\.freeze\)/)
   assert.match(plan, /freezeInput\.reason === 'needsTo' \? PP\.settings\.freezeNeedsTo : PP\.settings\.freezeOrder/)
 })
