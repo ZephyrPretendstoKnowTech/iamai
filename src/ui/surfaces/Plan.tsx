@@ -197,7 +197,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // The plan-wide dates the step variables read (the campaign's enrol-by, the
   // MFA enforcement day, the campaign's window); the operator's own account is resolved above, once.
   // A step the board holds lends none of them its turn-on day (planBoard.ts boardHolds; owner decision 2).
-  const dates = planDates(c.steps, c.schedule.start, c.coverage.organisation.naming, scan.snapshot, (s) => boardHolds(s, laneViewFor(s, board)))
+  const dates = planDates(c.steps, c.schedule.start, c.coverage.organisation.naming, scan.snapshot, (s) => boardHolds(s, laneViewFor(s, { readings, titleOf })))
   const rowSteps = c.steps.filter((s) => readings.has(s.id))
   // The number each row shows in its group's list (planBoard.ts rowNumbersOf),
   // taken over every row the board has before a tab or a focus filters one out:
