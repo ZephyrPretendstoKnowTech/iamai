@@ -540,6 +540,8 @@
           "Start the plan",
           "re:^Show completed\\s*\\d+$",
           "re:^Show deferred\\s*\\d+$",
+          "Show them",
+          "Show the full plan",
           "+",
           "−"
         ],

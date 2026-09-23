@@ -618,6 +618,21 @@ try {
   check('Plan: a header tile draws each section heading once', tileHeads.every((t) => t.pressed && t.heads.length === new Set(t.heads).size), JSON.stringify(tileHeads.filter((t) => !t.pressed || t.heads.length !== new Set(t.heads).size).slice(0, 2)))
   const allWorkLanes = await evaluate(`[...document.querySelectorAll('main.page .plan-group')].map((g) => new Set([...g.querySelectorAll('.plan-row .lane')].map((e) => (e.textContent || '').trim().split(' · ')[0])).size)`)
   check('Plan: a group on All work is the whole group, not one lane of it', Array.isArray(allWorkLanes) && allWorkLanes.some((n) => n > 1), JSON.stringify(allWorkLanes))
+  // Decision H, tried as a visible line: while the board has policies at
+  // Ready · Create, one line above the board counts them (a count, never a
+  // name) and its control shows exactly those rows.
+  const createLine = await evaluate(`((document.querySelector('main.page .plan-create-now') || {}).textContent || '').trim()`)
+  if (createLine) {
+    const n = Number((/^(\d+) polic/.exec(createLine) || [])[1])
+    await clickText('/^Show them$/', 'main.page .plan-create-now')
+    await sleep(200)
+    const createRows = await evaluate(`[...document.querySelectorAll('main.page .plan-board .plan-row .lane')].map((e) => (e.textContent || '').trim())`)
+    check('Plan: the line above the board counts the policies ready to create in report-only, and shows exactly them', /^\d+ polic(y is|ies are) ready to create in report-only now\. Show them$/.test(createLine) && createRows.length === n && createRows.every((l) => l === 'Ready · Create'), `${createLine} | ${JSON.stringify(createRows.slice(0, 4))}`)
+    await clickText('/^Show the full plan$/')
+    await sleep(200)
+  } else {
+    check('Plan: no line above the board where no policy is ready to create', true)
+  }
   // A step opened from a link keeps the tab where the tab shows it, and
   // otherwise opens on All work in its own section, with the page moved to it
   // (owner, roadmap flow V2; planBoard.ts followOpenStep).
