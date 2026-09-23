@@ -31,8 +31,8 @@ import { runFixture, withDirectionApproved } from '../../roadmap/fixtures/run.ts
 
 /**
  * The canonical case with the plan's foundation settled. Until Emergency Access and Direction
- * are - Establish Emergency Access complete, every Decide Your Tenant's
- * Direction answer approved - no policy step is Ready and none is dated
+ * are - Establish Emergency Access complete, every Define Your Rollout
+ * Scope answer approved - no policy step is Ready and none is dated
  * (roadmap/foundations.ts, 2026-09-19), which is a different case from this one.
  */
 const fixture = (name: Parameters<typeof curatedFixture>[0]): ReturnType<typeof curatedFixture> => withDirectionApproved(curatedFixture(name))

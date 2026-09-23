@@ -649,7 +649,7 @@ export type StepBody = ReturnType<typeof stepBodyOf>
  * is the one thing a snapshot of a rendered step must not do.
  */
 export function headingsOf(b: StepBody): string[] {
-  // A decision-anatomy step (Decide Your Tenant's Direction) draws its own three: nothing is built.
+  // A decision-anatomy step (Define Your Rollout Scope) draws its own three: nothing is built.
   if (usesDecisionAnatomy(b.contract.id)) return [DECISION_HEAD.why, DECISION_HEAD.questions, ...(b.contract.doneWhen.length > 0 ? [DECISION_HEAD.doneWhen] : [])]
   const task = taskHeadingsOf(b.contract.id)
   return [

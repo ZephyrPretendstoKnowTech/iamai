@@ -1,4 +1,4 @@
-// Decide Your Tenant's Direction, drawn (docs/plans/direction-spec.md): the
+// Define Your Rollout Scope, drawn (docs/plans/direction-spec.md): the
 // Questions section of a decision-anatomy step, and the "Answered in" block a
 // step shows where its question used to be asked.
 //

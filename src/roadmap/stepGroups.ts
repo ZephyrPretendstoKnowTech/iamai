@@ -21,7 +21,7 @@
  * `task`: About this Step, Tasks Remaining, Implementation Tasks, Completion
  * Criteria (Establish Emergency Access). `decision`: About this Step, Questions,
  * Completion Criteria, and no Implementation, because nothing is built
- * (Decide Your Tenant's Direction, docs/plans/direction-spec.md).
+ * (Define Your Rollout Scope, the Direction steps: docs/plans/direction-spec.md).
  *
  * `null` is the third answer: the member draws the step's own default headings,
  * exactly as an ungrouped step did before there was a group around it. No entry
@@ -80,97 +80,95 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     members: DIRECTION_STEP_IDS,
     anatomy: 'decision',
   },
-  // ---- the objects the Direction answers ask for ----
-  // An object step here exists because a Direction answer says it should: the
-  // trusted network, the allowed-countries location and the service accounts
-  // group are the DOING of an answer saved two groups above, and they used to
-  // sit among the policies that reference them. Straight after Direction the
-  // plan reads decide → make the things → roll out the policies, and a policy
-  // group holds policies (owner, 2026-09-20).
+  // ---- the rollout, in the eight sections of the roadmap flow ----
+  // docs/plans/roadmap-flow/v1-proposal-full.md section 2 sets the order and
+  // the membership, V2 the names (owner, 2026-09-23). The order is the one in
+  // which no step waits on a row drawn below it: every section after Direction
+  // waits only on sections above it, except two hand-offs that each stay inside
+  // one section (Turn Off Security Defaults with the four core policies; Give
+  // Shared Devices Their Own Policy with the two policies it carves out of).
+  // stepGroups.test.ts checks both, over the dependency graph and over the
+  // boards the fixtures build.
   //
-  // Only objects an answer creates. `s-prereq-per-user-mfa` and
-  // `s-prereq-security-defaults` are tenant settings to retire rather than
-  // objects to build, and the emergency prerequisites are the foundation's own
-  // — all three stay where they are. `s-prereq-auth-strength` stays with the
-  // admin policies that require it: it is the pinned baseline's demand, not an
-  // answer's.
-  {
-    key: 'prepare-objects',
-    titleKey: 'pages.app.plan.groups.prepareObjects.title',
-    completedTitleKey: 'pages.app.plan.groups.prepareObjects.completedTitle',
-    members: ['s-prereq-trusted-location', 's-prereq-allowed-countries', 's-prereq-service-accounts-group'],
-    anatomy: 'task',
-  },
-  // ---- the rollout's own runs ----
-  // Their order is the build order docs/plans/v1-step-map.md §3 sets (the
-  // waves), collapsed to the fewest runs that still read as one job each: a
-  // numbered list stops helping somewhere past seven rows, and nine waves as
-  // nine headings is a table of contents, not a plan. The waves themselves stay
-  // the engine's sequencing and are not drawn; a group is only a heading.
-  //
-  // A member id is listed once, in the order its group draws it. Membership is
-  // the whole of what an entry decides — nothing here says when a step is
-  // ready, who it touches or what it builds.
-  //
-  // Every id here is one the engine can generate. A listed id that nothing
-  // produces is a step the group promises and never draws, and it is read as a
-  // real step by anyone auditing the board: docs/plans/step-redundancy-analysis.md
-  // finding 4 found five of them, all removed —
+  // A member id is listed once, in the order its section draws it. Membership is
+  // the whole of what an entry decides: nothing here says when a step is ready,
+  // who it touches or what it builds. Every buildable step is listed by name,
+  // the ones only an uploaded baseline builds included, so no step reaches the
+  // catch-all by accident (stepGroups.test.ts). The ids nothing builds stay out:
   //   s-prereq-device-plan            replaced by D3 (its answer keys survive as D3's storage)
   //   s-question-travel               trip operations are hidden for V1
-  //   s-goal-mobile-app-protection    goal absent from the pinned baseline and not on the floor
-  //   s-goal-azure-management-mfa     the same
   //   s-goal-unmanaged-browser        never an id at all: `unmanaged-browser` is the CONTENT
   //                                   entry two goals merge into (content.json mergesGoals,
   //                                   coverage/goalIdentity.ts MERGE_ANCHOR), so the only id
   //                                   the engine can build is s-goal-byod-session-controls.
+  //
+  // Four rows hold an interim place until the merges land (Stages 3 and 4):
+  // Decide Where People Sign In From as Direction's fourth step, the countries
+  // location as the last object here, and each medium-risk step straight after
+  // its high partner.
+  //
+  // People first, then objects: the dormant accounts drop out of every count,
+  // the admin account you keep is the one your passkey goes on, and the campaign
+  // cannot start without that passkey. The objects take minutes; the campaign is
+  // the plan's longest wait. No policy here changes how anyone signs in.
   {
-    key: 'close-doors',
-    titleKey: 'pages.app.plan.groups.closeDoors.title',
-    completedTitleKey: 'pages.app.plan.groups.closeDoors.completedTitle',
-    members: ['s-goal-block-legacy-auth', 's-goal-block-device-code', 's-goal-block-auth-transfer', 's-goal-block-unsupported-platforms'],
+    key: 'prepare',
+    titleKey: 'pages.app.plan.groups.prepare.title',
+    completedTitleKey: 'pages.app.plan.groups.prepare.completedTitle',
+    members: ['s-check-dormant-accounts', 's-check-separate-admin-accounts', 's-ladder-operator-passkey', 's-verify-mfa', 's-prereq-auth-strength', 's-prereq-trusted-location', 's-prereq-service-accounts-group', 's-prereq-allowed-countries'],
     anatomy: 'task',
   },
+  // The four policies that replace security defaults, then the switch itself:
+  // with security defaults on, every other policy's turn-on waits on it, so
+  // these come first. Finish Moving Off Per-User MFA starts once MFA for
+  // everyone is on, and sits at the end of the section, under the
+  // security-defaults switch.
   {
-    key: 'protect-admins',
-    titleKey: 'pages.app.plan.groups.protectAdmins.title',
-    completedTitleKey: 'pages.app.plan.groups.protectAdmins.completedTitle',
-    members: ['s-ladder-operator-passkey', 's-prereq-auth-strength', 's-goal-admins-phishing-resistant', 's-goal-admin-session', 's-goal-pim-activation-reauth'],
-    anatomy: 'task',
-  },
-  {
-    key: 'mfa-everyone',
+    key: 'core',
     titleKey: 'pages.app.plan.groups.mfaEveryone.title',
     completedTitleKey: 'pages.app.plan.groups.mfaEveryone.completedTitle',
-    members: ['s-goal-register-info-protected', 's-goal-device-registration-mfa', 's-verify-mfa', 's-prereq-security-defaults', 's-goal-mfa-all-users', 's-goal-guests-mfa', 's-prereq-per-user-mfa'],
+    members: ['s-goal-block-legacy-auth', 's-goal-block-device-code', 's-goal-admins-phishing-resistant', 's-goal-mfa-all-users', 's-prereq-security-defaults', 's-prereq-per-user-mfa'],
     anatomy: 'task',
   },
+  // Where MFA does not reach yet: registering a method or a device, guests, role
+  // activation, the consoles that manage the tenant, and the sign-ins Entra
+  // flags as risky.
   {
-    key: 'where-people-sign-in',
-    titleKey: 'pages.app.plan.groups.whereSignIn.title',
-    completedTitleKey: 'pages.app.plan.groups.whereSignIn.completedTitle',
-    members: ['s-goal-geo-restriction', 's-goal-service-accounts-trusted-network', 's-goal-workload-identity-block'],
+    key: 'extend-mfa',
+    titleKey: 'pages.app.plan.groups.extendMfa.title',
+    completedTitleKey: 'pages.app.plan.groups.extendMfa.completedTitle',
+    members: ['s-goal-register-info-protected', 's-goal-device-registration-mfa', 's-goal-guests-mfa', 's-goal-pim-activation-reauth', 's-goal-inforcer-mfa', 's-goal-sign-in-risk', 's-goal-sign-in-risk-medium', 's-goal-user-risk', 's-goal-user-risk-medium', 's-goal-azure-management-mfa'],
     anatomy: 'task',
   },
+  // What nobody should legitimately use: a sign-in flow, a platform, a place,
+  // a service account from outside the office, the sync account from another
+  // address. The admin portals block is hidden from every screen
+  // (customerPlanSteps); released, this is its place.
   {
-    key: 'devices',
-    titleKey: 'pages.app.plan.groups.devices.title',
-    completedTitleKey: 'pages.app.plan.groups.devices.completedTitle',
-    members: ['s-goal-require-managed-device', 's-goal-intune-enrollment-reauth', 's-ladder-phone-access-restriction', 's-shared-devices'],
+    key: 'remaining-doors',
+    titleKey: 'pages.app.plan.groups.closeDoors.title',
+    completedTitleKey: 'pages.app.plan.groups.closeDoors.completedTitle',
+    members: ['s-goal-block-auth-transfer', 's-goal-block-unsupported-platforms', 's-goal-geo-restriction', 's-goal-service-accounts-trusted-network', 's-goal-workload-identity-block', 's-goal-admin-portals-protected'],
     anatomy: 'task',
   },
+  // The changes to every person's day come last. The two session steps name
+  // each other, admins first; shared devices sit with the two policies they
+  // wait on and hold; enrolment is protected before a managed device is
+  // required, and token protection needs that device. The two rows only an
+  // uploaded baseline builds come at the end, so they renumber nothing.
   {
-    key: 'risk-and-sessions',
-    titleKey: 'pages.app.plan.groups.riskAndSessions.title',
-    completedTitleKey: 'pages.app.plan.groups.riskAndSessions.completedTitle',
-    members: ['s-goal-sign-in-risk', 's-goal-user-risk', 's-goal-sign-in-risk-medium', 's-goal-user-risk-medium', 's-goal-all-users-no-persistence', 's-goal-token-protection'],
+    key: 'devices-sessions',
+    titleKey: 'pages.app.plan.groups.devicesSessions.title',
+    completedTitleKey: 'pages.app.plan.groups.devicesSessions.completedTitle',
+    members: ['s-goal-admin-session', 's-goal-all-users-no-persistence', 's-goal-intune-enrollment-reauth', 's-goal-require-managed-device', 's-shared-devices', 's-ladder-phone-access-restriction', 's-goal-token-protection', 's-goal-mobile-app-protection', 's-goal-byod-session-controls'],
     anatomy: 'task',
   },
+  // Care after the rollout: nothing above waits on it.
   {
     key: 'ongoing',
     titleKey: 'pages.app.plan.groups.ongoing.title',
     completedTitleKey: 'pages.app.plan.groups.ongoing.completedTitle',
-    members: ['s-goal-admin-portals-protected', 's-goal-inforcer-mfa', 's-check-dormant-accounts', 's-check-separate-admin-accounts', 'cleanup-alerting', 'cleanup-hardening', 'cleanup-consolidation', 'cleanup-naming'],
+    members: ['cleanup-alerting', 'cleanup-hardening', 'cleanup-namedExclusions', 'cleanup-consolidation', 'cleanup-naming'],
     memberPrefixes: ['s-review-baseline-'],
     catchAll: true,
     anatomy: 'task',

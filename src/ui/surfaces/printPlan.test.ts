@@ -704,25 +704,31 @@ test('a Completed Cleanup row still prints its body: the drill\'s recovery proce
 test('a section finished through a deferral prints as one line, and keeps the line of each step it set aside', () => {
   // A section is finished once nothing in it is left to do, Completed or
   // Deferred (planBoard.ts sectionProgressOf). Midflight, foundation settled,
-  // with Configure Allowed Countries deferred beside the two other skips:
-  // Prepare the Groups and Locations has one row Completed and one Deferred, and
-  // the board folds it to "1 of 2 completed, 1 deferred". The print had listed
-  // every deferred step by title under Deferred; folded, the paper said one was
-  // set aside and not which.
-  const skips = ['s-goal-register-info-protected', 's-goal-block-auth-transfer', 's-prereq-allowed-countries']
-  const p = plan('midflight', { stage: 'foundation', skips })
+  // with every open step of Prepare Accounts and Objects deferred beside the two
+  // other skips: the section is Completed and Deferred rows only, and the board
+  // folds it to "n of m completed, k deferred". The print had listed every
+  // deferred step by title under Deferred; folded, the paper said steps were set
+  // aside and not which.
+  const base = ['s-goal-register-info-protected', 's-goal-block-auth-transfer', 's-prereq-allowed-countries']
+  const first = plan('midflight', { stage: 'foundation', skips: base })
+  const section = printSectionsOf(first.board).find((s) => s.rows.some((r) => r.id === 's-prereq-allowed-countries'))
+  assert.ok(section, 'the premise: the deferred step prints in a section')
+  const planIds = new Set(first.steps.map((s) => s.id))
+  const open = section.rows.filter((r) => r.lane.lane !== 'Completed' && r.lane.lane !== 'Deferred' && planIds.has(r.id)).map((r) => r.id)
+  const p = plan('midflight', { stage: 'foundation', skips: [...base, ...open] })
   const items = p.board.rows.map((r) => r.item)
   const printed = printSectionsOf(p.board)
   const prep = printed.find((s) => s.rows.some((r) => r.id === 's-prereq-allowed-countries'))
   assert.ok(prep, 'the premise: the deferred step prints in a section')
-  assert.deepEqual(prep.rows.map((r) => r.lane.lane).sort(), ['Completed', 'Deferred'], 'the premise: the section is one Completed row and one Deferred')
+  assert.deepEqual([...new Set(prep.rows.map((r) => r.lane.lane))].sort(), ['Completed', 'Deferred'], 'the premise: the section is Completed and Deferred rows only')
+  const deferred = prep.rows.filter((r) => r.lane.lane === 'Deferred').map((r) => r.id)
   const g = allWorkGroups(items, items).find((x) => groupKeyOf(x) === prep.key)
   assert.ok(g?.closed, 'the premise: the board folds the section')
   assert.equal(prep.finished, true, 'the print reads the section as open')
   assert.equal(prep.line, `${g.label} · ${groupSummary(g)}`, 'the line is not the board\'s')
-  assert.match(prep.line ?? '', /1 deferred/, `the line does not say a step was set aside: ${prep.line}`)
+  assert.match(prep.line ?? '', new RegExp(`${deferred.length} deferred`), `the line does not say steps were set aside: ${prep.line}`)
   const kept = finishedRowsOf(prep, p.printBoard, p.ctx)
-  assert.deepEqual(kept.filter((r) => r.lane.lane === 'Deferred').map((r) => [r.id, r.print]), [['s-prereq-allowed-countries', 'line']], 'the deferred step is not printed as its line under the section\'s')
+  assert.deepEqual(kept.filter((r) => r.lane.lane === 'Deferred').map((r) => [r.id, r.print]), deferred.map((id) => [id, 'line']), 'a deferred step is not printed as its line under the section\'s')
   // Every Deferred row of every finished section, on every tenant, prints as its line.
   for (const [name, q] of [...stage5(), ['midflight (three deferred)', p] as [string, Plan]]) {
     for (const s of printSectionsOf(q.board).filter((x) => x.finished)) {

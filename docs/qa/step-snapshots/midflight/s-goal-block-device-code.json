@@ -4,7 +4,7 @@
   "reason": "after: Configure Passkey Authentication",
   "fact": null,
   "badge": "On Hold",
-  "bar": "Waiting on your direction",
+  "bar": "Waiting on your answers",
   "rail": "After prerequisites",
   "headings": [
     "About this Step",
@@ -19,7 +19,7 @@
     },
     {
       "label": "Confirm What You Use",
-      "state": "Waiting on your direction"
+      "state": "Waiting on your answers"
     },
     {
       "label": "Configure Passkey Authentication",

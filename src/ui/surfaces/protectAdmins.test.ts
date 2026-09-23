@@ -1,4 +1,4 @@
-// The "Protect Your Administrators" group, taken to the V1 standard:
+// The "Protect Your Administrators" steps, taken to the V1 standard:
 // docs/plans/protect-admins-spec.md holds the outcome, the Microsoft Learn page
 // behind every technical claim and the date it was checked. One test per
 // acceptance item in that spec.
@@ -28,10 +28,10 @@ import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
 import type { StepBody } from './stepBody.ts'
-import { membersOf } from '../../roadmap/stepGroups.ts'
+import { groupOf } from '../../roadmap/stepGroups.ts'
 import { cleanupEntry } from './cleanupExport.ts'
 
-/** The group's five members, in registry order (roadmap/stepGroups.ts). */
+/** The spec's five steps (docs/plans/protect-admins-spec.md), in its order. The roadmap flow spreads them over four sections (roadmap/stepGroups.ts). */
 const PROTECT_ADMINS = [
   's-ladder-operator-passkey',
   's-prereq-auth-strength',
@@ -99,8 +99,8 @@ const tasksTextOf = (b: StepBody): string =>
 // The group itself
 // ---------------------------------------------------------------------------
 
-test('the group draws its five members in the spec order', () => {
-  assert.deepEqual([...membersOf('protect-admins')], PROTECT_ADMINS)
+test('the spec’s five steps sit where the roadmap flow places them', () => {
+  assert.deepEqual(PROTECT_ADMINS.map((id) => groupOf(id)?.key), ['prepare', 'prepare', 'core', 'devices-sessions', 'extend-mfa'])
 })
 
 // ---------------------------------------------------------------------------

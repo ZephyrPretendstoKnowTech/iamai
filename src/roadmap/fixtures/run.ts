@@ -162,7 +162,7 @@ export function adminsAtRung5(viability: MfaViability[], at: string): MfaViabili
 }
 
 /**
- * The same tenant with Decide Your Tenant's Direction approved as the plan
+ * The same tenant with Define Your Rollout Scope approved as the plan
  * suggests it (roadmap/direction.ts): every question of each named step at its
  * saved answer, else its suggestion, saved as Approve answers saves it. A case
  * about what a policy does once nothing is waiting on a person's direction
@@ -183,7 +183,7 @@ export function withDirectionApproved(f: Fixture, ids: readonly DirectionStepId[
  * The same tenant with the plan's foundation settled (roadmap/foundations.ts):
  * Establish Emergency Access complete — an approved recovery passkey on each
  * emergency account, a recovery sign-in this scan can see, and the two answers
- * that step asks — and every Decide Your Tenant's Direction answer approved.
+ * that step asks — and every Define Your Rollout Scope answer approved.
  *
  * Until Emergency Access and Direction are settled no policy step is Ready and none is
  * dated, so a case about what a policy does, when it is dated or what it hands
@@ -206,8 +206,8 @@ export function withDevicesReady(f: Fixture): Fixture {
 }
 
 /**
- * Half of it: Establish Emergency Access complete, with Decide Your Tenant's
- * Direction left exactly as it was. A case about an unsaved Direction answer
+ * Half of it: Establish Emergency Access complete, with Define Your Rollout
+ * Scope left exactly as it was. A case about an unsaved Direction answer
  * starts here — approving them all would answer the question it is asking.
  */
 /**

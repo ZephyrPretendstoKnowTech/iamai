@@ -6,8 +6,8 @@
 // nothing to do with the change.
 //
 // The plan's foundation is the other wait and it is untouched (roadmap/foundations.ts):
-// no policy step is Ready until Establish Emergency Access and Decide Your
-// Tenant's Direction are settled. So the demo's first visit reads the step held
+// no policy step is Ready until Establish Emergency Access and Define Your
+// Rollout Scope are settled. So the demo's first visit reads the step held
 // by the foundation — and by nothing else. Settling the foundation is, for this
 // step, exactly the wait `gateOnFoundations` added being gone; everything else
 // the row reads is live over the step (roadmap/holds.ts holdOf,
