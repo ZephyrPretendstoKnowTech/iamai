@@ -211,10 +211,11 @@ export function promptPackMarkdown(items: PackItem[], tenant: string): string {
 // which is why the "redacted" bundle still carried policy names, group names,
 // departments and named-location CIDRs (audit redact-02, redact-03, redact-07).
 
-export function groundingBundle(args: { view: StepView; tenant: string; snapshot: TenantSnapshot; coverage: CoverageReport; steps: Step[]; schedule: Schedule; redacted: boolean; generated: string; cleanup?: CleanupExport[] }): Record<string, unknown> {
+export function groundingBundle(args: { view: StepView; tenant: string; snapshot: TenantSnapshot; coverage: CoverageReport; steps: Step[]; schedule: Schedule; redacted: boolean; generated: string; cleanup?: CleanupExport[]; groups?: ReadonlyMap<string, { displayName?: string | null }> }): Record<string, unknown> {
   const { snapshot } = args
   // Every name the tenant contains, not just its users.
-  const vocabulary = args.redacted ? tenantVocabulary(snapshot) : new Map<string, string>()
+  // And the groups the plan loaded, which the scan's group rows do not name.
+  const vocabulary = args.redacted ? tenantVocabulary(snapshot, { groups: args.groups?.values() }) : new Map<string, string>()
   // A count stands only where the scan got data out of its section
   // (graph/collect/coreSections.ts sectionHasData); over a section it could not
   // read it is null, never a zero. The bundle told an assistant

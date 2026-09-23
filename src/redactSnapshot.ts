@@ -38,6 +38,7 @@ const CLASS_LABEL = {
   organisation: 'the organisation',
   domain: 'a domain',
   network: 'a network range',
+  strength: 'an authentication strength',
 } as const
 export type NameClass = keyof typeof CLASS_LABEL
 
@@ -73,7 +74,14 @@ const add = (v: Vocabulary, counts: Map<NameClass, number>, cls: NameClass, raw:
  * and leaks the part that was not matched. Longest-first makes the most
  * specific name win (audit redact-10).
  */
-export function tenantVocabulary(snapshot: TenantSnapshot): Vocabulary {
+/**
+ * `loaded.groups`: the groups the plan loaded for its policies and exclusions
+ * (the members map the Plan and the Export page read), whose names a scan's
+ * group rows do not carry. The masked bundle named "Core - Break glass" and
+ * "Core - Exclusions" because only those rows were read (Phase 2 export
+ * finding 19).
+ */
+export function tenantVocabulary(snapshot: TenantSnapshot, loaded: { groups?: Iterable<{ displayName?: string | null }> } = {}): Vocabulary {
   const v: Vocabulary = new Map()
   const counts = new Map<NameClass, number>()
 
@@ -88,6 +96,9 @@ export function tenantVocabulary(snapshot: TenantSnapshot): Vocabulary {
 
   for (const p of rows(snapshot, 'caPolicies')) add(v, counts, 'policy', p.displayName)
   for (const g of rows(snapshot, 'groups')) add(v, counts, 'group', g.displayName)
+  for (const g of loaded.groups ?? []) add(v, counts, 'group', g.displayName)
+  // A strength the tenant made is named by the tenant; Microsoft's built-in ones are not.
+  for (const s of rows(snapshot, 'authStrengths')) if (s.policyType !== 'builtIn') add(v, counts, 'strength', s.displayName)
   for (const r of rows(snapshot, 'roleDefinitions')) add(v, counts, 'role', r.displayName)
   for (const a of rows(snapshot, 'applications')) add(v, counts, 'app', a.displayName)
   for (const a of snapshot.appSignInSummary ?? []) add(v, counts, 'app', (a as Record<string, unknown>).appDisplayName)

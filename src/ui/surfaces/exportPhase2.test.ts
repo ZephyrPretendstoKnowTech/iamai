@@ -426,3 +426,22 @@ test('no channel the opened step hands over doubles a full stop', () => {
   }
   assert.ok(bound > 0, 'the premise: a channel that binds the blockers')
 })
+
+// Finding 19 (severity 1, reproduced). The masked bundle still named the groups
+// the plan loaded ("Core - Break glass", "Core - Exclusions") and the tenant's
+// custom authentication strength ("Modern MFA + TAP"): the vocabulary read the
+// snapshot's group rows only, which a scan leaves empty, and no strengths. Its
+// readme also listed rings and evidence, which no step in it carries.
+test('the masked bundle names none of the groups the plan loaded or the tenant\'s custom strengths, and its readme lists what it carries', () => {
+  const p = exportPage(fixture('demo'))
+  const bundle = groundingBundle({ view: p.view, tenant: 'Tenant', snapshot: p.f.snapshot, coverage: p.r.coverage, steps: p.r.steps, schedule: p.r.schedule, redacted: true, generated: 'today', cleanup: p.cleanup, groups: p.f.groups })
+  const text = JSON.stringify(bundle)
+  const loaded = [...p.f.groups.values()].map((g) => g.displayName).filter((n): n is string => typeof n === 'string' && n.length >= 4)
+  const strengths = ((p.f.snapshot.config.authStrengths?.rows ?? []) as { displayName?: string; policyType?: string }[])
+  const custom = strengths.filter((s) => s.policyType !== 'builtIn').map((s) => s.displayName).filter((n): n is string => typeof n === 'string')
+  assert.ok(loaded.length > 0 && custom.length > 0, 'the premise: loaded groups and a custom strength')
+  for (const name of [...loaded, ...custom]) assert.ok(!text.includes(name), `the masked bundle names "${name}"`)
+  const readme = (bundle._readme as string[]).join(' ')
+  const keys = new Set(Object.keys((bundle.plan as { steps: Record<string, unknown>[] }).steps[0]!))
+  for (const field of ['rings', 'evidence']) if (!keys.has(field)) assert.doesNotMatch(readme, new RegExp(`\b${field}\b`), `the readme lists ${field}, which no step carries`)
+})
