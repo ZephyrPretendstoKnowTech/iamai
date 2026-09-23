@@ -1,6 +1,6 @@
 // The foundation gate (roadmap/foundations.ts; owner, 2026-09-19): no policy
 // step reads Ready until Emergency Access and Direction are settled — Establish Emergency
-// Access complete, and every Decide Your Tenant's Direction answer approved.
+// Access complete, and every Define Your Rollout Scope answer approved.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'

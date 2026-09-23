@@ -1287,7 +1287,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     steps.push(step)
   }
 
-  // The device decision (E2) is Decide Your Tenant's Direction's D3
+  // The device decision (E2) is Define Your Rollout Scope's D3
   // (roadmap/direction.ts): always asked with Conditional Access, never hidden
   // on evidence, and the device steps wait on its answers (gateOnDirection).
 
@@ -2935,7 +2935,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     setState(s, { setAside: true })
   }
   if (canUseConditionalAccess && devicePlan?.phones === 'none') steps.push(prereq('s-ladder-phone-access-restriction'))
-  // Decide Your Tenant's Direction (roadmap/direction.ts): the four decision
+  // Define Your Rollout Scope (roadmap/direction.ts): the four decision
   // steps, and the review rows whose services D1 asks about.
   if (canUseConditionalAccess) {
     steps.unshift(...directionSteps({ snapshot, mapping, notAssessed: input.coverage.organisation.notAssessed, availableGoalIds: input.coverage.results.filter((r) => r.status !== 'licence-limited').map((r) => r.goal.id), nameOf }))

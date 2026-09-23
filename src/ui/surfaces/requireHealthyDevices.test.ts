@@ -1,4 +1,4 @@
-// The "Require Healthy Devices" group, taken to the V1 standard:
+// The "Require Healthy Devices" steps, taken to the V1 standard:
 // docs/plans/require-healthy-devices-spec.md holds the outcome, the Microsoft
 // Learn page behind every technical claim and the date it was checked. One test
 // per acceptance item in that spec.

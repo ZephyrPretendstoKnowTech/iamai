@@ -203,7 +203,7 @@ test('a row the graph does not know takes the Plan’s own state, after the engi
 
 test('report-only preparation waits with the rest until the plan’s foundation is settled, and is Ready once it is', () => {
  // Owner, 2026-09-19: no policy step reads Ready while Establish Emergency Access
- // or Decide Your Tenant's Direction is unsettled. Report-only preparation used
+ // or Define Your Rollout Scope is unsettled. Report-only preparation used
  // to be the exception — the emergency gate held enforcement only.
  const {steps} = runFixture(fixture('demo'))
  const exclusion = steps.find(s => s.id === 's-prereq-exclusion-group')!

@@ -618,7 +618,7 @@ export type Step = {
   guidance?: import('../content/content.ts').ContentStep
   baselineReviewSource?: { name: string; json: string | null; reason: string }
   dormantChoices?: { id: string; name: string; outcome: 'keep' | 'disable' | 'investigate' | ''; reason: string; disabled: boolean }[]
-  /** A Decide Your Tenant's Direction step's questions (roadmap/direction.ts), one tile each. */
+  /** A Define Your Rollout Scope step's questions (roadmap/direction.ts), one tile each. */
   directionQuestions?: DirectionQuestion[]
   authenticationStrengthTarget?: { allowedCombinations: string[] }
   configurationFindings?: ConfigurationFinding[]

@@ -1,4 +1,4 @@
-// Decide Your Tenant's Direction (roadmap/direction.ts, directionAnswers.ts):
+// Define Your Rollout Scope (roadmap/direction.ts, directionAnswers.ts):
 // the four steps' questions, their suggestions, where their answers are stored,
 // completion, and reopening (docs/plans/direction-spec.md).
 import { test } from 'node:test'
