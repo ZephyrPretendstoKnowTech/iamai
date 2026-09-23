@@ -424,7 +424,7 @@ test('007.11f2 (R4-48): a sign-in read that reached no record says so, and says 
   // And the defect in the first fix (R4-48 review): it called every
   // 'insufficient' and 'error' read a refusal by the tenant — "could not be
   // read in this tenant … waiting will not change that". The collector
-  // (graph/collect/laneBCore.ts runLaneB) writes 'insufficient' for a read that
+  // (graph/collect/signInStream.ts runLaneB) writes 'insufficient' for a read that
   // ran and stopped short, with how far it got in its reason, and 'error' for a
   // fault that may pass. Over 17 hours of records the line contradicted its own
   // reason, and over "Graph 503 after retries" it called a passing fault a
@@ -472,7 +472,7 @@ test('007.11f2 (R4-48): a sign-in read that reached no record says so, and says 
 
   // Reads that ran and stopped with some hours covered: short windows, as 007.11f.
   for (const [status, reason, hours] of [
-    ['insufficient', 'stopped at memory ceiling with only 17 h covered (minimum 24 h)', 17],
+    ['insufficient', 'stopped at time budget with only 17 h covered (minimum 24 h)', 17],
     ['error', 'Graph 503 after retries', 5],
   ] as const) {
     const short = run(status, reason, hoursBack(hours))

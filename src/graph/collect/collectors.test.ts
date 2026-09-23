@@ -4,7 +4,9 @@
 // wants it goes unknown, never "could not be read".
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { collectConfigSection, collectMethodsForUsers, collectRegistrationForUsers, collectUsers, registrationGaps } from './collectors.ts'
+import { CONFIG_KEYS, collectConfigSection, collectMethodsForUsers, collectRegistrationForUsers, collectUsers, registrationGaps } from './collectors.ts'
+import { CONFIG_KEYS as CORE_CONFIG_KEYS } from './coreSections.ts'
+import { GRAPH_SCOPES } from '../scopes.ts'
 import { RETRY_MAX_5XX } from './constants.ts'
 import { COLLECTOR_REGISTRY } from './registry.ts'
 
@@ -366,4 +368,33 @@ test('the cross-tenant collector requests its registry row\'s path and the paths
   }
   assert.deepEqual(requested, [spec.endpoint, ...(spec.alsoReads ?? [])])
   assert.equal(spec.alsoReads?.length, 2)
+})
+
+// The owner dropped the /me/memberOf read (2026-09-23): nothing in the product
+// used the operator's groups, and How said so. Directory.Read.All stays: other
+// reads need it.
+test('the scan reads no /me/memberOf, and Directory.Read.All is still asked for by the reads that need it', async () => {
+  for (const row of COLLECTOR_REGISTRY) {
+    assert.ok(![row.endpoint, ...(row.alsoReads ?? [])].some((p) => p.includes('/me/memberOf')), `${row.name} reads /me/memberOf`)
+  }
+  assert.equal((CONFIG_KEYS as string[]).includes('meMemberOf'), false)
+  assert.equal((CORE_CONFIG_KEYS as string[]).includes('meMemberOf'), false)
+  assert.deepEqual([...CONFIG_KEYS].sort(), [...CORE_CONFIG_KEYS].sort(), 'the collector list and the unread-report list are the same sections')
+
+  const requested: string[] = []
+  const original = globalThis.fetch
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    requested.push(String(input))
+    return new Response(JSON.stringify({ value: [] }), { status: 200 })
+  }) as typeof fetch
+  try {
+    for (const key of CONFIG_KEYS) await collectConfigSection(ctx, key)
+  } finally {
+    globalThis.fetch = original
+  }
+  assert.ok(requested.length >= CONFIG_KEYS.length, 'every section was read')
+  assert.equal(requested.filter((u) => u.includes('/me/memberOf')).length, 0)
+
+  assert.ok(GRAPH_SCOPES.includes('Directory.Read.All'))
+  assert.ok(COLLECTOR_REGISTRY.some((row) => row.scopes.includes('Directory.Read.All')), 'another read still needs Directory.Read.All')
 })

@@ -52,7 +52,7 @@ export function cleanReportOnly(opts: {
  * records stop days before the scan — and the readiness gate reads that,
  * correctly, as a window nobody finished watching (roadmap/tracking.ts
  * `windowCollected`). The window keeps its length and slides, which is what the
- * collector does with it (collect/laneBCore.ts `runLaneB`).
+ * collector does with it (collect/signInStream.ts `runLaneB`).
  */
 export function scannedAt(snapshot: TenantSnapshot, asOf: string): TenantSnapshot {
   const src = snapshot.sources.signInEvidence

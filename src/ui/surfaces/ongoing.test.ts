@@ -428,9 +428,12 @@ test('E3: the template says to test the exclusions, not only to preserve them', 
   assert.ok(lines.some((l) => /exclude the emergency access accounts/.test(l) && /report-only policy blocks nobody/.test(l)), lines.join('\n'))
 })
 
-test('E4: the template says to disable rather than delete when rolling back', () => {
+test('E4: the template says to set the policy back to Report-only, never Off and never deleted, when rolling back', () => {
+  // Owner, 2026-09-23: a revert goes to Report-only, and the policy is switched
+  // on from there when the data supports it.
   const lines = reviewSteps('demo')
-  assert.ok(lines.some((l) => /disable the policy rather than delete it/.test(l) && /30 days/.test(l)), lines.join('\n'))
+  assert.ok(lines.some((l) => /set the policy back to Report-only rather than delete it/.test(l) && /30 days/.test(l)), lines.join('\n'))
+  assert.ok(!lines.some((l) => /disable the policy/i.test(l)), lines.join('\n'))
 })
 
 test('E5: Completion Criteria says what the record is held against, and what reopens it', () => {
