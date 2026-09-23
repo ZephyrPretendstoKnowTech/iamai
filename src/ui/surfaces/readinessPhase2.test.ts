@@ -550,8 +550,13 @@ test('a count of one in the evidence tile and the scope line reads as one: no "1
     assert.match(line, /\b1\b/, `the count is in the sentence: ${line}`)
     assert.doesNotMatch(line, /\b1 (people|method lists|of them aren’t)|1 person’s sign-ins aren’t reads|\breads\b/, line)
   }
+  // One person has one method list, and the refused line keeps one contraction style and no dash.
+  for (const line of [unreadMethodsWords(demo, 1), unreadMethodsWords(hostile, 1)]) {
+    assert.match(line, /the method list of 1 person\b/, line)
+    assert.doesNotMatch(line, /method lists|could not|—/, line)
+  }
   // Above one, the plural reads as before.
-  assert.match(unreadMethodsWords(demo, 3), /3 people’s method lists/)
+  assert.match(unreadMethodsWords(demo, 3), /the method list of 3 people\b/)
   assert.doesNotMatch(page(), /<dd>\{T\.evidence\.(individually|notCovered)\}<\/dd>/, 'no count set apart from its sentence')
 })
 

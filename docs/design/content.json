@@ -1378,9 +1378,10 @@
         "partial": "Sign-ins read {from} to {to}: the most recent part of the 30 days.",
         "none": "No sign-in records were read.",
         "$commentCounts": "These lines stood beside a count in its own cell, so a count of one read \"1 method lists\" and \"1 people’s sign-ins\". The count is now in each sentence, after its verb, so pluralise bends the noun and leaves the verbs alone.",
-        "unreadMethods": "IAMAI couldn’t read {n} people’s method lists. The next scan retries.",
-        "$commentUnreadMethodsRefused": "Where the registration report was refused (a permission or a licence), a rescan with the same sign-in reads no more. \"The next scan retries\" was false there. The Plan's blind-source sentence names the same refusal; {fix} is its fix (roadmap/readiness.ts sourceReadFix).",
-        "unreadMethodsRefused": "IAMAI couldn’t read {n} people’s method lists, and could not read registration details in this tenant — {reason}. {fix}",
+        "$commentUnreadMethods": "Each person has one method list, so the noun stays singular: \"1 person’s method lists\" read as several lists for one person.",
+        "unreadMethods": "IAMAI couldn’t read the method list of {n} people. The next scan retries.",
+        "$commentUnreadMethodsRefused": "Where the registration report was refused (a permission or a licence), a rescan with the same sign-in reads no more of it, so the line names that refusal and its fix, not a retry. The Plan's blind-source sentence names the same refusal; {fix} is its fix (roadmap/readiness.ts sourceReadFix). One contraction style, and the reason after a colon as in app.readiness.lineNoRecordsReason.",
+        "unreadMethodsRefused": "IAMAI couldn’t read the method list of {n} people, nor registration details in this tenant: {reason}. {fix}",
         "notCovered": "IAMAI hasn’t read {n} people’s sign-ins yet. The next scan continues.",
         "individually": "IAMAI read {n} people individually for the older part of the window."
       },
