@@ -988,9 +988,13 @@
       },
       "summaryLabel": "Readiness answer",
       "summary": "{ready} of {cohort} are ready for phishing-resistant sign-in.",
+      "$commentSummaryWithGuests": "People and guests counted together. \"4 of 29 people and 1 guest are ready\" read as if the guest were ready too. The whole count follows \"of\"; the guests stay named beside the people (owner, 2026-09-19).",
+      "summaryWithGuests": "{ready} of {total} are ready for phishing-resistant sign-in: {cohort}.",
       "summaryNone": "No active people to count.",
       "summaryNoneNoP1": "Nobody can be counted: sign-in records need Microsoft Entra ID P1, which this tenant doesn’t have, so this scan read nobody’s activity.",
       "summaryUnmeasured": "Readiness not measured for {cohort}: this scan holds no sign-in proof.",
+      "$commentSummaryNotJudged": "Everyone counted is Unknown, though the sign-in proof was read: their method lists were refused, say. \"0 of 30 are ready\" put an unread count in the shape of a measurement. Each row says what was missing.",
+      "summaryNotJudged": "Readiness not measured for {cohort}: this scan couldn’t read what it depends on.",
       "summaryNoP1": "Readiness can’t be measured for {cohort}: sign-in records need Microsoft Entra ID P1, which this tenant doesn’t have.",
       "groupNoP1": {
         "$comment": "The Unknown group's words where everyone in it is unconfirmed only because the tenant has no Entra ID P1 (summaryNoP1 says why, once).",
@@ -1077,21 +1081,25 @@
         "confirm": {
           "title": "Confirm the method still exists",
           "why": "Registered, but no confirmed sign-in in 30 days",
-          "body": "Ask each person to sign in once with the method named on their row. If the phone or computer was replaced, they remove the old method and register again."
+          "$commentBody": "It said \"they remove the old method and register again\". Registering first means nobody is left without a working method while the old one still works; removing a method on a lost device loses nothing. Registering security info needs MFA, so somebody whose only method was on that device can't register at all. The last sentence states that fact as the Temporary Access Pass check does (checks.tap.failText); it adds no instruction.",
+          "body": "Ask each person to sign in once with the method named on their row. If the phone or computer holding it was replaced, they register a new method first, then remove the old one. Anyone left with no method needs a Temporary Access Pass to register."
         },
         "device": {
-          "title": "Add a passkey to the device they use",
+          "$commentTitle": "It read \"Add a passkey to the device they use\" over rows whose step is to sign in once with the passkey they already hold. The title names the gap; each row names its step.",
+          "title": "Cover the device that signs in without a phishing-resistant method",
           "why": "Confirmed on one device, but another signs in without it",
+          "$commentBody": "A row's step may be a sign-in with a method already held. The option is named only where the step is a setup; \"On a phone that is…\" read as if every step were a passkey.",
           "body": {
-            "windows": "Each sets up the option named on their row, on the device that still signs in without it. On a phone that is a passkey in Microsoft Authenticator; on a joined computer, Windows Hello for Business.",
-            "mac": "Each sets up the option named on their row, on the device that still signs in without it. On a phone that is a passkey in Microsoft Authenticator; on a Mac, a synced passkey where passkey settings allow it.",
-            "both": "Each sets up the option named on their row, on the device that still signs in without it. On a phone that is a passkey in Microsoft Authenticator. On a joined Windows computer it is Windows Hello for Business; on a Mac, a synced passkey where allowed.",
-            "none": "Each sets up the option named on their row, on the device that still signs in without it. On a phone that is a passkey in Microsoft Authenticator."
+            "windows": "Each takes the step named on their row, on that device. Where the step is a setup, on a phone it is a passkey in Microsoft Authenticator; on a joined computer, Windows Hello for Business.",
+            "mac": "Each takes the step named on their row, on that device. Where the step is a setup, on a phone it is a passkey in Microsoft Authenticator. On a Mac it is a synced passkey, where passkey settings allow it.",
+            "both": "Each takes the step named on their row, on that device. Where the step is a setup, on a phone it is a passkey in Microsoft Authenticator. On a joined Windows computer it is Windows Hello for Business; on a Mac, a synced passkey where allowed.",
+            "none": "Each takes the step named on their row, on that device. Where the step is a setup, on a phone it is a passkey in Microsoft Authenticator."
           }
         },
         "unknown": {
           "title": "IAMAI couldn’t read these people",
-          "why": "Each row says what was missing. The next scan retries."
+          "$commentWhy": "It ended \"The next scan retries.\", which is false where the tenant refused the read. Each row says what was missing and whether a rescan reads it.",
+          "why": "Each row says what was missing."
         },
         "ready": {
           "title": "Ready",
@@ -1112,6 +1120,8 @@
         "byDepartment": "Department",
         "noDepartment": "No department recorded",
         "noDevices": "No sign-in seen in 30 days",
+        "$commentNoDevicesUnread": "The devices sub-group of people whose sign-ins were not read (derive/mfaReadiness.ts devicesUnread). It was titled noDevices, \"No sign-in seen in 30 days\", over rows whose cells say Not read.",
+        "noDevicesUnread": "Sign-ins not read",
         "showing": "Showing {shown} of {n}.",
         "showMore": "Show the next {n}"
       },
@@ -1191,11 +1201,14 @@
         "none": "Nothing to do",
         "seamless": "Add {option} on {device}",
         "setUp": "Set up {option}",
-        "restore": "Restore {method}",
+        "$commentRestore": "It said \"Restore the passkey\". A removed method can't be restored in Entra, and the row never said one was seen before. It is set up again.",
+        "restore": "Set up {method} again: the one seen {date} is no longer registered",
         "confirm": "Sign in once with {method}",
         "confirmOn": "Sign in once with {method} on {device}",
         "returnConfirm": "Confirm on return",
         "guest": "Set up Microsoft Authenticator; passkeys don’t work for guests yet",
+        "$commentGuestHasAuthenticator": "A guest who already holds Microsoft Authenticator was told to set it up. Nothing on the row can move a guest to Ready while passkeys don't work for guests, so the row states that.",
+        "guestHasAuthenticator": "Uses Microsoft Authenticator; passkeys don’t work for guests yet",
         "addDevice": "Add {option} on {device}",
         "updateOs": "Update {device} to {version}, or use a security key on it",
         "replaceKey": "Replace the key with an approved model",
@@ -1208,7 +1221,9 @@
           "methods": "Nothing to do: the next scan retries the method list",
           "signIns": "Nothing to do: the next scan retries the sign-in records",
           "notCovered": "Nothing to do: the next scan reads their sign-ins",
-          "unavailable": "Nothing to do here: sign-in records aren’t available to IAMAI in this tenant"
+          "unavailable": "Nothing to do here: sign-in records aren’t available to IAMAI in this tenant",
+          "$commentMethodsUnavailable": "Drawn only where no method list was read in this tenant and the registration report that stands in for one was refused (derive/readinessContext.ts methodListsUnread). The row states the fact; the evidence tile says what reads it. Where other lists were read, a missed one keeps \"methods\", because the next scan re-reads it.",
+          "methodsUnavailable": "Not known: IAMAI couldn’t read method lists in this tenant"
         }
       },
       "notes": {
@@ -1266,10 +1281,14 @@
         },
         "retained": "kept from an earlier scan",
         "unlisted": "Unlisted model ({aaguid})",
+        "$commentTwin": "A key with an approved model's name on another AAGUID (other firmware). The panel said \"Not on Step 3’s approved list\" beside a list naming the same model, and never said which AAGUID differs.",
+        "twin": "{model}, {aaguid}; the approved one is {approved}",
         "why": {
           "seamless": "Every device they use signs them in on its own.",
           "ready": "Phishing-resistant sign-in is confirmed on every kind of device they use (computer, phone) in the last 30 days.",
           "confirm": "They hold a phishing-resistant method, but no sign-in with it in the last 30 days: it may no longer exist.",
+          "$commentConfirmNew": "A method registered last week and not used yet read \"it may no longer exist\", right after a registration campaign. Where every usable method is new, the row says when it was registered.",
+          "confirmNew": "Registered {date} and not used to sign in yet.",
           "onLeave": "They haven’t signed in during the last 30 days. Confirm the method when they return.",
           "device": "Confirmed on one device, but {device} signs in without it.",
           "method": "No phishing-resistant method they can use.",
@@ -1307,13 +1326,18 @@
         "registration": {
           "pass": "People can register from anywhere after MFA",
           "fail": "Registration only works from trusted places",
-          "failText": "A Conditional Access policy limits security-info registration. Issue a Temporary Access Pass to people working remotely, or allow registration after MFA from anywhere.",
+          "$commentFailText": "It offered \"Issue a Temporary Access Pass to people working remotely\". A pass satisfies MFA, but not a block scoped by location or a compliant or joined device grant, which is what this check finds. The people it named stayed blocked. The remaining remedy is the one it already gave.",
+          "failText": "A Conditional Access policy lets people register security info only from a trusted location or a managed device. To unblock people elsewhere, allow registration after MFA from anywhere.",
           "unknown": "Conditional Access policies weren’t read. Scan again."
         },
         "windowsHello": {
           "seen": "Windows Hello for Business is working here: people sign in with it",
           "notSeen": "Windows Hello for Business isn’t seen working yet. Confirm it’s turned on in Intune: Devices, Enrollment, Windows Hello for Business.",
-          "noJoined": "No joined Windows computers seen, so Windows Hello for Business doesn’t apply yet"
+          "noJoined": "No joined Windows computers seen, so Windows Hello for Business doesn’t apply yet",
+          "$commentUnread": "The device directory wasn't read in full, so an absent joined computer settles nothing. The check was filed as done under noJoined there, over a read that failed.",
+          "unread": "Whether Windows Hello for Business works here isn’t known: this scan couldn’t read the device directory in full",
+          "$commentSignInsUnread": "The device directory holds joined Windows computers, but no sign-in record was read, so nobody could be seen signing in with Windows Hello. It shared unread's words, which read as if the directory had failed.",
+          "signInsUnread": "Whether Windows Hello for Business works here isn’t known: no sign-in records were read"
         },
         "tap": {
           "pass": "Temporary Access Pass is enabled",
@@ -1335,7 +1359,8 @@
         },
         "attestation": {
           "pass": "Attestation is off: synced and Windows Hello passkeys can register",
-          "note": "Attestation is on. Synced and Windows Hello passkeys can’t register, so contractors use a phone passkey or a security key."
+          "$commentNote": "It said \"so contractors use a phone passkey\"; nothing on the page defines contractors. The people it means are the ones on computers without Windows Hello for Business.",
+          "note": "Attestation is on. Synced and Windows Hello passkeys can’t register, so people on computers without Windows Hello for Business use a phone passkey or a security key."
         },
         "link": "Open the related step"
       },
@@ -1349,15 +1374,26 @@
         "service": "Service accounts",
         "shared": "Shared devices",
         "disabled": "Sign-in disabled",
+        "$commentOne": "A count of one beside a kind's name read \"1 Shared devices\". The name for exactly one of a kind.",
+        "one": {
+          "emergency": "Emergency access account",
+          "service": "Service account",
+          "shared": "Shared device",
+          "disabled": "Sign-in disabled"
+        },
         "dormantLink": "Confirm or disable in the Plan"
       },
       "evidence": {
         "full": "days of sign-ins, {from} to {to}",
         "partial": "Sign-ins read {from} to {to}: the most recent part of the 30 days.",
         "none": "No sign-in records were read.",
-        "unreadMethods": "method lists couldn’t be read. The next scan retries.",
-        "notCovered": "people’s sign-ins aren’t read yet. The next scan continues.",
-        "individually": "people read individually for the older part of the window"
+        "$commentCounts": "These lines stood beside a count in its own cell, so a count of one read \"1 method lists\" and \"1 people’s sign-ins\". The count is now in each sentence, after its verb, so pluralise bends the noun and leaves the verbs alone.",
+        "$commentUnreadMethods": "Each person has one method list, so the noun stays singular: \"1 person’s method lists\" read as several lists for one person.",
+        "unreadMethods": "IAMAI couldn’t read the method list of {n} people. The next scan retries.",
+        "$commentUnreadMethodsRefused": "Where the registration report was refused (a permission or a licence), a rescan with the same sign-in reads no more of it. The line names that refusal and its fix, not a retry. The Plan's blind-source sentence names the same refusal; {fix} is its fix (roadmap/readiness.ts sourceReadFix). One contraction style, and the reason after a colon as in app.readiness.lineNoRecordsReason.",
+        "unreadMethodsRefused": "IAMAI couldn’t read the method list of {n} people, nor registration details in this tenant: {reason}. {fix}",
+        "notCovered": "IAMAI hasn’t read {n} people’s sign-ins yet. The next scan continues.",
+        "individually": "IAMAI read {n} people individually for the older part of the window."
       },
       "guests": {
         "$comment": "Guests (owner decision, 2026-09-19, superseding option B): counted and listed with everyone else, tagged Guest, and in the MFA campaign; this tile adds the tenant-level reading. derive/guestReadiness.ts is the reading.",
@@ -1366,6 +1402,8 @@
         "trustOn": "This tenant trusts MFA from their home organisation.",
         "trustOff": "This tenant doesn’t trust MFA from their home organisation, so guests are asked to register a method here.",
         "trustUnknown": "Cross-tenant access settings weren’t read.",
+        "$commentTrustNotReported": "The settings were read and name no inbound MFA trust. trustUnknown said they weren't read, on the public demo among others.",
+        "trustNotReported": "Cross-tenant access settings were read, but don’t say whether this tenant trusts MFA from their home organisation.",
         "policyInPlace": "Require MFA for Guests is in place.",
         "policyNotInPlace": "Require MFA for Guests isn’t in place yet.",
         "policyLink": "Open the step",
@@ -1381,9 +1419,12 @@
       "planContext": {
         "$comment": "MFA Readiness opened from a Plan step (#/readiness/step/<id>): the people that step is waiting on, and the way back. Shown only when the step is on the plan and its own requirement is what holds it; derive/stepMfaReadiness.ts is the answer.",
         "filtered": "Filtered to the {cohort} {step} is waiting on.",
+        "$commentCovers": "A step that holds on nobody (Prepare Your Team for MFA) scopes the page to everyone it covers. \"Is waiting on\" said the step waited on all of them while it counted most of them ready.",
+        "covers": "Filtered to the {cohort} {step} covers.",
         "unknown": "{step} is waiting on sign-in readiness, and this scan could not work out who.",
         "back": "← Back to the step",
-        "uncounted": "{n} of them aren’t counted on this page: no sign-in in the last 90 days, or not a person’s account."
+        "$commentUncounted": "It began \"{n} of them aren’t counted\", which a count of one left as \"1 of them aren’t\": pluralise bends no contraction.",
+        "uncounted": "This page doesn’t count {n} of them: no sign-in in the last 90 days, or not a person’s account."
       }
     },
     "export": {
@@ -2938,7 +2979,8 @@
         "securityDefaultsCoexist": "{n} Conditional Access policies are enforced in this tenant while security defaults are still on, which Microsoft does not support. Do not turn security defaults off to settle it: this step does that only once the policies that replace them can go On in the same change window."
       },
       "readiness": {
-        "lineNoRecordsReason": "no sign-in records ({reason})",
+        "$commentLineNoRecordsReason": "It read \"no sign-in records ({reason})\" beside a count of 0, and the reason often said the same thing or carried its own parentheses. One sentence now, and a reason that only restates it is left out.",
+        "lineNoRecordsReason": "No sign-in records were read: {reason}.",
         "needsScan": "Nothing to show until the first scan.",
         "scanLink": "Scan the tenant",
         "$comment": "The MFA Readiness surface's own words (task 012); pages.app.today until it was renamed."

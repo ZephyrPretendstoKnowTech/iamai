@@ -9,17 +9,20 @@
 //
 // Pure: no DOM, no network.
 import type { TenantSnapshot } from '../graph/collect/types.ts'
+import { sectionHasData } from '../graph/collect/coreSections.ts'
 
 type TrustRow = { relationship?: string; inboundTrust?: { isMfaAccepted?: boolean }; b2bCollaborationInbound?: { inboundTrust?: { isMfaAccepted?: boolean } } }
 
 /**
  * Whether this tenant trusts MFA performed in a guest's home organisation. On
  * only where the default relationship is readable and accepts it and no partner
- * override rejects it; off where the default or a partner rejects it; unknown
- * where the settings were not read. The one reading (roadmap/scenarioLines.ts
- * reads it too).
+ * override rejects it; off where the default or a partner rejects it; unread
+ * where the settings were not read (graph/collect/coreSections.ts
+ * sectionHasData); notReported where they were read and say neither. The one
+ * reading (roadmap/scenarioLines.ts reads it too).
  */
-export function guestMfaTrustOf(snapshot: Pick<TenantSnapshot, 'config'>): 'on' | 'off' | 'unknown' {
+export type GuestMfaTrust = 'on' | 'off' | 'unread' | 'notReported'
+export function guestMfaTrustOf(snapshot: Pick<TenantSnapshot, 'config' | 'sources'>): GuestMfaTrust {
   const section = snapshot.config.crossTenantAccess
   const rows = (section?.rows ?? []) as TrustRow[]
   const value = (row: TrustRow): boolean | null => {
@@ -29,22 +32,24 @@ export function guestMfaTrustOf(snapshot: Pick<TenantSnapshot, 'config'>): 'on' 
   const defaults = rows.find((r) => r.relationship === 'default')
   const partners = rows.filter((r) => r.relationship === 'partner')
   if (defaults && value(defaults) === false) return 'off'
-  if (partners.some((r) => value(r) === false)) return section?.status === 'ok' ? 'off' : 'unknown'
+  // A read that failed is not a read that says nothing.
+  if (!sectionHasData(snapshot, 'crossTenantAccess')) return 'unread'
+  if (partners.some((r) => value(r) === false)) return section?.status === 'ok' ? 'off' : 'notReported'
   if (section?.status === 'ok' && defaults && value(defaults) === true) return 'on'
-  return 'unknown'
+  return 'notReported'
 }
 
 export type GuestReading = {
   /** Guests who signed in during the activity window. */
   active: number
-  trust: 'on' | 'off' | 'unknown'
+  trust: GuestMfaTrust
   /** The Plan's Require MFA for Guests step: in place, not yet, or not on this plan. */
   policy: 'inPlace' | 'notInPlace' | 'absent'
 }
 
 export const GUEST_STEP_ID = 's-goal-guests-mfa'
 
-export function guestReadingOf(snapshot: Pick<TenantSnapshot, 'config'>, activeGuests: number, guestStep: { status: string } | null): GuestReading {
+export function guestReadingOf(snapshot: Pick<TenantSnapshot, 'config' | 'sources'>, activeGuests: number, guestStep: { status: string } | null): GuestReading {
   return {
     active: activeGuests,
     trust: guestMfaTrustOf(snapshot),

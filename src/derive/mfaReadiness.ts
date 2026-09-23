@@ -185,7 +185,8 @@ export function shows(r: ReadinessRow, key: ShowKey, lapsing: readonly string[] 
 
 /** How a large group splits: by the devices people use (each part shares one set of instructions), or by department. */
 export type SubGroupBy = 'devices' | 'department'
-export type SubGroup = { key: string; admins: boolean; platforms: Platform[]; department: string | null; rows: ReadinessRow[] }
+/** `unread`: split by devices, the people with no device because their sign-ins were not read, apart from those with none seen. */
+export type SubGroup = { key: string; admins: boolean; platforms: Platform[]; department: string | null; unread: boolean; rows: ReadinessRow[] }
 
 /** A group is split once it holds more rows than one page shows. */
 export const SUB_GROUP_AT = 50
@@ -196,8 +197,17 @@ export function platformsOf(r: ReadinessRow): Platform[] {
 }
 
 /**
+ * The devices a row signed in from were not read: its own sign-ins, or the
+ * tenant's sign-in records. An empty device list there is not "no sign-in".
+ */
+export function devicesUnread(r: ReadinessRow): boolean {
+  return r.readiness?.unknown === 'signIns' || r.readiness?.signInsRead === false
+}
+
+/**
  * A group's sub-groups: the admins first (a lockout hurts most there), then the
- * rest by device setup or by department, largest first. Each row is in one.
+ * rest by device setup or by department, largest first. Each row is in one. By
+ * devices, people with no device read are apart from people with none seen.
  */
 export function subGroupsOf(rows: readonly ReadinessRow[], by: SubGroupBy): SubGroup[] {
   const admins = rows.filter((r) => r.admin)
@@ -206,11 +216,12 @@ export function subGroupsOf(rows: readonly ReadinessRow[], by: SubGroupBy): SubG
   for (const r of rest) {
     const platforms = platformsOf(r)
     const department = r.user.department?.trim() || null
-    const key = by === 'devices' ? platforms.join('+') || 'none' : department ?? ''
-    const b = buckets.get(key) ?? { key, admins: false, platforms: by === 'devices' ? platforms : [], department: by === 'department' ? department : null, rows: [] }
+    const unread = by === 'devices' && platforms.length === 0 && devicesUnread(r)
+    const key = by === 'devices' ? platforms.join('+') || (unread ? 'unread' : 'none') : department ?? ''
+    const b = buckets.get(key) ?? { key, admins: false, platforms: by === 'devices' ? platforms : [], department: by === 'department' ? department : null, unread, rows: [] }
     b.rows.push(r)
     buckets.set(key, b)
   }
   const out = [...buckets.values()].sort((a, b) => b.rows.length - a.rows.length || (a.key < b.key ? -1 : 1))
-  return admins.length > 0 ? [{ key: 'admins', admins: true, platforms: [], department: null, rows: admins }, ...out] : out
+  return admins.length > 0 ? [{ key: 'admins', admins: true, platforms: [], department: null, unread: false, rows: admins }, ...out] : out
 }
