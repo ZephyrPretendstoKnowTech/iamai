@@ -119,6 +119,9 @@ export type AppWords = {
     columns: Record<string, string>
     /** The static rules on the tenant's own policies (roadmap/staticRules.ts), one row per engine.staticRules key. */
     staticChecks: { caption: string; severity: string; rows: Record<string, { what: string; why: string }> }
+    /** "What IAMAI reads" in plain words, by registry read name (ui/surfaces/howView.ts howReadTables). */
+    readConditions: { licence: string; core: string; section: string }
+    readRows: Record<string, { why: string; note?: string }>
   }
   inventory: { caps: Record<string, string>; workloadNames: Record<string, string> }
   picker: { placeholder: string; remove: string; searching: string; noMatches: string; typeToSearch: string; suggestions: string; results: string; done: string; matched: string; choose: string }

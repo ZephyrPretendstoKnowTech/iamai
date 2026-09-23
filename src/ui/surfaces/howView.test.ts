@@ -3,7 +3,9 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { reviewBody } from '../../content/render.ts'
-import { howCheckTables, howLimits } from './howView.ts'
+import { howCheckTables, howLimits, howReadTables } from './howView.ts'
+import { COLLECTOR_REGISTRY } from '../../graph/collect/registry.ts'
+import { CORE_SOURCES } from '../../graph/collect/coreSections.ts'
 import { EVALUATED_SUBJECTS } from '../../validation/report.ts'
 import { app, engine, pages, stepById } from '../../content/content.ts'
 import { REGISTRY } from '../../validation/rules.ts'
@@ -155,4 +157,27 @@ test('the review page claims no How rewording the page does not show', () => {
   for (const key of ['needsByStep', 'exclusionsCheckReworded', 'groupSearchReworded', 'packageProblem']) {
     assert.equal((pages.how as Record<string, unknown>)[key], undefined, `pages.how.${key} is kept without a reader`)
   }
+})
+
+// "What IAMAI reads" printed the registry's developer notes: "none" under "When
+// it can fail" for twelve reads (the hostile tenant refuses one of them), raw
+// property names, "the replay engine", "for later phases" for a read the plan
+// already uses, "attempt and map the 403" (Phase 2 audit, How).
+test('What IAMAI reads states conditions and purposes in plain words, never "none"', () => {
+  const tables = howReadTables()
+  const rows = tables.flatMap((t) => t.rows)
+  assert.equal(rows.length, COLLECTOR_REGISTRY.length, 'one row per registry read')
+  assert.deepEqual(Object.keys(app.how.readRows).sort(), COLLECTOR_REGISTRY.map((s) => s.name).sort(), 'one plain line per registry read, and none for a read that is gone')
+  const DEVELOPER = /\bnone\b|registrationEnforcement|policyMigrationState|replay engine|later phases|attempt and map|consumers|\bintents?\b|\bincl\.|signInActivity|\bSP\b/
+  for (const r of rows) {
+    assert.ok(r.conditions.trim().length > 0, `${r.name}: no conditions`)
+    assert.ok(r.why.trim().length > 0, `${r.name}: no purpose`)
+    assert.doesNotMatch(r.conditions, DEVELOPER, `${r.name}: "${r.conditions}"`)
+    assert.doesNotMatch(r.why, DEVELOPER, `${r.name}: "${r.why}"`)
+  }
+  // A refused core section builds no plan (coreSections.ts), and the row says so.
+  for (const s of COLLECTOR_REGISTRY.filter((x) => (CORE_SOURCES as readonly string[]).includes(x.configKey ? `config:${x.configKey}` : (x.sourceKey ?? '')))) {
+    assert.match(rows.find((r) => r.name === s.name)?.conditions ?? '', /no plan/, `${s.name}: a refused read builds no plan`)
+  }
+  assert.doesNotMatch(app.how.columns.gate, /can fail/, 'the column says it lists when a read can fail')
 })

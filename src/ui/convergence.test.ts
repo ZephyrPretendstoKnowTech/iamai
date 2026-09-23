@@ -300,13 +300,14 @@ test('How still derives its permission and read truth from the runtime registrie
   // The single most dangerous way to make this page look tidier is to replace a
   // generated table with a hand-written list, because the page then states a
   // permission set the product does not actually request.
-  assert.match(HOW, /import \{ COLLECTOR_REGISTRY \} from '\.\.\/\.\.\/graph\/collect\/registry\.ts'/)
+  // The reads are the collector registry, drawn through the page's view model (howView.ts).
+  assert.match(text('src/ui/surfaces/howView.ts'), /COLLECTOR_REGISTRY\.filter/)
   // The checks are the rule registry, drawn through the page's view model (howView.ts).
   assert.match(HOW, /import \{ howCheckTables[,} ][^\n]*from '\.\/howView\.ts'/)
   assert.match(text('src/ui/surfaces/howView.ts'), /REGISTRY\.filter/)
   assert.match(HOW, /import \{ scopeRows \} from '\.\.\/PermissionsDisclosure\.tsx'/)
   assert.match(HOW, /rows=\{permissions\}/)
-  assert.match(HOW, /rows=\{COLLECTOR_REGISTRY\.filter/)
+  assert.match(HOW, /howReadTables\(\)/)
   assert.match(HOW, /rows=\{table\.rows\}/)
   // No literal Graph scope or endpoint is written into the page.
   assert.ok(!/'[A-Za-z]+\.Read(Write)?\.(All|Directory)'/.test(HOW), 'a permission name is hard-coded on How')

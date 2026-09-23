@@ -10,9 +10,7 @@
 // from GRAPH_SCOPES and COLLECTOR_REGISTRY — there is no second, hand-written
 // list of what IAMAI can see.
 import { useEffect, useRef } from 'react'
-import { COLLECTOR_REGISTRY } from '../../graph/collect/registry.ts'
-import type { CollectorSpec } from '../../graph/collect/registry.ts'
-import { howCheckTables, howLimits } from './howView.ts'
+import { howCheckTables, howLimits, howReadTables } from './howView.ts'
 import type { HowCheckRow } from './howView.ts'
 import { scopeRows } from '../PermissionsDisclosure.tsx'
 import { PERMISSIONS, SIGN_IN_SCOPES } from '../../copy/permissions.ts'
@@ -61,7 +59,6 @@ export function How() {
     }
   }, [])
   const permissions = scopeRows().filter((r) => !SIGN_IN_SCOPES.includes(r.scope) && r.usedBy.length > 0)
-  const lanes: CollectorSpec['lane'][] = ['0', 'A', 'B', 'on-demand']
   const checkTables = howCheckTables()
 
   return (
@@ -89,12 +86,13 @@ export function How() {
       </details>
       <details className="how-reference">
       <summary>{C.reads}</summary>
-      {lanes.map((lane) => (
+      {/* The registry's reads, in the plain words content keeps for them (howView.ts). */}
+      {howReadTables().map((table) => (
         <DataTable
             panel
-            key={lane}
-            caption={READS.lanes[lane]}
-            rows={COLLECTOR_REGISTRY.filter((s) => s.lane === lane)}
+            key={table.lane}
+            caption={table.caption}
+            rows={table.rows}
             rowKey={(s) => s.name}
             columns={[
               { key: 'name', header: READS.columns.data, minWidth: '9rem', render: (s) => s.name },
@@ -104,9 +102,9 @@ export function How() {
               // lets the panel's own scroll handle the long ones.
               { key: 'endpoint', header: READS.columns.endpoint, minWidth: '15rem', render: (s) => <code>{s.endpoint}</code> },
               { key: 'version', header: READS.columns.api, render: (s) => <Chip status="neutral">{s.version}</Chip> },
-              { key: 'scopes', header: READS.columns.permissions, render: (s) => s.scopes.join(', ') },
-              { key: 'gate', header: READS.columns.gate, minWidth: '12rem', render: (s) => s.gate },
-              { key: 'purpose', header: READS.columns.why, minWidth: '18rem', render: (s) => s.purpose },
+              { key: 'scopes', header: READS.columns.permissions, render: (s) => s.scopes },
+              { key: 'gate', header: READS.columns.gate, minWidth: '12rem', render: (s) => s.conditions },
+              { key: 'purpose', header: READS.columns.why, minWidth: '18rem', render: (s) => s.why },
             ]}
           />
       ))}
