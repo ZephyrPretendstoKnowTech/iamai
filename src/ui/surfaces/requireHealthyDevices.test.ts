@@ -25,12 +25,12 @@ import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
 import type { StepBody } from './stepBody.ts'
 import { CONTRACT } from './stepContract.ts'
-import { membersOf } from '../../roadmap/stepGroups.ts'
+import { groupOf } from '../../roadmap/stepGroups.ts'
 import { answerKey } from '../../roadmap/answers.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import type { MappingState } from '../../mapping/types.ts'
 
-/** The group's four members, in registry order (roadmap/stepGroups.ts). */
+/** The spec's four steps (docs/plans/require-healthy-devices-spec.md), in its order. */
 const DEVICES = ['s-goal-require-managed-device', 's-goal-intune-enrollment-reauth', 's-ladder-phone-access-restriction', 's-shared-devices']
 
 const MANAGED = 's-goal-require-managed-device'
@@ -134,8 +134,8 @@ function checkedOn(stepId: string): string {
 // The group itself
 // ---------------------------------------------------------------------------
 
-test('the group draws its four members in the spec order', () => {
-  assert.deepEqual([...membersOf('devices')], DEVICES)
+test('the spec’s four steps sit in Limit Sessions and Require Healthy Devices', () => {
+  assert.deepEqual(DEVICES.map((id) => groupOf(id)?.key), ['devices-sessions', 'devices-sessions', 'devices-sessions', 'devices-sessions'])
 })
 
 // ---------------------------------------------------------------------------

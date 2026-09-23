@@ -23,11 +23,11 @@ import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
 import type { StepBody } from './stepBody.ts'
-import { membersOf } from '../../roadmap/stepGroups.ts'
+import { STEP_GROUPS, groupOf } from '../../roadmap/stepGroups.ts'
 import { QUESTION_STEP, answerKey, answerTextFor, questionLabels, questionOptions } from '../../roadmap/answers.ts'
 import type { MappingState } from '../../mapping/types.ts'
 
-/** The group's four members, in registry order (roadmap/stepGroups.ts). */
+/** The spec's four steps (docs/plans/close-doors-spec.md), in its order. The roadmap flow draws the first two in Turn On MFA for Everyone and the other two in Close the Doors Nobody Should Use (roadmap/stepGroups.ts). */
 const CLOSE_DOORS = ['s-goal-block-legacy-auth', 's-goal-block-device-code', 's-goal-block-auth-transfer', 's-goal-block-unsupported-platforms']
 const LEGACY = 's-goal-block-legacy-auth'
 
@@ -83,8 +83,8 @@ function checkedOn(stepId: string): string {
 // The group itself
 // ---------------------------------------------------------------------------
 
-test('the group draws its five members in the spec order', () => {
-  assert.deepEqual([...membersOf('close-doors')], CLOSE_DOORS)
+test('the spec’s four steps sit where the roadmap flow places them', () => {
+  assert.deepEqual(CLOSE_DOORS.map((id) => groupOf(id)?.key), ['core', 'core', 'remaining-doors', 'remaining-doors'])
 })
 
 // ---------------------------------------------------------------------------
@@ -166,7 +166,7 @@ test('B3: the folded task offers only supported routes, never a password one', (
 
 test('B4: the exception devices are one step\u2019s second task, and the step they were is gone', () => {
   assert.equal(stepById['s-question-mail-devices'], undefined, 'the carved-out step still has words')
-  assert.equal(membersOf('close-doors').includes('s-question-mail-devices'), false)
+  assert.equal(STEP_GROUPS.some((g) => g.members.includes('s-question-mail-devices')), false)
   // No exception account named: the policy procedure alone, as every other
   // policy step draws. One named: a second task, with the account as its fact.
   assert.deepEqual(bodiesOf('demo').get(LEGACY)!.emergencyAccountTasks?.tasks.map((t) => t.id), ['policy-procedure'])
