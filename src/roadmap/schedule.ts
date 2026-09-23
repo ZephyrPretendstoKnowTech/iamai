@@ -391,7 +391,6 @@ export function dependencyGraph(steps: Step[]): Record<string, Dependency[]> {
   const breakGlass = steps.find((s) => s.id === 's-prereq-break-glass' && isWork(s))
   const verify = steps.find((s) => s.kind === 'verify' && isWork(s))
   const location = steps.find((s) => s.id === 's-prereq-trusted-location' && isWork(s))
-  const countries = steps.find((s) => s.id === 's-prereq-allowed-countries' && isWork(s))
   const work = steps.filter(isWork)
   for (const s of work) {
     for (const b of s.blockedBy) {
@@ -419,8 +418,8 @@ export function dependencyGraph(steps: Step[]): Record<string, Dependency[]> {
     if (asksForMethod && verify) add(s, { stepId: verify.id, kind: 'hard', reason: 'registration' })
     // A policy that names where people may sign in from waits for the place to exist.
     if (usesLocations) {
+      // The countries location is the countries policy's own first task since Stage 3, never a step to wait on.
       if (location) add(s, { stepId: location.id, kind: 'hard', reason: 'named-location' })
-      if (countries) add(s, { stepId: countries.id, kind: 'hard', reason: 'named-location' })
     }
   }
   // Soft: the same people prompted by two steps of different classes in the same week.
