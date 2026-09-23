@@ -1267,6 +1267,8 @@
         },
         "retained": "kept from an earlier scan",
         "unlisted": "Unlisted model ({aaguid})",
+        "$commentTwin": "A key with an approved model's name on another AAGUID (other firmware). The panel said \"Not on Step 3’s approved list\" beside a list naming the same model, and never said which AAGUID differs.",
+        "twin": "{model}, {aaguid}; the approved one is {approved}",
         "why": {
           "seamless": "Every device they use signs them in on its own.",
           "ready": "Phishing-resistant sign-in is confirmed on every kind of device they use (computer, phone) in the last 30 days.",
