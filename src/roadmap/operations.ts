@@ -1219,6 +1219,17 @@ export function createWaitsOnReadiness(step: PolicyStep): boolean {
   return enforcementHeld(step) && validOperations(step.action).some((op) => op.mode === 'create' && effectOf(op.body).controls.has('compliantdevice'))
 }
 
+/**
+ * True when that wait is what withholds the step's policy (`policyResult`
+ * `readiness-unmet`): nothing makes the policy unwritable, and the threshold is
+ * all that holds its create. The one reading of "held on device readiness" that
+ * the hold (holds.ts) and the step's preparation (ui/surfaces/stepInstructions.ts
+ * preparesWhileCreateWaits) both make.
+ */
+export function createHeldOnReadiness(step: PolicyStep): boolean {
+  return unavailableReason(step) === 'readiness-unmet' && createWaitsOnReadiness(step)
+}
+
 /** True when the step runs operations and each one only adds exclusions to a policy the tenant already has on, submitting no enforcement of its own. */
 export function addsExclusionsToEnforced(step: PolicyStep): boolean {
   const ops = validOperations(step.action)

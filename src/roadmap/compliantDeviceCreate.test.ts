@@ -145,13 +145,43 @@ test('demo: while its create waits, the opened, printed and exported step hands 
   for (const [where, text] of texts) {
     for (const [what, pattern] of CREATES) assert.doesNotMatch(text, pattern, `${where} carries ${what}`)
   }
-  // The Entra tab, and the Implementation Task drawn from it, inspect the policies that are there, as a switched-off policy's do.
-  assert.match(body.artifacts.find((a) => a.id === 'portal')?.text() ?? '', /Review the policies that affect/)
   // What it does say: why the create waits, in the export as on the step.
   assert.ok(whatToDo.some((l) => l.startsWith(CERTIFICATE)), whatToDo.join(' | '))
   const ai = body.artifacts.find((a) => a.id === 'ai')
   assert.ok(ai, 'AI Info still explains the step')
   assert.ok(ai.text().includes(CERTIFICATE), 'AI Info states the hold and why')
+})
+
+/**
+ * The Intune setting the content says to change before this policy (its
+ * `whatToDo.before` line) is preparation, not the create. It is also what keeps
+ * the device readiness the create waits on honest: at Intune's shipped value a
+ * device with no compliance policy reads compliant, so readiness could reach the
+ * threshold and release the create into the prompts the wait exists to prevent.
+ */
+const INTUNE_PREPARATION = /Mark devices with no compliance policy assigned/
+
+test('demo, first visit and settled: while its create waits, the step, its Implementation Task, its export and AI Info keep the Intune preparation', () => {
+  for (const [when, f] of [['first visit', fixture('demo')], ['settled', withFoundationSettled(fixture('demo'))]] as const) {
+    const { step, body, tasks, whatToDo } = opened(f)
+    assert.equal(createWaitsOnReadiness(step), true, `${when}: the premise: the create waits on device readiness`)
+    assert.equal(unavailableReason(step), 'readiness-unmet', `${when}: and nothing else holds it`)
+    const entra = body.artifacts.find((a) => a.id === 'portal')?.text() ?? ''
+    const ai = body.artifacts.find((a) => a.id === 'ai')?.text() ?? ''
+    const texts: [string, string][] = [['the Entra tab', entra], ['the Implementation Task', tasks.join('\n')], ['the export', whatToDo.join('\n')], ['AI Info', ai]]
+    for (const [where, text] of texts) {
+      assert.match(text, INTUNE_PREPARATION, `${when}: ${where} keeps the Intune preparation`)
+      for (const [what, pattern] of CREATES) assert.doesNotMatch(text, pattern, `${when}: ${where} carries ${what}`)
+    }
+    assert.ok(body.before.some((l) => INTUNE_PREPARATION.test(l)), `${when}: the step's own before lines stand`)
+    // The preparation stands where a switched-off policy draws an inspection, not beside one.
+    assert.doesNotMatch(entra, /Review the policies that affect/, `${when}: the Entra tab is the preparation, not an inspection`)
+    assert.doesNotMatch(tasks.join('\n'), /Review the policies that affect/, `${when}: the Implementation Task is the preparation, not an inspection`)
+    // The export says why the create waits first, then what to prepare meanwhile.
+    const why = whatToDo.findIndex((l) => l.startsWith(CERTIFICATE))
+    const prepare = whatToDo.findIndex((l) => INTUNE_PREPARATION.test(l))
+    assert.ok(why >= 0 && prepare > why, `${when}: ${whatToDo.join(' | ')}`)
+  }
 })
 
 test('demo: once device readiness is met the opened step hands the create over again', () => {

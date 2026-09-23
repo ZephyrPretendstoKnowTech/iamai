@@ -39,7 +39,7 @@
 // Pure: no DOM, no network.
 import type { Step } from './types.ts'
 import { heldForReview, workflowReviewIsCurrent } from './lifecycle.ts'
-import { createWaitsOnReadiness, enforcementHeld, isOpenPolicy, unavailableReason } from './operations.ts'
+import { createHeldOnReadiness, enforcementHeld, isOpenPolicy, unavailableReason } from './operations.ts'
 import { directionBlockerStep } from './directionAnswers.ts'
 import { readyWhen } from '../derive/readyWhen.ts'
 
@@ -94,12 +94,11 @@ export function holdOf(step: Step): Hold | null {
   if (heldForReview(step)) return { kind: 'review' }
   const policy = isOpenPolicy(step)
   // A compliant-device create the readiness threshold holds with its turn-on
-  // (operations.ts createWaitsOnReadiness): nothing about the policy is
+  // (operations.ts createHeldOnReadiness): nothing about the policy is
   // unwritable, the threshold is all that holds it, and it is counted and
   // worded as a readiness wait like the turn-on it waits with.
-  const unavailable = policy ? unavailableReason(step) : null
-  if (unavailable === 'readiness-unmet' && createWaitsOnReadiness(step)) return { kind: 'readiness' }
-  if (unavailable !== null) return { kind: 'unavailable' }
+  if (policy && createHeldOnReadiness(step)) return { kind: 'readiness' }
+  if (policy && unavailableReason(step) !== null) return { kind: 'unavailable' }
   if (policy && enforcementHeld(step)) return { kind: 'readiness' }
   // A wait on a step that is itself held is a hold (markHoldChains below): the
   // step waited on has no date, so nothing can be dated after it.

@@ -16,7 +16,7 @@ import { SHARED_REF_KEYS, fillText, ifWrongFor, listCountVars, whatToDoFor, whol
 import { stepVars, withoutScheduleDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor, unwrittenCorrectionLines } from './stepPortal.ts'
-import { instructionsHeld, preparationLines, rescanLinesOf, wholeLines } from './stepInstructions.ts'
+import { instructionsHeld, preparationLines, preparesWhileCreateWaits, rescanLinesOf, wholeLines } from './stepInstructions.ts'
 import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, proceduresAreReference, readinessHeldLine, stepContract } from './stepContract.ts'
 import type { LaneView, PrerequisiteLabel, StepContract } from './stepContract.ts'
 import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, previewNoteLines, selectedPolicyBodiesOf, entraWithSettings } from './stepPackage.ts'
@@ -487,7 +487,12 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // pasted into an assistant, which would then confidently instruct the
   // duplicate this whole reason exists to prevent.
   const switchedOff = cs.kind === 'policy' && unavailableReason(step) === 'switched-off'
-  if (switchedOff || (!conflicted && !inPlace && !hasPackagePortal && cs.kind === 'policy' && !(portal?.length && implementationIsCurrent(step)))) lines.splice(0, lines.length, ...policyInspectionLines(step))
+  // A create that waits on device readiness carries its preparation there
+  // instead, as the screen's Entra tab does (stepInstructions.ts
+  // preparesWhileCreateWaits): the contract's action, why the create waits,
+  // leads, and the content's "before" lines follow it.
+  const preparation = preparesWhileCreateWaits(step, cs) ? wholeLines(w.before, ex) : []
+  if (switchedOff || preparation.length > 0 || (!conflicted && !inPlace && !hasPackagePortal && cs.kind === 'policy' && !(portal?.length && implementationIsCurrent(step)))) lines.splice(0, lines.length, ...(preparation.length > 0 ? preparation : policyInspectionLines(step)))
   // The correction a person owes in a part IAMAI does not write, as the screen's
   // portal carries it (stepPortal.ts unwrittenCorrectionLines), once.
   if (cs.kind === 'policy') {
