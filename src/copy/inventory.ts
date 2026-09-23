@@ -1,5 +1,7 @@
 // Inventory (the data as found) and the package-instructions page.
 import { count, figure } from './statements.ts'
+import { app, directionWords } from '../content/content.ts'
+import { fillText } from '../content/render.ts'
 
 export const INVENTORY = {
   title: 'Inventory',
@@ -27,7 +29,14 @@ export const INVENTORY = {
     devices: { title: 'Where this comes from', text: 'Registered devices (/devices) with compliance, management, trust type, and registered owners.' },
     roles: { title: 'Where this comes from', text: 'Active role assignments (/roleManagement/directory/roleAssignments) and PIM-eligible schedules where Entra ID P2 or Microsoft Entra ID Governance is present.' },
     licensing: { title: 'Where this comes from', text: 'Subscribed SKUs (/subscribedSkus): seats, assigned units, and the service plans that unlock each capability.' },
-    apps: { title: 'Where this comes from', text: 'Aggregated app sign-in summary and service principal sign-in activity (/reports, 30 days). Detected workloads drive which goals apply.' },
+    // What the two tables show (content.json pages.app.inventory.appsSource): the Detected workloads word decides no goal, and the sources state no window.
+    // Filled when read: render.ts's own imports reach this file, so it cannot be filled while the module loads.
+    apps: {
+      title: 'Where this comes from',
+      get text(): string {
+        return fillText(app.inventory.appsSource, { step: directionWords.steps.use.title })
+      },
+    },
     signIns: { title: 'Where this comes from', text: 'Counts derived from the interactive sign-in records collected for the window. Raw records stay in the browser and are never shown.' },
   },
   policies: {

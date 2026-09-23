@@ -129,6 +129,7 @@ export type AppWords = {
     noneSeen: string
     hiddenNoteEligibleUnread: string
     appsNone: string
+    appsSource: string
     unnamedGroup: string
     unnamedLocation: string
     locationNotRead: string
