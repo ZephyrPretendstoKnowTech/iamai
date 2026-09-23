@@ -79,11 +79,16 @@ export function buildIcs(steps: Step[], tenantName: string, planId: string, view
     lines.push('BEGIN:VEVENT')
     lines.push(`UID:${planId}-${s.id}@iamai`)
     lines.push(stamp())
-    // The days the board, the rail and the Dates line state: the event's
-    // instants in the plan's display zone (copy/dates.ts calendarDay), never
-    // their UTC dates (Phase 2 export finding 1).
-    lines.push(`DTSTART;VALUE=DATE:${icsDate(calendarDay(event.start))}`)
-    lines.push(`DTEND;VALUE=DATE:${icsDate(dayAfter(calendarDay(event.end)))}`)
+    // The day the board, the rail and the Dates line state: the event's start in
+    // the plan's display zone (copy/dates.ts calendarDay), never its UTC date
+    // (Phase 2 export finding 1). A one-day event ends that day. A span's end is
+    // a schedule day, stored as UTC midnight (schedule.ts addDays/toWeekday),
+    // that no surface states in a zone, so its day is the UTC one: read in the
+    // zone, west of UTC every span ended a day early. Never before the start.
+    const first = calendarDay(event.start)
+    const last = event.end === event.start ? first : event.end.slice(0, 10)
+    lines.push(`DTSTART;VALUE=DATE:${icsDate(first)}`)
+    lines.push(`DTEND;VALUE=DATE:${icsDate(dayAfter(last > first ? last : first))}`)
     // What the day is for, as the Plan rail says it: its transition's words where
     // the board's row hands that operation over today (the export view's
     // `operation`, read off the board), or the step's lane label otherwise (A1c):
