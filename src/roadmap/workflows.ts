@@ -1,11 +1,11 @@
 import goals from '../../data/goals.json' with { type: 'json' }
-import { workflowWords } from '../content/content.ts'
+import { directionWords, workflowWords } from '../content/content.ts'
 import type { Learn } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import { detectFacets } from '../coverage/applicability.ts'
 import type { Facet } from '../coverage/applicability.ts'
 import type { NotAssessed } from '../coverage/types.ts'
-import type { TenantSnapshot } from '../graph/collect/types.ts'
+import type { ConfigSectionKey, SourceKey, TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
 import type { OwnerConfirmation } from './decisions.ts'
 import { STEP_EXTRAS } from './stepDefaults.ts'
@@ -37,8 +37,26 @@ export function checkStep(id: string, title: string, why: string): Step {
   return { ...STEP_EXTRAS, id, goalId: id, phase: 0, kind: 'check', title, why, ...stateFields({}), blockedBy: [], blockers: [], unblockNotes: [], population: { total: 0, active: 0, admins: 0, guests: 0, ids: [], activeIds: [], inScope: 0 }, readiness: { family: 'other', percent: null, lines: [] }, evidence: { status: 'none', lines: [], affectedUserIds: [] }, action: { kind: 'prerequisite', summary: [], json: null, portalSteps: [] }, history: [], skipReason: null, deliveredBy: [] }
 }
 
-/** What the scan read of a service: seen in use, and whether the read was complete enough to say it is not. The words are Direction's (direction.ts). */
-export type ServiceSignal = { used: boolean; complete: boolean }
+/**
+ * What the scan read of a service: seen in use, whether the read was complete
+ * enough to say it is not, and the sections the reading reads. The words are
+ * Direction's (serviceEvidence below).
+ */
+export type ServiceSignal = { used: boolean; complete: boolean; sources: (ConfigSectionKey | SourceKey)[] }
+
+/**
+ * What the scan saw of a service, in Direction's words: seen, or not seen where
+ * the reading was complete; null where it was neither, so nothing the scan saw
+ * can be said. Direction's evidence line and the Inventory's Detected workloads
+ * tooltip both read it.
+ */
+export function serviceEvidence(key: string, signal: ServiceSignal): string | null {
+  if (!signal.used && !signal.complete) return null
+  const E = directionWords.questions.serviceEvidence
+  if (key === 'workload') return signal.used ? E.syncSeen : E.syncNotSeen
+  const service = (W.names as Record<string, string>)[key] ?? (directionWords.questions.services as Record<string, string>)[key] ?? key
+  return fillText(signal.used ? E.seen : E.notSeen, { service })
+}
 
 /**
  * The services this plan's baseline has something to protect (a goal whose
@@ -53,10 +71,10 @@ export function serviceReading(snapshot: TenantSnapshot, policies: readonly NotA
   const detected = detectFacets(snapshot, {})
   const reliable = detectFacets({ ...snapshot, appSignInSummary: ['ok', 'partial'].includes(snapshot.sources.appSignInSummary?.status) ? snapshot.appSignInSummary : [], spActivity: ['ok', 'partial'].includes(snapshot.sources.spActivity?.status) ? snapshot.spActivity : [] }, {})
   const signal = (key: string): ServiceSignal => {
-    if (key === 'intune') return { used: false, complete: snapshot.config.subscribedSkus?.status === 'ok' }
-    if (key === 'workload') return { used: detected.workload.observedUsage === true && snapshot.config.roleAssignments?.status === 'ok', complete: snapshot.config.roleAssignments?.status === 'ok' }
+    if (key === 'intune') return { used: false, complete: snapshot.config.subscribedSkus?.status === 'ok', sources: ['subscribedSkus'] }
+    if (key === 'workload') return { used: detected.workload.observedUsage === true && snapshot.config.roleAssignments?.status === 'ok', complete: snapshot.config.roleAssignments?.status === 'ok', sources: ['roleAssignments'] }
     const complete = snapshot.sources.appSignInSummary?.status === 'ok' && snapshot.sources.spActivity?.status === 'ok'
-    return { used: reliable[key as Facet]?.observedUsage === true, complete }
+    return { used: reliable[key as Facet]?.observedUsage === true, complete, sources: ['appSignInSummary', 'spActivity'] }
   }
   return { keys, signal }
 }

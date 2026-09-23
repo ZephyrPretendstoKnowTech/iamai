@@ -11,7 +11,7 @@ import { portalName } from '../../roadmap/portalLines.ts'
 import { readinessView } from '../../derive/mfaReadiness.ts'
 import { methodsCell } from './readinessCells.ts'
 import { buildNameDirectory } from '../../names.ts'
-import { app, engine, pages, workflowWords } from '../../content/content.ts'
+import { app, directionWords, engine, pages, workflowWords } from '../../content/content.ts'
 import { INVENTORY as C } from '../../copy/inventory.ts'
 import { MFA_STATE } from '../../copy/definitions.ts'
 import { fillText } from '../../content/render.ts'
@@ -416,4 +416,32 @@ test('each Detected workloads row is named as Direction names the service its wo
   // The word on this row is whether an account holds the Directory Synchronization Accounts role: it is not workload identities.
   assert.equal(name.cell(m.rows.find((r) => r.facet === 'workload')!), 'Directory synchronization')
   assert.equal((app.inventory as unknown as Record<string, unknown>).workloadNames, undefined, 'one map of service names')
+})
+
+test('a Detected workloads tooltip says what its word says: what Direction shows the scan saw, or why it was not read', () => {
+  const E = (directionWords.questions as unknown as { serviceEvidence: Record<string, string> }).serviceEvidence
+  const demo = fixture('demo').snapshot
+  const failedSources = structuredClone(demo)
+  failedSources.sources.appSignInSummary = { ...failedSources.sources.appSignInSummary, status: 'error', reason: 'Request failed (500)' }
+  const noSkus = failed(failedSources, 'subscribedSkus')
+  const noRoles = failed(demo, 'roleAssignments', 'disabled', 'access denied (403)')
+  for (const s of [demo, failedSources, noSkus, noRoles]) {
+    const m = workloadsModel(s)
+    const word = m.columns.find((c) => c.key === 'detected')!
+    for (const r of m.rows) {
+      const w = word.cell(r)
+      // The engine's own reasons ("no sign-in activity for …", "no Intune licence") contradicted the word beside them.
+      assert.doesNotMatch(r.reason ?? '', /^no |licence present|sign-in activity observed/i, `${r.facet}: ${w} | ${r.reason}`)
+      if (w === notReadWord) assert.match(r.reason ?? '', /^(Not read|Partly read|Too little)/, `${r.facet}: ${r.reason}`)
+    }
+  }
+  const row = (s: typeof demo, facet: string) => workloadsModel(s).rows.find((r) => r.facet === facet)!
+  // Direction's sentences, word for word (roadmap/direction.ts serviceQuestion).
+  assert.equal(row(demo, 'workload').reason, E.syncSeen)
+  assert.equal(row(demo, 'avd').reason, fillText(E.notSeen, { service: 'Azure Virtual Desktop' }))
+  assert.equal(row(failedSources, 'avd').reason, 'Not read in this scan: Request failed (500).')
+  assert.equal(row(noRoles, 'workload').reason, 'Not read in this scan: access denied (403).')
+  assert.equal(row(noSkus, 'intune').reason, 'Not read in this scan: Request failed (500).')
+  assert.equal(row(demo, 'intune').reason, null, 'the licence word says it all')
+  assert.match(readFileSync('src/ui/surfaces/InventoryPage.tsx', 'utf8'), /title=\{r\.reason \?\? undefined\}/)
 })

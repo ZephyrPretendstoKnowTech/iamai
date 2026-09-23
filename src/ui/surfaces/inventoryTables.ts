@@ -19,7 +19,7 @@ import type { NameDirectory } from '../../names.ts'
 import { policyFacts } from '../../coverage/facts.ts'
 import { buildStrengthLookup } from '../../coverage/strength.ts'
 import { detectFacets } from '../../coverage/applicability.ts'
-import { serviceReading } from '../../roadmap/workflows.ts'
+import { serviceEvidence, serviceReading } from '../../roadmap/workflows.ts'
 import { portalName } from '../../roadmap/portalLines.ts'
 import { countryName } from '../../mapping/countries.ts'
 import { buildViabilityInputs } from '../../scoring/fromSnapshot.ts'
@@ -787,28 +787,41 @@ export function appsModel(snapshot: TenantSnapshot, names: NameDirectory): Inven
   }
 }
 
-export type WorkloadRow = { facet: string; name: string; word: string; seen: boolean; reason: string }
+/** A service's row: its name, its word, and the tooltip beside the word, which says the same reading (null where the word says it all). */
+export type WorkloadRow = { facet: string; name: string; word: string; seen: boolean; reason: string | null }
 
 /**
  * What the scan saw of each service, by the product's one reading of it
  * (roadmap/workflows.ts serviceReading, the one Direction asks from): seen in
  * use, not seen, or not read where the sources that would show it were not
  * read. Intune is a licence, read from the licences. It drew whether the
- * service's goal applies under the word "detected", seen or not.
+ * service's goal applies under the word "detected", seen or not. The tooltip
+ * is the same reading in Direction's sentence (workflows.ts serviceEvidence),
+ * or why its sections were not read: the engine's own reasons ("no sign-in
+ * activity for …", "no Intune licence") stood beside "not read" over reads
+ * that failed.
  */
 export function workloadsModel(snapshot: TenantSnapshot): InventoryModel<WorkloadRow> {
   const A = C.apps
   const reading = serviceReading(snapshot, [], [])
   const licencesRead = sectionHasData(snapshot, 'subscribedSkus')
-  const rows = Object.entries(detectFacets(snapshot)).map(([facet, f]): WorkloadRow => {
+  // Why a reading says nothing the scan saw: each section it reads that the scan did not read in full.
+  const shortfall = (keys: SectionKey[]): string | null => {
+    const line = (k: SectionKey): string => {
+      const reason = reasonOf(sectionState(snapshot, k))
+      return notReadLine(snapshot, k) ?? (reason === null ? W.partlyReadNoReason : fillText(W.partlyRead, { reason }))
+    }
+    return [...new Set(keys.filter((k) => sectionState(snapshot, k)?.status !== 'ok').map(line))].join(' ') || null
+  }
+  const rows = Object.keys(detectFacets(snapshot)).map((facet): WorkloadRow => {
     // The service as Direction names it (pages.app.plan.workflows.names, the one map): the workload row reads the sync role, and is named for it.
     const name = (workflowWords.names as Record<string, string>)[facet] ?? facet
     if (facet === 'intune') {
       const licensed = licencesRead && snapshot.capabilities.intune.enabled
-      return { facet, name, word: !licencesRead ? NOT_READ : licensed ? W.licensed : C.licensing.notLicensed, seen: licensed, reason: f.reason }
+      return { facet, name, word: !licencesRead ? NOT_READ : licensed ? W.licensed : C.licensing.notLicensed, seen: licensed, reason: licencesRead ? null : notReadLine(snapshot, 'subscribedSkus') }
     }
     const s = reading.signal(facet)
-    return { facet, name, word: s.used ? W.workloadSeen : s.complete ? W.workloadNotSeen : NOT_READ, seen: s.used, reason: f.reason }
+    return { facet, name, word: s.used ? W.workloadSeen : s.complete ? W.workloadNotSeen : NOT_READ, seen: s.used, reason: serviceEvidence(facet, s) ?? shortfall(s.sources) }
   })
   return {
     id: 'workloads',
