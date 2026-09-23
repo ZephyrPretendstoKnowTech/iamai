@@ -106,6 +106,7 @@
           "Try it with sample data",
           "Sign in with a work or school account",
           "Change baseline",
+          "Load Defense in Depth",
           "Open the sample plan"
         ],
         "summaries": [
@@ -210,6 +211,7 @@
           "Sign in with another account",
           "Sign out",
           "Change baseline",
+          "Load Defense in Depth",
           "Open the plan →",
           "Scan again",
           "Scan tenant",
