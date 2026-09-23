@@ -14,6 +14,7 @@ import { buildNameDirectory } from '../../names.ts'
 import { app, engine, pages } from '../../content/content.ts'
 import { INVENTORY as C } from '../../copy/inventory.ts'
 import { MFA_STATE } from '../../copy/definitions.ts'
+import { fillText } from '../../content/render.ts'
 
 const column = (t: { header: string[]; rows: (string | number)[][] }, header: string): (string | number)[] => {
   const i = t.header.indexOf(header)
@@ -131,7 +132,8 @@ test('the Apps table blames no licence for a summary that failed to read', () =>
   s.sources.appSignInSummary = { ...s.sources.appSignInSummary, status: 'error', reason: 'Request failed (500)' }
   s.appSignInSummary = []
   s.spActivity = []
-  assert.equal(appsModel(s, buildNameDirectory(s)).empty, 'Not read in this scan: Request failed (500).')
+  // The service principals were read and hold nothing: the line names the column whose own source failed.
+  assert.equal(appsModel(s, buildNameDirectory(s)).empty, 'The Sign-ins column was not read in this scan: Request failed (500).')
   const read = structuredClone(fixture('mid').snapshot)
   read.appSignInSummary = []
   read.spActivity = []
@@ -370,4 +372,37 @@ test('groups referenced by policies the scan did not read are not "no policy ref
   assert.equal(m.notRead, 'Not read in this scan: access denied (403).')
   assert.ok(!inventoryTables(s).some((t) => t.id === 'groups'), 'no groups file over policies not read')
   assert.match(readFileSync('src/ui/surfaces/InventoryPage.tsx', 'utf8'), /badge: badge\('caPolicies', referencedGroups\.size\)/)
+})
+
+test('an Apps column whose own source was not read says not read on screen as in the CSV, and the line over the table names that column', () => {
+  const W = app.inventory as unknown as Record<string, string>
+  const s = structuredClone(fixture('demo').snapshot)
+  s.sources.spActivity = { ...s.sources.spActivity, status: 'error', reason: 'Request failed (500)' }
+  const m = appsModel(s, buildNameDirectory(s))
+  assert.equal(m.notRead, null, 'the summary was read: the table is drawn')
+  assert.ok(m.rows.length > 0)
+  const last = m.columns.find((c) => c.key === 'lastSp')!
+  for (const r of m.rows) {
+    assert.equal(last.cell(r), notReadWord)
+    // No row carries a date, so the screen draws the model's cell for every row.
+    assert.equal(r.lastSp, null)
+  }
+  assert.ok(column(inventoryTables(s).find((t) => t.id === 'apps')!, C.apps.columns.lastSp).every((v) => v === notReadWord), 'the CSV says not read')
+  const page = readFileSync('src/ui/surfaces/InventoryPage.tsx', 'utf8')
+  assert.match(page, /const lastSp = cellOf\(apps, 'lastSp'\)/)
+  assert.match(page, /lastSp: \(r\) => \(r\.lastSp \? .+ : lastSp\(r\)\)/, 'the screen falls back to the model cell')
+  assert.doesNotMatch(page, /'—'/, 'the page draws no word of its own for a cell')
+  // The line over the table says which column was not read, not the whole table.
+  assert.equal(m.note, fillText(W.columnNotRead, { column: C.apps.columns.lastSp, reason: 'Request failed (500)' }))
+  const summary = structuredClone(fixture('demo').snapshot)
+  summary.sources.appSignInSummary = { ...summary.sources.appSignInSummary, status: 'error', reason: 'Request failed (500)' }
+  summary.spActivity = [{ appId: '00000003-0000-0ff1-ce00-000000000000', lastSignInActivity: { lastSignInDateTime: '2026-09-01T00:00:00Z' } }]
+  const n = appsModel(summary, buildNameDirectory(summary))
+  assert.equal(n.notRead, null, 'the service principals were read: the table is drawn')
+  assert.equal(n.rows.length, 1)
+  assert.equal(n.columns.find((c) => c.key === 'signIns')!.cell(n.rows[0]), notReadWord)
+  assert.equal(n.note, fillText(W.columnNotRead, { column: C.apps.columns.signIns, reason: 'Request failed (500)' }))
+  const partial = structuredClone(fixture('demo').snapshot)
+  partial.sources.appSignInSummary = { ...partial.sources.appSignInSummary, status: 'partial', reason: 'stopped at the page limit' }
+  assert.equal(appsModel(partial, buildNameDirectory(partial)).note, fillText(W.columnPartlyRead, { column: C.apps.columns.signIns, reason: 'stopped at the page limit' }))
 })
