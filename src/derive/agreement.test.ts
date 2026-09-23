@@ -21,6 +21,9 @@ import { allFixtures } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { applicableGoals, doneSteps, goalCounts, trackableSteps, notPeopleIds } from './sets.ts'
 import { populationLine } from './whoLine.ts'
+import { sharedDeviceUsers } from './sharedDevices.ts'
+import type { TenantSnapshot } from '../graph/collect/types.ts'
+import type { MappingState } from '../mapping/types.ts'
 
 const STATUSES: StepStatus[] = ['done', 'ready', 'blocked', 'in-report-only', 'ready-to-enforce', 'skipped']
 
@@ -199,7 +202,17 @@ test('one verdict: task completion requires coverage and any explicit workflow e
 // produce is the "11 people" bug the live walk found (three denominators on one
 // page). Every population number is bounded by, and derived from, activeUsers /
 // enabledUsers / adminUsers — the sets Today counts.
-const NAMED_ACCOUNTS = new Set(['s-check-dormant-accounts', 's-prereq-per-user-mfa', 's-verify-mfa'])
+// The steps whose population is the accounts they name (derive/population.ts
+// namedAccounts), and where each names them, read from the step or the scan
+// rather than from the population itself.
+const NAMED_ACCOUNTS: Record<string, (s: Step, snapshot: TenantSnapshot, mapping: MappingState) => readonly string[]> = {
+  's-verify-mfa': (s) => s.preparation?.ids ?? [],
+  's-check-dormant-accounts': (s) => (s.dormantChoices ?? []).map((c) => c.id),
+  's-prereq-per-user-mfa': (_s, snapshot) => snapshot.users.filter((u) => ['enabled', 'enforced'].includes(snapshot.perUserMfa?.[u.id]?.state ?? 'unknown')).map((u) => u.id),
+  's-shared-devices': (_s, snapshot, mapping) => (mapping.sharedDeviceUserIds === undefined ? sharedDeviceUsers(snapshot) : snapshot.users.filter((u) => mapping.sharedDeviceUserIds!.includes(u.id) && u.accountEnabled !== false)).map((u) => u.id),
+  's-goal-service-accounts-trusted-network': (_s, _snapshot, mapping) => mapping.serviceAccountUserIds,
+  's-ladder-authenticator-over-sms': (s) => s.preparation?.ids ?? [],
+}
 for (const f of allFixtures()) {
   test(`${f.name}: Today's tiles and every step's who-line agree on the denominator`, async () => {
     const { peopleCounts } = await import('./population.ts')
@@ -222,11 +235,14 @@ for (const f of allFixtures()) {
       // whose impact is every account it names (derive/population.ts
       // namedAccounts), and the MFA campaign is one since R4-52: it prepares
       // every admin, active or not, and its lead and row count all of them, so
-      // its tile counting only the active ones was the defect. Such a line says
-      // "accounts", never "active people", so it cannot pass the in-scope count
-      // off as people.
-      if (p.active > 0 && affectedIds(p).length !== p.active) {
-        assert.ok(NAMED_ACCOUNTS.has(s.id), `${s.id}: who-line count ${affectedIds(p).length} is not the active set ${p.active}`)
+      // its tile counting only the active ones was the defect. Such a line counts
+      // exactly the accounts the step names, and says "accounts", never "active
+      // people". It checked only the second, which populationLine guarantees by
+      // construction, and only where some of them were active.
+      if (affectedIds(p).length !== p.active) {
+        const named = NAMED_ACCOUNTS[s.id]
+        assert.ok(named, `${s.id}: who-line count ${affectedIds(p).length} is not the active set ${p.active}`)
+        assert.deepEqual([...affectedIds(p)].sort(), [...named(s, snapshot, f.mapping)].sort(), `${s.id}: the line counts the accounts the step names`)
         assert.doesNotMatch(populationLine(p), /active (?:person|people)/, `${s.id}: ${populationLine(p)}`)
       }
     }

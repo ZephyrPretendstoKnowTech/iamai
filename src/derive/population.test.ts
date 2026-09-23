@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { allFixtures, fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture, withFoundationSettled } from '../roadmap/fixtures/run.ts'
-import { activePeopleIds, campaignIdsFor, namedAccounts, populationIndex, reached, stepPopulation } from './population.ts'
+import { activePeopleIds, campaignIdsFor, isActivePerson, namedAccounts, populationIndex, reached, stepPopulation } from './population.ts'
 import { whoLine, populationLine, affectedIds } from './whoLine.ts'
 import { readinessView } from './mfaReadiness.ts'
 import { rowWho } from '../ui/surfaces/rowWho.ts'
@@ -32,20 +32,25 @@ test('the row and the step body read the same population, for every step on ever
       assert.ok(pop !== null)
       assert.equal(pop.active, affectedIds(of).length, `${f.name} ${s.id}: active count`)
       assert.ok(pop.enabledCovered >= pop.active, `${f.name} ${s.id}: enabledCovered is at least active`)
+      // Counts carry separators ("4,169 active people"): read them with the
+      // separator, or the large tenant's lines are never compared at all.
       const who = whoLine(of)
-      const m = who.match(/^(\d+) (?:person|people)/)
-      if (m) assert.equal(Number(m[1]), pop.active, `${f.name} ${s.id}: the row who-line count is the population's active count`)
+      const m = who.match(/^([\d,]+) (?:person|people)/)
+      if (m) assert.equal(Number(m[1].replace(/,/g, '')), pop.active, `${f.name} ${s.id}: the row who-line count is the population's count`)
       const line = populationLine(of)
-      const lm = line.match(/^(\d+) active (?:person|people)/)
-      if (lm) assert.equal(Number(lm[1]), pop.active, `${f.name} ${s.id}: the step body population line is the same active count`)
+      const lm = line.match(/^([\d,]+) (?:active (?:person|people)|accounts?)/)
+      if (lm) assert.equal(Number(lm[1].replace(/,/g, '')), pop.active, `${f.name} ${s.id}: the step body population line is the same count`)
     }
   }
 })
 
 // One population per step (derive/population.ts): the row's who-line, the lead's
 // counts ({n}, {active}, {people}, {admins}, {guests}) and Today's active tile
-// all read it; the campaign's population is the plan's active people minus the
-// emergency and shared-device accounts.
+// all read it. The campaign's active people are Today's (the plan's active
+// people, the emergency and service accounts left out); its population is every
+// account it prepares, which since R4-52 includes the role holders who are not
+// active (namedAccounts). This test said the population was the active people,
+// which held only on tenants where every admin is active.
 test('on the demo and GetIAMAI, every row count equals its step lead count, and Today and the campaign read the same people', () => {
   for (const name of ['demo', 'getiamai'] as const) {
     const f = fixture(name)
@@ -74,10 +79,20 @@ test('on the demo and GetIAMAI, every row count equals its step lead count, and 
       assert.equal(ex.guests, view.guests, `${name} ${s.id}: the lead's {guests}`)
     }
     const svc = new Set(f.mapping.serviceAccountUserIds)
-    assert.equal(readinessView(f.snapshot, f.snapshot.asOf, f.mapping).facts.active, campaignIdsFor(f.snapshot, f.snapshot.asOf, f.mapping).length, `${name}: Today's active people are the campaign's population`)
+    assert.equal(readinessView(f.snapshot, f.snapshot.asOf, f.mapping).facts.active, campaignIdsFor(f.snapshot, f.snapshot.asOf, f.mapping).length, `${name}: Today's active people are the campaign's active people`)
     assert.ok(activePeopleIds(f.snapshot, f.snapshot.asOf, svc).length >= campaignIdsFor(f.snapshot, f.snapshot.asOf, f.mapping).length, `${name}: the plan's active people include the campaign's`)
+  }
+  for (const name of ['demo', 'getiamai', 'large'] as const) {
+    const f = fixture(name)
+    const r = runFixture(f)
     const campaign = r.steps.find((s) => s.kind === 'verify')
-    if (campaign) assert.deepEqual([...affectedIds(campaign.population)].sort(), campaignIdsFor(f.snapshot, f.snapshot.asOf, f.mapping).sort(), `${name}: the campaign's population`)
+    assert.ok(campaign?.preparation, `${name}: the premise: the campaign is planned`)
+    const ids = affectedIds(campaign.population)
+    assert.deepEqual([...ids].sort(), [...campaign.preparation.ids].sort(), `${name}: the campaign's population is every account it prepares`)
+    const active = new Set(r.input.viability.filter(isActivePerson).map((v) => v.userId))
+    assert.deepEqual(ids.filter((id) => active.has(id)).sort(), campaignIdsFor(f.snapshot, f.snapshot.asOf, f.mapping).sort(), `${name}: and its active people are the plan's`)
+    assert.equal(campaign.population.active, campaignIdsFor(f.snapshot, f.snapshot.asOf, f.mapping).length, `${name}: its active count is theirs`)
+    if (name === 'large') assert.ok(ids.length > campaign.population.active, 'the premise: large prepares admins who are not active, so the two differ')
   }
   // {guests} pluralises like {n}.
   assert.equal(fillText('{guests} guests', { guests: 1 }), '1 guest')

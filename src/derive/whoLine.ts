@@ -1,9 +1,11 @@
 // The who-line and the population line, from one denominator (prompt 48.1 Part
-// 1, target-state §8.1). Every row and every step renders active people: the
-// count, never a name, or the word for a reach of nobody. The full in-scope
-// enabled count appears once, as a `covers N enabled` suffix on the step's
-// population line, never as the headline. Pure, so the agreement test reads
-// exactly what the page renders.
+// 1, target-state §8.1). A row and a step count the people they reach (active
+// people), or, for a step that names accounts (derive/population.ts
+// namedAccounts), those accounts, and say "active people" only where every one
+// of them is: the count, never a name, or the word for a reach of nobody. The
+// full in-scope enabled count appears once, as a `covers N enabled` suffix on
+// the step's population line, never as the headline. Pure, so the agreement
+// test reads exactly what the page renders.
 import type { StepPopulation } from '../roadmap/types.ts'
 import { count } from '../copy/statements.ts'
 import { engine, pages } from '../content/content.ts'
