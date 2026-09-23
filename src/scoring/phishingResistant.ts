@@ -598,6 +598,16 @@ function step3Keeps(option: SignInOption, ctx: ReadinessContext): boolean {
   return models.some((a) => listed.has(a))
 }
 
+/**
+ * Whether IAMAI offers anybody a synced passkey in this tenant: today's passkey
+ * settings let one register (no attestation, no model restriction) and Emergency
+ * Access Step 3's settings, once applied, keep it. The words that name a Mac's
+ * built-in option read this, so they never name one no row would offer.
+ */
+export function syncedPasskeyOffered(ctx: ReadinessContext): boolean {
+  return ctx.passkey.attestation === false && ctx.passkey.restriction === 'unrestricted' && step3Keeps('syncedPasskey', ctx)
+}
+
 /** The best way to sign in on one device family, and whether it is possible (the eligibility table in prompt 62). */
 function eligibility(d: DeviceSeen, ctx: ReadinessContext, userId: string | undefined, pk: PasskeyPolicy, holdsPlatformCredential = false): Pick<DeviceReading, 'best' | 'builtIn' | 'possible' | 'whyNot'> {
   const fallback = fallbackOf(pk)

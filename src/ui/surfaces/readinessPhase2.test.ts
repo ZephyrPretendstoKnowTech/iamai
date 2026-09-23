@@ -14,7 +14,8 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { signInsNeedP1 } from '../../derive/readinessContext.ts'
 import { signInProofRead } from '../../scoring/fromSnapshot.ts'
 import { cohortWords } from '../../derive/whoLine.ts'
-import { checkWords, goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, summaryLine, unreadMethodsWords, whyLine, countedLine, scopeWords, panelMethods, groupBodyLine, noRecordsWords } from './readinessCells.ts'
+import { checkWords, goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, summaryLine, unreadMethodsWords, whyLine, countedLine, scopeWords, panelMethods, groupBodyLine, noRecordsWords, computersSeen, leadLine } from './readinessCells.ts'
+import { syncedPasskeyOffered } from '../../scoring/phishingResistant.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { stepMfaHold } from '../../derive/stepMfaReadiness.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
@@ -407,4 +408,25 @@ test('the Needs a device group is titled by the gap, over rows that sign in with
   assert.ok(rows.some((r) => r.readiness?.next.kind === 'confirm'), 'the premise: a row whose step is to sign in with the passkey they hold')
   assert.doesNotMatch(G.device.title, /^(Add|Set up)/, G.device.title)
   for (const seen of ['windows', 'mac', 'both', 'none'] as const) assert.doesNotMatch(groupBodyLine('device', seen) ?? '', /^Each sets up/, seen)
+})
+
+test('the opening line and group bodies name a synced passkey only where one would be offered', () => {
+  for (const name of ['demo', 'demo-week2'] as const) {
+    const f = fixture(name)
+    const view = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
+    const seen = computersSeen(view.rows)
+    assert.ok(seen === 'mac' || seen === 'both', `the premise: ${name} has Macs signing in (${seen})`)
+    const offered = syncedPasskeyOffered(view.context)
+    assert.equal(offered, false, `the premise: ${name}'s passkey settings or Step 3 refuse a synced passkey`)
+    for (const words of [leadLine(seen, offered), groupBodyLine('method', seen, offered) ?? '', groupBodyLine('device', seen, offered) ?? '']) {
+      assert.doesNotMatch(words, /synced/i, `${name}: ${words}`)
+      assert.match(words, /passkey (on the phone|in Microsoft Authenticator)/, 'the phone passkey is still named')
+    }
+  }
+  // Where a synced passkey would be offered, the Mac's words name it as before.
+  assert.match(leadLine('mac', true), /synced passkey/)
+  // Nobody is called a contractor the page never defined.
+  assert.doesNotMatch(R.checks.attestation.note, /contractor/i)
+  assert.match(page(), /leadLine\(seen, offersSynced\)/)
+  assert.match(page(), /groupBodyLine\(state, seen, offersSynced\)/)
 })

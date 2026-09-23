@@ -128,15 +128,23 @@ export function computersSeen(rows: readonly ReadinessRow[]): ComputersSeen {
   return windows && mac ? 'both' : windows ? 'windows' : mac ? 'mac' : 'none'
 }
 
+/**
+ * The words for the computers seen. Where no synced passkey would be offered
+ * (scoring/phishingResistant.ts syncedPasskeyOffered: attestation on, an allow
+ * list, or Step 3's models to come), a Mac's words are the words for no built-in
+ * option, and Windows and Mac together read as Windows.
+ */
+const wordsFor = (seen: ComputersSeen, synced: boolean): ComputersSeen => (synced ? seen : seen === 'mac' ? 'none' : seen === 'both' ? 'windows' : seen)
+
 /** The page's opening line, in the words for the computers seen. */
-export function leadLine(seen: ComputersSeen): string {
-  return T.lead[seen]
+export function leadLine(seen: ComputersSeen, synced = true): string {
+  return T.lead[wordsFor(seen, synced)]
 }
 
 /** A group's body under its summary, where it has one, in the words for the computers seen. */
-export function groupBodyLine(state: ReadinessState, seen: ComputersSeen): string | null {
+export function groupBodyLine(state: ReadinessState, seen: ComputersSeen, synced = true): string | null {
   const body = T.groups[state].body
-  return body === undefined ? null : typeof body === 'string' ? body : body[seen]
+  return body === undefined ? null : typeof body === 'string' ? body : body[wordsFor(seen, synced)]
 }
 
 /**

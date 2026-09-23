@@ -36,7 +36,7 @@ import { progressOf } from '../../derive/readinessProgress.ts'
 import { GUEST_STEP_ID, guestReadingOf } from '../../derive/guestReadiness.ts'
 import { stepMfaHold } from '../../derive/stepMfaReadiness.ts'
 import { KINDS } from '../../derive/ladder.ts'
-import { READINESS_STATES, isReady } from '../../scoring/phishingResistant.ts'
+import { READINESS_STATES, isReady, syncedPasskeyOffered } from '../../scoring/phishingResistant.ts'
 import type { ReadinessState } from '../../scoring/phishingResistant.ts'
 import { app, pages, shared } from '../../content/content.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
@@ -269,6 +269,8 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
   const goal = goalLine(counted)
   // The computers the tenant signs in from choose the words that name a built-in option: no Windows Hello for a Mac-only tenant.
   const seen = computersSeen(view.rows)
+  // Nor a synced passkey on the Mac where no row would offer one (attestation, an allow list, or Step 3 to come).
+  const offersSynced = syncedPasskeyOffered(view.context)
   // Scoped from a Plan step, the next check counts that step's people, not the tenant's.
   const scopedView = context ? { ...view, rows: view.rows.filter(inScope), counts } : { ...view, counts }
   const next = nextCheck(scopedView, context ? tenantSetupChecks(snapshot, scopedView) : checks)
@@ -409,7 +411,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
     const G = state === 'unknown' && rows.every(signInsUnavailableFor) ? T.groupNoP1 : T.groups[state]
     const isNext = state === lead && show !== 'lapsing'
     const quiet = isReady(state)
-    const body = groupBodyLine(state, seen)
+    const body = groupBodyLine(state, seen, offersSynced)
     // The group's title is in its summary, which heading navigation can't reach: a visually hidden heading
     // before each group names it for a screen reader (owner, 2026-09-19).
     return (
@@ -490,7 +492,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
   return (
     <section className="surface readiness">
       {heading}
-      <p className="line intro">{leadLine(seen)}</p>
+      <p className="line intro">{leadLine(seen, offersSynced)}</p>
       {context && (
         <p className="line scope-line">
           {scopeWords(context, scopedCohort)}{' '}
