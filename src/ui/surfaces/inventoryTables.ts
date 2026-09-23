@@ -155,10 +155,21 @@ function usersSummary(f: PolicyFacts): string {
 
 /** The Exclusions column (E5): the groups and users the policy excludes, by name; guests when the whole type is. */
 export function exclusionsSummary(f: PolicyFacts, person: (id: string) => string, group: (id: string) => string): string {
-  const P = C.policies
-  const bits = [...[...f.whoNot.groups].map(group), ...[...f.whoNot.users].map(person)]
-  if (f.whoNot.guests) bits.push(P.guests)
+  const bits = [...[...f.whoNot.groups].map(group), ...[...f.whoNot.users].map(person), ...excludedRolesWords(f)]
+  if (f.whoNot.guests) bits.push(excludedGuestsWords(f))
   return bits.join(', ') || '—'
+}
+
+/** The roles a policy excludes: every admin role as one phrase, else each by name. */
+export function excludedRolesWords(f: PolicyFacts): string[] {
+  const roles = f.whoNot.roles
+  return roles.size === 0 ? [] : coversAdminSet(roles) ? [C.policies.allAdminRoles(roles.size)] : [...roles].map(roleLabel)
+}
+
+/** The guest or external types a policy excludes, by name; "guests" only where it excludes every type. */
+export function excludedGuestsWords(f: PolicyFacts): string {
+  const types = f.whoNot.guestTypes ?? []
+  return types.length === 0 ? C.policies.guests : types.map((t) => W.guestTypes[t] ?? t).join(', ')
 }
 
 /** The Users column's tooltip: the names behind the counts. */
@@ -170,7 +181,7 @@ export function usersDetail(f: PolicyFacts, person: (id: string) => string, grou
   return parts.join('\n')
 }
 
-function appsSummary(f: PolicyFacts): string {
+function appsSummary(f: PolicyFacts, appName: (id: string) => string | null): string {
   const P = C.policies
   const bits: string[] = []
   if (f.apps.all) bits.push(P.allApps)
@@ -179,14 +190,22 @@ function appsSummary(f: PolicyFacts): string {
   if (f.apps.ids.size > 0) bits.push(P.apps(f.apps.ids.size))
   for (const a of f.apps.userActions) bits.push(P.userActions(a))
   if (f.apps.authContexts.size > 0) bits.push(P.authContexts(f.apps.authContexts.size))
-  return bits.join(', ') || P.none
+  const include = bits.join(', ') || P.none
+  if (f.apps.excludedIds.size === 0) return include
+  // The apps the policy leaves out: by name where the directory has one, else counted.
+  const named = [...f.apps.excludedIds].map(appName).filter((n): n is string => n !== null)
+  const unnamed = f.apps.excludedIds.size - named.length
+  return fillText(W.targetsExcept, { include, exclude: [...named, ...(unnamed > 0 ? [P.apps(unnamed)] : [])].join(', ') })
 }
 
 function conditionsSummary(f: PolicyFacts, location: (id: string) => string): string {
   const P = C.policies
   const bits: string[] = []
   if (f.clientApps.size > 0 && !f.clientApps.has('all')) bits.push(P.clientApps([...f.clientApps].join(', ')))
-  if (f.platforms) bits.push(P.platforms([...f.platforms.include].join(', ') || 'any'))
+  if (f.platforms) {
+    const include = [...f.platforms.include].join(', ') || 'any'
+    bits.push(P.platforms(f.platforms.exclude.size > 0 ? fillText(W.targetsExcept, { include, exclude: [...f.platforms.exclude].join(', ') }) : include))
+  }
   const loc = (id: string) => (id.toLowerCase() === 'all' ? 'all' : id.toLowerCase() === 'alltrusted' ? 'all trusted' : location(id))
   if (f.locations)
     bits.push(
@@ -197,7 +216,7 @@ function conditionsSummary(f: PolicyFacts, location: (id: string) => string): st
   if (f.signInRisk.size > 0) bits.push(P.signInRisk([...f.signInRisk].join(', ')))
   if (f.userRisk.size > 0) bits.push(P.userRisk([...f.userRisk].join(', ')))
   if (f.flows.size > 0) bits.push(P.flows([...f.flows].join(', ')))
-  if (f.deviceFilter) bits.push(P.deviceFilter)
+  if (f.deviceFilter) bits.push(f.deviceFilter.mode === 'exclude' ? W.deviceFilterExclude : W.deviceFilterInclude)
   return bits.join(' · ') || '—'
 }
 
@@ -217,12 +236,14 @@ function grantSummary(f: PolicyFacts, strength: (id: string) => string): string 
   const controls = [...f.grant.controls].filter((c) => c !== 'mfa' || !f.grant?.strengthId)
   const bits = controls.map((c) => CONTROL_WORDS[c] ?? c)
   if (f.grant.strengthId) bits.push(P.strength(strength(f.grant.strengthId)))
+  if (f.grant.tou) bits.push(W.termsOfUse)
   return bits.length > 0 ? P.require(bits.join(f.grant.operator === 'AND' ? ' and ' : ' or ')) : '—'
 }
 
 function sessionSummary(f: PolicyFacts): string {
   const P = C.policies
   const bits: string[] = []
+  if (f.session.signInFrequencyEveryTime) bits.push(W.signInEveryTime)
   if (f.session.signInFrequencyHours !== null) bits.push(P.signInFrequency(f.session.signInFrequencyHours))
   if (f.session.persistentBrowser) bits.push(P.persist(f.session.persistentBrowser))
   if (f.session.secureSignInSession) bits.push(P.tokenProtection)
@@ -249,7 +270,7 @@ export function policiesModel(snapshot: TenantSnapshot, facts: PolicyFacts[], na
       { key: 'state', header: P.columns.state, sort: (r) => r.state, cell: (r) => P.state[r.state] },
       { key: 'users', header: P.columns.users, cell: (r) => usersSummary(r) },
       { key: 'exclusions', header: P.columns.exclusions, cell: (r) => exclusionsSummary(r, names.label, o.group) },
-      { key: 'apps', header: P.columns.apps, cell: (r) => appsSummary(r) },
+      { key: 'apps', header: P.columns.apps, cell: (r) => appsSummary(r, names.nameOf) },
       { key: 'conditions', header: P.columns.conditions, cell: (r) => conditionsSummary(r, o.location) },
       { key: 'grant', header: P.columns.grant, cell: (r) => grantSummary(r, o.strength) },
       { key: 'session', header: P.columns.session, cell: (r) => sessionSummary(r) },

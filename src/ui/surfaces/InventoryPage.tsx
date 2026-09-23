@@ -27,6 +27,7 @@ import {
   authStrengthsModel,
   capabilitiesModel,
   devicesModel,
+  excludedGuestsWords,
   groupsModel,
   methodTargetGroupsOf,
   objectLabels,
@@ -189,7 +190,7 @@ function PoliciesTab({ snapshot, facts, names, groupsPending }: { snapshot: Tena
               <strong>{P.include}:</strong> {[r.who.all ? P.allUsers : '', list(r.who.users), groupList(r.who.groups), roleList(r.who.roles)].filter(Boolean).join('; ') || P.none}
             </div>
             <div>
-              <strong>{P.exclude}:</strong> {[list(r.whoNot.users), groupList(r.whoNot.groups), roleList(r.whoNot.roles), r.whoNot.guests ? P.guests : ''].filter(Boolean).join('; ') || P.none}
+              <strong>{P.exclude}:</strong> {[list(r.whoNot.users), groupList(r.whoNot.groups), roleList(r.whoNot.roles), r.whoNot.guests ? excludedGuestsWords(r) : ''].filter(Boolean).join('; ') || P.none}
             </div>
           </div>
         )}

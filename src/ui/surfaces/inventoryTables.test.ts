@@ -225,3 +225,33 @@ test('a role holder IAMAI could not look up is named without a kind it never rea
   sp.config.roleAssignments.rows = [...sp.config.roleAssignments.rows, { principalId: holder, principalType: 'ServicePrincipal', roleDefinitionId: '62e90394-69f5-4237-9190-012177145e10' }]
   assert.equal(buildNameDirectory(sp).label(holder), 'a service principal')
 })
+
+test('a Policies row states what the policy excludes and every control it carries', () => {
+  const s = fixture('demo-week2').snapshot
+  const names = buildNameDirectory(s)
+  const syncRole = 'd29b2b05-8046-44ba-8758-1e26182fcf32'
+  const intuneEnrollment = 'd4ebce55-015a-49b5-a083-c84d1797ae8c'
+  const raw = (id: string, conditions: Record<string, unknown>, grantControls: Record<string, unknown> | null, sessionControls: Record<string, unknown> | null = null) => ({
+    id,
+    displayName: id,
+    state: 'enabled',
+    conditions: { applications: { includeApplications: ['All'] }, clientAppTypes: ['all'], ...conditions, users: { includeUsers: ['All'], ...((conditions.users as object) ?? {}) } },
+    grantControls,
+    sessionControls,
+  })
+  const policies = [
+    raw('sync-role', { users: { excludeRoles: [syncRole] } }, { operator: 'OR', builtInControls: ['mfa'] }),
+    raw('providers', { users: { excludeGuestsOrExternalUsers: { guestOrExternalUserTypes: 'serviceProvider', externalTenants: { membershipKind: 'all' } } } }, { operator: 'OR', builtInControls: ['block'] }),
+    raw('platforms', { platforms: { includePlatforms: ['all'], excludePlatforms: ['android', 'iOS'] }, devices: { deviceFilter: { mode: 'exclude', rule: 'device.isCompliant -eq True' } } }, { operator: 'OR', builtInControls: ['block'] }),
+    raw('apps', { applications: { includeApplications: ['All'], excludeApplications: [intuneEnrollment] } }, { operator: 'OR', builtInControls: ['mfa'], termsOfUse: ['tou-1'] }, { signInFrequency: { isEnabled: true, frequencyInterval: 'everyTime', authenticationType: 'primaryAndSecondaryAuthentication' } }),
+  ]
+  const m = policiesModel(s, policyFactsOf(s, policies), names)
+  const cell = (id: string, key: string) => String(m.columns.find((c) => c.key === key)!.cell(m.rows.find((r) => r.id === id)!))
+  assert.match(cell('sync-role', 'exclusions'), /Directory Synchronization Accounts/)
+  assert.equal(cell('providers', 'exclusions'), app.inventory.guestTypes.serviceProvider)
+  assert.match(cell('platforms', 'conditions'), / except /)
+  assert.ok(cell('platforms', 'conditions').includes(app.inventory.deviceFilterExclude), cell('platforms', 'conditions'))
+  assert.equal(cell('apps', 'apps'), `${C.policies.allApps} except ${names.label(intuneEnrollment)}`)
+  assert.ok(cell('apps', 'grant').includes(app.inventory.termsOfUse), cell('apps', 'grant'))
+  assert.equal(cell('apps', 'session'), app.inventory.signInEveryTime)
+})
