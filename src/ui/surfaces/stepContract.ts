@@ -759,7 +759,10 @@ function foundOf(step: Step, tenant: string, said: string | null, routeStart: St
   // that line says setting it to Report-only is the change, and this one said "or
   // follow the instructions below and leave it switched off" over no
   // instructions — two sources for one fact, disagreeing (Jordan D6).
-  if (tag && tag.state === 'disabled' && tag.matchedBy === 'tag' && tag.policyName && !isPreserved(step) && unavailableReason(step) !== 'switched-off') {
+  // Nor while the Report-only patch it names waits on device readiness
+  // (roadmap/operations.ts createWaitsOnReadiness): the step's reason says why,
+  // and "set Enable policy to Report-only there" beside it said the opposite.
+  if (tag && tag.state === 'disabled' && tag.matchedBy === 'tag' && tag.policyName && !isPreserved(step) && unavailableReason(step) !== 'switched-off' && !createWaitsOnReadiness(step)) {
     out.push(found('tagged-disabled', fillText(CONTRACT.foundTaggedDisabled, { policy: tag.policyName, tenant })))
   }
   // A goal the tenant already delivers, and *which* policy delivers it. The

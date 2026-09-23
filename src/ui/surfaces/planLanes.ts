@@ -137,7 +137,10 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
   const blockers: ObservedBlocker[] = []
   const gates: EvidenceGate[] = []
   const waitsOn: ObservedEdge[] = []
-  const holdsCreate = policy && !exists && createWaitsOnReadiness(step)
+  // The readiness threshold holds a compliant-device policy's report-only
+  // preparation: its create, or, found switched off, its Report-only patch
+  // (roadmap/operations.ts createWaitsOnReadiness).
+  const holdsCreate = policy && (!exists || switchedOff) && createWaitsOnReadiness(step)
   const conflict = step.state.condition === 'baseline-conflict'
   if (conflict) blockers.push({ kind: 'sourceConflict', id: step.state.conflictSource ?? 'baseline-conflict' })
   // Drift is a policy a person has to look at, or one the plan's own update
