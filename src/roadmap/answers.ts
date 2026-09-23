@@ -212,6 +212,8 @@ export function deviceCodeWorkflowsOf(mapping: Pick<MappingState, 'questionAnswe
  */
 /** The registration campaign, whose special-care list a person confirms (S-MC-2). */
 export const SPECIAL_CARE_STEP_ID = 's-verify-mfa'
+/** Not a step: the campaign's "Turn on without them for now" list persists under this key (followUp.ts). */
+export const MFA_FOLLOW_UP_KEY = 's-verify-mfa-follow-up'
 
 type InputRecord = Pick<MappingState, 'questionAnswers' | 'specialCareConfirmed'>
 

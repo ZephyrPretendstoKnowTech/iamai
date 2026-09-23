@@ -38,6 +38,9 @@ import { app, cleanup, directionWords, engine, pages, shared, stepById, scheduli
 import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
 import { directionBlockerStep, directionStepsAnswering, directionTitleOf } from '../../roadmap/direction.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
+import { CAMPAIGN_STEP_ID } from '../../roadmap/followUp.ts'
+import { effectsOf } from '../../roadmap/strand.ts'
+import { NAMES_INLINE } from './whoBlocks.ts'
 import { doneWhenFor, fillText, whatToDoFor, whole } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { list, plural } from '../../copy/statements.ts'
@@ -133,6 +136,8 @@ type ContractWords = {
   foundEnforcedBelowThreshold: string
   /** The same, where the value is a floor the scan could prove (readiness.atLeast). */
   foundEnforcedBelowThresholdFloor: string
+  /** The people marked on the campaign to turn on without, for now (roadmap/followUp.ts). */
+  followUp: { label: string; campaign: string; campaignOpen: string; method: string; risk: string; pickerLabel: string; pickerHelp: string; save: string; printed: string; printedNone: string }
   /** The threshold where the scan could prove only a floor under the value. */
   foundReadinessFloor: string
   /** That floor, wrapped before the family template. */
@@ -474,6 +479,8 @@ export type StepContract = {
   who: ContractWho | null
   /** Known directory inventory is distinct from exact policy applicability. */
   inventory?: ContractInventory | null
+  /** The people marked on the campaign to turn this policy on without, for now, and what happens to them; null where there are none. */
+  followUp: { count: number; text: string } | null
   whatToDo: ContractAction
   fix: ContractFix[]
   /**
@@ -1376,6 +1383,7 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     found,
     who: whoOf(step, ctx),
     inventory,
+    followUp: followUpOf(step, ctx),
     whatToDo,
     fix,
     enforcementWaits: enforcementWaitsOf(step),
@@ -1833,6 +1841,32 @@ function shortReadingOf(step: Step): { value: string; note: string } | null {
   return { value: R().tiles.notMeasured, note: said.filter((x): x is string => x !== null && x.length > 0).join(' ') }
 }
 
+/**
+ * The people a person marked on the campaign to turn the policies on without,
+ * for now (roadmap/followUp.ts, owner decision 9), named where the step reaches
+ * them, with what happens to them at their next sign-in. The campaign says the
+ * policies can go ahead; a policy that applies above a risk level says Entra
+ * blocks them on a risky sign-in; any other says each must register a method.
+ * Read from the policy itself (strand.ts effectsOf), never the goal's family.
+ */
+function followUpOf(step: Step, ctx: StepVarContext): StepContract['followUp'] {
+  const ids = step.turnOnWithout ?? []
+  if (ids.length === 0) return null
+  const F = CONTRACT.followUp
+  const shown = ids.slice(0, NAMES_INLINE).map((id) => ctx.nameOf(id))
+  const names = list(ids.length > NAMES_INLINE ? [...shown, `${ids.length - NAMES_INLINE} more`] : shown)
+  // The campaign says the policies can go ahead only once it is finished: with
+  // anybody else still not ready, they go ahead when that person is.
+  const template = step.id === CAMPAIGN_STEP_ID ? (step.status === 'done' ? F.campaign : F.campaignOpen) : (effectsOf(step) ?? []).some((e) => e.usesRisk) ? F.risk : F.method
+  return { count: ids.length, text: fillText(template, { names, step: stepById[CAMPAIGN_STEP_ID]?.title ?? CAMPAIGN_STEP_ID }) }
+}
+
+/** Their tile: a warning, never a hold — the person chose to go ahead without them. */
+function followUpTile(c: StepContract): ReadinessTile | null {
+  if (c.followUp == null) return null
+  return { key: 'follow-up', label: CONTRACT.followUp.label, tone: 'warn', value: `${c.followUp.count} ${plural(c.followUp.count, 'person', 'people')}`, note: c.followUp.text }
+}
+
 /** The key of that reading's tile: a finding on a finished step, which is not a task anybody can do here. */
 export const FINISHED_READING = 'enforced-readiness'
 
@@ -2258,7 +2292,7 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
     return { tiles, satisfied: configuredTiles.filter(t => t.tone === 'good'), bar: barOf(c) }
   }
   const inventory: ReadinessTile | null = c.inventory ? { key: 'directory-inventory', label: c.inventory.label, value: `${c.inventory.complete ? '' : 'At least '}${c.inventory.count} ${plural(c.inventory.count, 'guest')}`, note: [c.inventory.note, c.inventory.names.length > 0 ? CONTRACT.inventoryNames : null, ...c.inventory.names].filter((x): x is string => x !== null).join('\n'), tone: 'info' } : null
-  const facts = [enforcedReadingTile(step), blindReadingTile(step, c), ...emergencyTiles(step, c), ...configuredTiles, ...(configuration.length && step.id !== 's-prereq-break-glass' ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), exclusionsTile(step, c), exclusionsReachTile(c), peopleTile(c), implementationTile(c), inventory].filter((x): x is ReadinessTile => x !== null)
+  const facts = [enforcedReadingTile(step), followUpTile(c), blindReadingTile(step, c), ...emergencyTiles(step, c), ...configuredTiles, ...(configuration.length && step.id !== 's-prereq-break-glass' ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), exclusionsTile(step, c), exclusionsReachTile(c), peopleTile(c), implementationTile(c), inventory].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
   // The emergency step's failing checks are its account slots' lines (P0-7): no check tile beside them.
   const fixes = fixTiles(c.fix, prerequisiteLabel).filter((t) => !(step.emergency && t.key.startsWith('check:')) && !(configuration.length && /passkey.*(?:review|settings)|profile.*review/i.test(`${t.label} ${t.value}`)))

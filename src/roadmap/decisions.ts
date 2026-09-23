@@ -11,7 +11,7 @@ import { EXCLUSIONS_RECORD_KEY, exclusionsGroupRecord } from '../mapping/safetyC
 import { BREAK_GLASS_STEP_ID, PREREQ_STEP_ID } from './stepIds.ts'
 import { BASELINE_MAPPINGS_KEY } from './sourceMappings.ts'
 import { blockerStepId } from './blockerSteps.ts'
-import { SPECIAL_CARE_STEP_ID, currentAnswerText, QUESTION_STEP, answerKey, mailDevicesOf, questionLabels, referenceAnswer } from './answers.ts'
+import { MFA_FOLLOW_UP_KEY, SPECIAL_CARE_STEP_ID, currentAnswerText, QUESTION_STEP, answerKey, mailDevicesOf, questionLabels, referenceAnswer } from './answers.ts'
 import { WORKFLOW_DECISION_STEP, expandDirectionDecisions } from './directionAnswers.ts'
 
 export { answerKey, questionLabels } from './answers.ts'
@@ -157,6 +157,8 @@ export const DECISION_STEPS = {
   serviceAccounts: PREREQ_STEP_ID.serviceAccountsGroup,
   sharedDevices: 's-shared-devices',
   campaign: SPECIAL_CARE_STEP_ID,
+  /** Not a step: the campaign's "Turn on without them for now" list persists under this key (followUp.ts). */
+  followUp: MFA_FOLLOW_UP_KEY,
   /** Not a step: the Baseline mappings (Plan settings) persist under this key (sourceMappings.ts). */
   sourceReferences: BASELINE_MAPPINGS_KEY,
 } as const
@@ -222,6 +224,12 @@ export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<
         const reason = (d.answers?.[`reason:${id}`] ?? '').trim()
         next.dormantAccountChoices[id] = { outcome: value as 'keep' | 'disable' | 'investigate', reason }
       }
+      continue
+    }
+    if (stepId === DECISION_STEPS.followUp) {
+      // Turning a policy on without somebody is a person's call about that
+      // person (owner decision 9): only a Save marks anyone, never a detection.
+      if (provenance === 'confirmed') next.mfaFollowUpIds = [...new Set(d.picked ?? [])]
       continue
     }
     if (stepId === WORKFLOW_DECISION_STEP) {

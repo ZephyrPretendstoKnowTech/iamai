@@ -1,5 +1,6 @@
 import { networkDraftOf } from '../mapping/networkDraft.ts'
 import { emergencyAccountPreparationComplete, emergencyAccountPreparationOf } from './emergencyAccountPreparation.ts'
+import { followUpIdsOf, settleFollowUp } from './followUp.ts'
 import { addWorkflowSteps } from './workflows.ts'
 import { directionSteps } from './direction.ts'
 import { applyManualReviews } from './manualWork.ts'
@@ -2550,7 +2551,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // The active people not Ready yet (scoring/phishingResistant.ts): the one
     // count MFA Readiness and the MFA gate read, not a second "to set up".
     const toSetUp = preparationIds.length - preparedSet.size
-    const verifyDone = registrationKnown && toSetUp === 0
+    // Or everyone ready but the people a person marked to turn on without, for
+    // now (roadmap/followUp.ts, owner decision 9): one person on leave no longer
+    // holds every policy that waits on the campaign. Still over a scope the scan
+    // settled and targets it read — marking cannot finish a campaign nobody
+    // could count.
+    const followUpIds = preparation.completeScope && targetsKnown ? followUpIdsOf(preparationIds, preparedSet, mapping) : []
+    const marked = new Set(followUpIds)
+    const verifyDone = (registrationKnown && toSetUp === 0) || (followUpIds.length > 0 && preparationIds.every((id) => preparedSet.has(id) || marked.has(id)))
     // The role holders the campaign prepares outside its active people, by what
     // the scan read of them (R4-52): dormant by the dormant step's own rule
     // (derive/sets.ts notActiveUsers, which judges activity only where it was
@@ -2569,12 +2577,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         guestIds: preparationIds.filter(id => popIndex.guests.has(id)),
         dormantIds: preparationIds.filter(id => dormantSet.has(id)),
         activityUnreadIds: preparationIds.filter(id => viabilityById.get(id)?.activity === 'unknown'),
+        ...(followUpIds.length > 0 ? { followUpIds } : {}),
       },
       phase: 2,
       kind: 'verify',
       goalId: 'mfa-all-users',
       ...stateFields(verifyDone ? { satisfied: true } : {}),
-      deliveredBy: verifyDone ? ['Every person in the preparation cohort has a suitable registered authentication method.'] : [],
+      deliveredBy: verifyDone ? [toSetUp === 0 ? 'Every person in the preparation cohort has a suitable registered authentication method.' : 'Every person in the preparation cohort is ready, or marked to turn on without for now.'] : [],
       // Every account the campaign prepares, as its lead and its row count them
       // (stepVars {cohort}, rowWho): one population. population() counted the
       // active ones only, so on the large tenant the tile read "4,169 active
@@ -2647,6 +2656,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       s.action = { ...s.action, readinessGate: { ...gate, ...(shortfall === null ? { route: verifyStep.title, routeId: verifyStep.id } : { routeShortfall: shortfall }) } }
     }
   }
+  // The people turned on without, on every policy that waited for them.
+  settleFollowUp(steps)
 
   // Temporary Access Pass is Microsoft's documented rescue for somebody who has
   // no method and has to register one; without it the registration step has no

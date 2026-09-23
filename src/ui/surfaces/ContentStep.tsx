@@ -210,9 +210,12 @@ export function ContentStep({
   blockers = NO_BLOCKERS,
   prerequisiteLabel = null,
   onOpenMappings,
+  followUp,
 }: {
   step: Step
   ctx: StepVarContext
+  /** The campaign's "Turn on without them for now" list: its saved decision and its Save (roadmap/followUp.ts). Only the campaign is given one. */
+  followUp?: { saved: StepDecision | null; onDecide: (decision: StepDecisionInput) => void }
   /**
    * The board's one state reading of this step (planBoard.ts laneViewOf, A1b
    * decision 1): the badge, the bar and the rail read it. A caller with no board
@@ -497,6 +500,7 @@ export function ContentStep({
         <StepActionColumn rail={displayRail}>
           {/* A question that moved to Decide Your Tenant's Direction is answered there; this step says where, and what (roadmap/direction.ts ANSWERED_IN). */}
           {ANSWERED_IN[step.id] ? <AnsweredInDirection stepId={step.id} ctx={ctx} /> : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && <Decision key={step.id} d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} />}
+          {step.id === SPECIAL_CARE_STEP_ID && (followUp || printing) && <FollowUpDecision key={`${step.id}:follow-up`} step={step} ctx={ctx} saved={followUp?.saved ?? null} onDecide={followUp?.onDecide} printing={printing} />}
           {/* The one thing a scan cannot see, recorded where every other control
               on a step is (owner, 2026-09-20). It used to stand in the main
               column below Completion Criteria — a sixth section, outside the four
@@ -1428,6 +1432,32 @@ function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onD
  * and why: the picker Establish Emergency Access already uses for exactly this
  * shape of answer, and one reason for the set.
  */
+/**
+ * The campaign's "Turn on without them for now" list (roadmap/followUp.ts, owner
+ * decision 9): anyone not ready whom a person chooses not to wait for, such as
+ * someone on leave. Nobody is pre-selected — only a Save marks anyone — and the
+ * policies that waited on the campaign name whoever is.
+ */
+function FollowUpDecision({ step, ctx, saved, onDecide, printing }: { step: Step; ctx: StepVarContext; saved: StepDecision | null; onDecide?: (d: StepDecisionInput) => void; printing: boolean }) {
+  const F = CONTRACT.followUp
+  const notReady = step.preparation?.missingIds ?? []
+  const marked = step.preparation?.followUpIds ?? []
+  const optionOf = (id: string): PickerOption => ({ id, name: ctx.nameOf(id) })
+  const [picked, setPicked] = useState<PickerOption[]>(() => (saved?.picked ?? marked).filter((id) => notReady.includes(id)).map(optionOf))
+  const [query, setQuery] = useState('')
+  if (notReady.length === 0 && marked.length === 0) return null
+  if (printing) return <div className="decision"><p className="reason">{marked.length > 0 ? fillText(F.printed, { names: list(marked.map((id) => ctx.nameOf(id))) }) : F.printedNone}</p></div>
+  const labelId = `follow-up-${step.id}`
+  const options = notReady.map(optionOf)
+  const results = options.filter((o) => o.name.toLowerCase().includes(query.toLowerCase()))
+  return <div className="decision">
+    <h5 className="dlabel" id={labelId}>{F.pickerLabel}</h5>
+    <p className="reason">{F.pickerHelp}</p>
+    <Picker labelledBy={labelId} selected={picked} options={results} suggestions={options.slice(0, 3)} onSearch={setQuery} onChange={setPicked} />
+    <Button variant="secondary" onClick={() => onDecide?.({ picked: picked.map((o) => o.id) })}>{F.save}</Button>
+  </div>
+}
+
 function DormantDecision({ step, onDecide, printing }: { step: Step; onDecide?: (d: StepDecisionInput) => void; printing: boolean }) {
   const rows = step.dormantChoices ?? []
   const open = rows.filter(row => !row.disabled)
