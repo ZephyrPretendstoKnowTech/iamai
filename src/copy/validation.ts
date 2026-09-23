@@ -271,9 +271,11 @@ export const RULE_TEXT: Record<string, { what: string; why: string; label?: stri
   'bg.perUserMfaOff': {
     what: 'The tenant has finished migrating to the authentication methods policy.',
     // What the rule reads is the migration state. The why was about per-user MFA
-    // prompting, a fact this check never reads; the s-prereq-per-user-mfa step
-    // reads each account's own state (roadmap/manualWork.ts) (Phase 2 audit).
-    why: `Until the migration finishes, the legacy settings still decide which methods are offered. Each account's own per-user MFA state, the emergency accounts' included, is read on ${PER_USER_MFA_TITLE}.`,
+    // prompting, a fact this check never reads; the scan reads each account's
+    // own state, and the s-prereq-per-user-mfa step is on the plan only when
+    // that read is not clean (roadmap/manualWork.ts perUserMfaReading), so the
+    // why says when to look for it (Phase 2 audit; v2-research/peruser.md).
+    why: `Until the migration finishes, the legacy settings still decide which methods are offered. Each account's own per-user MFA state, the emergency accounts' included, is read on every scan, and the plan carries ${PER_USER_MFA_TITLE} only while an account still has it on or its state could not be read.`,
   },
   'bg.noLicenceNeeded': {
     // What the rule reads: an enabled mailbox service plan (rules.ts MAILBOX_PLANS).
