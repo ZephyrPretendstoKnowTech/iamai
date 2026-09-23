@@ -3000,6 +3000,16 @@
             }
           }
         },
+        "$commentPrerequisiteChecks": "Phase 2 review (How): the plan's check that the tenant has the baseline's authentication strength. It is a prerequisite step (src/roadmap/generate.ts, s-prereq-auth-strength), not a registry rule: it reads the scanned authentication strengths, and while none allows exactly the method combinations and restrictions the baseline's policies require, those policies wait on the step. How listed it only through the registry's str.* rows, which no plan evaluates, and dropping them left the check out. src/ui/surfaces/howView.ts draws one row per key under the Authentication strength caption; {step} is the step's title from content.",
+        "prerequisiteChecks": {
+          "severity": "Holds the policies that need it",
+          "rows": {
+            "s-prereq-auth-strength": {
+              "what": "A tenant authentication strength allows exactly the method combinations and restrictions of the strength the baseline's policies require.",
+              "why": "A policy cannot require a strength the tenant does not have. Until one matches, the policies that require it wait on {step}."
+            }
+          }
+        },
         "packages": "Baseline packages",
         "$commentPackageBody": "Phase 2 audit (How): the Baseline packages section's sentence was written into How.tsx and said the baseline credit a second time in other words. This says what IAMAI does with the package; whose it is, the Credits say once (creditBaseline).",
         "packageBody": "IAMAI plans against a reviewed version of this package, pinned in the build, and reads it unchanged. Connect shows its source and version.",

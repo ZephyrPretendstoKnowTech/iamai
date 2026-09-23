@@ -119,6 +119,8 @@ export type AppWords = {
     columns: Record<string, string>
     /** The static rules on the tenant's own policies (roadmap/staticRules.ts), one row per engine.staticRules key. */
     staticChecks: { caption: string; severity: string; rows: Record<string, { what: string; why: string }> }
+    /** The plan's prerequisite checks that are steps rather than registry rules, by step id ({step} is the step's title). */
+    prerequisiteChecks: { severity: string; rows: Record<string, { what: string; why: string }> }
     /** "What IAMAI reads" in plain words, by registry read name (ui/surfaces/howView.ts howReadTables). */
     readConditions: { licence: string; core: string; section: string }
     readRows: Record<string, { why: string; note?: string }>

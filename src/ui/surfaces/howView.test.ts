@@ -11,6 +11,7 @@ import { app, engine, pages, stepById } from '../../content/content.ts'
 import { REGISTRY } from '../../validation/rules.ts'
 import type { RuleResult } from '../../validation/rules.ts'
 import { emergencyTierOf } from '../../validation/emergencyTiers.ts'
+import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { ATTESTATION_RULES, NEED_LABEL, SEVERITY } from '../../copy/validation.ts'
 
 // "Every check IAMAI runs" listed seven pilot-group rows and three
@@ -21,7 +22,7 @@ test('Every check lists the rule subjects the plan evaluates, and the static rul
   const tables = howCheckTables()
   const ids = tables.flatMap((t) => t.rows.map((r) => r.id))
   for (const id of ids) assert.doesNotMatch(id, /^(pilot|str)\./, `How lists ${id}, which no plan runs`)
-  const ruleTables = tables.filter((t) => t.key !== 'staticRules').map((t) => t.key)
+  const ruleTables = tables.filter((t) => t.key !== 'staticRules' && t.key !== 'prerequisites').map((t) => t.key)
   assert.deepEqual(ruleTables, [...EVALUATED_SUBJECTS], 'the rule tables are exactly the subjects the plan evaluates')
   const statics = tables.find((t) => t.key === 'staticRules')
   assert.ok(statics, 'the static rules the plan runs on the tenant’s own policies are listed')
@@ -217,4 +218,22 @@ test('the operator reads say what the scan does with them', () => {
   assert.doesNotMatch(me, /plan file/i)
   assert.match(me, /emergency/i)
   assert.match(me, /passkey/i)
+})
+
+// Dropping the str.* rows removed How's only mention of the plan's check that the
+// tenant has the baseline's authentication strength (Phase 2 review). The plan
+// runs it as a prerequisite step, not a registry rule: s-prereq-auth-strength
+// reads the scanned strengths, and while none allows exactly the baseline's
+// combinations and restrictions, the policies that require it wait on that step
+// (5, 2 and 1 policy steps on mid, small and large).
+test('Every check lists the plan’s authentication-strength prerequisite, which holds the policies that require it', () => {
+  const table = howCheckTables().find((t) => t.key === 'prerequisites')
+  assert.ok(table, 'no prerequisite table')
+  assert.deepEqual(table.rows.map((r) => r.id), [PREREQ_STEP_ID.authStrength])
+  const [row] = table.rows
+  assert.equal(row.severity, 'prerequisite')
+  assert.equal(row.needs, NEED_LABEL.authStrengths)
+  assert.ok(row.what.length > 0)
+  const title = (stepById[PREREQ_STEP_ID.authStrength] as unknown as { title: string }).title
+  assert.ok(row.why.includes(title), `the row names the step the policies wait on, by its title: ${row.why}`)
 })
