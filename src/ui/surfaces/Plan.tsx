@@ -637,7 +637,7 @@ function CleanupRow({ phase, row, number, answers, open, onToggle, onScan, onDon
       {/* A completed row's When is the placeholder, as every finished row's is (planBoard.ts boardWhen). */}
       {/* A Cleanup row is held by the same engine and says what holds it the same way. */}
       {/* Finished, it is one compact line like every finished row (planBoard.ts drawsCompact), dated the day it was marked done. */}
-      <PlanRow stepId={`cleanup-${row.kind}`} lane={lane.label} tone={lane.tone} number={number} title={entry.title} waitingFor={lane.waitingFor} who={who} when={drawsCompact(lane.lane) ? (lane.lane === 'Completed' && row.done ? absoluteDate(row.done.slice(0, 10)) : '') : cleanupWhenOf(row, undated, lane)} open={open} onToggle={onToggle} compact={drawsCompact(lane.lane)} />
+      <PlanRow stepId={`cleanup-${row.kind}`} lane={lane.label} tone={lane.tone} number={number} title={entry.title} waitingFor={lane.waitingFor} who={who} when={cleanupWhenOf(row, undated, lane, drawsCompact(lane.lane))} open={open} onToggle={onToggle} compact={drawsCompact(lane.lane)} />
       {open && <CleanupBody phase={phase} row={row} status={status} onScan={() => (onScan ? onScan(returnToStep(`cleanup-${row.kind}`)) : (window.location.hash = '#/connect'))} onClose={onToggle} onDone={onDone} />}
     </>
   )
