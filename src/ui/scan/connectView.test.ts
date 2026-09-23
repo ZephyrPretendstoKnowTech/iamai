@@ -8,8 +8,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixtureSnapshot } from '../../testing/uiSnapshot.ts'
-import { gapsSnapshot, noRolesToken } from '../../testing/gapsFixture.ts'
-import { coreRoleGap, rolesInToken } from '../../graph/collect/tokenRoles.ts'
+import { gapsSnapshot, noRolesToken, tokenWithRoles } from '../../testing/gapsFixture.ts'
+import { coreRoleGap, holdsReadEverything, rolesInToken } from '../../graph/collect/tokenRoles.ts'
 import { CONFIG_KEYS, SOURCE_KEYS, coreGaps, unreadSources } from '../../graph/collect/coreSections.ts'
 import { app, pages } from '../../content/content.ts'
 import { accountTile, baselineTile, connectStatus, planInputOf, planTile, scanTile, tileStrings } from './connectView.ts'
@@ -336,6 +336,37 @@ test('a section Microsoft did not return in full is not blamed on the account; o
   assert.ok((partly.rows ?? []).length > 0, 'the premise: the demo scan read a section in part')
   assert.doesNotMatch(said(partly), /this account|Global Reader/)
   assert.equal(partly.ask, undefined)
+})
+
+// Phase 2 review, round 1: a refused section still asked for Global Reader when
+// the account's active roles were Global Reader or Global Administrator. Graph
+// refusing such an account is not for want of a role (a permission never
+// consented is one way it happens), so asking for one sends the reader after a
+// role they hold. The row still says the section was refused to this account.
+test('a refused section asks a Global Reader or a Global Administrator for no role they already hold', () => {
+  const unread = unreadSources(gapsSnapshot())
+  const held = scanTile({ kind: 'gaps', gaps: coreGaps(gapsSnapshot()), unread, lastScan: null, readsEverything: true })
+  assert.equal(held.ask, undefined, 'no ask for a role the account holds')
+  assert.equal(held.learn, undefined)
+  assert.deepEqual(held.rows, [
+    { name: 'Conditional Access policies', value: 'not read' },
+    { name: 'Sign-in records', value: 'refused to this account' },
+  ], 'the refusal is still stated')
+  const denied = structuredClone(fixture('small').snapshot)
+  denied.sources.devices = { ...denied.sources.devices, status: 'disabled', reason: 'access denied (403)', coveredWindow: null }
+  const built = scanTile({ kind: 'complete', at: full.asOf, now: twoMinutesLater, unread: unreadSources(denied), readsEverything: true })
+  assert.deepEqual(built.rows, [{ name: 'Devices', value: 'refused to this account' }])
+  assert.equal(built.ask, undefined)
+  // Without those roles, or with none known, the ask stays.
+  assert.equal(scanTile({ kind: 'gaps', gaps: coreGaps(gapsSnapshot()), unread, lastScan: null, readsEverything: false }).ask, 'Ask whoever administers the tenant for Global Reader; it reads every section and writes nothing.')
+  assert.equal(scanTile({ kind: 'complete', at: full.asOf, now: twoMinutesLater, unread: unreadSources(denied) }).learn?.label, 'Microsoft: Global Reader')
+  // The one reading of the token (tokenRoles.ts), the rule that also lets the scan start.
+  assert.equal(holdsReadEverything(rolesInToken(tokenWithRoles(['Global Reader']))), true)
+  assert.equal(holdsReadEverything(rolesInToken(tokenWithRoles(['Global Administrator']))), true)
+  assert.equal(holdsReadEverything(rolesInToken(tokenWithRoles(['Security Reader']))), false)
+  assert.equal(holdsReadEverything(null), false, 'a token without the claim says nothing about roles')
+  const CONNECT = readFileSync('src/ui/surfaces/Connect.tsx', 'utf8')
+  assert.equal(CONNECT.match(/readsEverything: holdsReadEverything\(roleIds\)/g)?.length, 2, 'Connect tells the gaps and the complete scan what the token holds')
 })
 
 // Phase 2 review, round 1: the gaps tile came to offer Scan again alone where no

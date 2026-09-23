@@ -38,7 +38,7 @@ import { authReady, getGraphToken } from '../../graph/auth.ts'
 import type { SignInError } from '../../graph/authError.ts'
 import { READ_EVERYTHING_ROLE } from '../../graph/collect/roles.ts'
 import type { TokenSource } from '../../graph/collect/runScan.ts'
-import { GLOBAL_ADMINISTRATOR, coreRoleGap, rolesInToken } from '../../graph/collect/tokenRoles.ts'
+import { GLOBAL_ADMINISTRATOR, coreRoleGap, holdsReadEverything, rolesInToken } from '../../graph/collect/tokenRoles.ts'
 import type { BaselineFile } from '../../baseline/index.ts'
 import { app } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
@@ -522,12 +522,13 @@ function SignedIn({
     : scanning
       ? { kind: 'scanning', lane: laneOf(runner).lane, elapsed: elapsedLabel(runner.startedAt ?? runner.nowTick, runner.nowTick) }
       : runner.gaps.length > 0
-        ? { kind: 'gaps', gaps: runner.gaps, unread: runner.unread, lastScan }
+        ? { kind: 'gaps', gaps: runner.gaps, unread: runner.unread, lastScan, readsEverything: holdsReadEverything(roleIds) }
         : lastScan
           ? // What the scan it names did not read in full, from that scan's own
             // snapshot, the way `degraded` is: a stored scan restored on the next
             // visit says the same thing it said the day it ran (S4-7, S4-8).
-            { kind: 'complete', at: lastScan.at, degraded: !signInProofRead(lastScan.snapshot), unread: unreadSources(lastScan.snapshot) }
+            // A refused section asks for no role the token already holds.
+            { kind: 'complete', at: lastScan.at, degraded: !signInProofRead(lastScan.snapshot), unread: unreadSources(lastScan.snapshot), readsEverything: holdsReadEverything(roleIds) }
           : { kind: 'ready' }
   // The plan follows a complete scan (its step counts the way the Plan header
   // counts them, once the plan has computed; read-only, so opening Connect never
