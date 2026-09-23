@@ -1651,14 +1651,19 @@ function shortReadingOf(step: Step): { value: string; note: string } | null {
   if (!step.state.satisfied || step.state.lifecycle !== 'enforced') return null
   const below = step.action.enforcedBelowReadiness
   const line = step.readiness?.lines?.[0]
-  const m = typeof line === 'string' ? /([0-9]+) of ([0-9]+)/.exec(line) : null
+  // The count as the line prints it, thousands separator and all ("3,569 of
+  // 4,900", copy/statements.ts figure). Read as digits alone it matched "569 of
+  // 4", found no shortfall, and an enforced policy with 1,331 people short of
+  // the threshold read "IAMAI cannot measure it".
+  const m = typeof line === 'string' ? /(\d[\d,]*) of (\d[\d,]*)/.exec(line) : null
+  const [ready, total] = m === null ? [0, 0] : [Number(m[1].replace(/,/g, '')), Number(m[2].replace(/,/g, ''))]
   // Not a count where nobody could be judged at all. A tenant whose
   // registration source is switched off reads "0 of 40 people have a
   // registered method", and saying "this policy is enforced and nobody can
   // satisfy it" over that is a claim about forty people made from having
   // looked at none of them. Where some were judged — "22 of 33, one not
   // established" — the count is a reading and stands.
-  const counted = m !== null && typeof line === 'string' && Number(m[1]) < Number(m[2]) && !(step.readiness?.unmeasured === 'unreadable' && Number(m[1]) === 0)
+  const counted = m !== null && typeof line === 'string' && ready < total && !(step.readiness?.unmeasured === 'unreadable' && ready === 0)
   if (counted) {
     const scope = CONTRACT.readinessScope[step.readiness?.family ?? ''] ?? CONTRACT.readinessScope.mfa
     const short = fillText(CONTRACT.foundEnforcedShort, { line })

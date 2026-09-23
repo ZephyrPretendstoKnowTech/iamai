@@ -70,9 +70,9 @@ export const AUTHORITIES = [
 export const RE = {
   /** The time gate on a report-only step's Done when (walk: plan.step body). */
   gateTime: /Time: in report-only since .+, the window clos(es|ed) \S.*\d{4}\./,
-  /** The evidence gate with today's numbers, in each of its three forms. */
+  /** The evidence gate with today's numbers, in each of its three forms; a count carries its thousands separator. */
   gateEvidence:
-    /Evidence: .+; today (ready now: 0 failures in \d+ days|\d+ failing or interrupted, \d+ of \d+ active people seen in \d+ days|no sign-in records read for this policy, \d+ of \d+ active people seen in \d+ days)\./,
+    /Evidence: .+; today (ready now: 0 failures in \d+ days|\d[\d,]* failing or interrupted, \d[\d,]* of \d[\d,]* active people seen in \d+ days|no sign-in records read for this policy, \d[\d,]* of \d[\d,]* active people seen in \d+ days)\./,
   /** A window that has closed, on the step's time line. */
   gateWindowClosed: /the window closed \S.*\d{4}\./,
   /** The Done when of a row reading Ready · Ready to enforce: the evidence gate says ready now. */
@@ -80,8 +80,10 @@ export const RE = {
   /**
    * The readiness summary, in either tense: pluralise() may bend the noun and the verb to the count.
    * The counted are people, guests, or people and guests (derive/whoLine.ts cohortWords): the total is 2 + 3.
+   * Each count carries its thousands separator ("1,234 of 4,169 people"), so a
+   * reader strips the commas before it adds them.
    */
-  readinessSummary: /(\d+) of (\d+) (?:people|person|guests?)(?: and (\d+) guests?)? (?:is|are) ready for phishing-resistant sign-in\./,
+  readinessSummary: /(\d[\d,]*) of (\d[\d,]*) (?:people|person|guests?)(?: and (\d[\d,]*) guests?)? (?:is|are) ready for phishing-resistant sign-in\./,
   /** A tenant with nobody active says so instead, and has no numbers to state. */
   readinessSummaryNone: /No active people to count/,
 }
