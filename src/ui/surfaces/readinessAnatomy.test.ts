@@ -337,7 +337,7 @@ test('the words that name a computer’s built-in option follow the computers se
     // The smoke's opening words, and the phone passkey, hold whatever the computers.
     assert.match(lead, /^Phishing-resistant sign-in for everyone, and seamless where the device allows it: a passkey on the phone/)
     assert.match(method, /A passkey in Microsoft Authenticator signs them in on their phone and from any computer\./)
-    assert.match(device, /On a phone that is a passkey in Microsoft Authenticator/)
+    assert.match(device, /Where the step is a setup, on a phone it is a passkey in Microsoft Authenticator/)
     // Windows Hello only where a Windows computer signs in; the Mac's option only where a Mac does.
     for (const [words, where] of [[lead, 'lead'], [method, 'Needs a method'], [device, 'Needs a device']] as const) {
       if (c === 'windows' || c === 'both') assert.match(words, /Windows Hello/, `${c}: the ${where} words don't name Windows Hello`)
