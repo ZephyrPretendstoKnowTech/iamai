@@ -63,3 +63,20 @@ test('How reads a missing Report-only exclusion one way: the exclusions group is
   assert.match(reportOnly.why, /exclusions group/)
   assert.match(row('xg.usedConsistently')?.what ?? '', /report-only/i)
 })
+
+// bg.drilled reads the recovery tests recorded on the plan (latestRecoveryTest),
+// and a recent sign-in that is not one fails bg.lastSignIn. How said a sign-in in
+// the last 90 days passes the check, needing "the user list": an administrator
+// who followed it signed in and failed both (Phase 2 audit, How).
+test('How says the drill check reads recorded recovery tests, and that a sign-in outside one is flagged', () => {
+  const rows = howCheckTables().flatMap((t) => t.rows)
+  const drilled = rows.find((r) => r.id === 'bg.drilled')
+  assert.ok(drilled)
+  assert.match(drilled.what, /recovery test is recorded/)
+  assert.doesNotMatch(drilled.what, /signed in/)
+  assert.match(drilled.needs, /recovery tests recorded/)
+  const last = rows.find((r) => r.id === 'bg.lastSignIn')
+  assert.ok(last)
+  assert.match(last.what, /except on a recorded recovery test/, 'the row says when the check fails, not only what it records')
+  assert.match(last.needs, /recovery tests recorded/)
+})

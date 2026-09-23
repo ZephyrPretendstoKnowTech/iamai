@@ -81,6 +81,7 @@ export type NeedKey =
   | 'devices'
   | 'groupMembers'
   | 'answers'
+  | 'recoveryTests'
 
 export type RuleEval = {
   outcome: RuleOutcome
@@ -200,7 +201,7 @@ export function missingNeeds(rule: { needs: NeedKey[] }, ctx: ValidationContext)
       : need === 'authStrengths' ? configOk(ctx, 'authStrengths')
       : need === 'signInEvidence' ? sourceUsable(ctx, 'signInEvidence')
       : need === 'devices' ? sourceUsable(ctx, 'devices')
-      : true // groupMembers and answers: the rule decides for itself
+      : true // groupMembers, answers and recoveryTests: the rule decides for itself
     if (!ok) out.push(NEED_LABEL[need] ?? need)
   }
   return out
@@ -651,7 +652,7 @@ const bgDrilled: ValidationRule = {
   id: 'bg.drilled',
   subject: 'breakGlass',
   severity: 'warning',
-  needs: ['users'],
+  needs: ['users', 'recoveryTests'],
   evaluate: (id, ctx) => {
     const u = userOf(ctx, id)
     if (!u) return unknown(UNKNOWN.needs([NEED_LABEL.users]))
@@ -708,7 +709,7 @@ const bgLastSignIn: ValidationRule = {
   id: 'bg.lastSignIn',
   subject: 'breakGlass',
   severity: 'warning',
-  needs: ['users'],
+  needs: ['users', 'recoveryTests'],
   // R10: a break-glass account that has never signed in is the expected case,
   // and printing that as a note is bookkeeping. A break-glass account that HAS
   // signed in is worth a line, because somebody used the escape hatch: a sign-in
