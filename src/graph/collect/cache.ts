@@ -86,14 +86,22 @@ export class StorageBlockedError extends Error {
   }
 }
 
-/** Whether the open in progress has started its upgrade (withinOpenTimeout). */
-let upgradeStarted = false
+/** What an open has seen: a tab on an older version blocking it (idb's `blocked`), and its upgrade starting. */
+export type OpenProgress = { blocked: boolean; upgradeStarted: boolean }
+
+/** What the open in progress has seen (openRefused). */
+let progress: OpenProgress = { blocked: false, upgradeStarted: false }
 
 function db(): Promise<IDBPDatabase<IamaiDB>> {
-  if (!dbPromise) upgradeStarted = false
+  if (!dbPromise) progress = { blocked: false, upgradeStarted: false }
+  const seen = progress
   dbPromise ??= openDB<IamaiDB>('iamai', 8, {
+    // A connection on an older version did not close when this open asked it to.
+    blocked() {
+      seen.blocked = true
+    },
     upgrade(d, oldVersion, _newVersion, tx) {
-      upgradeStarted = true
+      seen.upgradeStarted = true
       if (oldVersion < 1) {
         const rows = d.createObjectStore('signin-rows', { keyPath: ['tenantId', 'id'] })
         rows.createIndex('byTenant', 'tenantId')
@@ -123,8 +131,8 @@ function db(): Promise<IDBPDatabase<IamaiDB>> {
   })
   // Another tab on an older schema blocks the upgrade, and every read would
   // queue behind it forever (ux-review-06 §3). Each connection therefore
-  // closes itself when a newer version asks, and an open whose upgrade has not
-  // started in time fails loudly instead of hanging the page.
+  // closes itself when a newer version asks, and an open an older tab still
+  // blocks when its time is up fails loudly instead of hanging the page.
   const opening = dbPromise
   dbPromise = withinOpenTimeout(
     opening.then((d) => {
@@ -134,7 +142,7 @@ function db(): Promise<IDBPDatabase<IamaiDB>> {
       })
       return d
     }),
-    () => upgradeStarted,
+    () => seen,
     DB_OPEN_TIMEOUT_MS,
   ).catch((e: unknown) => {
     dbPromise = null
@@ -144,18 +152,25 @@ function db(): Promise<IDBPDatabase<IamaiDB>> {
 }
 
 /**
- * The open, or StorageBlockedError when after `ms` its upgrade has not started:
- * only a tab on an older version holds an upgrade back. An upgrade that has
- * started is waited for however long it runs. Version 8 indexes every saved
- * sign-in record inside it (2.9 s for 150,000 in Chrome, more on a slower
- * device), and timing it out left every load empty for that page load, with
- * another tab blamed for it.
+ * Whether an open still pending when its time is up is refused
+ * (StorageBlockedError): only while a tab on an older version blocks it and
+ * its upgrade has not started. idb reports the block (`blocked`) as the open
+ * asks the older connections to close, so it is known well inside the time.
+ * An open that is only slow is waited for however long it runs: version 8
+ * indexes every saved sign-in record inside its upgrade (2.9 s for 150,000 in
+ * Chrome, more on a slower device), and refusing it left every load empty for
+ * that page load, with another tab blamed for it.
  */
-export function withinOpenTimeout<T>(opening: Promise<T>, upgradeStarted: () => boolean, ms: number): Promise<T> {
+export function openRefused(progress: OpenProgress): boolean {
+  return progress.blocked && !progress.upgradeStarted
+}
+
+/** The open, or StorageBlockedError when after `ms` openRefused says so of its progress. */
+export function withinOpenTimeout<T>(opening: Promise<T>, progress: () => OpenProgress, ms: number): Promise<T> {
   return Promise.race([
     opening,
     new Promise<never>((_, reject) => setTimeout(() => {
-      if (!upgradeStarted()) reject(new StorageBlockedError())
+      if (openRefused(progress())) reject(new StorageBlockedError())
     }, ms)),
   ])
 }
