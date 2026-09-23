@@ -26,7 +26,7 @@ import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { Button, Callout, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { ALL_WORK_TAB, BOARD, DEFAULT_TAB, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupSummary, groupTotalsOf, groupsFor, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, tileSections, togglesOf, waveStartOf, drawsCompact, finishedDayOf, followOpenStep, groupClosed, pressKeyOf, readyToCreateOf, releaseFor } from './planBoard.ts'
+import { ALL_WORK_TAB, BOARD, DEFAULT_TAB, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupSummary, groupTotalsOf, groupsFor, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, tileSections, togglesOf, waveStartOf, drawsCompact, finishedDayOf, followOpenStep, followLaneChange, groupClosed, pressKeyOf, readyToCreateOf, releaseFor } from './planBoard.ts'
 import type { BoardGroup, BoardItem, BoardTab, Focus, LaneTab, WorkType } from './planBoard.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
@@ -275,10 +275,20 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // followOpenStep, owner, roadmap flow V2): the view the person is on, where
   // it draws the step; otherwise All work, where every row is, with the focus
   // cleared, the step's section open (groupClosed) and the page moved to it.
-  // It is read again when the open step's lane changes, so a step finished on
-  // the Ready tab stays on screen.
   const follow = open !== null ? followOpenStep(open, shown) : null
   const onFollow = (follow: BoardTab): void => { setSummaryFilter(null); setTab(follow); setFocus(NO_FOCUS); setToggled({}); moveTo.current = open }
+  // The open step's lane as the board reads it, Cleanup rows included.
+  const openLane = open !== null ? items.find((i) => i.id === open)?.lane : undefined
+  // When the open step's lane changes under the person (finished, deferred,
+  // answered) and the view no longer draws it: keep the tab and press the
+  // toggle that shows it, or follow it to its new lane's tab (planBoard.ts
+  // followLaneChange), as the board did before roadmap flow V2. All work only
+  // where that still leaves it off screen, such as a tile's list.
+  const onMoved = (): void => {
+    const lane = openLane
+    const keep = lane !== undefined && summaryFilter === null ? followLaneChange(lane, tab, focus) : null
+    if (keep !== null && applyFocus(items, keep.tab, keep.focus).some((i) => i.id === open)) { setTab(keep.tab); setFocus(keep.focus) } else onFollow(ALL_WORK_TAB)
+  }
   // On the view that draws it, a link lets go of the fold the person put over
   // the step's section (planBoard.ts releaseFor): a step opened inside a folded
   // section opened out of sight. Each group is keyed by the scope it is drawn
@@ -429,7 +439,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
           </Callout>
         </div>
       )}
-      <TabFollowsOpenStep open={open} lane={open ? readings.get(open)?.lane : undefined} follow={follow} linked={linked} onFollow={onFollow} onShow={onShow} />
+      <TabFollowsOpenStep open={open} lane={openLane} follow={follow} linked={linked} onFollow={onFollow} onShow={onShow} onMoved={onMoved} />
       <PlanControls
         tab={tab}
         onTab={(next) => { setSummaryFilter(null); setTab(next) }}
@@ -536,13 +546,20 @@ function PlanControls({ tab, onTab, focus, onFocus, counts, base }: {
  * The view follows the step a link or a tile opened (planBoard.ts
  * followOpenStep): where the view the person is on does not draw it, the board
  * goes to All work with the step's section open; where it does and a link
- * opened it, the page moves to it. A child with the one effect, because the
- * Plan's rows are built after its early returns and a hook cannot sit there.
+ * opened it, the page moves to it. When the same step's lane changes under the
+ * person instead (they finished, deferred or answered it), the view they chose
+ * is kept where it can draw the step (`onMoved`, planBoard.ts
+ * followLaneChange). A child with the one effect, because the Plan's rows are
+ * built after its early returns and a hook cannot sit there.
  */
-function TabFollowsOpenStep({ open, lane, follow, linked, onFollow, onShow }: { open: string | null; lane?: string; follow: BoardTab | null; linked: { current: boolean }; onFollow: (tab: BoardTab) => void; onShow: () => void }) {
+function TabFollowsOpenStep({ open, lane, follow, linked, onFollow, onShow, onMoved }: { open: string | null; lane?: string; follow: BoardTab | null; linked: { current: boolean }; onFollow: (tab: BoardTab) => void; onShow: () => void; onMoved: () => void }) {
+  // The step the effect last ran for, which tells a change of lane alone from a newly opened step.
+  const was = useRef<string | null>(null)
   useEffect(() => {
+    const moved = open !== null && open === was.current && !linked.current
+    was.current = open
     if (open === null) { linked.current = false; return }
-    if (follow !== null) onFollow(follow)
+    if (follow !== null) { if (moved) onMoved(); else onFollow(follow) }
     else if (linked.current) onShow()
     linked.current = false
     // Only when the opened step or its lane changes: choosing another tab afterwards is the person's.
