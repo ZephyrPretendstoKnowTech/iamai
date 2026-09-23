@@ -43,6 +43,7 @@ import { EMERGENCY_ACCOUNTS, EMERGENCY_GROUP, PASSKEY_SETTINGS } from '../../roa
 import { emergencyGroupTasksOf } from './emergencyGroupTasks.ts'
 import { emergencyPasskeyTasksOf } from './emergencyPasskeyTasks.ts'
 import { emergencyAccountTasksOf, emergencyAccountTasksText } from './emergencyAccountTasks.ts'
+import { objectTaskOwner } from '../../roadmap/stepIds.ts'
 
 export type { ExportStep }
 
@@ -296,6 +297,19 @@ export function exportCleanupViewsOf(board: Pick<BoardReadings, 'readings' | 'ti
  */
 const OPERATION_OF: Partial<Record<Substatus, ExportStep['operation']>> = { Create: 'createReportOnly', Correct: 'change', 'Ready to enforce': 'enforce' }
 
+/**
+ * The title a view states. An object a step makes itself (Stage 3; stepIds.ts
+ * OBJECT_TASK) is that step's task and no step of the plan, so its view — the
+ * lines its step exports ahead of its own, and the AI Info its step hands over
+ * while the task leads — names it by the title its step's task list shows
+ * ("Set up the allowed countries location"), never by the title of the step it
+ * used to be. Every other step by its content title, as the row reads it.
+ */
+function viewTitleOf(step: Step): string {
+  const taskTitle = objectTaskOwner(step.id) !== null ? (contentStepFor(step) as { taskTitle?: string | null } | undefined)?.taskTitle : null
+  return taskTitle ?? contentTitle(step)
+}
+
 export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView | null = null, startOf?: PrerequisiteLabel['startOf']): ExportStep {
   const cs = contentStepFor(step) as Record<string, any> | undefined
   // The frozen Step Contract, once, for every step. It is read and never
@@ -361,7 +375,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
     // so this is a step nothing has words for: the export carries what the
     // contract knows about it — where it is, what to do next and what would
     // finish it — and none of the engine's prose, exactly as the screen does.
-    return { title: contentTitle(step), why: contract.why, ...shell, whatToDo: [contract.whatToDo.text, gateLine(contract.whatToDo.gatedBy, laneView)].filter((l): l is string => l !== null), doneWhen: contract.doneWhen, ifWrong: null, dates: null }
+    return { title: viewTitleOf(step), why: contract.why, ...shell, whatToDo: [contract.whatToDo.text, gateLine(contract.whatToDo.gatedBy, laneView)].filter((l): l is string => l !== null), doneWhen: contract.doneWhen, ifWrong: null, dates: null }
   }
   const ex = undated ? withoutScheduleDates(stepVars(step, ctx), step, ctx) : stepVars(step, ctx)
   const names = portalNamesFor(ctx, ex, contentTitle(step))
@@ -558,7 +572,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // no authority had stated.
   const doneWhen = contract.doneWhen
   return {
-    title: contentTitle(step),
+    title: viewTitleOf(step),
     // A step that makes an object itself says the object's About sentence first,
     // as the screen does (stepContract.ts: the contract's why leads with it).
     why: step.objectTask === undefined && typeof cs.why === 'string' ? fillText(cs.why, ex) : contract.why,
