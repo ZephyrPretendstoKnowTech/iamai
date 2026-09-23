@@ -803,8 +803,13 @@ export function groupTitleOf(group: StepGroup, complete: boolean): string {
  * tab and focus leave, or a tile's pick), else All work, where every row is.
  * It used to switch to the step's own lane tab, which took a person off the
  * view they chose for a step that was already on it.
+ *
+ * A step with no row on the whole `board` also stays: one marked Doesn't apply
+ * here (the footer holds it) is drawn by no view, so going to All work would
+ * only clear the person's search, work type and folds for nothing to show.
  */
-export function followOpenStep(open: string, shown: readonly Pick<BoardItem, 'id'>[]): BoardTab | null {
+export function followOpenStep(open: string, shown: readonly Pick<BoardItem, 'id'>[], board: readonly Pick<BoardItem, 'id'>[]): BoardTab | null {
+  if (!board.some((i) => i.id === open)) return null
   return shown.some((i) => i.id === open) ? null : ALL_WORK_TAB
 }
 

@@ -630,13 +630,13 @@ test('a step opened from a link or a tile stays on the tab that shows it, and ot
   const done = items.find((i) => i.lane === 'Completed')!
   assert.ok(ready && held && done, 'the premise: the Follow-up demo has Ready, waiting and completed rows')
   // On the tab that shows it: stay.
-  assert.equal(followOpenStep(ready.id, applyFocus(items, 'ready', NO_FOCUS)), null, 'a link to a Ready step moved the Ready tab')
-  assert.equal(followOpenStep(held.id, applyFocus(items, ALL_WORK_TAB, NO_FOCUS)), null, 'a link moved All work')
-  assert.equal(followOpenStep(done.id, applyFocus(items, 'ready', { ...NO_FOCUS, showCompleted: true })), null, 'a completed step drawn after the Ready panel moved the tab')
+  assert.equal(followOpenStep(ready.id, applyFocus(items, 'ready', NO_FOCUS), items), null, 'a link to a Ready step moved the Ready tab')
+  assert.equal(followOpenStep(held.id, applyFocus(items, ALL_WORK_TAB, NO_FOCUS), items), null, 'a link moved All work')
+  assert.equal(followOpenStep(done.id, applyFocus(items, 'ready', { ...NO_FOCUS, showCompleted: true }), items), null, 'a completed step drawn after the Ready panel moved the tab')
   // Not on it: All work, whatever lane the step is in.
-  assert.equal(followOpenStep(held.id, applyFocus(items, 'ready', NO_FOCUS)), ALL_WORK_TAB, 'a link to a waiting step kept Ready, which does not show it')
-  assert.equal(followOpenStep(done.id, applyFocus(items, 'onHold', NO_FOCUS)), ALL_WORK_TAB)
-  assert.equal(followOpenStep(done.id, applyFocus(items, ALL_WORK_TAB, { ...NO_FOCUS, showCompleted: false })), ALL_WORK_TAB, 'a completed step hidden by the toggle stayed hidden')
+  assert.equal(followOpenStep(held.id, applyFocus(items, 'ready', NO_FOCUS), items), ALL_WORK_TAB, 'a link to a waiting step kept Ready, which does not show it')
+  assert.equal(followOpenStep(done.id, applyFocus(items, 'onHold', NO_FOCUS), items), ALL_WORK_TAB)
+  assert.equal(followOpenStep(done.id, applyFocus(items, ALL_WORK_TAB, { ...NO_FOCUS, showCompleted: false }), items), ALL_WORK_TAB, 'a completed step hidden by the toggle stayed hidden')
   // There, with the focus cleared, the step is drawn in its own section, and
   // that section is open even where it is finished and would otherwise fold.
   for (const target of [held, done]) {
@@ -679,7 +679,7 @@ test('a step opened from a link or a tile stays on the tab that shows it, and ot
   // view that draws it lets go of the fold over it, and the page moves to the
   // row only once it is out from under a folded section.
   const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
-  assert.match(plan, /const follow = open !== null \? followOpenStep\(open, shown\) : null/)
+  assert.match(plan, /const follow = open !== null \? followOpenStep\(open, shown, items\) : null/)
   assert.match(plan, /setTab\(follow\); setFocus\(NO_FOCUS\); setToggled\(\{\}\); moveTo\.current = open/)
   assert.match(plan, /const closed = groupClosed\(g, open, toggled\[key\], focusActive\(focus\)\)/)
   assert.match(plan, /const key = pressKeyOf\(scope, g\)/, 'a fold is kept under a key of its own making')
@@ -722,8 +722,38 @@ test('a step finished, deferred or moved while open keeps the tab the person is 
   const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
   assert.match(plan, /const moved = open !== null && open === was\.current && !linked\.current/, 'a lane change is not told from a newly opened step')
   assert.match(plan, /if \(follow !== null\) \{ if \(moved\) onMoved\(\); else onFollow\(follow\) \}/)
-  assert.match(plan, /const keep = lane !== undefined && summaryFilter === null \? followLaneChange\(lane, tab, focus\) : null/)
+  assert.match(plan, /const keep = summaryFilter === null \? followLaneChange\(lane, tab, focus\) : null/)
   assert.match(plan, /applyFocus\(items, keep\.tab, keep\.focus\)\.some\(\(i\) => i\.id === open\)\) \{ setTab\(keep\.tab\); setFocus\(keep\.focus\) \} else onFollow\(ALL_WORK_TAB\)/)
+})
+
+test('a step with no row on the board leaves the view alone: marked Doesn\'t apply here while open, or reached by a link', () => {
+  // Marking the open step Doesn't apply here takes its row off the board (the
+  // footer holds it). The view read that as a lane change with nowhere to go:
+  // it switched to All work, cleared the search, the work type and every fold,
+  // left the scroll over other rows, and set the page to move to a row that no
+  // longer existed, so putting the step back from the footer jumped the page
+  // to it. Before roadmap flow V2 the tab stayed put. A hash link to such a
+  // step went to All work the same way, with nothing there to show.
+  const items = itemsFor('demo')
+  const gone = items.find((i) => i.lane === 'Ready')!
+  const held = items.find((i) => i.lane === 'On Hold' || i.lane === 'Up Next')!
+  assert.ok(gone && held, 'the premise: the demo has Ready and waiting rows')
+  const board = items.filter((i) => i.id !== gone.id)
+  for (const tab of TABS) {
+    for (const f of [NO_FOCUS, { ...NO_FOCUS, search: gone.title.slice(0, 4) }, { ...NO_FOCUS, showCompleted: false, showDeferred: false }]) {
+      assert.equal(followOpenStep(gone.id, applyFocus(board, tab, f), board), null, `${tab}: a step with no row on the board moved the view`)
+    }
+  }
+  // A step on the board follows as before: stay where it is drawn, else All work.
+  assert.equal(followOpenStep(held.id, applyFocus(items, 'ready', NO_FOCUS), items), ALL_WORK_TAB)
+  assert.equal(followOpenStep(held.id, applyFocus(items, ALL_WORK_TAB, NO_FOCUS), items), null)
+  // The Plan wires it: the whole board decides whether there is a row to
+  // follow; a lane change to no row does nothing, and never points the page
+  // at a row that is not there.
+  const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
+  assert.match(plan, /const follow = open !== null \? followOpenStep\(open, shown, items\) : null/, 'the view follows a step the board has no row for')
+  assert.match(plan, /const onMoved = \(\): void => \{\s*const lane = openLane\s*if \(lane === undefined\) return\s/, 'onMoved goes to All work for a step that left the board')
+  assert.match(plan, /const onShow = \(\): void => \{\s*if \(open === null \|\| openLane === undefined\) return\s/, 'a link to a step with no row sets the page to move to it')
 })
 
 test('a row press is never a link, so it does not move the page to its row', () => {
