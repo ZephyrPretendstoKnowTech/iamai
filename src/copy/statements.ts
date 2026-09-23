@@ -318,6 +318,19 @@ export const FINISH = {
     if (named >= count) return `${count} ${count === 1 ? 'step waits' : 'steps wait'} on ${list(titles)}`
     return `${cleared}, ${named} of them after ${list(titles)}`
   },
+  /**
+   * The same steps as a clause that stands on its own: "19 steps are held, 14
+   * of them waiting on Prepare Emergency Access Accounts". `unwritable` is the
+   * tail of "cannot finish until …", and printed after a middle dot on the
+   * printed cover's Plan dates line it stated "19 held steps are cleared".
+   */
+  held: (count: number, titles: string[], named: number = count): string => {
+    if (count === 0) return ''
+    const held = `${count} ${count === 1 ? 'step is' : 'steps are'} held`
+    if (titles.length === 0 || named <= 0) return held
+    if (named >= count) return `${count} ${count === 1 ? 'step waits' : 'steps wait'} on ${list(titles)}`
+    return `${held}, ${named} of them waiting on ${list(titles)}`
+  },
   line: (date: string | null, waiting: { measure: string; count: number; family: string }[]): string => {
     const head = date ? `finishes ${date}` : 'nothing is dated'
     return waiting.length === 0 ? head : `${head} · ${FINISH.waiting(waiting)}`

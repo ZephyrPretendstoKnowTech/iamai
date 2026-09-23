@@ -24,7 +24,7 @@ import { planDates, stepVars } from './stepVars.ts'
 import { initialPicked } from './pickerRows.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { completedRows, deferredRows, doesntApplyRows, floorRows, openDoneRows, phaseRows, planPhases } from './planRows.ts'
-import { cleanupHeadingOf, cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, laneGroupsOf, noPlanLine, phaseDatesOf, postureOf, verificationNoteOf } from './printPlan.ts'
+import { cleanupHeadingOf, cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, holdsOf, laneGroupsOf, noPlanLine, phaseDatesOf, postureOf, verificationNoteOf } from './printPlan.ts'
 import { scheduleOf, scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { absolute, absoluteDate, dateRange, setDisplayTimeZone } from '../../copy/dates.ts'
@@ -32,6 +32,7 @@ import { stepFacts } from '../../derive/facts.ts'
 import { conditionalAccessLicenceLine } from '../../derive/notLicensed.ts'
 import { planFinish, statedEstimate } from '../../derive/finish.ts'
 import { headerLine1 } from '../../derive/planHeader.ts'
+import { list } from '../../copy/statements.ts'
 import type { PrintBoard } from './printPlan.ts'
 
 type Stage = 'fresh' | 'foundation' | 'recovered'
@@ -245,10 +246,28 @@ test('the cover names every kind of hold on the plan, the readiness waits and th
   const p = plan('demo')
   const finish = planFinish(p.steps, p.schedule.cleanup?.end ?? null)
   assert.ok(finish.waiting.length > 0 && finish.unwritable.count > 0, 'the premise: the demo has both kinds of hold')
-  const said = constraintOf(finish, (id) => p.board.titleOf(id) ?? id)
+  const titleOf = (id: string): string => p.board.titleOf(id) ?? id
+  // The header's clause, the tail of "cannot finish until …".
+  const said = constraintOf(finish, titleOf)
   assert.match(said, /1 device step waits for device readiness/, said)
   assert.match(said, / · \d+ held steps are cleared, \d+ of them after Prepare Emergency Access Accounts/, said)
-  assert.match(readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8'), /const constraint = constraintOf\(finish, titleOf\)/, 'the cover words the hold itself')
+  // The Plan dates line states the holds on their own. It had printed that
+  // tail after a middle dot, "Aug 31, 2026 · 1 device step waits for device
+  // readiness · 19 held steps are cleared, 14 of them after …", which states
+  // that nineteen held steps are cleared.
+  const holds = holdsOf(finish, titleOf)
+  const cover = coverDatesOf(p.schedule.start, finish, holds)
+  const held = finish.unwritable
+  assert.ok(held.named > 0 && held.named < held.count, 'the premise: some of the held steps wait on a named step and some do not')
+  assert.equal(cover, `${absoluteDate(p.schedule.start)} · 1 device step waits for device readiness · ${held.count} steps are held, ${held.named} of them waiting on ${list(held.waitsOn.map(titleOf))}`)
+  assert.equal(/are cleared|is cleared/.test(cover), false, `the cover states the held steps are cleared: ${cover}`)
+  // Each shape stands alone: nothing named, every one waiting on a named step, one step.
+  assert.equal(holdsOf({ ...finish, waiting: [], unwritable: { count: 3, waitsOn: [], named: 0 } }, titleOf), '3 steps are held')
+  assert.equal(holdsOf({ ...finish, waiting: [], unwritable: { count: 1, waitsOn: ['x'], named: 1 } }, () => 'Create or Correct Exclusions Group'), '1 step waits on Create or Correct Exclusions Group')
+  assert.equal(holdsOf({ ...finish, waiting: [], unwritable: { count: 2, waitsOn: ['x'], named: 1 } }, () => 'X'), '2 steps are held, 1 of them waiting on X')
+  const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
+  assert.match(print, /const constraint = constraintOf\(finish, titleOf\)/, 'the header words the hold itself')
+  assert.match(print, /coverDatesOf\(schedule\.start, finish, holdsOf\(finish, titleOf\)\)/, 'the cover\'s Plan dates line prints the tail of "cannot finish until"')
 })
 
 // ---- A plan nothing open dates ----
@@ -280,7 +299,7 @@ test('a plan whose open work has no dates states no finish: the start alone, nev
   assert.match(readFileSync('src/ui/surfaces/Plan.tsx', 'utf8'), /projectedFinish\(finish\.finish, statedEstimate\(c\.steps, finish, c\.schedule\)\)/, 'the Plan tile states the pre-deferral estimate')
   const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
   assert.match(print, /estimate: statedEstimate\(steps, finish, schedule\)/, 'the cover states the pre-deferral estimate')
-  assert.match(print, /coverDatesOf\(schedule\.start, finish, constraint\)/, 'the cover dates the plan itself')
+  assert.match(print, /coverDatesOf\(schedule\.start, finish, holdsOf\(finish, titleOf\)\)/, 'the cover dates the plan itself')
 })
 
 // ---- Cleanup rows say what they wait for ----

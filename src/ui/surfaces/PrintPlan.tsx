@@ -24,7 +24,7 @@ import { completedRows, deferredRows, floorRows, openDoneRows, phaseRows, planPh
 import { contentTitle } from '../../content/stepTitle.ts'
 import { boardHolds, boardReadingsOf, doesntApplyView, laneViewOf, laneWordOf, prerequisiteLabelFor, readinessBlockersOf } from './planBoard.ts'
 import type { LaneView } from './stepContract.ts'
-import { cleanupHeadingOf, cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, laneGroupsOf, noPlanLine, phaseDatesOf, postureOf, verificationNoteOf } from './printPlan.ts'
+import { cleanupHeadingOf, cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, holdsOf, laneGroupsOf, noPlanLine, phaseDatesOf, postureOf, verificationNoteOf } from './printPlan.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { PrintBoard } from './printPlan.ts'
 
@@ -210,7 +210,9 @@ export function PrintPlan({
   const weeks = planWeeks(finish, schedule)
   // What holds the plan: every readiness number that holds steps, and the steps
   // held on other work with the step each waits on (derive/finish.ts), joined
-  // (printPlan.ts constraintOf).
+  // (printPlan.ts constraintOf) as the tail of the header's "cannot finish
+  // until …". The Plan dates line states the same holds as clauses of their own
+  // (printPlan.ts holdsOf).
   const titleOf = (id: string): string => laneTitleOf(id) ?? id
   const constraint = constraintOf(finish, titleOf)
   // Held work dates no end: the cover, the Cleanup heading and the header all say so.
@@ -237,7 +239,7 @@ export function PrintPlan({
           <dt>{C.cover.baseline}</dt>
           <dd>{baselineLabel}</dd>
           <dt>{C.cover.dates}</dt>
-          <dd>{coverDatesOf(schedule.start, finish, constraint)}</dd>
+          <dd>{coverDatesOf(schedule.start, finish, holdsOf(finish, titleOf))}</dd>
         </dl>
         <p className="print-statement">{headerLine}</p>
         <div className="print-posture">
