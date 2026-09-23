@@ -809,6 +809,22 @@ export function followOpenStep(open: string, shown: readonly Pick<BoardItem, 'id
 }
 
 /**
+ * Where the board goes when the open step's lane changes while the person
+ * works on it — they finished it, deferred it or answered it — rather than a
+ * link opening it. The person keeps the view they chose, as before roadmap
+ * flow V2: a step that became Completed or Deferred is shown by pressing its
+ * toggle, which draws it after a lane tab's panel, or in its section on All
+ * work; one that moved to another lane is followed to that lane's tab. The
+ * search and the work type stay. The Plan goes to All work (followOpenStep)
+ * only where this view still does not draw the step. Pure.
+ */
+export function followLaneChange(lane: Lane, tab: BoardTab, f: Focus): { tab: BoardTab; focus: Focus } {
+  if (lane === 'Completed') return { tab, focus: { ...f, showCompleted: true } }
+  if (lane === 'Deferred') return { tab, focus: { ...f, showDeferred: true } }
+  return { tab: tab === ALL_WORK_TAB ? tab : TAB_OF[lane] ?? tab, focus: f }
+}
+
+/**
  * Whether a drawn group is folded: the person's own press where there is one;
  * otherwise where the board draws it closed (a finished section on All work),
  * unless it holds the open step — a link that opens a step inside a finished

@@ -58,6 +58,7 @@ import {
   readyToCreateOf,
   boardOf,
   followOpenStep,
+  followLaneChange,
   groupClosed,
   pressKeyOf,
   releaseFor,
@@ -685,6 +686,44 @@ test('a step opened from a link or a tile stays on the tab that shows it, and ot
   assert.match(plan, /setToggled\(\(t\) => releaseFor\(t, open, drawn\)\)/, 'a link does not let go of the fold over its step')
   assert.match(plan, /if \(!row \|\| row\.closest\('\[hidden\]'\) !== null\) return/, 'the page moves to a row still folded out of sight, which moves nothing')
   assert.equal(plan.includes('const openTab'), false, 'a link still switches to the step\'s lane tab')
+})
+
+test('a step finished, deferred or moved while open keeps the tab the person is on, and presses the toggle that shows it', () => {
+  // Before roadmap flow V2, finishing the open step on a lane tab kept the
+  // person on that tab and pressed Show completed, so the step was drawn after
+  // the panel. Stage 1 sent the whole board to All work instead, with the
+  // search, the work type and every fold cleared, so someone working through
+  // Ready was taken off it after each completion. A link still follows
+  // followOpenStep; a lane change under the person does not.
+  const items = itemsFor('demo-week2')
+  const ready = items.find((i) => i.lane === 'Ready')!
+  assert.ok(ready, 'the premise: the Follow-up demo has a Ready row')
+  const as = (lane: BoardItem['lane']): BoardItem[] => items.map((i) => (i.id === ready.id ? { ...i, lane } : i))
+  const search = { ...NO_FOCUS, search: ready.title.slice(0, 4) }
+  // Finished on Ready: Ready stays, Show completed is pressed, the search stays, and the step is drawn after the panel.
+  const done = followLaneChange('Completed', 'ready', search)
+  assert.equal(done.tab, 'ready', 'finishing the open step took the person off Ready')
+  assert.equal(done.focus.showCompleted, true, 'the finished step is not shown')
+  assert.equal(done.focus.search, search.search, 'finishing a step cleared the search')
+  assert.ok(asideGroupsFor(applyFocus(as('Completed'), done.tab, done.focus)).some((g) => g.items.some((i) => i.id === ready.id)), 'the finished step is not drawn after the Ready panel')
+  // Deferred the same way, under its own toggle.
+  const deferred = followLaneChange('Deferred', 'ready', NO_FOCUS)
+  assert.deepEqual([deferred.tab, deferred.focus.showDeferred, deferred.focus.showCompleted], ['ready', true, null])
+  assert.ok(applyFocus(as('Deferred'), deferred.tab, deferred.focus).some((i) => i.id === ready.id))
+  // Moved to another lane on a lane tab: that lane's tab, as before.
+  assert.equal(followLaneChange('Up Next', 'ready', NO_FOCUS).tab, 'upNext')
+  assert.equal(followLaneChange('On Hold', 'upNext', NO_FOCUS).tab, 'onHold')
+  // On All work with Show completed turned off, finishing the step presses it again and stays.
+  const off = followLaneChange('Completed', ALL_WORK_TAB, { ...NO_FOCUS, showCompleted: false })
+  assert.deepEqual([off.tab, off.focus.showCompleted], [ALL_WORK_TAB, true])
+  assert.ok(applyFocus(as('Completed'), off.tab, off.focus).some((i) => i.id === ready.id))
+  // The Plan wires it: a change of lane alone, not from a link, keeps the view
+  // where that draws the step, and goes to All work only where it cannot.
+  const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
+  assert.match(plan, /const moved = open !== null && open === was\.current && !linked\.current/, 'a lane change is not told from a newly opened step')
+  assert.match(plan, /if \(follow !== null\) \{ if \(moved\) onMoved\(\); else onFollow\(follow\) \}/)
+  assert.match(plan, /const keep = lane !== undefined && summaryFilter === null \? followLaneChange\(lane, tab, focus\) : null/)
+  assert.match(plan, /applyFocus\(items, keep\.tab, keep\.focus\)\.some\(\(i\) => i\.id === open\)\) \{ setTab\(keep\.tab\); setFocus\(keep\.focus\) \} else onFollow\(ALL_WORK_TAB\)/)
 })
 
 test('a header tile draws one list in section order: each section heading once, and each row once', () => {
