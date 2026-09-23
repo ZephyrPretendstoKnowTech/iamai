@@ -146,6 +146,10 @@ function withRow(f: Fixture, id: string, change: (row: Row) => Row): { r: Fixtur
 }
 
 test('R4-11: token protection, enforced as its step asked, is not handed over again as a correction that changes nothing', () => {
+  // With the policy read against the baseline's own targets (coverage/classify.ts
+  // narrowerApps, Nadia D7), a policy on exactly as its step built it owes
+  // nothing at all: the step is finished, not an empty correction (and the
+  // empty-update rule, generate.ts settleSections, has nothing left to drop).
   const f = withFoundationSettled(fixture('demo-week2'))
   const TOKEN = 's-goal-token-protection'
   // The first scan: the goal's own policy in report-only, and the update the switch.
@@ -155,34 +159,26 @@ test('R4-11: token protection, enforced as its step asked, is not handed over ag
   const { r, ctx } = withRow(f, String(op.policyId), (p) => ({ ...p, state: 'enabled', modifiedDateTime: f.snapshot.asOf }))
   const step = r.steps.find((s) => s.id === TOKEN)!
   const cov = r.coverage.results.find((x) => x.goal.id === step.goalId)!
-  // Premise: coverage still reads a gap in the policy's applications, and the policy holds the baseline's.
-  assert.ok(cov.reasons.some((x) => x.kind === 'apps-narrower' && !x.expected), `premise: ${JSON.stringify(cov.reasons.map((x) => x.kind))}`)
-  assert.deepEqual((step.action.resolution?.policies ?? []).map((o) => [o.mode, o.policyId, o.body]), [['update', op.policyId, {}]], 'nothing the policy already holds is submitted')
+  assert.ok(!cov.reasons.some((x) => x.kind === 'apps-narrower'), `the policy holds the baseline's targets and reads no gap: ${JSON.stringify(cov.reasons.map((x) => x.kind))}`)
+  assert.equal(step.status, 'done')
+  assert.equal(step.state.satisfied, true)
+  assert.deepEqual(step.action.resolution?.policies ?? [], [], 'nothing is submitted')
   assert.equal(implementationOffered(step), false, 'nothing is handed over as work')
-  assert.equal(unavailableReason(step), 'no-operation')
   const c = stepContract(step, ctx)
-  const because = c.implementation.offered ? '' : c.implementation.because ?? ''
-  assert.match(because, /Core - Session - Token protection/, because)
-  assert.match(because, /nothing to submit/, because)
-  assert.doesNotMatch(because, REBUILD)
-  assert.doesNotMatch(c.doneWhen.join(' '), REBUILD)
+  assert.doesNotMatch([c.implementation.offered ? '' : c.implementation.because ?? '', ...c.doneWhen].join(' '), REBUILD)
 })
 
-test('R4-11: large\'s device policy, once on, is not offered a Target resources patch it already holds', () => {
+test('R4-11: large\'s device policy, as the baseline has it, is not offered a Target resources patch it already holds', () => {
+  // Large's compliant-device policy is on and targets Office 365, as the
+  // baseline's does. It used to read narrower than the goal's "all applications"
+  // and came back as an Office365 -> Office365 update (Nadia D7); it is the goal
+  // in place, and the step offers nothing.
   const f = withFoundationSettled(fixture('large'))
-  const before = runFixture(f).steps.find((s) => s.id === DEVICE)!.action.resolution!.policies[0]
-  assert.deepEqual([before.mode, before.body], ['update', { state: 'enabled' }], 'premise: the switch')
-  const { r, ctx } = withRow(f, String(before.policyId), (p) => ({ ...p, state: 'enabled', modifiedDateTime: f.snapshot.asOf }))
-  const step = r.steps.find((s) => s.id === DEVICE)!
-  const ops = step.action.resolution?.policies ?? []
-  assert.deepEqual(ops.map((o) => [o.mode, o.body]), [['update', {}]], `nothing it already holds is submitted: ${JSON.stringify(ops.map((o) => o.body))}`)
-  // What is left is the platforms the device decision leaves out, which the
-  // tenant's policy does not, and which no update writes: a person's correction.
-  assert.equal(unavailableReason(step), 'manual-correction')
-  const c = stepContract(step, ctx)
-  const said = [c.implementation.offered ? '' : c.implementation.because ?? '', ...c.doneWhen].join(' ')
-  assert.doesNotMatch(said, /turns the policy on/, 'no hold about turning on a policy that is already on')
-  assert.doesNotMatch(said, REBUILD)
+  const step = runFixture(f).steps.find((s) => s.id === DEVICE)!
+  assert.equal(step.state.lifecycle, 'enforced', 'premise: the tenant enforces it')
+  assert.equal(step.status, 'done')
+  assert.deepEqual(step.action.resolution?.policies ?? [], [], 'no update re-submits what the policy holds')
+  assert.equal(implementationOffered(step), false)
 })
 
 test('R4-11: a pair with a half still to create keeps its update to the other half, even where that half holds everything', () => {
