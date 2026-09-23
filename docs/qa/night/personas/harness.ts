@@ -240,24 +240,40 @@ export const answers = (values: Record<string, DirectionAnswer>): StepDecisionIn
  *
  * The policy body is the step's own intended operation, so this is IAMAI's
  * output fed back as the next scan's input — with the mistake applied on top.
+ *
+ * `held` is the person who also runs what the step declares and withholds
+ * today — the switch a readiness threshold or an unverified escape hatch holds.
+ * Without it only what the step offers is applied, which is what following the
+ * plan means; but a journey that turns "everything on" with the offered
+ * operations alone never applies a held switch, and never reaches the states
+ * that follow it. The 2026-09-22 review of fix/patch found a step the earlier
+ * sweep called unreachable exactly there.
  */
-export function deploy(t: Tenant, step: Step, fidelity: 'exact' | 'enforced' | 'unconfigured' = 'exact'): Tenant {
+export function deploy(t: Tenant, step: Step, fidelity: 'exact' | 'enforced' | 'unconfigured' = 'exact', opts: { held?: boolean } = {}): Tenant {
   const next = structuredClone(t) as Tenant
-  const ops = stepOperations(step)
+  const ops = opts.held ? (step.action.resolution?.policies ?? []) : stepOperations(step)
   const rows = (next.snapshot.config.caPolicies?.rows ?? []) as Record<string, unknown>[]
   for (const op of ops) {
     const body = structuredClone(op.body) as Record<string, unknown>
-    // An UPDATE patches the policy this member already owns — turning it on is
-    // the commonest one — so it is applied to that row. Treating it as a create
-    // (its body is a patch, with no displayName) pushed a second, nameless
-    // policy and the step read as though nothing had happened.
+    // An UPDATE patches the policy it names — turning it on is the commonest
+    // one — so it is applied to that row. Treating it as a create (its body is a
+    // patch, with no displayName) pushed a second, nameless policy and the step
+    // read as though nothing had happened.
+    //
+    // The row is the operation's own `policyId`, and the patch merges the way
+    // Graph merges it: a `conditions` section the patch carries replaces that
+    // section, and one it leaves out stays (generate.ts withPatch). This used to
+    // apply every update of a pair to the step's first tracked row, and to
+    // replace `conditions` whole, so an applications-only correction dropped the
+    // policy's users — and the exclusions group with them, which then failed the
+    // consistency check for every other step.
     if ((op as { mode?: string }).mode === 'update') {
-      const owned = (step.tracking?.members ?? []).map((m) => m.policyId).filter((id): id is string => typeof id === 'string')
-      const at2 = rows.findIndex((row) => owned.includes(String(row.id)))
-      if (at2 >= 0) {
-        rows[at2] = { ...rows[at2], ...body, modifiedDateTime: t.snapshot.asOf }
-        continue
-      }
+      const at2 = rows.findIndex((row) => String(row.id) === String((op as { policyId?: unknown }).policyId))
+      if (at2 < 0) continue
+      const current = rows[at2]
+      const conditions = body.conditions && current.conditions ? { ...(current.conditions as object), ...(body.conditions as object) } : (body.conditions ?? current.conditions)
+      rows[at2] = { ...current, ...body, ...(conditions !== undefined ? { conditions } : {}), ...(fidelity === 'enforced' ? { state: 'enabled' } : {}), modifiedDateTime: t.snapshot.asOf }
+      continue
     }
     if (fidelity === 'enforced') body.state = 'enabled'
     if (fidelity === 'unconfigured') {
