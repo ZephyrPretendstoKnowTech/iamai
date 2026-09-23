@@ -713,9 +713,14 @@ export function targetedReadCandidates(
     .map((u) => u.id)
 }
 
-/** One person's read: their interactive sign-ins between the window's start and where the bulk read began. */
+/**
+ * One person's read: their interactive sign-ins between the window's start and
+ * where the bulk read began. `le`, because Microsoft Learn documents only eq,
+ * le and ge on a sign-in's createdDateTime; the records at `coveredFrom`, which
+ * the bulk read folded, come back too, and readTargeted (laneB.ts) drops them.
+ */
 export function targetedReadUrl(base: string, userId: string, windowStart: string, coveredFrom: string): string {
-  const filter = `userId eq '${userId}' and createdDateTime ge ${windowStart} and createdDateTime lt ${coveredFrom} and signInEventTypes/any(t: t eq 'interactiveUser')`
+  const filter = `userId eq '${userId}' and createdDateTime ge ${windowStart} and createdDateTime le ${coveredFrom} and signInEventTypes/any(t: t eq 'interactiveUser')`
   return `${base}/auditLogs/signIns?$filter=${encodeURIComponent(filter)}&$top=50`
 }
 
