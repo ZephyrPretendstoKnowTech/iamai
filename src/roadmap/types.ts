@@ -282,6 +282,15 @@ export type Action = {
    */
   intended?: Record<string, unknown>
   /**
+   * On a goal a policy the tenant wrote under its own name delivers: where that
+   * policy differs from the one the plan would write, in the parts coverage does
+   * not judge (observation.ts unwrittenDifferences, COVERAGE_JUDGED). Stated on
+   * the step and never an instruction (owner, 2026-09-22): the difference may be
+   * deliberate, and telling the tenant to reshape a policy that works could
+   * weaken it (the large fixture's compliant-device policy on every platform).
+   */
+  ownPolicyDiffers?: { policyName: string; dimensions: string[] }
+  /**
    * Why the step offers no implementation although nothing it names is missing:
    * the plan cannot tell which of the tenant's policies is which half of a pair,
    * so it will not guess. The step says so and waits for a person to sort it out.

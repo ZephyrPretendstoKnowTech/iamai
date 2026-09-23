@@ -1811,6 +1811,11 @@
           "$commentFoundEnforcedBelowThreshold": "Said after foundEnforcedShort where the reading is below the plan's own threshold, which the finished step otherwise never named once the gate was gone. The value now, never when the policy went on.",
           "foundEnforcedBelowThreshold": "The plan holds enforcement until {measure} reaches {threshold}; it is {value} now.",
           "foundEnforcedBelowThresholdFloor": "The plan holds enforcement until {measure} reaches {threshold}; it is at least {value} now.",
+          "ownPolicyDiffers": {
+            "$comment": "Owner, 2026-09-22: a policy the tenant wrote delivers the goal and differs from the baseline's in a part coverage does not judge (token protection without the Cloud PC filter; a compliant-device policy on every platform). The step stays Completed and states the difference; it never asks the tenant to change a policy that works, which could weaken it.",
+            "label": "Differs From the Baseline",
+            "note": "{policy} delivers this goal and differs from the baseline's policy in {dimensions}. That may be deliberate: IAMAI reads the goal as delivered and does not ask you to change it."
+          },
           "followUp": {
             "$comment": "Owner decision 9 (2026-09-22): one person on leave need not hold every policy that waits on Prepare Your Team for MFA. The people a person marks there to turn on without, for now, are named on the campaign and on each policy that reaches them, with what happens at their next sign-in.",
             "label": "Follow-Up List",

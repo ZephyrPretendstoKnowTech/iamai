@@ -44,7 +44,7 @@ import { BASELINE_CONFLICT, baselineConflicts } from './baselineConflict.ts'
 import type { TemplateBody, TemplatePlaceholder, TemplateValues } from './template.ts'
 import { policyFacts } from '../coverage/facts.ts'
 import { PINNED_GOAL_MAP, goalInMap, policyKey } from './goalMap.ts'
-import { memberKeyOf, sameDimension } from './observation.ts'
+import { COVERAGE_JUDGED, memberKeyOf, sameDimension, unwrittenDifferences } from './observation.ts'
 import type { GoalMap } from './goalMap.ts'
 import type { StrengthLookup } from '../coverage/strength.ts'
 import type { CoverageReport, Goal, GoalResult } from '../coverage/types.ts'
@@ -1716,12 +1716,27 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       const policies = !own ? [] : stepSources.length > 0 ? stepPolicies() : templatePolicy()
       const would = policies.length === 1 ? buildCreateAction(named(policies, proposedPolicyName(goal, naming)), mapping, planId, stepId, goal.id) : null
       const intended = would && (would.missing ?? []).length === 0 ? would.resolution?.policies[0]?.body : undefined
+      // A policy the tenant wrote delivers the goal: where it is not the policy
+      // the plan would write, in the parts coverage does not judge, the step says
+      // so and asks nothing (owner, 2026-09-22; Action.ownPolicyDiffers). One
+      // delivering policy, and a plan policy that resolves, or nothing is said.
+      const delivering = result.satisfaction?.policyIds ?? []
+      let ownPolicyDiffers: Action['ownPolicyDiffers'] | undefined
+      if (!own && delivering.length === 1) {
+        const theirs = (snapshot.config.caPolicies.rows as RawPolicy[]).find((p) => String(p.id) === delivering[0])
+        const mine = stepSources.length > 0 ? stepPolicies() : templatePolicy()
+        const plan = theirs && mine.length === 1 ? buildCreateAction(named(mine, proposedPolicyName(goal, naming)), mapping, planId, stepId, goal.id) : null
+        const body = plan && (plan.missing ?? []).length === 0 ? plan.resolution?.policies[0]?.body : undefined
+        const dimensions = body && theirs ? unwrittenDifferences(body as Record<string, unknown>, null, theirs as Record<string, unknown>, COVERAGE_JUDGED) : []
+        if (theirs && dimensions.length > 0) ownPolicyDiffers = { policyName: String(theirs.displayName ?? theirs.id), dimensions }
+      }
       action = {
         kind: 'create',
         summary: [],
         json: null,
         portalSteps: [],
         ...(intended ? { intended } : {}),
+        ...(ownPolicyDiffers ? { ownPolicyDiffers } : {}),
       }
     } else if (result.status === 'unknown') {
       // Coverage could not settle the goal: a live policy that stands for it
