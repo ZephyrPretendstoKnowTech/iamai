@@ -13,6 +13,11 @@ export const SIGN_IN_PAGE_SIZE = 200
 export const DEDUP_HORIZON_MS = 2_000
 /** The most records of one second held back before they are folded; a bigger second is folded in parts (LaneBStats.tieOverflow). */
 export const SIGN_IN_TIE_GROUP_MAX = 5_000
+/**
+ * A sign-in page that still fails after its own retries is read again from the
+ * last whole second folded; this many failures in a row stop the read.
+ */
+export const SIGN_IN_REANCHOR_MAX = 3
 export const SLOW_THRESHOLD_MS = 15_000
 export const PAGE_ABORT_MS = 125_000
 export const LANE_A_ABORT_MS = 30_000
