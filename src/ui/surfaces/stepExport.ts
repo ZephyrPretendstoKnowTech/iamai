@@ -21,9 +21,12 @@ import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, proceduresAreRef
 import type { LaneView, StepContract } from './stepContract.ts'
 import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, previewNoteLines, selectedPolicyBodiesOf, entraWithSettings } from './stepPackage.ts'
 import { projectSafely } from '../../content/implementation/project.ts'
-import { SUBSTATUS_WORD, boardHolds, laneViewAlone, laneViewFor, laneWordOf } from './planBoard.ts'
+import { SUBSTATUS_WORD, boardHolds, laneViewAlone, laneViewFor, laneViewOf, laneWordOf } from './planBoard.ts'
 import type { BoardReadings } from './planBoard.ts'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
+import type { CleanupExport } from '../../roadmap/types.ts'
+import { cleanupExportViews } from './cleanupExport.ts'
+import { planFinish } from '../../derive/finish.ts'
 import type { Substatus } from '../../actionability/lanes.ts'
 import { createsNewPolicy, enforcesByStateOnly, updatesExistingPolicy, heldByTitle, implementationOffered, waitingLine } from './stepJson.ts'
 import { awaitingDeployment, enforcementUnearned, forecastEnforcement } from '../../roadmap/forecast.ts'
@@ -248,6 +251,19 @@ export function exportViewsOf(board: Pick<BoardReadings, 'readings' | 'titleOf'>
  */
 export function exportHoldOf(board: Pick<BoardReadings, 'readings' | 'titleOf'>): (s: Step) => boolean {
   return (s) => boardHolds(s, laneViewFor(s, board))
+}
+
+/**
+ * The Export page's Cleanup rows, each as the board reads it: the When column the
+ * Plan's row shows (cleanupExport.ts cleanupWhenOnBoard), on the same board
+ * `exportViewsOf` reads, and no day while the plan cannot finish. The prompt
+ * pack printed "Verify Emergency Access (Sep 1, 2026)." and the bundle carried
+ * that day under a row the board read "After prerequisites" (Phase 2 export
+ * finding 3; owner decision 2).
+ */
+export function exportCleanupViewsOf(board: Pick<BoardReadings, 'readings' | 'titleOf'>, steps: Step[], phase: CleanupPhase | null | undefined): CleanupExport[] {
+  const undated = planFinish(steps, phase?.end ?? null).held
+  return cleanupExportViews(phase, { undated, laneOf: (id) => { const r = board.readings.get(id); return r ? laneViewOf(r, board.titleOf) : null } })
 }
 
 /**

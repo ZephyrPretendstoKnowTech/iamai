@@ -14,10 +14,11 @@ import { scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { app, pages } from '../../content/content.ts'
 import { planFinish, planLengthSentence } from '../../derive/finish.ts'
-import { promptPack } from '../../roadmap/prompts.ts'
-import { boardReadingsOf } from './planBoard.ts'
-import { exportHoldOf, exportViewsOf } from './stepExport.ts'
-import { cleanupExportViews } from './cleanupExport.ts'
+import { groundingBundle, promptPack } from '../../roadmap/prompts.ts'
+import { absoluteDate } from '../../copy/dates.ts'
+import { boardReadingsOf, laneViewOf } from './planBoard.ts'
+import { exportCleanupViewsOf, exportHoldOf, exportViewsOf } from './stepExport.ts'
+import { cleanupExportViews, cleanupWhen } from './cleanupExport.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 
@@ -97,4 +98,43 @@ test('the prompt pack states the plan length the Plan header states, and no leng
 test('the Plan header\'s Projected finish tip is the one plan-length sentence', () => {
   const plan = readFileSync(new URL('./Plan.tsx', import.meta.url), 'utf8').replace(/\/\/[^\n]*/g, '')
   assert.match(plan, /const lengthTip = planLengthSentence\(finish, c\.schedule\)/)
+})
+
+// Finding 3 (severity 3). The pack's Cleanup blocks and the bundle's cleanup
+// list dated every row, "Verify Emergency Access (Sep 1, 2026).", while the
+// board read the same rows "After prerequisites" on a plan that cannot finish
+// (owner decision 2: held work carries no date anywhere). The Export page's
+// Cleanup views carry the board's When, and the pack and bundle say it.
+test('the pack and the bundle say a Cleanup row\'s When as the board reads it, and date none while the plan cannot finish', () => {
+  let undatedRows = 0
+  for (const name of ['demo', 'mid', 'large', 'hostile'] as FixtureName[]) {
+    const p = exportPage(fixture(name))
+    const finish = planFinish(p.r.steps, p.r.schedule.cleanup?.end ?? null)
+    const rows = exportCleanupViewsOf(p.board, p.r.steps, p.r.schedule.cleanup)
+    const pack = promptPack({ view: p.view, tenant: 'Tenant', steps: p.r.steps, schedule: p.r.schedule, changeRecord: '', announcement: null, cleanup: rows })
+    const bundle = groundingBundle({ view: p.view, tenant: 'Tenant', snapshot: p.f.snapshot, coverage: p.r.coverage, steps: p.r.steps, schedule: p.r.schedule, redacted: false, generated: 'today', cleanup: rows })
+    const bundleRows = (bundle.plan as { cleanup: { kind: string; day: string | null }[] }).cleanup
+    for (const phaseRow of p.r.schedule.cleanup?.rows ?? []) {
+      const c = rows.find((x) => x.kind === phaseRow.kind)
+      if (!c) continue
+      const reading = p.board.readings.get(`cleanup-${phaseRow.kind}`)!
+      const lane = laneViewOf(reading, p.board.titleOf)
+      // The Plan's CleanupRow reads exactly this (Plan.tsx).
+      const board = cleanupWhen(phaseRow, finish.held, lane.lane === 'Completed', lane.lane === 'Ready' && lane.substatus === 'Review')
+      const where = `${name}/${c.kind}`
+      assert.equal(c.when, board, `${where}: the export's When is the board's`)
+      assert.ok(pack[0].prompt.includes(`${c.title} (${board}).`), `${where}: the pack's block reads "${board}"`)
+      if (finish.held && !phaseRow.done) {
+        undatedRows++
+        assert.ok(!pack[0].prompt.includes(`${c.title} (${absoluteDate(phaseRow.day)})`), `${where}: the pack dates a row the board holds`)
+        assert.equal(bundleRows.find((b) => b.kind === c.kind)?.day, null, `${where}: the bundle dates a row the board holds`)
+      }
+    }
+  }
+  assert.ok(undatedRows > 0, 'the premise: Cleanup rows on a plan that cannot finish')
+})
+
+test('the Export page builds its Cleanup views off the board', () => {
+  const page = readFileSync(new URL('./Export.tsx', import.meta.url), 'utf8').replace(/\/\/[^\n]*/g, '')
+  assert.match(page, /const cleanupViews = exportCleanupViewsOf\(board, steps, schedule\.cleanup\)/)
 })

@@ -4,7 +4,6 @@
 // "do not invent facts" instruction, the prompt pack, and the grounding
 // bundle, redacted by default. Pure.
 import { GROUNDING, PROMPTS } from '../copy/comms.ts'
-import { absoluteDate } from '../copy/dates.ts'
 import { forecastEnforcement, statedEnforcement } from './forecast.ts'
 import { planFinish, planLengthSentence } from '../derive/finish.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
@@ -147,9 +146,13 @@ export type PackItem = { title: string; prompt: string; scope: string | null }
  * to do said "nothing", and a row with no completion said "the next scan
  * confirms it" — a finish no authority had stated. A section the row has
  * nothing for is absent now, the way the screen leaves it out.
+ *
+ * The day beside the title is the row's When as the board reads it
+ * (`CleanupExport.when`): it dated every row, "Verify Emergency Access (Sep 1,
+ * 2026).", under a board that read "After prerequisites" (owner decision 2).
  */
 export function cleanupText(cleanup: CleanupExport[]): string {
-  return cleanup.map((c) => [`${c.title} (${c.done ? `done ${absoluteDate(c.done)}` : absoluteDate(c.day)}).`, ...cleanupArtifactLines(c)].join('\n')).join('\n\n')
+  return cleanup.map((c) => [`${c.title} (${c.when}).`, ...cleanupArtifactLines(c)].join('\n')).join('\n\n')
 }
 
 /**
@@ -288,7 +291,8 @@ export function groundingBundle(args: { view: StepView; tenant: string; snapshot
     tenant: args.redacted ? { name: '[the tenant]' } : { name: args.tenant, id: snapshot.tenantId },
     profile,
     // The Cleanup rows under their own key (E4), as the screen says them.
-    plan: { start: args.schedule.start, targetEnd: held ? null : args.schedule.targetEnd, weeks: held ? null : args.schedule.weeks, finish: finish.finish, criticalPath: held ? null : args.schedule.derivation.criticalPath, steps, cleanup: args.cleanup ?? [] },
+    // A Cleanup row the board dates nowhere carries no day here either (owner decision 2).
+    plan: { start: args.schedule.start, targetEnd: held ? null : args.schedule.targetEnd, weeks: held ? null : args.schedule.weeks, finish: finish.finish, criticalPath: held ? null : args.schedule.derivation.criticalPath, steps, cleanup: (args.cleanup ?? []).map((c) => (c.undated && c.done === null ? { ...c, day: null } : c)) },
     findings,
   }
   return args.redacted ? redactDeepShared(bundle, vocabulary) : bundle

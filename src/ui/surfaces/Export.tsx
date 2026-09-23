@@ -43,9 +43,8 @@ import { GROUNDING } from '../../copy/comms.ts'
 import { absoluteDate, toCsv } from '../format.ts'
 import { Button, Callout, Card, PageTip } from '../components/index.ts'
 import { PrintPlan } from './PrintPlan.tsx'
-import { exportHoldOf, exportViewsOf } from './stepExport.ts'
+import { exportCleanupViewsOf, exportHoldOf, exportViewsOf } from './stepExport.ts'
 import { boardReadingsOf } from './planBoard.ts'
-import { cleanupExportViews } from './cleanupExport.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 
@@ -245,8 +244,9 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   // exportViewsOf): every export states a step's lane label (A1c), and the
   // drill every policy's enforcement waits on is part of that reading (R4-22).
   const view = exportViewsOf(board, stepCtx)
-  // The Cleanup rows as the screen says them (E4): calendar entries, the pack's and the bundle's cleanup list.
-  const cleanupViews = cleanupExportViews(schedule.cleanup)
+  // The Cleanup rows as the screen says them (E4): calendar entries, the pack's
+  // and the bundle's cleanup list, each under the board's When.
+  const cleanupViews = exportCleanupViewsOf(board, steps, schedule.cleanup)
   const getPack = (): PackItem[] => {
     if (packCache.current?.plan === c) return packCache.current.pack
     const built = promptPack({ view, tenant: tenantName, steps, schedule, changeRecord: '', announcement: announcementDraft(steps, held), cleanup: cleanupViews })

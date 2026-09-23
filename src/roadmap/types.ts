@@ -932,7 +932,25 @@ export type ExportStep = {
 export type StepView = (step: Step) => ExportStep
 
 /** A Cleanup row as an export says it (E4): the calendar entry on its day, the prompt pack's and the bundle's cleanup list. Built by src/ui/surfaces/cleanupExport.ts. */
-export type CleanupExport = { kind: string; day: string; done: string | null; title: string; manualEvidence?: string[]; why: string; whatToDo: string[]; doneWhen: string[] }
+export type CleanupExport = {
+  kind: string
+  /** The planned day the schedule gives the row. An artifact dates the row only where `undated` is false. */
+  day: string
+  done: string | null
+  title: string
+  /**
+   * The row's When column as the board reads it (ui/surfaces/cleanupExport.ts
+   * cleanupWhen): its day, "done <day>", or the placeholder while the plan cannot
+   * finish. What the prompt pack's Cleanup block states beside the title.
+   */
+  when: string
+  /** True while the plan cannot finish (derive/finish.ts planFinish held): the board dates the row nowhere, and no artifact does (owner decision 2). */
+  undated: boolean
+  manualEvidence?: string[]
+  why: string
+  whatToDo: string[]
+  doneWhen: string[]
+}
 
 export type StepEvent = { kind: 'announce' | 'remind' | 'enforce'; at: string; reason: string; outOfHours: boolean }
 export type StepEvents = { announce: StepEvent | null; remind: StepEvent | null; remindMorning: StepEvent | null; enforce: StepEvent; noticeDays: number }
