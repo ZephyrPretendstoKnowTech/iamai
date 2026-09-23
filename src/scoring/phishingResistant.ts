@@ -352,6 +352,12 @@ export type PersonReadiness = {
   /** The usable phishing-resistant classes held now. */
   qualifying: MethodClass[]
   hasPasskey: boolean | null
+  /**
+   * Whether the sign-in records this person's devices come from were read. Where
+   * they were not, an empty `devices` means nothing was read, never that nobody
+   * signed in, whatever else the person is unknown for.
+   */
+  signInsRead: boolean
   devices: DeviceReading[]
   credentials: CredentialReading[]
   /** No sign-in in the window at all, though active: on leave, or signing in only silently. */
@@ -665,7 +671,7 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
   // This person's passkey settings: the targets and profiles scoped to them (owner item 9).
   const pk = input.userId && ctx.passkeyFor ? ctx.passkeyFor(input.userId) : ctx.passkey
   const inv = inventory(input)
-  const base: Omit<PersonReadiness, 'state' | 'methods' | 'qualifying' | 'hasPasskey' | 'next' | 'automated'> = { unknown: null, blocked: null, devices: [], credentials: [], onLeave: false, readyUntil: null, lastConfirmed: null, lost: [], other: null, recommended: null, usedRecently: null }
+  const base: Omit<PersonReadiness, 'state' | 'methods' | 'qualifying' | 'hasPasskey' | 'next' | 'automated'> = { unknown: null, blocked: null, signInsRead: input.signIns.read, devices: [], credentials: [], onLeave: false, readyUntil: null, lastConfirmed: null, lost: [], other: null, recommended: null, usedRecently: null }
   const apps = input.signIns.apps ?? []
   const automated = apps.length > 0 && apps.every((a) => SCRIPTING.test(a))
   const inWindow = (at: string): boolean => at >= ctx.windowStart

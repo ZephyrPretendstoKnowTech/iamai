@@ -46,6 +46,7 @@ type Words = {
   }
   notes: { automated: string; onLeave: string }
   panel: {
+    noDevices: string
     best: string
     now: string
     allowed: string
@@ -258,10 +259,22 @@ export function needsActionWords(counted: readonly ReadinessRow[]): string {
   return unread > 0 ? `${line}, ${T.notReadCount.replace('{n}', String(unread))}` : line
 }
 
+/**
+ * No device is "not seen" where the records it would be seen in were not read:
+ * the tenant's sign-in records, whatever else the person is unknown for (a
+ * method list refused leaves them unknown for that, and their sign-ins unread too).
+ */
+const devicesUnread = (r: ReadinessRow): boolean => r.readiness?.unknown === 'signIns' || r.readiness?.signInsRead === false
+
 /** The devices cell where no device was seen: not read, nothing (the page says why), or no sign-in in 30 days. */
 export function noDevicesWord(r: ReadinessRow): string {
   if (signInsUnavailableFor(r)) return ''
-  return r.readiness?.unknown === 'signIns' ? T.chip.unread : T.sub.noDevices
+  return devicesUnread(r) ? T.chip.unread : T.sub.noDevices
+}
+
+/** The person panel's devices where none was seen: not read, or no sign-in in 30 days. */
+export function panelNoDevices(r: ReadinessRow): string {
+  return devicesUnread(r) ? T.chip.unread : T.panel.noDevices
 }
 
 /** The next actions that ask a person to set up a passkey or another built-in method. */
