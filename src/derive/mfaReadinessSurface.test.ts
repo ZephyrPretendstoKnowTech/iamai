@@ -380,9 +380,18 @@ test('the walk and the smoke read the shipped words: the tabs from the content, 
   assert.match(one, RE.readinessSummary, 'the walk reads the summary at a count of one')
   assert.match(many, RE.readinessSummary, 'the walk reads it above one')
   assert.doesNotMatch(walk, /ready for phishing-resistant sign-in\\\./, 'and holds no copy of the sentence')
-  const lit = (smoke.match(/\/\(\\d\+\) of [^\n]*?ready for phishing-resistant sign-in\\\.\//) ?? [])[0]
+  const lit = (smoke.match(/const SUMMARY_LINE = (\/\(\\d\+\) of [^\n]*?ready for phishing-resistant sign-in[^\n]*\/)\n/) ?? [])[1]
   assert.ok(lit, 'the smoke still checks the summary sentence')
   const re = new RegExp(lit.slice(1, -1))
   assert.match(one, re, 'the smoke reads the summary at a count of one')
   assert.match(many, re, 'the smoke reads it above one')
+  // People and guests together, as the page draws them (summaryLine): the smoke reads the whole count after "of".
+  const W2 = pages.readiness as unknown as { summaryWithGuests: string }
+  for (const ready of [1, 4]) {
+    const line = fillText(W2.summaryWithGuests, { ready, total: 31, cohort: cohortWords(30, 1) })
+    const sm = line.match(re)
+    assert.ok(sm, `the smoke reads "${line}"`)
+    assert.equal(Number(sm[2]) + Number(sm[3] ?? 0), 31, 'and adds up the whole count')
+    assert.match(line, RE.readinessSummary, 'and so does the walk')
+  }
 })
