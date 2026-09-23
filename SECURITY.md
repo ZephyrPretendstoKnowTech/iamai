@@ -32,7 +32,8 @@ Microsoft Graph request, generated from the collector registry the code runs fro
 (`src/graph/collect/registry.ts`). In summary: Conditional Access policies, named
 locations, authentication strengths and the authentication methods policy; users,
 devices, group memberships, role assignments and subscribed licences; per-user registered
-sign-in methods; and interactive sign-in records for up to the last 30 days. For registered
+sign-in methods; and interactive sign-in records and directory audit events for up to the last
+30 days. For registered
 methods, Microsoft returns each method's details. IAMAI saves the sign-in details needed for
 its checks, leaving out phone numbers: each method's kind and when it was added, and for
 passkeys, security keys and Microsoft Authenticator the device details those checks read.
@@ -45,7 +46,7 @@ consent screen (`src/graph/scopes.ts`). There is no write scope, and
 |---|---|---|
 | `Policy.Read.All` | Conditional Access policies, named locations, authentication strengths, the authentication methods policy, security defaults, cross-tenant access | Nothing can be compared against the baseline, so there is no plan |
 | `Directory.Read.All` | People, groups and members, devices, licences, the organisation name, the signed-in account | No names, counts or populations |
-| `AuditLog.Read.All` | Up to 30 days of interactive sign-in records, and the registered-methods report | No predicted impact and no verification |
+| `AuditLog.Read.All` | Up to 30 days of interactive sign-in records and directory audit events (from an event: what happened, when, its result and the objects it changed), when each account last signed in, and the registered-methods report | No predicted impact and no verification |
 | `RoleManagement.Read.Directory` | Which accounts hold which directory roles, permanently or through PIM | IAMAI cannot tell who administers the tenant |
 | `UserAuthenticationMethod.Read.All` | Each account's registered methods; IAMAI saves the sign-in details its checks need, leaving out phone numbers | The emergency-access method and shared-device checks cannot run |
 | `Reports.Read.All` | Aggregated per-application sign-in counts, and application sign-in activity | App-scoping advice loses its evidence |

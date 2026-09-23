@@ -3,7 +3,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { GRAPH_SCOPES } from '../graph/scopes.ts'
 import { COLLECTOR_REGISTRY } from '../graph/collect/registry.ts'
-import { SCOPE_COPY, SIGN_IN_SCOPES } from '../copy/permissions.ts'
+import { SCOPE_COPY, SIGN_IN_SCOPES, consentRows } from '../copy/permissions.ts'
+import { recoveryAuditRequest } from '../graph/collect/laneBCore.ts'
 
 test('every scope the app requests is explained in the disclosure', () => {
   const missing = GRAPH_SCOPES.filter((s) => SCOPE_COPY[s] === undefined)
@@ -76,4 +77,26 @@ test('the requested scope set includes the dedicated read-only method-policy per
     'profile',
     'offline_access',
   ])
+})
+
+// Every scan with sign-in records also pages through 30 days of directory audit
+// events, every category (laneB.ts). How's reads table and both AuditLog.Read.All
+// rows, How's and the consent row Connect shows, named sign-in records only
+// (Phase 2 audit, How and Connect).
+test('the directory-audit read is disclosed: a registry row How lists, and both AuditLog.Read.All rows', () => {
+  const path = new URL(recoveryAuditRequest('https://graph.microsoft.com/beta', Date.parse('2026-09-22T00:00:00Z')).url).pathname.replace(/^\/beta/, '')
+  const row = COLLECTOR_REGISTRY.find((s) => s.endpoint === path)
+  assert.ok(row, `no read on How lists ${path}`)
+  assert.equal(row.version, 'beta')
+  assert.deepEqual(row.scopes, ['AuditLog.Read.All'])
+  assert.match(SCOPE_COPY['AuditLog.Read.All'].reads, /directory audit events/i)
+  assert.match(consentRows().find((r) => r.scope === 'AuditLog.Read.All')?.reads ?? '', /directory audit events/i)
+})
+
+test('the cross-tenant and passkey-detail reads the collectors make beside their main read are named in their rows', () => {
+  const cross = COLLECTOR_REGISTRY.find((s) => s.configKey === 'crossTenantAccess')
+  assert.match(cross?.endpoint ?? '', /\/default\b/)
+  assert.match(cross?.endpoint ?? '', /\/partners\b/)
+  const methods = COLLECTOR_REGISTRY.find((s) => s.sourceKey === 'authMethods')
+  assert.match(methods?.endpoint ?? '', /beta \/users\/\{id\}\/authentication\/fido2Methods/)
 })
