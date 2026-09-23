@@ -1099,48 +1099,84 @@ export type UnavailableReason =
  * cannot read in full is one that does: `effectOf` names what it could not read
  * and `any` carries that, so unknown is never read as harmless.
  */
+/** A policy a step tracks that the tenant has switched off, and the member of the step it delivers. */
+export type SwitchedOffPolicy = { name: string; id: string; memberKey: string; sourceName: string }
+
 /**
- * The policy this step is tracking, where the tenant has it switched off.
+ * The policies this step is tracking that the tenant has switched off, one per
+ * member. Empty where none is.
  *
  * A disabled policy is not a live one, so `claimedPolicy` will not take it and
  * the step falls through to a create — which is wrong twice over: the policy
  * exists, so creating one makes a second, and the change that restores the
- * protection is to set the one that is there to Report-only (`reportOnlyPatchOf`)
- * and turn it on from there, never straight to On. It reproduces whenever
- * somebody switches a policy off after it breaks something, which is the
- * ordinary response, and on an inherited tenant that arrives with one off.
+ * protection is to set the one that is there to Report-only
+ * (`reportOnlyPatchesOf`) and turn it on from there, never straight to On. It
+ * reproduces whenever somebody switches a policy off after it breaks
+ * something, which is the ordinary response, and on an inherited tenant that
+ * arrives with one off.
  *
- * Tracking knows all of it — the name, the id, and that the match was ours.
+ * Read per member, because a step the baseline implements with two policies
+ * has no one policy (`tracking.policyId` is null) and either can be Off. Read
+ * off the step's own policy alone, the guests pair with one member Off resolved
+ * a turn-on of both, which PATCHed the Off one straight to On once its gates
+ * cleared, while its script and batch created both policies again; with both
+ * Off it resolved two creates, beside the two already there.
+ *
+ * Tracking knows all of it — the names, the ids and the members. The step's
+ * own state stands in where no member says it: a finished step reopened on a
+ * regression keeps the members its last scan recorded, and records on the
+ * step that its policy is Off (tracking.ts).
  */
-export function switchedOffPolicy(step: PolicyStep): { name: string; id: string } | null {
+export function switchedOffPolicies(step: PolicyStep): SwitchedOffPolicy[] {
   const t = step.tracking
-  if (!t || t.state !== 'disabled' || typeof t.policyName !== 'string' || typeof t.policyId !== 'string') return null
-  return { name: t.policyName, id: t.policyId }
+  if (!t) return []
+  const members = t.members ?? []
+  const off = members.flatMap((m) => (m.state === 'disabled' && typeof m.policyId === 'string' && typeof m.policyName === 'string' ? [{ name: m.policyName, id: m.policyId, memberKey: m.key, sourceName: m.sourceName }] : []))
+  if (off.length > 0) return off
+  if (t.state !== 'disabled' || typeof t.policyName !== 'string' || typeof t.policyId !== 'string') return []
+  const own = members.find((m) => m.policyId === t.policyId) ?? members[0]
+  return [{ name: t.policyName, id: t.policyId, memberKey: own?.key ?? t.policyId, sourceName: own?.sourceName ?? t.policyName }]
 }
 
 /**
- * The one change a switched-off step hands over: its own policy, set to
- * Report-only and nothing else. Null on every other step.
+ * The policies a step hands over to be set to Report-only, in place of
+ * anything that would build or turn them on: its switched-off policies, on a
+ * step whose reason is that they are switched off. Empty on every other step.
  *
- * The step's resolved operation is still the create `claimedPolicy` fell
- * through to, so no channel may read that; this is the patch the JSON and
- * PowerShell channels carry instead, beside the portal's own lines for it
- * (ui/surfaces/stepResources.ts switchedOffLines). A policy in report-only
- * denies nobody, so nothing the plan waits for before a turn-on holds it; the
- * turn-on comes after, from the step's ordinary report-only watch.
- *
- * `policies` is the scan's Conditional Access policies: the target is the
- * tenant's own policy as the patch leaves it, as on every update. Null where the
- * scan does not hold it, and the channels then inspect rather than guess.
+ * Every channel reads this and nothing else to decide it: the portal lines, the
+ * Implementation Task, the patches (`reportOnlyPatchesOf`), the exports and AI
+ * Info (ui/surfaces/stepResources.ts switchedOffLines).
  */
-export function reportOnlyPatchOf(step: PolicyStep, policies: readonly unknown[]): PolicyOperation | null {
-  const off = unavailableReason(step) === 'switched-off' ? switchedOffPolicy(step) : null
-  const row = off === null ? undefined : policies.find((p): p is Record<string, unknown> => isObject(p) && p.id === off.id)
-  if (off === null || row === undefined) return null
-  const member = step.tracking?.members?.find((m) => m.policyId === off.id) ?? step.tracking?.members?.[0]
-  const body = { state: 'enabledForReportingButNotEnforced' }
-  const op: PolicyOperation = { mode: 'update', policyId: off.id, sourceName: member?.sourceName ?? off.name, memberKey: member?.key ?? off.id, body, target: { ...row, ...body } }
-  return isValidOperation(op) ? op : null
+export function toReportOnly(step: PolicyStep): SwitchedOffPolicy[] {
+  return unavailableReason(step) === 'switched-off' ? switchedOffPolicies(step) : []
+}
+
+/**
+ * The change a step hands over for its policies found Off: each one, set to
+ * Report-only and nothing else (`toReportOnly`). Empty on every other step.
+ *
+ * The step's resolved operations are still the create `claimedPolicy` fell
+ * through to, or a pair's turn-on, so no channel may read those; these are the
+ * patches the JSON and PowerShell channels carry instead, beside the portal's
+ * own lines for them (ui/surfaces/stepResources.ts switchedOffLines). A policy
+ * in report-only denies nobody, so nothing the plan waits for before a turn-on
+ * holds them; the turn-on comes after, from the step's ordinary report-only
+ * watch. A pair's member already in report-only or on is not touched.
+ *
+ * `policies` is the scan's Conditional Access policies: each target is the
+ * tenant's own policy as the patch leaves it, as on every update. Every policy
+ * that is Off or none: where the scan does not hold one, the channels inspect
+ * rather than hand over half the change.
+ */
+export function reportOnlyPatchesOf(step: PolicyStep, policies: readonly unknown[]): PolicyOperation[] {
+  const ops = toReportOnly(step).map((off): PolicyOperation | null => {
+    const row = policies.find((p): p is Record<string, unknown> => isObject(p) && p.id === off.id)
+    if (row === undefined) return null
+    const body = { state: 'enabledForReportingButNotEnforced' }
+    const op: PolicyOperation = { mode: 'update', policyId: off.id, sourceName: off.sourceName, memberKey: off.memberKey, body, target: { ...row, ...body } }
+    return isValidOperation(op) ? op : null
+  })
+  return ops.every((op): op is PolicyOperation => op !== null) ? ops : []
 }
 
 export function enforcesOnRun(op: PolicyOperation): boolean {
@@ -1312,14 +1348,17 @@ export function policyResult(step: PolicyStep): PolicyResult {
   // want one set of report-only. If someone has to revert and turns it off, we
   // should advise placing it to Report-only, and then they switch it on when
   // they are ready and data supports it"). That holds for a policy never
-  // watched in report-only and for one switched off after it was on.
+  // watched in report-only, for one switched off after it was on, and for
+  // either member of a pair: any one of the step's policies Off is enough.
   //
   // It sits above the readiness threshold because Report-only denies nobody:
   // the threshold, and every other prerequisite of enforcement, holds the
-  // turn-on and never this. The next scan finds the policy in report-only, and
-  // the step's ordinary watch and gates decide when it goes on
-  // (`reportOnlyPatchOf` is the one change every channel hands over).
-  if (switchedOffPolicy(step) !== null && step.status !== 'done') return { kind: 'unavailable', reason: 'switched-off' }
+  // turn-on and never this. It sits above a step with nothing left to submit
+  // too, which is what a pair reverted after it was on read as. The next scan
+  // finds the policy in report-only, and the step's ordinary watch and gates
+  // decide when it goes on (`reportOnlyPatchesOf` is the one change every
+  // channel hands over).
+  if (switchedOffPolicies(step).length > 0 && step.status !== 'done') return { kind: 'unavailable', reason: 'switched-off' }
   // The readiness prerequisite, and the same boundary the escape hatch draws: a
   // threshold the plan itself says to wait for holds every enforcement, and a
   // threshold nothing measured has not been met either. It sits below the

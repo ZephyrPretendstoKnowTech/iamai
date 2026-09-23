@@ -12,7 +12,7 @@ import type { MappingState } from '../../mapping/types.ts'
 import { HEAD, taskHeadingsOf } from './stepHeadings.ts'
 import { app, structuralWords } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
-import { reportOnlyPatchOf, switchedOffPolicy, unavailableReason } from '../../roadmap/operations.ts'
+import { reportOnlyPatchesOf, toReportOnly } from '../../roadmap/operations.ts'
 import type { PolicyOperation } from '../../roadmap/types.ts'
 import { powershellFor } from './stepPowerShell.ts'
 
@@ -137,30 +137,48 @@ export function mfaPreparationEmail(ctx: StepVarContext): Artifact {
 }
 
 /**
- * A policy this plan tracks that the tenant has switched off, set to Report-only
- * (pages.app.plan.switchedOffSteps): open the one that is there, check it, set
- * Enable policy to Report-only, scan. Never On, and never a second policy; the
+ * The policies this plan tracks that the tenant has switched off, set to
+ * Report-only (operations.ts toReportOnly): for each, open the one that is
+ * there, check it, set Enable policy to Report-only
+ * (pages.app.plan.switchedOffSteps); then scan, once
+ * (pages.app.plan.switchedOffRescan). Never On, and never a second policy; the
  * step's ordinary report-only watch decides the turn-on after the next scan.
- * Null on every other step.
+ * A pair's member already in report-only or on is not named. Null on every
+ * other step.
  */
 export function switchedOffLines(step: Step, tenant: string): string[] | null {
-  const off = unavailableReason(step) === 'switched-off' ? switchedOffPolicy(step) : null
-  if (off === null) return null
-  return structuralWords.switchedOffSteps.map((line) => fillText(line, { policy: off.name, id: off.id, tenant }))
+  const off = toReportOnly(step)
+  if (off.length === 0) return null
+  return [
+    ...off.flatMap((p) => structuralWords.switchedOffSteps.map((line) => fillText(line, { policy: p.name, id: p.id, tenant }))),
+    fillText(structuralWords.switchedOffRescan, { tenant }),
+  ]
 }
 
-/** The Graph request a switched-off step hands over: the one-field patch to its own policy (operations.ts reportOnlyPatchOf). */
-export function switchedOffRequest(step: Step, ctx: StepVarContext): { op: PolicyOperation; text: string; method: string; endpoint: string } | null {
-  const op = reportOnlyPatchOf(step, (ctx.snapshot.config.caPolicies?.rows ?? []) as unknown[])
-  if (op === null || op.mode !== 'update') return null
-  return { op, text: JSON.stringify(op.body, null, 2), method: 'PATCH', endpoint: `https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/${op.policyId}` }
+const GRAPH = 'https://graph.microsoft.com/v1.0'
+
+/**
+ * The Graph request a step with policies found Off hands over: the one-field
+ * patch to each (operations.ts reportOnlyPatchesOf). One policy is its own
+ * PATCH; a pair's two are one Graph batch of the two PATCHes, the form the
+ * pair's own JSON takes, and never a create. `requests` is what the batch
+ * sends, one per policy, as the AI Info briefing names them.
+ */
+export function switchedOffRequest(step: Step, ctx: StepVarContext): { ops: PolicyOperation[]; text: string; note: string; requests: { method: string; endpoint: string }[] } | null {
+  const ops = reportOnlyPatchesOf(step, (ctx.snapshot.config.caPolicies?.rows ?? []) as unknown[])
+  if (ops.length === 0) return null
+  const url = (op: PolicyOperation): string => `/identity/conditionalAccess/policies/${op.policyId}`
+  const requests = ops.map((op) => ({ method: 'PATCH', endpoint: `${GRAPH}${url(op)}` }))
+  if (ops.length === 1) return { ops, text: JSON.stringify(ops[0].body, null, 2), note: `PATCH ${requests[0].endpoint}`, requests }
+  const batch = { requests: ops.map((op, i) => ({ id: String(i + 1), method: 'PATCH', url: url(op), headers: { 'Content-Type': 'application/json' }, body: op.body })) }
+  return { ops, text: JSON.stringify(batch, null, 2), note: `POST ${GRAPH}/$batch`, requests }
 }
 
 /**
- * The channels a switched-off step draws, all saying the same change: the
- * portal lines, and the patch as JSON and as PowerShell. Empty on every other
- * step. Where the scan does not hold the policy's own object the patch cannot
- * be stated, and the JSON and PowerShell fall back to inspecting it.
+ * The channels a step with policies found Off draws, all saying the same
+ * change: the portal lines, and the patches as JSON and as PowerShell. Empty
+ * on every other step. Where the scan does not hold a policy's own object the
+ * patch cannot be stated, and the JSON and PowerShell fall back to inspecting it.
  */
 export function switchedOffResources(step: Step, ctx: StepVarContext, tenant: string): Artifact[] {
   const lines = switchedOffLines(step, tenant)
@@ -168,9 +186,9 @@ export function switchedOffResources(step: Step, ctx: StepVarContext, tenant: st
   const out: Artifact[] = [{ id: 'portal', form: 'list', lines, text: () => lines.map((line, i) => `${i + 1}. ${line}`).join('\n'), note: null }]
   const request = switchedOffRequest(step, ctx)
   if (request === null) return out
-  const ps = powershellFor([request.op])
+  const ps = powershellFor(request.ops)
   out.push({ id: 'ps', form: 'code', lines: [], text: () => ps, note: null })
-  out.push({ id: 'json', form: 'code', lines: [], text: () => request.text, note: `${request.method} ${request.endpoint}` })
+  out.push({ id: 'json', form: 'code', lines: [], text: () => request.text, note: request.note })
   return out
 }
 

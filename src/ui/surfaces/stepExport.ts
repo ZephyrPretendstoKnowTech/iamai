@@ -30,7 +30,7 @@ import { planFinish } from '../../derive/finish.ts'
 import type { Substatus } from '../../actionability/lanes.ts'
 import { createsNewPolicy, enforcesByStateOnly, updatesExistingPolicy, heldByTitle, implementationOffered, waitingLine } from './stepJson.ts'
 import { awaitingDeployment, enforcementUnearned, forecastEnforcement } from '../../roadmap/forecast.ts'
-import { isPreserved, unavailableReason } from '../../roadmap/operations.ts'
+import { isPreserved, toReportOnly, unavailableReason } from '../../roadmap/operations.ts'
 import { baselineConflictWords } from '../../roadmap/baselineConflict.ts'
 import { heldForCorrection, heldForReview } from '../../roadmap/lifecycle.ts'
 import { stepPopulation } from '../../derive/population.ts'
@@ -478,8 +478,9 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
       lines.push(...(preparation ?? [...(projectedEntra ? entraWithSettings(entra.text, step, ctx, contract, preview ?? projection) : entra.text).replace(/\*\*(.*?)\*\*/g, '$1').split(/\r?\n/).map(line => line.trim()).filter(Boolean), ...(preview ? previewNoteLines(step, contract, preview.hold) : [])]))
     }
   }
-  // A policy the tenant has switched off inspects the one that is there, in
-  // every channel that carries these lines.
+  // A policy the tenant has switched off is set to Report-only, in every
+  // channel that carries these lines: the screen's own procedure for it
+  // (stepResources.ts switchedOffLines), never straight to On.
   //
   // The package's blocked projection is the create procedure, and
   // `hasPackagePortal` let it through to the export and to the AI brief — so
@@ -488,9 +489,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // Policies > New policy. 2. Name: ...". That is the channel most likely to be
   // pasted into an assistant, which would then confidently instruct the
   // duplicate this whole reason exists to prevent.
-  // What it hands over is the screen's own procedure for it: set that policy to
-  // Report-only, never straight to On (stepResources.ts switchedOffLines).
-  const switchedOff = cs.kind === 'policy' && unavailableReason(step) === 'switched-off'
+  const switchedOff = cs.kind === 'policy' && toReportOnly(step).length > 0
   if (switchedOff) lines.splice(0, lines.length, ...(switchedOffLines(step, String(ex.tenant ?? '')) ?? policyInspectionLines(step)))
   else if (!conflicted && !inPlace && !hasPackagePortal && cs.kind === 'policy' && !(portal?.length && implementationIsCurrent(step))) lines.splice(0, lines.length, ...policyInspectionLines(step))
   // The correction a person owes in a part IAMAI does not write, as the screen's

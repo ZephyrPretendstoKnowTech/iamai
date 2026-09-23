@@ -23,7 +23,7 @@ import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withFoundationSettled, withRecoveryTested } from '../../roadmap/fixtures/run.ts'
 import { observationsOf } from '../../roadmap/tracking.ts'
 import { pinnedPackage } from '../../baseline/pinned.ts'
-import { enforcementHeld, switchedOffPolicy, unavailableReason } from '../../roadmap/operations.ts'
+import { enforcementHeld, unavailableReason } from '../../roadmap/operations.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { laneReadings } from './planLanes.ts'
 import { laneViewOf, readinessBlockersOf } from './planBoard.ts'
@@ -37,11 +37,23 @@ const STEP = 's-goal-block-device-code'
 
 /**
  * A turn-on, in any channel's words: "Enable policy: On", "set Enable policy to
- * On", "from Report-only to On", or a request body that switches the policy on.
+ * On", "from Report-only to On", or a request body or script that switches the
+ * policy on.
  */
-const TURN_ON = /Enable policy\**\s*(?::|to|from\s+\**Report-only\**\s+to)\s*\**On\b|"state":\s*"enabled"/i
+const TURN_ON = /Enable policy\**\s*(?::|to|from\s+\**Report-only\**\s+to)\s*\**On\b|"state":\s*"enabled"|state\s*=\s*'enabled'/i
+/**
+ * A second policy, in any channel's words: the portal's "New policy", a Graph
+ * create (on its own or inside a batch), and the scripts that create one.
+ */
+const CREATE = /New policy|New-MgIdentityConditionalAccessPolicy|CreateMissing|"method":\s*"POST",\s*"url":\s*"\/identity\/conditionalAccess\/policies"/
 /** The instruction every channel gives instead, in the portal's own words. */
 const REPORT_ONLY = /set Enable policy to Report-only/i
+const GRAPH_POLICY = 'https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/'
+
+/** The policies the step tracks that the tenant has Off, read from the scan's own tracking: one per member. */
+function offOf(step: Step): { name: string; id: string }[] {
+  return (step.tracking?.members ?? []).flatMap((m) => (m.state === 'disabled' && m.policyId && m.policyName ? [{ name: m.policyName, id: m.policyId }] : []))
+}
 
 type Scan = { f: Fixture; run: ReturnType<typeof runFixture> }
 
@@ -78,39 +90,59 @@ function later(id: string, state: string, f: Fixture = withFoundationSettled(str
   return { f: g, run: runFixture(g, {}, observationsOf(first.steps, undefined), g.snapshot.asOf), before }
 }
 
-/** Every channel the switched-off step speaks through says Report-only, and none says On. */
-function assertReportOnlyEverywhere(scan: Scan, id: string, label: string): void {
+/**
+ * Every channel of a step with a tracked policy Off says to set each Off policy
+ * to Report-only, and none turns one on or builds a second one. `reason` is the
+ * step's own reason: `switched-off`, or `missing-object`, which outranks it and
+ * whose What to do names the missing object; the procedure it hands over for
+ * the policy is the same.
+ */
+function assertReportOnlyEverywhere(scan: Scan, id: string, label: string, reason: 'switched-off' | 'missing-object' = 'switched-off'): void {
   const { step, ctx, lane, body } = drawn(scan, id)
-  const off = switchedOffPolicy(step)
-  assert.ok(off, `${label}: the premise: the tenant has the tracked policy switched off`)
-  assert.equal(unavailableReason(step), 'switched-off', `${label}: the step does not read it as switched off`)
+  const off = offOf(step)
+  assert.ok(off.length > 0, `${label}: the premise: the tenant has a tracked policy switched off`)
+  assert.equal(unavailableReason(step), reason, `${label}: the step reads ${unavailableReason(step)}`)
   // The step's one action.
-  assert.match(body.contract.whatToDo.text, REPORT_ONLY, `${label}: What to do: ${body.contract.whatToDo.text}`)
+  if (reason === 'switched-off') {
+    assert.match(body.contract.whatToDo.text, REPORT_ONLY, `${label}: What to do: ${body.contract.whatToDo.text}`)
+    for (const p of off) assert.ok(body.contract.whatToDo.text.includes(p.name), `${label}: What to do does not name ${p.name}: ${body.contract.whatToDo.text}`)
+  }
   assert.doesNotMatch(body.contract.whatToDo.text, TURN_ON, `${label}: What to do turns it on`)
-  assert.ok(body.contract.whatToDo.text.includes(off.name), `${label}: What to do does not name the policy`)
   const artifact = (x: string) => body.artifacts.find((a) => a.id === x)
   // The Readiness tile that carries the action names it, rather than calling the
   // implementation unavailable over a procedure the step hands over.
   const tile = body.readiness.tiles.find((t) => t.key === 'implementation')
   if (tile) assert.match(String(tile.value), /Report-only/, `${label}: the implementation tile reads "${tile.value}"`)
-  // The portal lines.
+  // The portal lines: each policy that is Off, by name and id.
   const portal = artifact('portal')
   assert.ok(portal, `${label}: no portal channel`)
   assert.match(portal.text(), REPORT_ONLY, `${label}: portal: ${portal.text()}`)
-  assert.ok(portal.text().includes(off.name), `${label}: the portal does not name the policy`)
+  for (const p of off) assert.ok(portal.text().includes(p.name) && portal.text().includes(p.id), `${label}: the portal does not name ${p.name}`)
   // The Implementation Task drawn from them.
   const task = body.emergencyAccountTasks?.tasks[0]
   assert.ok(task, `${label}: no Implementation Task`)
   assert.match(task.title, /Report-only/, `${label}: the task is called "${task.title}"`)
   assert.ok(task.steps.some((s) => REPORT_ONLY.test(s)), `${label}: task steps: ${task.steps.join(' | ')}`)
-  // JSON and PowerShell: the one-field patch to the policy that is there.
+  // JSON and PowerShell: the one-field patch to each policy that is there, and
+  // to nothing else. One policy is one PATCH; more are one Graph batch of them.
   const json = artifact('json')
   assert.ok(json, `${label}: no JSON channel`)
-  assert.deepEqual(JSON.parse(json.text()), { state: 'enabledForReportingButNotEnforced' }, `${label}: JSON: ${json.text()}`)
-  assert.equal(json.note, `PATCH https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/${off.id}`)
+  const sent = JSON.parse(json.text()) as { state?: string; requests?: { method: string; url: string; body: unknown }[] }
+  if (off.length === 1) {
+    assert.deepEqual(sent, { state: 'enabledForReportingButNotEnforced' }, `${label}: JSON: ${json.text()}`)
+    assert.equal(json.note, `PATCH ${GRAPH_POLICY}${off[0].id}`)
+  } else {
+    assert.equal(json.note, 'POST https://graph.microsoft.com/v1.0/$batch', `${label}: JSON note`)
+    assert.deepEqual(
+      (sent.requests ?? []).map((r) => [r.method, r.url, r.body]),
+      off.map((p) => ['PATCH', `/identity/conditionalAccess/policies/${p.id}`, { state: 'enabledForReportingButNotEnforced' }]),
+      `${label}: JSON: ${json.text()}`,
+    )
+  }
   const ps = artifact('ps')
   assert.ok(ps, `${label}: no PowerShell channel`)
-  assert.ok(ps.text().includes(`Update-MgIdentityConditionalAccessPolicy -ConditionalAccessPolicyId '${off.id}'`), `${label}: PowerShell: ${ps.text()}`)
+  for (const p of off) assert.ok(ps.text().includes(`Update-MgIdentityConditionalAccessPolicy -ConditionalAccessPolicyId '${p.id}'`), `${label}: PowerShell: ${ps.text()}`)
+  assert.equal(ps.text().match(/Update-MgIdentityConditionalAccessPolicy/g)?.length, off.length, `${label}: PowerShell updates a policy that is not Off`)
   assert.match(ps.text(), /"state": "enabledForReportingButNotEnforced"/)
   // AI Info.
   const ai = artifact('ai')
@@ -120,14 +152,17 @@ function assertReportOnlyEverywhere(scan: Scan, id: string, label: string): void
   const view = stepExportView(step, ctx, lane)
   assert.ok(view.whatToDo.some((l) => REPORT_ONLY.test(l)), `${label}: export: ${view.whatToDo.join(' | ')}`)
   const lines = stepLines(step, ctx)
-  // And nothing anywhere says On.
+  // And nothing anywhere says On, or builds a second policy.
   const spoken: [string, string][] = [...body.artifacts.map((a): [string, string] => [a.id, a.text()]), ['task', task.steps.join('\n')], ['export', view.whatToDo.join('\n')], ['lines', lines.join('\n')]]
-  for (const [where, text] of spoken) assert.doesNotMatch(text, TURN_ON, `${label}: ${where} turns the policy on: ${text.match(TURN_ON)?.[0]}`)
+  for (const [where, text] of spoken) {
+    assert.doesNotMatch(text, TURN_ON, `${label}: ${where} turns the policy on: ${text.match(TURN_ON)?.[0]}`)
+    assert.doesNotMatch(text, CREATE, `${label}: ${where} builds a second policy: ${text.match(CREATE)?.[0]}`)
+  }
 }
 
 test('a switched-off tagged policy reads Correct on the board, and no channel builds a second one', () => {
   const { step, reading, body, text } = drawn(scanOf(settled()), STEP)
-  assert.ok(switchedOffPolicy(step), 'the premise: the tenant holds the tagged policy, switched off')
+  assert.equal(offOf(step).length, 1, 'the premise: the tenant holds the tagged policy, switched off')
   assert.equal(unavailableReason(step), 'switched-off')
   assert.equal(reading.substatus, 'Correct', `the board reads "${reading.lane} · ${reading.substatus}" over a policy that exists`)
   assert.doesNotMatch(text, /did not find|create it in Report-only|Policies → New policy/, 'a channel builds the policy the tenant already has')
@@ -188,4 +223,77 @@ test('the other readings of a policy found Off say Report-only too, and never On
     assert.doesNotMatch(line, TURN_ON, `${key}: ${line}`)
     assert.doesNotMatch(line, /\benable it\b|\bScan again once it is on\b/i, `${key}: ${line}`)
   }
+})
+
+const GUESTS = 's-goal-guests-mfa'
+const REPORT_ONLY_STATE = 'enabledForReportingButNotEnforced'
+/** Sample ids for the pair's two policies, never a tenant's. */
+const PAIR_IDS = ['c0200000-0000-4000-8000-000000000000', 'c0200000-0000-4000-8000-000000000001'] as const
+
+/**
+ * getiamai on the pin, where the guests' MFA goal is two policies: both built in
+ * Report-only as the plan wrote them and scanned, then a week on with each in
+ * `states`. The step tracks the pair by its members; no one policy is the step.
+ */
+function guestsPair(states: readonly [string, string]): Scan {
+  const base = withFoundationSettled(structuredClone(fixture('getiamai')))
+  base.baseline = pinnedPackage()
+  const first = runFixture(base)
+  const creates = first.steps.find((s) => s.id === GUESTS)?.action.resolution?.policies ?? []
+  assert.deepEqual(creates.map((o) => o.mode), ['create', 'create'], 'the premise: the guests goal is a pair the plan creates')
+  const built = structuredClone(base)
+  const at = built.snapshot.asOf
+  creates.forEach((o, i) => (built.snapshot.config.caPolicies!.rows as Record<string, unknown>[]).push({ ...structuredClone(o.body as object), id: PAIR_IDS[i], state: REPORT_ONLY_STATE, createdDateTime: at, modifiedDateTime: at }))
+  built.snapshot.asOf = new Date(Date.parse(at) + 864e5).toISOString()
+  const second = runFixture(built, {}, observationsOf(first.steps, undefined), built.snapshot.asOf)
+  const watched = second.steps.find((s) => s.id === GUESTS)!
+  assert.deepEqual(watched.tracking?.members.map((m) => m.state), [REPORT_ONLY_STATE, REPORT_ONLY_STATE], 'the premise: the next scan tracks both, in Report-only')
+  assert.equal(watched.tracking?.policyId, null, 'the premise: no one policy is the pair')
+  const g = structuredClone(built)
+  states.forEach((state, i) => ((g.snapshot.config.caPolicies!.rows as Record<string, unknown>[]).find((r) => r.id === PAIR_IDS[i])!.state = state))
+  g.snapshot.asOf = new Date(Date.parse(built.snapshot.asOf) + 7 * 864e5).toISOString()
+  return { f: g, run: runFixture(g, {}, observationsOf(second.steps, undefined), g.snapshot.asOf) }
+}
+
+test('a pair with one policy switched Off sets that one to Report-only, and never recreates or turns on either', () => {
+  // It handed over a Graph batch creating both guest policies again, and the
+  // script in CreateMissing mode, beside a policy of each already there.
+  const scan = guestsPair(['disabled', REPORT_ONLY_STATE])
+  const step = scan.run.steps.find((s) => s.id === GUESTS)!
+  assert.deepEqual(offOf(step).map((p) => p.id), [PAIR_IDS[0]], 'the premise: one member is Off')
+  assertReportOnlyEverywhere(scan, GUESTS, 'one Off')
+  // The one in Report-only is not touched: its turn-on waits for the pair.
+  const { body } = drawn(scan, GUESTS)
+  for (const a of body.artifacts.filter((x) => x.id === 'json' || x.id === 'ps')) assert.equal(a.text().includes(PAIR_IDS[1]), false, `${a.id} changes the member already in Report-only`)
+})
+
+test('a pair with one policy Off is set to Report-only even where nothing holds the turn-on', () => {
+  // With the readiness threshold and the prerequisites met, the batch PATCHed
+  // {"state":"enabled"} onto the policy that was Off: straight from Off to On.
+  const scan = guestsPair(['disabled', REPORT_ONLY_STATE])
+  const step = scan.run.steps.find((s) => s.id === GUESTS)!
+  delete step.action.readinessGate
+  delete step.action.enforceWaitsOn
+  assertReportOnlyEverywhere(scan, GUESTS, 'one Off, nothing holding the turn-on')
+})
+
+test('a pair with both policies Off sets each to Report-only, and never recreates them', () => {
+  // It said "Create the two guest policies" with a create for each, beside the
+  // two already there, and nothing said Report-only.
+  const scan = guestsPair(['disabled', 'disabled'])
+  const step = scan.run.steps.find((s) => s.id === GUESTS)!
+  assert.deepEqual(offOf(step).map((p) => p.id), [...PAIR_IDS], 'the premise: both members are Off')
+  assertReportOnlyEverywhere(scan, GUESTS, 'both Off')
+})
+
+test('a pair reverted Off after it was enforced goes back to Report-only', () => {
+  // Both on, then one switched Off: the step read "nothing to submit" over a
+  // script in CreateMissing mode and a batch that created both again.
+  const on = guestsPair(['enabled', 'enabled'])
+  const g = structuredClone(on.f)
+  ;(g.snapshot.config.caPolicies!.rows as Record<string, unknown>[]).find((r) => r.id === PAIR_IDS[0])!.state = 'disabled'
+  g.snapshot.asOf = new Date(Date.parse(on.f.snapshot.asOf) + 7 * 864e5).toISOString()
+  const scan = { f: g, run: runFixture(g, {}, observationsOf(on.run.steps, undefined), g.snapshot.asOf) }
+  assert.deepEqual(offOf(scan.run.steps.find((s) => s.id === GUESTS)!).map((p) => p.id), [PAIR_IDS[0]], 'the premise: one member is Off')
+  assertReportOnlyEverywhere(scan, GUESTS, 'reverted pair')
 })

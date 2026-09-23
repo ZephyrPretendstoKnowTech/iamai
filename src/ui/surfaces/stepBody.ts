@@ -24,7 +24,7 @@ import type { Step } from '../../roadmap/types.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { fillText, whatToDoFor } from '../../content/render.ts'
 import { baselineConflictWords } from '../../roadmap/baselineConflict.ts'
-import { unavailableReason } from '../../roadmap/operations.ts'
+import { toReportOnly, unavailableReason } from '../../roadmap/operations.ts'
 import { stepContext } from '../../roadmap/prompts.ts'
 import { aiBriefingText, aiGroundingText } from './aiGrounding.ts'
 import type { TabItem } from '../components/index.ts'
@@ -311,11 +311,13 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   const jsonChannel = createWithheld ? null : (preview ?? projection)?.channels.find((a) => a.channel === 'json') ?? null
   // A policy the tenant has switched off hands over the patch that sets it to
   // Report-only, and the briefing describes that request: the package's own
-  // JSON for this state is the create (stepResources.ts switchedOffResources).
-  const offRequest = reason === 'switched-off' ? switchedOffRequest(step, ctx) : null
+  // JSON for this state is the create, or a pair's turn-on
+  // (stepResources.ts switchedOffResources).
+  const reportOnly = cs.kind === 'policy' && toReportOnly(step).length > 0
+  const offRequest = reportOnly ? switchedOffRequest(step, ctx) : null
   const groundingJson = offRequest
-    ? { text: offRequest.text, requests: [{ method: offRequest.method, endpoint: offRequest.endpoint }], preview: false }
-    : reason === 'switched-off' ? null
+    ? { text: offRequest.text, requests: offRequest.requests, preview: false }
+    : reportOnly ? null
       : jsonChannel ? { text: jsonChannel.text, requests: jsonChannel.requests, preview: preview !== null } : null
   const grounding = (own: string): string => aiGroundingText({ step, ctx, contract, lane: laneView, cs, ex: ex as Record<string, unknown>, bindings: pkgBindings as Record<string, unknown> | null, json: groundingJson, startOf: prerequisiteLabel?.startOf }, own)
   const textOf = (ch: Channel): string =>
@@ -343,23 +345,24 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
     // A policy the tenant has switched off keeps no channel that would build one.
     //
     // The step's own answer is "set the one that is there to Report-only"
-    // (operations.ts switched-off), and the package's blocked projection is
+    // (operations.ts toReportOnly), and the package's blocked projection is
     // still the create procedure — "Open Entra ID > Conditional Access >
     // Policies > New policy" — because no package authors a switched-off
     // block. Following that tab makes the second policy this whole fix exists
-    // to prevent. The step's own preparation lines may still add a portal
-    // below, which is wanted: those are about the policy that is there.
+    // to prevent. A pair's package projects its create of both, or its
+    // turn-on of both, which takes the one that is Off straight to On. Nor do
+    // the step's preparation lines replace it (stepInstructions.ts
+    // preparationLines).
     //
-    // Only this reason. `missing-object` renders the same procedure on
-    // twenty-four steps and is right to: there, the policy genuinely is not in
-    // the tenant yet.
+    // `missing-object` renders the same procedure on twenty-four steps and is
+    // right to where the policy genuinely is not in the tenant yet.
     //
     // What it keeps instead says the one change, the same on every channel: set
-    // the policy that is there to Report-only, never straight to On (owner,
-    // 2026-09-23). The portal lines, and the one-field patch as JSON and
+    // each policy that is Off to Report-only, never straight to On (owner,
+    // 2026-09-23). The portal lines, and the one-field patches as JSON and
     // PowerShell (stepResources.ts switchedOffResources).
-    .filter((a) => reason !== 'switched-off' || !['portal', 'ps', 'json'].includes(a.id))
-  if (reason === 'switched-off') produced.push(...switchedOffResources(step, ctx, String(ex.tenant ?? '')))
+    .filter((a) => !reportOnly || !['portal', 'ps', 'json'].includes(a.id))
+  if (reportOnly) produced.push(...switchedOffResources(step, ctx, String(ex.tenant ?? '')))
   // Keep every substantively supported lifecycle format. Fill missing machine
   // projections with clearly labelled inspection, never a placeholder message.
   const supported = new Set<Channel>(pkg ? Object.values(pkg.blocks).map((b) => PACKAGE_CHANNEL[b.meta.channel as OutputChannel]).filter((ch): ch is Channel => Boolean(ch) && resourceChannelAllowed(step, ch)) : machine ? ['portal', 'ps', 'json', 'ai'] : channels)
