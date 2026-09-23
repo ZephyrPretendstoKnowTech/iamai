@@ -360,7 +360,8 @@ test('every family is migrated, and each one still has the components it always 
   }
   // The decision primitive, the people blocks, More and the MFA handoff are all
   // still drawn by the components that drew them, inside the same frame.
-  for (const kept of ['<Decision key={step.id} d={d}', '<WhoBlockView', '<More', '<MfaHandoff']) {
+  // The decision primitive draws the step's own picker, or the object task's where the step asks nothing of its own (stepBody.ts taskDecision; Stage 3).
+  for (const kept of ['<Decision key={step.id} d={taskDecision?.d ?? d}', '<WhoBlockView', '<More', '<MfaHandoff']) {
     assert.ok(CONTENT_STEP.includes(kept), `${kept} left the step`)
   }
   // src/ui/surfaces/stepFamilies.test.ts is where the one-frame claim is proven
