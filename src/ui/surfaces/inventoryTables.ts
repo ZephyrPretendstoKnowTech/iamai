@@ -174,7 +174,7 @@ function usersSummary(f: PolicyFacts): string {
   if (f.who.groups.size > 0) bits.push(P.groups(f.who.groups.size))
   if (f.who.roles.size > 0) bits.push(coversAdminSet(f.who.roles) ? P.allAdminRoles(f.who.roles.size) : P.roles(f.who.roles.size))
   if (f.who.users.size > 0) bits.push(P.users(f.who.users.size))
-  if (f.who.guests !== null && !f.who.all) bits.push(P.guests)
+  if (f.who.guests !== null && !f.who.all) bits.push(includedGuestsWords(f))
   if (f.workload) bits.push(P.workload(f.workload.sps.size))
   return bits.join(', ') || P.none
 }
@@ -192,10 +192,17 @@ export function excludedRolesWords(f: PolicyFacts): string[] {
   return roles.size === 0 ? [] : coversAdminSet(roles) ? [C.policies.allAdminRoles(roles.size)] : [...roles].map(roleLabel)
 }
 
+/** Guest or external types by the portal's names; "guests" only where every type is meant (none named). */
+const guestTypesWords = (types: string[] | null): string => (!types || types.length === 0 ? C.policies.guests : types.map((t) => portalName('guestType', t) ?? t).join(', '))
+
 /** The guest or external types a policy excludes, by name; "guests" only where it excludes every type. */
 export function excludedGuestsWords(f: PolicyFacts): string {
-  const types = f.whoNot.guestTypes ?? []
-  return types.length === 0 ? C.policies.guests : types.map((t) => portalName('guestType', t) ?? t).join(', ')
+  return guestTypesWords(f.whoNot.guestTypes)
+}
+
+/** The guest or external types a policy includes, by name, as the excluded ones are; "guests" only where it includes every type. */
+export function includedGuestsWords(f: PolicyFacts): string {
+  return guestTypesWords(f.who.guests)
 }
 
 /** The Users column's tooltip: the names behind the counts. */
