@@ -30,7 +30,7 @@
 //
 // Pure: no DOM, no network.
 import goals from '../../data/goals.json' with { type: 'json' }
-import { directionWords, workflowWords } from '../content/content.ts'
+import { directionWords } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import { BLOCKED_REASON } from '../copy/reasons.ts'
 import type { NotAssessed } from '../coverage/types.ts'
@@ -45,7 +45,7 @@ import { setState } from './lifecycle.ts'
 import { DEVICE_GOALS } from './deviations.ts'
 import { QUESTION_STEP } from './answers.ts'
 import { PREREQ_STEP_ID } from './stepIds.ts'
-import { checkStep, serviceOf, serviceReading } from './workflows.ts'
+import { checkStep, serviceEvidence, serviceOf, serviceReading } from './workflows.ts'
 import type { ServiceSignal } from './workflows.ts'
 import { DIRECTION_BLOCKER, DIRECTION_STEP, SERVICE_KEYS, directionComplete, directionStepOf, isDirectionStep, savedAnswerOf } from './directionAnswers.ts'
 export { DIRECTION_BLOCKER, directionBlockerStep, directionComplete } from './directionAnswers.ts'
@@ -75,14 +75,13 @@ function serviceQuestion(key: string, signal: ServiceSignal, ctx: Context): Dire
   const needsReview = saved?.value === 'no' && signal.used && ctx.mapping.workflowEvidenceBasis?.[key] !== 'present'
   const suggested = signal.used ? answer('yes') : signal.complete ? answer('no') : answer('yes')
   const label = (Q.services as Record<string, string>)[key] ?? key
-  const E = Q.serviceEvidence
-  const service = (workflowWords.names as Record<string, string>)[key] ?? label
-  const seen = key === 'workload' ? (signal.used ? E.syncSeen : E.syncNotSeen) : fillText(signal.used ? E.seen : E.notSeen, { service })
+  // What the scan saw, in the one sentence the Inventory's Detected workloads shows too (workflows.ts serviceEvidence).
+  const seen = serviceEvidence(key, signal)
   return {
-    ...question(`service:${key}`, ctx, { label, control: 'choice', options: optionsOf(Q.serviceOptions), suggested, evidence: signal.used || signal.complete ? seen : W.defaultEvidence }),
+    ...question(`service:${key}`, ctx, { label, control: 'choice', options: optionsOf(Q.serviceOptions), suggested, evidence: seen ?? W.defaultEvidence }),
     needsReview,
     basis: signal.used ? 'present' : signal.complete ? 'absent' : 'unread',
-    ...(needsReview ? { evidence: fillText(W.reopened, { evidence: seen }) } : {}),
+    ...(needsReview && seen !== null ? { evidence: fillText(W.reopened, { evidence: seen }) } : {}),
   }
 }
 

@@ -10,13 +10,11 @@
 // from GRAPH_SCOPES and COLLECTOR_REGISTRY — there is no second, hand-written
 // list of what IAMAI can see.
 import { useEffect, useRef } from 'react'
-import { COLLECTOR_REGISTRY } from '../../graph/collect/registry.ts'
-import type { CollectorSpec } from '../../graph/collect/registry.ts'
-import { REGISTRY, ruleText, citationFor } from '../../validation/rules.ts'
-import type { RuleSubject, RuleSeverity } from '../../validation/rules.ts'
+import { howCheckTables, howLimits, howReadTables } from './howView.ts'
+import type { HowCheckRow } from './howView.ts'
 import { scopeRows } from '../PermissionsDisclosure.tsx'
 import { PERMISSIONS, SIGN_IN_SCOPES } from '../../copy/permissions.ts'
-import { SEVERITY, SUBJECT, NEED_LABEL, CITATION, FIELD_PRACTICE } from '../../copy/validation.ts'
+import { CITATION } from '../../copy/validation.ts'
 import { PACKAGE } from '../../copy/inventory.ts'
 import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
@@ -39,7 +37,7 @@ const BUILD_COMMIT = typeof __BUILD_COMMIT__ === 'string' ? __BUILD_COMMIT__ : '
 const BUILD_DATE = typeof __BUILD_DATE__ === 'string' ? __BUILD_DATE__ : ''
 const READS = app.how
 
-const SEVERITY_CHIP: Record<RuleSeverity, ChipStatus> = { blocker: 'blocked', warning: 'warning', note: 'neutral' }
+const SEVERITY_CHIP: Record<HowCheckRow['severity'], ChipStatus> = { blocker: 'blocked', warning: 'warning', note: 'neutral', housekeeping: 'neutral', prerequisite: 'blocked' }
 
 export function How() {
   const packageHeading = useRef<HTMLHeadingElement>(null)
@@ -61,8 +59,7 @@ export function How() {
     }
   }, [])
   const permissions = scopeRows().filter((r) => !SIGN_IN_SCOPES.includes(r.scope) && r.usedBy.length > 0)
-  const lanes: CollectorSpec['lane'][] = ['0', 'A', 'B', 'on-demand']
-  const subjects = [...new Set(REGISTRY.map((r) => r.subject))] as RuleSubject[]
+  const checkTables = howCheckTables()
 
   return (
     <section className="surface how">
@@ -89,12 +86,13 @@ export function How() {
       </details>
       <details className="how-reference">
       <summary>{C.reads}</summary>
-      {lanes.map((lane) => (
+      {/* The registry's reads, in the plain words content keeps for them (howView.ts). */}
+      {howReadTables().map((table) => (
         <DataTable
             panel
-            key={lane}
-            caption={READS.lanes[lane]}
-            rows={COLLECTOR_REGISTRY.filter((s) => s.lane === lane)}
+            key={table.lane}
+            caption={table.caption}
+            rows={table.rows}
             rowKey={(s) => s.name}
             columns={[
               { key: 'name', header: READS.columns.data, minWidth: '9rem', render: (s) => s.name },
@@ -102,11 +100,11 @@ export function How() {
               // would push a six-column table past any screen — but not into
               // slivers: the floor keeps a short path on one or two lines and
               // lets the panel's own scroll handle the long ones.
-              { key: 'endpoint', header: READS.columns.endpoint, minWidth: '15rem', render: (s) => <code>{s.endpoint}</code> },
+              { key: 'endpoint', header: READS.columns.endpoint, minWidth: '15rem', render: (s) => s.endpoints.map((e) => <div key={e}><code>{e}</code></div>) },
               { key: 'version', header: READS.columns.api, render: (s) => <Chip status="neutral">{s.version}</Chip> },
-              { key: 'scopes', header: READS.columns.permissions, render: (s) => s.scopes.join(', ') },
-              { key: 'gate', header: READS.columns.gate, minWidth: '12rem', render: (s) => s.gate },
-              { key: 'purpose', header: READS.columns.why, minWidth: '18rem', render: (s) => s.purpose },
+              { key: 'scopes', header: READS.columns.permissions, render: (s) => s.scopes },
+              { key: 'gate', header: READS.columns.gate, minWidth: '12rem', render: (s) => s.conditions },
+              { key: 'purpose', header: READS.columns.why, minWidth: '18rem', render: (s) => s.why },
             ]}
           />
       ))}
@@ -115,18 +113,20 @@ export function How() {
       <details className="how-reference">
       <summary>{C.checks}</summary>
       <p className="reason">{C.checksIntro}</p>
-      {subjects.map((subject) => (
+      {/* The subjects a plan evaluates and the static rules it runs, from the
+          registries (howView.ts): never a check no plan runs. */}
+      {checkTables.map((table) => (
         <DataTable
             panel
-            key={subject}
-            caption={SUBJECT[subject] ?? subject}
-            rows={REGISTRY.filter((r) => r.subject === subject)}
+            key={table.key}
+            caption={table.caption}
+            rows={table.rows}
             rowKey={(r) => r.id}
             columns={[
-              { key: 'what', header: 'What it looks for', minWidth: '16rem', render: (r) => ruleText(r.id).what },
-              { key: 'severity', header: 'If it fails', render: (r) => <Chip status={SEVERITY_CHIP[r.severity]}>{SEVERITY[r.severity]}</Chip> },
-              { key: 'why', header: 'Why it matters', minWidth: '18rem', render: (r) => ruleText(r.id).why },
-              { key: 'needs', header: 'Needs', minWidth: '12rem', render: (r) => (r.needs.length === 0 ? 'nothing' : r.needs.map((n) => NEED_LABEL[n] ?? n).join(', ')) },
+              { key: 'what', header: 'What it looks for', minWidth: '16rem', render: (r) => r.what },
+              { key: 'severity', header: 'If it fails', render: (r) => <Chip status={SEVERITY_CHIP[r.severity]}>{r.severityLabel}</Chip> },
+              { key: 'why', header: 'Why it matters', minWidth: '18rem', render: (r) => r.why },
+              { key: 'needs', header: 'Needs', minWidth: '12rem', render: (r) => r.needs },
               {
                 key: 'source',
                 header: CITATION.source,
@@ -136,11 +136,11 @@ export function How() {
                 // or a Graph path, which is right for those and wrong for this.
                 minWidth: '12rem',
                 render: (r) => {
-                  const c = citationFor(r.id)
-                  if (!c || c === FIELD_PRACTICE) return CITATION.fieldPracticeShort
+                  if (!r.source) return null
+                  if (r.source.url === null) return r.source.label
                   return (
-                    <a href={c.url} target="_blank" rel="noopener noreferrer">
-                      {c.label}
+                    <a href={r.source.url} target="_blank" rel="noopener noreferrer">
+                      {r.source.label}
                     </a>
                   )
                 },
@@ -152,9 +152,10 @@ export function How() {
       </details>
 
       <details className="how-reference">
-        <summary>Baseline Packages</summary>
-        <h2 id="package" ref={packageHeading} tabIndex={-1}>Defense in Depth</h2>
-        <p>IAMAI uses the included version of Defense in Depth, maintained by Jon Hope. The Connect page shows its source and version.</p>
+        <summary>{C.packages}</summary>
+        <h2 id="package" ref={packageHeading} tabIndex={-1}>{(pages.home as { baselineName: string }).baselineName}</h2>
+        {/* What IAMAI does with the package; whose it is, the Credits say once. */}
+        <p>{C.packageBody}</p>
         <a href="https://conditionalaccess.tech" target="_blank" rel="noopener noreferrer">ConditionalAccess.Tech</a>
       </details>
 
@@ -164,7 +165,7 @@ export function How() {
       <h2>{C.hosting}</h2>
       <p className="reason">{C.hostingBody}</p>
 
-      {/* Other people's work, named. The default baseline is Jon Hope's, and
+      {/* Other people's work, named. The baseline is Jon Hope's, and
           CA Policy Analyzer is a separate project of his; neither is an
           endorsement of IAMAI, and the note under them says so. */}
       <h2>{C.credits}</h2>
@@ -179,7 +180,7 @@ export function How() {
 
       <h2>{C.limits}</h2>
       <ul className="sections">
-        {C.limitsList.map((l, i) => (
+        {howLimits().map((l, i) => (
           <li key={i}>{l}</li>
         ))}
         {/* The last line: one of the two places the feedback address appears (the other is the error page). */}
@@ -194,7 +195,6 @@ export function How() {
           </a>
         )}
       </p>
-      <p className="reason">{(pages.how as Record<string, string>).noAi}</p>
     </section>
   )
 }

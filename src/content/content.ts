@@ -113,8 +113,54 @@ export type AppWords = {
     /** The undated group the document prints after the phases, as the Plan draws it (planRows.ts). */
     held: { heading: string; lead: string }
   }
-  how: Record<string, string> & { limitsList: string[]; lanes: Record<string, string>; columns: Record<string, string> }
-  inventory: { caps: Record<string, string>; workloadNames: Record<string, string> }
+  how: Record<string, string> & {
+    limitsList: string[]
+    lanes: Record<string, string>
+    columns: Record<string, string>
+    /** The static rules on the tenant's own policies (roadmap/staticRules.ts), one row per engine.staticRules key. */
+    staticChecks: { caption: string; severity: string; rows: Record<string, { what: string; why: string }> }
+    /** The plan's prerequisite checks that are steps rather than registry rules, by step id ({step} is the step's title). */
+    prerequisiteChecks: { severity: string; rows: Record<string, { what: string; why: string }> }
+    /** "What IAMAI reads" in plain words, by registry read name (ui/surfaces/howView.ts howReadTables). */
+    readConditions: { licence: string; core: string; section: string }
+    readRows: Record<string, { why: string; note?: string }>
+  }
+  /** The Inventory's words (ui/surfaces/inventoryTables.ts): capability names, and what a table says of a section the scan did not read in full. */
+  inventory: {
+    caps: Record<string, string>
+    notRead: string
+    notReadNoReason: string
+    tooLittle: string
+    partlyRead: string
+    partlyReadNoReason: string
+    columnNotRead: string
+    columnNotReadNoReason: string
+    columnPartlyRead: string
+    columnPartlyReadNoReason: string
+    noneSeen: string
+    hiddenNoteEligibleUnread: string
+    appsNone: string
+    appsSource: string
+    unnamedGroup: string
+    unnamedLocation: string
+    locationNotRead: string
+    unnamedStrength: string
+    strengthNotRead: string
+    targetsExcept: string
+    authenticatorMode: string
+    deviceFilterInclude: string
+    deviceFilterExclude: string
+    termsOfUse: string
+    riskRemediation: string
+    signInEveryTime: string
+    workloadSeen: string
+    workloadNotSeen: string
+    licensed: string
+    notAsked: string
+    policiesNone: string
+    licencesNone: string
+    blockedNone: string
+  }
   picker: { placeholder: string; remove: string; searching: string; noMatches: string; typeToSearch: string; suggestions: string; results: string; done: string; matched: string; choose: string }
 }
 export const app = content.pages.app as unknown as AppWords
@@ -153,6 +199,8 @@ export type EngineWords = {
     statement: { exclusionMissing: string; conditionsNarrower: string; conditionsRecorded: string; guestTypes: string }
     conditions: Record<string, string>
   }
+  /** The name directory's fallback for a role holder it holds no name for (names.ts label). */
+  names: { unnamedHolder: string }
 }
 export const engine = shared.engine as unknown as EngineWords
 

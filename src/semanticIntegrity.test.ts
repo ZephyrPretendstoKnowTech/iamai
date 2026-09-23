@@ -45,7 +45,7 @@ import { READINESS_STATES, isReady } from './scoring/phishingResistant.ts'
 import { stepPopulation, reached } from './derive/population.ts'
 import { directionBlockerStep } from './roadmap/direction.ts'
 import { factsOf, notReady, stepFacts } from './derive/facts.ts'
-import { deviceChips, methodsCell, nextCell, roleWord, rowCells, stateTitle } from './ui/surfaces/readinessCells.ts'
+import { deviceChips, methodsLine, nextCell, roleWord, rowCells, stateTitle } from './ui/surfaces/readinessCells.ts'
 import { readinessTable } from './ui/surfaces/inventoryTables.ts'
 import { firstMfaDependency, stepMfaHold } from './derive/stepMfaReadiness.ts'
 import { cleanupComplete } from './roadmap/cleanupDone.ts'
@@ -389,7 +389,8 @@ test('042.10: every readiness cell is the row it was rendered from, on screen an
       assert.equal(row[2], roleWord(r), `${c.label}: the exported role is not the rendered role`)
       // The rendered chips, then any quiet chip the screen shows beside them (no phone sign-ins, no sign-in in 30 days).
       assert.ok(String(row[3]).startsWith(deviceChips(r).chips.map((x) => `${x.os}: ${x.word}`).join('; ')), `${c.label}: the exported devices are not the rendered chips`)
-      assert.equal(row[4], methodsCell(r).main, `${c.label}: the exported methods are not the rendered methods`)
+      // The rendered methods cell with the note the screen draws under it (readinessCells.ts methodsLine).
+      assert.equal(row[4], methodsLine(r), `${c.label}: the exported methods are not the rendered methods`)
       if (r.state !== null) assert.equal(row[5], stateTitle(r.state), `${c.label}: the exported readiness is not the rendered readiness`)
       assert.equal(row[6], nextCell(r), `${c.label}: the exported next step is not the rendered next step`)
     })

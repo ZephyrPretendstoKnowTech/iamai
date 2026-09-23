@@ -65,7 +65,7 @@ const EXPECTED: Record<RuleSubject, string[]> = {
 /** Severity per rule, asserted so a blocker cannot be quietly downgraded. */
 const BLOCKERS = new Set([
   'bg.count', 'bg.role.permanentGa', 'bg.cloudOnly', 'bg.initialDomain', 'bg.enabled', 'bg.excludedFromAllPolicies',
-  'bg.notInDynamicScope', 'bg.hasMfaMethod', 'bg.separateDevices', 'bg.notPersonal',
+  'bg.notInDynamicScope', 'bg.hasMfaMethod',
   'xg.containsEmergency', 'xg.membersApproved', 'xg.noExtraAdmins', 'xg.notDynamic', 'xg.usedConsistently',
   'loc.notWholeInternet', 'loc.isTrusted',
   'cty.atLeastOne',
@@ -575,11 +575,13 @@ test('worst-state emergency access: every blocker fires, each naming its fact', 
   const fired = new Set(report.blocking.map((r) => r.id))
   const expected = [
     'bg.count', 'bg.role.permanentGa', 'bg.cloudOnly', 'bg.initialDomain', 'bg.enabled',
-    'bg.excludedFromAllPolicies', 'bg.notInDynamicScope', 'bg.hasMfaMethod', 'bg.notPersonal',
+    'bg.excludedFromAllPolicies', 'bg.notInDynamicScope', 'bg.hasMfaMethod',
   ]
   for (const ruleId of expected) assert.ok(fired.has(ruleId), `${ruleId} did not fire on the worst state`)
   for (const r of report.blocking) assert.ok(r.finding && r.finding.length > 5, `${r.id}: no finding text`)
   assert.ok(report.warnings.some((r) => r.id === 'bg.nameIdentifiesPurpose'), 'the name is called out as a recommendation')
+  // A person's account is hardening the plan holds nothing on (emergencyTiers.ts), so it is a recommendation too.
+  assert.ok(report.warnings.some((r) => r.id === 'bg.notPersonal'), 'the profile fields are called out as a recommendation')
 })
 
 test('worst-state exclusions group: every blocker fires', () => {

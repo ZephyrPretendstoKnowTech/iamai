@@ -106,12 +106,12 @@ test('the MFA handoff, the review picker and the per-user MFA finding name a sha
 })
 
 // The Inventory's Devices tab names device owners and Authenticator registrants
-// through the page's name directory, as the devices CSV does (inventoryTables.ts),
-// not by the bare display name; the registrant list drops a repeated entry, so
-// two people of one name were one.
+// through the page's name directory, in the one devices model the tab draws and
+// the devices CSV writes (inventoryTables.ts), not by the bare display name; the
+// registrant list drops a repeated entry, so two people of one name were one.
 test('the Inventory devices tab names people through the name directory', () => {
-  const page = readFileSync('src/ui/surfaces/InventoryPage.tsx', 'utf8')
-  const devices = page.slice(page.indexOf('function DevicesTab('), page.indexOf('// ---------- Roles'))
+  const tables = readFileSync('src/ui/surfaces/inventoryTables.ts', 'utf8')
+  const devices = tables.slice(tables.indexOf('export function devicesModel('), tables.indexOf('// ---------- Roles'))
   assert.match(devices, /names\.label\(id\)/)
   assert.doesNotMatch(devices, /userById\.get\([a-zA-Z]+\)\?\.displayName/)
 })
