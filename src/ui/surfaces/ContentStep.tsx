@@ -150,7 +150,8 @@ function EmergencyAccountStatusTile({ account, printing = false }: { account: Em
     {account.upn && <p className="emergency-account-upn">{account.upn.split('\n').map((line, index) => <span key={index}><Breakable text={line} /></span>)}</p>}
     {account.remainingCount !== null && account.remainingCount > 0 && <p className="emergency-account-count">{account.remainingCount} check{account.remainingCount === 1 ? '' : 's'} remaining</p>}
     <h5>{account.title}</h5>
-    {account.detail && <p><Breakable text={account.detail} /></p>}
+    {/* A line each: Verify Emergency Access lists the last change and the last sign-in under its sentence. */}
+    {account.detail && <p className="emergency-account-lines">{account.detail.split('\n').map((line, index) => <span key={index}><Breakable text={line} /></span>)}</p>}
     {account.instruction && <p>{account.instruction}</p>}
     {account.link && <p><a href={account.link.href}>{account.link.label} →</a></p>}
     {!!account.notes?.length && <div className="emergency-account-note"><EmergencyFacts facts={account.notes} /></div>}

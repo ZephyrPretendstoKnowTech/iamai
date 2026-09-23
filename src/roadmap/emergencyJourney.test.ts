@@ -228,25 +228,44 @@ test('emergency exclusions stay on hold until emergency accounts are selected', 
   assert.ok(result.schedule.cleanup?.rows.some(row => row.kind === 'drill'), 'Verify Emergency Access remains present as the fourth journey row')
 })
 
-test('Step 4 says what it is waiting on: a sign-in after the configuration start, and why the last one seen did not count', () => {
+// "Sign in with this account’s passkey after {date}" asked for a sign-in at a
+// time that had already passed (owner, 2026-09-23). The line asks for a sign-in
+// since the most recent change and lists the two dates that show whether one has
+// happened: the same two dates the old sentence named.
+test('Step 4 says what it is waiting on: a sign-in since the most recent change, with the last change and the last sign-in', () => {
   const f = structuredClone(fixture('demo-week2'))
   const id = f.mapping.breakGlassUserIds[0]
   const candidate = f.snapshot.signInEvidence[id]!.recoveryCandidates![0]
   const start = '2026-09-18T18:37:17.142Z'
-  const seen = { ...candidate, at: '2026-09-18T16:02:21Z', authenticationAt: '2026-09-18T16:02:21Z', resourceTenantId: f.snapshot.tenantId }
-  const readings = recoveryCandidateReadings({ ...f.snapshot, signInEvidence: { ...f.snapshot.signInEvidence, [id]: { ...f.snapshot.signInEvidence[id]!, recoveryCandidates: [seen] } } }, id, '2026-09-18T19:00:00Z', start)
-  const line = recoveryWaitingLine(start, readings, 'America/Chicago')
-  assert.equal(line, 'Sign in with this account’s passkey after Sep 18, 2026, 1:37 PM CDT. Last sign-in seen Sep 18, 2026, 11:02 AM CDT did not count: The passkey authentication predates the current recovery configuration.')
+  const readingsOf = (...seen: typeof candidate[]) => recoveryCandidateReadings({ ...f.snapshot, signInEvidence: { ...f.snapshot.signInEvidence, [id]: { ...f.snapshot.signInEvidence[id]!, recoveryCandidates: seen } } }, id, '2026-09-18T19:00:00Z', start)
+  const before = { ...candidate, at: '2026-09-18T16:02:21Z', authenticationAt: '2026-09-18T16:02:21Z', resourceTenantId: f.snapshot.tenantId }
+  const line = recoveryWaitingLine(start, readingsOf(before), 'America/Chicago')
+  assert.deepEqual(line.split('\n'), [
+    'Sign in with this account’s passkey since the most recent change.',
+    'Last change: Sep 18, 2026, 1:37 PM CDT',
+    'Last sign-in: Sep 18, 2026, 11:02 AM CDT',
+  ])
+  // The dates show why that sign-in did not count; the line does not say it again.
+  assert.doesNotMatch(line, /did not count|predates| after /)
   assert.doesNotMatch(line, /Follow Verify emergency sign-in/, 'the tile adds the action once')
-  assert.equal(recoveryWaitingLine(start, [], 'UTC'), 'Sign in with this account’s passkey after Sep 18, 2026, 6:37 PM UTC.')
+  assert.equal(recoveryWaitingLine(start, [], 'UTC'), 'Sign in with this account’s passkey since the most recent change.\nLast change: Sep 18, 2026, 6:37 PM UTC\nLast sign-in: none seen')
   assert.equal(recoveryWaitingLine(null, [], 'UTC'), 'Sign in with this account’s passkey once the configuration checks pass.')
+  // A sign-in after the change that still did not count is one the dates cannot
+  // explain, so its reason stays, on a line of its own.
+  const later = { ...before, at: '2026-09-18T18:50:00Z', authenticationAt: '2026-09-18T18:50:00Z', success: false }
+  assert.deepEqual(recoveryWaitingLine(start, readingsOf(before, later), 'America/Chicago').split('\n'), [
+    'Sign in with this account’s passkey since the most recent change.',
+    'Last change: Sep 18, 2026, 1:37 PM CDT',
+    'Last sign-in: Sep 18, 2026, 1:50 PM CDT',
+    'The sign-in did not succeed.',
+  ])
 })
 
 test('with no display time zone set, Step 4 times read in the browser’s zone, not UTC', () => {
   const browser = Intl.DateTimeFormat().resolvedOptions().timeZone
   const start = '2026-09-18T16:37:21.751Z'
   assert.equal(recoveryWaitingLine(start, [], null), recoveryWaitingLine(start, [], browser))
-  assert.equal(recoveryWaitingLine(start, [], 'Australia/Sydney'), 'Sign in with this account’s passkey after Sep 19, 2026, 2:37 AM GMT+10.')
+  assert.match(recoveryWaitingLine(start, [], 'Australia/Sydney'), /^Last change: Sep 19, 2026, 2:37 AM GMT\+10$/m)
 })
 
 // Emergency access is the plan's one large gate (owner, 2026-09-20), so a
