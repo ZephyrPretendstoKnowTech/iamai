@@ -1,6 +1,8 @@
 // What How IAMAI works says, read from the tables the page draws (howView.ts).
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { reviewBody } from '../../content/render.ts'
 import { howCheckTables, howLimits } from './howView.ts'
 import { EVALUATED_SUBJECTS } from '../../validation/report.ts'
 import { app, engine, pages, stepById } from '../../content/content.ts'
@@ -123,4 +125,34 @@ test('How’s Limits hold every limitation Connect lists before sending the read
   const limits = howLimits()
   for (const line of connect.limits) assert.ok(limits.includes(line), `How's Limits leave out Connect's "${line.slice(0, 60)}…"`)
   for (const line of app.how.limitsList) assert.ok(limits.includes(line), `How's Limits leave out its own "${line.slice(0, 60)}…"`)
+})
+
+// How's Baseline packages section was written into How.tsx rather than read from
+// content (app.how.packages had no reader), said the baseline credit a second
+// time in other words, and the no-AI line sat outside Limits speaking of "these
+// tools" (Phase 2 audit, How).
+test('How’s package section reads its words from content, says the credit once, and the no-AI line is a limit', () => {
+  const how = readFileSync('src/ui/surfaces/How.tsx', 'utf8')
+  assert.doesNotMatch(how, />Baseline Packages</, 'the section heading is written into How.tsx')
+  assert.doesNotMatch(how, /maintained by Jon Hope/, 'the credit is written into How.tsx a second time')
+  assert.match(how, /\{C\.packages\}/)
+  const C = app.how as Record<string, string>
+  assert.ok(C.packageBody, 'the section has its own sentence in content')
+  const both = [C.packageBody, C.creditBaseline]
+  assert.equal(both.filter((s) => /Jon Hope/.test(s)).length, 1, 'the credit is said once')
+  assert.equal(both.filter((s) => /pin/i.test(s)).length, 1, 'what IAMAI does with the package is said once')
+  for (const s of both) assert.doesNotMatch(s, /\bdefault\b/i, 'the baseline is offered as a default among choices')
+  const noAi = (pages.how as Record<string, string>).noAi
+  assert.ok(howLimits().includes(noAi), 'the no-AI line is one of the Limits')
+  assert.doesNotMatch(noAi, /these tools/)
+})
+
+// The content-review page told the owner that How's Needs column names the step
+// and that three reworded lines were live; How.tsx read none of them.
+test('the review page claims no How rewording the page does not show', () => {
+  const review = reviewBody()
+  assert.doesNotMatch(review, /Needs column now names the step/)
+  for (const key of ['needsByStep', 'exclusionsCheckReworded', 'groupSearchReworded', 'packageProblem']) {
+    assert.equal((pages.how as Record<string, unknown>)[key], undefined, `pages.how.${key} is kept without a reader`)
+  }
 })

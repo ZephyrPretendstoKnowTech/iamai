@@ -962,9 +962,6 @@ export function renderPages(): string {
   sec(
     'Footer, How IAMAI works',
     p((P.footer.links as { text: string }[]).map((l) => l.text).join(' | '), {}) +
-      h('How IAMAI works — reworded lines') +
-      ul([P.how.exclusionsCheckReworded, P.how.groupSearchReworded, P.how.packageProblem], { policy: 'IAC - AGENT - BLOCK - HighRiskAgent' }) +
-      p('Needs column now names the step: ' + Object.values(P.how.needsByStep).join(', '), {}) +
       p('Under Limits: ' + P.how.noAi, {}),
   )
   return out.join('')
