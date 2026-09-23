@@ -106,7 +106,8 @@ export function Plan({ scan: lastScan, baseline, account }: {
   const settingsLink = useRef<HTMLAnchorElement>(null)
   // A step opened from a link (a Readiness tile's link to its prerequisite, a
   // deep link) rather than by pressing its row: the page moves to it
-  // (TabFollowsOpenStep).
+  // (TabFollowsOpenStep). A row press clears it (openStep): a link to the step
+  // already open changes nothing, so the effect that clears it does not run.
   const linked = useRef<boolean>(stepFromPlanHash(window.location.hash) !== null)
   useEffect(() => {
     const onHash = () => { linked.current = true; setSummaryFilter(null); setOpen(stepFromPlanHash(window.location.hash)) }
@@ -129,6 +130,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
     row.scrollIntoView({ block: 'start' })
   })
   const openStep = (id: string | null): void => {
+    linked.current = false
     setOpen((cur) => {
       const next = cur === id ? null : id
       window.history.replaceState(null, '', next ? `#/plan/${next}` : '#/plan')
