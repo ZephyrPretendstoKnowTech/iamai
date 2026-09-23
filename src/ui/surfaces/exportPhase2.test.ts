@@ -16,7 +16,9 @@ import { app, pages } from '../../content/content.ts'
 import { planFinish, planLengthSentence } from '../../derive/finish.ts'
 import { groundingBundle, promptPack } from '../../roadmap/prompts.ts'
 import { absoluteDate } from '../../copy/dates.ts'
-import { boardReadingsOf, laneViewOf } from './planBoard.ts'
+import { boardReadingsOf, laneViewFor, laneViewOf } from './planBoard.ts'
+import { stepBodyOf } from './stepBody.ts'
+import { unavailableReason } from '../../roadmap/operations.ts'
 import { exportCleanupViewsOf, exportHoldOf, exportViewsOf } from './stepExport.ts'
 import { cleanupExportViews, cleanupWhen } from './cleanupExport.ts'
 import { planDates } from './stepVars.ts'
@@ -137,4 +139,36 @@ test('the pack and the bundle say a Cleanup row\'s When as the board reads it, a
 test('the Export page builds its Cleanup views off the board', () => {
   const page = readFileSync(new URL('./Export.tsx', import.meta.url), 'utf8').replace(/\/\/[^\n]*/g, '')
   assert.match(page, /const cleanupViews = exportCleanupViewsOf\(board, steps, schedule\.cleanup\)/)
+})
+
+// Finding 4 (severity 3). On the public demo Require MFA for Guests is Ready ·
+// Review with an unmatched pair: the opened step's portal channel is the step's
+// preparation ("Review the two guest policies separately …"), and its JSON and
+// PowerShell only read. The export replaced that with the package preview's
+// create procedure, "Create the two guest policies separately" with
+// ‹guests policy name› placeholders, into the calendar, the pack, the bundle and
+// AI Info's What remains. The export carries the portal channel the screen draws.
+test('an export carries the portal channel the opened step draws: the guest pair it cannot match is reviewed, never created', () => {
+  const p = exportPage(fixture('demo'))
+  const step = p.r.steps.find((s) => s.id === 's-goal-guests-mfa')!
+  assert.equal(unavailableReason(step), 'unmatched-pair', 'the premise: the pair is unmatched')
+  const v = p.view(step)
+  const screenPortal = stepBodyOf(step, p.ctxOf(step), { lane: laneViewFor(step, p.board) }).artifacts.find((a) => a.id === 'portal')!
+  const unnumbered = (l: string): string => l.replace(/^\d+\. /, '').trim()
+  const screenLines = screenPortal.text().split('\n').map(unnumbered).filter((l) => l !== '')
+  const exported = v.whatToDo.map(unnumbered)
+  for (const line of screenLines) assert.ok(exported.includes(line), `the export drops the screen's portal line "${line}"`)
+  for (const line of v.whatToDo) {
+    assert.doesNotMatch(line, /‹[^›]+›/, `an unfilled placeholder: ${line}`)
+    assert.doesNotMatch(line, /^Create the two guest policies/, `the create procedure the screen withholds: ${line}`)
+  }
+  // AI Info hands an assistant the same step: not the package's words for the
+  // create ("This state creates two guest MFA policies"), nor its POST request,
+  // while the JSON channel beside it only reads.
+  const body = stepBodyOf(step, p.ctxOf(step), { lane: laneViewFor(step, p.board) })
+  const ai = body.artifacts.find((a) => a.id === 'ai')!.text()
+  const json = body.artifacts.find((a) => a.id === 'json')?.text() ?? ''
+  assert.doesNotMatch(json, /"method": "POST"/, 'the premise: the JSON channel only reads')
+  assert.doesNotMatch(ai, /creates two guest MFA policies/, 'AI Info describes the create the step withholds')
+  assert.doesNotMatch(ai, /Request: POST/, 'AI Info names a request the JSON channel does not make')
 })

@@ -34,7 +34,7 @@ import { ifWrongLineFor, stepExportView } from './stepExport.ts'
 import { stepVars, withoutScheduleDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { portalNamesFor, unwrittenCorrectionLines } from './stepPortal.ts'
-import { rescanLinesOf, stepInstructions, wholeLines } from './stepInstructions.ts'
+import { preparationLines, rescanLinesOf, stepInstructions, wholeLines } from './stepInstructions.ts'
 import { CONTRACT, SETTLED_FINDINGS, eyebrowOf, implementationEmptyOf, implementationIsCurrent, isReadinessWork, proceduresAreReference, railOf, readinessOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
 import { boardHolds, laneViewAlone } from './planBoard.ts'
@@ -302,7 +302,13 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // IAMAI's facts for this step (aiGrounding.ts): one grounding for a package's AI Info and
   // for the step's own, so both hand an assistant the same facts.
   // The request the briefing describes is the JSON channel the package projects, or previews, for this state.
-  const jsonChannel = (preview ?? projection)?.channels.find((a) => a.channel === 'json') ?? null
+  // Where the step's preparation stands in for the package's procedure while a
+  // reason holds the policy (stepInstructions.ts preparationLines), the package's
+  // create is withheld from every channel: the JSON channel only reads, and AI
+  // Info described "This state creates two guest MFA policies" with the batch
+  // POST beside it (Phase 2 export finding 4). It hands over the step's own brief.
+  const createWithheld = preparationLines(step, cs, true) !== null
+  const jsonChannel = createWithheld ? null : (preview ?? projection)?.channels.find((a) => a.channel === 'json') ?? null
   const groundingJson = jsonChannel ? { text: jsonChannel.text, requests: jsonChannel.requests, preview: preview !== null } : null
   const grounding = (own: string): string => aiGroundingText({ step, ctx, contract, lane: laneView, cs, ex: ex as Record<string, unknown>, bindings: pkgBindings as Record<string, unknown> | null, json: groundingJson }, own)
   const textOf = (ch: Channel): string =>
@@ -383,13 +389,16 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   }
   // Every step can explain its purpose, facts, decisions and remaining work,
   // even when no executable change can be offered yet.
+  if (createWithheld) for (let i = produced.length - 1; i >= 0; i--) if (produced[i].id === 'ai') produced.splice(i, 1)
   supported.add('ai')
   if (!produced.some((a) => a.id === 'ai')) produced.push({ id: 'ai', form: 'code', lines: [], text: () => aiBriefingText('', grounding('')), note: null })
   if (step.id === 's-prereq-break-glass') supported.delete('email')
   // Preparation is useful even when the executable policy cannot yet be built.
   // It does not replace a resolved operation or bypass its prerequisites.
-  if (Array.isArray(cs.preparation) && (step.id === 's-prereq-passkey-settings' ? !produced.some(a => a.id === 'portal') : reason !== null || !produced.some(a => a.id === 'portal'))) {
-    const lines = [...cs.preparation.filter((line: unknown): line is string => typeof line === 'string'), ...(step.action.unmatchedPair ? step.action.portalSteps : [])]
+  // The rule is the export's too (stepInstructions.ts preparationLines).
+  const preparation = preparationLines(step, cs, produced.some(a => a.id === 'portal'))
+  if (preparation !== null) {
+    const lines = preparation
     const previous = produced.findIndex(a => a.id === 'portal')
     if (previous >= 0) produced.splice(previous, 1)
     produced.push({ id: 'portal', form: 'list', lines, text: () => lines.map((line: string, index: number) => `${index + 1}. ${line}`).join('\n'), note: null })
