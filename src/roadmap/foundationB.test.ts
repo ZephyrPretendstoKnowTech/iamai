@@ -1777,6 +1777,12 @@ test('a policy that was not there at the last scan says so, and says whether any
   assert.match(watched.note, /created in report-only by/, watched.note)
   assert.equal(/without a report-only period/.test(watched.note), false, watched.note)
 
+  // Created switched Off: the record holds the absence, so the note says the
+  // move it saw, never that it cannot say which policy it watched.
+  const off = observe(prior, { artifact: 'A', state: 'disabled', semantics: 'aaaa', at, evidenceAt: null })
+  assert.equal(/does not record which policy it watched/.test(off.note), false, off.note)
+  assert.match(off.note, /to off by/, off.note)
+
   // A policy IAMAI genuinely cannot place is still reported as unknown: the new
   // sentence is about a recorded absence, never about a gap in the record.
   const gap = observe({ ...prior, state: 'report-only' }, { artifact: 'B', state: 'enforced', semantics: 'bbbb', at, evidenceAt: null })
