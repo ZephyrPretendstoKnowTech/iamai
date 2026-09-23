@@ -181,3 +181,18 @@ test('What IAMAI reads states conditions and purposes in plain words, never "non
   }
   assert.doesNotMatch(app.how.columns.gate, /can fail/, 'the column says it lists when a read can fail')
 })
+
+// The cross-tenant collector also reads /default and /partners. Naming them in
+// the registry's endpoint broke the scan's request (Phase 2 review); the row
+// lists them from the registry's alsoReads, which the collector reads its paths from.
+test('What IAMAI reads lists every path a read requests, the cross-tenant default and partner reads among them', () => {
+  const rows = howReadTables().flatMap((t) => t.rows)
+  for (const s of COLLECTOR_REGISTRY) {
+    assert.deepEqual(rows.find((r) => r.name === s.name)?.endpoints, [s.endpoint, ...(s.alsoReads ?? [])], s.name)
+  }
+  assert.deepEqual(rows.find((r) => r.name === 'Cross-tenant access')?.endpoints, [
+    '/policies/crossTenantAccessPolicy',
+    '/policies/crossTenantAccessPolicy/default',
+    '/policies/crossTenantAccessPolicy/partners',
+  ])
+})

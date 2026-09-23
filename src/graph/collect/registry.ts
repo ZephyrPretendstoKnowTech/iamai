@@ -64,6 +64,15 @@ export type CollectorSpec = {
    * lacks as unread rather than absent.
    */
   fallbackEndpoint?: string
+  /**
+   * The further paths this collector reads on every scan beside `endpoint`, with
+   * the same version and scopes. The collector takes them from here
+   * (collectors.ts), so How and SPEC.md list the reads the scan makes.
+   * `endpoint` stays one path: CONFIG_ENDPOINTS builds the lane-0 request from
+   * it, and a row that named its other reads there sent every scan's
+   * cross-tenant read to a path that does not exist (Phase 2 review).
+   */
+  alsoReads?: string[]
   version: 'v1.0' | 'beta'
   paged?: boolean
   scopes: string[]
@@ -93,7 +102,7 @@ export const COLLECTOR_REGISTRY: CollectorSpec[] = [
   // person to look. Global Reader and the device administration roles can read
   // it under Policy.Read.All; a role that cannot reads as unknown, never as off.
   { name: 'Device registration policy', lane: '0', configKey: 'deviceRegistrationPolicy', endpoint: '/policies/deviceRegistrationPolicy', version: 'v1.0', scopes: ['Policy.Read.All'], requiredCapability: null, gate: 'Global Reader or a device administration role; otherwise unknown', purpose: 'Whether the tenant-wide device-registration MFA setting is on, which a Conditional Access user-action policy needs off.' },
-  { name: 'Cross-tenant access', lane: '0', configKey: 'crossTenantAccess', endpoint: '/policies/crossTenantAccessPolicy, /policies/crossTenantAccessPolicy/default and /policies/crossTenantAccessPolicy/partners', version: 'v1.0', scopes: ['Policy.Read.All'], requiredCapability: null, gate: 'none', purpose: 'Guest/B2B posture affecting external-user intents.' },
+  { name: 'Cross-tenant access', lane: '0', configKey: 'crossTenantAccess', endpoint: '/policies/crossTenantAccessPolicy', alsoReads: ['/policies/crossTenantAccessPolicy/default', '/policies/crossTenantAccessPolicy/partners'], version: 'v1.0', scopes: ['Policy.Read.All'], requiredCapability: null, gate: 'none', purpose: 'Guest/B2B posture affecting external-user intents.' },
   { name: 'Role assignments', lane: '0', configKey: 'roleAssignments', endpoint: '/roleManagement/directory/roleAssignments?$expand=roleDefinition($select=id,displayName)', version: 'v1.0', paged: true, scopes: ['RoleManagement.Read.Directory'], requiredCapability: null, gate: 'none', purpose: 'Active admin roles per user for admin-targeting intents; role names for display.' },
   { name: 'Role assignment schedules', lane: '0', configKey: 'roleAssignmentSchedules', endpoint: '/roleManagement/directory/roleAssignmentScheduleInstances?$expand=roleDefinition($select=id,displayName)', version: 'v1.0', paged: true, scopes: ['RoleManagement.Read.Directory'], requiredCapability: null, gate: 'none', purpose: 'Whether an active emergency administrator role is assigned permanently rather than eligible, activated, or time-limited.' },
   { name: 'PIM eligibility', lane: '0', configKey: 'pimEligibility', endpoint: '/roleManagement/directory/roleEligibilitySchedules', version: 'v1.0', paged: true, scopes: ['RoleManagement.Read.Directory'], requiredCapability: 'pim', gate: 'Entra ID P2 or Microsoft Entra ID Governance', purpose: 'Eligible vs permanent roles; eligible is out of CA role scope until activated.' },

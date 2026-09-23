@@ -95,9 +95,12 @@ test('the directory-audit read is disclosed: a registry row How lists, and both 
 })
 
 test('the cross-tenant and passkey-detail reads the collectors make beside their main read are named in their rows', () => {
+  // The cross-tenant row's endpoint is the one path the lane-0 request is built
+  // from; the other two reads are its alsoReads, which the collector reads from
+  // (collectors.test.ts holds the requests to them).
   const cross = COLLECTOR_REGISTRY.find((s) => s.configKey === 'crossTenantAccess')
-  assert.match(cross?.endpoint ?? '', /\/default\b/)
-  assert.match(cross?.endpoint ?? '', /\/partners\b/)
+  assert.equal(cross?.endpoint, '/policies/crossTenantAccessPolicy')
+  assert.deepEqual(cross?.alsoReads, ['/policies/crossTenantAccessPolicy/default', '/policies/crossTenantAccessPolicy/partners'])
   const methods = COLLECTOR_REGISTRY.find((s) => s.sourceKey === 'authMethods')
   assert.match(methods?.endpoint ?? '', /beta \/users\/\{id\}\/authentication\/fido2Methods/)
 })

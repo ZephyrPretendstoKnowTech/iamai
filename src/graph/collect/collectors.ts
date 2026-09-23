@@ -37,6 +37,10 @@ const CONFIG_ENDPOINTS = Object.fromEntries(
   ]),
 ) as Record<ConfigSectionKey, { url: string; fallbackUrl: string | null; paged?: boolean }>
 
+// The cross-tenant default and partner reads, made beside the policy read and
+// listed, in that order, in its registry row (alsoReads).
+const [CROSS_TENANT_DEFAULT, CROSS_TENANT_PARTNERS] = COLLECTOR_REGISTRY.find((s) => s.configKey === 'crossTenantAccess')!.alsoReads!
+
 // Item 2 of the data-model lock: Microsoft-managed CA policies are flagged by
 // display-name prefix or a present templateId.
 export function isMicrosoftManagedPolicy(policy: unknown): boolean {
@@ -88,13 +92,13 @@ export async function collectConfigSection(ctx: Ctx, key: ConfigSectionKey): Pro
       const rows: unknown[] = [{ ...(body as Record<string, unknown>), relationship: 'policy' }]
       const failures: string[] = []
       try {
-        const defaults = await graphRequest(ctx.tokens, `${V1}/policies/crossTenantAccessPolicy/default`, { signal: ctx.signal })
+        const defaults = await graphRequest(ctx.tokens, `${V1}${CROSS_TENANT_DEFAULT}`, { signal: ctx.signal })
         rows.push({ ...(defaults as Record<string, unknown>), relationship: 'default' })
       } catch (error) {
         failures.push(`default relationship unavailable: ${error instanceof Error ? error.message : String(error)}`)
       }
       try {
-        const partners = await graphPaged(ctx.tokens, `${V1}/policies/crossTenantAccessPolicy/partners`, { signal: ctx.signal })
+        const partners = await graphPaged(ctx.tokens, `${V1}${CROSS_TENANT_PARTNERS}`, { signal: ctx.signal })
         rows.push(...partners.map(partner => ({ ...(partner as Record<string, unknown>), relationship: 'partner' })))
       } catch (error) {
         failures.push(`partner relationships unavailable: ${error instanceof Error ? error.message : String(error)}`)
