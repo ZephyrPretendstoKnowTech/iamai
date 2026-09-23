@@ -23,7 +23,7 @@ import { completedRows, deferredRows, floorRows, openDoneRows, phaseRows, planPh
 import { contentTitle } from '../../content/stepTitle.ts'
 import { boardHolds, boardReadingsOf, doesntApplyView, laneViewOf, laneWordOf, prerequisiteLabelFor, readinessBlockersOf } from './planBoard.ts'
 import type { LaneView } from './stepContract.ts'
-import { cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, laneGroupsOf, noPlanLine, postureOf } from './printPlan.ts'
+import { cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, laneGroupsOf, noPlanLine, phaseDatesOf, postureOf } from './printPlan.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { PrintBoard } from './printPlan.ts'
 
@@ -290,7 +290,8 @@ export function PrintPlan({
               <Fragment key={w.wave}>
                 <tr>
                   <td>{waveTitle(w)}</td>
-                  <td>{w.days === 0 ? absoluteDate(w.start) : dateRange(w.start, w.end)}</td>
+                  {/* The days the phase's rows state (printPlan.ts phaseDatesOf), never the wave's forecast window. */}
+                  <td>{phaseDatesOf(phaseSteps(w))}</td>
                   <td>{stepListOf(phaseSteps(w))}</td>
                 </tr>
                 {w.wave === 0 && schedule.verification.days > 0 && (
@@ -316,7 +317,7 @@ export function PrintPlan({
       {waves.map((w) => (
         <section key={w.wave} className="print-page">
           <h2>{waveTitle(w)}</h2>
-          <p className="muted">{w.days === 0 ? absoluteDate(w.start) : dateRange(w.start, w.end)}</p>
+          {phaseDatesOf(phaseSteps(w)) && <p className="muted">{phaseDatesOf(phaseSteps(w))}</p>}
           {phaseSteps(w).map((s) => (
             <article key={s.id} className="print-step">
               <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} lane={laneOf(s.id)} blockers={blockersOf(s)} prerequisiteLabel={prerequisiteLabel} printing />
