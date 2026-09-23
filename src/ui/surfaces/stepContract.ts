@@ -29,7 +29,7 @@ import { appearedEnforced, dimensionWords, watchedArrive } from '../../roadmap/o
 import type { Condition, Lifecycle, Milestone } from '../../roadmap/lifecycle.ts'
 import { heldForReview, nextMilestone, reviewCauses } from '../../roadmap/lifecycle.ts'
 import type { PolicyHold, UnavailableReason } from '../../roadmap/operations.ts'
-import { awaitsWorkflowRecord, createWaitsOnReadiness, enforcesOnRun, implementationOffered, isPreserved, operationsOf, policyHold, switchedOffPolicies, unavailableReason, strengthNameIn } from '../../roadmap/operations.ts'
+import { awaitsOwnObject, awaitsWorkflowRecord, createWaitsOnReadiness, enforcesOnRun, implementationOffered, isPreserved, operationsOf, policyHold, switchedOffPolicies, unavailableReason, strengthNameIn } from '../../roadmap/operations.ts'
 import { requiredMembers } from '../../roadmap/tracking.ts'
 import { unreadLine } from '../../roadmap/evidence.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
@@ -1151,9 +1151,12 @@ function fixOf(step: Step, cs: Record<string, unknown> | undefined, ex: Record<s
  * enforce anything — then a goal already delivered, then a decision, and only
  * then the lifecycle's own next move.
  */
-function actionOf(step: Step, reason: UnavailableReason | null, milestone: ContractMilestone, tenant: string, cs: Record<string, unknown> | undefined, ex: Record<string, unknown>, exclusionsUnconfirmed = false): Omit<ContractAction, 'gatedBy'> {
+function actionOf(step: Step, reason: UnavailableReason | null, milestone: ContractMilestone, tenant: string, cs: Record<string, unknown> | undefined, ex: Record<string, unknown>, exclusionsUnconfirmed = false, ownTask: OwnObjectTask | null = null): Omit<ContractAction, 'gatedBy'> {
   if (step.state.setAside) return { kind: 'restore', text: CONTRACT.setAsideAction }
-  if (reason !== null) return { kind: 'resolve', text: reasonLine(step, reason, tenant, exclusionsUnconfirmed) }
+  // An object the step makes itself is not a reason to stop: it is the step's
+  // own next task (ownObjectTaskOf), and the step reads on as any other policy
+  // would, with that task's action where its own words would be.
+  if (reason !== null && ownTask === null) return { kind: 'resolve', text: reasonLine(step, reason, tenant, exclusionsUnconfirmed) }
   // A finished step with hardening still open has something to do: it is not
   // held by it, and the rollout continues, but "No change needed." over an open
   // recommendation is the step contradicting the card beneath it. The two-tier
@@ -1224,6 +1227,7 @@ function actionOf(step: Step, reason: UnavailableReason | null, milestone: Contr
   // are the action where it has them — "Fix each failing check. 3 of 34 fail
   // today." says more than "Make the object this step names.", and saying both
   // would be the same instruction twice.
+  if (ownTask !== null) return { kind: milestone.kind, text: ownTask.action }
   // The lead for the state the scan read (content/render.ts whatToDoFor).
   const lead = whatToDoFor(cs, ex)?.lead
   if (typeof lead === 'string' && whole(lead, ex)) return { kind: milestone.kind, text: fillText(lead, ex) }
@@ -1243,6 +1247,24 @@ function actionOf(step: Step, reason: UnavailableReason | null, milestone: Contr
 function milestoneSentence(m: Pick<ContractMilestone, 'kind' | 'label' | 'at'>, estimate: boolean): string {
   if (m.kind !== 'observe') return m.label
   return m.at ? fillText(MILESTONE.observeUntil, { date: shownDay(m.at, estimate, 'sentence') }) : MILESTONE.observe
+}
+
+/** The task a step does first because its policy names an object the step makes itself (ownObjectTaskOf). */
+type OwnObjectTask = { title: string; action: string }
+
+/**
+ * The task a step does first because its policy names an object the step makes
+ * itself and the tenant does not have yet (Stage 3; stepIds.ts OBJECT_TASK,
+ * roadmap/operations.ts awaitsOwnObject), in the task's own words: the title
+ * its task list shows, and the action its own contract states. That task is
+ * what the step offers now; the policy's own implementation follows it. Null on
+ * every other step, and once the object exists.
+ */
+function ownObjectTaskOf(step: Step, ctx: StepVarContext): OwnObjectTask | null {
+  const task = step.objectTask
+  if (!task || !awaitsOwnObject(step)) return null
+  const title = (contentStepFor(task) as { taskTitle?: string | null } | undefined)?.taskTitle
+  return { title: title ?? contentTitle(task), action: stepContract(task, ctx).whatToDo.text }
 }
 
 /** The reasons that leave no policy IAMAI can write, so no end state to state. */
@@ -1386,7 +1408,13 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
   // A step the board holds names no day, in its milestone or its sentence
   // (roadmap/lifecycle.ts nextMilestone `undated`): the board's When already
   // reads "After prerequisites" for it, and a date beside that is a second answer.
-  const m = nextMilestone(step, { undated })
+  // The object a step makes itself, while its policy waits for it, is the
+  // step's next task and the implementation it offers now (Stage 3): its action
+  // is the task's own, and its milestone names the task by the title its task
+  // list shows (ownObjectTaskOf).
+  const ownTask = ownObjectTaskOf(step, ctx)
+  const next = nextMilestone(step, { undated })
+  const m = ownTask !== null && next.kind === 'deploy' ? { ...next, label: ownTask.title } : next
   const reason = unavailableReason(step)
   const bare: ContractMilestone = { kind: m.kind, label: m.label, at: m.at, gatedBy: m.gatedBy, line: null }
   // A policy waiting on the exclusions group while the scan found one nobody has
@@ -1395,7 +1423,7 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
   const waitsOnGroup = (step.action.missing ?? []).some((x) => x.token === '{exclusionsGroup}')
   const choice = waitsOnGroup ? exclusionsGroupChoice({ snapshot: ctx.snapshot, mapping: ctx.mapping, groups: ctx.groups, directory: ctx.directory }) : null
   const exclusionsUnconfirmed = choice !== null && choice.actionableId === null && choice.candidates.length > 0
-  const action = actionOf(step, reason, bare, tenant, cs, ex, exclusionsUnconfirmed)
+  const action = actionOf(step, reason, bare, tenant, cs, ex, exclusionsUnconfirmed, ownTask)
   // What the action waits on, where the action IS the wait (`ContractAction.gatedBy`):
   // Foundation B's gate, said in the board's own words for it where a board
   // handed its reading down — the lane's tail on the two waiting lanes is that
@@ -2432,9 +2460,13 @@ function engineTiles(c: StepContract, blockers: readonly PrerequisiteBlocker[], 
  * Where Foundation A still offers nothing and no fix names why: that is the
  * fact, and a tile says it rather than "Clear" beside a step that cannot move.
  */
-function implementationTile(c: StepContract): ReadinessTile | null {
+function implementationTile(step: Step, c: StepContract): ReadinessTile | null {
   const t = R().tiles
   if (c.fix.length > 0 || c.implementation.offered || c.implementation.reason === null) return null
+  // A policy waiting on an object the step makes itself offers that object's
+  // task instead (Stage 3; ownObjectTaskOf): its action says so, and the task
+  // leads its Implementation, so "Unavailable" here would be the opposite.
+  if (awaitsOwnObject(step) && step.objectTask) return null
   if (c.state.satisfied || c.state.setAside || c.state.condition === 'baseline-conflict' || c.state.condition === 'needs-decision' || c.state.condition === 'review-required') return null
   // A policy the tenant switched off has one thing to do, and the step hands it
   // over on every channel: "Unavailable" over that procedure said the opposite.
@@ -2494,7 +2526,7 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
     return { tiles, satisfied: configuredTiles.filter(t => t.tone === 'good'), bar: barOf(c) }
   }
   const inventory: ReadinessTile | null = c.inventory ? { key: 'directory-inventory', label: c.inventory.label, value: `${c.inventory.complete ? '' : 'At least '}${c.inventory.count} ${plural(c.inventory.count, 'guest')}`, note: [c.inventory.note, c.inventory.names.length > 0 ? CONTRACT.inventoryNames : null, ...c.inventory.names].filter((x): x is string => x !== null).join('\n'), tone: 'info' } : null
-  const facts = [enforcedReadingTile(step), unwatchedTile(step), ownPolicyTile(step), belowGoalFloorTile(c), followUpTile(c), blindReadingTile(step, c), ...emergencyTiles(step, c), ...configuredTiles, ...(configuration.length && step.id !== 's-prereq-break-glass' ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), exclusionsTile(step, c), exclusionsReachTile(c), peopleTile(c), implementationTile(c), inventory].filter((x): x is ReadinessTile => x !== null)
+  const facts = [enforcedReadingTile(step), unwatchedTile(step), ownPolicyTile(step), belowGoalFloorTile(c), followUpTile(c), blindReadingTile(step, c), ...emergencyTiles(step, c), ...configuredTiles, ...(configuration.length && step.id !== 's-prereq-break-glass' ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), exclusionsTile(step, c), exclusionsReachTile(c), peopleTile(c), implementationTile(step, c), inventory].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
   // The emergency step's failing checks are its account slots' lines (P0-7): no check tile beside them.
   const fixes = fixTiles(c.fix, prerequisiteLabel).filter((t) => !(step.emergency && t.key.startsWith('check:')) && !(configuration.length && /passkey.*(?:review|settings)|profile.*review/i.test(`${t.label} ${t.value}`)))

@@ -392,7 +392,7 @@ test('6: the countries block makes the allowed-countries location as its own tas
   // Its maker is the step itself (Stage 3), named by the location's own task.
   const own = missingObjects(geo.step).find((m) => m.stepId === geo.step.id)
   assert.ok(own, 'it makes the location itself')
-  assert.equal(own.title, 'Create or Correct Allowed Countries Location', 'named by its own task, never its own title')
+  assert.equal(own.title, 'Set up the allowed countries location', 'named by its own task, never its own title nor the step the task used to be')
   assert.equal(geo.portal, null, 'no portal instructions')
   assert.equal(jsonOffered(geo.step), false, 'no JSON, no PowerShell, no download')
 })

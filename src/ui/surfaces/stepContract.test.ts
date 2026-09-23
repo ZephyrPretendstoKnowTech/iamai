@@ -18,7 +18,7 @@ import { applyProgress } from '../../roadmap/progress.ts'
 import { observationsOf, requiredMembers } from '../../roadmap/tracking.ts'
 import { PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
 import { stepIdForGoal } from '../../roadmap/stepIds.ts'
-import { implementationOffered, isPreserved, unavailableReason } from '../../roadmap/operations.ts'
+import { awaitsOwnObject, implementationOffered, isPreserved, unavailableReason } from '../../roadmap/operations.ts'
 import { operatorExclusionsDecision, exclusionsGroupCandidates } from '../../mapping/safetyChoice.ts'
 import { activePeopleIds } from '../../derive/population.ts'
 import { notPeopleIds } from '../../derive/sets.ts'
@@ -95,6 +95,10 @@ test('contract 1b: a policy the plan cannot write still says what would finish i
     // on a baseline that contradicts itself, where Foundation B's own milestone
     // already says there is nothing to submit and repeating it differently would
     // be a second sentence for one fact.
+    // Nor on a policy whose one missing object is its own to make (Stage 3,
+    // operations.ts awaitsOwnObject): nothing holds it, and its action is that
+    // task, or the question before it, never a reason it is held.
+    if (step.objectTask !== undefined && awaitsOwnObject(step)) continue
     if (c.state.condition !== 'baseline-conflict') assert.notEqual(c.whatToDo.text, c.milestone.label, `${step.id}: the action is the lifecycle's, not the reason it is held`)
   }
 })
