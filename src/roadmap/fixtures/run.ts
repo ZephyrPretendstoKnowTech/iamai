@@ -166,7 +166,7 @@ export function adminsAtRung5(viability: MfaViability[], at: string): MfaViabili
  * suggests it (roadmap/direction.ts): every question of each named step at its
  * saved answer, else its suggestion, saved as Approve answers saves it. A case
  * about what a policy does once nothing is waiting on a person's direction
- * starts here, or it is testing the wait instead. All four steps by default.
+ * starts here, or it is testing the wait instead. All three steps by default.
  */
 export function withDirectionApproved(f: Fixture, ids: readonly DirectionStepId[] = Object.values(DIRECTION_STEP)): Fixture {
   const steps = runFixture(f).steps

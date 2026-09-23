@@ -434,7 +434,8 @@ test('Step 4 correction 4: a step waiting on a held step is held too; waiting on
   // again (roadmap/foundations.ts): A is an object the schedule dates, B a policy
   // dated after it.
   const g = planOf(withDirectionApproved(curatedFixture('demo-week2')))
-  const a = stepOf(g, 's-prereq-allowed-countries')
+  // (The allowed-countries location was A; since Stage 3 it is the countries policy's own task.)
+  const a = stepOf(g, 's-prereq-service-accounts-group')
   const b = stepOf(g, 's-goal-block-unsupported-platforms')
   b.blockers.push({ kind: 'step', stepId: a.id, label: 'create-object' })
   markHoldChains(g.r.steps)

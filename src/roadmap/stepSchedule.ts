@@ -34,7 +34,7 @@ import { toWeekday } from './schedule.ts'
 import { holdOf } from './holds.ts'
 import { directionBlockerStep } from './directionAnswers.ts'
 import type { HoldKind } from './holds.ts'
-import { awaitsWorkflowRecord, implementationOffered } from './operations.ts'
+import { awaitsOwnObject, awaitsWorkflowRecord, implementationOffered } from './operations.ts'
 import { schedulingWords, shared } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import { absoluteDate } from '../copy/dates.ts'
@@ -180,6 +180,11 @@ export function stepScheduleOf(step: Step, basis: ScheduleBasis | null): StepSch
     const transition: ScheduledTransition = step.state.condition === 'needs-decision' ? 'decide' : step.kind === 'prerequisite' ? 'prepare' : 'verify'
     return { ...base, ...span(placed?.start ?? null, wave), class: 'scheduled', transition, enforcement: 'none' }
   }
+  // The object the step makes itself is its next task (Stage 3: the countries
+  // location, on the countries policy): dated as that preparation, on the day
+  // the object's own step was, until the object exists and the policy can be
+  // written (operations.ts awaitsOwnObject).
+  if (awaitsOwnObject(step)) return { ...base, ...span(placed?.start ?? basis?.waveStarts.find((w) => w.wave === wave)?.start ?? null, wave), class: 'scheduled', transition: 'prepare', enforcement: 'none' }
   const lifecycle = step.state.lifecycle
   if (lifecycle === 'report-only') {
     // Watched towards its review day. A window that has closed on records that do

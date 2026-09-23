@@ -948,6 +948,8 @@
         "baseline": "the baseline defines this policy two ways",
         "exclusionsGroup": "until you choose the exclusions group",
         "devicePlan": "until phones and computers are decided",
+        "$commentWorkCountries": "What holds Block Sign-ins From Countries Not Allowed while no work country is saved (roadmap-flow Stage 3, V1 decision 5): the countries step asks them itself with its picker, where Direction asked them before and the row read Waiting on your direction. It waits on a person, not on work.",
+        "workCountries": "until the work countries are saved",
         "direction": "until every answer is approved",
         "unsettled": "until the groups the source policy leaves out are identified",
         "sourceMapping": "Baseline references an unmapped group",

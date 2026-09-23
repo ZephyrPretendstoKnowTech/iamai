@@ -101,7 +101,7 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     key: 'prepare-objects',
     titleKey: 'pages.app.plan.groups.prepareObjects.title',
     completedTitleKey: 'pages.app.plan.groups.prepareObjects.completedTitle',
-    members: ['s-prereq-trusted-location', 's-prereq-allowed-countries', 's-prereq-service-accounts-group'],
+    members: ['s-prereq-trusted-location', 's-prereq-service-accounts-group'],
     pinned: false,
     anatomy: 'task',
   },

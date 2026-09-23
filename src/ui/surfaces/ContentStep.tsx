@@ -212,9 +212,16 @@ export function ContentStep({
   prerequisiteLabel = null,
   onOpenMappings,
   followUp,
+  objectTask,
 }: {
   step: Step
   ctx: StepVarContext
+  /**
+   * The saved decision of the object this step makes itself, and its Save
+   * (Step.objectTask; Stage 3): the countries location's picker, drawn on the
+   * countries step and saved under the location's own id, as it always was.
+   */
+  objectTask?: { saved: StepDecision | null; onDecide?: (decision: StepDecisionInput) => void }
   /** The campaign's "Turn on without them for now" list: its saved decision and its Save (roadmap/followUp.ts). Only the campaign is given one. */
   followUp?: { saved: StepDecision | null; onDecide: (decision: StepDecisionInput) => void }
   /**
@@ -270,7 +277,7 @@ export function ContentStep({
   // sections this step draws and the words under Implementation when it draws
   // none. Everything below renders it; nothing below asks again.
   const body = stepBodyOf(step, ctx, { lane, blockers, prerequisiteLabel, confirmations, baselineCommit, enforceWaits })
-  const { cs, ex, laneView, contract, title, d, reason, conflictWords, pkg, pkgBindings, pkgRuntime, pkgReadiness, scenarios, packaged, whoInline, whoHeld, lead, showWho, whoFull, hasEvidence, readiness, allTiles, decides, instructed, rail, eyebrow, artifacts, emergencyAccountTasks, implementationReference, previewNote, notes, showImplementation, empty, sourceLine, learnUrl, ifWrong } = body
+  const { cs, ex, laneView, contract, title, d, taskDecision, reason, conflictWords, pkg, pkgBindings, pkgRuntime, pkgReadiness, scenarios, packaged, whoInline, whoHeld, lead, showWho, whoFull, hasEvidence, readiness, allTiles, decides, instructed, rail, eyebrow, artifacts, emergencyAccountTasks, implementationReference, previewNote, notes, showImplementation, empty, sourceLine, learnUrl, ifWrong } = body
   const isPasskeySettings = step.id === 's-prereq-passkey-settings'
   const isEmergencyAccounts = step.id === 's-prereq-break-glass'
   // Which steps draw the task anatomy (the Tasks Remaining cards and the
@@ -500,7 +507,8 @@ export function ContentStep({
             a person has (Foundation C). */}
         <StepActionColumn rail={displayRail}>
           {/* A question that moved to Decide Your Tenant's Direction is answered there; this step says where, and what (roadmap/direction.ts ANSWERED_IN). */}
-          {ANSWERED_IN[step.id] ? <AnsweredInDirection stepId={step.id} ctx={ctx} /> : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && <Decision key={step.id} d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} printing={printing} />}
+          {/* The picker is the step's own, or — on a step that makes an object itself and asks nothing of its own — the object's, saved under the object's id (stepBody.ts taskDecision; Stage 3: the countries location's Work Countries, on the countries step). */}
+          {ANSWERED_IN[step.id] ? <AnsweredInDirection stepId={step.id} ctx={ctx} /> : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && <Decision key={step.id} d={taskDecision?.d ?? d} ex={taskDecision?.ex ?? ex} saved={taskDecision ? objectTask?.saved ?? null : decision} onDecide={taskDecision ? objectTask?.onDecide : onDecide} stepId={taskDecision?.stepId ?? step.id} ctx={ctx} printing={printing} />}
           {step.id === SPECIAL_CARE_STEP_ID && (followUp || printing) && <FollowUpDecision key={`${step.id}:follow-up`} step={step} ctx={ctx} saved={followUp?.saved ?? null} onDecide={followUp?.onDecide} printing={printing} />}
           {/* The one thing a scan cannot see, recorded where every other control
               on a step is (owner, 2026-09-20). It used to stand in the main

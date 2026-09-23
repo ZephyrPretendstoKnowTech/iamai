@@ -23,7 +23,7 @@
 import type { CaPolicy, Reference, ReferenceKind } from '../baseline/types.ts'
 import { inventoryReferences, unresolvedReferences } from '../baseline/index.ts'
 import type { MappingState } from '../mapping/types.ts'
-import { PREREQ_STEP_ID } from './stepIds.ts'
+import { PREREQ_STEP_ID, stepIdForGoal } from './stepIds.ts'
 import type { TemplatePlaceholder } from './template.ts'
 import { assumedAbsentSourceGroups } from './sourceMappings.ts'
 
@@ -37,7 +37,8 @@ export type RawPolicy = Record<string, unknown>
 export const PLACEHOLDER_STEP: Record<Exclude<TemplatePlaceholder, '{namePrefix}' | '{coreAdminRoles}'>, string> = {
   '{exclusionsGroup}': PREREQ_STEP_ID.exclusionsGroup,
   '{trustedLocations}': PREREQ_STEP_ID.trustedLocation,
-  '{allowedCountriesLocation}': PREREQ_STEP_ID.allowedCountries,
+  // The countries policy makes its own location, as its first task (Stage 3).
+  '{allowedCountriesLocation}': stepIdForGoal('geo-restriction'),
   '{serviceAccountsGroup}': PREREQ_STEP_ID.serviceAccountsGroup,
 }
 
@@ -488,9 +489,9 @@ function stepForReference(kind: ReferenceKind, token: string | null, goalId: str
   // would leave the policy exactly as blocked as it was and dress a question
   // about the author's baseline up as a task in their tenant.
   if (kind === 'namedLocation') {
-    if (token === 'allowedCountries') return PREREQ_STEP_ID.allowedCountries
+    if (token === 'allowedCountries') return stepIdForGoal('geo-restriction')
     if (token === 'trustedLocation') return PREREQ_STEP_ID.trustedLocation
-    return goalId === 'geo-restriction' ? PREREQ_STEP_ID.allowedCountries : null
+    return goalId === 'geo-restriction' ? stepIdForGoal('geo-restriction') : null
   }
   if (kind === 'authenticationStrength') return PREREQ_STEP_ID.authStrength
   return null

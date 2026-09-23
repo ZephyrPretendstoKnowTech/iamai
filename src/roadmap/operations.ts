@@ -1365,6 +1365,19 @@ export function unavailableReason(step: PolicyStep): UnavailableReason | null {
 }
 
 /**
+ * True where the one thing keeping the policy from being written is an object
+ * the step makes itself, as its own task (roadmap-flow Stage 3: the countries
+ * policy creates the countries location first; stepIds.ts OBJECT_TASK). The
+ * policy is still not written until the object exists, but that task is work
+ * the plan places now: it is neither a hold (holds.ts) nor something with
+ * nothing to run (schedule.ts).
+ */
+export function awaitsOwnObject(step: PolicyStep & { id: string }): boolean {
+  const missing = step.action.missing ?? []
+  return unavailableReason(step) === 'missing-object' && missing.length > 0 && missing.every((m) => m.stepId === step.id)
+}
+
+/**
  * Why a sound implementation is not being handed over today, or null when
  * nothing holds it back.
  *

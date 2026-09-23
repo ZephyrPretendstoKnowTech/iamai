@@ -105,9 +105,12 @@ test('saved travel stays separate from workplace countries; provider and printer
   const saVars = stepVars(sa, ctxFor(f, r, m))
   assert.ok((saVars.accountsWithSignals as string[]).some((row) => row.startsWith('MFP Reception')), 'the printer is a row of the service-accounts picker')
 
-  // The countries step lists New Zealand.
-  const countries = r.steps.find((s) => s.id === PREREQ_STEP_ID.allowedCountries)
+  // The countries step lists New Zealand. The countries location is the
+  // countries policy's own first task since Stage 3 (Step.objectTask), and its
+  // picker rows are that task's.
+  const countries = r.steps.find((s) => s.goalId === 'geo-restriction')?.objectTask
   assert.ok(countries)
+  assert.equal(countries.id, PREREQ_STEP_ID.allowedCountries)
   const cVars = stepVars(countries, ctxFor(f, r, m))
   assert.ok(!(cVars.countriesWithCounts as string[]).some((row) => row.startsWith('New Zealand')), 'travel is not presented as an approved workplace country')
 })

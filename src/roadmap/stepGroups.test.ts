@@ -127,9 +127,10 @@ test('no group lists a step the board can never draw', () => {
   assert.deepEqual([...membersOf('devices')], ['s-goal-require-managed-device', 's-goal-intune-enrollment-reauth', 's-ladder-phone-access-restriction', 's-shared-devices'])
   assert.equal(membersOf('protect-admins').length, 5)
   assert.equal(membersOf('mfa-everyone').includes('s-question-partner'), false, 'the partner follow-up folded into the guests policy')
-  // The three objects a Direction answer asks for are their own group straight
-  // after Direction (owner, 2026-09-20), so the policy group holds policies.
-  assert.deepEqual([...membersOf('prepare-objects')], ['s-prereq-trusted-location', 's-prereq-allowed-countries', 's-prereq-service-accounts-group'])
+  // The objects a Direction answer asks for are their own group straight after
+  // Direction (owner, 2026-09-20), so the policy group holds policies. The
+  // countries location left it in Stage 3: it is the countries policy's own task.
+  assert.deepEqual([...membersOf('prepare-objects')], ['s-prereq-trusted-location', 's-prereq-service-accounts-group'])
   assert.equal(membersOf('where-people-sign-in').length, 3)
   assert.equal(STEP_GROUPS.findIndex((g) => g.key === 'prepare-objects'), STEP_GROUPS.findIndex((g) => g.key === DIRECTION_GROUP) + 1, 'the objects are not read straight after the answers that ask for them')
   // The settings to retire and the foundation's own prerequisites are not objects an answer creates.

@@ -97,7 +97,8 @@ export function holdReasonFor(step: Step, stepById: Map<string, Step>): string |
           if (missing.some((m) => m.unreadable)) return BLOCKED_REASON.unsettled
           // A reference awaiting its Baseline mapping (Plan settings) holds the policy; no step ends it either.
           if (missing.some((m) => m.decision)) return BLOCKED_REASON.sourceMapping
-          return missing.map((m) => after(m.stepId)).find((r): r is string => r !== null) ?? blockedReasonFor(step, stepById)
+          // An object the step makes itself is named by its own task (Stage 3: the countries location).
+          return missing.map((m) => (m.stepId === step.id && step.objectTask ? BLOCKED_REASON.after(contentTitle(step.objectTask)) : after(m.stepId))).find((r): r is string => r !== null) ?? blockedReasonFor(step, stepById)
         }
         case 'escape-hatch-unverified':
           return after(step.action.escapeHatch?.stepId) ?? blockedReasonFor(step, stepById)
@@ -140,7 +141,8 @@ export function holdWaitsOn(step: Step): string[] {
   for (const b of step.blockers) if (b.kind === 'step' && b.held === true) add(b.stepId)
   if (hold.kind === 'unavailable') {
     const reason = unavailableReason(step)
-    if (reason === 'missing-object') for (const m of step.action.missing ?? []) add(m.stepId)
+    // Never itself: an object the step makes is its own task (Stage 3).
+    if (reason === 'missing-object') for (const m of step.action.missing ?? []) if (m.stepId !== step.id) add(m.stepId)
     if (reason === 'escape-hatch-unverified') add(step.action.escapeHatch?.stepId)
     if (reason === 'unsafe-emergency-access' || reason === 'unverified-emergency-exclusion') add(BREAK_GLASS_STEP_ID)
   }

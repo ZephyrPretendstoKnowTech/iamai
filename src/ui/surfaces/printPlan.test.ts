@@ -548,7 +548,8 @@ test('the printed step reads the saved decision, and never prints a picker\'s ow
   assert.equal(printedDefaultLine(names), `Suggested by IAMAI, not saved yet: ${names.join(', ')}`)
   assert.equal(printedDefaultLine([]), 'Not saved yet.', 'a picker with nothing to suggest prints an empty heading')
   const body = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
-  assert.match(body, /<Decision key=\{step\.id\} d=\{d\} ex=\{ex\} saved=\{decision\} onDecide=\{onDecide\} stepId=\{step\.id\} ctx=\{ctx\} printing=\{printing\} \/>/, 'the decision is not told it is printing')
+  // The one picker is the step's own or, on a step that makes an object itself, the object's (stepBody.ts taskDecision; Stage 3).
+  assert.match(body, /<Decision key=\{step\.id\} d=\{taskDecision\?\.d \?\? d\} ex=\{taskDecision\?\.ex \?\? ex\} saved=\{taskDecision \? objectTask\?\.saved \?\? null : decision\} onDecide=\{taskDecision \? objectTask\?\.onDecide : onDecide\} stepId=\{taskDecision\?\.stepId \?\? step\.id\} ctx=\{ctx\} printing=\{printing\} \/>/, 'the decision is not told it is printing')
   assert.match(body, /printing && initial\.defaulted && !isExclusionsGroup\n?\s*\? <p className="reason">\{printedDefaultLine\(chips\.map\(\(c\) => c\.name\)\)\}<\/p>/, 'a printed picker with nothing saved does not say so')
   assert.equal(/printing && initial\.defaulted \? \[\]/.test(body), false, 'a printed picker drops its suggestion and prints an empty heading')
 })

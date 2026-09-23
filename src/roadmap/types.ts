@@ -720,6 +720,15 @@ export type Step = {
    */
   doesntApplyByScan?: true
   /**
+   * The object this step makes itself, as its own task (roadmap-flow Stage 3;
+   * stepIds.ts OBJECT_TASK): the countries location, on Block Sign-ins From
+   * Countries Not Allowed. It is the reading the location's own step carried —
+   * its state, its proposed name, what the scan matched — under that step's old
+   * id, so the screen draws it with the location's content, implementation and
+   * picker. It is not a step of the plan: no board, schedule or lane reads it.
+   */
+  objectTask?: Step
+  /**
    * The gap a partly-in-place or below-baseline goal leaves, as the clause a
    * plan row shows: "sessions expire every 168h, baseline wants 4h". Null when
    * there is no gap to state (prompt 46 item 9).

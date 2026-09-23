@@ -452,6 +452,11 @@ const INVENTORY: string[] = [
   // A prerequisite step that now carries a finding: the security-defaults step
   // reports the coexistence when policies are enforced while defaults are on.
   'object · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · found · no-fix · one-policy · who-none',
+  // The countries policy making its own location first (Stage 3): nothing holds
+  // it, its next task is the location, and its policy waits for that object.
+  'policy · create · not-deployed · healthy · open · do:resolve · track · no-implementation · no-found · no-fix · one-policy · who-unknown', // demo-week2+settled/s-goal-geo-restriction
+  // And asking for its work countries, before which nothing of it can be written.
+  'policy · create · not-deployed · needs-decision · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown', // demo/s-goal-geo-restriction
 ]
 
 test('§1 the sweep reaches every canonical Plan case, and renders the inventory that was migrated', () => {

@@ -217,6 +217,11 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
       blockers.push({ kind: 'sourceMapping', id: `sourceMapping:${m.token.slice(0, 8)}`, ...(role ? { role } : {}) })
       continue
     }
+    // An object the step makes itself is its own task, not a wait and not a
+    // missing object (Stage 3: the countries policy makes the countries
+    // location). Without this it waited on itself, or read On Hold ·
+    // missingObject over work its own Implementation Tasks hand over now.
+    if (m.stepId === step.id) continue
     const maker = m.stepId !== null ? byId.get(m.stepId) : undefined
     if (maker && GRAPH.steps.has(maker.id) && graphGates(step.id, maker.id, action)) continue
     if (maker && GRAPH.steps.has(maker.id) && maker.status !== 'done') waitsOn.push({ step: maker.id, action, milestone: 'complete' })

@@ -1222,9 +1222,17 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     steps.push(s)
   }
 
-  // Allowed countries (prompt 16 §4): the named location is created in phase
-  // 0 unless the tenant already has one with exactly that list.
+  // Allowed countries (prompt 16 §4): the named location is created unless the
+  // tenant already has one with exactly that list.
+  //
+  // It is not a step of the plan (roadmap-flow Stage 3, V1 decision 5): Block
+  // Sign-ins From Countries Not Allowed is its only reader, and makes it as its
+  // own task — pick the work countries, create or correct the location, create
+  // the policy in report-only, turn it on. The reading is built here exactly as
+  // the location step's was, and handed to that step below (Step.objectTask),
+  // which draws it with the location's own content, package and picker.
   const countriesStepId = PREREQ_STEP_ID.allowedCountries
+  let countriesTask: Step | null = null
   if (canUseConditionalAccess && input.coverage.results.some((r) => r.goal.id === 'geo-restriction' && r.status !== 'licence-limited')) {
     const proposed = proposedObjectNames(naming).allowedCountries
     const needsWorkCountryReview = mapping.workCountriesConfirmed !== true && travelCountriesOf(mapping).some(country => mapping.allowedCountries.includes(country))
@@ -1235,7 +1243,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       s.blockers = [{ kind: 'decision', label: 'work-countries-review', binding: 'Confirm Work Countries: this older plan combined work and travel countries.' }]
       setState(s, { condition: 'needs-decision' })
     }
-    steps.push(s)
+    countriesTask = s
   }
   // Confirmed service accounts with no group holding them (prompt 16 §3).
   const saStepId = PREREQ_STEP_ID.serviceAccountsGroup
@@ -1533,7 +1541,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   if (gate === null && geStep && geStep.status !== 'done') gate = gateFor('exclusionGroup')
   // The step has to exist before the goal loop so a held step can name it; the
   // count of what it holds is filled in once the goal steps are known.
-  attachConfigurationFindings(steps, validationReports)
+  // The countries list's checks wait for the step that now carries them (the
+  // countries policy, built in the goal loop below; Stage 3).
+  attachConfigurationFindings(steps, validationReports.filter((r) => r.subject !== 'allowedCountries'))
   if (bgStep && bgReport) bgStep.configurationFindings = journeyAccountFindings(bgReport, snapshot, mapping, input.groupMembers)
   if (geStep) {
     const savedExclusions = operatorExclusionsDecision(mapping)
@@ -1674,6 +1684,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const blockers: Blocker[] = []
     const unblockNotes: string[] = []
     const blockByStep = (id: string, label: string): void => {
+      // An object this step makes itself is its own task, not a wait (Stage 3:
+      // the countries policy makes the countries location).
+      if (id === stepId) return
       if (blockedBy.includes(id)) return
       blockedBy.push(id)
       blockers.push({ kind: 'step', stepId: id, label })
@@ -2017,9 +2030,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // Named dependencies (prompt 12 §B).
     if (!state.satisfied) {
       if (goal.id === 'register-info-protected' && steps.some((s) => s.id === locStepId && s.status !== 'done' && s.doesntApply == null) && !doesntApply(locStepId)) blockByStep(locStepId, 'trusted-location')
-      if (goal.id === 'geo-restriction') {
-        if (steps.some((s) => s.id === countriesStepId)) blockByStep(countriesStepId, 'create-object')
-      }
       // Every policy that requires the baseline's own custom strength waits on
       // the step that creates it — read off the step's own missing list, so the
       // dependency is the same fact the body already reports and never a second
@@ -2830,18 +2840,53 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     if (trustedLocationCount === 0 && !doesntApply(locStepId) && !locationStepToDo) blockLate(registrationStep, 'registration-no-trusted-location', BLOCKED_REASON.exist(1, 'trusted location', 0))
   }
 
+  // The countries location, as the countries policy's own first task (Stage 3,
+  // V1 decision 5). The step carries the location's reading for the screen
+  // (Step.objectTask) and asks the work countries itself: until at least one is
+  // saved by a person it reads Needs decision, as the location step and the
+  // Direction question it came from both did. The picker keeps saving under the
+  // location's old id (decisions.ts DECISION_STEPS.countries). An older plan
+  // that mixed work and travel countries asks for them again, as before.
+  const geoStep = steps.find((s) => s.goalId === 'geo-restriction' && s.id === idFor('goal', 'geo-restriction')) ?? null
+  if (geoStep && countriesTask) {
+    geoStep.objectTask = countriesTask
+    const workCountriesSaved = mapping.allowedCountries.length > 0 && (mapping.workCountriesConfirmed === true || (mapping.wizardAnswered.countries === true && mapping.assumed?.countries !== 'detected'))
+    const open = geoStep.status !== 'done' && geoStep.status !== 'skipped' && !geoStep.state.satisfied && !geoStep.state.setAside && geoStep.state.lifecycle !== 'enforced'
+    const review = countriesTask.blockers.find((b) => b.label === 'work-countries-review')
+    if (open && (!workCountriesSaved || review)) {
+      geoStep.blockers.push(review ?? { kind: 'decision', label: 'work-countries', binding: BLOCKED_REASON.workCountries })
+      setState(geoStep, { condition: 'needs-decision' })
+    }
+  }
+  // Its checks — the countries people sign in from, your own, unknown countries —
+  // are 6.3's (blockerSteps.ts attachConfigurationFindings, through the
+  // location's old repair id): a failing one keeps it from reading Completed.
+  attachConfigurationFindings(steps, validationReports.filter((r) => r.subject === 'allowedCountries'))
+
   // 2. No country block before the operator's own recent countries are in the
   // allow list, and before the list itself passes its checks.
+  //
+  // Only a policy that names the countries location can be hurt by a bad list
+  // (Stage 3): by its resolved id, or — while there is none yet — by the
+  // reference the countries step makes (resolvePolicy.ts: its maker is 6.3). It held every policy that names any place — registration protection,
+  // which names only the trusted network, waited on the countries step with an
+  // empty list — and a list of countries changes nothing those policies do.
+  // On the countries policy itself, which makes the list, it holds the turn-on
+  // and never the report-only creation, and it is no wait on itself.
   const countriesReport = validationReports.find((r) => r.subject === 'allowedCountries')
   if (countriesReport && countriesReport.blocking.length > 0) {
-    // Which steps a bad country list can hurt is the policies' own answer: the
-    // ones that will name a place. A step with no policy of its own — one
-    // already in place, the enforce step — is read by its goal's family, as it
-    // always was (roadmap/strand.ts familyReading).
+    const locationId = countriesLocationId?.toLowerCase() ?? null
+    const namesCountriesLocation = (s: Step): boolean =>
+      (s.action.missing ?? []).some((m) => m.token === '{allowedCountriesLocation}' || (geoStep !== null && m.stepId === geoStep.id)) ||
+      (locationId !== null && (s.action.resolution?.policies ?? []).some((o) => JSON.stringify((o.body as { conditions?: { locations?: unknown } } | undefined)?.conditions?.locations ?? null).toLowerCase().includes(locationId)))
     for (const s of steps) {
-      const effects = effectsOf(s)
-      const namesAPlace = effects !== null ? effects.some((e) => e.usesLocations) : familyReading(s) === 'location'
-      if (namesAPlace) blockLate(s, 'countries-unsafe', null, canonicalBlockerStepId('allowedCountries'))
+      if (s.id === geoStep?.id) {
+        if (s.state.satisfied || s.state.setAside) continue
+        if (!s.blockers.some((b) => b.kind === 'readiness' && b.label === 'countries-unsafe')) {
+          s.blockers.push({ kind: 'readiness', label: 'countries-unsafe', binding: BLOCKED_REASON.after(stepById[countriesStepId]?.title ?? countriesStepId) })
+        }
+        raiseCondition(s, 'blocked')
+      } else if (namesCountriesLocation(s)) blockLate(s, 'countries-unsafe', null, geoStep?.id ?? canonicalBlockerStepId('allowedCountries'))
     }
   }
 

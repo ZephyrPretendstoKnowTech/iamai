@@ -31,7 +31,8 @@ const PILOT = 's-goal-admin-session'
 function bodyOf(stepId: string, name: FixtureName = 'demo', settled = false, over: Partial<RoadmapInput> = {}) {
   const value = settled ? withRecoveryTested(withFoundationSettled(fixture(name))) : fixture(name)
   const run = runFixture(value, over)
-  const step = run.steps.find((row) => row.id === stepId)!
+  // An object a step makes itself is that step's task, not a step (Stage 3): found on its owner.
+  const step = run.steps.find((row) => row.id === stepId) ?? run.steps.map((row) => row.objectTask).find((task) => task?.id === stepId)!
   const ctx: StepVarContext = { snapshot: value.snapshot, mapping: value.mapping, nameOf: (id) => run.input.names!.label(id), signature: 'IT', operatorId: value.operatorId, now: value.snapshot.asOf, groups: value.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
   return { step, body: stepBodyOf(step, ctx) }
 }
@@ -500,7 +501,9 @@ test('a field still waiting on a reference is not printed as a setting to copy',
   assert.ok(waiting.length > 0, 'the premise: midflight has steps waiting on a reference')
   let printed = 0
   for (const step of waiting) {
-    const portal = stepBodyOf(step, ctx).artifacts.find((a) => a.id === 'portal')
+    // The policy's own procedure: a step that makes its object itself leads with
+    // that object's Implementation while it is to be made (stepBody.ts; Stage 3).
+    const portal = stepBodyOf({ ...step, objectTask: undefined }, ctx).artifacts.find((a) => a.id === 'portal')
     const text = portal?.text() ?? ''
     const at = text.indexOf('Settings for This Action')
     if (at < 0) continue

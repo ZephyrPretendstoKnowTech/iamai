@@ -21,8 +21,10 @@ test('the countries step shows the travellers question on the demo, and its answ
   // The mapping as the plan derives it: the detected defaults are its decisions.
   const mapping = applyStepDecisions(f.mapping, defaultDecisions({ snapshot: f.snapshot, mapping: f.mapping, nameOf, groups: f.groups, now: f.snapshot.asOf }), 'detected')
   const r = runFixture({ ...f, mapping }, { mapping })
-  const step = r.steps.find((s) => s.id === PREREQ_STEP_ID.allowedCountries)
+  // The countries location's picker and its question are the countries policy's first task since Stage 3 (Step.objectTask), saved under the location's own id.
+  const step = r.steps.find((s) => s.goalId === 'geo-restriction')?.objectTask
   assert.ok(step, 'the demo plan holds the countries step')
+  assert.equal(step.id, PREREQ_STEP_ID.allowedCountries)
   const cs = contentStepFor(step) as Record<string, any>
   const ex = stepVars(step, { snapshot: f.snapshot, mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }) as Record<string, unknown>
   const q = questionFor(cs.decision, ex)

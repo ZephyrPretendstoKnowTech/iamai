@@ -311,10 +311,11 @@ test('the two named locations this baseline does settle keep their Preparation s
   for (const name of ['demo-week2', 'small', 'mid'] as FixtureName[]) {
     const geo = runFixture(fixture(name)).steps.find((s) => s.id === 's-goal-geo-restriction')
     assert.ok(geo, `${name}: the countries step is on the plan`)
+    // Made by the countries step itself, as its own task, since Stage 3.
     assert.equal(
-      (geo.action.missing ?? []).some((m) => m.stepId === PREREQ_STEP_ID.allowedCountries),
+      (geo.action.missing ?? []).some((m) => m.stepId === geo.id),
       true,
-      `${name}: the countries goal's own location still waits on the allowed-countries step`,
+      `${name}: the countries goal's own location is not the countries step's own task`,
     )
   }
 })
