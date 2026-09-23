@@ -8,7 +8,7 @@
 // back — but it is never counted as read: `unreadSources()` names it, and
 // Connect lists it under every finished scan, complete or not.
 // Pure; the runner (ui/scan/useScanRunner.ts) decides from it.
-import { isLicenceGate, rolesForSource } from './roles.ts'
+import { isLicenceGate, isPrivilegeDenial, rolesForSource } from './roles.ts'
 import type { ConfigSectionKey, SourceKey, TenantSnapshot } from './types.ts'
 
 export const CORE_SOURCES = ['config:caPolicies', 'users', 'signInEvidence'] as const
@@ -93,9 +93,27 @@ const readAsFarAsLicensed = (s: { status: string; reason: string | null }): bool
 export type UnreadSection = {
   /** The registry key, which carries the section's label (pages.app.scan.sections). */
   source: string
-  /** Some of it arrived and some did not, so the plan is built on less than the tenant holds. */
+  /**
+   * Some of it arrived and some did not, so the plan is built on less than the
+   * tenant holds. A sign-in read stopped short of its minimum ('insufficient')
+   * with a covered window returned those hours: that is a read in part too.
+   */
   partial: boolean
+  /**
+   * Graph refused the signed-in account (roles.ts isPrivilegeDenial): the one
+   * reason another account or role could change. An error, a throttled read or
+   * a read stopped short is not the account's doing, and Connect never says it
+   * is. A section the scan lacks altogether has no reason, and is not a refusal.
+   */
+  refused: boolean
 }
+
+/** One unread section, classified once from the state the scan recorded for it. */
+const unreadOf = (source: string, s: { status: string; reason: string | null; coveredWindow?: unknown }): UnreadSection => ({
+  source,
+  partial: s.status === 'partial' || (s.status === 'insufficient' && !!s.coveredWindow),
+  refused: isPrivilegeDenial(s.reason),
+})
 
 /**
  * Every section the scan did not read in full (a refusal, an error, or a read
@@ -114,22 +132,22 @@ export function unreadSources(snapshot: TenantSnapshot): UnreadSection[] {
     const s = snapshot.config?.[key]
     const source = `config:${key}`
     if (!s) {
-      if ((CORE_SOURCES as readonly string[]).includes(source)) out.push({ source, partial: false })
+      if ((CORE_SOURCES as readonly string[]).includes(source)) out.push({ source, partial: false, refused: false })
       continue
     }
     if (s.status === 'ok') continue
     if (readAsFarAsLicensed(s)) continue
-    out.push({ source, partial: s.status === 'partial' })
+    out.push(unreadOf(source, s))
   }
   for (const key of SOURCE_KEYS) {
     const s = snapshot.sources?.[key]
     if (!s) {
-      if ((CORE_SOURCES as readonly string[]).includes(key)) out.push({ source: key, partial: false })
+      if ((CORE_SOURCES as readonly string[]).includes(key)) out.push({ source: key, partial: false, refused: false })
       continue
     }
     if (s.status === 'ok') continue
     if (readAsFarAsLicensed(s)) continue
-    out.push({ source: key, partial: s.status === 'partial' })
+    out.push(unreadOf(key, s))
   }
   return out
 }

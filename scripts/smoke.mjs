@@ -821,7 +821,7 @@ try {
   await sleep(1500)
   check('Scan with gaps: the tile says so and builds no plan', await waitFor(`/finished with gaps · no plan built/.test(document.body.innerText)`))
   t = await text()
-  check('Scan with gaps: the unread sections are rows marked not read', /Conditional Access policies\s*not read/.test(t) && /Sign-in records\s*not read/.test(t))
+  check('Scan with gaps: the unread sections are rows marked not read, and the refused one says so', /Conditional Access policies\s*not read/.test(t) && /Sign-in records\s*refused to this account/.test(t))
   check('Scan with gaps: the one ask is Global Reader, read-only', /Ask whoever administers the tenant for Global Reader; it reads every section and writes nothing\./.test(t) && !/Security Reader|Reports Reader/.test(t))
   check('Scan with gaps: the last full plan stays open', /Open the last full plan \([A-Z][a-z]{2} \d+\)/.test(t) && !/Open the plan →/.test(t))
 

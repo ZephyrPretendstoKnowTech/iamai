@@ -226,14 +226,14 @@ test('tile 3, Scan, complete with sections it did not read in full: the same com
     at: full.asOf,
     now: twoMinutesLater,
     unread: [
-      { source: 'config:caPolicies', partial: true },
-      { source: 'config:roleAssignments', partial: false },
-      { source: 'devices', partial: false },
+      { source: 'config:caPolicies', partial: true, refused: false },
+      { source: 'config:roleAssignments', partial: false, refused: false },
+      { source: 'devices', partial: false, refused: false },
     ],
   })
   assert.equal(t.state, 'complete · 2 minutes ago', 'a plan was built: the scan is complete and says so')
   assert.equal(t.tone, 'done', 'not a failure, and not the gaps tile')
-  assert.equal(t.lead, '3 sections were not read in full with this account. The plan is built from what IAMAI did read, so check these before you act on it.')
+  assert.equal(t.lead, '3 sections were not read in full. The plan is built from what IAMAI did read, so check these before you act on it.')
   assert.deepEqual(t.rows, [
     { name: 'Conditional Access policies', value: 'partly read' },
     { name: 'Role assignments', value: 'not read' },
@@ -242,30 +242,30 @@ test('tile 3, Scan, complete with sections it did not read in full: the same com
   assert.deepEqual(t.actions, [{ label: 'Scan again', weight: 'secondary' }], 'no Sign in with another account: the plan was built')
   scanOnlyItsOwn(t)
   // One section: the line counts itself down (content/render.ts pluralise).
-  const one = scanTile({ kind: 'complete', at: full.asOf, now: twoMinutesLater, unread: [{ source: 'devices', partial: false }] })
+  const one = scanTile({ kind: 'complete', at: full.asOf, now: twoMinutesLater, unread: [{ source: 'devices', partial: false, refused: false }] })
   assert.match(one.lead ?? '', /^1 section was not read in full/)
 })
 
 test('every section label the unread list can name is a phrase, never a Graph key', () => {
   const every = [...CONFIG_KEYS.map((k) => `config:${k}`), ...SOURCE_KEYS]
-  const t = scanTile({ kind: 'complete', at: full.asOf, now: twoMinutesLater, unread: every.map((source) => ({ source, partial: false })) })
+  const t = scanTile({ kind: 'complete', at: full.asOf, now: twoMinutesLater, unread: every.map((source) => ({ source, partial: false, refused: false })) })
   for (const row of t.rows ?? []) assert.doesNotMatch(row.name, /^config:|^[a-z]+[A-Z]/, `${row.name} reaches the operator as its Graph key`)
 })
 
 test('tile 3, finished with gaps: the unread rows, one ask for Global Reader with the Microsoft link, Sign in with another account (primary), Scan again (secondary), the amber badge; no plan button', () => {
   const unread = unreadSources(gapsSnapshot())
   assert.deepEqual(unread, [
-    { source: 'config:caPolicies', partial: false },
-    { source: 'signInEvidence', partial: false },
+    { source: 'config:caPolicies', partial: false, refused: false },
+    { source: 'signInEvidence', partial: false, refused: true },
   ])
   const t = scanTile({ kind: 'gaps', unread, lastScan: last })
   beatsOf(t)
   assert.equal(t.state, 'finished with gaps · no plan built')
   assert.equal(t.tone, 'wait')
-  assert.equal(t.lead, '2 sections could not be read with this account. The plan needs them, so IAMAI kept your last full plan and built nothing from this scan.')
+  assert.equal(t.lead, '2 sections could not be read in full. The plan needs them, so IAMAI kept your last full plan and built nothing from this scan.')
   assert.deepEqual(t.rows, [
     { name: 'Conditional Access policies', value: 'not read' },
-    { name: 'Sign-in records', value: 'not read' },
+    { name: 'Sign-in records', value: 'refused to this account' },
   ])
   assert.equal(t.ask, 'Ask whoever administers the tenant for Global Reader; it reads every section and writes nothing.')
   assert.equal(t.learn?.label, 'Microsoft: Global Reader')
@@ -275,9 +275,64 @@ test('tile 3, finished with gaps: the unread rows, one ask for Global Reader wit
     { label: 'Scan again', weight: 'secondary' },
   ])
   const first = scanTile({ kind: 'gaps', unread, lastScan: null })
-  assert.equal(first.lead, '2 sections could not be read with this account. The plan needs them, so IAMAI built nothing from this scan.')
+  assert.equal(first.lead, '2 sections could not be read in full. The plan needs them, so IAMAI built nothing from this scan.')
   assert.deepEqual(first.actions, t.actions, 'the last full plan is the Plan tile\'s, not this one\'s')
   scanOnlyItsOwn(t)
+})
+
+// Phase 2 audit (Connect): every unread section was said to be unread "with
+// this account", and the gaps tile asked for Global Reader and offered another
+// account whatever the reason. A read Microsoft throttled, or one the sign-in
+// read stopped at its memory ceiling, is not the account's doing: a Global
+// Reader was told to ask for Global Reader. Only a refusal (roles.ts
+// isPrivilegeDenial) names this account and carries the ask, in both states.
+test('a section Microsoft did not return in full is not blamed on the account; only a refusal names this account and asks for Global Reader', () => {
+  const said = (t: ScanTile): string => tileStrings(t).join('\n')
+  const small = fixture('small').snapshot
+  // The sign-in read stopped at the memory ceiling with 9 hours of records (laneBCore.ts 'insufficient').
+  const ceiling = structuredClone(small)
+  ceiling.sources.signInEvidence = { status: 'insufficient', reason: 'stopped at memory ceiling with only 9 h covered (minimum 24 h)', coveredWindow: { from: '2026-09-07T15:00:00Z', to: '2026-09-08T00:00:00Z' }, asOf: ceiling.asOf }
+  const stopped = scanTile({ kind: 'gaps', unread: unreadSources(ceiling), lastScan: null })
+  assert.deepEqual(stopped.rows, [{ name: 'Sign-in records', value: 'partly read' }], 'nine hours of records is a read in part, not nothing')
+  assert.doesNotMatch(said(stopped), /this account|Global Reader/, 'a read stopped short is not blamed on the account')
+  assert.equal(stopped.ask, undefined)
+  assert.equal(stopped.learn, undefined)
+  assert.deepEqual(stopped.actions, [{ label: 'Scan again', weight: 'secondary' }], 'another account reads nothing more')
+  // Microsoft throttled the read and the retries ran out.
+  const throttled = structuredClone(small)
+  throttled.sources.signInEvidence = { status: 'error', reason: 'HTTP 429 TooManyRequests', coveredWindow: null, asOf: throttled.asOf }
+  const busy = scanTile({ kind: 'gaps', unread: unreadSources(throttled), lastScan: null })
+  assert.deepEqual(busy.rows, [{ name: 'Sign-in records', value: 'not read' }])
+  assert.doesNotMatch(said(busy), /this account|Global Reader/)
+  assert.deepEqual(busy.actions, [{ label: 'Scan again', weight: 'secondary' }])
+  // A refusal is the account's: that row says so, and the ask and the other account stay.
+  const refused = scanTile({ kind: 'gaps', unread: unreadSources(gapsSnapshot()), lastScan: null })
+  assert.deepEqual(refused.rows, [
+    { name: 'Conditional Access policies', value: 'not read' },
+    { name: 'Sign-in records', value: 'refused to this account' },
+  ])
+  assert.equal(refused.ask, 'Ask whoever administers the tenant for Global Reader; it reads every section and writes nothing.')
+  assert.equal(refused.learn?.label, 'Microsoft: Global Reader')
+  assert.deepEqual(refused.actions.map((a) => a.label), ['Sign in with another account', 'Scan again'])
+  assert.doesNotMatch(refused.lead ?? '', /this account/, 'the lead counts the sections; the row names the refusal')
+  // A complete scan the account was refused sections of carries the same ask (finding: "check these" alone could not be acted on).
+  const denied = structuredClone(small)
+  denied.sources.registrationDetails = { ...denied.sources.registrationDetails, status: 'disabled', reason: 'access denied (403)', coveredWindow: null }
+  denied.sources.devices = { ...denied.sources.devices, status: 'disabled', reason: 'access denied (403)', coveredWindow: null }
+  const built = scanTile({ kind: 'complete', at: full.asOf, now: twoMinutesLater, unread: unreadSources(denied) })
+  assert.deepEqual(built.rows, [
+    { name: 'MFA registration', value: 'refused to this account' },
+    { name: 'Devices', value: 'refused to this account' },
+  ])
+  assert.equal(built.ask, 'Ask whoever administers the tenant for Global Reader; it reads every section and writes nothing.')
+  assert.equal(built.learn?.label, 'Microsoft: Global Reader')
+  assert.deepEqual(built.actions, [{ label: 'Scan again', weight: 'secondary' }], 'the plan was built: Scan again alone')
+  // And a complete scan whose shortfall is not a refusal says nothing about the account.
+  const demo = fixture('demo').snapshot
+  const partly = scanTile({ kind: 'complete', at: full.asOf, now: twoMinutesLater, unread: unreadSources(demo) })
+  assert.ok((partly.rows ?? []).length > 0, 'the premise: the demo scan read a section in part')
+  assert.doesNotMatch(said(partly), /this account|Global Reader/)
+  assert.equal(partly.ask, undefined)
 })
 
 test('tile 3, not started: the account, one row asking for Global Reader, Sign in with another account (primary) alone, the red badge', () => {

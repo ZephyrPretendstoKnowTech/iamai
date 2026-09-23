@@ -812,7 +812,7 @@ export function renderPages(): string {
         cx.scan.gaps.state,
         p(cx.scan.gaps.lead, { n: 3 }) +
           p(cx.scan.gaps.leadFirst, { n: 3 }, 'sub') +
-          li(`Conditional Access policies · ${esc(cx.scan.gaps.notRead)}`, `Named locations · ${esc(cx.scan.gaps.notRead)}`) +
+          li(`Conditional Access policies · ${esc(cx.scan.gaps.notRead)}`, `Named locations · ${esc(cx.scan.gaps.notRead)}`, `Sign-in records · ${esc(cx.scan.gaps.refused)}`) +
           sub(fill(cx.scan.gaps.ask, { role: 'Global Reader' }), `<a>${esc(cx.scan.gaps.learn.label)}</a>`) +
           acts(cx.account.signInAnother, cx.scan.complete.again),
       ) +

@@ -61,7 +61,7 @@ type Words = {
     limitsLink: string
     meta: { people: string; policies: string; steps: string }
     complete: { state: string; again: string; degraded: string; unread: string }
-    gaps: { state: string; lead: string; leadFirst: string; notRead: string; partlyRead: string; ask: string; learn: { label: string; url: string } }
+    gaps: { state: string; lead: string; leadFirst: string; notRead: string; partlyRead: string; refused: string; ask: string; learn: { label: string; url: string } }
     role: { state: string; lead: string; row: string; ask: string }
     ready: { state: string; note: string; start: string }
     scanning: { state: string; stop: string }
@@ -389,8 +389,14 @@ export function scanTile(input: ScanInput): ScanTile {
   const again: Action = { label: S.complete.again, weight: 'secondary' }
   // One row per section the scan did not read in full, in both states. A section
   // read in PART says so: "not read" would understate what IAMAI holds, and the
-  // two are different problems to take to whoever administers the tenant.
-  const unreadRow = (u: UnreadSection): { name: string; value: string } => ({ name: sectionLabel(u.source), value: u.partial ? S.gaps.partlyRead : S.gaps.notRead })
+  // two are different problems to take to whoever administers the tenant. A
+  // section Graph refused the account says that, and only a refusal is laid at
+  // the account's door: an error, a throttled read or a read stopped short is
+  // not something another account or role would change (coreSections.ts).
+  const unreadRow = (u: UnreadSection): { name: string; value: string } => ({ name: sectionLabel(u.source), value: u.partial ? S.gaps.partlyRead : u.refused ? S.gaps.refused : S.gaps.notRead })
+  // The Global Reader ask, and its Microsoft link, where a row is a refusal and nowhere else.
+  const askFor = (rows: readonly UnreadSection[]): { ask: string; learn: { label: string; url: string } } | Record<string, never> =>
+    rows.some((u) => u.refused) ? { ask: fillText(S.gaps.ask, { role: READ_EVERYTHING_ROLE }), learn: S.gaps.learn } : {}
   switch (input.kind) {
     case 'complete': {
       const c = input.counts
@@ -404,6 +410,7 @@ export function scanTile(input: ScanInput): ScanTile {
         tone: 'done',
         meta: c ? [{ value: String(c.people), label: S.meta.people }, { value: String(c.policies), label: S.meta.policies }, { value: String(c.steps), label: S.meta.steps }] : undefined,
         ...(unread.length > 0 ? { lead: fillText(S.complete.unread, { n: unread.length }), rows: unread.map(unreadRow) } : {}),
+        ...askFor(unread),
         ...(input.degraded ? { note: S.complete.degraded } : {}),
         actions: [again],
       }
@@ -417,9 +424,9 @@ export function scanTile(input: ScanInput): ScanTile {
         tone: 'wait',
         lead: fillText(input.lastScan ? G.lead : G.leadFirst, { n: input.unread.length }),
         rows: input.unread.map(unreadRow),
-        ask: fillText(G.ask, { role: READ_EVERYTHING_ROLE }),
-        learn: G.learn,
-        actions: [signInAnother, again],
+        ...askFor(input.unread),
+        // Another account is offered only where one was refused: it reads nothing more otherwise.
+        actions: input.unread.some((u) => u.refused) ? [signInAnother, again] : [again],
       }
     }
     case 'role': {
