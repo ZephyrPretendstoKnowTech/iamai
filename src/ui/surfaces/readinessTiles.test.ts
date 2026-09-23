@@ -268,7 +268,8 @@ test('two configuration checks that produce the same card draw one card', () => 
 test('each configuration check on the allowed-countries step is its own card, and one that never ran reads Not Read', () => {
   const f = fixture('hostile')
   assert.equal(f.snapshot.sources.signInEvidence?.status, 'insufficient', 'the premise: hostile\'s sign-in records could not be used')
-  const { step, c } = opened(f, 's-prereq-allowed-countries')
+  // The countries location's checks are Block Sign-ins From Countries Not Allowed's since Stage 3.
+  const { step, c } = opened(f, 's-goal-geo-restriction')
   const cards = readinessOf(step, c).tiles.filter((t) => t.key.startsWith('configuration:'))
   const labels = cards.map((t) => t.label)
   assert.equal(labels.length, new Set(labels).size, `two checks share a heading: ${labels.join(' | ')}`)
@@ -314,7 +315,7 @@ test('a country check that ran on sign-in records holding nothing to decide on r
     if (e) e.countries = []
   }
   if (f.snapshot.evidenceAggregates) (f.snapshot.evidenceAggregates as { byCountry: unknown }).byCountry = null
-  const { step, c } = opened(f, 's-prereq-allowed-countries')
+  const { step, c } = opened(f, 's-goal-geo-restriction')
   const cards = readinessOf(step, c).tiles.filter((t) => t.key.startsWith('configuration:'))
   for (const id of ['cty.includesOperator', 'cty.seenCountriesIncluded']) {
     const card = cards.find((t) => t.key.startsWith(`configuration:${id}:`))

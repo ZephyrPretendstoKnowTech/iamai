@@ -371,11 +371,14 @@ test('6: an object the tenant does not have withholds Portal, JSON, PowerShell a
   assert.ok(unearned >= 1, `the report-only case exercised (${unearned})`)
 })
 
-test('6: the countries block waits on the allowed-countries location, and nothing actionable escapes', () => {
+test('6: the countries block makes the allowed-countries location as its own task, and nothing actionable escapes', () => {
   const { rows } = policySteps('demo-week2')
   const geo = rows.find((r) => r.step.goalId === 'geo-restriction')
   assert.ok(geo, 'the countries block is in the plan')
-  assert.ok(missingObjects(geo.step).some((m) => m.stepId === PREREQ_STEP_ID.allowedCountries), 'it names the step that creates the location')
+  // Its maker is the step itself (Stage 3), named by the location's own task.
+  const own = missingObjects(geo.step).find((m) => m.stepId === geo.step.id)
+  assert.ok(own, 'it makes the location itself')
+  assert.equal(own.title, 'Create or Correct Allowed Countries Location', 'named by its own task, never its own title')
   assert.equal(geo.portal, null, 'no portal instructions')
   assert.equal(jsonOffered(geo.step), false, 'no JSON, no PowerShell, no download')
 })

@@ -230,7 +230,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
     // projection: the date reads it, the lane never does.
     const waveStart = waveStartOf(step)
     const when = boardWhenOf(step, waveStart, laneView)
-    renderById.set(step.id, () => <Row key={step.id} step={step} lane={laneView} number={rowNumbers.get(step.id) ?? null} blockers={readinessBlockersOf(reading, titleOf)} enforceWaits={enforceWaits} prerequisiteLabel={prerequisiteLabel} onOpenMappings={openSettings} when={when} waveStart={waveStart} open={open === step.id} onToggle={() => openStep(step.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[step.id] ?? null} followUp={step.id === SPECIAL_CARE_STEP_ID ? { saved: data.stepDecisions[MFA_FOLLOW_UP_KEY] ?? null, onDecide: (d) => data.onDecide(MFA_FOLLOW_UP_KEY, d) } : undefined} onDecide={(d) => { data.onDecide(step.id, d); const next = nextDirectionStep(step.id, c.steps); if (next) { moveTo.current = next; setOpen(next); window.history.replaceState(null, '', `#/plan/${next}`) } }} saveStatus={data.persistence} confirmations={data.confirmations[step.id] ?? NO_CONFIRMATIONS} onConfirm={(c) => data.onConfirm(step.id, c)} onUnconfirm={(ids) => data.onUnconfirm(step.id, ids)} />)
+    renderById.set(step.id, () => <Row key={step.id} step={step} lane={laneView} number={rowNumbers.get(step.id) ?? null} blockers={readinessBlockersOf(reading, titleOf)} enforceWaits={enforceWaits} prerequisiteLabel={prerequisiteLabel} onOpenMappings={openSettings} when={when} waveStart={waveStart} open={open === step.id} onToggle={() => openStep(step.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[step.id] ?? null} followUp={step.id === SPECIAL_CARE_STEP_ID ? { saved: data.stepDecisions[MFA_FOLLOW_UP_KEY] ?? null, onDecide: (d) => data.onDecide(MFA_FOLLOW_UP_KEY, d) } : undefined} objectTask={step.objectTask ? { saved: data.stepDecisions[step.objectTask.id] ?? null, onDecide: (d) => data.onDecide(step.objectTask!.id, d) } : undefined} onDecide={(d) => { data.onDecide(step.id, d); const next = nextDirectionStep(step.id, c.steps); if (next) { moveTo.current = next; setOpen(next); window.history.replaceState(null, '', `#/plan/${next}`) } }} saveStatus={data.persistence} confirmations={data.confirmations[step.id] ?? NO_CONFIRMATIONS} onConfirm={(c) => data.onConfirm(step.id, c)} onUnconfirm={(ids) => data.onUnconfirm(step.id, ids)} />)
   }
 
   if (cleanupPhase) {
@@ -600,10 +600,12 @@ function CleanupRow({ phase, row, number, answers, open, onToggle, onScan, onDon
 
 const NO_CONFIRMATIONS: Readonly<Record<string, OwnerConfirmation>> = {}
 
-function Row({ step, lane, number, blockers, enforceWaits, prerequisiteLabel, onOpenMappings, when, waveStart, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onDoesntApply, onTick, computed, snapshot, mapping, operatorId, dates, groups, directory, decision, onDecide, followUp, saveStatus, confirmations, onConfirm, onUnconfirm, onScan }: {
+function Row({ step, lane, number, blockers, enforceWaits, prerequisiteLabel, onOpenMappings, when, waveStart, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onDoesntApply, onTick, computed, snapshot, mapping, operatorId, dates, groups, directory, decision, onDecide, followUp, objectTask, saveStatus, confirmations, onConfirm, onUnconfirm, onScan }: {
   step: Step
   /** The campaign's follow-up list, passed through to its step (ContentStep). */
   followUp?: { saved: StepDecision | null; onDecide: (decision: StepDecisionInput) => void }
+  /** The saved decision of the object the step makes itself, and its Save, under the object's own id (ContentStep; Stage 3). */
+  objectTask?: { saved: StepDecision | null; onDecide: (decision: StepDecisionInput) => void }
   /** The row's one state reading (planBoard.ts laneViewOf): the row's label and tone, and the opened step's badge, bar and rail. */
   lane: LaneView
   /** Cleanup work the enforce checklist's conditions depend on, by title (stepBody.ts enforceWaits). */
@@ -695,6 +697,7 @@ function Row({ step, lane, number, blockers, enforceWaits, prerequisiteLabel, on
           decision={decision}
           onDecide={onDecide}
           followUp={followUp}
+          objectTask={objectTask}
           saveStatus={saveStatus}
           confirmations={confirmations}
           onConfirm={onConfirm}

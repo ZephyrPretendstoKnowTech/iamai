@@ -8,6 +8,7 @@ import { app, stepById } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { list } from '../../copy/statements.ts'
 import { implementationOffered, operationsOf, submitsEnforcementOnly } from '../../roadmap/operations.ts'
+import { OBJECT_TASK } from '../../roadmap/stepIds.ts'
 
 /**
  * Whether the step has something to hand over: Foundation A's one implementation
@@ -27,7 +28,11 @@ export { implementationOffered }
 
 /** The objects the body names that the tenant lacks, with the step that creates each (its content title). */
 export function missingObjects(step: Step): { token: string; stepId: string | null; unreadable?: true; decision?: true; title: string; wait: WaitKind }[] {
-  return (step.action.missing ?? []).map((m) => ({ ...m, title: (m.stepId && stepById[m.stepId]?.title) || m.token, wait: waitKindOf(m) }))
+  // An object the step makes itself is named by its own task (stepIds.ts
+  // OBJECT_TASK): "Create or Correct Allowed Countries Location first", on the
+  // countries policy that does it (Stage 3), never the step's own title.
+  const makerOf = (id: string | null): string | null => (id !== null && id === step.id ? OBJECT_TASK[id] ?? id : id)
+  return (step.action.missing ?? []).map((m) => ({ ...m, title: (makerOf(m.stepId) && stepById[makerOf(m.stepId)!]?.title) || m.token, wait: waitKindOf(m) }))
 }
 
 /**

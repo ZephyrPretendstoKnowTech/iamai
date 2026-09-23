@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url'
 import { allFixtures } from './index.ts'
 import { runFixture, withFoundationSettled } from './run.ts'
 import { batchClassOf } from '../schedule.ts'
-import { enforcementHeld, unavailableReason } from '../operations.ts'
+import { awaitsOwnObject, enforcementHeld, unavailableReason } from '../operations.ts'
 import { holdOf, isHeld } from '../holds.ts'
 import { analysisUnknown, canDenyAccess, effectsOf, wouldStrand } from '../strand.ts'
 import { rolloutCohort } from '../rings.ts'
@@ -75,7 +75,9 @@ for (const f of fixtures) {
       // A policy the plan cannot write yet is in no wave — it has no date to sit
       // under — and renders in the Plan's own undated group (Plan.tsx heldRows),
       // which carries every step the waves do not.
-      const held = unavailableReason(s) !== null
+      // Not one whose only missing object is the one it makes itself: that task
+      // is placed and dated now (operations.ts awaitsOwnObject; Stage 3).
+      const held = unavailableReason(s) !== null && !awaitsOwnObject(s)
       const asRow = s.status !== 'done'
       const inFooter = s.status === 'done'
       assert.ok(asRow !== inFooter, `${f.name} ${s.id} (${s.status}) renders ${asRow && inFooter ? 'twice' : 'nowhere'}: inWave=${inWaves.has(s.id)}, held=${held}`)

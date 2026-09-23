@@ -1235,6 +1235,22 @@ function milestoneSentence(m: Pick<ContractMilestone, 'kind' | 'label' | 'at'>, 
 export const NO_POLICY_REASONS: ReadonlySet<UnavailableReason> = new Set(['baseline-conflict', 'no-operation', 'unmatched-pair'])
 
 /** The completion, always concrete and never absent. */
+/** The content entry of the object a step makes itself (Step.objectTask; Stage 3), or undefined. */
+function objectTaskContentOf(step: Step): Record<string, unknown> | undefined {
+  return step.objectTask ? (contentStepFor(step.objectTask) as Record<string, unknown> | undefined) : undefined
+}
+
+/**
+ * The object's own completion lines, first (Stage 3): the countries location's
+ * "lists exactly {countries}" and its unknown-countries line, on the countries
+ * step, as its entry wrote them. A line whose value the plan does not hold yet
+ * (no work country saved) is left out, never drawn with a hole.
+ */
+function objectTaskDoneWhen(task: Record<string, unknown> | undefined, ex: Record<string, unknown>): string[] {
+  const lines = Array.isArray(task?.doneWhen) ? (task.doneWhen as unknown[]).filter((l): l is string => typeof l === 'string') : []
+  return lines.filter((l) => whole(l, ex)).map((l) => fillText(l, ex))
+}
+
 function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<string, unknown> | undefined, ex: Record<string, unknown>, fix: ContractFix[], tenant: string, mapping?: StepVarContext['mapping']): string[] {
   if (step.state.setAside) return [CONTRACT.doneSetAside]
   // Emergency access in place with its hardening deferred is not fully resilient,
@@ -1411,7 +1427,12 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
   const found = foundOf(step, tenant, milestone.line, routeStart)
   const inventory = inventoryOf(step, ctx)
   if (inventory) found.push({ key: 'directory-inventory', label: inventory.label, text: `${inventory.complete ? '' : 'At least '}${inventory.count} guest ${plural(inventory.count, 'account')}. ${inventory.names.join('; ')}` })
-  const why = typeof cs?.why === 'string' ? fillText(cs.why, ex) : step.why
+  // The object a step makes itself comes first, as its task does (Stage 3;
+  // Step.objectTask): the countries location's own About sentence, then the
+  // policy's, each as its content entry wrote it.
+  const task = objectTaskContentOf(step)
+  const ownWhy = typeof cs?.why === 'string' ? fillText(cs.why, ex) : step.why
+  const why = typeof task?.why === 'string' && task.why.trim() !== '' ? `${fillText(task.why, ex)} ${ownWhy}` : ownWhy
   return {
     id: step.id,
     // The one resolver the row and the opened step read (content/stepTitle.ts).
@@ -1443,7 +1464,7 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     whatToDo,
     fix,
     enforcementWaits: enforcementWaitsOf(step),
-    doneWhen: doneWhenOf(step, reason, cs, ex, fix, tenant, ctx.mapping),
+    doneWhen: [...objectTaskDoneWhen(task, ex), ...doneWhenOf(step, reason, cs, ex, fix, tenant, ctx.mapping)],
     members,
     multiPolicy: members.length > 1,
     existing: existingOf(step),
@@ -1633,7 +1654,10 @@ export function stepFamily(step: Pick<Step, 'state'>, contentKind: string | null
   // (Enforced), keeps its lifecycle, and must not be filed here.
   if (s.satisfied && (s.inPlace || s.lifecycle !== 'enforced')) return 'in-place'
   // The step is waiting on the operator to choose, and the answer is on the row.
-  if (s.condition === 'needs-decision') return 'decision'
+  // A policy asking its own question keeps the policy family and its lifecycle:
+  // the condition never moves the track (Stage 3: the countries policy asking
+  // for its work countries is still a policy on its way to enforcement).
+  if (s.condition === 'needs-decision' && contentKind !== 'policy') return 'decision'
   if (contentKind === 'policy') return 'policy'
   if (contentKind === 'campaign') return 'mfa'
   return 'supporting'

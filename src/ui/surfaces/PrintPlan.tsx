@@ -332,7 +332,7 @@ export function PrintPlan({
           {phaseDatesOf(phaseSteps(w)) && <p className="muted">{phaseDatesOf(phaseSteps(w))}</p>}
           {phaseSteps(w).map((s) => (
             <article key={s.id} className="print-step">
-              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} lane={laneOf(s.id)} blockers={blockersOf(s)} prerequisiteLabel={prerequisiteLabel} decision={decisions[s.id] ?? null} printing />
+              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} lane={laneOf(s.id)} blockers={blockersOf(s)} prerequisiteLabel={prerequisiteLabel} decision={decisions[s.id] ?? null} objectTask={s.objectTask ? { saved: decisions[s.objectTask.id] ?? null } : undefined} printing />
             </article>
           ))}
         </section>
@@ -346,7 +346,7 @@ export function PrintPlan({
           <h2>{laneWordOf(g.lane)}</h2>
           {g.rows.map((s) => (
             <article key={s.id} className="print-step">
-              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} lane={laneOf(s.id)} blockers={blockersOf(s)} prerequisiteLabel={prerequisiteLabel} decision={decisions[s.id] ?? null} printing />
+              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} lane={laneOf(s.id)} blockers={blockersOf(s)} prerequisiteLabel={prerequisiteLabel} decision={decisions[s.id] ?? null} objectTask={s.objectTask ? { saved: decisions[s.objectTask.id] ?? null } : undefined} printing />
             </article>
           ))}
         </section>
@@ -359,7 +359,7 @@ export function PrintPlan({
           <h2>{phases.recommended}</h2>
           {floor.map((s) => (
             <article key={s.id} className="print-step">
-              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} lane={laneOf(s.id)} blockers={blockersOf(s)} prerequisiteLabel={prerequisiteLabel} decision={decisions[s.id] ?? null} printing />
+              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} lane={laneOf(s.id)} blockers={blockersOf(s)} prerequisiteLabel={prerequisiteLabel} decision={decisions[s.id] ?? null} objectTask={s.objectTask ? { saved: decisions[s.objectTask.id] ?? null } : undefined} printing />
             </article>
           ))}
         </section>

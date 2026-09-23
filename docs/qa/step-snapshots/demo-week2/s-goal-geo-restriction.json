@@ -1,11 +1,11 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "after: Create or Correct Allowed Countries Location",
+  "reason": "after: Confirm What You Use",
   "fact": null,
   "badge": "On Hold",
   "bar": "Waiting on your direction",
-  "rail": "After prerequisites",
+  "rail": "Not scheduled",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -14,12 +14,8 @@
   ],
   "tiles": [
     {
-      "label": "Affected people",
-      "state": "Not established"
-    },
-    {
-      "label": "Create or Correct Allowed Countries Location",
-      "state": "Prerequisite · To do"
+      "label": "Work Countries Location",
+      "state": "Needs Correction"
     },
     {
       "label": "Confirm What You Use",
@@ -30,7 +26,8 @@
     "Entra",
     "PowerShell",
     "JSON",
-    "AI Info"
+    "AI Info",
+    "Email"
   ],
-  "when": "After prerequisites"
+  "when": "Not scheduled"
 }

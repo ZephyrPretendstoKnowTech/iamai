@@ -22,7 +22,7 @@ import { laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } fr
 import { laneReadings } from './planLanes.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { stepBodyOf } from './stepBody.ts'
+import { objectTaskBodyOf, stepBodyOf } from './stepBody.ts'
 import { stepExportView } from './stepExport.ts'
 import type { StepBody } from './stepBody.ts'
 import { membersOf } from '../../roadmap/stepGroups.ts'
@@ -36,9 +36,10 @@ const WHERE_SIGN_IN = [
 ]
 
 /** The three objects a Direction answer asks for, which now sit in their own group straight after Direction (owner, 2026-09-20). */
+// The countries location left the objects' group in Stage 3: it is the
+// countries policy's own first task (Step.objectTask), drawn on that step.
 const PREPARE_OBJECTS = [
   's-prereq-trusted-location',
-  's-prereq-allowed-countries',
   's-prereq-service-accounts-group',
 ]
 
@@ -58,6 +59,9 @@ function bodiesOf(name: FixtureName, mapping?: MappingState): Map<string, StepBo
       const lane = laneViewOf(reading, titleOf)
       const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: step.reportOnlyAt ?? null, scheduledOn: waveStartOf(step), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
       out.set(step.id, stepBodyOf(step, ctx, { lane, blockers: readinessBlockersOf(reading, titleOf), prerequisiteLabel: prerequisiteLabelFor(readings) }))
+      // The object a step makes itself, as its step draws it (Stage 3: the countries location on the countries step).
+      const task = objectTaskBodyOf(step, ctx)
+      if (task && step.objectTask) out.set(step.objectTask.id, task)
     }
     return out
   } finally {
@@ -120,7 +124,7 @@ test('the group draws its three policies in the spec order, and the objects they
   assert.deepEqual([...membersOf('prepare-objects')], PREPARE_OBJECTS)
   // The spec's six steps are still the same six steps, read in the same order:
   // the objects first, then the policies that reference them.
-  assert.deepEqual([...PREPARE_OBJECTS, ...WHERE_SIGN_IN].sort(), ['s-goal-geo-restriction', 's-goal-service-accounts-trusted-network', 's-goal-workload-identity-block', 's-prereq-allowed-countries', 's-prereq-service-accounts-group', 's-prereq-trusted-location'])
+  assert.deepEqual([...PREPARE_OBJECTS, ...WHERE_SIGN_IN].sort(), ['s-goal-geo-restriction', 's-goal-service-accounts-trusted-network', 's-goal-workload-identity-block', 's-prereq-service-accounts-group', 's-prereq-trusted-location'])
 })
 
 // ---------------------------------------------------------------------------
@@ -255,8 +259,13 @@ test('G5: help desk says this policy does not reach a service principal, and nam
 })
 
 test('G6: the held step’s Completion Criteria is this step’s outcome, on screen and on both scans', () => {
+  // Since Stage 3 the step asks the work countries itself, and while they are
+  // unsaved (the demo's first visit) its completion is that answer. With them
+  // saved, the held step finishes on its own outcome, on both scans.
+  const demo = fixture('demo').mapping
+  const withCountries = { ...demo, workCountriesConfirmed: true, wizardAnswered: { ...demo.wizardAnswered, countries: true } }
   for (const f of ['demo', 'demo-week2'] as const) {
-    const done = bodiesOf(f).get('s-goal-geo-restriction')!.contract.doneWhen
+    const done = bodiesOf(f, f === 'demo' ? withCountries : undefined).get('s-goal-geo-restriction')!.contract.doneWhen
     assert.ok(done.some((l: string) => /^Nobody signs in to .+ from a country that is not on the approved list/.test(l)), `${f}: ${done.join('\n')}`)
     assert.ok(!done.some((l: string) => /blocking sign-ins from countries not in the allowed list/.test(l)), `${f}: ${done.join('\n')}`)
   }
