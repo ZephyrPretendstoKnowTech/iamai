@@ -598,7 +598,8 @@
         "diffSet": "{field}: now {value}",
         "diffCleared": "{field}: cleared",
         "diffChanged": "{field}: changed",
-        "diffUnreviewed": "{field}: outside what IAMAI's baseline model reads, so this change is not reviewed",
+        "$commentDiffUnreviewed": "Phase 2 audit (Connect): a setting the baseline model does not represent has no plain name, so {field} is its Graph path (connectView.ts deltaLine). The line opened on that raw key; it now leads with words and keeps the path, the one precise name the setting has, as a detail in brackets.",
+        "diffUnreviewed": "A setting IAMAI's baseline model does not read changed ({field}), so this change is not reviewed.",
         "diffConflict": "The author's repository holds two copies of this that say different things, so IAMAI cannot tell what it now says.",
         "diffFields": {
           "state": "Policy state",
