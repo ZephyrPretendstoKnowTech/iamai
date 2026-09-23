@@ -14,12 +14,16 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { signInsNeedP1 } from '../../derive/readinessContext.ts'
 import { signInProofRead } from '../../scoring/fromSnapshot.ts'
 import { cohortWords } from '../../derive/whoLine.ts'
-import { goalLine, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, summaryLine } from './readinessCells.ts'
+import { goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, summaryLine, unreadMethodsWords } from './readinessCells.ts'
 import { readinessTable } from './inventoryTables.ts'
+import { sourceReadFix } from '../../roadmap/readiness.ts'
 
 const R = pages.readiness as unknown as { checks: Record<string, Record<string, string>>; rail: { shownAbove: string } }
 const W = pages.readiness as unknown as { chip: { unread: string }; sub: { noDevices: string }; panel: { noDevices: string; noneRegistered: string }; methods: { unread: string } }
 const S = pages.readiness as unknown as Record<string, string>
+const N = (pages.readiness as unknown as { next: { rescan: Record<string, string> } }).next
+const E = (pages.readiness as unknown as { evidence: Record<string, string> }).evidence
+const G = (pages.readiness as unknown as { groups: Record<string, { title: string; why: string; body?: unknown }> }).groups
 const page = (): string => readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
 
 test('every remaining setup check carries its own words: the migration never shows without its safe order', () => {
@@ -110,4 +114,32 @@ test('the person panel never says "None registered yet." for somebody whose meth
   assert.ok(none.length > 0)
   for (const r of none) assert.equal(panelNoMethods(r), W.panel.noneRegistered, r.user.id)
   assert.match(page(), /panelList\(panelMethods\(openRow\), panelNoMethods\(openRow\)\)/, 'the panel draws the one word')
+})
+
+test('a method list the tenant refused is not "Nothing to do: the next scan retries"', () => {
+  const f = fixture('hostile')
+  const reg = f.snapshot.sources.registrationDetails
+  assert.equal(reg?.status, 'disabled', 'the premise: hostile refused the registration report')
+  const unread = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.filter((r) => r.state === 'unknown' && r.readiness?.unknown === 'methods')
+  assert.ok(unread.length > 0)
+  for (const r of unread) {
+    const words = nextCell(r)
+    assert.equal(words, N.rescan.methodsUnavailable, r.user.id)
+    assert.doesNotMatch(words, /Nothing to do|next scan/i, r.user.id)
+    assert.ok(!rowCells(r).join(' ').includes(N.rescan.methods), `${r.user.id}: nor the CSV`)
+  }
+  // The evidence tile names the refusal and what reads it, in the Plan's own sentence.
+  const line = unreadMethodsWords(f.snapshot)
+  assert.doesNotMatch(line, /next scan retries/i, line)
+  assert.ok(line.includes(reg.reason ?? '__'), line)
+  assert.ok(line.includes(sourceReadFix('registrationDetails', f.snapshot)), line)
+  assert.match(page(), /<dd>\{unreadMethodsWords\(snapshot\)\}<\/dd>/)
+  // The Unknown group promises no retry either: each row says what was missing.
+  assert.doesNotMatch(G.unknown.why, /next scan/i)
+  // A method list merely missed this time is still retried.
+  const demo = fixture('demo')
+  assert.equal(unreadMethodsWords(demo.snapshot), E.unreadMethods)
+  const missed = readinessView(demo.snapshot, demo.snapshot.asOf, demo.mapping).rows.filter((r) => r.state === 'unknown' && r.readiness?.unknown === 'methods')
+  assert.ok(missed.length > 0, 'the premise: demo missed one person’s method list')
+  for (const r of missed) assert.equal(nextCell(r), N.rescan.methods)
 })
