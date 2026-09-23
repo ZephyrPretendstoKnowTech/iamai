@@ -311,6 +311,14 @@ export async function runLaneB(deps: LaneBDeps): Promise<SignInEvidence> {
       if (end === 'time budget') return stopped(end)
       exhausted = end === 'history exhausted'
     } else {
+      // The gap: the records newer than the saved span. The meta moves only once
+      // the whole gap is saved, so a read interrupted in the gap leaves it as it
+      // was, and the next scan reads the gap again from its start, as the read
+      // did before it streamed. A meta of {the gap's frontier, now} would keep
+      // the gap's progress but give up the saved span below it, which one span
+      // cannot hold beside it: the next scan would fetch that span, most of the
+      // window, from Graph again to spare a second read of the gap, which is
+      // only what happened since the last scan.
       const gap = await graphLoop(deps.pageUrl(null), meta.to, 'new')
       if (gap === 'time budget') return stopped(gap)
       exhausted = gap === 'history exhausted'
