@@ -1,0 +1,116 @@
+// "In the baseline, not in this plan" (v2-research/missing-seven.md, decision C):
+// every policy of the pinned baseline is shown somewhere on the Plan — a step,
+// a Not licensed row, a review row, or this footer group — so a finished plan
+// never reads as the whole baseline. Seven pinned policies used to appear
+// nowhere, on every licence tier: the goal map claims none of them, and the
+// coverage check's looser signature match kept them off the review rows.
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { fixture } from '../roadmap/fixtures/index.ts'
+import type { FixtureName } from '../roadmap/fixtures/index.ts'
+import { runFixture } from '../roadmap/fixtures/run.ts'
+import { pinnedPackage } from '../baseline/pinned.ts'
+import { PINNED_GOAL_MAP } from '../roadmap/goalMap.ts'
+import { customerPlanSteps } from '../ui/surfaces/customerPlanSteps.ts'
+import { pages, stepById } from '../content/content.ts'
+import { notLicensedRows } from './notLicensed.ts'
+import { notInPlanRows, notInPlanSummary } from './notInPlan.ts'
+
+const TENANTS: FixtureName[] = ['demo', 'small', 'mid', 'getiamai']
+
+/** The tenant on the baseline the product ships, and the Plan as it is drawn: the steps the footer and the board receive. */
+function planOf(name: FixtureName) {
+  const f = { ...fixture(name), baseline: pinnedPackage() }
+  const run = runFixture(f)
+  const steps = customerPlanSteps(run.steps)
+  return { run, steps, policies: f.baseline.policies, rows: notInPlanRows(f.baseline.policies, steps, run.coverage, PINNED_GOAL_MAP) }
+}
+
+const titleOf = (goalId: string): string => stepById[goalId]?.title ?? goalId
+
+test('every pinned baseline policy is shown somewhere in the plan: a step, Not licensed, a review row, or In the baseline, not in this plan', () => {
+  for (const name of TENANTS) {
+    const { run, steps, policies, rows } = planOf(name)
+    assert.equal(policies.length, 38, `${name}: the premise, the pinned 38-policy baseline`)
+    // Where each surface names a baseline policy, read from what it draws.
+    const goalsOf = (p: { id?: string | null; displayName: string }): string[] => Object.entries(PINNED_GOAL_MAP).filter(([, keys]) => keys.includes(p.id ?? p.displayName)).map(([g]) => g)
+    const licenceTexts = notLicensedRows(run.coverage, PINNED_GOAL_MAP).map((r) => r.text)
+    const reviewed = new Set(steps.flatMap((s) => (s.baselineReviewSource ? [s.baselineReviewSource.name] : [])))
+    const listed = new Map(rows.map((r) => [r.policy, r]))
+    const nowhere: string[] = []
+    for (const p of policies) {
+      const goals = goalsOf(p)
+      const byStep = steps.some((s) => goals.includes(s.goalId))
+      const byLicence = goals.some((g) => licenceTexts.some((t) => t.includes(titleOf(g))))
+      const byReview = reviewed.has(p.displayName)
+      const elsewhere = byStep || byLicence || byReview
+      if (!elsewhere && !listed.has(p.displayName)) nowhere.push(p.displayName)
+      // The group holds only what nothing else names: one place per policy.
+      if (elsewhere) assert.ok(!listed.has(p.displayName), `${name}: "${p.displayName}" is shown elsewhere and listed again`)
+    }
+    assert.deepEqual(nowhere, [], `${name}: baseline policies the plan shows nowhere`)
+    // The heading's count is the rows'.
+    assert.ok(rows.length > 0, `${name}: the group is drawn`)
+    assert.equal(notInPlanSummary(rows), `In the baseline, not in this plan (${rows.length})`, `${name}: the count in the heading`)
+    assert.equal(new Set(rows.map((r) => r.policy)).size, rows.length, `${name}: one row per policy`)
+  }
+})
+
+test('each row names the baseline policy by its display name, with one reason that names steps by title', () => {
+  const { rows } = planOf('demo')
+  const R = (pages.plan as { footer: { notInPlanReason: Record<string, string> } }).footer.notInPlanReason
+  const emergency = (pages as unknown as { app: { plan: { groups: { emergencyAccess: { title: string } } } } }).app.plan.groups.emergencyAccess.title
+  const reasonOf = (policy: string): string | undefined => rows.find((r) => r.policy === policy)?.reason
+  // The seven the goal map claims nowhere (missing-seven.md), each with its own reason.
+  assert.equal(reasonOf('IAC - P2 - GLOBAL - BLOCK - RiskyUsers - RegisterSecurityInfo'), 'Blocks people flagged as risky from adding sign-in methods. Needs Entra ID P2. Not in this plan yet.')
+  assert.equal(reasonOf('IAC - P2 - GLOBAL - GRANT - EAM - High-Risk Users - Risk Remediation'), `A version of ${titleOf('user-risk')} for people who sign in with an external MFA provider such as Duo. Only needed if you use one.`)
+  const lockdown = 'An emergency lockdown switch for a major breach, built ahead and kept off. Not a day-to-day control.'
+  assert.equal(reasonOf('IAC - ZTCA - INTUNE - BLOCK - AllApps - ExcludeTrustedLocation'), lockdown)
+  assert.equal(reasonOf('IAC- ZTCA - GLOBAL - BLOCK - AllApps -Exclude CA-Global'), lockdown)
+  assert.equal(reasonOf('IAC - GLOBAL - GRANT - MFA-Passkey - UserRegistration'), "Jon's export targets device registration on iPhones only, which he confirmed was a mistake. What it was meant to do is Protect Sign-in Method Registration.")
+  assert.equal(reasonOf('IAC - GLOBAL - GRANT - MFA-Passkeys - ADM-Users'), 'The same requirement as Require Phishing-Resistant MFA for Admins, aimed at a group of admin accounts instead of admin roles.')
+  assert.equal(reasonOf('IAC - GLOBAL - GRANT - BreakGlass - TrustedLocations'), `Limits one emergency account outside the office network. This plan keeps emergency accounts out of every policy instead (${emergency}).`)
+  // The Countries variant the plan skips on purpose (generate.ts: "NoExclusions" variants are never considered) says so.
+  assert.equal(reasonOf('IAC - GLOBAL – BLOCK – Countries not Allowed - NoExclusions'), fillReason(R.blockedCountries, titleOf('geo-restriction')))
+  // Steps are named by title, never by a number another branch is changing.
+  for (const r of rows) {
+    assert.equal(r.text, `${r.policy}: ${r.reason}`, `${r.policy}: the row reads policy, then reason`)
+    assert.doesNotMatch(r.reason, /\{|\b\d+\.\d+\b|section \d/i, `${r.policy}: no unfilled slot and no step number`)
+  }
+  // A policy with no words of its own reads the generic reason.
+  const generic = rows.filter((r) => r.reason === R.generic).map((r) => r.policy)
+  assert.ok(generic.length > 0 && generic.every((p) => !/RegisterSecurityInfo|EAM|AllApps|MFA-Passkey|BreakGlass|NoExclusions/.test(p)), `the generic reason is the fallback only: ${generic.join(', ')}`)
+})
+
+test('the list is derived from what the Plan draws, never a fixed set of policies', () => {
+  const { run, steps, policies, rows } = planOf('demo')
+  // A step the Plan draws takes its policy off the list: the admin-portal block is
+  // withheld from customer plans today (customerPlanSteps.ts), so it is listed;
+  // drawn, it is not.
+  const portal = policies.find((p) => /ZTCA.*Admin Portal/i.test(p.displayName))!
+  assert.ok(rows.some((r) => r.policy === portal.displayName), 'a withheld step leaves its policy listed')
+  const withPortal = notInPlanRows(policies, run.steps, run.coverage, PINNED_GOAL_MAP)
+  assert.ok(!withPortal.some((r) => r.policy === portal.displayName), 'a drawn step takes its policy off the list')
+  // A review row takes its policy off the list; without the review rows, their policies are listed.
+  const reviewed = steps.filter((s) => s.baselineReviewSource).map((s) => s.baselineReviewSource!.name)
+  assert.ok(reviewed.length > 0, 'the premise: the demo draws review rows')
+  const noReviews = notInPlanRows(policies, steps.filter((s) => !s.baselineReviewSource), run.coverage, PINNED_GOAL_MAP)
+  for (const name of reviewed) assert.ok(noReviews.some((r) => r.policy === name), `${name}: listed once its review row is gone`)
+  // A Not licensed row's policies are never listed; with every goal licensed
+  // away from the map, the same policies would have to be.
+  const licensed = notLicensedRows(run.coverage, PINNED_GOAL_MAP)
+  assert.ok(licensed.length > 0, 'the premise: the demo has Not licensed rows')
+  const userRisk = policies.find((p) => (PINNED_GOAL_MAP['user-risk'] ?? []).includes(p.id ?? p.displayName))!
+  assert.ok(!rows.some((r) => r.policy === userRisk.displayName), 'a Not licensed goal\'s policy is not listed again')
+})
+
+test('the Plan footer draws the group from the Plan it shows', () => {
+  const src = readFileSync(new URL('../ui/surfaces/PlanFooter.tsx', import.meta.url), 'utf8')
+  assert.match(src, /notInPlanRows\(computed\.baselinePolicies, computed\.steps, computed\.coverage, computed\.goalMap\)/)
+  assert.match(src, /notInPlanSummary\(notInPlan\)/)
+})
+
+function fillReason(template: string, step: string): string {
+  return template.replace('{step}', step)
+}
