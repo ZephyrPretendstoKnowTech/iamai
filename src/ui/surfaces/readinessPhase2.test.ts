@@ -7,7 +7,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { readinessView } from '../../derive/mfaReadiness.ts'
-import { nextCheck, remainingChecks, tenantSetupChecks } from '../../derive/readinessSetup.ts'
+import { nextCheck, remainingChecks, stepNextCheck, tenantSetupChecks } from '../../derive/readinessSetup.ts'
 import { pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
@@ -470,4 +470,19 @@ test('the guests tile says cross-tenant access settings were not read only where
   assert.equal(unread.trust, 'unread')
   assert.equal(guestTrustWords(unread.trust), GU.trustUnknown)
   assert.match(page(), /guestTrustWords\(guests\.trust\)/)
+})
+
+test('opened from a step whose people this scan could not settle, the page puts no tenant-wide group forward as its next check', () => {
+  const f = fixture('demo')
+  const run = runFixture(f)
+  const step = run.steps.find((s) => s.id === 's-goal-guests-mfa')
+  assert.ok(step)
+  const hold = stepMfaHold(step, run.viability ?? [])
+  assert.ok(hold && hold.ids === null, 'the premise: the guest step waits on readiness it could not attribute to anybody')
+  const view = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
+  const checks = tenantSetupChecks(f.snapshot, view)
+  assert.equal(nextCheck(view, checks).kind, 'group', 'the premise: the tenant has a next check')
+  assert.deepEqual(stepNextCheck(view, checks, null), { kind: 'none' })
+  assert.deepEqual(stepNextCheck(view, checks, ['a']), nextCheck(view, checks), 'a step whose people are known keeps its next check')
+  assert.match(page(), /const next = stepNextCheck\(scopedView, context \? tenantSetupChecks\(snapshot, scopedView\) : checks, context \? context\.ids : undefined\)/)
 })

@@ -30,7 +30,7 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { BaselineResult } from '../baseline.ts'
 import { DEFAULT_SHOW, EXPLAINED, GROUP_ORDER, SHOW_KEYS, SUB_GROUP_AT, readinessView, showKeyOf, shows, subGroupsOf } from '../../derive/mfaReadiness.ts'
 import type { ReadinessRow, ShowKey, SubGroup, SubGroupBy } from '../../derive/mfaReadiness.ts'
-import { nextCheck, remainingChecks, tenantSetupChecks } from '../../derive/readinessSetup.ts'
+import { remainingChecks, stepNextCheck, tenantSetupChecks } from '../../derive/readinessSetup.ts'
 import type { SetupCheck } from '../../derive/readinessSetup.ts'
 import { progressOf } from '../../derive/readinessProgress.ts'
 import { GUEST_STEP_ID, guestReadingOf } from '../../derive/guestReadiness.ts'
@@ -273,7 +273,8 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
   const offersSynced = syncedPasskeyOffered(view.context)
   // Scoped from a Plan step, the next check counts that step's people, not the tenant's.
   const scopedView = context ? { ...view, rows: view.rows.filter(inScope), counts } : { ...view, counts }
-  const next = nextCheck(scopedView, context ? tenantSetupChecks(snapshot, scopedView) : checks)
+  // Opened from a step whose people this scan could not settle, no tenant-wide group is put forward as its next check.
+  const next = stepNextCheck(scopedView, context ? tenantSetupChecks(snapshot, scopedView) : checks, context ? context.ids : undefined)
   const remaining = remainingChecks(checks)
   const done = checks.filter((c) => c.outcome === 'pass' || c.outcome === 'note')
   const matches = (r: ReadinessRow): boolean => inScope(r) && shows(r, show, view.lapsing) && (!q || searchText(r).includes(q))
