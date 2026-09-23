@@ -584,11 +584,15 @@ try {
   // 2026-09-20) is the default view, so it sits leftmost and the Plan opens on
   // it (owner, 2026-09-23).
   check('Plan: All work is the first tab and selected, then the three lanes', (await evaluate(`[...document.querySelectorAll('main.page .plan-controls [role=tab]')].map((t) => (${tabText})(t) + ':' + t.getAttribute('aria-selected')).join(' ')`)) === 'All work:true Ready:false Up Next:false On Hold:false')
-  // All work reads how much of each group is done, and a group there is whole:
-  // it holds rows of more than one lane, which no lane tab can.
+  // All work: an open section says what is left of it, a finished one is one
+  // collapsed line in its own place (owner, roadmap flow V2 decision B), and a
+  // section there is whole: it holds rows of more than one lane, which no lane
+  // tab can.
   await showLane('All work')
-  const allWorkMeta = await evaluate(`[...document.querySelectorAll('main.page .plan-group .plan-group-meta')].map((e) => (e.textContent || '').trim())`)
-  check('Plan: every group on All work reads how much of it is completed', Array.isArray(allWorkMeta) && allWorkMeta.length >= 3 && allWorkMeta.every((t) => /^\d+ of \d+ completed$/.test(t)), JSON.stringify(allWorkMeta.slice(0, 4)))
+  const allWorkMeta = await evaluate(`[...document.querySelectorAll('main.page .plan-group')].map((g) => ({ meta: ((g.querySelector('.plan-group-meta') || {}).textContent || '').trim(), closed: g.classList.contains('closed'), hidden: !!(g.querySelector('.plan-group-rows') || {}).hidden }))`)
+  const FINISHED_RE = /^(All \d+ completed|1 of 1 completed|\d+ of \d+ completed, \d+ deferred)$/
+  check('Plan: every section on All work says what is left of it, or collapses to what became of it', Array.isArray(allWorkMeta) && allWorkMeta.length >= 3 && allWorkMeta.every((g) => (g.closed ? FINISHED_RE.test(g.meta) && g.hidden : /^\d+ of \d+ remaining$/.test(g.meta) || FINISHED_RE.test(g.meta))), JSON.stringify(allWorkMeta.slice(0, 4)))
+  check('Plan: nothing is drawn above the tabs or below the board as a section of its own', (await evaluate(`document.querySelectorAll('main.page .plan-board-foundation').length`)) === 0)
   const allWorkLanes = await evaluate(`[...document.querySelectorAll('main.page .plan-group')].map((g) => new Set([...g.querySelectorAll('.plan-row .lane')].map((e) => (e.textContent || '').trim().split(' · ')[0])).size)`)
   check('Plan: a group on All work is the whole group, not one lane of it', Array.isArray(allWorkLanes) && allWorkLanes.some((n) => n > 1), JSON.stringify(allWorkLanes))
   await showLane('Ready')

@@ -1901,6 +1901,29 @@ footer.app a {
   line-height: 1;
   cursor: pointer;
 }
+/* The whole heading line is the fold control's hit area (owner, roadmap flow
+   V2: selecting a collapsed section opens it). The button stays the one tab
+   stop and the one accessible name; its box is stretched over the head. */
+.plan-group-head {
+  position: relative;
+  cursor: pointer;
+}
+.plan-group-toggle::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+/* A collapsed section is one line: its title, and beside it what became of it
+   ("All 4 completed") or what is left. */
+.plan-group.closed .plan-group-lead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 14px;
+}
+.plan-group.closed .plan-group-meta {
+  margin-top: 0;
+}
 /* The four zones, named. Impact is a population and When is a date; before this
    they were two unlabelled columns of grey text on the right. The floor for a
    compact label on this board is --t-micro (10px); nothing goes below it. */

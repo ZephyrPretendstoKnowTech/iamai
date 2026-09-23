@@ -32,7 +32,7 @@ import type { HoldBlocker, Lane, Substatus } from '../../actionability/lanes.ts'
 import type { StatusTone } from '../components/index.ts'
 import { content, directionWords, pages } from '../../content/content.ts'
 import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
-import { EMERGENCY_ACCESS_GROUP, STEP_GROUPS, groupOf, groupPositions, groupTotals, membersOf, pinnedGroups, positionInGroup } from '../../roadmap/stepGroups.ts'
+import { EMERGENCY_ACCESS_GROUP, STEP_GROUPS, groupOf, groupPositions, groupTotals, membersOf, positionInGroup } from '../../roadmap/stepGroups.ts'
 import type { StepGroup } from '../../roadmap/stepGroups.ts'
 import { fillText } from '../../content/render.ts'
 import { list } from '../../copy/statements.ts'
@@ -55,8 +55,8 @@ import { cleanupTitleOf } from './stepContract.ts'
 export const WHEN = (pages.plan as unknown as { when: { none: string; after: string; afterPrerequisites: string } }).when
 /** The lane and substatus words (pages.plan.lanes, pages.plan.substatus): the one vocabulary every surface says a state in (A1b decision 11). */
 const LANE_WORDS = (pages.plan as unknown as { lanes: Record<'ready' | 'upNext' | 'onHold' | 'completed' | 'deferred' | 'doesntApply', string>; unsavedAnswer: string; unsavedConfirm: string; nothingReady: string; substatus: Record<'create' | 'correct' | 'needsDecision' | 'observing' | 'review' | 'readyToEnforce', string> })
-/** The words the fourth tab brought with it (pages.app.plan.board): its label, and the line a group drawn whole reads. */
-const BOARD_WORDS = (pages.app as unknown as { plan: { board: { allWork: string; groupCompleted: string } } }).plan.board
+/** The words the All work tab brought with it (pages.app.plan.board): its label, and the line a section drawn whole reads. */
+const BOARD_WORDS = (pages.app as unknown as { plan: { board: { allWork: string; groupCompleted: string; groupRemaining: string; groupAllCompleted: string; groupFinished: string } } }).plan.board
 /** The Ready lane's substatus word, by the engine's own literal (src/actionability/lanes.ts `Substatus`, an identifier and never a display word).
  *  `Observing` on Ready is the review of what report-only collected; the wait while it collects is On Hold · Observing. */
 export const SUBSTATUS_WORD: Readonly<Record<Substatus, string>> = {
@@ -118,9 +118,12 @@ export const TAB_OF: Readonly<Record<Lane, LaneTab | null>> = { Ready: 'ready', 
 export const BOARD = {
   lanesLabel: 'Lanes',
   lanes: { ready: LANE_WORDS.lanes.ready, upNext: LANE_WORDS.lanes.upNext, onHold: LANE_WORDS.lanes.onHold, completed: LANE_WORDS.lanes.completed, deferred: LANE_WORDS.lanes.deferred, doesntApply: LANE_WORDS.lanes.doesntApply },
-  /** The fourth tab's label, and the heading line a group drawn whole reads (pages.app.plan.board). */
+  /** The All work tab's label, and the heading lines a section drawn whole reads (pages.app.plan.board, groupSummary). */
   allWorkTab: BOARD_WORDS.allWork,
+  groupRemaining: BOARD_WORDS.groupRemaining,
+  groupAllCompleted: BOARD_WORDS.groupAllCompleted,
   groupCompleted: BOARD_WORDS.groupCompleted,
+  groupFinished: BOARD_WORDS.groupFinished,
   search: 'Search steps',
   searchPlaceholder: 'Search steps...',
   showCompleted: 'Show completed',
@@ -750,71 +753,12 @@ export type BoardItem = {
 /** The four existing rows that form the shared emergency-access foundation (stepGroups.ts). */
 export const EMERGENCY_STEP_IDS: readonly string[] = membersOf(EMERGENCY_ACCESS_GROUP)
 
-/** One group's rows out of the board's row set: its members in the group's order, and whether every member is Completed. */
-export type GroupPartition = { group: StepGroup; items: BoardItem[]; complete: boolean }
-
-function partitionGroup(items: readonly BoardItem[], group: StepGroup): GroupPartition {
-  const members = group.members.map(id => items.find(item => item.id === id)).filter((item): item is BoardItem => item !== undefined)
-  return { group, items: members, complete: members.length === group.members.length && members.every(item => item.lane === 'Completed') }
-}
-
-/** Partition the canonical row set into the pinned groups and the rest, without cloning or dropping an id. */
-export function partitionPinnedGroups(items: readonly BoardItem[], groups: readonly StepGroup[] = STEP_GROUPS): { pinned: GroupPartition[]; remaining: BoardItem[] } {
-  const pinned = pinnedGroups(groups).map(group => partitionGroup(items, group))
-  const ids = new Set(pinned.flatMap(p => p.group.members))
-  return { pinned, remaining: items.filter(item => !ids.has(item.id)) }
-}
-
-/** Partition the canonical row set without cloning or dropping an id: the Emergency Access group alone. */
-export function partitionEmergencyItems(items: readonly BoardItem[]): { emergency: BoardItem[]; remaining: BoardItem[]; complete: boolean } {
-  const { pinned: [emergency], remaining } = partitionPinnedGroups(items, STEP_GROUPS.filter(g => g.key === EMERGENCY_ACCESS_GROUP))
-  return { emergency: emergency.items, remaining, complete: emergency.complete }
-}
-
 /** A group's title, read from its content key (stepGroups.ts titleKey / completedTitleKey). */
 export function groupTitleOf(group: StepGroup, complete: boolean): string {
   const path = complete ? group.completedTitleKey : group.titleKey
   const words = path.split('.').reduce<unknown>((at, key) => (at as Record<string, unknown> | undefined)?.[key], content)
   if (typeof words !== 'string') throw new Error(`content.json has no ${path}`)
   return words
-}
-
-/**
- * The board groups the pinned groups draw WHOLE: an open group above the lanes,
- * and a completed one in the aside only when completed work is asked for (Show
- * completed, the Completed summary) or one of its members is the open step.
- *
- * `active` is the summary views' reading, where there is no lane to filter by.
- * A lane tab does not use it (owner, 2026-09-20): Ready, Up Next and On Hold
- * now filter the pinned groups exactly as they filter every other group, and
- * the pinned groups a tab draws come out of `groupsFor` with the rest and are
- * lifted above the tabs by `splitPinned`. Seeing a whole group has its own tab.
- */
-export function pinnedBoardGroups(pinned: readonly GroupPartition[], show: { completed: boolean; open: string | null }): { active: BoardGroup[]; completed: BoardGroup[] } {
-  const active: BoardGroup[] = []
-  const completed: BoardGroup[] = []
-  for (const p of pinned) {
-    if (!p.complete && p.items.length > 0) active.push({ key: p.group.key, label: groupTitleOf(p.group, false), secondary: false, closed: false, items: p.items })
-    if (p.complete && (show.completed || (show.open !== null && p.group.members.includes(show.open)))) completed.push({ key: `${p.group.key}-complete`, label: groupTitleOf(p.group, true), secondary: true, closed: false, items: p.items })
-  }
-  return { active, completed }
-}
-
-/**
- * The groups a tab drew, split into the pinned ones — lifted above the tab strip
- * in their own board — and the rest, in the order the tab handed them over.
- *
- * Pinning is a POSITION and no longer an exemption from the filter (owner,
- * 2026-09-20). Emergency Access and Direction are filtered by the lane tab like
- * every other group, so they appear here only when they have a row in that lane
- * and their headings read `N of M steps` for the same reason every other
- * filtered group's does. Which rows are in them is `groupsFor`'s answer and
- * nothing here re-decides it.
- */
-export function splitPinned(drawn: readonly BoardGroup[], groups: readonly StepGroup[] = STEP_GROUPS): { pinned: BoardGroup[]; rest: BoardGroup[] } {
-  const keys = new Set(pinnedGroups(groups).map(g => g.key))
-  const isPinned = (g: BoardGroup): boolean => { const key = groupKeyOf(g, groups); return key !== null && keys.has(key) }
-  return { pinned: drawn.filter(isPinned), rest: drawn.filter(g => !isPinned(g)) }
 }
 
 /** A rendered group: its heading, its summary and the row ids in it, in order. */
@@ -824,12 +768,20 @@ export type BoardGroup = {
   label: string
   /** A supporting group rather than the active lane. */
   secondary: boolean
-  /** Whether this group starts collapsed. */
+  /** Whether this group starts collapsed: a finished section on All work, drawn in its place as one line. */
   closed: boolean
-  /** Drawn WHOLE (the All work tab): its heading line reads how much of it is done rather than how many rows a filter left. */
-  progress?: boolean
+  /** Drawn WHOLE (the All work tab): how far the section has got over the whole board, which its heading line reads instead of how many rows a filter left. */
+  progress?: SectionProgress
   items: BoardItem[]
 }
+
+/**
+ * How far one section has got, counted over the board's WHOLE row set: how many
+ * rows it has, how many are still to do, and how many are Completed and
+ * Deferred. A Deferred row is set aside, so it is not left to do; a section with
+ * nothing left to do is finished, whether or not some of it was deferred.
+ */
+export type SectionProgress = { total: number; remaining: number; completed: number; deferred: number }
 
 export type Focus = {
   search: string
@@ -933,40 +885,57 @@ const inRegistryOrder = (groups: readonly StepGroup[]) => (a: BoardItem, b: Boar
   (positionInGroup(a.id, groups) ?? Number.MAX_SAFE_INTEGER) - (positionInGroup(b.id, groups) ?? Number.MAX_SAFE_INTEGER) || a.id.localeCompare(b.id)
 
 /**
- * The All work tab (owner, 2026-09-20): every group that is not entirely
- * complete, in registry order, with ALL of its rows in the group's own order —
- * no lane filtering inside a group, and its completed rows included, so the
- * group reads as the whole run of work it is.
+ * How far each section has got over the rows handed in (SectionProgress), keyed
+ * by registry key. Handed the board's WHOLE row set, so a heading says what is
+ * left of the section and not of what a filter left on screen. Pure.
+ */
+export function sectionProgressOf(items: readonly BoardItem[], groups: readonly StepGroup[] = STEP_GROUPS): ReadonlyMap<string, SectionProgress> {
+  const out = new Map<string, SectionProgress>()
+  for (const i of items) {
+    const key = groupOf(i.id, groups)?.key
+    if (key === undefined) continue
+    const p = out.get(key) ?? { total: 0, remaining: 0, completed: 0, deferred: 0 }
+    out.set(key, { total: p.total + 1, remaining: p.remaining + (i.lane === 'Completed' || i.lane === 'Deferred' ? 0 : 1), completed: p.completed + (i.lane === 'Completed' ? 1 : 0), deferred: p.deferred + (i.lane === 'Deferred' ? 1 : 0) })
+  }
+  return out
+}
+
+/**
+ * The All work tab: every section in its registry place, each WHOLE — all of
+ * its rows the focus left, in the section's own order, no lane filtering inside
+ * — so the page reads top to bottom as the plan runs.
  *
- * A group whose every row is Completed is not in `active`. It goes to
- * `completed`, which is the board's existing fold for finished work and not a
- * second mechanism: the same secondary group, under the group's own completed
- * title, revealed by Show completed or by holding the open step, exactly as a
- * finished pinned group has always been drawn (`pinnedBoardGroups`).
+ * Sections never move (owner, roadmap flow V2). There is no block lifted above
+ * the tabs while a section is open and no fold below them once it is finished:
+ * a finished section stays where it is and is `closed`, drawn as its title and
+ * one line ("All 4 completed"), and selecting it opens it. `board` is the whole
+ * row set, which the heading counts (sectionProgressOf); `shown` is what the
+ * focus left, which the section draws.
  *
  * The rows are the ones handed in, so the numbers a row shows (`rowNumbersOf`,
  * taken once over the whole board) are the same numbers here. Pure.
  */
-export function allWorkGroups(items: readonly BoardItem[], show: { completed: boolean; open: string | null }, groups: readonly StepGroup[] = STEP_GROUPS): { active: BoardGroup[]; completed: BoardGroup[] } {
+export function allWorkGroups(shown: readonly BoardItem[], board: readonly BoardItem[], groups: readonly StepGroup[] = STEP_GROUPS): BoardGroup[] {
   const inGroupOrder = inRegistryOrder(groups)
-  const active: BoardGroup[] = []
-  const completed: BoardGroup[] = []
+  const progress = sectionProgressOf(board, groups)
+  const out: BoardGroup[] = []
   for (const group of groups) {
-    const mine = items.filter((i) => groupOf(i.id, groups)?.key === group.key).sort(inGroupOrder)
+    const mine = shown.filter((i) => groupOf(i.id, groups)?.key === group.key).sort(inGroupOrder)
     if (mine.length === 0) continue
-    const done = mine.every((i) => i.lane === 'Completed')
-    if (!done) active.push({ key: `${ALL_WORK_TAB}-${group.key}`, label: groupTitleOf(group, false), secondary: false, closed: false, progress: true, items: mine })
-    else if (show.completed || (show.open !== null && mine.some((i) => i.id === show.open))) completed.push({ key: `${ALL_WORK_TAB}-${group.key}-complete`, label: groupTitleOf(group, true), secondary: true, closed: false, progress: true, items: mine })
+    const p = progress.get(group.key) ?? sectionProgressOf(mine, groups).get(group.key)!
+    const finished = p.remaining === 0
+    out.push({ key: `${ALL_WORK_TAB}-${group.key}`, label: groupTitleOf(group, finished), secondary: false, closed: finished, progress: p, items: mine })
   }
   // A row the registry claims for no group at all is still drawn: the board never loses one.
-  const ungrouped = items.filter((i) => groupOf(i.id, groups) === null)
-  if (ungrouped.length > 0) active.push({ key: ALL_WORK_TAB, label: BOARD.allWorkTab, secondary: false, closed: false, progress: true, items: ungrouped })
-  return { active, completed }
+  const ungrouped = shown.filter((i) => groupOf(i.id, groups) === null)
+  if (ungrouped.length > 0) out.push({ key: ALL_WORK_TAB, label: BOARD.allWorkTab, secondary: false, closed: false, items: ungrouped })
+  return out
 }
 
 /**
  * The Completed and Deferred groups the toggles revealed among the rows a focus
- * left, drawn after the tab panel and never inside it (A6). Pure.
+ * left on a LANE tab, drawn after the tab panel and never inside it (A6). All
+ * work draws finished rows in their own sections instead. Pure.
  */
 export function asideGroupsFor(items: readonly BoardItem[]): BoardGroup[] {
   const sorted = [...items].sort((a, b) => a.order - b.order)
@@ -1002,15 +971,22 @@ export function rowNumbersOf(items: readonly Pick<BoardItem, 'id'>[], groups: re
  * "3 steps" over rows numbered 3, 5 and 6 denied that anything was filtered.
  * Where nothing is filtered out the line is the plain count it always was.
  *
- * A group drawn WHOLE has no rows elsewhere to account for, so the same line
- * says the other thing worth knowing about a complete run: how much of it is
- * done ("2 of 7 completed", pages.app.plan.board.groupCompleted). One heading
+ * A section drawn WHOLE (All work) has no rows elsewhere to account for, so the
+ * same line says what a person acts on instead (owner, roadmap flow V2 decision
+ * B): what is left of it ("2 of 6 remaining"), and once nothing is, what became
+ * of it ("All 4 completed"; "1 of 1 completed" for a section of one row; "3 of
+ * 4 completed, 1 deferred" where some of it was set aside). One heading
  * mechanism, one line, and which sentence it is follows from whether the group
- * is a filtered selection or the group itself.
+ * is a filtered selection or the section itself.
  */
 export function groupSummary(g: BoardGroup, total: number | null = null): string {
+  const p = g.progress
+  if (p !== undefined) {
+    if (p.remaining > 0) return fillText(BOARD.groupRemaining, { remaining: p.remaining, total: p.total })
+    if (p.deferred > 0) return fillText(BOARD.groupFinished, { done: p.completed, total: p.total, deferred: p.deferred })
+    return fillText(p.total === 1 ? BOARD.groupCompleted : BOARD.groupAllCompleted, { done: p.completed, total: p.total })
+  }
   const n = g.items.length
-  if (g.progress === true) return fillText(BOARD.groupCompleted, { done: g.items.filter((i) => i.lane === 'Completed').length, total: n })
   const word = (k: number): string => `${k} step${k === 1 ? '' : 's'}`
   return total !== null && total > n ? `${n} of ${word(total)}` : word(n)
 }
