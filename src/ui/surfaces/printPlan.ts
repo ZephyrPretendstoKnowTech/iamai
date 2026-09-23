@@ -11,6 +11,8 @@ import { contentTitle } from '../../content/stepTitle.ts'
 import { pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { doesntApplyRows } from './planRows.ts'
+import { FINISH } from '../../copy/statements.ts'
+import type { PlanFinish } from '../../derive/finish.ts'
 import { stepBodyOf } from './stepBody.ts'
 import type { StepVarContext } from './stepVars.ts'
 import type { LaneView, PrerequisiteBlocker, PrerequisiteLabel, ReadinessTile } from './stepContract.ts'
@@ -83,4 +85,15 @@ export function laneGroupsOf(rows: readonly Step[], laneOf: (id: string) => { la
 export function doesntApplyLinesOf(steps: readonly Step[]): string[] {
   const row = (pages.plan as { footer: { doesntApplyRow: string } }).footer.doesntApplyRow
   return doesntApplyRows(steps).map((s) => fillText(row, { stepTitle: contentTitle(s), reason: s.doesntApply ?? '' }))
+}
+
+/**
+ * What holds the plan, as the cover names it beside its start: every readiness
+ * number that holds steps, then the steps held on other work and what they wait
+ * on (derive/finish.ts planFinish), joined as the finish line joins its parts.
+ * The readiness clause used to stand in for both, so the demo's cover named one
+ * device step and not the nineteen held on Prepare Emergency Access Accounts.
+ */
+export function constraintOf(finish: PlanFinish, titleOf: (id: string) => string): string {
+  return [FINISH.waiting(finish.waiting), FINISH.unwritable(finish.unwritable.count, finish.unwritable.waitsOn.map(titleOf), finish.unwritable.named)].filter((c) => c.length > 0).join(' · ')
 }

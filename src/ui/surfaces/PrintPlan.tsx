@@ -8,7 +8,6 @@ import type { CoverageReport } from '../../coverage/types.ts'
 import { waveLabels } from '../../derive/phases.ts'
 import { absoluteDate, dateRange } from '../../copy/dates.ts'
 import { planFinish, planWeeks } from '../../derive/finish.ts'
-import { FINISH } from '../../copy/statements.ts'
 import { BrandMark } from '../components/Mark.tsx'
 import { ContentStep } from './ContentStep.tsx'
 import type { StepVarContext } from './stepVars.ts'
@@ -24,7 +23,7 @@ import { completedRows, deferredRows, floorRows, openDoneRows, phaseRows, planPh
 import { contentTitle } from '../../content/stepTitle.ts'
 import { boardHolds, boardReadingsOf, doesntApplyView, laneViewOf, laneWordOf, prerequisiteLabelFor, readinessBlockersOf } from './planBoard.ts'
 import type { LaneView } from './stepContract.ts'
-import { completedLinesOf, doesntApplyLinesOf, laneGroupsOf, noPlanLine, postureOf } from './printPlan.ts'
+import { completedLinesOf, constraintOf, doesntApplyLinesOf, laneGroupsOf, noPlanLine, postureOf } from './printPlan.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { PrintBoard } from './printPlan.ts'
 
@@ -203,10 +202,11 @@ export function PrintPlan({
   // ready" (task 042).
   const verificationNote = facts === null ? '' : notReady(facts) > 0 ? fillText(C.verificationNote, { n: notReady(facts), active: facts.active }) : C.verificationNoteReady
   const weeks = planWeeks(finish, schedule)
-  // What holds the plan, as the Plan header names it: a readiness number where one
-  // does, else the held steps and the step each waits on (derive/finish.ts).
+  // What holds the plan: every readiness number that holds steps, and the steps
+  // held on other work with the step each waits on (derive/finish.ts), joined
+  // (printPlan.ts constraintOf).
   const titleOf = (id: string): string => laneTitleOf(id) ?? id
-  const constraint = FINISH.waiting(finish.waiting) || FINISH.unwritable(finish.unwritable.count, finish.unwritable.waitsOn.map(titleOf), finish.unwritable.named)
+  const constraint = constraintOf(finish, titleOf)
   // Held work dates no end: the cover, the Cleanup heading and the header all say so.
   const cannotFinish = finish.held
   // The Plan's header as one line (derive/planHeader.ts), without the anchored

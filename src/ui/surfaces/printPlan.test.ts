@@ -23,7 +23,7 @@ import { boardOf } from './planBoard.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { completedRows, deferredRows, doesntApplyRows, floorRows, openDoneRows } from './planRows.ts'
-import { completedLinesOf, doesntApplyLinesOf, laneGroupsOf, noPlanLine, postureOf } from './printPlan.ts'
+import { completedLinesOf, constraintOf, doesntApplyLinesOf, laneGroupsOf, noPlanLine, postureOf } from './printPlan.ts'
 import { stepFacts } from '../../derive/facts.ts'
 import { conditionalAccessLicenceLine } from '../../derive/notLicensed.ts'
 import { planFinish } from '../../derive/finish.ts'
@@ -215,4 +215,19 @@ test('a deferred floor step prints once, in the Deferred list, never in full und
   // Every step the board reads Deferred is in the list, and nothing else is.
   const boardDeferred = p.steps.filter((s) => !s.doesntApply && p.board.laneOf(s.id).lane === 'Deferred').map((s) => s.id).sort()
   assert.deepEqual([...deferredIds].sort(), boardDeferred, 'the Deferred list and the board\'s Deferred lane differ')
+})
+
+// ---- What holds the plan, on the cover ----
+
+test('the cover names every kind of hold on the plan, the readiness waits and the steps held on other work', () => {
+  // Demo: "Aug 31, 2026 · 1 device step waits for device readiness", while
+  // nineteen steps wait on Prepare Emergency Access Accounts and three others:
+  // the readiness clause dropped the other whenever one existed.
+  const p = plan('demo')
+  const finish = planFinish(p.steps, p.schedule.cleanup?.end ?? null)
+  assert.ok(finish.waiting.length > 0 && finish.unwritable.count > 0, 'the premise: the demo has both kinds of hold')
+  const said = constraintOf(finish, (id) => p.board.titleOf(id) ?? id)
+  assert.match(said, /1 device step waits for device readiness/, said)
+  assert.match(said, / · \d+ held steps are cleared, \d+ of them after Prepare Emergency Access Accounts/, said)
+  assert.match(readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8'), /const constraint = constraintOf\(finish, titleOf\)/, 'the cover words the hold itself')
 })
