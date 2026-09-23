@@ -488,3 +488,16 @@ test('People: the Name cell does not repeat the sign-in address the next column 
     if (r.user.displayName) assert.equal(name.cell(r), r.user.displayName)
   }
 })
+
+test('a Policies row names the guest or external types a policy includes, as it names the ones it excludes', () => {
+  const s = fixture('demo').snapshot
+  const policy = (id: string, users: Record<string, unknown>) => ({ id, displayName: id, state: 'enabled', conditions: { users, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'] }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } })
+  const m = policiesModel(s, policyFactsOf(s, [
+    policy('providers', { includeGuestsOrExternalUsers: { guestOrExternalUserTypes: 'serviceProvider,b2bDirectConnectUser', externalTenants: { membershipKind: 'all' } } }),
+    policy('every-guest', { includeUsers: ['GuestsOrExternalUsers'] }),
+  ]), buildNameDirectory(s))
+  const users = (id: string) => String(m.columns.find((c) => c.key === 'users')!.cell(m.rows.find((r) => r.id === id)!))
+  assert.equal(users('providers'), `${portalName('guestType', 'serviceProvider')}, ${portalName('guestType', 'b2bDirectConnectUser')}`)
+  assert.equal(users('every-guest'), C.policies.guests)
+  assert.match(readFileSync('src/ui/surfaces/InventoryPage.tsx', 'utf8'), /includedGuestsWords\(r\)/, 'the Include line names them too')
+})
