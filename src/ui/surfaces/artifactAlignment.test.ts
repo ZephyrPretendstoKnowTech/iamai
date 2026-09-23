@@ -35,7 +35,7 @@ import { statedEnforcement } from '../../roadmap/forecast.ts'
 import { readinessTable } from './inventoryTables.ts'
 import { floorRows, phaseRows, planPhases, scheduledIds, undatedRows } from './planRows.ts'
 import { laneReadings } from './planLanes.ts'
-import { boardReadingsOf, laneViewFor, laneViewOf } from './planBoard.ts'
+import { BOARD, boardReadingsOf, laneViewFor, laneViewOf } from './planBoard.ts'
 import { nextMilestone } from '../../roadmap/lifecycle.ts'
 import { inWave } from '../../derive/phases.ts'
 import { redactIdentifiers } from '../../redact.ts'
@@ -143,6 +143,15 @@ test('013.A: a step whose action is the wait says what it waits on in every chan
       // artifact and the row cannot name the wait differently.
       if (lane.lane === 'Up Next' || lane.lane === 'On Hold') assert.equal(k.whatToDo.gatedBy, lane.tail ?? nextMilestone(s).gatedBy, `${where}: the gate is not the row's`)
       const v = c.view(s)
+      // The gate is a line of its own only where it is the board's words for a
+      // waiting row: never the engine's milestone clause, a readiness gate's
+      // clause (its Threshold card's sentence is under Before turn-on) or the
+      // "Not supported" group label (Phase 2 export finding 13).
+      const boardWords = (lane.lane === 'Up Next' || lane.lane === 'On Hold') && lane.tail !== null && lane.tail === k.whatToDo.gatedBy && lane.tail !== BOARD.blockers.unsupported && !/^[a-z]/.test(lane.tail)
+      if (!boardWords) {
+        assert.ok(!v.whatToDo.some((l) => l === k.whatToDo.gatedBy || l === `${k.whatToDo.gatedBy}.`), `${where}: the gate "${k.whatToDo.gatedBy}" as a What to do line`)
+        continue
+      }
       const line = v.whatToDo.find((l) => l.startsWith(k.whatToDo.gatedBy!))
       assert.ok(line, `${where}: the export drops the gate "${k.whatToDo.gatedBy}" — ${v.whatToDo.join(' | ')}`)
       // The action comes first and the gate stands beside it, in the flat
