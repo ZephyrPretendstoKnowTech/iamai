@@ -136,6 +136,8 @@ type ContractWords = {
   foundEnforcedBelowThreshold: string
   /** The same, where the value is a floor the scan could prove (readiness.atLeast). */
   foundEnforcedBelowThresholdFloor: string
+  /** A tenant's own policy delivering the goal, where it differs from the baseline's (Action.ownPolicyDiffers). */
+  ownPolicyDiffers: { label: string; note: string }
   /** The people marked on the campaign to turn on without, for now (roadmap/followUp.ts). */
   followUp: { label: string; campaign: string; campaignOpen: string; method: string; risk: string; pickerLabel: string; pickerHelp: string; save: string; printed: string; printedNone: string }
   /** The threshold where the scan could prove only a floor under the value. */
@@ -1867,6 +1869,19 @@ function followUpTile(c: StepContract): ReadinessTile | null {
   return { key: 'follow-up', label: CONTRACT.followUp.label, tone: 'warn', value: `${c.followUp.count} ${plural(c.followUp.count, 'person', 'people')}`, note: c.followUp.text }
 }
 
+/**
+ * Where a policy the tenant wrote delivers the goal and differs from the
+ * baseline's in a part coverage does not judge (Action.ownPolicyDiffers): said,
+ * as a warning on a step that stays Completed, and never an instruction (owner,
+ * 2026-09-22).
+ */
+function ownPolicyTile(step: Step): ReadinessTile | null {
+  const d = step.action.ownPolicyDiffers
+  if (!d || !step.state.satisfied) return null
+  const dimensions = dimensionWords(d.dimensions)
+  return { key: 'own-policy-differs', label: CONTRACT.ownPolicyDiffers.label, tone: 'warn', value: dimensions, note: fillText(CONTRACT.ownPolicyDiffers.note, { policy: d.policyName, dimensions }) }
+}
+
 /** The key of that reading's tile: a finding on a finished step, which is not a task anybody can do here. */
 export const FINISHED_READING = 'enforced-readiness'
 
@@ -2292,7 +2307,7 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
     return { tiles, satisfied: configuredTiles.filter(t => t.tone === 'good'), bar: barOf(c) }
   }
   const inventory: ReadinessTile | null = c.inventory ? { key: 'directory-inventory', label: c.inventory.label, value: `${c.inventory.complete ? '' : 'At least '}${c.inventory.count} ${plural(c.inventory.count, 'guest')}`, note: [c.inventory.note, c.inventory.names.length > 0 ? CONTRACT.inventoryNames : null, ...c.inventory.names].filter((x): x is string => x !== null).join('\n'), tone: 'info' } : null
-  const facts = [enforcedReadingTile(step), followUpTile(c), blindReadingTile(step, c), ...emergencyTiles(step, c), ...configuredTiles, ...(configuration.length && step.id !== 's-prereq-break-glass' ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), exclusionsTile(step, c), exclusionsReachTile(c), peopleTile(c), implementationTile(c), inventory].filter((x): x is ReadinessTile => x !== null)
+  const facts = [enforcedReadingTile(step), ownPolicyTile(step), followUpTile(c), blindReadingTile(step, c), ...emergencyTiles(step, c), ...configuredTiles, ...(configuration.length && step.id !== 's-prereq-break-glass' ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), exclusionsTile(step, c), exclusionsReachTile(c), peopleTile(c), implementationTile(c), inventory].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
   // The emergency step's failing checks are its account slots' lines (P0-7): no check tile beside them.
   const fixes = fixTiles(c.fix, prerequisiteLabel).filter((t) => !(step.emergency && t.key.startsWith('check:')) && !(configuration.length && /passkey.*(?:review|settings)|profile.*review/i.test(`${t.label} ${t.value}`)))
