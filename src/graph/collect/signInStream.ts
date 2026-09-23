@@ -12,7 +12,7 @@
 //   2. the saved span itself, read back from the store,
 //   3. the records Graph has older than what has been folded, to the window's start.
 // The fetch, store and clock are injected, so Node tests drive all of it.
-import { DEDUP_HORIZON_MS, MIN_COVERAGE_HOURS, SIGN_IN_TIE_GROUP_MAX, SLOW_THRESHOLD_MS } from './constants.ts'
+import { DEDUP_HORIZON_MS, MIN_COVERAGE_HOURS, SIGN_IN_REANCHOR_MAX, SIGN_IN_TIE_GROUP_MAX, SLOW_THRESHOLD_MS } from './constants.ts'
 import { GraphResponseShapeError, SectionDisabledError } from './http.ts'
 import { absolute } from '../../copy/dates.ts'
 import { scenarioFold } from '../../derive/evidence.ts'
@@ -202,20 +202,39 @@ export async function runLaneB(deps: LaneBDeps): Promise<SignInEvidence> {
    */
   const graphLoop = async (firstUrl: string, boundary: string, mode: 'fresh' | 'new' | 'older'): Promise<'boundary' | 'history exhausted' | 'time budget'> => {
     let next: string | null = firstUrl
+    let failures = 0
     while (next) {
       if (deps.clock() - wallStart > budgetMs) return 'time budget'
       const t0 = deps.clock()
-      const body = await deps.fetchPage(next)
-      const ms = Math.round(deps.clock() - t0)
-      if (ms > slowThresholdMs && !slowSignalled) {
-        slowSignalled = true
-        deps.onSlow?.()
+      let value: unknown[]
+      let nextLink: string | null
+      let ms: number
+      try {
+        const body = await deps.fetchPage(next)
+        ms = Math.round(deps.clock() - t0)
+        if (ms > slowThresholdMs && !slowSignalled) {
+          slowSignalled = true
+          deps.onSlow?.()
+        }
+        stats.pages += 1
+        // A page without its value array is a failed read, never the end of history.
+        if (!Array.isArray(body.value)) throw new GraphResponseShapeError('sign-in page without a value array')
+        value = body.value
+        nextLink = body['@odata.nextLink'] ?? null
+      } catch (e) {
+        // A page that still fails after the request's own retries is read again from
+        // the last whole second folded: a nextLink is not needed to go on. A refusal,
+        // a cancelled scan, or SIGN_IN_REANCHOR_MAX failures in a row stop the read.
+        failures += 1
+        if (e instanceof SectionDisabledError || deps.signal?.aborted || failures >= SIGN_IN_REANCHOR_MAX) throw e
+        fold.discard()
+        next = fold.frontier ? deps.pageUrl(plus1s(fold.frontier)) : firstUrl
+        stats.reanchors += 1
+        continue
       }
-      stats.pages += 1
-      // A page without its value array is a failed read, never the end of history.
-      if (!Array.isArray(body.value)) throw new GraphResponseShapeError('sign-in page without a value array')
+      failures = 0
       // Graph returns newest first; a stable sort keeps its order within a second.
-      const rows = body.value.map(mapRow).filter((r): r is StoredSignIn => r !== null).sort(newestFirst)
+      const rows = value.map(mapRow).filter((r): r is StoredSignIn => r !== null).sort(newestFirst)
       const pageOldest = rows.length > 0 ? rows[rows.length - 1].createdDateTime : null
       const inWindow: StoredSignIn[] = []
       for (const row of rows) {
@@ -228,7 +247,7 @@ export async function runLaneB(deps: LaneBDeps): Promise<SignInEvidence> {
       resident(rows.length)
       deps.onPage?.({ pages: stats.pages, rows: fold.counts.folded, ms, oldest: fold.frontier ?? pageOldest })
       if (pageOldest !== null && pageOldest < boundary) return 'boundary'
-      next = body['@odata.nextLink'] ?? null
+      next = nextLink
     }
     return 'history exhausted'
   }

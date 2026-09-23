@@ -313,3 +313,47 @@ test('policy results from the stream equal the two-pass derivation, with ties an
     assert.deepStrictEqual(derived(r), straightFold(() => mapped).derived, `seed ${seed}`)
   }
 })
+
+test('a page that fails is read again from the last whole second folded, and three failures in a row stop the read', async () => {
+  const o = { seed: 11, anchorMs: NOW, spacingS: 390 }
+  const flaky = fakeGraph({ ...o, nowMs: NOW, failOn: (_url, n) => n === 40 || n === 41 })
+  const r = await read(flaky, discardStore())
+  assert.equal(r.status, 'ok')
+  assert.equal(r.stats?.reanchors, 2)
+  assert.equal(flaky.urls[39], `start#${39 * SIGN_IN_PAGE_SIZE}`)
+  assert.match(flaky.urls[40], /^lt:/)
+  assert.equal(flaky.urls[41], flaky.urls[40], 'both reads again start from the same second')
+  const second = flaky.urls[40].slice(3)
+  const last39 = 39 * SIGN_IN_PAGE_SIZE - 1
+  assert.equal(second, iso(rowTimeMs(o, last39 - (last39 % RUN) - 1) + 1000), 'a second after the last whole second folded')
+  assert.deepStrictEqual(derived(r), straightFold(() => flaky.rowsInWindow(windowStartOf(NOW))).derived)
+
+  const down = fakeGraph({ ...o, nowMs: NOW, failOn: (_url, n) => (n >= 40 ? new Error(`failure ${n}`) : null) })
+  const stopped = await read(down, discardStore())
+  assert.equal(stopped.status, 'partial')
+  assert.equal(stopped.reason, 'collection interrupted: failure 42', 'the third failure in a row stops it, with its own message')
+  assert.equal(stopped.stats?.reanchors, 2)
+})
+
+test('a cancelled scan and a refused read are not read again', async () => {
+  const o = { seed: 12, anchorMs: NOW, spacingS: 390 }
+  const cancel = new AbortController()
+  const fake = fakeGraph({ ...o, nowMs: NOW })
+  const cancelling: LaneBDeps['fetchPage'] = (url) => {
+    if (fake.urls.length === 4) {
+      cancel.abort()
+      return Promise.reject(new DOMException('The scan was cancelled.', 'AbortError'))
+    }
+    return fake.fetchPage(url)
+  }
+  const cancelled = await read({ pageUrl: fake.pageUrl, fetchPage: cancelling }, discardStore(), { signal: cancel.signal })
+  assert.equal(cancelled.stats?.reanchors, 0)
+  assert.equal(cancelled.reason, 'collection interrupted: The scan was cancelled.')
+  assert.equal(fake.urls.length, 4)
+
+  const refused = fakeGraph({ ...o, nowMs: NOW, failOn: (_url, n) => (n === 5 ? new SectionDisabledError('Sign-in logs need Microsoft Entra ID P1 or P2.') : null) })
+  const disabled = await read(refused, discardStore())
+  assert.equal(disabled.status, 'disabled')
+  assert.equal(disabled.stats?.reanchors, 0)
+  assert.equal(refused.urls.length, 5)
+})
