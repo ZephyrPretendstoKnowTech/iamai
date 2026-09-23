@@ -14,15 +14,15 @@
   ],
   "tiles": [
     {
-      "label": "Allowed countries",
+      "label": "Administrator Sign-in Countries",
       "state": "Needs Correction"
     },
     {
-      "label": "Allowed countries",
+      "label": "Work Countries Location",
       "state": "Needs Correction"
     },
     {
-      "label": "Allowed countries",
+      "label": "Countries People Sign In From",
       "state": "Needs Correction"
     }
   ],
