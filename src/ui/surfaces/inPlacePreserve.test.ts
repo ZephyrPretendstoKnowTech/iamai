@@ -72,6 +72,7 @@ import { jsonOffered, stepOperations } from './stepJson.ts'
 import { powershellFor } from './stepPowerShell.ts'
 import { portalNamesFor, stepPortalLines } from './stepPortal.ts'
 import { stepInstructions } from './stepInstructions.ts'
+import registry from '../../content/implementation/registry.generated.json' with { type: 'json' }
 import { rowWhen, rowReason } from './rowWhen.ts'
 import { statusOf } from './statusWord.ts'
 import { stepVars } from './stepVars.ts'
@@ -374,6 +375,27 @@ test('every way back IAMAI gives for a policy says Report-only, and none says Of
     assert.doesNotMatch(line, SWITCHING_OFF, `${step.id}: ${line}`)
   }
   assert.ok(rendered > 0, 'the premise: some step on the canonical tenant has a way back')
+})
+
+test('every rollback an implementation package gives for a policy keeps it out of Off', () => {
+  // The packages' own "ROLLBACK / SAFE RECOVERY" blocks render in the product
+  // (the AI Info and reference channels), and the sweep above reads only the
+  // content's ways back. Each says Report-only, or non-enforcing, today; a
+  // package that said Off would have reached the screen with no test to stop it.
+  const texts: string[] = []
+  const walk = (v: unknown): void => {
+    if (typeof v === 'string') texts.push(v)
+    else if (Array.isArray(v)) v.forEach(walk)
+    else if (v !== null && typeof v === 'object') Object.values(v).forEach(walk)
+  }
+  walk(registry)
+  const blocks = [...new Set(texts.flatMap((t) => [...t.matchAll(/ROLLBACK \/ SAFE RECOVERY\n([\s\S]*?)(?:\n\n|$)/g)].map((m) => m[1])))]
+  assert.ok(blocks.length >= 5, `the premise: the packages carry their rollback blocks (${blocks.length})`)
+  for (const block of blocks) {
+    assert.doesNotMatch(block, SWITCHING_OFF, `a package rollback switches the policy off: ${block}`)
+    assert.doesNotMatch(block, /\bto Off\b|state\s*[:=]\s*['"]?disabled/i, `a package rollback switches the policy off: ${block}`)
+    assert.match(block, /Report-only|non-enforcing/i, `a package rollback does not say where the policy goes: ${block}`)
+  }
 })
 
 // ---- 9: the screen and the artifacts say the same thing ----
