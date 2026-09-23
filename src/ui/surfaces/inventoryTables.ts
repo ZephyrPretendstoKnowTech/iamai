@@ -112,6 +112,18 @@ export function partlyReadLine(snapshot: TenantSnapshot, key: SectionKey): strin
   return reason === null ? W.partlyReadNoReason : fillText(W.partlyRead, { reason })
 }
 
+/**
+ * The line over a table naming one column whose own section was not read, or
+ * was read in part, by the column's header; null where it was read (as far as
+ * a licence allows).
+ */
+function columnLine(snapshot: TenantSnapshot, key: SectionKey, column: string): string | null {
+  const reason = reasonOf(sectionState(snapshot, key))
+  if (!sectionHasData(snapshot, key)) return reason === null ? fillText(W.columnNotReadNoReason, { column }) : fillText(W.columnNotRead, { column, reason })
+  if (!partlyRead(snapshot, key)) return null
+  return reason === null ? fillText(W.columnPartlyReadNoReason, { column }) : fillText(W.columnPartlyRead, { column, reason })
+}
+
 /** A table of one section: its rows only where the scan got data out of it. */
 function readOf<M extends { rows: unknown[]; empty?: string; notRead?: string | null; note?: string | null }>(snapshot: TenantSnapshot, key: SectionKey, m: M): M {
   const notRead = notReadLine(snapshot, key)
@@ -755,6 +767,8 @@ export function appsModel(snapshot: TenantSnapshot, names: NameDirectory): Inven
   const rows = [...byApp.values()]
   const summary = notReadLine(snapshot, 'appSignInSummary')
   const notRead = summary !== null && !spRead ? summary : null
+  // Over a table drawn from one source, the column whose own source fell short, by its header: never a line that reads as if the whole table were unread.
+  const columnLines = [columnLine(snapshot, 'appSignInSummary', A.columns.signIns), columnLine(snapshot, 'spActivity', A.columns.lastSp)].filter((l): l is string => l !== null)
   return {
     id: 'apps',
     label: C.tabs.apps,
@@ -762,9 +776,9 @@ export function appsModel(snapshot: TenantSnapshot, names: NameDirectory): Inven
     rows,
     rowKey: (r) => r.id,
     // A summary that was read and lists nothing is not a licence: the licence, where it is the reason, is in the not-read line.
-    empty: summary ?? W.appsNone,
+    empty: notRead ?? [...(summaryRead ? [W.appsNone] : []), ...columnLines].join(' '),
     notRead,
-    note: notRead !== null || rows.length === 0 ? null : (summary ?? partlyReadLine(snapshot, 'appSignInSummary') ?? notReadLine(snapshot, 'spActivity')),
+    note: notRead !== null || rows.length === 0 ? null : columnLines.join(' ') || null,
     columns: [
       { key: 'app', header: A.columns.app, sort: (r) => r.app.toLowerCase(), cell: (r) => r.app },
       { key: 'signIns', header: A.columns.signIns, sort: (r) => r.signIns, cell: (r) => (summaryRead ? r.signIns : NOT_READ) },

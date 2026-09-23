@@ -430,15 +430,18 @@ function LicensingTab({ snapshot }: { snapshot: TenantSnapshot }) {
 
 function AppsTab({ snapshot, names }: { snapshot: TenantSnapshot; names: NameDirectory }) {
   const A = C.apps
+  const apps = appsModel(snapshot, names)
+  const lastSp = cellOf(apps, 'lastSp')
   const workloads = workloadsModel(snapshot)
   const detected = cellOf(workloads, 'detected')
   return (
     <div>
       <Heading text={C.tabs.apps} source="apps" />
       <ModelTable
-        model={appsModel(snapshot, names)}
+        model={apps}
         initialSort={{ key: 'signIns', dir: -1 }}
-        render={{ lastSp: (r) => (r.lastSp ? <span title={absoluteDate(r.lastSp)}>{relative(r.lastSp)}</span> : '—') }}
+        // A date shown relative to today; without one, the model's own words ("not read" where the service principals were not read).
+        render={{ lastSp: (r) => (r.lastSp ? <span title={absoluteDate(r.lastSp)}>{relative(r.lastSp)}</span> : lastSp(r)) }}
       />
       <ModelTable
         model={workloads}

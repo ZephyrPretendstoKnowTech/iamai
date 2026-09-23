@@ -123,6 +123,10 @@ export type AppWords = {
     tooLittle: string
     partlyRead: string
     partlyReadNoReason: string
+    columnNotRead: string
+    columnNotReadNoReason: string
+    columnPartlyRead: string
+    columnPartlyReadNoReason: string
     noneSeen: string
     hiddenNoteEligibleUnread: string
     appsNone: string
