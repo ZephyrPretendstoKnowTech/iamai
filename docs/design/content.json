@@ -3000,7 +3000,7 @@
         "redactedLabel": "Include names and addresses (unredacted)",
         "promptScope": "About one step: {step}",
         "promptWholePlan": "About the whole plan",
-        "importBaselineMismatch": "This plan uses a different baseline. Load the matching baseline on Connect before importing it. Your current plan has not been changed.",
+        "importBaselineMismatch": "This plan file was saved with a different baseline from the one this plan uses, so it was not loaded. Your current plan has not been changed.",
         "importSaveFailed": "The plan could not be saved. Your previous saved plan has not been replaced. Keep the backup file and try again."
       },
       "print": {
