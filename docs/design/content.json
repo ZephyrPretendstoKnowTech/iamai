@@ -1213,7 +1213,7 @@
           "signIns": "Nothing to do: the next scan retries the sign-in records",
           "notCovered": "Nothing to do: the next scan reads their sign-ins",
           "unavailable": "Nothing to do here: sign-in records aren’t available to IAMAI in this tenant",
-          "$commentMethodsUnavailable": "The method list could not be read and the registration report that stands in for it was refused in this tenant. A rescan with the same sign-in reads no more, so the row states the fact; the evidence tile says what reads it.",
+          "$commentMethodsUnavailable": "Drawn only where no method list was read in this tenant and the registration report that stands in for one was refused (derive/readinessContext.ts methodListsUnread). The row states the fact; the evidence tile says what reads it. Where other lists were read, a missed one keeps \"methods\", because the next scan re-reads it.",
           "methodsUnavailable": "Not known: IAMAI couldn’t read method lists in this tenant"
         }
       },
