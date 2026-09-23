@@ -319,6 +319,14 @@ export type TenantSnapshot = {
   recoveryDirectoryAudits?: RecoveryDirectoryAudit[]
   recoveryAuditSource?: SourceState
   evidencePolicyResults: PolicyAppliedResult[]
+  /**
+   * The policies the sign-in records show in report-only in the collected
+   * window, by any report-only result, `reportOnlyNotApplied` included
+   * (laneBCore.ts deriveReportOnlyPolicyIds). Proof of a report-only period and
+   * nothing else: no counts, and no entry in `evidencePolicyResults`. Absent on
+   * snapshots collected before this read existed, which prove none.
+   */
+  evidenceReportOnlyPolicyIds?: string[]
   blockedToday: BlockedTodayEntry[]
   evidenceUsage: EvidenceUsage | null
   evidenceAggregates?: EvidenceAggregates | null
