@@ -94,8 +94,9 @@ export function toValidationResult(results: RuleResult[], checkedAt = new Date()
 /**
  * The rule subjects a plan evaluates (roadmap/generate.ts, through `reportFor`
  * and `breakGlassReport`), in the order How lists them. `reportFor` takes only
- * these, so the list cannot fall behind the engine: a subject the plan starts
- * evaluating has to be added here first, and How lists it from here.
+ * these, so a subject the plan starts evaluating has to be added here first, and
+ * How lists it from here. The guard runs one way only: a subject generate.ts
+ * stops evaluating stays here, and on How, until it is removed by hand.
  *
  * The registry also holds the pilot-group and authentication-strength rules,
  * which nothing evaluates; How listed them as checks IAMAI runs (Phase 2 audit).
