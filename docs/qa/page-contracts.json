@@ -545,6 +545,7 @@
         "summaries": [
           "re:^Doesn't apply here \\(\\d+\\)$",
           "re:^Not licensed \\(\\d+\\)$",
+          "re:^In the baseline, not in this plan \\(\\d+\\)$",
           "re:^Housekeeping \\(\\d+\\)$"
         ],
         "links": [
@@ -645,6 +646,10 @@
           },
           {
             "click": "summary",
+            "text": "In the baseline, not in this plan"
+          },
+          {
+            "click": "summary",
             "text": "Housekeeping"
           }
         ],
@@ -660,6 +665,7 @@
         "summaries": [
           "re:^Doesn't apply here \\(\\d+\\)$",
           "re:^Not licensed \\(\\d+\\)$",
+          "re:^In the baseline, not in this plan \\(\\d+\\)$",
           "re:^Housekeeping \\(\\d+\\)$"
         ],
         "links": [

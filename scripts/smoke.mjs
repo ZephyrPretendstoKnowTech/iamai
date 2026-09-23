@@ -662,7 +662,7 @@ try {
     check('Step: the What-to-do tabs carry no forbidden placeholder', stepHits.length === 0, stepHits.join('; '))
   }
   check('Plan: Plan settings opens the popover', (await clickText('/^Plan settings$/')) && (await waitFor(`document.querySelector('main.page .plan-settings') !== null`)))
-  check('Plan: the footer names its groups', ((await evaluate(`[...document.querySelectorAll('main.page .plan-footer summary')].map((s) => s.textContent).join(' ')`)).match(/Already in place|Doesn't apply here|Not licensed|Housekeeping/g) || []).length >= 1)
+  check('Plan: the footer names its groups', ((await evaluate(`[...document.querySelectorAll('main.page .plan-footer summary')].map((s) => s.textContent).join(' ')`)).match(/Already in place|Doesn't apply here|Not licensed|In the baseline, not in this plan|Housekeeping/g) || []).length >= 1)
   // Every row's state is its lane label (A1c); the chip beside it is a fact or absent.
   check('Plan: one lane label per row', await evaluate(`(() => { const rows = [...document.querySelectorAll('main.page .plan-row')]; return rows.length >= 3 && rows.every((r) => /^(Ready|Up Next|On Hold|Completed|Deferred)( · \\S.*)?$/.test(((r.querySelector('.lane') || {}).textContent || '').trim())) })()`))
   // The Plan → MFA Readiness handoff (task 012): a step whose own enforcement
@@ -990,6 +990,9 @@ try {
   const reasonLines = (await acrossLanes(`[document.querySelectorAll('main.page .plan-row .plan-row-reason').length]`)).reduce((n, x) => n + Number(x), 0)
   const doubled = (await acrossLanes(`[[...document.querySelectorAll('main.page .plan-row')].filter((r) => r.querySelectorAll('.plan-row-reason').length > 1).length]`)).reduce((n, x) => n + Number(x), 0)
   check('Demo: a waiting row names what it waits for, once', reasonLines > 0 && doubled === 0, `reason lines=${reasonLines}, rows with more than one=${doubled}`)
+  // The pinned baseline's policies nothing else on the Plan names are listed in the
+  // footer, and the heading counts its rows (derive/notInPlan.ts).
+  check('Demo: In the baseline, not in this plan counts its rows', await evaluate(`(() => { const head = 'In the baseline, not in this plan ('; const d = [...document.querySelectorAll('main.page .plan-footer details')].find((x) => ((x.querySelector('summary') || {}).textContent || '').trim().startsWith(head)); if (!d) return false; const n = Number(d.querySelector('summary').textContent.trim().slice(head.length, -1)); return Number.isInteger(n) && n > 0 && d.querySelectorAll('li').length === n })()`))
 
   // Two steps: open two plan rows, each shows its step body.
   let demoOpened = 0
