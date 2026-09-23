@@ -1267,6 +1267,21 @@ function ownObjectTaskOf(step: Step, ctx: StepVarContext): OwnObjectTask | null 
   return { title: title ?? contentTitle(task), action: stepContract(task, ctx).whatToDo.text }
 }
 
+/**
+ * Whether the object a step makes itself leads the step's Implementation
+ * (Stage 3; Step.objectTask): while the object is still to be made its task's
+ * procedure comes first, on screen (stepBody.ts withObjectTask) and in every
+ * export (stepExport.ts stepExportView), and the policy's procedure follows as
+ * the next task. Not while the step still asks its question: the object is made
+ * from the answer (the countries location from the saved work countries), and
+ * until it is saved the step offers nothing to make. Once the scan finds the
+ * object in place, the policy's Implementation is the step's.
+ */
+export function objectTaskLeads(step: Step): boolean {
+  const task = step.objectTask
+  return task !== undefined && !task.state.satisfied && !step.state.satisfied && step.state.condition !== 'needs-decision'
+}
+
 /** The reasons that leave no policy IAMAI can write, so no end state to state. */
 export const NO_POLICY_REASONS: ReadonlySet<UnavailableReason> = new Set(['baseline-conflict', 'no-operation', 'unmatched-pair'])
 
