@@ -11,6 +11,7 @@ import { contentTitle } from '../../content/stepTitle.ts'
 import { app, pages, phases } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { doesntApplyRows } from './planRows.ts'
+import { boardHolds } from './planBoard.ts'
 import { FINISH } from '../../copy/statements.ts'
 import type { PlanFinish } from '../../derive/finish.ts'
 import { absoluteDate, dateRange } from '../../copy/dates.ts'
@@ -176,6 +177,19 @@ export function verificationNoteOf(steps: readonly Step[]): string {
   const prep = campaign?.preparation
   if (!campaign || !prep) return ''
   return fillText(app.print.verificationNote, { n: prep.missingIds.length, total: prep.ids.length, step: contentTitle(campaign) })
+}
+
+/**
+ * The registration and verification window row's dates: the schedule's window,
+ * and none while the board holds the campaign step (planBoard.ts boardHolds).
+ * A step the board holds carries no date anywhere (owner decision 2,
+ * 2026-09-22), and the window is that step's work: large's first scan printed
+ * "Aug 31, 2026 → Sep 28, 2026" beside Prepare Your Team for MFA On Hold.
+ */
+export function verificationDatesOf(steps: readonly Step[], window: { start: string; end: string }, laneOf: (id: string) => LaneView): string | null {
+  const campaign = steps.find((s) => s.id === 's-verify-mfa')
+  if (campaign && boardHolds(campaign, laneOf(campaign.id))) return null
+  return dateRange(window.start, window.end)
 }
 
 /**

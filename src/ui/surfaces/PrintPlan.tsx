@@ -23,7 +23,7 @@ import { completedRows, deferredRows, floorRows, openDoneRows, phaseRows, planPh
 import { contentTitle } from '../../content/stepTitle.ts'
 import { boardHolds, boardReadingsOf, doesntApplyView, laneViewOf, laneWordOf, prerequisiteLabelFor, readinessBlockersOf } from './planBoard.ts'
 import type { LaneView } from './stepContract.ts'
-import { cleanupHeadingOf, cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, holdsOf, laneGroupsOf, noPlanLine, phaseDatesOf, postureOf, verificationNoteOf } from './printPlan.ts'
+import { cleanupHeadingOf, cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, holdsOf, laneGroupsOf, noPlanLine, phaseDatesOf, postureOf, verificationDatesOf, verificationNoteOf } from './printPlan.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { PrintBoard } from './printPlan.ts'
 
@@ -206,6 +206,8 @@ export function PrintPlan({
   // sized for, of everyone the campaign step prepares (printPlan.ts
   // verificationNoteOf), never a count of another population beside it.
   const verificationNote = verificationNoteOf(steps)
+  // Its dates: none while the board holds the campaign step (printPlan.ts verificationDatesOf).
+  const verificationDates = verificationDatesOf(steps, schedule.verification, laneOf)
   const weeks = planWeeks(finish, schedule)
   // What holds the plan: every readiness number that holds steps, and the steps
   // held on other work with the step each waits on (derive/finish.ts), joined
@@ -306,7 +308,7 @@ export function PrintPlan({
                   {w.wave === 0 && schedule.verification.days > 0 && (
                     <tr key="verification">
                       <td>{fillText(C.verificationWindow, { days: schedule.verification.days })}</td>
-                      <td>{dateRange(schedule.verification.start, schedule.verification.end)}</td>
+                      <td>{verificationDates}</td>
                       <td>{verificationNote}</td>
                     </tr>
                   )}
