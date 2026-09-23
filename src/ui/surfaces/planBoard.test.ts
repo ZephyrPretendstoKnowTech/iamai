@@ -17,7 +17,7 @@ import { fixture } from '../../roadmap/fixtures/index.ts'
 import type { FixtureName } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
-import { directionWords, stepById } from '../../content/content.ts'
+import { directionWords, pages, stepById } from '../../content/content.ts'
 import { laneReadings } from './planLanes.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { STEP_GROUPS, groupOf } from '../../roadmap/stepGroups.ts'
@@ -29,6 +29,7 @@ import {
   TABS,
   allWorkGroups,
   NO_FOCUS,
+  SUBSTATUS_WORD,
   TAB_OF,
   TYPE_ORDER,
   WHEN,
@@ -712,6 +713,24 @@ test('a Completed or Deferred row is one compact line: number, title, its lane w
   const row = readFileSync('src/ui/surfaces/StepSections.tsx', 'utf8')
   assert.match(row, /data-compact=\{compact \|\| undefined\}/, 'the compact row is not marked for its style')
   assert.match(row, /\{!compact && <span className="who">/, 'a compact row still says who it touches')
+})
+
+test('the how-to starts at the top of All work, and says every Ready · Create policy can be created in report-only once the first two sections are done', () => {
+  // Owner, roadmap flow V2 decision H: the plan already lets every policy that
+  // can be written be created in report-only on the same day, and only the
+  // turn-on is ordered. A top-to-bottom All work view would make it look
+  // sequential, so the how-to says it.
+  const howTo = (pages.plan as unknown as { howTo: Record<string, unknown> }).howTo
+  const intro = String(howTo.intro)
+  assert.match(intro, /^Start at the top of All work\b/, 'the how-to still starts somewhere else')
+  assert.ok(intro.includes(`${BOARD.lanes.ready} · ${SUBSTATUS_WORD.Create}`), 'the how-to does not name the Ready · Create label a row reads')
+  assert.match(intro, /first two sections/)
+  assert.match(intro, /in report-only/)
+  assert.match(intro, /turning each one on follows/i)
+  assert.equal(JSON.stringify(howTo).includes('Start with Ready'), false, 'a how-to line still starts with Ready')
+  // One copy of the words: the intro and the legend. `items` repeated both.
+  assert.equal('items' in howTo, false, 'the how-to keeps a second copy of its words')
+  assert.match(readFileSync('src/ui/surfaces/Plan.tsx', 'utf8'), /<p>\{PP\.howTo\.intro\}<\/p>/)
 })
 
 test('the board vocabulary is one record, and All work is the leftmost tab and the one the Plan opens on', () => {
