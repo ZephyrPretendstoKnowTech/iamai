@@ -1451,7 +1451,7 @@
         ],
         "planFile": [
           "Plan file",
-          "Save your plan decisions and records. Restore them with a compatible baseline in the same tenant; the file does not change tenant settings.",
+          "Save your plan decisions and records. Restore them with a compatible baseline in the same tenant; the file does not change tenant settings. The file includes names, sign-in addresses and object IDs in full. Review it before sharing.",
           "Save plan file · Load a plan file"
         ],
         "csv": [

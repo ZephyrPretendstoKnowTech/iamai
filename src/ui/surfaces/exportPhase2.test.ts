@@ -298,3 +298,13 @@ test('the calendar books a step on the day the board states, in the plan\'s disp
   }
   assert.ok(booked > 0 && differs > 0, `the premise: an event whose UTC day is not its day in the zone (${differs} of ${booked})`)
 })
+
+// Finding 15 (severity 2). The plan file leaves unredacted on the strength of
+// the plan-file card saying what it holds (ui/exportGuard.ts `plan-file`), and
+// the card said nothing of it: the file carries names, sign-in addresses and
+// object IDs in full, as the CSV card warns for its files.
+test('the plan-file card says the file holds names, sign-in addresses and object IDs in full', () => {
+  const card = (pages.export as unknown as { cards: { planFile: [string, string, string] } }).cards.planFile[1]
+  assert.match(card, /names, sign-in addresses and object IDs in full/, card)
+  assert.match(card, /Review it before sharing\./, card)
+})
