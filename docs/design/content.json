@@ -3083,7 +3083,7 @@
         "workloadSeen": "seen in use",
         "workloadNotSeen": "not seen",
         "licensed": "licensed",
-        "$commentNotAsked": "The Detected workloads answer column (Answered in Confirm What You Use) for a service that step never asks about (roadmap/directionAnswers.ts SERVICE_KEYS: Azure Virtual Desktop, SharePoint and OneDrive, Azure management, Inforcer, directory synchronization). Copilot, Azure DevOps, Agent identities and Intune read \"—\" there, the mark for a question with no answer saved, although the step has no question for them.",
+        "$commentNotAsked": "The Detected workloads answer column (Answered in Confirm What You Use) for a service that step never asks about. It asks only about roadmap/directionAnswers.ts SERVICE_KEYS: Azure Virtual Desktop, SharePoint and OneDrive, Azure management, Inforcer and directory synchronization. Copilot, Azure DevOps, Agent identities and Intune read \"—\" there, the mark for a question with no answer saved, although the step has no question for them.",
         "notAsked": "not asked",
         "$commentEmpty": "What an Inventory table says where its section was read and returned nothing (a section not read says notRead). \"No Conditional Access policies were read.\" and \"No subscribed licences were read.\" sounded like failed reads on a tenant that has none, and the blocked-today table fell to the shared \"Nothing to show yet.\", which gave the reader nothing on a tenant where the records show no one blocked.",
         "policiesNone": "This tenant has no Conditional Access policies.",
