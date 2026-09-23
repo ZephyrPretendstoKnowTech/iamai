@@ -147,10 +147,15 @@ export function rescanLinesOf(step: Step, cs: ContentStepLike): { steps: string[
  * placeholders, beside existing guest coverage the step said to compare first,
  * while the opened step's portal said to review the pair (Phase 2 export
  * finding 4).
+ *
+ * Never over a policy the tenant has switched off: the one change there is to
+ * set that policy to Report-only, and its own lines say so on every channel
+ * (stepResources.ts switchedOffLines).
  */
 export function preparationLines(step: Step, cs: { preparation?: unknown; kind?: unknown } | undefined, portalProduced: boolean): string[] | null {
   if (!cs || !Array.isArray(cs.preparation)) return null
   const reason = cs.kind === 'policy' ? unavailableReason(step) : null
+  if (reason === 'switched-off') return null
   const stands = step.id === 's-prereq-passkey-settings' ? !portalProduced : reason !== null || !portalProduced
   if (!stands) return null
   return [...cs.preparation.filter((line: unknown): line is string => typeof line === 'string'), ...(step.action.unmatchedPair ? step.action.portalSteps : [])]

@@ -1105,7 +1105,8 @@ export type UnavailableReason =
  * A disabled policy is not a live one, so `claimedPolicy` will not take it and
  * the step falls through to a create — which is wrong twice over: the policy
  * exists, so creating one makes a second, and the change that restores the
- * protection is to turn the one that is there back on. It reproduces whenever
+ * protection is to set the one that is there to Report-only (`reportOnlyPatchOf`)
+ * and turn it on from there, never straight to On. It reproduces whenever
  * somebody switches a policy off after it breaks something, which is the
  * ordinary response, and on an inherited tenant that arrives with one off.
  *
@@ -1115,6 +1116,31 @@ export function switchedOffPolicy(step: PolicyStep): { name: string; id: string 
   const t = step.tracking
   if (!t || t.state !== 'disabled' || typeof t.policyName !== 'string' || typeof t.policyId !== 'string') return null
   return { name: t.policyName, id: t.policyId }
+}
+
+/**
+ * The one change a switched-off step hands over: its own policy, set to
+ * Report-only and nothing else. Null on every other step.
+ *
+ * The step's resolved operation is still the create `claimedPolicy` fell
+ * through to, so no channel may read that; this is the patch the JSON and
+ * PowerShell channels carry instead, beside the portal's own lines for it
+ * (ui/surfaces/stepResources.ts switchedOffLines). A policy in report-only
+ * denies nobody, so nothing the plan waits for before a turn-on holds it; the
+ * turn-on comes after, from the step's ordinary report-only watch.
+ *
+ * `policies` is the scan's Conditional Access policies: the target is the
+ * tenant's own policy as the patch leaves it, as on every update. Null where the
+ * scan does not hold it, and the channels then inspect rather than guess.
+ */
+export function reportOnlyPatchOf(step: PolicyStep, policies: readonly unknown[]): PolicyOperation | null {
+  const off = unavailableReason(step) === 'switched-off' ? switchedOffPolicy(step) : null
+  const row = off === null ? undefined : policies.find((p): p is Record<string, unknown> => isObject(p) && p.id === off.id)
+  if (off === null || row === undefined) return null
+  const member = step.tracking?.members?.find((m) => m.policyId === off.id) ?? step.tracking?.members?.[0]
+  const body = { state: 'enabledForReportingButNotEnforced' }
+  const op: PolicyOperation = { mode: 'update', policyId: off.id, sourceName: member?.sourceName ?? off.name, memberKey: member?.key ?? off.id, body, target: { ...row, ...body } }
+  return isValidOperation(op) ? op : null
 }
 
 export function enforcesOnRun(op: PolicyOperation): boolean {
@@ -1279,6 +1305,21 @@ export function policyResult(step: PolicyStep): PolicyResult {
   if (step.action.escapeHatch) return { kind: 'unavailable', reason: 'escape-hatch-unverified' }
   if (step.action.unmatchedPair === true) return { kind: 'unavailable', reason: 'unmatched-pair' }
   if ((step.action.missing ?? []).length > 0) return { kind: 'unavailable', reason: 'missing-object' }
+  // A policy this plan is tracking that the tenant has switched off. It exists,
+  // so "Create the policy in Report-only" is the wrong instruction: follow it
+  // and there are two. What restores the protection is the one that is there,
+  // set to Report-only and never straight to On (owner, 2026-09-23: "We only
+  // want one set of report-only. If someone has to revert and turns it off, we
+  // should advise placing it to Report-only, and then they switch it on when
+  // they are ready and data supports it"). That holds for a policy never
+  // watched in report-only and for one switched off after it was on.
+  //
+  // It sits above the readiness threshold because Report-only denies nobody:
+  // the threshold, and every other prerequisite of enforcement, holds the
+  // turn-on and never this. The next scan finds the policy in report-only, and
+  // the step's ordinary watch and gates decide when it goes on
+  // (`reportOnlyPatchOf` is the one change every channel hands over).
+  if (switchedOffPolicy(step) !== null && step.status !== 'done') return { kind: 'unavailable', reason: 'switched-off' }
   // The readiness prerequisite, and the same boundary the escape hatch draws: a
   // threshold the plan itself says to wait for holds every enforcement, and a
   // threshold nothing measured has not been met either. It sits below the
@@ -1297,17 +1338,6 @@ export function policyResult(step: PolicyStep): PolicyResult {
   // threshold to withhold.
   if (enforcementHeld(step) && validOperations(step.action).some(enforcesOnRun)) {
     return { kind: 'unavailable', reason: 'readiness-unmet' }
-  }
-  // A policy this plan is tracking that the tenant has switched off. It exists,
-  // so "Create the policy in Report-only" is the wrong instruction: follow it
-  // and there are two. What restores the protection is turning the one that is
-  // there back on — and that enforces the moment it happens, so the readiness
-  // threshold decides whether it can be said today. Where the threshold is
-  // unmet the step says so and withholds it, exactly as it does for any other
-  // enforcement; only where nothing holds it does the step name the policy and
-  // say to switch it on.
-  if (switchedOffPolicy(step) !== null && step.status !== 'done') {
-    return { kind: 'unavailable', reason: enforcementHeld(step) ? 'readiness-unmet' : 'switched-off' }
   }
   const declared = step.action.resolution?.policies ?? []
   const valid = validOperations(step.action)
