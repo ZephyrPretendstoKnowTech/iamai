@@ -263,6 +263,8 @@ const CONTROL_WORDS: Record<string, string> = {
   approvedApplication: 'approved app',
   compliantApplication: 'app protection policy',
   passwordChange: 'password change',
+  // Graph's key read on screen and in the CSV ("Require MFA and riskRemediation"): the portal's "Require risk remediation".
+  riskRemediation: W.riskRemediation,
 }
 
 function grantSummary(f: PolicyFacts, strength: (id: string) => string): string {
