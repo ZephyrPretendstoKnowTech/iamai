@@ -127,8 +127,8 @@ const EMAIL_VARIABLES: [string, string[]][] = [
 test('on the demo, an email body fills every variable it names', () => {
   // Week two: the objects the policies name exist, so the policies are datable
   // and their announcements render (stepJson.ts implementationOffered).
-  // With the plan's foundation settled (roadmap/foundations.ts): until both
-  // pinned groups are, every policy step is held and the plan dates nothing.
+  // With the plan's foundation settled (roadmap/foundations.ts): until Emergency Access and
+  // Direction are, every policy step is held and the plan dates nothing.
   const f = withFoundationSettled(fixture('demo-week2'))
   const r = runFixture(f)
   let announced = 0

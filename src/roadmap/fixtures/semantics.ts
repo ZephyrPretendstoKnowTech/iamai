@@ -220,8 +220,8 @@ export function collidingNamesCase(): Case {
  * up as a corpus gap rather than as a silently skipped scenario.
  */
 export function reviewHeldCase(): Case | null {
-  // With the plan's foundation settled (roadmap/foundations.ts): until both
-  // pinned groups are, every policy step is held and none is being watched in
+  // With the plan's foundation settled (roadmap/foundations.ts): until Emergency Access and
+  // Direction are, every policy step is held and none is being watched in
   // the healthy condition this case rewrites.
   const f = withFoundationSettled(curatedFixture('demo-week2'))
   const first = runFixture(f)

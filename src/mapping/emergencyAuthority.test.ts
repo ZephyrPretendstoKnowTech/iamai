@@ -93,7 +93,7 @@ test('3+9. before confirmation the recommendation is inert; after it, the confir
   assert.ok(!failingFixes(r1).includes('second-account'), 'the confirmed set satisfies bg.count')
   assert.ok(offeredPolicies(r1).length > 0, 'confirming is what unblocks the work')
   // Nothing waits on the prerequisite's own verdict once it is met. What a policy
-  // still carries on that step is the plan's foundation — the two pinned groups
+  // still carries on that step is the plan's foundation — Emergency Access and Direction
   // are not finished, and that is the whole plan's sequencing (roadmap/foundations.ts).
   for (const id of heldByEmergency(r1)) {
     const s = r1.steps.find((x) => x.id === id)!

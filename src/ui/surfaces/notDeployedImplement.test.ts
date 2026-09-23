@@ -30,8 +30,8 @@ import { allFixtures, curatedFixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withDirectionApproved } from '../../roadmap/fixtures/run.ts'
 
 /**
- * The canonical case with the plan's foundation settled. Until both pinned
- * groups are - Establish Emergency Access complete, every Decide Your Tenant's
+ * The canonical case with the plan's foundation settled. Until Emergency Access and Direction
+ * are - Establish Emergency Access complete, every Decide Your Tenant's
  * Direction answer approved - no policy step is Ready and none is dated
  * (roadmap/foundations.ts, 2026-09-19), which is a different case from this one.
  */

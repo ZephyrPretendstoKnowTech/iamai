@@ -1,4 +1,4 @@
-// The plan's foundation: the two pinned groups (roadmap/stepGroups.ts), and the
+// The plan's foundation: Emergency Access and Direction (roadmap/stepGroups.ts), and the
 // one rule that no policy step runs ahead of them.
 //
 // Establish Emergency Access is the way back into the tenant; Decide Your
@@ -47,7 +47,7 @@ import { FOUNDATION_WAIT } from './holds.ts'
 import { setState, workflowReviewIsCurrent } from './lifecycle.ts'
 import type { Step } from './types.ts'
 
-/** The member ids of the two pinned groups, Emergency Access first, in the order each group draws them. */
+/** The member ids of the foundation, Emergency Access and Direction, Emergency Access first, in the order each group draws them. */
 export const FOUNDATION_STEP_IDS: readonly string[] = [...membersOf(EMERGENCY_ACCESS_GROUP), ...membersOf(DIRECTION_GROUP)]
 
 /** Whether a step is one of the foundation's own members (which this rule never gates). */
@@ -68,7 +68,7 @@ export function unsettledFoundations(steps: readonly Step[]): Step[] {
   return FOUNDATION_STEP_IDS.map((id) => byId.get(id)).filter((s): s is Step => s !== undefined && !settled(s))
 }
 
-/** Whether both pinned groups are settled, so the rollout may go ahead. */
+/** Whether Emergency Access and Direction (the foundation) are settled, so the rollout may go ahead. */
 export const foundationsSettled = (steps: readonly Step[]): boolean => unsettledFoundations(steps).length === 0
 
 const POLICY: readonly Step['kind'][] = ['create', 'adjust', 'enforce']

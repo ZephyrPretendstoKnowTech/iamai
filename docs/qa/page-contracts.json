@@ -491,7 +491,7 @@
         "exclude": ".step, details > *:not(summary)"
       },
       "allow": {
-        "$comment": "A1c: the one state vocabulary. Headings are the lane words (pages.plan.lanes.*) and, under On Hold, the blocker kinds the rows are grouped by (planBoard.ts BOARD.blockers). Tabs are the three working lanes. Tiles are the header's four. A row's state is its lane label (`.plan-row .lane`, `Lane · substatus/reason`); the only chips are the tenant facts Report-only and Enforced.",
+        "$comment": "A1c: the one state vocabulary. Headings are the lane words (pages.plan.lanes.*) and, under On Hold, the blocker kinds the rows are grouped by (planBoard.ts BOARD.blockers). Tabs are All work (the default, leftmost) and the three working lanes. Tiles are the header's four. A row's state is its lane label (`.plan-row .lane`, `Lane · substatus/reason`); the only chips are the tenant facts Report-only and Enforced.",
         "headings": [
           "Plan",
           "Ready",
@@ -511,6 +511,7 @@
           "Not supported"
         ],
         "tabs": [
+          "All work",
           "Ready",
           "Up Next",
           "On Hold"
@@ -539,6 +540,8 @@
           "Start the plan",
           "re:^Show completed\\s*\\d+$",
           "re:^Show deferred\\s*\\d+$",
+          "Show them",
+          "Show the full plan",
           "+",
           "−"
         ],
