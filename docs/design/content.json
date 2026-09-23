@@ -3340,6 +3340,7 @@
           "Add only the accounts chosen in Prepare Emergency Access Accounts: {list:emergencyAccounts}.",
           "Leave it without a licence and not mail-enabled."
         ],
+        "$commentCheckFixes": "xg.notDynamic checks three facts and names the one it found (validation/rules.ts, RuleEval.fix): not-dynamic for a dynamic rule, not-security-group for an object that is not security-enabled, group-licensed for assigned licences. Every failure rendered not-dynamic, so a licensed assigned group was told it was dynamic (Phase 2 audit). The two new lines restate the rule's own findings; not-mail-enabled no longer says 'or licensed', because the licence is xg.notDynamic's fact.",
         "checkFixes": {
           "all-emergency-accounts": "Add {list:missingAccounts} to the group: every policy excludes the group and never an account by name, so an emergency account outside it is covered by every policy the group is excluded from.",
           "members-only-emergency": "Remove {list:extraMembers}: only the emergency accounts belong here, and anyone else in this group is outside every policy it is excluded from.",
@@ -3347,8 +3348,10 @@
           "no-admin-members": "{name} holds {role} and is in the group besides the emergency accounts; an excluded administrator is the most valuable unprotected account in the tenant. Remove them.",
           "no-admin-members-unconfirmed": "{name} holds {role} and is in the group without being an emergency account you have chosen. Choose the tenant's emergency accounts on Prepare Emergency Access Accounts first, then remove from the group whoever is left besides them: an excluded administrator that is not the way back in is the most valuable unprotected account in the tenant.",
           "not-dynamic": "The group is dynamic; recreate it with assigned membership.",
+          "not-security-group": "The selected object is not a security-enabled group. Choose an assigned security group.",
+          "group-licensed": "The group has assigned licences. Review its licence dependencies before using a different unlicensed assigned security group.",
           "excluded-from-every-policy": "Exclude the group from {list:policies}: open each policy → Users → Exclude → Groups.",
-          "not-mail-enabled": "The group is mail-enabled or licensed; recreate it as a plain security group."
+          "not-mail-enabled": "The group is mail-enabled; recreate it as a plain security group."
         }
       },
       "dates": null,

@@ -843,6 +843,12 @@ const xgNoExtraAdmins: ValidationRule<GroupTarget> = {
   },
 }
 
+/**
+ * One check, three facts: an assigned security group with no licence. Each fact
+ * carries its own fix line (checkFixes.ts ALTERNATE_FIXES); every failure used to
+ * render "The group is dynamic; recreate it", so a licensed assigned group was
+ * told it was dynamic (Phase 2 audit).
+ */
 const xgNotDynamic: ValidationRule<GroupTarget> = {
   id: 'xg.notDynamic',
   subject: 'exclusionGroup',
@@ -851,9 +857,9 @@ const xgNotDynamic: ValidationRule<GroupTarget> = {
   evaluate: (entry) => {
     if (!entry) return groupUnknown()
     if (entry.securityEnabled === undefined || entry.securityEnabled === null || !Array.isArray(entry.groupTypes) || !Array.isArray(entry.assignedLicenseSkuIds)) return unknown('The group type, security-enabled state, and license assignments were not fully read.')
-    if (entry.securityEnabled !== true) return fail('The selected object is not a security-enabled group. Choose an assigned security group.')
+    if (entry.securityEnabled !== true) return fail('The selected object is not a security-enabled group. Choose an assigned security group.', undefined, 'not-security-group')
     if (entry.membershipRule || entry.groupTypes.some(type => type.toLowerCase() === 'dynamicmembership')) return fail(F.xgDynamic(entry.membershipRule || 'DynamicMembership'))
-    if (entry.assignedLicenseSkuIds.length) return fail(`The exclusions group has ${entry.assignedLicenseSkuIds.length} assigned license${entry.assignedLicenseSkuIds.length === 1 ? '' : 's'}. Review its license dependencies before using a different unlicensed assigned security group.`)
+    if (entry.assignedLicenseSkuIds.length) return fail(`The exclusions group has ${entry.assignedLicenseSkuIds.length} assigned license${entry.assignedLicenseSkuIds.length === 1 ? '' : 's'}. Review its license dependencies before using a different unlicensed assigned security group.`, undefined, 'group-licensed')
     return PASS
   },
 }

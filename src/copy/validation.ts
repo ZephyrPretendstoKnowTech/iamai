@@ -305,7 +305,7 @@ export const RULE_TEXT: Record<string, { what: string; why: string; label?: stri
     why: 'An administrator excluded from every policy is the most valuable unprotected account in the tenant.',
   },
   'xg.notDynamic': {
-    what: 'The group is not dynamic.',
+    what: 'The group is a security group with assigned membership, not dynamic, and carries no licence.',
     why: 'A rule that adds members adds exclusions, without anybody deciding to.',
   },
   'xg.usedConsistently': {
@@ -317,7 +317,7 @@ export const RULE_TEXT: Record<string, { what: string; why: string; label?: stri
     why: 'Each extra member is another account every policy will not apply to.',
   },
   'xg.notMailEnabled': {
-    what: 'The group is not mail-enabled and carries no licence.',
+    what: 'The group is not mail-enabled.',
     why: 'A mail-enabled exclusions group is a target that also delivers mail.',
   },
   // ---- trusted named location ----
