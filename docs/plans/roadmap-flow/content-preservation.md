@@ -48,6 +48,8 @@ It lists every user-visible string that was reworded, removed, moved or added, k
   - the three retired Direction questions (external methods, travel, device exceptions) are removed;
   - the countries location step's content moves into 6.3 word for word;
   - Doesn't apply wording for Turn Off Security Defaults and Define the Trusted Network.
+  - the office network question's step folds into Decide How People and Devices Sign In, renamed "Decide How and Where People Sign In" (V1 decision 3's name). Its why and milestone action are appended to that step's, with the countries clause dropped as the smallest true edit, because countries are asked on 6.3. The doubled "Approving these answers" waits for the content pass (v1.1 list).
+  - `pages.plan.blocked.workCountries` ("until the work countries are saved") is new, the one line the move needs.
 - **Stage 4 (V1 decision 7):** each medium risk step's content moves into its high partner word for word; the two-policy strip.
 - **Stage 5 (V1 decision 8):** print and export ordering only.
 
