@@ -523,7 +523,7 @@ test('a group summary counts the rows under it, and says so when a tab left some
   assert.ok(filtered > 0, 'no tab showed part of a group, so this proves nothing')
 })
 
-// ----------------------------------------------------------- the fourth tab
+// ------------------------------------------------------------------ All work
 
 test('All work draws every section in its registry place, whole, and a finished one collapsed there', () => {
   for (const name of [...FIXTURES, 'demo-week2'] as const) {
