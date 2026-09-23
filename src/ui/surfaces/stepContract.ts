@@ -27,7 +27,7 @@ import type { StepCheckItem } from '../../validation/checkFixes.ts'
 import { SET_LEVEL } from '../../validation/report.ts'
 import { dimensionWords, watchedArrive } from '../../roadmap/observation.ts'
 import type { Condition, Lifecycle, Milestone } from '../../roadmap/lifecycle.ts'
-import { heldForReview, nextMilestone, reviewCauses, undatedMilestone } from '../../roadmap/lifecycle.ts'
+import { heldForReview, nextMilestone, reviewCauses } from '../../roadmap/lifecycle.ts'
 import type { PolicyHold, UnavailableReason } from '../../roadmap/operations.ts'
 import { awaitsWorkflowRecord, enforcesOnRun, implementationOffered, isPreserved, operationsOf, policyHold, switchedOffPolicy, unavailableReason } from '../../roadmap/operations.ts'
 import { requiredMembers } from '../../roadmap/tracking.ts'
@@ -1322,9 +1322,9 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
   const held = isHeld(step)
   const word = planStateOf(step, held)
   // A step the board holds names no day, in its milestone or its sentence
-  // (roadmap/lifecycle.ts undatedMilestone): the board's When already reads
-  // "After prerequisites" for it, and a date beside that is a second answer.
-  const m = undated ? undatedMilestone(nextMilestone(step)) : nextMilestone(step)
+  // (roadmap/lifecycle.ts nextMilestone `undated`): the board's When already
+  // reads "After prerequisites" for it, and a date beside that is a second answer.
+  const m = nextMilestone(step, { undated })
   const reason = unavailableReason(step)
   const bare: ContractMilestone = { kind: m.kind, label: m.label, at: m.at, gatedBy: m.gatedBy, line: null }
   // A policy waiting on the exclusions group while the scan found one nobody has

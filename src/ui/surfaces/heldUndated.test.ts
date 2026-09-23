@@ -25,12 +25,13 @@ import { groundingBundle } from '../../roadmap/prompts.ts'
 import { scheduleOf, scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { absoluteDate } from '../../copy/dates.ts'
-import { schedulingWords } from '../../content/content.ts'
+import { engine, schedulingWords } from '../../content/content.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { fillText } from '../../content/render.ts'
 import { boardHolds, boardReadingsOf, boardWhenOf, laneViewFor, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from './planBoard.ts'
 import { phaseRows, planPhases, undatedRows } from './planRows.ts'
 import { stepBodyOf } from './stepBody.ts'
+import { stepContract } from './stepContract.ts'
 import { commsFor, exportViewsOf, stepExportView } from './stepExport.ts'
 import { aiGroundingText } from './aiGrounding.ts'
 import { planDates } from './stepVars.ts'
@@ -231,4 +232,27 @@ test('where the board reads a day as an estimate, the opened step\'s rail says E
     }
   }
   assert.ok(estimates > 0, 'the premise: a dated row the board reads as an estimate')
+})
+
+// A held create keeps its report-only preparation on the opened step (the Step
+// 5 ruling): where the board holds a create the plan schedules while readiness
+// holds its turn-on, the lead is the held create's - no day, the same gate, the
+// same kind - never "Finish the steps this one waits on first." above an
+// Implementation region still offering the create.
+test('the opened step of a held create still says to create the policy in report-only, without the day', () => {
+  const f = withDirectionApproved(curatedFixture('demo-week2'))
+  const r = runFixture(f, {}, null, f.snapshot.asOf)
+  const board = boardReadingsOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
+  const step = r.steps.find((s) => s.id === 's-goal-register-info-protected')!
+  const gate = step.action.readinessGate!
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: step.reportOnlyAt ?? null, scheduledOn: waveStartOf(step), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
+  const lane = laneViewFor(step, board)
+  const dated = stepContract(step, ctx, undefined, lane)
+  assert.equal(dated.milestone.kind, 'deploy', 'the premise: a create')
+  assert.match(dated.milestone.label, DATE, 'the premise: a create on a day')
+  const held = stepContract(step, ctx, undefined, lane, undefined, true)
+  assert.equal(held.milestone.kind, 'deploy', 'the held create is no longer a create')
+  assert.equal(held.milestone.label, fillText(engine.milestone.prepareHeld, { measure: gate.measure, threshold: gate.threshold }))
+  assert.equal(held.milestone.at, null)
+  assert.doesNotMatch(held.whatToDo.text, DATE)
 })
