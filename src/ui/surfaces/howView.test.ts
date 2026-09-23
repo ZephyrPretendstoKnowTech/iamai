@@ -121,10 +121,13 @@ test('How’s migration-state check says why the migration matters, and where pe
   // reader to it as though it were always there, and names all three.
   assert.doesNotMatch(row.why, new RegExp(`is read on ${title}`), row.why)
   assert.match(row.why, /read on every scan/, row.why)
-  assert.match(row.why, /only while an account still has it on, its state could not be read, or the scan's read of the directory was incomplete/, row.why)
+  assert.match(row.why, /only while an account has it on, its state went unread, or the directory read was incomplete/, row.why)
   // What is read and when the step is on the plan are two sentences: as one it
-  // ran to 47 words on How and on the emergency-access check row.
+  // ran to 47 words on How and on the emergency-access check row, and the
+  // second alone ran to 31, over the walk's 25-word heuristic.
   assert.match(row.why, new RegExp(`is read on every scan\\. The plan carries ${title} only while `), row.why)
+  const second = row.why.slice(row.why.indexOf('The plan carries'))
+  assert.ok(second.split(/\s+/).filter(Boolean).length <= 25, `${second.split(/\s+/).filter(Boolean).length} words: ${second}`)
 })
 
 // Two emergency-access checks pass on the operator's own answer, and IAMAI reads
