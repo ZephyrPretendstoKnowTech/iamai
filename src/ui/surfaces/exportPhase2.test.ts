@@ -487,7 +487,14 @@ test('the masked bundle names none of the groups the plan loaded or the tenant\'
   for (const name of [...loaded, ...custom]) assert.ok(!text.includes(name), `the masked bundle names "${name}"`)
   const readme = (bundle._readme as string[]).join(' ')
   const keys = new Set(Object.keys((bundle.plan as { steps: Record<string, unknown>[] }).steps[0]!))
-  for (const field of ['rings', 'evidence']) if (!keys.has(field)) assert.doesNotMatch(readme, new RegExp(`\b${field}\b`), `the readme lists ${field}, which no step carries`)
+  // A word, whole: String.raw keeps the \b a word boundary (in a plain template
+  // literal it is a backspace, and the check matched nothing on any readme).
+  const listed = (readmeText: string, field: string): boolean => new RegExp(String.raw`\b${field}\b`).test(readmeText)
+  assert.ok(listed('Contents: plan (steps, rings, dates, evidence), findings', 'rings'), 'the premise: the check finds a listed field')
+  for (const field of ['rings', 'evidence']) {
+    assert.equal(keys.has(field), false, `the premise: no step carries ${field}`)
+    assert.equal(listed(readme, field), false, `the readme lists ${field}, which no step carries`)
+  }
 })
 
 // Finding 5 (severity 2). The pack's Rewrite and Translate prompts carried the
