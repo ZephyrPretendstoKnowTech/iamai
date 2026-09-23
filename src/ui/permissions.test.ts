@@ -136,7 +136,7 @@ test('every directory-audit disclosure states the window the read uses', () => {
   assert.ok(security.length >= 2, 'SECURITY.md names the directory-audit read in its summary and its permissions table')
   for (const [where, text] of [
     ['AuditLog.Read.All reads', SCOPE_COPY['AuditLog.Read.All'].reads],
-    ['AuditLog.Read.All consent row', SCOPE_COPY['AuditLog.Read.All'].consentReads],
+    ['AuditLog.Read.All consent row', SCOPE_COPY['AuditLog.Read.All'].consentReads ?? ''],
     ['registry gate', audit?.gate ?? ''],
     ['How note', app.how.readRows['Directory audit events']?.note ?? ''],
     ...security.map((s) => ['SECURITY.md', s] as const),
