@@ -276,8 +276,9 @@ export const RULE_TEXT: Record<string, { what: string; why: string; label?: stri
     // that read is not clean (roadmap/manualWork.ts perUserMfaReading), so the
     // why says when to look for it (Phase 2 audit; v2-research/peruser.md).
     // Not clean includes a partial Users read (signInActivity refused) where
-    // every per-user state read Disabled, so the why names that case too.
-    why: `Until the migration finishes, the legacy settings still decide which methods are offered. Each account's own per-user MFA state, the emergency accounts' included, is read on every scan, and the plan carries ${PER_USER_MFA_TITLE} only while an account still has it on, its state could not be read, or the scan's read of the directory was incomplete.`,
+    // every per-user state read Disabled, so the why names that case too. What
+    // is read and when the step is on the plan are two sentences.
+    why: `Until the migration finishes, the legacy settings still decide which methods are offered. Each account's own per-user MFA state, the emergency accounts' included, is read on every scan. The plan carries ${PER_USER_MFA_TITLE} only while an account still has it on, its state could not be read, or the scan's read of the directory was incomplete.`,
   },
   'bg.noLicenceNeeded': {
     // What the rule reads: an enabled mailbox service plan (rules.ts MAILBOX_PLANS).
