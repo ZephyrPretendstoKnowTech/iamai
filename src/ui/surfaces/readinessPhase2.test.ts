@@ -400,3 +400,11 @@ test('a method an earlier scan saw and that is gone is set up again, never "rest
     assert.ok(words.includes(monthDay(r.readiness!.lost[0].lastSeen)), `it says when it was last seen: ${words}`)
   }
 })
+
+test('the Needs a device group is titled by the gap, over rows that sign in with what they hold as well as rows that set one up', () => {
+  const f = fixture('small')
+  const rows = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.filter((r) => r.state === 'device')
+  assert.ok(rows.some((r) => r.readiness?.next.kind === 'confirm'), 'the premise: a row whose step is to sign in with the passkey they hold')
+  assert.doesNotMatch(G.device.title, /^(Add|Set up)/, G.device.title)
+  for (const seen of ['windows', 'mac', 'both', 'none'] as const) assert.doesNotMatch(groupBodyLine('device', seen) ?? '', /^Each sets up/, seen)
+})
