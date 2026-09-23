@@ -54,22 +54,27 @@ function reportOnlyUnwatched(step: Step): boolean {
  * A finished policy this plan owns that went live with no report-only period
  * IAMAI watched (owner decision 3, 2026-09-22; R4-12): the Enforced outcome
  * (the plan's tag on a satisfying policy, `inPlace` false, and the policy on,
- * as stepContract.ts stageOf reads it) over the reading above. It stays
- * Completed, with a warning tile that says so and the check after the change
- * kept (stepContract.ts unwatchedTile, doneWhenOf).
+ * as stepContract.ts stageOf reads it) where IAMAI watched every policy member
+ * go On from not applying to anybody, with no report-only state between
+ * (observation.ts `skippedWindow`). It stays Completed, with a warning tile
+ * that says so and the check after the change kept (stepContract.ts
+ * unwatchedTile, doneWhenOf).
  *
- * Built straight to On, four policies on the pinned baseline filed under
- * Completed with "The scan found the assessed configuration in place." and
- * nothing else, and the one note saying nobody had watched them sat under New
- * evidence.
+ * Built straight to On, policies on the pinned baseline filed under Completed
+ * with "The scan found the assessed configuration in place." and nothing else,
+ * and the one note saying nobody had watched them sat under New evidence.
  *
- * Not a policy the tenant already had (In place): nothing went live under this
- * plan there. Not a policy whose completion is its configuration, which is not
- * evaluated in report-only, so no window was part of its rollout to miss.
+ * Not the reading above (`neverObserved`), which a first scan sets on every
+ * policy it finds On: a policy this plan built and watched through report-only
+ * is first seen On from a second browser or after Forget, and IAMAI cannot know
+ * that it skipped anything. Not a policy the tenant already had (In place):
+ * nothing went live under this plan there. Not a policy whose completion is its
+ * configuration, which is not evaluated in report-only, so no window was part of
+ * its rollout to miss.
  */
 export function enforcedUnwatched(step: Step): boolean {
   const s = step.state
-  return s.satisfied && !s.inPlace && s.lifecycle === 'enforced' && stepEvidenceStrategy(step) !== 'configuration' && reportOnlyUnwatched(step)
+  return s.satisfied && !s.inPlace && s.lifecycle === 'enforced' && stepEvidenceStrategy(step) !== 'configuration' && s.members.length > 0 && s.members.every((m) => m.change.latest.skippedWindow === true)
 }
 
 export function doneWhenTemplates(step: Step, doneWhen: unknown[], mapping?: Pick<MappingState, 'trustedLocationIds' | 'wizardAnswered' | 'assumed'>): unknown[] {

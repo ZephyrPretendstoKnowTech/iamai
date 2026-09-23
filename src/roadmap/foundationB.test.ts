@@ -360,6 +360,52 @@ test('a material change restarts the observation; a state that moves the way the
   assert.equal(elsewhere.reviewRequired, true)
 })
 
+test('a skipped report-only period is one IAMAI watched: On from not deployed or Off, never a policy a first scan found On', () => {
+  // R4-12, owner decision 3. `neverObserved` is set on every policy a first
+  // scan finds On, so a policy this plan built and watched through report-only
+  // read from a second browser, or after Forget, carried it too, and the step
+  // said it went live without a report-only period IAMAI could watch.
+  const day = (d: number): string => new Date(Date.parse('2026-09-01T00:00:00.000Z') + d * 86_400_000).toISOString()
+  const seen = (prior: StepObservation | null, state: StepObservation['state'], d: number, semantics = 'aaaa', artifact: string | null = 'A') =>
+    observe(prior, { artifact: state === 'absent' ? null : artifact, state, semantics: state === 'absent' ? '' : semantics, at: day(d) }).latest
+
+  const foundOn = seen(null, 'enforced', 0)
+  assert.equal(foundOn.neverObserved, true, 'the premise: a first scan finds it On')
+  assert.equal(foundOn.skippedWindow, undefined, 'a first scan cannot know what a policy did before IAMAI looked')
+  assert.equal(seen(foundOn, 'enforced', 3).skippedWindow, undefined, 'nor can the scan after it')
+
+  // Not deployed, then On: watched go live with nothing between.
+  const created = seen(seen(null, 'absent', 0), 'enforced', 3)
+  assert.equal(created.skippedWindow, true)
+  const kept = seen(created, 'enforced', 6)
+  assert.equal(kept.skippedWindow, true, 'the fact travels with the object')
+  assert.equal(seen(kept, 'enforced', 9, 'bbbb').skippedWindow, undefined, 'and is dropped with it, as neverObserved is')
+  assert.equal(seen(kept, 'enforced', 9, 'aaaa', 'B').skippedWindow, undefined, 'a different object inherits none of it')
+
+  // Created Off, edited while Off, then switched straight On.
+  const off = seen(seen(null, 'absent', 0), 'disabled', 2)
+  assert.equal(off.offOnly, true)
+  const edited = seen(off, 'disabled', 4, 'bbbb')
+  assert.equal(edited.offOnly, true, 'an edit while Off is still only Off')
+  assert.equal(seen(edited, 'enforced', 6, 'bbbb').skippedWindow, true, 'Off to On with no report-only between')
+  assert.equal(seen(seen(null, 'disabled', 0), 'enforced', 3).skippedWindow, true, 'first seen Off, then On: IAMAI watched it go live')
+
+  // Watched in report-only, whatever came after it.
+  const watched = seen(null, 'report-only', 0)
+  assert.equal(seen(watched, 'enforced', 3).skippedWindow, undefined, 'report-only to On had its window')
+  const paused = seen(watched, 'disabled', 3)
+  assert.equal(paused.offOnly, undefined, 'Off after a report-only period IAMAI watched')
+  assert.equal(seen(paused, 'enforced', 6).skippedWindow, undefined, 'and On from there did not skip the period IAMAI watched')
+
+  // A record that cannot say which object it watched claims nothing.
+  const legacyOff: StepObservation = { artifact: null, state: 'disabled', semantics: '', fields: {}, firstSeenAt: day(0), since: 'first-scan', lastSeenAt: day(0), evidenceAt: null }
+  assert.equal(seen(legacyOff, 'enforced', 3).skippedWindow, undefined)
+
+  // Both facts are durable: the plan record reads back what it wrote.
+  const record: Record<string, StepObservationRecord> = { 's-x': { members: { [SOLE_MEMBER]: kept }, unattributed: null }, 's-y': { members: { [SOLE_MEMBER]: off }, unattributed: null } }
+  assert.deepEqual(observationsFrom({ observations: JSON.parse(JSON.stringify(record)) }), record)
+})
+
 test('observedStateOf reads Graph’s word, and a policy that is not there is not deployed', () => {
   assert.equal(observedStateOf('enabled'), 'enforced')
   assert.equal(observedStateOf('enabledForReportingButNotEnforced'), 'report-only')
