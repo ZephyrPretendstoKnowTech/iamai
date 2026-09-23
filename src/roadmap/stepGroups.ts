@@ -258,6 +258,23 @@ export function groupTotals(stepIds: readonly string[], groups: readonly StepGro
   return out
 }
 
+/**
+ * The number each section shows, keyed by group key: its place among the
+ * sections a row set has a row in, in registry order, counting from 1.
+ *
+ * It counts the way `groupPositions` counts rows: the board's sections and not
+ * the registry's places, so a section this tenant has no row in leaves no gap.
+ * Handed the board's WHOLE row set, the number stays put while a tab or a focus
+ * filters rows, and a row reads `<section>.<row>` wherever the plan leaves the
+ * screen (planBoard.ts boardOrderOf: the printed plan and the exports).
+ */
+export function sectionPositions(stepIds: readonly string[], groups: readonly StepGroup[] = STEP_GROUPS): ReadonlyMap<string, number> {
+  const present = new Set(stepIds.map((id) => groupOf(id, groups)?.key))
+  const out = new Map<string, number>()
+  for (const g of groups) if (present.has(g.key)) out.set(g.key, out.size + 1)
+  return out
+}
+
 /** Whether a step is in any group, or in the group `key` when one is named. */
 export function isGroupMember(stepId: string, key?: string, groups: readonly StepGroup[] = STEP_GROUPS): boolean {
   const g = groupOf(stepId, groups)

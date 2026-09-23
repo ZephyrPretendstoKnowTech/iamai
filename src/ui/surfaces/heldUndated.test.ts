@@ -363,8 +363,10 @@ test('the Plan, the Export page and the step snapshots read the plan-wide dates 
   assert.match(read('./Plan.tsx'), /planDates\([^)]*scan\.snapshot, \(s\) => boardHolds\(s, laneViewFor\(s, \{ readings, titleOf \}\)\)\)/, 'the Plan')
   const exportPage = read('./Export.tsx')
   // One board: the hold and the views read the same construction, built once per render.
-  assert.equal(exportPage.split('boardReadingsOf(').length - 1, 1, 'the Export page builds its board once')
-  assert.match(exportPage, /const board = boardReadingsOf\(steps, schedule\.cleanup, data\.mapping\?\.breakGlassAnswers \?\? null\)/, 'the Export page builds the board')
+  // It is boardOf, on boardReadingsOf, so the exports' order reads the same rows (planBoard.ts boardOrderOf).
+  assert.equal(exportPage.split('boardOf(').length - 1, 1, 'the Export page builds its board once')
+  assert.equal(exportPage.includes('boardReadingsOf('), false, 'the Export page builds a second board')
+  assert.match(exportPage, /const board = boardOf\(steps, schedule\.cleanup, data\.mapping\?\.breakGlassAnswers \?\? null\)/, 'the Export page builds the board')
   assert.match(exportPage, /const held = exportHoldOf\(board\)/, 'the Export page reads the board\'s hold')
   assert.match(exportPage, /exportViewsOf\(board, stepCtx\)/, 'the Export page\'s views read the same board')
   assert.match(exportPage, /planDates\([^)]*snapshot, held\)/, 'the Export page\'s plan-wide dates')
