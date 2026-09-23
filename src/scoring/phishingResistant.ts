@@ -282,6 +282,13 @@ export type DeviceReading = {
   possible: Verdict
   /** Why a built-in option is not possible. */
   whyNot: 'notJoined' | 'otherAccount' | 'attestation' | 'osTooOld' | 'notAllowed' | null
+  /**
+   * The option to set up here: the best, unless Emergency Access Step 3's settings,
+   * not yet applied, would refuse it (a synced passkey, or a passkey in Windows Hello
+   * whose models its list leaves out). Nobody is set up with a credential the plan's
+   * own step switches off; what they already sign in with is judged by `best`.
+   */
+  offer: SignInOption
   /** The latest phishing-resistant sign-in on this device family inside the window. */
   proof: { cls: MethodClass; at: string } | null
   /** Its device type is proven: this device, or another of the same type (a computer, a phone), has a phishing-resistant sign-in in the window. */
@@ -565,10 +572,29 @@ const versionMajor = (v: string | null): number | null => {
   return m ? Number(m[1]) : null
 }
 
+/** What a device with nothing built in signs in with: the phone passkey where the settings allow one, else a security key. */
+function fallbackOf(pk: PasskeyPolicy): SignInOption {
+  const phonePasskey = passkeyAllowed(pk, AUTHENTICATOR_AAGUIDS[0], null, 'register') === 'yes' || passkeyAllowed(pk, AUTHENTICATOR_AAGUIDS[1], null, 'register') === 'yes'
+  return phonePasskey ? 'phonePasskey' : 'securityKey'
+}
+
+/**
+ * Whether a passkey option survives Emergency Access Step 3's settings once they
+ * are applied: its model is on Step 3's list. A synced passkey is on no model
+ * list. Settings already applied are today's, which `eligibility` has read.
+ */
+function step3Keeps(option: SignInOption, ctx: ReadinessContext): boolean {
+  if (ctx.step3.applied || ctx.step3.models.length === 0) return true
+  const form = FORM_OF[option]
+  if (form === undefined) return true
+  const listed = new Set(ctx.step3.models.map((m) => m.aaguid.toLowerCase()))
+  const models = form === 'authenticator' ? AUTHENTICATOR_AAGUIDS : form === 'windowsHelloPasskey' ? WINDOWS_HELLO_AAGUIDS : []
+  return models.some((a) => listed.has(a))
+}
+
 /** The best way to sign in on one device family, and whether it is possible (the eligibility table in prompt 62). */
 function eligibility(d: DeviceSeen, ctx: ReadinessContext, userId: string | undefined, pk: PasskeyPolicy, holdsPlatformCredential = false): Pick<DeviceReading, 'best' | 'builtIn' | 'possible' | 'whyNot'> {
-  const phonePasskey = passkeyAllowed(pk, AUTHENTICATOR_AAGUIDS[0], null, 'register') === 'yes' || passkeyAllowed(pk, AUTHENTICATOR_AAGUIDS[1], null, 'register') === 'yes'
-  const fallback: SignInOption = phonePasskey ? 'phonePasskey' : 'securityKey'
+  const fallback = fallbackOf(pk)
   if (d.os === 'iOS' || d.os === 'Android') {
     const major = versionMajor(d.version)
     const floor = d.os === 'iOS' ? 17 : 14
@@ -698,7 +724,10 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
     : d.os === 'Windows' && ctx.windowsDirectory === 'none' ? { ...d, trust: 'none' }
     : d
   const inWindowDevices = seenDevices.filter((d) => inWindow(d.at)).sort((a, b) => byPlatform(a.os, b.os)).map(settled)
-  const bare = (d: DeviceSeen): DeviceReading => ({ os: d.os, type: deviceTypeOf(d.os), lastSeen: d.at, trust: d.trust, version: d.version, ...eligibility(d, ctx, input.userId, pk, inv?.classes.has('platformCredential') === true), proof: null, covered: false, seamless: false })
+  const bare = (d: DeviceSeen): DeviceReading => {
+    const e = eligibility(d, ctx, input.userId, pk, inv?.classes.has('platformCredential') === true)
+    return { os: d.os, type: deviceTypeOf(d.os), lastSeen: d.at, trust: d.trust, version: d.version, ...e, offer: step3Keeps(e.best, ctx) ? e.best : fallbackOf(pk), proof: null, covered: false, seamless: false }
+  }
 
   if (inv === null) return { ...base, automated, devices: inWindowDevices.map(bare), state: 'unknown', unknown: 'methods', methods: null, qualifying: [], hasPasskey: null, next: { kind: 'rescan', reason: ctx.methodsUnavailable ? 'methodsUnavailable' : 'methods' } }
   // The method rows never list certificates; where the registration report has no
@@ -799,12 +828,13 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
   // computer otherwise, a security key where nothing else is possible.
   const firstSetUp = (): { option: SignInOption; os: Platform | null } => {
     const phone = devices.find((d) => d.type === 'phone' && d.possible !== 'no')
-    if (phone) return { option: phone.best, os: phone.os }
+    // Each device's offer, never a best option Step 3 will refuse once it is applied.
+    if (phone) return { option: phone.offer, os: phone.os }
     const own = devices.find((d) => d.best === 'windowsHello' && d.possible !== 'no')
     if (own) return { option: 'windowsHello', os: own.os }
     const any = devices.find((d) => d.possible !== 'no')
     // No device seen in the window: the phone passkey is the portable start.
-    return any ? { option: any.best, os: any.os } : { option: 'authenticatorPasskey', os: null }
+    return any ? { option: any.offer, os: any.os } : { option: 'authenticatorPasskey', os: null }
   }
 
   if (usable.length === 0) {
@@ -864,7 +894,7 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
     const confirmable = missing.find((d) => holdsFor(d) !== null)
     if (confirmable) return { ...base, ...common, devices, state: 'device', next: { kind: 'confirm', cls: holdsFor(confirmable) as MethodClass, os: confirmable.os } }
     const settable = missing.find((d) => d.possible !== 'no')
-    if (settable) return { ...base, ...common, devices, state: 'device', next: { kind: 'addDevice', os: settable.os, option: settable.best } }
+    if (settable) return { ...base, ...common, devices, state: 'device', next: { kind: 'addDevice', os: settable.os, option: settable.offer } }
     const old = missing.find((d) => d.whyNot === 'osTooOld')
     if (old) return { ...base, ...common, devices, state: 'device', next: { kind: 'updateOs', os: old.os } }
     const reason: BlockReason = pk.enabled === false ? 'passkeyOff' : 'authenticatorNotAllowed'
@@ -875,8 +905,8 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
   const typeOf = new Map(devices.map((d) => [d.os, d.type]))
   const latestOn = (t: DeviceType): string => windowProofs.filter((x) => x.os !== null && typeOf.get(x.os) === t && qualifying.includes(x.cls)).map((x) => x.at).sort().pop() as string
   const readyUntil = [...provenTypes].map((t) => new Date(Date.parse(latestOn(t)) + READINESS_WINDOW_DAYS * DAY).toISOString()).sort()[0] ?? null
-  // Recommend only what the device can have: a built-in option that is not ruled out.
-  const upgrade = devices.find((d) => !d.seamless && d.builtIn && d.possible !== 'no')
+  // Recommend only what the device can have: a built-in option that is not ruled out, now or by Step 3.
+  const upgrade = devices.find((d) => !d.seamless && d.builtIn && d.possible !== 'no' && d.offer === d.best)
   const seamless = devices.length > 0 && devices.every((d) => d.seamless)
   // The only usable key stopping under Step 3 comes first: an upgrade is a convenience, and the
   // replacement is what keeps them Ready once the plan's own step lands.
