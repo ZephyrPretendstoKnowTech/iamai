@@ -51,7 +51,7 @@ import { badgeOf, planStateOf } from './planState.ts'
 import type { PlanStateKind } from './planState.ts'
 import { GATING_SUBJECTS, blockerStepId } from '../../roadmap/blockerSteps.ts'
 import { POLICY_VERIFY_AFTER, doneWhenTemplates } from './doneWhen.ts'
-import { estimatedDay, scheduleOf } from '../../roadmap/stepSchedule.ts'
+import { estimatedDay, scheduleOf, shownDay } from '../../roadmap/stepSchedule.ts'
 import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
 import type { StepSchedule } from '../../roadmap/stepSchedule.ts'
 import { heldByTitle, missingObjects, waitKindOf, waitingLine } from './stepJson.ts'
@@ -1191,7 +1191,7 @@ function actionOf(step: Step, reason: UnavailableReason | null, milestone: Contr
   // The lead for the state the scan read (content/render.ts whatToDoFor).
   const lead = whatToDoFor(cs, ex)?.lead
   if (typeof lead === 'string' && whole(lead, ex)) return { kind: milestone.kind, text: fillText(lead, ex) }
-  return { kind: milestone.kind, text: milestoneSentence(milestone) }
+  return { kind: milestone.kind, text: milestoneSentence(milestone, estimatedDay(step)) }
 }
 
 /**
@@ -1204,9 +1204,9 @@ function actionOf(step: Step, reason: UnavailableReason | null, milestone: Contr
  * observations go — What IAMAI found — and the milestone says what the stage
  * asks for, which is the same either way: watch it.
  */
-function milestoneSentence(m: Pick<ContractMilestone, 'kind' | 'label' | 'at'>): string {
+function milestoneSentence(m: Pick<ContractMilestone, 'kind' | 'label' | 'at'>, estimate: boolean): string {
   if (m.kind !== 'observe') return m.label
-  return m.at ? fillText(MILESTONE.observeUntil, { date: absoluteDate(m.at) }) : MILESTONE.observe
+  return m.at ? fillText(MILESTONE.observeUntil, { date: shownDay(m.at, estimate) }) : MILESTONE.observe
 }
 
 /** The reasons that leave no policy IAMAI can write, so no end state to state. */
@@ -1362,11 +1362,11 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
   // action are the same thing said twice, and the action is the better of the
   // two: it is either the step's own words for the work or the authority's
   // reason the work is held.
-  const sentence = milestoneSentence(m)
+  const sentence = milestoneSentence(m, estimatedDay(step))
   const carriesDate = m.at !== null && sentence.includes(absoluteDate(m.at))
   const milestone: ContractMilestone = {
     ...bare,
-    line: m.at === null || whatToDo.text === sentence ? null : carriesDate ? fillText(CONTRACT.next, { label: sentence }) : fillText(CONTRACT.nextOn, { label: sentence, date: absoluteDate(m.at) }),
+    line: m.at === null || whatToDo.text === sentence ? null : carriesDate ? fillText(CONTRACT.next, { label: sentence }) : fillText(CONTRACT.nextOn, { label: sentence, date: shownDay(m.at, estimatedDay(step)) }),
   }
   const fix = fixOf(step, cs, ex, exclusionsUnconfirmed)
   const members = membersOf(step)
@@ -2048,7 +2048,7 @@ function stateTile(step: Step, c: StepContract, setupAfterEnforcement = false): 
   // and a tenant where four hundred people had been stopped said the same.
   if (c.milestone.kind === 'observe') {
     const why = c.milestone.at ? notes.observationDateNote : (step.evidence.lines[0] ?? notes.observationNote)
-    return { key: 'observation', label: t.observation, tone: 'wait', value: c.milestone.at ? fillText(t.observationUntil, { date: absoluteDate(c.milestone.at) }) : s.stage, note: why }
+    return { key: 'observation', label: t.observation, tone: 'wait', value: c.milestone.at ? fillText(t.observationUntil, { date: shownDay(c.milestone.at, c.estimate) }) : s.stage, note: why }
   }
   return null
 }
@@ -2543,7 +2543,7 @@ export function railOf(c: StepContract, actionText: string | null = null): { met
   // in the When column's own words: the rail read a bare "Aug 31, 2026" under a
   // row reading "Est. Aug 31, 2026", and a day that moves with the work it waits
   // on read as a deadline (R4-34).
-  const day = (at: string): string => (c.estimate ? fillText(schedulingWords.estimate, { date: absoluteDate(at) }) : absoluteDate(at))
+  const day = (at: string): string => shownDay(at, c.estimate)
   const s = c.schedule ?? null
   if (s !== null && (s.class === 'scheduled' || s.class === 'observing') && s.at !== null) return { metric: day(s.at), sub }
   if (m.at !== null) return { metric: day(m.at), sub }

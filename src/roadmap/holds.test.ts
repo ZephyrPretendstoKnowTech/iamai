@@ -236,7 +236,8 @@ test('C5: the calendar books a readiness-gated create on its report-only creatio
   const day = s.reportOnlyAt!.slice(0, 10).replace(/-/g, '')
   assert.ok(entries[0].includes(`DTSTART;VALUE=DATE:${day}`), 'on its creation day')
   assert.ok(entries[0].includes(`DTEND;VALUE=DATE:${new Date(Date.parse(s.reportOnlyAt!) + 86_400_000).toISOString().slice(0, 10).replace(/-/g, '')}`), 'for that one day')
-  assert.match(entries[0], /SUMMARY:[^\r\n]* · Create in report-only\r?\n/, 'named for what the day is for')
+  // A day the board reads as an estimate is booked as one (R4-34): the summary ends on it.
+  assert.match(entries[0], /SUMMARY:[^\r\n]* · Create in report-only(?: · Est\. [^\r\n]*)?\r?\n/, 'named for what the day is for')
   assert.doesNotMatch(entries[0], /Turn the policy on/, 'no enforcement named')
   assert.equal(s.events, null, 'no enforcement day on the step')
   assert.deepEqual(s.rings, [], 'no rollout rings')
