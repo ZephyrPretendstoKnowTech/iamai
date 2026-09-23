@@ -110,12 +110,17 @@ export function stages(done: readonly boolean[]): Stage[] {
  * Nothing left to do is not the same as nothing to say: a complete scan that
  * did not read every section, or read no sign-in proof, carries that as its
  * `caveat`, and the strip says it instead of "scan … ready" (Phase 2 audit).
+ *
+ * A stage that is not finished and offers no action is not "next" either: a
+ * tenant without Entra ID P1 has no plan to offer and no way on, so the strip
+ * says that stage's title and state line alone, the tile's own words.
  */
 export type ConnectStatus = { tone: Tone; title: string; text: string }
-export function connectStatus(done: readonly boolean[], stagesOf: readonly { title: string; state: string; tone: Tone; caveat?: string }[]): ConnectStatus {
+export function connectStatus(done: readonly boolean[], stagesOf: readonly { title: string; state: string; tone: Tone; caveat?: string; actions?: readonly unknown[] }[]): ConnectStatus {
   const current = done.indexOf(false)
   if (current === -1) return { tone: 'done', title: W.status.ready, text: stagesOf.find((s) => s.caveat)?.caveat ?? W.status.readyText }
   const s = stagesOf[current]
+  if (s?.actions?.length === 0) return { tone: s.tone, title: s.title, text: s.state }
   return { tone: s?.tone ?? null, title: fillText(W.status.next, { stage: s?.title ?? '' }), text: s?.state ?? '' }
 }
 

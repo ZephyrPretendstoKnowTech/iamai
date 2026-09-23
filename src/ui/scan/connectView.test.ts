@@ -547,6 +547,9 @@ test('the Plan destination is ready only when the Plan page draws a plan: no pla
   // The strip follows the destination: a plan that does not exist is not ready to plan.
   const strip = connectStatus([true, true, true, planTile(input).kind === 'ready'], [{ title: 'Signed in', state: 'x', tone: 'done' }, { title: 'Baseline', state: 'selected', tone: 'done' }, { title: 'Scan', state: 'complete', tone: 'done' }, none])
   assert.notEqual(strip.title, 'Ready to plan')
+  // Phase 2 review, round 1: nor is it "Next": the destination offers nothing to
+  // do, so the strip says where it stands in the tile's own words.
+  assert.deepEqual(strip, { tone: null, title: 'Plan', text: 'no plan to offer' })
   // Without a baseline the Plan page cannot compute: the destination waits, it does not offer the plan.
   assert.deepEqual(planInputOf({ scan: 'complete', lastScan: { at }, baselineLoaded: false, noPlan: null, counts: null }), { kind: 'waiting' })
   assert.deepEqual(planInputOf({ scan: 'complete', lastScan: { at }, baselineLoaded: true, noPlan: null, counts: { steps: 33, completed: 8 } }), { kind: 'ready', at, counts: { steps: 33, completed: 8 } })
