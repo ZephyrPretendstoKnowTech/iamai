@@ -79,14 +79,8 @@ const rule = (selector: string): string => {
   assert.fail(`app.css no longer declares ${selector} as a rule of its own`)
 }
 
-/**
- * A step with the fields these tests read, over the ordinary starting state.
- * Its blockers are an empty list, as on every step the engine generates:
- * readinessOf reads them for the waits that hold only the turn-on (R4-31,
- * stepContract.ts enforcementWaitsOf), so a mock without the field was a step
- * no scan can produce.
- */
-const step = (over: Record<string, unknown>): Step => ({ status: 'ready', blockers: [], state: { inPlace: false, setAside: false, satisfied: false, lifecycle: 'not-deployed', condition: 'healthy' }, ...over }) as unknown as Step
+/** A step with the fields these tests read, over the ordinary starting state. */
+const step = (over: Record<string, unknown>): Step => ({ status: 'ready', state: { inPlace: false, setAside: false, satisfied: false, lifecycle: 'not-deployed', condition: 'healthy' }, ...over }) as unknown as Step
 
 /** A source slice with its comments removed, so a check for a CALL is not tripped by prose about it. */
 const code = (src: string): string => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
@@ -747,6 +741,9 @@ function stateOf(o: {
     who: { known: true, text: '4 active people' },
     whatToDo: { kind: o.kind, text: 'The one action.' },
     fix: Array.from({ length: o.fix ?? 0 }, (_, i) => ({ key: `f${i}`, text: 'Fix it.' })),
+    // The turn-on waits are the contract's own list (R4-31), which the Readiness
+    // cards read: none of the five canonical states holds one.
+    enforcementWaits: [],
     doneWhen: ['Done.'],
     members: [],
     multiPolicy: false,

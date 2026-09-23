@@ -266,6 +266,9 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
     // a stop and a space with nothing after them. The detail joins the verdict
     // only when there is one to join.
     fix: [...new Set([...contract.fix.map((f) => f.text), ...(step.configurationFindings ?? []).filter(f => f.outcome !== 'pass').map(f => [`${f.label}: ${f.value}.`, f.detail.trim()].filter(part => part !== '').join(' '))])],
+    // What holds only the turn-on while the create is next, from the contract's
+    // one list, apart from `fix`: the create is not blocked by any of it (R4-31).
+    beforeTurnOn: contract.enforcementWaits.map((f) => f.text),
     implementation: contract.implementation.offered,
   }
   if (!cs) {

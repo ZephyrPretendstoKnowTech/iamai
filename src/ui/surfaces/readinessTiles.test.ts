@@ -518,3 +518,39 @@ test('a written enforcement prerequisite is on the step before the create, as a 
   assert.equal(after[0].note, tap[0].note, 'one sentence for the pass at both stages')
   assert.equal(after[0].label, CONTRACT.readiness.tiles.blockers, 'once the turn-on is the next action, the pass is its prerequisite')
 })
+
+// R4-31, the other channels. The turn-on waits were worked out inside the
+// Readiness card builder, not on the contract, and every export reads the
+// contract's `fix`. So on the registration policy before its create, the screen
+// drew three "Before turning on" cards (the Temporary Access Pass, the trusted
+// location, the people without a method), while the AI Info briefing, the
+// calendar entry and the prompt pack named none of them. The engine's answer
+// was dropped on the way to every channel but one. The waits are the contract's
+// own list now: the cards read it, and the export view carries it under the
+// cards' own label. It is never under Fix, which would claim the create is
+// blocked (owner, 2026-09-11).
+test('the turn-on waits the cards state before the create are in the exports and the AI Info briefing', async () => {
+  const { withFoundationSettled } = await import('../../roadmap/fixtures/run.ts')
+  const { scheduleOf } = await import('../../roadmap/stepSchedule.ts')
+  const { stepExportView } = await import('./stepExport.ts')
+  const { stepArtifactLines } = await import('../../roadmap/artifactLines.ts')
+  const { stepBodyOf } = await import('./stepBody.ts')
+  const T = CONTRACT.readiness.tiles
+  for (const f of [fixture('small'), withFoundationSettled(fixture('mid'))]) {
+    const { step, ctx, c, blockers, lane } = opened(f, 's-goal-register-info-protected')
+    assert.equal(scheduleOf(step).transition, 'createReportOnly', `${f.name}: the premise — the next action is the report-only create`)
+    const cards = readinessOf(step, c, blockers).tiles.filter((t) => t.label === T.beforeTurnOn)
+    assert.ok(cards.some((t) => /Temporary Access Pass/.test(t.note ?? '')), `${f.name}: the premise — the screen names the pass before the create`)
+    // One list: the cards are the contract's waits, card for card.
+    assert.deepEqual(cards.map((t) => t.note), c.enforcementWaits.map((w) => w.text), `${f.name}: the cards and the contract disagree`)
+    const view = stepExportView(step, ctx, lane)
+    assert.deepEqual(view.beforeTurnOn, c.enforcementWaits.map((w) => w.text), `${f.name}: the export view drops the turn-on waits`)
+    assert.equal(view.fix.some((l) => /Temporary Access Pass/.test(l)), false, `${f.name}: the pass is a fix before the create in the export`)
+    const lines = stepArtifactLines(view)
+    const turnOn = lines.find((l) => l.startsWith(`${T.beforeTurnOn}: `))
+    assert.ok(turnOn && /Temporary Access Pass/.test(turnOn), `${f.name}: the calendar entry and the prompt pack name no Temporary Access Pass — ${lines.join(' / ')}`)
+    const b = stepBodyOf(step, ctx, { lane, blockers })
+    const ai = String(b.artifacts.find((a) => a.id === 'ai')!.text())
+    assert.ok(ai.includes(`${T.beforeTurnOn}: `) && /Temporary Access Pass/.test(ai), `${f.name}: the AI Info briefing names no Temporary Access Pass`)
+  }
+})
