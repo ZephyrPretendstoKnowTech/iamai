@@ -270,7 +270,7 @@ test('Step 4: the row, the group, the step, the print and the calendar read one 
   const screen = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
   // The lanes through the one board construction (planBoard.ts boardReadingsOf, R4-22).
   // The rows and their lane views are built once (planBoard.ts boardOf, on boardReadingsOf).
-  for (const read of ['boardOf(', 'board.rows', 'boardWhenOf(step, waveStart, laneView)', 'planWeeks(finish, c.schedule)', 'finish.held']) assert.ok(screen.includes(read), `the Plan no longer reads ${read}`)
+  for (const read of ['boardOf(', 'board.rows', 'boardWhenOf(step, waveStart, laneView)', 'planLengthSentence(finish, c.schedule)', 'finish.held']) assert.ok(screen.includes(read), `the Plan no longer reads ${read}`)
 })
 
 // ---- the finish ----
