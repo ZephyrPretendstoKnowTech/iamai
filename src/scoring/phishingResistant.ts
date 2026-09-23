@@ -878,6 +878,8 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
   // Recommend only what the device can have: a built-in option that is not ruled out.
   const upgrade = devices.find((d) => !d.seamless && d.builtIn && d.possible !== 'no')
   const seamless = devices.length > 0 && devices.every((d) => d.seamless)
-  const recommended: NextAction | null = upgrade ? { kind: 'seamless', os: upgrade.os, option: upgrade.best } : onlyKey ? { kind: 'replaceKey', model: onlyKey.model, aaguid: onlyKey.aaguid } : null
+  // The only usable key stopping under Step 3 comes first: an upgrade is a convenience, and the
+  // replacement is what keeps them Ready once the plan's own step lands.
+  const recommended: NextAction | null = onlyKey ? { kind: 'replaceKey', model: onlyKey.model, aaguid: onlyKey.aaguid } : upgrade ? { kind: 'seamless', os: upgrade.os, option: upgrade.best } : null
   return { ...base, ...common, devices, readyUntil, state: seamless ? 'seamless' : 'ready', next: { kind: 'none' }, recommended }
 }

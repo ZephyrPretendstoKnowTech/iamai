@@ -14,7 +14,7 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { signInsNeedP1 } from '../../derive/readinessContext.ts'
 import { signInProofRead } from '../../scoring/fromSnapshot.ts'
 import { cohortWords } from '../../derive/whoLine.ts'
-import { checkWords, goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, summaryLine, unreadMethodsWords } from './readinessCells.ts'
+import { checkWords, goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, summaryLine, unreadMethodsWords, whyLine } from './readinessCells.ts'
 import { readinessTable } from './inventoryTables.ts'
 import { sourceReadFix } from '../../roadmap/readiness.ts'
 
@@ -24,6 +24,8 @@ const S = pages.readiness as unknown as Record<string, string>
 const N = (pages.readiness as unknown as { next: { rescan: Record<string, string> } }).next
 const E = (pages.readiness as unknown as { evidence: Record<string, string> }).evidence
 const G = (pages.readiness as unknown as { groups: Record<string, { title: string; why: string; body?: unknown }> }).groups
+const NX = (pages.readiness as unknown as { next: Record<string, string> }).next
+const WHY = (pages.readiness as unknown as { panel: { why: Record<string, string> } }).panel.why
 const page = (): string => readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
 
 test('every remaining setup check carries its own words: the migration never shows without its safe order', () => {
@@ -194,4 +196,30 @@ test('registration limited to trusted places is not answered with a Temporary Ac
   // A pass satisfies MFA; it does not satisfy a block scoped by location, or a compliant or joined device.
   assert.doesNotMatch(words.text, /Temporary Access Pass/, words.text)
   assert.match(words.text, /trusted location or a managed device/, 'the fact: where registration works')
+})
+
+test('a Ready person whose only usable key stops working under Step 3 is told to replace it before any upgrade', () => {
+  // demo, with the Ready people's passkey an unlisted security-key model and their Windows Hello removed.
+  const f = fixture('demo')
+  const s = structuredClone(f.snapshot)
+  const methods = s.authMethods as unknown as Record<string, unknown>
+  const evidence = s.signInEvidence as unknown as Record<string, { proofs?: { cls: string }[] }>
+  const before = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.filter((r) => r.state === 'ready' || r.state === 'seamless').map((r) => r.user.id)
+  for (const id of before) {
+    const ms = methods[id]
+    if (!Array.isArray(ms)) continue
+    methods[id] = ms.filter((m: { kind: string }) => m.kind !== 'windowsHelloForBusiness').map((m: { kind: string }) => (m.kind === 'passkey' ? { ...m, aaGuid: 'ee882879-721c-4913-9775-3dfcce97072a', model: 'YubiKey 5 Series (firmware 5.2)' } : m))
+    const ev = evidence[id]
+    if (ev?.proofs) ev.proofs = ev.proofs.map((p) => ({ ...p, cls: 'passkey' }))
+  }
+  const onlyKey = readinessView(s, s.asOf, f.mapping).rows.filter((r) => {
+    const usable = (r.readiness?.credentials ?? []).filter((c) => c.allowedNow !== 'no')
+    return (r.state === 'ready' || r.state === 'seamless') && usable.length === 1 && usable[0].cls === 'passkey' && usable[0].afterStep3 === 'no'
+  })
+  assert.ok(onlyKey.some((r) => (r.readiness?.devices ?? []).some((d) => !d.seamless && d.builtIn && d.possible !== 'no')), 'the premise: a built-in upgrade is on offer to somebody whose only key Step 3 stops')
+  for (const r of onlyKey) {
+    assert.equal(r.readiness?.recommended?.kind, 'replaceKey', r.user.id)
+    assert.equal(nextCell(r), NX.replaceKey, r.user.id)
+    assert.equal(whyLine(r), WHY.replaceKey, r.user.id)
+  }
 })
