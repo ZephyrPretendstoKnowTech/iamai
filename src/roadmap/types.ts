@@ -914,6 +914,14 @@ export type ExportStep = {
   /** Whether Foundation A hands over an implementation today: the same answer the JSON, the PowerShell and the download read. */
   implementation: boolean
   /**
+   * The operation the board's row hands over today, named as the schedule names
+   * a day's transition (roadmap/stepSchedule.ts ScheduledTransition): a Ready row
+   * whose substatus is Create, Correct or Ready to enforce. Null on every other
+   * lane and substatus. The calendar says what a day is for only where this is
+   * that day's transition; a row the board holds is booked under its lane label.
+   */
+  operation: 'createReportOnly' | 'change' | 'enforce' | null
+  /**
    * The board holds the step (ui/surfaces/planBoard.ts boardHolds): its row
    * reads "After prerequisites", so no artifact dates it — no Dates line, no
    * Next line, no calendar entry, no enforcement instant in the bundle (owner

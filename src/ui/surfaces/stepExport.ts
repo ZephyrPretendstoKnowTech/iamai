@@ -24,6 +24,7 @@ import { projectSafely } from '../../content/implementation/project.ts'
 import { SUBSTATUS_WORD, boardHolds, laneViewAlone, laneViewFor, laneWordOf } from './planBoard.ts'
 import type { BoardReadings } from './planBoard.ts'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
+import type { Substatus } from '../../actionability/lanes.ts'
 import { createsNewPolicy, enforcesByStateOnly, updatesExistingPolicy, heldByTitle, implementationOffered, waitingLine } from './stepJson.ts'
 import { awaitingDeployment, enforcementUnearned, forecastEnforcement } from '../../roadmap/forecast.ts'
 import { isPreserved, unavailableReason } from '../../roadmap/operations.ts'
@@ -249,6 +250,13 @@ export function exportHoldOf(board: Pick<BoardReadings, 'readings' | 'titleOf'>)
   return (s) => boardHolds(s, laneViewFor(s, board))
 }
 
+/**
+ * The operation each Ready substatus hands over, as the schedule names a day's
+ * transition (roadmap/stepSchedule.ts). Review, Decision and Observing hand over
+ * none: the day is for looking, not for a change.
+ */
+const OPERATION_OF: Partial<Record<Substatus, ExportStep['operation']>> = { Create: 'createReportOnly', Correct: 'change', 'Ready to enforce': 'enforce' }
+
 export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView | null = null): ExportStep {
   const cs = contentStepFor(step) as Record<string, any> | undefined
   // The frozen Step Contract, once, for every step. It is read and never
@@ -292,6 +300,10 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
     // one list, apart from `fix`: the create is not blocked by any of it (R4-31).
     beforeTurnOn: contract.enforcementWaits.map((f) => f.text),
     implementation: contract.implementation.offered,
+    // The board's row hands over an operation only from Ready (Phase 2 export
+    // finding 0): the calendar booked "Create in report-only" for a row the board
+    // held Up Next behind its prerequisites, from the step's schedule alone.
+    operation: laneView.lane === 'Ready' && laneView.substatus !== null ? OPERATION_OF[laneView.substatus] ?? null : null,
     undated,
   }
   if (!cs) {
