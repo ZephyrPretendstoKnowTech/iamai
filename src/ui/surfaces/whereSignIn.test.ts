@@ -329,11 +329,14 @@ test('S4: the sibling policies are named once in the step, and are the ones that
   const risks = risksOf('s-prereq-service-accounts-group').join('\n')
   assert.ok(!/Block Legacy Authentication/.test(risks) && !/Block Sign-ins From Countries Not Allowed/.test(risks), risks)
   assert.ok(!/Require Token Protection on Windows/.test(risks), risks)
-  // And the board agrees: on the mid plan both named steps wait on this object.
+  // And the board agrees for the trusted-network step: on the mid plan it waits on
+  // this object. The token-protection step waited on it only while it was written
+  // from the goal's own template, which excludes the service accounts group; the
+  // pinned policy it is written from now (q-pin) does not, so on the board it no
+  // longer waits here. The sentence above is the reviewed content and stays as it
+  // is until the owner decides it (flagged, not reworded).
   const mid = bodiesOf('mid')
-  for (const id of ['s-goal-service-accounts-trusted-network', 's-goal-token-protection']) {
-    assert.match(JSON.stringify(mid.get(id)!.allTiles), /Create or Correct Service Accounts Group/, id)
-  }
+  assert.match(JSON.stringify(mid.get('s-goal-service-accounts-trusted-network')!.allTiles), /Create or Correct Service Accounts Group/)
 })
 
 test('S5: the package carries a dated Microsoft Learn source, where it carried none', () => {

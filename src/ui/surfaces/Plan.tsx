@@ -26,7 +26,7 @@ import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { Button, Callout, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { ALL_WORK_TAB, BOARD, DEFAULT_TAB, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupSummary, groupTotalsOf, groupsFor, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, tileSections, togglesOf, waveStartOf, drawsCompact, finishedDayOf, followOpenStep, followLaneChange, groupClosed, pressKeyOf, readyToCreateOf, releaseFor } from './planBoard.ts'
+import { ALL_WORK_TAB, BOARD, DEFAULT_TAB, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupNumberOf, groupSummary, groupTotalsOf, groupsFor, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, sectionNumbersOf, tileSections, togglesOf, waveStartOf, drawsCompact, finishedDayOf, followOpenStep, followLaneChange, groupClosed, pressKeyOf, readyToCreateOf, releaseFor } from './planBoard.ts'
 import type { BoardGroup, BoardItem, BoardTab, Focus, LaneTab, WorkType } from './planBoard.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
@@ -227,6 +227,11 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // row. `renderById` holds the ONE renderer for each row, so a tab can only
   // choose where a row goes, never what it says.
   const items: BoardItem[] = board.rows.map((r) => r.item)
+  // The number each section's heading shows (planBoard.ts sectionNumbersOf),
+  // taken over the whole board as the row numbers are: the number the printed
+  // plan heads the section with and the exports number its steps under
+  // (`<section>.<row>`), the same on every tab and while a focus filters rows.
+  const sectionNumbers = sectionNumbersOf(items)
   const renderById = new Map<string, () => ReactNode>()
   for (const { step, reading, lane: laneView } of board.rows) {
     if (step === null) continue
@@ -322,7 +327,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
     // a step under it (releaseFor).
     const closed = groupClosed(g, open, toggled[key], focusActive(focus))
     return (
-      <BoardGroupView key={key} group={g} closed={closed} onToggle={() => setToggled((t) => ({ ...t, [key]: !closed }))} totals={groupTotals}>
+      <BoardGroupView key={key} group={g} number={groupNumberOf(g, sectionNumbers)} closed={closed} onToggle={() => setToggled((t) => ({ ...t, [key]: !closed }))} totals={groupTotals}>
         {g.items.map((i) => renderById.get(i.id)?.() ?? null)}
       </BoardGroupView>
     )
@@ -578,7 +583,7 @@ function TabFollowsOpenStep({ open, lane, follow, linked, onFollow, onShow, onMo
   return null
 }
 
-function BoardGroupView({ group, closed, onToggle, totals, children }: { group: BoardGroup; closed: boolean; onToggle: () => void; totals?: ReadonlyMap<string, number>; children: ReactNode }) {
+function BoardGroupView({ group, number, closed, onToggle, totals, children }: { group: BoardGroup; number: number | null; closed: boolean; onToggle: () => void; totals?: ReadonlyMap<string, number>; children: ReactNode }) {
   const id = `plan-group-${group.key}`
   // How many rows this group has on the whole board, so a tab that left fewer
   // says so rather than presenting its own selection as the whole group.
@@ -588,7 +593,11 @@ function BoardGroupView({ group, closed, onToggle, totals, children }: { group: 
     <section className={`plan-group${group.secondary ? ' secondary' : ''}${closed ? ' closed' : ''}`}>
       <div className="plan-group-head">
         <div className="plan-group-lead">
-          <h2>{group.label}</h2>
+          {/* The section's number beside its title (planBoard.ts groupNumberOf): none for a lane tab's Completed or Deferred group. */}
+          <h2>
+            {number !== null && <><span className="plan-group-number">{number}</span>{' '}</>}
+            <span className="plan-group-title">{group.label}</span>
+          </h2>
           <div className="plan-group-meta">{groupSummary(group, total)}</div>
         </div>
         <button type="button" className="plan-group-toggle no-print" aria-expanded={!closed} aria-controls={id} aria-label={`${closed ? BOARD.expandGroup : BOARD.collapseGroup}: ${group.label}`} onClick={onToggle}>

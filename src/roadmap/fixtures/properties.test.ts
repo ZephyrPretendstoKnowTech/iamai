@@ -6,7 +6,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import { allFixtures } from './index.ts'
+import { allCuratedFixtures, allFixtures } from './index.ts'
 import { runFixture, withFoundationSettled } from './run.ts'
 import { batchClassOf } from '../schedule.ts'
 import { enforcementHeld, unavailableReason } from '../operations.ts'
@@ -474,9 +474,13 @@ test('a sign-in-risk policy affects nobody when the collected sign-ins carry no 
   // Protection's own running judgement, which the scan does not hold, so a
   // policy acting on it is held rather than called quiet (operations.ts
   // Narrowing, strand.ts narrowingReach).
+  //
+  // On the curated baseline: the risk steps are written from the pinned risk
+  // policies (q-pin), and the user-risk ones name groups of the author's that
+  // this baseline has not settled, which holds them before any reach is read.
   let signIn = 0
   let user = 0
-  for (const f of fixtures) {
+  for (const f of allCuratedFixtures()) {
     const r = runFixture(f)
     for (const s of r.steps.filter((x) => x.readiness.family === 'risk')) {
       if (s.evidence.status !== 'ok') continue

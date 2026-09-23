@@ -5,7 +5,7 @@
 // the walk: the row and body titles are the same string, and it is content's.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { allFixtures, fixture } from '../../roadmap/fixtures/index.ts'
+import { allFixtures, curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { readFileSync } from 'node:fs'
@@ -39,7 +39,10 @@ test('the row, the body and the communications use the one content title', () =>
 // "Require Phishing-Resistant MFA for Admins" two pages on, one step under two
 // names. The cell is `stepListOf` (planRows.ts), and it reads the one title.
 test('the printed timeline names each phase step by the title the board and the opened step show', () => {
-  const f = allFixtures().find((x) => x.name === 'small')!
+  // Curated: the device-registration step is written from the pinned policy
+  // (q-pin), which names a group of the author's this baseline has not settled,
+  // and a step held on that is deferred rather than phased.
+  const f = curatedFixture('small')
   const r = runFixture(f)
   const deferred = new Set(deferredRows(r.steps, boardOf(r.steps, r.schedule.cleanup, null).laneOf).map((s) => s.id))
   const cells = planPhases(r.schedule).map((w) => stepListOf(phaseRows(r.steps, w).filter((s) => !deferred.has(s.id))))

@@ -1889,6 +1889,13 @@ footer.app a {
   line-height: var(--lh-heading);
   margin: 0;
 }
+/* The section's number (planBoard.ts groupNumberOf): the one the printed plan
+   heads it with and the exports number its steps under. */
+.plan-group-number {
+  font-variant-numeric: tabular-nums;
+  color: var(--quiet-text);
+  margin-right: 0.15em;
+}
 /* The heading carries the group's identity by itself. This is the one
    supporting line: how many rows, and how many of them need the operator. */
 .plan-group-meta {
@@ -3392,6 +3399,17 @@ footer.app a {
   .print-warnings { margin: 1mm 0 2mm 4mm; }
   .print-warnings dt { font-weight: var(--weight-strong); margin-top: 1mm; }
   .print-warnings dd { margin: 0; }
+  /* The board's numbers on paper (printPlan.ts printSectionsOf): a section's in
+     its heading, a row's above its step or at the head of its line. A finished
+     section is one line where the board folds it, with no page of its own: a
+     heading under the section heading's rule, set apart from the rows above it
+     so its number never reads as the next row of the section before. */
+  .print-number { font-variant-numeric: tabular-nums; font-weight: var(--weight-strong); color: var(--secondary-text); }
+  .print-row-number { margin: 0; color: var(--secondary-text); }
+  .print-line { break-inside: avoid-page; border-top: 1px solid var(--line); padding-top: 2mm; margin-top: 2mm; }
+  .print-line p { margin: 0; }
+  .print-section-done { margin-top: 12mm; }
+  .print-section-line { font-size: var(--t-4); margin: 0; border-bottom: 2px solid var(--brand-primary); padding-bottom: 2mm; break-after: avoid-page; }
   /* The screen's attached frame is a screen idea: on paper a step is a section
      under a heading, in one column, with no card, no shadow and no rail beside
      it. The rail's own blocks still print, under the main column, because they

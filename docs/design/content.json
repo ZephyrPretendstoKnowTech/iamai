@@ -95,7 +95,7 @@
     "existingCoverage": "{tenant} already covers this with {list:existingPolicies}. This step creates the baseline's version; Consolidate Overlapping Policies (Cleanup) reviews whether the older ones can be retired once it is enforced.",
     "whoUnresolved": "IAMAI could not finish this line from what it read, so it is not saying either way. Check this one in Entra yourself.",
     "syncRoleNote": "Also exclude the Directory Synchronization Accounts role: Entra Connect signs in with it and cannot answer a prompt.",
-    "certificatePrompt": "In report-only, a policy with a device condition can prompt iOS and macOS users to pick a certificate from the day it is created.",
+    "certificatePrompt": "In report-only, a policy that requires a compliant device can prompt people on Mac, iOS and Android devices to pick a certificate, again and again, until the device is compliant.",
     "strengthName": "Modern MFA + TAP",
     "aaguids": {
       "Microsoft Authenticator for Android": "de1e552d-db1d-4423-a619-566b625cdc84",
@@ -974,7 +974,7 @@
         "doesntApplyRow": "{stepTitle}: you said: {reason}",
         "notLicensed": "Not licensed ({n})",
         "notLicensedRow": "{stepTitle}: needs a licence this tenant does not hold: {licence}",
-        "notLicensedNote": "Nothing in the plan waits on these.",
+        "notLicensedNote": "The baseline includes these, and this tenant's licences don't cover them, so they aren't in this plan. A finished plan puts the baseline in place as far as those licences reach, not all of it. Nothing in the plan waits on these.",
         "notLicensedDevices": "{steps}: need an Intune Plan 1 licence this tenant does not hold; no device policy is offered and nothing asks how devices are managed",
         "housekeeping": "Housekeeping ({n})",
         "notInBaseline": "{policy}: not in the baseline · {verdict}",
@@ -1469,7 +1469,7 @@
         "covers": "Filtered to the {cohort} {step} covers.",
         "unknown": "{step} is waiting on sign-in readiness, and this scan could not work out who.",
         "back": "← Back to the step",
-        "$commentUncounted": "It began \"{n} of them aren’t counted\", which a count of one left as \"1 of them aren’t\": pluralise bends no contraction.",
+        "$commentUncounted": "It began \"{n} of them aren’t counted\", which a count of one left as \"1 of them aren’t\": pluralise bent no contraction then.",
         "uncounted": "This page doesn’t count {n} of them: no sign-in in the last 90 days, or not a person’s account."
       }
     },
@@ -1522,7 +1522,7 @@
         "inPlace": "{n} baseline controls in place",
         "toDo": "{n} to do, finishing {finish}",
         "doesntApply": "{n} do not apply here",
-        "notLicensed": "{n} baseline controls need a licence the tenant does not hold; nothing in the plan waits on them."
+        "notLicensed": "{n} baseline controls need a licence the tenant doesn't hold and aren't in this plan: finishing it puts the baseline in place as far as the tenant's licences reach, not all of it."
       },
       "tip": "Save a plan file after recording decisions or completing work. It preserves those records independently of your sign-in session."
     },
@@ -1839,6 +1839,10 @@
           "unconfigured": "Sign in with this account’s passkey once the configuration checks pass."
         },
         "escapeHatchHeld": "Running this would turn the policy on straight away, and the way back in to {tenant} is not verified yet. Finish {steps} first; the instructions come back when its checks pass.",
+        "$commentReadinessHeldCreate": "Owner, 2026-09-23: \"Hold the create for that policy until ready.\" A policy whose grant requires a compliant device is not created in report-only while the device readiness that gates its turn-on is unmet (roadmap/operations.ts createWaitsOnReadiness), because report-only prompts for a certificate (Microsoft Learn, concept-conditional-access-report-only). The fact, then what it waits on; no instruction.",
+        "readinessHeldCreate": "{certificatePrompt} So creating this policy waits, as turning it on does, until {measure} reaches {threshold}; it is {value} now.",
+        "$commentReadinessHeldSwitchedOff": "The same wait for a compliant-device policy the scan found in the tenant switched off: its Report-only patch waits on the same threshold (roadmap/operations.ts createWaitsOnReadiness), and the line says the policy was found, so it never reads as a policy still to create.",
+        "readinessHeldSwitchedOff": "{certificatePrompt} {policy} is already in {tenant}, switched off. So setting it to Report-only waits, as turning it on does, until {measure} reaches {threshold}; it is {value} now.",
         "readinessHeld": "Running this would change what {tenant}'s people have to do straight away, and {measure} is {value} - this step waits until it reaches {threshold}. The instruction being withheld is the one that turns the policy on; the rest of this step stays available, and turning it on comes back when {measure} reaches {threshold}.",
         "footerJson": "JSON",
         "cleanupDoneOn": "Done on",

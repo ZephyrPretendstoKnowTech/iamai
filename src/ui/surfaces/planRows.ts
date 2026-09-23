@@ -7,8 +7,10 @@
 // the waves do not carry renders in the undated group whatever changed since the
 // schedule was built.
 //
-// The screen and the printed document read this one rule, so a plan taken to PDF
-// carries the same work the Plan shows — the held rows included (task 013).
+// The printed document's timeline dates its phases by this one rule. Its rows
+// are the board's, in the board's sections (printPlan.ts printSectionsOf), so a
+// plan taken to PDF carries the same work the Plan shows — the held rows
+// included (task 013).
 //
 // Pure: no DOM, no network.
 import type { Step } from '../../roadmap/types.ts'
@@ -105,17 +107,6 @@ export function doesntApplyRows(steps: readonly Step[]): Step[] {
  */
 export function completedRows(steps: readonly Step[], laneOf: (id: string) => { lane: Lane }): Step[] {
   return steps.filter((s) => !s.doesntApply && laneOf(s.id).lane === 'Completed')
-}
-
-/**
- * The delivered steps the board still has work for: done, and not Completed on
- * the board (a policy enforced with a question nobody answered). No phase and no
- * undated group draws a done step (derive/phases.ts inWave), so without this the
- * document printed its body, where that question is stated, nowhere. It prints
- * in full under its own lane, with the undated rows.
- */
-export function openDoneRows(steps: readonly Step[], laneOf: (id: string) => { lane: Lane }): Step[] {
-  return steps.filter((s) => s.status === 'done' && !s.doesntApply && laneOf(s.id).lane !== 'Completed')
 }
 
 /**
