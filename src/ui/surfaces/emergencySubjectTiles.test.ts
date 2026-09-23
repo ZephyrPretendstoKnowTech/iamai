@@ -32,7 +32,7 @@ function oneAccountWaiting(): Fixture {
   const changed = '2026-08-20T17:25:00.000Z'
   value.checkpoints = [
     ...checkpoints.filter(record => !(record.outcome === 'passed' && record.accountIds?.includes(second))),
-    { ...preparation, at: changed, date: changed, configurationObservedAt: changed, configurationCheckedThrough: changed, accountIds: [second] },
+    { ...preparation, at: changed, date: changed, configurationObservedAt: changed, configurationChangeObserved: true, configurationCheckedThrough: changed, accountIds: [second] },
   ]
   return value
 }
