@@ -435,6 +435,11 @@ export function whyLine(r: ReadinessRow): string {
   // Needs a device names the device the gap is on (a device type with no proof), whatever the next action there is.
   const gap = rd.devices.find((d) => !d.covered)
   if (r.state === 'device' && gap) return fillText(W.device, { device: deviceNoun(gap.os) })
+  // Every usable method registered inside the window: new and not used yet, which is not a method that may be gone.
+  const usable = rd.credentials.filter((c) => c.allowedNow !== 'no')
+  if (r.state === 'confirm' && usable.length > 0 && usable.every((c) => c.createdInWindow && c.created)) {
+    return fillText(W.confirmNew, { date: monthDay(usable.map((c) => c.created as string).sort().pop() as string) })
+  }
   return W[r.state] ?? ''
 }
 

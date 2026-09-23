@@ -1278,6 +1278,8 @@
           "seamless": "Every device they use signs them in on its own.",
           "ready": "Phishing-resistant sign-in is confirmed on every kind of device they use (computer, phone) in the last 30 days.",
           "confirm": "They hold a phishing-resistant method, but no sign-in with it in the last 30 days: it may no longer exist.",
+          "$commentConfirmNew": "A method registered last week and not used yet read \"it may no longer exist\", right after a registration campaign. Where every usable method is new, the row says when it was registered.",
+          "confirmNew": "Registered {date} and not used to sign in yet.",
           "onLeave": "They haven’t signed in during the last 30 days. Confirm the method when they return.",
           "device": "Confirmed on one device, but {device} signs in without it.",
           "method": "No phishing-resistant method they can use.",

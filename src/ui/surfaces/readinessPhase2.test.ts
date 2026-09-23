@@ -430,3 +430,28 @@ test('the opening line and group bodies name a synced passkey only where one wou
   assert.match(page(), /leadLine\(seen, offersSynced\)/)
   assert.match(page(), /groupBodyLine\(state, seen, offersSynced\)/)
 })
+
+test('a passkey registered inside the window and not used yet is not one that "may no longer exist"', () => {
+  // mid, after a registration campaign: people who needed a method registered a phone passkey eight days before the scan.
+  const f = fixture('mid')
+  const s = structuredClone(f.snapshot)
+  const created = new Date(Date.parse(s.asOf) - 8 * 86_400_000).toISOString()
+  const methods = s.authMethods as unknown as Record<string, unknown>
+  const before = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.filter((r) => r.state === 'method' && !r.guest)
+  for (const r of before) {
+    const ms = methods[r.user.id]
+    if (!Array.isArray(ms)) continue
+    methods[r.user.id] = [...ms, { kind: 'passkey', id: `pk-${r.user.id}`, displayName: 'iPhone', aaGuid: '90a3ccdf-635c-4729-a248-9b709135078f', createdDateTime: created }]
+  }
+  const fresh = readinessView(s, s.asOf, f.mapping).rows.filter((r) => r.state === 'confirm' && before.some((b) => b.user.id === r.user.id) && !r.readiness?.usedRecently && !r.readiness?.onLeave)
+  assert.ok(fresh.length > 0, 'the premise: people in Confirm it whose only usable method is new')
+  for (const r of fresh) {
+    const why = whyLine(r)
+    assert.doesNotMatch(why, /may no longer exist/, `${r.user.id}: ${why}`)
+    assert.equal(why, fillText(WHY.confirmNew, { date: monthDay(created) }))
+  }
+  // A method older than the window keeps its words.
+  const demo = fixture('demo')
+  const old = readinessView(demo.snapshot, demo.snapshot.asOf, demo.mapping).rows.filter((r) => r.state === 'confirm' && !r.readiness?.usedRecently && !r.readiness?.onLeave && (r.readiness?.credentials ?? []).some((c) => c.allowedNow !== 'no' && !c.createdInWindow))
+  for (const r of old) assert.equal(whyLine(r), WHY.confirm, r.user.id)
+})

@@ -312,6 +312,8 @@ export type CredentialReading = {
    * which the list does not allow. Null where no approved model shares the name.
    */
   approvedTwin: string | null
+  /** Registered inside the readiness window: new, so no sign-in with it yet says it is unused, not that it may be gone. */
+  createdInWindow: boolean
   created: string | null
   /** Usable under the tenant's current passkey settings; an observed sign-in settles it. */
   allowedNow: Verdict
@@ -806,6 +808,7 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
       aaguid: cls === 'platformCredential' ? PLATFORM_CREDENTIAL_AAGUID : aaguid,
       model,
       approvedTwin: twin ? twin.aaguid.toLowerCase() : null,
+      createdInWindow: !!m?.createdDateTime && inWindow(m.createdDateTime),
       created: m?.createdDateTime ?? null,
       allowedNow,
       afterStep3,
