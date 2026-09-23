@@ -233,8 +233,9 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   // The board, built once (planBoard.ts boardOf, on boardReadingsOf): the hold and the views read it.
   const board = boardOf(steps, schedule.cleanup, data.mapping?.breakGlassAnswers ?? null)
   // The board's order and numbers (planBoard.ts boardOrderOf; roadmap flow V1
-  // decision 8): the calendar and the plan file list steps as the Plan draws
-  // them, each numbered by its section and row. The dates stay the schedule's.
+  // decision 8): the calendar, the plan file, the prompt pack and the grounding
+  // bundle list steps as the Plan draws them, each numbered by its section and
+  // row. The dates stay the schedule's.
   const order = boardOrderOf(board.rows.map((r) => r.item))
   const held = exportHoldOf(board)
   const dates = planDates(steps, schedule.start, coverage.organisation.naming, snapshot, held)
@@ -248,7 +249,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   const cleanupViews = exportCleanupViewsOf(board, steps, schedule.cleanup)
   const getPack = (): PackItem[] => {
     if (packCache.current?.plan === c) return packCache.current.pack
-    const built = promptPack({ view, tenant: tenantName, steps, schedule, changeRecord: '', announcement: exportAnnouncementOf(steps, held, stepCtx), cleanup: cleanupViews })
+    const built = promptPack({ view, tenant: tenantName, steps, schedule, changeRecord: '', announcement: exportAnnouncementOf(steps, held, stepCtx), cleanup: cleanupViews, order })
     packCache.current = { plan: c, pack: built }
     return built
   }
@@ -354,7 +355,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
             <input type="checkbox" checked={!bundleRedacted} onChange={(e) => setBundleRedacted(!e.currentTarget.checked)} /> {A.redactedLabel}
           </label>
           <p className="actions no-print">
-            <Button variant="secondary" onClick={() => exportDownload(`iamai-bundle-${snapshot.tenantId.slice(0, 8)}${bundleRedacted ? '-redacted' : ''}.json`, JSON.stringify(groundingBundle({ view, tenant: tenantName, snapshot, coverage, steps, schedule, redacted: bundleRedacted, generated: absoluteDate(new Date().toISOString()), cleanup: cleanupViews, groups: data.groups }), null, 2), 'application/json', bundleRedacted ? REDACTED : unredactedFrom('grounding-bundle'))}>
+            <Button variant="secondary" onClick={() => exportDownload(`iamai-bundle-${snapshot.tenantId.slice(0, 8)}${bundleRedacted ? '-redacted' : ''}.json`, JSON.stringify(groundingBundle({ view, tenant: tenantName, snapshot, coverage, steps, schedule, redacted: bundleRedacted, generated: absoluteDate(new Date().toISOString()), cleanup: cleanupViews, groups: data.groups, order }), null, 2), 'application/json', bundleRedacted ? REDACTED : unredactedFrom('grounding-bundle'))}>
               {buttons('bundle')[0]}
             </Button>
           </p>

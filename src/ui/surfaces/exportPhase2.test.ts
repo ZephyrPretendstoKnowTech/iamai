@@ -8,7 +8,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import type { Fixture, FixtureName } from '../../roadmap/fixtures/index.ts'
-import { runFixture, withDirectionApproved } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withDirectionApproved, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
 import { scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import { nextMilestone } from '../../roadmap/lifecycle.ts'
@@ -649,12 +649,33 @@ test('the pack\'s announcement prompts carry the email the opened step shows, na
 
 // ---- The board's order and numbers (roadmap flow Stage 5, V1 decision 8) ----
 
+/**
+ * The tenants Stage 5 is read on, each export page built once: getiamai curated
+ * with its foundation settled (withFoundationSettled approves Direction too),
+ * and the fixtures as scanned.
+ */
+const stage5Pages = (() => {
+  let built: [string, ReturnType<typeof exportPage>][] | null = null
+  return (): [string, ReturnType<typeof exportPage>][] => (built ??= [
+    ['getiamai (curated, foundation settled, Direction approved)', exportPage(withFoundationSettled(curatedFixture('getiamai')))],
+    ...(['demo', 'demo-week2', 'small', 'mid', 'large', 'messy', 'midflight'] as FixtureName[]).map((n): [string, ReturnType<typeof exportPage>] => [n, exportPage(fixture(n))]),
+  ])
+})()
+
+/** The board's order as a test states it on its own: the sections in the registry's order, each section's rows by the number the board shows. */
+function boardIdsOf(items: readonly { id: string }[]): string[] {
+  const rows = rowNumbersOf(items)
+  const sections = sectionNumbersOf(items)
+  const sectionOf = (id: string): number => sections.get(groupOf(id)?.key ?? '') ?? Number.MAX_SAFE_INTEGER
+  return items.map((i) => i.id).sort((a, b) => sectionOf(a) - sectionOf(b) || rows.get(a)! - rows.get(b)!)
+}
+
 test('the calendar and the plan file list steps in the board\'s order, each numbered by its section and row', () => {
   // Each listed steps in the engine's order, with no number: a step the Plan
   // shows as the second row of its third section was the fourteenth entry of
   // the calendar and the plan file, and nothing said where it sat on the board.
-  for (const [name, f] of [['demo', fixture('demo')], ['mid', fixture('mid')], ['getiamai (curated, Direction approved)', withDirectionApproved(curatedFixture('getiamai'))]] as [string, Fixture][]) {
-    const page = exportPage(f)
+  for (const [name, page] of stage5Pages()) {
+    const f = page.f
     const items = page.board.rows.map((r) => r.item)
     // The board's order: its sections in the registry's order, each section's rows by the number the board shows.
     const rows = rowNumbersOf(items)
@@ -688,4 +709,41 @@ test('the calendar and the plan file list steps in the board\'s order, each numb
   assert.match(src, /const order = boardOrderOf\(board\.rows\.map\(\(r\) => r\.item\)\)/, 'the Export page orders the exports itself')
   assert.match(src, /buildIcs\(steps, tenantName, planId, view, cleanupViews, order\)/, 'the calendar is not handed the board\'s order')
   assert.match(src, /buildPlanFile\(\{[^}]*\border\b/, 'the plan file is not handed the board\'s order')
+})
+
+test('the prompt pack and the grounding bundle list steps in the board\'s order, each numbered by its section and row', () => {
+  // Both listed steps in the engine's order, with no number, and the Cleanup
+  // rows after every step: the drill the Plan draws in Establish Emergency
+  // Access came last, and nothing said where a step sat on the board.
+  for (const [name, page] of stage5Pages()) {
+    const items = page.board.rows.map((r) => r.item)
+    const expected = boardIdsOf(items)
+    const order = boardOrderOf(items)
+    const titleOf = (id: string): string => (id.startsWith('cleanup-') ? PROMPTS.cleanup : page.view(page.r.steps.find((s) => s.id === id)!).title)
+    // The pack's whole-plan prompt: a block per board row, in the board's order, each labelled with its number.
+    const pack = promptPack({ view: page.view, tenant: 'Tenant', steps: page.r.steps, schedule: page.r.schedule, changeRecord: '', announcement: null, cleanup: page.cleanup, order })
+    const prompt = pack[0].prompt
+    const blocks = expected.filter((id) => id.startsWith('cleanup-') ? page.cleanup.some((c) => `cleanup-${c.kind}` === id) : page.r.steps.some((s) => s.id === id))
+    const at = blocks.map((id) => prompt.indexOf(`${order.numberOf(id)} ${titleOf(id)} ${PROMPTS.dataNote}`))
+    assert.ok(at.every((i) => i >= 0), `${name}: a board row's block is not labelled with its number: ${blocks.filter((_, k) => at[k] < 0).join(', ')}`)
+    assert.deepEqual(at, [...at].sort((a, b) => a - b), `${name}: the pack lists its blocks in another order than the board`)
+    // The bundle: every step, the board's rows first in the board's order, each carrying its number; each Cleanup row its own.
+    const bundle = groundingBundle({ view: page.view, tenant: 'Tenant', snapshot: page.f.snapshot, coverage: page.r.coverage, steps: page.r.steps, schedule: page.r.schedule, redacted: false, generated: 'today', cleanup: page.cleanup, order })
+    const plan = bundle.plan as { steps: { id: string; number?: string }[]; cleanup: { kind: string; number?: string }[] }
+    const ids = plan.steps.map((s) => s.id)
+    assert.deepEqual([...ids].sort(), page.r.steps.map((s) => s.id).sort(), `${name}: the bundle lost or doubled a step`)
+    const onBoard = ids.filter((id) => expected.includes(id))
+    assert.deepEqual(onBoard, expected.filter((id) => ids.includes(id)), `${name}: the bundle lists its steps in another order than the board`)
+    assert.deepEqual(ids.slice(0, onBoard.length), onBoard, `${name}: a step the board draws no row for comes before a board row`)
+    for (const s of plan.steps) assert.equal(s.number, order.numberOf(s.id) ?? undefined, `${name}/${s.id}: the bundle numbers the step otherwise than the board`)
+    assert.deepEqual(plan.cleanup.map((c) => `cleanup-${c.kind}`), expected.filter((id) => plan.cleanup.some((c) => `cleanup-${c.kind}` === id)), `${name}: the bundle lists its Cleanup rows in another order than the board`)
+    for (const c of plan.cleanup) assert.equal(c.number, order.numberOf(`cleanup-${c.kind}`) ?? undefined, `${name}/${c.kind}: the bundle numbers the Cleanup row otherwise than the board`)
+    // Unordered, both are what they were: the engine's order, no numbers.
+    const plainPack = promptPack({ view: page.view, tenant: 'Tenant', steps: page.r.steps, schedule: page.r.schedule, changeRecord: '', announcement: null, cleanup: page.cleanup })
+    assert.equal(/\n\d+\.\d+ /.test(plainPack[0].prompt), false, `${name}: a pack built without the board's order numbers its blocks`)
+  }
+  // The Export page hands both the board's order.
+  const src = readFileSync('src/ui/surfaces/Export.tsx', 'utf8')
+  assert.match(src, /promptPack\(\{[^}]*\border\b/, 'the prompt pack is not handed the board\'s order')
+  assert.match(src, /groundingBundle\(\{[^}]*\border\b/, 'the grounding bundle is not handed the board\'s order')
 })

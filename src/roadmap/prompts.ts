@@ -9,7 +9,7 @@ import { planFinish, planLengthSentence } from '../derive/finish.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { CoverageReport } from '../coverage/types.ts'
 import { cleanupArtifactLines, stepArtifactLines } from './artifactLines.ts'
-import type { CleanupExport, Step, StepView } from './types.ts'
+import type { CleanupExport, ExportOrder, Step, StepView } from './types.ts'
 import { redactDeep as redactDeepShared, tenantVocabulary } from '../redactSnapshot.ts'
 import type { Schedule } from './schedule.ts'
 import { content } from '../content/content.ts'
@@ -137,6 +137,11 @@ export function cleanupText(cleanup: CleanupExport[]): string {
   return cleanup.map((c) => [`${c.title} (${c.when}).`, ...cleanupArtifactLines(c)].join('\n')).join('\n\n')
 }
 
+/** Rows in the Plan board's order where the caller hands it (roadmap/types.ts ExportOrder), a row the board does not draw after every one it does; else as they came. */
+function inExportOrder<T extends { id: string }>(rows: readonly T[], order: ExportOrder | null | undefined): T[] {
+  return order ? [...rows].sort((a, b) => order.rankOf(a.id) - order.rankOf(b.id)) : [...rows]
+}
+
 /**
  * The prompt pack (§2.2), pre-filled from the current plan; the Cleanup rows
  * travel under their own label.
@@ -147,7 +152,7 @@ export function cleanupText(cleanup: CleanupExport[]): string {
  * condition, no prerequisites and no statement of whether the work can be done
  * at all. There is one reading of a step for an artifact and this is it.
  */
-export function promptPack(args: { view: StepView; tenant: string; steps: Step[]; schedule: Schedule; changeRecord: string; announcement: PackAnnouncement | null; language?: string; cleanup?: CleanupExport[] }): PackItem[] {
+export function promptPack(args: { view: StepView; tenant: string; steps: Step[]; schedule: Schedule; changeRecord: string; announcement: PackAnnouncement | null; language?: string; cleanup?: CleanupExport[]; order?: ExportOrder | null }): PackItem[] {
   const { tenant } = args
   // The plan's length as the Plan header states it (derive/finish.ts
   // planLengthSentence), from the same steps and schedule: the caller handed in
@@ -162,11 +167,23 @@ export function promptPack(args: { view: StepView; tenant: string; steps: Step[]
   // 4,000 characters, their titles (docs/plans/ongoing-spec.md §10.7). The demo
   // was already over the cap before this wave. Each row now stands or falls on
   // its own length.
-  const planBlocks: [string, string][] = cleanup.map((c) => [PROMPTS.cleanup, cleanupText([c])])
+  //
+  // With the Plan board's order (ui/surfaces/planBoard.ts boardOrderOf; roadmap
+  // flow V1 decision 8) the blocks follow the board's sections and rows, a
+  // Cleanup row where the board draws it, each label led by the number its row
+  // has there ("3.2"). Without it they are the steps in the engine's order,
+  // then the Cleanup rows, unnumbered. The labels' words are unchanged.
+  const numbered = (id: string, label: string): string => {
+    const n = args.order?.numberOf(id) ?? null
+    return n === null ? label : `${n} ${label}`
+  }
+  const cleanupBlocks = inExportOrder(cleanup.map((c) => ({ id: `cleanup-${c.kind}`, block: [numbered(`cleanup-${c.kind}`, PROMPTS.cleanup), cleanupText([c])] as [string, string] })), args.order)
+  const planBlocks: [string, string][] = cleanupBlocks.map((b) => b.block)
   // Each step is independently bounded, so a long plan cannot silently lose its later steps.
-  const steps: [string, string][] = args.steps.map(step => [args.view(step).title, stepContext(step, args.view)])
+  const stepBlocks = args.steps.map((step) => ({ id: step.id, block: [numbered(step.id, args.view(step).title), stepContext(step, args.view)] as [string, string] }))
+  const blocks: [string, string][] = inExportOrder([...stepBlocks, ...cleanupBlocks], args.order).map((b) => b.block)
   const items: PackItem[] = [
-    { title: SHARED.planPromptTitle, prompt: withFacts(PROMPTS.pack.explain, PROMPTS.plan, planSummary, [...steps, ...planBlocks]), scope: null },
+    { title: SHARED.planPromptTitle, prompt: withFacts(PROMPTS.pack.explain, PROMPTS.plan, planSummary, blocks), scope: null },
     { title: PROMPTS.pack.summarise(tenant).split(' for ')[0], prompt: withFacts(PROMPTS.pack.summarise(tenant), PROMPTS.plan, planSummary, planBlocks), scope: null },
   ]
   // The email belongs to one step, and the two prompts say which.
@@ -194,7 +211,7 @@ export function promptPackMarkdown(items: PackItem[], tenant: string): string {
 // which is why the "redacted" bundle still carried policy names, group names,
 // departments and named-location CIDRs (audit redact-02, redact-03, redact-07).
 
-export function groundingBundle(args: { view: StepView; tenant: string; snapshot: TenantSnapshot; coverage: CoverageReport; steps: Step[]; schedule: Schedule; redacted: boolean; generated: string; cleanup?: CleanupExport[]; groups?: ReadonlyMap<string, { displayName?: string | null }> }): Record<string, unknown> {
+export function groundingBundle(args: { view: StepView; tenant: string; snapshot: TenantSnapshot; coverage: CoverageReport; steps: Step[]; schedule: Schedule; redacted: boolean; generated: string; cleanup?: CleanupExport[]; groups?: ReadonlyMap<string, { displayName?: string | null }>; order?: ExportOrder | null }): Record<string, unknown> {
   const { snapshot } = args
   // Every name the tenant contains, not just its users.
   // And the groups the plan loaded, which the scan's group rows do not name.
@@ -230,9 +247,19 @@ export function groundingBundle(args: { view: StepView; tenant: string; snapshot
   // a second description of every step, written before Foundation B settled the
   // lifecycle, which is exactly the disagreement this file cannot afford. There
   // is one reading now and it is the screen's.
-  const steps = args.steps.map((s) => {
+  //
+  // With the Plan board's order (ui/surfaces/planBoard.ts boardOrderOf; roadmap
+  // flow V1 decision 8) the steps and the Cleanup rows are listed as the board
+  // draws them, each first stating the number its row has there ("3.2"), and a
+  // step the board draws no row for after every row, unnumbered.
+  const numberOf = (id: string): { number?: string } => {
+    const n = args.order?.numberOf(id) ?? null
+    return n === null ? {} : { number: n }
+  }
+  const steps = inExportOrder(args.steps, args.order).map((s) => {
     const v = args.view(s)
     return {
+      ...numberOf(s.id),
       id: s.id,
       kind: s.kind,
       status: v.lane,
@@ -283,7 +310,7 @@ export function groundingBundle(args: { view: StepView; tenant: string; snapshot
     profile,
     // The Cleanup rows under their own key (E4), as the screen says them.
     // A Cleanup row the board dates nowhere carries no day here either (owner decision 2).
-    plan: { start: args.schedule.start, targetEnd: held ? null : args.schedule.targetEnd, weeks: held ? null : args.schedule.weeks, finish: finish.finish, criticalPath: held ? null : args.schedule.derivation.criticalPath, steps, cleanup: (args.cleanup ?? []).map((c) => (c.undated && c.done === null ? { ...c, day: null } : c)) },
+    plan: { start: args.schedule.start, targetEnd: held ? null : args.schedule.targetEnd, weeks: held ? null : args.schedule.weeks, finish: finish.finish, criticalPath: held ? null : args.schedule.derivation.criticalPath, steps, cleanup: inExportOrder((args.cleanup ?? []).map((c) => ({ id: `cleanup-${c.kind}`, c })), args.order).map(({ id, c }) => ({ ...numberOf(id), ...(c.undated && c.done === null ? { ...c, day: null } : c) })) },
     findings,
   }
   return args.redacted ? redactDeepShared(bundle, vocabulary) : bundle
