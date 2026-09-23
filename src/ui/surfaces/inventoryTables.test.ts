@@ -14,6 +14,7 @@ import { buildNameDirectory } from '../../names.ts'
 import { app, directionWords, engine, pages, workflowWords } from '../../content/content.ts'
 import { INVENTORY as C } from '../../copy/inventory.ts'
 import { MFA_STATE } from '../../copy/definitions.ts'
+import { count } from '../../copy/statements.ts'
 import { fillText } from '../../content/render.ts'
 import { emptyMappingState } from '../../mapping/types.ts'
 
@@ -571,4 +572,16 @@ test('every pinned-baseline policy drawn as a Policies row names its values in w
   // The risk remediation grant, by name (the high-risk users policy asks for it with a strength).
   const grant = m.columns.find((c) => c.key === 'grant')!
   assert.ok(m.rows.some((r) => String(grant.cell(r)).includes(W.riskRemediation)), 'a grant names risk remediation')
+})
+
+test('the Roles note over unread eligible holders counts its hidden roles through count(), as the note beside it does', () => {
+  const W = app.inventory as unknown as Record<string, string>
+  assert.doesNotMatch(W.hiddenNoteEligibleUnread, /\{n\}/, 'no bare number before a fixed plural')
+  assert.match(fillText(W.hiddenNoteEligibleUnread, { roles: count(1, 'built-in role') }), /^1 built-in role hidden:/)
+  const pim = failed(fixture('mid').snapshot, 'pimEligibility', 'disabled', 'access denied (403)')
+  pim.capabilities = { ...pim.capabilities, pim: { enabled: true, seats: 10, consumed: 10 } }
+  const note = rolesModel(pim, buildNameDirectory(pim)).hiddenNote ?? ''
+  const n = Number((note.match(/^([\d,]+) built-in roles? hidden/) ?? [])[1]?.replace(/,/g, ''))
+  assert.ok(n > 0, note)
+  assert.equal(note, fillText(W.hiddenNoteEligibleUnread, { roles: count(n, 'built-in role') }))
 })

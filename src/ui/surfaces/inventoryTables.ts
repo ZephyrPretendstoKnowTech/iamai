@@ -35,7 +35,7 @@ import { ACTIVITY_STATE, MFA_STATE } from '../../copy/definitions.ts'
 import { app, directionWords, pages, workflowWords } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { absoluteDate } from '../format.ts'
-import { figure } from '../../copy/statements.ts'
+import { count, figure } from '../../copy/statements.ts'
 
 /** A table as a file: what the Export CSV card downloads. */
 export type InventoryTable = { id: string; label: string; csvName: string; header: string[]; rows: (string | number)[][] }
@@ -699,7 +699,7 @@ export function rolesModel(snapshot: TenantSnapshot, names: NameDirectory, resol
     ],
   })
   // The built-in roles left out, said only where the assignments were read.
-  model.hiddenNote = model.notRead !== null || showAll || hidden === 0 ? null : eligibleUnread ? fillText(W.hiddenNoteEligibleUnread, { n: hidden }) : R.hiddenNote(hidden)
+  model.hiddenNote = model.notRead !== null || showAll || hidden === 0 ? null : eligibleUnread ? fillText(W.hiddenNoteEligibleUnread, { roles: count(hidden, 'built-in role') }) : R.hiddenNote(hidden)
   return model
 }
 
