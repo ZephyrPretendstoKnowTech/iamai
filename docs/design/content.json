@@ -1346,7 +1346,8 @@
         },
         "attestation": {
           "pass": "Attestation is off: synced and Windows Hello passkeys can register",
-          "note": "Attestation is on. Synced and Windows Hello passkeys can’t register, so contractors use a phone passkey or a security key."
+          "$commentNote": "It said \"so contractors use a phone passkey\"; nothing on the page defines contractors. The people it means are the ones on computers without Windows Hello for Business.",
+          "note": "Attestation is on. Synced and Windows Hello passkeys can’t register, so people on computers without Windows Hello for Business use a phone passkey or a security key."
         },
         "link": "Open the related step"
       },

@@ -350,8 +350,9 @@ test('the words that name a computer’s built-in option follow the computers se
   assert.equal(groupBodyLine('seamless', 'mac'), null)
   // The page reads the tenant's computers once, and uses them for the lead and the next group's body.
   assert.match(SURFACE, /const seen = computersSeen\(view\.rows\)/)
-  assert.match(SURFACE, /<p className="line intro">\{leadLine\(seen\)\}<\/p>/)
-  assert.match(SURFACE, /const body = groupBodyLine\(state, seen\)/)
+  // With whether a synced passkey would be offered at all (readinessPhase2.test.ts).
+  assert.match(SURFACE, /<p className="line intro">\{leadLine\(seen, offersSynced\)\}<\/p>/)
+  assert.match(SURFACE, /const body = groupBodyLine\(state, seen, offersSynced\)/)
   assert.match(SURFACE, /\{isNext && body && \(\s*<div className="next-body">\s*<p>\{body\}<\/p>/)
   assert.doesNotMatch(SURFACE, /T\.lead|G\.body/, 'the page reads a Windows-only sentence directly')
 })
