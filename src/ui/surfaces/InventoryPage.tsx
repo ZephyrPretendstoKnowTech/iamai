@@ -21,6 +21,7 @@ import type { ReadinessRow } from '../../derive/mfaReadiness.ts'
 import { INVENTORY as C, migrationName } from '../../copy/inventory.ts'
 import { TILE } from '../../copy/definitions.ts'
 import { absoluteDate, relative } from '../format.ts'
+import { figure } from '../../copy/statements.ts'
 import { Button, Chip, DataTable, EmptyState, InfoTip, Tabs } from '../components/index.ts'
 import type { ChipStatus, Column } from '../components/index.ts'
 import {
@@ -132,8 +133,8 @@ export function InventoryPage({ snapshot }: { snapshot: TenantSnapshot }) {
   const names = useMemo(() => buildNameDirectory(snapshot, groups ?? []), [snapshot, groups])
   const viability = useMemo(() => viabilityOf(snapshot), [snapshot])
   const readiness = useMemo(() => readinessRowsOf(snapshot), [snapshot])
-  // A tab counts only a section the scan got data out of: an unread one is no count, never 0.
-  const badge = (key: 'caPolicies' | 'users' | 'devices', n: number): number | undefined => (sectionHasData(snapshot, key) ? n : undefined)
+  // A tab counts only a section the scan got data out of: an unread one is no count, never 0. A count prints as the tables print one ("4,902").
+  const badge = (key: 'caPolicies' | 'users' | 'devices', n: number): string | undefined => (sectionHasData(snapshot, key) ? figure(n) : undefined)
   // A read that did not come back carries no date (the catch above).
   const groupEntries = useMemo<GroupEntry[] | null>(
     () => groups?.map((g) => ({ groupId: g.groupId, displayName: g.displayName, memberCount: g.memberCount, sampled: g.sampled, membershipRule: g.membershipRule, read: g.asOf !== '' })) ?? null,
