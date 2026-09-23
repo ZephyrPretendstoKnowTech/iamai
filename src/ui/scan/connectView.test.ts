@@ -564,3 +564,19 @@ test('the gaps lead counts only the sections a plan cannot be built without, and
   assert.match(CONNECT, /kind: 'gaps', gaps: runner\.gaps, unread: runner\.unread/)
   assert.match(CONNECT, /tile\.more\.rows\.map/)
 })
+
+// Phase 2 audit (Connect): a limitation told the admin to keep new blocks in
+// report-only "across a full cycle" (a quarter, a year) while the plan turns
+// them on after its observation window: 7 days, 3 for legacy authentication
+// (roadmap/schedule.ts observationDaysFor). Two instructions for one act, and
+// the reader could follow only one. The limitation states the fact and names
+// no report-only length the plan does not use.
+test('the limitations state what the records cannot show, and set no report-only length against the plan', () => {
+  const lines = scanTile({ kind: 'sample' }).limits.lines
+  assert.equal(lines.length, 5)
+  const cycle = lines.find((l) => /quarterly invoice run/.test(l))
+  assert.equal(cycle, 'Anything on a longer cycle than the records (the quarterly invoice run, the yearly renewal) has left no evidence yet, and a report-only window shorter than its cycle cannot show it either.')
+  for (const l of lines) assert.doesNotMatch(l, /keep new blocks in report-only|across a full cycle/, l)
+  // The same lines on the signed-in tile: one source.
+  assert.deepEqual(scanTile({ kind: 'ready' }).limits.lines, lines)
+})
