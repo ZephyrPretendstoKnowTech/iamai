@@ -3020,6 +3020,11 @@
               "note": "Answering that it is not in Entra yet keeps Define the Trusted Network on your plan, where you name the office and its approved public ranges. IAMAI does not read sign-in addresses, so it cannot suggest them.",
               "$commentUnused": "A saved answer of \"Everyone works remotely\" sat beside the evidence line \"1 named location is marked trusted\" with nothing connecting them. The evidence is true and argues for the OPPOSITE answer, and the suggestion was in fact office - so a careful reader met a contradiction on one line and no way to tell which half to believe. The downstream prerequisite step already says this well (\"The scan read a trusted named location this answer leaves out: Head office\"); the question that SETS the answer said nothing. Said only where the saved answer is remote and the scan read a trusted location.",
               "savedRemoteUnused": "This answer leaves {n} of them unused; nothing location-based will apply."
+            },
+            "$commentWorkCountries": "The work countries question, asked since Stage 3 on Block Sign-ins From Countries Not Allowed rather than in Direction. Its words are kept here as Direction wrote them: the label heads that step's countries picker, and the seen line sits under it where the scan saw sign-in countries (ui/surfaces/stepBody.ts withObjectTask).",
+            "workCountries": {
+              "label": "Work countries",
+              "seen": "Sign-ins in the last 30 days came from {countries}."
             }
           }
         },

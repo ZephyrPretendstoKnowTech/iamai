@@ -23,6 +23,9 @@ import { initialDomain } from '../../validation/rules.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { fillText, whatToDoFor } from '../../content/render.ts'
+import { directionWords } from '../../content/content.ts'
+import { suggestCountries } from '../../mapping/countries.ts'
+import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { baselineConflictWords } from '../../roadmap/baselineConflict.ts'
 import { toReportOnly, unavailableReason } from '../../roadmap/operations.ts'
 import { stepContext } from '../../roadmap/prompts.ts'
@@ -180,11 +183,11 @@ export type StepBodyOptions = {
 export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   const own = ownBodyOf(step, ctx, o)
   const task = objectTaskBodyOf(step, ctx)
-  return task === null ? own : withObjectTask(step, own, task)
+  return task === null ? own : withObjectTask(step, own, task, ctx)
 }
 
 /** The body of the object a step makes itself, folded into the step's own (stepBodyOf). */
-function withObjectTask(step: Step, own: StepBody, task: StepBody): StepBody {
+function withObjectTask(step: Step, own: StepBody, task: StepBody, ctx: StepVarContext): StepBody {
   const taskStep = step.objectTask!
   // While the object is still to be made it is the step's next task, so its
   // Implementation leads (the policy's own procedure follows as the next task),
@@ -192,7 +195,7 @@ function withObjectTask(step: Step, own: StepBody, task: StepBody): StepBody {
   // objectTaskLeads).
   const leads = objectTaskLeads(step)
   // The object's picker, saved under its own id, where the step asks nothing of its own.
-  const taskDecision = !own.decides && task.decides ? { d: task.d, ex: task.ex, stepId: taskStep.id } : null
+  const taskDecision = !own.decides && task.decides ? { d: pickerWordsOf(taskStep, task.d, ctx), ex: task.ex, stepId: taskStep.id } : null
   const taskLead: WhoBlock[] = task.lead ? [{ key: `${taskStep.id}:lead`, lead: task.lead, names: [] }] : []
   const risks = (cs: Record<string, any>): unknown[] => (Array.isArray(cs?.more?.risks) ? cs.more.risks : [])
   const tasks = leads && task.emergencyAccountTasks
@@ -215,6 +218,21 @@ function withObjectTask(step: Step, own: StepBody, task: StepBody): StepBody {
       ? { artifacts: task.artifacts, packaged: task.packaged, previewNote: task.previewNote, notes: task.notes, empty: task.empty, sourceLine: task.sourceLine, showImplementation: task.showImplementation || own.showImplementation, scenarios: [...task.scenarios, ...own.scenarios] }
       : {}),
   }
+}
+
+/**
+ * The words an object task's picker keeps from the Direction question it used
+ * to be (Stage 3): the countries location's picker is the work countries
+ * question Direction asked, so that question's label heads it and its seen
+ * line sits under it where the scan saw sign-in countries, word for word
+ * (pages.app.plan.direction.questions.workCountries). The picker still saves
+ * under its own label; only what it is headed with changes.
+ */
+function pickerWordsOf(taskStep: Step, d: StepBody['d'], ctx: StepVarContext): StepBody['d'] {
+  if (taskStep.id !== PREREQ_STEP_ID.allowedCountries || !d) return d
+  const Q = directionWords.questions.workCountries
+  const seen = suggestCountries(ctx.snapshot).countries.filter((c) => c.users > 0).map((c) => c.code)
+  return { ...d, heading: Q.label, ...(seen.length > 0 ? { text: fillText(Q.seen, { countries: seen.join(', ') }) } : {}) }
 }
 
 /** The step's own body, before the object it makes itself is folded in (stepBodyOf). */
