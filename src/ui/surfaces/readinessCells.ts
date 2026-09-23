@@ -80,7 +80,7 @@ type Words = {
   }
   checks: Record<string, Record<string, string>>
   rail: { shownAbove: string }
-  evidence: { none: string; unreadMethods: string; unreadMethodsRefused: string }
+  evidence: { none: string; unreadMethods: string; unreadMethodsRefused: string; notCovered: string; individually: string }
   footer: { counted: string }
   planContext: { filtered: string; covers: string; unknown: string }
   guests: { trustOn: string; trustOff: string; trustUnknown: string; trustNotReported: string }
@@ -406,9 +406,14 @@ export function panelMethods(r: ReadinessRow): PanelItem[] {
  * the line names the refusal and what reads it, in the Plan's words for the same
  * source (roadmap/readiness.ts sourceReadFix), never "The next scan retries".
  */
-export function unreadMethodsWords(snapshot: TenantSnapshot): string {
+export function unreadMethodsWords(snapshot: TenantSnapshot, n: number): string {
   const refusal = registrationRefusal(snapshot)
-  return refusal ? fillText(T.evidence.unreadMethodsRefused, refusal) : T.evidence.unreadMethods
+  return refusal ? fillText(T.evidence.unreadMethodsRefused, { ...refusal, n }) : fillText(T.evidence.unreadMethods, { n })
+}
+
+/** An evidence line with its count in the sentence, so a count of one reads as one. */
+export function evidenceWords(key: 'notCovered' | 'individually', n: number): string {
+  return fillText(T.evidence[key], { n })
 }
 
 /**

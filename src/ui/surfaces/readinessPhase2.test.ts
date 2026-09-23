@@ -14,7 +14,7 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { signInsNeedP1 } from '../../derive/readinessContext.ts'
 import { signInProofRead } from '../../scoring/fromSnapshot.ts'
 import { cohortWords } from '../../derive/whoLine.ts'
-import { checkWords, goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, summaryLine, unreadMethodsWords, whyLine, countedLine, scopeWords, panelMethods, groupBodyLine, noRecordsWords, computersSeen, leadLine, guestTrustWords } from './readinessCells.ts'
+import { checkWords, goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, summaryLine, unreadMethodsWords, whyLine, countedLine, scopeWords, panelMethods, groupBodyLine, noRecordsWords, computersSeen, leadLine, guestTrustWords, evidenceWords } from './readinessCells.ts'
 import { guestReadingOf } from '../../derive/guestReadiness.ts'
 import { syncedPasskeyOffered } from '../../scoring/phishingResistant.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
@@ -141,16 +141,16 @@ test('a method list the tenant refused is not "Nothing to do: the next scan retr
     assert.ok(!rowCells(r).join(' ').includes(N.rescan.methods), `${r.user.id}: nor the CSV`)
   }
   // The evidence tile names the refusal and what reads it, in the Plan's own sentence.
-  const line = unreadMethodsWords(f.snapshot)
+  const line = unreadMethodsWords(f.snapshot, 34)
   assert.doesNotMatch(line, /next scan retries/i, line)
   assert.ok(line.includes(reg.reason ?? '__'), line)
   assert.ok(line.includes(sourceReadFix('registrationDetails', f.snapshot)), line)
-  assert.match(page(), /<dd>\{unreadMethodsWords\(snapshot\)\}<\/dd>/)
+  assert.match(page(), /unreadMethodsWords\(snapshot, unreadMethods\)/)
   // The Unknown group promises no retry either: each row says what was missing.
   assert.doesNotMatch(G.unknown.why, /next scan/i)
   // A method list merely missed this time is still retried.
   const demo = fixture('demo')
-  assert.equal(unreadMethodsWords(demo.snapshot), E.unreadMethods)
+  assert.equal(unreadMethodsWords(demo.snapshot, 1), fillText(E.unreadMethods, { n: 1 }))
   const missed = readinessView(demo.snapshot, demo.snapshot.asOf, demo.mapping).rows.filter((r) => r.state === 'unknown' && r.readiness?.unknown === 'methods')
   assert.ok(missed.length > 0, 'the premise: demo missed one person’s method list')
   for (const r of missed) assert.equal(nextCell(r), N.rescan.methods)
@@ -485,4 +485,23 @@ test('opened from a step whose people this scan could not settle, the page puts 
   assert.deepEqual(stepNextCheck(view, checks, null), { kind: 'none' })
   assert.deepEqual(stepNextCheck(view, checks, ['a']), nextCheck(view, checks), 'a step whose people are known keeps its next check')
   assert.match(page(), /const next = stepNextCheck\(scopedView, context \? tenantSetupChecks\(snapshot, scopedView\) : checks, context \? context\.ids : undefined\)/)
+})
+
+test('a count of one in the evidence tile and the scope line reads as one: no "1 method lists", "1 people’s" or "1 of them aren’t"', () => {
+  const demo = fixture('demo').snapshot
+  const hostile = fixture('hostile').snapshot
+  const lines = [
+    unreadMethodsWords(demo, 1),
+    unreadMethodsWords(hostile, 1),
+    evidenceWords('notCovered', 1),
+    evidenceWords('individually', 1),
+    fillText(PC.uncounted, { n: 1 }),
+  ]
+  for (const line of lines) {
+    assert.match(line, /\b1\b/, `the count is in the sentence: ${line}`)
+    assert.doesNotMatch(line, /\b1 (people|method lists|of them aren’t)|1 person’s sign-ins aren’t reads|\breads\b/, line)
+  }
+  // Above one, the plural reads as before.
+  assert.match(unreadMethodsWords(demo, 3), /3 people’s method lists/)
+  assert.doesNotMatch(page(), /<dd>\{T\.evidence\.(individually|notCovered)\}<\/dd>/, 'no count set apart from its sentence')
 })

@@ -42,7 +42,7 @@ import { app, pages, shared } from '../../content/content.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { fillText } from '../../content/render.ts'
 import { monthDay } from '../../copy/dates.ts'
-import { checkWords, deviceChips, listWords, methodsCell, needsActionWords, nextCell, noDevicesWord, osWord, panelDevices, panelMethods, rowCells, rowNote, searchText, signInsUnavailableFor, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine, railRemaining, panelNoDevices, panelNoMethods, summaryLine, unreadMethodsWords, countedLine, scopeWords, noRecordsWords, guestTrustWords } from './readinessCells.ts'
+import { checkWords, deviceChips, listWords, methodsCell, needsActionWords, nextCell, noDevicesWord, osWord, panelDevices, panelMethods, rowCells, rowNote, searchText, signInsUnavailableFor, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine, railRemaining, panelNoDevices, panelNoMethods, summaryLine, unreadMethodsWords, countedLine, scopeWords, noRecordsWords, guestTrustWords, evidenceWords } from './readinessCells.ts'
 import type { PanelItem } from './readinessCells.ts'
 import { READINESS_CSV } from './inventoryTables.ts'
 import { useAppliedMapping, usePlanData } from './planData.ts'
@@ -684,25 +684,11 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
                     <dd>{fillText(T.evidence.full, { from: monthDay(covered.from), to: monthDay(covered.to) })}</dd>
                   </div>
                 ))}
-              {(source?.targeted?.read ?? 0) > 0 && (
-                <div style={{ display: 'contents' }}>
-                  <dt>{source?.targeted?.read}</dt>
-                  <dd>{T.evidence.individually}</dd>
-                </div>
-              )}
-              {notCovered > 0 && (
-                <div style={{ display: 'contents' }}>
-                  <dt>{notCovered}</dt>
-                  <dd>{T.evidence.notCovered}</dd>
-                </div>
-              )}
-              {unreadMethods > 0 && (
-                <div style={{ display: 'contents' }}>
-                  <dt>{unreadMethods}</dt>
-                  <dd>{unreadMethodsWords(snapshot)}</dd>
-                </div>
-              )}
             </dl>
+            {/* Each count in its own sentence, so a count of one reads as one. */}
+            {(source?.targeted?.read ?? 0) > 0 && <p>{evidenceWords('individually', source?.targeted?.read ?? 0)}</p>}
+            {notCovered > 0 && <p>{evidenceWords('notCovered', notCovered)}</p>}
+            {unreadMethods > 0 && <p>{unreadMethodsWords(snapshot, unreadMethods)}</p>}
             {(notCovered > 0 || unreadMethods > 0) && (
               <p>
                 <Button variant="secondary" onClick={() => again.run(scan(readinessHref(show)))}>
