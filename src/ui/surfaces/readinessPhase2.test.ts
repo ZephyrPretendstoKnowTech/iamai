@@ -9,11 +9,17 @@ import { fixture } from '../../roadmap/fixtures/index.ts'
 import { readinessView } from '../../derive/mfaReadiness.ts'
 import { nextCheck, remainingChecks, tenantSetupChecks } from '../../derive/readinessSetup.ts'
 import { pages } from '../../content/content.ts'
-import { noDevicesWord, panelNoDevices, railRemaining } from './readinessCells.ts'
+import { fillText } from '../../content/render.ts'
+import type { TenantSnapshot } from '../../graph/collect/types.ts'
+import { signInsNeedP1 } from '../../derive/readinessContext.ts'
+import { signInProofRead } from '../../scoring/fromSnapshot.ts'
+import { cohortWords } from '../../derive/whoLine.ts'
+import { goalLine, noDevicesWord, panelNoDevices, railRemaining, summaryLine } from './readinessCells.ts'
 import { readinessTable } from './inventoryTables.ts'
 
 const R = pages.readiness as unknown as { checks: Record<string, Record<string, string>>; rail: { shownAbove: string } }
 const W = pages.readiness as unknown as { chip: { unread: string }; sub: { noDevices: string }; panel: { noDevices: string; noneRegistered: string }; methods: { unread: string } }
+const S = pages.readiness as unknown as Record<string, string>
 const page = (): string => readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
 
 test('every remaining setup check carries its own words: the migration never shows without its safe order', () => {
@@ -63,4 +69,32 @@ test('where the sign-in records were not read, no row, panel or CSV line says no
     assert.equal(noDevicesWord(r), W.sub.noDevices, r.user.id)
     assert.equal(panelNoDevices(r), W.panel.noDevices, r.user.id)
   }
+})
+
+/** demo with every method list refused (registration details and per-user methods both 403), sign-in records read. */
+const methodsRefused = (): TenantSnapshot => {
+  const s = structuredClone(fixture('demo').snapshot) as TenantSnapshot & { authMethods: Record<string, unknown> }
+  for (const id of Object.keys(s.authMethods)) s.authMethods[id] = 'unknown'
+  s.sources.authMethods = { ...s.sources.authMethods!, status: 'error', reason: 'access denied (403)' }
+  s.registrationDetails = []
+  s.sources.registrationDetails = { ...s.sources.registrationDetails!, status: 'disabled', reason: 'access denied (403)' }
+  return s
+}
+
+test('a headline over people nobody could judge is not a measured "0 of N are ready"', () => {
+  const f = fixture('demo')
+  const s = methodsRefused()
+  const counted = readinessView(s, s.asOf, f.mapping).rows.filter((r) => r.state !== null)
+  assert.ok(counted.length > 0 && counted.every((r) => r.state === 'unknown'), 'the premise: nobody could be judged')
+  const reads = { needP1: signInsNeedP1(s), proofRead: signInProofRead(s) }
+  assert.equal(reads.proofRead, true, 'the premise: the sign-in proof was read, so the no-proof sentence is not the reason')
+  const line = summaryLine(counted, reads)
+  assert.doesNotMatch(line, /^0 of /, line)
+  assert.equal(line, fillText(S.summaryNotJudged, { cohort: cohortWords(counted.length, counted.filter((r) => r.guest).length) }))
+  assert.equal(goalLine(counted), '', 'nor does the second line say nobody is seamless over people it could not judge')
+  // The shipped demo still states its measured answer.
+  const demo = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.filter((r) => r.state !== null)
+  assert.match(summaryLine(demo, { needP1: signInsNeedP1(f.snapshot), proofRead: signInProofRead(f.snapshot) }), /^\d+ of .* ready for phishing-resistant sign-in\.$/)
+  assert.notEqual(goalLine(demo), '')
+  assert.match(page(), /const summary = summaryLine\(counted, \{ needP1: signInsNeedP1\(snapshot\), proofRead: signInProofRead\(snapshot\) \}\)/)
 })

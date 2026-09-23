@@ -14,6 +14,7 @@ import type { CredentialReading, DeviceReading, MethodClass, NextAction, Platfor
 import { pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { monthDay } from '../../copy/dates.ts'
+import { cohortWords } from '../../derive/whoLine.ts'
 
 /** The computers seen in the tenant: they choose the words that name a computer's built-in option (owner, 2026-09-19). */
 export type ComputersSeen = 'windows' | 'mac' | 'both' | 'none'
@@ -22,6 +23,12 @@ type ByComputers = Record<ComputersSeen, string>
 
 type Words = {
   lead: ByComputers
+  summary: string
+  summaryNone: string
+  summaryNoneNoP1: string
+  summaryNoP1: string
+  summaryUnmeasured: string
+  summaryNotJudged: string
   seamlessLine: string
   seamlessNone: string
   seamlessNotPossible: string
@@ -139,6 +146,8 @@ export function groupBodyLine(state: ReadinessState, seen: ComputersSeen): strin
 export function goalLine(counted: readonly ReadinessRow[]): string {
   const seamless = counted.filter((r) => r.state === 'seamless').length
   if (seamless > 0) return fillText(T.seamlessLine, { seamless })
+  // Nobody could be judged: "nobody is seamless yet" would be a finding about people the headline has just said it could not measure.
+  if (counted.length > 0 && counted.every((r) => r.state === 'unknown')) return ''
   // Both sentences below name a cause the DEVICE records carry. With no device
   // record read for anybody there is no cause to name, and "everyone signs in
   // from a device with no built-in option" asserted an absence the page had just
@@ -148,6 +157,24 @@ export function goalLine(counted: readonly ReadinessRow[]): string {
   // A person can become Seamless only when every device they use is, or could be: one personal PC rules them out.
   const couldBe = counted.some((r) => { const devices = r.readiness?.devices ?? []; return devices.length > 0 && devices.every((d) => d.seamless || (d.builtIn && d.possible !== 'no')) })
   return couldBe ? T.seamlessNone : T.seamlessNotPossible
+}
+
+/**
+ * The answer's headline over the people it counts. A scan that holds no sign-in
+ * proof, or a tenant without Entra ID P1, is unmeasured, never "0 of N"; so is a
+ * scan where everybody counted is Unknown (their method lists refused, say),
+ * whatever proof it read: a count nobody could be judged for is not a zero.
+ */
+export function summaryLine(counted: readonly ReadinessRow[], reads: { needP1: boolean; proofRead: boolean }): string {
+  const active = counted.length
+  // Guests are counted with everyone else and named beside the people (owner, 2026-09-19).
+  const cohort = cohortWords(active, counted.filter((r) => r.guest).length)
+  if (active === 0) return reads.needP1 ? T.summaryNoneNoP1 : T.summaryNone
+  if (reads.needP1) return fillText(T.summaryNoP1, { cohort })
+  if (!reads.proofRead) return fillText(T.summaryUnmeasured, { cohort })
+  if (counted.every((r) => r.state === 'unknown')) return fillText(T.summaryNotJudged, { cohort })
+  const ready = counted.filter((r) => r.state === 'ready' || r.state === 'seamless').length
+  return fillText(T.summary, { ready, cohort })
 }
 
 /** A device's name with its version where the record gave one: Windows 10, iOS 17; otherwise the family's word. */

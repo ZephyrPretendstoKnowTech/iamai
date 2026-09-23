@@ -42,7 +42,7 @@ import { app, pages, shared } from '../../content/content.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { fillText } from '../../content/render.ts'
 import { monthDay } from '../../copy/dates.ts'
-import { checkWords, deviceChips, listWords, methodsCell, needsActionWords, nextCell, noDevicesWord, osWord, panelDevices, panelMethods, rowCells, rowNote, searchText, signInsUnavailableFor, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine, railRemaining, panelNoDevices } from './readinessCells.ts'
+import { checkWords, deviceChips, listWords, methodsCell, needsActionWords, nextCell, noDevicesWord, osWord, panelDevices, panelMethods, rowCells, rowNote, searchText, signInsUnavailableFor, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine, railRemaining, panelNoDevices, summaryLine } from './readinessCells.ts'
 import type { PanelItem } from './readinessCells.ts'
 import { READINESS_CSV } from './inventoryTables.ts'
 import { useAppliedMapping, usePlanData } from './planData.ts'
@@ -253,14 +253,13 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
   // are counted with everyone else and named beside the people (owner, 2026-09-19).
   const active = counted.length
   const cohort = cohortWords(active, counted.filter((r) => r.guest).length)
-  const ready = counts.ready + counts.seamless
   // The one proof-read check Connect and the Plan's gate make (scoring/fromSnapshot.ts): records read AND carrying
-  // proof. A scan that holds no proof is unmeasured, never "0 of N".
+  // proof. A scan that holds no proof, or nobody could be judged in, is unmeasured, never "0 of N" (summaryLine).
   // Without Entra ID P1 there are no sign-in records to read: said here, once, not on every row (owner item 4).
   // With nobody countable AND no P1, "No active people to count" states a count
   // the scan never took: Graph withholds signInActivity without P1, so nobody
   // could be placed inside or outside the window (V1 audit S4-21).
-  const summary = active === 0 ? (signInsNeedP1(snapshot) ? T.summaryNoneNoP1 : T.summaryNone) : signInsNeedP1(snapshot) ? fillText(T.summaryNoP1, { cohort }) : !signInProofRead(snapshot) ? fillText(T.summaryUnmeasured, { cohort }) : fillText(T.summary, { ready, cohort })
+  const summary = summaryLine(counted, { needP1: signInsNeedP1(snapshot), proofRead: signInProofRead(snapshot) })
   const goal = goalLine(counted)
   // The computers the tenant signs in from choose the words that name a built-in option: no Windows Hello for a Mac-only tenant.
   const seen = computersSeen(view.rows)
