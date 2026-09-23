@@ -29,7 +29,7 @@ import { appearedEnforced, dimensionWords, watchedArrive } from '../../roadmap/o
 import type { Condition, Lifecycle, Milestone } from '../../roadmap/lifecycle.ts'
 import { heldForReview, nextMilestone, reviewCauses } from '../../roadmap/lifecycle.ts'
 import type { PolicyHold, UnavailableReason } from '../../roadmap/operations.ts'
-import { awaitsWorkflowRecord, enforcesOnRun, implementationOffered, isPreserved, operationsOf, policyHold, switchedOffPolicy, unavailableReason, strengthNameIn } from '../../roadmap/operations.ts'
+import { awaitsWorkflowRecord, enforcesOnRun, implementationOffered, isPreserved, operationsOf, policyHold, switchedOffPolicies, unavailableReason, strengthNameIn } from '../../roadmap/operations.ts'
 import { requiredMembers } from '../../roadmap/tracking.ts'
 import { unreadLine } from '../../roadmap/evidence.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
@@ -635,12 +635,15 @@ function reasonLine(step: Step, reason: UnavailableReason, tenant: string, exclu
       return fillText(app.plan.escapeHatchHeld, { tenant, steps: heldByTitle(step) })
     case 'readiness-unmet':
       return fillText(app.plan.readinessHeld, { tenant, ...(step.action.readinessGate ?? {}) })
-    case 'switched-off':
+    case 'switched-off': {
       // Set to Report-only, never straight to On (owner, 2026-09-23). Report-only
       // denies nobody, so the plan's own prerequisites of enforcement
       // (roadmap/enforceWaits.ts) and its readiness threshold hold the turn-on
-      // that follows the step's report-only watch, and never this.
-      return fillText(app.plan.switchedOff, { tenant, policy: switchedOffPolicy(step)?.name ?? '' })
+      // that follows the step's report-only watch, and never this. A pair names
+      // the members that are Off, and only those.
+      const off = switchedOffPolicies(step).map((p) => p.name)
+      return off.length > 1 ? fillText(app.plan.switchedOffMany, { tenant, policies: list(off) }) : fillText(app.plan.switchedOff, { tenant, policy: off[0] ?? '' })
+    }
     case 'baseline-conflict':
       // Foundation B's own milestone for a baseline that contradicts itself. The
       // step's full explanation is its own `baselineConflict` paragraph and is

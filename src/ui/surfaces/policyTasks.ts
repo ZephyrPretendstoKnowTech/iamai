@@ -29,7 +29,7 @@ import { EMERGENCY_ACCESS_GROUP, isGroupMember, usesTaskAnatomy } from '../../ro
 import { enforcesByStateOnly, stepOperations } from './stepJson.ts'
 import { CONTRACT, FINISHED_FINDINGS, isReadinessWork } from './stepContract.ts'
 import { app, structuralWords } from '../../content/content.ts'
-import { unavailableReason } from '../../roadmap/operations.ts'
+import { toReportOnly } from '../../roadmap/operations.ts'
 import { fillText } from '../../content/render.ts'
 import { list } from '../../copy/statements.ts'
 
@@ -130,7 +130,7 @@ function taskTitle(step: Step, fallback: string): string {
   // A policy the tenant has switched off is set to Report-only: the create the
   // engine still resolves for it is not what the procedure does
   // (stepResources.ts switchedOffLines).
-  if (unavailableReason(step) === 'switched-off') return structuralWords.switchedOffTask
+  if (toReportOnly(step).length > 0) return structuralWords.switchedOffTask
   const ops = stepOperations(step)
   if (ops.length === 0) return entryOf(step)?.taskTitle ?? fallback
   if (ops.every((op) => op.mode === 'create')) {

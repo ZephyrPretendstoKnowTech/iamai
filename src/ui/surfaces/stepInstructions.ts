@@ -32,7 +32,7 @@
 // artifacts refused to describe. One reading now, here.
 //
 // Pure: no DOM, no network.
-import { policyHold, unavailableReason } from '../../roadmap/operations.ts'
+import { policyHold, toReportOnly, unavailableReason } from '../../roadmap/operations.ts'
 import { fillText, whatToDoFor, whole } from '../../content/render.ts'
 import { stepPortalLines } from './stepPortal.ts'
 import type { PortalNames } from './stepPortal.ts'
@@ -155,7 +155,7 @@ export function rescanLinesOf(step: Step, cs: ContentStepLike): { steps: string[
 export function preparationLines(step: Step, cs: { preparation?: unknown; kind?: unknown } | undefined, portalProduced: boolean): string[] | null {
   if (!cs || !Array.isArray(cs.preparation)) return null
   const reason = cs.kind === 'policy' ? unavailableReason(step) : null
-  if (reason === 'switched-off') return null
+  if (reason !== null && toReportOnly(step).length > 0) return null
   const stands = step.id === 's-prereq-passkey-settings' ? !portalProduced : reason !== null || !portalProduced
   if (!stands) return null
   return [...cs.preparation.filter((line: unknown): line is string => typeof line === 'string'), ...(step.action.unmatchedPair ? step.action.portalSteps : [])]
