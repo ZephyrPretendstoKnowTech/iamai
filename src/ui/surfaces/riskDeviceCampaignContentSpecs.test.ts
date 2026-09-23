@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs'
 import registry from '../../content/implementation/registry.generated.json' with { type: 'json' }
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import type { Fixture, FixtureName } from '../../roadmap/fixtures/index.ts'
-import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withDevicesReady } from '../../roadmap/fixtures/run.ts'
 import { laneReadings } from './planLanes.ts'
 import { laneViewFor, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from './planBoard.ts'
 import { planDates } from './stepVars.ts'
@@ -47,12 +47,6 @@ function bodyOf(name: FixtureName, stepId: string, adjust: (f: Fixture) => Fixtu
   const lane = laneViewFor(step, { readings, titleOf })
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: step.reportOnlyAt ?? null, scheduledOn: waveStartOf(step), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
   return stepBodyOf(step, ctx, { lane, blockers: readinessBlockersOf(reading, titleOf), prerequisiteLabel: prerequisiteLabelFor(readings) })
-}
-/** Every person in the fixture holds a compliant computer: device readiness is met (roadmap/compliantDeviceCreate.test.ts). */
-function devicesReady(f: Fixture): Fixture {
-  const snapshot = structuredClone(f.snapshot)
-  snapshot.devices = [...snapshot.devices, ...snapshot.users.map((u, i) => ({ id: `probe-device-${i}`, displayName: `PC-${i}`, isCompliant: true, isManaged: true, trustType: 'AzureAd', ownerIds: [u.id], operatingSystem: 'Windows' }))]
-  return { ...f, snapshot }
 }
 /** The text one channel tab draws. */
 const drawn = (b: StepBody, id: string): string => b.artifacts.find((a) => a.id === id)!.text()
@@ -217,7 +211,7 @@ test('s-goal-require-managed-device: the threshold says what it measures, Entra 
   // "Not scheduled" under a row reading "After prerequisites".
   assert.equal(b.rail.metric, 'After prerequisites')
   // With every person on a compliant device it draws the create procedure after the Intune prerequisite.
-  const ready = bodyOf('demo', DEVICE, devicesReady)
+  const ready = bodyOf('demo', DEVICE, withDevicesReady)
   assert.match(drawn(ready, 'portal'), /Mark devices with no compliance policy assigned/)
   const create = authoredParts(drawn(ready, 'portal')).find((p) => p.kind === 'list')
   assert.ok(create && create.kind === 'list' && create.items[1][0] === 'Name: Core - Require - Compliant device for Office 365.', 'the create procedure names the demo policy')

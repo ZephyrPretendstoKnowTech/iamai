@@ -9,7 +9,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import type { Fixture } from './fixtures/index.ts'
-import { runFixture, withFoundationSettled } from './fixtures/run.ts'
+import { runFixture, withDevicesReady, withFoundationSettled } from './fixtures/run.ts'
 import { createWaitsOnReadiness, implementationOffered, switchedOffPolicies, toReportOnly, unavailableReason } from './operations.ts'
 import { scheduleOf } from './stepSchedule.ts'
 import { boardReadingsOf, laneLabelOf, holdLabelOf, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from '../ui/surfaces/planBoard.ts'
@@ -40,13 +40,6 @@ function creates(f: Fixture) {
   return r.steps.filter((s) => label(s) === 'Ready · Create').map((s) => ({ id: s.id, at: scheduleOf(s).at }))
 }
 
-/** Every person in the demo holds a compliant computer: device readiness is met. */
-function devicesReady(f: Fixture): Fixture {
-  const snapshot = structuredClone(f.snapshot)
-  snapshot.devices = [...snapshot.devices, ...snapshot.users.map((u, i) => ({ id: `probe-device-${i}`, displayName: `PC-${i}`, isCompliant: true, isManaged: true, trustType: 'AzureAd', ownerIds: [u.id], operatingSystem: 'Windows' }))]
-  return { ...f, snapshot }
-}
-
 test('demo: the managed-device create waits on device readiness, and says why', () => {
   const f = withFoundationSettled(fixture('demo'))
   const { r, board, label, ctx } = run(f)
@@ -75,7 +68,7 @@ test('demo: the managed-device create waits on device readiness, and says why', 
 })
 
 test('demo: once device readiness is met the managed-device create is Ready · Create on the plan\'s first day', () => {
-  const f = devicesReady(withFoundationSettled(fixture('demo')))
+  const f = withDevicesReady(withFoundationSettled(fixture('demo')))
   const { r, label } = run(f)
   const step = r.steps.find((s) => s.id === DEVICE)!
   assert.equal(step.action.readinessGate, undefined, 'the premise: readiness is met')
@@ -94,7 +87,7 @@ test('demo and mid: every other create is unchanged — creatable early, on the 
     const days = new Set(now.map((c) => c.at))
     assert.equal(days.size, 1, `${name}: every Ready create is dated the same first day (${[...days].join(', ')})`)
     // The creates a tenant with ready devices would offer, less the managed-device one: nothing else moved.
-    const ready = creates(devicesReady(f)).filter((c) => c.id !== DEVICE)
+    const ready = creates(withDevicesReady(f)).filter((c) => c.id !== DEVICE)
     assert.deepEqual(now, ready, `${name}: the other creates do not depend on device readiness`)
   }
   // Mid holds no Intune licence, so it has no managed-device step at all.
@@ -185,7 +178,7 @@ test('demo, first visit and settled: while its create waits, the step, its Imple
 })
 
 test('demo: once device readiness is met the opened step hands the create over again', () => {
-  const { body } = opened(devicesReady(withFoundationSettled(fixture('demo'))))
+  const { body } = opened(withDevicesReady(withFoundationSettled(fixture('demo'))))
   const entra = body.artifacts.find((a) => a.id === 'portal')?.text() ?? ''
   assert.match(entra, /New policy/, 'the Entra procedure creates it')
   assert.match(body.artifacts.find((a) => a.id === 'json')?.text() ?? '', /enabledForReportingButNotEnforced/, 'the JSON is the report-only create')
@@ -198,13 +191,13 @@ test('demo: once device readiness is met the opened step hands the create over a
  */
 function managedDeviceOff(ready: boolean): Fixture {
   const f = withFoundationSettled(fixture('demo'))
-  const seed = runFixture(devicesReady(f)).steps.find((s) => s.id === DEVICE)!
+  const seed = runFixture(withDevicesReady(f)).steps.find((s) => s.id === DEVICE)!
   const op = seed.action.resolution?.policies.find((o) => o.mode === 'create')
   assert.ok(op, 'the premise: the plan would create the policy')
   const snapshot = structuredClone(f.snapshot)
   snapshot.config.caPolicies!.rows = [...(snapshot.config.caPolicies!.rows ?? []), { id: 'e5d0d3c6-0b6e-4a2e-9a3f-9c4b7a1d0d0f', createdDateTime: f.snapshot.asOf, modifiedDateTime: f.snapshot.asOf, ...(op.body as Record<string, unknown>), state: 'disabled' }]
   const off = { ...f, snapshot }
-  return ready ? devicesReady(off) : off
+  return ready ? withDevicesReady(off) : off
 }
 
 /** The switched-off instruction, in the portal's words. */

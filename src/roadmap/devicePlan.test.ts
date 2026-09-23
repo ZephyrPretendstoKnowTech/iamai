@@ -15,7 +15,7 @@ import assert from 'node:assert/strict'
 // settled (roadmap/sourceIdentity.test.ts).
 import { curatedFixture as fixture } from './fixtures/index.ts'
 import type { Fixture } from './fixtures/index.ts'
-import { runFixture } from './fixtures/run.ts'
+import { runFixture, withDevicesReady } from './fixtures/run.ts'
 import type { FixtureRun } from './fixtures/run.ts'
 import type { MappingState } from '../mapping/types.ts'
 import { applyStepDecisions } from './decisions.ts'
@@ -48,16 +48,6 @@ function applied(f: Fixture, decisions: Record<string, StepDecision> | null): Ma
 }
 function ctxFor(f: Fixture, r: FixtureRun, mapping: MappingState): StepVarContext {
   return { snapshot: f.snapshot, mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: null, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming }
-}
-/**
- * Every person on a compliant computer, so device readiness is met. Below it the
- * compliant-device policy's create waits with its turn-on and its procedure is
- * withheld (operations.ts createWaitsOnReadiness; owner, 2026-09-23), so a case
- * about what the procedure says reads it here.
- */
-function withDevicesReady(f: Fixture): Fixture {
-  const devices = [...f.snapshot.devices, ...f.snapshot.users.map((u, i) => ({ id: `d-ready-${i}`, displayName: `PC ${i}`, operatingSystem: 'Windows', isCompliant: true, isManaged: true, trustType: 'AzureAd', ownerIds: [u.id] }))]
-  return { ...f, snapshot: { ...f.snapshot, devices } }
 }
 const AT = '2026-09-02T00:00:00.000Z'
 /** A service-accounts group this tenant has named, so the compliant-device policy resolves. */

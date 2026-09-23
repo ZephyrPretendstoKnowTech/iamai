@@ -16,7 +16,7 @@ import { fillText } from '../../content/render.ts'
 import registry from '../../content/implementation/registry.generated.json' with { type: 'json' }
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import type { Fixture, FixtureName } from '../../roadmap/fixtures/index.ts'
-import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withDevicesReady } from '../../roadmap/fixtures/run.ts'
 import { setDisplayTimeZone } from '../../copy/dates.ts'
 import { laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from './planBoard.ts'
 import { laneReadings } from './planLanes.ts'
@@ -58,17 +58,6 @@ function withPhonesBlocked(f: Fixture): Fixture {
       },
     } as MappingState,
   }
-}
-
-/**
- * Every person holds a compliant computer, so device readiness is met. Below it
- * the policy's create waits with its turn-on and its procedure is withheld
- * (roadmap/operations.ts createWaitsOnReadiness; owner, 2026-09-23), so a case
- * about what the procedure says starts here.
- */
-function withDevicesReady(f: Fixture): Fixture {
-  const devices = [...f.snapshot.devices, ...f.snapshot.users.map((u, i) => ({ id: `d-ready-${i}`, displayName: `PC ${i}`, operatingSystem: 'Windows', isCompliant: true, isManaged: true, trustType: 'AzureAd', ownerIds: [u.id] }))]
-  return { ...f, snapshot: { ...f.snapshot, devices } }
 }
 
 /** Every step's body on a fixture, as the Plan composes it (closeDoors.test.ts bodiesOf). */
