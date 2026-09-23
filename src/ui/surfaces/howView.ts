@@ -75,10 +75,10 @@ export function howCheckTables(): HowCheckTable[] {
 /**
  * Limits: every limitation IAMAI states. Connect's scan tile lists its own
  * (pages.connect.scan.limits) and sends the reader here for "its limits in
- * full", so How draws those lines from the same list, then its own. How held
- * five other lines and none of Connect's (Phase 2 audit).
+ * full", so How draws those lines from the same list, then its own, then the
+ * no-AI line, which sat outside the list (Phase 2 audit).
  */
 export function howLimits(): string[] {
   const connect = (pages.connect as unknown as { scan: { limits: string[] } }).scan.limits
-  return [...connect, ...app.how.limitsList]
+  return [...connect, ...app.how.limitsList, (pages.how as Record<string, string>).noAi]
 }

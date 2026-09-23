@@ -154,9 +154,10 @@ export function How() {
       </details>
 
       <details className="how-reference">
-        <summary>Baseline Packages</summary>
-        <h2 id="package" ref={packageHeading} tabIndex={-1}>Defense in Depth</h2>
-        <p>IAMAI uses the included version of Defense in Depth, maintained by Jon Hope. The Connect page shows its source and version.</p>
+        <summary>{C.packages}</summary>
+        <h2 id="package" ref={packageHeading} tabIndex={-1}>{(pages.home as { baselineName: string }).baselineName}</h2>
+        {/* What IAMAI does with the package; whose it is, the Credits say once. */}
+        <p>{C.packageBody}</p>
         <a href="https://conditionalaccess.tech" target="_blank" rel="noopener noreferrer">ConditionalAccess.Tech</a>
       </details>
 
@@ -166,7 +167,7 @@ export function How() {
       <h2>{C.hosting}</h2>
       <p className="reason">{C.hostingBody}</p>
 
-      {/* Other people's work, named. The default baseline is Jon Hope's, and
+      {/* Other people's work, named. The baseline is Jon Hope's, and
           CA Policy Analyzer is a separate project of his; neither is an
           endorsement of IAMAI, and the note under them says so. */}
       <h2>{C.credits}</h2>
@@ -196,7 +197,6 @@ export function How() {
           </a>
         )}
       </p>
-      <p className="reason">{(pages.how as Record<string, string>).noAi}</p>
     </section>
   )
 }

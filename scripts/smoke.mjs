@@ -502,7 +502,7 @@ try {
   // would otherwise be asked what the loading line says.
   await waitFor(HOW_DRAWN)
   t = await text()
-  check('How IAMAI works: the reference page renders with its sections', /How IAMAI works/.test(t) && /Permissions/.test(t) && /What IAMAI reads/.test(t) && /Every check/.test(t) && /Baseline Packages/.test(t) && /Limits/.test(t))
+  check('How IAMAI works: the reference page renders with its sections', /How IAMAI works/.test(t) && /Permissions/.test(t) && /What IAMAI reads/.test(t) && /Every check/.test(t) && /Baseline packages/.test(t) && /Limits/.test(t))
   check('How: the old reference routes redirect here', (await (async () => { await send('Page.navigate', { url: `${BASE}#/checks` }); await sleep(600); return await waitFor(`location.hash === '#/how'`) })()))
 
 

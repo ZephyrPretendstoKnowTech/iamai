@@ -1454,18 +1454,8 @@
       ]
     },
     "how": {
-      "needsByStep": {
-        "emergency": "the emergency-access step",
-        "exclusions": "the exclusions-group step",
-        "countries": "the countries step",
-        "trusted": "the trusted-network step",
-        "serviceAccounts": "the service-accounts step"
-      },
-      "exclusionsCheckReworded": "The group is excluded from every enabled policy that relies on it.",
-      "groupSearchReworded": "runs only while the operator types in a step's picker",
-      "packageProblem": "{policy}: the export dropped a condition this package cannot carry (for example agent identities), so it is listed and not assessed. Re-export it through Graph REST to assess it.",
       "tip": "Everything IAMAI reads, every check it runs, and how to make a baseline package of your own.",
-      "noAi": "No AI runs in these tools. Every plan is computed from the tenant's own records; the Export page writes prompts for your own assistant, not the other way round."
+      "noAi": "No AI runs in IAMAI. Every plan is computed from the tenant's own records; the Export page writes prompts for your own assistant, not the other way round."
     },
     "home": {
       "metaTitle": "IAMAI — Microsoft Entra Conditional Access planner",
@@ -3011,6 +3001,8 @@
           }
         },
         "packages": "Baseline packages",
+        "$commentPackageBody": "Phase 2 audit (How): the Baseline packages section's sentence was written into How.tsx and said the baseline credit a second time in other words. This says what IAMAI does with the package; whose it is, the Credits say once (creditBaseline).",
+        "packageBody": "IAMAI plans against a reviewed version of this package, pinned in the build, and reads it unchanged. Connect shows its source and version.",
         "limits": "Limits",
         "limitsList": [
           "IAMAI cannot reproduce every Microsoft access decision. Review Microsoft's policy results and test the actual workflow, especially registration, recovery and device-dependent access.",
@@ -3038,7 +3030,7 @@
         "$commentHostingBody": "Phase 2 audit (How): Connect asks GitHub whether the baseline's author has published changes since the pinned version (src/ui/baseline.ts checkAuthorHead, then baselineReview when the author's head has moved). This named Cloudflare's beacon and never the one other third party the app contacts. src/ui/surfaces/publicTrust.test.ts holds it to every non-Microsoft host in scripts/csp.ts REQUEST_HOSTS.",
         "hostingBody": "IAMAI runs in your browser. It reads tenant data directly from Microsoft Graph and keeps the scan in this browser. On Connect it also asks GitHub (api.github.com, raw.githubusercontent.com) whether the baseline's author has published changes since the pinned version, and reads the changed files when there are; no tenant data is sent. The public source and site files are on GitHub Pages, served through Cloudflare. Hosting includes a Cloudflare page-load beacon, which is not in IAMAI's application bundle. IAMAI does not send the tenant snapshot to that beacon. Review exports before sharing them.",
         "credits": "Credits",
-        "creditBaseline": "The default baseline is Jon Hope's Defense in Depth, published at ConditionalAccess.Tech. IAMAI pins a reviewed version of it and reads it unchanged.",
+        "creditBaseline": "The baseline is Jon Hope's Defense in Depth, published at ConditionalAccess.Tech.",
         "creditAnalyzer": "CA Policy Analyzer by Jon Hope",
         "creditAnalyzerNote": "A separate open-source project by the same author, credited here alongside the baseline. IAMAI is a different tool and is not affiliated with it.",
         "creditsNote": "Microsoft MVP is an award for community contribution. It is not a Microsoft certification of this baseline, and Microsoft does not endorse or support IAMAI."
