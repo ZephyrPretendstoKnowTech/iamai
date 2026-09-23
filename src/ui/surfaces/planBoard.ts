@@ -1097,6 +1097,21 @@ export function sectionNumbersOf(items: readonly Pick<BoardItem, 'id'>[], groups
   return sectionPositions(items.map((i) => i.id), groups)
 }
 
+/**
+ * The number a drawn group's heading shows: its section's number
+ * (`sectionNumbersOf`, taken once over the WHOLE board), so the Plan, the
+ * printed plan and the exports number a section alike, and a section keeps its
+ * number on every tab, in a tile's list and while a focus filters it. A lane
+ * tab's Completed and Deferred groups (`secondary`) gather rows from many
+ * sections, and the catch-all holds rows no section claims: neither is a
+ * section, and neither shows a number. Pure.
+ */
+export function groupNumberOf(g: BoardGroup, numbers: ReadonlyMap<string, number>, groups: readonly StepGroup[] = STEP_GROUPS): number | null {
+  if (g.secondary) return null
+  const key = groupKeyOf(g, groups)
+  return key === null ? null : numbers.get(key) ?? null
+}
+
 /** One section of the board as All work draws it whole: the drawn group, its registry key and number, and whether the board reads it finished. */
 export type BoardSection = { key: string | null; number: number | null; group: BoardGroup; finished: boolean }
 
@@ -1117,7 +1132,7 @@ export function boardSectionsOf(items: readonly BoardItem[], groups: readonly St
   const numbers = sectionNumbersOf(items, groups)
   return allWorkGroups(items, items, groups).map((group) => {
     const key = groupKeyOf(group, groups)
-    return { key, number: key === null ? null : numbers.get(key) ?? null, group, finished: group.closed }
+    return { key, number: groupNumberOf(group, numbers, groups), group, finished: group.closed }
   })
 }
 

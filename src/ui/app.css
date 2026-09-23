@@ -1889,6 +1889,13 @@ footer.app a {
   line-height: var(--lh-heading);
   margin: 0;
 }
+/* The section's number (planBoard.ts groupNumberOf): the one the printed plan
+   heads it with and the exports number its steps under. */
+.plan-group-number {
+  font-variant-numeric: tabular-nums;
+  color: var(--quiet-text);
+  margin-right: 0.15em;
+}
 /* The heading carries the group's identity by itself. This is the one
    supporting line: how many rows, and how many of them need the operator. */
 .plan-group-meta {
