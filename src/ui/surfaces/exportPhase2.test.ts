@@ -26,7 +26,7 @@ import { unavailableReason } from '../../roadmap/operations.ts'
 import { copyBoxes, exportAnnouncementOf, exportCleanupViewsOf, exportHoldOf, exportViewsOf } from './stepExport.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { PROMPTS } from '../../copy/comms.ts'
-import { cleanupExportViews, cleanupWhen } from './cleanupExport.ts'
+import { cleanupWhen } from './cleanupExport.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { exportText, runbookRedaction } from '../exportGuard.ts'
@@ -47,7 +47,7 @@ function exportPage(f: Fixture) {
   const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot, held)
   const ctxOf = (s: Step): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: s.reportOnlyAt ?? null, groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming })
   const view = exportViewsOf(board, ctxOf)
-  const cleanup = cleanupExportViews(r.schedule.cleanup)
+  const cleanup = exportCleanupViewsOf(board, r.steps, r.schedule.cleanup)
   return { f, r, board, held, view, cleanup, ctxOf }
 }
 
