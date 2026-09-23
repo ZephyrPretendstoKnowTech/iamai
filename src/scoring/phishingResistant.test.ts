@@ -269,10 +269,11 @@ test('a key off Step 3\'s list works now, stops after Step 3, and is flagged, ne
   // Proven everywhere: still Ready today, and the replacement is the recommendation.
   const proven = personReadiness(input({ methods: [key], proofs: [proof('passkey', 'iOS')], platforms: ['iOS'], context: ctx }))
   assert.equal(isReady(proven.state), true)
-  // A carried key on an iPhone is Ready, not Seamless: the passkey in Authenticator (on Step 3's list) is recommended, which also replaces the key.
+  // A carried key on an iPhone is Ready, not Seamless. The key is their only method and Step 3 stops it, so the
+  // replacement outranks the upgrade (owner decision: once Ready, the off-list key is flagged as the recommendation).
   assert.equal(proven.state, 'ready')
-  assert.deepEqual(proven.recommended, { kind: 'seamless', os: 'iOS', option: 'authenticatorPasskey' })
-  // Where no built-in upgrade is possible (a Linux computer), the replacement is the recommendation.
+  assert.deepEqual(proven.recommended, { kind: 'replaceKey', model: null, aaguid: OFF_LIST })
+  // Where no built-in upgrade is possible (a Linux computer), the replacement is the recommendation too.
   const linux = personReadiness(input({ methods: [key], proofs: [proof('passkey', 'Linux')], platforms: ['Linux'], context: ctx }))
   assert.deepEqual(linux.recommended, { kind: 'replaceKey', model: null, aaguid: OFF_LIST })
   // A second, listed key: the off-list one is flagged, but nothing needs replacing.
