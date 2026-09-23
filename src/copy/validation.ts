@@ -6,6 +6,7 @@
 // produced them, never a rule id.
 import { count, list } from './statements.ts'
 import { methodName } from './inventory.ts'
+import { BREAK_GLASS_DRILL_DAYS } from '../roadmap/constants.ts'
 
 export const SEVERITY = {
   blocker: 'Must fix',
@@ -74,6 +75,10 @@ export const NEED_LABEL: Record<string, string> = {
   devices: 'devices',
   groupMembers: 'group membership',
   answers: 'an answer given on the plan',
+  // The Cleanup drill row's records (roadmap/cleanupDone.ts), which bg.drilled and
+  // bg.lastSignIn read. Always there to read, so never a missing need; How's Needs
+  // column said "the user list" for a check that reads these (Phase 2 audit).
+  recoveryTests: 'the recovery tests recorded on Verify Emergency Access',
 }
 
 export const UNKNOWN = {
@@ -264,8 +269,8 @@ export const RULE_TEXT: Record<string, { what: string; why: string; label?: stri
     why: 'A mailbox on an emergency account is somewhere to phish and somewhere for mail to sit unread.',
   },
   'bg.drilled': {
-    what: 'The account has signed in within the last 90 days.',
-    why: 'A passphrase nobody has used in a year is found to be wrong at the worst moment.',
+    what: `A recovery test is recorded for the account in the last ${BREAK_GLASS_DRILL_DAYS} days.`,
+    why: 'A passphrase nobody has used in a year is found to be wrong at the worst moment, and a sign-in alone does not show that recovery was tested.',
   },
   'bg.credentialStorage': {
     what: 'Where the credential is kept, and who can reach it, is recorded in the plan.',
@@ -280,7 +285,10 @@ export const RULE_TEXT: Record<string, { what: string; why: string; label?: stri
     why: 'An unexplained Global Administrator is deleted in a tidy-up, or left alone when it should have been questioned.',
   },
   // ---- break-glass, notes ----
-  'bg.lastSignIn': { what: 'When the account last signed in.', why: 'Recorded so the drill history is visible without opening the portal.' },
+  'bg.lastSignIn': {
+    what: `The account has not signed in during the last ${BREAK_GLASS_DRILL_DAYS} days except on a recorded recovery test.`,
+    why: 'These accounts should sign in almost never, so a sign-in that is not a recorded recovery test is one to account for: who signed in, and why.',
+  },
   'bg.signInCountries': { what: 'Countries the account has signed in from in the evidence window.', why: 'An emergency account signing in from an unexpected country is worth a question.' },
   'bg.mfaSeen': { what: 'Whether the account has completed MFA in the evidence window.', why: 'A registered method that has never been used is a method nobody has proved works.' },
   // ---- exclusions group ----
