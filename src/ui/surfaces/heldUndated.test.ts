@@ -25,14 +25,14 @@ import { groundingBundle } from '../../roadmap/prompts.ts'
 import { scheduleOf, scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { absoluteDate } from '../../copy/dates.ts'
-import { engine, schedulingWords } from '../../content/content.ts'
+import { engine, schedulingWords, stepById } from '../../content/content.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
-import { fillText } from '../../content/render.ts'
+import { fillText, listCountVars } from '../../content/render.ts'
 import { boardHolds, boardReadingsOf, boardWhenOf, laneViewFor, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from './planBoard.ts'
 import { phaseRows, planPhases, undatedRows } from './planRows.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { stepContract } from './stepContract.ts'
-import { commsFor, exportViewsOf, stepExportView } from './stepExport.ts'
+import { WHO_UNRESOLVED, commsFor, exportViewsOf, stepExportView, whoEvidenceLines } from './stepExport.ts'
 import { aiGroundingText } from './aiGrounding.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -255,4 +255,63 @@ test('the opened step of a held create still says to create the policy in report
   assert.equal(held.milestone.label, fillText(engine.milestone.prepareHeld, { measure: gate.measure, threshold: gate.threshold }))
   assert.equal(held.milestone.at, null)
   assert.doesNotMatch(held.whatToDo.text, DATE)
+})
+
+// A who-line that names the turn-on day keeps its people where the step carries
+// no such day. withoutScheduleDates takes the day off a step the board holds, and
+// a step the roadmap holds or has finished has none; the dated line then could
+// not be completed, and it took its people list with it - or printed "IAMAI could
+// not finish this line from what it read, so it is not saying either way", which
+// was false: IAMAI read every person in it, and only the day was missing. Each
+// such line now has an undated form (who.<key>Undated, by the line's place) that
+// keeps every other part of the line and says no more than it did.
+const DATE_VARS = ['enforce', 'enforceLong', 'announce', 'reportOnly']
+const varsOf = (line: string): string[] => [...line.matchAll(/\{(?:list:)?([a-zA-Z0-9_]+)\}/g)].map((m) => m[1]).sort()
+
+test('every who-line that names a scheduled day has an undated form with every other part of it', () => {
+  let forms = 0
+  for (const [id, raw] of Object.entries(stepById)) {
+    const who = (raw as { who?: Record<string, unknown> }).who
+    if (!who) continue
+    for (const [key, value] of Object.entries(who)) {
+      if (key.startsWith('$comment') || key.endsWith('Undated') || !Array.isArray(value)) continue
+      const undated = (who[`${key}Undated`] ?? {}) as Record<string, unknown>
+      for (const [i, line] of (value as string[]).entries()) {
+        const dated = varsOf(line).filter((v) => DATE_VARS.includes(v))
+        const form = undated[String(i)]
+        if (dated.length === 0) {
+          assert.equal(form, undefined, `${id} who.${key}[${i}]: an undated form for a line that names no day`)
+          continue
+        }
+        forms++
+        assert.equal(typeof form, 'string', `${id} who.${key}[${i}] names ${dated.join(', ')} and has no undated form`)
+        assert.deepEqual(varsOf(form as string), varsOf(line).filter((v) => !DATE_VARS.includes(v)), `${id} who.${key}[${i}]: the undated form is not the line without its day`)
+      }
+      for (const i of Object.keys(undated).filter((k) => k !== '$comment')) assert.ok(Number(i) < (value as string[]).length, `${id} who.${key}Undated.${i} points at no line`)
+    }
+  }
+  assert.ok(forms >= 10, `the premise: the dated who-lines, ${forms}`)
+})
+
+test('a held policy keeps the people its who-line names, without the day and without saying it could not finish the line', () => {
+  for (const [name, make] of TURN_ON_HELD) {
+    const f = make()
+    const r = runFixture(f, {}, null, f.snapshot.asOf)
+    const answers = f.mapping.breakGlassAnswers ?? null
+    const board = boardReadingsOf(r.steps, r.schedule.cleanup, answers)
+    const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot)
+    const token = r.steps.find((s) => s.id === 's-goal-token-protection')!
+    const lane = laneViewFor(token, board)
+    const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: token.reportOnlyAt ?? null, scheduledOn: waveStartOf(token), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
+    const body = stepBodyOf(token, ctx, { lane, blockers: readinessBlockersOf(board.readings.get(token.id), board.titleOf), prerequisiteLabel: prerequisiteLabelFor(board.readings) })
+    const ex = body.ex as Record<string, unknown>
+    const people = ex.unboundUsers as string[] | undefined
+    assert.ok(boardHolds(token, lane) && (people?.length ?? 0) > 0, `${name}: the premise, a held step whose line has people`)
+    const who = ((contentStepFor(token) ?? {}) as { who: Record<string, unknown> }).who
+    const lines = whoEvidenceLines(who, ex).map((l) => fillText(l, listCountVars(l, ex) as Record<string, unknown>))
+    assert.ok(!lines.includes(WHO_UNRESOLVED), `${name}: "${WHO_UNRESOLVED}"`)
+    const line = lines.find((l) => people!.every((p) => l.includes(p)))
+    assert.ok(line, `${name}: the people are gone from the Who section: ${lines.join(' | ')}`)
+    assert.doesNotMatch(line!, DATE, `${name}: a day in "${line}"`)
+  }
 })

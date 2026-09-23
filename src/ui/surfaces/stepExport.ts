@@ -542,7 +542,8 @@ export function whoEvidenceLines(who: Record<string, unknown>, ex: Record<string
   let unresolved = false
   const coverage = String((content.shared as Record<string, unknown>).existingCoverage)
   for (const [k, v] of Object.entries(who)) {
-    if (['$comment', 'lead', 'leadWhen', 'leadUndated', 'groups', 'adminsNote', 'timeline', 'overlap'].includes(k)) continue
+    // A key ending in Undated holds another key's undated forms (below), never lines of its own.
+    if (k.startsWith('$comment') || k.endsWith('Undated') || ['lead', 'leadWhen', 'groups', 'adminsNote', 'timeline', 'overlap'].includes(k)) continue
     // A licence caveat has no placeholders, so `whole()` can never gate it: it
     // was drawn on every tenant, seven of eight of which hold Entra ID P1, which
     // made the one honest sentence about the licence carry no information at all
@@ -553,7 +554,17 @@ export function whoEvidenceLines(who: Record<string, unknown>, ex: Record<string
       continue
     }
     const arr = Array.isArray(v) ? (v as string[]) : typeof v === 'string' ? [v] : []
-    for (let line of arr) {
+    // The undated forms of this key's lines, by the line's place (who.<key>Undated):
+    // a line that names the day the plan turns the policy on, without that day.
+    // A step carries no such day where the board holds it (owner decision 2,
+    // 2026-09-22), where the roadmap holds it or where it is finished, and the
+    // dated line then could not be completed: it took its people with it, or
+    // said IAMAI could not finish the line though the scan read every person in
+    // it. The undated form keeps the rest of the line, so it completes exactly
+    // where the day was the only hole.
+    const undatedForms = (who[`${k}Undated`] ?? null) as Record<string, unknown> | null
+    for (const [i, raw] of arr.entries()) {
+      let line = raw
       if (line === '{existingCoverage}') {
         if (!truthy(ex.existingPolicies)) continue
         line = coverage
@@ -564,6 +575,8 @@ export function whoEvidenceLines(who: Record<string, unknown>, ex: Record<string
       // The existing-coverage line reads the plan, not the tenant's people; the
       // licence caveat is a reading of what the scan was allowed to see.
       const reading = line !== coverage && (readsTenant(line) || k === 'licenceNote')
+      const undated = undatedForms?.[String(i)]
+      if (!whole(line, listCountVars(line, ex) as Record<string, unknown>) && typeof undated === 'string' && whole(undated, listCountVars(undated, ex) as Record<string, unknown>)) line = undated
       if (!whole(line, listCountVars(line, ex) as Record<string, unknown>)) {
         // A claim whose people are already on the page — its list has them — and
         // whose sentence still cannot be completed is the R4 case: the evidence
