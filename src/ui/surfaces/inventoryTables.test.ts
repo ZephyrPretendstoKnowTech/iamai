@@ -545,3 +545,12 @@ test('the Microsoft Authenticator targets say the authentication mode each carri
   const fido = authMethodsModel(s, buildNameDirectory(s))
   assert.equal(fido.columns.find((c) => c.key === 'targets')!.cell(fido.rows.find((r) => r.id.toLowerCase() === 'fido2')!), C.authentication.allUsers)
 })
+
+test('the Apps heading tip says what its tables show, and claims no window and no say over which goals apply', () => {
+  const W = app.inventory as unknown as Record<string, string>
+  const D = directionWords as unknown as { steps: { use: { title: string } } }
+  // Detected workloads is the scan's view of each service; an app service's facet is on whatever the scan saw (coverage/applicability.ts), so the view drives no goal.
+  assert.equal(C.source.apps.text, fillText(W.appsSource, { step: D.steps.use.title }))
+  assert.doesNotMatch(C.source.apps.text, /goal|30 days|drive/i)
+  assert.ok(C.source.apps.text.includes(D.steps.use.title), C.source.apps.text)
+})
