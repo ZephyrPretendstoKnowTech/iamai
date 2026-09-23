@@ -964,8 +964,9 @@ async function walkFixture(fx) {
           const OTHER = { complete: [/complete · /, /^Scan again$/], gaps: [/no plan built/, /Ask whoever administers/], role: [/holds none of the roles that read/, /Everything IAMAI needs, read-only/], scanning: [/^Stop$/], ready: [/About ten minutes/, /^Scan tenant$/], sample: [/about a minute for a small tenant/] }
           for (const [k, res] of Object.entries(OTHER)) {
             if (k === want) continue
-            // Scan again belongs to the complete and the gaps state both.
-            for (const re of res) if (!(k === 'complete' && want === 'gaps' && String(re) === String(/^Scan again$/)) && (re.test(t3.text) || t3.buttons.some((b) => re.test(b.t)))) add('P0', `${label}: tile 3 in the ${want} state carries the ${k} state's ${re}`)
+            // Scan again belongs to the complete and the gaps state both, and so
+            // does the Global Reader ask where a section was refused to the account.
+            for (const re of res) if (!(k === 'complete' && want === 'gaps' && String(re) === String(/^Scan again$/)) && !(k === 'gaps' && want === 'complete' && String(re) === String(/Ask whoever administers/)) && (re.test(t3.text) || t3.buttons.some((b) => re.test(b.t)))) add('P0', `${label}: tile 3 in the ${want} state carries the ${k} state's ${re}`)
           }
           for (const re of [/Open the plan →/, /Open the last full plan/, /What the sample tenant produced/, /Open the sample plan/, /\d+ people \d+ policies/, /from the scan/]) if (re.test(t3.text) || t3.buttons.some((b) => re.test(b.t))) add('P0', `${label}: tile 3 carries the Plan tile's ${re}`)
           if (want === 'complete') {
@@ -975,7 +976,7 @@ async function walkFixture(fx) {
           if (want === 'gaps') {
             const rows = await evaluate(`[...document.querySelectorAll('main.page .connect-step .tile-rows li')].map((l) => (l.textContent || '').replace(/\\s+/g, ' ').trim())`)
             if (!rows.some((r) => /^Conditional Access policies not read$/.test(r))) add('P0', `${label}: the policies section row is not marked not read: ${JSON.stringify(rows)}`)
-            if (!rows.some((r) => /^Sign-in records not read$/.test(r))) add('P0', `${label}: the sign-in records row is not marked not read: ${JSON.stringify(rows)}`)
+            if (!rows.some((r) => /^Sign-in records refused to this account$/.test(r))) add('P0', `${label}: the sign-in records row is not marked refused to this account: ${JSON.stringify(rows)}`)
             if (!/Ask whoever administers the tenant for Global Reader; it reads every section and writes nothing\./.test(t3.text)) add('P0', `${label}: the gaps tile lacks the one ask for Global Reader`)
             if (!(await evaluate(`[...document.querySelectorAll('main.page .connect-step a.lnk')].some((a) => /Microsoft: Global Reader/.test(a.textContent || '') && /global-reader/.test(a.getAttribute('href') || ''))`))) add('P0', `${label}: the gaps tile lacks Microsoft's Global Reader link`)
             expectBtn(t3, /^Sign in with another account$/, 'primary', 'the gaps tile')

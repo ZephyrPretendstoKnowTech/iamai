@@ -141,7 +141,7 @@ test('the scan step draws its counts only when a real scan produced them', () =>
     { value: '27', label: 'plan steps' },
   ])
   // No other scan state fills the row: an incomplete scan must never read as complete.
-  const others: ScanInput[] = [{ kind: 'ready' }, { kind: 'sample' }, { kind: 'scanning', lane: 'people', elapsed: '8s' }, { kind: 'gaps', unread: [{ source: 'policies', partial: false }], lastScan: null }]
+  const others: ScanInput[] = [{ kind: 'ready' }, { kind: 'sample' }, { kind: 'scanning', lane: 'people', elapsed: '8s' }, { kind: 'gaps', unread: [{ source: 'policies', partial: false, refused: false }], lastScan: null }]
   for (const input of others) {
     assert.equal(scanTile(input).meta, undefined, `the ${input.kind} scan state carries counts`)
   }

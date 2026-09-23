@@ -52,8 +52,8 @@ test('a core section read in part still builds a plan, and is never counted as r
   const s = partial()
   assert.deepEqual(coreGaps(s), [], 'a partly read core section is not a gap: what came back still builds a plan')
   assert.deepEqual(unreadSources(s), [
-    { source: 'config:caPolicies', partial: true },
-    { source: 'users', partial: true },
+    { source: 'config:caPolicies', partial: true, refused: false },
+    { source: 'users', partial: true, refused: false },
   ])
   // Both loops agree on one meaning of read: a configuration section and a
   // source in the same state are reported the same way.
@@ -64,15 +64,21 @@ test('a core section read in part still builds a plan, and is never counted as r
 
 test('every section a scan could not read reaches the list, core or not, gaps or none', () => {
   const s = fixtureSnapshot()
-  s.config.namedLocations = { ...s.config.namedLocations, status: 'error', reason: 'refused' }
-  s.config.authStrengths = { ...s.config.authStrengths, status: 'error', reason: 'refused' }
-  s.sources.devices = { ...s.sources.devices, status: 'error', reason: 'refused' }
+  s.config.namedLocations = { ...s.config.namedLocations, status: 'error', reason: REFUSED }
+  s.config.authStrengths = { ...s.config.authStrengths, status: 'error', reason: 'HTTP 500' }
+  s.sources.devices = { ...s.sources.devices, status: 'error', reason: 'HTTP 429 TooManyRequests' }
   assert.deepEqual(coreGaps(s), [], 'no core section is missing: the plan is built')
+  // Only Graph refusing the account is a refusal: an error or a throttled read is not the account's doing.
   assert.deepEqual(unreadSources(s), [
-    { source: 'config:namedLocations', partial: false },
-    { source: 'config:authStrengths', partial: false },
-    { source: 'devices', partial: false },
+    { source: 'config:namedLocations', partial: false, refused: true },
+    { source: 'config:authStrengths', partial: false, refused: false },
+    { source: 'devices', partial: false, refused: false },
   ])
+  // A sign-in read stopped short of its minimum with some hours covered returned those hours: read in part.
+  s.sources.signInEvidence = { status: 'insufficient', reason: 'stopped at memory ceiling with only 9 h covered (minimum 24 h)', coveredWindow: { from: '2026-09-07T15:00:00Z', to: '2026-09-08T00:00:00Z' }, asOf: s.asOf }
+  assert.deepEqual(unreadSources(s).at(-1), { source: 'signInEvidence', partial: true, refused: false })
+  s.sources.signInEvidence = { status: 'insufficient', reason: 'no sign-in records could be read', coveredWindow: null, asOf: s.asOf }
+  assert.deepEqual(unreadSources(s).at(-1), { source: 'signInEvidence', partial: false, refused: false }, 'no hours covered: nothing was read')
 })
 
 test('a token without the roles does not start the scan and names the role to ask for; Global Reader, Global Administrator or Security Reader start it; a token without the claim says nothing', () => {
