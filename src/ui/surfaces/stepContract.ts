@@ -594,7 +594,11 @@ function heldLine(step: Step): string | null {
  * createWaitsOnReadiness). The one reading the step and its export both state.
  */
 export function readinessHeldLine(step: Step, tenant: string): string {
-  return fillText(createWaitsOnReadiness(step) ? app.plan.readinessHeldCreate : app.plan.readinessHeld, { tenant, ...(step.action.readinessGate ?? {}) })
+  const vars = { tenant, ...(step.action.readinessGate ?? {}) }
+  if (!createWaitsOnReadiness(step)) return fillText(app.plan.readinessHeld, vars)
+  // A policy the scan found switched off is not one to create: say it was found.
+  const off = switchedOffPolicies(step).map((p) => p.name)
+  return off.length > 0 ? fillText(app.plan.readinessHeldSwitchedOff, { ...vars, policy: list([...new Set(off)]) }) : fillText(app.plan.readinessHeldCreate, vars)
 }
 
 /** The reason line an unavailable policy already shows, filled: Foundation A's answer in the operator's words. */
