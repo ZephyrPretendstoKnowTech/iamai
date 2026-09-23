@@ -452,6 +452,9 @@ const INVENTORY: string[] = [
   // A prerequisite step that now carries a finding: the security-defaults step
   // reports the coexistence when policies are enforced while defaults are on.
   'object · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · found · no-fix · one-policy · who-none',
+  // The High user-risk create written from the pinned policy (q-pin), not the
+  // goal's template: an account's own risk is not a reach the scan holds.
+  'policy · create · not-deployed · blocked · open · do:resolve · track · implementation · no-found · fix · one-policy · who-unknown', // mid+curated/s-goal-user-risk
 ]
 
 test('§1 the sweep reaches every canonical Plan case, and renders the inventory that was migrated', () => {

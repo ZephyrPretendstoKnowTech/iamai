@@ -85,8 +85,10 @@ test('the MFA handoff, the review picker and the per-user MFA finding name a sha
       if (person.id === member.id || person.id === guest.id) previewed.add(step.id)
     }
   }
-  // The premise: the admin step previews the member, four more preview the guest.
-  assert.ok(previewed.has('s-goal-admins-phishing-resistant') && previewed.size >= 5, [...previewed].join(', '))
+  // The premise: the admin step previews the member, three more preview the guest.
+  // The admin-portal step no longer does: it is written from the pinned policy
+  // (q-pin), whose source contradicts itself, so it hands over no MFA policy.
+  assert.ok(previewed.has('s-goal-admins-phishing-resistant') && previewed.size >= 4, [...previewed].join(', '))
 
   const options = r.steps.flatMap((step) => (step.manualReview?.fields ?? []).flatMap((field) => (field.key === 'accountIds' ? (field.options ?? []) : [])))
   const kaiOptions = options.filter((o) => o.value === member.id || o.value === guest.id)

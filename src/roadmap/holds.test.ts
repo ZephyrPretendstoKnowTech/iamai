@@ -227,7 +227,9 @@ test('Step 4 E: once the exclusions group is answered the same policy is Ready t
 // ---- the calendar books the canonical event ----
 
 test('C5: the calendar books a readiness-gated create on its report-only creation day, in the Plan rail’s words, and dates no enforcement', () => {
-  const p = planOf(fixture('small'))
+  // Curated: small's device-registration step is written from the pinned policy
+  // (q-pin), which names a group of the author's this baseline has not settled.
+  const p = planOf(curatedFixture('small'))
   const s = stepOf(p, 's-goal-device-registration-mfa')
   assert.ok(isHeld(s), 'the premise: a readiness threshold holds it')
   const event = scheduledEventOf(s)

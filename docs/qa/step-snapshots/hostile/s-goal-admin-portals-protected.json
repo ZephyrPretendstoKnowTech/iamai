@@ -1,25 +1,22 @@
 {
-  "lane": "Up Next",
+  "lane": "On Hold",
   "substatus": null,
-  "reason": "when MFA readiness reaches 90% (now not measured)",
+  "reason": "the baseline defines this policy two ways",
   "fact": null,
-  "badge": "Up Next",
-  "bar": "After Prepare Emergency Access Accounts",
-  "rail": "Aug 31, 2026",
+  "badge": "On Hold",
+  "bar": "Baseline conflict",
+  "rail": "After prerequisites",
   "headings": [
     "About this Step",
     "Tasks Remaining",
+    "Do not deploy this policy from the current baseline",
     "Implementation Tasks",
     "Completion Criteria"
   ],
   "tiles": [
     {
-      "label": "Threshold",
-      "state": "not measured"
-    },
-    {
-      "label": "Prepare Emergency Access Accounts",
-      "state": "Prerequisite · To do"
+      "label": "Baseline definition",
+      "state": "Conflict unresolved"
     }
   ],
   "channels": [
@@ -28,5 +25,5 @@
     "JSON",
     "AI Info"
   ],
-  "when": "Aug 31, 2026"
+  "when": "After prerequisites"
 }
