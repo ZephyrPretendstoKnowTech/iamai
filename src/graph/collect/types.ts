@@ -39,7 +39,6 @@ export type ConfigSectionKey =
   | 'subscribedSkus'
   | 'organization'
   | 'me'
-  | 'meMemberOf'
 
 export type ConfigSection = {
   status: 'ok' | 'partial' | 'disabled' | 'error'
