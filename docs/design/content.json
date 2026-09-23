@@ -662,11 +662,11 @@
         ],
         "limitsMore": "Permissions, every check it runs, and its limits in full:",
         "limitsLink": "How IAMAI works →",
-        "$comment": "Task 032: the approved pack carries a compact meta row of what the scan produced (docs/design/approved/connect-v3.html). Every number comes from the one authority that already owns it — derive/facts.ts for the active people, the loaded package for the policies, derive/facts.ts stepFacts for the steps — so the row is a second RENDERING of a count, never a second count. It renders only when a complete scan has produced a computed plan.",
+        "$comment": "Task 032: the approved pack carries a compact meta row of what the scan produced (docs/design/approved/connect-v3.html). Every number comes from the one authority that already owns it — derive/facts.ts for the active people, the loaded package for the policies, derive/facts.ts stepFacts for the steps — so the row is a second RENDERING of a count, never a second count. It renders only when a complete scan has produced a computed plan. Each item is one counted string filled through fillText (Phase 2 audit: the row printed \"1 active people\" and \"4169\" beside \"4,169\" elsewhere), so one reads as one and a large count carries its separator; the view splits the figure from the words after filling.",
         "meta": {
-          "people": "active people",
-          "policies": "baseline policies",
-          "steps": "plan steps"
+          "people": "{n} active people",
+          "policies": "{n} baseline policies",
+          "steps": "{n} plan steps"
         },
         "complete": {
           "state": "complete · {age}",

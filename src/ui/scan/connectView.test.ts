@@ -617,3 +617,24 @@ test('the ready strip carries the complete scan’s own caveat instead of saying
   assert.equal(connectStatus([true, true, true, true], [t1, t2, both, t4]).text, `${both.lead} ${both.note}`)
   for (const s of [withUnread, connectStatus([true, true, true, true], [t1, t2, both, t4])]) assert.doesNotMatch(s.text, /scan are ready/)
 })
+
+// Phase 2 audit (Connect): the scan's meta row printed String(count) beside a
+// fixed plural label, so a one-person trial tenant read "1 active people" and a
+// large one "4169 active people" where every other surface reads "4,169". Each
+// item is now one counted string, filled like every other count.
+test('the scan counts are counted words: one reads as one, and a large count carries its separator', () => {
+  const at = full.asOf
+  const one = scanTile({ kind: 'complete', at, counts: { people: 1, policies: 1, steps: 1 } }).meta
+  assert.deepEqual(one, [
+    { value: '1', label: 'active person' },
+    { value: '1', label: 'baseline policy' },
+    { value: '1', label: 'plan step' },
+  ])
+  const large = scanTile({ kind: 'complete', at, counts: { people: 4169, policies: 38, steps: 36 } }).meta ?? []
+  assert.deepEqual(large[0], { value: '4,169', label: 'active people' })
+  assert.equal(`${large[0].value} ${large[0].label}`, fillText('{n} active people', { n: 4169 }), 'the same reading every fillText surface gives')
+  assert.deepEqual(large.slice(1), [
+    { value: '38', label: 'baseline policies' },
+    { value: '36', label: 'plan steps' },
+  ])
+})
