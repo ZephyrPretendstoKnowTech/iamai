@@ -107,7 +107,7 @@ export function coreGaps(snapshot: TenantSnapshot): CoreGap[] {
 }
 
 /** Every section the scan reads, in scan order: the list the unread report walks. */
-export const CONFIG_KEYS: ConfigSectionKey[] = ['caPolicies', 'namedLocations', 'authStrengths', 'authMethodsPolicy', 'securityDefaults', 'crossTenantAccess', 'deviceRegistrationPolicy', 'roleAssignments', 'roleAssignmentSchedules', 'pimEligibility', 'subscribedSkus', 'organization', 'me', 'meMemberOf']
+export const CONFIG_KEYS: ConfigSectionKey[] = ['caPolicies', 'namedLocations', 'authStrengths', 'authMethodsPolicy', 'securityDefaults', 'crossTenantAccess', 'deviceRegistrationPolicy', 'roleAssignments', 'roleAssignmentSchedules', 'pimEligibility', 'subscribedSkus', 'organization', 'me']
 export const SOURCE_KEYS: SourceKey[] = ['registrationDetails', 'users', 'devices', 'spActivity', 'authMethods', 'appSignInSummary', 'signInEvidence']
 
 /**

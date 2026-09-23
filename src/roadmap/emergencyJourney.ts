@@ -461,7 +461,7 @@ export function journeyGroupFindings(report: SubjectReport | null | undefined, n
     // No check having run is not the same as every check having passed.
     //
     // "Membership verified" was said over a tenant whose group membership the
-    // scan never read — `groups` empty, `meMemberOf` with no rows — and over a
+    // scan never read — `groups` empty — and over a
     // step whose own Done-when claims "the scan verifies the selected group's
     // configuration, membership and required policy exclusions". With no
     // results at all there is nothing pending, and nothing pending read as
