@@ -698,8 +698,12 @@ export function rolesModel(snapshot: TenantSnapshot, names: NameDirectory, resol
       { key: 'eligible', header: R.columns.eligible, cell: (r: RoleRow) => r.eligible },
     ],
   })
-  // The built-in roles left out, said only where the assignments were read.
-  model.hiddenNote = model.notRead !== null || showAll || hidden === 0 ? null : eligibleUnread ? fillText(W.hiddenNoteEligibleUnread, { roles: count(hidden, 'built-in role') }) : R.hiddenNote(hidden)
+  // The built-in roles left out, said only where the assignments were read. A
+  // read in part says nothing of them: a role hidden as holderless may have its
+  // holders on the pages not read, and the line over the table says the read
+  // stopped short.
+  const partial = partlyRead(snapshot, 'roleAssignments') || partlyRead(snapshot, 'pimEligibility')
+  model.hiddenNote = model.notRead !== null || partial || showAll || hidden === 0 ? null : eligibleUnread ? fillText(W.hiddenNoteEligibleUnread, { roles: count(hidden, 'built-in role') }) : R.hiddenNote(hidden)
   return model
 }
 
