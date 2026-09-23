@@ -585,3 +585,16 @@ test('the Roles note over unread eligible holders counts its hidden roles throug
   assert.ok(n > 0, note)
   assert.equal(note, fillText(W.hiddenNoteEligibleUnread, { roles: count(n, 'built-in role') }))
 })
+
+test('the Roles note says no role has "no holder" over assignments read only in part', () => {
+  const base = fixture('mid').snapshot
+  assert.ok(rolesModel(base, buildNameDirectory(base)).hiddenNote, 'mid hides built-in roles over a whole read')
+  const active = structuredClone(base)
+  active.config.roleAssignments = { ...active.config.roleAssignments, status: 'partial', reason: 'Request failed (500) on page 3' }
+  const m = rolesModel(active, buildNameDirectory(active))
+  assert.equal(m.note, 'Partly read in this scan: Request failed (500) on page 3.')
+  assert.equal(m.hiddenNote, null, 'a hidden role may have its holders on the pages not read')
+  const eligible = structuredClone(base)
+  eligible.config.pimEligibility = { ...(eligible.config.pimEligibility ?? { rows: [] }), status: 'partial', reason: 'Request failed (500) on page 2' }
+  assert.equal(rolesModel(eligible, buildNameDirectory(eligible)).hiddenNote, null)
+})
