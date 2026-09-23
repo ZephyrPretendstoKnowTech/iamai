@@ -29,6 +29,8 @@ import { laneReadings } from './planLanes.ts'
 import { laneViewOf, readinessBlockersOf } from './planBoard.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { stepExportView, stepLines } from './stepExport.ts'
+import { CONTRACT } from './stepContract.ts'
+import { app } from '../../content/content.ts'
 import type { StepVarContext } from './stepVars.ts'
 
 const STEP = 's-goal-block-device-code'
@@ -175,4 +177,15 @@ test('once the policy is in Report-only the step is the ordinary report-only ste
   assert.notEqual(unavailableReason(step), 'switched-off')
   assert.doesNotMatch(body.contract.whatToDo.text, REPORT_ONLY, `a policy already in Report-only is told to go to Report-only: ${body.contract.whatToDo.text}`)
   for (const a of body.artifacts) assert.doesNotMatch(a.text(), REPORT_ONLY, `${a.id} asks for Report-only again`)
+})
+
+test('the other readings of a policy found Off say Report-only too, and never On', () => {
+  // A tagged policy found Off on a step something else holds first (the
+  // tagged-disabled finding), and a step whose every tracked policy is Off with
+  // no operation to offer (noOperationDisabled): the same rule, in their words.
+  for (const [key, line] of [['foundTaggedDisabled', CONTRACT.foundTaggedDisabled], ['noOperationDisabled', app.plan.noOperationDisabled]] as const) {
+    assert.match(line, REPORT_ONLY, `${key}: ${line}`)
+    assert.doesNotMatch(line, TURN_ON, `${key}: ${line}`)
+    assert.doesNotMatch(line, /\benable it\b|\bScan again once it is on\b/i, `${key}: ${line}`)
+  }
 })
