@@ -13,9 +13,28 @@ import { passkeyReadiness } from './passkeyPresentation.ts'
 import { consolidateEmergencyReadiness, emergencySubjectsOf, recoverySubjectsOf } from './emergencyReadiness.ts'
 import type { EmergencySubjectTile } from './emergencyReadiness.ts'
 import type { PrerequisiteBlocker } from './stepContract.ts'
-import { emergencyVerificationTasksOf } from './emergencyVerificationTasks.ts'
+import { emergencyVerificationAiInfo, emergencyVerificationJson, emergencyVerificationTasksOf } from './emergencyVerificationTasks.ts'
+import { RECOVERY_PREPARATION_WORKFLOW } from '../../roadmap/cleanupDone.ts'
+import type { CleanupCheckpoint } from '../../roadmap/cleanupDone.ts'
 
 type Fixture = ReturnType<typeof fixture>
+
+const FIXTURES = ['demo', 'demo-week2', 'small', 'mid', 'large', 'messy', 'midflight', 'hostile'] as const
+
+/** The owner's screen (2026-09-23): the first account verified, and the second
+ * changed after its last passkey sign-in, so that sign-in predates the change. */
+function oneAccountWaiting(): Fixture {
+  const value = structuredClone(fixture('demo-week2'))
+  const [, second] = value.mapping.breakGlassUserIds
+  const checkpoints = (value.checkpoints ?? []) as CleanupCheckpoint[]
+  const preparation = checkpoints.find(record => record.workflow === RECOVERY_PREPARATION_WORKFLOW)!
+  const changed = '2026-08-20T17:25:00.000Z'
+  value.checkpoints = [
+    ...checkpoints.filter(record => !(record.outcome === 'passed' && record.accountIds?.includes(second))),
+    { ...preparation, at: changed, date: changed, configurationObservedAt: changed, configurationCheckedThrough: changed, accountIds: [second] },
+  ]
+  return value
+}
 
 /** Steps 2–3 as ContentStep composes them for the interactive view. */
 function subjectsOf(value: Fixture, stepId: string, blockers: PrerequisiteBlocker[] = []): EmergencySubjectTile[] {
@@ -146,4 +165,27 @@ test('a finding that already states the action is not followed by the same actio
   assert.equal(tile.instruction, '')
   const lines = linesOf(tile)
   assert.equal(lines.filter(line => line.includes('Follow Verify emergency sign-in')).length, 1)
+})
+
+// Verification results said "Verification needed" beside cards that already
+// said which account needed what, and "Passed" beside a Sign-in evidence card
+// that already read Verified (owner, 2026-09-23: "completely eclipsed in person
+// by the Sign-in evidence tasks"). It carried no fact of its own: its value was
+// the Sign-in evidence verdict, and its failure was the Configuration card's.
+// Every state it had is drawn here: failed configuration (demo), every account
+// verified (demo-week2) and configuration verified with one account waiting.
+test('Step 4 draws no Verification results card in any state, on screen, in print or in an export', () => {
+  const runs: [string, Fixture][] = [...FIXTURES.map((name): [string, Fixture] => [name, structuredClone(fixture(name))]), ['one account waiting', oneAccountWaiting()]]
+  for (const [name, value] of runs) {
+    const { phase, tiles } = recoveryOf(value)
+    // The print and the exports draw these findings as they are.
+    assert.deepEqual((phase.recoveryFindings ?? []).map(finding => finding.label), ['Configuration', 'Sign-in evidence'], `${name}: the findings`)
+    assert.equal(tiles.some(tile => tile.heading === 'Verification results'), false, `${name}: the screen draws it`)
+    for (const text of [emergencyVerificationJson(phase), emergencyVerificationAiInfo(phase)]) assert.doesNotMatch(text, /Verification results|recovery-confirmation|Verification needed/, `${name}: an export carries it`)
+  }
+  // What it said is still said, by the cards that own it.
+  const verdict = (value: Fixture) => Object.fromEntries(recoveryOf(value).tiles.map(tile => [tile.heading, tile.satisfied]))
+  assert.deepEqual(verdict(structuredClone(fixture('demo'))), { Configuration: false, 'Sign-in evidence': false })
+  assert.deepEqual(verdict(structuredClone(fixture('demo-week2'))), { Configuration: true, 'Sign-in evidence': true })
+  assert.deepEqual(verdict(oneAccountWaiting()), { Configuration: true, 'Sign-in evidence': false })
 })

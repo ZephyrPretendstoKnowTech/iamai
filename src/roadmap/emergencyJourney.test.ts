@@ -123,12 +123,12 @@ test('a successful generic sign-in cannot satisfy observed passkey evidence or a
     [other]: { signInCount: 1, lastSignIn: f.snapshot.asOf, lastMfaSuccess: null, proofs: [{ at: f.snapshot.asOf, cls: 'passkey', os: null, method: 'FIDO2 security key' }], recoveryCandidates: [] },
   }
   const findings = journeyRecoveryFindings(reportOf(f), f.snapshot, f.mapping, f.groups, [], f.snapshot.asOf)
-  assert.deepEqual(findings.map(finding => finding.label), ['Configuration', 'Sign-in evidence', 'Verification results'])
+  // Verification results is gone (owner, 2026-09-23): the Sign-in evidence verdict was its value.
+  assert.deepEqual(findings.map(finding => finding.label), ['Configuration', 'Sign-in evidence'])
   const identity = findings.find(t => t.key === 'recovery-configuration')?.items?.find(item => item.factLabel === 'Account identity')
   assert.equal(identity, undefined)
   assert.equal(findings.find(t => t.key === 'recovery-sign-ins')?.outcome, 'unknown')
   assert.ok(findings.find(t => t.key === 'recovery-sign-ins')!.items!.filter(item => item.factLabel === 'Matching event').every(item => /No qualifying event observed/.test(item.value)))
-  assert.notEqual(findings.find(t => t.key === 'recovery-confirmation')?.outcome, 'pass')
 })
 
 test('final configuration sends credential work to Step 1, policy exclusions to Step 2 and profile settings to Step 3', () => {
@@ -155,7 +155,7 @@ test('a failed read asks for evidence, and a later failure or relevant key chang
   const record: CleanupCheckpoint = { cleanup: 'drill', date, at: now, outcome: 'passed', purpose: 'final', accountIds: f.mapping.breakGlassUserIds, accountBasis, recoveryEvidence: Object.fromEntries(f.mapping.breakGlassUserIds.map(id => { const event = f.snapshot.signInEvidence[id]!.recoveryCandidates![0]; return [id, { schema: 1, purpose: 'final', tenantId: f.snapshot.tenantId, accountId: id, eventId: event.eventId, eventAt: event.at, appId: event.appId, resourceId: event.resourceId, method: 'Passkey (FIDO2)', provenance: 'observed-sign-in', recoveryConfirmed: true, credentialConfirmed: true, configurationObservedAt }] })) }
   const read = (records: CleanupCheckpoint[]) => journeyRecoveryFindings(reportOf(f), f.snapshot, f.mapping, f.groups, records, now)
   assert.ok(read([preparation, record]).find(t => t.key === 'recovery-sign-ins')!.items!.slice(0, 2).every(i => /^[A-Z][a-z]{2} \d{1,2}, \d{4}, \d{1,2}:\d{2} [AP]M/.test(i.value)))
-  assert.notEqual(read([preparation, { ...record, outcome: 'failed' }]).find(t => t.key === 'recovery-confirmation')!.outcome, 'pass')
+  assert.notEqual(read([preparation, { ...record, outcome: 'failed' }]).find(t => t.key === 'recovery-sign-ins')!.outcome, 'pass')
   const originalMethods = structuredClone(f.snapshot.authMethods[f.mapping.breakGlassUserIds[0]])
   f.snapshot.authMethods[f.mapping.breakGlassUserIds[0]] = [{ kind: 'fido2', aaGuid: UNAPPROVED, passkeyType: 'deviceBound' }]
   assert.equal(read([preparation, record]).find(t => t.key === 'recovery-configuration')!.outcome, 'fail')
