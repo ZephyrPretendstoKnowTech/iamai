@@ -1347,6 +1347,13 @@ try {
   await send('Page.navigate', { url: `${BASE}#/plan` })
   await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
   await seedOtherTenant()
+  // The saved sign-in records are read newest first through an index by tenant
+  // and time (cache.ts version 8). A record of this tenant beside the other
+  // tenant's gives Forget's key-range delete one of each to tell apart.
+  const signInStore = await evaluate(
+    `(async () => { const req = indexedDB.open('iamai'); const db = await new Promise((r) => { req.onsuccess = () => r(req.result) }); await new Promise((res, rej) => { const q = db.transaction('signin-rows', 'readwrite').objectStore('signin-rows').put({ tenantId: ${JSON.stringify(MOCK_TENANT)}, id: 'mock-row-1', userId: 'u-1', createdDateTime: '2026-09-01T00:00:00Z' }); q.onsuccess = () => res(); q.onerror = () => rej(q.error) }); const out = { version: db.version, byTenantTime: db.transaction('signin-rows').objectStore('signin-rows').indexNames.contains('byTenantTime') }; db.close(); return out })()`,
+  )
+  check('Storage: saved sign-in records are indexed by tenant and time (version 8)', signInStore?.version === 8 && signInStore?.byTenantTime === true, JSON.stringify(signInStore))
   const bothTenants = await storedRows()
   const mockRowsBefore = await rowsFor(MOCK_TENANT)
   const otherRowsBefore = await rowsFor(OTHER_TENANT)

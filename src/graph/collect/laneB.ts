@@ -1,12 +1,14 @@
-// Lane B — sign-in evidence. Thin wrapper binding the testable core
-// (laneBCore.ts) to real I/O: Graph HTTP with the §6 retry policy, the
-// IndexedDB cache, and wall-clock time.
-import { PAGE_ABORT_MS, SIGN_IN_RETRY_MAX_429, SIGN_IN_RETRY_MAX_5XX } from './constants.ts'
+// Lane B — sign-in evidence. Thin wrapper binding the testable read
+// (signInStream.ts) to real I/O: Graph HTTP with the §6 retry policy, the
+// IndexedDB store, and wall-clock time.
+import { PAGE_ABORT_MS, SIGN_IN_PAGE_SIZE, SIGN_IN_RETRY_MAX_429, SIGN_IN_RETRY_MAX_5XX } from './constants.ts'
 import { BETA, graphPaged, graphRequest } from './http.ts'
 import type { TokenSource } from './http.ts'
-import { loadEvidenceCache, saveEvidenceCache } from './cache.ts'
-import { EVIDENCE_SCHEMA, EVIDENCE_SCHEMA_COMPATIBLE_FROM, TARGETED_READ_BUDGET_MS, mapRecoveryAudit, mapRow, mergeTargeted, recoveryAuditRequest, runLaneB, targetedReadUrl } from './laneBCore.ts'
+import { evidenceStore } from './cache.ts'
+import { EVIDENCE_SCHEMA, EVIDENCE_SCHEMA_COMPATIBLE_FROM, TARGETED_READ_BUDGET_MS, mapRecoveryAudit, mapRow, mergeTargeted, recoveryAuditRequest, targetedReadUrl } from './laneBCore.ts'
 import type { LaneBProgress, SignInEvidence } from './laneBCore.ts'
+import { runLaneB } from './signInStream.ts'
+import type { EvidenceStore } from './signInStream.ts'
 import type { RecoveryDirectoryAudit, StoredSignIn, UserEvidence } from './types.ts'
 
 export type { LaneBProgress, SignInEvidence }
@@ -21,6 +23,17 @@ export type SignInCtx = { tokens: TokenSource; signal: AbortSignal; wait?: (ms: 
  */
 export const SIGN_IN_READ = { abortMs: PAGE_ABORT_MS, attempts429: SIGN_IN_RETRY_MAX_429, attempts5xx: SIGN_IN_RETRY_MAX_5XX } as const
 
+/**
+ * The first page of interactive sign-ins, newest first; with `through`, only
+ * those created at or before it (a continued read). `le`, because Graph
+ * documents only eq, le and ge on a sign-in's createdDateTime.
+ */
+export function signInPageUrl(through: string | null): string {
+  const lambda = "signInEventTypes/any(t: t eq 'interactiveUser')"
+  const filter = through === null ? lambda : `createdDateTime le ${through} and ${lambda}`
+  return `${BETA}/auditLogs/signIns?$filter=${encodeURIComponent(filter)}&$top=${SIGN_IN_PAGE_SIZE}`
+}
+
 export async function collectSignInEvidence(
   ctx: SignInCtx,
   opts: {
@@ -30,21 +43,26 @@ export async function collectSignInEvidence(
     onSlow?: () => void
   },
 ): Promise<SignInEvidence> {
-  const lambda = encodeURIComponent("signInEventTypes/any(t: t eq 'interactiveUser')")
+  const saved = evidenceStore(opts.tenantId, EVIDENCE_SCHEMA, ctx.signal)
+  const store: EvidenceStore = {
+    ...saved,
+    meta: async () => {
+      // Records saved under another schema are read again from Graph (runLaneB resets them first).
+      const meta = await saved.meta()
+      const schema = meta?.schema ?? 0
+      if (!meta || schema < EVIDENCE_SCHEMA_COMPATIBLE_FROM || schema > EVIDENCE_SCHEMA) return null
+      return { covered: meta.covered }
+    },
+  }
   const evidence = await runLaneB({
-    startUrl: `${BETA}/auditLogs/signIns?$filter=${lambda}&$top=200`,
+    pageUrl: signInPageUrl,
     windowDays: opts.windowDays,
     nowMs: Date.now(),
     clock: () => performance.now(),
     fetchPage: (url) => graphRequest(ctx.tokens, url, { ...SIGN_IN_READ, signal: ctx.signal, wait: ctx.wait }),
-    loadCache: async () => {
-      const cached = await loadEvidenceCache(opts.tenantId)
-      // A cache from schema 6 loads with the prompt 48 labels absent; older ones are refetched.
-      const schema = cached?.meta.schema ?? 0
-      if (!cached || schema < EVIDENCE_SCHEMA_COMPATIBLE_FROM || schema > EVIDENCE_SCHEMA) return null
-      return { covered: cached.meta.covered, rows: cached.rows }
-    },
-    saveCache: (covered, rows) => saveEvidenceCache(opts.tenantId, covered, rows, EVIDENCE_SCHEMA),
+    store,
+    tenantId: opts.tenantId,
+    signal: ctx.signal,
     onPage: opts.onPage,
     onSlow: opts.onSlow,
   })
@@ -84,7 +102,8 @@ export async function readTargeted(
     try {
       // Every page of their records to the start of the window, following nextLink: a busy person has more than one page.
       const raw = await graphPaged(ctx.tokens, targetedReadUrl(BETA, id, windowStart, coveredFrom), { ...SIGN_IN_READ, signal: ctx.signal, wait: ctx.wait })
-      const rows = raw.map(mapRow).filter((r): r is StoredSignIn => r !== null)
+      // The read asks for createdDateTime le coveredFrom: a record at or after it is the bulk read's, folded already.
+      const rows = raw.map(mapRow).filter((r): r is StoredSignIn => r !== null && Date.parse(r.createdDateTime) < Date.parse(coveredFrom))
       mergeTargeted(perUser, id, rows)
       read += 1
     } catch {

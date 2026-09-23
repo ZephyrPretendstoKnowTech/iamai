@@ -735,7 +735,6 @@ export function buildFixture(spec: Spec): Fixture {
       ]),
       me: section([{ id: ids[0], displayName: 'Operator', userPrincipalName: `user0@${seed}.example.com` }]),
       organization: section([{ displayName: spec.demo ? 'Contoso Pty Ltd' : `Fixture ${spec.name}`, verifiedDomains: [{ name: `${seed}.example.com`, isInitial: false }, { name: `${seed}-fixture.onmicrosoft.com`, isInitial: true }] }]),
-      meMemberOf: section([]),
     },
     // The person whose methods could not be read is not in the registration report either: nothing says what they hold.
     registrationDetails: hostile ? [] : registrationDetails.filter((r) => r.id !== unreadRegistration),
