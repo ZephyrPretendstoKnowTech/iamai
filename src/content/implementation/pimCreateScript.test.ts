@@ -41,7 +41,7 @@ function createScript(): string {
     const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.title ?? null
     const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot), reportOnlyAt: step.reportOnlyAt ?? null, scheduledOn: waveStartOf(step), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
     const reading = readings.get(step.id)
-    const lane = reading ? laneViewOf(reading, titleOf) : laneViewFor(step, r.steps, titleOf)
+    const lane = laneViewFor(step, { readings, titleOf })
     const body = stepBodyOf(step, ctx, { lane, blockers: readinessBlockersOf(reading, titleOf), prerequisiteLabel: prerequisiteLabelFor(readings) })
     return body.artifacts.find((a) => a.id === 'ps')?.text() ?? ''
   } finally {
