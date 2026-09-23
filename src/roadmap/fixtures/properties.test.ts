@@ -318,7 +318,14 @@ for (const f of fixtures) {
     // hosted CI measured 237–273 ms (248 ms in a clean process), versus 112–141
     // ms locally. Give that fixture a 350 ms budget with runner headroom; keep
     // smaller tenants at 200 ms and the existing 25,000-user budget at 500 ms.
-    const bound = f.name === 'huge' ? 500 : f.name === 'large' ? 350 : 200
+    // Round 4 (2026-09-22) reads each policy's own method readiness, the
+    // readiness chain's start and the sign-in source's state on every step:
+    // isolated best on large went 184 -> 204 ms locally (217 with the MFA
+    // follow-up list and the turn-on holds), and hosted CI measured 393 ms in a
+    // clean process against the 350 ms bound: the bound had no headroom left over
+    // the hosted runner, which runs about 1.9x slower. The large budget moves to
+    // 480 ms, about 15% over the projected hosted time.
+    const bound = f.name === 'huge' ? 500 : f.name === 'large' ? 480 : 200
     // Functional tests share one process and retain many generated tenants.
     // Recheck a slow result in a clean process, rather than measuring unrelated
     // retained-heap/GC pressure. All three replans remain uncached; no bound moves.
