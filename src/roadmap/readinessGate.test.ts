@@ -82,7 +82,7 @@ const SHAREPOINT = '00000003-0000-0ff1-ce00-000000000000'
 function largeDevices(over: { enabled?: boolean; everyoneCompliant?: boolean; owesCorrection?: boolean } = {}) {
   // With the plan's foundation settled (roadmap/foundations.ts): a case about
   // what a readiness threshold holds cannot start behind the gate that holds
-  // every policy until both pinned groups are settled.
+  // every policy until Emergency Access and Direction are settled.
   //
   // The baseline's compliant-device policy targets All resources, as the pinned
   // one does, so the tenant's Office 365 policies are genuinely narrower and the

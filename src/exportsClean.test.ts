@@ -27,8 +27,8 @@ const V2 = ['soak', "the ring's", 'this ring', 'Ring plan', 'Exit criteria', 'Do
 
 // Week two: its policies name nothing the tenant lacks, so they carry dates and
 // calendar entries (a policy the plan cannot write yet carries neither).
-// With the plan's foundation settled (roadmap/foundations.ts): until both
-// pinned groups are, every policy step is held and the calendar books nothing.
+// With the plan's foundation settled (roadmap/foundations.ts): until Emergency Access and
+// Direction are, every policy step is held and the calendar books nothing.
 const f = withFoundationSettled(fixture('demo-week2'))
 const run = runFixture(f)
 const nameOf = (id: string): string => run.input.names!.label(id)

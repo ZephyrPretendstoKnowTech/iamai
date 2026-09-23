@@ -14,8 +14,8 @@ const dayIn = (iso: string): string => new Intl.DateTimeFormat('en-AU', { timeZo
 const hourIn = (iso: string): number => localHour(iso, ZONE)
 
 test('every policy step carries announce, remind and enforce as one instant each, with a reason', () => {
-  // With the plan's foundation settled (roadmap/foundations.ts): until both
-  // pinned groups are, every policy step is held and the plan dates nothing.
+  // With the plan's foundation settled (roadmap/foundations.ts): until Emergency Access and
+  // Direction are, every policy step is held and the plan dates nothing.
   const run = runFixture(withFoundationSettled(fixture('mid')))
   const dated = run.steps.filter((s) => s.events)
   assert.ok(dated.length > 5)
