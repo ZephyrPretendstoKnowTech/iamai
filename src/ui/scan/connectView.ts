@@ -372,6 +372,15 @@ export type ScanInput =
   | { kind: 'ready' }
   /** Before sign-in: the scan comes after sign-in. */
   | { kind: 'sample' }
+/**
+ * What a Scan action does. The tile's buttons change with its state (the gaps
+ * state offers another account only where a section was refused), so Connect
+ * wires each one by what it does and never by its place in the list: a list
+ * one button shorter must not hand Scan again the other account's handler, or
+ * read a second button that is not there.
+ */
+export type ScanDoes = 'scan' | 'scanAgain' | 'signInAnother' | 'stop'
+export type ScanAction = Action & { does: ScanDoes }
 export type ScanTile = {
   n: 3
   kind: ScanInput['kind']
@@ -390,7 +399,7 @@ export type ScanTile = {
   note?: string
   /** A complete scan's own shortfall, its unread lead and its degraded note, for the status strip (connectStatus). */
   caveat?: string
-  actions: Action[]
+  actions: ScanAction[]
 }
 
 /**
@@ -414,8 +423,8 @@ export function scanTile(input: ScanInput): ScanTile {
     title: S.title,
     limits: { summary: S.limitsSummary, lines: S.limits, more: S.limitsMore, link: { label: S.limitsLink, href: HOW_HREF } },
   }
-  const signInAnother: Action = { label: W.account.signInAnother, weight: 'primary' }
-  const again: Action = { label: S.complete.again, weight: 'secondary' }
+  const signInAnother: ScanAction = { label: W.account.signInAnother, weight: 'primary', does: 'signInAnother' }
+  const again: ScanAction = { label: S.complete.again, weight: 'secondary', does: 'scanAgain' }
   // One row per section the scan did not read in full, in both states. A section
   // read in PART says so: "not read" would understate what IAMAI holds, and the
   // two are different problems to take to whoever administers the tenant. A
@@ -485,9 +494,9 @@ export function scanTile(input: ScanInput): ScanTile {
       }
     }
     case 'scanning':
-      return { ...base, kind: 'scanning', state: fillText(S.scanning.state, { lane: lowerFirst(input.lane), elapsed: input.elapsed }), tone: null, actions: [{ label: S.scanning.stop, weight: 'tertiary' }] }
+      return { ...base, kind: 'scanning', state: fillText(S.scanning.state, { lane: lowerFirst(input.lane), elapsed: input.elapsed }), tone: null, actions: [{ label: S.scanning.stop, weight: 'tertiary', does: 'stop' }] }
     case 'ready':
-      return { ...base, kind: 'ready', state: S.ready.state, tone: null, note: S.ready.note, actions: [{ label: S.ready.start, weight: 'primary' }] }
+      return { ...base, kind: 'ready', state: S.ready.state, tone: null, note: S.ready.note, actions: [{ label: S.ready.start, weight: 'primary', does: 'scan' }] }
     case 'sample':
       return { ...base, kind: 'sample', state: S.sample.state, tone: null, actions: [] }
   }

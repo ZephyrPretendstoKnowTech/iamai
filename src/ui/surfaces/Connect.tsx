@@ -63,7 +63,7 @@ import { chooseBaseline, scan as runScan, signIn, signInAnother, signOut, stopSc
 import { useAction } from '../useAction.ts'
 import { useSession } from '../session.ts'
 import { W, accountTile, baselineTile, connectStatus, planInputOf, planTile, sampleTile, scanTile, signInTile, stages } from '../scan/connectView.ts'
-import type { Action, BaselinePin, BaselineUpdate, ConnectStatus, PlanInput, PlanTile, ScanCounts, ScanInput, ScanTile, Stage, Tone } from '../scan/connectView.ts'
+import type { Action, BaselinePin, BaselineUpdate, ConnectStatus, PlanInput, PlanTile, ScanCounts, ScanDoes, ScanInput, ScanTile, Stage, Tone } from '../scan/connectView.ts'
 import { facts, stepFacts } from '../../derive/facts.ts'
 import { unreadSources } from '../../graph/collect/coreSections.ts'
 import { signInProofRead } from '../../scoring/fromSnapshot.ts'
@@ -573,25 +573,17 @@ function SignedIn({
   // one that is not finished is the one with the next action.
   const done = [true, baseline !== null, scanInput.kind === 'complete', planInput.kind === 'ready']
   const [s1, s2, s3] = stages(done)
-  const scanActions = (): ReactNode => {
-    switch (t3.kind) {
-      case 'complete':
-        return <Act action={t3.actions[0]} onClick={() => start(false)} />
-      case 'gaps':
-        return (
-          <>
-            <Act action={t3.actions[0]} onClick={() => tile3.run(signInAnother())} />
-            <Act action={t3.actions[1]} onClick={() => start(false)} />
-          </>
-        )
-      case 'role':
-        return <Act action={t3.actions[0]} onClick={() => tile3.run(signInAnother())} />
-      case 'scanning':
-        return <Act action={t3.actions[0]} onClick={stopScan} />
-      default:
-        return <Act action={t3.actions[0]} onClick={() => start(true)} />
-    }
+  // The Scan step's buttons are the ones its state returns, each wired by what
+  // it does (connectView.ts ScanDoes), never by its place in the list: the gaps
+  // state offers another account only where a section was refused, so its
+  // second button is not always there.
+  const scanDoes: Record<ScanDoes, () => void> = {
+    scan: () => start(true),
+    scanAgain: () => start(false),
+    signInAnother: () => tile3.run(signInAnother()),
+    stop: stopScan,
   }
+  const scanActions: ReactNode = t3.actions.map((a) => <Act key={a.label} action={a} onClick={scanDoes[a.does]} />)
   return (
     <>
       <StatusStrip status={connectStatus(done, [t1, baselineStrings(baseline, baselineBusy), t3, t4])} />
@@ -630,7 +622,7 @@ function SignedIn({
               {tile3.error && <p className="quiet" role="status">{tile3.error}</p>}
             </>
           }
-          actions={scanActions()}
+          actions={scanActions}
         />
       </Flow>
       <Destination tile={t4} actions={t4.actions.map((a) => <Act key={a.label} action={a} href={PLAN_HREF} />)} />
