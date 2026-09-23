@@ -14,7 +14,8 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { signInsNeedP1 } from '../../derive/readinessContext.ts'
 import { signInProofRead } from '../../scoring/fromSnapshot.ts'
 import { cohortWords } from '../../derive/whoLine.ts'
-import { checkWords, goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, summaryLine, unreadMethodsWords, whyLine, countedLine, scopeWords, panelMethods, groupBodyLine, noRecordsWords, computersSeen, leadLine } from './readinessCells.ts'
+import { checkWords, goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, summaryLine, unreadMethodsWords, whyLine, countedLine, scopeWords, panelMethods, groupBodyLine, noRecordsWords, computersSeen, leadLine, guestTrustWords } from './readinessCells.ts'
+import { guestReadingOf } from '../../derive/guestReadiness.ts'
 import { syncedPasskeyOffered } from '../../scoring/phishingResistant.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { stepMfaHold } from '../../derive/stepMfaReadiness.ts'
@@ -34,6 +35,7 @@ const NX = (pages.readiness as unknown as { next: Record<string, string> }).next
 const WHY = (pages.readiness as unknown as { panel: { why: Record<string, string> } }).panel.why
 const FOOT = (pages.readiness as unknown as { footer: { counted: string } }).footer
 const PC = (pages.readiness as unknown as { planContext: Record<string, string> }).planContext
+const GU = (pages.readiness as unknown as { guests: Record<string, string> }).guests
 const page = (): string => readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
 
 test('every remaining setup check carries its own words: the migration never shows without its safe order', () => {
@@ -454,4 +456,18 @@ test('a passkey registered inside the window and not used yet is not one that "m
   const demo = fixture('demo')
   const old = readinessView(demo.snapshot, demo.snapshot.asOf, demo.mapping).rows.filter((r) => r.state === 'confirm' && !r.readiness?.usedRecently && !r.readiness?.onLeave && (r.readiness?.credentials ?? []).some((c) => c.allowedNow !== 'no' && !c.createdInWindow))
   for (const r of old) assert.equal(whyLine(r), WHY.confirm, r.user.id)
+})
+
+test('the guests tile says cross-tenant access settings were not read only where they were not', () => {
+  const f = fixture('demo')
+  assert.equal(f.snapshot.config.crossTenantAccess?.status, 'ok', 'the premise: the settings were read')
+  const read = guestReadingOf(f.snapshot, 1, null)
+  assert.notEqual(read.trust, 'unread')
+  assert.notEqual(guestTrustWords(read.trust), GU.trustUnknown, 'a read section is not "weren’t read"')
+  const s = structuredClone(f.snapshot)
+  s.config.crossTenantAccess = { ...s.config.crossTenantAccess!, status: 'error', reason: 'access denied (403)', rows: [] }
+  const unread = guestReadingOf(s, 1, null)
+  assert.equal(unread.trust, 'unread')
+  assert.equal(guestTrustWords(unread.trust), GU.trustUnknown)
+  assert.match(page(), /guestTrustWords\(guests\.trust\)/)
 })

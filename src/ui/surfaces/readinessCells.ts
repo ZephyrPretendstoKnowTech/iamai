@@ -17,6 +17,7 @@ import { monthDay } from '../../copy/dates.ts'
 import { cohortWords } from '../../derive/whoLine.ts'
 import { registrationRefusal } from '../../derive/readinessContext.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
+import type { GuestMfaTrust } from '../../derive/guestReadiness.ts'
 
 /** The computers seen in the tenant: they choose the words that name a computer's built-in option (owner, 2026-09-19). */
 export type ComputersSeen = 'windows' | 'mac' | 'both' | 'none'
@@ -82,6 +83,7 @@ type Words = {
   evidence: { none: string; unreadMethods: string; unreadMethodsRefused: string }
   footer: { counted: string }
   planContext: { filtered: string; covers: string; unknown: string }
+  guests: { trustOn: string; trustOff: string; trustUnknown: string; trustNotReported: string }
   counted: Record<Explained | Kind | 'dormantLink', string>
   admin: string
   guest: string
@@ -417,6 +419,12 @@ export function unreadMethodsWords(snapshot: TenantSnapshot): string {
 export function noRecordsWords(source: { status: string; reason: string | null } | null | undefined): string {
   const reason = source && source.status !== 'ok' ? source.reason : null
   return reason && !/sign-in records/i.test(reason) ? fillText(app.readiness.lineNoRecordsReason, { reason }) : T.evidence.none
+}
+
+/** The guests tile's line on cross-tenant MFA trust: on, off, not read, or read without saying. */
+export function guestTrustWords(trust: GuestMfaTrust): string {
+  const G = T.guests
+  return trust === 'on' ? G.trustOn : trust === 'off' ? G.trustOff : trust === 'notReported' ? G.trustNotReported : G.trustUnknown
 }
 
 /** The person panel's methods where none is listed: not read (the row says "Methods not read" too), or none registered. */

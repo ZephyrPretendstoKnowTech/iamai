@@ -1382,6 +1382,8 @@
         "trustOn": "This tenant trusts MFA from their home organisation.",
         "trustOff": "This tenant doesn’t trust MFA from their home organisation, so guests are asked to register a method here.",
         "trustUnknown": "Cross-tenant access settings weren’t read.",
+        "$commentTrustNotReported": "The settings were read and name no inbound MFA trust. trustUnknown said they weren't read, on the public demo among others.",
+        "trustNotReported": "Cross-tenant access settings were read, but don’t say whether this tenant trusts MFA from their home organisation.",
         "policyInPlace": "Require MFA for Guests is in place.",
         "policyNotInPlace": "Require MFA for Guests isn’t in place yet.",
         "policyLink": "Open the step",
