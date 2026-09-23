@@ -14,7 +14,7 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { signInsNeedP1 } from '../../derive/readinessContext.ts'
 import { signInProofRead } from '../../scoring/fromSnapshot.ts'
 import { cohortWords } from '../../derive/whoLine.ts'
-import { goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, summaryLine, unreadMethodsWords } from './readinessCells.ts'
+import { checkWords, goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, summaryLine, unreadMethodsWords } from './readinessCells.ts'
 import { readinessTable } from './inventoryTables.ts'
 import { sourceReadFix } from '../../roadmap/readiness.ts'
 
@@ -142,4 +142,41 @@ test('a method list the tenant refused is not "Nothing to do: the next scan retr
   const missed = readinessView(demo.snapshot, demo.snapshot.asOf, demo.mapping).rows.filter((r) => r.state === 'unknown' && r.readiness?.unknown === 'methods')
   assert.ok(missed.length > 0, 'the premise: demo missed one person’s method list')
   for (const r of missed) assert.equal(nextCell(r), N.rescan.methods)
+})
+
+test('the Windows Hello check is not filed as done where the computers were never read, or the directory holds joined ones', () => {
+  const H = R.checks.windowsHello
+  const check = (s: TenantSnapshot, mapping: Parameters<typeof readinessView>[2]) => {
+    const view = readinessView(s, s.asOf, mapping)
+    const c = tenantSetupChecks(s, view).find((x) => x.key === 'windowsHello')
+    assert.ok(c)
+    return { c, words: checkWords(c).line, view }
+  }
+  // micro: the directory holds joined Windows computers; no sign-in record was read (no P1).
+  const micro = fixture('micro')
+  const m = check(micro.snapshot, micro.mapping)
+  assert.equal(m.view.context.windowsDirectory, 'joined', 'the premise')
+  assert.notEqual(m.c.outcome, 'pass')
+  assert.equal(m.words, H.unread)
+  // hostile: neither the devices (403) nor the sign-in records were read.
+  const hostile = fixture('hostile')
+  const h = check(hostile.snapshot, hostile.mapping)
+  assert.equal(h.view.context.windowsDirectory, 'unknown', 'the premise')
+  assert.notEqual(h.c.outcome, 'pass')
+  assert.equal(h.words, H.unread)
+  assert.ok(remainingChecks([h.c]).length === 1, 'it is listed as remaining, not under Completed')
+  // A directory read in full with no joined Windows computer still settles it.
+  const s = structuredClone(fixture('small').snapshot)
+  s.devices = (s.devices ?? []).map((d) => (/^windows/i.test(d.operatingSystem ?? '') ? { ...d, trustType: 'Workplace' } : d))
+  const settled = check(s, fixture('small').mapping)
+  assert.equal(settled.view.context.windowsDirectory, 'notJoined', 'the premise')
+  if (!settled.view.rows.some((r) => (r.readiness?.devices ?? []).some((d) => d.os === 'Windows' && (d.trust === 'joined' || d.trust === 'hybrid')))) {
+    assert.equal(settled.c.outcome, 'pass')
+    assert.equal(settled.words, H.noJoined)
+  }
+  // Where the check was settled before, it still is.
+  const demo = fixture('demo')
+  assert.equal(check(demo.snapshot, demo.mapping).words, H.seen)
+  const small = fixture('small')
+  assert.equal(check(small.snapshot, small.mapping).words, H.notSeen)
 })
