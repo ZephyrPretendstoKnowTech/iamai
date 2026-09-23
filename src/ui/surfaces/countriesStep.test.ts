@@ -316,14 +316,16 @@ test('6.3’s countries picker keeps the Direction question’s words: its label
 
 test('nothing 6.3 draws or exports names the retired location step, on every scenario (D3)', async () => {
   const { withDirectionApproved } = await import('../../roadmap/fixtures/run.ts')
-  const { boardOf, laneViewFor, prerequisiteLabelFor, readinessBlockersOf } = await import('./planBoard.ts')
+  const { boardOf, boardOrderOf, laneViewFor, prerequisiteLabelFor, readinessBlockersOf } = await import('./planBoard.ts')
   const { planDates } = await import('./stepVars.ts')
   const { exportHoldOf, exportViewsOf } = await import('./stepExport.ts')
+  const { buildPlanFile } = await import('../../roadmap/plan.ts')
   const scenarios: [string, Fixture][] = [
     ['getiamai', withDirectionApproved(withFoundationSettled(curatedFixture('getiamai')))],
     ...(['demo', 'demo-week2', 'small', 'mid', 'large', 'messy', 'midflight', 'hostile'] as FixtureName[]).map((n): [string, Fixture] => [n, fixture(n)]),
   ]
   let read = 0
+  let filed = 0
   for (const [name, f] of scenarios) {
     const r = runFixture(f, {}, null, f.snapshot.asOf)
     const geo = r.steps.find((s) => s.id === GEO)
@@ -334,9 +336,16 @@ test('nothing 6.3 draws or exports names the retired location step, on every sce
     const body = stepBodyOf(geo, ctx, { lane: laneViewFor(geo, board), blockers: readinessBlockersOf(board.readings.get(GEO), board.titleOf), prerequisiteLabel: prerequisiteLabelFor(board.readings) })
     const drawn = [JSON.stringify(body.contract), JSON.stringify(body.readiness), JSON.stringify(body.emergencyAccountTasks ?? null), ...body.artifacts.map((a) => `${a.id}: ${a.text()}`), JSON.stringify(exportViewsOf(board, () => ctx)(geo))]
     for (const text of drawn) assert.ok(!text.includes(RETIRED_TITLE), `${name}: ${text.slice(Math.max(0, text.indexOf(RETIRED_TITLE) - 80), text.indexOf(RETIRED_TITLE) + 60)}`)
+    // The plan file (Export > Save plan file), as the Export page builds it: every step, in the board's order.
+    if (name === 'getiamai' || name === 'demo-week2') {
+      const file = JSON.stringify(buildPlanFile({ planId: f.planId, snapshot: f.snapshot, operator: { userId: f.operatorId, userPrincipalName: 'operator@example.test' }, baselineSource: { kind: 'github', owner: 'o', repo: 'r', commit: 'c' }, mapping: f.mapping, steps: r.steps, order: boardOrderOf(board.rows.map((x) => x.item)), checkpoints: [] }))
+      assert.ok(!file.includes(RETIRED_TITLE), `${name} plan file: ${file.slice(Math.max(0, file.indexOf(RETIRED_TITLE) - 120), file.indexOf(RETIRED_TITLE) + 60)}`)
+      filed++
+    }
     read++
   }
   assert.ok(read >= 8, `the premise: 6.3 is read on ${read} scenarios`)
+  assert.equal(filed, 2, 'the premise: the plan file is built for getiamai and demo-week2')
 })
 
 test('the countries location package is folded into the countries block package, tasks first, and compiles to the same two packages', () => {
