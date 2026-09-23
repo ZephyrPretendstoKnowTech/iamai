@@ -2825,7 +2825,7 @@
           "createNowShow": "Show them"
         },
         "groups": {
-          "$comment": "The Plan's eight sections, in the order the board draws them (roadmap/stepGroups.ts STEP_GROUPS; order and membership from the roadmap flow V1 proposal section 2, names from V2, owner 2026-09-23). Every title follows one convention: Title Case, an imperative verb, a technical object, three to six words.",
+          "$comment": "The Plan's eight sections, in the order the board draws them (roadmap/stepGroups.ts STEP_GROUPS; order and membership from the roadmap flow V1 proposal section 2, names from V2, owner 2026-09-23). Every title but the catch-all, Ongoing Checks and Cleanup, follows one convention: Title Case, an imperative verb, a technical object, three to six words.",
           "emergencyAccess": {
             "title": "Establish Emergency Access",
             "completedTitle": "Establish Emergency Access"
@@ -2835,7 +2835,7 @@
             "title": "Define Your Rollout Scope",
             "completedTitle": "Define Your Rollout Scope"
           },
-          "$commentPrepare": "Section 3 (roadmap flow V2): the accounts and objects the policies below need, people first and then objects, before any policy is created. It replaced Prepare the Groups and Locations, which no longer fits a section that also holds the dormant accounts, the admin accounts, your own passkey and the MFA campaign.",
+          "$commentPrepare": "Section 3 (roadmap flow V2): the accounts and objects the policies below rely on, people first and then objects, drawn above those policies. A create waits only on the object it names (for example the authentication strength), never on this section being finished: section position gates nothing (pages.plan.howTo.$commentIntro). It replaced Prepare the Groups and Locations, which no longer fits a section that also holds the dormant accounts, the admin accounts, your own passkey and the MFA campaign.",
           "prepare": {
             "title": "Prepare Accounts and Objects",
             "completedTitle": "Prepare Accounts and Objects"
