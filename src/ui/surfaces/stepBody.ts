@@ -35,7 +35,7 @@ import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { portalNamesFor, unwrittenCorrectionLines } from './stepPortal.ts'
 import { rescanLinesOf, stepInstructions, wholeLines } from './stepInstructions.ts'
-import { CONTRACT, eyebrowOf, implementationEmptyOf, implementationIsCurrent, proceduresAreReference, railOf, readinessOf, stepContract } from './stepContract.ts'
+import { CONTRACT, UNWATCHED_ENFORCEMENT, eyebrowOf, implementationEmptyOf, implementationIsCurrent, proceduresAreReference, railOf, readinessOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
 import { laneViewAlone } from './planBoard.ts'
 import { DECISION_HEAD, HEAD, taskHeadingsOf } from './stepHeadings.ts'
@@ -513,9 +513,13 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // a value IAMAI does not hold. None of them is ever offered an artifact.
   const hold = packaged ? (projection?.hold ?? null) : null
   const heldBox = (key: string): ImplementationEmpty => ({ key, tone: 'warn', title: W.empty[key][0], text: W.empty[key][1] })
+  // A policy that went live with no report-only period IAMAI watched is a fact
+  // about the finished step, and nothing in Readiness can clear it (owner
+  // decision 3): it does not make the step read "Waiting on Readiness".
+  const openTiles = readiness.tiles.filter((t) => t.key !== UNWATCHED_ENFORCEMENT).length
   const empty: ImplementationEmpty =
     hold === null
-      ? implementationEmptyOf(contract, readiness.tiles.length)
+      ? implementationEmptyOf(contract, openTiles)
       : hold.pendingPrerequisites.length > 0
         ? heldBox('confirmationsPending')
         : hold.unknownMismatches.length > 0
