@@ -16,7 +16,6 @@ import { CleanupBody } from './CleanupStep.tsx'
 import { app, phases } from '../../content/content.ts'
 import { headerLine1 } from '../../derive/planHeader.ts'
 import { stepFacts } from '../../derive/facts.ts'
-import type { Facts } from '../../derive/facts.ts'
 import { fillText } from '../../content/render.ts'
 import type { GoalMap } from '../../roadmap/goalMap.ts'
 import { notLicensedPrintLine, notLicensedRows } from '../../derive/notLicensed.ts'
@@ -69,14 +68,6 @@ export function PrintPlan({
   operator: string
   baselinePin?: string | null
   steps: Step[]
-  /**
-   * The tenant's people counts (derive/facts.ts). No longer read: the
-   * verification window's note states the people the window is sized for, from
-   * the campaign step (printPlan.ts verificationNoteOf), where it had stated
-   * readiness to the phishing-resistant standard beside a window sized for
-   * another population. Kept while the Export page still passes it.
-   */
-  facts?: Facts | null
   schedule: Schedule
   /** The scan the plan reads, so page 1 can date the posture. */
   scanAt: string
