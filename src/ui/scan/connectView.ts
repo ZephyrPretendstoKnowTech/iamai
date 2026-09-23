@@ -62,7 +62,7 @@ type Words = {
     meta: { people: string; policies: string; steps: string }
     complete: { state: string; again: string; degraded: string; unread: string }
     gaps: { state: string; lead: string; leadFirst: string; notRead: string; partlyRead: string; refused: string; others: string; ask: string; learn: { label: string; url: string } }
-    role: { state: string; lead: string; row: string; ask: string }
+    role: { state: string; lead: string; row: string; ask: string; note: string }
     ready: { state: string; note: string; start: string }
     scanning: { state: string; stop: string }
     sample: { state: string }
@@ -453,6 +453,8 @@ export function scanTile(input: ScanInput): ScanTile {
         tone: 'stop',
         lead: fillText(R.lead, { upn: input.upn, sections: list(input.gap.sources.map((s) => midSentence(sectionLabel(s)))) }),
         rows: [{ name: R.row, value: fillText(R.ask, { role: READ_EVERYTHING_ROLE }) }],
+        // What the gate read: the roles active in this sign-in (tokenRoles.ts), so an eligible role not yet activated is not one it saw.
+        note: R.note,
         actions: [signInAnother],
       }
     }

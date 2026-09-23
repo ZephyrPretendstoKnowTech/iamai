@@ -692,7 +692,9 @@
         },
         "role": {
           "state": "not started · this account can't read the tenant",
-          "lead": "{upn} holds none of the roles that read {sections}.",
+          "lead": "{upn} has no active role that reads {sections}.",
+          "$commentNote": "Phase 2 audit (Connect): the role state reads the token's active roles (graph/collect/tokenRoles.ts, the wids claim) and said the account held none of them, so an admin whose Global Reader is eligible in Privileged Identity Management, and not activated, was told to ask for a role they already hold. The lead and this note state what IAMAI read and when an eligible role counts; neither adds an instruction.",
+          "note": "IAMAI reads the roles active in this sign-in. A role eligible in Privileged Identity Management counts once it is activated and the account signs in again.",
           "row": "Everything IAMAI needs, read-only",
           "ask": "ask for {role}"
         },

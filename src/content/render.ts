@@ -826,7 +826,7 @@ export function renderPages(): string {
           sub(fill(cx.scan.gaps.ask, { role: 'Global Reader' }), `<a>${esc(cx.scan.gaps.learn.label)}</a>`) +
           acts(cx.account.signInAnother, cx.scan.complete.again),
       ) +
-      tileHtml(3, cx.scan.title, cx.scan.role.state, p(cx.scan.role.lead, { upn: exT.upn, sections: 'Conditional Access policies, people and sign-in records' }) + li(`${esc(cx.scan.role.row)} · ${fill(cx.scan.role.ask, { role: 'Global Reader' })}`) + acts(cx.account.signInAnother)) +
+      tileHtml(3, cx.scan.title, cx.scan.role.state, p(cx.scan.role.lead, { upn: exT.upn, sections: 'Conditional Access policies, people and sign-in records' }) + p(cx.scan.role.note, {}, 'sub') + li(`${esc(cx.scan.role.row)} · ${fill(cx.scan.role.ask, { role: 'Global Reader' })}`) + acts(cx.account.signInAnother)) +
       tileHtml(3, cx.scan.title, cx.scan.ready.state, p(cx.scan.ready.note, {}) + acts(cx.scan.ready.start)) +
       tileHtml(3, cx.scan.title, fill(cx.scan.scanning.state, { lane: 'reading sign-in records', elapsed: '8s' }), acts(cx.scan.scanning.stop)) +
       // 4 Plan: ready after a complete scan, the last full plan after one with gaps, waiting otherwise.
