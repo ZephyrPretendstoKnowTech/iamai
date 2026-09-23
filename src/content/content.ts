@@ -139,6 +139,9 @@ export type AppWords = {
     workloadSeen: string
     workloadNotSeen: string
     licensed: string
+    policiesNone: string
+    licencesNone: string
+    blockedNone: string
   }
   picker: { placeholder: string; remove: string; searching: string; noMatches: string; typeToSearch: string; suggestions: string; results: string; done: string; matched: string; choose: string }
 }

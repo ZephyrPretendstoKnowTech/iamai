@@ -268,7 +268,7 @@ export function policiesModel(snapshot: TenantSnapshot, facts: PolicyFacts[], na
     csvName: 'iamai-policies.csv',
     rows: facts,
     rowKey: (r) => r.id || r.name,
-    empty: P.empty,
+    empty: W.policiesNone,
     columns: [
       { key: 'name', header: P.columns.name, sort: (r) => r.name.toLowerCase(), cell: (r) => r.name },
       { key: 'microsoftManaged', header: P.microsoftManaged, hidden: true, cell: (r) => yesNo(r.isMicrosoftManaged) },
@@ -686,7 +686,7 @@ export function licencesModel(snapshot: TenantSnapshot): InventoryModel<LicenceR
     csvName: 'iamai-licences.csv',
     rows,
     rowKey: (r) => r.id,
-    empty: L.empty,
+    empty: W.licencesNone,
     columns: [
       { key: 'sku', header: L.columns.sku, sort: (r) => r.name.toLowerCase(), cell: (r) => (r.name === r.sku ? r.sku : `${r.name} (${r.sku})`) },
       { key: 'seats', header: L.columns.seats, sort: (r) => r.seats, cell: (r) => r.seats },
@@ -858,6 +858,7 @@ export function signInModels(snapshot: TenantSnapshot, names: NameDirectory) {
       id: 'blockedToday',
       label: S.blockedToday,
       csvName: 'iamai-blocked-today.csv',
+      empty: W.blockedNone,
       rows: (notRead === null ? snapshot.blockedToday : []).map((b) => ({ key: b.policyId, label: b.displayName ?? (b.policyId === 'unknown' ? S.noPolicy : names.label(b.policyId)), ids: b.userIds })),
       rowKey: (r) => r.key,
       columns: [{ key: 'policy', header: S.blockedColumns.policy, cell: (r) => r.label }, peopleColumn(S.blockedColumns.users)],

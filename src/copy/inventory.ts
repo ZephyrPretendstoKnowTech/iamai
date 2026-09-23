@@ -65,7 +65,6 @@ export const INVENTORY = {
     appEnforced: 'app-enforced restrictions',
     include: 'Include',
     exclude: 'Exclude',
-    empty: 'No Conditional Access policies were read.',
   },
   locations: {
     columns: { name: 'Location', type: 'Type', trusted: 'Trusted', ranges: 'Countries or IP ranges', usedBy: 'Used by' },
@@ -154,7 +153,6 @@ export const INVENTORY = {
     notLicensed: 'not licensed',
     seats: (enabled: number, consumed: number) => `${enabled} (${consumed} assigned)`,
     none: '—',
-    empty: 'No subscribed licences were read.',
   },
   apps: {
     columns: { app: 'App', signIns: 'Sign-ins', lastSp: 'Last activity' },
