@@ -5,7 +5,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
-import { appsModel, authMethodsModel, authStrengthsModel, capabilitiesModel, devicesModel, groupsModel, inventoryTables, licencesModel, locationsModel, methodTargetGroupsOf, policiesModel, policyFactsOf, referencedGroupsOf, registrationModel, rolesModel, securityDefaultsOf, signInModels } from './inventoryTables.ts'
+import { appsModel, authMethodsModel, authStrengthsModel, capabilitiesModel, devicesModel, groupsModel, inventoryTables, licencesModel, locationsModel, methodTargetGroupsOf, policiesModel, policyFactsOf, referencedGroupsOf, registrationModel, rolesModel, securityDefaultsOf, signInModels, workloadsModel } from './inventoryTables.ts'
+import { serviceReading } from '../../roadmap/workflows.ts'
 import { buildNameDirectory } from '../../names.ts'
 import { app, engine, pages } from '../../content/content.ts'
 import { INVENTORY as C } from '../../copy/inventory.ts'
@@ -254,4 +255,27 @@ test('a Policies row states what the policy excludes and every control it carrie
   assert.equal(cell('apps', 'apps'), `${C.policies.allApps} except ${names.label(intuneEnrollment)}`)
   assert.ok(cell('apps', 'grant').includes(app.inventory.termsOfUse), cell('apps', 'grant'))
   assert.equal(cell('apps', 'session'), app.inventory.signInEveryTime)
+})
+
+test('Detected workloads says what the scan saw of each service, as Direction reads it', () => {
+  const demo = fixture('demo').snapshot
+  const word = (s: typeof demo, facet: string) => {
+    const m = workloadsModel(s)
+    const row = m.rows.find((r) => r.facet === facet)!
+    return { name: m.columns.find((c) => c.key === 'workload')!.cell(row), word: m.columns.find((c) => c.key === 'detected')!.cell(row) }
+  }
+  // Direction's Confirm What You Use: absent for these three, present for directory synchronization.
+  const reading = serviceReading(demo, [], [])
+  for (const facet of ['avd', 'azureManagement', 'inforcer']) {
+    assert.equal(reading.signal(facet).used, false)
+    assert.equal(word(demo, facet).word, app.inventory.workloadNotSeen, facet)
+  }
+  assert.equal(word(demo, 'inforcer').name, 'Inforcer', 'a name, not the key')
+  assert.equal(reading.signal('workload').used, true)
+  assert.equal(word(demo, 'workload').word, app.inventory.workloadSeen)
+  // Sources not read: the scan cannot say a service is not used.
+  const unread = structuredClone(demo)
+  unread.sources.appSignInSummary = { ...unread.sources.appSignInSummary, status: 'error', reason: 'Request failed (500)' }
+  assert.equal(word(unread, 'avd').word, notReadWord)
+  assert.equal(word(demo, 'intune').word, demo.capabilities.intune.enabled ? app.inventory.licensed : C.licensing.notLicensed)
 })

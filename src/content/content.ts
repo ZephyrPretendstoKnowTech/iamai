@@ -137,6 +137,9 @@ export type AppWords = {
     deviceFilterExclude: string
     termsOfUse: string
     signInEveryTime: string
+    workloadSeen: string
+    workloadNotSeen: string
+    licensed: string
   }
   picker: { placeholder: string; remove: string; searching: string; noMatches: string; typeToSearch: string; suggestions: string; results: string; done: string; matched: string; choose: string }
 }
