@@ -468,3 +468,10 @@ test("Detected workloads shows the answer saved in Direction beside the scan's r
   assert.match(page, /useAppliedMapping\(snapshot\)/)
   assert.match(page, /workloadsModel\(snapshot, mapping\)/)
 })
+
+test('a list of names never spends its room on "and 1 other": a fourth name is shown instead', async () => {
+  const { firstThree } = await import('./inventoryTables.ts')
+  assert.equal(firstThree(['Sam Patel', 'Morgan Brown', 'Break-glass 1', 'Break-glass 2']), 'Sam Patel, Morgan Brown, Break-glass 1, Break-glass 2')
+  assert.equal(firstThree(['A', 'B', 'C', 'D', 'E']), 'A, B, C and 2 others')
+  assert.equal(firstThree(['A', 'B', 'C']), 'A, B, C')
+})
