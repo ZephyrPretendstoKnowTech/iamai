@@ -64,10 +64,15 @@ export function undatedRows(steps: readonly Step[], waves: readonly { stepIds: s
 
 /**
  * The rows the printed document's Deferred section draws (A1c, decision 3): the
- * steps the operator deferred. The screen's Deferred group is the lane engine's
- * (planLanes.ts, a skipped step is owner-deferred); this is the same fact read
- * for the document, which takes a deferred step out of its phase and prints it
- * once, under the lane's own word.
+ * steps the board reads Deferred (`laneOf`, planBoard.ts boardReadingsOf), the
+ * screen's Deferred group (planLanes.ts, a skipped step is owner-deferred). The
+ * document takes a deferred step out of its phase and prints it once, under
+ * the lane's own word.
+ *
+ * The board's lane and not `Step.status`: a deferred policy the tenant already
+ * enforces is Completed there (actionability/lanes.ts, a terminal outcome
+ * reached comes before a deferral), and read by status the document listed it
+ * under Completed and again under Deferred.
  *
  * A floor step the operator deferred is one of them. The rule used to read
  * `inWave`, which leaves every floor step out, so a deferred floor step stayed
@@ -75,8 +80,8 @@ export function undatedRows(steps: readonly Step[], waves: readonly { stepIds: s
  * instructions for work the operator had taken off the plan. A step the person
  * said does not apply here is the footer's, never this list's.
  */
-export function deferredRows(steps: readonly Step[]): Step[] {
-  return steps.filter((s) => s.status === 'skipped' && !s.doesntApply)
+export function deferredRows(steps: readonly Step[], laneOf: (id: string) => { lane: Lane }): Step[] {
+  return steps.filter((s) => !s.doesntApply && laneOf(s.id).lane === 'Deferred')
 }
 
 /**

@@ -162,10 +162,14 @@ export function PrintPlan({
   // screen reads it too, so a plan taken to PDF carries the same rows.
   const phaseList = planPhases(schedule)
   // A deferred step prints once, in the Deferred section under the lane's own
-  // word (A1c, decision 3), never under the phase that once dated it.
-  const deferred = deferredRows(steps)
-  const deferredIds = new Set(deferred.map((s) => s.id))
-  const notDeferred = (s: Step): boolean => !deferredIds.has(s.id)
+  // word (A1c, decision 3), never under the phase that once dated it. The
+  // board's Deferred lane (planRows.ts deferredRows): a deferred policy the
+  // tenant already enforces is Completed there, and prints once, under Completed.
+  const deferred = deferredRows(steps, laneOf)
+  // A row the document lists as a line, Completed or Deferred, never prints in
+  // full under a phase, the undated rows or the floor's group as well.
+  const listed = new Set([...done, ...deferred].map((s) => s.id))
+  const notListed = (s: Step): boolean => !listed.has(s.id)
   // A step the board holds prints with the undated rows, never under a phase's
   // dates (planBoard.ts boardHolds; owner decision 2, 2026-09-22): Turn Off
   // Security Defaults printed inside the Preparation phase, Aug 31 - Sep 28,
@@ -174,13 +178,13 @@ export function PrintPlan({
   // With them, a delivered step the board still has work for (planRows.ts
   // openDoneRows): no phase draws a done step, and its body is where the open
   // question is stated.
-  const held = [...undatedRows(steps, phaseList, boardHeld), ...openDoneRows(steps, laneOf)].filter(notDeferred)
+  const held = [...undatedRows(steps, phaseList, boardHeld), ...openDoneRows(steps, laneOf)].filter(notListed)
   // The undated rows under their own lane's word (A1c): the phase is a projection
   // the document may keep, and a step no phase dates is grouped by the state the
   // Plan shows for it, never under a heading of the document's own.
   const heldByLane = laneGroupsOf(held, laneOf)
-  const floor = floorRows(steps).filter(notDeferred)
-  const phaseSteps = (w: Schedule['waves'][number]): Step[] => phaseRows(steps, w, boardHeld).filter(notDeferred)
+  const floor = floorRows(steps).filter(notListed)
+  const phaseSteps = (w: Schedule['waves'][number]): Step[] => phaseRows(steps, w, boardHeld).filter(notListed)
   const waves = phaseList.filter((w) => phaseSteps(w).length > 0)
   const waveLabelByNumber = new Map(waves.map((w, i) => [w.wave, waveLabels(waves)[i]]))
   // Numbered phases (§5), never "Wave": Preparation / Phase N, from content.phases.
