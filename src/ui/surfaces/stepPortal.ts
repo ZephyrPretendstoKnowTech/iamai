@@ -276,22 +276,24 @@ const CONDITION_HEAD: Record<string, string> = {
  * `observation.unwritten`, roadmap/observation.ts unwrittenDifferences): the
  * manual-correction sentence naming where to look, then, for each such condition
  * the plan's own policy sets, the portal line that sets it — read from the whole
- * policy the plan writes (`PolicyOperation.intent`, on the step's one update),
- * in the translator's words. A condition the plan's policy does not have has no
+ * policy the plan writes (`PolicyOperation.intent` on the step's one update,
+ * `Action.intended` on a goal the plan's own policy already delivers), in the
+ * translator's words. A condition the plan's policy does not have has no
  * line to give: the sentence alone names it.
  *
  * IAMAI hands over no write for such a part (stepPackage.ts correctionFieldsOf),
  * and these lines are what a person follows instead. Before them the portal
  * named nothing: a report-only token-protection policy without its Cloud PC
- * filter was told only to keep observing (review of R4-10 B). Empty on a
- * finished step and where nothing differs.
+ * filter was told only to keep observing, and one enforced without it read
+ * "Completed" (reviews of R4-10 B and a27fb72d). Empty on a finished step and
+ * where nothing differs.
  */
 export function unwrittenCorrectionLines(step: Step, names: PortalNames, tenant: string): string[] {
   const unwritten = step.state?.observation?.unwritten ?? []
   if (unwritten.length === 0 || step.state.satisfied) return []
   const lines = [fillText(app.plan.manualCorrection, { tenant, fields: dimensionWords(unwritten) })]
   const ops = step.action.resolution?.policies ?? []
-  const intent = ops.length === 1 && ops[0].mode === 'update' ? ops[0].intent : undefined
+  const intent = ops.length === 0 ? step.action.intended : ops.length === 1 && ops[0].mode === 'update' ? ops[0].intent : undefined
   if (!intent) return lines
   const p = intent as unknown as PinnedPolicy
   const set = portalLines(policyFacts(p as unknown as CaPolicy, new Map()), contextFor(p, names, step.action.resolution?.tenant ?? { exclusionsGroupId: null, serviceAccountsGroupId: null }), { only: new Set<PortalSection>(['conditions']) })

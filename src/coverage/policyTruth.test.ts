@@ -16,7 +16,7 @@ import { PREREQ_STEP_ID } from '../roadmap/stepIds.ts'
 import type { Fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture, withFoundationSettled } from '../roadmap/fixtures/run.ts'
 import type { FixtureRun } from '../roadmap/fixtures/run.ts'
-import { operationsOf } from '../roadmap/operations.ts'
+import { operationsOf, unavailableReason } from '../roadmap/operations.ts'
 import { changedFieldsOf } from '../roadmap/changedFields.ts'
 import { actionableExclusionsGroupId, directoryEvidenceFromGroups } from '../mapping/safetyChoice.ts'
 import { exclusionsGroupPolicies, groupLookup } from '../validation/exclusionsGroupPolicies.ts'
@@ -535,6 +535,31 @@ test('demo week two: its token-protection policy, switched On exactly as the ste
   const s = goalStep(run, 'token-protection')
   assert.equal(s.status, 'done', 'the enforced policy is still asked for a correction')
   assert.equal(operationsOf(s).some((o) => o.mode === 'update'), false, 'an update is offered for a policy already as the plan built it')
+})
+
+test('demo week two: its token-protection policy switched On without the Cloud PC filter delivers the goal and is still not the plan\'s policy', () => {
+  // Review of a27fb72d. The goal is delivered either way: coverage judges who
+  // the policy reaches, its resources and its session control, and without the
+  // filter the policy reaches more devices, not fewer. But the filter is what
+  // keeps Microsoft Entra joined Cloud PCs, which token protection does not
+  // support, out of the policy, and without it they are blocked. Before
+  // a27fb72d the D7 no-op apps update was the only thing that read the tenant's
+  // policy against the plan's; with it gone the step read "Completed" and "Keep
+  // the policy as it is". The step now reads the delivering policy, which the
+  // plan tagged, against the policy the plan writes (Action.intended), and a
+  // difference in a part IAMAI does not write is a person's correction.
+  const f = fixture('demo-week2')
+  const row = rowsOf(f).find((p) => /token protection/i.test(String(p.displayName)))!
+  assert.ok((row.conditions as Record<string, unknown>).devices, 'the premise: the demo policy carries the filter')
+  delete (row.conditions as Record<string, unknown>).devices
+  row.state = 'enabled'
+  const run = runFixture(f)
+  assert.equal(resultOf(run, 'token-protection').verdict, 'inPlace', 'the premise: coverage reads the goal as delivered')
+  const s = goalStep(run, 'token-protection')
+  assert.notEqual(s.status, 'done', 'a policy without the Cloud PC filter reads as the plan\'s policy, finished')
+  assert.deepEqual(s.state.observation?.unwritten, ['conditions.devices'])
+  assert.equal(unavailableReason(s), 'manual-correction', 'the difference is not named as a person\'s correction')
+  assert.equal(operationsOf(s).length, 0, 'IAMAI offers a write for a part it does not write')
 })
 
 test('no step, on the fixtures the D7 defect reached, proposes an update that changes nothing on the policy it names', () => {

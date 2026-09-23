@@ -26,7 +26,7 @@ import { laneReadings } from '../ui/surfaces/planLanes.ts'
 import { stepBodyOf } from '../ui/surfaces/stepBody.ts'
 import { stepExportView } from '../ui/surfaces/stepExport.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
-import { shared } from '../content/content.ts'
+import { content, shared } from '../content/content.ts'
 import { artifactIdOf, semanticFieldsOf, semanticsOf } from './observation.ts'
 import type { StepObservation, StepObservationRecord } from './observation.ts'
 import { SOLE_MEMBER, driftOutcomeOf, matchMembers } from './tracking.ts'
@@ -438,6 +438,64 @@ test('a report-only legacy-authentication block with a trusted-location exclusio
   assert.doesNotMatch(portal, /click Save|make sure/i, `the portal hands over a correction that does not mention locations:\n${portal}`)
   for (const a of artifacts) assert.equal(handsOverWrite(a.id, a.text()), false, `the ${a.id} channel hands over a write for a part the note says IAMAI does not write`)
   assert.doesNotMatch(artifacts.find((a) => a.id === 'ai')?.text() ?? '', /conditions\.canonical/, 'AI Info names a package module id')
+})
+
+test('the token-protection policy the plan tagged, On without the Cloud PC filter, is never Completed: on the first scan, and after it was watched with the filter', () => {
+  // Review of a27fb72d. Before it, the D7 no-op apps update was the only thing
+  // that read the enforced policy against the plan's, and it read "not what the
+  // plan asked for in the device filter". With the no-op gone the goal is in
+  // place, the step had no operation, the difference was never computed, and
+  // the step read "Completed" with "Keep the policy as it is". On a later scan
+  // of a policy watched in report-only with the filter and then enforced
+  // without it, the note said what was watched is no longer what is deployed
+  // while the export said "IAMAI watched it get there". The product's own words
+  // say that without the filter Entra-joined Cloud PCs are blocked. The step now
+  // reads the policy against the whole policy the plan writes (Action.intended):
+  // a person corrects the filter, and the portal says to what.
+  const id = stepIdForGoal('token-protection')
+  const rule = 'device.systemLabels -contains "CloudPC" -and device.trustType -eq "AzureAD"'
+  const keep = String((content.pages.app as Record<string, Record<string, string>>).plan.inPlaceKeep)
+  const watched = /IAMAI watched it get there/
+  const row0 = rowsOf(ANSWERED.snapshot).find((p) => p.displayName === TOKEN)!
+  assert.ok(conditions(row0).devices, 'the premise: the demo policy carries the filter')
+  const seenAt = new Date(Date.parse(ANSWERED.snapshot.asOf) - TEN_DAYS).toISOString()
+  const watchedRecord = { [id]: { members: { [SOLE_MEMBER]: { artifact: artifactIdOf(String(row0.id)), state: 'report-only', semantics: semanticsOf(row0), fields: semanticFieldsOf(row0), firstSeenAt: seenAt, since: 'first-scan', lastSeenAt: seenAt, evidenceAt: null } }, unattributed: null } } as Record<string, StepObservationRecord>
+  for (const [label, prior] of [['first scan', null], ['watched in report-only with the filter', watchedRecord]] as const) {
+    const snapshot = structuredClone(ANSWERED.snapshot)
+    const row = rowsOf(snapshot).find((p) => p.displayName === TOKEN)!
+    delete conditions(row).devices
+    row.state = 'enabled'
+    const run = runFixture({ ...ANSWERED, snapshot })
+    if (prior) applyProgress(run.steps, snapshot, run.coverage, ANSWERED.planId, undefined, null, prior)
+    const step = run.steps.find((s) => s.id === id)!
+    assert.notEqual(step.status, 'done', `${label}: the step reads as finished`)
+    assert.notEqual(laneReadings(run.steps).get(id)?.lane, 'Completed', `${label}: the board files the step under Completed`)
+    assert.deepEqual(step.state.observation?.unwritten, ['conditions.devices'], `${label}: the filter is not read as a difference`)
+    const ctx: StepVarContext = { snapshot, mapping: ANSWERED.mapping, nameOf: (x) => run.input.names!.label(x), signature: 'IT', operatorId: ANSWERED.operatorId, now: snapshot.asOf, groups: ANSWERED.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
+    const portal = stepBodyOf(step, ctx).artifacts.find((a) => a.id === 'portal')?.text() ?? ''
+    assert.ok(portal.includes(rule), `${label}: no channel names the filter to set:\n${portal}`)
+    const exported = stepExportView(step, ctx).whatToDo
+    assert.equal(exported.includes(keep), false, `${label}: the export says to keep the policy as it is`)
+    assert.equal(exported.some((l) => watched.test(l)), false, `${label}: the export says IAMAI watched the policy get there`)
+  }
+})
+
+test('a policy the tenant wrote under its own name is not told to take the plan\'s shape where the plan does not write', () => {
+  // The other side of the rule above, and an owner question. The large
+  // fixture's own enforced compliant-device policies deliver its goal, and the
+  // settled device decision asks the plan's policy to leave Android and iOS
+  // out. Reading the tenant's own policy against the plan's shape told it to
+  // take Android and iOS out of its enforced compliant-device requirement: a
+  // narrowing of a policy the plan never built. Only a policy the plan tagged,
+  // or one carrying the name the plan gives the goal's policy, is read against
+  // the plan's (generate.ts Action.intended).
+  const f = withFoundationSettled(fixtures.find((x) => x.name === 'large')!)
+  const run = runFixture(f)
+  const step = run.steps.find((s) => s.goalId === 'require-managed-device')!
+  assert.equal(step.tracking?.matchedBy, 'fingerprint', 'the premise: the tenant\'s own policy delivers the goal')
+  assert.equal(step.action.intended, undefined, 'the tenant\'s own policy is read against the plan\'s')
+  assert.deepEqual(step.state.observation?.unwritten ?? [], [])
+  assert.equal(step.status, 'done')
 })
 
 test('a difference the update does not write is never stated as the setting to keep, on any channel', () => {

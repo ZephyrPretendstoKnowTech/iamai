@@ -927,9 +927,13 @@ export function trackExecution(
       // policy carrying the plan's tag or name that no longer matches the goal
       // at all — is compared on every dimension.
       const judged = (result?.candidates ?? []).some((c) => c.policyId === policyRow?.id) ? COVERAGE_JUDGED : []
+      // A goal the tenant already delivers has no operation, and the policy that
+      // delivers it is read against the whole policy the plan would write
+      // (Action.intended) with nothing patched: the step's one policy only.
+      const intended = m.op ? (m.op.mode === 'update' ? m.op.intent ?? null : null) : sole ? step.action.intended ?? null : null
       const unwritten =
-        policyRow && m.op && m.op.mode === 'update' && (step.action.missing ?? []).length === 0 && (observedState === 'report-only' || observedState === 'enforced')
-          ? unwrittenDifferences(m.op.intent ?? null, m.op.body, policyRow as Record<string, unknown>, judged)
+        policyRow && intended && (step.action.missing ?? []).length === 0 && (observedState === 'report-only' || observedState === 'enforced')
+          ? unwrittenDifferences(intended, m.op?.body ?? null, policyRow as Record<string, unknown>, judged)
           : []
       const change = observe(priorFor(record, m.key, artifact, sole), {
         // Which object this scan saw. The step id says which row of the plan this
@@ -1092,6 +1096,16 @@ export function trackExecution(
     // not merely something to review. Keep that known safety boundary stronger
     // than the observation that first noticed the tenant-side change.
     if (step.action.emergencyExposure?.reached.length) raiseCondition(step, 'blocked')
+    // A goal coverage finds delivered by this step's own enforced policy, where
+    // that policy is not what the plan asked for in a part coverage does not
+    // judge (Action.intended, observation.unwritten): the goal's protection is
+    // there and the plan's policy is not. Token protection without its Cloud PC
+    // device filter blocks the Cloud PCs the plan's policy leaves out, and it read
+    // "Completed" and "Keep the policy as it is" while its own observation named
+    // the filter. It is not finished: a person corrects that part
+    // (operations.ts manual-correction), and the next scan reads it again.
+    const unplanned = lifecycle === 'enforced' && memberObservations.some((o) => o.change.unwritten.length > 0)
+    if (unplanned && step.state.satisfied) setState(step, { satisfied: false, inPlace: false })
 
     const since = step.history.at(-1)?.at ?? snapshot.asOf
     const sinceText = absoluteDate(since)
@@ -1167,7 +1181,7 @@ export function trackExecution(
       //
       // On a pair, `enforced` already means every required member is enforced:
       // one enforced policy has never finished a two-policy goal.
-      if (result?.verdict === 'inPlace') {
+      if (result?.verdict === 'inPlace' && !unplanned) {
         advance(step, { satisfied: true }, `${fillText(TRACK.enforced, { date: absoluteDate(tracking.enforcedAt ?? now) })}; ${tracking.note}`, now)
       }
       continue

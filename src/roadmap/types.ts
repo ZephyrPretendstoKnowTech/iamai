@@ -254,6 +254,20 @@ export type Action = {
    */
   resolution?: StepResolution
   /**
+   * On a goal the tenant already delivers, which has no operation: the whole
+   * policy as the plan writes it (the body a create would submit, the same
+   * thing `PolicyOperation.intent` carries on an update). A scan reads the
+   * delivering policy against it in the parts coverage does not judge
+   * (roadmap/tracking.ts, observation.ts unwrittenDifferences), so a policy that
+   * delivers the goal and is still not the plan's policy — token protection
+   * without its Cloud PC device filter — is not read as finished. Read for
+   * comparison only; no channel submits it. Set only where the policy delivering
+   * the goal is the plan's own (its tag, or the name the plan gives it). Absent
+   * where the plan cannot state it: a goal the baseline implements with two
+   * policies, or a policy that names an object the tenant does not have.
+   */
+  intended?: Record<string, unknown>
+  /**
    * Why the step offers no implementation although nothing it names is missing:
    * the plan cannot tell which of the tenant's policies is which half of a pair,
    * so it will not guess. The step says so and waits for a person to sort it out.
