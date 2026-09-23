@@ -28,11 +28,12 @@ test('a sign-in-disabled account is not counted, not in Today, never dormant, an
   const people = inventoryTables(s).find((t) => t.id === 'people')!
   const row = people.rows.find((r) => String(r[1]) === mailbox.userPrincipalName)!
   assert.ok(row, 'listed in Inventory → People')
-  assert.equal(people.header[3], 'Tags')
-  assert.equal(row[3], INVENTORY.people.signInDisabled)
+  // The tag is in the Type cell, as the Inventory's People table draws it.
+  const type = people.header.indexOf(INVENTORY.people.columns.type)
+  assert.ok(String(row[type]).endsWith(` · ${INVENTORY.people.signInDisabled}`), String(row[type]))
   assert.equal(INVENTORY.people.signInDisabled, 'sign-in disabled')
   const enabledRow = people.rows.find((r) => String(r[1]) === s.users.find((u) => u.id === 'u-1')!.userPrincipalName)!
-  assert.equal(enabledRow[3], '', 'an enabled account carries no tag')
+  assert.ok(!String(enabledRow[type]).includes(INVENTORY.people.signInDisabled), 'an enabled account carries no tag')
 })
 
 test('on a plan: a dormant account blocked from sign-in leaves the dormant step', () => {
