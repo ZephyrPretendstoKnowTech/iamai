@@ -297,6 +297,24 @@ test('each person keeps only the newest passkey sign-ins as recovery candidates,
   assert.deepEqual(aggregate(tied).account.recoveryCandidates!.map((c) => c.eventId), tied.slice(0, n).map((r) => r.id))
 })
 
+test('newer passkey sign-ins that cannot be a recovery test do not push out the newest one that can', () => {
+  const n = RECOVERY_CANDIDATES_PER_PERSON
+  const passkey = (id: string, hoursAgo: number, result: string): StoredSignIn => row({ id, hoursAgo, userId: 'account', isInteractive: true, authenticationRequirement: 'multiFactorAuthentication', authenticationDetails: [{ succeeded: true, authenticationMethod: 'Passkey (device-bound)', authenticationStepDateTime: iso(hoursAgo), authenticationStepResultDetail: result }] })
+  // The drill: a fresh passkey step. After it, sign-ins whose passkey was previously satisfied, no fresh step.
+  const drill = passkey('drill', 200, 'MFA successfully completed')
+  const stale = Array.from({ length: n + 5 }, (_, i) => passkey(`stale-${i}`, i + 1, 'MFA requirement previously satisfied'))
+  const rows = [...stale, drill]
+  const scrambled = rows.map((r, i) => ({ r, k: (i * 7919) % rows.length })).sort((a, b) => a.k - b.k).map((x) => x.r)
+  for (const order of [rows, [...rows].reverse(), scrambled]) {
+    const kept = aggregate(order).account.recoveryCandidates!
+    assert.deepEqual(kept.map((c) => c.eventId), [...stale.slice(0, n).map((r) => r.id), 'drill'], 'the newest, then the drill, still newest first')
+    assert.equal(kept.at(-1)?.freshMethod, true)
+  }
+  // A newer sign-in that can be a test is among the newest, so nothing is added.
+  const fresh = passkey('fresh', 0.5, 'MFA successfully completed')
+  assert.deepEqual(aggregate([fresh, ...rows]).account.recoveryCandidates!.map((c) => c.eventId), [fresh.id, ...stale.slice(0, n - 1).map((r) => r.id)])
+})
+
 test('noteEnforced keeps the latest enforced record per policy, in any order, and is lastEnforcedOf a record at a time', () => {
   const applied = (hoursAgo: number, result: string) => row({ hoursAgo, appliedConditionalAccessPolicies: [{ id: 'p1', result }, { id: 'p2', result: 'reportOnlySuccess' }] })
   const rows = [applied(30, 'success'), applied(5, 'failure'), applied(2, 'reportOnlyFailure'), applied(12, 'success')]

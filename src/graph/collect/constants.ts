@@ -25,7 +25,8 @@ export const SIGN_IN_REANCHOR_MAX = 3
  * (UserEvidence.recoveryCandidates), newest first. Only emergency accounts'
  * are read (Step 4), and they sign in a few times a month; without a cap, a
  * tenant where everyone signs in with a passkey would carry one per sign-in
- * into the snapshot.
+ * into the snapshot. The newest that can be a recovery test is kept beside
+ * them when it is older (laneBCore.ts aggregateFold).
  */
 export const RECOVERY_CANDIDATES_PER_PERSON = 20
 export const SLOW_THRESHOLD_MS = 15_000
