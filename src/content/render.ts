@@ -806,7 +806,7 @@ export function renderPages(): string {
         fill(cx.scan.complete.state, { age: '57 minutes ago' }),
         // The compact counts the complete scan produced (task 032), each from the
         // authority that already owns it.
-        li(`<b>18</b> ${esc(cx.scan.meta.people)}`, `<b>38</b> ${esc(cx.scan.meta.policies)}`, `<b>27</b> ${esc(cx.scan.meta.steps)}`) +
+        li(fill(cx.scan.meta.people, { n: 18 }), fill(cx.scan.meta.policies, { n: 38 }), fill(cx.scan.meta.steps, { n: 27 })) +
           `<details open><summary>${esc(cx.scan.limitsSummary)}</summary>` +
           ul(cx.scan.limits, {}) +
           sub(esc(cx.scan.limitsMore), `<a>${esc(cx.scan.limitsLink)}</a>`) +

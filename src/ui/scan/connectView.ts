@@ -389,6 +389,17 @@ export type ScanTile = {
   actions: Action[]
 }
 
+/**
+ * One meta item, filled like every other count (content/render.ts fillText:
+ * the figure's separator, and the noun bent to it), then split so the figure
+ * can be set in bold: "4,169" · "active people", "1" · "active person".
+ */
+function counted(text: string, n: number): { value: string; label: string } {
+  const filled = fillText(text, { n })
+  const i = filled.indexOf(' ')
+  return { value: filled.slice(0, i), label: filled.slice(i + 1) }
+}
+
 /** The scan's age, from the one stored timestamp: the Scan and Plan tiles both read this. */
 export const scanAgeWords = (at: string, now?: number): string => relative(at, now)
 
@@ -425,7 +436,7 @@ export function scanTile(input: ScanInput): ScanTile {
         kind: 'complete',
         state: fillText(S.complete.state, { age: scanAgeWords(input.at, input.now) }),
         tone: 'done',
-        meta: c ? [{ value: String(c.people), label: S.meta.people }, { value: String(c.policies), label: S.meta.policies }, { value: String(c.steps), label: S.meta.steps }] : undefined,
+        meta: c ? [counted(S.meta.people, c.people), counted(S.meta.policies, c.policies), counted(S.meta.steps, c.steps)] : undefined,
         ...(lead ? { lead, rows: unread.map(unreadRow) } : {}),
         ...askFor(unread),
         ...(note ? { note } : {}),

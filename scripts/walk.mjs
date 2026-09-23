@@ -955,8 +955,9 @@ async function walkFixture(fx) {
           const metaRow = await evaluate(`[...document.querySelectorAll('main.page .connect-step .meta-counts li')].map((l) => ({ value: ((l.querySelector('b') || {}).textContent || '').trim(), label: (l.textContent || '').replace((l.querySelector('b') || {}).textContent || '', '').replace(/\\s+/g, ' ').trim() }))`)
           if (want !== 'complete' && metaRow.length > 0) add('P0', `${label}: the scan step carries counts in the ${want} state: ${JSON.stringify(metaRow)}`)
           if (metaRow.length > 0) {
-            if (metaRow.map((m) => m.label).join(' · ') !== 'active people · baseline policies · plan steps') add('P0', `${label}: the scan counts read ${JSON.stringify(metaRow)}; active people · baseline policies · plan steps`)
-            else if (!metaRow.every((m) => /^\d+$/.test(m.value))) add('P0', `${label}: a scan count is not a number: ${JSON.stringify(metaRow)}`)
+            // Counted words (fillText): "1 active person", "4,169 active people".
+            if (!/^active (people|person) · baseline polic(ies|y) · plan steps?$/.test(metaRow.map((m) => m.label).join(' · '))) add('P0', `${label}: the scan counts read ${JSON.stringify(metaRow)}; active people · baseline policies · plan steps`)
+            else if (!metaRow.every((m) => /^\d{1,3}(,\d{3})*$/.test(m.value))) add('P0', `${label}: a scan count is not a number: ${JSON.stringify(metaRow)}`)
           }
           const badge = { complete: 'done', gaps: 'wait', role: 'stop' }[want]
           if (badge && !new RegExp('\\b' + badge + '\\b').test(t3.cls)) add('P0', `${label}: tile 3's number badge does not carry the ${want} state colour (class ${badge}); it has "${t3.cls}"`)
