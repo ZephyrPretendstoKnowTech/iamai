@@ -71,6 +71,7 @@ type Words = {
     title: string
     ready: { state: string; stateCounted: string; lead: string; open: string }
     last: { state: string; open: string }
+    none: { state: string }
     waiting: { state: string }
     sample: { lead: string; people: string; steps: string; inPlace: string; weeks: string; weeksEstimate: string; weeksValue: string; weeksOne: string; open: string }
   }
@@ -454,8 +455,10 @@ export function scanTile(input: ScanInput): ScanTile {
 export type PlanInput =
   /** A complete scan: the state with the step counts once the plan has computed — every step, and the Completed lane's count (planLanes.ts laneCountsOf, A1c) — one line saying what was built, and Open the plan. The readiness ladder is MFA Readiness's, not Connect's (task 016). */
   | { kind: 'ready'; at: string; counts: { steps: number; completed: number } | null; now?: number }
-  /** A scan with gaps kept the last full plan. */
+  /** A stored full plan the Plan tab still opens, while the current scan has none: it ended with gaps, is running, or could not start. */
   | { kind: 'last'; at: string }
+  /** The Plan page offers this tenant no plan at all; `lead` is that page's own sentence (derive/notLicensed.ts conditionalAccessLicenceLine). */
+  | { kind: 'none'; lead: string }
   /** Signed in, no plan yet: the scan has not run, is running, or ended with gaps and nothing before it. */
   | { kind: 'waiting' }
   /** Before sign-in: what the sample tenant produced. */
@@ -470,6 +473,35 @@ export type PlanTile = {
   /** The sample tenant's four facts, before sign-in. */
   facts?: { value: string; label: string }[]
   actions: Action[]
+}
+
+/**
+ * The destination's state, from what the Plan page would draw rather than from
+ * the scan alone (Phase 2 audit). The Plan page computes a plan only against a
+ * loaded baseline, offers a tenant without Entra ID P1 no plan at all
+ * (`noPlan`, its own gate), and opens the stored full plan whatever a newer
+ * scan is doing. So: nothing stored or no baseline, it waits; no plan to offer,
+ * it says so in the Plan page's sentence; a stored plan under a scan that has
+ * not completed (running, ended with gaps, or not started for want of a role)
+ * is the last full plan; and only a complete scan with a plan is ready.
+ */
+export function planInputOf({
+  scan,
+  lastScan,
+  baselineLoaded,
+  noPlan,
+  counts,
+}: {
+  scan: ScanInput['kind']
+  lastScan: { at: string } | null
+  baselineLoaded: boolean
+  noPlan: string | null
+  counts: { steps: number; completed: number } | null
+}): PlanInput {
+  if (!lastScan || !baselineLoaded) return { kind: 'waiting' }
+  if (noPlan) return { kind: 'none', lead: noPlan }
+  if (scan !== 'complete') return { kind: 'last', at: lastScan.at }
+  return { kind: 'ready', at: lastScan.at, counts }
 }
 
 export function planTile(input: PlanInput): PlanTile {
@@ -491,6 +523,9 @@ export function planTile(input: PlanInput): PlanTile {
     }
     case 'last':
       return { n: 4, kind: 'last', title: P.title, state: fillText(P.last.state, { date: monthDay(input.at) }), tone: null, actions: [{ label: fillText(P.last.open, { date: monthDay(input.at) }), weight: 'tertiary' }] }
+    case 'none':
+      // No counts and no way on: the Plan page draws this one sentence and nothing else.
+      return { n: 4, kind: 'none', title: P.title, state: P.none.state, tone: null, lead: input.lead, actions: [] }
     case 'waiting':
       return { n: 4, kind: 'waiting', title: P.title, state: P.waiting.state, tone: null, actions: [] }
     case 'sample': {

@@ -1015,9 +1015,12 @@ async function walkFixture(fx) {
         // what the sample tenant produced. The scan's age is the one stored
         // timestamp's: it renders once as the Scan tile's state, and the Plan
         // tile's "from the scan" carries the same words; nothing says scanned.
-        const wantPlan = signedOut ? 'sample' : want === 'complete' ? 'ready' : want === 'gaps' ? 'last' : 'waiting'
+        // The destination reads what the Plan page would draw (connectView.ts planInputOf):
+        // no plan to offer without Entra ID P1, and the stored plan (the mock keeps one
+        // under the role and gaps states) while the current scan has none.
+        const wantPlan = signedOut ? 'sample' : fx.mock === 'free' ? 'none' : want === 'complete' ? 'ready' : want === 'gaps' || want === 'role' ? 'last' : 'waiting'
         // The ready state carries the step counts once the plan has computed (docs/design/mockups/connect-v2.html).
-        const PLAN_STATES = { ready: /^Plan ready · (\d+ steps, \d+ completed · )?from the scan .+$/, last: /^Plan last full plan · [A-Z][a-z]{2} \d+$/, waiting: /^Plan after the scan$/, sample: /^Plan after the scan$/ }
+        const PLAN_STATES = { ready: /^Plan ready · (\d+ steps, \d+ completed · )?from the scan .+$/, last: /^Plan last full plan · [A-Z][a-z]{2} \d+$/, none: /^Plan no plan to offer$/, waiting: /^Plan after the scan$/, sample: /^Plan after the scan$/ }
         if (t4) {
           if (!PLAN_STATES[wantPlan].test(t4.h2)) add('P0', `${label}: tile 4 reads "${t4.h2}"; Plan in the ${wantPlan} state`)
           // The approved pack tints the destination only when the plan is actually
@@ -1025,7 +1028,7 @@ async function walkFixture(fx) {
           // a readiness claim made in CSS (task 032).
           if (wantPlan === 'ready' && !/\bready\b/.test(t4.cls)) add('P0', `${label}: the ready Plan destination is not marked ready (${t4.cls})`)
           if (wantPlan !== 'ready' && /\bready\b/.test(t4.cls)) add('P0', `${label}: the ${wantPlan} Plan destination carries the ready treatment (${t4.cls})`)
-          const PLAN_OTHER = { ready: [/^Open the plan →$/, /\d+ people \d+ policies/, /from the scan/], last: [/^Open the last full plan/, /last full plan/], waiting: [], sample: [/What the sample tenant produced/, /already in place/, /^Open the sample plan$/] }
+          const PLAN_OTHER = { ready: [/^Open the plan →$/, /\d+ people \d+ policies/, /from the scan/], last: [/^Open the last full plan/, /last full plan/], none: [/no plan to offer/], waiting: [], sample: [/What the sample tenant produced/, /already in place/, /^Open the sample plan$/] }
           for (const [k, res] of Object.entries(PLAN_OTHER)) {
             if (k === wantPlan) continue
             for (const re of res) if (re.test(t4.text) || t4.buttons.some((b) => re.test(b.t))) add('P0', `${label}: tile 4 in the ${wantPlan} state carries the ${k} state's ${re}`)
