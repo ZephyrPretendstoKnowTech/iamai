@@ -110,6 +110,21 @@ function readOf<M extends { rows: unknown[]; empty?: string; notRead?: string | 
   return notRead === null ? { ...m, notRead: null, note: partlyReadLine(snapshot, key) } : { ...m, rows: [], notRead, empty: notRead, note: null }
 }
 
+/**
+ * How the Inventory names an object the directory holds no name for, by its
+ * kind: a group, a named location, an authentication strength. The directory's
+ * own fallback (names.ts label) names an account, and a group, a location or a
+ * strength is none. `groupsPending` while the surface's group reads have not
+ * come back.
+ */
+export function objectLabels(snapshot: TenantSnapshot, names: NameDirectory, groupsPending = false): { group: (id: string) => string; location: (id: string) => string; strength: (id: string) => string } {
+  return {
+    group: (id) => names.nameOf(id) ?? (groupsPending ? '…' : W.unnamedGroup),
+    location: (id) => names.nameOf(id) ?? (sectionHasData(snapshot, 'namedLocations') ? W.unnamedLocation : W.locationNotRead),
+    strength: (id) => names.nameOf(id) ?? (sectionHasData(snapshot, 'authStrengths') ? W.unnamedStrength : W.strengthNotRead),
+  }
+}
+
 /** Security defaults as the scan read them (derive/readinessContext.ts securityDefaultsState): on, off, or not read with the section's reason. */
 export function securityDefaultsOf(snapshot: TenantSnapshot): { state: boolean | null; word: string; reason: string | null } {
   const A = C.authentication
@@ -139,18 +154,18 @@ function usersSummary(f: PolicyFacts): string {
 }
 
 /** The Exclusions column (E5): the groups and users the policy excludes, by name; guests when the whole type is. */
-export function exclusionsSummary(f: PolicyFacts, label: (id: string) => string): string {
+export function exclusionsSummary(f: PolicyFacts, person: (id: string) => string, group: (id: string) => string): string {
   const P = C.policies
-  const bits = [...[...f.whoNot.groups].map(label), ...[...f.whoNot.users].map(label)]
+  const bits = [...[...f.whoNot.groups].map(group), ...[...f.whoNot.users].map(person)]
   if (f.whoNot.guests) bits.push(P.guests)
   return bits.join(', ') || '—'
 }
 
 /** The Users column's tooltip: the names behind the counts. */
-export function usersDetail(f: PolicyFacts, label: (id: string) => string): string {
+export function usersDetail(f: PolicyFacts, person: (id: string) => string, group: (id: string) => string): string {
   const parts: string[] = []
-  if (f.who.users.size > 0) parts.push([...f.who.users].map(label).join(', '))
-  if (f.who.groups.size > 0) parts.push([...f.who.groups].map(label).join(', '))
+  if (f.who.users.size > 0) parts.push([...f.who.users].map(person).join(', '))
+  if (f.who.groups.size > 0) parts.push([...f.who.groups].map(group).join(', '))
   if (f.who.roles.size > 0 && !coversAdminSet(f.who.roles)) parts.push([...f.who.roles].map(roleLabel).join(', '))
   return parts.join('\n')
 }
@@ -167,12 +182,12 @@ function appsSummary(f: PolicyFacts): string {
   return bits.join(', ') || P.none
 }
 
-function conditionsSummary(f: PolicyFacts, label: (id: string) => string): string {
+function conditionsSummary(f: PolicyFacts, location: (id: string) => string): string {
   const P = C.policies
   const bits: string[] = []
   if (f.clientApps.size > 0 && !f.clientApps.has('all')) bits.push(P.clientApps([...f.clientApps].join(', ')))
   if (f.platforms) bits.push(P.platforms([...f.platforms.include].join(', ') || 'any'))
-  const loc = (id: string) => (id.toLowerCase() === 'all' ? 'all' : id.toLowerCase() === 'alltrusted' ? 'all trusted' : label(id))
+  const loc = (id: string) => (id.toLowerCase() === 'all' ? 'all' : id.toLowerCase() === 'alltrusted' ? 'all trusted' : location(id))
   if (f.locations)
     bits.push(
       P.locations(
@@ -195,13 +210,13 @@ const CONTROL_WORDS: Record<string, string> = {
   passwordChange: 'password change',
 }
 
-function grantSummary(f: PolicyFacts, label: (id: string) => string): string {
+function grantSummary(f: PolicyFacts, strength: (id: string) => string): string {
   const P = C.policies
   if (!f.grant) return '—'
   if (f.grant.controls.has('block')) return P.block
   const controls = [...f.grant.controls].filter((c) => c !== 'mfa' || !f.grant?.strengthId)
   const bits = controls.map((c) => CONTROL_WORDS[c] ?? c)
-  if (f.grant.strengthId) bits.push(P.strength(label(f.grant.strengthId)))
+  if (f.grant.strengthId) bits.push(P.strength(strength(f.grant.strengthId)))
   return bits.length > 0 ? P.require(bits.join(f.grant.operator === 'AND' ? ' and ' : ' or ')) : '—'
 }
 
@@ -218,8 +233,9 @@ function sessionSummary(f: PolicyFacts): string {
 
 const yesNo = (v: boolean): string => (v ? C.devices.yes : C.devices.no)
 
-export function policiesModel(snapshot: TenantSnapshot, facts: PolicyFacts[], names: NameDirectory): InventoryModel<PolicyFacts> {
+export function policiesModel(snapshot: TenantSnapshot, facts: PolicyFacts[], names: NameDirectory, groupsPending = false): InventoryModel<PolicyFacts> {
   const P = C.policies
+  const o = objectLabels(snapshot, names, groupsPending)
   return readOf(snapshot, 'caPolicies', {
     id: 'policies',
     label: C.tabs.policies,
@@ -232,10 +248,10 @@ export function policiesModel(snapshot: TenantSnapshot, facts: PolicyFacts[], na
       { key: 'microsoftManaged', header: P.microsoftManaged, hidden: true, cell: (r) => yesNo(r.isMicrosoftManaged) },
       { key: 'state', header: P.columns.state, sort: (r) => r.state, cell: (r) => P.state[r.state] },
       { key: 'users', header: P.columns.users, cell: (r) => usersSummary(r) },
-      { key: 'exclusions', header: P.columns.exclusions, cell: (r) => exclusionsSummary(r, names.label) },
+      { key: 'exclusions', header: P.columns.exclusions, cell: (r) => exclusionsSummary(r, names.label, o.group) },
       { key: 'apps', header: P.columns.apps, cell: (r) => appsSummary(r) },
-      { key: 'conditions', header: P.columns.conditions, cell: (r) => conditionsSummary(r, names.label) },
-      { key: 'grant', header: P.columns.grant, cell: (r) => grantSummary(r, names.label) },
+      { key: 'conditions', header: P.columns.conditions, cell: (r) => conditionsSummary(r, o.location) },
+      { key: 'grant', header: P.columns.grant, cell: (r) => grantSummary(r, o.strength) },
       { key: 'session', header: P.columns.session, cell: (r) => sessionSummary(r) },
     ],
   })
@@ -282,13 +298,27 @@ export function authMethodsPolicyOf(snapshot: TenantSnapshot): Raw | null {
   return ((snapshot.config.authMethodsPolicy?.rows ?? [])[0] ?? null) as Raw | null
 }
 
-export function authMethodsModel(snapshot: TenantSnapshot, names: NameDirectory): InventoryModel<MethodRow> {
-  const A = C.authentication
+const methodConfigsOf = (snapshot: TenantSnapshot): Raw[] => {
   const policy = authMethodsPolicyOf(snapshot)
-  const configs = (Array.isArray(policy?.authenticationMethodConfigurations) ? policy!.authenticationMethodConfigurations : []) as Raw[]
-  const rows: MethodRow[] = configs.map((m) => {
-    const targets = (Array.isArray(m.includeTargets) ? m.includeTargets : []) as Raw[]
-    const t = targets.map((x) => (String(x.id) === 'all_users' ? A.allUsers : names.label(str(x.id)))).join(', ')
+  return (Array.isArray(policy?.authenticationMethodConfigurations) ? policy!.authenticationMethodConfigurations : []) as Raw[]
+}
+const targetsOf = (m: Raw, side: 'includeTargets' | 'excludeTargets'): Raw[] => (Array.isArray(m[side]) ? m[side] : []) as Raw[]
+/** A method target that is a group (Graph's targetType), never the all-users token or a person. */
+const isGroupTarget = (x: Raw): boolean => str(x.id) !== 'all_users' && x.targetType !== 'user'
+
+/** The groups the authentication methods policy includes or excludes: the surface reads their names with the policies' groups. */
+export function methodTargetGroupsOf(snapshot: TenantSnapshot): string[] {
+  const ids = new Set<string>()
+  for (const m of methodConfigsOf(snapshot)) for (const side of ['includeTargets', 'excludeTargets'] as const) for (const x of targetsOf(m, side)) if (isGroupTarget(x)) ids.add(str(x.id))
+  return [...ids]
+}
+
+export function authMethodsModel(snapshot: TenantSnapshot, names: NameDirectory, groupsPending = false): InventoryModel<MethodRow> {
+  const A = C.authentication
+  const o = objectLabels(snapshot, names, groupsPending)
+  const target = (x: Raw): string => (str(x.id) === 'all_users' ? A.allUsers : isGroupTarget(x) ? o.group(str(x.id)) : names.label(str(x.id)))
+  const rows: MethodRow[] = methodConfigsOf(snapshot).map((m) => {
+    const t = targetsOf(m, 'includeTargets').map(target).join(', ')
     return { id: str(m.id), enabled: m.state === 'enabled', targets: t || A.targets(0) }
   })
   return readOf(snapshot, 'authMethodsPolicy', {
@@ -422,11 +452,12 @@ export function groupEntriesOf(groups: GroupMembers): GroupEntry[] {
 
 export function groupsModel(referenced: Map<string, { include: string[]; exclude: string[] }>, groups: GroupEntry[] | null, names: NameDirectory): InventoryModel<GroupRow> {
   const G = C.groups
+  const group = (id: string): string => names.nameOf(id) ?? (groups === null ? '…' : W.unnamedGroup)
   const rows: GroupRow[] = [...referenced.entries()].map(([id, refs]) => {
     const g = groups?.find((x) => x.groupId === id)
     return {
       id,
-      name: g?.displayName ?? names.label(id),
+      name: g?.displayName ?? group(id),
       // A read that failed, or a group nobody read, has no count: its members are not read, never 0.
       members: groups === null ? '…' : g && g.read ? (g.sampled ? G.sampled(g.memberCount) : String(g.memberCount)) : NOT_READ,
       membership: g && g.read ? (g.membershipRule ? G.dynamic : G.assigned) : G.unknown,

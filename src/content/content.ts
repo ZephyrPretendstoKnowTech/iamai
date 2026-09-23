@@ -126,6 +126,11 @@ export type AppWords = {
     noneSeen: string
     hiddenNoteEligibleUnread: string
     appsNone: string
+    unnamedGroup: string
+    unnamedLocation: string
+    locationNotRead: string
+    unnamedStrength: string
+    strengthNotRead: string
   }
   picker: { placeholder: string; remove: string; searching: string; noMatches: string; typeToSearch: string; suggestions: string; results: string; done: string; matched: string; choose: string }
 }

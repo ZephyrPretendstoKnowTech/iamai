@@ -28,6 +28,8 @@ import {
   capabilitiesModel,
   devicesModel,
   groupsModel,
+  methodTargetGroupsOf,
+  objectLabels,
   licencesModel,
   locationsModel,
   peopleModel,
@@ -97,12 +99,14 @@ export function InventoryPage({ snapshot }: { snapshot: TenantSnapshot }) {
   const policies = useMemo(() => (snapshot.config.caPolicies?.rows ?? []) as Raw[], [snapshot])
   const facts = useMemo(() => policyFactsOf(snapshot, policies), [policies, snapshot])
   const referencedGroups = useMemo(() => referencedGroupsOf(facts), [facts])
+  // The groups whose names the page reads: those a policy references (the Groups tab), and those an authentication method targets.
+  const readGroups = useMemo(() => [...new Set([...referencedGroups.keys(), ...methodTargetGroupsOf(snapshot)])], [referencedGroups, snapshot])
 
   useEffect(() => {
     let cancelled = false
     void (async () => {
       const out: GroupMembersCacheEntry[] = []
-      for (const id of referencedGroups.keys()) {
+      for (const id of readGroups) {
         try {
           out.push(await getGroupMembers(snapshot.tenantId, id))
         } catch {
@@ -115,7 +119,7 @@ export function InventoryPage({ snapshot }: { snapshot: TenantSnapshot }) {
     return () => {
       cancelled = true
     }
-  }, [referencedGroups, snapshot.tenantId])
+  }, [readGroups, snapshot.tenantId])
 
   const names = useMemo(() => buildNameDirectory(snapshot, groups ?? []), [snapshot, groups])
   const viability = useMemo(() => viabilityOf(snapshot), [snapshot])
@@ -131,9 +135,9 @@ export function InventoryPage({ snapshot }: { snapshot: TenantSnapshot }) {
     <div>
       <Tabs
         tabs={[
-          { id: 'policies', label: C.tabs.policies, badge: badge('caPolicies', policies.length), render: () => <PoliciesTab snapshot={snapshot} facts={facts} names={names} /> },
+          { id: 'policies', label: C.tabs.policies, badge: badge('caPolicies', policies.length), render: () => <PoliciesTab snapshot={snapshot} facts={facts} names={names} groupsPending={groups === null} /> },
           { id: 'locations', label: C.tabs.locations, render: () => <LocationsTab snapshot={snapshot} facts={facts} /> },
-          { id: 'authentication', label: C.tabs.authentication, render: () => <AuthenticationTab snapshot={snapshot} names={names} /> },
+          { id: 'authentication', label: C.tabs.authentication, render: () => <AuthenticationTab snapshot={snapshot} names={names} groupsPending={groups === null} /> },
           { id: 'people', label: C.tabs.people, badge: badge('users', snapshot.users.length), render: () => <PeopleTab snapshot={snapshot} names={names} viability={viability} /> },
           { id: 'groups', label: C.tabs.groups, badge: referencedGroups.size, render: () => <GroupsTab referenced={referencedGroups} groups={groupEntries} names={names} /> },
           { id: 'devices', label: C.tabs.devices, badge: badge('devices', snapshot.devices.length), render: () => <DevicesTab snapshot={snapshot} names={names} /> },
@@ -156,11 +160,13 @@ const STATE_CHIP: Record<PolicyFacts['state'], ChipStatus> = {
   unknown: 'warning',
 }
 
-function PoliciesTab({ snapshot, facts, names }: { snapshot: TenantSnapshot; facts: PolicyFacts[]; names: NameDirectory }) {
+function PoliciesTab({ snapshot, facts, names, groupsPending }: { snapshot: TenantSnapshot; facts: PolicyFacts[]; names: NameDirectory; groupsPending: boolean }) {
   const P = C.policies
-  const model = policiesModel(snapshot, facts, names)
+  const model = policiesModel(snapshot, facts, names, groupsPending)
   const users = cellOf(model, 'users')
+  const o = objectLabels(snapshot, names, groupsPending)
   const list = (ids: Iterable<string>) => [...ids].map(names.label).join(', ')
+  const groupList = (ids: Iterable<string>) => [...ids].map(o.group).join(', ')
   const roleList = (ids: Set<string>) => (coversAdminSet(ids) ? P.allAdminRoles(ids.size) : [...ids].map(roleLabel).join(', '))
   return (
     <div>
@@ -175,15 +181,15 @@ function PoliciesTab({ snapshot, facts, names }: { snapshot: TenantSnapshot; fac
           ),
           state: (r) => <Chip status={STATE_CHIP[r.state]}>{P.state[r.state]}</Chip>,
           // Tooltip for the Users column: the names behind the counts.
-          users: (r) => <span title={usersDetail(r, names.label) || undefined}>{users(r)}</span>,
+          users: (r) => <span title={usersDetail(r, names.label, o.group) || undefined}>{users(r)}</span>,
         }}
         expand={(r) => (
           <div className="sub">
             <div>
-              <strong>{P.include}:</strong> {[r.who.all ? P.allUsers : '', list(r.who.users), list(r.who.groups), roleList(r.who.roles)].filter(Boolean).join('; ') || P.none}
+              <strong>{P.include}:</strong> {[r.who.all ? P.allUsers : '', list(r.who.users), groupList(r.who.groups), roleList(r.who.roles)].filter(Boolean).join('; ') || P.none}
             </div>
             <div>
-              <strong>{P.exclude}:</strong> {[list(r.whoNot.users), list(r.whoNot.groups), roleList(r.whoNot.roles), r.whoNot.guests ? P.guests : ''].filter(Boolean).join('; ') || P.none}
+              <strong>{P.exclude}:</strong> {[list(r.whoNot.users), groupList(r.whoNot.groups), roleList(r.whoNot.roles), r.whoNot.guests ? P.guests : ''].filter(Boolean).join('; ') || P.none}
             </div>
           </div>
         )}
@@ -212,12 +218,12 @@ function LocationsTab({ snapshot, facts }: { snapshot: TenantSnapshot; facts: Po
 
 // ---------- Authentication ----------
 
-function AuthenticationTab({ snapshot, names }: { snapshot: TenantSnapshot; names: NameDirectory }) {
+function AuthenticationTab({ snapshot, names, groupsPending }: { snapshot: TenantSnapshot; names: NameDirectory; groupsPending: boolean }) {
   const A = C.authentication
   const policy = authMethodsPolicyOf(snapshot)
   const campaign = ((policy?.registrationEnforcement as Raw | undefined)?.authenticationMethodsRegistrationCampaign ?? null) as Raw | null
   const migration = typeof policy?.policyMigrationState === 'string' ? policy.policyMigrationState : null
-  const methods = authMethodsModel(snapshot, names)
+  const methods = authMethodsModel(snapshot, names, groupsPending)
   const secDefaults = securityDefaultsOf(snapshot)
 
   return (
