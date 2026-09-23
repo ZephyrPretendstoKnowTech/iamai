@@ -597,6 +597,12 @@ try {
   // where finished work sits compactly in its own section; a lane tab keeps them
   // unpressed until a person presses one (checked on Ready below).
   check('Plan: on All work, Show completed and Show deferred start pressed', /^Show completed=\d+\/true \| Show deferred=\d+\/true$/.test(await evaluate(`[...document.querySelectorAll('main.page .plan-controls .focus')].map((b) => (b.textContent || '').replace((b.querySelector('.count') || {}).textContent || '', '').trim() + '=' + ((b.querySelector('.count') || {}).textContent || '') + '/' + b.getAttribute('aria-pressed')).join(' | ')`)))
+  // Finished work shrinks in place (owner, roadmap flow V2): a Completed or
+  // Deferred row is one compact line — number, lane word, title, and the day it
+  // was finished where one was recorded — with no Impact, chip or waiting line.
+  const finishedRows = await evaluate(`[...document.querySelectorAll('main.page .plan-group .plan-row')].filter((r) => /^(Completed|Deferred)$/.test(((r.querySelector('.lane') || {}).textContent || '').trim())).map((r) => ({ compact: r.hasAttribute('data-compact'), who: !!r.querySelector('.who'), chip: !!r.querySelector('.status'), reason: !!r.querySelector('.plan-row-reason'), number: ((r.querySelector('.plan-row-number') || {}).textContent || '').trim(), when: ((r.querySelector('.when') || {}).textContent || '').trim() }))`)
+  const DAY_ONLY = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/
+  check('Plan: a finished row on All work is one compact line with its number and, where recorded, its day', Array.isArray(finishedRows) && finishedRows.every((r) => r.compact && !r.who && !r.chip && !r.reason && /^\d+$/.test(r.number) && (r.when === '' || DAY_ONLY.test(r.when))), JSON.stringify((finishedRows || []).filter((r) => !(r.compact && !r.who && !r.chip && !r.reason)).slice(0, 3)))
   const allWorkLanes = await evaluate(`[...document.querySelectorAll('main.page .plan-group')].map((g) => new Set([...g.querySelectorAll('.plan-row .lane')].map((e) => (e.textContent || '').trim().split(' · ')[0])).size)`)
   check('Plan: a group on All work is the whole group, not one lane of it', Array.isArray(allWorkLanes) && allWorkLanes.some((n) => n > 1), JSON.stringify(allWorkLanes))
   await showLane('Ready')
@@ -622,7 +628,8 @@ try {
   const chipWrong = rowStates.filter(({ chip }) => !(chip === '' || chip === 'Report-only' || chip === 'Enforced'))
   check('Plan: a row’s chip is the tenant fact Report-only or Enforced, or nothing', chipWrong.length === 0, JSON.stringify(chipWrong.slice(0, 3)))
   // Every row's When and Impact say something (owner, 2026-09-11): never a blank cell.
-  const blankCells = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].filter((r) => ((r.querySelector('.when') || {}).textContent || '').trim() === '' || ((r.querySelector('.who') || {}).textContent || '').trim() === '').map((r) => ((r.querySelector('.step-title') || {}).textContent || '').trim())`)
+  // A compact (finished) row has no Impact cell by design, and is checked above.
+  const blankCells = await evaluate(`[...document.querySelectorAll('main.page .plan-row:not([data-compact])')].filter((r) => ((r.querySelector('.when') || {}).textContent || '').trim() === '' || ((r.querySelector('.who') || {}).textContent || '').trim() === '').map((r) => ((r.querySelector('.step-title') || {}).textContent || '').trim())`)
   check('Plan: no row leaves When or Impact blank', blankCells.length === 0, JSON.stringify(blankCells.slice(0, 3)))
   // The first row whose step draws the task anatomy (About this Step, Tasks
   // Remaining, Implementation Tasks, Completion Criteria) outside the two pinned

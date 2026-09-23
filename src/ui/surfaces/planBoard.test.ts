@@ -19,6 +19,7 @@ import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { directionWords, stepById } from '../../content/content.ts'
 import { laneReadings } from './planLanes.ts'
+import { absoluteDate } from '../../copy/dates.ts'
 import { STEP_GROUPS, groupOf } from '../../roadmap/stepGroups.ts'
 import {
   ALL_WORK_TAB,
@@ -34,6 +35,10 @@ import {
   applyFocus,
   asideGroupsFor,
   boardWhen,
+  boardWhenOf,
+  drawsCompact,
+  finishedDayOf,
+  laneViewOf,
   focusCounts,
   groupKeyOf,
   groupSummary,
@@ -602,6 +607,34 @@ test('Show completed and Show deferred start pressed on All work, and turning on
   assert.match(plan, /const shows = togglesOf\(focus, tab\)/, 'the toggles do not read the tab\'s default')
   assert.match(plan, /aria-pressed=\{shows\.completed\}/)
   assert.match(plan, /aria-pressed=\{shows\.deferred\}/)
+})
+
+test('a Completed or Deferred row is one compact line: number, title, its lane word and the day where one was recorded', () => {
+  // Owner, roadmap flow V2: finished work shrinks in place. The row keeps its
+  // number, its title and its lane word, and says the day it was completed or
+  // deferred when the plan recorded one; who it touches, the tenant chip and a
+  // reason line are for work still to do. Selecting it opens the step as before.
+  for (const lane of ['Completed', 'Deferred'] as const) assert.equal(drawsCompact(lane), true, lane)
+  for (const lane of ['Ready', 'Up Next', 'On Hold'] as const) assert.equal(drawsCompact(lane), false, lane)
+  const r = runFixture(fixture('demo-week2'))
+  const readings = laneReadings(r.steps)
+  const done = r.steps.find((s) => readings.get(s.id)?.lane === 'Completed' && s.history.some((h) => h.to === 'done'))
+  assert.ok(done, 'the premise: the Follow-up demo has a step completed on a recorded day')
+  const at = done.manualReview?.confirmedAt ?? done.history.filter((h) => h.to === 'done').at(-1)!.at
+  assert.equal(finishedDayOf(done, 'Completed'), absoluteDate(at), 'a completed row does not say the day it was completed')
+  // The same day the When column has always read for it (boardWhenOf), from one reading.
+  assert.equal(boardWhenOf(done, null, laneViewOf(readings.get(done.id)!, () => null)), absoluteDate(at))
+  const skipped = { ...done, manualReview: undefined, history: [...done.history, { at: '2026-09-22T12:00:00.000Z', from: 'ready' as const, to: 'skipped' as const, note: 'not now' }] }
+  assert.equal(finishedDayOf(skipped, 'Deferred'), absoluteDate('2026-09-22T12:00:00.000Z'), 'a deferred row does not say the day it was deferred')
+  // No recorded day: the line says none rather than a word in its place.
+  assert.equal(finishedDayOf({ ...done, manualReview: undefined, history: [] }, 'Completed'), null)
+  assert.equal(finishedDayOf(done, 'Ready'), null, 'work still to do has no finished day')
+  // The Plan draws every step row and every Cleanup row through the one compact rule.
+  const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
+  assert.equal(plan.match(/compact=\{drawsCompact\(lane(View)?\.lane\)\}/g)?.length, 2, 'a row kind decides its own shape')
+  const row = readFileSync('src/ui/surfaces/StepSections.tsx', 'utf8')
+  assert.match(row, /data-compact=\{compact \|\| undefined\}/, 'the compact row is not marked for its style')
+  assert.match(row, /\{!compact && <span className="who">/, 'a compact row still says who it touches')
 })
 
 test('the board vocabulary is one record, and All work is the leftmost tab and the one the Plan opens on', () => {

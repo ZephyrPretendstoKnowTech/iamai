@@ -647,7 +647,7 @@ export function boardWhenOf(step: Step, waveStart: string | null = null, read: L
   // policies. Where the two disagree the lane decides, as it does everywhere
   // else on the board, and the row is dated like the live row it is.
   if (step.status === 'done' && lane.lane === 'Completed') {
-    const at = step.manualReview?.confirmedAt ?? step.history.filter((h) => h.to === 'done').at(-1)?.at
+    const at = completedAtOf(step)
     return at ? dayLabel(at) : schedulingWords.done
   }
   const when = rowWhen(step, waveStart)
@@ -703,6 +703,29 @@ export function boardWhenOf(step: Step, waveStart: string | null = null, read: L
   if (read !== null && read.lane === 'On Hold' && read.substatus === null && read.tail !== BOARD.blockers.evidence) return schedulingWords.waiting
   if (read !== null && (read.lane === 'Up Next' || read.lane === 'On Hold') && turnsOn(step, scheduled)) return schedulingWords.waiting
   return estimatedDay(step) ? fillText(schedulingWords.estimate, { date: result }) : result
+}
+
+/** When the plan recorded a step as done: the owner's confirmation, else its last move to done; null where it recorded none. */
+const completedAtOf = (step: Step): string | null => step.manualReview?.confirmedAt ?? step.history.filter((h) => h.to === 'done').at(-1)?.at ?? null
+
+/**
+ * Whether a row draws as one compact line (owner, roadmap flow V2: finished
+ * work shrinks in place): Completed and Deferred rows. The line keeps the
+ * row's number, title and lane word, and the day it was finished where the
+ * plan recorded one (finishedDayOf); who it touches, the tenant chip and the
+ * waiting line belong to work still to do. Selecting it opens the step.
+ */
+export const drawsCompact = (lane: Lane): boolean => lane === 'Completed' || lane === 'Deferred'
+
+/**
+ * The day a compact row shows: when the step was completed (the same day its
+ * When column has always read, completedAtOf) or deferred, as a date; null
+ * where the plan recorded no day, and for work still to do. Never a word in a
+ * date's place.
+ */
+export function finishedDayOf(step: Pick<Step, 'manualReview' | 'history'>, lane: Lane): string | null {
+  const at = lane === 'Completed' ? completedAtOf(step as Step) : lane === 'Deferred' ? step.history.filter((h) => h.to === 'skipped').at(-1)?.at ?? null : null
+  return at ? dayLabel(at) : null
 }
 
 /**
