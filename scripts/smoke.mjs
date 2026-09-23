@@ -618,6 +618,15 @@ try {
   check('Plan: a header tile draws each section heading once', tileHeads.every((t) => t.pressed && t.heads.length === new Set(t.heads).size), JSON.stringify(tileHeads.filter((t) => !t.pressed || t.heads.length !== new Set(t.heads).size).slice(0, 2)))
   const allWorkLanes = await evaluate(`[...document.querySelectorAll('main.page .plan-group')].map((g) => new Set([...g.querySelectorAll('.plan-row .lane')].map((e) => (e.textContent || '').trim().split(' · ')[0])).size)`)
   check('Plan: a group on All work is the whole group, not one lane of it', Array.isArray(allWorkLanes) && allWorkLanes.some((n) => n > 1), JSON.stringify(allWorkLanes))
+  // At phone width (390px) All work's section lines and compact rows stay on
+  // the page, and the board widens nothing (owner, roadmap flow V2: check the
+  // view at desktop and mobile width).
+  await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true })
+  await sleep(400)
+  const phone = await evaluate(`(() => { const fits = (e) => { const b = e.getBoundingClientRect(); return b.left >= -1 && b.right <= innerWidth + 1 }; const heads = [...document.querySelectorAll('main.page .plan-group-head')]; const rows = [...document.querySelectorAll('main.page .plan-row[data-compact]')].filter((r) => r.offsetParent !== null); const board = document.querySelector('main.page .plan-board'); return { heads: heads.length, headsFit: heads.every(fits), rows: rows.length, rowsFit: rows.every(fits), board: board ? board.scrollWidth <= board.clientWidth + 1 : false, closedOneLine: [...document.querySelectorAll('main.page .plan-group.closed .plan-group-lead')].every((l) => l.getBoundingClientRect().height < 80) } })()`)
+  await send('Emulation.clearDeviceMetricsOverride')
+  await sleep(400)
+  check('Plan: at phone width, All work’s sections and finished rows fit the page', !!phone && phone.heads >= 1 && phone.headsFit && phone.rowsFit && phone.board && phone.closedOneLine, JSON.stringify(phone))
   // Decision H, tried as a visible line: while the board has policies at
   // Ready · Create, one line above the board counts them (a count, never a
   // name) and its control shows exactly those rows.
@@ -876,10 +885,14 @@ try {
   check('Unlicensed tenant: nobody is Ready without records', !(await evaluate(`[...document.querySelectorAll('main.page .readiness-legend li')].some((e) => /^(Ready|Seamless)/.test((e.textContent || '').trim()))`)))
   await send('Page.navigate', { url: `${BASE}&policies=0#/plan` })
   await sleep(1500)
-  check('Zero policies: the plan renders', await waitFor(`/[0-9]+ steps/.test(document.body.innerText)`))
+  // The plan's rows under their sections, each section line saying what is left
+  // of it or what became of it (All work, the default view).
+  check('Zero policies: the plan renders', await waitFor(`document.querySelector('main.page .plan-row') !== null && [...document.querySelectorAll('main.page .plan-group-meta')].some((m) => /^([0-9]+ of [0-9]+ remaining|All [0-9]+ completed)$/.test((m.textContent || '').trim()))`))
   await send('Page.navigate', { url: `${BASE}&policies=0#/plan` })
   await sleep(1500)
-  check('Zero policies: the plan renders', await waitFor(`/[0-9]+ steps/.test(document.body.innerText)`))
+  // The plan's rows under their sections, each section line saying what is left
+  // of it or what became of it (All work, the default view).
+  check('Zero policies: the plan renders', await waitFor(`document.querySelector('main.page .plan-row') !== null && [...document.querySelectorAll('main.page .plan-group-meta')].some((m) => /^([0-9]+ of [0-9]+ remaining|All [0-9]+ completed)$/.test((m.textContent || '').trim()))`))
   t = await text()
   // A sign-in with too little access names the role to ask for (prompt 31 4.18).
   // The refused-sections notice lives with the scan result, on Connect (prompt 47 Part 4).
