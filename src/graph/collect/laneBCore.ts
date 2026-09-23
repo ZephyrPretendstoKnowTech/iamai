@@ -2,6 +2,7 @@
 // derivations, all logic, no I/O. The read that feeds them is signInStream.ts.
 // Raw rows never leave the worker except through the saved records (cache.ts).
 import { COLLECTOR_REGISTRY } from './registry.ts'
+import { RECOVERY_CANDIDATES_PER_PERSON } from './constants.ts'
 import type { ScenarioEvidence } from '../../derive/evidence.ts'
 import { foldAll } from '../../derive/rowFold.ts'
 import type { RowFold } from '../../derive/rowFold.ts'
@@ -315,6 +316,18 @@ export function aggregate(rows: Iterable<StoredSignIn>): Record<string, UserEvid
   return foldAll(aggregateFold(), rows)
 }
 
+/**
+ * A person's newest RECOVERY_CANDIDATES_PER_PERSON recovery candidates, newest
+ * first, in place. The sort is stable, so within one second the first seen are
+ * kept; a list trimmed as it grows keeps what one trim at the end would, since
+ * a candidate dropped already has that many ahead of it.
+ */
+function keepNewest(list: NonNullable<UserEvidence['recoveryCandidates']>): NonNullable<UserEvidence['recoveryCandidates']> {
+  list.sort((a, b) => b.at.localeCompare(a.at))
+  if (list.length > RECOVERY_CANDIDATES_PER_PERSON) list.length = RECOVERY_CANDIDATES_PER_PERSON
+  return list
+}
+
 export function aggregateFold(): RowFold<Record<string, UserEvidence>> {
   const perUser: Record<string, UserEvidence> = {}
   // Proof is kept per method class and platform family, never in one slot: a
@@ -368,6 +381,7 @@ export function aggregateFold(): RowFold<Record<string, UserEvidence>> {
         let list = recovery.get(row.userId)
         if (!list) recovery.set(row.userId, (list = []))
         list.push(candidate)
+        if (list.length >= 2 * RECOVERY_CANDIDATES_PER_PERSON) keepNewest(list)
       }
       if (read.mfa) {
         const into = read.mfa === GENERIC_MFA ? generic : named
@@ -409,7 +423,7 @@ export function aggregateFold(): RowFold<Record<string, UserEvidence>> {
       for (const [id, u] of Object.entries(perUser)) {
         u.lastMfaSuccess = named.get(id) ?? generic.get(id) ?? null
         u.proofs = [...(proofs.get(id)?.values() ?? [])].sort((a, b) => (a.cls < b.cls ? -1 : a.cls > b.cls ? 1 : (a.os ?? '') < (b.os ?? '') ? -1 : 1))
-        u.recoveryCandidates = (recovery.get(id) ?? []).sort((a, b) => b.at.localeCompare(a.at))
+        u.recoveryCandidates = keepNewest(recovery.get(id) ?? [])
         const seen = platforms.get(id)
         u.platforms = PLATFORMS.filter((os) => seen?.has(os)).map((os) => ({ os, at: seen?.get(os) as string }))
         const byOs = devices.get(id)
