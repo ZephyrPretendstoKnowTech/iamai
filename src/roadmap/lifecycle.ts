@@ -27,14 +27,13 @@
 // no two representations to keep in step. Pure, no DOM.
 import { engine } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
-import { absoluteDate } from '../copy/dates.ts'
 import type { ObservationChange } from './observation.ts'
 import { dimensionWords, historyReset } from './observation.ts'
 import { holdOf, waitsOnFoundation } from './holds.ts'
 import { addsExclusionsToEnforced, awaitsWorkflowRecord, implementationOffered, operationsOf, policyHold, unavailableReason } from './operations.ts'
 import { SECURITY_DEFAULTS_STEP_ID } from './enforceWaits.ts'
 import { list } from '../copy/statements.ts'
-import { scheduleOf } from './stepSchedule.ts'
+import { estimatedDay, scheduleOf, shownDay } from './stepSchedule.ts'
 import type { Blocker, Step, StepStatus } from './types.ts'
 import { DIRECTION_BLOCKER, directionBlockerStep } from './directionAnswers.ts'
 
@@ -400,7 +399,8 @@ export function nextMilestone(step: Step, opts: { undated?: boolean } = {}): Mil
     // Undated, the create keeps its words for a held create: no day, same gate.
     const scheduled = step.scheduled ? scheduleOf(step) : null
     if (!undated && scheduled?.class === 'scheduled' && scheduled.transition === 'createReportOnly' && scheduled.at !== null) {
-      const date = absoluteDate(scheduled.at)
+      // A day that is an estimate says so, as the board's row does (stepSchedule.ts shownDay).
+      const date = shownDay(scheduled.at, estimatedDay(step))
       const label = gate ? fillText(MILESTONE.prepareScheduled, { date, measure: gate.measure, threshold: gate.threshold }) : fillText(MILESTONE.prepareScheduledOther, { date })
       return { kind: 'deploy', label, at: scheduled.at, gatedBy: null }
     }
@@ -447,8 +447,8 @@ export function nextMilestone(step: Step, opts: { undated?: boolean } = {}): Mil
     const label = !later
       ? MILESTONE.enforce
       : days > 0
-        ? fillText(MILESTONE.enforceScheduled, { date: absoluteDate(at), days: String(days) })
-        : fillText(MILESTONE.enforceScheduledOther, { date: absoluteDate(at) })
+        ? fillText(MILESTONE.enforceScheduled, { date: shownDay(at, estimatedDay(step)), days: String(days) })
+        : fillText(MILESTONE.enforceScheduledOther, { date: shownDay(at, estimatedDay(step)) })
     return { kind: 'enforce', label, at, gatedBy: null }
   }
   if (s.lifecycle === 'report-only') {
@@ -463,7 +463,7 @@ export function nextMilestone(step: Step, opts: { undated?: boolean } = {}): Mil
     const closed = readyOn !== null && step.tracking?.noticedAt != null && Date.parse(readyOn) <= Date.parse(step.tracking.noticedAt)
     const at = closed || undated ? null : readyOn
     const label =
-      s.observation && historyReset(s.observation) ? s.observation.note : closed ? MILESTONE.observeRecords : at ? fillText(MILESTONE.observeUntil, { date: absoluteDate(at) }) : MILESTONE.observe
+      s.observation && historyReset(s.observation) ? s.observation.note : closed ? MILESTONE.observeRecords : at ? fillText(MILESTONE.observeUntil, { date: shownDay(at, estimatedDay(step)) }) : MILESTONE.observe
     return { kind: 'observe', label, at, gatedBy: null }
   }
   if (s.condition === 'needs-decision') return { kind: 'decide', label: MILESTONE.decide, at: null, gatedBy: step.blockedReason }

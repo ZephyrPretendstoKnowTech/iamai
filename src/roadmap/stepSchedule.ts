@@ -35,6 +35,9 @@ import { holdOf } from './holds.ts'
 import { directionBlockerStep } from './directionAnswers.ts'
 import type { HoldKind } from './holds.ts'
 import { awaitsWorkflowRecord, implementationOffered } from './operations.ts'
+import { schedulingWords } from '../content/content.ts'
+import { fillText } from '../content/render.ts'
+import { absoluteDate } from '../copy/dates.ts'
 
 /**
  * Where a step stands in the schedule:
@@ -216,11 +219,23 @@ export function scheduleOf(step: Step): StepSchedule {
  * (`manualReview`) or a Direction step's questions (`directionQuestions`), and
  * nothing in the tenant settles when either is done. The board's When column
  * says so ("Est. {date}", pages.plan.when.estimate; ui/surfaces/planBoard.ts
- * boardWhenOf), and the opened step's rail says it in the same words
- * (ui/surfaces/stepContract.ts railOf).
+ * boardWhenOf), and every other place that prints the day says it in the same
+ * words (`shownDay`).
  */
 export function estimatedDay(step: Pick<Step, 'manualReview' | 'directionQuestions'>): boolean {
   return Boolean(step.manualReview || step.directionQuestions)
+}
+
+/**
+ * A day the plan gives a step, as every surface prints it: "Est. Aug 31, 2026"
+ * where the day is an estimate (`estimatedDay`), else the day. The rail, the
+ * milestone and its Next line, the Dates line and the calendar read this, so
+ * none of them states as a deadline a day the board's row reads as an estimate
+ * (R4-34: the rail, then the lead, the export and the calendar, read "Aug 31,
+ * 2026" bare under a row reading "Est. Aug 31, 2026").
+ */
+export function shownDay(at: string, estimate: boolean): string {
+  return estimate ? fillText(schedulingWords.estimate, { date: absoluteDate(at) }) : absoluteDate(at)
 }
 
 /** A step's one dated event, as an export books it: what the day is for, and the days it spans. */

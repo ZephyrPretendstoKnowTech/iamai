@@ -363,3 +363,48 @@ test('the Plan, the Export page and the step snapshots read the plan-wide dates 
   assert.match(exportPage, /announcementDraft\(steps, held\)/, 'the Export page\'s announcement')
   assert.match(read('../../testing/stepSnapshots.ts'), /planDates\([^)]*f\.snapshot, \(s\) => boardHolds\(s, laneViewFor\(s, board\)\)\)/, 'the step snapshots')
 })
+
+// R4-34, the rest of it: the rail was the only place besides the board that
+// said "Est.". On demo week two with Direction approved, Protect Sign-in Method
+// Registration read "Est. Aug 31, 2026" on its row and rail while its lead read
+// "Create the policy in report-only on Aug 31, 2026; …", its export's Dates line
+// "Report-only from Aug 31, 2026 · …", and the calendar booked "Create in
+// report-only" on Aug 31 with no mark - a day that moves with a person's review
+// or a Direction answer, stated as a deadline. Every surface that prints such a
+// day now prints it as the board does (roadmap/stepSchedule.ts shownDay).
+test('a day the board reads as an estimate is never printed bare: the lead, the Next line, the Dates line and the calendar', () => {
+  const EST = schedulingWords.estimate.split('{')[0]
+  /** True where `day` appears in `text` without the estimate words in front of it. */
+  const bare = (text: string, day: string): boolean => text.split(day).slice(0, -1).some((before) => !before.endsWith(EST))
+  let estimates = 0
+  let booked = 0
+  for (const [name, make] of [...CASES, ['demo-week2, Direction approved', () => withDirectionApproved(curatedFixture('demo-week2'))]] as [string, () => Fixture][]) {
+    const f = make()
+    const r = runFixture(f, {}, null, f.snapshot.asOf)
+    const answers = f.mapping.breakGlassAnswers ?? null
+    const board = boardReadingsOf(r.steps, r.schedule.cleanup, answers)
+    const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot)
+    const ctxOf = (step: Step): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: step.reportOnlyAt ?? null, scheduledOn: waveStartOf(step), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming })
+    const view = exportViewsOf(r.steps, r.schedule.cleanup, answers, ctxOf)
+    const ics = buildIcs(r.steps, 'Tenant', 'plan-est', view).replace(/\r\n /g, '')
+    for (const step of r.steps) {
+      const lane = laneViewFor(step, board)
+      const when = boardWhenOf(step, waveStartOf(step), lane)
+      if (!when.startsWith(EST)) continue
+      estimates++
+      const day = when.slice(EST.length)
+      const where = `${name}/${step.id}`
+      const body = stepBodyOf(step, ctxOf(step), { lane, blockers: readinessBlockersOf(board.readings.get(step.id), board.titleOf), prerequisiteLabel: prerequisiteLabelFor(board.readings) })
+      const v = view(step)
+      for (const [what, text] of [['lead', body.contract.milestone.label], ['Next line', body.contract.milestone.line], ['What to do', body.contract.whatToDo.text], ['Dates line', v.dates], ['export Next line', v.next]] as [string, string | null][]) {
+        if (text !== null) assert.equal(bare(text, day), false, `${where}: the ${what} reads ${day} bare under a row reading ${when}: "${text}"`)
+      }
+      const entry = ics.split('BEGIN:VEVENT').find((e) => e.includes(`UID:plan-est-${step.id}@iamai`))
+      if (entry === undefined) continue
+      booked++
+      const summary = entry.split('\r\n').find((l) => l.startsWith('SUMMARY:')) ?? ''
+      assert.ok(summary.includes(fillText(schedulingWords.estimate, { date: absoluteDate(scheduledEventOf(step)!.start) }).replace(/,/g, '\\,')), `${where}: the calendar books an estimated day as a fixed one: ${summary}`)
+    }
+  }
+  assert.ok(estimates > 0 && booked > 0, `the premise: rows the board reads as an estimate (${estimates}), booked in the calendar (${booked})`)
+})
