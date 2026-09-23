@@ -200,14 +200,14 @@ test('R4-11: another enforced policy\'s caveats are not a correction to the goal
   assert.deepEqual((step.action.changes ?? []).map((c) => c.field), ['State'])
 })
 
-test('R4-11: a report-only policy the goal reads below its floor is not switched on by that rule', () => {
-  // The conservative edge of the rule above. On the pin the plan's own admins
-  // policy asks for the baseline's "Modern MFA + TAP", and coverage reads that
-  // as weaker than the goal's phishing-resistant floor: its grant is the finding
-  // (gap 4). The grant the update writes is the one the policy already holds, so
-  // nothing is owed that the plan can write — and still the policy is not turned
-  // on here. Whether the baseline's policy should be enforced as written, below
-  // the goal, is the owner's call; until then it keeps the update it had.
+test('R4-11: a report-only policy the goal reads below its floor is switched on once it holds the grant the plan writes', () => {
+  // On the pin the plan's own admins policy asks for the baseline's "Modern MFA
+  // + TAP", and coverage reads that as weaker than the goal's phishing-resistant
+  // floor. The grant the update writes is the one the policy already holds, so
+  // nothing is owed that the plan can write. It used to keep that grant as its
+  // "correction" on every scan and never be turned on. The owner's call
+  // (2026-09-22): the pinned baseline wins, so it is turned on as written, and
+  // the step says the grant is weaker (Action.belowGoalFloor, belowGoalFloor.test.ts).
   const base = structuredClone(fixture('small'))
   base.baseline = pinnedPackage()
   const created = runFixture(base).steps.find((s) => s.id === 's-goal-admins-phishing-resistant')?.action.resolution?.policies ?? []
@@ -219,5 +219,5 @@ test('R4-11: a report-only policy the goal reads below its floor is not switched
   const cov = run.coverage.results.find((r) => r.goal.id === 'admins-phishing-resistant')!
   assert.ok(cov.candidates.some((c) => c.policyId === 'c0200000-0000-4000-8000-0000000000ad' && c.meetsFloor === false), `premise: the goal reads its own policy below the floor — ${JSON.stringify(cov.candidates.map((c) => [c.policyName, c.meetsFloor]))}`)
   const ops = run.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!.action.resolution?.policies ?? []
-  assert.ok(ops.length > 0 && ops.every((o) => o.mode === 'update' && o.body.state === undefined), `a policy below its floor was turned on: ${JSON.stringify(ops.map((o) => o.body))}`)
+  assert.deepEqual(ops.map((o) => [o.mode, o.body]), [['update', { state: 'enabled' }]], `the switch, and not the grant it already holds: ${JSON.stringify(ops.map((o) => o.body))}`)
 })

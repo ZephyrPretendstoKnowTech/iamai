@@ -29,7 +29,7 @@ import { dimensionWords, watchedArrive } from '../../roadmap/observation.ts'
 import type { Condition, Lifecycle, Milestone } from '../../roadmap/lifecycle.ts'
 import { heldForReview, nextMilestone, reviewCauses } from '../../roadmap/lifecycle.ts'
 import type { PolicyHold, UnavailableReason } from '../../roadmap/operations.ts'
-import { awaitsWorkflowRecord, enforcesOnRun, implementationOffered, isPreserved, operationsOf, policyHold, switchedOffPolicy, unavailableReason } from '../../roadmap/operations.ts'
+import { awaitsWorkflowRecord, enforcesOnRun, implementationOffered, isPreserved, operationsOf, policyHold, switchedOffPolicy, unavailableReason, strengthNameIn } from '../../roadmap/operations.ts'
 import { requiredMembers } from '../../roadmap/tracking.ts'
 import { unreadLine } from '../../roadmap/evidence.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
@@ -138,6 +138,8 @@ type ContractWords = {
   foundEnforcedBelowThresholdFloor: string
   /** A tenant's own policy delivering the goal, where it differs from the baseline's (Action.ownPolicyDiffers). */
   ownPolicyDiffers: { label: string; note: string }
+  /** The plan's policy asking for less than its goal's grant floor (Action.belowGoalFloor). */
+  belowGoalFloor: { label: string; value: string; note: string; floors: Record<string, string>; grantMfa: string; grantStrength: string }
   /** The people marked on the campaign to turn on without, for now (roadmap/followUp.ts). */
   followUp: { label: string; campaign: string; campaignOpen: string; method: string; risk: string; pickerLabel: string; pickerHelp: string; save: string; printed: string; printedNone: string }
   /** The threshold where the scan could prove only a floor under the value. */
@@ -483,6 +485,8 @@ export type StepContract = {
   inventory?: ContractInventory | null
   /** The people marked on the campaign to turn this policy on without, for now, and what happens to them; null where there are none. */
   followUp: { count: number; text: string } | null
+  /** Where the policy the plan writes asks for less than the goal's grant floor, the sentence that says so (Action.belowGoalFloor); null elsewhere. */
+  belowGoalFloor: { text: string; floor: string } | null
   whatToDo: ContractAction
   fix: ContractFix[]
   /**
@@ -1386,6 +1390,7 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     who: whoOf(step, ctx),
     inventory,
     followUp: followUpOf(step, ctx),
+    belowGoalFloor: belowGoalFloorOf(step, ctx),
     whatToDo,
     fix,
     enforcementWaits: enforcementWaitsOf(step),
@@ -1863,6 +1868,28 @@ function followUpOf(step: Step, ctx: StepVarContext): StepContract['followUp'] {
   return { count: ids.length, text: fillText(template, { names, step: stepById[CAMPAIGN_STEP_ID]?.title ?? CAMPAIGN_STEP_ID }) }
 }
 
+/**
+ * The pinned baseline asking for less than the goal it is filed under (owner,
+ * 2026-09-22, R4-11): the plan builds and turns on the policy as written, and
+ * the step says its grant is weaker, by the tenant's own name for the strength.
+ */
+function belowGoalFloorOf(step: Step, ctx: StepVarContext): StepContract['belowGoalFloor'] {
+  const b = step.action.belowGoalFloor
+  if (!b) return null
+  const W = CONTRACT.belowGoalFloor
+  const floor = W.floors[b.floor]
+  if (floor === undefined) return null
+  const strength = b.strengthId === null ? null : strengthNameIn(b.strengthId, ctx.snapshot, ctx.mapping)
+  const grant = strength !== null ? fillText(W.grantStrength, { strength }) : b.builtIn.includes('mfa') ? W.grantMfa : null
+  return grant === null ? null : { text: fillText(W.note, { grant, floor }), floor }
+}
+
+/** Its tile: a warning that holds nothing, on every stage of the step. */
+function belowGoalFloorTile(c: StepContract): ReadinessTile | null {
+  if (c.belowGoalFloor == null) return null
+  return { key: 'below-goal-floor', label: CONTRACT.belowGoalFloor.label, tone: 'warn', value: fillText(CONTRACT.belowGoalFloor.value, { floor: c.belowGoalFloor.floor }), note: c.belowGoalFloor.text }
+}
+
 /** Their tile: a warning, never a hold — the person chose to go ahead without them. */
 function followUpTile(c: StepContract): ReadinessTile | null {
   if (c.followUp == null) return null
@@ -2307,7 +2334,7 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
     return { tiles, satisfied: configuredTiles.filter(t => t.tone === 'good'), bar: barOf(c) }
   }
   const inventory: ReadinessTile | null = c.inventory ? { key: 'directory-inventory', label: c.inventory.label, value: `${c.inventory.complete ? '' : 'At least '}${c.inventory.count} ${plural(c.inventory.count, 'guest')}`, note: [c.inventory.note, c.inventory.names.length > 0 ? CONTRACT.inventoryNames : null, ...c.inventory.names].filter((x): x is string => x !== null).join('\n'), tone: 'info' } : null
-  const facts = [enforcedReadingTile(step), ownPolicyTile(step), followUpTile(c), blindReadingTile(step, c), ...emergencyTiles(step, c), ...configuredTiles, ...(configuration.length && step.id !== 's-prereq-break-glass' ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), exclusionsTile(step, c), exclusionsReachTile(c), peopleTile(c), implementationTile(c), inventory].filter((x): x is ReadinessTile => x !== null)
+  const facts = [enforcedReadingTile(step), ownPolicyTile(step), belowGoalFloorTile(c), followUpTile(c), blindReadingTile(step, c), ...emergencyTiles(step, c), ...configuredTiles, ...(configuration.length && step.id !== 's-prereq-break-glass' ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), exclusionsTile(step, c), exclusionsReachTile(c), peopleTile(c), implementationTile(c), inventory].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
   // The emergency step's failing checks are its account slots' lines (P0-7): no check tile beside them.
   const fixes = fixTiles(c.fix, prerequisiteLabel).filter((t) => !(step.emergency && t.key.startsWith('check:')) && !(configuration.length && /passkey.*(?:review|settings)|profile.*review/i.test(`${t.label} ${t.value}`)))
