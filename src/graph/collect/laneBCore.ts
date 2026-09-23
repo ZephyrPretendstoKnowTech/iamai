@@ -91,7 +91,7 @@ export function mapRow(raw: unknown): StoredSignIn | null {
           displayName: typeof pol.displayName === 'string' ? pol.displayName : undefined,
           result: typeof pol.result === 'string' ? pol.result : undefined,
         }
-      })
+      }).filter((p) => keptPolicyResult(p.result))
     : null
   return {
     id: r.id,
@@ -427,6 +427,16 @@ const RESULT_CLASS: Record<string, PolicyResultClass> = {
   failure: 'enforcedFailure',
   success: 'enforcedSuccess',
 }
+
+/**
+ * The policy results a derivation reads: the five counted results and every
+ * report-only one (`reportOnlyNotApplied` included, deriveReportOnlyPolicyIds).
+ * A sign-in carries an entry for every policy in the tenant, and most say
+ * `notApplied` or `notEnabled`; mapRow drops those and any other value, so a
+ * stored record holds only what is read. Rows stored before this carry them
+ * too, and every derivation reads both alike.
+ */
+export const keptPolicyResult = (r: string | undefined): boolean => r !== undefined && (Object.hasOwn(RESULT_CLASS, r) || r.startsWith('reportOnly'))
 
 const CLASSES: PolicyResultClass[] = [
   'reportOnlyFailure',

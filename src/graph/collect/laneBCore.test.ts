@@ -3,7 +3,8 @@
 // derived table. All I/O is injected — no fetch, no IndexedDB.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { aggregate, deriveBlockedToday, derivePolicyResults, deriveUsageSignals, mapRecoveryAudit, mapRow, recoveryAuditRequest, runLaneB } from './laneBCore.ts'
+import { aggregate, deriveAggregates, deriveBlockedToday, derivePolicyResults, deriveReportOnlyPolicyIds, deriveUsageSignals, mapRecoveryAudit, mapRow, recoveryAuditRequest, runLaneB } from './laneBCore.ts'
+import { deriveScenarioEvidence } from '../../derive/evidence.ts'
 import type { LaneBDeps } from './laneBCore.ts'
 import type { StoredSignIn } from './types.ts'
 
@@ -233,6 +234,45 @@ test('risk: the higher verdict decides the level; hidden and unknown remain outs
   assert.deepEqual(usage.riskMedium.userIds, ['u2'])
   assert.deepEqual(usage.riskMedium.byDetail, { aggregated: 1, 'during sign-in': 1 })
   assert.equal(usage.legacyAuth.count, 0)
+})
+
+// The results no derivation reads. Every sign-in carries one entry per policy
+// in the tenant, and these are most of them.
+const UNREAD_RESULTS = ['notApplied', 'notEnabled', 'unknownFutureValue', undefined]
+const READ_RESULTS = ['success', 'failure', 'reportOnlySuccess', 'reportOnlyFailure', 'reportOnlyInterrupted', 'reportOnlyNotApplied']
+
+test('mapRow keeps only the policy results a derivation reads', () => {
+  const raw = {
+    id: 'kept-results',
+    createdDateTime: iso(1),
+    userId: 'u1',
+    appliedConditionalAccessPolicies: [...READ_RESULTS, ...UNREAD_RESULTS].map((result, i) => ({ id: `p${i}`, displayName: `Policy ${i}`, ...(result === undefined ? {} : { result }) })),
+  }
+  assert.deepEqual(mapRow(raw)!.appliedConditionalAccessPolicies!.map((p) => p.result), READ_RESULTS)
+  assert.equal(mapRow({ ...raw, appliedConditionalAccessPolicies: 'not a list' })!.appliedConditionalAccessPolicies, null)
+  assert.deepEqual(mapRow({ ...raw, appliedConditionalAccessPolicies: [{ id: 'p', result: 'notApplied' }] })!.appliedConditionalAccessPolicies, [])
+})
+
+test('dropping the unread policy results changes no derivation', () => {
+  const results = [...READ_RESULTS, ...UNREAD_RESULTS]
+  const rows: StoredSignIn[] = Array.from({ length: 40 }, (_, i) => ({
+    id: `drop-${i}`,
+    createdDateTime: iso(Math.floor(i / 2) * 7 + 1),
+    userId: `u${i % 7}`,
+    status: { errorCode: i % 5 === 0 ? 53003 : 0 },
+    conditionalAccessStatus: i % 3 === 0 ? 'failure' : 'success',
+    appliedConditionalAccessPolicies: i % 11 === 0 ? null : Array.from({ length: 5 }, (_, k) => ({ id: `p${(i + k) % 6}`, displayName: k % 2 ? `Policy ${(i + k) % 6}` : undefined, result: results[(i * 5 + k) % results.length] })),
+  }))
+  const unread = new Set<string | undefined>(UNREAD_RESULTS)
+  const stripped = rows.map((r) => ({ ...r, appliedConditionalAccessPolicies: r.appliedConditionalAccessPolicies?.filter((p) => !unread.has(p.result)) ?? null }))
+  assert.deepStrictEqual(aggregate(stripped), aggregate(rows))
+  assert.deepStrictEqual(derivePolicyResults(stripped), derivePolicyResults(rows))
+  assert.deepStrictEqual(deriveReportOnlyPolicyIds(stripped), deriveReportOnlyPolicyIds(rows))
+  assert.deepStrictEqual(deriveBlockedToday(stripped), deriveBlockedToday(rows))
+  assert.deepStrictEqual(deriveUsageSignals(stripped), deriveUsageSignals(rows))
+  assert.deepStrictEqual(deriveAggregates(stripped), deriveAggregates(rows))
+  assert.deepStrictEqual(deriveScenarioEvidence(stripped), deriveScenarioEvidence(rows))
+  assert.ok(deriveBlockedToday(rows).length > 0 && derivePolicyResults(rows).length > 0, 'the rows reach the policy derivations')
 })
 
 test('omitted and future device facts stay unreported while explicit false is retained', () => {
