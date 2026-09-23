@@ -231,14 +231,34 @@ test('a deferred floor step prints once, in the Deferred list, never in full und
   const floorStep = byId(p.steps, 's-goal-register-info-protected')
   assert.equal(floorStep.floor, true, 'the premise: a floor step')
   assert.equal(p.board.laneOf(floorStep.id).lane, 'Deferred', 'the premise: the board reads it Deferred')
-  const deferred = deferredRows(p.steps)
+  const deferred = deferredRows(p.steps, p.board.laneOf)
   for (const id of ['s-goal-register-info-protected', 's-goal-block-auth-transfer']) assert.ok(deferred.some((s) => s.id === id), `${id} is not in the Deferred list`)
-  // The floor group the print draws is floorRows less the deferred rows (PrintPlan.tsx).
+  // The floor group the print draws is floorRows less the rows it lists as lines (PrintPlan.tsx).
   const deferredIds = new Set(deferred.map((s) => s.id))
   assert.equal(floorRows(p.steps).filter((s) => !deferredIds.has(s.id)).some((s) => s.id === floorStep.id), false, 'the deferred floor step still prints in the floor\'s group')
   // Every step the board reads Deferred is in the list, and nothing else is.
   const boardDeferred = p.steps.filter((s) => !s.doesntApply && p.board.laneOf(s.id).lane === 'Deferred').map((s) => s.id).sort()
   assert.deepEqual([...deferredIds].sort(), boardDeferred, 'the Deferred list and the board\'s Deferred lane differ')
+  // A deferred policy the tenant already enforces is Completed on the board (a
+  // terminal outcome reached comes before a deferral, actionability/lanes.ts),
+  // and the print listed it twice, under Completed and again under Deferred.
+  // Mid after the recovery test with every step the Plan offers to defer
+  // deferred: Block Device Code Sign-in and Require MFA for Guests.
+  const pre = plan('mid', { stage: 'recovered' })
+  const deferrable = pre.steps.filter((s) => s.status !== 'done' && s.status !== 'skipped' && (contentStepFor(s) as { skip?: boolean } | undefined)?.skip === true).map((s) => s.id)
+  const m = plan('mid', { stage: 'recovered', skips: deferrable })
+  const enforced = m.steps.filter((s) => s.status === 'skipped' && !s.doesntApply && m.board.laneOf(s.id).lane === 'Completed')
+  assert.ok(enforced.length > 0, 'the premise: a deferred step the board reads Completed')
+  const listedDeferred = new Set(deferredRows(m.steps, m.board.laneOf).map((s) => s.id))
+  const listedDone = new Set(completedRows(m.steps, m.board.laneOf).map((s) => s.id))
+  for (const s of enforced) {
+    assert.ok(listedDone.has(s.id), `${s.id} is not listed under Completed, where the board reads it`)
+    assert.equal(listedDeferred.has(s.id), false, `${s.id} is listed under Completed and again under Deferred`)
+  }
+  // No row the document lists as a line, Completed or Deferred, prints in full elsewhere.
+  const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
+  assert.match(print, /const listed = new Set\(\[\.\.\.done, \.\.\.deferred\]\.map\(\(s\) => s\.id\)\)/, 'the print decides for itself which rows it lists as lines')
+  assert.equal(print.match(/\.filter\(notListed\)/g)?.length, 3, 'a phase, the undated rows or the floor\'s group prints a row the document lists as a line')
 })
 
 // ---- What holds the plan, on the cover ----

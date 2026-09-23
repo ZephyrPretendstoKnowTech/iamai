@@ -11,6 +11,7 @@ import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { readFileSync } from 'node:fs'
 import { deferredRows, phaseRows, planPhases, stepListOf } from './planRows.ts'
 import { stepContract } from './stepContract.ts'
+import { boardOf } from './planBoard.ts'
 import type { StepVarContext } from './stepVars.ts'
 
 test('the row, the body and the communications use the one content title', () => {
@@ -40,7 +41,7 @@ test('the row, the body and the communications use the one content title', () =>
 test('the printed timeline names each phase step by the title the board and the opened step show', () => {
   const f = allFixtures().find((x) => x.name === 'small')!
   const r = runFixture(f)
-  const deferred = new Set(deferredRows(r.steps).map((s) => s.id))
+  const deferred = new Set(deferredRows(r.steps, boardOf(r.steps, r.schedule.cleanup, null).laneOf).map((s) => s.id))
   const cells = planPhases(r.schedule).map((w) => stepListOf(phaseRows(r.steps, w).filter((s) => !deferred.has(s.id))))
   const printed = cells.join('; ')
   // The premise: the engine's goal statement and the content title differ here.
@@ -55,7 +56,7 @@ test('the printed timeline names each phase step by the title the board and the 
   // (This compared stepListOf with the same map it is made of, which could not
   // fail.)
   const other = runFixture(fixture('getiamai'))
-  const off = new Set(deferredRows(other.steps).map((s) => s.id))
+  const off = new Set(deferredRows(other.steps, boardOf(other.steps, other.schedule.cleanup, null).laneOf).map((s) => s.id))
   const phased = planPhases(other.schedule).flatMap((w) => phaseRows(other.steps, w).filter((s) => !off.has(s.id)))
   const names = planPhases(other.schedule).flatMap((w) => stepListOf(phaseRows(other.steps, w).filter((s) => !off.has(s.id))).split('; '))
   const renamed = phased.filter((s) => s.title !== contentTitle(s))
