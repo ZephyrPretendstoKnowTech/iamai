@@ -846,6 +846,26 @@ test('In place says so about the POLICY, and a threshold never shown met is said
   }
 })
 
+// The finished reading reads its count out of the readiness line, and read it as
+// digits alone. Once the count carries its thousands separator (copy/statements.ts
+// figure), "3,569 of 4,900" matched as "569 of 4": no shortfall, and the large
+// tenant's enforced MFA policy, 1,331 people short of its 90% threshold, read
+// "IAMAI cannot measure it".
+test('the finished reading reads a count with its thousands separator', () => {
+  const f = fixture('large')
+  const short = caseOf(runFixture(f), f, 's-goal-mfa-all-users')
+  const line = short.step.readiness.lines[0]
+  assert.ok(/^\d+ of \d+ people/.test(line) || /^\d[\d,]* of \d[\d,]* people/.test(line), `the premise: the line leads with its count (${line})`)
+  const separated = line.replace(/^(\d+) of (\d+)/, (_m, a: string, b: string) => `${Number(a).toLocaleString('en')} of ${Number(b).toLocaleString('en')}`)
+  assert.match(separated, /^3,569 of 4,900 people/, 'the premise: the count as count() prints it')
+  const step = { ...short.step, readiness: { ...short.step.readiness, lines: [separated, ...short.step.readiness.lines.slice(1)] } }
+  const tile = [...readinessOf(step, stepContract(step, short.ctx)).tiles, ...readinessOf(step, stepContract(step, short.ctx)).satisfied].find((x) => x.key === FINISHED_READING) as { value: string; note: string | null } | undefined
+  assert.ok(tile, 'the premise: the finished reading is drawn')
+  assert.match(tile.value, /^3,569 of 4,900 /, tile.value)
+  assert.match(String(tile.note), /holds enforcement until MFA readiness reaches 90%; it is 73% now\./, String(tile.note))
+  assert.doesNotMatch(String(tile.note), /cannot measure/, String(tile.note))
+})
+
 test('an enforced step waiting on the person says so, instead of rendering nothing at all', () => {
   // Ready / Enforced, milestone "Review now", ZERO readiness tiles and ZERO
   // findings. Three readers reported that empty step, two of them on the same

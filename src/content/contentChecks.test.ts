@@ -70,6 +70,15 @@ test('the readiness summary reads in the shape the walk reads, at a count of one
   const m = withGuest.match(RE.readinessSummary)!
   assert.equal(Number(m[2]) + Number(m[3] ?? 0), 31, 'the walk reads the whole cohort: people plus guests')
   assert.match(textAt('pages.readiness.summaryNone'), RE.readinessSummaryNone)
+  // A count of a thousand or more carries its separator (copy/statements.ts
+  // figure), and the shape the walk reads must read it: "(\d+) of (\d+)" found
+  // no summary on a tenant of 4,169 people, and the walk reported it missing.
+  const large = fillText(textAt('pages.readiness.summary'), { ready: 1234, cohort: cohortWords(4169 + 197, 197) })
+  assert.equal(large, '1,234 of 4,169 people and 197 guests are ready for phishing-resistant sign-in.')
+  const lm = large.match(RE.readinessSummary)
+  assert.ok(lm, 'the walk reads the summary at a thousand and more')
+  const figure = (s: string | undefined): number => Number(String(s ?? 0).replace(/,/g, ''))
+  assert.deepEqual([figure(lm[1]), figure(lm[2]) + figure(lm[3])], [1234, 4366], 'and reads the whole count, not its last three digits')
 })
 
 test('the seven readiness states are named, in the worklist order', () => {
@@ -86,4 +95,8 @@ test("a report-only step's two gates render in the shape the walk reads", () => 
   assert.match(fillText(tracked[1], { reportOnly: '12 Aug', evidenceGate: gate('readyNow', { n: 14 }) }), RE.gateEvidence)
   assert.match(fillText(tracked[1], { reportOnly: '12 Aug', evidenceGate: gate('evidenceToday', { failures: 2, seen: 3, people: 4, n: 14 }) }), RE.gateEvidence)
   assert.match(fillText(tracked[1], { reportOnly: '12 Aug', evidenceGate: gate('evidenceTodayUnread', { seen: 3, people: 4, n: 14 }) }), RE.gateEvidence)
+  // At a thousand and more every count carries its separator (copy/statements.ts figure), and the walk still reads the gate.
+  const big = fillText(tracked[1], { reportOnly: '12 Aug', evidenceGate: gate('evidenceToday', { failures: 1200, seen: 3981, people: 4169, n: 14 }) })
+  assert.match(big, /1,200 failing or interrupted, 3,981 of 4,169 active people/, big)
+  assert.match(big, RE.gateEvidence)
 })
