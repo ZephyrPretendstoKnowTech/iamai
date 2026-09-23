@@ -8,6 +8,10 @@ import type { RuleSeverity } from '../../validation/rules.ts'
 import { EVALUATED_SUBJECTS } from '../../validation/report.ts'
 import { ATTESTATION_RULES, SEVERITY, SUBJECT, NEED_LABEL, CITATION, FIELD_PRACTICE } from '../../copy/validation.ts'
 import { STATIC_RULE_READS } from '../../roadmap/staticRules.ts'
+import { COLLECTOR_REGISTRY, capabilityLicence } from '../../graph/collect/registry.ts'
+import { CORE_SOURCES } from '../../graph/collect/coreSections.ts'
+import { fillText } from '../../content/render.ts'
+import type { CollectorSpec } from '../../graph/collect/registry.ts'
 import { app, pages } from '../../content/content.ts'
 
 /** One row of "Every check": what it looks for, what a failure does, why, what it reads and where it comes from. */
@@ -81,4 +85,52 @@ export function howCheckTables(): HowCheckTable[] {
 export function howLimits(): string[] {
   const connect = (pages.connect as unknown as { scan: { limits: string[] } }).scan.limits
   return [...connect, ...app.how.limitsList, (pages.how as Record<string, string>).noAi]
+}
+
+/** One row of "What IAMAI reads". */
+export type HowReadRow = { name: string; endpoint: string; version: CollectorSpec['version']; scopes: string; conditions: string; why: string }
+export type HowReadTable = { lane: CollectorSpec['lane']; caption: string; rows: HowReadRow[] }
+
+const LANES: CollectorSpec['lane'][] = ['0', 'A', 'B', 'on-demand']
+
+/** The scan section a registry read fills, in coreSections.ts's naming; null for a read that is not a section. */
+function sectionOf(s: CollectorSpec): string | null {
+  return s.configKey ? `config:${s.configKey}` : (s.sourceKey ?? null)
+}
+
+/**
+ * A read's Conditions cell: the licence it needs (the registry's
+ * requiredCapability), what the page says of it, and, for a scan section, what a
+ * refusal does (coreSections.ts: a core section builds no plan, any other is
+ * named on Connect by unreadSources).
+ */
+function conditionsOf(s: CollectorSpec): string {
+  const W = app.how.readConditions
+  const section = sectionOf(s)
+  return [
+    s.requiredCapability ? fillText(W.licence, { licence: capabilityLicence(s.requiredCapability) }) : null,
+    app.how.readRows[s.name]?.note ?? null,
+    section === null ? null : (CORE_SOURCES as readonly string[]).includes(section) ? W.core : W.section,
+  ].filter((x): x is string => x !== null).join(' ')
+}
+
+/**
+ * "What IAMAI reads": one table per lane, one row per registry read. The
+ * registry's gate and purpose are developer notes; the page shows the plain
+ * lines in content (app.how.readRows), keyed by the registry's name. It printed
+ * the notes, "none" for twelve reads among them (Phase 2 audit).
+ */
+export function howReadTables(): HowReadTable[] {
+  return LANES.map((lane) => ({
+    lane,
+    caption: app.how.lanes[lane],
+    rows: COLLECTOR_REGISTRY.filter((s) => s.lane === lane).map((s) => ({
+      name: s.name,
+      endpoint: s.endpoint,
+      version: s.version,
+      scopes: s.scopes.join(', '),
+      conditions: conditionsOf(s),
+      why: app.how.readRows[s.name]?.why ?? '',
+    })),
+  }))
 }
