@@ -60,6 +60,17 @@ function withPhonesBlocked(f: Fixture): Fixture {
   }
 }
 
+/**
+ * Every person holds a compliant computer, so device readiness is met. Below it
+ * the policy's create waits with its turn-on and its procedure is withheld
+ * (roadmap/operations.ts createWaitsOnReadiness; owner, 2026-09-23), so a case
+ * about what the procedure says starts here.
+ */
+function withDevicesReady(f: Fixture): Fixture {
+  const devices = [...f.snapshot.devices, ...f.snapshot.users.map((u, i) => ({ id: `d-ready-${i}`, displayName: `PC ${i}`, operatingSystem: 'Windows', isCompliant: true, isManaged: true, trustType: 'AzureAd', ownerIds: [u.id] }))]
+  return { ...f, snapshot: { ...f.snapshot, devices } }
+}
+
 /** Every step's body on a fixture, as the Plan composes it (closeDoors.test.ts bodiesOf). */
 function bodiesOf(name: FixtureName, shape: (f: Fixture) => Fixture = (f) => f): Map<string, StepBody> {
   setDisplayTimeZone('UTC')
@@ -173,7 +184,7 @@ test('D3: the create and correct procedures set Configure to Yes on Locations an
 })
 
 test('D4: the device answer that narrows the platforms puts them in the Entra procedure, beside the JSON that carries them', () => {
-  const b = bodyOf('demo', MANAGED, withPhonesBlocked)
+  const b = bodyOf('demo', MANAGED, (f) => withDevicesReady(withPhonesBlocked(f)))
   const entra = drawn(b, 'portal')
   const json = drawn(b, 'json')
   // The JSON always carried the exclusion; before this wave the Entra procedure did not name it at all.
@@ -185,7 +196,7 @@ test('D4: the device answer that narrows the platforms puts them in the Entra pr
 test('D4b: a target with no platform condition drops the platform line and keeps the rest of the procedure', () => {
   // The demo with the device decision unanswered is the pinned baseline's own
   // shape: no platform condition, so there is nothing to configure and no line.
-  const entra = drawn(bodyOf('demo', MANAGED), 'portal')
+  const entra = drawn(bodyOf('demo', MANAGED, withDevicesReady), 'portal')
   assert.doesNotMatch(entra, /Device platforms/)
   assert.doesNotMatch(entra, /\[omit |\{\{/)
   assert.match(entra, /Locations: set \*\*Configure\*\* to \*\*Yes\*\*/)

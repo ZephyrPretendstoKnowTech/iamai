@@ -17,7 +17,7 @@ import { stepVars, withoutScheduleDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor, unwrittenCorrectionLines } from './stepPortal.ts'
 import { instructionsHeld, preparationLines, rescanLinesOf, wholeLines } from './stepInstructions.ts'
-import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, proceduresAreReference, stepContract } from './stepContract.ts'
+import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, proceduresAreReference, readinessHeldLine, stepContract } from './stepContract.ts'
 import type { LaneView, PrerequisiteLabel, StepContract } from './stepContract.ts'
 import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, previewNoteLines, selectedPolicyBodiesOf, entraWithSettings } from './stepPackage.ts'
 import { projectSafely } from '../../content/implementation/project.ts'
@@ -430,7 +430,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   else if (emergencyUnsafe) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.emergencyUnsafe), { tenant: String(ex.tenant ?? '') }))
   else if (emergencyUnproven) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.emergencyUnproven), { tenant: String(ex.tenant ?? '') }))
   else if (escapeHatch) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.escapeHatchHeld), { tenant: String(ex.tenant ?? ''), steps: heldByTitle(step) }))
-  else if (readinessHeld) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.readinessHeld), { tenant: String(ex.tenant ?? ''), ...(step.action.readinessGate ?? {}) }))
+  else if (readinessHeld) lines.push(readinessHeldLine(step, String(ex.tenant ?? '')))
   // A goal the tenant already delivers says *which* policy delivers it, in the
   // artifacts as on the screen. The line used to be the bare "nothing to
   // create", which is also the contract's action and is unshifted in front of

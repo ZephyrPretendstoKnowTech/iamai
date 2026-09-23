@@ -1202,6 +1202,23 @@ export function enforcementHeld(step: PolicyStep): boolean {
   return step.action.readinessGate !== undefined && step.status !== 'done' && step.status !== 'skipped' && !addsExclusionsToEnforced(step)
 }
 
+/**
+ * True when the readiness threshold that holds this step's enforcement holds its
+ * report-only create too: a create whose policy requires a compliant device.
+ *
+ * A create lands in report-only and denies nobody, which is why a threshold
+ * holds only the turn-on (`policyResult`). This grant is the exception: in
+ * report-only, a policy that requires a compliant device can prompt Mac, iOS
+ * and Android devices to pick a certificate, again and again, until the device
+ * is compliant (https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-report-only;
+ * content shared.certificatePrompt). The owner, 2026-09-23: "Hold the create
+ * for that policy until ready." So it waits on the same gate its turn-on does,
+ * and on nothing new; every other create stays creatable early.
+ */
+export function createWaitsOnReadiness(step: PolicyStep): boolean {
+  return enforcementHeld(step) && validOperations(step.action).some((op) => op.mode === 'create' && effectOf(op.body).controls.has('compliantdevice'))
+}
+
 /** True when the step runs operations and each one only adds exclusions to a policy the tenant already has on, submitting no enforcement of its own. */
 export function addsExclusionsToEnforced(step: PolicyStep): boolean {
   const ops = validOperations(step.action)
@@ -1298,6 +1315,10 @@ export function policyResult(step: PolicyStep): PolicyResult {
   if (enforcementHeld(step) && validOperations(step.action).some(enforcesOnRun)) {
     return { kind: 'unavailable', reason: 'readiness-unmet' }
   }
+  // The one create the threshold holds as well (`createWaitsOnReadiness`): in
+  // report-only a compliant-device grant prompts for a certificate, so its
+  // creation is not safe preparation, and it waits with the turn-on.
+  if (createWaitsOnReadiness(step)) return { kind: 'unavailable', reason: 'readiness-unmet' }
   // A policy this plan is tracking that the tenant has switched off. It exists,
   // so "Create the policy in Report-only" is the wrong instruction: follow it
   // and there are two. What restores the protection is turning the one that is

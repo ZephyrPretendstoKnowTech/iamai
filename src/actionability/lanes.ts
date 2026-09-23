@@ -14,7 +14,10 @@
 //
 // An evidence gate — the observation predicate, a readiness threshold, an `evidence` or
 // `time/evidence-window` edge — gates `enforce` only, and an unstarted policy's create
-// never waits on it. The owner's status contract supersedes "evidence is never a hold":
+// never waits on it, unless the gate says it holds the create too (`holdsCreate`: a
+// compliant-device grant, whose report-only create prompts for a certificate; owner,
+// 2026-09-23). Then the unstarted policy waits On Hold with the gate as its reason.
+// The owner's status contract supersedes "evidence is never a hold":
 // a started policy behind an open gate waits On Hold with the gate as its reason, and
 // reads Ready · Observing (the review) only where the gate says what was collected can
 // be reviewed. Ready means the next action can be performed now; Up Next means every
@@ -60,6 +63,9 @@ export type EvidenceGate = {
   reason: string | null
   /** Open, but what was collected can be reviewed now (the window closed over records that were read). */
   reviewable?: boolean
+  /** The gate holds the policy's creation too, not only its enforcement: a report-only create
+   *  that is not safe preparation (roadmap/operations.ts createWaitsOnReadiness; owner, 2026-09-23). */
+  holdsCreate?: boolean
 }
 
 export type StepObservation = {
@@ -516,7 +522,12 @@ function deriveUncached(ctx: Ctx, id: string): LaneResult {
     // bringing it to the target is available now. `Observing` is a report-only policy's review.
     return result('Ready', { substatus: 'Correct', nextAction, started, gates, layers })
   }
-  // 6. Not started, next safe action executable now.
+  // 6. Not started, behind a gate that holds its create as well as its enforcement
+  // (`holdsCreate`): no prerequisite finishing makes the create available, so it is
+  // never Up Next, and the gate is the reason, prerequisites or not.
+  const createGate = kind === 'policy' ? gates.find((g) => !g.satisfied && g.holdsCreate === true) : undefined
+  if (createGate) return result('On Hold', { nextAction, started, reason: evidenceBlocker(createGate), blockers: healthy, gates, layers })
+  // Not started, next safe action executable now.
   if (healthy.length === 0) {
     return result('Ready', { substatus: kind === 'decision' ? 'Decision' : 'Create', nextAction, started, gates, layers })
   }

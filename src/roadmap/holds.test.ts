@@ -496,24 +496,29 @@ test('Step 4: no row says now unless the step is work a person can do today', ()
 // ---- a Direction answer holds the step (owner, 2026-09-19) ----
 
 test('Step 4: on the demo first visit a policy waiting only on a Direction answer is undated in the row, the schedule and the calendar; approving that step dates it', () => {
-  const DEVICE = 's-goal-require-managed-device'
+  // The security-info registration policy waits on one Direction step and, on the
+  // demo, on MFA readiness for its turn-on only. It was the managed-device policy,
+  // whose create now waits on device readiness as well (operations.ts
+  // createWaitsOnReadiness; owner, 2026-09-23), so approving its Direction step no
+  // longer dates it.
+  const STEP = 's-goal-register-info-protected'
   const d = demoTenant(false)
   const f: Fixture = { ...fixture('demo'), snapshot: d.snapshot, mapping: d.mapping, planId: planIdFor(DEMO_TENANT_ID) }
   const first = planOf(f)
-  const waiting = stepOf(first, DEVICE)
-  assert.deepEqual(waiting.blockers.map(directionBlockerStep).filter((id) => id !== null), [DIRECTION_STEP.devices], 'the premise: it waits on Decide How People and Devices Sign In')
+  const waiting = stepOf(first, STEP)
+  assert.deepEqual(waiting.blockers.map(directionBlockerStep).filter((id) => id !== null), [DIRECTION_STEP.locations], 'the premise: it waits on Decide Where People Sign In From')
   assert.ok(isHeld(waiting), 'the wait holds it')
   assert.equal(scheduleOf(waiting).class, 'waiting')
   assert.equal(scheduleOf(waiting).at, null, 'the schedule gives it no day')
   assert.equal(waiting.reportOnlyAt, null, 'not even its report-only creation')
-  assert.equal(phased(first).has(DEVICE), false, 'it sits in no numbered phase')
+  assert.equal(phased(first).has(STEP), false, 'it sits in no numbered phase')
   assert.doesNotMatch(rowWhen(waiting), YEAR, `the row dates it (${rowWhen(waiting)})`)
   assert.equal(nextMilestone(waiting).at, null, 'its next milestone has no day')
   assert.equal(scheduledEventOf(waiting), null)
-  assert.equal(booked(first, DEVICE), false, 'the calendar books nothing for it')
+  assert.equal(booked(first, STEP), false, 'the calendar books nothing for it')
   // Approved, the wait is gone and the plan dates its report-only creation again.
-  const approved = planOf(withDirectionApproved(f, [DIRECTION_STEP.devices]))
-  const dated = stepOf(approved, DEVICE)
+  const approved = planOf(withDirectionApproved(f, [DIRECTION_STEP.locations]))
+  const dated = stepOf(approved, STEP)
   assert.equal(dated.blockers.some((b) => directionBlockerStep(b) !== null), false, 'the premise: nothing waits on Direction')
   assert.equal(scheduleOf(dated).class, 'scheduled')
   assert.ok(scheduleOf(dated).at !== null, 'the schedule gives it a day')
@@ -526,7 +531,7 @@ test('Step 4: on the demo first visit a policy waiting only on a Direction answe
   const released = structuredClone(dated)
   released.blockers = released.blockers.filter((b) => b.label !== FOUNDATION_WAIT)
   assert.equal(nextMilestone(released).at, scheduleOf(released).at, 'its next milestone is that day')
-  assert.ok(booked(approved, DEVICE), 'and the calendar books it')
+  assert.ok(booked(approved, STEP), 'and the calendar books it')
   // The rollout's estimate is the schedule as drawn before anything was withdrawn: the wait does not move it.
   assert.equal(first.r.schedule.estimate?.targetEnd, approved.r.schedule.estimate?.targetEnd)
 })

@@ -29,7 +29,7 @@ import { appearedEnforced, dimensionWords, watchedArrive } from '../../roadmap/o
 import type { Condition, Lifecycle, Milestone } from '../../roadmap/lifecycle.ts'
 import { heldForReview, nextMilestone, reviewCauses } from '../../roadmap/lifecycle.ts'
 import type { PolicyHold, UnavailableReason } from '../../roadmap/operations.ts'
-import { awaitsWorkflowRecord, enforcesOnRun, implementationOffered, isPreserved, operationsOf, policyHold, switchedOffPolicy, unavailableReason, strengthNameIn } from '../../roadmap/operations.ts'
+import { awaitsWorkflowRecord, createWaitsOnReadiness, enforcesOnRun, implementationOffered, isPreserved, operationsOf, policyHold, switchedOffPolicy, unavailableReason, strengthNameIn } from '../../roadmap/operations.ts'
 import { requiredMembers } from '../../roadmap/tracking.ts'
 import { unreadLine } from '../../roadmap/evidence.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
@@ -589,6 +589,16 @@ function heldLine(step: Step): string | null {
   return owed.gaps.length > 0 ? `${lead} ${fillText(app.plan.noOperationHeldGap, { gaps: owed.gaps.join('; ') })}` : lead
 }
 
+/**
+ * Why a readiness threshold withholds this step's implementation: the turn-on,
+ * or — for a policy that requires a compliant device — its report-only create
+ * too, with the certificate prompt that is why (roadmap/operations.ts
+ * createWaitsOnReadiness). The one reading the step and its export both state.
+ */
+export function readinessHeldLine(step: Step, tenant: string): string {
+  return fillText(createWaitsOnReadiness(step) ? app.plan.readinessHeldCreate : app.plan.readinessHeld, { tenant, ...(step.action.readinessGate ?? {}) })
+}
+
 /** The reason line an unavailable policy already shows, filled: Foundation A's answer in the operator's words. */
 function reasonLine(step: Step, reason: UnavailableReason, tenant: string, exclusionsUnconfirmed = false): string {
   switch (reason) {
@@ -634,7 +644,7 @@ function reasonLine(step: Step, reason: UnavailableReason, tenant: string, exclu
     case 'escape-hatch-unverified':
       return fillText(app.plan.escapeHatchHeld, { tenant, steps: heldByTitle(step) })
     case 'readiness-unmet':
-      return fillText(app.plan.readinessHeld, { tenant, ...(step.action.readinessGate ?? {}) })
+      return readinessHeldLine(step, tenant)
     case 'switched-off': {
       // Turning it back on enforces it the moment it is saved, so it waits for
       // the plan's own prerequisites of enforcement like every other turn-on
