@@ -1001,7 +1001,7 @@ test('an enforced step waiting on the person says what the scan confirmed, and n
   assert.ok(read, 'the premise: mid has a review tile')
   assert.doesNotMatch(String(read.note), /finished with it|could not read the sign-in records|does not hold enough/, `${read.id}: ${read.note}`)
 
-  // A production-shaped short read (graph/collect/laneBCore.ts 'insufficient'):
+  // A production-shaped short read (graph/collect/signInStream.ts 'insufficient'):
   // some hours read, the rows kept. "Could not read" and "has seen none" are both
   // false there; the tile says IAMAI does not hold enough, and why.
   const reason = 'stopped at time budget with only 6 h covered (minimum 24 h)'

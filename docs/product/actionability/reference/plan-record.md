@@ -83,8 +83,8 @@ Terminology used below:
 
 | Store | keyPath / key shape | Indexes | Value type | Created at (upgrade) | Written by | Read by |
 |---|---|---|---|---|---|---|
-| `signin-rows` | `['tenantId', 'id']`, i.e. `[string, string]` | `byTenant` on `tenantId` | `StoredSignIn & { tenantId }` | `oldVersion < 1`, `cache.ts:77-79` | `saveEvidenceCache` (`cache.ts:159-182`) via `graph/collect/laneB.ts:36` | `loadEvidenceCache` (`cache.ts:142-157`) via `laneB.ts:30` |
-| `evidence-meta` | `'tenantId'` | none | `EvidenceCacheMeta` `{ tenantId, covered{from,to}, asOf, schema? }` | `oldVersion < 1`, `cache.ts:80` | `saveEvidenceCache` | `loadEvidenceCache` (a stale `schema` is ignored, `cache.ts:151`) |
+| `signin-rows` | `['tenantId', 'id']`, i.e. `[string, string]` | `byTenant` on `tenantId`; `byTenantTime` on `['tenantId', 'createdDateTime']` (version 8) | `StoredSignIn & { tenantId }` | `oldVersion < 1`; `byTenantTime` in every upgrade that lacks it | `evidenceStore(...).write`, page by page, via `graph/collect/signInStream.ts` `runLaneB` (bound in `laneB.ts`); `reset` and `expire` delete | `evidenceStore(...).read` (newest first through `byTenantTime`, whole-second batches, `timeBatches.ts`) |
+| `evidence-meta` | `'tenantId'` | none | `EvidenceCacheMeta` `{ tenantId, covered{from,to}, asOf, schema? }`: `covered` is the one contiguous span the saved records fill | `oldVersion < 1` | `evidenceStore(...).write`, in the same transaction as the records it covers | `evidenceStore(...).meta` (a stale `schema` is ignored in `laneB.ts`, and `runLaneB` resets the tenant's records) |
 | `group-members` | `['tenantId', 'groupId']` | `byTenant` on `tenantId` | `GroupMembersCacheEntry` | `oldVersion < 2`, `cache.ts:82-85` | `saveGroupMembersCache` via `graph/collect/onDemand.ts:198`; demo seed `App.tsx:120`; mock seed `App.tsx:187` | `loadGroupMembersCache` via `onDemand.ts:132`, `onDemand.ts:217` |
 | `mapping` | `'tenantId'` | none | `{ tenantId } & Record<string, unknown>`; in practice `MappingState` | `oldVersion < 3`, `cache.ts:86-88` | `saveMappingRecord` (`cache.ts:193-200`) via `mapping/store.ts:20-22 saveMappingState` | `loadMappingRecord` (`cache.ts:184-191`) via `mapping/store.ts:10-18 loadMappingState` |
 | `plan` | `'tenantId'` | none | `{ tenantId } & Record<string, unknown>`; in practice `PlanDecisions`, or the demo's `DemoSnapshotState` | `oldVersion < 4`, `cache.ts:89-91` | `savePlanRecord` (`cache.ts:211-218`), called from `planData.ts:368`, `Export.tsx:216`, `App.tsx:137-138` | `loadPlanRecord` (`cache.ts:202-209`), called from `planData.ts:182`, `planData.ts:546`, `App.tsx:135` |
@@ -419,7 +419,7 @@ Other fields `decisionsOf` drops on load: a legacy `steps` blob. Only its skips 
 - **`MappingState`:** version field **not found**.
   - On read, `store.ts:17` merges over `emptyMappingState`.
   - It then runs `emergencyChoice.ts:88-97 migrateEmergencySelection`: without `assumed.breakGlass === 'confirmed'`, `breakGlassUserIds` move to `breakGlassPriorIds`. This is idempotent.
-- **IndexedDB schema:** version 7, upgrade blocks only (§1.1).
+- **IndexedDB schema:** version 8, upgrade blocks only (§1.1). Version 8 adds the `byTenantTime` index on `signin-rows`.
 - **Plan file:** `PLAN_SCHEMA_VERSION = 2` (`plan.ts:12`). Older files are upgraded by `plan.ts:261-296 upgradePlanFile` / `upgradeStep`.
 
 ### 3.4 Redaction
@@ -488,7 +488,7 @@ Tests named for this path (not read): `src/roadmap/plan.test.ts`, `src/roadmap/p
 | Action | Control | What it does to stored data | What it does in memory |
 |---|---|---|---|
 | **Sign out** | Account menu (`AppShell.tsx`) → `ui/actions.ts:189-195 signOut` | IndexedDB untouched: the plan, mapping and all other rows stay. MSAL sessionStorage keys removed (`msal.ts:93` → `:103-109`), then `logoutRedirect`. localStorage keys and `iamai.preloadReloaded` untouched. | `endTenantTurn()`; the session drops account, tenantName, lastScan, scan, baseline, demoWeek2. `usePlanData` clears `mapping` / `saved` / groups when `snapshot` goes null (`planData.ts:164-175`). |
-| **Forget this tenant** | Account menu item (`AppShell.tsx:165`, `SHELL.forgetTooltip`) → `actions.ts:207-221 forgetTenant` | Waits for any in-flight baseline save, then `cache.ts:258-275 forgetTenant(tenantId)` deletes that tenant's rows from all seven stores in one transaction (index cursors for `signin-rows` / `group-members`, key deletes for the others). Other tenants' rows are untouched. MSAL sessionStorage is **not** cleared by this action (no non-test caller of `graph/auth.ts:38 clearAuthCache` found). Web storage untouched. Rejects if the store cannot be cleared. | `endTenantTurn()` first; the session drops lastScan, scan, baseline, demoWeek2; still signed in; navigates to `#/connect`. |
+| **Forget this tenant** | Account menu item (`AppShell.tsx:165`, `SHELL.forgetTooltip`) → `actions.ts:207-221 forgetTenant` | Waits for any in-flight baseline save, then `cache.ts:258-275 forgetTenant(tenantId)` deletes that tenant's rows from all seven stores in one transaction (a key-range delete for `signin-rows`, an index cursor for `group-members`, key deletes for the others). Other tenants' rows are untouched. MSAL sessionStorage is **not** cleared by this action (no non-test caller of `graph/auth.ts:38 clearAuthCache` found). Web storage untouched. Rejects if the store cannot be cleared. | `endTenantTurn()` first; the session drops lastScan, scan, baseline, demoWeek2; still signed in; navigates to `#/connect`. |
 
 - **Demo:** the Account menu is not rendered in demo mode (`AppShell.tsx:294`, `signedIn && !isDemo()`), so Forget is not offered there.
 - **Demo snapshots row:** `forgetTenant` deletes exact keys only, so it would not delete the `demo-sample-tenant#snapshots` row.

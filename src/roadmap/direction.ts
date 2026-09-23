@@ -100,11 +100,12 @@ function useQuestions(ctx: Context, services: { keys: string[]; signal: (key: st
   }))
   // Use the records show is use, however few of them were read, and keeps its
   // suggestion. What a read IAMAI cannot rely on (neither ok nor partial) cannot
-  // say is the window, or that nothing uses it: a production read that stops
-  // short of 24 hours is 'insufficient' and keeps the rows it read
-  // (graph/collect/laneBCore.ts), and this said "No device code sign-ins in the
-  // last 30 days" over six hours of records, beside the suggestion that builds
-  // the block — while the step's own tile said the records could not be relied
+  // say is the window, or that nothing uses it: a read that stops short of 24
+  // hours is 'insufficient' and keeps the rows it read
+  // (graph/collect/signInStream.ts; since the read streams, only a time budget
+  // stops it there), and this said "No device code sign-ins in the last 30
+  // days" over six hours of records, beside the suggestion that builds the
+  // block — while the step's own tile said the records could not be relied
   // on. The same gate the mail-sending and partner questions read.
   const code = snapshot.evidenceUsage?.deviceCode ?? null
   const read = signInsRead(snapshot)

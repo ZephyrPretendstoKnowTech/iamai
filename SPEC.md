@@ -75,7 +75,6 @@ B = sign-in evidence, on-demand = after baseline selection).
 | 0 | Tenant licence capabilities and seat coverage. | `/subscribedSkus` | v1.0 | Directory.Read.All | Directory Readers | none |
 | 0 | Tenant name and verified domains for the plan-file header. | `/organization` | v1.0 | Directory.Read.All | Directory Readers | none |
 | 0 | The operator's directory id (derive/operator.ts), for bg.notPersonal, the operator-passkey step and the steps' "your own account" lines. The plan file records the signed-in MSAL account, not this read. | `/me` | v1.0 | Directory.Read.All | Directory Readers | none |
-| 0 | The groups the operator is in. Nothing reads config.meMemberOf yet; whether to keep the read is an owner question. | `/me/memberOf` | v1.0 | Directory.Read.All | Directory Readers | none |
 | A | Per-user registered method types (no phone numbers) for MFA viability. | `/reports/authenticationMethods/userRegistrationDetails` | v1.0 | AuditLog.Read.All | Reports Reader | Entra ID P1/P2; a person whose method read still failed, and whom the tenant-wide read has no row for, is read alone (/{id}, $batch of 20) |
 | A | User inventory with activity, licence plans, and org attributes. | `/users` | v1.0 | Directory.Read.All AuditLog.Read.All | Directory Readers + Reports Reader | signInActivity needs Entra ID P1/P2 (degrades to a plain user list) |
 | A | Compliance/trust state with registered owners for device intents. | `/devices` | v1.0 | Directory.Read.All | Directory Readers | none |

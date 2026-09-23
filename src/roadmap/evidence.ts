@@ -19,7 +19,7 @@ const W = engine.evidence
  * and every status that sets `Evidence.unreadable`. It said "Time in report-only
  * cannot complete it" in the briefing of policies already enforced or in place,
  * and "could not read" over a production read that stopped short of 24 hours
- * with some records read (graph/collect/laneBCore.ts 'insufficient').
+ * with some records read (graph/collect/signInStream.ts 'insufficient').
  */
 export function unreadLine(reason: string): string {
   return fillText(W.unreadable, { reason })

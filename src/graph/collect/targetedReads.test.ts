@@ -27,7 +27,10 @@ test('only people with a phishing-resistant method whose last sign-in falls in t
 test('a person’s read asks for their interactive sign-ins in the unread part only', () => {
   const url = decodeURIComponent(targetedReadUrl('https://graph.microsoft.com/beta', 'u-1', START, FROM))
   assert.match(url, /userId eq 'u-1'/)
-  assert.match(url, new RegExp(`createdDateTime ge ${START} and createdDateTime lt ${FROM}`))
+  // Microsoft Learn documents eq, le and ge on a sign-in's createdDateTime, not lt:
+  // the records at FROM come back too, and readTargeted drops them (the test below).
+  assert.match(url, new RegExp(`createdDateTime ge ${START} and createdDateTime le ${FROM}`))
+  assert.doesNotMatch(url, / lt /)
   assert.match(url, /signInEventTypes\/any\(t: t eq 'interactiveUser'\)/)
 })
 
@@ -108,6 +111,21 @@ test('a person’s read follows nextLink to the start of the window, so a busy p
     assert.deepEqual(await readTargeted(signInCtx([]), perUser, ['u-1'], START, FROM), { read: 1, remaining: 0 })
     assert.equal(asked.length, 2)
     assert.equal(perUser['u-1'].signInCount, 2, 'both pages joined the evidence')
+  } finally {
+    globalThis.fetch = original
+  }
+})
+
+test('a person’s records at or after where the bulk read began are dropped: that read folded them already', async () => {
+  const signIn = (id: string, at: string) => ({ id, createdDateTime: at, userId: 'u-1', status: { errorCode: 0 }, authenticationRequirement: 'multiFactorAuthentication', authenticationDetails: [{ succeeded: true, authenticationMethod: 'Passkey (device-bound)' }] })
+  const original = globalThis.fetch
+  // FROM itself, the same instant written without milliseconds, a later one a lax Graph might send, and one in the unread part.
+  globalThis.fetch = (async () => new Response(JSON.stringify({ value: [signIn('later', '2026-09-09T09:00:00Z'), signIn('at-from', FROM), signIn('same-instant', '2026-09-08T00:00:00Z'), signIn('unread', '2026-09-05T09:00:00Z')] }), { status: 200 })) as typeof fetch
+  try {
+    const perUser: Record<string, UserEvidence> = {}
+    assert.deepEqual(await readTargeted(signInCtx([]), perUser, ['u-1'], START, FROM), { read: 1, remaining: 0 })
+    assert.equal(perUser['u-1'].signInCount, 1, 'only the record before FROM joins the evidence')
+    assert.equal(perUser['u-1'].lastSignIn, '2026-09-05T09:00:00Z')
   } finally {
     globalThis.fetch = original
   }
