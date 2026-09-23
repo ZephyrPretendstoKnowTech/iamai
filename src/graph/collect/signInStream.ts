@@ -329,11 +329,12 @@ export async function runLaneB(deps: LaneBDeps): Promise<SignInEvidence> {
     await save([], { from: windowStart, to: nowIso })
     if (writable) await store.expire(windowStart).catch(() => {})
     // A resumed read says what it fetched: the gap, and the older records when
-    // the saved ones did not reach the window's start or could not all be read.
+    // the saved ones did not reach the window's start or could not all be read,
+    // "at or before" the last second folded, as the request's `le` asks for them.
     const reason = exhausted
       ? `the last ${deps.windowDays} days, or less if the tenant keeps fewer`
       : resumed
-        ? `${stats.readFailed ? 'the saved records could not all be read' : 'resumed from the saved records'}: fetched the gap since ${absolute(meta!.to)}${olderThrough ? ` and the records before ${absolute(olderThrough)}` : ''}`
+        ? `${stats.readFailed ? 'the saved records could not all be read' : 'resumed from the saved records'}: fetched the gap since ${absolute(meta!.to)}${olderThrough ? ` and the records at or before ${absolute(olderThrough)}` : ''}`
         : null
     return result('ok', reason, { from: windowStart, to: nowIso })
   } catch (e) {
