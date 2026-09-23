@@ -52,7 +52,7 @@ type Words = {
     }
   }
   account: { title: string; line: string; note: string; signInAnother: string; signOut: string; sampleTitle: string; sampleNote: string }
-  baseline: { title: string; loading: string; none: string; selected: string; count: string; versionPinned: string; versionUploaded: string; sourceSummary: string; sourceVersion: string; sourceUploaded: string; what: string; pinned: string; goal: string; updated: string; updatedPartial: string; incomplete: string; diff: Record<ChangeKind, string>; diffWas: string; diffAdded: string; diffRemoved: string; diffBoth: string; diffSet: string; diffCleared: string; diffChanged: string; diffUnreviewed: string; diffConflict: string; diffFields: Record<string, string>; diffStep: string; diffNoStep: string; change: string; howToMakeOne: string }
+  baseline: { title: string; loading: string; none: string; selected: string; count: string; versionPinned: string; versionUploaded: string; sourceSummary: string; sourceVersion: string; sourceUploaded: string; what: string; pinned: string; goal: string; updated: string; updatedPartial: string; incomplete: string; diff: Record<ChangeKind, string>; diffWas: string; diffAdded: string; diffRemoved: string; diffBoth: string; diffSet: string; diffCleared: string; diffChanged: string; diffUnreviewed: string; diffConflict: string; diffFields: Record<string, string>; diffStep: string; diffNoStep: string; change: string; howToMakeOne: string; updateUnknown: string }
   scan: {
     title: string
     limitsSummary: string
@@ -234,7 +234,7 @@ export type BaselineTile = {
    * `version` is the revision IAMAI holds, both read from the loaded package's
    * own origin so there is no second version authority (task Step 1 C).
    */
-  source: { summary: string; text: string; link: { label: string; url: string } | null; version: string | null } | null
+  source: { summary: string; text: string; link: { label: string; url: string } | null; version: string | null; unchecked: string | null } | null
   /** The explaining copy when there is no card to nest it in (nothing loaded yet, or a load that failed). */
   paragraphs: string[]
   update: { summary: string; note: string | null; rows: BaselineReviewRow[] } | null
@@ -282,6 +282,7 @@ export function baselineTile({
   pin,
   loading,
   update,
+  updateUnchecked,
   stepsFor,
 }: {
   name: string | null
@@ -298,6 +299,8 @@ export function baselineTile({
   pin?: { repo: string; url: string; commit: string; readAt: string } | null
   loading: string | null
   update: BaselineUpdate | null
+  /** The author check could not run (ui/baseline.ts checkAuthorHead `checked: false`): the disclosure says so rather than reading as no update. */
+  updateUnchecked?: boolean
   /** The plan steps that policy stands behind, from the goal map by stable identity (derive/baselineDiff.ts stepsForChange). */
   stepsFor: (change: PolicyChange) => string[]
 }): BaselineTile {
@@ -326,7 +329,7 @@ export function baselineTile({
     state,
     tone: name ? 'done' : null,
     card,
-    source: card ? { summary: B.sourceSummary, text: B.pinned, ...sourceOf(version, pin) } : null,
+    source: card ? { summary: B.sourceSummary, text: B.pinned, ...sourceOf(version, pin), unchecked: updateUnchecked && version !== 'uploaded' ? B.updateUnknown : null } : null,
     paragraphs: card ? [] : [B.what, B.goal, B.pinned],
     update:
       update && (rows.length > 0 || incomplete)
@@ -601,7 +604,7 @@ export function tileStrings(tile: SignInTile | AccountTile | BaselineTile | Scan
   if ('paragraphs' in tile) {
     out.push(...tile.paragraphs)
     if (tile.card) out.push(tile.card.name, tile.card.source, ...tile.card.paragraphs)
-    if (tile.source) out.push(tile.source.summary, tile.source.text)
+    if (tile.source) out.push(tile.source.summary, tile.source.text, ...(tile.source.unchecked ? [tile.source.unchecked] : []))
     if (tile.update) out.push(tile.update.summary, ...tile.update.rows.flatMap((r) => [r.tag, r.policy, ...r.steps]))
   }
   if ('limits' in tile) {

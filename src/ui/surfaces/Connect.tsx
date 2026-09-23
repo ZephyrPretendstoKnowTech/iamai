@@ -641,8 +641,11 @@ function SignedIn({
  * one runtime network call and its compare both fail closed, so the line never
  * appears without real changes behind it.
  */
-function useAuthorUpdate(mock: BaselineUpdate | null | undefined): BaselineUpdate | null {
+function useAuthorUpdate(mock: BaselineUpdate | null | undefined): { update: BaselineUpdate | null; unchecked: boolean } {
   const [update, setUpdate] = useState<BaselineUpdate | null>(null)
+  // The check could not run (no network, GitHub's rate limit): the disclosure
+  // says so, because silence here reads exactly like "no update".
+  const [unchecked, setUnchecked] = useState(false)
   useEffect(() => {
     if (mock) {
       setUpdate(mock)
@@ -650,6 +653,7 @@ function useAuthorUpdate(mock: BaselineUpdate | null | undefined): BaselineUpdat
     }
     let live = true
     void checkAuthorHead().then(async (head) => {
+      if (live && !head.checked) setUnchecked(true)
       if (!live || !head.updated || !head.head || !head.date) return
       const review = await baselineReview(head.head)
       // An incomplete review still renders: a compare IAMAI could not finish is
@@ -661,7 +665,7 @@ function useAuthorUpdate(mock: BaselineUpdate | null | undefined): BaselineUpdat
       live = false
     }
   }, [mock])
-  return update
+  return { update, unchecked }
 }
 
 /**
@@ -680,7 +684,8 @@ function BaselineTile({ baseline, restoreError, locked, authorUpdate, stage }: {
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const loadingRef = useRef(false)
-  const update = useAuthorUpdate(authorUpdate)
+  const author = useAuthorUpdate(authorUpdate)
+  const update = author.update
 
   const loadPinned = async (chosen: boolean) => {
     if (loadingRef.current) return
@@ -725,7 +730,7 @@ function BaselineTile({ baseline, restoreError, locked, authorUpdate, stage }: {
   const policies = baseline?.pkg.policies ?? []
   const goalMap = baseline?.goalMap ?? PINNED_GOAL_MAP
   const stepsFor = (change: PolicyChange): string[] => stepsForChange(change, goalMap)
-  const t2 = baselineTile({ name: baseline?.source ?? null, policyCount: policies.length, version: baseline?.origin.kind === 'upload' ? 'uploaded' : 'pinned', pin: baselinePin(baseline), loading: busy, update, stepsFor })
+  const t2 = baselineTile({ name: baseline?.source ?? null, policyCount: policies.length, version: baseline?.origin.kind === 'upload' ? 'uploaded' : 'pinned', pin: baselinePin(baseline), loading: busy, update, updateUnchecked: author.unchecked, stepsFor })
   return (
     <Step
       n={2}
@@ -767,6 +772,7 @@ function BaselineTile({ baseline, restoreError, locked, authorUpdate, stage }: {
             </p>
           )}
           {t2.source.version && <p className="quiet">{t2.source.version}</p>}
+          {t2.source.unchecked && <p className="quiet">{t2.source.unchecked}</p>}
         </details>
       )}
       {t2.paragraphs.map((text) => (

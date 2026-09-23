@@ -647,7 +647,9 @@
         "versionUploaded": "uploaded package",
         "sourceSummary": "Source and version",
         "sourceVersion": "Commit {commit}, read from that repository on {date}.",
-        "sourceUploaded": "This package came from files you uploaded, so IAMAI cannot name a source for it or tell you when its author changes it."
+        "sourceUploaded": "This package came from files you uploaded, so IAMAI cannot name a source for it or tell you when its author changes it.",
+        "$commentUpdateUnknown": "Phase 2 audit (Connect): `pinned` says IAMAI tells you when the author updates the baseline, and a check that could not run (GitHub's unauthenticated rate limit, no network) read exactly like no update. When ui/baseline.ts checkAuthorHead returns checked: false, the source-and-version disclosure says the check could not be made.",
+        "updateUnknown": "The check for an update in the author's repository could not run just now, so IAMAI cannot say whether he has changed it since."
       },
       "scan": {
         "title": "Scan",
