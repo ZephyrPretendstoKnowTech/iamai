@@ -9,11 +9,10 @@
 // Partial projection rather than a rendered sample.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync, readdirSync } from 'node:fs'
-import { basename, dirname, join } from 'node:path'
 import registry from './registry.generated.json' with { type: 'json' }
 import type { CompiledPackage } from './protocol.ts'
 import { parseBlocks } from './protocol.ts'
+import { packageDirs, packageSources } from './library.ts'
 
 const PACKAGES = (registry as unknown as { packages: Record<string, CompiledPackage> }).packages
 
@@ -89,18 +88,20 @@ test('no registered package corrects a policy by moving it to report-only, apart
 // said "Stage any enabled policy to Report-only". Nothing drew it, but the authored package
 // is the source a later compile would project, so every authored package is scanned too.
 test('no authored package, the parts the registry withholds included, corrects a policy by moving it to report-only', () => {
-  const ROOT = 'docs/implementation-content'
-  const metas = (readdirSync(ROOT, { recursive: true }) as string[]).filter((p) => basename(p) === 'META.json')
+  // Every authored package, a task a folder folds in included (library.ts
+  // packageSources; Stage 3 folded the countries location into the countries
+  // block's folder).
+  const sources = packageDirs().flatMap(packageSources)
   // The floor moves down when a step retires and its package goes with it
   // (step-redundancy-analysis.md: eleven step identities, 2026-09-19). What the
   // number guards is that the sweep below reads the whole corpus, not a shard.
-  assert.ok(metas.length >= 43, `${metas.length} authored packages`)
+  assert.ok(sources.length >= 43, `${sources.length} authored packages`)
   const staging: Record<string, string[]> = {}
-  for (const path of metas) {
-    const dir = dirname(join(ROOT, path))
-    const authored = { meta: JSON.parse(readFileSync(join(dir, 'META.json'), 'utf8')), blocks: parseBlocks(readFileSync(join(dir, 'CONTENT.md'), 'utf8')) } as unknown as CompiledPackage
+  for (const source of sources) {
+    const meta = JSON.parse(source.metaJson) as { stepId: string }
+    const authored = { meta, blocks: parseBlocks(source.content) } as unknown as CompiledPackage
     const found = stagingIn(authored)
-    if (found.length > 0) staging[path] = found
+    if (found.length > 0) staging[`${source.dir}:${meta.stepId}`] = found
   }
   assert.deepEqual(staging, {})
 })
