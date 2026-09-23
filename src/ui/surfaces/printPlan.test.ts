@@ -23,7 +23,8 @@ import { boardOf } from './planBoard.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { completedRows } from './planRows.ts'
-import { completedLinesOf } from './printPlan.ts'
+import { completedLinesOf, noPlanLine } from './printPlan.ts'
+import { conditionalAccessLicenceLine } from '../../derive/notLicensed.ts'
 import type { PrintBoard } from './printPlan.ts'
 
 type Stage = 'fresh' | 'foundation' | 'recovered'
@@ -87,4 +88,25 @@ test('a finished policy prints the warnings its opened step keeps: enforced belo
   const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
   assert.match(print, /completedLinesOf\(done, printBoard, stepCtx\)/, 'the Completed section does not read the warnings a finished step keeps')
   assert.match(print, /l\.warnings\.map\(/, 'the Completed section drops the warnings it read')
+})
+
+// ---- No Entra ID P1: no plan on paper either ----
+
+test('a tenant without Entra ID P1 prints the Plan\'s one licence sentence and no plan', () => {
+  // The Plan renders only this sentence (owner, 2026-09-19/20); the print had
+  // printed a dated rollout plan with Cleanup instructions for the same tenant.
+  const micro = fixture('micro')
+  assert.equal(micro.snapshot.capabilities.entraP1.enabled, false, 'the premise: micro has no Entra ID P1')
+  const line = noPlanLine(micro.snapshot)
+  assert.equal(line, conditionalAccessLicenceLine(micro.snapshot), 'the print states a sentence other than the Plan\'s')
+  assert.ok(line && line.startsWith('Conditional Access needs Entra ID P1'), 'the premise: the Plan\'s sentence')
+  assert.equal(noPlanLine(fixture('small').snapshot), null, 'a tenant with P1 prints no licence sentence')
+  // The document stops at the cover's identity and that sentence: nothing after
+  // it is drawn, so no count, no finish, no timeline and no Cleanup section.
+  const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
+  const gate = print.indexOf('if (licenceLine) return createPortal(')
+  assert.ok(gate > 0, 'the print draws a plan for a tenant the Plan gives none')
+  const body = print.slice(gate, print.indexOf('document.body', gate))
+  for (const drawn of ['headerLine', 'schedule.cleanup', 'C.timeline', 'C.posture']) assert.equal(body.includes(drawn), false, `the no-plan document still draws ${drawn}`)
+  assert.ok(body.includes('{licenceLine}'), 'the no-plan document does not state the sentence')
 })
