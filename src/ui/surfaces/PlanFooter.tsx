@@ -61,7 +61,7 @@ export function PlanFooter({ computed, nameOf, onPutBack }: { computed: PlanComp
       )}
       {notLicensed.length > 0 && (
         <details>
-          <summary>{notLicensedSummary(notLicensed.length)}</summary>
+          <summary>{notLicensedSummary(notLicensed)}</summary>
           <ul className="sections">
             {notLicensed.map((r) => (
               <li key={r.goalId}>{r.text}</li>

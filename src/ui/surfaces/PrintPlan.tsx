@@ -199,7 +199,7 @@ export function PrintPlan({
   // (printPlan.ts doesntApplyLinesOf). Not licensed is its own count and
   // sentence (§5), not a name in this list.
   const doesntApply = doesntApplyLinesOf(steps)
-  const notLicensedCount = notLicensedRows(coverage, goalMap).length
+  const notLicensed = notLicensedRows(coverage, goalMap)
   // The header's own count (derive/facts.ts): the steps and the Cleanup rows, so the cover and the Plan agree.
   const { steps: totalCount, done: inPlaceCount } = stepFacts(steps, schedule.cleanup, answers)
   // Who the registration and verification window is for: the people it is
@@ -260,7 +260,7 @@ export function PrintPlan({
               ))}
             </ul>
           )}
-          {notLicensedCount > 0 && <p>{notLicensedPrintLine(notLicensedCount)}</p>}
+          {notLicensed.length > 0 && <p>{notLicensedPrintLine(notLicensed)}</p>}
         </div>
         <p className="muted">{fillText(C.cover.prepared, { by: operator })}</p>
         <p className="print-statement">{C.cover.readOnly}</p>

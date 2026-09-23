@@ -981,7 +981,7 @@
         "doesntApplyRow": "{stepTitle}: you said: {reason}",
         "notLicensed": "Not licensed ({n})",
         "notLicensedRow": "{stepTitle}: needs a licence this tenant does not hold: {licence}",
-        "notLicensedNote": "Nothing in the plan waits on these.",
+        "notLicensedNote": "The baseline includes these, and this tenant's licences don't cover them, so they aren't in this plan. A finished plan puts the baseline in place as far as those licences reach, not all of it. Nothing in the plan waits on these.",
         "notLicensedDevices": "{steps}: need an Intune Plan 1 licence this tenant does not hold; no device policy is offered and nothing asks how devices are managed",
         "housekeeping": "Housekeeping ({n})",
         "notInBaseline": "{policy}: not in the baseline · {verdict}",
@@ -1453,7 +1453,7 @@
         "covers": "Filtered to the {cohort} {step} covers.",
         "unknown": "{step} is waiting on sign-in readiness, and this scan could not work out who.",
         "back": "← Back to the step",
-        "$commentUncounted": "It began \"{n} of them aren’t counted\", which a count of one left as \"1 of them aren’t\": pluralise bends no contraction.",
+        "$commentUncounted": "It began \"{n} of them aren’t counted\", which a count of one left as \"1 of them aren’t\": pluralise bent no contraction then.",
         "uncounted": "This page doesn’t count {n} of them: no sign-in in the last 90 days, or not a person’s account."
       }
     },
@@ -1506,7 +1506,7 @@
         "inPlace": "{n} baseline controls in place",
         "toDo": "{n} to do, finishing {finish}",
         "doesntApply": "{n} do not apply here",
-        "notLicensed": "{n} baseline controls need a licence the tenant does not hold; nothing in the plan waits on them."
+        "notLicensed": "{n} baseline controls need a licence the tenant doesn't hold and aren't in this plan: finishing it puts the baseline in place as far as the tenant's licences reach, not all of it."
       },
       "tip": "Save a plan file after recording decisions or completing work. It preserves those records independently of your sign-in session."
     },
