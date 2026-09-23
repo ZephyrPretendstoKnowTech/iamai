@@ -114,10 +114,9 @@ export type AppWords = {
     held: { heading: string; lead: string }
   }
   how: Record<string, string> & { limitsList: string[]; lanes: Record<string, string>; columns: Record<string, string> }
-  /** The Inventory's words (ui/surfaces/inventoryTables.ts): capability and workload names, and what a table says of a section the scan did not read in full. */
+  /** The Inventory's words (ui/surfaces/inventoryTables.ts): capability names, and what a table says of a section the scan did not read in full. */
   inventory: {
     caps: Record<string, string>
-    workloadNames: Record<string, string>
     notRead: string
     notReadNoReason: string
     tooLittle: string

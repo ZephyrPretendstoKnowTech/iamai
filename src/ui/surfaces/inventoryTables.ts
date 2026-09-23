@@ -30,7 +30,7 @@ import { ROLE_TEMPLATES, coversAdminSet, heldOnlyByServices, roleLabel, roleName
 import productNames from '../../../data/product-names.json' with { type: 'json' }
 import { INVENTORY as C, combinationName, methodName, protocolName, trustTypeName } from '../../copy/inventory.ts'
 import { ACTIVITY_STATE, MFA_STATE } from '../../copy/definitions.ts'
-import { app, pages } from '../../content/content.ts'
+import { app, pages, workflowWords } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { absoluteDate } from '../format.ts'
 import { figure } from '../../copy/statements.ts'
@@ -801,7 +801,8 @@ export function workloadsModel(snapshot: TenantSnapshot): InventoryModel<Workloa
   const reading = serviceReading(snapshot, [], [])
   const licencesRead = sectionHasData(snapshot, 'subscribedSkus')
   const rows = Object.entries(detectFacets(snapshot)).map(([facet, f]): WorkloadRow => {
-    const name = W.workloadNames[facet] ?? facet
+    // The service as Direction names it (pages.app.plan.workflows.names, the one map): the workload row reads the sync role, and is named for it.
+    const name = (workflowWords.names as Record<string, string>)[facet] ?? facet
     if (facet === 'intune') {
       const licensed = licencesRead && snapshot.capabilities.intune.enabled
       return { facet, name, word: !licencesRead ? NOT_READ : licensed ? W.licensed : C.licensing.notLicensed, seen: licensed, reason: f.reason }
