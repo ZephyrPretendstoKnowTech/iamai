@@ -14,6 +14,7 @@ import type { GroupMembers } from '../coverage/population.ts'
 import { PLATFORM_CREDENTIAL_AAGUID, READINESS_WINDOW_DAYS, WINDOWS_HELLO_AAGUIDS } from '../scoring/phishingResistant.ts'
 import type { PasskeyPolicy, ReadinessContext } from '../scoring/phishingResistant.ts'
 import { sourceReadFix } from '../roadmap/readiness.ts'
+import { sectionHasData } from '../graph/collect/coreSections.ts'
 
 const DAY = 86_400_000
 const REGISTER_SECURITY_INFO = 'urn:user:registersecurityinfo'
@@ -126,6 +127,21 @@ export function registrationRefused(snapshot: Pick<TenantSnapshot, 'sources'>): 
   return snapshot.sources?.registrationDetails?.status === 'disabled'
 }
 
+/**
+ * No method list could be read in this tenant: the registration report was
+ * refused and the per-person method read returned no list either. The collector
+ * marks that read "partial" even where every person's list failed (worker.ts,
+ * "N users' methods unavailable"), so the section's status (sectionHasData)
+ * settles only a read that returned nothing; a read with no list in it is
+ * settled by its entries. Where any list was read, a person whose own list was
+ * missed is re-read by the next scan, and is never told the lists can't be read
+ * in this tenant.
+ */
+export function methodListsUnread(snapshot: Pick<TenantSnapshot, 'sources' | 'config' | 'authMethods'>): boolean {
+  if (!registrationRefused(snapshot)) return false
+  return !sectionHasData(snapshot, 'authMethods') || !Object.values(snapshot.authMethods ?? {}).some((m) => m !== 'unknown')
+}
+
 /** Where the registration report was refused: the source's reason, and what reads it in the Plan's words for the same source. */
 export function registrationRefusal(snapshot: TenantSnapshot): { reason: string; fix: string } | null {
   if (!registrationRefused(snapshot)) return null
@@ -179,7 +195,7 @@ export function readinessContextOf(snapshot: TenantSnapshot, mapping?: Partial<M
     coveredFrom: source?.coveredWindow?.from ?? null,
     signInsRead,
     signInsUnavailable: source?.status === 'disabled',
-    methodsUnavailable: registrationRefused(snapshot),
+    methodsUnavailable: methodListsUnread(snapshot),
     passkey,
     step3: { models, applied },
     modelNames,

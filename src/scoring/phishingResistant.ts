@@ -425,9 +425,10 @@ export type ReadinessContext = {
   /** Sign-in records can't be read in this tenant at all (a licence or permission), so a rescan won't help. */
   signInsUnavailable?: boolean
   /**
-   * The registration report, which stands in for a method list the per-person
-   * read missed, was refused in this tenant (a permission or a licence): a rescan
-   * with the same sign-in reads no more, so an unread method list is not retried.
+   * No method list could be read in this tenant (derive/readinessContext.ts
+   * methodListsUnread): the per-person read returned none and the registration
+   * report that stands in for one was refused. An unread list is then stated,
+   * not retried; where other lists were read, a missed one is retried.
    */
   methodsUnavailable?: boolean
   passkey: PasskeyPolicy

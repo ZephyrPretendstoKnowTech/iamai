@@ -158,6 +158,32 @@ test('a method list the tenant refused is not "Nothing to do: the next scan retr
   for (const r of missed) assert.equal(nextCell(r), N.rescan.methods)
 })
 
+test('with the registration report refused, one person’s missed method list is still retried and never "in this tenant"', () => {
+  // demo read 37 method lists and missed one; the registration report is refused
+  // (403), as it is on any Entra Free tenant where it is licence-gated.
+  const f = fixture('demo')
+  const s = structuredClone(f.snapshot) as TenantSnapshot
+  s.registrationDetails = []
+  s.sources.registrationDetails = { ...s.sources.registrationDetails!, status: 'disabled', reason: 'access denied (403)' }
+  assert.equal(s.sources.authMethods?.status, 'partial', 'the premise: the per-person method read returned lists')
+  const lists = Object.values(s.authMethods)
+  assert.ok(lists.some((m) => m !== 'unknown') && lists.some((m) => m === 'unknown'), 'the premise: most lists read, one missed')
+  const view = readinessView(s, s.asOf, f.mapping)
+  assert.equal(view.context.methodsUnavailable, false, 'lists were read in this tenant')
+  const missed = view.rows.filter((r) => r.state !== null && r.readiness?.unknown === 'methods' && s.authMethods[r.user.id] === 'unknown')
+  assert.ok(missed.length > 0, 'the premise: the missed person is counted and unknown for their method list')
+  for (const r of missed) {
+    assert.deepEqual(r.readiness?.next, { kind: 'rescan', reason: 'methods' }, r.user.id)
+    assert.equal(nextCell(r), N.rescan.methods, r.user.id)
+    assert.doesNotMatch(rowCells(r).join(' '), /in this tenant/, `${r.user.id}: the row never says the lists can't be read in this tenant`)
+  }
+  // Where no list was read at all, the same refusal is stated, not retried.
+  const none = methodsRefused()
+  const nv = readinessView(none, none.asOf, f.mapping)
+  assert.equal(nv.context.methodsUnavailable, true)
+  for (const r of nv.rows.filter((x) => x.state !== null && x.readiness?.unknown === 'methods')) assert.equal(nextCell(r), N.rescan.methodsUnavailable, r.user.id)
+})
+
 test('the Windows Hello check is not filed as done where the computers were never read, or the directory holds joined ones', () => {
   const H = R.checks.windowsHello
   const check = (s: TenantSnapshot, mapping: Parameters<typeof readinessView>[2]) => {
