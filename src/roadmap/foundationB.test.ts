@@ -422,6 +422,40 @@ test('a skipped report-only period is one IAMAI watched: On from a recorded abse
   assert.deepEqual(observationsFrom({ observations: JSON.parse(JSON.stringify(record)) }), record)
 })
 
+// The step's own workflow: the plan records the policy not deployed, the
+// administrator creates it in report-only as the step says, waits, and turns it
+// On, with no IAMAI scan between. The next scan read absent, then On, and said
+// IAMAI watched it go live with no report-only period, although the same scan
+// held Microsoft's report-only sign-in records for it - the one proof the tenant
+// gives that a policy was in report-only (tracking.ts evidenceAt).
+const recordDay = (d: number): string => new Date(Date.parse('2026-09-01T00:00:00.000Z') + d * 86_400_000).toISOString()
+/** One scan of object A at day `d`, with or without report-only sign-in records for it. */
+const scanned = (prior: StepObservation | null, state: StepObservation['state'], d: number, reportOnlyRecords = false): StepObservation =>
+  observe(prior, { artifact: state === 'absent' ? null : 'A', state, semantics: state === 'absent' ? '' : 'aaaa', at: recordDay(d), reportOnlyRecords }).latest
+
+test("a policy recorded absent and found On is not said to have skipped report-only where the scan's records show it in report-only", () => {
+  const absent = scanned(null, 'absent', 0)
+  assert.equal(scanned(absent, 'enforced', 20).skippedWindow, true, 'the premise: no records, and the arrival On is a skipped period')
+  assert.equal(scanned(absent, 'enforced', 20, true).skippedWindow, undefined, 'absent, report-only between scans, then On: the records show the period')
+})
+
+test("a policy seen arrive Off and found On is not said to have skipped report-only where the scan's records show it in report-only", () => {
+  const absent = scanned(null, 'absent', 0)
+  const off = scanned(absent, 'disabled', 1)
+  assert.equal(off.offOnly, true, 'the premise: seen arrive Off')
+  assert.equal(scanned(off, 'enforced', 20).skippedWindow, true, 'the premise: no records, and Off to On is a skipped period')
+  assert.equal(scanned(off, 'enforced', 20, true).skippedWindow, undefined, 'absent, Off, report-only between scans, then On: the records show the period')
+  assert.equal(scanned(absent, 'disabled', 16, true).offOnly, undefined, 'an Off sighting whose records show report-only was not only ever Off')
+  assert.equal(scanned(off, 'disabled', 16, true).offOnly, undefined, 'nor is one carried from an earlier Off')
+})
+
+test("a carried skipped report-only period drops when a later scan's records show the same object in report-only", () => {
+  const created = scanned(scanned(null, 'absent', 0), 'enforced', 3)
+  assert.equal(created.skippedWindow, true, 'the premise: watched arrive On')
+  assert.equal(scanned(created, 'enforced', 6).skippedWindow, true, 'the premise: carried with the object')
+  assert.equal(scanned(created, 'enforced', 6, true).skippedWindow, undefined, 'records of the same object in report-only disprove it')
+})
+
 test('observedStateOf reads Graph’s word, and a policy that is not there is not deployed', () => {
   assert.equal(observedStateOf('enabled'), 'enforced')
   assert.equal(observedStateOf('enabledForReportingButNotEnforced'), 'report-only')

@@ -57,7 +57,8 @@ function reportOnlyUnwatched(step: Step): boolean {
  * as stepContract.ts stageOf reads it) where IAMAI watched every policy member
  * go On from not applying to anybody, with no report-only state between
  * (observation.ts `skippedWindow`): not deployed at the scan before, or Off on
- * the same object after a scan that recorded it not deployed. It stays
+ * the same object after a scan that recorded it not deployed, and the scan's
+ * sign-in records show no report-only result for it. It stays
  * Completed, with a warning tile that says so and the check after the change
  * kept (stepContract.ts unwatchedTile, doneWhenOf).
  *
