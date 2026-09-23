@@ -2784,9 +2784,16 @@
           "notAssessed": "Baseline policies"
         },
         "board": {
-          "$comment": "The Plan board's fourth tab and the heading line it draws (src/ui/surfaces/planBoard.ts). The three lane tabs and the two toggles say their words in pages.plan.lanes; these two belong to the tab that shows whole groups instead of one lane.",
+          "$comment": "The Plan board's All work tab and the heading line a section draws there (src/ui/surfaces/planBoard.ts groupSummary). The three lane tabs and the two toggles say their words in pages.plan.lanes; these belong to the tab that shows whole sections instead of one lane.",
           "allWork": "All work",
-          "groupCompleted": "{done} of {total} completed"
+          "$commentGroupCompleted": "A finished section of one row, collapsed in place: \"1 of 1 completed\" rather than \"All 1 completed\".",
+          "groupCompleted": "{done} of {total} completed",
+          "$commentGroupRemaining": "An open section's heading line on All work (owner, roadmap flow V2 decision B): what is left to do, because that is what a person acts on. A Completed or Deferred row is not left to do; {total} is every row the section has.",
+          "groupRemaining": "{remaining} of {total} remaining",
+          "$commentGroupAllCompleted": "A finished section collapses in place to one line, its title and this (owner, roadmap flow V2 decision B). Selecting it opens it.",
+          "groupAllCompleted": "All {total} completed",
+          "$commentGroupFinished": "A section with nothing left to do where some rows were deferred: it collapses like a completed one, and says how much of it was deferred rather than claiming all of it completed.",
+          "groupFinished": "{done} of {total} completed, {deferred} deferred"
         },
         "groups": {
           "emergencyAccess": {

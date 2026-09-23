@@ -45,8 +45,8 @@ import {
   WORK_TYPE_IDS,
   EMERGENCY_STEP_IDS,
   groupTitleOf,
-  partitionEmergencyItems,
   rowNumbersOf,
+  sectionProgressOf,
   nothingReadyLine,
 } from './planBoard.ts'
 import type { BoardItem, LaneTab } from './planBoard.ts'
@@ -96,17 +96,25 @@ function itemsFor(name: FixtureName): BoardItem[] {
 const ids = (items: readonly BoardItem[]): string[] => items.map((i) => i.id)
 const ALL = { ...NO_FOCUS, showCompleted: true, showDeferred: true }
 
-test('the emergency foundation partitions the canonical rows once and stays active until all four are completed', () => {
-  const extra = (id: string, lane: BoardItem['lane']): BoardItem => ({ id, title: id, lane, laneLabel: lane, workType: 'setup', order: 0 })
-  const items = [...EMERGENCY_STEP_IDS.map((id, index) => extra(id, index === 0 ? 'Completed' : index === 1 ? 'Ready' : index === 2 ? 'Up Next' : 'On Hold')), extra('ordinary', 'Ready')]
-  const partitioned = partitionEmergencyItems(items)
-  assert.deepEqual(ids(partitioned.emergency), [...EMERGENCY_STEP_IDS])
-  assert.equal(partitioned.complete, false)
-  assert.equal(new Set([...ids(partitioned.emergency), ...ids(partitioned.remaining)]).size, items.length)
-  assert.equal(partitioned.remaining.some(item => EMERGENCY_STEP_IDS.includes(item.id as typeof EMERGENCY_STEP_IDS[number])), false)
-  const complete = partitionEmergencyItems(items.map(item => EMERGENCY_STEP_IDS.includes(item.id as typeof EMERGENCY_STEP_IDS[number]) ? { ...item, lane: 'Completed' } : item))
-  assert.equal(complete.complete, true)
+const row = (id: string, lane: BoardItem['lane']): BoardItem => ({ id, title: id, lane, laneLabel: lane, workType: 'setup', order: 0 })
+
+test('with Emergency Access finished, section 1 stays first and collapses to one line: its title and "All 4 completed"', () => {
+  // Owner, roadmap flow V2 decision B: sections never move. A finished section
+  // is not lifted above the tabs while open and sunk below them once done; it
+  // keeps its place and folds to its title and one line.
+  const items = [...EMERGENCY_STEP_IDS.map((id) => row(id, 'Completed')), row('s-direction-use', 'Ready'), row('s-direction-accounts', 'Completed'), row('s-goal-block-legacy-auth', 'Up Next')]
+  const drawn = allWorkGroups(items, items)
+  assert.deepEqual(drawn.map((g) => g.key), [`${ALL_WORK_TAB}-emergency-access`, `${ALL_WORK_TAB}-direction`, `${ALL_WORK_TAB}-close-doors`], 'a section moved')
+  const [emergency, direction] = drawn
+  assert.equal(emergency.closed, true, 'the finished section is drawn open')
+  assert.equal(emergency.label, groupTitleOf(STEP_GROUPS[0], true))
+  assert.equal(groupSummary(emergency), 'All 4 completed')
+  assert.deepEqual(ids(emergency.items), [...EMERGENCY_STEP_IDS], 'the collapsed section lost its rows: selecting it opens them')
+  // An open section says what is left of it.
+  assert.equal(direction.closed, false)
+  assert.equal(groupSummary(direction), '1 of 2 remaining')
 })
+
 /** Every row the three tabs draw between them, with both toggles on, each tab's own lane only. */
 const acrossTabs = (items: readonly BoardItem[]): string[] =>
   LANES.flatMap((tab) => groupsFor(tab, applyFocus(items, tab, ALL)).filter((g) => g.key !== 'complete' && g.key !== 'deferred').flatMap((g) => ids(g.items)))
@@ -501,61 +509,63 @@ test('a group summary counts the rows under it, and says so when a tab left some
 
 // ----------------------------------------------------------- the fourth tab
 
-test('All work lists every unfinished group whole, in registry order, with every one of its rows', () => {
+test('All work draws every section in its registry place, whole, and a finished one collapsed there', () => {
   for (const name of [...FIXTURES, 'demo-week2'] as const) {
     const items = itemsFor(name)
-    const drawn = allWorkGroups(applyFocus(items, ALL_WORK_TAB, NO_FOCUS), { completed: false, open: null })
+    const drawn = allWorkGroups(applyFocus(items, ALL_WORK_TAB, NO_FOCUS), items)
     const registry = STEP_GROUPS.map((g) => g.key)
-    const keyOf = (g: (typeof drawn.active)[number]): string => g.key.slice(`${ALL_WORK_TAB}-`.length)
-    // Registry order, and every group on the board that still has work in it.
-    assert.deepEqual(drawn.active.map(keyOf), drawn.active.map(keyOf).slice().sort((a, b) => registry.indexOf(a) - registry.indexOf(b)), `${name}: the groups are not in the registry's order`)
-    for (const g of drawn.active) {
+    const keyOf = (g: (typeof drawn)[number]): string => g.key.slice(`${ALL_WORK_TAB}-`.length)
+    // Registry order, each section once, and every section the board has rows for.
+    assert.deepEqual(drawn.map(keyOf), registry.filter((key) => items.some((i) => groupOf(i.id)?.key === key)), `${name}: a section moved, or is missing`)
+    for (const g of drawn) {
       const key = keyOf(g)
-      // The WHOLE group: every row of it the board has, no lane filtering inside.
-      assert.deepEqual(ids(g.items).sort(), ids(items.filter((i) => groupOf(i.id)?.key === key)).sort(), `${name}/${key}: the tab left a row of the group out`)
-      assert.ok(g.items.some((i) => i.lane !== 'Completed'), `${name}/${key}: an entirely complete group is in the list`)
-      assert.equal(g.progress, true, `${name}/${key}: the group does not read as a whole group`)
+      const mine = items.filter((i) => groupOf(i.id)?.key === key)
+      // The WHOLE section: every row of it the board has, no lane filtering inside.
+      assert.deepEqual(ids(g.items).sort(), ids(mine).sort(), `${name}/${key}: the tab left a row of the section out`)
+      const finished = mine.every((i) => i.lane === 'Completed' || i.lane === 'Deferred')
+      assert.equal(g.closed, finished, `${name}/${key}: ${finished ? 'a finished section is drawn open' : 'a section with work left is collapsed'}`)
+      assert.equal(g.label, groupTitleOf(STEP_GROUPS.find((x) => x.key === key)!, finished), `${name}/${key}: not the section's own title`)
+      assert.match(groupSummary(g), finished ? /^(All \d+ completed|1 of 1 completed|\d+ of \d+ completed, \d+ deferred)$/ : /^\d+ of \d+ remaining$/, `${name}/${key}`)
     }
-    // Nothing is lost and nothing is drawn twice: active plus completed is the board.
-    const everywhere = [...drawn.active, ...allWorkGroups(applyFocus(items, ALL_WORK_TAB, NO_FOCUS), { completed: true, open: null }).completed].flatMap((g) => ids(g.items))
+    // Nothing is lost and nothing is drawn twice.
+    const everywhere = drawn.flatMap((g) => ids(g.items))
     assert.equal(everywhere.length, new Set(everywhere).size, `${name}: a row is drawn twice`)
     assert.deepEqual([...everywhere].sort(), ids(items).sort(), `${name}: the tab and the row set disagree`)
-    // An entirely complete group is out of the list and under the completed fold,
-    // revealed by Show completed or by holding the open step — the board's own
-    // mechanism for finished work, not a second one.
-    const complete = STEP_GROUPS.map((g) => g.key).filter((key) => { const mine = items.filter((i) => groupOf(i.id)?.key === key); return mine.length > 0 && mine.every((i) => i.lane === 'Completed') })
-    assert.deepEqual(drawn.completed, [], `${name}: a finished group is folded away with Show completed off`)
-    const asked = allWorkGroups(applyFocus(items, ALL_WORK_TAB, NO_FOCUS), { completed: true, open: null })
-    assert.deepEqual(asked.completed.map((g) => g.key), complete.map((key) => `${ALL_WORK_TAB}-${key}-complete`), `${name}: Show completed did not reveal the finished groups`)
-    for (const g of asked.completed) assert.equal(g.secondary, true, `${name}/${g.key}: a finished group is not drawn as an aside`)
-    for (const key of complete) {
-      const held = allWorkGroups(applyFocus(items, ALL_WORK_TAB, NO_FOCUS), { completed: false, open: items.find((i) => groupOf(i.id)?.key === key)!.id })
-      assert.deepEqual(held.completed.map((g) => g.key), [`${ALL_WORK_TAB}-${key}-complete`], `${name}/${key}: opening a step of a finished group did not unfold it`)
-    }
   }
+  // The premise: some fixture finishes a section, so a collapsed one is drawn at all.
+  const week2 = itemsFor('demo-week2')
+  assert.ok(allWorkGroups(week2, week2).some((g) => g.closed), 'no fixture finished a section, so this proves little')
 })
 
-test('All work does not renumber: a row keeps its place in its group, and the numbers run with no gap', () => {
+test('All work does not renumber: a row keeps its place in its section, and the numbers run with no gap', () => {
   for (const name of FIXTURES) {
     const items = itemsFor(name)
     const numbers = rowNumbersOf(items)
-    for (const g of allWorkGroups(applyFocus(items, ALL_WORK_TAB, NO_FOCUS), { completed: true, open: null }).active) {
+    for (const g of allWorkGroups(applyFocus(items, ALL_WORK_TAB, NO_FOCUS), items)) {
       const seen = g.items.map((i) => numbers.get(i.id)!)
-      assert.deepEqual(seen, seen.map((_, at) => at + 1), `${name}/${g.key}: the whole group does not read 1..n`)
+      assert.deepEqual(seen, seen.map((_, at) => at + 1), `${name}/${g.key}: the whole section does not read 1..n`)
     }
   }
 })
 
-test('the tab reads how much of each group is done, in the words content.json holds', () => {
-  const g = { key: 'k', label: 'K', secondary: false, closed: false, progress: true, items: [
-    { id: 'a', title: 'a', lane: 'Completed' as const, laneLabel: 'Completed', workType: 'setup' as const, order: 0 },
-    { id: 'b', title: 'b', lane: 'Completed' as const, laneLabel: 'Completed', workType: 'setup' as const, order: 1 },
-    { id: 'c', title: 'c', lane: 'Ready' as const, laneLabel: 'Ready', workType: 'setup' as const, order: 2 },
-  ] }
-  assert.equal(groupSummary(g), '2 of 3 completed')
-  // A lane tab's group still counts rows, not progress: the two lines are the
-  // same mechanism answering the two different questions a heading can be asked.
-  assert.equal(groupSummary({ ...g, progress: false }, 6), '3 of 6 steps')
+test('a section heading on All work says what is left, and a finished one what became of it, in the words content.json holds', () => {
+  const g = (lanes: BoardItem['lane'][]) => {
+    const items = lanes.map((lane, at) => ({ ...row(`s-goal-block-${at}`, lane), order: at }))
+    return { key: 'k', label: 'K', secondary: false, closed: false, progress: sectionProgressOf(items).get('ongoing')!, items }
+  }
+  assert.equal(groupSummary(g(['Completed', 'Completed', 'Ready'])), '1 of 3 remaining')
+  assert.equal(groupSummary(g(['Completed', 'Deferred', 'On Hold', 'Up Next', 'Ready', 'Completed'])), '3 of 6 remaining', 'a deferred row is not left to do')
+  assert.equal(groupSummary(g(['Completed', 'Completed', 'Completed'])), 'All 3 completed')
+  assert.equal(groupSummary(g(['Completed'])), '1 of 1 completed')
+  assert.equal(groupSummary(g(['Completed', 'Deferred', 'Completed'])), '2 of 3 completed, 1 deferred')
+  // The count is the section's, over the whole board: a filter that leaves one
+  // row of it does not change what the heading says is left.
+  const whole = g(['Completed', 'Ready', 'Ready'])
+  assert.equal(groupSummary({ ...whole, items: whole.items.slice(1, 2) }), '2 of 3 remaining')
+  // A lane tab's group still counts rows, not progress: the two lines answer the
+  // two different questions a heading can be asked.
+  const { progress: _p, ...filtered } = g(['Completed', 'Completed', 'Ready'])
+  assert.equal(groupSummary(filtered, 6), '3 of 6 steps')
   assert.equal(BOARD.allWorkTab, 'All work')
 })
 

@@ -1,9 +1,10 @@
 // The Plan's step groups: a named run of existing steps the board draws
-// together, above its lanes when the group is pinned (Plan.tsx, planBoard.ts
-// partitionPinnedGroups).
+// together as one section (Plan.tsx, planBoard.ts allWorkGroups and groupsFor).
+// Sections never move (owner, roadmap flow V2): the order of this registry is
+// the order on screen, in every tab, from the first scan to the last.
 //
-// This is the one place a group's membership, order, pinning, title keys and
-// anatomy live. Adding a group is adding an entry here and its two title keys
+// This is the one place a group's membership, order, title keys and anatomy
+// live. Adding a group is adding an entry here and its two title keys
 // under pages.app.plan.groups in content.json; nothing else names a group's ids.
 //
 // Only membership is here. What a member *means* (the emergency gate, the
@@ -54,8 +55,6 @@ export type StepGroup = {
    * the last: a step nobody placed is ongoing work until somebody places it.
    */
   catchAll?: boolean
-  /** Drawn above the lanes, out of the tabs, until every member is Completed. */
-  pinned: boolean
   /** Which headings the members draw (GroupAnatomy), or null for the step's own defaults. */
   anatomy: GroupAnatomy | null
 }
@@ -72,7 +71,6 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     titleKey: 'pages.app.plan.groups.emergencyAccess.title',
     completedTitleKey: 'pages.app.plan.groups.emergencyAccess.completedTitle',
     members: ['s-prereq-break-glass', 's-prereq-exclusion-group', 's-prereq-passkey-settings', 'cleanup-drill'],
-    pinned: true,
     anatomy: 'task',
   },
   {
@@ -80,7 +78,6 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     titleKey: 'pages.app.plan.groups.direction.title',
     completedTitleKey: 'pages.app.plan.groups.direction.completedTitle',
     members: DIRECTION_STEP_IDS,
-    pinned: true,
     anatomy: 'decision',
   },
   // ---- the objects the Direction answers ask for ----
@@ -102,10 +99,9 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     titleKey: 'pages.app.plan.groups.prepareObjects.title',
     completedTitleKey: 'pages.app.plan.groups.prepareObjects.completedTitle',
     members: ['s-prereq-trusted-location', 's-prereq-allowed-countries', 's-prereq-service-accounts-group'],
-    pinned: false,
     anatomy: 'task',
   },
-  // ---- the rollout's own runs, drawn inside the lane tabs ----
+  // ---- the rollout's own runs ----
   // Their order is the build order docs/plans/v1-step-map.md §3 sets (the
   // waves), collapsed to the fewest runs that still read as one job each: a
   // numbered list stops helping somewhere past seven rows, and nine waves as
@@ -133,7 +129,6 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     titleKey: 'pages.app.plan.groups.closeDoors.title',
     completedTitleKey: 'pages.app.plan.groups.closeDoors.completedTitle',
     members: ['s-goal-block-legacy-auth', 's-goal-block-device-code', 's-goal-block-auth-transfer', 's-goal-block-unsupported-platforms'],
-    pinned: false,
     anatomy: 'task',
   },
   {
@@ -141,7 +136,6 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     titleKey: 'pages.app.plan.groups.protectAdmins.title',
     completedTitleKey: 'pages.app.plan.groups.protectAdmins.completedTitle',
     members: ['s-ladder-operator-passkey', 's-prereq-auth-strength', 's-goal-admins-phishing-resistant', 's-goal-admin-session', 's-goal-pim-activation-reauth'],
-    pinned: false,
     anatomy: 'task',
   },
   {
@@ -149,7 +143,6 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     titleKey: 'pages.app.plan.groups.mfaEveryone.title',
     completedTitleKey: 'pages.app.plan.groups.mfaEveryone.completedTitle',
     members: ['s-goal-register-info-protected', 's-goal-device-registration-mfa', 's-verify-mfa', 's-prereq-security-defaults', 's-goal-mfa-all-users', 's-goal-guests-mfa', 's-prereq-per-user-mfa'],
-    pinned: false,
     anatomy: 'task',
   },
   {
@@ -157,7 +150,6 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     titleKey: 'pages.app.plan.groups.whereSignIn.title',
     completedTitleKey: 'pages.app.plan.groups.whereSignIn.completedTitle',
     members: ['s-goal-geo-restriction', 's-goal-service-accounts-trusted-network', 's-goal-workload-identity-block'],
-    pinned: false,
     anatomy: 'task',
   },
   {
@@ -165,7 +157,6 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     titleKey: 'pages.app.plan.groups.devices.title',
     completedTitleKey: 'pages.app.plan.groups.devices.completedTitle',
     members: ['s-goal-require-managed-device', 's-goal-intune-enrollment-reauth', 's-ladder-phone-access-restriction', 's-shared-devices'],
-    pinned: false,
     anatomy: 'task',
   },
   {
@@ -173,7 +164,6 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     titleKey: 'pages.app.plan.groups.riskAndSessions.title',
     completedTitleKey: 'pages.app.plan.groups.riskAndSessions.completedTitle',
     members: ['s-goal-sign-in-risk', 's-goal-user-risk', 's-goal-sign-in-risk-medium', 's-goal-user-risk-medium', 's-goal-all-users-no-persistence', 's-goal-token-protection'],
-    pinned: false,
     anatomy: 'task',
   },
   {
@@ -183,7 +173,6 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     members: ['s-goal-admin-portals-protected', 's-goal-inforcer-mfa', 's-check-dormant-accounts', 's-check-separate-admin-accounts', 'cleanup-alerting', 'cleanup-hardening', 'cleanup-consolidation', 'cleanup-naming'],
     memberPrefixes: ['s-review-baseline-'],
     catchAll: true,
-    pinned: false,
     anatomy: 'task',
   },
 ]
@@ -294,6 +283,3 @@ export function usesTaskAnatomy(stepId: string, groups: readonly StepGroup[] = S
 export function usesDecisionAnatomy(stepId: string, groups: readonly StepGroup[] = STEP_GROUPS): boolean {
   return anatomyOf(stepId, groups) === 'decision'
 }
-
-/** The pinned groups, in registry order. */
-export const pinnedGroups = (groups: readonly StepGroup[] = STEP_GROUPS): StepGroup[] => groups.filter((g) => g.pinned)
