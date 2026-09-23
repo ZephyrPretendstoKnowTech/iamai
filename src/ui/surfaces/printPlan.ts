@@ -90,26 +90,38 @@ export function doesntApplyLinesOf(steps: readonly Step[]): string[] {
 }
 
 /**
- * What holds the plan, as the cover names it beside its start: every readiness
- * number that holds steps, then the steps held on other work and what they wait
- * on (derive/finish.ts planFinish), joined as the finish line joins its parts.
- * The readiness clause used to stand in for both, so the demo's cover named one
- * device step and not the nineteen held on Prepare Emergency Access Accounts.
+ * What holds the plan, as the header's "cannot finish until …" names it: every
+ * readiness number that holds steps, then the steps held on other work and what
+ * they wait on (derive/finish.ts planFinish), joined as the finish line joins
+ * its parts. The readiness clause used to stand in for both, so the demo's
+ * cover named one device step and not the nineteen held on Prepare Emergency
+ * Access Accounts.
  */
 export function constraintOf(finish: PlanFinish, titleOf: (id: string) => string): string {
   return [FINISH.waiting(finish.waiting), FINISH.unwritable(finish.unwritable.count, finish.unwritable.waitsOn.map(titleOf), finish.unwritable.named)].filter((c) => c.length > 0).join(' · ')
 }
 
 /**
- * The cover's Plan dates: the start to the finish the calendar sets; the start
- * and what holds the plan while anything required is held; the start alone
- * where nothing open is dated. It used to fall back to `schedule.targetEnd`,
- * the end the generator drew before the operator's deferrals, so a plan whose
- * remaining dated work was all deferred printed an end from work nobody will do.
+ * The same holds as clauses that stand on their own, for the cover's Plan
+ * dates line, where nothing before them says "until": "19 steps are held, 14
+ * of them waiting on …" (copy/statements.ts FINISH.held), never the header's
+ * "19 held steps are cleared", which there stated that they are.
  */
-export function coverDatesOf(start: string, finish: Pick<PlanFinish, 'finish' | 'held'>, constraint: string): string {
+export function holdsOf(finish: PlanFinish, titleOf: (id: string) => string): string {
+  return [FINISH.waiting(finish.waiting), FINISH.held(finish.unwritable.count, finish.unwritable.waitsOn.map(titleOf), finish.unwritable.named)].filter((c) => c.length > 0).join(' · ')
+}
+
+/**
+ * The cover's Plan dates: the start to the finish the calendar sets; the start
+ * and what holds the plan (`holds`, printPlan.ts holdsOf) while anything
+ * required is held; the start alone where nothing open is dated. It used to
+ * fall back to `schedule.targetEnd`, the end the generator drew before the
+ * operator's deferrals, so a plan whose remaining dated work was all deferred
+ * printed an end from work nobody will do.
+ */
+export function coverDatesOf(start: string, finish: Pick<PlanFinish, 'finish' | 'held'>, holds: string): string {
   if (finish.finish !== null) return dateRange(start, finish.finish)
-  return finish.held && constraint.length > 0 ? `${absoluteDate(start)} · ${constraint}` : absoluteDate(start)
+  return finish.held && holds.length > 0 ? `${absoluteDate(start)} · ${holds}` : absoluteDate(start)
 }
 
 /**
