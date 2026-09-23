@@ -11,6 +11,7 @@ import type { SourceKey } from '../graph/collect/types.ts'
 import { COLLECTOR_REGISTRY } from '../graph/collect/registry.ts'
 import { app, engine } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
+import builtinStrengths from '../../data/builtin-strengths.json' with { type: 'json' }
 import { list } from '../copy/statements.ts'
 import { strengthNameIn } from './operations.ts'
 
@@ -154,10 +155,12 @@ export function routeShortfallOf(
     : fillText(W.routeShortfallSome, { step, covered, short: short.length, rest: short.length - covered, threshold })
 }
 
+/** A built-in strength's id, by its name, from the one place the ids are written (data/builtin-strengths.json). */
+const builtInStrengthId = (name: string): string => builtinStrengths.strengths.find((s) => s.displayName === name)!.id
 /** Microsoft's built-in Multifactor authentication strength: what a plain MFA grant asks for. */
-const MFA_STRENGTH = '00000000-0000-0000-0000-000000000002'
+const MFA_STRENGTH = builtInStrengthId('Multifactor authentication')
 /** Microsoft's built-in Phishing-resistant MFA strength. */
-const PHISHING_RESISTANT_STRENGTH = '00000000-0000-0000-0000-000000000004'
+const PHISHING_RESISTANT_STRENGTH = builtInStrengthId('Phishing-resistant MFA')
 
 /**
  * The requirement a family's own words already name (copy/reasons.ts
