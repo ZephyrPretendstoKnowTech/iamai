@@ -659,6 +659,23 @@ try {
     await evaluate(`location.hash = '#/plan'`)
     await sleep(200)
   }
+  // A link into a section the person folded lets go of the fold
+  // (planBoard.ts releaseFor): the tab stays, the section opens and the page
+  // moves to the step. The step used to open inside the hidden block, out of
+  // sight, with its row reading expanded.
+  await showLane('All work')
+  const foldedId = await evaluate(`(() => { const g = [...document.querySelectorAll('main.page .plan-board .plan-group')].find((x) => !x.classList.contains('closed') && x.querySelector('.plan-row[data-step^="s-"]')); if (!g) return null; const r = [...g.querySelectorAll('.plan-row[data-step^="s-"]')].at(-1); g.querySelector('.plan-group-toggle').click(); return r.dataset.step })()`)
+  const foldedRow = `document.querySelector('main.page .plan-row[data-step=${JSON.stringify(foldedId)}]')`
+  const folded = foldedId !== null && (await waitFor(`!!(${foldedRow} || { closest: () => null }).closest('.plan-group-rows[hidden]')`, 3000))
+  if (folded) {
+    await evaluate(`location.hash = ${JSON.stringify(`#/plan/${foldedId}`)}`)
+    const unfolded = await waitFor(`(() => { const t = [...document.querySelectorAll('main.page .plan-controls [role=tab]')].find((x) => x.getAttribute('aria-selected') === 'true'); const r = ${foldedRow}; if (!t || !r) return false; const box = r.getBoundingClientRect(); return (${tabText})(t) === 'All work' && r.getAttribute('aria-expanded') === 'true' && !r.closest('.plan-group-rows[hidden]') && box.top >= 0 && box.top < innerHeight })()`, 5000)
+    check('Plan: a link into a section the person folded opens the section, with the step on screen', unfolded, String(foldedId))
+    await evaluate(`location.hash = '#/plan'`)
+    await sleep(200)
+  } else {
+    check('Plan: a link into a section the person folded opens the section, with the step on screen', false, `no open section on All work to fold (${foldedId})`)
+  }
   await showLane('Ready')
   // Every row says its lane under its state word: `Lane · substatus/reason`.
   const laneLabels = await acrossLanes(`[...document.querySelectorAll('main.page .plan-row .lane')].map((e) => (e.textContent || '').trim())`)

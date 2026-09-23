@@ -59,6 +59,8 @@ import {
   boardOf,
   followOpenStep,
   groupClosed,
+  pressKeyOf,
+  releaseFor,
   togglesOf,
   nothingReadyLine,
 } from './planBoard.ts'
@@ -645,18 +647,43 @@ test('a step opened from a link or a tile stays on the tab that shows it, and ot
     assert.equal(groupClosed({ ...section, closed: true }, target.id, undefined, false), false, 'a finished section folds over the open step')
   }
   // A finished section folds unless something opens it: the open step, a
-  // search, or the person's own press, which outranks both.
+  // search, or the person's own press, which outranks both while it stands —
+  // folding the section of the step one is reading folds it.
   const finished = allWorkGroups(items, items).find((g) => g.closed)!
   assert.ok(finished, 'the premise: the Follow-up demo has a finished section')
   assert.equal(groupClosed(finished, null, undefined, false), true)
   assert.equal(groupClosed(finished, null, undefined, true), false, 'a search matched rows in a section nobody can see')
-  assert.equal(groupClosed(finished, finished.items[0].id, true, false), true, 'the person\'s press did not outrank the open step')
+  assert.equal(groupClosed(finished, finished.items[0].id, true, false), true, 'the person\'s press did not outrank the step they had open')
+  // A link or a tile lets go of that press (releaseFor): it asks to see the
+  // step, and a step opened inside a section the person folded opened out of
+  // sight — the row read expanded inside a hidden block, and the page could
+  // not move to it. Only the press over that step goes; every other stays.
+  const drawnAll = allWorkGroups(applyFocus(items, ALL_WORK_TAB, NO_FOCUS), items)
+  const section = drawnAll.find((g) => g.items.some((i) => i.id === held.id))!
+  const other = drawnAll.find((g) => g !== section)!
+  const onReady = groupsFor('ready', applyFocus(items, 'ready', NO_FOCUS))[0]
+  const pressed = { [pressKeyOf(ALL_WORK_TAB, section)]: true, [pressKeyOf(ALL_WORK_TAB, other)]: true, [pressKeyOf('ready', onReady)]: true }
+  assert.equal(groupClosed(section, held.id, pressed[pressKeyOf(ALL_WORK_TAB, section)], false), true, 'the premise: the person folded the section that holds the step')
+  const released = releaseFor(pressed, held.id, drawnAll.map((g) => [ALL_WORK_TAB, g] as const))
+  assert.equal(groupClosed(section, held.id, released[pressKeyOf(ALL_WORK_TAB, section)], false), false, 'a link opened a step inside a section the person folded, out of sight')
+  assert.equal(released[pressKeyOf(ALL_WORK_TAB, other)], true, 'a link unfolded a section that does not hold the step')
+  assert.equal(released[pressKeyOf('ready', onReady)], true, 'a link unfolded a section under another tab')
+  // The same on a lane tab and in its aside: the press is let go under the view that draws the step.
+  const readyRow = onReady.items[0]
+  assert.equal(releaseFor({ [pressKeyOf('ready', onReady)]: true }, readyRow.id, [['ready', onReady]])[pressKeyOf('ready', onReady)], undefined)
+  const aside = asideGroupsFor(applyFocus(items, 'ready', { ...NO_FOCUS, showCompleted: true })).find((g) => g.items.some((i) => i.id === done.id))!
+  assert.equal(releaseFor({ [pressKeyOf('aside', aside)]: true }, done.id, [['aside', aside]])[pressKeyOf('aside', aside)], undefined)
   // The Plan wires it: the rows the view draws decide, the switch goes to All
-  // work with the focus cleared, and the page moves to the step.
+  // work with the focus cleared, and the page moves to the step. A link on the
+  // view that draws it lets go of the fold over it, and the page moves to the
+  // row only once it is out from under a folded section.
   const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
   assert.match(plan, /const follow = open !== null \? followOpenStep\(open, shown\) : null/)
   assert.match(plan, /setTab\(follow\); setFocus\(NO_FOCUS\); setToggled\(\{\}\); moveTo\.current = open/)
   assert.match(plan, /const closed = groupClosed\(g, open, toggled\[key\], focusActive\(focus\)\)/)
+  assert.match(plan, /const key = pressKeyOf\(scope, g\)/, 'a fold is kept under a key of its own making')
+  assert.match(plan, /setToggled\(\(t\) => releaseFor\(t, open, drawn\)\)/, 'a link does not let go of the fold over its step')
+  assert.match(plan, /if \(!row \|\| row\.closest\('\[hidden\]'\) !== null\) return/, 'the page moves to a row still folded out of sight, which moves nothing')
   assert.equal(plan.includes('const openTab'), false, 'a link still switches to the step\'s lane tab')
 })
 
