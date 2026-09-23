@@ -351,9 +351,10 @@ test('a delivered step whose reach is not established is not handed Readiness wo
 
 // "Your account is in scope: 3 sign-ins since Jul 29, 2026." was the one reading
 // on a delivered step still taken from the goal's people (stepVars.ts
-// operatorInScope), not from the reach the step's cards read: on screen, in the exports and in AI Info it stood under "IAMAI
-// cannot establish exactly who this reaches", and a policy that reached the
-// account was said not to where the goal's people left it out. Where the reach
+// operatorInScope), not from the reach the step's cards read, so a policy that
+// reached the account was said not to where the goal's people left it out.
+// Under "IAMAI cannot establish exactly who this reaches" the line still shows
+// unless something the scan read in full excludes the account. Where the reach
 // is settled it answers. Where it is not, the delivering policies are asked about
 // this one account (generate.ts deliveredReachesOperator), and an answer they
 // cannot give counts as reaching it: the convention an open policy follows,

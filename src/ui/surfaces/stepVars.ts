@@ -527,8 +527,9 @@ function answerVars(ctx: StepVarContext, v: Record<string, unknown>): Record<str
  * policies were asked about this one account (generate.ts
  * deliveredReachesOperator), and an answer they could not give counts as
  * reaching it. A delivered step decided this from the goal's people, a list
- * nothing measured for the policies that deliver it: "Your account is in scope"
- * stood under "IAMAI cannot establish exactly who this reaches".
+ * nothing measured for the policies that deliver it. Where their reach is not
+ * established the line still shows unless something the scan read in full
+ * excludes the account: unknown is not safe.
  */
 function operatorInScope(step: Step, operatorId: string): boolean {
   if (effectsOf(step) !== null) return step.includesOperator === true
