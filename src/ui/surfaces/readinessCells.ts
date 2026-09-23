@@ -54,6 +54,7 @@ type Words = {
   notes: { automated: string; onLeave: string }
   panel: {
     noDevices: string
+    noneRegistered: string
     best: string
     now: string
     allowed: string
@@ -351,6 +352,11 @@ export function panelMethods(r: ReadinessRow): PanelItem[] {
     const facts: [string, string][] = [[P.allowed, allowed], [P.lastConfirmed, last], ...(used ? [[P.lastUsed, used] as [string, string]] : [])]
     return { icon: c.cls === 'passkey' && c.aaguid && !/authenticator/i.test(model) ? 'key' : c.cls === 'windowsHello' || c.cls === 'platformCredential' ? 'computer' : 'phone', name: classWord(c.cls), sub: model, facts }
   })
+}
+
+/** The person panel's methods where none is listed: not read (the row says "Methods not read" too), or none registered. */
+export function panelNoMethods(r: ReadinessRow): string {
+  return r.methods === null ? T.methods.unread : T.panel.noneRegistered
 }
 
 /** Why the person stands where they do, one sentence. */

@@ -14,7 +14,7 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { signInsNeedP1 } from '../../derive/readinessContext.ts'
 import { signInProofRead } from '../../scoring/fromSnapshot.ts'
 import { cohortWords } from '../../derive/whoLine.ts'
-import { goalLine, noDevicesWord, panelNoDevices, railRemaining, summaryLine } from './readinessCells.ts'
+import { goalLine, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, summaryLine } from './readinessCells.ts'
 import { readinessTable } from './inventoryTables.ts'
 
 const R = pages.readiness as unknown as { checks: Record<string, Record<string, string>>; rail: { shownAbove: string } }
@@ -97,4 +97,17 @@ test('a headline over people nobody could judge is not a measured "0 of N are re
   assert.match(summaryLine(demo, { needP1: signInsNeedP1(f.snapshot), proofRead: signInProofRead(f.snapshot) }), /^\d+ of .* ready for phishing-resistant sign-in\.$/)
   assert.notEqual(goalLine(demo), '')
   assert.match(page(), /const summary = summaryLine\(counted, \{ needP1: signInsNeedP1\(snapshot\), proofRead: signInProofRead\(snapshot\) \}\)/)
+})
+
+test('the person panel never says "None registered yet." for somebody whose method list was not read', () => {
+  const f = fixture('hostile')
+  const unread = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.filter((r) => r.state !== null && r.methods === null)
+  assert.ok(unread.length > 0, 'the premise: hostile read nobody’s method list')
+  for (const r of unread) assert.equal(panelNoMethods(r), W.methods.unread, r.user.id)
+  // Somebody whose list WAS read and holds no phishing-resistant method still reads so.
+  const demo = fixture('demo')
+  const none = readinessView(demo.snapshot, demo.snapshot.asOf, demo.mapping).rows.filter((r) => r.state === 'method' && r.methods !== null)
+  assert.ok(none.length > 0)
+  for (const r of none) assert.equal(panelNoMethods(r), W.panel.noneRegistered, r.user.id)
+  assert.match(page(), /panelList\(panelMethods\(openRow\), panelNoMethods\(openRow\)\)/, 'the panel draws the one word')
 })
