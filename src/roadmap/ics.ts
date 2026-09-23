@@ -62,13 +62,18 @@ export function buildIcs(steps: Step[], tenantName: string, planId: string, view
     // carries, and no export dates a step any other way.
     const event = scheduledEventOf(s)
     if (event === null) continue
+    const v = view(s)
+    // A step the board holds books nothing, whatever day the schedule still
+    // carries for it (owner decision 2, 2026-09-22): Turn Off Security Defaults
+    // was booked for Aug 31, its cutover instructions as the entry, under a row
+    // that read "After prerequisites" (R4-21).
+    if (v.undated) continue
     const endExclusive = new Date(Date.parse(event.end) + 86_400_000).toISOString()
     lines.push('BEGIN:VEVENT')
     lines.push(`UID:${planId}-${s.id}@iamai`)
     lines.push(stamp())
     lines.push(`DTSTART;VALUE=DATE:${icsDate(event.start)}`)
     lines.push(`DTEND;VALUE=DATE:${icsDate(endExclusive)}`)
-    const v = view(s)
     // What the day is for, as the Plan rail says it: its transition's words, or
     // the step's lane label where the rail has none (A1c): the same state the
     // row and the badge show, never a sentence of the artifact's own.

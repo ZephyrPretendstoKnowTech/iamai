@@ -50,11 +50,15 @@ export function scheduledIds(waves: readonly { stepIds: string[] }[]): Set<strin
 
 /**
  * The rows the undated group draws: every step the Plan would otherwise not
- * render — not in a wave, not done, and not the floor's own group.
+ * render — not in a wave, not done, and not the floor's own group — and every
+ * step the board holds (`held`: planBoard.ts boardHolds, the caller's board),
+ * whatever wave the schedule still carries it in. A held step carries no date
+ * anywhere (owner decision 2, 2026-09-22), so it is never drawn under a
+ * phase's dates; `phaseRows` leaves it out by the same predicate.
  */
-export function undatedRows(steps: readonly Step[], waves: readonly { stepIds: string[] }[]): Step[] {
+export function undatedRows(steps: readonly Step[], waves: readonly { stepIds: string[] }[], held: (s: Step) => boolean = () => false): Step[] {
   const scheduled = scheduledIds(waves)
-  return steps.filter((s) => inWave(s) && !s.floor && !scheduled.has(s.id))
+  return steps.filter((s) => inWave(s) && !s.floor && (!scheduled.has(s.id) || held(s)))
 }
 
 /**
@@ -101,15 +105,18 @@ export function floorGroupIds(steps: readonly Step[]): Set<string> {
 /**
  * The rows a numbered phase draws: the steps the wave dates, less every row
  * another group holds — the floor's own group, and the footer's In place and
- * Doesn't apply here (derive/phases.ts inWave). A step renders once, and this is
- * the only place that decides a phase's rows.
+ * Doesn't apply here (derive/phases.ts inWave) — and every step the board holds
+ * (`held`, as `undatedRows` reads it), which the undated group draws instead:
+ * Turn Off Security Defaults printed inside the Preparation phase, Aug 31 - Sep
+ * 28, under a row reading "After prerequisites" (R4-21). A step renders once,
+ * and this is the only place that decides a phase's rows.
  */
-export function phaseRows(steps: readonly Step[], wave: { stepIds: string[] }): Step[] {
+export function phaseRows(steps: readonly Step[], wave: { stepIds: string[] }, held: (s: Step) => boolean = () => false): Step[] {
   const byId = new Map(steps.map((s) => [s.id, s]))
   const floor = floorGroupIds(steps)
   return wave.stepIds
     .map((id) => byId.get(id))
-    .filter((s): s is Step => s !== undefined && inWave(s) && !floor.has(s.id))
+    .filter((s): s is Step => s !== undefined && inWave(s) && !floor.has(s.id) && !held(s))
 }
 
 /**

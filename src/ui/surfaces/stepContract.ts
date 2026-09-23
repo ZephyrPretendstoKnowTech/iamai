@@ -27,7 +27,7 @@ import type { StepCheckItem } from '../../validation/checkFixes.ts'
 import { SET_LEVEL } from '../../validation/report.ts'
 import { dimensionWords, watchedArrive } from '../../roadmap/observation.ts'
 import type { Condition, Lifecycle, Milestone } from '../../roadmap/lifecycle.ts'
-import { heldForReview, nextMilestone, reviewCauses } from '../../roadmap/lifecycle.ts'
+import { heldForReview, nextMilestone, reviewCauses, undatedMilestone } from '../../roadmap/lifecycle.ts'
 import type { PolicyHold, UnavailableReason } from '../../roadmap/operations.ts'
 import { awaitsWorkflowRecord, enforcesOnRun, implementationOffered, isPreserved, operationsOf, policyHold, switchedOffPolicy, unavailableReason } from '../../roadmap/operations.ts'
 import { requiredMembers } from '../../roadmap/tracking.ts'
@@ -55,7 +55,7 @@ import { scheduleOf } from '../../roadmap/stepSchedule.ts'
 import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
 import type { StepSchedule } from '../../roadmap/stepSchedule.ts'
 import { heldByTitle, missingObjects, waitKindOf, waitingLine } from './stepJson.ts'
-import { stepVars, tenantNameOf } from './stepVars.ts'
+import { stepVars, tenantNameOf, withoutScheduleDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import type { BlockerKind, Lane, Substatus } from '../../actionability/lanes.ts'
 import { returnToStep } from '../shell/routes.ts'
@@ -84,6 +84,12 @@ export type LaneView = {
    */
   waitingFor: string | null
   tone: StatusTone
+  /**
+   * Read with nothing around it (planBoard.ts laneViewAlone): a stand-in where
+   * a caller hands no board, never the board's reading, so nothing is held on it
+   * (planBoard.ts boardHolds).
+   */
+  alone?: true
 }
 
 /**
@@ -504,6 +510,13 @@ export type StepContract = {
   scheduledOn: string | null
   /** The step's one scheduling result on the finished plan (roadmap/stepSchedule.ts); null where no finished plan carries the step. The rail reads it. */
   schedule: StepSchedule | null
+  /**
+   * The board holds the step (planBoard.ts boardHolds): its When reads "After
+   * prerequisites", and nothing here dates it — no milestone day, no Next line,
+   * no phase day, and a rail that says what the When column says (owner
+   * decision 2, 2026-09-22).
+   */
+  undated: boolean
   /** True for a step that delivers a policy: it keeps its Implementation region even with nothing to offer, where a decision or a check draws none. */
   policy: boolean
   /** Emergency-access hardening outstanding on this step, apart from what holds the rollout; null elsewhere. */
@@ -1293,14 +1306,20 @@ export function factOf(step: Pick<Step, 'state'>): string | null {
  * (planBoard.ts prerequisiteLabelFor → chainStartOf); the contract resolves its
  * readiness route against it once (`routeStart`).
  */
-export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<string, unknown>, lane: LaneView | null = null, startOf?: PrerequisiteLabel['startOf']): StepContract {
-  const ex = vars ?? stepVars(step, ctx)
+export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<string, unknown>, lane: LaneView | null = null, startOf?: PrerequisiteLabel['startOf'], undated = false): StepContract {
+  // `undated`: the board holds the step (planBoard.ts boardHolds, read by the
+  // caller that holds the board). Its words lose the days the plan scheduled for
+  // it, and its milestone its day (owner decision 2, 2026-09-22).
+  const ex = vars ?? (undated ? withoutScheduleDates(stepVars(step, ctx), step) : stepVars(step, ctx))
   const cs = contentStepFor(step) as Record<string, unknown> | undefined
   const tenant = tenantNameOf(ctx.snapshot)
   // The Plan's one presentation state: the row word, the badge, the bar and the rail read it (planState.ts).
   const held = isHeld(step)
   const word = planStateOf(step, held)
-  const m = nextMilestone(step)
+  // A step the board holds names no day, in its milestone or its sentence
+  // (roadmap/lifecycle.ts undatedMilestone): the board's When already reads
+  // "After prerequisites" for it, and a date beside that is a second answer.
+  const m = undated ? undatedMilestone(nextMilestone(step)) : nextMilestone(step)
   const reason = unavailableReason(step)
   const bare: ContractMilestone = { kind: m.kind, label: m.label, at: m.at, gatedBy: m.gatedBy, line: null }
   // A policy waiting on the exclusions group while the scan found one nobody has
@@ -1394,8 +1413,9 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     implementation: implementationOffered(step)
       ? { offered: true, operations: operationsOf(step).length }
       : { offered: false, reason, hold: policyHold(step), because: reason === null ? null : reasonLine(step, reason, tenant, exclusionsUnconfirmed) },
-    scheduledOn: ctx.scheduledOn ?? null,
+    scheduledOn: undated ? null : (ctx.scheduledOn ?? null),
     schedule: step.scheduled ? scheduleOf(step) : null,
+    undated,
     policy: step.kind === 'create' || step.kind === 'adjust',
     hardening: hardeningOf(step, cs, ex),
     emergencySlots: emergencySlotsOf(step, cs, ex, ctx.nameOf),
@@ -2508,6 +2528,10 @@ export function railOf(c: StepContract, actionText: string | null = null): { met
   // A completed step has no next action, even if its package defines a milestone.
   if (l?.lane === 'Completed') return { metric: l.label, sub: '' }
   const sub = actionText ?? ''
+  // A step the board holds reads what its When column reads, never a day the
+  // schedule still carries (owner decision 2): Turn Off Security Defaults read
+  // Aug 31 here under a row that read "After prerequisites" (R4-21).
+  if (c.undated) return { metric: schedulingWords.waiting, sub }
   // A day the plan schedules (roadmap/stepSchedule.ts) is the metric — the same
   // result the row's When and its phase read.
   const s = c.schedule ?? null

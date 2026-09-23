@@ -202,8 +202,10 @@ test('s-goal-require-managed-device: the threshold says what it measures, Entra 
   for (const t of prerequisites) assert.doesNotMatch(t.note ?? '', /does not enforce access restrictions/, t.key)
   // Its wait is on Decide How People and Devices Sign In (roadmap/direction.ts gateOnDirection), and a
   // Direction answer nobody has approved holds the step undated, like every other hold (owner, 2026-09-19):
-  // no create day either, until the answer is approved.
-  assert.equal(b.rail.metric, 'Not scheduled')
+  // no create day either, until the answer is approved. The rail says what the
+  // board's When says for a step it holds (owner decision 2, 2026-09-22): it read
+  // "Not scheduled" under a row reading "After prerequisites".
+  assert.equal(b.rail.metric, 'After prerequisites')
   const create = authoredParts(drawn(b, 'portal')).find((p) => p.kind === 'list')
   assert.ok(create && create.kind === 'list' && create.items[1][0] === 'Name: Core - Require - Compliant device for Office 365.', 'the create procedure names the demo policy')
   // The numbered readiness explanation stays shared (BLOCKED.md). Editorial batch C: the register Why; the held end state is unchanged.

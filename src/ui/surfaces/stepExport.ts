@@ -13,7 +13,7 @@ import { dimensionWords } from '../../roadmap/observation.ts'
 import { content } from '../../content/content.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { SHARED_REF_KEYS, fillText, ifWrongFor, listCountVars, whatToDoFor, whole } from '../../content/render.ts'
-import { stepVars } from './stepVars.ts'
+import { stepVars, withoutScheduleDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor, unwrittenCorrectionLines } from './stepPortal.ts'
 import { instructionsHeld, rescanLinesOf, wholeLines } from './stepInstructions.ts'
@@ -21,7 +21,7 @@ import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, proceduresAreRef
 import type { LaneView, StepContract } from './stepContract.ts'
 import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, previewNoteLines, selectedPolicyBodiesOf, entraWithSettings } from './stepPackage.ts'
 import { projectSafely } from '../../content/implementation/project.ts'
-import { SUBSTATUS_WORD, boardReadingsOf, laneViewAlone, laneViewFor, laneWordOf } from './planBoard.ts'
+import { SUBSTATUS_WORD, boardHolds, boardReadingsOf, laneViewAlone, laneViewFor, laneWordOf } from './planBoard.ts'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import { createsNewPolicy, enforcesByStateOnly, updatesExistingPolicy, heldByTitle, implementationOffered, waitingLine } from './stepJson.ts'
 import { awaitingDeployment, enforcementUnearned, forecastEnforcement } from '../../roadmap/forecast.ts'
@@ -252,7 +252,14 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // No lane handed down is a step read with nothing around it (planBoard.ts
   // laneViewAlone); the Export page hands down the board's (exportViewsOf).
   const laneView = lane ?? laneViewAlone(step)
-  const contract = stepContract(step, ctx, undefined, laneView)
+  // Whether the board holds the step (planBoard.ts boardHolds), on the reading
+  // handed down: a held step carries no date in any artifact — no Dates line, no
+  // Next line, no day in its words, and no calendar entry (owner decision 2,
+  // 2026-09-22). The export of a policy whose turn-on the board held read
+  // "Announce Sep 20, 2026 · Change Sep 21, 2026" under a row reading "After
+  // prerequisites" (R4-55).
+  const undated = boardHolds(step, lane)
+  const contract = stepContract(step, ctx, undefined, laneView, undefined, undated)
   const shell = {
     state: badgeLabel(contract),
     manualEvidence: manualEvidenceLines(step, ctx),
@@ -276,6 +283,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
     // one list, apart from `fix`: the create is not blocked by any of it (R4-31).
     beforeTurnOn: contract.enforcementWaits.map((f) => f.text),
     implementation: contract.implementation.offered,
+    undated,
   }
   if (!cs) {
     // No content entry at all. Every step the plan draws has one now (task 011),
@@ -284,7 +292,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
     // finish it — and none of the engine's prose, exactly as the screen does.
     return { title: contentTitle(step), why: contract.why, ...shell, whatToDo: [contract.whatToDo.text, gateLine(contract.whatToDo.gatedBy)].filter((l): l is string => l !== null), doneWhen: contract.doneWhen, ifWrong: null, dates: null }
   }
-  const ex = stepVars(step, ctx)
+  const ex = undated ? withoutScheduleDates(stepVars(step, ctx), step) : stepVars(step, ctx)
   const names = portalNamesFor(ctx, ex, contentTitle(step))
   // The settings the lines state are the ones the step's package selects for its JSON
   // (stepPackage.ts selectedPolicyBodiesOf), read only where the lines are handed over.
@@ -462,7 +470,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
     whatToDo: namedPortalResource({ id: 'portal', form: 'list', lines, text: () => lines.join('\n'), note: null }, ctx).lines,
     doneWhen,
     ifWrong: ((line) => (reason === null && line && whole(line, ex) ? fillText(line, ex) : null))(ifWrongLineFor(step, cs, ex)),
-    dates: reason === null && whole(datesLineFor(step, cs), ex) && datesLineFor(step, cs) ? fillText(datesLineFor(step, cs), ex) : null,
+    dates: !undated && reason === null && whole(datesLineFor(step, cs), ex) && datesLineFor(step, cs) ? fillText(datesLineFor(step, cs), ex) : null,
   }
 }
 

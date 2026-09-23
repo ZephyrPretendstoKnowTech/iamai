@@ -105,6 +105,24 @@ export function tenantNameOf(snapshot: TenantSnapshot): string {
 }
 
 /**
+ * A step's variables without the days the plan scheduled for it — its announce
+ * day, its change or enforcement day, and the report-only day it had been placed
+ * on where the scan has not seen it in report-only — for a step the board holds
+ * (planBoard.ts boardHolds; owner decision 2, 2026-09-22: a held step carries no
+ * date anywhere). A line that names one of those days is not drawn, as it is not
+ * drawn on a step the roadmap holds, which carries no events at all
+ * (roadmap/holds.ts): otherwise the email under a held step promises the people
+ * it reaches a day while the row above it reads "After prerequisites". What the
+ * scan read stays — the day the policy went into report-only, the day its
+ * window closes.
+ */
+export function withoutScheduleDates(v: Record<string, unknown>, step: Step): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...v, enforce: undefined, enforceLong: undefined, announce: undefined }
+  if (!step.tracking?.reportOnlyAt) out.reportOnly = undefined
+  return out
+}
+
+/**
  * The values for a content step's variables. Only the keys the step uses are
  * produced (the renderer reads the content step's own example keys); a missing
  * key gates its line off. Lists come as name arrays already resolved.

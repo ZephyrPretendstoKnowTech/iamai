@@ -354,7 +354,7 @@ export function laneViewFor(step: Step, board: Pick<BoardReadings, 'readings' | 
  * surface that draws or exports a step passes the board's lane.
  */
 export function laneViewAlone(step: Step): LaneView {
-  return laneViewFor(step, boardReadingsOf([step], null, null))
+  return { ...laneViewFor(step, boardReadingsOf([step], null, null)), alone: true }
 }
 
 /** The id prefix planLanes.ts `observe` gives a readiness threshold's evidence gate. */
@@ -561,6 +561,8 @@ const READY_ON_PREFIX = WHEN_WORDS.readyOn.split('{')[0]
  *  below therefore asks for the board's reading and never the guess. */
 export function boardWhenOf(step: Step, waveStart: string | null = null, read: LaneView | null = null): string {
   const lane = read ?? laneViewAlone(step)
+  // A reading made with nothing around it is the guess, whoever hands it in.
+  if (read?.alone) read = null
   if (step.status === 'skipped') return schedulingWords.deferred
   // The finished wording belongs to a row the board reads Completed. A step
   // whose own status is `done` while the lane still has work for it read the
@@ -612,6 +614,26 @@ export function boardWhenOf(step: Step, waveStart: string | null = null, read: L
   // no day.
   if (read !== null && read.lane === 'On Hold' && read.substatus === null && read.tail !== BOARD.blockers.evidence && step.blockedBy.length === 0) return schedulingWords.waiting
   return step.manualReview || step.directionQuestions ? fillText(schedulingWords.estimate, { date: result }) : result
+}
+
+/**
+ * Whether the board holds a step: its When column reads "After prerequisites"
+ * (`boardWhenOf` on the board's own reading, the day the Plan's row takes).
+ *
+ * Owner decision 2 (2026-09-22): held steps follow the board, and a step the
+ * board holds carries no date anywhere — the opened step's rail and milestone,
+ * the calendar, the export's Dates line, the printed plan and AI Info. The
+ * board already read "After prerequisites" for Turn Off Security Defaults while
+ * its rail read Aug 31, the calendar booked the cutover for that day with its
+ * instructions as the description, and the printed plan drew it inside a dated
+ * phase (R4-21); a policy whose turn-on the board held carried "Announce Sep 20
+ * · Change Sep 21" in its export (R4-55). Every one of those surfaces asks this,
+ * with the reading the board hands it; none of them decides "held" again, and
+ * a step read with nothing around it (`laneViewAlone`) is never held.
+ */
+export function boardHolds(step: Step, read: LaneView | null | undefined): boolean {
+  if (!read || read.alone) return false
+  return boardWhenOf(step, waveStartOf(step), read) === schedulingWords.waiting
 }
 
 /** The reason under a row (rowWhen.ts rowReason). The When cell never names a step, so nothing here is said twice. */
