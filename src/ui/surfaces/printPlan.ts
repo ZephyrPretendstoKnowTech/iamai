@@ -81,7 +81,13 @@ export function postureOf(ids: readonly string[], laneOf: (id: string) => { lane
  * (planBoard.ts rowNumbersOf), and how the document prints it. `body` is the
  * opened step in full (ContentStep), or a Cleanup row's body under its head;
  * `line` is its title and lane label, the way the board shrinks a Completed or
- * Deferred row to one line.
+ * Deferred step to one line.
+ *
+ * A Cleanup row prints its body whatever its lane, as the document always
+ * printed it: the body is the row's record as well as its instructions — the
+ * drill's Emergency recovery procedure and its Recorded Test, consolidation's
+ * and naming's Recorded Review — and a paper copy is kept for an incident,
+ * which comes after the drill is done.
  */
 export type PrintRow = {
   id: string
@@ -100,8 +106,9 @@ export type PrintRow = {
  * A printed section: one of the board's sections (planBoard.ts boardSectionsOf)
  * with its number, the title and line the board draws it with, and its rows in
  * the board's order. A finished section prints as `line`, its title and what
- * became of it ("All 4 completed"), and no row; an open one has no `line` and
- * prints its heading over its rows.
+ * became of it ("All 4 completed"), over only the rows it keeps
+ * (`finishedRowsOf`); an open one has no `line` and prints its heading over its
+ * rows.
  */
 export type PrintSection = { key: string | null; number: number | null; title: string; summary: string; finished: boolean; line: string | null; rows: PrintRow[] }
 
@@ -131,7 +138,7 @@ export function printSectionsOf(board: Pick<Board, 'rows'>): PrintSection[] {
       rows: group.items.flatMap((i): PrintRow[] => {
         const r = rows.get(i.id)
         if (!r) return []
-        return [{ id: i.id, number: numbers.get(i.id) ?? null, print: i.lane === 'Completed' || i.lane === 'Deferred' ? 'line' : 'body', step: r.step, cleanup: r.cleanup, title: i.title, lane: r.lane }]
+        return [{ id: i.id, number: numbers.get(i.id) ?? null, print: r.cleanup === null && (i.lane === 'Completed' || i.lane === 'Deferred') ? 'line' : 'body', step: r.step, cleanup: r.cleanup, title: i.title, lane: r.lane }]
       }),
     }
   })
@@ -145,6 +152,17 @@ export function printSectionsOf(board: Pick<Board, 'rows'>): PrintSection[] {
 export function finishedWarningsOf(section: Pick<PrintSection, 'rows'>, board: PrintBoard, stepCtx: (s: Step) => StepVarContext): CompletedLine[] {
   const done = section.rows.filter((r) => r.lane.lane === 'Completed').flatMap((r) => (r.step ? [r.step] : []))
   return completedLinesOf(done, board, stepCtx).filter((l) => l.warnings.length > 0)
+}
+
+/**
+ * The rows a finished section still prints under its one line, in the board's
+ * order: its Cleanup rows in full (a Cleanup row's body is its record, PrintRow)
+ * and its Completed steps that keep a warning (`finishedWarningsOf`). The rest
+ * of a finished section is what its line counts.
+ */
+export function finishedRowsOf(section: Pick<PrintSection, 'rows'>, board: PrintBoard, stepCtx: (s: Step) => StepVarContext): PrintRow[] {
+  const warned = new Set(finishedWarningsOf(section, board, stepCtx).map((l) => l.id))
+  return section.rows.filter((r) => r.print === 'body' || warned.has(r.id))
 }
 
 /**

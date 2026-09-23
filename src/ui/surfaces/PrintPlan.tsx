@@ -23,7 +23,7 @@ import { notLicensedPrintLine, notLicensedRows } from '../../derive/notLicensed.
 import { completedRows, deferredRows, phaseRows, planPhases, stepListOf } from './planRows.ts'
 import { boardHolds, boardOf } from './planBoard.ts'
 import type { ReadinessTile } from './stepContract.ts'
-import { cleanupDatesOf, cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, finishedWarningsOf, holdsOf, noPlanLine, phaseDatesOf, postureOf, printSectionsOf, verificationDatesOf, verificationNoteOf } from './printPlan.ts'
+import { cleanupDatesOf, cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, finishedRowsOf, holdsOf, noPlanLine, phaseDatesOf, postureOf, printSectionsOf, verificationDatesOf, verificationNoteOf } from './printPlan.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { PrintBoard, PrintRow } from './printPlan.ts'
 
@@ -238,10 +238,10 @@ export function PrintPlan({
   // The at-pace estimate only where it measures work still on the plan (derive/finish.ts statedEstimate).
   const headerLine = headerLine1({ steps: totalCount, inPlace: inPlaceCount, finish: finish.finish, estimate: statedEstimate(steps, finish, schedule), weeks: `${weeks} week${weeks === 1 ? '' : 's'}`, constraint, startedFrom: null })
 
-  // A row of an open section, under the number its board row shows: a finished
-  // row as its line (the warnings a finished step keeps printed under it,
-  // printPlan.ts completedLinesOf), a Cleanup row as its body under the head the
-  // board reads for it, and a step still to do in full.
+  // A row as the document prints it, under the number its board row shows: a
+  // finished step as its line (the warnings a finished step keeps printed under
+  // it, printPlan.ts completedLinesOf), a Cleanup row as its body under the head
+  // the board reads for it, whatever its lane, and a step still to do in full.
   const printRow = (r: PrintRow): ReactNode => {
     const s = r.step
     if (r.print === 'line') {
@@ -384,17 +384,16 @@ export function PrintPlan({
       )}
 
       {/* The board's sections (printPlan.ts printSectionsOf). A finished section is
-          one line where the board folds it, with the warnings its Completed steps
-          keep; an open one is its heading, its line and its rows. */}
+          one line where the board folds it, over the rows it keeps (printPlan.ts
+          finishedRowsOf): its Cleanup rows in full and the Completed steps that
+          keep a warning; an open one is its heading, its line and its rows. */}
       {sections.map((sec) =>
         sec.line !== null ? (
           <section key={sec.key ?? 'rows'} className="print-section-done">
             <p className="print-section-line">
               <span className="print-number">{sec.number}</span> {sec.line}
             </p>
-            {finishedWarningsOf(sec, printBoard, stepCtx).map((l) => (
-              <PrintLine key={l.id} number={sec.rows.find((r) => r.id === l.id)?.number ?? null} title={l.title} label={l.label} warnings={l.warnings} />
-            ))}
+            {finishedRowsOf(sec, printBoard, stepCtx).map(printRow)}
           </section>
         ) : (
           <section key={sec.key ?? 'rows'} className="print-page">

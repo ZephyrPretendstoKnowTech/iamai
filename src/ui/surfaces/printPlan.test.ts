@@ -25,7 +25,7 @@ import { planDates, stepVars } from './stepVars.ts'
 import { initialPicked, printedDefaultLine } from './pickerRows.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { completedRows, deferredRows, doesntApplyRows, floorRows, phaseRows, planPhases } from './planRows.ts'
-import { cleanupDatesOf, cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, finishedWarningsOf, holdsOf, noPlanLine, phaseDatesOf, postureOf, printSectionsOf, verificationDatesOf, verificationNoteOf } from './printPlan.ts'
+import { cleanupDatesOf, cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, finishedRowsOf, finishedWarningsOf, holdsOf, noPlanLine, phaseDatesOf, postureOf, printSectionsOf, verificationDatesOf, verificationNoteOf } from './printPlan.ts'
 import { scheduleOf, scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { absolute, absoluteDate, dateRange, setDisplayTimeZone } from '../../copy/dates.ts'
@@ -99,7 +99,7 @@ test('a finished policy prints the warnings its opened step keeps: enforced belo
   // Completed row of an open section, and the Completed rows of a finished one.
   const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
   assert.match(print, /completedLinesOf\(\[s\], printBoard, stepCtx\)/, 'a Completed row does not read the warnings a finished step keeps')
-  assert.match(print, /finishedWarningsOf\(sec, printBoard, stepCtx\)/, 'a finished section does not read the warnings its finished steps keep')
+  assert.match(print, /finishedRowsOf\(sec, printBoard, stepCtx\)/, 'a finished section does not read the warnings its finished steps keep')
   assert.match(print, /warnings\.map\(/, 'a Completed line drops the warnings it read')
 })
 
@@ -630,7 +630,7 @@ test('a finished row prints as its line, and work still to do prints in full, in
   assert.ok(legacy && legacy.step?.status === 'done', 'the premise: the policy is delivered')
   assert.equal(legacy.lane.label, 'Ready · Decision', 'the premise: the board still has a decision for it')
   assert.equal(legacy.print, 'body', 'a delivered step the board still has work for prints as a line')
-  for (const r of rows) assert.equal(r.print, r.lane.lane === 'Completed' || r.lane.lane === 'Deferred' ? 'line' : 'body', `${r.id}: ${r.lane.label} prints as ${r.print}`)
+  for (const r of rows) assert.equal(r.print, r.cleanup === null && (r.lane.lane === 'Completed' || r.lane.lane === 'Deferred') ? 'line' : 'body', `${r.id}: ${r.lane.label} prints as ${r.print}`)
   // A deferred step prints once, as its line, never in full with a date and live instructions.
   const d = plan('midflight', { stage: 'foundation', skips: ['s-goal-register-info-protected', 's-goal-block-auth-transfer'] })
   const deferred = printSectionsOf(d.board).flatMap((s) => s.rows).filter((r) => r.lane.lane === 'Deferred')
@@ -657,7 +657,44 @@ test('a finished section prints as one line: its number, the board\'s finished t
   // the Completed lines that carry one under its line (printPlan.ts finishedWarningsOf).
   const warned = finishedWarningsOf(direction, p.printBoard, p.ctx)
   assert.deepEqual(warned, completedLinesOf(direction.rows.filter((r) => r.lane.lane === 'Completed').flatMap((r) => (r.step ? [r.step] : [])), p.printBoard, p.ctx).filter((l) => l.warnings.length > 0))
+  assert.deepEqual(finishedRowsOf(direction, p.printBoard, p.ctx).map((r) => r.id), warned.map((l) => l.id), 'a finished section prints other steps under its line than the ones that keep a warning')
   const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
   assert.match(print, /sec\.line !== null \? \(/, 'the print does not draw a finished section as its line')
-  assert.match(print, /finishedWarningsOf\(sec, printBoard, stepCtx\)/, 'a finished section drops the warnings its Completed steps keep')
+  assert.match(print, /finishedRowsOf\(sec, printBoard, stepCtx\)/, 'a finished section drops the warnings its Completed steps keep')
+})
+
+test('a Completed Cleanup row still prints its body: the drill\'s recovery procedure and its recorded test stay on paper, in its section, finished or not', () => {
+  // The print drew every Cleanup row through CleanupBody whatever its state.
+  // That body is the drill's Emergency recovery procedure ("Keep the exported
+  // plan available independently of this tenant...") and its Recorded Test, and
+  // consolidation's and naming's Recorded Review. Printed as a bare line once
+  // Completed, and not at all inside a finished section, the paper lost them
+  // exactly when it exists to be kept for an incident: after the drill.
+  // demo-week2: Establish Emergency Access is finished and the drill is
+  // Completed; a legacy manual test is on record, which the body prints.
+  const tested = (f: Fixture): Fixture => ({ ...f, checkpoints: [...(f.checkpoints ?? []), { at: f.snapshot.asOf, date: f.snapshot.asOf.slice(0, 10), cleanup: 'drill', outcome: 'passed', accountIds: f.mapping.breakGlassUserIds }] })
+  const p = plan('demo-week2', { over: tested })
+  const section = printSectionsOf(p.board).find((s) => s.rows.some((r) => r.id === 'cleanup-drill'))
+  assert.ok(section?.finished, 'the premise: the drill\'s section is finished')
+  const drill = section.rows.find((r) => r.id === 'cleanup-drill')!
+  assert.equal(drill.lane.lane, 'Completed', 'the premise: the drill is Completed')
+  assert.equal(drill.cleanup?.row.record?.outcome, 'passed', 'the premise: a test is on record')
+  assert.equal(drill.print, 'body', 'a Completed drill prints as a bare line, without its procedure or its recorded test')
+  assert.ok(finishedRowsOf(section, p.printBoard, p.ctx).includes(drill), 'a finished section prints nothing of the drill')
+  // Every Cleanup row, on every tenant, in every lane and section.
+  for (const [name, q] of stage5()) {
+    for (const s of printSectionsOf(q.board)) {
+      for (const r of s.rows.filter((x) => x.cleanup !== null)) {
+        assert.equal(r.print, 'body', `${name}/${r.id}: ${r.lane.label} prints as a line`)
+        if (s.finished) assert.ok(finishedRowsOf(s, q.printBoard, q.ctx).includes(r), `${name}/${r.id}: a finished section drops the row's body`)
+      }
+    }
+  }
+  // The body is CleanupBody, which carries the procedure and the record, and a
+  // finished section prints it under its one line, through the same printRow.
+  const body = readFileSync('src/ui/surfaces/CleanupStep.tsx', 'utf8')
+  assert.match(body, /row\.kind === 'drill' && <details className="step-section emergency-recovery-procedure"/, 'the premise: the drill\'s body carries the recovery procedure')
+  assert.match(body, /row\.record && \(row\.kind !== 'drill' \|\| row\.record\.outcome\)/, 'the premise: the body carries the recorded test')
+  const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
+  assert.match(print, /finishedRowsOf\(sec, printBoard, stepCtx\)\.map\(printRow\)/, 'a finished section does not print the rows it keeps')
 })
