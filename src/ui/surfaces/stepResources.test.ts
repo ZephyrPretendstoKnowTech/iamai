@@ -1,5 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { stepById } from '../../content/content.ts'
 import { readFileSync } from 'node:fs'
 import { HEAD } from './stepHeadings.ts'
 import { fixture } from '../../roadmap/fixtures/index.ts'
@@ -228,4 +229,14 @@ test('the workflow checks are headed by the headings\' own line, never a literal
   const portal = bodies.get(QUESTION_STEP.deviceCode)?.artifacts.find(a => a.id === 'portal')?.text() ?? ''
   assert.ok(portal.split('\n').includes(HEAD.verifyWorkflow), portal)
   assert.doesNotMatch(readFileSync('src/ui/surfaces/stepResources.ts', 'utf8'), /['"`]Verify the workflow:/)
+})
+
+// R4-29c, integration decision (2026-09-22): with None saved, every check stays —
+// None is also saved once each workflow has moved off device code, so dropping
+// them would remove the one test of the answer — and the record check applies to
+// each workflow that moved, so a tenant with none to move can satisfy it.
+test('the device code record check applies to each workflow moved, so None can satisfy it', () => {
+  const words = JSON.stringify((stepById['block-device-code'] as unknown as { whatToDo: { verification: string[] } }).whatToDo.verification)
+  assert.match(words, /For each workflow moved off device code, record the account/)
+  assert.doesNotMatch(words, /"Record the account/)
 })
