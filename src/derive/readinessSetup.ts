@@ -88,7 +88,8 @@ export function tenantSetupChecks(snapshot: TenantSnapshot, view: ReadinessView)
   const migOutcome: SetupOutcome = mig === undefined ? 'unknown' : mig === null || mig === 'migrationComplete' ? 'pass' : 'fail'
   checks.push({ key: 'migration', outcome: migOutcome, affects: 0, reason: mig === undefined ? 'methodsPolicyUnread' : mig === null ? 'noState' : null })
   // 7. Emergency Access Step 3's passkey settings are the tenant's: keys are checked against them.
-  checks.push({ key: 'step3', outcome: ctx.step3.applied ? 'pass' : 'note', affects: 0, reason: null })
+  // Not applied yet, it is a thing to do, not a completed check: the models tile says so, once.
+  if (ctx.step3.applied) checks.push({ key: 'step3', outcome: 'pass', affects: 0, reason: null })
   // 8. Attestation's consequence: never a failure.
   checks.push({ key: 'attestation', outcome: p.attestation === true ? 'note' : 'pass', affects: 0, reason: null })
   return checks

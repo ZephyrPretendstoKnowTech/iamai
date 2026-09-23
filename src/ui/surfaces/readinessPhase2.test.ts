@@ -357,3 +357,19 @@ test('the headline puts the whole count after "of", so it never reads as if the 
   const people = counted.filter((r) => !r.guest)
   assert.equal(summaryLine(people, { needP1: false, proofRead: true }), fillText(S.summary, { ready: people.filter((r) => r.state === 'ready' || r.state === 'seamless').length, cohort: cohortWords(people.length, 0) }))
 })
+
+test('configuring Step 3 is not filed under Completed checks, and is said once', () => {
+  const f = fixture('demo')
+  const view = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
+  assert.equal(view.context.step3.applied, false, 'the premise: Step 3 is still to come')
+  const checks = tenantSetupChecks(f.snapshot, view)
+  const done = checks.filter((c) => c.outcome === 'pass' || c.outcome === 'note').map((c) => checkWords(c).line)
+  assert.ok(!done.includes(R.checks.step3.note), 'a to-do is not a completed check')
+  assert.ok(!railRemaining(remainingChecks(checks), null).some((c) => c.line === R.checks.step3.note), 'nor listed twice with the models tile')
+  assert.match(page(), /view\.context\.step3\.applied \? T\.rail\.modelsFrom : T\.checks\.step3\.note/, 'the models tile says it')
+  // Applied, it is a completed check.
+  const w2 = fixture('demo-week2')
+  const v2 = readinessView(w2.snapshot, w2.snapshot.asOf, w2.mapping)
+  assert.equal(v2.context.step3.applied, true)
+  assert.ok(tenantSetupChecks(w2.snapshot, v2).some((c) => c.key === 'step3' && c.outcome === 'pass'))
+})
