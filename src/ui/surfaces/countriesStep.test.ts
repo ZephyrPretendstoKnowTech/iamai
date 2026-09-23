@@ -168,3 +168,37 @@ test('the countries location package is folded into the countries block package,
   assert.ok(packages[GEO]?.blocks['entra.create'], 'the countries block package lost its own blocks')
   assert.equal(Object.keys(packages[GEO].blocks).some((id) => id.startsWith('location/')), false, 'the location blocks leaked into the policy package')
 })
+
+// Stage 3 on every scenario the roadmap-flow check ran: getiamai curated with
+// the foundation settled and Direction approved, demo, demo week two, small,
+// mid, large, messy and midflight.
+test('Stage 3 holds on every scenario: three Direction steps, one countries step that waits on nothing of its own, and Doesn’t apply only where it is true', async () => {
+  const { withDirectionApproved } = await import('../../roadmap/fixtures/run.ts')
+  const { isGroupMember, DIRECTION_GROUP } = await import('../../roadmap/stepGroups.ts')
+  const scenarios: [string, Fixture][] = [
+    ['getiamai', withDirectionApproved(withFoundationSettled(curatedFixture('getiamai')))],
+    ...(['demo', 'demo-week2', 'small', 'mid', 'large', 'messy', 'midflight'] as FixtureName[]).map((n): [string, Fixture] => [n, fixture(n)]),
+  ]
+  for (const [name, f] of scenarios) {
+    const r = runFixture(f)
+    assert.deepEqual(r.steps.filter((s) => isGroupMember(s.id, DIRECTION_GROUP)).map((s) => s.id), ['s-direction-use', 's-direction-accounts', 's-direction-devices'], `${name}: Direction`)
+    assert.ok(!r.steps.some((s) => s.id === 's-direction-locations' || s.id === LOCATION), `${name}: a retired step is drawn`)
+    for (const s of r.steps) {
+      assert.ok(!s.blockedBy.includes(s.id) && !s.blockedBy.includes(LOCATION), `${name}/${s.id}: waits on itself or on the folded location`)
+      assert.ok(!s.blockers.some((b) => b.kind === 'step' && (b.stepId === s.id || b.stepId === LOCATION)), `${name}/${s.id}: a step blocker on itself or the folded location`)
+    }
+    const geo = r.steps.find((s) => s.id === GEO)
+    if (geo) {
+      assert.equal(geo.objectTask?.id, LOCATION, `${name}: the countries step carries no location task`)
+      const reading = laneReadings(r.steps, [], r.input.mapping).get(GEO)
+      assert.ok(reading && !reading.blockers.some((b) => b.kind === 'missingObject'), `${name}: 6.3 reads ${reading?.lane} · missingObject`)
+    }
+    const sd = r.steps.find((s) => s.id === 's-prereq-security-defaults')
+    const readOn = f.snapshot.config.securityDefaults?.status === 'ok' && (f.snapshot.config.securityDefaults.rows?.[0] as { isEnabled?: boolean } | undefined)?.isEnabled === true
+    if (sd) assert.equal(sd.doesntApply != null, !readOn && f.snapshot.config.securityDefaults?.status === 'ok', `${name}: security defaults read ${readOn ? 'on' : 'off'}, the step reads ${sd.doesntApply ?? sd.status}`)
+    if (!readOn) assert.ok(!r.steps.some((s) => s.blockers.some((b) => b.label === 'security-defaults-first')), `${name}: security defaults read off hold a policy`)
+    const network = r.steps.find((s) => s.id === 's-prereq-trusted-location')
+    const remote = r.input.mapping.wizardAnswered.trustedLocations === true && r.input.mapping.assumed?.trustedLocations !== 'detected' && r.input.mapping.trustedLocationIds.length === 0
+    if (network && r.input.mapping.notApplicable?.[network.id] === undefined) assert.equal(network.doesntApply != null, remote, `${name}: the network reads ${network.doesntApply ?? network.status} and the answer is ${remote ? 'remote' : 'not remote'}`)
+  }
+})
