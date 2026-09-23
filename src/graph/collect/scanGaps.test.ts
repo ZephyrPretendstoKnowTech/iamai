@@ -77,7 +77,7 @@ test('every section a scan could not read reaches the list, core or not, gaps or
   ])
   // A sign-in read stopped short of its minimum with some hours covered returned those hours: read in part.
   s.sources.signInEvidence = { status: 'insufficient', reason: 'stopped at memory ceiling with only 9 h covered (minimum 24 h)', coveredWindow: { from: '2026-09-07T15:00:00Z', to: '2026-09-08T00:00:00Z' }, asOf: s.asOf }
-  assert.deepEqual(unreadSources(s).at(-1), { source: 'signInEvidence', partial: true, refused: false })
+  assert.deepEqual(unreadSources(s).at(-1), { source: 'signInEvidence', partial: true, refused: false, coveredHours: 9 }, 'the hours it covered, from its covered window')
   s.sources.signInEvidence = { status: 'insufficient', reason: 'no sign-in records could be read', coveredWindow: null, asOf: s.asOf }
   assert.deepEqual(unreadSources(s).at(-1), { source: 'signInEvidence', partial: false, refused: false }, 'no hours covered: nothing was read')
 })
@@ -92,7 +92,7 @@ test('a sign-in read that covered some hours is read in part on Connect and a sh
   const covered = { from: '2026-09-07T12:00:00Z', to: '2026-09-08T00:00:00Z' }
   const s = fixtureSnapshot()
   s.sources.signInEvidence = { status: 'error', reason: 'HTTP 503 ServiceUnavailable', coveredWindow: covered, asOf: s.asOf }
-  assert.deepEqual(unreadSources(s).at(-1), { source: 'signInEvidence', partial: true, refused: false }, 'an interrupted read that returned 12 hours is a read in part')
+  assert.deepEqual(unreadSources(s).at(-1), { source: 'signInEvidence', partial: true, refused: false, coveredHours: 12 }, 'an interrupted read that returned 12 hours is a read in part')
   for (const status of ['partial', 'insufficient', 'error', 'disabled'] as const) {
     for (const window of [covered, null]) {
       const t = fixtureSnapshot()

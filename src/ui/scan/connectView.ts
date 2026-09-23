@@ -20,6 +20,7 @@ import { fillText } from '../../content/render.ts'
 import { absoluteDate, monthDay, relative } from '../../copy/dates.ts'
 import { list, lowerFirst } from '../../copy/statements.ts'
 import { READ_EVERYTHING_ROLE } from '../../graph/collect/roles.ts'
+import { MIN_COVERAGE_HOURS } from '../../graph/collect/constants.ts'
 import { consentRows } from '../../copy/permissions.ts'
 import type { UnreadSection } from '../../graph/collect/coreSections.ts'
 import type { RoleGap } from '../../graph/collect/tokenRoles.ts'
@@ -61,7 +62,7 @@ type Words = {
     limitsLink: string
     meta: { people: string; policies: string; steps: string }
     complete: { state: string; again: string; degraded: string; unread: string }
-    gaps: { state: string; lead: string; leadFirst: string; notRead: string; partlyRead: string; refused: string; refusedThatAccount: string; others: string; ask: string; learn: { label: string; url: string } }
+    gaps: { state: string; lead: string; leadFirst: string; notRead: string; partlyRead: string; refused: string; refusedThatAccount: string; shortWindow: string; others: string; ask: string; learn: { label: string; url: string } }
     role: { state: string; lead: string; row: string; ask: string; note: string }
     ready: { state: string; note: string; start: string }
     scanning: { state: string; stop: string }
@@ -488,6 +489,10 @@ export function scanTile(input: ScanInput): ScanTile {
       const blocks = (u: UnreadSection): boolean => input.gaps.some((g) => g.source === u.source)
       const blocking = input.unread.filter(blocks)
       const others = input.unread.filter((u) => !blocks(u))
+      // A sign-in read that stopped short of the minimum with some hours read is
+      // "partly read", and a part still builds a plan elsewhere: the tile says how
+      // many hours it read against the minimum a plan needs. A fact, no remedy.
+      const short = blocking.find((u) => u.source === 'signInEvidence' && u.coveredHours !== undefined)
       return {
         ...base,
         kind: 'gaps',
@@ -497,6 +502,7 @@ export function scanTile(input: ScanInput): ScanTile {
         rows: blocking.map(unreadRow),
         ...(others.length > 0 ? { more: { lead: fillText(G.others, { n: others.length }), rows: others.map(unreadRow) } } : {}),
         ...askFor(input.unread),
+        ...(short ? { note: fillText(G.shortWindow, { hours: short.coveredHours, minimum: MIN_COVERAGE_HOURS }) } : {}),
         // Another account is offered only where a section the plan needs was
         // refused to an account whose roles were read and found short: it cannot
         // unblock a plan no refusal stopped, and reads nothing more for a Global
