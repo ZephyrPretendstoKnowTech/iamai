@@ -42,7 +42,7 @@ import { app, pages, shared } from '../../content/content.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { fillText } from '../../content/render.ts'
 import { monthDay } from '../../copy/dates.ts'
-import { checkWords, deviceChips, listWords, methodsCell, needsActionWords, nextCell, noDevicesWord, osWord, panelDevices, panelMethods, rowCells, rowNote, searchText, signInsUnavailableFor, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine, railRemaining, panelNoDevices, panelNoMethods, summaryLine, unreadMethodsWords, countedLine, scopeWords } from './readinessCells.ts'
+import { checkWords, deviceChips, listWords, methodsCell, needsActionWords, nextCell, noDevicesWord, osWord, panelDevices, panelMethods, rowCells, rowNote, searchText, signInsUnavailableFor, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine, railRemaining, panelNoDevices, panelNoMethods, summaryLine, unreadMethodsWords, countedLine, scopeWords, noRecordsWords } from './readinessCells.ts'
 import type { PanelItem } from './readinessCells.ts'
 import { READINESS_CSV } from './inventoryTables.ts'
 import { useAppliedMapping, usePlanData } from './planData.ts'
@@ -667,9 +667,10 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
 
           <section className="readiness-tile panel" aria-labelledby="readiness-evidence">
             <h3 id="readiness-evidence">{T.rail.evidence}</h3>
+            {!covered && <p>{noRecordsWords(source)}</p>}
             <dl className="ledger-list">
-              {covered ? (
-                partial ? (
+              {covered &&
+                (partial ? (
                   <div style={{ display: 'contents' }}>
                     <dt>{days}</dt>
                     <dd>{fillText(T.evidence.partial, { from: monthDay(covered.from), to: monthDay(covered.to) })}</dd>
@@ -679,13 +680,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
                     <dt>{days}</dt>
                     <dd>{fillText(T.evidence.full, { from: monthDay(covered.from), to: monthDay(covered.to) })}</dd>
                   </div>
-                )
-              ) : (
-                <div style={{ display: 'contents' }}>
-                  <dt>0</dt>
-                  <dd>{source?.reason && source.status !== 'ok' ? fillText(app.readiness.lineNoRecordsReason, { reason: source.reason }) : T.evidence.none}</dd>
-                </div>
-              )}
+                ))}
               {(source?.targeted?.read ?? 0) > 0 && (
                 <div style={{ display: 'contents' }}>
                   <dt>{source?.targeted?.read}</dt>

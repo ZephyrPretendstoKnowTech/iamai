@@ -11,7 +11,7 @@ import type { Kind } from '../../derive/ladder.ts'
 import type { SetupCheck, SetupKey } from '../../derive/readinessSetup.ts'
 import { AUTHENTICATOR_AAGUIDS, isQualifying } from '../../scoring/phishingResistant.ts'
 import type { CredentialReading, DeviceReading, MethodClass, NextAction, Platform, ReadinessState, SignInOption } from '../../scoring/phishingResistant.ts'
-import { pages } from '../../content/content.ts'
+import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { monthDay } from '../../copy/dates.ts'
 import { cohortWords } from '../../derive/whoLine.ts'
@@ -79,7 +79,7 @@ type Words = {
   }
   checks: Record<string, Record<string, string>>
   rail: { shownAbove: string }
-  evidence: { unreadMethods: string; unreadMethodsRefused: string }
+  evidence: { none: string; unreadMethods: string; unreadMethodsRefused: string }
   footer: { counted: string }
   planContext: { filtered: string; covers: string; unknown: string }
   counted: Record<Explained | Kind | 'dormantLink', string>
@@ -398,6 +398,16 @@ export function panelMethods(r: ReadinessRow): PanelItem[] {
 export function unreadMethodsWords(snapshot: TenantSnapshot): string {
   const refusal = registrationRefusal(snapshot)
   return refusal ? fillText(T.evidence.unreadMethodsRefused, refusal) : T.evidence.unreadMethods
+}
+
+/**
+ * The evidence tile's sentence where no sign-in records were read: the source's
+ * reason where it says something the sentence doesn't ("no sign-in records could
+ * be read" only restates it), and no count beside it.
+ */
+export function noRecordsWords(source: { status: string; reason: string | null } | null | undefined): string {
+  const reason = source && source.status !== 'ok' ? source.reason : null
+  return reason && !/sign-in records/i.test(reason) ? fillText(app.readiness.lineNoRecordsReason, { reason }) : T.evidence.none
 }
 
 /** The person panel's methods where none is listed: not read (the row says "Methods not read" too), or none registered. */

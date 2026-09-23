@@ -14,7 +14,7 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { signInsNeedP1 } from '../../derive/readinessContext.ts'
 import { signInProofRead } from '../../scoring/fromSnapshot.ts'
 import { cohortWords } from '../../derive/whoLine.ts'
-import { checkWords, goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, summaryLine, unreadMethodsWords, whyLine, countedLine, scopeWords, panelMethods, groupBodyLine } from './readinessCells.ts'
+import { checkWords, goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, summaryLine, unreadMethodsWords, whyLine, countedLine, scopeWords, panelMethods, groupBodyLine, noRecordsWords } from './readinessCells.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { stepMfaHold } from '../../derive/stepMfaReadiness.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
@@ -372,4 +372,19 @@ test('configuring Step 3 is not filed under Completed checks, and is said once',
   const v2 = readinessView(w2.snapshot, w2.snapshot.asOf, w2.mapping)
   assert.equal(v2.context.step3.applied, true)
   assert.ok(tenantSetupChecks(w2.snapshot, v2).some((c) => c.key === 'step3' && c.outcome === 'pass'))
+})
+
+test('the evidence tile says no sign-in records were read in one sentence, with no count beside it', () => {
+  const hostile = fixture('hostile').snapshot.sources.signInEvidence
+  const micro = fixture('micro').snapshot.sources.signInEvidence
+  const h = noRecordsWords(hostile)
+  const m = noRecordsWords(micro)
+  for (const line of [h, m]) {
+    assert.match(line, /^No sign-in records were read/, line)
+    assert.equal((line.match(/sign-in records/g) ?? []).length, 1, `said once: ${line}`)
+    assert.doesNotMatch(line, /\([^)]*\(/, `no parentheses inside parentheses: ${line}`)
+  }
+  assert.ok(m.includes(micro?.reason ?? '__'), 'a reason that says something new is kept')
+  assert.doesNotMatch(page(), /<dt>0<\/dt>/, 'no "0" beside it')
+  assert.match(page(), /noRecordsWords\(source\)/)
 })
