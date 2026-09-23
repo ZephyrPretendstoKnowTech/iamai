@@ -14,6 +14,10 @@
   ],
   "tiles": [
     {
+      "label": "Prerequisites",
+      "state": "Review MFA before enabling Every time"
+    },
+    {
       "label": "Decide How People and Devices Sign In",
       "state": "Waiting on your direction"
     },
