@@ -1315,7 +1315,11 @@ export function policyResult(step: PolicyStep): PolicyResult {
   // not write (observation.ts unwrittenDifferences), with nothing left for the
   // update to submit: the correction is a person's, and the step says so rather
   // than waiting for a scan to rebuild it, which names no work.
-  if ((step.state?.observation?.unwritten.length ?? 0) > 0 && declared.some((o) => o.mode === 'update' && !isSubmittablePatch(o.body))) return { kind: 'unavailable', reason: 'manual-correction' }
+  // A policy that delivers the goal with no operation at all (Action.intended) is
+  // the same case: nothing is left to submit, and the difference is a person's.
+  const unwritten = (step.state?.observation?.unwritten.length ?? 0) > 0
+  if (unwritten && declared.some((o) => o.mode === 'update' && !isSubmittablePatch(o.body))) return { kind: 'unavailable', reason: 'manual-correction' }
+  if (unwritten && declared.length === 0 && step.status !== 'done') return { kind: 'unavailable', reason: 'manual-correction' }
   if (declared.length > 0 && valid.length === 0) return { kind: 'unavailable', reason: 'no-operation' }
   // The tenant's enforced policy delivers the goal and a person still records its
   // workflow test: nothing to write, and nothing a scan has to rebuild. Not

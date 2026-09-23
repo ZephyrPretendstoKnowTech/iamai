@@ -1693,11 +1693,33 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // earned nothing.
       const planDeployed = (result.satisfaction?.policyIds ?? []).some((id) => matchedPolicyIds.includes(id))
       state = { ...state, satisfied: true, inPlace: !planDeployed }
+      // What the plan would write for the goal, kept for comparison only
+      // (Action.intended): coverage judges who a policy reaches, which resources
+      // and its controls, and nothing else. A token-protection policy without the
+      // Cloud PC device filter delivers the goal to coverage while blocking the
+      // Cloud PCs the plan's policy leaves out, and with no operation to compare
+      // it against it read "Completed, keep the policy as it is" (review of
+      // Nadia D7). One policy only, and only where every reference resolves: a
+      // policy still waiting on an object is not a statement of the plan.
+      //
+      // And only where the policy delivering the goal is the plan's own: one it
+      // tagged, or one carrying the name the plan gives the goal's policy
+      // (`claimedPolicy`, the same boundary a drifted policy is corrected by). A
+      // policy the tenant wrote under its own name is adopted as delivering the
+      // goal; reading it against the plan's shape told the large fixture to take
+      // Android and iOS out of its own enforced compliant-device policy, a
+      // narrowing of a policy the plan never built (an owner question).
+      const claimed = claimedPolicy()
+      const own = planDeployed || (claimed !== null && (result.satisfaction?.policyIds ?? []).includes(String(claimed.id)))
+      const policies = !own ? [] : stepSources.length > 0 ? stepPolicies() : templatePolicy()
+      const would = policies.length === 1 ? buildCreateAction(named(policies, proposedPolicyName(goal, naming)), mapping, planId, stepId, goal.id) : null
+      const intended = would && (would.missing ?? []).length === 0 ? would.resolution?.policies[0]?.body : undefined
       action = {
         kind: 'create',
         summary: [],
         json: null,
         portalSteps: [],
+        ...(intended ? { intended } : {}),
       }
     } else if (result.status === 'unknown') {
       // Coverage could not settle the goal: a live policy that stands for it
