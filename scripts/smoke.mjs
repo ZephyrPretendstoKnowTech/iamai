@@ -1166,8 +1166,9 @@ try {
   await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
   // The board draws one lane at a time and keeps the lane the last opened step
   // put it on (S5 TabFollowsOpenStep), so both readings are taken on the same lane.
-  // Both toggles pressed for both readings: the skip above pressed Show
-  // deferred, and a loaded plan starts with neither pressed.
+  // Both toggles pressed for both readings, on the Ready tab: the skip above
+  // pressed Show deferred, and a lane tab starts with neither pressed (All
+  // work, where a loaded plan opens, starts with both; planBoard.ts togglesOf).
   // One press at a time: each toggle's handler spreads the focus it rendered
   // with, so two clicks in one tick keep only the second (Plan.tsx onFocus).
   const revealAll = async () => {
