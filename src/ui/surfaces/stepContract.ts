@@ -34,7 +34,7 @@ import { requiredMembers } from '../../roadmap/tracking.ts'
 import { unreadLine } from '../../roadmap/evidence.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
 import { IMPACT, populationLine } from '../../derive/whoLine.ts'
-import { app, cleanup, directionWords, engine, pages, shared, stepById, schedulingWords } from '../../content/content.ts'
+import { app, cleanup, directionWords, engine, pages, shared, stepById, schedulingWords, structuralWords } from '../../content/content.ts'
 import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
 import { directionBlockerStep, directionStepsAnswering, directionTitleOf } from '../../roadmap/direction.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
@@ -2392,7 +2392,10 @@ function implementationTile(c: StepContract): ReadinessTile | null {
   const t = R().tiles
   if (c.fix.length > 0 || c.implementation.offered || c.implementation.reason === null) return null
   if (c.state.satisfied || c.state.setAside || c.state.condition === 'baseline-conflict' || c.state.condition === 'needs-decision' || c.state.condition === 'review-required') return null
-  return { key: 'implementation', label: t.implementation, tone: 'warn', value: t.unavailable, note: c.implementation.because }
+  // A policy the tenant switched off has one thing to do, and the step hands it
+  // over on every channel: "Unavailable" over that procedure said the opposite.
+  const value = c.implementation.reason === 'switched-off' ? structuralWords.switchedOffTask : t.unavailable
+  return { key: 'implementation', label: t.implementation, tone: 'warn', value, note: c.implementation.because }
 }
 
 /**
