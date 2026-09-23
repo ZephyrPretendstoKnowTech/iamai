@@ -967,7 +967,12 @@ test('the AI briefing of a policy past report-only never says time in report-onl
     const brief = briefOf(step)
     if (brief === '') continue
     assert.doesNotMatch(brief, /Time in report-only|sign-in records, which IAMAI could not read/, step.id)
-    if (step.state.lifecycle === 'enforced') {
+    // A finished step has no check left to run, so no sentence about its
+    // checks (aiGrounding.ts, Priya D13); one still waiting on the person keeps it.
+    const finished = step.status === 'done' || step.status === 'skipped' || step.state.satisfied
+    if (step.state.lifecycle === 'enforced' && finished) {
+      assert.ok(!brief.includes(unread), `${step.id} (enforced, finished): the briefing says a check cannot complete`)
+    } else if (step.state.lifecycle === 'enforced') {
       past.push(step.id)
       assert.ok(brief.includes(unread), `${step.id} (enforced): the briefing lost the unread sentence`)
     } else if (step.state.lifecycle === 'not-deployed' && toRun === null) {
