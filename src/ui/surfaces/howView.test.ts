@@ -1,7 +1,7 @@
 // What How IAMAI works says, read from the tables the page draws (howView.ts).
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { reviewBody } from '../../content/render.ts'
 import { howCheckTables, howLimits, howReadTables } from './howView.ts'
 import { COLLECTOR_REGISTRY } from '../../graph/collect/registry.ts'
@@ -195,4 +195,26 @@ test('What IAMAI reads lists every path a read requests, the cross-tenant defaul
     '/policies/crossTenantAccessPolicy/default',
     '/policies/crossTenantAccessPolicy/partners',
   ])
+})
+
+// Two plain-words read rows restated stale purposes (Phase 2 review). "Operator
+// groups … to warn when a step targets one of them": nothing reads
+// config.meMemberOf, and no such warning exists. "Signed-in operator … recorded in
+// the plan file": the plan file records the signed-in MSAL account (Export.tsx);
+// the /me read is the operator's id (derive/operator.ts), which the
+// emergency-account check, the operator-passkey step and the steps' "your own
+// account" lines read.
+test('the operator reads say what the scan does with them', () => {
+  const readers = (readdirSync('src', { recursive: true }) as string[])
+    .map((f) => f.split('\\').join('/'))
+    .filter((f) => /\.tsx?$/.test(f) && !/\.test\.tsx?$/.test(f) && !/(^|\/)(fixtures|testing)\//.test(f))
+    .filter((f) => !['graph/collect/registry.ts', 'graph/collect/types.ts', 'graph/collect/coreSections.ts'].includes(f))
+    .filter((f) => /config\.meMemberOf|config\[['"]meMemberOf|['"]config:meMemberOf/.test(readFileSync(`src/${f}`, 'utf8')))
+  assert.deepEqual(readers, [], 'something reads the operator groups now: say what on How')
+  assert.doesNotMatch(app.how.readRows['Operator groups'].why, /warn/i)
+  assert.match(app.how.readRows['Operator groups'].why, /not use|nothing .*uses/i)
+  const me = app.how.readRows['Signed-in operator'].why
+  assert.doesNotMatch(me, /plan file/i)
+  assert.match(me, /emergency/i)
+  assert.match(me, /passkey/i)
 })
