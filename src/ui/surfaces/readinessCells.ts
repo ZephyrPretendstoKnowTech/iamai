@@ -6,7 +6,8 @@
 // Every fact here is scoring/phishingResistant.ts `personReadiness`, carried on
 // the row; this module only chooses its words. The words are pages.readiness.
 // Pure.
-import type { Explained, ReadinessRow } from '../../derive/mfaReadiness.ts'
+import type { Explained, ReadinessRow, SubGroup } from '../../derive/mfaReadiness.ts'
+import { devicesUnread } from '../../derive/mfaReadiness.ts'
 import type { Kind } from '../../derive/ladder.ts'
 import type { SetupCheck, SetupKey } from '../../derive/readinessSetup.ts'
 import { AUTHENTICATOR_AAGUIDS, isQualifying } from '../../scoring/phishingResistant.ts'
@@ -42,7 +43,7 @@ type Words = {
   show: Record<string, string>
   groups: Record<ReadinessState, { title: string; why: string; body?: string | ByComputers }>
   chip: Record<'seamless' | 'confirmed' | 'covered' | 'notConfirmed' | 'notSetUp' | 'noPasskey' | 'blocked' | 'unread' | 'noPhone', string>
-  sub: { noDevices: string }
+  sub: { noDevices: string; noDevicesUnread: string }
   notReadCount: string
   methods: Record<MethodClass | 'none' | 'unread' | 'only' | 'notAllowed', string>
   lastConfirmed: string
@@ -328,12 +329,10 @@ export function needsActionWords(counted: readonly ReadinessRow[]): string {
   return unread > 0 ? `${line}, ${T.notReadCount.replace('{n}', String(unread))}` : line
 }
 
-/**
- * No device is "not seen" where the records it would be seen in were not read:
- * the tenant's sign-in records, whatever else the person is unknown for (a
- * method list refused leaves them unknown for that, and their sign-ins unread too).
- */
-const devicesUnread = (r: ReadinessRow): boolean => r.readiness?.unknown === 'signIns' || r.readiness?.signInsRead === false
+// No device is "not seen" where the records it would be seen in were not read
+// (derive/mfaReadiness.ts devicesUnread): the tenant's sign-in records, whatever
+// else the person is unknown for (a method list refused leaves them unknown for
+// that, and their sign-ins unread too).
 
 /** The devices cell where no device was seen: not read, nothing (the page says why), or no sign-in in 30 days. */
 export function noDevicesWord(r: ReadinessRow): string {
@@ -344,6 +343,11 @@ export function noDevicesWord(r: ReadinessRow): string {
 /** The person panel's devices where none was seen: not read, or no sign-in in 30 days. */
 export function panelNoDevices(r: ReadinessRow): string {
   return devicesUnread(r) ? T.chip.unread : T.panel.noDevices
+}
+
+/** A devices sub-group's title: its platforms, or for people with none, whether their sign-ins were read. */
+export function subDevicesTitle(g: Pick<SubGroup, 'platforms' | 'unread'>): string {
+  return g.platforms.length > 0 ? listWords(g.platforms.map(osWord)) : g.unread ? T.sub.noDevicesUnread : T.sub.noDevices
 }
 
 /** The next actions that ask a person to set up a passkey or another built-in method. */

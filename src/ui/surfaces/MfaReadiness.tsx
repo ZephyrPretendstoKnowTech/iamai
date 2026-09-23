@@ -42,7 +42,7 @@ import { app, pages, shared } from '../../content/content.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { fillText } from '../../content/render.ts'
 import { monthDay } from '../../copy/dates.ts'
-import { checkWords, deviceChips, listWords, methodsCell, needsActionWords, nextCell, noDevicesWord, osWord, panelDevices, panelMethods, rowCells, rowNote, searchText, signInsUnavailableFor, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine, railRemaining, panelNoDevices, panelNoMethods, summaryLine, unreadMethodsWords, countedLine, scopeWords, noRecordsWords, guestTrustWords, evidenceWords, countedKindWords } from './readinessCells.ts'
+import { checkWords, deviceChips, methodsCell, needsActionWords, nextCell, noDevicesWord, panelDevices, panelMethods, rowCells, rowNote, searchText, signInsUnavailableFor, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine, railRemaining, panelNoDevices, panelNoMethods, summaryLine, unreadMethodsWords, countedLine, scopeWords, noRecordsWords, guestTrustWords, evidenceWords, countedKindWords, subDevicesTitle } from './readinessCells.ts'
 import type { PanelItem } from './readinessCells.ts'
 import { READINESS_CSV } from './inventoryTables.ts'
 import { useAppliedMapping, usePlanData } from './planData.ts'
@@ -364,7 +364,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
       </p>
     ) : null
   const subTitle = (g: SubGroup): string =>
-    g.admins ? T.sub.admins : groupBy === 'devices' ? (g.platforms.length > 0 ? listWords(g.platforms.map(osWord)) : T.sub.noDevices) : (g.department ?? T.sub.noDepartment)
+    g.admins ? T.sub.admins : groupBy === 'devices' ? subDevicesTitle(g) : (g.department ?? T.sub.noDepartment)
   const groupBody = (state: ReadinessState, rows: ReadinessRow[]): ReactNode => {
     if (rows.length <= SUB_GROUP_AT) return <div className="readiness-rows">{head}{rows.map(rowView)}</div>
     const subs = subGroupsOf(rows, groupBy)

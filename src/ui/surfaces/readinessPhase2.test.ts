@@ -6,7 +6,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
-import { readinessView } from '../../derive/mfaReadiness.ts'
+import { readinessView, subGroupsOf, SUB_GROUP_AT } from '../../derive/mfaReadiness.ts'
 import { nextCheck, remainingChecks, stepNextCheck, tenantSetupChecks } from '../../derive/readinessSetup.ts'
 import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
@@ -14,7 +14,7 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { signInsNeedP1 } from '../../derive/readinessContext.ts'
 import { signInProofRead } from '../../scoring/fromSnapshot.ts'
 import { cohortWords } from '../../derive/whoLine.ts'
-import { checkWords, goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, summaryLine, unreadMethodsWords, whyLine, countedLine, scopeWords, panelMethods, groupBodyLine, noRecordsWords, computersSeen, leadLine, guestTrustWords, evidenceWords, panelDevices, countedKindWords } from './readinessCells.ts'
+import { checkWords, goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, summaryLine, unreadMethodsWords, whyLine, countedLine, scopeWords, panelMethods, groupBodyLine, noRecordsWords, computersSeen, leadLine, guestTrustWords, evidenceWords, panelDevices, countedKindWords, subDevicesTitle } from './readinessCells.ts'
 import { guestReadingOf } from '../../derive/guestReadiness.ts'
 import { syncedPasskeyOffered } from '../../scoring/phishingResistant.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
@@ -613,4 +613,29 @@ test('the rule for when a synced passkey can register is written once, for the r
   assert.equal((src.match(/attestation === false && [\w.]*restriction === 'unrestricted'/g) ?? []).length, 1, 'one statement of the rule')
   assert.match(src, /export function syncedPasskeyOffered\(ctx: ReadinessContext\): boolean \{\n\s+return syncedAllowed\(ctx\.passkey\)/, 'the page words read it')
   assert.match(src, /if \(syncedAllowed\(pk\) && pk\.reach !== 'unknown'\) return \{ best: 'syncedPasskey'/, 'a Mac row reads it')
+})
+
+test('a sub-group of people whose sign-ins were not read is never titled "No sign-in seen in 30 days"', () => {
+  const SUB = (pages.readiness as unknown as { sub: Record<string, string> }).sub
+  // mid with no sign-in record read: its Needs a method group is large enough to split by devices.
+  const f = fixture('mid')
+  const s = structuredClone(f.snapshot) as TenantSnapshot
+  s.signInEvidence = {} as TenantSnapshot['signInEvidence']
+  s.sources.signInEvidence = { status: 'insufficient', coveredWindow: null, reason: 'no sign-in records could be read', asOf: s.asOf }
+  const rows = readinessView(s, s.asOf, f.mapping).rows.filter((r) => r.state === 'method')
+  assert.ok(rows.length > SUB_GROUP_AT, 'the premise: a group large enough to split')
+  const none = subGroupsOf(rows, 'devices').filter((g) => !g.admins && g.platforms.length === 0)
+  assert.ok(none.length > 0, 'the premise: people with no device read')
+  const contract = (JSON.parse(readFileSync('docs/qa/page-contracts.json', 'utf8')) as { surfaces: { id: string; allow: { summaries: string[] } }[] }).surfaces.find((c) => c.id === 'readiness')
+  for (const g of none) {
+    assert.equal(subDevicesTitle(g), SUB.noDevicesUnread, g.key)
+    for (const r of g.rows) assert.equal(noDevicesWord(r), W.chip.unread, `${r.user.id}: the row says the same`)
+    const summary = `${subDevicesTitle(g)}${g.rows.length}`
+    assert.ok(contract?.allow.summaries.some((a) => a.startsWith('re:') && new RegExp(a.slice(3)).test(summary)), `the walk's contract allows "${summary}"`)
+  }
+  // Where the records were read, the people with no sign-in keep their title.
+  const read = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.filter((r) => r.state === 'method')
+  const seenNone = read.length > SUB_GROUP_AT ? subGroupsOf(read, 'devices').filter((g) => !g.admins && g.platforms.length === 0) : []
+  for (const g of seenNone) assert.equal(subDevicesTitle(g), SUB.noDevices, g.key)
+  assert.match(page(), /groupBy === 'devices' \? subDevicesTitle\(g\)/, 'the page draws the one title')
 })
