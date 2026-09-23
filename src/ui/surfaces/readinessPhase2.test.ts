@@ -14,7 +14,7 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { signInsNeedP1 } from '../../derive/readinessContext.ts'
 import { signInProofRead } from '../../scoring/fromSnapshot.ts'
 import { cohortWords } from '../../derive/whoLine.ts'
-import { checkWords, goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, summaryLine, unreadMethodsWords, whyLine } from './readinessCells.ts'
+import { checkWords, goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, summaryLine, unreadMethodsWords, whyLine, countedLine } from './readinessCells.ts'
 import { readinessTable } from './inventoryTables.ts'
 import { sourceReadFix } from '../../roadmap/readiness.ts'
 
@@ -26,6 +26,7 @@ const E = (pages.readiness as unknown as { evidence: Record<string, string> }).e
 const G = (pages.readiness as unknown as { groups: Record<string, { title: string; why: string; body?: unknown }> }).groups
 const NX = (pages.readiness as unknown as { next: Record<string, string> }).next
 const WHY = (pages.readiness as unknown as { panel: { why: Record<string, string> } }).panel.why
+const FOOT = (pages.readiness as unknown as { footer: { counted: string } }).footer
 const page = (): string => readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
 
 test('every remaining setup check carries its own words: the migration never shows without its safe order', () => {
@@ -245,4 +246,19 @@ test('nobody is told to set up a passkey that the plan’s own Step 3 will refus
     assert.ok(!refused.has(n?.option ?? '') && !refused.has(rec?.option ?? ''), `${r.user.id}: ${nextCell(r)}`)
   }
   for (const r of mac) assert.doesNotMatch(nextCell(r), /synced passkey/i, r.user.id)
+})
+
+test('the footer does not count "the 0 people who signed in" on a tenant whose activity was not read', () => {
+  const micro = fixture('micro')
+  const view = readinessView(micro.snapshot, micro.snapshot.asOf, micro.mapping)
+  const counted = view.rows.filter((r) => r.state !== null)
+  assert.equal(counted.length, 0, 'the premise: nobody could be placed in the window')
+  assert.ok(view.explained.unread > 0, 'the premise: their activity was not read')
+  assert.equal(countedLine(counted, { needP1: signInsNeedP1(micro.snapshot), activityUnread: view.explained.unread }), '')
+  // A tenant whose activity was read keeps its counted line.
+  const demo = fixture('demo')
+  const dv = readinessView(demo.snapshot, demo.snapshot.asOf, demo.mapping)
+  const dc = dv.rows.filter((r) => r.state !== null)
+  assert.equal(countedLine(dc, { needP1: false, activityUnread: dv.explained.unread }), fillText(FOOT.counted, { cohort: cohortWords(dc.length, dc.filter((r) => r.guest).length) }))
+  assert.match(page(), /countedLine\(counted, \{ needP1: signInsNeedP1\(snapshot\), activityUnread: view\.explained\.unread \}\)/)
 })
