@@ -36,7 +36,7 @@ function recoveryTime(iso: string, timeZone: string | null | undefined): string 
   try { return new Intl.DateTimeFormat('en-US', { ...options, timeZone: displayZone(timeZone) }).format(new Date(iso)) }
   catch { return new Intl.DateTimeFormat('en-US', { ...options, timeZone: 'UTC' }).format(new Date(iso)) }
 }
-const RECOVERY_SIGN_IN = (app.plan as unknown as { recoverySignIn: Record<'since' | 'lastChange' | 'noChangeSince' | 'lastSignIn' | 'lastSignInNone' | 'notPasskey' | 'recordPending' | 'unconfigured', string> }).recoverySignIn
+const RECOVERY_SIGN_IN = (app.plan as unknown as { recoverySignIn: Record<'since' | 'sinceNone' | 'lastChange' | 'noChangeSince' | 'lastSignIn' | 'lastSignInNone' | 'notPasskey' | 'recordPending' | 'unconfigured', string> }).recoverySignIn
 /** Where an account's recovery baseline starts, and whether that is a change
  * IAMAI read in the audit log or only where the log began (cleanupDone.ts recoveryEvidenceOf). */
 export type RecoveryBaseline = { at: string; changeObserved: boolean }
@@ -62,7 +62,7 @@ export function recoveryWaitingLine(baseline: RecoveryBaseline | null, readings:
   const pending = readings.some(reading => reading.qualifies)
   const reason = pending ? RECOVERY_SIGN_IN.recordPending : !afterChange ? null : other ? RECOVERY_SIGN_IN.notPasskey : latest && !latest.qualifies ? latest.reason : null
   return [
-    RECOVERY_SIGN_IN.since,
+    baseline.changeObserved ? RECOVERY_SIGN_IN.since : RECOVERY_SIGN_IN.sinceNone,
     fillText(baseline.changeObserved ? RECOVERY_SIGN_IN.lastChange : RECOVERY_SIGN_IN.noChangeSince, { date: recoveryTime(configuredAt, timeZone) }),
     lastAt ? fillText(RECOVERY_SIGN_IN.lastSignIn, { date: recoveryTime(lastAt, timeZone) }) : RECOVERY_SIGN_IN.lastSignInNone,
     ...(reason ? [reason] : []),
