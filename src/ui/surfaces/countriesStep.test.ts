@@ -241,6 +241,26 @@ test('6.3’s exports carry the location task’s About sentence and procedure a
   }
 })
 
+test('6.3’s Completion Criteria: the location task’s lines, the answer it asks for, then its own outcome; set aside, the set-aside line alone', async () => {
+  const { CONTRACT, stepContract } = await import('./stepContract.ts')
+  const { applySkips } = await import('../../roadmap/progress.ts')
+  const f = noCountries(withFoundationSettled(curatedFixture('getiamai')))
+  const r = runFixture(f)
+  const geo = geoOf(r.steps)
+  assert.equal(geo.state.condition, 'needs-decision', 'the premise: no work country is saved')
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: r.input.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
+  const done = stepContract(geo, ctx).doneWhen
+  const task = stepContract(geo.objectTask!, ctx).doneWhen.filter((l) => done.includes(l))
+  assert.ok(task.length > 0, `the premise: the location task's completion is drawn: ${done.join(' | ')}`)
+  // The policy's own outcome stays, after the answer the step still asks for.
+  const outcome = /^Nobody signs in to .+ from a country that is not on the approved list/
+  assert.deepEqual(done, [...task, CONTRACT.doneDecision, done.find((l) => outcome.test(l))], done.join(' | '))
+  // Set aside, nothing of it is left to finish: the set-aside line, and no task's.
+  applySkips(r.steps, { [GEO]: { reason: 'Not needed for this tenant', at: f.snapshot.asOf } })
+  assert.equal(geo.state.setAside, true, 'the premise: 6.3 is set aside')
+  assert.deepEqual(stepContract(geo, ctx).doneWhen, [CONTRACT.doneSetAside])
+})
+
 test('the countries location package is folded into the countries block package, tasks first, and compiles to the same two packages', () => {
   const dir = 'docs/implementation-content/s-goal-geo-restriction/s-goal-geo-restriction'
   assert.equal(existsSync('docs/implementation-content/s-prereq-allowed-countries'), false, 'the location still has a package folder of its own')
