@@ -33,12 +33,11 @@ import { returnToStep } from '../shell/routes.ts'
 
 const W = directionWords
 
-/** The universe a question picks from: accounts, the tenant's IP locations, or countries (pickerRows.ts). */
+/** The universe a question picks from: accounts or the tenant's IP locations (pickerRows.ts). */
 function universeOf(q: DirectionQuestion, ctx: StepVarContext): PickerObject[] {
   const pickerCtx = { snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, groups: ctx.groups, directory: ctx.directory }
   if (q.control === 'accounts') return pickerUniverse(PREREQ_STEP_ID.serviceAccountsGroup, 'accounts', pickerCtx)
   if (q.control === 'locations') return pickerUniverse(PREREQ_STEP_ID.trustedLocation, 'locations', pickerCtx)
-  if (q.control === 'countries') return pickerUniverse(PREREQ_STEP_ID.allowedCountries, null, pickerCtx)
   return []
 }
 
@@ -53,7 +52,7 @@ function QuestionTile({ q, answer, onAnswer, ctx, printing }: { q: DirectionQues
   const suggestions: PickerOption[] = q.suggested.picked.map((id) => byId.get(id) ?? { id, name: nameOf(id) })
   const labelId = `direction-${q.key.replace(/[^a-z0-9]+/gi, '-')}`
   const approved = q.saved !== null && !q.needsReview
-  const picks = q.control === 'countries' || (q.pickedWith !== null && answer.value === q.pickedWith)
+  const picks = q.pickedWith !== null && answer.value === q.pickedWith
   // An Emergency Access subject card (ContentStep.tsx EmergencyAccountStatusTile),
   // filled with a question: the state where that card carries its subject label,
   // the question where it carries its title, then the control on a row of its
@@ -72,7 +71,7 @@ function QuestionTile({ q, answer, onAnswer, ctx, printing }: { q: DirectionQues
       {q.note && <p>{q.note}</p>}
       {!printing && picks && (
         <div className="direction-question-picker">
-          <Picker labelledBy={labelId} selected={chips} options={results} suggestions={suggestions} onChange={(next) => onAnswer({ value: q.control === 'countries' ? 'some' : answer.value, picked: next.map((c) => c.id) })} onSearch={setQuery} />
+          <Picker labelledBy={labelId} selected={chips} options={results} suggestions={suggestions} onChange={(next) => onAnswer({ value: answer.value, picked: next.map((c) => c.id) })} onSearch={setQuery} />
         </div>
       )}
     </article>
