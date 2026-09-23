@@ -17,11 +17,11 @@ import { stepVars, withoutScheduleDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor, unwrittenCorrectionLines } from './stepPortal.ts'
 import { instructionsHeld, preparationLines, rescanLinesOf, wholeLines } from './stepInstructions.ts'
-import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, proceduresAreReference, stepContract } from './stepContract.ts'
-import type { LaneView, StepContract } from './stepContract.ts'
+import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, proceduresAreReference, readinessSentence, stepContract } from './stepContract.ts'
+import type { LaneView, PrerequisiteLabel, StepContract } from './stepContract.ts'
 import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, previewNoteLines, selectedPolicyBodiesOf, entraWithSettings } from './stepPackage.ts'
 import { projectSafely } from '../../content/implementation/project.ts'
-import { SUBSTATUS_WORD, boardHolds, laneViewAlone, laneViewFor, laneViewOf, laneWordOf } from './planBoard.ts'
+import { SUBSTATUS_WORD, boardHolds, laneViewAlone, laneViewFor, laneViewOf, laneWordOf, prerequisiteLabelFor } from './planBoard.ts'
 import type { BoardReadings } from './planBoard.ts'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import type { CleanupExport } from '../../roadmap/types.ts'
@@ -237,7 +237,11 @@ function gateLine(gatedBy: string | null): string | null {
  * access was tested (R4-22). The page calls this, and the tests call this.
  */
 export function exportViewsOf(board: Pick<BoardReadings, 'readings' | 'titleOf'>, ctxOf: (s: Step) => StepVarContext): (s: Step) => ExportStep {
-  return (s) => stepExportView(s, ctxOf(s), laneViewFor(s, board))
+  // Where a readiness route's chain starts, as the board reads it (R4-33): the
+  // opened step builds its contract with it, so the Threshold card's sentence
+  // names the first thing anybody can do, and the export says the same sentence.
+  const { startOf } = prerequisiteLabelFor(board.readings)
+  return (s) => stepExportView(s, ctxOf(s), laneViewFor(s, board), startOf)
 }
 
 /**
@@ -273,7 +277,7 @@ export function exportCleanupViewsOf(board: Pick<BoardReadings, 'readings' | 'ti
  */
 const OPERATION_OF: Partial<Record<Substatus, ExportStep['operation']>> = { Create: 'createReportOnly', Correct: 'change', 'Ready to enforce': 'enforce' }
 
-export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView | null = null): ExportStep {
+export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView | null = null, startOf?: PrerequisiteLabel['startOf']): ExportStep {
   const cs = contentStepFor(step) as Record<string, any> | undefined
   // The frozen Step Contract, once, for every step. It is read and never
   // re-decided: the badge, the dated next line, the reach, the one action, the
@@ -292,7 +296,16 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // "Announce Sep 20, 2026 · Change Sep 21, 2026" under a row reading "After
   // prerequisites" (R4-55).
   const undated = boardHolds(step, lane)
-  const contract = stepContract(step, ctx, undefined, laneView, undefined, undated)
+  const contract = stepContract(step, ctx, undefined, laneView, startOf, undated)
+  // The readiness threshold that holds the turn-on, in the Threshold card's own
+  // sentence (stepContract.ts readinessSentence, on the contract's route start):
+  // the card is drawn while the gate is on the action and the step is not
+  // finished, and holds the enforcement, never the create (owner, 2026-09-11).
+  // No export carried it, so the calendar, the pack and the bundle read a clean
+  // week of report-only as the finish of a policy the screen said waits for 90%
+  // (Phase 2 export finding 7).
+  const readinessGate = step.action.readinessGate
+  const threshold = readinessGate && step.status !== 'done' && step.status !== 'skipped' ? readinessSentence(step, readinessGate, contract.routeStart) : null
   const shell = {
     state: badgeLabel(contract),
     manualEvidence: manualEvidenceLines(step, ctx),
@@ -314,7 +327,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
     fix: [...new Set([...contract.fix.map((f) => f.text), ...(step.configurationFindings ?? []).filter(f => f.outcome !== 'pass').map(f => [`${f.label}: ${f.value}.`, f.detail.trim()].filter(part => part !== '').join(' '))])],
     // What holds only the turn-on while the create is next, from the contract's
     // one list, apart from `fix`: the create is not blocked by any of it (R4-31).
-    beforeTurnOn: contract.enforcementWaits.map((f) => f.text),
+    beforeTurnOn: [...new Set([...contract.enforcementWaits.map((f) => f.text), ...(threshold === null ? [] : [threshold])])],
     implementation: contract.implementation.offered,
     // The board's row hands over an operation only from Ready (Phase 2 export
     // finding 0): the calendar booked "Create in report-only" for a row the board

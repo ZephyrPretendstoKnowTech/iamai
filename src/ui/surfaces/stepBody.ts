@@ -310,7 +310,7 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   const createWithheld = preparationLines(step, cs, true) !== null
   const jsonChannel = createWithheld ? null : (preview ?? projection)?.channels.find((a) => a.channel === 'json') ?? null
   const groundingJson = jsonChannel ? { text: jsonChannel.text, requests: jsonChannel.requests, preview: preview !== null } : null
-  const grounding = (own: string): string => aiGroundingText({ step, ctx, contract, lane: laneView, cs, ex: ex as Record<string, unknown>, bindings: pkgBindings as Record<string, unknown> | null, json: groundingJson }, own)
+  const grounding = (own: string): string => aiGroundingText({ step, ctx, contract, lane: laneView, cs, ex: ex as Record<string, unknown>, bindings: pkgBindings as Record<string, unknown> | null, json: groundingJson, startOf: prerequisiteLabel?.startOf }, own)
   const textOf = (ch: Channel): string =>
     ch === 'portal'
       ? portalLines.map((l, i) => `${i + 1}. ${l}`).join('\n')
@@ -318,7 +318,7 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
         ? powershellFor(stepOperations(step))
         : ch === 'json'
           ? policyJsonText(step)
-          : ((facts) => (facts !== '' ? aiBriefingText('', facts) : stepContext(step, (s) => stepExportView(s, ctx, laneView))))(grounding(''))
+          : ((facts) => (facts !== '' ? aiBriefingText('', facts) : stepContext(step, (s) => stepExportView(s, ctx, laneView, prerequisiteLabel?.startOf))))(grounding(''))
   // The channels the Implementation region draws: the package's projected
   // channels where a package is active, and otherwise the ones this step always
   // had. Never both.

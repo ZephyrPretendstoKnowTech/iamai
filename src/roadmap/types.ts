@@ -905,7 +905,10 @@ export type ExportStep = {
    * because readiness gates the enforcement and not the create (owner,
    * 2026-09-11). The screen draws them as "Before turning on" cards; an export
    * that read `fix` alone left out the Temporary Access Pass a registration
-   * policy cannot be turned on without (R4-31). Empty on every other step.
+   * policy cannot be turned on without (R4-31). The readiness threshold the
+   * Threshold card states travels here too, in the card's sentence: it holds the
+   * enforcement, and no export carried it (Phase 2 export finding 7). Empty on
+   * every other step.
    */
   beforeTurnOn: string[]
   doneWhen: string[]
