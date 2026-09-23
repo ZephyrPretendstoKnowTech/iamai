@@ -405,3 +405,24 @@ test('the bundle\'s tenant profile draws no count from a section the scan did no
   const read = groundingBundle({ view: mid.view, tenant: 'Tenant', snapshot: mid.f.snapshot, coverage: mid.r.coverage, steps: mid.r.steps, schedule: mid.r.schedule, redacted: false, generated: 'today', cleanup: mid.cleanup }).profile as Record<string, unknown>
   assert.equal(typeof read.registrationMfaCapable, 'number')
 })
+
+// Finding 18 (severity 1, reproduced). AI Info's package words doubled the full
+// stop: "Known blockers and decisions: Finish Configure Passkey Authentication
+// first.. Resolve these …". The fixes bound into {{dependencies.blockers}} end
+// in a stop and every template adds its own.
+test('no channel the opened step hands over doubles a full stop', () => {
+  let bound = 0
+  for (const name of ['demo', 'small', 'mid'] as FixtureName[]) {
+    const p = exportPage(fixture(name))
+    for (const step of p.r.steps) {
+      const body = stepBodyOf(step, p.ctxOf(step), { lane: laneViewFor(step, p.board) })
+      for (const artifact of body.artifacts) {
+        const text = artifact.text()
+        if (/Blockers|blockers and decisions|blockers or decisions/.test(text)) bound++
+        const doubled = /[^.\n]{0,60}[^.]\.\.(?!\.)[^\n]{0,40}/.exec(text)
+        assert.equal(doubled, null, `${name}/${step.id} ${artifact.id}: a doubled stop: ${doubled?.[0]}`)
+      }
+    }
+  }
+  assert.ok(bound > 0, 'the premise: a channel that binds the blockers')
+})
