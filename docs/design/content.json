@@ -1075,8 +1075,8 @@
         "confirm": {
           "title": "Confirm the method still exists",
           "why": "Registered, but no confirmed sign-in in 30 days",
-          "$commentBody": "It said \"they remove the old method and register again\". A person whose only method was on the replaced device, removing it first, has nothing left to register with: registering security info needs MFA. Same two actions, in the safe order.",
-          "body": "Ask each person to sign in once with the method named on their row. If the phone or computer holding it was replaced, they register a new method first, then remove the old one."
+          "$commentBody": "It said \"they remove the old method and register again\". Registering first means nobody is left without a working method while the old one still works; removing a method on a lost device loses nothing. Registering security info needs MFA, so somebody whose only method was on that device can't register at all: the last sentence states the fact the Temporary Access Pass check already gives (checks.tap.failText), not a new instruction.",
+          "body": "Ask each person to sign in once with the method named on their row. If the phone or computer holding it was replaced, they register a new method first, then remove the old one. Anyone left with no method needs a Temporary Access Pass to register."
         },
         "device": {
           "$commentTitle": "It read \"Add a passkey to the device they use\" over rows whose step is to sign in once with the passkey they already hold. The title names the gap; each row names its step.",

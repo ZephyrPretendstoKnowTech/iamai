@@ -363,7 +363,11 @@ test('the Confirm it group never tells somebody to remove a method before they h
     const remove = body.search(/remov/i)
     assert.ok(remove === -1 || (register !== -1 && register < remove), body)
     assert.doesNotMatch(body, /remove the old method and register again/)
+    // Somebody whose only method was on the replaced device can't register without
+    // MFA: the body says so in the Temporary Access Pass check's own fact.
+    assert.match(body, /left with no method needs a Temporary Access Pass to register\./, body)
   }
+  assert.match(R.checks.tap.failText, /^People with no method need one to register\./, 'the fact the Temporary Access Pass check already states')
 })
 
 test('the headline puts the whole count after "of", so it never reads as if the guests are ready', () => {
