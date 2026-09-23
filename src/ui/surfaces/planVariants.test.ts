@@ -227,6 +227,28 @@ function paired(f: Fixture): Variant[] {
   return out
 }
 
+/**
+ * A report-only policy that owes a real correction while its step waits: the
+ * correction is offered, and the switch waits. large's device policy was this
+ * shape as shipped, through a Target resources correction that changed nothing —
+ * the other, enforced device policies' narrower apps written onto a policy that
+ * already held the baseline's (R4-11). Once that update became the switch, which
+ * device readiness holds, nothing in the sweep reached the shape. Here the
+ * policy also leaves SharePoint Online out of the Office 365 it targets, which
+ * the baseline's does not (roadmap/readinessGate.test.ts '2').
+ */
+function owesCorrection(f: Fixture): Variant[] {
+  const ca = f.snapshot.config.caPolicies
+  if (!ca) return []
+  const rows = (ca.rows as Record<string, unknown>[]).map((p) => {
+    if (p.displayName !== 'Core - Grant - Compliant device for Office') return p
+    const conditions = (p.conditions ?? {}) as Record<string, unknown>
+    return { ...p, conditions: { ...conditions, applications: { ...(conditions.applications as Record<string, unknown>), excludeApplications: ['00000003-0000-0ff1-ce00-000000000000'] } } }
+  })
+  const snapshot = withRows(f, rows)
+  return snapshot ? planOf(`${f.name}+owes-correction`, { ...f, snapshot }) : []
+}
+
 /** The first step of a plan put aside by the operator, which is how a step leaves the lifecycle. */
 function setAside(f: Fixture): Variant[] {
   const first = runFixture(f)
@@ -273,6 +295,7 @@ function sweep(): Variant[] {
   // groups are, every policy is held, so the stages a released policy reaches —
   // Ready to enforce above all — are reachable nowhere else.
   out.push(...planOf('demo-week2+settled', withDirectionApproved(fixture('demo-week2'))))
+  out.push(...owesCorrection(fixture('large')))
   SWEEP = out
   return out
 }
@@ -386,7 +409,7 @@ const INVENTORY: string[] = [
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown', // small+unanswered/s-goal-inforcer-mfa
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-unknown', // small+unanswered/s-goal-guests-mfa
   'policy · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // mid/s-shared-devices
-  'policy · adjust · report-only · blocked · open · do:observe · track · implementation · found · fix · one-policy · who-known', // large/s-goal-require-managed-device
+  'policy · adjust · report-only · blocked · open · do:observe · track · implementation · found · fix · one-policy · who-known', // large+owes-correction/s-goal-require-managed-device (as shipped, large reached it only through a correction that changed nothing: R4-11)
   'blocker · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · fix · one-policy · who-none', // messy/s-prereq-exclusion-group
   'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-known', // a tenant whose emergency keys are now readable reaches this with its reach settled (G-F1)
   'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-unknown', // messy/s-goal-admins-phishing-resistant
@@ -398,6 +421,12 @@ const INVENTORY: string[] = [
   'policy · create · not-deployed · blocked · open · do:resolve · track · implementation · found · fix · members · who-unknown', // demo+no-ca/s-goal-guests-mfa
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · implementation · found · fix · one-policy · who-known', // demo+half-pair/s-goal-mfa-all-users
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · found · fix · members · who-unknown', // demo+half-pair/s-goal-guests-mfa
+  // The pair's correction to its hand-edited, report-only half now travels
+  // without the switch (roadmap/reportOnlyTurnOn.test.ts, "takes the correction
+  // first"), so it enforces nothing and the unverified escape hatch, which holds
+  // only what enforces (generate.ts), does not hold it: the report-only
+  // preparation is offered, as a create's is.
+  'policy · adjust · not-deployed · blocked · open · do:resolve · track · implementation · found · fix · members · who-unknown', // demo+half-pair+rescan/s-goal-guests-mfa
   'policy · adjust · report-only · blocked · open · do:observe · track · no-implementation · no-found · fix · one-policy · who-known', // demo-week2/s-goal-block-auth-transfer
   'policy · create · enforced · healthy · open · do:decide · track · no-implementation · no-found · no-fix · one-policy · who-unknown', // demo-week2/s-goal-block-device-code
   'policy · create · enforced · healthy · open · do:decide · track · no-implementation · found · no-fix · one-policy · who-unknown', // demo-week2/s-goal-guests-mfa
