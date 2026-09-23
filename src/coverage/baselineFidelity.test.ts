@@ -526,3 +526,44 @@ test('resources are judged against the pinned member: fewer token-protection res
   assert.ok(own, 'the portal policy is the goal\'s candidate')
   assert.equal(own.caveats.includes('apps-narrower'), false, 'a portal policy is told to add the applications the pinned policy names beside the portals')
 })
+
+test('a goal the pinned map does not hold is judged against its own template, never another goal\'s policy', () => {
+  // Review of a27fb72d: narrowerApps read the reference coverage keeps for
+  // conditions, which for a goal the map does not hold is whatever pinned policy
+  // its signature matches. For azure-management-mfa that is the admin-portal
+  // BLOCK, which names Azure management (797f…) beside Microsoft Admin Portals.
+  // A tenant's MFA policy on Azure management alone read "covers fewer apps"
+  // against another goal's policy, and the goal went from in place to partly in
+  // place in the findings and the plan checkpoint. No step renders such a goal:
+  // generate.ts sourcesFor gives it no source, and a step for it would write
+  // the goal's own template, so that is what its resources are judged against.
+  const users = { includeUsers: ['All'], excludeUsers: [], includeGroups: [], excludeGroups: [], includeRoles: [], excludeRoles: [] }
+  const azure = { id: 'tenant-azure-mfa', displayName: 'Tenant Azure management MFA', state: 'enabled', conditions: { users, applications: { includeApplications: ['797f4846-ba00-4fd7-ba43-dac1f8f63013'], excludeApplications: [] }, clientAppTypes: ['all'] }, grantControls: { operator: 'OR', builtInControls: ['mfa'] }, sessionControls: null } as unknown as Raw
+  assert.deepEqual(PINNED_GOAL_MAP['azure-management-mfa'] ?? [], [], 'the premise: the pinned map does not hold Azure management')
+  const r = cover([azure], { baselinePolicies: PINNED_POLICIES, goalMap: PINNED_GOAL_MAP }).results.find((x) => x.goal.id === 'azure-management-mfa')
+  const own = r?.candidates.find((c) => c.policyId === 'tenant-azure-mfa')
+  assert.ok(own, 'the premise: the tenant policy is the goal\'s candidate')
+  assert.equal(own.caveats.includes('apps-narrower'), false, 'an MFA policy on Azure management reads as covering fewer apps than the admin-portal block beside it')
+  assert.equal(r?.reasons.some((x) => x.kind === 'apps-narrower'), false)
+  assert.equal(r?.status, 'enforced')
+})
+
+test('a goal\'s application label names the same resources its own template targets', () => {
+  // The same disagreement a27fb72d removed for "all", for the two Microsoft
+  // groups: byod-session-controls was labelled Office 365 over a template on All
+  // resources. With the template the reference for a goal the map does not hold,
+  // a tenant's BYOD policy on Office 365 read "covers fewer apps than the goal
+  // expects", against the goal's own label. Its template now targets Office 365,
+  // Microsoft's own scope for application-enforced restrictions.
+  const group: Record<string, string> = { all: 'All', office365: 'Office365', adminPortals: 'MicrosoftAdminPortals' }
+  const wrong: string[] = []
+  for (const goal of CATALOGUE) {
+    for (const [i, impl] of goal.implementations.entries()) {
+      const want = group[impl.expectedApps]
+      if (impl.kind !== 'ca' || want === undefined) continue
+      const apps = (impl.template as { conditions?: { applications?: { includeApplications?: unknown } } }).conditions?.applications?.includeApplications
+      if (!(Array.isArray(apps) && apps.length === 1 && apps[0] === want)) wrong.push(`${goal.id}[${i}] ${impl.expectedApps}: ${JSON.stringify(apps)}`)
+    }
+  }
+  assert.deepEqual(wrong, [], 'a goal is labelled with one set of resources and its template targets another')
+})

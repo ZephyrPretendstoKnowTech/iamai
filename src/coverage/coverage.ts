@@ -162,7 +162,10 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
   const factsByKey = new Map<string, PolicyFacts>()
   input.baselinePolicies.forEach((p, i) => factsByKey.set(policyKey(p as { id?: string | null; displayName: string }), baselineFacts[i]))
   const rawByFacts = new Map<PolicyFacts, unknown>(baselineFacts.map((f, i) => [f, input.baselinePolicies[i]]))
-  const goals: { goal: Goal; baselineMatches: PolicyFacts[]; goalPolicies: PolicyFacts[] }[] = CATALOGUE.map((goal) => {
+  // The map describes this package when its keys resolve in it (the pinned
+  // baseline), as generate.ts sourcesFor reads it.
+  const mapDescribesPackage = Object.values(goalMap).flat().some((k) => factsByKey.has(k))
+  const goals: { goal: Goal; baselineMatches: PolicyFacts[]; goalPolicies: PolicyFacts[]; written: PolicyFacts | null }[] = CATALOGUE.map((goal) => {
     const signatureMatches = baselineFacts.filter((f) =>
       goal.implementations.some((impl) => matchesSignature(f, impl.signature)),
     )
@@ -170,9 +173,19 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
     // The map's policies, in order (A first), when the package carries them;
     // else the signature matches (an upload with no map, a synthetic fixture).
     const mapped = (goalMap[goal.id] ?? []).map((k) => factsByKey.get(k)).filter((f): f is PolicyFacts => f !== undefined)
+    // The policy a step for the goal writes, which is what its resources are
+    // judged against (classify.ts narrowerApps): the map's policy; where the map
+    // describes the package and does not hold the goal, nothing in the package —
+    // generate.ts sourcesFor gives such a goal no source, and a step for it
+    // would write the goal's own template (null here); and only for a package
+    // the map does not describe, the signature match. A signature match on the
+    // pin is another goal's policy: the admin-portal block names Azure
+    // management beside the portals, so a tenant's MFA policy on Azure
+    // management alone read "covers fewer apps" against it.
+    const written = mapped.length > 0 ? mapped[0] : mapDescribesPackage ? null : (signatureMatches[0] ?? null)
     // Every policy the baseline implements the goal with, both halves of a pair:
     // what the goal reaches is what they reach together.
-    return { goal, baselineMatches: mapped.length > 0 ? mapped.slice(0, 1) : signatureMatches, goalPolicies: mapped.length > 0 ? mapped : signatureMatches }
+    return { goal, baselineMatches: mapped.length > 0 ? mapped.slice(0, 1) : signatureMatches, goalPolicies: mapped.length > 0 ? mapped : signatureMatches, written }
   })
   // Baseline policies no catalogue goal matches are not goals, findings or
   // steps (prompt 46 item 14, target-state §5 footer). They are listed as not
@@ -185,8 +198,8 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
     .map((b) => ({ name: b.name, json: jsonOf(b.name), reason: b.workload !== null ? NOT_ASSESSED.agentIdentity : NOT_ASSESSED.noGoal }))
   for (const w of input.baselineUnusable) notAssessed.push({ name: w.policyName, json: jsonOf(w.policyName), reason: w.warning })
 
-  const results: GoalResult[] = goals.map(({ goal, baselineMatches, goalPolicies }) =>
-    evaluateGoal(goal, baselineMatches, tenantFacts, input, assumed, facets, goalPolicies, rawByFacts),
+  const results: GoalResult[] = goals.map(({ goal, baselineMatches, goalPolicies, written }) =>
+    evaluateGoal(goal, baselineMatches, tenantFacts, input, assumed, facets, goalPolicies, rawByFacts, written),
   )
 
   // A tenant policy "maps to a goal" when any catalogue signature matches it,
@@ -280,6 +293,7 @@ function evaluateGoal(
   facets: ReturnType<typeof detectFacets>,
   goalPolicies: PolicyFacts[],
   rawByFacts: ReadonlyMap<PolicyFacts, unknown>,
+  written: PolicyFacts | null = baselineMatches[0] ?? null,
 ): GoalResult {
   const impl = goal.implementations[0]
   const base: Omit<GoalResult, 'status' | 'statement'> = {
@@ -407,7 +421,7 @@ function evaluateGoal(
     const caveats: string[] = []
     // Fewer resources than the reference targets: the policy the step writes,
     // never the catalogue's label for it (classify.ts narrowerApps).
-    if (narrowerApps(c, reference)) caveats.push('apps-narrower')
+    if (narrowerApps(c, written ?? policyFacts(impl.template, input.strengths))) caveats.push('apps-narrower')
     // Resource scope the baseline member does not give away: applications this
     // policy excludes and the baseline member does not, or an application filter
     // whose rule IAMAI does not evaluate (exact or unknown, never assumed equal).
