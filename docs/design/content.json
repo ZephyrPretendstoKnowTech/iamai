@@ -581,7 +581,8 @@
         "goal": "Its aim is layered protection for a small organisation: MFA for everyone, phishing-resistant admins, constrained sessions and devices, and emergency access kept out of every policy as a backup you check and test.",
         "updated": "Updated by its author on {date} · {n} policies changed · review",
         "updatedPartial": "Updated by its author on {date} · IAMAI could not read every change · review",
-        "incomplete": "IAMAI could not read every changed file in the author's repository, so this review is incomplete. Nothing changes here until you take an update.",
+        "$commentIncomplete": "Phase 2 audit (Connect): this said \"Nothing changes here until you take an update\", and no control takes an update: the baseline picker is held for V2 (Connect.tsx). It now states what is true, that IAMAI keeps the pinned version. Restore an instruction only when the control ships.",
+        "incomplete": "IAMAI could not read every changed file in the author's repository, so this review is incomplete. IAMAI keeps the pinned version.",
         "diff": {
           "added": "added",
           "removed": "removed",
