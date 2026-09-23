@@ -505,7 +505,7 @@ function PlanControls({ tab, onTab, focus, onFocus, counts, base }: {
       <div className="view-wrap">
         {/* The shared tab strip (task 017): one tab stop, arrows move and select,
             every tab names the panel it controls. The board is that panel. */}
-        {/* The three lanes carry a row count; the fourth tab is not a lane and
+        {/* The three lanes carry a row count; All work is not a lane and
             counts nothing, because the rows it shows are every other tab's rows
             plus the completed ones and a number over that means nothing. */}
         <TabList base={base} tabs={TABS.map((l) => ({ id: l, label: l === ALL_WORK_TAB ? BOARD.allWorkTab : BOARD.lanes[l], badge: l === ALL_WORK_TAB ? undefined : counts.lanes[l] }))} active={tab} onSelect={(id) => onTab(id as BoardTab)} panelId={() => `${base}-panel`} className="tabs view-tabs" />
