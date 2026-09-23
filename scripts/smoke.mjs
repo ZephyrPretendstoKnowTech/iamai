@@ -562,9 +562,9 @@ try {
   // with the row's own lane tone (src/ui/surfaces/StepSections.tsx PlanRow).
   const numbered = await evaluate(`[...document.querySelectorAll('main.page .plan-group .plan-row')].map((r) => { const n = r.querySelector('.plan-row-number'); return n ? \`\${(n.textContent || '').trim()}:\${[...n.classList].find((c) => c.startsWith('number-')) || ''}\` : 'missing' })`)
   check('Plan: every row in a group list is numbered, in its lane tone', Array.isArray(numbered) && numbered.length >= 3 && numbered.every((t) => /^\d+:number-(ok|wait|stop|idle)$/.test(t)), JSON.stringify(numbered.slice(0, 6)))
-  // The board draws one lane at a time (S3, src/ui/surfaces/planBoard.ts): Ready is
-  // the default tab, and the three are one tab set. A check that reads every row
-  // reads the three tabs in turn.
+  // The lane tabs draw one lane at a time (S3, src/ui/surfaces/planBoard.ts);
+  // All work is the default tab and the three lanes filter it. A check that
+  // reads every row by lane reads the three lane tabs in turn.
   const LANES = ['Ready', 'Up Next', 'On Hold']
   const tabText = `(t) => ((t.textContent || '').replace((t.querySelector('.tab-badge') || {}).textContent || '', '').trim())`
   const showLane = async (name) => {
@@ -580,9 +580,10 @@ try {
     await showLane(LANES[0])
     return out
   }
-  // The three lanes, then All work: the fourth tab is not a lane (owner,
-  // 2026-09-20) and shows every group that is not finished, whole.
-  check('Plan: the three lanes and All work are tabs with Ready selected', (await evaluate(`[...document.querySelectorAll('main.page .plan-controls [role=tab]')].map((t) => (${tabText})(t) + ':' + t.getAttribute('aria-selected')).join(' ')`)) === 'Ready:true Up Next:false On Hold:false All work:false')
+  // All work, then the three lanes: the tab that is not a lane (owner,
+  // 2026-09-20) is the default view, so it sits leftmost and the Plan opens on
+  // it (owner, 2026-09-23).
+  check('Plan: All work is the first tab and selected, then the three lanes', (await evaluate(`[...document.querySelectorAll('main.page .plan-controls [role=tab]')].map((t) => (${tabText})(t) + ':' + t.getAttribute('aria-selected')).join(' ')`)) === 'All work:true Ready:false Up Next:false On Hold:false')
   // All work reads how much of each group is done, and a group there is whole:
   // it holds rows of more than one lane, which no lane tab can.
   await showLane('All work')

@@ -26,7 +26,7 @@ import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { Button, Callout, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { ALL_WORK_TAB, BOARD, LANES, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupSummary, groupTotalsOf, groupsFor, laneViewFor, laneViewOf, partitionPinnedGroups, pinnedBoardGroups, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, splitPinned, waveStartOf } from './planBoard.ts'
+import { ALL_WORK_TAB, BOARD, DEFAULT_TAB, LANES, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupSummary, groupTotalsOf, groupsFor, laneViewFor, laneViewOf, partitionPinnedGroups, pinnedBoardGroups, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, splitPinned, waveStartOf } from './planBoard.ts'
 import type { BoardGroup, BoardItem, BoardTab, Focus, LaneTab, WorkType } from './planBoard.ts'
 import { TAB_OF } from './planBoard.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
@@ -92,11 +92,11 @@ export function Plan({ scan: lastScan, baseline, account }: {
     requestAnimationFrame(() => document.getElementById(PLAN_SETTINGS_ID)?.scrollIntoView({ block: 'start' }))
   }
   const [showHow, setShowHow] = useState(false)
-  // The board's four tabs (planBoard.ts). Ready is the default, because the
-  // Plan's own subject is what can be done now; the other two lanes hold the
-  // same rows, and All work holds every group that is not finished, whole.
+  // The board's four tabs (planBoard.ts). All work is the default and sits
+  // leftmost (owner, 2026-09-23): the whole plan, section by section, from the
+  // top. Ready, Up Next and On Hold are filters over the same list.
   const [summaryFilter, setSummaryFilter] = useState<'input' | 'observing' | 'completed' | null>(null)
-  const [tab, setTab] = useState<BoardTab>('ready')
+  const [tab, setTab] = useState<BoardTab>(DEFAULT_TAB)
   const [focus, setFocus] = useState<Focus>(NO_FOCUS)
   // Which groups the operator has collapsed, keyed by lane and group, so
   // collapsing Completed under Ready does not also collapse it under On Hold.
