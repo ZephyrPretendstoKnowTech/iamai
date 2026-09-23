@@ -1,5 +1,6 @@
 import { emergencyPasskeyCompatibility } from '../roadmap/passkeyCompatibility.ts'
 import { methodPreparation } from '../roadmap/methodReadiness.ts'
+import { personLabels } from '../names.ts'
 import { effectOf } from '../roadmap/operations.ts'
 // The validation rule registry (docs/design/validation-rules.md).
 //
@@ -120,6 +121,8 @@ export type RuleResult = RuleEval & {
 
 export type ValidationContext = {
   snapshot: TenantSnapshot
+  /** An account by the one naming rule (names.ts personLabels), computed once per context. Absent on a hand-built context: nameOf computes it then. */
+  personLabel?: (id: string) => string | null
   mapping: MappingState
   /** Conditional Access policies as collected; empty when the section was refused. */
   tenantPolicies: unknown[]
@@ -227,9 +230,10 @@ function userOf(ctx: ValidationContext, id: string): UserRow | null {
   return ctx.snapshot.users.find((u) => u.id === id) ?? null
 }
 
+/** An account by the one naming rule (names.ts): a display name another account shares carries its address. */
 function nameOf(ctx: ValidationContext, id: string): string {
-  const u = userOf(ctx, id)
-  return u?.displayName ?? u?.userPrincipalName ?? id
+  const label = ctx.personLabel ? ctx.personLabel(id) : personLabels(ctx.snapshot.users).get(id) ?? null
+  return label ?? userOf(ctx, id)?.userPrincipalName ?? id
 }
 
 function methodsOf(ctx: ValidationContext, id: string): AuthMethodSummary[] | 'unknown' | undefined {

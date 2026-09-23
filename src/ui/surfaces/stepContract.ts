@@ -862,8 +862,13 @@ function whoOf(step: Step, ctx: StepVarContext): ContractWho | null {
   if (pop === null) {
     const source = ctx.snapshot.sources.users
     const missing = [...new Set((step.action.missing ?? []).map(m => m.stepId ? stepById[m.stepId]?.title : null).filter(Boolean))]
+    // A step with no policy of its own is unsettled only where the tenant's
+    // policies deliver it and their scope could not be read (derive/population.ts
+    // reached): the reason is the scan's, never the plan's own missing
+    // references, which that policy does not wait on. It read the goal's people.
     const text = source && source.status !== 'ok'
       ? `Directory read incomplete${source.reason ? `: ${source.reason}` : '.'}`
+      : effectsOf(step) === null ? CONTRACT.whoUnknown
       : missing.length ? `Policy scope awaits: ${missing.join('; ')}.`
       : step.goalId === 'guests-mfa' ? 'Exact guest-policy reach needs the external-user type, home organization and applicable exclusions for each account.'
       : 'Policy applicability is not fully resolved. Review the named policy assignments and prerequisites on this step.'
@@ -2169,6 +2174,9 @@ function emergencyTiles(step: Step, c: StepContract): ReadinessTile[] {
   })
 }
 
+/** The key of the people card (peopleTile). */
+const PEOPLE_TILE = 'people'
+
 /** Who the policy reaches: the contract's one population line, or its one line saying the reach is not established. */
 function peopleTile(c: StepContract): ReadinessTile | null {
   if (c.who === null || (!c.who.known && c.who.text.startsWith('Policy applicability is not fully resolved.'))) return null
@@ -2178,7 +2186,28 @@ function peopleTile(c: StepContract): ReadinessTile | null {
   // was a sentence about a list that is not there. An empty reach states the
   // count and stops; the note belongs to the accounts, and there are none.
   const note = c.who.text === IMPACT.noUserImpact ? null : peopleNote
-  return c.who.known ? { key: 'people', label: t.people, tone: 'info', value: c.who.text, note } : { key: 'people', label: t.people, tone: 'warn', value: t.peopleUnknown, note: c.who.text }
+  return c.who.known ? { key: PEOPLE_TILE, label: t.people, tone: 'info', value: c.who.text, note } : { key: PEOPLE_TILE, label: t.people, tone: 'warn', value: t.peopleUnknown, note: c.who.text }
+}
+
+/**
+ * Whether a Readiness card is work the step still waits on: the one answer the
+ * Implementation box (stepBody.ts, through implementationEmptyOf) and the task
+ * bar (policyTasks.ts policyBarOf) both read.
+ *
+ * Every card is, except the people card. It states who the policy reaches, a
+ * fact about scope, and no Implementation Task points at it. Unresolved, it says
+ * the reach is not established (a group the scan read only a sample of, a
+ * directory read that came back incomplete), and what settles that is what a
+ * later scan reads, not anything done on this step. That holds on every step,
+ * open or Completed, so the rule is the same on every step: the card is still
+ * drawn, warn, under Tasks Remaining, and is never counted as work. Counted, a
+ * Completed step whose delivering policy excludes a group read only in part went
+ * from "Every task on this step is complete." to "Complete the next task shown
+ * for each item.", and from "No implementation needed" to "Waiting on
+ * Readiness": an instruction nobody can carry out.
+ */
+export function isReadinessWork(tile: { key: string }): boolean {
+  return tile.key !== PEOPLE_TILE
 }
 
 /**

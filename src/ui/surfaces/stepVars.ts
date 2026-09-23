@@ -22,7 +22,7 @@ import { analysisUnknown, effectsOf, promptsPeople } from '../../roadmap/strand.
 import { contentTitle } from '../../content/stepTitle.ts'
 import { contentLists } from '../../derive/contentLists.ts'
 import { watchedArrive } from '../../roadmap/observation.ts'
-import { stepPopulation } from '../../derive/population.ts'
+import { reached, stepPopulation } from '../../derive/population.ts'
 import { phoneSignInIds } from '../../derive/sets.ts'
 import { securityDefaultsState, signInsNeedP1 } from '../../derive/readinessContext.ts'
 import { cohortWords, guestsAmong } from '../../derive/whoLine.ts'
@@ -182,12 +182,13 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
       { tenant: tenantNameOf(ctx.snapshot) },
     ),
     existingName: step.naming?.fromBaseline ?? undefined,
-    // The operator's own sign-in count, when the operator is in the step's population (the "Your account is in scope" line);
+    // The operator's own sign-in count, when the step reaches the operator (the "Your account is in scope" line);
     // in scope with no records of their own (signed in for this scan, outside the window), the no-records line names them instead.
     // Whether the signed-in account is in scope is the policy's own answer,
     // decided where the scan is and carried on the step (generate.ts
-    // includesOperator). The step's list of people stands in only for a step
-    // with no policy of its own.
+    // includesOperator). A step with no policy of its own reads its reach
+    // (derive/population.ts reached), the one its cards read: a delivered step's
+    // is the tenant policies' own scope, never the goal's people (operatorInScope).
     operatorSignIns: ctx.operatorId && operatorInScope(step, ctx.operatorId) ? operatorSignIns(ctx.snapshot, ctx.operatorId) : undefined,
     operatorNoRecords: ctx.operatorId && operatorInScope(step, ctx.operatorId) && operatorSignIns(ctx.snapshot, ctx.operatorId) === undefined ? ctx.nameOf(ctx.operatorId) : undefined,
     people: view?.active,
@@ -517,9 +518,24 @@ function answerVars(ctx: StepVarContext, v: Record<string, unknown>): Record<str
   return out
 }
 
-/** Whether this step reaches the signed-in account: the policy's answer, or the step's list where it has no policy. */
+/**
+ * Whether this step reaches the signed-in account. An open policy answers for
+ * itself (generate.ts includesOperator). A step with no policy of its own
+ * answers from its reach (derive/population.ts reached), the one its cards
+ * read: the people it lists, or, while the tenant's policies deliver it, their
+ * own scope. Where that delivered reach is not established, the delivering
+ * policies were asked about this one account (generate.ts
+ * deliveredReachesOperator), and an answer they could not give counts as
+ * reaching it. A delivered step decided this from the goal's people, a list
+ * nothing measured for the policies that deliver it. Where their reach is not
+ * established the line still shows unless something the scan read in full
+ * excludes the account: unknown is not safe.
+ */
 function operatorInScope(step: Step, operatorId: string): boolean {
-  return effectsOf(step) === null ? (step.population?.ids ?? []).includes(operatorId) : step.includesOperator === true
+  if (effectsOf(step) !== null) return step.includesOperator === true
+  const reach = reached(step)
+  if (reach === null) return step.deliveredReachesOperator === true
+  return (reach?.ids ?? []).includes(operatorId)
 }
 
 function operatorSignIns(snapshot: TenantSnapshot, operatorId: string): number | undefined {
