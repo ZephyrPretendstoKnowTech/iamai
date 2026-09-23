@@ -183,7 +183,14 @@ test('D3: the create and correct procedures set Configure to Yes on Locations an
   }
 })
 
+/** Every tab a body draws, joined: the whole of what it hands over. */
+const allDrawn = (b: StepBody): string => b.artifacts.map((a) => a.text()).join('\n')
+
 test('D4: the device answer that narrows the platforms puts them in the Entra procedure, beside the JSON that carries them', () => {
+  // Below device readiness the create waits with its turn-on, and nothing the
+  // step draws creates the policy: no procedure, no platform line, no body.
+  const held = allDrawn(bodyOf('demo', MANAGED, withPhonesBlocked))
+  assert.doesNotMatch(held, /New policy|Device platforms|excludePlatforms|enabledForReportingButNotEnforced/, 'the held create draws no procedure')
   const b = bodyOf('demo', MANAGED, (f) => withDevicesReady(withPhonesBlocked(f)))
   const entra = drawn(b, 'portal')
   const json = drawn(b, 'json')
@@ -196,6 +203,8 @@ test('D4: the device answer that narrows the platforms puts them in the Entra pr
 test('D4b: a target with no platform condition drops the platform line and keeps the rest of the procedure', () => {
   // The demo with the device decision unanswered is the pinned baseline's own
   // shape: no platform condition, so there is nothing to configure and no line.
+  // Held on device readiness, it draws no procedure at all.
+  assert.doesNotMatch(allDrawn(bodyOf('demo', MANAGED)), /New policy|Locations: set|enabledForReportingButNotEnforced/, 'the held create draws no procedure')
   const entra = drawn(bodyOf('demo', MANAGED, withDevicesReady), 'portal')
   assert.doesNotMatch(entra, /Device platforms/)
   assert.doesNotMatch(entra, /\[omit |\{\{/)

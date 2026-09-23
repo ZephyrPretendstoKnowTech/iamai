@@ -12,7 +12,11 @@ import type { Fixture } from './fixtures/index.ts'
 import { runFixture, withFoundationSettled } from './fixtures/run.ts'
 import { createWaitsOnReadiness, implementationOffered, unavailableReason } from './operations.ts'
 import { scheduleOf } from './stepSchedule.ts'
-import { boardReadingsOf, laneLabelOf, holdLabelOf } from '../ui/surfaces/planBoard.ts'
+import { boardReadingsOf, laneLabelOf, holdLabelOf, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from '../ui/surfaces/planBoard.ts'
+import { laneReadings } from '../ui/surfaces/planLanes.ts'
+import { planDates } from '../ui/surfaces/stepVars.ts'
+import { stepBodyOf } from '../ui/surfaces/stepBody.ts'
+import { setDisplayTimeZone } from '../copy/dates.ts'
 import { stepContract } from '../ui/surfaces/stepContract.ts'
 import { stepExportView } from '../ui/surfaces/stepExport.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
@@ -51,7 +55,7 @@ test('demo: the managed-device create waits on device readiness, and says why', 
   assert.ok(gate && /device readiness/.test(gate.measure), 'the premise: device readiness gates its turn-on, unmet')
   assert.equal(step.state.lifecycle, 'not-deployed')
   assert.equal(createWaitsOnReadiness(step), true)
-  assert.equal(implementationOffered(step), false, 'no portal lines, JSON, PowerShell or download for the create')
+  assert.equal(implementationOffered(step), false, 'the translator offers no portal lines, JSON, PowerShell or download for the create')
   assert.equal(unavailableReason(step), 'readiness-unmet')
   assert.equal(label(step), 'On Hold', 'never Ready · Create')
   const reading = board.readings.get(DEVICE)!
@@ -95,4 +99,64 @@ test('demo and mid: every other create is unchanged — creatable early, on the 
   }
   // Mid holds no Intune licence, so it has no managed-device step at all.
   assert.ok(!runFixture(withFoundationSettled(fixture('mid'))).steps.some((s) => s.id === DEVICE))
+})
+
+/**
+ * The step as the Plan opens it and prints it (stepBody.ts: ContentStep and
+ * PrintPlan draw this body), and its export (the export, the plan file and the
+ * prompts read stepExportView), on the board's own reading.
+ */
+function opened(f: Fixture) {
+  setDisplayTimeZone('UTC')
+  try {
+    const r = runFixture(f, { mapping: f.mapping }, null, f.snapshot.asOf)
+    const readings = laneReadings(r.steps, [])
+    const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.title ?? null
+    const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot)
+    const step = r.steps.find((s) => s.id === DEVICE)!
+    const reading = readings.get(DEVICE)!
+    const lane = laneViewOf(reading, titleOf)
+    const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: step.reportOnlyAt ?? null, scheduledOn: waveStartOf(step), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
+    const body = stepBodyOf(step, ctx, { lane, blockers: readinessBlockersOf(reading, titleOf), prerequisiteLabel: prerequisiteLabelFor(readings) })
+    const tasks = (body.emergencyAccountTasks?.tasks ?? []).map((t) => [t.title, t.actionLabel, ...(t.facts ?? []).map((x) => `${x.label}: ${x.value}`), ...t.steps].join('\n'))
+    return { step, body, tasks, whatToDo: stepExportView(step, ctx, lane).whatToDo }
+  } finally {
+    setDisplayTimeZone(null)
+  }
+}
+
+/** Words that hand over the policy's creation: the portal's New policy, a Create-mode script, a POST, a report-only body, or saying the next action creates it. */
+const CREATES: [string, RegExp][] = [
+  ['the portal create', /New policy/i],
+  ['a Create-mode script', /ValidateSet\('Create'\)|-Mode\s+'?Create|in Create mode/i],
+  ['a POST', /\bPOST\b/],
+  ['a report-only body', /enabledForReportingButNotEnforced/],
+  ['saying the next action creates it', /next action (?:creates|is to create)/i],
+]
+
+test('demo: while its create waits, the opened, printed and exported step hands over nothing that creates the policy', () => {
+  const { step, body, tasks, whatToDo } = opened(withFoundationSettled(fixture('demo')))
+  assert.equal(createWaitsOnReadiness(step), true, 'the premise: the create waits on device readiness')
+  const texts: [string, string][] = [
+    ...body.artifacts.map((a): [string, string] => [`the ${a.id} tab`, a.text()]),
+    ...tasks.map((t, i): [string, string] => [`implementation task ${i + 1}`, t]),
+    ['the export', whatToDo.join('\n')],
+  ]
+  for (const [where, text] of texts) {
+    for (const [what, pattern] of CREATES) assert.doesNotMatch(text, pattern, `${where} carries ${what}`)
+  }
+  // The Entra tab, and the Implementation Task drawn from it, inspect the policies that are there, as a switched-off policy's do.
+  assert.match(body.artifacts.find((a) => a.id === 'portal')?.text() ?? '', /Review the policies that affect/)
+  // What it does say: why the create waits, in the export as on the step.
+  assert.ok(whatToDo.some((l) => l.startsWith(CERTIFICATE)), whatToDo.join(' | '))
+  const ai = body.artifacts.find((a) => a.id === 'ai')
+  assert.ok(ai, 'AI Info still explains the step')
+  assert.ok(ai.text().includes(CERTIFICATE), 'AI Info states the hold and why')
+})
+
+test('demo: once device readiness is met the opened step hands the create over again', () => {
+  const { body } = opened(devicesReady(withFoundationSettled(fixture('demo'))))
+  const entra = body.artifacts.find((a) => a.id === 'portal')?.text() ?? ''
+  assert.match(entra, /New policy/, 'the Entra procedure creates it')
+  assert.match(body.artifacts.find((a) => a.id === 'json')?.text() ?? '', /enabledForReportingButNotEnforced/, 'the JSON is the report-only create')
 })

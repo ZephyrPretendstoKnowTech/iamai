@@ -24,6 +24,7 @@ import { QUESTION_STEP, devicePlanOf, deviceScopeOf, questionLabels } from './an
 import { APP_PROTECTION_GOAL, COMPLIANT_DEVICE_GOAL, DEVICE_GOALS, INTUNE_ENROLMENT_GOAL, deviceStepDoesntApply, excludedPlatforms } from './deviations.ts'
 import { PREREQ_STEP_ID } from './stepIds.ts'
 import { readinessFor } from './readiness.ts'
+import { createWaitsOnReadiness } from './operations.ts'
 import { notLicensedRows } from '../derive/notLicensed.ts'
 import { PINNED_GOAL_MAP } from './goalMap.ts'
 import { defaultDecisions } from '../ui/surfaces/pickerRows.ts'
@@ -127,6 +128,9 @@ test('answered (apps, hybrid): the platform deviation, the enrolment step follow
   const body = JSON.parse(compliant.action.json ?? '{}') as { conditions?: { platforms?: { includePlatforms?: string[]; excludePlatforms?: string[] } } }
   assert.deepEqual(body.conditions?.platforms, { includePlatforms: ['all'], excludePlatforms: ['android', 'iOS'] }, 'the JSON scopes phones out')
   const ctx = ctxFor(f, r, m)
+  // Below device readiness the create waits with its turn-on, and there is no procedure to read.
+  assert.equal(createWaitsOnReadiness(compliant), true, 'the premise: device readiness is unmet on the demo')
+  assert.equal(stepPortalLines(compliant, portalNamesFor(ctx, stepVars(compliant, ctx), 'x')), null, 'the held create hands over no portal lines')
   // The procedure, read where it is handed over: once device readiness is met.
   const ready = withDevicesReady({ ...f, mapping: m })
   const rr = runFixture(ready, { mapping: m })
