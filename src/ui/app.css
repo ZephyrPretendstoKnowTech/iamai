@@ -2102,6 +2102,20 @@ footer.app a {
 .plan-row .when {
   white-space: nowrap;
 }
+/* Finished work, one quiet line (owner, roadmap flow V2; planBoard.ts
+   drawsCompact): the number, the lane word, the title and the day it was
+   finished. It has no Impact cell, so its day is placed in the When column
+   by name rather than falling into Impact's. */
+.plan-row[data-compact] {
+  min-height: 40px;
+}
+.plan-row[data-compact] .step-title {
+  font-weight: 400;
+  color: var(--secondary-text);
+}
+.plan-row[data-compact] .when {
+  grid-column: 5;
+}
 /* ---- the approved expanded step (task 034) ----
    docs/design/approved/anatomy/plan-step-v1.html: the row opens into ONE frame attached
    under it — `.step{border:1px solid var(--line);border-top:0;border-radius:0 0
@@ -4675,6 +4689,15 @@ footer.app a {
   .plan-row .when {
     grid-column: 3;
     text-align: left;
+  }
+  /* A finished row's day follows the same rule; its own column rule above is
+     more specific, so it is told again here. */
+  .plan-row[data-compact] .when {
+    grid-column: 3;
+  }
+  .plan-row[data-compact] {
+    padding-top: 8px;
+    padding-bottom: 8px;
   }
   /* The reason line can take the space it needs once the row is already tall. */
   .plan-row-reason {
