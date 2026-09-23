@@ -5,6 +5,8 @@ import { effectOf, validOperations } from './operations.ts'
 import { policyVerdict } from './strand.ts'
 import { createMethodPreparationCache, methodPreparation, methodReadiness } from './methodReadiness.ts'
 import { fixture } from './fixtures/index.ts'
+import type { Fixture } from './fixtures/index.ts'
+import { CATALOGUE } from '../coverage/coverage.ts'
 import { runFixture } from './fixtures/run.ts'
 
 function setup() {
@@ -199,8 +201,28 @@ test('R4-42: the built-in Multifactor authentication strength judges every perso
   assert.deepEqual(effectOf({ state: 'enabled', conditions: scope, grantControls: { operator: 'OR', authenticationStrength: { id: '00000000-0000-0000-0000-000000000004' } } }).requirements, [{ kind: 'strength', id: '00000000-0000-0000-0000-000000000004' }])
 })
 
+/**
+ * The large tenant on a baseline that carries its own admin-portal and
+ * device-registration policies, each requiring Microsoft's built-in MFA strength.
+ *
+ * These goals were written from their own templates on the fixtures' stand-in
+ * baseline, and those templates ask for the built-in MFA strength. A goal the
+ * pinned map holds is written from the pinned policy now (q-pin), which asks for
+ * the baseline's own strength, and the pinned admin-portal policy contradicts
+ * itself; so the premise these cases need is built here, from the same bodies,
+ * as a baseline's own policies.
+ */
+function withBuiltInMfaSources(f: Fixture): Fixture {
+  const first = f.baseline.policies[0] as unknown as { conditions: { users: unknown }; placeholders?: Record<string, string> }
+  const own = ['admin-portals-protected', 'device-registration-mfa'].map((goalId, i) => {
+    const template = structuredClone(CATALOGUE.find((g) => g.id === goalId)!.implementations[0].template) as { conditions: Record<string, unknown> }
+    return { ...template, id: `00000000-0000-4000-8000-00000000005${i}`, displayName: `Custom - ${goalId}`, state: 'enabled', placeholders: first.placeholders, conditions: { ...template.conditions, users: first.conditions.users } }
+  })
+  return { ...f, baseline: { ...f.baseline, policies: [...f.baseline.policies, ...own] as typeof f.baseline.policies } }
+}
+
 test('R4-42: on a generated plan, a step requiring the built-in MFA strength reads exactly what Require MFA would', () => {
-  const f = fixture('large')
+  const f = withBuiltInMfaSources(fixture('large'))
   const run = runFixture(f)
   // The group memberships the plan read, as the generator hands them on.
   const groupMembers: Record<string, string[]> = {}
@@ -403,7 +425,7 @@ test('R4-41: the methods policy is named only where the policies that refused a 
 })
 
 test('R4-41: on a generated plan, the gate names the people holding only a phone the tenant switched off, the same on every step reading them', () => {
-  const f = fixture('large')
+  const f = withBuiltInMfaSources(fixture('large'))
   const methods = ((f.snapshot.config.authMethodsPolicy.rows[0] as any).authenticationMethodConfigurations as { id: string; state: string }[])
   assert.deepEqual(methods.filter(c => ['Sms', 'Voice'].includes(c.id)).map(c => c.state), ['disabled', 'disabled'], 'the premise: text and voice are off')
   const run = runFixture(f)

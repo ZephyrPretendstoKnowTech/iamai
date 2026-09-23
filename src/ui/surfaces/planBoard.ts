@@ -27,7 +27,7 @@ import { schedulingWords } from '../../content/content.ts'
 // Nothing here reads a title to decide anything. A grouping built out of
 // `title.includes('MFA')` is a classifier nobody maintains and that silently
 // mis-files the first step somebody renames.
-import type { Step } from '../../roadmap/types.ts'
+import type { ExportOrder, Step } from '../../roadmap/types.ts'
 import type { HoldBlocker, Lane, Substatus } from '../../actionability/lanes.ts'
 import type { StatusTone } from '../components/index.ts'
 import { content, directionWords, pages } from '../../content/content.ts'
@@ -50,6 +50,7 @@ import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import { cleanupComplete } from '../../roadmap/cleanupDone.ts'
 import { cleanupEntry } from './cleanupExport.ts'
 import { cleanupTitleOf } from './stepContract.ts'
+import { sectionPositions } from '../../roadmap/stepGroups.ts'
 
 /** The When column's placeholder where a row has no date (A1b: a date, or this), and the Up Next label's tail words. */
 export const WHEN = (pages.plan as unknown as { when: { none: string; after: string; afterPrerequisites: string } }).when
@@ -1089,6 +1090,74 @@ export function asideGroupsFor(items: readonly BoardItem[]): BoardGroup[] {
  */
 export function rowNumbersOf(items: readonly Pick<BoardItem, 'id'>[], groups: readonly StepGroup[] = STEP_GROUPS): ReadonlyMap<string, number> {
   return groupPositions(items.map((i) => i.id), groups)
+}
+
+/** The number each section shows over the board's WHOLE row set (stepGroups.ts sectionPositions), keyed by registry key. */
+export function sectionNumbersOf(items: readonly Pick<BoardItem, 'id'>[], groups: readonly StepGroup[] = STEP_GROUPS): ReadonlyMap<string, number> {
+  return sectionPositions(items.map((i) => i.id), groups)
+}
+
+/**
+ * The number a drawn group's heading shows: its section's number
+ * (`sectionNumbersOf`, taken once over the WHOLE board), so the Plan, the
+ * printed plan and the exports number a section alike, and a section keeps its
+ * number on every tab, in a tile's list and while a focus filters it. A lane
+ * tab's Completed and Deferred groups (`secondary`) gather rows from many
+ * sections, and the catch-all holds rows no section claims: neither is a
+ * section, and neither shows a number. Pure.
+ */
+export function groupNumberOf(g: BoardGroup, numbers: ReadonlyMap<string, number>, groups: readonly StepGroup[] = STEP_GROUPS): number | null {
+  if (g.secondary) return null
+  const key = groupKeyOf(g, groups)
+  return key === null ? null : numbers.get(key) ?? null
+}
+
+/** One section of the board as All work draws it whole: the drawn group, its registry key and number, and whether the board reads it finished. */
+export type BoardSection = { key: string | null; number: number | null; group: BoardGroup; finished: boolean }
+
+/**
+ * The board's sections in the board's order, for a surface that states the
+ * whole plan off the screen: the printed plan and the exports (roadmap flow V1
+ * decision 8: they use the screen's sections and numbers).
+ *
+ * They are All work's own groups (`allWorkGroups`), drawn whole over the whole
+ * board, so a section's rows, their order, its title and its line are the ones
+ * the board draws, and nothing here decides them again. Each stands in its
+ * registry place, finished or not: sections never move (owner, roadmap flow V2).
+ * A section is finished where All work draws it closed: nothing left to do in
+ * it, whether its rows were completed or some were deferred. Handed the board's
+ * WHOLE row set. Pure.
+ */
+export function boardSectionsOf(items: readonly BoardItem[], groups: readonly StepGroup[] = STEP_GROUPS): BoardSection[] {
+  const numbers = sectionNumbersOf(items, groups)
+  return allWorkGroups(items, items, groups).map((group) => {
+    const key = groupKeyOf(group, groups)
+    return { key, number: groupNumberOf(group, numbers, groups), group, finished: group.closed }
+  })
+}
+
+/**
+ * The board's order and numbers as an export lists steps (roadmap/types.ts
+ * ExportOrder; roadmap flow V1 decision 8): the rows section by section in the
+ * board's order (`boardSectionsOf`), each numbered `<section>.<row>` from the
+ * numbers the board shows (`sectionNumbersOf`, `rowNumbersOf`). The calendar
+ * and the plan file listed steps in the engine's order, with no number, so a
+ * step the Plan draws second in its third section was an export's fourteenth.
+ * Handed the board's WHOLE row set. Pure.
+ */
+export function boardOrderOf(items: readonly BoardItem[], groups: readonly StepGroup[] = STEP_GROUPS): ExportOrder {
+  const rows = rowNumbersOf(items, groups)
+  const numbered = new Map<string, string>()
+  const ids: string[] = []
+  for (const s of boardSectionsOf(items, groups)) {
+    for (const i of s.group.items) {
+      ids.push(i.id)
+      const row = rows.get(i.id)
+      if (s.number !== null && row !== undefined) numbered.set(i.id, `${s.number}.${row}`)
+    }
+  }
+  const rank = new Map(ids.map((id, at) => [id, at]))
+  return { ids, rankOf: (id) => rank.get(id) ?? ids.length, numberOf: (id) => numbered.get(id) ?? null }
 }
 
 /**

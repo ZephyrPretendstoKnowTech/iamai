@@ -195,6 +195,17 @@ export function withFoundationSettled(f: Fixture): Fixture {
 }
 
 /**
+ * Device readiness met: every person in the fixture holds a compliant, managed
+ * Windows computer joined to Microsoft Entra, so no device readiness threshold
+ * holds a policy. For a case whose premise is a compliant-device policy handed
+ * over, its create no longer waiting (operations.ts createWaitsOnReadiness).
+ */
+export function withDevicesReady(f: Fixture): Fixture {
+  const devices = [...f.snapshot.devices, ...f.snapshot.users.map((u, i) => ({ id: `d-ready-${i}`, displayName: `PC ${i}`, operatingSystem: 'Windows', isCompliant: true, isManaged: true, trustType: 'AzureAd', ownerIds: [u.id] }))]
+  return { ...f, snapshot: { ...f.snapshot, devices } }
+}
+
+/**
  * Half of it: Establish Emergency Access complete, with Define Your Rollout
  * Scope left exactly as it was. A case about an unsaved Direction answer
  * starts here — approving them all would answer the question it is asking.

@@ -13,7 +13,7 @@ import type { CompiledPackage } from './protocol.ts'
 import { NO_ACTION_STATES, NO_RUNTIME, UNRESOLVED, projectSafely, readinessSafely, troubleshootingSafely } from './project.ts'
 import type { RuntimeContext } from './project.ts'
 import { contentStepFor, contentStepForPackage } from '../stepTitle.ts'
-import { fixture } from '../../roadmap/fixtures/index.ts'
+import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import { operationsOf } from '../../roadmap/operations.ts'
 import type { Step } from '../../roadmap/types.ts'
@@ -26,11 +26,11 @@ const PACKAGES = (registry as unknown as { packages: Record<string, CompiledPack
 
 type Placed = { step: Step; ctx: StepVarContext }
 
-function placed(name: 'small' | 'demo' | 'demo-week2'): Placed[] {
+function placed(name: 'small' | 'demo' | 'demo-week2', curated = false): Placed[] {
   // The foundation gate withholds every policy's implementation until Emergency
   // Access and Direction are settled (owner, 2026-09-19), and this file is about
   // what a package projects once a step may act — so the fixtures arrive settled.
-  const f = withFoundationSettled(fixture(name))
+  const f = withFoundationSettled(curated ? curatedFixture(name) : fixture(name))
   const r = runFixture(f)
   return r.steps.map((step) => ({ step, ctx: { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: r.schedule.reportOnlyAt[step.id] ?? null } }))
 }
@@ -153,7 +153,10 @@ test('a policy IAMAI would create projects the package’s Entra, PowerShell, JS
   // step (correction batch 2): its audience is the author's, its trigger the one state it is for.
   assert.deepEqual(projection.channels.find((c) => c.channel === 'email')?.communication, { audience: 'administrators-in-scope', trigger: 'before-report-only', purpose: '' })
   // The JSON the pilot authored with its request is the pinned baseline's policy, bound.
-  const pilot = at(SMALL, 's-goal-device-registration-mfa')
+  // On the curated baseline: small's step is written from that pinned policy
+  // (q-pin), which names a group of the author's this baseline has not settled,
+  // and an unsettled source group holds the create.
+  const pilot = at(placed('small', true), 's-goal-device-registration-mfa')
   const piloted = project(pilot)
   assert.equal(piloted.state, 'missing')
   const op = operationsOf(pilot.step)[0]

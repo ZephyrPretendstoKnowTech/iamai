@@ -6,7 +6,7 @@ import type { MappingState } from '../mapping/types.ts'
 import { emptyMappingState } from '../mapping/types.ts'
 import { normalizePasskeyApprovedModels } from '../mapping/passkeyModels.ts'
 import type { TenantMfaSummary } from '../scoring/mfaViability.ts'
-import type { Step } from './types.ts'
+import type { ExportOrder, Step } from './types.ts'
 import type { PlanDecisions, StepDecision } from './decisions.ts'
 import { isCleanupCheckpoint } from './cleanupDone.ts'
 import { app, engine } from '../content/content.ts'
@@ -51,7 +51,13 @@ export type PlanFile = {
     variantChoices: { familyKey: string; chosenPolicyName: string }[]
   }
   mappings: MappingState
-  steps: Step[]
+  /**
+   * The steps, readable on their own. Saved from the Export page they are in the
+   * Plan board's order, each row the board draws first and numbered as it is
+   * there ("3.2", roadmap flow V1 decision 8), then any step the board draws no
+   * row for. Never read back as the plan's order: a load regenerates the plan.
+   */
+  steps: FileStep[]
   /**
    * The decisions the plan was built from (prompt 50.1 item 1): skips, start
    * date, freeze, checkpoints. On load these are taken and the plan is
@@ -71,6 +77,9 @@ export type PlanFile = {
   /** The baseline commit the plan was generated from. */
   baselinePin: string | null
 }
+
+/** A step as the plan file carries it: the step, and the number its row has on the Plan board where the file was saved in the board's order. */
+export type FileStep = Step & { number?: string }
 
 export function makeCheckpoint(args: {
   snapshot: TenantSnapshot
@@ -150,6 +159,19 @@ export function fileStep(s: Step): Step {
 }
 
 /**
+ * The file's steps: in the board's order with each row's number first, where the
+ * caller hands the board's order, else as the engine built them. The number
+ * leads the step so a person reading the file sees where it sits on the Plan.
+ */
+function inBoardOrder(steps: readonly Step[], order: ExportOrder | undefined): FileStep[] {
+  if (!order) return steps.map(fileStep)
+  return [...steps].sort((a, b) => order.rankOf(a.id) - order.rankOf(b.id)).map((s) => {
+    const number = order.numberOf(s.id)
+    return number === null ? fileStep(s) : { number, ...fileStep(s) }
+  })
+}
+
+/**
  * The answers without the wizard's provenance map, which is derived again on
  * every load. The map is the reason the file's `breakGlassUserIds` proves
  * nothing on its own: a load cannot tell an operator's choice from a scan's
@@ -171,6 +193,8 @@ export function buildPlanFile(args: {
   baselineSource: PlanFile['baseline']['source']
   mapping: MappingState
   steps: Step[]
+  /** The Plan board's order and numbers (ui/surfaces/planBoard.ts boardOrderOf): the steps are listed and numbered as the board draws them. */
+  order?: ExportOrder
   checkpoints: Checkpoint[]
   schedule?: { startDate: string; band?: string; pace?: string; owner?: string; freeze?: { from: string; to: string } | null }
   revision?: number
@@ -216,7 +240,7 @@ export function buildPlanFile(args: {
     // The answers, without the wizard's provenance bookkeeping (`assumed`): the file
     // carries decisions and facts, and that map is derived again on every load.
     mappings: withoutProvenance(args.mapping),
-    steps: args.steps.map(fileStep),
+    steps: inBoardOrder(args.steps, args.order),
     decisions: {
       ...args.decisions,
       planId: args.planId,

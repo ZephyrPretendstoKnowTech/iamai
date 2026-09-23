@@ -770,10 +770,12 @@ try {
   // foundation (owner, 2026-09-19) is Up Next or On Hold, not Ready.
   for (const lane of LANES) {
     await showLane(lane)
-    const found = await evaluate(`(async () => { const wait=(ms)=>new Promise(r=>setTimeout(r,ms)); for (const r of [...document.querySelectorAll('main.page .plan-row')]) { r.click(); await wait(140); if (document.querySelector('main.page a[href^="#/readiness/step/"]')) return true; r.click(); await wait(40); } return false })()`)
+    // A step that counts its people. A step whose requirement this scan cannot
+    // read yet (a strength the tenant has not made) links too, and says so.
+    const found = await evaluate(`(async () => { const wait=(ms)=>new Promise(r=>setTimeout(r,ms)); const counts = () => [...document.querySelectorAll('main.page a[href^="#/readiness/step/"]')].some((a) => /not yet confirmed ready for this sign-in requirement/.test((a.closest('p') || a).textContent)); for (const r of [...document.querySelectorAll('main.page .plan-row')]) { r.click(); await wait(140); if (counts()) return true; r.click(); await wait(40); } return false })()`)
     if (found) break
   }
-  const handoff = await evaluate(`(() => { const a = document.querySelector('main.page a[href^="#/readiness/step/"]'); if (!a) return null; const line = a.closest('p'); return { href: a.getAttribute('href'), text: (line ? line.textContent : a.textContent).replace(/\\s+/g, ' ').trim() } })()`)
+  const handoff = await evaluate(`(() => { const links = [...document.querySelectorAll('main.page a[href^="#/readiness/step/"]')]; const a = links.find((x) => /not yet confirmed ready for this sign-in requirement/.test((x.closest('p') || x).textContent)) || links[0]; if (!a) return null; const line = a.closest('p'); return { href: a.getAttribute('href'), text: (line ? line.textContent : a.textContent).replace(/\\s+/g, ' ').trim() } })()`)
   check('Plan: a step held on its own sign-in requirement links to MFA Readiness', !!handoff && /not yet confirmed ready for this sign-in requirement/.test(handoff.text), handoff && handoff.text)
   if (handoff) {
     const wanted = Number((handoff.text.match(/^(\d+)/) ?? [])[1] ?? NaN)
@@ -1370,7 +1372,7 @@ try {
   // The whole heading line is the fold's hit area: a real press on the title's
   // words, away from the button's own box, opens it and a second folds it.
   await showLane('All work')
-  const sectionOne = `(() => { const g = document.querySelector('main.page .plan-board .plan-group'); if (!g) return null; const lead = g.querySelector('.plan-group-lead'); const head = g.querySelector('.plan-group-head'); const rows = g.querySelector('.plan-group-rows'); const b = head ? head.getBoundingClientRect() : null; return { width: innerWidth, closed: g.classList.contains('closed'), title: ((g.querySelector('h2') || {}).textContent || '').trim(), meta: ((g.querySelector('.plan-group-meta') || {}).textContent || '').trim(), hidden: !!(rows && rows.hidden), lead: lead ? Math.round(lead.getBoundingClientRect().height) : -1, fits: !!b && b.left >= -1 && b.right <= innerWidth + 1, expanded: (g.querySelector('.plan-group-toggle') || { getAttribute: () => null }).getAttribute('aria-expanded') } })()`
+  const sectionOne = `(() => { const g = document.querySelector('main.page .plan-board .plan-group'); if (!g) return null; const lead = g.querySelector('.plan-group-lead'); const head = g.querySelector('.plan-group-head'); const rows = g.querySelector('.plan-group-rows'); const b = head ? head.getBoundingClientRect() : null; return { width: innerWidth, closed: g.classList.contains('closed'), title: ((g.querySelector('h2 .plan-group-title') || {}).textContent || '').trim(), number: ((g.querySelector('h2 .plan-group-number') || {}).textContent || '').trim(), meta: ((g.querySelector('.plan-group-meta') || {}).textContent || '').trim(), hidden: !!(rows && rows.hidden), lead: lead ? Math.round(lead.getBoundingClientRect().height) : -1, fits: !!b && b.left >= -1 && b.right <= innerWidth + 1, expanded: (g.querySelector('.plan-group-toggle') || { getAttribute: () => null }).getAttribute('aria-expanded') } })()`
   const pressSectionOneTitle = async () => {
     const at = await evaluate(`(() => { const g = document.querySelector('main.page .plan-board .plan-group'); const h = g && g.querySelector('h2'); const btn = g && g.querySelector('.plan-group-toggle'); if (!h || !btn) return null; h.scrollIntoView({ block: 'center' }); const range = document.createRange(); range.selectNodeContents(h); const line = range.getClientRects()[0]; if (!line) return null; const x = line.left + Math.min(line.width / 2, 60); const y = line.top + line.height / 2; const bb = btn.getBoundingClientRect(); return { x, y, offButton: x < bb.left || x > bb.right || y < bb.top || y > bb.bottom } })()`)
     if (!at) return null
@@ -1382,7 +1384,7 @@ try {
   }
   const EA_TITLE = CONTENT_PAGES.app.plan.groups.emergencyAccess.completedTitle
   const EA_DONE = CONTENT_PAGES.app.plan.board.groupAllCompleted.replace('{total}', '4')
-  const collapsedLine = (s) => !!s && s.closed && s.title === EA_TITLE && s.meta === EA_DONE && s.hidden && s.expanded === 'false' && s.lead > 0 && s.lead < 80 && s.fits
+  const collapsedLine = (s) => !!s && s.closed && s.number === '1' && s.title === EA_TITLE && s.meta === EA_DONE && s.hidden && s.expanded === 'false' && s.lead > 0 && s.lead < 80 && s.fits
   const openedByTitle = (s) => !!s && s.offButton && !s.closed && !s.hidden && s.expanded === 'true'
   const foldedByTitle = (s) => !!s && s.offButton && s.closed && s.hidden
   const deskSection = await evaluate(sectionOne)

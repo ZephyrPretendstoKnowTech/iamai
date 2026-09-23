@@ -307,6 +307,23 @@ function indexFor(step: Step, snapshot: TenantSnapshot, index: PopulationIndex |
 }
 
 /**
+ * What this scan read of legacy per-user MFA, the one reading of it: the
+ * accounts read as Enabled or Enforced, the accounts whose state was not read,
+ * and whether the read is clean — the Users read ok, a per-user reading
+ * present, no account unknown, none Enabled or Enforced. Only a clean read
+ * leaves Finish Moving Off Per-User MFA off the plan (generate.ts); anything
+ * short of it keeps the step, because unknown is never hidden
+ * (v2-research/peruser.md).
+ */
+export function perUserMfaReading(snapshot: Pick<TenantSnapshot, 'users' | 'perUserMfa' | 'sources'>): { enabled: UserRow[]; unknown: UserRow[]; clean: boolean } {
+  const byId = snapshot.perUserMfa
+  const enabled = snapshot.users.filter(u => ['enabled', 'enforced'].includes(byId?.[u.id]?.state ?? 'unknown'))
+  const unknown = snapshot.users.filter(u => !byId?.[u.id] || byId[u.id].state === 'unknown')
+  const clean = snapshot.sources.users?.status === 'ok' && !!byId && unknown.length === 0 && enabled.length === 0
+  return { enabled, unknown, clean }
+}
+
+/**
  * The Legacy Per-User MFA tile, in content.json's words (shared.engine.perUserMfa)
  * with its counts through count(). Per-user MFA is a state of every account in
  * the directory, the emergency accounts included, so where the scan read none of
@@ -369,14 +386,13 @@ export function applyManualReviews(steps: Step[], snapshot: TenantSnapshot, conf
     }
     const perUser = step.id === 's-prereq-per-user-mfa' || item === 'per-user-mfa-cleanup'
     if (perUser) {
-      const enabled = snapshot.users.filter(u => ['enabled', 'enforced'].includes(snapshot.perUserMfa?.[u.id]?.state ?? 'unknown'))
-      const unknown = snapshot.users.filter(u => !snapshot.perUserMfa?.[u.id] || snapshot.perUserMfa[u.id].state === 'unknown')
+      const { enabled, unknown, clean } = perUserMfaReading(snapshot)
       step.configurationFindings = [perUserMfaFinding(snapshot, enabled, unknown)]
       // The accounts the scan read as Enabled or Enforced, active or not, the
       // emergency accounts among them: the step names them, and they are its
       // impact (namedAccounts). "Active" here meant "the account is enabled".
       step.population = namedAccounts(enabled.map(u => u.id), indexFor(step, snapshot, index))
-      if (snapshot.sources.users?.status === 'ok' && unknown.length === 0 && enabled.length === 0) {
+      if (clean) {
         delete step.manualReview
         step.deliveredBy = ['The scan read every account and found legacy per-user MFA disabled.']
         setState(step, { satisfied: true, inPlace: true })

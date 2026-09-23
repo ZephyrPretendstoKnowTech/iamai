@@ -8,10 +8,11 @@ import type { Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { conditionalAccessLicenceLine } from '../../derive/notLicensed.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
-import { app, pages, phases } from '../../content/content.ts'
+import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { doesntApplyRows } from './planRows.ts'
-import { boardHolds } from './planBoard.ts'
+import { boardHolds, boardSectionsOf, groupSummary, rowNumbersOf } from './planBoard.ts'
+import type { Board, BoardCleanupRow } from './planBoard.ts'
 import { FINISH } from '../../copy/statements.ts'
 import type { PlanFinish } from '../../derive/finish.ts'
 import { absoluteDate, dateRange } from '../../copy/dates.ts'
@@ -19,7 +20,6 @@ import { scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import { stepBodyOf } from './stepBody.ts'
 import type { StepVarContext } from './stepVars.ts'
 import type { LaneView, PrerequisiteBlocker, PrerequisiteLabel, ReadinessTile } from './stepContract.ts'
-import { LANE_ORDER } from './planLanes.ts'
 import type { Lane } from '../../actionability/lanes.ts'
 
 /** The board a printed row reads: the lane view, the prerequisites and their labels PrintPlan.tsx builds from planBoard.ts boardReadingsOf. */
@@ -76,9 +76,99 @@ export function postureOf(ids: readonly string[], laneOf: (id: string) => { lane
   return { completed: named((l) => l === 'Completed'), toDo: named((l) => l === 'Ready' || l === 'Up Next' || l === 'On Hold') }
 }
 
-/** Rows grouped under their board lane's word, in the lanes' order, empty lanes left out: how the document prints the rows no phase dates. */
-export function laneGroupsOf(rows: readonly Step[], laneOf: (id: string) => { lane: Lane }): { lane: Lane; rows: Step[] }[] {
-  return LANE_ORDER.map((lane) => ({ lane, rows: rows.filter((s) => laneOf(s.id).lane === lane) })).filter((g) => g.rows.length > 0)
+/**
+ * A row of a printed section: the board's row, the number the board gives it
+ * (planBoard.ts rowNumbersOf), and how the document prints it. `body` is the
+ * opened step in full (ContentStep), or a Cleanup row's body under its head;
+ * `line` is its title and lane label, the way the board shrinks a Completed or
+ * Deferred step to one line.
+ *
+ * A Cleanup row prints its body whatever its lane, as the document always
+ * printed it: the body is the row's record as well as its instructions — the
+ * drill's Emergency recovery procedure and its Recorded Test, consolidation's
+ * and naming's Recorded Review — and a paper copy is kept for an incident,
+ * which comes after the drill is done.
+ */
+export type PrintRow = {
+  id: string
+  number: number | null
+  print: 'body' | 'line'
+  /** The step the row draws, or null for a Cleanup row. */
+  step: Step | null
+  /** The Cleanup row the row draws, or null for a step. */
+  cleanup: BoardCleanupRow | null
+  /** The title the board row shows. */
+  title: string
+  lane: LaneView
+}
+
+/**
+ * A printed section: one of the board's sections (planBoard.ts boardSectionsOf)
+ * with its number, the title and line the board draws it with, and its rows in
+ * the board's order. A finished section prints as `line`, its title and what
+ * became of it ("All 4 completed"), over only the rows it keeps
+ * (`finishedRowsOf`); an open one has no `line` and prints its heading over its
+ * rows.
+ */
+export type PrintSection = { key: string | null; number: number | null; title: string; summary: string; finished: boolean; line: string | null; rows: PrintRow[] }
+
+/**
+ * The printed plan's sections (roadmap flow V1 decision 8): the Plan's own
+ * sections, in the board's order, each row under the number the board gives it.
+ *
+ * The document grouped its rows by phase and by lane (Preparation, Phase 1, the
+ * undated rows under Ready or On Hold, Completed, Deferred, Cleanup), so a plan
+ * taken to paper read in another order, under other headings, from the Plan it
+ * came from. Every row the board draws prints once, in its section; the dates
+ * stay the schedule's and are stated by each row's body and by the timeline.
+ */
+export function printSectionsOf(board: Pick<Board, 'rows'>): PrintSection[] {
+  const rows = new Map(board.rows.map((r) => [r.item.id, r]))
+  const items = board.rows.map((r) => r.item)
+  const numbers = rowNumbersOf(items)
+  return boardSectionsOf(items).map(({ key, number, group, finished }) => {
+    const summary = groupSummary(group)
+    return {
+      key,
+      number,
+      title: group.label,
+      summary,
+      finished,
+      line: finished ? `${group.label} · ${summary}` : null,
+      rows: group.items.flatMap((i): PrintRow[] => {
+        const r = rows.get(i.id)
+        if (!r) return []
+        return [{ id: i.id, number: numbers.get(i.id) ?? null, print: r.cleanup === null && (i.lane === 'Completed' || i.lane === 'Deferred') ? 'line' : 'body', step: r.step, cleanup: r.cleanup, title: i.title, lane: r.lane }]
+      }),
+    }
+  })
+}
+
+/**
+ * What a finished section prints under its one line: the Completed lines of its
+ * steps that keep a warning (completedLinesOf), and nothing else. A finished
+ * policy the opened step still warns about is never printed as done without it.
+ */
+export function finishedWarningsOf(section: Pick<PrintSection, 'rows'>, board: PrintBoard, stepCtx: (s: Step) => StepVarContext): CompletedLine[] {
+  const done = section.rows.filter((r) => r.lane.lane === 'Completed').flatMap((r) => (r.step ? [r.step] : []))
+  return completedLinesOf(done, board, stepCtx).filter((l) => l.warnings.length > 0)
+}
+
+/**
+ * The rows a finished section still prints under its one line, in the board's
+ * order: its Cleanup rows in full (a Cleanup row's body is its record, PrintRow),
+ * its Deferred steps as their lines, and its Completed steps that keep a
+ * warning (`finishedWarningsOf`). The rest of a finished section is what its
+ * line counts.
+ *
+ * A section is finished once nothing in it is left to do, whether its rows were
+ * completed or set aside (planBoard.ts sectionProgressOf). Its line says how
+ * many were deferred ("1 of 2 completed, 1 deferred"); the lines under it say
+ * which, as the document always listed every deferred step by title.
+ */
+export function finishedRowsOf(section: Pick<PrintSection, 'rows'>, board: PrintBoard, stepCtx: (s: Step) => StepVarContext): PrintRow[] {
+  const warned = new Set(finishedWarningsOf(section, board, stepCtx).map((l) => l.id))
+  return section.rows.filter((r) => r.print === 'body' || r.lane.lane === 'Deferred' || warned.has(r.id))
 }
 
 /**
@@ -193,14 +283,16 @@ export function verificationDatesOf(steps: readonly Step[], window: { start: str
 }
 
 /**
- * The printed Cleanup heading: the phase name alone while held work dates no
- * end (derive/finish.ts planFinish), its one day where the phase starts and
- * ends on the same day, else its range. A range from a day to itself read
- * "Cleanup · Sep 1, 2026 → Sep 1, 2026".
+ * The Cleanup phase's dates, as the timeline's Cleanup row states them: none
+ * while held work dates no end (derive/finish.ts planFinish), its one day where
+ * the phase starts and ends on the same day, else its range. A range from a day
+ * to itself read "Cleanup · Sep 1, 2026 → Sep 1, 2026".
+ *
+ * The phase headed its own section of the document until the document took the
+ * board's sections, where the Cleanup rows sit in their own sections (the drill
+ * in Establish Emergency Access); its dates moved to the timeline with it.
  */
-export function cleanupHeadingOf(cleanup: { start: string; end: string }, held: boolean): string {
-  if (held) return phases.last
-  const start = absoluteDate(cleanup.start)
-  const end = absoluteDate(cleanup.end)
-  return start === end ? fillText(phases.headingDay, { name: phases.last, date: start }) : fillText(phases.heading, { name: phases.last, start, end })
+export function cleanupDatesOf(cleanup: { start: string; end: string }, held: boolean): string | null {
+  if (held) return null
+  return absoluteDate(cleanup.start) === absoluteDate(cleanup.end) ? absoluteDate(cleanup.start) : dateRange(cleanup.start, cleanup.end)
 }

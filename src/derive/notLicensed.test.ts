@@ -9,9 +9,9 @@ import { fixture } from '../roadmap/fixtures/index.ts'
 import type { Fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { DIR_SYNC_ROLE } from '../coverage/applicability.ts'
-import { PINNED_GOAL_MAP } from '../roadmap/goalMap.ts'
+import { PINNED_GOAL_MAP, goalInMap } from '../roadmap/goalMap.ts'
 import { readFileSync } from 'node:fs'
-import { conditionalAccessLicenceLine, notLicensedNote, notLicensedPrintLine, notLicensedRows, notLicensedSummary } from './notLicensed.ts'
+import { conditionalAccessLicenceLine, notLicensedCount, notLicensedNote, notLicensedPrintLine, notLicensedRows, notLicensedSummary } from './notLicensed.ts'
 import { pages, stepById } from '../content/content.ts'
 
 test('the demo (P1) lists its P2 goals as Not licensed rows, from content', () => {
@@ -27,9 +27,32 @@ test('the demo (P1) lists its P2 goals as Not licensed rows, from content', () =
     assert.equal(row.text, `${cs.title}: needs a licence this tenant does not hold: ${row.licence}`)
     assert.doesNotMatch(row.text, /unlock|upgrade|benefit/i, 'never a tier\'s benefits')
   }
-  assert.equal(notLicensedSummary(rows.length), 'Not licensed (6)')
+  assert.equal(notLicensedSummary(rows), 'Not licensed (6)')
   assert.equal(notLicensedNote(), (pages.plan as { footer: { notLicensedNote: string } }).footer.notLicensedNote)
-  assert.equal(notLicensedPrintLine(rows.length), '6 baseline controls need a licence the tenant does not hold; nothing in the plan waits on them.')
+  assert.equal(notLicensedNote(), "The baseline includes these, and this tenant's licences don't cover them, so they aren't in this plan. A finished plan puts the baseline in place as far as those licences reach, not all of it. Nothing in the plan waits on these.")
+  assert.equal(notLicensedPrintLine(rows), "6 baseline controls need a licence the tenant doesn't hold and aren't in this plan: finishing it puts the baseline in place as far as the tenant's licences reach, not all of it.")
+})
+
+// The count is of the baseline controls left out, not of the lines that list
+// them: without Intune the device goals share one line (E2), and small said
+// "Not licensed (6)" over 7 goals (v2-research/licensing.md, problem 1).
+test('the count is of goals, not lines: a shared device line counts each goal it names', () => {
+  const r = runFixture(fixture('small'))
+  const rows = notLicensedRows(r.coverage, PINNED_GOAL_MAP)
+  const goals = r.coverage.results.filter((x) => goalInMap(PINNED_GOAL_MAP, x.goal.id) && (x.status === 'licence-limited' || (x.status === 'not-applicable' && / licence$/.test(x.applicability?.reason ?? '')))).map((x) => x.goal.id)
+  assert.equal(rows.length, 6, 'the premise: six lines')
+  assert.equal(goals.length, 7, 'the premise: seven goals, two of them on the shared device line')
+  assert.deepEqual(rows.flatMap((x) => x.goalIds).sort(), [...goals].sort(), 'every goal is on exactly one line')
+  assert.equal(notLicensedCount(rows), 7)
+  assert.equal(notLicensedSummary(rows), 'Not licensed (7)')
+  assert.match(notLicensedPrintLine(rows), /^7 baseline controls need a licence/)
+})
+
+test('one control left out reads in the singular', () => {
+  const r = runFixture(fixture('demo'))
+  const rows = notLicensedRows(r.coverage, { 'sign-in-risk': PINNED_GOAL_MAP['sign-in-risk'] })
+  assert.equal(notLicensedPrintLine(rows), "1 baseline control needs a licence the tenant doesn't hold and isn't in this plan: finishing it puts the baseline in place as far as the tenant's licences reach, not all of it.")
+  assert.equal(notLicensedSummary(rows), 'Not licensed (1)')
 })
 
 test('the workload goal exists only where someone holds the Directory Synchronization Accounts role: never planned or listed without a sync account (B7)', () => {

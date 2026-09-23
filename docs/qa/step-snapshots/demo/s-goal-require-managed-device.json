@@ -1,7 +1,7 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": null,
+  "reason": "when device readiness reaches 80% (now 30%)",
   "fact": null,
   "badge": "On Hold",
   "bar": "Waiting on your answers",

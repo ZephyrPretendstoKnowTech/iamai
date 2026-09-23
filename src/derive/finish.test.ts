@@ -5,7 +5,7 @@ import assert from 'node:assert/strict'
 import { allFixtures } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { heldByReadiness, heldRequired, planFinish, projectedFinish } from './finish.ts'
-import { unavailableReason } from '../roadmap/operations.ts'
+import { createWaitsOnReadiness, unavailableReason } from '../roadmap/operations.ts'
 import { holdOf, isHeld } from '../roadmap/holds.ts'
 import { FINISH } from '../copy/statements.ts'
 
@@ -19,8 +19,10 @@ test('every outstanding step is either dated by the calendar or held by a named 
     // is one whose threshold holds nothing — a correction that only adds
     // exclusions to a policy already on (owner, 2026-09-19): it names a number
     // and waits on the plan's foundation, and `holdOf` says which (finish.ts
-    // reads the same).
-    const held = outstanding.filter((s) => !s.floor && unavailableReason(s) === null && heldByReadiness(s) && isHeld(s) && holdOf(s)?.kind === 'readiness')
+    // reads the same). A compliant-device create the threshold holds with its
+    // turn-on is withheld as readiness-unmet but waits on the number, so it is
+    // in the readiness bucket (operations.ts createWaitsOnReadiness).
+    const held = outstanding.filter((s) => !s.floor && (unavailableReason(s) === null || createWaitsOnReadiness(s)) && heldByReadiness(s) && isHeld(s) && holdOf(s)?.kind === 'readiness')
     assert.equal(p.waitingCount, held.length, `${f.name}: the held count is the held steps`)
     for (const w of p.waiting) assert.match(w.measure, /readiness$/, `${f.name}: ${w.measure}`)
     // Anything the plan requires that is held leaves the plan with no finish at

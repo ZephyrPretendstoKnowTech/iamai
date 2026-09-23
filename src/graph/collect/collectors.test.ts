@@ -9,6 +9,8 @@ import { CONFIG_KEYS as CORE_CONFIG_KEYS } from './coreSections.ts'
 import { GRAPH_SCOPES } from '../scopes.ts'
 import { RETRY_MAX_5XX } from './constants.ts'
 import { COLLECTOR_REGISTRY } from './registry.ts'
+import { fixture } from '../../roadmap/fixtures/index.ts'
+import { runFixture } from '../../roadmap/fixtures/run.ts'
 
 const tokens = { get: () => 't', refresh: async () => 't' }
 const ctx = { tokens, signal: new AbortController().signal } as unknown as Parameters<typeof collectConfigSection>[0]
@@ -368,6 +370,69 @@ test('the cross-tenant collector requests its registry row\'s path and the paths
   }
   assert.deepEqual(requested, [spec.endpoint, ...(spec.alsoReads ?? [])])
   assert.equal(spec.alsoReads?.length, 2)
+})
+
+// Graph leaves signInActivity out of a user it returns when that account has
+// never signed in, or last signed in before April 2020
+// (https://learn.microsoft.com/graph/api/resources/user). On a read that
+// selected it and succeeded, a missing property is "no sign-in on record",
+// never "not read" (v2-research/dormant.md §5).
+test('a successful read marks sign-in activity read for every account, including one Graph returns without signInActivity', async () => {
+  const result = await withFetch({
+    '/users?': () => new Response(JSON.stringify({ value: [
+      { id: 'u-seen', userPrincipalName: 'seen@example.test', accountEnabled: true, signInActivity: { lastSuccessfulSignInDateTime: '2026-09-10T08:00:00Z' } },
+      { id: 'u-never', userPrincipalName: 'never@example.test', accountEnabled: true },
+    ] }), { status: 200 }),
+  }, () => collectUsers(ctx, async () => undefined))
+  assert.equal(result.partialReason, null)
+  const never = result.users.find((u) => u.id === 'u-never')!
+  assert.equal(never.successfulSignInActivityRead, true, 'read, and never signed in')
+  assert.equal(never.lastSuccessfulSignIn, null)
+  assert.equal(result.users.find((u) => u.id === 'u-seen')!.successfulSignInActivityRead, true)
+})
+
+test('each page handed on while reading carries the same reading of sign-in activity as the result', async () => {
+  const pages: boolean[][] = []
+  await withFetch({
+    '/users?': () => new Response(JSON.stringify({ value: [{ id: 'u-never', userPrincipalName: 'never@example.test', accountEnabled: true }] }), { status: 200 }),
+  }, () => collectUsers(ctx, async (page) => { pages.push(page.map((u) => u.successfulSignInActivityRead === true)) }))
+  assert.deepEqual(pages, [[true]])
+})
+
+test('a read that could not select signInActivity marks nobody read', async () => {
+  const refused = await withFetch({
+    'signInActivity': () => new Response(JSON.stringify({ error: { code: 'Authentication_RequestFromNonPremiumTenantOrB2CTenant', message: 'needs P1' } }), { status: 403 }),
+    '/users?': () => new Response(JSON.stringify({ value: [{ id: 'u-1', userPrincipalName: 'u1@example.test', accountEnabled: true }] }), { status: 200 }),
+  }, () => collectUsers(ctx, async () => undefined))
+  assert.match(refused.partialReason ?? '', /signInActivity unavailable/)
+  assert.equal(refused.users[0].successfulSignInActivityRead, false)
+  const skipped = await withFetch({
+    '/users?': () => new Response(JSON.stringify({ value: [{ id: 'u-1', userPrincipalName: 'u1@example.test', accountEnabled: true }] }), { status: 200 }),
+  }, () => collectUsers(ctx, async () => undefined, { includeSignInActivity: false }))
+  assert.equal(skipped.users[0].successfulSignInActivityRead, false)
+})
+
+test('the dormant step lists never-signed-in accounts read the way Graph returns them', async () => {
+  const f = fixture('getiamai')
+  const never = f.snapshot.users.filter((u) => u.accountEnabled !== false && u.lastSuccessfulSignIn === null).map((u) => u.id)
+  assert.ok(never.length > 0, 'getiamai holds never-signed-in accounts')
+  // The fixture's users as Graph returns them: signInActivity only for an account that signed in.
+  const raw = f.snapshot.users.map((u) => {
+    const { lastSuccessfulSignIn, lastSignInAttempt, successfulSignInActivityRead, skuIds, userType, ...rest } = u
+    void successfulSignInActivityRead
+    return {
+      ...rest,
+      userType: userType === 'guest' ? 'Guest' : 'Member',
+      assignedLicenses: (skuIds ?? []).map((skuId) => ({ skuId })),
+      ...(lastSuccessfulSignIn ? { signInActivity: { lastSuccessfulSignInDateTime: lastSuccessfulSignIn, lastSignInDateTime: lastSignInAttempt ?? null } } : {}),
+    }
+  })
+  const read = await withFetch({ '/users?': () => new Response(JSON.stringify({ value: raw }), { status: 200 }) }, () => collectUsers(ctx, async () => undefined))
+  const snapshot = structuredClone(f.snapshot)
+  snapshot.users = read.users
+  const step = runFixture({ ...f, snapshot }).steps.find((s) => s.id === 's-check-dormant-accounts')!
+  for (const id of never) assert.ok(step.population.ids.includes(id), `${id} never signed in and is listed`)
+  assert.equal(step.state.satisfied, false, 'the step is open while those accounts are unreviewed')
 })
 
 // The owner dropped the /me/memberOf read (2026-09-23): nothing in the product
