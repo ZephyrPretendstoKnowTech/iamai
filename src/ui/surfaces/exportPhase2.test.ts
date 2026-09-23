@@ -110,6 +110,20 @@ test('the prompt pack states the plan length the Plan header states, and no leng
   assert.ok(heldPlans > 0, 'the premise: a plan that cannot finish')
 })
 
+// Its weeks are a count like any other, bent by fillText's pluralise, not by
+// a plural built in the code.
+test('the held plan-length sentence counts its weeks through pluralise', () => {
+  const p = exportPage(fixture('demo'))
+  const finish = planFinish(p.r.steps, p.r.schedule.cleanup?.end ?? null)
+  assert.ok(finish.held && p.r.schedule.estimate, 'the premise: a held plan with an estimate')
+  for (const [weeks, said] of [[1, 'about 1 week because'], [3, 'about 3 weeks because']] as const) {
+    const sentence = planLengthSentence(finish, { ...p.r.schedule, estimate: { ...p.r.schedule.estimate!, weeks } })
+    assert.ok(sentence.includes(said), sentence)
+  }
+  const src = readFileSync(new URL('../../derive/finish.ts', import.meta.url), 'utf8')
+  assert.doesNotMatch(src, /week\$\{/, 'the sentence builds its plural by hand')
+})
+
 // The Plan header reads the same sentence (Plan.tsx Projected finish tip).
 test('the Plan header\'s Projected finish tip is the one plan-length sentence', () => {
   const plan = readFileSync(new URL('./Plan.tsx', import.meta.url), 'utf8').replace(/\/\/[^\n]*/g, '')

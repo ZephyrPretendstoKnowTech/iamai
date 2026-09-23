@@ -153,6 +153,7 @@ export function planLengthSentence(finish: PlanFinish, schedule: Pick<Schedule, 
   if (!finish.held) return [schedule.derivation.criticalPath, ...schedule.derivation.relaxed].join(' ')
   const reason = schedule.estimate?.reason ?? null
   if (!reason) return engine.critical.sentenceDone
+  // A count like any other: fillText's pluralise reads "1 weeks" as one week.
   const weeks = planWeeks(finish, schedule)
-  return fillText((pages.plan as Record<string, string>).lengthTipEstimate, { weeks: `${weeks} week${weeks === 1 ? '' : 's'}`, constraint: reason })
+  return fillText((pages.plan as Record<string, string>).lengthTipEstimate, { weeks: `${weeks} weeks`, constraint: reason })
 }
