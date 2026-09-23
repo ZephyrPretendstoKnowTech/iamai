@@ -319,7 +319,10 @@ export function authMethodsModel(snapshot: TenantSnapshot, names: NameDirectory,
   const target = (x: Raw): string => (str(x.id) === 'all_users' ? A.allUsers : isGroupTarget(x) ? o.group(str(x.id)) : names.label(str(x.id)))
   const rows: MethodRow[] = methodConfigsOf(snapshot).map((m) => {
     const t = targetsOf(m, 'includeTargets').map(target).join(', ')
-    return { id: str(m.id), enabled: m.state === 'enabled', targets: t || A.targets(0) }
+    // The groups the method leaves out, as Graph returns them: "All users" alone would read as everyone.
+    const except = targetsOf(m, 'excludeTargets').map(target).join(', ')
+    const include = t || A.targets(0)
+    return { id: str(m.id), enabled: m.state === 'enabled', targets: except && t ? fillText(W.targetsExcept, { include, exclude: except }) : include }
   })
   return readOf(snapshot, 'authMethodsPolicy', {
     id: 'authentication',
