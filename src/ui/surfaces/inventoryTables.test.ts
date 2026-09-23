@@ -605,3 +605,13 @@ test('an Inventory tab badge prints its count as the tables do, with separators'
   assert.match(page, /const badge = \([^)]*\): string \| undefined => \(sectionHasData\(snapshot, key\) \? figure\(n\) : undefined\)/)
   assert.equal(shownCell(4902), '4,902')
 })
+
+test('a service the scan did not see is said so in a sentence that agrees with a plural name', () => {
+  const E = (directionWords.questions as unknown as { serviceEvidence: Record<string, string> }).serviceEvidence
+  // "Agent identities does not appear", "SharePoint and OneDrive does not appear": the verb followed the name.
+  assert.doesNotMatch(E.notSeen, /\{service\} (does|is|has)\b/)
+  const demo = fixture('demo').snapshot
+  const reasons = workloadsModel(demo).rows.map((r) => r.reason ?? '')
+  for (const r of reasons) assert.doesNotMatch(r, /(identities|OneDrive) does\b/, r)
+  assert.ok(reasons.includes(fillText(E.notSeen, { service: (workflowWords.names as Record<string, string>).agents })), reasons.join('\n'))
+})
