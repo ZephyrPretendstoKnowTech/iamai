@@ -248,15 +248,15 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // the toggles reveal are drawn after it, never inside a tab.
   const inputIds = new Set(c.steps.filter((s) => !s.doesntApply && s.status !== 'done' && s.status !== 'skipped' && (s.state.condition === 'needs-decision' || (s.unsavedInputs ?? []).length > 0 || s.action.missing?.some((m) => m.decision === true))).map((s) => s.id))
   const observingIds = new Set(c.steps.filter((s) => !s.doesntApply && s.status !== 'skipped' && s.state.lifecycle === 'report-only').map((s) => s.id))
-  // Sections never move (owner, roadmap flow V2): nothing is lifted above the
-  // tabs while it is open and nothing is sunk below them once it is finished.
-  // Every section is drawn in its registry place (roadmap/stepGroups.ts).
   // The policies ready to create in report-only now (planBoard.ts
   // readyToCreateOf, decision H): the line above the board counts them and its
   // control shows exactly them, in section order.
   const createIds = new Set(readyToCreateOf(board.rows))
   const summaryItems = summaryFilter === 'input' ? items.filter((i) => inputIds.has(i.id)) : summaryFilter === 'observing' ? items.filter((i) => observingIds.has(i.id)) : summaryFilter === 'completed' ? items.filter((i) => i.lane === 'Completed') : summaryFilter === 'create' ? items.filter((i) => createIds.has(i.id)) : items
   const shown = summaryFilter ? summaryItems.filter((i) => (!focus.search || i.title.toLowerCase().includes(focus.search.toLowerCase())) && (!focus.workType || focus.workType === i.workType)) : applyFocus(items, tab, focus)
+  // Sections never move (owner, roadmap flow V2): nothing is lifted above the
+  // tabs while it is open and nothing is sunk below them once it is finished.
+  // Every section is drawn in its registry place (roadmap/stepGroups.ts).
   // All work draws every section whole, in its place, and a finished one
   // collapsed there to its title and one line (planBoard.ts allWorkGroups); it
   // counts each heading over the whole board. A lane tab draws its own lane

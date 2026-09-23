@@ -821,7 +821,7 @@ export function groupClosed(g: BoardGroup, open: string | null, pressed: boolean
 
 /** A rendered group: its heading, its summary and the row ids in it, in order. */
 export type BoardGroup = {
-  /** Stable key: `ready`, `upNext`, `hold-<n>`, `complete`, `deferred`. */
+  /** Stable key: `<lane tab>-<section>` on a lane tab, `allWork-<section>` on All work, `tile-<section>` in a header tile's list, and `complete` / `deferred` for a lane tab's aside. */
   key: string
   label: string
   /** A supporting group rather than the active lane. */
