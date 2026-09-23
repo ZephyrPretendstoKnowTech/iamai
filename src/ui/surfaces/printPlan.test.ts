@@ -22,8 +22,9 @@ import { customerPlanSteps } from './customerPlanSteps.ts'
 import { boardOf } from './planBoard.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { completedRows } from './planRows.ts'
-import { completedLinesOf, noPlanLine } from './printPlan.ts'
+import { completedRows, openDoneRows } from './planRows.ts'
+import { completedLinesOf, laneGroupsOf, noPlanLine, postureOf } from './printPlan.ts'
+import { stepFacts } from '../../derive/facts.ts'
 import { conditionalAccessLicenceLine } from '../../derive/notLicensed.ts'
 import { planFinish } from '../../derive/finish.ts'
 import { headerLine1 } from '../../derive/planHeader.ts'
@@ -71,7 +72,7 @@ test('a finished policy prints the warnings its opened step keeps: enforced belo
   // "Require Phishing-Resistant MFA for Admins · Completed".
   const large = plan('large')
   const admins = byId(large.steps, 's-goal-admins-phishing-resistant')
-  const lines = completedLinesOf(completedRows(large.steps), large.printBoard, large.ctx)
+  const lines = completedLinesOf(completedRows(large.steps, large.board.laneOf), large.printBoard, large.ctx)
   const line = lines.find((l) => l.id === admins.id)
   assert.ok(line, 'the premise: the admins policy is listed as Completed')
   const said = line.warnings.map((t) => `${t.label}: ${t.value}`)
@@ -79,7 +80,7 @@ test('a finished policy prints the warnings its opened step keeps: enforced belo
   assert.ok(said.some((w) => w.startsWith('Configure Passkey Authentication:')), `the prerequisite it went ahead of is not printed: ${said.join(' | ')}`)
   // Hostile: Require MFA for Everyone is enforced where readiness cannot be measured.
   const hostile = plan('hostile')
-  const mfa = completedLinesOf(completedRows(hostile.steps), hostile.printBoard, hostile.ctx).find((l) => l.id === 's-goal-mfa-all-users')
+  const mfa = completedLinesOf(completedRows(hostile.steps, hostile.board.laneOf), hostile.printBoard, hostile.ctx).find((l) => l.id === 's-goal-mfa-all-users')
   assert.ok(mfa, 'the premise: Require MFA for Everyone is listed as Completed')
   const hostileSaid = mfa.warnings.map((t) => `${t.label}: ${t.value}`)
   assert.ok(hostileSaid.some((w) => w.includes('Not measured')), `the unmeasured readiness is not printed: ${hostileSaid.join(' | ')}`)
@@ -137,4 +138,39 @@ test('no at-pace finish is stated from a rollout that placed none of the held wo
   // than "Nothing is left to schedule." over held work.
   const screen = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
   assert.match(screen, /const lengthTip = cannotFinish \? \(lengthReason \? fillText\(P\.lengthTipEstimate, \{ weeks: weeksText, constraint: lengthReason \}\) : undefined\)/, 'a held plan with no estimate says nothing is left to schedule')
+})
+
+// ---- Completed is the board's lane, on the cover and in the section ----
+
+test('Completed on paper is the board\'s Completed lane, and a delivered step the board still has work for prints in full', () => {
+  // Midflight: Block Legacy Authentication is enforced (status done) but its
+  // mail-sending-devices input was never saved, so the board reads it
+  // "Ready · Decision". The print filed it under Completed and printed its body,
+  // where the open question is stated, nowhere.
+  const p = plan('midflight')
+  const legacy = byId(p.steps, 's-goal-block-legacy-auth')
+  assert.equal(legacy.status, 'done', 'the premise: the policy is delivered')
+  assert.equal(p.board.laneOf(legacy.id).label, 'Ready · Decision', 'the premise: the board still has a decision for it')
+  assert.equal(completedRows(p.steps, p.board.laneOf).some((s) => s.id === legacy.id), false, 'a step the board reads Ready is listed as Completed')
+  assert.ok(openDoneRows(p.steps, p.board.laneOf).some((s) => s.id === legacy.id), 'the delivered step with an open decision prints nowhere in full')
+  const groups = laneGroupsOf(openDoneRows(p.steps, p.board.laneOf), p.board.laneOf)
+  assert.ok(groups.some((g) => g.lane === 'Ready' && g.rows.some((s) => s.id === legacy.id)), 'it does not print under its own lane')
+  const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
+  assert.match(print, /\.\.\.openDoneRows\(steps, laneOf\)/, 'the print does not draw the delivered steps the board still has work for')
+  assert.match(print, /const done = completedRows\(steps, laneOf\)/, 'the Completed section decides Completed itself')
+})
+
+test('the cover\'s Completed and To do lists are the rows the header counts, Cleanup included', () => {
+  // Demo: "43 steps · 3 in place" over Completed (3) and To do (36), 39 in all:
+  // the four Cleanup rows were counted in the header and listed nowhere.
+  // Demo week two: "13 in place" over Completed (12): the drill is complete.
+  for (const [name, o] of [['demo', {}], ['demo-week2', {}], ['midflight', {}], ['mid', { stage: 'recovered' }], ['large', {}]] as [FixtureName, { stage?: Stage }][]) {
+    const p = plan(name, o)
+    const facts = stepFacts(p.steps, p.schedule.cleanup, p.answers)
+    const posture = postureOf([...p.steps.map((s) => s.id), ...p.board.cleanupRows.map((r) => r.id)], p.board.laneOf, p.board.titleOf)
+    assert.equal(posture.completed.length, facts.done, `${name}: the cover lists ${posture.completed.length} Completed under a header of ${facts.done} in place`)
+    assert.equal(posture.completed.length + posture.toDo.length, facts.steps, `${name}: the cover lists ${posture.completed.length + posture.toDo.length} rows under a header of ${facts.steps} steps`)
+  }
+  const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
+  assert.match(print, /postureOf\(\[\.\.\.steps\.map\(\(s\) => s\.id\), \.\.\.cleanupRows\.map\(\(r\) => r\.id\)\], laneOf, laneTitleOf\)/, 'the cover builds its lists from something other than the board')
 })

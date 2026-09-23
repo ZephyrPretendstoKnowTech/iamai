@@ -16,6 +16,7 @@ import type { WaveSchedule } from '../../roadmap/schedule.ts'
 import { scheduleOf } from '../../roadmap/stepSchedule.ts'
 import { inWave } from '../../derive/phases.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
+import type { Lane } from '../../actionability/lanes.ts'
 
 /**
  * The phases the Plan and the printed plan draw: the finished plan's phases, read
@@ -73,11 +74,26 @@ export function deferredRows(steps: readonly Step[]): Step[] {
 }
 
 /**
- * The rows the printed document's Completed section draws: the finished steps,
- * which the screen's Completed group holds and no phase dates.
+ * The rows the printed document's Completed section draws: the steps the board
+ * reads Completed (`laneOf`, planBoard.ts boardReadingsOf), which the screen's
+ * Completed group holds and no phase dates. The board's lane and not
+ * `Step.status`: a delivered policy whose conditional input nobody saved is
+ * still Ready · Decision there (derive/sets.ts finished), and the document had
+ * listed it as Completed, a second definition beside the lane engine's.
  */
-export function completedRows(steps: readonly Step[]): Step[] {
-  return steps.filter((s) => s.status === 'done' && !s.doesntApply)
+export function completedRows(steps: readonly Step[], laneOf: (id: string) => { lane: Lane }): Step[] {
+  return steps.filter((s) => !s.doesntApply && laneOf(s.id).lane === 'Completed')
+}
+
+/**
+ * The delivered steps the board still has work for: done, and not Completed on
+ * the board (a policy enforced with a question nobody answered). No phase and no
+ * undated group draws a done step (derive/phases.ts inWave), so without this the
+ * document printed its body, where that question is stated, nowhere. It prints
+ * in full under its own lane, with the undated rows.
+ */
+export function openDoneRows(steps: readonly Step[], laneOf: (id: string) => { lane: Lane }): Step[] {
+  return steps.filter((s) => s.status === 'done' && !s.doesntApply && laneOf(s.id).lane !== 'Completed')
 }
 
 /**
