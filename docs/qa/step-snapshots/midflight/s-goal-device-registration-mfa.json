@@ -1,7 +1,7 @@
 {
   "lane": "Up Next",
   "substatus": null,
-  "reason": "when MFA readiness reaches 90% (now 72%)",
+  "reason": "when MFA readiness reaches 90% (now 71%)",
   "fact": null,
   "badge": "Up Next",
   "bar": "After Configure Passkey Authentication",
@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "At least 72% MFA-ready"
+      "state": "71% MFA-ready"
     },
     {
       "label": "Configure Passkey Authentication",

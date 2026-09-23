@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "At least 68% MFA-ready"
+      "state": "At least 67% MFA-ready"
     },
     {
       "label": "Prerequisites",

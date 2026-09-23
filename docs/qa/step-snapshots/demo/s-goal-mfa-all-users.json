@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "At least 70% MFA-ready"
+      "state": "At least 69% MFA-ready"
     },
     {
       "label": "Prepare Emergency Access Accounts",
