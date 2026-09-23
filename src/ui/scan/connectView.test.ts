@@ -12,7 +12,7 @@ import { gapsSnapshot, noRolesToken, tokenWithRoles } from '../../testing/gapsFi
 import { coreRoleGap, holdsReadEverything, rolesInToken } from '../../graph/collect/tokenRoles.ts'
 import { CONFIG_KEYS, SOURCE_KEYS, coreGaps, unreadSources } from '../../graph/collect/coreSections.ts'
 import { app, pages } from '../../content/content.ts'
-import { accountTile, baselineTile, connectStatus, planInputOf, planTile, scanTile, tileStrings } from './connectView.ts'
+import { W, accountTile, baselineTile, connectStatus, planInputOf, planTile, scanTile, tileStrings } from './connectView.ts'
 import type { PlanTile, ScanTile } from './connectView.ts'
 import type { PolicyChange } from '../../derive/baselineDiff.ts'
 import { absoluteDate } from '../../copy/dates.ts'
@@ -63,7 +63,7 @@ test('tile 1, Signed in: the tenant as the state, account · role, the Global Re
 // the step's state is the STEP's state word and the name, the size and which
 // version this is are the card's. `pinned` moves into the source-and-version
 // disclosure the pack draws under the card.
-test('tile 2, Baseline: the nested card carries name, size and version; the step state is a word; what a baseline is, whose it is and its aim; the author-update rows; Change baseline (secondary)', () => {
+test('tile 2, Baseline: the nested card carries name, size and version; the step state is a word; what a baseline is, whose it is and its aim; the author-update rows; no action once a package is loaded', () => {
   const t = baselineTile({ name: 'Jon Hope — Defense in Depth', policyCount: 46, loading: null, update: null, stepsFor })
   assert.equal(t.n, 2)
   assert.equal(t.title, 'Baseline')
@@ -112,7 +112,7 @@ test('tile 2, Baseline: the nested card carries name, size and version; the step
   // endorsing, certifying, approving or supporting IAMAI or this baseline.
   assert.doesNotMatch(said, /Microsoft(-| )(approved|certified|endorsed|recommended|official)|endorse|certifie|approved by Microsoft/i, said)
   assert.equal(t.update, null)
-  assert.deepEqual(t.actions, [{ label: 'Change baseline', weight: 'secondary' }])
+  assert.deepEqual(t.actions, [], 'the custom-package picker is reserved for V2: a loaded package offers nothing to press')
   const u = baselineTile({
     name: 'Jon Hope — Defense in Depth',
     policyCount: 46,
@@ -165,6 +165,25 @@ test('tile 2, Baseline: the nested card carries name, size and version; the step
   assert.match(loading.state, /^loading Jon Hope — Defense in Depth/)
   assert.equal(loading.card, null)
   noOtherRole(tileStrings(u))
+})
+
+// Phase 2 review, round 2 (F21): Connect drew the pinned card's name and the
+// load button from its own literals, "Defense in Depth — Maintained by Jon Hope"
+// and "Load Defense in Depth", beside a view model that named the card from the
+// loaded package and offered "Change baseline", a button the page never draws.
+// The card's name is the loaded package's, the button's words are content's, and
+// the view model offers the one button the page draws, when the page draws it.
+test('the baseline card is named by the loaded package and its button by content, never by Connect itself', () => {
+  const none = baselineTile({ name: null, policyCount: 0, loading: null, update: null, stepsFor })
+  assert.deepEqual(none.actions, [{ label: 'Load Defense in Depth', weight: 'secondary' }], 'nothing loaded: the one button loads the pinned baseline')
+  assert.equal(none.actions[0]?.label, W.baseline.load)
+  assert.deepEqual(baselineTile({ name: null, policyCount: 0, loading: 'Defense in Depth — Maintained by Jon Hope', update: null, stepsFor }).actions, [], 'a load in flight offers no second load')
+  assert.deepEqual(baselineTile({ name: 'Defense in Depth — Maintained by Jon Hope', policyCount: 38, loading: null, update: null, stepsFor }).actions, [], 'a loaded package offers nothing to press')
+  const CONNECT = readFileSync('src/ui/surfaces/Connect.tsx', 'utf8')
+  const tile = CONNECT.slice(CONNECT.indexOf('function BaselineTile('))
+  assert.doesNotMatch(tile, /Maintained by Jon Hope|Load Defense in Depth/, 'Connect names the baseline in its own words')
+  assert.match(tile, /<strong className="baseline-name">\{t2\.card\.name\}<\/strong>/, 'the card is named by the loaded package')
+  assert.match(tile, /t2\.actions\.map\(/, 'the step draws the actions the view model returns')
 })
 
 // The strings that belong to one Scan state and no other.

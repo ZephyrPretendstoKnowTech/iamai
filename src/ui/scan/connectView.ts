@@ -52,7 +52,7 @@ type Words = {
     }
   }
   account: { title: string; line: string; note: string; signInAnother: string; signOut: string; sampleTitle: string; sampleNote: string }
-  baseline: { title: string; loading: string; none: string; selected: string; count: string; versionPinned: string; versionUploaded: string; sourceSummary: string; sourceVersion: string; sourceUploaded: string; what: string; pinned: string; goal: string; updated: string; updatedPartial: string; incomplete: string; diff: Record<ChangeKind, string>; diffWas: string; diffAdded: string; diffRemoved: string; diffBoth: string; diffSet: string; diffCleared: string; diffChanged: string; diffUnreviewed: string; diffConflict: string; diffFields: Record<string, string>; diffStep: string; diffNoStep: string; change: string; howToMakeOne: string; updateUnknown: string }
+  baseline: { title: string; loading: string; none: string; selected: string; count: string; versionPinned: string; versionUploaded: string; sourceSummary: string; sourceVersion: string; sourceUploaded: string; what: string; pinned: string; goal: string; updated: string; updatedPartial: string; incomplete: string; diff: Record<ChangeKind, string>; diffWas: string; diffAdded: string; diffRemoved: string; diffBoth: string; diffSet: string; diffCleared: string; diffChanged: string; diffUnreviewed: string; diffConflict: string; diffFields: Record<string, string>; diffStep: string; diffNoStep: string; change: string; load: string; howToMakeOne: string; updateUnknown: string }
   scan: {
     title: string
     limitsSummary: string
@@ -345,7 +345,10 @@ export function baselineTile({
             rows,
           }
         : null,
-    actions: [{ label: B.change, weight: 'secondary' }],
+    // The one button the step draws: Load while nothing is loaded or loading. The
+    // custom-package picker ("Change baseline") is reserved for V2, so a loaded
+    // package offers nothing to press.
+    actions: name === null && loading === null ? [{ label: B.load, weight: 'secondary' }] : [],
   }
 }
 

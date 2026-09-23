@@ -640,6 +640,8 @@
         "diffStep": "changes {step}",
         "diffNoStep": "no step changes",
         "change": "Change baseline",
+        "$commentLoad": "Phase 2 review, round 2 (F21): the Baseline step's one button while no package is loaded (connectView.ts baselineTile), which loads the pinned baseline. Connect.tsx wrote these words itself, beside a view model that offered \"Change baseline\", a button the page does not draw while the custom-package picker is reserved for V2.",
+        "load": "Load Defense in Depth",
         "howToMakeOne": "How to make one →",
         "pinned": "IAMAI pins a reviewed version of it and tells you when he updates it.",
         "$comment": "Task 032: the approved pack nests the baseline's own card inside the step (docs/design/approved/connect-v3.html), so the step's state word is the step's state and the package's name and size move into the card. `selected` is that word; `count` and the two version words are the card's quiet source line, from the loaded package and its origin — never a claim about the author.",

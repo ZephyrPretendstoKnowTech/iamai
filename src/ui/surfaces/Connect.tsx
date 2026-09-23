@@ -668,8 +668,9 @@ function useAuthorUpdate(mock: BaselineUpdate | null | undefined): { update: Bas
 /**
  * Tile 2, in both states: the baseline's name and count as its state, the
  * approved sentences, the author-update rows (added / removed / changed ·
- * policy · the step that changes), and Change baseline, which opens the picker
- * with two choices. The default loads itself when nothing is saved, and says
+ * policy · the step that changes), and the view model's one button, which loads
+ * the pinned baseline while nothing is loaded (the picker with two choices is
+ * reserved for V2). The default loads itself when nothing is saved, and says
  * so: a default nobody picked is not a choice to record against the tenant.
  */
 // The tile asks; the action reads the package, makes it the tenant's and
@@ -738,19 +739,20 @@ function BaselineTile({ baseline, restoreError, locked, authorUpdate, stage, bus
       tone={t2.tone}
       stage={stage}
       actions={
-        !busy && !baseline && (
-          /* Held while a scan runs: the baseline it reads against must not change under it. */
-          <Button variant="secondary" disabled={locked} onClick={() => void loadPinned(true)}>
-            Load Defense in Depth
+        // Load, while nothing is loaded or loading (connectView.ts baselineTile).
+        // Held while a scan runs: the baseline it reads against must not change under it.
+        t2.actions.map((a) => (
+          <Button key={a.label} variant={a.weight} disabled={locked} onClick={() => void loadPinned(true)}>
+            {a.label}
           </Button>
-        )
+        ))
       }
     >
       {/* The pack nests the package's own card inside the step: its name, a
           quiet source line, and the copy that says what a baseline is. */}
       {t2.card && (
         <div className="baseline-card">
-          <strong className="baseline-name">{baseline?.origin.kind === 'upload' ? t2.card.name : 'Defense in Depth — Maintained by Jon Hope'}</strong>
+          <strong className="baseline-name">{t2.card.name}</strong>
           <p className="baseline-source">{t2.card.source}</p>
           {t2.card.paragraphs.map((text) => (
             <p key={text}>{text.split('ConditionalAccess.Tech').map((part, i) => <span key={i}>{i > 0 && <a href="https://conditionalaccess.tech" target="_blank" rel="noopener noreferrer">ConditionalAccess.Tech</a>}{part}</span>)}</p>

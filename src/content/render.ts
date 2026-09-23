@@ -798,7 +798,8 @@ export function renderPages(): string {
           `<details open><summary>${fill(cx.baseline.updatedPartial, { date: 'Sep 3, 2026' })}</summary><p class="sub">${esc(cx.baseline.incomplete)}</p></details>` +
           sub('The field names a review row can carry:', esc(Object.values(cx.baseline.diffFields as Record<string, string>).join(' · '))) +
           sub(fill(cx.baseline.loading, { source: exT.baselineName }), '·', esc(cx.baseline.none)) +
-          acts(cx.baseline.change) +
+          // Load while nothing is loaded (connectView.ts baselineTile); Change baseline is the V2 picker's.
+          acts(cx.baseline.load, cx.baseline.change) +
           sub(btn(cx.baseline.howToMakeOne)),
       ) +
       // 3 Scan: the limitations, then the scan in one of its states; the age is the one stored timestamp's.
