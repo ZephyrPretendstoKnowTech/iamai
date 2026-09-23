@@ -282,7 +282,8 @@ test('Step 4: no plan finishes on a date while work it requires is held, and its
     assert.equal(finish.held, heldWork, `${p.f.name}: the finish and the steps disagree about held work`)
     if (!heldWork) continue
     assert.equal(finish.finish, null, `${p.f.name}: a finish that assumes the hold clears`)
-    assert.equal(planWeeks(finish, p.r.schedule), p.r.schedule.estimate?.weeks, `${p.f.name}: the length is not the rollout's estimate`)
+    // Where the rollout placed none of the held work there is no estimate, and no surface states a length (roadmap/forecast.ts).
+    if (p.r.schedule.estimate) assert.equal(planWeeks(finish, p.r.schedule), p.r.schedule.estimate.weeks, `${p.f.name}: the length is not the rollout's estimate`)
     assert.ok(!p.ics.includes('-cleanup-'), `${p.f.name}: Cleanup booked after work that cannot finish`)
   }
   // The header says what holds the plan in a sentence of its own: one step in

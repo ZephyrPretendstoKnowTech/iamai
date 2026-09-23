@@ -25,6 +25,8 @@ import type { StepVarContext } from './stepVars.ts'
 import { completedRows } from './planRows.ts'
 import { completedLinesOf, noPlanLine } from './printPlan.ts'
 import { conditionalAccessLicenceLine } from '../../derive/notLicensed.ts'
+import { planFinish } from '../../derive/finish.ts'
+import { headerLine1 } from '../../derive/planHeader.ts'
 import type { PrintBoard } from './printPlan.ts'
 
 type Stage = 'fresh' | 'foundation' | 'recovered'
@@ -109,4 +111,30 @@ test('a tenant without Entra ID P1 prints the Plan\'s one licence sentence and n
   const body = print.slice(gate, print.indexOf('document.body', gate))
   for (const drawn of ['headerLine', 'schedule.cleanup', 'C.timeline', 'C.posture']) assert.equal(body.includes(drawn), false, `the no-plan document still draws ${drawn}`)
   assert.ok(body.includes('{licenceLine}'), 'the no-plan document does not state the sentence')
+})
+
+// ---- The at-pace finish ----
+
+test('no at-pace finish is stated from a rollout that placed none of the held work', () => {
+  // Messy, first visit: every enforcement the plan requires is held and the
+  // generator placed none of them, so its "estimate" was the end of Preparation,
+  // reasoned "no enforcement is left to schedule". The cover printed "finishes
+  // Sep 7, 2026 at pace" under a line naming the 11 held steps, and the Plan's
+  // Projected finish tile showed the same day.
+  const messy = plan('messy')
+  const finish = planFinish(messy.steps, messy.schedule.cleanup?.end ?? null)
+  assert.ok(finish.held, 'the premise: messy holds required work')
+  assert.equal(messy.schedule.estimate, null, `an estimate that places none of the held work stands: ${JSON.stringify(messy.schedule.estimate)}`)
+  const line = headerLine1({ steps: 32, inPlace: 2, finish: finish.finish, estimate: (messy.schedule as { estimate?: { targetEnd: string } | null }).estimate?.targetEnd ?? null, weeks: '1 week', constraint: 'the held steps', startedFrom: null })
+  assert.equal(line.includes('at pace'), false, `the cover states an at-pace finish: ${line}`)
+  assert.ok(line.endsWith('cannot finish until the held steps'), line)
+  // A rollout that did place held work keeps its estimate: the demo's is the
+  // three weeks two changes prompting the same people take.
+  const demo = plan('demo')
+  assert.ok(planFinish(demo.steps, demo.schedule.cleanup?.end ?? null).held, 'the premise: the demo holds required work')
+  assert.ok(demo.schedule.estimate && demo.schedule.estimate.weeks === 3, `the demo lost its estimate: ${JSON.stringify(demo.schedule.estimate)}`)
+  // The Plan's tile has no estimate to explain then, and says nothing rather
+  // than "Nothing is left to schedule." over held work.
+  const screen = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
+  assert.match(screen, /const lengthTip = cannotFinish \? \(lengthReason \? fillText\(P\.lengthTipEstimate, \{ weeks: weeksText, constraint: lengthReason \}\) : undefined\)/, 'a held plan with no estimate says nothing is left to schedule')
 })

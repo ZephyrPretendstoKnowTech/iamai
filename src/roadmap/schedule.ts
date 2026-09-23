@@ -129,9 +129,12 @@ export type Schedule = {
    * The rollout's length as the generator drew it, before `settleForecast`
    * withdrew anything held or unearned: an estimate, never a date a step has.
    * Connect's sample tile and a plan that cannot finish yet read its weeks
-   * (derive/finish.ts planWeeks). Filled on the finished plan.
+   * (derive/finish.ts planWeeks). Filled on the finished plan. Null where the
+   * plan holds required work and the generator placed none of it: that
+   * rollout is not the plan "if nothing held any of it", so there is no
+   * estimate to state (roadmap/forecast.ts settleForecast).
    */
-  estimate?: { weeks: number; targetEnd: string; reason: string }
+  estimate?: { weeks: number; targetEnd: string; reason: string } | null
   /**
    * Where every step landed, and what put it there: the one input every field
    * the placement decides is read back from (`readBackPlacement`).
