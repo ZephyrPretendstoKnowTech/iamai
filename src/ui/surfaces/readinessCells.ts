@@ -15,6 +15,8 @@ import { pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { monthDay } from '../../copy/dates.ts'
 import { cohortWords } from '../../derive/whoLine.ts'
+import { registrationRefusal } from '../../derive/readinessContext.ts'
+import type { TenantSnapshot } from '../../graph/collect/types.ts'
 
 /** The computers seen in the tenant: they choose the words that name a computer's built-in option (owner, 2026-09-19). */
 export type ComputersSeen = 'windows' | 'mac' | 'both' | 'none'
@@ -75,6 +77,7 @@ type Words = {
   }
   checks: Record<string, Record<string, string>>
   rail: { shownAbove: string }
+  evidence: { unreadMethods: string; unreadMethodsRefused: string }
   counted: Record<Explained | Kind | 'dormantLink', string>
   admin: string
   guest: string
@@ -352,6 +355,17 @@ export function panelMethods(r: ReadinessRow): PanelItem[] {
     const facts: [string, string][] = [[P.allowed, allowed], [P.lastConfirmed, last], ...(used ? [[P.lastUsed, used] as [string, string]] : [])]
     return { icon: c.cls === 'passkey' && c.aaguid && !/authenticator/i.test(model) ? 'key' : c.cls === 'windowsHello' || c.cls === 'platformCredential' ? 'computer' : 'phone', name: classWord(c.cls), sub: model, facts }
   })
+}
+
+/**
+ * The evidence tile's line for the method lists that couldn't be read. Where the
+ * registration report was refused, a rescan with the same sign-in reads no more:
+ * the line names the refusal and what reads it, in the Plan's words for the same
+ * source (roadmap/readiness.ts sourceReadFix), never "The next scan retries".
+ */
+export function unreadMethodsWords(snapshot: TenantSnapshot): string {
+  const refusal = registrationRefusal(snapshot)
+  return refusal ? fillText(T.evidence.unreadMethodsRefused, refusal) : T.evidence.unreadMethods
 }
 
 /** The person panel's methods where none is listed: not read (the row says "Methods not read" too), or none registered. */

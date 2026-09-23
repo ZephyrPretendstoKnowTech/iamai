@@ -13,6 +13,7 @@ import { passkeyProfilesFor, passkeyTargetsReach, usesPasskeyProfiles } from '..
 import type { GroupMembers } from '../coverage/population.ts'
 import { PLATFORM_CREDENTIAL_AAGUID, READINESS_WINDOW_DAYS, WINDOWS_HELLO_AAGUIDS } from '../scoring/phishingResistant.ts'
 import type { PasskeyPolicy, ReadinessContext } from '../scoring/phishingResistant.ts'
+import { sourceReadFix } from '../roadmap/readiness.ts'
 
 const DAY = 86_400_000
 const REGISTER_SECURITY_INFO = 'urn:user:registersecurityinfo'
@@ -117,6 +118,22 @@ export function signInsNeedP1(snapshot: Pick<TenantSnapshot, 'sources'>): boolea
 }
 
 /**
+ * The registration report was refused in this tenant (a permission or a
+ * licence), not merely missed: a rescan with the same sign-in reads no more of
+ * it, and nothing stands in for a method list the per-person read missed.
+ */
+export function registrationRefused(snapshot: Pick<TenantSnapshot, 'sources'>): boolean {
+  return snapshot.sources?.registrationDetails?.status === 'disabled'
+}
+
+/** Where the registration report was refused: the source's reason, and what reads it in the Plan's words for the same source. */
+export function registrationRefusal(snapshot: TenantSnapshot): { reason: string; fix: string } | null {
+  if (!registrationRefused(snapshot)) return null
+  const source = snapshot.sources.registrationDetails
+  return { reason: source?.reason ?? source?.status ?? '', fix: sourceReadFix('registrationDetails', snapshot) }
+}
+
+/**
  * Security defaults as the scan read them: on, off, or null where the section
  * was not read. Three states, never two — a step that says what security
  * defaults do "today" has to know which of them it is before it says it (R4).
@@ -162,6 +179,7 @@ export function readinessContextOf(snapshot: TenantSnapshot, mapping?: Partial<M
     coveredFrom: source?.coveredWindow?.from ?? null,
     signInsRead,
     signInsUnavailable: source?.status === 'disabled',
+    methodsUnavailable: registrationRefused(snapshot),
     passkey,
     step3: { models, applied },
     modelNames,

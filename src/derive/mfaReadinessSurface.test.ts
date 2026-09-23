@@ -89,7 +89,8 @@ test('a method inventory nobody could read leaves readiness unknown, never Needs
   assert.equal(v.counts.unknown, v.people, 'every active person is explicitly Unknown')
   for (const r of v.rows) if (r.active) {
     assert.equal(r.readiness?.unknown, 'methods', `${r.user.id}: unknown because the methods were not read`)
-    assert.deepEqual(r.readiness?.next, { kind: 'rescan', reason: 'methods' }, `${r.user.id}: the fix is the next scan, never a finding`)
+    // hostile refused the registration report (403), so a rescan with the same sign-in reads no more: the row says so, never a finding.
+    assert.deepEqual(r.readiness?.next, { kind: 'rescan', reason: 'methodsUnavailable' }, `${r.user.id}: the method list is unread, never a finding`)
   }
   // The demo, read: the only Unknown is the one person whose own read failed.
   const read = fixture('demo')

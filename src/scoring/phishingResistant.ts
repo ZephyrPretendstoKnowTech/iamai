@@ -341,7 +341,7 @@ export type NextAction =
   | { kind: 'addDevice'; os: Platform; option: SignInOption }
   | { kind: 'replaceKey'; model: string | null; aaguid: string | null }
   | { kind: 'waitSetup'; reason: BlockReason }
-  | { kind: 'rescan'; reason: UnknownReason | 'unavailable' }
+  | { kind: 'rescan'; reason: UnknownReason | 'unavailable' | 'methodsUnavailable' }
 
 export type PersonReadiness = {
   state: ReadinessState
@@ -409,6 +409,12 @@ export type ReadinessContext = {
   signInsRead: boolean
   /** Sign-in records can't be read in this tenant at all (a licence or permission), so a rescan won't help. */
   signInsUnavailable?: boolean
+  /**
+   * The registration report, which stands in for a method list the per-person
+   * read missed, was refused in this tenant (a permission or a licence): a rescan
+   * with the same sign-in reads no more, so an unread method list is not retried.
+   */
+  methodsUnavailable?: boolean
   passkey: PasskeyPolicy
   /** Emergency Access Step 3's intended models; `applied` where the tenant's allow list already equals them. */
   step3: { models: readonly { name: string; aaguid: string }[]; applied: boolean }
@@ -694,7 +700,7 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
   const inWindowDevices = seenDevices.filter((d) => inWindow(d.at)).sort((a, b) => byPlatform(a.os, b.os)).map(settled)
   const bare = (d: DeviceSeen): DeviceReading => ({ os: d.os, type: deviceTypeOf(d.os), lastSeen: d.at, trust: d.trust, version: d.version, ...eligibility(d, ctx, input.userId, pk, inv?.classes.has('platformCredential') === true), proof: null, covered: false, seamless: false })
 
-  if (inv === null) return { ...base, automated, devices: inWindowDevices.map(bare), state: 'unknown', unknown: 'methods', methods: null, qualifying: [], hasPasskey: null, next: { kind: 'rescan', reason: 'methods' } }
+  if (inv === null) return { ...base, automated, devices: inWindowDevices.map(bare), state: 'unknown', unknown: 'methods', methods: null, qualifying: [], hasPasskey: null, next: { kind: 'rescan', reason: ctx.methodsUnavailable ? 'methodsUnavailable' : 'methods' } }
   // The method rows never list certificates; where the registration report has no
   // row either, a certificate sign-in in the window shows one is held.
   if (input.registered === null && !inv.classes.has('certificate') && current.some((p) => p.cls === 'certificate' && inWindow(p.at))) {

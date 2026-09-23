@@ -1087,7 +1087,8 @@
         },
         "unknown": {
           "title": "IAMAI couldn’t read these people",
-          "why": "Each row says what was missing. The next scan retries."
+          "$commentWhy": "It ended \"The next scan retries.\", which is false where the tenant refused the read. Each row says what was missing and whether a rescan reads it.",
+          "why": "Each row says what was missing."
         },
         "ready": {
           "title": "Ready",
@@ -1204,7 +1205,9 @@
           "methods": "Nothing to do: the next scan retries the method list",
           "signIns": "Nothing to do: the next scan retries the sign-in records",
           "notCovered": "Nothing to do: the next scan reads their sign-ins",
-          "unavailable": "Nothing to do here: sign-in records aren’t available to IAMAI in this tenant"
+          "unavailable": "Nothing to do here: sign-in records aren’t available to IAMAI in this tenant",
+          "$commentMethodsUnavailable": "The method list could not be read and the registration report that stands in for it was refused in this tenant. A rescan with the same sign-in reads no more, so the row states the fact; the evidence tile says what reads it.",
+          "methodsUnavailable": "Not known: IAMAI couldn’t read method lists in this tenant"
         }
       },
       "notes": {
@@ -1352,6 +1355,8 @@
         "partial": "Sign-ins read {from} to {to}: the most recent part of the 30 days.",
         "none": "No sign-in records were read.",
         "unreadMethods": "method lists couldn’t be read. The next scan retries.",
+        "$commentUnreadMethodsRefused": "Where the registration report was refused (a permission or a licence), a rescan with the same sign-in reads no more. \"The next scan retries\" was false there. The Plan's blind-source sentence names the same refusal; {fix} is its fix (roadmap/readiness.ts sourceReadFix).",
+        "unreadMethodsRefused": "method lists couldn’t be read. IAMAI could not read registration details in this tenant — {reason}. {fix}",
         "notCovered": "people’s sign-ins aren’t read yet. The next scan continues.",
         "individually": "people read individually for the older part of the window"
       },
