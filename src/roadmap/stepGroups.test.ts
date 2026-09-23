@@ -314,6 +314,8 @@ const ASKED_AT: Readonly<Record<string, string>> = {
  * four core policies are ready to turn on, and those four turn on as it
  * finishes. Give Shared Devices Their Own Policy starts once the two policies it
  * carves the shared accounts out of are created, and those two turn on after it.
+ * What points down is only the turn-on: in the graph, a hand-off is an
+ * `enforce` edge, and any other wait between the same two rows still points up.
  */
 const HAND_OFFS: ReadonlyMap<string, readonly string[]> = new Map([
   ['s-prereq-security-defaults', ['s-goal-block-legacy-auth', 's-goal-block-device-code', 's-goal-admins-phishing-resistant', 's-goal-mfa-all-users']],
@@ -328,7 +330,7 @@ test('every wait in the dependency graph points up the page, except the two hand
   const unplaced = [...new Set(stepEdges.flatMap((e) => [e.step, e.prerequisite]))].filter((id) => placeOf(id) === -1)
   assert.deepEqual(unplaced, [], 'a graph node has no place on the page')
   const down = stepEdges
-    .filter((e) => placeOf(e.prerequisite) > placeOf(e.step) && !isHandOff(e.step, e.prerequisite))
+    .filter((e) => placeOf(e.prerequisite) > placeOf(e.step) && !(e.action === 'enforce' && isHandOff(e.step, e.prerequisite)))
     .map((e) => `${e.step} (${e.action}) waits on ${e.prerequisite}, which is drawn below it`)
   assert.deepEqual(down, [])
   // A hand-off stays inside one section, so the step that does both halves is read beside the rows it hands off.
