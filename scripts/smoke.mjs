@@ -822,7 +822,10 @@ try {
   check('Scan with gaps: the tile says so and builds no plan', await waitFor(`/finished with gaps · no plan built/.test(document.body.innerText)`))
   t = await text()
   check('Scan with gaps: the unread sections are rows marked not read, and the refused one says so', /Conditional Access policies\s*not read/.test(t) && /Sign-in records\s*refused to this account/.test(t))
-  check('Scan with gaps: the one ask is Global Reader, read-only', /Ask whoever administers the tenant for Global Reader; it reads every section and writes nothing\./.test(t) && !/Security Reader|Reports Reader/.test(t))
+  // The mock signs in as a Global Administrator (ui/App.tsx): Graph refusing such
+  // an account is not for want of a role, so the tile asks for none
+  // (tokenRoles.ts holdsReadEverything), and it names no other role.
+  check('Scan with gaps: a Global Administrator is asked for no role it already holds', await waitFor(`/refused to this account/.test(document.body.innerText) && !/Ask whoever administers the tenant/.test(document.body.innerText)`) && !/Security Reader|Reports Reader/.test(t))
   check('Scan with gaps: the last full plan stays open', /Open the last full plan \([A-Z][a-z]{2} \d+\)/.test(t) && !/Open the plan →/.test(t))
 
   check('No page threw', consoleErrors.filter((e) => !/authmethods|Not signed in|favicon/.test(e)).length === 0, consoleErrors.filter((e) => !/authmethods|Not signed in|favicon/.test(e)).slice(0, 2).join(' | '))

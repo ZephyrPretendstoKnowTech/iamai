@@ -978,8 +978,10 @@ async function walkFixture(fx) {
             const rows = await evaluate(`[...document.querySelectorAll('main.page .connect-step .tile-rows li')].map((l) => (l.textContent || '').replace(/\\s+/g, ' ').trim())`)
             if (!rows.some((r) => /^Conditional Access policies not read$/.test(r))) add('P0', `${label}: the policies section row is not marked not read: ${JSON.stringify(rows)}`)
             if (!rows.some((r) => /^Sign-in records refused to this account$/.test(r))) add('P0', `${label}: the sign-in records row is not marked refused to this account: ${JSON.stringify(rows)}`)
-            if (!/Ask whoever administers the tenant for Global Reader; it reads every section and writes nothing\./.test(t3.text)) add('P0', `${label}: the gaps tile lacks the one ask for Global Reader`)
-            if (!(await evaluate(`[...document.querySelectorAll('main.page .connect-step a.lnk')].some((a) => /Microsoft: Global Reader/.test(a.textContent || '') && /global-reader/.test(a.getAttribute('href') || ''))`))) add('P0', `${label}: the gaps tile lacks Microsoft's Global Reader link`)
+            // The mock signs in as a Global Administrator (ui/App.tsx): Graph refusing
+            // such an account is not for want of a role, so the tile asks for none.
+            if (/Ask whoever administers the tenant/.test(t3.text)) add('P0', `${label}: the gaps tile asks a Global Administrator for a role it already holds`)
+            if (await evaluate(`[...document.querySelectorAll('main.page .connect-step a.lnk')].some((a) => /Microsoft: Global Reader/.test(a.textContent || ''))`)) add('P0', `${label}: the gaps tile links Global Reader for a Global Administrator`)
             expectBtn(t3, /^Sign in with another account$/, 'primary', 'the gaps tile')
             expectBtn(t3, /^Scan again$/, 'secondary', 'the gaps tile')
             if (t3.buttons.length !== 2) add('P0', `${label}: the gaps tile has ${t3.buttons.length} buttons; Sign in with another account and Scan again`)

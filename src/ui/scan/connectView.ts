@@ -364,14 +364,16 @@ export type ScanInput =
    * `degraded`: the scan finished, but a material source (sign-in proof) was not read, so MFA readiness is not measured.
    * `unread`: the sections it did not read in full — refused, errored, or read in part. The plan was built
    * (no core section was missing), so this is not a failure; it is what the plan was built without.
+   * `readsEverything`: the account's active roles already read every section
+   * (tokenRoles.ts holdsReadEverything), so a refusal is not for want of a role and no role is asked for.
    */
-  | { kind: 'complete'; at: string; now?: number; counts?: ScanCounts | null; degraded?: boolean; unread?: UnreadSection[] }
+  | { kind: 'complete'; at: string; now?: number; counts?: ScanCounts | null; degraded?: boolean; unread?: UnreadSection[]; readsEverything?: boolean }
   /**
    * `gaps`: the core sections a plan cannot be built without (coreSections.ts
    * coreGaps), the one reason no plan was built; `unread` is every section the
-   * scan did not read in full, those included.
+   * scan did not read in full, those included. `readsEverything` as above.
    */
-  | { kind: 'gaps'; gaps: readonly { source: string }[]; unread: UnreadSection[]; lastScan: { at: string } | null }
+  | { kind: 'gaps'; gaps: readonly { source: string }[]; unread: UnreadSection[]; lastScan: { at: string } | null; readsEverything?: boolean }
   | { kind: 'role'; upn: string; gap: RoleGap }
   | { kind: 'scanning'; lane: string; elapsed: string }
   | { kind: 'ready' }
@@ -437,9 +439,12 @@ export function scanTile(input: ScanInput): ScanTile {
   // the account's door: an error, a throttled read or a read stopped short is
   // not something another account or role would change (coreSections.ts).
   const unreadRow = (u: UnreadSection): { name: string; value: string } => ({ name: sectionLabel(u.source), value: u.partial ? S.gaps.partlyRead : u.refused ? S.gaps.refused : S.gaps.notRead })
-  // The Global Reader ask, and its Microsoft link, where a row is a refusal and nowhere else.
+  // The Global Reader ask, and its Microsoft link, where a row is a refusal and
+  // nowhere else, and never to an account whose active roles already read every
+  // section: Graph refusing a Global Reader is not for want of a role.
+  const readsEverything = (input.kind === 'complete' || input.kind === 'gaps') && input.readsEverything === true
   const askFor = (rows: readonly UnreadSection[]): { ask: string; learn: { label: string; url: string } } | Record<string, never> =>
-    rows.some((u) => u.refused) ? { ask: fillText(S.gaps.ask, { role: READ_EVERYTHING_ROLE }), learn: S.gaps.learn } : {}
+    rows.some((u) => u.refused) && !readsEverything ? { ask: fillText(S.gaps.ask, { role: READ_EVERYTHING_ROLE }), learn: S.gaps.learn } : {}
   switch (input.kind) {
     case 'complete': {
       const c = input.counts
