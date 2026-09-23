@@ -660,6 +660,8 @@ test('a finished section prints as one line: its number, the board\'s finished t
   assert.deepEqual(finishedRowsOf(direction, p.printBoard, p.ctx).map((r) => r.id), warned.map((l) => l.id), 'a finished section prints other steps under its line than the ones that keep a warning')
   const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
   assert.match(print, /sec\.line !== null \? \(/, 'the print does not draw a finished section as its line')
+  // A heading: a bare number and a line printed under the section above read as its next row.
+  assert.match(print, /<h2 className="print-section-line">/, 'a finished section\'s line is not a heading')
   assert.match(print, /finishedRowsOf\(sec, printBoard, stepCtx\)/, 'a finished section drops the warnings its Completed steps keep')
 })
 
