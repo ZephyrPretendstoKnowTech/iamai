@@ -8,18 +8,19 @@ import type { RuleSeverity } from '../../validation/rules.ts'
 import { EVALUATED_SUBJECTS } from '../../validation/report.ts'
 import { ATTESTATION_RULES, SEVERITY, SUBJECT, NEED_LABEL, CITATION, FIELD_PRACTICE } from '../../copy/validation.ts'
 import { STATIC_RULE_READS } from '../../roadmap/staticRules.ts'
+import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { COLLECTOR_REGISTRY, capabilityLicence } from '../../graph/collect/registry.ts'
 import { CORE_SOURCES } from '../../graph/collect/coreSections.ts'
 import { fillText } from '../../content/render.ts'
 import type { CollectorSpec } from '../../graph/collect/registry.ts'
-import { app, pages } from '../../content/content.ts'
+import { app, pages, stepById } from '../../content/content.ts'
 
 /** One row of "Every check": what it looks for, what a failure does, why, what it reads and where it comes from. */
 export type HowCheckRow = {
   id: string
   what: string
-  /** A rule's severity, or `housekeeping` for a static rule, whose failure is a Housekeeping line on the Plan. */
-  severity: RuleSeverity | 'housekeeping'
+  /** A rule's severity, `housekeeping` for a static rule, whose failure is a Housekeeping line on the Plan, or `prerequisite` for a prerequisite step the policies that need it wait on. */
+  severity: RuleSeverity | 'housekeeping' | 'prerequisite'
   severityLabel: string
   why: string
   needs: string
@@ -73,7 +74,33 @@ export function howCheckTables(): HowCheckTable[] {
       source: null,
     })),
   }
-  return [...rules, statics]
+  const P = app.how.prerequisiteChecks
+  const prerequisites: HowCheckTable = {
+    key: 'prerequisites',
+    caption: SUBJECT.authStrength,
+    rows: Object.keys(PREREQUISITE_READS).map((stepId) => ({
+      id: stepId,
+      what: P.rows[stepId]?.what ?? '',
+      severity: 'prerequisite' as const,
+      severityLabel: P.severity,
+      why: fillText(P.rows[stepId]?.why ?? '', { step: stepById[stepId]?.title ?? stepId }),
+      needs: needsOf(PREREQUISITE_READS[stepId]),
+      source: null,
+    })),
+  }
+  return [...rules, prerequisites, statics]
+}
+
+/**
+ * The plan's checks that are prerequisite steps rather than registry rules, by
+ * step id, with the scan sections each reads. The baseline's authentication
+ * strength (generate.ts, s-prereq-auth-strength) reads the scanned strengths;
+ * while none matches, the policies that require it wait on the step. How listed
+ * it only through the registry's str.* rules, which no plan evaluates, and lost
+ * it with them (Phase 2 review).
+ */
+const PREREQUISITE_READS: Record<string, readonly string[]> = {
+  [PREREQ_STEP_ID.authStrength]: ['authStrengths'],
 }
 
 /**

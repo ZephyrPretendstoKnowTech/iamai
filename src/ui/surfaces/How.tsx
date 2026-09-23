@@ -37,7 +37,7 @@ const BUILD_COMMIT = typeof __BUILD_COMMIT__ === 'string' ? __BUILD_COMMIT__ : '
 const BUILD_DATE = typeof __BUILD_DATE__ === 'string' ? __BUILD_DATE__ : ''
 const READS = app.how
 
-const SEVERITY_CHIP: Record<HowCheckRow['severity'], ChipStatus> = { blocker: 'blocked', warning: 'warning', note: 'neutral', housekeeping: 'neutral' }
+const SEVERITY_CHIP: Record<HowCheckRow['severity'], ChipStatus> = { blocker: 'blocked', warning: 'warning', note: 'neutral', housekeeping: 'neutral', prerequisite: 'blocked' }
 
 export function How() {
   const packageHeading = useRef<HTMLHeadingElement>(null)
