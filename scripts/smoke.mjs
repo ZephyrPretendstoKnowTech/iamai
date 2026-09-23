@@ -618,6 +618,23 @@ try {
   check('Plan: a header tile draws each section heading once', tileHeads.every((t) => t.pressed && t.heads.length === new Set(t.heads).size), JSON.stringify(tileHeads.filter((t) => !t.pressed || t.heads.length !== new Set(t.heads).size).slice(0, 2)))
   const allWorkLanes = await evaluate(`[...document.querySelectorAll('main.page .plan-group')].map((g) => new Set([...g.querySelectorAll('.plan-row .lane')].map((e) => (e.textContent || '').trim().split(' · ')[0])).size)`)
   check('Plan: a group on All work is the whole group, not one lane of it', Array.isArray(allWorkLanes) && allWorkLanes.some((n) => n > 1), JSON.stringify(allWorkLanes))
+  // A step opened from a link keeps the tab where the tab shows it, and
+  // otherwise opens on All work in its own section, with the page moved to it
+  // (owner, roadmap flow V2; planBoard.ts followOpenStep).
+  let waitingId = null
+  for (const lane of ['On Hold', 'Up Next']) {
+    await showLane(lane)
+    waitingId = await evaluate(`((document.querySelector('main.page .plan-board .plan-row[data-step]') || { dataset: {} }).dataset.step) || null`)
+    if (waitingId) break
+  }
+  await showLane('Ready')
+  if (waitingId) {
+    await evaluate(`location.hash = ${JSON.stringify(`#/plan/${waitingId}`)}`)
+    const followed = await waitFor(`(() => { const t = [...document.querySelectorAll('main.page .plan-controls [role=tab]')].find((x) => x.getAttribute('aria-selected') === 'true'); const r = document.querySelector('main.page .plan-row[data-step=${JSON.stringify(waitingId)}]'); if (!t || !r) return false; const box = r.getBoundingClientRect(); return (${tabText})(t) === 'All work' && r.getAttribute('aria-expanded') === 'true' && !r.closest('.plan-group-rows[hidden]') && box.top >= 0 && box.top < innerHeight })()`, 5000)
+    check('Plan: a link to a step the Ready tab does not show opens it on All work, in its section, on screen', followed, String(waitingId))
+    await evaluate(`location.hash = '#/plan'`)
+    await sleep(200)
+  }
   await showLane('Ready')
   // Every row says its lane under its state word: `Lane · substatus/reason`.
   const laneLabels = await acrossLanes(`[...document.querySelectorAll('main.page .plan-row .lane')].map((e) => (e.textContent || '').trim())`)
