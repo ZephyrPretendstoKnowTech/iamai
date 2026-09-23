@@ -8,7 +8,7 @@ import type { RuleSeverity } from '../../validation/rules.ts'
 import { EVALUATED_SUBJECTS } from '../../validation/report.ts'
 import { ATTESTATION_RULES, SEVERITY, SUBJECT, NEED_LABEL, CITATION, FIELD_PRACTICE } from '../../copy/validation.ts'
 import { STATIC_RULE_READS } from '../../roadmap/staticRules.ts'
-import { app } from '../../content/content.ts'
+import { app, pages } from '../../content/content.ts'
 
 /** One row of "Every check": what it looks for, what a failure does, why, what it reads and where it comes from. */
 export type HowCheckRow = {
@@ -70,4 +70,15 @@ export function howCheckTables(): HowCheckTable[] {
     })),
   }
   return [...rules, statics]
+}
+
+/**
+ * Limits: every limitation IAMAI states. Connect's scan tile lists its own
+ * (pages.connect.scan.limits) and sends the reader here for "its limits in
+ * full", so How draws those lines from the same list, then its own. How held
+ * five other lines and none of Connect's (Phase 2 audit).
+ */
+export function howLimits(): string[] {
+  const connect = (pages.connect as unknown as { scan: { limits: string[] } }).scan.limits
+  return [...connect, ...app.how.limitsList]
 }
