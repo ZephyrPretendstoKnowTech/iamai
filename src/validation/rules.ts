@@ -621,8 +621,10 @@ const bgPerUserMfaOff: ValidationRule = {
   severity: 'warning',
   needs: ['authMethodsPolicy'],
   evaluate: (_id, ctx) => {
-    // Per-user MFA state is not exposed by Microsoft Graph at all; the closest
-    // readable fact is whether the tenant has finished the methods migration.
+    // The tenant's methods migration, and nothing about any account's own
+    // per-user MFA: the scan reads that per account (beta
+    // /users/{id}/authentication/requirements, snapshot.perUserMfa), and Finish
+    // Moving Off Per-User MFA is where it is judged (roadmap/manualWork.ts).
     // "Could not be read" only when the read actually failed (prompt 46 item
     // 24). A read that succeeded and came back without the field is a
     // different fact, and says so.

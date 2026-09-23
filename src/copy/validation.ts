@@ -262,7 +262,10 @@ export const RULE_TEXT: Record<string, { what: string; why: string; label?: stri
   },
   'bg.perUserMfaOff': {
     what: 'The tenant has finished migrating to the authentication methods policy.',
-    why: 'Microsoft says not to enable or enforce per-user MFA when Conditional Access is in use: the legacy setting prompts on its own terms and can block the recovery sign-in Conditional Access would have allowed.',
+    // What the rule reads is the migration state. The why was about per-user MFA
+    // prompting, a fact this check never reads; Finish Moving Off Per-User MFA
+    // reads each account's own state (roadmap/manualWork.ts) (Phase 2 audit).
+    why: "Until the migration finishes, the legacy settings still decide which methods are offered. Each account's own per-user MFA state, the emergency accounts' included, is read on Finish Moving Off Per-User MFA.",
   },
   'bg.noLicenceNeeded': {
     what: 'No licence is assigned unless something needs one, and no mailbox is in daily use.',

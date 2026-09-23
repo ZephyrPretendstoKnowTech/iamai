@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { howCheckTables } from './howView.ts'
 import { EVALUATED_SUBJECTS } from '../../validation/report.ts'
-import { engine } from '../../content/content.ts'
+import { engine, stepById } from '../../content/content.ts'
 import { REGISTRY } from '../../validation/rules.ts'
 import type { RuleResult } from '../../validation/rules.ts'
 import { emergencyTierOf } from '../../validation/emergencyTiers.ts'
@@ -79,4 +79,18 @@ test('How says the drill check reads recorded recovery tests, and that a sign-in
   assert.ok(last)
   assert.match(last.what, /except on a recorded recovery test/, 'the row says when the check fails, not only what it records')
   assert.match(last.needs, /recovery tests recorded/)
+})
+
+// bg.perUserMfaOff reads the tenant's migration state and nothing about any
+// account's per-user MFA; its "why" was about per-user MFA prompting, a
+// different fact, which Finish Moving Off Per-User MFA reads for every account
+// (Phase 2 audit, How).
+test('How’s migration-state check says why the migration matters, and where per-user MFA itself is read', () => {
+  const row = howCheckTables().flatMap((t) => t.rows).find((r) => r.id === 'bg.perUserMfaOff')
+  assert.ok(row)
+  assert.match(row.what, /migrating to the authentication methods policy/)
+  assert.doesNotMatch(row.why, /prompts on its own terms/, row.why)
+  assert.match(row.why, /migration/)
+  const title = (stepById['s-prereq-per-user-mfa'] as unknown as { title: string }).title
+  assert.ok(row.why.includes(title), `the why names the step that reads per-user MFA: ${title}`)
 })
