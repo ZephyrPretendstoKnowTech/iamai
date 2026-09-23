@@ -20,7 +20,8 @@ import { PASSKEY_SETTINGS_STEP_ID } from '../../roadmap/passkeySettings.ts'
 // readiness threshold, the report-only window and named evidence are evidence
 // gates on enforcement (a started policy behind one waits On Hold, or reads
 // Ready · Observing where the gate can be reviewed now, and its report-only
-// creation is not gated); an unwritable
+// creation is not gated, save a compliant-device create the readiness threshold
+// holds too, `holdsCreate`); an unwritable
 // policy is an observed blocker; a prerequisite is a step edge.
 //
 // The schedule is not an input. A step's phase, its wave and its dates are a
@@ -42,7 +43,7 @@ import type { LaneRow } from '../../actionability/sorting.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { FOUNDATION_WAIT, isHeld } from '../../roadmap/holds.ts'
 import { driftOutcomeOf } from '../../roadmap/tracking.ts'
-import { submitsEnforcementOnly, switchedOffPolicy, unavailableReason, implementationOffered, operationsOf, enforcesOnRun } from '../../roadmap/operations.ts'
+import { submitsEnforcementOnly, switchedOffPolicy, unavailableReason, implementationOffered, operationsOf, enforcesOnRun, createWaitsOnReadiness } from '../../roadmap/operations.ts'
 import { GATING_SUBJECTS, blockerStepId } from '../../roadmap/blockerSteps.ts'
 import { observationWindowDays, readyBasis, readyWhen } from '../../derive/readyWhen.ts'
 import { planStateOf } from './planState.ts'
@@ -136,6 +137,7 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
   const blockers: ObservedBlocker[] = []
   const gates: EvidenceGate[] = []
   const waitsOn: ObservedEdge[] = []
+  const holdsCreate = policy && !exists && createWaitsOnReadiness(step)
   const conflict = step.state.condition === 'baseline-conflict'
   if (conflict) blockers.push({ kind: 'sourceConflict', id: step.state.conflictSource ?? 'baseline-conflict' })
   // Drift is a policy a person has to look at, or one the plan's own update
@@ -174,7 +176,9 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
       if (!graphGates(step.id, b.stepId, on)) waitsOn.push({ step: b.stepId, action: on, milestone: 'complete' })
     }
     else if (b.kind === 'readiness' && b.label === 'session-loop' && exists) blockers.push({ kind: 'fact', id: 'fact:session-loop' })
-    else if (b.kind === 'readiness' && b.binding) gates.push({ id: `evidence:readiness:${b.label}`, satisfied: false, minDays: null, reason: b.binding })
+    // The readiness threshold holds a compliant-device policy's create as well as its
+    // enforcement (roadmap/operations.ts createWaitsOnReadiness; owner, 2026-09-23).
+    else if (b.kind === 'readiness' && b.binding) gates.push({ id: `evidence:readiness:${b.label}`, satisfied: false, minDays: null, reason: b.binding, ...(b.label === 'readiness' && holdsCreate ? { holdsCreate } : {}) })
     // A tenant fact this scan could not read — a group a policy names whose
     // members nobody could list — holds the step; it is not a gate the policy
     // earns by being watched (§8.4: a fact still to be established holds).
@@ -191,7 +195,7 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
     }
   }
   if (policy && open && step.action.readinessGate && !gates.some((g) => g.id.startsWith('evidence:readiness:'))) {
-    gates.push({ id: 'evidence:readiness:threshold', satisfied: false, minDays: null, reason: null })
+    gates.push({ id: 'evidence:readiness:threshold', satisfied: false, minDays: null, reason: null, ...(holdsCreate ? { holdsCreate } : {}) })
   }
   // The report-only window: both of tracking's gates close before enforcement
   // (derive/readyWhen.ts), and the window's length is the gate's time part.

@@ -13,9 +13,11 @@ import { recoveryAccountBasis } from './cleanupDone.ts'
 // The correction is `Action.readinessGate` (roadmap/generate.ts), read by the
 // implementation authority (`policyResult`) and by everything that dates a
 // rollout (`enforcementHeld`). It holds the operations that enforce the moment
-// they are submitted, and those alone: a new policy lands in report-only and a
-// patch that leaves a report-only policy in report-only deny nobody, and they
-// are how readiness reaches the threshold in the first place.
+// they are submitted: a new policy lands in report-only and a patch that leaves
+// a report-only policy in report-only deny nobody, and they are how readiness
+// reaches the threshold in the first place. One create is held too: a policy
+// that requires a compliant device prompts for a certificate in report-only, so
+// its creation waits with its turn-on (`createWaitsOnReadiness`; owner, 2026-09-23).
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 // On the curated baseline (fixtures/index.ts `curatedFixture`): this is about a
@@ -26,7 +28,9 @@ import type { FixtureName } from './fixtures/index.ts'
 import { runFixture, withFoundationSettled } from './fixtures/run.ts'
 import { personReadiness } from '../scoring/phishingResistant.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
-import { enforcesOnRun, enforcementHeld, implementationOffered, isPreserved, operationsOf, policyHold, unavailableReason, validOperations } from './operations.ts'
+import { createWaitsOnReadiness, effectOf, enforcesOnRun, enforcementHeld, implementationOffered, isPreserved, operationsOf, policyHold, unavailableReason, validOperations } from './operations.ts'
+import { readinessHeldLine } from '../ui/surfaces/stepContract.ts'
+import { fillText } from '../content/render.ts'
 import { readinessFor, readyNeeded, routeShortfallOf } from './readiness.ts'
 import { methodReadiness } from './methodReadiness.ts'
 import { pages } from '../content/content.ts'
@@ -371,6 +375,7 @@ test('the held step says which instruction is withheld, and is right about it', 
   assert.equal(sentence.includes('The instructions come back'), false, 'the unqualified claim is back')
 
   let seen = 0
+  let creates = 0
   for (const name of ['small', 'mid', 'large', 'midflight', 'getiamai', 'hostile', 'demo', 'demo-week2'] as const) {
     for (const step of runFixture(withFoundationSettled(shippedFixture(name))).steps) {
       if (unavailableReason(step) !== 'readiness-unmet') continue
@@ -379,12 +384,23 @@ test('the held step says which instruction is withheld, and is right about it', 
       // question is what the hold took away, which is what it was valid to run.
       const ops = validOperations(step.action)
       assert.ok(ops.length > 0, `${name}/${step.id}: held with nothing to hold`)
+      // The one create the threshold withholds (owner, 2026-09-23): a policy that
+      // requires a compliant device, whose report-only create prompts for a
+      // certificate. It is said in its own words (readinessHeldCreate), never in
+      // the sentence about a withheld turn-on.
+      if (createWaitsOnReadiness(step)) {
+        creates++
+        assert.ok(ops.some((op) => op.mode === 'create' && effectOf(op.body).controls.has('compliantdevice')), `${name}/${step.id}: a withheld create requires a compliant device`)
+        assert.equal(readinessHeldLine(step, 'T'), fillText(String((pages.app as { plan: Record<string, string> }).plan.readinessHeldCreate), { tenant: 'T', ...step.action.readinessGate }))
+        continue
+      }
       // Every one of them enforces the moment it is submitted. If a create or a
       // report-only patch were ever in here the sentence would be false.
       for (const op of ops) assert.equal(enforcesOnRun(op), true, `${name}/${step.id}: a ${op.mode} that denies nobody is being withheld`)
     }
   }
-  assert.ok(seen > 0, 'no fixture reaches the readiness hold, so the sentence is untested')
+  assert.ok(seen > creates, 'no fixture reaches the readiness hold of a turn-on, so the sentence is untested')
+  assert.ok(creates > 0, 'no fixture reaches the held compliant-device create')
 })
 
 // ---- R4-14: a gate is met at its threshold, never at a reading rounded up to it ----
