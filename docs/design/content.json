@@ -247,7 +247,7 @@
       },
       "staticRules": {
         "blockDependency": "{policy} blocks every resource but excludes none of the sign-in dependencies. Registration and enrollment break; exclude those four apps first.",
-        "appProtectionManaged": "{policy} requires an approved app but does not target unmanaged devices only, so scope it to personal devices.",
+        "appProtectionManaged": "{policy} requires an app protection policy but does not target unmanaged devices only, so scope it to personal devices.",
         "autopilot": "{policy} requires a compliant device over all resources, so new-device enrollment stops. Add the Autopilot carve-out."
       },
       "serviceSignals": {
@@ -2991,7 +2991,7 @@
               "why": "Without those exclusions, registration and enrollment break."
             },
             "appProtectionManaged": {
-              "what": "A policy that requires an approved app targets unmanaged devices only.",
+              "what": "A policy that requires an app protection policy targets unmanaged devices only.",
               "why": "Otherwise the requirement reaches managed devices as well as personal ones."
             },
             "autopilot": {
