@@ -97,7 +97,7 @@ function guid(seed: string, i: number): string {
  * that prerequisite, so what they exercise is the rollout and not the wait; a
  * tenant that has not is what `strengthMissing` below builds.
  */
-export function baselineStrengths(seed: string): Record<string, unknown>[] {
+function baselineStrengths(seed: string): Record<string, unknown>[] {
   const policies = pinnedPackage().policies
   const seen = new Set<string>()
   const out: Record<string, unknown>[] = []

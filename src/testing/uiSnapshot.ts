@@ -75,6 +75,11 @@ export function fixtureSnapshot(): TenantSnapshot {
         rows: [
           { id: '00000000-0000-0000-0000-000000000004', displayName: 'Phishing-resistant MFA', policyType: 'builtIn', allowedCombinations: ['windowsHelloForBusiness', 'fido2', 'x509CertificateMultiFactor'] },
           { id: 's-2', displayName: 'Contoso passwordless', policyType: 'custom', allowedCombinations: ['fido2', 'microsoftAuthenticatorPush,federatedSingleFactor'] },
+          // This tenant's copy of the pinned baseline's own strength, the one
+          // Create the Baseline's Authentication Strength asks for: the steps
+          // written from the pinned policies require it (q-pin), as the
+          // fixtures' tenants have it (fixtures/index.ts baselineStrengths).
+          { id: 's-3', displayName: 'Modern MFA + TAP', policyType: 'custom', allowedCombinations: ['windowsHelloForBusiness', 'fido2', 'x509CertificateMultiFactor', 'temporaryAccessPassOneTime'], combinationConfigurations: [] },
         ],
       },
       authMethodsPolicy: {
