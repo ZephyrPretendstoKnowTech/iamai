@@ -444,9 +444,16 @@ export function nextMilestone(step: Step, opts: { undated?: boolean } = {}): Mil
     // is the wait, never "ready to be turned on" or the day it would be.
     if (undated) return { kind: 'resolve', label: MILESTONE.resolve, at: null, gatedBy: null }
     const days = step.events?.noticeDays ?? 0
+    // The notice is the plan's announce day to the turn-on. Once the scan is
+    // past that day IAMAI cannot know a notice went out, and one sent today
+    // leaves fewer working days, so the sentence states the day and claims no
+    // notice (Phase 2 export finding 6: "which leaves the 5 working days of
+    // notice" at a scan a day after the announce day).
+    const announceAt = step.events?.announce?.at ?? null
+    const noticeAhead = announceAt === null || today === null || Date.parse(announceAt) >= Date.parse(today)
     const label = !later
       ? MILESTONE.enforce
-      : days > 0
+      : days > 0 && noticeAhead
         ? fillText(MILESTONE.enforceScheduled, { date: shownDay(at, estimatedDay(step), 'sentence'), days: String(days) })
         : fillText(MILESTONE.enforceScheduledOther, { date: shownDay(at, estimatedDay(step), 'sentence') })
     return { kind: 'enforce', label, at, gatedBy: null }
