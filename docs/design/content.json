@@ -2980,7 +2980,8 @@
         "permissions": "Permissions",
         "reads": "What IAMAI reads",
         "checks": "Every check",
-        "checksIntro": "Every check IAMAI runs, generated from the rules the code runs from.",
+        "$commentChecksIntro": "Phase 2 review, round 2 (How): this said 'Every check IAMAI runs, generated from the rules the code runs from'. The plan runs checks the tables do not list (the passkey-settings step holds 17 steps on mid), and the prerequisite and static rows are written here, not generated. It claims only what the tables hold: the rules' checks and the one prerequisite that is not a rule (src/ui/surfaces/howView.test.ts). The heading 'Every check' is fixed by docs/qa/page-contracts.json.",
+        "checksIntro": "What IAMAI's rules check, and whether the tenant has the authentication strength the baseline's policies require.",
         "$commentStaticChecks": "Phase 2 audit (How): the checks src/roadmap/staticRules.ts runs on the tenant's own Conditional Access policies, one row per engine.staticRules template (src/ui/surfaces/howView.test.ts holds the two key sets equal). A failure is a line in the Plan's Housekeeping list, never a held step, so the chip says Housekeeping. How listed only the rule registry, which left these out while listing pilot-group and authentication-strength rules no plan evaluates.",
         "staticChecks": {
           "caption": "The tenant's own policies",
