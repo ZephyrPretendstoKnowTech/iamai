@@ -5,6 +5,7 @@ import { GRAPH_SCOPES } from '../graph/scopes.ts'
 import { COLLECTOR_REGISTRY } from '../graph/collect/registry.ts'
 import { SCOPE_COPY, SIGN_IN_SCOPES, consentRows } from '../copy/permissions.ts'
 import { recoveryAuditRequest } from '../graph/collect/laneBCore.ts'
+import { CORE_SOURCES } from '../graph/collect/coreSections.ts'
 
 test('every scope the app requests is explained in the disclosure', () => {
   const missing = GRAPH_SCOPES.filter((s) => SCOPE_COPY[s] === undefined)
@@ -99,4 +100,18 @@ test('the cross-tenant and passkey-detail reads the collectors make beside their
   assert.match(cross?.endpoint ?? '', /\/partners\b/)
   const methods = COLLECTOR_REGISTRY.find((s) => s.sourceKey === 'authMethods')
   assert.match(methods?.endpoint ?? '', /beta \/users\/\{id\}\/authentication\/fido2Methods/)
+})
+
+// A refused read of a core section builds no plan (coreSections.ts: Connect reads
+// "finished with gaps · no plan built"). How's "Without it" for Directory.Read.All
+// and AuditLog.Read.All described a weaker plan that the product never builds
+// (Phase 2 audit, How).
+test('each permission’s "Without it" says no plan is built exactly where refusing it leaves a core section unread', () => {
+  const core = COLLECTOR_REGISTRY.filter((s) => (CORE_SOURCES as readonly string[]).includes(s.configKey ? `config:${s.configKey}` : (s.sourceKey ?? '')))
+  assert.equal(core.length, CORE_SOURCES.length, 'every core section has its registry row')
+  for (const [scope, copy] of Object.entries(SCOPE_COPY)) {
+    if (SIGN_IN_SCOPES.includes(scope)) continue
+    const stopsThePlan = core.some((s) => s.scopes.includes(scope))
+    assert.equal(/\bno plan\b/i.test(copy.without), stopsThePlan, `${scope}: "${copy.without}"`)
+  }
 })

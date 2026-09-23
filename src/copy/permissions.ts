@@ -65,7 +65,9 @@ export const SCOPE_COPY: Record<string, ScopeCopy> = {
   },
   'Directory.Read.All': {
     reads: 'People, groups and their members, devices, the licences the tenant holds, the organisation name and the signed-in account.',
-    without: 'No names, no counts and no populations: every step would be about nobody in particular.',
+    // The people are a core section (graph/collect/coreSections.ts): a refused
+    // read builds no plan, as Connect says. This described a weaker plan (Phase 2 audit).
+    without: 'IAMAI cannot read the people, so it builds no plan.',
     consentName: 'Read directory data',
     consentReads: "People, groups, devices, licences, the tenant's name",
   },
@@ -73,7 +75,9 @@ export const SCOPE_COPY: Record<string, ScopeCopy> = {
     // The directory audit events are read with the sign-in records on every scan
     // (graph/collect/laneB.ts); both rows named the sign-in records only (Phase 2 audit).
     reads: "Interactive sign-in records and directory audit events for the last 30 days, when each account last signed in, and the report of which sign-in methods each person has registered. From an audit event IAMAI keeps what happened, when, its result and the objects it changed.",
-    without: 'No predicted impact and no verification. Steps could still be listed, and none of them could be backed by evidence.',
+    // A refused sign-in read is a core gap and builds no plan; a tenant without
+    // Entra ID P1 has no records to read, and that is not a gap (coreSections.ts).
+    without: 'IAMAI cannot read the sign-in records, so it builds no plan. Without Entra ID P1 there are no records to read, and the plan is built without that evidence.',
     consentName: 'Read audit log data',
     consentReads: 'Sign-in records and directory audit events for the last 30 days',
   },
