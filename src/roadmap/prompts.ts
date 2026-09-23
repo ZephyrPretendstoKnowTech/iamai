@@ -4,7 +4,7 @@
 // "do not invent facts" instruction, the prompt pack, and the grounding
 // bundle, redacted by default. Pure.
 import { GROUNDING, PROMPTS } from '../copy/comms.ts'
-import { forecastEnforcement, statedEnforcement } from './forecast.ts'
+import { statedEnforcement } from './forecast.ts'
 import { planFinish, planLengthSentence } from '../derive/finish.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { CoverageReport } from '../coverage/types.ts'
@@ -17,7 +17,7 @@ import { sectionHasData } from '../graph/collect/coreSections.ts'
 import { fillText } from '../content/render.ts'
 
 /** The shared lines this module states a date with; the words live in content.json. */
-const SHARED = content.shared as unknown as { commsForecastNote: string; planPromptTitle: string }
+const SHARED = content.shared as unknown as { planPromptTitle: string }
 
 /** What a prompt in the pack is about, in the page's own words (pages.app.export). */
 const EXPORT = (content.pages.app as unknown as { export: { promptScope: string; promptWholePlan: string } }).export
@@ -97,35 +97,16 @@ export function stepContext(step: Step, view: StepView): string {
   return [`${v.title}.`, ...stepArtifactLines(v)].join('\n')
 }
 
-/** A blank line between paragraphs, the way every announcement is composed. */
-const PARA = '\n\n'
-
 /**
- * The draft announcement the prompt pack hands to a model, on the terms the
- * date it names is worth.
- *
- * The generator writes this draft before Foundation B's lifecycle is settled —
- * tracking advances it afterwards — so the draft leaves the generator dated and
- * unclassified, and the classification happens here, on the finished plan. While
- * the step's enforcement is the roadmap's projection the draft says so in its
- * own paragraph, under the one that names the day and above the sign-off, in the
- * same words the screen's Tell your people box carries
- * (stepExport.ts `commsFor`). A step with no announcement to make ("nobody is
- * affected") names no day and gains no paragraph.
+ * The announcement the prompt pack offers to rewrite and translate: the email
+ * one step's Tell your people box shows, and that step's title
+ * (ui/surfaces/stepExport.ts exportAnnouncementOf builds it). The pack used to
+ * take the generator's own draft of the first step that had one, labelled as
+ * about the whole plan: "No announcement needed: nobody is affected." for a
+ * policy that reached 246 people, and later a different email from the one the
+ * screen showed (Phase 2 export finding 5).
  */
-export function announcementDraft(steps: readonly Step[], held: (s: Step) => boolean = () => false): string | null {
-  // Never a step the board holds (`held`: ui/surfaces/planBoard.ts boardHolds,
-  // read by the caller): the generator's draft names its turn-on day, and a
-  // held step carries no date anywhere (owner decision 2, 2026-09-22).
-  const step = steps.find((s) => s.comms && !held(s))
-  const draft = step?.comms ?? null
-  if (step === undefined || draft === null) return null
-  const parts = draft.split(PARA)
-  // Salutation, body, sign-off: fewer paragraphs than that is not a dated
-  // announcement, so there is no day to qualify.
-  if (parts.length < 3 || !forecastEnforcement(step)) return draft
-  return [...parts.slice(0, 2), SHARED.commsForecastNote, ...parts.slice(2)].join(PARA)
-}
+export type PackAnnouncement = { step: string; text: string }
 
 /**
  * One prompt in the pack.
@@ -166,7 +147,7 @@ export function cleanupText(cleanup: CleanupExport[]): string {
  * condition, no prerequisites and no statement of whether the work can be done
  * at all. There is one reading of a step for an artifact and this is it.
  */
-export function promptPack(args: { view: StepView; tenant: string; steps: Step[]; schedule: Schedule; changeRecord: string; announcement: string | null; language?: string; cleanup?: CleanupExport[] }): PackItem[] {
+export function promptPack(args: { view: StepView; tenant: string; steps: Step[]; schedule: Schedule; changeRecord: string; announcement: PackAnnouncement | null; language?: string; cleanup?: CleanupExport[] }): PackItem[] {
   const { tenant } = args
   // The plan's length as the Plan header states it (derive/finish.ts
   // planLengthSentence), from the same steps and schedule: the caller handed in
@@ -188,9 +169,11 @@ export function promptPack(args: { view: StepView; tenant: string; steps: Step[]
     { title: SHARED.planPromptTitle, prompt: withFacts(PROMPTS.pack.explain, PROMPTS.plan, planSummary, [...steps, ...planBlocks]), scope: null },
     { title: PROMPTS.pack.summarise(tenant).split(' for ')[0], prompt: withFacts(PROMPTS.pack.summarise(tenant), PROMPTS.plan, planSummary, planBlocks), scope: null },
   ]
-  if (args.announcement?.trim()) items.push(
-    { title: PROMPTS.pack.rewrite, prompt: withFacts(PROMPTS.rewrite(tenant), PROMPTS.draft, args.announcement), scope: null },
-    { title: PROMPTS.pack.translate(args.language ?? PROMPTS.language).split(',')[0], prompt: withFacts(PROMPTS.pack.translate(args.language ?? PROMPTS.language), PROMPTS.draft, args.announcement), scope: null },
+  // The email belongs to one step, and the two prompts say which.
+  const announcement = args.announcement !== null && args.announcement.text.trim() !== '' ? args.announcement : null
+  if (announcement !== null) items.push(
+    { title: PROMPTS.pack.rewrite, prompt: withFacts(PROMPTS.rewrite(tenant), PROMPTS.draft, announcement.text), scope: announcement.step },
+    { title: PROMPTS.pack.translate(args.language ?? PROMPTS.language).split(',')[0], prompt: withFacts(PROMPTS.pack.translate(args.language ?? PROMPTS.language), PROMPTS.draft, announcement.text), scope: announcement.step },
   )
   if (args.changeRecord.trim()) items.push({ title: PROMPTS.pack.changeRequest(tenant).split(',')[0], prompt: withFacts(PROMPTS.pack.changeRequest(tenant), PROMPTS.record, args.changeRecord), scope: null })
   return items

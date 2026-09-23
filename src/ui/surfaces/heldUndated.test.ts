@@ -22,18 +22,18 @@ import type { Fixture, FixtureName } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withDirectionApproved, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
 import { stepArtifactLines } from '../../roadmap/artifactLines.ts'
-import { announcementDraft, groundingBundle } from '../../roadmap/prompts.ts'
+import { groundingBundle } from '../../roadmap/prompts.ts'
 import { scheduleOf, scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { engine, schedulingWords, shared, stepById } from '../../content/content.ts'
-import { contentStepFor } from '../../content/stepTitle.ts'
+import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { fillText, listCountVars } from '../../content/render.ts'
 import { BOARD, boardHolds, boardReadingsOf, boardWhenOf, laneViewFor, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from './planBoard.ts'
 import { phaseRows, planPhases, undatedRows } from './planRows.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { stepContract } from './stepContract.ts'
-import { WHO_UNRESOLVED, commsFor, exportViewsOf, stepExportView, whoEvidenceLines } from './stepExport.ts'
+import { WHO_UNRESOLVED, commsFor, copyBoxes, exportAnnouncementOf, exportViewsOf, stepExportView, whoEvidenceLines } from './stepExport.ts'
 import { aiGroundingText } from './aiGrounding.ts'
 import { planDates, stepVars } from './stepVars.ts'
 import { DEVICE_ANSWER_KEYS, QUESTION_STEP, answerKey, devicePlanOf } from '../../roadmap/answers.ts'
@@ -321,7 +321,7 @@ test('a held policy keeps the people its who-line names, without the day and wit
 })
 
 // The plan-wide days one step's words name for another (stepVars.ts planDates)
-// and the prompt pack's announcement (roadmap/prompts.ts announcementDraft)
+// and the prompt pack's announcement (stepExport.ts exportAnnouncementOf)
 // never asked the board. A step the board holds carries no date anywhere (owner
 // decision 2), yet its turn-on could still be the campaign's enrol-by, the day
 // Prepare Your Team says Require MFA for Everyone is planned for, the passkey
@@ -345,14 +345,15 @@ test('a day a held step carries is never another step\'s date, nor the prompt pa
   assert.equal(held.mfaEnforce, null, 'a held MFA policy has no day on which people will be asked for MFA')
   assert.notEqual(held.firstEnforce, first.events!.enforce.at, 'the first enforcement is a held step\'s')
   assert.equal(held.firstEnforce, dated.find((s) => !heldIds.has(s.id))!.events!.enforce.at, 'the first enforcement is the first unheld one')
-  // The announcement: the first step with an email, unless the board holds it.
-  const withComms = r.steps.filter((s) => s.comms)
-  assert.ok(withComms.length >= 2, 'the premise: two steps with an announcement')
-  assert.equal(announcementDraft(r.steps)?.startsWith(withComms[0]!.comms!.split('\n\n')[0]!), true, 'the premise: the first one is the draft')
-  const draft = announcementDraft(r.steps, (s) => s.id === withComms[0]!.id)
-  assert.ok(draft !== null && !draft.includes(withComms[0]!.comms!.split('\n\n')[1]!), 'the prompt pack announces a step the board holds')
-  assert.ok(draft!.includes(withComms[1]!.comms!.split('\n\n')[1]!), 'the draft is the first unheld step\'s')
-  assert.equal(announcementDraft(r.steps, () => true), null, 'every step held, and the pack still announces a day')
+  // The announcement: the first step whose opened page shows an email
+  // (stepExport.ts exportAnnouncementOf), unless the board holds it.
+  const ctxOf = (s: Step): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...open, reportOnlyAt: s.reportOnlyAt ?? null, groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming })
+  const withEmail = r.steps.filter((s) => copyBoxes(s, ctxOf(s)).some((b) => b.kind === 'comms'))
+  assert.ok(withEmail.length >= 2, 'the premise: two steps with an email')
+  assert.equal(exportAnnouncementOf(r.steps, () => false, ctxOf)?.step, contentTitle(withEmail[0]!), 'the premise: the first one is the draft')
+  const draft = exportAnnouncementOf(r.steps, (s) => s.id === withEmail[0]!.id, ctxOf)
+  assert.equal(draft?.step, contentTitle(withEmail[1]!), 'the prompt pack announces a step the board holds, or not the first unheld one')
+  assert.equal(exportAnnouncementOf(r.steps, () => true, ctxOf), null, 'every step held, and the pack still announces a day')
 })
 
 // The pages hand both of them the board's hold: the Plan (its own board), the
@@ -367,7 +368,7 @@ test('the Plan, the Export page and the step snapshots read the plan-wide dates 
   assert.match(exportPage, /const held = exportHoldOf\(board\)/, 'the Export page reads the board\'s hold')
   assert.match(exportPage, /exportViewsOf\(board, stepCtx\)/, 'the Export page\'s views read the same board')
   assert.match(exportPage, /planDates\([^)]*snapshot, held\)/, 'the Export page\'s plan-wide dates')
-  assert.match(exportPage, /announcementDraft\(steps, held\)/, 'the Export page\'s announcement')
+  assert.match(exportPage, /exportAnnouncementOf\(steps, held, stepCtx\)/, 'the Export page\'s announcement')
   assert.match(read('../../testing/stepSnapshots.ts'), /planDates\([^)]*f\.snapshot, \(s\) => boardHolds\(s, laneViewFor\(s, board\)\)\)/, 'the step snapshots')
 })
 

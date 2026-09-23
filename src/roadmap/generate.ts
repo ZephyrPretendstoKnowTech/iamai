@@ -3064,7 +3064,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // generator — tracking advances it afterwards (roadmap/progress.ts) — so a
     // draft classified here would call every step's date a projection and every
     // enforced policy's date a projection with it. The reader classifies, on the
-    // finished plan (roadmap/prompts.ts `announcementDraft`).
+    // finished plan (ui/surfaces/stepExport.ts `commsFor`).
     if (s.comms?.includes('{DATE}')) {
       const template = s.comms
       // A step the schedule did not place (skipped, or sent to the footer by an answer) has undated rings: the wave's start or the plan's stands in.
