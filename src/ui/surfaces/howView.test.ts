@@ -262,3 +262,17 @@ test('Every check lists the plan’s authentication-strength prerequisite, which
   const title = (stepById[PREREQ_STEP_ID.authStrength] as unknown as { title: string }).title
   assert.ok(row.why.includes(title), `the row names the step the policies wait on, by its title: ${row.why}`)
 })
+
+// The app-protection rule (roadmap/staticRules.ts) tests the grant
+// 'compliantApplication', which Microsoft labels "Require app protection policy";
+// 'approvedApplication' is the approved client app. The Plan's Housekeeping line
+// and How called the control "an approved app" (Phase 2 review).
+test('The app-protection rule names the control it tests', () => {
+  const source = readFileSync('src/roadmap/staticRules.ts', 'utf8')
+  assert.match(source, /grant\.includes\('compliantApplication'\)/)
+  const how = howCheckTables().find((t) => t.key === 'staticRules')?.rows.find((r) => r.id === 'appProtectionManaged')
+  for (const text of [how?.what ?? '', engine.staticRules.appProtectionManaged]) {
+    assert.match(text, /app protection policy/, text)
+    assert.doesNotMatch(text, /approved app/, text)
+  }
+})
