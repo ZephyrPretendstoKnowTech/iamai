@@ -1369,11 +1369,12 @@
         "full": "days of sign-ins, {from} to {to}",
         "partial": "Sign-ins read {from} to {to}: the most recent part of the 30 days.",
         "none": "No sign-in records were read.",
-        "unreadMethods": "method lists couldn’t be read. The next scan retries.",
+        "$commentCounts": "These lines stood beside a count in its own cell, so a count of one read \"1 method lists\" and \"1 people’s sign-ins\". The count is now in each sentence, after its verb, so pluralise bends the noun and leaves the verbs alone.",
+        "unreadMethods": "IAMAI couldn’t read {n} people’s method lists. The next scan retries.",
         "$commentUnreadMethodsRefused": "Where the registration report was refused (a permission or a licence), a rescan with the same sign-in reads no more. \"The next scan retries\" was false there. The Plan's blind-source sentence names the same refusal; {fix} is its fix (roadmap/readiness.ts sourceReadFix).",
-        "unreadMethodsRefused": "method lists couldn’t be read. IAMAI could not read registration details in this tenant — {reason}. {fix}",
-        "notCovered": "people’s sign-ins aren’t read yet. The next scan continues.",
-        "individually": "people read individually for the older part of the window"
+        "unreadMethodsRefused": "IAMAI couldn’t read {n} people’s method lists, and could not read registration details in this tenant — {reason}. {fix}",
+        "notCovered": "IAMAI hasn’t read {n} people’s sign-ins yet. The next scan continues.",
+        "individually": "IAMAI read {n} people individually for the older part of the window."
       },
       "guests": {
         "$comment": "Guests (owner decision, 2026-09-19, superseding option B): counted and listed with everyone else, tagged Guest, and in the MFA campaign; this tile adds the tenant-level reading. derive/guestReadiness.ts is the reading.",
@@ -1403,7 +1404,8 @@
         "covers": "Filtered to the {cohort} {step} covers.",
         "unknown": "{step} is waiting on sign-in readiness, and this scan could not work out who.",
         "back": "← Back to the step",
-        "uncounted": "{n} of them aren’t counted on this page: no sign-in in the last 90 days, or not a person’s account."
+        "$commentUncounted": "It began \"{n} of them aren’t counted\", which a count of one left as \"1 of them aren’t\": pluralise bends no contraction.",
+        "uncounted": "This page doesn’t count {n} of them: no sign-in in the last 90 days, or not a person’s account."
       }
     },
     "export": {
