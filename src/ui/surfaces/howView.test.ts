@@ -82,7 +82,13 @@ test('How says the drill check reads recorded recovery tests, and that a sign-in
   assert.match(drilled.needs, /recovery tests recorded/)
   const last = rows.find((r) => r.id === 'bg.lastSignIn')
   assert.ok(last)
-  assert.match(last.what, /except on a recorded recovery test/, 'the row says when the check fails, not only what it records')
+  assert.match(last.what, /recorded recovery test/, 'the row says when the check fails, not only what it records')
+  // The rule reads users[].lastSuccessfulSignIn, one date: an unrecorded
+  // sign-in before the last one is never seen. "Has not signed in during the
+  // last 90 days except on a recorded recovery test" said it was (Phase 2
+  // review, round 2).
+  assert.match(last.what, /most recent successful sign-in/, 'the row names the one sign-in the check reads')
+  assert.doesNotMatch(last.what, /has not signed in|during the last/, 'the check cannot say the account made no other sign-in')
   assert.match(last.needs, /recovery tests recorded/)
 })
 

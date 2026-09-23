@@ -299,8 +299,11 @@ export const RULE_TEXT: Record<string, { what: string; why: string; label?: stri
     why: 'An unexplained Global Administrator is deleted in a tidy-up, or left alone when it should have been questioned.',
   },
   // ---- break-glass, notes ----
+  // The rule reads one date, users[].lastSuccessfulSignIn: an earlier sign-in in
+  // the window is never seen, so this says what that one sign-in must be, not
+  // that the account made no other (Phase 2 review, round 2).
   'bg.lastSignIn': {
-    what: `The account has not signed in during the last ${BREAK_GLASS_DRILL_DAYS} days except on a recorded recovery test.`,
+    what: `The account's most recent successful sign-in, if it falls in the last ${BREAK_GLASS_DRILL_DAYS} days, is a recorded recovery test.`,
     why: 'These accounts should sign in almost never, so a sign-in that is not a recorded recovery test is one to account for: who signed in, and why.',
   },
   'bg.signInCountries': { what: 'Countries the account has signed in from in the evidence window.', why: 'An emergency account signing in from an unexpected country is worth a question.' },
