@@ -52,6 +52,7 @@ import {
   groupTitleOf,
   rowNumbersOf,
   sectionProgressOf,
+  tileSections,
   togglesOf,
   nothingReadyLine,
 } from './planBoard.ts'
@@ -607,6 +608,36 @@ test('Show completed and Show deferred start pressed on All work, and turning on
   assert.match(plan, /const shows = togglesOf\(focus, tab\)/, 'the toggles do not read the tab\'s default')
   assert.match(plan, /aria-pressed=\{shows\.completed\}/)
   assert.match(plan, /aria-pressed=\{shows\.deferred\}/)
+})
+
+test('a header tile draws one list in section order: each section heading once, and each row once', () => {
+  // The Needs your input, Observing and Completed tiles filter the one list.
+  // They used to draw it lane by lane, so a section with rows in three lanes
+  // read its heading three times, and the Completed rows sat loose after it.
+  let spread = 0
+  for (const name of [...FIXTURES, 'demo-week2'] as const) {
+    const items = itemsFor(name)
+    const picks: Record<string, BoardItem[]> = { all: items, completed: items.filter((i) => i.lane === 'Completed'), alternate: items.filter((_, at) => at % 2 === 0) }
+    for (const [pick, rows] of Object.entries(picks)) {
+      const drawn = tileSections(rows)
+      const keys = drawn.map((g) => groupKeyOf(g))
+      assert.equal(new Set(keys).size, keys.length, `${name}/${pick}: a section heading is drawn twice`)
+      const registry = STEP_GROUPS.map((g) => g.key)
+      assert.deepEqual(keys, [...keys].sort((x, y) => registry.indexOf(x!) - registry.indexOf(y!)), `${name}/${pick}: the sections are not in registry order`)
+      const seen = drawn.flatMap((g) => ids(g.items))
+      assert.equal(seen.length, new Set(seen).size, `${name}/${pick}: a row is drawn twice`)
+      assert.deepEqual([...seen].sort(), ids(rows).sort(), `${name}/${pick}: the tile lost or added a row`)
+      for (const g of drawn) assert.equal(g.label, groupTitleOf(STEP_GROUPS.find((x) => x.key === groupKeyOf(g))!, false), `${name}/${g.key}: not the section's own title`)
+    }
+    // The premise: a section with rows in more than one lane, which lane by lane drew twice.
+    spread += STEP_GROUPS.filter((g) => new Set(items.filter((i) => groupOf(i.id)?.key === g.key).map((i) => i.lane)).size > 1).length
+  }
+  assert.ok(spread > 0, 'no section spans two lanes, so this proves nothing')
+  // The Plan draws a tile's view through it, with nothing loose after the list.
+  const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
+  assert.match(plan, /const groups = summaryFilter \? tileSections\(shown\)/, 'a tile does not draw the one list')
+  assert.equal(plan.includes('LANES.flatMap('), false, 'a tile still draws the list lane by lane')
+  assert.match(plan, /const aside = summaryFilter \|\| laneTab === null \? \[\] : asideGroupsFor\(shown\)/, 'a tile still draws finished rows loose after the list')
 })
 
 test('a Completed or Deferred row is one compact line: number, title, its lane word and the day where one was recorded', () => {

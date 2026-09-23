@@ -888,9 +888,22 @@ export function focusCounts(items: readonly BoardItem[]): { complete: number; de
  * those, ungrouped, exactly as before. Pure.
  */
 export function groupsFor(tab: LaneTab, items: readonly BoardItem[], groups: readonly StepGroup[] = STEP_GROUPS): BoardGroup[] {
-  const priority = (i: BoardItem): number => tab !== 'ready' ? 0 : i.id === 's-prereq-passkey-settings' ? -3 : i.id === 's-prereq-break-glass' ? -2 : 0
-  const sorted = [...items].sort((a, b) => priority(a) - priority(b) || a.order - b.order)
-  const own = sorted.filter((i) => TAB_OF[i.lane] === tab)
+  return sectionsFrom(tab, items.filter((i) => TAB_OF[i.lane] === tab), BOARD.lanes[tab], groups)
+}
+
+/**
+ * The one list a header tile shows (Needs your input, Observing, Completed):
+ * the rows it picked, whatever their lane, under their sections in registry
+ * order, so each section heading appears once. Drawn lane by lane, a section
+ * with rows in three lanes read its heading three times, and the finished rows
+ * sat loose after the list. Pure.
+ */
+export function tileSections(items: readonly BoardItem[], groups: readonly StepGroup[] = STEP_GROUPS): BoardGroup[] {
+  return sectionsFrom('tile', items, BOARD.allWorkTab, groups)
+}
+
+/** Rows under their sections: one group per section that has a row, in registry order, each section's rows in its own order. */
+function sectionsFrom(prefix: string, own: readonly BoardItem[], fallback: string, groups: readonly StepGroup[]): BoardGroup[] {
   // A group's rows come out in the group's own order — which is the order its
   // numbers count in, so the list reads 1, 3, 6 and its gaps are legible as
   // gaps. Ordered by the engine instead, the same three rows read 6, 1, 3, and
@@ -909,12 +922,12 @@ export function groupsFor(tab: LaneTab, items: readonly BoardItem[], groups: rea
   const out: BoardGroup[] = []
   for (const group of groups) {
     const mine = own.filter((i) => groupOf(i.id, groups)?.key === group.key).sort(inGroupOrder)
-    if (mine.length > 0) out.push({ key: `${tab}-${group.key}`, label: groupTitleOf(group, false), secondary: false, closed: false, items: mine })
+    if (mine.length > 0) out.push({ key: `${prefix}-${group.key}`, label: groupTitleOf(group, false), secondary: false, closed: false, items: mine })
   }
   // A row the registry claims for no group at all (no catch-all entry) still has
   // to be drawn: the board never silently loses one.
   const ungrouped = own.filter((i) => groupOf(i.id, groups) === null)
-  if (ungrouped.length > 0) out.push({ key: tab, label: BOARD.lanes[tab], secondary: false, closed: false, items: ungrouped })
+  if (ungrouped.length > 0) out.push({ key: prefix, label: fallback, secondary: false, closed: false, items: ungrouped })
   return out
 }
 
