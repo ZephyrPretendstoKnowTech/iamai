@@ -424,12 +424,13 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
   }
   // One wait, said once (docs/plans/step-redundancy-analysis.md finding 3), on
   // the reading the second tile producer reads. A policy held by "Define the
-  // Trusted Network" AND by "Waiting on your answers: Decide Where People Sign
-  // In From" said one thing twice, in two vocabularies: the trusted network is
-  // what that answer is for, and the step is where it gets made. The nearest
-  // cause is the step; the answer behind it is that step's own wait to show. The
-  // row's `reason` is untouched, so no row changes lane, label or order, and a
-  // row whose stated reason IS the answer still says it — once.
+  // Trusted Network" AND by "Waiting on your direction: Decide Where People Sign
+  // In From" (the label then) said one thing twice, in two vocabularies: the
+  // trusted network is what that answer is for, and the step is where it gets
+  // made. The nearest cause is the step; the answer behind it is that step's
+  // own wait to show. The row's `reason` is untouched, so no row changes lane,
+  // label or order, and a row whose stated reason IS the answer still says it
+  // — once.
   for (const reading of out.values()) {
     const relayed = new Set(reading.blockers.flatMap((b) => (b.kind === 'step' || b.kind === 'suspendedPrerequisite' ? [...directionStepsAnswering(b.id)] : [])))
     if (relayed.size === 0) continue
