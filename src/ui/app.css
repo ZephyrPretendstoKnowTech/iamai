@@ -5165,7 +5165,8 @@ th .th-sort:focus-visible,
   font-weight: var(--weight-strong);
   overflow-wrap: anywhere;
 }
-.emergency-account-upn span { display: block; }
+.emergency-account-upn span,
+.emergency-account-lines span { display: block; }
 .emergency-account-upn {
   margin: 0 0 8px;
   color: var(--primary-text);
