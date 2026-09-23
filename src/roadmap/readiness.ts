@@ -207,9 +207,11 @@ export function strengthMeasuredOf(
  * reading itself (types.ts `Readiness.blind`). Null where the number was read,
  * or where nobody is in scope: a missing number is blind only when it is
  * unreadable, which is also the only missing number a threshold ever waits on.
+ * The parameter is named `readiness` so foundationA.test.ts's pinned grep for
+ * reads of the goal family counts this one; named `reading`, it hid from it.
  */
-export function blindOf(reading: Pick<Readiness, 'family' | 'unmeasured'>, snapshot: TenantSnapshot): string | null {
-  return reading.unmeasured === 'unreadable' ? blindSourceOf(reading.family, snapshot) : null
+export function blindOf(readiness: Pick<Readiness, 'family' | 'unmeasured'>, snapshot: TenantSnapshot): string | null {
+  return readiness.unmeasured === 'unreadable' ? blindSourceOf(readiness.family, snapshot) : null
 }
 
 export function blindSourceOf(family: Readiness['family'], snapshot: TenantSnapshot): string | null {

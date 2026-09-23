@@ -1212,13 +1212,15 @@ test('nothing new reads the goal family or the floor for a policy consequence', 
   // `familyReading`/`effectsOf`, or add the file here with its reason.
   const allowed: Record<string, { family: number; floor: number; why: string }> = {
     'src/roadmap/strand.ts': { family: 1, floor: 0, why: 'familyReading: the one door the family may answer through, and it refuses for an open policy' },
-    // Fifteen, not sixteen: the sixteenth was the gate's own call to blindSourceOf,
-    // which named the SOURCE this family is measured from. R4-20 moved it onto the
-    // reading (roadmap/readiness.ts blindOf, handed the reading and not the goal),
-    // so the blind is worked out once for the gate and the campaign alike. It still
-    // decides nothing about the policy: the family picks a source key, and what
-    // comes back is a sentence.
+    // Fifteen, not sixteen. The sixteenth was the gate's own call to blindSourceOf.
+    // R4-20 did not remove that read: it moved it into roadmap/readiness.ts blindOf,
+    // so the blind is worked out once for the gate and the campaign alike. It is
+    // counted there, below.
     'src/roadmap/generate.ts': { family: 15, floor: 4, why: 'the readiness threshold and its blocker, and the fallbacks that sit inside an isOpenPolicy branch. Neither the announcement nor the manager note counts any more: the family reaches both through familyReading, which refuses for an open policy' },
+    // The read moved here from generate.ts. It was first written as
+    // `reading.family`, which this grep does not match, so generate.ts's count
+    // fell by one while no line had stopped reading the family.
+    'src/roadmap/readiness.ts': { family: 1, floor: 0, why: 'blindOf: which SOURCE a reading is measured from, to name the one the scan could not read. It decides nothing about the policy: the family picks a source key, and what comes back is a sentence' },
     'src/roadmap/stateReason.ts': { family: 2, floor: 0, why: 'the words for a readiness blocker' },
     'src/ui/surfaces/stepContract.ts': { family: 1, floor: 0, why: 'the scope noun beside a finished rollout’s reading (shortReadingOf): admins, people in scope. It picks a word and decides nothing about the policy' },
     'src/derive/finish.ts': { family: 2, floor: 0, why: 'which readiness measure a waiting step is counted under' },
