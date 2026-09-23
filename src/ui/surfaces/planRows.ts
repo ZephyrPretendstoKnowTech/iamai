@@ -68,9 +68,15 @@ export function undatedRows(steps: readonly Step[], waves: readonly { stepIds: s
  * (planLanes.ts, a skipped step is owner-deferred); this is the same fact read
  * for the document, which takes a deferred step out of its phase and prints it
  * once, under the lane's own word.
+ *
+ * A floor step the operator deferred is one of them. The rule used to read
+ * `inWave`, which leaves every floor step out, so a deferred floor step stayed
+ * in the floor's group and printed in full with a report-only date and live
+ * instructions for work the operator had taken off the plan. A step the person
+ * said does not apply here is the footer's, never this list's.
  */
 export function deferredRows(steps: readonly Step[]): Step[] {
-  return steps.filter((s) => inWave(s) && s.status === 'skipped')
+  return steps.filter((s) => s.status === 'skipped' && !s.doesntApply)
 }
 
 /**

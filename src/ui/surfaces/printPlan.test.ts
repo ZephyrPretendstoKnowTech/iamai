@@ -22,7 +22,7 @@ import { customerPlanSteps } from './customerPlanSteps.ts'
 import { boardOf } from './planBoard.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { completedRows, doesntApplyRows, openDoneRows } from './planRows.ts'
+import { completedRows, deferredRows, doesntApplyRows, floorRows, openDoneRows } from './planRows.ts'
 import { completedLinesOf, doesntApplyLinesOf, laneGroupsOf, noPlanLine, postureOf } from './printPlan.ts'
 import { stepFacts } from '../../derive/facts.ts'
 import { conditionalAccessLicenceLine } from '../../derive/notLicensed.ts'
@@ -193,4 +193,26 @@ test('the cover\'s Doesn\'t apply list is the Plan footer\'s, each step with the
   const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
   assert.match(print, /const doesntApply = doesntApplyLinesOf\(steps\)/, 'the cover builds Doesn\'t apply from something other than the Plan\'s list')
   assert.equal(print.includes('not-applicable'), false, 'the cover still names coverage verdicts under Doesn\'t apply')
+})
+
+// ---- Deferred: every deferred step once, in the Deferred list ----
+
+test('a deferred floor step prints once, in the Deferred list, never in full under the floor\'s group', () => {
+  // Midflight after Foundation with Protect Sign-in Method Registration (a
+  // floor step, which the Plan offers to defer) and Block Authentication
+  // Transfer deferred: the board reads both Deferred, but the floor step printed
+  // in full, with a report-only date and live instructions, under "Microsoft
+  // recommended, not in this baseline".
+  const p = plan('midflight', { stage: 'foundation', skips: ['s-goal-register-info-protected', 's-goal-block-auth-transfer'] })
+  const floorStep = byId(p.steps, 's-goal-register-info-protected')
+  assert.equal(floorStep.floor, true, 'the premise: a floor step')
+  assert.equal(p.board.laneOf(floorStep.id).lane, 'Deferred', 'the premise: the board reads it Deferred')
+  const deferred = deferredRows(p.steps)
+  for (const id of ['s-goal-register-info-protected', 's-goal-block-auth-transfer']) assert.ok(deferred.some((s) => s.id === id), `${id} is not in the Deferred list`)
+  // The floor group the print draws is floorRows less the deferred rows (PrintPlan.tsx).
+  const deferredIds = new Set(deferred.map((s) => s.id))
+  assert.equal(floorRows(p.steps).filter((s) => !deferredIds.has(s.id)).some((s) => s.id === floorStep.id), false, 'the deferred floor step still prints in the floor\'s group')
+  // Every step the board reads Deferred is in the list, and nothing else is.
+  const boardDeferred = p.steps.filter((s) => !s.doesntApply && p.board.laneOf(s.id).lane === 'Deferred').map((s) => s.id).sort()
+  assert.deepEqual([...deferredIds].sort(), boardDeferred, 'the Deferred list and the board\'s Deferred lane differ')
 })
