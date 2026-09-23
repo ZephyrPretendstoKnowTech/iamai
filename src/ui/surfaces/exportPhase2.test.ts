@@ -99,12 +99,13 @@ test('the prompt pack states the plan length the Plan header states, and no leng
     const pack = promptPack({ view: p.view, tenant: 'Tenant', steps: p.r.steps, schedule: p.r.schedule, changeRecord: '', announcement: null, cleanup: p.cleanup })
     const header = planLengthSentence(finish, p.r.schedule)
     for (const item of pack.slice(0, 2)) {
-      assert.ok(item.prompt.includes(header), `${name}/${item.title}: the pack's plan block is the header's sentence "${header}"`)
+      assert.doesNotMatch(item.prompt, /Nothing is left to schedule/, `${name}/${item.title}: a held plan said nothing is left`)
+      if (header !== null) assert.ok(item.prompt.includes(header), `${name}/${item.title}: the pack's plan block is the header's sentence "${header}"`)
       if (finish.held) assert.doesNotMatch(item.prompt, /The plan is \d+ weeks?\b/, `${name}/${item.title}: a held plan states a length`)
     }
     if (finish.held) {
       heldPlans++
-      assert.ok(header.startsWith(HELD_PREFIX), `${name}: the header's held sentence: ${header}`)
+      assert.ok(header === null || header.startsWith(HELD_PREFIX), `${name}: the header's held sentence: ${header}`)
     }
   }
   assert.ok(heldPlans > 0, 'the premise: a plan that cannot finish')
@@ -118,7 +119,7 @@ test('the held plan-length sentence counts its weeks through pluralise', () => {
   assert.ok(finish.held && p.r.schedule.estimate, 'the premise: a held plan with an estimate')
   for (const [weeks, said] of [[1, 'about 1 week because'], [3, 'about 3 weeks because']] as const) {
     const sentence = planLengthSentence(finish, { ...p.r.schedule, estimate: { ...p.r.schedule.estimate!, weeks } })
-    assert.ok(sentence.includes(said), sentence)
+    assert.ok((sentence ?? '').includes(said), String(sentence))
   }
   const src = readFileSync(new URL('../../derive/finish.ts', import.meta.url), 'utf8')
   assert.doesNotMatch(src, /week\$\{/, 'the sentence builds its plural by hand')
@@ -127,7 +128,7 @@ test('the held plan-length sentence counts its weeks through pluralise', () => {
 // The Plan header reads the same sentence (Plan.tsx Projected finish tip).
 test('the Plan header\'s Projected finish tip is the one plan-length sentence', () => {
   const plan = readFileSync(new URL('./Plan.tsx', import.meta.url), 'utf8').replace(/\/\/[^\n]*/g, '')
-  assert.match(plan, /const lengthTip = planLengthSentence\(finish, c\.schedule\)/)
+  assert.match(plan, /const lengthTip = finish\.finish === null && projected\.estimate === null \? undefined : \(planLengthSentence\(finish, c\.schedule\) \?\? undefined\)/)
 })
 
 // Finding 3 (severity 3). The pack's Cleanup blocks and the bundle's cleanup

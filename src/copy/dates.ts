@@ -1,7 +1,10 @@
 // Dates as a human reads them: relative + absolute, never raw ISO. Pure (Intl
 // only) so the roadmap engine and the UI share one rendering.
 
-const REL = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' })
+// In the content's language, as monthDay is: a relative age sits inside English
+// sentences ("complete · 3 days ago"), and the browser's own locale would put
+// "vor 3 Tagen" in the middle of one (Phase 2 audit).
+const REL = new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
 
 // Display time zone is a Setup answer; storage stays UTC.
 let displayTimeZone: string | undefined

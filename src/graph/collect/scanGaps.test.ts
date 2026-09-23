@@ -11,6 +11,7 @@ import { CORE_SOURCES, coreGaps, unreadSources } from './coreSections.ts'
 import { coreRoleGap, rolesInToken } from './tokenRoles.ts'
 import { READ_EVERYTHING_ROLE, isLicenceGate } from './roles.ts'
 import { fixture } from '../../roadmap/fixtures/index.ts'
+import { sourceUnreadOf } from '../../roadmap/evidence.ts'
 import { planTile } from '../../ui/scan/connectView.ts'
 import type { TenantSnapshot } from './types.ts'
 
@@ -52,8 +53,8 @@ test('a core section read in part still builds a plan, and is never counted as r
   const s = partial()
   assert.deepEqual(coreGaps(s), [], 'a partly read core section is not a gap: what came back still builds a plan')
   assert.deepEqual(unreadSources(s), [
-    { source: 'config:caPolicies', partial: true },
-    { source: 'users', partial: true },
+    { source: 'config:caPolicies', partial: true, refused: false },
+    { source: 'users', partial: true, refused: false },
   ])
   // Both loops agree on one meaning of read: a configuration section and a
   // source in the same state are reported the same way.
@@ -64,15 +65,43 @@ test('a core section read in part still builds a plan, and is never counted as r
 
 test('every section a scan could not read reaches the list, core or not, gaps or none', () => {
   const s = fixtureSnapshot()
-  s.config.namedLocations = { ...s.config.namedLocations, status: 'error', reason: 'refused' }
-  s.config.authStrengths = { ...s.config.authStrengths, status: 'error', reason: 'refused' }
-  s.sources.devices = { ...s.sources.devices, status: 'error', reason: 'refused' }
+  s.config.namedLocations = { ...s.config.namedLocations, status: 'error', reason: REFUSED }
+  s.config.authStrengths = { ...s.config.authStrengths, status: 'error', reason: 'HTTP 500' }
+  s.sources.devices = { ...s.sources.devices, status: 'error', reason: 'HTTP 429 TooManyRequests' }
   assert.deepEqual(coreGaps(s), [], 'no core section is missing: the plan is built')
+  // Only Graph refusing the account is a refusal: an error or a throttled read is not the account's doing.
   assert.deepEqual(unreadSources(s), [
-    { source: 'config:namedLocations', partial: false },
-    { source: 'config:authStrengths', partial: false },
-    { source: 'devices', partial: false },
+    { source: 'config:namedLocations', partial: false, refused: true },
+    { source: 'config:authStrengths', partial: false, refused: false },
+    { source: 'devices', partial: false, refused: false },
   ])
+  // A sign-in read stopped short of its minimum with some hours covered returned those hours: read in part.
+  s.sources.signInEvidence = { status: 'insufficient', reason: 'stopped at memory ceiling with only 9 h covered (minimum 24 h)', coveredWindow: { from: '2026-09-07T15:00:00Z', to: '2026-09-08T00:00:00Z' }, asOf: s.asOf }
+  assert.deepEqual(unreadSources(s).at(-1), { source: 'signInEvidence', partial: true, refused: false, coveredHours: 9 }, 'the hours it covered, from its covered window')
+  s.sources.signInEvidence = { status: 'insufficient', reason: 'no sign-in records could be read', coveredWindow: null, asOf: s.asOf }
+  assert.deepEqual(unreadSources(s).at(-1), { source: 'signInEvidence', partial: false, refused: false }, 'no hours covered: nothing was read')
+})
+
+// Phase 2 review, round 1: Connect's unread list and the plan's evidence
+// (roadmap/evidence.ts sourceUnreadOf) each decided whether the sign-in records
+// were read in part, by two rules. A read interrupted by an error after it had
+// fetched some hours (laneBCore.ts: finalize('error') keeps the window it
+// covered) read "Sign-in records · not read" on Connect while the plan held
+// those hours as a short window. One rule decides both.
+test('a sign-in read that covered some hours is read in part on Connect and a short window in the plan, whatever stopped it', () => {
+  const covered = { from: '2026-09-07T12:00:00Z', to: '2026-09-08T00:00:00Z' }
+  const s = fixtureSnapshot()
+  s.sources.signInEvidence = { status: 'error', reason: 'HTTP 503 ServiceUnavailable', coveredWindow: covered, asOf: s.asOf }
+  assert.deepEqual(unreadSources(s).at(-1), { source: 'signInEvidence', partial: true, refused: false, coveredHours: 12 }, 'an interrupted read that returned 12 hours is a read in part')
+  for (const status of ['partial', 'insufficient', 'error', 'disabled'] as const) {
+    for (const window of [covered, null]) {
+      const t = fixtureSnapshot()
+      t.sources.signInEvidence = { status, reason: status === 'disabled' ? REFUSED : 'stopped', coveredWindow: window, asOf: t.asOf }
+      const row = unreadSources(t).find((u) => u.source === 'signInEvidence')
+      assert.ok(row, `${status}, ${window ? 'hours covered' : 'no hours'}: listed as not read in full`)
+      assert.equal(row.partial, sourceUnreadOf(t.sources.signInEvidence) === null, `${status}, ${window ? 'hours covered' : 'no hours'}: Connect and the plan disagree on whether any of it was read`)
+    }
+  }
 })
 
 test('a token without the roles does not start the scan and names the role to ask for; Global Reader, Global Administrator or Security Reader start it; a token without the claim says nothing', () => {

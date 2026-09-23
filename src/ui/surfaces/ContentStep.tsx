@@ -43,7 +43,7 @@ import { app, content, workflowWords } from '../../content/content.ts'
 import { fillText, whole, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
 import { Button, Callout, Icon, Picker, TabList, onePanelProps } from '../components/index.ts'
 import type { PickerOption } from '../components/index.ts'
-import { exclusionsPickerLabel, filterPickerObjects, initialPicked, matchedNoteOf, pickerUniverse } from './pickerRows.ts'
+import { exclusionsPickerLabel, filterPickerObjects, initialPicked, matchedNoteOf, pickerUniverse, printedDefaultLine } from './pickerRows.ts'
 import type { PickerObject } from './pickerRows.ts'
 import { answerParts, answerText, optionsOf, questionFor, valueSource } from './stepQuestion.ts'
 import type { QuestionOption } from './stepQuestion.ts'
@@ -499,7 +499,7 @@ export function ContentStep({
             a person has (Foundation C). */}
         <StepActionColumn rail={displayRail}>
           {/* A question that moved to Decide Your Tenant's Direction is answered there; this step says where, and what (roadmap/direction.ts ANSWERED_IN). */}
-          {ANSWERED_IN[step.id] ? <AnsweredInDirection stepId={step.id} ctx={ctx} /> : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && <Decision key={step.id} d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} />}
+          {ANSWERED_IN[step.id] ? <AnsweredInDirection stepId={step.id} ctx={ctx} /> : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && <Decision key={step.id} d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} printing={printing} />}
           {step.id === SPECIAL_CARE_STEP_ID && (followUp || printing) && <FollowUpDecision key={`${step.id}:follow-up`} step={step} ctx={ctx} saved={followUp?.saved ?? null} onDecide={followUp?.onDecide} printing={printing} />}
           {/* The one thing a scan cannot see, recorded where every other control
               on a step is (owner, 2026-09-20). It used to stand in the main
@@ -1033,11 +1033,11 @@ function ReasonForm({ body, label, placeholder, cancel, confirm, multiline = fal
   )
 }
 
-function Decision(props: { d: Record<string, any>; ex: Ex; saved: StepDecision | null; onDecide?: (decision: StepDecisionInput) => void; stepId: string; ctx: StepVarContext }) {
+function Decision(props: { d: Record<string, any>; ex: Ex; saved: StepDecision | null; onDecide?: (decision: StepDecisionInput) => void; stepId: string; ctx: StepVarContext; printing?: boolean }) {
   return <div className="decision-form"><SingleDecision {...props} /></div>
 }
 
-function SingleDecision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<string, any>; ex: Ex; saved: StepDecision | null; onDecide?: (decision: StepDecisionInput) => void; stepId: string; ctx: StepVarContext }) {
+function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false }: { d: Record<string, any>; ex: Ex; saved: StepDecision | null; onDecide?: (decision: StepDecisionInput) => void; stepId: string; ctx: StepVarContext; printing?: boolean }) {
   // The typeahead (target-state §6.4): empty, it lists the objects the scan
   // nominated with their signal text, ticked by default as chips; typing filters
   // every object of the kind in the tenant by name and UPN; the chips are the
@@ -1149,8 +1149,14 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<str
             plan already holds — every active admin, everyone with no method,
             everyone on SMS alone (derive/contentLists.ts specialCareIds) —
             and somebody added by hand changes who the plan says needs help,
-            which is a number other steps read (owner, 2026-09-22). */}
-        {(hasPicker || isNetwork) && !remote && <Picker labelledBy={`${base}-decision`} selected={chips} options={results} suggestions={isNetwork ? nominated.slice(0, 3) : nominated} onChange={setChips} onSearch={setQuery} single={single} readOnly={stepId === SPECIAL_CARE_STEP_ID} />}
+            which is a number other steps read (owner, 2026-09-22).
+            On paper, a picker nobody saved (pickerRows.ts initialPicked
+            `defaulted`) says its chips are IAMAI's suggestion and not saved
+            (printedDefaultLine): it had printed them as the answer, and then
+            the heading over nothing. */}
+        {(hasPicker || isNetwork) && !remote && (printing && initial.defaulted && !isExclusionsGroup
+          ? <p className="reason">{printedDefaultLine(chips.map((c) => c.name))}</p>
+          : <Picker labelledBy={`${base}-decision`} selected={chips} options={results} suggestions={isNetwork ? nominated.slice(0, 3) : nominated} onChange={setChips} onSearch={setQuery} single={single} readOnly={stepId === SPECIAL_CARE_STEP_ID} />)}
         {isNetwork && !remote && chips.length === 0 && <div className="decision-fields">
           {universe.length === 0 && <p className="reason">{ctx.snapshot.config.namedLocations?.status === 'ok' ? 'No IP named locations were found in this scan.' : 'Named locations could not be fully read. Scan again to load existing office networks.'}</p>}
           <div className="decision-field"><label htmlFor={`${base}-network-name`}><strong>Office Network Name</strong></label><input type="text" id={`${base}-network-name`} value={networkName} onChange={e => setNetworkName(e.target.value)} /></div>

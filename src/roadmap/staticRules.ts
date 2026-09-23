@@ -9,6 +9,17 @@ import { engine } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 
 export type PolicySource = 'tenant' | 'baseline' | 'template'
+
+/**
+ * What each static rule reads, by its engine.staticRules template key: How IAMAI
+ * works lists the rules from these keys (ui/surfaces/howView.ts). The Autopilot
+ * rule reads the sign-in records as well, through technicianToolsOffCompliance.
+ */
+export const STATIC_RULE_READS: Record<string, readonly ('caPolicies' | 'signInEvidence')[]> = {
+  blockDependency: ['caPolicies'],
+  appProtectionManaged: ['caPolicies'],
+  autopilot: ['caPolicies', 'signInEvidence'],
+}
 export type StaticViolation = { policyName: string; source: PolicySource; text: string }
 
 const DEPENDENCY_APP_IDS = new Set(appsWithRole(APP_ROLE.dependency).map((a) => a.appId.toLowerCase()))

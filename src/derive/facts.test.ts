@@ -66,7 +66,8 @@ test('no surface computes a count: the three surfaces, the print, the sample fac
     const src = readFileSync(file, 'utf8')
     // MFA Readiness reads the facts through its view (derive/mfaReadiness.ts readinessView carries factsOf).
     const readsFacts = /derive\/facts\.ts/.test(src) || (file.endsWith('MfaReadiness.tsx') && /readinessView\b[\s\S]*derive\/mfaReadiness\.ts/.test(src))
-    assert.ok(readsFacts, `${file} reads derive/facts.ts`)
+    // The Export page states no count: it mounts the printed plan, which reads the facts itself.
+    if (!file.endsWith('Export.tsx')) assert.ok(readsFacts, `${file} reads derive/facts.ts`)
     assert.doesNotMatch(src, /ladderCounts|peopleCounts|planCounts|rolloutBucket|activePeopleIds|campaignIdsFor/, `${file} computes no count of its own`)
   }
   assert.doesNotMatch(readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8'), /ladder\(|\.states\[[a-z]+\]\.length/, 'MFA Readiness reads the facts, never the partition')

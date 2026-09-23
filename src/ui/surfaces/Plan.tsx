@@ -20,7 +20,7 @@ import { fillText } from '../../content/render.ts'
 import { CleanupBody, cleanupEntry } from './CleanupStep.tsx'
 import { cleanupWhenOf } from './cleanupExport.ts'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
-import { planFinish, planLengthSentence, projectedFinish } from '../../derive/finish.ts'
+import { planFinish, planLengthSentence, projectedFinish, statedEstimate } from '../../derive/finish.ts'
 import { startControl } from '../../derive/planHeader.ts'
 import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
@@ -169,9 +169,15 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // The Projected finish tile's tip (A2): the critical-path sentences the schedule
   // derives, or while held work is withdrawn the estimate's reason. One sentence,
   // shared with the prompt pack's plan block (derive/finish.ts planLengthSentence).
-  const lengthTip = planLengthSentence(finish, c.schedule)
   // The estimate at pace, and the committed day when it is another day (derive/finish.ts projectedFinish; the printed cover reads the same pair).
-  const projected = projectedFinish(finish.finish, c.schedule.estimate?.targetEnd ?? null)
+  // Only where it measures work still on the plan (derive/finish.ts statedEstimate).
+  const projected = projectedFinish(finish.finish, statedEstimate(c.steps, finish, c.schedule))
+  // A tile that states no date explains no length. A held plan with no estimate
+  // (roadmap/forecast.ts: the rollout placed none of the held work) has nothing
+  // to explain: no tip, never "Nothing is left to schedule." Nor has a plan
+  // whose remaining work is all deferred: its tile read "Depends on open work"
+  // over "The plan is 5 weeks because …", a chain naming a deferred step.
+  const lengthTip = finish.finish === null && projected.estimate === null ? undefined : (planLengthSentence(finish, c.schedule) ?? undefined)
 
   // The step a row waits on, by the title its reason line names it with (roadmap/stateReason.ts).
   // The lanes (planLanes.ts): the actionability engine read over the plan as

@@ -34,7 +34,6 @@ import { decisionsOf } from '../../roadmap/progress.ts'
 import type { PlanDecisions } from '../../roadmap/progress.ts'
 import { planIdFor } from '../../roadmap/generate.ts'
 import { summarizeTenant } from '../../scoring/mfaViability.ts'
-import { facts } from '../../derive/facts.ts'
 import { groundingBundle, promptPack, promptPackMarkdown } from '../../roadmap/prompts.ts'
 import type { PackItem } from '../../roadmap/prompts.ts'
 import { importPlanRecords } from '../../graph/collect/cache.ts'
@@ -151,12 +150,6 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   const tenantName = (snapshot.config.organization?.rows?.[0] as { displayName?: string } | undefined)?.displayName ?? account.username
   const planId = planIdFor(snapshot.tenantId)
   const operator = { userId: account.localAccountId, userPrincipalName: account.username }
-  // The verification window's people, from the one facts function
-  // (derive/facts.ts). The page hands the counts over and words nothing: which
-  // sentence the window's note carries is the printed document's, out of its own
-  // content entries, and how many people are still to set up is
-  // derive/facts.ts's (task 042).
-  const tenantFacts = data.mapping ? facts(snapshot, data.mapping) : null
   const copy = (id: string, text: string): void => {
     void exportClipboard(text, runbookRedaction(data.mapping)).then((ok) => {
       if (!ok) { setExportError('Copy failed. Try copying again.'); return }
@@ -374,12 +367,13 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
           baselinePin={pinOf(baseline)}
           steps={steps}
           schedule={schedule}
-          facts={tenantFacts}
           scanAt={scan.at}
           coverage={coverage}
           goalMap={c.goalMap}
           stepCtx={stepCtx}
           answers={data.mapping?.breakGlassAnswers ?? null}
+          tenant={snapshot}
+          decisions={data.stepDecisions}
         />
       )}
     </section>

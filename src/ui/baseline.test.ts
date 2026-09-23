@@ -59,6 +59,12 @@ test('checkAuthorHead: a differing head is an update, a matching head is not, a 
   })
   assert.equal(failed.updated, false)
   assert.equal(failed.head, null)
+  // A check that could not run is not a check that found nothing (Phase 2 audit): Connect says so.
+  assert.equal(failed.checked, false)
+  const limited = await checkAuthorHead(async () => new Response('rate limited', { status: 403 }))
+  assert.equal(limited.checked, false, "GitHub's rate limit is a check that did not run")
+  assert.equal(differ.checked, true)
+  assert.equal(same.checked, true)
 })
 
 

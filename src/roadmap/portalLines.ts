@@ -91,7 +91,21 @@ const GUEST_TYPE_LABEL: Record<string, string> = {
   otherexternaluser: 'Other external users',
 }
 const RISK_LABEL: Record<string, string> = { high: 'High', medium: 'Medium', low: 'Low' }
+// Microsoft Authenticator's authentication mode per target (Graph authenticationMode), as the portal's Enable and Target tab names it.
+const AUTHENTICATOR_MODE_LABEL: Record<string, string> = { any: 'Any', push: 'Push', devicebasedpush: 'Passwordless' }
 const RISK_ORDER = ['high', 'medium', 'low']
+const USER_ACTION_LABEL: Record<string, string> = { 'urn:user:registersecurityinfo': 'Register security information', 'urn:user:registerdevice': 'Register or join devices' }
+
+/**
+ * A Graph value as the portal names it — a platform, a client app type, an
+ * authentication flow, a guest or external type, a user action, a risk level, an Authenticator mode — or null where
+ * the portal has no name IAMAI holds. The one map: these lines and the
+ * Inventory's rows (ui/surfaces/inventoryTables.ts) both read it.
+ */
+export function portalName(kind: 'platform' | 'clientApp' | 'flow' | 'guestType' | 'userAction' | 'risk' | 'authenticatorMode', value: string): string | null {
+  const map = { platform: PLATFORM_LABEL, clientApp: CLIENT_APP_LABEL, flow: FLOW_LABEL, guestType: GUEST_TYPE_LABEL, userAction: USER_ACTION_LABEL, risk: RISK_LABEL, authenticatorMode: AUTHENTICATOR_MODE_LABEL }[kind]
+  return map[lc(value)] ?? null
+}
 
 function platformList(s: Set<string>, ctx: PortalContext): string {
   return [...s].map((p) => PLATFORM_LABEL[lc(p)] ?? ctx.nameOf(p)).join(', ')
@@ -169,8 +183,8 @@ function usersLine(f: PolicyFacts, ctx: PortalContext): string {
 /** The `Target resources → …` line. */
 function resourcesLine(f: PolicyFacts, ctx: PortalContext): string | null {
   const a = f.apps
-  if (a.userActions.has('urn:user:registersecurityinfo')) return 'Target resources → User actions → Register security information'
-  if (a.userActions.has('urn:user:registerdevice')) return 'Target resources → User actions → Register or join devices'
+  if (a.userActions.has('urn:user:registersecurityinfo')) return `Target resources → User actions → ${USER_ACTION_LABEL['urn:user:registersecurityinfo']}`
+  if (a.userActions.has('urn:user:registerdevice')) return `Target resources → User actions → ${USER_ACTION_LABEL['urn:user:registerdevice']}`
   if (a.authContexts.size > 0) return `Target resources → Authentication context → ${names(a.authContexts, ctx)}`
   // The resources an all-resources policy excludes are part of its target: "All
   // resources" beside a request that excludes Microsoft Intune Enrollment was two
@@ -269,6 +283,9 @@ function grantLine(f: PolicyFacts, ctx: PortalContext, override?: GrantOverride)
   const controls = new Set([...f.grant.controls].map(lc))
   if (controls.has('block')) return 'Grant → Block access'
   const reqs: string[] = []
+  // Risk remediation first, as the portal lists it: selecting it selects the
+  // authentication strength beside it. It had no label and was dropped.
+  if (controls.has('riskremediation')) reqs.push('Require risk remediation')
   // A strength nothing names is written by the id the request carries, and
   // never by a name. The fallback here was "Multifactor authentication", which
   // is not a generic phrase: it is the display name of Microsoft's built-in

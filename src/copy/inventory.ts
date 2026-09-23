@@ -1,5 +1,7 @@
 // Inventory (the data as found) and the package-instructions page.
-import { count } from './statements.ts'
+import { count, figure } from './statements.ts'
+import { app, directionWords } from '../content/content.ts'
+import { fillText } from '../content/render.ts'
 
 export const INVENTORY = {
   title: 'Inventory',
@@ -9,7 +11,8 @@ export const INVENTORY = {
     policies: 'Policies',
     locations: 'Named locations',
     authentication: 'Authentication',
-    people: 'People',
+    // Every account the scan read, emergency, service and sign-in-disabled ones included: the badge counts them all, so the tab is not named for people (derive/sets.ts).
+    people: 'Accounts',
     groups: 'Groups',
     devices: 'Devices',
     roles: 'Roles',
@@ -21,12 +24,19 @@ export const INVENTORY = {
     policies: { title: 'Where this comes from', text: 'Conditional Access policies read from the tenant at scan time (/identity/conditionalAccess/policies).' },
     locations: { title: 'Where this comes from', text: 'Named locations read from the tenant (/identity/conditionalAccess/namedLocations). "Used by" counts policies that include or exclude the location.' },
     authentication: { title: 'Where this comes from', text: 'The authentication methods policy, authentication strengths, security defaults, and per-user registration details (/reports/authenticationMethods/userRegistrationDetails).' },
-    people: { title: 'Where this comes from', text: 'The user list (/users) with sign-in activity, plus MFA state and strongest method from registered methods and sign-in records.' },
+    people: { title: 'Where this comes from', text: 'The user list (/users) with sign-in activity, plus MFA state from registered methods and sign-in records, and each account\'s methods as MFA Readiness reads them.' },
     groups: { title: 'Where this comes from', text: 'Every group any policy includes or excludes, with members read on demand (/groups/{id}/transitiveMembers).' },
     devices: { title: 'Where this comes from', text: 'Registered devices (/devices) with compliance, management, trust type, and registered owners.' },
     roles: { title: 'Where this comes from', text: 'Active role assignments (/roleManagement/directory/roleAssignments) and PIM-eligible schedules where Entra ID P2 or Microsoft Entra ID Governance is present.' },
     licensing: { title: 'Where this comes from', text: 'Subscribed SKUs (/subscribedSkus): seats, assigned units, and the service plans that unlock each capability.' },
-    apps: { title: 'Where this comes from', text: 'Aggregated app sign-in summary and service principal sign-in activity (/reports, 30 days). Detected workloads drive which goals apply.' },
+    // What the two tables show (content.json pages.app.inventory.appsSource): the Detected workloads word decides no goal, and the sources state no window.
+    // Filled when read: render.ts's own imports reach this file, so it cannot be filled while the module loads.
+    apps: {
+      title: 'Where this comes from',
+      get text(): string {
+        return fillText(app.inventory.appsSource, { step: directionWords.steps.use.title })
+      },
+    },
     signIns: { title: 'Where this comes from', text: 'Counts derived from the interactive sign-in records collected for the window. Raw records stay in the browser and are never shown.' },
   },
   policies: {
@@ -53,7 +63,6 @@ export const INVENTORY = {
     signInRisk: (s: string) => `sign-in risk: ${s}`,
     userRisk: (s: string) => `user risk: ${s}`,
     flows: (s: string) => `flows: ${s}`,
-    deviceFilter: 'device filter',
     block: 'Block',
     require: (s: string) => `Require ${s}`,
     strength: (name: string) => `strength: ${name}`,
@@ -64,7 +73,6 @@ export const INVENTORY = {
     appEnforced: 'app-enforced restrictions',
     include: 'Include',
     exclude: 'Exclude',
-    empty: 'No Conditional Access policies were read.',
   },
   locations: {
     columns: { name: 'Location', type: 'Type', trusted: 'Trusted', ranges: 'Countries or IP ranges', usedBy: 'Used by' },
@@ -101,7 +109,7 @@ export const INVENTORY = {
     empty: 'The authentication methods policy could not be read.',
   },
   people: {
-    columns: { name: 'Name', upn: 'Sign-in address', type: 'Type', activity: 'Activity', mfa: 'MFA state', method: 'Strongest method', licence: 'Licence', roles: 'Roles' },
+    columns: { name: 'Name', upn: 'Sign-in address', type: 'Type', activity: 'Activity', mfa: 'MFA state', method: 'Methods', licence: 'Licence', roles: 'Roles' },
     member: 'Member',
     guest: 'Guest',
     /** Sign-in blocked (a shared mailbox, a resource): listed here, and not a person anywhere else. */
@@ -117,7 +125,7 @@ export const INVENTORY = {
     dynamic: 'dynamic',
     assigned: 'assigned',
     unknown: 'unknown',
-    sampled: (n: number) => `${n} (sampled)`,
+    sampled: (n: number) => `${figure(n)} (sampled)`,
     include: (name: string) => `${name} (include)`,
     exclude: (name: string) => `${name} (exclude)`,
     loading: 'Reading group memberships…',
@@ -151,16 +159,13 @@ export const INVENTORY = {
     capColumns: { capability: 'Capability', seats: 'Seats' },
     enabled: 'enabled',
     notLicensed: 'not licensed',
-    seats: (enabled: number, consumed: number) => `${enabled} (${consumed} assigned)`,
+    seats: (enabled: number, consumed: number) => `${figure(enabled)} (${figure(consumed)} assigned)`,
     none: '—',
-    empty: 'No subscribed licences were read.',
   },
   apps: {
     columns: { app: 'App', signIns: 'Sign-ins', lastSp: 'Last activity' },
     facets: 'Detected workloads',
     facetColumns: { workload: 'Workload', detected: 'Detected' },
-    on: 'detected',
-    off: 'not detected',
     empty: 'No app sign-in summary is available on this licence.',
   },
   signIns: {
@@ -169,7 +174,8 @@ export const INVENTORY = {
     distinctUsers: (n: number) => `${count(n, 'distinct user')}`,
     distinctUsersTip: {
       title: 'Distinct users',
-      text: 'Users with at least one record inside the collected window (the last 30 days). Readiness counts activity over 90 days, so Active users can be higher than this number.',
+      // The window is the one the line beside it dates: a read can stop short of the 30 days it asks for.
+      text: 'Users with at least one record inside the collected window. Readiness counts activity over 90 days, so Active users can be higher than this number.',
     },
     byClientApp: 'By client app',
     byProtocol: 'By protocol',

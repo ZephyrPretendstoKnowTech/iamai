@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { allFixtures } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
-import { heldByReadiness, planFinish, projectedFinish } from './finish.ts'
+import { heldByReadiness, heldRequired, planFinish, projectedFinish } from './finish.ts'
 import { unavailableReason } from '../roadmap/operations.ts'
 import { holdOf, isHeld } from '../roadmap/holds.ts'
 import { FINISH } from '../copy/statements.ts'
@@ -63,11 +63,17 @@ test('the projected finish is the estimate at pace, and the committed day only w
   assert.deepEqual(projectedFinish('2026-10-12T12:00:00.000Z', estimate), { estimate, committed: '2026-10-12T12:00:00.000Z' })
   // No estimate at all: the tile reads the placeholder; the committed day is still a fact.
   assert.deepEqual(projectedFinish('2026-10-12T12:00:00.000Z', null), { estimate: null, committed: '2026-10-12T12:00:00.000Z' })
-  // Every fixture's plan carries an estimate once the forecast is settled (roadmap/forecast.ts), so the header tile shows a date on every tenant, held or not.
+  // A plan carries an estimate once the forecast is settled (roadmap/forecast.ts),
+  // so the header tile shows a date, held or not, unless the plan holds required
+  // work and the rollout placed none of it: then what the generator drew is the
+  // unheld work alone (messy's Preparation week, "no enforcement is left to
+  // schedule"), and the tile reads its placeholder rather than that day.
   for (const f of allFixtures()) {
     const r = runFixture(f)
     const p = projectedFinish(planFinish(r.steps, r.schedule.cleanup?.end ?? null).finish, r.schedule.estimate?.targetEnd ?? null)
-    assert.ok(p.estimate !== null, `${f.name}: the Projected finish tile has no date`)
-    if (p.committed !== null) assert.notEqual(p.committed.slice(0, 10), p.estimate.slice(0, 10), `${f.name}: the committed day repeats the estimate`)
+    const held = heldRequired(r.steps)
+    const placedNone = held.length > 0 && held.every((s) => r.schedule.placement?.placed[s.id] === undefined && r.schedule.forecastOnly?.[s.id] === undefined)
+    assert.equal(p.estimate === null, placedNone, `${f.name}: the Projected finish tile ${p.estimate === null ? 'has no date though the rollout placed held work' : 'dates a rollout that placed none of the held work'}`)
+    if (p.committed !== null && p.estimate !== null) assert.notEqual(p.committed.slice(0, 10), p.estimate.slice(0, 10), `${f.name}: the committed day repeats the estimate`)
   }
 })
