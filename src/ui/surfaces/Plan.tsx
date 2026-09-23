@@ -177,12 +177,15 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // withdrawn the schedule's own chain no longer measures the estimate the tile
   // shows, so the tip reads the estimate's reason instead.
   const lengthReason = cannotFinish ? (c.schedule.estimate?.reason ?? null) : c.schedule.derivation.reason
-  // A held plan with no estimate (roadmap/forecast.ts: the rollout placed none of
-  // the held work) has nothing to explain: no tip, never "Nothing is left to schedule."
-  const lengthTip = cannotFinish ? (lengthReason ? fillText(P.lengthTipEstimate, { weeks: weeksText, constraint: lengthReason }) : undefined) : [c.schedule.derivation.criticalPath, ...c.schedule.derivation.relaxed].join(' ')
   // The estimate at pace, and the committed day when it is another day (derive/finish.ts projectedFinish; the printed cover reads the same pair).
   // Only where it measures work still on the plan (derive/finish.ts statedEstimate).
   const projected = projectedFinish(finish.finish, statedEstimate(c.steps, finish, c.schedule))
+  // A tile that states no date explains no length. A held plan with no estimate
+  // (roadmap/forecast.ts: the rollout placed none of the held work) has nothing
+  // to explain: no tip, never "Nothing is left to schedule." Nor has a plan
+  // whose remaining work is all deferred: its tile read "Depends on open work"
+  // over "The plan is 5 weeks because …", a chain naming a deferred step.
+  const lengthTip = finish.finish === null && projected.estimate === null ? undefined : cannotFinish ? (lengthReason ? fillText(P.lengthTipEstimate, { weeks: weeksText, constraint: lengthReason }) : undefined) : [c.schedule.derivation.criticalPath, ...c.schedule.derivation.relaxed].join(' ')
 
   // The step a row waits on, by the title its reason line names it with (roadmap/stateReason.ts).
   // The lanes (planLanes.ts): the actionability engine read over the plan as

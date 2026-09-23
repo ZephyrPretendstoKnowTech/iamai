@@ -118,18 +118,20 @@ export function planWeeks(finish: PlanFinish, schedule: Pick<Schedule, 'start' |
 
 /**
  * The at-pace estimate a surface may state (A2): the schedule's estimate, except
- * where the plan holds nothing and nothing still open is dated. Then every step
- * that set the estimate is done or deferred (the generator draws the schedule
- * before the operator's deferrals are applied, ui/surfaces/planData.ts), so it
- * dates work nobody will do: mid with every deferrable step deferred printed
- * "finishes Oct 4, 2026 at pace", from a reason naming a deferred step. A plan
- * with no open work at all keeps the estimate as it was. The Plan's Projected
- * finish tile and the printed cover read this, so they state one date or none.
+ * where the plan holds nothing and nothing still open is dated while some step
+ * is not done. Then every step that set the estimate is done or deferred (the
+ * generator draws the schedule before the operator's deferrals are applied,
+ * ui/surfaces/planData.ts), so it dates work nobody will do: mid with every
+ * deferrable step deferred printed "finishes Oct 4, 2026 at pace", from a
+ * reason naming a deferred step, and with every remaining step deferred it
+ * still did, over a Cleanup ending Oct 7. Only a plan whose every step is done
+ * keeps the estimate as it was. The Plan's Projected finish tile and the
+ * printed cover read this, so they state one date or none.
  */
 export function statedEstimate(steps: readonly Step[], finish: PlanFinish, schedule: Pick<Schedule, 'estimate'>): string | null {
   const estimate = schedule.estimate?.targetEnd ?? null
   if (finish.held || finish.finish !== null) return estimate
-  return steps.some((s) => s.status !== 'done' && s.status !== 'skipped') ? null : estimate
+  return steps.some((s) => s.status !== 'done') ? null : estimate
 }
 
 /**
