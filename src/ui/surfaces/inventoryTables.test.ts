@@ -5,7 +5,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
-import { appsModel, authMethodsModel, authStrengthsModel, capabilitiesModel, devicesModel, groupsModel, inventoryTables, licencesModel, locationsModel, methodTargetGroupsOf, peopleModel, policiesModel, policyFactsOf, referencedGroupsOf, registrationModel, rolesModel, securityDefaultsOf, signInModels, workloadsModel } from './inventoryTables.ts'
+import { appsModel, authMethodsModel, authStrengthsModel, capabilitiesModel, devicesModel, groupsModel, inventoryTables, licencesModel, locationsModel, methodTargetGroupsOf, peopleModel, policiesModel, policyFactsOf, referencedGroupsOf, registrationModel, rolesModel, securityDefaultsOf, shownCell, signInModels, workloadsModel } from './inventoryTables.ts'
 import { serviceReading } from '../../roadmap/workflows.ts'
 import { portalName } from '../../roadmap/portalLines.ts'
 import { readinessView } from '../../derive/mfaReadiness.ts'
@@ -347,4 +347,19 @@ test('a read that returned nothing says so, not "yet" and not as a read that fai
   const demo = fixture('demo').snapshot
   assert.equal(signInModels(demo, buildNameDirectory(demo)).blockedToday.empty, app.inventory.blockedNone)
   for (const line of [app.inventory.policiesNone, app.inventory.licencesNone, app.inventory.blockedNone]) assert.doesNotMatch(line, /\byet\b|were read/)
+})
+
+test('large tenants: counts carry separators on screen, and a holder cell names three and counts the rest', () => {
+  const s = fixture('large').snapshot
+  const names = buildNameDirectory(s)
+  assert.equal(shownCell(58800), '58,800')
+  const caps = capabilitiesModel(s)
+  const p1 = caps.rows.find((r) => r.id === 'entraP1')!
+  assert.match(String(caps.columns.find((c) => c.key === 'seats')!.cell(p1)), /^\d{1,3}(,\d{3})+ \(\d{1,3}(,\d{3})* assigned\)$/)
+  const roles = rolesModel(s, names)
+  const ga = roles.rows.find((r) => r.id === '62e90394-69f5-4237-9190-012177145e10')!
+  const holders = String(roles.columns.find((c) => c.key === 'active')!.cell(ga))
+  assert.ok(holders.split(', ').length > 3, 'the CSV lists every holder')
+  assert.match(ga.activeShown, /and \d[\d,]* others$/)
+  assert.equal(ga.activeShown.split(', ').length, 3, ga.activeShown)
 })

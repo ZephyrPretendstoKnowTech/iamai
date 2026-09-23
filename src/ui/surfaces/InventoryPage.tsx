@@ -41,6 +41,7 @@ import {
   referencedGroupsOf,
   registrationModel,
   securityDefaultsOf,
+  shownCell,
   roleHoldersOf,
   rolesModel,
   signInModels,
@@ -84,7 +85,7 @@ function ModelTable<R>({
   expand?: (r: R) => ReactNode
   initialSort?: { key: string; dir: 1 | -1 }
 }) {
-  const columns: Column<R>[] = model.columns.map((c) => ({ key: c.key, header: c.header, csv: c.cell, sortValue: c.sort, hidden: c.hidden, minWidth: c.minWidth, render: render[c.key] ?? c.cell }))
+  const columns: Column<R>[] = model.columns.map((c) => ({ key: c.key, header: c.header, csv: c.cell, sortValue: c.sort, hidden: c.hidden, minWidth: c.minWidth, render: render[c.key] ?? ((r: R) => shownCell(c.cell(r))) }))
   return (
     <>
       {model.note && <p className="reason">{model.note}</p>}
@@ -388,6 +389,9 @@ function RolesTab({ snapshot, names }: { snapshot: TenantSnapshot; names: NameDi
               {r.name} {r.privileged && <Chip status="warning">{R.privileged}</Chip>}
             </>
           ),
+          // Three holders and a count of the rest; the CSV lists every one.
+          active: (r) => <span title={r.active}>{r.activeShown}</span>,
+          eligible: (r) => <span title={r.eligible}>{r.eligibleShown}</span>,
         }}
       />
     </div>

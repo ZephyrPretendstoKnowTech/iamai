@@ -1,5 +1,5 @@
 // Inventory (the data as found) and the package-instructions page.
-import { count } from './statements.ts'
+import { count, figure } from './statements.ts'
 
 export const INVENTORY = {
   title: 'Inventory',
@@ -117,7 +117,7 @@ export const INVENTORY = {
     dynamic: 'dynamic',
     assigned: 'assigned',
     unknown: 'unknown',
-    sampled: (n: number) => `${n} (sampled)`,
+    sampled: (n: number) => `${figure(n)} (sampled)`,
     include: (name: string) => `${name} (include)`,
     exclude: (name: string) => `${name} (exclude)`,
     loading: 'Reading group memberships…',
@@ -151,7 +151,7 @@ export const INVENTORY = {
     capColumns: { capability: 'Capability', seats: 'Seats' },
     enabled: 'enabled',
     notLicensed: 'not licensed',
-    seats: (enabled: number, consumed: number) => `${enabled} (${consumed} assigned)`,
+    seats: (enabled: number, consumed: number) => `${figure(enabled)} (${figure(consumed)} assigned)`,
     none: '—',
   },
   apps: {
