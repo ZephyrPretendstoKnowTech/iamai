@@ -250,7 +250,7 @@ test('tile 3, Scan, complete with sections it did not read in full: the same com
 })
 
 test('every section label the unread list can name is a phrase, never a Graph key', () => {
-  const every = [...CONFIG_KEYS.map((k) => `config:${k}`), ...SOURCE_KEYS]
+  const every = [...CONFIG_KEYS.map((k) => `config:${k}`), ...SOURCE_KEYS, 'recoveryAudit']
   const t = scanTile({ kind: 'complete', at: full.asOf, now: twoMinutesLater, unread: every.map((source) => ({ source, partial: false, refused: false })) })
   for (const row of t.rows ?? []) assert.doesNotMatch(row.name, /^config:|^[a-z]+[A-Z]/, `${row.name} reaches the operator as its Graph key`)
 })
@@ -674,4 +674,21 @@ test('the Scan tile states no scan duration it cannot know, before sign-in or af
   assert.equal(sample.state, 'after sign-in')
   assert.equal(ready.note, 'The scan is processed in this browser; nothing is uploaded to IAMAI.')
   for (const t of [sample, ready]) for (const s of [t.state, t.note ?? '']) assert.doesNotMatch(s, /minute|hour|second/i, s)
+})
+
+// Phase 2 audit (Connect): the directory audit read, which every automatic
+// recovery-test check needs, was never on the unread list: a scan whose audit
+// read failed read "complete" with nothing listed. It is listed like any other
+// section the scan did not read, with its own label.
+test('a directory audit read that failed is listed with the sections the scan did not read', () => {
+  const s = structuredClone(fixture('small').snapshot)
+  assert.deepEqual(unreadSources(s), [], 'the premise: the fixture read everything')
+  s.recoveryAuditSource = { status: 'error', reason: 'Directory audit evidence could not be read: access denied (403)', coveredWindow: null, asOf: s.asOf }
+  assert.deepEqual(unreadSources(s), [{ source: 'recoveryAudit', partial: false, refused: true }])
+  const t = scanTile({ kind: 'complete', at: full.asOf, unread: unreadSources(s) })
+  assert.deepEqual(t.rows, [{ name: 'Directory audit log', value: 'refused to this account' }])
+  assert.match(t.lead ?? '', /^1 section was not read in full/)
+  // A scan from before the read existed recorded no state for it, and is not said to have failed it.
+  delete s.recoveryAuditSource
+  assert.deepEqual(unreadSources(s), [])
 })

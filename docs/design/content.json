@@ -1672,7 +1672,9 @@
           "spActivity": "Service principal activity",
           "authMethods": "Registered methods",
           "appSignInSummary": "App usage",
-          "signInEvidence": "Sign-in records"
+          "signInEvidence": "Sign-in records",
+          "$commentRecoveryAudit": "Phase 2 audit (Connect): the directory audit read (graph/collect/laneB.ts), which every automatic recovery-test check needs, was never on the unread list, so a scan whose audit read failed read complete with nothing listed. coreSections.ts unreadSources now lists it under this label.",
+          "recoveryAudit": "Directory audit log"
         }
       },
       "connect": {
