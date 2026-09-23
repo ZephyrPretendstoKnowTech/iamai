@@ -35,7 +35,7 @@ import { stepVars, withoutScheduleDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { portalNamesFor, unwrittenCorrectionLines } from './stepPortal.ts'
 import { preparationLines, preparesWhileCreateWaits, rescanLinesOf, stepInstructions, wholeLines } from './stepInstructions.ts'
-import { CONTRACT, SETTLED_FINDINGS, eyebrowOf, implementationEmptyOf, implementationIsCurrent, isReadinessWork, proceduresAreReference, railOf, readinessOf, stepContract } from './stepContract.ts'
+import { CONTRACT, SETTLED_FINDINGS, eyebrowOf, implementationEmptyOf, implementationIsCurrent, isReadinessWork, objectTaskLeads, proceduresAreReference, railOf, readinessOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
 import { boardHolds, laneViewAlone } from './planBoard.ts'
 import { DECISION_HEAD, HEAD, taskHeadingsOf } from './stepHeadings.ts'
@@ -187,12 +187,10 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
 function withObjectTask(step: Step, own: StepBody, task: StepBody): StepBody {
   const taskStep = step.objectTask!
   // While the object is still to be made it is the step's next task, so its
-  // Implementation leads (the policy's own procedure follows as the next task);
-  // once the scan finds it in place, the policy's Implementation is the step's.
-  // Not while the step still asks its question: the object is made from the
-  // answer (the countries location from the saved work countries), and until
-  // it is saved the step offers nothing to make.
-  const leads = !taskStep.state.satisfied && !step.state.satisfied && step.state.condition !== 'needs-decision'
+  // Implementation leads (the policy's own procedure follows as the next task),
+  // and the exports put its lines first the same way (stepContract.ts
+  // objectTaskLeads).
+  const leads = objectTaskLeads(step)
   // The object's picker, saved under its own id, where the step asks nothing of its own.
   const taskDecision = !own.decides && task.decides ? { d: task.d, ex: task.ex, stepId: taskStep.id } : null
   const taskLead: WhoBlock[] = task.lead ? [{ key: `${taskStep.id}:lead`, lead: task.lead, names: [] }] : []

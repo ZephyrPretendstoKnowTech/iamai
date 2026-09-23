@@ -17,7 +17,7 @@ import { stepVars, withoutScheduleDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor, unwrittenCorrectionLines } from './stepPortal.ts'
 import { instructionsHeld, preparationLines, preparesWhileCreateWaits, rescanLinesOf, wholeLines } from './stepInstructions.ts'
-import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, proceduresAreReference, readinessHeldLine, stepContract } from './stepContract.ts'
+import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, objectTaskLeads, proceduresAreReference, readinessHeldLine, stepContract } from './stepContract.ts'
 import type { LaneView, PrerequisiteLabel, StepContract } from './stepContract.ts'
 import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, previewNoteLines, selectedPolicyBodiesOf, entraWithSettings } from './stepPackage.ts'
 import { projectSafely } from '../../content/implementation/project.ts'
@@ -536,6 +536,18 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
     // The export opens with the screen's action, as every artifact does (013.A).
     if (action.trim().length > 0 && !lines.includes(action)) lines.unshift(action)
   }
+  // The object the step makes itself, while it leads the screen's Implementation
+  // (stepContract.ts objectTaskLeads; Stage 3): its own export lines, word for
+  // word, ahead of the policy's, as its step exported them before it merged —
+  // the countries location's "+ Countries location", its name, its unknown
+  // countries and its trusted-mark lines on the countries policy. The action
+  // and what it waits on still open the export (013.A).
+  if (objectTaskLeads(step)) {
+    const task = stepExportView(step.objectTask!, ctx).whatToDo
+    const head = [action, gate].filter((l): l is string => l !== null && l.trim().length > 0)
+    const ordered = [...new Set([...head, ...task, ...lines])]
+    lines.splice(0, lines.length, ...ordered)
+  }
   // The completion, from the contract, for every step. Nothing here implies the
   // policy can be rolled out while it cannot be written: where a reason holds
   // it, the contract's completion is what would *clear the reason*
@@ -547,7 +559,9 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   const doneWhen = contract.doneWhen
   return {
     title: contentTitle(step),
-    why: typeof cs.why === 'string' ? fillText(cs.why, ex) : contract.why,
+    // A step that makes an object itself says the object's About sentence first,
+    // as the screen does (stepContract.ts: the contract's why leads with it).
+    why: step.objectTask === undefined && typeof cs.why === 'string' ? fillText(cs.why, ex) : contract.why,
     ...shell,
     whatToDo: namedPortalResource({ id: 'portal', form: 'list', lines, text: () => lines.join('\n'), note: null }, ctx).lines,
     doneWhen,

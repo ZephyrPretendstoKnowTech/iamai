@@ -194,6 +194,53 @@ test('6.3 offers its location task as its implementation: no Unavailable tile or
   for (const line of said) assert.ok(!line.includes(RETIRED_TITLE), `names the retired step: ${line}`)
 })
 
+test('6.3’s exports carry the location task’s About sentence and procedure ahead of the policy’s, word for word, on every channel', async () => {
+  const { withDirectionApproved } = await import('../../roadmap/fixtures/run.ts')
+  const { boardOf, boardOrderOf } = await import('./planBoard.ts')
+  const { planDates } = await import('./stepVars.ts')
+  const { exportCleanupViewsOf, exportHoldOf, exportViewsOf, stepExportView } = await import('./stepExport.ts')
+  const { buildIcs } = await import('../../roadmap/ics.ts')
+  const { groundingBundle, promptPack } = await import('../../roadmap/prompts.ts')
+  // The Export page's own construction (Export.tsx): the board once, its hold, the dates, the views.
+  const f = withDirectionApproved(withFoundationSettled(curatedFixture('getiamai')))
+  const r = runFixture(f, {}, null, f.snapshot.asOf)
+  const board = boardOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
+  const held = exportHoldOf(board)
+  const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot, held)
+  const ctxOf = (s: Step): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: s.reportOnlyAt ?? null, groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming })
+  const view = exportViewsOf(board, ctxOf)
+  const geo = geoOf(r.steps)
+  assert.equal(geo.objectTask?.state.satisfied, false, 'the premise: getiamai has no countries location yet')
+  const v = view(geo)
+  // The location task's own export lines, which its step used to export.
+  const task = stepExportView(geo.objectTask!, ctxOf(geo))
+  for (const line of ['+ Countries location', 'Name it CA - Allowed - Countries', 'Leave "Include unknown countries/regions" off', 'A countries location carries no trusted mark']) {
+    assert.ok(task.whatToDo.some((l) => l.includes(line)), `the premise: the location task exports "${line}"`)
+  }
+  // The view: the task's About sentence leads the policy's, and its lines lead the policy's procedure.
+  assert.ok(v.why.startsWith(task.why), `the About sentence: ${v.why}`)
+  assert.deepEqual(v.whatToDo.slice(0, task.whatToDo.length), task.whatToDo, `the task's lines do not lead: ${v.whatToDo.join(' | ')}`)
+  assert.ok(v.whatToDo.length > task.whatToDo.length, 'the policy\'s own procedure is gone')
+  for (const line of [...v.whatToDo, v.why]) assert.ok(!line.includes(RETIRED_TITLE), `names the retired step: ${line}`)
+  // Every channel that reads the view carries the moved words as they are.
+  const moved = [task.why, ...task.whatToDo]
+  const cleanup = exportCleanupViewsOf(board, r.steps, r.schedule.cleanup)
+  const order = boardOrderOf(board.rows.map((x) => x.item))
+  const unescape = (text: string): string => text.replace(/\r\n /g, '').replace(/\\n/g, '\n').replace(/\\([,;\\])/g, '$1')
+  const ics = unescape(buildIcs(r.steps, 'Tenant', 'plan', view, cleanup, order))
+  const entry = ics.split('BEGIN:VEVENT').find((e) => e.includes(`UID:plan-${GEO}@iamai`))
+  assert.ok(entry, 'the premise: the calendar books 6.3')
+  const pack = promptPack({ view, tenant: 'Tenant', steps: r.steps, schedule: r.schedule, changeRecord: '', announcement: null, cleanup, order }).map((p) => p.prompt).join('\n')
+  const bundle = groundingBundle({ view, tenant: 'Tenant', snapshot: f.snapshot, coverage: r.coverage, steps: r.steps, schedule: r.schedule, redacted: false, generated: 'today', cleanup, groups: f.groups, order }) as { plan: { steps: { id: string; why?: string; whatToDo?: string[] }[] } }
+  const bundled = bundle.plan.steps.find((s) => s.id === GEO)
+  assert.ok(bundled, 'the premise: the bundle carries 6.3')
+  for (const line of moved) {
+    assert.ok(entry.includes(line), `the calendar entry drops "${line}"`)
+    assert.ok(pack.includes(line), `the prompt pack drops "${line}"`)
+    assert.ok(JSON.stringify(bundled).includes(JSON.stringify(line).slice(1, -1)), `the grounding bundle drops "${line}"`)
+  }
+})
+
 test('the countries location package is folded into the countries block package, tasks first, and compiles to the same two packages', () => {
   const dir = 'docs/implementation-content/s-goal-geo-restriction/s-goal-geo-restriction'
   assert.equal(existsSync('docs/implementation-content/s-prereq-allowed-countries'), false, 'the location still has a package folder of its own')
