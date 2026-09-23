@@ -35,7 +35,7 @@ const WHERE_SIGN_IN = [
   's-goal-workload-identity-block',
 ]
 
-/** The three objects a Direction answer asks for, which sit among the objects before any policy (owner, 2026-09-20; roadmap flow section 3). */
+/** The three objects a Direction answer asks for, drawn among the objects above the policies (owner, 2026-09-20; roadmap flow section 3). A policy's create waits only on the object it names. */
 const PREPARE_OBJECTS = [
   's-prereq-trusted-location',
   's-prereq-allowed-countries',
@@ -115,11 +115,11 @@ function checkedOn(stepId: string): string {
 // The group itself
 // ---------------------------------------------------------------------------
 
-test('the spec’s three policies close the doors, and the objects they reference are prepared before any policy', () => {
+test('the spec’s three policies close the doors, and the objects they reference are drawn above the policies', () => {
   assert.deepEqual(WHERE_SIGN_IN.map((id) => groupOf(id)?.key), ['remaining-doors', 'remaining-doors', 'remaining-doors'])
   assert.deepEqual(PREPARE_OBJECTS.map((id) => groupOf(id)?.key), ['prepare', 'prepare', 'prepare'])
-  // The spec's six steps are still the same six steps, read in the same order:
-  // the objects first, then the policies that reference them.
+  // The spec's six steps are still the same six steps: the objects drawn
+  // above the policies that reference them.
   assert.deepEqual([...PREPARE_OBJECTS, ...WHERE_SIGN_IN].sort(), ['s-goal-geo-restriction', 's-goal-service-accounts-trusted-network', 's-goal-workload-identity-block', 's-prereq-allowed-countries', 's-prereq-service-accounts-group', 's-prereq-trusted-location'])
 })
 
