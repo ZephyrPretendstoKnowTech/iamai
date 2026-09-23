@@ -85,6 +85,7 @@ test('nothing but lifecycle.ts assigns a status', () => {
     'src/graph/spikes/authMethods.ts': { n: 1, why: 'a dev spike recording a response status' },
     'src/graph/spikes/reportsCheck.ts': { n: 1, why: 'a dev spike recording a response status' },
     'src/graph/spikes/spike1Extended.ts': { n: 3, why: 'a dev spike recording a response status' },
+    'src/testing/laneBHeapProbe.ts': { n: 1, why: 'a test probe setting the status of a synthetic sign-in record' },
   }
   const counted: Record<string, number> = {}
   const walk = (dir: string): void => {
