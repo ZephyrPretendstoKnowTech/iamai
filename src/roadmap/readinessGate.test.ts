@@ -113,7 +113,11 @@ test('1: device readiness 29% against the 80% the step asks for enforces nothing
 
   // And with the tenant already enforcing that policy, the change to it is an
   // enforcement the moment it is submitted — so no channel offers it at all.
-  const enforcing = largeDevices({ enabled: true })
+  // The change is one the policy really owes (`owesCorrection`): on the fixture
+  // as shipped, the enforced policy already holds everything the step writes, and
+  // its update is empty rather than the Target resources patch identical to what
+  // it holds that this case used to rest on (R4-11, generate.ts settleSections).
+  const enforcing = largeDevices({ enabled: true, owesCorrection: true })
   const op = enforcing.step.action.resolution!.policies[0]
   assert.equal(op.mode, 'update')
   assert.equal((op.target as Row).state, 'enabled', 'the tenant already enforces this policy')
@@ -166,7 +170,9 @@ test('2b: a new policy is always a report-only preparation, so a readiness hold 
 // ---- 3: met, and the hold lifts ----
 
 test('3: with the threshold reached the same enforcing change is offered and dated', () => {
-  const { step, ctx, r } = largeDevices({ enabled: true, everyoneCompliant: true })
+  // The same real correction as in 1: a patch identical to what the enforced
+  // policy holds is no longer an operation at all (R4-11).
+  const { step, ctx, r } = largeDevices({ enabled: true, everyoneCompliant: true, owesCorrection: true })
   assert.equal(step.readiness.percent, 100, 'every active member holds a compliant device')
   assert.equal(step.action.readinessGate, undefined, 'nothing holds it')
   assert.equal(enforcementHeld(step), false)

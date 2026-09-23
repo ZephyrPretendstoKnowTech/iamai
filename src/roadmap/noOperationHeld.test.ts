@@ -23,9 +23,9 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import type { Fixture } from './fixtures/index.ts'
-import { runFixture } from './fixtures/run.ts'
+import { runFixture, withFoundationSettled } from './fixtures/run.ts'
 import type { FixtureRun } from './fixtures/run.ts'
-import { unavailableReason } from './operations.ts'
+import { implementationOffered, unavailableReason } from './operations.ts'
 import { applyStepDecisions } from './decisions.ts'
 import type { StepDecision } from './decisions.ts'
 import { directionDecisionOf } from './directionAnswers.ts'
@@ -141,4 +141,83 @@ test('a step with no operations at all still asks for the scan that rebuilds it'
   assert.equal(unavailableReason(stale), 'no-operation')
   const c = stepContract(stale, run.ctx)
   assert.match(c.implementation.offered ? '' : c.implementation.because ?? '', REBUILD)
+})
+
+// ---- An enforced policy's update carries no section it already holds ----
+//
+// 1a3fdc42 dropped a section the target already holds only where it could offer
+// the switch instead. For an enforced policy the section stayed, and the update
+// was a correction that changed nothing: token protection, enforced exactly as
+// its step asked (getiamai, small, large, the demo's second week, both
+// baselines), came back on every scan as a Target resources patch identical to
+// what the policy holds, in lane Ready and handed over as work; large's device
+// policy, once on, came back as Office365 -> Office365, withheld behind a
+// readiness tile about turning on a policy that was already on.
+
+/** The tenant with one policy's row changed, scanned. */
+function withRow(f: Fixture, id: string, change: (row: Row) => Row): { r: FixtureRun; ctx: StepVarContext } {
+  const ca = f.snapshot.config.caPolicies!
+  const rows = (ca.rows as Row[]).map((p) => (p.id === id ? change(p) : p))
+  const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows } } } as Fixture['snapshot']
+  const r = runFixture({ ...f, snapshot }, { snapshot } as never)
+  return { r, ctx: { snapshot, mapping: f.mapping, nameOf: (x) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming } }
+}
+
+test('R4-11: token protection, enforced as its step asked, is not handed over again as a correction that changes nothing', () => {
+  const f = withFoundationSettled(fixture('demo-week2'))
+  const TOKEN = 's-goal-token-protection'
+  // The first scan: the goal's own policy in report-only, and the update the switch.
+  const op = runFixture(f).steps.find((s) => s.id === TOKEN)!.action.resolution!.policies[0]
+  assert.deepEqual([op.mode, op.body], ['update', { state: 'enabled' }], 'premise: the switch')
+  // The person turns it on, and scans again.
+  const { r, ctx } = withRow(f, String(op.policyId), (p) => ({ ...p, state: 'enabled', modifiedDateTime: f.snapshot.asOf }))
+  const step = r.steps.find((s) => s.id === TOKEN)!
+  const cov = r.coverage.results.find((x) => x.goal.id === step.goalId)!
+  // Premise: coverage still reads a gap in the policy's applications, and the policy holds the baseline's.
+  assert.ok(cov.reasons.some((x) => x.kind === 'apps-narrower' && !x.expected), `premise: ${JSON.stringify(cov.reasons.map((x) => x.kind))}`)
+  assert.deepEqual((step.action.resolution?.policies ?? []).map((o) => [o.mode, o.policyId, o.body]), [['update', op.policyId, {}]], 'nothing the policy already holds is submitted')
+  assert.equal(implementationOffered(step), false, 'nothing is handed over as work')
+  assert.equal(unavailableReason(step), 'no-operation')
+  const c = stepContract(step, ctx)
+  const because = c.implementation.offered ? '' : c.implementation.because ?? ''
+  assert.match(because, /Core - Session - Token protection/, because)
+  assert.match(because, /nothing to submit/, because)
+  assert.doesNotMatch(because, REBUILD)
+  assert.doesNotMatch(c.doneWhen.join(' '), REBUILD)
+})
+
+test('R4-11: large\'s device policy, once on, is not offered a Target resources patch it already holds', () => {
+  const f = withFoundationSettled(fixture('large'))
+  const before = runFixture(f).steps.find((s) => s.id === DEVICE)!.action.resolution!.policies[0]
+  assert.deepEqual([before.mode, before.body], ['update', { state: 'enabled' }], 'premise: the switch')
+  const { r, ctx } = withRow(f, String(before.policyId), (p) => ({ ...p, state: 'enabled', modifiedDateTime: f.snapshot.asOf }))
+  const step = r.steps.find((s) => s.id === DEVICE)!
+  const ops = step.action.resolution?.policies ?? []
+  assert.deepEqual(ops.map((o) => [o.mode, o.body]), [['update', {}]], `nothing it already holds is submitted: ${JSON.stringify(ops.map((o) => o.body))}`)
+  // What is left is the platforms the device decision leaves out, which the
+  // tenant's policy does not, and which no update writes: a person's correction.
+  assert.equal(unavailableReason(step), 'manual-correction')
+  const c = stepContract(step, ctx)
+  const said = [c.implementation.offered ? '' : c.implementation.because ?? '', ...c.doneWhen].join(' ')
+  assert.doesNotMatch(said, /turns the policy on/, 'no hold about turning on a policy that is already on')
+  assert.doesNotMatch(said, REBUILD)
+})
+
+test('R4-11: a pair with a half still to create keeps its update to the other half, even where that half holds everything', () => {
+  // An empty update is no operation, and one invalid operation withholds the
+  // whole step's (operations.ts validOperations): the create would go with it.
+  const base = fixture('demo')
+  const ca = base.snapshot.config.caPolicies!
+  const empty = { ...base, snapshot: { ...base.snapshot, config: { ...base.snapshot.config, caPolicies: { ...ca, rows: [] } } } } as Fixture
+  const pair = runFixture(empty).steps.find((s) => (s.action.resolution?.policies ?? []).length > 1)
+  assert.ok(pair, 'premise: a goal the baseline implements with two policies')
+  const half = { ...structuredClone(pair.action.resolution!.policies[0].body) as Row, id: POLICY, state: 'enabled', createdDateTime: base.snapshot.asOf, modifiedDateTime: base.snapshot.asOf }
+  const snapshot = { ...empty.snapshot, config: { ...empty.snapshot.config, caPolicies: { ...ca, rows: [half] } } } as Fixture['snapshot']
+  const r = runFixture({ ...empty, snapshot }, { snapshot } as never)
+  const step = r.steps.find((s) => s.id === pair.id)!
+  const ops = step.action.resolution?.policies ?? []
+  assert.deepEqual(ops.map((o) => o.mode).sort(), ['create', 'update'], `premise: one half to create, one to update: ${JSON.stringify(ops.map((o) => [o.mode, o.body]))}`)
+  const update = ops.find((o) => o.mode === 'update')!
+  assert.notDeepEqual(update.body, {}, 'the update keeps what it carried')
+  assert.notEqual(unavailableReason(step), 'no-operation', 'and the create is not withheld with it')
 })
