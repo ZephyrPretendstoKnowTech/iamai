@@ -193,7 +193,7 @@ export const RULE_TEXT: Record<string, { what: string; why: string; label?: stri
   // ---- break-glass, blockers ----
   'bg.count': {
     what: 'At least two emergency access accounts are nominated.',
-    why: 'One account is a single point of failure: a lost key or a forgotten passphrase leaves nobody able to get back in.',
+    why: 'One account is a single point of failure: a lost key or a forgotten passphrase leaves nobody able to get back in. With no account confirmed this holds the rollout; with one, the second is resilience hardening, which the rollout waits on until it is added or deferred to Cleanup.',
   },
   'bg.role.permanentGa': {
     what: 'Global Administrator is assigned permanently and active, not only eligible through PIM.',

@@ -485,10 +485,13 @@ const bgHasMfaMethod: ValidationRule = {
   },
 }
 
+// A warning, not a blocker: the plan's tier decides what holds the rollout
+// (emergencyTiers.ts), and a shared device is hardening that holds nothing. As a
+// blocker How called it Must fix, which says the plan holds on it (Phase 2 audit).
 const bgSeparateDevices: ValidationRule = {
   id: 'bg.separateDevices',
   subject: 'breakGlass',
-  severity: 'blocker',
+  severity: 'warning',
   needs: ['authMethods'],
   evaluate: (id, ctx) => {
     const methods = methodsOf(ctx, id)
@@ -510,10 +513,11 @@ const bgSeparateDevices: ValidationRule = {
   },
 }
 
+// A warning for the same reason as bg.separateDevices: hardening, never a minimum.
 const bgNotPersonal: ValidationRule = {
   id: 'bg.notPersonal',
   subject: 'breakGlass',
-  severity: 'blocker',
+  severity: 'warning',
   needs: ['users'],
   evaluate: (id, ctx) => {
     if (ctx.operatorUserId !== null && ctx.operatorUserId === id) return fail(F.bgPersonalOperator, { attribute: 'your own account' })

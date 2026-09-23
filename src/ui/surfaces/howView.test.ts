@@ -4,6 +4,10 @@ import assert from 'node:assert/strict'
 import { howCheckTables } from './howView.ts'
 import { EVALUATED_SUBJECTS } from '../../validation/report.ts'
 import { engine } from '../../content/content.ts'
+import { REGISTRY } from '../../validation/rules.ts'
+import type { RuleResult } from '../../validation/rules.ts'
+import { emergencyTierOf } from '../../validation/emergencyTiers.ts'
+import { SEVERITY } from '../../copy/validation.ts'
 
 // "Every check IAMAI runs" listed seven pilot-group rows and three
 // authentication-strength rows that no plan evaluates (generate.ts builds
@@ -23,4 +27,23 @@ test('Every check lists the rule subjects the plan evaluates, and the static rul
     assert.ok(r.what.length > 0 && r.why.length > 0, `${r.id} says what it looks for and why`)
     assert.doesNotMatch(r.what, /\{policy\}/, `${r.id} shows a template slot`)
   }
+})
+
+// Emergency access is decided in two tiers (validation/emergencyTiers.ts, owner
+// 2026-09-11), not by rule severity: How called a shared Authenticator device and
+// a populated profile field "Must fix" — the plan holds every step that can deny
+// access — while the plan holds nothing on either (Phase 2 audit, How).
+test('How calls an emergency-access check Must fix only where the plan’s tier holds the rollout on it', () => {
+  const bg = howCheckTables().find((t) => t.key === 'breakGlass')
+  assert.ok(bg)
+  for (const row of bg.rows) {
+    const rule = REGISTRY.find((r) => r.id === row.id)
+    assert.ok(rule)
+    const failed = { id: row.id, subject: 'breakGlass', severity: rule.severity, outcome: 'fail', target: null } as RuleResult
+    const minimum = emergencyTierOf(failed, 0) === 'minimum'
+    assert.equal(row.severityLabel === SEVERITY.blocker, minimum, `${row.id}: How says ${row.severityLabel}; the plan's tier with no account confirmed is ${emergencyTierOf(failed, 0)}`)
+  }
+  // bg.count is the one check whose tier moves: it holds the rollout with no
+  // account confirmed and is hardening with one, and its row says so.
+  assert.match(bg.rows.find((r) => r.id === 'bg.count')?.why ?? '', /deferred/)
 })
