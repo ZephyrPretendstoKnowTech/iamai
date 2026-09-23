@@ -23,13 +23,9 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import type { Fixture } from './fixtures/index.ts'
-import { runFixture, withFoundationSettled } from './fixtures/run.ts'
+import { runFixture, withDirectionApproved, withFoundationSettled } from './fixtures/run.ts'
 import type { FixtureRun } from './fixtures/run.ts'
 import { implementationOffered, unavailableReason } from './operations.ts'
-import { applyStepDecisions } from './decisions.ts'
-import type { StepDecision } from './decisions.ts'
-import { directionDecisionOf } from './directionAnswers.ts'
-import type { DirectionAnswer } from './directionAnswers.ts'
 import { excludedPlatforms } from './deviations.ts'
 import { BLOCKED_REASON } from '../copy/reasons.ts'
 import { stepContract } from '../ui/surfaces/stepContract.ts'
@@ -42,20 +38,6 @@ const POLICY = 'c0100000-0000-4000-8000-0000000000d1'
 const REBUILD = /rebuild/i
 
 type Row = Record<string, unknown> & { conditions?: Record<string, unknown> }
-
-/** Every Direction question answered with IAMAI's own suggestion, the way the careful administrator saves them. */
-function directionAccepted(f: Fixture): Fixture {
-  const r = runFixture(f)
-  const decisions: Record<string, StepDecision> = {}
-  for (const step of r.steps) {
-    const questions = step.directionQuestions ?? []
-    if (questions.length === 0) continue
-    const values: Record<string, DirectionAnswer> = {}
-    for (const q of questions) values[q.key] = { value: q.suggested.value, picked: [...q.suggested.picked] }
-    decisions[step.id] = { ...directionDecisionOf(values), at: f.snapshot.asOf }
-  }
-  return { ...f, decisions, mapping: applyStepDecisions(f.mapping, decisions) } as Fixture
-}
 
 /** The tenant with `row` among its policies, scanned. */
 function scanned(f: Fixture, row: Row): { f: Fixture; r: FixtureRun; step: Step; ctx: StepVarContext } {
@@ -114,7 +96,7 @@ function assertHeld(run: ReturnType<typeof scanned>, name: string, label: string
 
 test('R4-11: the demo\'s device policy, turned on as the step asked, is not a step a scan rebuilds', () => {
   // The device decision (IAMAI's own suggestion) leaves phones out of the policy.
-  const f = directionAccepted(fixture('demo-week2'))
+  const f = withDirectionApproved(fixture('demo-week2'))
   assert.deepEqual(excludedPlatforms(f.mapping), ['android', 'iOS'], 'premise: the decision leaves phones out')
   const body = created(f)
   assert.deepEqual((body.conditions?.platforms as { excludePlatforms?: string[] } | undefined)?.excludePlatforms, ['android', 'iOS'], 'premise: the step writes the decision')
@@ -124,7 +106,7 @@ test('R4-11: the demo\'s device policy, turned on as the step asked, is not a st
 })
 
 test('R4-11: a tenant\'s own enforced compliant-device policy that leaves phones out, as decided, says the same on its first scan', () => {
-  const f = directionAccepted(fixture('demo-week2'))
+  const f = withDirectionApproved(fixture('demo-week2'))
   const body = created(f)
   const name = 'Contoso - Compliant device, computers'
   const conditions = { ...(body.conditions ?? {}), platforms: { includePlatforms: ['all'], excludePlatforms: ['android', 'iOS'] } }
