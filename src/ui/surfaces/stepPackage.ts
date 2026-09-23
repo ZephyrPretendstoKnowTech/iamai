@@ -1065,14 +1065,15 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   // list that silently drops people is worse here than no list at all.
   const affectedNames = (affected?.names ?? []).map(accountLabel)
   if (affectedNames.length > 0 && affectedNames.every((l): l is string => l !== null)) put('people.affected.summary', affectedNames.join(', '))
-  // The fixes are sentences, and every template ends the binding with its own
-  // stop ("Blockers: {{dependencies.blockers}}. Resolve …"), so they are bound
-  // as one run of sentences without the last one's stop. Bound as a list they
-  // read "Finish Configure Passkey Authentication first.. Resolve these …"
-  // (Phase 2 export finding 18). A fix with no stop of its own gets one, or it
-  // runs into the next: "… exists (now 0) Finish Configure Passkey
-  // Authentication first" (midflight).
-  put('dependencies.blockers', c.fix.length > 0 ? c.fix.map((f) => f.text.trim()).map((t) => (/[.!?]$/.test(t) ? t : `${t}.`)).join(' ').replace(/\.$/, '') : undefined)
+  // The fixes are bound as one run of whole sentences, each with its stop. A fix
+  // with no stop of its own gets one, or it runs into the next: "… exists
+  // (now 0) Finish Configure Passkey Authentication first" (midflight). Some
+  // templates add a stop after the binding ("Blockers: {{dependencies.blockers}}.
+  // Resolve …") and some end the line with it ("- Existing blockers:
+  // {{dependencies.blockers}} [omit if unavailable]"), so the last stop is the
+  // binding's, and the renderer drops a template's stop after a value that
+  // already ends a sentence (project.ts bindText; Phase 2 export finding 18).
+  put('dependencies.blockers', c.fix.length > 0 ? c.fix.map((f) => f.text.trim()).map((t) => (/[.!?]$/.test(t) ? t : `${t}.`)).join(' ') : undefined)
   return out
 }
 
