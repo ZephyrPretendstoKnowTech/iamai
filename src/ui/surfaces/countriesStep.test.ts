@@ -78,15 +78,22 @@ test('6.3 reads Needs decision while no work country is saved', () => {
   assert.notEqual(saved.state.condition, 'needs-decision', 'a saved country list still reads Needs decision')
 })
 
-test('the lockout checks show on 6.3, and a blocking one holds its turn-on, never its report-only creation', () => {
+test('the lockout checks show on 6.3; only the blocking one holds its turn-on, never its report-only creation, and the three warnings hold nothing', () => {
   // The countries people sign in from, your own country, unknown countries: the
-  // checks the location step carried (they were dropped once it was gone).
+  // checks the location step carried (they were dropped once it was gone). In
+  // v1.0 they are warnings: each draws as Needs Correction and holds nothing
+  // (owner, 2026-09-23; gating the turn-on on them is on the v1.1 list).
   for (const name of ['getiamai', 'mid', 'demo-week2'] as FixtureName[]) {
     const r = runFixture(withFoundationSettled(curatedFixture(name)))
-    const checks = (geoOf(r.steps).configurationFindings ?? []).filter((f) => f.key.startsWith('cty.'))
+    const geo = geoOf(r.steps)
+    const checks = (geo.configurationFindings ?? []).filter((f) => f.key.startsWith('cty.'))
     assert.ok(checks.length > 0, `${name}: no lockout check shows on 6.3`)
     for (const c of checks) assert.ok(['cty.seenCountriesIncluded', 'cty.includesOperator', 'cty.unknownCountries', 'cty.atLeastOne'].some((k) => c.key.startsWith(`${k}:`)), c.key)
+    if (!checks.some((c) => c.key.startsWith('cty.atLeastOne:'))) assert.ok(!geo.blockers.some((b) => b.label === 'countries-unsafe'), `${name}: a warning holds the turn-on`)
   }
+  const warned = geoOf(runFixture(withFoundationSettled(curatedFixture('getiamai'))).steps)
+  assert.ok((warned.configurationFindings ?? []).some((c) => c.key.startsWith('cty.unknownCountries:') && c.outcome !== 'pass'), 'the premise: getiamai fails a warning')
+  assert.deepEqual(warned.blockers, [], 'a failing warning holds 6.3')
   // A blocking check (an empty confirmed list) holds the turn-on as it held the
   // location step, as a gate: the create in report-only is not held, and 6.3
   // never reads Completed over it. An empty list is also no work country saved,

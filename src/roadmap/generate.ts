@@ -2885,9 +2885,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       setState(geoStep, { condition: 'needs-decision' })
     }
   }
-  // Its checks — the countries people sign in from, your own, unknown countries —
-  // are 6.3's (blockerSteps.ts attachConfigurationFindings, through the
-  // location's old repair id): a failing one keeps it from reading Completed.
+  // Its checks are 6.3's (blockerSteps.ts attachConfigurationFindings, through
+  // the location's old repair id). Only the blocking one, a list with no
+  // country in it (cty.atLeastOne), keeps it from reading Completed and holds
+  // its turn-on (countries-unsafe, below). The three warnings — the countries
+  // people sign in from, your own, unknown countries — draw as Needs
+  // Correction and hold nothing in v1.0 (owner, 2026-09-23; gating the turn-on
+  // on the first two is on docs/plans/roadmap-flow/v1.1-list.md).
   attachConfigurationFindings(steps, validationReports.filter((r) => r.subject === 'allowedCountries'))
 
   // 2. No country block before the operator's own recent countries are in the
