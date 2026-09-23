@@ -24,6 +24,7 @@ import { fixture } from '../../roadmap/fixtures/index.ts'
 import { conditionalAccessLicenceLine } from '../../derive/notLicensed.ts'
 import { readFileSync } from 'node:fs'
 import { fillText } from '../../content/render.ts'
+import { signInProofRead } from '../../scoring/fromSnapshot.ts'
 
 const upn = 'alex@example.com'
 const tenant = 'Contoso Pty Ltd'
@@ -236,7 +237,7 @@ test('tile 3, Scan, complete with sections it did not read in full: the same com
   })
   assert.equal(t.state, 'complete · 2 minutes ago', 'a plan was built: the scan is complete and says so')
   assert.equal(t.tone, 'done', 'not a failure, and not the gaps tile')
-  assert.equal(t.lead, '3 sections were not read in full. The plan is built from what IAMAI did read, so check these before you act on it.')
+  assert.equal(t.lead, '3 sections were not read in full. The plan is built from what IAMAI did read, so check what is listed under Scan before you act on it.')
   assert.deepEqual(t.rows, [
     { name: 'Conditional Access policies', value: 'partly read' },
     { name: 'Role assignments', value: 'not read' },
@@ -679,6 +680,29 @@ test('the ready strip carries the complete scan’s own caveat instead of saying
   const both = scanTile({ kind: 'complete', at: full.asOf, degraded: true, unread: [{ source: 'devices', partial: false, refused: false }] })
   assert.equal(connectStatus([true, true, true, true], [t1, t2, both, t4]).text, `${both.lead} ${both.note}`)
   for (const s of [withUnread, connectStatus([true, true, true, true], [t1, t2, both, t4])]) assert.doesNotMatch(s.text, /scan are ready/)
+})
+
+// Phase 2 review, round 2: the strip carried the complete lead "…so check these
+// before you act on it", and in the strip "these" points at rows that exist only
+// in the Scan step; with one section it was also plural for one. Every beta
+// visitor reads it: the demo scan read one section in part. The sentence now
+// reads the same with any count, in the strip or the step.
+test('the complete lead reads as one for one section, and points at the Scan step from the strip', () => {
+  const one = scanTile({ kind: 'complete', at: full.asOf, unread: [{ source: 'devices', partial: false, refused: false }] })
+  assert.equal(one.lead, '1 section was not read in full. The plan is built from what IAMAI did read, so check what is listed under Scan before you act on it.')
+  assert.doesNotMatch(one.lead ?? '', /\b(these|them|those)\b/, 'no pronoun that counts the sections, or points at rows the strip does not draw')
+  const t1 = accountTile({ tenant, upn, role: 'Global Reader' })
+  const t2 = baselineTile({ name: 'Jon Hope — Defense in Depth', policyCount: 38, loading: null, update: null, stepsFor })
+  for (const id of ['demo', 'demo-week2'] as const) {
+    const s = fixture(id).snapshot
+    const t3 = scanTile({ kind: 'complete', at: s.asOf, degraded: !signInProofRead(s), unread: unreadSources(s) })
+    const t4 = planTile({ kind: 'ready', at: s.asOf, counts: null })
+    assert.deepEqual(connectStatus([true, true, true, true], [t1, t2, t3, t4]), {
+      tone: 'done',
+      title: 'Ready to plan',
+      text: '1 section was not read in full. The plan is built from what IAMAI did read, so check what is listed under Scan before you act on it.',
+    }, `${id}: the strip every beta visitor reads`)
+  }
 })
 
 // Phase 2 audit (Connect): the scan's meta row printed String(count) beside a
