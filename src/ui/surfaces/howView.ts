@@ -6,7 +6,7 @@
 import { REGISTRY, ruleText, citationFor } from '../../validation/rules.ts'
 import type { RuleSeverity } from '../../validation/rules.ts'
 import { EVALUATED_SUBJECTS } from '../../validation/report.ts'
-import { ATTESTATION_RULES, SEVERITY, SUBJECT, NEED_LABEL, CITATION, FIELD_PRACTICE } from '../../copy/validation.ts'
+import { SEVERITY, SUBJECT, NEED_LABEL, CITATION, FIELD_PRACTICE } from '../../copy/validation.ts'
 import { STATIC_RULE_READS } from '../../roadmap/staticRules.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { COLLECTOR_REGISTRY, capabilityLicence } from '../../graph/collect/registry.ts'
@@ -30,14 +30,21 @@ export type HowCheckRow = {
 
 export type HowCheckTable = { key: string; caption: string; rows: HowCheckRow[] }
 
+/**
+ * A check's Needs cell. A rule that lists no scan evidence reads the plan's
+ * answers alone: the two confirmations, the emergency accounts chosen
+ * (bg.count), the countries chosen (cty.atLeastOne). It printed "nothing",
+ * which read as a fact IAMAI checks without evidence (Phase 2 audit and review).
+ */
 function needsOf(needs: readonly string[]): string {
-  return needs.length === 0 ? 'nothing' : needs.map((n) => NEED_LABEL[n] ?? n).join(', ')
+  return needs.length === 0 ? NEED_LABEL.answers : needs.map((n) => NEED_LABEL[n] ?? n).join(', ')
 }
 
 /**
  * "Every check": one table per rule subject a plan evaluates
- * (validation/report.ts EVALUATED_SUBJECTS), then the static rules the plan runs
- * on the tenant's own policies (roadmap/staticRules.ts, one per engine.staticRules
+ * (validation/report.ts EVALUATED_SUBJECTS), then the prerequisite steps that
+ * check the tenant (PREREQUISITE_READS), then the static rules the plan runs on
+ * the tenant's own policies (roadmap/staticRules.ts, one per engine.staticRules
  * template). The registry's pilot-group and authentication-strength rules are
  * not here: no plan evaluates them, and How listed them as checks IAMAI runs.
  */
@@ -53,9 +60,7 @@ export function howCheckTables(): HowCheckTable[] {
         severity: r.severity,
         severityLabel: SEVERITY[r.severity as RuleSeverity],
         why: ruleText(r.id).why,
-        // A check that passes on the operator's own answer reads nothing from the
-        // tenant; "nothing" read as a fact IAMAI checks (Phase 2 audit).
-        needs: ATTESTATION_RULES.has(r.id) ? NEED_LABEL.answers : needsOf(r.needs),
+        needs: needsOf(r.needs),
         source: !c || c === FIELD_PRACTICE ? { label: CITATION.fieldPracticeShort, url: null } : { label: c.label, url: c.url },
       }
     }),

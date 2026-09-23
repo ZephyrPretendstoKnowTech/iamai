@@ -130,6 +130,20 @@ test('How says which emergency-access checks are the operator’s confirmation, 
   assert.doesNotMatch(licence.what, /daily use|unless something needs one/)
 })
 
+// A rule that lists no scan evidence reads the plan's answers alone: bg.count the
+// emergency accounts chosen, cty.atLeastOne the countries chosen. Its Needs cell
+// printed "nothing", which reads as a fact IAMAI checks without evidence
+// (Phase 2 review).
+test('How’s Needs column never says "nothing": a check that reads no scan evidence reads the plan’s answers', () => {
+  const rows = howCheckTables().flatMap((t) => t.rows)
+  for (const r of rows) assert.notEqual(r.needs, 'nothing', r.id)
+  for (const rule of REGISTRY.filter((r) => r.needs.length === 0 && (EVALUATED_SUBJECTS as readonly string[]).includes(r.subject))) {
+    assert.equal(rows.find((r) => r.id === rule.id)?.needs, NEED_LABEL.answers, rule.id)
+  }
+  assert.equal(rows.find((r) => r.id === 'bg.count')?.needs, NEED_LABEL.answers)
+  assert.equal(rows.find((r) => r.id === 'cty.atLeastOne')?.needs, NEED_LABEL.answers)
+})
+
 // Connect's scan tile lists five limitations, then sends the reader to How for
 // "its limits in full"; How's Limits held five different lines and none of
 // Connect's (Phase 2 audit, How and Connect).
