@@ -8,7 +8,7 @@
 // Pure.
 import type { Explained, ReadinessRow } from '../../derive/mfaReadiness.ts'
 import type { Kind } from '../../derive/ladder.ts'
-import type { SetupCheck } from '../../derive/readinessSetup.ts'
+import type { SetupCheck, SetupKey } from '../../derive/readinessSetup.ts'
 import { AUTHENTICATOR_AAGUIDS, isQualifying } from '../../scoring/phishingResistant.ts'
 import type { CredentialReading, DeviceReading, MethodClass, NextAction, Platform, ReadinessState, SignInOption } from '../../scoring/phishingResistant.ts'
 import { pages } from '../../content/content.ts'
@@ -65,6 +65,7 @@ type Words = {
     why: Record<string, string>
   }
   checks: Record<string, Record<string, string>>
+  rail: { shownAbove: string }
   counted: Record<Explained | Kind | 'dormantLink', string>
   admin: string
   guest: string
@@ -347,6 +348,20 @@ export function checkWords(c: SetupCheck): { line: string; text: string } {
   if (c.outcome === 'note') return { line: W.note, text: '' }
   if (c.outcome === 'unknown') return { line: W.unknown ?? W.fail, text: '' }
   return { line: W.fail, text: W.failText ?? '' }
+}
+
+/**
+ * The Tenant setup tile's remaining checks, each with its line and its own words
+ * where it fails. Every remaining check carries its instruction: a to-do drawn
+ * without it sends the reader the obvious way, and for the migration the
+ * obvious way removes people's only method (checks.migration.$commentFailText).
+ * The check shown above as the next check says so rather than repeat itself.
+ */
+export function railRemaining(remaining: readonly SetupCheck[], shownAbove: SetupKey | null): { key: SetupKey; line: string; text: string }[] {
+  return remaining.map((c) => {
+    const w = checkWords(c)
+    return { key: c.key, line: w.line, text: c.key === shownAbove ? T.rail.shownAbove : w.text }
+  })
 }
 
 /** The CSV row, in the columns' order after the name: role, devices, methods, state, next step. */

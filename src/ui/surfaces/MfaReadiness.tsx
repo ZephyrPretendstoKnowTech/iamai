@@ -42,7 +42,7 @@ import { app, pages, shared } from '../../content/content.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { fillText } from '../../content/render.ts'
 import { monthDay } from '../../copy/dates.ts'
-import { checkWords, deviceChips, listWords, methodsCell, needsActionWords, nextCell, noDevicesWord, osWord, panelDevices, panelMethods, rowCells, rowNote, searchText, signInsUnavailableFor, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine } from './readinessCells.ts'
+import { checkWords, deviceChips, listWords, methodsCell, needsActionWords, nextCell, noDevicesWord, osWord, panelDevices, panelMethods, rowCells, rowNote, searchText, signInsUnavailableFor, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine, railRemaining } from './readinessCells.ts'
 import type { PanelItem } from './readinessCells.ts'
 import { READINESS_CSV } from './inventoryTables.ts'
 import { useAppliedMapping, usePlanData } from './planData.ts'
@@ -592,15 +592,12 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
           <section className="readiness-tile panel" aria-labelledby="readiness-setup">
             <h3 id="readiness-setup">{T.rail.setup}</h3>
             <p className="remain">{remaining.length > 0 ? fillText(T.rail.remaining, { n: remaining.length }) : T.rail.nothing}</p>
-            {remaining[0] && (
-              <>
-                <p className="check">{checkWords(remaining[0]).line}</p>
-                {setupNext && setupNext.key === remaining[0].key ? <p>{T.rail.shownAbove}</p> : checkWords(remaining[0]).text && <p>{checkWords(remaining[0]).text}</p>}
-                {remaining.slice(1).map((c) => (
-                  <p key={c.key} className="check">{checkWords(c).line}</p>
-                ))}
-              </>
-            )}
+            {railRemaining(remaining, setupNext?.key ?? null).map((c) => (
+              <Fragment key={c.key}>
+                <p className="check">{c.line}</p>
+                {c.text && <p>{c.text}</p>}
+              </Fragment>
+            ))}
             <details open={remaining.length === 0 || undefined}>
               <summary>{fillText(T.rail.completed, { n: done.length })}</summary>
               <ul>
