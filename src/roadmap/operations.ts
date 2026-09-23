@@ -1140,15 +1140,26 @@ export function switchedOffPolicies(step: PolicyStep): SwitchedOffPolicy[] {
 
 /**
  * The policies a step hands over to be set to Report-only, in place of
- * anything that would build or turn them on: its switched-off policies, on a
- * step whose reason is that they are switched off. Empty on every other step.
+ * anything that would build or turn them on: its switched-off policies, on an
+ * open step whose reason is that they are switched off, or that an object its
+ * policy names is missing. Empty on every other step.
+ *
+ * `missing-object` outranks `switched-off` (`policyResult`): What to do says
+ * to make the object first. Its channels hand over the procedure that follows,
+ * which is the create where the policy is not in the tenant yet, and was the
+ * create — "Policies > New policy" — beside the policy that is there and Off,
+ * so following it built a second one. Report-only denies nobody, so setting
+ * the one that is there to it is safe whatever else the step waits on. The
+ * reasons above it hand over no procedure for the policy at all.
  *
  * Every channel reads this and nothing else to decide it: the portal lines, the
  * Implementation Task, the patches (`reportOnlyPatchesOf`), the exports and AI
  * Info (ui/surfaces/stepResources.ts switchedOffLines).
  */
 export function toReportOnly(step: PolicyStep): SwitchedOffPolicy[] {
-  return unavailableReason(step) === 'switched-off' ? switchedOffPolicies(step) : []
+  if (step.status === 'done') return []
+  const reason = unavailableReason(step)
+  return reason === 'switched-off' || reason === 'missing-object' ? switchedOffPolicies(step) : []
 }
 
 /**
