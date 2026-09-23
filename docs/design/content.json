@@ -1114,6 +1114,8 @@
         "byDepartment": "Department",
         "noDepartment": "No department recorded",
         "noDevices": "No sign-in seen in 30 days",
+        "$commentNoDevicesUnread": "The devices sub-group of people whose sign-ins were not read (derive/mfaReadiness.ts devicesUnread). It was titled noDevices, \"No sign-in seen in 30 days\", over rows whose cells say Not read.",
+        "noDevicesUnread": "Sign-ins not read",
         "showing": "Showing {shown} of {n}.",
         "showMore": "Show the next {n}"
       },
