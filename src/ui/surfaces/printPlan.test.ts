@@ -23,10 +23,12 @@ import { boardOf } from './planBoard.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { completedRows, deferredRows, doesntApplyRows, floorRows, openDoneRows } from './planRows.ts'
-import { completedLinesOf, constraintOf, doesntApplyLinesOf, laneGroupsOf, noPlanLine, postureOf } from './printPlan.ts'
+import { completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, laneGroupsOf, noPlanLine, postureOf } from './printPlan.ts'
+import { contentStepFor } from '../../content/stepTitle.ts'
+import { absoluteDate, dateRange } from '../../copy/dates.ts'
 import { stepFacts } from '../../derive/facts.ts'
 import { conditionalAccessLicenceLine } from '../../derive/notLicensed.ts'
-import { planFinish } from '../../derive/finish.ts'
+import { planFinish, statedEstimate } from '../../derive/finish.ts'
 import { headerLine1 } from '../../derive/planHeader.ts'
 import type { PrintBoard } from './printPlan.ts'
 
@@ -230,4 +232,36 @@ test('the cover names every kind of hold on the plan, the readiness waits and th
   assert.match(said, /1 device step waits for device readiness/, said)
   assert.match(said, / · \d+ held steps are cleared, \d+ of them after Prepare Emergency Access Accounts/, said)
   assert.match(readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8'), /const constraint = constraintOf\(finish, titleOf\)/, 'the cover words the hold itself')
+})
+
+// ---- A plan nothing open dates ----
+
+test('a plan whose open work has no dates states no finish: the start alone, never the pre-deferral end', () => {
+  // Mid after the recovery test, every step the Plan offers to defer deferred:
+  // nothing held and nothing open dated, so planFinish has no finish. The cover
+  // printed "Aug 31, 2026 → Oct 4, 2026" and "finishes Oct 4, 2026 at pace · 5
+  // weeks": the generator's end, drawn before the deferrals, whose own reason
+  // names a deferred step, three days before the Cleanup it printed.
+  const pre = plan('mid', { stage: 'recovered' })
+  const deferrable = pre.steps.filter((s) => s.status !== 'done' && s.status !== 'skipped' && (contentStepFor(s) as { skip?: boolean } | undefined)?.skip === true).map((s) => s.id)
+  const p = plan('mid', { stage: 'recovered', skips: deferrable })
+  const finish = planFinish(p.steps, p.schedule.cleanup?.end ?? null)
+  assert.deepEqual([finish.finish, finish.held], [null, false], 'the premise: nothing open dates the plan and nothing is held')
+  assert.ok(p.steps.some((s) => s.status !== 'done' && s.status !== 'skipped'), 'the premise: open work remains')
+  assert.ok(p.schedule.estimate, 'the premise: the schedule still carries the pre-deferral estimate')
+  assert.equal(statedEstimate(p.steps, finish, p.schedule), null, 'an at-pace date is stated from work that is done or deferred')
+  const facts = stepFacts(p.steps, p.schedule.cleanup, p.answers)
+  const line = headerLine1({ steps: facts.steps, inPlace: facts.done, finish: finish.finish, estimate: statedEstimate(p.steps, finish, p.schedule), weeks: '5 weeks', constraint: '', startedFrom: null })
+  assert.equal(line, `${facts.steps} steps · ${facts.done} in place`, `the cover's header: ${line}`)
+  assert.equal(coverDatesOf(p.schedule.start, finish, ''), absoluteDate(p.schedule.start), 'the cover dates the plan to an end nothing open has')
+  // A plan the calendar dates keeps its range; a held one its start and what holds it.
+  const dated = plan('mid', { stage: 'recovered' })
+  const datedFinish = planFinish(dated.steps, dated.schedule.cleanup?.end ?? null)
+  if (datedFinish.finish !== null) assert.equal(coverDatesOf(dated.schedule.start, datedFinish, ''), dateRange(dated.schedule.start, datedFinish.finish))
+  assert.equal(coverDatesOf('2026-08-31T00:00:00.000Z', { ...datedFinish, finish: null, held: true }, '3 steps wait on X'), `${absoluteDate('2026-08-31T00:00:00.000Z')} · 3 steps wait on X`)
+  // The Plan's Projected finish tile reads the same stated estimate.
+  assert.match(readFileSync('src/ui/surfaces/Plan.tsx', 'utf8'), /projectedFinish\(finish\.finish, statedEstimate\(c\.steps, finish, c\.schedule\)\)/, 'the Plan tile states the pre-deferral estimate')
+  const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
+  assert.match(print, /estimate: statedEstimate\(steps, finish, schedule\)/, 'the cover states the pre-deferral estimate')
+  assert.match(print, /coverDatesOf\(schedule\.start, finish, constraint\)/, 'the cover dates the plan itself')
 })

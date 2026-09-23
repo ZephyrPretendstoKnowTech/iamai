@@ -7,7 +7,7 @@ import type { Schedule } from '../../roadmap/schedule.ts'
 import type { CoverageReport } from '../../coverage/types.ts'
 import { waveLabels } from '../../derive/phases.ts'
 import { absoluteDate, dateRange } from '../../copy/dates.ts'
-import { planFinish, planWeeks } from '../../derive/finish.ts'
+import { planFinish, planWeeks, statedEstimate } from '../../derive/finish.ts'
 import { BrandMark } from '../components/Mark.tsx'
 import { ContentStep } from './ContentStep.tsx'
 import type { StepVarContext } from './stepVars.ts'
@@ -23,7 +23,7 @@ import { completedRows, deferredRows, floorRows, openDoneRows, phaseRows, planPh
 import { contentTitle } from '../../content/stepTitle.ts'
 import { boardHolds, boardReadingsOf, doesntApplyView, laneViewOf, laneWordOf, prerequisiteLabelFor, readinessBlockersOf } from './planBoard.ts'
 import type { LaneView } from './stepContract.ts'
-import { completedLinesOf, constraintOf, doesntApplyLinesOf, laneGroupsOf, noPlanLine, postureOf } from './printPlan.ts'
+import { completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, laneGroupsOf, noPlanLine, postureOf } from './printPlan.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { PrintBoard } from './printPlan.ts'
 
@@ -211,7 +211,8 @@ export function PrintPlan({
   const cannotFinish = finish.held
   // The Plan's header as one line (derive/planHeader.ts), without the anchored
   // start: the same estimate / committed pair the Projected finish tile shows (A2).
-  const headerLine = headerLine1({ steps: totalCount, inPlace: inPlaceCount, finish: finish.finish, estimate: schedule.estimate?.targetEnd ?? null, weeks: `${weeks} week${weeks === 1 ? '' : 's'}`, constraint, startedFrom: null })
+  // The at-pace estimate only where it measures work still on the plan (derive/finish.ts statedEstimate).
+  const headerLine = headerLine1({ steps: totalCount, inPlace: inPlaceCount, finish: finish.finish, estimate: statedEstimate(steps, finish, schedule), weeks: `${weeks} week${weeks === 1 ? '' : 's'}`, constraint, startedFrom: null })
 
   // Portal onto <body>: the print stylesheet hides the whole app shell and
   // shows only this document, on every route.
@@ -230,10 +231,7 @@ export function PrintPlan({
           <dt>{C.cover.baseline}</dt>
           <dd>{baselineLabel}</dd>
           <dt>{C.cover.dates}</dt>
-          <dd>
-            {cannotFinish ? absoluteDate(schedule.start) : dateRange(schedule.start, finish.finish ?? schedule.targetEnd)}
-            {cannotFinish && constraint && ` · ${constraint}`}
-          </dd>
+          <dd>{coverDatesOf(schedule.start, finish, constraint)}</dd>
         </dl>
         <p className="print-statement">{headerLine}</p>
         <div className="print-posture">

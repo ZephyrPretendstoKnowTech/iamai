@@ -19,7 +19,7 @@ import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { CleanupBody, cleanupEntry, cleanupWhen } from './CleanupStep.tsx'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
-import { planFinish, planWeeks, projectedFinish } from '../../derive/finish.ts'
+import { planFinish, planWeeks, projectedFinish, statedEstimate } from '../../derive/finish.ts'
 import { startControl } from '../../derive/planHeader.ts'
 import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
@@ -181,7 +181,8 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // the held work) has nothing to explain: no tip, never "Nothing is left to schedule."
   const lengthTip = cannotFinish ? (lengthReason ? fillText(P.lengthTipEstimate, { weeks: weeksText, constraint: lengthReason }) : undefined) : [c.schedule.derivation.criticalPath, ...c.schedule.derivation.relaxed].join(' ')
   // The estimate at pace, and the committed day when it is another day (derive/finish.ts projectedFinish; the printed cover reads the same pair).
-  const projected = projectedFinish(finish.finish, c.schedule.estimate?.targetEnd ?? null)
+  // Only where it measures work still on the plan (derive/finish.ts statedEstimate).
+  const projected = projectedFinish(finish.finish, statedEstimate(c.steps, finish, c.schedule))
 
   // The step a row waits on, by the title its reason line names it with (roadmap/stateReason.ts).
   // The lanes (planLanes.ts): the actionability engine read over the plan as
