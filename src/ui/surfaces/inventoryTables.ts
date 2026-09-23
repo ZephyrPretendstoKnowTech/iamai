@@ -458,7 +458,7 @@ export type PersonRow = {
   v: MfaViability | undefined
   roles: string
   licence: string
-  /** The methods as MFA Readiness names them (readinessCells.ts methodsCell), and whether the scan read them at all. */
+  /** The methods as MFA Readiness names them in one line (readinessCells.ts methodsLine: a held passkey the settings do not allow is named), and whether the scan read them at all. */
   methods: string
   methodsRead: boolean
 }
@@ -487,7 +487,7 @@ export function peopleModel(snapshot: TenantSnapshot, names: NameDirectory, viab
   // read" where it did not, never a registered method nothing showed.
   const rows: PersonRow[] = snapshot.users.map((u) => {
     const row = readiness.get(u.id)
-    return { user: u, v: viability.get(u.id), roles: (snapshot.roles.active[u.id] ?? []).map(roleLabel).join(', '), licence: licenceTier(u), methods: row ? methodsCell(row).main : '—', methodsRead: row?.methods !== null }
+    return { user: u, v: viability.get(u.id), roles: (snapshot.roles.active[u.id] ?? []).map(roleLabel).join(', '), licence: licenceTier(u), methods: row ? methodsLine(row) : '—', methodsRead: row?.methods !== null }
   })
   const type = (u: UserRow): string => (u.userType === 'guest' ? P.guest : P.member)
   return readOf(snapshot, 'users', {
@@ -965,7 +965,7 @@ export function inventoryTables(snapshot: TenantSnapshot, groups: GroupMembers =
 // page's own Export CSV writes what is on screen, which is the filtered set).
 import { readinessView } from '../../derive/mfaReadiness.ts'
 import type { ReadinessRow } from '../../derive/mfaReadiness.ts'
-import { methodsCell, rowCells } from './readinessCells.ts'
+import { methodsLine, rowCells } from './readinessCells.ts'
 export function readinessTable(snapshot: TenantSnapshot, mapping: { breakGlassUserIds: readonly string[]; serviceAccountUserIds: readonly string[] } = { breakGlassUserIds: [], serviceAccountUserIds: [] }): InventoryTable {
   // The same cells the MFA Readiness table renders (readinessCells.ts): a row's CSV equals its screen.
   const view = readinessView(snapshot, snapshot.asOf, mapping)
