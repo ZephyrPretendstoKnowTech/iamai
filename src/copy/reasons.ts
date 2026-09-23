@@ -55,7 +55,7 @@ export const NOT_ASSESSED = {
  * The rest of the reasons stay on the step, under More.
  */
 export const BLOCKED_REASON_MAX_WORDS = 12
-const BLOCKED = (pages.plan as { blocked: { after: string; readiness: string; count: string; baseline: string; exclusionsGroup: string; devicePlan: string; direction: string; unsettled: string; sourceMapping: string; pairUnmatched: string; targetAmbiguous: string; noOperation: string; noOperationHeld: string; activityUnread: string; authContextInUse: string; manualCorrection: string; unverifiedExclusion: string; methodsPolicyUnread: string; passkeyProfiles: string; passkeyBlockConflict: string; passkeyPartialRead: string; workloadIdentityUnknown: string; workloadIdentityUnsupported: string; emergency: string } }).blocked
+const BLOCKED = (pages.plan as { blocked: { after: string; readiness: string; count: string; baseline: string; exclusionsGroup: string; devicePlan: string; workCountries: string; direction: string; unsettled: string; sourceMapping: string; pairUnmatched: string; targetAmbiguous: string; noOperation: string; noOperationHeld: string; activityUnread: string; authContextInUse: string; manualCorrection: string; unverifiedExclusion: string; methodsPolicyUnread: string; passkeyProfiles: string; passkeyBlockConflict: string; passkeyPartialRead: string; workloadIdentityUnknown: string; workloadIdentityUnsupported: string; emergency: string } }).blocked
 export const BLOCKED_REASON = {
   after: (stepTitle: string): string => fillText(BLOCKED.after, { stepTitle }),
   reaches: (measure: string, threshold: string, now: string): string => fillText(BLOCKED.readiness, { measure, threshold, value: now }),
@@ -70,6 +70,8 @@ export const BLOCKED_REASON = {
   exclusionsGroup: BLOCKED.exclusionsGroup,
   /** The device decision nobody has made (roadmap/generate.ts): the step waits on a person, not on work. */
   devicePlan: BLOCKED.devicePlan,
+  /** The work countries nobody has saved (roadmap/generate.ts, Stage 3): the countries step waits on a person, not on work. */
+  workCountries: BLOCKED.workCountries,
   /** A Define Your Rollout Scope step with an answer nobody has approved (roadmap/direction.ts): it waits on a person, not on work. */
   direction: BLOCKED.direction,
   /**

@@ -48,13 +48,16 @@ const ABSENT: StepObservation = { exists: false }
 const REPORT_ONLY: StepObservation = { exists: true }
 const PREDICATE_MET: StepObservation = { exists: true, evidenceSatisfied: true }
 
-test('1. prerequisite Ready, dependent not started → Up Next after Allowed Countries', () => {
-  const s = state({ 's-prereq-allowed-countries': ABSENT, 's-goal-geo-restriction': ABSENT })
-  assert.equal(read(lane('s-prereq-allowed-countries', s)), 'Ready · Create')
-  const geo = lane('s-goal-geo-restriction', s)
-  assert.equal(read(geo), 'Up Next · step:s-prereq-allowed-countries')
-  assert.equal(geo.layers, 1)
-  assert.equal(geo.nextAction, 'create')
+// The playbook's example 1 was the allowed-countries location and the countries
+// block; the location folded into that block in roadmap-flow Stage 3, so the
+// example is the same chain on the service accounts group.
+test('1. prerequisite Ready, dependent not started → Up Next after Service Accounts Group', () => {
+  const s = state({ 's-prereq-service-accounts-group': ABSENT, 's-goal-service-accounts-trusted-network': ABSENT })
+  assert.equal(read(lane('s-prereq-service-accounts-group', s)), 'Ready · Create')
+  const sa = lane('s-goal-service-accounts-trusted-network', s)
+  assert.equal(read(sa), 'Up Next · step:s-prereq-service-accounts-group')
+  assert.equal(sa.layers, 1)
+  assert.equal(sa.nextAction, 'create')
 })
 
 test('2. prerequisite still collecting evidence → it waits On Hold, and so does the dependent behind it', () => {
@@ -336,7 +339,8 @@ test('§12.1 unlock counts: direct and transitive, Security Defaults cutover edg
   expect('s-prereq-trusted-location', 4, 5)
   expect('s-prereq-device-plan', 1, 3)
   expect('s-prereq-service-accounts-group', 2, 2)
-  expect('s-prereq-allowed-countries', 2, 2)
+  // s-prereq-allowed-countries folded into the countries block in Stage 3: not a graph step.
+  assert.equal(counts.has('s-prereq-allowed-countries'), false)
   expect('s-question-partner', 2, 2)
   expect('s-shared-devices', 2, 2)
   expect('s-goal-require-managed-device', 1, 2)

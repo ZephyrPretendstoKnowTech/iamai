@@ -14,15 +14,19 @@
   ],
   "tiles": [
     {
+      "label": "Work Countries Location",
+      "state": "Needs Correction"
+    },
+    {
+      "label": "Countries People Sign In From",
+      "state": "Needs Correction"
+    },
+    {
       "label": "Affected people",
       "state": "Not established"
     },
     {
       "label": "Configure Emergency Exclusions",
-      "state": "Prerequisite · To do"
-    },
-    {
-      "label": "Create or Correct Allowed Countries Location",
       "state": "Prerequisite · To do"
     },
     {
@@ -38,7 +42,8 @@
     "Entra",
     "PowerShell",
     "JSON",
-    "AI Info"
+    "AI Info",
+    "Email"
   ],
   "when": "After prerequisites"
 }

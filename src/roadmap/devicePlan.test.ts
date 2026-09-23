@@ -9,6 +9,7 @@
 // readiness is measured against the answer. Without Intune the device steps are
 // one shared Not licensed line and nothing asks.
 import { test } from 'node:test'
+import { directionDependenciesOf } from './direction.ts'
 import assert from 'node:assert/strict'
 // On the curated baseline (fixtures/index.ts `curatedFixture`): this is about a
 // policy that can be written, not about the source groups this baseline has not
@@ -87,7 +88,9 @@ test('open: the step asks, phones are out of readiness, and only the device step
     assert.ok(s, `${goalId}: on the plan`)
     assert.ok(s.blockers.some((b) => b.kind === 'decision' && b.label === `direction:${D3}`), `${goalId}: waits on the device decision`)
   }
-  for (const s of r.steps) if (!DEVICE_GOALS.has(s.goalId)) assert.ok(!s.blockers.some((b) => b.label === `direction:${D3}`), `${s.id}: does not wait on the device decision`)
+  // D3 asks the office network too since Stage 3: a step waits on it for its
+  // devices or for its office network, never for anything else.
+  for (const s of r.steps) if (!DEVICE_GOALS.has(s.goalId) && !directionDependenciesOf(s).includes('officeNetwork')) assert.ok(!s.blockers.some((b) => b.label === `direction:${D3}`), `${s.id}: does not wait on the device decision`)
   // Device readiness against the open decision: compliant computers only, phones out.
   const compliant = r.steps.find((x) => x.goalId === COMPLIANT_DEVICE_GOAL)!
   const all = r.viability.map((v) => v.userId)
@@ -104,8 +107,8 @@ test('answered (apps, hybrid): the platform deviation, the enrolment step follow
   const f = fixture('demo')
   // The baseline's compliant-device policy excludes the author's service-accounts
   // group, so this tenant needs one before the policy can be written at all.
-  // D3's third answer, device exceptions, is new with Direction: saved None here.
-  const m = { ...applyStepDecisions(applied(f, decided('Protect the apps only', 'Hybrid-joined is enough')), { [DEVICE]: { at: f.snapshot.asOf, answers: { phoneManagement: 'unmanaged', phoneAppProtection: 'required', computerManagement: 'hybrid' } }, [D3]: { at: f.snapshot.asOf, answers: { deviceExceptions: 'none' } } }), serviceAccountsGroupId: SERVICE_ACCOUNTS_GROUP }
+  // D3's third answer is the office network since Stage 3: saved here.
+  const m = { ...applyStepDecisions(applied(f, decided('Protect the apps only', 'Hybrid-joined is enough')), { [DEVICE]: { at: f.snapshot.asOf, answers: { phoneManagement: 'unmanaged', phoneAppProtection: 'required', computerManagement: 'hybrid' } }, [D3]: { at: f.snapshot.asOf, answers: { officeNetwork: 'notInEntra' } } }), serviceAccountsGroupId: SERVICE_ACCOUNTS_GROUP }
   const plan = devicePlanOf(m)
   assert.deepEqual(plan && { phones: plan.phones, computers: plan.computers, blockPhones: plan.blockPhones }, { phones: 'apps', computers: 'hybrid', blockPhones: false })
   assert.deepEqual(excludedPlatforms(m), ['android', 'iOS'])

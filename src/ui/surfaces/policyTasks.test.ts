@@ -5,6 +5,7 @@
 // steps (their own producers, frozen) and the four Direction steps (the decision
 // anatomy) are outside it.
 import { test } from 'node:test'
+import type { RoadmapInput } from '../../roadmap/generate.ts'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
@@ -27,10 +28,11 @@ import { SNAPSHOT_FIXTURES } from '../../testing/stepSnapshots.ts'
 const PILOT = 's-goal-admin-session'
 
 /** `settled` settles the plan's foundation, so nothing holds the step (roadmap/foundations.ts). */
-function bodyOf(stepId: string, name: FixtureName = 'demo', settled = false) {
+function bodyOf(stepId: string, name: FixtureName = 'demo', settled = false, over: Partial<RoadmapInput> = {}) {
   const value = settled ? withRecoveryTested(withFoundationSettled(fixture(name))) : fixture(name)
-  const run = runFixture(value)
-  const step = run.steps.find((row) => row.id === stepId)!
+  const run = runFixture(value, over)
+  // An object a step makes itself is that step's task, not a step (Stage 3): found on its owner.
+  const step = run.steps.find((row) => row.id === stepId) ?? run.steps.map((row) => row.objectTask).find((task) => task?.id === stepId)!
   const ctx: StepVarContext = { snapshot: value.snapshot, mapping: value.mapping, nameOf: (id) => run.input.names!.label(id), signature: 'IT', operatorId: value.operatorId, now: value.snapshot.asOf, groups: value.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
   return { step, body: stepBodyOf(step, ctx) }
 }
@@ -125,7 +127,8 @@ test('a baseline-review step reads its reference, and what it waits on is a card
 
 test('"No tasks remaining" is shown only where nothing is left', () => {
   // A step the tenant already satisfies: its own card and its tiles are all satisfied.
-  const { step: secDefaults, body: inPlace } = bodyOf('s-prereq-security-defaults')
+  // Security defaults seen on by this plan and now off (V1 decision 6: never seen on, it does not apply).
+  const { step: secDefaults, body: inPlace } = bodyOf('s-prereq-security-defaults', 'demo', false, { securityDefaultsSeenOnAt: '2026-08-01T00:00:00.000Z' })
   const done = policySubjectsOf(inPlace.contract, inPlace.readiness, inPlace.emergencyAccountTasks, taskSubjectOf(secDefaults, inPlace.eyebrow, inPlace.title), cardWordsOf(secDefaults)?.check ?? null)
   assert.equal(done.some((card) => !card.satisfied), false)
   assert.equal(policyBarOf(done), 'Every task on this step is complete.')
@@ -498,7 +501,9 @@ test('a field still waiting on a reference is not printed as a setting to copy',
   assert.ok(waiting.length > 0, 'the premise: midflight has steps waiting on a reference')
   let printed = 0
   for (const step of waiting) {
-    const portal = stepBodyOf(step, ctx).artifacts.find((a) => a.id === 'portal')
+    // The policy's own procedure: a step that makes its object itself leads with
+    // that object's Implementation while it is to be made (stepBody.ts; Stage 3).
+    const portal = stepBodyOf({ ...step, objectTask: undefined }, ctx).artifacts.find((a) => a.id === 'portal')
     const text = portal?.text() ?? ''
     const at = text.indexOf('Settings for This Action')
     if (at < 0) continue

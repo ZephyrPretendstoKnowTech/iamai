@@ -1,7 +1,7 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "after: Create or Correct Allowed Countries Location",
+  "reason": "after: Prepare Emergency Access Accounts",
   "fact": null,
   "badge": "On Hold",
   "bar": "Waiting on your answers",
@@ -14,12 +14,8 @@
   ],
   "tiles": [
     {
-      "label": "Affected people",
-      "state": "Not established"
-    },
-    {
-      "label": "Create or Correct Allowed Countries Location",
-      "state": "Prerequisite · To do"
+      "label": "Decision",
+      "state": "Decision"
     },
     {
       "label": "Prepare Emergency Access Accounts",
@@ -28,10 +24,6 @@
     {
       "label": "Confirm What You Use",
       "state": "Waiting on your answers"
-    },
-    {
-      "label": "Configure Emergency Exclusions",
-      "state": "Prerequisite · To do"
     }
   ],
   "channels": [

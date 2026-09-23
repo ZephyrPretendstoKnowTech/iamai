@@ -39,7 +39,7 @@
 // Pure: no DOM, no network.
 import type { Step } from './types.ts'
 import { heldForReview, workflowReviewIsCurrent } from './lifecycle.ts'
-import { createHeldOnReadiness, enforcementHeld, isOpenPolicy, unavailableReason } from './operations.ts'
+import { awaitsOwnObject, createHeldOnReadiness, enforcementHeld, isOpenPolicy, unavailableReason } from './operations.ts'
 import { directionBlockerStep } from './directionAnswers.ts'
 import { readyWhen } from '../derive/readyWhen.ts'
 
@@ -98,7 +98,11 @@ export function holdOf(step: Step): Hold | null {
   // unwritable, the threshold is all that holds it, and it is counted and
   // worded as a readiness wait like the turn-on it waits with.
   if (policy && createHeldOnReadiness(step)) return { kind: 'readiness' }
-  if (policy && unavailableReason(step) !== null) return { kind: 'unavailable' }
+  // An object the step makes itself is its own next task, and that is work the
+  // plan schedules now, not a hold (Stage 3: the countries policy creates the
+  // countries location, then its policy). Its policy still cannot be written
+  // until the object exists (operations.ts missing-object); only the hold goes.
+  if (policy && unavailableReason(step) !== null && !awaitsOwnObject(step)) return { kind: 'unavailable' }
   if (policy && enforcementHeld(step)) return { kind: 'readiness' }
   // A wait on a step that is itself held is a hold (markHoldChains below): the
   // step waited on has no date, so nothing can be dated after it.

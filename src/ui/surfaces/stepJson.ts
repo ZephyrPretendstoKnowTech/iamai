@@ -8,6 +8,7 @@ import { app, stepById } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { list } from '../../copy/statements.ts'
 import { implementationOffered, operationsOf, submitsEnforcementOnly } from '../../roadmap/operations.ts'
+import { OBJECT_TASK } from '../../roadmap/stepIds.ts'
 
 /**
  * Whether the step has something to hand over: Foundation A's one implementation
@@ -27,7 +28,17 @@ export { implementationOffered }
 
 /** The objects the body names that the tenant lacks, with the step that creates each (its content title). */
 export function missingObjects(step: Step): { token: string; stepId: string | null; unreadable?: true; decision?: true; title: string; wait: WaitKind }[] {
-  return (step.action.missing ?? []).map((m) => ({ ...m, title: (m.stepId && stepById[m.stepId]?.title) || m.token, wait: waitKindOf(m) }))
+  // An object the step makes itself is named as its own task (stepIds.ts
+  // OBJECT_TASK), by the title the step's task list gives it: "Set up the
+  // allowed countries location first", on the countries policy that does it
+  // (Stage 3). Never the step's own title, and never the title of the step the
+  // task used to be, which is no step of the plan any more.
+  const titleOf = (id: string | null): string | null => {
+    if (id === null) return null
+    const task = id === step.id ? OBJECT_TASK[id] : undefined
+    return task !== undefined ? (stepById[task]?.taskTitle ?? null) : (stepById[id]?.title ?? null)
+  }
+  return (step.action.missing ?? []).map((m) => ({ ...m, title: titleOf(m.stepId) || m.token, wait: waitKindOf(m) }))
 }
 
 /**

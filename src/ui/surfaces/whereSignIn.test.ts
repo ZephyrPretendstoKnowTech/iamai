@@ -22,7 +22,7 @@ import { laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } fr
 import { laneReadings } from './planLanes.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { stepBodyOf } from './stepBody.ts'
+import { objectTaskBodyOf, stepBodyOf } from './stepBody.ts'
 import { stepExportView } from './stepExport.ts'
 import type { StepBody } from './stepBody.ts'
 import { groupOf } from '../../roadmap/stepGroups.ts'
@@ -35,10 +35,11 @@ const WHERE_SIGN_IN = [
   's-goal-workload-identity-block',
 ]
 
-/** The three objects a Direction answer asks for, drawn among the objects above the policies (owner, 2026-09-20; roadmap flow section 3). A policy's create waits only on the object it names. */
+/** The two objects a Direction answer asks for, drawn among the objects above the policies (owner, 2026-09-20; roadmap flow section 3). A policy's create waits only on the object it names. */
+// The countries location left the objects in Stage 3: it is the countries
+// policy's own first task (Step.objectTask), drawn on that step.
 const PREPARE_OBJECTS = [
   's-prereq-trusted-location',
-  's-prereq-allowed-countries',
   's-prereq-service-accounts-group',
 ]
 
@@ -58,6 +59,9 @@ function bodiesOf(name: FixtureName, mapping?: MappingState): Map<string, StepBo
       const lane = laneViewOf(reading, titleOf)
       const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: step.reportOnlyAt ?? null, scheduledOn: waveStartOf(step), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
       out.set(step.id, stepBodyOf(step, ctx, { lane, blockers: readinessBlockersOf(reading, titleOf), prerequisiteLabel: prerequisiteLabelFor(readings) }))
+      // The object a step makes itself, as its step draws it (Stage 3: the countries location on the countries step).
+      const task = objectTaskBodyOf(step, ctx)
+      if (task && step.objectTask) out.set(step.objectTask.id, task)
     }
     return out
   } finally {
@@ -117,10 +121,10 @@ function checkedOn(stepId: string): string {
 
 test('the spec’s three policies close the doors, and the objects they reference are drawn above the policies', () => {
   assert.deepEqual(WHERE_SIGN_IN.map((id) => groupOf(id)?.key), ['remaining-doors', 'remaining-doors', 'remaining-doors'])
-  assert.deepEqual(PREPARE_OBJECTS.map((id) => groupOf(id)?.key), ['prepare', 'prepare', 'prepare'])
-  // The spec's six steps are still the same six steps: the objects drawn
-  // above the policies that reference them.
-  assert.deepEqual([...PREPARE_OBJECTS, ...WHERE_SIGN_IN].sort(), ['s-goal-geo-restriction', 's-goal-service-accounts-trusted-network', 's-goal-workload-identity-block', 's-prereq-allowed-countries', 's-prereq-service-accounts-group', 's-prereq-trusted-location'])
+  assert.deepEqual(PREPARE_OBJECTS.map((id) => groupOf(id)?.key), ['prepare', 'prepare'])
+  // The spec's six steps are five now: the objects drawn above the policies
+  // that reference them, and the countries location inside its policy.
+  assert.deepEqual([...PREPARE_OBJECTS, ...WHERE_SIGN_IN].sort(), ['s-goal-geo-restriction', 's-goal-service-accounts-trusted-network', 's-goal-workload-identity-block', 's-prereq-service-accounts-group', 's-prereq-trusted-location'])
 })
 
 // ---------------------------------------------------------------------------
@@ -165,8 +169,9 @@ test('T5: the step names every step that waits on it, which the board proves is 
 test('T6: the step shows the date its Microsoft sources were checked, on both scans', () => {
   assert.equal(checkedOn('s-prereq-trusted-location'), '2026-09-20')
   assert.equal(bodiesOf('demo').get('s-prereq-trusted-location')!.sourceLine, 'Source checked Sep 20, 2026')
-  // The follow-up scan has the object in place; the line is the same.
-  assert.equal(bodiesOf('demo-week2').get('s-prereq-trusted-location')!.sourceLine, 'Source checked Sep 20, 2026')
+  // The follow-up scan answered that everyone works remotely: the step does not
+  // apply there (Stage 3, V1 decision 6) and sits in the footer, with no body to date.
+  assert.equal(bodiesOf('demo-week2').has('s-prereq-trusted-location'), false)
 })
 
 test('T7: Done when opens on this step’s outcome, on screen', () => {

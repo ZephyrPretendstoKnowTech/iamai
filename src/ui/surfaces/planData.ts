@@ -28,7 +28,7 @@ import type { MfaViability } from '../../scoring/mfaViability.ts'
 import { buildNameDirectory } from '../../names.ts'
 import { generateRoadmap, planIdFor } from '../../roadmap/generate.ts'
 import { annotateStateReasons } from '../../roadmap/stateReason.ts'
-import { applySkips, decisionsOf, applyProgress } from '../../roadmap/progress.ts'
+import { applySkips, decisionsOf, applyProgress, securityDefaultsSeenOnAtOf } from '../../roadmap/progress.ts'
 import { settleForecast } from '../../roadmap/forecast.ts'
 import { observationsOf } from '../../roadmap/tracking.ts'
 import type { PlanDecisions, StepDecision } from '../../roadmap/progress.ts'
@@ -370,6 +370,8 @@ export function usePlanData(
       reviewNow: new Date().toISOString(),
       // The operator's deferral of the emergency-access hardening, where one is recorded (validation/emergencyTiers.ts).
       hardeningDeferral: saved?.confirmations?.[BREAK_GLASS_STEP_ID]?.[HARDENING_DEFERRAL_ID] ?? null,
+      // Whether this plan ever saw security defaults on: the record's date, or this scan where it reads them on (V1 decision 6).
+      securityDefaultsSeenOnAt: securityDefaultsSeenOnAtOf(saved?.securityDefaultsSeenOnAt, snapshot),
     })
     const { schedule } = result
     // Temporarily withheld from all customer plan surfaces, including Export.
@@ -443,9 +445,12 @@ export function usePlanData(
       observations: observationsOf(computed.steps, saved.observations ?? null),
       ...(saved.signature ? { signature: saved.signature } : {}),
     }
+    // The first scan that read security defaults on, kept from then on (progress.ts securityDefaultsSeenOnAtOf).
+    const sdSeenOn = securityDefaultsSeenOnAtOf(saved.securityDefaultsSeenOnAt, snapshot)
+    if (sdSeenOn !== null) decisions.securityDefaultsSeenOnAt = sdSeenOn
     if (saved.startedAt) decisions.startedAt = saved.startedAt
     if (saved.firstDeployment) decisions.firstDeployment = saved.firstDeployment
-    const key = JSON.stringify({ tenantId: snapshot.tenantId, skips: decisions.skips, startDate: decisions.startDate, startedAt: decisions.startedAt, firstDeployment: decisions.firstDeployment, band: decisions.band, freeze: decisions.freeze, stepDecisions: decisions.stepDecisions, confirmations: decisions.confirmations, observations: decisions.observations, signature: decisions.signature, cleanup: cleanupRecord(decisions.checkpoints) })
+    const key = JSON.stringify({ tenantId: snapshot.tenantId, securityDefaultsSeenOnAt: decisions.securityDefaultsSeenOnAt, skips: decisions.skips, startDate: decisions.startDate, startedAt: decisions.startedAt, firstDeployment: decisions.firstDeployment, band: decisions.band, freeze: decisions.freeze, stepDecisions: decisions.stepDecisions, confirmations: decisions.confirmations, observations: decisions.observations, signature: decisions.signature, cleanup: cleanupRecord(decisions.checkpoints) })
     if (key === lastPersist.current) return
     lastPersist.current = key
     setPersistence('saving')

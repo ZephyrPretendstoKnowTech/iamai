@@ -24,7 +24,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { allFixtures, noExclusionsAnswer } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
-import { accountApplicability, effectOf, emergencyExposureOf, implementationOffered, isOpenPolicy, isSubmittablePatch, isValidOperation, operationsOf, stepEffects, strengthLookupOf, unavailableReason } from './operations.ts'
+import { accountApplicability, awaitsOwnObject, effectOf, emergencyExposureOf, implementationOffered, isOpenPolicy, isSubmittablePatch, isValidOperation, operationsOf, stepEffects, strengthLookupOf, unavailableReason } from './operations.ts'
 import { analysisUnknown, canDenyAccess, effectsOf, familyReading, measuredReach, operationReach, promptsPeople, scopeCohort, stepAccountVerdict, stepApplicability, wouldStrand } from './strand.ts'
 import { batchClassOf, buildSchedule, dependencyGraph, observationDaysFor } from './schedule.ts'
 import { eventsFor, nobodyAffected, noticeDaysFor } from './timing.ts'
@@ -906,7 +906,9 @@ test('work the plan cannot write is scheduled nowhere and proves nothing', () =>
     const dated = new Set(schedule.waves.flatMap((w) => w.stepIds))
     for (const s of openPolicies(r.steps)) {
       if (unavailableReason(s) === null) continue
-      assert.ok(!dated.has(s.id), `${f.name} ${s.id}: unavailable work takes no dated wave`)
+      // The object a step makes itself is its next task, placed now (operations.ts
+      // awaitsOwnObject; Stage 3); its policy is still written nowhere.
+      if (!awaitsOwnObject(s)) assert.ok(!dated.has(s.id), `${f.name} ${s.id}: unavailable work takes no dated wave`)
       assert.equal(nobodyAffected(s), false, `${f.name} ${s.id}: unavailable work is not a zero`)
       assert.equal(s.rings.length, 0, `${f.name} ${s.id}: and no rings`)
       assert.equal(s.lockout, undefined, `${f.name} ${s.id}: and no lockout number`)
@@ -1106,6 +1108,8 @@ test('a policy IAMAI cannot read in full waits on everything, is watched in full
     // (G-F1), which is the whole point of that fix — so the assertion is about
     // the prerequisites that are still open.
     if (plan.find((s) => s.id === id)?.status === 'done') continue
+    // Nor is one that does not apply here (everyone remote, Stage 3): nothing waits on it.
+    if (plan.find((s) => s.id === id)?.doesntApply != null) continue
     assert.ok(waitsOn(reason, id), `${f.name} ${held.id}: waits on ${reason} (${[...reasons].join(', ') || 'nothing'})`)
   }
   assert.equal(nobodyAffected(held), false, 'it is no zero')
@@ -1117,8 +1121,9 @@ test('a policy IAMAI cannot read in full waits on everything, is watched in full
     [],
     'and no ring plan for a policy nobody can read',
   )
-  // Work the plan cannot write at all is not scheduled in the first place.
-  const unavailable = openPolicies(r.steps).filter((s) => unavailableReason(s) !== null)
+  // Work the plan cannot write at all is not scheduled in the first place. The
+  // object a step makes itself is that step's next task, placed now (Stage 3).
+  const unavailable = openPolicies(r.steps).filter((s) => unavailableReason(s) !== null && !awaitsOwnObject(s))
   const schedule = buildSchedule(r.steps, r.schedule.start, r.viability.length)
   for (const s of unavailable) assert.ok(!schedule.waves.some((w) => w.stepIds.includes(s.id)), `${f.name} ${s.id}: in no dated wave`)
 })

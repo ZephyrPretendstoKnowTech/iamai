@@ -108,7 +108,7 @@ test('the How page\'s check rows carry no forbidden-everywhere string', () => {
 // A policy step's JSON waits on every object the body names; the translator
 // never drops one silently. GetIAMAI's countries policy names the baseline's
 // location; with no such location in the tenant it offers no JSON and names the
-// step that creates one; with the tenant's own countries location, its JSON
+// task that creates one; with the tenant's own countries location, its JSON
 // carries excludeLocations with that id.
 test('GetIAMAI: the countries block waits on the allowed-countries location, then carries it', () => {
   const f = fixture('getiamai')
@@ -117,7 +117,8 @@ test('GetIAMAI: the countries block waits on the allowed-countries location, the
   assert.equal(without.action.json, null, 'no body at all while the location is missing')
   assert.equal(jsonOffered(without), false, 'no JSON is offered while the location is missing')
   const names = missingObjects(without).map((m) => m.title)
-  assert.ok(names.includes('Create or Correct Allowed Countries Location'), `names the step that creates it (${names.join(', ')})`)
+  // The countries policy makes the location itself (Stage 3): it names that task, by the title its task list shows.
+  assert.deepEqual(names, ['Set up the allowed countries location'], 'names the task that creates it')
   // The tenant's own countries location, matching the allowed list.
   const location = { '@odata.type': '#microsoft.graph.countryNamedLocation', id: 'loc-au', displayName: 'Allowed countries', countriesAndRegions: ['AU'], includeUnknownCountriesAndRegions: false, countryLookupMethod: 'clientIpAddress' }
   const named = f.snapshot.config.namedLocations ?? { status: 'ok', reason: null, rows: [] }
@@ -209,7 +210,8 @@ test('GetIAMAI: the prompt renders in full, the Doesn\'t-apply group holds only 
   const prompt = fillText(shared.doesntApplyPrompt, { tenant: 'GetIAMAI' })
   assert.equal(prompt, shared.doesntApplyPrompt.replace('{tenant}', 'GetIAMAI'), 'the prompt in full, the tenant filled')
   assert.ok(!/\{[a-zA-Z]+\}/.test(prompt))
-  assert.deepEqual(r.steps.filter((s) => s.doesntApply).map((s) => s.id), ['s-prereq-service-accounts-group'], 'the confirmed no-service-accounts prerequisite remains visible as not applicable; licence exclusions do not join it')
+  // Security defaults never seen on, and everyone working remotely, do not apply either (Stage 3, V1 decision 6).
+  assert.deepEqual(r.steps.filter((s) => s.doesntApply).map((s) => s.id).sort(), ['s-prereq-security-defaults', 's-prereq-service-accounts-group', 's-prereq-trusted-location'], 'the confirmed no-service-accounts prerequisite remains visible as not applicable; licence exclusions do not join it')
   // Over the goals this baseline holds: an absent goal never renders (walk-51 item 9).
   const licenceGoals = r.coverage.results.filter((x) => x.status === 'not-applicable' && x.applicability && / licence$/.test(x.applicability.reason) && goalInMap(PINNED_GOAL_MAP, x.goal.id)).map((x) => x.goal.id)
   assert.ok(licenceGoals.length >= 1, `licence-facet goals the baseline holds (${licenceGoals.join(', ')})`)

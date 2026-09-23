@@ -30,9 +30,32 @@ export const PREREQ_STEP_ID = {
   devicePlan: 's-prereq-device-plan',
 } as const
 
-/** Old repair links resolve to the single configuration task; saved records remain intact. */
+/**
+ * The object a step makes itself, as its own task (roadmap-flow Stage 3), by the
+ * step that makes it: Block Sign-ins From Countries Not Allowed creates the
+ * countries location its policy names. The value is the id the object's step
+ * had before it merged (`s-prereq-allowed-countries`), which the task keeps:
+ * its content entry, its implementation content, its picker's saved decision
+ * (roadmap/decisions.ts DECISION_STEPS.countries) and its title. That id is no
+ * longer a step of the plan.
+ */
+export const OBJECT_TASK: Readonly<Record<string, string>> = {
+  [stepIdForGoal('geo-restriction')]: PREREQ_STEP_ID.allowedCountries,
+}
+
+/** The step that makes an object a task id names (OBJECT_TASK read backwards), or null. */
+export function objectTaskOwner(taskId: string): string | null {
+  return Object.entries(OBJECT_TASK).find(([, id]) => id === taskId)?.[0] ?? null
+}
+
+/**
+ * Old links resolve to the step that does the work now; saved records remain
+ * intact. The countries location and its checks' old repair step open the
+ * countries policy, which makes the location as its own task (Stage 3).
+ */
 export const REPAIR_STEP_ALIASES: Readonly<Record<string, string>> = {
   's-blocker-trusted-location': PREREQ_STEP_ID.trustedLocation,
-  's-blocker-allowed-countries': PREREQ_STEP_ID.allowedCountries,
+  's-blocker-allowed-countries': stepIdForGoal('geo-restriction'),
+  [PREREQ_STEP_ID.allowedCountries]: stepIdForGoal('geo-restriction'),
   's-blocker-auth-strength': PREREQ_STEP_ID.authStrength,
 }

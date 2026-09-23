@@ -7,14 +7,18 @@ import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/generate.ts'
+import { stepIdForGoal } from '../../roadmap/stepIds.ts'
 import { PLAN_HREF, READINESS_HREF, afterScanHref, readinessHref, resolveHash, returnToStep, showFromReadinessHash, stepFromPlanHash, stepFromReadinessHash } from './routes.ts'
 import { showKeyOf } from '../../derive/mfaReadiness.ts'
 
 test('the in-step scan ends at the step: the demo advances to week two and the countries step reopens', () => {
-  const id = PREREQ_STEP_ID.allowedCountries
+  // The countries step is Block Sign-ins From Countries Not Allowed since Stage 3:
+  // it makes the location as its own task, and the location's old link opens it.
+  const id = stepIdForGoal('geo-restriction')
   const returnTo = returnToStep(id)
   assert.equal(returnTo, `#/plan/${id}`)
   assert.equal(stepFromPlanHash(returnTo), id, 'the Plan reads the step to open from the hash')
+  assert.equal(stepFromPlanHash(returnToStep(PREREQ_STEP_ID.allowedCountries)), id, 'the old location link opens it')
   assert.equal(resolveHash(returnTo).route, 'plan')
   assert.equal(afterScanHref(returnTo), returnTo, 'the scan lands on the step that asked for it')
   assert.equal(afterScanHref(null), PLAN_HREF, 'a scan with nowhere to return lands on the Plan')

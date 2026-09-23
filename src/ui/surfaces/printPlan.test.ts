@@ -553,7 +553,8 @@ test('the printed step reads the saved decision, and never prints a picker\'s ow
   assert.equal(printedDefaultLine(names), `Suggested by IAMAI, not saved yet: ${names.join(', ')}`)
   assert.equal(printedDefaultLine([]), 'Not saved yet.', 'a picker with nothing to suggest prints an empty heading')
   const body = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
-  assert.match(body, /<Decision key=\{step\.id\} d=\{d\} ex=\{ex\} saved=\{decision\} onDecide=\{onDecide\} stepId=\{step\.id\} ctx=\{ctx\} printing=\{printing\} \/>/, 'the decision is not told it is printing')
+  // The one picker is the step's own or, on a step that makes an object itself, the object's (stepBody.ts taskDecision; Stage 3).
+  assert.match(body, /<Decision key=\{step\.id\} d=\{taskDecision\?\.d \?\? d\} ex=\{taskDecision\?\.ex \?\? ex\} saved=\{taskDecision \? objectTask\?\.saved \?\? null : decision\} onDecide=\{taskDecision \? objectTask\?\.onDecide : onDecide\} stepId=\{taskDecision\?\.stepId \?\? step\.id\} ctx=\{ctx\} printing=\{printing\} \/>/, 'the decision is not told it is printing')
   assert.match(body, /printing && initial\.defaulted && !isExclusionsGroup\n?\s*\? <p className="reason">\{printedDefaultLine\(chips\.map\(\(c\) => c\.name\)\)\}<\/p>/, 'a printed picker with nothing saved does not say so')
   assert.equal(/printing && initial\.defaulted \? \[\]/.test(body), false, 'a printed picker drops its suggestion and prints an empty heading')
 })
@@ -709,16 +710,16 @@ test('a section finished through a deferral prints as one line, and keeps the li
   // folds it to "n of m completed, k deferred". The print had listed every
   // deferred step by title under Deferred; folded, the paper said steps were set
   // aside and not which.
-  const base = ['s-goal-register-info-protected', 's-goal-block-auth-transfer', 's-prereq-allowed-countries']
+  const base = ['s-goal-register-info-protected', 's-goal-block-auth-transfer', 's-check-dormant-accounts']
   const first = plan('midflight', { stage: 'foundation', skips: base })
-  const section = printSectionsOf(first.board).find((s) => s.rows.some((r) => r.id === 's-prereq-allowed-countries'))
+  const section = printSectionsOf(first.board).find((s) => s.rows.some((r) => r.id === 's-check-dormant-accounts'))
   assert.ok(section, 'the premise: the deferred step prints in a section')
   const planIds = new Set(first.steps.map((s) => s.id))
   const open = section.rows.filter((r) => r.lane.lane !== 'Completed' && r.lane.lane !== 'Deferred' && planIds.has(r.id)).map((r) => r.id)
   const p = plan('midflight', { stage: 'foundation', skips: [...base, ...open] })
   const items = p.board.rows.map((r) => r.item)
   const printed = printSectionsOf(p.board)
-  const prep = printed.find((s) => s.rows.some((r) => r.id === 's-prereq-allowed-countries'))
+  const prep = printed.find((s) => s.rows.some((r) => r.id === 's-check-dormant-accounts'))
   assert.ok(prep, 'the premise: the deferred step prints in a section')
   assert.deepEqual([...new Set(prep.rows.map((r) => r.lane.lane))].sort(), ['Completed', 'Deferred'], 'the premise: the section is Completed and Deferred rows only')
   const deferred = prep.rows.filter((r) => r.lane.lane === 'Deferred').map((r) => r.id)
@@ -763,4 +764,12 @@ test('the Plan numbers each section as the print and the exports do, on every vi
   assert.match(screen, /const sectionNumbers = sectionNumbersOf\(items\)/, 'the Plan does not number its sections over the whole board')
   assert.match(screen, /number=\{groupNumberOf\(g, sectionNumbers\)\}/, 'a section heading on the Plan shows no number')
   assert.match(screen, /<span className="plan-group-number">\{number\}<\/span>/, 'the heading does not draw the number')
+})
+
+test('the print hands each step its own object task\'s saved answer, as the Plan does', () => {
+  // A policy that makes its own object (6.3's countries location) draws that
+  // task's picker from the saved decision under the task's id. Without it the
+  // printed picker read "Not saved yet" over a saved list (Stage 3 merge).
+  const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
+  assert.ok(print.includes('objectTask={s.objectTask ? { saved: decisions[s.objectTask.id] ?? null } : undefined}'), 'the print draws a step without its object task\'s saved answer')
 })

@@ -1,7 +1,7 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "after: Create or Correct Allowed Countries Location",
+  "reason": "after: Prepare Emergency Access Accounts",
   "fact": null,
   "badge": "On Hold",
   "bar": "Waiting on your answers",
@@ -14,12 +14,16 @@
   ],
   "tiles": [
     {
-      "label": "Affected people",
-      "state": "Not established"
+      "label": "Administrator Sign-in Countries",
+      "state": "Not Read"
     },
     {
-      "label": "Create or Correct Allowed Countries Location",
-      "state": "Prerequisite · To do"
+      "label": "Work Countries Location",
+      "state": "Needs Correction"
+    },
+    {
+      "label": "Countries People Sign In From",
+      "state": "Not Read"
     },
     {
       "label": "Prepare Emergency Access Accounts",
@@ -34,7 +38,8 @@
     "Entra",
     "PowerShell",
     "JSON",
-    "AI Info"
+    "AI Info",
+    "Email"
   ],
   "when": "After prerequisites"
 }

@@ -292,7 +292,7 @@ test('one blocker, one place: no caption, a concise rail, Prerequisites in Readi
   for (const t of r.tiles) if (t.key.startsWith('step:') || t.key.startsWith('missing:')) assert.ok(t.link && 'href' in t.link && t.link.href.startsWith('#/plan/'), `${t.key} does not link to its step`)
   assert.equal(r.tiles.some((t) => t.key === 'blockers'), false, 'a count tile stands in for the prerequisites')
   // Work the Plan schedules in a phase reads the phase's day on the rail, as the row's When does.
-  const prep = opened('demo', 's-prereq-allowed-countries')
+  const prep = opened('demo', 's-prereq-trusted-location')
   const scheduled = stepContract(prep.step, { ...prep.ctx, scheduledOn: '2026-08-31T12:00:00.000Z' }, undefined, prep.lane)
   assert.match(railOf(scheduled).metric, /\d{4}$/, 'scheduled preparation work reads no day on its rail')
 })

@@ -7,7 +7,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { packageDirs } from './library.ts'
+import { packageDirs, packageSources } from './library.ts'
 import { normalizePackage, parseBlocks, validatePackage } from './protocol.ts'
 import type { Block, PackageMeta } from './protocol.ts'
 
@@ -62,9 +62,10 @@ const AUTHORED_ON_BLOCK: Readonly<Record<string, readonly string[]>> = {
 }
 
 function library(): { meta: PackageMeta; source: Record<string, Block>; normal: ReturnType<typeof normalizePackage> }[] {
-  return packageDirs().map((dir) => {
-    const meta = JSON.parse(readFileSync(join(dir, 'META.json'), 'utf8')) as PackageMeta
-    const source = parseBlocks(readFileSync(join(dir, meta.contentFile ?? 'CONTENT.md'), 'utf8'))
+  // Every package, a task a folder folds in included (library.ts packageSources).
+  return packageDirs().flatMap(packageSources).map(({ metaJson, content }) => {
+    const meta = JSON.parse(metaJson) as PackageMeta
+    const source = parseBlocks(content)
     return { meta, source, normal: normalizePackage(meta, source) }
   })
 }

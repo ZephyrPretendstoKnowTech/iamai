@@ -234,7 +234,15 @@ test('013.B: unresolved operations retain useful portal guidance without invente
       // The completion is one line: the resolution where there is no policy to
       // state an end of, and otherwise the policy's end state — what clears the
       // hold is Fix before continuing's (owner, 2026-09-11); never the rollout's gates.
-      assert.equal(v.doneWhen.length, 1, `${where}: ${v.doneWhen.join(' | ')}`)
+      // A step that makes an object itself (Stage 3, Step.objectTask) finishes
+      // on that object's completion first, as its first task, then on the
+      // answer it still asks for, where it asks one, then on its own end state,
+      // whatever else holds it.
+      const taskDone = s.objectTask !== undefined ? stepContract(s.objectTask, c.ctx(s)).doneWhen : []
+      const decided = s.objectTask !== undefined && s.state.condition === 'needs-decision' ? [CONTRACT.doneDecision] : []
+      const lead = [...taskDone, ...decided]
+      assert.deepEqual(v.doneWhen.slice(0, lead.length), lead, `${where}: the task's completion and the answer do not lead: ${v.doneWhen.join(' | ')}`)
+      assert.equal(v.doneWhen.length, lead.length + 1, `${where}: ${v.doneWhen.join(' | ')}`)
       // The line is the step's own end state (steps[].doneEnd), or the shared
       // one where the step states none — checked as the sentence it is, not by
       // the words it opens with. A step whose outcome is named in its own words
@@ -245,7 +253,7 @@ test('013.B: unresolved operations retain useful portal guidance without invente
         const own = (contentStepFor(s) as { doneEnd?: unknown } | undefined)?.doneEnd
         const template = typeof own === 'string' ? own : CONTRACT.doneHeldEnd
         const shape = new RegExp(`^${template.split('{tenant}').map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.+')}$`)
-        assert.match(v.doneWhen[0], shape, `${where}: ${v.doneWhen.join(' | ')}`)
+        assert.match(v.doneWhen[lead.length], shape, `${where}: ${v.doneWhen.join(' | ')}`)
       }
       assert.equal(/report-only|sign-in failures|%/i.test(v.doneWhen.join(' ')), false, `${where}: a rollout completion — ${v.doneWhen.join(' | ')}`)
     }

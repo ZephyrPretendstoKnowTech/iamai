@@ -6,7 +6,7 @@ import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { generateRoadmap } from './generate.ts'
-import { applySkips, applyProgress, decisionsOf } from './progress.ts'
+import { applySkips, applyProgress, decisionsOf, securityDefaultsSeenOnAtOf } from './progress.ts'
 import { isEmergencyAccess } from './blockerSteps.ts'
 
 test('a pre-50.1 record: only the skip is kept; the plan renders from the snapshot, not the cached status', () => {
@@ -80,4 +80,20 @@ test('a decisions-shaped record round-trips unchanged through decisionsOf', () =
   assert.deepEqual(out.freeze, rec.freeze)
   assert.deepEqual(out.checkpoints, rec.checkpoints)
   assert.equal(out.planCreatedAt, rec.planCreatedAt)
+})
+
+// Stage 3 (V1 decision 6): the one new saved fact. The first scan that reads
+// security defaults on records its date, like planCreatedAt a history no
+// regeneration can repeat; a later scan keeps it, an off or unread scan records
+// nothing, and the record carries it through a reload.
+test('the plan records the first scan that read security defaults on, and keeps it', () => {
+  const on = structuredClone(fixture('messy').snapshot)
+  const off = structuredClone(fixture('small').snapshot)
+  assert.equal(securityDefaultsSeenOnAtOf(null, off), null, 'read off: nothing to record')
+  assert.equal(securityDefaultsSeenOnAtOf(null, on), on.asOf, 'read on: this scan is the first')
+  assert.equal(securityDefaultsSeenOnAtOf('2026-08-01T00:00:00.000Z', on), '2026-08-01T00:00:00.000Z', 'a later scan keeps the first date')
+  assert.equal(securityDefaultsSeenOnAtOf('2026-08-01T00:00:00.000Z', off), '2026-08-01T00:00:00.000Z', 'and so does an off one')
+  const unread = { ...off, config: { ...off.config, securityDefaults: { ...off.config.securityDefaults, status: 'error' as const, rows: [] } } }
+  assert.equal(securityDefaultsSeenOnAtOf(null, unread as never), null, 'an unread setting records nothing')
+  assert.equal(decisionsOf({ planId: 'p', skips: {}, checkpoints: [], securityDefaultsSeenOnAt: '2026-08-01T00:00:00.000Z' }, 'p').securityDefaultsSeenOnAt, '2026-08-01T00:00:00.000Z', 'the record carries it')
 })

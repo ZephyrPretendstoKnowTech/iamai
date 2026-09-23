@@ -62,8 +62,8 @@ export type StepGroup = {
 export const EMERGENCY_ACCESS_GROUP = 'emergency-access'
 export const DIRECTION_GROUP = 'direction'
 
-/** The four Direction steps, in the order the group draws them (roadmap/direction.ts builds them). */
-export const DIRECTION_STEP_IDS = ['s-direction-use', 's-direction-accounts', 's-direction-devices', 's-direction-locations'] as const
+/** The three Direction steps, in the order the group draws them (roadmap/direction.ts builds them). */
+export const DIRECTION_STEP_IDS = ['s-direction-use', 's-direction-accounts', 's-direction-devices'] as const
 
 export const STEP_GROUPS: readonly StepGroup[] = [
   {
@@ -102,10 +102,11 @@ export const STEP_GROUPS: readonly StepGroup[] = [
   //                                   coverage/goalIdentity.ts MERGE_ANCHOR), so the only id
   //                                   the engine can build is s-goal-byod-session-controls.
   //
-  // Four rows hold an interim place until the merges land (Stages 3 and 4):
-  // Decide Where People Sign In From as Direction's fourth step, the countries
-  // location as the last object here, and each medium-risk step straight after
-  // its high partner.
+  // Two rows hold an interim place until the merge lands (Stage 4): each
+  // medium-risk step straight after its high partner. Stage 3 landed the other
+  // two: Decide Where People Sign In From joined Decide How and Where People
+  // Sign In, and the countries location is Block Sign-ins From Countries Not
+  // Allowed's own first task, so neither is a row here.
   //
   // People first, then objects: the dormant accounts drop out of every count,
   // the admin account you keep is the one your passkey goes on, and the campaign
@@ -115,7 +116,7 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     key: 'prepare',
     titleKey: 'pages.app.plan.groups.prepare.title',
     completedTitleKey: 'pages.app.plan.groups.prepare.completedTitle',
-    members: ['s-check-dormant-accounts', 's-check-separate-admin-accounts', 's-ladder-operator-passkey', 's-verify-mfa', 's-prereq-auth-strength', 's-prereq-trusted-location', 's-prereq-service-accounts-group', 's-prereq-allowed-countries'],
+    members: ['s-check-dormant-accounts', 's-check-separate-admin-accounts', 's-ladder-operator-passkey', 's-verify-mfa', 's-prereq-auth-strength', 's-prereq-trusted-location', 's-prereq-service-accounts-group'],
     anatomy: 'task',
   },
   // The four policies that replace security defaults, then the switch itself:

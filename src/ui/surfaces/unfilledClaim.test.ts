@@ -220,8 +220,9 @@ test('the security-defaults step describes the state the scan read, and says so 
 // cutover this step performs still names all four.
 test('the security-defaults step claims only what completes it, in the state the scan read', () => {
   const sd = stepById['s-prereq-security-defaults'] as unknown as { doneWhen: string[]; doneWhenWhen: { securityDefaultsOff: string[] } }
+  // A plan that saw security defaults on (V1 decision 6): one that never did reads Doesn't apply, in the footer.
   const contractOf = (f: ReturnType<typeof fixture>) => {
-    const r = runFixture(f)
+    const r = runFixture(f, { securityDefaultsSeenOnAt: '2026-08-01T00:00:00.000Z' })
     const step = r.steps.find((s) => s.id === 's-prereq-security-defaults')!
     return { step, c: stepContract(step, ctxFor(f, r)), r }
   }
@@ -264,9 +265,12 @@ test('a security-defaults step read already off tells nobody to turn a replaceme
   const CUTOVER = /Right after saving|same change window|changeover/
   // The step as the Plan draws it: the board's lane and blockers, the opened
   // body, and the export every artifact reads.
+  // small and hostile read security defaults off: the step is a Completed row
+  // only on a plan that saw them on first (V1 decision 6), which is the case
+  // this is about; one that never did reads Doesn't apply, in the footer.
   const drawn = (name: 'small' | 'hostile' | 'messy') => {
     const f = fixture(name)
-    const r = runFixture(f)
+    const r = runFixture(f, { securityDefaultsSeenOnAt: '2026-08-01T00:00:00.000Z' })
     const step = r.steps.find((s) => s.id === 's-prereq-security-defaults')!
     const { readings, titleOf } = boardReadingsOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
     const reading = readings.get(step.id)!

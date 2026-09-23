@@ -47,7 +47,7 @@ import { submitsEnforcementOnly, switchedOffPolicies, unavailableReason, impleme
 import { GATING_SUBJECTS, blockerStepId } from '../../roadmap/blockerSteps.ts'
 import { observationWindowDays, readyBasis, readyWhen } from '../../derive/readyWhen.ts'
 import { planStateOf } from './planState.ts'
-import { directionBlockerStep, directionStepsAnswering } from '../../roadmap/direction.ts'
+import { directionBlockerStep, directionWaitRelayed } from '../../roadmap/direction.ts'
 import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
 import type { PlanState } from './planState.ts'
 
@@ -224,6 +224,11 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
       blockers.push({ kind: 'sourceMapping', id: `sourceMapping:${m.token.slice(0, 8)}`, ...(role ? { role } : {}) })
       continue
     }
+    // An object the step makes itself is its own task, not a wait and not a
+    // missing object (Stage 3: the countries policy makes the countries
+    // location). Without this it waited on itself, or read On Hold ·
+    // missingObject over work its own Implementation Tasks hand over now.
+    if (m.stepId === step.id) continue
     const maker = m.stepId !== null ? byId.get(m.stepId) : undefined
     if (maker && GRAPH.steps.has(maker.id) && graphGates(step.id, maker.id, action)) continue
     if (maker && GRAPH.steps.has(maker.id) && maker.status !== 'done') waitsOn.push({ step: maker.id, action, milestone: 'complete' })
@@ -298,7 +303,10 @@ export function tenantStateOf(steps: readonly Step[], rows: readonly LaneRowInpu
   const conds = graphConditions(byId, answers)
   return [
     { steps: observed, conditions: conds, prerequisites: prerequisites(byId, conds) },
-    { deferred: steps.filter((s) => s.status === 'skipped').map((s) => s.id) },
+    // Deferred is the person's choice to put a step off. A step that does not
+    // apply here is set aside too (its status reads skipped), but nobody
+    // deferred it: it is complete to the engine (`observe`), never Deferred.
+    { deferred: steps.filter((s) => s.status === 'skipped' && s.doesntApply == null).map((s) => s.id) },
   ]
 }
 
@@ -438,10 +446,15 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
   // own wait to show. The row's `reason` is untouched, so no row changes lane,
   // label or order, and a row whose stated reason IS the answer still says it
   // — once.
-  for (const reading of out.values()) {
-    const relayed = new Set(reading.blockers.flatMap((b) => (b.kind === 'step' || b.kind === 'suspendedPrerequisite' ? [...directionStepsAnswering(b.id)] : [])))
-    if (relayed.size === 0) continue
-    reading.blockers = reading.blockers.filter((b) => !(b.kind === 'decision' && relayed.has(b.id)))
+  //
+  // The relay is by question, not by Direction step (direction.ts
+  // directionWaitRelayed): a device policy's own computers-and-phones wait is
+  // not Define the Trusted Network's to carry.
+  for (const [id, reading] of out) {
+    const via = reading.blockers.flatMap((b) => (b.kind === 'step' || b.kind === 'suspendedPrerequisite' ? [b.id] : []))
+    if (via.length === 0) continue
+    const step = byId.get(id) ?? null
+    reading.blockers = reading.blockers.filter((b) => !(b.kind === 'decision' && isDirectionStep(b.id) && directionWaitRelayed(step, via, b.id)))
   }
   for (const row of rows) { const reading = out.get(row.id); if (reading?.lane === 'Ready') reading.substatus = 'Review' }
   const rolloutPending = steps.some(step => POLICY.includes(step.kind) && step.status !== 'done' && step.status !== 'skipped' && !step.doesntApply)
