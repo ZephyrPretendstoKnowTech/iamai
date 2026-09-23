@@ -204,7 +204,14 @@ test('the recovery test can be recorded, and with it the policies ready to enfor
   const drilled = walk(tenant('mid'), habit)
   assert.equal(lanes(drilled.t, drilled.r).find((row) => row.id === 'cleanup-drill')?.lane, 'Completed', 'the recorded drill does not complete the drill row')
   const enforced = stage(drilled.stages, 'enforced what was ready')
-  assert.equal(enforced['ready-to-enforce'] ?? 0, 0, 'a policy ready to enforce was not turned on')
+  // Every prerequisite the board lists holds a turn-on (owner decision 6), not
+  // the drill alone: a policy still ready to enforce once the drill is recorded
+  // waits on another step the plan names — never on the drill, never on nothing.
+  for (const s of drilled.r.steps.filter((x) => x.status === 'ready-to-enforce')) {
+    const waits = (s.action.enforceWaitsOn ?? []).map((w) => w.id)
+    assert.ok(waits.length > 0 && !waits.includes('cleanup-drill'), `${s.id} ready to enforce and not turned on, waiting on ${JSON.stringify(waits)}`)
+  }
+  assert.ok((enforced['ready-to-enforce'] ?? 0) < ready, 'the recorded drill turned nothing on')
   assert.ok(enforced.done > stage(drilled.stages, 'report-only window').done, 'turning the policies on completed none of them')
 })
 
