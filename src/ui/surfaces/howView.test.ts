@@ -122,6 +122,9 @@ test('How’s migration-state check says why the migration matters, and where pe
   assert.doesNotMatch(row.why, new RegExp(`is read on ${title}`), row.why)
   assert.match(row.why, /read on every scan/, row.why)
   assert.match(row.why, /only while an account still has it on, its state could not be read, or the scan's read of the directory was incomplete/, row.why)
+  // What is read and when the step is on the plan are two sentences: as one it
+  // ran to 47 words on How and on the emergency-access check row.
+  assert.match(row.why, new RegExp(`is read on every scan\\. The plan carries ${title} only while `), row.why)
 })
 
 // Two emergency-access checks pass on the operator's own answer, and IAMAI reads
