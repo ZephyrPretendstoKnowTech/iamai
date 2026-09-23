@@ -4,7 +4,10 @@ import assert from 'node:assert/strict'
 import { GRAPH_SCOPES } from '../graph/scopes.ts'
 import { COLLECTOR_REGISTRY } from '../graph/collect/registry.ts'
 import { SCOPE_COPY, SIGN_IN_SCOPES, consentRows } from '../copy/permissions.ts'
-import { recoveryAuditRequest } from '../graph/collect/laneBCore.ts'
+import { RECOVERY_AUDIT_LOOKBACK_DAYS, recoveryAuditRequest } from '../graph/collect/laneBCore.ts'
+import { EVIDENCE_WINDOW_DAYS } from '../graph/collect/constants.ts'
+import { app } from '../content/content.ts'
+import { readFileSync } from 'node:fs'
 import { CORE_SOURCES } from '../graph/collect/coreSections.ts'
 
 test('every scope the app requests is explained in the disclosure', () => {
@@ -116,5 +119,29 @@ test('each permission’s "Without it" says no plan is built exactly where refus
     if (SIGN_IN_SCOPES.includes(scope)) continue
     const stopsThePlan = core.some((s) => s.scopes.includes(scope))
     assert.equal(/\bno plan\b/i.test(copy.without), stopsThePlan, `${scope}: "${copy.without}"`)
+  }
+})
+
+// The directory-audit window was written out as "30 days" in five disclosures
+// beside the constant the read uses (laneBCore.ts RECOVERY_AUDIT_LOOKBACK_DAYS);
+// changing it would have left every one stale (Phase 2 review). The sentences
+// name one window for the sign-in records and the audit events, so the two
+// windows must be the same.
+test('every directory-audit disclosure states the window the read uses', () => {
+  assert.equal(RECOVERY_AUDIT_LOOKBACK_DAYS, EVIDENCE_WINDOW_DAYS, 'the disclosures give sign-in records and audit events one window')
+  const days = `${RECOVERY_AUDIT_LOOKBACK_DAYS} days`
+  const audit = COLLECTOR_REGISTRY.find((s) => s.name === 'Directory audit events')
+  // SECURITY.md wraps its prose, so its sentences and table cells are read whole.
+  const security = readFileSync('SECURITY.md', 'utf8').replace(/\s+/g, ' ').split(/(?<=\.) |\|/).filter((s) => /directory audit events/.test(s))
+  assert.ok(security.length >= 2, 'SECURITY.md names the directory-audit read in its summary and its permissions table')
+  for (const [where, text] of [
+    ['AuditLog.Read.All reads', SCOPE_COPY['AuditLog.Read.All'].reads],
+    ['AuditLog.Read.All consent row', SCOPE_COPY['AuditLog.Read.All'].consentReads],
+    ['registry gate', audit?.gate ?? ''],
+    ['How note', app.how.readRows['Directory audit events']?.note ?? ''],
+    ...security.map((s) => ['SECURITY.md', s] as const),
+  ] as const) {
+    assert.ok(text.includes(days), `${where}: ${text}`)
+    for (const d of text.match(/\b\d+ days\b/g) ?? []) assert.equal(d, days, `${where}: ${text}`)
   }
 })
