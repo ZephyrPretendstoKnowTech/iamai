@@ -15,11 +15,11 @@ import type { GroupMembers } from '../../coverage/population.ts'
 import type { DirectoryEvidence } from '../../mapping/safetyChoice.ts'
 import type { OwnerConfirmation, StepDecision, StepDecisionInput } from '../../roadmap/decisions.ts'
 import { MFA_FOLLOW_UP_KEY, SPECIAL_CARE_STEP_ID } from '../../roadmap/answers.ts'
-import { app, engine, pages } from '../../content/content.ts'
+import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { CleanupBody, cleanupEntry, cleanupWhen } from './CleanupStep.tsx'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
-import { planFinish, planWeeks, projectedFinish } from '../../derive/finish.ts'
+import { planFinish, planLengthSentence, projectedFinish } from '../../derive/finish.ts'
 import { startControl } from '../../derive/planHeader.ts'
 import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
@@ -161,23 +161,14 @@ export function Plan({ scan: lastScan, baseline, account }: {
   const finish = planFinish(c.steps, cleanupPhase?.end ?? null)
   // The emergency-access attestations, the second fact that can complete the alerting Cleanup row.
   const answers = data.mapping?.breakGlassAnswers ?? null
-  // Weeks derive from the finish date, not the last blocked wave (item 15); one derivation, shared with the print and the sample tile (derive/finish.ts).
-  const weeks = planWeeks(finish, c.schedule)
   // Held work dates no end (derive/finish.ts): Cleanup, which follows it, is undated with it.
   const cannotFinish = finish.held
   const P = pages.plan as Record<string, string>
-  const weeksText = `${weeks} week${weeks === 1 ? '' : 's'}`
   const start = startControl()
-  // Filled once: one because, one full stop; the clause names steps by their content titles.
-  // A plan that cannot finish explains its estimate, from the rollout the schedule
-  // drew before anything held was withdrawn (roadmap/schedule.ts `estimate`).
-  //
   // The Projected finish tile's tip (A2): the critical-path sentences the schedule
-  // derives, so the person sees which chain sets the date. While held work is
-  // withdrawn the schedule's own chain no longer measures the estimate the tile
-  // shows, so the tip reads the estimate's reason instead.
-  const lengthReason = cannotFinish ? (c.schedule.estimate?.reason ?? null) : c.schedule.derivation.reason
-  const lengthTip = cannotFinish ? (lengthReason ? fillText(P.lengthTipEstimate, { weeks: weeksText, constraint: lengthReason }) : engine.critical.sentenceDone) : [c.schedule.derivation.criticalPath, ...c.schedule.derivation.relaxed].join(' ')
+  // derives, or while held work is withdrawn the estimate's reason. One sentence,
+  // shared with the prompt pack's plan block (derive/finish.ts planLengthSentence).
+  const lengthTip = planLengthSentence(finish, c.schedule)
   // The estimate at pace, and the committed day when it is another day (derive/finish.ts projectedFinish; the printed cover reads the same pair).
   const projected = projectedFinish(finish.finish, c.schedule.estimate?.targetEnd ?? null)
 

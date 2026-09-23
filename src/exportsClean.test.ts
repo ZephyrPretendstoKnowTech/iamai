@@ -67,7 +67,7 @@ test('the calendar speaks from the content-driven step and carries no forbidden 
 })
 
 test('the prompt pack speaks from the content-driven step and carries no forbidden vocabulary', () => {
-  const pack = promptPack({ view, tenant: 'Contoso Pty Ltd', steps: run.steps, schedule: run.schedule, changeRecord: '', planSummary: run.schedule.derivation.criticalPath, announcement: null, cleanup })
+  const pack = promptPack({ view, tenant: 'Contoso Pty Ltd', steps: run.steps, schedule: run.schedule, changeRecord: '', announcement: null, cleanup })
   const md = promptPackMarkdown(pack, 'Contoso Pty Ltd')
   assert.match(md, /Verify emergency sign-in/, 'the premise: the drill travels in the pack')
   assert.deepEqual(hits(md), [], 'no forbidden string in the prompt pack')

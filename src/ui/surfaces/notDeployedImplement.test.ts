@@ -516,7 +516,7 @@ test('004.17: the prompt pack’s draft announcement carries the same qualificat
   assert.deepEqual([...parts.slice(0, 2), ...parts.slice(3)], source.comms!.split('\n\n'), 'the draft says something other than what the step wrote')
   // And the pack a person actually copies carries it, in both prompts built
   // from the draft (rewrite, translate) — not only in the facts block.
-  const pack = promptPack({ view: (st: Step) => stepExportView(st, canonical().ctx), tenant: 'Fixture tenant', steps, schedule: r.schedule, changeRecord: '', planSummary: '', announcement: draft })
+  const pack = promptPack({ view: (st: Step) => stepExportView(st, canonical().ctx), tenant: 'Fixture tenant', steps, schedule: r.schedule, changeRecord: '', announcement: draft })
   const carrying = pack.filter((p) => p.prompt.includes(source.comms!.split('\n\n')[1]))
   assert.ok(carrying.length >= 2, `the pack builds ${carrying.length} prompts from the draft`)
   for (const p of carrying) assert.ok(p.prompt.includes(FORECAST_NOTE), `${p.title}: the prompt hands a model a projected date as a commitment`)

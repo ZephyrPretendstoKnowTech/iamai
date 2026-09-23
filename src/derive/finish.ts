@@ -10,6 +10,8 @@ import { holdOf, isHeld } from '../roadmap/holds.ts'
 import { holdWaitsOn } from '../roadmap/stateReason.ts'
 import type { Schedule } from '../roadmap/schedule.ts'
 import type { Step } from '../roadmap/types.ts'
+import { engine, pages } from '../content/content.ts'
+import { fillText } from '../content/render.ts'
 
 export type PlanFinish = {
   /** ISO date the plan finishes; null while anything it requires is held, or when nothing enforces. */
@@ -132,4 +134,25 @@ export type ProjectedFinish = { estimate: string | null; committed: string | nul
 export function projectedFinish(finish: string | null, estimate: string | null): ProjectedFinish {
   const committed = finish !== null && (estimate === null || absoluteDate(finish) !== absoluteDate(estimate)) ? finish : null
   return { estimate, committed }
+}
+
+/**
+ * The plan's length in one sentence: the Plan header's Projected finish tip and
+ * the prompt pack's plan block (roadmap/prompts.ts promptPack).
+ *
+ * While work the plan requires is held the schedule's own chain no longer
+ * measures the estimate, so the sentence is the estimate's reason
+ * (pages.plan.lengthTipEstimate: "Once nothing is held, the plan is about …").
+ * Otherwise it is the critical path the schedule derives, with the constraints
+ * it relaxed. The pack used to carry the bare critical path whatever the header
+ * said: "The plan is 1 week because … no enforcement is left to schedule" on a
+ * demo plan the header read as held, about 3 weeks once nothing is held
+ * (Phase 2 export finding 2).
+ */
+export function planLengthSentence(finish: PlanFinish, schedule: Pick<Schedule, 'start' | 'weeks' | 'estimate' | 'derivation'>): string {
+  if (!finish.held) return [schedule.derivation.criticalPath, ...schedule.derivation.relaxed].join(' ')
+  const reason = schedule.estimate?.reason ?? null
+  if (!reason) return engine.critical.sentenceDone
+  const weeks = planWeeks(finish, schedule)
+  return fillText((pages.plan as Record<string, string>).lengthTipEstimate, { weeks: `${weeks} week${weeks === 1 ? '' : 's'}`, constraint: reason })
 }

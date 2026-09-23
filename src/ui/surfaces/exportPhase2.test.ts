@@ -5,13 +5,16 @@
 // the grounding bundle.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import type { Fixture, FixtureName } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
 import { scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import type { Step } from '../../roadmap/types.ts'
-import { app } from '../../content/content.ts'
+import { app, pages } from '../../content/content.ts'
+import { planFinish, planLengthSentence } from '../../derive/finish.ts'
+import { promptPack } from '../../roadmap/prompts.ts'
 import { boardReadingsOf } from './planBoard.ts'
 import { exportHoldOf, exportViewsOf } from './stepExport.ts'
 import { cleanupExportViews } from './cleanupExport.ts'
@@ -63,4 +66,35 @@ test('the calendar names an operation only on a row the board reads Ready with t
   }
   assert.ok(held > 0, 'the premise: an Up Next create the schedule dates is booked')
   void handed
+})
+
+// Finding 2 (severity 3). The pack's plan block was the schedule's critical-path
+// sentence, whatever the header said: "The plan is 1 week because MFA
+// registration for 30 people takes 1 week and no enforcement is left to
+// schedule" on a demo plan the header read as held, about 3 weeks once nothing
+// is held. The pack reads the header's one plan-length sentence.
+test('the prompt pack states the plan length the Plan header states, and no length while work is held', () => {
+  const HELD_PREFIX = (pages.plan as Record<string, string>).lengthTipEstimate.split('{')[0]
+  let heldPlans = 0
+  for (const name of ['demo', 'mid', 'large'] as FixtureName[]) {
+    const p = exportPage(fixture(name))
+    const finish = planFinish(p.r.steps, p.r.schedule.cleanup?.end ?? null)
+    const pack = promptPack({ view: p.view, tenant: 'Tenant', steps: p.r.steps, schedule: p.r.schedule, changeRecord: '', announcement: null, cleanup: p.cleanup })
+    const header = planLengthSentence(finish, p.r.schedule)
+    for (const item of pack.slice(0, 2)) {
+      assert.ok(item.prompt.includes(header), `${name}/${item.title}: the pack's plan block is the header's sentence "${header}"`)
+      if (finish.held) assert.doesNotMatch(item.prompt, /The plan is \d+ weeks?\b/, `${name}/${item.title}: a held plan states a length`)
+    }
+    if (finish.held) {
+      heldPlans++
+      assert.ok(header.startsWith(HELD_PREFIX), `${name}: the header's held sentence: ${header}`)
+    }
+  }
+  assert.ok(heldPlans > 0, 'the premise: a plan that cannot finish')
+})
+
+// The Plan header reads the same sentence (Plan.tsx Projected finish tip).
+test('the Plan header\'s Projected finish tip is the one plan-length sentence', () => {
+  const plan = readFileSync(new URL('./Plan.tsx', import.meta.url), 'utf8').replace(/\/\/[^\n]*/g, '')
+  assert.match(plan, /const lengthTip = planLengthSentence\(finish, c\.schedule\)/)
 })

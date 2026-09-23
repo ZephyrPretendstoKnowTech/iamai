@@ -377,7 +377,7 @@ test('013.E: the step block a prompt is grounded in says each fact once', () => 
 
 test('013.E: the pack says which step each of its prompts speaks for', () => {
   for (const c of CASES) {
-    const pack = promptPack({ view: c.view, tenant: 'Tenant', steps: c.run.steps, schedule: c.run.schedule, changeRecord: '', planSummary: c.run.schedule.derivation.criticalPath, announcement: null })
+    const pack = promptPack({ view: c.view, tenant: 'Tenant', steps: c.run.steps, schedule: c.run.schedule, changeRecord: '', announcement: null })
     const stepGrounded = pack.filter((p) => p.scope !== null)
     assert.equal(stepGrounded.length, 0, 'the global pack must not pretend to be about an arbitrary step')
     for (const step of c.run.steps) assert.ok(pack.some(p => p.prompt.includes(c.view(step).title)), `${c.name}: the plan briefing drops ${step.id}`)
@@ -410,7 +410,7 @@ test('013.F: no global Plan artifact carries the person-level MFA ledger', () =>
   const people = c.snapshot.users.map((u) => u.displayName ?? '').filter((n) => n.length > 3)
   const bundle = JSON.stringify(groundingBundle({ view: c.view, tenant: 'Tenant', snapshot: c.snapshot, coverage: c.run.coverage, steps: c.run.steps, schedule: c.run.schedule, redacted: false, generated: 'Sep 7, 2026' }))
   const ics = buildIcs(c.run.steps, 'Tenant', c.run.input.planId, c.view)
-  const prompts = promptPackMarkdown(promptPack({ view: c.view, tenant: 'Tenant', steps: c.run.steps, schedule: c.run.schedule, changeRecord: '', planSummary: '', announcement: null }), 'Tenant')
+  const prompts = promptPackMarkdown(promptPack({ view: c.view, tenant: 'Tenant', steps: c.run.steps, schedule: c.run.schedule, changeRecord: '', announcement: null }), 'Tenant')
   for (const [where, text] of [['bundle', bundle], ['calendar', ics], ['prompt pack', prompts]] as const) {
     // A plan artifact may name a handful of people a step actually turns on. It
     // may not be the ledger: a majority of the directory is the ledger.

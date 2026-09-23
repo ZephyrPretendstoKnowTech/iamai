@@ -171,7 +171,7 @@ test('the correction keeps the tenant\'s by-name emergency exclusion, adds none,
   // And the prompt pack says what the screen says: each row is its own bounded
   // block, so an added row cannot clip the last one off.
   const { ctx } = demo()
-  const pack = promptPack({ view: (s: Step) => stepExportView(s, ctx), tenant: 'Demo', steps: r.steps, schedule: r.schedule, changeRecord: '', planSummary: '', announcement: null, cleanup: cleanupExportViews(r.schedule.cleanup) })
+  const pack = promptPack({ view: (s: Step) => stepExportView(s, ctx), tenant: 'Demo', steps: r.steps, schedule: r.schedule, changeRecord: '', announcement: null, cleanup: cleanupExportViews(r.schedule.cleanup) })
   assert.ok(pack.every((item) => item.prompt.includes(row.title)), 'the prompt pack carries the Cleanup row')
 })
 
