@@ -64,16 +64,34 @@ function assertNothingIsDated(step: Step, r: ReturnType<typeof runFixture>, ctx:
   for (const o of operationsOf(step)) assert.equal(enforcesOnRun(o), false, `${label}: no operation that enforces the moment it is run`)
 }
 
-/** The large tenant, whose compliant-device readiness is 29% against the 80% its own step asks for. */
-function largeDevices(over: { enabled?: boolean; everyoneCompliant?: boolean } = {}) {
+/** SharePoint Online, which the step's own device policy leaves out where `owesCorrection` asks for it. */
+const SHAREPOINT = '00000003-0000-0ff1-ce00-000000000000'
+
+/**
+ * The large tenant, whose compliant-device readiness is 29% against the 80% its own step asks for.
+ *
+ * `owesCorrection`: the step's own policy also leaves SharePoint Online out of
+ * the Office 365 it targets, which the baseline's does not, so the step owes it
+ * a real Target resources correction. On the fixture as shipped the only update
+ * is now the switch: the correction the first scan used to carry changed nothing
+ * — the other, enforced device policies' narrower apps written onto one that
+ * already held the baseline's (R4-11) — and the cases below about a change that
+ * is not the switch rested on it.
+ */
+function largeDevices(over: { enabled?: boolean; everyoneCompliant?: boolean; owesCorrection?: boolean } = {}) {
   // With the plan's foundation settled (roadmap/foundations.ts): a case about
   // what a readiness threshold holds cannot start behind the gate that holds
   // every policy until both pinned groups are settled.
   const f = withFoundationSettled(fixture('large'))
   const ca = f.snapshot.config.caPolicies!
-  const rows = over.enabled
-    ? (ca.rows as Row[]).map((p) => (/Compliant device for Office/.test(String(p.displayName)) ? { ...p, state: 'enabled' } : p))
-    : (ca.rows as Row[])
+  const rows = (ca.rows as Row[]).map((p) => {
+    if (!/Compliant device for Office/.test(String(p.displayName))) return p
+    const q = over.enabled ? { ...p, state: 'enabled' } : p
+    if (!over.owesCorrection || q.displayName !== 'Core - Grant - Compliant device for Office') return q
+    // New objects: this fixture's policies share their conditions.
+    const conditions = (q.conditions ?? {}) as Row
+    return { ...q, conditions: { ...conditions, applications: { ...(conditions.applications as Row), excludeApplications: [SHAREPOINT] } } }
+  })
   const devices = over.everyoneCompliant
     ? [...f.snapshot.devices, ...f.snapshot.users.map((u, i) => ({ id: `d-ready-${i}`, displayName: `PC ${i}`, operatingSystem: 'Windows', isCompliant: true, trustType: 'AzureAd', ownerIds: [u.id] }))]
     : f.snapshot.devices
@@ -109,9 +127,13 @@ test('1: device readiness 29% against the 80% the step asks for enforces nothing
 // ---- 2: the safe report-only preparation survives ----
 
 test('2: the same readiness failure leaves a report-only preparation offered, and still dates nothing', () => {
-  const { r, step, ctx } = largeDevices()
+  // A correction the policy really owes (`owesCorrection`): the premise used to
+  // be found on the fixture, in an update that changed nothing, and 1a3fdc42
+  // rightly replaced it with the switch, which the threshold holds.
+  const { r, step, ctx } = largeDevices({ owesCorrection: true })
   const op = step.action.resolution!.policies[0]
   assert.equal(op.mode, 'update')
+  assert.deepEqual(Object.keys(op.body), ['conditions'], `premise: a correction, not the switch: ${JSON.stringify(op.body)}`)
   assert.equal((op.target as Row).state, 'enabledForReportingButNotEnforced', 'the policy it changes stays in report-only')
   assert.equal(enforcesOnRun(op), false, 'so running it denies nobody')
   // The preparation is how readiness gets to the threshold, so it is not withheld.
