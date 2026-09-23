@@ -11,6 +11,7 @@ import { emergencyTaskSteps } from './emergencyAccountTasks.ts'
 import type { EmergencyAccountTask } from './emergencyAccountTasks.ts'
 import { emergencyVerificationTasksOf } from './emergencyVerificationTasks.ts'
 import type { StepVarContext } from './stepVars.ts'
+import { affectedPasskeysByProposedChange } from '../../roadmap/passkeyCompatibility.ts'
 
 const ENTRA = 'Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **'
 const KEEP = 'Keep your working administrator session open.'
@@ -185,7 +186,12 @@ test('Step 3: affected passkeys name the accounts to prepare', () => {
     // said over thirty-five accounts whose key model the scan had never read,
     // four lines under a tile saying "Existing passkeys affected · Could not
     // verify".
-    else if (/could not tell whether/.test(first)) assert.match(first, /passkeys on [0-9]+ accounts?, because it could not read their key model/)
+    else if (/could not tell whether the planned settings affect/.test(first)) assert.match(first, /passkeys on [0-9]+ accounts?, because it could not read their key model/)
+    // Nor is nobody found affected in what was read an all-clear where not
+    // everything was read: demo-week2 holds an account whose registered methods
+    // were not read, and the task said "No existing passkey is affected" there
+    // under a tile reading "Could not verify". It says what it did not read.
+    else if (affectedPasskeysByProposedChange(value.snapshot, value.mapping, value.groups).state !== 'known') assert.match(first, /^IAMAI could not tell whether the planned settings stop any existing passkey\. .*(could not be compared exactly|were not readable)\./)
     else assert.equal(first, 'No existing passkey is affected by the planned settings. Keep the existing working method available while preparing an account.')
   }
 })
