@@ -98,14 +98,6 @@
       "iamaiOrder": null
     },
     {
-      "id": "s-prereq-allowed-countries",
-      "title": "Create or Correct Allowed Countries Location",
-      "workType": "foundation object",
-      "scopeClass": "n/a",
-      "effortKind": "portal",
-      "iamaiOrder": null
-    },
-    {
       "id": "s-prereq-service-accounts-group",
       "title": "Create or Correct Service Accounts Group",
       "workType": "foundation object",
@@ -460,18 +452,6 @@
       "condition": null,
       "edgeKind": "hard",
       "source": "owner",
-      "status": "ok",
-      "table": "10.1"
-    },
-    {
-      "step": "s-question-travel",
-      "action": "start",
-      "prerequisite": "s-prereq-allowed-countries",
-      "prerequisiteKind": "step",
-      "milestone": "complete",
-      "condition": null,
-      "edgeKind": "hard",
-      "source": "package",
       "status": "ok",
       "table": "10.1"
     },
@@ -1827,18 +1807,6 @@
       "source": "package",
       "status": "ok",
       "table": "10.3"
-    },
-    {
-      "step": "s-goal-geo-restriction",
-      "action": "create",
-      "prerequisite": "s-prereq-allowed-countries",
-      "prerequisiteKind": "step",
-      "milestone": "complete",
-      "condition": null,
-      "edgeKind": "hard",
-      "source": "package",
-      "status": "ok",
-      "table": "10.4"
     },
     {
       "step": "s-goal-geo-restriction",

@@ -250,7 +250,7 @@ Condition names used: `sd-enabled` (Security Defaults currently enabled in the t
 | `s-prereq-auth-strength` | Create the Baseline's Authentication Strength | foundation object | n/a | portal | | yes |
 | `s-verify-mfa` | Create and Enforce the MFA Registration Campaign | readiness / registration | all-users | portal | | yes |
 | `s-prereq-trusted-location` | Define the Trusted Network | foundation object | n/a | portal | | yes |
-| `s-prereq-allowed-countries` | Create or Correct Allowed Countries Location | foundation object | n/a | portal | | yes |
+| `s-prereq-allowed-countries` | Create or Correct Allowed Countries Location | foundation object | n/a | portal | | no — folded into `s-goal-geo-restriction` as its first task (roadmap-flow Stage 3) |
 | `s-prereq-service-accounts-group` | Create or Correct Service Accounts Group | foundation object | service-accounts | portal | | yes |
 | `s-question-mail-devices` | Set Up an SMTP Relay for Mail-Sending Devices | conditional remediation | devices | external-platform | | yes |
 | `s-question-partner` | Exclude the Partner or MSP Accounts | owner decision / exception design | guests | decision | | yes |
@@ -498,6 +498,7 @@ Observation predicates are written as the kind of evidence required, never as a 
 #### `s-prereq-allowed-countries` — Create or Correct Allowed Countries Location
 - Work type: foundation object · scope_class: n/a · effort_kind: portal · actions: start → complete
 - Non-step blockers: `decision:` allowed countries/regions and whether unknown areas are included.
+- Folded into `s-goal-geo-restriction` (roadmap-flow Stage 3, owner decision 5): the location is that step's first task — pick the work countries, create or correct the location, then the policy — so it is not a step and carries no edge (`generated: no`, §10.0). Its two edges in §10 stay as the record and are skipped by the build: the geographic block's construction dependency is now inside one step, and the travel workflow's start follows the countries step it lives on.
 
 #### `s-prereq-service-accounts-group` — Create or Correct Service Accounts Group
 - Work type: foundation object · scope_class: service-accounts · effort_kind: portal · actions: start → complete
@@ -627,7 +628,7 @@ Observation predicates are written as the kind of evidence required, never as a 
 - Work type: CA policy · scope_class: all-users · effort_kind: portal · actions: create → observe → enforce
 - Non-step blockers: `fact:` baseline source-reference mappings resolve.
 - Observation predicate: Report-only shows no legitimate sign-ins from blocked locations, or those are covered by partner/travel handling.
-- Rationale: Allowed Countries is the hard construction dependency; partner and travel are conditional enforcement dependencies (§10.4).
+- Rationale: the allowed-countries location is this step's own first task since roadmap-flow Stage 3 (it absorbed `s-prereq-allowed-countries`), so its construction dependency is no edge; the work countries are this step's own decision, and a blocking check on the list holds its enforcement. Partner and travel are conditional enforcement dependencies (§10.4).
 
 #### `s-goal-guests-mfa` — Require MFA for Guests
 - Work type: CA policy pair · scope_class: guests · effort_kind: portal · actions: create → observe → enforce
@@ -713,8 +714,8 @@ Trusted Network ─────┬→ Service accounts restricted to trusted net
                      ├→ Sign-in-method registration location rule
                      └→ Shared-devices policy
 
-Allowed Countries ───┬→ Geographic block
-                     └→ Travel exception workflow ─(conditional)→ Geographic block enforce
+Geographic block (makes its Allowed Countries location as its first task, Stage 3)
+Travel exception workflow ─(conditional)→ Geographic block enforce
 
 Service Accounts Group ─┬→ Service-account trusted-network policy
                         ├→ Azure-management MFA
@@ -745,7 +746,6 @@ Computed over action nodes, counting distinct downstream steps. **Excludes** the
 | `s-prereq-trusted-location` | 4 | 5 | shared-devices, register-info-protected, require-managed-device, service-accounts-trusted-network |
 | `s-prereq-device-plan` | 1 | 3 | require-managed-device |
 | `s-prereq-service-accounts-group` | 2 | 2 | block-legacy-auth, service-accounts-trusted-network |
-| `s-prereq-allowed-countries` | 2 | 2 | travel, geo-restriction |
 | `s-question-partner` | 2 | 2 | geo-restriction (conditional), guests-mfa (conditional) |
 | `s-shared-devices` | 2 | 2 | require-managed-device (conditional), all-users-no-persistence (conditional) |
 | `s-goal-require-managed-device` | 1 | 2 | shared-devices (conditional, @created) |
@@ -842,7 +842,7 @@ An unavailable channel whose only output is an error ("JSON could not be project
 
 Each example gives next action · applicable blockers · started? · lane · substatus/reason · why. Steps and edges are real; tenant states are hypothetical.
 
-**1. Prerequisite Ready, dependent not started.** `s-prereq-allowed-countries` object absent, decision inputs present → its next action `start` executable → `Ready · Create`. `s-goal-geo-restriction`: next action `create` ← allowed-countries@complete unsatisfied; no blockers; not started → **Up Next · After Allowed Countries**. Healthy chain, one layer.
+**1. Prerequisite Ready, dependent not started.** `s-prereq-service-accounts-group` object absent, decision inputs present → its next action `start` executable → `Ready · Create`. `s-goal-service-accounts-trusted-network`: next action `create` ← service-accounts-group@complete unsatisfied; no blockers; not started → **Up Next · After Service Accounts Group**. Healthy chain, one layer.
 
 **2. Prerequisite Observing, dependent not started.** `s-goal-mfa-all-users` exists in Report-only, exclusions group complete, evidence maturing → **Ready · Observing**. `s-prereq-per-user-mfa`: next action `start` ← mfa-all-users@enforced; not started; chain healthy → **Up Next · After Require MFA for Everyone**.
 
