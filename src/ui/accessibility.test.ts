@@ -823,8 +823,10 @@ test('a data table stays a table, and its labels are DOM structure rather than C
 
 test('the accessibility repair left the step body deciding nothing', () => {
   // The one action, the decision gate and the contract are read exactly where
-  // they were; only the markup around them moved.
-  assert.match(contentStep, /const contract = stepContract\(step, ctx, ex as Record<string, unknown>, laneView\)/)
+  // they were; only the markup around them moved. The contract also takes the
+  // board's answer to where a held chain starts, so the Threshold card and the
+  // finding the dialog, the print and AI Info read agree (R4-33).
+  assert.match(contentStep, /const contract = stepContract\(step, ctx, ex as Record<string, unknown>, laneView, prerequisiteLabel\?\.startOf\)/)
   assert.match(contentStep, /<WhatToDoLead contract=\{contract\} \/>/)
   assert.match(contentStep, /const decides = Boolean\(d\) && \(typeof d\.applies !== 'string' \|\| truthy\(ex\[d\.applies\]\)\)/)
   assert.match(contentStep, /decides && <Decision/)
