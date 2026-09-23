@@ -214,7 +214,7 @@ test('tile 3, Scan, complete: no beats, no read-only line, the five limitations 
   assert.equal(t.tone, 'done')
   assert.equal(t.lead, undefined)
   assert.equal(t.rows, undefined)
-  assert.deepEqual(t.actions, [{ label: 'Scan again', weight: 'secondary' }])
+  assert.deepEqual(t.actions, [{ label: 'Scan again', weight: 'secondary', does: 'scanAgain' }])
   scanOnlyItsOwn(t)
 })
 
@@ -242,7 +242,7 @@ test('tile 3, Scan, complete with sections it did not read in full: the same com
     { name: 'Role assignments', value: 'not read' },
     { name: 'Devices', value: 'not read' },
   ])
-  assert.deepEqual(t.actions, [{ label: 'Scan again', weight: 'secondary' }], 'no Sign in with another account: the plan was built')
+  assert.deepEqual(t.actions, [{ label: 'Scan again', weight: 'secondary', does: 'scanAgain' }], 'no Sign in with another account: the plan was built')
   scanOnlyItsOwn(t)
   // One section: the line counts itself down (content/render.ts pluralise).
   const one = scanTile({ kind: 'complete', at: full.asOf, now: twoMinutesLater, unread: [{ source: 'devices', partial: false, refused: false }] })
@@ -274,8 +274,8 @@ test('tile 3, finished with gaps: the unread rows, one ask for Global Reader wit
   assert.equal(t.learn?.label, 'Microsoft: Global Reader')
   assert.match(t.learn?.url ?? '', /learn\.microsoft\.com.*global-reader/)
   assert.deepEqual(t.actions, [
-    { label: 'Sign in with another account', weight: 'primary' },
-    { label: 'Scan again', weight: 'secondary' },
+    { label: 'Sign in with another account', weight: 'primary', does: 'signInAnother' },
+    { label: 'Scan again', weight: 'secondary', does: 'scanAgain' },
   ])
   const first = scanTile({ kind: 'gaps', gaps: coreGaps(gapsSnapshot()), unread, lastScan: null })
   assert.equal(first.lead, 'The plan needs 2 sections that could not be read in full, so IAMAI built nothing from this scan.')
@@ -300,14 +300,14 @@ test('a section Microsoft did not return in full is not blamed on the account; o
   assert.doesNotMatch(said(stopped), /this account|Global Reader/, 'a read stopped short is not blamed on the account')
   assert.equal(stopped.ask, undefined)
   assert.equal(stopped.learn, undefined)
-  assert.deepEqual(stopped.actions, [{ label: 'Scan again', weight: 'secondary' }], 'another account reads nothing more')
+  assert.deepEqual(stopped.actions, [{ label: 'Scan again', weight: 'secondary', does: 'scanAgain' }], 'another account reads nothing more')
   // Microsoft throttled the read and the retries ran out.
   const throttled = structuredClone(small)
   throttled.sources.signInEvidence = { status: 'error', reason: 'HTTP 429 TooManyRequests', coveredWindow: null, asOf: throttled.asOf }
   const busy = scanTile({ kind: 'gaps', gaps: coreGaps(throttled), unread: unreadSources(throttled), lastScan: null })
   assert.deepEqual(busy.rows, [{ name: 'Sign-in records', value: 'not read' }])
   assert.doesNotMatch(said(busy), /this account|Global Reader/)
-  assert.deepEqual(busy.actions, [{ label: 'Scan again', weight: 'secondary' }])
+  assert.deepEqual(busy.actions, [{ label: 'Scan again', weight: 'secondary', does: 'scanAgain' }])
   // A refusal is the account's: that row says so, and the ask and the other account stay.
   const refused = scanTile({ kind: 'gaps', gaps: coreGaps(gapsSnapshot()), unread: unreadSources(gapsSnapshot()), lastScan: null })
   assert.deepEqual(refused.rows, [
@@ -329,13 +329,42 @@ test('a section Microsoft did not return in full is not blamed on the account; o
   ])
   assert.equal(built.ask, 'Ask whoever administers the tenant for Global Reader; it reads every section and writes nothing.')
   assert.equal(built.learn?.label, 'Microsoft: Global Reader')
-  assert.deepEqual(built.actions, [{ label: 'Scan again', weight: 'secondary' }], 'the plan was built: Scan again alone')
+  assert.deepEqual(built.actions, [{ label: 'Scan again', weight: 'secondary', does: 'scanAgain' }], 'the plan was built: Scan again alone')
   // And a complete scan whose shortfall is not a refusal says nothing about the account.
   const demo = fixture('demo').snapshot
   const partly = scanTile({ kind: 'complete', at: full.asOf, now: twoMinutesLater, unread: unreadSources(demo) })
   assert.ok((partly.rows ?? []).length > 0, 'the premise: the demo scan read a section in part')
   assert.doesNotMatch(said(partly), /this account|Global Reader/)
   assert.equal(partly.ask, undefined)
+})
+
+// Phase 2 review, round 1: the gaps tile came to offer Scan again alone where no
+// section was refused, and Connect still wired the tile's buttons by their place
+// in the list: the first as Sign in with another account, the second as Scan
+// again. A throttled, failed or ceiling-stopped sign-in read therefore read an
+// action that was not there, and the page fell to its error boundary. Each Scan
+// action names what it does, and Connect wires it by that, in every state.
+test('every Scan action names what it does, and Connect wires each by that, never by its place', () => {
+  const small = fixture('small').snapshot
+  const throttled = structuredClone(small)
+  throttled.sources.signInEvidence = { status: 'error', reason: 'HTTP 429 TooManyRequests', coveredWindow: null, asOf: throttled.asOf }
+  const alone = scanTile({ kind: 'gaps', gaps: coreGaps(throttled), unread: unreadSources(throttled), lastScan: null })
+  assert.deepEqual(alone.actions.map((a) => [a.label, a.does]), [['Scan again', 'scanAgain']], 'the one button scans again')
+  const refused = scanTile({ kind: 'gaps', gaps: coreGaps(gapsSnapshot()), unread: unreadSources(gapsSnapshot()), lastScan: null })
+  assert.deepEqual(refused.actions.map((a) => [a.label, a.does]), [
+    ['Sign in with another account', 'signInAnother'],
+    ['Scan again', 'scanAgain'],
+  ])
+  const gap = coreRoleGap(rolesInToken(noRolesToken()))
+  assert.ok(gap)
+  assert.deepEqual(scanTile({ kind: 'role', upn, gap }).actions.map((a) => a.does), ['signInAnother'])
+  assert.deepEqual(scanTile({ kind: 'complete', at: full.asOf, now: twoMinutesLater }).actions.map((a) => a.does), ['scanAgain'])
+  assert.deepEqual(scanTile({ kind: 'scanning', lane: 'Sign-in records', elapsed: '1 min' }).actions.map((a) => a.does), ['stop'])
+  assert.deepEqual(scanTile({ kind: 'ready' }).actions.map((a) => a.does), ['scan'])
+  // Connect renders the actions the tile returns, each wired by what it does.
+  const CONNECT = readFileSync('src/ui/surfaces/Connect.tsx', 'utf8')
+  assert.doesNotMatch(CONNECT, /t3\.actions\[/, 'Connect picks a Scan action by its place in the list')
+  assert.match(CONNECT, /t3\.actions\.map\(\(a\) => <Act key=\{a\.label\} action=\{a\} onClick=\{scanDoes\[a\.does\]\} \/>\)/, 'Connect wires a Scan action by what it does')
 })
 
 // Phase 2 audit (Connect): the likeliest gaps scan, sign-in records alone,
@@ -368,7 +397,7 @@ test('tile 3, not started: the account, one row asking for Global Reader, Sign i
   assert.equal(t.tone, 'stop')
   assert.equal(t.lead, 'alex@example.com has no active role that reads Conditional Access policies, people and sign-in records.')
   assert.deepEqual(t.rows, [{ name: 'Everything IAMAI needs, read-only', value: 'ask for Global Reader' }])
-  assert.deepEqual(t.actions, [{ label: 'Sign in with another account', weight: 'primary' }])
+  assert.deepEqual(t.actions, [{ label: 'Sign in with another account', weight: 'primary', does: 'signInAnother' }])
   scanOnlyItsOwn(t)
 })
 
@@ -377,14 +406,14 @@ test('tile 3, scanning: one line with the elapsed time, Stop (tertiary), no stat
   beatsOf(s)
   assert.equal(s.state, 'reading sign-in records · 8s')
   assert.equal(s.tone, null)
-  assert.deepEqual(s.actions, [{ label: 'Stop', weight: 'tertiary' }])
+  assert.deepEqual(s.actions, [{ label: 'Stop', weight: 'tertiary', does: 'stop' }])
   scanOnlyItsOwn(s)
   const r = scanTile({ kind: 'ready' })
   beatsOf(r)
   assert.equal(r.state, 'not started')
   assert.equal(r.tone, null)
   assert.equal(r.note, 'The scan is processed in this browser; nothing is uploaded to IAMAI.')
-  assert.deepEqual(r.actions, [{ label: 'Scan tenant', weight: 'primary' }])
+  assert.deepEqual(r.actions, [{ label: 'Scan tenant', weight: 'primary', does: 'scan' }])
   scanOnlyItsOwn(r)
 })
 
