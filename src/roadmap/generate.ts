@@ -66,7 +66,7 @@ import { eventsFor, nobodyAffected as nobodyAffectedBy } from './timing.ts'
 import { MANAGER, MANAGER_BY_CONTROL, MANAGER_BY_GOAL } from '../copy/plain.ts'
 import { contentTitle } from '../content/stepTitle.ts'
 import { settleEnforceWaits } from './enforceWaits.ts'
-import { app, engine, shared, stepById } from '../content/content.ts'
+import { app, directionWords, engine, shared, stepById } from '../content/content.ts'
 import { countryName as countryLabel } from '../mapping/countries.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
@@ -1183,6 +1183,17 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       ...stateFields(snapshot.config.namedLocations?.status === 'ok' && mapping.wizardAnswered.trustedLocations === true && mapping.assumed?.trustedLocations !== 'detected' && (mapping.trustedLocationIds.length === 0 || ipLocations.length === mapping.trustedLocationIds.length) ? { satisfied: true, inPlace: true } : {}),
       deliveredBy: ipLocations.map((l) => l.displayName ?? l.id ?? '').filter((n) => n.length > 0),
     })
+    // Everyone works remotely: there is no network to define, so the step does
+    // not apply (V1 decision 6), with the answer as its reason. It was Completed,
+    // a row claiming work nobody did. The policies that read a trusted location
+    // treat it as done (below: rule 1 and the named dependencies), so a remote
+    // tenant keeps every hold it had and waits on nothing that does not apply.
+    // Only the person's own saved answer says remote; nothing assumes it.
+    if (networkConfirmed && mapping.trustedLocationIds.length === 0) {
+      const network = steps[steps.length - 1]
+      network.doesntApply = directionWords.questions.officeNetwork.options.remote
+      setState(network, { setAside: true, satisfied: false, inPlace: false })
+    }
   }
 
   // The baseline's own authentication strength (task 022 correction). Jon Hope's
@@ -2005,7 +2016,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
 
     // Named dependencies (prompt 12 §B).
     if (!state.satisfied) {
-      if (goal.id === 'register-info-protected' && steps.some((s) => s.id === locStepId && s.status !== 'done') && !doesntApply(locStepId)) blockByStep(locStepId, 'trusted-location')
+      if (goal.id === 'register-info-protected' && steps.some((s) => s.id === locStepId && s.status !== 'done' && s.doesntApply == null) && !doesntApply(locStepId)) blockByStep(locStepId, 'trusted-location')
       if (goal.id === 'geo-restriction') {
         if (steps.some((s) => s.id === countriesStepId)) blockByStep(countriesStepId, 'create-object')
       }
@@ -2016,7 +2027,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       if ((action.missing ?? []).some((m) => m.stepId === strengthStepId) && steps.some((x) => x.id === strengthStepId)) blockByStep(strengthStepId, 'create-object')      // The service-accounts block names the group and the trusted network (E9): it waits on both.
       if (goal.id === SERVICE_ACCOUNTS_TRUSTED_GOAL) {
         if (steps.some((s) => s.id === saStepId)) blockByStep(saStepId, 'create-object')
-        if (steps.some((s) => s.id === locStepId && s.status !== 'done') && !doesntApply(locStepId)) blockByStep(locStepId, 'trusted-location')
+        if (steps.some((s) => s.id === locStepId && s.status !== 'done' && s.doesntApply == null) && !doesntApply(locStepId)) blockByStep(locStepId, 'trusted-location')
       }
     }
 
@@ -2812,7 +2823,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // shows that prerequisite, and "when 1 trusted location exist (now 0)" beside
     // it is the same sentence again (docs/plans/step-redundancy-analysis.md
     // finding 3).
-    const locationStepToDo = steps.some((s) => s.id === locStepId && s.status !== 'done')
+    // A network step that does not apply (everyone remote) is not work to do:
+    // it counts as done here, so the tenant with no trusted location keeps the
+    // hold (V1 decision 6).
+    const locationStepToDo = steps.some((s) => s.id === locStepId && s.status !== 'done' && s.doesntApply == null)
     if (trustedLocationCount === 0 && !doesntApply(locStepId) && !locationStepToDo) blockLate(registrationStep, 'registration-no-trusted-location', BLOCKED_REASON.exist(1, 'trusted location', 0))
   }
 
