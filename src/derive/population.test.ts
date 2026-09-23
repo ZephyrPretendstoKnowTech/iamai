@@ -258,11 +258,13 @@ test('turning a policy on does not move its reach, and "Who it misses" counts on
 // the scan read only a sample of (over the member cap), or one it read in full.
 // Read in full the group holds the emergency accounts and nobody else, so the
 // policy's reach is exactly what it was without it.
-function deliveredWithGroup(policyName: string, stepId: string, sampled: boolean) {
+// `prepare` changes the tenant first, handed the groups the policy already excludes.
+function deliveredWithGroup(policyName: string, stepId: string, sampled: boolean, prepare: (f: Fixture, excluded: readonly string[]) => void = () => {}) {
   const GROUP = '7e5b6c1a-0000-4000-8000-00000000c0de'
   const f = structuredClone(withFoundationSettled(fixture('mid')))
   const policy = f.snapshot.config.caPolicies.rows.find((p) => (p as { displayName?: string }).displayName === policyName) as { conditions: { users: { excludeGroups?: string[] } } } | undefined
   assert.ok(policy, `the premise: mid has "${policyName}"`)
+  prepare(f, [...(policy.conditions.users.excludeGroups ?? [])])
   policy.conditions.users.excludeGroups = [...(policy.conditions.users.excludeGroups ?? []), GROUP]
   const members = [...f.mapping.breakGlassUserIds]
   f.groups.set(GROUP, { memberIds: members, directMemberIds: members, memberCount: sampled ? 30_000 : members.length, sampled, displayName: 'Contractors' } as never)
@@ -271,7 +273,7 @@ function deliveredWithGroup(policyName: string, stepId: string, sampled: boolean
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
   const body = stepBodyOf(step, ctx)
   const tiles = [...body.readiness.tiles, ...body.readiness.satisfied]
-  return { f, step, ctx, body, tiles, people: tiles.find((t) => t.key === 'people'), found: body.contract.found, row: rowWho(step), exported: stepExportView(step, ctx).population }
+  return { f, step, ctx, body, tiles, people: tiles.find((t) => t.key === 'people'), found: body.contract.found, row: rowWho(step), exported: stepExportView(step, ctx).population, vars: stepVars(step, ctx) }
 }
 
 // R4-30's residual (population Q1). On mid the tenant's own "Core - Grant - MFA
@@ -328,6 +330,61 @@ test('a delivered step whose reach is not established is not handed Readiness wo
   const read = deliveredWithGroup('Core - Block - Legacy authentication', 's-goal-block-legacy-auth', false)
   assert.equal(read.step.status, 'done', 'the premise: still delivered')
   assert.equal(read.body.empty.key, 'inPlace')
+})
+
+// "Your account is in scope: 3 sign-ins since Jul 29, 2026." was the one reading
+// on a delivered step still taken from the goal's people (stepVars.ts
+// operatorInScope, generate.ts includesOperator), not from the reach the step's
+// cards read: on screen, in the exports and in AI Info it stood under "IAMAI
+// cannot establish exactly who this reaches", and a policy that reached the
+// account was said not to where the goal's people left it out. Where the reach
+// is settled it answers. Where it is not, the delivering policies are asked about
+// this one account, and an answer they cannot give counts as reaching it: the
+// convention an open policy follows, because unknown is not safe. A group read
+// in full that excludes the account still settles it.
+test('a delivered step says whether the signed-in account is in scope from the delivering policies, never the goal\'s people', () => {
+  const POLICY = 'Core - Block - Legacy authentication'
+  const STEP = 's-goal-block-legacy-auth'
+  const inScope = (vars: Record<string, unknown>): boolean => vars.operatorSignIns !== undefined || vars.operatorNoRecords !== undefined
+
+  // Settled: the policy reaches an account the goal's people leave out (the
+  // plan counts it a service account), and the step says it is in scope.
+  const service = deliveredWithGroup(POLICY, STEP, false, (f) => { f.mapping.serviceAccountUserIds = [...f.mapping.serviceAccountUserIds, f.operatorId] })
+  const op = service.f.operatorId
+  assert.equal(service.step.status, 'done', 'the premise: the tenant\'s policy delivers the goal')
+  assert.equal(service.step.population.ids.includes(op), false, 'the premise: the goal\'s people leave the account out')
+  assert.equal(reached(service.step)?.ids.includes(op), true, 'the premise: the policy reaches it')
+  assert.equal(service.step.includesOperator, true, 'the step says the policy does not reach an account it reaches')
+  assert.equal(inScope(service.vars), true, 'and "Your account is in scope" is not said')
+
+  // Settled: a reach that leaves the account out while the goal's people name it.
+  const plain = deliveredWithGroup(POLICY, STEP, false)
+  assert.equal(inScope(plain.vars), true, 'the premise: in scope on the tenant as it is')
+  const reach = plain.step.deliveredReach
+  assert.ok(reach, 'the premise: a settled delivered reach')
+  const narrowed: Step = { ...plain.step, deliveredReach: { ...reach, ids: reach.ids.filter((id) => id !== plain.f.operatorId) } }
+  assert.equal(narrowed.population.ids.includes(plain.f.operatorId), true, 'the premise: the goal\'s people name the account')
+  assert.equal(inScope(stepVars(narrowed, plain.ctx)), false, '"Your account is in scope" read from the goal\'s people, not the policy\'s reach')
+
+  // Not established, and nothing the scan read settles the account: it counts as reached.
+  const unread = deliveredWithGroup(POLICY, STEP, true)
+  assert.equal(reached(unread.step), null, 'the premise: the reach is not established')
+  assert.equal(unread.step.includesOperator, true, 'an account the policies cannot answer for counts as reached')
+  assert.equal(inScope(unread.vars), true)
+
+  // Not established, but the exclusions group, read in full, holds the account:
+  // the policies settle it for this one account, and it is not in scope.
+  const excluded = deliveredWithGroup(POLICY, STEP, true, (f, groups) => {
+    const g = f.groups.get(groups[0]) as { memberIds: string[]; directMemberIds: string[]; memberCount: number } | undefined
+    assert.ok(g, 'the premise: the policy excludes a group the scan read')
+    g.memberIds = [...g.memberIds, f.operatorId]
+    g.directMemberIds = [...g.directMemberIds, f.operatorId]
+    g.memberCount += 1
+  })
+  assert.equal(excluded.step.status, 'done', 'the premise: still delivered')
+  assert.equal(reached(excluded.step), null, 'the premise: the reach is not established')
+  assert.equal(excluded.step.includesOperator, false, 'an account a group read in full excludes is said to be reached')
+  assert.equal(inScope(excluded.vars), false, '"Your account is in scope" for an account the policy excludes')
 })
 
 // One number format (copy/statements.ts figure). The thousands separator was

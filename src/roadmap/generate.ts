@@ -14,7 +14,7 @@ import type { BaselinePackage } from '../baseline/types.ts'
 import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
 import { PLACEHOLDER_STEP, implementable, resolveTenantPolicy, tenantObjectsOf, unmatchedStrengths } from './resolvePolicy.ts'
-import { effectOf, emergencyExposureOf, enforcementHeld, isOpenPolicy, isValidOperation, operationsOf, stepEffects, strengthLookupOf, submitsEnforcement, tenantStrengthsOf, validOperations, unavailableReason } from './operations.ts'
+import { accountApplicability, effectOf, emergencyExposureOf, enforcementHeld, isOpenPolicy, isValidOperation, operationsOf, stepEffects, strengthLookupOf, submitsEnforcement, tenantStrengthsOf, validOperations, unavailableReason } from './operations.ts'
 import type { PolicyEffect } from './operations.ts'
 import type { GrantFloor } from '../coverage/types.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
@@ -2146,24 +2146,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     }
 
 
-    // Whether the signed-in account is in scope is the policy's own answer, from
-    // its include and exclude lists (roadmap/operations.ts accountApplicability);
-    // a step with no policy of its own is bounded by the people it lists.
     const asStep = { goalId: goal.id, kind, status: statusNow(), action, readiness, population: pop, ...conflictState } as unknown as Step
-    const operatorEffects = isOpenPolicy(asStep) ? stepEffects(asStep) : []
-    const includesOperator =
-      operatorId !== null &&
-      (isOpenPolicy(asStep)
-        ? // An open policy answers for itself, conditions and all
-          // (roadmap/strand.ts operationReach). One the plan cannot read is
-          // treated as reaching the operator: its safety is then unknown, and
-          // unknown is not safe.
-          operatorEffects.length === 0 || operatorEffects.some((e) => operationReach(e, operatorId, snapshot, strandContext).answer !== 'out')
-        : popIds.includes(operatorId))
-    // The strand simulator decides (roadmap-v2.md §7): the same check the
-    // property tests run, so a step that would lock the operator out is
-    // never offered as ready.
-    const opVerdict = includesOperator && operatorId !== null ? stepAccountVerdict(asStep, operatorId, snapshot, strandContext) : null
     const stepLockout = lockoutCount(stepEffects(asStep), viability, snapshot, strandContext.strengths, excluded, strandContext)
     // Who the records show this step's own policies touching, measured against
     // the evidence those policies' own conditions are about (roadmap/strand.ts
@@ -2190,6 +2173,37 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // open policy again, and its cohort is its own operation's scope or nothing.
     const deliveredReach = cohort === null && deliveringEffects !== null && deliveringEffects.length > 0 ? cohortFor(deliveringEffects) : undefined
     const reach = cohort ?? deliveredReach ?? null
+
+    // Whether the signed-in account is in scope is the policy's own answer, from
+    // its include and exclude lists (roadmap/operations.ts accountApplicability).
+    const operatorEffects = isOpenPolicy(asStep) ? stepEffects(asStep) : []
+    const includesOperator =
+      operatorId !== null &&
+      (isOpenPolicy(asStep)
+        ? // An open policy answers for itself, conditions and all
+          // (roadmap/strand.ts operationReach). One the plan cannot read is
+          // treated as reaching the operator: its safety is then unknown, and
+          // unknown is not safe.
+          operatorEffects.length === 0 || operatorEffects.some((e) => operationReach(e, operatorId, snapshot, strandContext).answer !== 'out')
+        : deliveredReach !== undefined
+          ? // A delivered step answers from the delivering policies' reach, the
+            // one its cards read (derive/population.ts reached). Where that reach
+            // is not established, those policies are asked about this one
+            // account, from the same user scope, and an answer they cannot give
+            // counts as reaching it: the convention above. A group read in full
+            // that excludes the account still settles it. It read the goal's
+            // people, a list nothing measured for those policies, and said "Your
+            // account is in scope" under "IAMAI cannot establish exactly who this
+            // reaches".
+            deliveredReach !== null
+            ? deliveredReach.ids.includes(operatorId)
+            : (deliveringEffects ?? []).some((e) => accountApplicability(e.scope, operatorId, snapshot as never, strandContext) !== 'out')
+          : // Any other step with no policy of its own is bounded by the people it lists.
+            popIds.includes(operatorId))
+    // The strand simulator decides (roadmap-v2.md §7): the same check the
+    // property tests run, so a step that would lock the operator out is
+    // never offered as ready.
+    const opVerdict = includesOperator && operatorId !== null ? stepAccountVerdict(asStep, operatorId, snapshot, strandContext) : null
     // The denominator. A goal can be delivered and still reach a fraction of the
     // tenant: a policy excluding a group that holds 116 of 122 accounts delivers
     // it for six people, and the step said "already delivered, so there is
