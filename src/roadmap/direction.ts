@@ -188,6 +188,12 @@ function deviceQuestions(ctx: Context): DirectionQuestion[] {
   // the iPhone sign-ins 3 and 10 days back is a claim about records nobody read
   // (NEW-Nadia-D4). What was seen is still said; the flat negative is not.
   const readWhole = ctx.snapshot.sources?.signInEvidence?.status === 'ok'
+  // And what was seen is said as what was seen. Over a read that stopped short,
+  // "Today: 3 people signed in from phones." stated the hours it reached as the
+  // tenant's number, beside a choice where an undercount argues for Blocked from
+  // company data or makes requiring managed computers look cheap. Each count
+  // says it is from the part that was read (NEW-Nadia-D4 review).
+  const count = (whole: string, part: string, n: number): string => fillText(readWhole ? whole : part, { n })
   return [
     question('computers', ctx, {
       label: Q.computers.label, control: 'choice', options: optionsOf(Q.computers.options),
@@ -205,14 +211,14 @@ function deviceQuestions(ctx: Context): DirectionQuestion[] {
       // and enrolled — so leaving the registered ones out of a line headed
       // "computers that aren't joined" understated a 2,339-person fleet as 3.
       today: unjoined === undefined ? null : [
-        unjoined > 0 ? fillText(Q.computers.today, { n: unjoined }) : readWhole ? Q.computers.todayNone : null,
-        registered === undefined ? null : registered > 0 ? fillText(Q.computers.todayRegistered, { n: registered }) : null,
+        unjoined > 0 ? count(Q.computers.today, Q.computers.todayPartial, unjoined) : readWhole ? Q.computers.todayNone : null,
+        registered === undefined ? null : registered > 0 ? count(Q.computers.todayRegistered, Q.computers.todayRegisteredPartial, registered) : null,
       ].filter((line): line is string => line !== null).join(' ') || null,
     }),
     question('phones', ctx, {
       label: Q.phones.label, control: 'choice', options: optionsOf(Q.phones.options),
       suggested: answer('apps'), evidence: W.baselineEvidence,
-      today: phones === undefined ? null : phones > 0 ? fillText(Q.phones.today, { n: phones }) : readWhole ? Q.phones.todayNone : null,
+      today: phones === undefined ? null : phones > 0 ? count(Q.phones.today, Q.phones.todayPartial, phones) : readWhole ? Q.phones.todayNone : null,
       // Blocked from company data is not a setting on this step: it adds a
       // policy step of its own (generate.ts s-ladder-phone-access-restriction),
       // which the question never said (owner, 2026-09-20).
