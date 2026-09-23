@@ -149,8 +149,8 @@ test('setup checks read the tenant: phones without the Authenticator models fail
   assert.ok(joined, 'the demo has a joined Windows computer')
   const notSeen = tenantSetupChecks(snap, unseen).find((c) => c.key === 'windowsHello')!
   assert.deepEqual([notSeen.outcome, notSeen.reason, notSeen.affects], ['unknown', 'notSeen', 0])
-  // No joined computer at all: nothing to do.
-  const none = { ...unseen, rows: unseen.rows.map((r) => (r.readiness ? { ...r, readiness: { ...r.readiness, devices: r.readiness.devices.filter((d) => d.os !== 'Windows') } } : r)) }
+  // No joined computer at all, the device directory's answer read in full: nothing to do.
+  const none = { ...unseen, context: { ...unseen.context, windowsDirectory: 'none' as const }, rows: unseen.rows.map((r) => (r.readiness ? { ...r, readiness: { ...r.readiness, devices: r.readiness.devices.filter((d) => d.os !== 'Windows') } } : r)) }
   assert.equal(tenantSetupChecks(snap, none).find((c) => c.key === 'windowsHello')!.reason, 'noJoined')
 })
 
@@ -316,7 +316,7 @@ test('audit 15, 17 and 21: the Methods cell lists what is usable, a phone chip r
   assert.equal(cell.note, fillText(W.methods.notAllowed, { method: W.methods.passkey }))
   // 17: a security key held doesn't put a passkey on the phone.
   const device = person(demoView, (x) => x.state === 'device' && (x.readiness?.devices ?? []).some((d) => d.type === 'phone' && d.proof === null))
-  const withKeyOnly = { ...device, readiness: { ...device.readiness!, credentials: [{ cls: 'passkey' as const, key: 'y', name: null, aaguid: 'a25342c0-3cdc-4414-8e46-f4807fca511c', model: null, created: null, allowedNow: 'yes' as const, afterStep3: null, lastConfirmed: null, lastUsed: null, unused: null }] } }
+  const withKeyOnly = { ...device, readiness: { ...device.readiness!, credentials: [{ cls: 'passkey' as const, key: 'y', name: null, aaguid: 'a25342c0-3cdc-4414-8e46-f4807fca511c', model: null, approvedTwin: null, createdInWindow: false, created: null, allowedNow: 'yes' as const, afterStep3: null, lastConfirmed: null, lastUsed: null, unused: null }] } }
   const phoneChip = deviceChips(withKeyOnly).chips.find((c) => c.kind === 'phone')!
   assert.equal(phoneChip.word, W.chip.noPasskey)
   // 21: sign-in records unavailable in this tenant (a licence): the rescan words don't promise a retry.
