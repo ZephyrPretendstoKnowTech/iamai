@@ -17,7 +17,7 @@ import { stepVars, withoutScheduleDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor, unwrittenCorrectionLines } from './stepPortal.ts'
 import { instructionsHeld, preparationLines, rescanLinesOf, wholeLines } from './stepInstructions.ts'
-import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, proceduresAreReference, readinessSentence, stepContract } from './stepContract.ts'
+import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, proceduresAreReference, stepContract } from './stepContract.ts'
 import type { LaneView, PrerequisiteLabel, StepContract } from './stepContract.ts'
 import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, previewNoteLines, selectedPolicyBodiesOf, entraWithSettings } from './stepPackage.ts'
 import { projectSafely } from '../../content/implementation/project.ts'
@@ -314,18 +314,17 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // prerequisites" (R4-55).
   const undated = boardHolds(step, lane)
   const contract = stepContract(step, ctx, undefined, laneView, startOf, undated)
-  // The readiness threshold that holds the turn-on, in the Threshold card's own
-  // sentence (stepContract.ts readinessSentence, on the contract's route start):
-  // the card is drawn while the gate is on the action and the step is not
-  // finished, and holds the enforcement, never the create (owner, 2026-09-11).
-  // No export carried it, so the calendar, the pack and the bundle read a clean
-  // week of report-only as the finish of a policy the screen said waits for 90%
-  // (Phase 2 export finding 7). A policy already on waits for nothing — the
-  // card then states only the count (readinessSentence's own `waiting` test) —
-  // so it is no turn-on wait: demo Require MFA for Everyone, a correction to a
-  // policy already enforced, exported "Before turning on: At least 69% …".
-  const readinessGate = step.action.readinessGate
-  const threshold = readinessGate && step.status !== 'done' && step.status !== 'skipped' && step.state.lifecycle !== 'enforced' ? readinessSentence(step, readinessGate, contract.routeStart) : null
+  // The readiness threshold that holds the turn-on: the contract's gate finding,
+  // which is the Threshold card's own sentence on the same route start
+  // (stepContract.ts foundOf), and holds the enforcement, never the create
+  // (owner, 2026-09-11). No export carried it, so the calendar, the pack and the
+  // bundle read a clean week of report-only as the finish of a policy the screen
+  // said waits for 90% (Phase 2 export finding 7). A policy already on waits for
+  // nothing — the card then states only the count (readinessSentence's own
+  // `waiting` test) — so it is no turn-on wait: demo Require MFA for Everyone, a
+  // correction to a policy already enforced, exported "Before turning on: At
+  // least 69% …".
+  const threshold = step.state.lifecycle === 'enforced' ? null : (contract.found.find((f) => f.key === 'gate')?.text ?? null)
   const shell = {
     state: badgeLabel(contract),
     manualEvidence: manualEvidenceLines(step, ctx),

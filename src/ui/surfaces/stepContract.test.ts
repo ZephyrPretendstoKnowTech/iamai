@@ -146,7 +146,7 @@ test('contract 4: an outstanding prerequisite is an instruction under Fix before
     const gate = step.action.readinessGate
     if (!gate) continue
     gated += 1
-    assert.ok(c.found.some((x) => x.key === 'readiness'), `${step.id}: the readiness number is not stated as an observation`)
+    assert.ok(c.found.some((x) => x.key === 'gate' || x.key === 'readiness'), `${step.id}: the readiness number is not stated as an observation`)
     assert.ok(!c.fix.some((x) => x.text.includes(gate.threshold) && x.text.includes(gate.measure)), `${step.id}: the threshold rendered as something to go and fix`)
   }
   assert.ok(gated > 0, 'no step on the demo has a readiness threshold; the case is not covered')

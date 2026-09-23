@@ -453,12 +453,12 @@ test('the Threshold card, its finding and the AI Info briefing name the same pla
       const b = stepBodyOf(step, ctx, { lane: laneViewOf(reading, titleOf), blockers: readinessBlockersOf(reading, titleOf), prerequisiteLabel: label })
       const where = `it waits on “${titleOf(start)}”, which is where to start.`
       const tile = b.readiness.tiles.find((t) => t.key === 'gate')!
-      const finding = b.contract.found.find((x) => x.key === 'readiness')
+      const finding = b.contract.found.find((x) => x.key === 'gate')
       assert.ok(tile.note!.includes(where), `${name}/${step.id}: the premise — the card names where to start: ${tile.note}`)
       assert.equal(finding?.text, tile.note, `${name}/${step.id}: the Evidence dialog says a different threshold sentence from the card`)
       // ContentStep's printing branch: a finding a card already states, word for word, is not printed again.
       const printed = b.contract.found.filter((x) => !b.allTiles.some((t) => t.note === x.text || t.value === x.text))
-      assert.equal(printed.some((x) => x.key === 'readiness'), false, `${name}/${step.id}: the printed plan says the threshold twice`)
+      assert.equal(printed.some((x) => x.key === 'gate'), false, `${name}/${step.id}: the printed plan says the threshold twice`)
       const ai = String(b.artifacts.find((a) => a.id === 'ai')!.text())
       assert.ok(ai.includes(where), `${name}/${step.id}: the AI Info briefing does not say where to start`)
       assert.equal(ai.includes(`moves this number is “${gate.route}”.`), false, `${name}/${step.id}: the AI Info briefing sends the reader to the held campaign`)
@@ -559,8 +559,12 @@ test('the turn-on waits the cards state before the create are in the exports and
     // One list: the cards are the contract's waits, card for card.
     assert.deepEqual(cards.map((t) => t.note), c.enforcementWaits.map((w) => w.text), `${f.name}: the cards and the contract disagree`)
     const view = stepExportView(step, ctx, lane)
-    // Every wait the cards state, and the Threshold card's sentence beside them (Phase 2 export finding 7).
-    for (const w of c.enforcementWaits) assert.ok(view.beforeTurnOn.includes(w.text), `${f.name}: the export view drops the turn-on wait "${w.text}"`)
+    // The waits the cards state, and the Threshold card's sentence after them
+    // where the card is drawn and the policy is not yet on (Phase 2 export
+    // finding 7); nothing else.
+    const gate = readinessOf(step, c, blockers).tiles.find((t) => t.key === 'gate')
+    const threshold = gate?.note !== undefined && step.state.lifecycle !== 'enforced' ? [gate.note] : []
+    assert.deepEqual(view.beforeTurnOn, [...c.enforcementWaits.map((w) => w.text), ...threshold], `${f.name}: the export view and the cards disagree on what holds the turn-on`)
     assert.equal(view.fix.some((l) => /Temporary Access Pass/.test(l)), false, `${f.name}: the pass is a fix before the create in the export`)
     const lines = stepArtifactLines(view)
     const turnOn = lines.find((l) => l.startsWith(`${T.beforeTurnOn}: `))
