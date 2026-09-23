@@ -16,7 +16,7 @@ import type { Step } from '../../roadmap/types.ts'
 import { app, pages } from '../../content/content.ts'
 import { planFinish, planLengthSentence } from '../../derive/finish.ts'
 import { groundingBundle, promptPack } from '../../roadmap/prompts.ts'
-import { absoluteDate } from '../../copy/dates.ts'
+import { absoluteDate, setDisplayTimeZone } from '../../copy/dates.ts'
 import { BOARD, boardReadingsOf, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf } from './planBoard.ts'
 import { stepArtifactLines } from '../../roadmap/artifactLines.ts'
 import { stepBodyOf } from './stepBody.ts'
@@ -263,4 +263,38 @@ test('a turn-on claims the notice it leaves only while the plan\'s announce day 
   const label = nextMilestone(after).label
   assert.doesNotMatch(label, NOTICE, `after the announce day the notice is claimed: ${label}`)
   assert.match(label, /The plan schedules the turn-on for/, 'the day is still stated')
+})
+
+// Finding 1 (severity 2). The calendar's all-day DTSTART and DTEND were the UTC
+// date of the scheduled instant, while the board, the rail and the Dates line
+// state the day in the plan's display zone. East of UTC a turn-on at 09:00 was
+// booked on the announce day before it; west of UTC a day after it.
+test('the calendar books a step on the day the board states, in the plan\'s display zone', () => {
+  let differs = 0
+  let booked = 0
+  try {
+    for (const zone of ['Australia/Sydney', 'America/Los_Angeles']) {
+      setDisplayTimeZone(zone)
+      for (const name of ['mid', 'demo', 'getiamai'] as FixtureName[]) {
+        const p = exportPage(fixture(name))
+        const ics = buildIcs(p.r.steps, 'Tenant', 'plan-tz', p.view, p.cleanup).replace(/\r\n /g, '')
+        for (const step of p.r.steps) {
+          const entry = ics.split('BEGIN:VEVENT').find((e) => e.includes(`UID:plan-tz-${step.id}@iamai`))
+          if (!entry) continue
+          const event = scheduledEventOf(step)!
+          const start = /DTSTART;VALUE=DATE:(\d{4})(\d{2})(\d{2})/.exec(entry)!
+          const end = /DTEND;VALUE=DATE:(\d{4})(\d{2})(\d{2})/.exec(entry)!
+          booked++
+          if (event.start.slice(0, 10) !== new Date(Date.parse(event.start)).toLocaleDateString('en-CA', { timeZone: zone })) differs++
+          const where = `${zone} ${name}/${step.id}`
+          assert.equal(absoluteDate(`${start[1]}-${start[2]}-${start[3]}`), absoluteDate(event.start), `${where}: booked on another day than the one stated`)
+          const lastDay = new Date(Date.UTC(Number(end[1]), Number(end[2]) - 1, Number(end[3]) - 1)).toISOString().slice(0, 10)
+          assert.equal(absoluteDate(lastDay), absoluteDate(event.end), `${where}: the entry ends on another day than the one stated`)
+        }
+      }
+    }
+  } finally {
+    setDisplayTimeZone(null)
+  }
+  assert.ok(booked > 0 && differs > 0, `the premise: an event whose UTC day is not its day in the zone (${differs} of ${booked})`)
 })
