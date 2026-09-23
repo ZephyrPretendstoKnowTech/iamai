@@ -451,7 +451,7 @@ test('NEW-Nadia-D4: a person read on their own after a partial read, seen on an 
   e.platforms = [...(e.platforms ?? []), { os: 'iOS', at: s.asOf }]
   e.devices = [...(e.devices ?? []), { os: 'iOS', at: s.asOf, trust: 'none', managed: null, deviceIds: [], version: 'iOS 18.2' }]
   e.individuallyRead = true
-  s.sources.signInEvidence = { ...s.sources.signInEvidence, status: 'partial', reason: 'stopped at memory ceiling; covers the most recent 40 h of the requested 30 days' }
+  s.sources.signInEvidence = { ...s.sources.signInEvidence, status: 'partial', reason: 'stopped at time budget; covers the most recent 40 h of the requested 30 days' }
   assert.deepEqual(phoneSignInIds(s), [id])
   // Counted, and — the read being partial — said as a count of the part that
   // was read (NEW-Nadia-D4 review; the test below).
@@ -502,7 +502,7 @@ test('NEW-Nadia-D4 review: over a sign-in read that stopped short, every count t
   assert.equal(s.sources.signInEvidence.status, 'ok', 'the premise: a whole read')
   assert.equal(today('phones'), fillText(W.questions.phones.today, { n: phones }))
   assert.equal(today('computers'), [fillText(W.questions.computers.today, { n: unjoined }), fillText(W.questions.computers.todayRegistered, { n: 1 })].join(' '))
-  for (const [status, reason] of [['partial', 'stopped at memory ceiling; covers the most recent 40 h of the requested 30 days'], ['insufficient', 'stopped at memory ceiling with only 17 h covered (minimum 24 h)']] as const) {
+  for (const [status, reason] of [['partial', 'stopped at time budget; covers the most recent 40 h of the requested 30 days'], ['insufficient', 'stopped at time budget with only 17 h covered (minimum 24 h)']] as const) {
     s.sources.signInEvidence = { ...s.sources.signInEvidence, status, reason }
     const computers = today('computers') ?? ''
     assert.doesNotMatch(computers, /^Today:| Today:/, `${status}: a short read's computer counts stated as the tenant's: ${computers}`)

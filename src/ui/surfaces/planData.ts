@@ -67,6 +67,8 @@ export type PlanComputed = {
   staticViolations: StaticViolation[]
   /** The loaded baseline's goal map: the footer and the print page list only goals it holds (walk-51 item 9). */
   goalMap: GoalMap
+  /** The loaded baseline's policies: the footer lists the ones nothing on the Plan names (derive/notInPlan.ts). */
+  baselinePolicies: readonly { id?: string | null; displayName: string }[]
 }
 
 export type PlanData = {
@@ -389,7 +391,7 @@ export function usePlanData(
     // policies already exist (roadmap/forecast.ts settleForecast).
     settleForecast(steps, schedule)
     annotateStateReasons(steps)
-    return { steps, schedule, coverage, viability, names, staticViolations: result.housekeeping.staticViolations, goalMap: baseline.goalMap ?? PINNED_GOAL_MAP }
+    return { steps, schedule, coverage, viability, names, staticViolations: result.housekeeping.staticViolations, goalMap: baseline.goalMap ?? PINNED_GOAL_MAP, baselinePolicies: baseline.pkg.policies }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [snapshot, baseline, applied, groupsLoaded, loaded, groups, directory, saved, planId, version, startDate, firstDeployment, band, freeze, mappingFor, groupsFor])
 

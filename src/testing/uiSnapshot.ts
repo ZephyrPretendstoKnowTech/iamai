@@ -113,7 +113,6 @@ export function fixtureSnapshot(): TenantSnapshot {
         rows: [{ displayName: 'Contoso Pty Ltd', verifiedDomains: [{ name: 'example.com', isInitial: false }, { name: 'contoso.onmicrosoft.com', isInitial: true }] }],
       },
       me: { status: 'ok', reason: null, rows: [{ id: 'u-1', displayName: 'Alex Morgan', userPrincipalName: 'alex@example.com' }] },
-      meMemberOf: { status: 'ok', reason: null, rows: [] },
     },
     registrationDetails: users.map(([id, , upn, type]) => ({
       id,

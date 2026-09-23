@@ -42,7 +42,7 @@ import type { LaneRow } from '../../actionability/sorting.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { FOUNDATION_WAIT, isHeld } from '../../roadmap/holds.ts'
 import { driftOutcomeOf } from '../../roadmap/tracking.ts'
-import { submitsEnforcementOnly, switchedOffPolicy, unavailableReason, implementationOffered, operationsOf, enforcesOnRun } from '../../roadmap/operations.ts'
+import { submitsEnforcementOnly, switchedOffPolicies, unavailableReason, implementationOffered, operationsOf, enforcesOnRun } from '../../roadmap/operations.ts'
 import { GATING_SUBJECTS, blockerStepId } from '../../roadmap/blockerSteps.ts'
 import { observationWindowDays, readyBasis, readyWhen } from '../../derive/readyWhen.ts'
 import { planStateOf } from './planState.ts'
@@ -129,9 +129,9 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
   // A policy this plan tagged that the tenant switched off exists: its lifecycle
   // reads not-deployed because a disabled policy enforces nothing, and the board
   // read "Ready · Create" over a step whose own words said the policy is already
-  // there and turning it back on is the change, not a new policy (Jordan D6). The
+  // there and setting it to Report-only is the change, not a new policy (Jordan D6). The
   // next action corrects it.
-  const switchedOff = policy && !done && switchedOffPolicy(step) !== null
+  const switchedOff = policy && !done && switchedOffPolicies(step).length > 0
   const exists = policy ? (lifecycle !== null && lifecycle !== 'not-deployed') || switchedOff : emergency ? emergency.accounts.length > 0 : done
   const blockers: ObservedBlocker[] = []
   const gates: EvidenceGate[] = []
