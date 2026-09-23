@@ -23,7 +23,7 @@ import { boardHolds, boardOf } from './planBoard.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { completedRows, deferredRows, doesntApplyRows, floorRows, openDoneRows, phaseRows, planPhases } from './planRows.ts'
-import { cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, laneGroupsOf, noPlanLine, phaseDatesOf, postureOf, verificationNoteOf } from './printPlan.ts'
+import { cleanupHeadingOf, cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, laneGroupsOf, noPlanLine, phaseDatesOf, postureOf, verificationNoteOf } from './printPlan.ts'
 import { scheduleOf, scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { absolute, absoluteDate, dateRange, setDisplayTimeZone } from '../../copy/dates.ts'
@@ -345,4 +345,19 @@ test('the drill\'s recovery procedure dates the scan in the plan\'s format and d
   } finally {
     setDisplayTimeZone(null)
   }
+})
+
+// ---- No empty list after a colon, no empty table, no same-day range ----
+
+test('the cover, the timeline and the Cleanup heading state nothing empty and no range of one day', () => {
+  // "To do (0):" with nothing after the colon, a Timeline table with only its
+  // header, and "Cleanup · Sep 1, 2026 → Sep 1, 2026".
+  const day = '2026-09-01T09:00:00.000Z'
+  assert.equal(cleanupHeadingOf({ start: day, end: '2026-09-01T17:00:00.000Z' }, false), `Cleanup · ${absoluteDate(day)}`)
+  assert.equal(cleanupHeadingOf({ start: day, end: '2026-09-23T00:00:00.000Z' }, false), `Cleanup · ${absoluteDate(day)} → ${absoluteDate('2026-09-23T00:00:00.000Z')}`)
+  assert.equal(cleanupHeadingOf({ start: day, end: day }, true), 'Cleanup', 'held work dates no Cleanup')
+  const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
+  assert.match(print, /toDoNames\.length > 0 \? toDoNames\.join\(', '\) : C\.posture\.none/, 'an empty To do list is printed after its colon')
+  assert.match(print, /\{waves\.length > 0 && \(\n\s*<section className="print-page">\n\s*<h2>\{C\.summary\}<\/h2>/, 'the timeline prints with no phase in it')
+  assert.match(print, /cleanupHeadingOf\(schedule\.cleanup, cannotFinish\)/, 'the Cleanup heading is worded in the print')
 })

@@ -23,7 +23,7 @@ import { completedRows, deferredRows, floorRows, openDoneRows, phaseRows, planPh
 import { contentTitle } from '../../content/stepTitle.ts'
 import { boardHolds, boardReadingsOf, doesntApplyView, laneViewOf, laneWordOf, prerequisiteLabelFor, readinessBlockersOf } from './planBoard.ts'
 import type { LaneView } from './stepContract.ts'
-import { cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, laneGroupsOf, noPlanLine, phaseDatesOf, postureOf, verificationNoteOf } from './printPlan.ts'
+import { cleanupHeadingOf, cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, laneGroupsOf, noPlanLine, phaseDatesOf, postureOf, verificationNoteOf } from './printPlan.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { PrintBoard } from './printPlan.ts'
 
@@ -235,7 +235,7 @@ export function PrintPlan({
             <strong>{fillText(C.posture.inPlace, { n: inPlaceNames.length })}</strong> {inPlaceNames.length > 0 ? inPlaceNames.join(', ') : C.posture.noneYet}
           </p>
           <p>
-            <strong>{fillText(C.posture.toDo, { n: toDoNames.length })}</strong> {toDoNames.join(', ')}
+            <strong>{fillText(C.posture.toDo, { n: toDoNames.length })}</strong> {toDoNames.length > 0 ? toDoNames.join(', ') : C.posture.none}
           </p>
           <p>
             <strong>{fillText(C.posture.doesntApply, { n: doesntApply.length })}</strong> {doesntApply.length === 0 && C.posture.none}
@@ -256,7 +256,7 @@ export function PrintPlan({
       <section className="print-page">
         <h2>{C.contents}</h2>
         <ol>
-          <li>{C.summary}</li>
+          {waves.length > 0 && <li>{C.summary}</li>}
           {waves.map((w) => (
             <li key={w.wave}>{waveTitle(w)}</li>
           ))}
@@ -270,45 +270,48 @@ export function PrintPlan({
         </ol>
       </section>
 
-      <section className="print-page">
-        <h2>{C.summary}</h2>
-        <h3>{C.timeline}</h3>
-        <table className="datatable">
-          <thead>
-            <tr>
-              <th scope="col">{C.timelineColumns.wave}</th>
-              <th scope="col">{C.timelineColumns.dates}</th>
-              <th scope="col">{C.timelineColumns.steps}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {waves.map((w) => (
-              <Fragment key={w.wave}>
-                <tr>
-                  <td>{waveTitle(w)}</td>
-                  {/* The days the phase's rows state (printPlan.ts phaseDatesOf), never the wave's forecast window. */}
-                  <td>{phaseDatesOf(phaseSteps(w))}</td>
-                  <td>{stepListOf(phaseSteps(w))}</td>
-                </tr>
-                {w.wave === 0 && schedule.verification.days > 0 && (
-                  <tr key="verification">
-                    <td>{fillText(C.verificationWindow, { days: schedule.verification.days })}</td>
-                    <td>{dateRange(schedule.verification.start, schedule.verification.end)}</td>
-                    <td>{verificationNote}</td>
+      {/* The timeline, where a phase has rows to date: a table of headers alone says nothing. */}
+      {waves.length > 0 && (
+        <section className="print-page">
+          <h2>{C.summary}</h2>
+          <h3>{C.timeline}</h3>
+          <table className="datatable">
+            <thead>
+              <tr>
+                <th scope="col">{C.timelineColumns.wave}</th>
+                <th scope="col">{C.timelineColumns.dates}</th>
+                <th scope="col">{C.timelineColumns.steps}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {waves.map((w) => (
+                <Fragment key={w.wave}>
+                  <tr>
+                    <td>{waveTitle(w)}</td>
+                    {/* The days the phase's rows state (printPlan.ts phaseDatesOf), never the wave's forecast window. */}
+                    <td>{phaseDatesOf(phaseSteps(w))}</td>
+                    <td>{stepListOf(phaseSteps(w))}</td>
                   </tr>
-                )}
-                {w.wave === 0 && schedule.observation.days > 0 && (
-                  <tr key="observation">
-                    <td>{fillText(C.observation, { days: schedule.observation.days })}</td>
-                    <td>{dateRange(schedule.observation.start, schedule.observation.end)}</td>
-                    <td>{C.observationText}</td>
-                  </tr>
-                )}
-              </Fragment>
-            ))}
-          </tbody>
-        </table>
-      </section>
+                  {w.wave === 0 && schedule.verification.days > 0 && (
+                    <tr key="verification">
+                      <td>{fillText(C.verificationWindow, { days: schedule.verification.days })}</td>
+                      <td>{dateRange(schedule.verification.start, schedule.verification.end)}</td>
+                      <td>{verificationNote}</td>
+                    </tr>
+                  )}
+                  {w.wave === 0 && schedule.observation.days > 0 && (
+                    <tr key="observation">
+                      <td>{fillText(C.observation, { days: schedule.observation.days })}</td>
+                      <td>{dateRange(schedule.observation.start, schedule.observation.end)}</td>
+                      <td>{C.observationText}</td>
+                    </tr>
+                  )}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
 
       {waves.map((w) => (
         <section key={w.wave} className="print-page">
@@ -391,7 +394,7 @@ export function PrintPlan({
       )}
       {schedule.cleanup && (
         <section className="print-page">
-          <h2>{cannotFinish ? phases.last : fillText(phases.heading, { name: phases.last, start: absoluteDate(schedule.cleanup.start), end: absoluteDate(schedule.cleanup.end) })}</h2>
+          <h2>{cleanupHeadingOf(schedule.cleanup, cannotFinish)}</h2>
           {cleanupHeadsOf(schedule.cleanup.rows, laneOf).map((h) => (
             // The row's head says its lane and what it waits for (printPlan.ts
             // cleanupHeadsOf over planBoard.ts laneViewOf), as the Plan's row does.
