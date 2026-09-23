@@ -7,7 +7,7 @@ import { howCheckTables, howLimits, howReadTables } from './howView.ts'
 import { COLLECTOR_REGISTRY } from '../../graph/collect/registry.ts'
 import { CORE_SOURCES } from '../../graph/collect/coreSections.ts'
 import { EVALUATED_SUBJECTS } from '../../validation/report.ts'
-import { app, engine, pages, stepById } from '../../content/content.ts'
+import { app, cleanup, engine, pages, stepById } from '../../content/content.ts'
 import { REGISTRY } from '../../validation/rules.ts'
 import type { RuleResult } from '../../validation/rules.ts'
 import { emergencyTierOf } from '../../validation/emergencyTiers.ts'
@@ -84,6 +84,17 @@ test('How says the drill check reads recorded recovery tests, and that a sign-in
   assert.ok(last)
   assert.match(last.what, /except on a recorded recovery test/, 'the row says when the check fails, not only what it records')
   assert.match(last.needs, /recovery tests recorded/)
+})
+
+// The step titles in rule copy came from a second, hand-written source: renaming
+// the Cleanup drill row in content would have left How's Needs column naming a
+// step that no longer exists (Phase 2 review).
+test('Rule copy names steps by their content titles, never a copy of them', () => {
+  const drill = cleanup.drill.title
+  const perUser = (stepById['s-prereq-per-user-mfa'] as unknown as { title: string }).title
+  assert.ok(NEED_LABEL.recoveryTests.includes(drill), NEED_LABEL.recoveryTests)
+  const source = readFileSync('src/copy/validation.ts', 'utf8')
+  for (const title of [drill, perUser]) assert.ok(!source.includes(title), `src/copy/validation.ts writes "${title}" out by hand`)
 })
 
 // bg.perUserMfaOff reads the tenant's migration state and nothing about any
