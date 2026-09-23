@@ -14,7 +14,7 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { signInsNeedP1 } from '../../derive/readinessContext.ts'
 import { signInProofRead } from '../../scoring/fromSnapshot.ts'
 import { cohortWords } from '../../derive/whoLine.ts'
-import { checkWords, goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, summaryLine, unreadMethodsWords, whyLine, countedLine, scopeWords } from './readinessCells.ts'
+import { checkWords, goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, summaryLine, unreadMethodsWords, whyLine, countedLine, scopeWords, panelMethods } from './readinessCells.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { stepMfaHold } from '../../derive/stepMfaReadiness.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
@@ -299,4 +299,25 @@ test('opened from a step that holds on nobody, the page does not say the step is
   assert.equal(scopeWords({ title, ids: null, held: true }, ''), fillText(PC.unknown, { step: title }))
   assert.match(page(), /held: hold !== null/)
   assert.match(page(), /scopeWords\(context, scopedCohort\)/)
+})
+
+test('a key that shares an approved model’s name but not its AAGUID says which AAGUID differs', () => {
+  for (const name of ['demo', 'demo-week2'] as const) {
+    const f = fixture(name)
+    const view = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
+    const approved = view.context.step3.models
+    let seen = 0
+    for (const r of view.rows.filter((x) => x.state !== null)) {
+      const creds = r.readiness?.credentials ?? []
+      const items = panelMethods(r)
+      creds.forEach((c, i) => {
+        const twin = approved.find((m) => c.model !== null && m.name.toLowerCase() === c.model.toLowerCase() && m.aaguid.toLowerCase() !== c.aaguid)
+        if (!twin || !c.aaguid || (c.afterStep3 !== 'no' && c.allowedNow !== 'no')) return
+        seen++
+        assert.ok(items[i].sub.includes(`${c.aaguid.slice(0, 8)}…`), `${name}/${r.user.id}: ${items[i].sub}`)
+        assert.ok(items[i].sub.includes(`${twin.aaguid.slice(0, 8)}…`), `${name}/${r.user.id}: ${items[i].sub}`)
+      })
+    }
+    assert.ok(seen > 0, `the premise: ${name} holds a key named like an approved model with another AAGUID`)
+  }
 })

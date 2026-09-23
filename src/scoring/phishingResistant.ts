@@ -306,6 +306,12 @@ export type CredentialReading = {
   aaguid: string | null
   /** The model's name where IAMAI knows the AAGUID. */
   model: string | null
+  /**
+   * The AAGUID of an approved model (Emergency Access Step 3's list) with this
+   * credential's model name and another AAGUID: the same name on other firmware,
+   * which the list does not allow. Null where no approved model shares the name.
+   */
+  approvedTwin: string | null
   created: string | null
   /** Usable under the tenant's current passkey settings; an observed sign-in settles it. */
   allowedNow: Verdict
@@ -780,12 +786,16 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
     }
     const afterStep3: Verdict | null = cls !== 'passkey' || ctx.step3.applied || step3.size === 0 ? null : aaguid === null ? 'unknown' : step3.has(aaguid) ? 'yes' : 'no'
     const last = latestOf(cls)
+    const model = cls === 'platformCredential' ? (ctx.modelNames.get(PLATFORM_CREDENTIAL_AAGUID) ?? null) : aaguid ? (ctx.modelNames.get(aaguid) ?? m?.model ?? null) : (m?.model ?? null)
+    // The same model name on another AAGUID (other firmware): the approved list names this model, and still does not allow this key.
+    const twin = cls === 'passkey' && aaguid && model ? ctx.step3.models.find((x) => x.name.toLowerCase() === model.toLowerCase() && x.aaguid.toLowerCase() !== aaguid) : undefined
     return {
       cls,
       key: m?.id ?? null,
       name: m?.displayName ?? null,
       aaguid: cls === 'platformCredential' ? PLATFORM_CREDENTIAL_AAGUID : aaguid,
-      model: cls === 'platformCredential' ? (ctx.modelNames.get(PLATFORM_CREDENTIAL_AAGUID) ?? null) : aaguid ? (ctx.modelNames.get(aaguid) ?? m?.model ?? null) : (m?.model ?? null),
+      model,
+      approvedTwin: twin ? twin.aaguid.toLowerCase() : null,
       created: m?.createdDateTime ?? null,
       allowedNow,
       afterStep3,

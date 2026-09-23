@@ -73,6 +73,7 @@ type Words = {
     unused: { never: string; stale: string }
     retained: string
     unlisted: string
+    twin: string
     why: Record<string, string>
   }
   checks: Record<string, Record<string, string>>
@@ -372,7 +373,9 @@ export function panelDevices(r: ReadinessRow): PanelItem[] {
 export function panelMethods(r: ReadinessRow): PanelItem[] {
   const P = T.panel
   return (r.readiness?.credentials ?? []).map((c: CredentialReading) => {
-    const model = c.model ?? (c.aaguid ? fillText(P.unlisted, { aaguid: `${c.aaguid.slice(0, 8)}…` }) : c.name ?? '')
+    const refused = c.afterStep3 === 'no' || c.allowedNow === 'no'
+    // A key named like an approved model on another AAGUID names both, so the name alone never contradicts the list beside it.
+    const model = c.model && c.approvedTwin && c.aaguid && refused ? fillText(P.twin, { model: c.model, aaguid: `${c.aaguid.slice(0, 8)}…`, approved: `${c.approvedTwin.slice(0, 8)}…` }) : c.model ?? (c.aaguid ? fillText(P.unlisted, { aaguid: `${c.aaguid.slice(0, 8)}…` }) : c.name ?? '')
     const allowed = c.afterStep3 !== null ? `${P.verdict[c.allowedNow]}. ${P.step3[c.afterStep3]}.` : `${P.verdict[c.allowedNow]}.`
     const last = c.lastConfirmed ? `${monthDay(c.lastConfirmed.at)}${c.lastConfirmed.os ? `, ${osWord(c.lastConfirmed.os)}` : ''}${c.lastConfirmed.retained ? ` (${P.retained})` : ''}` : P.never
     // Microsoft's last-use date, where it was read: supporting evidence, and the flag for a passkey that may be gone.

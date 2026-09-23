@@ -316,7 +316,7 @@ test('audit 15, 17 and 21: the Methods cell lists what is usable, a phone chip r
   assert.equal(cell.note, fillText(W.methods.notAllowed, { method: W.methods.passkey }))
   // 17: a security key held doesn't put a passkey on the phone.
   const device = person(demoView, (x) => x.state === 'device' && (x.readiness?.devices ?? []).some((d) => d.type === 'phone' && d.proof === null))
-  const withKeyOnly = { ...device, readiness: { ...device.readiness!, credentials: [{ cls: 'passkey' as const, key: 'y', name: null, aaguid: 'a25342c0-3cdc-4414-8e46-f4807fca511c', model: null, created: null, allowedNow: 'yes' as const, afterStep3: null, lastConfirmed: null, lastUsed: null, unused: null }] } }
+  const withKeyOnly = { ...device, readiness: { ...device.readiness!, credentials: [{ cls: 'passkey' as const, key: 'y', name: null, aaguid: 'a25342c0-3cdc-4414-8e46-f4807fca511c', model: null, approvedTwin: null, created: null, allowedNow: 'yes' as const, afterStep3: null, lastConfirmed: null, lastUsed: null, unused: null }] } }
   const phoneChip = deviceChips(withKeyOnly).chips.find((c) => c.kind === 'phone')!
   assert.equal(phoneChip.word, W.chip.noPasskey)
   // 21: sign-in records unavailable in this tenant (a licence): the rescan words don't promise a retry.
