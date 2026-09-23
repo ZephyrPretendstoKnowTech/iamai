@@ -159,7 +159,7 @@ test('s-goal-sign-in-risk: Entra is one numbered portal procedure naming the str
   assert.equal(words.doneEnd, 'A sign-in {tenant} rates high risk cannot continue until it is answered with a method the selected grant accepts, and the exclusions group is applied.')
 })
 
-test('s-goal-require-managed-device: the threshold says what it measures, Entra is one numbered create procedure, and it is undated while it waits on the device direction', () => {
+test('s-goal-require-managed-device: the threshold says what it measures, the held create draws the Intune preparation and is undated, and the numbered create procedure appears once devices are ready', () => {
   const DEVICE = 's-goal-require-managed-device'
   // Require Healthy Devices D8 (docs/plans/require-healthy-devices-spec.md): the
   // gate counts the active people who own an in-scope compliant device
