@@ -566,10 +566,16 @@ test('042.15: no surface re-derives a fact that has an authority', () => {
   const demoTile = read('src/ui/demoFacts.ts')
 
   // The weeks a plan runs: derive/finish.ts `planWeeks`, and the three surfaces
-  // that state it read it. The expression had been copied into all three.
-  for (const [name, src] of [['Plan', plan], ['PrintPlan', print], ['demoFacts', demoTile]] as const) {
+  // that state it read it. The expression had been copied into all three. The
+  // Plan header states it through the one plan-length sentence
+  // (derive/finish.ts planLengthSentence, shared with the prompt pack), which
+  // reads planWeeks itself.
+  const finishSrc = read('src/derive/finish.ts')
+  const lengthSentence = finishSrc.slice(finishSrc.indexOf('export function planLengthSentence('))
+  assert.ok(lengthSentence.includes('planWeeks('), 'the plan-length sentence no longer reads planWeeks')
+  for (const [name, src, reader] of [['Plan', plan, 'planLengthSentence('], ['PrintPlan', print, 'planWeeks('], ['demoFacts', demoTile, 'planWeeks(']] as const) {
     assert.equal(/7 \* 86_400_000/.test(src), false, `${name} computes the plan's length itself; derive/finish.ts planWeeks is the one derivation`)
-    assert.ok(src.includes('planWeeks('), `${name} no longer states the plan's length at all`)
+    assert.ok(src.includes(reader), `${name} no longer states the plan's length at all`)
   }
 
   // A Cleanup row's completion and its word: roadmap/cleanupDone.ts, and the
