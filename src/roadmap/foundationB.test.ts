@@ -360,7 +360,7 @@ test('a material change restarts the observation; a state that moves the way the
   assert.equal(elsewhere.reviewRequired, true)
 })
 
-test('a skipped report-only period is one IAMAI watched: On from not deployed or Off, never a policy a first scan found On', () => {
+test('a skipped report-only period is one IAMAI watched: On from a recorded absence, never a policy a first scan found On or Off', () => {
   // R4-12, owner decision 3. `neverObserved` is set on every policy a first
   // scan finds On, so a policy this plan built and watched through report-only
   // read from a second browser, or after Forget, carried it too, and the step
@@ -388,7 +388,23 @@ test('a skipped report-only period is one IAMAI watched: On from not deployed or
   const edited = seen(off, 'disabled', 4, 'bbbb')
   assert.equal(edited.offOnly, true, 'an edit while Off is still only Off')
   assert.equal(seen(edited, 'enforced', 6, 'bbbb').skippedWindow, true, 'Off to On with no report-only between')
-  assert.equal(seen(seen(null, 'disabled', 0), 'enforced', 3).skippedWindow, true, 'first seen Off, then On: IAMAI watched it go live')
+  assert.equal(seen(off, 'enforced', 6, 'aaaa', 'B').skippedWindow, undefined, 'a different object replacing the one seen arrive Off is only sighted, not watched arriving')
+
+  // First seen Off: IAMAI cannot know what it did before it looked. A policy
+  // watched through report-only from another browser, or before Forget, and
+  // switched Off after an incident reads exactly like this, and switching it
+  // back on is what the switched-off step asks for.
+  const firstOff = seen(null, 'disabled', 0)
+  assert.equal(firstOff.offOnly, undefined, 'a first sighting Off is not an Off this record saw arrive')
+  assert.equal(seen(firstOff, 'enforced', 3).skippedWindow, undefined, 'first seen Off, then On: nothing shows a skipped period')
+  assert.equal(seen(seen(firstOff, 'disabled', 2), 'enforced', 3).skippedWindow, undefined, 'nor after more scans of it Off')
+
+  // A different object is sighted, not created: the scan before may have held
+  // it in report-only as a second, unclaimed policy.
+  const replacedOff = seen(seen(null, 'report-only', 0), 'disabled', 2, 'aaaa', 'B')
+  assert.equal(replacedOff.offOnly, undefined, 'a different object seen Off is not one this record saw arrive Off')
+  assert.equal(seen(replacedOff, 'enforced', 4, 'aaaa', 'B').skippedWindow, undefined, 'report-only X, then a different Y Off, then Y On: nothing shows a skipped period')
+  assert.equal(seen(seen(null, 'disabled', 0), 'enforced', 3, 'aaaa', 'B').skippedWindow, undefined, 'X Off, then a different Y On')
 
   // Watched in report-only, whatever came after it.
   const watched = seen(null, 'report-only', 0)

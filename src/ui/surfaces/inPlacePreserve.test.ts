@@ -1179,6 +1179,45 @@ test('a policy carrying this plan\'s tag, first seen On, is never said to have g
   }
 })
 
+test("a policy carrying this plan's tag, first seen Off and then switched On, is never said to have gone live unwatched", () => {
+  // The same case through Off. A record whose first scan found the tagged
+  // policy Off marked it as only ever Off, so switching it back on drew "No
+  // report-only period watched" beside "IAMAI watched it get there". IAMAI
+  // cannot know what a policy found Off did before it looked: one watched
+  // through report-only from another browser, or before Forget, and switched
+  // Off after an incident reads exactly like this, and turning it back on is
+  // what the switched-off step asks for.
+  const ID = 's-goal-block-legacy-auth'
+  const DAY = 86_400_000
+  const f = fixture('midflight')
+  const tagged = runFixture(f).steps.find((s) => s.id === ID)!
+  const owned = (tagged.tracking?.members ?? []).map((m) => m.policyId)
+  assert.ok(owned.length > 0, 'the premise: the step tracks its tagged policy')
+  const at = (days: number, state: string): Fixture => {
+    const h = structuredClone(f)
+    h.snapshot.asOf = new Date(Date.parse(f.snapshot.asOf) + days * DAY).toISOString()
+    for (const row of (h.snapshot.config.caPolicies?.rows ?? []) as Record<string, unknown>[]) if (owned.includes(String(row.id))) row.state = state
+    return h
+  }
+  const offScan = at(0, 'disabled')
+  const offRun = runFixture(offScan, { snapshot: offScan.snapshot })
+  const offStep = offRun.steps.find((s) => s.id === ID)!
+  assert.equal(offStep.state.members.every((m) => m.change.latest.state === 'disabled' && m.change.latest.since === 'first-scan'), true, "the premise: the record's first scan finds it Off")
+  let prior = observationsOf(offRun.steps)
+  for (const days of [2, 5]) {
+    const h = at(days, 'enabled')
+    const run = runFixture(h, { snapshot: h.snapshot }, prior)
+    prior = observationsOf(run.steps, prior)
+    const step = run.steps.find((s) => s.id === ID)!
+    const label = `day ${days}, On`
+    assert.equal(step.state.lifecycle === 'enforced' && step.state.satisfied && !step.state.inPlace, true, `the premise (${label}): Enforced, not In place`)
+    assert.equal(step.state.members.every((m) => m.change.latest.skippedWindow === undefined), true, `${label}: the record claims a skipped report-only period it never saw`)
+    const ctx = unwatchedCtx(h, run)
+    assert.equal(readinessOf(step, stepContract(step, ctx)).tiles.some((t) => t.key === 'enforced-unwatched'), false, `${label}: said to have gone live unwatched`)
+    assert.deepEqual(unwatchedWarnings(step, ctx), [], label)
+  }
+})
+
 // The third case: a tenant IAMAI has planned before.
 //
 // `midflight` arrives carrying six policies with IAMAI's own tag, and every

@@ -127,11 +127,12 @@ export type StepObservation = {
   neverObserved?: true
   /**
    * True where IAMAI WATCHED this policy object go On with no report-only state
-   * between: the scan before recorded it not deployed, or Off (and only ever
-   * Off, `offOnly`), and this scan found it enforced. The one reading that
-   * says a rollout skipped its report-only period (owner decision 3,
-   * 2026-09-22; R4-12), because it needs a prior record that saw the policy not
-   * applying to anybody: a first scan never sets it.
+   * between: the scan before recorded the step's policy not deployed, or Off
+   * on this same object after a recorded absence (`offOnly`), and this scan
+   * found it enforced. The one reading that says a rollout skipped its
+   * report-only period (owner decision 3, 2026-09-22; R4-12), because it needs
+   * a record that saw the policy not deployed: a first scan never sets it, nor
+   * does a first sighting Off or a different object.
    *
    * Durable, and carried with the object exactly as `neverObserved` is: the
    * scan that saw the arrival compares against the one before it, and the fact
@@ -139,12 +140,12 @@ export type StepObservation = {
    */
   skippedWindow?: true
   /**
-   * True on an Off (disabled) observation of an object this record has only
-   * ever seen Off: first sighted Off, or created Off after a scan recorded the
-   * step's policy not deployed, and edited, if at all, while still Off. What
-   * lets a later move to On read `skippedWindow`: a policy IAMAI watched in
-   * report-only, then turned Off and back On, had a report-only period IAMAI
-   * watched, and the Off state before On does not undo that.
+   * True on an Off (disabled) observation of an object this record saw arrive
+   * Off: created Off after a scan recorded the step's policy not deployed, and
+   * edited, if at all, while still Off. What lets a later move to On read
+   * `skippedWindow`. Never on a first sighting Off: a policy IAMAI watched in
+   * report-only from another browser, or before Forget, then turned Off, is
+   * first seen Off by this record, and its report-only period was watched.
    */
   offOnly?: true
 }
@@ -618,9 +619,11 @@ export function observe(prior: StepObservation | null, sighting: Sighting): Obse
   const differs = unwritten.length > 0 ? fillText(OBS.differs, { fields: dimensionWords(unwritten) }) : null
   if (!prior) {
     return {
-      // Never `skippedWindow` here: what a policy found On did before IAMAI
-      // first looked is not something this scan watched.
-      latest: { artifact, state, semantics, fields, firstSeenAt: at, since: 'first-scan', lastSeenAt: at, evidenceAt, ...(state === 'enforced' ? { neverObserved: true as const } : {}), ...(state === 'disabled' ? { offOnly: true as const } : {}) },
+      // Never `skippedWindow` or `offOnly` here: what a policy found On, or
+      // Off, did before IAMAI first looked is not something this scan watched.
+      // A policy watched through report-only from another browser, or before
+      // Forget, and switched Off after an incident is first seen Off here.
+      latest: { artifact, state, semantics, fields, firstSeenAt: at, since: 'first-scan', lastSeenAt: at, evidenceAt, ...(state === 'enforced' ? { neverObserved: true as const } : {}) },
       prior: null,
       changed: 'first-scan',
       // A first sighting is nothing the plan can claim to have asked for.
@@ -697,19 +700,23 @@ export function observe(prior: StepObservation | null, sighting: Sighting): Obse
    */
   const since: StepObservation['since'] = artifactAnswer === 'same' ? (moved ? 'observed-change' : prior.since) : 'first-scan'
   /**
-   * What this record has seen of the object before On. A step whose policy the
-   * last scan recorded not deployed, or a different object from the one it
-   * recorded, is an object this scan sights for the first time.
+   * What this record has seen of the object before On. Only a scan that
+   * recorded the step's policy not deployed proves the next one arrived under
+   * IAMAI's eye. A different object from the one recorded is not that: it is
+   * sighted for the first time by this record, not created now, and the scan
+   * before may have held it in report-only as a second, unclaimed policy
+   * (tracking.ts matchMembers keeps the recorded member while one sits there).
    *
    * `skippedWindow` is IAMAI watching it go On from not applying to anybody:
-   * not deployed, or Off where this record has only ever seen it Off. Off after
-   * a report-only period IAMAI watched is not that, and neither is a record
-   * that cannot say which object it watched.
+   * not deployed at the last scan, or Off on the same object that this record
+   * saw arrive Off after a recorded absence (`offOnly`). A first sighting Off,
+   * Off after a report-only period IAMAI watched, a different object, and a
+   * record that cannot say which object it watched all claim nothing.
    */
-  const sightedNow = artifactAnswer === 'different' || prior.state === 'absent'
+  const sightedNow = prior.state === 'absent'
   const offOnly = state === 'disabled' && (sightedNow || (artifactAnswer === 'same' && prior.state === 'disabled' && prior.offOnly === true))
   const skippedWindow =
-    (state === 'enforced' && (prior.state === 'absent' || (prior.state === 'disabled' && (artifactAnswer === 'different' || (artifactAnswer === 'same' && prior.offOnly === true))))) ||
+    (state === 'enforced' && (prior.state === 'absent' || (prior.state === 'disabled' && artifactAnswer === 'same' && prior.offOnly === true))) ||
     (artifactAnswer === 'same' && !moved && prior.skippedWindow === true)
   return {
     latest: {

@@ -56,9 +56,10 @@ function reportOnlyUnwatched(step: Step): boolean {
  * (the plan's tag on a satisfying policy, `inPlace` false, and the policy on,
  * as stepContract.ts stageOf reads it) where IAMAI watched every policy member
  * go On from not applying to anybody, with no report-only state between
- * (observation.ts `skippedWindow`). It stays Completed, with a warning tile
- * that says so and the check after the change kept (stepContract.ts
- * unwatchedTile, doneWhenOf).
+ * (observation.ts `skippedWindow`): not deployed at the scan before, or Off on
+ * the same object after a scan that recorded it not deployed. It stays
+ * Completed, with a warning tile that says so and the check after the change
+ * kept (stepContract.ts unwatchedTile, doneWhenOf).
  *
  * Built straight to On, policies on the pinned baseline filed under Completed
  * with "The scan found the assessed configuration in place." and nothing else,
@@ -66,9 +67,10 @@ function reportOnlyUnwatched(step: Step): boolean {
  *
  * Not the reading above (`neverObserved`), which a first scan sets on every
  * policy it finds On: a policy this plan built and watched through report-only
- * is first seen On from a second browser or after Forget, and IAMAI cannot know
- * that it skipped anything. Not a policy the tenant already had (In place):
- * nothing went live under this plan there. Not a policy whose completion is its
+ * is first seen On (or Off, after an incident) from a second browser or after
+ * Forget, and IAMAI cannot know that it skipped anything. Not a policy the
+ * tenant already had (In place): nothing went live under this plan there. Not
+ * a policy whose completion is its
  * configuration, which is not evaluated in report-only, so no window was part of
  * its rollout to miss.
  */
