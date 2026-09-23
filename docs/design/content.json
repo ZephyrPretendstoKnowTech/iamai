@@ -1075,14 +1075,14 @@
         "confirm": {
           "title": "Confirm the method still exists",
           "why": "Registered, but no confirmed sign-in in 30 days",
-          "$commentBody": "It said \"they remove the old method and register again\". Registering first means nobody is left without a working method while the old one still works; removing a method on a lost device loses nothing. Registering security info needs MFA, so somebody whose only method was on that device can't register at all: the last sentence states the fact the Temporary Access Pass check already gives (checks.tap.failText), not a new instruction.",
+          "$commentBody": "It said \"they remove the old method and register again\". Registering first means nobody is left without a working method while the old one still works; removing a method on a lost device loses nothing. Registering security info needs MFA, so somebody whose only method was on that device can't register at all. The last sentence states that fact as the Temporary Access Pass check does (checks.tap.failText); it adds no instruction.",
           "body": "Ask each person to sign in once with the method named on their row. If the phone or computer holding it was replaced, they register a new method first, then remove the old one. Anyone left with no method needs a Temporary Access Pass to register."
         },
         "device": {
           "$commentTitle": "It read \"Add a passkey to the device they use\" over rows whose step is to sign in once with the passkey they already hold. The title names the gap; each row names its step.",
           "title": "Cover the device that signs in without a phishing-resistant method",
           "why": "Confirmed on one device, but another signs in without it",
-          "$commentBody": "A row's step may be a sign-in with a method already held, so the option is named only where the step is a setup: \"On a phone that is…\" read as if every step were a passkey.",
+          "$commentBody": "A row's step may be a sign-in with a method already held. The option is named only where the step is a setup; \"On a phone that is…\" read as if every step were a passkey.",
           "body": {
             "windows": "Each takes the step named on their row, on that device. Where the step is a setup, on a phone it is a passkey in Microsoft Authenticator; on a joined computer, Windows Hello for Business.",
             "mac": "Each takes the step named on their row, on that device. Where the step is a setup, on a phone it is a passkey in Microsoft Authenticator. On a Mac it is a synced passkey, where passkey settings allow it.",
@@ -1328,7 +1328,7 @@
           "noJoined": "No joined Windows computers seen, so Windows Hello for Business doesn’t apply yet",
           "$commentUnread": "The device directory wasn't read in full, so an absent joined computer settles nothing. The check was filed as done under noJoined there, over a read that failed.",
           "unread": "Whether Windows Hello for Business works here isn’t known: this scan couldn’t read the device directory in full",
-          "$commentSignInsUnread": "The device directory was read and holds joined Windows computers, but no sign-in record was read, so nobody could be seen signing in with Windows Hello. It shared unread's words, which read as if the directory had failed.",
+          "$commentSignInsUnread": "The device directory holds joined Windows computers, but no sign-in record was read, so nobody could be seen signing in with Windows Hello. It shared unread's words, which read as if the directory had failed.",
           "signInsUnread": "Whether Windows Hello for Business works here isn’t known: no sign-in records were read"
         },
         "tap": {
@@ -1382,7 +1382,7 @@
         "$commentCounts": "These lines stood beside a count in its own cell, so a count of one read \"1 method lists\" and \"1 people’s sign-ins\". The count is now in each sentence, after its verb, so pluralise bends the noun and leaves the verbs alone.",
         "$commentUnreadMethods": "Each person has one method list, so the noun stays singular: \"1 person’s method lists\" read as several lists for one person.",
         "unreadMethods": "IAMAI couldn’t read the method list of {n} people. The next scan retries.",
-        "$commentUnreadMethodsRefused": "Where the registration report was refused (a permission or a licence), a rescan with the same sign-in reads no more of it, so the line names that refusal and its fix, not a retry. The Plan's blind-source sentence names the same refusal; {fix} is its fix (roadmap/readiness.ts sourceReadFix). One contraction style, and the reason after a colon as in app.readiness.lineNoRecordsReason.",
+        "$commentUnreadMethodsRefused": "Where the registration report was refused (a permission or a licence), a rescan with the same sign-in reads no more of it. The line names that refusal and its fix, not a retry. The Plan's blind-source sentence names the same refusal; {fix} is its fix (roadmap/readiness.ts sourceReadFix). One contraction style, and the reason after a colon as in app.readiness.lineNoRecordsReason.",
         "unreadMethodsRefused": "IAMAI couldn’t read the method list of {n} people, nor registration details in this tenant: {reason}. {fix}",
         "notCovered": "IAMAI hasn’t read {n} people’s sign-ins yet. The next scan continues.",
         "individually": "IAMAI read {n} people individually for the older part of the window."
