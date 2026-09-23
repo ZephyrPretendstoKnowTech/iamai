@@ -20,6 +20,7 @@ import { CONTRACT, stepContract } from '../ui/surfaces/stepContract.ts'
 import { stepBodyOf } from '../ui/surfaces/stepBody.ts'
 import { stepExportView } from '../ui/surfaces/stepExport.ts'
 import { cardWordsOf, policyBarOf, policySubjectsOf, taskSubjectOf } from '../ui/surfaces/policyTasks.ts'
+import { statusOf } from '../ui/surfaces/statusWord.ts'
 
 test('the row and the step body read the same population, for every step on every fixture', () => {
   for (const f of allFixtures()) {
@@ -350,14 +351,14 @@ test('a delivered step whose reach is not established is not handed Readiness wo
 
 // "Your account is in scope: 3 sign-ins since Jul 29, 2026." was the one reading
 // on a delivered step still taken from the goal's people (stepVars.ts
-// operatorInScope, generate.ts includesOperator), not from the reach the step's
-// cards read: on screen, in the exports and in AI Info it stood under "IAMAI
+// operatorInScope), not from the reach the step's cards read: on screen, in the exports and in AI Info it stood under "IAMAI
 // cannot establish exactly who this reaches", and a policy that reached the
 // account was said not to where the goal's people left it out. Where the reach
 // is settled it answers. Where it is not, the delivering policies are asked about
-// this one account, and an answer they cannot give counts as reaching it: the
-// convention an open policy follows, because unknown is not safe. A group read
-// in full that excludes the account still settles it.
+// this one account (generate.ts deliveredReachesOperator), and an answer they
+// cannot give counts as reaching it: the convention an open policy follows,
+// because unknown is not safe. A group read in full that excludes the account
+// still settles it.
 test('a delivered step says whether the signed-in account is in scope from the delivering policies, never the goal\'s people', () => {
   const POLICY = 'Core - Block - Legacy authentication'
   const STEP = 's-goal-block-legacy-auth'
@@ -370,8 +371,8 @@ test('a delivered step says whether the signed-in account is in scope from the d
   assert.equal(service.step.status, 'done', 'the premise: the tenant\'s policy delivers the goal')
   assert.equal(service.step.population.ids.includes(op), false, 'the premise: the goal\'s people leave the account out')
   assert.equal(reached(service.step)?.ids.includes(op), true, 'the premise: the policy reaches it')
-  assert.equal(service.step.includesOperator, true, 'the step says the policy does not reach an account it reaches')
-  assert.equal(inScope(service.vars), true, 'and "Your account is in scope" is not said')
+  assert.equal(service.step.deliveredReachesOperator, undefined, 'a settled reach answers for itself, and carries no second answer')
+  assert.equal(inScope(service.vars), true, '"Your account is in scope" is not said of an account the policy reaches')
 
   // Settled: a reach that leaves the account out while the goal's people name it.
   const plain = deliveredWithGroup(POLICY, STEP, false)
@@ -385,8 +386,8 @@ test('a delivered step says whether the signed-in account is in scope from the d
   // Not established, and nothing the scan read settles the account: it counts as reached.
   const unread = deliveredWithGroup(POLICY, STEP, true)
   assert.equal(reached(unread.step), null, 'the premise: the reach is not established')
-  assert.equal(unread.step.includesOperator, true, 'an account the policies cannot answer for counts as reached')
-  assert.equal(inScope(unread.vars), true)
+  assert.equal(unread.step.deliveredReachesOperator, true, 'an account the policies cannot answer for counts as reached')
+  assert.equal(inScope(unread.vars), true, '"Your account is in scope" is not said of an account nobody can say is out')
 
   // Not established, but the exclusions group, read in full, holds the account:
   // the policies settle it for this one account, and it is not in scope.
@@ -399,8 +400,39 @@ test('a delivered step says whether the signed-in account is in scope from the d
   })
   assert.equal(excluded.step.status, 'done', 'the premise: still delivered')
   assert.equal(reached(excluded.step), null, 'the premise: the reach is not established')
-  assert.equal(excluded.step.includesOperator, false, 'an account a group read in full excludes is said to be reached')
+  assert.equal(excluded.step.deliveredReachesOperator, false, 'an account a group read in full excludes is said to be reached')
   assert.equal(inScope(excluded.vars), false, '"Your account is in scope" for an account the policy excludes')
+})
+
+// The answer above is the operator line's, and only on a step still delivered
+// when it is read. It was carried in includesOperator, which also decides the
+// signed-in account's safety verdict, and a step this run reopens keeps the
+// delivered reach the scan read. On small, mid and five more fixtures the
+// guests step is found delivered by the tenant's MFA policies and then reopened
+// as a policy to create, and it took their answer for the signed-in account, a
+// member: in scope, with that account's sign-ins, and on small a stranding
+// verdict (operatorSafe false) that turned its tone from wait to stop. Nothing
+// the step creates reaches that account, and none of it was said before.
+test('a step reopened after the scan found it delivered does not answer for the signed-in account from the policies that delivered it', () => {
+  for (const name of ['small', 'mid'] as const) {
+    const f = fixture(name)
+    const r = runFixture(f)
+    const guests = r.steps.find((s) => s.id === 's-goal-guests-mfa')
+    assert.ok(guests, `${name}: the premise: the guests step is planned`)
+    assert.notEqual(guests.deliveredReach, undefined, `${name}: the premise: the scan found it delivered`)
+    assert.equal(guests.state.satisfied, false, `${name}: the premise: reopened`)
+    assert.equal(guests.population.ids.includes(f.operatorId!), false, `${name}: the premise: the signed-in account is not one of its guests`)
+    assert.equal(guests.includesOperator, false, `${name}: the delivering policies answered for a step they no longer deliver`)
+    assert.equal(guests.deliveredReachesOperator, undefined, `${name}: no second answer where the delivered reach was settled`)
+    const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+    const vars = stepVars(guests, ctx)
+    assert.equal(vars.operatorSignIns, undefined, `${name}: "Your account is in scope" on the guests step`)
+    assert.equal(vars.operatorNoRecords, undefined, `${name}: the no-records line on the guests step`)
+    if (name === 'small') {
+      assert.equal(guests.operatorSafe, null, 'small: a stranding verdict from policies the step does not create')
+      assert.equal(statusOf(guests).tone, 'wait', 'small: the tone a stranding verdict gives')
+    }
+  }
 })
 
 // One number format (copy/statements.ts figure). The thousands separator was

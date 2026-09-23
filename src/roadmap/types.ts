@@ -775,6 +775,16 @@ export type Step = {
    */
   deliveredReach?: StepPopulation | null
   /**
+   * Whether the tenant policies that deliver the goal reach the signed-in
+   * account, set only where `deliveredReach` is null: asked of those policies
+   * for this one account, and an answer they cannot give counts as reaching it.
+   * Read by the operator line (ui/surfaces/stepVars.ts operatorInScope) only
+   * while the step stays delivered, the way `reached` reads `deliveredReach`.
+   * Never `includesOperator`, which decides the operator's safety verdict and
+   * is not changed by it.
+   */
+  deliveredReachesOperator?: boolean
+  /**
    * The one binding reason while blocked (target-state §8.5): at most twelve
    * words, in one of three shapes; null otherwise. The full list is `blockers`.
    */
