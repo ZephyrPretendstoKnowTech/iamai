@@ -172,8 +172,8 @@ const SCAN_OWN: Record<ScanTile['kind'], string[]> = {
   gaps: ['no plan built', 'Ask whoever administers the tenant for Global Reader'],
   role: ["can't read the tenant", 'Everything IAMAI needs, read-only'],
   scanning: ['Stop'],
-  ready: ['Scan tenant', 'About ten minutes'],
-  sample: ['after sign-in · about a minute for a small tenant'],
+  ready: ['Scan tenant', 'The scan is processed in this browser'],
+  sample: ['after sign-in'],
 }
 // What the other tile carries, never the Scan tile (the fact labels are the Plan tile's).
 const PLAN_STRINGS = ['Open the plan →', 'Open the last full plan', 'from the scan', 'What the sample tenant produced', 'already in place', 'Open the sample plan']
@@ -372,7 +372,7 @@ test('tile 3, not started: the account, one row asking for Global Reader, Sign i
   scanOnlyItsOwn(t)
 })
 
-test('tile 3, scanning: one line with the elapsed time, Stop (tertiary), no state colour; ready: Scan tenant (primary) and the ten-minute line', () => {
+test('tile 3, scanning: one line with the elapsed time, Stop (tertiary), no state colour; ready: Scan tenant (primary) and the in-browser line', () => {
   const s = scanTile({ kind: 'scanning', lane: 'Reading sign-in records', elapsed: '8s' })
   beatsOf(s)
   assert.equal(s.state, 'reading sign-in records · 8s')
@@ -383,7 +383,7 @@ test('tile 3, scanning: one line with the elapsed time, Stop (tertiary), no stat
   beatsOf(r)
   assert.equal(r.state, 'not started')
   assert.equal(r.tone, null)
-  assert.equal(r.note, 'About ten minutes. The scan is processed in this browser; nothing is uploaded to IAMAI.')
+  assert.equal(r.note, 'The scan is processed in this browser; nothing is uploaded to IAMAI.')
   assert.deepEqual(r.actions, [{ label: 'Scan tenant', weight: 'primary' }])
   scanOnlyItsOwn(r)
 })
@@ -662,4 +662,16 @@ test('an incomplete author review names no action the page does not offer', () =
   const partial = baselineTile({ name: 'x', policyCount: 46, loading: null, update: { date: '2026-09-03T10:00:00Z', changes: [], incomplete: true }, stepsFor })
   assert.equal(partial.update?.note, "IAMAI could not read every changed file in the author's repository, so this review is incomplete. IAMAI keeps the pinned version.")
   for (const s of tileStrings(partial)) assert.doesNotMatch(s, /take an update/, s)
+})
+
+// Phase 2 audit (Connect): the Scan tile promised "about a minute for a small
+// tenant" before sign-in and "About ten minutes" after it: one fact, two
+// sources, a factor of ten apart, and neither established (the sign-in read
+// runs to the window's end with no clock). Neither state names a duration.
+test('the Scan tile states no scan duration it cannot know, before sign-in or after', () => {
+  const sample = scanTile({ kind: 'sample' })
+  const ready = scanTile({ kind: 'ready' })
+  assert.equal(sample.state, 'after sign-in')
+  assert.equal(ready.note, 'The scan is processed in this browser; nothing is uploaded to IAMAI.')
+  for (const t of [sample, ready]) for (const s of [t.state, t.note ?? '']) assert.doesNotMatch(s, /minute|hour|second/i, s)
 })

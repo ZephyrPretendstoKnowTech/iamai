@@ -934,7 +934,7 @@ async function walkFixture(fx) {
         // then exactly one of its states (docs/design/connect-mockup.html); the
         // number badge carries the state colour; nothing of the other states, and
         // nothing of the Plan tile's.
-        const SCAN_STATES = { complete: /^Scan complete · .+$/, gaps: /^Scan finished with gaps · no plan built$/, role: /^Scan not started · this account can't read the tenant$/, scanning: /^Scan .+ · \d+(m \d+)?s$/, ready: /^Scan not started$/, sample: /^Scan after sign-in · about a minute for a small tenant$/ }
+        const SCAN_STATES = { complete: /^Scan complete · .+$/, gaps: /^Scan finished with gaps · no plan built$/, role: /^Scan not started · this account can't read the tenant$/, scanning: /^Scan .+ · \d+(m \d+)?s$/, ready: /^Scan not started$/, sample: /^Scan after sign-in$/ }
         const want = signedOut ? 'sample' : ({ roles: 'role', gaps: 'gaps', free: 'complete', scanning: 'scanning', ready: 'ready' }[fx.mock] ?? 'complete')
         if (t3) {
           const seen = Object.entries(SCAN_STATES).filter(([, re]) => re.test(t3.h2)).map(([k]) => k)
@@ -962,7 +962,7 @@ async function walkFixture(fx) {
           const badge = { complete: 'done', gaps: 'wait', role: 'stop' }[want]
           if (badge && !new RegExp('\\b' + badge + '\\b').test(t3.cls)) add('P0', `${label}: tile 3's number badge does not carry the ${want} state colour (class ${badge}); it has "${t3.cls}"`)
           if (!badge && /\b(done|wait|stop)\b/.test(t3.cls)) add('P0', `${label}: tile 3 in the ${want} state carries a state colour (${t3.cls})`)
-          const OTHER = { complete: [/complete · /, /^Scan again$/], gaps: [/no plan built/, /Ask whoever administers/], role: [/has no active role that reads/, /Everything IAMAI needs, read-only/], scanning: [/^Stop$/], ready: [/About ten minutes/, /^Scan tenant$/], sample: [/about a minute for a small tenant/] }
+          const OTHER = { complete: [/complete · /, /^Scan again$/], gaps: [/no plan built/, /Ask whoever administers/], role: [/has no active role that reads/, /Everything IAMAI needs, read-only/], scanning: [/^Stop$/], ready: [/The scan is processed in this browser/, /^Scan tenant$/], sample: [/after sign-in/] }
           for (const [k, res] of Object.entries(OTHER)) {
             if (k === want) continue
             // Scan again belongs to the complete and the gaps state both, and so
@@ -1006,7 +1006,7 @@ async function walkFixture(fx) {
           if (want === 'ready') {
             expectBtn(t3, /^Scan tenant$/, 'primary', 'the ready tile')
             if (t3.buttons.length !== 1) add('P0', `${label}: the ready tile has ${t3.buttons.length} buttons; Scan tenant alone`)
-            if (!/About ten minutes\. The scan is processed in this browser; nothing is uploaded to IAMAI\./.test(t3.text)) add('P0', `${label}: the ready tile lacks the ten-minute line`)
+            if (!/The scan is processed in this browser; nothing is uploaded to IAMAI\./.test(t3.text)) add('P0', `${label}: the ready tile lacks the in-browser line`)
           }
           if (want === 'sample' && t3.buttons.length !== 0) add('P0', `${label}: the signed-out Scan tile has ${t3.buttons.length} buttons; none`)
         }
