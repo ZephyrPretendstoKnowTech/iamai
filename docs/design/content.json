@@ -427,6 +427,8 @@
         "statement": {
           "exclusionMissing": "It does not exclude the exclusions group.",
           "conditionsNarrower": "It applies only under narrower conditions than the baseline.",
+          "$commentConditionsRecorded": "Added after an in-place goal's statement where the delivering policy is narrower than the baseline only as far as the person's recorded answer chose (roadmap/deviations.ts applyDeviations; coverage.ts recordedReference): the device decision's phones-out answer. {conditions} is the list of coverage.conditions words.",
+          "conditionsRecorded": "It applies under narrower conditions than the baseline by your choice: {conditions}.",
           "guestTypes": "It reaches only some guest types."
         },
         "conditions": {

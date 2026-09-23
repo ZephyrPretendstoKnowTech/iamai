@@ -150,7 +150,7 @@ export type EngineWords = {
   coverage: {
     reason: { exclusionMissing: string; conditionsNarrower: string; guestTypes: string }
     gap: { exclusionMissing: string; conditionsNarrower: string; guestTypes: string }
-    statement: { exclusionMissing: string; conditionsNarrower: string; guestTypes: string }
+    statement: { exclusionMissing: string; conditionsNarrower: string; conditionsRecorded: string; guestTypes: string }
     conditions: Record<string, string>
   }
 }
