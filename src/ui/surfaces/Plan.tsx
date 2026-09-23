@@ -475,7 +475,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
           Doesn't apply here answers, the licence ladder and housekeeping. The
           In place rows moved into the board's Complete group above, because a
           lens cannot group a row that lives in another component. */}
-      <PlanFooter computed={c} nameOf={nameOf} onPutBack={(id) => data.setNotApplicable(id, null)} />
+      <PlanFooter computed={c} mapping={data.mapping} nameOf={nameOf} onPutBack={(id) => data.setNotApplicable(id, null)} />
     </section>
   )
 }
