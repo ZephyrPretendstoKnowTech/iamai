@@ -339,6 +339,12 @@ export function aggregateFold(): RowFold<Record<string, UserEvidence>> {
   const apps = new Map<string, Set<string>>()
   const trusted = new Set<string>()
   const recovery = new Map<string, NonNullable<UserEvidence['recoveryCandidates']>>()
+  // Each person's newest candidate that can be a recovery test on the facts that
+  // do not depend on its time (recoveryCandidateReadings in roadmap/cleanupDone.ts:
+  // success, interactive, a fresh passkey step, an authentication time). It is
+  // kept beside the newest, so newer sign-ins that cannot be a test do not push
+  // it out; every check left favours a newer event.
+  const couldTest = new Map<string, NonNullable<UserEvidence['recoveryCandidates']>[number]>()
   // The latest record of each kind, kept apart while the rows are read: a
   // record that names a method is proof of that method, a generic one is
   // proof only that MFA happened. Graph returns the newest row first, so one
@@ -382,6 +388,10 @@ export function aggregateFold(): RowFold<Record<string, UserEvidence>> {
         if (!list) recovery.set(row.userId, (list = []))
         list.push(candidate)
         if (list.length >= 2 * RECOVERY_CANDIDATES_PER_PERSON) keepNewest(list)
+        if (candidate.success && candidate.isInteractive === true && candidate.freshMethod === true && candidate.authenticationAt) {
+          const held = couldTest.get(row.userId)
+          if (held === undefined || candidate.at > held.at) couldTest.set(row.userId, candidate)
+        }
       }
       if (read.mfa) {
         const into = read.mfa === GENERIC_MFA ? generic : named
@@ -423,7 +433,10 @@ export function aggregateFold(): RowFold<Record<string, UserEvidence>> {
       for (const [id, u] of Object.entries(perUser)) {
         u.lastMfaSuccess = named.get(id) ?? generic.get(id) ?? null
         u.proofs = [...(proofs.get(id)?.values() ?? [])].sort((a, b) => (a.cls < b.cls ? -1 : a.cls > b.cls ? 1 : (a.os ?? '') < (b.os ?? '') ? -1 : 1))
-        u.recoveryCandidates = keepNewest(recovery.get(id) ?? [])
+        const kept = keepNewest(recovery.get(id) ?? [])
+        const test = couldTest.get(id)
+        if (test && !kept.includes(test)) kept.push(test)
+        u.recoveryCandidates = kept
         const seen = platforms.get(id)
         u.platforms = PLATFORMS.filter((os) => seen?.has(os)).map((os) => ({ os, at: seen?.get(os) as string }))
         const byOs = devices.get(id)
