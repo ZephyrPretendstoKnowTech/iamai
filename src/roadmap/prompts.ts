@@ -13,6 +13,7 @@ import type { CleanupExport, Step, StepView } from './types.ts'
 import { redactDeep as redactDeepShared, tenantVocabulary } from '../redactSnapshot.ts'
 import type { Schedule } from './schedule.ts'
 import { content } from '../content/content.ts'
+import { sectionHasData } from '../graph/collect/coreSections.ts'
 import { fillText } from '../content/render.ts'
 
 /** The shared lines this module states a date with; the words live in content.json. */
@@ -214,15 +215,21 @@ export function groundingBundle(args: { view: StepView; tenant: string; snapshot
   const { snapshot } = args
   // Every name the tenant contains, not just its users.
   const vocabulary = args.redacted ? tenantVocabulary(snapshot) : new Map<string, string>()
+  // A count stands only where the scan got data out of its section
+  // (graph/collect/coreSections.ts sectionHasData); over a section it could not
+  // read it is null, never a zero. The bundle told an assistant
+  // "registrationMfaCapable": 0 on a tenant whose registration details were
+  // refused (Phase 2 export finding 8).
+  const counted = (key: Parameters<typeof sectionHasData>[1], n: () => number): number | null => (sectionHasData(snapshot, key) ? n() : null)
   const profile = {
-    users: snapshot.users.length,
-    enabled: snapshot.users.filter((u) => u.accountEnabled !== false).length,
-    guests: snapshot.users.filter((u) => u.userType === 'guest').length,
+    users: counted('users', () => snapshot.users.length),
+    enabled: counted('users', () => snapshot.users.filter((u) => u.accountEnabled !== false).length),
+    guests: counted('users', () => snapshot.users.filter((u) => u.userType === 'guest').length),
     admins: Object.keys(snapshot.roles.active).length,
-    policies: (snapshot.config.caPolicies?.rows ?? []).length,
+    policies: counted('caPolicies', () => (snapshot.config.caPolicies?.rows ?? []).length),
     capabilities: Object.fromEntries(Object.entries(snapshot.capabilities).map(([k, v]) => [k, v.enabled])),
     signInEvidence: snapshot.sources.signInEvidence?.status ?? 'unknown',
-    registrationMfaCapable: snapshot.registrationDetails.filter((r) => r.isMfaCapable).length,
+    registrationMfaCapable: counted('registrationDetails', () => snapshot.registrationDetails.filter((r) => r.isMfaCapable).length),
   }
   // The findings are data (goal, status). The engine's statement prose stays out
   // of a content-era bundle (prompt 53 queue item 7).

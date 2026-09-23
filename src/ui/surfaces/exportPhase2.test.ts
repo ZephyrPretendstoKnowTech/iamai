@@ -29,6 +29,7 @@ import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { exportText, runbookRedaction } from '../exportGuard.ts'
 import { requiredModels } from '../../roadmap/passkeySettings.ts'
+import { sectionHasData } from '../../graph/collect/coreSections.ts'
 
 /** The Plan rail's words for a scheduled day (pages.app.plan.stepContract.railTransition). */
 const RAIL = (app.plan as unknown as { stepContract: { railTransition: Record<string, string> } }).stepContract.railTransition
@@ -385,4 +386,22 @@ test('a plan file that does not load is refused in a sentence that repeats nothi
   assert.match(planFileRefusal(null), /^[A-Z].*\.$/, 'the fallback is a sentence too')
   const page = readFileSync(new URL('./Export.tsx', import.meta.url), 'utf8').replace(/\/\/[^\n]*/g, '')
   assert.doesNotMatch(page, /setExportError\(error/, 'the Export page shows the parser\'s message')
+})
+
+// Finding 8 (severity 2, partly). On a tenant whose registration details were
+// not read (403) the bundle's tenant profile told an assistant
+// "registrationMfaCapable": 0, a count over a section the scan got nothing out
+// of. A profile count stands only where its section was read
+// (coreSections.ts sectionHasData); otherwise it is null.
+test('the bundle\'s tenant profile draws no count from a section the scan did not read', () => {
+  const p = exportPage(fixture('hostile'))
+  assert.equal(sectionHasData(p.f.snapshot, 'registrationDetails'), false, 'the premise: registration details were not read')
+  const bundle = groundingBundle({ view: p.view, tenant: 'Tenant', snapshot: p.f.snapshot, coverage: p.r.coverage, steps: p.r.steps, schedule: p.r.schedule, redacted: false, generated: 'today', cleanup: p.cleanup })
+  const profile = bundle.profile as Record<string, unknown>
+  assert.equal(profile.registrationMfaCapable, null, `a count over an unread section: ${profile.registrationMfaCapable}`)
+  // A read section still counts.
+  const mid = exportPage(fixture('mid'))
+  assert.equal(sectionHasData(mid.f.snapshot, 'registrationDetails'), true, 'the premise: mid read them')
+  const read = groundingBundle({ view: mid.view, tenant: 'Tenant', snapshot: mid.f.snapshot, coverage: mid.r.coverage, steps: mid.r.steps, schedule: mid.r.schedule, redacted: false, generated: 'today', cleanup: mid.cleanup }).profile as Record<string, unknown>
+  assert.equal(typeof read.registrationMfaCapable, 'number')
 })
