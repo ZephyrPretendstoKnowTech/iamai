@@ -2668,7 +2668,7 @@
             "Check the policies already here, and exclude the emergency access accounts from anything that blocks or restricts sign-in. A report-only policy blocks nobody and needs no exclusion.",
             "Create it in report-only, leave it there for a week, and read the sign-in logs before you turn it on.",
             "Test the exclusions as well as the rule: another policy can still ask an excluded person for MFA.",
-            "To back a change out, disable the policy rather than delete it; a deleted one can be restored for 30 days and no longer.",
+            "To back a change out, set the policy back to Report-only rather than delete it; a deleted one can be restored for 30 days and no longer.",
             "Confirm that the intended access works and unwanted access is blocked. Record the review below only after you have validated the control; IAMAI does not verify completion of this manual step."
           ],
           "reviewDone": "You have reviewed the policy for this tenant, made any necessary changes, and tested the intended access and restrictions. IAMAI holds that record against the version you read, and asks again when the policy or the objects it names change.",
@@ -3424,7 +3424,7 @@
         "label": "If a change locks you out",
         "steps": [
           "Sign in with one of the emergency accounts above, in a private browser window.",
-          "Entra admin center → Entra ID → Conditional Access → Policies → open the policy that changed today → Enable policy: Report-only (or Off) → Save. It applies within minutes.",
+          "Entra admin center → Entra ID → Conditional Access → Policies → open the policy that changed today → Enable policy: Report-only → Save. It applies within minutes.",
           "If the portal itself is blocked: sign in from a device and network the policies trust (a managed laptop on the office network), or from any device run Connect-MgGraph -Scopes Policy.ReadWrite.ConditionalAccess and then Update-MgIdentityConditionalAccessPolicy -ConditionalAccessPolicyId <id> -State enabledForReportingButNotEnforced.",
           "If no route works, Microsoft support can help; they will ask for the tenant id: {tenantId}."
         ]

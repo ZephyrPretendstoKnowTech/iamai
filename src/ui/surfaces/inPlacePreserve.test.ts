@@ -79,6 +79,7 @@ import { laneReadings } from './planLanes.ts'
 import { laneViewOf } from './planBoard.ts'
 import { policyBarOf, policySubjectsOf } from './policyTasks.ts'
 import type { StepVarContext } from './stepVars.ts'
+import { shared, steps, workflowWords } from '../../content/content.ts'
 
 /** The one canonical case, named here so a change to it is a change to this test. */
 const FIXTURE = 'mid'
@@ -337,6 +338,42 @@ test('a preserved step offers no rollback: there is nothing to put back, and "de
   assert.equal(ifWrongLineFor(step, cs, {}), null, 'the If-it-goes-wrong line is withheld')
   assert.equal(view.ifWrong, null)
   for (const line of stepLines(step, ctx)) assert.doesNotMatch(line, UNDOING, `a preserved step offers to undo a change it never made: ${line}`)
+})
+
+// ---- 8b: a way back is Report-only, never Off ----
+
+// Where a change does get a way back, it is Report-only (owner, 2026-09-23: "If
+// someone has to revert and turns it off, we should advise placing it to
+// Report-only, and then they switch it on when they are ready and data supports
+// it"). A policy set Off is one the plan then has to bring back through
+// Report-only anyway, and one somebody may later switch straight On; one left
+// in Report-only keeps collecting the sign-in data the turn-on is judged by.
+/** A way back that switches a policy off: "(or Off)", "Enable policy: Off", "disable the policy", "turn it off". */
+const SWITCHING_OFF = /\(or Off\)|Enable policy\**\s*(?::|to)\s*\**Off\b|\bdisabl(?:e|ing) (?:the|this|that|a) (?:policy|change)\b|\b(?:switch|turn)(?:ing)? (?:it|the policy) (?:back )?off\b/i
+
+test('every way back IAMAI gives for a policy says Report-only, and none says Off', () => {
+  const lockedOut = steps.flatMap((s) => s.lockedOut?.steps ?? [])
+  const review: string[] = workflowWords.reviewInstructions
+  const whenLines = steps.flatMap((s) => Object.values(((s as unknown as Record<string, unknown>).ifWrongWhen ?? {}) as Record<string, unknown>))
+  const shared_ = shared as unknown as Record<string, unknown>
+  const ways = [shared_.policyIfWrong, shared_.enforceIfWrong, shared_.changeIfWrong, ...steps.map((s) => s.ifWrong), ...whenLines, ...lockedOut, ...review].filter((l): l is string => typeof l === 'string')
+  for (const line of ways) assert.doesNotMatch(line, SWITCHING_OFF, `a way back switches the policy off: ${line}`)
+  // The lines that put a Conditional Access policy back say where to put it.
+  const restoring = [shared_.policyIfWrong, shared_.enforceIfWrong, ...lockedOut.filter((l) => /Enable policy/.test(l)), ...review.filter((l) => /back a change out/i.test(l))].map(String)
+  assert.equal(restoring.length, 4, 'the premise: the recovery runbook and the review template each carry one way back')
+  for (const line of restoring) assert.match(line, /Report-only/i, `a way back does not say Report-only: ${line}`)
+  // And as the plan renders them: every way back on every step of the canonical tenant.
+  const f = fixture(FIXTURE)
+  const run = runFixture(f)
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => run.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+  let rendered = 0
+  for (const step of run.steps) {
+    const line = stepExportView(step, ctx).ifWrong
+    if (line === null) continue
+    rendered++
+    assert.doesNotMatch(line, SWITCHING_OFF, `${step.id}: ${line}`)
+  }
+  assert.ok(rendered > 0, 'the premise: some step on the canonical tenant has a way back')
 })
 
 // ---- 9: the screen and the artifacts say the same thing ----
