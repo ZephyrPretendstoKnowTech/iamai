@@ -93,8 +93,8 @@ export const STEP_GROUPS: readonly StepGroup[] = [
   // A member id is listed once, in the order its section draws it. Membership is
   // the whole of what an entry decides: nothing here says when a step is ready,
   // who it touches or what it builds. Every buildable step is listed by name,
-  // the ones only an uploaded baseline builds included, so the catch-all takes a
-  // step by accident never (stepGroups.test.ts). The ids nothing builds stay out:
+  // the ones only an uploaded baseline builds included, so no step reaches the
+  // catch-all by accident (stepGroups.test.ts). The ids nothing builds stay out:
   //   s-prereq-device-plan            replaced by D3 (its answer keys survive as D3's storage)
   //   s-question-travel               trip operations are hidden for V1
   //   s-goal-unmanaged-browser        never an id at all: `unmanaged-browser` is the CONTENT
