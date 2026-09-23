@@ -6,7 +6,7 @@
 import { GROUNDING, PROMPTS } from '../copy/comms.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import { forecastEnforcement, statedEnforcement } from './forecast.ts'
-import { planFinish } from '../derive/finish.ts'
+import { planFinish, planLengthSentence } from '../derive/finish.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { CoverageReport } from '../coverage/types.ts'
 import { cleanupArtifactLines, stepArtifactLines } from './artifactLines.ts'
@@ -162,8 +162,13 @@ export function cleanupText(cleanup: CleanupExport[]): string {
  * condition, no prerequisites and no statement of whether the work can be done
  * at all. There is one reading of a step for an artifact and this is it.
  */
-export function promptPack(args: { view: StepView; tenant: string; steps: Step[]; schedule: Schedule; changeRecord: string; planSummary: string; announcement: string | null; language?: string; cleanup?: CleanupExport[] }): PackItem[] {
+export function promptPack(args: { view: StepView; tenant: string; steps: Step[]; schedule: Schedule; changeRecord: string; announcement: string | null; language?: string; cleanup?: CleanupExport[] }): PackItem[] {
   const { tenant } = args
+  // The plan's length as the Plan header states it (derive/finish.ts
+  // planLengthSentence), from the same steps and schedule: the caller handed in
+  // the schedule's critical path, which states a length the header does not
+  // hold while work is held.
+  const planSummary = planLengthSentence(planFinish(args.steps, args.schedule.cleanup?.end ?? null), args.schedule)
   const cleanup = args.cleanup ?? []
   const withFacts = (head: string, label: string, body: string, extra: [string, string][] = []) => [head, dataBlock(label, body), ...extra.map(([l, b]) => dataBlock(l, b)), PROMPTS.noInvent].join('\n\n')
   // One block per Cleanup row, for the same reason each step gets one: the rows
@@ -176,8 +181,8 @@ export function promptPack(args: { view: StepView; tenant: string; steps: Step[]
   // Each step is independently bounded, so a long plan cannot silently lose its later steps.
   const steps: [string, string][] = args.steps.map(step => [args.view(step).title, stepContext(step, args.view)])
   const items: PackItem[] = [
-    { title: SHARED.planPromptTitle, prompt: withFacts(PROMPTS.pack.explain, PROMPTS.plan, args.planSummary, [...steps, ...planBlocks]), scope: null },
-    { title: PROMPTS.pack.summarise(tenant).split(' for ')[0], prompt: withFacts(PROMPTS.pack.summarise(tenant), PROMPTS.plan, args.planSummary, planBlocks), scope: null },
+    { title: SHARED.planPromptTitle, prompt: withFacts(PROMPTS.pack.explain, PROMPTS.plan, planSummary, [...steps, ...planBlocks]), scope: null },
+    { title: PROMPTS.pack.summarise(tenant).split(' for ')[0], prompt: withFacts(PROMPTS.pack.summarise(tenant), PROMPTS.plan, planSummary, planBlocks), scope: null },
   ]
   if (args.announcement?.trim()) items.push(
     { title: PROMPTS.pack.rewrite, prompt: withFacts(PROMPTS.rewrite(tenant), PROMPTS.draft, args.announcement), scope: null },

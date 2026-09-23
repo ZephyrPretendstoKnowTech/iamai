@@ -249,7 +249,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   const cleanupViews = cleanupExportViews(schedule.cleanup)
   const getPack = (): PackItem[] => {
     if (packCache.current?.plan === c) return packCache.current.pack
-    const built = promptPack({ view, tenant: tenantName, steps, schedule, changeRecord: '', planSummary: schedule.derivation.criticalPath, announcement: announcementDraft(steps, held), cleanup: cleanupViews })
+    const built = promptPack({ view, tenant: tenantName, steps, schedule, changeRecord: '', announcement: announcementDraft(steps, held), cleanup: cleanupViews })
     packCache.current = { plan: c, pack: built }
     return built
   }

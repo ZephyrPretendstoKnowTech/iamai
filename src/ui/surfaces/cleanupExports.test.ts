@@ -70,7 +70,7 @@ test("the print cover's step count is the Plan header's: the steps and the Clean
 
 test('the prompt pack and the bundle list Cleanup under cleanup; the bundle drops the v2 field names', () => {
   const { f, r, view, cleanup } = setUp()
-  const pack = promptPack({ view, tenant: 'Contoso', steps: r.steps, schedule: r.schedule, changeRecord: '', planSummary: r.schedule.derivation.criticalPath, announcement: null, cleanup })
+  const pack = promptPack({ view, tenant: 'Contoso', steps: r.steps, schedule: r.schedule, changeRecord: '', announcement: null, cleanup })
   const summarise = pack.find((p) => /Summarise/i.test(p.title))!
   assert.ok(summarise, 'the pack has the summarise prompt')
   assert.ok(summarise.prompt.includes('Cleanup (data from'), 'the Cleanup block is labelled')
