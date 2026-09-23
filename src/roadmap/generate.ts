@@ -2909,10 +2909,17 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     for (const s of steps) {
       if (s.id === geoStep?.id) {
         if (s.state.satisfied || s.state.setAside) continue
+        // What the turn-on waits for is the step's own location task, named by
+        // the title its task list shows: the location is no step of the plan
+        // any more, and its old title named one (D3).
+        const taskTitle = stepById[countriesStepId]?.taskTitle
         if (!s.blockers.some((b) => b.kind === 'readiness' && b.label === 'countries-unsafe')) {
-          s.blockers.push({ kind: 'readiness', label: 'countries-unsafe', binding: BLOCKED_REASON.after(stepById[countriesStepId]?.title ?? countriesStepId) })
+          s.blockers.push({ kind: 'readiness', label: 'countries-unsafe', binding: taskTitle ? BLOCKED_REASON.after(taskTitle) : BLOCKED_REASON.workCountries })
         }
-        raiseCondition(s, 'blocked')
+        // While no work country is saved the step's question comes first (it
+        // reads Needs decision above), as it does with no list at all: an empty
+        // list is that same unanswered question, not a second, blocked state.
+        if (s.state.condition !== 'needs-decision') raiseCondition(s, 'blocked')
       } else if (namesCountriesLocation(s)) blockLate(s, 'countries-unsafe', null, geoStep?.id ?? canonicalBlockerStepId('allowedCountries'))
     }
   }
