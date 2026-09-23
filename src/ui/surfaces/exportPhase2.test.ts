@@ -190,8 +190,14 @@ test('an export carries the portal channel the opened step draws: the guest pair
 // clean week of report-only as the finish (26 of 29 gated steps). What holds
 // only the turn-on travels under the Before turn-on label (R4-31), in the card's
 // own words, with the route start the board reads (R4-33).
+// A policy already on waits for nothing (stepContract.ts readinessSentence
+// states only the count for it), so its card is no turn-on wait: on the public
+// demo Require MFA for Everyone, a correction to a policy already enforced,
+// exported "Before turning on: At least 69% of people in scope have a
+// qualifying method." into the calendar, the pack, the bundle and AI Info.
 test('every export carries the Threshold card that holds a step\'s turn-on, word for word, under Before turn-on', () => {
   let gated = 0
+  let on = 0
   for (const name of ['getiamai', 'hostile', 'demo', 'mid'] as FixtureName[]) {
     const p = exportPage(fixture(name))
     const prerequisiteLabel = prerequisiteLabelFor(p.board.readings)
@@ -200,13 +206,24 @@ test('every export carries the Threshold card that holds a step\'s turn-on, word
       const body = stepBodyOf(step, p.ctxOf(step), { lane, blockers: readinessBlockersOf(p.board.readings.get(step.id), p.board.titleOf), prerequisiteLabel })
       const card = body.readiness.tiles.find((t) => t.key === 'gate')
       if (!card?.note) continue
-      gated++
       const v = p.view(step)
+      if (step.state.lifecycle === 'enforced') {
+        on++
+        assert.equal(v.beforeTurnOn.includes(card.note), false, `${name}/${step.id}: a policy already on exports its count as a turn-on wait: "${card.note}"`)
+        continue
+      }
+      gated++
       assert.ok(v.beforeTurnOn.includes(card.note), `${name}/${step.id}: the export leaves out the Threshold card "${card.note}"`)
       assert.ok(stepArtifactLines(v).some((l) => l.startsWith(`${BEFORE_TURN_ON}:`) && l.includes(card.note!)), `${name}/${step.id}: the artifact lines do not carry it under ${BEFORE_TURN_ON}`)
     }
   }
   assert.ok(gated > 0, 'the premise: a Threshold card')
+  assert.ok(on > 0, 'the premise: a Threshold card on a policy already on')
+  const demo = exportPage(fixture('demo'))
+  const everyone = demo.r.steps.find((s) => s.id === 's-goal-mfa-all-users')!
+  assert.equal(everyone.state.lifecycle, 'enforced', 'the premise: Require MFA for Everyone is already on')
+  const lines = stepArtifactLines(demo.view(everyone))
+  assert.deepEqual(lines.filter((l) => l.startsWith(`${BEFORE_TURN_ON}:`)), [], 'Require MFA for Everyone is already on and waits for nothing')
 })
 
 // Finding 13 (severity 2, partly). Every export put the contract's gate under
