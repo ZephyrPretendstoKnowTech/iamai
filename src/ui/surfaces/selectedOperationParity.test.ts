@@ -172,8 +172,7 @@ test('a step that withholds its implementation states no turn-on as its intended
   assert.ok(step)
   assert.equal(implementationOffered(step), true, 'the premise: the turn-on is offered')
   const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.title ?? null
-  const reading = laneReadings(r.steps).get(step.id)
-  const lane = reading ? laneViewOf(reading, titleOf) : laneViewFor(step, r.steps, titleOf)
+  const lane = laneViewFor(step, { readings: laneReadings(r.steps), titleOf })
   const ctx = { snapshot: g.snapshot, mapping: g.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: g.operatorId, now: g.snapshot.asOf, groups: g.groups, directory: r.input.directory, naming: r.coverage.organisation.naming, reportOnlyAt: null } as StepVarContext
   const ai = aiOf({ step, ctx, lane })
   assert.ok(ai.slice(ai.indexOf(BRIEFING.heading)).includes(ENABLE), 'an offered turn-on is not stated')
