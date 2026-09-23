@@ -369,7 +369,7 @@ export type ScanInput =
   | { kind: 'role'; upn: string; gap: RoleGap }
   | { kind: 'scanning'; lane: string; elapsed: string }
   | { kind: 'ready' }
-  /** Before sign-in: after sign-in · about a minute for a small tenant. */
+  /** Before sign-in: the scan comes after sign-in. */
   | { kind: 'sample' }
 export type ScanTile = {
   n: 3

@@ -132,11 +132,11 @@ test('a sign-in error is one of three states from the MSAL error code: admin app
   onlyItsOwn('cancelled', x)
 })
 
-test('tile 3 signed out: Scan after sign-in · about a minute for a small tenant, the limitations, no beats, no read-only line, no button, no state colour', () => {
+test('tile 3 signed out: Scan after sign-in, the limitations, no beats, no read-only line, no button, no state colour', () => {
   const t = scanTile({ kind: 'sample' })
   assert.equal(t.n, 3)
   assert.equal(t.title, 'Scan')
-  assert.equal(t.state, 'after sign-in · about a minute for a small tenant')
+  assert.equal(t.state, 'after sign-in')
   assert.equal(t.tone, null)
   assert.ok(!('beats' in t), 'no beats signed out either')
   assert.ok(!/\bReads\b|\bCompares\b|\bWrites\b|your tenant/.test(tileStrings(t).join('\n')), 'no Reads / Compares / Writes line')

@@ -368,7 +368,7 @@ try {
   await send('Page.navigate', { url: `${BASE}&state=noScan#/connect` })
   await sleep(1200)
   t = await text()
-  check('Connect (no scan): Scan tenant and the ten-minute line', /Scan tenant/.test(t) && /About ten minutes\. The scan is processed in this browser; nothing is uploaded to IAMAI\./.test(t))
+  check('Connect (no scan): Scan tenant and the in-browser line', /Scan tenant/.test(t) && /The scan is processed in this browser; nothing is uploaded to IAMAI\./.test(t))
   check('Connect (no scan): nothing about a plan yet', !/Open the plan/.test(t))
   await send('Page.navigate', { url: `${BASE}&state=scanning#/connect` })
   await sleep(1200)

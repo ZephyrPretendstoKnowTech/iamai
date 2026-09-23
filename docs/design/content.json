@@ -703,7 +703,7 @@
         },
         "ready": {
           "state": "not started",
-          "note": "About ten minutes. The scan is processed in this browser; nothing is uploaded to IAMAI.",
+          "note": "The scan is processed in this browser; nothing is uploaded to IAMAI.",
           "start": "Scan tenant"
         },
         "scanning": {
@@ -711,7 +711,7 @@
           "stop": "Stop"
         },
         "sample": {
-          "state": "after sign-in · about a minute for a small tenant"
+          "state": "after sign-in"
         }
       },
       "plan": {
