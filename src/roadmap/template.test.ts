@@ -3,7 +3,7 @@
 // baseline policy would, and every placeholder either resolves from the
 // assumptions or names the Wave 0 step that creates the missing object.
 import { powershellFor } from '../ui/surfaces/stepPowerShell.ts'
-import { inBaselineConflict } from './baselineConflict.ts'
+import { REVIEWED_SOURCES, inBaselineConflict } from './baselineConflict.ts'
 import { test } from 'node:test'
 import { PINNED_GOAL_MAP, goalInMap } from './goalMap.ts'
 import { isFloorGoal } from './floor.ts'
@@ -86,11 +86,18 @@ test('item 12: with no baseline at all, every create step still carries a body, 
   const f = allFixtures().find((x) => x.name === 'small')
   assert.ok(f)
   const r = runFixture({ ...f, baseline: { ...f.baseline, policies: [], docs: [] } })
-  // With no baseline at all there is no source to contradict itself: the
-  // conflict is a reading of the package this run plans against, never of the
-  // goal map alone (roadmap/baselineConflict.ts), so every goal here is planned
-  // from its own template and none of them is held.
-  assert.deepEqual(r.steps.filter((s) => inBaselineConflict(s)).map((s) => s.id), [], 'an empty package inherited a conflict from the pinned map')
+  // With no baseline at all, a goal the pinned map holds is written from the
+  // pinned policy (q-pin) and only the floor from its own template. The conflict
+  // is a reading of the source a step is planned from, never of the goal map
+  // alone (roadmap/baselineConflict.ts): the one step held for it is the one
+  // written from the reviewed source, and it names that source.
+  const conflicted = r.steps.filter((s) => inBaselineConflict(s))
+  assert.deepEqual(conflicted.map((s) => s.id), ['s-goal-admin-portals-protected'], 'a conflict came from the pinned map, not from the source a step is planned from')
+  assert.deepEqual(conflicted.map((s) => s.state.conflictSource), [REVIEWED_SOURCES[0].key])
+  for (const s of r.steps) {
+    if (!s.goalId || !goalInMap(PINNED_GOAL_MAP, s.goalId)) continue
+    for (const op of s.action.resolution?.policies ?? []) assert.notEqual(op.sourceName, s.goalId, `${s.id}: written from the goal's template, not the pinned policy`)
+  }
   const creates = r.steps.filter((s) => s.goalId && s.kind === 'create' && s.status !== 'done')
   // The plan holds the pinned map's goals (walk-51 item 9): every create step is
   // one of them, and every held goal small does not enforce gets one.
@@ -100,6 +107,8 @@ test('item 12: with no baseline at all, every create step still carries a body, 
     // A step whose policy names an object this tenant does not have has no body
     // at all; the ones that can be written have theirs.
     if (!s.action.json) {
+      // Held on its source's contradiction, which is why it has no body (above).
+      if (inBaselineConflict(s)) continue
       if (s.blockers.some(b => b.label === 'inforcer-application')) {
         assert.ok(s.configurationFindings?.some(f => f.key === 'inforcerApplication' && f.outcome === 'unknown'), 'unresolved app identity remains explicit even when broad MFA covers the goal')
         assert.equal(s.state.satisfied, false)

@@ -71,10 +71,13 @@ const jsonOf = (o: Opened): Record<string, unknown> => {
 
 test("Medium user risk on mid: the export states the guest exclusion and no session control, and names the pin's grant pair", () => {
   const o = opened('mid', 's-goal-user-risk-medium')
-  // The resolved operation of this stand-in baseline says otherwise: the case the export used to read.
-  const resolved = o.step.action.resolution!.policies[0].body as { sessionControls?: unknown; grantControls?: { authenticationStrength?: unknown } }
-  assert.ok(resolved.sessionControls, 'the premise: the resolved operation carries a session control')
-  assert.equal(resolved.grantControls?.authenticationStrength, undefined, 'the premise: this stand-in resolves no authentication strength')
+  // The resolved operation is the pin's own pair with no session control (q-pin). On
+  // this stand-in baseline it used to be the goal's template — a session control and
+  // no strength — which is the case the export used to read.
+  const resolved = o.step.action.resolution!.policies[0].body as { sessionControls?: unknown; grantControls?: { builtInControls?: string[]; authenticationStrength?: unknown } }
+  assert.equal(resolved.sessionControls ?? null, null, 'the premise: the resolved operation carries no session control')
+  assert.deepEqual(resolved.grantControls?.builtInControls, ['passwordChange'])
+  assert.ok(resolved.grantControls?.authenticationStrength, 'the premise: the resolved operation carries the resolved strength')
 
   const lines = stepExportView(o.step, o.ctx, o.lane).whatToDo
   const text = lines.join('\n')
@@ -89,11 +92,10 @@ test("Medium user risk on mid: the export states the guest exclusion and no sess
   // (CLAUDE.md, owner 2026-09-20): every channel builds the pin's pair, the procedure and
   // the settings block name that one pair, and the caveat is gone.
   assert.match(text, /Grant: Grant access → Require authentication strength: .+ and Require password change → Require all selected controls\./)
-  // The settings line names the pair. This stand-in resolves no strength (the
-  // premise above), so it names none: it used to read "…: Multifactor
-  // authentication", the built-in strength's name for a different object (R4-18,
-  // roadmap/portalLines.ts grantLine).
-  assert.match(text, /^- Grant → Require authentication strength, Require password change; Require all the selected controls$/m)
+  // The settings line names the pair, with the strength the resolution names. It
+  // once read "…: Multifactor authentication", the built-in strength's name for a
+  // different object (R4-18, roadmap/portalLines.ts grantLine).
+  assert.match(text, /^- Grant → Require authentication strength: .+, Require password change; Require all the selected controls$/m)
   assert.doesNotMatch(text, /Require multifactor authentication|built-in `mfa`|JSON and PowerShell outputs/)
 })
 
