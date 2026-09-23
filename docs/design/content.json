@@ -1306,7 +1306,8 @@
         "registration": {
           "pass": "People can register from anywhere after MFA",
           "fail": "Registration only works from trusted places",
-          "failText": "A Conditional Access policy limits security-info registration. Issue a Temporary Access Pass to people working remotely, or allow registration after MFA from anywhere.",
+          "$commentFailText": "It offered \"Issue a Temporary Access Pass to people working remotely\". A pass satisfies MFA, but not a block scoped by location or a compliant or joined device grant, which is what this check finds. The people it named stayed blocked. The remaining remedy is the one it already gave.",
+          "failText": "A Conditional Access policy lets people register security info only from a trusted location or a managed device. To unblock people elsewhere, allow registration after MFA from anywhere.",
           "unknown": "Conditional Access policies weren’t read. Scan again."
         },
         "windowsHello": {

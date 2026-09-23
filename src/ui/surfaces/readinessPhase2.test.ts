@@ -180,3 +180,18 @@ test('the Windows Hello check is not filed as done where the computers were neve
   const small = fixture('small')
   assert.equal(check(small.snapshot, small.mapping).words, H.notSeen)
 })
+
+test('registration limited to trusted places is not answered with a Temporary Access Pass, which cannot pass it', () => {
+  // small with the older registration template: register security info, all people, blocked outside trusted locations.
+  const f = fixture('small')
+  const s = structuredClone(f.snapshot)
+  s.config.caPolicies.rows.push({ id: 'reg-trusted', displayName: 'Register from the office', state: 'enabled', conditions: { applications: { includeUserActions: ['urn:user:registersecurityinfo'] }, users: { includeUsers: ['All'] }, locations: { includeLocations: ['All'], excludeLocations: ['AllTrusted'] } }, grantControls: { operator: 'OR', builtInControls: ['block'] } })
+  const view = readinessView(s, s.asOf, f.mapping)
+  assert.equal(view.context.registration, 'trustedOnly', 'the premise')
+  const c = tenantSetupChecks(s, view).find((x) => x.key === 'registration')
+  assert.ok(c && c.outcome === 'fail')
+  const words = checkWords(c)
+  // A pass satisfies MFA; it does not satisfy a block scoped by location, or a compliant or joined device.
+  assert.doesNotMatch(words.text, /Temporary Access Pass/, words.text)
+  assert.match(words.text, /trusted location or a managed device/, 'the fact: where registration works')
+})
