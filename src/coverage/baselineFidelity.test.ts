@@ -468,7 +468,7 @@ test('no implementation expects all applications while its own template names fe
 
 test('every pinned member, switched on in the tenant as it stands, is never read as covering fewer applications than its goal expects', () => {
   const on = (enabled: boolean) => ({ enabled, seats: 10, consumed: 0 })
-  const snapshot = mkSnapshot({ capabilities: { entraP1: on(true), entraP2: on(true), intune: on(true), workloadIdPremium: on(true), globalSecureAccess: on(true), defenderForCloudApps: on(true), purviewInsiderRisk: on(true) } })
+  const snapshot = mkSnapshot({ capabilities: { entraP1: on(true), entraP2: on(true), intune: on(true), workloadIdPremium: on(true), globalSecureAccess: on(true), defenderForCloudApps: on(true), purviewInsiderRisk: on(true), pim: on(true) } })
   const judged: string[] = []
   const narrower: string[] = []
   for (const [goalId, keys] of Object.entries(PINNED_GOAL_MAP)) {
