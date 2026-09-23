@@ -2173,6 +2173,17 @@ function engineTiles(c: StepContract, blockers: readonly PrerequisiteBlocker[], 
     }
     if (b.kind === 'decision' && (present.has('decision') || c.state.condition === 'needs-decision')) continue
     if (b.kind === 'missingObject' && [...present].some((k) => k.startsWith('missing:'))) continue
+    // A tenant fact the step's own blocker already heads a tile with — its
+    // subject and its sentence (fixTiles, `evidence:<label>` or `readiness:<label>`;
+    // planLanes.ts observe names the fact `fact:<label>`) — is that tile. It was
+    // drawn again as its bare kind, "Tenant fact · Tenant fact", with nothing
+    // under it: beside "Authentication context · while another policy targets
+    // authentication context c1" on the held PIM create (R4-18 review), and beside
+    // the session-loop wait on Intune enrollment.
+    if (b.kind === 'fact') {
+      const label = b.id.startsWith('fact:') ? b.id.slice('fact:'.length) : b.id
+      if (present.has(`evidence:${label}`) || present.has(`readiness:${label}`)) continue
+    }
     // The kinds with no tile of their own said their own label twice and
     // nothing else: "Not supported · Not supported ·". Why Foundation A offers
     // nothing is already on the contract (`implementation.reason`) and was

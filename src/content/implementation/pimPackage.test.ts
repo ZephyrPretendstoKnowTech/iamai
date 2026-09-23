@@ -126,6 +126,8 @@ test('a context another of the tenant’s policies already targets holds the cre
   assert.ok(held, body.allTiles.map((t) => `${t.label} · ${t.value}`).join('\n'))
   assert.equal(held.note, 'while another policy targets authentication context c1')
   assert.equal(held.tone, 'warn')
+  // Once: the board's reading of the same fact is not a second, bare card.
+  assert.equal(body.allTiles.some((t) => t.value === 'Tenant fact'), false, body.allTiles.map((t) => `${t.label} · ${t.value}`).join('\n'))
   // The planned work names the context it would use, and no stand-in.
   const bindings = packageBindings(step, ctx, body.contract)
   assert.equal(bindings['authContext.target.id'], 'c1')
