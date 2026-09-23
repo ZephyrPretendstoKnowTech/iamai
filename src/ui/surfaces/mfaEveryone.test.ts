@@ -27,10 +27,10 @@ import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
 import type { StepBody } from './stepBody.ts'
 import { rowWho } from './rowWho.ts'
-import { membersOf } from '../../roadmap/stepGroups.ts'
+import { groupOf } from '../../roadmap/stepGroups.ts'
 import type { MappingState } from '../../mapping/types.ts'
 
-/** The group's seven members, in registry order (roadmap/stepGroups.ts). */
+/** The spec's seven steps (docs/plans/mfa-everyone-spec.md), in its order. The roadmap flow spreads them over three sections (roadmap/stepGroups.ts). */
 const MFA_EVERYONE = [
   's-goal-register-info-protected',
   's-goal-device-registration-mfa',
@@ -122,8 +122,8 @@ function everyString(value: unknown, out: string[] = []): string[] {
 // The group itself
 // ---------------------------------------------------------------------------
 
-test('the group draws its seven members in the spec order', () => {
-  assert.deepEqual([...membersOf('mfa-everyone')], MFA_EVERYONE)
+test('the spec’s seven steps sit where the roadmap flow places them', () => {
+  assert.deepEqual(MFA_EVERYONE.map((id) => groupOf(id)?.key), ['extend-mfa', 'extend-mfa', 'prepare', 'core', 'core', 'extend-mfa', 'core'])
 })
 
 // ---------------------------------------------------------------------------

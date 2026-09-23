@@ -26,7 +26,7 @@ import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
 import type { StepBody } from './stepBody.ts'
-import { membersOf } from '../../roadmap/stepGroups.ts'
+import { groupOf, membersOf } from '../../roadmap/stepGroups.ts'
 import { rowWho } from './rowWho.ts'
 import { cleanupEntry, cleanupExportViews } from './cleanupExport.ts'
 import { stepExportView } from './stepExport.ts'
@@ -43,7 +43,7 @@ import { readFileSync } from 'node:fs'
 const FREE_TIER = /const FREE_TIER_LADDER = true/.test(readFileSync('src/roadmap/generate.ts', 'utf8'))
 const dormant = { skip: FREE_TIER ? false : 'dormant with FREE_TIER_LADDER (src/roadmap/generate.ts)' }
 
-/** The group's eight listed members, in registry order (roadmap/stepGroups.ts). */
+/** The spec's eight steps (docs/plans/ongoing-spec.md), in its order. The roadmap flow keeps the Cleanup rows here and moves the other four up (roadmap/stepGroups.ts). */
 const ONGOING = [
   's-goal-admin-portals-protected',
   's-goal-inforcer-mfa',
@@ -133,8 +133,10 @@ function checkedOn(stepId: string): string {
 // The group itself
 // ---------------------------------------------------------------------------
 
-test('the group lists its eight members in the spec order, and takes every unclaimed step', () => {
-  assert.deepEqual([...membersOf('ongoing')], ONGOING)
+test('the spec’s eight steps sit where the roadmap flow places them, and Ongoing takes every unclaimed step', () => {
+  assert.deepEqual(ONGOING.map((id) => groupOf(id)?.key), ['remaining-doors', 'extend-mfa', 'prepare', 'prepare', 'ongoing', 'ongoing', 'ongoing', 'ongoing'])
+  assert.deepEqual([...membersOf('ongoing')], ['cleanup-alerting', 'cleanup-hardening', 'cleanup-namedExclusions', 'cleanup-consolidation', 'cleanup-naming'])
+  assert.equal(groupOf('s-something-nobody-placed')?.key, 'ongoing')
 })
 
 // ---------------------------------------------------------------------------
