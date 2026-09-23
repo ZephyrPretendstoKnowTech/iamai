@@ -84,7 +84,7 @@ type Words = {
   footer: { counted: string }
   planContext: { filtered: string; covers: string; unknown: string }
   guests: { trustOn: string; trustOff: string; trustUnknown: string; trustNotReported: string }
-  counted: Record<Explained | Kind | 'dormantLink', string>
+  counted: Record<Explained | Kind | 'dormantLink', string> & { one: Record<Kind, string> }
   admin: string
   guest: string
   and: string
@@ -411,6 +411,11 @@ export function panelMethods(r: ReadinessRow): PanelItem[] {
 export function unreadMethodsWords(snapshot: TenantSnapshot, n: number): string {
   const refusal = registrationRefusal(snapshot)
   return refusal ? fillText(T.evidence.unreadMethodsRefused, { ...refusal, n }) : fillText(T.evidence.unreadMethods, { n })
+}
+
+/** A kind's name in the Not counted tile beside its count: one of it named in the singular. */
+export function countedKindWords(k: Kind, n: number): string {
+  return n === 1 ? T.counted.one[k] : T.counted[k]
 }
 
 /** An evidence line with its count in the sentence, so a count of one reads as one. */

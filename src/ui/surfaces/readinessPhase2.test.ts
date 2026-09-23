@@ -14,7 +14,7 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { signInsNeedP1 } from '../../derive/readinessContext.ts'
 import { signInProofRead } from '../../scoring/fromSnapshot.ts'
 import { cohortWords } from '../../derive/whoLine.ts'
-import { checkWords, goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, summaryLine, unreadMethodsWords, whyLine, countedLine, scopeWords, panelMethods, groupBodyLine, noRecordsWords, computersSeen, leadLine, guestTrustWords, evidenceWords, panelDevices } from './readinessCells.ts'
+import { checkWords, goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, summaryLine, unreadMethodsWords, whyLine, countedLine, scopeWords, panelMethods, groupBodyLine, noRecordsWords, computersSeen, leadLine, guestTrustWords, evidenceWords, panelDevices, countedKindWords } from './readinessCells.ts'
 import { guestReadingOf } from '../../derive/guestReadiness.ts'
 import { syncedPasskeyOffered } from '../../scoring/phishingResistant.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
@@ -37,6 +37,7 @@ const FOOT = (pages.readiness as unknown as { footer: { counted: string } }).foo
 const PC = (pages.readiness as unknown as { planContext: Record<string, string> }).planContext
 const GU = (pages.readiness as unknown as { guests: Record<string, string> }).guests
 const PANEL = (pages.readiness as unknown as { panel: { best: string; whyNot: Record<string, string> } }).panel
+const CNT = (pages.readiness as unknown as { counted: Record<string, string> }).counted
 const page = (): string => readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
 
 test('every remaining setup check carries its own words: the migration never shows without its safe order', () => {
@@ -521,4 +522,13 @@ test('a device Seamless with Windows Hello is not told Windows Hello needs a joi
     })
   }
   assert.ok(seen > 0, 'the premise: demo holds devices Seamless with Windows Hello')
+})
+
+test('the Not counted tile names one account of a kind in the singular: never "1 Shared devices"', () => {
+  for (const k of ['emergency', 'service', 'shared', 'disabled'] as const) {
+    const one = countedKindWords(k, 1)
+    assert.doesNotMatch(one, /(accounts|devices)$/, `${k}: ${one}`)
+    assert.equal(countedKindWords(k, 2), CNT[k], `${k}: the plural stays`)
+  }
+  assert.match(page(), /countedKindWords\(k, view\.facts\.kinds\[k\]\)/)
 })

@@ -1363,6 +1363,13 @@
         "service": "Service accounts",
         "shared": "Shared devices",
         "disabled": "Sign-in disabled",
+        "$commentOne": "A count of one beside a kind's name read \"1 Shared devices\". The name for exactly one of a kind.",
+        "one": {
+          "emergency": "Emergency access account",
+          "service": "Service account",
+          "shared": "Shared device",
+          "disabled": "Sign-in disabled"
+        },
         "dormantLink": "Confirm or disable in the Plan"
       },
       "evidence": {

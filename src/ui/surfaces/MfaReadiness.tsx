@@ -42,7 +42,7 @@ import { app, pages, shared } from '../../content/content.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { fillText } from '../../content/render.ts'
 import { monthDay } from '../../copy/dates.ts'
-import { checkWords, deviceChips, listWords, methodsCell, needsActionWords, nextCell, noDevicesWord, osWord, panelDevices, panelMethods, rowCells, rowNote, searchText, signInsUnavailableFor, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine, railRemaining, panelNoDevices, panelNoMethods, summaryLine, unreadMethodsWords, countedLine, scopeWords, noRecordsWords, guestTrustWords, evidenceWords } from './readinessCells.ts'
+import { checkWords, deviceChips, listWords, methodsCell, needsActionWords, nextCell, noDevicesWord, osWord, panelDevices, panelMethods, rowCells, rowNote, searchText, signInsUnavailableFor, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine, railRemaining, panelNoDevices, panelNoMethods, summaryLine, unreadMethodsWords, countedLine, scopeWords, noRecordsWords, guestTrustWords, evidenceWords, countedKindWords } from './readinessCells.ts'
 import type { PanelItem } from './readinessCells.ts'
 import { READINESS_CSV } from './inventoryTables.ts'
 import { useAppliedMapping, usePlanData } from './planData.ts'
@@ -646,7 +646,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
                 <div key={k} style={{ display: 'contents' }}>
                   <dt>{view.facts.kinds[k]}</dt>
                   <dd>
-                    <a href={readinessHref(k)}>{Cnt[k]}</a>
+                    <a href={readinessHref(k)}>{countedKindWords(k, view.facts.kinds[k])}</a>
                   </dd>
                 </div>
               ))}
