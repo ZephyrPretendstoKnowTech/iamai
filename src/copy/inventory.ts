@@ -9,7 +9,8 @@ export const INVENTORY = {
     policies: 'Policies',
     locations: 'Named locations',
     authentication: 'Authentication',
-    people: 'People',
+    // Every account the scan read, emergency, service and sign-in-disabled ones included: the badge counts them all, so the tab is not named for people (derive/sets.ts).
+    people: 'Accounts',
     groups: 'Groups',
     devices: 'Devices',
     roles: 'Roles',
