@@ -14,7 +14,7 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { signInsNeedP1 } from '../../derive/readinessContext.ts'
 import { signInProofRead } from '../../scoring/fromSnapshot.ts'
 import { cohortWords } from '../../derive/whoLine.ts'
-import { checkWords, goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, summaryLine, unreadMethodsWords, whyLine, countedLine, scopeWords, panelMethods, groupBodyLine, noRecordsWords, computersSeen, leadLine, guestTrustWords, evidenceWords } from './readinessCells.ts'
+import { checkWords, goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, summaryLine, unreadMethodsWords, whyLine, countedLine, scopeWords, panelMethods, groupBodyLine, noRecordsWords, computersSeen, leadLine, guestTrustWords, evidenceWords, panelDevices } from './readinessCells.ts'
 import { guestReadingOf } from '../../derive/guestReadiness.ts'
 import { syncedPasskeyOffered } from '../../scoring/phishingResistant.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
@@ -36,6 +36,7 @@ const WHY = (pages.readiness as unknown as { panel: { why: Record<string, string
 const FOOT = (pages.readiness as unknown as { footer: { counted: string } }).footer
 const PC = (pages.readiness as unknown as { planContext: Record<string, string> }).planContext
 const GU = (pages.readiness as unknown as { guests: Record<string, string> }).guests
+const PANEL = (pages.readiness as unknown as { panel: { best: string; whyNot: Record<string, string> } }).panel
 const page = (): string => readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
 
 test('every remaining setup check carries its own words: the migration never shows without its safe order', () => {
@@ -504,4 +505,20 @@ test('a count of one in the evidence tile and the scope line reads as one: no "1
   // Above one, the plural reads as before.
   assert.match(unreadMethodsWords(demo, 3), /3 people’s method lists/)
   assert.doesNotMatch(page(), /<dd>\{T\.evidence\.(individually|notCovered)\}<\/dd>/, 'no count set apart from its sentence')
+})
+
+test('a device Seamless with Windows Hello is not told Windows Hello needs a joined computer', () => {
+  const f = fixture('demo')
+  let seen = 0
+  for (const r of readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.filter((x) => x.state !== null)) {
+    const items = panelDevices(r)
+    ;(r.readiness?.devices ?? []).forEach((d, i) => {
+      if (!(d.seamless && d.proof?.cls === 'windowsHello')) return
+      seen++
+      const best = items[i].facts.find(([k]) => k === PANEL.best)?.[1] ?? ''
+      assert.ok(!best.includes(PANEL.whyNot.notJoined), `${r.user.displayName}: ${best}`)
+      assert.match(best, /^Windows Hello for Business/, `${r.user.displayName}: ${best}`)
+    })
+  }
+  assert.ok(seen > 0, 'the premise: demo holds devices Seamless with Windows Hello')
 })
