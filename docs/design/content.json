@@ -1796,6 +1796,16 @@
           "$commentVariants": "The line that introduces a task's alternatives where they are written out together - the export, AI Info and the Entra artifact, which cannot offer the screen's picker (emergencyAccountTasks.ts emergencyTaskAlternativesText). They used to carry the default alternative alone, unlabelled and numbered as mandatory, so a reader was told to register a YubiKey on every affected account and the Authenticator procedures were gone (R4-32).",
           "variantsLead": "Use the steps for the authenticator being registered:"
         },
+        "$commentRecoverySignIn": "Verify Emergency Access: what an account's Sign-in evidence card, its print and its exports say while the account waits for a passkey sign-in (src/roadmap/emergencyJourney.ts recoveryWaitingLine).",
+        "recoverySignIn": {
+          "$comment": "One line each. The card read “Sign in with this account’s passkey after {date}. Last sign-in seen {date} did not count: …”, which asks for a sign-in at a time already past (owner, 2026-09-23). It asks for a sign-in since the most recent change and lists the two dates that show whether one has happened: the change IAMAI last observed to the account's recovery configuration, and the latest sign-in it read for the account. A reason stays only where the dates cannot show it: a sign-in after the change that still did not qualify.",
+          "since": "Sign in with this account’s passkey since the most recent change.",
+          "lastChange": "Last change: {date}",
+          "lastSignIn": "Last sign-in: {date}",
+          "lastSignInNone": "Last sign-in: none seen",
+          "$commentUnconfigured": "Before IAMAI has observed a verified configuration there is no change to date, so the line waits for the checks instead.",
+          "unconfigured": "Sign in with this account’s passkey once the configuration checks pass."
+        },
         "escapeHatchHeld": "Running this would turn the policy on straight away, and the way back in to {tenant} is not verified yet. Finish {steps} first; the instructions come back when its checks pass.",
         "readinessHeld": "Running this would change what {tenant}'s people have to do straight away, and {measure} is {value} - this step waits until it reaches {threshold}. The instruction being withheld is the one that turns the policy on; the rest of this step stays available, and turning it on comes back when {measure} reaches {threshold}.",
         "footerJson": "JSON",

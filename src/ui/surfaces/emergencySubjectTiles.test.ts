@@ -5,6 +5,7 @@
 // twice, no list the same screen already shows.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -188,4 +189,50 @@ test('Step 4 draws no Verification results card in any state, on screen, in prin
   assert.deepEqual(verdict(structuredClone(fixture('demo'))), { Configuration: false, 'Sign-in evidence': false })
   assert.deepEqual(verdict(structuredClone(fixture('demo-week2'))), { Configuration: true, 'Sign-in evidence': true })
   assert.deepEqual(verdict(oneAccountWaiting()), { Configuration: true, 'Sign-in evidence': false })
+})
+
+// The owner's card read "Sign in with this account's passkey after Sep 20, 2026,
+// 11:25 AM MDT. Last sign-in seen Sep 18, 2026, 1:50 PM MDT did not count: …",
+// an instruction to sign in at a time already past (2026-09-23). It asks for a
+// sign-in since the most recent change and lists the two dates the old sentence
+// named, so the reader sees the sign-in is older than the change.
+test('Step 4: a waiting account asks for a sign-in since the most recent change, then lists the last change and the last sign-in', () => {
+  const { phase, tiles } = recoveryOf(oneAccountWaiting())
+  const [, second] = phase.accountIds
+  const signIn = tiles.find(tile => tile.key === 'recovery-sign-ins')!
+  assert.equal(signIn.upn, phase.accountUpnsById?.[second])
+  assert.equal(signIn.remainingCount, 1)
+  assert.equal(signIn.title, 'Sign in with the prepared passkey')
+  // The dates the old sentence named: "after Aug 21, 2026, 3:25 AM GMT+10" and
+  // "Last sign-in seen Aug 18, 2026, 7:00 PM GMT+10" (the fixture reads Sydney).
+  const lines = [
+    'Sign in with this account’s passkey since the most recent change.',
+    'Last change: Aug 21, 2026, 3:25 AM GMT+10',
+    'Last sign-in: Aug 18, 2026, 7:00 PM GMT+10',
+  ]
+  assert.deepEqual(signIn.detail?.split('\n'), lines)
+  // The card draws its detail a line at a time, so each date sits on its own line under the sentence.
+  const source = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
+  const card = source.slice(source.indexOf('function EmergencyAccountStatusTile('), source.indexOf('export function EmergencySubjectReadiness('))
+  assert.match(card, /account\.detail\.split\('\\n'\)\.map/)
+  // The one pointer to the procedure stays: the sentence does not say where it is.
+  assert.equal(signIn.instruction, 'Follow Verify emergency sign-in in Implementation Tasks.')
+  assert.equal(signIn.completed.length, 1)
+  // The print draws the finding's value; the JSON export and AI Info carry it as the account's result.
+  const item = phase.recoveryFindings?.find(finding => finding.key === 'recovery-sign-ins')?.items?.find(row => row.accountId === second)
+  assert.equal(item?.value, lines.join('\n'))
+  assert.equal(JSON.parse(emergencyVerificationJson(phase)).accounts.find((account: { id: string }) => account.id === second).result, lines.join('\n'))
+})
+
+test('no channel of any emergency step asks for a sign-in after a date', () => {
+  const after = /passkey after|did not count|after [A-Z][a-z]{2} \d{1,2}, \d{4}/
+  const runs: [string, Fixture][] = [...FIXTURES.map((name): [string, Fixture] => [name, structuredClone(fixture(name))]), ['one account waiting', oneAccountWaiting()]]
+  for (const [name, value] of runs) {
+    const { phase, tiles } = recoveryOf(value)
+    const print = (phase.recoveryFindings ?? []).flatMap(finding => [finding.value, finding.detail, ...(finding.items ?? []).map(item => item.value)])
+    for (const text of [...tiles.flatMap(linesOf), ...print, emergencyVerificationJson(phase), emergencyVerificationAiInfo(phase)]) assert.doesNotMatch(text, after, `${name}: ${text}`)
+    for (const id of ['s-prereq-break-glass', 's-prereq-exclusion-group', 's-prereq-passkey-settings']) {
+      for (const tile of subjectsOf(structuredClone(value), id)) for (const line of linesOf(tile)) assert.doesNotMatch(line, after, `${name}/${id}: ${line}`)
+    }
+  }
 })

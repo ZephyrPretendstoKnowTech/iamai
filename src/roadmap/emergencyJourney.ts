@@ -20,6 +20,7 @@ import { exclusionsGroupPolicies, groupLookup } from '../validation/exclusionsGr
 import { displayZone } from '../copy/dates.ts'
 import { list } from '../copy/statements.ts'
 import { app } from '../content/content.ts'
+import { fillText } from '../content/render.ts'
 
 // A failing finding's value. "Needs attention" is a retired state word
 // (oneProducer.test, stateAgreement.test); the Plan's own word for a fact that
@@ -35,12 +36,22 @@ function recoveryTime(iso: string, timeZone: string | null | undefined): string 
   try { return new Intl.DateTimeFormat('en-US', { ...options, timeZone: displayZone(timeZone) }).format(new Date(iso)) }
   catch { return new Intl.DateTimeFormat('en-US', { ...options, timeZone: 'UTC' }).format(new Date(iso)) }
 }
-/** What Step 4 is waiting on for one account: a passkey sign-in after the
- * configuration start, and why the latest sign-in seen did not count. */
+const RECOVERY_SIGN_IN = (app.plan as unknown as { recoverySignIn: Record<'since' | 'lastChange' | 'lastSignIn' | 'lastSignInNone' | 'unconfigured', string> }).recoverySignIn
+/** What Step 4 is waiting on for one account, one line each (pages.app.plan.recoverySignIn):
+ * a passkey sign-in since the most recent change, then the date of that change
+ * and of the latest sign-in seen. It said "after {date}", a time already past
+ * (owner, 2026-09-23). The two dates show why a sign-in from before the change
+ * did not count; a later one that did not count keeps its reason, which no date shows. */
 export function recoveryWaitingLine(configuredAt: string | null, readings: readonly RecoveryCandidateReading[], timeZone: string | null | undefined): string {
-  const waiting = configuredAt ? `Sign in with this account’s passkey after ${recoveryTime(configuredAt, timeZone)}.` : 'Sign in with this account’s passkey once the configuration checks pass.'
-  const latest = [...readings].sort((a, b) => Date.parse(b.candidate.at) - Date.parse(a.candidate.at))[0]
-  return latest && !latest.qualifies && latest.reason ? `${waiting} Last sign-in seen ${recoveryTime(latest.candidate.at, timeZone)} did not count: ${latest.reason}` : waiting
+  if (!configuredAt) return RECOVERY_SIGN_IN.unconfigured
+  const latest = readings.filter(reading => Number.isFinite(Date.parse(reading.candidate.at))).sort((a, b) => Date.parse(b.candidate.at) - Date.parse(a.candidate.at))[0]
+  const unexplained = latest && !latest.qualifies && latest.reason && Date.parse(latest.candidate.at) > Date.parse(configuredAt) ? [latest.reason] : []
+  return [
+    RECOVERY_SIGN_IN.since,
+    fillText(RECOVERY_SIGN_IN.lastChange, { date: recoveryTime(configuredAt, timeZone) }),
+    latest ? fillText(RECOVERY_SIGN_IN.lastSignIn, { date: recoveryTime(latest.candidate.at, timeZone) }) : RECOVERY_SIGN_IN.lastSignInNone,
+    ...unexplained,
+  ].join('\n')
 }
 const link = (id: string, label: string) => ({ href: '#/plan/' + id, label })
 const clean = (s: string) => s.replace(/[\r\n]+/g, ' ').trim()
