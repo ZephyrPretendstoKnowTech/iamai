@@ -86,9 +86,14 @@ export class StorageBlockedError extends Error {
   }
 }
 
+/** Whether the open in progress has started its upgrade (withinOpenTimeout). */
+let upgradeStarted = false
+
 function db(): Promise<IDBPDatabase<IamaiDB>> {
+  if (!dbPromise) upgradeStarted = false
   dbPromise ??= openDB<IamaiDB>('iamai', 8, {
     upgrade(d, oldVersion, _newVersion, tx) {
+      upgradeStarted = true
       if (oldVersion < 1) {
         const rows = d.createObjectStore('signin-rows', { keyPath: ['tenantId', 'id'] })
         rows.createIndex('byTenant', 'tenantId')
@@ -118,10 +123,10 @@ function db(): Promise<IDBPDatabase<IamaiDB>> {
   })
   // Another tab on an older schema blocks the upgrade, and every read would
   // queue behind it forever (ux-review-06 §3). Each connection therefore
-  // closes itself when a newer version asks, and an open that takes too long
-  // fails loudly instead of hanging the page.
+  // closes itself when a newer version asks, and an open whose upgrade has not
+  // started in time fails loudly instead of hanging the page.
   const opening = dbPromise
-  dbPromise = Promise.race([
+  dbPromise = withinOpenTimeout(
     opening.then((d) => {
       d.addEventListener('versionchange', () => {
         d.close()
@@ -129,12 +134,30 @@ function db(): Promise<IDBPDatabase<IamaiDB>> {
       })
       return d
     }),
-    new Promise<never>((_, reject) => setTimeout(() => reject(new StorageBlockedError()), DB_OPEN_TIMEOUT_MS)),
-  ]).catch((e: unknown) => {
+    () => upgradeStarted,
+    DB_OPEN_TIMEOUT_MS,
+  ).catch((e: unknown) => {
     dbPromise = null
     throw e
   })
   return dbPromise
+}
+
+/**
+ * The open, or StorageBlockedError when after `ms` its upgrade has not started:
+ * only a tab on an older version holds an upgrade back. An upgrade that has
+ * started is waited for however long it runs. Version 8 indexes every saved
+ * sign-in record inside it (2.9 s for 150,000 in Chrome, more on a slower
+ * device), and timing it out left every load empty for that page load, with
+ * another tab blamed for it.
+ */
+export function withinOpenTimeout<T>(opening: Promise<T>, upgradeStarted: () => boolean, ms: number): Promise<T> {
+  return Promise.race([
+    opening,
+    new Promise<never>((_, reject) => setTimeout(() => {
+      if (!upgradeStarted()) reject(new StorageBlockedError())
+    }, ms)),
+  ])
 }
 
 export async function loadGroupMembersCache(
