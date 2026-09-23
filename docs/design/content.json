@@ -3064,7 +3064,9 @@
         "unnamedLocation": "an unnamed location",
         "locationNotRead": "a named location that was not read",
         "unnamedStrength": "an unnamed authentication strength",
-        "strengthNotRead": "an authentication strength that was not read"
+        "strengthNotRead": "an authentication strength that was not read",
+        "$commentTargetsExcept": "The Authentication tab's Targets cell where a method excludes groups (the method's excludeTargets, as Graph returns them): {include} is the targets it reaches, {exclude} the groups it leaves out. The cell read only the included targets, so a passkey method for all users that excluded the emergency-access group read \"All users\" while Emergency Access, reading the same policy, said those accounts could not use a passkey.",
+        "targetsExcept": "{include} except {exclude}"
       }
     }
   },

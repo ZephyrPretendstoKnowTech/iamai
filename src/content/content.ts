@@ -131,6 +131,7 @@ export type AppWords = {
     locationNotRead: string
     unnamedStrength: string
     strengthNotRead: string
+    targetsExcept: string
   }
   picker: { placeholder: string; remove: string; searching: string; noMatches: string; typeToSearch: string; suggestions: string; results: string; done: string; matched: string; choose: string }
 }

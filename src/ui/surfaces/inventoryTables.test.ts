@@ -196,3 +196,15 @@ test('a group, a named location or a strength without a name is named by its kin
   assert.equal(targets.cell(authMethodsModel(scoped, buildNameDirectory(scoped, f.groups)).rows.find((r) => r.id.toLowerCase() === 'fido2')!), f.groups.get(group)!.displayName)
   assert.match(readFileSync('src/ui/surfaces/InventoryPage.tsx', 'utf8'), /methodTargetGroupsOf\(snapshot\)/)
 })
+
+test('a method that excludes a group says so, as Emergency Access reads the same policy', () => {
+  const f = fixture('demo-week2')
+  const group = [...f.groups.keys()].find((id) => /break/i.test(f.groups.get(id)!.displayName ?? ''))!
+  const s = structuredClone(f.snapshot)
+  const fido = (s.config.authMethodsPolicy.rows[0] as { authenticationMethodConfigurations: { id: string; excludeTargets?: unknown[] }[] }).authenticationMethodConfigurations.find((c) => c.id.toLowerCase() === 'fido2')!
+  fido.excludeTargets = [{ id: group, targetType: 'group' }]
+  const m = authMethodsModel(s, buildNameDirectory(s, f.groups))
+  const cell = m.columns.find((c) => c.key === 'targets')!.cell(m.rows.find((r) => r.id.toLowerCase() === 'fido2')!)
+  assert.equal(cell, `${C.authentication.allUsers} except ${f.groups.get(group)!.displayName}`)
+  assert.ok(methodTargetGroupsOf(s).includes(group), 'the page reads the excluded group name too')
+})
