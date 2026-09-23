@@ -36,7 +36,7 @@ function recoveryTime(iso: string, timeZone: string | null | undefined): string 
   try { return new Intl.DateTimeFormat('en-US', { ...options, timeZone: displayZone(timeZone) }).format(new Date(iso)) }
   catch { return new Intl.DateTimeFormat('en-US', { ...options, timeZone: 'UTC' }).format(new Date(iso)) }
 }
-const RECOVERY_SIGN_IN = (app.plan as unknown as { recoverySignIn: Record<'since' | 'lastChange' | 'noChangeSince' | 'lastSignIn' | 'lastSignInNone' | 'unconfigured', string> }).recoverySignIn
+const RECOVERY_SIGN_IN = (app.plan as unknown as { recoverySignIn: Record<'since' | 'lastChange' | 'noChangeSince' | 'lastSignIn' | 'lastSignInNone' | 'notPasskey' | 'unconfigured', string> }).recoverySignIn
 /** Where an account's recovery baseline starts, and whether that is a change
  * IAMAI read in the audit log or only where the log began (cleanupDone.ts recoveryEvidenceOf). */
 export type RecoveryBaseline = { at: string; changeObserved: boolean }
@@ -45,17 +45,25 @@ export type RecoveryBaseline = { at: string; changeObserved: boolean }
  * and of the latest sign-in seen. It said "after {date}", a time already past
  * (owner, 2026-09-23). The two dates show why a sign-in from before the change
  * did not count; a later one that did not count keeps its reason, which no date shows.
- * A start IAMAI did not see change is not called one: it reads "No change seen since". */
-export function recoveryWaitingLine(baseline: RecoveryBaseline | null, readings: readonly RecoveryCandidateReading[], timeZone: string | null | undefined): string {
+ * A start IAMAI did not see change is not called one: it reads "No change seen since".
+ * The last sign-in is the account's last sign-in of any kind (`lastSignIn`,
+ * UserEvidence.lastSignIn), not only its latest passkey sign-in (`readings`):
+ * a password or Authenticator sign-in after the change is the one a reader needs
+ * to see, with the reason it did not count. */
+export function recoveryWaitingLine(baseline: RecoveryBaseline | null, readings: readonly RecoveryCandidateReading[], lastSignIn: string | null | undefined, timeZone: string | null | undefined): string {
   if (!baseline) return RECOVERY_SIGN_IN.unconfigured
   const configuredAt = baseline.at
   const latest = readings.filter(reading => Number.isFinite(Date.parse(reading.candidate.at))).sort((a, b) => Date.parse(b.candidate.at) - Date.parse(a.candidate.at))[0]
-  const unexplained = latest && !latest.qualifies && latest.reason && Date.parse(latest.candidate.at) > Date.parse(configuredAt) ? [latest.reason] : []
+  // A later sign-in than every passkey sign-in read is one that did not succeed with a passkey.
+  const other = lastSignIn && Number.isFinite(Date.parse(lastSignIn)) && (!latest || Date.parse(lastSignIn) > Date.parse(latest.candidate.at)) ? lastSignIn : null
+  const lastAt = other ?? latest?.candidate.at
+  const afterChange = !!lastAt && Date.parse(lastAt) > Date.parse(configuredAt)
+  const reason = !afterChange ? null : other ? RECOVERY_SIGN_IN.notPasskey : latest && !latest.qualifies ? latest.reason : null
   return [
     RECOVERY_SIGN_IN.since,
     fillText(baseline.changeObserved ? RECOVERY_SIGN_IN.lastChange : RECOVERY_SIGN_IN.noChangeSince, { date: recoveryTime(configuredAt, timeZone) }),
-    latest ? fillText(RECOVERY_SIGN_IN.lastSignIn, { date: recoveryTime(latest.candidate.at, timeZone) }) : RECOVERY_SIGN_IN.lastSignInNone,
-    ...unexplained,
+    lastAt ? fillText(RECOVERY_SIGN_IN.lastSignIn, { date: recoveryTime(lastAt, timeZone) }) : RECOVERY_SIGN_IN.lastSignInNone,
+    ...(reason ? [reason] : []),
   ].join('\n')
 }
 const link = (id: string, label: string) => ({ href: '#/plan/' + id, label })
@@ -567,7 +575,7 @@ export function journeyRecoveryFindings(report: SubjectReport, snapshot: TenantS
         : 'Sign in with the prepared passkey'
     const value = current ? verifiedAt!
       : sourceFailure ? source.reason ?? String(source.status)
-        : recoveryWaitingLine(configuredAt ? { at: configuredAt, changeObserved } : null, readings, mapping.displayTimeZone)
+        : recoveryWaitingLine(configuredAt ? { at: configuredAt, changeObserved } : null, readings, snapshot.signInEvidence[id]?.lastSignIn, mapping.displayTimeZone)
     return { label: accountLabel(snapshot, id), action, value, current }
   })
   const configurationParts = [accounts, exclusions, method, ...finalPolicy]
