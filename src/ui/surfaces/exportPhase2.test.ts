@@ -523,25 +523,36 @@ test('the bundle\'s tenant profile draws no count from a section the scan did no
 // in a stop and every template adds its own. A fix that is a clause with no
 // stop of its own ran into the next one: midflight Require Phishing-Resistant
 // MFA for Admins read "Blockers: when 1 safe way in for the signed-in account
-// exists (now 0) Finish Configure Passkey Authentication first."
-test('no channel the opened step hands over doubles a full stop', () => {
+// exists (now 0) Finish Configure Passkey Authentication first." Not every
+// template adds a stop: "- Existing blockers: {{dependencies.blockers}} [omit
+// if unavailable]" ends the line with the binding, and with the last stop left
+// to the template, small's All Users No Persistent Browser Session read
+// "- Existing blockers: Finish Configure Passkey Authentication first", and
+// messy's "… first. Finish Prepare Emergency Access Accounts first".
+test('every blocker a channel hands over is a sentence with one full stop, and no channel doubles a stop', () => {
   let bound = 0
   let several = 0
-  for (const name of ['demo', 'small', 'mid', 'midflight'] as FixtureName[]) {
+  let lineEnd = 0
+  for (const name of ['demo', 'small', 'mid', 'midflight', 'messy'] as FixtureName[]) {
     const p = exportPage(fixture(name))
     for (const step of p.r.steps) {
       const lane = laneViewFor(step, p.board)
       const body = stepBodyOf(step, p.ctxOf(step), { lane })
       const contract = stepContract(step, p.ctxOf(step), undefined, lane)
-      const fixes = contract.fix.map((f) => f.text.trim())
+      const sentences = contract.fix.map((f) => f.text.trim()).map((t) => (/[.!?]$/.test(t) ? t : `${t}.`))
       const blockers = packageBindings(step, p.ctxOf(step), contract)['dependencies.blockers']
-      if (typeof blockers === 'string' && fixes.length > 1) {
-        several++
-        for (const fix of fixes.slice(0, -1)) assert.ok(blockers.includes(/[.!?]$/.test(fix) ? fix : `${fix}.`), `${name}/${step.id}: "${fix}" runs into the next blocker: ${blockers}`)
+      if (typeof blockers === 'string') {
+        assert.equal(blockers, sentences.join(' '), `${name}/${step.id}: the blockers are not bound as whole sentences`)
+        if (sentences.length > 1) several++
       }
       for (const artifact of body.artifacts) {
         const text = artifact.text()
         if (/Blockers|blockers and decisions|blockers or decisions/.test(text)) bound++
+        // Wherever the template puts the binding, mid-sentence or at a line's end, its last stop stands.
+        if (typeof blockers === 'string' && text.includes(blockers.slice(0, -1))) {
+          assert.ok(text.includes(blockers), `${name}/${step.id} ${artifact.id}: the last blocker has lost its stop`)
+          if (text.split('\n').some((l) => l.trimEnd().endsWith(`: ${blockers}`))) lineEnd++
+        }
         const doubled = /[^.\n]{0,60}[^.]\.\.(?!\.)[^\n]{0,40}/.exec(text)
         assert.equal(doubled, null, `${name}/${step.id} ${artifact.id}: a doubled stop: ${doubled?.[0]}`)
       }
@@ -549,6 +560,7 @@ test('no channel the opened step hands over doubles a full stop', () => {
   }
   assert.ok(bound > 0, 'the premise: a channel that binds the blockers')
   assert.ok(several > 0, 'the premise: a step with more than one blocker')
+  assert.ok(lineEnd > 0, 'the premise: a template that ends a line with the blockers')
 })
 
 // Finding 19 (severity 1, reproduced). The masked bundle still named the groups

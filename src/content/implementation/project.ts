@@ -85,6 +85,15 @@ export const NO_ACTION_STATES: ReadonlySet<PackageState> = new Set<PackageState>
 const OMIT = /\s*\[omit (?:this line )?(?:when|if) unavailable\]/g
 
 /**
+ * A binding and the template's full stop after it, if there is one (an ellipsis
+ * is not a stop). A value that already ends a sentence keeps its own stop and
+ * the template's goes: the blockers are bound as whole sentences (stepPackage.ts)
+ * and "Blockers: {{dependencies.blockers}}. Resolve …" read "… first.. Resolve …"
+ * (Phase 2 export finding 18).
+ */
+const BINDING_STOP = new RegExp(`${BINDING.source}(\\.(?!\\.))?`, 'g')
+
+/**
  * A tenant's free text on one line. A directory or policy name is stored as read,
  * and a line break in one, put into a sentence, a list item or a script's `#`
  * comment, ends that line: the rest of the name became code in a handed-over
@@ -162,7 +171,10 @@ export function bindText(text: string, bindings: Bindings, required: ReadonlySet
       out.push(null)
       continue
     }
-    out.push(line.replace(BINDING, (_m, json: string | undefined, key: string) => (json ? JSON.stringify(bindings[key]) : formatValue(bindings[key]))).replace(OMIT, ''))
+    out.push(line.replace(BINDING_STOP, (_m, json: string | undefined, key: string, stop: string | undefined) => {
+      const value = json ? JSON.stringify(bindings[key]) : formatValue(bindings[key])
+      return stop === undefined || (!json && /[.!?]$/.test(value)) ? value : `${value}${stop}`
+    }).replace(OMIT, ''))
   }
   if (missing.size > 0) return { missing: [...missing] }
   for (let i = 0; i < lines.length; i++) {
