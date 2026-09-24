@@ -376,6 +376,18 @@ export function matchMembers(step: Step, snapshot: TenantSnapshot, coverage: Cov
     const policy = candidate ? byId.get(candidate.policyId) : undefined
     if (policy && !claimed.has(policy.id as string)) claim(out[0], policy, 'fingerprint')
   }
+
+  // 5. a switched-off policy carrying the exact name the plan gives the member:
+  // the member's own, which the step sets to Report-only, never a policy to
+  // build a "(2)" beside (walk list 4.x item 12, owner 2026-09-24; generate.ts
+  // uniqueName leaves that name to it).
+  for (const m of out) {
+    if (m.policy || m.ambiguous) continue
+    const want = nameKey(m.displayName)
+    if (want.length === 0) continue
+    const off = all.filter((p) => p.state === 'disabled' && !claimed.has(p.id as string) && nameKey(p.displayName) === want)
+    if (off.length === 1) claim(m, off[0], 'member-name')
+  }
   return out
 }
 

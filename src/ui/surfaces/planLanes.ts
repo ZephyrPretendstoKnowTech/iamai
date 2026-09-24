@@ -52,6 +52,7 @@ import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
 import type { PlanState } from './planState.ts'
 import { pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
+import { readinessFamilyOf } from '../../copy/reasons.ts'
 
 /** The row sub-lines a gate or a blocker writes for itself (pages.plan.when; walk list 4.x item 27). */
 const ROW = (pages.plan as unknown as { when: { readinessAdmins: string; notExcluded: string } }).when
@@ -63,7 +64,8 @@ const ROW = (pages.plan as unknown as { when: { readinessAdmins: string; notExcl
  * binding, starting with a capital: "When MFA readiness reaches 90% (now 85%)".
  */
 function readinessRowWords(step: Step, label: string, binding: string): string {
-  const count = label === 'readiness' && step.readiness?.family === 'admin' ? /(\d[\d,]*) of (\d[\d,]*)/.exec(step.readiness.lines?.[0] ?? '') : null
+  const gate = step.action.readinessGate
+  const count = label === 'readiness' && gate !== undefined && readinessFamilyOf(gate) === 'admin' ? /(\d[\d,]*) of (\d[\d,]*)/.exec(step.readiness.lines?.[0] ?? '') : null
   if (count !== null) return fillText(ROW.readinessAdmins, { ready: count[1], total: count[2] })
   return binding.charAt(0).toUpperCase() + binding.slice(1)
 }

@@ -1034,6 +1034,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const exclusionsGroupId = tenantObjects.exclusionsGroupId
   const existingNames = new Set((snapshot.config.caPolicies?.rows ?? []).map((p) => String((p as RawPolicy).displayName ?? '').trim().toLowerCase()).filter(Boolean))
   const proposedTaken = new Set<string>()
+  const switchedOffNames = new Set((snapshot.config.caPolicies?.rows ?? []).filter((p) => (p as RawPolicy).state === 'disabled').map((p) => String((p as RawPolicy).displayName ?? '').trim().toLowerCase()).filter(Boolean))
   /** The names of the policies this plan tagged for one step, lower-cased. */
   const taggedNamesFor = (stepId: string): Set<string> => {
     const rows = (snapshot.config.caPolicies?.rows ?? []) as RawPolicy[]
@@ -1055,6 +1056,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const uniqueName = (goal: Goal, stepId: string): { name: string; note: string | null } => {
     const base = proposedPolicyName(goal, naming)
     const mine = taggedNamesFor(stepId)
+    // A switched-off policy carrying the name is the step's own too: the step
+    // sets it to Report-only (tracking.ts matchMembers, rule 5), never builds a
+    // "(2)" beside it (walk list 4.x item 12, owner 2026-09-24).
+    if (switchedOffNames.has(base.trim().toLowerCase())) mine.add(base.trim().toLowerCase())
     const taken = (name: string): boolean => (existingNames.has(name) && !mine.has(name)) || proposedTaken.has(name)
     if (!taken(base.toLowerCase())) {
       proposedTaken.add(base.toLowerCase())
