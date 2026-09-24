@@ -4976,7 +4976,11 @@
         "$comment": "The card Require MFA for Everyone draws while it is not On (ui/surfaces/pitfalls.ts, round 1, owner 2026-09-24): the people who hold a method this policy accepts and have no MFA sign-in in the last 30 days (derive/contentLists.ts unproven), each with MFA Readiness's next step. The policy's first prompt is otherwise the first time they use it. It informs; it never holds the turn-on.",
         "unprovenLabel": "People Who Haven't Used MFA",
         "unprovenValue": "{n} people have a method but no MFA sign-in in the last 30 days",
-        "unprovenNote": "Before you turn this on, get each one signed in once with the method named beside them. For a passkey: {passkeySignIn}"
+        "unprovenNote": "Before you turn this on, get each one signed in once with the method named beside them. For a passkey: {passkeySignIn}",
+        "$commentScript": "The accounts MFA Readiness sets aside as scripts (derive/mfaReadiness.ts explained 'script': active, and seen signing in only to PowerShell or Graph tools). The scan reads interactive sign-ins only, so it cannot tell a script signing in with a password from a person running PowerShell; the note gives the fix for each (owner, 2026-09-24).",
+        "scriptLabel": "PowerShell and Graph Accounts",
+        "scriptValue": "{n} accounts sign in only from PowerShell or Graph tools",
+        "scriptNote": "Prepare Your Team for MFA doesn't count them, and this policy will prompt them. Set a person up with their method; move a script that signs in with a password to an app registration before you turn this on."
       },
       "kind": "policy",
       "title": "Require MFA for Everyone",
