@@ -11,7 +11,7 @@ import type { StepVarContext } from './stepVars.ts'
 import { laneReadings } from './planLanes.ts'
 import { laneViewOf } from './planBoard.ts'
 import { badgeLabel } from './stepContract.ts'
-import { channelTabsOf, stepBodyOf } from './stepBody.ts'
+import { channelTabsOf, headingsOf, stepBodyOf } from './stepBody.ts'
 import { pickerSavesAlone } from './pickerRows.ts'
 import { applyStepDecisions } from '../../roadmap/decisions.ts'
 
@@ -230,4 +230,28 @@ test('#14 the picker list fits the rail and wraps its text', () => {
   // No horizontal scroll inside the list, and names and reasons wrap.
   assert.match(rule('.picker-list'), /overflow-x: hidden;/)
   assert.match(rule('.picker-option-name,\n.picker-option-secondary'), /overflow-wrap: anywhere;/)
+})
+
+test('#22 a Completed step shows what was confirmed, open, with no Tasks Remaining and no scan prompt', () => {
+  // On 1.1 and on a policy step, as the board reads them.
+  for (const id of [STEP, 's-goal-mfa-all-users']) {
+    const { lane, body } = opened('demo-week2', () => {}, id)
+    assert.equal(lane.lane, 'Completed', `the premise: ${id} is Completed on demo-week2`)
+    assert.ok(body.emergencyAccountTasks, `${id} draws the task anatomy`)
+    assert.equal(headingsOf(body).includes('Tasks Remaining'), false, `${id}: a finished step draws Tasks Remaining`)
+    assert.deepEqual(headingsOf(body), ['About this Step', 'Implementation Tasks', 'Completion Criteria'], id)
+  }
+  // A step with work left keeps the heading.
+  assert.ok(headingsOf(opened('demo').body).includes('Tasks Remaining'))
+  // The one shared layout: finished, it draws every card in the grid, each card's
+  // completed checks open, and none of the three open-work lines.
+  const step = read('src/ui/surfaces/ContentStep.tsx')
+  const layout = step.slice(step.indexOf('export function EmergencySubjectReadiness('), step.indexOf('/** True when a content line has every variable'))
+  const done = layout.slice(layout.indexOf('if (completed)'), layout.indexOf('return <section className="step-section readiness-section emergency-account-readiness">'))
+  assert.ok(done.length > 0, 'no Completed branch')
+  assert.doesNotMatch(done, /Tasks Remaining|<h4>|No tasks remaining|readiness-satisfied|emergency-account-scan-note|scanControl/)
+  assert.match(done, /<div className="emergency-account-status-grid">\{subjects\.map\(\(subject\) => tile\(subject, true\)\)\}<\/div>/)
+  assert.match(step, /<details className="emergency-account-completed" open=\{printing \|\| open \|\| undefined\}>/)
+  // Every step that draws the layout says whether it is finished.
+  assert.equal((step.match(/completed=\{laneView\.lane === 'Completed'\}/g) ?? []).length, 2)
 })
