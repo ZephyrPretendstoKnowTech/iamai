@@ -3,6 +3,7 @@ import { emergencyAccountPreparationComplete, emergencyAccountPreparationOf } fr
 import { followUpIdsOf, settleFollowUp } from './followUp.ts'
 import { addWorkflowSteps } from './workflows.ts'
 import { directionSteps } from './direction.ts'
+import { answeredReasonOf } from './directionAnswers.ts'
 import { applyManualReviews, perUserMfaReading } from './manualWork.ts'
 // Step generation (roadmap.md §1–§6; 2026-08-27 redesign: collapsed phase 0,
 // per-tenant impact, safe-today lane, handle-with-care gating, comms drafts,
@@ -66,7 +67,7 @@ import { eventsFor, nobodyAffected as nobodyAffectedBy } from './timing.ts'
 import { MANAGER, MANAGER_BY_CONTROL, MANAGER_BY_GOAL } from '../copy/plain.ts'
 import { contentTitle } from '../content/stepTitle.ts'
 import { settleEnforceWaits } from './enforceWaits.ts'
-import { app, directionWords, engine, shared, stepById } from '../content/content.ts'
+import { app, engine, shared, stepById } from '../content/content.ts'
 import { countryName as countryLabel } from '../mapping/countries.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
@@ -1214,7 +1215,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // Only the person's own saved answer says remote; nothing assumes it.
     if (networkConfirmed && mapping.trustedLocationIds.length === 0) {
       const network = steps[steps.length - 1]
-      network.doesntApply = directionWords.questions.officeNetwork.options.remote
+      network.doesntApply = answeredReasonOf('officeNetwork', 'remote')
+      network.doesntApplyByAnswer = true
       setState(network, { setAside: true, satisfied: false, inPlace: false })
     }
   }
@@ -1276,7 +1278,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const matched = !!members && !members.sampled && new Set(members.memberIds).size === new Set(mapping.serviceAccountUserIds).size && mapping.serviceAccountUserIds.every((id) => members.memberIds.includes(id))
     const step = { ...prereq(saStepId), ...stateFields(matched ? { satisfied: true, inPlace: true } : {}), naming: { proposed: proposed.name, fromBaseline: null }, deliveredBy: matched ? ['The scanned group includes exactly the selected service accounts.'] : [] }
     if (mapping.serviceAccountUserIds.length === 0) {
-      step.doesntApply = 'No service accounts are selected. No group or group protection is claimed.'
+      step.doesntApply = answeredReasonOf('serviceAccounts', 'none')
+      step.doesntApplyByAnswer = true
       setState(step, { setAside: true, satisfied: false, inPlace: false })
     }
     steps.push(step)
@@ -1330,7 +1333,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     step.naming = { proposed: proposedName({ prefix: 'CA', rest: ['Block', 'Shared devices outside trusted networks'], collapsed: 'Block shared devices outside trusted networks' }, naming).name, fromBaseline: null }
     step.population = namedAccounts(sharedDevices.map((u) => u.id), popIndex)
     if (sharedDevices.length === 0 && snapshot.sources.users?.status === 'ok') {
-      step.doesntApply = (mapping.sharedDeviceUserIds?.length ?? 0) > 0 ? 'The selected shared accounts are no longer enabled in the directory. Previous test records remain history.' : 'No shared accounts are selected. No shared-device policy protection is claimed.'
+      // Answered None on Identify Service and Shared Accounts: the answer is the reason (walk list item 17).
+      const answeredNone = mapping.sharedDeviceUserIds?.length === 0
+      step.doesntApply = (mapping.sharedDeviceUserIds?.length ?? 0) > 0 ? 'The selected shared accounts are no longer enabled in the directory. Previous test records remain history.' : answeredNone ? answeredReasonOf('sharedDevices', 'none') : 'No shared accounts are selected. No shared-device policy protection is claimed.'
+      if (answeredNone) step.doesntApplyByAnswer = true
       setState(step, { setAside: true, satisfied: false, inPlace: false })
       step.configurationFindings = [{ key: 'sharedAccounts', label: 'Shared Accounts', value: 'No active selected accounts', detail: step.doesntApply, outcome: 'pass' }]
     }
@@ -1624,7 +1630,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       if (result.goal.id === 'inforcer-mfa' && result.status === 'not-applicable' && inBaseline(result.goal)) {
         const s = prereq('s-goal-inforcer-mfa', 'Require MFA for Inforcer Access')
         s.goalId = result.goal.id
-        s.doesntApply = 'Inforcer is confirmed not in use. MFA protection for this service is not claimed.'
+        s.doesntApply = answeredReasonOf('service:inforcer', 'no')
+        s.doesntApplyByAnswer = true
         setState(s, { setAside: true })
         steps.push(s)
       }
@@ -3051,6 +3058,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   for (const s of steps) {
     if (!doesntApply(s.id)) continue
     s.doesntApply = notApplicable[s.id].trim()
+    // The person's own reason, which a Put back can take away (planRows.ts canPutBack).
+    delete s.doesntApplyByAnswer
     s.skipReason = s.doesntApply
     setState(s, { setAside: true })
   }
@@ -3063,6 +3072,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const reason = deviceStepDoesntApply(s.goalId, mapping)
     if (reason === null) continue
     s.doesntApply = reason
+    s.doesntApplyByAnswer = true
     s.skipReason = reason
     setState(s, { setAside: true })
   }

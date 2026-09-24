@@ -30,7 +30,8 @@ import type { StepDecision, StepDecisionInput } from './decisions.ts'
 import { DEVICE_ANSWER_KEYS, QUESTION_STEP, answerKey, answerOf, answerTextFor, devicePlanOf, questionLabels, questionOptions } from './answers.ts'
 import { PREREQ_STEP_ID } from './stepIds.ts'
 import { DIRECTION_STEP_IDS } from './stepGroups.ts'
-import { directionWords } from '../content/content.ts'
+import { directionWords, workflowWords } from '../content/content.ts'
+import { fillText } from '../content/render.ts'
 
 export const DIRECTION_STEP = {
   use: DIRECTION_STEP_IDS[0],
@@ -117,6 +118,22 @@ export function directionStepOf(key: DirectionQuestionKey): DirectionStepId {
 }
 
 /**
+ * The reason on a Doesn't apply here row a Direction answer put there (walk
+ * list item 17): the option as its card shows it, the card's label, and the
+ * Direction step that asks it. The words are the ones direction.ts draws the
+ * card with; the two account questions share one option list.
+ */
+export function answeredReasonOf(key: DirectionQuestionKey, value: string): string {
+  const Q = directionWords.questions
+  const service = key.startsWith('service:') ? key.slice('service:'.length) : null
+  const own = service === null ? (Q as unknown as Record<string, { label: string; options?: Record<string, string> }>)[key] : null
+  const label = own?.label ?? (Q.services as Record<string, string>)[service ?? ''] ?? (workflowWords.names as Record<string, string>)[service ?? ''] ?? key
+  const options: Record<string, string> = service !== null ? Q.serviceOptions : own?.options ?? Q.accountOptions
+  const stepKey = (Object.entries(DIRECTION_STEP) as [keyof typeof DIRECTION_STEP, string][]).find(([, id]) => id === directionStepOf(key))![0]
+  return fillText(directionWords.doesntApplyAnswered, { option: options[value] ?? value, question: label, step: directionWords.steps[stepKey].title })
+}
+
+/**
  * The office network's three answers, persisted under its own storage id
  * (DIRECTION_LOCATIONS_STORAGE) *as well as* the trusted-location decision
  * (owner, 2026-09-20): an answer saved before Direction existed still has to
@@ -134,7 +151,7 @@ const answer = (value: string, picked: readonly string[] = []): DirectionAnswer 
 const confirmed = (m: Mapping, q: string): boolean => m.wizardAnswered?.[q] === true && m.assumed?.[q] !== 'detected'
 
 /** Phones, as the four D3 options, from the device answers however they were saved. */
-function phonesOf(m: Mapping): string | null {
+export function phonesOf(m: Pick<MappingState, 'questionAnswers'>): string | null {
   const plan = devicePlanOf(m)
   if (!plan) return null
   if (plan.phoneManagement === 'enrolled' || (plan.phoneManagement === undefined && plan.phones === 'enrol')) return 'enrolled'
