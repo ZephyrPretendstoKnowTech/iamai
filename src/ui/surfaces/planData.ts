@@ -34,7 +34,7 @@ import { observationsOf } from '../../roadmap/tracking.ts'
 import type { PlanDecisions, StepDecision } from '../../roadmap/progress.ts'
 import { appliedMapping } from './pickerRows.ts'
 import { heldPlan } from './planChanges.ts'
-import { effectiveFirstDeployment, lockedStart, proposedFirstDeployment, proposedStart } from '../../derive/planStart.ts'
+import { effectiveFirstDeployment, lockedStart, movedFirstDeployment, proposedFirstDeployment, proposedStart } from '../../derive/planStart.ts'
 import { HARDENING_DEFERRAL_ID } from '../../validation/emergencyTiers.ts'
 import { BREAK_GLASS_STEP_ID } from '../../roadmap/stepIds.ts'
 import { operatorUserId } from '../../derive/operator.ts'
@@ -500,13 +500,12 @@ export function usePlanData(
     firstDeployment,
     setStart: (iso) => {
       // A date set here moves the locked start (a deliberate re-plan, §5). The
-      // first deployment is anchored with it as the lock anchors it: a saved day
-      // stands while it is not before the new start, else the eligible workday
-      // after it. Deployment never lands before the plan starts.
+      // day the lock anchored moves with it; a day the operator set stands while
+      // it is not before the new start (derive/planStart.ts movedFirstDeployment).
       setSaved((p) => ({
         ...(p ?? { planId, skips: {}, checkpoints: [] }),
         startDate: iso,
-        firstDeployment: effectiveFirstDeployment(iso, { firstDeployment: p?.firstDeployment }),
+        firstDeployment: movedFirstDeployment(iso, p),
         startedAt: p?.startedAt ?? new Date().toISOString(),
       }))
       bump()
