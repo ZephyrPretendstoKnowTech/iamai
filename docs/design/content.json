@@ -2990,7 +2990,6 @@
               "todayRegistered": "{n} people signed in from registered computers that aren't joined, in the last 30 days.",
               "$commentIntuneSeats": "The device question chooses between Managed, Hybrid joined and Left unmanaged, and Managed means joined AND enrolled - which needs an Intune licence per device. The question offered the baseline recommendation and nothing about the tenant, on a tenant holding 300 seats with 41 in use. A reader picking the suggested answer was committing to enrolment without being shown whether the licences for it existed.",
               "intuneSeats": "Intune: {consumed} of {seats} licences assigned. Each person who uses a managed computer needs one.",
-              "intuneAbsent": "No Intune licences were read in this tenant. Managed means joined and enrolled, and enrollment needs them.",
               "note": "Answering Unmanaged takes Require a Managed Device Outside the Office and Require a Fresh Sign-in for Intune Enrollment off your plan."
             },
             "phones": {
