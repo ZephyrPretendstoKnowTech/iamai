@@ -707,11 +707,12 @@ try {
   // prerequisite and check carries is dropped, and a held row says so instead of
   // borrowing its wave's date.
   check('Plan: the board drops the generic now from supporting rows', (await evaluate(`[...document.querySelectorAll('main.page .plan-row .when')].map((e) => (e.textContent || '').trim()).filter((t) => t === 'now').length`)) === 0)
-  // When shows a calendar date, an estimate, or the condition preventing a date.
+  // When shows a calendar date or an estimate (owner, 2026-09-23): Not scheduled,
+  // After prerequisites and After review are gone from the column.
   // The chip continues to describe the observed policy state.
   const rowStates = await acrossLanes(`[...document.querySelectorAll('main.page .plan-row')].map((r) => ({ title: ((r.querySelector('.step-title') || {}).textContent || '').trim(), when: ((r.querySelector('.when') || {}).textContent || '').trim(), chip: ((r.querySelector('.status') || {}).textContent || '').trim() }))`)
-  const whenWrong = rowStates.filter(({ when }) => !(['Already in place', 'Not scheduled', 'After prerequisites', 'After review', 'Review now'].includes(when) || /^(?:Est\. )?[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(when)))
-  check('Plan: every row’s When provides a date, estimate or scheduling condition', whenWrong.length === 0, JSON.stringify(whenWrong.slice(0, 3)))
+  const whenWrong = rowStates.filter(({ when }) => !(['Review now', 'Decide now'].includes(when) || /^(?:Est\. )?[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(when)))
+  check('Plan: every row’s When provides a date or an estimate', whenWrong.length === 0, JSON.stringify(whenWrong.slice(0, 3)))
   const chipWrong = rowStates.filter(({ chip }) => !(chip === '' || chip === 'Report-only' || chip === 'Enforced'))
   check('Plan: a row’s chip is the tenant fact Report-only or Enforced, or nothing', chipWrong.length === 0, JSON.stringify(chipWrong.slice(0, 3)))
   // Every row's When and Impact say something (owner, 2026-09-11): never a blank cell.

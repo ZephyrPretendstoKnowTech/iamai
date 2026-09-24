@@ -799,7 +799,7 @@
         "coversEnabled": "covers {n} enabled"
       },
       "when": {
-        "$comment": "The board's When column (planBoard.ts boardWhen): a date, or the placeholder (A1b). after and afterPrerequisites are the Up Next lane label's tail (laneLabelOf), never the column.",
+        "$comment": "The board's When column (planBoard.ts boardWhenOf): a date on every open row (owner, 2026-09-23). A row with no day of its own, a held one included, reads estimate: the day the plan expects its waits to clear (roadmap/forecast.ts planForecast). none and waiting stand only where no board reading estimated the row; waiting is also the opened step's rail for a step the board holds. after and afterPrerequisites are the Up Next lane label's tail (laneLabelOf), never the column.",
         "none": "Not scheduled",
         "after": "After {step}",
         "afterPrerequisites": "After prerequisites",
