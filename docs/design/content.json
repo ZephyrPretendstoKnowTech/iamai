@@ -1824,7 +1824,9 @@
           "$commentVariants": "The line that introduces a task's alternatives where they are written out together - the export, AI Info and the Entra artifact, which cannot offer the screen's picker (emergencyAccountTasks.ts emergencyTaskAlternativesText). They used to carry the default alternative alone, unlabelled and numbered as mandatory, so a reader was told to register a YubiKey on every affected account and the Authenticator procedures were gone (R4-32).",
           "variantsLead": "Use the steps for the authenticator being registered:",
           "$commentNoAccountsChosen": "Accounts and identity before any emergency access account is saved (src/roadmap/emergencyJourney.ts journeyAccountFindings). It read Needs correction in AI Info while the cards said No account selected: nothing is chosen yet, so there is nothing to correct.",
-          "noAccountsChosen": "No accounts chosen yet"
+          "noAccountsChosen": "No accounts chosen yet",
+          "$commentSignedInAccount": "The one line on an emergency access account card when that account is the one signed in to IAMAI (the scan's /me, by object id or sign-in name; emergencyAccountTasks.ts). A fact, not a check: it replaces the bg.notPersonal note on that card and gates nothing. Owner wording, 2026-09-23.",
+          "signedInAccount": "You're signed in to IAMAI with this account. Emergency accounts should be ones nobody uses day to day."
         },
         "$commentRecoverySignIn": "Verify Emergency Access: what an account's Sign-in evidence card, its print and its exports say while the account waits for a passkey sign-in (src/roadmap/emergencyJourney.ts recoveryWaitingLine).",
         "recoverySignIn": {
