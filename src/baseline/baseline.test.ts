@@ -67,99 +67,108 @@ const files: BaselineFile[] = [
   { path: "Updated/index.json", text: '{"files": []}' },
 ];
 
-test("dedupes across generations and casings, preferring Updated/Policies", () => {
-  const pkg = loadBaseline(files);
-  const names = pkg.policies.map((p) => p.displayName);
-  assert.equal(names.filter((n) => nameKey(n) === nameKey("IAC - GLOBAL - GRANT - MFA - AllUsers")).length, 1);
-  assert.equal(pkg.origins["IAC - GLOBAL - GRANT - MFA - AllUsers"], "Updated/Policies/IAC - GLOBAL - GRANT - MFA - AllUsers.json");
-  assert.equal(pkg.report.duplicates.length, 3);
-  assert.equal(pkg.policies.length, 9);
+test('loadBaseline dedupes across generations and casings, preferring Updated/Policies, and an older generation only fills gaps', () => {
+  // dedupes across generations and casings, preferring Updated/Policies
+  {
+    const pkg = loadBaseline(files);
+    const names = pkg.policies.map((p) => p.displayName);
+    assert.equal(names.filter((n) => nameKey(n) === nameKey("IAC - GLOBAL - GRANT - MFA - AllUsers")).length, 1);
+    assert.equal(pkg.origins["IAC - GLOBAL - GRANT - MFA - AllUsers"], "Updated/Policies/IAC - GLOBAL - GRANT - MFA - AllUsers.json");
+    assert.equal(pkg.report.duplicates.length, 3);
+    assert.equal(pkg.policies.length, 9);
+  }
+  // older generation only fills gaps in the newest generation
+  {
+    const pkg = loadBaseline(files);
+    const names = pkg.policies.map((p) => p.displayName);
+    assert.ok(names.includes("IAC - GLOBAL - BLOCK - Device Code Auth Flow"));
+    assert.ok(!names.includes("ACME - GLOBAL - BLOCK - Device Code Auth Flow"));
+    assert.ok(names.includes("ACME - APP - BLOCK - Copilot")); // fallback keeps what Updated lacks
+    assert.ok(pkg.report.duplicates.some((d) => d.reason.startsWith("older generation of")));
+  }
+  // precedence mirrors Updated + fallback
+  {
+    assert.ok(precedenceFor("Updated/Policies/x.json") > precedenceFor("Updated/Documentation/x/policy.json"));
+    assert.ok(precedenceFor("Updated/Documentation/x/policy.json") > precedenceFor("Policies/x.json"));
+    assert.equal(precedenceFor("x.json"), precedenceFor("CA/x.json"));
+  }
 });
 
-test("older generation only fills gaps in the newest generation", () => {
-  const pkg = loadBaseline(files);
-  const names = pkg.policies.map((p) => p.displayName);
-  assert.ok(names.includes("IAC - GLOBAL - BLOCK - Device Code Auth Flow"));
-  assert.ok(!names.includes("ACME - GLOBAL - BLOCK - Device Code Auth Flow"));
-  assert.ok(names.includes("ACME - APP - BLOCK - Copilot")); // fallback keeps what Updated lacks
-  assert.ok(pkg.report.duplicates.some((d) => d.reason.startsWith("older generation of")));
+test('loadBaseline normalizes SDK PascalCase into Graph camelCase, classifies references by portability, turns placeholder tokens into tenant-specific references and infers group roles', () => {
+  // normalizes SDK PascalCase into Graph camelCase and prunes null noise
+  {
+    const pkg = loadBaseline(files);
+    const p = pkg.policies.find((x) => x.displayName === "IAC - GLOBAL - GRANT - MFA - AllUsers")!;
+    assert.deepEqual(p.conditions.users?.excludeGroups, [BREAKGLASS, SVCACCTS]);
+    assert.deepEqual(p.grantControls?.builtInControls, ["mfa"]);
+    assert.equal(p.grantControls?.authenticationStrength, undefined);
+    assert.equal(p.sessionControls, undefined);
+    assert.equal((p as unknown as Record<string, unknown>).additionalProperties, undefined);
+    assert.equal(p.state, "enabledForReportingButNotEnforced");
+  }
+  // classifies references by portability
+  {
+    const pkg = loadBaseline(files);
+    const byId = Object.fromEntries(pkg.references.map((r) => [r.id, r]));
+    assert.equal(byId[BREAKGLASS].kind, "group");
+    assert.equal(byId[BREAKGLASS].portability, "tenantSpecific");
+    assert.equal(byId["62e90394-69f5-4237-9190-012177145e10"].portability, "stable"); // Global Administrator template id
+    assert.equal(byId["00000000-0000-0000-0000-000000000004"].portability, "stable"); // built-in phishing-resistant
+    assert.equal(byId["42de22a7-5339-4a58-b560-28565d53b14d"].portability, "tenantSpecific"); // custom strength
+    assert.equal(byId[TRUSTED_LOC].kind, "namedLocation");
+    assert.ok(!("all" in byId));
+  }
+  // named placeholder tokens become tenant-specific references
+  {
+    const pkg = loadBaseline(files);
+    const ph = pkg.references.find((r) => r.placeholder);
+    assert.ok(ph);
+    assert.equal(ph!.kind, "group");
+    assert.equal(ph!.id, "ca-copilot-users-groupid-replaceme");
+    assert.equal(ph!.portability, "tenantSpecific");
+  }
+  // infers group roles from usage signatures
+  {
+    const pkg = loadBaseline(files);
+    const sig = Object.fromEntries(pkg.groupSignatures.map((s) => [s.id, s]));
+    assert.equal(sig[BREAKGLASS].inferredRole, "globalExclusion");
+    assert.equal(sig[BREAKGLASS].excludedFrom.length, 8);
+    assert.equal(sig[SVCACCTS].inferredRole, "serviceAccounts");
+    assert.equal(sig[PILOT].inferredRole, "passkeyPilot");
+  }
 });
 
-test("named placeholder tokens become tenant-specific references", () => {
-  const pkg = loadBaseline(files);
-  const ph = pkg.references.find((r) => r.placeholder);
-  assert.ok(ph);
-  assert.equal(ph!.kind, "group");
-  assert.equal(ph!.id, "ca-copilot-users-groupid-replaceme");
-  assert.equal(ph!.portability, "tenantSpecific");
-});
-
-test("warns about policies that target nothing", () => {
-  const pkg = loadBaseline(files);
-  assert.equal(pkg.report.warnings.length, 1);
-  assert.equal(pkg.report.warnings[0].policyName, "IAC - AGENT - BLOCK - HighRiskAgent");
-});
-
-test("reports bad and irrelevant files instead of throwing", () => {
-  const pkg = loadBaseline(files);
-  assert.ok(pkg.report.errors.some((e) => e.path === "Policies/Broken.json"));
-  assert.ok(pkg.report.skipped.some((s) => s.path.includes("/Test/") && s.reason === "test folder"));
-  assert.ok(pkg.report.skipped.some((s) => s.path === "Updated/index.json"));
-});
-
-test("normalizes SDK PascalCase into Graph camelCase and prunes null noise", () => {
-  const pkg = loadBaseline(files);
-  const p = pkg.policies.find((x) => x.displayName === "IAC - GLOBAL - GRANT - MFA - AllUsers")!;
-  assert.deepEqual(p.conditions.users?.excludeGroups, [BREAKGLASS, SVCACCTS]);
-  assert.deepEqual(p.grantControls?.builtInControls, ["mfa"]);
-  assert.equal(p.grantControls?.authenticationStrength, undefined);
-  assert.equal(p.sessionControls, undefined);
-  assert.equal((p as unknown as Record<string, unknown>).additionalProperties, undefined);
-  assert.equal(p.state, "enabledForReportingButNotEnforced");
-});
-
-test("classifies references by portability", () => {
-  const pkg = loadBaseline(files);
-  const byId = Object.fromEntries(pkg.references.map((r) => [r.id, r]));
-  assert.equal(byId[BREAKGLASS].kind, "group");
-  assert.equal(byId[BREAKGLASS].portability, "tenantSpecific");
-  assert.equal(byId["62e90394-69f5-4237-9190-012177145e10"].portability, "stable"); // Global Administrator template id
-  assert.equal(byId["00000000-0000-0000-0000-000000000004"].portability, "stable"); // built-in phishing-resistant
-  assert.equal(byId["42de22a7-5339-4a58-b560-28565d53b14d"].portability, "tenantSpecific"); // custom strength
-  assert.equal(byId[TRUSTED_LOC].kind, "namedLocation");
-  assert.ok(!("all" in byId));
-});
-
-test("infers group roles from usage signatures", () => {
-  const pkg = loadBaseline(files);
-  const sig = Object.fromEntries(pkg.groupSignatures.map((s) => [s.id, s]));
-  assert.equal(sig[BREAKGLASS].inferredRole, "globalExclusion");
-  assert.equal(sig[BREAKGLASS].excludedFrom.length, 8);
-  assert.equal(sig[SVCACCTS].inferredRole, "serviceAccounts");
-  assert.equal(sig[PILOT].inferredRole, "passkeyPilot");
-});
-
-test("detects same-intent variants and leaves distinct policies alone", () => {
-  const pkg = loadBaseline(files);
-  assert.equal(pkg.variantSets.length, 1);
-  assert.equal(pkg.variantSets[0].relation, "variant");
-  assert.deepEqual(pkg.variantSets[0].policyNames, [
-    "IAC - GLOBAL - BLOCK - Countries not Allowed",
-    "IAC - GLOBAL - BLOCK - Countries not Allowed - NoExclusions",
-  ]);
-  const mfa = pkg.policies.find((p) => p.displayName.endsWith("AllUsers"))!;
-  const legacy = pkg.policies.find((p) => p.displayName.includes("Legacy"))!;
-  assert.notEqual(intentKey(mfa), intentKey(legacy));
-});
-
-test("extracts author intent from README and matches it to a policy", () => {
-  const pkg = loadBaseline(files);
-  assert.equal(pkg.docs.length, 1);
-  assert.equal(pkg.docs[0].intent, "Baseline MFA for all users. Enable last in Phase 1.");
-});
-
-test("precedence mirrors Updated + fallback", () => {
-  assert.ok(precedenceFor("Updated/Policies/x.json") > precedenceFor("Updated/Documentation/x/policy.json"));
-  assert.ok(precedenceFor("Updated/Documentation/x/policy.json") > precedenceFor("Policies/x.json"));
-  assert.equal(precedenceFor("x.json"), precedenceFor("CA/x.json"));
+test('loadBaseline reports policies that target nothing, bad and irrelevant files, same-intent variants and README intent instead of throwing', () => {
+  // warns about policies that target nothing
+  {
+    const pkg = loadBaseline(files);
+    assert.equal(pkg.report.warnings.length, 1);
+    assert.equal(pkg.report.warnings[0].policyName, "IAC - AGENT - BLOCK - HighRiskAgent");
+  }
+  // reports bad and irrelevant files instead of throwing
+  {
+    const pkg = loadBaseline(files);
+    assert.ok(pkg.report.errors.some((e) => e.path === "Policies/Broken.json"));
+    assert.ok(pkg.report.skipped.some((s) => s.path.includes("/Test/") && s.reason === "test folder"));
+    assert.ok(pkg.report.skipped.some((s) => s.path === "Updated/index.json"));
+  }
+  // detects same-intent variants and leaves distinct policies alone
+  {
+    const pkg = loadBaseline(files);
+    assert.equal(pkg.variantSets.length, 1);
+    assert.equal(pkg.variantSets[0].relation, "variant");
+    assert.deepEqual(pkg.variantSets[0].policyNames, [
+      "IAC - GLOBAL - BLOCK - Countries not Allowed",
+      "IAC - GLOBAL - BLOCK - Countries not Allowed - NoExclusions",
+    ]);
+    const mfa = pkg.policies.find((p) => p.displayName.endsWith("AllUsers"))!;
+    const legacy = pkg.policies.find((p) => p.displayName.includes("Legacy"))!;
+    assert.notEqual(intentKey(mfa), intentKey(legacy));
+  }
+  // extracts author intent from README and matches it to a policy
+  {
+    const pkg = loadBaseline(files);
+    assert.equal(pkg.docs.length, 1);
+    assert.equal(pkg.docs[0].intent, "Baseline MFA for all users. Enable last in Phase 1.");
+  }
 });

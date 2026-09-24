@@ -73,63 +73,69 @@ function stagingIn(pkg: CompiledPackage): string[] {
   return found
 }
 
-test('no registered package corrects a policy by moving it to report-only, apart from any named with its reason', () => {
-  const staging: Record<string, string[]> = {}
-  for (const [id, pkg] of Object.entries(PACKAGES)) {
-    const found = stagingIn(pkg)
-    if (found.length > 0) staging[id] = found
+test('no package, registered or as authored with the parts the registry withholds, corrects a policy by moving it to report-only, apart from any named with its reason', () => {
+  // no registered package corrects a policy by moving it to report-only, apart from any named with its reason
+  {
+    const staging: Record<string, string[]> = {}
+    for (const [id, pkg] of Object.entries(PACKAGES)) {
+      const found = stagingIn(pkg)
+      if (found.length > 0) staging[id] = found
+    }
+    assert.deepEqual(Object.keys(staging).sort(), Object.keys(STILL_STAGING).sort(), JSON.stringify(staging, null, 1))
   }
-  assert.deepEqual(Object.keys(staging).sort(), Object.keys(STILL_STAGING).sort(), JSON.stringify(staging, null, 1))
-})
-
-// Cycle 6: the registry is compiled with the parts the runtime cannot project withheld, so a
-// withheld Partial projection never reaches the scan above. s-goal-unmanaged-browser's was
-// one: its authored correction ran StageA/StageB, refused to correct an enabled policy and
-// said "Stage any enabled policy to Report-only". Nothing drew it, but the authored package
-// is the source a later compile would project, so every authored package is scanned too.
-test('no authored package, the parts the registry withholds included, corrects a policy by moving it to report-only', () => {
-  // Every authored package, a task a folder folds in included (library.ts
-  // packageSources; Stage 3 folded the countries location into the countries
-  // block's folder).
-  const sources = packageDirs().flatMap(packageSources)
-  // The floor moves down when a step retires and its package goes with it
-  // (step-redundancy-analysis.md: eleven step identities, 2026-09-19). What the
-  // number guards is that the sweep below reads the whole corpus, not a shard.
-  assert.ok(sources.length >= 43, `${sources.length} authored packages`)
-  const staging: Record<string, string[]> = {}
-  for (const source of sources) {
-    const meta = JSON.parse(source.metaJson) as { stepId: string }
-    const authored = { meta, blocks: parseBlocks(source.content) } as unknown as CompiledPackage
-    const found = stagingIn(authored)
-    if (found.length > 0) staging[`${source.dir}:${meta.stepId}`] = found
+  // no authored package, the parts the registry withholds included, corrects a policy by moving it to report-only
+  // Cycle 6: the registry is compiled with the parts the runtime cannot project withheld, so a
+  // withheld Partial projection never reaches the scan above. s-goal-unmanaged-browser's was
+  // one: its authored correction ran StageA/StageB, refused to correct an enabled policy and
+  // said "Stage any enabled policy to Report-only". Nothing drew it, but the authored package
+  // is the source a later compile would project, so every authored package is scanned too.
+  {
+    // Every authored package, a task a folder folds in included (library.ts
+    // packageSources; Stage 3 folded the countries location into the countries
+    // block's folder).
+    const sources = packageDirs().flatMap(packageSources)
+    // The floor moves down when a step retires and its package goes with it
+    // (step-redundancy-analysis.md: eleven step identities, 2026-09-19). What the
+    // number guards is that the sweep below reads the whole corpus, not a shard.
+    assert.ok(sources.length >= 43, `${sources.length} authored packages`)
+    const staging: Record<string, string[]> = {}
+    for (const source of sources) {
+      const meta = JSON.parse(source.metaJson) as { stepId: string }
+      const authored = { meta, blocks: parseBlocks(source.content) } as unknown as CompiledPackage
+      const found = stagingIn(authored)
+      if (found.length > 0) staging[`${source.dir}:${meta.stepId}`] = found
+    }
+    assert.deepEqual(staging, {})
   }
-  assert.deepEqual(staging, {})
 })
 
-test('the scan sees staging where it is: any named package, and a synthetic lifecycle module', () => {
-  for (const id of Object.keys(STILL_STAGING)) assert.ok(stagingIn(PACKAGES[id]).length > 0, `${id} no longer stages: remove it from STILL_STAGING`)
-  const base = PACKAGES['s-goal-user-risk']
-  const partial = (base.meta.projection as Record<string, Record<string, unknown>>).partial
-  const synthetic = {
-    ...base,
-    meta: { ...base.meta, projection: { ...base.meta.projection, partial: { ...partial, mismatches: { ...(partial.mismatches as object), 'lifecycle.report-only': { select: { equals: ['policy.current.state', 'enabled'] }, alongside: true, entra: ['entra.correct.lifecycle'], json: ['json.correct.report-only'], powershell: [{ block: 'powershell.run', mode: 'ReportOnly' }] } } } } },
-  } as unknown as CompiledPackage
-  const found = stagingIn(synthetic)
-  assert.ok(found.some((f) => /runs ReportOnly/.test(f)), JSON.stringify(found))
-  assert.ok(found.some((f) => /PATCHes the state/.test(f)), JSON.stringify(found))
-  assert.ok(found.some((f) => /tells the technician/.test(f)), JSON.stringify(found))
-  assert.deepEqual(stagingIn(base), [], 'the unchanged package stages nothing')
-})
-
-test('prose control: a recovery step is not a correction default, a report-only move while correcting is', () => {
-  assert.equal(stagesInProse('If a correction creates unexpected risk, return the same policy to Report-only before further changes.'), false)
-  assert.equal(stagesInProse('If a required workflow fails, return the same stable policy to Report-only first.'), false)
-  assert.equal(stagesInProse("Keep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save."), false)
-  assert.equal(stagesInProse('If it is On, return that same policy to Report-only first.'), true)
-  assert.equal(stagesInProse('If the workload policy is currently On and the location range is wrong, return the workload policy to Report-only before changing the allowed address.'), true)
-  assert.equal(stagesInProse('Keep or return a materially incorrect policy to **Report-only** while correcting it.'), true)
-  assert.equal(stagesInProse('Set **Enable policy** to **Report-only** before applying semantic corrections.'), true)
-  // Cycle 6: unmanaged-browser's wording, which the verb list missed (it also ran StageA/StageB).
-  assert.equal(stagesInProse('Stage any enabled policy to Report-only before access-affecting correction.'), true)
-  assert.equal(stagesInProse('GOAL\nMove the existing resolved policy to the canonical Report-only target without creating a duplicate.'), true)
+test('the scan sees staging where it is, in a synthetic lifecycle module and in prose, and leaves a recovery step alone', () => {
+  // the scan sees staging where it is: any named package, and a synthetic lifecycle module
+  {
+    for (const id of Object.keys(STILL_STAGING)) assert.ok(stagingIn(PACKAGES[id]).length > 0, `${id} no longer stages: remove it from STILL_STAGING`)
+    const base = PACKAGES['s-goal-user-risk']
+    const partial = (base.meta.projection as Record<string, Record<string, unknown>>).partial
+    const synthetic = {
+      ...base,
+      meta: { ...base.meta, projection: { ...base.meta.projection, partial: { ...partial, mismatches: { ...(partial.mismatches as object), 'lifecycle.report-only': { select: { equals: ['policy.current.state', 'enabled'] }, alongside: true, entra: ['entra.correct.lifecycle'], json: ['json.correct.report-only'], powershell: [{ block: 'powershell.run', mode: 'ReportOnly' }] } } } } },
+    } as unknown as CompiledPackage
+    const found = stagingIn(synthetic)
+    assert.ok(found.some((f) => /runs ReportOnly/.test(f)), JSON.stringify(found))
+    assert.ok(found.some((f) => /PATCHes the state/.test(f)), JSON.stringify(found))
+    assert.ok(found.some((f) => /tells the technician/.test(f)), JSON.stringify(found))
+    assert.deepEqual(stagingIn(base), [], 'the unchanged package stages nothing')
+  }
+  // prose control: a recovery step is not a correction default, a report-only move while correcting is
+  {
+    assert.equal(stagesInProse('If a correction creates unexpected risk, return the same policy to Report-only before further changes.'), false)
+    assert.equal(stagesInProse('If a required workflow fails, return the same stable policy to Report-only first.'), false)
+    assert.equal(stagesInProse("Keep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save."), false)
+    assert.equal(stagesInProse('If it is On, return that same policy to Report-only first.'), true)
+    assert.equal(stagesInProse('If the workload policy is currently On and the location range is wrong, return the workload policy to Report-only before changing the allowed address.'), true)
+    assert.equal(stagesInProse('Keep or return a materially incorrect policy to **Report-only** while correcting it.'), true)
+    assert.equal(stagesInProse('Set **Enable policy** to **Report-only** before applying semantic corrections.'), true)
+    // Cycle 6: unmanaged-browser's wording, which the verb list missed (it also ran StageA/StageB).
+    assert.equal(stagesInProse('Stage any enabled policy to Report-only before access-affecting correction.'), true)
+    assert.equal(stagesInProse('GOAL\nMove the existing resolved policy to the canonical Report-only target without creating a duplicate.'), true)
+  }
 })
