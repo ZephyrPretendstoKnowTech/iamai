@@ -3,6 +3,7 @@ import { emergencyAccountPreparationComplete, emergencyAccountPreparationOf } fr
 import { followUpIdsOf, settleFollowUp } from './followUp.ts'
 import { addWorkflowSteps } from './workflows.ts'
 import { countDirectionImpact, directionSteps } from './direction.ts'
+import dependencyData from '../actionability/dependency-data.json' with { type: 'json' }
 import { answeredReasonOf } from './directionAnswers.ts'
 import { applyManualReviews, perUserMfaReading } from './manualWork.ts'
 // Step generation (roadmap.md §1–§6; 2026-08-27 redesign: collapsed phase 0,
@@ -3112,6 +3113,21 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const complete = remaining.length === 0 && snapshot.sources.users?.status === 'ok'
     setState(s, { satisfied: complete, inPlace: complete })
     if (complete) s.deliveredBy = [accounts.length === 0 ? 'The scanned directory has no outstanding dormant accounts.' : 'Every listed dormant account is disabled, active again, or retained with a recorded reason.']
+  }
+  // Impact (ui/surfaces/rowWho.ts; walk list item 16, owner 2026-09-23): what
+  // each Prepare step changes, counted. Use Separate Accounts for Admin Work, the
+  // admins seen on Outlook or Teams (not every role holder); the service accounts
+  // group, the service accounts picked; the authentication strength and the
+  // trusted network, the plan's policies that wait on them, by the dependency
+  // graph's own edges (actionability/dependency-data.json), each on the plan and
+  // not set aside.
+  for (const s of steps) {
+    if (s.id === SEPARATE_ADMIN_ACCOUNTS_STEP_ID) s.impactCount = adminsWithWorkload.length
+    else if (s.id === saStepId) s.impactCount = mapping.serviceAccountUserIds.length
+    else if (s.id === strengthStepId || s.id === PREREQ_STEP_ID.trustedLocation) {
+      const waiting = new Set((dependencyData as { edges: { step: string; prerequisite: string }[] }).edges.filter((e) => e.prerequisite === s.id).map((e) => e.step))
+      s.impactCount = steps.filter((w) => waiting.has(w.id) && !w.doesntApply && !w.state.setAside).length
+    }
   }
   // No Entra ID P1, no plan (owner, 2026-09-20). Three non-policy steps survive
   // the gates above — dormant accounts, administrator separation, the MFA

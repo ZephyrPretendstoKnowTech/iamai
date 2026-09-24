@@ -75,9 +75,6 @@ test('on the demo and GetIAMAI, every row count equals its step lead count, and 
       const rowCount = m ? Number(m[1]) : 0
       assert.equal(rowCount, view.active, `${name} ${s.id}: the row's count is the population's (${row})`)
       assert.equal(ex.n, s.kind === 'check' ? s.population.total : view.active, `${name} ${s.id}: the lead's {n} uses reviewed accounts for check steps`)
-      const reviewCount = rowWho(s).match(/^(\d+) accounts?$/)
-      // Prepare Emergency Access Accounts counts its emergency accounts instead: the ones chosen, at least the two it needs.
-      if (reviewCount) assert.equal(Number(reviewCount[1]), s.id === 's-prereq-break-glass' ? Math.max(2, s.emergency?.accounts.length ?? 0) : s.population.total, `${s.id}: actual row Impact counts the same reviewed accounts`)
       assert.equal(ex.active, view.active, `${name} ${s.id}: the lead's {active}`)
       assert.equal(ex.people, view.active, `${name} ${s.id}: the lead's {people}`)
       assert.equal(ex.admins, view.admins, `${name} ${s.id}: the lead's {admins}`)
@@ -443,7 +440,7 @@ test('a number prints one way on the row, the tile and every filled line', () =>
   // The dormant step at the size huge reaches (HUGE=1 runs huge itself).
   const dormant = r.steps.find((s) => s.id === 's-check-dormant-accounts')
   assert.ok(dormant, 'the premise: large plans the dormant step')
-  const big: Step = { ...dormant, population: namedAccounts(f.snapshot.users.slice(0, 3671).map((u) => u.id), populationIndex(f.snapshot, r.input.viability)) }
+  const big: Step = { ...dormant, impactCount: 3671, population: namedAccounts(f.snapshot.users.slice(0, 3671).map((u) => u.id), populationIndex(f.snapshot, r.input.viability)) }
   assert.equal(rowWho(big), '3,671 accounts')
   assert.match(populationLine(reached(big)!), /^3,671 accounts( · |$)/)
   // The campaign's Who lines on large.
