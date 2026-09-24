@@ -47,6 +47,10 @@ test('one card per policy: to create, headed by its step and naming the policy; 
     assert.equal(t.names?.length, 1, 'the policy it creates, by name')
   }
   for (const t of done) assert.match(t.value, /^(On|In Report-only|Report-only until .+)$/)
+  // A created policy has nothing left to do here: a Satisfied card, never a task.
+  assert.ok(created.length > 0, 'the premise: the demo has created some')
+  const tasks = body.emergencyAccountTasks!.tasks.map((t) => t.id)
+  assert.deepEqual(tasks, create.map((id) => `create:${id}`), 'one task per policy to create, and none for one created')
 })
 
 test('its rail counts the policies left to create, and its header reads Preparation step', () => {
