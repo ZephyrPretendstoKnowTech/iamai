@@ -66,3 +66,6 @@ Item 5 (the change line reporting section 7 steps reopening) is for when the wal
 | — | Create task never says Include: All users or Exclude: the emergency exclusions group; step 3's "Apply the IAMAI-resolved users and exclusions" names neither | noted |
 | — | Name suggests "Core - Require - Security info registration (2)" while that policy already exists | noted |
 | — | Filler per the standing rules: "Do not add or swap a control", step 6 (session controls), step 7's explanation after "create it", step 8 (compare and rescan) | noted |
+
+## Check in every section with a Report-only create (owner, 2026-09-23)
+Every policy's create task must state its Include (e.g. All users) and its Exclude (the emergency exclusions group) by name. A create that leaves either out gives a week of report-only on the wrong people, which makes the week useless. Check this on every create step as the walk reaches it; not fixed now.
