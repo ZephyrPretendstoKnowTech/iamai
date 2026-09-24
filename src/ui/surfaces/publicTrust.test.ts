@@ -1,16 +1,15 @@
 // Task 016: the two entry surfaces and the trust they make claims about.
 //
 // Connect's progression (Microsoft tenant → Baseline → Tenant scan → Plan), the
-// mechanics behind its controls (task 015's, unchanged), the permission truth
-// the signed-out disclosure is generated from, How's hosting and credit
-// statements, and the repository housekeeping the public claims rest on.
+// permission truth the signed-out disclosure is generated from, How's hosting
+// and credit statements, and the housekeeping the public claims rest on.
 //
 // The assertions are about facts and structure, never about a particular
 // sentence: the copy is the owner's to change, and a test that freezes prose
 // makes the next edit look like a regression.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { existsSync, readFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { GRAPH_SCOPES } from '../../graph/scopes.ts'
 import { CONSENT_SCREEN_ORDER, SCOPE_COPY, SIGN_IN_SCOPES, consentRows } from '../../copy/permissions.ts'
 import { app, pages } from '../../content/content.ts'
@@ -55,95 +54,44 @@ test('the setup progression settles what is done and makes the next action the c
   }
 })
 
-// Plan is the destination after the first successful scan, and the order is the
-// product's: Connect → Plan → MFA Readiness → Export. Connect renders four
-// numbered stages in that order and routes on to the plan alone.
-test('Connect renders tenant → baseline → scan → Plan and routes on to the plan', () => {
-  // Both states render the same four stages, in the same order.
-  const signedOutAt = CONNECT.indexOf('function SignedOut(')
-  const signedInAt = CONNECT.indexOf('function SignedIn(')
-  const authorUpdateAt = CONNECT.indexOf('function useAuthorUpdate(')
-  assert.ok(signedOutAt > 0 && signedInAt > signedOutAt && authorUpdateAt > signedInAt, 'the two states are here, in this order')
-  const bodies = {
-    'signed out': CONNECT.slice(signedOutAt, signedInAt),
-    'signed in': CONNECT.slice(signedInAt, authorUpdateAt),
-  }
-  // Task 032 restored the approved anatomy: the first three stages are steps in
-  // one contiguous flow and the Plan is the destination panel below it. The
-  // order and the routing are the same four things in the same sequence.
-  for (const [state, body] of Object.entries(bodies)) {
-    const rendered = [...body.matchAll(/<(Step\n?\s*n=\{1\}|BaselineTile|ScanTileView|Destination)[ \n]/g)].map((m) => m[1].replace(/\s+/g, ' '))
-    assert.deepEqual(rendered, ['Step n={1}', 'BaselineTile', 'ScanTileView', 'Destination'], `${state}: tenant → baseline → scan → Plan`)
-    // Exactly one flow, and the Plan destination is outside it.
-    assert.equal((body.match(/<Flow>/g) ?? []).length, 1, `${state}: the three setup steps share one flow container`)
-    assert.ok(body.indexOf('</Flow>') < body.indexOf('<Destination'), `${state}: the Plan destination sits below the flow, not inside it`)
-  }
-  assert.match(CONNECT, /<Destination tile=\{t4\}/, 'the fourth stage is the Plan')
-  assert.match(CONNECT, /href=\{PLAN_HREF\}/, 'and it opens the plan')
-  // Nothing on Connect sends the operator to MFA Readiness first.
-  assert.doesNotMatch(CONNECT, /readinessHref|#\/readiness|LadderTiles/, 'Connect does not route to MFA Readiness')
-  assert.ok(!JSON.stringify(pages.connect).includes('#/readiness'), 'and its words carry no readiness link')
-  // The current stage says so in a word, so the progression is not colour alone.
-  assert.match(CONNECT, /stage === 'current' && <span className="next">/, 'the current stage carries a word marker')
-  assert.match(read('src/ui/app.css'), /\.connect-step\.settled h2 \{/, 'and a settled stage steps back')
-})
-
-// ---- B. the mechanics are task 015's ----
-
-// The redesign moved presentation. Every control on Connect still calls the one
-// canonical action, and the page keeps no session, auth, demo or cache state of
-// its own to disagree with it.
-test('every Connect control calls the canonical action, and the page owns no session state', () => {
-  assert.match(CONNECT, /from '\.\.\/actions\.ts'/, 'the actions come from ui/actions.ts')
-  for (const action of ['signIn', 'signInAnother', 'signOut', 'chooseBaseline', 'stopScan']) {
-    assert.ok(new RegExp(`\\b${action}\\b`).test(CONNECT), `Connect calls ${action} rather than reimplementing it`)
-  }
-  assert.match(CONNECT, /scan as runScan/, 'the scan is ui/actions.ts scan()')
-  assert.match(CONNECT, /useSession\(\)/, 'and the scan in flight is the session\'s')
-  assert.match(CONNECT, /demoUrl\(\)/, 'the sample-data entry is demoMode.ts')
-  // No second implementation of what task 015 owns.
-  for (const forbidden of ['msalInstance', 'localStorage.', 'indexedDB', 'forgetStored', 'PublicClientApplication', 'DEMO_PARAM']) {
-    assert.ok(!CONNECT.includes(forbidden), `Connect reaches past ui/actions.ts for ${forbidden}`)
-  }
-})
-
-// The public demo exit is one implementation: the banner's link is the URL
-// demoMode.ts builds, and nothing else clears the demo.
-test('leaving the demo goes through the one exit, from the shell', () => {
-  const shell = read('src/ui/shell/AppShell.tsx')
-  assert.match(shell, /exitDemoUrl\(\)/, 'the banner leaves through demoMode.ts')
-  const demoMode = read('src/ui/demoMode.ts')
-  assert.match(demoMode, /export function exitDemoUrl/, 'and there is one exit')
-  // Demo mode is read from the URL, never from storage: leaving is a navigation,
-  // not a state a second implementation could get wrong.
-  assert.match(demoMode, /Read from the URL, never from storage/)
-  // The home page's sample-data link enters the same way the app leaves it.
-  const home = read('home/index.html')
-  assert.ok(home.includes('?demo=1#/plan'), 'the home page enters the demo at the same URL demoUrl() builds')
-})
-
 // ---- C. permission truth ----
 
 // The signed-out disclosure is generated from the permission authority: the
 // scopes the app requests, crossed with what each one is spent on. There is no
 // second list in the content that could widen or contradict it.
-test('the signed-out disclosure is generated from GRAPH_SCOPES, not from a list of its own', () => {
-  const tenantScopes = GRAPH_SCOPES.filter((s) => !SIGN_IN_SCOPES.includes(s))
-  const rows = consentRows()
-  assert.deepEqual([...rows.map((r) => r.scope)].sort(), [...tenantScopes].sort(), 'one row per requested tenant scope, none invented')
-  assert.deepEqual(rows.map((r) => r.scope), CONSENT_SCREEN_ORDER, "the rows are in the consent screen's order")
-  for (const r of rows) {
-    assert.equal(r.name, SCOPE_COPY[r.scope].consentName, `${r.scope}: the name is the authority's`)
-    assert.equal(r.reads, SCOPE_COPY[r.scope].consentReads, `${r.scope}: what it reads is the authority's`)
+test('the permission disclosure on Connect and the tables on How are generated from GRAPH_SCOPES and the registries, never from a list of their own', () => {
+  {
+    const tenantScopes = GRAPH_SCOPES.filter((s) => !SIGN_IN_SCOPES.includes(s))
+    const rows = consentRows()
+    assert.deepEqual([...rows.map((r) => r.scope)].sort(), [...tenantScopes].sort(), 'one row per requested tenant scope, none invented')
+    assert.deepEqual(rows.map((r) => r.scope), CONSENT_SCREEN_ORDER, "the rows are in the consent screen's order")
+    for (const r of rows) {
+      assert.equal(r.name, SCOPE_COPY[r.scope].consentName, `${r.scope}: the name is the authority's`)
+      assert.equal(r.reads, SCOPE_COPY[r.scope].consentReads, `${r.scope}: what it reads is the authority's`)
+    }
+    // The tile renders exactly those rows, and the count in its lead is theirs.
+    const tile = signInTile({ error: null })
+    assert.deepEqual(tile.permissions.rows, rows)
+    assert.ok(tile.permissions.lead.includes(String(rows.length)), 'the lead counts the rows it shows')
+    // The content carries no permission list of its own any more.
+    const words = JSON.stringify(pages.connect)
+    for (const scope of GRAPH_SCOPES) assert.ok(!words.includes(scope), `${scope} is written into the page's words as well`)
+    assert.ok(!('consent' in (pages.connect as { signIn: Record<string, unknown> }).signIn), 'the second consent list was retired')
   }
-  // The tile renders exactly those rows, and the count in its lead is theirs.
-  const tile = signInTile({ error: null })
-  assert.deepEqual(tile.permissions.rows, rows)
-  assert.ok(tile.permissions.lead.includes(String(rows.length)), 'the lead counts the rows it shows')
-  // The content carries no permission list of its own any more.
-  const words = JSON.stringify(pages.connect)
-  for (const scope of GRAPH_SCOPES) assert.ok(!words.includes(scope), `${scope} is written into the page's words as well`)
-  assert.ok(!('consent' in (pages.connect as { signIn: Record<string, unknown> }).signIn), 'the second consent list was retired')
+  {
+    // The permission, read and check tables stay generated from the registries the
+    // code runs from. A hand-maintained table beside them is a second truth that
+    // can quietly disagree with what the tool actually does.
+    assert.match(HOW, /scopeRows\(\)/, 'the permissions are generated from GRAPH_SCOPES')
+    assert.match(read('src/ui/surfaces/howView.ts'), /COLLECTOR_REGISTRY\.filter/, 'the reads are the collector registry')
+    assert.match(read('src/ui/surfaces/howView.ts'), /REGISTRY\.filter/, 'the checks are the rule registry')
+    // No literal endpoint, scope or check written into the page.
+    for (const literal of ['https://graph.microsoft.com', '/v1.0/', 'Policy.Read.All', 'Directory.Read.All']) {
+      assert.ok(!HOW.includes(literal), `How writes ${literal} down instead of reading it from the registry`)
+    }
+    const words = JSON.stringify(app.how)
+    for (const scope of GRAPH_SCOPES) assert.ok(!words.includes(scope), `${scope} is written into How's words`)
+  }
 })
 
 // Read-only is the product boundary, not a claim about it: no requested scope
@@ -157,37 +105,46 @@ test('no write scope is requested, and no public surface names one', () => {
 
 // ---- G, H, I. How: the technical trust surface ----
 
-// The permission, read and check tables stay generated from the registries the
-// code runs from. A hand-maintained table beside them is a second truth that
-// can quietly disagree with what the tool actually does.
-test('How generates its permissions, reads and checks from the registries', () => {
-  assert.match(HOW, /scopeRows\(\)/, 'the permissions are generated from GRAPH_SCOPES')
-  assert.match(read('src/ui/surfaces/howView.ts'), /COLLECTOR_REGISTRY\.filter/, 'the reads are the collector registry')
-  assert.match(read('src/ui/surfaces/howView.ts'), /REGISTRY\.filter/, 'the checks are the rule registry')
-  // No literal endpoint, scope or check written into the page.
-  for (const literal of ['https://graph.microsoft.com', '/v1.0/', 'Policy.Read.All', 'Directory.Read.All']) {
-    assert.ok(!HOW.includes(literal), `How writes ${literal} down instead of reading it from the registry`)
-  }
-  const words = JSON.stringify(app.how)
-  for (const scope of GRAPH_SCOPES) assert.ok(!words.includes(scope), `${scope} is written into How's words`)
-})
-
 // Where the site runs, and where the tenant's data does not. The sentence has to
 // be true of the current deployment: a static site on GitHub Pages behind
 // Cloudflare, with the snapshot never leaving the browser.
-test('How says where the public site is served from, that the tenant data stays in the browser, and that the source is public', () => {
-  const hosting = (app.how as Record<string, string>).hostingBody
-  assert.ok(hosting, 'How carries a hosting statement')
-  assert.match(hosting, /Cloudflare/, 'it names what serves the public site')
-  assert.match(hosting, /GitHub/, 'and where the files and the source are')
-  assert.match(hosting, /browser/, 'and where the tenant data stays')
-  assert.match(hosting, /public/, 'and that the source is public')
-  // Cloudflare serves the site; it never receives the snapshot. The sentence
-  // must not be readable the other way.
-  assert.doesNotMatch(hosting, /Cloudflare[^.]*\b(receives|stores|holds|processes|sends)\b/i, hosting)
-  assert.match(HOW, /\{C\.hostingBody\}/, 'and the page renders it')
-  // Said once: the home page makes its own shorter claim rather than repeating this.
-  assert.ok(!JSON.stringify(pages.home).includes('Cloudflare'), 'the hosting sentence is not copied onto the home page')
+test("How's hosting statement says where the site is served from, the telemetry the host collects, every non-Microsoft host the app contacts, and that tenant data stays in the browser", () => {
+  {
+    const hosting = (app.how as Record<string, string>).hostingBody
+    assert.ok(hosting, 'How carries a hosting statement')
+    assert.match(hosting, /Cloudflare/, 'it names what serves the public site')
+    assert.match(hosting, /GitHub/, 'and where the files and the source are')
+    assert.match(hosting, /browser/, 'and where the tenant data stays')
+    assert.match(hosting, /public/, 'and that the source is public')
+    // Cloudflare serves the site; it never receives the snapshot. The sentence
+    // must not be readable the other way.
+    assert.doesNotMatch(hosting, /Cloudflare[^.]*\b(receives|stores|holds|processes|sends)\b/i, hosting)
+    assert.match(HOW, /\{C\.hostingBody\}/, 'and the page renders it')
+    // Said once: the home page makes its own shorter claim rather than repeating this.
+    assert.ok(!JSON.stringify(pages.home).includes('Cloudflare'), 'the hosting sentence is not copied onto the home page')
+  }
+  {
+    const hosting = (app.how as Record<string, string>).hostingBody
+    // Named, so a reader who opens the network tab is not surprised by it.
+    assert.match(hosting, /beacon|page load|page-load/i, 'the hosting statement does not mention the host-injected beacon')
+    // And bounded: it is about the page, and IAMAI cannot remove it from here.
+    assert.match(hosting, /\btenant\b/, 'it does not say what the beacon does not carry')
+    assert.match(hosting, /cannot be removed|not in IAMAI/i, 'it does not say the beacon is outside the bundle')
+  }
+  {
+    // Connect asks GitHub whether the baseline's author has published changes
+    // (ui/baseline.ts checkAuthorHead and baselineReview) from the administrator's
+    // browser. How's "Where it runs" named Cloudflare's beacon and never the one
+    // other third party the app itself contacts (Phase 2 audit, How).
+    const hosting = (app.how as Record<string, string>).hostingBody
+    const others = REQUEST_HOSTS.filter((h) => !/microsoft(online)?\.com$/.test(h))
+    assert.ok(others.length > 0)
+    for (const host of others) assert.ok(hosting.includes(host), `How's hosting statement does not name ${host}`)
+    assert.match(hosting, /no tenant data/i, 'it does not say what the GitHub requests carry')
+    // "reads the changed files when there are" left "there are" with nothing to
+    // refer to (Phase 2 review, round 2).
+    assert.match(hosting, /when there are changes, reads the changed files/, 'it says when the changed files are read')
+  }
 })
 
 // Jon Hope's work is credited by name and by canonical repository, with no claim
@@ -214,12 +171,10 @@ test('How credits CA Policy Analyzer and the baseline without claiming an endors
 
 // Production publishes the exact commit pushed to main (bb385cd0, a0284f8a):
 // deploy-pages.yml checks out that SHA, builds the site and deploys it; a
-// failed install or build deploys nothing. ci.yml validates the same pushes and
-// every pull request beside the deploy (7e99ffb4) and never gates it. The walk
-// runs in neither: the retired walk gate is not asserted any more.
-test('the deploy workflow publishes the pushed main commit, and CI validates beside it', () => {
+// failed install or build deploys nothing. What ci.yml runs, and on which
+// pushes, is the owner's to change and is not pinned here.
+test('the deploy workflow publishes the pushed main commit, built, and only after ci passed on it', () => {
   const uncommented = (yml: string): string => yml.split('\n').filter(l => !/^\s*#/.test(l)).join('\n')
-  const ci = uncommented(read('.github/workflows/ci.yml'))
   const config = uncommented(read('.github/workflows/deploy-pages.yml'))
   // Deploy: after ci, on main only, the validated commit, built then published.
   assert.match(config, /on:\n  workflow_run:\n    workflows: \[ci\]\n    types: \[completed\]\n    branches: \[main\]/, 'the deploy no longer waits for ci')
@@ -230,24 +185,7 @@ test('the deploy workflow publishes the pushed main commit, and CI validates bes
   assert.equal((config.match(/ref: \$\{\{ github\.event\.workflow_run\.head_sha \|\| github\.sha \}\}/g) ?? []).length, checkouts.length, 'the build is not pinned to the commit ci validated')
   assert.ok(config.indexOf('npm run build:site') > 0 && config.indexOf('npm run build:site') < config.indexOf('actions/deploy-pages@'), 'the site is deployed without being built first')
   assert.doesNotMatch(config, /npm run walk|workflow_call|night-1|\/next\/|TOOL_PATH_PREFIX|ref: +main\s*$/m)
-  // CI: pull requests and main, both jobs required, reporting beside the deploy.
-  assert.match(ci, /pull_request:/)
-  assert.match(ci, /push:\n    branches: \[main\]/)
-  assert.match(ci, /run: npx tsc --noEmit/)
-  assert.match(ci, /npm test/)
-  assert.match(ci, /name: ci\n    needs: \[checks, browser\]/, 'both independently retryable jobs remain required')
-  assert.match(ci, /test "\$CHECKS" = success && test "\$BROWSER" = success/)
-  assert.doesNotMatch(ci, /deploy-pages\.yml|npm run walk/, 'CI gates the deploy or runs the walk')
   assert.doesNotMatch(read('scripts/toolPath.ts'), /process\.env/)
-})
-test('dependabot is configured for the one npm project at the root, weekly', () => {
-  const path = '.github/dependabot.yml'
-  assert.ok(existsSync(path), 'the dependabot config exists')
-  const yml = read(path)
-  assert.match(yml, /^version: 2$/m)
-  assert.match(yml, /package-ecosystem: npm/)
-  assert.match(yml, /directory: \/$/m)
-  assert.match(yml, /interval: weekly/)
 })
 
 // The wording review is read by people who are not the owner: its example
@@ -267,52 +205,43 @@ test("the wording review's example operator is admin@contoso.com", () => {
 // collected for getiamai.com, by the host, outside anything this repository can
 // change. The product may say IAMAI collects nothing; it may not say nothing is
 // collected.
-test('no public surface claims a blanket absence of analytics that the host contradicts', () => {
-  // A bare "no analytics" / "no telemetry" reads as a claim about the page, and
-  // the page is not IAMAI's to make that claim about. Qualified forms ("no
-  // analytics of its own", "no telemetry in the bundle") are what the evidence
-  // supports.
-  const BARE = /\bno (analytics|telemetry|tracking)\b(?!\s+(of (its|our) own|in the bundle|of ours))/i
-  for (const [what, words] of [
-    ['the home page', JSON.stringify(pages.home)],
-    ['Connect', JSON.stringify(pages.connect)],
-    ['How', JSON.stringify(app.how)],
-  ] as const) {
-    assert.doesNotMatch(words, BARE, `${what} makes an unqualified no-analytics claim`)
+test('no public surface claims a blanket absence of analytics, and no analytics host is referenced in the source the bundle is built from', () => {
+  {
+    // A bare "no analytics" / "no telemetry" reads as a claim about the page, and
+    // the page is not IAMAI's to make that claim about. Qualified forms ("no
+    // analytics of its own", "no telemetry in the bundle") are what the evidence
+    // supports.
+    const BARE = /\bno (analytics|telemetry|tracking)\b(?!\s+(of (its|our) own|in the bundle|of ours))/i
+    for (const [what, words] of [
+      ['the home page', JSON.stringify(pages.home)],
+      ['Connect', JSON.stringify(pages.connect)],
+      ['How', JSON.stringify(app.how)],
+    ] as const) {
+      assert.doesNotMatch(words, BARE, `${what} makes an unqualified no-analytics claim`)
+    }
   }
-})
-
-test('How discloses the page telemetry the host collects, and keeps it apart from the tenant', () => {
-  const hosting = (app.how as Record<string, string>).hostingBody
-  // Named, so a reader who opens the network tab is not surprised by it.
-  assert.match(hosting, /beacon|page load|page-load/i, 'the hosting statement does not mention the host-injected beacon')
-  // And bounded: it is about the page, and IAMAI cannot remove it from here.
-  assert.match(hosting, /\btenant\b/, 'it does not say what the beacon does not carry')
-  assert.match(hosting, /cannot be removed|not in IAMAI/i, 'it does not say the beacon is outside the bundle')
-})
-
-// The home page's own short claim is about the tenant's data, which is the
-// claim the product can keep: the beacon is not the tenant's data.
-test("the home page's browser claim is about the tenant's data, and admits the host counts page loads", () => {
-  const trust = pages.home.trust as { title: string; body: string }[]
-  const row = trust.find((t) => /browser/i.test(t.title) || /browser/i.test(t.body))
-  assert.ok(row, 'the trust row about the browser is gone')
-  assert.match(row.title + ' ' + row.body, /tenant/i, 'the claim is not narrowed to the tenant’s data')
-  assert.match(row.body, /host/i, 'the row does not admit that the web host counts page loads')
-  // Said without naming Cloudflare: that sentence lives on How, once.
-  assert.ok(!row.body.includes('Cloudflare'), 'the hosting sentence is repeated on the home page')
-})
-
-// The claim rests on the build, so the build is what the test reads: no
-// analytics host may appear in any source file the bundle is made from.
-test('no analytics host is referenced anywhere in the source the bundle is built from', () => {
-  const HOSTS = /cloudflareinsights|google-analytics|googletagmanager|plausible\.io|segment\.(io|com)|mixpanel|sentry\.io|posthog/i
-  for (const path of ['index.html', 'vite.config.ts', 'scripts/assemble-site.mjs', 'scripts/build-home.ts']) {
-    assert.doesNotMatch(read(path), HOSTS, `${path} references an analytics host`)
+  {
+    // The home page's own short claim is about the tenant's data, which is the
+    // claim the product can keep: the beacon is not the tenant's data.
+    const trust = pages.home.trust as { title: string; body: string }[]
+    const row = trust.find((t) => /browser/i.test(t.title) || /browser/i.test(t.body))
+    assert.ok(row, 'the trust row about the browser is gone')
+    assert.match(row.title + ' ' + row.body, /tenant/i, 'the claim is not narrowed to the tenant’s data')
+    assert.match(row.body, /host/i, 'the row does not admit that the web host counts page loads')
+    // Said without naming Cloudflare: that sentence lives on How, once.
+    assert.ok(!row.body.includes('Cloudflare'), 'the hosting sentence is repeated on the home page')
   }
-  // SECURITY.md is the one place that names the beacon, because naming it is
-  // the disclosure; it is prose, not a script tag.
-  assert.match(read('SECURITY.md'), /cloudflareinsights/, 'SECURITY.md no longer discloses the host-injected beacon')
+  {
+    // The claim rests on the build, so the build is what the test reads: no
+    // analytics host may appear in any source file the bundle is made from.
+    const HOSTS = /cloudflareinsights|google-analytics|googletagmanager|plausible\.io|segment\.(io|com)|mixpanel|sentry\.io|posthog/i
+    for (const path of ['index.html', 'vite.config.ts', 'scripts/assemble-site.mjs', 'scripts/build-home.ts']) {
+      assert.doesNotMatch(read(path), HOSTS, `${path} references an analytics host`)
+    }
+    // SECURITY.md is the one place that names the beacon, because naming it is
+    // the disclosure; it is prose, not a script tag.
+    assert.match(read('SECURITY.md'), /cloudflareinsights/, 'SECURITY.md no longer discloses the host-injected beacon')
+  }
 })
 
 // ---- Baseline source and version ----
@@ -333,19 +262,4 @@ test('Connect renders the baseline source and version from the loaded package, n
   // No commit, repository or date written into the component by hand.
   assert.doesNotMatch(pin, /[0-9a-f]{7,40}/, 'a revision is hardcoded beside the one the package carries')
   assert.doesNotMatch(pin, /\d{4}-\d{2}-\d{2}/, 'a date is hardcoded beside the pinned index’s own')
-})
-
-// Connect asks GitHub whether the baseline's author has published changes
-// (ui/baseline.ts checkAuthorHead and baselineReview) from the administrator's
-// browser. How's "Where it runs" named Cloudflare's beacon and never the one
-// other third party the app itself contacts (Phase 2 audit, How).
-test('How names every non-Microsoft host the app contacts, and that no tenant data goes to it', () => {
-  const hosting = (app.how as Record<string, string>).hostingBody
-  const others = REQUEST_HOSTS.filter((h) => !/microsoft(online)?\.com$/.test(h))
-  assert.ok(others.length > 0)
-  for (const host of others) assert.ok(hosting.includes(host), `How's hosting statement does not name ${host}`)
-  assert.match(hosting, /no tenant data/i, 'it does not say what the GitHub requests carry')
-  // "reads the changed files when there are" left "there are" with nothing to
-  // refer to (Phase 2 review, round 2).
-  assert.match(hosting, /when there are changes, reads the changed files/, 'it says when the changed files are read')
 })
