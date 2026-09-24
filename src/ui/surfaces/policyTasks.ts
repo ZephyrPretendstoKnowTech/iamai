@@ -30,7 +30,7 @@ import { enforcesByStateOnly, stepOperations } from './stepJson.ts'
 import { CONTRACT, FINISHED_FINDINGS, isReadinessWork } from './stepContract.ts'
 import { app, structuralWords } from '../../content/content.ts'
 import { toReportOnly } from '../../roadmap/operations.ts'
-import { fillText } from '../../content/render.ts'
+import { fillText, whole } from '../../content/render.ts'
 import { list } from '../../copy/statements.ts'
 
 /** The line every package authors above the enforce conditions, and the one place a step's own prerequisites belong. */
@@ -81,7 +81,7 @@ function contentKindOf(stepId: string): string | null {
 
 /** The step a card is on, as the content file has it: its own entry, or the guidance a generated step carries (a baseline-review row). */
 type CardStep = { id: string; goalId?: string; guidance?: { card?: { subject: string; check: string } | null; taskTitle?: string | null } }
-const entryOf = (step: CardStep): { card?: { subject: string; check: string } | null; taskTitle?: string | null } | undefined =>
+const entryOf = (step: CardStep): { card?: { subject: string; check: string; satisfied?: string } | null; taskTitle?: string | null } | undefined =>
   contentStepFor({ id: step.id, goalId: step.goalId ?? (step.id.startsWith('s-goal-') ? step.id.slice('s-goal-'.length) : ''), guidance: step.guidance as never })
 
 /**
@@ -95,6 +95,17 @@ const entryOf = (step: CardStep): { card?: { subject: string; check: string } | 
 export function cardWordsOf(step: CardStep): { subject: string; check: string } | null {
   const card = entryOf(step)?.card
   return card && typeof card.subject === 'string' && typeof card.check === 'string' ? card : null
+}
+
+/**
+ * The fact a satisfied card states in place of "In place · No change needed."
+ * (step template rule 6), where the step's content writes one (`card.satisfied`)
+ * and the scan holds every value it names: 3.7's "Core - Exception - Service
+ * accounts · 2 members". Null otherwise, and the card keeps its state word.
+ */
+export function cardFactOf(step: CardStep, ex: Record<string, unknown>): string | null {
+  const fact = entryOf(step)?.card?.satisfied
+  return typeof fact === 'string' && whole(fact, ex) ? fillText(fact, ex) : null
 }
 
 /**
@@ -342,7 +353,7 @@ function atLastStage(track: readonly ContractStage[], lifecycle: Lifecycle | nul
  * step has no task left to do, so "No tasks remaining" cannot be shown over work
  * that Implementation Tasks still lists.
  */
-export function policyCardsOf(contract: StepContract, projected: EmergencyTaskProjection | null, subject: string = POLICY_SUBJECT, check: string | null = null): EmergencySubjectTile[] {
+export function policyCardsOf(contract: StepContract, projected: EmergencyTaskProjection | null, subject: string = POLICY_SUBJECT, check: string | null = null, fact: string | null = null): EmergencySubjectTile[] {
   const task = projected?.tasks.find((item) => item.required) ?? projected?.tasks[0] ?? null
   // One task needs no pointer sentence (owner, 2026-09-20). On Emergency Access
   // the sentence earns its place because the step has three or four tasks and
@@ -392,12 +403,13 @@ export function policyCardsOf(contract: StepContract, projected: EmergencyTaskPr
       accountId: null,
       heading: subject.heading,
       upn: subject.name,
-      title: satisfied ? here : next ?? here,
+      // A satisfied card states its fact where the step's content writes one (cardFactOf).
+      title: satisfied ? fact ?? here : next ?? here,
       // What that check means, in the contract's own words for this step: its one
       // action (Foundation B's milestone where nothing overrules it, and the more
       // specific sentence where something does — "this policy names an object
       // Contoso does not have yet", "in place already: nothing to create").
-      detail: contract.whatToDo.text,
+      detail: satisfied && fact !== null ? '' : contract.whatToDo.text,
       instruction: satisfied || directed === null || !pointer ? '' : followTask(directed.title),
       // The rollout lifecycle is not a list of checks anybody completed, and
       // stages left are not checks remaining (S4-5): the card claims neither.
@@ -418,7 +430,7 @@ export function policyCardsOf(contract: StepContract, projected: EmergencyTaskPr
  * satisfied card, so it folds under the completed disclosure the way it folded
  * under the strip's own.
  */
-export function policySubjectsOf(contract: StepContract, readiness: ContractReadiness, projected: EmergencyTaskProjection | null, subject: string = POLICY_SUBJECT, check: string | null = null): EmergencySubjectTile[] {
+export function policySubjectsOf(contract: StepContract, readiness: ContractReadiness, projected: EmergencyTaskProjection | null, subject: string = POLICY_SUBJECT, check: string | null = null, fact: string | null = null): EmergencySubjectTile[] {
   // One task needs no pointer sentence (owner, 2026-09-20): the one pointer the
   // adapter can write on this step is to the step's only task, and the section
   // below it carries the same words.
@@ -436,6 +448,6 @@ export function policySubjectsOf(contract: StepContract, readiness: ContractRead
   // — the two cards read identically. The card that names the subject the
   // sentence is about keeps it; the general one drops it and states its check.
   const said = new Set(rest.map((c) => (c.instruction ?? '').trim()).filter((s) => s !== ''))
-  const own = policyCardsOf(contract, projected, subject, check).map((c) => (said.has((c.detail ?? '').trim()) ? { ...c, detail: '' } : c))
+  const own = policyCardsOf(contract, projected, subject, check, fact).map((c) => (said.has((c.detail ?? '').trim()) ? { ...c, detail: '' } : c))
   return [...own, ...rest]
 }

@@ -210,9 +210,12 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // punctuation the review renderer drops after a list, so the fragment this test
   // looks for carries a leading "." or ":" the page does not. The mail-sending
   // sentence rides the list line now ([2]), so it goes with the list where none is
-  // nominated; the ROPC line moved from [4] to [3].
+  // nominated. The ROPC line moved to the package's AI Info (walk list item 72).
   '.steps[5].whatToDo.steps[2]',
-  '.steps[5].whatToDo.steps[3]',
+  // Its lead once the scan finds the group holding exactly the picked accounts
+  // and nobody has saved it (stepVars.ts serviceGroupFound): the example's
+  // tenant has no such group, so the review page draws the create lead.
+  '.steps[5].whatToDoWhen.serviceGroupFound.lead',
   '.steps[6].who.none',
   // The lead for a tenant whose security defaults the scan read as already off
   // (who.leadWhen, R4): the example's tenant has them on, so only that sentence
