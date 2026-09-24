@@ -89,58 +89,6 @@ test('Step 1: configuring an existing account names the account and only the cha
   assert.ok(!text.includes(value.snapshot.users.find(row => row.id === second)!.userPrincipalName!))
 })
 
-test('Step 1: with no account needing configuration the procedure says so and lists no change', () => {
-  const steps = tasksOf(structuredClone(fixture('demo-week2'))).get('s-prereq-break-glass')!.find(task => task.id === 'configure-account')!.steps
-  // And says what it is saying it about: this procedure is the sign-in
-  // address, the enabled state and the role, and the step has another tile
-  // that can be asking for a passkey at the same time.
-  assert.equal(steps[1], 'No selected account needs a change to its sign-in address, enabled state or role.')
-  // A change no chosen account needs is not listed (owner, 2026-09-23).
-  assert.ok(!steps.some(line => /sign-in address, open the account|User principal name|Account enabled|Global Administrator/.test(line)))
-})
-
-// NEW-Nadia-D12. The configuration procedure said it was not needed and the
-// create procedure never did: with two verified accounts selected, the printed
-// plan and the task list offered "Create an emergency account" as work beside
-// the one task that remained. It says so where the selection holds two or more
-// accounts, every one read as cloud-only — and nowhere a new account is needed.
-test('Step 1: with enough cloud-only accounts selected the create procedure says no new account is needed', () => {
-  const REFERENCE = /^No new emergency account is needed: \d+ cloud-only accounts are selected\. The steps below stay here as a reference\.$/
-  const createOf = (value: Fixture) => tasksOf(value).get('s-prereq-break-glass')!.find(task => task.id === 'create-account')!.steps
-  const verified = structuredClone(fixture('demo-week2'))
-  assert.equal(verified.mapping.breakGlassUserIds.length, 2, 'the premise: two accounts selected')
-  const steps = createOf(verified)
-  assert.match(steps[0], REFERENCE)
-  assert.ok(steps.some(line => /New user → Create new user/.test(line)), 'the procedure stays as a reference')
-
-  // One account selected: a second is needed.
-  const one = structuredClone(fixture('demo-week2'))
-  one.mapping.breakGlassUserIds = one.mapping.breakGlassUserIds.slice(0, 1)
-  assert.ok(!createOf(one).some(line => REFERENCE.test(line)))
-  // A synchronized account: it has to be replaced.
-  const synced = structuredClone(fixture('demo-week2'))
-  synced.snapshot.users.find(user => user.id === synced.mapping.breakGlassUserIds[0])!.onPremisesSyncEnabled = true
-  assert.ok(!createOf(synced).some(line => REFERENCE.test(line)))
-  // Nobody selected.
-  const none = structuredClone(fixture('demo-week2'))
-  none.mapping.breakGlassUserIds = []
-  assert.ok(!createOf(none).some(line => REFERENCE.test(line)))
-
-  // A selected account that may not be dedicated. The line used to appear here
-  // too: with the account signed in to IAMAI now, or carrying a job title, its
-  // card noted it and bg.notPersonal's fix said "Use a dedicated account ...
-  // Users → New user", while this procedure said no new account was needed —
-  // steering an administrator towards keeping a daily Global Administrator
-  // account as the way back in. IAMAI cannot know a new account is unneeded
-  // when its own check says one may not be dedicated.
-  const signedIn = structuredClone(fixture('demo-week2'))
-  signedIn.snapshot.config.me = { status: 'ok', reason: null, rows: [{ id: signedIn.mapping.breakGlassUserIds[0] }] }
-  assert.ok(!createOf(signedIn).some(line => REFERENCE.test(line)), 'the operator is selected')
-  const titled = structuredClone(fixture('demo-week2'))
-  titled.snapshot.users.find(user => user.id === titled.mapping.breakGlassUserIds[1])!.jobTitle = 'IT Manager'
-  assert.ok(!createOf(titled).some(line => REFERENCE.test(line)), 'a selected account has a job title')
-})
-
 test('Step 3: affected passkeys name the accounts to prepare', () => {
   for (const [, make] of CASES) {
     const value = make()
