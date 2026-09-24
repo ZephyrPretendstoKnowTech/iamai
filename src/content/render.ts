@@ -91,6 +91,7 @@ export function fillText(text: unknown, ex: Ex, depth = 0): string {
     portalOpen: S.portalOpen, existingCoverage: S.existingCoverage ?? '', syncRoleNote: S.syncRoleNote ?? '', strengthName: (ex && ex.strengthName) ?? '',
     certificatePrompt: S.certificatePrompt ?? '',
     registerPasskeyLine: sharedRefText('registerPasskeyLine'), methodGuidePointer: sharedRefText('methodGuidePointer'), guestNoTap: sharedRefText('guestNoTap'),
+    ...passkeyRefs(),
   }
   const subList = (_m: string, key: string): string => {
     const items = (ex as Record<string, unknown>)[key]
@@ -131,7 +132,7 @@ export const SINGLE_CHOICE_SOURCES = ['groups', 'countryLocations', 'strengths']
  * anything this tenant was read for. A line whose only variables are these says
  * nothing about the tenant (stepExport.ts readsTenant).
  */
-export const SHARED_REF_KEYS = new Set(['portalRoot', 'reportOnlyLine', 'exclusionsLine', 'signature', 'policyIfWrong', 'changeIfWrong', 'enforceIfWrong', 'datesNew', 'datesChange', 'datesDeploy', 'datesObserve', 'datesReview', 'portalOpen', 'existingCoverage', 'syncRoleNote', 'strengthName', 'certificatePrompt', 'registerPasskeyLine', 'methodGuidePointer', 'guestNoTap'])
+export const SHARED_REF_KEYS = new Set(['portalRoot', 'reportOnlyLine', 'exclusionsLine', 'signature', 'policyIfWrong', 'changeIfWrong', 'enforceIfWrong', 'datesNew', 'datesChange', 'datesDeploy', 'datesObserve', 'datesReview', 'portalOpen', 'existingCoverage', 'syncRoleNote', 'strengthName', 'certificatePrompt', 'registerPasskeyLine', 'methodGuidePointer', 'guestNoTap', 'passkeyOpen', 'passkeyCreate', 'passkeyPrompts', 'passkeyProvider', 'passkeySignIn'])
 
 /**
  * The string behind a shared reference. Most are a key of `shared`; the three
@@ -140,6 +141,24 @@ export const SHARED_REF_KEYS = new Set(['portalRoot', 'reportOnlyLine', 'exclusi
  * and `missingVars` resolve a reference the same way and no line can be filled
  * with a value the hole gate never saw.
  */
+/**
+ * The one procedure for a passkey in Microsoft Authenticator and the line that
+ * says how to pick it at sign-in (shared.methodGuides.common, owner 2026-09-24).
+ * A line names them as {passkeyOpen}, {passkeyCreate}, {passkeyPrompts},
+ * {passkeyProvider} and {passkeySignIn}; the reader's values fill
+ * {passkeyPhone} and {passkeyAccount} inside them.
+ */
+function passkeyRefs(): Record<string, unknown> {
+  const common = ((S.methodGuides as Record<string, unknown> | undefined)?.common ?? {}) as Record<string, unknown>
+  return {
+    passkeyOpen: common.authenticatorOpen,
+    passkeyCreate: common.authenticatorCreate,
+    passkeyPrompts: common.authenticatorPrompts,
+    passkeyProvider: common.authenticatorProvider,
+    passkeySignIn: common.passkeySignIn,
+  }
+}
+
 function sharedRefText(key: string): unknown {
   if (key === 'registerPasskeyLine') return (S.methodGuides as Record<string, unknown> | undefined)?.userInstruction
   if (key === 'methodGuidePointer') return (S.methodGuides as Record<string, unknown> | undefined)?.pointer
@@ -323,6 +342,7 @@ export function fill(text: unknown, ex: Ex, depth = 0): string {
     registerPasskeyLine: sharedRefText('registerPasskeyLine'),
     methodGuidePointer: sharedRefText('methodGuidePointer'),
     guestNoTap: sharedRefText('guestNoTap'),
+    ...passkeyRefs(),
   }
   const defaults: Record<string, any> = {
     announce: 'Tue Sep 1',

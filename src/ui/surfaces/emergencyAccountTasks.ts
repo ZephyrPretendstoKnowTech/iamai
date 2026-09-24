@@ -10,6 +10,7 @@ import { GLOBAL_ADMIN_ROLE, initialDomain } from '../../validation/rules.ts'
 import { oneLine } from '../../content/implementation/project.ts'
 import { app } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
+import { authenticatorPasskeyLines } from '../../content/passkeySetup.ts'
 import { list } from '../../copy/statements.ts'
 import { tenantNameOf } from './stepVars.ts'
 import { operatorUserId } from '../../derive/operator.ts'
@@ -134,10 +135,8 @@ export function yubiKeySteps(upn: string, device = 'approved YubiKey'): string[]
 export function authenticatorSteps(upn: string, platform: 'iPhone/iPad' | 'Android'): string[] {
   const account = upn === 'the emergency account' ? upn : `**${upn}**`
   return [
-    `Open **Microsoft Authenticator** on the recovery ${platform} device.`,
-    `Select ${account} and **Create a passkey**. If the account is absent, use **Add account → Work or school account → Sign in** instead, and complete the passkey setup flow.`,
-    'Complete the Microsoft authentication prompts for that account.',
-    'Follow the app’s Settings prompt to enable a screen lock and select **Authenticator** as a passkey provider. Return to the app and finish setup.',
+    // The one Authenticator procedure every step reads (content/passkeySetup.ts).
+    ...authenticatorPasskeyLines(`the recovery ${platform} device`, account),
     `Confirm the passkey appears for ${account}. In a separate private browser window, sign in to Microsoft Entra admin center using it; confirm the account and tenant, then sign out.`,
     'Retain the previous working method until that sign-in succeeds. Secure the recovery device and unlock information for authorized access without this tenant.',
     'Return to IAMAI and select **Scan to update the plan**.',

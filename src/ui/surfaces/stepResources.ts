@@ -15,6 +15,7 @@ import { fillText } from '../../content/render.ts'
 import { reportOnlyPatchesOf, toReportOnly } from '../../roadmap/operations.ts'
 import type { PolicyOperation } from '../../roadmap/types.ts'
 import { powershellFor } from './stepPowerShell.ts'
+import { mfaEmailValues } from './prepareSteps.ts'
 
 /**
  * Where a lifecycle resource would print a value IAMAI does not hold: U+E000, the
@@ -94,6 +95,7 @@ type EmailWords = {
   required: string
   notRequired: string
   mfaPreparation: { heading: string | null; subject: string; paragraphs: string[] }[]
+  mfaAccounts: { work: string; admin: string }
 }
 const EMAILS = (app.plan as unknown as { stepContract: { implementation: { emails: EmailWords } } }).stepContract.implementation.emails
 
@@ -126,14 +128,27 @@ export function emailResource(step: Step, ctx: StepVarContext, why: string): Art
  * same subject, paragraphs and signature as the Email tab's first message, from
  * the one set of words (walk list section 3 item 52).
  */
-export function mfaPreparationStaffMessage(signature: string): { salutation: string; body: string; extra: string[]; signature: string } {
+export function mfaPreparationStaffMessage(signature: string, values: Record<string, string>): { salutation: string; body: string; extra: string[]; signature: string } {
   const [first] = EMAILS.mfaPreparation
-  return { salutation: fillText(EMAILS.subject, { subject: first.subject }), body: first.paragraphs.join('\n\n'), extra: [], signature: fillText(EMAILS.signOff, { signature }).trim() }
+  // The box draws each paragraph as its own: the first is the body, the rest follow it.
+  const [body = '', ...extra] = mfaParagraphs(first, 0, values)
+  return { salutation: fillText(EMAILS.subject, { subject: first.subject }), body, extra, signature: fillText(EMAILS.signOff, { signature }).trim() }
+}
+
+/**
+ * A message's paragraphs as the person reads them: filled with the reader's
+ * values (prepareSteps.ts mfaEmailValues, and the account the message is for),
+ * as plain text, since an email carries no bold.
+ */
+function mfaParagraphs(m: EmailWords['mfaPreparation'][number], index: number, values: Record<string, string>): string[] {
+  const passkeyAccount = index === 1 ? EMAILS.mfaAccounts.admin : EMAILS.mfaAccounts.work
+  return m.paragraphs.map((p) => fillText(p, { ...values, passkeyAccount }).replace(/\*\*/g, '')).filter((p) => p !== '')
 }
 
 /** The MFA preparation step's three messages (everyone, the admins, the follow-up), each signed. */
 export function mfaPreparationEmail(ctx: StepVarContext): Artifact {
-  const text = EMAILS.mfaPreparation.map((m) => (m.heading ? `${m.heading}\n` : '') + message(m.subject, m.paragraphs, ctx)).join('\n\n')
+  const values = mfaEmailValues(ctx)
+  const text = EMAILS.mfaPreparation.map((m, i) => (m.heading ? `${m.heading}\n` : '') + message(m.subject, mfaParagraphs(m, i, values), ctx)).join('\n\n')
   return { id: 'email', form: 'markdown', lines: [], text: () => text, note: null }
 }
 

@@ -814,7 +814,7 @@ export function commsFor(cs: Record<string, unknown>, ex: Record<string, unknown
   if (ex.stepDone) return null
   // Prepare Your Team for MFA sends the Email tab's first message, word for
   // word: its email had a second, older copy here (walk list section 3 item 52).
-  if (step.id === 's-verify-mfa') return mfaPreparationStaffMessage(String(ex.signature ?? ''))
+  if (step.id === 's-verify-mfa') return mfaPreparationStaffMessage(String(ex.signature ?? ''), (ex.mfaEmail ?? {}) as Record<string, string>)
   const comms = (cs.comms ?? null) as Record<string, unknown> | null
   if (!comms) return null
   const inPlace = Boolean(ex.mfaInPlace) && typeof comms.bodyMfaInPlace === 'string'
