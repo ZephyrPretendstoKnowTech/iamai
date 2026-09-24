@@ -18,6 +18,7 @@ import type { ContractFound, ContractMember, ContractReadiness, ContractStage, I
 import { CONTRACT, FOOTER, badgeLabel, nextCaption, readinessLeadOf, stageClass } from './stepContract.ts'
 import type { ContractEmergencySlot, ContractHardening, StepRail } from './stepContract.ts'
 import { fillText } from '../../content/render.ts'
+import { content } from '../../content/content.ts'
 import { autoOpenTiles } from './tileExpansion.ts'
 import { useSession } from '../session.ts'
 import { scanLineText } from '../scan/ScanProgress.tsx'
@@ -265,21 +266,20 @@ export function StepActionColumn({ rail, children = null }: { rail: StepRail; ch
  * scan on the right. It offers only what production already does — the
  * exception is the existing skip and Doesn't apply here, the scan is the existing
  * action on the existing routing — and it renders nothing where it has nothing
- * to offer. The row above the step is what closes it.
+ * to offer. The row above the step is what closes it: no step draws a Close.
  */
-export function StepFooter({ controls = null, onScan, auxiliary = null }: { controls?: ReactNode; onScan?: (() => void) | null; auxiliary?: ReactNode }) {
+export function StepFooter({ controls = null, onScan }: { controls?: ReactNode; onScan?: (() => void) | null }) {
   // A scan in flight (owner item 10): the person who pressed Scan here is down
   // in the step, out of sight of the line under the header, so the same line
   // (ScanProgress.tsx scanLineText) stands over the button, which waits. The
   // header's line is the one that announces it.
   const { scan } = useSession()
   const scanning = scan.state === 'running' || scan.state === 'paused'
-  if (!controls && !onScan && !auxiliary) return null
+  if (!controls && !onScan) return null
   return (
     <footer className="step-footer no-print">
       {controls}
       <div className="step-footer-end">
-        {auxiliary}
         {onScan && scanning && <p className="step-footer-scan-status">{scanLineText(scan)}</p>}
         {onScan && (
           <Button variant="primary" className="step-footer-scan" onClick={onScan} disabled={scanning}>
@@ -298,6 +298,18 @@ export function StepFooter({ controls = null, onScan, auxiliary = null }: { cont
  * turn-on steps to use later: this is the one switch that shows the link again.
  */
 export const WHY_LINK_SHOWN = false
+
+/** The Scan control's own words (content.shared.scanControl). */
+const SCAN_CONTROL = String((content.shared as Record<string, unknown>).scanControl)
+
+/**
+ * The helper line under Tasks Remaining (owner, 2026-09-23): after making
+ * changes, select Scan to update the plan. Every step that draws Tasks Remaining
+ * on screen draws it here, the same way, whichever component draws the tasks.
+ */
+export function ScanNote() {
+  return <p className="emergency-account-scan-note">After making changes, select <strong>{SCAN_CONTROL}</strong>.</p>
+}
 
 /** The strip's track count (A1 §16.1: up to four across, wrapping); fewer tiles take fewer tracks. */
 const TRACKS = 4
@@ -320,7 +332,7 @@ const MARK: Record<ReadinessTone, string | null> = { good: '✓', warn: '!', wai
  * the evidence where there is evidence to open. The grid takes its track
  * count from the tiles it is handed, so nothing is padded.
  */
-export function ReadinessSection({ readiness, lead, onWhy = null, onConfirm = null, onOpenMappings = null, extra = null, printing = false, children = null, showClosedCount = true, heading }: {
+export function ReadinessSection({ readiness, lead, onWhy = null, onConfirm = null, onOpenMappings = null, extra = null, printing = false, children = null, showClosedCount = true, heading, scanNote = false }: {
   readiness: ContractReadiness
   lead: ReactNode
   onWhy?: (() => void) | null
@@ -335,6 +347,8 @@ export function ReadinessSection({ readiness, lead, onWhy = null, onConfirm = nu
   children?: ReactNode
   showClosedCount?: boolean
   heading?: string
+  /** Drawn as Tasks Remaining on screen: the Scan helper line under the tasks (ScanNote). */
+  scanNote?: boolean
 }) {
   const W = CONTRACT.readiness
   // The blocking tiles open with the step (content review D5). Their explanations
@@ -385,6 +399,7 @@ export function ReadinessSection({ readiness, lead, onWhy = null, onConfirm = nu
           {strip(readiness.satisfied, 'satisfied')}
         </details>
       )}
+      {scanNote && !printing && <ScanNote />}
       {/* The bar's status line only repeated the badge and the cards (owner,
           2026-09-23: "Account preparation is verified." is useless); it carries
           the action lead where one is handed in, and the Why link when shown. */}

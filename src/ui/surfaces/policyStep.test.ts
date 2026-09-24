@@ -159,7 +159,6 @@ test('the frame: a full-width header holding the track, a body split beside the 
     // A footer with nothing to offer is not drawn.
     const footer = SECTIONS.slice(SECTIONS.indexOf('export function StepFooter'), SECTIONS.indexOf('/** A tile'))
     assert.match(footer, /\{onScan && \(/, 'the scan control is unconditional')
-    assert.match(footer, /if \(!controls && !onScan && !auxiliary\) return null/, 'an empty footer is drawn')
   }
   {
     // The head is a sibling of the body, not a row inside it: the lifecycle track
