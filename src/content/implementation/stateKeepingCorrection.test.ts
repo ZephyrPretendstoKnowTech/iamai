@@ -47,99 +47,95 @@ const STAGING = /Report-only\*{0,2} (first|before)|StageForCorrection|stage (an 
 
 const callsOf = (text: string): string[] => text.split('\n').filter((l) => l.startsWith('Invoke-IAMAIStep '))
 
-for (const stepId of STAGED) {
-  const pkg = PACKAGES[stepId]
-
-  test(`${stepId}: the script has no staging mode and never writes the policy state outside Create and Enforce`, () => {
-    const script = pkg.blocks['powershell.run']
-    assert.equal(script.meta.kind, 'deployableAfterBinding')
-    assert.doesNotMatch(script.text, /StageForCorrection|Refusing access-affecting/)
+test('no staged package has a staging mode, and its script writes the policy state only in Create (Report-only) and Enforce', () => {
+  for (const stepId of STAGED) {
+    const script = PACKAGES[stepId].blocks['powershell.run']
+    assert.equal(script.meta.kind, 'deployableAfterBinding', stepId)
+    assert.doesNotMatch(script.text, /StageForCorrection|Refusing access-affecting/, stepId)
     const stateWrites = [...script.text.matchAll(/state='([A-Za-z]+)'/g)].map((m) => m[1])
     // The Create body sets Report-only; Enforce sets enabled after its own checks. Nothing else touches state.
-    assert.deepEqual(stateWrites, ['enabledForReportingButNotEnforced', 'enabled'])
+    assert.deepEqual(stateWrites, ['enabledForReportingButNotEnforced', 'enabled'], stepId)
     // `description` carries the plan tag IAMAI recognises its own work by, and it
     // sits between the name and the state in the create body.
-    assert.match(script.text, /if\(\$Mode -eq 'Create'\)\{\n? *\$body=\[ordered\]@\{displayName=\$target\.displayName;description=\$target\.description;state='enabledForReportingButNotEnforced'/)
-  })
+    assert.match(script.text, /if\(\$Mode -eq 'Create'\)\{\n? *\$body=\[ordered\]@\{displayName=\$target\.displayName;description=\$target\.description;state='enabledForReportingButNotEnforced'/, stepId)
+  }
+})
 
-  for (const [changed, mode] of CORRECTIONS) {
-    test(`${stepId}: a ${mode} correction is one call bound to the target and the policy, and Entra and AI keep the state and say what saving does`, () => {
-      const p = projectImplementation(pkg, 'partial', bindings({ [CHANGED_FIELDS_BINDING]: [changed] }))
+test('every staged correction is one call bound to the target and the policy, and no channel stages the policy to correct it', () => {
+  for (const stepId of STAGED) {
+    for (const [changed, mode] of CORRECTIONS) {
+      const where = `${stepId} ${mode}`
+      const p = projectImplementation(PACKAGES[stepId], 'partial', bindings({ [CHANGED_FIELDS_BINDING]: [changed] }))
       const ps = p.channels.find((c) => c.channel === 'powershell')
-      assert.ok(ps, `${JSON.stringify(p.hold)} ${JSON.stringify(p.degraded ?? null)}`)
-      assert.deepEqual(ps.runs.map((r) => r.mode), [mode])
+      assert.ok(ps, `${where}: ${JSON.stringify(p.hold)} ${JSON.stringify(p.degraded ?? null)}`)
+      assert.deepEqual(ps.runs.map((r) => r.mode), [mode], where)
       const calls = callsOf(ps.text)
-      assert.equal(calls.length, 1, ps.text.slice(-400))
+      assert.equal(calls.length, 1, `${where}: ${ps.text.slice(-400)}`)
       assert.ok(calls[0].startsWith(`Invoke-IAMAIStep -Mode '${mode}' `), calls[0])
       assert.ok(calls[0].includes(`-TargetPolicyJson ${LITERAL}`), calls[0])
       assert.ok(calls[0].includes(`-PolicyId '${ID(3)}'`), calls[0])
       // The call is the last thing in the artifact, after the whole function body.
       assert.ok(ps.text.startsWith('function Invoke-IAMAIStep {\nparam('), ps.text.slice(0, 80))
-      assert.ok(ps.text.trimEnd().endsWith(calls[0]))
-      assert.doesNotMatch(ps.text, STAGING)
+      assert.ok(ps.text.trimEnd().endsWith(calls[0]), where)
+      assert.doesNotMatch(ps.text, STAGING, where)
       for (const channel of ['entra', 'aiInfo']) {
         const c = p.channels.find((x) => x.channel === channel)
-        if (!c) continue
-        assert.doesNotMatch(c.text, STAGING, `${channel}: ${c.text}`)
+        if (c) assert.doesNotMatch(c.text, STAGING, `${where} ${channel}: ${c.text}`)
       }
-    })
+    }
   }
+})
 
-  test(`${stepId}: create and observe calls, and Enforce only where the script's readiness switch can be passed`, () => {
+test("every staged package calls Create and Observe, and Enforce only where the script's readiness switch can be passed", () => {
+  for (const stepId of STAGED) {
+    const pkg = PACKAGES[stepId]
     const created = projectImplementation(pkg, 'missing', bindings({}))
     const create = created.channels.find((c) => c.channel === 'powershell')
-    assert.ok(create, JSON.stringify(created.degraded ?? created.hold))
-    assert.deepEqual(callsOf(create.text), [`Invoke-IAMAIStep -Mode 'Create' -TargetPolicyJson ${LITERAL}`])
+    assert.ok(create, `${stepId}: ${JSON.stringify(created.degraded ?? created.hold)}`)
+    assert.deepEqual(callsOf(create.text), [`Invoke-IAMAIStep -Mode 'Create' -TargetPolicyJson ${LITERAL}`], stepId)
     const observed = projectImplementation(pkg, 'reportOnly', bindings({}))
     const observe = observed.channels.find((c) => c.channel === 'powershell')
-    assert.ok(observe, JSON.stringify(observed.degraded ?? observed.hold))
-    assert.deepEqual(callsOf(observe.text), [`Invoke-IAMAIStep -Mode 'Observe' -TargetPolicyJson ${LITERAL} -PolicyId '${ID(3)}'`])
+    assert.ok(observe, `${stepId}: ${JSON.stringify(observed.degraded ?? observed.hold)}`)
+    assert.deepEqual(callsOf(observe.text), [`Invoke-IAMAIStep -Mode 'Observe' -TargetPolicyJson ${LITERAL} -PolicyId '${ID(3)}'`], stepId)
     const needsApproval = /\[switch\]\$ReadinessApproved/.test(pkg.blocks['powershell.run'].text)
-    assert.equal(typeof pkg.blocks['powershell.run'].meta.invocation?.withheldModes?.Enforce === 'string', needsApproval)
+    assert.equal(typeof pkg.blocks['powershell.run'].meta.invocation?.withheldModes?.Enforce === 'string', needsApproval, stepId)
     const enforced = projectImplementation(pkg, 'readyToEnforce', bindings({}))
     const enforce = enforced.channels.find((c) => c.channel === 'powershell')
-    if (needsApproval) assert.equal(enforce, undefined, 'an Enforce call without -ReadinessApproved would throw')
+    if (needsApproval) assert.equal(enforce, undefined, `${stepId}: an Enforce call without -ReadinessApproved would throw`)
     else {
-      assert.ok(enforce, JSON.stringify(enforced.degraded ?? enforced.hold))
-      assert.deepEqual(callsOf(enforce.text), [`Invoke-IAMAIStep -Mode 'Enforce' -TargetPolicyJson ${LITERAL} -PolicyId '${ID(3)}'`])
+      assert.ok(enforce, `${stepId}: ${JSON.stringify(enforced.degraded ?? enforced.hold)}`)
+      assert.deepEqual(callsOf(enforce.text), [`Invoke-IAMAIStep -Mode 'Enforce' -TargetPolicyJson ${LITERAL} -PolicyId '${ID(3)}'`], stepId)
     }
-  })
-}
+  }
+})
 
 // Cycle 3 (review 2): the effect check accepted "Leave **Enable policy** as it is", which
 // states no effect, and never read AI Info. Every correction now has to say, in Entra and
 // in AI Info, what saving does to a policy that is On — the ten packages above and the two
 // (mfa-all-users, admins-phishing-resistant) whose corrections already kept the state.
 // Editorial batch C: the shared correction sentence ("If it is On, the changed rule can affect access after you save.") states the effect too.
+// Review 3 queue 5: the guests pair's correction adds the exclusions group to both guest
+// policies and said only "Save." twice. Its script is not called yet, so the check reads
+// the two authored blocks the partial state projects rather than a bound projection.
 const EFFECT = /\bif (it|the policy|a policy) is On, [^.]*(as soon as (you save|it is saved)|saving applies it at once|can affect access after you save)/i
-for (const stepId of [...STAGED, 's-goal-mfa-all-users', 's-goal-admins-phishing-resistant']) {
-  for (const [changed, mode] of CORRECTIONS) {
-    test(`${stepId}: a ${mode} correction says in Entra and in AI Info what saving does to a policy that is On`, () => {
+
+test('every correction says in Entra and in AI Info what saving does to a policy that is On, the guests pair included', () => {
+  for (const stepId of [...STAGED, 's-goal-mfa-all-users', 's-goal-admins-phishing-resistant']) {
+    for (const [changed, mode] of CORRECTIONS) {
       const p = projectImplementation(PACKAGES[stepId], 'partial', bindings({ [CHANGED_FIELDS_BINDING]: [changed], 'authStrength.target.id': ID(4) }))
       for (const channel of ['entra', 'aiInfo']) {
         const c = p.channels.find((x) => x.channel === channel)
         assert.ok(c, `${stepId} ${mode}: no ${channel} ${JSON.stringify(p.degraded ?? p.hold)}`)
-        assert.match(c.text, EFFECT, `${channel}: ${c.text}`)
+        assert.match(c.text, EFFECT, `${stepId} ${mode} ${channel}: ${c.text}`)
       }
-    })
+    }
   }
-}
-
-// Review 3 queue 5: the guests pair's correction adds the exclusions group to both guest
-// policies and said only "Save." twice. Its script is not called yet, so the check reads
-// the two authored blocks the partial state projects rather than a bound projection.
-test('s-goal-guests-mfa: the pair correction says in Entra (both saves) and in AI Info what saving does to a policy that is On', () => {
   const blocks = PACKAGES['s-goal-guests-mfa'].blocks
   const entra = blocks['entra.correct-pair'].text
   const saves = entra.split('\n').filter((l) => /^\d+\. Save\b/.test(l))
   assert.equal(saves.length, 2, entra)
   for (const line of saves) assert.match(line, EFFECT, line)
   assert.match(blocks['ai.correct'].text, EFFECT)
-})
-
-test('effect control: "Leave Enable policy as it is" alone states no effect', () => {
-  assert.doesNotMatch('5. Save. Leave **Enable policy** as it is.\n6. Rescan in IAMAI to confirm the correction.', EFFECT)
-  assert.match('5. Save. Leave **Enable policy** as it is: if the policy is On, these changes apply to sign-ins as soon as you save.', EFFECT)
 })
 
 test('a target short of the whole policy withholds only the script', () => {

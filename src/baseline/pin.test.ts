@@ -45,51 +45,37 @@ const ESCAPES: { name: string; path: string }[] = [
   { name: 'an empty segment', path: 'Policies//policy.json' },
 ]
 
-for (const { name, path } of ESCAPES) {
-  test(`rawUrl: ${name} cannot leave the pinned prefix`, () => {
-    const url = urlFor(() => rawUrl(INDEX, path))
-    if (url === null) return // refused outright, which is the intended outcome
-    // It returned something. The only acceptable something starts at the pin.
-    assert.ok(url.startsWith(PREFIX), `escaped the pinned commit: ${url}`)
-    assert.equal(new URL(url).origin, 'https://raw.githubusercontent.com')
-  })
-}
-
-test('pinnedUrl: a path absent from the index is never fetched', () => {
-  const url = urlFor(() => pinnedUrl(INDEX, 'Policies/not-in-the-index.json'))
-  assert.equal(url, null, 'a path the index does not name produced a URL')
-})
-
-test('pinnedUrl: every escaping path is refused before the index check too', () => {
+test('no escaping path leaves the pinned prefix: rawUrl refuses it or lands under the pin, and pinnedUrl refuses it outright', () => {
   for (const { name, path } of ESCAPES) {
-    const url = urlFor(() => pinnedUrl(INDEX, path))
-    assert.equal(url, null, `${name} produced a URL through pinnedUrl: ${url}`)
+    const raw = urlFor(() => rawUrl(INDEX, path))
+    // Refused outright is the intended outcome; anything returned must start at the pin.
+    if (raw !== null) {
+      assert.ok(raw.startsWith(PREFIX), `${name} escaped the pinned commit: ${raw}`)
+      assert.equal(new URL(raw).origin, 'https://raw.githubusercontent.com', name)
+    }
+    const pinned = urlFor(() => pinnedUrl(INDEX, path))
+    assert.equal(pinned, null, `${name} produced a URL through pinnedUrl: ${pinned}`)
   }
 })
 
-test('the honest paths still work, and land inside the pin', () => {
+test('pinnedUrl fetches only what the index names, and the honest paths land inside the pin, spaces and parentheses included', () => {
+  assert.equal(urlFor(() => pinnedUrl(INDEX, 'Policies/not-in-the-index.json')), null, 'a path the index does not name produced a URL')
   for (const path of INDEX.files) {
     const url = pinnedUrl(INDEX, path)
     assert.ok(url.startsWith(PREFIX), `${path} did not land under the pin: ${url}`)
     assert.ok(url.endsWith(path.split('/').map(encodeURIComponent).join('/')), `${path} was mangled: ${url}`)
   }
-})
-
-test('a name with spaces and parentheses survives, because real baselines have them', () => {
   const index = { ...INDEX, files: ['Policies/CA01 - Require MFA (all users).json'] }
   const url = pinnedUrl(index, index.files[0])
   assert.ok(url.startsWith(PREFIX))
   assert.ok(url.includes('CA01%20-%20Require%20MFA%20(all%20users).json'), url)
 })
 
-test('the pin itself is checked: a branch name is not a commit', () => {
+test('the pin itself is checked: a branch name is not a commit, and owner and repo cannot carry a path of their own', () => {
   for (const commit of ['main', 'HEAD', 'ceccdc2', `${COMMIT}x`, '']) {
     const url = urlFor(() => rawUrl({ ...INDEX, commit }, 'Policies/policy.json'))
     assert.equal(url, null, `commit "${commit}" was accepted as a pin`)
   }
-})
-
-test('owner and repo cannot carry a path of their own', () => {
   const cases: Partial<BaselineIndex>[] = [
     { owner: 'Jhope188/../attacker' },
     { repo: 'ConditionalAccessPolicies/../../attacker/evil' },

@@ -29,36 +29,31 @@ const bindings = (extra: Record<string, unknown> = {}): Record<string, unknown> 
   ...extra,
 })
 
-for (const patches of [undefined, PATCHES]) {
-  const which = patches ? 'with the people-policy patches resolved' : 'before the people-policy patches resolve'
-
-  test(`s-shared-devices ${which}: the create's JSON is the policy's own POST, and Entra still names the people-policy exclusions`, () => {
+test("s-shared-devices, before and after the people-policy patches resolve: the create's JSON is the policy's own POST, and Entra still names the people-policy exclusions", () => {
+  for (const patches of [undefined, PATCHES]) {
+    const which = patches ? 'with the patches resolved' : 'before the patches resolve'
     const p = projectImplementation(PKG, 'missing', bindings({ 'peoplePolicies.resolvedPatches': patches }))
     const json = p.channels.find((c) => c.channel === 'json')
-    assert.ok(json, JSON.stringify(p.degraded ?? p.hold))
-    assert.deepEqual(json.blocks, ['json.create'])
-    assert.equal(json.requests.length, 1)
-    assert.equal(json.requests[0].method, 'POST')
+    assert.ok(json, `${which}: ${JSON.stringify(p.degraded ?? p.hold)}`)
+    assert.deepEqual(json.blocks, ['json.create'], which)
+    assert.equal(json.requests.length, 1, which)
+    assert.equal(json.requests[0].method, 'POST', which)
     assert.equal((JSON.parse(json.text) as { displayName: string }).displayName, 'Sample shared devices')
     assert.equal(p.degraded?.some((d) => d.channel === 'json') ?? false, false, JSON.stringify(p.degraded))
     const entra = p.channels.find((c) => c.channel === 'entra')
-    assert.ok(entra)
-    assert.ok(entra.blocks.includes('entra.manual-review'))
+    assert.ok(entra, which)
+    assert.ok(entra.blocks.includes('entra.manual-review'), which)
     assert.match(entra.text, /Review the other policies that apply to these accounts/)
     assert.match(entra.text, /do not place shared devices in the emergency-access exclusions group/)
-  })
-}
+  }
+})
 
-test('s-shared-devices with the patches resolved: a users correction offers its conditions PATCH beside the people-policy Entra step', () => {
+test('s-shared-devices with the patches resolved: a users correction offers its conditions PATCH beside the people-policy Entra step, and no projection composes the reference-only patches into JSON', () => {
   const p = projectImplementation(PKG, 'partial', bindings({ 'peoplePolicies.resolvedPatches': PATCHES, 'policy.current.semanticMismatches': ['users.shared-devices'], [CHANGED_FIELDS_BINDING]: ['conditions.users.includeUsers'] }))
   const json = p.channels.find((c) => c.channel === 'json')
   assert.ok(json, JSON.stringify(p.degraded ?? p.hold))
   assert.deepEqual(json.blocks, ['json.correct.conditions'])
   assert.deepEqual(json.requests, [{ method: 'PATCH', endpoint: `https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/${ID(3)}` }])
   assert.ok(p.channels.find((c) => c.channel === 'entra')?.blocks.includes('entra.people-exclusions'))
-})
-
-test('no projection composes the reference-only people-policy patches into a JSON channel', () => {
-  const meta = JSON.stringify(PKG.meta.projection)
-  assert.equal(meta.includes('json.people-patches'), false)
+  assert.equal(JSON.stringify(PKG.meta.projection).includes('json.people-patches'), false)
 })

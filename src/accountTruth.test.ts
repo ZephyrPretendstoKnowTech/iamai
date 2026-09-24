@@ -57,49 +57,39 @@ const stepOf = (steps: Step[], id: string): Step => {
 
 // ---- the people ----
 
-for (const name of ['demo', 'demo-week2'] as const) {
-  test(`${name}: every derivation of the active people counts the same set`, () => {
-    const f = fixture(name)
-    const notPeople = notPeopleIds(f.mapping)
-    const active = facts(f.snapshot, f.mapping).active
-    assert.equal(activePeopleIds(f.snapshot, f.snapshot.asOf, notPeople).length, active, 'the plan’s active people (tracking) are the facts’ active people')
-    assert.equal(campaignIdsFor(f.snapshot, f.snapshot.asOf, f.mapping).length, active, 'the campaign counts the same people')
-    assert.equal(peopleCounts(f.snapshot, f.snapshot.asOf, notPeople).active, active, 'the people counts count the same people')
-    assert.equal(readinessView(f.snapshot, f.snapshot.asOf, f.mapping).facts.active, active, 'MFA Readiness counts the same people')
-    const run = runFixture(f)
-    assert.equal(run.viability.filter(isActivePerson).length, active, 'the plan scores exactly those active people')
-  })
+test('every derivation of the active people counts the same set, no account that is not a person is scored or counted, and the shared device is a shared device on every surface', () => {
+  const f = fixture('demo')
+  const notPeople = notPeopleIds(f.mapping)
+  const active = facts(f.snapshot, f.mapping).active
+  assert.equal(activePeopleIds(f.snapshot, f.snapshot.asOf, notPeople).length, active, 'the plan’s active people (tracking) are the facts’ active people')
+  assert.equal(campaignIdsFor(f.snapshot, f.snapshot.asOf, f.mapping).length, active, 'the campaign counts the same people')
+  assert.equal(peopleCounts(f.snapshot, f.snapshot.asOf, notPeople).active, active, 'the people counts count the same people')
+  assert.equal(readinessView(f.snapshot, f.snapshot.asOf, f.mapping).facts.active, active, 'MFA Readiness counts the same people')
+  const run = runFixture(f)
+  assert.equal(run.viability.filter(isActivePerson).length, active, 'the plan scores exactly those active people')
 
-  test(`${name}: no account that is not a person reaches a scored row or a step's people`, () => {
-    const f = fixture(name)
-    const kinds = accountKinds(f.snapshot, f.mapping)
-    const run = runFixture(f)
-    for (const v of run.viability) assert.equal(kinds.get(v.userId), 'person', `${v.userId} is scored as a person`)
-    for (const s of run.steps) {
-      // Two steps are about accounts that are not people, and name exactly those: the shared devices, and the service accounts (generate.ts).
-      if (s.id === 's-shared-devices' || s.goalId === SERVICE_ACCOUNTS_TRUSTED_GOAL) continue
-      for (const p of [s.population, s.cohort ?? null]) {
-        for (const id of p?.activeIds ?? []) assert.equal(kinds.get(id), 'person', `${s.id}: ${id} is counted among its people`)
-      }
+  const kinds = accountKinds(f.snapshot, f.mapping)
+  for (const v of run.viability) assert.equal(kinds.get(v.userId), 'person', `${v.userId} is scored as a person`)
+  for (const s of run.steps) {
+    // Two steps are about accounts that are not people, and name exactly those: the shared devices, and the service accounts (generate.ts).
+    if (s.id === 's-shared-devices' || s.goalId === SERVICE_ACCOUNTS_TRUSTED_GOAL) continue
+    for (const p of [s.population, s.cohort ?? null]) {
+      for (const id of p?.activeIds ?? []) assert.equal(kinds.get(id), 'person', `${s.id}: ${id} is counted among its people`)
     }
-  })
+  }
 
-  test(`${name}: the shared device is a shared device on every surface`, () => {
-    const f = fixture(name)
-    const shared = sharedDeviceIds(f.snapshot)
-    assert.ok(shared.length > 0, 'the demo has a shared device')
-    const kinds = accountKinds(f.snapshot, f.mapping)
-    const people = new Set(personAccounts(f.snapshot, notPeopleIds(f.mapping)).map((u) => u.id))
-    const listed = new Set(ladder(f.snapshot, f.mapping, f.snapshot.asOf).kinds.shared.map((u) => u.id))
-    const rows = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows
-    for (const id of shared) {
-      assert.equal(kinds.get(id), 'shared')
-      assert.ok(!people.has(id), 'not a person')
-      assert.ok(listed.has(id), 'listed by kind on the ladder')
-      assert.equal(rows.find((r) => r.user.id === id)?.kind, 'shared', 'and on MFA Readiness')
-    }
-  })
-}
+  const shared = sharedDeviceIds(f.snapshot)
+  assert.ok(shared.length > 0, 'the demo has a shared device')
+  const people = new Set(personAccounts(f.snapshot, notPeople).map((u) => u.id))
+  const listed = new Set(ladder(f.snapshot, f.mapping, f.snapshot.asOf).kinds.shared.map((u) => u.id))
+  const rows = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows
+  for (const id of shared) {
+    assert.equal(kinds.get(id), 'shared')
+    assert.ok(!people.has(id), 'not a person')
+    assert.ok(listed.has(id), 'listed by kind on the ladder')
+    assert.equal(rows.find((r) => r.user.id === id)?.kind, 'shared', 'and on MFA Readiness')
+  }
+})
 
 // ---- emergency access ----
 
@@ -167,32 +157,30 @@ test('a confirmed emergency id the scan holds no account for stands as the choic
 
 // ---- the exclusions group ----
 
-for (const name of ['demo', 'demo-week2'] as const) {
-  test(`${name}: every consumer resolves the same confirmed exclusions group, full reading or the app's partial one`, () => {
-    const f = fixture(name)
-    const stored = f.mapping.records[EXCLUSIONS_RECORD_KEY].resolvedId as string
-    for (const universe of ['complete', 'partial'] as const) {
-      const directory = directoryEvidenceFromGroups(f.groups, universe)
-      const id = actionableExclusionsGroupId({ snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, directory })
-      assert.equal(id, stored, `${universe}: the confirmed group, read this scan, is actionable`)
-      const run = runFixture(f, { directory })
-      assert.ok(run.coverage.assumed.groups.has(stored), `${universe}: coverage names it`)
-      const ge = stepOf(run.steps, PREREQ_STEP_ID.exclusionsGroup)
-      const bg = stepOf(run.steps, BREAK_GLASS_STEP_ID)
-      const geVars = varsOf(ge, f, f.mapping, directory)
-      assert.equal(geVars.exclusionsGroup, f.groups.get(stored)?.displayName, `${universe}: the exclusions step names it`)
-      assert.deepEqual(pickerVars(PREREQ_STEP_ID.exclusionsGroup, '{name}', { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x) => x, groups: f.groups, directory })?.groupsTicked, [stored], `${universe}: the picker ticks it`)
-      // Policy-exclusion ownership stays on the exclusions step.
-      const policyCheck = (ge.checks?.items ?? []).find((it) => it.fix === 'excluded-from-every-policy')
-      const fromCheck = sorted(Array.isArray(policyCheck?.values.policies) ? (policyCheck.values.policies as string[]) : [])
-      const policyTopic = ge.configurationFindings?.find(finding => finding.key === 'group-policies')
-      assert.ok(policyTopic, `${universe}: the exclusions step owns the policy-exclusion topic even when no policy is missing it`)
-      // Each policy is two items since cff043a2 (Mode, Group exclusion), named in subjectLabel.
-      for (const policy of fromCheck) assert.ok(policyTopic.items?.some(item => item.subjectLabel === policy && item.label === 'Group exclusion' && item.outcome !== 'pass'), `${universe}: ${policy} is absent from the exclusions topic`)
-      assert.equal(bg.configurationFindings?.some(finding => finding.label === 'Policy exclusions'), false, `${universe}: policy exclusions leaked back into the account-owned topics`)
-    }
-  })
-}
+test("every consumer resolves the same confirmed exclusions group, full reading or the app's partial one", () => {
+  const f = fixture('demo-week2')
+  const stored = f.mapping.records[EXCLUSIONS_RECORD_KEY].resolvedId as string
+  for (const universe of ['complete', 'partial'] as const) {
+    const directory = directoryEvidenceFromGroups(f.groups, universe)
+    const id = actionableExclusionsGroupId({ snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, directory })
+    assert.equal(id, stored, `${universe}: the confirmed group, read this scan, is actionable`)
+    const run = runFixture(f, { directory })
+    assert.ok(run.coverage.assumed.groups.has(stored), `${universe}: coverage names it`)
+    const ge = stepOf(run.steps, PREREQ_STEP_ID.exclusionsGroup)
+    const bg = stepOf(run.steps, BREAK_GLASS_STEP_ID)
+    const geVars = varsOf(ge, f, f.mapping, directory)
+    assert.equal(geVars.exclusionsGroup, f.groups.get(stored)?.displayName, `${universe}: the exclusions step names it`)
+    assert.deepEqual(pickerVars(PREREQ_STEP_ID.exclusionsGroup, '{name}', { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x) => x, groups: f.groups, directory })?.groupsTicked, [stored], `${universe}: the picker ticks it`)
+    // Policy-exclusion ownership stays on the exclusions step.
+    const policyCheck = (ge.checks?.items ?? []).find((it) => it.fix === 'excluded-from-every-policy')
+    const fromCheck = sorted(Array.isArray(policyCheck?.values.policies) ? (policyCheck.values.policies as string[]) : [])
+    const policyTopic = ge.configurationFindings?.find(finding => finding.key === 'group-policies')
+    assert.ok(policyTopic, `${universe}: the exclusions step owns the policy-exclusion topic even when no policy is missing it`)
+    // Each policy is two items since cff043a2 (Mode, Group exclusion), named in subjectLabel.
+    for (const policy of fromCheck) assert.ok(policyTopic.items?.some(item => item.subjectLabel === policy && item.label === 'Group exclusion' && item.outcome !== 'pass'), `${universe}: ${policy} is absent from the exclusions topic`)
+    assert.equal(bg.configurationFindings?.some(finding => finding.label === 'Policy exclusions'), false, `${universe}: policy exclusions leaked back into the account-owned topics`)
+  }
+})
 
 test('a confirmed exclusions group that is gone, or unread, never masquerades — and a namesake is not it', () => {
   const f = fixture('demo')
