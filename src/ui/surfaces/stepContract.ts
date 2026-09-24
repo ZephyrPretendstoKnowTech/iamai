@@ -152,6 +152,8 @@ type ContractWords = {
   foundReadinessEnforced: string
   /** Who a readiness measure counts, by its family (copy/reasons.ts READINESS_MEASURE). */
   readinessScope: Record<string, string>
+  /** Who a finished policy's readiness fact counts, by its family: "19 of 28 people have a method it accepts". */
+  acceptedWho: Record<string, string>
   /** Where a readiness number is moved, by family, for a measure this plan runs no step for. */
   readinessRoute: Record<string, string>
   foundReadinessRouteStep: string
@@ -201,10 +203,6 @@ type ContractWords = {
   leadUnverified: string
   fixStep: string
   fixStepAt: Record<string, string>
-  /** A completed step whose own hard prerequisite the scan still finds unmet. */
-  fixStepOvertaken: string
-  /** The same fact on a step the board does not call Completed: its change is in place, and there is still work on it. */
-  fixStepOvertakenOpen: string
   fixConfirmExclusions: string
   /** A policy naming a reference of the baseline's nobody has mapped yet: the fix is the mapping, in Plan settings (S4). */
   fixMapping: string
@@ -1829,8 +1827,6 @@ export type PrerequisiteLabel = ((id: string) => string | null) & { startOf?: (i
  * to be complete — into an apparent deadlock with no way out.
  */
 export type PrerequisiteBlocker = { kind: BlockerKind; id: string; abnormal: boolean; label: string; title: string | null; milestone?: string | null
-  /** The step is finished and this prerequisite of it is not: a fact, not work left on this step (lanes.ts `unmetPrerequisites`). */
-  overtaken?: true
   /** The engine's reason for the step's lane (lanes.ts `reason`): the prerequisite the board's row names (planBoard.ts holdLabelOf). */
   primary?: true }
 
@@ -1958,7 +1954,7 @@ export function readinessSentence(step: Step, gate: NonNullable<Step['action']['
  * was half a sentence inside the green coverage tile (Priya D3). The generator
  * carries the threshold onto the finished step, and this states it.
  */
-function shortReadingOf(step: Step): { value: string; note: string } | null {
+function shortReadingOf(step: Step): { value: string; note: string; counted: { ready: string; total: string } | null } | null {
   if (!step.state.satisfied || step.state.lifecycle !== 'enforced') return null
   const below = step.action.enforcedBelowReadiness
   const line = step.readiness?.lines?.[0]
@@ -1981,13 +1977,13 @@ function shortReadingOf(step: Step): { value: string; note: string } | null {
     // The plan's own threshold, where the reading is under it: the gate the
     // finished step otherwise stopped naming the moment the policy went on.
     const threshold = below === undefined ? null : fillText(below.floor === true ? CONTRACT.foundEnforcedBelowThresholdFloor : CONTRACT.foundEnforcedBelowThreshold, { ...below })
-    return { value: `${m[1]} of ${m[2]} ${scope}`, note: threshold === null ? short : `${short} ${threshold}` }
+    return { value: `${m[1]} of ${m[2]} ${scope}`, note: threshold === null ? short : `${short} ${threshold}`, counted: { ready: m[1], total: m[2] } }
   }
   if (below === undefined) return null
   // Never read: the threshold, that nothing showed it met, why (the reading's
   // own line, where it has one) and what would open the source.
   const said = [fillText(CONTRACT.foundEnforcedUnmeasured, { measure: below.measure, threshold: below.threshold }), typeof line === 'string' ? line : null, below.blind ?? null]
-  return { value: R().tiles.notMeasured, note: said.filter((x): x is string => x !== null && x.length > 0).join(' ') }
+  return { value: R().tiles.notMeasured, note: said.filter((x): x is string => x !== null && x.length > 0).join(' '), counted: null }
 }
 
 /**
@@ -2060,17 +2056,25 @@ function ownPolicyTile(step: Step): ReadinessTile | null {
   const d = step.action.ownPolicyDiffers
   if (!d || !step.state.satisfied) return null
   const dimensions = dimensionWords(d.dimensions)
-  return { key: OWN_POLICY_DIFFERS, label: CONTRACT.ownPolicyDiffers.label, tone: 'warn', value: dimensions, note: fillText(CONTRACT.ownPolicyDiffers.note, { policy: d.policyName, dimensions }) }
+  // A fact of the finished step, under Satisfied: a Completed step shows no open card (walk list 4.x item 2).
+  return { key: OWN_POLICY_DIFFERS, label: CONTRACT.ownPolicyDiffers.label, tone: 'good', value: dimensions, note: fillText(CONTRACT.ownPolicyDiffers.note, { policy: d.policyName, dimensions }) }
 }
 
 /** The key of that reading's tile: a finding on a finished step, which is not a task anybody can do here. */
 export const FINISHED_READING = 'enforced-readiness'
 
-/** The tile that reading draws: a warning on a finished step, never a hold. */
+/**
+ * The tile that reading draws: a fact of the finished step, under Satisfied
+ * ("19 of 28 people have a method it accepts"). A Completed step shows no open
+ * card (walk list 4.x item 2, owner 2026-09-24): the people short of a method
+ * are Prepare Your Team for MFA's work and MFA Readiness's list, not this
+ * step's. A reading that counted nobody states nothing.
+ */
 function enforcedReadingTile(step: Step): ReadinessTile | null {
   const short = shortReadingOf(step)
-  if (short === null) return null
-  return { key: FINISHED_READING, label: R().tiles.reading, tone: 'warn', value: short.value, note: short.note }
+  if (short === null || short.counted === null) return null
+  const who = CONTRACT.acceptedWho[step.readiness?.family ?? ''] ?? CONTRACT.acceptedWho.mfa
+  return { key: FINISHED_READING, label: R().tiles.reading, tone: 'good', value: fillText(R().tiles.accepted, { ...short.counted, who }), note: null }
 }
 
 /** The key of the tile a finished policy draws where it went live with no report-only period IAMAI watched: a finding, not a task. */
@@ -2107,7 +2111,12 @@ export const FINISHED_FINDINGS: ReadonlySet<string> = new Set([FINISHED_READING,
  */
 function unwatchedTile(step: Step): ReadinessTile | null {
   if (!enforcedUnwatched(step)) return null
-  return { key: UNWATCHED_ENFORCEMENT, label: R().tiles.observation, tone: 'warn', value: R().tiles.unwatched, note: CONTRACT.foundEnforcedUnwatched }
+  // The scan that first saw it On, or Microsoft's own date for it where the
+  // tenant gives one: a fact of the finished step, under Satisfied (walk list
+  // 4.x item 2, owner 2026-09-24).
+  const on = step.state.members.map((m) => m.change.latest.evidenceAt ?? m.change.latest.firstSeenAt).sort()[0]
+  if (on === undefined) return null
+  return { key: UNWATCHED_ENFORCEMENT, label: R().tiles.observation, tone: 'good', value: fillText(R().tiles.unwatched, { date: absoluteDate(on) }), note: null }
 }
 
 /**
@@ -2264,15 +2273,16 @@ function emergencyTiles(step: Step, c: StepContract): ReadinessTile[] {
 }
 
 /**
- * What a prerequisite has to reach, in words. 'complete' is the common case and
- * keeps the plain sentence; anything else says which milestone, because a step
+ * What a prerequisite has to reach, where it is short of finished: a step
  * waiting for another to be READY is not waiting for it to be finished, and a
  * reader told to "finish" both halves of a reciprocal pair has been handed a
- * deadlock that the dependency data does not contain.
+ * deadlock that the dependency data does not contain. 'complete', the common
+ * case, has no note: the card names the step and its state, and "Finish {step}
+ * first." under it said the heading again (walk list 4.x item 23).
  */
-function fixStepNote(title: string, milestone: string | null | undefined): string {
+function fixStepNote(title: string, milestone: string | null | undefined): string | null {
   const at = milestone && milestone !== 'complete' ? (CONTRACT.fixStepAt as Record<string, string>)[milestone] : undefined
-  return fillText(at ?? CONTRACT.fixStep, { step: title })
+  return at === undefined ? null : fillText(at, { step: title })
 }
 
 /** A step prerequisite's link: the step it names, opened on the Plan. */
@@ -2307,7 +2317,9 @@ function fixTiles(fixes: readonly ContractFix[], prerequisiteLabel: (id: string)
       const id = rest.join(':')
       const title = stepById[id]?.title ?? cleanupTitleOf(id) ?? id
       if (kind === 'missing' && prerequisiteLabel(id) === 'Prerequisite · Completed') return { key: f.key, label: title, tone: 'warn', value: t.mapping, note: fillText((CONTRACT as unknown as { fixCompletedReference: string }).fixCompletedReference, { step: title }), link: mappingsLink() }
-      return { key: f.key, label: title, tone: 'warn', value: prerequisiteLabel(id) ?? t.prerequisite, note: f.text, link: stepLink(id, title) }
+      // "Finish {step} first." is the card's heading said again (walk list 4.x item 23).
+      const note = f.text === fillText(CONTRACT.fixStep, { step: title }) ? null : f.text
+      return { key: f.key, label: title, tone: 'warn', value: prerequisiteLabel(id) ?? t.prerequisite, note, link: stepLink(id, title) }
     }
     if (kind === 'direction' && isDirectionStep(rest.join(':'))) {
       const id = rest.join(':') as Parameters<typeof directionTitleOf>[0]
@@ -2365,15 +2377,7 @@ function engineTiles(c: StepContract, blockers: readonly PrerequisiteBlocker[], 
       // (Register Your Own Passkey waiting on Verify Emergency Access,
       // docs/plans/protect-admins-spec.md section 2).
       const title = stepById[b.id]?.title ?? b.title ?? cleanupTitleOf(b.id) ?? b.id
-      // The engine records a prerequisite a step went ahead of only on a step it
-      // reads Completed, and the board can still draw that step elsewhere: a
-      // policy already on with a review left reads Ready · Review. "This step is
-      // finished" beside that badge contradicted it (R4-NEW-jordanb-1), so the
-      // note is worded by the lane the step is drawn in; the fact — the change
-      // went in before its prerequisite — is kept either way.
-      const overtakenNote = c.state.lane?.lane === 'Completed' ? CONTRACT.fixStepOvertaken : CONTRACT.fixStepOvertakenOpen
-      const note = b.overtaken ? fillText(overtakenNote, { step: title }) : fixStepNote(title, b.milestone)
-      out.push({ key: `engine:${b.kind}:${b.id}`, label: title, tone: b.overtaken ? 'warn' : tone, value: prerequisiteLabel(b.id) ?? b.label, note, link: stepLink(b.id, title) })
+      out.push({ key: `engine:${b.kind}:${b.id}`, label: title, tone, value: prerequisiteLabel(b.id) ?? b.label, note: fixStepNote(title, b.milestone), link: stepLink(b.id, title) })
       continue
     }
     if (b.kind === 'sourceMapping') {

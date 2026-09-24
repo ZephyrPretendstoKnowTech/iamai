@@ -124,12 +124,5 @@ test('a create lands in report-only and denies nobody, so the hold leaves it off
     const f = withSecurityDefaultsOn(base())
     const run = runFixture(f)
     for (const s of run.steps) if (s.state.lifecycle === 'enforced') assert.notEqual(policyHold(s), 'prerequisite-unmet', `${s.id} is already on and was held`)
-    // The overtaken tile read only the recovery test, because every security-
-    // defaults edge is conditional; the condition is resolved to applicable here.
-    const readings = laneReadings(run.steps, [])
-    const completed = run.steps.filter((s) => s.status === 'done' && (s.kind === 'create' || s.kind === 'adjust') && s.state.lifecycle === 'enforced')
-    assert.ok(completed.length > 0, 'the premise: some policy is on')
-    const named = completed.filter((s) => (readings.get(s.id)?.overtaken ?? []).some((b) => b.id === SECURITY_DEFAULTS_STEP_ID))
-    assert.ok(named.length > 0, 'no completed policy says it went ahead of Turn Off Security Defaults')
   }
 })
