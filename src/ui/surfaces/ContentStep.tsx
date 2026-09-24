@@ -1165,7 +1165,7 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false 
       {/* Prepare Emergency Access Accounts: once accounts are saved, the line over
           the picker names them rather than asking for them (owner, 2026-09-23). */}
       {stepId === 's-prereq-break-glass'
-        ? <Line s={ctx.mapping.breakGlassUserIds.length > 0 ? YOUR_ACCOUNTS : d.help} ex={ex} cls="reason" />
+        ? <Line s={ctx.mapping.breakGlassUserIds.length >= 2 ? YOUR_ACCOUNTS : d.help} ex={ex} cls="reason" />
         : !isExclusionsGroup && decisionAnswer === null && <Line s={decisionLine(d, null)} ex={ex} cls="reason" />}
       <div className="decision">
         {/* Each label is an element the controls under it can name (task 017):

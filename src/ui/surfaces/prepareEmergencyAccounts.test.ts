@@ -338,5 +338,16 @@ test('#23 a Completed step draws no milestone block, and 1.1 with accounts saved
   const words = JSON.parse(read('docs/design/content.json')).pages.app.plan.emergencyTasks as Record<string, string>
   assert.equal(words.yourAccounts, 'Your emergency access accounts')
   const single = step.slice(step.indexOf('function SingleDecision('), step.indexOf('export function Options('))
-  assert.match(single, /\? <Line s=\{ctx\.mapping\.breakGlassUserIds\.length > 0 \? YOUR_ACCOUNTS : d\.help\} ex=\{ex\} cls="reason" \/>/)
+  assert.match(single, /\? <Line s=\{ctx\.mapping\.breakGlassUserIds\.length >= 2 \? YOUR_ACCOUNTS : d\.help\} ex=\{ex\} cls="reason" \/>/)
+})
+
+test('#11 #13 #23 with one account of two chosen, choosing the second is still the next action', () => {
+  const one = (f: Fixture): void => { f.mapping.breakGlassUserIds = f.mapping.breakGlassUserIds.slice(0, 1) }
+  const { lane, body, ctx } = opened('small', one)
+  assert.equal(ctx.mapping.breakGlassUserIds.length, 1, 'the premise: one account is saved')
+  assert.equal(lane.label, 'Ready · Decision', 'the row read Ready · Correct with one account saved and none to correct')
+  assert.equal(body.rail.sub, 'Choose your second emergency access account.')
+  // The rail keeps asking until both are chosen; it names them only then.
+  const step = read('src/ui/surfaces/ContentStep.tsx')
+  assert.match(step, /\? <Line s=\{ctx\.mapping\.breakGlassUserIds\.length >= 2 \? YOUR_ACCOUNTS : d\.help\} ex=\{ex\} cls="reason" \/>/)
 })
