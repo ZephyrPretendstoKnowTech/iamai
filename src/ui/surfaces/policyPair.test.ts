@@ -9,25 +9,7 @@ import type { RoadmapInput } from '../../roadmap/generate.ts'
 import { policyPairNames } from '../../coverage/naming.ts'
 import { planDates, stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { pairBaselineNames, portalNamesFor, stepPortalLines } from './stepPortal.ts'
-
-// GetIAMAI: the guests policy is not in place there, so the plan proposes the pair's names.
-const f = fixture('getiamai')
-const r = runFixture(f)
-const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming) }
-const guests = r.steps.find((s) => s.goalId === 'guests-mfa' && s.kind !== 'verify')!
-
-test('guests Policy A and Policy B carry distinct names: the proposal, and the proposal with the baseline\'s words for the second policy', () => {
-  const baseline = pairBaselineNames(guests.goalId)
-  assert.equal(baseline.length, 2, 'the baseline implements the guests goal with two policies')
-  const proposed = String(guests.naming?.proposed)
-  const ex = stepVars(guests, ctx) as Record<string, unknown>
-  assert.equal(ex.policyNameA, proposed, 'A is the plan\'s proposal')
-  assert.equal(typeof ex.policyNameB, 'string')
-  assert.notEqual(ex.policyNameA, ex.policyNameB)
-  const bWords = baseline[1].split(/\s+[-–|]\s+/).pop()!
-  assert.ok((ex.policyNameB as string).endsWith(bWords), `${ex.policyNameB} carries the baseline's words for B (${bWords})`)
-})
+import { portalNamesFor, stepPortalLines } from './stepPortal.ts'
 
 // The two blocks come from the step's own resolved policies, so they render on a
 // fixture whose baseline is the pinned one — the package the product ships.

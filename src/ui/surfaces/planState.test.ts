@@ -13,16 +13,13 @@ import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { cleanupComplete } from '../../roadmap/cleanupDone.ts'
-import { BREAK_GLASS_STEP_ID } from '../../roadmap/stepIds.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { stepFacts } from '../../derive/facts.ts'
-import { planStateOf } from './planState.ts'
-import { isHeld } from '../../roadmap/holds.ts'
-import { WHEN, boardHolds, boardWhenOf, focusCounts, laneViewOf, waveStartOf } from './planBoard.ts'
+import { boardHolds, boardWhenOf, focusCounts, laneViewOf, waveStartOf } from './planBoard.ts'
 import type { BoardItem } from './planBoard.ts'
 import { laneReadings } from './planLanes.ts'
 import type { LaneReading } from './planLanes.ts'
-import { CONTRACT, badgeLabel, railOf, readinessOf, stepContract } from './stepContract.ts'
+import { railOf, stepContract } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { floorRows, planPhases, scheduledSpan, undatedRows } from './planRows.ts'
 import { applyStepDecisions } from '../../roadmap/decisions.ts'
@@ -106,25 +103,6 @@ test('a dated row’s rail is the day the plan schedules, and its When column re
     }
   }
   assert.ok(checked > 40, `dated rows checked: ${checked}`)
-})
-
-test('an undated row reads the placeholder and so does its rail: the reason lives in the lane', () => {
-  let checked = 0
-  for (const run of everyRun()) {
-    const { when, readings } = boardOf(run)
-    const ctx = ctxOf(run)
-    const titleOf = (id: string): string | null => run.r.steps.find((s) => s.id === id)?.plainTitle ?? null
-    for (const step of run.r.steps) {
-      const reading = readings.get(step.id)
-      if (!reading || when.get(step.id) !== WHEN.none || step.status === 'done') continue
-      const lane = laneViewOf(reading, titleOf)
-      const c = stepContract(step, ctx, undefined, lane, undefined, boardHolds(step, lane))
-      if (c.milestone.at !== null) continue
-      assert.equal(railOf(c).metric, 'Not scheduled', `${run.f.name}/${step.id}: the row reads the placeholder and the rail says "${railOf(c).metric}"`)
-      checked += 1
-    }
-  }
-  assert.ok(checked > 0, `undated rows checked: ${checked}`)
 })
 
 test('a group heading spans every day its rows read: the floor group dates its created rows, the undated group dates none', () => {

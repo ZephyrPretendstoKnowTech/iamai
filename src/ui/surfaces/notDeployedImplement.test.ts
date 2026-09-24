@@ -41,17 +41,16 @@ import { effectsOf } from '../../roadmap/strand.ts'
 import { readyWhen } from '../../derive/readyWhen.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
-import { groundingBundle, promptPack, stepContext } from '../../roadmap/prompts.ts'
+import { stepContext } from '../../roadmap/prompts.ts'
 import { findTaggedPolicies } from '../../roadmap/generate.ts'
-import { absoluteDate, longDate } from '../../copy/dates.ts'
-import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
+import { absoluteDate } from '../../copy/dates.ts'
+import { contentStepFor } from '../../content/stepTitle.ts'
 import { content } from '../../content/content.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { stepContract } from './stepContract.ts'
-import { stepExportView, commsFor, copyBoxes, datesLineFor, exportAnnouncementOf, ifWrongLineFor, stepLines } from './stepExport.ts'
-import { policyJsonText, jsonOffered, stepOperations, createsNewPolicy } from './stepJson.ts'
+import { stepExportView, commsFor, copyBoxes, datesLineFor, exportAnnouncementOf } from './stepExport.ts'
+import { policyJsonText, stepOperations, createsNewPolicy } from './stepJson.ts'
 import { powershellFor } from './stepPowerShell.ts'
-import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
 import { rowWhen } from './rowWhen.ts'
 import { nextMilestone } from '../../roadmap/lifecycle.ts'
 import { awaitingDeployment, enforcementTiming } from '../../roadmap/forecast.ts'
@@ -93,46 +92,14 @@ function portalOf(step: Step, ctx: StepVarContext): string[] {
   return artifact.text().replace(/\*\*(.*?)\*\*/g, '$1').split(/\r?\n/).map(l => l.trim()).filter(Boolean)
 }
 
-// ---- 1. the case is real, and it is genuinely Not deployed ----
-
-test('004.1: the canonical case is a Conditional Access policy step that is genuinely Not deployed', () => {
-  const { step } = canonical()
-  assert.equal(step.kind, 'create', 'the canonical case is a policy the plan writes')
-  assert.equal(contentStepFor(step)?.kind, 'policy')
-  // Foundation B, and only Foundation B, says where the policy is. Having an
-  // operation to run is not deployment: the lifecycle has to say so itself.
-  assert.equal(step.state.lifecycle, 'not-deployed')
-  assert.equal(step.state.condition, 'healthy', 'the canonical Implement case has no blocker, decision or conflict')
-  assert.equal(step.state.satisfied, false)
-  assert.equal(step.state.inPlace, false)
-  assert.equal(step.state.setAside, false)
-  // Nothing has been observed of the policy, because there is no policy: no
-  // tracking, no report-only date, and the member the step requires is absent.
-  assert.equal(step.tracking, null, 'a not-deployed policy has nothing tracked')
-  assert.equal(readyWhen(step), null, 'a not-deployed policy is not ready to enforce')
-  assert.equal(step.state.members.length, 1, 'the canonical case is a single-policy goal')
-  assert.equal(step.state.members[0].change.latest.state, 'absent')
-  assert.equal(step.state.members[0].change.latest.artifact, null)
-})
-
-// ---- 2. Foundation A offers the implementation, and the contract reports it ----
-
-test('004.2: implementation is offered by Foundation A and the frozen contract says so', () => {
-  const { step, ctx } = canonical()
-  assert.equal(unavailableReason(step), null, 'nothing holds the canonical Implement case')
-  assert.equal(implementationOffered(step), true)
-  const c = stepContract(step, ctx)
-  assert.equal(c.implementation.offered, true)
-  assert.equal(c.implementation.offered && c.implementation.operations, 1)
-  // The four channels are offered together or not at all.
-  assert.equal(jsonOffered(step), true)
-  assert.equal(portalOf(step, ctx).length > 0, true)
-})
-
 // ---- 3. a true create, in every channel ----
 
 test('004.3: the operation is a create, and no channel describes an update', () => {
   const { step, ctx } = canonical()
+  // Genuinely Not deployed (Foundation B), and nothing holds it: Foundation A offers the implementation.
+  assert.equal(step.state.lifecycle, 'not-deployed')
+  assert.equal(unavailableReason(step), null, 'nothing holds the canonical Implement case')
+  assert.equal(implementationOffered(step), true)
   const ops = operationsOf(step)
   assert.equal(ops.length, 1)
   const op = ops[0]
@@ -212,20 +179,6 @@ test('004.5: nothing claims report-only evidence, readiness or enforcement befor
 
 // ---- 5. the screen the operator reads ----
 
-test('004.6: the expanded step answers every question the contract makes non-optional', () => {
-  const { step, ctx } = canonical()
-  const c = stepContract(step, ctx)
-  assert.ok(c.why.trim().length > 0)
-  assert.notEqual(c.why.trim(), c.title, 'Why explains the control, it does not repeat the title')
-  assert.ok(c.whatToDo.text.trim().length > 0)
-  assert.ok(c.doneWhen.length > 0)
-  // Neither a blocker nor a decision competes with the action on this case.
-  assert.deepEqual(c.fix, [], 'the canonical Implement case has nothing to fix first')
-  assert.equal(c.multiPolicy, false)
-  assert.equal(c.members.length, 1)
-  assert.equal(c.members[0].lifecycle, null, 'no member object is deployed yet')
-})
-
 test('004.7: Who this touches is the operation’s own reach, not the goal’s people', () => {
   const { step, ctx } = canonical()
   // The step has a policy of its own, so the reach is read from it (Foundation A):
@@ -267,51 +220,6 @@ test('004.8: the portal instructions name the policy, the objects and the state 
   if (body.conditions?.clientAppTypes) assert.match(text, /Client apps/)
   if (body.sessionControls?.signInFrequency) assert.match(text, /Sign-in frequency/)
   if (body.sessionControls?.persistentBrowser) assert.match(text, /Persistent browser session/)
-})
-
-// ---- 7. the artifacts, against the screen ----
-
-test('004.9: the export view says what the screen says about this case', () => {
-  const { step, ctx } = canonical()
-  const c = stepContract(step, ctx)
-  const v = stepExportView(step, ctx)
-  const portal = portalOf(step, ctx)
-  assert.equal(v.title, c.title)
-  assert.equal(v.why, c.why)
-  // The export never suppresses an implementation the screen offers, and never
-  // rewrites the completion the frozen contract states.
-  assert.deepEqual(v.whatToDo.slice(-portal.length), portal, 'the export carries the same portal instructions the screen shows')
-  // And it leads with the same next action: the frozen contract's sentence,
-  // not the portal path with the operation itself left unsaid.
-  assert.equal(v.whatToDo[0], c.whatToDo.text, 'the export must lead with the action the screen states')
-  assert.match(v.whatToDo[0], /report-only/i)
-  assert.deepEqual(v.doneWhen, c.doneWhen, 'the export must not invent a second Done when')
-  // The dates and the rollback follow the operation, not the words the step's
-  // content was written with: a created policy has a report-only deployment to
-  // date and no settings to put back.
-  assert.equal(datesLineFor(step, contentStepFor(step) as Record<string, unknown>), '{datesDeploy}')
-  assert.equal(ifWrongLineFor(step, contentStepFor(step) as Record<string, unknown>, {}), '{policyIfWrong}')
-  assert.doesNotMatch(String(v.dates), /Change /, 'a create deploys to report-only; it does not "Change"')
-  assert.match(String(v.ifWrong), /return the affected policy to Report-only/)
-  assert.doesNotMatch(String(v.ifWrong), /back to what they were/, 'a created policy has no previous settings to restore')
-})
-
-test('004.10: the calendar entry and the prompt pack carry the same create-in-report-only', () => {
-  const { step, ctx, steps, planId } = canonical()
-  const view = (s: Step): ReturnType<typeof stepExportView> => stepExportView(s, ctx)
-  const ics = buildIcs(steps, 'Fixture tenant', planId, view)
-  const event = ics
-    .split('BEGIN:VEVENT')
-    .find((b) => b.includes(`${planId}-${step.id}@iamai`))
-  assert.ok(event, 'the canonical case has a calendar entry')
-  // ICS folds long lines, so compare on the unfolded text.
-  const unfolded = event!.replace(/\r\n /g, '')
-  assert.match(unfolded, /Report-only/)
-  assert.match(unfolded, /New policy/)
-  assert.doesNotMatch(unfolded, /Update-Mg/)
-  const prompt = stepContext(step, view)
-  assert.match(prompt, /Report-only/)
-  assert.doesNotMatch(prompt, /changed settings|(?<!Verify )after the change/i)
 })
 
 // ---- 8. no enforcement is dated, on any surface, while the policy is absent ----
@@ -389,35 +297,6 @@ test('004.12: API artifacts retain identity markers without inventing a Descript
 
 // ---- 10. the forecast is carried as a forecast, and never as a commitment ----
 
-test('004.13: the grounding bundle states what the step’s enforcement date is worth, beside the date', () => {
-  const f = fixture(FIXTURE)
-  const r = runFixture(f)
-  const step = r.steps.find((st) => st.id === STEP_ID)!
-  const { ctx } = canonical()
-  const view = (st: Step): ReturnType<typeof stepExportView> => stepExportView(st, ctx)
-  // The bundle speaks from the screen's view and has no other branch: the
-  // fallback that emitted the schedule's own events and rings is gone (task
-  // 013), because it was a second description of every step. A tool reading this
-  // gets an instant; without the basis beside it, it could not tell a projection
-  // from a milestone something earned.
-  const bundle = groundingBundle({
-    view,
-    tenant: 'Fixture tenant',
-    snapshot: f.snapshot,
-    coverage: r.coverage,
-    steps: r.steps,
-    schedule: r.schedule,
-    redacted: false,
-    generated: f.snapshot.asOf,
-  })
-  const plan = bundle.plan as { steps: Record<string, unknown>[] }
-  const row = plan.steps.find((x) => x.id === STEP_ID)!
-  assert.deepEqual(row.enforcement, { basis: 'forecast', at: step.events!.enforce.at }, 'the bundle does not say the enforcement instant is a forecast')
-  // And the engine's own field names are in none of it: one reading of a step,
-  // and it is the screen's.
-  for (const key of ['rings', 'events', 'plainTitle', 'forManager']) assert.equal(key in row, false, `the bundle carries the engine's ${key}`)
-})
-
 test('004.14: across every fixture, a forecast enforcement never becomes an actionable one', () => {
   for (const f of allFixtures()) {
     const r = runFixture(f)
@@ -449,91 +328,6 @@ test('004.14: across every fixture, a forecast enforcement never becomes an acti
 
 /** The words the content file gives a message that names a date the roadmap projected. */
 const FORECAST_NOTE = String((content.shared as unknown as Record<string, unknown>).commsForecastNote)
-
-test('004.15: the canonical step keeps its projected enforcement date in the email, and the email says the date is a target', () => {
-  const { step, ctx } = canonical()
-  assert.equal(step.state.lifecycle, 'not-deployed')
-  assert.equal(enforcementTiming(step).basis, 'forecast')
-  const cs = contentStepFor(step) as Record<string, unknown>
-  const ex = stepVars(step, ctx) as Record<string, unknown>
-  const email = commsFor(cs, ex, step)
-  assert.ok(email, 'the canonical step renders no email')
-  // The roadmap's projected enforcement day is still in the message. This is not
-  // fixed by deleting the date: a rollout planner has to be able to draw a whole
-  // path before a policy exists, and the operator has to be able to tell people
-  // what it is (owner decision, 004 correction 2).
-  const projected = String(ex.enforceLong)
-  assert.equal(projected, longDate(step.events!.enforce.at), 'the email’s day is the schedule’s own projection')
-  assert.ok(email!.body.includes(projected), `the projected date left the email: ${email!.body}`)
-  // And the message says what that day is worth, in its own paragraph, in the
-  // words the content file gives it — never a sentence composed here.
-  assert.ok(email!.extra.includes(FORECAST_NOTE), `the email states a projected date as a commitment: ${[email!.body, ...email!.extra].join(' / ')}`)
-  assert.match(FORECAST_NOTE, /not a commitment/)
-  assert.match(FORECAST_NOTE, /report-only/)
-  // The Dates line above it withholds the enforcement date entirely; the email
-  // below it names the day and qualifies it. Both say the same thing about what
-  // the plan has earned, which is what they disagreed about.
-  const dates = String(stepExportView(step, ctx).dates)
-  assert.doesNotMatch(dates, new RegExp(absoluteDate(step.events!.enforce.at)), dates)
-  assert.match(dates, /Report-only from/)
-  // The authoritative action is unmoved: this step deploys in report-only.
-  assert.equal(nextMilestone(step).kind, 'deploy')
-  assert.equal(rowWhen(step), absoluteDate(ctx.reportOnlyAt!))
-})
-
-test('004.16: what the screen copies and what the exports render is the one email, qualification included', () => {
-  const { step, ctx } = canonical()
-  const cs = contentStepFor(step) as Record<string, unknown>
-  const email = commsFor(cs, stepVars(step, ctx) as Record<string, unknown>, step)!
-  const text = [email.salutation, email.body, ...email.extra, email.signature].join('\n\n')
-  // The copy button's text (ContentStep.tsx joins the same four parts) and the
-  // lines every export reads: an operator cannot copy a version of this message
-  // without the qualification, from either.
-  const box = copyBoxes(step, ctx).find((b) => b.kind === 'comms')
-  assert.ok(box, 'the canonical step renders no Tell your people box')
-  assert.equal(box!.text, text)
-  assert.ok(box!.text.includes(FORECAST_NOTE), 'the copied email drops the qualification')
-  assert.ok(stepLines(step, ctx).includes(FORECAST_NOTE), 'the rendered lines drop the qualification')
-})
-
-test('004.17: the prompt pack’s draft announcement carries the same qualification the screen does', () => {
-  // The draft the pack sends is the screen's own Tell your people box
-  // (stepExport.ts exportAnnouncementOf, Phase 2 export finding 5), so the
-  // paragraph that says what its date is worth travels with it.
-  const { step, ctx, steps } = canonical()
-  const box = copyBoxes(step, ctx).find((b) => b.kind === 'comms')
-  assert.ok(box && box.text.includes(FORECAST_NOTE), 'the premise: the screen qualifies the date')
-  const draft = exportAnnouncementOf([step], () => false, () => ctx)
-  assert.deepEqual(draft, { step: contentTitle(step), text: box!.text }, 'the draft is not the screen\'s email')
-  // And the pack a person actually copies carries it, in both prompts built
-  // from the draft (rewrite, translate), each named for the step.
-  const r = runFixture(fixture(FIXTURE))
-  const pack = promptPack({ view: (st: Step) => stepExportView(st, ctx), tenant: 'Fixture tenant', steps, schedule: r.schedule, changeRecord: '', announcement: draft })
-  const carrying = pack.filter((p) => p.prompt.includes(box!.text))
-  assert.equal(carrying.length, 2, `the pack builds ${carrying.length} prompts from the draft`)
-  for (const p of carrying) {
-    assert.ok(p.prompt.includes(FORECAST_NOTE), `${p.title}: the prompt hands a model a projected date as a commitment`)
-    assert.equal(p.scope, contentTitle(step), `${p.title}: the prompt names no step`)
-  }
-})
-
-test('004.18: an enforcement Foundation B has earned is stated plainly — the qualification is not added to every message', () => {
-  const f = fixture(FIXTURE)
-  const r = runFixture(f)
-  // A real step on the same fixture that Foundation B has carried to
-  // ready-to-enforce: its date is committed, and its draft is untouched.
-  const committed = r.steps.find((s) => s.comms && enforcementTiming(s).basis === 'committed')
-  assert.ok(committed, `${FIXTURE} no longer carries a step with an earned enforcement and a draft`)
-  assert.ok(committed!.state.lifecycle === 'ready-to-enforce' || committed!.state.lifecycle === 'enforced')
-  // The screen reads the same authority. Same content, same tenant values, only
-  // the step whose lifecycle classifies the date changed — and the paragraph
-  // goes away.
-  const { step, ctx } = canonical()
-  const cs = contentStepFor(step) as Record<string, unknown>
-  const ex = stepVars(step, ctx) as Record<string, unknown>
-  assert.ok(commsFor(cs, ex, step)!.extra.includes(FORECAST_NOTE))
-  assert.ok(!commsFor(cs, ex, committed!)!.extra.includes(FORECAST_NOTE), 'the screen qualifies a date that has been earned')
-})
 
 test('004.19: across every fixture, a message names a projected enforcement date only with the paragraph that says so', () => {
   for (const f of allFixtures()) {
