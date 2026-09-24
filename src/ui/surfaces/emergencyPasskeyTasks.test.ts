@@ -287,3 +287,36 @@ test('1.3’s card and its task state one count, the accounts the allow list wou
   const task = emergencyPasskeyTasksOf(step, ctx).tasks.find((t) => t.id === 'prepare-affected-passkeys')!
   assert.ok(task.steps.some((l) => l.includes(`would lock out ${locked.length} accounts`)), 'the task says the same count')
 })
+
+/** The fixture with Configure Passkey Authentication's planned settings already applied. */
+function applied(name: 'mid' | 'small') {
+  const f = curatedFixture(name)
+  const snapshot = structuredClone(f.snapshot)
+  const reading = passkeyReadingOf(snapshot, f.mapping)
+  assert.equal(reading.resolution?.kind, 'target', 'the premise: the step has settings to apply')
+  const target = (reading.resolution as { target: Record<string, unknown> }).target
+  const rows = (snapshot.config.authMethodsPolicy?.rows ?? []) as { authenticationMethodConfigurations?: Record<string, unknown>[] }[]
+  const others = (rows[0]?.authenticationMethodConfigurations ?? []).filter((c) => String(c.id).toLowerCase() !== 'fido2')
+  snapshot.config.authMethodsPolicy = { status: 'ok', reason: null, rows: [{ ...(rows[0] ?? {}), authenticationMethodConfigurations: [{ ...target, id: 'Fido2' }, ...others] }] }
+  const r = runFixture({ ...f, snapshot })
+  return { f, snapshot, r, step: r.steps.find((s) => s.id === 's-prereq-passkey-settings')! }
+}
+
+test('1.3 is never Completed while an account the applied allow list locks out is still to check; with nobody locked out it completes, and the rest is a fact (net-new 4)', () => {
+  {
+    const { f, snapshot, r, step } = applied('mid')
+    assert.notEqual(step.status, 'done', 'mid: accounts with no other way in keep the step open')
+    const ctx: StepVarContext = { snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: snapshot.asOf, groups: f.groups }
+    assert.equal(emergencyPasskeyTasksOf(step, ctx).tasks.find((t) => t.id === 'prepare-affected-passkeys')?.required, true)
+    assert.match((step.configurationFindings ?? []).find((c) => c.key === 'affected-passkeys')?.value ?? '', /^\d+ accounts? to check now$/)
+  }
+  {
+    const { f, snapshot, r, step } = applied('small')
+    assert.equal(step.status, 'done', 'small: everyone affected keeps another way in')
+    const ctx: StepVarContext = { snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: snapshot.asOf, groups: f.groups }
+    assert.ok(emergencyPasskeyTasksOf(step, ctx).tasks.every((t) => !t.required), 'Completed: no task required')
+    const card = (step.configurationFindings ?? []).find((c) => c.key === 'affected-passkeys')!
+    assert.equal(card.outcome, 'pass')
+    assert.match(card.value, /keep another way in$/)
+  }
+})

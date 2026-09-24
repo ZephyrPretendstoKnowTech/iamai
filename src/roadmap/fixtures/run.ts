@@ -33,6 +33,7 @@ import type { Fixture } from './index.ts'
 import type { RoadmapInput } from '../generate.ts'
 import type { MfaViability } from '../../scoring/mfaViability.ts'
 import type { StepObservationRecord } from '../observation.ts'
+import { passkeyRestrictionReading } from '../passkeyRestrictions.ts'
 
 export type FixtureRun = ReturnType<typeof generateRoadmap> & {
   input: RoadmapInput
@@ -240,6 +241,10 @@ export function withEmergencyAccessSettled(f: Fixture): Fixture {
   const snapshot = structuredClone(f.snapshot)
   const ids = f.mapping.breakGlassUserIds
   withPreparedPasskeys(snapshot, ids)
+  // Nobody the applied allow list locks out: Configure Passkey Authentication
+  // stays open while anyone is (net-new 4), so each such account also holds
+  // Windows Hello for Business, another way in.
+  for (const id of passkeyRestrictionReading(snapshot, f.mapping, f.groups).lockedOut) snapshot.authMethods[id] = [...(snapshot.authMethods[id] ?? []), { kind: 'windowsHelloForBusiness' }] as never
   // And the tenant's own policies carving out the group its technician chose,
   // wherever they carve out another one (the inverse of withBreakGlassCarveOut):
   // a chosen group the policies do not use leaves Configure Emergency Exclusions

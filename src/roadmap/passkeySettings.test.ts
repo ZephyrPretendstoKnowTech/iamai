@@ -15,6 +15,7 @@ import { BLOCKED_REASON } from '../copy/reasons.ts'
 import { operatorUserId } from '../derive/operator.ts'
 import { OPERATOR_PASSKEY_STEP_ID, PASSKEY_SETTINGS_STEP_ID, PASSKEY_TARGET_AAGUIDS, passkeyReadingOf, resolvePasskeyTarget } from './passkeySettings.ts'
 import type { Fido2Configuration, PasskeyResolution } from './passkeySettings.ts'
+import { passkeyRestrictionReading } from './passkeyRestrictions.ts'
 
 const CAMPAIGN = 's-verify-mfa'
 const IOS = '90a3ccdf-635c-4729-a248-9b709135078f'
@@ -123,10 +124,19 @@ test('A5.3–A5.6 on the demo Step 3 is Up Next with the target resolved from th
     assert.equal(packageOf(f, r).state, 'missing')
   }
 
-  // A5.5 every field matching completes the step and releases the campaign from it.
+  // A5.5 every field matching completes the step and releases the campaign from
+  // it, once nobody is locked out by it: an account whose only passkey the allow
+  // list now stops, with no other way in, keeps the step open with Prepare
+  // affected passkeys its work (net-new 4: never Completed while a task is required).
   {
     const f = withFido2(fixture('demo'), legacy())
-    const { r, lane, label } = plan(f)
+    const locked = passkeyRestrictionReading(f.snapshot, f.mapping, runFixture(f).input.groupMembers).lockedOut
+    assert.ok(locked.length > 0, 'the premise: the demo has an account the allow list locks out')
+    assert.notEqual(plan(f).r.steps.find((s) => s.id === PASSKEY_SETTINGS_STEP_ID)?.status, 'done')
+    // Each of them with another way in: Windows Hello for Business.
+    const snapshot = structuredClone(f.snapshot)
+    for (const id of locked) snapshot.authMethods[id] = [...(snapshot.authMethods[id] ?? []), { kind: 'windowsHelloForBusiness' }] as never
+    const { r, lane, label } = plan({ ...f, snapshot })
     const step = r.steps.find((s) => s.id === PASSKEY_SETTINGS_STEP_ID)
     assert.equal(step?.status, 'done')
     assert.equal(lane(PASSKEY_SETTINGS_STEP_ID), 'Completed')

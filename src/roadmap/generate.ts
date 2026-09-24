@@ -343,6 +343,7 @@ const EXTRAS = STEP_EXTRAS
 // importing the engine); re-exported here for the modules that import them from the engine.
 export { idFor, stepIdForGoal, EXCLUSION_GROUP_STEP_ID, BREAK_GLASS_STEP_ID, PREREQ_STEP_ID } from './stepIds.ts'
 import { idFor, BREAK_GLASS_STEP_ID, EXCLUSION_GROUP_STEP_ID, PREREQ_STEP_ID, SEPARATE_ADMIN_ACCOUNTS_STEP_ID } from './stepIds.ts'
+import { passkeyRestrictionReading } from './passkeyRestrictions.ts'
 import { OPERATOR_PASSKEY_STEP_ID, PASSKEY_SETTINGS_STEP_ID, PASSKEY_TARGET, operatorPasskeyOf, operatorSignInOf, passkeyReadingOf, passkeyReadinessFindingsOf } from './passkeySettings.ts'
 import { SYNC_WORKLOAD_GOAL_ID, WORKLOAD_IDENTITY_BLOCKER, syncIdentitySupportOf } from './workloadIdentity.ts'
 
@@ -1476,7 +1477,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const registering = passkey.resolution?.kind === 'target' ? passkey.resolution.target : passkey.current ?? PASSKEY_TARGET
     const registrant = (id: string): boolean => userById.get(id)?.userType !== 'guest' && passkeyTargetsReach(registering.includeTargets, id, input.groupMembers ?? new Map()) === true && passkeyTargetsReach(registering.excludeTargets ?? [], id, input.groupMembers ?? new Map()) === false
     s.impactCount = campaignIds(viability, snapshot, mapping).filter(registrant).length
-    if (passkey.state === 'inPlace') setState(s, { satisfied: true, inPlace: true })
+    // In place, and nobody locked out by it: an account the applied allow list
+    // leaves with no other way in keeps the step open, with Prepare affected
+    // passkeys its work (net-new 4, owner 2026-09-24: never Completed while a
+    // task is required).
+    if (passkey.state === 'inPlace' && passkeyRestrictionReading(snapshot, mapping, input.groupMembers).lockedOut.length === 0) setState(s, { satisfied: true, inPlace: true })
+    else if (passkey.state === 'inPlace') { /* open: its accounts to check are its work */ }
     else if (passkey.state === 'unread') {
       s.blockers = [{ kind: 'evidence', label: 'passkey-settings-unread', binding: BLOCKED_REASON.methodsPolicyUnread, unverified: true }]
       setState(s, { condition: conditionFor(s.blockers) })

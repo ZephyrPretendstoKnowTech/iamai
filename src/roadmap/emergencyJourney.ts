@@ -32,7 +32,7 @@ const NEEDS_CORRECTION = (app.plan as unknown as { stepContract: { stateWords: {
 const NO_ACCOUNTS_CHOSEN = (app.plan as unknown as { emergencyTasks: { noAccountsChosen: string } }).emergencyTasks.noAccountsChosen
 /** Existing passkeys affected where accounts would be left without a passkey the planned settings allow (pages.app.plan.emergencyTasks). */
 const ACCOUNTS_TO_PREPARE = (app.plan as unknown as { emergencyTasks: { accountsToPrepare: string } }).emergencyTasks.accountsToPrepare
-const LOCKED_OUT = (app.plan as unknown as { emergencyTasks: { accountsLockedOut: string; lockedOutItem: string } }).emergencyTasks
+const LOCKED_OUT = (app.plan as unknown as { emergencyTasks: { accountsLockedOut: string; accountsToCheck: string; accountsKeepAnother: string; lockedOutItem: string } }).emergencyTasks
 
 export const EMERGENCY_ACCOUNTS = 's-prereq-break-glass'
 export const EMERGENCY_GROUP = 's-prereq-exclusion-group'
@@ -300,6 +300,8 @@ export function journeyPasskeyFindings(snapshot: TenantSnapshot, mapping: Mappin
   // while its task said the list "would lock out 5 accounts", both right and
   // read as a contradiction.
   const lockedOut = affected.users.length || affected.state === 'known' ? [] : passkeyRestrictionReading(snapshot, mapping, groups).lockedOut
+  // Applied, and every account whose passkey it stops keeps another way in: a fact, not work (net-new 4).
+  const settled = reading.state === 'inPlace' && !affected.users.length && lockedOut.length === 0
   const affectedFinding: ConfigurationFinding | null = !affected.users.length && affected.state !== 'known' && !affected.stranded.length ? null : {
     key: 'affected-passkeys',
     label: 'Existing passkeys affected',
@@ -308,16 +310,16 @@ export function journeyPasskeyFindings(snapshot: TenantSnapshot, mapping: Mappin
       : affected.state === 'known'
         ? 'No existing passkey stops working under this change.'
         : lockedOut.length > 0
-          ? fillText(LOCKED_OUT.accountsLockedOut, { count: count(lockedOut.length, 'account') })
-          : fillText(ACCOUNTS_TO_PREPARE, { count: count(affected.stranded.length, 'account') }),
-    outcome: affected.users.length ? 'fail' : affected.state === 'known' ? 'pass' : 'unknown',
+          ? fillText(reading.state === 'inPlace' ? LOCKED_OUT.accountsToCheck : LOCKED_OUT.accountsLockedOut, { count: count(lockedOut.length, 'account') })
+          : fillText(settled ? LOCKED_OUT.accountsKeepAnother : ACCOUNTS_TO_PREPARE, { count: count(affected.stranded.length, 'account') }),
+    outcome: affected.users.length ? 'fail' : affected.state === 'known' || settled ? 'pass' : 'unknown',
     detail: '',
     items: affected.users.flatMap(user => user.methods.map((method, index) => ({
       label: `Affected passkey ${index + 1}`, factLabel: `Affected passkey ${index + 1}`, accountId: user.accountId, subjectId: user.accountId, subjectLabel: accountLabel(snapshot, user.accountId),
       value: `${[method.displayName, method.aaguid, method.passkeyType].filter(Boolean).join(' · ')}${user.hasCompatibleAlternative ? ' · Compatible alternative observed' : ''}`,
       outcome: 'fail' as const, issueKeys: [`passkey:affected:${user.accountId.toLowerCase()}`],
     }))).concat(lockedOut.map(id => ({
-      label: LOCKED_OUT.accountsLockedOut, factLabel: fillText(LOCKED_OUT.accountsLockedOut, { count: count(lockedOut.length, 'account') }), accountId: id, subjectId: id, subjectLabel: accountLabel(snapshot, id),
+      label: LOCKED_OUT.accountsLockedOut, factLabel: fillText(reading.state === 'inPlace' ? LOCKED_OUT.accountsToCheck : LOCKED_OUT.accountsLockedOut, { count: count(lockedOut.length, 'account') }), accountId: id, subjectId: id, subjectLabel: accountLabel(snapshot, id),
       value: LOCKED_OUT.lockedOutItem, outcome: 'fail' as const, issueKeys: [`passkey:locked-out:${id.toLowerCase()}`],
     }))),
   }
