@@ -22,36 +22,37 @@ const X = 'dddddddd-0000-4000-8000-00000000000d'
 const COMMAND = 'Remove-MgGroup -GroupId 00000000-0000-0000-0000-000000000000'
 const BREAKS = ['\n', '\r\n', '\r', '\u2028', '\u0085']
 
-test('a text binding holding a line break stays on its line; a JSON binding keeps its escaped break; a plain name is unchanged', () => {
-  for (const br of BREAKS) {
-    const bound = bindText(`# This change removes {{k}} from the policy's exclusions.\nparam(`, { k: [`Contractors${br}${COMMAND}`, 'guest or external users'] }, new Set())
-    assert.deepEqual(bound, { text: `# This change removes Contractors ${COMMAND}, guest or external users from the policy's exclusions.\nparam(` }, JSON.stringify(br))
-    assert.deepEqual(bindText('   Open "{{p}}".', { p: `Policy${br}B` }, new Set()), { text: '   Open "Policy B".' }, JSON.stringify(br))
-  }
-  assert.deepEqual(bindText('{ "displayName": {{json:p}} }', { p: 'a\nb' }, new Set()), { text: '{ "displayName": "a\\nb" }' })
-  // Control: an ordinary name, a tab and non-ASCII letters are left as they are.
-  assert.deepEqual(bindText('# removes {{k}}', { k: 'Contoso – Staff\tÉquipe' }, new Set()), { text: '# removes Contoso – Staff\tÉquipe' })
-})
-
-test('every registered text block keeps its line count when each of its values holds a line break', () => {
-  let blocks = 0
-  for (const [id, pkg] of Object.entries(PACKAGES)) {
-    for (const [bid, block] of Object.entries(pkg.blocks)) {
-      if (/json/.test(String(block.meta.format))) continue
-      const keys = [...new Set([...block.text.matchAll(/\{\{(?:json:)?([A-Za-z0-9_.-]+)\}\}/g)].map((m) => m[1]))]
-      if (keys.length === 0) continue
-      const plain = bindText(block.text, Object.fromEntries(keys.map((k) => [k, 'Contractors'])), new Set())
-      const broken = bindText(block.text, Object.fromEntries(keys.map((k) => [k, `Contractors\n${COMMAND}`])), new Set())
-      assert.ok('text' in plain && 'text' in broken, `${id} ${bid}`)
-      assert.equal(broken.text.split('\n').length, plain.text.split('\n').length, `${id} ${bid}: a bound value ended its line`)
-      assert.doesNotMatch(broken.text, /^\s*Remove-MgGroup/m, `${id} ${bid}`)
-      blocks++
+test('a text binding holding a line break stays on its line in every registered text block; a JSON binding keeps its escaped break; a plain name is unchanged', () => {
+  {
+    for (const br of BREAKS) {
+      const bound = bindText(`# This change removes {{k}} from the policy's exclusions.\nparam(`, { k: [`Contractors${br}${COMMAND}`, 'guest or external users'] }, new Set())
+      assert.deepEqual(bound, { text: `# This change removes Contractors ${COMMAND}, guest or external users from the policy's exclusions.\nparam(` }, JSON.stringify(br))
+      assert.deepEqual(bindText('   Open "{{p}}".', { p: `Policy${br}B` }, new Set()), { text: '   Open "Policy B".' }, JSON.stringify(br))
     }
+    assert.deepEqual(bindText('{ "displayName": {{json:p}} }', { p: 'a\nb' }, new Set()), { text: '{ "displayName": "a\\nb" }' })
+    // Control: an ordinary name, a tab and non-ASCII letters are left as they are.
+    assert.deepEqual(bindText('# removes {{k}}', { k: 'Contoso – Staff\tÉquipe' }, new Set()), { text: '# removes Contoso – Staff\tÉquipe' })
   }
-  // Premise: the 27 script blocks and the Entra/AI blocks with text bindings were read.
-  assert.ok(blocks > 100, String(blocks))
-  const scripts = Object.values(PACKAGES).flatMap((p) => Object.values(p.blocks)).filter((b) => b.meta.format === 'powershell' && /\{\{(?!json:)/.test(b.text))
-  assert.ok(scripts.length >= 25, String(scripts.length))
+  {
+    let blocks = 0
+    for (const [id, pkg] of Object.entries(PACKAGES)) {
+      for (const [bid, block] of Object.entries(pkg.blocks)) {
+        if (/json/.test(String(block.meta.format))) continue
+        const keys = [...new Set([...block.text.matchAll(/\{\{(?:json:)?([A-Za-z0-9_.-]+)\}\}/g)].map((m) => m[1]))]
+        if (keys.length === 0) continue
+        const plain = bindText(block.text, Object.fromEntries(keys.map((k) => [k, 'Contractors'])), new Set())
+        const broken = bindText(block.text, Object.fromEntries(keys.map((k) => [k, `Contractors\n${COMMAND}`])), new Set())
+        assert.ok('text' in plain && 'text' in broken, `${id} ${bid}`)
+        assert.equal(broken.text.split('\n').length, plain.text.split('\n').length, `${id} ${bid}: a bound value ended its line`)
+        assert.doesNotMatch(broken.text, /^\s*Remove-MgGroup/m, `${id} ${bid}`)
+        blocks++
+      }
+    }
+    // Premise: the 27 script blocks and the Entra/AI blocks with text bindings were read.
+    assert.ok(blocks > 100, String(blocks))
+    const scripts = Object.values(PACKAGES).flatMap((p) => Object.values(p.blocks)).filter((b) => b.meta.format === 'powershell' && /\{\{(?!json:)/.test(b.text))
+    assert.ok(scripts.length >= 25, String(scripts.length))
+  }
 })
 
 test('a removed exclusion named with a line break stays one comment line in the handed-over script, one Save item in Entra, and one export line', () => {

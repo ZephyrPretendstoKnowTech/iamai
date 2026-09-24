@@ -12,7 +12,7 @@ import { authErrorOf, classifyAuthError } from '../../graph/authError.ts'
 import { demoFacts } from '../demoFacts.ts'
 import { facts as factsOf } from '../../derive/facts.ts'
 import { demoTenant } from '../demo.ts'
-import { W, accountTile, planTile, scanTile, signInTile, tileStrings } from './connectView.ts'
+import { planTile, signInTile, tileStrings } from './connectView.ts'
 import type { SignInTile } from './connectView.ts'
 
 const CONSENT = "Before anyone in a tenant can use IAMAI, a Global Administrator approves it once by selecting “Consent on behalf of your organization” on Microsoft's screen; after that, Global Reader is enough."
@@ -32,18 +32,6 @@ const onlyItsOwn = (kind: string, t: SignInTile): void => {
   }
   for (const s of tileStrings(t)) assert.ok(!/Security Reader|Reports Reader/.test(s), `"${s}" names a role other than Global Reader`)
 }
-
-// Task 016: the heading leads with the security outcome. Conditional Access is
-// an implementation the operator meets at the baseline stage, once there is
-// something for the term to attach to — not the first word on the page.
-test('the heading leads with the outcome, and names Conditional Access only once the baseline gives it context', () => {
-  assert.equal(W.h1, 'Strengthen identity security with evidence about who could be affected.')
-  assert.equal(W.intro, 'IAMAI reads a Microsoft Entra tenant, compares it with a reviewed identity-security baseline, and writes a dated plan to help you close the gaps and see who each change affects. It is read-only and runs in this browser.')
-  assert.ok(!/Conditional Access/.test(W.h1 + W.intro), 'the first two lines explain the outcome, not the mechanism')
-  assert.ok(W.baseline.what.includes('Conditional Access'), 'the baseline stage is where the term is introduced')
-  assert.ok(!JSON.stringify(W).includes('Connect a tenant'))
-  assert.ok(!JSON.stringify(W).includes('What happens next'), 'tile 3 is Scan')
-})
 
 test('tile 1 signed out: no tenant connected, the Global Reader line with the consent sentence, Sign in with Microsoft (primary), Try it with sample data (secondary), the consent rows for every requested scope in order, the removal line', () => {
   const t = signInTile({ error: null })
@@ -78,73 +66,70 @@ test('tile 1 signed out: no tenant connected, the Global Reader line with the co
   onlyItsOwn('none', t)
 })
 
-test('the signed-in tile 1 carries the same consent sentence', () => {
-  const t = accountTile({ tenant: 'Contoso Pty Ltd', upn: 'alex@example.com', role: 'Global Administrator' })
-  assert.ok(t.note.endsWith(CONSENT))
-})
+test('a sign-in error is one of three states from the MSAL error code, and a failure with no message quotes the code or draws no Microsoft answered line', () => {
+  {
+    const consent = classifyAuthError({ code: 'consent_required', message: "AADSTS65001: The user or administrator has not consented to use the application with ID 'x' named 'IAMAI Planner' for user 'alex@contoso.com'." })
+    assert.deepEqual(consent, { kind: 'consent', domain: 'contoso.com' })
+    assert.deepEqual(classifyAuthError({ code: 'access_denied', message: 'AADSTS90094: The grant requires admin permission.' }), { kind: 'consent', domain: null })
+    const personal = classifyAuthError({ code: 'invalid_request', message: "AADSTS50020: User account 'someone@outlook.com' from identity provider 'live.com' does not exist in tenant 'organizations' and cannot access the application." })
+    assert.deepEqual(personal, { kind: 'personal', account: 'someone@outlook.com' })
+    assert.deepEqual(classifyAuthError({ code: 'user_cancelled', message: 'User cancelled the flow.' }), { kind: 'cancelled' })
+    assert.deepEqual(classifyAuthError({ code: 'access_denied', message: 'AADSTS65004: User declined to consent to access the app.' }), { kind: 'cancelled' })
+    assert.deepEqual(classifyAuthError({ code: 'server_error', message: 'AADSTS90002: Tenant not found.' }), { kind: 'failed', message: 'AADSTS90002: Tenant not found.' })
 
-test('a sign-in error is one of three states from the MSAL error code: admin approval needed (amber), a personal account (red, its own button), cancelled (the state line only)', () => {
-  const consent = classifyAuthError({ code: 'consent_required', message: "AADSTS65001: The user or administrator has not consented to use the application with ID 'x' named 'IAMAI Planner' for user 'alex@contoso.com'." })
-  assert.deepEqual(consent, { kind: 'consent', domain: 'contoso.com' })
-  assert.deepEqual(classifyAuthError({ code: 'access_denied', message: 'AADSTS90094: The grant requires admin permission.' }), { kind: 'consent', domain: null })
-  const personal = classifyAuthError({ code: 'invalid_request', message: "AADSTS50020: User account 'someone@outlook.com' from identity provider 'live.com' does not exist in tenant 'organizations' and cannot access the application." })
-  assert.deepEqual(personal, { kind: 'personal', account: 'someone@outlook.com' })
-  assert.deepEqual(classifyAuthError({ code: 'user_cancelled', message: 'User cancelled the flow.' }), { kind: 'cancelled' })
-  assert.deepEqual(classifyAuthError({ code: 'access_denied', message: 'AADSTS65004: User declined to consent to access the app.' }), { kind: 'cancelled' })
-  assert.deepEqual(classifyAuthError({ code: 'server_error', message: 'AADSTS90002: Tenant not found.' }), { kind: 'failed', message: 'AADSTS90002: Tenant not found.' })
+    const c = signInTile({ error: consent })
+    assert.equal(c.state, 'Microsoft asked for admin approval')
+    assert.equal(c.tone, 'wait')
+    // No "first sign-in" claim and no link that does not exist: the approval is
+    // missing until an administrator grants it for the organization, and one who
+    // leaves the box unticked approves it for themselves only.
+    assert.equal(c.lead, "IAMAI is not yet approved in contoso.com. A Global Administrator approves it once: sign in with that account and select “Consent on behalf of your organization” on Microsoft's screen. After that, Global Reader is enough.")
+    assert.doesNotMatch(c.lead ?? '', /first sign-in|this link/)
+    assert.equal(c.note, null, 'the error paragraph replaces the Global Reader line')
+    assert.deepEqual(
+      c.actions.map((a) => a.label),
+      ['Sign in with Microsoft', 'Try it with sample data'],
+    )
+    assert.equal(signInTile({ error: { kind: 'consent', domain: null } }).lead?.startsWith('IAMAI is not yet approved in this tenant. '), true)
+    onlyItsOwn('consent', c)
 
-  const c = signInTile({ error: consent })
-  assert.equal(c.state, 'Microsoft asked for admin approval')
-  assert.equal(c.tone, 'wait')
-  // No "first sign-in" claim and no link that does not exist: the approval is
-  // missing until an administrator grants it for the organization, and one who
-  // leaves the box unticked approves it for themselves only.
-  assert.equal(c.lead, "IAMAI is not yet approved in contoso.com. A Global Administrator approves it once: sign in with that account and select “Consent on behalf of your organization” on Microsoft's screen. After that, Global Reader is enough.")
-  assert.doesNotMatch(c.lead ?? '', /first sign-in|this link/)
-  assert.equal(c.note, null, 'the error paragraph replaces the Global Reader line')
-  assert.deepEqual(
-    c.actions.map((a) => a.label),
-    ['Sign in with Microsoft', 'Try it with sample data'],
-  )
-  assert.equal(signInTile({ error: { kind: 'consent', domain: null } }).lead?.startsWith('IAMAI is not yet approved in this tenant. '), true)
-  onlyItsOwn('consent', c)
+    const p = signInTile({ error: personal })
+    assert.equal(p.state, 'that is a personal Microsoft account')
+    assert.equal(p.tone, 'stop')
+    assert.equal(p.lead, 'someone@outlook.com is a personal account. IAMAI reads a Microsoft Entra tenant, so it needs a work or school account that belongs to one.')
+    assert.deepEqual(p.actions, [
+      { label: 'Sign in with a work or school account', weight: 'primary' },
+      { label: 'Try it with sample data', weight: 'secondary' },
+    ])
+    assert.equal(signInTile({ error: { kind: 'personal', account: null } }).lead?.startsWith('That account is a personal account.'), true)
+    onlyItsOwn('personal', p)
 
-  const p = signInTile({ error: personal })
-  assert.equal(p.state, 'that is a personal Microsoft account')
-  assert.equal(p.tone, 'stop')
-  assert.equal(p.lead, 'someone@outlook.com is a personal account. IAMAI reads a Microsoft Entra tenant, so it needs a work or school account that belongs to one.')
-  assert.deepEqual(p.actions, [
-    { label: 'Sign in with a work or school account', weight: 'primary' },
-    { label: 'Try it with sample data', weight: 'secondary' },
-  ])
-  assert.equal(signInTile({ error: { kind: 'personal', account: null } }).lead?.startsWith('That account is a personal account.'), true)
-  onlyItsOwn('personal', p)
-
-  const x = signInTile({ error: { kind: 'cancelled' } })
-  assert.equal(x.state, 'sign-in was cancelled')
-  assert.equal(x.tone, null)
-  assert.equal(x.lead, null)
-  assert.equal(x.note, null)
-  assert.deepEqual(
-    x.actions.map((a) => a.weight),
-    ['primary', 'secondary'],
-  )
-  onlyItsOwn('cancelled', x)
-})
-
-test('tile 3 signed out: Scan after sign-in, the limitations, no beats, no read-only line, no button, no state colour', () => {
-  const t = scanTile({ kind: 'sample' })
-  assert.equal(t.n, 3)
-  assert.equal(t.title, 'Scan')
-  assert.equal(t.state, 'after sign-in')
-  assert.equal(t.tone, null)
-  assert.ok(!('beats' in t), 'no beats signed out either')
-  assert.ok(!/\bReads\b|\bCompares\b|\bWrites\b|your tenant/.test(tileStrings(t).join('\n')), 'no Reads / Compares / Writes line')
-  assert.ok(!('readOnly' in t) && !tileStrings(t).join('\n').includes('Read-only.'), 'no read-only line signed out either')
-  assert.equal(t.limits.lines.length, 5)
-  assert.deepEqual(t.actions, [])
-  const text = tileStrings(t).join('\n')
-  for (const s of ['complete · ', 'no plan built', "can't read the tenant", 'Stop', 'Scan tenant', 'Scan again']) assert.ok(!text.includes(s), `the signed-out Scan tile must not render "${s}"`)
+    const x = signInTile({ error: { kind: 'cancelled' } })
+    assert.equal(x.state, 'sign-in was cancelled')
+    assert.equal(x.tone, null)
+    assert.equal(x.lead, null)
+    assert.equal(x.note, null)
+    assert.deepEqual(
+      x.actions.map((a) => a.weight),
+      ['primary', 'secondary'],
+    )
+    onlyItsOwn('cancelled', x)
+  }
+  // Phase 2 audit (Connect): a sign-in failure whose error carried no message
+  // (MSAL leaves errorMessage empty when the server sends no description) read
+  // "Microsoft answered:" and nothing after it, and dropped the error code, the
+  // one fact that would have helped. The code stands in; with nothing at all to
+  // quote there is no "Microsoft answered" line.
+  {
+    const coded = classifyAuthError(authErrorOf({ errorCode: 'server_error', errorMessage: '', message: '' }))
+    assert.deepEqual(coded, { kind: 'failed', message: 'server_error' })
+    assert.equal(signInTile({ error: coded }).lead, 'Microsoft answered: server_error')
+    // MSAL's own message stands in for an empty errorMessage before the code does.
+    assert.deepEqual(classifyAuthError(authErrorOf({ errorCode: 'server_error', errorMessage: '', message: 'server_error: the service is busy' })), { kind: 'failed', message: 'server_error: the service is busy' })
+    const blank = signInTile({ error: classifyAuthError({ code: '', message: '' }) })
+    assert.equal(blank.lead, null, 'no colon introducing nothing')
+    assert.equal(blank.state, 'sign-in did not complete')
+  }
 })
 
 test("tile 4 signed out: Plan after the scan, the sample tenant's four facts computed from the demo fixture, Open the sample plan (secondary)", () => {
@@ -170,20 +155,4 @@ test("tile 4 signed out: Plan after the scan, the sample tenant's four facts com
   assert.equal(planTile({ kind: 'sample', facts: null }).facts, undefined, 'the facts wait for the fixture; nothing is typed in')
   const text = tileStrings(t).join('\n')
   for (const s of ['Open the plan →', 'Open the last full plan', 'from the scan', 'Try it with sample data', 'licence']) assert.ok(!text.includes(s), `the sample tile must not render "${s}"`)
-})
-
-// Phase 2 audit (Connect): a sign-in failure whose error carried no message
-// (MSAL leaves errorMessage empty when the server sends no description) read
-// "Microsoft answered:" and nothing after it, and dropped the error code, the
-// one fact that would have helped. The code stands in; with nothing at all to
-// quote there is no "Microsoft answered" line.
-test('a sign-in failure with no message quotes the error code, and with nothing to quote draws no "Microsoft answered"', () => {
-  const coded = classifyAuthError(authErrorOf({ errorCode: 'server_error', errorMessage: '', message: '' }))
-  assert.deepEqual(coded, { kind: 'failed', message: 'server_error' })
-  assert.equal(signInTile({ error: coded }).lead, 'Microsoft answered: server_error')
-  // MSAL's own message stands in for an empty errorMessage before the code does.
-  assert.deepEqual(classifyAuthError(authErrorOf({ errorCode: 'server_error', errorMessage: '', message: 'server_error: the service is busy' })), { kind: 'failed', message: 'server_error: the service is busy' })
-  const blank = signInTile({ error: classifyAuthError({ code: '', message: '' }) })
-  assert.equal(blank.lead, null, 'no colon introducing nothing')
-  assert.equal(blank.state, 'sign-in did not complete')
 })

@@ -21,31 +21,32 @@ const emailStep = r.steps.find((s) => s.status !== 'done' && s.status !== 'skipp
 const noOrg = { ...f.snapshot, config: { ...f.snapshot.config, organization: { ...(f.snapshot.config.organization ?? { rows: [] }), rows: [] } } } as typeof f.snapshot
 const emailOf = (lines: string[], comms: { salutation: string; body: string }): boolean => lines.includes(comms.salutation) && lines.includes(comms.body)
 
-test('a done step renders no email: not on screen, not in the copy box, not in the exports', () => {
-  assert.ok(emailStep, 'the demo has a step with an email')
-  const cs = contentStepFor(emailStep) as Record<string, unknown>
-  const live = commsFor(cs, stepVars(emailStep, ctxFor()) as Record<string, unknown>, emailStep)!
-  assert.ok(emailOf(stepLines(emailStep, ctxFor()), live) && copyBoxes(emailStep, ctxFor()).some((b) => b.kind === 'comms'), 'the email renders while the step is open')
-  const done = { ...emailStep, status: 'done' as const }
-  const ex = stepVars(done, ctxFor()) as Record<string, unknown>
-  assert.equal(ex.stepDone, true)
-  assert.equal(commsFor(cs, ex, done), null)
-  assert.ok(!emailOf(stepLines(done, ctxFor()), live), 'no email line on a done step')
-  assert.deepEqual(copyBoxes(done, ctxFor()).filter((b) => b.kind === 'comms'), [], 'no Tell your people box on a done step')
-})
-
-test('copyBoxes and stepLines share one hole rule: an email with an unfilled variable renders nowhere, a whole one renders in both, the same text', () => {
-  const cs = contentStepFor(emailStep) as Record<string, unknown>
-  // The tenant's name is a variable the body names; with no organisation row it is unfilled and the email has a hole.
-  const holed = ctxFor(noOrg)
-  assert.equal((stepVars(emailStep, holed) as Record<string, unknown>).tenant, '')
-  assert.equal(commsFor(cs, stepVars(emailStep, holed) as Record<string, unknown>, emailStep), null)
-  assert.deepEqual(copyBoxes(emailStep, holed).filter((b) => b.kind === 'comms'), [])
-  const body = String((cs.comms as { body: string }).body)
-  assert.ok(!stepLines(emailStep, holed).some((l) => l.includes(body.slice(0, 12)) || /\{[a-zA-Z:]+\}/.test(l)), 'no email line, and no hole, when a variable is missing')
-  // Whole: the copy box's text is exactly the lines the screen renders.
-  const whole = ctxFor()
-  const box = copyBoxes(emailStep, whole).find((b) => b.kind === 'comms')!
-  const lines = stepLines(emailStep, whole)
-  for (const part of box.text.split('\n\n')) assert.ok(lines.includes(part), `the copy box's "${part.slice(0, 40)}" is a rendered line`)
+test('the email follows one rule on screen, in the copy box and in the exports: whole or nowhere, and never on a done step', () => {
+  {
+    assert.ok(emailStep, 'the demo has a step with an email')
+    const cs = contentStepFor(emailStep) as Record<string, unknown>
+    const live = commsFor(cs, stepVars(emailStep, ctxFor()) as Record<string, unknown>, emailStep)!
+    assert.ok(emailOf(stepLines(emailStep, ctxFor()), live) && copyBoxes(emailStep, ctxFor()).some((b) => b.kind === 'comms'), 'the email renders while the step is open')
+    const done = { ...emailStep, status: 'done' as const }
+    const ex = stepVars(done, ctxFor()) as Record<string, unknown>
+    assert.equal(ex.stepDone, true)
+    assert.equal(commsFor(cs, ex, done), null)
+    assert.ok(!emailOf(stepLines(done, ctxFor()), live), 'no email line on a done step')
+    assert.deepEqual(copyBoxes(done, ctxFor()).filter((b) => b.kind === 'comms'), [], 'no Tell your people box on a done step')
+  }
+  {
+    const cs = contentStepFor(emailStep) as Record<string, unknown>
+    // The tenant's name is a variable the body names; with no organisation row it is unfilled and the email has a hole.
+    const holed = ctxFor(noOrg)
+    assert.equal((stepVars(emailStep, holed) as Record<string, unknown>).tenant, '')
+    assert.equal(commsFor(cs, stepVars(emailStep, holed) as Record<string, unknown>, emailStep), null)
+    assert.deepEqual(copyBoxes(emailStep, holed).filter((b) => b.kind === 'comms'), [])
+    const body = String((cs.comms as { body: string }).body)
+    assert.ok(!stepLines(emailStep, holed).some((l) => l.includes(body.slice(0, 12)) || /\{[a-zA-Z:]+\}/.test(l)), 'no email line, and no hole, when a variable is missing')
+    // Whole: the copy box's text is exactly the lines the screen renders.
+    const whole = ctxFor()
+    const box = copyBoxes(emailStep, whole).find((b) => b.kind === 'comms')!
+    const lines = stepLines(emailStep, whole)
+    for (const part of box.text.split('\n\n')) assert.ok(lines.includes(part), `the copy box's "${part.slice(0, 40)}" is a rendered line`)
+  }
 })
