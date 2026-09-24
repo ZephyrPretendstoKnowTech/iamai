@@ -27,8 +27,13 @@ export type PickerOption = {
 // listbox a screen reader reads wrong.
 //
 // None of this touches what the picker decides: which options exist, which are
-// nominated, which are selected and when the selection is saved are the
-// caller's, exactly as before.
+// nominated and which are selected are the caller's, exactly as before.
+//
+// Where the caller hands it `onCommit`, the picker saves (owner, 2026-09-23:
+// one control, no separate Save beside it): Done saves the selection and
+// closes the list, removing a chip saves what is left, picking in a
+// single-choice list saves the pick, and closing the list any other way after
+// a change saves it too, so a pick is never left on screen unsaved.
 export function Picker({
   selected,
   options,
@@ -40,6 +45,7 @@ export function Picker({
   loading = false,
   labelledBy,
   readOnly = false,
+  onCommit,
 }: {
   selected: PickerOption[]
   options: PickerOption[] // results for the current query (caller filters/searches)
@@ -62,6 +68,8 @@ export function Picker({
    * take off (owner, 2026-09-22).
    */
   readOnly?: boolean
+  /** Saves the selection: Done, a removed chip, a single pick, or the list closed after a change. */
+  onCommit?: (selected: PickerOption[]) => void
 }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
@@ -70,6 +78,34 @@ export function Picker({
   const base = useId()
   const listId = `${base}-list`
   const optionId = (i: number): string => `${base}-option-${i}`
+  // The selection as it stands, and as it stood when the list opened: closing
+  // the list after a change saves it (`onCommit`), closing it unchanged does not.
+  const latest = useRef(selected)
+  latest.current = selected
+  // The caller's save as it is now, for the click outside the list the effect below listens for.
+  const commit = useRef(onCommit)
+  commit.current = onCommit
+  const openedWith = useRef('')
+  const idsOf = (rows: PickerOption[]): string => rows.map((r) => r.id).join(' ')
+  useEffect(() => {
+    if (open) openedWith.current = idsOf(latest.current)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
+  const save = (rows: PickerOption[]): void => {
+    if (!commit.current) return
+    openedWith.current = idsOf(rows)
+    commit.current(rows)
+  }
+  const close = (): void => {
+    setOpen(false)
+    if (idsOf(latest.current) !== openedWith.current) save(latest.current)
+  }
+  // Done saves the selection as it stands, changed or not: it is how a
+  // selection the picker opened with, and nobody has saved, is saved.
+  const done = (): void => {
+    setOpen(false)
+    save(latest.current)
+  }
 
   useEffect(() => {
     onSearch?.(query)
@@ -79,7 +115,7 @@ export function Picker({
   useEffect(() => {
     if (!open) return
     const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      if (ref.current && !ref.current.contains(e.target as Node)) close()
     }
     document.addEventListener('mousedown', onDoc)
     return () => document.removeEventListener('mousedown', onDoc)
@@ -88,16 +124,24 @@ export function Picker({
   const selectedIds = useMemo(() => new Set(selected.map((s) => s.id)), [selected])
   const empty = query.trim().length === 0
   const list = (empty ? suggestions : options).filter((o) => !selectedIds.has(o.id)).slice(0, 8)
-  // Empty and nothing nominated remains: just the field, no header, no Done.
-  const showList = open && (!empty || loading || list.length > 0)
+  // Empty and nothing nominated remains: just the field, no header, no Done —
+  // unless Done is what saves, so a selection the picker opened with can be saved.
+  const showList = open && (!empty || loading || list.length > 0 || onCommit !== undefined)
   const at = Math.min(focused, Math.max(0, list.length - 1))
 
   const pick = (o: PickerOption): void => {
     onChange(single ? [o] : [...selected, o])
     setQuery('')
-    if (single) setOpen(false)
+    if (single) {
+      setOpen(false)
+      save([o])
+    }
   }
-  const remove = (id: string): void => onChange(selected.filter((s) => s.id !== id))
+  const remove = (id: string): void => {
+    const next = selected.filter((s) => s.id !== id)
+    onChange(next)
+    save(next)
+  }
 
   return (
     <div className="picker" ref={ref} role="group" aria-labelledby={labelledBy}>
@@ -141,7 +185,7 @@ export function Picker({
               // A search input clears itself on Escape and fires onChange, which
               // would reopen the list (prompt 19 §B): keep the text, close the list.
               e.preventDefault()
-              setOpen(false)
+              close()
             }
             if (e.key === 'ArrowDown') {
               e.preventDefault()
@@ -163,7 +207,7 @@ export function Picker({
         <div className="picker-list">
           {empty && list.length > 0 && <div className="picker-heading">{T.suggestions}</div>}
           {loading && <div className="picker-footer">{T.searching}</div>}
-          {list.length === 0 && !loading && <div className="picker-footer">{T.noMatches}</div>}
+          {list.length === 0 && !loading && !empty && <div className="picker-footer">{T.noMatches}</div>}
           <div role="listbox" id={listId} aria-label={placeholder}>
             {list.map((o, i) => (
               <div
@@ -184,7 +228,7 @@ export function Picker({
             ))}
           </div>
           <div className="picker-footer">
-            <Button size="sm" variant="tertiary" onClick={() => setOpen(false)}>
+            <Button size="sm" variant="tertiary" onClick={done}>
               {T.done}
             </Button>
             {!empty && <span className="picker-count">{fillText(T.results, { n: list.length })}</span>}

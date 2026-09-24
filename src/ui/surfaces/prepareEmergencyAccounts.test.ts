@@ -3,6 +3,7 @@
 // One test per item the owner approved; each names the item it holds.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
@@ -11,6 +12,10 @@ import { laneReadings } from './planLanes.ts'
 import { laneViewOf } from './planBoard.ts'
 import { badgeLabel } from './stepContract.ts'
 import { stepBodyOf } from './stepBody.ts'
+import { pickerSavesAlone } from './pickerRows.ts'
+import { applyStepDecisions } from '../../roadmap/decisions.ts'
+
+const read = (p: string): string => readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
 
 const STEP = 's-prereq-break-glass'
 
@@ -76,4 +81,53 @@ test('#12 an emergency account that is the one signed in to IAMAI carries one he
   // Nobody else's account is flagged.
   const plain = opened('demo-week2').body.emergencyAccountTasks!.accounts!
   assert.ok(plain.every((c) => c.headsUp === undefined))
+})
+
+/** A step's decision block in content.json, wherever the step entry sits. */
+function decisionOf(stepId: string): Record<string, unknown> {
+  const content = JSON.parse(read('docs/design/content.json')) as unknown
+  let found: Record<string, unknown> | null = null
+  const walk = (o: unknown): void => {
+    if (found || o === null || typeof o !== 'object') return
+    const row = o as Record<string, unknown>
+    if (row.id === stepId && row.decision && typeof row.decision === 'object') { found = row.decision as Record<string, unknown>; return }
+    for (const v of Object.values(row)) walk(v)
+  }
+  walk(content)
+  assert.ok(found, `${stepId} has a decision`)
+  return found
+}
+
+test('#15 every picker saves from the list: Done saves and closes, taking a chip off saves, and no Save stands beside a picker alone', () => {
+  const picker = read('src/ui/components/Picker.tsx')
+  // Done saves the selection as it stands and closes the list.
+  assert.match(picker, /const done = \(\): void => \{\n\s+setOpen\(false\)\n\s+save\(latest\.current\)\n\s+\}/)
+  assert.match(picker, /<Button size="sm" variant="tertiary" onClick=\{done\}>\n\s+\{T\.done\}/)
+  // Taking a chip off saves what is left; a single-choice pick saves the pick.
+  assert.match(picker, /const next = selected\.filter\(\(s\) => s\.id !== id\)\n\s+onChange\(next\)\n\s+save\(next\)/)
+  assert.match(picker, /if \(single\) \{\n\s+setOpen\(false\)\n\s+save\(\[o\]\)/)
+  // Closing the list another way after a change saves it too: a pick is never left on screen unsaved.
+  assert.match(picker, /if \(ref\.current && !ref\.current\.contains\(e\.target as Node\)\) close\(\)/)
+  assert.match(picker, /if \(idsOf\(latest\.current\) !== openedWith\.current\) save\(latest\.current\)/)
+
+  // The decisions whose picker is their only input draw no Save; the rest keep theirs for their other inputs.
+  for (const id of [STEP, 's-prereq-exclusion-group', 's-prereq-service-accounts-group', 's-shared-devices']) assert.equal(pickerSavesAlone(decisionOf(id), id), true, id)
+  for (const id of ['s-prereq-trusted-location', 's-prereq-allowed-countries', 's-verify-mfa']) assert.equal(pickerSavesAlone(decisionOf(id), id), false, id)
+  const step = read('src/ui/surfaces/ContentStep.tsx')
+  const single = step.slice(step.indexOf('function SingleDecision('), step.indexOf('export function Options('))
+  assert.match(single, /\{!savesAlone && <Button variant="secondary" disabled=\{!canSave\} onClick=\{\(\) => save\(\)\}>/)
+  assert.match(single, /onCommit=\{stepId === SPECIAL_CARE_STEP_ID \? undefined : \(picked\) => save\(picked\)\}/)
+  // The campaign's follow-up list is a picker alone: no Save beside it.
+  const followUp = step.slice(step.indexOf('function FollowUpDecision('), step.indexOf('function DormantDecision('))
+  assert.doesNotMatch(followUp, /<Button/)
+  assert.match(followUp, /onCommit=\{\(next\) => onDecide\?\.\(\{ picked: next\.map\(\(o\) => o\.id\) \}\)\}/)
+  const dormant = step.slice(step.indexOf('function DormantDecision('))
+  assert.match(dormant, /onCommit=\{\(next\) => \{ if \(next\.length === 0 \|\| reason\.trim\(\)\) save\(next\) \}\}/)
+})
+
+test('#15 the emergency accounts the picker saves are the operator-saved decision, the one thing that writes them', () => {
+  const value = structuredClone(fixture('small'))
+  const ids = [...value.mapping.breakGlassUserIds].reverse()
+  const saved = applyStepDecisions({ ...value.mapping, breakGlassUserIds: [] }, { [STEP]: { picked: ids, at: value.snapshot.asOf } })
+  assert.deepEqual(saved.breakGlassUserIds, ids)
 })
