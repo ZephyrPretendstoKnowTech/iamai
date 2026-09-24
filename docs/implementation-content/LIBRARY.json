@@ -237,7 +237,7 @@
       ],
       "correctionModules": 4,
       "requiredBindings": 5,
-      "optionalBindings": 10,
+      "optionalBindings": 11,
       "verifiedSourceCount": 5,
       "packageSpecificMicrosoftSources": 5,
       "sharedPrimitivesReused": 0,
@@ -366,7 +366,7 @@
       ],
       "correctionModules": 4,
       "requiredBindings": 5,
-      "optionalBindings": 12,
+      "optionalBindings": 13,
       "verifiedSourceCount": 7,
       "packageSpecificMicrosoftSources": 7,
       "sharedPrimitivesReused": 0,
@@ -409,7 +409,7 @@
       ],
       "correctionModules": 4,
       "requiredBindings": 5,
-      "optionalBindings": 11,
+      "optionalBindings": 13,
       "verifiedSourceCount": 6,
       "packageSpecificMicrosoftSources": 6,
       "sharedPrimitivesReused": 0,
@@ -667,7 +667,7 @@
       ],
       "correctionModules": 4,
       "requiredBindings": 4,
-      "optionalBindings": 10,
+      "optionalBindings": 11,
       "verifiedSourceCount": 5,
       "packageSpecificMicrosoftSources": 5,
       "sharedPrimitivesReused": 0,
@@ -1324,7 +1324,7 @@
       "status": "SELF-VERIFIED",
       "validationResult": "parts-withheld",
       "sourceFiles": 3,
-      "contentBlocks": 17,
+      "contentBlocks": 16,
       "outputs": {
         "entra": true,
         "json": true,
@@ -1332,7 +1332,7 @@
         "aiInfo": true,
         "email": true,
         "readiness": true,
-        "troubleshooting": true
+        "troubleshooting": false
       },
       "statesSupported": [
         "missing",
@@ -1351,7 +1351,7 @@
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "supporting",
-      "strictValidationErrors": 9,
+      "strictValidationErrors": 6,
       "registered": true,
       "provenance": "tenant-prerequisite",
       "review": "current"
@@ -1618,13 +1618,13 @@
       ],
       "correctionModules": 3,
       "requiredBindings": 6,
-      "optionalBindings": 7,
+      "optionalBindings": 9,
       "verifiedSourceCount": 5,
       "packageSpecificMicrosoftSources": 5,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
-      "strictValidationErrors": 19,
+      "strictValidationErrors": 13,
       "registered": true,
       "provenance": "tenant-prerequisite",
       "review": "current"
@@ -1658,13 +1658,13 @@
       ],
       "correctionModules": 3,
       "requiredBindings": 4,
-      "optionalBindings": 6,
+      "optionalBindings": 8,
       "verifiedSourceCount": 4,
       "packageSpecificMicrosoftSources": 4,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
-      "strictValidationErrors": 13,
+      "strictValidationErrors": 12,
       "registered": true,
       "provenance": "tenant-prerequisite",
       "review": "current"
@@ -3490,6 +3490,18 @@
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
+      "binding": "location.correct.displayName",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-trusted-location"
+      ],
+      "packages": [
+        "s-prereq-trusted-location"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
       "binding": "location.current.countryCodes",
       "requiredBy": [],
       "optionalBy": [
@@ -3691,6 +3703,18 @@
         "s-prereq-trusted-location"
       ],
       "optionalBy": [],
+      "packages": [
+        "s-prereq-trusted-location"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "location.target.ipRangesText",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-trusted-location"
+      ],
       "packages": [
         "s-prereq-trusted-location"
       ],
@@ -4515,6 +4539,7 @@
         "s-goal-admins-phishing-resistant",
         "s-goal-block-auth-transfer",
         "s-goal-block-device-code",
+        "s-goal-block-legacy-auth",
         "s-goal-device-registration-mfa",
         "s-goal-inforcer-mfa",
         "s-goal-mfa-all-users",
@@ -4528,6 +4553,7 @@
         "s-goal-admins-phishing-resistant",
         "s-goal-block-auth-transfer",
         "s-goal-block-device-code",
+        "s-goal-block-legacy-auth",
         "s-goal-device-registration-mfa",
         "s-goal-inforcer-mfa",
         "s-goal-mfa-all-users",
@@ -4795,6 +4821,24 @@
       ],
       "packages": [
         "s-prereq-exclusion-group"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policy.fact",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-admins-phishing-resistant",
+        "s-goal-block-device-code",
+        "s-goal-block-legacy-auth",
+        "s-goal-mfa-all-users"
+      ],
+      "packages": [
+        "s-goal-admins-phishing-resistant",
+        "s-goal-block-device-code",
+        "s-goal-block-legacy-auth",
+        "s-goal-mfa-all-users"
       ],
       "knownIAMAIInput": null,
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
@@ -5285,6 +5329,18 @@
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
+      "binding": "service.ropcAccount",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-service-accounts-group"
+      ],
+      "packages": [
+        "s-prereq-service-accounts-group"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
       "binding": "service.ropcAccounts",
       "requiredBy": [],
       "optionalBy": [
@@ -5328,6 +5384,18 @@
       "optionalBy": [],
       "packages": [
         "s-goal-service-accounts-trusted-network"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "serviceAccounts.memberUpns",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-service-accounts-group"
+      ],
+      "packages": [
+        "s-prereq-service-accounts-group"
       ],
       "knownIAMAIInput": null,
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
@@ -6033,15 +6101,15 @@
     "packageCount": 43,
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
-    "contentBlocks": 933,
-    "uniqueBindings": 262,
+    "contentBlocks": 932,
+    "uniqueBindings": 267,
     "bindingsRequiredByAtLeastOneProjection": 86,
-    "bindingsOptionalInAtLeastOnePackage": 180,
+    "bindingsOptionalInAtLeastOnePackage": 185,
     "bindingDefinitionsCarriedForward": 42,
-    "bindingDefinitionsPendingHolisticReview": 220,
+    "bindingDefinitionsPendingHolisticReview": 225,
     "knownIAMAIInputTrue": 40,
     "knownIAMAIInputFalse": 2,
-    "knownIAMAIInputUnreviewed": 220,
+    "knownIAMAIInputUnreviewed": 225,
     "verifiedSourceRecords": 267,
     "microsoftSourceRecords": 265,
     "surfaces": [
