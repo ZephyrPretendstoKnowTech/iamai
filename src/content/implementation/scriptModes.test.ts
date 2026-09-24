@@ -25,37 +25,45 @@ const IF_SCRIPT = [
   'Write-Host done',
 ].join('\n')
 
-test('a script is shipped in the modes it is called in, and the others are gone', () => {
-  const only = text(scriptForRuns(IF_SCRIPT, SPEC, run('Observe')))
-  assert.ok(only.includes(`ValidateSet(${Q}Observe${Q})`), only)
-  assert.ok(!only.includes('PATCH'), `the enforce branch is still shipped:\n${only}`)
-  assert.ok(!only.includes('POST'), 'the create branch is still shipped')
-  // Everything that is not a mode's own branch is untouched.
-  assert.ok(only.includes('function Helper { 1 }') && only.includes('Write-Host done'))
-  // Called in a mode, it keeps that mode and nothing else.
-  const two = text(scriptForRuns(IF_SCRIPT, SPEC, run('Create', 'Enforce')))
-  assert.ok(two.includes('POST') && two.includes('PATCH'))
-  assert.ok(two.includes(`ValidateSet(${Q}Create${Q},${Q}Enforce${Q})`), two)
-})
-
-test('a switch arm is removed the same way, and braces inside strings and subexpressions are text', () => {
-  const script = [
-    `param([ValidateSet(${Q}Create${Q},${Q}Enforce${Q})][string]$Mode)`,
-    'switch ($Mode){',
-    ` ${Q}Create${Q} {`,
-    `   if($Name -like ${Q}{{*${Q}){throw ${Q}unresolved${Q}}`,
-    `   $f="displayName eq ${Q}$($Name.Replace("${Q}","${Q}${Q}"))${Q}"`,
-    '   POST',
-    ' }',
-    ` ${Q}Enforce${Q}{ PATCH }`,
-    '}',
-    'Write-Host end',
-  ].join('\n')
-  const only = text(scriptForRuns(script, SPEC, run('Create')))
-  assert.ok(!only.includes('PATCH'), `the enforce arm survived:\n${only}`)
-  // The Create arm is whole: its own braces sit inside a string and a subexpression.
-  assert.ok(only.includes('POST') && only.includes('unresolved') && only.includes('Write-Host end'), only)
-  assert.ok(only.includes(`ValidateSet(${Q}Create${Q})`), only)
+test('a script is shipped in only the modes it is called in, if-branches and switch arms alike, and is untouched when called in all or declaring none', () => {
+  // a script is shipped in the modes it is called in, and the others are gone
+  {
+    const only = text(scriptForRuns(IF_SCRIPT, SPEC, run('Observe')))
+    assert.ok(only.includes(`ValidateSet(${Q}Observe${Q})`), only)
+    assert.ok(!only.includes('PATCH'), `the enforce branch is still shipped:\n${only}`)
+    assert.ok(!only.includes('POST'), 'the create branch is still shipped')
+    // Everything that is not a mode's own branch is untouched.
+    assert.ok(only.includes('function Helper { 1 }') && only.includes('Write-Host done'))
+    // Called in a mode, it keeps that mode and nothing else.
+    const two = text(scriptForRuns(IF_SCRIPT, SPEC, run('Create', 'Enforce')))
+    assert.ok(two.includes('POST') && two.includes('PATCH'))
+    assert.ok(two.includes(`ValidateSet(${Q}Create${Q},${Q}Enforce${Q})`), two)
+  }
+  // a switch arm is removed the same way, and braces inside strings and subexpressions are text
+  {
+    const script = [
+      `param([ValidateSet(${Q}Create${Q},${Q}Enforce${Q})][string]$Mode)`,
+      'switch ($Mode){',
+      ` ${Q}Create${Q} {`,
+      `   if($Name -like ${Q}{{*${Q}){throw ${Q}unresolved${Q}}`,
+      `   $f="displayName eq ${Q}$($Name.Replace("${Q}","${Q}${Q}"))${Q}"`,
+      '   POST',
+      ' }',
+      ` ${Q}Enforce${Q}{ PATCH }`,
+      '}',
+      'Write-Host end',
+    ].join('\n')
+    const only = text(scriptForRuns(script, SPEC, run('Create')))
+    assert.ok(!only.includes('PATCH'), `the enforce arm survived:\n${only}`)
+    // The Create arm is whole: its own braces sit inside a string and a subexpression.
+    assert.ok(only.includes('POST') && only.includes('unresolved') && only.includes('Write-Host end'), only)
+    assert.ok(only.includes(`ValidateSet(${Q}Create${Q})`), only)
+  }
+  // a script with no mode ValidateSet, or called in every mode it declares, is untouched
+  {
+    assert.equal(text(scriptForRuns('Write-Host hi', SPEC, run('Create'))), 'Write-Host hi')
+    assert.equal(text(scriptForRuns(IF_SCRIPT, SPEC, run('Create', 'Observe', 'Enforce'))), IF_SCRIPT)
+  }
 })
 
 test('a guard that only names a mode is left alone; a branch this does not recognise withholds the channel', () => {
@@ -78,9 +86,4 @@ test('a guard that only names a mode is left alone; a branch this does not recog
   ].join('\n')
   const refused = scriptForRuns(odd, SPEC, run('Create'))
   assert.deepEqual('unstripped' in refused ? refused.unstripped : null, ['Enforce'])
-})
-
-test('a script with no mode ValidateSet, or called in every mode it declares, is untouched', () => {
-  assert.equal(text(scriptForRuns('Write-Host hi', SPEC, run('Create'))), 'Write-Host hi')
-  assert.equal(text(scriptForRuns(IF_SCRIPT, SPEC, run('Create', 'Observe', 'Enforce'))), IF_SCRIPT)
 })

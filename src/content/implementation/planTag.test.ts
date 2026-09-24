@@ -83,23 +83,26 @@ test('every JSON create body a person can copy carries the plan tag', () => {
   ].join(String.fromCharCode(10)))
 })
 
-test('every PowerShell create body built from the resolved target carries the plan tag', () => {
-  const missing: string[] = []
-  let checked = 0
-  for (const p of ALL) {
-    const ps = Object.values(p.source.blocks).find((b) => b.meta.channel === 'powershell')
-    if (!ps || !/\$target\.displayName/.test(ps.text)) continue
-    checked += 1
-    if (/\$target\.description/.test(ps.text)) continue
-    if (Object.hasOwn(WITHOUT_TAG, p.stepId)) continue
-    missing.push(p.stepId)
+test('every PowerShell create body built from the resolved target carries the plan tag, and the counted gap cannot grow or name a package that is gone', () => {
+  // every PowerShell create body built from the resolved target carries the plan tag
+  {
+    const missing: string[] = []
+    let checked = 0
+    for (const p of ALL) {
+      const ps = Object.values(p.source.blocks).find((b) => b.meta.channel === 'powershell')
+      if (!ps || !/\$target\.displayName/.test(ps.text)) continue
+      checked += 1
+      if (/\$target\.description/.test(ps.text)) continue
+      if (Object.hasOwn(WITHOUT_TAG, p.stepId)) continue
+      missing.push(p.stepId)
+    }
+    assert.ok(checked >= 10, `scripts building a body from the target: ${checked}`)
+    assert.deepEqual(missing, [], 'a script that submits a policy IAMAI cannot recognise')
   }
-  assert.ok(checked >= 10, `scripts building a body from the target: ${checked}`)
-  assert.deepEqual(missing, [], 'a script that submits a policy IAMAI cannot recognise')
-})
-
-test('the gap is counted, and every package named in it still exists', () => {
-  const ids = new Set(ALL.map((p) => p.stepId))
-  for (const id of Object.keys(WITHOUT_TAG)) assert.ok(ids.has(id), `${id}: named as untagged, but there is no such package`)
-  assert.ok(Object.keys(WITHOUT_TAG).length <= 4, `the untagged set grew to ${Object.keys(WITHOUT_TAG).length}`)
+  // the gap is counted, and every package named in it still exists
+  {
+    const ids = new Set(ALL.map((p) => p.stepId))
+    for (const id of Object.keys(WITHOUT_TAG)) assert.ok(ids.has(id), `${id}: named as untagged, but there is no such package`)
+    assert.ok(Object.keys(WITHOUT_TAG).length <= 4, `the untagged set grew to ${Object.keys(WITHOUT_TAG).length}`)
+  }
 })

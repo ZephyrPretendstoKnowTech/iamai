@@ -55,9 +55,23 @@ test('passkey settings: Entra, JSON and AI Info project the resolved change; the
   assert.match(p.channels.find((c) => c.channel === 'aiInfo')!.text, /passkey|FIDO2/i)
 })
 
-test('passkey settings: with no readable configuration no request body is built at all', () => {
-  const p = projectImplementation(PASSKEY, 'missing', passkeyBindings(null))
-  assert.equal(p.channels.some((c) => c.channel === 'json'), false, JSON.stringify(p.channels.map((c) => c.channel)))
+test('passkey settings: with no readable configuration no request body is built at all, Apply writes only FIDO2, and Verify stays available', () => {
+  // passkey settings: with no readable configuration no request body is built at all
+  {
+    const p = projectImplementation(PASSKEY, 'missing', passkeyBindings(null))
+    assert.equal(p.channels.some((c) => c.channel === 'json'), false, JSON.stringify(p.channels.map((c) => c.channel)))
+  }
+  // passkey settings: Apply writes only FIDO2; missing configuration keeps Verify available
+  {
+    const script = PASSKEY.blocks['powershell.run']
+    assert.equal(script.meta.invocation?.withheldModes?.Apply, undefined)
+    assert.doesNotMatch(script.text, /authenticationMethodConfigurations\/(microsoftAuthenticator|temporaryAccessPass)/)
+    assert.equal(projectImplementation(PASSKEY, 'missing', passkeyBindings(null)).channels.some((c) => c.channel === 'powershell'), false)
+    const verify = planSafely(PASSKEY, 'inPlace', passkeyBindings(null), NO_RUNTIME, key => `missing ${key}`)
+    const ps = verify.channels.find((c) => c.channel === 'powershell')
+    assert.ok(ps, JSON.stringify(verify.hold ?? verify.degraded))
+    assert.deepEqual(ps.text.split('\n').filter((l) => l.startsWith('Invoke-IAMAIStep ')), ["Invoke-IAMAIStep -Mode 'Verify'"])
+  }
 })
 
 test('runtime package and final JSON/PowerShell retain only the resolver-authored profile correction while preserving the unchanged profile', () => {
@@ -86,17 +100,6 @@ test('runtime package and final JSON/PowerShell retain only the resolver-authore
   assert.match(powershell.text, /profile-correct/)
   assert.match(powershell.text, /profile-change/)
   assert.equal(JSON.stringify(JSON.parse(json.text)).includes('passkeyProfiles'), true)
-})
-
-test('passkey settings: Apply writes only FIDO2; missing configuration keeps Verify available', () => {
-  const script = PASSKEY.blocks['powershell.run']
-  assert.equal(script.meta.invocation?.withheldModes?.Apply, undefined)
-  assert.doesNotMatch(script.text, /authenticationMethodConfigurations\/(microsoftAuthenticator|temporaryAccessPass)/)
-  assert.equal(projectImplementation(PASSKEY, 'missing', passkeyBindings(null)).channels.some((c) => c.channel === 'powershell'), false)
-  const verify = planSafely(PASSKEY, 'inPlace', passkeyBindings(null), NO_RUNTIME, key => `missing ${key}`)
-  const ps = verify.channels.find((c) => c.channel === 'powershell')
-  assert.ok(ps, JSON.stringify(verify.hold ?? verify.degraded))
-  assert.deepEqual(ps.text.split('\n').filter((l) => l.startsWith('Invoke-IAMAIStep ')), ["Invoke-IAMAIStep -Mode 'Verify'"])
 })
 
 test('a change request with no target identifier is still refused outside authentication-method configurations', () => {
