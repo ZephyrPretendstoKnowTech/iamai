@@ -473,9 +473,24 @@ export function unwrittenDifferences(intent: Record<string, unknown> | null | un
   const out: string[] = []
   for (const d of new Set([...Object.keys(wanted), ...Object.keys(held)])) {
     if (written.has(d)) continue
+    if (d === 'conditions.authenticationFlows' && blocksMoreFlows(intent, deployed)) continue
     if (!sameDimension(wanted[d], held[d])) out.push(d)
   }
   return out.sort((x, y) => dimensionRank(x) - dimensionRank(y) || x.localeCompare(y))
+}
+
+/**
+ * A block policy that blocks every authentication flow the plan's does, and more:
+ * stricter than the target, never a difference to correct (walk list 4.x item
+ * 13). A policy that blocks device code sign-in and authentication transfer meets
+ * Block Device Code Sign-in; asking to take the transfer out would weaken it.
+ */
+function blocksMoreFlows(intent: Record<string, unknown>, deployed: Record<string, unknown>): boolean {
+  const blocks = (p: Record<string, unknown>): boolean => ((p.grantControls as { builtInControls?: unknown } | null | undefined)?.builtInControls as unknown[] | undefined)?.includes('block') === true
+  const flows = (p: Record<string, unknown>): string[] => String(((p.conditions as { authenticationFlows?: { transferMethods?: unknown } } | undefined)?.authenticationFlows?.transferMethods) ?? '').split(',').map((f) => f.trim().toLowerCase()).filter(Boolean)
+  const wanted = flows(intent)
+  const held = new Set(flows(deployed))
+  return blocks(intent) && blocks(deployed) && wanted.length > 0 && wanted.every((f) => held.has(f))
 }
 
 /**
