@@ -235,65 +235,64 @@ function everythingSaid(c: Case): string {
   ].join(' | ')
 }
 
-// ---- 1. the case is real, and it is Report-only with a condition on it ----
+// ---- 1, 2. the case is real, Report-only with a condition on it, and the evidence is the member's own ----
 
-test('006.1: a later scan finds the deployed policy changed to something the plan did not ask for, and the step is Report-only · Review required', () => {
-  const { step } = canonical()
-  assert.equal(contentStepFor(step)?.kind, 'policy')
-  // Both axes, from Foundation B and nowhere else. The stage did not move and
-  // the condition did.
-  assert.equal(step.state.lifecycle, 'report-only')
-  assert.equal(step.state.condition, 'review-required')
-  assert.equal(step.status, 'in-report-only', 'the projected word is still the report-only one')
-  assert.equal(step.state.satisfied, false)
-  assert.equal(step.state.setAside, false)
-  // "Review required" is not a stage, and nothing invented one to hold it.
-  assert.notEqual(step.state.lifecycle, 'ready-to-enforce')
-  assert.notEqual(step.state.lifecycle, 'not-deployed')
-  assert.notEqual(step.state.lifecycle, 'enforced')
-  // The stage leads the row, and the condition stands beside it as it does in the badge (correction batch 1.1).
-  assert.equal(statusOf(step).word.split(' · ')[0], 'Report-only', 'the row word leads with the stage')
-  assert.notEqual(statusOf(step).word, 'Report-only', 'and does not hide the review the step is held for')
-  // The condition came from the observation, which came from two scans.
-  const obs = step.state.observation!
-  assert.equal(obs.reviewRequired, true)
-  assert.equal(obs.expected, false, 'a change nobody submitted is not called expected')
-  assert.equal(obs.changed, 'semantics', 'what moved is what the policy means')
-  assert.ok(obs.prior, 'there is an earlier scan behind it')
-  assert.equal(obs.prior!.firstSeenAt, fixture(FIXTURE).snapshot.asOf, 'and it is the first scan of this sequence')
-  assert.equal(heldForReview(step), true)
-})
+test("006.1/2: a later scan finds the deployed policy changed to something the plan did not ask for, and the step is Report-only · Review required on that member's own observation, which no other policy's change can hold or clear", () => {
+  {
+    const { step } = canonical()
+    assert.equal(contentStepFor(step)?.kind, 'policy')
+    // Both axes, from Foundation B and nowhere else. The stage did not move and
+    // the condition did.
+    assert.equal(step.state.lifecycle, 'report-only')
+    assert.equal(step.state.condition, 'review-required')
+    assert.equal(step.status, 'in-report-only', 'the projected word is still the report-only one')
+    assert.equal(step.state.satisfied, false)
+    assert.equal(step.state.setAside, false)
+    // "Review required" is not a stage, and nothing invented one to hold it.
+    assert.notEqual(step.state.lifecycle, 'ready-to-enforce')
+    assert.notEqual(step.state.lifecycle, 'not-deployed')
+    assert.notEqual(step.state.lifecycle, 'enforced')
+    // The stage leads the row, and the condition stands beside it as it does in the badge (correction batch 1.1).
+    assert.equal(statusOf(step).word.split(' · ')[0], 'Report-only', 'the row word leads with the stage')
+    assert.notEqual(statusOf(step).word, 'Report-only', 'and does not hide the review the step is held for')
+    // The condition came from the observation, which came from two scans.
+    const obs = step.state.observation!
+    assert.equal(obs.reviewRequired, true)
+    assert.equal(obs.expected, false, 'a change nobody submitted is not called expected')
+    assert.equal(obs.changed, 'semantics', 'what moved is what the policy means')
+    assert.ok(obs.prior, 'there is an earlier scan behind it')
+    assert.equal(obs.prior!.firstSeenAt, fixture(FIXTURE).snapshot.asOf, 'and it is the first scan of this sequence')
+    assert.equal(heldForReview(step), true)
+  }
+  {
+    const c = canonical()
+    assert.equal(c.step.state.members.length, 1, 'the canonical case is a single-policy goal')
+    const m = c.step.state.members[0]
+    assert.equal(m.key, SOLE_MEMBER)
+    assert.equal(m.change.reviewRequired, true)
+    assert.deepEqual(
+      (c.step.tracking?.members ?? []).map((x) => x.reviewRequired),
+      [true],
+      'the tracking carries the member’s own answer',
+    )
+    // The other week-two policy is untouched, and it is not in review.
+    const other = c.steps.find((s) => s.id === OTHER_ID)!
+    assert.notEqual(other.tracking?.policyId, c.step.tracking?.policyId)
+    assert.equal(other.state.condition, 'healthy', 'this step’s change did not reach the policy beside it')
+    assert.equal(heldForReview(other), false)
 
-// ---- 2. the evidence belongs to the exact policy member ----
-
-test('006.2: the review is this member’s own observation, and another policy’s change cannot hold or clear it', () => {
-  const c = canonical()
-  assert.equal(c.step.state.members.length, 1, 'the canonical case is a single-policy goal')
-  const m = c.step.state.members[0]
-  assert.equal(m.key, SOLE_MEMBER)
-  assert.equal(m.change.reviewRequired, true)
-  assert.deepEqual(
-    (c.step.tracking?.members ?? []).map((x) => x.reviewRequired),
-    [true],
-    'the tracking carries the member’s own answer',
-  )
-  // The other week-two policy is untouched, and it is not in review.
-  const other = c.steps.find((s) => s.id === OTHER_ID)!
-  assert.notEqual(other.tracking?.policyId, c.step.tracking?.policyId)
-  assert.equal(other.state.condition, 'healthy', 'this step’s change did not reach the policy beside it')
-  assert.equal(heldForReview(other), false)
-
-  // And the other way round: change the *other* policy and this step is
-  // untouched. One member's evidence is one member's.
-  const first = firstScan()
-  const otherId = first.run.steps.find((s) => s.id === OTHER_ID)!.tracking!.policyId!
-  assert.notEqual(otherId, first.policyId)
-  const elsewhere = laterScan({ edit: excludeByHand, on: otherId })
-  assert.equal(elsewhere.step.state.condition, 'healthy', 'another policy’s change put this step into review')
-  assert.equal(heldForReview(elsewhere.step), false)
-  const moved = elsewhere.steps.find((s) => s.id === OTHER_ID)!
-  assert.equal(moved.state.condition, 'review-required', 'and the step whose policy did change is the one held')
-  assert.equal(moved.state.lifecycle, 'report-only')
+    // And the other way round: change the *other* policy and this step is
+    // untouched. One member's evidence is one member's.
+    const first = firstScan()
+    const otherId = first.run.steps.find((s) => s.id === OTHER_ID)!.tracking!.policyId!
+    assert.notEqual(otherId, first.policyId)
+    const elsewhere = laterScan({ edit: excludeByHand, on: otherId })
+    assert.equal(elsewhere.step.state.condition, 'healthy', 'another policy’s change put this step into review')
+    assert.equal(heldForReview(elsewhere.step), false)
+    const moved = elsewhere.steps.find((s) => s.id === OTHER_ID)!
+    assert.equal(moved.state.condition, 'review-required', 'and the step whose policy did change is the one held')
+    assert.equal(moved.state.lifecycle, 'report-only')
+  }
 })
 
 // ---- 3. a new event is not a review on its own ----
@@ -373,93 +372,153 @@ test('006.5: three more days of the same policy keep their window, and a materia
   assert.ok(said.includes(absoluteDate(c.snapshot.asOf)), 'and the day the policy has actually been watched from is stated')
 })
 
-// ---- 6. advancement is held even where every other gate passes ----
+// ---- 6, 7. advancement is held even where every other gate passes, and unknown is not clean ----
 
-test('006.6: an unresolved review holds the step at Report-only even when the observation window and the records would carry it', () => {
-  // A plan record that does not name the object it watched — a file saved before
-  // artifact identity was recorded — still holds the fingerprint it watched, so
-  // a later scan can see the policy was rewritten. Microsoft's own evidence for
-  // this object is admissible in that case, so the *time gate is met*: five days
-  // in report-only, the window closed on Aug 29. Nothing but the review is left
-  // to hold it, and it does.
-  const c = laterScan({
-    edit: excludeByHand,
-    record: (rec) => {
-      const raw = JSON.parse(JSON.stringify({ observations: rec })) as { observations: Record<string, { members: Record<string, Record<string, unknown>> }> }
-      delete raw.observations[STEP_ID].members[SOLE_MEMBER].artifact
-      return observationsFrom(raw)
-    },
-  })
-  const t = c.step.tracking!
-  assert.equal(c.step.state.observation?.reviewRequired, true)
-  assert.ok(t.daysInReportOnly >= 3, `the window is satisfied (${t.daysInReportOnly} days)`)
-  assert.ok(t.readyOn !== null && Date.parse(t.readyOn) <= Date.parse(c.snapshot.asOf), 'and the time gate has passed')
-  assert.deepEqual(
-    (t.members ?? []).map((m) => m.ready),
-    [false],
-    'the member is ready on nothing while its policy is not what was watched',
-  )
-  assert.equal(c.step.state.lifecycle, 'report-only', 'so the step did not advance')
-  assert.notEqual(c.step.status, 'ready-to-enforce')
-  assert.equal(c.step.events, null, 'and nothing dated an enforcement for it')
-  // The same window with nothing wrong does carry the step through: the hold is
-  // the review and not the arithmetic.
-  const control = untouched()
-  assert.equal(control.step.state.lifecycle, 'ready-to-enforce', 'the control proves the gates would otherwise have advanced it')
-  assert.equal(control.step.state.condition, 'healthy')
-})
-
-// ---- 7. unknown is not expected, and not clean ----
-
-test('006.7: evidence the record cannot attribute stays unknown, and nothing downstream calls it expected or clean', () => {
-  const c = laterScan({
-    edit: excludeByHand,
-    record: (rec) => {
-      const raw = JSON.parse(JSON.stringify({ observations: rec })) as { observations: Record<string, { members: Record<string, Record<string, unknown>> }> }
-      delete raw.observations[STEP_ID].members[SOLE_MEMBER].artifact
-      return observationsFrom(raw)
-    },
-  })
-  const obs = c.step.state.observation!
-  assert.equal(obs.continuity, 'unknown', 'the record cannot say which object it was watching')
-  assert.equal(obs.expected, false, 'so nothing about the change can be shown to be what the plan asked for')
-  assert.equal(obs.reviewRequired, true)
-  assert.equal(c.step.state.condition, 'review-required', 'and unknown is not quietly resolved into healthy')
-  assert.equal(heldForReview(c.step), true)
-  assert.deepEqual(statedEnforcement(c.step), { basis: 'unearned', at: null })
-})
-
-// ---- 8. no enforcement anywhere while the review is unresolved ----
-
-test('006.8: while the review is unresolved there is no enforcing operation, date, wave or calendar entry, on any surface', () => {
-  const c = canonical()
-  const { step, run } = c
-  assert.equal(enforcementUnearned(step), true)
-  assert.deepEqual(statedEnforcement(step), { basis: 'unearned', at: null })
-  assert.equal(step.events, null, 'the step carries no enforce event')
-  assert.equal(run.schedule.waveOf[step.id], undefined, 'and no enforcement wave carries it')
-  for (const w of run.schedule.waves) assert.ok(!w.stepIds.includes(step.id), `enforcement wave ${w.wave} still carries it`)
-  assert.equal(step.comms, null, 'no dated announcement survives on it')
-  // Nothing a person could run enforces the moment it is submitted.
-  for (const op of stepOperations(step)) assert.equal(enforcesOnRun(op), false)
-  assert.doesNotMatch(policyJsonText(step), /"state"\s*:\s*"enabled"/)
-  // And no projected enforcement instant is stated as this step's date anywhere.
-  const said = everythingSaid(c)
-  for (const at of [enforcementTiming(step).at, run.schedule.forecastOnly?.[step.id]?.events?.enforce.at ?? null]) {
-    if (at === null) continue
-    assert.ok(!said.includes(absoluteDate(at)), `the enforcement day is stated as this step's date: ${said}`)
-    assert.ok(!said.includes(`DATE:${at.slice(0, 10).replace(/-/g, '')}`), 'the calendar books the enforcement')
+test('006.6/7: a review the record cannot attribute holds the step at Report-only even where the gates would carry it, and stays unknown, never expected or clean', () => {
+  {
+    // A plan record that does not name the object it watched — a file saved before
+    // artifact identity was recorded — still holds the fingerprint it watched, so
+    // a later scan can see the policy was rewritten. Microsoft's own evidence for
+    // this object is admissible in that case, so the *time gate is met*: five days
+    // in report-only, the window closed on Aug 29. Nothing but the review is left
+    // to hold it, and it does.
+    const c = laterScan({
+      edit: excludeByHand,
+      record: (rec) => {
+        const raw = JSON.parse(JSON.stringify({ observations: rec })) as { observations: Record<string, { members: Record<string, Record<string, unknown>> }> }
+        delete raw.observations[STEP_ID].members[SOLE_MEMBER].artifact
+        return observationsFrom(raw)
+      },
+    })
+    const t = c.step.tracking!
+    assert.equal(c.step.state.observation?.reviewRequired, true)
+    assert.ok(t.daysInReportOnly >= 3, `the window is satisfied (${t.daysInReportOnly} days)`)
+    assert.ok(t.readyOn !== null && Date.parse(t.readyOn) <= Date.parse(c.snapshot.asOf), 'and the time gate has passed')
+    assert.deepEqual(
+      (t.members ?? []).map((m) => m.ready),
+      [false],
+      'the member is ready on nothing while its policy is not what was watched',
+    )
+    assert.equal(c.step.state.lifecycle, 'report-only', 'so the step did not advance')
+    assert.notEqual(c.step.status, 'ready-to-enforce')
+    assert.equal(c.step.events, null, 'and nothing dated an enforcement for it')
+    // The same window with nothing wrong does carry the step through: the hold is
+    // the review and not the arithmetic.
+    const control = untouched()
+    assert.equal(control.step.state.lifecycle, 'ready-to-enforce', 'the control proves the gates would otherwise have advanced it')
+    assert.equal(control.step.state.condition, 'healthy')
   }
-  // The next milestone is the review, and it carries no date: nothing schedules
-  // a person looking at something.
-  const m = nextMilestone(step)
-  assert.equal(m.kind, 'resolve')
-  assert.equal(m.at, null)
-  assert.equal(m.gatedBy, step.state.observation!.note, 'and it names what has to clear first')
-  // The row's date column is the hold, not a day something may happen on.
-  assert.equal(rowWhen(step), 'held until reviewed')
-  assert.equal(rowReason(step), step.state.observation!.note, 'and the collapsed row carries what was seen')
-  assert.ok(!rowWhen(step).includes(absoluteDate(readyWhen(step)!.date)), 'the row still offers the window’s date as this step’s next day')
+  {
+    const c = laterScan({
+      edit: excludeByHand,
+      record: (rec) => {
+        const raw = JSON.parse(JSON.stringify({ observations: rec })) as { observations: Record<string, { members: Record<string, Record<string, unknown>> }> }
+        delete raw.observations[STEP_ID].members[SOLE_MEMBER].artifact
+        return observationsFrom(raw)
+      },
+    })
+    const obs = c.step.state.observation!
+    assert.equal(obs.continuity, 'unknown', 'the record cannot say which object it was watching')
+    assert.equal(obs.expected, false, 'so nothing about the change can be shown to be what the plan asked for')
+    assert.equal(obs.reviewRequired, true)
+    assert.equal(c.step.state.condition, 'review-required', 'and unknown is not quietly resolved into healthy')
+    assert.equal(heldForReview(c.step), true)
+    assert.deepEqual(statedEnforcement(c.step), { basis: 'unearned', at: null })
+  }
+})
+
+// ---- 8, 10, 11. no enforcement or instruction anywhere while the review is unresolved, and every artifact agrees ----
+
+test('006.8/10/11: while the review is unresolved no surface offers an enforcing operation, an instruction, a date, a wave or a calendar entry, and every artifact says it is held for review', () => {
+  {
+    const c = canonical()
+    const { step, run } = c
+    assert.equal(enforcementUnearned(step), true)
+    assert.deepEqual(statedEnforcement(step), { basis: 'unearned', at: null })
+    assert.equal(step.events, null, 'the step carries no enforce event')
+    assert.equal(run.schedule.waveOf[step.id], undefined, 'and no enforcement wave carries it')
+    for (const w of run.schedule.waves) assert.ok(!w.stepIds.includes(step.id), `enforcement wave ${w.wave} still carries it`)
+    assert.equal(step.comms, null, 'no dated announcement survives on it')
+    // Nothing a person could run enforces the moment it is submitted.
+    for (const op of stepOperations(step)) assert.equal(enforcesOnRun(op), false)
+    assert.doesNotMatch(policyJsonText(step), /"state"\s*:\s*"enabled"/)
+    // And no projected enforcement instant is stated as this step's date anywhere.
+    const said = everythingSaid(c)
+    for (const at of [enforcementTiming(step).at, run.schedule.forecastOnly?.[step.id]?.events?.enforce.at ?? null]) {
+      if (at === null) continue
+      assert.ok(!said.includes(absoluteDate(at)), `the enforcement day is stated as this step's date: ${said}`)
+      assert.ok(!said.includes(`DATE:${at.slice(0, 10).replace(/-/g, '')}`), 'the calendar books the enforcement')
+    }
+    // The next milestone is the review, and it carries no date: nothing schedules
+    // a person looking at something.
+    const m = nextMilestone(step)
+    assert.equal(m.kind, 'resolve')
+    assert.equal(m.at, null)
+    assert.equal(m.gatedBy, step.state.observation!.note, 'and it names what has to clear first')
+    // The row's date column is the hold, not a day something may happen on.
+    assert.equal(rowWhen(step), 'held until reviewed')
+    assert.equal(rowReason(step), step.state.observation!.note, 'and the collapsed row carries what was seen')
+    assert.ok(!rowWhen(step).includes(absoluteDate(readyWhen(step)!.date)), 'the row still offers the window’s date as this step’s next day')
+  }
+  {
+    const c = canonical()
+    const { step, ctx } = c
+    assert.equal(implementationOffered(step), false)
+    assert.equal(unavailableReason(step), null, 'the policy is writable; it is simply not what today asks for')
+    assert.equal(policyHold(step), 'observation-incomplete')
+    assert.equal(jsonOffered(step), false)
+    assert.deepEqual(stepOperations(step), [])
+    assert.equal(portalOf(step, ctx), null)
+    assert.doesNotMatch(powershellFor(stepOperations(step)), /New-MgIdentityConditionalAccessPolicy|Update-MgIdentityConditionalAccessPolicy/)
+    const screen = instructionsOf(step, ctx)
+    assert.equal(screen.held, true)
+    assert.equal(screen.portal, null)
+    assert.deepEqual(screen.before, [])
+    assert.deepEqual(screen.steps, [])
+    // And the export view's What to do is the review action alone.
+    assert.equal(c.view(step).whatToDo[0], stepContract(step, ctx).whatToDo.text)
+    assert.ok(!c.view(step).whatToDo.includes('Verify the workflow:'))
+  }
+  {
+    const c = canonical()
+    const v = c.view(c.step)
+    const action = stepContract(c.step, c.ctx).whatToDo.text
+    // The Dates line states the hold rather than a review day the window derived.
+    assert.ok(v.dates, 'the step has a Dates line')
+    assert.match(v.dates!, /Held until/i)
+    assert.ok(!v.dates!.includes(absoluteDate(readyWhen(c.step)!.date)), `the Dates line still offers the window’s date: ${v.dates}`)
+    // Done when carries the review in the artifacts too, not only on screen.
+    assert.deepEqual(v.doneWhen, stepContract(c.step, c.ctx).doneWhen, 'the export’s completion is the screen’s')
+    // The grounding bundle and the calendar entry say the same thing.
+    const bundle = groundingBundle({ view: c.view, tenant: 'Tenant', snapshot: c.snapshot, coverage: c.run.coverage, steps: c.run.steps, schedule: c.run.schedule, redacted: false, generated: 'Sep 6, 2026', cleanup: [] }) as unknown as { plan: { steps: Record<string, unknown>[] } }
+    const b = bundle.plan.steps.find((s) => s.id === c.step.id) as Record<string, unknown>
+    assert.equal(b.status, 'Ready')
+    assert.deepEqual(b.enforcement, { basis: 'unearned', at: null })
+    assert.deepEqual(b.whatToDo, v.whatToDo)
+    assert.equal(v.whatToDo[0], action)
+    assert.equal(b.dates, v.dates)
+    // A held step books nothing (roadmap/holds.ts): there is no day on which a
+    // person looks at a change nobody has explained, and the calendar is for days.
+    const entry = buildIcs(c.run.steps, 'Tenant', 'plan-006', c.view)
+      .split('BEGIN:VEVENT')
+      .find((x) => x.includes(`-${c.step.id}@iamai`))
+    assert.equal(entry, undefined, 'a step held for review has no calendar entry')
+    // Nothing anywhere claims the step is ready, or tells anyone to enforce.
+    const said = everythingSaid(c)
+    assert.doesNotMatch(said, /ready to enforce/i, `an artifact claims the step is ready: ${said}`)
+    assert.doesNotMatch(said, /no issues remain/i)
+    // And no surface that answers "what next" offers the window's own date as this
+    // step's next day. The date is still stated under Done when, where it is one of
+    // the gates that has to hold rather than something about to happen.
+    const readyDay = absoluteDate(readyWhen(c.step)!.date)
+    const next = [v.dates ?? '', rowWhen(c.step), rowReason(c.step) ?? '', ...v.whatToDo, nextMilestone(c.step).label].join(' | ')
+    assert.ok(!next.includes(readyDay), `the window's date is offered as this step's next day: ${next}`)
+    // The prompt answers "when" with the Dates line above, not with a sentence of
+    // its own: the hold is in it, and the window's date is not offered as the day.
+    const facts = stepContext(c.step, c.view)
+    assert.ok(facts.includes(v.dates!), `the prompt pack dates the change its own way: ${facts}`)
+    assert.match(facts, /Held until/i, 'the prompt pack drops the hold')
+  }
 })
 
 // ---- 9. what the screen says ----
@@ -503,71 +562,6 @@ test('006.9: the Step Contract states the stage, the condition, what changed, wh
   // The Next line stays absent: Foundation B has no date for it, and What to do
   // is the same fact said better.
   assert.equal(contract.milestone.line, null)
-})
-
-// ---- 10. nothing asks the operator to resubmit a policy nobody asked to change ----
-
-test('006.10: no portal, JSON or PowerShell instruction appears merely because the step is held', () => {
-  const c = canonical()
-  const { step, ctx } = c
-  assert.equal(implementationOffered(step), false)
-  assert.equal(unavailableReason(step), null, 'the policy is writable; it is simply not what today asks for')
-  assert.equal(policyHold(step), 'observation-incomplete')
-  assert.equal(jsonOffered(step), false)
-  assert.deepEqual(stepOperations(step), [])
-  assert.equal(portalOf(step, ctx), null)
-  assert.doesNotMatch(powershellFor(stepOperations(step)), /New-MgIdentityConditionalAccessPolicy|Update-MgIdentityConditionalAccessPolicy/)
-  const screen = instructionsOf(step, ctx)
-  assert.equal(screen.held, true)
-  assert.equal(screen.portal, null)
-  assert.deepEqual(screen.before, [])
-  assert.deepEqual(screen.steps, [])
-  // And the export view's What to do is the review action alone.
-  assert.equal(c.view(step).whatToDo[0], stepContract(step, ctx).whatToDo.text)
-  assert.ok(!c.view(step).whatToDo.includes('Verify the workflow:'))
-})
-
-// ---- 11. the screen, the exports, the prompts and the calendar agree ----
-
-test('006.11: every artifact says Report-only, held for review, review-and-scan-again, and none of them says ready to enforce', () => {
-  const c = canonical()
-  const v = c.view(c.step)
-  const action = stepContract(c.step, c.ctx).whatToDo.text
-  // The Dates line states the hold rather than a review day the window derived.
-  assert.ok(v.dates, 'the step has a Dates line')
-  assert.match(v.dates!, /Held until/i)
-  assert.ok(!v.dates!.includes(absoluteDate(readyWhen(c.step)!.date)), `the Dates line still offers the window’s date: ${v.dates}`)
-  // Done when carries the review in the artifacts too, not only on screen.
-  assert.deepEqual(v.doneWhen, stepContract(c.step, c.ctx).doneWhen, 'the export’s completion is the screen’s')
-  // The grounding bundle and the calendar entry say the same thing.
-  const bundle = groundingBundle({ view: c.view, tenant: 'Tenant', snapshot: c.snapshot, coverage: c.run.coverage, steps: c.run.steps, schedule: c.run.schedule, redacted: false, generated: 'Sep 6, 2026', cleanup: [] }) as unknown as { plan: { steps: Record<string, unknown>[] } }
-  const b = bundle.plan.steps.find((s) => s.id === c.step.id) as Record<string, unknown>
-  assert.equal(b.status, 'Ready')
-  assert.deepEqual(b.enforcement, { basis: 'unearned', at: null })
-  assert.deepEqual(b.whatToDo, v.whatToDo)
-  assert.equal(v.whatToDo[0], action)
-  assert.equal(b.dates, v.dates)
-  // A held step books nothing (roadmap/holds.ts): there is no day on which a
-  // person looks at a change nobody has explained, and the calendar is for days.
-  const entry = buildIcs(c.run.steps, 'Tenant', 'plan-006', c.view)
-    .split('BEGIN:VEVENT')
-    .find((x) => x.includes(`-${c.step.id}@iamai`))
-  assert.equal(entry, undefined, 'a step held for review has no calendar entry')
-  // Nothing anywhere claims the step is ready, or tells anyone to enforce.
-  const said = everythingSaid(c)
-  assert.doesNotMatch(said, /ready to enforce/i, `an artifact claims the step is ready: ${said}`)
-  assert.doesNotMatch(said, /no issues remain/i)
-  // And no surface that answers "what next" offers the window's own date as this
-  // step's next day. The date is still stated under Done when, where it is one of
-  // the gates that has to hold rather than something about to happen.
-  const readyDay = absoluteDate(readyWhen(c.step)!.date)
-  const next = [v.dates ?? '', rowWhen(c.step), rowReason(c.step) ?? '', ...v.whatToDo, nextMilestone(c.step).label].join(' | ')
-  assert.ok(!next.includes(readyDay), `the window's date is offered as this step's next day: ${next}`)
-  // The prompt answers "when" with the Dates line above, not with a sentence of
-  // its own: the hold is in it, and the window's date is not offered as the day.
-  const facts = stepContext(c.step, c.view)
-  assert.ok(facts.includes(v.dates!), `the prompt pack dates the change its own way: ${facts}`)
-  assert.match(facts, /Held until/i, 'the prompt pack drops the hold')
 })
 
 // ---- 12. the whole path, held together ----

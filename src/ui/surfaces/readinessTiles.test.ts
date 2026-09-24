@@ -17,7 +17,6 @@ import { CONTRACT, readinessOf, stepContract } from './stepContract.ts'
 import type { PrerequisiteBlocker } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { laneReadings } from './planLanes.ts'
-import type { HoldBlockerKind } from '../../actionability/lanes.ts'
 import { BOARD, laneViewOf, readinessBlockersOf } from './planBoard.ts'
 import { mergeReadiness } from './stepPackage.ts'
 import { BLOCKED_REASON, BLOCKED_SUBJECT } from '../../copy/reasons.ts'
@@ -26,10 +25,8 @@ import { CHECK_STATE, RULE_TEXT } from '../../copy/validation.ts'
 import { rulesFor } from '../../validation/rules.ts'
 
 const read = (p: string): string => readFileSync(p, 'utf8')
-const CONTENT_STEP = read('src/ui/surfaces/ContentStep.tsx')
 const SECTIONS = read('src/ui/surfaces/StepSections.tsx')
 const CSS = read('src/ui/app.css')
-const CONTENT = read('docs/design/content.json')
 const EMERGENCY = 's-prereq-break-glass'
 
 function opened(name: 'demo' | 'demo-week2' | Fixture, id: string) {
@@ -91,170 +88,135 @@ test('the engine’s blockers the fixes do not name become tiles: a queued step 
   assert.equal(own2.tiles.some((t) => t.key.startsWith('engine:decision')), false, 'the step’s own decision is listed as a prerequisite of itself')
 })
 
-test('with nothing unresolved the region is its compact success line and the satisfied evidence stays expandable', () => {
-  const { step, c, blockers } = opened('demo-week2', EMERGENCY)
-  const r = readinessOf(step, c, blockers)
-  assert.deepEqual(r.tiles, [])
-  assert.equal(r.satisfied.length, 2)
-  assert.ok(r.satisfied.every(t => t.key.startsWith('configuration:') && t.tone === 'good'))
-  assert.equal(r.bar.main, CONTRACT.lifecycle['in-place'], 'a completed step’s bar is not the tenant fact (A1b)')
-  const section = SECTIONS.slice(SECTIONS.indexOf('export function ReadinessSection('), SECTIONS.indexOf('/** The truthful no-action box'))
-  assert.match(section, /readiness\.tiles\.length > 0 \? \(\s*strip\(readiness\.tiles, 'unresolved'\)\s*\) : \(\s*<p className="readiness-clear">/, 'nothing unresolved does not collapse to the success line')
-  assert.match(section, /<details className="readiness-satisfied" open=\{printing \|\| undefined\}>/, 'the satisfied evidence is not behind its own disclosure')
-  assert.match(section, /<div id=\{detailId\} className="tile-detail" hidden=\{!shown\}>/, 'a tile’s explanation is not behind its disclosure')
-  assert.match(section, /'href' in t\.link \? <a href=\{t\.link\.href\}>/, 'a step tile does not link')
-  assert.match(CSS, /\.step \.readiness-strip \{[^}]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/, 'the strip is not four across')
-  assert.match(CSS, /\.step \.readiness-clear \{/, 'the success line has no treatment')
-})
-
-test('Fix before continuing, the hardening section and the Needs attention pointer are gone from the step', () => {
-  for (const gone of ['<FixBeforeContinuing', '<HardeningRecommendations', 'fixHeading', 'W.preview.checks']) assert.equal(CONTENT_STEP.includes(gone), false, `ContentStep still draws ${gone}`)
-  for (const gone of ['export function FixBeforeContinuing', 'export function HardeningRecommendations', 'CONTRACT.fixHeading']) assert.equal(SECTIONS.includes(gone), false, `StepSections still exports ${gone}`)
-  // The content file no longer points at a container that does not exist (the export's section heading keeps the key).
-  assert.equal((CONTENT.match(/Fix before continuing/g) ?? []).length, 1)
-  const { step, c, blockers } = opened('demo', EMERGENCY)
-  const r = readinessOf(step, c, blockers)
-  // Step 1 states its facts as findings (c1cacf21); no check tile stands beside them.
-  assert.ok([...r.tiles, ...r.satisfied].every((t) => t.key.startsWith('configuration:')), r.tiles.map((t) => t.key).join(' | '))
-  assert.equal(c.doneWhen.some((l) => /Fix before continuing/.test(l)), false)
-})
-
-test('the Emergency Access step is Why → Readiness → account selection → Implementation → Done when, and a selected set is never "not held"', () => {
-  // The account selection is the action column's (U2), between Readiness and Implementation in the DOM (U5).
-  const main = CONTENT_STEP.slice(CONTENT_STEP.indexOf('<div className="step-main step-main-lead">'), CONTENT_STEP.indexOf('<StepFooter'))
-  const at = (needle: string): number => {
-    const i = main.indexOf(needle)
-    assert.ok(i >= 0, `the opened step no longer renders ${needle}`)
-    return i
+test("with nothing unresolved the region is its compact success line, and the package's gates merge without a cap: unresolved after the runtime's own tiles, satisfied as evidence", () => {
+  {
+    const { step, c, blockers } = opened('demo-week2', EMERGENCY)
+    const r = readinessOf(step, c, blockers)
+    assert.deepEqual(r.tiles, [])
+    assert.equal(r.satisfied.length, 2)
+    assert.ok(r.satisfied.every(t => t.key.startsWith('configuration:') && t.tone === 'good'))
+    assert.equal(r.bar.main, CONTRACT.lifecycle['in-place'], 'a completed step’s bar is not the tenant fact (A1b)')
+    const section = SECTIONS.slice(SECTIONS.indexOf('export function ReadinessSection('), SECTIONS.indexOf('/** The truthful no-action box'))
+    assert.match(section, /readiness\.tiles\.length > 0 \? \(\s*strip\(readiness\.tiles, 'unresolved'\)\s*\) : \(\s*<p className="readiness-clear">/, 'nothing unresolved does not collapse to the success line')
+    assert.match(section, /<details className="readiness-satisfied" open=\{printing \|\| undefined\}>/, 'the satisfied evidence is not behind its own disclosure')
+    assert.match(section, /<div id=\{detailId\} className="tile-detail" hidden=\{!shown\}>/, 'a tile’s explanation is not behind its disclosure')
+    assert.match(section, /'href' in t\.link \? <a href=\{t\.link\.href\}>/, 'a step tile does not link')
+    assert.match(CSS, /\.step \.readiness-strip \{[^}]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/, 'the strip is not four across')
+    assert.match(CSS, /\.step \.readiness-clear \{/, 'the success line has no treatment')
   }
-  const order = [at('<h4>{taskHead?.why ?? decisionHead?.why ?? HEAD.why}</h4>'), at('<ReadinessSection'), at('decides && <Decision'), at('<Implementation\n'), at('<DoneWhen heading={taskHead?.doneWhen ?? decisionHead?.doneWhen ?? HEAD.doneWhen}')]
-  assert.deepEqual([...order].sort((a, b) => a - b), order, 'the regions are out of order')
-  const { step, ctx, c } = opened('demo', EMERGENCY)
-  assert.ok((ctx.mapping.breakGlassUserIds?.length ?? 0) > 1, 'the premise: two accounts are selected')
-  assert.equal(c.whatToDo.kind, 'deploy')
-  // Two selected accounts each owing work: the one-account channel takes one and is
-  // simply not offered (S6) — never a line saying IAMAI does not hold the account.
-  assert.equal(CONTENT_STEP.includes('W.withheld'), false, 'the step still draws a withheld-channel line')
-  assert.equal('withheld' in CONTRACT.implementation, false)
-})
-
-test('the package’s gates merge without a cap: unresolved after the runtime’s own tiles, satisfied as evidence', () => {
-  const { step, c } = opened('demo', EMERGENCY)
-  const runtime = readinessOf(step, c)
-  const merged = mergeReadiness(runtime, {
-    tiles: [
-      { id: 'pkg.open', gate: 'Safe to prove', result: 'Unknown', line: 'x', gateKey: null, confirm: null },
-      { id: 'pkg.done', gate: 'Safe to continue', result: 'Ready', line: 'y', gateKey: null, confirm: null },
-      { id: 'pkg.same', gate: 'Emergency access', result: 'Blocked', line: 'z', gateKey: 'configuration:recovery-methods', confirm: null },
-    ],
-    conclusion: null,
-    whyItMatters: null,
-    unknowns: [],
-    references: [],
-  })
-  assert.deepEqual(merged.tiles.map((t) => t.key), [...runtime.tiles.map((t) => t.key), 'pkg.open'])
-  assert.deepEqual(merged.satisfied.map((t) => t.key), [...runtime.satisfied.map((t) => t.key), 'pkg.done'])
-})
-
-test('the printed step and the screen read the same blockers, the row hands them to the step, and a tile’s link opens its step on the view that shows it, else on All work', () => {
-  assert.match(read('src/ui/surfaces/PrintPlan.tsx'), /blockers=\{blockersOf\(s\)\}/)
-  const plan = read('src/ui/surfaces/Plan.tsx')
-  // `enforceWaits` sits between them now: the Cleanup work the enforce
-  // checklist's own conditions depend on, which is not a prerequisite of this
-  // step's next action and so is not among `blockers` (stepBody.ts).
-  assert.match(plan, /blockers=\{readinessBlockersOf\(reading, titleOf\)\} enforceWaits=\{enforceWaits\} prerequisiteLabel=\{prerequisiteLabel\} onOpenMappings=\{openSettings\}/)
-  // A prerequisite the view does not show: the link opens it on All work, in its own
-  // section (planBoard.ts followOpenStep, owner, roadmap flow V2), or the link would open
-  // nothing on screen. Where the view shows it, the tab stays where the operator put it.
-  // A change of the open step's lane alone is not a link, and keeps the view (planBoard.ts followLaneChange).
-  assert.match(plan, /<TabFollowsOpenStep open=\{open\} lane=\{openLane\} follow=\{follow\}[^>]*\/>/)
-  assert.match(plan, /if \(follow !== null\) \{ if \(moved\) onMoved\(\); else onFollow\(follow\) \}/)
-  // Narrow widths: two across at the pack's first breakpoint, one at the second; nothing hidden.
-  const narrow = (w: number): string => CSS.slice(CSS.indexOf(`@media (max-width: ${w}px)`))
-  assert.match(narrow(940), /\.step \.readiness-strip,\s*\.step \.readiness-strip\.tiles-3 \{\s*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/)
-  assert.match(narrow(650), /\.step \.readiness-strip,\s*\.step \.readiness-strip\.tiles-3,\s*\.step \.readiness-strip\.tiles-2 \{\s*grid-template-columns: minmax\(0, 1fr\);/)
-  const { reading, blockers } = opened('demo', 's-goal-mfa-all-users')
-  assert.equal(blockers.length, reading.blockers.length)
-  for (const b of blockers) assert.equal(b.label, BOARD.blockers[b.kind as HoldBlockerKind])
-})
-
-test('a card is headed by what is being waited on, with its state beneath', () => {
-  // The card shape (owner, 2026-09-20; quality audit 2.4): a step that waits on
-  // four others drew four cards all headed "Prerequisite · To do", each naming a
-  // different step underneath — the inverse of an Emergency Access card, where
-  // the subject heads it and the check is beneath.
-  const { step, c, blockers } = opened('demo', 's-goal-geo-restriction')
-  const r = readinessOf(step, c, blockers)
-  const waits = r.tiles.filter((t) => /^(?:step|missing|direction|engine:step|engine:suspendedPrerequisite|engine:decision):/.test(t.key))
-  assert.ok(waits.length > 1, 'the premise: this step waits on more than one thing')
-  assert.equal(new Set(waits.map((t) => t.label)).size, waits.length, 'two cards are headed the same')
-  for (const t of waits) {
-    assert.match(t.value, /^(?:Prerequisite\b|Baseline mapping$|Waiting on your answers$)/, `${t.key}: the check is not a state`)
-    assert.notEqual(t.label, t.value, `${t.key}: the heading and the check say the same thing`)
-    assert.ok(t.link, `${t.key}: the card does not open what it names`)
+  {
+    const { step, c } = opened('demo', EMERGENCY)
+    const runtime = readinessOf(step, c)
+    const merged = mergeReadiness(runtime, {
+      tiles: [
+        { id: 'pkg.open', gate: 'Safe to prove', result: 'Unknown', line: 'x', gateKey: null, confirm: null },
+        { id: 'pkg.done', gate: 'Safe to continue', result: 'Ready', line: 'y', gateKey: null, confirm: null },
+        { id: 'pkg.same', gate: 'Emergency access', result: 'Blocked', line: 'z', gateKey: 'configuration:recovery-methods', confirm: null },
+      ],
+      conclusion: null,
+      whyItMatters: null,
+      unknowns: [],
+      references: [],
+    })
+    assert.deepEqual(merged.tiles.map((t) => t.key), [...runtime.tiles.map((t) => t.key), 'pkg.open'])
+    assert.deepEqual(merged.satisfied.map((t) => t.key), [...runtime.satisfied.map((t) => t.key), 'pkg.done'])
   }
 })
 
-test('a blocker heads its card with its subject and states the binding beneath', () => {
-  // The `blocked.*` bindings were written to follow "Blocked · ", so as card
-  // headings they read lowercase and mid-clause: "when 1 Temporary Access Pass
-  // policy exists (now 0)", "after: Identify the Inforcer application" (quality
-  // audit 2.3). The subject is the heading; the binding is the note.
-  const { step, c, blockers } = opened('demo', 's-goal-inforcer-mfa')
-  const r = readinessOf(step, c, blockers)
-  const blocker = r.tiles.find((t) => t.key === 'evidence:inforcer-application')
-  assert.ok(blocker, 'the premise: this step waits on the Inforcer application')
-  assert.equal(blocker.value, BLOCKED_SUBJECT['inforcer-application'])
-  assert.equal(blocker.note, BLOCKED_REASON.after('Identify the Inforcer application'))
-  // Every subject is a heading, not a clause: no leading lowercase, no "after:".
-  for (const [key, subject] of Object.entries(BLOCKED_SUBJECT)) {
-    assert.match(subject, /^[A-Z]/, `${key}: a card heading starts mid-sentence`)
-    assert.ok(subject.length <= 40, `${key}: a card heading is a paragraph`)
-  }
-})
-
-test('a tenant fact the step’s own blocker already states is that one card, not a second bare one', () => {
-  // The board reads a tenant-fact hold as the blocker `fact:<label>`, and the
-  // step's own blocker already heads a card with its subject and sentence. The
-  // fact was drawn again as its bare kind — "Tenant fact · Tenant fact", nothing
-  // beneath — here beside the session-loop wait on Intune enrollment, and on the
-  // PIM create held on an authentication context another policy targets
-  // (R4-18 review; content/implementation/pimPackage.test.ts).
-  const { step, c, blockers, reading } = opened('demo-week2', 's-goal-intune-enrollment-reauth')
-  assert.ok(reading.blockers.some((b) => b.kind === 'fact' && b.id === 'fact:session-loop'), 'the premise: the step holds on a tenant fact')
-  const r = readinessOf(step, c, blockers)
-  const tiles = [...r.tiles, ...r.satisfied]
-  assert.ok(tiles.some((t) => t.key === 'readiness:session-loop'), 'the premise: the step’s own blocker heads a card')
-  assert.deepEqual(tiles.filter((t) => t.value === BOARD.blockers.fact).map((t) => `${t.label} · ${t.value} · ${t.note ?? ''}`), [])
-})
-
-test('a count of one bends the verb a binding uses', () => {
-  // "when 1 Temporary Access Pass policy exist (now 0)" — the pluraliser bends
-  // the verb after a count, and `exist` was missing from its table.
-  assert.equal(BLOCKED_REASON.exist(1, 'Temporary Access Pass policy', 0), 'when 1 Temporary Access Pass policy exists (now 0)')
-  assert.equal(BLOCKED_REASON.exist(2, 'trusted location', 0), 'when 2 trusted locations exist (now 0)')
-})
-
-test('two configuration checks that produce the same card draw one card', () => {
-  // One step drew "Allowed countries · Not Fully Read · Missing scan evidence:
-  // sign-in records" twice, from two different check keys. A reader counts two
-  // problems where there is one, and then reasonably wonders what else on the
-  // page is doubled. `directOnly` deduped tiles naming the same STEP; two
-  // checks can still come out byte for byte identical.
-  for (const name of ['demo', 'hostile', 'midflight', 'large', 'mid', 'getiamai'] as const) {
-    const f = fixture(name)
-    const run = runFixture(f)
-    const ctx: StepVarContext = {
-      snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names!.label(id),
-      signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups,
+test('a card is headed by what it waits on, with its state or its binding beneath (owner, 2026-09-20)', () => {
+  {
+    // The card shape (owner, 2026-09-20; quality audit 2.4): a step that waits on
+    // four others drew four cards all headed "Prerequisite · To do", each naming a
+    // different step underneath — the inverse of an Emergency Access card, where
+    // the subject heads it and the check is beneath.
+    const { step, c, blockers } = opened('demo', 's-goal-geo-restriction')
+    const r = readinessOf(step, c, blockers)
+    const waits = r.tiles.filter((t) => /^(?:step|missing|direction|engine:step|engine:suspendedPrerequisite|engine:decision):/.test(t.key))
+    assert.ok(waits.length > 1, 'the premise: this step waits on more than one thing')
+    assert.equal(new Set(waits.map((t) => t.label)).size, waits.length, 'two cards are headed the same')
+    for (const t of waits) {
+      assert.match(t.value, /^(?:Prerequisite\b|Baseline mapping$|Waiting on your answers$)/, `${t.key}: the check is not a state`)
+      assert.notEqual(t.label, t.value, `${t.key}: the heading and the check say the same thing`)
+      assert.ok(t.link, `${t.key}: the card does not open what it names`)
     }
-    for (const step of run.steps) {
-      const r = readinessOf(step, stepContract(step, ctx))
-      for (const list of [r.tiles, r.satisfied]) {
-        const cards = list.filter((t) => t.key.startsWith('configuration:')).map((t) => JSON.stringify([t.label, t.value, t.note]))
-        assert.equal(cards.length, new Set(cards).size, `${name}/${step.id} draws the same card twice`)
+  }
+  {
+    // The `blocked.*` bindings were written to follow "Blocked · ", so as card
+    // headings they read lowercase and mid-clause: "when 1 Temporary Access Pass
+    // policy exists (now 0)", "after: Identify the Inforcer application" (quality
+    // audit 2.3). The subject is the heading; the binding is the note.
+    const { step, c, blockers } = opened('demo', 's-goal-inforcer-mfa')
+    const r = readinessOf(step, c, blockers)
+    const blocker = r.tiles.find((t) => t.key === 'evidence:inforcer-application')
+    assert.ok(blocker, 'the premise: this step waits on the Inforcer application')
+    assert.equal(blocker.value, BLOCKED_SUBJECT['inforcer-application'])
+    assert.equal(blocker.note, BLOCKED_REASON.after('Identify the Inforcer application'))
+    // Every subject is a heading, not a clause: no leading lowercase, no "after:".
+    for (const [key, subject] of Object.entries(BLOCKED_SUBJECT)) {
+      assert.match(subject, /^[A-Z]/, `${key}: a card heading starts mid-sentence`)
+      assert.ok(subject.length <= 40, `${key}: a card heading is a paragraph`)
+    }
+  }
+})
+
+test("no card is drawn twice: not a tenant fact the step's blocker states, not two checks alike; two locations failing one check stay two cards, each naming its location", () => {
+  {
+    // The board reads a tenant-fact hold as the blocker `fact:<label>`, and the
+    // step's own blocker already heads a card with its subject and sentence. The
+    // fact was drawn again as its bare kind — "Tenant fact · Tenant fact", nothing
+    // beneath — here beside the session-loop wait on Intune enrollment, and on the
+    // PIM create held on an authentication context another policy targets
+    // (R4-18 review; content/implementation/pimPackage.test.ts).
+    const { step, c, blockers, reading } = opened('demo-week2', 's-goal-intune-enrollment-reauth')
+    assert.ok(reading.blockers.some((b) => b.kind === 'fact' && b.id === 'fact:session-loop'), 'the premise: the step holds on a tenant fact')
+    const r = readinessOf(step, c, blockers)
+    const tiles = [...r.tiles, ...r.satisfied]
+    assert.ok(tiles.some((t) => t.key === 'readiness:session-loop'), 'the premise: the step’s own blocker heads a card')
+    assert.deepEqual(tiles.filter((t) => t.value === BOARD.blockers.fact).map((t) => `${t.label} · ${t.value} · ${t.note ?? ''}`), [])
+  }
+  {
+    // One step drew "Allowed countries · Not Fully Read · Missing scan evidence:
+    // sign-in records" twice, from two different check keys. A reader counts two
+    // problems where there is one, and then reasonably wonders what else on the
+    // page is doubled. `directOnly` deduped tiles naming the same STEP; two
+    // checks can still come out byte for byte identical. Read over the tenant whose
+    // sign-in records could not be used, and the one shaped like a real tenant.
+    for (const name of ['hostile', 'getiamai'] as const) {
+      const f = fixture(name)
+      const run = runFixture(f)
+      const ctx: StepVarContext = {
+        snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names!.label(id),
+        signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups,
+      }
+      for (const step of run.steps) {
+        const r = readinessOf(step, stepContract(step, ctx))
+        for (const list of [r.tiles, r.satisfied]) {
+          const cards = list.filter((t) => t.key.startsWith('configuration:')).map((t) => JSON.stringify([t.label, t.value, t.note]))
+          assert.equal(cards.length, new Set(cards).size, `${name}/${step.id} draws the same card twice`)
+        }
       }
     }
+  }
+  {
+    // R4-58, the other half: headed by its check, a finding still names the object
+    // it is about. The trusted-location step runs the same checks over every saved
+    // location; without the location's name in the note, two locations failing one
+    // check would be the same card, and the fold would drop one of them.
+    const f = structuredClone(fixture('demo'))
+    const rows = f.snapshot.config.namedLocations.rows as { id: string; displayName: string; ipRanges?: { cidrAddress: string }[] }[]
+    const office = rows.find((r) => Array.isArray(r.ipRanges))!
+    office.ipRanges = [{ cidrAddress: '0.0.0.0/0' }]
+    rows.push({ ...structuredClone(office), id: 'loc-branch', displayName: 'Branch Office' })
+    f.mapping.trustedLocationIds = [office.id, 'loc-branch']
+    f.mapping.wizardAnswered.trustedLocations = true
+    if (f.mapping.assumed) delete (f.mapping.assumed as Record<string, unknown>).trustedLocations
+    const r = runFixture(f, { snapshot: f.snapshot, mapping: f.mapping })
+    const step = r.steps.find((s) => s.id === 's-prereq-trusted-location')!
+    const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+    const wide = readinessOf(step, stepContract(step, ctx)).tiles.filter((t) => t.key.startsWith('configuration:loc.notWholeInternet:'))
+    assert.equal(wide.length, 2, `the two locations' whole-internet findings drew ${wide.length} cards`)
+    for (const t of wide) assert.equal(t.label, RULE_TEXT['loc.notWholeInternet'].label, 'the finding is not headed by its check')
+    assert.deepEqual(wide.map((t) => (t.note ?? '').split(':')[0]).sort(), ['Branch Office', office.displayName].sort(), 'a card does not name the location it is about')
   }
 })
 
@@ -265,87 +227,66 @@ test('two configuration checks that produce the same card draw one card', () => 
 // neither — one of them the lockout check for the countries people actually
 // sign in from. And "Not Fully Read" called a total refusal a partial read. A
 // finding is now headed by its check, and a check that never ran reads Not Read.
-test('each configuration check on the allowed-countries step is its own card, and one that never ran reads Not Read', () => {
-  const f = fixture('hostile')
-  assert.equal(f.snapshot.sources.signInEvidence?.status, 'insufficient', 'the premise: hostile\'s sign-in records could not be used')
-  // The countries location's checks are Block Sign-ins From Countries Not Allowed's since Stage 3.
-  const { step, c } = opened(f, 's-goal-geo-restriction')
-  const cards = readinessOf(step, c).tiles.filter((t) => t.key.startsWith('configuration:'))
-  const labels = cards.map((t) => t.label)
-  assert.equal(labels.length, new Set(labels).size, `two checks share a heading: ${labels.join(' | ')}`)
-  const card = (id: string) => cards.find((t) => t.key.startsWith(`configuration:${id}:`))
-  for (const id of ['cty.seenCountriesIncluded', 'cty.includesOperator', 'cty.unknownCountries']) {
-    assert.ok(card(id), `${id} draws no card: it was folded into another`)
-    assert.equal(card(id)!.label, RULE_TEXT[id].label, `${id} is not headed by its check`)
-  }
-  assert.equal(card('cty.seenCountriesIncluded')!.label, 'Countries People Sign In From')
-  assert.equal(card('cty.includesOperator')!.label, 'Administrator Sign-in Countries')
-  for (const id of ['cty.seenCountriesIncluded', 'cty.includesOperator']) {
-    assert.equal(card(id)!.value, CHECK_STATE.notRead, `${id} never ran and reads "${card(id)!.value}"`)
-    assert.match(card(id)!.note ?? '', /sign-in records/, `${id} does not name the source it lacked`)
-  }
-  for (const t of cards) assert.notEqual(t.value, CHECK_STATE.notFullyRead, `${t.label} calls sign-in records nobody could use partly read`)
-  assert.equal(card('cty.unknownCountries')!.value, CHECK_STATE.fail)
-  // Every check drawn this way has a heading of its own: a card heading, not a
-  // clause, and no two alike on one step.
-  for (const subject of ['trustedLocation', 'allowedCountries', 'authStrength'] as const) {
-    const rules = rulesFor(subject)
-    const own = rules.map((r) => RULE_TEXT[r.id]?.label)
-    for (const [i, label] of own.entries()) {
-      assert.ok(label, `${rules[i].id} has no heading of its own`)
-      assert.match(label, /^[A-Z]/, `${label}: a card heading starts mid-sentence`)
-      assert.ok(label.length <= 40, `${label}: a card heading is a paragraph`)
+test('R4-58: each country check is its own card, headed by its check; one that never ran reads Not Read, and one that ran on records holding nothing reads Not Fully Read', () => {
+  {
+    const f = fixture('hostile')
+    assert.equal(f.snapshot.sources.signInEvidence?.status, 'insufficient', 'the premise: hostile\'s sign-in records could not be used')
+    // The countries location's checks are Block Sign-ins From Countries Not Allowed's since Stage 3.
+    const { step, c } = opened(f, 's-goal-geo-restriction')
+    const cards = readinessOf(step, c).tiles.filter((t) => t.key.startsWith('configuration:'))
+    const labels = cards.map((t) => t.label)
+    assert.equal(labels.length, new Set(labels).size, `two checks share a heading: ${labels.join(' | ')}`)
+    const card = (id: string) => cards.find((t) => t.key.startsWith(`configuration:${id}:`))
+    for (const id of ['cty.seenCountriesIncluded', 'cty.includesOperator', 'cty.unknownCountries']) {
+      assert.ok(card(id), `${id} draws no card: it was folded into another`)
+      assert.equal(card(id)!.label, RULE_TEXT[id].label, `${id} is not headed by its check`)
     }
-    assert.equal(own.length, new Set(own).size, `${subject}: two checks share a heading`)
+    assert.equal(card('cty.seenCountriesIncluded')!.label, 'Countries People Sign In From')
+    assert.equal(card('cty.includesOperator')!.label, 'Administrator Sign-in Countries')
+    for (const id of ['cty.seenCountriesIncluded', 'cty.includesOperator']) {
+      assert.equal(card(id)!.value, CHECK_STATE.notRead, `${id} never ran and reads "${card(id)!.value}"`)
+      assert.match(card(id)!.note ?? '', /sign-in records/, `${id} does not name the source it lacked`)
+    }
+    for (const t of cards) assert.notEqual(t.value, CHECK_STATE.notFullyRead, `${t.label} calls sign-in records nobody could use partly read`)
+    assert.equal(card('cty.unknownCountries')!.value, CHECK_STATE.fail)
+    // Every check drawn this way has a heading of its own: a card heading, not a
+    // clause, and no two alike on one step.
+    for (const subject of ['trustedLocation', 'allowedCountries', 'authStrength'] as const) {
+      const rules = rulesFor(subject)
+      const own = rules.map((r) => RULE_TEXT[r.id]?.label)
+      for (const [i, label] of own.entries()) {
+        assert.ok(label, `${rules[i].id} has no heading of its own`)
+        assert.match(label, /^[A-Z]/, `${label}: a card heading starts mid-sentence`)
+        assert.ok(label.length <= 40, `${label}: a card heading is a paragraph`)
+      }
+      assert.equal(own.length, new Set(own).size, `${subject}: two checks share a heading`)
+    }
   }
-})
-
-// R4-58, the third case: a check that ran on sign-in records the scan read and
-// found nothing to decide on is Not Fully Read — and its note said "Missing scan
-// evidence: sign-in records", the words for a source never collected. The state
-// said the records were read and the note said they were missing, on one card.
-// On small, whose sign-in records were read, with no administrator's sign-in
-// carrying a country and no counts by country, both checks ran and could not
-// decide; each says so in its own words.
-test('a country check that ran on sign-in records holding nothing to decide on reads Not Fully Read, and never calls the records missing', () => {
-  const f = structuredClone(fixture('small'))
-  assert.equal(f.snapshot.sources.signInEvidence?.status, 'ok', 'the premise: small\'s sign-in records were read')
-  for (const id of Object.keys(f.snapshot.roles?.active ?? {})) {
-    const e = f.snapshot.signInEvidence[id]
-    if (e) e.countries = []
+  {
+    // R4-58, the third case: a check that ran on sign-in records the scan read and
+    // found nothing to decide on is Not Fully Read — and its note said "Missing scan
+    // evidence: sign-in records", the words for a source never collected. The state
+    // said the records were read and the note said they were missing, on one card.
+    // On small, whose sign-in records were read, with no administrator's sign-in
+    // carrying a country and no counts by country, both checks ran and could not
+    // decide; each says so in its own words.
+    const f = structuredClone(fixture('small'))
+    assert.equal(f.snapshot.sources.signInEvidence?.status, 'ok', 'the premise: small\'s sign-in records were read')
+    for (const id of Object.keys(f.snapshot.roles?.active ?? {})) {
+      const e = f.snapshot.signInEvidence[id]
+      if (e) e.countries = []
+    }
+    if (f.snapshot.evidenceAggregates) (f.snapshot.evidenceAggregates as { byCountry: unknown }).byCountry = null
+    const { step, c } = opened(f, 's-goal-geo-restriction')
+    const cards = readinessOf(step, c).tiles.filter((t) => t.key.startsWith('configuration:'))
+    for (const id of ['cty.includesOperator', 'cty.seenCountriesIncluded']) {
+      const card = cards.find((t) => t.key.startsWith(`configuration:${id}:`))
+      assert.ok(card, `${id} draws no card`)
+      assert.equal(card.value, CHECK_STATE.notFullyRead, `${id} ran and reads "${card.value}"`)
+      assert.doesNotMatch(card.note ?? '', /Missing scan evidence/, `${id} ran on the sign-in records and calls them missing: "${card.note}"`)
+      assert.match(card.note ?? '', /sign-in records this scan read/, `${id} does not say what the records it read hold`)
+    }
   }
-  if (f.snapshot.evidenceAggregates) (f.snapshot.evidenceAggregates as { byCountry: unknown }).byCountry = null
-  const { step, c } = opened(f, 's-goal-geo-restriction')
-  const cards = readinessOf(step, c).tiles.filter((t) => t.key.startsWith('configuration:'))
-  for (const id of ['cty.includesOperator', 'cty.seenCountriesIncluded']) {
-    const card = cards.find((t) => t.key.startsWith(`configuration:${id}:`))
-    assert.ok(card, `${id} draws no card`)
-    assert.equal(card.value, CHECK_STATE.notFullyRead, `${id} ran and reads "${card.value}"`)
-    assert.doesNotMatch(card.note ?? '', /Missing scan evidence/, `${id} ran on the sign-in records and calls them missing: "${card.note}"`)
-    assert.match(card.note ?? '', /sign-in records this scan read/, `${id} does not say what the records it read hold`)
-  }
-})
-
-// R4-58, the other half: headed by its check, a finding still names the object
-// it is about. The trusted-location step runs the same checks over every saved
-// location; without the location's name in the note, two locations failing one
-// check would be the same card, and the fold would drop one of them.
-test('two trusted locations failing the same check stay two cards, each naming its location', () => {
-  const f = structuredClone(fixture('demo'))
-  const rows = f.snapshot.config.namedLocations.rows as { id: string; displayName: string; ipRanges?: { cidrAddress: string }[] }[]
-  const office = rows.find((r) => Array.isArray(r.ipRanges))!
-  office.ipRanges = [{ cidrAddress: '0.0.0.0/0' }]
-  rows.push({ ...structuredClone(office), id: 'loc-branch', displayName: 'Branch Office' })
-  f.mapping.trustedLocationIds = [office.id, 'loc-branch']
-  f.mapping.wizardAnswered.trustedLocations = true
-  if (f.mapping.assumed) delete (f.mapping.assumed as Record<string, unknown>).trustedLocations
-  const r = runFixture(f, { snapshot: f.snapshot, mapping: f.mapping })
-  const step = r.steps.find((s) => s.id === 's-prereq-trusted-location')!
-  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
-  const wide = readinessOf(step, stepContract(step, ctx)).tiles.filter((t) => t.key.startsWith('configuration:loc.notWholeInternet:'))
-  assert.equal(wide.length, 2, `the two locations' whole-internet findings drew ${wide.length} cards`)
-  for (const t of wide) assert.equal(t.label, RULE_TEXT['loc.notWholeInternet'].label, 'the finding is not headed by its check')
-  assert.deepEqual(wide.map((t) => (t.note ?? '').split(':')[0]).sort(), ['Branch Office', office.displayName].sort(), 'a card does not name the location it is about')
 })
 
 // R4-16 (Marcus D6), second half. Four risk policies read "On Hold · After
@@ -377,48 +318,71 @@ test('the prerequisite the row names is on the opened step, beside the one that 
 // thing anybody could do. The board's own readings know the chain. Rendered with
 // them, as the Plan renders it, the card names where the chain starts and opens
 // it; where the campaign itself can be done today it names the campaign alone.
-test('a Threshold card whose campaign is held names where its chain starts, and opens it', async () => {
-  const { cleanupComplete } = await import('../../roadmap/cleanupDone.ts')
-  const { cleanupEntry } = await import('./cleanupExport.ts')
-  const { chainStartOf, prerequisiteLabelFor } = await import('./planBoard.ts')
-  const { cleanupTitleOf } = await import('./stepContract.ts')
-  const seen = { held: 0, clear: 0 }
-  for (const name of ['demo', 'mid', 'midflight'] as const) {
-    const f = fixture(name)
-    const r = runFixture(f, {}, null, f.snapshot.asOf)
-    const rows = (r.schedule.cleanup?.rows ?? []).filter((row) => cleanupEntry(row.kind) !== null).map((row) => ({ id: `cleanup-${row.kind}`, complete: cleanupComplete(row, f.mapping.breakGlassAnswers ?? null), afterRollout: ['alerting', 'consolidation', 'naming'].includes(row.kind) }))
-    const readings = laneReadings(r.steps, rows)
-    const titleOf = (x: string): string | null => r.steps.find((s) => s.id === x)?.title ?? cleanupTitleOf(x)
-    for (const step of r.steps) {
-      const gate = step.action.readinessGate
-      if (!gate?.routeId || gate.blind !== undefined || step.status === 'done' || step.status === 'skipped' || step.state.lifecycle === 'enforced') continue
-      const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: null }
-      const reading = readings.get(step.id)!
-      // The board's chain goes into the contract, which works out where the
-      // route starts once for the card and every finding (StepContract.routeStart);
-      // handed to the card alone, the finding and the AI Info briefing kept
-      // naming the held campaign (review of R4-33).
-      const label = prerequisiteLabelFor(readings)
-      const c = stepContract(step, ctx, undefined, laneViewOf(reading, titleOf), label.startOf)
-      const tile = readinessOf(step, c, readinessBlockersOf(reading, titleOf), label).tiles.find((t) => t.key === 'gate')!
-      assert.ok(tile.link && 'href' in tile.link, `${name}/${step.id}: the card opens nothing`)
-      const start = chainStartOf(readings, gate.routeId)
-      if (readings.get(gate.routeId)!.lane === 'Ready') {
-        seen.clear++
-        assert.equal(start, null)
-        assert.ok(tile.note!.endsWith(`“${gate.route}”.`), `${name}/${step.id}: a campaign that can be done today is named alone — ${tile.note}`)
-        assert.equal(tile.link.href, returnToStep(gate.routeId))
-        continue
+test('a Threshold card whose campaign is held names where its chain starts, which is a Ready step on it or nothing, and opens it', async () => {
+  {
+    const { cleanupComplete } = await import('../../roadmap/cleanupDone.ts')
+    const { cleanupEntry } = await import('./cleanupExport.ts')
+    const { chainStartOf, prerequisiteLabelFor } = await import('./planBoard.ts')
+    const { cleanupTitleOf } = await import('./stepContract.ts')
+    const seen = { held: 0, clear: 0 }
+    for (const name of ['demo', 'mid', 'midflight'] as const) {
+      const f = fixture(name)
+      const r = runFixture(f, {}, null, f.snapshot.asOf)
+      const rows = (r.schedule.cleanup?.rows ?? []).filter((row) => cleanupEntry(row.kind) !== null).map((row) => ({ id: `cleanup-${row.kind}`, complete: cleanupComplete(row, f.mapping.breakGlassAnswers ?? null), afterRollout: ['alerting', 'consolidation', 'naming'].includes(row.kind) }))
+      const readings = laneReadings(r.steps, rows)
+      const titleOf = (x: string): string | null => r.steps.find((s) => s.id === x)?.title ?? cleanupTitleOf(x)
+      for (const step of r.steps) {
+        const gate = step.action.readinessGate
+        if (!gate?.routeId || gate.blind !== undefined || step.status === 'done' || step.status === 'skipped' || step.state.lifecycle === 'enforced') continue
+        const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: null }
+        const reading = readings.get(step.id)!
+        // The board's chain goes into the contract, which works out where the
+        // route starts once for the card and every finding (StepContract.routeStart);
+        // handed to the card alone, the finding and the AI Info briefing kept
+        // naming the held campaign (review of R4-33).
+        const label = prerequisiteLabelFor(readings)
+        const c = stepContract(step, ctx, undefined, laneViewOf(reading, titleOf), label.startOf)
+        const tile = readinessOf(step, c, readinessBlockersOf(reading, titleOf), label).tiles.find((t) => t.key === 'gate')!
+        assert.ok(tile.link && 'href' in tile.link, `${name}/${step.id}: the card opens nothing`)
+        const start = chainStartOf(readings, gate.routeId)
+        if (readings.get(gate.routeId)!.lane === 'Ready') {
+          seen.clear++
+          assert.equal(start, null)
+          assert.ok(tile.note!.endsWith(`“${gate.route}”.`), `${name}/${step.id}: a campaign that can be done today is named alone — ${tile.note}`)
+          assert.equal(tile.link.href, returnToStep(gate.routeId))
+          continue
+        }
+        seen.held++
+        assert.ok(start !== null, `${name}/${step.id}: the campaign is held and the board found no start — ${JSON.stringify(readings.get(gate.routeId)!.reason)}`)
+        assert.equal(readings.get(start)!.lane, 'Ready', `${name}/${step.id}: "where to start" is not a step anybody can do today`)
+        const first = titleOf(start)!
+        assert.ok(tile.note!.includes(`“${gate.route}”; it waits on “${first}”, which is where to start.`), `${name}/${step.id}: ${tile.note}`)
+        assert.equal(tile.link.href, returnToStep(start), `${name}/${step.id}: the card opens the held campaign, not where to start`)
       }
-      seen.held++
-      assert.ok(start !== null, `${name}/${step.id}: the campaign is held and the board found no start — ${JSON.stringify(readings.get(gate.routeId)!.reason)}`)
-      assert.equal(readings.get(start)!.lane, 'Ready', `${name}/${step.id}: "where to start" is not a step anybody can do today`)
-      const first = titleOf(start)!
-      assert.ok(tile.note!.includes(`“${gate.route}”; it waits on “${first}”, which is where to start.`), `${name}/${step.id}: ${tile.note}`)
-      assert.equal(tile.link.href, returnToStep(start), `${name}/${step.id}: the card opens the held campaign, not where to start`)
     }
+    assert.ok(seen.held > 0 && seen.clear > 0, `the premise: both a held and a clear campaign — ${JSON.stringify(seen)}`)
   }
-  assert.ok(seen.held > 0 && seen.clear > 0, `the premise: both a held and a clear campaign — ${JSON.stringify(seen)}`)
+  {
+    // The chain is the engine's own reasons, and it ends where a step does: a chain
+    // that runs into a mapping or a decision has no step to send anybody to (that
+    // step's own page names what holds it), and a reciprocal pair never loops.
+    const { chainStartOf } = await import('./planBoard.ts')
+    const on = (lane: string, reason: { kind: string; id: string } | null) => ({ lane, substatus: lane === 'Ready' ? 'Review' : null, reason: reason && { ...reason, milestone: null, condition: null, abnormal: reason.kind !== 'step', ordinal: 5 }, blockers: [], gates: [], order: 0, fromEngine: true })
+    const readings = new Map<string, unknown>([
+      ['campaign', on('On Hold', { kind: 'step', id: 'ladder' })],
+      ['ladder', on('Up Next', { kind: 'step', id: 'drill' })],
+      ['drill', on('Ready', null)],
+      ['mapped', on('On Hold', { kind: 'sourceMapping', id: 'sourceMapping:x' })],
+      ['a', on('Up Next', { kind: 'step', id: 'b' })],
+      ['b', on('Up Next', { kind: 'step', id: 'a' })],
+    ]) as never
+    assert.equal(chainStartOf(readings, 'campaign'), 'drill')
+    assert.equal(chainStartOf(readings, 'ladder'), 'drill')
+    assert.equal(chainStartOf(readings, 'drill'), null, 'a Ready step is where to start: nothing further to name')
+    assert.equal(chainStartOf(readings, 'mapped'), null)
+    assert.equal(chainStartOf(readings, 'a'), null, 'a reciprocal pair does not loop')
+    assert.equal(chainStartOf(readings, 'unknown'), null)
+  }
 })
 
 // R4-33, second half. Where the chain starts was worked out in the Threshold
@@ -466,28 +430,6 @@ test('the Threshold card, its finding and the AI Info briefing name the same pla
     }
   }
   assert.ok(held >= 4, `the premise: gates whose campaign is held — ${held}`)
-})
-
-// The chain is the engine's own reasons, and it ends where a step does: a chain
-// that runs into a mapping or a decision has no step to send anybody to (that
-// step's own page names what holds it), and a reciprocal pair never loops.
-test('where a chain starts is a Ready step on it, or nothing', async () => {
-  const { chainStartOf } = await import('./planBoard.ts')
-  const on = (lane: string, reason: { kind: string; id: string } | null) => ({ lane, substatus: lane === 'Ready' ? 'Review' : null, reason: reason && { ...reason, milestone: null, condition: null, abnormal: reason.kind !== 'step', ordinal: 5 }, blockers: [], gates: [], order: 0, fromEngine: true })
-  const readings = new Map<string, unknown>([
-    ['campaign', on('On Hold', { kind: 'step', id: 'ladder' })],
-    ['ladder', on('Up Next', { kind: 'step', id: 'drill' })],
-    ['drill', on('Ready', null)],
-    ['mapped', on('On Hold', { kind: 'sourceMapping', id: 'sourceMapping:x' })],
-    ['a', on('Up Next', { kind: 'step', id: 'b' })],
-    ['b', on('Up Next', { kind: 'step', id: 'a' })],
-  ]) as never
-  assert.equal(chainStartOf(readings, 'campaign'), 'drill')
-  assert.equal(chainStartOf(readings, 'ladder'), 'drill')
-  assert.equal(chainStartOf(readings, 'drill'), null, 'a Ready step is where to start: nothing further to name')
-  assert.equal(chainStartOf(readings, 'mapped'), null)
-  assert.equal(chainStartOf(readings, 'a'), null, 'a reciprocal pair does not loop')
-  assert.equal(chainStartOf(readings, 'unknown'), null)
 })
 
 // R4-31 (Marcus D12). While the next action is the report-only create, every

@@ -30,81 +30,84 @@ const portal = (ctx: StepVarContext): { step: string; line: string }[] =>
     return (stepPortalLines(s, portalNamesFor(ctx, ex, s.title)) ?? []).map((line) => ({ step: s.id, line }))
   })
 
-test('the exclusions-group step names the plan\'s proposal, and the policy steps wait for the group rather than naming a proposal', () => {
-  assert.equal(operatorExclusionsDecision(f.mapping), null, 'nobody has chosen an exclusions group, so the plan proposes one')
-  const step = prereq(PREREQ_STEP_ID.exclusionsGroup)
-  const proposed = String(step.naming?.proposed)
-  assert.ok(proposed.length > 0)
-  assert.equal((stepVars(step, withPlan) as Record<string, unknown>).proposedName, proposed, 'the prerequisite step names the plan\'s proposal')
-  assert.equal(withPlan.proposed?.exclusionsGroup, proposed)
-  // No policy step offers instructions while the group does not exist, so no
-  // portal line names an object the tenant does not have (resolvePolicy.ts).
-  assert.deepEqual(portal(withPlan), [], 'the policy steps wait on the exclusions-group step')
+test("the policy steps wait for the exclusions group while it is only proposed, and once it is saved every exclusions line names the tenant's own group", () => {
+  {
+    assert.equal(operatorExclusionsDecision(f.mapping), null, 'nobody has chosen an exclusions group, so the plan proposes one')
+    const step = prereq(PREREQ_STEP_ID.exclusionsGroup)
+    const proposed = String(step.naming?.proposed)
+    assert.ok(proposed.length > 0)
+    assert.equal((stepVars(step, withPlan) as Record<string, unknown>).proposedName, proposed, 'the prerequisite step names the plan\'s proposal')
+    assert.equal(withPlan.proposed?.exclusionsGroup, proposed)
+    // No policy step offers instructions while the group does not exist, so no
+    // portal line names an object the tenant does not have (resolvePolicy.ts).
+    assert.deepEqual(portal(withPlan), [], 'the policy steps wait on the exclusions-group step')
+  }
+  {
+    const f2 = fixture('demo-week2')
+    const r2 = runFixture(f2)
+    const ctx2: StepVarContext = { snapshot: f2.snapshot, mapping: f2.mapping, nameOf: (id: string) => r2.input.names!.label(id), signature: 'IT', operatorId: f2.operatorId, now: f2.snapshot.asOf, groups: f2.groups, naming: r2.coverage.organisation.naming, ...planDates(r2.steps, r2.schedule.start, r2.coverage.organisation.naming) }
+    const lines = r2.steps
+      .filter((s) => (contentStepFor(s) as { kind?: string } | undefined)?.kind === 'policy')
+      .flatMap((s) => (stepPortalLines(s, portalNamesFor(ctx2, stepVars(s, ctx2) as Record<string, unknown>, s.title)) ?? []).map((line) => ({ step: s.id, line })))
+      .filter((l) => /Exclude → Groups:/.test(l.line))
+    assert.ok(lines.length > 0, 'policy steps carry an exclusions line')
+    for (const l of lines) assert.ok(l.line.includes('Exclude → Groups: Core - Exclusions'), `${l.step} names the tenant's group: ${l.line}`)
+  }
 })
 
-test('with the group saved, every portal exclusions line names the tenant\'s own group', () => {
-  const f2 = fixture('demo-week2')
-  const r2 = runFixture(f2)
-  const ctx2: StepVarContext = { snapshot: f2.snapshot, mapping: f2.mapping, nameOf: (id: string) => r2.input.names!.label(id), signature: 'IT', operatorId: f2.operatorId, now: f2.snapshot.asOf, groups: f2.groups, naming: r2.coverage.organisation.naming, ...planDates(r2.steps, r2.schedule.start, r2.coverage.organisation.naming) }
-  const lines = r2.steps
-    .filter((s) => (contentStepFor(s) as { kind?: string } | undefined)?.kind === 'policy')
-    .flatMap((s) => (stepPortalLines(s, portalNamesFor(ctx2, stepVars(s, ctx2) as Record<string, unknown>, s.title)) ?? []).map((line) => ({ step: s.id, line })))
-    .filter((l) => /Exclude → Groups:/.test(l.line))
-  assert.ok(lines.length > 0, 'policy steps carry an exclusions line')
-  for (const l of lines) assert.ok(l.line.includes('Exclude → Groups: Core - Exclusions'), `${l.step} names the tenant's group: ${l.line}`)
-})
-
-test('the trusted-network step and the plan\'s proposals name the same location', () => {
-  const step = prereq(PREREQ_STEP_ID.trustedLocation)
-  const proposed = String(step.naming?.proposed)
-  assert.equal((stepVars(step, withPlan) as Record<string, unknown>).proposedName, proposed)
-  // The proposals are the plan's, on the step that creates each object. They are
-  // not a portal input any more: a policy step whose object does not exist yet
-  // offers no instructions at all (roadmap/resolvePolicy.ts).
-  const names = proposedNamesFor(withPlan)
-  assert.equal(names.trustedLocation, proposed)
-  assert.equal(names.exclusionsGroup, prereq(PREREQ_STEP_ID.exclusionsGroup).naming?.proposed)
-})
-
-test('the names come from the plan, not from the context\'s convention', () => {
-  const noConvention: StepVarContext = { ...base, ...planDates(r.steps, r.schedule.start) }
-  const proposed = String(prereq(PREREQ_STEP_ID.exclusionsGroup).naming?.proposed)
-  assert.equal(proposedNamesFor(noConvention).exclusionsGroup, proposed)
-  // Without the plan's steps, the engine's own proposal for the convention stands in.
-  const bare = planProposedNames([], null)
-  assert.equal(bare.exclusionsGroup, proposedObjectNames(null).exclusionsGroup.name)
-  assert.equal(proposedNamesFor({ ...base, naming: undefined }).exclusionsGroup, bare.exclusionsGroup)
+test("the proposed names are the plan's own, on the step that creates each object, and not the context's convention", () => {
+  {
+    const step = prereq(PREREQ_STEP_ID.trustedLocation)
+    const proposed = String(step.naming?.proposed)
+    assert.equal((stepVars(step, withPlan) as Record<string, unknown>).proposedName, proposed)
+    // The proposals are the plan's, on the step that creates each object. They are
+    // not a portal input any more: a policy step whose object does not exist yet
+    // offers no instructions at all (roadmap/resolvePolicy.ts).
+    const names = proposedNamesFor(withPlan)
+    assert.equal(names.trustedLocation, proposed)
+    assert.equal(names.exclusionsGroup, prereq(PREREQ_STEP_ID.exclusionsGroup).naming?.proposed)
+  }
+  {
+    const noConvention: StepVarContext = { ...base, ...planDates(r.steps, r.schedule.start) }
+    const proposed = String(prereq(PREREQ_STEP_ID.exclusionsGroup).naming?.proposed)
+    assert.equal(proposedNamesFor(noConvention).exclusionsGroup, proposed)
+    // Without the plan's steps, the engine's own proposal for the convention stands in.
+    const bare = planProposedNames([], null)
+    assert.equal(bare.exclusionsGroup, proposedObjectNames(null).exclusionsGroup.name)
+    assert.equal(proposedNamesFor({ ...base, naming: undefined }).exclusionsGroup, bare.exclusionsGroup)
+  }
 })
 
 // A retired policy's name is not the convention a tenant writes new policies in.
 // Twenty-four switched-off "Old - Disabled N" alongside twelve live ones read a
 // two-thirds agreement on the prefix "Old", and sixteen steps then instructed the
 // administrator to name new objects "Old - Trusted Head Office".
-test('a disabled policy does not set the convention new objects are named in', () => {
-  const f = fixture('messy')
-  const r = runFixture(f, { mapping: f.mapping })
-  const rows = f.snapshot.config.caPolicies.rows as { displayName?: string; state?: string }[]
-  const off = rows.filter((x) => x.state === 'disabled')
-  assert.ok(off.length > rows.length / 3, `the premise: most of this tenant's policies are switched off (${off.length} of ${rows.length})`)
-  assert.ok(off.some((x) => (x.displayName ?? '').startsWith('Old')), 'the premise: the switched-off ones share a prefix')
-  const naming = r.coverage.organisation.naming
-  assert.notEqual(naming.prefix, 'Old', 'a retired prefix became the convention')
-  const names = Object.values(planProposedNames(r.steps, naming))
-  assert.ok(names.length > 0)
-  for (const name of names) assert.doesNotMatch(name, /^Old/, `${name} is named after the retired policies`)
-})
-
-// And the sentence beside the name says which of the two it is.
-test(`the name line claims the tenant's convention only where the tenant has one`, () => {
-  const said = (name: 'demo' | 'messy'): string => {
-    const f = fixture(name)
+test("a disabled policy does not set the naming convention, and the name line claims the tenant's convention only where it has one", () => {
+  {
+    const f = fixture('messy')
     const r = runFixture(f, { mapping: f.mapping })
-    const step = r.steps.find((x) => x.id === PREREQ_STEP_ID.trustedLocation)!
-    const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming) }
-    return String((stepVars(step, ctx) as Record<string, unknown>).proposedNameNote ?? '')
+    const rows = f.snapshot.config.caPolicies.rows as { displayName?: string; state?: string }[]
+    const off = rows.filter((x) => x.state === 'disabled')
+    assert.ok(off.length > rows.length / 3, `the premise: most of this tenant's policies are switched off (${off.length} of ${rows.length})`)
+    assert.ok(off.some((x) => (x.displayName ?? '').startsWith('Old')), 'the premise: the switched-off ones share a prefix')
+    const naming = r.coverage.organisation.naming
+    assert.notEqual(naming.prefix, 'Old', 'a retired prefix became the convention')
+    const names = Object.values(planProposedNames(r.steps, naming))
+    assert.ok(names.length > 0)
+    for (const name of names) assert.doesNotMatch(name, /^Old/, `${name} is named after the retired policies`)
   }
-  assert.match(said('demo'), /follows the convention/)
-  assert.match(said('messy'), /do not agree on one shape/)
+  {
+    // And the sentence beside the name says which of the two it is.
+    const said = (name: 'demo' | 'messy'): string => {
+      const f = fixture(name)
+      const r = runFixture(f, { mapping: f.mapping })
+      const step = r.steps.find((x) => x.id === PREREQ_STEP_ID.trustedLocation)!
+      const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming) }
+      return String((stepVars(step, ctx) as Record<string, unknown>).proposedNameNote ?? '')
+    }
+    assert.match(said('demo'), /follows the convention/)
+    assert.match(said('messy'), /do not agree on one shape/)
+  }
 })
 
 // A member with no resolved operation binds no name, so the planning preview

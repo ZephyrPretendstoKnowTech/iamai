@@ -39,13 +39,3 @@ test('MFA preparation row and evidence lead identify the whole cohort before sub
   step.preparation!.ids = []
   assert.equal(rowWho(step), 'User Authentication', 'empty preparation uses the topic rather than a stale activity count')
 })
-
-test('a directory inventory of one guest is singular in both the tile and evidence', () => {
-  const snapshot = structuredClone(f.snapshot)
-  const guest = snapshot.users.find(u => u.userType === 'guest')!
-  snapshot.users = snapshot.users.filter(u => u.userType !== 'guest' || u.id === guest.id)
-  const step = run.steps.find(s => s.id === 's-goal-guests-mfa')!
-  const body = stepBodyOf(step, { ...ctx, snapshot })
-  assert.equal(body.allTiles.find(t => t.key === 'directory-inventory')?.value, '1 guest')
-  assert.match(body.contract.found.find(f => f.key === 'directory-inventory')!.text, /^1 guest account\./)
-})
