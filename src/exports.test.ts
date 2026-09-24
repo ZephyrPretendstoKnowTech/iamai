@@ -10,6 +10,7 @@ import { groundingBundle } from './roadmap/prompts.ts'
 import { redactIdentifiers } from './redact.ts'
 import { buildIcs } from './roadmap/ics.ts'
 import { stepExportView } from './ui/surfaces/stepExport.ts'
+import { exportText, runbookRedaction } from './ui/exportGuard.ts'
 
 const f = fixture('small')
 const run = runFixture(f)
@@ -67,6 +68,10 @@ test('diagnostics: redactIdentifiers removes every sign-in name and every id, ke
 
 test('the calendar export carries titles, dates and the runbook, never a sign-in name or the tenant id', () => {
   const ics = buildIcs(run.steps, 'Fixture small', f.planId, (s) => stepExportView(s, { snapshot, mapping: f.mapping, nameOf, signature: 'IT', operatorId: null, now: snapshot.asOf }))
-  assert.deepEqual(contains(ics, upns), [])
+  // The runbook names the accounts a step asks about; the file a person
+  // downloads is the guarded text (Export.tsx exportDownload), which masks them.
+  // Read raw, the check passed only while a line fold split the one address.
+  const delivered = exportText('plan.ics', ics, runbookRedaction(f.mapping)).replace(/\r\n[ \t]/g, '')
+  assert.deepEqual(contains(delivered, upns), [])
   assert.ok(!ics.includes(tenantId))
 })
