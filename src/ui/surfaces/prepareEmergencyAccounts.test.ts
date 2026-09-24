@@ -78,6 +78,9 @@ test('#12 an emergency account that is the one signed in to IAMAI carries one he
     assert.equal(signedIn.notes, undefined, 'one line, not the heads-up and the check note both')
     assert.ok(cards.filter((c) => c.accountId !== id).every((c) => c.headsUp === undefined))
   }
+  // The Plan's own operator, as Connect resolves the account signed in, with no /me read.
+  const byPlan = opened('demo-week2', (f) => { f.operatorId = f.mapping.breakGlassUserIds[1]; f.snapshot.config.me = { status: 'error', reason: 'denied', rows: [] } })
+  assert.equal(byPlan.body.emergencyAccountTasks!.accounts!.find((c) => c.accountId === byPlan.value.mapping.breakGlassUserIds[1])!.headsUp, HEADS_UP)
   // Nobody else's account is flagged.
   const plain = opened('demo-week2').body.emergencyAccountTasks!.accounts!
   assert.ok(plain.every((c) => c.headsUp === undefined))

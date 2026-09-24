@@ -167,15 +167,16 @@ function dedicatedAccountNotes(step: Step): ReadonlyMap<string, { label: string;
 }
 
 /**
- * Whether an account is the one signed in to IAMAI: the scan's /me, by object
- * id or by sign-in name, as Connect shows it. A fact about the account, never
- * a guess about who uses it.
+ * Whether an account is the one signed in to IAMAI: the Plan's operator (the
+ * scan's /me, or the account signed in, by sign-in name, as Connect shows it:
+ * planData.ts operatorIdOf), or the scan's /me by object id or sign-in name. A
+ * fact about the account, never a guess about who uses it.
  */
 function signedInAccount(ctx: StepVarContext): (id: string) => boolean {
   const me = (ctx.snapshot.config.me?.rows?.[0] ?? null) as { userPrincipalName?: unknown } | null
-  const meId = operatorUserId(ctx.snapshot)?.toLowerCase() ?? null
+  const ids = new Set([ctx.operatorId, operatorUserId(ctx.snapshot)].filter((x): x is string => typeof x === 'string' && x !== '').map(x => x.toLowerCase()))
   const meUpn = typeof me?.userPrincipalName === 'string' && me.userPrincipalName.trim() ? me.userPrincipalName.trim().toLowerCase() : null
-  return (id) => id.toLowerCase() === meId || (meUpn !== null && userOf(ctx, id)?.userPrincipalName?.trim().toLowerCase() === meUpn)
+  return (id) => ids.has(id.toLowerCase()) || (meUpn !== null && userOf(ctx, id)?.userPrincipalName?.trim().toLowerCase() === meUpn)
 }
 
 function accountStatuses(ctx: StepVarContext, preparations: Preparations, notes: ReadonlyMap<string, { label: string; value: string }[]> = new Map(), signedIn: (id: string) => boolean = () => false): EmergencyAccountStatus[] {
