@@ -43,7 +43,7 @@ import { app, content, workflowWords } from '../../content/content.ts'
 import { fillText, whole, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
 import { Button, Callout, Icon, Picker, TabList, onePanelProps } from '../components/index.ts'
 import type { PickerOption } from '../components/index.ts'
-import { exclusionsPickerLabel, filterPickerObjects, initialPicked, matchedNoteOf, pickerUniverse, printedDefaultLine } from './pickerRows.ts'
+import { exclusionsPickerLabel, filterPickerObjects, initialPicked, matchedNoteOf, pickerSavesAlone, pickerUniverse, printedDefaultLine } from './pickerRows.ts'
 import type { PickerObject } from './pickerRows.ts'
 import { answerParts, answerText, optionsOf, questionFor, valueSource } from './stepQuestion.ts'
 import type { QuestionOption } from './stepQuestion.ts'
@@ -1119,12 +1119,18 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false 
     const parsed = answerParts(value, choices)
     return parsed !== null && (parsed.option.needs === null || parsed.picked.length > 0)
   }
-  const canSave = (accountPickerOnly || options.length === 0 || complete(option, options)) && (!question || stepId === 's-prereq-allowed-countries' || complete(answer, question.options)) && (isNetwork ? remote || chips.length > 0 || networkDraftValid : (!single && stepId !== 's-prereq-allowed-countries') || chips.length > 0)
-  const save = (): void => {
-    if (!canSave) return
+  const canSaveWith = (picked: PickerOption[]): boolean => (accountPickerOnly || options.length === 0 || complete(option, options)) && (!question || stepId === 's-prereq-allowed-countries' || complete(answer, question.options)) && (isNetwork ? remote || picked.length > 0 || networkDraftValid : (!single && stepId !== 's-prereq-allowed-countries') || picked.length > 0)
+  const canSave = canSaveWith(chips)
+  // The picker saves (owner, 2026-09-23): Done in its list, or a chip taken off,
+  // saves the decision with the selection as it stands, through the same Save
+  // as ever. Where the picker is the decision's only input no Save button
+  // stands beside it (pickerRows.ts pickerSavesAlone).
+  const savesAlone = hasPicker && pickerSavesAlone(d, stepId)
+  const save = (picked: PickerOption[] = chips): void => {
+    if (!canSaveWith(picked)) return
     onDecide?.({
-      ...(hasPicker || isNetwork ? { picked: remote ? [] : chips.map((c) => c.id) } : {}),
-      ...(isNetwork ? { option: remote ? 'remote' : 'office-network', answers: { [NETWORK_NAME]: !remote && chips.length === 0 ? networkName.trim() : '', [NETWORK_RANGES]: !remote && chips.length === 0 ? networkRanges.trim() : '' }, ...(remote ? {assumed: 'none'} : {}) } : {}),
+      ...(hasPicker || isNetwork ? { picked: remote ? [] : picked.map((c) => c.id) } : {}),
+      ...(isNetwork ? { option: remote ? 'remote' : 'office-network', answers: { [NETWORK_NAME]: !remote && picked.length === 0 ? networkName.trim() : '', [NETWORK_RANGES]: !remote && picked.length === 0 ? networkRanges.trim() : '' }, ...(remote ? {assumed: 'none'} : {}) } : {}),
       ...(option !== null ? { option } : accountPickerOnly ? { option: 'None' } : {}),
       ...(question && (answer !== null || stepId === 's-prereq-allowed-countries') ? { answers: { [question.label]: answer ?? 'No Recurring Destinations' } } : {}),
       ...(strict && strictShown && strictOn ? { answers: { ...(question && answer !== null ? { [question.label]: answer } : {}), [strict.label]: strict.option } } : {}),
@@ -1166,7 +1172,7 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false 
             the heading over nothing. */}
         {(hasPicker || isNetwork) && !remote && (printing && initial.defaulted && !isExclusionsGroup
           ? <p className="reason">{printedDefaultLine(chips.map((c) => c.name))}</p>
-          : <Picker labelledBy={`${base}-decision`} selected={chips} options={results} suggestions={isNetwork ? nominated.slice(0, 3) : nominated} onChange={setChips} onSearch={setQuery} single={single} readOnly={stepId === SPECIAL_CARE_STEP_ID} />)}
+          : <Picker labelledBy={`${base}-decision`} selected={chips} options={results} suggestions={isNetwork ? nominated.slice(0, 3) : nominated} onChange={setChips} onSearch={setQuery} single={single} readOnly={stepId === SPECIAL_CARE_STEP_ID} onCommit={stepId === SPECIAL_CARE_STEP_ID ? undefined : (picked) => save(picked)} />)}
         {isNetwork && !remote && chips.length === 0 && <div className="decision-fields">
           {universe.length === 0 && <p className="reason">{ctx.snapshot.config.namedLocations?.status === 'ok' ? 'No IP named locations were found in this scan.' : 'Named locations could not be fully read. Scan again to load existing office networks.'}</p>}
           <div className="decision-field"><label htmlFor={`${base}-network-name`}><strong>Office Network Name</strong></label><input type="text" id={`${base}-network-name`} value={networkName} onChange={e => setNetworkName(e.target.value)} /></div>
@@ -1196,7 +1202,7 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false 
             </div>
           </>
         )}
-        <Button variant="secondary" disabled={!canSave} onClick={save}>{d.save || 'Save'}</Button>
+        {!savesAlone && <Button variant="secondary" disabled={!canSave} onClick={() => save()}>{d.save || 'Save'}</Button>}
       </div>
     </>
   )
@@ -1469,8 +1475,7 @@ function FollowUpDecision({ step, ctx, saved, onDecide, printing }: { step: Step
   return <div className="decision">
     <h5 className="dlabel" id={labelId}>{F.pickerLabel}</h5>
     <p className="reason">{F.pickerHelp}</p>
-    <Picker labelledBy={labelId} selected={picked} options={results} suggestions={options.slice(0, 3)} onSearch={setQuery} onChange={setPicked} />
-    <Button variant="secondary" onClick={() => onDecide?.({ picked: picked.map((o) => o.id) })}>{F.save}</Button>
+    <Picker labelledBy={labelId} selected={picked} options={results} suggestions={options.slice(0, 3)} onSearch={setQuery} onChange={setPicked} onCommit={(next) => onDecide?.({ picked: next.map((o) => o.id) })} />
   </div>
 }
 
@@ -1491,16 +1496,18 @@ function DormantDecision({ step, onDecide, printing }: { step: Step; onDecide?: 
   </div>
   // Every account the picker does not hold is expected to be disabled in Entra;
   // the next scan is what completes it, so nothing is saved for them here.
-  const save = (): void => onDecide?.({ answers: Object.fromEntries(rows.flatMap(row => {
-    const keep = picked.some(option => option.id === row.id)
+  const save = (keeping: PickerOption[] = picked): void => onDecide?.({ answers: Object.fromEntries(rows.flatMap(row => {
+    const keep = keeping.some(option => option.id === row.id)
     return [[`outcome:${row.id}`, keep ? 'keep' : ''], [`reason:${row.id}`, keep ? reason.trim() : '']]
   })) })
   return <div className="decision">
     <h5 className="dlabel" id={labelId}>Accounts you are keeping</h5>
-    <Picker labelledBy={labelId} selected={picked} options={results} suggestions={options.slice(0, 3)} onSearch={setQuery} onChange={setPicked} />
+    {/* The picker's Done saves as every picker's does, once there is a reason for
+        what it keeps; the Save below is the reason's. */}
+    <Picker labelledBy={labelId} selected={picked} options={results} suggestions={options.slice(0, 3)} onSearch={setQuery} onChange={setPicked} onCommit={(next) => { if (next.length === 0 || reason.trim()) save(next) }} />
     <label className="dlabel" htmlFor={`${labelId}-reason`}>Why they are kept</label>
     <input id={`${labelId}-reason`} value={reason} onChange={e => setReason(e.currentTarget.value)} />
     <p className="reason">Disable the rest in Entra, then scan again. {disabled > 0 ? `${disabled} of these are already disabled.` : 'None of these are disabled yet.'}</p>
-    <Button variant="primary" disabled={picked.length > 0 && !reason.trim()} onClick={save}>Save</Button>
+    <Button variant="primary" disabled={picked.length > 0 && !reason.trim()} onClick={() => save()}>Save</Button>
   </div>
 }

@@ -110,7 +110,7 @@ function createSteps(domain: string, replacement: boolean): string[] {
     'Store the initial password securely where authorized staff can retrieve it without signing in to this tenant.',
     'Select **Review + create**, check the username and domain, then select **Create**.',
     'Return to IAMAI and select **Scan to update the plan**.',
-    'Select the new account under **Emergency access accounts**, then select **Save**.',
+    'Select the new account under **Emergency access accounts**, then select **Done**.',
     ...(replacement ? ['Keep the existing recovery account and its credentials available until the replacement is fully prepared and final verification succeeds.'] : []),
   ]
 }

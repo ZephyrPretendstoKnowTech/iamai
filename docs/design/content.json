@@ -2110,7 +2110,7 @@
               "$comment": "One Readiness tile per emergency account slot (B10 P0-7, S-BG-1): labelled by the selected account's name, or Account 1 / Account 2 while nobody is selected for it.",
               "slot": "Account {n}",
               "notSelected": "Not selected",
-              "notSelectedNote": "Choose an emergency access account in the action column, then save.",
+              "notSelectedNote": "Choose an emergency access account in the action column.",
               "unchecked": "Not checked on this scan",
               "minimumOpen": "Minimum not met",
               "hardeningOpen": "Minimum met · hardening open",
