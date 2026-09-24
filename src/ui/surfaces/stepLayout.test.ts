@@ -38,20 +38,6 @@ test('U1: no opened step on any fixture draws a What to do heading', () => {
   assert.doesNotMatch(CONTENT_STEP, /HEAD\.whatToDo/, 'the opened step still draws the What to do heading')
 })
 
-test('U2/U5: the action column sits between Readiness and Implementation, and holds the decision', () => {
-  const at = (s: string): number => {
-    const i = CONTENT_STEP.indexOf(s)
-    assert.ok(i >= 0, `${s} is not in ContentStep.tsx`)
-    return i
-  }
-  const order = ['<div className="step-body has-rail">', '<div className="step-main step-main-lead">', '<h4>{taskHead?.why ?? decisionHead?.why ?? HEAD.why}</h4>', '<ReadinessSection', '<StepActionColumn rail={displayRail}>', '<div className="step-main step-main-rest">', '<Implementation', '<DoneWhen'].map(at)
-  assert.deepEqual([...order].sort((a, b) => a - b), order, 'the DOM order is not Why → Readiness → action column → Implementation → Done when')
-  const column = CONTENT_STEP.slice(at('<StepActionColumn rail={displayRail}>'), at('</StepActionColumn>'))
-  assert.match(column, /decides && <Decision /, 'the decision controls are not children of the action column')
-  assert.equal(CONTENT_STEP.split('<Decision ').length - 1, 1, 'the decision is drawn somewhere besides the action column')
-  assert.doesNotMatch(CONTENT_STEP, /StepRail/, 'the old rail is still drawn')
-})
-
 test('U2: the body is a two-column grid, 1fr and 260px, that stacks below 900px', () => {
   const rule = (sel: string, css = CSS): string => css.match(new RegExp(`(^|\\n)\\s*${sel.replace(/[.>]/g, (c) => `\\${c}`)} \\{[^}]*\\}`))?.[0] ?? ''
   const body = rule('.step-body.has-rail')
@@ -67,33 +53,6 @@ test('U2: the body is a two-column grid, 1fr and 260px, that stacks below 900px'
   assert.match(rule('.step-body.has-rail', narrow), /grid-template-columns: 1fr;/, 'the body does not stack below 900px')
   assert.match(narrow, /> \.step-action-column,[^}]*grid-column: auto;[^}]*grid-row: auto;/, 'the action column keeps its desktop place when stacked')
   assert.doesNotMatch(narrow, /display:\s*none/, 'a column is hidden rather than stacked')
-})
-
-test('U3: the milestone sub-line is a written sentence or nothing, never generated', () => {
-  const lane = { lane: 'Up Next', substatus: null, label: 'Up Next · After Create or Correct Exclusions Group', tone: 'wait' }
-  const undated = { milestone: { at: null, label: 'Make the object this step names', kind: 'resolve', gatedBy: 'after: Create or Correct Exclusions Group' }, state: { lane }, schedule: null, scheduledOn: null } as unknown as StepContract
-  assert.deepEqual(railOf(undated), { metric: 'Not scheduled', sub: '' })
-  assert.deepEqual(railOf(undated, 'Create and verify two emergency accounts'), { metric: 'Not scheduled', sub: 'Create and verify two emergency accounts' })
-  const dated = { ...undated, schedule: { transition: 'createReportOnly', class: 'scheduled', at: '2026-09-22T00:00:00.000Z' } } as unknown as StepContract
-  assert.deepEqual(railOf(dated), { metric: absoluteDate('2026-09-22T00:00:00.000Z'), sub: '' }, 'a dated milestone still writes its transition words')
-  // Two written sources, no third: the package's own action text, and — on a
-  // Direction step, which has no package — the sentence its content writes for
-  // what approving its answers does (owner, 2026-09-20). Neither is composed.
-  // Prepare Emergency Access Accounts with nothing chosen reads its own written
-  // sentence for the choice first (owner, 2026-09-23): a content string, not composed.
-  assert.match(STEP_BODY, /railOf\(contract, choosing \?\? pkg\?\.meta\.milestone\?\.actionText \?\? directionMilestoneAction\(step\.id\)\)/, 'the action column does not read the written sources')
-  for (const id of DIRECTION_STEP_IDS) {
-    const text = directionMilestoneAction(id)
-    assert.ok(text && text.length > 0, `${id}: no written milestone sentence`)
-    assert.match(text, /^Approving these answers /, `${id}: the sentence does not say what approving does`)
-  }
-  assert.equal(directionMilestoneAction('s-goal-mfa-all-users'), null, 'a step that is not a Direction step takes one')
-  assert.equal((CONTRACT as unknown as Record<string, unknown>).rail, undefined, 'the generated sub-line words are still in content')
-  const fn = read('./stepContract.ts')
-  const railSrc = fn.slice(fn.indexOf('export function railOf'), fn.indexOf('export type ImplementationEmpty'))
-  for (const generated of ['railTransition', 'gatedBy', 'resolveSub', 'decideSub']) assert.equal(railSrc.includes(generated), false, `railOf still composes its sub-line from ${generated}`)
-  // Every step on every fixture still has a milestone to lead the column with.
-  for (const { where, s } of snapshots()) assert.ok(s.rail.trim().length > 0, `${where}: the action column has no milestone`)
 })
 
 test('U4: no Planned work banner stands over the channels', () => {

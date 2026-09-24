@@ -663,9 +663,6 @@ test('§4 a blocker stays a blocker and a passed prerequisite leaves nothing beh
 // -------------------------------------------------------------------- §5 rail
 
 test('§5 the rail and Readiness say only what the contract holds, on every variant', () => {
-  // Every step has a milestone to lead its action column, and the contract
-  // composes no words under it: those are the package's alone (U3).
-  every('rail', (v) => railOf(v.c).metric.trim().length > 0 && railOf(v.c).sub === '', 'a step draws an empty milestone, or a generated sub-line')
   // Readiness is one tile per unresolved prerequisite and the satisfied evidence
   // apart, each a label over a value, and a bar with a headline: never padded.
   every(

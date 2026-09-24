@@ -5,7 +5,7 @@
   "fact": "Report-only",
   "badge": "On Hold",
   "bar": "when admin readiness reaches 100% (now 16%)",
-  "rail": "After prerequisites",
+  "rail": "Finish the steps this one waits on first.",
   "headings": [
     "About this Step",
     "Tasks Remaining",

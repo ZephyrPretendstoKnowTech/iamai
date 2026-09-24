@@ -2449,30 +2449,28 @@ footer.app a {
   color: var(--primary-text);
   font-weight: var(--weight-strong);
 }
+/* The Next milestone block and the divider under it, on every step, whether
+   or not the step takes a control below it (owner, 2026-09-23). */
 .side-block {
   padding-bottom: 16px;
   margin-bottom: 16px;
   border-bottom: 1px solid var(--line);
 }
-.side-block:last-child {
-  padding-bottom: 0;
-  margin-bottom: 0;
-  border-bottom: 0;
-}
+/* The headline is what the milestone is, in words (stepContract.ts railOf): a
+   sentence, so it is set bold at the text size rather than the display size a
+   date took, the same on every step, Completed included. It wraps inside the
+   260px column rather than widening it. */
 .side-block .metric {
   margin: 6px 0 0;
-  font-size: var(--t-lead-lg);
+  font-size: var(--t-4);
   font-weight: var(--weight-strong);
-}
-/* A metric can be a word rather than a date ("No change needed"): it wraps
-   inside the 260px action column rather than widening it. */
-.side-block .metric {
+  line-height: 1.4;
+  color: var(--primary-text);
   overflow-wrap: anywhere;
 }
-.side-block .metric-sub {
-  margin: 2px 0 0;
-  font-size: var(--t-1);
-  color: var(--secondary-text);
+/* The instruction line under the divider, over the controls it introduces. */
+.step-action-column .rail-instruction {
+  margin: 0;
 }
 .step-body h4 {
   margin: 18px 0 6px;

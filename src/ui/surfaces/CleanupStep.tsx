@@ -21,7 +21,7 @@ import type { StatusTone } from '../components/index.ts'
 import { AuthoredText, DoneWhen, ReadinessSection, StepActionColumn, StepHead, StepSection } from './StepSections.tsx'
 import type { ReadinessTile } from './stepContract.ts'
 import { HEAD, TASK_HEAD } from './stepHeadings.ts'
-import { CONTRACT } from './stepContract.ts'
+import { CONTRACT, milestoneHeadlineOf } from './stepContract.ts'
 import { cleanupEntry, cleanupVars, cleanupWhen, EMERGENCY_RECOVERY_PROCEDURE } from './cleanupExport.ts'
 import { EmergencySubjectReadiness, Implementation, copyImplementationArtifact } from './ContentStep.tsx'
 import type { Artifact, Channel } from './stepBody.ts'
@@ -178,7 +178,7 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone }: {
         </p>
       )}
         </div>
-        {row.kind === 'drill' && <StepActionColumn rail={{ metric: status.word, sub: row.done ? 'Every selected account is verified.' : 'Verify every selected account after the final configuration is observed.' }} />}
+        {row.kind === 'drill' && <StepActionColumn rail={{ headline: milestoneHeadlineOf(row.done ? status.word : null, ['Verify every selected account after the final configuration is observed.']), instruction: null }} />}
       </div>
     </article>
   )

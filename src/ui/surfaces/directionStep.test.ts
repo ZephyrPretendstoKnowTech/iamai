@@ -148,20 +148,6 @@ test('the text fixes the owner approved on the frozen steps, 2026-09-20: the six
     const service = use.find((q) => q.key.startsWith('service:'))
     if (service) assert.deepEqual(service.options.map((o) => o.value), ['yes', 'no'], 'the premise: a service question reads Yes/No')
     assert.deepEqual(pair('partner'), ['yes', 'no'])
-
-    // 4. The bare date under NEXT MILESTONE now carries the step's own written
-    //    sentence, saying what approving its answers does — the one thing the
-    //    step does not say anywhere else. Written in content, never composed from
-    //    the contract (stepLayout.test.ts U3).
-    for (const id of DIRECTION_STEP_IDS) {
-      const step = r.steps.find((s) => s.id === id)!
-      const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: r.schedule.reportOnlyAt[id] ?? null }
-      const sub = stepBodyOf(step, ctx).rail.sub
-      if (stepBodyOf(step, ctx).contract.state.lane?.lane !== 'Completed') {
-        assert.equal(sub, directionMilestoneAction(id), `${id}: the rail does not read the written sentence`)
-        assert.notEqual(sub, '', `${id}: a bare date under Next milestone`)
-      }
-    }
   }
   {
     // Two lines were section titles numbered as if they were instructions, and the
