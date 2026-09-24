@@ -19,6 +19,7 @@ import { detectServiceAccounts } from '../../mapping/serviceAccounts.ts'
 import { sharedDeviceUsers, sharedDeviceSignals } from '../../derive/sharedDevices.ts'
 import { DECISION_STEPS, applyStepDecisions } from '../../roadmap/decisions.ts'
 import { exclusionsGroupChoice, operatorExclusionsDecision } from '../../mapping/safetyChoice.ts'
+import { exclusionsReach } from '../../validation/exclusionsGroupPolicies.ts'
 import type { DirectoryEvidence } from '../../mapping/safetyChoice.ts'
 import type { StepDecision } from '../../roadmap/decisions.ts'
 import { contentLists } from '../../derive/contentLists.ts'
@@ -205,11 +206,15 @@ export function pickerVars(stepId: string, template: string, ctx: PickerContext)
     const candidate = new Set(choice.candidates.map((c) => lc(c.id)))
     const isStored = (id: string): number => (stored !== null && lc(id) === lc(stored) ? 1 : 0)
     const isRecorded = (id: string): number => (choice.recordedId !== null && lc(id) === lc(choice.recordedId) ? 1 : 0)
-    const excludedFrom = (id: string): number => policies.filter((p) => policyGroups(p).exclude.some((g) => lc(g) === lc(id))).length
+    // "Excluded from N of M policies" by the one rule, which Impact counts too
+    // (validation/exclusionsGroupPolicies.ts exclusionsReach): M is every policy
+    // On or in Report-only, never an Off one.
+    const reach = new Map([...known.values()].map((id) => [id, exclusionsReach(policies, id)]))
+    const excludedFrom = (id: string): number => reach.get(id)?.excludedFrom ?? 0
     const ids = [...known.values()].sort((a, b) => isStored(b) - isStored(a) || isRecorded(b) - isRecorded(a) || Number(candidate.has(lc(b))) - Number(candidate.has(lc(a))) || excludedFrom(b) - excludedFrom(a) || nameOf(a).localeCompare(nameOf(b)))
     const rows = ids.map((id) => {
       const g = ctx.groups?.get(id)
-      return row(template, { name: g?.displayName ?? nameOf(id), memberCount: g?.memberCount, excludedFrom: excludedFrom(id), policyCount: policies.length })
+      return row(template, { name: g?.displayName ?? nameOf(id), memberCount: g?.memberCount, ...reach.get(id) })
     })
     // Detected candidates are suggestions in the focused picker list. They do
     // not open as selected chips; only an explicit saved operator answer does.

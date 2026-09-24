@@ -34,7 +34,7 @@ import type { GroupMembers } from '../../coverage/population.ts'
 import type { NamingConvention } from '../../coverage/naming.ts'
 import { usable as usableConvention } from '../../roadmap/convention.ts'
 import { initialDomain } from '../../validation/rules.ts'
-import { exclusionsGroupPolicies, groupLookup } from '../../validation/exclusionsGroupPolicies.ts'
+import { exclusionsGroupPolicies, exclusionsReach, groupLookup } from '../../validation/exclusionsGroupPolicies.ts'
 import { observationDaysFor } from '../../roadmap/schedule.ts'
 import { readyBasis, readyWhen } from '../../derive/readyWhen.ts'
 import { isHeld } from '../../roadmap/holds.ts'
@@ -406,7 +406,9 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   if (DECISION_STEPS.exclusions.has(step.id)) {
     const choice = exclusionsGroupChoice({ snapshot: ctx.snapshot, mapping: ctx.mapping, groups: ctx.groups, directory: ctx.directory })
     const policies = ctx.snapshot.config.caPolicies?.rows ?? []
-    const excludedFrom = (id: string): number => policies.filter((p) => ((p as { conditions?: { users?: { excludeGroups?: string[] } } }).conditions?.users?.excludeGroups ?? []).some((x) => x.toLowerCase() === id.toLowerCase())).length
+    // "Excluded from N of M policies" by the picker's rule, which Impact counts
+    // too (validation/exclusionsGroupPolicies.ts exclusionsReach).
+    const excludedFrom = (id: string): number => exclusionsReach(policies, id).excludedFrom
     const id = choice.actionableId
     // Two different sentences again. `needsCreate` is a proof: a reading that
     // covered the tenant and found nothing that qualifies. `createIfNeeded` is
@@ -418,7 +420,7 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     // And only where nothing plausible is in view: beside a group IAMAI found,
     // "create one if you do not already have one" asks for a second.
     v.createIfNeeded = choice.status === 'undetermined' && choice.suggested === null
-    v.policyCount = policies.length
+    v.policyCount = exclusionsReach(policies, '').policyCount
     // No group in use: no checks ran, so no count (the population's 0 would read "All 0 checks pass").
     if (id === null) delete v.total
     if (id !== null) {
@@ -454,7 +456,7 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     if (choice.suggested) {
       v.suggestedGroup = [choice.suggested.name]
       if (choice.suggested.memberCount !== null) v.suggestedMemberCount = choice.suggested.memberCount
-      v.suggestedExcludedFrom = choice.suggested.excludedFrom ?? 0
+      v.suggestedExcludedFrom = excludedFrom(choice.suggested.id)
     }
     if (choice.status === 'ambiguous') v.candidateGroups = choice.candidates.map((c) => c.name)
     // Which read came up short, in the engine's own words, and only where one

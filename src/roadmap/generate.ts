@@ -102,7 +102,7 @@ import { addsExclusionsOnly } from './changedFields.ts'
 import type { CleanupRecord } from './cleanupDone.ts'
 import { recoveryAccountBasis, recoveryCandidateReadings, recoveryPreparation, recoveryEvidenceSource } from './cleanupDone.ts'
 import { passkeyTargetsReach, recoveryPasskeyCandidateSet } from './passkeyCompatibility.ts'
-import { exclusionsGroupPolicies, groupLookup } from '../validation/exclusionsGroupPolicies.ts'
+import { exclusionsReach } from '../validation/exclusionsGroupPolicies.ts'
 import { journeyPasskeyFindings, journeyAccountFindings, journeyGroupFindings, journeyRecoveryFindings } from './emergencyJourney.ts'
 import { isFloorGoal } from './floor.ts'
 import { devicePlanOf, devicePlanComplete, deviceScopeOf, openInputsOf, travelCountriesOf } from './answers.ts'
@@ -1583,8 +1583,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   if (geStep) {
     const savedExclusions = operatorExclusionsDecision(mapping)
     // Impact (rowWho.ts): the policies the group must be excluded from, every
-    // one On or in Report-only (validation/exclusionsGroupPolicies.ts), chosen group or not.
-    if (snapshot.config.caPolicies?.status === 'ok') geStep.impactCount = exclusionsGroupPolicies({ policies: snapshot.config.caPolicies.rows, groupId: savedExclusions?.id ?? exclusions.actionableId ?? '', accountIds: mapping.breakGlassUserIds, activeRoles: snapshot.roles.active, membersOf: groupLookup(input.groupMembers) }).length
+    // one On or in Report-only, chosen group or not: the picker's "of M
+    // policies" (validation/exclusionsGroupPolicies.ts exclusionsReach).
+    if (snapshot.config.caPolicies?.status === 'ok') geStep.impactCount = exclusionsReach(snapshot.config.caPolicies.rows, '').policyCount
     geStep.configurationFindings = journeyGroupFindings(geReport, savedExclusions?.name ?? exclusions.actionableName ?? exclusions.suggested?.name ?? null, savedExclusions !== null, snapshot, savedExclusions?.id ?? exclusions.actionableId, input.groupMembers, mapping.breakGlassUserIds)
   }
   const validationSteps = blockerSteps(validationReports)
