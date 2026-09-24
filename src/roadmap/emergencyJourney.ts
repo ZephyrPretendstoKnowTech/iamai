@@ -9,7 +9,7 @@ import { emergencyTierOf } from '../validation/emergencyTiers.ts'
 import content from '../../docs/design/content.json' with { type: 'json' }
 import { ruleText } from '../validation/rules.ts'
 import type { RuleResult } from '../validation/rules.ts'
-import type { ConfigurationFinding, ConfigurationFindingItem } from './types.ts'
+import type { ConfigurationFinding } from './types.ts'
 import { assignedPasskeyProfiles, passkeyFindingsOf, passkeyReadingOf, requiredModels } from './passkeySettings.ts'
 import { affectedPasskeysByProposedChange, emergencyPasskeyCompatibility, emergencyProposedPasskeyCompatibility } from './passkeyCompatibility.ts'
 import { automaticRecoveryPreparationStates, latestRecoveryTest, recoveryEvidenceOf } from './cleanupDone.ts'
@@ -546,23 +546,9 @@ export function journeyGroupFindings(report: SubjectReport | null | undefined, n
 }
 
 export function journeyRecoveryFindings(report: SubjectReport, snapshot: TenantSnapshot, mapping: MappingState, groups: GroupMembers | undefined, records: CleanupCheckpoint[], now: string): ConfigurationFinding[] {
+  // The configuration the sign-in must follow: the accounts, their exclusions and passkeys.
   const accounts = journeyAccountFindings(report, snapshot, mapping, groups)[0]
-  accounts.key = 'recovery-accounts'
-  accounts.label = 'Account preparation'
-  accounts.link = link(EMERGENCY_ACCOUNTS, 'Review account preparation')
   const exclusions = reportFinding(report, 'recovery-exclusions', 'Policy exclusions', r => EXCLUSIONS.has(r.id), 'Verified', true)
-  exclusions.link = link(EMERGENCY_GROUP, 'Review emergency exclusions')
-  const exclusionLabels: Record<string, string> = {
-    'bg.excludedFromAllPolicies': 'Enabled policy exclusions',
-    'bg.excludedFromReportOnly': 'Report-only policy exclusions',
-    'bg.microsoftManaged': 'Microsoft-managed policy coverage',
-    'bg.notInDynamicScope': 'Dynamic policy scope',
-  }
-  exclusions.items = (exclusions.items ?? []).map(item => {
-    const issue = item.issueKeys?.[0]?.split(':')[1] ?? ''
-    const value = item.value.replace(/^not excluded from /i, 'Missing from ').replace(/[.]$/, '')
-    return { ...item, factLabel: exclusionLabels[issue] ?? item.factLabel, value }
-  })
   const method = emergencyMethodFinding(snapshot, mapping, groups)
   const finalPolicy = journeyPasskeyFindings(snapshot, mapping, groups).filter(finding => finding.key === 'registration' || finding.key === 'protection')
   const ids = mapping.breakGlassUserIds
@@ -588,43 +574,12 @@ export function journeyRecoveryFindings(report: SubjectReport, snapshot: TenantS
   const visibleConfigurationOutcome = configurationParts.some(f => f.outcome === 'fail') ? 'fail' : configurationParts.some(f => f.outcome === 'unknown') ? 'unknown' : 'pass'
   const configurationOutcome = visibleConfigurationOutcome === 'fail' || stateValues.includes('incorrect') ? 'fail' : visibleConfigurationOutcome === 'unknown' || stateValues.includes('unread') ? 'unknown' : 'pass'
   const confirmationPassed = ids.length > 0 && tests.every(r => r.current)
-  const ownerRows = configurationParts.flatMap<ConfigurationFindingItem>(finding => {
-    if (finding.outcome === 'pass') return []
-    const rows = (finding.items ?? []).filter(item => item.outcome !== 'pass')
-    return (rows.length ? rows : [{ label: finding.label, value: finding.value, outcome: finding.outcome }]).map(item => {
-      const owner = finding === accounts ? link(EMERGENCY_ACCOUNTS, 'Review account preparation')
-        : finding === exclusions ? link(EMERGENCY_GROUP, 'Review emergency exclusions')
-          : finalPolicy.includes(finding) ? link(PASSKEY_SETTINGS, 'Review intended passkey settings')
-          : item.factLabel === 'Applicable profile' ? link(PASSKEY_SETTINGS, 'Review intended passkey settings')
-            : link(EMERGENCY_ACCOUNTS, 'Review prepared passkeys')
-      return { ...item, ...(item.accountId ? { subjectLabel: accountLabel(snapshot, item.accountId) } : {}), link: owner }
-    })
-  })
-  if (visibleConfigurationOutcome === 'pass' && configurationOutcome !== 'pass') ownerRows.push({
-    label: 'Emergency exclusions group', factLabel: 'Emergency exclusions group',
-    value: configurationOutcome === 'fail' ? 'The saved group or its membership is not suitable for emergency exclusions.' : 'The saved group or its membership could not be read completely.',
-    outcome: configurationOutcome, link: link(EMERGENCY_GROUP, 'Review emergency exclusions'),
-  })
-  const seenOwnerLinks = new Set<string>()
-  const pendingOwnerRows = ownerRows.map(item => {
-    if (!item.link) return item
-    const key = `${item.accountId ?? 'shared'}:${item.link.href}`
-    if (seenOwnerLinks.has(key)) { const { link: _link, ...rest } = item; return rest }
-    seenOwnerLinks.add(key)
-    return item
-  })
-  const configuration: ConfigurationFinding = {
-    key: 'recovery-configuration', label: 'Configuration',
-    value: configurationOutcome === 'pass' ? 'Verified' : configurationOutcome === 'fail' ? 'Correction required' : 'Not fully verified',
-    outcome: configurationOutcome,
-    detail: '',
-    items: pendingOwnerRows,
-  }
   const showSignInRows = configurationOutcome === 'pass' || snapshot.sources.signInEvidence?.status !== 'ok'
   const signInFinding: ConfigurationFinding = { key: 'recovery-sign-ins', label: 'Sign-in evidence', value: !ids.length ? 'Select emergency accounts' : confirmationPassed ? 'Verified' : 'Evidence needed', outcome: confirmationPassed ? 'pass' : 'unknown', detail: '', items: showSignInRows ? tests.map(({ label, action, value, current }, index) => ({ label: action, factLabel: action, value, subjectId: ids[index], subjectLabel: label, accountId: ids[index], outcome: current ? 'pass' as const : 'unknown' as const, issueKeys: [`recovery-sign-in:${ids[index].toLowerCase()}`] })) : [] }
-  // Two findings, not three. A third, "Verification results", said Passed or
-  // Verification needed: the Sign-in evidence verdict under another name, and a
-  // failure that was the Configuration finding's. The owner removed it
-  // (2026-09-23): the account cards already say who still has to sign in.
-  return [configuration, signInFinding]
+  // One finding. A third, "Verification results", said Passed or Verification
+  // needed: the Sign-in evidence verdict under another name. A "Configuration"
+  // finding repeated the account, exclusions and passkey steps' own open
+  // checks, which the drill already waits on. The owner removed both
+  // (2026-09-23); the configuration still decides when the sign-in rows show.
+  return [signInFinding]
 }

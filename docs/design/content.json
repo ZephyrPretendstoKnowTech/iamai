@@ -3374,7 +3374,8 @@
     "drill": {
       "title": "Verify Emergency Access",
       "learn": {
-        "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access#monitor-sign-in-and-audit-logs"
+        "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access#monitor-sign-in-and-audit-logs",
+        "checkedOn": "2026-09-25"
       },
       "why": "Verify each selected account with a successful passkey sign-in observed after the final account, exclusion and passkey configuration.",
       "whatToDo": [
