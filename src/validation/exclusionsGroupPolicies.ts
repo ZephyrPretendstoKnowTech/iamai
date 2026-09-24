@@ -80,6 +80,18 @@ export function exclusionsGroupPolicies(input: ExclusionsGroupPolicyInput): Excl
   })
 }
 
+/**
+ * A group's "excluded from N of M policies", by the one rule: M is every policy
+ * that needs the exclusions group (On or Report-only), N those of them that
+ * exclude this group. The picker and the step's group line read it, and Impact
+ * counts the same M (roadmap/generate.ts). The picker's M had counted Off
+ * policies too: messy read "Impact 12 policies" beside "of 36 policies".
+ */
+export function exclusionsReach(policies: readonly unknown[], groupId: string): { excludedFrom: number; policyCount: number } {
+  const needing = exclusionsGroupPolicies({ policies, groupId, accountIds: [], activeRoles: {}, membersOf: () => undefined })
+  return { excludedFrom: needing.filter(policy => policy.outcome === 'pass').length, policyCount: needing.length }
+}
+
 /** `membersOf` over a group map keyed by id in any case (coverage/population.ts GroupMembers). */
 export function groupLookup(groups: ReadonlyMap<string, { memberIds: readonly string[]; sampled?: boolean }> | null | undefined): ExclusionsGroupPolicyInput['membersOf'] {
   return (groupId) => groups?.get(groupId) ?? [...(groups ?? [])].find(([id]) => same(id, groupId))?.[1]

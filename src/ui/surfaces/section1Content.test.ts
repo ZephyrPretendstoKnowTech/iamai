@@ -17,6 +17,7 @@ import { cleanupRowWho, rowWho } from './rowWho.ts'
 import { readGroup } from '../../graph/collect/onDemand.ts'
 import { campaignIds } from '../../derive/population.ts'
 import { count } from '../../copy/statements.ts'
+import { stepVars } from './stepVars.ts'
 import { PASSKEY_TARGET_AAGUIDS, passkeyReadingOf } from '../../roadmap/passkeySettings.ts'
 
 const GROUP = 's-prereq-exclusion-group'
@@ -33,7 +34,7 @@ function opened(value: Fixture, id: string) {
   const tasks = body.emergencyAccountTasks!
   const cards = emergencySubjectsOf(consolidateEmergencyReadiness(passkeyReadiness(step, body.readiness), tasks, new Map(), true), tasks)
   const task = (taskId: string) => tasks.tasks.find((t) => t.id === taskId)!
-  return { run, step, body, tasks, cards, task, text: tasks.tasks.flatMap((t) => [...t.steps, ...(t.variants ?? []).flatMap((v) => v.steps)]).join('\n') }
+  return { run, step, ctx, body, tasks, cards, task, text: tasks.tasks.flatMap((t) => [...t.steps, ...(t.variants ?? []).flatMap((v) => v.steps)]).join('\n') }
 }
 const copy = (name: Parameters<typeof fixture>[0]): Fixture => structuredClone(fixture(name))
 const drillOf = (value: Fixture) => {
@@ -181,6 +182,16 @@ test('#4 Impact counts what each step changes: policies to exclude the group fro
     const { phase, row } = drillOf(value)
     assert.equal(cleanupRowWho(phase, row), '2 accounts', `${name}: 1.4`)
   }
+  // 1.2's count is the picker's denominator: one number, where a policy is Off too.
+  const messy = copy('messy')
+  const { step, ctx } = opened(messy, GROUP)
+  assert.ok((messy.snapshot.config.caPolicies.rows as { state?: string }[]).some((p) => p.state === 'disabled'), 'the premise: an Off policy')
+  const impact = rowWho(step)
+  const v = stepVars(step, ctx)
+  assert.equal(count(v.policyCount as number, 'policy', 'policies'), impact, 'the chosen group line')
+  const rows = v.groups as string[]
+  assert.ok(rows.length > 0)
+  for (const r of rows) assert.ok(r.endsWith(` of ${impact}`), `${r} against Impact ${impact}`)
 })
 
 // ---- The owner's rewrites, word for word ----
