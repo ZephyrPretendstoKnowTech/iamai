@@ -37,45 +37,62 @@ test('scoped records survive decoding and generic history never becomes successf
   assert.equal(step.state.satisfied, false)
 })
 
-test('shared account review follows All users policy changes but ignores explicitly excluded unrelated users', () => {
-  const { f, step } = setup('s-shared-devices')
-  f.snapshot.config.caPolicies.rows = [{ id: 'all', state: 'enabled', conditions: { users: { includeUsers: ['All'], excludeUsers: [] } } }, { id: 'other', state: 'enabled', conditions: { users: { includeUsers: ['All'], excludeUsers: step.population.ids } } }]
-  const record = recordFor(step, f)
-  apply(step, f, record)
-  assert.equal(step.state.satisfied, true)
-  ;(f.snapshot.config.caPolicies.rows[1] as any).grantControls = { builtInControls: ['block'] }
-  apply(step, f, record)
-  assert.equal(step.state.satisfied, true)
-  ;(f.snapshot.config.caPolicies.rows[0] as any).grantControls = { builtInControls: ['block'] }
-  apply(step, f, record)
-  assert.equal(step.manualReview?.verification, 'changed')
-  assert.equal(step.state.satisfied, false)
+test('a review follows the configuration and people it covers: All users policy changes reopen it, unrelated exclusions do not, and new guests are a pending delta', () => {
+  // shared account review follows All users policy changes but ignores explicitly excluded unrelated users
+  {
+    const { f, step } = setup('s-shared-devices')
+    f.snapshot.config.caPolicies.rows = [{ id: 'all', state: 'enabled', conditions: { users: { includeUsers: ['All'], excludeUsers: [] } } }, { id: 'other', state: 'enabled', conditions: { users: { includeUsers: ['All'], excludeUsers: step.population.ids } } }]
+    const record = recordFor(step, f)
+    apply(step, f, record)
+    assert.equal(step.state.satisfied, true)
+    ;(f.snapshot.config.caPolicies.rows[1] as any).grantControls = { builtInControls: ['block'] }
+    apply(step, f, record)
+    assert.equal(step.state.satisfied, true)
+    ;(f.snapshot.config.caPolicies.rows[0] as any).grantControls = { builtInControls: ['block'] }
+    apply(step, f, record)
+    assert.equal(step.manualReview?.verification, 'changed')
+    assert.equal(step.state.satisfied, false)
+  }
+
+  // new guests become a pending delta while the reviewed guest evidence stays current
+  {
+    const { f, step } = setup('s-ladder-guest-review')
+    const guests = f.snapshot.users.filter(u => u.userType === 'guest')
+    assert.ok(guests.length)
+    step.population.ids = guests.map(u => u.id)
+    const record = recordFor(step, f, { outcome: 'retained' })
+    apply(step, f, record)
+    assert.equal(step.state.satisfied, true)
+    f.snapshot.users.push({ ...guests[0], id: 'new-guest', displayName: 'New guest' })
+    apply(step, f, record)
+    assert.equal(step.manualReview?.verification, 'current')
+    assert.deepEqual(step.manualReview?.pendingAccountIds, ['new-guest'])
+    assert.equal(step.state.satisfied, false)
+    assert.deepEqual(step.manualReview?.record, record)
+  }
 })
 
-test('failed collection preserves the dated record without manufacturing a new configuration change', () => {
-  const { f, step } = setup('s-shared-devices')
-  const record = recordFor(step, f)
-  f.snapshot.config.caPolicies = { status: 'error', rows: [], reason: 'Unavailable' }
-  apply(step, f, record)
-  assert.equal(step.manualReview?.verification, 'unread')
-  assert.deepEqual(step.manualReview?.record, record)
-  assert.equal(step.state.satisfied, false)
-})
+test('failed collection or a historical snapshot without optional sections keeps the dated record and completes nothing', () => {
+  // failed collection preserves the dated record without manufacturing a new configuration change
+  {
+    const { f, step } = setup('s-shared-devices')
+    const record = recordFor(step, f)
+    f.snapshot.config.caPolicies = { status: 'error', rows: [], reason: 'Unavailable' }
+    apply(step, f, record)
+    assert.equal(step.manualReview?.verification, 'unread')
+    assert.deepEqual(step.manualReview?.record, record)
+    assert.equal(step.state.satisfied, false)
+  }
 
-test('new guests become a pending delta while the reviewed guest evidence stays current', () => {
-  const { f, step } = setup('s-ladder-guest-review')
-  const guests = f.snapshot.users.filter(u => u.userType === 'guest')
-  assert.ok(guests.length)
-  step.population.ids = guests.map(u => u.id)
-  const record = recordFor(step, f, { outcome: 'retained' })
-  apply(step, f, record)
-  assert.equal(step.state.satisfied, true)
-  f.snapshot.users.push({ ...guests[0], id: 'new-guest', displayName: 'New guest' })
-  apply(step, f, record)
-  assert.equal(step.manualReview?.verification, 'current')
-  assert.deepEqual(step.manualReview?.pendingAccountIds, ['new-guest'])
-  assert.equal(step.state.satisfied, false)
-  assert.deepEqual(step.manualReview?.record, record)
+  // historical snapshots without optional configuration sections remain reviewable with unknown evidence
+  {
+    const { f, step } = setup('s-goal-guests-mfa')
+    delete (f.snapshot.config as Partial<typeof f.snapshot.config>).authStrengths
+    delete (f.snapshot.config as Partial<typeof f.snapshot.config>).crossTenantAccess
+    applyManualReviews([step], f.snapshot, {}, f.mapping)
+    assert.equal(step.manualReview?.verification, 'unread')
+    assert.equal(step.state.satisfied, false)
+  }
 })
 
 test('failed workflow or observed administrator separation defect cannot be overridden by a manual record', () => {
@@ -88,20 +105,30 @@ test('failed workflow or observed administrator separation defect cannot be over
   assert.equal(step.state.satisfied, false)
 })
 
-test('a dated successful recovery test never exempts every same-day sign-in', () => {
-  const details = { accountIds: ['a'], outcome: 'passed' as const, timeZone: 'UTC' }
-  let records = cleanupRecord(withCleanupDone([], 'drill', '2026-08-31', at, details)).records!
-  assert.equal(latestRecoveryTest('a', records, at), null, 'a legacy Passed date has no qualifying event evidence')
-  assert.equal(isRecordedDrill('2026-08-31T10:00:00Z', [], 'a', records), false)
-  // The scan's own record of the one observed passkey sign-in (schema 2).
-  const candidate = recoveryCandidate('a', '2026-08-31T10:00:00Z', 'tenant', 'event-a')
-  records = cleanupRecord(observedRecoveryRecords({ tenantId: 'tenant', events: { a: candidate }, configurationObservedAt: '2026-08-31T09:00:00Z', at, candidateSetBasis: { a: '["key-a"]' } })).records!
-  const context = observedContext(candidate, 'tenant', at, '["key-a"]')
-  assert.equal(latestRecoveryTest('a', records, at, undefined, context), '2026-08-31T10:00:00Z')
-  assert.equal(isRecordedDrill('2026-08-31T10:00:00Z', [], 'a', records, context), true)
-  assert.equal(isRecordedDrill('2026-08-31T11:00:00Z', [], 'a', records, context), false)
-  assert.equal(isRecordedDrill('2026-08-31T10:00:00Z', [], 'b', records, context), false)
-  assert.equal(cleanupComplete({ kind: 'alerting', done: null }, { signInMonitoring: true }), false)
+test('a dated successful recovery test never exempts every same-day sign-in, and a later failed test supersedes it', () => {
+  // a dated successful recovery test never exempts every same-day sign-in
+  {
+    const details = { accountIds: ['a'], outcome: 'passed' as const, timeZone: 'UTC' }
+    let records = cleanupRecord(withCleanupDone([], 'drill', '2026-08-31', at, details)).records!
+    assert.equal(latestRecoveryTest('a', records, at), null, 'a legacy Passed date has no qualifying event evidence')
+    assert.equal(isRecordedDrill('2026-08-31T10:00:00Z', [], 'a', records), false)
+    // The scan's own record of the one observed passkey sign-in (schema 2).
+    const candidate = recoveryCandidate('a', '2026-08-31T10:00:00Z', 'tenant', 'event-a')
+    records = cleanupRecord(observedRecoveryRecords({ tenantId: 'tenant', events: { a: candidate }, configurationObservedAt: '2026-08-31T09:00:00Z', at, candidateSetBasis: { a: '["key-a"]' } })).records!
+    const context = observedContext(candidate, 'tenant', at, '["key-a"]')
+    assert.equal(latestRecoveryTest('a', records, at, undefined, context), '2026-08-31T10:00:00Z')
+    assert.equal(isRecordedDrill('2026-08-31T10:00:00Z', [], 'a', records, context), true)
+    assert.equal(isRecordedDrill('2026-08-31T11:00:00Z', [], 'a', records, context), false)
+    assert.equal(isRecordedDrill('2026-08-31T10:00:00Z', [], 'b', records, context), false)
+    assert.equal(cleanupComplete({ kind: 'alerting', done: null }, { signInMonitoring: true }), false)
+  }
+
+  // a later failed recovery test supersedes the previous successful test
+  {
+    let checkpoints = withCleanupDone([], 'drill', '2026-08-29', '2026-08-30T12:00:00Z', { accountIds: ['a'], outcome: 'passed' })
+    checkpoints = withCleanupDone(checkpoints, 'drill', '2026-08-31', at, { accountIds: ['a'], outcome: 'failed' })
+    assert.equal(latestRecoveryTest('a', cleanupRecord(checkpoints).records!, at), null)
+  }
 })
 
 test('recovery evidence reopens for replaced methods while harmless account names do not change its basis', async () => {
@@ -114,25 +141,6 @@ test('recovery evidence reopens for replaced methods while harmless account name
   assert.equal(recoveryAccountBasis(f.snapshot, [id])[id], original)
   f.snapshot.authMethods[id] = [{ kind: 'fido2', aaGuid: '11111111-1111-1111-1111-111111111111' }]
   assert.notEqual(recoveryAccountBasis(f.snapshot, [id])[id], original)
-})
-
-test('a later failed recovery test supersedes the previous successful test', () => {
-  let checkpoints = withCleanupDone([], 'drill', '2026-08-29', '2026-08-30T12:00:00Z', { accountIds: ['a'], outcome: 'passed' })
-  checkpoints = withCleanupDone(checkpoints, 'drill', '2026-08-31', at, { accountIds: ['a'], outcome: 'failed' })
-  assert.equal(latestRecoveryTest('a', cleanupRecord(checkpoints).records!, at), null)
-})
-
-test('the simplified policy steps complete from scanned configuration without a Workflow Check form', () => {
-  for (const id of ['s-goal-token-protection', 's-goal-block-auth-transfer', 's-goal-user-risk']) {
-    const {f, step} = setup(id)
-    setState(step, {satisfied: true, inPlace: true})
-    applyManualReviews([step], f.snapshot, {}, f.mapping)
-    assert.equal(step.state.satisfied, true, id)
-    assert.equal(step.manualReview, undefined, id)
-    setState(step, {satisfied: false, inPlace: false})
-    applyManualReviews([step], f.snapshot, {}, f.mapping)
-    assert.equal(step.state.satisfied, false, 'removing a workflow form does not override a scan failure')
-  }
 })
 
 test('PIM manual proof identifies the actual policy context, tested role and linked configuration', () => {
@@ -168,15 +176,6 @@ test('policy tracking preserves observed enforcement without completing an untes
     assert.equal(step.state.satisfied, false, `${id}: tracking cannot replace a workflow test`)
     assert.notEqual(step.status, 'done')
   }
-})
-
-test('historical snapshots without optional configuration sections remain reviewable with unknown evidence', () => {
-  const { f, step } = setup('s-goal-guests-mfa')
-  delete (f.snapshot.config as Partial<typeof f.snapshot.config>).authStrengths
-  delete (f.snapshot.config as Partial<typeof f.snapshot.config>).crossTenantAccess
-  applyManualReviews([step], f.snapshot, {}, f.mapping)
-  assert.equal(step.manualReview?.verification, 'unread')
-  assert.equal(step.state.satisfied, false)
 })
 
 

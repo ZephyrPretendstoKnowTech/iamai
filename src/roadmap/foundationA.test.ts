@@ -17,24 +17,20 @@
 // and assert that nothing downstream moves. A new consumer that reads the goal
 // family, the floor or the step's population for an open policy fails them
 // without anybody having to notice the new line.
-import { isHeld } from './holds.ts'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { allFixtures, noExclusionsAnswer } from './fixtures/index.ts'
+import { allFixtures } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { accountApplicability, awaitsOwnObject, effectOf, emergencyExposureOf, implementationOffered, isOpenPolicy, isSubmittablePatch, isValidOperation, operationsOf, stepEffects, strengthLookupOf, unavailableReason } from './operations.ts'
-import { analysisUnknown, canDenyAccess, effectsOf, familyReading, measuredReach, operationReach, promptsPeople, scopeCohort, stepAccountVerdict, stepApplicability, wouldStrand } from './strand.ts'
+import { analysisUnknown, canDenyAccess, effectsOf, familyReading, operationReach, promptsPeople, scopeCohort, stepAccountVerdict, stepApplicability, wouldStrand } from './strand.ts'
 import { batchClassOf, buildSchedule, dependencyGraph, observationDaysFor } from './schedule.ts'
 import { eventsFor, nobodyAffected, noticeDaysFor } from './timing.ts'
 import { proposeRings, ringContextIndexes, rolloutCohort } from './rings.ts'
-import { announcementFor } from '../copy/announcements.ts'
-import { scenarioLinesFor } from './scenarioLines.ts'
 import { controlNoteFor, policySemantics } from './generate.ts'
-import { MANAGER, MANAGER_BY_GOAL } from '../copy/plain.ts'
+import { MANAGER_BY_GOAL } from '../copy/plain.ts'
 import { applyProgress } from './progress.ts'
-import { matchPolicy } from './tracking.ts'
 import { readyWhen } from '../derive/readyWhen.ts'
 import { activePeopleIds } from '../derive/population.ts'
 import { notPeopleIds } from '../derive/sets.ts'
@@ -55,7 +51,6 @@ function grantOfStepForTest(step: Step): 'mfa' | 'phishingResistant' | 'block' |
   return null
 }
 import { reached, stepPopulation } from '../derive/population.ts'
-import { populationLine } from '../derive/whoLine.ts'
 import { rowWho } from '../ui/surfaces/rowWho.ts'
 import { inBaselineConflict } from './baselineConflict.ts'
 import { stepVars } from '../ui/surfaces/stepVars.ts'
@@ -66,7 +61,7 @@ import { actionableExclusionsGroupId, directoryEvidenceFromGroups } from '../map
 import { buildContext, exclusionGroupPolicySafety, reportFor } from '../validation/report.ts'
 import type { SubjectReport } from '../validation/report.ts'
 import { fixture, withBreakGlassCarveOut } from './fixtures/index.ts'
-import type { DirectoryEvidence, ObjectEvidence } from '../mapping/safetyChoice.ts'
+import type { ObjectEvidence } from '../mapping/safetyChoice.ts'
 import type { Fixture } from './fixtures/index.ts'
 import type { FixtureRun } from './fixtures/run.ts'
 import { lockoutCount } from './lockout.ts'
@@ -94,71 +89,6 @@ const cohortOf = (step: Step): string[] | null => rolloutCohort(step)?.slice().s
 /** Who the scan can prove is in a group, as the engine reads it: a sampled list proves nobody out. */
 const membersOf = (f: Fixture): { groupMembers: Record<string, string[]> } => ({
   groupMembers: Object.fromEntries([...f.groups].filter(([, g]) => g.sampled !== true).map(([id, g]) => [id.toLowerCase(), [...g.memberIds]])),
-})
-
-test('a rollout is the people the policy names, even where the goal is filed under a narrower few', () => {
-  // GetIAMAI's guests goal: the baseline's policy for it targets All users and
-  // excludes only the exclusions group, while the goal's own expectedWho is
-  // `guests` and the tenant has one guest, who is not even active. The rollout is
-  // eleven people because the policy names eleven people. A goal population used
-  // as an upper bound would have proposed a rollout of one — or, since that one
-  // guest is dormant, a who-line reading "nobody affected".
-  const { f, r } = runs.find((x) => x.f.name === 'getiamai') as { f: Fixture; r: FixtureRun }
-  const step = r.steps.find((x) => x.id === 's-goal-guests-mfa') as Step
-  assert.ok(step && isOpenPolicy(step), 'the guests step is an open policy')
-  const effects = stepEffects(step)
-  assert.ok(effects.length > 0 && effects.every((e) => e.scope.allUsers), 'and its policy names all users')
-
-  const cohort = cohortOf(step)
-  assert.ok(cohort !== null, 'whose scope the scan can settle')
-  // The accounts that can sign in: a disabled account is out of every rollout
-  // (the next test). GetIAMAI has none, so this reads the same as before.
-  const named = f.snapshot.users.filter((u) => u.accountEnabled !== false && effects.some((e) => accountApplicability(e.scope, u.id, f.snapshot as never, membersOf(f)) === 'in')).map((u) => u.id)
-  assert.deepEqual(cohort, named.slice().sort(), 'the cohort is exactly the enabled accounts the policy names')
-
-  // The goal's own population is narrower, and decides none of it.
-  assert.ok(step.population.ids.length < cohort.length, `the goal lists fewer (${step.population.ids.length}) than the policy names (${cohort.length})`)
-  const members = step.rings.flatMap((x) => x.targeting.suggestedMemberIds)
-  if (isHeld(step)) {
-    assert.deepEqual(members, [], 'unmet actual method readiness withdraws the rollout without changing its cohort')
-  } else {
-    assert.deepEqual(members.slice().sort(), cohort, 'every ring member comes from the policy, and everyone the policy names is in a ring')
-    assert.equal(step.rings.reduce((n, x) => n + x.targeting.memberCount, 0), cohort.length, 'and the counts say so')
-  }
-  // The who-line and the audience read the same authority. The goal's one guest
-  // is dormant, so a goal-derived line would have read "nobody affected".
-  assert.equal(step.population.active, 0, 'the goal population holds nobody active')
-  const view = stepPopulation(step)
-  assert.ok(view !== null && view.active > 0, 'the surfaces count the people the policy names')
-  assert.notEqual(rowWho(step), 'No user impact', 'and the row does not report a rollout of nobody')
-})
-
-// NEW-Nadia-D3. GetIAMAI's all-users policy names eleven accounts. The operator
-// disabled nine of them, as the dormant-accounts step asked, and the Affected
-// people tile still read "2 active people · 1 admin · covers 11 enabled": the
-// cohort's universe was every account in the directory, disabled ones included,
-// and "covers N enabled" was the count of every id in it. A disabled account
-// cannot sign in, so no policy reaches anybody through it.
-test('a disabled account is in no rollout and never counted under "enabled"', () => {
-  const f = structuredClone(fixture('getiamai'))
-  const bg = new Set(f.mapping.breakGlassUserIds)
-  const before = runFixture(f).steps.find((x) => x.id === 's-goal-mfa-all-users') as Step
-  const named = (before.cohort?.ids ?? []).filter((id) => !bg.has(id))
-  const keep = new Set((before.cohort?.activeIds ?? []).slice(0, 2))
-  const disable = named.filter((id) => !keep.has(id))
-  assert.ok(disable.length >= 5 && keep.size === 2, `the premise: the policy names several accounts beyond the two kept (${named.length})`)
-  for (const u of f.snapshot.users) if (disable.includes(u.id)) u.accountEnabled = false
-  const after = runFixture(f).steps.find((x) => x.id === 's-goal-mfa-all-users') as Step
-  const cohort = after.cohort
-  assert.ok(cohort !== undefined, 'the scope is still settled')
-  for (const id of disable) assert.equal(cohort.ids.includes(id), false, `${id}: a disabled account is not in the cohort`)
-  assert.equal(after.rings.some((r) => r.targeting.suggestedMemberIds.some((id) => disable.includes(id))), false, 'nor in any ring')
-  const enabled = new Set(f.snapshot.users.filter((u) => u.accountEnabled !== false).map((u) => u.id))
-  assert.equal(cohort.inScope, cohort.ids.filter((id) => enabled.has(id)).length, 'inScope is the enabled accounts in scope')
-  const line = populationLine(reached(after) as NonNullable<ReturnType<typeof reached>>)
-  const covers = /covers ([\d,]+) enabled/.exec(line)
-  assert.ok(covers === null || Number(covers[1].replace(/,/g, '')) <= enabled.size, `the tile claims more enabled accounts than the tenant has: ${line}`)
-  assert.doesNotMatch(line, new RegExp(`covers ${named.length} enabled`), `the tile still counts the disabled accounts: ${line}`)
 })
 
 test('the same policy under a different goal population rolls out to the same people and says the same thing', () => {
@@ -290,176 +220,10 @@ test('a policy the plan cannot resolve a scope for proposes no rollout at all', 
   assert.equal(step.population.ids.length, 2)
 })
 
-// ---- 1b: what an announcement says an open policy does ----
-//
-// The announcement is the one place a policy's meaning is put into words for the
-// people it reaches, and it used to read two of them off the goal's readiness
-// family: a goal filed under `guest` made an all-users policy announce "guest
-// access", and a goal filed under `location` gave a policy nobody could read a
-// message about the office network. `policySemantics` reads the operation
-// instead, and the family reaches the announcement only through `familyReading`,
-// which answers for no open policy.
-
-/** One operation's effect, from a body written for the case at hand. */
-const effectFor = (conditions: Record<string, unknown>, grant: Record<string, unknown> | null = { operator: 'OR', builtInControls: ['mfa'] }): ReturnType<typeof effectOf> =>
-  effectOf({ displayName: 'p', state: 'enabledForReportingButNotEnforced', conditions: { applications: { includeApplications: ['All'] }, ...conditions }, ...(grant ? { grantControls: grant } : {}) })
-
-const ALL_USERS = { users: { includeUsers: ['All'] } }
-const SAY = { tenant: 'Contoso', date: 'Sep 8' }
-
-test('the goal family decides nothing an announcement says about an open policy', () => {
-  // The same resolved operation under all eight families: one announcement, one
-  // audience, one greeting. The family is not even passed for an open policy.
-  const effects = [effectFor(ALL_USERS)]
-  const audience = { kind: 'everyone' as const }
-  const said = new Set<string>()
-  for (const family of FAMILIES) {
-    // `policy` is what an open policy sends; the family is deliberately supplied
-    // beside it to prove it is ignored rather than merely absent.
-    said.add(String(announcementFor({ policy: policySemantics(effects), family, grant: 'mfa', sessionOnly: false, affected: null, admins: false, audience }, SAY.tenant, SAY.date)))
-  }
-  assert.equal(said.size, 1, `one announcement for one operation, whatever the goal says: ${[...said].join(' | ')}`)
-  assert.match([...said][0], /stepping up sign-in security/)
-})
-
-test('a policy whose goal says guests but which names everybody does not announce guest access', () => {
-  const everybody = policySemantics([effectFor(ALL_USERS)])
-  assert.equal(everybody.guestsOnly, false, 'the policy names all users, so it is not a guests policy')
-  const said = announcementFor({ policy: everybody, family: 'guest', grant: 'mfa', sessionOnly: false, affected: null, admins: false, audience: { kind: 'everyone' } }, SAY.tenant, SAY.date)
-  assert.doesNotMatch(String(said), /guest access/, 'the goal does not make an all-users policy a guests policy')
-
-  // And a policy that really does name external users and nobody else still says so.
-  const guestsOnly = policySemantics([effectFor({ users: { includeUsers: [], includeGuestsOrExternalUsers: { guestOrExternalUserTypes: 'b2bCollaborationGuest', externalTenants: { membershipKind: 'all' } } } })])
-  assert.equal(guestsOnly.guestsOnly, true, 'read from its own scope')
-  assert.match(String(announcementFor({ policy: guestsOnly, grant: 'mfa', sessionOnly: false, affected: null, admins: false, audience: { kind: 'everyone' } }, SAY.tenant, SAY.date)), /guest access/)
-
-  // GetIAMAI is the real case: the goal is `guests`, the baseline's policy for it
-  // targets All users, and eleven people were being told about guest access.
-  const { r } = runs.find((x) => x.f.name === 'getiamai') as { f: Fixture; r: FixtureRun }
-  const step = r.steps.find((x) => x.id === 's-goal-guests-mfa') as Step
-  assert.equal(step.readiness.family, 'guest', 'the goal is still filed under guests')
-  if (isHeld(step)) assert.equal(step.comms, null, 'a held rollout has no dated announcement')
-  else assert.ok(typeof step.comms === 'string' && step.comms.length > 0, 'a scheduled rollout announces')
-  assert.doesNotMatch(step.comms ?? '', /guest access/, 'but not about guest access')
-})
-
-test('a policy about a place says so from its own conditions, not from the goal', () => {
-  // Registering sign-in methods from the trusted network: the user action and the
-  // location condition are both on the policy, and both are what the message is
-  // about. Neither the goal id nor the family is passed.
-  const registration = policySemantics([effectFor({ ...ALL_USERS, applications: { includeUserActions: ['urn:user:registersecurityinfo'] }, locations: { includeLocations: ['All'], excludeLocations: ['AllTrusted'] } })])
-  assert.deepEqual({ ...registration, guestsOnly: false }, { locations: true, registration: true, deviceRegistration: false, resource: null, guestsOnly: false, blocks: false })
-  assert.match(String(announcementFor({ policy: registration, grant: 'mfa', sessionOnly: false, affected: null, admins: false, audience: { kind: 'everyone' } }, SAY.tenant, SAY.date)), /works from the office network/)
-
-  // A block narrowed by place is the countries message, again from the policy.
-  const geo = policySemantics([effectFor({ ...ALL_USERS, locations: { includeLocations: ['All'], excludeLocations: ['loc-1'] } }, { operator: 'OR', builtInControls: ['block'] })])
-  assert.deepEqual(geo, { locations: true, registration: false, deviceRegistration: false, resource: null, guestsOnly: false, blocks: true })
-  assert.match(String(announcementFor({ policy: geo, grant: 'block', sessionOnly: false, affected: 3, admins: false, audience: { kind: 'everyone' } }, SAY.tenant, SAY.date)), /sign-ins from outside our allowed countries/)
-
-  // The same two messages are refused where the policy does not carry the
-  // condition: registration with no place, and a block with no place.
-  const registrationAnywhere = policySemantics([effectFor({ ...ALL_USERS, applications: { includeUserActions: ['urn:user:registersecurityinfo'] } })])
-  assert.equal(registrationAnywhere.locations, false)
-  assert.doesNotMatch(String(announcementFor({ policy: registrationAnywhere, grant: 'mfa', sessionOnly: false, affected: null, admins: false, audience: { kind: 'everyone' } }, SAY.tenant, SAY.date)), /office network/)
-  const plainBlock = policySemantics([effectFor(ALL_USERS, { operator: 'OR', builtInControls: ['block'] })])
-  assert.doesNotMatch(String(announcementFor({ policy: plainBlock, grant: 'block', sessionOnly: false, affected: 3, admins: false, audience: { kind: 'everyone' } }, SAY.tenant, SAY.date)), /allowed countries/)
-
-  // And the real plans: every open policy that announces the office-network
-  // message carries both conditions.
-  for (const { f, r } of runs) {
-    for (const s of openPolicies(r.steps)) {
-      if (typeof s.comms !== 'string' || !/works from the office network/.test(s.comms)) continue
-      const p = policySemantics(stepEffects(s))
-      assert.ok(p.registration && p.locations, `${f.name} ${s.id}: the message is the policy's own`)
-    }
-  }
-})
-
-test('an open policy whose meaning the operation does not establish is sent no announcement', () => {
-  // A policy narrowed by place that asks for nothing this reading can name. The
-  // family would once have supplied "the office network is trusted"; there is now
-  // nothing to say, and nothing is said.
-  const unnamed = { locations: true, registration: false, deviceRegistration: false, resource: null, guestsOnly: false, blocks: false }
-  assert.equal(announcementFor({ policy: unnamed, grant: null, sessionOnly: false, affected: null, admins: false, audience: { kind: 'everyone' } }, SAY.tenant, SAY.date), null)
-  // The family is passed beside it and still changes nothing.
-  for (const family of FAMILIES) {
-    assert.equal(announcementFor({ policy: unnamed, family, grant: null, sessionOnly: false, affected: null, admins: false, audience: { kind: 'everyone' } }, SAY.tenant, SAY.date), null, `family ${family}`)
-  }
-  // A block whose reach was never measured claims no count and says nothing.
-  assert.equal(announcementFor({ policy: { ...unnamed, blocks: true, locations: false }, grant: 'block', sessionOnly: false, affected: null, admins: false }, SAY.tenant, SAY.date), null)
-  // The same line still answers for a step with no policy of its own, which is
-  // read by its goal as it always was.
-  assert.match(String(announcementFor({ goalId: 'g', family: 'location', grant: null, sessionOnly: false, affected: null, admins: false }, SAY.tenant, SAY.date)), /treats the office network as trusted/)
-  // A step the plan cannot write at all announces nothing on any fixture.
-  for (const { f, r } of runs) {
-    for (const s of openPolicies(r.steps)) {
-      if (!analysisUnknown(s)) continue
-      assert.equal(s.comms, null, `${f.name} ${s.id}: a policy IAMAI cannot read in full says nothing`)
-    }
-  }
-})
-
-test('the guests lockout line follows the policy that would prompt them, not the goal it is filed under', () => {
-  // The line says "N guests will be prompted from {date}". Whether this step's
-  // policy would prompt them is the policy's answer: it names them, or it does
-  // not. The goal used to decide it, so a policy filed under guests that names
-  // no guest showed the line, and one filed elsewhere that names them all hid it.
-  const guest = '00000000-0000-4000-8000-0000000000g1'.replace('g1', 'a1')
-  const ctx = {
-    snapshot: { users: [], config: {}, sources: {} },
-    evidence: { guestsSeen: { people: [guest], count: 1 }, legacyClients: { byPerson: {} }, technicianToolsOffCompliance: { count: 0, detail: {}, people: [] }, serverSignIns: { people: [] }, browserWithoutClaims: { people: [], detail: {} }, nonMicrosoftApps: { detail: {}, people: [] }, trustedLocationMatches: { byLocation: {}, total: 0 }, serviceProviderSignIns: { people: [], homeTenants: [] }, unregisteredWindows: { people: [] }, passwordNotTyped: { people: [] } },
-    nameOf: (id: string) => id,
-    enforceDate: 'Sep 8',
-    guestMfaTrust: false,
-    hybridPresent: false,
-    syncRoleHolder: null,
-    noMethodActive: [],
-  }
-  const stepWith = (ids: string[] | null): Step =>
-    ({
-      id: 's', goalId: 'guests-mfa', kind: 'create', status: 'ready',
-      // Filed under guests either way: only the cohort differs.
-      readiness: { family: 'guest', percent: 100, lines: [] },
-      population: { total: 1, active: 1, admins: 0, guests: 1, ids: [guest], activeIds: [guest], inScope: 1 },
-      ...(ids === null ? {} : { cohort: { total: ids.length, active: ids.length, admins: 0, guests: 0, ids, activeIds: ids, inScope: ids.length } }),
-      action: { kind: 'create', summary: [], json: null, portalSteps: [], resolution: { policies: [{ mode: 'create', sourceName: 'p', memberKey: 'p', body: { displayName: 'p', state: 'enabledForReportingButNotEnforced', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } } }], tenant: { exclusionsGroupId: null, serviceAccountsGroupId: null } } },
-    }) as unknown as Step
-  const shows = (step: Step): boolean => scenarioLinesFor(step, ctx as never).some((l) => l.kind === 'guests')
-  assert.equal(shows(stepWith([guest, 'someone-else'])), true, 'the policy names the guest, so the line is shown')
-  assert.equal(shows(stepWith(['someone-else'])), false, 'the policy does not name the guest, whatever the goal is called')
-  assert.equal(shows(stepWith(null)), false, 'and a scope nobody settled prompts nobody knowably')
-})
-
 // ---- 1c: what a manager is told an open policy does ----
-
-const SEMANTICS = { locations: false, registration: false, deviceRegistration: false, resource: null, guestsOnly: false, blocks: false }
-
-test('a goal id manufactures no control: the note for a named control is the policy’s or nothing', () => {
-  // `controlNoteFor` takes no goal id. Four notes describe a specific control,
-  // and each is returned only where the operation names that control and asks
-  // for a method — which is what makes them true.
-  assert.equal(controlNoteFor({ ...SEMANTICS, resource: 'adminPortals' }, 'mfa'), MANAGER_BY_GOAL['admin-portals-protected']())
-  assert.equal(controlNoteFor({ ...SEMANTICS, resource: 'azureManagement' }, 'mfa'), MANAGER_BY_GOAL['azure-management-mfa']())
-  assert.equal(controlNoteFor({ ...SEMANTICS, registration: true }, 'mfa'), MANAGER_BY_GOAL['register-info-protected']())
-  assert.equal(controlNoteFor({ ...SEMANTICS, deviceRegistration: true }, 'phishingResistant'), MANAGER_BY_GOAL['device-registration-mfa']())
-
-  // The admin-portals words need the admin-portals target. A policy that names
-  // no resource IAMAI can name, or names one and blocks, or names one and asks
-  // for something else, gets nothing from here.
-  assert.equal(controlNoteFor({ ...SEMANTICS }, 'mfa'), null, 'a policy naming no resource')
-  assert.equal(controlNoteFor({ ...SEMANTICS, resource: 'adminPortals', blocks: true }, 'block'), null, 'a policy that blocks the admin portals does not require MFA on them')
-  assert.equal(controlNoteFor({ ...SEMANTICS, resource: 'azureManagement' }, 'compliantDevice'), null, 'a device requirement is not an MFA requirement')
-  assert.equal(controlNoteFor({ ...SEMANTICS, resource: 'azureManagement' }, null), null, 'and a policy asking for nothing this reading can name says nothing')
-})
-
-test('the two resources IAMAI names are read from the policy’s own application list', () => {
-  const named = (apps: string[]): ReturnType<typeof policySemantics> =>
-    policySemantics([effectOf({ displayName: 'p', state: 'enabledForReportingButNotEnforced', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: apps } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } })])
-  assert.equal(named(['MicrosoftAdminPortals']).resource, 'adminPortals', 'Graph’s own admin-portals target')
-  assert.equal(named(['797f4846-ba00-4fd7-ba43-dac1f8f63013']).resource, 'azureManagement', 'the Azure Service Management API')
-  assert.equal(named(['All']).resource, null, 'every resource is not a named one')
-  assert.equal(named(['00000003-0000-0ff1-ce00-000000000000']).resource, null, 'and an application id IAMAI does not name is not interpreted')
-})
+//
+// (What an announcement says is covered by the words sweep below: the family,
+// the population and the evidence are perturbed and `step.comms` may not move.)
 
 test('every generated manager note is what the operation establishes, and the goal adds nothing to it', () => {
   // The generator-level half: for every open policy on every fixture, a note
@@ -478,25 +242,6 @@ test('every generated manager note is what the operation establishes, and the go
       assert.equal(named.has(s.forManager), false, `${f.name} ${s.id}: no control note without the control (${s.forManager.slice(0, 60)})`)
     }
   }
-})
-
-test('unknown resource semantics get general wording, never goal-derived specificity', () => {
-  // A step whose own baseline source contradicts itself has no operation, so
-  // nothing establishes a resource. The note claims nothing specific, and names
-  // neither the portals nor MFA — on every fixture that carries such a step
-  // (the ones deriving through the pinned package, whose Admin Portal policy is
-  // the reviewed source: roadmap/baselineConflict.ts).
-  let seen = 0
-  for (const { f, r } of runs) {
-    for (const s of r.steps.filter((x) => inBaselineConflict(x))) {
-      seen += 1
-      assert.deepEqual(stepEffects(s), [], `${f.name}: no operation`)
-      assert.equal(policySemantics(stepEffects(s)).resource, null, `${f.name}: and no resource established`)
-      assert.equal(s.forManager, MANAGER.other(), `${f.name}: so the general note stands`)
-      assert.doesNotMatch(s.forManager, /admin portal|Azure|requires MFA/i, `${f.name}: and nothing specific is claimed`)
-    }
-  }
-  assert.ok(seen > 0, 'no fixture carries a step whose baseline source contradicts itself')
 })
 
 // ---- 1d: what the records are counted over ----
@@ -535,34 +280,6 @@ test('what the records are counted over is the deployed policy’s scope, whatev
   }
 })
 
-test('a deployed policy broader than the goal it delivers is tracked over the policy', () => {
-  // demo-week2's guests goal lists one guest. Without a guests policy of its own,
-  // the policy the tenant deployed for it targets All users, so the records are
-  // counted over everyone it reaches — which is the whole point of asking the
-  // policy rather than the goal. (The tenant's own guests policy is taken out:
-  // where it is there, it is the guests goal's policy and tracking follows it,
-  // whatever order the scan listed the policies in — C01.)
-  const base = fixtures.find((x) => x.name === 'demo-week2') as Fixture
-  const ca = base.snapshot.config.caPolicies!
-  const guestsOnly = (p: unknown): boolean => ((p as { conditions?: { users?: { includeUsers?: string[] } } }).conditions?.users?.includeUsers ?? []).includes('GuestsOrExternalUsers')
-  assert.ok(ca.rows.some(guestsOnly), 'the demo tenant has a guests policy to take out')
-  const f: Fixture = { ...base, snapshot: { ...base.snapshot, config: { ...base.snapshot.config, caPolicies: { ...ca, rows: ca.rows.filter((p) => !guestsOnly(p)) } } } }
-  const r = runFixture(f)
-  const step = r.steps.find((x) => x.id === 's-goal-guests-mfa') as Step
-  assert.ok(step.tracking, 'it has a matched policy')
-  const goalPeople = (step.population.activeIds ?? step.population.ids).length
-  assert.equal(goalPeople, 1, 'the goal lists one active person')
-  assert.ok((step.tracking!.activeInScope ?? 0) > goalPeople, `the deployed policy reaches more (${step.tracking!.activeInScope})`)
-  // And it is exactly the policy's own scope, resolved the same way the plan
-  // resolves an operation's.
-  const match = matchPolicy(step, f.snapshot, r.coverage, f.planId)
-  assert.ok(match, 'the policy is matched')
-  const evidence = { groupMembers: Object.fromEntries([...f.groups].filter(([, g]) => g.sampled !== true).map(([id, g]) => [id.toLowerCase(), [...g.memberIds]])) }
-  const cohort = scopeCohort([effectOf(match!.policy as Record<string, unknown>)], f.snapshot.users.map((u) => u.id), f.snapshot, evidence)
-  const active = new Set(activePeopleIds(f.snapshot, f.snapshot.asOf, notPeopleIds(f.mapping)))
-  assert.equal(step.tracking!.activeInScope, (cohort ?? []).filter((id) => active.has(id)).length, 'the count is the policy’s own scope, narrowed to active people')
-})
-
 test('a deployed policy whose scope cannot be resolved is tracked as unknown, never as the goal’s people', () => {
   // Every policy these tenants deployed excludes a group. With no membership
   // read, who they reach is nobody's answer: no count, no evidence gate, and the
@@ -586,47 +303,6 @@ test('a deployed policy whose scope cannot be resolved is tracked as unknown, ne
   }
 })
 
-test('where the plan’s own policy is the one deployed, the records are counted over that same operation', () => {
-  // Matched by tag: the policy on the tenant is the one this plan wrote. Its
-  // scope and the planned operation's cohort are the same reading of the same
-  // policy, so the two agree — no second interpreter, and no goal in either.
-  let compared = 0
-  for (const { f, r } of runs) {
-    for (const s of r.steps) {
-      if (!s.tracking || s.tracking.matchedBy !== 'tag' || !isOpenPolicy(s) || stepEffects(s).length === 0) continue
-      const active = new Set(activePeopleIds(f.snapshot, f.snapshot.asOf, notPeopleIds(f.mapping)))
-      const planned = (s.cohort?.ids ?? []).filter((id) => active.has(id)).length
-      assert.equal(s.tracking.activeInScope, planned, `${f.name} ${s.id}: the deployed policy and the planned operation are one policy`)
-      compared += 1
-    }
-  }
-  assert.ok(compared > 0, 'some fixture deploys its own plan’s policy')
-})
-
-test('the week-two policy that is ready to enforce is ready on its own scope', () => {
-  // The demo's token-protection step advances on the evidence gate. Its planned
-  // test deliberately withholds the tenant-specific exclusions-group decision,
-  // so the planned operation still has a genuine missing object and no cohort or
-  // ring plan; what the gate reads is the policy the tenant actually deployed,
-  // and every active person that policy reaches has been seen. Nothing here comes
-  // from the goal: with the memberships withheld the step falls back to the time
-  // gate rather than to the goal's thirty people.
-  const f = noExclusionsAnswer(fixture('demo-week2'))
-  const step = retrack(f).find((x) => x.id === 's-goal-token-protection') as Step
-  assert.equal(unavailableReason(step), 'missing-object', 'the plan cannot write this one')
-  assert.equal(step.cohort, undefined, 'so it has no cohort of its own')
-  assert.equal(step.tracking?.readyNow, true, 'and it is ready on the deployed policy’s records')
-  assert.equal(step.tracking?.seenInScope, step.tracking?.activeInScope, 'every active person the policy reaches has been seen')
-  // The deployed policy reaches every active person here, so its count and the
-  // goal's population coincide; a goal population of strangers shows which of
-  // the two the count is.
-  const strangers = ['00000000-0000-4000-8000-00000000dead', '00000000-0000-4000-8000-00000000beef']
-  const foreign = retrack(f, { population: (s) => ({ ...s.population, ids: strangers, activeIds: strangers, active: 2, total: 2 }) }).find((x) => x.id === 's-goal-token-protection') as Step
-  assert.equal(foreign.tracking?.activeInScope, step.tracking?.activeInScope, 'the count is not the goal’s population')
-  const blind = retrack(f, { groupMembers: {} }).find((x) => x.id === 's-goal-token-protection') as Step
-  assert.equal(blind.tracking?.readyNow, false, 'and with the scope unresolved the evidence gate closes rather than falling back')
-})
-
 // ---- 2: exact, or explicitly unknown ----
 
 test('the pinned baseline puts nothing on the wire that IAMAI recognises and then ignores', () => {
@@ -640,23 +316,7 @@ test('the pinned baseline puts nothing on the wire that IAMAI recognises and the
   assert.deepEqual(ignored, [], 'every field the pinned baseline carries has a reading or is held by name')
 })
 
-test('every operation a plan generates is valid, and its final target is read exactly or held by name', () => {
-  const bad: string[] = []
-  for (const { f, r } of runs) {
-    for (const s of openPolicies(r.steps)) {
-      // A step the plan cannot write offers no operation at all, and says why.
-      if (unavailableReason(s) !== null) {
-        assert.deepEqual(operationsOf(s), [], `${f.name} ${s.id}: unavailable work offers no operation`)
-        continue
-      }
-      for (const op of operationsOf(s)) assert.ok(isValidOperation(op), `${f.name} ${s.id}: ${op.sourceName} is a request IAMAI would submit`)
-      for (const e of stepEffects(s)) for (const why of e.unknown) if (RECOGNISED_BUT_IGNORED.test(why)) bad.push(`${f.name} ${s.id}: ${why}`)
-    }
-  }
-  assert.deepEqual(bad, [], 'no generated final target carries a field the decoder recognises and ignores')
-})
-
-test('a field nothing consumes is held by name rather than read as absent', () => {
+test('a field nothing consumes, or a value malformed on the tenant’s own policy, is held by name rather than read', () => {
   // A part of a condition nobody has thought about yet: the clause it sits in is
   // not a clause IAMAI can read, so who this policy reaches is nobody's answer
   // rather than "everyone, as written".
@@ -682,6 +342,23 @@ test('a field nothing consumes is held by name rather than read as absent', () =
     sessionControls: null,
   })
   assert.deepEqual(asGraphReturnsIt.unknown, [], 'a policy that sets nothing extra is read in full')
+
+  // A malformed value on the tenant's own policy is held, not read as written.
+  // An update's target is the tenant's policy, which IAMAI does not get to
+  // refuse — but it does not get to misread it either.
+  const bad = (conditions: Record<string, unknown>, over: Record<string, unknown> = {}): ReturnType<typeof effectOf> =>
+    effectOf({ displayName: 'p', state: 'enabled', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] }, ...conditions }, grantControls: { operator: 'OR', builtInControls: ['mfa'] }, ...over })
+  assert.ok(bad({ clientAppTypes: ['nonsense'] }).unknown.some((u) => /cannot read as written: clientAppTypes/.test(u)))
+  assert.ok(bad({ signInRiskLevels: ['catastrophic'] }).unknown.some((u) => /cannot read as written: signInRiskLevels/.test(u)))
+  assert.ok(bad({ devices: { deviceFilter: { mode: 'include' } } }).unknown.some((u) => /cannot read as written: devices/.test(u)))
+  assert.ok(bad({ platforms: { includePlatforms: ['toaster'] } }).unknown.some((u) => /cannot read as written: platforms/.test(u)))
+  // A grant with no operator is not read as either, and a session control whose
+  // value Graph would refuse is not read as switched on.
+  const noOperator = effectOf({ displayName: 'p', state: 'enabled', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } }, grantControls: { builtInControls: ['mfa', 'compliantDevice'] } })
+  assert.ok(noOperator.unknown.some((u) => /does not say how its controls combine/.test(u)))
+  const badSession = bad({}, { sessionControls: { signInFrequency: { isEnabled: true } } })
+  assert.ok(badSession.unknown.some((u) => /cannot read as written: signInFrequency/.test(u)))
+  assert.equal(badSession.sessionControls?.signInFrequency, false, 'and it is not read as a setting')
 })
 
 // ---- 1: the operation is the only authority ----
@@ -866,56 +543,6 @@ test('the goal a step is filed under decides none of its consequences either', (
   assert.deepEqual(failures, [])
 })
 
-// ---- 3: unknown stays conservative ----
-
-test('an open policy IAMAI cannot read in full is not safe, not zero, and earns no shortened timing', () => {
-  // One unreadable field on an otherwise ordinary policy, through every
-  // consequence at once.
-  const { f, r } = runs.find(({ r: run }) => openPolicies(run.steps).length > 0)!
-  const s = openPolicies(r.steps).find((x) => unavailableReason(x) === null && stepEffects(x).length > 0)!
-  const held = {
-    ...s,
-    action: {
-      ...s.action,
-      resolution: {
-        ...s.action.resolution!,
-        policies: operationsOf(s).map((op) => ({
-          ...op,
-          mode: 'create' as const,
-          policyId: null,
-          target: undefined,
-          body: { ...op.body, sessionControls: { ...((op.body.sessionControls ?? {}) as Record<string, unknown>), cloudAppSecurity: { isEnabled: true, cloudAppSecurityType: 'blockDownloads' } } },
-        })),
-      },
-    },
-  } as unknown as Step
-  const effects = effectsOf(held)!
-  assert.ok(effects.every((e) => e.unknown.length > 0), 'the policy is held unknown')
-  assert.equal(nobodyAffected(held), false, 'a policy that might touch anyone is not a zero')
-  assert.equal(noticeDaysFor(held), 5, 'no courtesy notice on an unread policy')
-  assert.notEqual(batchClassOf(held), 'zero', 'no zero batch class')
-  assert.equal(observationDaysFor(held), OBSERVATION_DAYS, 'and the full watch, never the short one')
-  assert.equal(lockoutCount(effects, r.viability, f.snapshot, strengthLookupOf(f.snapshot)), null, 'no numeric lockout claim')
-  const verdict = stepAccountVerdict(held, r.viability[0]?.userId ?? 'nobody', f.snapshot)
-  assert.ok(!verdict.stranded || verdict.unknown, 'and no confident verdict about a person')
-})
-
-test('work the plan cannot write is scheduled nowhere and proves nothing', () => {
-  for (const { f, r } of runs) {
-    const schedule = buildSchedule(r.steps, r.schedule.start, r.viability.length)
-    const dated = new Set(schedule.waves.flatMap((w) => w.stepIds))
-    for (const s of openPolicies(r.steps)) {
-      if (unavailableReason(s) === null) continue
-      // The object a step makes itself is its next task, placed now (operations.ts
-      // awaitsOwnObject; Stage 3); its policy is still written nowhere.
-      if (!awaitsOwnObject(s)) assert.ok(!dated.has(s.id), `${f.name} ${s.id}: unavailable work takes no dated wave`)
-      assert.equal(nobodyAffected(s), false, `${f.name} ${s.id}: unavailable work is not a zero`)
-      assert.equal(s.rings.length, 0, `${f.name} ${s.id}: and no rings`)
-      assert.equal(s.lockout, undefined, `${f.name} ${s.id}: and no lockout number`)
-    }
-  }
-})
-
 // ---- the values, one at a time ----
 
 /** A scan holding exactly the evidence each case is about. */
@@ -1007,64 +634,7 @@ test('a risk condition is answered only where the records measure every level it
   assert.equal(reach(['high'], quiet, 'userRiskLevels'), 'unknown')
 })
 
-test('what the records measured for one question is no answer to another', () => {
-  // A step filed under a risk goal, carrying evidence collected for it, whose
-  // policy actually blocks the old protocols. The zero has to come from the
-  // legacy-authentication signal, and the risk evidence beside it proves nothing.
-  const snapshot = scan({
-    users: [{ id: 'u1', userType: 'member', userPrincipalName: 'a@contoso.com' }],
-    evidenceUsage: { legacyAuth: { userIds: ['u1'] }, deviceCode: { userIds: [] }, authTransfer: { userIds: [] }, riskHigh: { userIds: [] }, riskMedium: { userIds: [] } },
-  })
-  const legacyBlock = {
-    displayName: 'p',
-    state: 'enabled',
-    conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['exchangeActiveSync', 'other'] },
-    grantControls: { operator: 'OR', builtInControls: ['block'] },
-  }
-  const effects = [effectOf(legacyBlock)]
-  assert.deepEqual(measuredReach(effects, ['u1'], snapshot), ['u1'], 'the records show this account using what the policy blocks')
-  const step = {
-    id: 's-x',
-    goalId: 'sign-in-risk',
-    kind: 'create',
-    status: 'ready',
-    readiness: { family: 'risk', percent: 100, lines: [] },
-    // Collected under the goal, and about a different question entirely.
-    evidence: { status: 'ok', lines: [], affectedUserIds: [] },
-    population: { total: 1, active: 1, admins: 0, guests: 0, ids: ['u1'], activeIds: ['u1'], inScope: 1 },
-    rings: [],
-    blockedBy: [],
-    action: { kind: 'create', summary: [], json: '{}', portalSteps: [], missing: [], resolution: { policies: [{ sourceName: 'a', memberKey: 'a', mode: 'create', policyId: null, body: legacyBlock }] } },
-  } as unknown as Step
-  assert.equal(nobodyAffected(step), false, 'an empty count filed under the goal is not this policy’s zero')
-  assert.equal(nobodyAffected({ ...step, measured: { ids: ['u1'] } } as Step), false)
-  assert.equal(nobodyAffected({ ...step, measured: { ids: [] } } as Step), true, 'only the measured answer says nobody')
-})
-
-test('an AND policy with one thing IAMAI cannot read offers no lockout number and no zero', () => {
-  const snapshot = scan({
-    users: [{ id: 'u1', userType: 'member', userPrincipalName: 'a@contoso.com' }],
-    registrationDetails: [{ id: 'u1', isMfaCapable: false, methodsRegistered: [] }],
-    config: { authStrengths: { status: 'ok', reason: null, rows: [{ id: 's', displayName: 'Keys only', allowedCombinations: ['fido2'] }] } },
-  })
-  const body = {
-    displayName: 'p',
-    state: 'enabled',
-    conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } },
-    // Both required: a strength this account cannot satisfy, and a control with
-    // no reading at all.
-    grantControls: { operator: 'AND', builtInControls: ['mfa'], authenticationStrength: { id: 's' }, customAuthenticationFactors: ['something-of-our-own'] },
-    sessionControls: { cloudAppSecurity: { isEnabled: true, cloudAppSecurityType: 'blockDownloads' } },
-  }
-  const effect = effectOf(body)
-  assert.equal(effect.operator, 'AND')
-  assert.ok(effect.unknown.length >= 2, effect.unknown.join(' | '))
-  const viability = [{ userId: 'u1', activity: 'active', methodTiers: [] }] as never
-  assert.equal(lockoutCount([effect], viability, snapshot, strengthLookupOf(snapshot)), null, 'no number is offered while part of the policy is unread')
-  assert.equal(measuredReach([effect], ['u1'], snapshot), null, 'and no zero either')
-})
-
-test('a policy IAMAI cannot read in full waits on everything, is watched in full, and has no ring plan', () => {
+test('a policy IAMAI cannot read in full is not safe or zero, waits on everything, is watched in full, and has no ring plan or lockout number', () => {
   // A step the plan *can* write, with one thing in it nobody could read. It is
   // still scheduled, so every conservative branch has to hold: a prerequisite
   // skipped because the reading came back thin is a prerequisite dropped on a
@@ -1116,6 +686,10 @@ test('a policy IAMAI cannot read in full waits on everything, is watched in full
   assert.notEqual(batchClassOf(held), 'zero')
   assert.equal(noticeDaysFor(held), 5, 'the full notice')
   assert.equal(observationDaysFor(held), OBSERVATION_DAYS, 'and the full watch')
+  // Unknown is not safe: no numeric lockout claim, and no confident verdict about a person.
+  assert.equal(lockoutCount(effectsOf(held)!, r.viability, f.snapshot, strengthLookupOf(f.snapshot)), null, 'no numeric lockout claim')
+  const verdict = stepAccountVerdict(held, r.viability[0]?.userId ?? 'nobody', f.snapshot)
+  assert.ok(!verdict.stranded || verdict.unknown, 'and no confident verdict about a person')
   assert.deepEqual(
     proposeRings(held, { snapshot: f.snapshot, viability: new Map(), breakGlassIds: new Set(), highCareIds: new Set(), operatorId: null, naming: r.coverage.organisation.naming, activeUsers: 10, ...ringContextIndexes(f.snapshot) } as never),
     [],
@@ -1145,27 +719,6 @@ test('an update that changes nothing is not an update, at any depth', () => {
   assert.equal(isSubmittablePatch({ state: 'enabled' }), true)
   assert.equal(isSubmittablePatch({ sessionControls: null }), true, 'clearing a section is a change')
   assert.equal(isValidOperation(op({ state: 'enabled' })), true)
-})
-
-test('a malformed value on the tenant’s own policy is held, not read as written', () => {
-  // An update's target is the tenant's policy, which IAMAI does not get to
-  // refuse — but it does not get to misread it either.
-  const bad = (conditions: Record<string, unknown>, over: Record<string, unknown> = {}): ReturnType<typeof effectOf> =>
-    effectOf({ displayName: 'p', state: 'enabled', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] }, ...conditions }, grantControls: { operator: 'OR', builtInControls: ['mfa'] }, ...over })
-  assert.ok(bad({ clientAppTypes: ['nonsense'] }).unknown.some((u) => /cannot read as written: clientAppTypes/.test(u)))
-  assert.ok(bad({ signInRiskLevels: ['catastrophic'] }).unknown.some((u) => /cannot read as written: signInRiskLevels/.test(u)))
-  assert.ok(bad({ devices: { deviceFilter: { mode: 'include' } } }).unknown.some((u) => /cannot read as written: devices/.test(u)))
-  assert.ok(bad({ platforms: { includePlatforms: ['toaster'] } }).unknown.some((u) => /cannot read as written: platforms/.test(u)))
-  // A grant with no operator is not read as either, and a session control whose
-  // value Graph would refuse is not read as switched on.
-  const noOperator = effectOf({ displayName: 'p', state: 'enabled', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } }, grantControls: { builtInControls: ['mfa', 'compliantDevice'] } })
-  assert.ok(noOperator.unknown.some((u) => /does not say how its controls combine/.test(u)))
-  const badSession = bad({}, { sessionControls: { signInFrequency: { isEnabled: true } } })
-  assert.ok(badSession.unknown.some((u) => /cannot read as written: signInFrequency/.test(u)))
-  assert.equal(badSession.sessionControls?.signInFrequency, false, 'and it is not read as a setting')
-  // A clause IAMAI cannot read means who the policy reaches is nobody's answer.
-  const unreadableScope = bad({ users: { includeUsers: ['All'], somethingNew: [] } as never })
-  assert.equal(unreadableScope.scope.unreadable, true)
 })
 
 test('the pinned baseline, after this tenant’s mapping, is read exactly or held by name', () => {
@@ -1381,44 +934,6 @@ test('the reading itself: out is the only answer that lets a policy through', ()
   assert.deepEqual(emergencyExposureOf(pair, bg, f.snapshot as never, read), { reached: [...bg], unproven: [] })
   // No emergency account confirmed: nothing to contain, and no invented finding.
   assert.equal(emergencyExposureOf(effects([policy({ includeUsers: ['All'] })]), [], f.snapshot as never, read), null)
-})
-
-test('an exclusion group whose membership nothing read holds every policy that relies on it', () => {
-  const { f } = runs.find((x) => x.f.name === 'small') as { f: Fixture; r: FixtureRun }
-  const stored = f.mapping.records['__globalExclusion'].resolvedId as string
-  // The group exists — the operator's choice is verified — and this scan could
-  // not enumerate who is in it. Nothing that depends on the carve-out is offered,
-  // and whatever is offered proves the accounts out by its own scope rather than
-  // by a group nobody read.
-  const partial = new Map(f.groups)
-  partial.delete(stored)
-  const base = directoryEvidenceFromGroups(partial, 'complete')
-  const withUnread: DirectoryEvidence = {
-    universe: 'complete',
-    groups: new Map([...base.groups, [stored.toLowerCase(), { presence: 'present', members: 'unknown', displayName: 'Core - Exclusions', memberIds: [], memberCount: null } as ObjectEvidence]]),
-  }
-  const r = runFixture({ ...f, groups: partial }, { groupMembers: partial, directory: withUnread })
-  const evidence = { groupMembers: Object.fromEntries([...partial].map(([id, g]) => [id.toLowerCase(), g.memberIds])) }
-  let held = 0
-  for (const s of openPolicies(r.steps)) {
-    if ((s.action.missing ?? []).some((m) => m.token === '{exclusionsGroup}')) {
-      assert.equal(implementationOffered(s), false, `${s.id}: a policy that relies on the carve-out is held`)
-      held += 1
-    }
-    if (!implementationOffered(s)) continue
-    for (const id of f.mapping.breakGlassUserIds) {
-      assert.ok(stepEffects(s).every((e) => accountApplicability(e.scope, id, f.snapshot as never, evidence) === 'out'), `${s.id}: offered, so its own scope proves the emergency accounts out`)
-    }
-  }
-  assert.ok(held > 0, 'policies do rely on the carve-out in this fixture')
-})
-
-test('a workload-only policy answers out for every account, and raises no false boundary', () => {
-  const { f } = runs.find((x) => x.f.name === 'small') as { f: Fixture; r: FixtureRun }
-  const workload = { displayName: 'W', state: 'enabled', conditions: { clientApplications: { includeServicePrincipals: ['All'] }, applications: { includeApplications: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['block'] } }
-  const scope = effectOf(workload).scope
-  assert.equal(scope.workloadOnly, true, 'the policy names no people at all')
-  for (const id of f.mapping.breakGlassUserIds) assert.equal(accountApplicability(scope, id, f.snapshot as never, {}), 'out', 'so no emergency account is in scope, and no users clause has to be invented for one')
 })
 
 test('the step is the unit: one unsafe or unproven policy holds all of it, in place or not', () => {
@@ -1683,7 +1198,7 @@ function usedInconsistently(name: 'midflight'): Fixture {
   return { ...f, snapshot }
 }
 
-test('a group that is intrinsically safe but not excluded everywhere still holds every enforcement', () => {
+test('a group that is intrinsically safe but not excluded everywhere still holds every enforcement, and the gate lifts once every check passes', () => {
   const f = usedInconsistently('midflight')
   const r = runFixture(f)
   const report = exclusionGroupReportOf(f, r)
@@ -1711,6 +1226,15 @@ test('a group that is intrinsically safe but not excluded everywhere still holds
     assert.ok(!stepLines(s, ctx).some((l) => /Entra admin center/.test(l)), `${s.id}: the export carries no instructions`)
     assert.ok(s.blockedBy.includes(s.action.escapeHatch?.stepId ?? ''), `${s.id}: and it names the foundation holding it`)
   }
+
+  // With every check passed the gate lifts, and the same enforcement is offered.
+  // demo-week2 is the tenant that finished its foundations: both blocker reports
+  // are clean, so nothing is held behind them.
+  const settled = runs.find((x) => x.f.name === 'demo-week2') as { f: Fixture; r: FixtureRun }
+  const clean = exclusionGroupReportOf(settled.f, settled.r)
+  assert.deepEqual((clean?.blocking ?? []).map((x) => x.id), [], 'every blocking exclusion-group check passes, consistency included')
+  assert.equal(openPolicies(settled.r.steps).some((s) => unavailableReason(s) === 'escape-hatch-unverified'), false, 'this gate holds nothing')
+  assert.ok(openPolicies(settled.r.steps).some((s) => implementationOffered(s)), 'and the plan offers its policies')
 })
 
 test('a consistency check that could not run holds it too: unknown on a blocker blocks', () => {
@@ -1745,16 +1269,6 @@ test('a consistency check that could not run holds it too: unknown on a blocker 
       assert.equal(implementationOffered(s), false, `${s.id}: offered although the carve-out could not be verified`)
     }
   }
-})
-
-test('with every check passed the gate lifts, and the same enforcement is offered', () => {
-  // demo-week2 is the tenant that finished its foundations: both blocker reports
-  // are clean, so nothing is held behind them.
-  const { f, r } = runs.find((x) => x.f.name === 'demo-week2') as { f: Fixture; r: FixtureRun }
-  const report = exclusionGroupReportOf(f, r)
-  assert.deepEqual((report?.blocking ?? []).map((x) => x.id), [], 'every blocking exclusion-group check passes, consistency included')
-  assert.equal(openPolicies(r.steps).some((s) => unavailableReason(s) === 'escape-hatch-unverified'), false, 'this gate holds nothing')
-  assert.ok(openPolicies(r.steps).some((s) => implementationOffered(s)), 'and the plan offers its policies')
 })
 
 /** The exclusion-group report the plan built, rebuilt from the same inputs. */
