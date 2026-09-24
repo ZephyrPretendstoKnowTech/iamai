@@ -1,7 +1,7 @@
 // Strand simulation (roadmap-v2.md §7): would carrying out a step, as written,
 // lock a given account out? Pure: runs in tests, the worker and the page.
 import type { TenantSnapshot } from '../graph/collect/types.ts'
-import { accountApplicability, isOpenPolicy, stepEffects, strengthLookupOf } from './operations.ts'
+import { applies, isOpenPolicy, stepEffects, strengthLookupOf } from './operations.ts'
 import type { Applicability, Narrowing, PolicyEffect, Requirement, ScopeEvidence } from './operations.ts'
 import type { Step } from './types.ts'
 import { isPhishingResistantRegistered } from '../scoring/phishingResistant.ts'
@@ -254,7 +254,8 @@ function narrowingReach(n: Narrowing, accountId: string, snapshot: TenantSnapsho
  * nothing answers leaves the whole question unknown.
  */
 export function operationReach(effect: PolicyEffect, accountId: string, snapshot: TenantSnapshot, ctx: StrandContext = {}): Reached {
-  const subject = accountApplicability(effect.scope, accountId, snapshot as never, ctx)
+  // PIM-eligible roles count as held (operations.ts applies; walk list 4.x L2).
+  const subject = applies(effect, accountId, snapshot, ctx)
   if (subject === 'out') return { answer: 'out', reason: 'the policy does not reach this account: it is out of scope' }
   let unsure: Reached | null = subject === 'unknown' ? { answer: 'unknown', reason: 'nothing in the scan settles whether this policy reaches the account' } : null
   let why: Reached | null = null
@@ -327,7 +328,8 @@ export function scopeCohort(
   for (const id of accounts) {
     let named = false
     for (const effect of effects) {
-      const answer = accountApplicability(effect.scope, id, snapshot as never, ctx)
+      // PIM-eligible admins count, as readiness counts them (operations.ts applies; walk list 4.x L2).
+      const answer = applies(effect, id, snapshot, ctx)
       if (answer === 'unknown') return null
       if (answer === 'in') named = true
     }

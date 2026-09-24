@@ -6,7 +6,7 @@ import { fillText } from '../content/render.ts'
 const W = engine.readiness
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { Readiness } from './types.ts'
-import { accountApplicability, tenantStrengthsOf, BUILT_IN_STRENGTHS, BUILT_IN_MFA_STRENGTH } from './operations.ts'
+import { applies, tenantStrengthsOf, BUILT_IN_STRENGTHS, BUILT_IN_MFA_STRENGTH } from './operations.ts'
 import type { PolicyEffect, Requirement, ScopeEvidence } from './operations.ts'
 import { strengthSatisfaction } from './strand.ts'
 import { readinessPercent } from './readiness.ts'
@@ -71,19 +71,6 @@ export type MethodPreparation = {
    */
   offIds?: string[]
   completeScope: boolean
-}
-
-/** A readiness cohort includes an eligible administrator's activation path,
- * without claiming that the eligible role is currently active in Impact. */
-function applies(effect: PolicyEffect, id: string, snapshot: TenantSnapshot, context: ScopeEvidence): 'in' | 'out' | 'unknown' {
-  const current = accountApplicability(effect.scope, id, snapshot, context)
-  if (!effect.scope.roles.include.length && !effect.scope.roles.exclude.length) return current
-  const answers = [current]
-  for (const role of snapshot.roles.eligible?.[id] ?? []) {
-    const roles = { active: { ...snapshot.roles.active, [id]: [...(snapshot.roles.active[id] ?? []), role] } }
-    answers.push(accountApplicability(effect.scope, id, { users: snapshot.users, roles }, context))
-  }
-  return answers.includes('in') ? 'in' : answers.includes('unknown') ? 'unknown' : 'out'
 }
 
 /** Cache belongs to a single immutable scan derivation, never a saved plan. */

@@ -16,7 +16,7 @@ import type { BaselinePackage } from '../baseline/types.ts'
 import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
 import { PLACEHOLDER_STEP, implementable, matchedStrengthIds, resolveTenantPolicy, tenantObjectsOf, unmatchedStrengths } from './resolvePolicy.ts'
-import { accountApplicability, effectOf, emergencyExposureOf, enforcementHeld, isOpenPolicy, isValidOperation, operationsOf, stepEffects, strengthLookupOf, submitsEnforcement, tenantStrengthsOf, validOperations, unavailableReason } from './operations.ts'
+import { applies, effectOf, emergencyExposureOf, enforcementHeld, isOpenPolicy, isValidOperation, operationsOf, stepEffects, strengthLookupOf, submitsEnforcement, tenantStrengthsOf, validOperations, unavailableReason } from './operations.ts'
 import type { PolicyEffect } from './operations.ts'
 import type { GrantFloor } from '../coverage/types.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
@@ -2344,7 +2344,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // policies that had delivered it, said the signed-in member account was in
     // scope, and on small was given a stranding verdict it never had.
     const deliveredReachesOperator = deliveredReach === null && operatorId !== null
-      ? (deliveringEffects ?? []).some((e) => accountApplicability(e.scope, operatorId, snapshot as never, strandContext) !== 'out')
+      ? (deliveringEffects ?? []).some((e) => applies(e, operatorId, snapshot, strandContext) !== 'out')
       : undefined
     // The denominator. A goal can be delivered and still reach a fraction of the
     // tenant: a policy excluding a group that holds 116 of 122 accounts delivers
