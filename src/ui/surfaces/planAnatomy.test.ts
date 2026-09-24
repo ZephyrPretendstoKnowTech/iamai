@@ -243,7 +243,8 @@ test('the metadata and timing zones are handed existing facts, and no new one is
   // The row's four values come from the four modules that already own them.
   // Nothing on the Plan builds a count, a date or an elapsed time for display.
   assert.match(PLAN, /title=\{contentTitle\(step\)\}/, 'the title is no longer the content entry')
-  assert.match(PLAN, /who=\{rowWho\(step\)\}/, 'the metadata zone no longer reads the one who-line authority')
+  // Every row but a deferred one (planBoard.ts drawsImpact): a Completed row keeps the Impact it read while open.
+  assert.match(PLAN, /who=\{drawsImpact\(lane\.lane\) \? rowWho\(step\) : null\}/, 'the metadata zone no longer reads the one who-line authority')
   // The timing zone still reads `rowWhen` and nothing else — but through the
   // board's own reading of it (planBoard.ts `boardWhenOf`), which shows a day or
   // the placeholder (A1b). It takes the VALUE and chooses what to show; it
