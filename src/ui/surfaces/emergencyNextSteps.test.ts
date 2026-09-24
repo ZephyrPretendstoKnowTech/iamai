@@ -37,10 +37,6 @@ test('Steps 2 and 3 project only their own work: the exclusions tasks preserve t
     f.snapshot.config.authMethodsPolicy = { status: 'error', reason: 'Read denied', rows: [] }
     const step = runFixture(f).steps.find(item => item.id === 's-prereq-passkey-settings')!
     const projection = emergencyPasskeyTasksOf(step, ctx)
-    const inspect = projection.tasks.find(task => task.id === 'inspect-passkey-settings')!
-    assert.equal(inspect.required, false)
-    assert.equal(inspect.evidence, null)
-    assert.doesNotMatch(inspect.steps.join(' '), /Scan to update the plan|scan again/i)
     assert.equal(projection.tasks.some(task => task.required), false)
   }
 })

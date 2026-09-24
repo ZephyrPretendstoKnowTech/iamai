@@ -95,14 +95,15 @@ const lowerIds = (value: unknown): string[] => Array.isArray(value) ? [...new Se
 const typeWords = (value: unknown): string => (Array.isArray(value) ? value : typeof value === 'string' ? value.split(',') : []).map(entry => String(entry).trim().toLowerCase()).filter(Boolean).map(entry => entry === 'devicebound' ? 'Device-bound' : entry === 'synced' ? 'Synced' : entry).join(', ')
 
 /**
- * The allow-list changes as portal actions, each value given where it is typed:
- * removals, then a provider entry where every one of its models is required
- * (one save), then each remaining model entered by AAGUID (one save each).
+ * The allow list as portal actions, each value given where it is typed: the
+ * entries the target drops removed, then every model the target lists — a
+ * provider entry where every one of its models is required (one save), then
+ * each remaining model entered by AAGUID (one save each).
  */
 function aaguidSteps(currentIds: string[], targetIds: string[], required: readonly string[], modelNames: ReadonlyMap<string, string>, profile: boolean): string[] {
   const named = (id: string): string => modelNames.has(id) ? ` (${modelNames.get(id)})` : ''
   const steps = currentIds.filter(id => !targetIds.includes(id)).map(id => `Remove **${id}**${named(id)} from the AAGUID list.`)
-  let missing = targetIds.filter(id => !currentIds.includes(id))
+  let missing = [...targetIds]
   if (profile) for (const provider of AAGUID_PROVIDERS) {
     if (!provider.aaguids.every(id => required.includes(id)) || !provider.aaguids.some(id => missing.includes(id))) continue
     steps.push(`Select **+ Add AAGUID → ${provider.label}**, then **Save**.`)
@@ -114,44 +115,48 @@ function aaguidSteps(currentIds: string[], targetIds: string[], required: readon
 
 const saved = (steps: string[]): string[] => steps.length && !/then \*\*Save\*\*\.$/.test(steps.at(-1)!) ? [...steps, 'Select **Save**.'] : steps
 
-/** One profile's differing values, in the order the profile page sets them. */
+/**
+ * One profile's values, every one of them, in the order the profile page sets
+ * them. With attestation enforced the page offers device-bound passkeys only,
+ * however the types are stored.
+ */
 function profileSteps(currentRaw: unknown, targetRaw: unknown, required: readonly string[], modelNames: ReadonlyMap<string, string>, restrict = true): string[] {
   const current = (currentRaw && typeof currentRaw === 'object' ? currentRaw : {}) as Record<string, any>
   const target = (targetRaw && typeof targetRaw === 'object' ? targetRaw : {}) as Record<string, any>
   const kr = current.keyRestrictions ?? {}
   const tk = target.keyRestrictions ?? {}
+  const attested = target.attestationEnforcement === 'registrationOnly'
   return saved([
-    ...(samePasskeyValue(current.passkeyTypes, target.passkeyTypes, 'passkeyTypes') ? [] : [`Set **Passkey types** to **${typeWords(target.passkeyTypes)}**.`]),
-    ...(samePasskeyValue(current.attestationEnforcement, target.attestationEnforcement) ? [] : [`Set **Enforce attestation** to **${target.attestationEnforcement === 'registrationOnly' ? 'Yes' : 'No'}**.`]),
+    `Set **Passkey types** to **${attested ? 'Device-bound' : typeWords(target.passkeyTypes)}**.`,
+    `Set **Enforce attestation** to **${attested ? 'Yes' : 'No'}**.`,
     // The allow list, only where it is IAMAI's to hand over (roadmap/passkeyRestrictions.ts).
-    ...(!restrict || (kr.isEnforced === tk.isEnforced && kr.enforcementType === tk.enforcementType) ? [] : [tk.isEnforced === true ? `Select **Target specific AAGUIDs** and set **Behavior** to **${tk.enforcementType === 'block' ? 'Block' : 'Allow'}**.` : 'Clear **Target specific AAGUIDs**.']),
+    ...(!restrict ? [] : [tk.isEnforced === true ? `Select **Target specific AAGUIDs** and set **Behavior** to **${tk.enforcementType === 'block' ? 'Block' : 'Allow'}**.` : 'Clear **Target specific AAGUIDs**.']),
     ...(restrict ? aaguidSteps(lowerIds(kr.aaGuids), lowerIds(tk.aaGuids), required, modelNames, true) : []),
   ])
 }
 
-/** A legacy (profile-less) configuration's differing values, on its Configure tab. */
-function legacySteps(fields: readonly string[], current: Record<string, any> | null, target: Record<string, any>, required: readonly string[], modelNames: ReadonlyMap<string, string>, restrict = true): string[] {
+/** The legacy (profile-less) configuration's values, every one of them, on its Configure tab. */
+const LEGACY_PROTECTION_FIELDS = ['isAttestationEnforced', 'keyRestrictions.isEnforced', 'keyRestrictions.enforcementType', 'keyRestrictions.aaGuids'] as const
+function legacySteps(current: Record<string, any> | null, target: Record<string, any>, required: readonly string[], modelNames: ReadonlyMap<string, string>, restrict = true): string[] {
   const yes = (value: unknown): string => value === true ? 'Yes' : 'No'
-  return saved(fields.filter(field => restrict || !field.startsWith('keyRestrictions.')).flatMap(field => {
+  return saved(LEGACY_PROTECTION_FIELDS.filter(field => restrict || !field.startsWith('keyRestrictions.')).flatMap(field => {
     switch (field) {
       case 'isAttestationEnforced': return [`Set **Enforce attestation** to **${yes(target.isAttestationEnforced)}**.`]
       case 'keyRestrictions.isEnforced': return [`Set **Enforce key restrictions** to **${yes(target.keyRestrictions?.isEnforced)}**.`]
       case 'keyRestrictions.enforcementType': return [`Set **Restrict specific keys** to **${target.keyRestrictions?.enforcementType === 'block' ? 'Block' : 'Allow'}**.`]
       case 'keyRestrictions.aaGuids': return aaguidSteps(lowerIds(current?.keyRestrictions?.aaGuids), lowerIds(target.keyRestrictions?.aaGuids), required, modelNames, false)
-      default: return []
     }
   }))
 }
 
-/** Four persistent, outcome-sized Entra procedures for Configure Passkey Authentication. */
+/** Three persistent, outcome-sized Entra procedures for Configure Passkey Authentication. */
 export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): EmergencyTaskProjection {
   const reading = passkeyReadingOf(ctx.snapshot, ctx.mapping)
   const current = reading.current
   const profiles = current ? assignedPasskeyProfiles(current) : null
   const profileNames = profiles?.profiles.map(profile => clean(profile.name || profile.id)) ?? []
   const subject = profileNames.length === 1 ? profileNames[0] : profileNames.length > 1 ? 'Applicable passkey profiles' : 'Passkey (FIDO2) policy'
-  const profileInstruction = profileNames.length === 1 ? `Open **${profileNames[0]}**.` : profileNames.length > 1 ? `Review each applicable profile separately: ${profileNames.map(name => `**${name}**`).join(', ')}.` : 'Open **Configure**.'
-  const unresolved = (step.configurationFindings ?? []).filter(finding => finding.outcome !== 'pass')
+  const profileInstruction = profileNames.length === 1 ? `Open **${profileNames[0]}**.` : profileNames.length > 1 ? `Open each applicable profile: ${profileNames.map(name => `**${name}**`).join(', ')}.` : 'Open **Configure**.'
   const resolution = reading.resolution?.kind === 'target' ? reading.resolution : null
   const intendedModels = approvedPasskeyModels(ctx.snapshot, ctx.mapping)
   const modelNames = new Map(intendedModels.map(model => [model.aaguid.toLowerCase(), model.name]))
@@ -169,8 +174,6 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
     const id = String((raw as Record<string, unknown>).id ?? '')
     return changedProfileFacts(currentProfiles.get(id), raw, modelNames)
   })
-  const changedProfileNames = changedProfiles.map(raw => clean(String((raw as Record<string, unknown>).name || (raw as Record<string, unknown>).id || 'Passkey profile')))
-  const correctionProfileInstruction = changedProfileNames.length === 1 ? `Open **${changedProfileNames[0]}**.` : changedProfileNames.length > 1 ? `Open only these profiles: ${changedProfileNames.map(name => `**${name}**`).join(', ')}.` : profileInstruction
   const affected = affectedPasskeysByProposedChange(ctx.snapshot, ctx.mapping, ctx.groups)
   // Who the planned allow list would leave without a passkey it allows, and
   // whether any of them would keep no way to sign in (roadmap/passkeyRestrictions.ts).
@@ -189,27 +192,33 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
     steps: yubiKeySteps('the affected account', `approved hardware security key (${customHardware.map(model => `${model.name}, AAGUID ${model.aaguid}`).join('; ')})`).filter(line => !/Store the|Return to IAMAI/i.test(line)).map(line => line.replace('Microsoft Entra admin center', 'a normal work resource')),
   })
   const required = requiredModels(ctx.mapping).map(model => model.aaguid.toLowerCase())
-  const protectionChanges = !resolution || !protectionFields.length ? []
-    : changedProfiles.length ? changedProfiles.flatMap(raw => {
-        const id = String((raw as Record<string, unknown>).id ?? '')
-        const changes = profileSteps(currentProfiles.get(id), raw, required, modelNames, !withheld)
-        return changes.length ? [`Open **${clean(String((raw as Record<string, unknown>).name || id || 'Passkey profile'))}**.`, ...changes] : []
-      })
-    : (() => { const changes = legacySteps(protectionFields, current as Record<string, any> | null, resolution.target as Record<string, any>, required, modelNames, !withheld); return changes.length ? ['Open **Configure**.', ...changes] : [] })()
   const targetValue = (field: string): unknown => field === 'state' ? resolution?.target.state : field === 'includeTargets' ? resolution?.target.includeTargets : field === 'isSelfServiceRegistrationAllowed' ? resolution?.target.isSelfServiceRegistrationAllowed : field === 'isAttestationEnforced' ? resolution?.target.isAttestationEnforced : field === 'keyRestrictions.isEnforced' ? resolution?.target.keyRestrictions?.isEnforced : field === 'keyRestrictions.enforcementType' ? resolution?.target.keyRestrictions?.enforcementType : field === 'keyRestrictions.aaGuids' ? resolution?.target.keyRestrictions?.aaGuids : field === 'passkeyProfiles' ? resolution?.target.passkeyProfiles : undefined
-  const currentValue = (field: string): unknown => field === 'state' ? current?.state : field === 'includeTargets' ? current?.includeTargets : field === 'isSelfServiceRegistrationAllowed' ? current?.isSelfServiceRegistrationAllowed : field === 'isAttestationEnforced' ? current?.isAttestationEnforced : field === 'keyRestrictions.isEnforced' ? current?.keyRestrictions?.isEnforced : field === 'keyRestrictions.enforcementType' ? current?.keyRestrictions?.enforcementType : field === 'keyRestrictions.aaGuids' ? current?.keyRestrictions?.aaGuids : field === 'passkeyProfiles' ? current?.passkeyProfiles : undefined
-  const comparisonFields = [...new Set([...availabilityFields, ...protectionFields])]
-  const registrationChanges = availabilityFields.flatMap(field => {
-    const value = targetValue(field)
-    if (field === 'state' && (value === 'enabled' || value === 'disabled')) return [`Set **Enable** to **${value === 'enabled' ? 'On' : 'Off'}**.`]
-    if (field === 'includeTargets' && Array.isArray(value)) return [value.length ? `Under **Include**, target **${displayTargets(value)}**.` : 'Under **Include**, add the users or groups who register passkeys, including the emergency accounts.']
-    if (field === 'isSelfServiceRegistrationAllowed' && typeof value === 'boolean') return [`Set **Allow self-service set up** to **${value ? 'Yes' : 'No'}**.`]
-    return []
-  })
-  const inspectionFacts = resolution ? [
-    ...comparisonFields.filter(field => field !== 'passkeyProfiles').map(field => ({ label: fieldLabel(field), value: `${fieldValue(fieldLabel(field), currentValue(field), modelNames)} → ${fieldValue(fieldLabel(field), targetValue(field), modelNames)}` })),
-    ...profileCorrections,
-  ] : unresolved.flatMap(finding => finding.items?.filter(item => item.outcome !== 'pass').slice(0, 2).map(item => ({ label: item.factLabel ?? item.label, value: item.value })) ?? [])
+  // Every task states the values it sets, in every state, a change needed or
+  // not (owner, 2026-09-23): they read "Review … No save is required." once the
+  // settings matched. The values are the resolved target's. Where the scan
+  // resolves none (the settings unread, or a policy the step holds for review)
+  // registration takes the plan's own values and keeps the tenant's targets,
+  // and the protections name no value the step has not resolved.
+  const include = resolution?.target.includeTargets
+  const registrationSteps = [
+    `Set **Enable** to **${resolution?.target.state === 'disabled' ? 'Off' : 'On'}**.`,
+    Array.isArray(include) && include.length ? `Under **Include**, target **${displayTargets(include)}**.` : 'Under **Include**, add the users or groups who register passkeys, including the emergency accounts.',
+    `Set **Allow self-service set up** to **${resolution?.target.isSelfServiceRegistrationAllowed === false ? 'No' : 'Yes'}**.`,
+  ]
+  const target = resolution?.target as Record<string, any> | undefined
+  const targetProfiles = new Map((Array.isArray(target?.passkeyProfiles) ? target.passkeyProfiles as unknown[] : []).flatMap(raw => raw && typeof raw === 'object' && !Array.isArray(raw) && typeof (raw as Record<string, unknown>).id === 'string' ? [[String((raw as Record<string, unknown>).id).toLowerCase(), raw] as const] : []))
+  const assignedProfiles = profiles?.profiles ?? []
+  // The allow list is stated unless it is withheld (roadmap/passkeyRestrictions.ts),
+  // and always where the tenant already has it as planned.
+  const restrictionsOf = (raw: unknown): unknown => raw && typeof raw === 'object' ? (raw as Record<string, unknown>).keyRestrictions : undefined
+  const restricts = (from: unknown, to: unknown): boolean => !withheld || samePasskeyValue(restrictionsOf(from), restrictionsOf(to))
+  const protectionSteps = !target ? [profileInstruction]
+    : assignedProfiles.length && targetProfiles.size ? assignedProfiles.flatMap(profile => {
+        const from = currentProfiles.get(profile.id)
+        const to = targetProfiles.get(profile.id.toLowerCase())
+        return [`Open **${clean(profile.name || profile.id)}**.`, ...profileSteps(from, to, required, modelNames, restricts(from, to))]
+      })
+    : ['Open **Configure**.', ...legacySteps(current as Record<string, any> | null, target, required, modelNames, restricts(current, target))]
   // Prepare affected passkeys opens on what the scan found in what it read: the
   // accounts the planned settings would stop or could not judge, the affected
   // accounts, or how many it could not judge.
@@ -230,29 +239,16 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
   // over a tenant most of whose accounts it had not read, under a tile reading
   // "Could not verify". Every reading says so, in the tile's own sentence.
   const unreadAlso = affected.coverage.includes(REGISTERED_METHODS_UNREAD) ? ` ${fillText(PR().unreadAlso, { unread: REGISTERED_METHODS_UNREAD })}` : ''
-  const prepareLead = namedFromRead !== null
-    ? `${namedFromRead}${unreadAlso}`
-    // Nobody found affected in what was read is an all-clear only where
-    // everything was read. It was said on hostile, where no account's
-    // registered methods were read, and wherever the passkey settings
-    // themselves were not read — under a tile reading "Could not verify".
-    // What was not read is the projection's own `coverage`, the tile's words.
-    : affected.state !== 'known'
-    ? fillText(PR().unread, { unread: affected.coverage.join(' ') })
-    : 'No existing passkey is affected by the planned settings. Keep the existing working method available while preparing an account.'
+  // With nobody named the procedure opens on what to keep, with no all-clear
+  // and no qualifier about what the scan read (owner, 2026-09-23): the
+  // Existing passkeys affected card says what it found.
+  const prepareLead = namedFromRead !== null ? `${namedFromRead}${unreadAlso}` : 'Keep the existing working method available while preparing an account.'
   const tasks: EmergencyAccountTask[] = [
-    {
-      id: 'inspect-passkey-settings', accountId: null, title: 'Review passkey settings', subjectLabel: subject, targetUpn: null, required: false,
-      readinessKey: unresolved[0]?.key ?? 'registration', readinessKeys: unresolved.map(finding => finding.key), evidence: null, actionLabel: 'Open review instructions', issueKeys: [],
-      steps: ['Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Authentication methods → Policies → Passkey (FIDO2)**.', profileInstruction, ...(inspectionFacts.length ? inspectionFacts.map(fact => `Check **${fact.label.replace(/^.* · /, '')}**: ${fact.value}.`) : ['Inspect **Enable and target** and the applicable profiles.']), 'Do not change a value in this review task.'],
-    },
     {
       id: 'make-passkey-registration-available', accountId: null, title: 'Configure passkey registration', targetUpn: null,
       required: availabilityFields.length > 0, readinessKey: 'registration', evidence: availabilityFields.length ? availabilityFields.join(', ') : null, actionLabel: 'Open registration instructions',
       issueKeys: availabilityFields.map(field => `passkey:${field === 'state' ? 'method' : field === 'isSelfServiceRegistrationAllowed' ? 'selfService' : 'targets'}`),
-      steps: resolution && registrationChanges.length
-        ? ['Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Authentication methods → Policies → Passkey (FIDO2) → Enable and target**.', ...registrationChanges, 'Preserve unrelated inclusions and exclusions. Select **Save**.', 'Return to IAMAI and select **Scan to update the plan**.']
-        : ['Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Authentication methods → Policies → Passkey (FIDO2) → Enable and target**.', ...(resolution ? ['Review the current availability, targeting, exclusions, and self-service registration settings. No save is required.', 'Return to IAMAI and select **Scan to update the plan**.'] : ['Review the current availability and targeting. IAMAI has not established the change values for this scan; do not save guessed values.'])],
+      steps: ['Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Authentication methods → Policies → Passkey (FIDO2) → Enable and target**.', ...registrationSteps, 'Preserve unrelated inclusions and exclusions. Select **Save**.', 'Return to IAMAI and select **Scan to update the plan**.'],
     },
     {
       id: 'prepare-affected-passkeys', accountId: null, title: 'Prepare affected passkeys', targetUpn: null,
@@ -266,7 +262,7 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
       issueKeys: (step.configurationFindings ?? []).filter(finding => finding.key === 'protection').flatMap(finding => finding.items?.flatMap(item => item.issueKeys ?? []) ?? []),
       // The changes are the tile's facts; the procedure applies each value at the point of action.
       readinessFacts: resolution ? (profileCorrections.length ? profileCorrections : protectionFields.flatMap(field => { const value = fieldAction(field, targetValue(field), modelNames).replace(/\*\*/g, ''); return value ? [{ label: fieldLabel(field), value }] : [] })) : [],
-      steps: [...(withheld && protectionFields.some(field => field === 'passkeyProfiles' || field.startsWith('keyRestrictions.')) ? [fillText(PR().withheldTask, { count: count(restriction.lockedOut.length, 'account') })] : []), 'Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Authentication methods → Policies → Passkey (FIDO2)**.', ...(resolution && protectionChanges.length ? protectionChanges : [protectionFields.length ? correctionProfileInstruction : profileInstruction, ...(resolution && protectionFields.length && !withheld ? ['Apply the values listed in **Review passkey settings**. Preserve unrelated targeting and settings.', 'Select **Save**.'] : resolution ? ['Review storage type, attestation, authenticator restrictions, restriction mode, and approved models. No save is required.'] : ['Review the applicable profile. IAMAI has not established the change values for this scan; do not save guessed values.'])]), ...(resolution ? ['Return to IAMAI and select **Scan to update the plan**.'] : [])],
+      steps: [...(withheld && protectionFields.some(field => field === 'passkeyProfiles' || field.startsWith('keyRestrictions.')) ? [fillText(PR().withheldTask, { count: count(restriction.lockedOut.length, 'account') })] : []), 'Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Authentication methods → Policies → Passkey (FIDO2)**.', ...protectionSteps, 'Return to IAMAI and select **Scan to update the plan**.'],
     },
   ]
   // The step opens on Prepare while it is the thing to do first: somebody would be
@@ -275,7 +271,7 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
   return { tasks, printAll: true, approvedModels: intendedModels, ...(prepareFirst ? { recommendedTaskId: 'prepare-affected-passkeys' } : {}) }
 }
 
-type PasskeyRestrictionWords = { stranded: string; strandedAfter: string; strandedAfterLocked: string; withheld: string; withheldTask: string; keptMany: string; unread: string; unreadAlso: string }
+type PasskeyRestrictionWords = { stranded: string; strandedAfter: string; strandedAfterLocked: string; withheld: string; withheldTask: string; keptMany: string; unreadAlso: string }
 const PR = (): PasskeyRestrictionWords => (shared as unknown as { passkeyRestrictions: PasskeyRestrictionWords }).passkeyRestrictions
 
 /** Accounts by sign-in name, the first NAMES_INLINE of them, the rest counted. */

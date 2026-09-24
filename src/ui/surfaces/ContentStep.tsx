@@ -1,5 +1,5 @@
 import { NETWORK_NAME, NETWORK_RANGES, validNetworkRanges } from '../../mapping/networkDraft.ts'
-import { PASSKEY_METHODOLOGY, passkeyReadiness } from './passkeyPresentation.ts'
+import { passkeyReadiness } from './passkeyPresentation.ts'
 import { PasskeyModelDecision } from './PasskeyModelDecision.tsx'
 import { ManualReviewForm } from './ManualReviewForm.tsx'
 // A step opened in place: the one body the Plan draws for every step it has, and
@@ -482,12 +482,6 @@ export function ContentStep({
           >
             {step.id === 's-verify-mfa' ? <p><a href="#/readiness/step/s-verify-mfa">Open MFA Readiness</a></p> : <MfaHandoff step={step} snapshot={ctx.snapshot} mapping={ctx.mapping} />}
           </ReadinessSection>}
-          {isPasskeySettings && (
-            <section className="step-section passkey-methodology">
-              <h4>Methodology</h4>
-              <ul>{PASSKEY_METHODOLOGY.map(line => <li key={line}>{line}</li>)}</ul>
-            </section>
-          )}
 
           {/* The baseline defines this policy two ways (roadmap/baselineConflict.ts):
               the approved design's danger attention, under Readiness. The words

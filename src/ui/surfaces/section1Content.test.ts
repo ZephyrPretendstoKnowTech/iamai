@@ -14,6 +14,7 @@ import { passkeyReadiness } from './passkeyPresentation.ts'
 import { readGroup } from '../../graph/collect/onDemand.ts'
 
 const GROUP = 's-prereq-exclusion-group'
+const PASSKEY = 's-prereq-passkey-settings'
 
 /** The opened step as the board hands it over, with the Tasks Remaining cards ContentStep draws. */
 function opened(value: Fixture, id: string) {
@@ -88,4 +89,26 @@ test('1.2 #10 the empty group card reads No group selected and says once where t
   assert.equal(card.title, 'No group selected')
   assert.equal(card.instruction, 'To create one, follow Create an emergency exclusions group in Implementation Tasks.')
   assert.doesNotMatch(JSON.stringify(cards), /Choose an exclusions group|Select a group under Exclusions group/)
+})
+
+// ---- 1.3 Configure Passkey Authentication ----
+
+test('1.3 #11 with the settings matching, every task is the procedure with its values, and no review task', () => {
+  const { tasks, task, text, run } = opened(copy('demo-week2'), PASSKEY)
+  assert.equal(run.steps.find((s) => s.id === PASSKEY)!.state.satisfied, true, 'the premise: the settings match')
+  assert.deepEqual(tasks.tasks.map((t) => t.id), ['make-passkey-registration-available', 'prepare-affected-passkeys', 'apply-passkey-settings'])
+  assert.doesNotMatch(text, /Do not change a value|No save is required|No existing passkey is affected|has not established|^Review /m)
+  const registration = task('make-passkey-registration-available').steps
+  for (const line of ['Set **Enable** to **On**.', 'Set **Allow self-service set up** to **Yes**.']) assert.ok(registration.includes(line), registration.join('\n'))
+  const protection = task('apply-passkey-settings').steps.join('\n')
+  assert.match(protection, /Set \*\*Enforce attestation\*\* to \*\*Yes\*\*\./)
+  assert.match(protection, /Add AAGUID/)
+})
+
+test('1.3 #12 the Methodology block is gone', async () => {
+  assert.equal('PASSKEY_METHODOLOGY' in (await import('./passkeyPresentation.ts')), false)
+})
+
+test('1.3 #13 Configure Passkey Authentication hands over Entra and AI Info only', () => {
+  assert.deepEqual(opened(copy('demo-week2'), PASSKEY).body.artifacts.map((a) => a.id), ['portal', 'ai'])
 })
