@@ -5,7 +5,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
-import { directionSteps, nextDirectionStep } from './direction.ts'
+import { directionSteps } from './direction.ts'
 import type { DirectionInput } from './direction.ts'
 import { DIRECTION_LOCATIONS_STORAGE, DIRECTION_STEP, answersOfDecision, directionDecisionOf, legacyDecisionsOf, savedAnswerOf } from './directionAnswers.ts'
 import type { DirectionAnswer } from './directionAnswers.ts'
@@ -156,7 +156,6 @@ test('(c) Approve saves every answer under the key it is read from, completes th
     }
   }
 
-  // Approve moves to the next open Direction step.
   {
     const steps = stepsOf(fixture('demo'))
     // A service question states no window: its two sources (appSignInSummary and
@@ -165,15 +164,6 @@ test('(c) Approve saves every answer under the key it is read from, completes th
     for (const x of stepOf(steps, DIRECTION_STEP.use).directionQuestions!.filter((y) => y.key.startsWith('service:'))) {
       assert.doesNotMatch(x.evidence, /last 30 days/, x.key + ' claims a window its sources do not declare')
     }
-    // Approving D1 moves to D2; with D2 answered too, D3 is next, and from D3 back to the first open one.
-    assert.equal(nextDirectionStep(DIRECTION_STEP.use, steps), DIRECTION_STEP.accounts)
-    const answered = (id: string): Step => ({ ...stepOf(steps, id), directionQuestions: stepOf(steps, id).directionQuestions!.map((x) => ({ ...x, saved: x.suggested, needsReview: false })) })
-    const later = steps.map((s) => s.id === DIRECTION_STEP.accounts ? answered(s.id) : s)
-    assert.equal(nextDirectionStep(DIRECTION_STEP.use, later), DIRECTION_STEP.devices)
-    assert.equal(nextDirectionStep(DIRECTION_STEP.devices, later), DIRECTION_STEP.use)
-    const all = steps.map((s) => answered(s.id))
-    assert.equal(nextDirectionStep(DIRECTION_STEP.use, all), null, 'nothing open: the page stays')
-    assert.equal(nextDirectionStep('s-goal-admin-mfa', steps), null, 'only a Direction step moves the page')
   }
 })
 

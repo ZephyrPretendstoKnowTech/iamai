@@ -300,15 +300,6 @@ const STEP_WORDS: Readonly<Record<DirectionStepId, { title: string; why: string 
 /** A Direction step's title (content.json pages.app.plan.direction.steps). */
 export const directionTitleOf = (id: DirectionStepId): string => STEP_WORDS[id].title
 
-/** After approving one Direction step: the next one, in order and wrapping round, whose answers are not all approved yet; null for none. */
-export function nextDirectionStep(id: string, steps: readonly Step[]): DirectionStepId | null {
-  const order = Object.values(DIRECTION_STEP) as DirectionStepId[]
-  const at = order.indexOf(id as DirectionStepId)
-  if (at < 0) return null
-  const byId = new Map(steps.map((s) => [s.id, s]))
-  return [...order.slice(at + 1), ...order.slice(0, at)].find((next) => { const s = byId.get(next); return s !== undefined && !directionComplete(s.directionQuestions ?? []) }) ?? null
-}
-
 function directionStep(id: DirectionStepId, questions: DirectionQuestion[], savedAt: string | null): Step {
   const words = STEP_WORDS[id]
   const step = checkStep(id, words.title, words.why)
