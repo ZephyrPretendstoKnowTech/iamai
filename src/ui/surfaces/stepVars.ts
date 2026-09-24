@@ -53,6 +53,7 @@ import { exclusionsGroupChoice, groupEvidence } from '../../mapping/safetyChoice
 import { prepareVarsOf } from './prepareSteps.ts'
 import { networkDraftOf } from '../../mapping/networkDraft.ts'
 import type { DirectoryEvidence } from '../../mapping/safetyChoice.ts'
+import { trustedIpLocations } from '../../roadmap/directionAnswers.ts'
 
 export type StepVarContext = {
   snapshot: TenantSnapshot
@@ -394,6 +395,9 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     // draws no card of its own and its action is the answer
     // (whatToDoWhen.officeUnanswered).
     if (step.blockers.some((b) => b.kind === 'decision' && b.label.startsWith('direction:'))) v.officeUnanswered = true
+    // Entra already trusts a location and none is saved as the office: the step
+    // asks for the pick on its rail before any create (whatToDoWhen.officeInEntra).
+    else if (!step.state.satisfied && !step.officeToTrust?.length && ctx.mapping.trustedLocationIds.length === 0 && (trustedIpLocations(ctx.snapshot) ?? []).length > 0) v.officeInEntra = true
   }
 
   // Nobody affected (timing.ts, the one definition): the records show nobody

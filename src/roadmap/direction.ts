@@ -48,14 +48,14 @@ import type { MappingState } from '../mapping/types.ts'
 import { detectServiceAccounts } from '../mapping/serviceAccounts.ts'
 import { personLabels } from '../names.ts'
 import { sharedDeviceUsers } from '../derive/sharedDevices.ts'
-import { notPeopleIds, personAccounts, phoneSignInIds } from '../derive/sets.ts'
+import { notPeopleIds, personAccounts } from '../derive/sets.ts'
 import { setState } from './lifecycle.ts'
 import { DEVICE_GOALS } from './deviations.ts'
 import { QUESTION_STEP } from './answers.ts'
 import { PREREQ_STEP_ID, stepIdForGoal } from './stepIds.ts'
 import { checkStep, serviceEvidence, serviceOf, serviceReading } from './workflows.ts'
 import type { ServiceSignal } from './workflows.ts'
-import { DIRECTION_BLOCKER, DIRECTION_STEP, SERVICE_KEYS, directionComplete, directionStepOf, isDirectionStep, officeLocationsCreated, savedAnswerOf, savedBasisOf, trustedIpLocations } from './directionAnswers.ts'
+import { DIRECTION_BLOCKER, DIRECTION_STEP, SERVICE_KEYS, directionComplete, directionStepOf, isDirectionStep, savedAnswerOf, savedBasisOf, trustedIpLocations } from './directionAnswers.ts'
 export { DIRECTION_BLOCKER, directionBlockerStep, directionComplete } from './directionAnswers.ts'
 import type { DirectionQuestionKey, DirectionStepId } from './directionAnswers.ts'
 import type { DirectionQuestion, Step } from './types.ts'
@@ -69,8 +69,8 @@ const optionsOf = (words: Record<string, string>): DirectionQuestion['options'] 
 
 type Context = { snapshot: TenantSnapshot; mapping: MappingState }
 
-function question(key: DirectionQuestionKey, ctx: Context, q: Omit<DirectionQuestion, 'key' | 'saved' | 'needsReview' | 'basis' | 'today' | 'note' | 'noneNote' | 'pickedWith'> & Partial<Pick<DirectionQuestion, 'today' | 'note' | 'noneNote' | 'pickedWith' | 'basis' | 'needsReview'>>): DirectionQuestion {
-  return { key, today: null, note: null, noneNote: null, pickedWith: null, basis: null, needsReview: false, ...q, saved: savedAnswerOf(key, ctx.mapping) }
+function question(key: DirectionQuestionKey, ctx: Context, q: Omit<DirectionQuestion, 'key' | 'saved' | 'needsReview' | 'basis' | 'today' | 'note' | 'chosen' | 'pickedWith'> & Partial<Pick<DirectionQuestion, 'today' | 'note' | 'chosen' | 'pickedWith' | 'basis' | 'needsReview'>>): DirectionQuestion {
+  return { key, today: null, note: null, chosen: null, pickedWith: null, basis: null, needsReview: false, ...q, saved: savedAnswerOf(key, ctx.mapping) }
 }
 
 // ---- D1 Confirm What You Use ----
@@ -88,7 +88,7 @@ function serviceQuestion(key: string, signal: ServiceSignal, ctx: Context): Dire
   // said, the card says nothing.
   const seen = serviceEvidence(key, signal)
   return {
-    // Its consequence line names the plan's steps, so it is written once the plan is whole (noteServiceConsequences).
+    // Its No line names the plan's steps, so it is written once the plan is whole (noteServiceConsequences).
     ...question(`service:${key}`, ctx, { label, control: 'choice', options: optionsOf(Q.serviceOptions), suggested, evidence: seen ?? '' }),
     needsReview,
     basis: signal.used ? 'present' : signal.complete ? 'absent' : 'unread',
@@ -135,7 +135,7 @@ function useQuestions(ctx: Context, services: { keys: string[]; signal: (key: st
     label: Q.mailDevices.label, control: 'accounts', options: optionsOf(Q.accountOptions), pickedWith: 'some',
     suggested: pickable.length > 0 ? answer('some', pickable) : answer('none'),
     evidence: mailReview && mailSeen !== '' ? fillText(W.reopened, { answer: Q.accountOptions.none, evidence: mailSeen }) : mailSeen,
-    note: Q.mailDevices.consequence,
+    chosen: { some: Q.mailDevices.consequence },
     needsReview: mailReview,
     basis: senders === null ? 'unread' : pickable.length > 0 ? 'present' : 'absent',
   }))
@@ -148,7 +148,7 @@ function useQuestions(ctx: Context, services: { keys: string[]; signal: (key: st
     label: Q.partner.label, control: 'choice', options: optionsOf(Q.partner.options),
     suggested: answer(partnersUsed ? 'yes' : 'no'),
     evidence: partnerReview && partnerSeen !== '' ? fillText(W.reopened, { answer: Q.partner.options.no, evidence: partnerSeen }) : partnerSeen,
-    note: Q.partner.consequence,
+    chosen: { yes: Q.partner.consequence },
     needsReview: partnerReview,
     basis: partnersUsed ? 'present' : partners !== null && signInsRead(snapshot) ? 'absent' : 'unread',
   }))
@@ -186,85 +186,44 @@ function accountQuestions(ctx: Context, nameOf: (id: string) => string): Directi
       label: Q.serviceAccounts.label, control: 'accounts', options: optionsOf(Q.accountOptions), pickedWith: 'some',
       suggested: candidates.length > 0 ? answer('some', candidates) : answer('none'),
       evidence: seen(Q.serviceAccounts, candidates.length),
-      noneNote: Q.serviceAccounts.note,
+      // None says what it does to "these accounts" only while there are some: found, or already picked.
+      chosen: candidates.length > 0 || mapping.serviceAccountUserIds.length > 0 ? { none: Q.serviceAccounts.note } : null,
       note: setAside,
     }),
     question('sharedDevices', ctx, {
       label: Q.sharedDevices.label, control: 'accounts', options: optionsOf(Q.accountOptions), pickedWith: 'some',
       suggested: shared.length > 0 ? answer('some', shared) : answer('none'),
       evidence: seen(Q.sharedDevices, shared.length),
-      noneNote: Q.sharedDevices.note,
+      chosen: shared.length > 0 || (mapping.sharedDeviceUserIds ?? []).length > 0 ? { none: Q.sharedDevices.note } : null,
     }),
   ]
 }
 
 // ---- D3 Decide How and Where People Sign In ----
 
-/**
- * What the Managed answer costs in licences, where the scan read them.
- *
- * Null where Intune was never read: an absent capability is not the same as
- * zero seats, and inventing a licence position is the failure this whole
- * question exists to avoid. Null too where the tenant holds no Intune licence:
- * evidence comes in the walk's shapes only, and the one this said is not one
- * of them (walk list 14).
- */
-function intuneSeatLine(ctx: Context): string | null {
-  const intune = ctx.snapshot.capabilities?.intune
-  if (intune === undefined || intune === null) return null
-  if (intune.enabled !== true) return null
-  const { seats, consumed } = intune
-  if (typeof seats !== 'number' || typeof consumed !== 'number') return null
-  return fillText(Q.computers.intuneSeats, { consumed, seats })
-}
-
 function deviceQuestions(ctx: Context): DirectionQuestion[] {
-  const evidence = ctx.snapshot.scenarioEvidence ?? null
-  // Every count here is of the plan's people, the one set every people count
-  // reads (derive/sets.ts personAccounts over notPeopleIds, as generate.ts
-  // takes it): the emergency access, service and shared-device accounts the
-  // sign-in records also name are not people, and Identify Service and Shared
-  // Accounts says they are out of the people counts. Where the user rows were
-  // not read there is no such set, and the cards say nothing about people.
-  const usersRead = ctx.snapshot.sources.users?.status === 'ok' || ctx.snapshot.sources.users?.status === 'partial'
-  const people = new Set(personAccounts(ctx.snapshot, notPeopleIds(ctx.mapping)).map((u) => u.id))
-  const peopleIn = (ids: readonly string[] | null | undefined): number | undefined => !usersRead || ids === null || ids === undefined ? undefined : ids.filter((id) => people.has(id)).length
-  const unjoined = peopleIn(evidence?.unjoinedComputers?.people)
-  const registered = peopleIn(evidence?.registeredComputers?.people)
-  // Who signed in from a phone: the one reading MFA Readiness draws its phones from (derive/sets.ts).
-  const phones = peopleIn(phoneSignInIds(ctx.snapshot))
-  // A sign-in line is said only over sign-in records read whole (signInsReadWhole).
-  const readWhole = signInsReadWhole(ctx.snapshot)
-  const seen = (n: number | undefined, some: string, none: string | null): string | null => !readWhole || n === undefined ? null : n > 0 ? fillText(some, { n }) : none
-  const lines = (...all: (string | null)[]): string => all.filter((line): line is string => line !== null).join(' ')
-  // The device policies are on the plan only with Intune licences (their goals' applicability).
+  // The device policies are on the plan only with Intune licences (their goals'
+  // applicability): without them, managing a computer or a phone changes
+  // nothing on the plan, and only Blocked from company data says anything.
   const intune = ctx.snapshot.capabilities?.intune?.enabled === true
+  // Not managed takes the two steps off only while phones are not Enrolled in
+  // Intune, which keeps them on for phones (deviations.ts deviceStepDoesntApply).
+  const phonesEnrolled = savedAnswerOf('phones', ctx.mapping)?.value === 'enrolled'
+  const C = Q.computers.chosen
+  // 2.3 draws no scan counts: it asks how people should sign in, not what the
+  // tenant has today (owner, 2026-09-24).
   return [
     question('computers', ctx, {
       label: Q.computers.label, control: 'choice', options: optionsOf(Q.computers.options),
-      // What Managed would cost here: the Intune licences the tenant holds.
       suggested: answer('managed'),
-      // Two populations, each saying what it counted. `unjoinedComputers` is
-      // devices with NO trust type; a REGISTERED computer is not joined either,
-      // so leaving the registered ones out understated a 2,339-person fleet as 3.
-      evidence: lines(
-        intuneSeatLine(ctx),
-        seen(unjoined, Q.computers.today, Q.computers.todayNone),
-        unjoined === undefined ? null : seen(registered, Q.computers.todayRegistered, null),
-      ),
-      // Only where Unmanaged does take the two steps off: the plan holds them
-      // only with Intune licences, and phones answered Compliant keep them on,
-      // scoped to phones (deviations.ts deviceStepDoesntApply).
-      note: intune && (savedAnswerOf('phones', ctx.mapping)?.value ?? 'apps') !== 'enrolled' ? Q.computers.note : null,
+      evidence: '',
+      chosen: intune ? { managed: C.managed, unmanaged: phonesEnrolled ? C.unmanagedPhonesEnrolled : C.unmanaged } : null,
     }),
     question('phones', ctx, {
       label: Q.phones.label, control: 'choice', options: optionsOf(Q.phones.options),
       suggested: answer('apps'),
-      evidence: lines(seen(phones, Q.phones.today, Q.phones.todayNone)),
-      // Blocked from company data adds a policy step of its own (generate.ts
-      // s-ladder-phone-access-restriction); Compliant adds phones to the
-      // managed-device policy, which only a tenant with Intune licences can use.
-      note: lines(Q.phones.note, intune ? Q.phones.noteIntune : null),
+      evidence: '',
+      chosen: intune ? Q.phones.chosen : { blocked: Q.phones.chosen.blocked },
     }),
     officeNetworkQuestion(ctx),
   ]
@@ -282,43 +241,23 @@ function officeNetworkQuestion(ctx: Context): DirectionQuestion {
   const read = locations !== null
   const trusted = (locations ?? []).map((l) => l.id)
   const names = (locations ?? []).map((l) => l.name).join(', ')
-  // A saved "Not in Entra yet" reopens once the scan finds the office location
-  // it was waiting for, pre-filled with it (walk list item 6, as #29 and #36):
-  // Define the Trusted Network is done with it, and the policies that use the
-  // office take it from this answer.
-  const created = officeLocationsCreated(snapshot, ctx.mapping)
-  const reopened = created.length > 0
-  const seen = !read ? null : trusted.length > 0 ? fillText(Q.officeNetwork.seen, { n: trusted.length, names }) : Q.officeNetwork.notSeen
-  return (
-    question('officeNetwork', ctx, {
-      label: Q.officeNetwork.label, control: 'locations', options: optionsOf(Q.officeNetwork.options), pickedWith: 'office',
-      // A tenant with no trusted named location is not thereby all-remote, and
-      // the scan reads nothing either way. Suggesting "Everyone works remotely"
-      // switched off the step that would have defined the office network in the
-      // first place, on no evidence; the suggestion that keeps the work on the
-      // plan is the conservative one (owner, 2026-09-20).
-      suggested: reopened ? answer('office', created.map((l) => l.id)) : trusted.length > 0 ? answer('office', trusted) : answer('notInEntra'),
-      needsReview: reopened,
-      // The trusted locations the answer is approved against, so a location
-      // trusted after "Not in Entra yet" is told from one already there.
-      basis: read ? [...trusted].sort().join(',') : null,
-      // The evidence, and — where the saved answer contradicts it — what that
-      // answer does with it. "Everyone works remotely" sat beside "1 named
-      // location is marked trusted" with nothing joining them: the evidence is
-      // true, argues for the opposite answer, and the suggestion WAS the
-      // opposite answer. A reader who reads carefully, which is who this
-      // question is for, met a contradiction on one line and no way to tell
-      // which half to believe.
-      // Named locations not read: no evidence line (walk list 60).
-      evidence: [
-        reopened && seen !== null ? fillText(W.reopened, { answer: Q.officeNetwork.options.notInEntra, evidence: seen }) : seen,
-        read && trusted.length > 0 && savedAnswerOf('officeNetwork', ctx.mapping)?.value === 'remote'
-          ? fillText(Q.officeNetwork.savedRemoteUnused, { names })
-          : null,
-      ].filter((line): line is string => line !== null).join(' '),
-      note: Q.officeNetwork.note,
-    })
-  )
+  // One decision only a person can make: an office (or VPN) network, or none.
+  // Whether it is in Entra yet is the scan's to read, and Define the Trusted
+  // Network does that part (owner, 2026-09-24).
+  return question('officeNetwork', ctx, {
+    label: Q.officeNetwork.label, control: 'choice', options: optionsOf(Q.officeNetwork.options),
+    // A tenant with no trusted named location is not thereby all-remote, and
+    // the scan reads nothing either way: the suggestion keeps Define the Trusted
+    // Network on the plan (owner, 2026-09-20).
+    suggested: answer('office'),
+    // The trusted locations the answer is approved against, so a location
+    // trusted after it is told from one already there (officeLocationsCreated).
+    basis: read ? [...trusted].sort().join(',') : null,
+    // Named locations not read: no evidence line (walk list 60). A remote answer
+    // beside a location Entra trusts says what it does with it (walk list 61).
+    evidence: read && trusted.length > 0 && savedAnswerOf('officeNetwork', ctx.mapping)?.value === 'remote' ? fillText(Q.officeNetwork.savedRemoteUnused, { names }) : '',
+    chosen: Q.officeNetwork.chosen,
+  })
 }
 
 // ---- the steps ----
@@ -503,7 +442,7 @@ export function noteServiceConsequences(steps: Step[]): void {
   for (const q of use?.directionQuestions ?? []) {
     if (!q.key.startsWith('service:')) continue
     const titles = [...new Set(steps.filter((s) => !isDirectionStep(s.id) && directionDependenciesOf(s).includes(q.key as DirectionQuestionKey)).map((s) => contentTitle(s)))]
-    q.note = titles.length > 0 ? fillText(Q.serviceConsequence, { steps: list(titles) }) : null
+    q.chosen = titles.length > 0 ? { no: fillText(Q.serviceConsequence, { steps: list(titles) }) } : null
   }
 }
 

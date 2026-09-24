@@ -10,7 +10,9 @@ import type { AccountInfo } from '@azure/msal-browser'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { BaselineResult } from '../baseline.ts'
 import type { Step } from '../../roadmap/types.ts'
-import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
+import { DIRECTION_STEP, directionDecisionWith, isDirectionStep } from '../../roadmap/directionAnswers.ts'
+import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
+import type { DirectionAnswer } from '../../roadmap/directionAnswers.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import type { DirectoryEvidence } from '../../mapping/safetyChoice.ts'
 import type { OwnerConfirmation, StepDecision, StepDecisionInput } from '../../roadmap/decisions.ts'
@@ -259,7 +261,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
     // projection: the date reads it, the lane never does.
     const waveStart = waveStartOf(step)
     const when = boardWhenOf(step, waveStart, laneView)
-    renderById.set(step.id, () => <Row key={step.id} step={step} lane={laneView} number={rowNumbers.get(step.id) ?? null} blockers={readinessBlockersOf(reading, titleOf)} enforceWaits={enforceWaits} prerequisiteLabel={prerequisiteLabel} onOpenMappings={openSettings} when={when} waveStart={waveStart} open={open === step.id} onToggle={() => openStep(step.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[decisionKeyOf(step.id)] ?? null} followUp={step.id === SPECIAL_CARE_STEP_ID ? { saved: data.stepDecisions[MFA_FOLLOW_UP_KEY] ?? null, onDecide: (d) => data.onDecide(MFA_FOLLOW_UP_KEY, d) } : undefined} objectTask={step.objectTask ? { saved: data.stepDecisions[step.objectTask.id] ?? null, onDecide: (d) => data.onDecide(step.objectTask!.id, d) } : undefined} onDecide={(d) => { data.onDecide(decisionKeyOf(step.id), d); if (isDirectionStep(step.id)) approved.current = step.id }} saveStatus={data.persistence} confirmations={data.confirmations[step.id] ?? NO_CONFIRMATIONS} onConfirm={(c) => data.onConfirm(step.id, c)} onUnconfirm={(ids) => data.onUnconfirm(step.id, ids)} />)
+    renderById.set(step.id, () => <Row key={step.id} step={step} lane={laneView} number={rowNumbers.get(step.id) ?? null} blockers={readinessBlockersOf(reading, titleOf)} enforceWaits={enforceWaits} prerequisiteLabel={prerequisiteLabel} onOpenMappings={openSettings} when={when} waveStart={waveStart} open={open === step.id} onToggle={() => openStep(step.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[decisionKeyOf(step.id)] ?? null} followUp={step.id === SPECIAL_CARE_STEP_ID ? { saved: data.stepDecisions[MFA_FOLLOW_UP_KEY] ?? null, onDecide: (d) => data.onDecide(MFA_FOLLOW_UP_KEY, d) } : undefined} objectTask={step.objectTask ? { saved: data.stepDecisions[step.objectTask.id] ?? null, onDecide: (d) => data.onDecide(step.objectTask!.id, d) } : undefined} officeNetwork={step.id === PREREQ_STEP_ID.trustedLocation ? (a) => { const devices = c.steps.find((s) => s.id === DIRECTION_STEP.devices); if (devices) data.onDecide(DIRECTION_STEP.devices, directionDecisionWith(devices, 'officeNetwork', a)) } : undefined} onDecide={(d) => { data.onDecide(decisionKeyOf(step.id), d); if (isDirectionStep(step.id)) approved.current = step.id }} saveStatus={data.persistence} confirmations={data.confirmations[step.id] ?? NO_CONFIRMATIONS} onConfirm={(c) => data.onConfirm(step.id, c)} onUnconfirm={(ids) => data.onUnconfirm(step.id, ids)} />)
   }
 
   if (cleanupPhase) {
@@ -704,12 +706,14 @@ function CleanupRow({ phase, row, number, answers, open, onToggle, onScan, onDon
 
 const NO_CONFIRMATIONS: Readonly<Record<string, OwnerConfirmation>> = {}
 
-function Row({ step, lane, number, blockers, enforceWaits, prerequisiteLabel, onOpenMappings, when, waveStart, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onDoesntApply, onTick, computed, snapshot, mapping, operatorId, dates, groups, directory, decision, onDecide, followUp, objectTask, saveStatus, confirmations, onConfirm, onUnconfirm, onScan }: {
+function Row({ step, lane, number, blockers, enforceWaits, prerequisiteLabel, onOpenMappings, when, waveStart, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onDoesntApply, onTick, computed, snapshot, mapping, operatorId, dates, groups, directory, decision, onDecide, followUp, objectTask, officeNetwork, saveStatus, confirmations, onConfirm, onUnconfirm, onScan }: {
   step: Step
   /** The campaign's follow-up list, passed through to its step (ContentStep). */
   followUp?: { saved: StepDecision | null; onDecide: (decision: StepDecisionInput) => void }
   /** The saved decision of the object the step makes itself, and its Save, under the object's own id (ContentStep; Stage 3). */
   objectTask?: { saved: StepDecision | null; onDecide: (decision: StepDecisionInput) => void }
+  /** Define the Trusted Network's office network answer, saved as Decide How and Where People Sign In's own. */
+  officeNetwork?: (answer: DirectionAnswer) => void
   /** The row's one state reading (planBoard.ts laneViewOf): the row's label and tone, and the opened step's badge, bar and rail. */
   lane: LaneView
   /** Cleanup work the enforce checklist's conditions depend on, by title (stepBody.ts enforceWaits). */
@@ -803,6 +807,7 @@ function Row({ step, lane, number, blockers, enforceWaits, prerequisiteLabel, on
           onDecide={onDecide}
           followUp={followUp}
           objectTask={objectTask}
+          officeNetwork={officeNetwork}
           saveStatus={saveStatus}
           confirmations={confirmations}
           onConfirm={onConfirm}

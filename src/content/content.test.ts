@@ -214,6 +214,8 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // Held on the office answer (walk list 60), and a strength of the baseline's
   // name to correct (walk list 55): states the example does not reach.
   '.steps[4].whatToDoWhen.officeUnanswered.lead',
+  // Entra already trusts a location and none is saved as the office (stepVars.ts officeInEntra).
+  '.steps[4].whatToDoWhen.officeInEntra.lead',
   '.steps[10].whatToDoWhen.strengthToCorrect.lead',
   '.steps[5].who.none',
   // The service-accounts group's lead once the scan finds the group holding

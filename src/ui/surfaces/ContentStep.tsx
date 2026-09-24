@@ -60,7 +60,8 @@ import { AuthoredText, DoneWhen, EmergencySlotBody, PolicyMembers, ReadinessSect
 import { MfaHandoff } from './MfaHandoff.tsx'
 import { TEAM_READINESS_HREF } from './prepareSteps.ts'
 import { HEAD, decisionHeadingsOf, taskHeadingsOf } from './stepHeadings.ts'
-import { ApproveAnswers, DirectionQuestions, useDirectionDraft } from './DirectionQuestions.tsx'
+import { ApproveAnswers, DirectionQuestions, OfficeNetworkRail, useDirectionDraft } from './DirectionQuestions.tsx'
+import type { DirectionAnswer } from '../../roadmap/directionAnswers.ts'
 import { ANSWERED_IN } from '../../roadmap/direction.ts'
 import { channelTabsOf, stepBodyOf, truthy } from './stepBody.ts'
 import type { Artifact, Channel } from './stepBody.ts'
@@ -219,6 +220,7 @@ export function ContentStep({
   onOpenMappings,
   followUp,
   objectTask,
+  officeNetwork,
 }: {
   step: Step
   ctx: StepVarContext
@@ -228,6 +230,8 @@ export function ContentStep({
    * countries step and saved under the location's own id, as it always was.
    */
   objectTask?: { saved: StepDecision | null; onDecide?: (decision: StepDecisionInput) => void }
+  /** Define the Trusted Network's office network answer, saved as Decide How and Where People Sign In's own (Plan.tsx). */
+  officeNetwork?: (answer: DirectionAnswer) => void
   /** The campaign's "Turn on without them for now" list: its saved decision and its Save (roadmap/followUp.ts). Only the campaign is given one. */
   followUp?: { saved: StepDecision | null; onDecide: (decision: StepDecisionInput) => void }
   /**
@@ -513,6 +517,8 @@ export function ContentStep({
             a person has (Foundation C). */}
         <StepActionColumn rail={rail}>
           {decisionHead && !printing && <ApproveAnswers draft={directionDraft} onDecide={onDecide} saving={saveStatus === 'saving'} />}
+          {/* Define the Trusted Network answers the office network here too: which trusted location is the office, or that everyone works remotely (owner, 2026-09-24). */}
+          {officeNetwork && !printing && step.doesntApply == null && <OfficeNetworkRail key={ctx.mapping.trustedLocationIds.join(',')} ctx={ctx} picked={ctx.mapping.trustedLocationIds} onAnswer={officeNetwork} />}
           {/* A question that moved to Define Your Rollout Scope is answered there, and this step draws nothing in its place: no Answered in block (walk list item 19; roadmap/direction.ts ANSWERED_IN). A step whose own picker saves under a key of its own still draws it: Create or Correct Service Accounts Group's group picker (decisions.ts decisionKeyOf). */}
           {/* The picker is the step's own, or — on a step that makes an object itself and asks nothing of its own — the object's, saved under the object's id (stepBody.ts taskDecision; Stage 3: the countries location's Work Countries, on the countries step). */}
           {ANSWERED_IN[step.id] && decisionKeyOf(step.id) === step.id ? null : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && <Decision key={step.id} d={taskDecision?.d ?? d} ex={taskDecision?.ex ?? ex} saved={taskDecision ? objectTask?.saved ?? null : decision} onDecide={taskDecision ? objectTask?.onDecide : onDecide} stepId={taskDecision?.stepId ?? decisionKeyOf(step.id)} ctx={ctx} printing={printing} railInstruction={!taskDecision && rail.instruction !== null} />}

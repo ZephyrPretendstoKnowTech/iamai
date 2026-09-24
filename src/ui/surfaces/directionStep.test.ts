@@ -108,8 +108,8 @@ test('the text fixes the owner approved on the frozen steps, 2026-09-20: the six
     // 2. Blocked from company data adds a policy step of its own, which the
     //    question never said.
     const phones = devices.find((q) => q.key === 'phones')!
-    assert.match(phones.note ?? '', /Keep Company Data Off Phones/)
-    assert.match(phones.note ?? '', /report-only/)
+    assert.match(phones.chosen?.blocked ?? '', /Keep Company Data Off Phones/)
+    assert.match(phones.chosen?.blocked ?? '', /report-only/)
 
     // 3. The same dropdown position means the same thing: the service questions
     //    read Yes/No, and these two read No/Yes beside them on one screen.

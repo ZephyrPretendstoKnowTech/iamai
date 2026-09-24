@@ -13,14 +13,14 @@
 // The controls are the ones the Plan's decisions already use: the dropdown the
 // decision options draw (`decision-select`) and the shared Picker over the
 // pickers' own universes (pickerRows.ts). Every word is content.json's.
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import type { Step } from '../../roadmap/types.ts'
 import type { DirectionQuestion } from '../../roadmap/types.ts'
 import type { StepDecisionInput } from '../../roadmap/decisions.ts'
-import { directionAnswerComplete, directionDecisionOf, directionDraftOf } from '../../roadmap/directionAnswers.ts'
+import { directionAnswerComplete, directionDecisionOf, directionDraftOf, trustedIpLocations } from '../../roadmap/directionAnswers.ts'
 import type { DirectionAnswer } from '../../roadmap/directionAnswers.ts'
 import { answerTextOf } from '../../roadmap/direction.ts'
-import { directionWords } from '../../content/content.ts'
+import { directionWords, stepById } from '../../content/content.ts'
 import { Button, Picker } from '../components/index.ts'
 import type { PickerOption } from '../components/index.ts'
 import { accountBadges, filterPickerObjects, pickerUniverse } from './pickerRows.ts'
@@ -77,13 +77,12 @@ function QuestionTile({ q, tag, answer, onAnswer, ctx, printing }: { q: Directio
   const suggestions: PickerOption[] = q.suggested.picked.map((id) => byId.get(id) ?? { id, name: nameOf(id) })
   const labelId = `direction-${q.key.replace(/[^a-z0-9]+/gi, '-')}`
   const picks = q.pickedWith !== null && answer.value === q.pickedWith
-  // What None does to "these accounts" reads only while there are some: the
-  // scan's (its suggestion picks them) or the answer's own picks.
-  const noneNote = q.noneNote && (q.suggested.picked.length > 0 || answer.picked.length > 0) ? q.noneNote : null
+  // What the answer on screen does, in one line, and it changes with the answer (owner, 2026-09-24).
+  const chosen = q.chosen?.[answer.value] ?? null
   // An Emergency Access subject card (ContentStep.tsx EmergencyAccountStatusTile),
   // filled with a question: the state where that card carries its subject label,
   // the question where it carries its title, then the control on a row of its
-  // own, the evidence under it, and the list picker last.
+  // own, the evidence under it, what the answer does, and the list picker last.
   return (
     <article className="emergency-account-status direction-question" data-question={q.key}>
       <p className="emergency-account-label direction-question-state">{TAG_WORDS[tag]}</p>
@@ -95,7 +94,7 @@ function QuestionTile({ q, tag, answer, onAnswer, ctx, printing }: { q: Directio
       )}
       {q.evidence && <p>{q.evidence}</p>}
       {q.today && <p>{q.today}</p>}
-      {noneNote && <p>{noneNote}</p>}
+      {chosen && <p>{chosen}</p>}
       {q.note && <p>{q.note}</p>}
       {!printing && picks && (
         <div className="direction-question-picker">
@@ -179,6 +178,39 @@ export function ApproveAnswers({ draft, onDecide, saving = false }: { draft: Dir
     <div className="direction-approve">
       <Button variant="primary" disabled={empty.length > 0 || !pending || saving || !onDecide} onClick={approve}>{W.approve}</Button>
       {why.map((line) => <p key={line} className="reason">{line}</p>)}
+    </div>
+  )
+}
+
+/**
+ * Define the Trusted Network's own controls (owner, 2026-09-24): which of the
+ * locations Entra already trusts are the office, where the scan read any, and
+ * Everyone works remotely. Each saves Decide How and Where People Sign In's own
+ * Office network answer (directionAnswers.ts directionDecisionWith), so the
+ * answer is stored once and reads the same on both steps.
+ */
+export function OfficeNetworkRail({ ctx, picked, onAnswer }: { ctx: StepVarContext; picked: readonly string[]; onAnswer: (a: DirectionAnswer) => void }) {
+  const O = W.questions.officeNetwork
+  const labelId = useId()
+  const universe = useMemo(() => pickerUniverse(PREREQ_STEP_ID.trustedLocation, 'locations', { snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, groups: ctx.groups, directory: ctx.directory }), [ctx.snapshot, ctx.mapping, ctx.nameOf, ctx.groups, ctx.directory])
+  const byId = useMemo(() => new Map(universe.map((o) => [o.id, o])), [universe])
+  const trusted = trustedIpLocations(ctx.snapshot) ?? []
+  // Nothing picked yet: the locations Entra trusts, pre-filled as the suggestion,
+  // and a Save beside them, since nothing is the office until it is saved.
+  const [chips, setChips] = useState<PickerOption[]>(() => (picked.length > 0 ? picked : trusted.map((l) => l.id)).map((id) => byId.get(id) ?? { id, name: trusted.find((l) => l.id === id)?.name ?? id }))
+  const prefilled = picked.length === 0 && chips.length > 0
+  const [query, setQuery] = useState('')
+  const results = useMemo(() => filterPickerObjects(universe, query), [universe, query])
+  const suggestions: PickerOption[] = trusted.filter((l) => !chips.some((c) => c.id === l.id)).map((l) => byId.get(l.id) ?? { id: l.id, name: l.name })
+  const save = String((stepById[PREREQ_STEP_ID.trustedLocation] as { decision?: { save?: string } } | undefined)?.decision?.save ?? '')
+  return (
+    <div className="decision">
+      <h5 className="dlabel action-heading" id={labelId}>{O.label}</h5>
+      {trusted.length > 0 && (
+        <Picker labelledBy={labelId} selected={chips} options={results} suggestions={suggestions} onChange={setChips} onSearch={setQuery} onCommit={(next) => { if (next.length > 0) onAnswer({ value: 'office', picked: next.map((c) => c.id) }) }} />
+      )}
+      {trusted.length > 0 && prefilled && <Button variant="secondary" onClick={() => onAnswer({ value: 'office', picked: chips.map((c) => c.id) })}>{save}</Button>}
+      <Button variant="secondary" onClick={() => onAnswer({ value: 'remote', picked: [] })}>{O.options.remote}</Button>
     </div>
   )
 }

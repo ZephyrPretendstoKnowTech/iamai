@@ -227,13 +227,14 @@ test('Approve answers is pressed only where the screen lets it be pressed', () =
   // Approve is disabled while a question that takes a list has none
   // (directionAnswerComplete). acceptDirection saved such a step anyway: a
   // countries question with no country suggested was approved as none. The
-  // office network's "trusted locations" answer takes a list the same way.
+  // service accounts' "Pick accounts" answer takes a list the same way.
+  const ACCOUNTS = 's-direction-accounts'
   const t = tenant('mid')
   const r = plan(t)
-  const incomplete = { ...r, steps: r.steps.map((s) => (s.id !== DEVICES ? s : { ...s, directionQuestions: s.directionQuestions!.map((q) => (q.key !== 'officeNetwork' ? q : { ...q, saved: null, suggested: { value: 'office', picked: [] } })) })) }
-  const q = incomplete.steps.find((s) => s.id === DEVICES)!.directionQuestions!.find((x) => x.key === 'officeNetwork')!
-  assert.equal(directionAnswerComplete(q, q.suggested), false, 'an empty trusted-locations answer is approvable: this proves nothing')
+  const incomplete = { ...r, steps: r.steps.map((s) => (s.id !== ACCOUNTS ? s : { ...s, directionQuestions: s.directionQuestions!.map((q) => (q.key !== 'serviceAccounts' ? q : { ...q, saved: null, suggested: { value: 'some', picked: [] } })) })) }
+  const q = incomplete.steps.find((s) => s.id === ACCOUNTS)!.directionQuestions!.find((x) => x.key === 'serviceAccounts')!
+  assert.equal(directionAnswerComplete(q, q.suggested), false, 'an empty picked-accounts answer is approvable: this proves nothing')
   const approved = acceptDirection(t, incomplete)
-  assert.equal(approved.decisions?.[DEVICES], undefined, 'the harness approved a step whose Approve button is disabled')
+  assert.equal(approved.decisions?.[ACCOUNTS], undefined, 'the harness approved a step whose Approve button is disabled')
   assert.ok(approved.decisions?.['s-direction-use'], 'the steps that could be approved were not')
 })

@@ -4,7 +4,7 @@ import { followUpIdsOf, settleFollowUp } from './followUp.ts'
 import { addWorkflowSteps } from './workflows.ts'
 import { countDirectionImpact, directionSteps } from './direction.ts'
 import dependencyData from '../actionability/dependency-data.json' with { type: 'json' }
-import { answeredReasonOf, officeLocationsCreated, trustedIpLocations } from './directionAnswers.ts'
+import { answeredReasonOf, officeLocationsCreated, savedAnswerOf, trustedIpLocations } from './directionAnswers.ts'
 import { applyManualReviews, perUserMfaReading } from './manualWork.ts'
 import { LEGACY_AUTH_STEP_ID, MAIL_ACCOUNTS_WAIT, mailAccountsToMove, settleBlockSignIns } from './blockSignIns.ts'
 // Step generation (roadmap.md §1–§6; 2026-08-27 redesign: collapsed phase 0,
@@ -1208,6 +1208,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // the one thing the tile has to add — a network the scan drafted, waiting to be
   // created — is still drawn, because that is work and not a question.
   const locStepId = PREREQ_STEP_ID.trustedLocation
+  // The person's own saved answer that everyone works remotely (directionAnswers.ts savedAnswerOf).
+  const officeNetworkRemote = savedAnswerOf('officeNetwork', mapping)?.value === 'remote'
   if (canUseConditionalAccess) {
     const networkRead = snapshot.config.namedLocations?.status === 'ok'
     const trustedNow = trustedIpLocations(snapshot) ?? []
@@ -1215,17 +1217,19 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const proposed = proposedObjectNames(naming).trustedLocation
     const networkDraft = networkDraftOf(mapping)
     const networkConfirmed = mapping.wizardAnswered.trustedLocations === true && mapping.assumed?.trustedLocations !== 'detected'
-    // The office the step is done with: the locations picked in Decide How and
-    // Where People Sign In, each one trusted; or, after "Not in Entra yet", the
-    // trusted location the scan found since (walk list item 6), which reopens
-    // that answer pre-filled with it (direction.ts officeNetworkQuestion).
+    // Everyone works remotely is the person's own saved answer, from Decide How
+    // and Where People Sign In or this step's own rail; nothing assumes it.
+    const remote = officeNetworkRemote
+    // The office the step is done with: the locations picked on this step's
+    // rail, each one trusted; or the trusted location the scan found since the
+    // office was answered (walk list item 6).
     const pickedTrusted = trustedNow.filter((l) => picked.includes(l.id))
     const created = officeLocationsCreated(snapshot, mapping)
     const office = networkRead && networkConfirmed && picked.length > 0 && pickedTrusted.length === picked.length ? pickedTrusted : created
-    const satisfied = networkRead && ((networkConfirmed && picked.length === 0) || office.length > 0)
+    const satisfied = networkRead && !remote && office.length > 0
     // A picked location the scan reads without the trusted mark is marked
     // trusted, not made again (walk list item 61).
-    const officeToTrust = !satisfied && networkRead && networkConfirmed
+    const officeToTrust = !satisfied && !remote && networkRead && networkConfirmed
       ? (snapshot.config.namedLocations?.rows ?? [])
         .map((l) => l as { id?: string; displayName?: string; isTrusted?: boolean; '@odata.type'?: string })
         .filter((l) => typeof l.id === 'string' && picked.includes(l.id) && l.isTrusted !== true && String(l['@odata.type'] ?? '').includes('ipNamedLocation'))
@@ -1260,7 +1264,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // treat it as done (below: rule 1 and the named dependencies), so a remote
     // tenant keeps every hold it had and waits on nothing that does not apply.
     // Only the person's own saved answer says remote; nothing assumes it.
-    if (networkConfirmed && mapping.trustedLocationIds.length === 0) {
+    if (remote) {
       const network = steps[steps.length - 1]
       network.doesntApply = answeredReasonOf('officeNetwork', 'remote')
       network.doesntApplyByAnswer = true
@@ -3013,11 +3017,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // shows that prerequisite, and "when 1 trusted location exist (now 0)" beside
     // it is the same sentence again (docs/plans/step-redundancy-analysis.md
     // finding 3).
-    // A network step that does not apply (everyone remote) is not work to do:
-    // it counts as done here, so the tenant with no trusted location keeps the
-    // hold (V1 decision 6).
+    // A remote team has no office to register from: the policy then requires
+    // MFA to register from anywhere (its template excludes only trusted
+    // locations), so nothing waits for a trusted location (owner, 2026-09-24).
     const locationStepToDo = steps.some((s) => s.id === locStepId && s.status !== 'done' && s.doesntApply == null)
-    if (trustedLocationCount === 0 && !doesntApply(locStepId) && !locationStepToDo) blockLate(registrationStep, 'registration-no-trusted-location', BLOCKED_REASON.exist(1, 'trusted location', 0))
+    if (trustedLocationCount === 0 && !officeNetworkRemote && !doesntApply(locStepId) && !locationStepToDo) blockLate(registrationStep, 'registration-no-trusted-location', BLOCKED_REASON.exist(1, 'trusted location', 0))
   }
 
   // The countries location, as the countries policy's own first task (Stage 3,
