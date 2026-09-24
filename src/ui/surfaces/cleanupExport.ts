@@ -28,7 +28,7 @@ export function cleanupSourceLine(entry: CleanupEntry): string | null {
 
 /** Verify Emergency Access's line under its milestone: the sign-in still to do, in the owner's words (2026-09-23). */
 export function drillMilestone(row: CleanupPhase['rows'][number]): string {
-  return row.done ? 'Every selected account is verified.' : (A as unknown as { emergencyTasks: { signInEachAccount: string } }).emergencyTasks.signInEachAccount
+  return row.done ? 'Every selected account is verified.' : (A as unknown as { recoverySignIn: { milestone: string } }).recoverySignIn.milestone
 }
 
 /** Shared by the live drill and the existing printable/exported plan. */
