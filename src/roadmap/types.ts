@@ -309,15 +309,6 @@ export type Action = {
    */
   ownPolicyDiffers?: { policyName: string; dimensions: string[] }
   /**
-   * Where the policy the plan writes asks for less than its goal's own grant
-   * floor (coverage/strength.ts satisfiesFloor over coverage/facts.ts
-   * policyFacts): the pinned baseline's admin policy grants "Modern MFA + TAP"
-   * under a goal whose floor is phishing-resistant MFA. The pinned baseline
-   * wins (owner, 2026-09-22): the plan builds it and turns it on as written,
-   * and the step says the grant is weaker — never an instruction to change it.
-   */
-  belowGoalFloor?: { strengthId: string | null; builtIn: string[]; floor: import('../coverage/types.ts').GrantFloor }
-  /**
    * Why the step offers no implementation although nothing it names is missing:
    * the plan cannot tell which of the tenant's policies is which half of a pair,
    * so it will not guess. The step says so and waits for a person to sort it out.
@@ -701,6 +692,13 @@ export type Step = {
    * here had no slot for offIds, so what the engine knew had no type on the step.
    */
   methodPreparation?: import('./methodReadiness.ts').MethodPreparation
+  /**
+   * Require MFA for Everyone only: the accounts its policy reaches that have not
+   * signed in for 90 days (or ever) and hold no method it accepts, the ones kept
+   * in Disable or Confirm Dormant Accounts aside (walk list 4.x item 10). The
+   * gate no longer counts them; the step names them to disable.
+   */
+  dormantWithoutMethod?: string[]
 
   manualReview?: { basis: string; confirmedAt: string | null; readyToConfirm: boolean; fields?: import('./decisions.ts').ManualEvidenceField[]; record?: import('./decisions.ts').OwnerConfirmation; verification?: 'current' | 'unread' | 'changed' | 'incomplete' | 'historical'; staleReason?: string; pendingAccountIds?: string[] }
   id: string

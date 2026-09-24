@@ -237,7 +237,7 @@
       ],
       "correctionModules": 4,
       "requiredBindings": 5,
-      "optionalBindings": 11,
+      "optionalBindings": 12,
       "verifiedSourceCount": 5,
       "packageSpecificMicrosoftSources": 5,
       "sharedPrimitivesReused": 0,
@@ -2116,9 +2116,11 @@
         "s-goal-user-risk-medium"
       ],
       "optionalBy": [
+        "s-goal-admins-phishing-resistant",
         "s-goal-pim-activation-reauth"
       ],
       "packages": [
+        "s-goal-admins-phishing-resistant",
         "s-goal-device-registration-mfa",
         "s-goal-pim-activation-reauth",
         "s-goal-user-risk",

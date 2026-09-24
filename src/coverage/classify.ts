@@ -373,6 +373,14 @@ export function narrowerConditions(f: PolicyFacts, reference: PolicyFacts): stri
 // §5 floor raising: a baseline policy that matches a goal and is stricter
 // raises the goal's floor for this baseline. Returns the effective floor and
 // what raised it.
+//
+// And the other way: the pinned baseline wins (owner, 2026-09-22 R4-11; walk
+// list 4.x item 1). Where the baseline's own policy for the goal asks for a
+// weaker authentication strength than the catalogue's floor, that strength is
+// the floor. The admin policy asks for Modern MFA + TAP under a goal whose
+// catalogue floor is phishing-resistant MFA; built and turned on exactly as the
+// plan wrote it, it read as a gap, the step offered nothing, and it sat On Hold
+// for good. A tenant policy asking less than the baseline's strength is still a gap.
 export function raiseFloor(
   goal: Goal,
   baselineMatches: PolicyFacts[],
@@ -408,6 +416,17 @@ export function raiseFloor(
         floor.session = { ...floor.session, maxSignInFrequencyHours: b.session.signInFrequencyHours }
       }
     }
+  }
+  // Lowered only where nothing raised it, and to the strongest of the baseline's
+  // own strengths for the goal: every one of them asks less than the catalogue.
+  const catalogue = impl.floor.grant
+  if (catalogue !== undefined && floor.grant === catalogue && AUTH_FLOORS.has(catalogue)) {
+    const tiers = baselineMatches
+      .filter((b) => populationReach(b, impl.expectedWho.kind) === 'whole')
+      .map((b) => b.grant?.strength)
+      .filter((t): t is NonNullable<typeof t> => typeof t === 'string' && AUTH_FLOORS.has(t))
+      .sort((a, b) => grantFloorRank(b) - grantFloorRank(a))
+    if (tiers.length > 0 && grantFloorRank(tiers[0]) < grantFloorRank(catalogue)) floor.grant = tiers[0]
   }
   return { floor, raised }
 }

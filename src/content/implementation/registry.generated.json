@@ -1395,7 +1395,8 @@
           "dependencies.blockers",
           "signature",
           "policy.target.json",
-          "policy.fact"
+          "policy.fact",
+          "authStrength.target.displayName"
         ],
         "projection": {
           "missing": {
@@ -1702,7 +1703,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Set Grant to **Require authentication strength** and select the custom strength resolved for this tenant. Its ID is **{{authStrength.target.id}}**. Remove built-in MFA or any other strength from this policy's grant. This strength also accepts a Temporary Access Pass; Microsoft's built-in Phishing-resistant MFA strength does not. Replacing that built-in strength with this one lets administrators sign in with a Temporary Access Pass where they could not before, so review that effect before you save.\n"
+          "text": "Under **Grant**, select **Require authentication strength** → **{{authStrength.target.displayName}}**, and clear any other grant.\n"
         },
         "entra.correct-session": {
           "meta": {
@@ -1714,7 +1715,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Remove session controls from this policy. Admin session duration and persistence are implemented by separate baseline steps.\n"
+          "text": "Under **Session**, clear every control.\n"
         },
         "entra.correct-name": {
           "meta": {
@@ -1726,7 +1727,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Rename the same policy (same policy ID) to **{{policy.target.displayName}}**. Find it by its policy ID, not by display name alone.\n"
+          "text": "Name: **{{policy.target.displayName}}**.\n"
         },
         "entra.correct-verify": {
           "meta": {
@@ -1750,7 +1751,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Keep the policy in Report-only while you review the evidence listed for this step. Review Report-only sign-in results for each affected administrator and check that each one can use a method the custom strength accepts. An admin who cannot is a readiness issue to fix, not a reason to weaken the grant. A Temporary Access Pass also satisfies this strength, but it is temporary: an admin relying on one still needs a lasting accepted method.\n"
+          "text": "Keep the policy in Report-only while you review the evidence listed for this step. Review Report-only sign-in results for each affected administrator and check that each one can use a method the custom strength accepts. An admin who cannot is a readiness issue to fix, not a reason to weaken the grant.\n"
         },
         "entra.enforce": {
           "meta": {
@@ -20257,7 +20258,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nAn authentication strength is a named set of sign-in methods that a Conditional Access policy can require. The grant \"Require multifactor authentication\" accepts any second factor the tenant allows, including phone call and text message. This custom strength accepts exactly: {{strength.target.methodNames}}.\n\nWindows Hello for Business, FIDO2 and multifactor certificate authentication are phishing-resistant. A Temporary Access Pass is a time-limited passcode an administrator issues, for example so a person with no usable method can sign in and register one. Because it accepts a Temporary Access Pass, it is not Microsoft's built-in Phishing-resistant MFA strength.\n\nPhone call, text message and Authenticator push notifications are not accepted.\n\nSeveral baseline policies use this strength. Create it once in this tenant; those policies reference it by its object ID.\n"
+          "text": "\nAn authentication strength is a named set of sign-in methods that a Conditional Access policy can require. The grant \"Require multifactor authentication\" accepts any second factor the tenant allows, including phone call and text message. This custom strength accepts exactly: {{strength.target.methodNames}}.\n\nWindows Hello for Business, FIDO2 and multifactor certificate authentication are phishing-resistant. A Temporary Access Pass is a time-limited passcode an administrator issues, for example so a person with no usable method can sign in and register one.\n\nPhone call, text message and Authenticator push notifications are not accepted.\n\nSeveral baseline policies use this strength. Create it once in this tenant; those policies reference it by its object ID.\n"
         },
         "ai.correct": {
           "meta": {

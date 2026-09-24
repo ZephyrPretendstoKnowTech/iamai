@@ -319,7 +319,7 @@ test('the prerequisite the row names is on the opened step, beside the one that 
 // thing anybody could do. The board's own readings know the chain. Rendered with
 // them, as the Plan renders it, the card names where the chain starts and opens
 // it; where the campaign itself can be done today it names the campaign alone.
-test('a Threshold card whose campaign is held names where its chain starts, which is a Ready step on it or nothing, and opens it', async () => {
+test('a Threshold card on people’s methods names the campaign that gets them ready and opens it; the chain it waits on is the campaign’s own (walk list 4.x item 42)', async () => {
   {
     const { cleanupComplete } = await import('../../roadmap/cleanupDone.ts')
     const { cleanupEntry } = await import('./cleanupExport.ts')
@@ -345,20 +345,15 @@ test('a Threshold card whose campaign is held names where its chain starts, whic
         const c = stepContract(step, ctx, undefined, laneViewOf(reading, titleOf), label.startOf)
         const tile = readinessOf(step, c, readinessBlockersOf(reading, titleOf), label).tiles.find((t) => t.key === 'gate')!
         assert.ok(tile.link && 'href' in tile.link, `${name}/${step.id}: the card opens nothing`)
-        const start = chainStartOf(readings, gate.routeId)
-        if (readings.get(gate.routeId)!.lane === 'Ready') {
-          seen.clear++
-          assert.equal(start, null)
-          assert.ok(tile.note!.endsWith(`“${gate.route}”.`), `${name}/${step.id}: a campaign that can be done today is named alone — ${tile.note}`)
-          assert.equal(tile.link.href, returnToStep(gate.routeId))
-          continue
-        }
-        seen.held++
-        assert.ok(start !== null, `${name}/${step.id}: the campaign is held and the board found no start — ${JSON.stringify(readings.get(gate.routeId)!.reason)}`)
-        assert.equal(readings.get(start)!.lane, 'Ready', `${name}/${step.id}: "where to start" is not a step anybody can do today`)
-        const first = titleOf(start)!
-        assert.ok(tile.note!.includes(`“${gate.route}”; it waits on “${first}”, which is where to start.`), `${name}/${step.id}: ${tile.note}`)
-        assert.equal(tile.link.href, returnToStep(start), `${name}/${step.id}: the card opens the held campaign, not where to start`)
+        // Held or not, the card names the campaign and opens it: the campaign's
+        // own page says what it waits on (owner, 2026-09-24).
+        // A gate with nobody counted keeps the threshold sentence (readinessWords.test.ts).
+        if (!step.methodPreparation?.completeScope || step.methodPreparation.ids.length === 0) continue
+        if (chainStartOf(readings, gate.routeId) === null) seen.clear++
+        else seen.held++
+        assert.ok(tile.note!.endsWith(`${gate.route} gets them ready.`), `${name}/${step.id}: ${tile.note}`)
+        assert.ok(!tile.note!.includes('which is where to start'), `${name}/${step.id}: ${tile.note}`)
+        assert.equal(tile.link.href, returnToStep(gate.routeId))
       }
     }
     assert.ok(seen.held > 0 && seen.clear > 0, `the premise: both a held and a clear campaign — ${JSON.stringify(seen)}`)
@@ -394,7 +389,7 @@ test('a Threshold card whose campaign is held names where its chain starts, whic
 // it word for word, printed the threshold twice: the card's version, then the
 // finding's. Rendered as the Plan and the print render it, the card, the finding
 // and the briefing name the same place to start, and the print says it once.
-test('the Threshold card, its finding and the AI Info briefing name the same place to start', async () => {
+test('the Threshold card, its finding and the AI Info briefing say the same sentence, and the print says it once', async () => {
   const { cleanupComplete } = await import('../../roadmap/cleanupDone.ts')
   const { cleanupEntry } = await import('./cleanupExport.ts')
   const { prerequisiteLabelFor } = await import('./planBoard.ts')
@@ -411,26 +406,23 @@ test('the Threshold card, its finding and the AI Info briefing name the same pla
     for (const step of r.steps) {
       const gate = step.action.readinessGate
       if (!gate?.routeId || gate.blind !== undefined || step.status === 'done' || step.status === 'skipped' || step.state.lifecycle === 'enforced') continue
-      const start = label.startOf!(gate.routeId)
-      if (start === null) continue
       held++
       const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: null }
       const reading = readings.get(step.id)!
       const b = stepBodyOf(step, ctx, { lane: laneViewOf(reading, titleOf), blockers: readinessBlockersOf(reading, titleOf), prerequisiteLabel: label })
-      const where = `it waits on “${titleOf(start)}”, which is where to start.`
       const tile = b.readiness.tiles.find((t) => t.key === 'gate')!
       const finding = b.contract.found.find((x) => x.key === 'gate')
-      assert.ok(tile.note!.includes(where), `${name}/${step.id}: the premise — the card names where to start: ${tile.note}`)
+      const where = `${gate.route} gets them ready.`
+      assert.ok(tile.note!.includes(where), `${name}/${step.id}: the premise — the card names the campaign: ${tile.note}`)
       assert.equal(finding?.text, tile.note, `${name}/${step.id}: the Evidence dialog says a different threshold sentence from the card`)
       // ContentStep's printing branch: a finding a card already states, word for word, is not printed again.
       const printed = b.contract.found.filter((x) => !b.allTiles.some((t) => t.note === x.text || t.value === x.text))
       assert.equal(printed.some((x) => x.key === 'gate'), false, `${name}/${step.id}: the printed plan says the threshold twice`)
       const ai = String(b.artifacts.find((a) => a.id === 'ai')!.text())
-      assert.ok(ai.includes(where), `${name}/${step.id}: the AI Info briefing does not say where to start`)
-      assert.equal(ai.includes(`moves this number is “${gate.route}”.`), false, `${name}/${step.id}: the AI Info briefing sends the reader to the held campaign`)
+      assert.ok(ai.includes(where), `${name}/${step.id}: the AI Info briefing does not name the campaign`)
     }
   }
-  assert.ok(held >= 4, `the premise: gates whose campaign is held — ${held}`)
+  assert.ok(held >= 4, `the premise: gates the campaign moves — ${held}`)
 })
 
 // R4-31 (Marcus D12). While the next action is the report-only create, every

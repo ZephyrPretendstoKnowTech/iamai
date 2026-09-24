@@ -71,7 +71,7 @@ test("a tenant's own policy that differs from the baseline in a part coverage do
   assert.equal(same.tile, null)
 })
 
-test("a Completed step's own-policy and weaker-grant findings are stated, and never turn it into Readiness work", () => {
+test("a Completed step's own-policy finding is stated, and never turns it into Readiness work", () => {
   // Both tiles say IAMAI asks for no change (owner, 2026-09-22). On a Completed
   // step, the one below drew them beside "Complete the next task shown for each
   // item." over the evidence link, and an Implementation box that read "Waiting
@@ -92,10 +92,4 @@ test("a Completed step's own-policy and weaker-grant findings are stated, and ne
   }
   // The difference is a fact under Satisfied (walk list 4.x item 2): no open tile.
   finished(step, "the tenant's own policy", [])
-  // The weaker-grant tile draws on every stage of a step the plan writes; on a
-  // finished one it is the same kind of finding, alone or beside the other.
-  const floor = { strengthId: null, builtIn: ['mfa'], floor: 'phishingResistant' }
-  const { ownPolicyDiffers: _own, ...rest } = step.action
-  finished({ ...step, action: { ...rest, belowGoalFloor: floor } } as Step, 'a weaker grant', ['below-goal-floor'])
-  finished({ ...step, action: { ...step.action, belowGoalFloor: floor } } as Step, 'both', ['below-goal-floor'])
 })

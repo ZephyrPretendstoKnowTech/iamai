@@ -75,8 +75,9 @@ const byId = (steps: readonly Step[], id: string): Step => {
 // ---- Completed: the warnings a finished step keeps ----
 
 test('a finished policy prints the warnings its opened step keeps, and nothing its opened step moved under Satisfied', () => {
-  // Large: the admins policy is enforced while 12 of 60 admins hold a method it
-  // accepts. That reading is a fact under Satisfied (walk list 4.x item 2), and a
+  // Large: the admins policy is enforced while 9 of its 51 active admins hold a
+  // method it accepts (walk list 4.x L4: the gate counts the people MFA Readiness
+  // counts). That reading is a fact under Satisfied (walk list 4.x item 2), and a
   // prerequisite it went ahead of is that prerequisite's own row (L3): neither
   // is a warning on paper.
   const large = plan('large')
@@ -85,7 +86,7 @@ test('a finished policy prints the warnings its opened step keeps, and nothing i
   const line = lines.find((l) => l.id === admins.id)
   assert.ok(line, 'the premise: the admins policy is listed as Completed')
   const said = line.warnings.map((t) => `${t.label}: ${t.value}`)
-  assert.ok(!said.some((w) => w.includes('12 of 60 admins') || w.startsWith('Configure Passkey Authentication:')), said.join(' | '))
+  assert.ok(!said.some((w) => /\d+ of \d+ admins/.test(w) || w.startsWith('Configure Passkey Authentication:')), said.join(' | '))
   // A finished step with nothing to warn about prints its line alone.
   for (const l of lines) for (const t of l.warnings) assert.equal(t.tone, 'warn', `${l.id}: a tile that is not a warning printed under a finished step`)
   // The document draws these lines, and nothing of its own beside them: a

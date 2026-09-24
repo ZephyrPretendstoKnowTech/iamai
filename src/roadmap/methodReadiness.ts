@@ -10,6 +10,7 @@ import { applies, tenantStrengthsOf, BUILT_IN_STRENGTHS, BUILT_IN_MFA_STRENGTH }
 import type { PolicyEffect, Requirement, ScopeEvidence } from './operations.ts'
 import { strengthSatisfaction } from './strand.ts'
 import { readinessPercent } from './readiness.ts'
+import { list } from '../copy/statements.ts'
 
 type Answer = 'yes' | 'no' | 'unknown'
 /**
@@ -70,6 +71,8 @@ export type MethodPreparation = {
    * the counterfactual (methodLineOff), so its count is exactly these people.
    */
   offIds?: string[]
+  /** What the people in `offIds` registered, each method once, in the order met: what the methods policy turns off for them. */
+  offMethods?: string[]
   completeScope: boolean
 }
 
@@ -302,6 +305,7 @@ export function methodPreparation(effects: readonly PolicyEffect[], candidates: 
       // Not "registered nothing": registered, and held back by the tenant's
       // methods policy alone — a policy that could not judge them leaves that unsaid.
       (result.offIds ??= []).push(id)
+      for (const m of registrations.get(id)?.methodsRegistered ?? []) if (!(result.offMethods ??= []).includes(m)) result.offMethods.push(m)
     }
   }
   return result
@@ -311,8 +315,6 @@ export function methodReadiness(family: Readiness['family'], preparation: Method
   const { ids, readyIds, unknownIds, completeScope } = preparation
   const staleIds = preparation.staleIds ?? []
   const offIds = preparation.offIds ?? []
-  // The people judged without an accepted method the tenant lets them use.
-  const short = ids.length - readyIds.length - unknownIds.length
   const unreadable = !completeScope || unknownIds.length > 0
   // The floor, where the people were counted and only their methods could not be
   // judged (types.ts `atLeast`). An incomplete scope has no real denominator, so
@@ -353,8 +355,24 @@ export function methodReadiness(family: Readiness['family'], preparation: Method
         // fillText prints a count with its thousands separator.
         : [[
           fillText(W.methodLine, { ready: readyIds.length, total: ids.length }),
-          offIds.length === 0 ? null : fillText(offIds.length === short ? W.methodLineOffAll : W.methodLineOff, { off: offIds.length, short }),
-          staleIds.length > 0 ? fillText(W.methodLineStale, { unknown: unknownIds.length, stale: staleIds.length })
-            : unknownIds.length > 0 ? fillText(W.methodLineUnknown, { unknown: unknownIds.length }) : null,
+          offIds.length === 0 ? null : fillText(W.methodLineOff, { off: offIds.length, methods: offMethodWords(preparation.offMethods ?? []) }),
+          // Only the people one sign-in would count (staleIds): said of anybody
+          // else it promises a number that will not move (R4-15).
+          staleIds.length > 0 ? fillText(W.methodLineSignIn, { n: staleIds.length }) : null,
         ].filter((x): x is string => x !== null).join(' ')] }
+}
+
+/** The kind of method a registration method is, for the words that name it (engine.readiness.offMethods). */
+const OFF_METHOD_KIND: Readonly<Record<string, string>> = {
+  mobilephone: 'phone', alternatemobilephone: 'phone', officephone: 'phone', sms: 'phone', voice: 'phone',
+  microsoftauthenticatorpush: 'authenticator', microsoftauthenticatorpasswordless: 'authenticator',
+  softwareonetimepasscode: 'code', hardwareonetimepasscode: 'code',
+  fido2securitykey: 'passkey', passkeydevicebound: 'passkey', passkeydeviceboundauthenticator: 'passkey', passkeydeviceboundwindowshello: 'passkey',
+  windowshelloforbusiness: 'windowsHello',
+}
+
+/** What the people the methods policy holds back registered, in words, each kind once (walk list 4.x item 48). */
+export function offMethodWords(methods: readonly string[]): string {
+  const kinds = [...new Set(methods.map((m) => OFF_METHOD_KIND[m.toLowerCase()]).filter((k): k is string => k !== undefined))]
+  return kinds.length === 0 ? W.offMethods.other : list(kinds.map((k) => W.offMethods[k] ?? W.offMethods.other))
 }

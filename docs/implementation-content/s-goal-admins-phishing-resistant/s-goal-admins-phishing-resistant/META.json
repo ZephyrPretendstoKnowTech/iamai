@@ -70,7 +70,8 @@
     "dependencies.blockers",
     "signature",
     "policy.target.json",
-    "policy.fact"
+    "policy.fact",
+    "authStrength.target.displayName"
   ],
   "projection": {
     "missing": {
