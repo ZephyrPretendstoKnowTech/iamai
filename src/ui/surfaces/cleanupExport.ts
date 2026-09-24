@@ -26,6 +26,11 @@ export function cleanupSourceLine(entry: CleanupEntry): string | null {
   return sourceCheckedLine(entry.learn?.checkedOn ?? null, CONTRACT.implementation)
 }
 
+/** Verify Emergency Access's line under its milestone: the sign-in still to do, in the owner's words (2026-09-23). */
+export function drillMilestone(row: CleanupPhase['rows'][number]): string {
+  return row.done ? 'Every selected account is verified.' : (A as unknown as { emergencyTasks: { signInEachAccount: string } }).emergencyTasks.signInEachAccount
+}
+
 /** Shared by the live drill and the existing printable/exported plan. */
 export const EMERGENCY_RECOVERY_PROCEDURE = [
   'Preserve any working administrator session and credentials. Stop further broad authentication or Conditional Access changes.',

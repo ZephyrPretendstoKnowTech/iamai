@@ -214,9 +214,6 @@ test('needs decision: the state, the word, the next milestone, the action and th
   assert.equal(contract.state.conditionLabel, 'Needs decision')
   assert.equal(contract.state.word, 'Needs decision')
   assert.equal(contract.whatToDo.kind, 'decide')
-  // The step's own completion (S-EG-5, B8), not the shared decision sentence.
-  // Editorial batch C: the register's completion, and the policy references as a human check each policy step confirms.
-  assert.deepEqual(contract.doneWhen, ["The scan verifies the selected group's configuration, membership and required policy exclusions."])
   // The question is the step's What to do, not something to fix (owner, 2026-09-11).
   assert.deepEqual(contract.fix.map((x) => x.text), [])
   // The collapsed row says the same, without the step being opened.

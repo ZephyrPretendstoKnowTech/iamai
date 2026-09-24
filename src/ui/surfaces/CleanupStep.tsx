@@ -22,7 +22,7 @@ import { AuthoredText, DoneWhen, ReadinessSection, StepActionColumn, StepHead, S
 import type { ReadinessTile } from './stepContract.ts'
 import { HEAD, TASK_HEAD } from './stepHeadings.ts'
 import { CONTRACT } from './stepContract.ts'
-import { cleanupEntry, cleanupSourceLine, cleanupVars, cleanupWhen, EMERGENCY_RECOVERY_PROCEDURE } from './cleanupExport.ts'
+import { cleanupEntry, cleanupSourceLine, cleanupVars, cleanupWhen, drillMilestone, EMERGENCY_RECOVERY_PROCEDURE } from './cleanupExport.ts'
 import { EmergencySubjectReadiness, Implementation, copyImplementationArtifact } from './ContentStep.tsx'
 import type { Artifact, Channel } from './stepBody.ts'
 import { emergencyVerificationArtifacts, emergencyVerificationTasksOf } from './emergencyVerificationTasks.ts'
@@ -173,7 +173,7 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone }: {
         </p>
       )}
         </div>
-        {row.kind === 'drill' && <StepActionColumn rail={{ metric: status.word, sub: row.done ? 'Every selected account is verified.' : 'Verify every selected account after the final configuration is observed.' }} />}
+        {row.kind === 'drill' && <StepActionColumn rail={{ metric: status.word, sub: drillMilestone(row) }} />}
       </div>
     </article>
   )

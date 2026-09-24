@@ -12,7 +12,7 @@ import type { StepVarContext } from './stepVars.ts'
 import { consolidateEmergencyReadiness, emergencySubjectsOf, recoverySubjectsOf } from './emergencyReadiness.ts'
 import { passkeyReadiness } from './passkeyPresentation.ts'
 import { emergencyVerificationArtifacts, emergencyVerificationTasksOf } from './emergencyVerificationTasks.ts'
-import { cleanupEntry, cleanupSourceLine } from './cleanupExport.ts'
+import { cleanupEntry, cleanupSourceLine, drillMilestone } from './cleanupExport.ts'
 import { cleanupRowWho, rowWho } from './rowWho.ts'
 import { readGroup } from '../../graph/collect/onDemand.ts'
 import { campaignIds } from '../../derive/population.ts'
@@ -163,4 +163,20 @@ test('#4 Impact counts what each step changes: policies to exclude the group fro
     const { phase, row } = drillOf(value)
     assert.equal(cleanupRowWho(phase, row), '2 accounts', `${name}: 1.4`)
   }
+})
+
+// ---- The owner's rewrites, word for word ----
+
+test('rewrites: About, Completion Criteria and the 1.4 milestone read as the owner wrote them', () => {
+  const group = opened(copy('demo'), GROUP).body.contract
+  assert.equal(group.why, 'Put your emergency access accounts in one group, and exclude that group from every Conditional Access policy, so no policy can lock them out.')
+  assert.deepEqual(group.doneWhen, ['Both emergency access accounts are direct members of the group you chose, and every policy excludes it.'])
+  const passkey = opened(copy('demo'), PASSKEY).body.contract
+  assert.equal(passkey.why, 'Turn on passkeys (FIDO2) for everyone and allow only the approved passkey models, so emergency and admin accounts can register one.')
+  assert.deepEqual(passkey.doneWhen, ['Passkeys (FIDO2) are on for everyone, attestation is enforced, and only the approved models can register.'])
+  const drill = cleanupEntry('drill')!
+  assert.equal(drill.why, "Sign in once with each emergency access account's passkey, so you know the way back in works before any policy is turned on.")
+  assert.deepEqual(drill.doneWhen, ['Each emergency access account has signed in with its passkey since its last change, within the last 90 days.'])
+  const { row } = drillOf(copy('demo'))
+  assert.equal(drillMilestone(row), 'Sign in with each emergency access account.')
 })
