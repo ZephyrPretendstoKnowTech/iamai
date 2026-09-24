@@ -1534,7 +1534,9 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
   // anybody to do, its own paragraph is the explanation
   // (roadmap/baselineConflict.ts), and nothing in the tenant clears it anyway.
   const waitTail = lane !== undefined && lane !== null && (lane.lane === 'Up Next' || lane.lane === 'On Hold') ? lane.tail : null
-  const saysWait = action.kind === 'resolve' && step.state.condition !== 'baseline-conflict'
+  // A readiness hold's action already names its threshold ("It stays until every
+  // admin has a method it accepts (0 of 1 today)."): the row's tail beside it said it twice.
+  const saysWait = action.kind === 'resolve' && step.state.condition !== 'baseline-conflict' && reason !== 'readiness-unmet'
   const gatedBy = saysWait && waitWords === null && typeof bare.gatedBy === 'string' && bare.gatedBy.trim().length > 0 ? waitTail ?? bare.gatedBy : null
   const whatToDo: ContractAction = { ...action, gatedBy }
   const actionText = whatToDo.text
