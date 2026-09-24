@@ -48,6 +48,8 @@ export type Fixture = {
   decisions?: Record<string, StepDecision>
   /** The plan checkpoints the fixture's technician recorded (the demo's week two: the emergency access drill, E3): seeded into the demo's plan record. */
   checkpoints?: unknown[]
+  /** The day each step was first found complete, as an earlier scan's plan record keeps it (PlanDecisions.completedAt). */
+  completedAt?: Record<string, string>
   expect: FixtureExpectations
 }
 

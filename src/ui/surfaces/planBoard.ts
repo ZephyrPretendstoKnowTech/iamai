@@ -719,17 +719,28 @@ export function boardWhenOf(step: Step, waveStart: string | null = null, read: L
   return estimatedDay(step) ? fillText(schedulingWords.estimate, { date: result }) : result
 }
 
-/** When the plan recorded a step as done: the owner's confirmation, else its last move to done; null where it recorded none. */
-const completedAtOf = (step: Step): string | null => step.manualReview?.confirmedAt ?? step.history.filter((h) => h.to === 'done').at(-1)?.at ?? null
+/**
+ * When the plan recorded a step as done: the day the plan first found it
+ * complete (Step.completedAt, roadmap/progress.ts recordCompletion), else the
+ * owner's confirmation, else its last move to done; null where it recorded none.
+ */
+const completedAtOf = (step: Pick<Step, 'completedAt' | 'manualReview' | 'history'>): string | null => step.completedAt ?? step.manualReview?.confirmedAt ?? step.history.filter((h) => h.to === 'done').at(-1)?.at ?? null
 
 /**
  * Whether a row draws as one compact line (owner, roadmap flow V2: finished
  * work shrinks in place): Completed and Deferred rows. The line keeps the
  * row's number, title and lane word, and the day it was finished where the
- * plan recorded one (finishedDayOf); who it touches, the tenant chip and the
- * waiting line belong to work still to do. Selecting it opens the step.
+ * plan recorded one (finishedDayOf); the tenant chip and the waiting line
+ * belong to work still to do. Selecting it opens the step.
  */
 export const drawsCompact = (lane: Lane): boolean => lane === 'Completed' || lane === 'Deferred'
+
+/**
+ * Whether a row draws its Impact: every row but a deferred one. A Completed row
+ * keeps the Impact it read while it was open (owner, 2026-09-23): finishing the
+ * work does not change what it touched.
+ */
+export const drawsImpact = (lane: Lane): boolean => lane !== 'Deferred'
 
 /**
  * The day a compact row shows: when the step was completed (the same day its
@@ -737,8 +748,8 @@ export const drawsCompact = (lane: Lane): boolean => lane === 'Completed' || lan
  * where the plan recorded no day, and for work still to do. Never a word in a
  * date's place.
  */
-export function finishedDayOf(step: Pick<Step, 'manualReview' | 'history'>, lane: Lane): string | null {
-  const at = lane === 'Completed' ? completedAtOf(step as Step) : lane === 'Deferred' ? step.history.filter((h) => h.to === 'skipped').at(-1)?.at ?? null : null
+export function finishedDayOf(step: Pick<Step, 'completedAt' | 'manualReview' | 'history'>, lane: Lane): string | null {
+  const at = lane === 'Completed' ? completedAtOf(step) : lane === 'Deferred' ? step.history.filter((h) => h.to === 'skipped').at(-1)?.at ?? null : null
   return at ? dayLabel(at) : null
 }
 

@@ -113,10 +113,14 @@ export function applyProgress(
   // scope of any policy that names a group unknown, which is conservative and
   // never a fallback to the goal's population.
   scopeEvidence: TrackingEvidence = {},
+  // The day each step was first found complete, as the plan record keeps it (PlanDecisions.completedAt).
+  completedAt: Readonly<Record<string, string>> | null = null,
 ): Step[] {
   // A wait on a held step is a hold before tracking asks who is ready (roadmap/holds.ts).
   markHoldChains(steps)
   trackExecution(steps, snapshot, coverage, planId, now, observations ?? {}, scopeEvidence)
+  // Every status is this scan's now: each complete step gets its completed day.
+  recordCompletion(steps, completedAt, snapshot.asOf)
   // Per-answer gating (roadmap/direction.ts), once every lifecycle is this
   // scan's and every skip applied: an enforced, delivered or set-aside policy
   // carries no wait on a Direction answer, and the schedule and tracking never
@@ -130,6 +134,35 @@ export function applyProgress(
   // blockers both passes just wrote.
   markHoldChains(steps)
   return steps
+}
+
+/**
+ * The day each complete step was completed (Step.completedAt), the day its
+ * Completed row states.
+ *
+ * Most of what completes a step is the scan reading the tenant: a preparation
+ * the tenant already has, emergency accounts that now pass their checks. That
+ * writes a state and nothing dated, so a Completed row had no day to say and
+ * drew its title alone. The day is the one the plan record already keeps for the
+ * step; else the step's own record — an owner's confirmation, a saved answer's
+ * move to done, tracking's — else this scan, which is when IAMAI found it
+ * complete. A step not complete has none, so one that reopens records a new day
+ * when it completes again.
+ */
+export function recordCompletion(steps: readonly Step[], recorded: Readonly<Record<string, string>> | null, asOf: string): void {
+  for (const step of steps) {
+    if (step.status !== 'done') {
+      delete step.completedAt
+      continue
+    }
+    const kept = recorded?.[step.id]
+    step.completedAt = typeof kept === 'string' && kept !== '' ? kept : step.manualReview?.confirmedAt ?? step.history.filter((h) => h.to === 'done').at(-1)?.at ?? asOf
+  }
+}
+
+/** The completed days the plan record keeps (PlanDecisions.completedAt): every complete step's, from this scan's plan. */
+export function completedDaysOf(steps: readonly Step[]): Record<string, string> {
+  return Object.fromEntries(steps.flatMap((s) => (s.status === 'done' && typeof s.completedAt === 'string' ? [[s.id, s.completedAt]] : [])))
 }
 
 // ---- Decisions-only record (prompt 50.1 item 1) ----
@@ -185,6 +218,10 @@ export function decisionsOf(
   // record holds (observation.ts). A pre-Foundation-B record kept a single
   // report-only date per step, and it migrates as a report-only observation.
   const observations = observationsFrom(rec)
+  // The day each step was first found complete travels as written, and nothing else in its place.
+  const completedAt: Record<string, string> = {}
+  const days = (rec as { completedAt?: unknown } | null | undefined)?.completedAt
+  if (days && typeof days === 'object' && !Array.isArray(days)) for (const [id, at] of Object.entries(days)) if (typeof at === 'string' && at !== '') completedAt[id] = at
   return {
     planId: rec?.planId ?? planId,
     skips,
@@ -196,6 +233,7 @@ export function decisionsOf(
     checkpoints: rec?.checkpoints ?? [],
     planCreatedAt: rec?.planCreatedAt,
     ...(typeof rec?.securityDefaultsSeenOnAt === 'string' ? { securityDefaultsSeenOnAt: rec.securityDefaultsSeenOnAt } : {}),
+    ...(Object.keys(completedAt).length > 0 ? { completedAt } : {}),
     stepDecisions,
     ...(Object.keys(confirmations).length > 0 ? { confirmations } : {}),
     observations,

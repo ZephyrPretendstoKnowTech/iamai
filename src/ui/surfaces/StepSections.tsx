@@ -72,15 +72,17 @@ export function PlanRow({ lane, tone, chip: fact = null, wave = null, number = n
    * cannot either — it is fixed 125px. So it goes here, under the title.
    */
   waitingFor?: string | null
-  who: string
+  /** The row's Impact (rowWho.ts), or null where the row draws none (planBoard.ts drawsImpact: a deferred row). */
+  who: string | null
   /** A day, or the placeholder (planBoard.ts boardWhen): never a reason. On a compact row, the day it was finished, or empty. */
   when: string
   open: boolean
   onToggle: () => void
   /**
    * Finished work, drawn as one quiet line (planBoard.ts drawsCompact): the
-   * number, the lane word, the title and the day where one was recorded. Who it
-   * touches, the tenant chip and the waiting line are for work still to do.
+   * number, the lane word, the title, the Impact a Completed row read while it
+   * was open, and the day where one was recorded. The tenant chip and the
+   * waiting line are for work still to do.
    */
   compact?: boolean
 }) {
@@ -126,7 +128,7 @@ export function PlanRow({ lane, tone, chip: fact = null, wave = null, number = n
         <span className="step-title">{title}</span>
         {waitingFor && <span className="plan-row-reason">{waitingFor}</span>}
       </span>
-      {!compact && <span className="who">{who}</span>}
+      {who !== null && <span className="who">{who}</span>}
       {(!compact || when !== '') && <span className="when">{when}</span>}
     </div>
   )
