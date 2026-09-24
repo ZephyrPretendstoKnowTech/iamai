@@ -386,3 +386,292 @@ The 3.6 audit was cut off after its Tasks Remaining lines, and no 3.7 audit arri
 - 3.4 puts Follow-Up tiles on the policies it releases: Require MFA for Everyone, Require Phishing-Resistant MFA for Admins, 5.1 and the risk policies. Later steps.
 - 3.5 puts a prerequisite tile on each policy it releases (section 4 onward). Later steps.
 - The shared cards in item 11 still draw on 4.x, 5.1 and the frozen steps.
+
+
+## Section 4 Turn On MFA for Everyone (4.1–4.6): APPROVED (owner, 2026-09-24), with my recommendations and these changes
+- **1:** fix 4.3's completion, but do NOT state the Modern MFA + TAP weakness anywhere ("adds MORE fluff"). Delete the "Baseline Grant · Weaker than phishing-resistant MFA" card, and item 41's About has no weakness sentence.
+- **L1–L3:** yes.
+- **5:** option (b).
+- **10:** without the Turn On Without Them part.
+- **14–18, 25 and 29:** apply on every policy step, through shared code.
+- **Owner's emphasis:** the content itself gets the most scrutiny. Every line must read well and give a useful instruction, or be removed.
+From the section 4 audit (six auditors plus a synthesis, fixtures), with the live walk of 4.1–4.4 on the owner's tenant (2026-09-23) prepended as L1–L4.
+
+### Found live on the owner's tenant (not visible on fixtures)
+- **L1 (I5 E4). IAMAI reads the tenant's own policies as unreadable.** Graph returns them with a full strength object and empty fields (insiderRiskLevels, applicationFilter). Everything reading them turns "unknown": 4.3 and 4.4 "Readiness · Not measured · … could not be judged: method compatibility is not established", "Affected people · Not established", and 3.4 listing both people as needing help, while MFA Readiness says 2 of 2 ready. Fix built on fix/decoder (operations.ts effectOf): skip empty fields and read the strength by id. On an owner-like clone, 4.3 reads 1 of 1 admin, 3.4 reads 2 of 2, and 4.4 reads real counts. No fixture changes, because fixtures write IAMAI's own shape.
+- **L2 (I4 E3). One reading of role scope.** PIM-eligible admins count for readiness but not for Affected people or the admin count. Count eligible admins everywhere.
+- **L3 (I5 E4). A Completed step carries no prerequisite card.** "Verify Emergency Access · Prerequisite · To do · This step is finished, and …" shows on 4.1–4.4 on the owner's tenant. It is the same mechanism as item 2's first bullet (lanes.ts completedWithout).
+- **L4. 4.4's gate counts enabled accounts that never signed in**, unlike 3.4 and MFA Readiness. It is the same root as item 10.
+
+
+These readings come from fixtures (getiamai, small, mid, demo, demo-week2), not from your tenant. On the fixtures the exclusions group is called "Core - Exclusions"; on your tenant it is Breakglass Exclusion.
+
+**Numbering:** Turn Off Security Defaults only appears when a scan has read security defaults on. Where it doesn't appear (your tenant, getiamai, demo), Finish Moving Off Per-User MFA is numbered 4.5 instead of 4.6.
+
+**Coverage:** the 4.4 audit stopped after its row, and no audits arrived for 4.5 or 4.6. I audited the rest of 4.4 and all of 4.5 and 4.6 myself with the harness.
+
+### Needs your call
+
+1. **Recommend: 4.3 reads Completed once its policy is On exactly as the plan wrote it.**
+   - Following the plan exactly (create, report-only week, drill, turn on) leaves 4.3 stuck at "On Hold · Not supported". It shows "Threshold · not measured", "Implementation · Unavailable", "Not supported · Not supported", Impact "Administrator Accounts" and "A later scan finds the goal in place, or you record that this step does not apply here."
+   - Root cause is in generate.ts. The goal floor treats the pinned Modern MFA + TAP grant as a gap, although your R4-11 ruling says to state it, not hold on it. With no operation left there's no cohort, so readiness is never measured.
+   - Fix both parts. Impact then reads "1 admin". mid and demo-week2 only reach Completed through their own policies. I5 E2
+2. **Recommend: a Completed step shows no open cards.** This is the root cause of your 4.3/4.4 note. Both steps are correctly Completed because the policy is On. The problem is three kinds of card left under Tasks Remaining:
+   - "Prepare Your Team for MFA · Prerequisite · To do · This step is finished, and Prepare Your Team for MFA, which the plan puts before it, is not finished yet." (stepContract.ts:2436, on 4.1–4.4). DELETE: that step's own row carries the work.
+   - "Readiness · 19 of 28 people in scope · This policy is enforced, and…" (4.3, 4.4). Move it under Satisfied as "19 of 28 people have a method it accepts". On demo-week2 this card also names "Phishing-resistant MFA readiness" for 4.4, whose policy only requires plain MFA, and says "Method compatibility is not yet established for 1."
+   - "Observation · No report-only period watched…" (a policy created straight On). Move it under Satisfied as "On since Aug 29, 2026, without a report-only week". That keeps the warning you asked for on 2026-09-22. I5 E4
+3. **Recommend: delete 4.2's Workflow Check and let the scan complete the step.** This is why your 4.2 reads "Ready · Review" with Enforced.
+   - manualWork.ts:68 keeps a matching, enforced policy open until someone saves "Outcome" and "Tested On".
+   - Delete it along with everything it brings: Impact "Device Code Sign-ins", When "Review now", "Test the required workflow and record its outcome.", "Your review · Waiting on you", the three "Verify the workflow:" task lines and "Tools, shared devices and enrollment workflows that used device code have a tested alternative."
+   - 5.1 has the same form. I5 E4
+4. **Recommend: delete 4.1's mail Workflow Check and complete the mail half from sign-in data.**
+   - When 2.1 names mail senders (small, demo, demo-week2), the rail holds "Workflow Check · Mail Job and Delivery Route · Temporary Exception Removed · Outcome · Tested On · Save Check" plus "Your review · Waiting on you".
+   - 4.1 then never completes: demo-week2 reads Ready · Review in every state.
+   - Proposal: the mail half is done when no named account has signed in with legacy authentication in the last 30 days. This changes a completion rule. I5 E2
+5. **Recommend: stop saying the service-accounts group keeps mail senders out of 4.1, and hold the turn-on until they have moved instead.**
+   - The pinned legacy policy never excludes that group. On demo, with svc-mailer-1 and svc-mailer-2 named in 2.1, the target excludes only Core - Exclusions and Core - Break glass.
+   - Three places still claim or assume it does:
+     - 4.1's turn-on waits on 3.7 (dependency-data.json).
+     - The mail task says "Until each device moves, Create or Correct Service Accounts Group keeps these accounts out of this policy."
+     - 2.x #31 says "Block Legacy Authentication leaves them out until each moves to a supported mail route."
+   - Turning 4.1 on as it stands blocks those devices. Two options:
+     - (a) Exclude the group whenever 2.1 names accounts. This adds to the pinned policy, so it needs your consent.
+     - (b) **Recommended:** drop the 3.7 wait, delete the sentence, and have 2.x #31 read "…Block Legacy Authentication waits until each moves to a supported mail route." I5 E3
+6. **Recommend: the mail question gets one wait, shown the same way everywhere.**
+   - On small and mid, 4.1 reads "Ready · Decision · Waiting on your answer: Mail-sending devices · Decide now", with the card "Mail-sending devices · Not confirmed · A quiet sign-in history does not establish that every scheduled mail job has stopped using basic authentication."
+   - getiamai shows the same wait as "On Hold · Waiting on your answers".
+   - Proposal: an input answered on a Direction step never creates a decision lane or tile on the step it changes. That step shows 2.x #18's wait tile, and the card is deleted. I4 E3
+7. **Recommend: only one step asks for each policy edit, and making it is never flagged.**
+   - When the tenant's enforced legacy policy lacks the exclusions group, 1.2's "Configure Conditional Access exclusions" and 4.1's "Update the policy settings" ask for the same edit.
+   - Once it's made, 4.1 reads Completed next to "New evidence · Review required · the policy itself changed by Aug 28, 2026: what was watched before this is no longer what is deployed".
+   - Proposal: 1.2 keeps the task, and 4.1 waits on it. A change that brings a policy to its own target never raises Review required. I4 E3
+8. **Recommend: 4.5 includes the four turn-ons in its own task.**
+   - The four policies' turn-ons wait for security defaults to be off, and 4.5 waits for those four to be ready. So once someone has saved "Disabled", every turn-on task stays hidden until the next scan.
+   - Meanwhile 4.5 only says "Right after saving, enable Require MFA for Everyone, … in the same change window, then test sign-in."
+   - Proposal: end 4.5's task with one line per policy: "Open **{policy}**, set **Enable policy** to **On** and select **Save**." I4 E3
+9. **Recommend: 4.6 reads Completed when the work is done, instead of disappearing.**
+   - The step only exists while some per-user state reads Enabled or Enforced (generate.ts:1447). Once they're all disabled, the next scan drops it from the plan.
+   - Proposal: record the first scan that read per-user MFA on, as 4.5 does for security defaults, and read Completed from any clean read after that. I4 E3
+10. **Recommend: dormant accounts stop holding 4.4's 90% gate forever.**
+    - On getiamai and small the gate counts enabled accounts nobody signs in with. It says: "“Prepare Your Team for MFA” will not move this number: none of the 9 people it is waiting on are in that step's list, because IAMAI has not seen them sign in. Until they sign in and register a method, or you decide those accounts are not in use, this number cannot reach 90%."
+    - Disabling those accounts (3.1's action) cleared the gate on small.
+    - Proposal: "{n} accounts haven't signed in for 90 days and have no method: {names}. Disable them in Disable or Confirm Dormant Accounts."
+    - Counting an account kept in 3.1 as "Turn On Without Them" would change how the gate counts, so that part is your call. I4 E3
+11. **Recommend: the report-only week reads as a wait, not a stop.**
+    - Today a policy's planned week reads "On Hold · Observing" in stop red, and the next state reads "Ready · Ready to enforce".
+    - Proposal: "Up Next · Report-only until Aug 31, 2026", then "Ready · Turn on".
+    - These are shared lane words, so frozen steps change too. I3 E3
+12. **Recommend: reuse a matching switched-off policy, and never suggest a "(2)" name.**
+    - An Off "CA - Block - Legacy authentication" that already matches the target makes 4.1 propose "CA - Block - Legacy authentication (2)". 4.2–4.4 behave the same, and 5.1 is already noted.
+    - Root cause: generate.ts:1049 uniqueName, and a first scan never claims a disabled policy.
+    - Proposal: treat that policy as the step's own, with the task "Set the policy to Report-only". I4 E3
+13. **Recommend: a stricter tenant policy counts as meeting 4.2.**
+    - A policy that blocks device code and authentication transfer reads Ready · Correct, and tells the person to take authentication transfer out. That weakens a grant.
+    - Seen only in a fixture variant (auditor-reported). I3 E3
+
+### Section 4 template (uniformity)
+
+14. **Every create names its Include and Exclude outright.** All four fail your standing check today.
+    - 4.1 and 4.2: "Configure exactly this intended scope: **Users: All users** with the exclusions IAMAI resolved…"
+    - 4.3: "include exactly the built-in directory roles resolved from the baseline, and apply the intended exclusions."
+    - 4.4: "Apply the IAMAI-resolved assignments exactly as the settings below them read… Exclude the resolved exclusions and nobody else."
+    - Proposal: "Under **Users**, include **All users** and exclude the group **Core - Exclusions**." For 4.3 the Include is "**Directory roles**: {the 46 roles}". Then one line each for Target resources (4.4 adds "exclude **Microsoft Intune Enrollment**") and Grant (4.3: "**Require authentication strength** → **Modern MFA + TAP**"). I5 E4
+15. **Every correction names its values and changes only what differs.**
+    - Today it says "add the exclusions group you confirmed in Configure Emergency Exclusions" and "(the includeRoles list in the JSON output)", with "make sure" lines for settings the scan already passed.
+    - On 4.2 variant b, a same-name policy scoped to one group keeps that scope.
+    - On 4.3 variant A, the grant-only correction never adds the missing exclusion.
+    - Proposal for demo 4.4: "Under **Users → Exclude**, add the group **Core - Exclusions**." / "Under **Target resources → Exclude**, add **Microsoft Intune Enrollment**." / "Select **Save**." I5 E3
+16. **One procedure layout, in section 1's words.**
+    - First line: "Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Conditional Access → Policies → New policy**." Today it reads "Open **Entra ID > … > New policy**." or "Go to Entra admin center → (Protection →) Conditional Access". Separately, "Open the policy named X (ID: …)" → "Open **X**".
+    - Add "Description: **{tag}**." after the name.
+    - Last line: "Return to IAMAI and select **Scan to update the plan**."
+    - DELETE on all four:
+      - "Leave session controls unconfigured(; the intended target has none)."
+      - everything after "Set **Enable policy: Report-only** and create it."
+      - "Reopen the created policy, compare it with the intended target shown in IAMAI, then rescan." (4.3: "create, re-open, verify, and rescan")
+      - "Left at **No**, the condition matches every client app…" (4.1)
+      - "Two consequences to know before you create it: …" (4.2)
+      - "Ticking every box instead…" (4.3)
+      - "Do not substitute an authentication strength." (4.4)
+      - "This policy already exists. The correction changes only…"
+      - "Keep the policy's current state. If it is On, the changed rule can affect access after you save."
+      - "Rescan in IAMAI to confirm the correction. Verify after the change: …"
+    - I5 E4
+17. **The turn-on task is two lines.**
+    - Today it runs 10–13 lines: "Verify the same policy and its prerequisites…" / "Reopen the policy by its ID. Confirm…" / "Do not turn it on unless all of these are true now:" plus three conditions numbered as steps / "If any one of them is not true, leave the policy in Report-only. Then change **Enable policy** to **On** and save." / "Verify after the change: …" / "Rescan in IAMAI."
+    - Proposal: "Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Conditional Access → Policies → {policy}**." / "Set **Enable policy** to **On** and select **Save**." I5 E4
+18. **The same procedure in every state, for policy steps too.** 3.x #19 doesn't reach these code paths.
+    - In report-only the task becomes "Keep the policy in Report-only while you review the evidence listed for this step. … No events in the available records does not prove there are no dependencies."
+    - Once Completed it becomes "Open “{policy}” (id) — the policy IAMAI matched to this step — and check its assignments, conditions, access controls and state against Completion Criteria on this step." (stepResources.ts:210, hard-coded English). In those states the task and rail are titled with the step's own name.
+    - Proposal: "Create the policy in Report-only" and "Turn the policy on" stay in every state. "Correct the policy" and "Set the policy to Report-only" appear only where they apply. The rail names the next task. I4 E3
+19. **Delete the "Settings for This Action" fold.** It holds:
+    - "Description: … — paste this exactly; it is how IAMAI recognises the policy it planned when it next reads the tenant."
+    - "Users → Include: All users, Guest or external users → all types." Entra can't select both (portalLines.ts:132).
+    - "Never exclude the emergency accounts directly; they are members of this group."
+    - Leftover "Setting: …" labels.
+    - I3 E4
+20. **The policy card names the task, never "Blocked" or the step title.**
+    - Today: "Blocked · Finish the steps this one waits on first."
+    - "Blocked · Create the policy in report-only on Aug 31, 2026 (estimated); turning it on waits for MFA readiness to reach 90%." (4.3 and 4.4, while the badge says Ready · Create)
+    - "Create the policy in Report-only · Create the policy in Report-only."
+    - "Require MFA for Everyone · Continue observation and collect the missing evidence. Review from Sep 4, 2026."
+    - "…the instruction that turns it on comes back then."
+    - "…which leaves the 1 working day of notice a change this size asks for."
+    - Proposal: "Create the policy in Report-only" / "Report-only until Sep 4, 2026" / "Turn the policy on · Report-only blocked no one. After Verify Emergency Access." I4 E4
+21. **Delete two report-only cards:**
+    - "Observation · Until Aug 31, 2026 · This is the earliest review date, not a scheduled automatic enforcement." (all four steps)
+    - "Implementation · Unavailable · Running this would change what Fixture small's people have to do straight away…" on a policy that is only in Report-only (4.3, 4.4)
+    - I3 E5
+22. **Satisfied cards state their fact.**
+    - "In place · This is in place already: nothing to create. Keep the policy as it is." becomes, for example, "On · Requires MFA for All users except Core - Exclusions" (4.4) or "On · Blocks Exchange ActiveSync and Other clients for All users except Core - Exclusions" (4.1).
+    - 4.5's "In place · No change needed." becomes "Off". I3 E4
+23. **A prerequisite card never contradicts itself.**
+    - "Prepare Emergency Access Accounts · Prerequisite · Completed · Finish Prepare Emergency Access Accounts first." shows whenever 1.2 is open, because the emergency-access set check is filed under 1.1's id (generate.ts:1526). File it under Configure Emergency Exclusions instead.
+    - Delete the note "Finish {step} first." everywhere. I4 E4
+24. **Each problem gets one card, with its fix.**
+    - Drift shows four cards for one change: "Review required · IAMAI does not write this change…", "New evidence · Review required…", "Review · … find out what changed on it, and why…", "Review · … IAMAI does not write that part". Proposal: one card, such as "Client apps changed · Set Client apps back to Exchange ActiveSync clients and Other clients."
+    - A removed exclusion shows "Exclusions · Reaches emergency access · … fix the exclusions-group step, then scan again." plus a second card, "Baseline safety conflict · Baseline safety conflict", and no correction task. Proposal: "Emergency accounts not excluded · Add Core - Exclusions back under Users → Exclude.", with the task that does it.
+    - The second card on a switched-off policy, "Implementation · Set the policy to Report-only · … not a new policy and not On: …", is deleted. I3 E3
+25. **Impact is a count, never a label.**
+    - Today some rows show labels: "Legacy Authentication" (4.1), "Device Code Sign-ins" (4.2), "Administrator Accounts" (4.3), "User Authentication" (4.4), "Tenant settings" (4.5).
+    - Root cause: rowWho.ts IMPACT_TOPICS. Count the tracked policy's reach instead.
+    - 4.3's "1 person · 1 would be stopped" becomes "1 admin". 4.5 reads "4 policies".
+    - For 4.1 and 4.2, you choose between today's reach count and the number of people who used the flow in the last 30 days (see 33 and 38). I4 E3
+26. **Completion Criteria is two lines, the same in every state.**
+    - Today it has up to six lines that change by state:
+      - "The required report-only period of 7 days is complete…"
+      - "The available records show every active person…"
+      - "A later scan confirms…"
+      - "Verify after the change: review sign-in failures…"
+      - "Representative users can satisfy MFA…"
+      - "…today ready now: 0 failures in 8 days." (grammar error)
+      - "Until a later scan finds the policy enabled, it is ready to enforce, not enforced."
+      - "IAMAI watched no report-only period…"
+      - "The scan found the assessed configuration in place."
+    - Proposal: "IAMAI sees {policy} On, {what it does} for {Include} except Core - Exclusions." / "Its report-only week showed no sign-in it would have stopped." Drop the second line where the policy was found already On.
+    - Keep "Verify after the change" only for policies turned on without a watched report-only week (your 2026-09-22 ruling). I4 E4
+27. **Row sub-lines:**
+    - "when MFA readiness reaches 90% (now 18%)" and "when admin readiness reaches 100% (now 66%)" start lower-case → "When MFA readiness reaches 90% (now 85%)" / "When every admin has a method it accepts (2 of 3)".
+    - "Baseline safety conflict" → "Doesn't exclude Core - Exclusions".
+    - 4.5's "Prerequisite on hold: Block Legacy Authentication" → "After Block Legacy Authentication".
+    - I2 E4
+28. **Row dates while a step is held:**
+    - On 4.2, recording the drill moved the date later on the same day: "Est. Sep 8, 2026" became "Est. Sep 15, 2026".
+    - 4.4's readiness-wait estimate moves with every scan (Est. Aug 31, then Est. Sep 7).
+    - Proposal: show the later of the day the wait clears and the scheduled turn-on. I2 E3
+29. **Tabs: keep Entra and AI Info; keep PowerShell and JSON only where they write** (create, correct, turn on).
+    - DELETE the report-only and Completed "Invoke-IAMAIStep -Mode 'Observe'" and "$batch … read-only GET requests", and 4.5's and 4.6's GET scripts.
+    - DELETE the Email tab on 4.1 ("Subject: Review Older Sign-In and Email Methods…") and 4.4 ("Subject: Stronger Sign-in Protection…", which repeats 3.4's email and still shows once Completed). I3 E4
+30. **Delete Troubleshooting, as in 3.x #21:** 4.3's four scenarios, 4.4's "A user in scope cannot satisfy MFA / … Intune Enrollment / A second broad MFA policy… / Report-only shows failures…", and 4.5's "…Graph rejects the Security Defaults update". I2 E5
+31. **AI Info on the four policy steps:**
+    - The lead states the action with its values.
+    - DELETE "No events in the available records does not prove…", "A registered method is not the same as a successful MFA sign-in, and few records do not show that everyone is ready." and "Do not infer…".
+    - Focus → "Walk me through creating this policy in Report-only and turning it on after its report-only week."
+    - "Excluded accounts: none: the resolved target excludes no individual accounts" → "Excluded accounts: none".
+    - Show "Values shown as ‹…› are not resolved yet. Do not run this output." only when a ‹…› value is actually present.
+    - "Who this touches: Policy applicability is not fully resolved…" → the count. I2 E4
+32. **"Defer this step" never shows on a Completed step** (today it does on 4.1–4.4). I2 E5
+
+### 4.1 Block Legacy Authentication
+
+33. SOLVE: show who uses legacy authentication.
+    - Today the only sentence naming them is inside the hidden Why dialog.
+    - Proposal: a card "Legacy sign-ins · 3 accounts signed in with legacy authentication in the last 30 days: svc-mailer-1, svc-mailer-2, svc-mailer-3" (mid), or a Satisfied card "Nobody signed in with legacy authentication in the last 30 days." (getiamai). I4 E3
+34. About: "Legacy authentication protocols cannot complete multifactor authentication… Exchange Online already refuses a password for POP, IMAP and ActiveSync… Review the clients and jobs still using one before that path closes." → "Legacy authentication can't ask for MFA, so a password alone gets through it. This policy blocks it for everyone except the emergency access accounts." I3 E5
+35. A report-only week that would have blocked someone:
+    - Today: "The records show 1 person this policy stopped while it was in report-only. Review them before enforcing: time elapsed alone does not complete this check." / "Continue observation and collect the missing evidence."
+    - Proposal: "Report-only would have blocked Alex Morgan (user2@…). Move them to a modern mail app before you turn this on." with the title "Move the blocked accounts". I5 E3
+36. Mail task:
+    - Target "Devices named in the mail-sending answer" → the account names.
+    - DELETE "Record each device's supported authentication and TLS options, the recipients it sends to, and a test window." and the false sentence from item 5.
+    - The route line → "Move each device to SMTP AUTH with OAuth, an Exchange Online connector, or Direct Send (internal recipients only)."
+    - The fold's "Exception account: 000f42a4-d8c7-…" (a raw id) → the account's name. I3 E4
+37. Grammar and a hostile-only line:
+    - "Also exclude the groups Core - Break glass." → "Also exclude the group Core - Break glass." ("the directory roles" has the same bug.)
+    - DELETE "…no sign-in records could be read — …", which only the hostile fixture reaches. I2 E5
+
+### 4.2 Block Device Code Sign-in
+
+38. SOLVE: show who uses device code.
+    - The card detail that repeats its own title ("Create the policy in Report-only.") → "No device-code sign-ins in the last 30 days." or "{n} people signed in with device code in the last 30 days: {names}."
+    - This replaces every "does not prove it is unused" line. I4 E3
+39. About: "Device-code phishing can persuade a person to approve a sign-in for someone else. Blocking this flow reduces that route of attack, but legitimate devices and tools need a checked alternative." → "Device-code phishing tricks a person into entering a code that signs an attacker in as them. Blocking device code sign-in closes that route." I3 E5
+40. AI Info:
+    - "It blocks Conditions → Authentication flows → Configure: Yes, then Device code flow for all users…" → "Create it in Report-only: it blocks device code sign-in for All users except Core - Exclusions, across all resources."
+    - The correct lead "…differs from the intended target: conditions.canonical." → "…it doesn't exclude Core - Exclusions." I3 E4
+
+### 4.3 Require Phishing-Resistant MFA for Admins
+
+41. About: "Administrator access deserves stronger sign-in protection. Checking accepted methods…" → "Admin accounts can change everything in your tenant, so this policy makes every admin role sign in with a passkey, a security key, Windows Hello, a certificate or a Temporary Access Pass. That is the baseline's Modern MFA + TAP strength; the Temporary Access Pass makes it weaker than Microsoft's phishing-resistant strength."
+    - DELETE the card "Baseline Grant · Weaker than phishing-resistant MFA · …": About now states it (R4-11). I3 E5
+42. Threshold:
+    - Today: "0% of admins ready for Modern MFA + TAP" / "66% of admins phishing-resistant" / "…it waits on “Prepare Emergency Access Accounts”, which is where to start."
+    - Proposal: "0 of 1 admin has a method it accepts · Kai Brown (user0@getiamai.example.com) needs a passkey, security key or Windows Hello. Prepare Your Team for MFA gets them ready."
+    - Name up to five people; beyond that, "MFA Readiness lists them." I3 E3
+43. Operator card:
+    - The same card is headed "Before turning on" in one state and "Prerequisites" in another, and reads "Your safe way in · when 1 safe way in for the signed-in account exists (now 0)".
+    - Proposal: "Your account · No method this policy accepts · Kai Brown (user0@getiamai.example.com) holds an admin role and has no passkey or security key. Register Your Own Passkey fixes this before it turns on." I3 E4
+44. Holds that are false or garbled:
+    - "Stop: Prepare Your Team for MFA is not finished, and this policy is part of it." (content.json:3033; the policy is not part of that step) → "Wait for Prepare Your Team for MFA; leave this policy in Report-only until then."
+    - "Running this would turn the policy on straight away…" on a report-only policy → "It turns on after Prepare Emergency Access Accounts."
+    - "…the instruction being withheld is the one that turns the policy on…" on a policy that is already On → "It stays until every admin has a method it accepts (1 of 3 today)." I3 E4
+45. Correction lines:
+    - Grant: "…Its ID is **“Modern MFA + TAP” (004c4b41-…)**. … so review that effect before you save." → "Under **Grant**, select **Require authentication strength** → **Modern MFA + TAP**, and clear any other grant."
+    - Session: "Remove session controls from this policy. Admin session duration…" → "Under **Session**, clear every control."
+    - Name: "Rename the same policy (same policy ID)… Find it by its policy ID…" → "Name: **{name}**." I3 E5
+46. AI Info:
+    - "1 admin is not yet Ready for phishing-resistant MFA…" shows while the gate reads 100%. Build this line from the gate's own count.
+    - DELETE "2 of them use the same account for mail or Teams; see Use Separate Accounts for Admin Work: …". That is 3.2's work.
+    - Optional, your call: the name "CA - Require - Phishing-resistant MFA for admins" promises more than Modern MFA + TAP delivers. I3 E3
+
+### 4.4 Require MFA for Everyone
+
+47. About: "MFA makes a stolen password less useful. Reviewing who has a usable method—and who has actually used one—helps catch access problems before enforcement." → "A stolen password alone should never be enough to sign in. This policy asks everyone for MFA, the floor the admin and guest policies build on." I2 E5
+48. Threshold detail:
+    - Today: "23 of 27 people this step's policies include have a registered method those policies accept and this tenant lets them use. 2 of the 4 people without one would be counted if this tenant's Authentication methods policy allowed the methods they registered."
+    - Proposal: "23 of 27 people have a method it accepts. 2 registered {method}, which your Authentication methods policy turns off."
+    - The dormant-accounts half is item 10. I3 E3
+
+### 4.5 Turn Off Security Defaults (only on tenants where a scan read security defaults on)
+
+49. About: "Replacing Security Defaults gives you more control over access rules. The changeover needs care…" → "Security defaults and Conditional Access can't run together. Turn security defaults off on the day the four policies below turn on, so the tenant is never without MFA." I3 E5
+50. Card and rail:
+    - Today: "Security defaults · Still on · Security defaults and Conditional Access are not meant to run together, and the rule runs both ways: … Turn them off on that day and not before." That's about 110 words, and the rail repeats it.
+    - Proposal: "Security defaults · On · Turn off the day the four policies below are ready to turn on."
+    - DELETE the four cards' note "…needs to be ready to enforce first — not finished, just ready." I4 E5
+51. Task:
+    - DELETE "Check each policy that takes over: … must have run in report-only with no failures before you turn it on today."
+    - "Entra admin center → Entra ID → Overview → Properties → Manage security defaults → Disabled (not recommended) → Save. You need at least the Conditional Access Administrator role." → "As at least a Conditional Access Administrator, open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Overview → Properties → Manage security defaults**." / "Select **Disabled (not recommended)**, then **Save**." Then the four turn-ons from item 8.
+    - Once Completed, the task switches to "…There is nothing to change on this step." / "…None of them is turned on from here.", which contradicts the open task. DELETE it (item 18). I4 E4
+52. Completion Criteria: "Security defaults are off; Require MFA for Everyone, … are enforced." / "Test sign-in for representative users and admins right after the changeover." → "IAMAI reads security defaults as Disabled." I3 E5
+53. Rollback advice and footer:
+    - AI Info: "If it goes wrong: … Re-enabling Security Defaults may require changing active Conditional Access policies first…" → "If it goes wrong: set the policy that blocks sign-in back to Report-only. If you are locked out, sign in with an emergency access account." (Your rule: rollback advice says Report-only.)
+    - The footer row on your tenant: "No scan of this plan has read security defaults on, so there is nothing to turn off." → "Security defaults are already off." I2 E5
+
+### 4.6 Finish Moving Off Per-User MFA (4.5 where Turn Off Security Defaults isn't on the plan)
+
+54. DELETE "Legacy Per-User MFA · Not fully read · The scan read no per-user MFA state, so every account in the directory needs a check: all 13 accounts, the emergency accounts included." and the Ready · Review confirm state it brings.
+    - Every fixture reaches this only because the fixtures predate the per-user read. A real scan reads every account (collect/registry.ts:85). I3 E4
+55. Two cards say the same thing:
+    - "Per-user MFA states · Not in place · On the day Require MFA for Everyone enforces, and not before, disable every legacy per-user MFA state."
+    - "Legacy Per-User MFA · 3 accounts Enabled or Enforced · Sam Patel, Morgan Brown, Jamie Singh"
+    - Proposal: one card, "3 accounts on per-user MFA · Sam Patel, Morgan Brown, Jamie Singh". Drop "On the day … not before" once 4.4 is On; today it stays after 4.4 is Completed.
+    - The badge "Ready · Create" becomes "Ready", as in 3.x #18: the step creates nothing. I4 E4
+56. About: "An account left on Enforced is asked for MFA at every sign-in whatever the policy decides… Keep the existing protection until the replacement is actually enabled…" → "An account left on per-user MFA is asked for MFA at every sign-in, whatever Conditional Access decides. Turn it off for each account once Require MFA for Everyone is On." I3 E5
+57. Task:
+    - DELETE "Check first that every method these people use is enabled under … Authentication methods → Policies. That policy decides what they may register; it never requires MFA…"
+    - Then: "As at least an Authentication Policy Administrator, open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Users → All users → Per-user MFA**." / "Select **Sam Patel**, **Morgan Brown** and **Jamie Singh**, then **Disable MFA**." / "Delete any app password these accounts hold." / the scan line.
+    - "Read each state back as Disabled" goes: the scan reads that. I4 E4
+58. Completion Criteria and AI Info:
+    - "…reviewed and disabled for the intended accounts after replacement protection is verified." / "Authentication-method policy migration is tracked separately; its completion does not prove…" → "IAMAI reads per-user MFA as Disabled for every account."
+    - AI Info Focus → "Walk me through turning off per-user MFA for these accounts." I3 E5
+
+### Later steps (frozen, noted only)
+
+- The Workflow Check (POLICY_WORKFLOWS) is also on 5.1, which is next in the walk. The frozen guests MFA, device registration, Intune enrollment, PIM activation, medium user risk and service-accounts trusted-network steps have it too, so each reads Ready · Review.
+- The shared code behind items 2, 7, 11, 12 and 16–28 draws on every frozen policy step. The entra.observe and entra.enforce blocks are written separately in each of about 40 packages, so items 17 and 18 have to land package by package or through one shared block.
+- Every frozen policy's turn-on also waits on security defaults, but 4.5 names only four policies. Item 8 has to say what happens to the rest.
+- Restrict Service Accounts to the Trusted Network also waits on 3.7: check it against item 5.
+- laneBCore.ts:276 counts device-code sessions as authentication transfer (the frozen Block Authentication Transfer step).
+- "see Use Separate Accounts for Admin Work: {list:adminsWithWorkload}" also appears on 5.4 and on section 7's admin-session step.
+- 4.3's META.json and STEP.md still carry the old five-method list. Fix it together with 3.x #55.
