@@ -92,7 +92,8 @@ test('P1-1: the Decision tile reads Decision, explains the ask, and names the on
   // The next-check tile asks for the choice; the suggestion line names the group IAMAI found (needsDecision.test).
   assert.ok(name)
   assert.equal(tile.value, 'Choose an exclusions group')
-  assert.match(tile.note ?? '', /^Select a group under Exclusions group, then Save\./)
+  // The group picker saves the group it is given: there is no Save to press (2026-09-23).
+  assert.match(tile.note ?? '', /^Select a group under Exclusions group\. To create one/)
   for (const t of allTiles(group)) assert.doesNotMatch(t.value, /Needs decision/)
 })
 
