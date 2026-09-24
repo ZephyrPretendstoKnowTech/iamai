@@ -149,7 +149,11 @@ Audit numbers from the section 2 audit (2026-09-23), approved with the owner's c
 | 65 | 2.3's unused AI Info branch (aiGrounding.ts) is deleted | approved |
 
 
-## Section 3 Prepare (3.1–3.7): PROPOSED, awaiting the owner's approval
+## Section 3 Prepare (3.1–3.7): APPROVED (owner, 2026-09-23), all items with these changes
+- **5:** only the Windows Hello half. A Windows Hello sign-in counts as the operator's phishing-resistant sign-in; there is no every-kind-of-device requirement, and item 43's criterion follows.
+- **10:** withdrawn.
+- **11:** the "Affected people" and "Existing coverage" cards are deleted on EVERY step. The "In place · No change needed." cards get their facts section by section (section 3 now, item 14).
+- **Everything else as written.** The intent comes first: each step reads as an expert that has already looked, names what to do, and completes when the work is done.
 From the section 3 audit (seven auditors plus a synthesis, fixtures) and the live walk of 3.1–3.6 on the owner's tenant (2026-09-23). Claims marked (fixture) are checked on the live tenant before building. Nothing here is built until approved.
 
 The 3.6 audit was cut off after its Tasks Remaining lines, and no 3.7 audit arrived. I audited the rest of 3.6 and all of 3.7 myself with the harness, on demo and mid (fixtures). Items not built in section 2 yet (#17, #19, #45, #61) are left out of this list.
