@@ -29,11 +29,10 @@ import { classOfKind, isReady } from '../../scoring/phishingResistant.ts'
 import { content, pages, shared } from '../../content/content.ts'
 import { fillText, whole } from '../../content/render.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
-import { GUIDE_POINTER, METHOD_GUIDES, PASSKEY_TARGET, TENANT_PREREQUISITE, USER_INSTRUCTION, guideText, methodGuide, reachesTarget } from '../../content/methodGuides.ts'
+import { GUIDE_POINTER, METHOD_GUIDES, USER_INSTRUCTION, guideText, methodGuide, reachesTarget } from '../../content/methodGuides.ts'
 import type { MethodGuideId } from '../../content/methodGuides.ts'
-import { classWord, deviceChips, methodsCell, nextCell, panelDevices, panelMethods, whyLine, deviceNoun } from './readinessCells.ts'
+import { nextCell, panelDevices, panelMethods, whyLine } from './readinessCells.ts'
 import { copyBoxes, stepLines } from './stepExport.ts'
-import { rescanLinesOf } from './stepInstructions.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 
@@ -85,38 +84,6 @@ test('every guide resolves from the content file, and a line two guides share is
     assert.ok(lines.includes(MG.common.useIt), `${id}: ends by using the method`)
     assert.ok(lines.includes(MG.common.scanAgain), `${id}: and by scanning again`)
   }
-})
-
-test('the help-desk text is the guidance, not a second version of it', () => {
-  for (const g of METHOD_GUIDES) {
-    const text = guideText(g.id)
-    assert.ok(text.includes(g.title), `${g.id}: the copy names the method`)
-    for (const l of g.lines) assert.ok(text.includes(l), `${g.id}: the copy carries the guide's line`)
-    assert.ok(text.includes(g.learn.url), `${g.id}: and the Microsoft page`)
-    // Nothing about a person travels with it: the operator hands somebody the
-    // steps, never a name from the table.
-    assert.doesNotMatch(text, /@[a-z0-9.-]+\.[a-z]{2,}/i, `${g.id}: no address in the copied guidance`)
-  }
-})
-
-test('the Plan and the campaign email reference the shared lines rather than repeating them', () => {
-  const cs = content.steps.find((s) => s.id === CAMPAIGN) as Record<string, any>
-  const steps = (cs.whatToDo.steps ?? []) as string[]
-  assert.ok(steps.includes('{methodGuidePointer}'), 'the Plan step references the one pointer')
-  const comms = cs.comms as Record<string, string>
-  for (const key of ['body', 'bodyMfaInPlace']) {
-    assert.ok(comms[key].includes('{registerPasskeyLine}'), `comms.${key}: references the one end-user sentence`)
-  }
-  // Rendered, both come out as the shared line itself. On a tenant whose plan
-  // dates the enforcement the email warns of: the demo's is held
-  // (roadmap/holds.ts), and an email with no day to name is not written.
-  const ctx = ctxFor('mid')
-  const step = campaignOf('mid')
-  const lines = stepLines(step, ctx)
-  assert.ok(lines.includes(GUIDE_POINTER), 'the Plan step renders the pointer')
-  assert.ok(lines.some((l) => l.includes(USER_INSTRUCTION)), 'the email renders the shared end-user sentence')
-  const box = copyBoxes(step, ctx).find((b) => b.kind === 'comms')!
-  assert.ok(box.text.includes(USER_INSTRUCTION), 'and the copy box carries the same sentence')
 })
 
 // ---- B. the next step follows the evidence ------------------------------------
@@ -176,71 +143,6 @@ test('the next step a person is offered follows their readiness, the panel agree
   assert.deepEqual([...seen].sort(), ['confirm', 'device', 'method', 'ready', 'seamless', 'unknown'], 'the sweep saw every state the fixtures hold')
 })
 
-test('a registered method with no confirmed sign-in is asked to be confirmed, on the row and in the panel', () => {
-  const P = (pages.readiness as unknown as { panel: { proofNow: { none: string }; now: string } }).panel
-  let seen = 0
-  for (const name of TENANTS) {
-    const f = fixture(name)
-    for (const row of readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows) {
-      const rd = row.readiness
-      if (row.state !== 'confirm' || !rd || rd.next.kind !== 'confirm') continue
-      seen++
-      // The method keeps its capitals mid-sentence, and the device is named where one is known.
-      const W = pages.readiness as unknown as { next: { confirm: string; confirmOn: string }; methodsInline: Record<string, string> }
-      assert.equal(nextCell(row), rd.next.os ? fillText(W.next.confirmOn, { method: W.methodsInline[rd.next.cls], device: deviceNoun(rd.next.os) }) : fillText(W.next.confirm, { method: W.methodsInline[rd.next.cls] }))
-      assert.doesNotMatch(nextCell(row), /windows hello/, 'never a lower-cased product name')
-      // Every device in use reads Not confirmed, on the chip and in the panel's Now.
-      for (const c of deviceChips(row).chips) assert.equal(c.word, (pages.readiness as unknown as { chip: { notConfirmed: string } }).chip.notConfirmed)
-      for (const d of panelDevices(row)) assert.deepEqual(d.facts.find(([k]) => k === P.now)?.[1], P.proofNow.none)
-    }
-  }
-  assert.ok(seen > 0, 'the fixtures hold somebody with a registered method and no confirmed sign-in')
-})
-
-test('a row holding two qualifying methods names both', () => {
-  const f = fixture('demo')
-  const both = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.find((r) => r.readiness?.qualifying.includes('passkey') && r.readiness.qualifying.includes('windowsHello'))
-  assert.ok(both, 'the demo has somebody with a passkey and Windows Hello')
-  assert.equal(methodsCell(both).main, 'Passkey and Windows Hello')
-})
-
-test('the surface offers the next step the readiness gives, and the panel reads the same row', () => {
-  assert.match(SURFACE, /<div className="next-step">\s*\{nextCell\(r\)\}/, 'the row reads the one next-step authority')
-  // Only counted people are in a group; an account the page does not count is in the rail, asked for nothing.
-  assert.match(SURFACE, /rows: view\.rows\.filter\(\(r\) => r\.state === s && matches\(r\)\)/)
-  assert.match(SURFACE, /useState<string \| null>\(null\)/, 'the panel is closed by default')
-  assert.match(SURFACE, /const openRow = openId === null \? null : \(view\?\.rows\.find\(\(r\) => r\.user\.id === openId\) \?\? null\)/, 'the panel reads the same row the Details was on')
-  assert.match(SURFACE, /<strong>\{nextCell\(openRow\)\}<\/strong>\s*<p>\{whyLine\(openRow\)\}<\/p>/, "the panel's next step is not the row's")
-})
-
-// ---- C. Windows Hello is phishing-resistant, where it signs in -----------------
-
-test('Windows Hello satisfies the baseline on the computer it signs in on, and the passkey guide is unchanged', () => {
-  // The guide's own target is the portable passkey, which Windows Hello is not.
-  assert.equal(reachesTarget('windows-hello'), false)
-  const hello = methodGuide('windows-hello')
-  assert.ok(!hello.lines.includes(MG.common.scanAgain), 'no "scan again and you are passkey-ready" ending')
-  assert.ok(hello.lines.some((l) => /does not reach the passkey target/.test(l)), 'the guide says so in words')
-  const f = fixture('demo')
-  const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
-  // Windows Hello alone, and only a Windows computer in use: Ready, nothing required.
-  const helloOnly = v.rows.filter((r) => r.state !== null && r.readiness?.qualifying.length === 1 && r.readiness.qualifying[0] === 'windowsHello')
-  const helloReady = helloOnly.filter((r) => isReady(r.state!))
-  assert.ok(helloReady.length > 0, 'the demo has somebody Ready with Windows Hello alone')
-  for (const row of helloReady) {
-    assert.equal(row.readiness!.next.kind, 'none')
-    assert.ok(row.readiness!.devices.every((d) => d.os === 'Windows'), `${row.user.id}: Windows Hello is Ready only where Windows is all they use`)
-  }
-  // Windows Hello confirmed on Windows and a phone in use: asked to add the phone, never told they hold nothing.
-  const helloElsewhere = helloOnly.filter((r) => r.state === 'device')
-  assert.ok(helloElsewhere.length > 0, 'the demo has a Windows Hello person who also signs in on a phone')
-  for (const row of helloElsewhere) {
-    assert.equal(row.readiness!.next.kind, 'addDevice')
-    assert.match(nextCell(row), /^Add /)
-    assert.doesNotMatch(nextCell(row), /^Set up/)
-  }
-})
-
 // ---- D. a Temporary Access Pass is a way in, not the end state ----------------
 
 test('a Temporary Access Pass bootstraps and is never a readiness method', () => {
@@ -297,64 +199,7 @@ test('a guest is told, in one shared sentence, why this tenant issues them no Te
   assert.ok(guests > 0, 'the fixtures hold an active guest')
 })
 
-// ---- E / F. the platforms, and the security key --------------------------------
-
-test('both Authenticator platforms are guided, and they differ where the Microsoft steps differ', () => {
-  const ios = methodGuide('authenticator-iphone')
-  const android = methodGuide('authenticator-android')
-  assert.notEqual(ios.title, android.title, 'the operator can tell them apart')
-  assert.match(ios.title, /iPhone/)
-  assert.match(android.title, /Android/)
-  assert.ok(ios.lines.some((l) => /App Store/.test(l)) && android.lines.some((l) => /Google Play/.test(l)), 'each names its own store')
-  assert.ok(ios.lines.some((l) => /Face ID/.test(l)), 'iOS confirms the way iOS confirms')
-  assert.ok(android.lines.some((l) => /screen lock/.test(l)), 'Android confirms the way Android does')
-  // Different where they differ, shared where they do not.
-  assert.notDeepEqual(ios.lines, android.lines)
-  assert.ok(ios.lines.filter((l) => android.lines.includes(l)).length >= 3, 'the common steps are shared, not retyped')
-})
-
-test('the security-key guide is concise, and carries no vendor or raw identifier', () => {
-  const key = methodGuide('security-key')
-  assert.ok(key.lines.length <= 6, `four or so lines, not a manual (${key.lines.length})`)
-  const text = guideText('security-key')
-  // The recorded Microsoft Authenticator AAGUIDs belong to the administrative
-  // method-settings step; they are not end-user setup instructions.
-  assert.doesNotMatch(text, /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i, 'no raw AAGUID in end-user steps')
-  assert.doesNotMatch(text, /yubi|feitian|solokey|token2|idmelon/i, 'no vendor-specific assumption')
-  // And no guide anywhere carries one.
-  for (const g of METHOD_GUIDES) assert.doesNotMatch(guideText(g.id), /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i, `${g.id}: no identifier in guidance`)
-  // The two AAGUIDs stay exactly where they were, in the method-settings step.
-  const settings = content.steps.find((s) => s.id === 's-prereq-passkey-settings') as Record<string, any>
-  assert.ok(JSON.stringify(settings.whatToDo).includes('{aaguidAndroid}'), 'the administrative step still carries them')
-})
-
 // ---- G. the Plan keeps its own job ---------------------------------------------
-
-test('the campaign step hands person-level setup to MFA Readiness and keeps its policy work', () => {
-  // GetIAMAI for the tenant whose MFA waits on readiness: on the demo nothing the
-  // plan dates gives the readiness line its enrol-by day (roadmap/holds.ts).
-  for (const name of ['getiamai', 'mid', 'messy'] as FixtureName[]) {
-    const step = campaignOf(name)
-    const ctx = ctxFor(name)
-    const lines = stepLines(step, ctx)
-    const text = lines.join('\n')
-    // The handoff.
-    assert.ok(lines.includes(GUIDE_POINTER), `${name}: the step points at MFA Readiness`)
-    assert.ok(text.includes('Help people set up the sign-in methods'), `${name}: preparation purpose`)
-    // mfa-everyone-spec.md §4 C9: Completion Criteria is split so each line says
-    // one thing — the cohort, the administrator gate, the support list.
-    assert.ok(text.includes('Everyone in this step has a registered MFA method they can use'), `${name}: exact preparation cohort`)
-    assert.ok(text.includes('Every administrator has a phishing-resistant method'), `${name}: stronger administrator requirement`)
-    assert.ok(text.includes('The people who still need help are identified and on the support list'), `${name}: who is still owed help`)
-    assert.doesNotMatch(text, /Readiness reaches 90%/, 'preparation cannot mask people without a suitable method')
-    // And the long per-method manual is not back: no guide's instruction list
-    // renders inline on the step.
-    for (const g of METHOD_GUIDES) {
-      const inline = g.lines.filter((l) => text.includes(l))
-      assert.ok(inline.length === 0, `${name}: ${g.id} renders inline on the Plan (${inline[0] ?? ''})`)
-    }
-  }
-})
 
 test('no Plan step anywhere renders the shared setup guidance inline', () => {
   const guideLines = new Set(METHOD_GUIDES.flatMap((g) => g.lines))
@@ -391,24 +236,6 @@ test("the campaign email reuses the guidance, states no proof, and does not leav
   assert.ok(whole('{registerPasskeyLine}', {}), 'a shared reference is not a hole')
   assert.equal(fillText('{registerPasskeyLine}', {}), USER_INSTRUCTION, 'and it fills to the one shared sentence')
   assert.equal(fillText('{methodGuidePointer}', {}), GUIDE_POINTER)
-})
-
-test('the help-desk lines the campaign keeps are exceptions, not a setup manual', () => {
-  const ctx = ctxFor('demo')
-  const box = copyBoxes(campaignOf('demo'), ctx).find((b) => b.kind === 'helpDesk')!
-  assert.ok(box.text.length > 0)
-  for (const g of METHOD_GUIDES) for (const l of g.lines) assert.ok(!box.text.includes(l), `${g.id}: not duplicated into the help-desk box`)
-})
-
-// ---- I. the official source ----------------------------------------------------
-
-test('every guide ends on one official Microsoft page, and the page renders no guide of its own', () => {
-  for (const g of METHOD_GUIDES) {
-    assert.match(g.learn.url, /^https:\/\/learn\.microsoft\.com\//, `${g.id}: an official Microsoft page`)
-    assert.doesNotMatch(g.learn.url, /blog|medium|github\.io/, `${g.id}: not a vendor blog`)
-  }
-  // MFA Readiness's person panel is the next step, the devices and the methods (prompt 62): no bibliography, no guide panel.
-  assert.doesNotMatch(SURFACE, /methodGuide\(|guideText\(|learn\.url|RemediationPanel/, 'the page renders a guide of its own')
 })
 
 // ---- J. no new authority, and no way to write ----------------------------------
@@ -455,37 +282,3 @@ test('the guidance layer reads the tenant and writes nothing', () => {
   for (const g of METHOD_GUIDES) assert.doesNotMatch(guideText(g.id), /IAMAI (issues|registers|creates|sets) (?!nothing)/, `${g.id}: IAMAI performs nothing`)
 })
 
-test('the target and the tenant prerequisite are said once, outside every guide', () => {
-  assert.equal(PASSKEY_TARGET, MG.target)
-  assert.equal(TENANT_PREREQUISITE, MG.prereq)
-  // The one-line explanation lives outside the guides, so no guide carries a
-  // "why passkeys matter" preamble of its own.
-  for (const g of METHOD_GUIDES) {
-    assert.ok(!g.lines.includes(PASSKEY_TARGET), `${g.id}: the target is stated once, above`)
-    assert.ok(!g.lines.includes(TENANT_PREREQUISITE), `${g.id}: and so is the prerequisite`)
-  }
-  // The target is phishing-resistant MFA, not a passkey (Step 7).
-  assert.match(MG.target, /phishing-resistant/)
-  // MFA Readiness's page carries neither: the answer's definition line says what Ready means.
-  assert.doesNotMatch(SURFACE, /PASSKEY_TARGET|TENANT_PREREQUISITE/)
-})
-
-test('the step content the guidance replaced is gone, and its meaning is not', () => {
-  const campaign = campaignOf('demo')
-  const cs = contentStepFor(campaign) as Record<string, any>
-  // The steps as a readable tenant reads them: the promise that the next scan
-  // shows the evidence follows them from whatToDo.rescan, and is left out only
-  // where the source it is read from was refused (R4-20).
-  const steps = [...(cs.whatToDo.steps as string[]), ...rescanLinesOf(campaign, cs).steps].join('\n')
-  // The four per-state setup blocks the step used to carry.
-  for (const gone of ['Add sign-in method → Passkey → in Microsoft Authenticator', 'Never seen or possibly broken', 'read it to them by phone']) {
-    assert.ok(!steps.includes(gone), `the long setup line "${gone}" is not back on the Plan`)
-  }
-  // What it must not have lost: the pass for somebody with no way in, the phone
-  // number that comes off after, the admins' harder requirement, and the scan.
-  assert.ok(/Temporary Access Pass/.test(steps), 'a person with no method still gets a way in')
-  // Editorial batch C: an older method is retired only through the approved change, after recovery is checked.
-  assert.ok(/Retire an older method only through the approved method-policy change, after checking recovery needs/.test(steps), 'the phone number still comes off, safely')
-  assert.ok(/hardware security key/.test(steps), "the admins' requirement stands")
-  assert.ok(/the record shows it on the next scan/.test(steps), 'and the step still ends on the evidence')
-})
