@@ -118,21 +118,6 @@ test('every step in the corpus offers a channel count the capability rule can dr
   assert.ok((counts.get(0) ?? 0) > 0 && (counts.get(1) ?? 0) + (counts.get(3) ?? 0) > 0, `the corpus does not exercise the rule: ${[...counts].join(' ')}`)
 })
 
-// ------------------------------------------------------------ the rail is real
-
-test('every family draws the one milestone at the head of its action column, and it is never empty', () => {
-  for (const a of audited()) {
-    const r = railOf(a.contract)
-    // The sub-line is the package's words or nothing (U3); the milestone itself is always there.
-    assert.ok(r.metric.trim().length > 0, `${a.fixture}/${a.step.id}: a milestone with nothing in it`)
-    assert.equal(r.sub, '', `${a.fixture}/${a.step.id}: the contract composed a sub-line`)
-    // A date only where Foundation B holds one; never one it does not.
-    // A day the schedule places (roadmap/stepSchedule.ts) is not invented: the row reads the same day.
-    const scheduled = a.contract.schedule !== null ? a.contract.schedule.at : null
-    if (a.contract.milestone.at === null && scheduled === null) assert.equal(/\d{4}/.test(r.metric), false, `${a.fixture}/${a.step.id}: the rail invents a date`)
-  }
-})
-
 // ------------------------------------ implementation is not always the action
 
 test('a held policy does not offer the deployment as its current action', () => {

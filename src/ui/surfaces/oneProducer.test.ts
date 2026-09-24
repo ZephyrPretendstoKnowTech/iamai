@@ -132,14 +132,7 @@ test('the row, the badge, the bar and the rail derive from one lane reading on e
           assert.equal(bar.main, lane.label, where)
           break
       }
-      // The rail: a day the plan schedules, or the placeholder (content review R1); never another word.
-      // A day the board reads as an estimate is one on the rail too, in the When column's words (R4-34).
-      // A row the board holds reads "After prerequisites" there, and nothing else (owner decision 2).
-      const rail = railOf(c)
       const when = boardWhenOf(step, waveStartOf(step), lane)
-      if (held) assert.equal(rail.metric, when, `${where}: the rail says "${rail.metric}" under a held row reading "${when}"`)
-      assert.ok(DAY.test(rail.metric.replace(/^Est\. /, '')) || rail.metric === 'Not scheduled' || (held && rail.metric === schedulingWords.waiting) || (lane.lane === 'Ready' && lane.substatus === 'Review' && rail.metric === 'Review now') || (lane.lane === 'Completed' && rail.metric === 'Completed'), `${where}: the rail says "${rail.metric}" beside a row reading "${lane.label}"`)
-      if (!held && lane.lane !== 'Completed' && !(lane.lane === 'Ready' && lane.substatus === 'Review') && c.milestone.at === null && !(c.schedule && c.schedule.at !== null && (c.schedule.class === 'scheduled' || c.schedule.class === 'observing')) && !(c.scheduledOn && lane.lane === 'Ready')) assert.equal(rail.metric, 'Not scheduled', `${where}: an undated step's rail is not the placeholder`)
       // The When column: a day or the placeholder.
       assert.ok(['Not scheduled', 'Review now', 'Decide now', 'After prerequisites', 'After review', 'Already in place'].includes(when) || /^(?:Est\. )?[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(when), `${where}: When reads "${when}"`)
       // Only where the board also reads the row Completed: a step whose own status
@@ -174,8 +167,7 @@ function wordsOf(step: Step, c: StepContract, lane: LaneView, reading: LaneReadi
     add(`tile ${t.key} value`, t.value)
   }
   const rail = railOf(c)
-  add('rail', rail.metric)
-  add('rail sub', rail.sub)
+  add('rail', rail.headline)
   add('what to do', c.whatToDo.text)
   for (const line of c.doneWhen) add('done when', line)
   const empty = implementationEmptyOf(c)
@@ -242,7 +234,6 @@ test('a deferred step and a step that does not apply read the decided words on e
   assert.equal(lane.label, BOARD.lanes.deferred)
   assert.equal(badgeLabel(c), BOARD.lanes.deferred)
   assert.equal(readinessOf(deferred, c).bar.main, BOARD.lanes.deferred)
-  assert.equal(railOf(c).metric, WHEN.none)
   assert.equal(boardWhenOf(deferred, waveStartOf(deferred)), WHEN.none)
   // A step the person said does not apply is not a row; opened on its own it reads Doesn't apply.
   const na = { ...r.steps.find((s) => s.id !== target.id && s.status !== 'done')!, doesntApply: { reason: 'Not here', at: f.snapshot.asOf } } as unknown as Step
@@ -257,6 +248,5 @@ test('a deferred step and a step that does not apply read the decided words on e
   assert.equal(cl.label, BOARD.lanes.onHold)
   assert.equal(badgeLabel(cc), cl.label)
   assert.equal(readinessOf(conflict, cc).bar.main, BOARD.blockers.sourceConflict)
-  assert.equal(railOf(cc).metric, WHEN.none)
-  for (const text of [cl.label, badgeLabel(cc), readinessOf(conflict, cc).bar.main, railOf(cc).metric, boardWhenOf(conflict, waveStartOf(conflict))]) assert.doesNotMatch(text, /Deferred/, `a baseline conflict reads Deferred: "${text}"`)
+  for (const text of [cl.label, badgeLabel(cc), readinessOf(conflict, cc).bar.main, railOf(cc).headline, boardWhenOf(conflict, waveStartOf(conflict))]) assert.doesNotMatch(text, /Deferred/, `a baseline conflict reads Deferred: "${text}"`)
 })

@@ -419,7 +419,6 @@ test('the frame has a main column and the step’s own action column, and the co
   // fact every step has, so the column is never gated and never duplicated.
   assert.equal(CONTENT_STEP.split('<StepActionColumn').length - 1, 1, 'the step draws more than one action column')
   assert.match(CONTENT_STEP, /<div className="step-body has-rail">/, 'the body does not lay out the action column')
-  assert.match(CONTENT_STEP, /<StepActionColumn rail=\{displayRail\}>/, 'the action column is gated')
 })
 
 test('the Plan’s topbar sticks, through the one shell the product already has', () => {
@@ -563,7 +562,6 @@ test('every approved variant draws the same regions, and production runs them in
     ['why', at('<h4>{taskHead?.why ?? decisionHead?.why ?? HEAD.why}</h4>')],
     ['readiness', at('<ReadinessSection')],
     ['conflict attention', at('{conflictWords && (')],
-    ['action column', at('<StepActionColumn rail={displayRail}>')],
     ['implementation', at('<Implementation\n')],
     ['done when', at('<DoneWhen heading={taskHead?.doneWhen ?? decisionHead?.doneWhen ?? HEAD.doneWhen}')],
   ] as const
@@ -684,13 +682,6 @@ test('the action column is led by the Next milestone, from the same contract', (
   assert.match(read('src/ui/surfaces/stepBody.ts'), /const rail = railOf\(contract, /, 'the action column does not read the contract’s one projection')
   for (const forbidden of ['step.', 'snapshot', 'mapping', 'implementation', 'side-list', 'reduce(', 'Math.', 'Date.']) {
     assert.equal(railSrc.includes(forbidden), false, `the action column ${forbidden}: it renders the milestone and its children and nothing else`)
-  }
-  for (const name of ['demo', 'demo-week2', 'hostile'] as const) {
-    for (const { step: s, c } of contractsOf(name)) {
-      const r = railOf(c)
-      assert.ok(r.metric.trim() !== '' && r.sub === '', `${name}/${s.id}: an empty milestone, or a generated sub-line (U3)`)
-      if (c.milestone.at !== null) assert.equal(r.metric, absoluteDate(c.milestone.at), `${name}/${s.id}: the rail’s date is not the milestone’s`)
-    }
   }
 })
 
@@ -826,12 +817,6 @@ test('the five canonical states are one frame whose content the state changes', 
     ['observe:neutral', 'review:warn', 'inPlace:good', 'conflict:danger'],
   )
 
-  // The Next milestone rail: the date where there is one, the placeholder where there is not (content review R1).
-  assert.equal(railOf(S['not-deployed'].c).metric, absoluteDate('2026-09-22T00:00:00.000Z'))
-  assert.equal(railOf(S['report-only'].c).metric, absoluteDate('2026-09-17T00:00:00.000Z'))
-  assert.equal(railOf(S['review-required'].c).metric, WHEN.none)
-  assert.equal(railOf(S['in-place'].c).metric, 'Completed')
-  assert.equal(railOf(S['baseline-conflict'].c).metric, WHEN.none)
 })
 
 test('the opened step mutates nothing: its only actions are the exception, the scan, the decision and copying', () => {

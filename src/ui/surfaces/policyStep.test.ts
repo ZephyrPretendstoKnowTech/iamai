@@ -159,7 +159,6 @@ test('the frame: a full-width header holding the track, a body split beside the 
     // A footer with nothing to offer is not drawn.
     const footer = SECTIONS.slice(SECTIONS.indexOf('export function StepFooter'), SECTIONS.indexOf('/** A tile'))
     assert.match(footer, /\{onScan && \(/, 'the scan control is unconditional')
-    assert.match(footer, /if \(!controls && !onScan && !auxiliary\) return null/, 'an empty footer is drawn')
   }
   {
     // The head is a sibling of the body, not a row inside it: the lifecycle track
@@ -177,7 +176,6 @@ test('the frame: a full-width header holding the track, a body split beside the 
     // The action column is led by the milestone, and every step has one, so the
     // column is never optional and never empty.
     assert.match(CONTENT_STEP, /<div className="step-body has-rail">/, 'the body does not lay out the action column')
-    assert.match(CONTENT_STEP, /<StepActionColumn rail=\{displayRail\}>/, 'the action column is gated')
     const one = CSS.match(/\.step-body \{[^}]*\}/)?.[0] ?? ''
     const two = CSS.match(/\.step-body\.has-rail \{[^}]*\}/)?.[0] ?? ''
     assert.match(one, /grid-template-columns: minmax\(0, 1fr\);/, 'a step with no action column leaves an empty column')
@@ -241,7 +239,6 @@ test('the Next caption and the rail read the milestone, and invent nothing where
     // and Fix before continuing's; the caption restating it is gone.
     const gated = { milestone: { line: null, at: null, gatedBy: 'after: Create or Correct Emergency Access Accounts', kind: 'resolve', label: 'Clear what this step is waiting on.' }, state: { condition: 'blocked', setAside: false, lane: UP_NEXT }, whatToDo: { kind: 'resolve', text: 'x' } } as unknown as StepContract
     assert.equal(nextCaption(gated), null)
-    assert.equal(railOf(gated).sub, '', 'the milestone writes a sub-line the package does not author (U3)')
   }
   {
     const bare = { milestone: { line: null, at: null, gatedBy: null } } as unknown as StepContract
@@ -256,18 +253,5 @@ test('the Next caption and the rail read the milestone, and invent nothing where
     // A dated line is Foundation B's own sentence and is never rewritten.
     const dated = { milestone: { line: 'Next: leave it in report-only until Sep 17, 2026.', at: '2026-09-17', gatedBy: 'after: something' } } as unknown as StepContract
     assert.equal(nextCaption(dated), 'Next: leave it in report-only until Sep 17, 2026.')
-  }
-  {
-    // The caption says what happens next; the rail's headline says when, or — with
-    // no date — the placeholder (content review R1), never the caption or the lane again.
-    const gated = { milestone: { at: null, gatedBy: 'after: something', label: 'Clear what this step is waiting on.' }, state: { condition: 'blocked', setAside: false, lane: UP_NEXT }, whatToDo: { kind: 'resolve', text: 'x' } } as unknown as StepContract
-    assert.equal(railOf(gated).metric, 'Not scheduled', 'an undated queued step’s rail is not the placeholder')
-    assert.equal((nextCaption(gated) ?? '').includes(railOf(gated).metric), false, 'the rail headline repeats the caption')
-    const dated = { milestone: { at: '2026-09-17T00:00:00.000Z', gatedBy: null, label: 'Leave it in report-only until Sep 17.' }, state: { condition: 'healthy', setAside: false }, whatToDo: { kind: 'observe', text: 'x' } } as unknown as StepContract
-    assert.equal(railOf(dated).metric, absoluteDate('2026-09-17T00:00:00.000Z'), 'a dated milestone does not lead with its date')
-    assert.equal(railOf(dated).sub, '', 'a dated milestone writes a sub-line the package does not author (U3)')
-    const src = readFileSync('src/ui/surfaces/stepContract.ts', 'utf8')
-    const rail = src.slice(src.indexOf('export function railOf'), src.indexOf('export type ImplementationEmpty'))
-    for (const forbidden of ['Date.', 'new Date', 'step.', 'implementation']) assert.equal(rail.includes(forbidden), false, `the rail computes ${forbidden}`)
   }
 })

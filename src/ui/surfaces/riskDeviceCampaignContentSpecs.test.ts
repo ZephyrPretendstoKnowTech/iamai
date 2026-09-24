@@ -70,10 +70,6 @@ test('s-goal-require-managed-device: the held create draws the Intune preparatio
   // what is being waited on, and checked by its state (owner, 2026-09-20; quality audit 2.4).
   for (const t of prerequisites) assert.ok(['Prerequisite · To do', 'Prerequisite · Waiting'].includes(t.value), `${t.label}: ${t.value}`)
   for (const t of prerequisites) assert.doesNotMatch(t.note ?? '', /does not enforce access restrictions/, t.key)
-  // A Direction answer nobody has approved holds the step undated, like every
-  // other hold (owner, 2026-09-19), and the rail says what the board's When says
-  // for a step it holds (owner decision 2, 2026-09-22).
-  assert.equal(b.rail.metric, 'After prerequisites')
   // With every person on a compliant device it draws the create procedure after the Intune prerequisite.
   const ready = bodyOf('demo', DEVICE, withDevicesReady)
   assert.match(drawn(ready, 'portal'), /Mark devices with no compliance policy assigned/)

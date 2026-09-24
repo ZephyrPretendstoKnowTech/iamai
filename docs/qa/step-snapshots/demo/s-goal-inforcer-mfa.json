@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "On Hold",
   "bar": "Waiting on your answers",
-  "rail": "After prerequisites",
+  "rail": "Require MFA for Inforcer Access",
   "headings": [
     "About this Step",
     "Tasks Remaining",

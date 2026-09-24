@@ -74,9 +74,13 @@ const SNAPSHOT_TIME_ZONE = 'UTC'
  * lane view with the engine's blockers and the prerequisite labels (A1b).
  */
 export function stepSnapshotsOf(name: FixtureName): Record<string, StepSnapshot> {
+  return fixtureStepSnapshotsOf(fixture(name))
+}
+
+/** The same readings for a fixture a test changed first (withDirectionApproved, a mapping edit). */
+export function fixtureStepSnapshotsOf(f: Fixture): Record<string, StepSnapshot> {
   setDisplayTimeZone(SNAPSHOT_TIME_ZONE)
   try {
-    const f = fixture(name)
     return snapshotsOf(f, runFixture(f, {}, null, f.snapshot.asOf))
   } finally {
     setDisplayTimeZone(null)
@@ -128,7 +132,7 @@ function snapshotOf(step: Step, ctx: StepVarContext, lane: LaneView, blockers: P
     fact: factOf(step),
     badge: badgeLabel(b.contract),
     bar: b.readiness.bar.main,
-    rail: b.rail.metric,
+    rail: b.rail.headline,
     headings: headingsOf(b),
     tiles: b.readiness.tiles.map((t) => ({ label: t.label, state: t.value })),
     channels: channelTabsOf(b.artifacts).map((t) => String(t.label)),
