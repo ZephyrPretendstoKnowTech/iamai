@@ -66,7 +66,6 @@ import type { StepVarContext } from './stepVars.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
-import { directionBlockerStep } from '../../roadmap/directionAnswers.ts'
 
 const read = (p: string): string => readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
 
@@ -415,26 +414,17 @@ const INVENTORY: string[] = [
   'check · check · no-lifecycle · healthy · open · do:verify · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // hostile/s-check-separate-admin-accounts
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-known', // hostile+unanswered/s-goal-guests-mfa
   'check · check · no-lifecycle · healthy · in-place · do:preserve · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // demo/s-ladder-operator-passkey
-  'object · prerequisite · no-lifecycle · blocked · open · do:resolve · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // demo/s-prereq-trusted-location
   'policy · create · not-deployed · needs-decision · open · do:decide · track · no-implementation · no-found · fix · one-policy · who-known', // demo/s-goal-geo-restriction
-  'check · check · no-lifecycle · blocked · open · do:resolve · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // demo/s-review-baseline-iac-app-block-sharepoint-onedrive-nontrustedlocations-1gjmtq8
+  'check · check · no-lifecycle · blocked · open · do:resolve · no-track · no-implementation · no-found · fix · one-policy · who-none', // demo/s-review-baseline-iac-app-block-sharepoint-onedrive-nontrustedlocations-1gjmtq8
   'policy · create · not-deployed · needs-decision · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-known', // demo+unanswered/s-goal-geo-restriction
   'policy · create · not-deployed · blocked · open · do:resolve · track · implementation · found · fix · members · who-known', // demo+no-ca/s-goal-guests-mfa
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · implementation · found · fix · one-policy · who-known', // demo+half-pair/s-goal-mfa-all-users
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · found · fix · members · who-known', // demo+half-pair/s-goal-guests-mfa
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · implementation · found · fix · members · who-known', // demo+half-pair+rescan/s-goal-guests-mfa
-  'policy · adjust · report-only · blocked · open · do:observe · track · no-implementation · no-found · no-fix · one-policy · who-known', // demo-week2/s-goal-block-auth-transfer
-  'policy · create · not-deployed · blocked · open · do:resolve · track · implementation · no-found · no-fix · one-policy · who-known', // demo-week2/s-goal-admin-session
+  'policy · adjust · report-only · blocked · open · do:observe · track · no-implementation · no-found · fix · one-policy · who-known', // demo-week2/s-goal-block-auth-transfer
   'policy · create · enforced · blocked · open · do:resolve · track · no-implementation · found · no-fix · one-policy · who-known', // demo-week2/s-goal-guests-mfa
-  'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · no-found · no-fix · one-policy · who-known', // demo-week2/s-goal-geo-restriction
-  'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · found · no-fix · one-policy · who-known', // demo-week2/s-goal-require-managed-device
   'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-known', // demo-week2/s-goal-intune-enrollment-reauth
   'policy · adjust · report-only · review-required · open · do:resolve · track · no-implementation · found · fix · one-policy · who-known', // demo-week2+rescan/s-goal-block-auth-transfer
-  'policy · create · not-deployed · blocked · open · do:resolve · track · implementation · found · no-fix · one-policy · who-known', // demo-week2+no-ca/s-goal-mfa-all-users
-  'policy · create · not-deployed · blocked · open · do:resolve · track · implementation · found · no-fix · members · who-known', // demo-week2+no-ca/s-goal-guests-mfa
-  'policy · adjust · not-deployed · blocked · open · do:resolve · track · implementation · found · no-fix · one-policy · who-known', // demo-week2+half-pair/s-goal-mfa-all-users
-  'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · found · no-fix · members · who-known', // demo-week2+half-pair/s-goal-guests-mfa
-  'policy · adjust · not-deployed · blocked · open · do:resolve · track · implementation · found · no-fix · members · who-known', // demo-week2+half-pair+rescan/s-goal-guests-mfa
   'policy · adjust · enforced · blocked · open · do:resolve · track · implementation · found · fix · one-policy · who-known', // demo+curated/s-goal-block-legacy-auth
   'decision · check · no-lifecycle · healthy · in-place · do:preserve · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // demo-week2+settled/s-direction-use
   'policy · prerequisite · no-lifecycle · healthy · set-aside · do:restore · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // demo-week2+settled/s-goal-inforcer-mfa
@@ -444,6 +434,7 @@ const INVENTORY: string[] = [
   'policy · create · not-deployed · healthy · open · do:deploy · track · implementation · no-found · no-fix · one-policy · who-known', // demo-week2+settled/s-goal-admin-session
   'policy · create · enforced · healthy · open · do:verify · track · no-implementation · found · no-fix · one-policy · who-known', // demo-week2+settled/s-goal-guests-mfa
   'policy · create · not-deployed · healthy · open · do:deploy · track · no-implementation · no-found · no-fix · one-policy · who-known', // demo-week2+settled/s-goal-geo-restriction
+  'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · found · no-fix · one-policy · who-known', // demo-week2+settled/s-goal-require-managed-device
   'policy · adjust · ready-to-enforce · healthy · open · do:enforce · track · implementation · no-found · no-fix · one-policy · who-known', // demo-week2+settled/s-goal-token-protection
   'check · check · no-lifecycle · healthy · set-aside · do:restore · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // demo-week2+settled/s-review-baseline-iac-app-block-avd-exclude-allowedavdusers-1cq4mc9
 ]
@@ -624,9 +615,7 @@ test('§4 a blocker stays a blocker and a passed prerequisite leaves nothing beh
     // A held step still handing over its report-only create says so in its action,
     // with what turning it on waits for, and its row carries the hold's own reason
     // (roadmap/lifecycle.ts nextMilestone, roadmap/stateReason.ts holdReasonFor).
-    // A wait on a Direction answer is said by its Readiness card, the Direction
-    // step and Waiting on your answers, and by no fix line (net-new 9).
-    (v) => v.c.state.condition !== 'blocked' || v.c.fix.length > 0 || v.c.whatToDo.kind === 'resolve' || v.c.whatToDo.kind === 'decide' || (v.c.whatToDo.kind === 'deploy' && isHeld(v.step) && (v.step.blockedReason ?? '').length > 0) || v.step.blockers.some((b) => directionBlockerStep(b) !== null),
+    (v) => v.c.state.condition !== 'blocked' || v.c.fix.length > 0 || v.c.whatToDo.kind === 'resolve' || v.c.whatToDo.kind === 'decide' || (v.c.whatToDo.kind === 'deploy' && isHeld(v.step) && (v.step.blockedReason ?? '').length > 0),
     'a blocked step neither lists a blocker nor states the authority’s reason',
   )
   // And a step held for review keeps that as its condition rather than having it
