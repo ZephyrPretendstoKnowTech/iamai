@@ -4,7 +4,8 @@ import { emergencyAccountTasksOf } from './emergencyAccountTasks.ts'
 import type { EmergencyTaskProjection } from './emergencyAccountTasks.ts'
 import { emergencyGroupTasksOf } from './emergencyGroupTasks.ts'
 import { emergencyPasskeyTasksOf } from './emergencyPasskeyTasks.ts'
-import { drawsTaskAnatomy, policyTasksOf } from './policyTasks.ts'
+import { drawsTaskAnatomy, ownCardWordsOf, policyTasksOf } from './policyTasks.ts'
+import { DORMANT_STEP_ID, DORMANT_WORDS, sectionThreeTasksOf, sectionThreeTasksText } from './sectionThreeTasks.ts'
 import { oneLine } from '../../content/implementation/project.ts'
 import { networkDraftOf } from '../../mapping/networkDraft.ts'
 // The opened step's body, worked out once (A3): everything ContentStep.tsx draws
@@ -383,7 +384,11 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   const help = d && typeof d.help === 'string' && whole(d.help, ex) ? fillText(d.help, ex) : null
   const exclusions = step.id === 's-prereq-exclusion-group'
   const ownRailWords = choosing ?? pkg?.meta.milestone?.actionText ?? directionMilestoneAction(step.id)
-  const railInstruction = step.id === 's-prereq-break-glass' ? help : exclusions ? EXCLUSIONS_MILESTONE : null
+  // Disable or Confirm Dormant Accounts takes a choice too, the accounts kept:
+  // its instruction stands in the same slot while any account is open (walk
+  // list item 17), and a finished step draws none (item 29).
+  const keeping = step.id === DORMANT_STEP_ID && (step.dormantChoices ?? []).some((row) => !row.kept) ? DORMANT_WORDS.keep.instruction : null
+  const railInstruction = step.id === 's-prereq-break-glass' ? help : exclusions ? EXCLUSIONS_MILESTONE : keeping
   // What kind of step this is, and "Resolution step" for one whose source
   // contradicts itself (stepContract.ts eyebrowOf).
   const eyebrow = eyebrowOf(contract, typeof cs.kind === 'string' ? cs.kind : null)
@@ -592,6 +597,16 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
     supported.add('portal')
     produced.push({ id: 'portal', form: 'markdown', lines: [], text: () => emergencyPortal, note: null })
   }
+  // Disable or Confirm Dormant Accounts and Use Separate Accounts for Admin
+  // Work: their tasks name every account with the scan's values
+  // (sectionThreeTasks.ts), and the Entra tab carries the same procedure.
+  const sectionThree = sectionThreeTasksOf(step, ctx)
+  if (sectionThree !== null) {
+    for (let i = produced.length - 1; i >= 0; i--) if (produced[i].id === 'portal') produced.splice(i, 1)
+    supported.add('portal')
+    const text = sectionThreeTasksText(sectionThree)
+    produced.push({ id: 'portal', form: 'markdown', lines: [], text: () => text, note: null })
+  }
   if (step.id === 's-prereq-break-glass' && accountTasks) {
     const ai = produced.find(a => a.id === 'ai')
     if (ai) ai.text = () => emergencyAccountAiInfo(step, ctx, accountTasks)
@@ -604,7 +619,7 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // — so the task frame draws exactly what this step drew. The four Emergency
   // Access steps keep their own producers above and are never this.
   const outstandingForEnforce = [...new Set([...blockers.map((b) => b.title ?? b.label).filter((x): x is string => typeof x === 'string' && x.length > 0), ...(o.enforceWaits ?? [])])]
-  const taskProjection: EmergencyTaskProjection | null = emergencyAccountTasks ?? (drawsTaskAnatomy(step.id) ? policyTasksOf(step, title, artifacts, ctx.mapping, outstandingForEnforce) : null)
+  const taskProjection: EmergencyTaskProjection | null = emergencyAccountTasks ?? sectionThree ?? (drawsTaskAnatomy(step.id) ? policyTasksOf(step, title, artifacts, ctx.mapping, outstandingForEnforce) : null)
   // The action column's Next milestone and its instruction line (stepContract.ts
   // railOf): the step's own words above, the one action its Readiness bar draws
   // — which it draws on screen only where the step has no task list, no
@@ -706,6 +721,8 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
     ownSteps,
     instructed,
     rail,
+    /** The step's own Tasks Remaining card words beyond its subject, filled (policyTasks.ts ownCardWordsOf). */
+    ownCard: ownCardWordsOf(step, ex as Record<string, unknown>),
     eyebrow,
     artifacts,
     emergencyAccountTasks: taskProjection,
