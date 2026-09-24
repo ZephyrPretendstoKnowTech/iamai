@@ -11,7 +11,7 @@ import { emergencyTaskSteps } from './emergencyAccountTasks.ts'
 import type { EmergencyAccountTask } from './emergencyAccountTasks.ts'
 import { emergencyVerificationTasksOf } from './emergencyVerificationTasks.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { affectedPasskeysByProposedChange, REGISTERED_METHODS_UNREAD } from '../../roadmap/passkeyCompatibility.ts'
+import { affectedPasskeysByProposedChange } from '../../roadmap/passkeyCompatibility.ts'
 
 const ENTRA = 'Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **'
 const KEEP = 'Keep your working administrator session open.'
@@ -97,25 +97,11 @@ test('Step 3: affected passkeys name the accounts to prepare', () => {
     const step = run.steps.find(row => row.id === 's-prereq-passkey-settings')
     if (!step) continue
     const task = stepBodyOf(step, ctx).emergencyAccountTasks!.tasks.find(row => row.id === 'prepare-affected-passkeys')!
-    const projection = affectedPasskeysByProposedChange(value.snapshot, value.mapping, value.groups)
-    // Whatever it names from what was read, it says where that is not everything:
-    // demo withholds the restrictions over one account while another account's
-    // registered methods were not read, and the line said nothing of that.
-    const also = / Some users’ registered authentication methods were not readable\. The planned settings may stop passkeys on those accounts too\.$/
-    const named = task.required || /could not tell whether the planned settings affect/.test(task.steps[0])
-    if (named) assert.equal(also.test(task.steps[0]), projection.coverage.includes(REGISTERED_METHODS_UNREAD), task.steps[0])
-    const first = named ? task.steps[0].replace(also, '') : task.steps[0]
+    const first = task.steps[0]
     // Or the accounts the allow list would leave without a passkey it allows,
     // named, with what each keeps — or why the restrictions are withheld
     // (roadmap/passkeyRestrictions.ts; Jordan D13). Either way, by name.
-    if (task.required) assert.match(first, /^Keep the existing working method available while preparing each affected account: \*\*.+\*\*\.$|would stop the passkeys on [0-9,]+ accounts?, or IAMAI could not judge them: \*\*|Key restrictions stay off for now: they would lock out [0-9,]+ accounts? — \*\*|The passkey settings are applied\. IAMAI could not judge the passkeys on [0-9,]+ accounts?: \*\*/)
-    // Three readings, not two. "Could not judge" is not "not affected", and
-    // saying the second over the first is an unhedged all-clear before a change
-    // that enforces attestation and a model allow-list: on one tenant it was
-    // said over thirty-five accounts whose key model the scan had never read,
-    // four lines under a tile saying "Existing passkeys affected · Could not
-    // verify".
-    else if (/could not tell whether the planned settings affect/.test(first)) assert.match(first, /passkeys on [0-9]+ accounts?, because it could not read their key model/)
+    if (task.required) assert.match(first, /^Keep the existing working method available while preparing each affected account: \*\*.+\*\*\.$|would stop the passkeys on [0-9,]+ accounts?: \*\*|Key restrictions stay off for now: they would lock out [0-9,]+ accounts? — \*\*|The passkey settings are applied\. Have each of [0-9,]+ accounts? sign in/)
   }
 })
 

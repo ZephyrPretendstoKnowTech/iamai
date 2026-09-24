@@ -228,7 +228,7 @@ Check the group's object ID, that its direct members are exactly the owner-confi
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["needsDecision","blocked"],"format":"markdown","kind":"template"}
 
-State: IAMAI cannot act on the exclusions group in {{tenant.displayName}} yet. Known blockers or decisions: {{dependencies.blockers}}. A group with a likely name, or one whose membership could not be read, is not a confirmed exclusions group. No group or policy change is offered until the group's object ID and the owner-confirmed emergency accounts are known.
+State: IAMAI cannot act on the exclusions group in {{tenant.displayName}} yet. Known blockers or decisions: {{dependencies.blockers}}. A group with a likely name is not a confirmed exclusions group. No group or policy change is offered until the group's object ID and the owner-confirmed emergency accounts are known.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.admins.exclusion-change","channel":"email","states":["verificationRequired"],"format":"markdown","kind":"template","audience":"administrators"}
