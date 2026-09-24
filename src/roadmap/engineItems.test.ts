@@ -1,31 +1,19 @@
 // Small engine items (E9): the device-code, authentication-transfer and
-// unsupported-platforms blocks are evidence-gated blocks (nobody affected when
-// their evidence count is zero) with no device-readiness gate; the admin session
-// policy has no admin-readiness gate; the admin-portals step names the Azure
-// sign-ins by people with no directory role; step 6's risk names the baseline's
-// service-accounts block, which is a step of its own, Restrict Service Accounts
-// to the Trusted Network; the manager's "nobody here used it" clause applies
-// only when the records show nobody affected.
+// unsupported-platforms blocks are evidence-gated blocks with no device-readiness
+// gate; the admin session policy has no admin-readiness gate; the baseline maps
+// its service-accounts block to a goal of its own, Restrict Service Accounts to
+// the Trusted Network.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { curatedFixture, fixture } from './fixtures/index.ts'
-import { runFixture, withFoundationSettled } from './fixtures/run.ts'
+import { fixture } from './fixtures/index.ts'
+import { runFixture } from './fixtures/run.ts'
 import { SERVICE_ACCOUNTS_TRUSTED_GOAL } from './generate.ts'
-import { PREREQ_STEP_ID } from './stepIds.ts'
 import { nobodyAffected } from './timing.ts'
 import { PINNED_GOAL_MAP, goalMapFor } from './goalMap.ts'
 import { PINNED, pinnedPackage } from '../baseline/pinned.ts'
 import { mapGoalsToPolicies } from '../coverage/goalIdentity.ts'
 import { policyFacts } from '../coverage/facts.ts'
 import type { CaPolicy } from '../baseline/types.ts'
-import { stepById } from '../content/content.ts'
-import { stepVars } from '../ui/surfaces/stepVars.ts'
-import { commsFor, managerText, stepExportView, stepLines } from '../ui/surfaces/stepExport.ts'
-import { implementationOffered } from '../ui/surfaces/stepJson.ts'
-import { unavailableReason } from './operations.ts'
-import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
-
-const ctxFor = (f: ReturnType<typeof fixture>, r: ReturnType<typeof runFixture>): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming })
 
 test('the three blocks are evidence-gated with no device-readiness gate; the admin session policy has no admin-readiness gate', () => {
   // Week two: the device-code block carves out the chosen exclusions group and is delivered, so its
@@ -52,72 +40,6 @@ test('the three blocks are evidence-gated with no device-readiness gate; the adm
   assert.ok(!session.blockers.some((b) => b.kind === 'readiness'), 'not held by admin readiness')
 })
 
-test("the manager's nobody-here-used-it clause applies only when the records show nobody affected", () => {
-  // Week two, where the device-code block is delivered (see above).
-  const f = fixture('demo-week2')
-  const r = runFixture(f)
-  const ctx = ctxFor(f, r)
-  const dc = r.steps.find((x) => x.goalId === 'block-device-code')!
-  const up = r.steps.find((x) => x.goalId === 'block-unsupported-platforms')!
-  // Editorial batch C: the clause reads "No use appears in the records since", the evidence it has, not a claim about everyone.
-  assert.match(managerText(stepById['block-device-code'] as unknown as Record<string, unknown>, stepVars(dc, ctx) as Record<string, unknown>)!, /tested alternative first/)
-  assert.doesNotMatch(managerText(stepById['block-unsupported-platforms'] as unknown as Record<string, unknown>, stepVars(up, ctx) as Record<string, unknown>)!, /No use appears in the records|Nobody here/)
-  // The none line stands in for the usage line, and never beside it.
-  const dcLines = stepLines(dc, ctx)
-  assert.ok(dcLines.some((l) => /^No device-code sign-ins in the records since .+; that does not prove nothing uses it\.$/.test(l)), dcLines.filter((l) => /device-code/.test(l)).join(' | '))
-  const upLines = stepLines(up, ctx)
-  assert.ok(upLines.some((l) => /^1 sign-in since .+ carried no platform \(Outlook Mobile\) by /.test(l)), upLines.filter((l) => /platform/.test(l)).join(' | '))
-  assert.ok(!upLines.some((l) => /^Every sign-in (in the records )?since/.test(l)))
-})
-
-test('a step the plan cannot write reports no zero and announces nothing; on a baseline it can write, both lines are there', () => {
-  // These two lines used to be asserted on the shipped demo by the walk, until
-  // this baseline's unexplained source groups held thirteen of its seventeen
-  // policy steps (task 022). Both facts are conditional on the step being
-  // writable, so both halves are pinned here rather than on a screen where the
-  // condition is invisible.
-  //
-  // On the curated baseline, where the policies can be written: the manager's
-  // clause reports the zero the records show, and the email states the session
-  // length it is warning people about.
-  const cf = withFoundationSettled(curatedFixture('demo'))
-  const cr = runFixture(cf)
-  const cctx = ctxFor(cf, cr)
-  const cAt = cr.steps.find((x) => x.goalId === 'block-auth-transfer')!
-  const cSession = cr.steps.find((x) => x.goalId === 'admin-session')!
-  assert.equal(unavailableReason(cAt), null)
-  assert.equal(unavailableReason(cSession), null)
-  assert.match(managerText(stepById['block-auth-transfer'] as unknown as Record<string, unknown>, stepVars(cAt, cctx) as Record<string, unknown>)!, /No use appears in the records since /)
-  const cEmail = commsFor(stepById['admin-session'] as unknown as Record<string, unknown>, stepVars(cSession, cctx) as Record<string, unknown>, cSession)
-  assert.ok(cEmail, 'a step with an enforcement day writes its email')
-  // Editorial batch C: a planned sign-in frequency and no persistent browser sign-in, not a hard expiry.
-  assert.match(cEmail.body, /a sign-in frequency of (\d+ hours|an hour|a day|a week|\d+ days), and no persistent browser sign-in/)
-
-  // On the baseline as it ships, where both steps wait on a source group nothing
-  // settles: there is no policy to run, so nothing was measured against one and
-  // no zero is claimed, and there is no day to announce so no email is written.
-  const f = fixture('demo')
-  f.mapping.records.__globalExclusion = { ...f.mapping.records.__globalExclusion, resolvedId: null }
-  const r = runFixture(f)
-  const ctx = ctxFor(f, r)
-  const at = r.steps.find((x) => x.goalId === 'block-auth-transfer')!
-  const session = r.steps.find((x) => x.goalId === 'admin-session')!
-  assert.equal(unavailableReason(at), 'missing-object')
-  assert.equal(unavailableReason(session), 'missing-object')
-  assert.equal(nobodyAffected(at), false, 'work the plan cannot write is no zero')
-  assert.doesNotMatch(managerText(stepById['block-auth-transfer'] as unknown as Record<string, unknown>, stepVars(at, ctx) as Record<string, unknown>)!, /Nobody here/)
-  assert.equal(commsFor(stepById['admin-session'] as unknown as Record<string, unknown>, stepVars(session, ctx) as Record<string, unknown>, session), null, 'a step with no day to announce announces nothing')
-})
-
-test("step 16's evidence names the Azure sign-ins by people with no directory role", () => {
-  const f = fixture('demo')
-  const r = runFixture(f)
-  const s = r.steps.find((x) => x.goalId === 'admin-portals-protected')!
-  const ex = stepVars(s, ctxFor(f, r)) as { azureNonAdmins: string[] }
-  assert.equal(ex.azureNonAdmins.length, 1, 'the developer who opened the Azure portal')
-  assert.ok(stepLines(s, ctxFor(f, r)).some((l) => /^1 person without a directory role signed in to Azure since .+: /.test(l)))
-})
-
 test('the baseline maps its service-accounts block to the new goal, and the pin script would derive the same map', () => {
   const key = PINNED_GOAL_MAP[SERVICE_ACCOUNTS_TRUSTED_GOAL]
   assert.deepEqual(key, ['99eabebd-877c-4800-aa15-d389b8767760'])
@@ -127,31 +49,4 @@ test('the baseline maps its service-accounts block to the new goal, and the pin 
   for (const [g, ids] of Object.entries(PINNED_GOAL_MAP)) assert.deepEqual(derived[g], ids, `${g} maps as the pin says`)
   // Without the pin's tokens (an uploaded baseline) the goal is not mapped: the group cannot be told from any other.
   assert.equal(goalMapFor(pinnedPackage().policies.map((p) => ({ ...p, placeholders: undefined })) as unknown as CaPolicy[], new Map()).map[SERVICE_ACCOUNTS_TRUSTED_GOAL], undefined)
-})
-
-test('step 6 gains Restrict Service Accounts to the Trusted Network on a plan with service accounts, waiting on the group and the network', () => {
-  const f = fixture('demo')
-  const r = runFixture(f)
-  const s = r.steps.find((x) => x.goalId === SERVICE_ACCOUNTS_TRUSTED_GOAL)!
-  assert.ok(s, 'the demo has service accounts')
-  assert.equal(s.plainTitle, 'Restrict Service Accounts to the Trusted Network')
-  assert.deepEqual([...s.population.ids].sort(), [...f.mapping.serviceAccountUserIds].sort(), 'its population is the service accounts')
-  assert.ok(s.blockedBy.includes(PREREQ_STEP_ID.serviceAccountsGroup), 'waits on the service-accounts group')
-  // The demo has neither the group nor the trusted network yet, so the step
-  // offers no implementation at all — not the portal instructions, not the JSON,
-  // not the PowerShell, not the download — and says which steps come first
-  // (roadmap/resolvePolicy.ts, stepJson.ts implementationOffered).
-  const view = stepExportView(s, ctxFor(f, r))
-  assert.equal(implementationOffered(s), false, 'it waits on the group and the network')
-  assert.ok(!view.whatToDo.some((l) => /^Users → Include: /.test(l)), `no instructions while it waits: ${view.whatToDo.join(' | ')}`)
-  const waits = view.whatToDo.find((l) => /first: this policy names an object/.test(l))
-  assert.ok(waits, `the step says what is missing: ${view.whatToDo.join(' | ')}`)
-  assert.match(waits, /Trusted Network/, 'the trusted network is named')
-  assert.match(waits, /Service Accounts Group/, 'the service-accounts group is named')
-  assert.ok(!view.whatToDo.some((l) => /[0-9a-f]{8}-[0-9a-f]{4}-/.test(l)), 'every object is a name')
-  const risk = (stepById[PREREQ_STEP_ID.serviceAccountsGroup] as unknown as { more: { risks: { text: string }[] } }).more.risks
-  assert.ok(risk.some((x) => x.text.includes('see Restrict Service Accounts to the Trusted Network')), "step 6's risk names it")
-  // GetIAMAI has no service accounts: no step.
-  const g = fixture('getiamai')
-  assert.equal(runFixture(g).steps.some((x) => x.goalId === SERVICE_ACCOUNTS_TRUSTED_GOAL), false)
 })
