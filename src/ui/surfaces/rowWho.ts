@@ -11,6 +11,10 @@ import { reached } from '../../derive/population.ts'
 import { effectsOf } from '../../roadmap/strand.ts'
 import { REPORT_ONLY_GAP } from '../../coverage/verdict.ts'
 import { implementationPackageFor } from './stepPackage.ts'
+import { BREAK_GLASS_STEP_ID } from '../../roadmap/stepIds.ts'
+
+/** How many emergency access accounts the step needs: the count rule's own minimum (validation/rules.ts bgCount). */
+const EMERGENCY_ACCOUNTS_NEEDED = 2
 
 const IMPACT_TOPICS: Record<string, string> = {
   'guests-mfa': 'Guest Accounts', 'mfa-all-users': 'User Authentication', 'admins-phishing-resistant': 'Administrator Accounts',
@@ -33,6 +37,10 @@ export function rowWho(step: Step): string {
   if (step.preparation) return step.preparation.ids.length ? cohortWords(step.preparation.ids.length, guestsAmong(step.preparation.ids, step.preparation.guestIds)) : 'User Authentication'
   // Through count(), as the tile beside it: "3,671 accounts" on both, never "3671".
   if (ACCOUNT_REVIEW_STEPS.has(step.id) && step.population.total > 0) return count(step.population.total, 'account')
+  // Prepare Emergency Access Accounts is its accounts: the ones chosen, and never
+  // fewer than the two the step needs, so a step with one or none chosen still
+  // counts what it is for rather than reading a label.
+  if (step.id === BREAK_GLASS_STEP_ID) return count(Math.max(EMERGENCY_ACCOUNTS_NEEDED, step.emergency?.accounts.length ?? 0), 'account')
   const namedImpact = step.impactLabel ?? (structuralWords.impactLabels as Record<string, string>)[step.id]
   if (namedImpact) return namedImpact
   // Who the row names is who the step's own policies name (derive/population.ts

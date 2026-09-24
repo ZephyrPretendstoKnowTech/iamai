@@ -164,7 +164,8 @@ test('every row reads an Impact value: people, No user impact, the package’s f
         assert.ok(impact.length > 0 && !/^0\b/.test(impact) && impact !== 'Not established', `${name}/${s.id}: use the topic when exact reach is unknown`)
         seen.add('unknown')
       } else if (/^\d+ accounts?$/.test(impact)) {
-        assert.equal(Number.parseInt(impact), new Set(pop.ids).size, `${name}/${s.id}: account review count must match its named inventory`)
+        // Prepare Emergency Access Accounts counts its emergency accounts: the ones chosen, at least the two it needs.
+        assert.equal(Number.parseInt(impact), s.id === 's-prereq-break-glass' ? Math.max(2, s.emergency?.accounts.length ?? 0) : new Set(pop.ids).size, `${name}/${s.id}: account review count must match its named inventory`)
         seen.add('known')
       } else if ((pop.activeIds ?? pop.ids).length === 0) {
         // The fallback chain: no people → the package's impact.fallbackLabel → the placeholder.
