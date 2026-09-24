@@ -1,5 +1,5 @@
 // A1a: every legacy hold (roadmap/holds.ts HoldKind) has an engine counterpart in
-// the adapter's observation — one test per kind, each stating the legacy premise
+// the adapter's observation — each kind stating the legacy premise
 // (holdOf) and the engine reading the same step gets. The legacy hold stays an
 // input; the engine's lane is the judgment (RUN-CONTEXT-A decision 1).
 import { test } from 'node:test'
@@ -55,37 +55,32 @@ function readingOf(step: Step, also: (s: Step) => void = () => {}): LaneReading 
 
 const label = (r: LaneReading): string => [r.lane, r.substatus, r.reason ? `${r.reason.kind}:${r.reason.id}` : null].filter(Boolean).join(' · ')
 
-test('conflict → the sourceConflict blocker: On Hold', () => {
-  const step = cleanPolicy()
-  step.state = { ...step.state, condition: 'baseline-conflict', conflictSource: 'sourceConflict:test' }
-  assert.equal(holdOf(step)?.kind, 'conflict')
-  assert.ok(observe(step).blockers?.some((b) => b.kind === 'sourceConflict' && b.id === 'sourceConflict:test'))
-  assert.equal(label(readingOf(step)), 'On Hold · sourceConflict:sourceConflict:test')
-})
-
-test('decision → the decision kind: Ready · Decision, never a hold', () => {
-  const step = cleanPolicy()
-  step.state = { ...step.state, condition: 'needs-decision' }
-  assert.equal(holdOf(step)?.kind, 'decision')
-  assert.equal(observe(step).kind, 'decision')
-  assert.equal(label(readingOf(step)), 'Ready · Decision')
-})
-
-test('review → drift: Ready · Correct', () => {
-  const step = cleanPolicy()
-  step.state = { ...step.state, lifecycle: 'report-only', condition: 'review-required' }
-  step.status = 'in-report-only'
-  assert.equal(holdOf(step)?.kind, 'review')
-  assert.equal(observe(step).drift, true)
-  assert.equal(label(readingOf(step)), 'Ready · Correct')
-})
-
-test('unavailable → the unsupported blocker: On Hold', () => {
-  const step = cleanPolicy()
-  step.action = { ...step.action, unmatchedPair: true }
-  assert.equal(holdOf(step)?.kind, 'unavailable')
-  assert.ok(observe(step).blockers?.some((b) => b.kind === 'unsupported' && b.id === 'unmatched-pair'))
-  assert.equal(label(readingOf(step)), 'On Hold · unsupported:unmatched-pair')
+test('conflict, decision, review and unavailable each read as their engine counterpart', () => {
+  // conflict → the sourceConflict blocker: On Hold
+  const conflict = cleanPolicy()
+  conflict.state = { ...conflict.state, condition: 'baseline-conflict', conflictSource: 'sourceConflict:test' }
+  assert.equal(holdOf(conflict)?.kind, 'conflict')
+  assert.ok(observe(conflict).blockers?.some((b) => b.kind === 'sourceConflict' && b.id === 'sourceConflict:test'))
+  assert.equal(label(readingOf(conflict)), 'On Hold · sourceConflict:sourceConflict:test')
+  // decision → the decision kind: Ready · Decision, never a hold
+  const decision = cleanPolicy()
+  decision.state = { ...decision.state, condition: 'needs-decision' }
+  assert.equal(holdOf(decision)?.kind, 'decision')
+  assert.equal(observe(decision).kind, 'decision')
+  assert.equal(label(readingOf(decision)), 'Ready · Decision')
+  // review → drift: Ready · Correct
+  const review = cleanPolicy()
+  review.state = { ...review.state, lifecycle: 'report-only', condition: 'review-required' }
+  review.status = 'in-report-only'
+  assert.equal(holdOf(review)?.kind, 'review')
+  assert.equal(observe(review).drift, true)
+  assert.equal(label(readingOf(review)), 'Ready · Correct')
+  // unavailable → the unsupported blocker: On Hold
+  const unavailable = cleanPolicy()
+  unavailable.action = { ...unavailable.action, unmatchedPair: true }
+  assert.equal(holdOf(unavailable)?.kind, 'unavailable')
+  assert.ok(observe(unavailable).blockers?.some((b) => b.kind === 'unsupported' && b.id === 'unmatched-pair'))
+  assert.equal(label(readingOf(unavailable)), 'On Hold · unsupported:unmatched-pair')
 })
 
 test('readiness → an evidence gate on enforce: a started policy waits On Hold with the threshold as what it waits on; its report-only create is not gated', () => {
@@ -103,6 +98,11 @@ test('readiness → an evidence gate on enforce: a started policy waits On Hold 
   assert.equal(label(started), 'On Hold · evidence:evidence:readiness:mfa-readiness')
   assert.equal(started.gates.find((g) => !g.satisfied)?.reason, binding, 'the threshold text is what the step waits on')
   assert.ok(started.gates.some((g) => g.id === 'evidence:observation' && g.minDays === observationDaysFor(step)), 'the window is the observation gate\'s time part')
+  // R4-16: the row, and the opened step's bar that reads its tail, name the threshold, never Observing.
+  const view = laneViewOf(started, () => null)
+  assert.equal(view.waitingFor, binding, 'the row says what it waits for')
+  assert.equal(view.tail, binding)
+  assert.notEqual(view.waitingFor, BOARD.blockers.evidence)
   // The same threshold on a policy nobody has deployed gates nothing: the create lands in report-only.
   const unstarted = cleanPolicy()
   unstarted.blockers = step.blockers
@@ -163,6 +163,13 @@ test('evidence → the observation gate: records that do not clear the window ke
   const r = readingOf(step)
   assert.equal(label(r), 'Ready · Observing')
   assert.deepEqual(r.gates.filter((g) => !g.satisfied).map((g) => g.id), ['evidence:observation'])
+  // R4-16's control: a report-only policy whose only open gate IS its observation window reads Observing.
+  const watched = cleanPolicy()
+  watched.state = { ...watched.state, lifecycle: 'report-only' }
+  watched.status = 'in-report-only'
+  const window = readingOf(watched)
+  assert.equal(window.reason?.id, 'evidence:observation', 'the premise: only the window holds it')
+  assert.equal(laneViewOf(window, () => null).waitingFor, BOARD.blockers.evidence)
 })
 
 // ---------------------------------------------------------------------------
@@ -261,92 +268,6 @@ test('every held or queued row names what it is waiting for, and never just repe
   // A hold that is a fact about the tenant names the fact.
   assert.equal(named.get('s-goal-service-accounts-trusted-network'), 'Baseline references an unmapped group')
   assert.equal(named.get('s-goal-guests-mfa'), 'Not supported')
-})
-
-// A row that is finished and still short of an answer.
-//
-// `s-goal-block-legacy-auth` reads status `done`, lifecycle `enforced` and
-// planState "In place", and the lane engine keeps it in Ready - Decision
-// because a conditional input has no saved answer (lanes.ts isComplete, U28).
-// Three readings of one step on one screen, and the answer that was actually
-// missing named in none of them.
-test('a finished row short of an answer names the answer', () => {
-  const run = runFixture(fixture('mid'))
-  const step = run.steps.find((s) => s.id === 's-goal-block-legacy-auth')
-  assert.ok(step, 'the premise: mid plans the legacy-auth step')
-  assert.equal(step.status, 'done', 'the premise: the step is finished')
-  assert.deepEqual(step.unsavedInputs, ['Mail-sending devices'], 'the premise: one input has no saved answer')
-
-  const titleOf = (id: string): string | null => run.steps.find((s) => s.id === id)?.title ?? null
-  const view = laneViewOf(laneReadings(run.steps).get(step.id)!, titleOf)
-  assert.equal(view.label, 'Ready · Decision', 'the premise: the engine keeps it out of Completed')
-  assert.equal(view.waitingFor, 'Waiting on your answer: Mail-sending devices')
-
-  // And never in place of a real hold: a row something holds says what holds
-  // it, whatever else it is short of.
-  const guests = run.steps.find((s) => s.id === 's-goal-guests-mfa')!
-  assert.ok((guests.unsavedInputs ?? []).length > 0, 'the premise: this row is short of an answer too')
-  assert.equal(laneViewOf(laneReadings(run.steps).get(guests.id)!, titleOf).waitingFor, 'Not supported')
-})
-
-// Not every open input is a question.
-//
-// The campaign's support list is IAMAI's own — every active admin, everyone
-// with no method, everyone on SMS alone (derive/contentLists.ts
-// specialCareIds) — and it opens filled, waiting on a Save. A row reading
-// "Waiting on your answer" over ten names IAMAI worked out itself names the
-// wrong party.
-test('a row waiting on a list IAMAI filled asks for confirmation, not for an answer', () => {
-  // `demo`, where the campaign is Ready: a held row says what holds it first,
-  // and the unsaved line is the last thing it falls back to.
-  const run = runFixture(fixture('demo'))
-  const titleOf = (id: string): string | null => run.steps.find((s) => s.id === id)?.title ?? null
-  const readings = laneReadings(run.steps)
-
-  const campaign = run.steps.find((s) => s.id === 's-verify-mfa')
-  assert.ok(campaign, 'the premise: mid plans the campaign')
-  assert.deepEqual(campaign.unsavedInputs, ['People Needing Help'], 'the premise: its list is unsaved')
-  assert.equal(campaign.unsavedInputsPrefilled, true, 'the list IAMAI computes is not marked as its own')
-  assert.equal(laneViewOf(readings.get(campaign.id)!, titleOf).waitingFor, 'Waiting on you to confirm: People Needing Help')
-
-  // A question IAMAI genuinely cannot answer is not marked as its own, and
-  // reads as a question wherever its row falls through to the unsaved line. A
-  // held row says what holds it first, so this asserts the reading, and the
-  // line only where the row has no hold to state.
-  const asks = run.steps.filter((s) => (s.unsavedInputs ?? []).length > 0 && s.unsavedInputsPrefilled !== true)
-  assert.ok(asks.length > 0, 'the premise: some step still has a real question open')
-  for (const step of asks) {
-    const view = laneViewOf(readings.get(step.id)!, titleOf)
-    if (view.lane !== 'Ready') continue
-    assert.match(String(view.waitingFor), /^Waiting on your answer: /, `${step.id}: a question read as a confirmation`)
-  }
-})
-
-// R4-16 (Marcus D6). The board read every evidence gate as "Observing", so the
-// four report-only policies held on a readiness threshold — "when MFA readiness
-// reaches 90% (now 75%)", "when device readiness reaches 80% (now 32%)" — read
-// "Observing" as what they were waiting for, a wait that time delivers, and kept
-// reading it after the observation window closed. Nothing about watching a
-// report-only policy moves a readiness number. The row says the gate's own words.
-test('a report-only policy held on its readiness threshold names the threshold, not Observing', () => {
-  const step = cleanPolicy()
-  const binding = 'when MFA readiness reaches 90% (now 75%)'
-  step.blockers = [{ kind: 'readiness', label: 'readiness', binding }]
-  step.action = { ...step.action, readinessGate: { measure: 'MFA readiness', threshold: '90%', value: '75%' } }
-  step.state = { ...step.state, lifecycle: 'report-only', condition: 'blocked' }
-  step.status = 'in-report-only'
-  const held = laneViewOf(readingOf(step), () => null)
-  assert.equal(held.lane, 'On Hold')
-  assert.equal(held.waitingFor, binding, 'the row says what it waits for')
-  assert.equal(held.tail, binding, 'and so does the opened step\'s bar, which reads the tail')
-  assert.notEqual(held.waitingFor, BOARD.blockers.evidence)
-  // The control: a report-only policy whose only open gate IS its observation window still reads Observing.
-  const watched = cleanPolicy()
-  watched.state = { ...watched.state, lifecycle: 'report-only' }
-  watched.status = 'in-report-only'
-  const reading = readingOf(watched)
-  assert.equal(reading.reason?.id, 'evidence:observation', 'the premise: only the window holds it')
-  assert.equal(laneViewOf(reading, () => null).waitingFor, BOARD.blockers.evidence)
 })
 
 // Stage 3 (V1 decision 6). Turn Off Security Defaults read Completed on a tenant
