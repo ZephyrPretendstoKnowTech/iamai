@@ -324,8 +324,25 @@ export function appliedMapping(ctx: DefaultsContext, saved: Record<string, StepD
   return applyStepDecisions(applyStepDecisions(ctx.mapping, defaultDecisions(ctx), 'detected'), saved ?? null)
 }
 
-/** One object a picker can hold: the id behind a chip, its name, its UPN or count, and, for a nomination, the signal text. */
-export type PickerObject = { id: string; name: string; secondary?: string; why?: string }
+/** One object a picker can hold: the id behind a chip, its name, its UPN or count, for a nomination the signal text, and on its chip why it was picked. */
+export type PickerObject = { id: string; name: string; secondary?: string; why?: string; badge?: string }
+
+/**
+ * Why the detection picked each account a Direction account question offers,
+ * for its chip, by account id: a service candidate's own detection signals, a
+ * shared-device account's signal in words (shared.sharedDeviceSignals). The
+ * same detections the questions suggest from (roadmap/direction.ts); any other
+ * question has none.
+ */
+export function accountBadges(questionKey: string, ctx: PickerContext): Map<string, string> {
+  const { snapshot, mapping } = ctx
+  if (questionKey === 'serviceAccounts') return new Map(detectServiceAccounts(snapshot, [...mapping.breakGlassUserIds, ...mapping.serviceAccountRejectedIds]).map((c) => [c.id, c.evidence.join('; ')]))
+  if (questionKey === 'sharedDevices') {
+    const words = shared.sharedDeviceSignals as Record<string, string>
+    return new Map(sharedDeviceUsers(snapshot).map((u) => [u.id, sharedDeviceSignals(u, snapshot).map((s) => words[s] ?? s).join('; ')]))
+  }
+  return new Map()
+}
 
 /** The kind of thing a picker chooses, from the step and its content source. */
 export type PickerKind = 'accounts' | 'groups' | 'locations' | 'countries' | 'strengths' | 'other'

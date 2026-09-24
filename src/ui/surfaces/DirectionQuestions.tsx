@@ -24,7 +24,7 @@ import { directionWords } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { Button, Picker } from '../components/index.ts'
 import type { PickerOption } from '../components/index.ts'
-import { filterPickerObjects, pickerUniverse } from './pickerRows.ts'
+import { accountBadges, filterPickerObjects, pickerUniverse } from './pickerRows.ts'
 import type { PickerObject } from './pickerRows.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -36,7 +36,11 @@ const W = directionWords
 /** The universe a question picks from: accounts or the tenant's IP locations (pickerRows.ts). */
 function universeOf(q: DirectionQuestion, ctx: StepVarContext): PickerObject[] {
   const pickerCtx = { snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, groups: ctx.groups, directory: ctx.directory }
-  if (q.control === 'accounts') return pickerUniverse(PREREQ_STEP_ID.serviceAccountsGroup, 'accounts', pickerCtx)
+  if (q.control === 'accounts') {
+    // Each chip says why its account was picked, where the detection picked it (pickerRows.ts accountBadges).
+    const why = accountBadges(q.key, pickerCtx)
+    return pickerUniverse(PREREQ_STEP_ID.serviceAccountsGroup, 'accounts', pickerCtx).map((o) => (why.has(o.id) ? { ...o, badge: why.get(o.id) } : o))
+  }
   if (q.control === 'locations') return pickerUniverse(PREREQ_STEP_ID.trustedLocation, 'locations', pickerCtx)
   return []
 }
