@@ -817,8 +817,10 @@ test('007.4/6: the one operation updates the exact matched policy and enforces t
     assert.ok(ps.includes(json), 'the PowerShell body is the JSON tab’s body')
     // The screen's own What to do is the same set of lines the export carries.
     assert.deepEqual(instructionsOf(c.step, c.ctx).portal, portal)
-    const actual = stepBodyOf(c.step, c.ctx).artifacts.find(a => a.id === 'portal' && !a.unavailable)!
-    const rendered = actual.text().replace(/\*\*(.*?)\*\*/g, '$1').split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+    // The export carries the task the screen opens on, the turn-on, word for word.
+    const next = stepBodyOf(c.step, c.ctx).emergencyAccountTasks!.tasks.find((t) => t.required)!
+    assert.equal(next.title, 'Turn the policy on')
+    const rendered = next.steps.map((l, i) => `${i + 1}. ${l.replace(/\*\*(.*?)\*\*/g, '$1')}`)
     assert.deepEqual(c.view(c.step).whatToDo.slice(-rendered.length), rendered)
   }
 })

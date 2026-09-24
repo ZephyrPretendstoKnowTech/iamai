@@ -4,7 +4,10 @@ import { emergencyAccountTasksOf } from './emergencyAccountTasks.ts'
 import type { EmergencyTaskProjection } from './emergencyAccountTasks.ts'
 import { emergencyGroupTasksOf } from './emergencyGroupTasks.ts'
 import { emergencyPasskeyTasksOf } from './emergencyPasskeyTasks.ts'
-import { drawsTaskAnatomy, ownCardWordsOf, policyTasksOf } from './policyTasks.ts'
+import { drawsTaskAnatomy, ownCardWordsOf, policyProcedureOf, policyTasksOf } from './policyTasks.ts'
+import { emergencyAccountTasksText } from './emergencyAccountTasks.ts'
+import { estimatedDay } from '../../roadmap/stepSchedule.ts'
+import { proposedNamesFor } from './proposedNames.ts'
 import { DORMANT_STEP_ID, DORMANT_WORDS, sectionThreeTasksOf, sectionThreeTasksText } from './sectionThreeTasks.ts'
 import { oneLine } from '../../content/implementation/project.ts'
 import { prepareReadingOf } from './prepareSteps.ts'
@@ -37,7 +40,7 @@ import { ifWrongLineFor, stepExportView } from './stepExport.ts'
 import { stepVars, withoutScheduleDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { portalNamesFor, unwrittenCorrectionLines } from './stepPortal.ts'
-import { campaignProcedureLines, preparationLines, preparesWhileCreateWaits, stepInstructions } from './stepInstructions.ts'
+import { campaignProcedureLines, preparationLines, preparesWhileCreateWaits, stepInstructions, wholeLines } from './stepInstructions.ts'
 import { CONTRACT, SETTLED_FINDINGS, eyebrowOf, implementationEmptyOf, implementationIsCurrent, objectTaskLeads, railOf, readinessOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
 import { boardHolds, laneViewAlone } from './planBoard.ts'
@@ -46,8 +49,8 @@ import { usesDecisionAnatomy } from '../../roadmap/stepGroups.ts'
 import { directionMilestoneAction } from '../../roadmap/directionAnswers.ts'
 import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
 import type { WhoBlock } from './whoBlocks.ts'
-import { BASELINE_COMMIT, artifactText, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageRuntime, packageSourceLine, packageStateOf, planningPreview, reviewedPackageFor, setupAfterEnforcementOf, sourceCheckedLine, entraWithSettings, jsonWithPlanTag, workProcedureOf } from './stepPackage.ts'
-import { lifecycleResources, policyInspectionLines, resourceChannelAllowed, emailResource, mfaPreparationEmail, deviceSetupResource, namedPortalResource, switchedOffRequest, switchedOffResources, withWorkflowVerification } from './stepResources.ts'
+import { BASELINE_COMMIT, artifactText, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageRuntime, packageSourceLine, packageStateOf, planningPreview, policyProcedureExtras, reviewedPackageFor, setupAfterEnforcementOf, sourceCheckedLine, jsonWithPlanTag, workProcedureOf } from './stepPackage.ts'
+import { lifecycleResources, policyInspectionLines, resourceChannelAllowed, emailResource, mfaPreparationEmail, deviceSetupResource, namedPortalResource, switchedOffRequest, switchedOffResources, verificationResourceLines, withWorkflowVerification } from './stepResources.ts'
 import { bindText, projectSafely, projectExplanation, readinessSafely, troubleshootingSafely } from '../../content/implementation/project.ts'
 import type { ChannelArtifact, OutputChannel, OwnerConfirmation, TroubleshootingScenario } from '../../content/implementation/project.ts'
 
@@ -237,7 +240,7 @@ function withObjectTask(step: Step, own: StepBody, task: StepBody, ctx: StepVarC
     hasEvidence: own.hasEvidence || task.hasEvidence,
     emergencyAccountTasks: tasks,
     ...(leads
-      ? { artifacts: task.artifacts, packaged: task.packaged, previewNote: task.previewNote, notes: task.notes, empty: task.empty, sourceLine: task.sourceLine, showImplementation: task.showImplementation || own.showImplementation, scenarios: [...task.scenarios, ...own.scenarios] }
+      ? { artifacts: task.artifacts, packaged: task.packaged, previewNote: task.previewNote, notes: task.notes, empty: task.empty, sourceLine: task.sourceLine, showImplementation: task.showImplementation || own.showImplementation, scenarios: own.cs.kind === 'policy' ? [] : [...task.scenarios, ...own.scenarios] }
       : {}),
   }
 }
@@ -341,7 +344,9 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   const pkgRuntime = pkg && pkgState && pkgBindings ? packageRuntime(pkg, pkgState, pkgBindings, confirmations, baselineCommit) : null
   const projection = pkg && pkgState && pkgBindings && pkgRuntime ? projectSafely(pkg, pkgState, pkgBindings, pkgRuntime.runtime) : null
   const pkgReadiness = pkg && pkgState && pkgBindings && pkgRuntime ? readinessSafely(pkg, pkgState, pkgBindings, pkgRuntime.runtime) : null
-  const scenarios: TroubleshootingScenario[] = pkg && pkgState && pkgBindings ? troubleshootingSafely(pkg, pkgState, pkgBindings) : []
+  // No policy step carries Troubleshooting (walk list section 4 item 30, as 3.x
+  // item 21): its scenarios restated the procedure's own warnings.
+  const scenarios: TroubleshootingScenario[] = pkg && pkgState && pkgBindings && cs.kind !== 'policy' ? troubleshootingSafely(pkg, pkgState, pkgBindings) : []
   // The planning preview (owner, 2026-09-11): where the package authors the work
   // this step will require but it cannot run yet, the planned work stands in the
   // Implementation region for review and estimation — never copyable, and saying
@@ -460,7 +465,7 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // Info shared warning aside) has no content: it is not drawn as a blank tab.
   const produced: Artifact[] = (
     packaged
-      ? (shownProjection?.channels ?? []).map((a) => packageArtifact(a.channel === 'entra' && machine && shownProjection ? { ...a, text: entraWithSettings(a.text, step, ctx, contract, shownProjection) } : a.channel === 'json' && machine ? { ...a, text: jsonWithPlanTag(a.text, step) } : a, grounding)).filter((a) => a.text().trim() !== '')
+      ? (shownProjection?.channels ?? []).map((a) => packageArtifact(a.channel === 'json' && machine ? { ...a, text: jsonWithPlanTag(a.text, step) } : a, grounding)).filter((a) => a.text().trim() !== '')
       : channels.map((ch): Artifact => ({ id: ch, form: ch === 'portal' ? 'list' : 'code', lines: ch === 'portal' ? portalLines : [], text: () => textOf(ch), note: null }))
   ).filter((a) => resourceChannelAllowed(step, a.id))
     // A policy the tenant has switched off keeps no channel that would build one.
@@ -485,7 +490,7 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
     // 2026-09-23). The portal lines, and the one-field patches as JSON and
     // PowerShell (stepResources.ts switchedOffResources).
     .filter((a) => !reportOnly || !['portal', 'ps', 'json'].includes(a.id))
-  if (reportOnly) produced.push(...switchedOffResources(step, ctx, String(ex.tenant ?? '')))
+  if (reportOnly) produced.push(...switchedOffResources(step, ctx))
   // Keep every substantively supported lifecycle format. Fill missing machine
   // projections with clearly labelled inspection, never a placeholder message.
   const supported = new Set<Channel>(pkg ? Object.values(pkg.blocks).map((b) => PACKAGE_CHANNEL[b.meta.channel as OutputChannel]).filter((ch): ch is Channel => Boolean(ch) && resourceChannelAllowed(step, ch)) : machine ? ['portal', 'ps', 'json', 'ai'] : channels)
@@ -652,14 +657,37 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
     if (ai) ai.text = () => emergencyAccountAiInfo(step, ctx, accountTasks)
   }
   const artifacts: Artifact[] = CHANNEL_TABS.filter(t => supported.has(t.id as Channel)).flatMap(t => produced.filter(a => a.id === t.id).slice(0, 1)).map(a => withWorkflowVerification(namedPortalResource(a, ctx), step, ctx.mapping))
-  // Every step that carries work draws the Emergency Access task anatomy
-  // (policyTasks.ts, owner 2026-09-19): its Implementation Tasks are the portal
-  // procedure the channel above already carries — the policy create, the portal
-  // path that makes the object, the campaign's preparation, the review's reading
-  // — so the task frame draws exactly what this step drew. The four Emergency
-  // Access steps keep their own producers above and are never this.
+  // A policy step's Implementation Tasks are its procedures, from the one
+  // producer every policy step draws, the same in every state: the create and
+  // the turn-on always, the correction and the switch to Report-only where they
+  // apply (policyTasks.ts policyProcedureOf; walk list items 14–18). They stand
+  // in for the package's own Entra blocks, which each wrote a different copy
+  // for each state, and the Entra tab carries the same words.
   const outstandingForEnforce = [...new Set([...blockers.map((b) => b.title ?? b.label).filter((x): x is string => typeof x === 'string' && x.length > 0), ...(o.enforceWaits ?? [])])]
-  const taskProjection: EmergencyTaskProjection | null = emergencyAccountTasks ?? sectionThree ?? (drawsTaskAnatomy(step.id) ? policyTasksOf(step, title, artifacts, ctx.mapping, outstandingForEnforce) : null)
+  const procedure = machine && drawsTaskAnatomy(step.id)
+    ? policyProcedureOf(step, { nameOf: portalNames.nameOf, strengthNameOf: (id) => portalNames.strengthNameFor?.(id) ?? null, rows: ctx.snapshot.config.caPolicies?.rows ?? [], before: wholeLines(w.before, ex), contract, outstanding: outstandingForEnforce, estimate: estimatedDay(step), proposed: proposedNamesFor(ctx), mapping: ctx.mapping, extras: policyProcedureExtras(step, pkg, pkgBindings ?? (pkg ? packageBindings(step, ctx, contract) : null)) })
+    : null
+  if (procedure !== null) {
+    const text = emergencyAccountTasksText(procedure)
+    const at = artifacts.findIndex((a) => a.id === 'portal')
+    const portal = withWorkflowVerification({ id: 'portal', form: 'markdown', lines: [], text: () => text, note: null }, step, ctx.mapping)
+    if (at >= 0) artifacts[at] = portal
+    else artifacts.unshift(portal)
+    // A step whose content writes workflow checks keeps them, as a task of their
+    // own after the policy's procedures, never inside the create or the turn-on.
+    const checks = verificationResourceLines(step, ctx.mapping)
+    if (checks.length > 0) {
+      const title = checks[0].replace(/:$/, '')
+      procedure.tasks.push({ id: 'workflow-check', accountId: null, title, targetUpn: null, required: false, readinessKey: '', evidence: null, actionLabel: title, steps: checks.slice(1).map((line) => line.replace(/^\d+\.\s+/, '')) })
+    }
+  }
+  // Every other step that carries work draws the Emergency Access task anatomy
+  // (policyTasks.ts, owner 2026-09-19): its Implementation Tasks are the portal
+  // procedure the channel above already carries — the portal path that makes
+  // the object, the campaign's preparation, the review's reading — so the task
+  // frame draws exactly what this step drew. The four Emergency Access steps
+  // keep their own producers above and are never this.
+  const taskProjection: EmergencyTaskProjection | null = emergencyAccountTasks ?? sectionThree ?? procedure ?? (drawsTaskAnatomy(step.id) ? policyTasksOf(step, title, artifacts, ctx.mapping) : null)
   // The task that marks a picked office location trusted is called what it does
   // (whatToDoWhen.officeToTrust.task), and the rail's headline reads it.
   if (taskProjection && step.id === 's-prereq-trusted-location' && (step.officeToTrust?.length ?? 0) > 0 && typeof w.task === 'string' && whole(w.task, ex)) {
@@ -673,7 +701,9 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // or the first it needs.
   const railTasks = taskProjection?.tasks ?? []
   const nextTask = (railTasks.find((t) => t.id === taskProjection?.recommendedTaskId) ?? railTasks.find((t) => t.required))?.title ?? null
-  const leadDrawn = !instructed && taskProjection === null && !usesDecisionAnatomy(step.id)
+  // A policy step whose tasks are all done names none, so its headline reads
+  // the step's own action (railOf), as a step with no task list does.
+  const leadDrawn = !usesDecisionAnatomy(step.id) && (procedure !== null ? nextTask === null : !instructed && taskProjection === null)
   const railWords = (exclusions && emergencyAccountTasks && 'milestone' in emergencyAccountTasks ? emergencyAccountTasks.milestone : null) ?? ownRailWords
   const rail = railOf(contract, { words: railWords, task: nextTask, instruction: railInstruction, leadDrawn })
   const W = CONTRACT.implementation

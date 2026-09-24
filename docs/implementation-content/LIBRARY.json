@@ -1558,7 +1558,7 @@
       "status": "SELF-VERIFIED",
       "validationResult": "parts-withheld",
       "sourceFiles": 3,
-      "contentBlocks": 10,
+      "contentBlocks": 9,
       "outputs": {
         "entra": true,
         "json": true,
@@ -1566,7 +1566,7 @@
         "aiInfo": true,
         "email": true,
         "readiness": true,
-        "troubleshooting": true
+        "troubleshooting": false
       },
       "statesSupported": [
         "blocked",
@@ -1583,7 +1583,7 @@
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "supporting",
-      "strictValidationErrors": 6,
+      "strictValidationErrors": 2,
       "registered": true,
       "provenance": "tenant-prerequisite",
       "review": "current"
@@ -6101,7 +6101,7 @@
     "packageCount": 43,
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
-    "contentBlocks": 932,
+    "contentBlocks": 931,
     "uniqueBindings": 267,
     "bindingsRequiredByAtLeastOneProjection": 86,
     "bindingsOptionalInAtLeastOnePackage": 185,

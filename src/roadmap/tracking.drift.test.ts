@@ -377,8 +377,8 @@ test('R4-10: a token-protection policy without the Cloud PC device filter is tol
   const artifacts = stepBodyOf(step, ctx).artifacts
   const portal = artifacts.find((a) => a.id === 'portal')?.text() ?? ''
   assert.ok(portal.includes(rule), `the portal does not say which filter to set:\n${portal}`)
-  assert.match(portal, /Filter for devices → Configure: Yes, then Exclude devices matching/)
-  assert.match(portal, /not what the plan asked for in the device filter/)
+  // The correction names the value to set (roadmap/policyProcedure.ts correctionSettings, walk list item 15).
+  assert.match(portal, /\*\*Correct the policy\*\*[\s\S]*Under \*\*Conditions → Filter for devices\*\*, set \*\*Configure\*\* to \*\*Yes\*\*, select \*\*Exclude filtered devices from policy\*\*/)
   assert.equal(portal.includes(String(shared.changeUntouched)), false, 'the portal tells the operator to leave the missing filter as it is')
   for (const a of artifacts) assert.equal(handsOverWrite(a.id, a.text()), false, `the ${a.id} channel hands over a write for a part the note says IAMAI does not write:\n${a.text().slice(0, 400)}`)
   assert.ok(stepExportView(step, ctx).whatToDo.some((l) => l.includes(rule)), 'the export says a person corrects the filter and never says to what')
@@ -444,7 +444,7 @@ test('a report-only legacy-authentication block with a trusted-location exclusio
   const ctx: StepVarContext = { snapshot, mapping: ANSWERED.mapping, nameOf: (id) => run.input.names!.label(id), signature: 'IT', operatorId: ANSWERED.operatorId, now: snapshot.asOf, groups: ANSWERED.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
   const artifacts = stepBodyOf(step, ctx).artifacts
   const portal = artifacts.find((a) => a.id === 'portal')?.text() ?? ''
-  assert.match(portal, /not what the plan asked for in locations/, `the portal never names the difference:\n${portal}`)
+  assert.match(portal, /\*\*Correct the policy\*\*[\s\S]*Under \*\*Conditions → Locations\*\*, set \*\*Configure\*\* to \*\*No\*\*/, `the portal never names the difference:\n${portal}`)
   assert.doesNotMatch(portal, /click Save|make sure/i, `the portal hands over a correction that does not mention locations:\n${portal}`)
   for (const a of artifacts) assert.equal(handsOverWrite(a.id, a.text()), false, `the ${a.id} channel hands over a write for a part the note says IAMAI does not write`)
   assert.doesNotMatch(artifacts.find((a) => a.id === 'ai')?.text() ?? '', /conditions\.canonical/, 'AI Info names a package module id')

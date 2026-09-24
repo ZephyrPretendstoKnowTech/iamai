@@ -125,11 +125,13 @@ function usersLine(f: PolicyFacts, ctx: PortalContext): string {
   if (f.who.all) include.push('All users')
   if (f.who.roles.size > 0) include.push(`Directory roles → ${names(f.who.roles, ctx)}`)
   // All users reaches every guest type (facts.ts reads it as an all-types guest
-  // include). Where the policy then excludes guests, that reach is not a guest
-  // include to name, and the exclusion is not "the same as the include": All users
-  // minus every guest type read "Include: All users, Guest or external users → all
-  // types" with the exclusion dropped, the opposite of the policy (Medium user risk).
-  const implicitGuests = f.who.all && f.whoNot.guests && f.who.guests !== null && f.who.guests.length === 0
+  // include), and Entra cannot select All users and Guest or external users
+  // together, so that reach is never a guest include to name (walk list section 4
+  // item 19). Nor is a guest exclusion beside it "the same as the include": All
+  // users minus every guest type read "Include: All users, Guest or external users
+  // → all types" with the exclusion dropped, the opposite of the policy (Medium
+  // user risk).
+  const implicitGuests = f.who.all && f.who.guests !== null && f.who.guests.length === 0
   if (f.who.guests !== null && !implicitGuests) {
     const kinds = f.who.guests.length > 0 ? f.who.guests.map((t) => GUEST_TYPE_LABEL[lc(t)] ?? t).join(', ') : 'all types'
     include.push(`Guest or external users → ${kinds}`)
@@ -265,7 +267,8 @@ function conditionLines(f: PolicyFacts, ctx: PortalContext): string[] {
   return out
 }
 
-const GRANT_LABEL: Record<string, string> = {
+/** A built-in grant control as the portal names it; the policy procedure reads it too (roadmap/policyProcedure.ts). */
+export const GRANT_LABEL: Record<string, string> = {
   compliantdevice: 'Require device to be marked as compliant',
   domainjoineddevice: 'Require Microsoft Entra hybrid joined device',
   compliantapplication: 'Require app protection policy',

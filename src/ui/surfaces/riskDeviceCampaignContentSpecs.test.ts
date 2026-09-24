@@ -70,9 +70,10 @@ test('s-goal-require-managed-device: the held create draws the Intune preparatio
   // what is being waited on, and checked by its state (owner, 2026-09-20; quality audit 2.4).
   for (const t of prerequisites) assert.ok(['Prerequisite · To do', 'Prerequisite · Waiting'].includes(t.value), `${t.label}: ${t.value}`)
   for (const t of prerequisites) assert.doesNotMatch(t.note ?? '', /does not enforce access restrictions/, t.key)
-  // With every person on a compliant device it draws the create procedure after the Intune prerequisite.
+  // With every person on a compliant device it draws the create procedure, the Intune prerequisite its first line.
   const ready = bodyOf('demo', DEVICE, withDevicesReady)
-  assert.match(drawn(ready, 'portal'), /Mark devices with no compliance policy assigned/)
   const create = authoredParts(drawn(ready, 'portal')).find((p) => p.kind === 'list')
-  assert.ok(create && create.kind === 'list' && create.items[1][0] === 'Name: Core - Require - Compliant device for Office 365.', 'the create procedure names the demo policy')
+  assert.ok(create && create.kind === 'list', 'the create procedure is drawn')
+  assert.match(create.items[0][0], /Mark devices with no compliance policy assigned/)
+  assert.equal(create.items[2][0], 'Name: **Core - Require - Compliant device for Office 365**.', 'the create procedure names the demo policy')
 })

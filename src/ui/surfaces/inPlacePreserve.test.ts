@@ -454,10 +454,10 @@ test('two policies that satisfy the goal only together are both named, and neith
   const found = stepContract(step, ctx).found.find((x) => x.key === 'in-place')
   assert.ok(found, 'the contract reports the goal as already delivered')
   for (const name of [FIRST, SECOND]) assert.ok(found.text.includes(name), `What IAMAI found drops ${name}: ${found.text}`)
-  // And the artifacts speak from the same line, so no export names one policy
-  // where the screen names two.
+  // And no export names one policy where the screen names two. A Completed
+  // step's export hands over no task (walk list item 19), so it names neither.
   const all = stepLines(step, ctx).join('\n')
-  for (const name of [FIRST, SECOND]) assert.ok(all.includes(name), `the export drops ${name}`)
+  assert.equal(all.includes(FIRST), all.includes(SECOND), 'the export names one of the two policies as the coverage')
   // Still preserve: two policies to keep is not a policy to create.
   assert.equal(operationsOf(step).length, 0)
   for (const line of stepLines(step, ctx)) assert.doesNotMatch(line, CREATING, `combined coverage drew a create instruction: ${line}`)

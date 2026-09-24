@@ -359,7 +359,7 @@ test('C01/C02 R1-F3: a lone staff group MFA policy is corrected to All users wit
       assert.ok(artifact && !artifact.unavailable, `${id} is drawn`)
       assert.match(artifact.text(), carries, `${id} carries the exclusion`)
     }
-    assert.match(stepExportView(step, r.ctx).whatToDo.join('\n'), /Target resources → Include: All resources\. Exclude: Microsoft Intune Enrollment/, 'the export names it too')
+    assert.match(stepExportView(step, r.ctx).whatToDo.join('\n'), /Under Target resources → Exclude, add Microsoft Intune Enrollment\./, 'the export names it too')
   }
   // Where the tenant's policy already excludes it, the resources are not a change.
   const r = groupRun({ reversed: false, names: GROUP_NAMES[0], staff: 'group', admins: null, staffApps: { includeApplications: ['All'], excludeApplications: [INTUNE_ENROLLMENT] } })

@@ -560,7 +560,6 @@ export function ContentStep({
               chosenTaskId={isTaskStep ? emergencyTaskId : null}
               onChooseTask={isTaskStep ? chooseEmergencyTask : null}
               taskPreferenceKey={isTaskStep ? emergencyTaskPreferenceKey : null}
-              taskSettings={isOwnTaskStep}
               heading={taskHead?.implementation}
             />
           )}
@@ -761,7 +760,7 @@ export function copyImplementationArtifact(text: string): Promise<boolean> {
   return exportClipboard(text, unredactedFrom('implementation-artifact'))
 }
 
-export function Implementation({ artifacts, drawnBy, preview, notes, title, empty, source, learn, onTroubleshooting, open, onOpen, onClose, copy, copied, printing, tasks, chosenChannel, onChooseChannel, chosenTaskId, onChooseTask, taskPreferenceKey, taskSettings = false, emptyTaskText, heading }: {
+export function Implementation({ artifacts, drawnBy, preview, notes, title, empty, source, learn, onTroubleshooting, open, onOpen, onClose, copy, copied, printing, tasks, chosenChannel, onChooseChannel, chosenTaskId, onChooseTask, taskPreferenceKey, emptyTaskText, heading }: {
   artifacts: Artifact[]
   /** Who draws the region: the step's implementation-content package, or the translator's own channels (stepPackage.ts packageDrawsImplementation). */
   drawnBy: 'package' | 'translator'
@@ -789,7 +788,6 @@ export function Implementation({ artifacts, drawnBy, preview, notes, title, empt
   onChooseTask: ((taskId: string | null) => void) | null
   taskPreferenceKey?: string | null
   /** The one policy the owner is judging the resolved settings on (policyTasks.ts): its task's facts stand under the procedure, folded. */
-  taskSettings?: boolean
   emptyTaskText?: string
   heading?: string
 }) {
@@ -820,15 +818,6 @@ export function Implementation({ artifacts, drawnBy, preview, notes, title, empt
       {(item.targetUpn || item.targetLabel) && <p className="emergency-task-target">{item.targetUpn ?? item.targetLabel}</p>}
       {printing && !!taskFacts.length && <dl className="emergency-task-facts">{taskFacts.map((row, index) => <div key={`${row.label}-${index}`}><dt>{row.label}</dt><dd><AuthoredText text={row.value} /></dd></div>)}</dl>}
       <ol>{emergencyTaskSteps(item, variant).map((line, index) => <li key={index}><AuthoredText text={line} /></li>)}</ol>
-      {/* The resolved settings this procedure was written against, on the one
-          policy the owner is judging them on (owner, 2026-09-19). They are the
-          task's own facts — printed and copied already — under the heading the
-          artifact gave them, in the disclosure this file already draws a
-          resolved list in (Approved authenticator models). */}
-      {!printing && taskSettings && !!taskFacts.length && <details className="approved-model-disclosure">
-        <summary>{SHARED.policySettingsForAction}</summary>
-        <dl className="emergency-task-facts">{taskFacts.map((row, index) => <div key={`${row.label}-${index}`}><dt>{row.label}</dt><dd><AuthoredText text={row.value} /></dd></div>)}</dl>
-      </details>}
     </section>
   }
   const printableTasks = tasks?.printAll ? taskList : taskList.filter(item => item.required)

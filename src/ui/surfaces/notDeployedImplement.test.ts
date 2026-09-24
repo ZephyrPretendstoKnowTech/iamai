@@ -85,11 +85,11 @@ function canonical(): { step: Step; ctx: StepVarContext; steps: Step[]; planId: 
   return { step, ctx, steps: r.steps, planId: f.planId }
 }
 
-/** The step's portal lines, as the screen and the exports both render them. */
+/** The create a person follows: the step's Create the policy in Report-only task (policyTasks.ts policyProcedureOf), bold markers off. */
 function portalOf(step: Step, ctx: StepVarContext): string[] {
-  const artifact = stepBodyOf(step, ctx).artifacts.find(a => a.id === 'portal' && !a.unavailable)
-  assert.ok(artifact, 'the canonical case renders no Entra instructions')
-  return artifact.text().replace(/\*\*(.*?)\*\*/g, '$1').split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+  const create = stepBodyOf(step, ctx).emergencyAccountTasks?.tasks.find((t) => t.id === 'create')
+  assert.ok(create, 'the canonical case renders no Entra instructions')
+  return create.steps.map((l) => l.replace(/\*\*(.*?)\*\*/g, '$1').trim())
 }
 
 // ---- 3. a true create, in every channel ----
@@ -215,7 +215,7 @@ test('004.8: the portal instructions name the policy, the objects and the state 
   // Every semantic section the body carries is instructed: who, what, the
   // conditions and the session controls it sets.
   const body = operationsOf(step)[0].body as Record<string, any>
-  assert.match(text, /Users:/)
+  assert.match(text, /Under Users, /)
   assert.match(text, /Target resources/)
   if (body.conditions?.clientAppTypes) assert.match(text, /Client apps/)
   if (body.sessionControls?.signInFrequency) assert.match(text, /Sign-in frequency/)

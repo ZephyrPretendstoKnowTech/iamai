@@ -79,6 +79,9 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // draft add under the day they name. It is composed at render time from the
   // step's lifecycle, and the review page has no lifecycle to read.
   '.shared.commsForecastNote',
+  // The plan tag's line in the translator's settings (stepPortal.ts contextFor):
+  // the review page draws no created policy, so it carries no tag.
+  '.shared.descriptionLine',
   '.shared.enableLine',
   '.shared.syncRoleNote',
   // What a claim leaves behind when the tenant's values cannot complete it (R4,
@@ -332,8 +335,10 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
 // its Tasks Remaining cards and Implementation Task (policyTasks.ts
 // ownCardWordsOf, generate.ts, sectionThreeTasks.ts), and the review page draws
 // no cards and no tasks.
+// shared.procedure is every policy step's Implementation Tasks (roadmap/policyProcedure.ts,
+// policyTasks.ts policyProcedureOf), and the review page draws no tasks.
 // These fields are consumed by Plan.tsx, stepContract.ts, stepResources.ts and aiGrounding.ts, not the static content-review renderer.
-const isAppOnly = (p: string): boolean => /^\.steps\[\d+\]\.who\.\w+Undated\./.test(p) ||p === '.pages.plan.howTo.intro' || p.startsWith('.pages.plan.changes.') || p.startsWith('.pages.plan.howTo.legend.') || /^\.pages\.plan\.howTo\.legend\[/.test(p) || p === '.shared.certificatePrompt' || /\.tileNote(Unread)?$/.test(p) || /\.whatToDo\.verification(Lead)?\[/.test(p) || /^\.steps\[\d+\]\.preparation\[\d+\]$/.test(p) || /^\.steps\[\d+\]\.decision\.heading$/.test(p) || /^\.steps\[\d+\]\.(doneEnd|aiFocus|taskTitle)$/.test(p) || /^\.steps\[\d+\]\.card\.\w+$/.test(p) || /^\.steps\[\d+\]\.(milestone|instruction)(\.\w+)?$/.test(p) || /^\.steps\[\d+\]\.campaign\.\w+$/.test(p) || /^\.steps\[\d+\]\.(keep|procedure)\./.test(p) || p.startsWith('.pages.plan.workflows.reviewCard.') || p === '.pages.plan.workflows.reviewTaskTitle' || p.startsWith('.pages.app.') || p.startsWith('.pages.plan.blockedSubject.') || p.startsWith('.pages.plan.settings.mappings.') || p.startsWith('.shared.engine.') || p.startsWith('.shared.deviation.') || p.startsWith('.shared.devicePlan.') || p.startsWith('.shared.mailDevices.') || p === '.pages.plan.footer.notLicensedDevices' || p === '.shared.planPromptTitle' || p === '.shared.policySettingsForAction' || p.startsWith('.shared.deviceBriefing.') || p.startsWith('.shared.passkeyCompatibility.') || p.startsWith('.shared.passkeyRestrictions.') || p === '.shared.policyDoneWhenUnobserved' || p.startsWith('.shared.registrationScope.')
+const isAppOnly = (p: string): boolean => /^\.steps\[\d+\]\.who\.\w+Undated\./.test(p) ||p === '.pages.plan.howTo.intro' || p.startsWith('.pages.plan.changes.') || p.startsWith('.pages.plan.howTo.legend.') || /^\.pages\.plan\.howTo\.legend\[/.test(p) || p === '.shared.certificatePrompt' || /\.tileNote(Unread)?$/.test(p) || /\.whatToDo\.verification(Lead)?\[/.test(p) || /^\.steps\[\d+\]\.preparation\[\d+\]$/.test(p) || /^\.steps\[\d+\]\.decision\.heading$/.test(p) || /^\.steps\[\d+\]\.(doneEnd|aiFocus|taskTitle)$/.test(p) || /^\.steps\[\d+\]\.card\.\w+$/.test(p) || /^\.steps\[\d+\]\.(milestone|instruction)(\.\w+)?$/.test(p) || /^\.steps\[\d+\]\.campaign\.\w+$/.test(p) || /^\.steps\[\d+\]\.(keep|procedure)\./.test(p) || p.startsWith('.pages.plan.workflows.reviewCard.') || p === '.pages.plan.workflows.reviewTaskTitle' || p.startsWith('.pages.app.') || p.startsWith('.pages.plan.blockedSubject.') || p.startsWith('.pages.plan.settings.mappings.') || p.startsWith('.shared.engine.') || p.startsWith('.shared.deviation.') || p.startsWith('.shared.devicePlan.') || p.startsWith('.shared.mailDevices.') || p === '.pages.plan.footer.notLicensedDevices' || p === '.shared.planPromptTitle' || p.startsWith('.shared.procedure.') || p.startsWith('.shared.deviceBriefing.') || p.startsWith('.shared.passkeyCompatibility.') || p.startsWith('.shared.passkeyRestrictions.') || p === '.shared.policyDoneWhenUnobserved' || p.startsWith('.shared.registrationScope.')
 const isStructural = (p: string): boolean =>
   /\.id$/.test(p) || /\.href$/.test(p) || /\.applies$/.test(p) || /pickerSource$/.test(p) || /\.kind$/.test(p) || /\.multi$/.test(p) || /\.mergesGoals\b/.test(p) || /\.learn\.url$/.test(p) || /\.whatToDoReference\b/.test(p) || /\.placement$/.test(p)
 
