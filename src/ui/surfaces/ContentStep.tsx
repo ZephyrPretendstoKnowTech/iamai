@@ -58,7 +58,7 @@ import type { ImplementationEmpty, LaneView, PrerequisiteBlocker, PrerequisiteLa
 import { HARDENING_DEFERRAL_ID } from '../../validation/emergencyTiers.ts'
 import { AuthoredText, DoneWhen, EmergencySlotBody, PolicyMembers, ReadinessSection, StepActionColumn, StepDialog, StepFooter, StepHead, StepSection, StepState, WHY_LINK_SHOWN, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
 import { MfaHandoff } from './MfaHandoff.tsx'
-import { TEAM_READINESS_HREF } from './prepareSteps.ts'
+import { TEAM_READINESS_HREF, turnOnWithoutChoices } from './prepareSteps.ts'
 import { HEAD, decisionHeadingsOf, taskHeadingsOf } from './stepHeadings.ts'
 import { ApproveAnswers, DirectionQuestions, OfficeNetworkRail, useDirectionDraft } from './DirectionQuestions.tsx'
 import type { DirectionAnswer } from '../../roadmap/directionAnswers.ts'
@@ -1482,7 +1482,7 @@ function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onD
  */
 function FollowUpDecision({ step, ctx, saved, onDecide, printing }: { step: Step; ctx: StepVarContext; saved: StepDecision | null; onDecide?: (d: StepDecisionInput) => void; printing: boolean }) {
   const F = CONTRACT.followUp
-  const notReady = step.preparation?.missingIds ?? []
+  const notReady = turnOnWithoutChoices(step, ctx.operatorId)
   const marked = step.preparation?.followUpIds ?? []
   const optionOf = (id: string): PickerOption => ({ id, name: ctx.nameOf(id) })
   const [picked, setPicked] = useState<PickerOption[]>(() => (saved?.picked ?? marked).filter((id) => notReady.includes(id)).map(optionOf))

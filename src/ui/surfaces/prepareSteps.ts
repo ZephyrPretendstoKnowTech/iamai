@@ -212,6 +212,16 @@ const MFA_COMPUTER = (app.plan as unknown as { stepContract: { implementation: {
  * Readiness uses); everywhere else a computer uses the phone's passkey. Windows
  * Hello is not a passkey, so it is never called one (owner, 2026-09-24).
  */
+/**
+ * Who Turn On Without Them for Now offers: everyone not ready, except the
+ * operator. You make every change in this plan, so the policies never go ahead
+ * without you (net-new 18, owner 2026-09-24).
+ */
+export function turnOnWithoutChoices(step: Step, operatorId: string | null): string[] {
+  const operator = operatorId?.toLowerCase() ?? null
+  return (step.preparation?.missingIds ?? []).filter((id) => id.toLowerCase() !== operator)
+}
+
 export function mfaEmailValues(ctx: StepVarContext): Record<string, string> {
   const computers = devicePlanOf(ctx.mapping)?.computers
   const managed = (computers === 'enrol' || computers === 'hybrid') && readinessContextOf(ctx.snapshot, ctx.mapping, ctx.now).windowsDirectory === 'joined'
