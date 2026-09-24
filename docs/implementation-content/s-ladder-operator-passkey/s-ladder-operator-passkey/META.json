@@ -102,7 +102,7 @@
       "authority": "Microsoft Learn",
       "title": "Register a passkey with a FIDO2 security key",
       "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-register-passkey-with-security-key",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": true
     },
     {
@@ -110,7 +110,7 @@
       "authority": "Microsoft Learn",
       "title": "Register passkeys in Authenticator on Android and iOS devices",
       "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-register-passkey-authenticator",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": true
     },
     {
@@ -118,7 +118,7 @@
       "authority": "Microsoft Learn",
       "title": "How to enable passkeys (FIDO2) in Microsoft Entra ID",
       "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-authentication-passkeys-fido2",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": true
     }
   ],

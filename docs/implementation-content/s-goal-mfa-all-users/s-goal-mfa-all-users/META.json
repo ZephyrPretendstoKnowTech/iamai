@@ -310,7 +310,7 @@
       "authority": "Microsoft Learn",
       "title": "Require MFA for all users with Conditional Access",
       "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-mfa-strength",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": true
     },
     {
@@ -318,7 +318,7 @@
       "authority": "Microsoft Learn",
       "title": "Conditional Access authentication strength",
       "url": "https://learn.microsoft.com/entra/identity/authentication/concept-authentication-strengths",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": true
     },
     {
@@ -326,7 +326,7 @@
       "authority": "Microsoft Learn",
       "title": "Microsoft-managed policies in Conditional Access",
       "url": "https://learn.microsoft.com/entra/identity/conditional-access/managed-policies",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": true
     },
     {
@@ -334,7 +334,7 @@
       "authority": "Microsoft Learn",
       "title": "Passkeys by default and retirement of Microsoft-provided SMS and voice authentication",
       "url": "https://learn.microsoft.com/entra/identity/authentication/concept-sms-voice-retirement",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": true
     }
   ],

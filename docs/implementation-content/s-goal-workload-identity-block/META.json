@@ -406,7 +406,7 @@
       "title": "Conditional Access for workload identities",
       "url": "https://learn.microsoft.com/entra/identity/conditional-access/workload-identity",
       "purpose": "Workload scope, licensing, direct service-principal assignment, location policy, report-only, sign-in logs, and Enterprise applications Object ID requirement.",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": true,
       "priority": "primary",
       "audience": [
@@ -423,7 +423,7 @@
       "title": "Frequently asked questions about Microsoft Entra Workload ID",
       "url": "https://learn.microsoft.com/entra/workload-id/workload-identities-faqs",
       "purpose": "Current Workload ID Premium licensing behavior.",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": false,
       "priority": "technical",
       "audience": [
@@ -437,7 +437,7 @@
       "title": "conditionalAccessClientApplications resource type - v1.0",
       "url": "https://learn.microsoft.com/graph/api/resources/conditionalaccessclientapplications?view=graph-rest-1.0",
       "purpose": "v1.0 workload/service-principal include/exclude schema.",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": false,
       "priority": "technical",
       "audience": [
@@ -451,7 +451,7 @@
       "title": "ipNamedLocation resource type - v1.0",
       "url": "https://learn.microsoft.com/graph/api/resources/ipnamedlocation?view=graph-rest-1.0",
       "purpose": "IP named-location shape and CIDR range semantics.",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": false,
       "priority": "technical",
       "audience": [
@@ -465,7 +465,7 @@
       "title": "Create namedLocation - v1.0",
       "url": "https://learn.microsoft.com/graph/api/conditionalaccessroot-post-namedlocations?view=graph-rest-1.0",
       "purpose": "v1.0 named-location POST endpoint, required IP-range fields, permissions, and roles.",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": true,
       "priority": "technical",
       "audience": [
@@ -480,7 +480,7 @@
       "title": "Update ipNamedLocation - v1.0",
       "url": "https://learn.microsoft.com/graph/api/ipnamedlocation-update?view=graph-rest-1.0",
       "purpose": "v1.0 named-location PATCH behavior; complete desired ipRanges must be supplied because omitted ranges are removed.",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": true,
       "priority": "technical",
       "audience": [
@@ -495,7 +495,7 @@
       "title": "List namedLocations - v1.0",
       "url": "https://learn.microsoft.com/graph/api/conditionalaccessroot-list-namedlocations?view=graph-rest-1.0",
       "purpose": "Stable list/collision-check surface and Policy.Read.All read permission.",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": false,
       "priority": "technical",
       "audience": [
@@ -507,7 +507,7 @@
       "authority": "Microsoft Learn",
       "title": "Network assignment in Conditional Access policy",
       "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": true
     },
     {
@@ -515,7 +515,7 @@
       "authority": "Microsoft Learn",
       "title": "Microsoft Entra Connect: accounts and permissions",
       "url": "https://learn.microsoft.com/entra/identity/hybrid/connect/reference-connect-accounts-permissions",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": true
     },
     {
@@ -523,7 +523,7 @@
       "authority": "Microsoft Learn",
       "title": "Microsoft Entra Cloud Sync FAQ",
       "url": "https://learn.microsoft.com/entra/identity/hybrid/cloud-sync/reference-cloud-sync-faq",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": true
     }
   ],

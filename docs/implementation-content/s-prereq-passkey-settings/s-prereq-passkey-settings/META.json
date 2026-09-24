@@ -174,7 +174,7 @@
       "title": "Enable passkeys in Microsoft Authenticator",
       "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-enable-authenticator-passkey",
       "purpose": "Microsoft Authenticator AAGUIDs for iOS and Android, pinned as the key-restriction allow list (decision 9). Page dated 2026-07-05.",
-      "checkedOn": "2026-09-12",
+      "checkedOn": "2026-09-25",
       "userFacing": true
     }
   ],

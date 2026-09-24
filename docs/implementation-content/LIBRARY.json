@@ -5840,7 +5840,7 @@
     {
       "id": "ca.graph.policy-v1",
       "surface": "Microsoft Graph v1.0",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-25",
       "facts": [
         "POST /identity/conditionalAccess/policies creates a policy.",
         "PATCH /identity/conditionalAccess/policies/{id} updates a policy.",
@@ -5864,7 +5864,7 @@
     {
       "id": "ca.license-p1",
       "surface": "Microsoft Entra licensing",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-25",
       "facts": [
         "Conditional Access requires Microsoft Entra ID P1; Microsoft 365 Business Premium includes Conditional Access rights."
       ],
@@ -5881,7 +5881,7 @@
     {
       "id": "ca.named-location.graph-v1",
       "surface": "Microsoft Graph v1.0",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-25",
       "facts": [
         "POST /identity/conditionalAccess/namedLocations creates an ipNamedLocation using #microsoft.graph.ipNamedLocation plus displayName and ipRanges.",
         "PATCH /identity/conditionalAccess/namedLocations/{id} updates an IP named location.",
@@ -5901,7 +5901,7 @@
     {
       "id": "ca.session-lifetime.graph-v1",
       "surface": "Microsoft Entra Conditional Access + Microsoft Graph v1.0",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-25",
       "facts": [
         "Sign-in frequency supports time-based hour/day controls and persistent-browser mode can be set to never.",
         "The persistent-browser session control should target All apps/resources to work correctly.",
@@ -5922,7 +5922,7 @@
     {
       "id": "ca.token-protection.beta-session-control",
       "surface": "Microsoft Graph beta",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-25",
       "facts": [
         "The current Graph v1.0 conditionalAccessSessionControls schema does not expose secureSignInSession.",
         "The Graph beta conditionalAccessSessionControls schema exposes secureSignInSession and secureSignInSessionControl.isEnabled.",
@@ -5942,7 +5942,7 @@
     {
       "id": "ca.workload-identity.graph-v1",
       "surface": "Microsoft Entra Conditional Access + Microsoft Graph v1.0",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-25",
       "facts": [
         "Conditional Access workload policies must target an eligible service principal directly; assigning a policy to a group containing the service principal does not enforce it.",
         "Use the Enterprise applications service principal Object ID, not the App registrations Object ID.",
@@ -5962,7 +5962,7 @@
     {
       "id": "graph.powershell.invoke-v1",
       "surface": "Microsoft Graph PowerShell",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-25",
       "facts": [
         "Invoke-MgGraphRequest is in Microsoft.Graph.Authentication and supports REST GET/POST/PATCH; Body is required for POST/PATCH."
       ],
@@ -5980,7 +5980,7 @@
     {
       "id": "pim.authentication-context.graph-v1",
       "surface": "Microsoft Entra PIM + Microsoft Graph v1.0",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-25",
       "facts": [
         "PATCH /identity/conditionalAccess/authenticationContextClassReferences/{id} creates or updates an authentication context and isAvailable publishes it for use.",
         "AuthenticationContext.ReadWrite.All is the least delegated write permission; Conditional Access Administrator and Security Administrator are supported roles.",
@@ -6000,7 +6000,7 @@
     {
       "id": "pim.license-entitlement",
       "surface": "Microsoft Entra licensing",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-25",
       "facts": [
         "Privileged Identity Management capabilities require an eligible Microsoft Entra ID P2 or Microsoft Entra ID Governance entitlement for users in scope."
       ],
@@ -6014,7 +6014,7 @@
     {
       "id": "pim.role-policy.graph-v1",
       "surface": "Microsoft Graph v1.0",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-25",
       "facts": [
         "PATCH /policies/roleManagementPolicies/{policyId}/rules/{ruleId} updates one PIM rule without replacing unrelated rules.",
         "AuthenticationContext_EndUser_Assignment is the authentication-context activation rule and claimValue stores the authentication-context claim.",

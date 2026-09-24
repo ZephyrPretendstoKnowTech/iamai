@@ -23,7 +23,7 @@ const W = workflowWords
  * date beside the link (stepBody.ts sourceCheckedLine), which is why the date
  * lives here with the URL and is moved only by re-reading the page.
  */
-const PLAN_CA: Learn = { url: 'https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access', checkedOn: '2026-09-20' }
+const PLAN_CA: Learn = { url: 'https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access', checkedOn: '2026-09-25' }
 const services: [string, RegExp][] = [['sharepoint', /sharepoint|onedrive/i], ['avd', /\bAVD\b|virtual.desktop/i], ['inforcer', /inforcer/i], ['agents', /agent/i], ['azureManagement', /WindowsAzureAD|BaselineScopes/i]]
 /** The service a baseline policy IAMAI does not assess protects, by its name; null for none. */
 export function serviceOf(policy: Pick<NotAssessed, 'name'>): string | null { return services.find(([, re]) => re.test(policy.name))?.[0] ?? null }

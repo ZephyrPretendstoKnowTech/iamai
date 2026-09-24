@@ -316,7 +316,7 @@
       "authority": "Microsoft Learn",
       "title": "Control security information registration with Conditional Access",
       "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-security-info-registration",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": true
     },
     {
@@ -324,7 +324,7 @@
       "authority": "Microsoft Learn",
       "title": "Network condition in Conditional Access policy",
       "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": true
     }
   ],

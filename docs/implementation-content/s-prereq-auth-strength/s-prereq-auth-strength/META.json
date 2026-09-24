@@ -204,7 +204,7 @@
       "authority": "Microsoft Learn",
       "title": "Create and Manage Custom Conditional Access Authentication Strengths",
       "url": "https://learn.microsoft.com/entra/identity/authentication/concept-authentication-strength-advanced-options",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": true
     },
     {
@@ -212,7 +212,7 @@
       "authority": "Microsoft Learn",
       "title": "Overview of Conditional Access authentication strengths",
       "url": "https://learn.microsoft.com/entra/identity/authentication/concept-authentication-strengths",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": true
     }
   ],

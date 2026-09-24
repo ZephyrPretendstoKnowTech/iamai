@@ -175,7 +175,7 @@
       "authority": "Microsoft Learn",
       "title": "Microsoft Entra recommendation: Turn off per-user MFA",
       "url": "https://learn.microsoft.com/entra/identity/monitoring-health/recommendation-turn-off-per-user-mfa",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": true
     },
     {
@@ -183,7 +183,7 @@
       "authority": "Microsoft Learn",
       "title": "Enable per-user Microsoft Entra multifactor authentication",
       "url": "https://learn.microsoft.com/entra/identity/authentication/howto-mfa-userstates",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": true
     },
     {
@@ -191,7 +191,7 @@
       "authority": "Microsoft Learn",
       "title": "Configure Microsoft Entra multifactor authentication settings",
       "url": "https://learn.microsoft.com/entra/identity/authentication/howto-mfa-mfasettings",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": true
     }
   ]

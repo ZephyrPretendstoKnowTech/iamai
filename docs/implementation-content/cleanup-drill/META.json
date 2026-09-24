@@ -111,7 +111,7 @@
       "title": "Manage emergency access admin accounts",
       "url": "https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/security-emergency-access",
       "purpose": "Emergency-account guardrails, monitoring, secure workstation guidance, and validation at least every 90 days.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-25"
     }
   ],
   "authoringReviewNotes": [

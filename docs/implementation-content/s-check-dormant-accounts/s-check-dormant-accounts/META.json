@@ -168,7 +168,7 @@
       "authority": "Microsoft Learn",
       "title": "How to manage inactive user accounts",
       "url": "https://learn.microsoft.com/entra/identity/monitoring-health/howto-manage-inactive-user-accounts",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": true
     },
     {
@@ -176,7 +176,7 @@
       "authority": "Microsoft Graph",
       "title": "signInActivity resource type",
       "url": "https://learn.microsoft.com/graph/api/resources/signinactivity",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": true
     }
   ],
