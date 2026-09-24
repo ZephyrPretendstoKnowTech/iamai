@@ -27,6 +27,7 @@ import { readinessContextOf } from '../../derive/readinessContext.ts'
 import { smsRetirementOf } from '../../derive/smsRetirement.ts'
 import { unprovenIdsOf } from '../../derive/contentLists.ts'
 import { personLines } from './personNext.ts'
+import { personLabels } from '../../names.ts'
 import type { ReadinessTile } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
 
@@ -82,8 +83,17 @@ function campaignPitfalls(step: Step, ctx: StepVarContext): ReadinessTile[] {
 function mfaEveryonePitfalls(step: Step, ctx: StepVarContext, stepLink: StepLinkOf): ReadinessTile[] {
   if (step.state.lifecycle === 'enforced') return []
   const W = wordsOf(step)
+  const out: ReadinessTile[] = []
   const ids = unprovenIdsOf({ snapshot: ctx.snapshot, mapping: ctx.mapping, now: ctx.now })
-  if (ids.length === 0) return []
-  const campaign = stepById[CAMPAIGN_STEP_ID]?.title ?? CAMPAIGN_STEP_ID
-  return [{ key: 'pitfall:unproven', label: W.unprovenLabel, tone: 'warn', value: fillText(W.unprovenValue, { n: ids.length }), note: plain(fillText(W.unprovenNote, {})), names: personLines(ctx, ids), link: stepLink(CAMPAIGN_STEP_ID, campaign) }]
+  if (ids.length > 0) {
+    const campaign = stepById[CAMPAIGN_STEP_ID]?.title ?? CAMPAIGN_STEP_ID
+    out.push({ key: 'pitfall:unproven', label: W.unprovenLabel, tone: 'warn', value: fillText(W.unprovenValue, { n: ids.length }), note: plain(fillText(W.unprovenNote, {})), names: personLines(ctx, ids), link: stepLink(CAMPAIGN_STEP_ID, campaign) })
+  }
+  // The accounts MFA Readiness sets aside as scripts: outside the campaign, inside
+  // this policy. The scan cannot tell a script from a person at PowerShell, so the
+  // note gives the fix for each, and the card names them only.
+  const labels = personLabels(ctx.snapshot.users, { address: true })
+  const scripts = readinessView(ctx.snapshot, ctx.now, ctx.mapping).rows.filter((r) => r.explained === 'script').map((r) => labels.get(r.user.id) ?? ctx.nameOf(r.user.id))
+  if (scripts.length > 0) out.push({ key: 'pitfall:script', label: W.scriptLabel, tone: 'warn', value: fillText(W.scriptValue, { n: scripts.length }), note: W.scriptNote, names: scripts })
+  return out
 }

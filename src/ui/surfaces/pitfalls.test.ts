@@ -99,7 +99,7 @@ test('4.4 names the people who hold a method and have no MFA sign-in in 30 days,
   assert.match(tile.value, /have a method but no MFA sign-in in the last 30 days|has a method but no MFA sign-in in the last 30 days/)
   assert.deepEqual(tile.names, personLines(ctx, ids), 'each named with MFA Readiness’s next step')
   assert.match(tile.note ?? '', /^Before you turn this on, get each one signed in once with the method named beside them\. For a passkey: After the username, choose Other ways to sign in, then Face, fingerprint, PIN or security key\.$/)
-  assert.equal(tile.link?.href.endsWith(CAMPAIGN_STEP_ID), true, 'it opens Prepare Your Team for MFA')
+  assert.ok(tile.link && 'href' in tile.link && tile.link.href.endsWith(CAMPAIGN_STEP_ID), 'it opens Prepare Your Team for MFA')
   // The policy On: every sign-in completes MFA, and the card goes.
   const on = stepAt('demo', 's-goal-mfa-all-users')
   assert.equal(on.step.state.lifecycle, 'enforced')
@@ -115,4 +115,22 @@ test('4.3 names each admin it waits for with the method and device MFA Readiness
   assert.ok(gate.names.some((line) => [...next.values()].some((n) => line.endsWith(`: ${n}`))), 'in MFA Readiness’s own words')
   assert.doesNotMatch(gate.names.join('\n'), /needs a passkey, security key or Windows Hello/, 'no generic line in place of the method')
   assert.match(gate.note ?? '', /^Get each one signed in once with the method named beside them\. For a passkey: After the username, choose Other ways to sign in, then Face, fingerprint, PIN or security key\. Prepare Your Team for MFA gets them ready\.$/)
+})
+
+test('4.4 names the accounts MFA Readiness sets aside as scripts, with the fix for a person and for a script', () => {
+  const f = curatedFixture('getiamai')
+  // One person the records show only at PowerShell: MFA Readiness sets them aside.
+  const snapshot = structuredClone(f.snapshot)
+  const id = Object.keys(snapshot.signInEvidence ?? {})[0]!
+  snapshot.signInEvidence[id] = { ...snapshot.signInEvidence[id]!, apps: ['Microsoft Graph Command Line Tools'] }
+  const run = runFixture({ ...f, snapshot })
+  const step = run.steps.find((s) => s.id === 's-goal-mfa-all-users')!
+  assert.notEqual(step.state.lifecycle, 'enforced', 'the premise: the policy is not On')
+  const ctx: StepVarContext = { snapshot, mapping: f.mapping, nameOf: (x: string) => run.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: snapshot.asOf, groups: f.groups }
+  const tile = readinessOf(step, stepContract(step, ctx)).tiles.find((t) => t.key === 'pitfall:script')
+  assert.ok(tile, 'the account is named on the policy that will prompt it')
+  assert.equal(tile.names?.length, 1)
+  assert.ok(tile.names![0].includes(ctx.nameOf(id)))
+  assert.match(tile.value, /^1 account signs in only from PowerShell or Graph tools$/)
+  assert.match(tile.note ?? '', /Set a person up with their method; move a script that signs in with a password to an app registration before you turn this on\./)
 })
