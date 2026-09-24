@@ -11,7 +11,7 @@ import type { StepVarContext } from './stepVars.ts'
 import { laneReadings } from './planLanes.ts'
 import { laneViewOf } from './planBoard.ts'
 import { badgeLabel } from './stepContract.ts'
-import { stepBodyOf } from './stepBody.ts'
+import { channelTabsOf, stepBodyOf } from './stepBody.ts'
 import { pickerSavesAlone } from './pickerRows.ts'
 import { applyStepDecisions } from '../../roadmap/decisions.ts'
 
@@ -188,5 +188,12 @@ test('#20 Completion Criteria is the one line the owner approved', () => {
   const LINE = 'Each account you chose is cloud-only, enabled, signs in with the onmicrosoft.com address, holds Global Administrator permanently, and has an approved passkey.'
   for (const [name, edit] of [['demo', () => {}], ['demo-week2', () => {}], ['small', noAccounts]] as const) {
     assert.deepEqual(opened(name, edit).body.contract.doneWhen, [LINE], name)
+  }
+})
+
+test('#16 #17 the step hands over Entra and AI Info only: its PowerShell and JSON repeated what the scan already read', () => {
+  for (const [name, edit] of [['demo', () => {}], ['demo-week2', () => {}], ['small', noAccounts]] as const) {
+    const { body } = opened(name, edit)
+    assert.deepEqual(channelTabsOf(body.artifacts).map((t) => t.label), ['Entra', 'AI Info'], name)
   }
 })

@@ -1,5 +1,5 @@
 import { requiredModels } from '../../roadmap/passkeySettings.ts'
-import { emergencyAccountAiInfo, emergencyAccountPowerShell, emergencyImplementation } from './emergencyImplementation.ts'
+import { emergencyAccountAiInfo, emergencyImplementation } from './emergencyImplementation.ts'
 import { emergencyAccountTasksOf } from './emergencyAccountTasks.ts'
 import type { EmergencyTaskProjection } from './emergencyAccountTasks.ts'
 import { emergencyGroupTasksOf } from './emergencyGroupTasks.ts'
@@ -7,7 +7,6 @@ import { emergencyPasskeyTasksOf } from './emergencyPasskeyTasks.ts'
 import { drawsTaskAnatomy, policyTasksOf } from './policyTasks.ts'
 import { oneLine } from '../../content/implementation/project.ts'
 import { networkDraftOf } from '../../mapping/networkDraft.ts'
-import { initialDomain } from '../../validation/rules.ts'
 // The opened step's body, worked out once (A3): everything ContentStep.tsx draws
 // that is not a React concern — the contract under the lane engine's reading,
 // the instructions, the implementation channels and artifacts, the package's
@@ -584,8 +583,6 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
     produced.push({ id: 'portal', form: 'markdown', lines: [], text: () => emergencyPortal, note: null })
   }
   if (step.id === 's-prereq-break-glass' && accountTasks) {
-    const powershell = produced.find(a => a.id === 'ps')
-    if (powershell) powershell.text = () => emergencyAccountPowerShell(initialDomain(ctx.snapshot))
     const ai = produced.find(a => a.id === 'ai')
     if (ai) ai.text = () => emergencyAccountAiInfo(step, ctx, accountTasks)
   }
