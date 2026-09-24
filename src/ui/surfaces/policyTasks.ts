@@ -817,6 +817,11 @@ export function policyCardsOf(contract: StepContract, projected: EmergencyTaskPr
     // on · Report-only blocked no one. After Verify Emergency Access." — never
     // Blocked, the step's title or the contract's sentence about the hold.
     if (procedure && task !== null && !satisfied) return { key: subject.key, accountId: null, heading: subject.heading, upn: subject.name, title: task.readinessTitle ?? task.title, detail: task.readinessDirection ?? '', instruction: '', completed: [], remainingCount: null, satisfied }
+    // A policy step with nothing of its own left and its policy On states that,
+    // where it has no fact of its own to state (walk list 4.x items 20 and 22):
+    // "Conditional Access policy · Blocked" and "Enforced · This is in place
+    // already…" sat under Satisfied.
+    if (procedure && satisfied) return { key: subject.key, accountId: null, heading: subject.heading, upn: subject.name, title: POLICY_ON, detail: '', instruction: '', completed: [], remainingCount: null, satisfied }
     return {
       key: subject.key,
       accountId: null,
