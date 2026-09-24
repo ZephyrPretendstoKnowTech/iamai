@@ -3,6 +3,7 @@ import { emergencyAccountPreparationComplete, emergencyAccountPreparationOf } fr
 import { followUpIdsOf, settleFollowUp } from './followUp.ts'
 import { addWorkflowSteps } from './workflows.ts'
 import { countDirectionImpact, directionSteps } from './direction.ts'
+import dependencyData from '../actionability/dependency-data.json' with { type: 'json' }
 import { answeredReasonOf } from './directionAnswers.ts'
 import { applyManualReviews, perUserMfaReading } from './manualWork.ts'
 // Step generation (roadmap.md §1–§6; 2026-08-27 redesign: collapsed phase 0,
@@ -57,7 +58,7 @@ import { proposeRings, ringContextIndexes } from './rings.ts'
 import { createMethodPreparationCache, methodPreparation, methodReadiness } from './methodReadiness.ts'
 import type { PolicyEffect as MethodTarget } from './operations.ts'
 import { campaignIds, isActivePerson, namedAccounts, population, populationIndex } from '../derive/population.ts'
-import { activityUnreadUsers, enabledUsers, notActiveUsers, notPeopleIds, personAccounts } from '../derive/sets.ts'
+import { notActiveUsers, notPeopleIds, personAccounts } from '../derive/sets.ts'
 import { adminsWithWorkloadOf } from '../derive/contentLists.ts'
 import { affectedIds } from '../derive/whoLine.ts'
 import { lockoutCount } from './lockout.ts'
@@ -92,7 +93,7 @@ import {
   SEVERITY_STRENGTH_OR_DEVICE,
 } from './constants.ts'
 import { evidenceFor } from './evidence.ts'
-import { blindOf, goalFamily, mfaReady, readinessFor, routeShortfallOf, strengthMeasuredOf, blindSourceOf, sourceReadFix } from './readiness.ts'
+import { blindOf, goalFamily, mfaReady, readinessFor, routeShortfallOf, strengthMeasuredOf, blindSourceOf } from './readiness.ts'
 import { cantSeeFor, scenarioContext, scenarioLinesFor } from './scenarioLines.ts'
 import { SCENARIO } from '../copy/scenarios.ts'
 import { sharedDeviceUsers } from '../derive/sharedDevices.ts'
@@ -1239,7 +1240,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const s = name ? { ...prereq(strengthStepId), naming: { proposed: name, fromBaseline: name } } : prereq(strengthStepId)
     s.authenticationStrengthTarget = { allowedCombinations: requiredStrengths[0].allowedCombinations }
     const strengthRead = snapshot.config.authStrengths?.status === 'ok'
-    s.configurationFindings = [{ key: 'authentication-strength', label: 'Authentication Strength', value: !strengthRead ? 'Configuration not read' : strengthsUnanswered.length ? 'Matching strength missing' : 'Exact match found', detail: !strengthRead ? 'The scan did not read authentication strengths. Scan again to compare the allowed methods and model restrictions.' : strengthsUnanswered.length ? `No scanned strength matches all required method combinations and restrictions. Create ${name || 'the required strength'} using the instructions below, then scan again.` : 'A scanned strength matches the baseline’s allowed method combinations and restrictions. IAMAI uses that existing object automatically.', outcome: !strengthRead ? 'unknown' : strengthsUnanswered.length ? 'fail' : 'pass' }]
+    // Where the scan read no authentication strengths the step says nothing of it
+    // (walk list item 24): only a synthetic fixture reaches that read.
+    if (strengthRead) s.configurationFindings = [{ key: 'authentication-strength', label: 'Authentication Strength', value: strengthsUnanswered.length ? 'Matching strength missing' : 'Exact match found', detail: strengthsUnanswered.length ? `No scanned strength matches all required method combinations and restrictions. Create ${name || 'the required strength'} using the instructions below, then scan again.` : 'A scanned strength matches the baseline’s allowed method combinations and restrictions. IAMAI uses that existing object automatically.', outcome: strengthsUnanswered.length ? 'fail' : 'pass' }]
     if (strengthsUnanswered.length === 0 && strengthRead) {
       setState(s, { satisfied: true, inPlace: true })
       s.deliveredBy = ['Scanned authentication strengths match the resolved baseline method combinations and restrictions.']
@@ -3104,41 +3107,27 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // admins and guests are counted over them (derive/population.ts namedAccounts).
     s.population = namedAccounts(accounts.map(u => u.id), popIndex)
     delete s.manualReview
-    // The accounts the list could not judge. The directory read falls back to a
-    // user list without signInActivity where Graph refuses that property
-    // (graph/collect/collectors.ts collectUsers), and the Users source is then
-    // `partial` with the refusal as its reason — the only way it is ever partial
-    // (graph/collect/worker.ts). Nobody's activity was read, so nobody is listed
-    // (derive/sets.ts notActiveUsers), and the step read "Ready · Review" over no
-    // accounts, told the reader to review "each account IAMAI lists", and said
-    // the refusal nowhere (R4-49). An empty list made that way is not a
-    // directory with nothing dormant. The step now says how many accounts it
-    // could not judge, why, and what reads them; and where nothing is left
-    // listed to review, the read is the only thing it waits on, so it holds on
-    // that fact the way the passkey settings step holds on an unread methods
-    // policy. It finishes only on a whole read, as before.
-    //
-    // Only on that fallback. On a read that succeeded, Graph leaves
-    // signInActivity out for an account that never signed in (Microsoft Learn,
-    // user resource), so an account without it there was read, not unread.
-    const users = snapshot.sources.users
-    const unread = users?.status === 'partial' ? activityUnreadUsers(snapshot, notPeopleIds(mapping)) : []
-    if (unread.length > 0) {
-      s.configurationFindings = [{
-        key: 'activity-unread',
-        label: engine.readiness.activityUnreadLabel,
-        value: engine.readiness.activityUnreadValue,
-        detail: fillText(engine.readiness.activityUnread, { n: unread.length, total: enabledUsers(snapshot, notPeopleIds(mapping)).length, reason: users?.reason ?? users?.status, fix: sourceReadFix('users', snapshot, 'entraP1') }),
-        outcome: 'unknown',
-      }]
-      if (remaining.length === 0) {
-        s.blockers = [...s.blockers, { kind: 'evidence', label: 'activity-unread', binding: BLOCKED_REASON.activityUnread, unverified: true }]
-        setState(s, { condition: conditionFor(s.blockers) })
-      }
-    }
+    // Impact (ui/surfaces/rowWho.ts; walk list item 16): the accounts still to
+    // disable or keep, so a step with nothing left reads "no accounts".
+    s.impactCount = remaining.length
     const complete = remaining.length === 0 && snapshot.sources.users?.status === 'ok'
     setState(s, { satisfied: complete, inPlace: complete })
     if (complete) s.deliveredBy = [accounts.length === 0 ? 'The scanned directory has no outstanding dormant accounts.' : 'Every listed dormant account is disabled, active again, or retained with a recorded reason.']
+  }
+  // Impact (ui/surfaces/rowWho.ts; walk list item 16, owner 2026-09-23): what
+  // each Prepare step changes, counted. Use Separate Accounts for Admin Work, the
+  // admins seen on Outlook or Teams (not every role holder); the service accounts
+  // group, the service accounts picked; the authentication strength and the
+  // trusted network, the plan's policies that wait on them, by the dependency
+  // graph's own edges (actionability/dependency-data.json), each on the plan and
+  // not set aside.
+  for (const s of steps) {
+    if (s.id === SEPARATE_ADMIN_ACCOUNTS_STEP_ID) s.impactCount = adminsWithWorkload.length
+    else if (s.id === saStepId) s.impactCount = mapping.serviceAccountUserIds.length
+    else if (s.id === strengthStepId || s.id === PREREQ_STEP_ID.trustedLocation) {
+      const waiting = new Set((dependencyData as { edges: { step: string; prerequisite: string }[] }).edges.filter((e) => e.prerequisite === s.id).map((e) => e.step))
+      s.impactCount = steps.filter((w) => waiting.has(w.id) && !w.doesntApply && !w.state.setAside).length
+    }
   }
   // No Entra ID P1, no plan (owner, 2026-09-20). Three non-policy steps survive
   // the gates above — dormant accounts, administrator separation, the MFA

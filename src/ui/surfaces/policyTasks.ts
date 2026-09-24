@@ -27,7 +27,7 @@ import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
 import { contentStepFor, contentStepForPackage } from '../../content/stepTitle.ts'
 import { EMERGENCY_ACCESS_GROUP, isGroupMember, usesTaskAnatomy } from '../../roadmap/stepGroups.ts'
 import { enforcesByStateOnly, stepOperations } from './stepJson.ts'
-import { CONTRACT, FINISHED_FINDINGS, isReadinessWork } from './stepContract.ts'
+import { CONTRACT, FINISHED_FINDINGS } from './stepContract.ts'
 import { app, structuralWords } from '../../content/content.ts'
 import { toReportOnly } from '../../roadmap/operations.ts'
 import { fillText } from '../../content/render.ts'
@@ -281,10 +281,7 @@ export function taskSubjectOf(step: CardStep, eyebrow: string | null, title: str
  * cards' ("task", "complete"), not new vocabulary.
  */
 export function policyBarOf(subjects: readonly EmergencySubjectTile[]): string {
-  // The cards that are work (stepContract.ts isReadinessWork): the people card
-  // stands under Tasks Remaining where its reach is not established, and is not
-  // a task anybody can complete.
-  const open = subjects.filter((subject) => !subject.satisfied && isReadinessWork(subject))
+  const open = subjects.filter((subject) => !subject.satisfied)
   if (open.length === 0) return 'Every task on this step is complete.'
   // What a finished rollout left behind is a finding, not a task: the policy is
   // on, and nothing on this step moves the number (stepContract.ts

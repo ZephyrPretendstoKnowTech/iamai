@@ -216,7 +216,6 @@ test('a step never states a Direction wait the prerequisite beside it already ca
 
   // Six tiles of which four were two facts doubled; four now, each its own fact.
   assert.deepEqual(tiles.get('s-goal-service-accounts-trusted-network')!.map(line), [
-    'Affected people: Not established',
     'Define the Trusted Network: Prerequisite \u00b7 To do',
     'Create or Correct Service Accounts Group: Prerequisite \u00b7 To do',
     'Prepare Emergency Access Accounts: Prerequisite \u00b7 To do',

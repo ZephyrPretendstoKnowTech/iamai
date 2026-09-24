@@ -617,8 +617,6 @@ test('Readiness is the pack’s tiles over its bar, from facts the contract alre
       for (const t of [...r.tiles, ...r.satisfied]) assert.ok(t.label.trim() !== '' && t.value.trim() !== '', `${name}/${s.id}: an empty tile`)
       assert.ok(r.satisfied.every((t) => t.tone === 'good' || t.tone === 'info'), `${name}/${s.id}: an unresolved tile among the satisfied`)
       assert.ok(bars.has(r.bar.main), `${name}/${s.id}: the bar’s headline is not the content file’s`)
-      const people = [...r.tiles, ...r.satisfied].find((t) => t.key === 'people')
-      if (people && c.who?.known) assert.equal(people.value, c.who.text, `${name}/${s.id}: the people tile counts on its own`)
     }
   }
 })

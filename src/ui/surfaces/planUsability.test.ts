@@ -161,8 +161,8 @@ test('every row reads an Impact value: people, No user impact, the package’s f
       assert.equal(impact.includes('Configuration only'), false, `${name}/${s.id}: "${impact}"`)
       const pop = reached(s)
       if (s.impactCount !== undefined) {
-        // Configure Emergency Exclusions and Configure Passkey Authentication count what they change (rowWho.ts).
-        assert.match(impact, /^([\d,]+|no) (polic(y|ies)|person|people)$/, `${name}/${s.id}: "${impact}"`)
+        // Configure Emergency Exclusions, Configure Passkey Authentication and the Prepare steps count what they change (rowWho.ts).
+        assert.match(impact, /^([\d,]+|no) (polic(y|ies)|person|people|accounts?|steps?)$/, `${name}/${s.id}: "${impact}"`)
         seen.add('known')
       } else if (pop === null) {
         assert.ok(impact.length > 0 && !/^0\b/.test(impact) && impact !== 'Not established', `${name}/${s.id}: use the topic when exact reach is unknown`)

@@ -370,10 +370,6 @@
         "$commentBlindFix": "What reads an unread source, for every step that names one (roadmap/readiness.ts sourceReadFix). It said \"once that is granted, scan again\" and not how. Owner, 2026-09-22: sign in with a Global Reader or Global Administrator account with every permission approved, and nothing about assigning roles. The licence clause (blindFixLicensed) stays only where the tenant lacks it: no account or consent reads a source the tenant is not licensed for.",
         "blindFix": "It is read with the {scope} permission. Sign in with a Global Reader or Global Administrator account, with every permission IAMAI asks for approved, then scan again.",
         "blindFixLicensed": "It needs {capability} and the {scope} permission. With {capability} in place, sign in with a Global Reader or Global Administrator account, with every permission IAMAI asks for approved, then scan again.",
-        "$commentActivityUnread": "The dormant-accounts step's own finding where the directory read fell back to a user list without sign-in activity (roadmap/generate.ts; graph/collect/collectors.ts collectUsers, the Users source partial with the refusal as its reason). Nobody's activity was read, so derive/sets.ts notActiveUsers lists nobody, and the step read Ready · Review over an empty list, told the reader to review each account IAMAI lists, and said the refusal nowhere (R4-49). {reason} is the source's own reason; {fix} is the permission and licence sentence the readiness gates use (roadmap/readiness.ts sourceReadFix). Not drawn on a read that succeeded: Graph leaves sign-in activity out for an account that never signed in, which is a reading, not a refusal.",
-        "activityUnreadLabel": "Sign-in activity",
-        "activityUnreadValue": "Not Fully Read",
-        "activityUnread": "Sign-in activity could not be read for {n} of {total} enabled accounts: {reason}. This check does not list an account whose activity it could not read, so it cannot finish until that activity can be read. {fix}",
         "$commentRouteShortfall": "Naming the campaign beside every MFA gate was keyed on the MEASURE, not on whether that campaign's cohort actually contains the people the gate is short. The campaign prepares people the scan has seen sign in. On a tenant where most people never have, the gate counts them and the campaign cannot: eleven people measured, a cohort of two, a 90% threshold. The reader finished the named step, read \"Nothing left to do\", and the number had not moved a point — with no other action anywhere on the board. Said only where finishing the named step provably cannot reach the threshold.",
         "routeShortfallNone": "“{step}” will not move this number: none of the {short} people it is waiting on are in that step's list, because IAMAI has not seen them sign in. Until they sign in and register a method, or you decide those accounts are not in use, this number cannot reach {threshold}.",
         "routeShortfallSome": "“{step}” covers {covered} of the {short} people this number is waiting on, which is not enough to reach {threshold}. IAMAI has not seen the other {rest} sign in, so that step's list leaves them out.",
@@ -955,8 +951,6 @@
         "manualCorrection": "until the policy is corrected by hand",
         "unverifiedExclusion": "until the group {group} can be read",
         "methodsPolicyUnread": "until the authentication methods policy can be read",
-        "$commentActivityUnread": "What holds the dormant-accounts step where the directory read returned no sign-in activity for anyone (roadmap/generate.ts, R4-49) and nothing is left listed to review: the step cannot tell a dormant account from one in daily use until that read succeeds.",
-        "activityUnread": "until sign-in activity can be read for every enabled account",
         "emergency": "until emergency access is provably out of scope",
         "passkeyProfiles": "until the passkey profile settings are reviewed",
         "passkeyBlockConflict": "until the block list entry for Microsoft Authenticator is reviewed",
@@ -2139,7 +2133,6 @@
               "baseline": "Baseline definition",
               "conflictValue": "Conflict unresolved",
               "decision": "Decision",
-              "coverage": "Existing coverage",
               "gate": "Threshold",
               "reading": "Readiness",
               "observation": "Observation",
@@ -2149,8 +2142,6 @@
               "exclusions": "Exclusions",
               "exclusionsReached": "Reaches emergency access",
               "exclusionsUnproven": "Not proven",
-              "people": "Affected people",
-              "peopleUnknown": "Not established",
               "blockers": "Prerequisites",
               "$commentBeforeTurnOn": "The label of a wait that holds only the turn-on, on a policy whose next action is its Report-only create (R4-31, Marcus D12). The registration policy read Ready · Create with its MFA threshold on the card and nothing about the Temporary Access Pass it cannot be turned on without: the engine held that wait and the page dropped it until the policy had been built. Headed Prerequisites, the same wait would claim the create is blocked, which readiness never does (owner, 2026-09-11: readiness gates enforcement, not creation). After the create, turning it on is the next action and the wait is a Prerequisite again.",
               "beforeTurnOn": "Before turning on",
@@ -2173,13 +2164,8 @@
               "exclusionsReach": "Policies",
               "exclusionsReachValue": "{n} of {total} policies exclude the group",
               "exclusionsReachNote": "The count shows policies this scan verified. Selecting the group does not change a policy; each policy step adds it where it is missing.",
-              "peopleNote": "This is the population IAMAI resolved for this policy. It is not a prediction that every account will be prompted.",
               "observationNote": "Review the available records and the remaining evidence requirements. Time elapsed alone does not complete this check.",
               "observationDateNote": "This is the earliest review date, not a scheduled automatic enforcement.",
-              "coverageNote": "IAMAI found an existing control that meets the assessed goal. Keep it unless a separate reviewed change is needed.",
-              "peopleStepNote": "These are the accounts this step asks you to review. Check the listed evidence before deciding what each account needs.",
-              "$commentCoverageUnreadable": "A goal an existing policy already delivers reads In place / Completed, and said nothing about whether the people it covers can actually satisfy it. On a tenant whose registration source returned 403 the step read Completed beside a readiness of \"0 of 40 people have a registered method allowed by the target policies. Method compatibility is not yet established for 40\" - which the engine had computed and the completed step did not show. In place describes the policy; it is not a finding about the people, and a reader takes Completed as protection.",
-              "coverageUnreadable": "IAMAI could not read whether the people it covers can satisfy it: {line} This describes the policy, not the people.",
               "notMeasured": "Not measured",
               "$commentAwaitingReview": "A policy that is enforced and waiting on the person to record their workflow test rendered Ready / Enforced, milestone Review now, and ZERO readiness tiles and ZERO findings - three readers reported the same empty step, two of them on the same step id. Its Done-when listed five lines: three that IAMAI checks itself and two that are the person, with nothing saying which of them remained. The step knows: awaitsWorkflowRecord is true and manualReview.confirmedAt is not set.",
               "awaitingReview": "Waiting on you",
@@ -2791,7 +2777,6 @@
           "s-ladder-legacy-auth-inventory": "Legacy sign-ins",
           "s-ladder-app-passwords": "App passwords",
           "s-ladder-guest-review": "Guest access",
-          "s-check-dormant-accounts": "Inactive accounts",
           "s-ladder-authenticator-over-sms": "Sign-in methods",
           "s-ladder-global-admin-count": "Global Administrators",
           "s-prereq-per-user-mfa": "Per-user MFA",
@@ -2801,10 +2786,8 @@
           "s-ladder-per-user-mfa-cleanup": "Per-user MFA",
           "s-prereq-break-glass": "Emergency access accounts",
           "s-prereq-exclusion-group": "Policy exclusions",
-          "s-prereq-service-accounts-group": "Service accounts",
           "s-prereq-device-plan": "Phones and computers",
           "s-ladder-phone-access-restriction": "Phone access",
-          "s-check-separate-admin-accounts": "Administrator accounts",
           "s-shared-devices": "Shared-device accounts",
           "s-goal-admin-portals-protected": "Administrator portals"
         },
@@ -3640,12 +3623,7 @@
       },
       "decision": null,
       "whatToDo": {
-        "lead": "Review each account with its owner and record the outcome.",
-        "steps": [
-          "Disable it: Entra admin center → Entra ID → Users → the account → Edit properties → Account enabled: No. Keep the mailbox if anything still needs it.",
-          "Or confirm it is in use and have the owner sign in; the directory's record can take a day to catch up.",
-          "Or, if it is a shared mailbox or a resource that should never sign in, block sign-in the same way; it then stays listed under Inventory and nowhere else."
-        ]
+        "lead": "Review each account with its owner and record the outcome."
       },
       "dates": null,
       "doneWhen": [
@@ -3655,7 +3633,7 @@
       "ifWrong": "Re-enable the account: Users → the account → Edit properties → Account enabled: Yes. Nothing else changes.",
       "comms": null,
       "doesntApply": false,
-      "skip": true,
+      "skip": false,
       "scanControl": true,
       "more": {
         "risks": [
@@ -3827,14 +3805,6 @@
       },
       "whatToDo": {
         "lead": "Confirm the office's public IP ranges with the network owner, then create the named location and mark it trusted.",
-        "steps": [
-          "Ask the network owner for the approved public IPv4 and IPv6 ranges, including any VPN exits the organization approves as trusted.",
-          "Entra admin center → Entra ID → Conditional Access → Named locations → + IP ranges location.",
-          "Name it {proposedName}. {proposedNameNote}",
-          "Add each approved range in CIDR notation, as narrow as the network owner's allocation. Entra accepts only masks greater than /8, and no more than two thousand ranges in one location.",
-          "Addresses seen in sign-in records, to compare with the approved ranges (being seen does not approve them): {list:ranges}",
-          "Select \"Mark as trusted location\". Save, then check that an expected sign-in matches; investigate a mismatch instead of widening the range."
-        ],
         "correct": [
           "Entra admin center → Entra ID → Conditional Access → Named locations → open {existingName}.",
           "{list:fixes}"
@@ -3847,7 +3817,7 @@
       ],
       "ifWrong": null,
       "comms": null,
-      "doesntApply": true,
+      "doesntApply": false,
       "skip": false,
       "scanControl": true,
       "more": {
@@ -3917,13 +3887,7 @@
         "save": "Save"
       },
       "whatToDo": {
-        "lead": "Create the group and add only the accounts an application owner confirmed run unattended.",
-        "steps": [
-          "Entra admin center → Entra ID → Groups → New group → Security; membership Assigned.",
-          "Name it {proposedName}. {proposedNameNote}",
-          "Add: {list:serviceAccounts}. Any account named as a mail-sending device in Confirm What You Use is already on that list.",
-          "For {list:ropcAccounts}: these sign in with a password over a script; move each to a service principal or managed identity when you can, and until then keep it in this group."
-        ]
+        "lead": "Create the group and add only the accounts an application owner confirmed run unattended."
       },
       "dates": null,
       "doneWhen": [
@@ -3932,7 +3896,7 @@
       ],
       "ifWrong": "Remove the account from the group; the policies apply again on its next sign-in.",
       "comms": null,
-      "doesntApply": true,
+      "doesntApply": false,
       "skip": false,
       "scanControl": true,
       "more": {
@@ -7038,15 +7002,7 @@
       },
       "decision": null,
       "whatToDo": {
-        "lead": "Review active and eligible administrator accounts. If they are already dedicated to admin work, record that outcome. Otherwise test a dedicated replacement before removing everyday access.",
-        "steps": [
-          "Create a second, cloud-only account for the role, named so the purpose is obvious (adm- and their name).",
-          "Give it no mailbox to read, but an email address that reaches the person: role approvals and service notices still have to arrive.",
-          "Register a passkey or security key on the admin account before its first use; the admin policies require one.",
-          "Assign the role to the admin account under the same governance model, keeping PIM eligibility where the everyday account used it: Entra admin center → Entra ID → Roles and administrators → the role → Add assignment.",
-          "Sign in with the admin account and complete the admin task it needs; only then remove the role from the everyday account.",
-          "Keep mail, Teams and files on the everyday account; open admin portals with the admin account only."
-        ]
+        "lead": "Review active and eligible administrator accounts. If they are already dedicated to admin work, record that outcome. Otherwise test a dedicated replacement before removing everyday access."
       },
       "dates": null,
       "doneWhen": [
@@ -7056,7 +7012,7 @@
       "ifWrong": "Put the role back on the everyday account; nothing else changes.",
       "comms": null,
       "doesntApply": false,
-      "skip": true,
+      "skip": false,
       "scanControl": true,
       "more": {
         "risks": [

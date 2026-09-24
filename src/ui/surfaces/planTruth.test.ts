@@ -139,8 +139,8 @@ test('Step 5: the Impact column says who a step reaches, never the state, and a 
       const impact = rowWho(s)
       assert.ok(!impact.includes(REPORT_ONLY_GAP), `${where}: "${impact}" restates the state`)
       if (s.impactCount !== undefined) {
-        // Configure Emergency Exclusions and Configure Passkey Authentication count what they change (rowWho.ts).
-        assert.match(impact, /^([\d,]+|no) (polic(y|ies)|person|people)$/, `${where}: "${impact}"`)
+        // Configure Emergency Exclusions, Configure Passkey Authentication and the Prepare steps count what they change (rowWho.ts).
+        assert.match(impact, /^([\d,]+|no) (polic(y|ies)|person|people|accounts?|steps?)$/, `${where}: "${impact}"`)
       } else if (/^\d+ accounts?$/.test(impact)) {
         // Prepare Emergency Access Accounts counts its emergency accounts: the ones chosen, at least the two it needs.
         assert.equal(Number(impact.split(' ')[0]), s.id === 's-prereq-break-glass' ? Math.max(2, s.emergency?.accounts.length ?? 0) : s.population.ids.length, `${where}: account inventory count must match named accounts`)

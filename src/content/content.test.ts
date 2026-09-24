@@ -146,9 +146,6 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.pages.plan.blocked.workCountries',
   // The authentication methods policy the scan could not read (A5, copy/reasons.ts BLOCKED_REASON).
   '.pages.plan.blocked.methodsPolicyUnread',
-  // The dormant-accounts step held where no account's sign-in activity was read (R4-49,
-  // copy/reasons.ts BLOCKED_REASON): the review page's example scan read that activity.
-  '.pages.plan.blocked.activityUnread',
   // The Plan usability pass (2026-09-11): words the Plan, its settings and its
   // decision layout read that the review body does not draw.
   '.pages.plan.blocked.devicePlan',
@@ -205,14 +202,6 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.steps[1].who.none',
   '.steps[3].decision.location.none',
   '.steps[5].who.none',
-  // The service-accounts group's list lines: each renders (the example nominates
-  // svc-mailer-1 and svc-mailer-2), but the words after its list begin with the
-  // punctuation the review renderer drops after a list, so the fragment this test
-  // looks for carries a leading "." or ":" the page does not. The mail-sending
-  // sentence rides the list line now ([2]), so it goes with the list where none is
-  // nominated; the ROPC line moved from [4] to [3].
-  '.steps[5].whatToDo.steps[2]',
-  '.steps[5].whatToDo.steps[3]',
   '.steps[6].who.none',
   // The lead for a tenant whose security defaults the scan read as already off
   // (who.leadWhen, R4): the example's tenant has them on, so only that sentence
