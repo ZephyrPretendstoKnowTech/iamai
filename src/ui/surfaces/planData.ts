@@ -59,6 +59,22 @@ import { cleanupRecord, withCleanupDone, cleanupBasis, recoveryAccountBasis, rec
 // migrated on load by decisionsOf and rewritten in this shape.
 type LegacyOrDecisions = Partial<PlanDecisions> & { steps?: Record<string, { status: string; skipReason?: string | null; history?: { at: string }[] }> }
 
+/** The most picked service accounts whose group memberships a scan reads to find the service accounts group (one Graph read each). */
+const SERVICE_GROUP_LOOKUP_CEILING = 25
+/** Those memberships, read once per scan: a Save re-reads the plan's groups, and the scan's answer has not changed. */
+const serviceMemberships = new Map<string, Promise<string[] | null>>()
+const membershipsAt = (snapshot: TenantSnapshot, userId: string): Promise<string[] | null> => {
+  const key = `${snapshot.tenantId}|${snapshot.asOf}|${userId}`
+  let read = serviceMemberships.get(key)
+  if (!read) {
+    read = readUserTransitiveGroupIds(userId)
+    serviceMemberships.set(key, read)
+    // A read that failed is tried again on the next pass, not remembered.
+    void read.then((ids) => { if (ids === null) serviceMemberships.delete(key) })
+  }
+  return read
+}
+
 export type PlanComputed = {
   steps: Step[]
   schedule: Schedule
@@ -266,6 +282,19 @@ export function usePlanData(
     void (async () => {
       const map: GroupMembers = new Map()
       const reads: GroupRead[] = []
+      // The group a person makes on Create or Correct Service Accounts Group is
+      // named by no policy yet, so nothing above reads it. The groups that hold
+      // every picked service account are read too, so the scan after it is
+      // created finds it and the step's picker offers it, pre-filled.
+      const service = decided.serviceAccountUserIds
+      if (service.length > 0 && service.length <= SERVICE_GROUP_LOOKUP_CEILING) {
+        const memberships = await Promise.all(service.map((id) => membershipsAt(snapshot, id)))
+        if (memberships.every((m): m is string[] => m !== null)) {
+          const known = new Set([...ids].map((id) => id.toLowerCase()))
+          const others = memberships.slice(1).map((m) => new Set(m.map((g) => g.toLowerCase())))
+          for (const g of memberships[0]) if (others.every((s) => s.has(g.toLowerCase())) && !known.has(g.toLowerCase())) ids.add(g)
+        }
+      }
       for (const id of ids) {
         // Existence and membership are read as two facts and kept as two
         // (readGroup): a group Graph says is gone is absent, a request that

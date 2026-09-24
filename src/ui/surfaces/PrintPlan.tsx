@@ -5,6 +5,7 @@ import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import type { Step } from '../../roadmap/types.ts'
 import type { StepDecision } from '../../roadmap/decisions.ts'
+import { decisionKeyOf } from '../../roadmap/decisions.ts'
 import type { Schedule } from '../../roadmap/schedule.ts'
 import type { CoverageReport } from '../../coverage/types.ts'
 import { waveLabels } from '../../derive/phases.ts'
@@ -271,7 +272,7 @@ export function PrintPlan({
           <span className="print-number">{r.number}</span>
           {s.floor === true && <> · {phases.recommended}</>}
         </p>
-        <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} lane={laneOf(s.id)} blockers={blockersOf(s)} prerequisiteLabel={prerequisiteLabel} decision={decisions[s.id] ?? null} objectTask={s.objectTask ? { saved: decisions[s.objectTask.id] ?? null } : undefined} printing />
+        <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} lane={laneOf(s.id)} blockers={blockersOf(s)} prerequisiteLabel={prerequisiteLabel} decision={decisions[decisionKeyOf(s.id)] ?? null} objectTask={s.objectTask ? { saved: decisions[s.objectTask.id] ?? null } : undefined} printing />
       </article>
     )
   }

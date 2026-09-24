@@ -202,6 +202,11 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.steps[1].who.none',
   '.steps[3].decision.location.none',
   '.steps[5].who.none',
+  // The service-accounts group's lead once the scan finds the group holding
+  // exactly the picked accounts and nobody has saved it (stepVars.ts
+  // serviceGroupFound): the example's tenant has no such group, so the review
+  // page draws the create lead.
+  '.steps[5].whatToDoWhen.serviceGroupFound.lead',
   '.steps[6].who.none',
   // The lead for a tenant whose security defaults the scan read as already off
   // (who.leadWhen, R4): the example's tenant has them on, so only that sentence

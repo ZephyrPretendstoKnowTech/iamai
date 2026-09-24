@@ -82,7 +82,7 @@ function contentKindOf(stepId: string): string | null {
 
 /** The step a card is on, as the content file has it: its own entry, or the guidance a generated step carries (a baseline-review row). */
 type CardStep = { id: string; goalId?: string; guidance?: { card?: { subject: string; check: string } | null; taskTitle?: string | null } }
-const entryOf = (step: CardStep): { card?: { subject: string; check: string } | null; taskTitle?: string | null } | undefined =>
+const entryOf = (step: CardStep): { card?: { subject: string; check: string; satisfied?: string } | null; taskTitle?: string | null } | undefined =>
   contentStepFor({ id: step.id, goalId: step.goalId ?? (step.id.startsWith('s-goal-') ? step.id.slice('s-goal-'.length) : ''), guidance: step.guidance as never })
 
 /**
@@ -117,6 +117,17 @@ export function ownCardWordsOf(step: CardStep, ex: Record<string, unknown>): Own
   if (!card || !('detail' in card || 'pointer' in card || 'satisfied' in card)) return null
   const filled = (s: unknown): string | null => (typeof s === 'string' && whole(s, ex) ? fillText(s, ex) : null)
   return { check: filled(card.check), noDetail: card.detail === null, pointer: card.pointer === true, satisfied: filled(card.satisfied) }
+}
+
+/**
+ * The fact a satisfied card states in place of "In place · No change needed."
+ * (step template rule 6), where the step's content writes one (`card.satisfied`)
+ * and the scan holds every value it names: 3.7's "Core - Exception - Service
+ * accounts · 2 members". Null otherwise, and the card keeps its state word.
+ */
+export function cardFactOf(step: CardStep, ex: Record<string, unknown>): string | null {
+  const fact = entryOf(step)?.card?.satisfied
+  return typeof fact === 'string' && whole(fact, ex) ? fillText(fact, ex) : null
 }
 
 /**

@@ -389,12 +389,18 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // picker has its instruction here, in place of its own help (walk list
   // section 3 items 17, 41 and 46).
   const prepare = prepareReadingOf(step, ctx, contract.state.satisfied)
-  const ownRailWords = choosing ?? prepare?.milestone ?? pkg?.meta.milestone?.actionText ?? directionMilestoneAction(step.id)
+  // Create or Correct Service Accounts Group once the scan finds a group that
+  // holds exactly the picked accounts and nobody has saved it: saving it is the
+  // milestone, in the step's own words for that state (whatToDoWhen).
+  const serviceGroupFound = step.id === PREREQ_STEP_ID.serviceAccountsGroup && truthy(ex.serviceGroupFound) && typeof w.lead === 'string' && whole(w.lead, ex) ? fillText(w.lead, ex) : null
+  const ownRailWords = choosing ?? prepare?.milestone ?? serviceGroupFound ?? pkg?.meta.milestone?.actionText ?? directionMilestoneAction(step.id)
   // Disable or Confirm Dormant Accounts takes a choice too, the accounts kept:
   // its instruction stands in the same slot while any account is open (walk
   // list item 17), and a finished step draws none (item 29).
   const keeping = step.id === DORMANT_STEP_ID && (step.dormantChoices ?? []).some((row) => !row.kept) ? DORMANT_WORDS.keep.instruction : null
-  const railInstruction = step.id === 's-prereq-break-glass' ? help : exclusions ? EXCLUSIONS_MILESTONE : keeping ?? prepare?.instruction ?? null
+  // 1.1's decision help, 1.2's group line, and 3.7's group picker line: the
+  // instruction under the milestone of a step whose rail takes a choice.
+  const railInstruction = step.id === 's-prereq-break-glass' || step.id === PREREQ_STEP_ID.serviceAccountsGroup ? help : exclusions ? EXCLUSIONS_MILESTONE : keeping ?? prepare?.instruction ?? null
   // What kind of step this is, and "Resolution step" for one whose source
   // contradicts itself (stepContract.ts eyebrowOf).
   const eyebrow = eyebrowOf(contract, typeof cs.kind === 'string' ? cs.kind : null)

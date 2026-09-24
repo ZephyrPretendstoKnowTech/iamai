@@ -100,7 +100,6 @@ test('every step projects its own Entra procedure as its Implementation Task, an
   {
     for (const [id, title, first] of [
       ['s-prereq-allowed-countries', 'Set up the allowed countries location', /Named locations/],
-      ['s-prereq-service-accounts-group', 'Set up the service accounts group', /Groups/],
       ['s-verify-mfa', 'Help each person set up their method', /aka\.ms\/mfasetup/],
     ] as const) {
       const { step, body } = bodyOf(id)
