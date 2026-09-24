@@ -26,9 +26,7 @@
         ],
         "projection": {
           "missing": {
-            "entra": [
-              "entra.dormant"
-            ],
+            "entra": [],
             "json": [],
             "powershell": [],
             "aiInfo": [
@@ -113,9 +111,6 @@
           "readiness": [
             "readiness.review",
             "readiness.model"
-          ],
-          "troubleshooting": [
-            "troubleshooting.model"
           ]
         },
         "verifiedSources": [
@@ -144,18 +139,6 @@
         }
       },
       "blocks": {
-        "entra.dormant": {
-          "meta": {
-            "id": "entra.dormant",
-            "channel": "entra",
-            "states": [
-              "missing"
-            ],
-            "format": "markdown",
-            "kind": "template"
-          },
-          "text": "Review each account IAMAI lists with its owner before changing it.\n\nAccounts to review ({{people.affected.count}}): {{people.affected.summary}}. [omit this line when unavailable]\n An old or missing sign-in record is a reason to investigate, not proof that the account is unused: the directory keeps sign-ins only so far back, and never fills the gap in later. Record one outcome for each account:\n1. No longer needed: disable sign-in, as at least a User Administrator. Entra admin center → Entra ID → Users → the account → Edit properties → Account enabled: No. Do not delete the account or remove mailbox data.\n2. Still needed: confirm its purpose and owner, and verify legitimate use. Once the owner signs in, the directory's record can take a day to catch up, so scan again after that.\n3. Shared mailbox or resource account: confirm whether direct sign-in should be blocked. If so, block sign-in the same way; it then stays listed under Inventory and nowhere else.\n"
-        },
         "ai.dormant": {
           "meta": {
             "id": "ai.dormant",
@@ -166,7 +149,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nIAMAI lists enabled accounts with no successful sign-in recorded in the last 90 days, or none on record. It reads the directory's last successful sign-in together with the sign-in records it collected; a failed attempt is not use. They are review candidates: a missing or old record can mean the account is unused, that its activity predates the retained history, or that activity data could not be read. For each account the outcomes are: keep it for a confirmed purpose and owner; disable sign-in once the owner confirms it is no longer needed; or block direct sign-in for a shared mailbox or resource account that should never sign in. This step does not delete accounts, remove licences or change mailbox data.\n"
+          "text": "\nIAMAI lists enabled accounts with no successful sign-in recorded in the last 90 days, or none on record. It reads the directory's last successful sign-in together with the sign-in records it collected; a failed attempt is not use. For each account: disable sign-in if nobody needs it, or keep it. This step does not delete accounts, remove licences or change mailbox data.\n"
         },
         "entra.disable": {
           "meta": {
@@ -308,21 +291,6 @@
             "kind": "referenceOnly"
           },
           "text": "{\n  \"tiles\": [],\n  \"whyIamaiSaysThis\": \"The only tenant change in this step is turning off Account enabled for an account whose owner approved it.\",\n  \"whyIamAISaysThis\": {\n    \"sections\": {\n      \"whyItMatters\": \"The only tenant change in this step is turning off Account enabled for an account whose owner approved it.\"\n    }\n  }\n}\n"
-        },
-        "troubleshooting.model": {
-          "meta": {
-            "id": "troubleshooting.model",
-            "channel": "troubleshooting",
-            "states": [
-              "needsDecision",
-              "disableConfirmed",
-              "verificationRequired",
-              "inPlace"
-            ],
-            "format": "json",
-            "kind": "referenceOnly"
-          },
-          "text": "{\n  \"scenarios\": [\n    {\n      \"id\": \"blank-signin\",\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Determine whether the account never signed in, activity predates retained history, or the required activity data could not be read.\"\n      ],\n      \"fix\": [\n        \"Keep the account in review; obtain owner context before any disable action.\"\n      ],\n      \"then\": [\n        \"Save an explicit disposition and rescan.\"\n      ],\n      \"sources\": [\n        \"ms-inactive\",\n        \"ms-signinactivity\"\n      ],\n      \"states\": [\n        \"needsDecision\",\n        \"inPlace\"\n      ],\n      \"title\": \"The account has no last sign-in timestamp\"\n    },\n    {\n      \"id\": \"failed-attempt-newer\",\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Compare with lastSuccessfulSignInDateTime; lastSignInDateTime includes failed interactive attempts.\"\n      ],\n      \"fix\": [\n        \"Use successful access plus owner context for the decision.\"\n      ],\n      \"then\": [\n        \"Do not change the account until disposition is explicit.\"\n      ],\n      \"sources\": [\n        \"ms-signinactivity\"\n      ],\n      \"states\": [\n        \"needsDecision\",\n        \"inPlace\"\n      ],\n      \"title\": \"lastSignInDateTime is recent but actual use is unclear\"\n    },\n    {\n      \"id\": \"wrong-user-risk\",\n      \"classification\": \"derived\",\n      \"check\": [\n        \"Resolve the exact user ID and UPN.\"\n      ],\n      \"fix\": [\n        \"Stop the change and target only the saved object ID.\"\n      ],\n      \"then\": [\n        \"Re-read the user before retrying.\"\n      ],\n      \"sources\": [\n        \"ms-user-update\"\n      ],\n      \"states\": [\n        \"needsDecision\",\n        \"inPlace\"\n      ],\n      \"title\": \"The proposed action targets a display name rather than the saved object ID\"\n    },\n    {\n      \"id\": \"graph-403\",\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Verify User.EnableDisableAccount.All plus User.Read.All and an administrator role appropriate to the target user.\"\n      ],\n      \"fix\": [\n        \"Reconnect with the required authorization; do not broaden the operation.\"\n      ],\n      \"then\": [\n        \"Retry the same single-user action.\"\n      ],\n      \"sources\": [\n        \"ms-user-update\"\n      ],\n      \"states\": [\n        \"needsDecision\",\n        \"inPlace\"\n      ],\n      \"title\": \"PowerShell returns 403 while changing accountEnabled\"\n    }\n  ]\n}\n"
         }
       }
     },
@@ -346,9 +314,7 @@
         ],
         "projection": {
           "missing": {
-            "entra": [
-              "entra.separate"
-            ],
+            "entra": [],
             "json": [],
             "powershell": [],
             "aiInfo": [
@@ -469,7 +435,7 @@
           }
         ],
         "milestone": {
-          "actionText": "Test the new admin account, then move the role."
+          "actionText": "Move each admin role to a separate admin account"
         },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
@@ -478,18 +444,6 @@
         }
       },
       "blocks": {
-        "entra.separate": {
-          "meta": {
-            "id": "entra.separate",
-            "channel": "entra",
-            "states": [
-              "missing"
-            ],
-            "format": "markdown",
-            "kind": "template"
-          },
-          "text": "Review the listed active and eligible administrator accounts. Record Already dedicated to admin work when that is true. For an account also used for everyday work:\n1. Create a second, cloud-only account for the role: Entra admin center → Entra ID → Users → New user → Create new user. Name it so the purpose is obvious (adm- and their name). Cloud-only keeps the role clear of a compromised on-premises directory.\n2. Give the admin account no mailbox to read, but an email address that reaches the person: role approvals and service notices still have to arrive.\n3. Before the admin account is used for admin work, register an approved phishing-resistant method on it, such as a passkey or security key: sign in as the admin account at https://mysignins.microsoft.com/security-info. If it has no method yet, use a Temporary Access Pass for that first sign-in. The admin policies require a method that meets their authentication strength.\n4. Add the same directory role to it: Entra admin center → Entra ID → Roles and administrators → the role → Add assignments → the admin account. A role held through Privileged Identity Management stays eligible on the new account; do not make it permanent. This is the moment to count: Microsoft asks for fewer than five Global Administrators, and fewer than ten privileged role assignments in all.\n5. Sign in to an admin portal with the admin account and complete the administrative task the role is needed for. Only then remove the role from the everyday account.\n6. Keep mail, Teams and files on the everyday account; open admin portals with the admin account only.\n"
-        },
         "ai.separate": {
           "meta": {
             "id": "ai.separate",
@@ -658,6 +612,7 @@
             "id": "troubleshooting.model",
             "channel": "troubleshooting",
             "states": [
+              "missing",
               "actionRequired",
               "credentialProofRequired",
               "roleCutoverRequired",
@@ -667,7 +622,7 @@
             "format": "json",
             "kind": "referenceOnly"
           },
-          "text": "{\n  \"scenarios\": [\n    {\n      \"id\": \"new-admin-cannot-sign-in\",\n      \"classification\": \"derived\",\n      \"check\": [\n        \"Confirm passkey/security-key registration and applicable Conditional Access prerequisites.\"\n      ],\n      \"fix\": [\n        \"Keep the old role assignment while correcting the new account's sign-in path; do not weaken the admin policy.\"\n      ],\n      \"then\": [\n        \"Prove the new sign-in before cutover.\"\n      ],\n      \"sources\": [\n        \"ms-privileged-accounts\"\n      ],\n      \"states\": [\n        \"inPlace\"\n      ],\n      \"title\": \"The dedicated admin account has a role but cannot complete the required phishing-resistant sign-in\"\n    },\n    {\n      \"id\": \"pim-became-permanent\",\n      \"classification\": \"derived\",\n      \"check\": [\n        \"Compare assignment governance on the old and new principals.\"\n      ],\n      \"fix\": [\n        \"Restore the intended PIM eligibility/activation model and remove the unintended permanent path only after safe access is confirmed.\"\n      ],\n      \"then\": [\n        \"Re-review role governance.\"\n      ],\n      \"sources\": [\n        \"ms-zero-trust-privileged\"\n      ],\n      \"states\": [\n        \"inPlace\"\n      ],\n      \"title\": \"A PIM-eligible role was recreated as a permanent direct assignment on the new account\"\n    },\n    {\n      \"id\": \"daily-account-still-privileged\",\n      \"classification\": \"derived\",\n      \"check\": [\n        \"Read role assignments for both accounts by object ID.\"\n      ],\n      \"fix\": [\n        \"After the new admin path is proven, remove the old assignment using the correct direct/PIM governance surface.\"\n      ],\n      \"then\": [\n        \"Rescan IAMAI and watch subsequent admin sign-ins.\"\n      ],\n      \"sources\": [\n        \"ms-identity-best-practices\"\n      ],\n      \"states\": [\n        \"inPlace\"\n      ],\n      \"title\": \"The dedicated account works, but the everyday account still holds the migrated directory role\"\n    }\n  ]\n}\n"
+          "text": "{\n  \"scenarios\": [\n    {\n      \"id\": \"new-admin-cannot-sign-in\",\n      \"classification\": \"derived\",\n      \"check\": [\n        \"Confirm passkey/security-key registration and applicable Conditional Access prerequisites.\"\n      ],\n      \"fix\": [\n        \"Keep the old role assignment while correcting the new account's sign-in path; do not weaken the admin policy.\"\n      ],\n      \"then\": [\n        \"Prove the new sign-in before cutover.\"\n      ],\n      \"sources\": [\n        \"ms-privileged-accounts\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"inPlace\"\n      ],\n      \"title\": \"The dedicated admin account has a role but cannot complete the required phishing-resistant sign-in\"\n    },\n    {\n      \"id\": \"pim-became-permanent\",\n      \"classification\": \"derived\",\n      \"check\": [\n        \"Compare assignment governance on the old and new principals.\"\n      ],\n      \"fix\": [\n        \"Restore the intended PIM eligibility/activation model and remove the unintended permanent path only after safe access is confirmed.\"\n      ],\n      \"then\": [\n        \"Re-review role governance.\"\n      ],\n      \"sources\": [\n        \"ms-zero-trust-privileged\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"inPlace\"\n      ],\n      \"title\": \"A PIM-eligible role was recreated as a permanent direct assignment on the new account\"\n    },\n    {\n      \"id\": \"daily-account-still-privileged\",\n      \"classification\": \"derived\",\n      \"check\": [\n        \"Read role assignments for both accounts by object ID.\"\n      ],\n      \"fix\": [\n        \"After the new admin path is proven, remove the old assignment using the correct direct/PIM governance surface.\"\n      ],\n      \"then\": [\n        \"Rescan IAMAI and watch subsequent admin sign-ins.\"\n      ],\n      \"sources\": [\n        \"ms-identity-best-practices\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"inPlace\"\n      ],\n      \"title\": \"The dedicated account works, but the everyday account still holds the migrated directory role\"\n    }\n  ]\n}\n"
         }
       }
     },

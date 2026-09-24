@@ -53,7 +53,7 @@
       "status": "SELF-VERIFIED",
       "validationResult": "parts-withheld",
       "sourceFiles": 3,
-      "contentBlocks": 14,
+      "contentBlocks": 12,
       "outputs": {
         "entra": true,
         "json": false,
@@ -61,7 +61,7 @@
         "aiInfo": true,
         "email": true,
         "readiness": true,
-        "troubleshooting": true
+        "troubleshooting": false
       },
       "statesSupported": [
         "missing",
@@ -80,7 +80,7 @@
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
-      "strictValidationErrors": 13,
+      "strictValidationErrors": 5,
       "registered": true,
       "provenance": "workflow-check",
       "review": "current"
@@ -93,7 +93,7 @@
       "status": "SELF-VERIFIED",
       "validationResult": "parts-withheld",
       "sourceFiles": 3,
-      "contentBlocks": 15,
+      "contentBlocks": 14,
       "outputs": {
         "entra": true,
         "json": false,
@@ -6033,7 +6033,7 @@
     "packageCount": 43,
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
-    "contentBlocks": 936,
+    "contentBlocks": 933,
     "uniqueBindings": 262,
     "bindingsRequiredByAtLeastOneProjection": 86,
     "bindingsOptionalInAtLeastOnePackage": 180,

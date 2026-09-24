@@ -58,8 +58,9 @@ import { proposeRings, ringContextIndexes } from './rings.ts'
 import { createMethodPreparationCache, methodPreparation, methodReadiness } from './methodReadiness.ts'
 import type { PolicyEffect as MethodTarget } from './operations.ts'
 import { campaignIds, isActivePerson, namedAccounts, population, populationIndex } from '../derive/population.ts'
-import { notActiveUsers, notPeopleIds, personAccounts } from '../derive/sets.ts'
-import { adminsWithWorkloadOf } from '../derive/contentLists.ts'
+import { lastSuccessOf, notActiveUsers, notPeopleIds, personAccounts } from '../derive/sets.ts'
+import { adminRolesOf, adminsWithWorkloadOf, officeAppsOf } from '../derive/contentLists.ts'
+import { list } from '../copy/statements.ts'
 import { affectedIds } from '../derive/whoLine.ts'
 import { lockoutCount } from './lockout.ts'
 import { accountVerdict, effectsOf, familyReading, measuredReach, operationReach, scopeCohort, stepAccountVerdict } from './strand.ts'
@@ -73,7 +74,7 @@ import { countryName as countryLabel } from '../mapping/countries.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
-import { adminUserIds, learnRoleNames, roleListSummary } from '../roles.ts'
+import { adminUserIds, learnRoleNames, roleLabel, roleListSummary } from '../roles.ts'
 import { policyPairNames, proposedPolicyName } from '../coverage/naming.ts'
 import { rolloutBucket } from '../scoring/mfaViability.ts'
 import { isReady } from '../scoring/phishingResistant.ts'
@@ -1317,6 +1318,15 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // On every plan, for the same reason as the dormant check above: the ladder's
   // admin-accounts-separate rung was this step under a second id, with the same
   // Completion Criteria word for word (finding 9).
+  //
+  // The scan decides it (walk list item 1): it is done when no account holding
+  // an admin role, the emergency access accounts aside, signed in to Outlook or
+  // Teams in the sign-in window the scan reads (the last 30 days). There is no
+  // review to record, so a tenant without Entra ID P2, whose eligible roles
+  // Graph withholds, completes it on the same reading. Each admin the scan still
+  // sees there is a card of its own (item 2), naming the admin roles held and
+  // the apps signed in to; the task beside it moves those roles to a separate
+  // admin account (ui/surfaces/sectionThreeTasks.ts).
   const adminsWithWorkload = adminsWithWorkloadOf(snapshot, new Set(mapping.breakGlassUserIds)).map(([id]) => id)
   {
     const s = prereq(SEPARATE_ADMIN_ACCOUNTS_STEP_ID)
@@ -1325,8 +1335,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     s.population = population(adminsWithWorkload, popIndex)
     if (adminsWithWorkload.length === 0 && snapshot.scenarioEvidence?.officeSignIns && snapshot.sources.signInEvidence?.status === 'ok' && snapshot.config.roleAssignments?.status === 'ok') {
       setState(s, { satisfied: true, inPlace: true })
-      s.deliveredBy = ['The scanned directory-role holders have no Outlook or Teams activity in the collected sign-in window.']
+      s.deliveredBy = ['No admin signed in to Outlook or Teams in the last 30 days.']
     }
+    const holds = (contentStepById[SEPARATE_ADMIN_ACCOUNTS_STEP_ID] as unknown as { card: { admin: string } }).card.admin
+    s.configurationFindings = adminsWithWorkload.map((id) => {
+      const roles = adminRolesOf(snapshot, id)
+      // Headed by the person's name: the card's next line is the account's own address.
+      return { key: `admin:${id}`, label: snapshot.users.find((u) => u.id === id)?.displayName || nameOf(id), value: fillText(holds, { roles: list([...roles.active, ...roles.eligible].map(roleLabel)), apps: list(officeAppsOf(snapshot, id)) }), detail: '', outcome: 'fail' as const }
+    })
     steps.push(s)
   }
 
@@ -3094,11 +3110,16 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   }
   applyManualReviews(steps, snapshot, input.manualConfirmations, mapping, popIndex)
   for (const s of steps.filter(s => s.id === 's-check-dormant-accounts')) {
-    const dormantIds = new Set(dormant.map(u => u.id))
+    // Every account still dormant, with the last sign-in the scan holds, and
+    // whether the person keeps it: picked under Accounts you are keeping, whose
+    // Done saves the keeps (walk list item 28). A keep needs no reason: IAMAI
+    // never read one. An account disabled in Entra, or signed in again, is no
+    // longer dormant and leaves the list; the rest are the step's open work.
     const reviewed = mapping.dormantAccountChoices ?? {}
-    const accounts = snapshot.users.filter(u => dormantIds.has(u.id) || Object.hasOwn(reviewed, u.id))
-    s.dormantChoices = accounts.map(u => ({ id: u.id, name: nameOf(u.id), outcome: reviewed[u.id]?.outcome ?? '', reason: reviewed[u.id]?.reason ?? '', disabled: u.accountEnabled === false }))
-    const remaining = accounts.filter(u => dormantIds.has(u.id) && u.accountEnabled !== false && !(reviewed[u.id]?.outcome === 'keep' && reviewed[u.id].reason.trim()))
+    const kept = (id: string): boolean => reviewed[id]?.outcome === 'keep'
+    const accounts = dormant
+    s.dormantChoices = accounts.map(u => ({ id: u.id, name: nameOf(u.id), lastSignIn: lastSuccessOf(snapshot, u), kept: kept(u.id) }))
+    const remaining = accounts.filter(u => !kept(u.id))
     // The dormant step names never-signed-in accounts (§8.1, and the dormant
     // step above sets the same builder): `population()` derives activeIds from
     // the active index, which is empty for dormant accounts by definition, and
@@ -3112,7 +3133,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     s.impactCount = remaining.length
     const complete = remaining.length === 0 && snapshot.sources.users?.status === 'ok'
     setState(s, { satisfied: complete, inPlace: complete })
-    if (complete) s.deliveredBy = [accounts.length === 0 ? 'The scanned directory has no outstanding dormant accounts.' : 'Every listed dormant account is disabled, active again, or retained with a recorded reason.']
+    if (complete) s.deliveredBy = [accounts.length === 0 ? 'The scanned directory has no outstanding dormant accounts.' : 'Every dormant account left is one you keep.']
   }
   // Impact (ui/surfaces/rowWho.ts; walk list item 16, owner 2026-09-23): what
   // each Prepare step changes, counted. Use Separate Accounts for Admin Work, the

@@ -123,7 +123,6 @@ test('P1-4 and P1-5: Separate Accounts and Dormant Accounts offer Entra and AI I
   const demo = bodiesOf(fixture('demo'))
   // The channels with content; every channel is a tab (content review D2).
   const dormant = demo.get('s-check-dormant-accounts')!.artifacts
-  assert.match(dormant.find((a) => a.id === 'portal')!.text(), /Account enabled: No/)
   assert.match(dormant.find((a) => a.id === 'ai')!.text(), /dormant accounts/i)
 })
 

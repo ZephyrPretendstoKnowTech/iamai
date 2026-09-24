@@ -75,6 +75,7 @@ import { emergencyTaskFacts, emergencyTaskSteps, emergencyTaskText } from './eme
 import type { EmergencyAccountTask, EmergencyTaskProjection } from './emergencyAccountTasks.ts'
 import { consolidateEmergencyReadiness, emergencySubjectsOf } from './emergencyReadiness.ts'
 import { cardWordsOf, drawsTaskAnatomy, policyBarOf, policySubjectsOf, taskSubjectOf } from './policyTasks.ts'
+import { DORMANT_WORDS, lastSignInWords } from './sectionThreeTasks.ts'
 import type { EmergencyFact, EmergencySubjectTile } from './emergencyReadiness.ts'
 import type { ApprovedModel } from '../../roadmap/emergencyJourney.ts'
 import { operatorExclusionsDecision } from '../../mapping/safetyChoice.ts'
@@ -284,7 +285,7 @@ export function ContentStep({
   // sections this step draws and the words under Implementation when it draws
   // none. Everything below renders it; nothing below asks again.
   const body = stepBodyOf(step, ctx, { lane, blockers, prerequisiteLabel, confirmations, baselineCommit, enforceWaits })
-  const { cs, ex, laneView, contract, title, d, taskDecision, reason, conflictWords, pkg, pkgBindings, pkgRuntime, pkgReadiness, scenarios, packaged, whoInline, whoHeld, lead, showWho, whoFull, hasEvidence, readiness, allTiles, decides, instructed, rail, eyebrow, artifacts, emergencyAccountTasks, previewNote, notes, showImplementation, empty, sourceLine, learnUrl, ifWrong } = body
+  const { cs, ex, laneView, contract, title, d, taskDecision, reason, conflictWords, pkg, pkgBindings, pkgRuntime, pkgReadiness, scenarios, packaged, whoInline, whoHeld, lead, showWho, whoFull, hasEvidence, readiness, allTiles, decides, instructed, rail, eyebrow, artifacts, emergencyAccountTasks, previewNote, notes, showImplementation, empty, sourceLine, learnUrl, ifWrong, ownCard } = body
   const isPasskeySettings = step.id === 's-prereq-passkey-settings'
   const isEmergencyAccounts = step.id === 's-prereq-break-glass'
   // Which steps draw the task anatomy (the Tasks Remaining cards and the
@@ -329,7 +330,7 @@ export function ContentStep({
   // tiles — each of them a thing it waits on — everywhere this module produces
   // the subjects, and the Readiness tiles alone on Emergency Access Steps 2–3.
   // The bar reads them, so they are decided once.
-  const taskSubjects = isOwnTaskStep ? policySubjectsOf(contract, displayedReadiness, emergencyAccountTasks, taskSubjectOf(step, eyebrow, title), cardWordsOf(step)?.check ?? null) : emergencySubjectsOf(displayedReadiness, emergencyAccountTasks)
+  const taskSubjects = isOwnTaskStep ? policySubjectsOf(contract, displayedReadiness, emergencyAccountTasks, taskSubjectOf(step, eyebrow, title), cardWordsOf(step)?.check ?? null, ownCard) : emergencySubjectsOf(displayedReadiness, emergencyAccountTasks)
   const emergencyTaskPreferenceKey = `iamai:emergency-task:${ctx.mapping.tenantId}:${step.id}`
   const [implementationChannel, setImplementationChannel] = useState<Channel | null>(null)
   const [emergencyTaskId, setEmergencyTaskId] = useState<string | null>(() => readEmergencyTaskPreference(emergencyTaskPreferenceKey).taskId ?? null)
@@ -1449,20 +1450,17 @@ function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onD
 }
 
 /**
- * Disable or Confirm Dormant Accounts, as one control.
+ * Disable or Confirm Dormant Accounts, as one control: the accounts the person
+ * keeps (walk list items 22, 23, 28, 29).
  *
- * It drew a dropdown and a text box per account — two controls on the demo, and
- * **1,462 on a directory with 731 dormant accounts**, in the action column of one
- * step. Nobody works a list that long through a form (owner, 2026-09-20: if a
- * step looks like too much, it is).
- *
- * Only one of the three answers was ever needed here. The step completes when
- * every listed account is disabled, active again, or kept with a recorded reason
- * (generate.ts), and the first two the scan sees for itself — an account
- * disabled in Entra reads back disabled. "Investigate" clears nothing. So the
- * only thing a person has to tell IAMAI is which accounts they are **keeping**,
- * and why: the picker Establish Emergency Access already uses for exactly this
- * shape of answer, and one reason for the set.
+ * The step completes when every dormant account is disabled, signs in again, or
+ * is kept (generate.ts), and the first two the scan sees for itself. So the one
+ * thing a person tells IAMAI is which accounts they keep, and the picker's Done
+ * saves it: an account taken off the picker is no longer kept. There is no
+ * reason to give, because IAMAI never read one, and no Save beside it. Nothing
+ * is suggested, because no fact picks an account to keep; each option says when
+ * the account last signed in. The instruction stands in the rail's slot above it
+ * (stepBody.ts), and a finished step with nothing listed draws nothing.
  */
 /**
  * The campaign's "Turn on without them for now" list (roadmap/followUp.ts, owner
@@ -1490,34 +1488,21 @@ function FollowUpDecision({ step, ctx, saved, onDecide, printing }: { step: Step
 }
 
 function DormantDecision({ step, onDecide, printing }: { step: Step; onDecide?: (d: StepDecisionInput) => void; printing: boolean }) {
+  const K = DORMANT_WORDS.keep
   const rows = step.dormantChoices ?? []
-  const open = rows.filter(row => !row.disabled)
-  const kept = rows.filter(row => row.outcome === 'keep')
-  const [picked, setPicked] = useState<PickerOption[]>(() => kept.map(row => ({ id: row.id, name: row.name })))
-  const [reason, setReason] = useState<string>(() => kept.find(row => row.reason.trim())?.reason ?? '')
+  const optionOf = (row: (typeof rows)[number]): PickerOption => ({ id: row.id, name: row.name, secondary: lastSignInWords(row.lastSignIn) })
+  const [picked, setPicked] = useState<PickerOption[]>(() => rows.filter((row) => row.kept).map(optionOf))
   const [query, setQuery] = useState('')
+  if (rows.length === 0) return null
   const labelId = `dormant-${step.id}`
-  const options: PickerOption[] = open.map(row => ({ id: row.id, name: row.name }))
-  const results = options.filter(option => option.name.toLowerCase().includes(query.toLowerCase()))
-  const disabled = rows.filter(row => row.disabled).length
-  if (printing) return <div className="decision">
-    <p className="reason">{kept.length > 0 ? `Kept: ${kept.map(row => row.name).join(', ')}${reason ? ` — ${reason}` : ''}` : 'No account is recorded as kept.'}</p>
-    {disabled > 0 && <p className="reason">{disabled} already disabled in the directory.</p>}
-  </div>
-  // Every account the picker does not hold is expected to be disabled in Entra;
-  // the next scan is what completes it, so nothing is saved for them here.
-  const save = (keeping: PickerOption[] = picked): void => onDecide?.({ answers: Object.fromEntries(rows.flatMap(row => {
-    const keep = keeping.some(option => option.id === row.id)
-    return [[`outcome:${row.id}`, keep ? 'keep' : ''], [`reason:${row.id}`, keep ? reason.trim() : '']]
-  })) })
+  const kept = rows.filter((row) => row.kept)
+  if (printing) return kept.length > 0 ? <div className="decision"><p className="reason">{K.label}: {kept.map((row) => row.name).join(', ')}</p></div> : null
+  const options = rows.map(optionOf)
+  const results = options.filter((option) => option.name.toLowerCase().includes(query.toLowerCase()))
+  // Every dormant account is answered on each Done: kept, or not.
+  const save = (keeping: PickerOption[]): void => onDecide?.({ answers: Object.fromEntries(rows.map((row) => [`outcome:${row.id}`, keeping.some((option) => option.id === row.id) ? 'keep' : ''])) })
   return <div className="decision">
-    <h5 className="dlabel" id={labelId}>Accounts you are keeping</h5>
-    {/* The picker's Done saves as every picker's does, once there is a reason for
-        what it keeps; the Save below is the reason's. */}
-    <Picker labelledBy={labelId} selected={picked} options={results} suggestions={options.slice(0, 3)} onSearch={setQuery} onChange={setPicked} onCommit={(next) => { if (next.length === 0 || reason.trim()) save(next) }} />
-    <label className="dlabel" htmlFor={`${labelId}-reason`}>Why they are kept</label>
-    <input id={`${labelId}-reason`} value={reason} onChange={e => setReason(e.currentTarget.value)} />
-    <p className="reason">Disable the rest in Entra, then scan again. {disabled > 0 ? `${disabled} of these are already disabled.` : 'None of these are disabled yet.'}</p>
-    <Button variant="primary" disabled={picked.length > 0 && !reason.trim()} onClick={() => save()}>Save</Button>
+    <h5 className="dlabel" id={labelId}>{K.label}</h5>
+    <Picker labelledBy={labelId} selected={picked} options={results} onSearch={setQuery} onChange={setPicked} onCommit={save} />
   </div>
 }
