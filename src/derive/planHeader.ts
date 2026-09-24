@@ -29,7 +29,7 @@ export type HeaderInput = {
   startedFrom: string | null
 }
 
-type PlanCopy = { line1: string; line1Committed: string; line1CannotFinish: string; line1Undated: string; line1Started: string; startControl: string }
+type PlanCopy = { line1: string; line1Committed: string; line1CannotFinish: string; line1Undated: string; line1Started: string }
 const copy = (): PlanCopy => pages.plan as unknown as PlanCopy
 
 /** The first header line, in the branch the plan is in. */
@@ -47,9 +47,4 @@ export function headerLine1(i: HeaderInput): string {
   if (i.startedFrom !== null) return fillText(P.line1Started, { steps: i.steps, done: i.inPlace, start: absoluteDate(i.startedFrom), finish: absoluteDate(shown) })
   if (pair.estimate !== null && pair.committed !== null) return fillText(P.line1Committed, { steps: i.steps, inPlace: i.inPlace, finish: absoluteDate(pair.estimate), committed: absoluteDate(pair.committed), weeks: i.weeks })
   return fillText(P.line1, { steps: i.steps, inPlace: i.inPlace, finish: absoluteDate(shown), weeks: i.weeks })
-}
-
-/** The start control's label, shown only while dates are proposals (docs/design/mockups/plan-top-v2.html: no line under it). */
-export function startControl(): { label: string } {
-  return { label: copy().startControl }
 }

@@ -3292,27 +3292,9 @@ footer.app a {
   margin: 0 0 16px;
   max-width: 32rem;
 }
-/* Each control on its own line; a label never wraps mid-word. The Start date
-   field above Start the plan is the same control, without the box. */
-.plan-start label.rows {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  /* The label and its control wrap rather than widen the page; the labels keep
-     their own `white-space: nowrap` so neither breaks mid-word (task 017). */
-  flex-wrap: wrap;
-  padding: 10px 0;
-}
-.plan-start .rows > * {
-  border-bottom: 0;
-  padding: 0;
-}
-.plan-start .rows > span {
-  white-space: nowrap;
-}
-/* The row rule above cancels the surface's row borders and padding on every
-   child; a control in the row keeps its own edge and inset. */
-.plan-start .rows > input,
+/* Each control on its own line; a label never wraps mid-word. The surface's row
+   rule cancels row borders and padding on every child; a control in the row
+   keeps its own edge and inset. */
 .plan-settings .rows > input,
 .plan-settings .rows > select {
   border-bottom: 1px solid var(--quiet-text);

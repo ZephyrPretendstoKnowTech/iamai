@@ -1,6 +1,7 @@
 // The Plan's header and what sits under it (docs/design/mockups/plan-top-v2.html,
-// then task 011): the start keeps its date, its button and its settings link, and
-// nothing else stands between the header line and the rollout board.
+// then task 011): the start keeps its settings link (its date field and button
+// went on 2026-09-23: the start locks itself), and nothing else stands between
+// the header line and the rollout board.
 //
 // The MFA readiness ladder was a tenant-wide diagnostic on a page whose job is
 // the rollout; it answered a question no step on the Plan asks. Task 011 took it
@@ -15,7 +16,6 @@ import { ladder } from '../../derive/ladder.ts'
 import { factsOf } from '../../derive/facts.ts'
 import { readinessView } from '../../derive/mfaReadiness.ts'
 import { READINESS_STATES } from '../../scoring/phishingResistant.ts'
-import { startControl } from '../../derive/planHeader.ts'
 import { pages } from '../../content/content.ts'
 import { readinessHref } from '../shell/routes.ts'
 
@@ -31,12 +31,12 @@ test('the readiness numbers are one set, on the demo and GetIAMAI, wherever they
   for (const s of READINESS_STATES) assert.equal(readinessHref(s), `#/readiness/${s}`, 'each state links to MFA Readiness filtered to it')
 })
 
-test('the strip, the lists and the two note lines are gone from the Plan, with their words; the start keeps its date, its button and its settings link', () => {
+test('the strip, the lists and the two note lines are gone from the Plan, with their words; the start keeps its settings link', () => {
   const plan = pages.plan as Record<string, unknown> & { settings: Record<string, unknown> }
   for (const key of ['readiness', 'startNote', 'line2']) assert.ok(!(key in plan), `pages.plan.${key} was retired`)
   assert.ok(!('startNote' in plan.settings), 'pages.plan.settings.startNote was retired')
-  assert.deepEqual(startControl(), { label: 'Start the plan' })
-  assert.equal(plan.settings.start, 'Start date')
+  // The start locks itself (planPage.test.ts): its field and button went, with their words.
+  assert.ok(!('startControl' in plan) && !('start' in plan.settings), 'the Start date field and Start the plan were retired')
   assert.equal(plan.settingsLink, 'Plan settings')
   const src = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
   assert.doesNotMatch(src, /ReadinessStrip|startNote|line2/, 'the strip and the notes are gone from the Plan')

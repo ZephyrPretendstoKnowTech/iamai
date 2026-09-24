@@ -1,6 +1,7 @@
-// Prompt 52 Part 5: Start the plan (target-state §5, §9). Until pressed, every
-// visit proposes dates from today under the Start date field; pressing
-// writes the start date to the plan file and the header's first line becomes the
+// Prompt 52 Part 5: the started plan (target-state §5, §9). Since 2026-09-23
+// there is no Start the plan button: the start locks itself the first time the
+// plan is computed (derive/planStart.ts lockedStart, ui/surfaces/planPage.test.ts).
+// The locked start travels in the plan file and the header's first line has its
 // started form; later scans update statuses and evidence but never move the
 // anchored start. Changing the start afterwards is Plan settings.
 import { test } from 'node:test'
@@ -9,9 +10,8 @@ import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { buildPlanFile, parsePlanFile } from './plan.ts'
 import { decisionsOf } from './progress.ts'
-import { headerLine1, startControl } from '../derive/planHeader.ts'
+import { headerLine1 } from '../derive/planHeader.ts'
 import { absoluteDate } from '../copy/dates.ts'
-import { pages } from '../content/content.ts'
 
 const FINISH = '2026-10-07T12:00:00.000Z'
 const START = '2026-09-07T12:00:00.000Z'
@@ -23,10 +23,6 @@ test('the header line has three branches, each a content string: proposed, canno
   assert.equal(headerLine1({ ...base, finish: FINISH, startedFrom: START }), `23 steps · 5 done · started ${absoluteDate(START)} · finishes ${absoluteDate(FINISH)}`)
   // A started plan that cannot finish still says what holds it, never a hole.
   assert.equal(headerLine1({ ...base, finish: null, startedFrom: START }), '23 steps · 5 in place · cannot finish until 2 device steps wait for device readiness')
-  // The control carries its label alone: the note under it left with docs/design/mockups/plan-top-v2.html.
-  const P = pages.plan as unknown as { startControl: string }
-  assert.deepEqual(startControl(), { label: P.startControl })
-  assert.equal(startControl().label, 'Start the plan')
 })
 
 test('pressing Start writes the start date and when to the plan file, and a load reads both back', () => {
