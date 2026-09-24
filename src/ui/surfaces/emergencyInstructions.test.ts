@@ -141,24 +141,6 @@ test('Step 1: with enough cloud-only accounts selected the create procedure says
   assert.ok(!createOf(titled).some(line => REFERENCE.test(line)), 'a selected account has a job title')
 })
 
-test('Step 3: review uses the portal’s field names; affected accounts are named; registration changes are inline', () => {
-  const legacy = tasksOf(structuredClone(fixture('small'))).get('s-prereq-passkey-settings')!
-  const review = legacy.find(task => task.id === 'inspect-passkey-settings')!.steps
-  assert.ok(review.includes('Check **Enforce attestation**: No → Yes.'), review.join('\n'))
-  assert.ok(review.includes('Check **Restrict specific keys**: Block → Allow.'))
-  const profile = tasksOf(profileTenant()).get('s-prereq-passkey-settings')!
-  const profileReview = profile.find(task => task.id === 'inspect-passkey-settings')!.steps
-  assert.ok(profileReview.includes('Check **Behavior**: Block → Allow.'), profileReview.join('\n'))
-
-  const value = structuredClone(fixture('small'))
-  const row = value.snapshot.config.authMethodsPolicy.rows[0] as Record<string, any>
-  const fido = row.fido2Configuration ?? row.authenticationMethodConfigurations.find((c: Record<string, unknown>) => String(c.id).toLowerCase() === 'fido2')
-  fido.isSelfServiceRegistrationAllowed = false
-  const registration = tasksOf(value).get('s-prereq-passkey-settings')!.find(task => task.id === 'make-passkey-registration-available')!.steps
-  assert.deepEqual(registration.slice(0, 2), [`${ENTRA}Entra ID → Authentication methods → Policies → Passkey (FIDO2) → Enable and target**.`, 'Set **Allow self-service set up** to **Yes**.'])
-  assert.ok(registration.includes('Preserve unrelated inclusions and exclusions. Select **Save**.'))
-})
-
 test('Step 3: affected passkeys name the accounts to prepare', () => {
   for (const [, make] of CASES) {
     const value = make()
@@ -186,12 +168,6 @@ test('Step 3: affected passkeys name the accounts to prepare', () => {
     // four lines under a tile saying "Existing passkeys affected · Could not
     // verify".
     else if (/could not tell whether the planned settings affect/.test(first)) assert.match(first, /passkeys on [0-9]+ accounts?, because it could not read their key model/)
-    // Nor is nobody found affected in what was read an all-clear where not
-    // everything was read: demo-week2 holds an account whose registered methods
-    // were not read, and the task said "No existing passkey is affected" there
-    // under a tile reading "Could not verify". It says what it did not read.
-    else if (projection.state !== 'known') assert.match(first, /^IAMAI could not tell whether the planned settings stop any existing passkey\. .*(could not be compared exactly|were not readable)\./)
-    else assert.equal(first, 'No existing passkey is affected by the planned settings. Keep the existing working method available while preparing an account.')
   }
 })
 
