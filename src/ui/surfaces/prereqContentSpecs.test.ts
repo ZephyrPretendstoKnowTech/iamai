@@ -46,9 +46,9 @@ test('s-prereq-break-glass: preparation owns account identity, role and approved
   assert.equal(stepOf('s-prereq-break-glass').why, 'Prepare at least two dedicated emergency access accounts with approved passkeys. These provide administrative access when your normal sign-in is unavailable. Two accounts give you another recovery option if one account or its passkey cannot be used.')
   const cs = stepOf('s-prereq-break-glass')
   assert.equal(cs.partner, undefined)
+  // The one line the owner approved (2026-09-23).
   assert.deepEqual(cs.doneWhen, [
-    "The selected dedicated accounts are enabled, cloud-only identities on the tenant's onmicrosoft.com domain with permanent active Global Administrator assignments.",
-    'Each selected account has an approved passkey compatible with the current and planned settings.',
+    'Each account you chose is cloud-only, enabled, signs in with the onmicrosoft.com address, holds Global Administrator permanently, and has an approved passkey.',
   ])
   const artifacts = bodiesOf(fixture('demo')).get('s-prereq-break-glass')!.artifacts
   const entra = artifacts.find((artifact) => artifact.id === 'portal')!.text()
