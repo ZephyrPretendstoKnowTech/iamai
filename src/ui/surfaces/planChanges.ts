@@ -19,7 +19,7 @@ export function heldPlan<T>(fresh: T | null, held: { snapshot: unknown; plan: T 
 /** A board row as the change line reads it: its id, the title it shows and its lane. */
 export type ChangeRow = { readonly id: string; readonly title: string; readonly lane: string }
 
-type ChangeWords = { line: string; completed: string; added: string; removed: string; more: string }
+type ChangeWords = { line: string; completed: string; reopened: string; added: string; removed: string; more: string }
 const words = (): ChangeWords => (pages.plan as unknown as { changes: ChangeWords }).changes
 
 /** At most three titles, then how many more. */
@@ -30,18 +30,20 @@ function named(titles: readonly string[]): string {
 
 /**
  * What changed between two plans of the same tenant, as one short line: the
- * steps that reached Completed, the steps added and the steps removed, each by
- * the title its row shows. Null when none of the three happened.
+ * steps that reached Completed, the steps that left it, the steps added and the
+ * steps removed, each by the title its row shows. Null when none happened.
  */
 export function planChangeLine(before: readonly ChangeRow[], after: readonly ChangeRow[]): string | null {
   const was = new Map(before.map((r) => [r.id, r]))
   const now = new Set(after.map((r) => r.id))
   const completed = after.filter((r) => r.lane === 'Completed' && was.has(r.id) && was.get(r.id)?.lane !== 'Completed').map((r) => r.title)
+  const reopened = after.filter((r) => r.lane !== 'Completed' && was.get(r.id)?.lane === 'Completed').map((r) => r.title)
   const added = after.filter((r) => !was.has(r.id)).map((r) => r.title)
   const removed = before.filter((r) => !now.has(r.id)).map((r) => r.title)
   const W = words()
   const parts = [
     ...(completed.length > 0 ? [fillText(W.completed, { steps: named(completed) })] : []),
+    ...(reopened.length > 0 ? [fillText(W.reopened, { steps: named(reopened) })] : []),
     ...(added.length > 0 ? [fillText(W.added, { n: added.length, steps: named(added) })] : []),
     ...(removed.length > 0 ? [fillText(W.removed, { n: removed.length, steps: named(removed) })] : []),
   ]
@@ -61,9 +63,15 @@ export type Seen = { tenantId: string; cause: string; base: readonly ChangeRow[]
  * what that one change did and replaces the line before it; the plan settling
  * under the same cause (the groups read again, a recovery sign-in recorded) is
  * still that change. The first plan drawn for a tenant has nothing before it.
+ *
+ * `line` undefined: keep the line on screen. A new cause that has changed
+ * nothing yet (a Save before its plan lands, or a Save that changes nothing,
+ * such as Done after a chip already saved) must not erase what the change
+ * before it did.
  */
-export function observePlan(seen: Seen | null, tenantId: string, cause: string, rows: readonly ChangeRow[]): { seen: Seen; line: string | null } {
+export function observePlan(seen: Seen | null, tenantId: string, cause: string, rows: readonly ChangeRow[]): { seen: Seen; line: string | null | undefined } {
   if (seen === null || seen.tenantId !== tenantId) return { seen: { tenantId, cause, base: null, rows }, line: null }
   const base = seen.cause === cause ? seen.base : seen.rows
-  return { seen: { tenantId, cause, base, rows }, line: base === null ? null : planChangeLine(base, rows) }
+  const line = base === null ? null : planChangeLine(base, rows)
+  return { seen: { tenantId, cause, base, rows }, line: line === null && seen.cause !== cause ? undefined : line }
 }

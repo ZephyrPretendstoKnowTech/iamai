@@ -878,9 +878,10 @@
         ]
       },
       "changes": {
-        "$comment": "The one line above the board after a Save or a scan changes the plan (owner, 2026-09-23): what reached Completed, what was added and what was removed, each by the title its row shows, at most three names then how many more. The next change or a navigation replaces it.",
+        "$comment": "The one line above the board after a Save or a scan changes the plan (owner, 2026-09-23): what reached Completed, what left it, what was added and what was removed, each by the title its row shows, at most three names then how many more. The next change or a navigation replaces it.",
         "line": "Updated: {changes}.",
         "completed": "{steps} completed",
+        "reopened": "{steps} reopened",
         "added": "{n} steps added: {steps}",
         "removed": "{n} steps removed: {steps}",
         "more": "{steps} and {n} more"
