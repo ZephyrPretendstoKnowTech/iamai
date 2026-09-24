@@ -24,15 +24,15 @@ This policy already exists. Correct only the settings below, which IAMAI found d
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Set Grant to **Require authentication strength** and select the custom strength resolved for this tenant. Its ID is **{{authStrength.target.id}}**. Remove built-in MFA or any other strength from this policy's grant.
+Under **Grant**, select **Require authentication strength** → **{{authStrength.target.displayName}}**, and clear any other grant.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-session","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Remove session controls from this policy. Admin session duration and persistence are implemented by separate baseline steps.
+Under **Session**, clear every control.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-name","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Rename the same policy (same policy ID) to **{{policy.target.displayName}}**. Find it by its policy ID, not by display name alone.
+Name: **{{policy.target.displayName}}**.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
