@@ -242,4 +242,3 @@ test('sample JSON, calendar, and CSV keep valid file structure and a demo label'
   assert.match(csv, /First line\nsecond line/)
   assert.equal(csv.split('Demo').length > 1 || csv.split('DEMO').length > 1 || csv.toLowerCase().includes('sample'), true)
 })
-

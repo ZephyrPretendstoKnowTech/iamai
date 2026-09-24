@@ -127,4 +127,3 @@ test('saved plan restores scoped workflow evidence without upgrading old confirm
     assert.match(parsePlanFile(JSON.stringify(file)).error ?? '', /invalid additional authenticator/)
   }
 })
-
