@@ -28,7 +28,7 @@ test('the proposal is that day at noon UTC, and a later visit proposes the later
 // day the lock anchored follows the start, earlier or later. Only a day the
 // operator set stands, while it is not before the new start.
 test('moving Plan starts moves the anchored first deployment with it; a day the operator set stands', () => {
-  const locked = lockedStart({}, null, new Date('2026-09-23T15:00:00Z'))
+  const locked = lockedStart<{ startDate?: string; firstDeployment?: string; startedAt?: string }>({}, null, new Date('2026-09-23T15:00:00Z'))
   assert.deepEqual([locked.startDate, locked.firstDeployment], ['2026-09-23T12:00:00.000Z', '2026-09-24T12:00:00.000Z'])
   const earlier = movedFirstDeployment('2026-09-14T12:00:00.000Z', locked)
   assert.equal(earlier, '2026-09-15T12:00:00.000Z', 'moved earlier, deployment follows')
