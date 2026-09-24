@@ -207,10 +207,34 @@ test('#19 the emergency tasks carry no filler, and configuring an existing accou
   // Global Administrator eligible only: the PIM fix, naming the account.
   const eligible = configure((f) => { const id = f.mapping.breakGlassUserIds[0]; f.snapshot.roles.active[id] = []; f.snapshot.roles.eligible[id] = [GA] })
   assert.deepEqual([ADDRESS, ENABLE, DIRECT, PIM].map((re) => has(eligible, re)), [false, false, false, true])
-  // No Global Administrator assignment at all: the direct assignment.
+  // No Global Administrator assignment at all, in a tenant with no PIM licence
+  // and no eligible assignment (the premise): the direct assignment.
   const none = configure((f) => { f.snapshot.roles.active[f.mapping.breakGlassUserIds[0]] = [] })
   assert.deepEqual([ADDRESS, ENABLE, DIRECT, PIM].map((re) => has(none, re)), [false, false, true, false])
   for (const steps of [address, eligible, none]) assert.equal(steps.at(-1), RETURN)
+})
+
+test('#19 Global Administrator is assigned Active and Permanently assigned: through PIM wherever the tenant has it, even to an account holding none', () => {
+  const configure = (edit: (f: Fixture) => void) => opened('demo-week2', edit).body.emergencyAccountTasks!.tasks.find((t) => t.id === 'configure-account')!.steps
+  const noGa = (f: Fixture): void => { f.snapshot.roles.active[f.mapping.breakGlassUserIds[0]] = [] }
+  const DIRECT = /Roles & admins → Global Administrator → Add assignments/
+  const PIM_LINE = /^Open \*\*ID Governance → Privileged Identity Management → Microsoft Entra roles → Roles → Global Administrator → Add assignments\*\*, select \*\*[^*]+\*\*\. Choose \*\*Assignment type: Active\*\* and \*\*Permanently assigned\*\*\.$/
+  // Licensed for PIM: Roles & admins opens the PIM wizard, which defaults to
+  // Eligible, so the account goes through PIM, Active and Permanently assigned.
+  const licensed = configure((f) => { noGa(f); f.snapshot.capabilities.pim = { enabled: true, seats: 5, consumed: 1 } })
+  assert.equal(licensed.some((l) => PIM_LINE.test(l)), true, JSON.stringify(licensed))
+  assert.equal(licensed.some((l) => DIRECT.test(l)), false)
+  // Any eligible assignment in the tenant is PIM at work, licence read or not.
+  const eligibleElsewhere = configure((f) => {
+    noGa(f)
+    const other = f.snapshot.users.find((u) => !f.mapping.breakGlassUserIds.includes(u.id))!.id
+    f.snapshot.roles.eligible[other] = ['fe930be7-5e62-47db-91af-98c3a49a38b1']
+  })
+  assert.equal(eligibleElsewhere.some((l) => PIM_LINE.test(l)), true, JSON.stringify(eligibleElsewhere))
+  assert.equal(eligibleElsewhere.some((l) => DIRECT.test(l)), false)
+  // No PIM signal: the direct line, which keeps Active and Permanently assigned for an assignment that asks.
+  const plain = configure(noGa)
+  assert.equal(plain.find((l) => DIRECT.test(l)), 'Open **Entra ID → Roles & admins → Global Administrator → Add assignments**, select **bg1@demo-fixture.onmicrosoft.com**, and complete the assignment. If it asks for an assignment type, choose **Active** and **Permanently assigned**.')
 })
 
 test('#19 Configure an existing account is offered only when it has a fix, or the all-clear, to give', () => {
