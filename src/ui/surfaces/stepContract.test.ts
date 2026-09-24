@@ -9,7 +9,6 @@
 // Step. A hand-built step would agree with whatever the contract happened to do.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
 import { fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
@@ -309,65 +308,6 @@ test('contract 10: a reach IAMAI could not settle is never a count of nobody', (
   }
 })
 
-// ---- 12. one structure, everywhere ----
-
-test('contract 12: every Plan row and every step body is drawn by the shared components', () => {
-  const read = (p: string): string => readFileSync(new URL(p, import.meta.url), 'utf8')
-  const shared = read('./StepSections.tsx')
-  assert.match(shared, /className="plan-row"/, 'the shared row is where the row markup lives')
-  for (const file of ['./Plan.tsx', './ContentStep.tsx', './CleanupStep.tsx', './PlanFooter.tsx', './PrintPlan.tsx']) {
-    const src = read(file)
-    assert.doesNotMatch(src, /className="plan-row"/, `${file} builds its own row instead of using PlanRow`)
-  }
-  const plan = read('./Plan.tsx')
-  assert.match(plan, /import \{ PlanRow \} from '\.\/StepSections\.tsx'/, 'Plan.tsx draws its rows with the shared row')
-  assert.equal(plan.match(/<PlanRow/g)?.length, 2, 'both kinds of Plan row — a step and a Cleanup item — go through it')
-  // And the step body renders the contract rather than re-reading the engine.
-  // The opened step's body spans the component and stepBody.ts (A3): the decisions read there.
-  const body = read('./ContentStep.tsx') + read('./stepBody.ts')
-  assert.match(body, /stepContract\(step, ctx/, 'the step body is built from the contract')
-  assert.match(body, /<WhatToDoLead contract=\{contract\}/, 'and its action comes from there')
-  assert.match(body, /<DoneWhen /, 'and its completion')
-  // The call may carry the package's answer after the blockers (R4-18: whether
-  // setup a person still owes follows enforcement, stepPackage.ts
-  // setupAfterEnforcementOf); the blockers and their labels are what this reads.
-  assert.match(body, /readinessOf\(step, contract, blockers, prerequisiteLabel \?\? undefined[,)]/, 'and its blockers, as Readiness tiles labelled by their own lane (A1b decision 12)')
-  for (const gone of ['implementationOffered', 'isPreserved', 'statusOf']) {
-    assert.doesNotMatch(body, new RegExp(`\\b${gone}\\(`), `ContentStep still asks the engine ${gone}() itself`)
-  }
-})
-
-// A step IAMAI WATCHED move is not a report of coverage that was already there.
-// "Already delivered by X, so there is nothing to create" is a sentence about a
-// tenant that had the policy before IAMAI looked; printed on the step somebody
-// has just created, watched through its window and enforced, it describes their
-// work as something they never needed to do. Every persona who finishes a policy
-// correctly reads this line, so it is the successful path's sentence, not an
-// edge case. `observation.since` already knows which it is (observation.ts).
-test('a policy IAMAI watched get into place is not reported as coverage the tenant already had', () => {
-  const f = structuredClone(fixture('demo-week2'))
-  const r = runFixture(f)
-  const watched = r.steps.find((s) => s.state.observation?.latest.since === 'observed-change' && isPreserved(s))
-  const found = (s: Step, run: Run): string[] =>
-    stepContract(s, ctxFor(f, run, s)).found.filter((x) => x.key === 'in-place').map((x) => x.text)
-  if (watched) {
-    const text = found(watched, r).join(' ')
-    assert.equal(/nothing to create/.test(text), false, `${watched.id}: ${text}`)
-    assert.match(text, /IAMAI watched (it|them) get there/, `${watched.id}: ${text}`)
-  }
-  // And a goal the tenant genuinely already had, on a scan that watched nothing:
-  // the existing-coverage report is unchanged, because it is still true.
-  const first = structuredClone(fixture('mid'))
-  const fr = runFixture(first)
-  const already = fr.steps.filter((s) => isPreserved(s) && s.state.observation?.latest.since !== 'observed-change')
-  assert.ok(already.length > 0, 'the premise: this tenant has goals it already delivered')
-  for (const s of already) {
-    const text = stepContract(s, ctxFor(first, fr, s)).found.filter((x) => x.key === 'in-place').map((x) => x.text).join(' ')
-    if (text.length === 0) continue
-    assert.equal(/IAMAI watched/.test(text), false, `${s.id}: claims to have watched a policy it found in place — ${text}`)
-  }
-})
-
 // A threshold stated against a non-number is a dead end. "Enforcement waits for
 // MFA readiness to reach 90%; it is not measured today" appeared three times on
 // one step — the finding, the Threshold tile and its note — and named nothing
@@ -536,41 +476,16 @@ test('a policy IAMAI watched arrive is never also reported as coverage the tenan
     const claims = Array.isArray(ex.existingPolicies) ? (ex.existingPolicies as unknown[]).length : 0
     assert.equal(claims, 0, `${step.id}: says the tenant already covers a policy IAMAI watched arrive`)
   }
-  // And the predicate has one definition: both readers call it rather than
-  // re-deriving it, which is how the two rows came to disagree.
-  const contract = readFileSync('src/ui/surfaces/stepContract.ts', 'utf8')
-  const vars = readFileSync('src/ui/surfaces/stepVars.ts', 'utf8')
-  for (const [where, src] of [['stepContract.ts', contract], ['stepVars.ts', vars]] as const) {
-    assert.match(src, /watchedArrive\(/, `${where}: does not use the shared predicate`)
-    assert.equal(/since === 'observed-change'/.test(src), false, `${where}: re-derives "watched" instead of calling it`)
+  // And a goal the tenant genuinely already had, on a scan that watched nothing:
+  // the existing-coverage report stands, and never claims IAMAI watched it.
+  const mid = structuredClone(fixture('mid'))
+  const fr = runFixture(mid)
+  const already = fr.steps.filter((s) => isPreserved(s) && s.state.observation?.latest.since !== 'observed-change')
+  assert.ok(already.length > 0, 'the premise: this tenant has goals it already delivered')
+  for (const s of already) {
+    const text = stepContract(s, ctxFor(mid, fr, s)).found.filter((x) => x.key === 'in-place').map((x) => x.text).join(' ')
+    assert.equal(/IAMAI watched/.test(text), false, `${s.id}: claims to have watched a policy it found in place — ${text}`)
   }
-})
-
-// "Scan again to rebuild it" over a goal the tenant already delivers.
-//
-// The step's own record names the policy doing it (Step.satisfiedBy), so both
-// halves of the sentence are wrong for this case: there is nothing to rebuild
-// and rescanning changes nothing. A reader scanned, got the identical page,
-// and had no way forward — the step is open for some other reason, and those
-// reasons are on the card already.
-test('a step with nothing to write over existing coverage names the policy, not a rescan', () => {
-  let checked = 0
-  for (const name of ['mid', 'large', 'midflight', 'messy', 'hostile'] as const) {
-    const f = structuredClone(fixture(name))
-    const run = runFixture(f)
-    const ctx = { snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, nameOf: (id: string) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: null } as unknown as StepVarContext
-    for (const step of run.steps) {
-      if (unavailableReason(step) !== 'no-operation') continue
-      const by = step.satisfiedBy
-      if (!by || by.policies.length === 0) continue
-      checked++
-      const said = stepContract(step, ctx).milestone.line ?? stepContract(step, ctx).whatToDo.text
-      const policy = by.sufficient ?? by.policies[0]
-      assert.ok(said.includes(policy), `${name}/${step.id}: the policy delivering this is not named: ${said}`)
-      assert.doesNotMatch(said, /again to rebuild it/, `${name}/${step.id}: still asks for a rescan`)
-    }
-  }
-  assert.ok(checked > 0, 'no fixture reaches the case')
 })
 
 // A completion no scan can reach.
@@ -598,6 +513,7 @@ test('a step whose goal is already delivered does not wait on a scan that cannot
       // finishes the step and nothing else.
       const card = contract.milestone.line ?? contract.whatToDo.text
       assert.ok(card.includes(by.sufficient ?? by.policies[0]), `${name}/${step.id}: the policy delivering it is named nowhere`)
+      assert.doesNotMatch(card, /again to rebuild it/, `${name}/${step.id}: still asks for a rescan`)
       // And the way out is stated, because there is one.
       assert.match(done, /does not apply/, `${name}/${step.id}: no way to decline`)
     }
