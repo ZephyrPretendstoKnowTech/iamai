@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "Doesn't apply",
   "bar": "Doesn't apply",
-  "rail": "Set up the trusted network",
+  "rail": "Create the trusted network",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -15,10 +15,7 @@
   "tiles": [],
   "channels": [
     "Entra",
-    "PowerShell",
-    "JSON",
-    "AI Info",
-    "Email"
+    "AI Info"
   ],
   "when": "Not scheduled"
 }

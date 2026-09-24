@@ -18,10 +18,6 @@
       "state": "10% ready for Modern MFA + TAP"
     },
     {
-      "label": "Affected people",
-      "state": "Not established"
-    },
-    {
       "label": "Configure Emergency Exclusions",
       "state": "Prerequisite · To do"
     },

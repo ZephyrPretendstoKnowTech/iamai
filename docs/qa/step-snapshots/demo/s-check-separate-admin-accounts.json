@@ -1,11 +1,11 @@
 {
   "lane": "Ready",
-  "substatus": "Review",
+  "substatus": "Create",
   "reason": null,
   "fact": null,
-  "badge": "Ready · Review",
-  "bar": "Complete the review below",
-  "rail": "Test the new admin account, then move the role.",
+  "badge": "Ready · Create",
+  "bar": "Ready now",
+  "rail": "Move each admin role to a separate admin account",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -14,15 +14,17 @@
   ],
   "tiles": [
     {
-      "label": "Administrator Account Evidence",
-      "state": "Account or role data not fully read"
+      "label": "Quinn Ivanova",
+      "state": "Holds Global Administrator and signs in to Microsoft Teams"
+    },
+    {
+      "label": "Jordan Chen",
+      "state": "Holds Global Administrator and signs in to Outlook"
     }
   ],
   "channels": [
     "Entra",
-    "PowerShell",
-    "AI Info",
-    "Email"
+    "AI Info"
   ],
   "when": "Est. Aug 31, 2026"
 }
