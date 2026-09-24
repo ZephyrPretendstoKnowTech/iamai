@@ -355,10 +355,11 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   // prerequisites hold it (roadmap/enforceWaits.ts: the recovery test not
   // recorded, security defaults still on) it hands over no instruction that
   // turns the policy on: a reader enforced eight policies beside security
-  // defaults (Sam D2). It says what it waits on, the milestone's words.
-  const turnOnHeld = policyHold(step) === 'prerequisite-unmet' && input.contract.milestone.label !== ''
-  // It names what it waits for, in the hold's own words (walk list 4.x item 44):
-  // "Wait for Verify Emergency Access; leave this policy in Report-only until then."
+  // defaults (Sam D2). It names what it waits for (walk list 4.x item 44):
+  // "Wait for Verify Emergency Access; leave this policy in Report-only until
+  // then." A policy already On has no turn-on to hold, and its lines stand as
+  // the reference they are on a finished step.
+  const turnOnHeld = policyHold(step) === 'prerequisite-unmet' && input.contract.milestone.label !== '' && members.some((m) => !m.on)
   const heldLine = input.outstanding.length > 0 ? fillText(app.plan.enforceOutstanding, { items: list([...input.outstanding]) }) : input.contract.milestone.label
   tasks.push(task('turn-on', 'turnOn', turnOnHeld ? [heldLine] : members.flatMap((m) => turnOnLines(m.name || String(m.create?.body.displayName ?? ''))), !step.state.satisfied && members.some((m) => !m.on)))
   // What the step's package says comes after the policy is On, in every state:
