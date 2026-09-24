@@ -43,19 +43,29 @@ function owingACorrection(lifecycle: 'report-only' | 'enforced' | 'not-deployed'
   return { step, snapshot: { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...f.snapshot.config.caPolicies!, rows } } } }
 }
 
-test('a set-aside step has no package state; a contradictory source, a question and a blocker come before any stage', () => {
+test('the package state precedence: set aside, then a contradictory source, a question and a blocker, then In place, then the lifecycle', () => {
   const ready = pilotStepAt(base, 'readyToEnforce')
   assert.equal(stateOf(withState(ready, { setAside: true }, 'skipped')), null)
   assert.equal(stateOf(withState(ready, { condition: 'baseline-conflict' })), 'sourceConflict')
   assert.equal(stateOf(withState(ready, { condition: 'needs-decision' })), 'needsDecision')
   assert.equal(stateOf(withState(ready, { condition: 'blocked' })), 'blocked')
   assert.equal(stateOf(withState(ready, { condition: 'review-required' })), 'blocked')
-})
-
-test('the lifecycle answers where nothing overrules it', () => {
+  // A delivered goal is In place, and an enforced policy with nothing to submit projects nothing.
+  assert.equal(stateOf(withState(pilotStepAt(base, 'reportOnly'), { satisfied: true, inPlace: true, lifecycle: 'enforced' }, 'done')), 'inPlace')
+  assert.equal(stateOf(withState(pilotStepAt(base, 'reportOnly'), { lifecycle: 'enforced' }, 'ready')), 'blocked')
+  // The lifecycle answers where nothing overrules it.
   assert.equal(stateOf(pilotStepAt(base, 'readyToEnforce')), 'readyToEnforce')
   assert.equal(stateOf(pilotStepAt(base, 'reportOnly')), 'reportOnly')
   assert.equal(stateOf(pilotStepAt(base, 'missing')), 'missing')
+  // The owner's one held case: a held, undeployed policy whose next action is its report-only creation is Missing.
+  const held = {
+    ...pilotStepAt(base, 'missing'),
+    blockers: [{ kind: 'readiness', label: 'mfa-readiness', binding: 'when MFA readiness reaches 90% (now 5%)' }],
+    action: { ...pilotStepAt(base, 'missing').action, readinessGate: { measure: 'MFA readiness', threshold: '90%', value: '5%' } },
+    state: { ...pilotStepAt(base, 'missing').state, condition: 'blocked' },
+    status: 'blocked',
+  } as unknown as Step
+  assert.equal(stateOf(held), 'missing')
 })
 
 test('a correction owed is Partial whatever the stage, and is never hidden behind Report-only or Enforced', () => {
@@ -69,24 +79,6 @@ test('a correction owed is Partial whatever the stage, and is never hidden behin
   const already = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...f.snapshot.config.caPolicies!, rows: [...(f.snapshot.config.caPolicies?.rows ?? []), (step.action.resolution!.policies[0] as { target: unknown }).target] } } } as TenantSnapshot
   assert.deepEqual(correctionFieldsOf(step, already), [])
   assert.equal(stateOf(step, already), 'reportOnly')
-})
-
-test('a delivered goal is In place, and an enforced policy with nothing to submit projects nothing', () => {
-  const done = withState(pilotStepAt(base, 'reportOnly'), { satisfied: true, inPlace: true, lifecycle: 'enforced' }, 'done')
-  assert.equal(stateOf(done), 'inPlace')
-  const enforced = withState(pilotStepAt(base, 'reportOnly'), { lifecycle: 'enforced' }, 'ready')
-  assert.equal(stateOf(enforced), 'blocked')
-})
-
-test('the owner’s one held case: a held, undeployed policy whose next action is its report-only creation is Missing', () => {
-  const held = {
-    ...pilotStepAt(base, 'missing'),
-    blockers: [{ kind: 'readiness', label: 'mfa-readiness', binding: 'when MFA readiness reaches 90% (now 5%)' }],
-    action: { ...pilotStepAt(base, 'missing').action, readinessGate: { measure: 'MFA readiness', threshold: '90%', value: '5%' } },
-    state: { ...pilotStepAt(base, 'missing').state, condition: 'blocked' },
-    status: 'blocked',
-  } as unknown as Step
-  assert.equal(stateOf(held), 'missing')
 })
 
 test('A3 B3, creation vs enforcement: a report-only policy owing a safe correction projects the correction while a threshold holds its enforcement; one that cannot be written projects nothing', () => {
