@@ -386,8 +386,14 @@ export function planForecast(rows: readonly ForecastRow[]): PlanForecast {
   const visiting = new Set<string>()
   const settled = new Set<string>()
 
-  /** The day a wait is expected to clear, and the row that clears it where one does. */
-  const clears = (w: ForecastWait): { day: string; by: string | null } => {
+  /**
+   * The day a wait is expected to clear, and the row that clears it where one
+   * does. `waiting` is the row whose turn-on waits: a step that turns that
+   * policy on in its own change (Turn Off Security Defaults, Step.turnsOn)
+   * clears the wait on its own day, not at the end of the window the placement
+   * gave it (net-new 22, owner 2026-09-24).
+   */
+  const clears = (w: ForecastWait, waiting: string | null = null): { day: string; by: string | null } => {
     // A readiness threshold clears with the MFA registration campaign.
     if (w.kind === 'evidence') {
       const c = w.id.startsWith('evidence:readiness') && campaign !== null ? spanOf(campaign) : null
@@ -396,7 +402,8 @@ export function planForecast(rows: readonly ForecastRow[]): PlanForecast {
     if (byId.has(w.id)) {
       const s = spanOf(w.id)
       if (s === null) return { day: plan.start, by: null }
-      const day = w.milestone === 'created' ? s.at : w.milestone === 'enforced' || w.milestone === 'ready-to-enforce' ? (s.turnOn ?? s.end) : s.end
+      const turnsItOn = waiting !== null && (byId.get(w.id)?.step?.turnsOn ?? []).some((t) => t.stepId === waiting)
+      const day = w.milestone === 'created' || turnsItOn ? s.at : w.milestone === 'enforced' || w.milestone === 'ready-to-enforce' ? (s.turnOn ?? s.end) : s.end
       return { day, by: w.id }
     }
     // A step the board draws no row for holds nothing.
@@ -404,10 +411,10 @@ export function planForecast(rows: readonly ForecastRow[]): PlanForecast {
     // A hold a person clears (an answer, a conflict, a missing object, a mapping) is preparation work.
     return { day: plan.prepEnd, by: null }
   }
-  const latest = (from: string, waits: readonly ForecastWait[]): { day: string; by: string | null } => {
+  const latest = (from: string, waits: readonly ForecastWait[], waiting: string | null = null): { day: string; by: string | null } => {
     let out: { day: string; by: string | null } = { day: from, by: null }
     for (const w of waits) {
-      const c = clears(w)
+      const c = clears(w, waiting)
       if (ms(c.day) > ms(out.day)) out = c
     }
     return out
@@ -453,7 +460,7 @@ export function planForecast(rows: readonly ForecastRow[]): PlanForecast {
     // No earlier than the forecast placement put the turn-on: the cap on change
     // windows and the rule on prompting the same people are the placement's.
     if (placed) turnOn = later(turnOn, placed.start)
-    const held = latest(turnOn, row.turnOnWaits)
+    const held = latest(turnOn, row.turnOnWaits, row.id)
     turnOn = dayOf(held.day)
     const soak = placed ? daysBetween(placed.start, placed.end) : ringlessSoakDays(s, plan.activeUsers)
     let end = addDays(turnOn, soak)
