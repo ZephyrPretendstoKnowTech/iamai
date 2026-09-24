@@ -69,8 +69,8 @@ const optionsOf = (words: Record<string, string>): DirectionQuestion['options'] 
 
 type Context = { snapshot: TenantSnapshot; mapping: MappingState }
 
-function question(key: DirectionQuestionKey, ctx: Context, q: Omit<DirectionQuestion, 'key' | 'saved' | 'needsReview' | 'basis' | 'today' | 'note' | 'pickedWith'> & Partial<Pick<DirectionQuestion, 'today' | 'note' | 'pickedWith' | 'basis' | 'needsReview'>>): DirectionQuestion {
-  return { key, today: null, note: null, pickedWith: null, basis: null, needsReview: false, ...q, saved: savedAnswerOf(key, ctx.mapping) }
+function question(key: DirectionQuestionKey, ctx: Context, q: Omit<DirectionQuestion, 'key' | 'saved' | 'needsReview' | 'basis' | 'today' | 'note' | 'noneNote' | 'pickedWith'> & Partial<Pick<DirectionQuestion, 'today' | 'note' | 'noneNote' | 'pickedWith' | 'basis' | 'needsReview'>>): DirectionQuestion {
+  return { key, today: null, note: null, noneNote: null, pickedWith: null, basis: null, needsReview: false, ...q, saved: savedAnswerOf(key, ctx.mapping) }
 }
 
 // ---- D1 Confirm What You Use ----
@@ -186,13 +186,14 @@ function accountQuestions(ctx: Context, nameOf: (id: string) => string): Directi
       label: Q.serviceAccounts.label, control: 'accounts', options: optionsOf(Q.accountOptions), pickedWith: 'some',
       suggested: candidates.length > 0 ? answer('some', candidates) : answer('none'),
       evidence: seen(Q.serviceAccounts, candidates.length),
-      note: [Q.serviceAccounts.note, setAside].filter((line): line is string => line !== null).join(' '),
+      noneNote: Q.serviceAccounts.note,
+      note: setAside,
     }),
     question('sharedDevices', ctx, {
       label: Q.sharedDevices.label, control: 'accounts', options: optionsOf(Q.accountOptions), pickedWith: 'some',
       suggested: shared.length > 0 ? answer('some', shared) : answer('none'),
       evidence: seen(Q.sharedDevices, shared.length),
-      note: Q.sharedDevices.note,
+      noneNote: Q.sharedDevices.note,
     }),
   ]
 }
