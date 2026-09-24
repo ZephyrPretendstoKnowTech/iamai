@@ -18,7 +18,6 @@ import type { ContractFound, ContractMember, ContractReadiness, ContractStage, I
 import { CONTRACT, FOOTER, badgeLabel, nextCaption, readinessLeadOf, stageClass } from './stepContract.ts'
 import type { ContractEmergencySlot, ContractHardening, StepRail } from './stepContract.ts'
 import { fillText } from '../../content/render.ts'
-import { content } from '../../content/content.ts'
 import { autoOpenTiles } from './tileExpansion.ts'
 import { useSession } from '../session.ts'
 import { scanLineText } from '../scan/ScanProgress.tsx'
@@ -299,18 +298,6 @@ export function StepFooter({ controls = null, onScan }: { controls?: ReactNode; 
  */
 export const WHY_LINK_SHOWN = false
 
-/** The Scan control's own words (content.shared.scanControl). */
-const SCAN_CONTROL = String((content.shared as Record<string, unknown>).scanControl)
-
-/**
- * The helper line under Tasks Remaining (owner, 2026-09-23): after making
- * changes, select Scan to update the plan. Every step that draws Tasks Remaining
- * on screen draws it here, the same way, whichever component draws the tasks.
- */
-export function ScanNote() {
-  return <p className="emergency-account-scan-note">After making changes, select <strong>{SCAN_CONTROL}</strong>.</p>
-}
-
 /** The strip's track count (A1 §16.1: up to four across, wrapping); fewer tiles take fewer tracks. */
 const TRACKS = 4
 
@@ -332,7 +319,7 @@ const MARK: Record<ReadinessTone, string | null> = { good: '✓', warn: '!', wai
  * the evidence where there is evidence to open. The grid takes its track
  * count from the tiles it is handed, so nothing is padded.
  */
-export function ReadinessSection({ readiness, lead, onWhy = null, onConfirm = null, onOpenMappings = null, extra = null, printing = false, children = null, showClosedCount = true, heading, scanNote = false }: {
+export function ReadinessSection({ readiness, lead, onWhy = null, onConfirm = null, onOpenMappings = null, extra = null, printing = false, children = null, showClosedCount = true, heading }: {
   readiness: ContractReadiness
   lead: ReactNode
   onWhy?: (() => void) | null
@@ -347,8 +334,6 @@ export function ReadinessSection({ readiness, lead, onWhy = null, onConfirm = nu
   children?: ReactNode
   showClosedCount?: boolean
   heading?: string
-  /** Drawn as Tasks Remaining on screen: the Scan helper line under the tasks (ScanNote). */
-  scanNote?: boolean
 }) {
   const W = CONTRACT.readiness
   // The blocking tiles open with the step (content review D5). Their explanations
@@ -399,7 +384,6 @@ export function ReadinessSection({ readiness, lead, onWhy = null, onConfirm = nu
           {strip(readiness.satisfied, 'satisfied')}
         </details>
       )}
-      {scanNote && !printing && <ScanNote />}
       {/* The bar's status line only repeated the badge and the cards (owner,
           2026-09-23: "Account preparation is verified." is useless); it carries
           the action lead where one is handed in, and the Why link when shown. */}
