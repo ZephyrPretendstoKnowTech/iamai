@@ -16,6 +16,7 @@ import { laneReadings } from './planLanes.ts'
 import { laneViewOf } from './planBoard.ts'
 import { milestoneHeadlineOf, readinessLeadOf } from './stepContract.ts'
 import { stepBodyOf } from './stepBody.ts'
+import { isPolicyProcedureTask } from './policyTasks.ts'
 import { EXCLUSIONS_RECORD_KEY } from '../../mapping/safetyChoice.ts'
 
 /** A day anywhere in the headline, bare or as an estimate ("Sep 23, 2026", "Est. Aug 31, 2026"). */
@@ -81,7 +82,10 @@ test('an open step heads its column with words it already draws: never an engine
       const where = `${name}/${step.id}`
       const c = body.contract
       const lead = readinessLeadOf(c)
-      const drawn = !body.instructed && body.emergencyAccountTasks === null && !usesDecisionAnatomy(step.id) ? lead : null
+      // A policy step whose tasks are all done draws its own action, as a step with no task list does (stepBody.ts).
+      const tasks = body.emergencyAccountTasks?.tasks ?? []
+      const noTask = tasks.some(isPolicyProcedureTask) ? !tasks.some((t) => t.required) : !body.instructed && body.emergencyAccountTasks === null
+      const drawn = noTask && !usesDecisionAnatomy(step.id) ? lead : null
       const { headline, barLead } = body.rail
       checked++
       if (headline === c.milestone.label) assert.equal(headline, drawn, `${where}: heads with the engine's sentence, which the step does not draw: "${headline}"`)
@@ -101,7 +105,11 @@ test('an open decision, a dated plan and a long explanation each head with the s
     const legacy = opened(name, 's-goal-block-legacy-auth')
     assert.equal(legacy.lane.substatus, 'Decision', `the premise: 4.1 needs a decision on ${name}`)
     assert.equal(ALL_CLEAR.has(legacy.body.rail.headline), false, `${name} 4.1: "${legacy.body.rail.headline}"`)
-    assert.equal(legacy.body.rail.headline, legacy.body.emergencyAccountTasks?.tasks[0]?.title, `${name} 4.1 heads with its task`)
+    // Its first task still to do, where it has one; never a task already done (walk list section 4 item 18).
+    const tasks = legacy.body.emergencyAccountTasks?.tasks ?? []
+    const next = tasks.find((t) => t.required)
+    if (next) assert.equal(legacy.body.rail.headline, next.title, `${name} 4.1 heads with its task`)
+    else assert.equal(tasks.some((t) => t.title === legacy.body.rail.headline), false, `${name} 4.1 heads with a task already done`)
   }
   // Once Direction is approved the engine dates its milestones; the column does not.
   const approved = withDirectionApproved(fixture('demo-week2'))

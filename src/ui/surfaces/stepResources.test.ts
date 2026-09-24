@@ -156,38 +156,9 @@ test('removed workflow forms do not leave recording instructions in copied guida
   }
 })
 
-// A step whose target the engine resolves to no operation — already enforced, or
-// unresolvable — still drew the portal channel, and its instruction sent the
-// operator to compare the tenant's policies "with the configuration listed on this
-// step". Such a step lists no configuration: its JSON is a read-only GET and its
-// Implementation section says nothing is generated. The instruction pointed at
-// nothing, and the five administrators put the step down rather than guess.
-test('a read-only policy instruction names the matched policy and the criteria it is checked against, never an absent listing', () => {
-  for (const name of ['demo-week2', 'mid'] as const) {
-    const { r, bodies } = opened(name)
-    let checked = 0
-    for (const [id, body] of bodies) {
-      const portal = body.artifacts.find(a => a.id === 'portal')
-      if (!portal) continue
-      const text = portal.text()
-      assert.doesNotMatch(text, /configuration listed on this step/, id)
-      const step = r.steps.find(x => x.id === id)!
-      const matched = (step.tracking?.members ?? []).filter(m => m.policyName)
-      if (!/the policy IAMAI matched to this step/.test(text)) continue
-      checked++
-      assert.ok(matched.length > 0, id)
-      for (const m of matched) {
-        assert.ok(text.includes(m.policyName!), `${id}: ${m.policyName} is not named`)
-        assert.ok(m.policyId === null || text.includes(m.policyId), `${id}: ${m.policyId} is not named`)
-      }
-      assert.match(text, /Completion Criteria on this step/, id)
-    }
-    assert.ok(checked > 0, `${name}: no step reached the read-only instruction`)
-  }
-})
-
-// The other half: a step with nothing matched cannot name a policy, so it asks for
-// a review of the policies that affect it and points nowhere.
+// A step the plan can state no policy for cannot name one, so it asks for a
+// review of the policies that affect it and points nowhere. (A step it can state
+// one for draws its procedures in every state: policyTasks.ts policyProcedureOf.)
 test('a read-only policy instruction with nothing matched asks for a review and claims no listing', () => {
   const { r, bodies } = opened('demo')
   const step = r.steps.find(x => x.id === 's-goal-admin-portals-protected')!
@@ -302,7 +273,7 @@ test('with one of a pair resolved, the screen hands over the same create the exp
     action: { ...step.action, resolution: { ...step.action.resolution!, policies: members.filter((m) => roles.includes(m.role)).map((m) => ({ ...create, memberKey: memberKeyOf(m.memberStableId, 0), body: { ...(create.body as Record<string, unknown>), displayName: `Sample ${m.role}` } })) } },
   }) as Step
   const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
-  const plain = (line: string): string => line.replace(/^\d+\.\s+/, '')
+  const plain = (line: string): string => line.replace(/^\d+\.\s+/, '').replace(/\*\*/g, '')
   for (const role of ['strong', 'mixed']) {
     const s = resolving([role])
     const b = stepBodyOf(s, ctx)
@@ -311,10 +282,15 @@ test('with one of a pair resolved, the screen hands over the same create the exp
     assert.ok(task, `${role}: the step draws its create task`)
     // The export opens with the step's action; every line after it is the task's.
     assert.equal(view.whatToDo[0], b.contract.whatToDo.text)
-    assert.deepEqual(task.steps.map(plain), view.whatToDo.slice(1).map(plain), `${role}: the screen and the export hand over one procedure`)
+    // The workflow checks follow the procedure in the export, as their own task does on screen.
+    const checks = view.whatToDo.indexOf(HEAD.verifyWorkflow)
+    assert.deepEqual(task.steps.map(plain), view.whatToDo.slice(1, checks < 0 ? undefined : checks).map(plain), `${role}: the screen and the export hand over one procedure`)
     const portal = b.artifacts.find((a) => a.id === 'portal')!.text()
-    assert.match(portal, new RegExp(`Name: Sample ${role}`), `${role}: the create names the policy IAMAI holds`)
-    assert.match(portal, /\[IAMAI:plan-/, `${role}: with the plan tag IAMAI recognises it by`)
+    assert.match(portal, new RegExp(`Name: \\*\\*Sample ${role}\\*\\*`), `${role}: the create names the policy IAMAI holds`)
+    // The Entra form has no Description field, so the portal carries no plan tag:
+    // IAMAI recognises a policy made there by the name the plan gives it
+    // (roadmap/policyProcedure.ts createLines).
+    assert.doesNotMatch(portal, /\[IAMAI:plan-|Description:/, `${role}: a Description line the Entra form has no field for`)
     assert.doesNotMatch(portal, /Review the two guest policies separately/, `${role}: not the preparation lines in its place`)
   }
 })

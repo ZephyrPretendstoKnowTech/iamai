@@ -93,8 +93,9 @@ test('R1: an enabled group policy granting a way round the floor is widened with
     assert.deepEqual(grantTarget.grantControls, body.grantControls, 'the CorrectGrant call submits the listed grant')
     assert.doesNotMatch(art.json ?? '', /compliantDevice/)
     const exported = stepExportView(step, ctx).whatToDo.join('\n')
-    assert.match(exported, /Under Grant, select Require multifactor authentication and clear any other control/)
-    assert.match(exported, /Open the policy named Policy A/)
+    // The correction names the grant it sets, by value (roadmap/policyProcedure.ts correctionSettings).
+    assert.match(exported, /Under Grant, select Require multifactor authentication, and clear any other grant\./)
+    assert.match(exported, /Conditional Access → Policies → Policy A\./)
   }
 })
 

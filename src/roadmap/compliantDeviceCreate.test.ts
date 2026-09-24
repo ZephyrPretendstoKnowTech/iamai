@@ -208,8 +208,8 @@ function managedDeviceOff(ready: boolean): Fixture {
   return ready ? withDevicesReady(off) : off
 }
 
-/** The switched-off instruction, in the portal's words. */
-const REPORT_ONLY = /set Enable policy to Report-only/i
+/** The switched-off instruction, in the portal's words, bold or plain (the procedure bolds the control and its value, roadmap/policyProcedure.ts). */
+const REPORT_ONLY = /set (?:\*\*)?Enable policy(?:\*\*)? to (?:\*\*)?Report-only/i
 
 test('demo: Require a Managed Device found Off is told to go to Report-only only once device readiness is met', () => {
   // demo: Require a Managed Device found Off is not told to go to Report-only while device readiness is unmet

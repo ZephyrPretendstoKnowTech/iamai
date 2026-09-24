@@ -600,7 +600,8 @@ export function buildCreateAction(
     const deviated = answered !== clone
     // Nothing is dropped silently: an object the tenant does not have comes back
     // in `missing`, and while any does there is no operation to run.
-    const whole = implementable(artifact(answered, p, tag), p.resolved)
+    const drawn = artifact(answered, p, tag)
+    const whole = implementable(drawn, p.resolved)
     // The approved absent-source assumption concerns the source export only.
     // It must not remove any exclusion already configured in this tenant.
     if (p.target?.policy && whole.omitted.length > 0) {
@@ -620,6 +621,9 @@ export function buildCreateAction(
     for (const [id, d] of p.resolved.decisions ?? []) if (!sourceReferences.has(id) || (d.answer === 'pending' && sourceReferences.get(id)!.answer !== 'pending')) sourceReferences.set(id, { id, kind: d.kind, answer: d.answer })
     const wholeBaseline = deviated ? implementable(artifact(p.resolved.body, p, tag), p.resolved).policy : undefined
     const target = p.target ?? null
+    // The same policy with the objects it waits on left in, and nothing else the
+    // body leaves out, for the step's procedure to name (PolicyOperation.pending).
+    const pending = whole.missing.length > 0 ? implementable(drawn, { ...p.resolved, keep: new Set(whole.missing.map((m) => m.token.toLowerCase())) }).policy : undefined
     if (target) {
       const patch = patchOf(whole.policy, sections)
       // The policy the change leaves behind: the tenant's own policy with this
@@ -642,9 +646,10 @@ export function buildCreateAction(
         // object against every dimension the plan asked for and not only the
         // ones this patch writes (roadmap/tracking.ts, observation.ts).
         intent: whole.policy,
+        ...(pending ? { pending } : {}),
       })
     } else {
-      operations.push({ sourceName: p.sourceName, memberKey, mode: 'create', policyId: null, body: whole.policy, baseline: wholeBaseline })
+      operations.push({ sourceName: p.sourceName, memberKey, mode: 'create', policyId: null, body: whole.policy, baseline: wholeBaseline, ...(pending ? { pending } : {}) })
     }
   }
   // `json` is a projection of the operations, for the plan file and the exports;
@@ -1865,6 +1870,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       const policies = !own ? [] : stepSources.length > 0 ? stepPolicies() : templatePolicy()
       const would = policies.length === 1 ? buildCreateAction(named(policies, proposedPolicyName(goal, naming)), mapping, planId, stepId, goal.id) : null
       const intended = would && (would.missing ?? []).length === 0 ? would.resolution?.policies[0]?.body : undefined
+      // The same create, whoever's policy delivers the goal, for the step's
+      // procedure alone (Action.planned): a finished step still hands over how
+      // its policy is created and turned on (walk list item 18). Every
+      // reference resolved, or nothing.
+      const plannedCreate = policies.length === 1 ? would : buildCreateAction(named(stepSources.length > 0 ? stepPolicies() : templatePolicy(), proposedPolicyName(goal, naming)), mapping, planId, stepId, goal.id)
+      const planned = plannedCreate && (plannedCreate.missing ?? []).length === 0 ? plannedCreate.resolution : undefined
       // A policy the tenant wrote delivers the goal: where it is not the policy
       // the plan would write, in the parts coverage does not judge, the step says
       // so and asks nothing (owner, 2026-09-22; Action.ownPolicyDiffers). One
@@ -1885,6 +1896,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         json: null,
         portalSteps: [],
         ...(intended ? { intended } : {}),
+        ...(planned ? { planned } : {}),
         ...(ownPolicyDiffers ? { ownPolicyDiffers } : {}),
       }
     } else if (result.status === 'unknown') {
@@ -2098,6 +2110,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // instruction names the object the body actually holds rather than looking
     // one up in the mapping again.
     if (action.resolution) action.resolution = { ...action.resolution, tenant: { exclusionsGroupId: tenantObjects.exclusionsGroupId, serviceAccountsGroupId: tenantObjects.serviceAccountsGroupId, emergencyIds: [...mapping.breakGlassUserIds] } }
+    if (action.planned) action.planned = { ...action.planned, tenant: { exclusionsGroupId: tenantObjects.exclusionsGroupId, serviceAccountsGroupId: tenantObjects.serviceAccountsGroupId, emergencyIds: [...mapping.breakGlassUserIds] } }
 
     // ---- The emergency-access boundary (Foundation A) ----
     // The last thing asked of a policy before anything is offered for it, and

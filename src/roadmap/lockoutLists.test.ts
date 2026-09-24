@@ -121,7 +121,7 @@ test('step 35 offers the plain-MFA rung as the first enforcement while anyone ha
   const artifact = (id: string) => drawn.artifacts.find(a => a.id === id)!
   assert.equal(artifact('json').unavailable, undefined)
   assert.deepEqual(JSON.parse(artifact('json').text()).grantControls, json.grantControls, 'the opened JSON follows the saved engine choice')
-  assert.match(artifact('portal').text(), /Grant: Require multifactor authentication/)
+  assert.match(artifact('portal').text(), /Under \*\*Grant\*\*, select \*\*Require multifactor authentication\*\*\. · your choice; the baseline's version: Under \*\*Grant\*\*, select \*\*Require authentication strength\*\*/)
   assert.match(artifact('ai').text(), /Selected grant: Require multifactor authentication/)
   assert.ok(artifact('ps').text().includes(`-GrantControlsJson '${JSON.stringify(json.grantControls)}'`))
 })

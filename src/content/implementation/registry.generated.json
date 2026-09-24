@@ -7523,7 +7523,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Open **Entra ID → Conditional Access → Policies → New policy**.\n2. Name: **{{policy.target.displayName}}**.\n3. Users: **All users**. Apply the resolved exclusions shown in Settings for This Action.\n4. Target resources → Select resources: select the Inforcer application, **708861da-226e-4d65-a57a-24128df64524**. Match that application ID, not a similar name.\n5. Leave **Conditions → Client apps** unconfigured: an unconfigured condition already applies to every client app, and ticking the boxes writes a narrower policy than the target. Leave the session controls unconfigured too. Grant access: **Require multifactor authentication**.\n6. Set **Enable policy: Report-only** and create it. Do not choose **On** here: a policy created On applies to everyone it covers from the moment you save, before anyone has seen who it would have stopped — the failure this plan exists to prevent. The script for this step can only create in Report-only. Reopen the policy, compare its settings with the intended target and rescan.\n"
+          "text": "1. Open **Entra ID → Conditional Access → Policies → New policy**.\n2. Name: **{{policy.target.displayName}}**.\n3. Under **Users**, include **All users** and exclude the exclusions group you confirmed in Configure Emergency Exclusions.\n4. Target resources → Select resources: select the Inforcer application, **708861da-226e-4d65-a57a-24128df64524**. Match that application ID, not a similar name.\n5. Leave **Conditions → Client apps** unconfigured: an unconfigured condition already applies to every client app, and ticking the boxes writes a narrower policy than the target. Leave the session controls unconfigured too. Grant access: **Require multifactor authentication**.\n6. Set **Enable policy: Report-only** and create it. Do not choose **On** here: a policy created On applies to everyone it covers from the moment you save, before anyone has seen who it would have stopped — the failure this plan exists to prevent. The script for this step can only create in Report-only. Reopen the policy, compare its settings with the intended target and rescan.\n"
         },
         "entra.correct-conditions": {
           "meta": {
@@ -7535,7 +7535,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open **{{policy.current.displayName}}** (ID: **{{policy.current.id}}**). Keep its current state. Set Users to All users with the resolved exclusions, and Target resources to the Inforcer application, 708861da-226e-4d65-a57a-24128df64524. Leave **Conditions → Client apps** unconfigured, which is what reaches every client app; ticking the boxes writes a narrower policy than the target. Match the remaining conditions to Settings for This Action.\n"
+          "text": "Open **{{policy.current.displayName}}** (ID: **{{policy.current.id}}**). Keep its current state. Set Users to All users with the resolved exclusions, and Target resources to the Inforcer application, 708861da-226e-4d65-a57a-24128df64524. Leave **Conditions → Client apps** unconfigured, which is what reaches every client app; ticking the boxes writes a narrower policy than the target.\n"
         },
         "entra.correct-grant": {
           "meta": {
@@ -7607,7 +7607,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Open **{{policy.current.displayName}}** (ID: **{{policy.current.id}}**) and confirm its target and exclusions still match Settings for This Action.\n2. Review the observation evidence and test the intended Inforcer sign-in workflow with an account in scope.\n3.\n\nDo not turn it on unless all of these are true now:\n\n- The required report-only period is complete, with no failures on this policy in the sign-in records.\n- The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not.\n- Emergency access is prepared and tested.\n\nIf any one of them is not true, leave the policy in Report-only. Set **Enable policy: On** and save.\n4. Confirm the user can access Inforcer with MFA and emergency access still works, then rescan.\n"
+          "text": "1. Open **{{policy.current.displayName}}** (ID: **{{policy.current.id}}**) and confirm its target and exclusions are unchanged.\n2. Review the observation evidence and test the intended Inforcer sign-in workflow with an account in scope.\n3.\n\nDo not turn it on unless all of these are true now:\n\n- The required report-only period is complete, with no failures on this policy in the sign-in records.\n- The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not.\n- Emergency access is prepared and tested.\n\nIf any one of them is not true, leave the policy in Report-only. Set **Enable policy: On** and save.\n4. Confirm the user can access Inforcer with MFA and emergency access still works, then rescan.\n"
         },
         "json.target-policy": {
           "meta": {
@@ -21979,9 +21979,6 @@
         "supportBlocks": {
           "readiness": [
             "readiness.model"
-          ],
-          "troubleshooting": [
-            "troubleshooting.model"
           ]
         },
         "verifiedSources": [
@@ -22120,20 +22117,6 @@
             "kind": "referenceOnly"
           },
           "text": "{\n  \"tiles\": [],\n  \"whyIamaiSaysThis\": \"Microsoft recommends no gap between disabling Security Defaults and enabling the replacement Conditional Access protections.\",\n  \"whyIamAISaysThis\": {\n    \"sections\": {\n      \"whyItMatters\": \"Microsoft recommends no gap between disabling Security Defaults and enabling the replacement Conditional Access protections.\"\n    }\n  }\n}\n"
-        },
-        "troubleshooting.model": {
-          "meta": {
-            "id": "troubleshooting.model",
-            "channel": "troubleshooting",
-            "states": [
-              "readyToDisable",
-              "verificationRequired",
-              "inPlace"
-            ],
-            "format": "json",
-            "kind": "referenceOnly"
-          },
-          "text": "{\n  \"scenarios\": [\n    {\n      \"id\": \"protection-gap\",\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Verify the Security Defaults singleton and the intended replacement policies immediately.\"\n      ],\n      \"fix\": [\n        \"Complete the approved replacement cutover or use the coordinated rollback; do not leave both protection models inactive.\"\n      ],\n      \"then\": [\n        \"Rescan IAMAI.\"\n      ],\n      \"sources\": [\n        \"ms-sd\"\n      ],\n      \"states\": [\n        \"inPlace\"\n      ],\n      \"title\": \"Security Defaults is off but replacement Conditional Access protection is not active\"\n    },\n    {\n      \"id\": \"graph-403\",\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Verify Policy.Read.All plus Policy.ReadWrite.ConditionalAccess for write and an appropriate admin role.\"\n      ],\n      \"fix\": [\n        \"Reconnect with supported permissions/role and retry only the singleton patch.\"\n      ],\n      \"then\": [\n        \"Read the singleton back.\"\n      ],\n      \"sources\": [\n        \"ms-sd-graph\"\n      ],\n      \"states\": [\n        \"inPlace\"\n      ],\n      \"title\": \"Graph rejects the Security Defaults update\"\n    }\n  ]\n}\n"
         }
       }
     },

@@ -78,7 +78,9 @@ test('an unstarted policy waiting only on emergency access is held, never Ready,
       assert.equal(body.emergencyAccountTasks?.recommendedTaskId ?? null, null, `${where}: a recommended Implementation Task`)
       for (const card of policyCardsOf(c, body.emergencyAccountTasks)) {
         assert.equal(card.instruction, '', `${where}: "${card.instruction}" on the policy card`)
-        assert.equal(card.detail, engine.milestone.resolve, `${where}: "${card.detail}" on the policy card`)
+        // It names the task, and says nothing about the hold beside it (walk list section 4 item 20).
+        assert.equal(card.title, 'Create the policy in Report-only', `${where}: "${card.title}" on the policy card`)
+        assert.equal(card.detail, '', `${where}: "${card.detail}" on the policy card`)
       }
       // The export, print and prompt pack: no "create it now" beside the wait.
       const view = stepExportView(s, ctx(s), lane)

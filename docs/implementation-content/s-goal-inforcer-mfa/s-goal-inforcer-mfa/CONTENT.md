@@ -1,14 +1,14 @@
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
 1. Open **Entra ID → Conditional Access → Policies → New policy**.
 2. Name: **{{policy.target.displayName}}**.
-3. Users: **All users**. Apply the resolved exclusions shown in Settings for This Action.
+3. Under **Users**, include **All users** and exclude the exclusions group you confirmed in Configure Emergency Exclusions.
 4. Target resources → Select resources: select the Inforcer application, **708861da-226e-4d65-a57a-24128df64524**. Match that application ID, not a similar name.
 5. Leave **Conditions → Client apps** unconfigured: an unconfigured condition already applies to every client app, and ticking the boxes writes a narrower policy than the target. Leave the session controls unconfigured too. Grant access: **Require multifactor authentication**.
 6. Set **Enable policy: Report-only** and create it. Do not choose **On** here: a policy created On applies to everyone it covers from the moment you save, before anyone has seen who it would have stopped — the failure this plan exists to prevent. The script for this step can only create in Report-only. Reopen the policy, compare its settings with the intended target and rescan.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open **{{policy.current.displayName}}** (ID: **{{policy.current.id}}**). Keep its current state. Set Users to All users with the resolved exclusions, and Target resources to the Inforcer application, 708861da-226e-4d65-a57a-24128df64524. Leave **Conditions → Client apps** unconfigured, which is what reaches every client app; ticking the boxes writes a narrower policy than the target. Match the remaining conditions to Settings for This Action.
+Open **{{policy.current.displayName}}** (ID: **{{policy.current.id}}**). Keep its current state. Set Users to All users with the resolved exclusions, and Target resources to the Inforcer application, 708861da-226e-4d65-a57a-24128df64524. Leave **Conditions → Client apps** unconfigured, which is what reaches every client app; ticking the boxes writes a narrower policy than the target.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -34,7 +34,7 @@ Review this policy's Report-only results for sign-ins to Inforcer (application I
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-1. Open **{{policy.current.displayName}}** (ID: **{{policy.current.id}}**) and confirm its target and exclusions still match Settings for This Action.
+1. Open **{{policy.current.displayName}}** (ID: **{{policy.current.id}}**) and confirm its target and exclusions are unchanged.
 2. Review the observation evidence and test the intended Inforcer sign-in workflow with an account in scope.
 3.
 

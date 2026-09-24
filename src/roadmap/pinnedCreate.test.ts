@@ -41,7 +41,7 @@ const controls = (lines: readonly string[]): string[] =>
   lines.filter((l) => /^(?:Grant|Session) →/.test(l)).map((l) => l.replace(/(Require authentication strength): [^,;]+/, '$1'))
 const controlsOf = (body: unknown): string[] => controls(portalLines(policyFacts(body, new Map()), PORTAL))
 
-type Drawn = { instructions: string[]; facts: string[]; json: string | null }
+type Drawn = { instructions: string[]; task: string[]; json: string | null }
 
 /** Every step of the scenario's plan with what its body draws, the way the Plan draws it. */
 function drawnSteps(f: Fixture): { step: Step; drawn: () => Drawn }[] {
@@ -54,11 +54,11 @@ function drawnSteps(f: Fixture): { step: Step; drawn: () => Drawn }[] {
     drawn: () => {
       const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: step.reportOnlyAt ?? null, scheduledOn: waveStartOf(step), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming } as StepVarContext
       const body = stepBodyOf(step, ctx, { lane: laneViewFor(step, board), blockers: readinessBlockersOf(board.readings.get(step.id), board.titleOf), prerequisiteLabel })
-      const task = body.emergencyAccountTasks?.tasks[0]
+      const task = body.emergencyAccountTasks?.tasks.find((t) => t.id === 'create')
       return {
         instructions: body.instructions.portal ?? [],
-        // A fact is its setting line split at its first colon (policyTasks.ts portalProcedureOf): put back whole.
-        facts: (task?.facts ?? []).map((x) => (x.label === 'Setting' ? x.value : `${x.label}: ${x.value}`)),
+        // The create task's own lines (roadmap/policyProcedure.ts createLines).
+        task: task?.steps ?? [],
         json: body.artifacts.find((a) => a.id === 'json')?.text() ?? null,
       }
     },
@@ -88,8 +88,6 @@ test('on every scenario, no goal the pinned map holds is written from its own te
       const d = drawn()
       const said = controls(d.instructions)
       if (said.length > 0) assert.deepEqual(said, want, `${name}/${step.id}: the portal block`)
-      const facts = controls(d.facts)
-      if (facts.length > 0) assert.deepEqual(facts, want, `${name}/${step.id}: the Implementation Task's facts`)
       const json = d.json !== null && d.json.trim().startsWith('{') ? (JSON.parse(d.json) as Record<string, unknown>) : null
       if (json && 'grantControls' in json) assert.deepEqual(controlsOf(json), want, `${name}/${step.id}: the JSON channel`)
     }
@@ -112,7 +110,7 @@ test('mid: the High user-risk create requires risk remediation with the strength
   const d = hit.drawn()
   const want = 'Grant → Require risk remediation, Require authentication strength; Require all the selected controls'
   assert.ok(controls(d.instructions).includes(want), `portal block: ${JSON.stringify(controls(d.instructions))}`)
-  assert.ok(controls(d.facts).includes(want), `task facts: ${JSON.stringify(controls(d.facts))}`)
+  assert.ok(d.task.includes('Under **Grant**, select **Require risk remediation** and **Require authentication strength** → **Modern MFA + TAP**, then **Require all the selected controls**.'), `create task: ${JSON.stringify(d.task)}`)
   assert.ok(hit.step.action.json, 'the create is offered')
   assert.deepEqual(JSON.parse(hit.step.action.json).grantControls.builtInControls, ['riskRemediation'])
   // The Medium-risk step stays its own step (the risk-pair merge is v1.1).

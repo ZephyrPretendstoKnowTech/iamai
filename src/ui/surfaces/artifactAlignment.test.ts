@@ -216,7 +216,11 @@ test('013.B: unresolved operations retain useful portal guidance without invente
       const portal = body.artifacts.find(a => a.id === 'portal')
       if (portal) {
         assert.ok(portal.text().trim().length > 0, `${where}: empty displayed portal channel`)
-        assert.ok(v.whatToDo.length > 1, `${where}: useful displayed guidance missing from export`)
+        // A turn-on the step does not hand over yet is carried by what it waits
+        // on alone (stepExport.ts; 005.11): the screen keeps it as the step's
+        // task in every state, the export never offers it early.
+        const next = body.emergencyAccountTasks?.tasks.find((t) => t.required)
+        if (next?.title !== 'Turn the policy on') assert.ok(v.whatToDo.length > 1, `${where}: useful displayed guidance missing from export`)
       }
       assert.equal(v.whatToDo[0], stepContract(s, c.ctx(s), undefined, c.lane(s)).whatToDo.text, `${where}: readiness action no longer first`)
       // The completion is one line: the resolution where there is no policy to
