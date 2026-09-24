@@ -44,7 +44,7 @@ function coverage(snapshot: TenantSnapshot, groups: GroupMembers, mapping?: { br
   })
 }
 
-test('answering Setup never lowers coverage for an exclusion the answers justify', () => {
+test('answering Setup never lowers coverage for an exclusion the answers justify, and the break-glass-only group is suggested first', () => {
   const { snapshot, groups } = tenantWithExclusionGroup()
   const before = coverage(snapshot, groups)
   // Question 1 answered (break-glass = u-4), question 2 answered "does not exist yet".
@@ -64,10 +64,8 @@ test('answering Setup never lowers coverage for an exclusion the answers justify
   assert.ok(ex && ex.expected, 'the break-glass-only group is an expected exclusion')
   assert.match(ex.detail, /Breakglass Exclusion/)
   assert.doesNotMatch(ex.detail, /assumed/, 'confirmed answers carry no "assumed" note')
-})
 
-test('the exclusions group: the break-glass-only group is suggested first', () => {
-  const { snapshot, groups } = tenantWithExclusionGroup()
+  // And the break-glass-only group is the exclusions group suggested first.
   const g = groups.get(BG_GROUP)!
   const out = suggestGroups('globalExclusion', {
     snapshot,

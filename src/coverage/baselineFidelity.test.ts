@@ -41,7 +41,7 @@ const OTHER_APP = 'cc15fd57-2c6c-4117-a88c-83b1d56b4bbe'
 
 // ---------------------------------------------------------------- 1. inventory
 
-test('every pinned source policy is accounted for: mapped, a variant, or an unmapped Cleanup row', () => {
+test('every pinned source policy is accounted for, and the loaded package holds exactly the pinned set', () => {
   const built = goalMapFor(PINNED_POLICIES, new Map())
   const keys = PINNED_POLICIES.map((p) => policyKey(p))
   assert.equal(new Set(keys).size, keys.length, 'two pinned policies share a stable key, so one can stand in for the other')
@@ -58,9 +58,8 @@ test('every pinned source policy is accounted for: mapped, a variant, or an unma
   assert.deepEqual(missed, [], 'a pinned policy is in no bucket at all — it would disappear silently')
   assert.equal(mapped.size + variants.size + unmapped.size, PINNED_POLICIES.length, 'the buckets do not partition the pinned set')
   assert.equal(built.ties.length, 0, 'a tie maps nothing, so its policy would carry no consequence')
-})
 
-test('the product plans against the same number of policies the pin holds', () => {
+  // The product plans against the same number of policies the pin holds.
   const pkg = pinnedPackage()
   assert.equal(pkg.policies.length, PINNED_POLICIES.length, 'the loaded package dropped or added a policy against pinned truth')
   assert.equal(pkg.report.considered, PINNED_POLICIES.length)
@@ -92,9 +91,7 @@ test('renaming and reordering the pinned policies does not remap a goal', () => 
   const disguised = [...PINNED_POLICIES].reverse().map((p, i) => (p.id ? { ...p, displayName: `Renamed policy ${i}` } : p))
   const built = goalMapFor(disguised as CaPolicy[], new Map())
   assert.deepEqual(built.map, PINNED_GOAL_MAP, 'goal identity followed the display names, not the stable source identity')
-})
-
-test('the runtime reads the stored map rather than matching at render time', () => {
+  // The runtime reads the stored map rather than matching at render time.
   for (const [goalId, keys] of Object.entries(PINNED_GOAL_MAP)) {
     for (const k of keys) assert.ok(PINNED_POLICIES.some((p) => policyKey(p) === k), `${goalId} maps to ${k}, which is not a pinned policy`)
   }
@@ -258,7 +255,7 @@ const mfaGoal = (r: ReturnType<typeof computeCoverage>) => {
   return g
 }
 
-test('a tenant policy that differs only by an application exclusion is not the baseline member', () => {
+test('application scope: an extra exclusion is not the baseline member, the member\'s own exclusion is, and an unread filter proves nothing', () => {
   const g = mfaGoal(cover([mkTenantPolicy({ displayName: 'MFA all, minus one app' }, { excludeApplications: [OTHER_APP] })]))
   assert.notEqual(g.status, 'enforced', 'an application the baseline covers was excluded and the goal still read as in place')
   assert.equal(g.status, 'partial')
@@ -267,33 +264,28 @@ test('a tenant policy that differs only by an application exclusion is not the b
   assert.match(g.statement, /Covers fewer apps than the goal expects/)
   assert.equal(g.verdict, 'partly')
   assert.equal(g.gapSentence, 'covers fewer apps than the baseline')
-})
 
-test('a tenant policy that excludes exactly what the baseline member excludes is still equivalent', () => {
   // Fidelity runs both ways: the pinned member itself leaves Intune Enrollment
   // out, so a tenant that leaves the same application out matches it.
-  const g = mfaGoal(cover([mkTenantPolicy({ displayName: 'MFA all, same carve-out' }, { excludeApplications: [INTUNE_ENROLMENT] })]))
-  assert.equal(g.status, 'enforced', 'a tenant policy matching the baseline member exactly was demoted')
-  assert.equal(g.reasons.some((r) => r.kind === 'apps-excluded'), false)
+  const same = mfaGoal(cover([mkTenantPolicy({ displayName: 'MFA all, same carve-out' }, { excludeApplications: [INTUNE_ENROLMENT] })]))
+  assert.equal(same.status, 'enforced', 'a tenant policy matching the baseline member exactly was demoted')
+  assert.equal(same.reasons.some((r) => r.kind === 'apps-excluded'), false)
+
+  // An application filter IAMAI does not evaluate cannot prove full application scope.
+  const filtered = mfaGoal(cover([mkTenantPolicy({ displayName: 'MFA all, filtered' }, { applicationFilter: { mode: 'include', rule: 'app.assignedName -contains "Finance"' } })]))
+  assert.notEqual(filtered.status, 'enforced', 'an unread filter rule was treated as all applications')
+  assert.ok(filtered.reasons.some((r) => r.kind === 'apps-excluded'))
 })
 
-test('an application filter IAMAI does not evaluate cannot prove full application scope', () => {
-  const g = mfaGoal(cover([mkTenantPolicy({ displayName: 'MFA all, filtered' }, { applicationFilter: { mode: 'include', rule: 'app.assignedName -contains "Finance"' } })]))
-  assert.notEqual(g.status, 'enforced', 'an unread filter rule was treated as all applications')
-  assert.ok(g.reasons.some((r) => r.kind === 'apps-excluded'))
-})
-
-test('a tenant policy covering part of the required users cannot raise the whole goal', () => {
+test('a tenant policy covering part of the required users cannot raise the whole goal, however strong its control', () => {
   const groups: GroupMembers = new Map([['g1', { memberIds: ['u1'], memberCount: 1, sampled: false, displayName: 'One team' }]])
   const g = mfaGoal(cover([mkTenantPolicy({ displayName: 'MFA for one team' }, {}, { includeUsers: [], includeGroups: ['g1'] })], { groupMembers: groups }))
   assert.notEqual(g.status, 'enforced')
   assert.equal(g.enforcedIds.length < 6, true, 'a one-group policy was credited with the whole population')
   assert.equal(g.floorRaised, null, 'a narrow tenant policy raised a floor')
-})
 
-test('a stronger control on a narrower population is still not full coverage', () => {
-  const groups: GroupMembers = new Map([['g1', { memberIds: ['u1'], memberCount: 1, sampled: false, displayName: 'One team' }]])
-  const g = mfaGoal(
+  // A stronger control on the same narrower population is still not full coverage.
+  const stronger = mfaGoal(
     cover(
       [
         mkTenantPolicy(
@@ -305,11 +297,11 @@ test('a stronger control on a narrower population is still not full coverage', (
       { groupMembers: groups },
     ),
   )
-  assert.notEqual(g.status, 'enforced', 'strength stood in for scope')
-  assert.equal(g.floorRaised, null, 'a narrow tenant policy raised the goal floor by being stronger')
+  assert.notEqual(stronger.status, 'enforced', 'strength stood in for scope')
+  assert.equal(stronger.floorRaised, null, 'a narrow tenant policy raised the goal floor by being stronger')
 })
 
-test('an unreadable semantic stays unknown: never equivalent, full, safe or absent', () => {
+test('an unreadable semantic stays unknown: never equivalent, full, safe or absent; an unsupported signature key fails closed', async () => {
   // The policy targets a group nothing in the scan read, so who it reaches is
   // unknown; the goal may not resolve that either way.
   const g = mfaGoal(cover([mkTenantPolicy({ displayName: 'MFA via a group nothing read' }, {}, { includeUsers: [], includeGroups: ['g-never-read'] })]))
@@ -317,9 +309,7 @@ test('an unreadable semantic stays unknown: never equivalent, full, safe or abse
   assert.equal(g.verdict, 'unknown')
   assert.equal(g.enforcedIds.length, 0, 'unknown reach was counted as covered')
   assert.notEqual(g.status, 'absent', 'unknown became absent, which is a claim the evidence does not support')
-})
-
-test('an unsupported signature key fails closed rather than matching', async () => {
+  // An unsupported signature key fails closed rather than matching.
   const { matchesSignature } = await import('./classify.ts')
   const { policyFacts } = await import('./facts.ts')
   const facts = policyFacts(mkTenantPolicy(), buildStrengthLookup([]))
@@ -389,9 +379,8 @@ test('the Admin Portal conflict is bound to the source policy this package carri
   // that does not carry the reviewed policy conflicts nothing, because there is
   // no source there to contradict itself.
   assert.deepEqual([...baselineConflicts(PINNED_GOAL_MAP, { policies: [] }).keys()], [], 'a package with no reviewed source inherited the conflict from the pinned map')
-})
 
-test('the conflicted step offers nothing and the rest of the plan still works', () => {
+  // The conflicted step offers nothing and the rest of the plan still works.
   const r = runFixture(fixture('demo-week2'))
   const step = r.steps.find((s) => s.goalId === 'admin-portals-protected')
   assert.ok(step, 'the admin-portals step is in the plan')
@@ -449,7 +438,7 @@ test('whole path: pinned member to goal identity to classification to coverage t
 // (classify.ts narrowerApps), and the duplicate is gone. The goal's own template
 // is held to the same rule in coverage.test.ts.
 
-test('no implementation expects all applications while its own template names fewer', () => {
+test('no implementation expects all applications while its own template names fewer, and every label names its template\'s resources', () => {
   // require-managed-device had the same disagreement: it expects All resources
   // (the pinned policy's scope, prompt 51) over a template on Office 365. Where
   // a baseline holds no compliant-device policy that template is the reference,
@@ -464,6 +453,21 @@ test('no implementation expects all applications while its own template names fe
     }
   }
   assert.deepEqual(wrong, [], 'a goal expects all applications of a policy its own template scopes to fewer')
+
+  // The same for the two Microsoft groups: byod-session-controls was labelled
+  // Office 365 over a template on All resources. A goal's application label
+  // names the same resources its own template targets.
+  const group: Record<string, string> = { all: 'All', office365: 'Office365', adminPortals: 'MicrosoftAdminPortals' }
+  const mislabelled: string[] = []
+  for (const goal of CATALOGUE) {
+    for (const [i, impl] of goal.implementations.entries()) {
+      const want = group[impl.expectedApps]
+      if (impl.kind !== 'ca' || want === undefined) continue
+      const apps = (impl.template as { conditions?: { applications?: { includeApplications?: unknown } } }).conditions?.applications?.includeApplications
+      if (!(Array.isArray(apps) && apps.length === 1 && apps[0] === want)) mislabelled.push(`${goal.id}[${i}] ${impl.expectedApps}: ${JSON.stringify(apps)}`)
+    }
+  }
+  assert.deepEqual(mislabelled, [], 'a goal is labelled with one set of resources and its template targets another')
 })
 
 test('every pinned member, switched on in the tenant as it stands, is never read as covering fewer applications than its goal expects', () => {
@@ -495,9 +499,8 @@ test('every pinned member, switched on in the tenant as it stands, is never read
   assert.ok(judged.includes('token-protection'), 'the token-protection member was not judged at all')
   assert.ok(judged.length >= 20, `only ${judged.length} goals were judged`)
   assert.deepEqual(narrower, [], 'the baseline\'s own policy reads as covering fewer apps than its goal expects, so following the step can never finish it')
-})
 
-test('an enforced tenant policy equal to the pinned token-protection member is the goal in place', () => {
+  // An enforced tenant policy equal to the pinned token-protection member is the goal in place.
   const member = PINNED_POLICIES.find((p) => p.displayName === 'IAC - GLOBAL - SESSION - Windows - TokenProtection')!
   const tenant = { ...structuredClone(member), id: 'tenant-token-protection', displayName: 'Tenant token protection', state: 'enabled', conditions: { ...structuredClone(member.conditions), users: { includeUsers: ['All'], excludeUsers: [], includeGroups: [], excludeGroups: [], includeRoles: [], excludeRoles: [] } } } as unknown as Raw
   const r = cover([tenant], { baselinePolicies: [member], goalMap: { 'token-protection': [policyKey(member)] } })
@@ -526,9 +529,8 @@ test('resources are judged against the pinned member: fewer token-protection res
   const own = a?.candidates.find((c) => c.policyId === 'tenant-admin-portals')
   assert.ok(own, 'the portal policy is the goal\'s candidate')
   assert.equal(own.caveats.includes('apps-narrower'), false, 'a portal policy is told to add the applications the pinned policy names beside the portals')
-})
 
-test('a goal the pinned map does not hold is judged against its own template, never another goal\'s policy', () => {
+  // A goal the pinned map does not hold is judged against its own template, never another goal's policy.
   // Review of a27fb72d: narrowerApps read the reference coverage keeps for
   // conditions, which for a goal the map does not hold is whatever pinned policy
   // its signature matches. For azure-management-mfa that is the admin-portal
@@ -538,33 +540,12 @@ test('a goal the pinned map does not hold is judged against its own template, ne
   // place in the findings and the plan checkpoint. No step renders such a goal:
   // generate.ts sourcesFor gives it no source, and a step for it would write
   // the goal's own template, so that is what its resources are judged against.
-  const users = { includeUsers: ['All'], excludeUsers: [], includeGroups: [], excludeGroups: [], includeRoles: [], excludeRoles: [] }
   const azure = { id: 'tenant-azure-mfa', displayName: 'Tenant Azure management MFA', state: 'enabled', conditions: { users, applications: { includeApplications: ['797f4846-ba00-4fd7-ba43-dac1f8f63013'], excludeApplications: [] }, clientAppTypes: ['all'] }, grantControls: { operator: 'OR', builtInControls: ['mfa'] }, sessionControls: null } as unknown as Raw
   assert.deepEqual(PINNED_GOAL_MAP['azure-management-mfa'] ?? [], [], 'the premise: the pinned map does not hold Azure management')
   const r = cover([azure], { baselinePolicies: PINNED_POLICIES, goalMap: PINNED_GOAL_MAP }).results.find((x) => x.goal.id === 'azure-management-mfa')
-  const own = r?.candidates.find((c) => c.policyId === 'tenant-azure-mfa')
-  assert.ok(own, 'the premise: the tenant policy is the goal\'s candidate')
-  assert.equal(own.caveats.includes('apps-narrower'), false, 'an MFA policy on Azure management reads as covering fewer apps than the admin-portal block beside it')
+  const azureOwn = r?.candidates.find((c) => c.policyId === 'tenant-azure-mfa')
+  assert.ok(azureOwn, 'the premise: the tenant policy is the goal\'s candidate')
+  assert.equal(azureOwn.caveats.includes('apps-narrower'), false, 'an MFA policy on Azure management reads as covering fewer apps than the admin-portal block beside it')
   assert.equal(r?.reasons.some((x) => x.kind === 'apps-narrower'), false)
   assert.equal(r?.status, 'enforced')
-})
-
-test('a goal\'s application label names the same resources its own template targets', () => {
-  // The same disagreement a27fb72d removed for "all", for the two Microsoft
-  // groups: byod-session-controls was labelled Office 365 over a template on All
-  // resources. With the template the reference for a goal the map does not hold,
-  // a tenant's BYOD policy on Office 365 read "covers fewer apps than the goal
-  // expects", against the goal's own label. Its template now targets Office 365,
-  // Microsoft's own scope for application-enforced restrictions.
-  const group: Record<string, string> = { all: 'All', office365: 'Office365', adminPortals: 'MicrosoftAdminPortals' }
-  const wrong: string[] = []
-  for (const goal of CATALOGUE) {
-    for (const [i, impl] of goal.implementations.entries()) {
-      const want = group[impl.expectedApps]
-      if (impl.kind !== 'ca' || want === undefined) continue
-      const apps = (impl.template as { conditions?: { applications?: { includeApplications?: unknown } } }).conditions?.applications?.includeApplications
-      if (!(Array.isArray(apps) && apps.length === 1 && apps[0] === want)) wrong.push(`${goal.id}[${i}] ${impl.expectedApps}: ${JSON.stringify(apps)}`)
-    }
-  }
-  assert.deepEqual(wrong, [], 'a goal is labelled with one set of resources and its template targets another')
 })

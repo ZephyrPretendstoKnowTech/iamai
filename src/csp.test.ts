@@ -17,6 +17,9 @@ test('the planner may reach only the hosts it requests, and runs no inline or ev
   assert.ok(!directive(p, 'script-src').includes("'unsafe-inline'"))
   assert.deepEqual(directive(p, 'object-src'), ["'none'"])
   assert.ok(!/frame-ancestors/.test(p), 'frame-ancestors is ignored in a meta policy; it is a header')
+  // The planner build writes the policy; the dev server does not.
+  const src = readFileSync('vite.config.ts', 'utf8')
+  assert.match(src, /name: 'content-security-policy',\s*apply: 'build',\s*transformIndexHtml\(html\) \{\s*return withCsp\(html, plannerCsp\(\)\)/)
 })
 
 test('the home page allows its own inline scripts by hash and fetches nothing', () => {
@@ -27,19 +30,8 @@ test('the home page allows its own inline scripts by hash and fetches nothing', 
   assert.ok(directive(p, 'script-src').includes(`'${hash}'`))
   assert.ok(!directive(p, 'script-src').includes("'unsafe-inline'"))
   assert.deepEqual(directive(p, 'frame-src'), ["'none'"])
-})
-
-test('the policy is placed straight after the charset, once', () => {
-  const out = withCsp('<head>\n    <meta charset="UTF-8" />\n    <title>x</title>', 'default-src \'self\'')
-  assert.match(out, /<meta charset="UTF-8" \/>\n {4}<meta http-equiv="Content-Security-Policy" content="default-src 'self'" \/>\n {4}<title>/)
-  assert.throws(() => withCsp(out, 'x'), /already carries/)
-  assert.throws(() => withCsp('<head></head>', 'x'), /no <meta charset>/)
-})
-
-test('the assembled home page carries the hash of the script it publishes', () => {
-  const html = readFileSync('home/index.html', 'utf8')
-  const sheets = { 'home.css': readFileSync('home/home.css', 'utf8'), 'theme.css': readFileSync('home/theme.css', 'utf8') }
-  const page = assembleHome(html, sheets, 'planner')['index.html']
+  // The assembled home page carries the hash of the script it publishes.
+  const page = assembleHome(readFileSync('home/index.html', 'utf8'), { 'home.css': readFileSync('home/home.css', 'utf8'), 'theme.css': readFileSync('home/theme.css', 'utf8') }, 'planner')['index.html']
   const meta = page.match(/<meta http-equiv="Content-Security-Policy" content="([^"]+)" \/>/)
   assert.ok(meta, 'no policy on the assembled home page')
   const withoutMeta = page.replace(meta[0], '')
@@ -47,7 +39,9 @@ test('the assembled home page carries the hash of the script it publishes', () =
   assert.ok(inlineScriptHashes(withoutMeta).length > 0, 'the home page publishes its theme script inline')
 })
 
-test('the planner build writes the policy; the dev server does not', () => {
-  const src = readFileSync('vite.config.ts', 'utf8')
-  assert.match(src, /name: 'content-security-policy',\s*apply: 'build',\s*transformIndexHtml\(html\) \{\s*return withCsp\(html, plannerCsp\(\)\)/)
+test('the policy is placed straight after the charset, once', () => {
+  const out = withCsp('<head>\n    <meta charset="UTF-8" />\n    <title>x</title>', 'default-src \'self\'')
+  assert.match(out, /<meta charset="UTF-8" \/>\n {4}<meta http-equiv="Content-Security-Policy" content="default-src 'self'" \/>\n {4}<title>/)
+  assert.throws(() => withCsp(out, 'x'), /already carries/)
+  assert.throws(() => withCsp('<head></head>', 'x'), /no <meta charset>/)
 })
