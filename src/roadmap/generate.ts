@@ -1480,17 +1480,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         setState(s, { satisfied: true, inPlace: true })
         s.deliveredBy = ['Security Defaults is disabled in the scanned tenant configuration.']
       }
-    } else if (snapshot.config.securityDefaults?.status === 'ok' && secDefaults?.isEnabled === true) {
-      // The invariant this step owns, checked against what the tenant actually
-      // holds. The plan says it in its own voice — "nothing in this plan
-      // enforces before this step" — and a reader enforced eight policies with
-      // security defaults still on, swept all thirty-three steps, and found no
-      // warning anywhere: the board read Completed and the tile said "IAMAI
-      // watched it get there." The step that states the rule is the one place
-      // that has to notice it has been broken.
-      const enforced = ((snapshot.config.caPolicies?.rows ?? []) as { state?: string }[]).filter((p) => p.state === 'enabled').length
-      if (enforced > 0) s.readiness.lines = [fillText(app.plan.securityDefaultsCoexist, { n: enforced }), ...s.readiness.lines]
     }
+    // (No line for Conditional Access policies enforced beside security defaults
+    // on: Entra does not let a policy go On while they are, so no tenant reads
+    // that way, and the step built a contingency for it; walk list 4.x item 49.)
     steps.push(s)
   }
   // Per-user MFA still on: a conflict named up front (roadmap-v2.md §7, messy).

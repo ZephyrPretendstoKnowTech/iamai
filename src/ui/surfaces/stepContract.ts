@@ -744,22 +744,8 @@ const found = (key: string, text: string): ContractFound => ({ key, label: CONTR
  * whatever the observation had to say about what changed. Nothing is invented to
  * fill the section, and an unknown is never written down as a zero.
  */
-/** The step that owns the security-defaults ordering invariant, and so the one that reports it broken. */
-const SECURITY_DEFAULTS_STEP_ID = 's-prereq-security-defaults'
-
 function foundOf(step: Step, tenant: string, said: string | null, routeStart: StepContract['routeStart'] = null, labels: ReadonlyMap<string, string> | null = null, operatorId: string | null = null): ContractFound[] {
   const out: ContractFound[] = []
-  // The one step that states the ordering invariant is the one that has to
-  // notice it has been broken. A reader enforced eight policies with security
-  // defaults still on, swept all thirty-three steps, and found no warning
-  // anywhere — the board read Completed and the tile said "IAMAI watched it get
-  // there." The generator writes the count onto this step's readiness
-  // (generate.ts); a step with no threshold renders none of its readiness, so
-  // it is said here, where a finding about the tenant belongs.
-  if (step.id === SECURITY_DEFAULTS_STEP_ID) {
-    const line = step.readiness.lines.find((l) => l.includes(app.plan.securityDefaultsCoexist.split('{')[0].trim()))
-    if (line !== undefined) out.push(found('readiness', line))
-  }
   const gate = step.action.readinessGate
   // The same sentence the Threshold card says, with the same start of its route's
   // chain (StepContract.routeStart): the finding the Evidence dialog, the printed
@@ -2110,6 +2096,9 @@ function followUpOf(step: Step, ctx: StepVarContext): StepContract['followUp'] {
  * and where to disable them. Up to five by name; past that, the step that
  * disables them lists them. Not once the step is finished.
  */
+/** The most dormant accounts Require MFA for Everyone's card names before it points at the step that lists them. */
+const DORMANT_NAMED = 20
+
 function dormantOf(step: Step, ctx: StepVarContext): StepContract['dormant'] {
   const ids = step.dormantWithoutMethod ?? []
   if (ids.length === 0 || step.status === 'done' || step.status === 'skipped') return null
@@ -2117,7 +2106,9 @@ function dormantOf(step: Step, ctx: StepVarContext): StepContract['dormant'] {
   const labels = personLabels(ctx.snapshot.users, { address: true })
   const step31 = stepById[DORMANT_STEP_ID]?.title ?? DORMANT_STEP_ID
   const value = ids.length === 1 ? W.valueOne : fillText(W.value, { n: ids.length })
-  const text = ids.length > GATE_NAMES_UP_TO ? fillText(W.listed, { step: step31 })
+  // Every one by name (walk list 4.x item 10, "…no method: {names}"): the five-name
+  // cap was the admin gate's (item 42), and getiamai read "9 accounts" naming none.
+  const text = ids.length > DORMANT_NAMED ? fillText(W.listed, { step: step31 })
     : fillText(W.names, { names: list(ids.map((id) => labels.get(id) ?? ctx.nameOf(id))), step: step31 })
   return { value, text }
 }

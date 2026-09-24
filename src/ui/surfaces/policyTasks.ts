@@ -150,6 +150,8 @@ type ProcedureMember = {
   correction: string[]
   /** Whether Configure Emergency Exclusions adds the exclusions group to it (afterExclusionsEdit). */
   exclusionsEdit?: boolean
+  /** The name the create writes, where it is not the name the other tasks open (a goal a tenant policy delivers). */
+  createName?: string
 }
 
 const PW = PROCEDURE as unknown as { tasks: Record<string, string>; card: Record<string, string> }
@@ -282,6 +284,10 @@ function membersOf(step: Step, input: PolicyProcedureInput, ctx: ProcedureContex
     const correction = row && unwritten.length > 0 ? correctionSettings(row, step.action.intended!, ctx, dims.sections, dims.conditions) : []
     out.push({
       name: String(row?.displayName ?? delivering ?? body.displayName ?? ''),
+      // The create names the plan's own policy, never the tenant's that delivers
+      // the goal (walk list 4.x item 18): following it made a second, different
+      // policy under that one's name.
+      createName: typeof body.displayName === 'string' && body.displayName !== '' ? body.displayName : undefined,
       create: { body, baseline: baseline ?? null },
       exists: true,
       on: row !== null ? row.state === 'enabled' : true,
@@ -406,7 +412,7 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   const creates = members.filter((m) => m.create !== null)
   // What the create needs first (the authentication context it targets), only while the policy is still to be made.
   const toCreate = members.some((m) => !m.exists)
-  tasks.push(task('create', 'create', [...input.before, ...(toCreate ? input.extras?.createFirst ?? [] : []), ...creates.flatMap((m) => createLines(m.create!.body, ctx, { name: m.name || String(m.create!.body.displayName ?? ''), baseline: m.create!.baseline }))], toCreate))
+  tasks.push(task('create', 'create', [...input.before, ...(toCreate ? input.extras?.createFirst ?? [] : []), ...creates.flatMap((m) => createLines(m.create!.body, ctx, { name: m.createName ?? (m.name || String(m.create!.body.displayName ?? '')), baseline: m.create!.baseline }))], toCreate))
   // A policy the tenant switched off goes back through Report-only, whatever
   // else the step waits on: Report-only denies nobody (owner, 2026-09-23). The
   // step's tracking names each one (operations.ts switchedOffPolicies).
@@ -428,7 +434,7 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   // On line.
   const reason = unavailableReason(step)
   const waits = turnOnWaitsOf(step, input)
-  const holds = policyHold(step) === 'prerequisite-unmet' || SAFETY_HOLDS.has(reason ?? '') || enforcementHeld(step) || (step.mailAccountsToMove?.length ?? 0) > 0 || ((readyWhen(step)?.failures ?? 0) > 0 && step.state.lifecycle === 'report-only')
+  const holds = policyHold(step) === 'prerequisite-unmet' || (step.action.enforceWaitsOn?.length ?? 0) > 0 || SAFETY_HOLDS.has(reason ?? '') || enforcementHeld(step) || (step.mailAccountsToMove?.length ?? 0) > 0 || ((readyWhen(step)?.failures ?? 0) > 0 && step.state.lifecycle === 'report-only')
   const turnOnHeld = holds && members.some((m) => !m.on) && (waits.length > 0 || input.contract.milestone.label !== '')
   const heldLine = waits.length > 0 ? fillText(app.plan.enforceOutstanding, { items: list(waits.map((w) => w.wait)) }) : input.contract.milestone.label
   tasks.push(task('turn-on', 'turnOn', turnOnHeld ? [heldLine] : members.flatMap((m) => turnOnLines(m.name || String(m.create?.body.displayName ?? ''))), !step.state.satisfied && members.some((m) => !m.on)))

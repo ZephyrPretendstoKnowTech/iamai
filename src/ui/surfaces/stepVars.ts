@@ -363,13 +363,16 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   for (const [i, t] of (step.turnsOn ?? []).entries()) v[`turnOn${i + 1}`] = t.policy
 
   // Finish Moving Off Per-User MFA: the accounts the scan reads on (its
-  // population, roadmap/manualWork.ts), counted on its card and, five or fewer,
+  // population, roadmap/manualWork.ts), counted on its card and, twenty or fewer,
   // named with their sign-in addresses on the card and in its task (walk list
   // 4.x items 55 and 57).
+  const PER_USER_NAMED = 20
   if (step.id === PER_USER_MFA_STEP_ID && step.population.ids.length > 0) {
     const ids = step.population.ids
     v.perUserOn = count(ids.length, 'account')
-    if (ids.length <= NAMES_INLINE) {
+    // Every one of them up to twenty (walk list 4.x item 55, the checkers' reading):
+    // a Business Premium tenant's list is short, and "7 accounts" named nobody.
+    if (ids.length <= PER_USER_NAMED) {
       const labels = personLabels(ctx.snapshot.users, { address: true })
       const names = ids.map((id) => labels.get(id) ?? ctx.nameOf(id))
       v.perUserNames = names.join(', ')

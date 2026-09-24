@@ -250,7 +250,10 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
     // The window closed over records that were read: what they show can be reviewed now,
     // though it has not cleared the gate (time alone never does).
     const reviewable = ready !== null && ready.kind === 'since' && ready.read && ready.failures !== null
-    gates.push({ id: 'evidence:observation', satisfied: lifecycle === 'ready-to-enforce' || lifecycle === 'enforced', minDays: observationWindowDays(step), reason: ready ? readyBasis(ready) : null, ...(reviewable ? { reviewable } : {}), ...(ready ? { until: ready.date } : {}) })
+    // A week that is over with clear records is done, whatever else holds the
+    // turn-on (walk list 4.x items 11 and 28): the row read "Report-only until
+    // Sep 4, 2026" on Sep 15 while Prepare Emergency Access Accounts held it.
+    gates.push({ id: 'evidence:observation', satisfied: lifecycle === 'ready-to-enforce' || lifecycle === 'enforced' || ready?.kind === 'now', minDays: observationWindowDays(step), reason: ready ? readyBasis(ready) : null, ...(reviewable ? { reviewable } : {}), ...(ready ? { until: ready.date } : {}) })
   }
   // A policy the plan cannot write as it stands (the legacy `unavailable` hold). A missing
   // object is Action.missing below, the baseline conflict is the condition above, an unmet
@@ -287,7 +290,9 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
     kind: decides ? 'decision' : policy ? 'policy' : undefined,
     exists,
     drift,
-    evidenceSatisfied: lifecycle === 'ready-to-enforce' || lifecycle === 'enforced',
+    // A report-only week that is over with clear records is done, whatever else
+    // holds the turn-on (walk list 4.x items 11 and 28).
+    evidenceSatisfied: lifecycle === 'ready-to-enforce' || lifecycle === 'enforced' || (policy && exists && readyWhen(step)?.kind === 'now'),
     enforced: lifecycle === 'enforced',
     complete: done || step.doesntApply != null,
     milestones,
