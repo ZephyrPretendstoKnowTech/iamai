@@ -171,7 +171,7 @@ Its report-only period showed no sign-in it would have stopped.
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}
 
-State: the MFA-for-everyone step cannot proceed yet. Known blockers or decisions: {{dependencies.blockers}}. These must be resolved before the policy is created or changed; an added exclusion does not resolve them.
+**Require MFA for Everyone** waits for {{dependencies.waits}}. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-licensed","channel":"aiInfo","states":["notLicensed"],"format":"markdown","kind":"template"}

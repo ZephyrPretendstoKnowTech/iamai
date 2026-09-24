@@ -631,7 +631,8 @@ function noteFor(continuity: ObservationContinuity, changed: ObservationChanged,
  */
 export function watchedArrive(step: Pick<Step, 'state'>): boolean {
   const obs = step.state.observation
-  return obs?.latest.since === 'observed-change'
+  // A policy found On and edited since was not watched getting there (walk list 4.x item 26).
+  return (obs?.latest.since === 'observed-change' && obs.latest.neverObserved !== true)
     || obs?.prior?.state === 'absent'
     || step.state.members.some((m) => m.change.prior?.state === 'absent')
 }

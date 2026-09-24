@@ -171,7 +171,7 @@ Its report-only period showed no sign-in it would have stopped.
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}
 
-The administrator authentication-strength policy cannot proceed yet. Blockers: {{dependencies.blockers}}. Resolving them should not add role exclusions or weaken the grant.
+**Require Phishing-Resistant MFA for Admins** waits for {{dependencies.waits}}. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-licensed","channel":"aiInfo","states":["notLicensed"],"format":"markdown","kind":"template"}
