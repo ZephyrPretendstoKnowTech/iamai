@@ -195,7 +195,7 @@ Please tell IT about older mail clients, printers or applications that still use
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["missing","partial","reportOnly","readyToEnforce","inPlace","blocked","needsDecision"],"format":"markdown","kind":"template"}
-Review observed use and ask owners about infrequent jobs. No events in the available records does not prove there are no dependencies. Ready only when the intended exclusions and the service-account and mail-device decisions are resolved, recent legacy use has been reviewed, and Report-only results show no unexplained legitimate dependency.
+Review observed use and ask owners about infrequent jobs. Ready only when the intended exclusions and the service-account and mail-device decisions are resolved, recent legacy use has been reviewed, and Report-only results show no unexplained legitimate dependency.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["missing","partial","reportOnly","readyToEnforce","inPlace"],"format":"markdown","kind":"template"}
