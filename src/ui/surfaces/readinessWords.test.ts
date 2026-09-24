@@ -183,9 +183,13 @@ test('a readiness threshold stated as a percentage also states the reading behin
       if (step.state.lifecycle === 'enforced') continue
       checked++
       const said = readinessSentence(step, gate)
-      assert.ok(said.includes(gate.value), `${name}/${step.id}: ${said}`)
+      // The percentage is the card's value (readinessValueOf); the sentence is
+      // the reading behind it (walk list 4.x item 48).
       // An enforced policy is not waiting for the number, so it states the floor
       // alone; the count is the finished-rollout card's (enforced-readiness).
+      // The admin card's count is its value, and its sentence names the admins
+      // short instead (walk list 4.x item 42).
+      if (/^admin/.test(gate.measure)) continue
       assert.ok(said.includes(line), `${name}/${step.id}: the reading is not said`)
     }
   }
@@ -258,7 +262,7 @@ test('every readiness gate holding a step names what moves the number', () => {
       assert.ok(said.includes(gate.route), `${name}/${step.id}: the route is on the gate and not in the sentence — ${said}`)
       // Last, after the reading: between a threshold and its own numerator it
       // reads as an interruption.
-      assert.ok(said.trim().endsWith(`${gate.route}”.`), `${name}/${step.id}: the route is not the last thing said — ${said}`)
+      assert.ok(said.trim().endsWith(`${gate.route}”.`) || said.trim().endsWith(`${gate.route} gets them ready.`), `${name}/${step.id}: the route is not the last thing said — ${said}`)
     }
   }
   assert.ok(checked > 10, `only ${checked} gates were held`)
@@ -371,7 +375,6 @@ test('a readiness the scan could only put a floor under says the floor, and says
       floors += 1
       // The floor is a real share of a real denominator, and the reading behind it.
       assert.match(readinessValueOf(gate), /^At least [0-9]+%/, `${name}/${step.id}`)
-      assert.match(said, /At least [0-9]+%/, `${name}/${step.id}: ${said}`)
       assert.doesNotMatch(said, /not measured/, `${name}/${step.id}: ${said}`)
       // An enforced policy is not waiting for the number, so it states the floor
       // alone; the count is the finished-rollout card's (enforced-readiness).
@@ -526,19 +529,19 @@ test('a readiness number is labelled by the strength its policies require, so tw
   const registerTile = gateTile(bodies.get('s-goal-register-info-protected'))!
   assert.doesNotMatch(deviceTile.value, /MFA-ready/, 'a strength-bound number labelled as plain MFA')
   assert.match(deviceTile.value, /ready for Modern MFA \+ TAP$/)
-  assert.match(deviceTile.note ?? '', /Modern MFA \+ TAP readiness/, 'the card\'s sentence names what it waits for')
   assert.match(registerTile.value, /MFA-ready$/, 'the plain-MFA policy keeps its words')
   assert.notEqual(deviceTile.value.replace(/^(At least )?\d+% /, ''), registerTile.value.replace(/^(At least )?\d+% /, ''), 'two requirements under one label')
   // The row's reason states the same measure.
   const binding = device.blockers.find((b) => b.kind === 'readiness' && b.label === 'readiness')?.binding
   assert.match(String(binding), /^when Modern MFA \+ TAP readiness reaches 90%/)
   // The admins' policy keeps "phishing-resistant" where it requires Phishing-resistant MFA...
-  assert.match(gateTile(bodies.get('s-goal-admins-phishing-resistant'))!.value, /of admins phishing-resistant$/)
+  // The admins' card counts admins with a method the policy accepts, whatever it requires (walk list 4.x item 42).
+  assert.match(gateTile(bodies.get('s-goal-admins-phishing-resistant'))!.value, /^\d+ of \d+ admins? ha(?:s|ve) a method it accepts$/)
   // ...and on the pin, where it requires Modern MFA + TAP, it no longer claims it.
   const pinned = { ...fixture('small'), baseline: pinnedPackage() }
   const admins = gateTile(bodiesOf(pinned).get('s-goal-admins-phishing-resistant'))!
   assert.doesNotMatch(admins.value, /phishing-resistant/, `a Modern MFA + TAP number labelled phishing-resistant: ${admins.value}`)
-  assert.match(admins.value, /of admins ready for Modern MFA \+ TAP$/)
+  assert.match(admins.value, /^\d+ of \d+ admins? ha(?:s|ve) a method it accepts$/)
   // The plan header counts that step under the same words, not the family's.
   assert.deepEqual(planFinish(runFixture(pinned).steps).waiting.map((w) => w.measure), ['admin Modern MFA + TAP readiness'])
 })

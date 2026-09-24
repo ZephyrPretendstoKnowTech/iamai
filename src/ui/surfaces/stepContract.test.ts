@@ -22,7 +22,7 @@ import { operatorExclusionsDecision, exclusionsGroupCandidates } from '../../map
 import { activePeopleIds } from '../../derive/population.ts'
 import { notPeopleIds } from '../../derive/sets.ts'
 import type { Step } from '../../roadmap/types.ts'
-import { readinessOf, readinessSentence, stepContract } from './stepContract.ts'
+import { readinessOf, readinessSentence, readinessValueOf, stepContract } from './stepContract.ts'
 import type { StepContract } from './stepContract.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -339,8 +339,8 @@ test('a readiness gate with no number states its threshold and claims no number'
       }
       if (gate.floor !== true) continue
       floored += 1
-      // What used to be a dead end: the reading is said, and marked as a floor.
-      assert.match(text, /At least [0-9]+%/, `${name}/${step.id}: ${text}`)
+      // What used to be a dead end: the reading is said, and the card's value marks it as a floor.
+      assert.match(readinessValueOf(gate), /At least [0-9]+%/, `${name}/${step.id}: ${text}`)
       if (step.state.lifecycle !== 'enforced' && typeof line === 'string' && line.length > 0) assert.ok(text.includes(line), `${name}/${step.id}: the gate does not say what could not be measured — ${text}`)
     }
   }
@@ -350,7 +350,7 @@ test('a readiness gate with no number states its threshold and claims no number'
   const r = runFixture(structuredClone(fixture('mid')))
   for (const s of r.steps.filter((x) => x.action.readinessGate?.value.endsWith('%') && x.action.readinessGate?.floor !== true)) {
     const g = s.action.readinessGate!
-    assert.ok(readinessSentence(s, g).includes(g.value), `${s.id}: a measured gate lost its number`)
+    assert.ok(readinessValueOf(g).includes(g.value), `${s.id}: a measured gate lost its number`)
   }
 })
 
