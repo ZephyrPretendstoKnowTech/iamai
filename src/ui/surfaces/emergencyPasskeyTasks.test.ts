@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from '../../roadmap/fixtures/index.ts'
+import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { emergencyPasskeyTasksOf } from './emergencyPasskeyTasks.ts'
@@ -271,4 +271,19 @@ test('an administrator whose only phishing-resistant method is an unjudged passk
   const apply = task(projected, 'apply-passkey-settings').steps.join('\n')
   assert.doesNotMatch(apply, RESTRICTION, `the allow list is handed over with admins it would lock out:\n${apply}`)
   assert.doesNotMatch(task(projected, 'prepare-affected-passkeys').steps[0], /none is locked out/)
+})
+
+test('1.3’s card and its task state one count, the accounts the allow list would lock out, each named on the card (net-new 3)', () => {
+  const f = curatedFixture('mid')
+  const r = runFixture(f)
+  const step = r.steps.find((s) => s.id === 's-prereq-passkey-settings')!
+  const locked = passkeyRestrictionReading(f.snapshot, f.mapping, f.groups).lockedOut
+  assert.ok(locked.length > 0, 'the premise: mid would lock accounts out')
+  const card = (step.configurationFindings ?? []).find((c) => c.key === 'affected-passkeys')!
+  assert.equal(card.value, `${locked.length} accounts would be locked out`)
+  const named = (card.items ?? []).filter((i) => i.value === 'No other way in').map((i) => i.accountId)
+  assert.deepEqual(named, locked, 'each lock-out named')
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+  const task = emergencyPasskeyTasksOf(step, ctx).tasks.find((t) => t.id === 'prepare-affected-passkeys')!
+  assert.ok(task.steps.some((l) => l.includes(`would lock out ${locked.length} accounts`)), 'the task says the same count')
 })
