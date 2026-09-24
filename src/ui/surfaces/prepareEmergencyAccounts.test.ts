@@ -47,3 +47,11 @@ test('#11 with no account chosen, AI Info says none is chosen yet, not that one 
   assert.match(ai, /Accounts and identity: No accounts chosen yet/)
   assert.doesNotMatch(ai, /Needs correction/)
 })
+
+test('#24 the account cards are numbered by the account display name, not by the order they were picked', () => {
+  // Breakglass2 picked first read as "Emergency access account 1".
+  const { body, value } = opened('demo', (f) => { f.mapping.breakGlassUserIds = [...f.mapping.breakGlassUserIds].reverse() })
+  const nameOf = (id: string | null) => value.snapshot.users.find((u) => u.id === id)?.displayName
+  const cards = body.emergencyAccountTasks!.accounts!
+  assert.deepEqual(cards.map((c) => [c.heading, nameOf(c.accountId)]), [['Emergency access account 1', 'Break-glass 1'], ['Emergency access account 2', 'Break-glass 2']])
+})

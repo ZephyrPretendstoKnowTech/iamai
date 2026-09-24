@@ -165,7 +165,10 @@ function dedicatedAccountNotes(step: Step): ReadonlyMap<string, { label: string;
 }
 
 function accountStatuses(ctx: StepVarContext, preparations: Preparations, notes: ReadonlyMap<string, { label: string; value: string }[]> = new Map()): EmergencyAccountStatus[] {
-  const selected = ctx.mapping.breakGlassUserIds
+  // Numbered by the account's display name, never by the order they were
+  // picked: the second account picked read as "Emergency access account 1".
+  const displayName = (id: string): string => safe(userOf(ctx, id)?.displayName || targetOf(ctx, id))
+  const selected = [...ctx.mapping.breakGlassUserIds].sort((a, b) => displayName(a).localeCompare(displayName(b), undefined, { sensitivity: 'base', numeric: true }))
   const domain = initialDomain(ctx.snapshot)
   const rows: EmergencyAccountStatus[] = selected.map((id, index) => {
     const user = userOf(ctx, id)
