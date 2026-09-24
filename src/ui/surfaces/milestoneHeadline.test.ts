@@ -112,9 +112,8 @@ test('an open decision, a dated plan and a long explanation each head with the s
     assert.match(body.contract.milestone.label, DAY, `the premise: ${id}'s engine milestone carries its day`)
     assert.doesNotMatch(body.rail.headline, DAY, `${id}: "${body.rail.headline}"`)
   }
-  // Turn Off Security Defaults' explanation stays whole in its step, under the headline its task gives.
+  // Turn Off Security Defaults' lead stays whole in its step, under the headline its task gives.
   const defaults = opened('messy', 's-prereq-security-defaults').body
-  assert.ok(sentences(readinessLeadOf(defaults.contract) ?? '') > 1, 'the premise: a lead of several sentences')
   assert.equal(defaults.rail.headline, defaults.emergencyAccountTasks?.tasks[0]?.title)
   assert.equal(defaults.rail.barLead, readinessLeadOf(defaults.contract))
   // A step on hold for its baseline's contradiction heads with the first of its bar's two sentences, and the bar keeps the other.

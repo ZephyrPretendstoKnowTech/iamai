@@ -7,6 +7,7 @@ import { trackExecution } from './tracking.ts'
 import { markHoldChains } from './holds.ts'
 import { gateOnDirection, noteServiceConsequences } from './direction.ts'
 import { gateOnFoundations } from './foundations.ts'
+import { noteTurnOns } from './enforceWaits.ts'
 import type { TrackingEvidence } from './tracking.ts'
 import { isEmergencyAccess } from './blockerSteps.ts'
 import { engine } from '../content/content.ts'
@@ -128,6 +129,8 @@ export function applyProgress(
   gateOnDirection(steps)
   // Each service card names the steps its No takes off this plan (direction.ts).
   noteServiceConsequences(steps)
+  // Turn Off Security Defaults names the policies it turns on, as tracking read them (enforceWaits.ts).
+  noteTurnOns(steps)
   // No policy step runs ahead of Emergency Access and Direction (roadmap/foundations.ts;
   // owner, 2026-09-19). After the per-answer gating, so a policy that already
   // waits on a Direction step keeps the wait it has.

@@ -355,6 +355,11 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     if (methods.length > 0) v.strengthMethods = list(methods)
   }
 
+  // Turn Off Security Defaults: the policies it turns on in the same change, in
+  // the Plan's order, one task line each (roadmap/enforceWaits.ts noteTurnOns;
+  // walk list 4.x item 8). A policy not on the plan leaves its line undrawn.
+  for (const [i, t] of (step.turnsOn ?? []).entries()) v[`turnOn${i + 1}`] = t.policy
+
   // Define the Trusted Network: the office ranges its task adds (the ranges
   // saved for the office where there are any, walk list 65), and the picked
   // location it marks trusted instead of making one (walk list 61).
