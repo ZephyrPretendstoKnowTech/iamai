@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "At least 68% MFA-ready"
+      "state": "68% MFA-ready"
     },
     {
       "label": "Define the Trusted Network",

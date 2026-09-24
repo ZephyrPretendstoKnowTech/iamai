@@ -5,7 +5,7 @@
   "fact": "Enforced",
   "badge": "Up Next",
   "bar": "After Configure Passkey Authentication",
-  "rail": "Core - Grant - MFA for all users found.",
+  "rail": "After Configure Passkey Authentication",
   "headings": [
     "About this Step",
     "Tasks Remaining",

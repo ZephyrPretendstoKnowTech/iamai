@@ -14,10 +14,6 @@
   ],
   "tiles": [
     {
-      "label": "Observation",
-      "state": "Report-only"
-    },
-    {
       "label": "Prerequisites",
       "state": "Review MFA before enabling Every time"
     },
