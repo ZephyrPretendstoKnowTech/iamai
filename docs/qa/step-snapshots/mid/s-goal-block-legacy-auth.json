@@ -1,11 +1,11 @@
 {
-  "lane": "Ready",
-  "substatus": "Decision",
+  "lane": "On Hold",
+  "substatus": null,
   "reason": "Satisfied by Core - Block - Legacy authentication — no change needed",
   "fact": "Enforced",
-  "badge": "Ready · Decision",
-  "bar": "Needs a decision",
-  "rail": "Block Legacy Authentication",
+  "badge": "On Hold",
+  "bar": "Waiting on your answers",
+  "rail": "This is in place already: nothing to create.",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -14,16 +14,17 @@
   ],
   "tiles": [
     {
-      "label": "Mail-sending devices",
-      "state": "Not confirmed"
+      "label": "Confirm What You Use",
+      "state": "Waiting on your answers"
+    },
+    {
+      "label": "Verify Emergency Access",
+      "state": "Prerequisite · Waiting"
     }
   ],
   "channels": [
     "Entra",
-    "PowerShell",
-    "JSON",
-    "AI Info",
-    "Email"
+    "AI Info"
   ],
-  "when": "Decide now"
+  "when": "Est. Sep 7, 2026"
 }

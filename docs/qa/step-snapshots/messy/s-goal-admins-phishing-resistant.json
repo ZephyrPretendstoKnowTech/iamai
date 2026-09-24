@@ -4,8 +4,8 @@
   "reason": "after: Configure Emergency Exclusions",
   "fact": "Report-only",
   "badge": "On Hold",
-  "bar": "when admin readiness reaches 100% (now 16%)",
-  "rail": "Require Phishing-Resistant MFA for Admins",
+  "bar": "When every admin has a method it accepts (1 of 6)",
+  "rail": "Correct the policy",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "16% of admins phishing-resistant"
+      "state": "1 of 6 admins has a method it accepts"
     },
     {
       "label": "Configure Emergency Exclusions",
@@ -28,9 +28,7 @@
   ],
   "channels": [
     "Entra",
-    "PowerShell",
-    "JSON",
     "AI Info"
   ],
-  "when": "Est. Sep 7, 2026"
+  "when": "Est. Sep 15, 2026"
 }

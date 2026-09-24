@@ -1,11 +1,11 @@
 {
-  "lane": "Ready",
-  "substatus": "Decision",
-  "reason": null,
+  "lane": "On Hold",
+  "substatus": null,
+  "reason": "until a scan rebuilds this step",
   "fact": "Enforced",
-  "badge": "Ready · Decision",
-  "bar": "Needs a decision",
-  "rail": "Require MFA for Guests",
+  "badge": "On Hold",
+  "bar": "Waiting on your answers",
+  "rail": "Core - Grant - Guests MFA found.",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -14,20 +14,22 @@
   ],
   "tiles": [
     {
-      "label": "Your review",
-      "state": "Waiting on you"
+      "label": "Implementation",
+      "state": "Unavailable"
     },
     {
-      "label": "Partner or MSP access",
-      "state": "Confirm whether partners access your tenant"
+      "label": "Confirm What You Use",
+      "state": "Waiting on your answers"
+    },
+    {
+      "label": "Not supported",
+      "state": "Not supported"
     }
   ],
   "channels": [
     "Entra",
-    "PowerShell",
-    "JSON",
     "AI Info",
     "Email"
   ],
-  "when": "Decide now"
+  "when": "Est. Sep 7, 2026"
 }

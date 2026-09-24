@@ -4,8 +4,8 @@
   "reason": "when admin readiness reaches 100% (now 33%)",
   "fact": "Report-only",
   "badge": "On Hold",
-  "bar": "when admin readiness reaches 100% (now 33%)",
-  "rail": "Require Phishing-Resistant MFA for Admins",
+  "bar": "When every admin has a method it accepts (1 of 3)",
+  "rail": "Turn the policy on",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -15,22 +15,20 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "33% of admins phishing-resistant"
-    },
-    {
-      "label": "Prerequisites",
-      "state": "Your safe way in"
+      "state": "1 of 3 admins has a method it accepts"
     },
     {
       "label": "Configure Passkey Authentication",
       "state": "Prerequisite · To do"
+    },
+    {
+      "label": "Your account",
+      "state": "No method this policy accepts"
     }
   ],
   "channels": [
     "Entra",
-    "PowerShell",
-    "JSON",
     "AI Info"
   ],
-  "when": "Est. Sep 7, 2026"
+  "when": "Est. Sep 18, 2026"
 }

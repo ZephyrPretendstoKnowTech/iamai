@@ -5,7 +5,7 @@
   "fact": "Report-only",
   "badge": "On Hold",
   "bar": "Waiting on your answers",
-  "rail": "Block Authentication Transfer",
+  "rail": "Turn the policy on",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -24,9 +24,7 @@
   ],
   "channels": [
     "Entra",
-    "PowerShell",
-    "JSON",
     "AI Info"
   ],
-  "when": "Est. Sep 7, 2026"
+  "when": "Est. Sep 8, 2026"
 }

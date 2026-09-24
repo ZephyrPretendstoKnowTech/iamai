@@ -5,7 +5,7 @@
   "fact": "Report-only",
   "badge": "On Hold",
   "bar": "Waiting on your answers",
-  "rail": "Require a Fresh Sign-in for Intune Enrollment",
+  "rail": "Turn the policy on",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -32,9 +32,7 @@
   ],
   "channels": [
     "Entra",
-    "PowerShell",
-    "JSON",
     "AI Info"
   ],
-  "when": "Est. Sep 7, 2026"
+  "when": "Est. Sep 15, 2026"
 }
