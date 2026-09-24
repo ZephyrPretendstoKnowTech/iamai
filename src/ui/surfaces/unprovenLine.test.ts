@@ -24,18 +24,16 @@ const mfaStepOn = (name: FixtureName) => {
   return { step, ctx, lines: stepLines(step, ctx), ex: stepVars(step, ctx) as Record<string, unknown>, unproven: lists.unproven, mfaInPlace: ctx.mfaInPlace === true }
 }
 
-test('with Require MFA for Everyone in place, the line does not render although people are in the bucket', () => {
+test('the line renders only while Require MFA for Everyone is not in place', () => {
   // Week two, where the MFA policy carves out the chosen exclusions group; on day one it does not and is partly in place.
   const c = mfaStepOn('demo-week2')
   assert.equal(c.mfaInPlace, true, 'the demo in week two has Require MFA for Everyone in place')
   assert.ok(c.unproven.length > 0, 'the records still hold people never seen to complete MFA')
   assert.deepEqual(c.ex.unproven, [], 'the step carries nobody in the bucket')
   assert.ok(!c.lines.some((l) => UNPROVEN.test(l)), 'no "never seen to complete MFA" line')
-})
-
-test('while the policy is not enforced, the line renders with its people', () => {
-  const c = (['small', 'mid', 'messy', 'getiamai'] as FixtureName[]).map(mfaStepOn).find((x) => !x.mfaInPlace && x.unproven.length > 0)
-  assert.ok(c, 'a fixture without the policy in place and with people in the bucket')
-  assert.deepEqual(c.ex.unproven, c.unproven)
-  assert.ok(c.lines.some((l) => UNPROVEN.test(l)), 'the line renders')
+  // While the policy is not enforced, the line renders with its people.
+  const open = (['small', 'mid', 'messy', 'getiamai'] as FixtureName[]).map(mfaStepOn).find((x) => !x.mfaInPlace && x.unproven.length > 0)
+  assert.ok(open, 'a fixture without the policy in place and with people in the bucket')
+  assert.deepEqual(open.ex.unproven, open.unproven)
+  assert.ok(open.lines.some((l) => UNPROVEN.test(l)), 'the line renders')
 })

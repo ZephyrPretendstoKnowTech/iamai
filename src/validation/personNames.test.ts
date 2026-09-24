@@ -9,7 +9,7 @@ import { fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { buildContext, reportFor } from './report.ts'
 
-test('an emergency account whose display name another account shares is labelled with its address', () => {
+test('an emergency account is labelled with its address only where another account shares its display name', () => {
   const f = structuredClone(fixture('small'))
   const run0 = runFixture(f)
   const bg = run0.input.mapping.breakGlassUserIds[0] ?? f.snapshot.users[0].id
@@ -22,14 +22,12 @@ test('an emergency account whose display name another account shares is labelled
   const label = report.targets[0].label
   assert.notEqual(label, mine.displayName, `a shared display name is printed bare: ${label}`)
   assert.ok(mine.userPrincipalName && label.includes(mine.userPrincipalName), `the label carries the address: ${label}`)
-})
-
-test('an account whose display name is its own keeps the name alone', () => {
-  const f = fixture('small')
-  const run = runFixture(f)
-  const bg = run.input.mapping.breakGlassUserIds[0] ?? f.snapshot.users[0].id
-  const mine = f.snapshot.users.find((u) => u.id === bg)!
-  assert.equal(f.snapshot.users.filter((u) => u.displayName === mine.displayName).length, 1, 'the premise: the name is unique')
-  const ctx = buildContext({ snapshot: f.snapshot, state: run.input.mapping, groupMembers: [], viability: run.viability })
-  assert.equal(reportFor('breakGlass', [bg], ctx).targets[0].label, mine.displayName)
+  // An account whose display name is its own keeps the name alone.
+  const own = fixture('small')
+  const ownRun = runFixture(own)
+  const ownId = ownRun.input.mapping.breakGlassUserIds[0] ?? own.snapshot.users[0].id
+  const unique = own.snapshot.users.find((u) => u.id === ownId)!
+  assert.equal(own.snapshot.users.filter((u) => u.displayName === unique.displayName).length, 1, 'the premise: the name is unique')
+  const ownCtx = buildContext({ snapshot: own.snapshot, state: ownRun.input.mapping, groupMembers: [], viability: ownRun.viability })
+  assert.equal(reportFor('breakGlass', [ownId], ownCtx).targets[0].label, unique.displayName)
 })
