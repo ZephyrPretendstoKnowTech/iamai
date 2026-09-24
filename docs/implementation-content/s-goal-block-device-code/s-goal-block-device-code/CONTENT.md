@@ -154,7 +154,8 @@ Because it targets All resources, it also applies to Device Registration Service
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
 
 IAMAI found {{policy.current.displayName}} for **Block Device Code Sign-in**, and {{policy.current.difference}}.
-Correct it on the same policy: it blocks device code sign-in for All users except {{exclusions.group.displayName}}, across all resources. Keep the policy's current state. If it is On, the changed rule can affect access after you save.
+Correct it on the same policy: it blocks device code sign-in for All users except {{exclusions.group.displayName}}, across all resources.
+Keep the policy's current state. If it is On, the changed rule can affect access after you save.
 
 This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
