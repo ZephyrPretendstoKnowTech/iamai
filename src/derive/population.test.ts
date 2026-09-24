@@ -306,7 +306,8 @@ test('a delivered step whose delivering policy\'s scope cannot be settled says i
   // Not established is not a task (stepContract.ts isReadinessWork): the bar
   // reads what it reads with the group read. It read "Complete the next task
   // shown for each item." over a card nobody can complete.
-  assert.equal(read.bar, 'Every task on this step is complete, and it left something behind.', 'the premise: the bar with the group read')
+  // The finished reading is a fact under Satisfied (walk list 4.x item 2), so nothing is left open.
+  assert.equal(read.bar, 'Every task on this step is complete.', 'the premise: the bar with the group read')
   assert.equal(unread.bar, read.bar, 'the step is handed a task because its reach is not established')
 })
 

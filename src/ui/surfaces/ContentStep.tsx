@@ -381,14 +381,16 @@ export function ContentStep({
   // The footer's deferral (A1b decision 3): `Defer this step` is the existing
   // skip, offered only where the step's content entry marks it deferrable, and
   // `Doesn't apply here` where the step is flagged for it. A deferred step
-  // offers the way back.
+  // offers the way back. A Completed step has nothing left to put off, so it
+  // offers no deferral (walk list 4.x item 32).
   const RO = CONTRACT.rollout
+  const deferrable = Boolean(cs.skip) && laneView.lane !== 'Completed'
   const exceptions: ReactNode[] = printing
     ? []
     : step.status === 'skipped'
       ? [<Button key="put-back" variant="secondary" onClick={onUnskip}>{app.plan.putBack}</Button>]
       : [
-          cs.skip ? <Button key="exclude" variant="secondary" className="rollout-exception" onClick={() => setDialog('rollout')}>{RO.control}</Button> : null,
+          deferrable ? <Button key="exclude" variant="secondary" className="rollout-exception" onClick={() => setDialog('rollout')}>{RO.control}</Button> : null,
           offersDoesntApply(cs, step) && onDoesntApply ? <Button key="doesnt-apply" variant="secondary" onClick={() => setDialog('doesnt-apply')}>{SHARED.doesntApplyControl}</Button> : null,
         ].filter((x) => x !== null)
   const partnerLink = step.id === 's-prereq-exclusion-group' ? null : partnerLinkOf(cs)
@@ -608,6 +610,7 @@ export function ContentStep({
                   onSkip={onSkip}
                   onUnskip={onUnskip}
                   onDoesntApply={onDoesntApply}
+                  deferrable={deferrable}
                   copy={copy}
                   copied={copied}
                   open
@@ -1400,7 +1403,7 @@ function MoreReading({ cs, ex, ifWrong, comms, copy, copied }: {
  *
  * `open` while printing, so a printed step is the whole step (§7).
  */
-function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onDoesntApply, copy, copied, open = false }: {
+function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onDoesntApply, deferrable, copy, copied, open = false }: {
   cs: Record<string, any>
   ex: Ex
   step: Step
@@ -1413,6 +1416,8 @@ function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onD
   onSkip: (r: string) => void
   onUnskip: () => void
   onDoesntApply?: (reason: string) => void
+  /** Whether Defer this step is offered: the step's content allows it and the step is not Completed. */
+  deferrable: boolean
   copy: (id: string, t: string) => void
   copied: string | null
   open?: boolean
@@ -1440,7 +1445,7 @@ function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onD
           required, that goes on the plan; the step then leaves its phase for the footer. */}
       {step.status !== 'skipped' && (
         <p className="actions">
-          {cs.skip && <Button variant="tertiary" onClick={() => onSkip('Not needed for this tenant')}>{CONTRACT.rollout.control}</Button>}
+          {deferrable && <Button variant="tertiary" onClick={() => onSkip('Not needed for this tenant')}>{CONTRACT.rollout.control}</Button>}
           {offersDoesntApply(cs, step) && onDoesntApply && !asking && <Button variant="tertiary" onClick={() => setAsking(true)}>{SHARED.doesntApplyControl}</Button>}
         </p>
       )}

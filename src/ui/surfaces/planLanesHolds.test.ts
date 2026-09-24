@@ -86,22 +86,24 @@ test('conflict, decision, review and unavailable each read as their engine count
 test('readiness → an evidence gate on enforce: a started policy waits On Hold with the threshold as what it waits on; its report-only create is not gated', () => {
   const step = cleanPolicy()
   const binding = 'when MFA readiness reaches 90% (now 5%)'
+  // The row says it starting with a capital (walk list 4.x item 27).
+  const shown = 'When MFA readiness reaches 90% (now 5%)'
   step.blockers = [{ kind: 'readiness', label: 'mfa-readiness', binding }]
   step.action = { ...step.action, readinessGate: { measure: 'MFA readiness', threshold: '90%', value: '5%' } }
   step.state = { ...step.state, lifecycle: 'report-only', condition: 'blocked' }
   step.status = 'in-report-only'
   assert.equal(holdOf(step)?.kind, 'readiness')
   const o = observe(step)
-  assert.deepEqual(o.gates?.find((g) => g.id === 'evidence:readiness:mfa-readiness'), { id: 'evidence:readiness:mfa-readiness', satisfied: false, minDays: null, reason: binding })
+  assert.deepEqual(o.gates?.find((g) => g.id === 'evidence:readiness:mfa-readiness'), { id: 'evidence:readiness:mfa-readiness', satisfied: false, minDays: null, reason: shown })
   assert.deepEqual(o.blockers, [], 'a threshold is never a blocker')
   const started = readingOf(step)
   assert.equal(label(started), 'On Hold · evidence:evidence:readiness:mfa-readiness')
-  assert.equal(started.gates.find((g) => !g.satisfied)?.reason, binding, 'the threshold text is what the step waits on')
+  assert.equal(started.gates.find((g) => !g.satisfied)?.reason, shown, 'the threshold text is what the step waits on')
   assert.ok(started.gates.some((g) => g.id === 'evidence:observation' && g.minDays === observationDaysFor(step)), 'the window is the observation gate\'s time part')
   // R4-16: the row, and the opened step's bar that reads its tail, name the threshold, never Observing.
   const view = laneViewOf(started, () => null)
-  assert.equal(view.waitingFor, binding, 'the row says what it waits for')
-  assert.equal(view.tail, binding)
+  assert.equal(view.waitingFor, shown, 'the row says what it waits for')
+  assert.equal(view.tail, shown)
   assert.notEqual(view.waitingFor, BOARD.blockers.evidence)
   // The same threshold on a policy nobody has deployed gates nothing: the create lands in report-only.
   const unstarted = cleanPolicy()

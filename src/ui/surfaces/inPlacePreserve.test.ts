@@ -668,19 +668,8 @@ test('In place says so about the POLICY, and a threshold never shown met is said
   // goes unchecked.
   const tileOf = (c: ReturnType<typeof readinessOf>, key: string): { key: string; tone: string; value: string; note: string | null } | undefined =>
     [...c.tiles, ...c.satisfied].find((x) => x.key === key) as { key: string; tone: string; value: string; note: string | null } | undefined
-  const blindCards = readinessOf(blind.step, stepContract(blind.step, blind.ctx))
-  const reading = tileOf(blindCards, FINISHED_READING)
-  assert.ok(reading, 'a policy enforced below a threshold nothing showed met reads as finished with nothing to say')
-  assert.equal(reading.tone, 'warn')
-  assert.equal(reading.value, 'Not measured')
-  const note = String(reading.note)
-  assert.match(note, /holds enforcement until MFA readiness reaches 90%/, note)
-  assert.match(note, /nothing has shown that threshold met/, note)
-  // The count the engine computed, and what would open the source.
-  assert.match(note, /None of the 40 people in scope could be judged/, 'the reading the engine computed is still not on the step')
-  assert.match(note, /could not read in this tenant/, 'the source that would move the number is not named')
-  // It claims nothing about WHEN the policy went on: IAMAI found it already on.
-  assert.doesNotMatch(note, /went on|was turned on|before IAMAI/, note)
+  // A Completed step shows no open card, and a reading that counted nobody states nothing (walk list 4.x item 2).
+  assert.equal(tileOf(readinessOf(blind.step, stepContract(blind.step, blind.ctx)), FINISHED_READING), undefined)
 
   // Measured and under the threshold: the count, and now the threshold beside it.
   // The large tenant's own policy for this goal requires Phishing-resistant MFA,
@@ -689,8 +678,9 @@ test('In place says so about the POLICY, and a threshold never shown met is said
   const short = caseOf(runFixture(fixture('large')), fixture('large'), 's-goal-mfa-all-users')
   const shortReading = tileOf(readinessOf(short.step, stepContract(short.step, short.ctx)), FINISHED_READING)
   assert.ok(shortReading)
-  // 3569 of 4900 is 72.8%, read down to 72% (R4-14, roadmap/readiness.ts readinessPercent).
-  assert.match(String(shortReading.note), /holds enforcement until Phishing-resistant MFA readiness reaches 90%; it is 72% now./, String(shortReading.note))
+  // A fact under Satisfied (walk list 4.x item 2): the count, and nothing open.
+  assert.equal(shortReading.tone, 'good')
+  assert.equal(shortReading.value, '3,569 of 4,900 people have a method it accepts')
 
   // Never where the threshold is met, and never on a step that is not finished.
   for (const f of allFixtures()) {
@@ -782,7 +772,8 @@ function unsupportedOver(scans: readonly (readonly [number, string, CreatedRecor
 }
 
 const unwatchedCtx = (h: Fixture, run: ReturnType<typeof runFixture>): StepVarContext => ({ snapshot: h.snapshot, mapping: h.mapping, nameOf: (id: string) => run.input.names!.label(id), signature: 'IT', operatorId: h.operatorId, now: h.snapshot.asOf, groups: h.groups })
-const unwatchedWarnings = (step: Step, ctx: StepVarContext) => readinessOf(step, stepContract(step, ctx)).tiles.filter((t) => t.tone === 'warn' && UNWATCHED.test(String(t.note)))
+/** The Satisfied fact a policy watched go On with no report-only period states (walk list 4.x item 2), and any open card saying it. */
+const unwatchedWarnings = (step: Step, ctx: StepVarContext) => { const r = readinessOf(step, stepContract(step, ctx)); return [...r.tiles, ...r.satisfied].filter((t) => t.key === 'enforced-unwatched' || UNWATCHED.test(String(t.note))) }
 /** How many times the step's AI Info briefing, as the opened step copies it, says the policy went live unwatched. */
 const briefingTells = (step: Step, ctx: StepVarContext): number => {
   const ai = stepBodyOf(step, ctx).artifacts.find((a) => a.id === 'ai')
@@ -803,20 +794,22 @@ function assertWentLiveUnwatched(scan: Scan, id: string): void {
   assert.equal(laneViewOf(laneReadings(run.steps).get(id)!, (x) => x).label, 'Completed', `${label}: it stays Completed`)
   const ctx = unwatchedCtx(h, run)
   const warn = unwatchedWarnings(step, ctx)
-  assert.equal(warn.length, 1, `${label}: no warning tile says it went live unwatched`)
+  assert.equal(warn.length, 1, `${label}: no fact says it went live unwatched`)
   assert.equal(warn[0].key, 'enforced-unwatched', label)
+  assert.equal(warn[0].tone, 'good', `${label}: a Completed step shows an open card`)
+  assert.match(warn[0].value, /^On since [A-Z][a-z]{2} [0-9]{1,2}, [0-9]{4}, without a report-only week$/, label)
   // The step as the screen draws it carries the same tile, as a fact left
   // behind: nothing in Readiness can make that window have happened, so
   // neither the bar nor Implementation sends the reader to clear it.
   const body = stepBodyOf(step, ctx)
-  assert.ok(body.readiness.tiles.some((t) => t.key === warn[0].key), `${label}: the opened step lost the tile`)
-  assert.equal(policyBarOf(policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)), 'Every task on this step is complete, and it left something behind.', label)
+  assert.ok(body.readiness.satisfied.some((t) => t.key === warn[0].key), `${label}: the opened step lost the fact`)
+  assert.equal(policyBarOf(policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)), 'Every task on this step is complete.', label)
   assert.notEqual(body.empty.key, 'blocked', `${label}: ${body.empty.title}`)
   // One fact, one home: the tile. The scan that saw the policy arrive also
   // wrote it as the observation note, and the step said it under New evidence
   // too.
   const told = [...body.contract.found.map((x) => x.text), ...body.readiness.tiles.map((t) => String(t.note ?? ''))].filter((text) => UNWATCHED.test(text))
-  assert.equal(told.length, 1, `${label}: the fact is said ${told.length} times: ${told.join(' | ')}`)
+  assert.equal(told.length, 0, `${label}: the fact is said again: ${told.join(' | ')}`)
   // AI Info reads the findings and no tile, so it lost the fact when the
   // findings stopped carrying it, and told an assistant only "IAMAI watched it
   // get there". It says it once.
@@ -926,7 +919,7 @@ test("a block policy whose only report-only records are reportOnlyNotApplied is 
     assert.equal(laneViewOf(laneReadings(run.steps).get(UNSUPPORTED)!, (x) => x).label, 'Completed', `${label}: it stays Completed`)
     assert.equal(step.state.members.every((m) => m.change.latest.skippedWindow === undefined), true, `${label}: the record claims a skipped report-only period the scan's records disprove`)
     const ctx = unwatchedCtx(h, run)
-    assert.equal(readinessOf(step, stepContract(step, ctx)).tiles.some((t) => t.key === 'enforced-unwatched'), false, `${label}: said to have gone live unwatched`)
+    assert.equal((() => { const r = readinessOf(step, stepContract(step, ctx)); return [...r.tiles, ...r.satisfied] })().some((t) => t.key === 'enforced-unwatched'), false, `${label}: said to have gone live unwatched`)
     const ai = stepBodyOf(step, ctx).artifacts.find((a) => a.id === 'ai')
     assert.ok(ai, `${label}: the opened step has no AI Info`)
     assert.equal(ai.text().includes(CONTRACT.foundEnforcedUnwatched), false, `${label}: the AI Info briefing carries the unwatched tile's words`)
@@ -960,7 +953,7 @@ test('a policy carrying this plan\'s tag, first seen On, is never said to have g
       assert.equal(step.state.lifecycle === 'enforced' && step.state.satisfied && !step.state.inPlace, true, `the premise (${label}, ${id}): Enforced, not In place`)
       assert.equal(step.state.members.every((m) => m.change.latest.neverObserved === true), true, `the premise (${label}, ${id}): first seen already On`)
       const ctx = unwatchedCtx(f, run)
-      assert.equal(readinessOf(step, stepContract(step, ctx)).tiles.some((t) => t.key === 'enforced-unwatched'), false, `${label}, ${id}: said to have gone live unwatched`)
+      assert.equal((() => { const r = readinessOf(step, stepContract(step, ctx)); return [...r.tiles, ...r.satisfied] })().some((t) => t.key === 'enforced-unwatched'), false, `${label}, ${id}: said to have gone live unwatched`)
       assert.equal(briefingTells(step, ctx), 0, `${label}, ${id}: the AI Info briefing says it went live unwatched`)
       assert.equal(stepContract(step, ctx).doneWhen.includes(POLICY_VERIFY_AFTER), false, `${label}, ${id}: a check after a change nobody saw`)
     }

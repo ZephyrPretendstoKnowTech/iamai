@@ -24,11 +24,19 @@ import { adminUserIds } from '../roles.ts'
  */
 export type PopulationIndex = { active: ReadonlySet<string>; admins: ReadonlySet<string>; guests: ReadonlySet<string>; enabled: ReadonlySet<string> }
 
+/** Every role each account holds, active or PIM-eligible. */
+function withEligible(roles: TenantSnapshot['roles']): Record<string, string[]> {
+  const out: Record<string, string[]> = { ...roles.active }
+  for (const [id, eligible] of Object.entries(roles.eligible ?? {})) out[id] = [...(out[id] ?? []), ...eligible]
+  return out
+}
+
 export function populationIndex(snapshot: TenantSnapshot, viability: readonly MfaViability[]): PopulationIndex {
   return {
     // The plan's active people: a step's reach counts the people MFA Readiness counts.
     active: new Set(viability.filter(isActivePerson).map((v) => v.userId)),
-    admins: adminUserIds(snapshot.roles),
+    // Active and PIM-eligible alike: the one reading of role scope (operations.ts applies; walk list 4.x L2).
+    admins: adminUserIds({ active: withEligible(snapshot.roles) }),
     guests: new Set(snapshot.users.filter((u) => u.userType === 'guest').map((u) => u.id)),
     // "covers N enabled" counts these and nothing else.
     enabled: new Set(snapshot.users.filter((u) => u.accountEnabled !== false).map((u) => u.id)),

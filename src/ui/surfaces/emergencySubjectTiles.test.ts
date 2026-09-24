@@ -78,7 +78,8 @@ test('Step 2: a satisfied subject collapses under Satisfied with its checks comp
 test('Step 3: a prerequisite is the next check, stated once', () => {
   const blocker: PrerequisiteBlocker = { kind: 'step', id: 's-prereq-break-glass', abnormal: false, label: 'Prerequisite', title: 'Prepare Emergency Access Accounts' }
   const registration = subjectsOf(structuredClone(fixture('demo')), 's-prereq-passkey-settings', [blocker]).find(tile => tile.key === 'configuration:registration')!
-  assert.equal(registration.title, 'Finish Prepare Emergency Access Accounts first.')
+  // The step, and no "Finish {step} first." under it (walk list 4.x item 23).
+  assert.equal(registration.title, 'Prepare Emergency Access Accounts')
   assert.ok(linesOf(registration).every(line => !/Prepare Emergency Access Accounts\. Finish/.test(line)))
 })
 

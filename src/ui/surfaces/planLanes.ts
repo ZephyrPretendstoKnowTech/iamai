@@ -50,6 +50,25 @@ import { planStateOf } from './planState.ts'
 import { directionBlockerStep, directionWaitRelayed } from '../../roadmap/direction.ts'
 import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
 import type { PlanState } from './planState.ts'
+import { pages } from '../../content/content.ts'
+import { fillText } from '../../content/render.ts'
+import { readinessFamilyOf } from '../../copy/reasons.ts'
+
+/** The row sub-lines a gate or a blocker writes for itself (pages.plan.when; walk list 4.x item 27). */
+const ROW = (pages.plan as unknown as { when: { readinessAdmins: string; notExcluded: string } }).when
+
+/**
+ * A readiness wait as its row says it (walk list 4.x item 27, owner
+ * 2026-09-24): the admin threshold as the people it counts, "When every admin
+ * has a method it accepts (2 of 3)", and any other threshold as its own
+ * binding, starting with a capital: "When MFA readiness reaches 90% (now 85%)".
+ */
+function readinessRowWords(step: Step, label: string, binding: string): string {
+  const gate = step.action.readinessGate
+  const count = label === 'readiness' && gate !== undefined && readinessFamilyOf(gate) === 'admin' ? /(\d[\d,]*) of (\d[\d,]*)/.exec(step.readiness.lines?.[0] ?? '') : null
+  if (count !== null) return fillText(ROW.readinessAdmins, { ready: count[1], total: count[2] })
+  return binding.charAt(0).toUpperCase() + binding.slice(1)
+}
 
 const GRAPH = buildGraph(data as DependencyData)
 /** §12.1 counts leave the Security Defaults cutover edges out (BLOCKED.md · S2). */
@@ -97,8 +116,6 @@ export type LaneReading = {
   unsaved?: readonly string[]
   /** True where those inputs are IAMAI's to have confirmed rather than its questions (Step.unsavedInputsPrefilled). */
   unsavedPrefilled?: boolean
-  /** Completed: hard prerequisites of the action it already took that the scan still finds unmet (lanes.ts `unmetPrerequisites`). */
-  overtaken?: readonly HoldBlocker[]
   /** Where the plan expects the row to happen (roadmap/forecast.ts planForecast), set by the board (planBoard.ts boardReadingsOf): the day a row with none of its own is dated by. */
   estimate?: string
 }
@@ -199,7 +216,7 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
     else if (b.kind === 'readiness' && b.label === 'session-loop' && exists) blockers.push({ kind: 'fact', id: 'fact:session-loop' })
     // The readiness threshold holds a compliant-device policy's create as well as its
     // enforcement (roadmap/operations.ts createWaitsOnReadiness; owner, 2026-09-23).
-    else if (b.kind === 'readiness' && b.binding) gates.push({ id: `evidence:readiness:${b.label}`, satisfied: false, minDays: null, reason: b.binding, ...(b.label === 'readiness' && holdsCreate ? { holdsCreate } : {}) })
+    else if (b.kind === 'readiness' && b.binding) gates.push({ id: `evidence:readiness:${b.label}`, satisfied: false, minDays: null, reason: readinessRowWords(step, b.label, b.binding), ...(b.label === 'readiness' && holdsCreate ? { holdsCreate } : {}) })
     // A tenant fact this scan could not read — a group a policy names whose
     // members nobody could list — holds the step; it is not a gate the policy
     // earns by being watched (§8.4: a fact still to be established holds).
@@ -225,14 +242,15 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
     // The window closed over records that were read: what they show can be reviewed now,
     // though it has not cleared the gate (time alone never does).
     const reviewable = ready !== null && ready.kind === 'since' && ready.read && ready.failures !== null
-    gates.push({ id: 'evidence:observation', satisfied: lifecycle === 'ready-to-enforce' || lifecycle === 'enforced', minDays: observationWindowDays(step), reason: ready ? readyBasis(ready) : null, ...(reviewable ? { reviewable } : {}) })
+    gates.push({ id: 'evidence:observation', satisfied: lifecycle === 'ready-to-enforce' || lifecycle === 'enforced', minDays: observationWindowDays(step), reason: ready ? readyBasis(ready) : null, ...(reviewable ? { reviewable } : {}), ...(ready ? { until: ready.date } : {}) })
   }
   // A policy the plan cannot write as it stands (the legacy `unavailable` hold). A missing
   // object is Action.missing below, the baseline conflict is the condition above, an unmet
   // threshold is the gate above, and the unverified escape hatch is the gate's step edge.
   const unavailable = policy && open ? unavailableReason(step) : null
   if (unavailable === 'unmatched-pair' || unavailable === 'no-operation') blockers.push({ kind: 'unsupported', id: unavailable })
-  else if (unavailable === 'unsafe-emergency-access') blockers.push({ kind: 'baselineSafetyConflict', id: `baselineSafetyConflict:${unavailable}` })
+  // Its row says what is wrong: "Doesn't exclude Core - Exclusions" (walk list 4.x item 27).
+  else if (unavailable === 'unsafe-emergency-access') blockers.push({ kind: 'baselineSafetyConflict', id: `baselineSafetyConflict:${unavailable}`, ...(step.action.emergencyExposure?.group ? { text: fillText(ROW.notExcluded, { group: step.action.emergencyExposure.group }) } : {}) })
   else if (unavailable === 'unverified-emergency-exclusion') blockers.push({ kind: 'fact', id: `fact:${unavailable}` })
   for (const m of step.action.missing ?? []) {
     // A source reference only a person can answer (resolvePolicy.ts unsettled / decisions) holds the policy
@@ -372,10 +390,10 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
     for (const r of list) {
       if (!known.has(r.id)) continue
       const blockers = r.result.blockers.map(hold).filter((b): b is HoldBlocker => b !== null)
-      // An open evidence gate is the reason a report-only policy waits On Hold, and the board says so.
-      const reason = r.result.reason === null ? null : lane === 'On Hold' ? (r.result.reason as HoldBlocker) : hold(r.result.reason)
-      const overtaken = r.result.unmetPrerequisites.map(hold).filter((b): b is HoldBlocker => b !== null)
-      out.set(r.id, { lane, substatus: r.result.substatus, reason, blockers, gates: r.result.gates, order: counts[lane]++, fromEngine: true, ...(overtaken.length > 0 ? { overtaken } : {}) })
+      // An open evidence gate is the reason a report-only policy waits, On Hold or, its
+      // report-only week alone, Up Next (walk list 4.x item 11), and the board says so.
+      const reason = r.result.reason === null ? null : lane === 'On Hold' || lane === 'Up Next' ? (r.result.reason as HoldBlocker) : hold(r.result.reason)
+      out.set(r.id, { lane, substatus: r.result.substatus, reason, blockers, gates: r.result.gates, order: counts[lane]++, fromEngine: true })
     }
   }
   place('Ready', groups.ready)
