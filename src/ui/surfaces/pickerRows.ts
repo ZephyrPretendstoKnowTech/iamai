@@ -86,16 +86,26 @@ function vars(key: string, rows: string[], ids: string[], ticked: string[], matc
  * it there; `defaulted` marks the picker's own default, which nobody chose.
  */
 /**
- * Whether a decision's picker is its only input, so the picker saves it and no
- * Save button stands beside it (owner, 2026-09-23): Done in the list saves the
- * selection, and so does taking a chip off. A decision that also has options, a
- * question, a toggle or typed fields (the office network) keeps its Save for
- * those, and its picker's Done saves it too. A read-only list (the campaign's
- * support list) has no Done, and its Save is how it is confirmed.
+ * Whether a decision's picker saves the decision from its list (owner,
+ * 2026-09-23): Done saves the selection, and so does taking a chip off. Not where
+ * the decision also asks a question: saving from the picker would record the
+ * question's default before it is answered (the countries location and its
+ * travel destinations), so that decision keeps Save as the one thing that saves.
+ * A read-only list (the campaign's support list) has no Done either.
+ */
+export function pickerSaves(d: Readonly<Record<string, unknown>>, stepId: string): boolean {
+  return Boolean(d.pickerRow) && stepId !== SPECIAL_CARE_STEP_ID && !d.question
+}
+
+/**
+ * Whether a decision's picker is its only input, so no Save button stands
+ * beside it (owner, 2026-09-23). A decision that also has options, a toggle or
+ * typed fields (the office network) keeps its Save for those, and its picker's
+ * Done saves it too.
  */
 export function pickerSavesAlone(d: Readonly<Record<string, unknown>>, stepId: string): boolean {
-  if (!d.pickerRow || stepId === SPECIAL_CARE_STEP_ID || stepId === PREREQ_STEP_ID.trustedLocation) return false
-  return !(Array.isArray(d.options) && d.options.length > 0) && !d.question && !d.strict
+  if (!pickerSaves(d, stepId) || stepId === PREREQ_STEP_ID.trustedLocation) return false
+  return !(Array.isArray(d.options) && d.options.length > 0) && !d.strict
 }
 
 export function initialPicked(ex: Readonly<Record<string, unknown>>, key: string | null, saved: Pick<StepDecision, 'picked'> | null, ids: readonly string[], single: boolean): { picked: string[]; matched: string[]; defaulted?: true } {
