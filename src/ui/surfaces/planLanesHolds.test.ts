@@ -251,7 +251,9 @@ test('every held or queued row names what it is waiting for, and never just repe
   assert.equal(named.get('s-goal-geo-restriction'), directionWords.waiting)
   // A hold that is a fact about the tenant names the fact.
   assert.equal(named.get('s-goal-service-accounts-trusted-network'), 'Baseline references an unmapped group')
-  assert.equal(named.get('s-goal-guests-mfa'), 'Not supported')
+  // A step whose conditional input is answered on a Direction step waits on
+  // that answer, as every such step does (walk list 4.x item 6).
+  assert.equal(named.get('s-goal-guests-mfa'), directionWords.waiting)
 })
 
 // Stage 3 (V1 decision 6). Turn Off Security Defaults read Completed on a tenant

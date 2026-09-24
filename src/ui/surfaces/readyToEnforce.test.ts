@@ -1078,6 +1078,14 @@ test("007.14: an enforced policy, found on by a later scan or the tenant's own, 
         assert.deepEqual(operationsOf(step), [], 'workflow review does not invent a policy mutation')
         continue
       }
+      if ((step.mailAccountsToMove ?? []).length > 0) {
+        // Block Legacy Authentication's mail half (walk list 4.x item 4): a mail
+        // account the answer named still signs in with legacy authentication, so
+        // the step has work left, and none of it is a policy change.
+        assert.equal(step.state.satisfied, false, `${step.id}: done while a named mail account still uses legacy authentication`)
+        assert.deepEqual(operationsOf(step), [], `${step.id}: moving mail accounts invents a policy mutation`)
+        continue
+      }
       assert.equal(step.state.satisfied, true, `${step.id}: enforced and not delivered`)
       assert.equal(step.status, 'done', step.id)
       assert.deepEqual(findTaggedPolicies(run.input.snapshot, run.input.planId, step.id), [], `${step.id}: this plan deployed a policy for it after all`)

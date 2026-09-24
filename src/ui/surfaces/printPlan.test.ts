@@ -172,13 +172,13 @@ test('no at-pace finish is stated from a rollout that placed none of the held wo
 
 test('Completed on paper is the board\'s Completed lane, and a delivered step the board still has work for prints in full', () => {
   // Midflight: Block Legacy Authentication is enforced (status done) but its
-  // mail-sending-devices input was never saved, so the board reads it
-  // "Ready · Decision". The print filed it under Completed and printed its body,
-  // where the open question is stated, nowhere.
+  // mail-sending answer in Confirm What You Use was never saved, so the board
+  // holds it On Hold on that answer (walk list 4.x item 6). The print filed it
+  // under Completed and printed its body, where the open question is stated, nowhere.
   const p = plan('midflight')
   const legacy = byId(p.steps, 's-goal-block-legacy-auth')
   assert.equal(legacy.status, 'done', 'the premise: the policy is delivered')
-  assert.equal(p.board.laneOf(legacy.id).label, 'Ready · Decision', 'the premise: the board still has a decision for it')
+  assert.equal(p.board.laneOf(legacy.id).lane, 'On Hold', 'the premise: the board still holds it on its answer')
   assert.equal(completedRows(p.steps, p.board.laneOf).some((s) => s.id === legacy.id), false, 'a step the board reads Ready is listed as Completed')
   // It prints in full, in its own section, under the lane the board reads (printPlan.ts printSectionsOf).
   const row = printSectionsOf(p.board).flatMap((s) => s.rows).find((r) => r.id === legacy.id)
@@ -620,13 +620,13 @@ test('every printed row carries the number its board row shows, and every board 
 
 test('a finished row prints as its line, and work still to do prints in full, in its section', () => {
   // Midflight: Block Legacy Authentication is enforced (status done) but its
-  // mail-sending-devices input was never saved, so the board reads it
-  // "Ready · Decision": it prints in full, where the open question is stated.
+  // mail-sending answer was never saved, so the board holds it On Hold on that
+  // answer (walk list 4.x item 6): it prints in full, where the wait is stated.
   const p = plan('midflight')
   const rows = printSectionsOf(p.board).flatMap((s) => s.rows)
   const legacy = rows.find((r) => r.id === 's-goal-block-legacy-auth')
   assert.ok(legacy && legacy.step?.status === 'done', 'the premise: the policy is delivered')
-  assert.equal(legacy.lane.label, 'Ready · Decision', 'the premise: the board still has a decision for it')
+  assert.equal(legacy.lane.lane, 'On Hold', 'the premise: the board still holds it on its answer')
   assert.equal(legacy.print, 'body', 'a delivered step the board still has work for prints as a line')
   for (const r of rows) assert.equal(r.print, r.cleanup === null && (r.lane.lane === 'Completed' || r.lane.lane === 'Deferred') ? 'line' : 'body', `${r.id}: ${r.lane.label} prints as ${r.print}`)
   // A deferred step prints once, as its line, never in full with a date and live instructions.

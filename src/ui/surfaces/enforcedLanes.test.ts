@@ -212,7 +212,7 @@ test('U19: an enforced block policy missing the exclusions group is a safe corre
   assert.equal(packageStateOf(step, stepContract(step, ctxOf(demo, demoRun, removed)), removed), 'blocked')
 })
 
-test('a rollout that finished short of its own readiness states it under Satisfied and keeps the criterion it did not meet', () => {
+test('a rollout that finished short of its own readiness states it under Satisfied, and its Completion Criteria reads what IAMAI sees', () => {
   // Sam, severity 4: "the tenant locked out with a green tick". Turn the admin
   // policy on while one admin of six holds a method it accepts and the threshold
   // card is deleted - `action.readinessGate` exists only while the gate is unmet
@@ -231,9 +231,10 @@ test('a rollout that finished short of its own readiness states it under Satisfi
     assert.ok(tile, 'a finished step short of its readiness draws no reading')
     assert.match(tile.value, /^[0-9]+ of [0-9]+ admins have a method it accepts$/, tile.value)
     assert.ok(c.found.some((f) => /This policy is enforced, and/.test(f.text)), 'What IAMAI found does not carry it')
-    // Its own end state is the half that is not true yet, so it is stated first.
-    assert.equal(c.doneWhen.length, 2, JSON.stringify(c.doneWhen))
-    assert.match(c.doneWhen[0], /every admin in scope has one registered/)
+    // Completion Criteria is at most two lines, the same in every state, led by
+    // what IAMAI sees (walk list 4.x item 26).
+    assert.ok(c.doneWhen.length <= 2, JSON.stringify(c.doneWhen))
+    assert.match(c.doneWhen[0], /^IAMAI sees .+ On[,.]/, JSON.stringify(c.doneWhen))
     // A rollout that finished with everybody ready is not a finding.
     const ready = { ...finished, readiness: { ...finished.readiness, lines: ['6 of 6 people have a registered method allowed by the target policies.'] } } as Step
     assert.equal([...readinessOf(ready, stepContract(ready, ctx)).satisfied, ...readinessOf(ready, stepContract(ready, ctx)).tiles].some((x) => x.key === 'enforced-readiness'), false)
