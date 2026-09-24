@@ -1960,7 +1960,7 @@ export function readinessSentence(step: Step, gate: NonNullable<Step['action']['
  * was half a sentence inside the green coverage tile (Priya D3). The generator
  * carries the threshold onto the finished step, and this states it.
  */
-function shortReadingOf(step: Step): { value: string; note: string; counted: { ready: string; total: string } | null } | null {
+function shortReadingOf(step: Step): { value: string; note: string; counted: { ready: string; total: string; who: string } | null } | null {
   if (!step.state.satisfied || step.state.lifecycle !== 'enforced') return null
   const below = step.action.enforcedBelowReadiness
   const line = step.readiness?.lines?.[0]
@@ -1978,12 +1978,13 @@ function shortReadingOf(step: Step): { value: string; note: string; counted: { r
   // established" — the count is a reading and stands.
   const counted = m !== null && typeof line === 'string' && ready < total && !(step.readiness?.unmeasured === 'unreadable' && ready === 0)
   if (counted) {
-    const scope = CONTRACT.readinessScope[step.readiness?.family ?? ''] ?? CONTRACT.readinessScope.mfa
+    const family = step.readiness?.family ?? ''
+    const scope = CONTRACT.readinessScope[family] ?? CONTRACT.readinessScope.mfa
     const short = fillText(CONTRACT.foundEnforcedShort, { line })
     // The plan's own threshold, where the reading is under it: the gate the
     // finished step otherwise stopped naming the moment the policy went on.
     const threshold = below === undefined ? null : fillText(below.floor === true ? CONTRACT.foundEnforcedBelowThresholdFloor : CONTRACT.foundEnforcedBelowThreshold, { ...below })
-    return { value: `${m[1]} of ${m[2]} ${scope}`, note: threshold === null ? short : `${short} ${threshold}`, counted: { ready: m[1], total: m[2] } }
+    return { value: `${m[1]} of ${m[2]} ${scope}`, note: threshold === null ? short : `${short} ${threshold}`, counted: { ready: m[1], total: m[2], who: CONTRACT.acceptedWho[family] ?? CONTRACT.acceptedWho.mfa } }
   }
   if (below === undefined) return null
   // Never read: the threshold, that nothing showed it met, why (the reading's
@@ -2079,8 +2080,7 @@ export const FINISHED_READING = 'enforced-readiness'
 function enforcedReadingTile(step: Step): ReadinessTile | null {
   const short = shortReadingOf(step)
   if (short === null || short.counted === null) return null
-  const who = CONTRACT.acceptedWho[step.readiness?.family ?? ''] ?? CONTRACT.acceptedWho.mfa
-  return { key: FINISHED_READING, label: R().tiles.reading, tone: 'good', value: fillText(R().tiles.accepted, { ...short.counted, who }), note: null }
+  return { key: FINISHED_READING, label: R().tiles.reading, tone: 'good', value: fillText(R().tiles.accepted, short.counted), note: null }
 }
 
 /** The key of the tile a finished policy draws where it went live with no report-only period IAMAI watched: a finding, not a task. */
