@@ -396,4 +396,3 @@ test('phase order (ux-review-07 §3): no step starts before the last start of an
     for (const w of s.waves) assert.ok(w.phases.length > 0 && w.phases.includes(w.phase), `wave ${w.wave} records its own phase`)
   }
 })
-
