@@ -73,15 +73,15 @@ test('a step whose question moved says where it is answered now, with the answer
   {
     const { f, ctx } = setup()
     // The countries step asks its own work countries since Stage 3: nothing about it is answered in Direction.
-    assert.deepEqual(Object.keys(ANSWERED_IN).sort(), [PREREQ_STEP_ID.serviceAccountsGroup, PREREQ_STEP_ID.trustedLocation, 's-goal-block-device-code', 's-goal-block-legacy-auth', 's-goal-guests-mfa', 's-shared-devices'].sort())
+    assert.deepEqual(Object.keys(ANSWERED_IN).sort(), [PREREQ_STEP_ID.serviceAccountsGroup, PREREQ_STEP_ID.trustedLocation, 's-goal-block-legacy-auth', 's-goal-guests-mfa', 's-shared-devices'].sort())
     f.mapping.questionAnswers = {}
-    const open = answeredInOf('s-goal-block-device-code', { ...ctx, mapping: f.mapping })!
+    const open = answeredInOf('s-goal-guests-mfa', { ...ctx, mapping: f.mapping })!
     assert.equal(open.step, DIRECTION_STEP.use)
     assert.equal(open.title, 'Confirm What You Use')
     assert.match(open.lines[0].value, /^Not answered yet: the suggestion is /)
-    const saved = applyStepDecisions(f.mapping, { [DIRECTION_STEP.use]: { ...directionDecisionOf({ deviceCode: { value: 'used', picked: [] } }), at: f.snapshot.asOf } })
-    const answered = answeredInOf('s-goal-block-device-code', { ...ctx, mapping: saved })!
-    assert.deepEqual(answered.lines.map((l) => [l.label, l.value, l.saved]), [[W.questions.deviceCode.label, 'In use', true]])
+    const saved = applyStepDecisions(f.mapping, { [DIRECTION_STEP.use]: { ...directionDecisionOf({ partner: { value: 'yes', picked: [] } }), at: f.snapshot.asOf } })
+    const answered = answeredInOf('s-goal-guests-mfa', { ...ctx, mapping: saved })!
+    assert.deepEqual(answered.lines.map((l) => [l.label, l.value, l.saved]), [[W.questions.partner.label, 'Yes', true]])
     assert.equal(answeredInOf(PREREQ_STEP_ID.allowedCountries, ctx), null)
     const network = answeredInOf(PREREQ_STEP_ID.trustedLocation, ctx)!
     assert.equal(network.step, DIRECTION_STEP.devices, 'the office network is answered on D3 now')

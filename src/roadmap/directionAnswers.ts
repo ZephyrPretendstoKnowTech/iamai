@@ -83,7 +83,7 @@ export type DirectionAnswer = { value: string; picked: string[] }
  */
 export type DirectionQuestionKey =
   | `service:${string}`
-  | 'mailDevices' | 'deviceCode' | 'partner'
+  | 'mailDevices' | 'partner'
   | 'serviceAccounts' | 'sharedDevices'
   | 'computers' | 'phones' | 'officeNetwork'
 
@@ -95,7 +95,6 @@ export type DirectionQuestionKey =
 export const DIRECTION_QUESTIONS: Readonly<Record<Exclude<DirectionQuestionKey, `service:${string}`> | 'service', { step: DirectionStepId; storedAs: string }>> = {
   service: { step: DIRECTION_STEP.use, storedAs: `stepDecisions['${WORKFLOW_DECISION_STEP}'] → workflowAnswers[<service>], facetOverrides[<service>]` },
   mailDevices: { step: DIRECTION_STEP.use, storedAs: `questionAnswers['${QUESTION_STEP.mailDevices}:<decision label>']` },
-  deviceCode: { step: DIRECTION_STEP.use, storedAs: `questionAnswers['${QUESTION_STEP.deviceCode}:<decision label>']` },
   partner: { step: DIRECTION_STEP.use, storedAs: `questionAnswers['${QUESTION_STEP.partner}:<question label>']` },
   serviceAccounts: { step: DIRECTION_STEP.accounts, storedAs: 'serviceAccountUserIds, wizardAnswered.serviceAccounts' },
   sharedDevices: { step: DIRECTION_STEP.accounts, storedAs: 'sharedDeviceUserIds' },
@@ -161,10 +160,6 @@ export function savedAnswerOf(key: DirectionQuestionKey, m: Mapping): DirectionA
     case 'mailDevices': {
       const a = answerOf(m, QUESTION_STEP.mailDevices, 'decision')
       return a === null ? null : a.index === 0 ? answer('none') : answer('some', a.picked)
-    }
-    case 'deviceCode': {
-      const a = answerOf(m, QUESTION_STEP.deviceCode, 'decision')
-      return a === null ? null : answer(a.index === 0 ? 'unused' : 'used')
     }
     case 'partner': {
       const a = answerOf(m, QUESTION_STEP.partner, 'question')
@@ -258,11 +253,6 @@ export function legacyDecisionsOf(_stepId: DirectionStepId | typeof DIRECTION_LO
   if (mail) {
     const text = mail.value === 'some' && mail.picked.length > 0 ? option(QUESTION_STEP.mailDevices, 'decision', 1, mail.picked) : option(QUESTION_STEP.mailDevices, 'decision', 0)
     if (text !== null) out.push([QUESTION_STEP.mailDevices, { option: text, at }])
-  }
-  const code = answers.deviceCode
-  if (code) {
-    const text = option(QUESTION_STEP.deviceCode, 'decision', code.value === 'used' ? 1 : 0)
-    if (text !== null) out.push([QUESTION_STEP.deviceCode, { option: text, at }])
   }
   const partner = answers.partner
   const partnerLabel = questionLabels(QUESTION_STEP.partner).question
