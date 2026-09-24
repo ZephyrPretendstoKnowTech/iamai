@@ -1441,24 +1441,73 @@ try {
   )
   if (createDrawn) await clickText('/^Show the full plan$/')
   await sleep(200)
-  // The action column (owner, 2026-09-23): the Next milestone block leads it on
-  // every step, and on a Completed step it reads Completed. On Prepare Emergency
-  // Access Accounts the instruction line follows, once, then the picker's label.
-  const EA_HELP = JSON.parse(readFileSync('docs/design/content.json', 'utf8')).steps.find((s) => s.id === 's-prereq-break-glass').decision.help
-  const railRead = async (id) => {
+  // One template on the four Establish Emergency Access steps (owner,
+  // 2026-09-23: "Uniformity is a BIG deal"), 1.1–1.3 drawn by ContentStep and
+  // 1.4, the recovery drill, by CleanupStep: the step-type eyebrow; the action
+  // column on the same inset surface and left rule, down the whole body; its
+  // Next milestone in words (never a day, never a lane word; Completed when the
+  // row is); the divider; the instruction once, before the controls, where there
+  // are controls; the four sections in one order under one heading style, the
+  // Scan helper under Tasks Remaining; and the one footer strip with the Scan and
+  // no Close. Read on the Follow-up scan here, at 1440px and 390px, and on the
+  // Initial scan below, and judged once there.
+  const TEMPLATE_STEPS = ['s-prereq-break-glass', 's-prereq-exclusion-group', 's-prereq-passkey-settings', 'cleanup-drill']
+  const templateRead = async (id) => {
     await evaluate(`location.hash = '#/plan/${id}'`)
-    const rail = `document.querySelector('main.page .step[data-step-id="${id}"] .step-body > .step-action-column')`
-    if (!(await waitFor(`!!${rail}`, 6000))) return null
-    return await evaluate(`(() => { const rail = ${rail}; const block = rail.firstElementChild; const text = rail.textContent || ''; const line = text.indexOf(${JSON.stringify(EA_HELP)}); const label = ((rail.querySelector('.decision .action-heading') || {}).textContent || '').trim(); return { lane: ((document.querySelector('main.page .plan-row[data-step="${id}"] .lane') || {}).textContent || '').trim(), milestone: block && block.classList.contains('side-block') ? [(block.querySelector('.key-label') || {}).textContent, (block.querySelector('.metric') || {}).textContent] : null, help: text.split(${JSON.stringify(EA_HELP)}).length - 1, yours: /Your emergency access accounts/.test(text), label, lineFirst: line >= 0 && label !== '' && line < text.indexOf(label, line) } })()`)
+    const sel = `main.page .step[data-step-id="${id}"]`
+    if (!(await waitFor(`!!document.querySelector('${sel} > .step-body > .step-action-column')`, 6000))) return { id, missing: true }
+    await sleep(150)
+    return evaluate(`(() => {
+      const st = document.querySelector('${sel}')
+      const body = st.querySelector(':scope > .step-body')
+      const rail = body.querySelector(':scope > .step-action-column')
+      const block = rail.firstElementChild
+      const rs = getComputedStyle(rail)
+      const bs = block ? getComputedStyle(block) : null
+      const metric = block ? block.querySelector('.metric') : null
+      const decision = rail.querySelector('.decision')
+      const instruction = rail.querySelector(':scope > .rail-instruction')
+      const footer = st.querySelector(':scope > .step-footer')
+      const scan = footer ? footer.querySelector('button.step-footer-scan') : null
+      const r = rail.getBoundingClientRect()
+      const b = body.getBoundingClientRect()
+      const heads = [...body.querySelectorAll(':scope > .step-main > .step-section > h4')]
+      const tasks = heads.find((h) => h.textContent.trim() === 'Tasks Remaining')
+      const row = document.querySelector('main.page .plan-row[data-step="${id}"] .lane')
+      const said = instruction ? instruction.textContent.trim() : ''
+      return {
+        id: '${id}',
+        lane: row ? row.textContent.trim() : null,
+        eyebrow: ((st.querySelector(':scope > .step-head .eyebrow') || {}).textContent || '').trim(),
+        bg: rs.backgroundColor,
+        rule: rs.borderLeftWidth + ' ' + rs.borderLeftStyle,
+        fills: Math.abs(r.top - b.top) <= 1 && Math.abs(r.bottom - b.bottom) <= 1,
+        label: block && block.classList.contains('side-block') ? ((block.querySelector('.key-label') || {}).textContent || '').trim() : null,
+        headline: metric ? metric.textContent.trim() : null,
+        headlineType: metric ? getComputedStyle(metric).fontSize + ' ' + getComputedStyle(metric).fontWeight : null,
+        bar: bs ? bs.borderBottomWidth + ' ' + bs.borderBottomStyle : null,
+        controls: !!decision,
+        instruction: said || null,
+        instructionFirst: !!instruction && block.nextElementSibling === instruction && (!decision || !!(instruction.compareDocumentPosition(decision) & Node.DOCUMENT_POSITION_FOLLOWING)),
+        instructionCount: said ? rail.textContent.split(said).length - 1 : 0,
+        footer: !!footer && !!(body.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING),
+        scan: scan ? scan.textContent.trim() : null,
+        close: [...st.querySelectorAll('button')].filter((x) => x.textContent.trim() === 'Close').length,
+        heads: heads.map((h) => h.textContent.trim()),
+        headType: heads.slice(0, 4).map((h) => { const s = getComputedStyle(h); return s.fontSize + ' ' + s.fontWeight + ' ' + h.parentElement.className.split(' ')[0] }).join(' / '),
+        scanNote: tasks ? ((tasks.parentElement.querySelector('.emergency-account-scan-note') || {}).textContent || '').trim() : null,
+        width: innerWidth,
+        fits: st.getBoundingClientRect().right <= innerWidth + 1 && st.scrollWidth <= st.clientWidth + 1,
+      }
+    })()`)
   }
-  const completedRail = (r) => !!r && r.lane === 'Completed' && JSON.stringify(r.milestone) === JSON.stringify(['Next milestone', 'Completed'])
-  const policyRail = await railRead('s-goal-mfa-all-users')
-  const accountsRail = await railRead('s-prereq-break-glass')
-  check(
-    'Demo: a Completed step’s action column leads with Next milestone · Completed, and 1.1 says its instruction once, over the picker’s label',
-    completedRail(policyRail) && completedRail(accountsRail) && accountsRail.help === 1 && !accountsRail.yours && accountsRail.label === 'Emergency access accounts' && accountsRail.lineFirst,
-    JSON.stringify({ policyRail, accountsRail }),
-  )
+  const templateReads = async () => { const out = []; for (const id of TEMPLATE_STEPS) out.push(await templateRead(id)); return out }
+  const templateFollowUp = await templateReads()
+  await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true })
+  await sleep(400)
+  const templateFollowUpPhone = await templateReads()
+  await send('Emulation.clearDeviceMetricsOverride')
+  await sleep(400)
   // Scan again only ever moves forward; the way back to the initial scan is the
   // banner's selector, which names the snapshot it selects.
   await demoScanAgain()
@@ -1494,6 +1543,42 @@ try {
       : backRecord === day1Record
         ? `rows differ: left "${day1Rows.slice(0, 200)}" / back "${backRows.slice(0, 200)}"`
         : `record: left ${String(day1Record).slice(0, 200)} / back ${String(backRecord).slice(0, 200)}`,
+  )
+
+  // The four Establish Emergency Access steps on the Initial scan, and the one
+  // template judged across both scans and both widths (above).
+  const templateInitial = await templateReads()
+  const FOUR = ['About this Step', 'Tasks Remaining', 'Implementation Tasks', 'Completion Criteria']
+  const DAY_WORDS = /\b[A-Z][a-z]{2} \d{1,2}, \d{4}\b/
+  const LANE_WORDS = /^(Ready|Up Next|On Hold|Deferred|Completed)\b/
+  const SCAN_NOTE = 'After making changes, select Scan to update the plan.'
+  const templateFaults = (reads, where, desktop) => {
+    const bad = []
+    for (const t of reads) {
+      const at = `${where} ${t.id}`
+      if (t.missing) { bad.push(`${at}: not opened`); continue }
+      const done = t.lane === 'Completed'
+      if (!t.eyebrow) bad.push(`${at}: no step-type eyebrow`)
+      if (!/^next milestone$/i.test(t.label ?? '')) bad.push(`${at}: the column does not lead with Next milestone (${t.label})`)
+      if (!t.headline || DAY_WORDS.test(t.headline) || (done ? t.headline !== 'Completed' : LANE_WORDS.test(t.headline))) bad.push(`${at}: headline "${t.headline}" on a row reading "${t.lane}"`)
+      if (!/^[1-9][0-9.]*px solid$/.test(t.bar ?? '')) bad.push(`${at}: no divider under the milestone (${t.bar})`)
+      if (t.controls && (!t.instruction || !t.instructionFirst || t.instructionCount !== 1)) bad.push(`${at}: instruction ${JSON.stringify([t.instruction, t.instructionFirst, t.instructionCount])}`)
+      if (!t.footer || t.scan !== 'Scan to update the plan' || t.close !== 0) bad.push(`${at}: footer ${JSON.stringify([t.footer, t.scan, t.close])}`)
+      if (JSON.stringify(t.heads.slice(0, 4)) !== JSON.stringify(FOUR) || t.heads.slice(4).some((h) => FOUR.includes(h))) bad.push(`${at}: sections ${t.heads.join(' | ')}`)
+      if (t.scanNote !== SCAN_NOTE) bad.push(`${at}: Tasks Remaining helper "${t.scanNote}"`)
+      if (/rgba\(0, 0, 0, 0\)|transparent/.test(t.bg)) bad.push(`${at}: the column has no surface`)
+      if (!t.fits) bad.push(`${at}: wider than the page at ${t.width}px`)
+      if (desktop && (!t.fills || !/^[1-9][0-9.]*px solid$/.test(t.rule))) bad.push(`${at}: the column does not run the body's height beside its rule (${t.fills}, ${t.rule})`)
+    }
+    const found = reads.filter((t) => !t.missing)
+    for (const k of ['bg', 'rule', 'bar', 'headlineType', 'headType']) if (new Set(found.map((t) => t[k])).size > 1) bad.push(`${where}: ${k} differs: ${found.map((t) => `${t.id}=${t[k]}`).join(', ')}`)
+    return bad
+  }
+  const templateBad = [...templateFaults(templateFollowUp, 'Follow-up 1440', true), ...templateFaults(templateFollowUpPhone, 'Follow-up 390', false), ...templateFaults(templateInitial, 'Initial 1440', true)]
+  check(
+    'Demo: 1.1–1.4 draw one template on both scans: eyebrow, the inset column down the body with its Next milestone in words, the divider, the instruction once before the controls, the four sections in order with the Scan helper, and the footer strip with the Scan',
+    templateBad.length === 0,
+    templateBad.length === 0 ? [...templateInitial, ...templateFollowUp].map((t) => `${t.id}: ${t.headline}`).join(' | ') : templateBad.slice(0, 8).join(' ; '),
   )
 
   // Leave the demo: back to the signed-out app, no banner (item 12).

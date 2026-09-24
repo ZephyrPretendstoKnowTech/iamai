@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "On Hold",
   "bar": "Baseline references an unmapped group",
-  "rail": "After prerequisites",
+  "rail": "Baseline mappings first (Plan settings): the baseline names a group of its author's, and IAMAI does not yet know whether it stands for something in Contoso Pty Ltd or is left out.",
   "headings": [
     "About this Step",
     "Tasks Remaining",

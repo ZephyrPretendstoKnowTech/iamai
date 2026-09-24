@@ -5,7 +5,7 @@
   "fact": "Enforced",
   "badge": "On Hold",
   "bar": "On Hold",
-  "rail": "Not scheduled",
+  "rail": "Require MFA for Inforcer Access",
   "headings": [
     "About this Step",
     "Tasks Remaining",

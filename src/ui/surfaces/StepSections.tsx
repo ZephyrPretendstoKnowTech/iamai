@@ -16,7 +16,7 @@ import { Button, Icon, Status } from '../components/index.ts'
 import type { StatusTone } from '../components/index.ts'
 import type { ContractFound, ContractMember, ContractReadiness, ContractStage, ImplementationEmpty, ReadinessTile, ReadinessTone, StepContract } from './stepContract.ts'
 import { CONTRACT, FOOTER, badgeLabel, nextCaption, readinessLeadOf, stageClass } from './stepContract.ts'
-import type { ContractEmergencySlot, ContractHardening } from './stepContract.ts'
+import type { ContractEmergencySlot, ContractHardening, StepRail } from './stepContract.ts'
 import { fillText } from '../../content/render.ts'
 import { autoOpenTiles } from './tileExpansion.ts'
 import { useSession } from '../session.ts'
@@ -237,22 +237,23 @@ export function LifecycleTrack({ track }: { track: ContractStage[] }) {
 
 /**
  * The opened step's action column (U2): what the person does here, in IAMAI.
- * The milestone leads it — the day the plan schedules where it holds one and the
- * lane's own label where it does not, over the package's own words for it or
- * none (stepContract.ts `railOf`, U3) — and under it the controls the step takes:
- * a picker, a decision, a question, and their Save. Every step has a milestone,
- * so every step has the column, inputs or not. It sits between Readiness and
- * Implementation in the DOM (U5), so a screen reader meets it where a narrow
+ * Top to bottom, on every step (owner, 2026-09-23): the Next milestone — what
+ * it is, in words, never a day or a lane word (stepContract.ts `railOf`) — the
+ * divider under it, the instruction line where the step carries one, then the
+ * controls the step takes: a picker, a decision, a question, a setting, and
+ * their Save. Every step has a milestone, so every step has the column, inputs
+ * or not, on the inset surface down the whole body. It sits between Readiness
+ * and Implementation in the DOM (U5), so a screen reader meets it where a narrow
  * screen stacks it; the grid draws it on the right.
  */
-export function StepActionColumn({ rail, children = null }: { rail: { metric: string; sub: string }; children?: ReactNode }) {
+export function StepActionColumn({ rail, children = null }: { rail: StepRail; children?: ReactNode }) {
   return (
     <aside className="step-action-column surface-inset">
       <div className="side-block">
         <div className="key-label">{CONTRACT.railMilestone}</div>
-        <p className="metric">{rail.metric}</p>
-        {rail.sub !== '' && <p className="metric-sub">{rail.sub}</p>}
+        <p className="metric">{rail.headline}</p>
       </div>
+      {rail.instruction && <p className="reason rail-instruction">{rail.instruction}</p>}
       {children}
     </aside>
   )
@@ -264,21 +265,20 @@ export function StepActionColumn({ rail, children = null }: { rail: { metric: st
  * scan on the right. It offers only what production already does — the
  * exception is the existing skip and Doesn't apply here, the scan is the existing
  * action on the existing routing — and it renders nothing where it has nothing
- * to offer. The row above the step is what closes it.
+ * to offer. The row above the step is what closes it: no step draws a Close.
  */
-export function StepFooter({ controls = null, onScan, auxiliary = null }: { controls?: ReactNode; onScan?: (() => void) | null; auxiliary?: ReactNode }) {
+export function StepFooter({ controls = null, onScan }: { controls?: ReactNode; onScan?: (() => void) | null }) {
   // A scan in flight (owner item 10): the person who pressed Scan here is down
   // in the step, out of sight of the line under the header, so the same line
   // (ScanProgress.tsx scanLineText) stands over the button, which waits. The
   // header's line is the one that announces it.
   const { scan } = useSession()
   const scanning = scan.state === 'running' || scan.state === 'paused'
-  if (!controls && !onScan && !auxiliary) return null
+  if (!controls && !onScan) return null
   return (
     <footer className="step-footer no-print">
       {controls}
       <div className="step-footer-end">
-        {auxiliary}
         {onScan && scanning && <p className="step-footer-scan-status">{scanLineText(scan)}</p>}
         {onScan && (
           <Button variant="primary" className="step-footer-scan" onClick={onScan} disabled={scanning}>
@@ -753,9 +753,12 @@ export function EmergencySlotBody({ slot, hardening, onDefer, onUndo }: { slot: 
   )
 }
 
-/** The one next operator action under the Readiness bar, or nothing where it is filler (content review R2). */
-export function WhatToDoLead({ contract }: { contract: StepContract }) {
-  const text = readinessLeadOf(contract)
+/**
+ * The one next operator action under the Readiness bar, or nothing where it is
+ * filler (content review R2). `text`: what of it the action column's Next
+ * milestone left the bar to say (stepContract.ts railOf `barLead`).
+ */
+export function WhatToDoLead({ contract, text = readinessLeadOf(contract) }: { contract: StepContract; text?: string | null }) {
   if (text === null) return null
   return <p className={`do-lead do-${contract.whatToDo.kind}`}>{text}</p>
 }

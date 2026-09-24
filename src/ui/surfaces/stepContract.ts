@@ -34,7 +34,7 @@ import { requiredMembers } from '../../roadmap/tracking.ts'
 import { unreadLine } from '../../roadmap/evidence.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
 import { IMPACT, populationLine } from '../../derive/whoLine.ts'
-import { app, cleanup, directionWords, engine, pages, shared, stepById, schedulingWords, structuralWords } from '../../content/content.ts'
+import { app, cleanup, directionWords, engine, shared, stepById, structuralWords } from '../../content/content.ts'
 import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
 import { directionBlockerStep, directionStepsAnswering, directionTitleOf, directionWaitRelayed } from '../../roadmap/direction.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
@@ -2742,43 +2742,98 @@ function barOf(c: StepContract): ContractReadiness['bar'] {
 const SUBSTATUS_KEY: Readonly<Record<Substatus, string>> = { Review: 'manualReview', Create: 'create', Correct: 'correct', Decision: 'needsDecision', Observing: 'review', 'Ready to enforce': 'readyToEnforce' }
 
 /**
- * The milestone the action column leads with (U2): the day the plan schedules
- * where it holds one, and otherwise the placeholder the When column reads
- * (content review R1) — the lane is already the badge's and the row's, and in
- * a date field it read as a date with words in it. Under it, the step's own
- * words for what the milestone is for — its package's `milestone.actionText` —
- * or no words at all (U3). Nothing here composes the sub-line: a generated one
- * repeated the lane, named a prerequisite the lane label already names, or said
- * nothing ("Make the decision"), and none is better than wrong.
+ * The Next milestone headline the action column leads with (owner, 2026-09-23:
+ * "Uniformity is a BIG deal"): what the next milestone IS, in words. A finished
+ * step reads its Completed label (`completed`), as it always has. Otherwise it is
+ * the first of the step's own sentences for the milestone, in the order given.
+ *
+ * It is never a day and never a lane word: the day is the row's When column's
+ * and the lane is the badge's, and the rail that repeated either read as a
+ * second answer to a question the row had already answered. So a sentence that
+ * carries a day — any day in the shape the Plan writes one, or one of `days`,
+ * the step's own days as this display writes them — is passed over, and so is
+ * the engine's all-clear ("No change needed.", "Nothing left to do."), which
+ * is true of a finished step only and read over an open one's Needs a decision
+ * bar. Nothing here composes a sentence; it picks one the step already has.
  */
-export function railOf(c: StepContract, actionText: string | null = null): { metric: string; sub: string } {
-  const m = c.milestone
-  const l = c.state.lane
-  // A completed step has no next action, even if its package defines a milestone.
-  if (l?.lane === 'Completed') return { metric: l.label, sub: '' }
-  const sub = actionText ?? ''
-  // A step the board holds reads what its When column reads, never a day the
-  // schedule still carries (owner decision 2): Turn Off Security Defaults read
-  // Aug 31 here under a row that read "After prerequisites" (R4-21).
-  if (c.undated) return { metric: schedulingWords.waiting, sub }
-  // A day the plan schedules (roadmap/stepSchedule.ts) is the metric — the same
-  // result the row's When and its phase read. A day that is an estimate says so,
-  // in the When column's own words: the rail read a bare "Aug 31, 2026" under a
-  // row reading "Est. Aug 31, 2026", and a day that moves with the work it waits
-  // on read as a deadline (R4-34).
-  const day = (at: string): string => shownDay(at, c.estimate, 'label')
-  const s = c.schedule ?? null
-  if (s !== null && (s.class === 'scheduled' || s.class === 'observing') && s.at !== null) return { metric: day(s.at), sub }
-  if (m.at !== null) return { metric: day(m.at), sub }
-  // Work the Plan schedules in a phase, with no dated milestone of its own, reads
-  // the day its row's When reads.
-  if (c.scheduledOn && l?.lane === 'Ready') return { metric: day(c.scheduledOn), sub }
-  if (l?.lane === 'Ready' && l.substatus === 'Review') return { metric: schedulingWords.reviewNow, sub }
-  return { metric: NO_DATE, sub }
+export function milestoneHeadlineOf(completed: string | null, words: readonly (string | null | undefined)[], days: readonly string[] = []): string {
+  if (completed !== null) return completed
+  for (const w of words) {
+    const t = typeof w === 'string' ? w.trim() : ''
+    if (t === '' || DAY.test(t) || days.some((d) => t.includes(d)) || ALL_CLEAR.has(t)) continue
+    return t
+  }
+  return ''
 }
 
-/** The undated milestone: the When column's placeholder (pages.plan.when.none). */
-const NO_DATE = (pages.plan as unknown as { when: { none: string } }).when.none
+/** A day as the Plan writes one, bare or as an estimate ("Aug 31, 2026", "Aug 31, 2026 (estimated)"). */
+const DAY = /\b[A-Z][a-z]{2} \d{1,2}, \d{4}\b/
+/** The engine's all-clear milestones (shared.engine.milestone.preserve, .none). */
+const ALL_CLEAR: ReadonlySet<string> = new Set([MILESTONE.preserve, MILESTONE.none])
+
+/**
+ * A step's action column (U2), top to bottom: the Next milestone headline, the
+ * divider, and the instruction line where the column carries one of its own
+ * (Prepare Emergency Access Accounts and Configure Emergency Exclusions: their
+ * decision's help), over the controls the step takes.
+ */
+export type StepRail = { headline: string; instruction: string | null }
+
+/**
+ * railOf's reading: the column's rail, and the lead the Readiness bar still
+ * draws once the headline has taken its part (`barLead`) — the contract's one
+ * action whole where the headline took none of it, the sentences after its first
+ * where the headline took that one, and nothing where the headline took it all.
+ * Each sentence stands once on the step.
+ */
+export type RailReading = StepRail & { barLead: string | null }
+
+/** What the action column reads besides the contract: each is words the step already draws. */
+export type RailWords = {
+  /**
+   * The step's own words for its milestone: its package's
+   * `milestone.actionText`, the choice Prepare Emergency Access Accounts still
+   * needs, the exclusions group, a Direction step's approval sentence (U3).
+   */
+  words?: string | null
+  /** The step's next task, by the title its Implementation Tasks selector shows. */
+  task?: string | null
+  /** The instruction line under the divider, where the column carries one. */
+  instruction?: string | null
+  /** Whether the step's Readiness bar draws the contract's one action (readinessLeadOf) on screen. */
+  leadDrawn?: boolean
+}
+
+/**
+ * The action column's Next milestone, from words the step already draws
+ * (milestoneHeadlineOf; owner, 2026-09-23: add no new words, and the steps after
+ * 5.1 keep theirs): the step's own words for its milestone; else the one action
+ * its Readiness bar draws, where that is one sentence, which moves up rather
+ * than being said twice; else its next task by its title; else the first
+ * sentence of a longer lead its bar draws, the rest staying in the bar; and only
+ * then the engine's own one-sentence milestone, which no step of any fixture
+ * reaches. A lead of several sentences is an explanation, not a headline (Turn
+ * Off Security Defaults' ran to 588 characters), and the engine's sentence was
+ * on no step's screen where its bar did not draw it: "Finish the steps this one
+ * waits on first." headed frozen steps that never said it.
+ */
+export function railOf(c: StepContract, o: RailWords = {}): RailReading {
+  const l = c.state.lane
+  const lead = readinessLeadOf(c)
+  const drawn = o.leadDrawn ? lead : null
+  const first = drawn === null ? null : (drawn.split(/(?<=[.!?])\s+/)[0] ?? drawn)
+  const label = c.milestone.label
+  const engineWords = FILLER.has(label.trim().replace(/[.:]$/, '')) || sentenceCount(label) > 1 ? null : label
+  const days = [c.milestone.at, c.schedule?.at ?? null, c.scheduledOn].filter((d): d is string => d !== null).map(absoluteDate)
+  const headline = milestoneHeadlineOf(l?.lane === 'Completed' ? l.label : null, [o.words, drawn !== null && sentenceCount(drawn) <= 1 ? drawn : null, o.task, first, engineWords], days)
+  const barLead = lead === null || headline === lead ? null : first !== null && headline === first ? lead.slice(first.length).trim() || null : lead
+  return { headline, instruction: o.instruction ?? null, barLead }
+}
+
+/** How many sentences a line holds. */
+function sentenceCount(s: string): number {
+  return (s.match(/[.!?](?=\s|$)/g) ?? []).length
+}
 
 /**
  * The readiness bar's sub-line (content review R2): the contract's one action,

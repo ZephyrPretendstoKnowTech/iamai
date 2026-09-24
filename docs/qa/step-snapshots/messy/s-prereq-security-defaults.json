@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "On Hold",
   "bar": "Prerequisite on hold: Block Device Code Sign-in",
-  "rail": "After prerequisites",
+  "rail": "Turn security defaults off",
   "headings": [
     "About this Step",
     "Tasks Remaining",

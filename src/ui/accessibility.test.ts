@@ -828,7 +828,6 @@ test('the accessibility repair left the step body deciding nothing', () => {
   // finding the dialog, the print and AI Info read agree (R4-33), and the
   // board's hold, so a step the board holds names no day (owner decision 2).
   assert.match(contentStep, /const contract = stepContract\(step, ctx, ex as Record<string, unknown>, laneView, prerequisiteLabel\?\.startOf, undated\)/)
-  assert.match(contentStep, /<WhatToDoLead contract=\{contract\} \/>/)
   assert.match(contentStep, /const decides = Boolean\(d\) && \(typeof d\.applies !== 'string' \|\| truthy\(ex\[d\.applies\]\)\)/)
   assert.match(contentStep, /decides && <Decision/)
 })

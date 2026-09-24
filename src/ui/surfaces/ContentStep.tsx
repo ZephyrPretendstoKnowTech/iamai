@@ -327,7 +327,6 @@ export function ContentStep({
   // the subjects, and the Readiness tiles alone on Emergency Access Steps 2–3.
   // The bar reads them, so they are decided once.
   const taskSubjects = isOwnTaskStep ? policySubjectsOf(contract, displayedReadiness, emergencyAccountTasks, taskSubjectOf(step, eyebrow, title), cardWordsOf(step)?.check ?? null) : emergencySubjectsOf(displayedReadiness, emergencyAccountTasks)
-  const displayRail = step.id === 's-prereq-exclusion-group' ? { ...rail, sub: app.plan.exclusionsGroupRailSub } : rail
   const emergencyTaskPreferenceKey = `iamai:emergency-task:${ctx.mapping.tenantId}:${step.id}`
   const [implementationChannel, setImplementationChannel] = useState<Channel | null>(null)
   const [emergencyTaskId, setEmergencyTaskId] = useState<string | null>(() => readEmergencyTaskPreference(emergencyTaskPreferenceKey).taskId ?? null)
@@ -353,8 +352,10 @@ export function ContentStep({
   }
   // The one next action (stepContract.ts actionOf), under the Readiness bar where
   // the step has no instructions of its own. Where it led instructions it was
-  // What to do's first line, and it left with What to do (U1).
-  const actionLead = <WhatToDoLead contract={contract} />
+  // What to do's first line, and it left with What to do (U1). Said once (owner,
+  // 2026-09-23): the part the action column's Next milestone took, the bar does
+  // not say again (stepContract.ts railOf barLead).
+  const actionLead = <WhatToDoLead contract={contract} text={rail.barLead} />
   // The check a person is confirming, from the Readiness tile that states it.
   const confirmTile: ReadinessTile | null = confirmKey ? (allTiles.find((t) => t.key === confirmKey) ?? null) : null
   const closeConfirm = (): void => {
@@ -503,16 +504,28 @@ export function ContentStep({
             step takes in IAMAI. On a step that needs a decision the decision is
             the action: IAMAI cannot choose, so nothing is offered to submit until
             a person has (Foundation C). */}
-        <StepActionColumn rail={displayRail}>
+        <StepActionColumn rail={rail}>
           {/* A question that moved to Define Your Rollout Scope is answered there; this step says where, and what (roadmap/direction.ts ANSWERED_IN). */}
           {/* The picker is the step's own, or — on a step that makes an object itself and asks nothing of its own — the object's, saved under the object's id (stepBody.ts taskDecision; Stage 3: the countries location's Work Countries, on the countries step). */}
-          {ANSWERED_IN[step.id] ? <AnsweredInDirection stepId={step.id} ctx={ctx} /> : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && <Decision key={step.id} d={taskDecision?.d ?? d} ex={taskDecision?.ex ?? ex} saved={taskDecision ? objectTask?.saved ?? null : decision} onDecide={taskDecision ? objectTask?.onDecide : onDecide} stepId={taskDecision?.stepId ?? step.id} ctx={ctx} printing={printing} />}
+          {ANSWERED_IN[step.id] ? <AnsweredInDirection stepId={step.id} ctx={ctx} /> : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && <Decision key={step.id} d={taskDecision?.d ?? d} ex={taskDecision?.ex ?? ex} saved={taskDecision ? objectTask?.saved ?? null : decision} onDecide={taskDecision ? objectTask?.onDecide : onDecide} stepId={taskDecision?.stepId ?? step.id} ctx={ctx} printing={printing} railInstruction={!taskDecision && rail.instruction !== null} />}
           {step.id === SPECIAL_CARE_STEP_ID && (followUp || printing) && <FollowUpDecision key={`${step.id}:follow-up`} step={step} ctx={ctx} saved={followUp?.saved ?? null} onDecide={followUp?.onDecide} printing={printing} />}
           {/* The one thing a scan cannot see, recorded where every other control
               on a step is (owner, 2026-09-20). It used to stand in the main
               column below Completion Criteria — a sixth section, outside the four
               the anatomy has, on twelve steps. */}
           {step.manualReview && !printing && <ManualReviewForm key={`${step.id}:${step.manualReview.basis}:${step.manualReview.record?.at ?? ''}`} review={step.manualReview} ctx={ctx} printing={false} onConfirm={onConfirm} onUnconfirm={onUnconfirm} />}
+          {/* Configure Passkey Settings' settings: the approved models and the
+              models an owner adds, in the column with every other control
+              (owner, 2026-09-23). They stood under the step, right of the scan. */}
+          {isPasskeySettings && !printing && (
+            <div className="rail-settings">
+              <ApprovedAuthenticatorModels models={emergencyAccountTasks?.approvedModels ?? []} />
+              <details className="passkey-model-disclosure">
+                <summary>Add additional AAGUIDs</summary>
+                <PasskeyModelDecision mapping={ctx.mapping} saved={decision ?? null} onDecide={onDecide} />
+              </details>
+            </div>
+          )}
         </StepActionColumn>
 
         <div className="step-main step-main-rest">
@@ -599,7 +612,7 @@ export function ContentStep({
         </div>
       </div>
       {!printing && (saveStatus === 'saving' || saveStatus === 'failed') && <p className="reason step-save-feedback" role="status">{saveStatus === 'saving' ? 'Saving plan…' : 'Plan could not be saved. Use Retry Saving above.'}</p>}
-      <StepFooter controls={exceptions.length > 0 ? exceptions : null} onScan={printing ? null : (onScan ?? null)} auxiliary={isPasskeySettings && !printing ? <><ApprovedAuthenticatorModels models={emergencyAccountTasks?.approvedModels ?? []} /><details className="passkey-model-disclosure"><summary>Add additional AAGUIDs</summary><PasskeyModelDecision mapping={ctx.mapping} saved={decision ?? null} onDecide={onDecide} /></details></> : null} />
+      <StepFooter controls={exceptions.length > 0 ? exceptions : null} onScan={printing ? null : (onScan ?? null)} />
       {!printing && (
         <>
           <StepDialog open={dialog === 'readiness'} onClose={closeDialog} eyebrow={CONTRACT.readiness.dialogEyebrow} title={CONTRACT.readiness.dialogTitle} closeLabel={CONTRACT.readiness.close}>
@@ -1032,11 +1045,16 @@ function ReasonForm({ body, label, placeholder, cancel, confirm, multiline = fal
   )
 }
 
-function Decision(props: { d: Record<string, any>; ex: Ex; saved: StepDecision | null; onDecide?: (decision: StepDecisionInput) => void; stepId: string; ctx: StepVarContext; printing?: boolean }) {
+function Decision(props: { d: Record<string, any>; ex: Ex; saved: StepDecision | null; onDecide?: (decision: StepDecisionInput) => void; stepId: string; ctx: StepVarContext; printing?: boolean; railInstruction?: boolean }) {
   return <div className="decision-form"><SingleDecision {...props} /></div>
 }
 
-function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false }: { d: Record<string, any>; ex: Ex; saved: StepDecision | null; onDecide?: (decision: StepDecisionInput) => void; stepId: string; ctx: StepVarContext; printing?: boolean }) {
+/**
+ * `railInstruction`: the action column already carries this decision's
+ * instruction line under its milestone (stepBody.ts rail.instruction), so the
+ * decision does not open with its help a second time.
+ */
+function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false, railInstruction = false }: { d: Record<string, any>; ex: Ex; saved: StepDecision | null; onDecide?: (decision: StepDecisionInput) => void; stepId: string; ctx: StepVarContext; printing?: boolean; railInstruction?: boolean }) {
   // The typeahead (target-state §6.4): empty, it lists the objects the scan
   // nominated with their signal text, ticked by default as chips; typing filters
   // every object of the kind in the tenant by name and UPN; the chips are the
@@ -1136,9 +1154,7 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false 
   // (stepExport.ts decisionLine): one line, never both.
   return (
     <>
-      {stepId === 's-prereq-break-glass'
-        ? <Line s={d.help} ex={ex} cls="reason" />
-        : !isExclusionsGroup && decisionAnswer === null && <Line s={decisionLine(d, null)} ex={ex} cls="reason" />}
+      {!railInstruction && !isExclusionsGroup && decisionAnswer === null && <Line s={decisionLine(d, null)} ex={ex} cls="reason" />}
       <div className="decision">
         {/* Each label is an element the controls under it can name (task 017):
             the picker takes it as its group label, the radios as their

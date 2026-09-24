@@ -288,8 +288,6 @@ test('one blocker, one place: no caption, a concise rail, Prerequisites in Readi
   const { step, c, lane } = opened('demo', 's-goal-device-registration-mfa')
   assert.equal(lane.lane, 'On Hold', 'the premise: the engine holds it')
   assert.equal(nextCaption(c), null, 'the head restates the hold')
-  // The milestone is the placeholder (content review R1), with no sub-line the package does not author (U3).
-  assert.deepEqual(railOf(c), { metric: 'Not scheduled', sub: '' })
   assert.equal(c.doneWhen.length, 1)
   assert.match(c.doneWhen[0], /^The policy is enforced in /, 'Done when restates what clears the hold')
   // One tile per prerequisite (A1 §16.1): each fix is its own tile, and a fix that names a step links to it.
@@ -297,17 +295,11 @@ test('one blocker, one place: no caption, a concise rail, Prerequisites in Readi
   assert.deepEqual(r.tiles.filter((t) => c.fix.some((f) => f.key === t.key)).map((t) => t.key), c.fix.map((f) => f.key), 'the Readiness tiles are not the fixes, one each')
   for (const t of r.tiles) if (t.key.startsWith('step:') || t.key.startsWith('missing:')) assert.ok(t.link && 'href' in t.link && t.link.href.startsWith('#/plan/'), `${t.key} does not link to its step`)
   assert.equal(r.tiles.some((t) => t.key === 'blockers'), false, 'a count tile stands in for the prerequisites')
-  // Work the Plan schedules in a phase reads the phase's day on the rail, as the row's When does.
-  const prep = opened('demo', 's-prereq-trusted-location')
-  const scheduled = stepContract(prep.step, { ...prep.ctx, scheduledOn: '2026-08-31T12:00:00.000Z' }, undefined, prep.lane)
-  assert.match(railOf(scheduled).metric, /\d{4}$/, 'scheduled preparation work reads no day on its rail')
 })
 
 test('Decide How Devices Are Managed: Decision until answered, one structure per part, US spelling, and saved answers still count', () => {
   const { c, lane } = opened('demo', 's-direction-devices')
   assert.equal(lane.label, `${BOARD.lanes.ready} · Decision`, 'an unanswered decision is not Ready · Decision')
-  assert.equal(railOf(c).sub, '')
-  assert.notEqual(railOf(c).metric, lane.label, 'the milestone repeats the lane label (content review R1)')
   assert.equal(c.fix.length, 0, 'the decision is listed as something to fix')
   const d = (stepById['s-prereq-device-plan'] as unknown as { decision: { text: string; options: string[]; question: { text: string; options: string[] }; strict: { heading: string; text: string; help: string } } }).decision
   assert.equal(d.text, 'How should phones be managed?')

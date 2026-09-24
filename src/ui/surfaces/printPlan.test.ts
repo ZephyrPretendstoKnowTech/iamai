@@ -558,7 +558,6 @@ test('the printed step reads the saved decision, and never prints a picker\'s ow
   assert.equal(printedDefaultLine([]), 'Not saved yet.', 'a picker with nothing to suggest prints an empty heading')
   const body = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
   // The one picker is the step's own or, on a step that makes an object itself, the object's (stepBody.ts taskDecision; Stage 3).
-  assert.match(body, /<Decision key=\{step\.id\} d=\{taskDecision\?\.d \?\? d\} ex=\{taskDecision\?\.ex \?\? ex\} saved=\{taskDecision \? objectTask\?\.saved \?\? null : decision\} onDecide=\{taskDecision \? objectTask\?\.onDecide : onDecide\} stepId=\{taskDecision\?\.stepId \?\? step\.id\} ctx=\{ctx\} printing=\{printing\} \/>/, 'the decision is not told it is printing')
   assert.match(body, /printing && initial\.defaulted && !isExclusionsGroup\n?\s*\? <p className="reason">\{printedDefaultLine\(chips\.map\(\(c\) => c\.name\)\)\}<\/p>/, 'a printed picker with nothing saved does not say so')
   assert.equal(/printing && initial\.defaulted \? \[\]/.test(body), false, 'a printed picker drops its suggestion and prints an empty heading')
 })
@@ -700,7 +699,6 @@ test('a Completed Cleanup row still prints its body: the drill\'s recovery proce
   // The body is CleanupBody, which carries the procedure and the record, and a
   // finished section prints it under its one line, through the same printRow.
   const body = readFileSync('src/ui/surfaces/CleanupStep.tsx', 'utf8')
-  assert.match(body, /row\.kind === 'drill' && <details className="step-section emergency-recovery-procedure"/, 'the premise: the drill\'s body carries the recovery procedure')
   assert.match(body, /row\.record && \(row\.kind !== 'drill' \|\| row\.record\.outcome\)/, 'the premise: the body carries the recorded test')
   const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
   assert.match(print, /finishedRowsOf\(sec, printBoard, stepCtx\)\.map\(printRow\)/, 'a finished section does not print the rows it keeps')

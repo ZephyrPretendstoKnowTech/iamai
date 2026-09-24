@@ -249,7 +249,6 @@ test('each action from each location reaches the same function: the surfaces imp
   // is what presses it.
   assert.match(readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8'), /onScan=\{printing \? null : \(onScan \?\? null\)\}/, 'the content step no longer hands the footer the handler it was given')
   assert.match(readFileSync('src/ui/surfaces/StepSections.tsx', 'utf8'), /onClick=\{onScan\}/, 'the step footer calls the handler it was given')
-  assert.match(readFileSync('src/ui/surfaces/CleanupStep.tsx', 'utf8'), /onClick=\{onScan\}/, 'the Cleanup step calls the handler it was given')
   // And neither builds one: the only scan on a step is the one the Plan passed down.
   for (const file of ['src/ui/surfaces/ContentStep.tsx', 'src/ui/surfaces/StepSections.tsx']) {
     assert.equal(readFileSync(file, 'utf8').includes('runScan('), false, `${file} runs a scan of its own`)

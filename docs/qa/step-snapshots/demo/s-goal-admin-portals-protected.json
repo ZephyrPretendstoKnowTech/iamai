@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "On Hold",
   "bar": "Baseline conflict",
-  "rail": "After prerequisites",
+  "rail": "This step is on hold until the baseline author resolves a contradiction.",
   "headings": [
     "About this Step",
     "Tasks Remaining",
