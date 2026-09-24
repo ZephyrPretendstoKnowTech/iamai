@@ -60,6 +60,33 @@ const listOk = (v: unknown, allowed: ReadonlySet<string> | null = null): boolean
 const word = (v: unknown): boolean => typeof v === 'string' && v.trim().length > 0
 
 /**
+ * A value that says nothing: absent, null, an empty list, or an object with
+ * nothing but such values (and Graph's annotations) inside it. Graph answers
+ * every field of a policy it returns, so a tenant's own policy carries
+ * `insiderRiskLevels: null`, `applicationFilter: null` and `excludeUsers: []`
+ * where IAMAI's own bodies say nothing at all, and the two mean the same thing
+ * (observation.ts `material` reads them the same way).
+ */
+const saysNothing = (v: unknown): boolean =>
+  v === null || v === undefined || (Array.isArray(v) && v.length === 0) || (isObject(v) && Object.entries(v).every(([k, x]) => isAnnotation(k) || saysNothing(x)))
+
+/**
+ * A policy's conditions as the policy states them: every condition that says
+ * nothing, and every field inside one that says nothing, taken out. This is
+ * the READING side only — whether IAMAI can read a condition is asked of what
+ * the policy says, never of the empty fields Graph fills in beside it. What
+ * IAMAI SENDS is checked as written (fieldsAreSupported), empty fields and all.
+ */
+function conditionsStated(conditions: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(conditions)) {
+    if (isAnnotation(k) || saysNothing(v)) continue
+    out[k] = isObject(v) ? Object.fromEntries(Object.entries(v).filter(([k2, v2]) => !isAnnotation(k2) && !saysNothing(v2))) : v
+  }
+  return out
+}
+
+/**
  * The request envelope: the fields a Conditional Access create or update may
  * carry. Graph's own read-only bookkeeping is not among them, and a body
  * carrying it is a request Graph refuses.
@@ -576,15 +603,19 @@ export function effectOf(body: Record<string, unknown>): PolicyEffect {
   const controls = new Set(named.filter((c) => READABLE_CONTROLS.has(c)))
   const foreign = named.filter((c) => !READABLE_CONTROLS.has(c))
   for (const c of foreign) unknown.push(`a grant control IAMAI has no reading for: ${c}`)
-  // The request carries a reference and nothing else. What the strength allows
-  // is the tenant's own metadata, read where the answer is needed
-  // (strengthLookupOf), never a description travelling beside the id.
+  // A strength is read by its id and nothing else. Graph returns the reference
+  // expanded into the whole strength object (its name, its description, what it
+  // allows); what a strength allows is the tenant's own metadata, read by that id
+  // where the answer is needed (strengthLookupOf), never from a copy travelling
+  // beside it. What IAMAI sends is the reference alone (fieldsAreSupported).
   const rawStrength = grant && isObject(grant.authenticationStrength) ? grant.authenticationStrength : null
   const strength = rawStrength && typeof rawStrength.id === 'string' && rawStrength.id.trim().length > 0 ? { id: rawStrength.id } : null
   if (rawStrength && strength === null) unknown.push('an authentication strength with no id')
   if (grant && nonEmpty(grant.customAuthenticationFactors)) unknown.push('a custom authentication factor')
   if (grant && nonEmpty(grant.termsOfUse)) unknown.push('terms of use')
-  const submitted = isObject(body.conditions) ? body.conditions : {}
+  // Only what the policy states is judged: a condition, or a field inside one,
+  // that says nothing is not a condition IAMAI failed to read.
+  const submitted = conditionsStated(isObject(body.conditions) ? body.conditions : {})
   // A recognised field is not an understood one: the value has to be one
   // Conditional Access would take, or the condition is held rather than decoded.
   // A malformed value only ever arrives on an update's target — the tenant's own
@@ -592,11 +623,9 @@ export function effectOf(body: Record<string, unknown>): PolicyEffect {
   // well formed would describe a policy nobody has.
   const conditions: Record<string, unknown> = {}
   for (const [k, v] of Object.entries(submitted)) {
-    if (isAnnotation(k)) continue
     const reading = CONDITION_READING[k as keyof typeof CONDITION_READING]
     const shape = CONDITION_SHAPES[k as keyof typeof CONDITION_SHAPES] as ((v: unknown) => boolean) | undefined
     if (reading === undefined || shape === undefined) unknown.push(`a condition IAMAI has no reading for: ${k}`)
-    else if (v === null || v === undefined) continue
     else if (!shape(v)) unknown.push(`a condition IAMAI cannot read as written: ${k}`)
     else if (!reading) unknown.push(`a condition IAMAI carries but cannot read: ${k}`)
     else {
@@ -612,12 +641,11 @@ export function effectOf(body: Record<string, unknown>): PolicyEffect {
         held.add(`grantControls.${k}`)
       }
   // The same for the grant's own values: a control list that is not a list of
-  // controls, or a strength reference carrying anything but an id, is held.
+  // controls is held.
   if (grant && !listOk(grant.builtInControls)) {
     unknown.push('a grant control list IAMAI cannot read as written')
     held.add('grantControls.builtInControls')
   }
-  if (grant && rawStrength !== null && !isObjectOnly(rawStrength, new Set(['id']))) unknown.push('an authentication strength carrying more than the reference IAMAI submits')
   const locations = isObject(conditions.locations) ? conditions.locations : null
   const locationIds = locations ? { include: strings(locations.includeLocations), exclude: strings(locations.excludeLocations) } : null
   const scope = scopeOf(conditions, held.has('conditions.users') || held.has('conditions.clientApplications'))
@@ -734,7 +762,7 @@ export function effectOf(body: Record<string, unknown>): PolicyEffect {
   // Anything the policy carries that the reading above did not consume is held,
   // by name. A field recognised and ignored would be read as though the policy
   // did not have it (READ_LEAVES).
-  for (const leaf of semanticLeaves(body)) {
+  for (const leaf of semanticLeaves({ ...body, conditions: submitted })) {
     if (READ_LEAVES.has(leaf)) continue
     if ([...held].some((h) => leaf === h || leaf.startsWith(`${h}.`))) continue
     unknown.push(`a field IAMAI recognised but did not read: ${leaf}`)
