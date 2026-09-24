@@ -743,9 +743,12 @@ export function headingsOf(b: StepBody): string[] {
   // A decision-anatomy step (Define Your Rollout Scope) draws its own three: nothing is built.
   if (usesDecisionAnatomy(b.contract.id)) return [DECISION_HEAD.why, DECISION_HEAD.questions, ...(b.contract.doneWhen.length > 0 ? [DECISION_HEAD.doneWhen] : [])]
   const task = taskHeadingsOf(b.contract.id)
+  // A Completed step drawn with the task anatomy shows its confirmed cards with
+  // no heading over them (ContentStep.tsx EmergencySubjectReadiness `completed`).
+  const confirmed = task !== null && b.emergencyAccountTasks !== null && b.laneView.lane === 'Completed'
   return [
     task?.why ?? HEAD.why,
-    task?.remaining ?? CONTRACT.readiness.heading,
+    ...(confirmed ? [] : [task?.remaining ?? CONTRACT.readiness.heading]),
     ...(b.conflictWords ? [CONTRACT.attentionConflict] : []),
     ...(b.showImplementation ? [task?.implementation ?? CONTRACT.implementation.heading] : []),
     ...(b.contract.doneWhen.length > 0 ? [task?.doneWhen ?? HEAD.doneWhen] : []),
