@@ -47,7 +47,7 @@ import { directionMilestoneAction } from '../../roadmap/directionAnswers.ts'
 import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
 import type { WhoBlock } from './whoBlocks.ts'
 import { BASELINE_COMMIT, artifactText, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageRuntime, packageSourceLine, packageStateOf, planningPreview, reviewedPackageFor, setupAfterEnforcementOf, sourceCheckedLine, entraWithSettings, jsonWithPlanTag, workProcedureOf } from './stepPackage.ts'
-import { lifecycleResources, policyInspectionLines, resourceChannelAllowed, inspectionResource, emailResource, mfaPreparationEmail, deviceSetupResource, namedPortalResource, switchedOffRequest, switchedOffResources, withWorkflowVerification } from './stepResources.ts'
+import { lifecycleResources, policyInspectionLines, resourceChannelAllowed, emailResource, mfaPreparationEmail, deviceSetupResource, namedPortalResource, switchedOffRequest, switchedOffResources, withWorkflowVerification } from './stepResources.ts'
 import { bindText, projectSafely, projectExplanation, readinessSafely, troubleshootingSafely } from '../../content/implementation/project.ts'
 import type { ChannelArtifact, OutputChannel, OwnerConfirmation, TroubleshootingScenario } from '../../content/implementation/project.ts'
 
@@ -70,7 +70,23 @@ export type Channel = 'portal' | 'ps' | 'json' | 'ai' | 'email'
  * built for a tab nobody opens), and the one line of support under the preview
  * that says how it is run.
  */
-export type Artifact = { id: Channel; form: 'list' | 'code' | 'markdown'; lines: string[]; text: () => string; note: string | null; unavailable?: true }
+export type Artifact = { id: Channel; form: 'list' | 'code' | 'markdown'; lines: string[]; text: () => string; note: string | null; unavailable?: true; readOnly?: true }
+
+/**
+ * The modes a package's script runs that only read (walk list 4.x item 29):
+ * `Observe` and `Verify` read back what the scan already reads, so a
+ * PowerShell tab that runs nothing else has no tab.
+ */
+const READ_ONLY_MODE = /^(?:Observe|Verify\w*|Review\w*)$/
+/**
+ * A package channel that writes nothing (walk list 4.x item 29, owner
+ * 2026-09-24): a script whose every run is a read-only mode, or a JSON channel
+ * whose every request is a GET. PowerShell and JSON stay only where they write:
+ * a create, a correction, a turn-on.
+ */
+const onlyReads = (a: ChannelArtifact): boolean =>
+  (a.channel === 'powershell' && a.runs.length > 0 && a.runs.every((r) => READ_ONLY_MODE.test(r.mode)))
+  || (a.channel === 'json' && a.requests.length > 0 && a.requests.every((r) => r.method.toUpperCase() === 'GET'))
 
 /** A package's output channels under the viewer's own tab ids. */
 const PACKAGE_CHANNEL: Record<OutputChannel, Channel> = { entra: 'portal', powershell: 'ps', json: 'json', aiInfo: 'ai', email: 'email' }
@@ -95,7 +111,7 @@ function packageArtifact(a: ChannelArtifact, ground: ((own: string) => string) |
   const own = artifactText(a, W.aiWarning)
   const facts = a.channel === 'aiInfo' && ground !== null && own.trim() !== '' ? ground(own) : ''
   const text = facts === '' ? own : aiBriefingText(own, facts)
-  return { id: PACKAGE_CHANNEL[a.channel], form: a.format === 'markdown' ? 'markdown' : 'code', lines: [], text: () => text, note }
+  return { id: PACKAGE_CHANNEL[a.channel], form: a.format === 'markdown' ? 'markdown' : 'code', lines: [], text: () => text, note, ...(onlyReads(a) ? { readOnly: true as const } : {}) }
 }
 
 /**
@@ -553,13 +569,18 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
     }
   }
   for (const channel of [...supported]) if (!resourceChannelAllowed(step, channel)) supported.delete(channel)
-  // A retained format always contains actual work or inspection, never a message
-  // saying the format has nothing to offer. Resolved mutations remain first choice.
+  // PowerShell and JSON stay only where they write — a create, a correction, a
+  // turn-on (walk list 4.x item 29, owner 2026-09-24; step template rule 8). A
+  // format with a value still unresolved is dropped, and so is one that only
+  // reads: the report-only "Observe" script, a "Verify" read-back, and the
+  // read-only GET requests that used to stand in wherever no change was
+  // resolved, all of which read what the scan already reads.
   for (const channel of ['ps', 'json'] as const) {
-    const index = produced.findIndex(a => a.id === channel)
-    const unresolved = index >= 0 && /‹[^›]+›/.test(produced[index].text())
-    if (unresolved) produced.splice(index, 1)
-    if (supported.has(channel) && !produced.some(a => a.id === channel)) produced.push(inspectionResource(step, channel))
+    for (let i = produced.length - 1; i >= 0; i--) {
+      const a = produced[i]
+      if (a.id === channel && (a.readOnly || /‹[^›]+›/.test(a.text()))) produced.splice(i, 1)
+    }
+    if (!produced.some(a => a.id === channel)) supported.delete(channel)
   }
   if (supported.has('email')) {
     const existing = produced.findIndex(a => a.id === 'email')

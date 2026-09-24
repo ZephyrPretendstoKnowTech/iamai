@@ -21957,12 +21957,7 @@
               "entra.verify"
             ],
             "json": [],
-            "powershell": [
-              {
-                "block": "powershell.run",
-                "mode": "Verify"
-              }
-            ],
+            "powershell": [],
             "aiInfo": [
               "ai.verify"
             ],
@@ -22050,8 +22045,7 @@
             "id": "powershell.run",
             "channel": "powershell",
             "states": [
-              "readyToDisable",
-              "verificationRequired"
+              "readyToDisable"
             ],
             "format": "powershell",
             "kind": "template"
