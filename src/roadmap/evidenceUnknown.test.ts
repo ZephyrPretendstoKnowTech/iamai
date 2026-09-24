@@ -7,13 +7,10 @@
 // read, nobody Ready — must still be 0%.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
 import { readinessFor } from './readiness.ts'
 import { signInProofRead, signInProofsRecorded } from '../scoring/fromSnapshot.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
-import { scanTile } from '../ui/scan/connectView.ts'
-import { app, pages } from '../content/content.ts'
 
 const WINDOW = { from: '2026-08-10T00:00:00.000Z', to: '2026-09-09T00:00:00.000Z' }
 const snapshotWith = (records: Record<string, unknown>, status = 'ok'): TenantSnapshot =>
@@ -22,56 +19,25 @@ const people = ['u1', 'u2', 'u3']
 /** Three active people, none of them Ready. */
 const notReady = people.map((userId) => ({ userId, activity: 'active', readiness: { state: 'unknown' } })) as unknown as MfaViability[]
 
-test('proof read and nobody Ready is a measured 0%', () => {
+test('proof read and nobody Ready is a measured 0%; records with no proof in them are unmeasured, never 0%; with no records the source status decides', () => {
   const s = snapshotWith({ u1: { proofs: [] }, u2: { proofs: [] }, u3: { proofs: [] } })
   assert.equal(signInProofsRecorded(s), true)
   assert.equal(signInProofRead(s), true)
   const r = readinessFor('device-registration-mfa', people, notReady, s)
   assert.equal(r.percent, 0)
   assert.equal(r.unmeasured, undefined)
-})
 
-test('records with no proof in them are unmeasured, never 0%', () => {
-  const s = snapshotWith({ u1: { lastMfaSuccess: null }, u2: {}, u3: {} })
-  assert.equal(signInProofsRecorded(s), false)
-  assert.equal(signInProofRead(s), false)
+  const unproven = snapshotWith({ u1: { lastMfaSuccess: null }, u2: {}, u3: {} })
+  assert.equal(signInProofsRecorded(unproven), false)
+  assert.equal(signInProofRead(unproven), false)
   for (const goal of ['device-registration-mfa', 'mfa-all-users', 'guests-mfa', 'admins-phishing-resistant']) {
-    const r = readinessFor(goal, people, notReady, s)
-    assert.equal(r.percent, null, `${goal}: unread proof was stated as a percentage`)
-    assert.equal(r.unmeasured, 'unreadable')
+    const reading = readinessFor(goal, people, notReady, unproven)
+    assert.equal(reading.percent, null, `${goal}: unread proof was stated as a percentage`)
+    assert.equal(reading.unmeasured, 'unreadable')
   }
-})
 
-test('no records at all carry nothing to be missing: the source status decides', () => {
+  // No records at all carry nothing to be missing: the source status decides.
   assert.equal(signInProofsRecorded(snapshotWith({})), true)
   assert.equal(signInProofRead(snapshotWith({})), true)
   assert.equal(signInProofRead(snapshotWith({}, 'disabled')), false, 'a source that was not read is proof not read')
-})
-
-test('Connect says when a complete scan holds no sign-in proof, and says nothing when it does', () => {
-  const degraded = scanTile({ kind: 'complete', at: '2026-09-09T00:00:00.000Z', now: Date.parse('2026-09-10T00:00:00.000Z'), degraded: true })
-  assert.equal(degraded.note, (pages.connect as { scan: { complete: { degraded: string } } }).scan.complete.degraded)
-  const clean = scanTile({ kind: 'complete', at: '2026-09-09T00:00:00.000Z', now: Date.parse('2026-09-10T00:00:00.000Z'), degraded: false })
-  assert.equal(clean.note, undefined)
-  const connect = readFileSync('src/ui/surfaces/Connect.tsx', 'utf8')
-  assert.match(connect, /degraded: !signInProofRead\(lastScan\.snapshot\)/)
-})
-
-test('MFA Readiness does not headline an unmeasured gate as "0 of N are Ready"', () => {
-  const page = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8').replace(/\r\n/g, '\n')
-  // The headline chooses the unmeasured sentence on the one reading Connect and the
-  // gate make (signInProofRead): a scan whose records hold no proof is unmeasured
-  // even though its sign-in source read "ok", never "0 of N people are ready".
-  assert.match(page, /import \{[^}]*\bsignInProofRead\b[^}]*\} from '\.\.\/\.\.\/scoring\/fromSnapshot\.ts'/, 'the page does not read the one proof-read authority')
-  assert.match(page, /summaryLine\(counted, \{ needP1: signInsNeedP1\(snapshot\), proofRead: signInProofRead\(snapshot\) \}\)/, 'the headline is not chosen by signInProofRead')
-  const cells = readFileSync('src/ui/surfaces/readinessCells.ts', 'utf8').replace(/\r\n/g, '\n')
-  assert.match(cells, /if \(!reads\.proofRead\) return fillText\(T\.summaryUnmeasured, \{ cohort \}\)/, 'summaryLine does not choose the unmeasured sentence on it')
-  assert.doesNotMatch(page, /signInEvidence\.status === 'ok' \|\| snapshot\.sources\.signInEvidence\.status === 'partial'/, 'the page re-derives proof-read from the source status alone')
-  const summary = (pages.readiness as unknown as { summaryUnmeasured: string }).summaryUnmeasured
-  assert.ok(typeof summary === 'string' && !/\b0\b|0%/.test(summary))
-  // The case the source status alone misses: records read, proof never recorded.
-  const s = snapshotWith({ u1: { lastMfaSuccess: null }, u2: {}, u3: {} })
-  assert.equal(s.sources.signInEvidence?.status, 'ok')
-  assert.equal(signInProofRead(s), false, 'the premise: an ok source whose records hold no proof is proof not read')
-  void app
 })

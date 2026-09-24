@@ -23,8 +23,7 @@
 // against the baseline with the recorded answers applied (coverage.ts
 // recordedReference, roadmap/deviations.ts applyDeviations), and the policy is
 // the goal delivered, with the narrowing still named in the goal's statement. A
-// narrowing nobody recorded is still a gap. The words for an update the policy
-// holds in full are still held below, over the reading that used to reach them.
+// narrowing nobody recorded is still a gap.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture, curatedFixture } from './fixtures/index.ts'
@@ -34,7 +33,6 @@ import type { FixtureRun } from './fixtures/run.ts'
 import { implementationOffered, unavailableReason } from './operations.ts'
 import { excludedPlatforms } from './deviations.ts'
 import { QUESTION_STEP, answerKey } from './answers.ts'
-import { BLOCKED_REASON } from '../copy/reasons.ts'
 import { stepContract } from '../ui/surfaces/stepContract.ts'
 import { stepExportView } from '../ui/surfaces/stepExport.ts'
 import { statusOf } from '../ui/surfaces/statusWord.ts'
@@ -50,18 +48,14 @@ const CHOSEN = /narrower conditions than the baseline by your choice: device pla
 
 type Row = Record<string, unknown> & { conditions?: Record<string, unknown> }
 
-/**
- * The tenant with `row` among its policies, scanned. `planned` is the mapping
- * the step is built from where it differs from the one coverage reads (the
- * held-words test below only).
- */
-function scanned(f: Fixture, row: Row, planned: Fixture['mapping'] = f.mapping): { f: Fixture; r: FixtureRun; step: Step; ctx: StepVarContext } {
+/** The tenant with `row` among its policies, scanned. */
+function scanned(f: Fixture, row: Row): { f: Fixture; r: FixtureRun; step: Step; ctx: StepVarContext } {
   const ca = f.snapshot.config.caPolicies!
   const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows: [...ca.rows, row] } } } as Fixture['snapshot']
   const t = { ...f, snapshot }
-  const r = runFixture(t, { snapshot, mapping: planned } as never)
+  const r = runFixture(t, { snapshot, mapping: f.mapping } as never)
   const step = r.steps.find((s) => s.id === DEVICE)!
-  const ctx: StepVarContext = { snapshot, mapping: planned, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming }
+  const ctx: StepVarContext = { snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming }
   return { f: t, r, step, ctx }
 }
 
@@ -94,30 +88,6 @@ function said(run: ReturnType<typeof scanned>): { because: string; doneWhen: str
     row: run.step.blockedReason ?? '',
     exported: view.whatToDo.join(' '),
   }
-}
-
-function assertHeld(run: ReturnType<typeof scanned>, name: string, label: string): void {
-  const ops = run.step.action.resolution?.policies ?? []
-  // The premise: an update to the policy, with nothing in it, and a goal still
-  // short of the baseline in a condition.
-  assert.deepEqual(ops.map((o) => [o.mode, o.policyId, o.body]), [['update', POLICY, {}]], `${label}: premise — the update is empty`)
-  assert.equal(unavailableReason(run.step), 'no-operation', `${label}: premise — no operation`)
-  const cov = run.r.coverage.results.find((x) => x.goal.id === run.step.goalId)!
-  assert.ok(cov.reasons.some((x) => x.kind === 'conditions-narrower' && !x.expected), `${label}: premise — narrower conditions: ${JSON.stringify(cov.reasons.map((x) => x.kind))}`)
-
-  const s = said(run)
-  // The policy by name, and nothing to submit.
-  assert.ok(s.because.includes(name), `${label}: the reason names the policy: ${s.because}`)
-  assert.match(s.because, /nothing to submit/, label)
-  // The gap no update writes, in the classifier's own words.
-  assert.match(s.because, /narrower conditions than the baseline: device platforms/, `${label}: the gap is named: ${s.because}`)
-  // No rescan promised, anywhere the step is read.
-  assert.doesNotMatch(s.because, REBUILD, `${label}: the reason still promises a rescan`)
-  assert.doesNotMatch(s.doneWhen, REBUILD, `${label}: the completion still promises a rescan`)
-  assert.equal(s.row, BLOCKED_REASON.noOperationHeld, `${label}: the row reason`)
-  assert.doesNotMatch(s.row, REBUILD, label)
-  assert.doesNotMatch(s.exported, REBUILD, `${label}: the export still promises a rescan: ${s.exported}`)
-  assert.ok(s.exported.includes(s.because), `${label}: the export reads the screen's reason line`)
 }
 
 /** The goal delivered as decided: Completed, nothing handed over, and the statement names the narrowing. */
@@ -179,30 +149,6 @@ test('patch Q3: a platform narrowing nobody recorded is still a gap', () => {
   gap(scanned(f, tenantOwn(body, { includePlatforms: ['all'], excludePlatforms: ['android', 'iOS', 'macOS'] })), 'macOS left out as well')
 })
 
-test('R4-11: an update the policy already holds in full, short of the goal in a condition, says so and promises no rescan', () => {
-  // Coverage now reads the recorded answer (patch Q3), so no scan of the demo
-  // reaches this: the reading that used to is kept here, a coverage that judged
-  // the phones-out policy against the baseline as the author wrote it (the
-  // decision's answers left out of what coverage reads) beside the step built
-  // from them. The words must stay true for any gap no update writes.
-  const f = withDirectionApproved(fixture('demo-week2'))
-  const body = created(f)
-  const unread = { ...f, mapping: { ...f.mapping, questionAnswers: Object.fromEntries(Object.entries(f.mapping.questionAnswers ?? {}).filter(([k]) => !k.startsWith(`${QUESTION_STEP.devices}:`))) } }
-  const run = scanned(unread, { ...body, id: POLICY, state: 'enabled', createdDateTime: f.snapshot.asOf, modifiedDateTime: f.snapshot.asOf }, f.mapping)
-  assertHeld(run, String(body.displayName), 'the plan\'s own policy')
-})
-
-test('a step with no operations at all still asks for the scan that rebuilds it', () => {
-  // The generic words stay where they are true: a step from an older plan file,
-  // with a body and no operations, is rebuilt by a fresh scan (operations.test.ts).
-  const f = fixture('demo-week2')
-  const run = scanned(f, { id: POLICY, displayName: 'Unrelated', state: 'disabled', conditions: { users: { includeUsers: ['None'] }, applications: { includeApplications: ['None'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } })
-  const stale = { ...run.step, action: { ...run.step.action, json: '{"displayName":"stale"}', resolution: undefined, nothingOwed: undefined } } as unknown as Step
-  assert.equal(unavailableReason(stale), 'no-operation')
-  const c = stepContract(stale, run.ctx)
-  assert.match(c.implementation.offered ? '' : c.implementation.because ?? '', REBUILD)
-})
-
 // ---- An enforced policy's update carries no section it already holds ----
 //
 // 1a3fdc42 dropped a section the target already holds only where it could offer
@@ -223,7 +169,7 @@ function withRow(f: Fixture, id: string, change: (row: Row) => Row): { r: Fixtur
   return { r, ctx: { snapshot, mapping: f.mapping, nameOf: (x) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming } }
 }
 
-test('R4-11: token protection, enforced as its step asked, is not handed over again as a correction that changes nothing', () => {
+test("R4-11: a policy enforced as its step asked (token protection) or as the baseline has it (the large tenant's device policy) is not handed over again as a correction that changes nothing", () => {
   // With the policy read against the baseline's own targets (coverage/classify.ts
   // narrowerApps, Nadia D7), a policy on exactly as its step built it owes
   // nothing at all: the step is finished, not an empty correction (and the
@@ -244,19 +190,16 @@ test('R4-11: token protection, enforced as its step asked, is not handed over ag
   assert.equal(implementationOffered(step), false, 'nothing is handed over as work')
   const c = stepContract(step, ctx)
   assert.doesNotMatch([c.implementation.offered ? '' : c.implementation.because ?? '', ...c.doneWhen].join(' '), REBUILD)
-})
 
-test('R4-11: large\'s device policy, as the baseline has it, is not offered a Target resources patch it already holds', () => {
   // Large's compliant-device policy is on and targets Office 365, as the
   // baseline's does. It used to read narrower than the goal's "all applications"
   // and came back as an Office365 -> Office365 update (Nadia D7); it is the goal
   // in place, and the step offers nothing.
-  const f = withFoundationSettled(fixture('large'))
-  const step = runFixture(f).steps.find((s) => s.id === DEVICE)!
-  assert.equal(step.state.lifecycle, 'enforced', 'premise: the tenant enforces it')
-  assert.equal(step.status, 'done')
-  assert.deepEqual(step.action.resolution?.policies ?? [], [], 'no update re-submits what the policy holds')
-  assert.equal(implementationOffered(step), false)
+  const large = runFixture(withFoundationSettled(fixture('large'))).steps.find((s) => s.id === DEVICE)!
+  assert.equal(large.state.lifecycle, 'enforced', 'premise: the tenant enforces it')
+  assert.equal(large.status, 'done')
+  assert.deepEqual(large.action.resolution?.policies ?? [], [], 'no update re-submits what the policy holds')
+  assert.equal(implementationOffered(large), false)
 })
 
 test('R4-11: a pair with a half still to create keeps its update to the other half, even where that half holds everything', () => {

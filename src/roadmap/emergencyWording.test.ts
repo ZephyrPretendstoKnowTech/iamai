@@ -16,12 +16,19 @@ function run() {
   return { f, r, ctx }
 }
 
-test('Step 1 names the sign-in domain check plainly', () => {
+test('Step 1 names the sign-in domain check plainly, and Emergency Access tile labels use sentence case', () => {
   const { r, ctx } = run()
   const accounts = emergencyAccountTasksOf(r.steps.find(s => s.id === 's-prereq-break-glass')!, ctx).accounts
   const completed = accounts.flatMap(account => account.completed)
   assert.ok(completed.includes('Signs in with the tenant’s onmicrosoft.com address'), completed.join(' | '))
   assert.equal(completed.some(line => /Initial onmicrosoft/.test(line)), false)
+  // The tile labels use sentence case, as the other Plan tile labels do.
+  const labels = [
+    ...['s-prereq-break-glass', 's-prereq-exclusion-group', 's-prereq-passkey-settings'].flatMap(id => r.steps.find(s => s.id === id)?.configurationFindings?.map(finding => finding.label) ?? []),
+    ...(r.schedule.cleanup?.recoveryFindings ?? []).map(finding => finding.label),
+  ]
+  assert.ok(labels.length >= 8, labels.join(', '))
+  for (const label of labels) assert.match(label, /^[A-Z][a-z-]*(?: [a-z-]+)*$/, `sentence case: ${label}`)
 })
 
 test('an account the Passkey method excludes is told what that means and what to change', () => {
@@ -37,14 +44,4 @@ test('an account the Passkey method excludes is told what that means and what to
   assert.match(text, /The Passkey \(FIDO2\) authentication method excludes this account, so it cannot sign in with a passkey/)
   assert.match(text, /Exclude list/)
   assert.doesNotMatch(text, /must not exclude it from the authentication method/)
-})
-
-test('Emergency Access tile labels use sentence case, as the other Plan tile labels do', () => {
-  const { r } = run()
-  const labels = [
-    ...['s-prereq-break-glass', 's-prereq-exclusion-group', 's-prereq-passkey-settings'].flatMap(id => r.steps.find(s => s.id === id)?.configurationFindings?.map(finding => finding.label) ?? []),
-    ...(r.schedule.cleanup?.recoveryFindings ?? []).map(finding => finding.label),
-  ]
-  assert.ok(labels.length >= 8, labels.join(', '))
-  for (const label of labels) assert.match(label, /^[A-Z][a-z-]*(?: [a-z-]+)*$/, `sentence case: ${label}`)
 })
