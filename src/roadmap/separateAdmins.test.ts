@@ -29,7 +29,6 @@ test('the review includes role holders and separately lists observed mail or Tea
   assert.ok(with_.every(([id]) => s.population.ids.includes(id)), 'the review includes the administrators with observed business activity')
   const cs = stepById[SEPARATE_ADMIN_ACCOUNTS_STEP_ID]
   assert.equal(cs.title, TITLE)
-  assert.equal(cs.skip, true, 'skippable')
   // Ongoing Checks and Cleanup (docs/plans/ongoing-spec.md sections 3 and 9): the
   // Learn link moved from the privileged-access-workstations concept page to the one
   // that carries the instruction — personal email is phished constantly, so the

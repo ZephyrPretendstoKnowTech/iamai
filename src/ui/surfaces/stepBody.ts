@@ -550,7 +550,6 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
       supported.add(channel)
     }
     produced.push({ id: 'portal', form: 'list', lines, text: () => lines.map((line, i) => `${i + 1}. ${line}`).join('\n'), note: null })
-    produced.push(inspectionResource(step, 'ps'))
     produced.push({ id: 'ai', form: 'markdown', lines: [], text: () => aiBriefingText('Help prepare the people in this plan for their actual MFA requirements. Explain who needs a method, which registered methods satisfy their target, and who needs help. Distinguish registered-method readiness from a tested workflow. Explain useful Microsoft Authenticator registration-campaign options without claiming a campaign object is required or already configured.', grounding('')), note: null })
   }
   if (step.id === 's-prereq-device-plan') {

@@ -3641,7 +3641,7 @@
       "ifWrong": "Re-enable the account: Users → the account → Edit properties → Account enabled: Yes. Nothing else changes.",
       "comms": null,
       "doesntApply": false,
-      "skip": true,
+      "skip": false,
       "scanControl": true,
       "more": {
         "risks": [
@@ -3833,7 +3833,7 @@
       ],
       "ifWrong": null,
       "comms": null,
-      "doesntApply": true,
+      "doesntApply": false,
       "skip": false,
       "scanControl": true,
       "more": {
@@ -3918,7 +3918,7 @@
       ],
       "ifWrong": "Remove the account from the group; the policies apply again on its next sign-in.",
       "comms": null,
-      "doesntApply": true,
+      "doesntApply": false,
       "skip": false,
       "scanControl": true,
       "more": {
@@ -7042,7 +7042,7 @@
       "ifWrong": "Put the role back on the everyday account; nothing else changes.",
       "comms": null,
       "doesntApply": false,
-      "skip": true,
+      "skip": false,
       "scanControl": true,
       "more": {
         "risks": [
