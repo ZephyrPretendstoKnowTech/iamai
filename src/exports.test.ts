@@ -34,11 +34,30 @@ function contains(text: string, needles: string[]): string[] {
   return needles.filter((n) => text.includes(n))
 }
 
-test('the fixture really carries the identifiers the exports are checked against', () => {
-  const raw = JSON.stringify(snapshot)
-  assert.equal(contains(raw, upns).length, upns.length)
-  assert.equal(contains(raw, names).length, names.length)
-  assert.ok(raw.includes(tenantId) && raw.includes(ip) && deviceNames.length > 0 && contains(raw, deviceNames).length === deviceNames.length)
+test('the redacted grounding bundle holds none of the identifiers the fixture carries, and the unredacted one says in its header what it contains', () => {
+  // the fixture really carries the identifiers the exports are checked against
+  {
+    const raw = JSON.stringify(snapshot)
+    assert.equal(contains(raw, upns).length, upns.length)
+    assert.equal(contains(raw, names).length, names.length)
+    assert.ok(raw.includes(tenantId) && raw.includes(ip) && deviceNames.length > 0 && contains(raw, deviceNames).length === deviceNames.length)
+  }
+  // the redacted grounding bundle holds no sign-in names, display names, tenant id, device names or IP ranges
+  {
+    const bundle = JSON.stringify(groundingBundle({ view: bundleView, tenant: 'Fixture small', snapshot, coverage: run.coverage, steps: run.steps, schedule: run.schedule, redacted: true, generated: '2026-08-28' }))
+    assert.deepEqual(contains(bundle, upns), [])
+    assert.deepEqual(contains(bundle, names), [])
+    assert.ok(!bundle.includes(tenantId))
+    assert.deepEqual(contains(bundle, deviceNames), [])
+    assert.ok(!bundle.includes(ip))
+    assert.match(bundle, /Redacted: no user names/)
+  }
+  // the unredacted grounding bundle names what it contains in its header
+  {
+    const bundle = JSON.stringify(groundingBundle({ view: bundleView, tenant: 'Fixture small', snapshot, coverage: run.coverage, steps: run.steps, schedule: run.schedule, redacted: false, generated: '2026-08-28' }))
+    assert.match(bundle, /Unredacted: contains user names and sign-in names/)
+    assert.ok(bundle.includes(tenantId))
+  }
 })
 
 test('diagnostics: redactIdentifiers removes every sign-in name and every id, keeping correlations', () => {
@@ -48,22 +67,6 @@ test('diagnostics: redactIdentifiers removes every sign-in name and every id, ke
   assert.ok(!out.includes(users[0].id))
   assert.match(out, /upn-1@redacted/)
   assert.match(out, /guid-0001/)
-})
-
-test('the redacted grounding bundle holds no sign-in names, display names, tenant id, device names or IP ranges', () => {
-  const bundle = JSON.stringify(groundingBundle({ view: bundleView, tenant: 'Fixture small', snapshot, coverage: run.coverage, steps: run.steps, schedule: run.schedule, redacted: true, generated: '2026-08-28' }))
-  assert.deepEqual(contains(bundle, upns), [])
-  assert.deepEqual(contains(bundle, names), [])
-  assert.ok(!bundle.includes(tenantId))
-  assert.deepEqual(contains(bundle, deviceNames), [])
-  assert.ok(!bundle.includes(ip))
-  assert.match(bundle, /Redacted: no user names/)
-})
-
-test('the unredacted grounding bundle names what it contains in its header', () => {
-  const bundle = JSON.stringify(groundingBundle({ view: bundleView, tenant: 'Fixture small', snapshot, coverage: run.coverage, steps: run.steps, schedule: run.schedule, redacted: false, generated: '2026-08-28' }))
-  assert.match(bundle, /Unredacted: contains user names and sign-in names/)
-  assert.ok(bundle.includes(tenantId))
 })
 
 test('the calendar export carries titles, dates and the runbook, never a sign-in name or the tenant id', () => {

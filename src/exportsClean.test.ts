@@ -58,33 +58,36 @@ function hits(text: string, { json = false } = {}): string[] {
   return all.filter((w) => (w === 'urn:user:' ? false : joined.includes(w)))
 }
 
-test('the calendar speaks from the content-driven step and carries no forbidden vocabulary', () => {
-  const ics = buildIcs(run.steps, 'Contoso Pty Ltd', f.planId, view)
-  assert.deepEqual(hits(ics), [], 'no forbidden string in the calendar')
-  assert.match(ics, /SUMMARY:Require MFA for Everyone|SUMMARY:Block Legacy Authentication|SUMMARY:Shorten Admin Sessions/, 'entries carry the content titles')
-  assert.match(ics, /Done when:/, 'entries carry the done-when lines')
-  assert.match(ics, /What to do:/, 'entries carry the portal lines')
-})
-
-test('the prompt pack speaks from the content-driven step and carries no forbidden vocabulary', () => {
-  const pack = promptPack({ view, tenant: 'Contoso Pty Ltd', steps: run.steps, schedule: run.schedule, changeRecord: '', announcement: null, cleanup })
-  const md = promptPackMarkdown(pack, 'Contoso Pty Ltd')
-  assert.match(md, /Verify emergency sign-in/, 'the premise: the drill travels in the pack')
-  assert.deepEqual(hits(md), [], 'no forbidden string in the prompt pack')
-  assert.match(md, /What to do:/, 'the step prompt carries the portal lines')
-})
-
-test('the grounding bundle speaks from the content-driven step and carries no forbidden vocabulary', () => {
-  const bundle = groundingBundle({ view, tenant: 'Contoso Pty Ltd', snapshot: f.snapshot, coverage: run.coverage, steps: run.steps, schedule: run.schedule, redacted: false, generated: 'Sep 2, 2026', cleanup })
-  const text = JSON.stringify(bundle, null, 2)
-  assert.match(text, /Verify emergency sign-in/, 'the premise: the drill travels in the bundle')
-  assert.deepEqual(hits(text, { json: true }), [], 'no forbidden string in the bundle')
-  const steps = (bundle as { plan: { steps: { title: string; whatToDo?: string[]; doneWhen?: string[]; whatChanges?: string }[] } }).plan.steps
-  assert.ok(steps.length > 0)
-  for (const s of steps) {
-    assert.ok(typeof s.title === 'string' && s.title.length > 0)
-    assert.ok(Array.isArray(s.whatToDo) && Array.isArray(s.doneWhen), `${s.title}: what to do and done when travel`)
-    assert.equal(s.whatChanges, undefined, 'the v2 what-changes line does not travel')
+test('the calendar, the prompt pack and the grounding bundle speak from the content-driven step and carry no forbidden vocabulary', () => {
+  // the calendar speaks from the content-driven step and carries no forbidden vocabulary
+  {
+    const ics = buildIcs(run.steps, 'Contoso Pty Ltd', f.planId, view)
+    assert.deepEqual(hits(ics), [], 'no forbidden string in the calendar')
+    assert.match(ics, /SUMMARY:Require MFA for Everyone|SUMMARY:Block Legacy Authentication|SUMMARY:Shorten Admin Sessions/, 'entries carry the content titles')
+    assert.match(ics, /Done when:/, 'entries carry the done-when lines')
+    assert.match(ics, /What to do:/, 'entries carry the portal lines')
+  }
+  // the prompt pack speaks from the content-driven step and carries no forbidden vocabulary
+  {
+    const pack = promptPack({ view, tenant: 'Contoso Pty Ltd', steps: run.steps, schedule: run.schedule, changeRecord: '', announcement: null, cleanup })
+    const md = promptPackMarkdown(pack, 'Contoso Pty Ltd')
+    assert.match(md, /Verify emergency sign-in/, 'the premise: the drill travels in the pack')
+    assert.deepEqual(hits(md), [], 'no forbidden string in the prompt pack')
+    assert.match(md, /What to do:/, 'the step prompt carries the portal lines')
+  }
+  // the grounding bundle speaks from the content-driven step and carries no forbidden vocabulary
+  {
+    const bundle = groundingBundle({ view, tenant: 'Contoso Pty Ltd', snapshot: f.snapshot, coverage: run.coverage, steps: run.steps, schedule: run.schedule, redacted: false, generated: 'Sep 2, 2026', cleanup })
+    const text = JSON.stringify(bundle, null, 2)
+    assert.match(text, /Verify emergency sign-in/, 'the premise: the drill travels in the bundle')
+    assert.deepEqual(hits(text, { json: true }), [], 'no forbidden string in the bundle')
+    const steps = (bundle as { plan: { steps: { title: string; whatToDo?: string[]; doneWhen?: string[]; whatChanges?: string }[] } }).plan.steps
+    assert.ok(steps.length > 0)
+    for (const s of steps) {
+      assert.ok(typeof s.title === 'string' && s.title.length > 0)
+      assert.ok(Array.isArray(s.whatToDo) && Array.isArray(s.doneWhen), `${s.title}: what to do and done when travel`)
+      assert.equal(s.whatChanges, undefined, 'the v2 what-changes line does not travel')
+    }
   }
 })
 

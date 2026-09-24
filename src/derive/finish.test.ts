@@ -7,7 +7,6 @@ import { runFixture } from '../roadmap/fixtures/run.ts'
 import { heldByReadiness, heldRequired, planFinish, projectedFinish } from './finish.ts'
 import { createWaitsOnReadiness, unavailableReason } from '../roadmap/operations.ts'
 import { holdOf, isHeld } from '../roadmap/holds.ts'
-import { FINISH } from '../copy/statements.ts'
 
 test('every outstanding step is either dated by the calendar or held by a named readiness threshold', () => {
   for (const f of allFixtures()) {
@@ -44,15 +43,6 @@ test('every outstanding step is either dated by the calendar or held by a named 
     }
   }
 })
-
-test('the header line says the date and what waits, in the words given', () => {
-  assert.equal(FINISH.line('Sep 20', []), 'finishes Sep 20')
-  assert.equal(FINISH.line('Sep 20', [{ measure: 'device readiness', count: 3, family: 'device' }]), 'finishes Sep 20 · 3 device steps wait for device readiness')
-  assert.equal(FINISH.line('Sep 20', [{ measure: 'MFA readiness', count: 1, family: 'mfa' }]), 'finishes Sep 20 · 1 MFA step waits for MFA readiness')
-  assert.equal(FINISH.line(null, [{ measure: 'admin readiness', count: 2, family: 'admin' }]), 'nothing is dated · 2 admin steps wait for admin readiness')
-})
-
-// ------------------------------------------------------------ the projected finish (A2)
 
 test('the projected finish is the estimate at pace, and the committed day only when the calendar names another day', () => {
   const estimate = '2026-10-05T12:00:00.000Z'

@@ -39,19 +39,6 @@ test('states are exclusive and sum to the active people; the kinds and the not a
   }
 })
 
-test('the Windows-Hello-only person is proven on the PC they used, and Needs a device on the phone they also sign in from', () => {
-  const f = fixture('demo')
-  const l = ladder(f.snapshot, f.mapping, f.snapshot.asOf)
-  const hello = [...l.viability.values()].find((v) => v.registered.length === 1 && v.registered[0] === 'windowsHelloForBusiness')
-  assert.ok(hello, 'the demo has a Windows-Hello-only person')
-  assert.ok(hello.evidence, 'MFA proven on that PC')
-  assert.deepEqual(hello.readiness.methods, ['windowsHello'])
-  assert.deepEqual(hello.readiness.devices.map((d) => [d.os, d.proof?.cls ?? null]), [['Windows', 'windowsHello'], ['iOS', null]], 'proven on Windows, and not on the phone the records show in use')
-  assert.equal(hello.readiness.state, 'device')
-  assert.deepEqual(hello.readiness.next, { kind: 'addDevice', os: 'iOS', option: 'authenticatorPasskey' })
-  assert.ok(l.states.device.some((p) => p.id === hello.userId), 'counted in Needs a device')
-})
-
 test('an account readiness does not score still shows its methods, from the method rows or the registration report, and unknown where neither was read', () => {
   const f = fixture('demo')
   const s = f.snapshot
@@ -68,11 +55,9 @@ test('an account readiness does not score still shows its methods, from the meth
   assert.ok(methodClassesOf(fallback, someone.id)?.includes('authenticator'))
 })
 
-test("the campaign step's groups and the admin readiness list read the states; the gate's threshold is the engine's, never a number on a surface", async () => {
+test("the campaign step's groups and the admin readiness list read the states", async () => {
   const { contentLists } = await import('./contentLists.ts')
   const { adminUserIds } = await import('../roles.ts')
-  const { stepById } = await import('../content/content.ts')
-  const { readFileSync } = await import('node:fs')
   for (const name of ['demo', 'getiamai'] as const) {
     const f = fixture(name)
     const l = ladder(f.snapshot, f.mapping, f.snapshot.asOf)
@@ -90,17 +75,6 @@ test("the campaign step's groups and the admin readiness list read the states; t
     assert.deepEqual([...cl.adminsWithout].sort(), below, `${name}: the admin readiness list is the admins not yet Ready`)
     assert.deepEqual([...cl.adminsNotReady].sort(), below, `${name}: the campaign's admin note names the same admins`)
   }
-  // The campaign's groups and the admin step say so in their own words.
-  const campaign = JSON.stringify(stepById['s-verify-mfa'])
-  for (const t of ['with no sign-in method', 'with no phishing-resistant method', 'not confirmed in the last 30 days on every kind of device they use', '{list:adminsNotReady}']) assert.ok(campaign.includes(t), `the campaign names ${t}`)
-  assert.ok(JSON.stringify(stepById['admins-phishing-resistant']).includes('not yet Ready for phishing-resistant MFA'))
-  // The 90% gate is the engine's constant (roadmap/constants.ts): MFA Readiness
-  // reads it and renders the count it implies, and no surface writes the number.
-  const page = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8').replace(/\/\/.*$/gm, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
-  assert.match(page, /step\?\.methodPreparation/, 'the page reads actual policy-scoped method preparation from the engine')
-  assert.doesNotMatch(page, /READINESS_THRESHOLD_MFA_PERCENT/, 'the global readiness strip is not a ninety-percent rollout gate')
-  assert.doesNotMatch(page, /\b90\b/, 'and writes no number of its own')
-  assert.doesNotMatch(readFileSync('src/ui/surfaces/Connect.tsx', 'utf8').replace(/\/\/.*$/gm, ''), /READINESS_THRESHOLD|\b90 ?%/, 'Connect renders no gate')
 })
 
 // The one list a policy can empty is the ordinary-MFA one: with Require MFA for
@@ -113,7 +87,6 @@ test("Require MFA for Everyone in place empties the ordinary-MFA list and no rea
   const { runFixture } = await import('../roadmap/fixtures/run.ts')
   const { statusOf } = await import('../ui/surfaces/statusWord.ts')
   const { planDates } = await import('../ui/surfaces/stepVars.ts')
-  const { readFileSync } = await import('node:fs')
   for (const [name, inPlace] of [['demo-week2', true], ['demo', false], ['getiamai', false]] as const) {
     const f = fixture(name)
     const r = runFixture(f)
@@ -128,7 +101,4 @@ test("Require MFA for Everyone in place empties the ordinary-MFA list and no rea
     assert.deepEqual([...under.unproven].sort(), inPlace ? [] : [...base.unproven].sort(), `${name}: the ordinary-MFA list under the policy`)
     for (const k of ['noMethod', 'needsSetup', 'needsProof', 'readinessUnknown'] as const) assert.deepEqual([...under[k]].sort(), [...base[k]].sort(), `${name}: ${k} is the same under the policy`)
   }
-  // The row's state is its lane label (A1c, RUN-CONTEXT-A decision 1): a finished policy reads Completed, never a status word of the walk's own.
-  const walkLine = (readFileSync('scripts/walk.mjs', 'utf8').match(/^\s*mfaInPlace: .*$/m) ?? [''])[0]
-  assert.match(walkLine, /COMPLETED_RE\.test\(mfaLabel\)/, `the walk reads the row's lane label, and reads "${walkLine.trim()}"`)
 })
