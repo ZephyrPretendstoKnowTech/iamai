@@ -67,31 +67,82 @@ function pimOn(f: Fixture, id: string = PIM_STEP): { step: Step; body: StepBody;
 
 const channelText = (b: StepBody, id: string): string => b.artifacts.find((a) => a.id === id)?.text() ?? ''
 
-// R4-18 (Marcus D9). The resolved operation targets authentication context c1
-// — it is in the body the plan would send — and nothing bound it, so the
-// package held every channel on `authContext.target.id` and the planning
-// preview drew the create on a Ready · Create row with the ID glossed into a
-// sentence: "Target resources → Authentication context: `the authentication
-// context configured for the intended PIM role` (`the ID of that context in
-// Conditional Access → Authentication context`)". That context is configured for
-// no role at create time — the package forbids pointing PIM at it until the
-// policy is On — and the JSON and PowerShell tabs fell back to a bare GET.
-test('the create names the authentication context the plan targets, the ID its own request sends', () => {
-  const { step, body, ctx } = pimOn(pinnedMid())
-  const op = plannedOperationsOf(step)[0]
-  const sent = (op.body as { conditions?: { applications?: { includeAuthenticationContextClassReferences?: string[] } } }).conditions?.applications?.includeAuthenticationContextClassReferences
-  assert.deepEqual(sent, ['c1'], 'the premise: the pinned member targets c1')
-  const bindings = packageBindings(step, ctx, body.contract)
-  assert.equal(bindings['authContext.target.id'], 'c1')
-  assert.equal(bindings['authContext.target.displayName'], 'Privileged role activation')
-  const portal = channelText(body, 'portal')
-  assert.match(portal, /Target resources → Authentication context: `Privileged role activation` \(`c1`\)/)
-  assert.doesNotMatch(portal, /the ID of that context|configured for the intended PIM role/)
-  // Executable, every channel: the request the JSON tab carries targets the same context.
-  const json = channelText(body, 'json')
-  assert.match(json, /"includeAuthenticationContextClassReferences":\s*\[\s*"c1"\s*\]/)
-  assert.doesNotMatch(json, /"method":\s*"GET"/)
-  assert.match(channelText(body, 'ps'), /-Mode 'Create' -AuthenticationContextId 'c1'/)
+test('the create names the authentication context the plan targets, and prepares that context only where there is none, before the policy that targets it', () => {
+  // the create names the authentication context the plan targets, the ID its own request sends
+  // R4-18 (Marcus D9). The resolved operation targets authentication context c1
+  // — it is in the body the plan would send — and nothing bound it, so the
+  // package held every channel on `authContext.target.id` and the planning
+  // preview drew the create on a Ready · Create row with the ID glossed into a
+  // sentence: "Target resources → Authentication context: `the authentication
+  // context configured for the intended PIM role` (`the ID of that context in
+  // Conditional Access → Authentication context`)". That context is configured for
+  // no role at create time — the package forbids pointing PIM at it until the
+  // policy is On — and the JSON and PowerShell tabs fell back to a bare GET.
+  {
+    const { step, body, ctx } = pimOn(pinnedMid())
+    const op = plannedOperationsOf(step)[0]
+    const sent = (op.body as { conditions?: { applications?: { includeAuthenticationContextClassReferences?: string[] } } }).conditions?.applications?.includeAuthenticationContextClassReferences
+    assert.deepEqual(sent, ['c1'], 'the premise: the pinned member targets c1')
+    const bindings = packageBindings(step, ctx, body.contract)
+    assert.equal(bindings['authContext.target.id'], 'c1')
+    assert.equal(bindings['authContext.target.displayName'], 'Privileged role activation')
+    const portal = channelText(body, 'portal')
+    assert.match(portal, /Target resources → Authentication context: `Privileged role activation` \(`c1`\)/)
+    assert.doesNotMatch(portal, /the ID of that context|configured for the intended PIM role/)
+    // Executable, every channel: the request the JSON tab carries targets the same context.
+    const json = channelText(body, 'json')
+    assert.match(json, /"includeAuthenticationContextClassReferences":\s*\[\s*"c1"\s*\]/)
+    assert.doesNotMatch(json, /"method":\s*"GET"/)
+    assert.match(channelText(body, 'ps'), /-Mode 'Create' -AuthenticationContextId 'c1'/)
+  }
+  // the create prepares the context only where there is none, before the policy that targets it
+  // R4-18, the first link of the package's own setup order. The create put the
+  // policy on the context and nothing on the step said to create or publish the
+  // context: in Entra a context that does not exist cannot be chosen under Target
+  // resources, so the procedure stopped at step 3, and PIM can only ever be
+  // pointed at a published one. The package authors that work as its own state
+  // (`contextMissing`), which the runtime never enters because IAMAI reads no
+  // authentication contexts and cannot tell a missing one from a published one.
+  // The create carries it first instead.
+  //
+  // R4-18 review: it carried it as the package wrote it for a context IAMAI had
+  // read as its own — "Create or update … c1 / Privileged role activation … and
+  // publish it", a blind PATCH of name, description and published state. IAMAI has
+  // read nothing here, and c1 is the baseline author's ID, not one resolved against
+  // this tenant: a c1 that exists for something else (sensitivity labels, Defender
+  // for Cloud Apps, a context left unpublished) was renamed and published, and once
+  // enforced this All-users policy gates whatever requests it. The preparation only
+  // creates: a context under any other name or description stops the step, in the
+  // procedure and in the script, whose Create refuses a context it did not prepare.
+  {
+    const { body } = pimOn(pinnedMid())
+    const portal = channelText(body, 'portal')
+    const prepare = portal.indexOf('Conditional Access → Authentication context. If no context has ID `c1`, create it with that ID, the name `Privileged role activation` and the description `Fresh strong authentication for privileged role activation.`, and publish it.')
+    const create = portal.indexOf('Conditional Access → Policies → New policy')
+    assert.ok(prepare >= 0, portal)
+    assert.ok(create > prepare, 'the context is prepared after the policy that must select it')
+    assert.match(portal, /If it exists under any other name or description, stop here: something in your tenant may already request that context, and this step does not rename, republish or reuse a context it did not create\./)
+    assert.doesNotMatch(portal, /Create or update|IAMAI-resolved context/)
+    // The Implementation Task reads the same procedure, context first.
+    const task = body.emergencyAccountTasks?.tasks[0]
+    assert.ok(task, 'the step draws no Implementation Task')
+    assert.match(task.steps[0], /Authentication context\. If no context has ID `c1`, create it/)
+    // The script runs the same two modes in the same order, and reads before it writes.
+    const ps = channelText(body, 'ps')
+    const runs = [...ps.matchAll(/^Invoke-IAMAIStep -Mode '(\w+)'/gm)].map((m) => m[1])
+    assert.deepEqual(runs, ['PrepareContext', 'Create'])
+    assert.match(ps, /-Mode 'PrepareContext' -AuthenticationContextId 'c1' -AuthenticationContextDisplayName 'Privileged role activation'/)
+    assert.match(ps, /-Mode 'Create' -AuthenticationContextId 'c1' -AuthenticationContextDisplayName 'Privileged role activation'/)
+    const arm = (mode: string): string => ps.slice(ps.indexOf(`  '${mode}' {`), ps.indexOf('\n  }', ps.indexOf(`  '${mode}' {`)))
+    const prepareArm = arm('PrepareContext')
+    const read = prepareArm.indexOf('$existing = Get-ContextIfPresent')
+    const refuse = prepareArm.indexOf("throw \"Authentication context $AuthenticationContextId already exists as")
+    const write = prepareArm.indexOf('-Method PATCH')
+    assert.ok(read >= 0 && refuse > read && write > refuse, `PrepareContext writes before it reads the context:\n${prepareArm}`)
+    assert.match(prepareArm, /\$existing\.displayName -ne \$AuthenticationContextDisplayName -or \$existing\.description -ne \$ContextDescription/)
+    const createArm = arm('Create')
+    assert.ok(createArm.indexOf('Assert-ContextCanonical (Get-Context)') >= 0 && createArm.indexOf('Assert-ContextCanonical (Get-Context)') < createArm.indexOf('-Method POST'), `Create posts the policy before it checks the context:\n${createArm}`)
+  }
 })
 
 // The one thing a scan does see about authentication contexts is which of the
@@ -158,54 +209,6 @@ test('a request repeated once per role-management policy is reported as an unsup
   // Another block with an undeclared endpoint binding and no repeat is still the author's defect.
   const stray = { meta: { stepId: 'x', projection: {} } as unknown as PackageMeta, blocks: { j: { meta: { id: 'j', channel: 'json', format: 'json', endpoint: 'https://graph.microsoft.com/v1.0/x/{missingId}' }, text: '{}\n' } } }
   assert.deepEqual(validatePackage(stray as unknown as CompiledPackage), ['j: endpoint names undeclared binding missingId'])
-})
-
-// R4-18, the first link of the package's own setup order. The create put the
-// policy on the context and nothing on the step said to create or publish the
-// context: in Entra a context that does not exist cannot be chosen under Target
-// resources, so the procedure stopped at step 3, and PIM can only ever be
-// pointed at a published one. The package authors that work as its own state
-// (`contextMissing`), which the runtime never enters because IAMAI reads no
-// authentication contexts and cannot tell a missing one from a published one.
-// The create carries it first instead.
-//
-// R4-18 review: it carried it as the package wrote it for a context IAMAI had
-// read as its own — "Create or update … c1 / Privileged role activation … and
-// publish it", a blind PATCH of name, description and published state. IAMAI has
-// read nothing here, and c1 is the baseline author's ID, not one resolved against
-// this tenant: a c1 that exists for something else (sensitivity labels, Defender
-// for Cloud Apps, a context left unpublished) was renamed and published, and once
-// enforced this All-users policy gates whatever requests it. The preparation only
-// creates: a context under any other name or description stops the step, in the
-// procedure and in the script, whose Create refuses a context it did not prepare.
-test('the create prepares the context only where there is none, before the policy that targets it', () => {
-  const { body } = pimOn(pinnedMid())
-  const portal = channelText(body, 'portal')
-  const prepare = portal.indexOf('Conditional Access → Authentication context. If no context has ID `c1`, create it with that ID, the name `Privileged role activation` and the description `Fresh strong authentication for privileged role activation.`, and publish it.')
-  const create = portal.indexOf('Conditional Access → Policies → New policy')
-  assert.ok(prepare >= 0, portal)
-  assert.ok(create > prepare, 'the context is prepared after the policy that must select it')
-  assert.match(portal, /If it exists under any other name or description, stop here: something in your tenant may already request that context, and this step does not rename, republish or reuse a context it did not create\./)
-  assert.doesNotMatch(portal, /Create or update|IAMAI-resolved context/)
-  // The Implementation Task reads the same procedure, context first.
-  const task = body.emergencyAccountTasks?.tasks[0]
-  assert.ok(task, 'the step draws no Implementation Task')
-  assert.match(task.steps[0], /Authentication context\. If no context has ID `c1`, create it/)
-  // The script runs the same two modes in the same order, and reads before it writes.
-  const ps = channelText(body, 'ps')
-  const runs = [...ps.matchAll(/^Invoke-IAMAIStep -Mode '(\w+)'/gm)].map((m) => m[1])
-  assert.deepEqual(runs, ['PrepareContext', 'Create'])
-  assert.match(ps, /-Mode 'PrepareContext' -AuthenticationContextId 'c1' -AuthenticationContextDisplayName 'Privileged role activation'/)
-  assert.match(ps, /-Mode 'Create' -AuthenticationContextId 'c1' -AuthenticationContextDisplayName 'Privileged role activation'/)
-  const arm = (mode: string): string => ps.slice(ps.indexOf(`  '${mode}' {`), ps.indexOf('\n  }', ps.indexOf(`  '${mode}' {`)))
-  const prepareArm = arm('PrepareContext')
-  const read = prepareArm.indexOf('$existing = Get-ContextIfPresent')
-  const refuse = prepareArm.indexOf("throw \"Authentication context $AuthenticationContextId already exists as")
-  const write = prepareArm.indexOf('-Method PATCH')
-  assert.ok(read >= 0 && refuse > read && write > refuse, `PrepareContext writes before it reads the context:\n${prepareArm}`)
-  assert.match(prepareArm, /\$existing\.displayName -ne \$AuthenticationContextDisplayName -or \$existing\.description -ne \$ContextDescription/)
-  const createArm = arm('Create')
-  assert.ok(createArm.indexOf('Assert-ContextCanonical (Get-Context)') >= 0 && createArm.indexOf('Assert-ContextCanonical (Get-Context)') < createArm.indexOf('-Method POST'), `Create posts the policy before it checks the context:\n${createArm}`)
 })
 
 // R4-18, secondary. On a plan whose PIM policy had no strength resolved for the
@@ -282,62 +285,6 @@ test('an enforced activation policy asks for the PIM role settings that make it 
   assert.ok(task && /On activation, require Microsoft Entra Conditional Access authentication context/.test(task.steps[0]), JSON.stringify(task?.steps))
 })
 
-// The name IAMAI proposes is the create's instruction ("create or update … c1 /
-// Privileged role activation, and publish it"), never a reading: IAMAI reads no
-// authentication contexts. A tenant's own activation policy, found On with no
-// plan tag, targets a context the tenant named itself, and the PIM line told the
-// reader to select `Privileged role activation` — a context that may not exist,
-// or a different one of that name, whose own policy then decides role activation.
-// The ID is read off the policy.
-//
-// R4-18 review: the name then stayed unresolved and drew its ‹authentication
-// context name› stand-in into the procedure — "selecting … ID `c7` (`‹authentication
-// context name›`)" — a placeholder the portal of a step never carries
-// (ui/surfaces/stepResources.test.ts), because the PIM state required a name IAMAI
-// has no business giving a context the tenant named. The context is named by
-// the ID its policy targets, and the premise of this test's last assertion changes
-// with it: no stand-in, and the proposed-name line drops.
-test('a tenant’s own activation policy is named by the context ID it targets, never by the name IAMAI proposes for its own', () => {
-  const { step, body, ctx } = pimOn(enforcedOn(PIM_STEP, (p) => {
-    delete p.description
-    p.displayName = 'PIM step-up'
-    ;(p.conditions as { applications: { includeAuthenticationContextClassReferences: string[] } }).applications.includeAuthenticationContextClassReferences = ['c7']
-  }))
-  assert.equal(step.state.lifecycle, 'enforced', 'the premise: the policy reads enforced')
-  assert.equal(step.tracking?.matchedBy, 'fingerprint', 'the premise: the scan tied it by its settings, not by the plan’s tag')
-  const bindings = packageBindings(step, ctx, body.contract)
-  assert.equal(bindings['authContext.target.id'], 'c7')
-  assert.equal(bindings['authContext.target.displayName'], undefined)
-  const portal = channelText(body, 'portal')
-  assert.match(portal, /selecting the authentication context with ID `c7` — the context this policy targets — then \*\*Update\*\*/)
-  assert.doesNotMatch(portal, /Privileged role activation|‹[^›]+›|This plan proposed the name/)
-})
-
-// R4-18 review: the portal of a held or completed step never carries a ‹…›
-// stand-in (ui/surfaces/stepResources.test.ts, on the demo and mid fixtures),
-// and the PIM step on the pinned baseline is on neither, so its context line
-// broke the rule where nothing looked: the enforced tenant's own policy read
-// `‹authentication context name›`. Every state the PIM step reaches on the
-// pinned mid tenant, as each channel's copyable text.
-test('no PIM state on the pinned baseline draws a ‹…› stand-in into the portal, the script or the request', () => {
-  const states: [string, Fixture][] = [
-    ['create', pinnedMid()],
-    ['create, on a context another policy targets', sharedContext()],
-    ['report-only, the plan’s own', reportOnlyOn('c1', false)],
-    ['report-only, the tenant’s own', reportOnlyOn('c7', true)],
-    ['enforced, the plan’s own', pimEnforced()],
-    ['enforced, the tenant’s own', enforcedOn(PIM_STEP, (p) => {
-      delete p.description
-      p.displayName = 'PIM step-up'
-      ;(p.conditions as { applications: { includeAuthenticationContextClassReferences: string[] } }).applications.includeAuthenticationContextClassReferences = ['c7']
-    })],
-  ]
-  for (const [name, f] of states) {
-    const { body } = pimOn(f)
-    for (const id of ['portal', 'ps', 'json']) assert.doesNotMatch(channelText(body, id), /‹[^›]+›/, `${name}/${id}`)
-  }
-})
-
 /**
  * The PIM step with its policy already in the tenant, in report-only: the plan's
  * own (its tag in the description), or — `own` — the tenant's, found by its
@@ -353,59 +300,82 @@ const reportOnlyOn = (context: string, own: boolean): Fixture =>
     ;(p.conditions as { applications: { includeAuthenticationContextClassReferences: string[] } }).applications.includeAuthenticationContextClassReferences = [context]
   })
 
-// R4-18 review (blocking). "Privileged role activation" is the name the package
-// proposes for its own context — the one its create asks the reader to create —
-// and it was bound for every operation. A tenant's own activation policy on c7,
-// in report-only, read "Authentication context: Privileged role activation / c7"
-// in AI Info, and a correction of its context target would have said to select
-// `Privileged role activation` (`c7`): a context that may not exist, or another
-// one of that name. The same policy lost the name once enforced, where only that
-// path was gated. IAMAI reads no authentication contexts: the ID is read off the
-// policy, and the name is bound only on the policy the plan builds on its own
-// context.
-test('a tenant’s own policy in report-only names its context by ID and never by the name IAMAI proposes for its own', () => {
-  const { step, body, ctx } = pimOn(reportOnlyOn('c7', true))
-  assert.equal(step.state.lifecycle, 'report-only', 'the premise: the policy reads report-only')
-  const op = plannedOperationsOf(step)[0]
-  assert.equal(op?.mode, 'update', 'the premise: the step hands over an update of the tenant’s policy')
-  assert.equal(step.tracking?.members[0]?.matchedBy, 'operation-target', 'the premise: the tie is the operation’s, which says nothing of a tag')
-  const bindings = packageBindings(step, ctx, body.contract)
-  assert.equal(bindings['authContext.target.id'], 'c7')
-  assert.equal(bindings['authContext.target.displayName'], undefined)
-  assert.match(channelText(body, 'ai'), /^- Authentication context ID the policy targets: c7$/m)
-  for (const a of body.artifacts) assert.doesNotMatch(a.text(), /Privileged role activation/, a.id)
-  // The correction of that policy's context target names the context by its ID alone.
-  const corrected = projectImplementation(PIM, 'partial', { ...bindings, [CHANGED_FIELDS_BINDING]: ['conditions.applications'] })
-  const entra = corrected.channels.find((c) => c.channel === 'entra')?.text ?? ''
-  assert.match(entra, /Set Target resources to the single authentication context with ID `c7`\./, JSON.stringify(corrected.hold))
-  assert.doesNotMatch(entra, /Privileged role activation|‹/)
-  const ai = corrected.channels.find((c) => c.channel === 'aiInfo')?.text ?? ''
-  assert.match(ai, /Authentication context ID the policy targets: c7/)
-  assert.doesNotMatch(ai, /Privileged role activation/)
-})
-
-// The counterpart: the policy the plan's create built — its tag in the
-// description, on the package's own context — keeps the name the create asked
-// for, before and after enforcement, and says it is the plan's proposal.
-test('the plan’s own policy on its own context keeps the name the create proposed, as a proposal', () => {
-  const { step, body, ctx } = pimOn(reportOnlyOn('c1', false))
-  assert.equal(plannedOperationsOf(step)[0]?.mode, 'update', 'the premise: an update, whose tie says nothing of the tag')
-  assert.equal(packageBindings(step, ctx, body.contract)['authContext.target.displayName'], 'Privileged role activation')
-  assert.match(channelText(body, 'ai'), /^- Name this plan proposes for that context \(IAMAI does not read authentication contexts\): Privileged role activation$/m)
-  // The plan's tag on a policy the reader moved to another context proves the
-  // policy, not the context: c7 was never the context the create named.
-  const moved = pimOn(reportOnlyOn('c7', false))
-  assert.equal(packageBindings(moved.step, moved.ctx, moved.body.contract)['authContext.target.id'], 'c7')
-  assert.equal(packageBindings(moved.step, moved.ctx, moved.body.contract)['authContext.target.displayName'], undefined)
-})
-
-// The note is the package's answer, not the tile's: another step waiting on its
-// workflow record, with no setup after enforcement, keeps "IAMAI is finished".
-test('an enforced step with no setup after enforcement keeps its own review words', () => {
-  const { step, body } = pimOn(enforcedOn('s-goal-device-registration-mfa'), 's-goal-device-registration-mfa')
-  assert.equal(step.manualReview?.readyToConfirm, true, 'the premise: only the workflow record is left')
-  const note = body.allTiles.find((t) => t.key === 'review')?.note ?? ''
-  // Its own review words (donewhen): what the scan confirmed, never that IAMAI is finished with it.
-  assert.match(note, /^The scan found the policy enforced, with the assessed configuration in place./, note)
-  assert.doesNotMatch(note, /PIM/, note)
+test('a tenant’s own activation policy, enforced or in report-only, names its context by the ID it targets and never by the name IAMAI proposes; the plan’s own policy keeps the proposed name, as a proposal', () => {
+  // a tenant’s own activation policy is named by the context ID it targets, never by the name IAMAI proposes for its own
+  // The name IAMAI proposes is the create's instruction ("create or update … c1 /
+  // Privileged role activation, and publish it"), never a reading: IAMAI reads no
+  // authentication contexts. A tenant's own activation policy, found On with no
+  // plan tag, targets a context the tenant named itself, and the PIM line told the
+  // reader to select `Privileged role activation` — a context that may not exist,
+  // or a different one of that name, whose own policy then decides role activation.
+  // The ID is read off the policy.
+  //
+  // R4-18 review: the name then stayed unresolved and drew its ‹authentication
+  // context name› stand-in into the procedure — "selecting … ID `c7` (`‹authentication
+  // context name›`)" — a placeholder the portal of a step never carries
+  // (ui/surfaces/stepResources.test.ts), because the PIM state required a name IAMAI
+  // has no business giving a context the tenant named. The context is named by
+  // the ID its policy targets, and the premise of this test's last assertion changes
+  // with it: no stand-in, and the proposed-name line drops.
+  {
+    const { step, body, ctx } = pimOn(enforcedOn(PIM_STEP, (p) => {
+      delete p.description
+      p.displayName = 'PIM step-up'
+      ;(p.conditions as { applications: { includeAuthenticationContextClassReferences: string[] } }).applications.includeAuthenticationContextClassReferences = ['c7']
+    }))
+    assert.equal(step.state.lifecycle, 'enforced', 'the premise: the policy reads enforced')
+    assert.equal(step.tracking?.matchedBy, 'fingerprint', 'the premise: the scan tied it by its settings, not by the plan’s tag')
+    const bindings = packageBindings(step, ctx, body.contract)
+    assert.equal(bindings['authContext.target.id'], 'c7')
+    assert.equal(bindings['authContext.target.displayName'], undefined)
+    const portal = channelText(body, 'portal')
+    assert.match(portal, /selecting the authentication context with ID `c7` — the context this policy targets — then \*\*Update\*\*/)
+    assert.doesNotMatch(portal, /Privileged role activation|‹[^›]+›|This plan proposed the name/)
+  }
+  // a tenant’s own policy in report-only names its context by ID and never by the name IAMAI proposes for its own
+  // R4-18 review (blocking). "Privileged role activation" is the name the package
+  // proposes for its own context — the one its create asks the reader to create —
+  // and it was bound for every operation. A tenant's own activation policy on c7,
+  // in report-only, read "Authentication context: Privileged role activation / c7"
+  // in AI Info, and a correction of its context target would have said to select
+  // `Privileged role activation` (`c7`): a context that may not exist, or another
+  // one of that name. The same policy lost the name once enforced, where only that
+  // path was gated. IAMAI reads no authentication contexts: the ID is read off the
+  // policy, and the name is bound only on the policy the plan builds on its own
+  // context.
+  {
+    const { step, body, ctx } = pimOn(reportOnlyOn('c7', true))
+    assert.equal(step.state.lifecycle, 'report-only', 'the premise: the policy reads report-only')
+    const op = plannedOperationsOf(step)[0]
+    assert.equal(op?.mode, 'update', 'the premise: the step hands over an update of the tenant’s policy')
+    assert.equal(step.tracking?.members[0]?.matchedBy, 'operation-target', 'the premise: the tie is the operation’s, which says nothing of a tag')
+    const bindings = packageBindings(step, ctx, body.contract)
+    assert.equal(bindings['authContext.target.id'], 'c7')
+    assert.equal(bindings['authContext.target.displayName'], undefined)
+    assert.match(channelText(body, 'ai'), /^- Authentication context ID the policy targets: c7$/m)
+    for (const a of body.artifacts) assert.doesNotMatch(a.text(), /Privileged role activation/, a.id)
+    // The correction of that policy's context target names the context by its ID alone.
+    const corrected = projectImplementation(PIM, 'partial', { ...bindings, [CHANGED_FIELDS_BINDING]: ['conditions.applications'] })
+    const entra = corrected.channels.find((c) => c.channel === 'entra')?.text ?? ''
+    assert.match(entra, /Set Target resources to the single authentication context with ID `c7`\./, JSON.stringify(corrected.hold))
+    assert.doesNotMatch(entra, /Privileged role activation|‹/)
+    const ai = corrected.channels.find((c) => c.channel === 'aiInfo')?.text ?? ''
+    assert.match(ai, /Authentication context ID the policy targets: c7/)
+    assert.doesNotMatch(ai, /Privileged role activation/)
+  }
+  // the plan’s own policy on its own context keeps the name the create proposed, as a proposal
+  // The counterpart: the policy the plan's create built — its tag in the
+  // description, on the package's own context — keeps the name the create asked
+  // for, before and after enforcement, and says it is the plan's proposal.
+  {
+    const { step, body, ctx } = pimOn(reportOnlyOn('c1', false))
+    assert.equal(plannedOperationsOf(step)[0]?.mode, 'update', 'the premise: an update, whose tie says nothing of the tag')
+    assert.equal(packageBindings(step, ctx, body.contract)['authContext.target.displayName'], 'Privileged role activation')
+    assert.match(channelText(body, 'ai'), /^- Name this plan proposes for that context \(IAMAI does not read authentication contexts\): Privileged role activation$/m)
+    // The plan's tag on a policy the reader moved to another context proves the
+    // policy, not the context: c7 was never the context the create named.
+    const moved = pimOn(reportOnlyOn('c7', false))
+    assert.equal(packageBindings(moved.step, moved.ctx, moved.body.contract)['authContext.target.id'], 'c7')
+    assert.equal(packageBindings(moved.step, moved.ctx, moved.body.contract)['authContext.target.displayName'], undefined)
+  }
 })

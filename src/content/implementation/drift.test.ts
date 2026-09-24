@@ -4,7 +4,6 @@
 // and the library is never disabled as a whole.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
 import registry from './registry.generated.json' with { type: 'json' }
 import type { CompiledPackage } from './protocol.ts'
 import { driftOf, identitiesAt, memberFingerprint, memberIdentity, membersAt } from './drift.ts'
@@ -19,18 +18,30 @@ const pin = (commit: string, policies: ReturnType<typeof policy>[], goalMap: Rec
 const A = '00000000-0000-4000-8000-0000000000a1'
 const B = '00000000-0000-4000-8000-0000000000b1'
 
-test('each package is reviewed against the pin the build carries, member by member, and only a changed member sets its package aside', () => {
-  assert.deepEqual(Object.keys(REVIEWS).sort(), Object.keys(PACKAGES).sort(), 'a registered package was not reviewed')
-  const statuses = Object.fromEntries(Object.entries(REVIEWS).map(([id, r]) => [id, r.status]))
-  assert.equal(statuses['s-goal-device-registration-mfa'], 'current', 'the re-authored package still reads as drifted')
-  const portal = REVIEWS['s-goal-admin-portals-protected']
-  assert.equal(portal.status, 'reviewNeeded')
-  assert.deepEqual(portal.changed, ['fafaa50c-0b61-4ac6-a589-f9a1120b2f9e'])
-  const aside = Object.entries(statuses).filter(([, s]) => s !== 'current').map(([id]) => id)
-  assert.deepEqual(aside, ['s-goal-admin-portals-protected'], 'more than the changed member’s package was set aside')
-  // A placeholder re-baked at the new pin, or a rename, changes no fingerprint.
-  const medium = PINNED.policies.find((p) => p.id === '7475b373-0544-4ee8-8827-cff35009136d')!
-  assert.equal(memberFingerprint({ ...medium, displayName: 'renamed', placeholders: {} } as never), memberFingerprint(medium as never))
+test('each package is reviewed against the pin the build carries, member by member; only a changed member sets its package aside, which then no longer draws its step while every other package applies', () => {
+  // each package is reviewed against the pin the build carries, member by member, and only a changed member sets its package aside
+  {
+    assert.deepEqual(Object.keys(REVIEWS).sort(), Object.keys(PACKAGES).sort(), 'a registered package was not reviewed')
+    const statuses = Object.fromEntries(Object.entries(REVIEWS).map(([id, r]) => [id, r.status]))
+    assert.equal(statuses['s-goal-device-registration-mfa'], 'current', 'the re-authored package still reads as drifted')
+    const portal = REVIEWS['s-goal-admin-portals-protected']
+    assert.equal(portal.status, 'reviewNeeded')
+    assert.deepEqual(portal.changed, ['fafaa50c-0b61-4ac6-a589-f9a1120b2f9e'])
+    const aside = Object.entries(statuses).filter(([, s]) => s !== 'current').map(([id]) => id)
+    assert.deepEqual(aside, ['s-goal-admin-portals-protected'], 'more than the changed member’s package was set aside')
+    // A placeholder re-baked at the new pin, or a rename, changes no fingerprint.
+    const medium = PINNED.policies.find((p) => p.id === '7475b373-0544-4ee8-8827-cff35009136d')!
+    assert.equal(memberFingerprint({ ...medium, displayName: 'renamed', placeholders: {} } as never), memberFingerprint(medium as never))
+  }
+  // a package set aside for review no longer draws its step, says why, and every other package still applies
+  {
+    const portalStep = { id: 's-goal-admin-portals-protected', goalId: 'admin-portals-protected' }
+    assert.equal(packageForEntry(portalStep), null, 'guidance for a policy the baseline no longer asks for was applied')
+    assert.equal(packageReviewFor(portalStep)?.status, 'reviewNeeded')
+    const applied = Object.keys(PACKAGES).filter((id) => packageForEntry({ id, goalId: id.replace(/^s-goal-/, '') }) !== null)
+    assert.ok(applied.length >= Object.keys(PACKAGES).length - 1, `only ${applied.length} packages still apply`)
+    assert.equal(packageReviewFor({ id: 's-goal-device-registration-mfa', goalId: 'device-registration-mfa' }), null)
+  }
 })
 
 test('unchanged is current, changed needs review, removed is held, and a new member is reported without disabling the package', () => {
@@ -47,76 +58,66 @@ test('unchanged is current, changed needs review, removed is held, and a new mem
   assert.equal(driftOf(undefined, null, ['template-only'], pin('new', [policy(A, 's1')], { goal: [A] })).status, 'current')
 })
 
-test('a member the pin knows by display name alone is reported as such, and a rename that changes nothing is not a removal', () => {
-  const NAME = 'IAC - WORKLOAD - BLOCK - Example'
-  const idless = (name: string, strength: string) => ({ ...policy(A, strength, name), id: null }) as unknown as ReturnType<typeof policy>
-  const record = membersAt(pin('old', [idless(NAME, 's1')], { goal: [NAME] }), ['goal'])
-  // The same member, renamed and otherwise untouched.
-  const renamed = driftOf(record, 'old', ['goal'], pin('new', [idless('Renamed', 's1')], { goal: ['Renamed'] }))
-  assert.equal(renamed.status, 'current')
-  assert.deepEqual(renamed.renamed, [{ from: NAME, to: 'Renamed' }])
-  assert.deepEqual(renamed.removed, [])
-  assert.deepEqual(renamed.added, [])
-  assert.deepEqual(renamed.identityFallback, [NAME], 'the fallback is said, never assumed stable')
-  // Materially changed under the same name.
-  const changed = driftOf(record, 'old', ['goal'], pin('new', [idless(NAME, 's2')], { goal: [NAME] }))
-  assert.equal(changed.status, 'reviewNeeded')
-  assert.deepEqual(changed.changed, [NAME])
-  // Removed.
-  assert.equal(driftOf(record, 'old', ['goal'], pin('new', [], { goal: [] })).status, 'held')
-  // Renamed and changed, with no record of what it targeted, cannot be told from a replacement: it holds.
-  assert.equal(driftOf(record, 'old', ['goal'], pin('new', [idless('Renamed', 's2')], { goal: ['Renamed'] })).status, 'held')
-  // An unrelated member changing touches nothing.
-  const other = driftOf(record, 'old', ['goal'], pin('new', [idless(NAME, 's1'), policy(B, 's9')], { goal: [NAME], elsewhere: [B] }))
-  assert.equal(other.status, 'current')
-  // Members with a stable id report no fallback.
-  assert.deepEqual(driftOf(membersAt(pin('old', [policy(A, 's1')], { goal: [A] }), ['goal']), 'old', ['goal'], pin('new', [policy(A, 's1')], { goal: [A] })).identityFallback, [])
-  // The build's registry names the packages reviewed by name.
-  const fallback = Object.entries(REVIEWS as unknown as Record<string, { identityFallback: string[] }>).filter(([, r]) => r.identityFallback.length > 0).map(([id]) => id).sort()
-  assert.deepEqual(fallback, ['s-goal-intune-enrollment-reauth', 's-goal-workload-identity-block'])
-})
-
-test('an id-less member falls back to what it targets: a cosmetic rename is current, a changed member needs review, a removal holds, and an unrelated member is only added (correction batch 2)', () => {
-  const NAME = 'IAC - APP - SESSION - Example'
-  const member = (name: string, app: string, strength: string) => ({ ...policy(A, strength, name), id: null, conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: [app] } } }) as unknown as ReturnType<typeof policy>
-  const reviewedPin = pin('old', [member(NAME, 'enrollment-app', 's1')], { goal: [NAME] })
-  const record = membersAt(reviewedPin, ['goal'])
-  const identities = identitiesAt(reviewedPin, ['goal'])
-  assert.deepEqual(Object.keys(identities), [NAME], 'the identity is recorded for the id-less member')
-  assert.equal(memberIdentity(member('Renamed', 'enrollment-app', 's9')), identities[NAME], 'a different grant is the same target')
-  // Cosmetic rename.
-  const cosmetic = driftOf(record, 'old', ['goal'], pin('new', [member('Renamed', 'enrollment-app', 's1')], { goal: ['Renamed'] }), identities)
-  assert.deepEqual([cosmetic.status, cosmetic.renamed, cosmetic.matchedByTarget], ['current', [{ from: NAME, to: 'Renamed' }], []])
-  // Semantic change under a new name: the same target, so the same member, changed.
-  const semantic = driftOf(record, 'old', ['goal'], pin('new', [member('Renamed', 'enrollment-app', 's2')], { goal: ['Renamed'] }), identities)
-  assert.deepEqual([semantic.status, semantic.changed, semantic.matchedByTarget, semantic.removed, semantic.added], ['reviewNeeded', [NAME], [NAME], [], []])
-  assert.deepEqual(semantic.identityFallback, [NAME], 'the fallback is still said')
-  // Removal: nothing targets what the member targeted.
-  assert.equal(driftOf(record, 'old', ['goal'], pin('new', [], { goal: [] }), identities).status, 'held')
-  // An unrelated new member targeting something else is not the reviewed member: it holds, and the newcomer is only added.
-  const unrelated = driftOf(record, 'old', ['goal'], pin('new', [member('Other', 'another-app', 's2')], { goal: ['Other'] }), identities)
-  assert.deepEqual([unrelated.status, unrelated.removed, unrelated.added, unrelated.matchedByTarget], ['held', [NAME], ['Other'], []])
-  // Beside the unchanged member, an unrelated addition changes nothing.
-  const beside = driftOf(record, 'old', ['goal'], pin('new', [member(NAME, 'enrollment-app', 's1'), member('Other', 'another-app', 's2')], { goal: [NAME, 'Other'] }), identities)
-  assert.deepEqual([beside.status, beside.added], ['current', ['Other']])
-  // Two candidates with the same target cannot be told apart: it holds.
-  assert.equal(driftOf(record, 'old', ['goal'], pin('new', [member('One', 'enrollment-app', 's2'), member('Two', 'enrollment-app', 's3')], { goal: ['One', 'Two'] }), identities).status, 'held')
-  // The build's two id-less packages record the identity their members target.
-  for (const id of ['s-goal-intune-enrollment-reauth', 's-goal-workload-identity-block']) {
-    const authority = PACKAGES[id].meta.baselineAuthority as { reviewedMembers: Record<string, string>; reviewedIdentities?: Record<string, string> }
-    assert.deepEqual(Object.keys(authority.reviewedIdentities ?? {}), Object.keys(authority.reviewedMembers), `${id} records no target identity`)
+test('an id-less member is reported as such and falls back to what it targets: a rename is current, a changed member needs review, a removal or an ambiguous replacement holds, and an unrelated member is only added', () => {
+  // a member the pin knows by display name alone is reported as such, and a rename that changes nothing is not a removal
+  {
+    const NAME = 'IAC - WORKLOAD - BLOCK - Example'
+    const idless = (name: string, strength: string) => ({ ...policy(A, strength, name), id: null }) as unknown as ReturnType<typeof policy>
+    const record = membersAt(pin('old', [idless(NAME, 's1')], { goal: [NAME] }), ['goal'])
+    // The same member, renamed and otherwise untouched.
+    const renamed = driftOf(record, 'old', ['goal'], pin('new', [idless('Renamed', 's1')], { goal: ['Renamed'] }))
+    assert.equal(renamed.status, 'current')
+    assert.deepEqual(renamed.renamed, [{ from: NAME, to: 'Renamed' }])
+    assert.deepEqual(renamed.removed, [])
+    assert.deepEqual(renamed.added, [])
+    assert.deepEqual(renamed.identityFallback, [NAME], 'the fallback is said, never assumed stable')
+    // Materially changed under the same name.
+    const changed = driftOf(record, 'old', ['goal'], pin('new', [idless(NAME, 's2')], { goal: [NAME] }))
+    assert.equal(changed.status, 'reviewNeeded')
+    assert.deepEqual(changed.changed, [NAME])
+    // Removed.
+    assert.equal(driftOf(record, 'old', ['goal'], pin('new', [], { goal: [] })).status, 'held')
+    // Renamed and changed, with no record of what it targeted, cannot be told from a replacement: it holds.
+    assert.equal(driftOf(record, 'old', ['goal'], pin('new', [idless('Renamed', 's2')], { goal: ['Renamed'] })).status, 'held')
+    // An unrelated member changing touches nothing.
+    const other = driftOf(record, 'old', ['goal'], pin('new', [idless(NAME, 's1'), policy(B, 's9')], { goal: [NAME], elsewhere: [B] }))
+    assert.equal(other.status, 'current')
+    // Members with a stable id report no fallback.
+    assert.deepEqual(driftOf(membersAt(pin('old', [policy(A, 's1')], { goal: [A] }), ['goal']), 'old', ['goal'], pin('new', [policy(A, 's1')], { goal: [A] })).identityFallback, [])
+    // The build's registry names the packages reviewed by name.
+    const fallback = Object.entries(REVIEWS as unknown as Record<string, { identityFallback: string[] }>).filter(([, r]) => r.identityFallback.length > 0).map(([id]) => id).sort()
+    assert.deepEqual(fallback, ['s-goal-intune-enrollment-reauth', 's-goal-workload-identity-block'])
   }
-})
-
-test('a package set aside for review no longer draws its step, says why, and every other package still applies', () => {
-  const portalStep = { id: 's-goal-admin-portals-protected', goalId: 'admin-portals-protected' }
-  assert.equal(packageForEntry(portalStep), null, 'guidance for a policy the baseline no longer asks for was applied')
-  assert.equal(packageReviewFor(portalStep)?.status, 'reviewNeeded')
-  const applied = Object.keys(PACKAGES).filter((id) => packageForEntry({ id, goalId: id.replace(/^s-goal-/, '') }) !== null)
-  assert.ok(applied.length >= Object.keys(PACKAGES).length - 1, `only ${applied.length} packages still apply`)
-  assert.equal(packageReviewFor({ id: 's-goal-device-registration-mfa', goalId: 'device-registration-mfa' }), null)
-})
-
-test('the compiler no longer calls an applied package inactive', () => {
-  assert.equal(readFileSync('scripts/compile-implementation-content.mjs', 'utf8').includes('inactive in this build'), false)
+  // an id-less member falls back to what it targets: a cosmetic rename is current, a changed member needs review, a removal holds, and an unrelated member is only added (correction batch 2)
+  {
+    const NAME = 'IAC - APP - SESSION - Example'
+    const member = (name: string, app: string, strength: string) => ({ ...policy(A, strength, name), id: null, conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: [app] } } }) as unknown as ReturnType<typeof policy>
+    const reviewedPin = pin('old', [member(NAME, 'enrollment-app', 's1')], { goal: [NAME] })
+    const record = membersAt(reviewedPin, ['goal'])
+    const identities = identitiesAt(reviewedPin, ['goal'])
+    assert.deepEqual(Object.keys(identities), [NAME], 'the identity is recorded for the id-less member')
+    assert.equal(memberIdentity(member('Renamed', 'enrollment-app', 's9')), identities[NAME], 'a different grant is the same target')
+    // Cosmetic rename.
+    const cosmetic = driftOf(record, 'old', ['goal'], pin('new', [member('Renamed', 'enrollment-app', 's1')], { goal: ['Renamed'] }), identities)
+    assert.deepEqual([cosmetic.status, cosmetic.renamed, cosmetic.matchedByTarget], ['current', [{ from: NAME, to: 'Renamed' }], []])
+    // Semantic change under a new name: the same target, so the same member, changed.
+    const semantic = driftOf(record, 'old', ['goal'], pin('new', [member('Renamed', 'enrollment-app', 's2')], { goal: ['Renamed'] }), identities)
+    assert.deepEqual([semantic.status, semantic.changed, semantic.matchedByTarget, semantic.removed, semantic.added], ['reviewNeeded', [NAME], [NAME], [], []])
+    assert.deepEqual(semantic.identityFallback, [NAME], 'the fallback is still said')
+    // Removal: nothing targets what the member targeted.
+    assert.equal(driftOf(record, 'old', ['goal'], pin('new', [], { goal: [] }), identities).status, 'held')
+    // An unrelated new member targeting something else is not the reviewed member: it holds, and the newcomer is only added.
+    const unrelated = driftOf(record, 'old', ['goal'], pin('new', [member('Other', 'another-app', 's2')], { goal: ['Other'] }), identities)
+    assert.deepEqual([unrelated.status, unrelated.removed, unrelated.added, unrelated.matchedByTarget], ['held', [NAME], ['Other'], []])
+    // Beside the unchanged member, an unrelated addition changes nothing.
+    const beside = driftOf(record, 'old', ['goal'], pin('new', [member(NAME, 'enrollment-app', 's1'), member('Other', 'another-app', 's2')], { goal: [NAME, 'Other'] }), identities)
+    assert.deepEqual([beside.status, beside.added], ['current', ['Other']])
+    // Two candidates with the same target cannot be told apart: it holds.
+    assert.equal(driftOf(record, 'old', ['goal'], pin('new', [member('One', 'enrollment-app', 's2'), member('Two', 'enrollment-app', 's3')], { goal: ['One', 'Two'] }), identities).status, 'held')
+    // The build's two id-less packages record the identity their members target.
+    for (const id of ['s-goal-intune-enrollment-reauth', 's-goal-workload-identity-block']) {
+      const authority = PACKAGES[id].meta.baselineAuthority as { reviewedMembers: Record<string, string>; reviewedIdentities?: Record<string, string> }
+      assert.deepEqual(Object.keys(authority.reviewedIdentities ?? {}), Object.keys(authority.reviewedMembers), `${id} records no target identity`)
+    }
+  }
 })

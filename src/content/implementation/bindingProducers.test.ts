@@ -123,9 +123,3 @@ test('every required binding a package declares either has a producer or is on t
   }
   assert.deepEqual([...unproduced].sort(), [...UNPRODUCED].sort(), 'the set of required bindings with no producer changed: a new one is a package block that can never project, and one that has gone is a producer to take off this list')
 })
-
-// The one that was reported, kept as its own case so it reads as the finding it is.
-test('the dormant-accounts package is written against a namespace nothing produces', () => {
-  const emitted = [...emittedKeys()]
-  assert.equal(emitted.some((k) => k.startsWith('account.')), false, 'an account.* producer exists now; take the three account keys off UNPRODUCED')
-})
