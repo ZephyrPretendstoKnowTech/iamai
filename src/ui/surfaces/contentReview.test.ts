@@ -1,6 +1,5 @@
 // Content review S0 (docs/content-review/specs/UNIVERSAL-CONTENT-CHANGES.md):
-// one test per renderer fix, UI polish item and resolved decision, each
-// asserting what the opened step now shows.
+// the resolved decisions that change what the engine and the opened step say.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'

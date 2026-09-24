@@ -25,41 +25,43 @@ function withMembers(roles: readonly string[], missing: Step['action']['missing'
   return { ...step, action: { ...step.action, missing, resolution: { ...step.action.resolution!, policies } } } as Step
 }
 
-test('the premise: the pair package names a strong and a mixed member, and the step resolves a create with a whole body', () => {
-  assert.deepEqual(members.map((m) => m.role).sort(), ['mixed', 'strong'])
-  assert.equal(create.mode, 'create')
-  assert.ok((create.body as { conditions?: unknown }).conditions)
-})
-
-test('both members resolved whole: the pair targets carry each role with its own name, conditions and grant', () => {
-  const bound = memberBindings(withMembers(['strong', 'mixed']), f.snapshot)
-  const json = bound['policies.guests.targets.json']
-  assert.equal(typeof json, 'string', JSON.stringify(Object.keys(bound)))
-  const targets = JSON.parse(json as string) as { role: string; displayName: string; conditions: unknown; grantControls: unknown }[]
-  assert.deepEqual(targets.map((t) => [t.role, t.displayName]).sort(), [['mixed', 'Sample mixed'], ['strong', 'Sample strong']])
-  const body = create.body as { conditions: unknown; grantControls?: unknown }
-  for (const t of targets) {
-    assert.deepEqual(t.conditions, body.conditions)
-    assert.deepEqual(t.grantControls, body.grantControls ?? null)
+test('both guests members resolved whole: the pair targets carry each role with its own name, conditions and grant', () => {
+  {
+    assert.deepEqual(members.map((m) => m.role).sort(), ['mixed', 'strong'])
+    assert.equal(create.mode, 'create')
+    assert.ok((create.body as { conditions?: unknown }).conditions)
+  }
+  {
+    const bound = memberBindings(withMembers(['strong', 'mixed']), f.snapshot)
+    const json = bound['policies.guests.targets.json']
+    assert.equal(typeof json, 'string', JSON.stringify(Object.keys(bound)))
+    const targets = JSON.parse(json as string) as { role: string; displayName: string; conditions: unknown; grantControls: unknown }[]
+    assert.deepEqual(targets.map((t) => [t.role, t.displayName]).sort(), [['mixed', 'Sample mixed'], ['strong', 'Sample strong']])
+    const body = create.body as { conditions: unknown; grantControls?: unknown }
+    for (const t of targets) {
+      assert.deepEqual(t.conditions, body.conditions)
+      assert.deepEqual(t.grantControls, body.grantControls ?? null)
+    }
   }
 })
 
-test('one member missing, or a member still waiting on a reference: no pair targets, so the script is withheld', () => {
-  assert.equal(memberBindings(withMembers(['strong']), f.snapshot)['policies.guests.targets.json'], undefined)
-  // Getiamai's own shape: a single create no member key matches.
-  assert.equal(memberBindings(step, f.snapshot)['policies.guests.targets.json'], undefined)
-  const waiting = withMembers(['strong', 'mixed'], [{ token: 'ffffffff-0000-4000-8000-000000000001' } as NonNullable<Step['action']['missing']>[number]])
-  assert.equal(memberBindings(waiting, f.snapshot)['policies.guests.targets.json'], undefined)
-})
-
-test('each member resolved whole binds its own conditions, grant and session for the JSON batch; a member missing or waiting binds none', () => {
-  const roots = ['conditions', 'grantControls', 'sessionControls'] as const
-  const body = create.body as Record<(typeof roots)[number], unknown>
-  const both = memberBindings(withMembers(['strong', 'mixed']), f.snapshot)
-  for (const role of ['strong', 'mixed']) for (const r of roots) assert.deepEqual(both[`policies.guests.${role}.target.${r}`], body[r] ?? null, `${role} ${r}`)
-  const one = memberBindings(withMembers(['strong']), f.snapshot)
-  assert.ok(Object.hasOwn(one, 'policies.guests.strong.target.conditions'))
-  assert.equal(roots.some((r) => Object.hasOwn(one, `policies.guests.mixed.target.${r}`)), false)
-  const waiting = withMembers(['strong', 'mixed'], [{ token: 'ffffffff-0000-4000-8000-000000000001' } as NonNullable<Step['action']['missing']>[number]])
-  assert.equal(Object.keys(memberBindings(waiting, f.snapshot)).some((k) => /\.target\.(conditions|grantControls|sessionControls)$/.test(k)), false)
+test('a guests member missing or still waiting on a reference binds nothing, so the pair script is withheld; each member resolved whole binds its own conditions, grant and session', () => {
+  {
+    assert.equal(memberBindings(withMembers(['strong']), f.snapshot)['policies.guests.targets.json'], undefined)
+    // Getiamai's own shape: a single create no member key matches.
+    assert.equal(memberBindings(step, f.snapshot)['policies.guests.targets.json'], undefined)
+    const waiting = withMembers(['strong', 'mixed'], [{ token: 'ffffffff-0000-4000-8000-000000000001' } as NonNullable<Step['action']['missing']>[number]])
+    assert.equal(memberBindings(waiting, f.snapshot)['policies.guests.targets.json'], undefined)
+  }
+  {
+    const roots = ['conditions', 'grantControls', 'sessionControls'] as const
+    const body = create.body as Record<(typeof roots)[number], unknown>
+    const both = memberBindings(withMembers(['strong', 'mixed']), f.snapshot)
+    for (const role of ['strong', 'mixed']) for (const r of roots) assert.deepEqual(both[`policies.guests.${role}.target.${r}`], body[r] ?? null, `${role} ${r}`)
+    const one = memberBindings(withMembers(['strong']), f.snapshot)
+    assert.ok(Object.hasOwn(one, 'policies.guests.strong.target.conditions'))
+    assert.equal(roots.some((r) => Object.hasOwn(one, `policies.guests.mixed.target.${r}`)), false)
+    const waiting = withMembers(['strong', 'mixed'], [{ token: 'ffffffff-0000-4000-8000-000000000001' } as NonNullable<Step['action']['missing']>[number]])
+    assert.equal(Object.keys(memberBindings(waiting, f.snapshot)).some((k) => /\.target\.(conditions|grantControls|sessionControls)$/.test(k)), false)
+  }
 })

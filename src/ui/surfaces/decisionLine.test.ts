@@ -21,20 +21,21 @@ const help = String(d.help)
 const effects = d.effect as string[]
 const ctxWith = (mapping: typeof f.mapping): StepVarContext => ({ snapshot: f.snapshot, mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming) })
 
-test('open: the help line renders and no effect line', () => {
-  assert.equal(decisionLine(d, null), help)
-  const lines = stepLines(step, ctxWith(f.mapping))
-  assert.ok(lines.includes(help), 'the open line')
-  for (const e of effects) assert.ok(!lines.includes(e), `no effect line while open: ${e}`)
-})
-
-test('answered: the effect line stands where the help stood, and the help is gone', () => {
-  const options = d.options as string[]
-  for (const [i, option] of options.entries()) {
-    const answered = { ...f.mapping, questionAnswers: { ...(f.mapping.questionAnswers ?? {}), [answerKey(step.id, String(d.label))]: option } }
-    assert.equal(decisionLine(d, { index: i }), effects[i])
-    const lines = stepLines(step, ctxWith(answered))
-    assert.ok(lines.includes(effects[i]), `the answered line for "${option}"`)
-    assert.ok(!lines.includes(help), `no open line once "${option}" is the answer`)
+test('a decision block shows its open line or its answered line, never both', () => {
+  {
+    assert.equal(decisionLine(d, null), help)
+    const lines = stepLines(step, ctxWith(f.mapping))
+    assert.ok(lines.includes(help), 'the open line')
+    for (const e of effects) assert.ok(!lines.includes(e), `no effect line while open: ${e}`)
+  }
+  {
+    const options = d.options as string[]
+    for (const [i, option] of options.entries()) {
+      const answered = { ...f.mapping, questionAnswers: { ...(f.mapping.questionAnswers ?? {}), [answerKey(step.id, String(d.label))]: option } }
+      assert.equal(decisionLine(d, { index: i }), effects[i])
+      const lines = stepLines(step, ctxWith(answered))
+      assert.ok(lines.includes(effects[i]), `the answered line for "${option}"`)
+      assert.ok(!lines.includes(help), `no open line once "${option}" is the answer`)
+    }
   }
 })

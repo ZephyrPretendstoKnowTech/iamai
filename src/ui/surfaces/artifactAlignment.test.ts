@@ -133,7 +133,7 @@ test('013.A: every artifact reads one step, and that step is the frozen Step Con
   }
 })
 
-// ---- the one rendering the flat artifacts share ----
+// ---- the one rendering the flat artifacts share (D, E) ----
 
 test("013.A/D/E: the calendar entry and the prompt block are one run of the view's lines, dated the same way, each fact said once", () => {
   {
@@ -329,9 +329,7 @@ test("013.D: the bundle carries the screen's reading of a step, and a projected 
   }
 })
 
-// ---- E. the prompt is an execution artifact, not a transcript ----
-
-// ---- F. Export is not a second MFA Readiness ----
+// ---- F/G. Export is not a second MFA Readiness, and carries no identity ----
 
 test('013.F/G: no plan artifact leaks identity: the MFA ledger stays in its CSV, the calendar and the redacted bundle carry no tenant id or sign-in name, and every export goes through the guard', () => {
   {
@@ -398,8 +396,6 @@ test('013.F/G: no plan artifact leaks identity: the MFA ledger stays in its CSV,
     }
   }
 })
-
-// ---- G. the calendar is timing, and carries no identity ----
 
 // ---- H. the printed plan is the Plan ----
 //

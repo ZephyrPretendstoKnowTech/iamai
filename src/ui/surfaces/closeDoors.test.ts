@@ -1,7 +1,8 @@
 // The "Close the Doors Nobody Should Use" steps, taken to the V1 standard:
 // docs/plans/close-doors-spec.md holds the outcome, the Microsoft Learn page
-// behind every technical claim and the date it was checked. One test per
-// acceptance item in that spec.
+// behind every technical claim and the date it was checked. What is kept here
+// is the settings that decide who a block reaches, and the folded exception task;
+// the rest of the spec's words are pinned by the step snapshots.
 //
 // A test here reads the OPENED STEP, not the content file, wherever the claim is
 // about what an admin sees: the acceptance is what is on screen (CLAUDE.md), and

@@ -19,38 +19,39 @@ import { badgeLabel, stepContract } from './stepContract.ts'
 
 const DC = 's-goal-block-device-code'
 
-test('demo week two: the enforced Block Device Code Sign-in is in place, reads Ready · Decision, and asks for no rebuild', () => {
-  // With Establish Emergency Access complete (roadmap/foundations.ts) and the
-  // Direction left open, which is the unsaved answer this case is about.
-  const f = withEmergencyAccessSettled(fixture('demo-week2'))
-  const step = runFixture(f, {}, null, f.snapshot.asOf).steps.find((s) => s.id === DC)
-  assert.ok(step)
-  assert.equal(step.state.lifecycle, 'enforced', 'the premise: the tenant already enforces it')
-  assert.ok(step.satisfiedBy?.sufficient, 'the premise: a tenant policy delivers the goal')
-  assert.deepEqual(step.unsavedInputs, ['Device code sign-in'], 'the premise: the Direction answer is unsaved')
-  assert.equal(policyResult(step).kind, 'not-policy', 'nothing for IAMAI to write, and not a policy it cannot build')
-  assert.equal(unavailableReason(step), null)
-  assert.equal(isPreserved(step), false, 'not finished either: the workflow test is not recorded')
-  assert.equal(driftOutcomeOf(step), null, 'nothing it owns has drifted')
-  const snap = stepSnapshotsOf('demo-week2')[DC]
-  assert.equal(snap.fact, 'Enforced')
-  assert.equal(snap.badge, 'Ready · Decision', 'the open Direction answer is the next thing')
-  assert.notEqual(snap.bar, 'Not supported')
-  assert.ok(!snap.tiles.some((t) => t.state === 'Not supported' || t.state === 'Unavailable'), JSON.stringify(snap.tiles))
-  assert.notEqual(snap.reason, 'until a scan rebuilds this step')
-})
-
-test('demo week two answered: the same step asks for its workflow test, never a rescan to rebuild it', () => {
-  const w = fixture('demo-week2')
-  const f = { ...w, mapping: applyStepDecisions(w.mapping, w.decisions) }
-  const run = runFixture(f, {}, null, f.snapshot.asOf)
-  const step = run.steps.find((s) => s.id === DC)
-  assert.ok(step)
-  assert.equal(step.unsavedInputs, undefined, 'the premise: the answer is saved')
-  const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: null }
-  const c = stepContract(step, ctx, undefined, laneViewFor(step, boardReadingsOf(run.steps, run.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)))
-  assert.equal(badgeLabel(c), 'Ready · Review')
-  assert.equal(c.whatToDo.kind, 'verify', c.whatToDo.text)
-  assert.equal(c.implementation.offered, false, 'nothing to write')
-  assert.equal(c.implementation.reason, null, 'and nothing IAMAI failed to build')
+test('demo week two: the enforced Block Device Code Sign-in is in place and asks for no rebuild, reading Ready · Decision until answered and then Ready · Review', () => {
+  {
+    // With Establish Emergency Access complete (roadmap/foundations.ts) and the
+    // Direction left open, which is the unsaved answer this case is about.
+    const f = withEmergencyAccessSettled(fixture('demo-week2'))
+    const step = runFixture(f, {}, null, f.snapshot.asOf).steps.find((s) => s.id === DC)
+    assert.ok(step)
+    assert.equal(step.state.lifecycle, 'enforced', 'the premise: the tenant already enforces it')
+    assert.ok(step.satisfiedBy?.sufficient, 'the premise: a tenant policy delivers the goal')
+    assert.deepEqual(step.unsavedInputs, ['Device code sign-in'], 'the premise: the Direction answer is unsaved')
+    assert.equal(policyResult(step).kind, 'not-policy', 'nothing for IAMAI to write, and not a policy it cannot build')
+    assert.equal(unavailableReason(step), null)
+    assert.equal(isPreserved(step), false, 'not finished either: the workflow test is not recorded')
+    assert.equal(driftOutcomeOf(step), null, 'nothing it owns has drifted')
+    const snap = stepSnapshotsOf('demo-week2')[DC]
+    assert.equal(snap.fact, 'Enforced')
+    assert.equal(snap.badge, 'Ready · Decision', 'the open Direction answer is the next thing')
+    assert.notEqual(snap.bar, 'Not supported')
+    assert.ok(!snap.tiles.some((t) => t.state === 'Not supported' || t.state === 'Unavailable'), JSON.stringify(snap.tiles))
+    assert.notEqual(snap.reason, 'until a scan rebuilds this step')
+  }
+  {
+    const w = fixture('demo-week2')
+    const f = { ...w, mapping: applyStepDecisions(w.mapping, w.decisions) }
+    const run = runFixture(f, {}, null, f.snapshot.asOf)
+    const step = run.steps.find((s) => s.id === DC)
+    assert.ok(step)
+    assert.equal(step.unsavedInputs, undefined, 'the premise: the answer is saved')
+    const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: null }
+    const c = stepContract(step, ctx, undefined, laneViewFor(step, boardReadingsOf(run.steps, run.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)))
+    assert.equal(badgeLabel(c), 'Ready · Review')
+    assert.equal(c.whatToDo.kind, 'verify', c.whatToDo.text)
+    assert.equal(c.implementation.offered, false, 'nothing to write')
+    assert.equal(c.implementation.reason, null, 'and nothing IAMAI failed to build')
+  }
 })
