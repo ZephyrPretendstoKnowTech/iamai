@@ -44,6 +44,7 @@ import { mailDevicesOf } from '../../roadmap/answers.ts'
 import { shared } from '../../content/content.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import type { OwnCard } from './prepareSteps.ts'
+import { factSentence } from './policyFact.ts'
 
 /** The folded mail follow-up's words (docs/plans/step-redundancy-analysis.md finding 6). */
 const MAIL = shared.mailDevices as { title: string; target: string; steps: string[]; action: string }
@@ -274,6 +275,9 @@ export function policyTasksOf(step: Step, title: string, artifacts: readonly Por
   return { tasks: mail ? [task, mail] : [task], recommendedTaskId: implementationIsCurrent(step) ? task.id : null, printAll: true }
 }
 
+/** A finished policy's state, as Entra shows it (pages.app.plan.stepContract.policyFact.on). */
+const POLICY_ON = (CONTRACT as unknown as { policyFact: { on: string } }).policyFact.on
+
 /** The subject a card names where the step delivers one policy; a step that delivers two labels each member ("Policy A") itself. */
 const POLICY_SUBJECT = 'Conditional Access policy'
 
@@ -420,6 +424,12 @@ export function policyCardsOf(contract: StepContract, projected: EmergencyTaskPr
     // (prepareSteps.ts): who it is about, and the fact, never "In place · No
     // change needed." (walk list section 3 items 14, 41 and 46).
     if (own !== null) return { key: subject.key, accountId: null, heading: subject.heading, upn: own.upn ?? subject.name, title: own.title, detail: own.detail, instruction: '', completed: [], remainingCount: null, satisfied, ...(own.link ? { link: own.link } : {}) }
+    // A finished policy in Turn On MFA for Everyone states what it does (walk
+    // list 4.x item 22, owner 2026-09-24): "On · Requires MFA for All users
+    // except Core - Exclusions", never "In place · This is in place already:
+    // nothing to create. Keep the policy as it is."
+    const fact = satisfied ? contract.policyFact : null
+    if (fact) return { key: subject.key, accountId: null, heading: subject.heading, upn: subject.name, title: POLICY_ON, detail: factSentence(fact), instruction: '', completed: [], remainingCount: null, satisfied }
     return {
       key: subject.key,
       accountId: null,

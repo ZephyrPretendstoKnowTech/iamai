@@ -64,6 +64,10 @@ import dependencyData from '../../actionability/dependency-data.json' with { typ
 import type { DependencyData } from '../../actionability/parseDependencyDoc.ts'
 import { buildGraph } from '../../actionability/lanes.ts'
 import { exclusionsGroupChoice } from '../../mapping/safetyChoice.ts'
+import { policyFactOf } from './policyFact.ts'
+import type { PolicyFact } from './policyFact.ts'
+import { QUESTION_STEP, mailDevicesOf } from '../../roadmap/answers.ts'
+import { isGroupMember } from '../../roadmap/stepGroups.ts'
 
 /**
  * The one state reading of a step (A1b, RUN-CONTEXT-A decision 1): the lane
@@ -543,6 +547,13 @@ export type StepContract = {
    * plan show, and the AI Info briefing all read it (R4-33).
    */
   routeStart: { id: string; title: string } | null
+  /**
+   * What the step's policy does, read from the policy IAMAI will see
+   * (policyFact.ts), on a policy in Turn On MFA for Everyone; null elsewhere.
+   * Its Satisfied card and its Completion Criteria state it (walk list 4.x
+   * items 22 and 26).
+   */
+  policyFact: PolicyFact | null
 }
 
 /**
@@ -1301,8 +1312,48 @@ function objectTaskDoneWhen(task: Record<string, unknown> | undefined, ex: Recor
   return lines.filter((l) => whole(l, ex)).map((l) => fillText(l, ex))
 }
 
-function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<string, unknown> | undefined, ex: Record<string, unknown>, fix: ContractFix[], tenant: string, mapping?: StepVarContext['mapping']): string[] {
+/** Completion Criteria's words on a policy in Turn On MFA for Everyone (walk list 4.x item 26). */
+type DoneOnWords = { doneOn: string; doneOnPlain: string; donePeriod: string }
+const DONE_ON = (): DoneOnWords => CONTRACT as unknown as DoneOnWords
+/** The completion of the mail half of Block Legacy Authentication, where the mail question named accounts (shared.mailDevices.done). */
+const MAIL_DONE = (): string => (shared.mailDevices as unknown as { done: string }).done
+
+/**
+ * A policy in Turn On MFA for Everyone finishes on two lines, the same in
+ * every state (walk list 4.x item 26, owner 2026-09-24): what IAMAI will see —
+ * the policy On, and what it does for whom — and the report-only period it
+ * has to pass. The period's line goes where the scan found the policy already
+ * On, since there was none to pass; where the plan's policy went On without a
+ * report-only period IAMAI watched, the check after the change stands in its
+ * place (owner, 2026-09-22). Block Legacy Authentication adds its mail half
+ * where the mail question named accounts. Up to six lines changed with the
+ * state before: the report-only gates with today's numbers, "A later scan
+ * confirms…", "Verify after the change…", "Representative users can satisfy
+ * MFA…" and "The scan found the assessed configuration in place."
+ */
+function policyDoneWhen(step: Step, fact: PolicyFact | null, policy: string, mailAccounts: readonly string[]): string[] {
+  const W = DONE_ON()
+  const on = fact === null ? fillText(W.doneOnPlain, { policy }) : fillText(W.doneOn, { policy: fact.policy, fact: fact.doing })
+  // Found already On: first seen enforced (observation.ts neverObserved), or, where
+  // nothing is tracked, the tenant's own policy in place. A tenant policy IAMAI
+  // watched go from Report-only to On passed its period like any other.
+  const members = step.state.members
+  const foundOn = members.length > 0 ? members.every((m) => m.change.latest.neverObserved === true) : step.state.inPlace
+  const period = enforcedUnwatched(step) ? [POLICY_VERIFY_AFTER] : foundOn ? [] : [W.donePeriod]
+  return [on, ...period, ...(mailAccounts.length > 0 ? [fillText(MAIL_DONE(), { accounts: list([...mailAccounts]) })] : [])]
+}
+
+/** A policy in Turn On MFA for Everyone: the steps policyDoneWhen finishes. */
+const isSectionPolicy = (step: Step, cs: Record<string, unknown> | undefined): boolean => isGroupMember(step.id, 'core') && cs?.kind === 'policy'
+
+function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<string, unknown> | undefined, ex: Record<string, unknown>, fix: ContractFix[], tenant: string, mapping?: StepVarContext['mapping'], ctx?: StepVarContext, fact: PolicyFact | null = null): string[] {
   if (step.state.setAside) return [CONTRACT.doneSetAside]
+  if (isSectionPolicy(step, cs) && step.state.condition !== 'baseline-conflict') {
+    const mail = step.id === QUESTION_STEP.mailDevices && mapping ? mailDevicesOf(mapping).map((id) => ctx?.nameOf(id) ?? id) : []
+    // The policy by its name: the tracked one where the tenant has it, else the one the plan proposes.
+    const tracked = (step.tracking?.members ?? []).map((m) => m.policyName).find((n): n is string => typeof n === 'string' && n.trim() !== '')
+    return policyDoneWhen(step, fact, tracked ?? String(ex.policyName ?? contentTitle(step)), mail)
+  }
   // Emergency access in place with its hardening deferred is not fully resilient,
   // and Done when does not say it is (owner, 2026-09-11).
   if (step.state.satisfied && step.emergency?.deferredAt) return [CONTRACT.hardening.doneDeferred]
@@ -1490,6 +1541,7 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
   const gateNow = step.action.readinessGate
   const routeStart = gateNow ? routeStartOf(step, gateNow, startOf) : null
   const found = foundOf(step, tenant, milestone.line, routeStart)
+  const policyFact = policyFactOf(step, ctx)
   const inventory = inventoryOf(step, ctx)
   if (inventory) found.push({ key: 'directory-inventory', label: inventory.label, text: `${inventory.complete ? '' : 'At least '}${inventory.count} guest ${plural(inventory.count, 'account')}. ${inventory.names.join('; ')}` })
   // The object a step makes itself comes first, as its task does (Stage 3;
@@ -1530,7 +1582,7 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     fix,
     enforcementWaits: enforcementWaitsOf(step),
     // A step set aside has nothing left to finish, its object's task included.
-    doneWhen: [...(step.state.setAside ? [] : objectTaskDoneWhen(task, ex)), ...doneWhenOf(step, reason, cs, ex, fix, tenant, ctx.mapping)],
+    doneWhen: [...(step.state.setAside ? [] : objectTaskDoneWhen(task, ex)), ...doneWhenOf(step, reason, cs, ex, fix, tenant, ctx.mapping, ctx, policyFact)],
     members,
     multiPolicy: members.length > 1,
     existing: existingOf(step),
@@ -1548,6 +1600,7 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     decisionNote: decisionNoteOf(step, cs, ex),
     exclusionsReach: step.id === GATE_STEP.exclusionGroup && typeof ex.excludedFrom === 'number' && typeof ex.policyCount === 'number' ? { excludedFrom: ex.excludedFrom, policyCount: ex.policyCount } : null,
     routeStart,
+    policyFact,
   }
 }
 
