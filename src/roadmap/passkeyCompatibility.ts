@@ -242,10 +242,15 @@ export function affectedPasskeysByProposedChange(snapshot: TenantSnapshot, mappi
   const unassessable = new Set<string>()
   const stranded = new Set<string>()
   const coverage = new Set<AffectedPasskeyProjection['coverage'][number]>()
+  // With the settings already as planned (no field differs) there is no change
+  // left to make, so an account whose registered methods were not read cannot
+  // lose a passkey to it. The Follow-up snapshot, in place and Completed, kept
+  // an open Existing passkeys affected card for exactly that (owner, 2026-09-23).
+  const unchanged = reading.differs.length === 0
   for (const user of snapshot.users) {
     const accountId = user.id
     const methods = snapshot.authMethods[accountId]
-    if (!Array.isArray(methods)) { coverage.add('methods'); continue }
+    if (!Array.isArray(methods)) { if (!unchanged) coverage.add('methods'); continue }
     const keys = methods.filter(isPasskey)
     if (!keys.length) continue
     const states = keys.map(method => {
