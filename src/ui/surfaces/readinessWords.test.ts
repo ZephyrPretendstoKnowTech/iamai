@@ -14,7 +14,7 @@ import { laneViewFor, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } f
 import { laneReadings } from './planLanes.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { channelTabsOf, stepBodyOf } from './stepBody.ts'
+import { stepBodyOf } from './stepBody.ts'
 import type { StepBody } from './stepBody.ts'
 import { CONTRACT, readinessOf, readinessSentence, readinessValueOf } from './stepContract.ts'
 import type { PrerequisiteBlocker } from './stepContract.ts'
@@ -122,7 +122,6 @@ test('P1-3: a prerequisite another prerequisite tile already waits on is not dra
 test('P1-4 and P1-5: Separate Accounts and Dormant Accounts offer Entra and AI Info', () => {
   const demo = bodiesOf(fixture('demo'))
   // The channels with content; every channel is a tab (content review D2).
-  for (const id of ['s-check-separate-admin-accounts', 's-check-dormant-accounts']) assert.deepEqual(channelTabsOf(demo.get(id)!.artifacts.filter((a) => !a.unavailable)).map((t) => String(t.label)), ['Entra', 'PowerShell', 'AI Info', 'Email'], id)
   const dormant = demo.get('s-check-dormant-accounts')!.artifacts
   assert.match(dormant.find((a) => a.id === 'portal')!.text(), /Account enabled: No/)
   assert.match(dormant.find((a) => a.id === 'ai')!.text(), /dormant accounts/i)

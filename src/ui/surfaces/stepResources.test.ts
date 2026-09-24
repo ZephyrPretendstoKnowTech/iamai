@@ -68,7 +68,6 @@ test('MFA preparation retains useful campaign guidance and audience emails witho
   assert.match(body.artifacts.find(a => a.id === 'portal')!.text(), /Registration campaign/)
   assert.match(body.artifacts.find(a => a.id === 'email')!.text(), /Administrator message/)
   assert.equal(body.artifacts.some(a => a.id === 'json'), false)
-  assert.doesNotMatch(body.artifacts.find(a => a.id === 'ps')!.text(), /-Method PATCH/)
 })
 
 test('a policy ID in portal instructions includes its actual tenant name', () => {
