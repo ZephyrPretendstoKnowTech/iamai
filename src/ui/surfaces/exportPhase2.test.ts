@@ -90,26 +90,29 @@ test('the calendar names an operation only on a row the board reads Ready with t
 // sentence, whatever the header said: "The plan is 1 week because MFA
 // registration for 30 people takes 1 week and no enforcement is left to
 // schedule" on a demo plan the header read as held, about 3 weeks once nothing
-// is held. The pack reads the header's one plan-length sentence.
-test('the prompt pack states the plan length the Plan header states, and no length while work is held', () => {
-  const HELD_PREFIX = (pages.plan as Record<string, string>).lengthTipEstimate.split('{')[0]
+// is held. The pack reads the header's one plan-length sentence: the Estimated
+// finish ⓘ's (owner, 2026-09-23), from the board's own forecast, which the
+// Export page hands it. Without it the pack still said "Once nothing is held,
+// the plan is about 3 weeks …" beside a demo Plan whose ⓘ said 7.
+test('the prompt pack states the plan length the Plan\'s Estimated finish ⓘ states, held plans included', () => {
   let heldPlans = 0
   for (const name of ['demo', 'mid', 'large'] as FixtureName[]) {
     const p = exportPage(fixture(name))
     const finish = planFinish(p.r.steps, p.r.schedule.cleanup?.end ?? null)
-    const pack = promptPack({ view: p.view, tenant: 'Tenant', steps: p.r.steps, schedule: p.r.schedule, changeRecord: '', announcement: null, cleanup: p.cleanup })
-    const header = planLengthSentence(finish, p.r.schedule)
+    const forecast = { steps: p.r.steps, forecast: p.board.forecast, titleOf: p.board.titleOf }
+    const pack = promptPack({ view: p.view, tenant: 'Tenant', steps: p.r.steps, schedule: p.r.schedule, changeRecord: '', announcement: null, cleanup: p.cleanup, forecast })
+    const header = planLengthSentence(finish, p.r.schedule, forecast)
+    assert.ok(header, `${name}: the premise, the ⓘ states a length`)
     for (const item of pack.slice(0, 2)) {
-      assert.doesNotMatch(item.prompt, /Nothing is left to schedule/, `${name}/${item.title}: a held plan said nothing is left`)
-      if (header !== null) assert.ok(item.prompt.includes(header), `${name}/${item.title}: the pack's plan block is the header's sentence "${header}"`)
-      if (finish.held) assert.doesNotMatch(item.prompt, /The plan is \d+ weeks?\b/, `${name}/${item.title}: a held plan states a length`)
+      assert.doesNotMatch(item.prompt, /Nothing is left to schedule|no enforcement is left/, `${name}/${item.title}: the pack says nothing is left over open work`)
+      assert.ok(item.prompt.includes(header), `${name}/${item.title}: the pack's plan block is not the ⓘ's sentence "${header}"`)
     }
-    if (finish.held) {
-      heldPlans++
-      assert.ok(header === null || header.startsWith(HELD_PREFIX), `${name}: the header's held sentence: ${header}`)
-    }
+    if (finish.held) heldPlans++
   }
   assert.ok(heldPlans > 0, 'the premise: a plan that cannot finish')
+  // The Export page hands the pack the board it builds, as the Plan hands its ⓘ.
+  const page = readFileSync(new URL('./Export.tsx', import.meta.url), 'utf8')
+  assert.match(page, /promptPack\(\{[^\n]*forecast: \{ steps, forecast: board\.forecast, titleOf: board\.titleOf \}/, 'the Export page hands the pack no forecast')
 })
 
 // Its weeks are a count like any other, bent by fillText's pluralise, not by

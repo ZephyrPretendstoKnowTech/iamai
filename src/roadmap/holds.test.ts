@@ -32,7 +32,7 @@ import { buildIcs } from './ics.ts'
 import { groundingBundle } from './prompts.ts'
 import type { Step } from './types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
-import { planFinish, planWeeks } from '../derive/finish.ts'
+import { planFinish, planWeeks, statedEstimate } from '../derive/finish.ts'
 import { headerLine1 } from '../derive/planHeader.ts'
 import { FINISH } from '../copy/statements.ts'
 import { readyWhen } from '../derive/readyWhen.ts'
@@ -47,6 +47,7 @@ import { scheduleOf, scheduledEventOf } from './stepSchedule.ts'
 import { WHEN, boardReadingsOf, boardWhenOf } from '../ui/surfaces/planBoard.ts'
 import { planStateOf } from '../ui/surfaces/planState.ts'
 import { demoFacts } from '../ui/demoFacts.ts'
+import { customerPlanSteps } from '../ui/surfaces/customerPlanSteps.ts'
 import { demoTenant } from '../ui/demo.ts'
 
 type Plan = { f: Fixture; r: ReturnType<typeof runFixture>; ctx: (s: Step) => StepVarContext; ics: string }
@@ -307,8 +308,11 @@ test('Step 4: no plan finishes on a date while work it requires is held, and its
   // Connect's sample tile is the Plan's length, and says it is an estimate when the Plan cannot finish.
   const d = demoTenant(false)
   const demo = runFixture({ ...fixture('demo'), snapshot: d.snapshot, mapping: d.mapping })
-  const demoFinish = planFinish(demo.steps, demo.schedule.cleanup?.end ?? null)
-  assert.equal(demoFacts().weeks, planWeeks(demoFinish, demo.schedule))
+  // The rows the Plan draws, and the weeks to the Estimated finish its tile states (derive/finish.ts statedEstimate).
+  const drawn = customerPlanSteps(demo.steps)
+  const demoFinish = planFinish(drawn, demo.schedule.cleanup?.end ?? null)
+  const estimate = statedEstimate(drawn, demoFinish, demo.schedule, boardReadingsOf(drawn, demo.schedule.cleanup, d.mapping.breakGlassAnswers ?? null).forecast)
+  assert.equal(demoFacts().weeks, planWeeks({ ...demoFinish, finish: estimate }, demo.schedule))
   assert.equal(demoFacts().estimated, demoFinish.held)
 })
 

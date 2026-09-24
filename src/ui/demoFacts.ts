@@ -5,8 +5,9 @@
 import { fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { facts, stepFacts } from '../derive/facts.ts'
-import { planFinish, planWeeks } from '../derive/finish.ts'
+import { planFinish, planWeeks, statedEstimate } from '../derive/finish.ts'
 import { customerPlanSteps } from './surfaces/customerPlanSteps.ts'
+import { boardReadingsOf } from './surfaces/planBoard.ts'
 import { demoTenant } from './demo.ts'
 
 /** `estimated`: the sample plan cannot finish yet, so `weeks` is the rollout's estimate (derive/finish.ts planWeeks), never a finish. */
@@ -24,11 +25,13 @@ export function demoFacts(): DemoFacts {
   // plan surface reads (ui/surfaces/planData.ts). Without it the tile counted a
   // step withheld from the board, and said 43 over a Plan drawing 42.
   const drawn = customerPlanSteps(run.steps)
-  const { steps, done: inPlace } = stepFacts(drawn, cleanup, d.mapping.breakGlassAnswers ?? null)
+  const answers = d.mapping.breakGlassAnswers ?? null
+  const { steps, done: inPlace } = stepFacts(drawn, cleanup, answers)
   const finish = planFinish(drawn, cleanup?.end ?? null)
-  // Weeks derive from the finish date, as the Plan header does, from the Plan header's own derivation (derive/finish.ts).
-  // A sample plan that cannot finish yet states its estimate, and says it is one: the Plan it opens says it cannot finish.
-  const weeks = planWeeks(finish, run.schedule)
+  // Weeks to the Estimated finish the Plan's tile states and its ⓘ counts (derive/finish.ts
+  // statedEstimate, from the board's own forecast): the tile counted the rollout's drawn
+  // estimate, "3 weeks", over a Plan whose ⓘ said 7.
+  const weeks = planWeeks({ ...finish, finish: statedEstimate(drawn, finish, run.schedule, boardReadingsOf(drawn, cleanup, answers).forecast) }, run.schedule)
   // The active people, as the Plan tile and Today count them (derive/facts.ts); never the directory's row count.
   cached = { people: facts(d.snapshot, d.mapping).active, steps, inPlace, weeks, estimated: finish.held }
   return cached

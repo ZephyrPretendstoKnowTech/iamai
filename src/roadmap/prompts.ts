@@ -6,6 +6,7 @@
 import { GROUNDING, PROMPTS } from '../copy/comms.ts'
 import { statedEnforcement } from './forecast.ts'
 import { planFinish, planLengthSentence } from '../derive/finish.ts'
+import type { ForecastReading } from '../derive/finish.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { CoverageReport } from '../coverage/types.ts'
 import { cleanupArtifactLines, stepArtifactLines } from './artifactLines.ts'
@@ -152,13 +153,16 @@ function inExportOrder<T extends { id: string }>(rows: readonly T[], order: Expo
  * condition, no prerequisites and no statement of whether the work can be done
  * at all. There is one reading of a step for an artifact and this is it.
  */
-export function promptPack(args: { view: StepView; tenant: string; steps: Step[]; schedule: Schedule; changeRecord: string; announcement: PackAnnouncement | null; language?: string; cleanup?: CleanupExport[]; order?: ExportOrder | null }): PackItem[] {
+export function promptPack(args: { view: StepView; tenant: string; steps: Step[]; schedule: Schedule; changeRecord: string; announcement: PackAnnouncement | null; language?: string; cleanup?: CleanupExport[]; order?: ExportOrder | null; forecast?: ForecastReading | null }): PackItem[] {
   const { tenant } = args
   // The plan's length as the Plan header states it (derive/finish.ts
   // planLengthSentence), from the same steps and schedule: the caller handed in
   // the schedule's critical path, which states a length the header does not
-  // hold while work is held.
-  const planSummary = planLengthSentence(planFinish(args.steps, args.schedule.cleanup?.end ?? null), args.schedule)
+  // hold while work is held. With the board's forecast (`forecast`, which the
+  // Export page hands in from the board it builds) it is the Estimated finish
+  // ⓘ's sentence word for word: without it the pack said "Once nothing is held,
+  // the plan is about 3 weeks …" beside a Plan whose ⓘ said 7.
+  const planSummary = planLengthSentence(planFinish(args.steps, args.schedule.cleanup?.end ?? null), args.schedule, args.forecast ?? null)
   const cleanup = args.cleanup ?? []
   const withFacts = (head: string, label: string, body: string | null, extra: [string, string][] = []) => [head, ...(body === null ? [] : [dataBlock(label, body)]), ...extra.map(([l, b]) => dataBlock(l, b)), PROMPTS.noInvent].join('\n\n')
   // One block per Cleanup row, for the same reason each step gets one: the rows
