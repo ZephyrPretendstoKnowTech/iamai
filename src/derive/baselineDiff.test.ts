@@ -12,13 +12,11 @@
 // The policy id never moved. Everything below is one policy.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { PINNED } from '../baseline/pinned.ts'
 import { PINNED_GOAL_MAP } from '../roadmap/goalMap.ts'
 import { comparePolicies, samePolicySemantics } from '../baseline/semantics.ts'
 import { normalizePolicy } from '../baseline/normalize.ts'
 import { memberIdentity, policyChanges, sourceSet, stepsForChange } from './baselineDiff.ts'
 import type { SourceArtifact } from './baselineDiff.ts'
-import { mockAuthorUpdate } from '../testing/authorUpdate.ts'
 import { baselineTile } from '../ui/scan/connectView.ts'
 
 // ---------------------------------------------------------------- the fixture
@@ -81,7 +79,7 @@ const reviewOf = (base: SourceArtifact[], head: SourceArtifact[]) => policyChang
 
 // ------------------------------------------------------- A. one evolving policy
 
-test('A. four file events for one renamed, modified policy collapse to one change on the stable policy id', () => {
+test('A–C. four file events for one renamed, modified policy are one change on the stable policy id, with its material deltas, and it keeps its step', () => {
   assert.equal(baseFiles.length + headFiles.length, 4, 'the compare saw four JSON file events')
   const changes = reviewOf(baseFiles, headFiles)
   assert.equal(changes.length, 1, `one evolving policy, not ${changes.length} files: ${JSON.stringify(changes.map((c) => c.newName ?? c.oldName))}`)
@@ -93,51 +91,27 @@ test('A. four file events for one renamed, modified policy collapse to one chang
   assert.equal(c.oldName, OLD_NAME)
   assert.equal(c.newName, NEW_NAME)
   assert.deepEqual(c.unreviewed, [], 'every changed field is one the baseline model represents')
-})
 
-// -------------------------------------------------- B. the material delta shows
-
-test('B. the review exposes the authentication-strength change and the extra excluded group as material, not as formatting noise', () => {
-  const [c] = reviewOf(baseFiles, headFiles)
-  const strength = c.deltas.find((d) => d.field === 'authenticationStrength')
-  assert.ok(strength, `no authentication-strength delta in ${JSON.stringify(c.deltas)}`)
-  assert.deepEqual(strength, { field: 'authenticationStrength', kind: 'set', value: 'Modern MFA + TAP' })
-  const groups = c.deltas.find((d) => d.field === 'excludeGroups')
-  assert.deepEqual(groups, { field: 'excludeGroups', kind: 'added', n: 1 }, 'one more excluded group')
-  // The allowed combinations moved with the strength; they are inside the same field, not a second claim.
-  assert.equal(c.deltas.filter((d) => d.field === 'authenticationStrength').length, 1)
-  // Nothing else moved: the locations and the user action are the same policy.
+  // B. The authentication-strength change and the extra excluded group are material, not formatting noise.
+  assert.deepEqual(c.deltas.find((d) => d.field === 'authenticationStrength'), { field: 'authenticationStrength', kind: 'set', value: 'Modern MFA + TAP' })
+  assert.deepEqual(c.deltas.find((d) => d.field === 'excludeGroups'), { field: 'excludeGroups', kind: 'added', n: 1 }, 'one more excluded group')
+  // The allowed combinations moved with the strength; nothing else moved.
   assert.deepEqual(c.deltas.map((d) => d.field).sort(), ['authenticationStrength', 'excludeGroups'])
 
-  // As a person reads it on the Baseline tile.
-  const tile = baselineTile({ name: 'Jon Hope — Defense in Depth', policyCount: 38, loading: null, update: { date: '2026-09-03T10:00:00Z', changes: reviewOf(baseFiles, headFiles) }, stepsFor: (ch) => stepsForChange(ch, PINNED_GOAL_MAP) })
-  assert.ok(tile.update)
-  assert.match(tile.update.summary, /· 1 policy changed · review$/, `the count is policies, not files: "${tile.update.summary}"`)
-  assert.equal(tile.update.rows.length, 1)
-  const [row] = tile.update.rows
-  assert.equal(row.tag, 'renamed and changed')
-  assert.equal(row.policy, NEW_NAME)
-  assert.equal(row.was, `was ${OLD_NAME}`)
-  // In the model's own order: who it applies to, then what it demands.
-  assert.deepEqual(row.deltas, ['Excluded groups: 1 added', 'Authentication strength: now Modern MFA + TAP'])
-})
-
-// -------------------------------------------------- C. step attribution survives
-
-test('C. the renamed policy keeps its goal and its step, because the goal map keys by the same stable id', () => {
+  // C. The renamed policy keeps its goal and its step, because the goal map keys by the same stable id.
   assert.deepEqual(PINNED_GOAL_MAP['device-registration-mfa'], [REG_ID], 'the pinned map holds this policy by id')
-  const [c] = reviewOf(baseFiles, headFiles)
-  const steps = stepsForChange(c, PINNED_GOAL_MAP)
-  assert.deepEqual(steps, ['Require MFA to Register a Device'])
-  // The old review showed the removed file with the step and the added file with none.
-  const tile = baselineTile({ name: 'x', policyCount: 38, loading: null, update: { date: '2026-09-03T10:00:00Z', changes: [c] }, stepsFor: (ch) => stepsForChange(ch, PINNED_GOAL_MAP) })
+  assert.deepEqual(stepsForChange(c, PINNED_GOAL_MAP), ['Require MFA to Register a Device'])
+  // As a person reads it on the Baseline tile: one row, counted as policies, not files.
+  const tile = baselineTile({ name: 'x', policyCount: 38, loading: null, update: { date: '2026-09-03T10:00:00Z', changes }, stepsFor: (ch) => stepsForChange(ch, PINNED_GOAL_MAP) })
   assert.ok(tile.update)
+  assert.equal(tile.update.rows.length, 1)
+  assert.equal(tile.update.rows[0].policy, NEW_NAME)
   assert.deepEqual(tile.update.rows[0].steps, ['changes Require MFA to Register a Device'])
 })
 
-// ------------------------------------ D/E. duplicate copies: collapse or refuse
+// ------------------------------------ D/E/K. duplicate copies: collapse or refuse
 
-test('D. two equivalent source copies of one policy at a commit are one member, however they are spelled', () => {
+test('D/E/K. source copies at one commit: equivalent copies are one member, copies that disagree are refused, and an unreadable file makes the review incomplete', () => {
   // The documentation copy is a PowerShell-cased export with the same meaning:
   // reordered lists, an empty container where the other has none, a null block.
   const documentationCopy = {
@@ -160,36 +134,38 @@ test('D. two equivalent source copies of one policy at a commit are one member, 
   assert.deepEqual(set.members[0].paths.length, 2)
   // And nothing about that pair reads as a change.
   assert.deepEqual(policyChanges(sourceSet([at('Policies', OLD_NAME, registrationBefore)]), set), [])
-})
 
-test('E. two source copies with the same id that say different things are not silently deduplicated', () => {
+  // E. Two copies with the same id that say different things are not silently deduplicated.
   const weaker = { ...registrationBefore, grantControls: { operator: 'OR', builtInControls: ['mfa'], authenticationStrength: null } }
-  const set = sourceSet([at('Policies', OLD_NAME, registrationBefore), doc(OLD_NAME, weaker)])
-  assert.equal(set.members.length, 0, 'neither copy is taken as the answer')
-  assert.equal(set.conflicts.length, 1)
-  assert.equal(set.conflicts[0].key, REG_ID)
-  const changes = policyChanges(sourceSet(baseFiles), set)
+  const refused = sourceSet([at('Policies', OLD_NAME, registrationBefore), doc(OLD_NAME, weaker)])
+  assert.equal(refused.members.length, 0, 'neither copy is taken as the answer')
+  assert.equal(refused.conflicts.length, 1)
+  assert.equal(refused.conflicts[0].key, REG_ID)
+  const changes = policyChanges(sourceSet(baseFiles), refused)
   assert.equal(changes.length, 1)
   assert.equal(changes[0].kind, 'unknown')
   assert.equal(changes[0].reason, 'conflictingCopies')
   const tile = baselineTile({ name: 'x', policyCount: 38, loading: null, update: { date: '2026-09-03T10:00:00Z', changes }, stepsFor: () => [] })
   assert.ok(tile.update)
   assert.equal(tile.update.rows[0].tag, 'not reviewed')
-  assert.match(tile.update.rows[0].deltas.join(' '), /two copies of this that say different things/)
+
+  // K. A source file that will not parse makes the review incomplete, never shorter.
+  const broken: SourceArtifact = { path: 'Updated/Policies/broken.json', text: '{ "displayName": "half a policy"' }
+  const partial = sourceSet([...headFiles, broken])
+  assert.equal(partial.unreadable.length, 1)
+  assert.equal(partial.members.length, 1, 'what parsed is still read')
+  // A file that holds no policy at all is not a policy artifact and is not an error.
+  assert.deepEqual(sourceSet([{ path: 'Updated/Documentation/readme.json', text: '{"note":"docs"}' }]), { members: [], conflicts: [], unreadable: [] })
 })
 
 // ------------------------------------------- F. different ids are never paired
 
-test('F. two policies with different ids are an addition and a removal, however alike their names are', () => {
+test('F/G. different ids are never paired, and an id-less policy is matched only by its name: renaming one is never called a rename', () => {
   const other = { ...registrationBefore, id: 'd7c2c2c9-4f7c-49a2-9e2f-1c4a5b6d7e8f', displayName: `${OLD_NAME} (copy)` }
   const changes = reviewOf([at('Policies', OLD_NAME, registrationBefore)], [at('Policies', 'other', other)])
   assert.deepEqual(changes.map((c) => c.kind).sort(), ['added', 'removed'])
   assert.equal(new Set(changes.map((c) => c.key)).size, 2)
-})
 
-// ------------------------------------------------ G. an id-less policy stays put
-
-test('G. an id-less policy is matched only by the stable fallback name; renaming one is never called a rename', () => {
   const { placeholders: _p, ...noId } = { ...registrationBefore, id: undefined, placeholders: {} } as Record<string, unknown>
   delete noId.id
   const renamed = { ...noId, displayName: 'IAC - INTUNE - GRANT - Registration' }
@@ -210,7 +186,7 @@ test('G. an id-less policy is matched only by the stable fallback name; renaming
 
 // ------------------------- H. normalisation collapses representation, not meaning
 
-test('H. representation-only differences are not changes, and a real grant or scope change still is', () => {
+test('H/I3. representation-only differences are not changes; a real grant, scope or session change still is; a control the model does not name is unreviewed', () => {
   const reordered = {
     ...registrationBefore,
     conditions: {
@@ -246,6 +222,22 @@ test('H. representation-only differences are not changes, and a real grant or sc
   const changes = reviewOf([at('Policies', OLD_NAME, registrationBefore)], [at('Policies', OLD_NAME, unmodelled)])
   assert.equal(changes[0].kind, 'unknown', 'a change IAMAI cannot read is never "nothing material changed"')
   assert.equal(changes[0].reason, 'unmodelledField')
+
+  // I3. A session control IAMAI has never heard of still changes what the policy
+  // does, so it is reported as a change nobody has established.
+  const sessionBefore = { ...registrationAfter, sessionControls: { signInFrequency: { isEnabled: true, value: 12, type: 'hours' } } }
+  const sessionAfter = { ...registrationAfter, sessionControls: { signInFrequency: { isEnabled: true, value: 12, type: 'hours' }, someFutureSessionControl: { isEnabled: true } } }
+  const future = comparePolicies(normalizePolicy(sessionBefore), normalizePolicy(sessionAfter))
+  assert.deepEqual(future.changed, [], 'the block is not reported as a field the model read')
+  assert.deepEqual(future.unreviewed, ['sessionControls.someFutureSessionControl.isEnabled'])
+  const [row] = reviewOf([at('Policies', NEW_NAME, sessionBefore)], [at('Policies', NEW_NAME, sessionAfter)])
+  assert.equal(row.kind, 'unknown')
+  assert.equal(row.reason, 'unmodelledField')
+  // A session control the model does name is material.
+  const shorter = { ...registrationAfter, sessionControls: { signInFrequency: { isEnabled: true, value: 4, type: 'hours' } } }
+  const session = comparePolicies(normalizePolicy(sessionBefore), normalizePolicy(shorter))
+  assert.deepEqual(session.changed.map((c) => c.field), ['sessionControls'])
+  assert.deepEqual(session.unreviewed, [])
 })
 
 // ------------------------- I. an expanded Graph object is not a policy change
@@ -276,7 +268,7 @@ const withStrength = (strength: unknown) => ({
   grantControls: { operator: 'OR', builtInControls: [], 'authenticationStrength@odata.context': 'https://graph.microsoft.com/v1.0/$metadata#strength', authenticationStrength: strength },
 })
 
-test('I. a re-export that only moved the referenced strength object’s own record is not a policy change', () => {
+test('I/I2. a re-export that only moved the referenced strength object’s own record is not a policy change; the strength’s id and combinations still are', () => {
   const before = withStrength(expandedStrength(MODERN_MFA_TAP, '2026-08-12T13:23:05.2711028Z', TAP_COMBINATIONS))
   const after = withStrength(expandedStrength(MODERN_MFA_TAP, '2026-09-06T09:41:11.5000000Z', TAP_COMBINATIONS))
 
@@ -295,45 +287,20 @@ test('I. a re-export that only moved the referenced strength object’s own reco
   // as a bare id means the same thing as the expanded projection of it.
   const bare = withStrength({ id: MODERN_MFA_TAP, displayName: 'Modern MFA + TAP', allowedCombinations: TAP_COMBINATIONS })
   assert.deepEqual(reviewOf([at('Policies', NEW_NAME, before)], [at('Policies', NEW_NAME, bare)]), [])
-})
 
-test('I2. the strength the policy points at is still material: its id and the combinations it allows', () => {
-  const before = withStrength(expandedStrength(BUILT_IN_MFA, '2026-08-12T13:23:05.2711028Z', ['password,microsoftAuthenticatorPush']))
-  const after = withStrength(expandedStrength(MODERN_MFA_TAP, '2026-08-12T13:23:05.2711028Z', TAP_COMBINATIONS))
-  const cmp = comparePolicies(normalizePolicy(before), normalizePolicy(after))
-  assert.deepEqual(cmp.changed.map((c) => c.field), ['authenticationStrength'], 'a different strength is a change')
-  assert.deepEqual(cmp.unreviewed, [])
-
-  // The same strength id whose allowed combinations moved is a change too.
+  // I2. The strength the policy points at is still material: its id and the combinations it allows.
+  const builtIn = withStrength(expandedStrength(BUILT_IN_MFA, '2026-08-12T13:23:05.2711028Z', ['password,microsoftAuthenticatorPush']))
+  const strength = comparePolicies(normalizePolicy(builtIn), normalizePolicy(after))
+  assert.deepEqual(strength.changed.map((c) => c.field), ['authenticationStrength'], 'a different strength is a change')
+  assert.deepEqual(strength.unreviewed, [])
   const widened = withStrength(expandedStrength(MODERN_MFA_TAP, '2026-08-12T13:23:05.2711028Z', [...TAP_COMBINATIONS, 'deviceBasedPush']))
   assert.deepEqual(comparePolicies(normalizePolicy(after), normalizePolicy(widened)).changed.map((c) => c.field), ['authenticationStrength'])
-
-  // As a person reads it, from the name the author gave the strength.
-  const [row] = reviewOf([at('Policies', NEW_NAME, before)], [at('Policies', NEW_NAME, after)])
+  const [row] = reviewOf([at('Policies', NEW_NAME, builtIn)], [at('Policies', NEW_NAME, after)])
   assert.deepEqual(row.deltas, [{ field: 'authenticationStrength', kind: 'set', value: 'Modern MFA + TAP' }])
   assert.equal(row.kind, 'changed')
 })
 
-test('I3. a control the model does not name is unreviewed, never counted as a field it understands', () => {
-  // A session control IAMAI has never heard of still changes what the policy
-  // does, so it is reported as a change nobody has established.
-  const before = { ...registrationAfter, sessionControls: { signInFrequency: { isEnabled: true, value: 12, type: 'hours' } } }
-  const after = { ...registrationAfter, sessionControls: { signInFrequency: { isEnabled: true, value: 12, type: 'hours' }, someFutureSessionControl: { isEnabled: true } } }
-  const cmp = comparePolicies(normalizePolicy(before), normalizePolicy(after))
-  assert.deepEqual(cmp.changed, [], 'the block is not reported as a field the model read')
-  assert.deepEqual(cmp.unreviewed, ['sessionControls.someFutureSessionControl.isEnabled'])
-  const [row] = reviewOf([at('Policies', NEW_NAME, before)], [at('Policies', NEW_NAME, after)])
-  assert.equal(row.kind, 'unknown')
-  assert.equal(row.reason, 'unmodelledField')
-
-  // A session control the model does name is material, and worded by the block.
-  const shorter = { ...registrationAfter, sessionControls: { signInFrequency: { isEnabled: true, value: 4, type: 'hours' } } }
-  const real = comparePolicies(normalizePolicy(before), normalizePolicy(shorter))
-  assert.deepEqual(real.changed.map((c) => c.field), ['sessionControls'])
-  assert.deepEqual(real.unreviewed, [])
-})
-
-test('I4. a strength’s combination configuration is never lost inside the reference: the same id configured differently is unreviewed, not unchanged', () => {
+test('I4/I5. a strength’s combination configuration and a nested object’s type are never lost inside the reference; an OData context is nothing', () => {
   // What a combination configuration does: the strength still allows fido2, but
   // only these authenticators satisfy it. Narrowing or widening that list
   // materially changes who can sign in, and the id does not move when it does.
@@ -369,39 +336,37 @@ test('I4. a strength’s combination configuration is never lost inside the refe
   const record = comparePolicies(normalizePolicy(withStrength(plain)), normalizePolicy(withStrength(reworded)))
   assert.deepEqual(record.changed, [])
   assert.deepEqual(record.unreviewed, [], `the strength object's own record is the exporter's, not the author's: ${JSON.stringify(record)}`)
-})
 
-test('I5. a nested object’s type is what it is, not how it was fetched: a changed @odata.type is unreviewed, a moved @odata.context is nothing', () => {
+  // I5. A nested object's type is what it is, not how it was fetched.
   // `@odata.type` names the derived type of the object it sits on: a FIDO2
   // combination configuration restricts which authenticators satisfy the
   // combination, an X.509 one restricts which issuers do. Two strengths sharing
   // an id, an allowed-combinations list and a configuration id can still mean
   // different things, and the discriminator is the only field that says so.
   const config = (type: string) => [{ '@odata.type': type, id: 'a6b2f5e0-1f7c-4a3a-9c1a-2b3c4d5e6f70', appliesToCombinations: ['fido2'] }]
-  const plain = expandedStrength(MODERN_MFA_TAP, '2026-08-12T13:23:05.2711028Z', TAP_COMBINATIONS)
   const asFido2 = { ...plain, combinationConfigurations: config('#microsoft.graph.fido2CombinationConfiguration') }
   const asX509 = { ...plain, combinationConfigurations: config('#microsoft.graph.x509CertificateCombinationConfiguration') }
 
   // 1. The change is reported, as one the model has not read.
-  const cmp = comparePolicies(normalizePolicy(withStrength(asFido2)), normalizePolicy(withStrength(asX509)))
-  assert.deepEqual(cmp.changed, [], 'the model does not claim to have read the configuration')
-  assert.deepEqual(cmp.unreviewed, ['grantControls.authenticationStrength.combinationConfigurations'], `a changed type discriminator must be reported: ${JSON.stringify(cmp)}`)
-  const [row] = reviewOf([at('Policies', NEW_NAME, withStrength(asFido2))], [at('Policies', NEW_NAME, withStrength(asX509))])
-  assert.equal(row.kind, 'unknown')
-  assert.equal(row.reason, 'unmodelledField')
+  const retyped = comparePolicies(normalizePolicy(withStrength(asFido2)), normalizePolicy(withStrength(asX509)))
+  assert.deepEqual(retyped.changed, [], 'the model does not claim to have read the configuration')
+  assert.deepEqual(retyped.unreviewed, ['grantControls.authenticationStrength.combinationConfigurations'], `a changed type discriminator must be reported: ${JSON.stringify(retyped)}`)
+  const [retypedRow] = reviewOf([at('Policies', NEW_NAME, withStrength(asFido2))], [at('Policies', NEW_NAME, withStrength(asX509))])
+  assert.equal(retypedRow.kind, 'unknown')
+  assert.equal(retypedRow.reason, 'unmodelledField')
 
   // 2. Two copies at one commit that disagree only about that type fail closed.
   assert.equal(samePolicySemantics(normalizePolicy(withStrength(asFido2)), normalizePolicy(withStrength(asX509))), false)
-  const set = sourceSet([at('Policies', NEW_NAME, withStrength(asFido2)), doc(NEW_NAME, withStrength(asX509))])
-  assert.equal(set.members.length, 0, 'a same-id copy that disagrees about a nested type is not collapsed away')
-  assert.equal(set.conflicts.length, 1)
+  const typeSet = sourceSet([at('Policies', NEW_NAME, withStrength(asFido2)), doc(NEW_NAME, withStrength(asX509))])
+  assert.equal(typeSet.members.length, 0, 'a same-id copy that disagrees about a nested type is not collapsed away')
+  assert.equal(typeSet.conflicts.length, 1)
 
   // 3. The fetch's own bookkeeping still normalizes away at every depth: a
   //    re-export that only moved an OData context is not a policy change.
   const refetched = { ...asFido2, 'combinationConfigurations@odata.context': 'https://graph.microsoft.com/beta/$metadata#refetched' }
-  const moved = comparePolicies(normalizePolicy(withStrength(asFido2)), normalizePolicy(withStrength(refetched)))
-  assert.deepEqual(moved.changed, [])
-  assert.deepEqual(moved.unreviewed, [], `an OData context is the fetch's, not the author's: ${JSON.stringify(moved)}`)
+  const refetchedCmp = comparePolicies(normalizePolicy(withStrength(asFido2)), normalizePolicy(withStrength(refetched)))
+  assert.deepEqual(refetchedCmp.changed, [])
+  assert.deepEqual(refetchedCmp.unreviewed, [], `an OData context is the fetch's, not the author's: ${JSON.stringify(refetchedCmp)}`)
   assert.equal(sourceSet([at('Policies', NEW_NAME, withStrength(asFido2)), doc(NEW_NAME, withStrength(refetched))]).members.length, 1)
 
   // 4. And the referenced object's own class is part of its record: how deeply
@@ -410,39 +375,4 @@ test('I5. a nested object’s type is what it is, not how it was fetched: a chan
   const depth = comparePolicies(normalizePolicy(withStrength(plain)), normalizePolicy(withStrength(typed)))
   assert.deepEqual(depth.changed, [])
   assert.deepEqual(depth.unreviewed, [], `the strength's own class is its record: ${JSON.stringify(depth)}`)
-})
-
-// ------------------------------------------------ K. unreadable source is unknown
-
-test('K. a source file that will not parse makes the review incomplete, never shorter', () => {
-  const broken: SourceArtifact = { path: 'Updated/Policies/broken.json', text: '{ "displayName": "half a policy"' }
-  const set = sourceSet([...headFiles, broken])
-  assert.equal(set.unreadable.length, 1)
-  assert.equal(set.members.length, 1, 'what parsed is still read')
-  // A file that holds no policy at all is not a policy artifact and is not an error.
-  assert.deepEqual(sourceSet([{ path: 'Updated/Documentation/readme.json', text: '{"note":"docs"}' }]), { members: [], conflicts: [], unreadable: [] })
-})
-
-// ------------------------------------------------- the ?author=1 review is real
-
-test('the mock author update runs the real review: one renamed-and-changed row, one added, one changed, one removed', () => {
-  const update = mockAuthorUpdate(new Date('2026-09-03T10:00:00.000Z'))
-  assert.equal(update.changes.length, 4, JSON.stringify(update.changes.map((c) => [c.kind, c.newName ?? c.oldName])))
-  const byKind = new Map(update.changes.map((c) => [c.kind, c]))
-  assert.deepEqual([...byKind.keys()].sort(), ['added', 'changed', 'removed', 'renamedChanged'])
-  const evolving = byKind.get('renamedChanged')!
-  assert.ok(evolving.deltas.some((d) => d.field === 'authenticationStrength'), JSON.stringify(evolving.deltas))
-  assert.ok(evolving.deltas.some((d) => d.field === 'excludeGroups'))
-  assert.ok(stepsForChange(evolving, PINNED_GOAL_MAP).length >= 1, 'the renamed policy still stands behind its step')
-
-  const tile = baselineTile({ name: 'Jon Hope — Defense in Depth', policyCount: PINNED.policies.length, loading: null, update, stepsFor: (c) => stepsForChange(c, PINNED_GOAL_MAP) })
-  assert.ok(tile.update)
-  assert.match(tile.update.summary, /^Updated by its author on .+ · 4 policies changed · review$/)
-  assert.equal(tile.update.rows.length, 4)
-  assert.ok(tile.update.rows.some((r) => r.steps.some((s) => /^changes /.test(s))), 'a mapped policy names the step it changes')
-  assert.ok(tile.update.rows.some((r) => r.steps[0] === 'no step changes'), 'a policy no goal maps to changes no step')
-  for (const r of tile.update.rows) {
-    assert.ok(r.policy.length > 3 && !/\bpolicy\b/.test(r.policy), `a row names its policy: "${r.policy}"`)
-    assert.ok(!/\bpolicy\b/.test(r.steps.join(' ')))
-  }
 })

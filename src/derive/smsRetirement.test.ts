@@ -27,51 +27,57 @@ function setup() {
   return { s, smsOnly, smsAdmin, both, unreadPerson, eligible, windowStart }
 }
 
-test('only SMS or voice: a phone and nothing else that is MFA (a password or an email is not a method)', () => {
-  const { s, smsOnly, both, unreadPerson } = setup()
-  assert.equal(onlySmsVoice(s, smsOnly.id), true)
-  assert.equal(onlySmsVoice(s, both.id), false, 'Authenticator beside the phone: not only SMS')
-  assert.equal(onlySmsVoice(s, unreadPerson.id), null, 'methods unread: unknown, never a guess')
+test('only SMS or voice is a phone and nothing else that is MFA: an unrecognised method counts as another, unread methods are unknown, and the registration report stands in', () => {
+  // only SMS or voice: a phone and nothing else that is MFA (a password or an email is not a method)
+  {
+    const { s, smsOnly, both, unreadPerson } = setup()
+    assert.equal(onlySmsVoice(s, smsOnly.id), true)
+    assert.equal(onlySmsVoice(s, both.id), false, 'Authenticator beside the phone: not only SMS')
+    assert.equal(onlySmsVoice(s, unreadPerson.id), null, 'methods unread: unknown, never a guess')
+  }
+  // an unrecognised method counts as another method, so nobody is told they hold only SMS on a guess
+  {
+    const { s, smsOnly } = setup()
+    s.authMethods[smsOnly.id] = [{ kind: 'phone', phoneType: 'mobile' }, { kind: 'other' }]
+    assert.equal(onlySmsVoice(s, smsOnly.id), false)
+  }
+  // the registration report stands in where the method rows were not read
+  {
+    const { s, smsOnly } = setup()
+    s.authMethods[smsOnly.id] = 'unknown'
+    const reg = s.registrationDetails.find((r) => r.id === smsOnly.id)!
+    reg.methodsRegistered = ['mobilePhone']
+    assert.equal(onlySmsVoice(s, smsOnly.id), true)
+    reg.methodsRegistered = ['mobilePhone', 'microsoftAuthenticatorPush']
+    assert.equal(onlySmsVoice(s, smsOnly.id), false)
+  }
 })
 
-test('an unrecognised method counts as another method, so nobody is told they hold only SMS on a guess', () => {
-  const { s, smsOnly } = setup()
-  s.authMethods[smsOnly.id] = [{ kind: 'phone', phoneType: 'mobile' }, { kind: 'other' }]
-  assert.equal(onlySmsVoice(s, smsOnly.id), false)
-})
-
-test('the registration report stands in where the method rows were not read', () => {
-  const { s, smsOnly } = setup()
-  s.authMethods[smsOnly.id] = 'unknown'
-  const reg = s.registrationDetails.find((r) => r.id === smsOnly.id)!
-  reg.methodsRegistered = ['mobilePhone']
-  assert.equal(onlySmsVoice(s, smsOnly.id), true)
-  reg.methodsRegistered = ['mobilePhone', 'microsoftAuthenticatorPush']
-  assert.equal(onlySmsVoice(s, smsOnly.id), false)
-})
-
-test('February for everyone; July for active Global Administrators and external users; internal guests stay in February', () => {
-  const { s, smsOnly, smsAdmin } = setup()
-  assert.equal(smsCohortOf(s, smsOnly), 'february')
-  assert.equal(smsCohortOf(s, smsAdmin), 'july')
-  const external = { ...smsOnly, userType: 'guest' as const, externalUserState: 'Accepted' }
-  assert.equal(smsCohortOf(s, external), 'july')
-  const internalGuest = { ...smsOnly, userType: 'guest' as const, externalUserState: null }
-  assert.equal(smsCohortOf(s, internalGuest), 'february')
-})
-
-test('the reach: SMS-only people by date, recent text use, eligible Global Administrators flagged, unread kept apart', () => {
-  const { s, smsOnly, smsAdmin, both, unreadPerson, eligible, windowStart } = setup()
-  const r = smsRetirementOf(s, s.users.map((u) => u.id), windowStart)
-  const of = (id: string) => r.people.find((p) => p.userId === id)
-  assert.deepEqual([of(smsOnly.id)?.cohort, of(smsOnly.id)?.onlySmsVoice], ['february', true])
-  assert.deepEqual([of(smsAdmin.id)?.cohort, of(smsAdmin.id)?.onlySmsVoice], ['july', true])
-  assert.deepEqual([of(both.id)?.onlySmsVoice, of(both.id)?.usedRecently], [false, true], 'holds Authenticator, but still texting: reached, not blocked')
-  assert.equal(of(eligible.id)?.eligibleGlobalAdmin, true, 'PIM-eligible Global Administrator: Microsoft does not say which date; flagged')
-  assert.ok(r.unread.includes(unreadPerson.id))
-  assert.equal(of(unreadPerson.id), undefined)
-  // Nobody without a phone method and without a recent text is listed.
-  const noPhone = s.users.find((u) => Array.isArray(s.authMethods[u.id]) && !(s.authMethods[u.id] as { kind: string }[]).some((m) => m.kind === 'phone') && !(s.signInEvidence[u.id]?.proofs ?? []).some((p) => p.cls === 'phone'))
-  if (noPhone) assert.equal(of(noPhone.id), undefined)
-  assert.ok(['enabled', 'disabled', 'unread'].includes(r.policy.sms))
+test('the cohorts and the reach: February for everyone, July for active Global Administrators and external users, recent text use reached, eligible Global Administrators flagged, unread kept apart', () => {
+  // February for everyone; July for active Global Administrators and external users; internal guests stay in February
+  {
+    const { s, smsOnly, smsAdmin } = setup()
+    assert.equal(smsCohortOf(s, smsOnly), 'february')
+    assert.equal(smsCohortOf(s, smsAdmin), 'july')
+    const external = { ...smsOnly, userType: 'guest' as const, externalUserState: 'Accepted' }
+    assert.equal(smsCohortOf(s, external), 'july')
+    const internalGuest = { ...smsOnly, userType: 'guest' as const, externalUserState: null }
+    assert.equal(smsCohortOf(s, internalGuest), 'february')
+  }
+  // the reach: SMS-only people by date, recent text use, eligible Global Administrators flagged, unread kept apart
+  {
+    const { s, smsOnly, smsAdmin, both, unreadPerson, eligible, windowStart } = setup()
+    const r = smsRetirementOf(s, s.users.map((u) => u.id), windowStart)
+    const of = (id: string) => r.people.find((p) => p.userId === id)
+    assert.deepEqual([of(smsOnly.id)?.cohort, of(smsOnly.id)?.onlySmsVoice], ['february', true])
+    assert.deepEqual([of(smsAdmin.id)?.cohort, of(smsAdmin.id)?.onlySmsVoice], ['july', true])
+    assert.deepEqual([of(both.id)?.onlySmsVoice, of(both.id)?.usedRecently], [false, true], 'holds Authenticator, but still texting: reached, not blocked')
+    assert.equal(of(eligible.id)?.eligibleGlobalAdmin, true, 'PIM-eligible Global Administrator: Microsoft does not say which date; flagged')
+    assert.ok(r.unread.includes(unreadPerson.id))
+    assert.equal(of(unreadPerson.id), undefined)
+    // Nobody without a phone method and without a recent text is listed.
+    const noPhone = s.users.find((u) => Array.isArray(s.authMethods[u.id]) && !(s.authMethods[u.id] as { kind: string }[]).some((m) => m.kind === 'phone') && !(s.signInEvidence[u.id]?.proofs ?? []).some((p) => p.cls === 'phone'))
+    if (noPhone) assert.equal(of(noPhone.id), undefined)
+    assert.ok(['enabled', 'disabled', 'unread'].includes(r.policy.sms))
+  }
 })
