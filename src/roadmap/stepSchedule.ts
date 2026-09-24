@@ -80,6 +80,18 @@ export type ScheduleBasis = {
   decisionOpen: boolean
   /** The day the plan was read on (Schedule.today); absent or null where none was given. */
   today?: string | null
+  /** The plan's own days a forecast reads a wait's clearing from (roadmap/forecast.ts planForecast); null on a plan with no placement. */
+  window?: PlanWindow | null
+}
+
+/** The plan's own days the forecast reads where the plan expects a wait to clear (roadmap/forecast.ts planForecast). */
+export type PlanWindow = {
+  /** The first day unfinished work is placed on: the placement's now floor. */
+  start: string
+  /** The last day of the preparation window, by which the plan has its preparation — and a person's fixes — done. */
+  prepEnd: string
+  /** The active people the ring band is sized by, which a turn-on the placement never reached soaks by (schedule.ts ringlessSoakDays). */
+  activeUsers: number
 }
 
 export type StepSchedule = {
@@ -127,6 +139,7 @@ export function basisOf(step: Step, schedule: Schedule, byId: ReadonlyMap<string
     // the policy is undated, its report-only creation included (roadmap/direction.ts).
     decisionOpen: step.blockers.some((b) => (b.kind === 'step' && byId.get(b.stepId)?.state.condition === 'needs-decision') || directionBlockerStep(b) !== null),
     today: schedule.today ?? null,
+    window: schedule.placement ? { start: schedule.placement.context.start, prepEnd: schedule.placement.context.day0End, activeUsers: schedule.activeUsers } : null,
   }
 }
 

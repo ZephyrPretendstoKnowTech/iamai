@@ -294,6 +294,18 @@ export function batchClassOf(step: Step): BatchClass {
 }
 const OVERLAP_SHARE = 0.5
 
+/**
+ * How long a turn-on with no rings of its own soaks: as long as what it does
+ * deserves — a change nobody feels a day, anything else the band's. What it does
+ * and to whom decides (roadmap/timing.ts nobodyAffected), never the goal it is
+ * filed under. The placement reads it, and so does the forecast of a policy the
+ * placement never reached (roadmap/forecast.ts planForecast).
+ */
+export function ringlessSoakDays(s: Step, activeUsers: number): number {
+  const quiet = effectsOf(s) !== null ? nobodyAffected(s) : familyReading(s) === 'other'
+  return quiet ? 1 : ringBandFor(activeUsers).soakDays
+}
+
 export function addDays(iso: string, days: number): string {
   const d = new Date(iso)
   d.setUTCDate(d.getUTCDate() + Math.round(days))
@@ -510,7 +522,6 @@ export function buildSchedule(
 ): Schedule {
   const band = bandOverride ?? bandForActiveUsers(activeUsers)
   const preset = BANDS[band]
-  const ringBand = ringBandFor(activeUsers)
   const expectedDays = preset.weeks * 7
   const day0 = toWeekday(startIso)
   const cap = ENFORCEMENT_CAP[band]
@@ -702,12 +713,7 @@ export function buildSchedule(
       // two policies in the same window, and neither is anyone else.
       const soft = deps.filter((d) => d.kind === 'soft' && !(relaxSamePeople && d.reason === 'same-people'))
       const rings = s.rings.length > 0 ? s.rings : null
-      // A step with no rings still soaks for as long as what it does deserves: a
-      // change nobody feels needs a day, anything else the band's. What it does
-      // and to whom decides (roadmap/timing.ts nobodyAffected), never the goal
-      // it is filed under.
-      const quiet = effectsOf(s) !== null ? nobodyAffected(s) : familyReading(s) === 'other'
-      const soaks = rings ? rings.map((r) => r.soakDays) : [quiet ? 1 : ringBand.soakDays]
+      const soaks = rings ? rings.map((r) => r.soakDays) : [ringlessSoakDays(s, activeUsers)]
       const batch = batchClassOf(s)
       const layout = (from: string): { start: string; windows: { start: string; end: string }[] } => {
         const windows: { start: string; end: string }[] = []

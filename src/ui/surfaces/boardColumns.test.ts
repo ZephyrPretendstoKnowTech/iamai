@@ -12,7 +12,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { curatedFixture } from '../../roadmap/fixtures/index.ts'
+import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import { decisionsOf } from '../../roadmap/progress.ts'
@@ -20,7 +20,12 @@ import { BREAK_GLASS_STEP_ID } from '../../roadmap/stepIds.ts'
 import { count } from '../../copy/statements.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { rowWho } from './rowWho.ts'
-import { boardReadingsOf, boardWhenOf, drawsCompact, drawsImpact, finishedDayOf, laneViewFor, waveStartOf } from './planBoard.ts'
+import { WHEN, boardHolds, boardOf, boardReadingsOf, boardWhenOf, drawsCompact, drawsImpact, finishedDayOf, laneViewFor, waveStartOf } from './planBoard.ts'
+import { cleanupWhenOf } from './cleanupExport.ts'
+import { planFinish } from '../../derive/finish.ts'
+import { scheduleOf } from '../../roadmap/stepSchedule.ts'
+import { schedulingWords } from '../../content/content.ts'
+import { fillText } from '../../content/render.ts'
 
 /** The fixture with this set of emergency accounts chosen. */
 const choosing = (f: Fixture, ids: string[]): Fixture => ({ ...f, mapping: { ...f.mapping, breakGlassUserIds: ids } })
@@ -81,4 +86,83 @@ test('the day a step was first found complete is kept by the plan record and rea
   const data = readFileSync('src/ui/surfaces/planData.ts', 'utf8')
   assert.match(data, /saved\?\.completedAt \?\? null/, 'the plan does not read the recorded days')
   assert.match(data, /completedAt: completedDaysOf\(computed\.steps\)/, 'the plan record does not keep the days')
+})
+
+// ---- When: a date on every open row (owner decision, 2026-09-23) ----
+//
+// Every open row shows a date. A held row reads "Est. <date>": the day the plan
+// expects what it waits on to clear (roadmap/forecast.ts planForecast). "Not
+// scheduled" went — Configure Emergency Exclusions read it while it was Up Next
+// right behind 1.1 — and so did "After prerequisites", which repeated the row's
+// own "After …" waiting line. A date that is an estimate says so; a fixed one
+// (a completed day, a scheduled review day) does not.
+
+const WHEN_CASES: [string, () => Fixture][] = [
+  ['getiamai', () => curatedFixture('getiamai')],
+  ['getiamai, foundation settled', () => withFoundationSettled(curatedFixture('getiamai'))],
+  ['demo', () => fixture('demo')],
+  ['mid', () => fixture('mid')],
+  ['demo-week2', () => fixture('demo-week2')],
+]
+const DAY = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/
+const EST = schedulingWords.estimate.split('{')[0]
+const PLACEHOLDERS = [schedulingWords.none, schedulingWords.waiting, schedulingWords.review, WHEN.none, WHEN.afterPrerequisites]
+
+test('every open row on the board reads a date: never Not scheduled or After prerequisites, and a held row reads an Est. date', () => {
+  let held = 0
+  let cleanup = 0
+  for (const [name, make] of WHEN_CASES) {
+    const f = make()
+    const r = runFixture(f, {}, null, f.snapshot.asOf)
+    const board = boardOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
+    const undated = planFinish(r.steps, r.schedule.cleanup?.end ?? null).held
+    for (const row of board.rows) {
+      if (row.lane.lane === 'Completed' || row.lane.lane === 'Deferred') continue
+      const where = `${name}/${row.item.id}`
+      const when = row.step ? boardWhenOf(row.step, waveStartOf(row.step), row.lane) : cleanupWhenOf(row.cleanup!.row, undated, row.lane)
+      assert.ok(!PLACEHOLDERS.includes(when), `${where}: an open row reads "${when}"`)
+      if (row.step === null) {
+        cleanup++
+        continue
+      }
+      if (!boardHolds(row.step, row.lane)) continue
+      held++
+      assert.ok(when.startsWith(EST) && DAY.test(when.slice(EST.length)), `${where}: a held row reads "${when}", not an estimated date`)
+    }
+  }
+  assert.ok(held > 10 && cleanup > 0, `the premise: held rows (${held}) and open Cleanup rows (${cleanup}) checked`)
+})
+
+test('a held row is dated where its wait is expected to clear: behind 1.1, the day 1.1 is expected done', () => {
+  const f = curatedFixture('getiamai')
+  const r = runFixture(f, {}, null, f.snapshot.asOf)
+  const board = boardOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
+  const first = r.steps.find((s) => s.id === BREAK_GLASS_STEP_ID)!
+  const done = first.scheduled!.range!.end
+  // Block Authentication Transfer waits on 1.1 alone (Up Next · After Prepare Emergency Access Accounts).
+  const row = board.rows.find((x) => x.item.id === 's-goal-block-auth-transfer')!
+  assert.deepEqual(row.reading.blockers.map((b) => b.id), [BREAK_GLASS_STEP_ID], 'the premise: it waits on 1.1 alone')
+  assert.equal(boardHolds(row.step!, row.lane), true, 'the premise: the board holds it')
+  assert.equal(boardWhenOf(row.step!, waveStartOf(row.step!), row.lane), fillText(schedulingWords.estimate, { date: absoluteDate(done.slice(0, 10)) }))
+  // The day is one the board carries on the row's own reading, never a second answer.
+  assert.equal(row.lane.estimate, board.forecast.spans.get(row.item.id)!.at)
+})
+
+test('a date that is an estimate says Est., and a fixed one does not: a completed day and a scheduled review day read bare', () => {
+  let fixed = 0
+  for (const [name, make] of WHEN_CASES) {
+    const f = make()
+    const r = runFixture(f, {}, null, f.snapshot.asOf)
+    const board = boardOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
+    for (const row of board.rows) {
+      if (row.step === null) continue
+      const when = boardWhenOf(row.step, waveStartOf(row.step), row.lane)
+      const review = row.step.scheduled && scheduleOf(row.step).transition === 'review'
+      if (row.lane.lane !== 'Completed' && !review) continue
+      if (!DAY.test(when.replace(EST, ''))) continue
+      fixed++
+      assert.ok(!when.startsWith(EST), `${name}/${row.item.id}: a fixed day reads "${when}"`)
+    }
+  }
+  assert.ok(fixed > 0, 'the premise: completed and review days checked')
 })
