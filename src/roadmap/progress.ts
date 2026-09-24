@@ -130,7 +130,7 @@ export function applyProgress(
   // scan's and every skip applied: an enforced, delivered or set-aside policy
   // carries no wait on a Direction answer, and the schedule and tracking never
   // read one.
-  gateOnDirection(steps)
+  gateOnDirection(steps, snapshot)
   // Each service card names the steps its No takes off this plan (direction.ts).
   noteServiceConsequences(steps)
   // Turn Off Security Defaults names the policies it turns on, as tracking read them (enforceWaits.ts).

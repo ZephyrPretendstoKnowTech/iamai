@@ -52,6 +52,17 @@ export function legacySignInIds(snapshot: SignInRead): string[] | null {
   return legacy === null ? null : Object.keys(legacy.byPerson).sort()
 }
 
+/**
+ * Whether the mail-sending answer can change nothing: the sign-in records, read
+ * whole, show nobody using legacy authentication in the last 30 days. Block
+ * Legacy Authentication then waits on no answer (net-new 26, owner 2026-09-24);
+ * a partial or unread record keeps the wait, since nobody in part of the
+ * records is not nobody.
+ */
+export function mailAnswerMoot(snapshot: SignInRead): boolean {
+  return snapshot.sources?.signInEvidence?.status === 'ok' && legacySignInIds(snapshot)?.length === 0
+}
+
 /** The accounts the sign-in records show signing in with device code in the last 30 days, or null where the scan did not read them. */
 export function deviceCodeSignInIds(snapshot: SignInRead): string[] | null {
   const usage = signInsRead(snapshot) ? snapshot.evidenceUsage?.deviceCode ?? null : null
