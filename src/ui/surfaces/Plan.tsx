@@ -10,7 +10,7 @@ import type { AccountInfo } from '@azure/msal-browser'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { BaselineResult } from '../baseline.ts'
 import type { Step } from '../../roadmap/types.ts'
-import { nextDirectionStep } from '../../roadmap/direction.ts'
+import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import type { DirectoryEvidence } from '../../mapping/safetyChoice.ts'
 import type { OwnerConfirmation, StepDecision, StepDecisionInput } from '../../roadmap/decisions.ts'
@@ -25,7 +25,7 @@ import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { Button, Callout, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { ALL_WORK_TAB, BOARD, DEFAULT_TAB, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupNumberOf, groupSummary, groupTotalsOf, groupsFor, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, sectionNumbersOf, tileSections, togglesOf, waveStartOf, drawsCompact, drawsImpact, finishedDayOf, followOpenStep, followLaneChange, groupClosed, pressKeyOf, readyToCreateOf, releaseFor } from './planBoard.ts'
+import { ALL_WORK_TAB, BOARD, DEFAULT_TAB, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupNumberOf, groupSummary, groupTotalsOf, groupsFor, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, sectionNumbersOf, tileSections, togglesOf, waveStartOf, drawsCompact, drawsImpact, finishedDayOf, followOpenStep, followLaneChange, groupClosed, nextInPlanOrder, pressKeyOf, readyToCreateOf, releaseFor } from './planBoard.ts'
 import type { BoardGroup, BoardItem, BoardTab, Focus, LaneTab, WorkType } from './planBoard.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
@@ -128,11 +128,14 @@ export function Plan({ scan: lastScan, baseline, account }: {
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
-  // Approving a Direction step's answers moves to the next Direction step still
-  // open, once the plan has re-rendered with the saved answers; the page would
-  // otherwise stay where the completed step's row used to be. A link moves to
-  // its step the same way (TabFollowsOpenStep).
+  // The page moves to a step opened here once its row is drawn: the step after
+  // an approved Direction step (OpensNextStep), and a link's step
+  // (TabFollowsOpenStep). The page would otherwise stay where the completed
+  // step's row used to be.
   const moveTo = useRef<string | null>(null)
+  // The Direction step whose answers were just approved: the next render, which
+  // carries them, opens the step after it in plan order (OpensNextStep).
+  const approved = useRef<string | null>(null)
   useEffect(() => {
     const id = moveTo.current
     if (id === null) return
@@ -252,7 +255,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
     // projection: the date reads it, the lane never does.
     const waveStart = waveStartOf(step)
     const when = boardWhenOf(step, waveStart, laneView)
-    renderById.set(step.id, () => <Row key={step.id} step={step} lane={laneView} number={rowNumbers.get(step.id) ?? null} blockers={readinessBlockersOf(reading, titleOf)} enforceWaits={enforceWaits} prerequisiteLabel={prerequisiteLabel} onOpenMappings={openSettings} when={when} waveStart={waveStart} open={open === step.id} onToggle={() => openStep(step.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[step.id] ?? null} followUp={step.id === SPECIAL_CARE_STEP_ID ? { saved: data.stepDecisions[MFA_FOLLOW_UP_KEY] ?? null, onDecide: (d) => data.onDecide(MFA_FOLLOW_UP_KEY, d) } : undefined} objectTask={step.objectTask ? { saved: data.stepDecisions[step.objectTask.id] ?? null, onDecide: (d) => data.onDecide(step.objectTask!.id, d) } : undefined} onDecide={(d) => { data.onDecide(step.id, d); const next = nextDirectionStep(step.id, c.steps); if (next) { moveTo.current = next; setOpen(next); window.history.replaceState(null, '', `#/plan/${next}`) } }} saveStatus={data.persistence} confirmations={data.confirmations[step.id] ?? NO_CONFIRMATIONS} onConfirm={(c) => data.onConfirm(step.id, c)} onUnconfirm={(ids) => data.onUnconfirm(step.id, ids)} />)
+    renderById.set(step.id, () => <Row key={step.id} step={step} lane={laneView} number={rowNumbers.get(step.id) ?? null} blockers={readinessBlockersOf(reading, titleOf)} enforceWaits={enforceWaits} prerequisiteLabel={prerequisiteLabel} onOpenMappings={openSettings} when={when} waveStart={waveStart} open={open === step.id} onToggle={() => openStep(step.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[step.id] ?? null} followUp={step.id === SPECIAL_CARE_STEP_ID ? { saved: data.stepDecisions[MFA_FOLLOW_UP_KEY] ?? null, onDecide: (d) => data.onDecide(MFA_FOLLOW_UP_KEY, d) } : undefined} objectTask={step.objectTask ? { saved: data.stepDecisions[step.objectTask.id] ?? null, onDecide: (d) => data.onDecide(step.objectTask!.id, d) } : undefined} onDecide={(d) => { data.onDecide(step.id, d); if (isDirectionStep(step.id)) approved.current = step.id }} saveStatus={data.persistence} confirmations={data.confirmations[step.id] ?? NO_CONFIRMATIONS} onConfirm={(c) => data.onConfirm(step.id, c)} onUnconfirm={(ids) => data.onUnconfirm(step.id, ids)} />)
   }
 
   if (cleanupPhase) {
@@ -452,6 +455,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
         </div>
       )}
       <TabFollowsOpenStep open={open} lane={openLane} follow={follow} linked={linked} onFollow={onFollow} onShow={onShow} onMoved={onMoved} />
+      <OpensNextStep approved={approved} board={items} onOpen={(next) => { moveTo.current = next; setOpen(next); window.history.replaceState(null, '', `#/plan/${next}`) }} />
       <PlanControls
         tab={tab}
         onTab={(next) => { setSummaryFilter(null); setTab(next) }}
@@ -576,6 +580,27 @@ function TabFollowsOpenStep({ open, lane, follow, linked, onFollow, onShow, onMo
     linked.current = false
     // Only when the opened step or its lane changes: choosing another tab afterwards is the person's.
   }, [open, lane])
+  return null
+}
+
+/**
+ * Every successful Approve answers opens the step after it in plan order
+ * (planBoard.ts nextInPlanOrder; owner, 2026-09-23): 2.1 → 2.2 → 2.3 → the
+ * first row of section 3. It reads the board the answers leave, which they can
+ * change, so it waits for the render that carries them: a child with the one
+ * effect, because the board is built after the Plan's early returns. The move
+ * used to look only among the three Direction steps for one not yet approved,
+ * so the page stayed put after 2.3, and after 2.2 wherever 2.3 was already
+ * approved.
+ */
+function OpensNextStep({ approved, board, onOpen }: { approved: { current: string | null }; board: readonly BoardItem[]; onOpen: (id: string) => void }) {
+  useEffect(() => {
+    const id = approved.current
+    if (id === null) return
+    approved.current = null
+    const next = nextInPlanOrder(id, board)
+    if (next !== null) onOpen(next)
+  })
   return null
 }
 
