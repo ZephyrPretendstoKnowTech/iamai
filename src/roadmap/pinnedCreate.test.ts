@@ -65,42 +65,37 @@ function drawnSteps(f: Fixture): { step: Step; drawn: () => Drawn }[] {
   }))
 }
 
-for (const [name, make] of SCENARIOS) {
-  test(`${name}: no step for a goal the pinned map holds is written from the goal's own template`, () => {
-    for (const { step } of drawnSteps(make())) {
-      if (!step.goalId || !goalInMap(PINNED_GOAL_MAP, step.goalId)) continue
-      for (const op of step.action.resolution?.policies ?? []) {
-        assert.notEqual(op.sourceName, step.goalId, `${step.id}: its ${op.mode} is the goal's template, not the pinned policy`)
-      }
-    }
-  })
-
-  test(`${name}: every create backed by a pinned policy says the pin's grant and session on every channel`, () => {
+test('on every scenario, no goal the pinned map holds is written from its own template, and every pinned create says the pin\'s grant and session on every channel', () => {
+  for (const [name, make] of SCENARIOS) {
     let checked = 0
     for (const { step, drawn } of drawnSteps(make())) {
-      if (!step.goalId || !goalInMap(PINNED_GOAL_MAP, step.goalId) || step.action.kind !== 'create') continue
+      if (!step.goalId || !goalInMap(PINNED_GOAL_MAP, step.goalId)) continue
+      for (const op of step.action.resolution?.policies ?? []) {
+        assert.notEqual(op.sourceName, step.goalId, `${name}/${step.id}: its ${op.mode} is the goal's template, not the pinned policy`)
+      }
+      if (step.action.kind !== 'create') continue
       const ops = (step.action.resolution?.policies ?? []).filter((op) => op.mode === 'create')
       const pinned = ops.map((op) => PINNED_BY_NAME.get(op.sourceName))
       if (ops.length === 0 || pinned.some((p) => p === undefined)) continue
-      ops.forEach((op, i) => assert.deepEqual(controlsOf(op.body), controlsOf(pinned[i]), `${step.id}: the body of ${op.sourceName}`))
+      ops.forEach((op, i) => assert.deepEqual(controlsOf(op.body), controlsOf(pinned[i]), `${name}/${step.id}: the body of ${op.sourceName}`))
       // A pinned policy this tenant cannot use yet offers no body and says why:
       // the objects it names that are not here are the step's own blockers.
-      if (step.action.json === null) assert.ok((step.action.missing ?? []).length > 0, `${step.id}: no body, and nothing says why`)
+      if (step.action.json === null) assert.ok((step.action.missing ?? []).length > 0, `${name}/${step.id}: no body, and nothing says why`)
       checked++
       if (ops.length !== 1) continue
       const want = controlsOf(pinned[0])
-      if (step.action.json) assert.deepEqual(controlsOf(JSON.parse(step.action.json)), want, `${step.id}: the step's JSON`)
+      if (step.action.json) assert.deepEqual(controlsOf(JSON.parse(step.action.json)), want, `${name}/${step.id}: the step's JSON`)
       const d = drawn()
       const said = controls(d.instructions)
-      if (said.length > 0) assert.deepEqual(said, want, `${step.id}: the portal block`)
+      if (said.length > 0) assert.deepEqual(said, want, `${name}/${step.id}: the portal block`)
       const facts = controls(d.facts)
-      if (facts.length > 0) assert.deepEqual(facts, want, `${step.id}: the Implementation Task's facts`)
+      if (facts.length > 0) assert.deepEqual(facts, want, `${name}/${step.id}: the Implementation Task's facts`)
       const json = d.json !== null && d.json.trim().startsWith('{') ? (JSON.parse(d.json) as Record<string, unknown>) : null
-      if (json && 'grantControls' in json) assert.deepEqual(controlsOf(json), want, `${step.id}: the JSON channel`)
+      if (json && 'grantControls' in json) assert.deepEqual(controlsOf(json), want, `${name}/${step.id}: the JSON channel`)
     }
-    assert.ok(checked > 0, 'the premise: the plan creates a policy from the pin')
-  })
-}
+    assert.ok(checked > 0, `${name}: the premise: the plan creates a policy from the pin`)
+  }
+})
 
 test('mid: the High user-risk create requires risk remediation with the strength, on the portal block, the task and the JSON', () => {
   // Curated, so the author's own groups this policy names read as the author's
