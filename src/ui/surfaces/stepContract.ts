@@ -102,6 +102,9 @@ type ContractWords = {
   kind: Record<string, string>
   trackLabel: string
   railMilestone: string
+  /** The line under an opened step while its save runs, and after it failed (ContentStep.tsx). */
+  saving: string
+  saveFailed: string
   railImplementation: string
   railExisting: string
   railExistingKeep: string
