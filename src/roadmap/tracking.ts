@@ -1062,6 +1062,7 @@ export function trackExecution(
         ? []
         : Object.entries(asked.controls).filter(([dimension, value]) => deployedFields[dimension] !== value).map(([dimension]) => dimension)
       const differsIn = (policyRow as { state?: unknown } | null)?.state === 'disabled' ? [] : differs
+      const resourcesDiffer = differsIn.includes('conditions.applications') && m.op ? excludedResourcesDiffer(m.op.body, policyRow) : null
       const asPlanned = asked !== null && differs.length === 0
       // `memberGates.readyNow` is both gates already (`gates`), so this line adds
       // the reasons that have nothing to do with the window or the records and
@@ -1095,6 +1096,7 @@ export function trackExecution(
         enforcedAtSource: enforced.source,
         ready,
         differsIn,
+        ...(resourcesDiffer ? { resourcesDiffer } : {}),
         reviewRequired: change.reviewRequired,
         ...memberGates,
       })
@@ -1332,4 +1334,24 @@ export function driftOutcomeOf(step: Step): DriftOutcome | null {
   const nothingMoved = obs?.changed === 'none' && (obs?.unwritten.length ?? 0) === 0
   if (nothingMoved && members.every((m) => Array.isArray(m.differsIn) && m.differsIn.length === 0)) return null
   return holdOf(step) !== null ? 'on-hold' : 'correctable'
+}
+
+/**
+ * The excluded resources on which the plan's body and the deployed policy
+ * disagree, by id: the plan excludes and the policy covers, and the reverse.
+ * Null where they exclude the same ones (the difference is elsewhere in the
+ * resources) or either side names none it can read.
+ */
+function excludedResourcesDiffer(asked: unknown, deployed: unknown): { covered: string[]; excluded: string[] } | null {
+  const excludedOf = (policy: unknown): Set<string> | null => {
+    const apps = (policy as { conditions?: { applications?: { excludeApplications?: unknown } } } | null)?.conditions?.applications
+    const list = apps?.excludeApplications
+    return Array.isArray(list) ? new Set(list.filter((x): x is string => typeof x === 'string' && !/^none$/i.test(x)).map((x) => x.toLowerCase())) : null
+  }
+  const plan = excludedOf(asked)
+  const tenant = excludedOf(deployed) ?? (plan ? new Set<string>() : null)
+  if (!plan || !tenant) return null
+  const covered = [...plan].filter((id) => !tenant.has(id))
+  const excluded = [...tenant].filter((id) => !plan.has(id))
+  return covered.length + excluded.length > 0 ? { covered, excluded } : null
 }

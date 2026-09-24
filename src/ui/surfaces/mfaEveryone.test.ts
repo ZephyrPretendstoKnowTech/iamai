@@ -24,6 +24,7 @@ import { laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } fr
 import { laneReadings } from './planLanes.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
+import { stepContract } from './stepContract.ts'
 import { stepBodyOf } from './stepBody.ts'
 import type { StepBody } from './stepBody.ts'
 import { rowWho } from './rowWho.ts'
@@ -231,4 +232,14 @@ test('once 4.3 is On, 4.4 counts people against its own policy, never the admins
   assert.ok(mfa.satisfiedBy!.policies.some((n) => /Admins phishing-resistant/.test(n)), 'the premise: the admins’ policy is among those that deliver it too')
   // 20 counted the admin short of a phishing-resistant method as short of a method 4.4 accepts.
   assert.match(mfa.readiness.lines[0] ?? '', /^21 of 30 people have a method it accepts\./)
+})
+
+test('4.4’s Not as asked says which resources differ: the tenant’s policy covers Microsoft Intune Enrollment, which the baseline excludes (net-new 14)', () => {
+  const f = curatedFixture('demo')
+  const r = runFixture(f)
+  const step = r.steps.find((s) => s.id === 's-goal-mfa-all-users')!
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+  const differs = stepContract(step, ctx).found.find((x) => x.key === 'differs')
+  assert.ok(differs, 'the premise: the demo tenant’s policy differs in its resources')
+  assert.match(differs.text, /covers Microsoft Intune Enrollment, which the baseline excludes\.$/)
 })

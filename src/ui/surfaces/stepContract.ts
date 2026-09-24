@@ -185,6 +185,8 @@ type ContractWords = {
   foundWider: string
   foundWiderCohort: Record<string, string>
   foundDiffers: string
+  foundDiffersCovered: string
+  foundDiffersExcluded: string
   foundTaggedDisabled: string
   /** The line that heads the directory tile's name list, so a name is never a paragraph of its own. */
   inventoryNames: string
@@ -753,7 +755,7 @@ const found = (key: string, text: string): ContractFound => ({ key, label: CONTR
  * whatever the observation had to say about what changed. Nothing is invented to
  * fill the section, and an unknown is never written down as a zero.
  */
-function foundOf(step: Step, tenant: string, said: string | null, routeStart: StepContract['routeStart'] = null, labels: ReadonlyMap<string, string> | null = null, operatorId: string | null = null): ContractFound[] {
+function foundOf(step: Step, tenant: string, said: string | null, routeStart: StepContract['routeStart'] = null, labels: ReadonlyMap<string, string> | null = null, operatorId: string | null = null, nameOf: (id: string) => string = (id) => id): ContractFound[] {
   const out: ContractFound[] = []
   const gate = step.action.readinessGate
   // The same sentence the Threshold card says, with the same start of its route's
@@ -881,7 +883,15 @@ function foundOf(step: Step, tenant: string, said: string | null, routeStart: St
   for (const m of step.tracking?.members ?? []) {
     const fields = m.differsIn ?? []
     if (fields.length === 0 || !m.policyName) continue
-    out.push(found('differs', fillText(CONTRACT.foundDiffers, { policy: m.policyName, fields: dimensionWords([...fields]) })))
+    // Which resources, where they are what differs (net-new 14): "…covers
+    // Microsoft Intune Enrollment, which the baseline excludes."
+    const r = m.resourcesDiffer
+    const resources = (ids: readonly string[]): string => list(ids.map(nameOf))
+    const which = [
+      r && r.covered.length > 0 ? fillText(CONTRACT.foundDiffersCovered, { policy: m.policyName, resources: resources(r.covered) }) : null,
+      r && r.excluded.length > 0 ? fillText(CONTRACT.foundDiffersExcluded, { policy: m.policyName, resources: resources(r.excluded) }) : null,
+    ].filter((x): x is string => x !== null)
+    out.push(found('differs', [fillText(CONTRACT.foundDiffers, { policy: m.policyName, fields: dimensionWords([...fields]) }), ...which].join(' ')))
   }
   // The step's one observation is Foundation B's own aggregate over its members
   // (lifecycle.ts aggregateObservation); this reports it and never re-derives it.
@@ -1582,7 +1592,7 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
   // campaign, and the printed plan said the threshold twice in two versions.
   const gateNow = step.action.readinessGate
   const routeStart = gateNow ? routeStartOf(step, gateNow, startOf) : null
-  const found = foundOf(step, tenant, milestone.line, routeStart, personLabels(ctx.snapshot.users, { address: true }), operator?.id ?? null)
+  const found = foundOf(step, tenant, milestone.line, routeStart, personLabels(ctx.snapshot.users, { address: true }), operator?.id ?? null, ctx.nameOf)
   const policyFact = policyFactOf(step, ctx)
   const inventory = inventoryOf(step, ctx)
   if (inventory) found.push({ key: 'directory-inventory', label: inventory.label, text: `${inventory.complete ? '' : 'At least '}${inventory.count} guest ${plural(inventory.count, 'account')}. ${inventory.names.join('; ')}` })

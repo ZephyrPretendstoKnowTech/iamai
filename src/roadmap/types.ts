@@ -1150,6 +1150,13 @@ export type MemberTracking = {
    */
   differsIn?: readonly string[]
   /**
+   * Where the resources differ, the ones: the resources the plan excludes that
+   * the deployed policy covers (`covered`), and the ones the deployed policy
+   * excludes that the plan covers (`excluded`), by id (net-new 14: "Not as asked ·
+   * target resources differ" said which dimension and never what in it).
+   */
+  resourcesDiffer?: { covered: readonly string[]; excluded: readonly string[] }
+  /**
    * How the member was tied to that object, strongest first: the operation's own
    * target (Foundation A already settled it), the member's own plan tag, a plan
    * tag from before members were tagged plus the name the plan gives this member,
