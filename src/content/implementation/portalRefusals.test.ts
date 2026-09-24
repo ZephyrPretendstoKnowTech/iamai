@@ -116,66 +116,69 @@ function enforceProcedure(pkg: CompiledPackage): string | null {
 
 const ENFORCERS = ALL.map((p) => ({ p, text: enforceProcedure(p.source) })).filter((x) => x.text !== null) as { p: LibraryPackage; text: string }[]
 
-test('every enforce procedure names the conditions the script refuses on', () => {
-  assert.ok(ENFORCERS.length >= 25, `enforce procedures found: ${ENFORCERS.length}`)
-  const missing: string[] = []
-  const fired = { reportOnly: 0, drift: 0, attested: 0, people: 0 }
-  for (const { p, text } of ENFORCERS) {
-    const ps = script(p.source) ?? ''
-    const path = enforcePath(ps)
+test('every enforce procedure names the conditions the script refuses on, and the refusal stands before the line that turns the policy on', () => {
+  // every enforce procedure names the conditions the script refuses on
+  {
+    assert.ok(ENFORCERS.length >= 25, `enforce procedures found: ${ENFORCERS.length}`)
+    const missing: string[] = []
+    const fired = { reportOnly: 0, drift: 0, attested: 0, people: 0 }
+    for (const { p, text } of ENFORCERS) {
+      const ps = script(p.source) ?? ''
+      const path = enforcePath(ps)
 
-    // Gate A — the script reads the policy back and refuses unless it is still
-    // report-only immediately before the change.
-    const refusesNotReportOnly = /Report-only immediately before|not Report-only|must be Report-only/i.test(path)
-    if (refusesNotReportOnly) fired.reportOnly++
-    if (refusesNotReportOnly && !/still Report-only/i.test(text)) missing.push(`${p.stepId}: does not say the policy must still be Report-only`)
+      // Gate A — the script reads the policy back and refuses unless it is still
+      // report-only immediately before the change.
+      const refusesNotReportOnly = /Report-only immediately before|not Report-only|must be Report-only/i.test(path)
+      if (refusesNotReportOnly) fired.reportOnly++
+      if (refusesNotReportOnly && !/still Report-only/i.test(text)) missing.push(`${p.stepId}: does not say the policy must still be Report-only`)
 
-    // Gate B — the script refuses unless the policy still matches the canonical
-    // target (its conditions, grant and session controls, exclusions included).
-    const refusesDrift = /canonical target|Assert-Canonical|Canonical\b|mismatch/i.test(path)
-    if (refusesDrift) fired.drift++
-    if (refusesDrift) {
-      if (!/still match(es)? the intended target|match the intended settings|still matches the intended/i.test(text))
-        missing.push(`${p.stepId}: does not say the settings must still match the intended target`)
-      // The refusal is named as a refusal, not offered as advice.
-      if (!/refuses to enforce/.test(text)) missing.push(`${p.stepId}: does not say the script refuses`)
+      // Gate B — the script refuses unless the policy still matches the canonical
+      // target (its conditions, grant and session controls, exclusions included).
+      const refusesDrift = /canonical target|Assert-Canonical|Canonical\b|mismatch/i.test(path)
+      if (refusesDrift) fired.drift++
+      if (refusesDrift) {
+        if (!/still match(es)? the intended target|match the intended settings|still matches the intended/i.test(text))
+          missing.push(`${p.stepId}: does not say the settings must still match the intended target`)
+        // The refusal is named as a refusal, not offered as advice.
+        if (!/refuses to enforce/.test(text)) missing.push(`${p.stepId}: does not say the script refuses`)
+      }
+
+      // Gate C — the observation window. Some scripts hold it as a human
+      // attestation IAMAI cannot supply (-ReadinessApproved and its siblings, so
+      // the Enforce mode is withheld); for the rest it is the product's own gate
+      // (shared.policyDoneWhen). Either way a procedure that turns a policy on
+      // states it before the flip.
+      const attested = /\$(Readiness|MfaRegistration|Hybrid\w*|Enrollment\w*|Workflow\w*|IdentityTypes|Compatibility\w*|Unsupported\w*|TrustedLocation\w*|ReportOnlyEvidence|CurrentEgressAddress|GuestExternalScope)\w*\b/.test(path)
+        || Object.keys((p.source.meta.invocation as { withheldModes?: Record<string, string> } | undefined)?.withheldModes ?? {}).some((m) => /^Enforce/.test(m))
+      if (attested) fired.attested++
+      if (!/required report-only period is complete/.test(text)) missing.push(`${p.stepId}: does not require the report-only period to be complete`)
+      if (!/no failures on (this policy|these policies) in the sign-in records/.test(text)) missing.push(`${p.stepId}: does not require the sign-in records to be clear`)
+      if (!/leave (the policy|both) in Report-only/.test(text)) missing.push(`${p.stepId}: does not say what to do when a condition is not met`)
+
+      // Emergency access is a property of the tenant, not of the policy's
+      // lifecycle (R2): a policy that reaches people is not enforced before it is
+      // prepared and tested. A workload-identity policy reaches no person, so it
+      // makes no such claim.
+      const reachesPeople = !/includeServicePrincipals|clientApplications/.test(policyCreateBody(p.source)?.text ?? '')
+      if (reachesPeople) fired.people++
+      if (reachesPeople && !/Emergency access is prepared and tested/.test(text))
+        missing.push(`${p.stepId}: does not require emergency access before enforcement`)
+      if (!reachesPeople && /Emergency access is prepared and tested/.test(text))
+        missing.push(`${p.stepId}: claims emergency access matters to a policy that reaches no person`)
     }
-
-    // Gate C — the observation window. Some scripts hold it as a human
-    // attestation IAMAI cannot supply (-ReadinessApproved and its siblings, so
-    // the Enforce mode is withheld); for the rest it is the product's own gate
-    // (shared.policyDoneWhen). Either way a procedure that turns a policy on
-    // states it before the flip.
-    const attested = /\$(Readiness|MfaRegistration|Hybrid\w*|Enrollment\w*|Workflow\w*|IdentityTypes|Compatibility\w*|Unsupported\w*|TrustedLocation\w*|ReportOnlyEvidence|CurrentEgressAddress|GuestExternalScope)\w*\b/.test(path)
-      || Object.keys((p.source.meta.invocation as { withheldModes?: Record<string, string> } | undefined)?.withheldModes ?? {}).some((m) => /^Enforce/.test(m))
-    if (attested) fired.attested++
-    if (!/required report-only period is complete/.test(text)) missing.push(`${p.stepId}: does not require the report-only period to be complete`)
-    if (!/no failures on (this policy|these policies) in the sign-in records/.test(text)) missing.push(`${p.stepId}: does not require the sign-in records to be clear`)
-    if (!/leave (the policy|both) in Report-only/.test(text)) missing.push(`${p.stepId}: does not say what to do when a condition is not met`)
-
-    // Emergency access is a property of the tenant, not of the policy's
-    // lifecycle (R2): a policy that reaches people is not enforced before it is
-    // prepared and tested. A workload-identity policy reaches no person, so it
-    // makes no such claim.
-    const reachesPeople = !/includeServicePrincipals|clientApplications/.test(policyCreateBody(p.source)?.text ?? '')
-    if (reachesPeople) fired.people++
-    if (reachesPeople && !/Emergency access is prepared and tested/.test(text))
-      missing.push(`${p.stepId}: does not require emergency access before enforcement`)
-    if (!reachesPeople && /Emergency access is prepared and tested/.test(text))
-      missing.push(`${p.stepId}: claims emergency access matters to a policy that reaches no person`)
+    assert.deepEqual(missing, [])
+    // The rule is not vacuous: each gate is read off a real script and fires widely.
+    assert.ok(fired.reportOnly >= 20 && fired.drift >= 20 && fired.attested >= 15 && fired.people >= 20, JSON.stringify(fired))
   }
-  assert.deepEqual(missing, [])
-  // The rule is not vacuous: each gate is read off a real script and fires widely.
-  assert.ok(fired.reportOnly >= 20 && fired.drift >= 20 && fired.attested >= 15 && fired.people >= 20, JSON.stringify(fired))
-})
-
-test('the refusal stands before the line that turns the policy on, never after it', () => {
-  const late: string[] = []
-  for (const { p, text } of ENFORCERS) {
-    const refusal = text.search(/Do not turn (it|either) on unless/)
-    if (refusal === -1) continue
-    const flip = text.search(/Change (only )?\*\*Enable policy\*\*|Change Enable policy|Change only Enable policy|Set \*\*Enable policy|Change it from Report-only|Change the policy from Report-only|Then set \*\*Enable policy|Set \*\*Enable policy\*\* from|Enable both in the same|Set one policy to \*\*On\*\*/)
-    if (flip !== -1 && flip < refusal) late.push(`${p.stepId}: the refusal reads after the change`)
+  // the refusal stands before the line that turns the policy on, never after it
+  {
+    const late: string[] = []
+    for (const { p, text } of ENFORCERS) {
+      const refusal = text.search(/Do not turn (it|either) on unless/)
+      if (refusal === -1) continue
+      const flip = text.search(/Change (only )?\*\*Enable policy\*\*|Change Enable policy|Change only Enable policy|Set \*\*Enable policy|Change it from Report-only|Change the policy from Report-only|Then set \*\*Enable policy|Set \*\*Enable policy\*\* from|Enable both in the same|Set one policy to \*\*On\*\*/)
+      if (flip !== -1 && flip < refusal) late.push(`${p.stepId}: the refusal reads after the change`)
+    }
+    assert.deepEqual(late, [])
   }
-  assert.deepEqual(late, [])
 })

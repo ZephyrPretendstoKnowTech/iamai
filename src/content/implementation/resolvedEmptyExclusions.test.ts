@@ -33,59 +33,65 @@ const usersOf = (p: Projection): { excludeUsers: unknown; excludeGroups: unknown
 /** Wording that makes a shared-device exclusion mandatory whatever the target says. */
 const MANDATORY_SHARED = /resolved shared-device accounts|shared-device exclusions|shared-device accounts remain excluded|group\/shared-device/
 
-test('a resolved empty excludeUsers is a value: every channel draws, the JSON and script carry [], and the words say the target excludes nobody', () => {
-  const empty = { 'policy.target.excludeUsers': [], 'policy.target.excludeUsersSummary': NONE }
-  const create = projectImplementation(PKG, 'missing', { ...base('missing'), ...empty })
-  assert.equal(create.hold, null, JSON.stringify(create.hold))
-  assert.deepEqual(create.channels.map((c) => c.channel), ['entra', 'powershell', 'json', 'aiInfo'])
-  assert.deepEqual([usersOf(create).excludeUsers, usersOf(create).excludeGroups], [[], [ID(1)]])
-  assert.equal(calls(create).length, 1)
-  assert.ok(calls(create)[0].startsWith("Invoke-IAMAIStep -Mode 'CreateBrowser' -BrowserPolicyDisplayName 'Sample - browser sessions' -BrowserSessionControlsJson '{"), calls(create)[0])
-  assert.ok(calls(create)[0].endsWith(`-ExcludeGroupIds @('${ID(1)}') -ExcludeUserIds @()`), calls(create)[0])
-  for (const ch of ['entra', 'aiInfo']) {
-    assert.ok(channel(create, ch).includes(`Individual accounts the resolved target excludes: ${NONE}.`), `${ch}: ${channel(create, ch)}`)
-    assert.doesNotMatch(channel(create, ch), MANDATORY_SHARED, ch)
+test('a resolved excludeUsers is a value, empty or not: every channel draws it exactly, and the words say whom the target excludes, nobody included', () => {
+  // a resolved empty excludeUsers is a value: every channel draws, the JSON and script carry [], and the words say the target excludes nobody
+  {
+    const empty = { 'policy.target.excludeUsers': [], 'policy.target.excludeUsersSummary': NONE }
+    const create = projectImplementation(PKG, 'missing', { ...base('missing'), ...empty })
+    assert.equal(create.hold, null, JSON.stringify(create.hold))
+    assert.deepEqual(create.channels.map((c) => c.channel), ['entra', 'powershell', 'json', 'aiInfo'])
+    assert.deepEqual([usersOf(create).excludeUsers, usersOf(create).excludeGroups], [[], [ID(1)]])
+    assert.equal(calls(create).length, 1)
+    assert.ok(calls(create)[0].startsWith("Invoke-IAMAIStep -Mode 'CreateBrowser' -BrowserPolicyDisplayName 'Sample - browser sessions' -BrowserSessionControlsJson '{"), calls(create)[0])
+    assert.ok(calls(create)[0].endsWith(`-ExcludeGroupIds @('${ID(1)}') -ExcludeUserIds @()`), calls(create)[0])
+    for (const ch of ['entra', 'aiInfo']) {
+      assert.ok(channel(create, ch).includes(`Individual accounts the resolved target excludes: ${NONE}.`), `${ch}: ${channel(create, ch)}`)
+      assert.doesNotMatch(channel(create, ch), MANDATORY_SHARED, ch)
+    }
+    const watch = projectImplementation(PKG, 'reportOnly', { ...base('reportOnly'), ...empty })
+    assert.equal(watch.hold, null, JSON.stringify(watch.hold))
+    assert.ok(calls(watch)[0].startsWith(`Invoke-IAMAIStep -Mode 'VerifyBrowser' -BrowserPolicyId '${ID(3)}'`) && calls(watch)[0].endsWith('-ExcludeUserIds @()'), calls(watch)[0])
+    assert.match(channel(watch, 'entra'), /Confirm the policy's exclusions still match the resolved target\./)
+    assert.doesNotMatch(channel(watch, 'entra'), MANDATORY_SHARED)
+    const enforce = projectImplementation(PKG, 'readyToEnforce', { ...base('readyToEnforce'), ...empty })
+    assert.equal(enforce.hold, null, JSON.stringify(enforce.hold))
+    assert.deepEqual(JSON.parse(channel(enforce, 'json')), { state: 'enabled' })
+    assert.match(channel(enforce, 'entra'), /including any account the resolved target excludes/)
   }
-  const watch = projectImplementation(PKG, 'reportOnly', { ...base('reportOnly'), ...empty })
-  assert.equal(watch.hold, null, JSON.stringify(watch.hold))
-  assert.ok(calls(watch)[0].startsWith(`Invoke-IAMAIStep -Mode 'VerifyBrowser' -BrowserPolicyId '${ID(3)}'`) && calls(watch)[0].endsWith('-ExcludeUserIds @()'), calls(watch)[0])
-  assert.match(channel(watch, 'entra'), /Confirm the policy's exclusions still match the resolved target\./)
-  assert.doesNotMatch(channel(watch, 'entra'), MANDATORY_SHARED)
-  const enforce = projectImplementation(PKG, 'readyToEnforce', { ...base('readyToEnforce'), ...empty })
-  assert.equal(enforce.hold, null, JSON.stringify(enforce.hold))
-  assert.deepEqual(JSON.parse(channel(enforce, 'json')), { state: 'enabled' })
-  assert.match(channel(enforce, 'entra'), /including any account the resolved target excludes/)
-})
-
-test('a resolved non-empty excludeUsers is carried exactly into the JSON, the script and the words', () => {
-  const summary = `Room Panel (${ID(2)}), Lobby Phone (${ID(5)})`
-  const p = projectImplementation(PKG, 'missing', { ...base('missing'), 'policy.target.excludeUsers': [ID(2), ID(5)], 'policy.target.excludeUsersSummary': summary })
-  assert.equal(p.hold, null, JSON.stringify(p.hold))
-  assert.deepEqual(usersOf(p).excludeUsers, [ID(2), ID(5)])
-  assert.ok(calls(p)[0].endsWith(`-ExcludeUserIds @('${ID(2)}', '${ID(5)}')`), calls(p)[0])
-  for (const ch of ['entra', 'aiInfo']) assert.ok(channel(p, ch).includes(`Individual accounts the resolved target excludes: ${summary}.`), ch)
-})
-
-test('an unresolved excludeUsers still holds, and the empty-list rule makes no other required binding optional', () => {
-  for (const state of ['missing', 'reportOnly', 'readyToEnforce'] as PackageState[]) {
-    assert.deepEqual(projectImplementation(PKG, state, base(state)).hold?.missingBindings, ['policy.target.excludeUsers'], `${state}: absent`)
-    assert.deepEqual(projectImplementation(PKG, state, { ...base(state), 'policy.target.excludeUsers': null }).hold?.missingBindings, ['policy.target.excludeUsers'], `${state}: null is not a resolved list`)
+  // a resolved non-empty excludeUsers is carried exactly into the JSON, the script and the words
+  {
+    const summary = `Room Panel (${ID(2)}), Lobby Phone (${ID(5)})`
+    const p = projectImplementation(PKG, 'missing', { ...base('missing'), 'policy.target.excludeUsers': [ID(2), ID(5)], 'policy.target.excludeUsersSummary': summary })
+    assert.equal(p.hold, null, JSON.stringify(p.hold))
+    assert.deepEqual(usersOf(p).excludeUsers, [ID(2), ID(5)])
+    assert.ok(calls(p)[0].endsWith(`-ExcludeUserIds @('${ID(2)}', '${ID(5)}')`), calls(p)[0])
+    for (const ch of ['entra', 'aiInfo']) assert.ok(channel(p, ch).includes(`Individual accounts the resolved target excludes: ${summary}.`), ch)
   }
-  // The exclusions group is still required: an empty group list is not the target's own "none".
-  const noGroup = projectImplementation(PKG, 'missing', { ...base('missing'), 'policy.target.excludeGroups': [], 'policy.target.excludeUsers': [] })
-  assert.deepEqual(noGroup.hold?.missingBindings, ['policy.target.excludeGroups'])
-  // The rule is the package's declaration, and only this package declares one.
-  assert.deepEqual([...resolvedEmptyOf(PKG as unknown as { meta: Record<string, unknown> })], ['policy.target.excludeUsers'])
-  const declaring = Object.entries(PACKAGES).filter(([, p]) => resolvedEmptyOf(p as unknown as { meta: Record<string, unknown> }).size > 0).map(([id]) => id)
-  assert.deepEqual(declaring, ['s-goal-session-lifetime'])
-  assert.equal(bound({ k: [] }, 'k'), false)
-  assert.equal(bound({ k: [] }, 'k', new Set(['k'])), true)
-  assert.equal(bound({}, 'k', new Set(['k'])), false)
-  assert.equal(bound({ k: 'text' }, 'k', new Set()), true)
 })
 
-test('the validator refuses a resolvedEmptyBindings entry the package does not declare', () => {
-  assert.deepEqual(validatePackage(PKG).filter((m) => m.includes('resolvedEmptyBindings')), [])
-  const bad = { ...PKG, meta: { ...PKG.meta, resolvedEmptyBindings: ['policy.target.notDeclared'] } } as CompiledPackage
-  assert.ok(validatePackage(bad).includes('resolvedEmptyBindings: policy.target.notDeclared is not a declared binding'), JSON.stringify(validatePackage(bad).filter((m) => m.includes('resolved'))))
+test('an unresolved excludeUsers still holds, no other required binding becomes optional, and the validator refuses a resolvedEmptyBindings entry the package does not declare', () => {
+  // an unresolved excludeUsers still holds, and the empty-list rule makes no other required binding optional
+  {
+    for (const state of ['missing', 'reportOnly', 'readyToEnforce'] as PackageState[]) {
+      assert.deepEqual(projectImplementation(PKG, state, base(state)).hold?.missingBindings, ['policy.target.excludeUsers'], `${state}: absent`)
+      assert.deepEqual(projectImplementation(PKG, state, { ...base(state), 'policy.target.excludeUsers': null }).hold?.missingBindings, ['policy.target.excludeUsers'], `${state}: null is not a resolved list`)
+    }
+    // The exclusions group is still required: an empty group list is not the target's own "none".
+    const noGroup = projectImplementation(PKG, 'missing', { ...base('missing'), 'policy.target.excludeGroups': [], 'policy.target.excludeUsers': [] })
+    assert.deepEqual(noGroup.hold?.missingBindings, ['policy.target.excludeGroups'])
+    // The rule is the package's declaration, and only this package declares one.
+    assert.deepEqual([...resolvedEmptyOf(PKG as unknown as { meta: Record<string, unknown> })], ['policy.target.excludeUsers'])
+    const declaring = Object.entries(PACKAGES).filter(([, p]) => resolvedEmptyOf(p as unknown as { meta: Record<string, unknown> }).size > 0).map(([id]) => id)
+    assert.deepEqual(declaring, ['s-goal-session-lifetime'])
+    assert.equal(bound({ k: [] }, 'k'), false)
+    assert.equal(bound({ k: [] }, 'k', new Set(['k'])), true)
+    assert.equal(bound({}, 'k', new Set(['k'])), false)
+    assert.equal(bound({ k: 'text' }, 'k', new Set()), true)
+  }
+  // the validator refuses a resolvedEmptyBindings entry the package does not declare
+  {
+    assert.deepEqual(validatePackage(PKG).filter((m) => m.includes('resolvedEmptyBindings')), [])
+    const bad = { ...PKG, meta: { ...PKG.meta, resolvedEmptyBindings: ['policy.target.notDeclared'] } } as CompiledPackage
+    assert.ok(validatePackage(bad).includes('resolvedEmptyBindings: policy.target.notDeclared is not a declared binding'), JSON.stringify(validatePackage(bad).filter((m) => m.includes('resolved'))))
+  }
 })

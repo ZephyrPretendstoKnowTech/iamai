@@ -14,7 +14,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { contentFindings } from '../../scripts/walkContent.mjs'
-import { AUTHORITIES, RE, headerTabsLine, readinessStatTitles, staticFindings, textAt } from './contentChecks.ts'
+import { RE, staticFindings, textAt } from './contentChecks.ts'
 import { content } from './content.ts'
 import { fillText } from './render.ts'
 import { cohortWords } from '../derive/whoLine.ts'
@@ -32,26 +32,6 @@ test('the content file carries no walk P0', () => {
 test('every walk expectation the content can answer is answered', () => {
   const texts = staticFindings().map((f) => f.text)
   assert.deepEqual(texts, [], `walk expectations no longer hold:\n  ${texts.join('\n  ')}`)
-})
-
-// The four cases the audit named, asserted one by one so a failure says which
-// authority moved rather than only that the set is non-empty.
-
-test('the content authorities the walk reads still resolve', () => {
-  const missing = AUTHORITIES.filter((p) => (p.endsWith('[]') ? false : !textAt(p).trim()))
-  assert.deepEqual(missing, [], `content keys the walk reads have moved: ${missing.join(', ')}`)
-})
-
-test('the header names the five destinations, the plan before the readiness diagnostic', () => {
-  const tabs = headerTabsLine().split(' · ')
-  assert.deepEqual(tabs, ['Connect', 'Plan', 'MFA Readiness', 'Export', 'How'], `the header line reads "${headerTabsLine()}"`)
-  assert.ok(!tabs.some((t) => !t || t === 'undefined'), `the header line reads "${headerTabsLine()}"`)
-  // The plan is the destination after a scan and MFA Readiness reads the people
-  // it waits on, so the header cannot put the diagnostic in front of it (task 017).
-  assert.ok(tabs.indexOf('Plan') < tabs.indexOf('MFA Readiness'), 'the header lists MFA Readiness before the Plan')
-  // Today was replaced by MFA Readiness (task 012); the walk must not be able to
-  // hold a name the header has stopped using.
-  assert.ok(!tabs.includes('Today'), 'the header still names the retired Today tab')
 })
 
 test('the readiness summary reads in the shape the walk reads, at a count of one and above', () => {
@@ -79,24 +59,4 @@ test('the readiness summary reads in the shape the walk reads, at a count of one
   assert.ok(lm, 'the walk reads the summary at a thousand and more')
   const figure = (s: string | undefined): number => Number(String(s ?? 0).replace(/,/g, ''))
   assert.deepEqual([figure(lm[1]), figure(lm[2]) + figure(lm[3])], [1234, 4366], 'and reads the whole count, not its last three digits')
-})
-
-test('the seven readiness states are named, in the worklist order', () => {
-  const titles = readinessStatTitles()
-  assert.deepEqual(titles, ['Blocked by setup', 'Needs a method', 'Confirm it', 'Needs a device', 'Unknown', 'Ready', 'Seamless'], `the states read ${JSON.stringify(titles)}`)
-  assert.equal(new Set(titles).size, titles.length, 'every state has its own word')
-})
-
-test("a report-only step's two gates render in the shape the walk reads", () => {
-  const tracked = (content.shared as { policyDoneWhenTracked: string[] }).policyDoneWhenTracked
-  const gate = (key: string, vals: Record<string, unknown>): string => fillText(textAt(`shared.engine.tracking.${key}`), vals)
-  assert.match(fillText(tracked[0], { reportOnly: '12 Aug', timeGate: gate('windowCloses', { date: '20 August 2026' }) }), RE.gateTime)
-  assert.match(fillText(tracked[0], { reportOnly: '12 Aug', timeGate: gate('windowClosed', { date: '20 August 2026' }) }), RE.gateWindowClosed)
-  assert.match(fillText(tracked[1], { reportOnly: '12 Aug', evidenceGate: gate('readyNow', { n: 14 }) }), RE.gateEvidence)
-  assert.match(fillText(tracked[1], { reportOnly: '12 Aug', evidenceGate: gate('evidenceToday', { failures: 2, seen: 3, people: 4, n: 14 }) }), RE.gateEvidence)
-  assert.match(fillText(tracked[1], { reportOnly: '12 Aug', evidenceGate: gate('evidenceTodayUnread', { seen: 3, people: 4, n: 14 }) }), RE.gateEvidence)
-  // At a thousand and more every count carries its separator (copy/statements.ts figure), and the walk still reads the gate.
-  const big = fillText(tracked[1], { reportOnly: '12 Aug', evidenceGate: gate('evidenceToday', { failures: 1200, seen: 3981, people: 4169, n: 14 }) })
-  assert.match(big, /1,200 failing or interrupted, 3,981 of 4,169 active people/, big)
-  assert.match(big, RE.gateEvidence)
 })

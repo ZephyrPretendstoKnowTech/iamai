@@ -20,12 +20,3 @@ const EXPECTED: string[] = []
 test('the §3 validators produce exactly the documented findings on the pinned baseline', () => {
   assert.deepEqual(findings.map(key).sort(), [...EXPECTED].sort(), 'the baseline findings changed — reconcile docs/reports/51.md, never hand-patch content or the baseline')
 })
-
-test('every finding names a validator id and a level, and no policy fails shape-01 or ret-01', () => {
-  for (const f of findings) {
-    assert.match(f.id, /^[a-z]+-\d\d$/, `${f.policy}: a finding has a malformed id`)
-    assert.ok(['must', 'warn', 'info'].includes(f.level))
-  }
-  assert.equal(findings.filter((f) => f.id === 'shape-01').length, 0, 'every pinned policy ends in a grant or session control')
-  assert.equal(findings.filter((f) => f.id === 'ret-01').length, 0, 'no pinned policy uses a retired grant')
-})

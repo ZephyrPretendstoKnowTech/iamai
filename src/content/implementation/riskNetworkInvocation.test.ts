@@ -64,40 +64,36 @@ const CASES = [
   },
 ] as const
 
-for (const c of CASES) {
-  const pkg = PACKAGES[c.id]
-
-  test(`${c.id}: the script takes its values as parameters, not JSON text or '{{binding}}' defaults`, () => {
+test('each script takes its values as parameters, not JSON text or binding defaults, and Create is one call after the whole script, with no policy id, creating in report-only', () => {
+  for (const c of CASES) {
+    const pkg = PACKAGES[c.id]
     const script = pkg.blocks['powershell.run']
-    assert.equal(script.meta.kind, 'deployableAfterBinding')
+    assert.equal(script.meta.kind, 'deployableAfterBinding', c.id)
     // A request body is still serialised with ConvertTo-Json, and Create still refuses an unfilled '{{…' name.
-    assert.doesNotMatch(script.text, /\$\w+Json\b|ParseArray|=\s*'\{\{/, 'a JSON-text parameter or a binding default remains')
-    assert.match(script.text, /\[string\[\]\]\$ExcludeGroups=@\(\)/)
-  })
-
-  test(`${c.id}: Create is one call after the whole script, with no policy id, and creates in report-only`, () => {
+    assert.doesNotMatch(script.text, /\$\w+Json\b|ParseArray|=\s*'\{\{/, `${c.id}: a JSON-text parameter or a binding default remains`)
+    assert.match(script.text, /\[string\[\]\]\$ExcludeGroups=@\(\)/, c.id)
     const { p, ps } = psOf(pkg, 'missing', { ...c.bindings, 'policy.current.id': undefined, 'policy.current.state': undefined })
-    assert.ok(ps, JSON.stringify(p.hold ?? p.degraded))
+    assert.ok(ps, `${c.id}: ${JSON.stringify(p.hold ?? p.degraded)}`)
     assert.deepEqual(callsOf(ps.text), [c.create])
     assert.ok(ps.text.startsWith('function Invoke-IAMAIStep {\nparam('), ps.text.slice(0, 60))
-    assert.ok(ps.text.trimEnd().endsWith(c.create), 'the call does not follow the whole body')
-    assert.match(ps.text, /state='enabledForReportingButNotEnforced'/)
-  })
+    assert.ok(ps.text.trimEnd().endsWith(c.create), `${c.id}: the call does not follow the whole body`)
+    assert.match(ps.text, /state='enabledForReportingButNotEnforced'/, c.id)
+  }
+})
 
-  test(`${c.id}: corrections call CorrectConditions and CorrectGrant on the policy and write no state`, () => {
+test('each script corrects conditions and grant on the policy writing no state, verifies on the policy, and withholds Enforce with its reason rather than draw a call that would throw', () => {
+  for (const c of CASES) {
+    const pkg = PACKAGES[c.id]
     for (const [facts, call] of [[c.conditionsFacts, c.conditions], [c.grantFacts, c.grant]] as const) {
       const { p, ps } = psOf(pkg, 'partial', { ...c.bindings, ...facts })
-      assert.ok(ps, JSON.stringify(p.hold ?? p.degraded))
+      assert.ok(ps, `${c.id}: ${JSON.stringify(p.hold ?? p.degraded)}`)
       assert.deepEqual(callsOf(ps.text), [call])
-      assert.doesNotMatch(callsOf(ps.text).join('\n'), /ReportOnly|Enforce/)
+      assert.doesNotMatch(callsOf(ps.text).join('\n'), /ReportOnly|Enforce/, c.id)
     }
-  })
-
-  test(`${c.id}: Verify is called on the policy; Enforce is withheld with its reason, never drawn as a call that would throw`, () => {
     const { ps } = psOf(pkg, 'reportOnly', c.bindings)
-    assert.ok(ps)
+    assert.ok(ps, c.id)
     assert.deepEqual(callsOf(ps.text), [c.verify])
-    assert.match(pkg.blocks['powershell.run'].meta.invocation?.withheldModes?.Enforce ?? '', c.enforce)
-    assert.equal(psOf(pkg, 'readyToEnforce', c.bindings).ps, undefined)
-  })
-}
+    assert.match(pkg.blocks['powershell.run'].meta.invocation?.withheldModes?.Enforce ?? '', c.enforce, c.id)
+    assert.equal(psOf(pkg, 'readyToEnforce', c.bindings).ps, undefined, c.id)
+  }
+})

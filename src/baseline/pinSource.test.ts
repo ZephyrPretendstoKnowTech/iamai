@@ -54,22 +54,25 @@ const includeAppsOf = (pinned: { conditions: unknown }): string[] =>
 
 // ------------------------------------------------- A. the authored exclusions survive pinning
 
-test('the four authored Admin Portal application exclusions survive the pin', () => {
-  const { policy, stripped } = pinPolicy(adminPortalSource(AUTHORED_IDS), NO_PLACEHOLDERS)
+test('the four authored Admin Portal application exclusions survive the pin, each a first-party id the shared registry knows', () => {
+  // the four authored Admin Portal application exclusions survive the pin
+  {
+    const { policy, stripped } = pinPolicy(adminPortalSource(AUTHORED_IDS), NO_PLACEHOLDERS)
 
-  assert.deepEqual(
-    excludeAppsOf(policy),
-    AUTHORED_IDS,
-    'pinning dropped an application the author excluded, so the pinned policy blocks more than the source does',
-  )
-  assert.deepEqual(stripped, [], 'a first-party exclusion was recorded as author-specific')
-  // The scope the author wrote, not a substitute: the include side is untouched.
-  assert.deepEqual(includeAppsOf(policy), ['MicrosoftAdminPortals'])
-})
-
-test('each authored exclusion is a first-party id the shared registry knows by name', () => {
-  for (const { appId, displayName } of AUTHORED_EXCLUSIONS) {
-    assert.equal(isFirstPartyApplicationId(appId), true, `${displayName} (${appId}) is not in the first-party registry`)
+    assert.deepEqual(
+      excludeAppsOf(policy),
+      AUTHORED_IDS,
+      'pinning dropped an application the author excluded, so the pinned policy blocks more than the source does',
+    )
+    assert.deepEqual(stripped, [], 'a first-party exclusion was recorded as author-specific')
+    // The scope the author wrote, not a substitute: the include side is untouched.
+    assert.deepEqual(includeAppsOf(policy), ['MicrosoftAdminPortals'])
+  }
+  // each authored exclusion is a first-party id the shared registry knows by name
+  {
+    for (const { appId, displayName } of AUTHORED_EXCLUSIONS) {
+      assert.equal(isFirstPartyApplicationId(appId), true, `${displayName} (${appId}) is not in the first-party registry`)
+    }
   }
 })
 
@@ -102,34 +105,35 @@ test('a stable application id is retained on either side, and the side is preser
   assert.deepEqual(includeAppsOf(excluded.policy), ['All'])
 })
 
-// ------------------------------------------------- C. an unknown application stays non-portable
+// ------------------------------------------------- C. an unknown application stays non-portable, and D. runtime portability agrees with pinning
 
-test('an application id the registry does not know is still stripped, and recorded', () => {
-  const { policy, stripped } = pinPolicy(adminPortalSource([...AUTHORED_IDS, CUSTOM_APP]), NO_PLACEHOLDERS)
+test('an application id the registry does not know is stripped and recorded, and an exclusion the pin kept is not an unresolved tenant reference at runtime', () => {
+  // an application id the registry does not know is still stripped, and recorded
+  {
+    const { policy, stripped } = pinPolicy(adminPortalSource([...AUTHORED_IDS, CUSTOM_APP]), NO_PLACEHOLDERS)
 
-  assert.equal(isFirstPartyApplicationId(CUSTOM_APP), false, 'a custom application id was promoted into the first-party registry')
-  assert.deepEqual(excludeAppsOf(policy), AUTHORED_IDS, 'a tenant-specific application id was carried into the pin')
-  assert.deepEqual(
-    stripped,
-    [`IAC - ZTCA - GLOBAL – BLOCK – Admin Portal: ${CUSTOM_APP}`],
-    'the removal was not recorded against its policy and id',
-  )
-})
-
-// ------------------------------------------------- D. runtime portability agrees with pinning
-
-test('an exclusion the pin kept is not an unresolved tenant reference at runtime', () => {
-  const { policy } = pinPolicy(adminPortalSource([...AUTHORED_IDS, CUSTOM_APP]), NO_PLACEHOLDERS)
-  const refs = inventoryReferences([policy as unknown as CaPolicy])
-  const unresolved = new Set(unresolvedReferences(refs).map((r) => r.id))
-
-  for (const { appId, displayName } of AUTHORED_EXCLUSIONS) {
-    const ref = refs.find((r) => r.kind === 'application' && r.id === appId.toLowerCase())
-    assert.ok(ref, `${displayName} is in the pinned policy but was not inventoried`)
-    assert.equal(ref.portability, 'stable', `pinning kept ${displayName} but runtime calls it tenant-specific`)
-    assert.equal(unresolved.has(appId.toLowerCase()), false, `${displayName} would be reported as a missing tenant object`)
+    assert.equal(isFirstPartyApplicationId(CUSTOM_APP), false, 'a custom application id was promoted into the first-party registry')
+    assert.deepEqual(excludeAppsOf(policy), AUTHORED_IDS, 'a tenant-specific application id was carried into the pin')
+    assert.deepEqual(
+      stripped,
+      [`IAC - ZTCA - GLOBAL – BLOCK – Admin Portal: ${CUSTOM_APP}`],
+      'the removal was not recorded against its policy and id',
+    )
   }
+  // an exclusion the pin kept is not an unresolved tenant reference at runtime
+  {
+    const { policy } = pinPolicy(adminPortalSource([...AUTHORED_IDS, CUSTOM_APP]), NO_PLACEHOLDERS)
+    const refs = inventoryReferences([policy as unknown as CaPolicy])
+    const unresolved = new Set(unresolvedReferences(refs).map((r) => r.id))
 
-  // The custom id never reached the pin, so it is not there to resolve either way.
-  assert.equal(refs.some((r) => r.id === CUSTOM_APP), false)
+    for (const { appId, displayName } of AUTHORED_EXCLUSIONS) {
+      const ref = refs.find((r) => r.kind === 'application' && r.id === appId.toLowerCase())
+      assert.ok(ref, `${displayName} is in the pinned policy but was not inventoried`)
+      assert.equal(ref.portability, 'stable', `pinning kept ${displayName} but runtime calls it tenant-specific`)
+      assert.equal(unresolved.has(appId.toLowerCase()), false, `${displayName} would be reported as a missing tenant object`)
+    }
+
+    // The custom id never reached the pin, so it is not there to resolve either way.
+    assert.equal(refs.some((r) => r.id === CUSTOM_APP), false)
+  }
 })
