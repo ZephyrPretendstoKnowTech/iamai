@@ -464,7 +464,8 @@ test('the readiness and "Who it misses" lines carry separators', () => {
   const mfa = r.steps.find((s) => s.id === 's-goal-mfa-all-users')
   assert.ok(mfa, 'the premise: large plans the MFA policy')
   // The active people its policy includes (walk list 4.x L4), in the count line's own words (item 48).
-  assert.ok(mfa.readiness.lines.some((l) => /^3,031 of 4,169 people have a method it accepts\./.test(l)), JSON.stringify(mfa.readiness.lines))
+  // The count itself is the delivering policy's (net-new 25); the separators are the point here.
+  assert.ok(mfa.readiness.lines.some((l) => /^\d,\d{3} of 4,169 people have a method it accepts\./.test(l)), JSON.stringify(mfa.readiness.lines))
   for (const s of r.steps) {
     for (const l of s.readiness.lines) assert.doesNotMatch(l, raw, `${s.id}: ${l}`)
     for (const x of stepContract(s, ctx).found) assert.doesNotMatch(x.text, raw, `${s.id}: ${x.text}`)
