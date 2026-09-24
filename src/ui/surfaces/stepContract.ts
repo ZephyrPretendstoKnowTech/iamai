@@ -2189,7 +2189,7 @@ function stateTile(step: Step, c: StepContract, setupAfterEnforcement = false): 
   // The value is the substatus's own word (U11); the note is what to decide (B10 P1-1).
   if (s.condition === 'needs-decision') return { key: 'decision', label: t.decision, tone: 'warn', value: t.decisionValue, note: c.decisionNote }
   // A tile's detail says what its value is evidence of, where the contract carries no finding of its own (editorial batch C).
-  const notes = t as unknown as { observationNote: string; observationDateNote: string }
+  const notes = t as unknown as { observationNote: string }
   // A finished step draws no "Existing coverage" card (walk list item 11, owner
   // 2026-09-23): "In place · IAMAI found an existing control that meets the
   // assessed goal" sat on every Completed step, a check or a preparation with no
@@ -2215,9 +2215,13 @@ function stateTile(step: Step, c: StepContract, setupAfterEnforcement = false): 
   // read by nothing, so twelve steps of one tenant sat behind "Review the
   // available records and the remaining evidence requirements" for ten days,
   // and a tenant where four hundred people had been stopped said the same.
-  if (c.milestone.kind === 'observe') {
-    const why = c.milestone.at ? notes.observationDateNote : (step.evidence.lines[0] ?? notes.observationNote)
-    return { key: 'observation', label: t.observation, tone: 'wait', value: c.milestone.at ? fillText(t.observationUntil, { date: shownDay(c.milestone.at, c.estimate, 'label') }) : s.stage, note: why }
+  //
+  // A dated report-only week draws no card (walk list 4.x item 21, owner
+  // 2026-09-24): "Observation · Until Aug 31, 2026 · This is the earliest review
+  // date, not a scheduled automatic enforcement." sat on every policy in
+  // report-only, beside the policy card that already says what the week is for.
+  if (c.milestone.kind === 'observe' && !c.milestone.at) {
+    return { key: 'observation', label: t.observation, tone: 'wait', value: s.stage, note: step.evidence.lines[0] ?? notes.observationNote }
   }
   return null
 }
@@ -2425,6 +2429,12 @@ function implementationTile(step: Step, c: StepContract): ReadinessTile | null {
   // leads its Implementation, so "Unavailable" here would be the opposite.
   if (awaitsOwnObject(step) && step.objectTask) return null
   if (c.state.satisfied || c.state.setAside || c.state.condition === 'baseline-conflict' || c.state.condition === 'needs-decision' || c.state.condition === 'review-required') return null
+  // A policy in Report-only whose turn-on waits on readiness draws no card of its
+  // own (walk list 4.x item 21, owner 2026-09-24): "Implementation · Unavailable ·
+  // Running this would change what Fixture small's people have to do straight
+  // away…" said again what the Threshold card beside it says. A create the
+  // threshold holds keeps it: there the create itself is what waits.
+  if (c.implementation.reason === 'readiness-unmet' && !createWaitsOnReadiness(step)) return null
   // A policy the tenant switched off has one thing to do, and the step hands it
   // over on every channel: "Unavailable" over that procedure said the opposite.
   const value = c.implementation.reason === 'switched-off' ? structuralWords.switchedOffTask : t.unavailable
