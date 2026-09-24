@@ -120,6 +120,10 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // (roadmap/lifecycle.ts heldForReview): a scan-to-scan condition, and the
   // review page compares no two scans.
   '.shared.datesReview',
+  // A policy's Description line in its Entra procedure (stepPortal.ts): the
+  // review page draws no policy procedure. Its fragment matched 3.5's old
+  // "Description:" task line, which walk list item 59 deleted.
+  '.shared.descriptionLine',
   // The row's date column for that same step, for the same reason.
   '.pages.plan.heldForReview',
   // The Plan's length tip and Connect's sample tile for a plan that cannot finish
@@ -201,6 +205,14 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.steps[1].who.cannotTell',
   '.steps[1].who.none',
   '.steps[3].decision.location.none',
+  // Define the Trusted Network's words for a picked office location Entra holds
+  // without the trusted mark, for no saved ranges, and for sign-ins from the
+  // finished location (walk list items 14, 61, 63, 65; stepVars.ts, stepBody.ts,
+  // generate.ts): states the review page's example does not reach.
+  '.steps[4].rangesUnsaved',
+  '.steps[4].satisfied.signIns',
+  '.steps[4].whatToDoWhen.officeToTrust.lead',
+  '.steps[4].whatToDoWhen.officeToTrust.task',
   '.steps[5].who.none',
   // The service-accounts group's lead once the scan finds the group holding
   // exactly the picked accounts and nobody has saved it (stepVars.ts
