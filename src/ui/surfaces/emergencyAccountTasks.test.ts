@@ -329,7 +329,9 @@ test('Step 1 notes an emergency account that is signed in to IAMAI now', () => {
   // The signed-in operator is the scan's /me.
   const signedIn = dedicatedCase((value, id) => { value.snapshot.config.me = { status: 'ok', reason: null, rows: [{ id }] } })
   const account = signedIn.accounts.find(row => row.accountId === signedIn.id)!
-  assert.match(account.notes?.[0]?.value ?? '', /signed in to IAMAI now/)
+  // One heads-up line in the owner's words, in place of the check's note (2026-09-23).
+  assert.match(account.headsUp ?? '', /^You're signed in to IAMAI with this account\./)
+  assert.equal(account.notes, undefined)
 })
 
 // A finished step's procedures are reference, not instructions.

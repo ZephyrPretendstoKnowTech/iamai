@@ -12,6 +12,7 @@ import { app } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { list } from '../../copy/statements.ts'
 import { tenantNameOf } from './stepVars.ts'
+import { operatorUserId } from '../../derive/operator.ts'
 import type { StepVarContext } from './stepVars.ts'
 
 export type EmergencyAccountTaskVariant = {
@@ -70,6 +71,8 @@ export type EmergencyAccountStatus = {
   satisfied: boolean
   /** Signals shown beside the account that are not checks: they count toward nothing and gate nothing. */
   notes?: { label: string; value: string }[]
+  /** One line on the account that is signed in to IAMAI (the scan's /me): a fact, never a check. */
+  headsUp?: string
 }
 
 /** Shared task projection used by the connected emergency-access steps. */
@@ -84,7 +87,7 @@ export type EmergencyTaskProjection = {
 }
 
 /** What a procedure says about whether a selected account needs it (pages.app.plan.emergencyTasks). */
-const WORDS = (app.plan as unknown as { emergencyTasks: Record<'configureNotNeeded' | 'passkeyNotNeeded' | 'passkeyUnreadOne' | 'passkeyUnreadMany' | 'passkeyNeededOne' | 'passkeyNeededMany' | 'createNotNeeded' | 'variantsLead', string> }).emergencyTasks
+const WORDS = (app.plan as unknown as { emergencyTasks: Record<'configureNotNeeded' | 'passkeyNotNeeded' | 'passkeyUnreadOne' | 'passkeyUnreadMany' | 'passkeyNeededOne' | 'passkeyNeededMany' | 'createNotNeeded' | 'variantsLead' | 'signedInAccount', string> }).emergencyTasks
 
 const safe = (value: string): string => oneLine(value).trim()
 const userOf = (ctx: StepVarContext, id: string) => ctx.snapshot.users.find(user => user.id.toLowerCase() === id.toLowerCase())
@@ -164,7 +167,19 @@ function dedicatedAccountNotes(step: Step): ReadonlyMap<string, { label: string;
   return notes
 }
 
-function accountStatuses(ctx: StepVarContext, preparations: Preparations, notes: ReadonlyMap<string, { label: string; value: string }[]> = new Map()): EmergencyAccountStatus[] {
+/**
+ * Whether an account is the one signed in to IAMAI: the scan's /me, by object
+ * id or by sign-in name, as Connect shows it. A fact about the account, never
+ * a guess about who uses it.
+ */
+function signedInAccount(ctx: StepVarContext): (id: string) => boolean {
+  const me = (ctx.snapshot.config.me?.rows?.[0] ?? null) as { userPrincipalName?: unknown } | null
+  const meId = operatorUserId(ctx.snapshot)?.toLowerCase() ?? null
+  const meUpn = typeof me?.userPrincipalName === 'string' && me.userPrincipalName.trim() ? me.userPrincipalName.trim().toLowerCase() : null
+  return (id) => id.toLowerCase() === meId || (meUpn !== null && userOf(ctx, id)?.userPrincipalName?.trim().toLowerCase() === meUpn)
+}
+
+function accountStatuses(ctx: StepVarContext, preparations: Preparations, notes: ReadonlyMap<string, { label: string; value: string }[]> = new Map(), signedIn: (id: string) => boolean = () => false): EmergencyAccountStatus[] {
   // Numbered by the account's display name, never by the order they were
   // picked: the second account picked read as "Emergency access account 1".
   const displayName = (id: string): string => safe(userOf(ctx, id)?.displayName || targetOf(ctx, id))
@@ -221,8 +236,9 @@ function accountStatuses(ctx: StepVarContext, preparations: Preparations, notes:
       instruction = 'IAMAI could not fully check this account. Open MFA Readiness and find it under Emergency access, where Evidence read says what could not be read. No account change is established.'
     }
     const remainingCount = checks.every(value => value !== null) ? checks.filter(value => value === false).length : null
-    const note = notes.get(id.toLowerCase())
-    return { key: id, accountId: id, heading, upn, title, instruction, completed, remainingCount, satisfied: checks.every(value => value === true), ...(note ? { notes: note } : {}) }
+    // The account signed in to IAMAI says so in one line, in place of the check's note about it.
+    const note = signedIn(id) ? undefined : notes.get(id.toLowerCase())
+    return { key: id, accountId: id, heading, upn, title, instruction, completed, remainingCount, satisfied: checks.every(value => value === true), ...(note ? { notes: note } : {}), ...(signedIn(id) ? { headsUp: WORDS.signedInAccount } : {}) }
   })
   while (rows.length < 2) {
     const slot = rows.length + 1
@@ -307,7 +323,8 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
   // someone's daily account and bg.notPersonal's fix is a new one, so saying no
   // new account is needed would steer the reader to keep it.
   const notes = dedicatedAccountNotes(step)
-  const createClear = selected.length >= 2 && selected.every(id => preparations.get(id)?.checks.cloudOnly === true && !notes.has(id.toLowerCase()))
+  const signedIn = signedInAccount(ctx)
+  const createClear = selected.length >= 2 && selected.every(id => preparations.get(id)?.checks.cloudOnly === true && !notes.has(id.toLowerCase()) && !signedIn(id))
   const create = domain ? createSteps(domain, false) : [...tenantLead(ctx), 'Open **Entra ID → Custom domain names** and note the tenant’s initial **onmicrosoft.com** domain.', 'Open **Entra ID → Users → New user → Create new user** and create a cloud-only emergency account on that domain.', 'Return to IAMAI and select **Scan to update the plan**.']
   // After the session reminder where there is one: the reminder leads every task.
   const createAt = create[0] === 'Keep your working administrator session open.' ? 1 : 0
@@ -336,7 +353,7 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
     ] }),
     task({ id: 'set-up-passkey', accountId: null, title: 'Set up an approved passkey', targetUpn: null, required: false, readinessKey: 'recovery-methods', evidence: null, actionLabel: 'Open passkey instructions', steps: variants[0].steps, variants, defaultVariantId: variants[0].id }),
   ]
-  const accounts = accountStatuses(ctx, preparations, notes)
+  const accounts = accountStatuses(ctx, preparations, notes, signedIn)
   const confirmedPriority = (row: EmergencyAccountStatus): number => row.accountId === null ? 0
     : row.title === 'Use a cloud-only account' ? 1
       : row.title === 'Change the sign-in address' ? 2

@@ -55,3 +55,25 @@ test('#24 the account cards are numbered by the account display name, not by the
   const cards = body.emergencyAccountTasks!.accounts!
   assert.deepEqual(cards.map((c) => [c.heading, nameOf(c.accountId)]), [['Emergency access account 1', 'Break-glass 1'], ['Emergency access account 2', 'Break-glass 2']])
 })
+
+test('#12 an emergency account that is the one signed in to IAMAI carries one heads-up line', () => {
+  const HEADS_UP = "You're signed in to IAMAI with this account. Emergency accounts should be ones nobody uses day to day."
+  const cardsWith = (me: (f: Fixture, id: string, upn: string) => Record<string, unknown>) => {
+    const { body, value } = opened('demo-week2', (f) => {
+      const id = f.mapping.breakGlassUserIds[0]
+      const upn = f.snapshot.users.find((u) => u.id === id)!.userPrincipalName!
+      f.snapshot.config.me = { status: 'ok', reason: null, rows: [me(f, id, upn)] }
+    })
+    return { cards: body.emergencyAccountTasks!.accounts!, id: value.mapping.breakGlassUserIds[0] }
+  }
+  // By object id, and by sign-in name.
+  for (const { cards, id } of [cardsWith((_f, id) => ({ id })), cardsWith((_f, _id, upn) => ({ id: '00000000-0000-0000-0000-00000000abcd', userPrincipalName: upn.toUpperCase() }))]) {
+    const signedIn = cards.find((c) => c.accountId === id)!
+    assert.equal(signedIn.headsUp, HEADS_UP)
+    assert.equal(signedIn.notes, undefined, 'one line, not the heads-up and the check note both')
+    assert.ok(cards.filter((c) => c.accountId !== id).every((c) => c.headsUp === undefined))
+  }
+  // Nobody else's account is flagged.
+  const plain = opened('demo-week2').body.emergencyAccountTasks!.accounts!
+  assert.ok(plain.every((c) => c.headsUp === undefined))
+})
