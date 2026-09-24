@@ -2370,7 +2370,8 @@ function fixTiles(fixes: readonly ContractFix[], prerequisiteLabel: (id: string)
     }
     if (kind === 'direction' && isDirectionStep(rest.join(':'))) {
       const id = rest.join(':') as Parameters<typeof directionTitleOf>[0]
-      return { key: f.key, label: directionTitleOf(id), tone: 'warn', value: directionWords.waiting, note: f.text, link: stepLink(id, directionTitleOf(id)) }
+      // The step and Waiting on your answers, and no note under them (walk list item 18).
+      return { key: f.key, label: directionTitleOf(id), tone: 'warn', value: directionWords.waiting, note: null, link: stepLink(id, directionTitleOf(id)) }
     }
     if (kind === 'mapping') return { key: f.key, label: t.mapping, tone: 'warn', value: BLOCKED_REASON.sourceMapping, note: f.text, link: mappingsLink() }
     if (kind === 'review') return { key: f.key, label: t.review, tone: 'warn', value: CONTRACT.condition['review-required'], note: f.text }
@@ -2444,7 +2445,7 @@ function engineTiles(c: StepContract, blockers: readonly PrerequisiteBlocker[], 
     if (b.kind === 'decision' && isDirectionStep(b.id)) {
       if (present.has(`direction:${b.id}`)) continue
       const title = directionTitleOf(b.id)
-      out.push({ key: `engine:${b.kind}:${b.id}`, label: title, tone, value: b.label, note: fillText(directionWords.waitingNote, { step: title }), link: stepLink(b.id, title) })
+      out.push({ key: `engine:${b.kind}:${b.id}`, label: title, tone, value: b.label, note: null, link: stepLink(b.id, title) })
       continue
     }
     if (b.kind === 'decision' && (present.has('decision') || c.state.condition === 'needs-decision')) continue
