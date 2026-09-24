@@ -154,32 +154,15 @@ const SECURITY_DEFAULTS = 's-prereq-security-defaults'
 /** A content step's own `whatToDo`, flattened: its lead and every step line. */
 const whatToDoOf = (id: string): string => everyString((stepById[id] as unknown as { whatToDo?: unknown }).whatToDo).join('\n')
 
-// V1 audit S4-16 / S4-20. The lead stated only the direction that blocks NOBODY
-// — you cannot re-enable security defaults once the policies exist — and left
-// the direction that decides the whole plan unsaid. Microsoft Learn, checked
-// 2026-09-20 (https://learn.microsoft.com/entra/fundamentals/security-defaults,
-// page updated 2026-07-01): "Organizations that choose to implement Conditional
-// Access policies that replace security defaults must disable security
-// defaults." Report-only creation is not restricted by any first-party sentence
-// (playbook V3, re-checked against the report-only page, updated 2026-06-01), so
-// the gate stays on enforcement — and the step now says that is what it gates.
-test('F1a: the lead names the direction that blocks — security defaults off before the replacements take over', () => {
-  const w = whatToDoOf(SECURITY_DEFAULTS)
-  assert.match(w, /security defaults must be off before the policies replacing them can take over/)
-  assert.match(w, /nothing in this plan enforces before this step/)
-  assert.match(w, /once these policies exist you cannot turn security defaults back on/)
-})
-
-test('F2: the replacement list is four policies wherever it is said', () => {
-  const FOUR = /Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins/
-  assert.match(whatToDoOf(SECURITY_DEFAULTS), FOUR)
-  // The cutover's Done-when, read where the cutover is still to come: messy's
-  // scan read security defaults on. This read demo, whose scan read them
-  // already off; there the step is complete on that fact alone and its
-  // Done-when claims only it (R4-38, eb099c8c), so demo no longer names the
-  // four — rightly, since nothing checked them.
+// Walk list 4.x item 8: the four policies' turn-ons wait on security defaults
+// being off, so once someone saved Disabled nothing said to turn them on until
+// the next scan. Turn Off Security Defaults' own task turns each on, by name.
+test('F2: Turn Off Security Defaults turns on the four policies it waits on, each by name, in its own task', () => {
   const b = bodiesOf('messy').get(SECURITY_DEFAULTS)!
-  assert.ok(b.contract.doneWhen.some((d) => FOUR.test(d)), b.contract.doneWhen.join('\n'))
+  const portal = b.artifacts.find((a) => a.id === 'portal')!.text()
+  const turnOns = portal.split('\n').filter((l) => l.endsWith('set Enable policy to On and select Save.'))
+  assert.equal(turnOns.length, 4, portal)
+  assert.ok(portal.includes('Select Disabled (not recommended), then Save.'), portal)
   assert.match(aboutOf(b) + everyString((stepById[SECURITY_DEFAULTS] as unknown as { who?: unknown }).who).join('\n'), /block device code sign-in today/)
 })
 

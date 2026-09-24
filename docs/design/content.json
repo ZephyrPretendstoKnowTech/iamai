@@ -2062,9 +2062,9 @@
           "fixStepOvertaken": "This step is finished, and {step}, which the plan puts before it, is not finished yet.",
           "$commentFixStepOvertakenOpen": "The overtaken note is the engine's: the step reached its outcome (a policy enforced as pinned) ahead of a hard prerequisite. The board can still draw that step outside Completed — a policy already on with a workflow record or an unmatched guest pair to review reads Ready · Review — and the note said \"This step is finished\" beside a badge saying there is work left on it (R4-NEW-jordanb-1). The fact stays: the change went in before the prerequisite. Only the claim that the step is finished goes, where the board does not say it is.",
           "fixStepOvertakenOpen": "This step's change is already in place, and {step}, which the plan puts before it, is not finished yet.",
-          "$commentFixStepAt": "A prerequisite is not always waited on until it is FINISHED (src/actionability/dependency-data.json carries the milestone on every edge). Turn Off Security Defaults waits for the replacement policies to be ready to enforce; those policies wait for it to be complete. Both tiles said \"Finish the other first\", so the pair read as a deadlock that the data does not contain — and the way out of an apparent deadlock is to turn security defaults off, which is the one thing the step's own words say not to do yet.",
+          "$commentFixStepAt": "A prerequisite is not always waited on until it is FINISHED (src/actionability/dependency-data.json carries the milestone on every edge). Turn Off Security Defaults waits for the replacement policies to be ready to enforce; those policies wait for it to be complete. Both tiles said \"Finish the other first\", so the pair read as a deadlock that the data does not contain — and the way out of an apparent deadlock is to turn security defaults off, which is the one thing the step's own words say not to do yet. A null milestone draws no note under the card: Turn Off Security Defaults' own card already says to turn them off the day the four policies below it are ready (walk list 4.x item 50).",
           "fixStepAt": {
-            "ready-to-enforce": "{step} needs to be ready to enforce first — not finished, just ready.",
+            "ready-to-enforce": null,
             "created": "{step} needs to exist first.",
             "enforced": "{step} needs to be enforced first.",
             "resolved": "{step} needs to be resolved first.",
@@ -3018,7 +3018,7 @@
         "$commentSecurityDefaultsCoexistPointer": "It ended \"and this is the step that turns them off\", which reads as the way out. On the tenant where it fired the plan's own MFA policy was still held below its threshold, and turning security defaults off then removes the MFA they require from everybody (Sam D2). The step turns them off only once the replacements can go On in the same change window, and the line says that instead.",
         "securityDefaultsCoexist": "{n} Conditional Access policies are enforced in this tenant while security defaults are still on, which Microsoft does not support. Do not turn security defaults off to settle it: this step does that only once the policies that replace them can go On in the same change window.",
         "$commentSecurityDefaultsNeverOn": "Turn Off Security Defaults read Completed on a tenant whose security defaults were already off when this plan first scanned it: a row claiming work nobody did (roadmap-flow V1 decision 6, Stage 3). The plan records the day a scan first read them on (PlanDecisions.securityDefaultsSeenOnAt); where there is none the step does not apply, and this is the reason the Doesn't apply here footer states for it. The scan says so, not a person, so it is drawn without the you-said prefix (pages.plan.footer.doesntApplyScanRow).",
-        "securityDefaultsNeverOn": "No scan of this plan has read security defaults on, so there is nothing to turn off."
+        "securityDefaultsNeverOn": "Security defaults are already off."
       },
       "readiness": {
         "$commentLineNoRecordsReason": "It read \"no sign-in records ({reason})\" beside a count of 0, and the reason often said the same thing or carried its own parentheses. One sentence now, and a reason that only restates it is left out.",
@@ -4077,7 +4077,8 @@
       "kind": "object",
       "title": "Turn Off Security Defaults",
       "changeLine": null,
-      "why": "Replacing Security Defaults gives you more control over access rules. The changeover needs care so the tenant does not lose protection between the two configurations.",
+      "why": "Security defaults and Conditional Access can't run together. Turn security defaults off on the day the four policies below turn on, so the tenant is never without MFA.",
+      "$commentWhatToDo": "One procedure in every state (walk list 4.x items 8, 18 and 51): turn security defaults off, then turn on in the same change the four policies that replace them, each by the name it has in the tenant (turnOn1 to turnOn4, in the Plan's order: roadmap/enforceWaits.ts noteTurnOns, ui/surfaces/stepVars.ts). A policy not on the plan has no name, and its line is not drawn. The step completes when a scan reads security defaults off; every other policy turns on from its own step after that.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/fundamentals/security-defaults"
       },
@@ -4090,38 +4091,23 @@
       },
       "decision": null,
       "whatToDo": {
-        "lead": "Security defaults and Conditional Access are not meant to run together, and the rule runs both ways: security defaults must be off before the policies replacing them can take over, and once these policies exist you cannot turn security defaults back on. That is why nothing in this plan enforces before this step. One order works, and it is the one this plan follows: create all four replacements in Report-only while security defaults are still on, watch them there, then turn security defaults off and enable all four in the same change window. Turn them off on that day and not before.",
+        "lead": "Turn off the day the four policies below are ready to turn on.",
         "steps": [
-          "Check each policy that takes over: Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins. Any one of them not enforced already must have run in report-only with no failures before you turn it on today.",
-          "Entra admin center → Entra ID → Overview → Properties → Manage security defaults → Disabled (not recommended) → Save. You need at least the Conditional Access Administrator role.",
-          "Right after saving, enable Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins in the same change window, then test sign-in."
+          "As at least a Conditional Access Administrator, open [Microsoft Entra admin center](https://entra.microsoft.com/) → Entra ID → Overview → Properties → Manage security defaults.",
+          "Select Disabled (not recommended), then Save.",
+          "Go to Entra ID → Conditional Access → Policies.",
+          "Open {turnOn1}, set Enable policy to On and select Save.",
+          "Open {turnOn2}, set Enable policy to On and select Save.",
+          "Open {turnOn3}, set Enable policy to On and select Save.",
+          "Open {turnOn4}, set Enable policy to On and select Save.",
+          "Return to IAMAI and select Scan to update the plan."
         ]
-      },
-      "$commentWhatToDoWhen": "The procedure for the state the scan read, beside doneWhenWhen: where the fact holds this object replaces whatToDo whole (content/render.ts whatToDoFor), on the screen, every export and the review page. whatToDo above is the cutover this step performs where security defaults were read on or could not be read. Where the scan read them already off, the step is Completed on that fact alone, and its Implementation Tasks — drawn as reference, still readable — told the reader to disable security defaults and, right after saving, to enable Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins in the same change window: on hostile the admin policy was Not deployed and held by its own readiness gate, and only a report-only guard two lines up stood between the reader and turning it on (R4-38 follow-up). There is nothing to turn off in that state, and each replacement turns on from its own step, under its own gates. No lead: a Completed step's action is the contract's milestone.",
-      "whatToDoWhen": {
-        "securityDefaultsOff": {
-          "steps": [
-            "Entra admin center → Entra ID → Overview → Properties → Manage security defaults: check it reads Disabled (not recommended). There is nothing to change on this step.",
-            "Turn on Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins each from its own step, when that step says it is ready. None of them is turned on from here."
-          ]
-        }
       },
       "dates": null,
       "doneWhen": [
-        "Security defaults are off; Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins are enforced.",
-        "Test sign-in for representative users and admins right after the changeover."
+        "IAMAI reads security defaults as Disabled."
       ],
-      "$commentDoneWhenWhen": "The Done-when for the state the scan read, beside who.leadWhen. The lines above are the cutover this step performs where the scan read security defaults on (or could not read them): turn them off and enforce the four replacements in the same window. The step completes on security defaults being off and on nothing else (roadmap/generate.ts); it cannot also wait for the four policies, because each of them waits on this step. Where the scan read them already off, the step is Completed and the cutover lines claimed four policies enforced that nothing checked — on a tenant with no admin phishing-resistant policy at all, whose own row read Not deployed on the same board (R4-38). There is no changeover to test either. So that read state's Done-when is what completes the step, and only that; what the four replacements still need is their own steps', and the who lead already says nothing replaces security defaults until they are enforced.",
-      "doneWhenWhen": {
-        "securityDefaultsOff": [
-          "Security defaults are off."
-        ]
-      },
-      "ifWrong": "If the changeover fails, use your tested emergency access and the agreed rollback procedure. Re-enabling Security Defaults may require changing active Conditional Access policies first; coordinate the rollback to avoid a protection gap.",
-      "$commentIfWrongWhen": "The way back for the state the scan read (content/render.ts ifWrongFor); null says that state has none. ifWrong above undoes the cutover this step performs. Where the scan read security defaults already off, IAMAI cannot know that any changeover was made, by this plan or anyone: \"If the changeover fails … Re-enabling Security Defaults\" described undoing a change IAMAI cannot know was made. Each replacement policy's own step carries its own way back.",
-      "ifWrongWhen": {
-        "securityDefaultsOff": null
-      },
+      "ifWrong": "Set the policy that blocks sign-in back to Report-only. If you are locked out, sign in with an emergency access account.",
       "comms": null,
       "doesntApply": false,
       "skip": false,
@@ -4148,13 +4134,18 @@
       "example": {
         "tenant": "Contoso Pty Ltd",
         "from": "Aug 1",
-        "securityDefaultsOn": true
+        "securityDefaultsOn": true,
+        "turnOn1": "IAC - GLOBAL – BLOCK - Legacy Authentication",
+        "turnOn2": "IAC - GLOBAL - BLOCK - Device Code Auth Flow",
+        "turnOn3": "IAC - GLOBAL - GRANT - MFA - AllAdmins",
+        "turnOn4": "IAC - GLOBAL - GRANT - MFA - AllUsers"
       },
       "placement": "Placed on the day Require MFA for Everyone enforces, with Block Legacy Authentication and Require Phishing-Resistant MFA for Admins enforced the same day; its row carries that date. Shown only when security defaults are on.",
-      "aiFocus": "Describe the ordered cutover and replacement policy identities. Report-only preparation is not replacement protection until enforcement is verified.",
+      "aiFocus": "Walk me through turning off security defaults and turning on the four policies in the same change.",
       "card": {
         "subject": "Security defaults",
-        "check": "Still on"
+        "check": "On",
+        "satisfied": "Off"
       },
       "taskTitle": "Turn security defaults off"
     },

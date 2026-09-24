@@ -78,15 +78,7 @@ export const ACCEPTANCE = [
   // so the replacement list is four policies, not three; and no Learn page says
   // a report-only policy may coexist with security defaults — what Learn says is
   // that creating Conditional Access policies prevents enabling them.
-  { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'once these policies exist you cannot turn security defaults back on.', mustNot: '{firstPolicy}' },
-  // The lead is a Tasks Remaining card's one sentence, so the dating is a whole sentence and not a colon leading a list.
-  { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'Turn them off on that day and not before.' },
-  // The order is sourced now (playbook V3 corroborated 2026-09-21), so the step
-  // states it. What it still may not do is claim Microsoft guarantees coexistence.
-  { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'create all four replacements in Report-only while security defaults are still on' },
-  { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'enable Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins in the same change window' },
   { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'Disabled (not recommended)' },
-  { item: 'C7', step: 's-prereq-security-defaults', path: 'doneWhen', must: 'Security defaults are off; Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins are enforced.' },
   { item: 'C7', step: 's-prereq-security-defaults', path: 'more.helpDesk', must: 'Prompts on the switch day are the new MFA policy; anyone without a method gets a Temporary Access Pass.' },
   { item: 'C7', step: 's-prereq-security-defaults', path: 'more.risks', must: 'Security defaults also block device code sign-in' },
   // Per step, 1–10.

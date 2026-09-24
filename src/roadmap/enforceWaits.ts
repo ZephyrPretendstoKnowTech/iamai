@@ -39,6 +39,7 @@ import { cleanup as cleanupWords } from '../content/content.ts'
 import { contentTitle } from '../content/stepTitle.ts'
 import { graphConditions } from './graphConditions.ts'
 import type { PlanAnswers } from './graphConditions.ts'
+import { positionInGroup } from './stepGroups.ts'
 import type { Schedule } from './schedule.ts'
 import type { Step } from './types.ts'
 
@@ -48,6 +49,35 @@ export const DRILL_PREREQUISITE = 'cleanup-drill'
 export const SECURITY_DEFAULTS_STEP_ID = 's-prereq-security-defaults'
 
 type Edge = { step: string; action: string; prerequisite: string; prerequisiteKind: string; milestone: string; condition: string | null; edgeKind: string }
+
+/**
+ * The policies Turn Off Security Defaults turns on in the same change: the steps
+ * the graph starts it on, in the Plan's order (stepGroups.ts). Their turn-ons
+ * wait on security defaults being off, so once someone saves Disabled no other
+ * step says to turn them on until a scan reads it (walk list 4.x item 8).
+ */
+const SECURITY_DEFAULTS_TURNS_ON: readonly string[] = [...new Set((data as { edges: Edge[] }).edges
+  .filter((e) => e.step === SECURITY_DEFAULTS_STEP_ID && e.action === 'start' && e.prerequisiteKind === 'step')
+  .map((e) => e.prerequisite))]
+  .sort((a, b) => (positionInGroup(a) ?? Number.MAX_SAFE_INTEGER) - (positionInGroup(b) ?? Number.MAX_SAFE_INTEGER))
+
+/**
+ * Writes Turn Off Security Defaults' `turnsOn`: each of those policies on the
+ * plan, by the name it has in the tenant, else the name the plan creates it
+ * under. A policy deferred or ruled out here is not one it turns on. Run once
+ * tracking has read every policy (progress.ts applyProgress).
+ */
+export function noteTurnOns(steps: readonly Step[]): void {
+  const sd = steps.find((s) => s.id === SECURITY_DEFAULTS_STEP_ID)
+  if (sd === undefined) return
+  const byId = new Map(steps.map((s) => [s.id, s]))
+  sd.turnsOn = SECURITY_DEFAULTS_TURNS_ON.flatMap((id) => {
+    const s = byId.get(id)
+    if (s === undefined || s.status === 'skipped' || s.state.setAside || s.doesntApply != null) return []
+    const policy = s.tracking?.policyName || s.naming?.proposed
+    return policy ? [{ stepId: id, policy }] : []
+  })
+}
 
 /** Every policy step's enforce edges on a step prerequisite's completion, from the graph. */
 const EDGES: readonly Edge[] = (data as { edges: Edge[] }).edges.filter((e) =>

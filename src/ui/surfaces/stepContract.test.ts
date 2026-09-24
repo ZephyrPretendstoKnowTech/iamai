@@ -375,9 +375,12 @@ test('a prerequisite waited on short of completion says which milestone, not "fi
     return [...ready.tiles, ...ready.satisfied].find((t) => t.key === 'engine:step:s-goal-mfa-all-users')?.note ?? null
   }
   assert.ok(f && r, 'the fixture ran')
-  const short = noteFor('ready-to-enforce')
-  assert.match(short ?? '', /ready to enforce first/, String(short))
+  const short = noteFor('enforced')
+  assert.match(short ?? '', /needs to be enforced first/, String(short))
   assert.equal(/Finish .* first\./.test(short ?? ''), false, String(short))
+  // Ready to enforce draws no note: Turn Off Security Defaults' own card says
+  // the four policies below it need to be ready (walk list 4.x item 50).
+  assert.equal(noteFor('ready-to-enforce'), null)
   // A wait that really is until completion keeps the plain sentence, and a
   // blocker carrying no milestone is read as one (callers that never had it).
   for (const milestone of ['complete', undefined]) {

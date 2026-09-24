@@ -200,7 +200,8 @@ type ContractWords = {
   /** A finished step's lead where every open finding is unread (actionOf). */
   leadUnverified: string
   fixStep: string
-  fixStepAt: Record<string, string>
+  /** By milestone; a null note draws none (walk list 4.x item 50). */
+  fixStepAt: Record<string, string | null>
   /** A completed step whose own hard prerequisite the scan still finds unmet. */
   fixStepOvertaken: string
   /** The same fact on a step the board does not call Completed: its change is in place, and there is still work on it. */
@@ -2270,8 +2271,12 @@ function emergencyTiles(step: Step, c: StepContract): ReadinessTile[] {
  * reader told to "finish" both halves of a reciprocal pair has been handed a
  * deadlock that the dependency data does not contain.
  */
-function fixStepNote(title: string, milestone: string | null | undefined): string {
-  const at = milestone && milestone !== 'complete' ? (CONTRACT.fixStepAt as Record<string, string>)[milestone] : undefined
+function fixStepNote(title: string, milestone: string | null | undefined): string | null {
+  const at = milestone && milestone !== 'complete' ? CONTRACT.fixStepAt[milestone] : undefined
+  // A milestone whose note is null draws none: Turn Off Security Defaults' own
+  // card says the four policies it waits on need to be ready, and each of their
+  // cards said it again (walk list 4.x item 50).
+  if (at === null) return null
   return fillText(at ?? CONTRACT.fixStep, { step: title })
 }
 
