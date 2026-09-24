@@ -213,6 +213,21 @@ test('#19 the emergency tasks carry no filler, and configuring an existing accou
   for (const steps of [address, eligible, none]) assert.equal(steps.at(-1), RETURN)
 })
 
+test('#19 Configure an existing account is offered only when it has a fix, or the all-clear, to give', () => {
+  const idsOf = (name: Parameters<typeof fixture>[0], edit: (f: Fixture) => void = () => {}) => opened(name, edit).body.emergencyAccountTasks!.tasks.map((t) => t.id)
+  // No account chosen: nothing to configure, so no procedure that opens Users and returns.
+  assert.deepEqual(idsOf('small', noAccounts), ['create-account', 'set-up-passkey'])
+  // Chosen, but a configure check was not read and none is known to fail: the same.
+  const unread = (f: Fixture): void => { for (const id of f.mapping.breakGlassUserIds) delete (f.snapshot.users.find((u) => u.id === id) as { accountEnabled?: boolean }).accountEnabled }
+  assert.deepEqual(idsOf('demo-week2', unread), ['create-account', 'set-up-passkey'])
+  // Chosen and read: offered, with its fix or its all-clear between the two ends.
+  assert.deepEqual(idsOf('demo-week2'), ['create-account', 'configure-account', 'set-up-passkey'])
+  assert.deepEqual(idsOf('demo-week2', (f) => { f.snapshot.users.find((u) => u.id === f.mapping.breakGlassUserIds[0])!.accountEnabled = false }), ['create-account', 'configure-account', 'set-up-passkey'])
+  // The export and print carry what the screen offers.
+  const { step, ctx } = opened('small', noAccounts)
+  assert.equal(stepLines(step, ctx).includes('Configure an existing account'), false)
+})
+
 test('#20 Completion Criteria is the one line the owner approved', () => {
   const LINE = 'Each account you chose is cloud-only, enabled, signs in with the onmicrosoft.com address, holds Global Administrator permanently, and has an approved passkey.'
   for (const [name, edit] of [['demo', () => {}], ['demo-week2', () => {}], ['small', noAccounts]] as const) {

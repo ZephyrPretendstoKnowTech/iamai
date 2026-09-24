@@ -300,8 +300,7 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
   // checks were read for each. With nobody selected it was vacuously true: the
   // tile above it said "Select the intended accounts", and the print and the
   // export carried it as step 3 of the work (R4-44). An unread check is not a
-  // pass either. Without the line the three changes stand as they are, for
-  // whoever needs them.
+  // pass either. Without the line, the changes listed are the ones needed.
   const configureClear = selected.length > 0 && !configureNeeded
     && selected.every(id => preparations.get(id)?.checks.cloudOnly === false || CONFIGURE_CHECKS.every(check => preparations.get(id)?.checks[check] != null))
   const approvedModels = approvedPasskeyModels(ctx.snapshot, ctx.mapping)
@@ -336,9 +335,14 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
   const createClear = selected.length >= 2 && selected.every(id => preparations.get(id)?.checks.cloudOnly === true && !notes.has(id.toLowerCase()) && !signedIn(id))
   const create = domain ? createSteps(domain, false) : [...tenantLead(ctx), 'Open **Entra ID → Custom domain names** and note the tenant’s initial **onmicrosoft.com** domain.', 'Open **Entra ID → Users → New user → Create new user** and create a cloud-only emergency account on that domain.', 'Return to IAMAI and select **Scan to update the plan**.']
   if (createClear) create.unshift(fillText(WORDS.createNotNeeded, { n: selected.length }))
+  // The configure procedure is offered only where it has a change to give, or
+  // its all-clear. With no account chosen, or none whose checks were read and
+  // failed, it was "open Users" then "return and scan" with nothing between
+  // (review of #19); the cards and the rail already say to choose the accounts.
+  const configureOffered = configureNeeded || configureClear
   const tasks: EmergencyAccountTask[] = [
     task({ id: 'create-account', accountId: null, title: 'Create an emergency account', targetUpn: null, required: false, readinessKey: 'account-setup', evidence: null, actionLabel: 'Open creation instructions', steps: create }),
-    task({ id: 'configure-account', accountId: null, title: 'Configure an existing account', targetUpn: null, required: false, readinessKey: 'account-setup', evidence: null, actionLabel: 'Open configuration instructions', steps: [
+    ...(!configureOffered ? [] : [task({ id: 'configure-account', accountId: null, title: 'Configure an existing account', targetUpn: null, required: false, readinessKey: 'account-setup', evidence: null, actionLabel: 'Open configuration instructions', steps: [
       'Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Users**.',
       // Each change is listed only for the chosen accounts IAMAI's checks say
       // need it, and names them; a change no chosen account needs is not listed
@@ -354,7 +358,7 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
       ...(direct.length ? [`Open **Entra ID → Roles & admins → Global Administrator → Add assignments**, select ${named(direct.map(id => targetOf(ctx, id)))}, and complete the assignment.`] : []),
       ...(viaPim.length ? [`Open **ID Governance → Privileged Identity Management → Microsoft Entra roles → Roles → Global Administrator → Add assignments**, select ${named(viaPim.map(id => targetOf(ctx, id)))}. Choose **Assignment type: Active** and **Permanently assigned**.`] : []),
       'Return to IAMAI and select **Scan to update the plan**.',
-    ] }),
+    ] })]),
     task({ id: 'set-up-passkey', accountId: null, title: 'Set up an approved passkey', targetUpn: null, required: false, readinessKey: 'recovery-methods', evidence: null, actionLabel: 'Open passkey instructions', steps: variants[0].steps, variants, defaultVariantId: variants[0].id }),
   ]
   const accounts = accountStatuses(ctx, preparations, notes, signedIn)
