@@ -115,6 +115,14 @@ export type PlanDecisions = {
    * scan that reads them on and kept (progress.ts securityDefaultsSeenOnAtOf).
    */
   securityDefaultsSeenOnAt?: string
+  /**
+   * By step id, the day the plan first found the step complete (Step.completedAt):
+   * the day its Completed row states. A step the scan finds complete records
+   * nothing else, so without this its day moved to every later scan's. Written
+   * by the first scan that finds the step complete, kept while it stays complete
+   * and dropped when it reopens (progress.ts recordCompletion).
+   */
+  completedAt?: Record<string, string>
   /** Every picker's saved decision, by step id (prompt 52 Part 3). */
   stepDecisions?: Record<string, StepDecision>
   /** Owner confirmations of the checks IAMAI cannot read, by step id, then by prerequisite id. */

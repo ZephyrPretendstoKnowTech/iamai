@@ -48,7 +48,7 @@ const memo = new Map<string, { key: string; run: FixtureRun }>()
 
 /** Everything the derivation reads, serialised: a fixture edited in place gets a new key. */
 function keyOf(f: Fixture): string {
-  return [f.planId, f.planCreatedAt, f.operatorId, JSON.stringify(f.mapping), JSON.stringify([...f.groups]), JSON.stringify(f.baseline), JSON.stringify(f.snapshot), JSON.stringify(f.checkpoints ?? [])].join('\u0000')
+  return [f.planId, f.planCreatedAt, f.operatorId, JSON.stringify(f.mapping), JSON.stringify([...f.groups]), JSON.stringify(f.baseline), JSON.stringify(f.snapshot), JSON.stringify(f.checkpoints ?? []), JSON.stringify(f.completedAt ?? {})].join('\u0000')
 }
 
 /**
@@ -127,7 +127,7 @@ function derive(f: Fixture, over: Partial<RoadmapInput>, observations: Record<st
   applyProgress(result.steps, snapshot, coverage, f.planId, now ?? undefined, f.planCreatedAt, observations, {
     groupMembers: Object.fromEntries([...f.groups].filter(([, g]) => g.sampled !== true).map(([id, g]) => [id.toLowerCase(), g.memberIds])),
     activePeople: activePeopleIds(snapshot, snapshot.asOf, notPeopleIds(f.mapping)),
-  })
+  }, f.completedAt ?? null)
   // Tracking has settled every lifecycle, so the schedule's own forecast can be
   // taken off the steps it was never earned for: an enforcement wave and an
   // enforce event were placed on every step before the scan found which policies

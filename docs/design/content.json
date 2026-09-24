@@ -212,7 +212,11 @@
         "freeze": "the change freeze ends on {to} and {step} starts after it",
         "phase": "{step} follows {other}, which starts first",
         "soft": "two changes prompt the same people, so {step} cannot run in the same window as {other}",
-        "prerequisites": "{n} prerequisites take the first days"
+        "prerequisites": "{n} prerequisites take the first days",
+        "$commentForecast": "The Estimated finish tip's reason where the plan's last work waits on other work (derive/finish.ts planLengthSentence, from roadmap/forecast.ts planForecast): the step that ends last and the step whose finish it waits for.",
+        "turnOnAfter": "{step} is turned on once {waitsFor} is done",
+        "waitsThenObserves": "{step} waits for {waitsFor}, then observes in report-only for {observation} days before it is turned on",
+        "waitsFor": "{step} waits for {waitsFor}"
       },
       "tracking": {
         "matchedByTag": "matched by its plan tag",
@@ -799,7 +803,7 @@
         "coversEnabled": "covers {n} enabled"
       },
       "when": {
-        "$comment": "The board's When column (planBoard.ts boardWhen): a date, or the placeholder (A1b). after and afterPrerequisites are the Up Next lane label's tail (laneLabelOf), never the column.",
+        "$comment": "The board's When column (planBoard.ts boardWhenOf): a date on every open row (owner, 2026-09-23). A row with no day of its own, a held one included, reads estimate: the day the plan expects its waits to clear (roadmap/forecast.ts planForecast). none and waiting stand only where no board reading estimated the row; waiting is also the opened step's rail for a step the board holds. after and afterPrerequisites are the Up Next lane label's tail (laneLabelOf), never the column.",
         "none": "Not scheduled",
         "after": "After {step}",
         "afterPrerequisites": "After prerequisites",
@@ -2821,8 +2825,7 @@
           "all": "Show the full plan",
           "$commentCreate": "The view the line above the board opens (pages.app.plan.board.createNow): the policies ready to create in report-only now, in section order. Read after \"Showing\".",
           "create": "policies ready to create in report-only",
-          "filter": "Showing {view}",
-          "finishUnknown": "Depends on open work"
+          "filter": "Showing {view}"
         },
         "cleanupImpacts": {
           "hardening": "Emergency account safeguards",

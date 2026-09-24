@@ -126,10 +126,12 @@ test('the held plan-length sentence counts its weeks through pluralise', () => {
   assert.doesNotMatch(src, /week\$\{/, 'the sentence builds its plural by hand')
 })
 
-// The Plan header reads the same sentence (Plan.tsx Projected finish tip).
-test('the Plan header\'s Projected finish tip is the one plan-length sentence', () => {
+// The Plan header reads the same sentence function (Plan.tsx Estimated finish
+// tip), with the board's forecast of the held work the pack has no board for
+// (owner, 2026-09-23; derive/estimatedFinish.test.ts).
+test('the Plan header\'s Estimated finish tip is the one plan-length sentence', () => {
   const plan = readFileSync(new URL('./Plan.tsx', import.meta.url), 'utf8').replace(/\/\/[^\n]*/g, '')
-  assert.match(plan, /const lengthTip = finish\.finish === null && projected\.estimate === null \? undefined : \(planLengthSentence\(finish, c\.schedule\) \?\? undefined\)/)
+  assert.match(plan, /const lengthTip = planLengthSentence\(finish, c\.schedule, \{ steps: c\.steps, forecast: board\.forecast, titleOf \}\) \?\? undefined/)
 })
 
 // Finding 3 (severity 3). The pack's Cleanup blocks and the bundle's cleanup

@@ -88,6 +88,8 @@ export type LaneReading = {
   unsavedPrefilled?: boolean
   /** Completed: hard prerequisites of the action it already took that the scan still finds unmet (lanes.ts `unmetPrerequisites`). */
   overtaken?: readonly HoldBlocker[]
+  /** Where the plan expects the row to happen (roadmap/forecast.ts planForecast), set by the board (planBoard.ts boardReadingsOf): the day a row with none of its own is dated by. */
+  estimate?: string
 }
 
 /** A row that is not a roadmap step: a Cleanup row, by the id the board gives it. */

@@ -797,8 +797,9 @@ test('a header tile draws one list in section order: each section heading once, 
 test('a Completed or Deferred row is one compact line: number, title, its lane word and the day where one was recorded', () => {
   // Owner, roadmap flow V2: finished work shrinks in place. The row keeps its
   // number, its title and its lane word, and says the day it was completed or
-  // deferred when the plan recorded one; who it touches, the tenant chip and a
-  // reason line are for work still to do. Selecting it opens the step as before.
+  // deferred when the plan recorded one; the tenant chip and a reason line are
+  // for work still to do. A Completed row keeps its Impact (owner, 2026-09-23;
+  // boardColumns.test.ts). Selecting it opens the step as before.
   for (const lane of ['Completed', 'Deferred'] as const) assert.equal(drawsCompact(lane), true, lane)
   for (const lane of ['Ready', 'Up Next', 'On Hold'] as const) assert.equal(drawsCompact(lane), false, lane)
   const r = runFixture(fixture('demo-week2'))
@@ -812,14 +813,14 @@ test('a Completed or Deferred row is one compact line: number, title, its lane w
   const skipped = { ...done, manualReview: undefined, history: [...done.history, { at: '2026-09-22T12:00:00.000Z', from: 'ready' as const, to: 'skipped' as const, note: 'not now' }] }
   assert.equal(finishedDayOf(skipped, 'Deferred'), absoluteDate('2026-09-22T12:00:00.000Z'), 'a deferred row does not say the day it was deferred')
   // No recorded day: the line says none rather than a word in its place.
-  assert.equal(finishedDayOf({ ...done, manualReview: undefined, history: [] }, 'Completed'), null)
+  assert.equal(finishedDayOf({ ...done, completedAt: undefined, manualReview: undefined, history: [] }, 'Completed'), null)
   assert.equal(finishedDayOf(done, 'Ready'), null, 'work still to do has no finished day')
   // The Plan draws every step row and every Cleanup row through the one compact rule.
   const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
   assert.equal(plan.match(/compact=\{drawsCompact\(lane(View)?\.lane\)\}/g)?.length, 2, 'a row kind decides its own shape')
   const row = readFileSync('src/ui/surfaces/StepSections.tsx', 'utf8')
   assert.match(row, /data-compact=\{compact \|\| undefined\}/, 'the compact row is not marked for its style')
-  assert.match(row, /\{!compact && <span className="who">/, 'a compact row still says who it touches')
+  assert.match(row, /\{who !== null && <span className="who">/, 'the row draws an Impact it is not handed')
 })
 
 test('the how-to starts at the top of All work, says every Ready · Create policy can be created in report-only once the first two sections are done, and turns each on by its own row, not its section', () => {

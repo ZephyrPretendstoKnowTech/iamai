@@ -49,6 +49,8 @@ import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import { cleanupComplete } from '../../roadmap/cleanupDone.ts'
 import { cleanupEntry } from './cleanupExport.ts'
+import { planForecast } from '../../roadmap/forecast.ts'
+import type { ForecastRow, ForecastWait, PlanForecast } from '../../roadmap/forecast.ts'
 import { cleanupTitleOf } from './stepContract.ts'
 import { sectionPositions } from '../../roadmap/stepGroups.ts'
 
@@ -274,7 +276,7 @@ export function laneLabelOf(r: LaneReading, titleOf: (id: string) => string | nu
  * apply here has no engine reading and reads `Doesn't apply` (decision 3).
  */
 export function laneViewOf(r: LaneReading, titleOf: (id: string) => string | null): LaneView {
-  return { lane: r.lane, substatus: r.substatus, label: laneLabelOf(r, titleOf), tail: laneTailOf(r, titleOf), waitingFor: waitingForOf(r, titleOf), tone: LANE_TONE[r.lane] }
+  return { lane: r.lane, substatus: r.substatus, label: laneLabelOf(r, titleOf), tail: laneTailOf(r, titleOf), waitingFor: waitingForOf(r, titleOf), tone: LANE_TONE[r.lane], ...(r.estimate ? { estimate: r.estimate } : {}) }
 }
 
 /**
@@ -336,11 +338,43 @@ export function boardReadingsOf(
     const s = byId.get(id)
     return s ? contentTitle(s) : cleanupTitleOf(id)
   }
-  return { readings, titleOf, cleanupRows }
+  // Where the plan expects each row to happen: the day a row with none of its own reads (boardWhenOf).
+  const forecast = planForecast(forecastRowsOf(steps, readings, titleOf, cleanupRows))
+  for (const [id, span] of forecast.spans) {
+    const r = readings.get(id)
+    if (r) r.estimate = span.at
+  }
+  return { readings, titleOf, cleanupRows, forecast }
+}
+
+/**
+ * The board's rows as the forecast reads them (roadmap/forecast.ts planForecast):
+ * whether the board dates each step by its own day, what each row's next action
+ * waits on (its reading's prerequisites), and what a policy's turn-on waits on
+ * beyond that — its open readiness gates, an answer it still needs, and the work
+ * its enforcement waits for (Action.enforceWaitsOn).
+ */
+function forecastRowsOf(steps: readonly Step[], readings: ReadonlyMap<string, LaneReading>, titleOf: (id: string) => string | null, cleanupRows: readonly BoardCleanupRow[]): ForecastRow[] {
+  const waitsOf = (r: LaneReading): ForecastWait[] => r.blockers.map((b) => ({ kind: b.kind, id: b.id, milestone: b.milestone }))
+  const rows: ForecastRow[] = []
+  for (const step of steps) {
+    const r = readings.get(step.id)
+    if (!r || step.doesntApply != null) continue
+    const gates = r.gates.filter((g) => !g.satisfied).flatMap((g): ForecastWait[] => g.id.startsWith(READINESS_GATE) ? [{ kind: 'evidence', id: g.id }] : g.id.startsWith('input:') ? [{ kind: 'input', id: g.id }] : readings.has(g.id) ? [{ kind: 'step', id: g.id }] : [])
+    const enforce = (step.action.enforceWaitsOn ?? []).map((w): ForecastWait => ({ kind: 'step', id: w.id }))
+    const complete = r.lane === 'Completed' || r.lane === 'Deferred'
+    rows.push({ id: step.id, step, dated: !complete && boardDatesOwnDay(step, laneViewOf(r, titleOf)), waits: waitsOf(r), turnOnWaits: [...gates, ...enforce], complete })
+  }
+  for (const c of cleanupRows) {
+    const r = readings.get(c.id)
+    if (!r) continue
+    rows.push({ id: c.id, step: null, dated: true, day: c.row.day, waits: waitsOf(r), turnOnWaits: [], afterRollout: AFTER_ROLLOUT.has(c.row.kind), complete: c.complete || r.lane === 'Completed' || r.lane === 'Deferred' })
+  }
+  return rows
 }
 
 /** The board's reading of a whole plan (boardReadingsOf): every row's lane reading, the title each names a prerequisite by, and the Cleanup rows it draws. */
-export type BoardReadings = { readings: Map<string, LaneReading>; titleOf: (id: string) => string | null; cleanupRows: BoardCleanupRow[] }
+export type BoardReadings = { readings: Map<string, LaneReading>; titleOf: (id: string) => string | null; cleanupRows: BoardCleanupRow[]; forecast: PlanForecast }
 
 /** One row of the board before a tab, a focus or a group places it: the item the tabs group, its reading and lane view, and the step or Cleanup row it draws. */
 export type BoardRow = { item: BoardItem; reading: LaneReading; lane: LaneView; step: Step | null; cleanup: BoardCleanupRow | null }
@@ -636,23 +670,33 @@ function turnsOn(step: Step, scheduled: StepSchedule | null): boolean {
 }
 
 /**
- * The board's timing column for one step: the row's own value (rowWhen.ts)
- * where it is a day, else the day the plan's one scheduling result gives the
- * step (roadmap/stepSchedule.ts) — for preparation work the first day of its
- * phase, `waveStart` — else the placeholder. A step sequenced after another
- * keeps its date, unless the day is a policy's turn-on; a held step has no
- * scheduled day and reads the placeholder (owner decisions 2 and 6, 2026-09-22,
- * the hold rule below).
+ * What the board's timing column reads for one step, before it is worded: the
+ * row's own day, a word that is not a day, or that the board has no day of its
+ * own for it — held (`held`, the board holds it) or never given one (`undated`).
+ *
+ * The row's own value (rowWhen.ts) where it is a day, else the day the plan's
+ * one scheduling result gives the step (roadmap/stepSchedule.ts) — for
+ * preparation work the first day of its phase, `waveStart`. A step sequenced
+ * after another keeps its date, unless the day is a policy's turn-on; a held
+ * step has no scheduled day of its own (owner decisions 2 and 6, 2026-09-22, the
+ * hold rule below).
+ *
+ * `read`: the board's own reading, or null where the caller has none and the
+ * single-step fallback stands in. The fallback runs the engine over one step, so
+ * every cross-step edge is missing and it can only say On Hold; the hold rule
+ * below therefore asks for the board's reading and never the guess.
  */
-/** `read`: the board's own reading, or null where the caller has none and the
- *  single-step fallback stands in. The fallback runs the engine over one step, so
- *  every cross-step edge is missing and it can only say On Hold; the hold rule
- *  below therefore asks for the board's reading and never the guess. */
-export function boardWhenOf(step: Step, waveStart: string | null = null, read: LaneView | null = null): string {
+type BoardTiming =
+  | { kind: 'day'; text: string }
+  | { kind: 'word'; text: string }
+  | { kind: 'held' }
+  | { kind: 'undated'; word: string }
+
+function boardTimingOf(step: Step, waveStart: string | null, read: LaneView | null): BoardTiming {
   const lane = read ?? laneViewAlone(step)
   // A reading made with nothing around it is the guess, whoever hands it in.
   if (read?.alone) read = null
-  if (step.status === 'skipped') return schedulingWords.deferred
+  if (step.status === 'skipped') return { kind: 'word', text: schedulingWords.deferred }
   // The finished wording belongs to a row the board reads Completed. A step
   // whose own status is `done` while the lane still has work for it read the
   // day it was finished, or "Already in place", in the When column of a row
@@ -662,13 +706,13 @@ export function boardWhenOf(step: Step, waveStart: string | null = null, read: L
   // else on the board, and the row is dated like the live row it is.
   if (step.status === 'done' && lane.lane === 'Completed') {
     const at = completedAtOf(step)
-    return at ? dayLabel(at) : schedulingWords.done
+    return { kind: 'word', text: at ? dayLabel(at) : schedulingWords.done }
   }
   const when = rowWhen(step, waveStart)
   const scheduled = step.scheduled ? scheduleOf(step) : null
   // A review day that has passed with no scan since reads that it is due, never
   // the day that went by, and is no estimate (roadmap/stepSchedule.ts `overdue`).
-  if (scheduled?.overdue) return when
+  if (scheduled?.overdue) return { kind: 'word', text: when }
   const words = when === '' || rowWhenWraps(step) || when === WHEN_WORDS.now || when === WHEN_WORDS.readyNow || when.startsWith(READY_ON_PREFIX)
   // The generic `now` reads the step's own scheduled day, which is the phase's first day for preparation work.
   const day = scheduled?.at ?? (when === WHEN_WORDS.now ? waveStart : null)
@@ -678,12 +722,12 @@ export function boardWhenOf(step: Step, waveStart: string | null = null, read: L
     day: day ? dayLabel(day) : null,
   })
   if (result === WHEN.none || result === '—' || result === '–') {
-    if (lane.lane === 'Ready' && lane.substatus === 'Review') return schedulingWords.reviewNow
+    if (lane.lane === 'Ready' && lane.substatus === 'Review') return { kind: 'word', text: schedulingWords.reviewNow }
     // A Ready row the scheduler gave no day — a step whose own status is already
     // `done` while a decision on it is still open — says the action rather than
-    // "Not scheduled", which is the word for work outside the rollout.
-    if (lane.lane === 'Ready' && lane.substatus === 'Decision') return schedulingWords.decideNow
-    return step.blockedBy.length > 0 ? schedulingWords.waiting : step.state.condition === 'needs-decision' ? schedulingWords.review : schedulingWords.none
+    // a placeholder.
+    if (lane.lane === 'Ready' && lane.substatus === 'Decision') return { kind: 'word', text: schedulingWords.decideNow }
+    return step.blockedBy.length > 0 ? { kind: 'held' } : { kind: 'undated', word: step.state.condition === 'needs-decision' ? schedulingWords.review : schedulingWords.none }
   }
   // One authority for "is this step held": the lane engine (planLanes.ts),
   // which reads the dependency graph. A step's own `blockedBy` is the narrower
@@ -691,7 +735,8 @@ export function boardWhenOf(step: Step, waveStart: string | null = null, read: L
   // Turn Off Security Defaults carries none of them while the graph holds it
   // behind another step's milestone. The row therefore read a near, ordinary
   // day: follow it on the day it names and the tenant's own protection comes
-  // off before its replacements are ready. A row the board holds has no day.
+  // off before its replacements are ready. A row the board holds has no day of
+  // its own.
   // Not On Hold · Observing, which is a healthy wait with a day of its own: the
   // report-only window closes on a date and the column says which. Observing is
   // that row's reason (BOARD.blockers.evidence, the lane tail), never its
@@ -699,14 +744,14 @@ export function boardWhenOf(step: Step, waveStart: string | null = null, read: L
   // substatus test excluded nothing, and a report-only policy still being
   // watched read "After prerequisites" wherever the roadmap recorded no wait of
   // its own on it — the same policy read its review day on a tenant where it
-  // did. Every row the engine files On Hold behind something else still reads
-  // no day, whatever waits the roadmap records on the step itself: owner
+  // did. Every row the engine files On Hold behind something else has no day of
+  // its own, whatever waits the roadmap records on the step itself: owner
   // decision 2 (2026-09-22) keeps the sequencing ruling's dates for work
   // nothing holds, and On Hold is the lane engine holding it.
   //
   // A turn-on is held by every prerequisite the board shows (owner decision 6,
-  // roadmap/enforceWaits.ts), so a row whose day is the turn-on reads no day
-  // on either waiting lane - Up Next as much as On Hold. Require Token
+  // roadmap/enforceWaits.ts), so a row whose day is the turn-on has no day of
+  // its own on either waiting lane - Up Next as much as On Hold. Require Token
   // Protection on Windows, ready to enforce behind Verify Emergency Access
   // (demo week two, the recovery test not yet run), read "Sep 14, 2026" under
   // "Up Next · After Verify Emergency Access", while its own milestone said it
@@ -714,22 +759,55 @@ export function boardWhenOf(step: Step, waveStart: string | null = null, read: L
   // read "Announce Sep 7, 2026 · Change Sep 14, 2026" and the calendar booked
   // "Turn the policy on" for the day (R4-55). A day for a create, a preparation
   // or a check still stands on Up Next: that work waits on nothing held.
-  if (read !== null && read.lane === 'On Hold' && read.substatus === null && read.tail !== BOARD.blockers.evidence) return schedulingWords.waiting
-  if (read !== null && (read.lane === 'Up Next' || read.lane === 'On Hold') && turnsOn(step, scheduled)) return schedulingWords.waiting
-  return estimatedDay(step) ? fillText(schedulingWords.estimate, { date: result }) : result
+  if (read !== null && read.lane === 'On Hold' && read.substatus === null && read.tail !== BOARD.blockers.evidence) return { kind: 'held' }
+  if (read !== null && (read.lane === 'Up Next' || read.lane === 'On Hold') && turnsOn(step, scheduled)) return { kind: 'held' }
+  return { kind: 'day', text: estimatedDay(step) ? fillText(schedulingWords.estimate, { date: result }) : result }
 }
 
-/** When the plan recorded a step as done: the owner's confirmation, else its last move to done; null where it recorded none. */
-const completedAtOf = (step: Step): string | null => step.manualReview?.confirmedAt ?? step.history.filter((h) => h.to === 'done').at(-1)?.at ?? null
+/**
+ * The board's timing column for one step: a date for every open row (owner,
+ * 2026-09-23). The row's own day where the board dates it by one; else — a row
+ * the board holds, or one nothing gave a day — "Est. <date>", the day the plan
+ * expects what it waits on to clear (roadmap/forecast.ts planForecast, carried
+ * on the board's reading as `estimate`). A finished row reads the day it was
+ * completed, a deferred one its word. Only a reading made without the board has
+ * no estimate, and says its placeholder.
+ */
+export function boardWhenOf(step: Step, waveStart: string | null = null, read: LaneView | null = null): string {
+  const t = boardTimingOf(step, waveStart, read)
+  if (t.kind === 'day' || t.kind === 'word') return t.text
+  const estimate = read && !read.alone ? (read.estimate ?? null) : null
+  if (estimate !== null) return fillText(schedulingWords.estimate, { date: dayLabel(estimate) })
+  return t.kind === 'held' ? schedulingWords.waiting : t.word
+}
+
+/** Whether the board dates the step by a day of its own (`boardTimingOf`): the forecast reads that day, and estimates every other. */
+export function boardDatesOwnDay(step: Step, read: LaneView | null): boolean {
+  return boardTimingOf(step, waveStartOf(step), read).kind === 'day'
+}
+
+/**
+ * When the plan recorded a step as done: the day the plan first found it
+ * complete (Step.completedAt, roadmap/progress.ts recordCompletion), else the
+ * owner's confirmation, else its last move to done; null where it recorded none.
+ */
+const completedAtOf = (step: Pick<Step, 'completedAt' | 'manualReview' | 'history'>): string | null => step.completedAt ?? step.manualReview?.confirmedAt ?? step.history.filter((h) => h.to === 'done').at(-1)?.at ?? null
 
 /**
  * Whether a row draws as one compact line (owner, roadmap flow V2: finished
  * work shrinks in place): Completed and Deferred rows. The line keeps the
  * row's number, title and lane word, and the day it was finished where the
- * plan recorded one (finishedDayOf); who it touches, the tenant chip and the
- * waiting line belong to work still to do. Selecting it opens the step.
+ * plan recorded one (finishedDayOf); the tenant chip and the waiting line
+ * belong to work still to do. Selecting it opens the step.
  */
 export const drawsCompact = (lane: Lane): boolean => lane === 'Completed' || lane === 'Deferred'
+
+/**
+ * Whether a row draws its Impact: every row but a deferred one. A Completed row
+ * keeps the Impact it read while it was open (owner, 2026-09-23): finishing the
+ * work does not change what it touched.
+ */
+export const drawsImpact = (lane: Lane): boolean => lane !== 'Deferred'
 
 /**
  * The day a compact row shows: when the step was completed (the same day its
@@ -737,14 +815,15 @@ export const drawsCompact = (lane: Lane): boolean => lane === 'Completed' || lan
  * where the plan recorded no day, and for work still to do. Never a word in a
  * date's place.
  */
-export function finishedDayOf(step: Pick<Step, 'manualReview' | 'history'>, lane: Lane): string | null {
-  const at = lane === 'Completed' ? completedAtOf(step as Step) : lane === 'Deferred' ? step.history.filter((h) => h.to === 'skipped').at(-1)?.at ?? null : null
+export function finishedDayOf(step: Pick<Step, 'completedAt' | 'manualReview' | 'history'>, lane: Lane): string | null {
+  const at = lane === 'Completed' ? completedAtOf(step) : lane === 'Deferred' ? step.history.filter((h) => h.to === 'skipped').at(-1)?.at ?? null : null
   return at ? dayLabel(at) : null
 }
 
 /**
- * Whether the board holds a step: its When column reads "After prerequisites"
- * (`boardWhenOf` on the board's own reading, the day the Plan's row takes).
+ * Whether the board holds a step: it has no day of its own on the board
+ * (`boardTimingOf` on the board's own reading), and its When column reads the
+ * day the plan expects its waits to clear, as an estimate (owner, 2026-09-23).
  *
  * Owner decision 2 (2026-09-22): held steps follow the board, and a step the
  * board holds carries no date anywhere — the opened step's rail and milestone,
@@ -759,7 +838,7 @@ export function finishedDayOf(step: Pick<Step, 'manualReview' | 'history'>, lane
  */
 export function boardHolds(step: Step, read: LaneView | null | undefined): boolean {
   if (!read || read.alone) return false
-  return boardWhenOf(step, waveStartOf(step), read) === schedulingWords.waiting
+  return boardTimingOf(step, waveStartOf(step), read).kind === 'held'
 }
 
 /** The reason under a row (rowWhen.ts rowReason). The When cell never names a step, so nothing here is said twice. */
