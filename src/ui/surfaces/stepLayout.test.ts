@@ -17,7 +17,6 @@ import { directionMilestoneAction } from '../../roadmap/directionAnswers.ts'
 
 const read = (p: string): string => readFileSync(new URL(p, import.meta.url), 'utf8')
 const CONTENT_STEP = read('./ContentStep.tsx')
-const STEP_SECTIONS = read('./StepSections.tsx')
 const STEP_BODY = read('./stepBody.ts')
 const CSS = read('../app.css')
 
@@ -51,10 +50,6 @@ test('U2/U5: the action column sits between Readiness and Implementation, and ho
   assert.match(column, /decides && <Decision /, 'the decision controls are not children of the action column')
   assert.equal(CONTENT_STEP.split('<Decision ').length - 1, 1, 'the decision is drawn somewhere besides the action column')
   assert.doesNotMatch(CONTENT_STEP, /StepRail/, 'the old rail is still drawn')
-  // The column is led by the milestone, with no sub-line where the package authors none,
-  // and none at all on a Completed step (owner, 2026-09-23).
-  const component = STEP_SECTIONS.slice(STEP_SECTIONS.indexOf('export function StepActionColumn'))
-  assert.match(component, /<aside className="step-action-column surface-inset">\s*\{rail && <div className="side-block">\s*<div className="key-label">\{CONTRACT\.railMilestone\}<\/div>\s*<p className="metric">\{rail\.metric\}<\/p>\s*\{rail\.sub !== '' && <p className="metric-sub">\{rail\.sub\}<\/p>\}\s*<\/div>\}\s*\{children\}/)
 })
 
 test('U2: the body is a two-column grid, 1fr and 260px, that stacks below 900px', () => {

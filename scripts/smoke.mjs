@@ -377,6 +377,12 @@ try {
   t = await text()
   check('Connect (scanning): the lane in plain words with the elapsed time, and Stop', /reading people · \d+s/.test(t) && /Stop/.test(t) && !/Scan tenant/.test(t), (t.match(/[^\n]*reading[^\n]*/) ?? [''])[0])
   check('Connect (scanning): the header tabs are disabled', (await evaluate(`[...document.querySelectorAll('header.app nav a[aria-disabled="true"]')].length`)) === 3)
+  // A scan pressed from inside a step (owner item 10): the step's footer says
+  // what the scan line under the header says, over its Scan button, which waits.
+  await send('Page.navigate', { url: `${BASE}&state=rescanning#/plan/s-prereq-break-glass` })
+  const footerScan = `(() => { const f = document.querySelector('main.page .step[data-step-id="s-prereq-break-glass"] > .step-footer'); const line = document.querySelector('.scan-line > span'); const b = f && f.querySelector('.step-footer-scan'); const s = f && f.querySelector('.step-footer-scan-status'); return { line: line ? line.textContent.trim() : null, footer: s ? s.textContent.trim() : null, disabled: !!b && b.disabled, above: !!(s && b) && !!(s.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) } })()`
+  const scanShown = await waitFor(`(() => { const r = ${footerScan}; return !!r.line && /^reading people · \\d+s$/.test(r.line) && r.footer === r.line && r.disabled && r.above })()`, 8000)
+  check('Plan (scanning): the step’s footer carries the scan line’s status over its Scan button, and the button is disabled', scanShown, JSON.stringify(await evaluate(footerScan)))
   // Connect, scanned: who is signed in, the baseline line, the one-line result, Open the plan (target-state §3).
   await go('connect')
   await sleep(600)
@@ -1435,6 +1441,24 @@ try {
   )
   if (createDrawn) await clickText('/^Show the full plan$/')
   await sleep(200)
+  // The action column (owner, 2026-09-23): the Next milestone block leads it on
+  // every step, and on a Completed step it reads Completed. On Prepare Emergency
+  // Access Accounts the instruction line follows, once, then the picker's label.
+  const EA_HELP = JSON.parse(readFileSync('docs/design/content.json', 'utf8')).steps.find((s) => s.id === 's-prereq-break-glass').decision.help
+  const railRead = async (id) => {
+    await evaluate(`location.hash = '#/plan/${id}'`)
+    const rail = `document.querySelector('main.page .step[data-step-id="${id}"] .step-body > .step-action-column')`
+    if (!(await waitFor(`!!${rail}`, 6000))) return null
+    return await evaluate(`(() => { const rail = ${rail}; const block = rail.firstElementChild; const text = rail.textContent || ''; const line = text.indexOf(${JSON.stringify(EA_HELP)}); const label = ((rail.querySelector('.decision .action-heading') || {}).textContent || '').trim(); return { lane: ((document.querySelector('main.page .plan-row[data-step="${id}"] .lane') || {}).textContent || '').trim(), milestone: block && block.classList.contains('side-block') ? [(block.querySelector('.key-label') || {}).textContent, (block.querySelector('.metric') || {}).textContent] : null, help: text.split(${JSON.stringify(EA_HELP)}).length - 1, yours: /Your emergency access accounts/.test(text), label, lineFirst: line >= 0 && label !== '' && line < text.indexOf(label, line) } })()`)
+  }
+  const completedRail = (r) => !!r && r.lane === 'Completed' && JSON.stringify(r.milestone) === JSON.stringify(['Next milestone', 'Completed'])
+  const policyRail = await railRead('s-goal-mfa-all-users')
+  const accountsRail = await railRead('s-prereq-break-glass')
+  check(
+    'Demo: a Completed step’s action column leads with Next milestone · Completed, and 1.1 says its instruction once, over the picker’s label',
+    completedRail(policyRail) && completedRail(accountsRail) && accountsRail.help === 1 && !accountsRail.yours && accountsRail.label === 'Emergency access accounts' && accountsRail.lineFirst,
+    JSON.stringify({ policyRail, accountsRail }),
+  )
   // Scan again only ever moves forward; the way back to the initial scan is the
   // banner's selector, which names the snapshot it selects.
   await demoScanAgain()
