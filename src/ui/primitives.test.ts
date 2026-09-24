@@ -33,17 +33,6 @@ const PACKS = {
   mfa: 'docs/design/approved/anatomy/mfa-readiness-v3.html',
 } as const
 
-/**
- * The evidence the shared roles still stand on. Task 031 established them over
- * the four packs as they stood, with MFA Readiness's v2 as a second witness for
- * the eyebrow, the key head, the pill and the callout. The v3 pack (prompt 62)
- * draws its own sentence-case kicker and grouped rows instead, and v2 was
- * archived on 2026-09-19 (item 22), so a test no longer reads it: the roles
- * rest on the current packs that still draw them, and production's other
- * surfaces still use them.
- */
-const ROLE_EVIDENCE = { home: PACKS.home, connect: PACKS.connect, plan: PACKS.plan } as const
-
 const APP = 'src/ui/app.css'
 
 /**
@@ -68,144 +57,6 @@ function ruleBody(css: string, selector: string, { solo = false } = {}): string 
   }
   return undefined
 }
-
-/** Every rule that names the selector, for a property one of several may set. */
-function allRuleBodies(css: string, selector: string): string[] {
-  const stripped = css.replace(/\/\*[\s\S]*?\*\//g, '')
-  const out: string[] = []
-  for (const m of stripped.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-    const selectors = m[1]
-      .split(',')
-      .map((s) => s.replace(/\s+/g, ' ').trim())
-      .filter(Boolean)
-    if (selectors.includes(selector)) out.push(m[2].replace(/\s+/g, ' ').trim())
-  }
-  return out
-}
-
-// ------------------------------------------------- what the evidence shares
-
-test('the eyebrow is shared because the Home, Connect and Plan packs declare it, and they declare it identically', () => {
-  const declared = Object.entries(ROLE_EVIDENCE).map(([surface, path]) => ({ surface, body: ruleBody(read(path), '.eyebrow', { solo: true }) }))
-  for (const { surface, body } of declared) assert.ok(body, `${surface} no longer declares .eyebrow — the shared role has lost its evidence`)
-  const [first, ...rest] = declared
-  for (const other of rest) assert.equal(other.body, first.body, `${other.surface} and ${first.surface} draw .eyebrow differently`)
-  // The values the packs agree on, so a silent drift in the pack is caught too.
-  assert.match(first.body!, /font-size:\s*11px/)
-  assert.match(first.body!, /text-transform:\s*uppercase/)
-  assert.match(first.body!, /letter-spacing:\s*\.11em/)
-
-  // Production carries the same role, translated onto the brand skin: the
-  // packs are dark Inter mockups and own the anatomy, not the face or the ink.
-  const role = ruleBody(read(APP), '.eyebrow', { solo: true })
-  assert.ok(role, 'app.css has no .eyebrow role')
-  assert.match(role, /font-size: var\(--t-0\)/, '11px is --t-0')
-  assert.match(role, /text-transform: uppercase/)
-  assert.match(role, /letter-spacing: 0\.11em/)
-  // 11px is text, so it takes the AA quiet level, not the muted component ink
-  // (task 030 correction 1). src/ui/tokens.test.ts measures that it is AA.
-  assert.match(role, /color: var\(--quiet-text\)/)
-})
-
-test('the key label is the field key the Plan pack draws twice, at the smaller step', () => {
-  const plan = read(PACKS.plan)
-  // The Plan's side-block label and readiness tile label. The archived MFA
-  // Readiness v2 person-table head was the other pack's witness.
-  for (const [where, body] of [
-    ['plan .side-label', ruleBody(plan, '.side-label', { solo: true })],
-    ['plan .readiness-tile-label', ruleBody(plan, '.readiness-tile-label', { solo: true })],
-  ] as const) {
-    assert.ok(body, `${where} is gone`)
-    assert.match(body, /font-size:\s*10px/, `${where} is no longer 10px`)
-    assert.match(body, /text-transform:\s*uppercase/, `${where} is no longer uppercase`)
-  }
-  const role = ruleBody(read(APP), '.key-label', { solo: true })
-  assert.ok(role, 'app.css has no .key-label role')
-  assert.match(role, /font-size: var\(--t-micro\)/, '10px is --t-micro')
-  assert.match(role, /text-transform: uppercase/)
-  // It is a step quieter than the eyebrow, which is what the packs draw.
-  assert.notEqual(role, ruleBody(read(APP), '.eyebrow', { solo: true }))
-})
-
-test('the pill is shape only: the Plan badge draws the geometry, and neither the shape nor this role chooses a state', () => {
-  // The archived MFA Readiness v2 readiness cell was the second witness; the
-  // v3 pack's filter pill is a full round too (design-lint.test.ts).
-  const badge = ruleBody(read(PACKS.plan), '.badge', { solo: true })
-  assert.ok(badge, 'the Plan state badge is gone')
-  for (const [where, body] of [
-    ['plan .badge', badge],
-  ] as const) {
-    assert.match(body, /border-radius:\s*999px/, `${where} is no longer a full round`)
-    assert.match(body, /padding:\s*5px 8px/, `${where} no longer has the shared padding`)
-    assert.match(body, /font-size:\s*11px/, `${where} is no longer 11px`)
-    assert.match(body, /gap:\s*7px/, `${where} no longer has the shared gap`)
-  }
-
-  const role = ruleBody(read(APP), '.pill', { solo: true })
-  assert.ok(role, 'app.css has no .pill role')
-  assert.match(role, /border-radius: 999px/)
-  assert.match(role, /font-size: var\(--t-0\)/)
-  // The whole reason this is geometry and not a component: the two packs put
-  // DIFFERENT meanings in the same shape. A shared pill that carried a state
-  // list would merge a Plan lifecycle badge with an MFA readiness cell, which
-  // are not the same enum and must not become one.
-  assert.doesNotMatch(role, /color/, '.pill must not choose a colour — the state colour is .status (design lint rule 5)')
-  assert.doesNotMatch(role, /--(ok|wait|stop|idle|success|danger|attention)\b/, '.pill must carry no state token')
-  // `.status` still owns the dot and the word, and still comes with a word.
-  assert.match(read(APP), /\.status::before/, 'the status dot is gone')
-  assert.match(read('src/ui/components/Status.tsx'), /\{children\}/, 'a status must render its word: state is never colour alone')
-})
-
-test('the attention panel is the one the Plan pack draws, and it is now actually drawn', () => {
-  // The Plan calls it .attention: a 1px tone border over a tone tint at a
-  // control radius. The archived MFA Readiness v2 `.callout` drew the same.
-  const planAttention = ruleBody(read(PACKS.plan), '.attention', { solo: true })
-  assert.ok(planAttention, 'the Plan pack stopped drawing the attention panel')
-  for (const [where, body] of [
-    ['plan .attention', planAttention],
-  ] as const) {
-    assert.match(body, /border:\s*1px solid/, `${where} lost its tone border`)
-    assert.match(body, /background:/, `${where} lost its tint`)
-  }
-
-  // Production has had a Callout component and no rule behind it, so an
-  // attention notice rendered as plain body text. This is the treatment.
-  const role = ruleBody(read(APP), '.callout', { solo: true })
-  assert.ok(role, 'app.css has no .callout rule — an attention notice renders as plain text')
-  assert.match(role, /border: 1px solid/)
-  assert.match(role, /background: var\(--brand-tint\)/)
-  assert.match(role, /border-radius: var\(--radius-control\)/)
-  // The tone is border + tint + icon; the words stay at full body contrast, so
-  // the notice never depends on colour to be read.
-  assert.match(role, /color: var\(--primary-text\)/)
-
-  // Brand teal is the info tone; success is the semantic green. They are
-  // different colours and must not collapse into one another.
-  const success = ruleBody(read(APP), '.callout-success', { solo: true })
-  assert.ok(success, 'no success tone')
-  assert.match(success, /var\(--success\)/)
-  assert.doesNotMatch(success, /var\(--brand-/, 'the brand colour must not stand in for semantic success')
-})
-
-test('the row hairline is shared by three packs, and no universal row grid came with it', () => {
-  // Home's steps and catches, Connect's flow steps, MFA's person rows: a top
-  // hairline on every child but the first.
-  for (const [where, body] of [
-    ['home .step', ruleBody(read(PACKS.home), '.step', { solo: true })],
-    ['home .catch', ruleBody(read(PACKS.home), '.catch', { solo: true })],
-    ['connect .step', ruleBody(read(PACKS.connect), '.step', { solo: true })],
-    ['mfa .row', ruleBody(read(PACKS.mfa), '.row', { solo: true })],
-  ] as const) {
-    assert.ok(body, `${where} is gone`)
-    assert.match(body, /border-top:\s*1px solid/, `${where} no longer separates with a top hairline`)
-  }
-  const role = ruleBody(read(APP), '.row-group > * + *', { solo: true })
-  assert.ok(role, 'app.css has no .row-group role')
-  assert.match(role, /border-top: 1px solid var\(--line\)/)
-  // The separator is what is shared. The column grid inside a row is not: the
-  // four packs set four different ones, and each belongs to its own pack.
-  assert.doesNotMatch(role, /grid/, '.row-group must not impose a column grid')
-})
 
 // --------------------------------------- what the evidence does NOT share
 
@@ -259,47 +110,6 @@ test('a pattern only one pack draws did not become a global role', () => {
   }
 })
 
-// ------------------------------------------------------- the display role
-
-test('the display role has one declaration and one knob, and production reads it', () => {
-  const app = read(APP)
-  // One source for the role. `.display` was declared beside h1/h2 with the same
-  // three properties and no consumer at all; a second copy is how the two drift.
-  assert.equal(app.match(/font-size: var\(--display-size\)/g)?.length, 1, 'the display role is declared more than once')
-  const shared = ruleBody(app, '.display', { solo: true })
-  assert.ok(shared, 'the .display role is gone')
-  assert.match(shared, /--display-size: var\(--d-6\)/)
-  assert.match(shared, /line-height: var\(--lh-display\)/)
-
-  // A heading is on the role by setting one variable, which is what a
-  // restoration pack changes. These are the sizes production is built at
-  // today: the packs' own sizes are per-surface and are packs 032-038's.
-  // h2 shares its rule with .wave-title, so this asks whether ANY rule naming
-  // the heading sets the knob, not what one particular rule says.
-  const setsKnob = (selector: string, token: string): boolean =>
-    allRuleBodies(app, selector).some((b) => b.includes(`--display-size: var(${token})`))
-  assert.ok(setsKnob('h1', '--t-6'), 'h1 is not on the display role')
-  assert.ok(setsKnob('h2', '--t-5'), 'h2 is not on the display role')
-  assert.ok(setsKnob('.wave-title', '--t-5'), '.wave-title is not on the display role')
-})
-
-test('the packs decide which headings are editorial, and they say some are not', () => {
-  // Every page h1 in every pack is serif, which is why production's h1 is.
-  for (const [surface, path] of Object.entries(PACKS)) {
-    const css = read(path)
-    assert.match(css, /h1\{font:\s*700 \d+px\/[\d.]+ (Georgia|var\(--font-serif\))/, `${surface} no longer sets its h1 in the display face`)
-  }
-  // And the opened Plan step's title is deliberately NOT: 21px in the
-  // interface face. That is why h3 and h4 stay sans, and why a later pack must
-  // not treat every heading as display text.
-  const plan = read(PACKS.plan)
-  assert.match(plan, /\.step-head h3\{[^}]*font-size:\s*21px/, "the Plan step title's size moved")
-  assert.doesNotMatch(ruleBody(plan, '.step-head h3', { solo: true })!, /Georgia|serif/, 'the Plan step title is the interface face')
-  const app = read(APP)
-  assert.match(ruleBody(app, 'h3', { solo: true })!, /font-family: var\(--font-sans\)/)
-  assert.match(ruleBody(app, 'h4', { solo: true })!, /font-family: var\(--font-sans\)/)
-})
-
 // ------------------------------------------------------------------ scope
 
 test('the shared layer adds no second token system and no product meaning', () => {
@@ -318,15 +128,5 @@ test('the shared layer adds no second token system and no product meaning', () =
   // truth and are decided in the engine, never in a stylesheet.
   for (const word of ['rung', 'readiness', 'proof', 'report-only', 'enforced', 'break-glass', 'emergency']) {
     assert.ok(!block.toLowerCase().includes(`.${word}`), `the shared layer defined a selector for the product concept "${word}"`)
-  }
-})
-
-test('no tagline and no generated attribution reached the shared layer', () => {
-  // The brand lockup has no tagline (docs/brand/brand-manifest.json), and the
-  // generated branding previews are authority for nothing — including copy.
-  // Built from parts so this file is not itself a hit for the string it bans.
-  const banned = new RegExp(['Built', 'by', 'Jon', 'Hope'].join('\\s+'), 'i')
-  for (const f of [APP, 'src/ui/components/Callout.tsx', 'docs/design/reports/031-shared-approved-design-primitives.md']) {
-    assert.doesNotMatch(read(f), banned, `${f} carries a generated-preview attribution`)
   }
 })

@@ -9,7 +9,7 @@ import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import type { RoadmapInput } from '../../roadmap/generate.ts'
-import { stepContract, readinessOf, CONTRACT } from './stepContract.ts'
+import { stepContract, readinessOf } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { packageBindings } from './stepPackage.ts'
 
@@ -38,7 +38,6 @@ function run(f: Tenant, over: Partial<RoadmapInput> = {}) {
 
 const waitingOnEmergency = (r: ReturnType<typeof runFixture>): number => r.steps.filter((s) => s.blockers.some((b) => b.kind === 'step' && b.stepId === EMERGENCY)).length
 const user = (f: Tenant, id: string) => f.snapshot.users.find((u) => u.id === id)!
-const T = CONTRACT.hardening.tiles
 
 /** Account A hardened (two method types, its sign-in the recorded drill); account B signed in on a day no drill records. */
 const hardenedAndNot = (f: Tenant, a: string, b: string): void => {
@@ -48,15 +47,41 @@ const hardenedAndNot = (f: Tenant, a: string, b: string): void => {
   user(f, b).department = 'IT'
 }
 
-test('retired hardening hints do not become hidden emergency-account completion gates', () => {
-  const { f, a, b } = tenant(hardenedAndNot)
-  const { step } = run(f)
-  assert.deepEqual(step.emergency?.accounts, [
-    { id: a, minimum: 0, hardening: 0, assessed: true },
-    { id: b, minimum: 0, hardening: 0, assessed: true },
-  ], JSON.stringify(step.checks?.items))
-  assert.equal(step.emergency?.minimum, 0)
-  assert.equal(step.emergency?.hardening, 0)
+test('emergency readiness asks only within its two topics: no retired hint or method diversity becomes a hidden gate, and with no account selected it invents none', () => {
+  {
+    const { f, a, b } = tenant(hardenedAndNot)
+    const { step } = run(f)
+    assert.deepEqual(step.emergency?.accounts, [
+      { id: a, minimum: 0, hardening: 0, assessed: true },
+      { id: b, minimum: 0, hardening: 0, assessed: true },
+    ], JSON.stringify(step.checks?.items))
+    assert.equal(step.emergency?.minimum, 0)
+    assert.equal(step.emergency?.hardening, 0)
+  }
+  {
+    const { f } = tenant((t) => {
+      t.mapping.breakGlassUserIds = []
+    })
+    const { step, c } = run(f)
+    assert.ok(step.emergency, 'the premise: the emergency step carries its standing with nobody selected')
+    const r = readinessOf(step, c)
+    assert.equal(r.tiles.find(t => t.key === 'configuration:recovery-methods')?.value, 'Select emergency accounts')
+    assert.equal(r.tiles.length + r.satisfied.length, 2)
+    assert.equal(r.tiles.some(t => t.key.startsWith('slot:')), false)
+    assert.equal(r.tiles.some((t) => t.key.startsWith('check:') || t.key === 'emergency' || t.key === 'resilience'), false, r.tiles.map((t) => t.key).join(', '))
+  }
+  {
+    const { f, a, b } = tenant(() => {})
+    user(f, a).department = 'IT'
+    user(f, b).department = 'IT'
+    const { step, ctx, c } = run(f, { cleanupRecord: { done: {}, drills: [] } })
+    const accounts = step.emergency!.accounts
+    assert.deepEqual(accounts.map((x) => x.id), [a, b])
+    assert.equal(step.emergency!.hardening, 0)
+    assert.ok(accounts.every((x) => x.hardening === 0))
+    const bindings = packageBindings(step, ctx, c)
+    for (const id of [a, b]) assert.match(String(bindings['emergency.target.accountsSummary']), new RegExp(user(f, id).userPrincipalName!.replace('.', '\\.')))
+  }
 })
 
 test('a minimum safety failure on one account holds the rollout, stays that account’s, and no deferral releases it', () => {
@@ -80,30 +105,4 @@ test('a minimum safety failure on one account holds the rollout, stays that acco
   assert.ok(blockers.some(item => item.factLabel === 'Global Administrator'))
   const bSlot = c.emergencySlots.find((s) => s.accountId === b)!
   assert.ok(bSlot.minimum.length > 0 && bSlot.minimum.every((l) => !l.startsWith(`${ctx.nameOf(b)}: `)), JSON.stringify(bSlot))
-})
-
-test('with no account selected, Readiness asks for a choice within the two owned topics without inventing accounts', () => {
-  const { f } = tenant((t) => {
-    t.mapping.breakGlassUserIds = []
-  })
-  const { step, c } = run(f)
-  assert.ok(step.emergency, 'the premise: the emergency step carries its standing with nobody selected')
-  const r = readinessOf(step, c)
-  assert.equal(r.tiles.find(t => t.key === 'configuration:recovery-methods')?.value, 'Select emergency accounts')
-  assert.equal(r.tiles.length + r.satisfied.length, 2)
-  assert.equal(r.tiles.some(t => t.key.startsWith('slot:')), false)
-  assert.equal(r.tiles.some((t) => t.key.startsWith('check:') || t.key === 'emergency' || t.key === 'resilience'), false, r.tiles.map((t) => t.key).join(', '))
-})
-
-test('method diversity is not a hidden set-level or per-account blocker', () => {
-  const { f, a, b } = tenant(() => {})
-  user(f, a).department = 'IT'
-  user(f, b).department = 'IT'
-  const { step, ctx, c } = run(f, { cleanupRecord: { done: {}, drills: [] } })
-  const accounts = step.emergency!.accounts
-  assert.deepEqual(accounts.map((x) => x.id), [a, b])
-  assert.equal(step.emergency!.hardening, 0)
-  assert.ok(accounts.every((x) => x.hardening === 0))
-  const bindings = packageBindings(step, ctx, c)
-  for (const id of [a, b]) assert.match(String(bindings['emergency.target.accountsSummary']), new RegExp(user(f, id).userPrincipalName!.replace('.', '\\.')))
 })

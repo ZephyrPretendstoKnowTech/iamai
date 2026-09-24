@@ -11,52 +11,53 @@ import { stepIdForGoal } from '../../roadmap/stepIds.ts'
 import { PLAN_HREF, READINESS_HREF, afterScanHref, readinessHref, resolveHash, returnToStep, showFromReadinessHash, stepFromPlanHash, stepFromReadinessHash } from './routes.ts'
 import { showKeyOf } from '../../derive/mfaReadiness.ts'
 
-test('the in-step scan ends at the step: the demo advances to week two and the countries step reopens', () => {
-  // The countries step is Block Sign-ins From Countries Not Allowed since Stage 3:
-  // it makes the location as its own task, and the location's old link opens it.
-  const id = stepIdForGoal('geo-restriction')
-  const returnTo = returnToStep(id)
-  assert.equal(returnTo, `#/plan/${id}`)
-  assert.equal(stepFromPlanHash(returnTo), id, 'the Plan reads the step to open from the hash')
-  assert.equal(stepFromPlanHash(returnToStep(PREREQ_STEP_ID.allowedCountries)), id, 'the old location link opens it')
-  assert.equal(resolveHash(returnTo).route, 'plan')
-  assert.equal(afterScanHref(returnTo), returnTo, 'the scan lands on the step that asked for it')
-  assert.equal(afterScanHref(null), PLAN_HREF, 'a scan with nowhere to return lands on the Plan')
-  assert.equal(afterScanHref('#/readiness/confirm'), '#/readiness/confirm', "MFA Readiness's Scan again returns to it, its filter kept")
-  assert.equal(afterScanHref(readinessHref('lapsing')), '#/readiness/lapsing', 'a filter reached from the change block returns to itself')
-  // A filter from before prompt 62 still lands on the state it meant.
-  assert.equal(afterScanHref('#/readiness/needsProof'), '#/readiness/needsProof')
-  assert.equal(showKeyOf(showFromReadinessHash('#/readiness/needsProof')), 'confirm')
-  assert.equal(stepFromReadinessHash('#/readiness/step/s-goal-mfa-all-users'), 's-goal-mfa-all-users', 'the step-scoped view reads its step from the hash')
-  assert.equal(showFromReadinessHash('#/readiness/step/s-goal-mfa-all-users'), null, 'and no filter')
-  assert.equal(afterScanHref('#/readiness/step/s-goal-mfa-all-users'), '#/readiness/step/s-goal-mfa-all-users', 'a step-scoped view returns to itself')
-  // The old name still resolves, and it resolves to the one surface; the scan
-  // lands on the Plan rather than on a hash the app is about to rewrite.
-  assert.equal(resolveHash('#/today/rung-3').route, 'readiness')
-  assert.equal(resolveHash('#/today/rung-3').redirect, '#/readiness/rung-3')
-  assert.equal(resolveHash('#/today').route, 'readiness')
-  assert.equal(showKeyOf(showFromReadinessHash('#/today/rung-3')), null, 'an old rung is no filter, so the page opens on its default')
-  assert.equal(afterScanHref('#/nowhere'), PLAN_HREF, 'a hash that is no page lands on the Plan')
-  assert.equal(afterScanHref('#/roadmap/step/x'), PLAN_HREF, 'an old link lands on the Plan')
-  assert.equal(afterScanHref(returnToStep('cleanup-drill')), '#/plan/cleanup-drill', 'a Cleanup row returns to itself')
-  const day1 = runFixture(fixture('demo'))
-  const week2 = runFixture(fixture('demo-week2'))
-  assert.ok(day1.steps.some((s) => s.id === id), 'the step is on the day-one plan')
-  assert.ok(week2.steps.some((s) => s.id === id), 'and on the week-two plan, so the landing opens it')
-})
-
-test('every page that starts a scan gets its own page back, and Connect gets what Connect asks for', () => {
-  // MFA Readiness (the surface that replaced Today) and the Plan each name
-  // themselves, so a scan started there lands there.
-  assert.equal(afterScanHref(READINESS_HREF), READINESS_HREF)
-  assert.equal(afterScanHref(PLAN_HREF), PLAN_HREF)
-  assert.match(readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8'), /scan\(readinessHref\(show\)\)/, 'MFA Readiness no longer asks for itself, with its filter')
-  assert.match(readFileSync('src/ui/surfaces/Plan.tsx', 'utf8'), /runScan\(returnTo\)/, "the Plan no longer asks for the step the scan was started in")
-  // Connect's two scans (surfaces/Connect.tsx): the first tenant scan asks for
-  // nowhere, so the page stays on Connect and its tiles fill in under the
-  // operator; Scan again on an already-scanned tenant asks for the Plan by name.
-  assert.match(readFileSync('src/ui/surfaces/Connect.tsx', 'utf8'), /runScan\(first \? null : PLAN_HREF\)/)
-  assert.match(readFileSync('src/ui/actions.ts', 'utf8'), /if \(returnTo !== null\) go\(afterScanHref\(returnTo\)\)/, 'a scan that asked for nowhere now moves the page')
-  // And if Connect ever did ask for itself by name, it would get itself.
-  assert.equal(afterScanHref('#/connect'), '#/connect')
+test('a scan ends where it was started: the step, the filtered MFA Readiness view, the Plan, or Connect', () => {
+  {
+    // The countries step is Block Sign-ins From Countries Not Allowed since Stage 3:
+    // it makes the location as its own task, and the location's old link opens it.
+    const id = stepIdForGoal('geo-restriction')
+    const returnTo = returnToStep(id)
+    assert.equal(returnTo, `#/plan/${id}`)
+    assert.equal(stepFromPlanHash(returnTo), id, 'the Plan reads the step to open from the hash')
+    assert.equal(stepFromPlanHash(returnToStep(PREREQ_STEP_ID.allowedCountries)), id, 'the old location link opens it')
+    assert.equal(resolveHash(returnTo).route, 'plan')
+    assert.equal(afterScanHref(returnTo), returnTo, 'the scan lands on the step that asked for it')
+    assert.equal(afterScanHref(null), PLAN_HREF, 'a scan with nowhere to return lands on the Plan')
+    assert.equal(afterScanHref('#/readiness/confirm'), '#/readiness/confirm', "MFA Readiness's Scan again returns to it, its filter kept")
+    assert.equal(afterScanHref(readinessHref('lapsing')), '#/readiness/lapsing', 'a filter reached from the change block returns to itself')
+    // A filter from before prompt 62 still lands on the state it meant.
+    assert.equal(afterScanHref('#/readiness/needsProof'), '#/readiness/needsProof')
+    assert.equal(showKeyOf(showFromReadinessHash('#/readiness/needsProof')), 'confirm')
+    assert.equal(stepFromReadinessHash('#/readiness/step/s-goal-mfa-all-users'), 's-goal-mfa-all-users', 'the step-scoped view reads its step from the hash')
+    assert.equal(showFromReadinessHash('#/readiness/step/s-goal-mfa-all-users'), null, 'and no filter')
+    assert.equal(afterScanHref('#/readiness/step/s-goal-mfa-all-users'), '#/readiness/step/s-goal-mfa-all-users', 'a step-scoped view returns to itself')
+    // The old name still resolves, and it resolves to the one surface; the scan
+    // lands on the Plan rather than on a hash the app is about to rewrite.
+    assert.equal(resolveHash('#/today/rung-3').route, 'readiness')
+    assert.equal(resolveHash('#/today/rung-3').redirect, '#/readiness/rung-3')
+    assert.equal(resolveHash('#/today').route, 'readiness')
+    assert.equal(showKeyOf(showFromReadinessHash('#/today/rung-3')), null, 'an old rung is no filter, so the page opens on its default')
+    assert.equal(afterScanHref('#/nowhere'), PLAN_HREF, 'a hash that is no page lands on the Plan')
+    assert.equal(afterScanHref('#/roadmap/step/x'), PLAN_HREF, 'an old link lands on the Plan')
+    assert.equal(afterScanHref(returnToStep('cleanup-drill')), '#/plan/cleanup-drill', 'a Cleanup row returns to itself')
+    const day1 = runFixture(fixture('demo'))
+    const week2 = runFixture(fixture('demo-week2'))
+    assert.ok(day1.steps.some((s) => s.id === id), 'the step is on the day-one plan')
+    assert.ok(week2.steps.some((s) => s.id === id), 'and on the week-two plan, so the landing opens it')
+  }
+  {
+    // MFA Readiness (the surface that replaced Today) and the Plan each name
+    // themselves, so a scan started there lands there.
+    assert.equal(afterScanHref(READINESS_HREF), READINESS_HREF)
+    assert.equal(afterScanHref(PLAN_HREF), PLAN_HREF)
+    assert.match(readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8'), /scan\(readinessHref\(show\)\)/, 'MFA Readiness no longer asks for itself, with its filter')
+    assert.match(readFileSync('src/ui/surfaces/Plan.tsx', 'utf8'), /runScan\(returnTo\)/, "the Plan no longer asks for the step the scan was started in")
+    // Connect's two scans (surfaces/Connect.tsx): the first tenant scan asks for
+    // nowhere, so the page stays on Connect and its tiles fill in under the
+    // operator; Scan again on an already-scanned tenant asks for the Plan by name.
+    assert.match(readFileSync('src/ui/surfaces/Connect.tsx', 'utf8'), /runScan\(first \? null : PLAN_HREF\)/)
+    assert.match(readFileSync('src/ui/actions.ts', 'utf8'), /if \(returnTo !== null\) go\(afterScanHref\(returnTo\)\)/, 'a scan that asked for nowhere now moves the page')
+    // And if Connect ever did ask for itself by name, it would get itself.
+    assert.equal(afterScanHref('#/connect'), '#/connect')
+  }
 })

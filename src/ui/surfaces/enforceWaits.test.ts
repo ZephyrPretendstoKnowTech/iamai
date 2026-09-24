@@ -69,66 +69,67 @@ function drawn(f: Fixture, stepId = STEP_ID): { step: Step; run: ReturnType<type
   return { step, run, text, exported, ctx }
 }
 
-test('nothing held: the ready-to-enforce policy hands over its turn-on (the control)', () => {
-  const { step, text } = drawn(base())
-  assert.equal(step.state.lifecycle, 'ready-to-enforce', 'the premise: the evidence is earned')
-  assert.equal(step.action.enforceWaitsOn, undefined, 'the premise: the recovery test is recorded and security defaults are off')
-  assert.equal(policyResult(step).kind, 'implementable')
-  assert.match(text, TURN_ON, 'the control does not offer the turn-on, so the cases below prove nothing')
+test('a ready-to-enforce policy hands over its turn-on only when nothing holds it: with security defaults on or the recovery test undone, no channel turns it on and the step names the wait', () => {
+  {
+    const { step, text } = drawn(base())
+    assert.equal(step.state.lifecycle, 'ready-to-enforce', 'the premise: the evidence is earned')
+    assert.equal(step.action.enforceWaitsOn, undefined, 'the premise: the recovery test is recorded and security defaults are off')
+    assert.equal(policyResult(step).kind, 'implementable')
+    assert.match(text, TURN_ON, 'the control does not offer the turn-on, so the cases below prove nothing')
+  }
+  {
+    // The recovery test recorded on this configuration: turning security defaults
+    // on changes what a recorded test covered, and this case is about them alone.
+    const { step, run, text, exported, ctx } = drawn(withRecoveryTested(withSecurityDefaultsOn(base())))
+    assert.equal(step.state.lifecycle, 'ready-to-enforce', 'the step keeps its stage: the evidence is still earned')
+    assert.deepEqual(step.action.enforceWaitsOn?.map((w) => w.id), [SECURITY_DEFAULTS_STEP_ID])
+    assert.equal(policyHold(step), 'prerequisite-unmet')
+    assert.equal(implementationOffered(step), false)
+    assert.equal(operationsOf(step).length > 0, true, 'held, not unavailable: the operation is sound and kept')
+    // Neither what the package executes nor what it previews is the turn-on: the
+    // step is not current (the security-defaults ordering blocks it), and what it
+    // previews is the policy staying in Report-only.
+    const contract = stepBodyOf(step, ctx).contract
+    assert.notEqual(packageStateOf(step, contract, run.input.snapshot), 'readyToEnforce')
+    assert.equal(plannedPackageStateOf(step, contract, run.input.snapshot), 'reportOnly')
+    assert.doesNotMatch(text, TURN_ON, `a channel still turns the policy on:\n${text}`)
+    assert.doesNotMatch(exported, TURN_ON, `the export still turns the policy on:\n${exported}`)
+    const m = nextMilestone(step)
+    assert.match(m.label, /stays in Report-only until Turn Off Security Defaults is finished/, m.label)
+    assert.match(m.label, /Entra does not let a Conditional Access policy go On while security defaults are on/, m.label)
+    assert.doesNotMatch(m.label, /ready to be turned on/)
+  }
+  {
+    const { step, text, exported } = drawn(withoutRecoveryTest(base()))
+    assert.deepEqual(step.action.enforceWaitsOn?.map((w) => w.id), [DRILL_PREREQUISITE])
+    assert.equal(policyHold(step), 'prerequisite-unmet')
+    assert.doesNotMatch(text, TURN_ON, `a channel still turns the policy on:\n${text}`)
+    assert.doesNotMatch(exported, TURN_ON, `the export still turns the policy on:\n${exported}`)
+    const m = nextMilestone(step)
+    assert.match(m.label, /stays in Report-only until Verify Emergency Access is finished/, m.label)
+    assert.doesNotMatch(m.label, /security defaults/i, 'a wait that is not there is named')
+    // The day stays: waiting on a step the plan schedules is sequencing (owner, Step 4).
+    assert.equal(m.at, step.events?.enforce.at ?? null)
+  }
 })
 
-test('security defaults on: no channel turns the policy on, and the step says what it waits for', () => {
-  // The recovery test recorded on this configuration: turning security defaults
-  // on changes what a recorded test covered, and this case is about them alone.
-  const { step, run, text, exported, ctx } = drawn(withRecoveryTested(withSecurityDefaultsOn(base())))
-  assert.equal(step.state.lifecycle, 'ready-to-enforce', 'the step keeps its stage: the evidence is still earned')
-  assert.deepEqual(step.action.enforceWaitsOn?.map((w) => w.id), [SECURITY_DEFAULTS_STEP_ID])
-  assert.equal(policyHold(step), 'prerequisite-unmet')
-  assert.equal(implementationOffered(step), false)
-  assert.equal(operationsOf(step).length > 0, true, 'held, not unavailable: the operation is sound and kept')
-  // Neither what the package executes nor what it previews is the turn-on: the
-  // step is not current (the security-defaults ordering blocks it), and what it
-  // previews is the policy staying in Report-only.
-  const contract = stepBodyOf(step, ctx).contract
-  assert.notEqual(packageStateOf(step, contract, run.input.snapshot), 'readyToEnforce')
-  assert.equal(plannedPackageStateOf(step, contract, run.input.snapshot), 'reportOnly')
-  assert.doesNotMatch(text, TURN_ON, `a channel still turns the policy on:\n${text}`)
-  assert.doesNotMatch(exported, TURN_ON, `the export still turns the policy on:\n${exported}`)
-  const m = nextMilestone(step)
-  assert.match(m.label, /stays in Report-only until Turn Off Security Defaults is finished/, m.label)
-  assert.match(m.label, /Entra does not let a Conditional Access policy go On while security defaults are on/, m.label)
-  assert.doesNotMatch(m.label, /ready to be turned on/)
-})
-
-test('the recovery test undone: no channel turns the policy on, and the step names the test', () => {
-  const { step, text, exported } = drawn(withoutRecoveryTest(base()))
-  assert.deepEqual(step.action.enforceWaitsOn?.map((w) => w.id), [DRILL_PREREQUISITE])
-  assert.equal(policyHold(step), 'prerequisite-unmet')
-  assert.doesNotMatch(text, TURN_ON, `a channel still turns the policy on:\n${text}`)
-  assert.doesNotMatch(exported, TURN_ON, `the export still turns the policy on:\n${exported}`)
-  const m = nextMilestone(step)
-  assert.match(m.label, /stays in Report-only until Verify Emergency Access is finished/, m.label)
-  assert.doesNotMatch(m.label, /security defaults/i, 'a wait that is not there is named')
-  // The day stays: waiting on a step the plan schedules is sequencing (owner, Step 4).
-  assert.equal(m.at, step.events?.enforce.at ?? null)
-})
-
-test('a create lands in report-only and denies nobody, so the hold leaves it offered', () => {
-  const run = runFixture(withSecurityDefaultsOn(withoutRecoveryTest(base())))
-  const creates = run.steps.filter((s) => (s.action.enforceWaitsOn?.length ?? 0) > 0 && operationsOf(s).some((o) => o.mode === 'create'))
-  assert.ok(creates.length > 0, 'the premise: a policy still to be created waits on both')
-  for (const s of creates) assert.notEqual(policyHold(s), 'prerequisite-unmet', `${s.id}: a report-only create was held`)
-})
-
-test('a policy already on is finished with the turn-on, and a completed one names the cutover it went ahead of', () => {
-  const f = withSecurityDefaultsOn(base())
-  const run = runFixture(f)
-  for (const s of run.steps) if (s.state.lifecycle === 'enforced') assert.notEqual(policyHold(s), 'prerequisite-unmet', `${s.id} is already on and was held`)
-  // The overtaken tile read only the recovery test, because every security-
-  // defaults edge is conditional; the condition is resolved to applicable here.
-  const readings = laneReadings(run.steps, [])
-  const completed = run.steps.filter((s) => s.status === 'done' && (s.kind === 'create' || s.kind === 'adjust') && s.state.lifecycle === 'enforced')
-  assert.ok(completed.length > 0, 'the premise: some policy is on')
-  const named = completed.filter((s) => (readings.get(s.id)?.overtaken ?? []).some((b) => b.id === SECURITY_DEFAULTS_STEP_ID))
-  assert.ok(named.length > 0, 'no completed policy says it went ahead of Turn Off Security Defaults')
+test('a create lands in report-only and denies nobody, so the hold leaves it offered; a policy already on is finished with the turn-on', () => {
+  {
+    const run = runFixture(withSecurityDefaultsOn(withoutRecoveryTest(base())))
+    const creates = run.steps.filter((s) => (s.action.enforceWaitsOn?.length ?? 0) > 0 && operationsOf(s).some((o) => o.mode === 'create'))
+    assert.ok(creates.length > 0, 'the premise: a policy still to be created waits on both')
+    for (const s of creates) assert.notEqual(policyHold(s), 'prerequisite-unmet', `${s.id}: a report-only create was held`)
+  }
+  {
+    const f = withSecurityDefaultsOn(base())
+    const run = runFixture(f)
+    for (const s of run.steps) if (s.state.lifecycle === 'enforced') assert.notEqual(policyHold(s), 'prerequisite-unmet', `${s.id} is already on and was held`)
+    // The overtaken tile read only the recovery test, because every security-
+    // defaults edge is conditional; the condition is resolved to applicable here.
+    const readings = laneReadings(run.steps, [])
+    const completed = run.steps.filter((s) => s.status === 'done' && (s.kind === 'create' || s.kind === 'adjust') && s.state.lifecycle === 'enforced')
+    assert.ok(completed.length > 0, 'the premise: some policy is on')
+    const named = completed.filter((s) => (readings.get(s.id)?.overtaken ?? []).some((b) => b.id === SECURITY_DEFAULTS_STEP_ID))
+    assert.ok(named.length > 0, 'no completed policy says it went ahead of Turn Off Security Defaults')
+  }
 })
