@@ -27,6 +27,7 @@ import type { PickerOption } from '../components/index.ts'
 import { accountBadges, filterPickerObjects, pickerUniverse } from './pickerRows.ts'
 import type { PickerObject } from './pickerRows.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
+import { QUESTION_STEP } from '../../roadmap/answers.ts'
 import type { StepVarContext } from './stepVars.ts'
 
 const W = directionWords
@@ -37,7 +38,9 @@ function universeOf(q: DirectionQuestion, ctx: StepVarContext): PickerObject[] {
   if (q.control === 'accounts') {
     // Each chip says why its account was picked, where the detection picked it (pickerRows.ts accountBadges).
     const why = accountBadges(q.key, pickerCtx)
-    return pickerUniverse(PREREQ_STEP_ID.serviceAccountsGroup, 'accounts', pickerCtx).map((o) => (why.has(o.id) ? { ...o, badge: why.get(o.id) } : o))
+    // The mail-sending card picks from its own list: no emergency access account or guest, and a sender says why (pickerRows.ts pickerUniverse).
+    const stepId = q.key === 'mailDevices' ? QUESTION_STEP.mailDevices : PREREQ_STEP_ID.serviceAccountsGroup
+    return pickerUniverse(stepId, 'accounts', pickerCtx).map((o) => (why.has(o.id) ? { ...o, badge: why.get(o.id) } : o))
   }
   if (q.control === 'locations') return pickerUniverse(PREREQ_STEP_ID.trustedLocation, 'locations', pickerCtx)
   return []
