@@ -18,7 +18,7 @@ import { BREAK_GLASS_DRILL_DAYS } from './constants.ts'
 import { exclusionGroupPolicySafety } from '../validation/report.ts'
 import { exclusionsGroupPolicies, groupLookup } from '../validation/exclusionsGroupPolicies.ts'
 import { displayZone } from '../copy/dates.ts'
-import { list } from '../copy/statements.ts'
+import { count, list } from '../copy/statements.ts'
 import { app } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 
@@ -28,6 +28,8 @@ import { fillText } from '../content/render.ts'
 const NEEDS_CORRECTION = (app.plan as unknown as { stepContract: { stateWords: { needsCorrection: string } } }).stepContract.stateWords.needsCorrection
 /** Accounts and identity before any account is saved (pages.app.plan.emergencyTasks): nothing is chosen, so nothing needs correcting. */
 const NO_ACCOUNTS_CHOSEN = (app.plan as unknown as { emergencyTasks: { noAccountsChosen: string } }).emergencyTasks.noAccountsChosen
+/** Existing passkeys affected where accounts would be left without a passkey the planned settings allow (pages.app.plan.emergencyTasks). */
+const ACCOUNTS_TO_PREPARE = (app.plan as unknown as { emergencyTasks: { accountsToPrepare: string } }).emergencyTasks.accountsToPrepare
 
 export const EMERGENCY_ACCOUNTS = 's-prereq-break-glass'
 export const EMERGENCY_GROUP = 's-prereq-exclusion-group'
@@ -289,7 +291,7 @@ export function journeyPasskeyFindings(snapshot: TenantSnapshot, mapping: Mappin
   // Where the projection did not settle the impact and names nobody, the card
   // said only that (owner, 2026-09-23): it is left out, unless some account
   // would be left without a passkey the planned settings allow, where it is
-  // Prepare affected passkeys' card and keeps its state word.
+  // Prepare affected passkeys' card and states how many accounts that is.
   const affectedFinding: ConfigurationFinding | null = !affected.users.length && affected.state !== 'known' && !affected.stranded.length ? null : {
     key: 'affected-passkeys',
     label: 'Existing passkeys affected',
@@ -297,7 +299,7 @@ export function journeyPasskeyFindings(snapshot: TenantSnapshot, mapping: Mappin
       ? `${affected.users.length} ${affected.users.length === 1 ? 'user has' : 'users have'} a passkey that loses access`
       : affected.state === 'known'
         ? 'No existing passkeys were identified as losing sign-in access under this change.'
-        : 'Could not verify',
+        : fillText(ACCOUNTS_TO_PREPARE, { count: count(affected.stranded.length, 'account') }),
     outcome: affected.users.length ? 'fail' : affected.state === 'known' ? 'pass' : 'unknown',
     detail: '',
     items: affected.users.flatMap(user => user.methods.map((method, index) => ({
