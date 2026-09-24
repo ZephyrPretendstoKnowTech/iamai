@@ -52,7 +52,7 @@ import { phoneSignInIds } from '../derive/sets.ts'
 import { setState } from './lifecycle.ts'
 import { DEVICE_GOALS } from './deviations.ts'
 import { QUESTION_STEP } from './answers.ts'
-import { PREREQ_STEP_ID } from './stepIds.ts'
+import { PREREQ_STEP_ID, stepIdForGoal } from './stepIds.ts'
 import { checkStep, serviceEvidence, serviceOf, serviceReading } from './workflows.ts'
 import type { ServiceSignal } from './workflows.ts'
 import { DIRECTION_BLOCKER, DIRECTION_STEP, SERVICE_KEYS, directionComplete, directionStepOf, isDirectionStep, savedAnswerOf, savedBasisOf } from './directionAnswers.ts'
@@ -431,26 +431,39 @@ export function directionDependenciesOf(step: Pick<Step, 'goalId' | 'baselineRev
   return out
 }
 
-/** A step only an answer puts on the plan: Keep Company Data Off Phones, while phones are Blocked from company data (generate.ts). */
-const ADDED_BY_ANSWER: Readonly<Record<string, readonly DirectionQuestionKey[]>> = {
-  's-ladder-phone-access-restriction': ['phones'],
+/**
+ * The steps only an answer puts on the plan, so the plan may not hold them
+ * now: Keep Company Data Off Phones while phones are Blocked from company data
+ * (generate.ts); the service accounts group and Restrict Service Accounts to
+ * the Trusted Network while service accounts are picked, and Give Shared
+ * Devices Their Own Policy while shared-device accounts are (walk list 45). A
+ * goal's step is one only where the plan's baseline holds that goal.
+ */
+const ADDED_BY_ANSWER: Readonly<Record<string, { keys: readonly DirectionQuestionKey[]; goal?: string }>> = {
+  's-ladder-phone-access-restriction': { keys: ['phones'] },
+  [PREREQ_STEP_ID.serviceAccountsGroup]: { keys: ['serviceAccounts'] },
+  's-shared-devices': { keys: ['sharedDevices'] },
+  [stepIdForGoal('service-accounts-trusted-network')]: { keys: GOAL_DEPENDS['service-accounts-trusted-network'], goal: 'service-accounts-trusted-network' },
 }
 
 /**
  * Each Direction step's Impact (walk list item 25, ui/surfaces/rowWho.ts): how
  * many plan steps its answers decide — a step an answer puts on the plan or
  * takes off it, and a policy that waits on it (directionDependenciesOf, the
- * moved questions of ANSWERED_IN). Only questions the step asks count.
+ * moved questions of ANSWERED_IN). Only questions the step asks count. A step
+ * only an answer puts on the plan counts whether the answers have put it there
+ * or not, so the count is the same whatever they are.
  */
-export function countDirectionImpact(steps: Step[]): void {
+export function countDirectionImpact(steps: Step[], availableGoalIds: readonly string[]): void {
   const asked = new Set(steps.filter((s) => isDirectionStep(s.id)).flatMap((s) => (s.directionQuestions ?? []).map((q) => q.key)))
-  const counts = new Map<string, number>()
-  for (const step of steps) {
-    if (isDirectionStep(step.id)) continue
-    const keys = [...directionDependenciesOf(step), ...(ANSWERED_IN[step.id] ?? []), ...(ADDED_BY_ANSWER[step.id] ?? [])].filter((k) => asked.has(k))
-    for (const id of new Set(keys.map(directionStepOf))) counts.set(id, (counts.get(id) ?? 0) + 1)
+  const decided = new Map<string, Set<string>>()
+  const add = (stepId: string, keys: readonly DirectionQuestionKey[]): void => {
+    for (const id of new Set(keys.filter((k) => asked.has(k)).map(directionStepOf))) decided.set(id, (decided.get(id) ?? new Set<string>()).add(stepId))
   }
-  for (const step of steps) if (isDirectionStep(step.id)) step.impactCount = counts.get(step.id) ?? 0
+  for (const step of steps) if (!isDirectionStep(step.id)) add(step.id, [...directionDependenciesOf(step), ...(ANSWERED_IN[step.id] ?? []), ...(ADDED_BY_ANSWER[step.id]?.keys ?? [])])
+  const available = new Set(availableGoalIds)
+  for (const [stepId, { keys, goal }] of Object.entries(ADDED_BY_ANSWER)) if (goal === undefined || available.has(goal)) add(stepId, keys)
+  for (const step of steps) if (isDirectionStep(step.id)) step.impactCount = decided.get(step.id)?.size ?? 0
 }
 
 /**

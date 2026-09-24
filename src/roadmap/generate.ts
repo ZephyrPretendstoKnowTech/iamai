@@ -3085,9 +3085,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // Define Your Rollout Scope (roadmap/direction.ts): the four decision
   // steps, and the review rows whose services D1 asks about.
   if (canUseConditionalAccess) {
-    steps.unshift(...directionSteps({ snapshot, mapping, notAssessed: input.coverage.organisation.notAssessed, availableGoalIds: input.coverage.results.filter((r) => r.status !== 'licence-limited').map((r) => r.goal.id), nameOf }))
+    const availableGoalIds = input.coverage.results.filter((r) => r.status !== 'licence-limited').map((r) => r.goal.id)
+    steps.unshift(...directionSteps({ snapshot, mapping, notAssessed: input.coverage.organisation.notAssessed, availableGoalIds, nameOf }))
     addWorkflowSteps(steps, input.coverage.organisation.notAssessed, mapping, input.manualConfirmations)
-    countDirectionImpact(steps)
+    countDirectionImpact(steps, availableGoalIds)
   }
   applyManualReviews(steps, snapshot, input.manualConfirmations, mapping, popIndex)
   for (const s of steps.filter(s => s.id === 's-check-dormant-accounts')) {
