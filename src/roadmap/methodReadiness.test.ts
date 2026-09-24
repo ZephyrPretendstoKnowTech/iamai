@@ -197,7 +197,7 @@ test('R4-15: an aged-out sign-in is named only where the same sign-in made today
   // An old passkey sign-in would: said, and true.
   const passkey = signedIn('passkey', old)
   assert.deepEqual(passkey.staleIds, ['u-1'])
-  assert.match(methodReadiness('mfa', passkey).lines[0], /confirmed by a sign-in that is now older than 30 days/)
+  assert.match(methodReadiness('mfa', passkey).lines[0], /1 person needs to sign in once with the method they registered\./)
   assert.deepEqual(signedIn('passkey', snapshot.asOf).readyIds, ['u-1', 'u-2'], 'and made today, it counts them: the promise is kept')
 })
 
@@ -238,20 +238,16 @@ test('R4-41: people who registered only methods the tenant does not allow are co
   assert.deepEqual(reading.unknownIds, [], 'a method the tenant does not allow is known, not "not established"')
   assert.deepEqual(reading.offIds, ['u-2'], 'a phone the tenant switched off, told apart from nothing registered and from a key not on record')
   const line = methodReadiness('mfa', reading).lines[0]
-  assert.match(line, /^1 of 4 people this step's policies include has a registered method those policies accept and this tenant lets them use\. /, line)
-  // The sentence states the counterfactual it counts (the R4-41 review below):
-  // it said "has registered only methods ... does not let them use", which is
-  // true of people the step's own policy refuses as well.
-  assert.match(line, /\. 1 of the 3 people without one would be counted if this tenant's Authentication methods policy allowed the methods they registered\.$/, line)
+  // Owner, 2026-09-24 (walk list 4.x item 48): the count, then what the methods policy turns off.
+  assert.equal(line, '1 of 4 people has a method it accepts. 1 registered only a phone for texts or calls, which your Authentication methods policy turns off.')
   assert.doesNotMatch(line, /the policies allow/, 'the line names the Conditional Access policy as what stopped them')
 
   // Marcus's steps required Microsoft's built-in MFA strength: the same people, the same words.
   const strength = effectOf({ state: 'enabled', conditions: scope, grantControls: { operator: 'OR', authenticationStrength: { id: '00000000-0000-0000-0000-000000000002' } } })
   assert.deepEqual(methodPreparation([strength], ids, snapshot), reading)
 
-  // Where every person it did not count is one of them, it says so without "1 of the 1".
   const two = methodPreparation([requireMfa], ['u-1', 'u-2'], snapshot)
-  assert.equal(methodReadiness('mfa', two).lines[0].split('. ')[1], "The 1 person without one would be counted if this tenant's Authentication methods policy allowed the methods they registered.")
+  assert.equal(methodReadiness('mfa', two).lines[0].split('. ')[1], '1 registered only a phone for texts or calls, which your Authentication methods policy turns off.')
 
   // A key on record that the passkey settings exclude is the tenant's doing.
   snapshot.authMethods['u-4'] = [{ kind: 'fido2', aaGuid: 'key' }]
@@ -296,7 +292,7 @@ test('R4-41: the methods policy is named only where the policies that refused a 
   const admins = methodPreparation([phishingResistant(['u-1', 'u-3'])], ['u-1', 'u-3'], snapshot)
   assert.deepEqual(admins.readyIds, [], 'the premise: neither is ready')
   assert.deepEqual(admins.offIds, ['u-3'], 'the strength refuses a phone either way; only the passkey is held back by the methods policy alone')
-  assert.match(methodReadiness('admin', admins).lines[0], /\. 1 of the 2 people without one would be counted if this tenant's Authentication methods policy allowed the methods they registered\.$/)
+  assert.match(methodReadiness('admin', admins).lines[0], /\. 1 registered only a passkey, which your Authentication methods policy turns off\.$/)
 
   const phoneOnly = methodPreparation([phishingResistant(['u-1'])], ['u-1'], snapshot)
   assert.deepEqual(phoneOnly.offIds, [], 'a phone-only administrator on a phishing-resistant step')

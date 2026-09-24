@@ -425,7 +425,10 @@ const heldCampaignOf = (f: Fixture) => {
 test('Prepare Your Team for MFA, held while Require MFA for Everyone has no day, sends the undated email', () => {
   const f = withFoundationSettled(curatedFixture('getiamai'))
   const { r, step, mfa, onBoard, ctxWith, bodyOf, lane } = heldCampaignOf(f)
-  const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot, onBoard)
+  // Forged, as the device-line test below forges it: since walk list 4.x L4 the
+  // MFA gate counts getiamai's two active people, not its nine dormant accounts,
+  // so Require MFA for Everyone is no longer held here on its own.
+  const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot, (s) => s.id === mfa.id || onBoard(s))
   assert.equal(boardHolds(step, lane), true, 'the premise: the board holds the campaign')
   assert.equal(boardWhenOf(step, waveStartOf(step), lane), estimated(lane), 'the premise: its row reads the day the plan expects it, as an estimate')
   assert.equal(dates.mfaEnforce, null, `the premise: ${mfa.id} has no turn-on day`)

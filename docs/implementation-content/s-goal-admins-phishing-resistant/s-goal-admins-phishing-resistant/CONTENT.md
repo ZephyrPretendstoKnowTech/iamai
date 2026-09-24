@@ -24,15 +24,15 @@ This policy already exists. Correct only the settings below, which IAMAI found d
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Set Grant to **Require authentication strength** and select the custom strength resolved for this tenant. Its ID is **{{authStrength.target.id}}**. Remove built-in MFA or any other strength from this policy's grant. This strength also accepts a Temporary Access Pass; Microsoft's built-in Phishing-resistant MFA strength does not. Replacing that built-in strength with this one lets administrators sign in with a Temporary Access Pass where they could not before, so review that effect before you save.
+Under **Grant**, select **Require authentication strength** → **{{authStrength.target.displayName}}**, and clear any other grant.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-session","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Remove session controls from this policy. Admin session duration and persistence are implemented by separate baseline steps.
+Under **Session**, clear every control.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-name","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Rename the same policy (same policy ID) to **{{policy.target.displayName}}**. Find it by its policy ID, not by display name alone.
+Name: **{{policy.target.displayName}}**.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -41,7 +41,7 @@ Rename the same policy (same policy ID) to **{{policy.target.displayName}}**. Fi
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
-Keep the policy in Report-only while you review the evidence listed for this step. Review Report-only sign-in results for each affected administrator and check that each one can use a method the custom strength accepts. An admin who cannot is a readiness issue to fix, not a reason to weaken the grant. A Temporary Access Pass also satisfies this strength, but it is temporary: an admin relying on one still needs a lasting accepted method.
+Keep the policy in Report-only while you review the evidence listed for this step. Review Report-only sign-in results for each affected administrator and check that each one can use a method the custom strength accepts. An admin who cannot is a readiness issue to fix, not a reason to weaken the grant.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
@@ -192,7 +192,7 @@ We are preparing stronger authentication for admin access. Please test the appro
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["missing","partial","reportOnly","readyToEnforce"],"format":"json-template","kind":"template"}
-{"tiles":[{"id":"admins","label":"Admins in scope","result":{{json:admins.affected.count}},"line":"Review the selected built-in roles and each affected admin's ability to use an accepted method. The target strength also permits Temporary Access Pass."},{"id":"notReady","label":"Admins not ready","result":{{json:admins.notReady}},"line":"Check that each affected admin can satisfy the selected authentication strength."},{"id":"state","label":"Policy state","result":{{json:policy.current.state}},"line":"Client rollout is Report-only first."}],"baselineStrength":"Modern MFA + TAP, resolved by tenant-local strength ID and exact allowed combinations."}
+{"tiles":[{"id":"admins","label":"Admins in scope","result":{{json:admins.affected.count}},"line":"Review the selected built-in roles and each affected admin's ability to use an accepted method."},{"id":"notReady","label":"Admins not ready","result":{{json:admins.notReady}},"line":"Check that each affected admin can satisfy the selected authentication strength."},{"id":"state","label":"Policy state","result":{{json:policy.current.state}},"line":"Client rollout is Report-only first."}],"baselineStrength":"Modern MFA + TAP, resolved by tenant-local strength ID and exact allowed combinations."}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["missing","partial","reportOnly","readyToEnforce","inPlace"],"format":"json","kind":"referenceOnly"}

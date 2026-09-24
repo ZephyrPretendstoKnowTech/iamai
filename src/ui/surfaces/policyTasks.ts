@@ -357,7 +357,10 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   // turns the policy on: a reader enforced eight policies beside security
   // defaults (Sam D2). It says what it waits on, the milestone's words.
   const turnOnHeld = policyHold(step) === 'prerequisite-unmet' && input.contract.milestone.label !== ''
-  tasks.push(task('turn-on', 'turnOn', turnOnHeld ? [input.contract.milestone.label] : members.flatMap((m) => turnOnLines(m.name || String(m.create?.body.displayName ?? ''))), !step.state.satisfied && members.some((m) => !m.on)))
+  // It names what it waits for, in the hold's own words (walk list 4.x item 44):
+  // "Wait for Verify Emergency Access; leave this policy in Report-only until then."
+  const heldLine = input.outstanding.length > 0 ? fillText(app.plan.enforceOutstanding, { items: list([...input.outstanding]) }) : input.contract.milestone.label
+  tasks.push(task('turn-on', 'turnOn', turnOnHeld ? [heldLine] : members.flatMap((m) => turnOnLines(m.name || String(m.create?.body.displayName ?? ''))), !step.state.satisfied && members.some((m) => !m.on)))
   // What the step's package says comes after the policy is On, in every state:
   // the PIM role settings that make role activation ask for the context.
   for (const after of input.extras?.after ?? []) if (after.steps.length > 0) tasks.push({ id: after.id, accountId: null, title: after.title, targetUpn: null, required: after.required, readinessKey: '', evidence: null, actionLabel: after.title, steps: after.steps })

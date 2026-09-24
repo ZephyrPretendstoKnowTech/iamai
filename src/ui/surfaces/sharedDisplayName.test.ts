@@ -81,10 +81,12 @@ test('the MFA handoff, the review picker and the per-user MFA finding name a sha
       if (person.id === member.id || person.id === guest.id) previewed.add(step.id)
     }
   }
-  // The premise: the admin step previews the member, three more preview the guest.
+  // The premise: the admin step previews the member. The guest has never signed
+  // in, so no MFA gate counts it any more (walk list 4.x L4: the gates count the
+  // people MFA Readiness counts); the per-user MFA finding below names it.
   // The admin-portal step no longer does: it is written from the pinned policy
   // (q-pin), whose source contradicts itself, so it hands over no MFA policy.
-  assert.ok(previewed.has('s-goal-admins-phishing-resistant') && previewed.size >= 4, [...previewed].join(', '))
+  assert.ok(previewed.has('s-goal-admins-phishing-resistant'), [...previewed].join(', '))
 
   // The per-user MFA finding, with both accounts still enabled for per-user MFA.
   const perUser = structuredClone(r.steps.find((st) => st.id === 's-prereq-per-user-mfa')!) as Step

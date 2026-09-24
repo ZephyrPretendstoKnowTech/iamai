@@ -483,15 +483,21 @@
         "$commentNoneJudged": "\"0 of 39 people have a registered method allowed by the target policies\" is the same construction as a MEASURED zero — the post-grant line on the same tenant reads \"0 of 2 people have a registered method\". Where nobody could be judged at all, leading with a bare zero puts an unread count in the shape of a measurement, and a reader had to reach the third clause to learn which kind of zero it was. Said only where the ready count is zero AND every person in scope is unestablished.",
         "noneJudged": "None of the {n} people in scope could be judged: method compatibility is not established for any of them.",
         "noneJudgedOne": "The one person in scope could not be judged: method compatibility is not established for them.",
-        "$commentMethodLine": "Three totals on one step - \"246 active people\", \"covers 283 enabled\", \"209 of 279 people\" - each derivable and none explained. The readiness denominator is its own population: the people the target policies actually include, which is not the step's active count and not its enabled count. The line said \"people\" and left the reader to work out which. It then said \"in scope of these policies\", and two steps over different policies read as one number: 200 of 265 on one step and 209 of 279 on the next, both headed MFA readiness (R4-14). It names this step's own policies now, which is why two steps can read two numbers.",
-        "methodLine": "{ready} of {total} people this step's policies include have a registered method those policies accept and this tenant lets them use.",
-        "methodLineUnknown": "Method compatibility is not yet established for {unknown}.",
-        "$commentMethodLineStale": "Admin readiness fell 5 -> 4 -> 0 of 60 over thirty days on a tenant where fourteen admins held a phishing-resistant method throughout, and nothing in the tenant changed: the sign-in that confirmed each method had aged out of the 30-day proof window. \"0 of 60 people have a registered method the policies allow\" is a claim about registration driven by a reading about proof, and a number that falls on its own, on a gate that has to reach 100%, reads as the tenant getting worse. The line now says which of the unestablished were confirmed once, and what makes them count again. It is the line's last sentence, after methodLine and methodLineOff; methodLineUnknown is the same sentence where nobody's confirmation aged out. It said the aged-out people were ones \"nothing about\" had changed; the scan cannot know that - there is no registration history, and a person counted here may have signed in since with another method - so it says only how old the sign-in is and what counts them again.",
-        "methodLineStale": "Method compatibility is not yet established for {unknown} — {stale} of those were confirmed by a sign-in that is now older than 30 days: ask them to sign in once with that method and the next scan counts them again.",
-        "$commentMethodLineOff": "A reader of a 4,900-person tenant took 669 people who had registered a phone as a measurement error (R4-41, Sam D7): Require multifactor authentication accepts a phone, and the line said they lacked \"a registered method the policies allow\". What stopped them was not the Conditional Access policy but the tenant's Authentication methods policy, which switches text and voice off. On another tenant 38 people whose only method was text were called unknowable (R4-15, Marcus D5). The engine told \"registered only what the tenant does not allow\" from \"registered nothing\" and the line had no slot for it. It then said \"have registered only methods this tenant's Authentication methods policy does not let them use\" of five administrators on a phishing-resistant step who held only a phone: true of their registrations, and read as the reason, when the strength refuses a phone whatever the methods policy says - the one change it invites, switching text back on for administrators, weakens the tenant and counts nobody. So the line says the counterfactual itself, and counts exactly the people it is true of: every method they registered is one the methods policy stops, every policy of this step that refused them would accept those methods if it did not, and no policy of the step left them unjudged (methodReadiness.ts offIds; a passkey with no key on record is not counted, since that is a missing key, not a setting). Said straight after methodLine; methodLine itself names both authorities. Worded without \"have\" or \"use\": the renderer bends the first such verb after a count of one, modal or not (\"1 of the 2 people without one would has one\").",
-        "methodLineOff": "{off} of the {short} people without one would be counted if this tenant's Authentication methods policy allowed the methods they registered.",
-        "$commentMethodLineOffAll": "methodLineOff where it is every one of them: \"38 of the 38 people\" read as a count that forgot to differ.",
-        "methodLineOffAll": "The {short} people without one would be counted if this tenant's Authentication methods policy allowed the methods they registered.",
+        "$commentMethodLine": "Three totals on one step - \"246 active people\", \"covers 283 enabled\", \"209 of 279 people\" - each derivable and none explained. The readiness denominator is the people the step's own policies include among the plan's active people (walk list 4.x L4: the ones MFA Readiness and Prepare Your Team for MFA count). It read \"{ready} of {total} people this step's policies include have a registered method those policies accept and this tenant lets them use\"; owner, 2026-09-24 (walk list 4.x item 48): \"23 of 27 people have a method it accepts\".",
+        "methodLine": "{ready} of {total} people have a method it accepts.",
+        "$commentMethodLineSignIn": "The people one sign-in would count (methodReadiness.ts staleIds): the sign-in that confirmed their method aged out of the 30-day window, and the same sign-in made today counts them again (R4-15: said of anybody else it promises a number that will not move). It replaced methodLineUnknown and methodLineStale, whose \"Method compatibility is not yet established\" put IAMAI's uncertainty on the reader; the people nothing would settle are left out of the count and not described.",
+        "methodLineSignIn": "{n} people need to sign in once with the method they registered.",
+        "$commentMethodLineOff": "The people counted without a method who registered one, every one of which this tenant's Authentication methods policy turns off, and which the step's policy would accept if it did not (methodReadiness.ts offIds; R4-41, R4-15: 669 people holding only a phone read as a measurement error). Said straight after methodLine, naming what they registered (offMethods). Owner, 2026-09-24 (walk list 4.x item 48): \"2 registered {method}, which your Authentication methods policy turns off.\"",
+        "methodLineOff": "{off} registered only {methods}, which your Authentication methods policy turns off.",
+        "$commentOffMethods": "What the people in methodLineOff registered, in words, by kind (methodReadiness.ts offMethodWords). A method no MFA policy accepts (email, security questions) is not named.",
+        "offMethods": {
+          "phone": "a phone for texts or calls",
+          "authenticator": "Microsoft Authenticator",
+          "code": "an authenticator app code",
+          "passkey": "a passkey",
+          "windowsHello": "Windows Hello",
+          "other": "a method"
+        },
         "$commentDeviceLine": "The device gate printed a bare percentage and no line, where every MFA gate prints \"N of M people\". Three readers hand-counted it and all three got a different number, because the ratio counts people with a compliant device WITHIN THE DEVICE DECISION SCOPE - computers only, where that is the answer - and the sentence said \"of people on a compliant device\" with no mention of scope. Every instance read optimistic, and enrolling the phones would not have moved the number the reader was told to move.",
         "deviceComputers": "{ready} of {total} people have a compliant computer. Phones are outside this answer, so they are not counted here.",
         "deviceBoth": "{ready} of {total} people have a compliant device on a platform this answer covers."
@@ -1059,6 +1065,8 @@
       },
       "blocked": {
         "after": "after: {stepTitle}",
+        "$commentOperator": "The row reason on a policy that would leave the signed-in account with no way to sign in (roadmap/generate.ts, strand verdict). It read \"when 1 safe way in for the signed-in account exists (now 0)\" (walk list 4.x item 43).",
+        "operator": "when your account has a method this policy accepts",
         "readiness": "when {measure} reaches {threshold} (now {value})",
         "count": "when {n} {thing} exist (now {have})",
         "baseline": "the baseline defines this policy two ways",
@@ -1968,12 +1976,14 @@
           "$commentMilestone": "Verify Emergency Access's line under its milestone while an account still has to sign in (cleanupExport.ts drillMilestone), in place of \"Verify every selected account after the final configuration is observed.\". Owner wording, 2026-09-23.",
           "milestone": "Sign in with each emergency access account."
         },
-        "escapeHatchHeld": "Running this would turn the policy on straight away, and the way back in to {tenant} is not verified yet. Finish {steps} first; the instructions come back when its checks pass.",
+        "escapeHatchHeld": "It turns on after {steps}.",
         "$commentReadinessHeldCreate": "Owner, 2026-09-23: \"Hold the create for that policy until ready.\" A policy whose grant requires a compliant device is not created in report-only while the device readiness that gates its turn-on is unmet (roadmap/operations.ts createWaitsOnReadiness), because report-only prompts for a certificate (Microsoft Learn, concept-conditional-access-report-only). The fact, then what it waits on; no instruction.",
         "readinessHeldCreate": "{certificatePrompt} So creating this policy waits, as turning it on does, until {measure} reaches {threshold}; it is {value} now.",
         "$commentReadinessHeldSwitchedOff": "The same wait for a compliant-device policy the scan found in the tenant switched off: its Report-only patch waits on the same threshold (roadmap/operations.ts createWaitsOnReadiness), and the line says the policy was found, so it never reads as a policy still to create.",
         "readinessHeldSwitchedOff": "{certificatePrompt} {policy} is already in {tenant}, switched off. So setting it to Report-only waits, as turning it on does, until {measure} reaches {threshold}; it is {value} now.",
-        "readinessHeld": "Running this would change what {tenant}'s people have to do straight away, and {measure} is {value} - this step waits until it reaches {threshold}. The instruction being withheld is the one that turns the policy on; the rest of this step stays available, and turning it on comes back when {measure} reaches {threshold}.",
+        "readinessHeld": "It stays until {measure} reaches {threshold} ({value} today).",
+        "$commentReadinessHeldAdmin": "readinessHeld on the admin policy, whose gate is every admin (walk list 4.x item 44): the admins' own count (roadmap/methodReadiness.ts).",
+        "readinessHeldAdmin": "It stays until every admin has a method it accepts ({ready} of {total} today).",
         "footerJson": "JSON",
         "cleanupDoneOn": "Done on",
         "cleanupDone": "Done",
@@ -2063,18 +2073,32 @@
           "$commentFoundEnforcedBelowThreshold": "Said after foundEnforcedShort where the reading is below the plan's own threshold, which the finished step otherwise never named once the gate was gone. The value now, never when the policy went on.",
           "foundEnforcedBelowThreshold": "The plan holds enforcement until {measure} reaches {threshold}; it is {value} now.",
           "foundEnforcedBelowThresholdFloor": "The plan holds enforcement until {measure} reaches {threshold}; it is at least {value} now.",
-          "belowGoalFloor": {
-            "$comment": "Owner, 2026-09-22 (R4-11): the pinned baseline's admin policy grants \"Modern MFA + TAP\" under a goal whose floor is phishing-resistant MFA. The pinned baseline wins: IAMAI builds it and turns it on as written, and says the grant is weaker. It never asks the admin to change it.",
-            "label": "Baseline Grant",
-            "value": "Weaker than {floor}",
-            "note": "The baseline writes this policy to ask for {grant}, which is weaker than the {floor} this goal names. IAMAI builds it and turns it on as the baseline wrote it.",
-            "floors": {
-              "mfa": "multifactor authentication",
-              "passwordless": "passwordless sign-in",
-              "phishingResistant": "phishing-resistant MFA"
-            },
-            "grantMfa": "multifactor authentication",
-            "grantStrength": "the {strength} authentication strength"
+          "dormantNoMethod": {
+            "$comment": "Require MFA for Everyone's card for the accounts its policy reaches that have not signed in for 90 days, or ever, and hold no method it accepts, the ones kept in Disable or Confirm Dormant Accounts aside (stepContract.ts dormantOf). Owner, 2026-09-24 (walk list 4.x item 10 and L4): they no longer hold the step's 90% gate, which counts the people MFA Readiness counts; whoever signs in to one first registers its method, so the step names them and where to disable them. Up to five by name; past that, the step that disables them lists them.",
+            "label": "Dormant Accounts",
+            "value": "{n} accounts haven't signed in for 90 days and have no method",
+            "valueOne": "1 account hasn't signed in for 90 days and has no method",
+            "names": "Disable {names} in {step}.",
+            "listed": "Disable them in {step}, which lists them."
+          },
+          "operatorCard": {
+            "$comment": "The card on a policy that would leave the signed-in account with no way to sign in (stepContract.ts operatorOf). Owner, 2026-09-24 (walk list 4.x item 43): one heading in every state, the account named, and the step that fixes it. It was headed \"Before turning on\" in one state and \"Prerequisites\" in another, over \"Your safe way in · when 1 safe way in for the signed-in account exists (now 0)\".",
+            "label": "Your account",
+            "value": "No method this policy accepts",
+            "admin": "{name} holds an admin role and has no passkey or security key.",
+            "other": "{name} has no passkey or security key.",
+            "fix": "{step} fixes this before it turns on."
+          },
+          "methodGate": {
+            "$comment": "The Threshold card on a step whose turn-on waits on people's methods (mfa, admin and guest gates; stepContract.ts methodGateSentence). Owner, 2026-09-24 (walk list 4.x items 42, 48): the admin gate counts admins and names up to five of those short, with what each needs; every other method gate keeps its percentage and states the engine's count line (engine.readiness.methodLine). Both end on the step that gets them ready, and link to it. It replaced \"Enforcement waits for {measure} to reach {threshold}; it is {value} today.\" and \"…; it waits on X, which is where to start\" on these gates: the row and the value state the threshold.",
+            "adminValue": "{ready} of {total} admins have a method it accepts",
+            "needs": "{names} needs a passkey, security key or Windows Hello.",
+            "needMany": "{names} need a passkey, security key or Windows Hello.",
+            "needListed": "{n} admins need a passkey, security key or Windows Hello; MFA Readiness lists them.",
+            "signIn": "{names} needs to sign in once with the method they registered.",
+            "signInMany": "{names} need to sign in once with the method they registered.",
+            "signInListed": "{n} admins need to sign in once with the method they registered.",
+            "route": "{step} gets them ready."
           },
           "ownPolicyDiffers": {
             "$comment": "Owner, 2026-09-22: a policy the tenant wrote delivers the goal and differs from the baseline's in a part coverage does not judge (token protection without the Cloud PC filter; a compliant-device policy on every platform). The step stays Completed and states the difference; it never asks the tenant to change a policy that works, which could weaken it.",
@@ -3182,6 +3206,8 @@
         },
         "$commentNoOperationDisabled": "\"This step has no policy for IAMAI to write in this plan. Scan again to rebuild it.\" was said over a step whose policy EXISTS in the tenant and is switched off - the step was tracking it, state disabled, on both the latest scan and the one before. So the sentence was false and its remedy did nothing: a reader scanned three times, got byte-identical output, and stopped. Said where every policy this step tracks is disabled.",
         "noOperationDisabled": "A policy for this step already exists in {tenant} and is switched off, so there is nothing for IAMAI to create. Set Enable policy to Report-only in the Entra admin center, not On: IAMAI watches it there, and this step says when it can be turned on. Scan again once it is in Report-only.",
+        "$commentEnforceOutstanding": "Owner, 2026-09-24 (walk list 4.x items 17 and 44): the turn-on task's one line while the plan's own prerequisites hold it (ui/surfaces/policyTasks.ts policyProcedureOf). It read \"Stop: {items} is not finished, and this policy is part of it\", and the policy is not part of that step; it stood inside a checklist the two-line turn-on no longer has.",
+        "enforceOutstanding": "Wait for {items}; leave this policy in Report-only until then.",
         "$commentSecurityDefaultsCoexist": "The plan states its own ordering invariant on this step - \"security defaults must be off before the policies replacing them can take over, and once these policies exist you cannot turn security defaults back on... That is why nothing in this plan enforces before this step.\" A reader enforced eight policies with security defaults still on, swept all thirty-three steps, and found no warning anywhere; the board read Completed and the tile said \"IAMAI watched it get there.\" The step that owns the invariant is the one place that must notice it has been broken.",
         "$commentSecurityDefaultsCoexistPointer": "It ended \"and this is the step that turns them off\", which reads as the way out. On the tenant where it fired the plan's own MFA policy was still held below its threshold, and turning security defaults off then removes the MFA they require from everybody (Sam D2). The step turns them off only once the replacements can go On in the same change window, and the line says that instead.",
         "securityDefaultsCoexist": "{n} Conditional Access policies are enforced in this tenant while security defaults are still on, which Microsoft does not support. Do not turn security defaults off to settle it: this step does that only once the policies that replace them can go On in the same change window.",
@@ -4853,7 +4879,7 @@
       "kind": "policy",
       "title": "Require MFA for Everyone",
       "changeLine": null,
-      "why": "MFA makes a stolen password less useful. Reviewing who has a usable method—and who has actually used one—helps catch access problems before enforcement.",
+      "why": "A stolen password alone should never be enough to sign in. This policy asks everyone for MFA, the floor the admin and guest policies build on.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-mfa-strength"
       },
@@ -4951,7 +4977,7 @@
       "kind": "policy",
       "title": "Require Phishing-Resistant MFA for Admins",
       "changeLine": null,
-      "why": "Administrator access deserves stronger sign-in protection. Checking accepted methods and recent use helps identify admins who would struggle to meet the policy when it is enabled.",
+      "why": "Admin accounts can change everything in your tenant, so this policy makes everyone in an admin role sign in with a passkey, a security key, Windows Hello, a certificate or a Temporary Access Pass.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-admin-phish-resistant-mfa"
       },
@@ -4959,14 +4985,13 @@
         "lead": "{admins} people hold an admin role",
         "evidenceUndated": {
           "$comment": "The evidence lines that name the turn-on day ({enforce}), without it, keyed by the dated line's place in evidence: for a step that carries no such day - held on the board (owner decision 2, 2026-09-22), held by the roadmap, or finished - whose people the scan still read. Each keeps the rest of its dated line and says no more than it did (stepExport.ts whoEvidenceLines).",
-          "1": "{n} admins are not yet Ready for phishing-resistant MFA; get each Ready: {list:adminsWithout}",
-          "2": "{adminsWithoutCount} admins are not yet Ready for phishing-resistant MFA; get each Ready."
+          "1": "{n} admins need a passkey, security key or Windows Hello: {list:adminsWithout}",
+          "2": "{adminsWithoutCount} admins need a passkey, security key or Windows Hello."
         },
         "evidence": [
           "No session control here on purpose: the baseline keeps sign-in frequency and persistence in their own policies (Shorten Admin Sessions, Limit How Long Sessions Last).",
-          "{n} admins are not yet Ready for phishing-resistant MFA; get each Ready before {enforce}: {list:adminsWithout}",
-          "{adminsWithoutCount} admins are not yet Ready for phishing-resistant MFA; get each Ready before {enforce}.",
-          "{n} of them use the same account for mail or Teams; see Use Separate Accounts for Admin Work: {list:adminsWithWorkload}",
+          "{n} admins need a passkey, security key or Windows Hello before {enforce}: {list:adminsWithout}",
+          "{adminsWithoutCount} admins need a passkey, security key or Windows Hello before {enforce}.",
           "Roles held through Privileged Identity Management are in scope only while activated.",
           "Your account is in scope: {operatorSignIns} sign-ins since {from}.",
           "{operatorNoRecords}, your own account, is in scope: it signed in for this scan and has no sign-in records in the window.",
@@ -5006,11 +5031,11 @@
           }
         ],
         "helpDesk": [
-          "A Temporary Access Pass satisfies this policy's strength in both its forms; Microsoft's own phishing-resistant strength accepts neither.",
+          "An admin who cannot sign in: issue a Temporary Access Pass, which this policy accepts, and register a passkey or security key with them.",
           "Anything the strength does not list is refused, including a code or an approval; do not add exclusions.",
           "An admin who signed in with a password first is never prompted for Windows Hello: they restart the sign-in and choose Sign-in options."
         ],
-        "manager": "Admin sign-ins use methods that are much harder to phish than codes or approvals. The accepted set also includes a Temporary Access Pass, which is temporary but can be issued for repeated use.",
+        "manager": "Admin sign-ins use methods that are much harder to phish than codes or approvals.",
         "waits": null
       },
       "example": {

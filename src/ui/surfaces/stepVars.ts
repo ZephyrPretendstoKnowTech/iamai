@@ -21,7 +21,7 @@ import { hoursAsDuration, needsPasskey, sessionWantedForGoal, sessionWantedLongF
 import { hoursInWords } from '../../coverage/verdict.ts'
 import { analysisUnknown, effectsOf, promptsPeople } from '../../roadmap/strand.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
-import { contentLists } from '../../derive/contentLists.ts'
+import { contentLists, NAMES_UP_TO } from '../../derive/contentLists.ts'
 import { watchedArrive } from '../../roadmap/observation.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
 import { disabledInactiveUsers, notPeopleIds, phoneSignInIds } from '../../derive/sets.ts'
@@ -391,6 +391,18 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // emergency/service/admin id sets. A step reads only the keys it uses.
   // With Require MFA for Everyone in place nobody is "registered but never seen to complete MFA" (population.ts campaignBucket).
   Object.assign(v, contentLists({ snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, now: ctx.now, mfaInPlace: ctx.mfaInPlace === true }))
+  // The admins the admin policy's own gate counts short (walk list 4.x item 46):
+  // "1 admin is not yet Ready for phishing-resistant MFA" read MFA Readiness's
+  // state beside a gate at 100%. The admins judged without a method the policy
+  // accepts (roadmap/methodReadiness.ts), by name when three or fewer.
+  if (step.goalId === 'admins-phishing-resistant' && step.methodPreparation) {
+    const p = step.methodPreparation
+    const judged = new Set([...p.readyIds, ...p.unknownIds])
+    const short = p.ids.filter((id) => !judged.has(id))
+    v.adminsWithout = short.length <= NAMES_UP_TO ? short.map(ctx.nameOf) : []
+    if (short.length > NAMES_UP_TO) v.adminsWithoutCount = short.length
+    else delete v.adminsWithoutCount
+  }
   // Disable or Confirm Dormant Accounts' card (walk list items 14, 26): the
   // accounts still to disable or keep, and once none are, how many the person
   // keeps and how many accounts with no sign-in in the last 90 days are
