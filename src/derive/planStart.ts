@@ -27,6 +27,18 @@ export function effectiveFirstDeployment(startIso: string, saved: { firstDeploym
   return proposedFirstDeployment(startIso)
 }
 
+/**
+ * The first deployment when Plan starts moves (a deliberate re-plan, §5). The day
+ * the lock anchored beside the old start is not a choice, so it moves with the
+ * start: the eligible workday after it, earlier or later. A day the operator set
+ * stands while it is not before the new start.
+ */
+export function movedFirstDeployment(startIso: string, prior: { startDate?: string; firstDeployment?: string } | null | undefined): string {
+  const anchored = prior?.startDate ? proposedFirstDeployment(prior.startDate).slice(0, 10) : null
+  const set = prior?.firstDeployment && prior.firstDeployment.slice(0, 10) !== anchored ? prior.firstDeployment : undefined
+  return effectiveFirstDeployment(startIso, { firstDeployment: set })
+}
+
 /** Today's date in the display zone (never UTC), as YYYY-MM-DD. */
 export function todayIn(zone: string | null, now: Date = new Date()): string {
   try {
