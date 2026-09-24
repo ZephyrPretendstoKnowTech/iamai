@@ -249,7 +249,10 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
     },
     {
       id: 'prepare-affected-passkeys', accountId: null, title: EMERGENCY_TASK.affectedPasskeys, targetUpn: null,
-      required: affected.users.length > 0 || restriction.stranded.length > 0, readinessKey: 'affected-passkeys', evidence: affected.users.length ? `${affected.users.length} user${affected.users.length === 1 ? '' : 's'} confirmed affected.` : null, actionLabel: 'Open preparation instructions',
+      // Required while an account would be, or is, locked out; before the change also while
+      // anyone's passkey would stop (they are told first). Once applied, an account that keeps
+      // another way in is the card's to say, not work that holds the step (net-new 4).
+      required: affected.users.length > 0 || restriction.lockedOut.length > 0 || (protectionFields.length > 0 && restriction.stranded.length > 0), readinessKey: 'affected-passkeys', evidence: affected.users.length ? `${affected.users.length} user${affected.users.length === 1 ? '' : 's'} confirmed affected.` : null, actionLabel: 'Open preparation instructions',
       issueKeys: affected.users.map(user => `passkey:affected:${user.accountId.toLowerCase()}`), facts: affectedFacts, variants, defaultVariantId: variants[0].id,
       steps: [prepareLead, '**Compatible alternative:** sign in with the registered compatible alternative in a separate session, confirm the account, then continue to the final scan action.', '**Replacement registration, only if needed:** where no compatible alternative is registered, continue with the steps below to register a replacement.', protectionFields.length > 0 ? 'Return to IAMAI and select **Scan to update the plan** before applying restrictions.' : 'Return to IAMAI and select **Scan to update the plan**.'],
     },
