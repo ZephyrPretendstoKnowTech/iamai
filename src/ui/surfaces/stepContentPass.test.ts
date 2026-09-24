@@ -57,7 +57,7 @@ test('a Learn link shows the day it was checked where no package is current: a s
   // the step draws the translator's channels. When the page was checked is a
   // fact about the page, so the date stays on both plans.
   const expected = packageSourceLine(PACKAGES['s-goal-admin-portals-protected'], CONTRACT.implementation)
-  assert.equal(sourceUpdatedOn(PACKAGES['s-goal-admin-portals-protected']), '2026-09-20')
+  assert.equal(sourceUpdatedOn(PACKAGES['s-goal-admin-portals-protected']), '2026-09-25')
   assert.ok(expected, 'the package records no checked date')
   for (const name of ['mid', 'demo'] as const) {
     const { r, ctx } = planOf(name)
@@ -75,12 +75,12 @@ test('a Learn link shows the day it was checked where no package is current: a s
   // The rows are built per tenant (roadmap/workflows.ts PLAN_CA) and have no
   // package, so the date is on the row's own Learn entry, from the source table
   // in docs/plans/ongoing-spec.md section 1 (`ms-plan-ca`, checked 2026-09-20).
-  const rowLine = sourceCheckedLine('2026-09-20', CONTRACT.implementation)
+  const rowLine = sourceCheckedLine('2026-09-25', CONTRACT.implementation)
   assert.ok(rowLine, 'no Source checked line for a recorded date')
   const rows = demo.r.steps.filter((s) => s.id.startsWith('s-review-baseline-'))
   assert.equal(rows.length, 4, 'the demo generates four review rows')
   for (const step of rows) {
-    assert.equal((step.guidance as { learn?: { checkedOn?: string } } | undefined)?.learn?.checkedOn, '2026-09-20', step.id)
+    assert.equal((step.guidance as { learn?: { checkedOn?: string } } | undefined)?.learn?.checkedOn, '2026-09-25', step.id)
     const b = stepBodyOf(step, demo.ctx)
     assert.equal(b.learnUrl, 'https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access', step.id)
     assert.equal(b.sourceLine, rowLine, `${step.id}: the Learn link shows no checked date`)

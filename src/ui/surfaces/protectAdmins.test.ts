@@ -238,8 +238,8 @@ test('each step links a page its package cites, and shows the date its Microsoft
   const meta = (registry.packages as Record<string, { meta?: { verifiedSources?: { url: string }[] } }>)[PASSKEY]?.meta
   assert.ok((meta?.verifiedSources ?? []).some((s) => s.url === passkey.learnUrl), 'the package cites a different page from the step')
   for (const id of [PASSKEY, STRENGTH, ADMINS, SESSION]) {
-    assert.equal(checkedOn(id), '2026-09-20', id)
-    assert.equal(demo.get(id)!.sourceLine, 'Source checked Sep 20, 2026', id)
+    assert.equal(checkedOn(id), '2026-09-25', id)
+    assert.equal(demo.get(id)!.sourceLine, 'Source checked Sep 25, 2026', id)
   }
-  assert.equal(checkedOn(PIM), '2026-09-20')
+  assert.equal(checkedOn(PIM), '2026-09-25')
 })
