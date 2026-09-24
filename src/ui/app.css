@@ -5283,7 +5283,8 @@ th .th-sort:focus-visible,
 .direction-question > p:not(.emergency-account-label) + p { margin-top: 6px; }
 .direction-question .picker { border: 0; margin: 10px 0 0; padding: 0; }
 .direction-section > .reason { margin: 0 0 12px; }
-.direction-section > button { margin-top: 16px; }
+/* Approve answers in the action column, and why a list nobody has picked from holds it. */
+.direction-approve > .reason { margin: 8px 0 0; }
 .emergency-account-scan-note { margin: 12px 0 0; color: var(--secondary-text); font-size: var(--t-0); }
 .emergency-readiness-extra { margin-top: 10px; }
 .emergency-finding-groups { display: grid; gap: 12px; margin-top: 8px; }
