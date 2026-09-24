@@ -2491,7 +2491,11 @@ function stateTile(step: Step, c: StepContract, setupAfterEnforcement = false): 
     const people = methodGateOf(step, gate) !== null
     const route = people ? gateRouteOf(step, gate) : c.routeStart ?? gateRouteOf(step, gate)
     const note = c.found.find((f) => f.key === 'gate')?.text ?? readinessSentence(step, gate, c.routeStart)
-    return { key: 'gate', label: t.gate, tone: 'warn', value: methodGateValueOf(step, gate) ?? readinessValueOf(gate), note, ...(route !== null ? { link: stepLink(route.id, route.title) } : {}) }
+    // Where the card states its count ("21 of 30 people have a method it
+    // accepts"), the percentage beside it carries no "At least" (walk list 4.x
+    // item 48): the count is exact, and the hedge was IAMAI's to carry.
+    const value = methodGateValueOf(step, gate) ?? readinessValueOf(people ? (({ floor: _floor, ...rest }) => rest)(gate) : gate)
+    return { key: 'gate', label: t.gate, tone: 'warn', value, note, ...(route !== null ? { link: stepLink(route.id, route.title) } : {}) }
   }
   // An observation with no date says WHY it has no date, where the step knows:
   // the people the policy stopped in report-only, or the records that could not
