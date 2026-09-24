@@ -18,10 +18,11 @@ import { fillText, missingVars } from '../../content/render.ts'
 import { absolute } from '../../copy/dates.ts'
 import { Button, Picker } from '../components/index.ts'
 import type { StatusTone } from '../components/index.ts'
-import { AuthoredText, DoneWhen, ReadinessSection, StepActionColumn, StepHead, StepSection } from './StepSections.tsx'
+import { AuthoredText, DoneWhen, ReadinessSection, StepActionColumn, StepFooter, StepHead, StepSection } from './StepSections.tsx'
 import type { ReadinessTile } from './stepContract.ts'
 import { HEAD, TASK_HEAD } from './stepHeadings.ts'
 import { CONTRACT, milestoneHeadlineOf } from './stepContract.ts'
+import { groupOf } from '../../roadmap/stepGroups.ts'
 import { cleanupEntry, cleanupVars, cleanupWhen, EMERGENCY_RECOVERY_PROCEDURE } from './cleanupExport.ts'
 import { EmergencySubjectReadiness, Implementation, copyImplementationArtifact } from './ContentStep.tsx'
 import type { Artifact, Channel } from './stepBody.ts'
@@ -33,12 +34,15 @@ export type { CleanupEntry } from './cleanupExport.ts'
 
 const A = app.plan
 
+/** Verify Emergency Access's Next milestone while it is open: the words its action column has always carried. */
+const DRILL_MILESTONE = 'Verify every selected account after the final configuration is observed.'
+
 /** Today as the Done control's default, in the display zone's calendar day shape. */
 function todayDate(): string {
   return new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 }
 
-export function CleanupBody({ phase, row, status, onScan, onClose, onDone }: {
+export function CleanupBody({ phase, row, status, onScan, onDone }: {
   phase: CleanupPhase
   row: CleanupPhase['rows'][number]
   /**
@@ -48,7 +52,6 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone }: {
   status: { word: string; tone: StatusTone; waitingFor?: string | null }
   /** The live controls; absent when printing. */
   onScan?: () => void
-  onClose?: () => void
   /** Done: record the date (YYYY-MM-DD) in the plan's checkpoints. */
   onDone?: (date: string, accountIds?: string[], evidence?: Pick<CleanupCheckpoint, 'outcome' | 'recipient' | 'workflow' | 'purpose' | 'tenantId' | 'configurationObservedAt' | 'signInAtByAccount' | 'recoveryEvidence' | 'replacementPolicyId' | 'retiredPolicyIds' | 'coverageVerified' | 'replacementBasis' | 'reference' | 'policyNames' | 'consolidationDecision' | 'retainedPolicyIds' | 'retainedPolicyBases' | 'rationale' | 'namingChanges' | 'toolingVerified'>) => void
 }) {
@@ -101,85 +104,104 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone }: {
   ], [phase])
   // Every hook above runs on every render (Rules of Hooks); a row with no content entry renders nothing.
   if (!entry) return null
-  // The recovery drill draws the task-step headings, because it draws the task
-  // anatomy: the Tasks Remaining cards and the task frame below are its own.
-  // The other Cleanup rows keep their default headings — the owner left the
-  // Cleanup rows out of the 2026-09-19 uniformity rule, and a Cleanup row is a
-  // board row rather than a step, so it answers this for itself rather than
-  // through its group (stepHeadings.ts taskHeadingsOf).
+  // The recovery drill is Establish Emergency Access's fourth step (1.4), and it
+  // is drawn as the other three are (owner, 2026-09-23: "Uniformity is a BIG
+  // deal"): the step-type eyebrow over its title, the task-step headings in the
+  // same order, the action column with its Next milestone on the inset surface
+  // down the whole body, and the one footer strip with the Scan. The other
+  // Cleanup rows keep their default headings and one column — the owner left
+  // the Cleanup rows out of the 2026-09-19 uniformity rule, and a Cleanup row is
+  // a board row rather than a step — and close on the same footer.
+  const drill = row.kind === 'drill'
   const taskHead = row.kind === 'drill' ? TASK_HEAD : null
   const doneWhen = entry.doneWhen.filter(whole)
   const copyArtifact = (id: string, value: string): void => { void copyImplementationArtifact(value).then(ok => { setCopied(ok ? id : 'copy-failed'); setTimeout(() => setCopied(null), ok ? 1500 : 6000) }) }
+  const head = <StepHead eyebrow={drill ? CONTRACT.kind.check : null} title={entry.title} badge={status.word} tone={status.tone} sub={status.waitingFor ? <p className="reason">{status.waitingFor}</p> : null} />
+  const why = (
+    <StepSection heading={taskHead?.why ?? HEAD.why}>
+      <p>
+        {fillText(entry.why, ex)}{' '}
+        {entry.learn?.url && (
+          <a href={entry.learn.url} target="_blank" rel="noopener noreferrer">
+            Learn →
+          </a>
+        )}
+      </p>
+    </StepSection>
+  )
+  const done = <DoneWhen heading={taskHead?.doneWhen ?? HEAD.doneWhen} lines={doneWhen.map((l) => fillText(l, ex))} />
+  const recorded = row.record && (row.kind !== 'drill' || row.record.outcome) && <section className="step-section"><h4>{row.kind === 'naming' || row.kind === 'consolidation' ? 'Recorded Review' : 'Recorded Test'}</h4><p>{row.record.date.slice(0, 10)} · {row.record.consolidationDecision === 'retain-both' ? 'Retain Both' : row.record.outcome === 'passed' ? 'Passed' : row.record.outcome === 'failed' ? 'Failed' : 'Outcome not recorded'}</p>{recordedAccounts.length > 0 && <p>Tested accounts: {recordedAccounts.join(', ')}</p>}{row.record.recipient && <p>Recipient: {row.record.recipient}</p>}{row.record.replacementPolicyId && <p>Retained policy: {policyOptions.find(policy => policy.id === row.record?.replacementPolicyId)?.name ?? row.record.replacementPolicyId}</p>}{row.record.retiredPolicyIds?.length ? <p>Retired policies: {row.record.retiredPolicyIds.map(id => policyOptions.find(policy => policy.id === id)?.name ?? id).join(', ')}</p> : null}{row.record.retainedPolicyIds?.length ? <p>Policies retained: {row.record.retainedPolicyIds.map(id => policyOptions.find(p => p.id === id)?.name ?? row.record?.policyNames?.[id] ?? id).join(', ')}</p> : null}{row.record.rationale && <p>Reason: {row.record.rationale}</p>}{row.record.reference && <p>Change record: {row.record.reference}</p>}{row.verificationReason && <p>{row.verificationReason}</p>}</section>
+  // The Scan in the one footer every step closes on (StepSections.tsx
+  // StepFooter): the scan's status over it while one runs, and it waits. The
+  // row above the body is what closes it; no step draws a Close.
+  const footer = <StepFooter onScan={onScan ?? null} />
+  if (drill) {
+    return (
+      // The frame ContentStep draws for a step: the head, the main column in two
+      // parts with the action column between them in the DOM (U5) and beside
+      // them on screen, and the footer under both. `data-task-anatomy` is the
+      // group's, as on the other three steps of Establish Emergency Access.
+      <article className="step panel panel-key" data-step-id="cleanup-drill" data-task-anatomy={groupOf('cleanup-drill')?.key}>
+        {head}
+        <div className="step-body has-rail">
+          <div className="step-main step-main-lead">
+            {why}
+            {/* Tasks Remaining, on screen whatever the scan found, as on the
+                other three: the accounts' cards, or No tasks remaining. */}
+            {onDone ? <EmergencySubjectReadiness subjects={recoverySubjects} printing={false} barMain={recoveryReadiness.bar.main} onWhy={null} /> : recoveryTiles.length > 0 && <ReadinessSection heading={TASK_HEAD.remaining} readiness={recoveryReadiness} lead={null} showClosedCount={false} printing />}
+          </div>
+          <StepActionColumn rail={{ headline: milestoneHeadlineOf(row.done ? status.word : null, [DRILL_MILESTONE]), instruction: null }} />
+          <div className="step-main step-main-rest">
+            {/* The row's own instructions are its Implementation (U1; S-RN-2, S-RB-3): no step draws What to do. */}
+            <Implementation heading={TASK_HEAD.implementation} artifacts={verificationArtifacts} drawnBy="translator" preview={null} notes={[]} title={entry.title} empty={{ key: 'none', tone: 'neutral', title: '', text: '' }} source={null} learn={entry.learn?.url ?? null} onTroubleshooting={null} open={implementationOpen} onOpen={() => setImplementationOpen(true)} onClose={() => setImplementationOpen(false)} copy={copyArtifact} copied={copied} printing={!onDone} tasks={verificationTasks} chosenChannel={implementationChannel} onChooseChannel={setImplementationChannel} chosenTaskId={taskId} onChooseTask={setTaskId} emptyTaskText={row.done ? 'Verification is current. No Entra action is required.' : 'Complete the highlighted configuration tasks before starting verification.'} />
+            {done}
+            <details className="step-section emergency-recovery-procedure" open={!onDone || undefined}><summary><strong>Emergency recovery procedure</strong></summary><p className="reason">Keep the exported plan available independently of this tenant. Scan-specific facts reflect the scan at {phase.snapshotObservedAt ? absolute(phase.snapshotObservedAt) : 'an unavailable time'} and may differ during an incident.</p><ol>{EMERGENCY_RECOVERY_PROCEDURE.map(line => <li key={line}><AuthoredText text={line} /></li>)}</ol><p className="reason">Conditional Access exclusions do not disable Security Defaults or authentication-method policy. Temporary Access Pass does not bypass Conditional Access, and no recovery route or timeframe is guaranteed.</p></details>
+            {recorded}
+          </div>
+        </div>
+        {footer}
+      </article>
+    )
+  }
   return (
     // The same frame the Plan draws for a step (task 034): attached under the row
-    // that opened it, its head above the body. A Cleanup row is not a policy,
-    // has no lifecycle to be at and no milestone or implementation to summarise,
-    // so it draws no track and no rail — the frame is the same, the step
-    // activates less of it.
-    <article className="step panel panel-key" data-step-id={row.kind === 'drill' ? 'cleanup-drill' : undefined}>
-      <StepHead title={entry.title} badge={status.word} tone={status.tone} sub={status.waitingFor ? <p className="reason">{status.waitingFor}</p> : null} />
-      <div className={`step-body${row.kind === 'drill' ? ' has-rail' : ''}`}>
+    // that opened it, its head above the body. A Cleanup row is not a policy and
+    // has no lifecycle to be at, so it draws no track — the frame is the same,
+    // the row activates less of it.
+    <article className="step panel panel-key">
+      {head}
+      <div className="step-body">
         <div className="step-main">
-      {/* The same sections, in the same order, under the same headings as a step
-          (StepSections.tsx, stepHeadings.ts). A Cleanup row is not a policy and
-          has no lifecycle to be at, so it activates fewer of them; it does not
-          get its own layout for the ones it does. */}
-      <StepSection heading={taskHead?.why ?? HEAD.why}>
-        <p>
-          {fillText(entry.why, ex)}{' '}
-          {entry.learn?.url && (
-            <a href={entry.learn.url} target="_blank" rel="noopener noreferrer">
-              Learn →
-            </a>
+          {/* The same sections, in the same order, under the same headings as a
+              step (StepSections.tsx, stepHeadings.ts). */}
+          {why}
+          <StepSection heading={CONTRACT.implementation.heading}>
+            <ol className="sections">{entry.whatToDo.filter(whole).map((l, i) => <li key={i}>{fillText(l, ex)}</li>)}</ol>
+          </StepSection>
+          {done}
+          {recorded}
+          {onDone && row.kind !== 'hardening' && row.kind !== 'namedExclusions' && (
+            <div className="decision">
+              {row.kind === 'alerting' && <div className="decision-field"><label><strong>Test Result</strong><select value={outcome} onChange={event => setOutcome(event.currentTarget.value as typeof outcome)}><option value="">Choose…</option><option value="passed">Passed</option><option value="failed">Failed</option></select></label></div>}
+              {row.kind === 'alerting' && <div className="decision-field"><label><strong>Alert Recipient</strong><input value={recipient} onChange={event => setRecipient(event.currentTarget.value)} /></label></div>}
+              {row.kind === 'naming' && <div className="decision-fields"><ul>{namingProposals.map(p => <li key={p.id}><strong>{p.from}</strong><label><span className="sr-only">Approved name for {p.from}</span><input value={p.to} onChange={e => { const value = e.currentTarget.value; setNameDrafts(prev => ({ ...prev, [p.id]: value })) }} /></label><span className="reason">ID: {p.id}</span>{p.collision && <p>Name collision: resolve the duplicate name before saving this proposal.</p>}</li>)}</ul><label className="choice"><input type="checkbox" checked={toolingVerified} onChange={e => setToolingVerified(e.currentTarget.checked)} />Name-based scripts and reports have been checked.</label><p>Save the proposed names before renaming in Entra, then rescan. Confirm the tooling check after the names are updated.</p></div>}
+              {row.kind === 'consolidation' && <div className="decision-fields">
+                <div className="decision-field"><label><strong>Review Outcome</strong><select value={consolidationDecision} onChange={e => { setConsolidationDecision(e.currentTarget.value as typeof consolidationDecision); setRetiredIds([]) }}><option value="retire">Retire Replaced Policies</option><option value="retain-both">Retain Both</option></select></label></div>
+                {consolidationDecision === 'retire' && <div className="decision-field"><label><strong>Retained Policy</strong><select value={replacementId} onChange={event => setReplacementId(event.currentTarget.value)}><option value="">Choose…</option>{policyOptions.filter(policy => policy.state === 'enabled').map(policy => <option key={policy.id} value={policy.id}>{policy.name}</option>)}</select></label></div>}
+                <div className="decision-field"><h5 id="retired-policy-label">{consolidationDecision === 'retire' ? 'Retired Policies' : 'Policies to Retain'}</h5><Picker labelledBy="retired-policy-label" options={policyOptions.filter(policy => (consolidationDecision === 'retain-both' || policy.id !== replacementId) && `${policy.name} ${policy.id}`.toLowerCase().includes(policyQuery.toLowerCase()))} selected={retiredIds.map(id => policyOptions.find(policy => policy.id === id) ?? { id, name: id })} onSearch={setPolicyQuery} onChange={options => setRetiredIds(options.map(option => option.id))} /></div>
+                {consolidationDecision === 'retire' && <label className="choice"><input type="checkbox" checked={coverageVerified} onChange={event => setCoverageVerified(event.currentTarget.checked)} />The retained policy covers the users, resources and controls of the retired policies.</label>}
+                {consolidationDecision === 'retain-both' && <div className="decision-field"><label><strong>Reason to Retain Both</strong><input value={rationale} onChange={e => setRationale(e.currentTarget.value)} /></label></div>}
+                <div className="decision-field"><label><strong>Change Record</strong><input value={reference} onChange={event => setReference(event.currentTarget.value)} /></label></div>
+              </div>}
+              <><div className="dlabel">{A.cleanupDoneOn}</div>
+              <input type="date" max={todayDate()} aria-label={A.cleanupDoneOn} value={date} onChange={(e) => setDate(e.currentTarget.value)} />
+              <Button variant="secondary" disabled={!validCompletionDate(date, todayDate()) || (row.kind === 'consolidation' && !consolidationReady) || (row.kind === 'naming' && (!namingProposals.length || namingProposals.some(p => p.collision))) || (row.kind === 'alerting' && !outcome) || (row.kind === 'alerting' && !recipient.trim())} onClick={() => onDone(date, row.kind === 'alerting' ? phase.accountIds : [], { ...(row.kind === 'naming' ? { namingChanges: namingProposals.map(({id, from, to}) => ({id, from, to})), toolingVerified } : {}), ...(row.kind === 'consolidation' && consolidationDecision === 'retain-both' ? { outcome: 'passed' as const, consolidationDecision, retainedPolicyIds: retiredIds, retainedPolicyBases: Object.fromEntries(policyOptions.filter(p => retiredIds.includes(p.id)).map(p => [p.id, JSON.stringify([p.state, p.basis])])), rationale: rationale.trim(), policyNames: Object.fromEntries(policyOptions.filter(p => retiredIds.includes(p.id)).map(p => [p.id, p.name])) } : {}), ...(row.kind === 'consolidation' && consolidationDecision === 'retire' ? { consolidationDecision, outcome: 'passed' as const, replacementPolicyId: replacementId, retiredPolicyIds: retiredIds, coverageVerified, replacementBasis: replacement?.basis ?? undefined, reference: reference.trim(), policyNames: Object.fromEntries(policyOptions.filter(policy => policy.id === replacementId || retiredIds.includes(policy.id)).map(policy => [policy.id, policy.name])) } : {}), ...(outcome ? { outcome } : {}), ...(recipient.trim() ? { recipient: recipient.trim() } : {}) })}>{row.kind === 'alerting' ? 'Save Test Result' : row.kind === 'naming' ? 'Save Naming Review' : row.kind === 'consolidation' ? 'Save Review' : A.cleanupDone}</Button></>
+              {row.done && <p className="reason">{cleanupWhen(row)}</p>}
+            </div>
           )}
-        </p>
-      </StepSection>
-      {row.kind === 'drill' && recoveryTiles.length > 0 && onDone && <EmergencySubjectReadiness subjects={recoverySubjects} printing={false} barMain={recoveryReadiness.bar.main} onWhy={null} />}
-      {row.kind === 'drill' && recoveryTiles.length > 0 && !onDone && <ReadinessSection heading={taskHead?.remaining} readiness={recoveryReadiness} lead={null} showClosedCount={false} printing={!onDone} />}
-      {/* The row's own instructions are its Implementation (U1; S-RN-2, S-RB-3):
-          no step draws What to do. */}
-      {row.kind === 'drill' ? <Implementation heading={taskHead?.implementation} artifacts={verificationArtifacts} drawnBy="translator" preview={null} notes={[]} title={entry.title} empty={{ key: 'none', tone: 'neutral', title: '', text: '' }} source={null} learn={entry.learn?.url ?? null} onTroubleshooting={null} open={implementationOpen} onOpen={() => setImplementationOpen(true)} onClose={() => setImplementationOpen(false)} copy={copyArtifact} copied={copied} printing={!onDone} tasks={verificationTasks} chosenChannel={implementationChannel} onChooseChannel={setImplementationChannel} chosenTaskId={taskId} onChooseTask={setTaskId} emptyTaskText={row.done ? 'Verification is current. No Entra action is required.' : 'Complete the highlighted configuration tasks before starting verification.'} /> : <StepSection heading={CONTRACT.implementation.heading}>
-        <ol className="sections">{entry.whatToDo.filter(whole).map((l, i) => <li key={i}>{fillText(l, ex)}</li>)}</ol>
-      </StepSection>}
-      <DoneWhen heading={taskHead?.doneWhen ?? HEAD.doneWhen} lines={doneWhen.map((l) => fillText(l, ex))} />
-      {row.kind === 'drill' && <details className="step-section emergency-recovery-procedure" open={!onDone || undefined}><summary><strong>Emergency recovery procedure</strong></summary><p className="reason">Keep the exported plan available independently of this tenant. Scan-specific facts reflect the scan at {phase.snapshotObservedAt ? absolute(phase.snapshotObservedAt) : 'an unavailable time'} and may differ during an incident.</p><ol>{EMERGENCY_RECOVERY_PROCEDURE.map(line => <li key={line}><AuthoredText text={line} /></li>)}</ol><p className="reason">Conditional Access exclusions do not disable Security Defaults or authentication-method policy. Temporary Access Pass does not bypass Conditional Access, and no recovery route or timeframe is guaranteed.</p></details>}
-      {row.record && (row.kind !== 'drill' || row.record.outcome) && <section className="step-section"><h4>{row.kind === 'naming' || row.kind === 'consolidation' ? 'Recorded Review' : 'Recorded Test'}</h4><p>{row.record.date.slice(0, 10)} · {row.record.consolidationDecision === 'retain-both' ? 'Retain Both' : row.record.outcome === 'passed' ? 'Passed' : row.record.outcome === 'failed' ? 'Failed' : 'Outcome not recorded'}</p>{recordedAccounts.length > 0 && <p>Tested accounts: {recordedAccounts.join(', ')}</p>}{row.record.recipient && <p>Recipient: {row.record.recipient}</p>}{row.record.replacementPolicyId && <p>Retained policy: {policyOptions.find(policy => policy.id === row.record?.replacementPolicyId)?.name ?? row.record.replacementPolicyId}</p>}{row.record.retiredPolicyIds?.length ? <p>Retired policies: {row.record.retiredPolicyIds.map(id => policyOptions.find(policy => policy.id === id)?.name ?? id).join(', ')}</p> : null}{row.record.retainedPolicyIds?.length ? <p>Policies retained: {row.record.retainedPolicyIds.map(id => policyOptions.find(p => p.id === id)?.name ?? row.record?.policyNames?.[id] ?? id).join(', ')}</p> : null}{row.record.rationale && <p>Reason: {row.record.rationale}</p>}{row.record.reference && <p>Change record: {row.record.reference}</p>}{row.verificationReason && <p>{row.verificationReason}</p>}</section>}
-      {onDone && row.kind !== 'hardening' && row.kind !== 'namedExclusions' && row.kind !== 'drill' && (
-        <div className="decision">
-          {row.kind === 'alerting' && <div className="decision-field"><label><strong>Test Result</strong><select value={outcome} onChange={event => setOutcome(event.currentTarget.value as typeof outcome)}><option value="">Choose…</option><option value="passed">Passed</option><option value="failed">Failed</option></select></label></div>}
-          {row.kind === 'alerting' && <div className="decision-field"><label><strong>Alert Recipient</strong><input value={recipient} onChange={event => setRecipient(event.currentTarget.value)} /></label></div>}
-          {row.kind === 'naming' && <div className="decision-fields"><ul>{namingProposals.map(p => <li key={p.id}><strong>{p.from}</strong><label><span className="sr-only">Approved name for {p.from}</span><input value={p.to} onChange={e => { const value = e.currentTarget.value; setNameDrafts(prev => ({ ...prev, [p.id]: value })) }} /></label><span className="reason">ID: {p.id}</span>{p.collision && <p>Name collision: resolve the duplicate name before saving this proposal.</p>}</li>)}</ul><label className="choice"><input type="checkbox" checked={toolingVerified} onChange={e => setToolingVerified(e.currentTarget.checked)} />Name-based scripts and reports have been checked.</label><p>Save the proposed names before renaming in Entra, then rescan. Confirm the tooling check after the names are updated.</p></div>}
-          {row.kind === 'consolidation' && <div className="decision-fields">
-            <div className="decision-field"><label><strong>Review Outcome</strong><select value={consolidationDecision} onChange={e => { setConsolidationDecision(e.currentTarget.value as typeof consolidationDecision); setRetiredIds([]) }}><option value="retire">Retire Replaced Policies</option><option value="retain-both">Retain Both</option></select></label></div>
-            {consolidationDecision === 'retire' && <div className="decision-field"><label><strong>Retained Policy</strong><select value={replacementId} onChange={event => setReplacementId(event.currentTarget.value)}><option value="">Choose…</option>{policyOptions.filter(policy => policy.state === 'enabled').map(policy => <option key={policy.id} value={policy.id}>{policy.name}</option>)}</select></label></div>}
-            <div className="decision-field"><h5 id="retired-policy-label">{consolidationDecision === 'retire' ? 'Retired Policies' : 'Policies to Retain'}</h5><Picker labelledBy="retired-policy-label" options={policyOptions.filter(policy => (consolidationDecision === 'retain-both' || policy.id !== replacementId) && `${policy.name} ${policy.id}`.toLowerCase().includes(policyQuery.toLowerCase()))} selected={retiredIds.map(id => policyOptions.find(policy => policy.id === id) ?? { id, name: id })} onSearch={setPolicyQuery} onChange={options => setRetiredIds(options.map(option => option.id))} /></div>
-            {consolidationDecision === 'retire' && <label className="choice"><input type="checkbox" checked={coverageVerified} onChange={event => setCoverageVerified(event.currentTarget.checked)} />The retained policy covers the users, resources and controls of the retired policies.</label>}
-            {consolidationDecision === 'retain-both' && <div className="decision-field"><label><strong>Reason to Retain Both</strong><input value={rationale} onChange={e => setRationale(e.currentTarget.value)} /></label></div>}
-            <div className="decision-field"><label><strong>Change Record</strong><input value={reference} onChange={event => setReference(event.currentTarget.value)} /></label></div>
-          </div>}
-          <><div className="dlabel">{A.cleanupDoneOn}</div>
-          <input type="date" max={todayDate()} aria-label={A.cleanupDoneOn} value={date} onChange={(e) => setDate(e.currentTarget.value)} />
-          <Button variant="secondary" disabled={!validCompletionDate(date, todayDate()) || (row.kind === 'consolidation' && !consolidationReady) || (row.kind === 'naming' && (!namingProposals.length || namingProposals.some(p => p.collision))) || (row.kind === 'alerting' && !outcome) || (row.kind === 'alerting' && !recipient.trim())} onClick={() => onDone(date, row.kind === 'alerting' ? phase.accountIds : [], { ...(row.kind === 'naming' ? { namingChanges: namingProposals.map(({id, from, to}) => ({id, from, to})), toolingVerified } : {}), ...(row.kind === 'consolidation' && consolidationDecision === 'retain-both' ? { outcome: 'passed' as const, consolidationDecision, retainedPolicyIds: retiredIds, retainedPolicyBases: Object.fromEntries(policyOptions.filter(p => retiredIds.includes(p.id)).map(p => [p.id, JSON.stringify([p.state, p.basis])])), rationale: rationale.trim(), policyNames: Object.fromEntries(policyOptions.filter(p => retiredIds.includes(p.id)).map(p => [p.id, p.name])) } : {}), ...(row.kind === 'consolidation' && consolidationDecision === 'retire' ? { consolidationDecision, outcome: 'passed' as const, replacementPolicyId: replacementId, retiredPolicyIds: retiredIds, coverageVerified, replacementBasis: replacement?.basis ?? undefined, reference: reference.trim(), policyNames: Object.fromEntries(policyOptions.filter(policy => policy.id === replacementId || retiredIds.includes(policy.id)).map(policy => [policy.id, policy.name])) } : {}), ...(outcome ? { outcome } : {}), ...(recipient.trim() ? { recipient: recipient.trim() } : {}) })}>{row.kind === 'alerting' ? 'Save Test Result' : row.kind === 'naming' ? 'Save Naming Review' : row.kind === 'consolidation' ? 'Save Review' : A.cleanupDone}</Button></>
-          {row.done && <p className="reason">{cleanupWhen(row)}</p>}
         </div>
-      )}
-      {(onScan || onClose) && (
-        <p className="actions no-print">
-          {onScan && (
-            <Button variant="secondary" onClick={onScan}>
-              Scan to update the plan
-            </Button>
-          )}
-          {onClose && (
-            <Button variant="tertiary" onClick={onClose}>
-              Close
-            </Button>
-          )}
-        </p>
-      )}
-        </div>
-        {row.kind === 'drill' && <StepActionColumn rail={{ headline: milestoneHeadlineOf(row.done ? status.word : null, ['Verify every selected account after the final configuration is observed.']), instruction: null }} />}
       </div>
+      {footer}
     </article>
   )
 }

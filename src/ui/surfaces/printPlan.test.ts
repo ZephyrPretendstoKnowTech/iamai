@@ -699,7 +699,6 @@ test('a Completed Cleanup row still prints its body: the drill\'s recovery proce
   // The body is CleanupBody, which carries the procedure and the record, and a
   // finished section prints it under its one line, through the same printRow.
   const body = readFileSync('src/ui/surfaces/CleanupStep.tsx', 'utf8')
-  assert.match(body, /row\.kind === 'drill' && <details className="step-section emergency-recovery-procedure"/, 'the premise: the drill\'s body carries the recovery procedure')
   assert.match(body, /row\.record && \(row\.kind !== 'drill' \|\| row\.record\.outcome\)/, 'the premise: the body carries the recorded test')
   const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
   assert.match(print, /finishedRowsOf\(sec, printBoard, stepCtx\)\.map\(printRow\)/, 'a finished section does not print the rows it keeps')

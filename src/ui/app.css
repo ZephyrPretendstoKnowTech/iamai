@@ -2348,11 +2348,9 @@ footer.app a {
 .step-main-rest {
   padding-top: 0;
 }
-.step[data-step-id='cleanup-drill'] .step-main,
 .step[data-task-anatomy] .step-main-rest {
   padding-bottom: 4px;
 }
-.step[data-step-id='cleanup-drill'] .step-main > .step-section:last-of-type .done-line:last-child,
 .step[data-task-anatomy] .step-main-rest > .step-section:last-of-type .done-line:last-child {
   margin-bottom: 0;
 }
@@ -5313,7 +5311,7 @@ th .th-sort:focus-visible,
 .passkey-model-decision .decision-field, .decision-fields:has([id$="-network-name"]) .decision-field { display: grid; gap: .5rem; min-width: 0; }
 .passkey-model-decision input, .decision-fields:has([id$="-network-name"]) input, .decision-fields:has([id$="-network-name"]) textarea { width: 100%; }
 
-.step[data-step-id='cleanup-drill'] .emergency-recovery-procedure summary { cursor: pointer; }
+.step details.step-section > summary { cursor: pointer; }
 .step[data-step-id='cleanup-drill'] .emergency-recovery-procedure li + li { margin-top: .55rem; }
 
 .passkey-model-disclosure {
