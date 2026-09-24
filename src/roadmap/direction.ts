@@ -204,12 +204,14 @@ function accountQuestions(ctx: Context, nameOf: (id: string) => string): Directi
  *
  * Null where Intune was never read: an absent capability is not the same as
  * zero seats, and inventing a licence position is the failure this whole
- * question exists to avoid.
+ * question exists to avoid. Null too where the tenant holds no Intune licence:
+ * evidence comes in the walk's shapes only, and the one this said is not one
+ * of them (walk list 14).
  */
 function intuneSeatLine(ctx: Context): string | null {
   const intune = ctx.snapshot.capabilities?.intune
   if (intune === undefined || intune === null) return null
-  if (intune.enabled !== true) return Q.computers.intuneAbsent
+  if (intune.enabled !== true) return null
   const { seats, consumed } = intune
   if (typeof seats !== 'number' || typeof consumed !== 'number') return null
   return fillText(Q.computers.intuneSeats, { consumed, seats })
