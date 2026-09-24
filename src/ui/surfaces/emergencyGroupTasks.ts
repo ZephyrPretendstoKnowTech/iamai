@@ -77,7 +77,7 @@ export function emergencyGroupTasksOf(step: Step, ctx: StepVarContext): Emergenc
     {
       id: 'create-exclusions-group', accountId: null, title: 'Create an emergency exclusions group', targetUpn: null, required: choice.status === 'none-found' && selected.length > 0, readinessKey: 'group-choice', evidence: null, actionLabel: 'Open creation instructions',
       ...noGroup,
-      steps: ['Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Groups → All groups → New group**.', 'Choose **Security**, enter the group name, and choose **Assigned** membership.', ...(selected.length ? [`Under **Members**, add ${accounts}.`] : []), 'Select **Create**. Return to IAMAI and select **Scan to update the plan**.', 'Select the new group under **Exclusions group**. Scan again to verify its membership and settings.'],
+      steps: ['Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Groups → All groups → New group**.', 'Choose **Security**, enter the group name, and choose **Assigned** membership.', ...(selected.length ? [`Under **Members**, add ${accounts}.`] : []), 'Select **Create**. Return to IAMAI and select **Scan to update the plan**.', 'Select the new group under **Exclusions group**.'],
     },
     {
       id: 'choose-exclusions-group', accountId: null, title: 'Choose an existing exclusions group', targetUpn: null, required: (!saved && choice.status !== 'none-found') || choice.status === 'invalidated' || unsuitableGroup, readinessKey: 'group-choice', evidence: null, actionLabel: 'Open selection instructions',
@@ -112,7 +112,7 @@ export function emergencyGroupTasksOf(step: Step, ctx: StepVarContext): Emergenc
         ...(extra.length ? [`First confirm any of these that is a genuinely dedicated emergency account, in the emergency accounts step: removing one puts it back inside every policy this group is excluded from. Then, for the rest only: select ${extra.map(id => `**${directObject(id)}**`).join(', ')}, choose **Remove**, and confirm. Remove a few at a time and check their next sign-in before the next few.`] : []),
         // Nothing can be said about this group's membership until the emergency
         // accounts are chosen, so the step asks for that instead of guessing.
-        ...(unselected ? [`This group has ${directIds.length} direct member${directIds.length === 1 ? '' : 's'}. Which of them belong here cannot be worked out until the emergency accounts are selected: do that in Prepare Emergency Access Accounts, then scan again and this list will mean something. Remove nobody before then — a member taken out of this group goes back inside every policy the group is excluded from.`] : []),
+        ...(unselected ? [`This group has ${directIds.length} direct member${directIds.length === 1 ? '' : 's'}. Select the emergency accounts in Prepare Emergency Access Accounts, then scan again. Remove nobody before then — a member taken out of this group goes back inside every policy the group is excluded from.`] : []),
         'Return to IAMAI and select **Scan to update the plan**.',
       ],
     },

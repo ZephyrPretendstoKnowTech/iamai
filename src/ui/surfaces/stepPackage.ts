@@ -1055,7 +1055,8 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   if (step.id === 's-prereq-break-glass' || step.id === PASSKEY_SETTINGS_STEP_ID) {
     const W = shared.passkeyCompatibility as Record<string, string>
     const rows = emergencyPasskeyCompatibility(ctx.snapshot, ctx.mapping.breakGlassUserIds, ctx.groups)
-    put('emergency.passkey.compatibility', rows.length ? rows.map(row => `${ctx.nameOf(row.accountId)}: ${W[row.reason]}`).join('\n') : W.noAccounts)
+    // An account whose registered methods were not read has no line (owner, 2026-09-23).
+    put('emergency.passkey.compatibility', rows.length ? rows.flatMap(row => W[row.reason] ? [`${ctx.nameOf(row.accountId)}: ${W[row.reason]}`] : []).join('\n') : W.noAccounts)
   }
   put('tenant.displayName', tenantNameOf(ctx.snapshot))
   const affected = stepPopulation(step)

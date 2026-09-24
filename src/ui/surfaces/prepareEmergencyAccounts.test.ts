@@ -147,7 +147,7 @@ test('#15 no instruction sends the person to a Save beside the picker: 1.1 ends 
   // and closes the list (Picker.tsx pick), so its lines end on the choice.
   const group = opened('small', () => {}, 's-prereq-exclusion-group').body.emergencyAccountTasks!.tasks.flatMap((t) => t.steps)
   assert.deepEqual(group.filter((l) => /under \*\*Exclusions group\*\*/.test(l)), [
-    'Select the new group under **Exclusions group**. Scan again to verify its membership and settings.',
+    'Select the new group under **Exclusions group**.',
     'In IAMAI, select that group under **Exclusions group**.',
   ])
   const who = entryOf('s-prereq-exclusion-group').who as Record<string, string>
