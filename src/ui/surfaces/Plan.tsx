@@ -26,7 +26,7 @@ import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { Button, Callout, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { ALL_WORK_TAB, BOARD, DEFAULT_TAB, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupNumberOf, groupSummary, groupTotalsOf, groupsFor, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, sectionNumbersOf, tileSections, togglesOf, waveStartOf, drawsCompact, finishedDayOf, followOpenStep, followLaneChange, groupClosed, pressKeyOf, readyToCreateOf, releaseFor } from './planBoard.ts'
+import { ALL_WORK_TAB, BOARD, DEFAULT_TAB, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupNumberOf, groupSummary, groupTotalsOf, groupsFor, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, sectionNumbersOf, tileSections, togglesOf, waveStartOf, drawsCompact, drawsImpact, finishedDayOf, followOpenStep, followLaneChange, groupClosed, pressKeyOf, readyToCreateOf, releaseFor } from './planBoard.ts'
 import type { BoardGroup, BoardItem, BoardTab, Focus, LaneTab, WorkType } from './planBoard.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
@@ -655,7 +655,7 @@ function CleanupRow({ phase, row, number, answers, open, onToggle, onScan, onDon
       {/* A completed row's When is the placeholder, as every finished row's is (planBoard.ts boardWhen). */}
       {/* A Cleanup row is held by the same engine and says what holds it the same way. */}
       {/* Finished, it is one compact line like every finished row (planBoard.ts drawsCompact), dated the day it was marked done. */}
-      <PlanRow stepId={`cleanup-${row.kind}`} lane={lane.label} tone={lane.tone} number={number} title={entry.title} waitingFor={lane.waitingFor} who={who} when={cleanupWhenOf(row, undated, lane, drawsCompact(lane.lane))} open={open} onToggle={onToggle} compact={drawsCompact(lane.lane)} />
+      <PlanRow stepId={`cleanup-${row.kind}`} lane={lane.label} tone={lane.tone} number={number} title={entry.title} waitingFor={lane.waitingFor} who={drawsImpact(lane.lane) ? who : null} when={cleanupWhenOf(row, undated, lane, drawsCompact(lane.lane))} open={open} onToggle={onToggle} compact={drawsCompact(lane.lane)} />
       {open && <CleanupBody phase={phase} row={row} status={status} onScan={() => (onScan ? onScan(returnToStep(`cleanup-${row.kind}`)) : (window.location.hash = '#/connect'))} onClose={onToggle} onDone={onDone} />}
     </>
   )
@@ -738,7 +738,7 @@ function Row({ step, lane, number, blockers, enforceWaits, prerequisiteLabel, on
         wave={step.scheduled?.wave ?? null}
         title={contentTitle(step)}
         waitingFor={lane.waitingFor}
-        who={rowWho(step)}
+        who={drawsImpact(lane.lane) ? rowWho(step) : null}
         when={drawsCompact(lane.lane) ? finishedDayOf(step, lane.lane) ?? '' : when}
         open={open}
         onToggle={onToggle}

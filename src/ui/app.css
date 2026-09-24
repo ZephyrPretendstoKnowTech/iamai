@@ -2119,9 +2119,10 @@ footer.app a {
   white-space: nowrap;
 }
 /* Finished work, one quiet line (owner, roadmap flow V2; planBoard.ts
-   drawsCompact): the number, the lane word, the title and the day it was
-   finished. It has no Impact cell, so its day is placed in the When column
-   by name rather than falling into Impact's. */
+   drawsCompact): the number, the lane word, the title, a Completed row's
+   Impact and the day it was finished. A deferred row has no Impact cell, so
+   the day is placed in the When column by name rather than falling into
+   Impact's. */
 .plan-row[data-compact] {
   min-height: 40px;
 }

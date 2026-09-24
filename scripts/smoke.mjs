@@ -611,10 +611,13 @@ try {
   check('Plan: on All work, Show completed and Show deferred start pressed', /^Show completed=\d+\/true \| Show deferred=\d+\/true$/.test(await evaluate(`[...document.querySelectorAll('main.page .plan-controls .focus')].map((b) => (b.textContent || '').replace((b.querySelector('.count') || {}).textContent || '', '').trim() + '=' + ((b.querySelector('.count') || {}).textContent || '') + '/' + b.getAttribute('aria-pressed')).join(' | ')`)))
   // Finished work shrinks in place (owner, roadmap flow V2): a Completed or
   // Deferred row is one compact line — number, lane word, title, and the day it
-  // was finished where one was recorded — with no Impact, chip or waiting line.
-  const finishedRows = await evaluate(`[...document.querySelectorAll('main.page .plan-group .plan-row')].filter((r) => /^(Completed|Deferred)$/.test(((r.querySelector('.lane') || {}).textContent || '').trim())).map((r) => ({ compact: r.hasAttribute('data-compact'), who: !!r.querySelector('.who'), chip: !!r.querySelector('.status'), reason: !!r.querySelector('.plan-row-reason'), number: ((r.querySelector('.plan-row-number') || {}).textContent || '').trim(), when: ((r.querySelector('.when') || {}).textContent || '').trim() }))`)
+  // was finished where one was recorded — with no chip or waiting line. A
+  // Completed row keeps the Impact it read while open, and a Completed step
+  // always has its day (owner, 2026-09-23); a Deferred row draws no Impact.
+  const finishedRows = await evaluate(`[...document.querySelectorAll('main.page .plan-group .plan-row')].filter((r) => /^(Completed|Deferred)$/.test(((r.querySelector('.lane') || {}).textContent || '').trim())).map((r) => ({ lane: ((r.querySelector('.lane') || {}).textContent || '').trim(), step: !(r.getAttribute('data-step') || '').startsWith('cleanup-'), compact: r.hasAttribute('data-compact'), who: ((r.querySelector('.who') || {}).textContent || '').trim(), chip: !!r.querySelector('.status'), reason: !!r.querySelector('.plan-row-reason'), number: ((r.querySelector('.plan-row-number') || {}).textContent || '').trim(), when: ((r.querySelector('.when') || {}).textContent || '').trim() }))`)
   const DAY_ONLY = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/
-  check('Plan: a finished row on All work is one compact line with its number and, where recorded, its day', Array.isArray(finishedRows) && finishedRows.every((r) => r.compact && !r.who && !r.chip && !r.reason && /^\d+$/.test(r.number) && (r.when === '' || DAY_ONLY.test(r.when))), JSON.stringify((finishedRows || []).filter((r) => !(r.compact && !r.who && !r.chip && !r.reason)).slice(0, 3)))
+  const finishedRight = (r) => r.compact && !r.chip && !r.reason && /^\d+$/.test(r.number) && (r.lane === 'Completed' ? r.who !== '' && (r.step ? DAY_ONLY.test(r.when) : r.when === '' || DAY_ONLY.test(r.when)) : r.who === '' && (r.when === '' || DAY_ONLY.test(r.when)))
+  check('Plan: a finished row on All work is one compact line with its number, a Completed row with its Impact and the day it was completed', Array.isArray(finishedRows) && finishedRows.every(finishedRight), JSON.stringify((finishedRows || []).filter((r) => !finishedRight(r)).slice(0, 3)))
   // A header tile filters the one list in section order, so each section
   // heading is drawn once (the tiles used to draw the list lane by lane, one
   // heading per lane a section had rows in).
