@@ -115,9 +115,9 @@ function largeDevices(over: { enabled?: boolean; everyoneCompliant?: boolean; ow
   return { f, r, snapshot, step: r.steps.find((s) => s.id === DEVICE) as Step, ctx: ctxFor(f, r, snapshot) }
 }
 
-// ---- 1: the real managed-device case ----
+// ---- 1–3: the real managed-device case: held, the safe preparation survives, and met ----
 
-test('1: device readiness 29% against the 80% the step asks for enforces nothing and dates nothing', () => {
+test('1–3: device readiness 29% against the 80% the step asks for withholds the enforcing change and dates nothing, still offers the report-only preparation, and at the threshold offers and dates the same change', () => {
   const { r, step, ctx } = largeDevices()
   assert.equal(step.readiness.family, 'device')
   assert.equal(step.readiness.percent, 29, 'the tenant IAMAI actually reads')
@@ -141,27 +141,44 @@ test('1: device readiness 29% against the 80% the step asks for enforces nothing
   assert.equal(implementationOffered(enforcing.step), false, 'no portal lines, no JSON, no PowerShell, no download')
   assert.deepEqual(operationsOf(enforcing.step), [], 'and nothing to run')
   assertNothingIsDated(enforcing.step, enforcing.r, enforcing.ctx, 'large/device enforcing')
+
+  // 2: the same readiness failure leaves a report-only preparation offered, and still dates nothing.
+  {
+    // A correction the policy really owes (`owesCorrection`): the premise used to
+    // be found on the fixture, in an update that changed nothing, and 1a3fdc42
+    // rightly replaced it with the switch, which the threshold holds.
+    const { r, step, ctx } = largeDevices({ owesCorrection: true })
+    const op = step.action.resolution!.policies[0]
+    assert.equal(op.mode, 'update')
+    assert.deepEqual(Object.keys(op.body), ['conditions'], `premise: a correction, not the switch: ${JSON.stringify(op.body)}`)
+    assert.equal((op.target as Row).state, 'enabledForReportingButNotEnforced', 'the policy it changes stays in report-only')
+    assert.equal(enforcesOnRun(op), false, 'so running it denies nobody')
+    // The preparation is how readiness gets to the threshold, so it is not withheld.
+    assert.equal(unavailableReason(step), null)
+    assert.equal(implementationOffered(step), true, 'the report-only change is still offered')
+    assert.equal(operationsOf(step).length, 1)
+    // What it does not get is a promise that the change lands.
+    assertNothingIsDated(step, r, ctx, 'large/device report-only')
+  }
+
+  // 3: with the threshold reached the same enforcing change is offered and dated.
+  {
+    // The same real correction as in 1: a patch identical to what the enforced
+    // policy holds is no longer an operation at all (R4-11).
+    const { step, ctx, r } = largeDevices({ enabled: true, everyoneCompliant: true, owesCorrection: true })
+    assert.equal(step.readiness.percent, 100, 'every active member holds a compliant device')
+    assert.equal(step.action.readinessGate, undefined, 'nothing holds it')
+    assert.equal(enforcementHeld(step), false)
+    assert.equal(unavailableReason(step), null)
+    assert.equal(implementationOffered(step), true)
+    assert.equal(enforcesOnRun(step.action.resolution!.policies[0]), true, 'the same operation that was held')
+    assert.ok(step.events, 'and it is dated again')
+    assert.ok(step.rings.length > 0, 'with a rollout')
+    assert.ok(buildIcs(r.steps, 'Tenant', 'plan-1', (s) => stepExportView(s, ctx)).includes(`UID:plan-1-${step.id}@iamai`), 'and a calendar entry')
+  }
 })
 
-// ---- 2: the safe report-only preparation survives ----
-
-test('2: the same readiness failure leaves a report-only preparation offered, and still dates nothing', () => {
-  // A correction the policy really owes (`owesCorrection`): the premise used to
-  // be found on the fixture, in an update that changed nothing, and 1a3fdc42
-  // rightly replaced it with the switch, which the threshold holds.
-  const { r, step, ctx } = largeDevices({ owesCorrection: true })
-  const op = step.action.resolution!.policies[0]
-  assert.equal(op.mode, 'update')
-  assert.deepEqual(Object.keys(op.body), ['conditions'], `premise: a correction, not the switch: ${JSON.stringify(op.body)}`)
-  assert.equal((op.target as Row).state, 'enabledForReportingButNotEnforced', 'the policy it changes stays in report-only')
-  assert.equal(enforcesOnRun(op), false, 'so running it denies nobody')
-  // The preparation is how readiness gets to the threshold, so it is not withheld.
-  assert.equal(unavailableReason(step), null)
-  assert.equal(implementationOffered(step), true, 'the report-only change is still offered')
-  assert.equal(operationsOf(step).length, 1)
-  // What it does not get is a promise that the change lands.
-  assertNothingIsDated(step, r, ctx, 'large/device report-only')
-})
+// ---- 2b: a create is always a report-only preparation ----
 
 test('2b: a new policy is always a report-only preparation, so a readiness hold never withholds one', () => {
   // Every policy IAMAI writes lands in report-only (generate.ts buildCreateAction),
@@ -180,23 +197,6 @@ test('2b: a new policy is always a report-only preparation, so a readiness hold 
     }
   }
   assert.ok(creates > 0, `held steps that still propose a new policy: ${creates}`)
-})
-
-// ---- 3: met, and the hold lifts ----
-
-test('3: with the threshold reached the same enforcing change is offered and dated', () => {
-  // The same real correction as in 1: a patch identical to what the enforced
-  // policy holds is no longer an operation at all (R4-11).
-  const { step, ctx, r } = largeDevices({ enabled: true, everyoneCompliant: true, owesCorrection: true })
-  assert.equal(step.readiness.percent, 100, 'every active member holds a compliant device')
-  assert.equal(step.action.readinessGate, undefined, 'nothing holds it')
-  assert.equal(enforcementHeld(step), false)
-  assert.equal(unavailableReason(step), null)
-  assert.equal(implementationOffered(step), true)
-  assert.equal(enforcesOnRun(step.action.resolution!.policies[0]), true, 'the same operation that was held')
-  assert.ok(step.events, 'and it is dated again')
-  assert.ok(step.rings.length > 0, 'with a rollout')
-  assert.ok(buildIcs(r.steps, 'Tenant', 'plan-1', (s) => stepExportView(s, ctx)).includes(`UID:plan-1-${step.id}@iamai`), 'and a calendar entry')
 })
 
 // ---- 4: unknown is not met ----
@@ -236,7 +236,7 @@ test('4: a readiness the scan could not measure holds the enforcement; nobody to
 
 // ---- 5 + 6: a policy the tenant already enforces ----
 
-test('5: a material change to an already-enabled policy is held while its readiness is unmet', () => {
+test('5 + 6: a material change to an already-enabled policy is held while its readiness is unmet; with no material change it stays in place and no readiness holds it', () => {
   // The demo's admins step, with its policy back in report-only, submits exactly
   // `{ state: "enabled" }`: running it turns on a phishing-resistant requirement
   // for admins of whom two in three are Ready (Step 7: the first demo admin holds a passkey and Windows Hello, both proven).
@@ -286,25 +286,26 @@ test('5: a material change to an already-enabled policy is held while its readin
   // step's milestone (roadmap/forecast.ts settleForecast): a readiness gate
   // releasing is not an observation window closing.
   assert.ok(met.events ?? ready.schedule.forecastOnly?.[met.id]?.events, 'and dated')
-})
 
-test('6: an already-enabled policy with no material change stays in place, and no readiness holds it', () => {
-  // Week two: the tenant turned the admins policy on and the goal is delivered.
-  // There is nothing to write, which is a result of its own — being below the
-  // threshold must not turn a preservation into a failure.
-  const f = fixture('demo-week2')
-  const r = runFixture(f)
-  const step = r.steps.find((s) => s.id === ADMINS) as Step
-  assert.equal(step.status, 'done')
-  assert.equal(step.state.inPlace, true)
-  assert.equal(isPreserved(step), true, 'in place, not unavailable')
-  assert.equal(unavailableReason(step), null)
-  assert.equal(enforcementHeld(step), false, 'a done step is not held')
-  assert.deepEqual(operationsOf(step), [], 'because there is nothing to run, not because something stopped it')
-  // Even handed a gate, a delivered goal stays delivered.
-  const held = { ...step, action: { ...step.action, readinessGate: { measure: 'admin readiness', threshold: '100%', value: '0%' } } } as Step
-  assert.equal(unavailableReason(held), null, 'the hold is on enforcement, and there is none left to hold')
-  assert.equal(isPreserved(held), true)
+  // 6: an already-enabled policy with no material change stays in place, and no readiness holds it.
+  {
+    // Week two: the tenant turned the admins policy on and the goal is delivered.
+    // There is nothing to write, which is a result of its own — being below the
+    // threshold must not turn a preservation into a failure.
+    const f = fixture('demo-week2')
+    const r = runFixture(f)
+    const step = r.steps.find((s) => s.id === ADMINS) as Step
+    assert.equal(step.status, 'done')
+    assert.equal(step.state.inPlace, true)
+    assert.equal(isPreserved(step), true, 'in place, not unavailable')
+    assert.equal(unavailableReason(step), null)
+    assert.equal(enforcementHeld(step), false, 'a done step is not held')
+    assert.deepEqual(operationsOf(step), [], 'because there is nothing to run, not because something stopped it')
+    // Even handed a gate, a delivered goal stays delivered.
+    const held = { ...step, action: { ...step.action, readinessGate: { measure: 'admin readiness', threshold: '100%', value: '0%' } } } as Step
+    assert.equal(unavailableReason(held), null, 'the hold is on enforcement, and there is none left to hold')
+    assert.equal(isPreserved(held), true)
+  }
 })
 
 test('a gate names the campaign only where finishing it could reach the threshold', () => {
@@ -444,21 +445,22 @@ test('R4-14: a readiness reading below the threshold never reads as the threshol
   assert.equal(met.readiness.percent, 90)
   assert.equal(met.action.readinessGate, undefined, 'the gate is not met at 90.2%')
   assert.equal(met.blockers.some((b) => b.kind === 'readiness' && b.label === 'readiness'), false)
-})
 
-// The R4-14 review. The shortfall check beside the gate counted the people it
-// needs itself, as Math.ceil((threshold / 100) * people), while the gate opens
-// at readyNeeded. In floating point 55% of 100 is 55.00000000000001: the check
-// asked for 56 people where the gate opens at 55, and told the reader that
-// finishing the campaign would not reach a threshold it reaches. One count now.
-test('R4-14: the shortfall check asks for the people the gate opens at, not a second count of them', () => {
-  const ids = Array.from({ length: 100 }, (_, i) => `u${i}`)
-  const gate = { ids, readyIds: [] as string[] }
-  // The campaign has 55 of them still to prepare.
-  const campaign = { ids: ids.slice(0, 55), readyIds: [] as string[] }
-  assert.equal(readyNeeded(100, 55), 55, 'the premise: the gate opens at 55 of 100')
-  assert.equal(routeShortfallOf(gate, campaign, 'Prepare Your Team for MFA', 55), null, 'the campaign reaches the threshold, and is named')
-  assert.notEqual(routeShortfallOf(gate, { ids: ids.slice(0, 54), readyIds: [] }, 'Prepare Your Team for MFA', 55), null, 'and one fewer does not')
+  // R4-14: the shortfall check asks for the people the gate opens at, not a second count of them.
+  // The R4-14 review. The shortfall check beside the gate counted the people it
+  // needs itself, as Math.ceil((threshold / 100) * people), while the gate opens
+  // at readyNeeded. In floating point 55% of 100 is 55.00000000000001: the check
+  // asked for 56 people where the gate opens at 55, and told the reader that
+  // finishing the campaign would not reach a threshold it reaches. One count now.
+  {
+    const ids = Array.from({ length: 100 }, (_, i) => `u${i}`)
+    const gate = { ids, readyIds: [] as string[] }
+    // The campaign has 55 of them still to prepare.
+    const campaign = { ids: ids.slice(0, 55), readyIds: [] as string[] }
+    assert.equal(readyNeeded(100, 55), 55, 'the premise: the gate opens at 55 of 100')
+    assert.equal(routeShortfallOf(gate, campaign, 'Prepare Your Team for MFA', 55), null, 'the campaign reaches the threshold, and is named')
+    assert.notEqual(routeShortfallOf(gate, { ids: ids.slice(0, 54), readyIds: [] }, 'Prepare Your Team for MFA', 55), null, 'and one fewer does not')
+  }
 })
 
 // Owner, 2026-09-22: a source IAMAI could not read says how to read it —
