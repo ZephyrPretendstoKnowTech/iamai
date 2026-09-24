@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Existing passkeys affected",
-      "state": "710 accounts to prepare"
+      "state": "12 accounts would be locked out"
     },
     {
       "label": "Passkey protections",

@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "On Hold",
   "bar": "Waiting on your answers",
-  "rail": "Create the trusted network",
+  "rail": "Finish the steps this one waits on first.",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -19,7 +19,6 @@
     }
   ],
   "channels": [
-    "Entra",
     "AI Info"
   ],
   "when": "Est. Sep 7, 2026"

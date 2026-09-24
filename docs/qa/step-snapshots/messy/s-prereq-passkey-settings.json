@@ -19,7 +19,7 @@
     },
     {
       "label": "Existing passkeys affected",
-      "state": "13 accounts to prepare"
+      "state": "1 account would be locked out"
     },
     {
       "label": "Passkey protections",

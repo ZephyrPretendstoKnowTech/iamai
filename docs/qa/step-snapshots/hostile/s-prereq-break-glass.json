@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Prepared passkeys",
-      "state": "Could not verify"
+      "state": "Set up an approved passkey"
     }
   ],
   "channels": [

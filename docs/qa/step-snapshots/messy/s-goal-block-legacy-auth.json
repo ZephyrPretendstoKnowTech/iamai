@@ -1,26 +1,21 @@
 {
-  "lane": "On Hold",
+  "lane": "Completed",
   "substatus": null,
   "reason": "Satisfied by Core - Block - Legacy authentication — no change needed",
   "fact": "Enforced",
-  "badge": "On Hold",
-  "bar": "Waiting on your answers",
-  "rail": "Block Legacy Authentication",
+  "badge": "Completed",
+  "bar": "Enforced",
+  "rail": "Completed",
   "headings": [
     "About this Step",
     "Tasks Remaining",
     "Implementation Tasks",
     "Completion Criteria"
   ],
-  "tiles": [
-    {
-      "label": "Confirm What You Use",
-      "state": "Waiting on your answers"
-    }
-  ],
+  "tiles": [],
   "channels": [
     "Entra",
     "AI Info"
   ],
-  "when": "Est. Sep 7, 2026"
+  "when": "Aug 28, 2026"
 }
