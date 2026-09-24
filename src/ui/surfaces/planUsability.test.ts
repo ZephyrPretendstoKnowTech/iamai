@@ -164,7 +164,8 @@ test('every row reads an Impact value: people, No user impact, the package’s f
         assert.ok(impact.length > 0 && !/^0\b/.test(impact) && impact !== 'Not established', `${name}/${s.id}: use the topic when exact reach is unknown`)
         seen.add('unknown')
       } else if (/^\d+ accounts?$/.test(impact)) {
-        assert.equal(Number.parseInt(impact), new Set(pop.ids).size, `${name}/${s.id}: account review count must match its named inventory`)
+        // Prepare Emergency Access Accounts counts its emergency accounts: the ones chosen, at least the two it needs.
+        assert.equal(Number.parseInt(impact), s.id === 's-prereq-break-glass' ? Math.max(2, s.emergency?.accounts.length ?? 0) : new Set(pop.ids).size, `${name}/${s.id}: account review count must match its named inventory`)
         seen.add('known')
       } else if ((pop.activeIds ?? pop.ids).length === 0) {
         // The fallback chain: no people → the package's impact.fallbackLabel → the placeholder.
@@ -209,11 +210,12 @@ test('the Plan header offers four useful filters and an estimated finish, keepin
   assert.match(plan, /onClick=\{t\.select\}/)
   assert.match(plan, /aria-label=\{`\$\{t\.label\}: \$\{t\.value\}`\}/)
   assert.match(plan, /aria-expanded=\{showHow\} aria-controls=\{PLAN_HOW_ID\}/)
-  // The estimate a surface may state (derive/finish.ts statedEstimate), which the printed cover reads too.
-  assert.match(plan, /projectedFinish\(finish\.finish, statedEstimate\(c\.steps, finish, c\.schedule\)\)/)
+  // The estimate a surface may state (derive/finish.ts statedEstimate), from the board's forecast, which the printed cover reads too.
+  assert.match(plan, /projectedFinish\(finish\.finish, statedEstimate\(c\.steps, finish, c\.schedule, board\.forecast\)\)/)
   // The tip is the one plan-length sentence (derive/finish.ts), which states the
-  // schedule's critical path and what it relaxed once nothing is held.
-  assert.match(plan, /planLengthSentence\(finish, c\.schedule\)/)
+  // schedule's critical path and what it relaxed where the calendar ends the plan,
+  // and otherwise what the board's forecast says sets the finish.
+  assert.match(plan, /planLengthSentence\(finish, c\.schedule, \{ steps: c\.steps, forecast: board\.forecast, titleOf \}\)/)
   assert.match(readFileSync('src/derive/finish.ts', 'utf8'), /schedule\.derivation\.criticalPath, \.\.\.schedule\.derivation\.relaxed/)
   assert.match(plan, /data\.setFreeze\(freezeInput\.freeze\)/)
   assert.match(plan, /freezeInput\.reason === 'needsTo' \? PP\.settings\.freezeNeedsTo : PP\.settings\.freezeOrder/)

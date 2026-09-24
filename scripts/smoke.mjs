@@ -607,10 +607,13 @@ try {
   check('Plan: on All work, Show completed and Show deferred start pressed', /^Show completed=\d+\/true \| Show deferred=\d+\/true$/.test(await evaluate(`[...document.querySelectorAll('main.page .plan-controls .focus')].map((b) => (b.textContent || '').replace((b.querySelector('.count') || {}).textContent || '', '').trim() + '=' + ((b.querySelector('.count') || {}).textContent || '') + '/' + b.getAttribute('aria-pressed')).join(' | ')`)))
   // Finished work shrinks in place (owner, roadmap flow V2): a Completed or
   // Deferred row is one compact line — number, lane word, title, and the day it
-  // was finished where one was recorded — with no Impact, chip or waiting line.
-  const finishedRows = await evaluate(`[...document.querySelectorAll('main.page .plan-group .plan-row')].filter((r) => /^(Completed|Deferred)$/.test(((r.querySelector('.lane') || {}).textContent || '').trim())).map((r) => ({ compact: r.hasAttribute('data-compact'), who: !!r.querySelector('.who'), chip: !!r.querySelector('.status'), reason: !!r.querySelector('.plan-row-reason'), number: ((r.querySelector('.plan-row-number') || {}).textContent || '').trim(), when: ((r.querySelector('.when') || {}).textContent || '').trim() }))`)
+  // was finished where one was recorded — with no chip or waiting line. A
+  // Completed row keeps the Impact it read while open, and a Completed step
+  // always has its day (owner, 2026-09-23); a Deferred row draws no Impact.
+  const finishedRows = await evaluate(`[...document.querySelectorAll('main.page .plan-group .plan-row')].filter((r) => /^(Completed|Deferred)$/.test(((r.querySelector('.lane') || {}).textContent || '').trim())).map((r) => ({ lane: ((r.querySelector('.lane') || {}).textContent || '').trim(), step: !(r.getAttribute('data-step') || '').startsWith('cleanup-'), compact: r.hasAttribute('data-compact'), who: ((r.querySelector('.who') || {}).textContent || '').trim(), chip: !!r.querySelector('.status'), reason: !!r.querySelector('.plan-row-reason'), number: ((r.querySelector('.plan-row-number') || {}).textContent || '').trim(), when: ((r.querySelector('.when') || {}).textContent || '').trim() }))`)
   const DAY_ONLY = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/
-  check('Plan: a finished row on All work is one compact line with its number and, where recorded, its day', Array.isArray(finishedRows) && finishedRows.every((r) => r.compact && !r.who && !r.chip && !r.reason && /^\d+$/.test(r.number) && (r.when === '' || DAY_ONLY.test(r.when))), JSON.stringify((finishedRows || []).filter((r) => !(r.compact && !r.who && !r.chip && !r.reason)).slice(0, 3)))
+  const finishedRight = (r) => r.compact && !r.chip && !r.reason && /^\d+$/.test(r.number) && (r.lane === 'Completed' ? r.who !== '' && (r.step ? DAY_ONLY.test(r.when) : r.when === '' || DAY_ONLY.test(r.when)) : r.who === '' && (r.when === '' || DAY_ONLY.test(r.when)))
+  check('Plan: a finished row on All work is one compact line with its number, a Completed row with its Impact and the day it was completed', Array.isArray(finishedRows) && finishedRows.every(finishedRight), JSON.stringify((finishedRows || []).filter((r) => !finishedRight(r)).slice(0, 3)))
   // A header tile filters the one list in section order, so each section
   // heading is drawn once (the tiles used to draw the list lane by lane, one
   // heading per lane a section had rows in).
@@ -700,11 +703,12 @@ try {
   // prerequisite and check carries is dropped, and a held row says so instead of
   // borrowing its wave's date.
   check('Plan: the board drops the generic now from supporting rows', (await evaluate(`[...document.querySelectorAll('main.page .plan-row .when')].map((e) => (e.textContent || '').trim()).filter((t) => t === 'now').length`)) === 0)
-  // When shows a calendar date, an estimate, or the condition preventing a date.
+  // When shows a calendar date or an estimate (owner, 2026-09-23): Not scheduled,
+  // After prerequisites and After review are gone from the column.
   // The chip continues to describe the observed policy state.
   const rowStates = await acrossLanes(`[...document.querySelectorAll('main.page .plan-row')].map((r) => ({ title: ((r.querySelector('.step-title') || {}).textContent || '').trim(), when: ((r.querySelector('.when') || {}).textContent || '').trim(), chip: ((r.querySelector('.status') || {}).textContent || '').trim() }))`)
-  const whenWrong = rowStates.filter(({ when }) => !(['Already in place', 'Not scheduled', 'After prerequisites', 'After review', 'Review now'].includes(when) || /^(?:Est\. )?[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(when)))
-  check('Plan: every row’s When provides a date, estimate or scheduling condition', whenWrong.length === 0, JSON.stringify(whenWrong.slice(0, 3)))
+  const whenWrong = rowStates.filter(({ when }) => !(['Review now', 'Decide now'].includes(when) || /^(?:Est\. )?[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(when)))
+  check('Plan: every row’s When provides a date or an estimate', whenWrong.length === 0, JSON.stringify(whenWrong.slice(0, 3)))
   const chipWrong = rowStates.filter(({ chip }) => !(chip === '' || chip === 'Report-only' || chip === 'Enforced'))
   check('Plan: a row’s chip is the tenant fact Report-only or Enforced, or nothing', chipWrong.length === 0, JSON.stringify(chipWrong.slice(0, 3)))
   // Every row's When and Impact say something (owner, 2026-09-11): never a blank cell.

@@ -167,14 +167,11 @@ test('no at-pace finish is stated from a rollout that placed none of the held wo
   const demo = plan('demo')
   assert.ok(planFinish(demo.steps, demo.schedule.cleanup?.end ?? null).held, 'the premise: the demo holds required work')
   assert.ok(demo.schedule.estimate && demo.schedule.estimate.weeks === 3, `the demo lost its estimate: ${JSON.stringify(demo.schedule.estimate)}`)
-  // The Plan's tile has no estimate to explain then, and says nothing rather
-  // than "Nothing is left to schedule." over held work.
+  // The Plan's tile and its tip read the board's forecast instead (owner,
+  // 2026-09-23; derive/estimatedFinish.test.ts): a date from the first scan on,
+  // and the step that sets it, never "Nothing is left to schedule." over held work.
   const screen = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
-  // Nor, where nothing is held, the tip of a length the tile withholds: mid with
-  // every remaining step deferred read "Depends on open work" over "The plan is
-  // 5 weeks because … Require MFA at Every Role Activation rolls through 2
-  // rings", a deferred step.
-  assert.ok(/const lengthTip = finish\.finish === null && projected\.estimate === null \? undefined : \(planLengthSentence\(finish, c\.schedule\) \?\? undefined\)/.test(screen), 'a plan with no stated estimate explains no length')
+  assert.ok(/const lengthTip = planLengthSentence\(finish, c\.schedule, \{ steps: c\.steps, forecast: board\.forecast, titleOf \}\) \?\? undefined/.test(screen), 'the tip does not read the board\'s forecast')
 })
 
 // ---- Completed is the board's lane, on the cover and in the section ----
@@ -345,7 +342,7 @@ test('the cover names every kind of hold on the plan, the readiness waits and th
 
 // ---- A plan nothing open dates ----
 
-test('a plan whose open work has no dates states no finish: the start alone, never the pre-deferral end', () => {
+test('a plan whose open work has no dates states the finish of the work still open, never the pre-deferral end', () => {
   // Mid after the recovery test, every step the Plan offers to defer deferred:
   // nothing held and nothing open dated, so planFinish has no finish. The cover
   // printed "Aug 31, 2026 → Oct 4, 2026" and "finishes Oct 4, 2026 at pace · 5
@@ -358,16 +355,21 @@ test('a plan whose open work has no dates states no finish: the start alone, nev
   assert.deepEqual([finish.finish, finish.held], [null, false], 'the premise: nothing open dates the plan and nothing is held')
   assert.ok(p.steps.some((s) => s.status !== 'done' && s.status !== 'skipped'), 'the premise: open work remains')
   assert.ok(p.schedule.estimate, 'the premise: the schedule still carries the pre-deferral estimate')
-  assert.equal(statedEstimate(p.steps, finish, p.schedule), null, 'an at-pace date is stated from work that is done or deferred')
+  // The Estimated finish (owner, 2026-09-23) is where the plan expects the work
+  // still open to end: a date, and one no deferred step sets.
+  const stated = statedEstimate(p.steps, finish, p.schedule, p.board.forecast)
+  assert.equal(stated, p.board.forecast.finish, 'the finish is not the forecast of the work still open')
+  for (const s of p.steps.filter((x) => x.status === 'skipped')) assert.equal(p.board.forecast.spans.has(s.id), false, `a deferred step, ${s.id}, sets the finish`)
   const facts = stepFacts(p.steps, p.schedule.cleanup, p.answers)
-  const line = headerLine1({ steps: facts.steps, inPlace: facts.done, finish: finish.finish, estimate: statedEstimate(p.steps, finish, p.schedule), weeks: '5 weeks', constraint: '', startedFrom: null })
-  assert.equal(line, `${facts.steps} steps · ${facts.done} in place`, `the cover's header: ${line}`)
+  const line = headerLine1({ steps: facts.steps, inPlace: facts.done, finish: finish.finish, estimate: stated, weeks: '5 weeks', constraint: '', startedFrom: null })
+  assert.ok(line.includes(absoluteDate(stated)), `the cover's header: ${line}`)
   assert.equal(coverDatesOf(p.schedule.start, finish, ''), absoluteDate(p.schedule.start), 'the cover dates the plan to an end nothing open has')
   // Nothing open at all: every step is done or deferred, as it is once the
   // prerequisites the Plan will not defer are done and the rest deferred. The
-  // estimate was still stated then: mid printed "finishes Oct 4, 2026 at pace ·
-  // 5 weeks" over a Cleanup of Sep 1 → Oct 7, 2026, from a reason naming a
-  // deferred step.
+  // pre-deferral estimate was stated then: mid printed "finishes Oct 4, 2026 at
+  // pace · 5 weeks" over a Cleanup of Sep 1 → Oct 7, 2026, from a reason naming
+  // a deferred step. The finish is now the forecast of what is left (Cleanup),
+  // or the day the last step was completed.
   for (const name of ['mid', 'small', 'large'] as FixtureName[]) {
     const open = plan(name, { stage: 'recovered' }).steps.filter((s) => s.status !== 'done' && s.status !== 'skipped').map((s) => s.id)
     const all = plan(name, { stage: 'recovered', skips: open })
@@ -375,17 +377,19 @@ test('a plan whose open work has no dates states no finish: the start alone, nev
     assert.deepEqual([allFinish.finish, allFinish.held], [null, false], `${name}: the premise: nothing open dates the plan and nothing is held`)
     assert.equal(all.steps.some((s) => s.status !== 'done' && s.status !== 'skipped'), false, `${name}: the premise: nothing is left open`)
     assert.ok(all.schedule.estimate, `${name}: the premise: the schedule still carries the pre-deferral estimate`)
-    assert.equal(statedEstimate(all.steps, allFinish, all.schedule), null, `${name}: an at-pace date is stated from work that is all done or deferred`)
+    const allStated = statedEstimate(all.steps, allFinish, all.schedule, all.board.forecast)
+    const lastDone = all.steps.map((s) => s.completedAt ?? null).filter((d): d is string => d !== null).sort().at(-1) ?? null
+    assert.equal(allStated, all.board.forecast.finish ?? lastDone, `${name}: the finish is neither what is left nor the last day a step was completed`)
   }
   // A plan the calendar dates keeps its range; a held one its start and what holds it.
   const dated = plan('mid', { stage: 'recovered' })
   const datedFinish = planFinish(dated.steps, dated.schedule.cleanup?.end ?? null)
   if (datedFinish.finish !== null) assert.equal(coverDatesOf(dated.schedule.start, datedFinish, ''), dateRange(dated.schedule.start, datedFinish.finish))
   assert.equal(coverDatesOf('2026-08-31T00:00:00.000Z', { ...datedFinish, finish: null, held: true }, '3 steps wait on X'), `${absoluteDate('2026-08-31T00:00:00.000Z')} · 3 steps wait on X`)
-  // The Plan's Projected finish tile reads the same stated estimate.
-  assert.match(readFileSync('src/ui/surfaces/Plan.tsx', 'utf8'), /projectedFinish\(finish\.finish, statedEstimate\(c\.steps, finish, c\.schedule\)\)/, 'the Plan tile states the pre-deferral estimate')
+  // The Plan's Estimated finish tile reads the same stated estimate, from the board's forecast.
+  assert.match(readFileSync('src/ui/surfaces/Plan.tsx', 'utf8'), /projectedFinish\(finish\.finish, statedEstimate\(c\.steps, finish, c\.schedule, board\.forecast\)\)/, 'the Plan tile states another estimate')
   const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
-  assert.match(print, /estimate: statedEstimate\(steps, finish, schedule\)/, 'the cover states the pre-deferral estimate')
+  assert.match(print, /const estimate = statedEstimate\(steps, finish, schedule, board\.forecast\)/, 'the cover states another estimate')
   assert.match(print, /coverDatesOf\(schedule\.start, finish, holdsOf\(finish, titleOf\)\)/, 'the cover dates the plan itself')
 })
 

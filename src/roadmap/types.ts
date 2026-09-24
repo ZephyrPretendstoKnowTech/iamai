@@ -709,6 +709,13 @@ export type Step = {
     accounts: { id: string; minimum: number; hardening: number; assessed: boolean }[]
   } | null
   history: StepHistoryEntry[]
+  /**
+   * The day the plan first found this step complete (roadmap/progress.ts
+   * recordCompletion): the day its own record gives — an owner's confirmation, a
+   * saved answer, the move tracking recorded — else the scan that found it, kept
+   * by the plan record while it stays complete. The day its Completed row states.
+   */
+  completedAt?: string | null
   skipReason: string | null
   /** The person's reason this step does not apply here (mapping.notApplicable): the step sits in the footer's Doesn't apply here group. */
   doesntApply?: string | null

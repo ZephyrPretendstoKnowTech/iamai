@@ -42,13 +42,14 @@ const doneDay = (done: string): string => absoluteDate(done.slice(0, 10))
 
 /**
  * The row's date column: the day it was marked done, else its planned day — and
- * nothing while the plan cannot finish (`undated`, derive/finish.ts heldRequired):
- * Cleanup follows the last enforcement, and a day after work that is held is a
- * date nothing has made true.
+ * while the plan cannot finish (`undated`, derive/finish.ts heldRequired), where
+ * the plan expects it (`estimate`, roadmap/forecast.ts planForecast) as an
+ * estimate: Cleanup follows the last enforcement, and its planned day comes
+ * after work that is held, so that day is not one the plan can promise.
  */
-export function cleanupWhen(row: CleanupPhase['rows'][number], undated = false, completed = false, readyReview = false): string {
-  // Never blank (owner, 2026-09-11): an undated row reads the When column's placeholder (A1b: a day, or the placeholder).
-  return row.done ? fillText(A.cleanupDoneRow, { date: doneDay(row.done) }) : completed ? schedulingWords.done : undated && readyReview ? schedulingWords.reviewNow : undated ? (pages.plan as unknown as { when: { afterPrerequisites: string } }).when.afterPrerequisites : absoluteDate(row.day.slice(0, 10))
+export function cleanupWhen(row: CleanupPhase['rows'][number], undated = false, completed = false, readyReview = false, estimate: string | null = null): string {
+  // Never blank (owner, 2026-09-11), and a date on every open row (owner, 2026-09-23); the placeholder only where no board estimated it.
+  return row.done ? fillText(A.cleanupDoneRow, { date: doneDay(row.done) }) : completed ? schedulingWords.done : undated && readyReview ? schedulingWords.reviewNow : undated ? (estimate !== null ? fillText(schedulingWords.estimate, { date: absoluteDate(estimate) }) : (pages.plan as unknown as { when: { afterPrerequisites: string } }).when.afterPrerequisites) : absoluteDate(row.day.slice(0, 10))
 }
 
 /** Recorded checks remain evidence, never a substitute for current completion. */
@@ -108,7 +109,7 @@ export type CleanupBoardRead = { undated: boolean; laneOf: (id: string) => LaneV
 export function cleanupWhenOf(row: CleanupPhase['rows'][number], undated: boolean, lane: LaneView | null, compact = false): string {
   const completed = lane?.lane === 'Completed'
   if (compact) return completed && row.done ? doneDay(row.done) : ''
-  return cleanupWhen(row, undated, completed, lane?.lane === 'Ready' && lane.substatus === 'Review')
+  return cleanupWhen(row, undated, completed, lane?.lane === 'Ready' && lane.substatus === 'Review', lane && !lane.alone ? (lane.estimate ?? null) : null)
 }
 
 /** The row's When column on the board, from its reading (the Plan's CleanupRow reads cleanupWhenOf too). */

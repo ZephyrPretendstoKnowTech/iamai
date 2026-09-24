@@ -139,7 +139,8 @@ test('Step 5: the Impact column says who a step reaches, never the state, and a 
       const impact = rowWho(s)
       assert.ok(!impact.includes(REPORT_ONLY_GAP), `${where}: "${impact}" restates the state`)
       if (/^\d+ accounts?$/.test(impact)) {
-        assert.equal(Number(impact.split(' ')[0]), s.population.ids.length, `${where}: account inventory count must match named accounts`)
+        // Prepare Emergency Access Accounts counts its emergency accounts: the ones chosen, at least the two it needs.
+        assert.equal(Number(impact.split(' ')[0]), s.id === 's-prereq-break-glass' ? Math.max(2, s.emergency?.accounts.length ?? 0) : s.population.ids.length, `${where}: account inventory count must match named accounts`)
       } else if (reached(s) === null) {
         assert.ok(impact.length > 0 && !/^\d+ (person|people)/.test(impact), `${where}: unknown scope uses a topic without inventing a count`)
         unknown += 1

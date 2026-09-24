@@ -28,7 +28,7 @@ import type { MfaViability } from '../../scoring/mfaViability.ts'
 import { buildNameDirectory } from '../../names.ts'
 import { generateRoadmap, planIdFor } from '../../roadmap/generate.ts'
 import { annotateStateReasons } from '../../roadmap/stateReason.ts'
-import { applySkips, decisionsOf, applyProgress, securityDefaultsSeenOnAtOf } from '../../roadmap/progress.ts'
+import { applySkips, completedDaysOf, decisionsOf, applyProgress, securityDefaultsSeenOnAtOf } from '../../roadmap/progress.ts'
 import { settleForecast } from '../../roadmap/forecast.ts'
 import { observationsOf } from '../../roadmap/tracking.ts'
 import type { PlanDecisions, StepDecision } from '../../roadmap/progress.ts'
@@ -387,7 +387,7 @@ export function usePlanData(
       // nothing (generate.ts knownGroupMembers).
       groupMembers: Object.fromEntries([...groups].filter(([, g]) => g.sampled !== true).map(([id, g]) => [id.toLowerCase(), g.memberIds])),
       activePeople: activePeopleIds(snapshot, snapshot.asOf, notPeopleIds(mapping)),
-    })
+    }, saved?.completedAt ?? null)
     // Tracking has settled every lifecycle, so the schedule's own forecast can be
     // taken off the steps it was never earned for: an enforcement wave and an
     // enforce event were placed on every step before the scan found which
@@ -455,6 +455,8 @@ export function usePlanData(
       // goal this scan could not assess is not a rollout that never happened
       // (tracking.ts observationsOf).
       observations: observationsOf(computed.steps, saved.observations ?? null),
+      // The day each step was first found complete, over what the record held (progress.ts recordCompletion).
+      completedAt: completedDaysOf(computed.steps),
       ...(saved.signature ? { signature: saved.signature } : {}),
     }
     // The first scan that read security defaults on, kept from then on (progress.ts securityDefaultsSeenOnAtOf).
@@ -462,7 +464,7 @@ export function usePlanData(
     if (sdSeenOn !== null) decisions.securityDefaultsSeenOnAt = sdSeenOn
     if (saved.startedAt) decisions.startedAt = saved.startedAt
     if (saved.firstDeployment) decisions.firstDeployment = saved.firstDeployment
-    const key = JSON.stringify({ tenantId: snapshot.tenantId, securityDefaultsSeenOnAt: decisions.securityDefaultsSeenOnAt, skips: decisions.skips, startDate: decisions.startDate, startedAt: decisions.startedAt, firstDeployment: decisions.firstDeployment, band: decisions.band, freeze: decisions.freeze, stepDecisions: decisions.stepDecisions, confirmations: decisions.confirmations, observations: decisions.observations, signature: decisions.signature, cleanup: cleanupRecord(decisions.checkpoints) })
+    const key = JSON.stringify({ tenantId: snapshot.tenantId, securityDefaultsSeenOnAt: decisions.securityDefaultsSeenOnAt, completedAt: decisions.completedAt, skips: decisions.skips, startDate: decisions.startDate, startedAt: decisions.startedAt, firstDeployment: decisions.firstDeployment, band: decisions.band, freeze: decisions.freeze, stepDecisions: decisions.stepDecisions, confirmations: decisions.confirmations, observations: decisions.observations, signature: decisions.signature, cleanup: cleanupRecord(decisions.checkpoints) })
     if (key === lastPersist.current) return
     lastPersist.current = key
     setPersistence('saving')

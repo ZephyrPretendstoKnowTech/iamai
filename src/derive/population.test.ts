@@ -76,7 +76,8 @@ test('on the demo and GetIAMAI, every row count equals its step lead count, and 
       assert.equal(rowCount, view.active, `${name} ${s.id}: the row's count is the population's (${row})`)
       assert.equal(ex.n, s.kind === 'check' ? s.population.total : view.active, `${name} ${s.id}: the lead's {n} uses reviewed accounts for check steps`)
       const reviewCount = rowWho(s).match(/^(\d+) accounts?$/)
-      if (reviewCount) assert.equal(Number(reviewCount[1]), s.population.total, `${s.id}: actual row Impact counts the same reviewed accounts`)
+      // Prepare Emergency Access Accounts counts its emergency accounts instead: the ones chosen, at least the two it needs.
+      if (reviewCount) assert.equal(Number(reviewCount[1]), s.id === 's-prereq-break-glass' ? Math.max(2, s.emergency?.accounts.length ?? 0) : s.population.total, `${s.id}: actual row Impact counts the same reviewed accounts`)
       assert.equal(ex.active, view.active, `${name} ${s.id}: the lead's {active}`)
       assert.equal(ex.people, view.active, `${name} ${s.id}: the lead's {people}`)
       assert.equal(ex.admins, view.admins, `${name} ${s.id}: the lead's {admins}`)

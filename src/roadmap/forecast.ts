@@ -29,8 +29,8 @@
 // lifecycle, moves a step forward, or lets a forecast satisfy a gate.
 import type { Step, StepEvents } from './types.ts'
 import type { Schedule } from './schedule.ts'
-import { readBackPlacement } from './schedule.ts'
-import { policyHold } from './operations.ts'
+import { addDays, observationDaysFor, readBackPlacement, ringlessSoakDays, toWeekday } from './schedule.ts'
+import { awaitsOwnObject, policyHold } from './operations.ts'
 import { isHeld, markHoldChains } from './holds.ts'
 import { heldRequired } from '../derive/finish.ts'
 import { basisOf, createsWhileGated, settleSchedule } from './stepSchedule.ts'
@@ -306,4 +306,185 @@ export function settleForecast(steps: readonly Step[], schedule: Schedule): Sche
   // Then each step's one scheduling result, and the phases read back off them.
   settleSchedule(steps, schedule)
   return schedule
+}
+
+// ---- Where the plan expects each row to happen (owner, 2026-09-23) ----
+//
+// Every open row on the board states a date, a held row included, and the
+// Estimated finish counts all of the plan's work. A held row has no day of its
+// own — nothing is scheduled while something holds it — so its day is the one
+// on which the plan expects what it waits on to clear: the day the step it waits
+// on finishes (or is turned on, or is created, as the wait asks), the end of the
+// MFA registration campaign for a readiness threshold, and the end of the
+// preparation window for a hold a person clears (an answer, a conflict, a
+// missing object). From there it runs as the placement would run it: a policy is
+// created in report-only, watched for its window, turned on no earlier than the
+// forecast placement put its turn-on nor before its turn-on's own waits clear,
+// and soaks as the placement gives it. The finish is the latest of those days,
+// Cleanup after it. Estimates, all of them, and read only as estimates.
+
+/** What a row's next action, or a policy's turn-on, waits on: another row by id, or a hold no row clears, by its kind. */
+export type ForecastWait = { kind: string; id: string; milestone?: string | null }
+
+/** One board row as the forecast reads it. */
+export type ForecastRow = {
+  id: string
+  /** The step, or null for a Cleanup row. */
+  step: Step | null
+  /** The board dates the row by its own day (a step's scheduled day; a Cleanup row's planned day where the plan is dated). */
+  dated: boolean
+  /** A Cleanup row's planned day. */
+  day?: string | null
+  /** What the row's next action waits on (the board's reading of it). */
+  waits: readonly ForecastWait[]
+  /** What a policy's turn-on waits on beyond its next action: its open readiness gates and enforcement waits. */
+  turnOnWaits: readonly ForecastWait[]
+  /** A Cleanup row that follows the rollout rather than running beside it. */
+  afterRollout?: boolean
+  /** Finished, deferred or not on the plan: it holds nothing and has no day to estimate. */
+  complete: boolean
+}
+
+/** Where the plan expects one row to happen. */
+export type EstimatedSpan = {
+  /** The day of its next action: its own where the board dates it, else the day its waits are expected to clear. */
+  at: string
+  /** A policy's estimated turn-on. */
+  turnOn: string | null
+  /** The day its work ends: a policy's turn-on and soak, anything else its own span. */
+  end: string
+  /** The row whose clearing set the latest of its days, where a row did. */
+  waitedOn: string | null
+  /** Whether that row held its turn-on rather than its next action. */
+  turnOnWait: boolean
+  /** A policy created in report-only: the days it is watched before it is turned on. */
+  observation: number | null
+  /** The days its turn-on soaks. */
+  soak: number
+}
+
+/** The whole plan's forecast: each open row's estimate, the finish, and the step that ends last. */
+export type PlanForecast = { spans: ReadonlyMap<string, EstimatedSpan>; finish: string | null; last: string | null }
+
+const DAY = 86_400_000
+const ms = (iso: string): number => Date.parse(iso)
+const later = (a: string, b: string): string => (ms(b) > ms(a) ? b : a)
+const daysBetween = (a: string, b: string): number => Math.max(0, Math.round((ms(b) - ms(a)) / DAY))
+// The day an estimate names, as a date-only string: the placement counts in UTC days, and an
+// instant at a UTC midnight reads as the day before anywhere west of it.
+const dayOf = (iso: string): string => toWeekday(iso).slice(0, 10)
+const isPolicy = (s: Step): boolean => s.kind === 'create' || s.kind === 'adjust' || s.kind === 'enforce'
+
+/** Where the plan expects every open row to happen (the rows the board draws, ui/surfaces/planBoard.ts boardReadingsOf). Pure. */
+export function planForecast(rows: readonly ForecastRow[]): PlanForecast {
+  const window = rows.map((r) => r.step?.scheduled?.basis?.window ?? null).find((w) => w != null) ?? null
+  const spans = new Map<string, EstimatedSpan>()
+  if (window === null) return { spans, finish: null, last: null }
+  const plan = window
+  const byId = new Map(rows.map((r) => [r.id, r]))
+  const campaign = rows.find((r) => r.step?.kind === 'verify' && !r.complete)?.id ?? null
+  const visiting = new Set<string>()
+  const settled = new Set<string>()
+
+  /** The day a wait is expected to clear, and the row that clears it where one does. */
+  const clears = (w: ForecastWait): { day: string; by: string | null } => {
+    // A readiness threshold clears with the MFA registration campaign.
+    if (w.kind === 'evidence') {
+      const c = w.id.startsWith('evidence:readiness') && campaign !== null ? spanOf(campaign) : null
+      return c ? { day: c.end, by: campaign } : { day: plan.start, by: null }
+    }
+    if (byId.has(w.id)) {
+      const s = spanOf(w.id)
+      if (s === null) return { day: plan.start, by: null }
+      const day = w.milestone === 'created' ? s.at : w.milestone === 'enforced' || w.milestone === 'ready-to-enforce' ? (s.turnOn ?? s.end) : s.end
+      return { day, by: w.id }
+    }
+    // A step the board draws no row for holds nothing.
+    if (w.kind === 'step' || w.kind === 'decision') return { day: plan.start, by: null }
+    // A hold a person clears (an answer, a conflict, a missing object, a mapping) is preparation work.
+    return { day: plan.prepEnd, by: null }
+  }
+  const latest = (from: string, waits: readonly ForecastWait[]): { day: string; by: string | null } => {
+    let out: { day: string; by: string | null } = { day: from, by: null }
+    for (const w of waits) {
+      const c = clears(w)
+      if (ms(c.day) > ms(out.day)) out = c
+    }
+    return out
+  }
+
+  function spanOf(id: string): EstimatedSpan | null {
+    if (settled.has(id)) return spans.get(id) ?? null
+    const row = byId.get(id)
+    // A wait round a loop reads as cleared, never as a day that loops.
+    if (!row || row.complete || visiting.has(id)) return null
+    visiting.add(id)
+    const span = estimate(row)
+    visiting.delete(id)
+    settled.add(id)
+    if (span) spans.set(id, span)
+    return span
+  }
+
+  function estimate(row: ForecastRow): EstimatedSpan {
+    const s = row.step
+    if (s === null) {
+      const w = latest(row.day ?? plan.start, row.waits)
+      const at = dayOf(w.day)
+      return { at, turnOn: null, end: at, waitedOn: w.by, turnOnWait: false, observation: null, soak: 0 }
+    }
+    const scheduled = s.scheduled ?? null
+    const own = row.dated ? (scheduled?.at ?? null) : null
+    const start = own !== null ? { day: own, by: null } : latest(plan.start, row.waits)
+    const at = dayOf(start.day)
+    // A policy whose next task is the object it makes itself was placed as that
+    // task (schedule.ts): its placement is the preparation window, not a turn-on.
+    const placed = awaitsOwnObject(s) ? null : (scheduled?.basis?.placed ?? null)
+    if (!isPolicy(s)) {
+      // Its own span, as the placement gave it: a preparation's window, the campaign's.
+      const end = dayOf(own !== null ? later(scheduled?.range?.end ?? at, at) : addDays(at, placed ? daysBetween(placed.start, placed.end) : 0))
+      return { at, turnOn: null, end, waitedOn: start.by, turnOnWait: false, observation: null, soak: 0 }
+    }
+    // Created in report-only on its day and watched for its window; a policy the
+    // tenant already has is turned on from its own day (its review, its change).
+    const creates = s.kind === 'create' && s.state.lifecycle === 'not-deployed'
+    const observation = creates ? observationDaysFor(s) : null
+    let turnOn = observation !== null ? addDays(at, observation) : at
+    // No earlier than the forecast placement put the turn-on: the cap on change
+    // windows and the rule on prompting the same people are the placement's.
+    if (placed) turnOn = later(turnOn, placed.start)
+    const held = latest(turnOn, row.turnOnWaits)
+    turnOn = dayOf(held.day)
+    const soak = placed ? daysBetween(placed.start, placed.end) : ringlessSoakDays(s, plan.activeUsers)
+    let end = addDays(turnOn, soak)
+    if (own !== null && scheduled?.range) end = later(end, scheduled.range.end)
+    end = dayOf(end)
+    return { at, turnOn, end, waitedOn: held.by ?? start.by, turnOnWait: held.by !== null, observation, soak }
+  }
+
+  for (const r of rows) if (!r.afterRollout) spanOf(r.id)
+  // The step whose work ends last; a policy where a tie leaves the choice.
+  let last: string | null = null
+  let rolloutEnd: string | null = null
+  for (const r of rows) {
+    const s = spans.get(r.id)
+    if (!s || r.step === null) continue
+    if (rolloutEnd === null || ms(s.end) > ms(rolloutEnd) || (ms(s.end) === ms(rolloutEnd) && isPolicy(r.step))) {
+      rolloutEnd = s.end
+      last = r.id
+    }
+  }
+  // The Cleanup rows that follow the rollout come after the last of its work, one working day each.
+  let cursor = rolloutEnd
+  for (const r of rows) {
+    if (!r.afterRollout) continue
+    const own = spanOf(r.id)
+    if (!own || cursor === null) continue
+    cursor = dayOf(addDays(cursor, 1))
+    if (ms(cursor) > ms(own.at)) spans.set(r.id, { ...own, at: cursor, end: cursor })
+    else cursor = own.at
+  }
+  let finish: string | null = null
+  for (const s of spans.values()) if (finish === null || ms(s.end) > ms(finish)) finish = s.end
+  return { spans, finish, last }
 }

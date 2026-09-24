@@ -90,6 +90,8 @@ export type LaneView = {
    * (planBoard.ts boardHolds).
    */
   alone?: true
+  /** The day the plan expects the row to happen (LaneReading.estimate): what its When column reads, as an estimate, where the row has no day of its own. */
+  estimate?: string
 }
 
 /**

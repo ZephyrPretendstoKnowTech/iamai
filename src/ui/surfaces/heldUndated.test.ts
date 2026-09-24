@@ -1,6 +1,6 @@
 // Held steps follow the board (owner decision 2, 2026-09-22): a step the board
-// holds — its When column reads "After prerequisites" — carries no date
-// anywhere. The rail, the milestone's Next line, the export's Dates line, the
+// holds carries no date anywhere but its own row, whose When column reads the
+// day the plan expects its waits to clear, as an estimate (owner, 2026-09-23). The rail, the milestone's Next line, the export's Dates line, the
 // calendar, the printed plan and AI Info each ask the board (planBoard.ts
 // boardHolds); none of them decides "held" again.
 //
@@ -38,6 +38,9 @@ import { aiGroundingText } from './aiGrounding.ts'
 import { planDates, stepVars } from './stepVars.ts'
 import { DEVICE_ANSWER_KEYS, QUESTION_STEP, answerKey, devicePlanOf } from '../../roadmap/answers.ts'
 import type { StepVarContext } from './stepVars.ts'
+
+/** What the board's When reads for a row it holds: the day the plan expects its waits to clear, as an estimate (owner, 2026-09-23). */
+const estimated = (lane: { estimate?: string }): string => fillText(schedulingWords.estimate, { date: absoluteDate(lane.estimate!) })
 
 /** Any day as the product prints one: the short form, and the long form an email names ("Monday, September 14"). */
 const DATE = /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{1,2}, \d{4}\b|\b(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), (?:January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2}\b/
@@ -116,7 +119,7 @@ test('a step the board holds carries no date on any surface, and every step it d
       }
       held++
       if (scheduledDays(step).length > 0) heldScheduled++
-      assert.equal(boardWhenOf(step, waveStartOf(step), lane), schedulingWords.waiting, `${where}: the premise, the board reads After prerequisites`)
+      assert.equal(boardWhenOf(step, waveStartOf(step), lane), estimated(lane), `${where}: the premise, the board reads the day the plan expects it, as an estimate`)
       // The opened step: the rail says what the row says, and the milestone names no day.
       assert.equal(body.rail.metric, schedulingWords.waiting, `${where}: rail`)
       assert.equal(body.contract.milestone.at, null, `${where}: milestone day`)
@@ -176,7 +179,7 @@ test('a policy whose turn-on waits behind the recovery test carries no turn-on d
     assert.ok(token.events?.announce?.at && token.events.enforce.at, `${where}: the premise, the schedule carries its announce and turn-on days`)
     const days = [token.events!.announce!.at, token.events!.enforce.at].map(absoluteDate)
     // The board, and every surface that asks it.
-    assert.equal(boardWhenOf(token, waveStartOf(token), lane), schedulingWords.waiting, `${where}: the board's When`)
+    assert.equal(boardWhenOf(token, waveStartOf(token), lane), estimated(lane), `${where}: the board's When`)
     assert.equal(boardHolds(token, lane), true, `${where}: the board holds it`)
     const body = stepBodyOf(token, ctxOf(token), { lane, blockers: readinessBlockersOf(board.readings.get(token.id), board.titleOf), prerequisiteLabel: prerequisiteLabelFor(board.readings) })
     assert.equal(body.rail.metric, schedulingWords.waiting, `${where}: rail`)
@@ -195,7 +198,7 @@ test('a policy whose turn-on waits behind the recovery test carries no turn-on d
 // The same rule on a change to a policy the tenant has that is not on yet: that
 // day is its turn-on too. A change to a policy already on is a correction, which
 // no turn-on prerequisite holds, and it keeps its day on Up Next.
-test('a change that turns a policy on reads no day on a waiting lane, and a correction to a policy already on keeps its day', () => {
+test('a change that turns a policy on has no day of its own on a waiting lane, and a correction to a policy already on keeps its day', () => {
   const f = withoutRecoveryTest(withDirectionApproved(curatedFixture('demo-week2')))
   const r = runFixture(f, {}, null, f.snapshot.asOf)
   const board = boardReadingsOf(r.steps, r.schedule.cleanup, null)
@@ -204,7 +207,7 @@ test('a change that turns a policy on reads no day on a waiting lane, and a corr
   const as = (lifecycle: 'not-deployed' | 'enforced'): Step => ({ ...token, state: { ...token.state, lifecycle } })
   assert.equal(lane.lane, 'Up Next', 'the premise: filed Up Next')
   assert.equal(scheduleOf(as('not-deployed')).transition, 'change', 'the premise: a change')
-  assert.equal(boardWhenOf(as('not-deployed'), waveStartOf(token), lane), schedulingWords.waiting, 'a change that turns it on')
+  assert.equal(boardWhenOf(as('not-deployed'), waveStartOf(token), lane), estimated(lane), 'a change that turns it on')
   assert.equal(scheduleOf(as('enforced')).transition, 'change', 'the premise: a change')
   assert.equal(boardWhenOf(as('enforced'), waveStartOf(token), lane), absoluteDate(scheduleOf(as('enforced')).at!), 'a correction to a policy already on')
 })
@@ -456,7 +459,7 @@ test('Prepare Your Team for MFA, held while Require MFA for Everyone has no day,
   const { r, step, mfa, onBoard, ctxWith, bodyOf, lane } = heldCampaignOf(f)
   const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot, onBoard)
   assert.equal(boardHolds(step, lane), true, 'the premise: the board holds the campaign')
-  assert.equal(boardWhenOf(step, waveStartOf(step), lane), schedulingWords.waiting, 'the premise: its row reads After prerequisites')
+  assert.equal(boardWhenOf(step, waveStartOf(step), lane), estimated(lane), 'the premise: its row reads the day the plan expects it, as an estimate')
   assert.equal(dates.mfaEnforce, null, `the premise: ${mfa.id} has no turn-on day`)
   assert.ok(typeof dates.firstEnforce === 'string', 'the premise: another policy has one')
   const ex = bodyOf(ctxWith(dates)).ex as Record<string, unknown>
@@ -520,7 +523,7 @@ test('an On Hold row, not Observing, carries no day whatever waits the roadmap r
   // Forged: the lane engine files it On Hold behind the same step, not Observing.
   const lane = { ...read, lane: 'On Hold' as const, substatus: null }
   assert.notEqual(lane.tail, BOARD.blockers.evidence, `${where}: the premise, not Observing`)
-  assert.equal(boardWhenOf(step, waveStartOf(step), lane), schedulingWords.waiting, `${where}: the board's When`)
+  assert.equal(boardWhenOf(step, waveStartOf(step), lane), estimated(lane), `${where}: the board's When`)
   assert.equal(boardHolds(step, lane), true, `${where}: the board holds it`)
   const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot)
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: step.reportOnlyAt ?? null, scheduledOn: waveStartOf(step), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
