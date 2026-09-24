@@ -1282,10 +1282,11 @@ export function awaitsWorkflowRecord(step: PolicyStep): boolean {
  * Confirm What You Use that still signs in with legacy authentication
  * (Step.mailAccountsToMove, roadmap/blockSignIns.ts; walk list 4.x item 4).
  * Nothing is left for IAMAI to write; the next scan reads whether each has moved.
+ * A policy that has drifted, or that something else holds, is that first.
  */
 export function awaitsMailMove(step: PolicyStep): boolean {
   const s = step.state
-  return (step.mailAccountsToMove?.length ?? 0) > 0 && s?.lifecycle === 'enforced' && !s.satisfied && !s.setAside && s.condition !== 'baseline-conflict' && validOperations(step.action).length === 0
+  return (step.mailAccountsToMove?.length ?? 0) > 0 && s?.lifecycle === 'enforced' && s.condition === 'healthy' && !s.satisfied && !s.setAside && validOperations(step.action).length === 0
 }
 
 /**

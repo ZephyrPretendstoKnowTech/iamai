@@ -50,7 +50,7 @@ const POLICY_WORKFLOWS: Record<string, string> = {
 // and it records nothing (walk list item 1; generate.ts). Nor is Block Device
 // Code Sign-in: an enforced policy that matches completes it from the scan
 // (walk list 4.x item 3). Block Legacy Authentication's mail half is the sign-in
-// records' too (item 4, roadmap/legacyMail.ts).
+// records' too (item 4, roadmap/blockSignIns.ts).
 const SCOPED_MANUAL = new Set(['s-ladder-global-admin-count', 's-ladder-authenticator-over-sms', 's-ladder-legacy-auth-inventory', 's-shared-devices', 's-ladder-guest-review', 's-ladder-app-passwords', ...Object.keys(POLICY_WORKFLOWS)])
 const outcomeField = (review = false): ManualEvidenceField => ({ key: 'outcome', label: 'Outcome', type: 'select', required: true, options: review ? [{ value: 'retained', label: 'Retain access' }, { value: 'revoked', label: 'Access revoked' }, { value: 'investigate', label: 'Investigate' }] : [{ value: 'passed', label: 'Successful' }, { value: 'failed', label: 'Unsuccessful' }, { value: 'investigate', label: 'Investigate' }] })
 
