@@ -171,6 +171,8 @@ export const DECISION_STEPS = {
   countries: PREREQ_STEP_ID.allowedCountries,
   trustedLocation: PREREQ_STEP_ID.trustedLocation,
   serviceAccounts: PREREQ_STEP_ID.serviceAccountsGroup,
+  /** Not a step: Create or Correct Service Accounts Group's group picker persists under this key (decisionKeyOf). */
+  serviceAccountsGroup: 's-prereq-service-accounts-group-choice',
   sharedDevices: 's-shared-devices',
   campaign: SPECIAL_CARE_STEP_ID,
   /** Not a step: the campaign's "Turn on without them for now" list persists under this key (followUp.ts). */
@@ -178,6 +180,16 @@ export const DECISION_STEPS = {
   /** Not a step: the Baseline mappings (Plan settings) persist under this key (sourceMappings.ts). */
   sourceReferences: BASELINE_MAPPINGS_KEY,
 } as const
+
+/**
+ * The key a step's own picker saves under: the step's id, except where that id
+ * already holds another answer. Create or Correct Service Accounts Group's id
+ * holds the accounts Identify Service and Shared Accounts picked
+ * (directionAnswers.ts), so its group picker saves under a key of its own.
+ */
+export function decisionKeyOf(stepId: string): string {
+  return stepId === PREREQ_STEP_ID.serviceAccountsGroup ? DECISION_STEPS.serviceAccountsGroup : stepId
+}
 
 /**
  * The mapping with every saved step decision applied (target-state §6.4):
@@ -330,6 +342,11 @@ export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<
       next.serviceAccountUserIds = picked
       next.serviceAccountRejectedIds = next.serviceAccountRejectedIds.filter((id) => !picked.includes(id))
       answered('serviceAccounts')
+    } else if (stepId === DECISION_STEPS.serviceAccountsGroup) {
+      // The group every policy excludes as the service accounts is a person's
+      // choice: the picker pre-fills the scanned group that holds exactly the
+      // picked accounts, and only a Save makes it the plan's.
+      if (provenance === 'confirmed') next.serviceAccountsGroupId = picked[0] ?? null
     } else if (stepId === DECISION_STEPS.sharedDevices && provenance === 'confirmed') {
       next.sharedDeviceUserIds = picked
     } else if (stepId === DECISION_STEPS.campaign) {

@@ -15,7 +15,7 @@ import type { GroupMembers } from '../../coverage/population.ts'
 import { emergencySignals } from '../../mapping/emergencyAccess.ts'
 import { emergencySelection } from '../../mapping/emergencyChoice.ts'
 import { suggestCountries, countryName, COUNTRY_CODES } from '../../mapping/countries.ts'
-import { detectServiceAccounts } from '../../mapping/serviceAccounts.ts'
+import { detectServiceAccounts, groupHoldsExactly } from '../../mapping/serviceAccounts.ts'
 import { sharedDeviceUsers, sharedDeviceSignals } from '../../derive/sharedDevices.ts'
 import { DECISION_STEPS, applyStepDecisions } from '../../roadmap/decisions.ts'
 import { exclusionsGroupChoice, operatorExclusionsDecision } from '../../mapping/safetyChoice.ts'
@@ -255,6 +255,33 @@ export function pickerVars(stepId: string, template: string, ctx: PickerContext)
     })
     const trusted = locations.filter((l) => l.isTrusted === true).map((l) => l.id as string)
     return vars('locationsWithMatches', rows, ids, tickedFrom(mapping.trustedLocationIds, trusted.length > 0 ? trusted : ids))
+  }
+
+  // The service accounts group (Create or Correct Service Accounts Group, saved
+  // under its own key): every group the plan knows, the one saved first, then
+  // any that holds exactly the accounts picked in Identify Service and Shared
+  // Accounts, then any that holds them all. The saved group is ticked; where
+  // nothing is saved, the one group that holds exactly them is pre-filled
+  // (`groupsMatched`) and becomes the plan's only when the person saves it.
+  if (stepId === DECISION_STEPS.serviceAccountsGroup) {
+    const known = new Map<string, string>()
+    for (const [id] of ctx.groups ?? []) known.set(lc(id), id)
+    for (const p of policies) for (const id of [...policyGroups(p).include, ...policyGroups(p).exclude]) if (!known.has(lc(id))) known.set(lc(id), id)
+    const picked = mapping.serviceAccountUserIds
+    const saved = mapping.serviceAccountsGroupId
+    const isSaved = (id: string): number => (saved !== null && lc(id) === lc(saved) ? 1 : 0)
+    const exact = (id: string): number => (groupHoldsExactly(ctx.groups?.get(id), picked) ? 1 : 0)
+    const holdsAll = (id: string): number => {
+      const members = new Set((ctx.groups?.get(id)?.memberIds ?? []).map(lc))
+      return picked.length > 0 && picked.every((a) => members.has(lc(a))) ? 1 : 0
+    }
+    const ids = [...known.values()].sort((a, b) => isSaved(b) - isSaved(a) || exact(b) - exact(a) || holdsAll(b) - holdsAll(a) || nameOf(a).localeCompare(nameOf(b)))
+    const rows = ids.map((id) => {
+      const g = ctx.groups?.get(id)
+      return row(template, { name: g?.displayName ?? nameOf(id), memberCount: g?.memberCount })
+    })
+    const ticked = ids.filter((id) => isSaved(id) === 1)
+    return vars('groups', rows, ids, ticked, ticked.length === 0 ? ids.filter((id) => exact(id) === 1) : [])
   }
 
   // Service accounts: the candidates the signals nominate (the rejected ones

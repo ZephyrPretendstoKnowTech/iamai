@@ -3906,7 +3906,7 @@
       "kind": "object",
       "title": "Create or Correct Service Accounts Group",
       "changeLine": null,
-      "why": "Unattended jobs may use accounts that cannot complete a person's sign-in prompt. A reviewed group makes those exceptions visible and easier to maintain.",
+      "why": "Block Legacy Authentication and Restrict Service Accounts to the Trusted Network wait on this group. It holds the service accounts you picked in Identify Service and Shared Accounts.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/architecture/secure-service-accounts"
       },
@@ -3916,18 +3916,19 @@
         "none": "No service accounts recognised in {tenant}."
       },
       "decision": {
-        "label": "Service accounts",
-        "help": "Confirm each account's workload and owner before adding it. This group is for user-based service accounts: a policy scoped to users does not block a call made by a service principal, and one assigned to a group is not enforced for a service principal inside it.",
-        "pickerRow": "{name} · {signals}",
+        "label": "Service accounts group",
+        "help": "Select the group that holds your service accounts.",
+        "pickerSource": "groups",
+        "pickerRow": "{name} · {memberCount} members",
+        "accountRow": "{name} · {signals}",
         "save": "Save"
       },
       "whatToDo": {
-        "lead": "Create the group and add only the accounts an application owner confirmed run unattended."
+        "lead": "Create {proposedName} with {serviceAccountNames}."
       },
       "dates": null,
       "doneWhen": [
-        "The group holds exactly the user accounts confirmed as running unattended jobs, the mail-sending devices named in Confirm What You Use among them.",
-        "Each member's workload owner confirmed it runs unattended and no person signs in with it."
+        "{serviceAccountsGroupName} holds exactly the accounts you picked in Identify Service and Shared Accounts."
       ],
       "ifWrong": "Remove the account from the group; the policies apply again on its next sign-in.",
       "comms": null,
@@ -3960,6 +3961,12 @@
           "svc-mailer-2 · name; 1 sign-in by password over ROPC to Azure PowerShell"
         ],
         "proposedName": "Core - Exception - Service accounts",
+        "serviceAccountNames": "svc-mailer-1 and svc-mailer-2",
+        "serviceAccountsGroupName": "Core - Exception - Service accounts",
+        "serviceAccountsGroupMembers": 2,
+        "groups": [
+          "Core - Exception - Service accounts · 2 members"
+        ],
         "serviceAccounts": [
           "svc-mailer-1",
           "svc-mailer-2"
@@ -3972,9 +3979,16 @@
       "aiFocus": "Separate confirmed members from candidates. Include workload purpose, owner information where known, and any modernization opportunity without treating it as completed.",
       "card": {
         "subject": "Service accounts group",
-        "check": "Not in place"
+        "check": "Not in place",
+        "satisfied": "{serviceAccountsGroupName} · {serviceAccountsGroupMembers} members"
       },
-      "taskTitle": "Set up the service accounts group"
+      "$commentWhatToDoWhen": "The scan found a group holding exactly the picked accounts and nobody has saved it on the picker (stepVars.ts serviceGroupFound): saving it is what is left, and the rail's milestone says so (stepBody.ts).",
+      "whatToDoWhen": {
+        "serviceGroupFound": {
+          "lead": "Save {serviceGroupFound} as your service accounts group."
+        }
+      },
+      "taskTitle": "Create the service accounts group"
     },
     {
       "id": "s-shared-devices",

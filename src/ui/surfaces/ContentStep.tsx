@@ -47,7 +47,7 @@ import { exclusionsPickerLabel, filterPickerObjects, initialPicked, matchedNoteO
 import type { PickerObject } from './pickerRows.ts'
 import { answerParts, answerText, optionsOf, questionFor, valueSource } from './stepQuestion.ts'
 import type { QuestionOption } from './stepQuestion.ts'
-import { answerKey } from '../../roadmap/decisions.ts'
+import { answerKey, decisionKeyOf } from '../../roadmap/decisions.ts'
 import { SPECIAL_CARE_STEP_ID, answerOf, effectLine } from '../../roadmap/answers.ts'
 import { commsFor, datesLineFor, managerText, decisionLine } from './stepExport.ts'
 import { stepVars } from './stepVars.ts'
@@ -511,9 +511,9 @@ export function ContentStep({
             a person has (Foundation C). */}
         <StepActionColumn rail={rail}>
           {decisionHead && !printing && <ApproveAnswers draft={directionDraft} onDecide={onDecide} saving={saveStatus === 'saving'} />}
-          {/* A question that moved to Define Your Rollout Scope is answered there, and this step draws nothing in its place: no Answered in block (walk list item 19; roadmap/direction.ts ANSWERED_IN). */}
+          {/* A question that moved to Define Your Rollout Scope is answered there, and this step draws nothing in its place: no Answered in block (walk list item 19; roadmap/direction.ts ANSWERED_IN). A step whose own picker saves under a key of its own still draws it: Create or Correct Service Accounts Group's group picker (decisions.ts decisionKeyOf). */}
           {/* The picker is the step's own, or — on a step that makes an object itself and asks nothing of its own — the object's, saved under the object's id (stepBody.ts taskDecision; Stage 3: the countries location's Work Countries, on the countries step). */}
-          {ANSWERED_IN[step.id] ? null : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && <Decision key={step.id} d={taskDecision?.d ?? d} ex={taskDecision?.ex ?? ex} saved={taskDecision ? objectTask?.saved ?? null : decision} onDecide={taskDecision ? objectTask?.onDecide : onDecide} stepId={taskDecision?.stepId ?? step.id} ctx={ctx} printing={printing} railInstruction={!taskDecision && rail.instruction !== null} />}
+          {ANSWERED_IN[step.id] && decisionKeyOf(step.id) === step.id ? null : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && <Decision key={step.id} d={taskDecision?.d ?? d} ex={taskDecision?.ex ?? ex} saved={taskDecision ? objectTask?.saved ?? null : decision} onDecide={taskDecision ? objectTask?.onDecide : onDecide} stepId={taskDecision?.stepId ?? decisionKeyOf(step.id)} ctx={ctx} printing={printing} railInstruction={!taskDecision && rail.instruction !== null} />}
           {step.id === SPECIAL_CARE_STEP_ID && (followUp || printing) && <FollowUpDecision key={`${step.id}:follow-up`} step={step} ctx={ctx} saved={followUp?.saved ?? null} onDecide={followUp?.onDecide} printing={printing} />}
           {/* The one thing a scan cannot see, recorded where every other control
               on a step is (owner, 2026-09-20). It used to stand in the main
@@ -1139,7 +1139,13 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false,
   // as ever (pickerRows.ts pickerSaves). Where the picker is the decision's
   // only input no Save button stands beside it (pickerSavesAlone).
   const saves = pickerSaves(d, stepId)
-  const savesAlone = hasPicker && pickerSavesAlone(d, stepId)
+  // A pre-filled match nobody has saved (initialPicked `matched`: the service
+  // accounts group the scan found holding exactly the picked accounts) keeps its
+  // Save, so the chip it opens with is saved with one press; once saved it is
+  // an ordinary chip.
+  const prefilled = initial.matched.length > 0
+  const savesAlone = hasPicker && pickerSavesAlone(d, stepId) && !prefilled
+  const shownChips = prefilled ? chips : chips.map((c) => (c.badge === app.picker.matched ? { ...c, badge: undefined } : c))
   const save = (picked: PickerOption[] = chips): void => {
     if (!canSaveWith(picked)) return
     onDecide?.({
@@ -1184,7 +1190,7 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false,
             the heading over nothing. */}
         {(hasPicker || isNetwork) && !remote && (printing && initial.defaulted && !isExclusionsGroup
           ? <p className="reason">{printedDefaultLine(chips.map((c) => c.name))}</p>
-          : <Picker labelledBy={`${base}-decision`} selected={chips} options={results} suggestions={isNetwork ? nominated.slice(0, 3) : nominated} onChange={setChips} onSearch={setQuery} single={single} readOnly={stepId === SPECIAL_CARE_STEP_ID} onCommit={saves ? (picked) => save(picked) : undefined} />)}
+          : <Picker labelledBy={`${base}-decision`} selected={shownChips} options={results} suggestions={isNetwork ? nominated.slice(0, 3) : nominated} onChange={setChips} onSearch={setQuery} single={single} readOnly={stepId === SPECIAL_CARE_STEP_ID} onCommit={saves ? (picked) => save(picked) : undefined} />)}
         {isNetwork && !remote && chips.length === 0 && <div className="decision-fields">
           {universe.length === 0 && <p className="reason">{ctx.snapshot.config.namedLocations?.status === 'ok' ? 'No IP named locations were found in this scan.' : 'Named locations could not be fully read. Scan again to load existing office networks.'}</p>}
           <div className="decision-field"><label htmlFor={`${base}-network-name`}><strong>Office Network Name</strong></label><input type="text" id={`${base}-network-name`} value={networkName} onChange={e => setNetworkName(e.target.value)} /></div>
