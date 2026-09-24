@@ -249,7 +249,8 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   const cleanupViews = exportCleanupViewsOf(board, steps, schedule.cleanup)
   const getPack = (): PackItem[] => {
     if (packCache.current?.plan === c) return packCache.current.pack
-    const built = promptPack({ view, tenant: tenantName, steps, schedule, changeRecord: '', announcement: exportAnnouncementOf(steps, held, stepCtx), cleanup: cleanupViews, order })
+    // The board's forecast, so the pack states the length the Plan's Estimated finish ⓘ states (derive/finish.ts planLengthSentence).
+    const built = promptPack({ view, tenant: tenantName, steps, schedule, changeRecord: '', announcement: exportAnnouncementOf(steps, held, stepCtx), cleanup: cleanupViews, order, forecast: { steps, forecast: board.forecast, titleOf: board.titleOf } })
     packCache.current = { plan: c, pack: built }
     return built
   }

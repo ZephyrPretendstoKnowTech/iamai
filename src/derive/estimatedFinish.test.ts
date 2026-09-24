@@ -11,11 +11,15 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { allFixtures, curatedFixture } from '../roadmap/fixtures/index.ts'
+import { allFixtures, curatedFixture, fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { boardOf, boardHolds } from '../ui/surfaces/planBoard.ts'
 import { contentTitle } from '../content/stepTitle.ts'
-import { planFinish, planLengthSentence, statedEstimate } from './finish.ts'
+import { planFinish, planLengthSentence, planWeeks, statedEstimate } from './finish.ts'
+import { fillText } from '../content/render.ts'
+import { demoTenant } from '../ui/demo.ts'
+import { demoFacts } from '../ui/demoFacts.ts'
+import { customerPlanSteps } from '../ui/surfaces/customerPlanSteps.ts'
 
 const ms = (iso: string): number => Date.parse(iso)
 const isPolicy = (kind: string): boolean => kind === 'create' || kind === 'adjust' || kind === 'enforce'
@@ -73,4 +77,22 @@ test('the Estimated finish is a date on every plan, from the first scan on, and 
   const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
   assert.match(print, /const estimate = statedEstimate\(steps, finish, schedule, board\.forecast\)/, 'the cover states another finish than the tile')
   assert.match(print, /const weeks = planWeeks\(\{ \.\.\.finish, finish: estimate \}, schedule\)/, 'the cover counts its weeks to another day')
+})
+
+// One length, stated three ways. With the Estimated finish on the board's
+// forecast, Connect's sample tile still counted the rollout's drawn estimate
+// ("3 weeks · estimated rollout") over a demo Plan whose tile read "Est. Sep 24,
+// 2026" and whose ⓘ said "The plan is 4 weeks because …".
+test('Connect\'s sample tile counts the weeks the demo Plan\'s ⓘ states', () => {
+  const d = demoTenant(false)
+  const run = runFixture({ ...fixture('demo'), snapshot: d.snapshot, mapping: d.mapping })
+  // The rows the Plan draws (ui/surfaces/planData.ts), as the tile counts them.
+  const steps = customerPlanSteps(run.steps)
+  const cleanup = run.schedule.cleanup ?? null
+  const board = boardOf(steps, cleanup, d.mapping.breakGlassAnswers ?? null)
+  const finish = planFinish(steps, cleanup?.end ?? null)
+  const weeks = planWeeks({ ...finish, finish: statedEstimate(steps, finish, run.schedule, board.forecast) }, run.schedule)
+  const tip = planLengthSentence(finish, run.schedule, { steps, forecast: board.forecast, titleOf: board.titleOf })
+  assert.ok(tip?.startsWith(fillText('The plan is {weeks} weeks', { weeks })), `the premise: the ⓘ states ${weeks} weeks: ${tip}`)
+  assert.equal(demoFacts().weeks, weeks, 'the sample tile states another length than the Plan it opens')
 })
