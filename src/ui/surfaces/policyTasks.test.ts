@@ -334,7 +334,8 @@ test('a policy card states no stage it is not at, and no check the plan never re
     assert.equal((held.body.emergencyAccountTasks?.tasks ?? []).some(isPolicyProcedureTask), false, 'a procedure is handed over while emergency access is unproven')
     const [heldCard] = policySubjectsOf(held.body.contract, held.body.readiness, held.body.emergencyAccountTasks)
     assert.equal(heldCard.title, 'Blocked')
-    assert.match(heldCard.detail ?? '', /Prepare Emergency Access Accounts/)
+    // The emergency-access set check is filed under Configure Emergency Exclusions (walk list 4.x item 23).
+    assert.match(heldCard.detail ?? '', /Configure Emergency Exclusions/)
     const correction = bodyOf('s-goal-block-legacy-auth', 'demo')
     assert.equal(correction.body.contract.state.stage, 'Enforced', 'the premise: the policy is enforced and needs correction')
     assert.equal(policySubjectsOf(correction.body.contract, correction.body.readiness, correction.body.emergencyAccountTasks)[0].title, 'Correct the policy')
@@ -398,8 +399,8 @@ test('while the emergency drill is outstanding the turn-on stands, reads the wai
   const body = stepBodyOf(step, ctx, { enforceWaits: [title] })
   const turnOn = body.emergencyAccountTasks?.tasks.find((t) => t.title === 'Turn the policy on')
   assert.ok(turnOn, 'the turn-on is drawn')
-  assert.deepEqual(turnOn.steps, [body.contract.milestone.label], 'the turn-on reads the wait')
-  assert.match(turnOn.steps[0], new RegExp(`until ${title} is finished`))
+  // It names what it waits for (walk list 4.x item 44).
+  assert.deepEqual(turnOn.steps, [`Wait for ${title}; leave this policy in Report-only until then.`], 'the turn-on reads the wait')
   assert.doesNotMatch(turnOn.steps.join('\n'), /Enable policy\*\* to \*\*On/, 'the turn-on is handed over before the drill')
   const [card] = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)
   assert.equal(card.title, 'Turn the policy on')
