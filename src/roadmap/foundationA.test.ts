@@ -482,9 +482,13 @@ test('nothing but the operation decides what an open policy tells people or offe
     // The step's Who line counts the people this rollout is for, and for an open
     // policy those are the people its own policy names: it is compared under
     // every perturbation, this one included.
+    // Where the policy's own scope settles nobody, the row's Impact counts the
+    // goal's people (derive/population.ts impactReachOf; walk list 4.x item 25,
+    // owner 2026-09-24): that one field reads the population by design.
+    const impact = (step: Step): string | null => (reached(step) === null && !(step.state.satisfied && step.deliveredReach) ? null : rowWho(step))
     const wordsOf = (step: Step): string => {
       const ex = stepVars(step, ctx) as Record<string, unknown>
-      return JSON.stringify([stepPortalLines(step, portalNamesFor(ctx, ex, step.title)), stepLines(step, ctx), rowWho(step), ex.active ?? null, ex.n ?? null, ex.admins ?? null, ex.guests ?? null, ex.strengthName ?? null, ex.wanted ?? null, ex.wantedLong ?? null, step.comms])
+      return JSON.stringify([stepPortalLines(step, portalNamesFor(ctx, ex, step.title)), stepLines(step, ctx), impact(step), ex.active ?? null, ex.n ?? null, ex.admins ?? null, ex.guests ?? null, ex.strengthName ?? null, ex.wanted ?? null, ex.wantedLong ?? null, step.comms])
     }
     // One family value is enough to catch a family read here; the sweep above
     // walks all eight against every consequence. The words are the expensive

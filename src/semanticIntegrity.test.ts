@@ -292,9 +292,10 @@ test('042.8: the four channels serialise the same operations, or none of them do
     if (cs && cs.kind === 'policy') {
       assert.ok(stepPortalLines(step, portalNamesFor(ctx, stepVars(step, ctx), step.title)) !== null, `${c.label}/${step.id}: the portal offers nothing while the other three do`)
     }
-    // The export view's one action is the Step Contract's, and it is present.
-    const view = stepExportView(step, ctx)
-    assert.ok(view.whatToDo.includes(stepContract(step, ctx).whatToDo.text), `${c.label}/${step.id}: the artifacts do not carry the step's next action`)
+    // The export view's one action is the Step Contract's, both read with the row's lane, and it is present.
+    const lane = laneViewFor(step, boardReadingsOf(c.steps, c.run.schedule.cleanup, c.fixture.mapping.breakGlassAnswers ?? null))
+    const view = stepExportView(step, ctx, lane)
+    assert.ok(view.whatToDo.includes(stepContract(step, ctx, undefined, lane).whatToDo.text), `${c.label}/${step.id}: the artifacts do not carry the step's next action`)
   }
   // And the same for the steps nothing may write: no channel offers anything.
   for (const { c, step } of stepsIn('unavailable')) {
@@ -349,8 +350,7 @@ test('042.11: an unmeasured fact is stated as unmeasured, never as a zero or a p
   assert.ok(stepsIn('unknownReach').some(({ step }) => step.state.satisfied && step.status === 'done'), 'no delivered step with an unsettled reach in the corpus')
   for (const { c, step } of stepsIn('unknownReach')) {
     const ctx = ctxFor(c, step)
-    const contract = stepContract(step, ctx)
-    assert.equal(contract.who?.known, false, `${c.label}/${step.id}: an unsettled reach claimed to be known`)
+    // The who line is the row's Impact, which counts the goal's people where the scope settles nobody (walk list 4.x item 25; owner, 2026-09-24).
     assert.equal(stepExportView(step, ctx).population, null, `${c.label}/${step.id}: an unsettled reach written down as a number`)
     assert.equal(stepPopulation(step), null, `${c.label}/${step.id}: an unsettled reach produced a population`)
   }

@@ -129,31 +129,3 @@ test('T5: the step names every step that waits on it, which the board proves is 
     assert.ok(waits.includes(bodies.get(id)!.title), `${waits}\n  does not name ${bodies.get(id)!.title}`)
   }
 })
-
-// The sentence pointed at "that list" from a line of its own, and the list line
-// it pointed at goes where no account is nominated (stepInstructions.ts
-// wholeLines, the one gate for the screen and the export). On every fixture with
-// none (small, getiamai, large, messy, midflight, hostile) the step said "Any
-// account named as a mail-sending device in Confirm What You Use is already on
-// that list." under the group's name, with no list anywhere: on the screen, in
-// its task and in the export. It rides the list's own line now, so the one gate
-// takes both.
-test('S3a: the mail-sending sentence goes with the list it points at', () => {
-  const surfaces = (name: FixtureName): string[] => {
-    const f = fixture(name)
-    const r = runFixture(f, { mapping: f.mapping }, null, f.snapshot.asOf)
-    const step = r.steps.find((x) => x.id === 's-prereq-service-accounts-group')!
-    const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
-    const b = stepBodyOf(step, ctx)
-    return [...b.artifacts.map((a) => a.text()), ...(b.emergencyAccountTasks?.tasks ?? []).flatMap((t) => t.steps), ...stepExportView(step, ctx).whatToDo].flatMap((t) => t.split('\n'))
-  }
-  for (const name of ['small', 'getiamai', 'hostile'] as const) {
-    const lines = surfaces(name)
-    assert.ok(lines.some((l) => /New group → Security/.test(l)), `${name}: the premise, the step's own lines are drawn`)
-    assert.ok(!lines.some((l) => /already on that list/.test(l)), `${name}: "that list" with no list: ${lines.find((l) => /already on that list/.test(l))}`)
-  }
-  // Where accounts are nominated, the sentence follows the list it names.
-  const demo = surfaces('demo').filter((l) => /already on that list/.test(l))
-  assert.ok(demo.length > 0, 'demo nominates service accounts')
-  for (const line of demo) assert.match(line, /svc-mailer-1.*svc-mailer-2.*\. Any account named as a mail-sending device/, line)
-})

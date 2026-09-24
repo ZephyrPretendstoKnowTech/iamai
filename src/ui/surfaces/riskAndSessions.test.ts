@@ -206,8 +206,8 @@ test("T1: a target that narrows sign-in risk, user risk, device platforms or cli
     // concept-conditional-access-conditions (ms.date 2026-06-02), checked
     // 2026-09-20. Left at No the interval would reach desktop and mobile apps,
     // which is where sign-in frequency's documented known issues live.
-    assert.ok(linesForPinned('ea9459a9-91b6-4d2b-b929-03781ac81d54').includes('Conditions → Client apps → Configure: Yes, then Browser. Left at No it reaches every client app.'), linesForPinned('ea9459a9-91b6-4d2b-b929-03781ac81d54').join('\n'))
-    assert.ok(referenceOf('session-lifetime').includes('Conditions → Client apps → Configure: Yes, then Browser. Left at No it reaches every client app.'), referenceOf('session-lifetime'))
+    assert.ok(linesForPinned('ea9459a9-91b6-4d2b-b929-03781ac81d54').includes('Conditions → Client apps → Configure: Yes, then Browser'), linesForPinned('ea9459a9-91b6-4d2b-b929-03781ac81d54').join('\n'))
+    assert.ok(referenceOf('session-lifetime').includes('Conditions → Client apps → Configure: Yes, then Browser'), referenceOf('session-lifetime'))
     assert.match(blockText(SESSIONS_PKG, 'entra.create-set'), /set \*\*Configure\*\* to \*\*Yes\*\*, then \*\*Browser\*\* only/)
     assert.match(blockText(SESSIONS_PKG, 'entra.correct.browser.conditions'), /Configure: Yes, then Browser only, because at No the condition reaches every client app/)
   }

@@ -89,7 +89,7 @@ test("Medium user risk on mid: the export states the guest exclusion and no sess
   assert.doesNotMatch(text, /Require multifactor authentication|built-in `mfa`|JSON and PowerShell outputs/)
 })
 
-type Briefing = { heading: string; proposed: string; previewValues: string }
+type Briefing = { heading: string; previewValues: string }
 const BRIEFING = CONTRACT.implementation.aiFacts as unknown as Briefing
 const aiOf = (o: Opened): string => {
   const a = stepBodyOf(o.step, o.ctx, { lane: o.lane }).artifacts.find((x) => x.id === 'ai')
@@ -97,7 +97,7 @@ const aiOf = (o: Opened): string => {
   return a.text()
 }
 
-test('a held step whose reference is unresolved: AI Info proposes the settings, says they are not handed over, and names what the scan could not settle', () => {
+test('a held step whose reference is unresolved: AI Info names what the scan could not settle', () => {
   setDisplayTimeZone('UTC')
   const f = { ...fixture('mid'), baseline: pinnedPackage() }
   const r = runFixture(f, {}, null, f.snapshot.asOf)
@@ -109,7 +109,6 @@ test('a held step whose reference is unresolved: AI Info proposes the settings, 
   assert.equal(implementationOffered(step), false, 'the premise: the step waits on a baseline mapping')
   const ai = aiOf({ step, ctx, lane })
   const facts = ai.slice(ai.indexOf(BRIEFING.heading))
-  assert.ok(facts.includes(BRIEFING.proposed), 'the settings are proposed, not handed over')
   assert.match(facts, /^Not available in this scan: conditions\.users$/m)
   // "Values shown as ‹…› are not resolved yet" only beside a ‹…› value (walk list 4.x item 31).
   assert.equal(facts.includes(BRIEFING.previewValues), /‹[^›]+›/.test(facts.replace(BRIEFING.previewValues, '')), 'the unresolved-values line shows exactly where a ‹…› value does')

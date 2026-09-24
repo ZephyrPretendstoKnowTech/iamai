@@ -71,7 +71,8 @@ test('a change step carries a Dates line and a calendar entry, on the demo and G
     {
       name: 'demo-week2',
       stepId: 's-goal-admins-phishing-resistant',
-      dates: /^Report-only since .+ · Review .+ · Enforcement is dated once the observation window closes and the sign-in records are clear and complete$/,
+      // The report-only week's end (walk list 4.x items 20, 28).
+      dates: /^Report-only since .+, until .+$/,
       adminsReady: true,
       snapshot: (f) => {
         const ca = f.snapshot.config.caPolicies!

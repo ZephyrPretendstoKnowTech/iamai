@@ -207,7 +207,7 @@ test('6.3 draws the location as its own task in its one frame: the picker saved 
   assert.ok((body.cs.more?.risks ?? []).some((x: { text?: string }) => (x.text ?? '').includes('Determine location by GPS coordinates')), 'the location risks are not on 6.3')
   // The frame draws one picker, and its Save lands under the location id.
   const content = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
-  assert.ok(content.includes('<Decision key={step.id} d={taskDecision?.d ?? d} ex={taskDecision?.ex ?? ex} saved={taskDecision ? objectTask?.saved ?? null : decision} onDecide={taskDecision ? objectTask?.onDecide : onDecide} stepId={taskDecision?.stepId ?? step.id}'), 'the picker is not the object task picker where the step has none')
+  assert.ok(content.includes('<Decision key={step.id} d={taskDecision?.d ?? d} ex={taskDecision?.ex ?? ex} saved={taskDecision ? objectTask?.saved ?? null : decision} onDecide={taskDecision ? objectTask?.onDecide : onDecide} stepId={taskDecision?.stepId ?? decisionKeyOf(step.id)}'), 'the picker is not the object task picker where the step has none')
   assert.ok(readFileSync('src/ui/surfaces/Plan.tsx', 'utf8').includes('objectTask={step.objectTask ? { saved: data.stepDecisions[step.objectTask.id] ?? null, onDecide: (d) => data.onDecide(step.objectTask!.id, d) }'), 'the Plan does not save the picker under the location id')
   // Until a work country is saved nothing to make is offered; a save there releases the step.
   const none = noCountries(f)

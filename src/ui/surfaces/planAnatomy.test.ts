@@ -791,14 +791,15 @@ test('the five canonical states are one frame whose content the state changes', 
   const tiles = (m: Mock): string[] => readinessOf(m.step, m.c).tiles.map((t) => `${t.key}:${t.tone}`)
   const satisfied = (m: Mock): string[] => readinessOf(m.step, m.c).satisfied.map((t) => `${t.key}:${t.tone}`)
   assert.deepEqual(tiles(S['not-deployed']), [])
-  assert.deepEqual(satisfied(S['not-deployed']), ['people:info'])
+  // The Affected people and Existing coverage cards are gone from every step (038f2e5b).
+  assert.deepEqual(satisfied(S['not-deployed']), [])
   // A dated report-only week draws no card (walk list 4.x item 21).
   assert.deepEqual(tiles(S['report-only']), [])
   assert.deepEqual(tiles(S['review-required']), ['evidence:warn', ...S['review-required'].c.fix.map((f) => `${f.key}:warn`)])
   assert.deepEqual(tiles(S['in-place']), [])
-  assert.deepEqual(satisfied(S['in-place']), ['coverage:good', 'people:info'])
+  assert.deepEqual(satisfied(S['in-place']), [])
   assert.deepEqual(tiles(S['baseline-conflict']), ['baseline:warn'])
-  assert.deepEqual(satisfied(S['baseline-conflict']), ['people:info'])
+  assert.deepEqual(satisfied(S['baseline-conflict']), [])
   const bar = (m: Mock): string => readinessOf(m.step, m.c).bar.main
   const B = CONTRACT.readiness.bar
   // The bar is keyed by the lane (A1b): the Ready substatus's words, the tenant fact on Completed, the blocker on On Hold.

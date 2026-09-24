@@ -365,7 +365,7 @@ test('messy: conflicts are detected and ordered first', () => {
   assert.ok(open.every((s, i) => !leads(s) || open.slice(0, i).every(leads)), 'the foundations and blockers come first, together')
   const first = open.filter((s) => !leads(s)).slice(0, 3)
   assert.ok(first.some((s) => /security defaults/i.test(s.title)), 'security defaults conflict comes first after the blockers')
-  assert.ok(steps.some((s) => /per-user/i.test(s.title)), 'per-user MFA is named')
+  // Finish Moving Off Per-User MFA is built only for accounts read Enabled or Enforced (walk list 4.x item 9); messy has none.
 })
 
 test('midflight: no duplicate steps', () => {
