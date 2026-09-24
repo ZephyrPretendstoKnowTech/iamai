@@ -7,13 +7,29 @@
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import type { CleanupExport } from '../../roadmap/types.ts'
 import type { LaneView } from './stepContract.ts'
+import { CONTRACT } from './stepContract.ts'
+import { sourceCheckedLine } from './stepPackage.ts'
 import { app, cleanup as cleanupContent, pages, schedulingWords } from '../../content/content.ts'
 import { fillText, missingVars } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { emergencyVerificationTasksOf } from './emergencyVerificationTasks.ts'
 
 export type { CleanupExport }
-export type CleanupEntry = { title: string; learn?: { url: string } | null; why: string; whatToDo: string[]; doneWhen: string[] }
+export type CleanupEntry = { title: string; learn?: { url: string; checkedOn?: string } | null; why: string; whatToDo: string[]; doneWhen: string[] }
+
+/**
+ * The date beside a Cleanup row's Learn link, as every step shows one (the one
+ * producer, stepPackage.ts sourceCheckedLine): the date its Learn entry records
+ * the page was checked on, and no line where it records none.
+ */
+export function cleanupSourceLine(entry: CleanupEntry): string | null {
+  return sourceCheckedLine(entry.learn?.checkedOn ?? null, CONTRACT.implementation)
+}
+
+/** Verify Emergency Access's line under its milestone: the sign-in still to do, in the owner's words (2026-09-23). */
+export function drillMilestone(row: CleanupPhase['rows'][number]): string {
+  return row.done ? 'Every selected account is verified.' : (A as unknown as { recoverySignIn: { milestone: string } }).recoverySignIn.milestone
+}
 
 /** Shared by the live drill and the existing printable/exported plan. */
 export const EMERGENCY_RECOVERY_PROCEDURE = [

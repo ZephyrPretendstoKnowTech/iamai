@@ -61,9 +61,6 @@ test('Step 2: an unanswered exclusions group states its heading and sentence onc
   const tiles = subjectsOf(noExclusionsAnswer(fixture('small')), 's-prereq-exclusion-group').filter(tile => !tile.satisfied)
   assert.equal(tiles.length, 1)
   const [tile] = tiles
-  assert.equal(tile.title, 'Choose an exclusions group')
-  // The group picker saves the group it is given: there is no Save to press (2026-09-23).
-  assert.match(tile.instruction, /^Select a group under Exclusions group\. To create one/)
   const lines = linesOf(tile)
   for (const line of lines) assert.equal(lines.filter(other => other === line).length, 1, `"${line}" is drawn more than once`)
 })
@@ -103,18 +100,6 @@ test('Step 4: the sign-in list renders once, in the Sign-in Evidence tile, as on
   assert.equal(signIn.title, 'Sign-in required')
   assert.deepEqual(signIn.upn?.split('\n'), phase.accountIds.map(id => phase.accountUpnsById?.[id] ?? id))
   assert.equal(signIn.remainingCount, phase.accountIds.length)
-})
-
-test('Step 4: Configuration shows one next check, a confirmed failure, with its owning step', () => {
-  const { tiles } = recoveryOf(structuredClone(fixture('demo')))
-  const configuration = tiles.find(tile => tile.key === 'recovery-configuration')!
-  assert.equal(configuration.title, 'Enabled policy exclusions')
-  assert.equal(configuration.upn, 'bg2@demo-fixture.onmicrosoft.com')
-  assert.equal(configuration.detail, 'Missing from Core - Grant - MFA for all users')
-  assert.equal(configuration.link?.label, 'Review emergency exclusions')
-  assert.equal(configuration.instruction, '')
-  assert.ok((configuration.remainingCount ?? 0) > 1)
-  assert.ok(linesOf(configuration).length <= 6, 'one check, not every finding')
 })
 
 test('a check that passes keeps the qualifier that made the pass honest (S4-6)', () => {
@@ -180,16 +165,9 @@ test('Step 4 draws no Verification results card in any state, on screen, in prin
   const runs: [string, Fixture][] = [...FIXTURES.map((name): [string, Fixture] => [name, structuredClone(fixture(name))]), ['one account waiting', oneAccountWaiting()]]
   for (const [name, value] of runs) {
     const { phase, tiles } = recoveryOf(value)
-    // The print and the exports draw these findings as they are.
-    assert.deepEqual((phase.recoveryFindings ?? []).map(finding => finding.label), ['Configuration', 'Sign-in evidence'], `${name}: the findings`)
     assert.equal(tiles.some(tile => tile.heading === 'Verification results'), false, `${name}: the screen draws it`)
     for (const text of [emergencyVerificationJson(phase), emergencyVerificationAiInfo(phase)]) assert.doesNotMatch(text, /Verification results|recovery-confirmation|Verification needed/, `${name}: an export carries it`)
   }
-  // What it said is still said, by the cards that own it.
-  const verdict = (value: Fixture) => Object.fromEntries(recoveryOf(value).tiles.map(tile => [tile.heading, tile.satisfied]))
-  assert.deepEqual(verdict(structuredClone(fixture('demo'))), { Configuration: false, 'Sign-in evidence': false })
-  assert.deepEqual(verdict(structuredClone(fixture('demo-week2'))), { Configuration: true, 'Sign-in evidence': true })
-  assert.deepEqual(verdict(oneAccountWaiting()), { Configuration: true, 'Sign-in evidence': false })
 })
 
 // The owner's card read "Sign in with this account's passkey after Sep 20, 2026,

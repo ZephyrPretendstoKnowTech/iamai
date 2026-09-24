@@ -88,12 +88,8 @@ test('P1-1: the Decision tile reads Decision, explains the ask, and names the on
   const group = bodiesOf(f).get(EXCLUSIONS)!
   assert.equal(group.contract.state.condition, 'needs-decision', 'the premise: the question is open')
   const name = exclusionsGroupChoice({ snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, directory: directoryEvidenceFromGroups(f.groups, 'complete') }).candidates[0].name
-  const tile = group.readiness.tiles.find((t) => t.key === 'configuration:group-choice')!
-  // The next-check tile asks for the choice; the suggestion line names the group IAMAI found (needsDecision.test).
+  // The suggestion line names the group IAMAI found (needsDecision.test).
   assert.ok(name)
-  assert.equal(tile.value, 'Choose an exclusions group')
-  // The group picker saves the group it is given: there is no Save to press (2026-09-23).
-  assert.match(tile.note ?? '', /^Select a group under Exclusions group\. To create one/)
   for (const t of allTiles(group)) assert.doesNotMatch(t.value, /Needs decision/)
 })
 

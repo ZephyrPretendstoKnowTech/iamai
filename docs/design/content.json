@@ -82,8 +82,6 @@
       "withheld": "Key restrictions stay off for now: they would lock out {count} — {names}. Every passkey those accounts hold is one the allow list would stop, or one IAMAI could not judge, and none has another way in that IAMAI can confirm (for an administrator, another phishing-resistant method). Register an approved passkey for each, then scan again: the restrictions are offered once nobody would be locked out.",
       "withheldTask": "Key restrictions are not part of this change yet: {count} would be locked out by them. Prepare affected passkeys says who and what to do first.",
       "keptMany": "another sign-in method ({methods})",
-      "$commentUnread": "Prepare affected passkeys where the scan did not read everything the planned settings reach and, in what it did read, found no passkey they stop (ui/surfaces/emergencyPasskeyTasks.ts). {unread} is what it did not read, the same sentences the Existing passkeys affected tile shows under Could not verify (roadmap/passkeyCompatibility.ts coverage). The task said \"No existing passkey is affected by the planned settings\" there: on a tenant where no account's registered methods were read, and wherever the passkey settings themselves were not read, under a tile reading Could not verify.",
-      "unread": "IAMAI could not tell whether the planned settings stop any existing passkey. {unread} Keep the existing working method available while preparing an account.",
       "$commentUnreadAlso": "Prepare affected passkeys, after the first line has named what it read (the accounts the planned settings would stop or could not judge: stranded, withheld, strandedAfter, strandedAfterLocked; the affected accounts; or the count it could not judge), where the scan did not read every account's registered methods (ui/surfaces/emergencyPasskeyTasks.ts). {unread} is the projection's own coverage sentence, the one the Existing passkeys affected tile shows under Could not verify (roadmap/passkeyCompatibility.ts REGISTERED_METHODS_UNREAD). The line read as complete there: on small with every other account's methods unread it said \"Each keeps Microsoft Authenticator, so none is locked out\" under a tile reading Could not verify, and said nothing of what it had not read.",
       "unreadAlso": "{unread} The planned settings may stop passkeys on those accounts too."
     },
@@ -1854,7 +1852,9 @@
           "$commentRecordPending": "A passkey sign-in since the change that meets every condition, while the account still waits: IAMAI records it from a scan (planData.ts reconcileAutomaticRecovery), so until then the card showed a last sign-in after the last change under the instruction to sign in, and the dates read as done (review, 2026-09-23). It asks for the scan, not another sign-in, and wins over notPasskey: a later sign-in with another method does not undo it.",
           "recordPending": "Scan again to record the passkey sign-in.",
           "$commentUnconfigured": "Before IAMAI has observed a verified configuration there is no change to date, so the line waits for the checks instead.",
-          "unconfigured": "Sign in with this account’s passkey once the configuration checks pass."
+          "unconfigured": "Sign in with this account’s passkey once the configuration checks pass.",
+          "$commentMilestone": "Verify Emergency Access's line under its milestone while an account still has to sign in (cleanupExport.ts drillMilestone), in place of \"Verify every selected account after the final configuration is observed.\". Owner wording, 2026-09-23.",
+          "milestone": "Sign in with each emergency access account."
         },
         "escapeHatchHeld": "Running this would turn the policy on straight away, and the way back in to {tenant} is not verified yet. Finish {steps} first; the instructions come back when its checks pass.",
         "$commentReadinessHeldCreate": "Owner, 2026-09-23: \"Hold the create for that policy until ready.\" A policy whose grant requires a compliant device is not created in report-only while the device readiness that gates its turn-on is unmet (roadmap/operations.ts createWaitsOnReadiness), because report-only prompts for a certificate (Microsoft Learn, concept-conditional-access-report-only). The fact, then what it waits on; no instruction.",
@@ -3374,16 +3374,17 @@
     "drill": {
       "title": "Verify Emergency Access",
       "learn": {
-        "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access#monitor-sign-in-and-audit-logs"
+        "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access#monitor-sign-in-and-audit-logs",
+        "checkedOn": "2026-09-25"
       },
-      "why": "Verify each selected account with a successful passkey sign-in observed after the final account, exclusion and passkey configuration.",
+      "why": "Sign in once with each emergency access account's passkey, so you know the way back in works before any policy is turned on.",
       "whatToDo": [
         "Follow Verify emergency sign-in in Implementation Tasks for each account named in Tasks Remaining.",
         "Wait 5–10 minutes, then scan to update the plan.",
         "Use Troubleshoot emergency sign-in if a sign-in fails or its evidence does not appear."
       ],
       "doneWhen": [
-        "Each selected account has a qualifying passkey sign-in observed after its current verified recovery configuration and within the last 90 days."
+        "Each emergency access account has signed in with its passkey since its last change, within the last 90 days."
       ]
     }
   },
@@ -3529,7 +3530,7 @@
       "kind": "blocker",
       "title": "Configure Emergency Exclusions",
       "changeLine": null,
-      "why": "Keep the selected recovery accounts outside policies that could prevent recovery, using the intended exclusions group.",
+      "why": "Put your emergency access accounts in one group, and exclude that group from every Conditional Access policy, so no policy can lock them out.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access#conditional-access-considerations"
       },
@@ -3578,7 +3579,7 @@
       },
       "dates": null,
       "doneWhen": [
-        "The scan verifies the selected group's configuration, membership and required policy exclusions."
+        "Both emergency access accounts are direct members of the group you chose, and every policy excludes it."
       ],
       "ifWrong": null,
       "comms": null,
@@ -4244,7 +4245,7 @@
       "kind": "object",
       "title": "Configure Passkey Authentication",
       "changeLine": null,
-      "why": "Keep approved passkey registration available, protect existing working methods, and apply the intended passkey settings without guessing at unread configuration.",
+      "why": "Turn on passkeys (FIDO2) for everyone and allow only the approved passkey models, so emergency and admin accounts can register one.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-authentication-passkeys-fido2"
       },
@@ -4266,7 +4267,7 @@
       },
       "dates": null,
       "doneWhen": [
-        "The scan confirms that the applicable passkey settings match the intended configuration."
+        "Passkeys (FIDO2) are on for everyone, attestation is enforced, and only the approved models can register."
       ],
       "ifWrong": null,
       "comms": null,

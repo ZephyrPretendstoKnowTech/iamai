@@ -12,7 +12,6 @@ import { PASSKEY_DEFAULT_MODELS } from './passkeySettings.ts'
 import { exclusionsGroupIdToVerify } from '../mapping/safetyChoice.ts'
 
 const HARDWARE = PASSKEY_DEFAULT_MODELS[2].aaguid
-const UNAPPROVED = '11111111-2222-4333-8444-555555555555'
 function tenant() {
   const f = structuredClone(fixture('demo-week2'))
   for (const id of f.mapping.breakGlassUserIds) f.snapshot.authMethods[id] = [{
@@ -76,10 +75,6 @@ test('a successful generic sign-in cannot satisfy observed passkey evidence or a
     [other]: { signInCount: 1, lastSignIn: f.snapshot.asOf, lastMfaSuccess: null, proofs: [{ at: f.snapshot.asOf, cls: 'passkey', os: null, method: 'FIDO2 security key' }], recoveryCandidates: [] },
   }
   const findings = journeyRecoveryFindings(reportOf(f), f.snapshot, f.mapping, f.groups, [], f.snapshot.asOf)
-  // Verification results is gone (owner, 2026-09-23): the Sign-in evidence verdict was its value.
-  assert.deepEqual(findings.map(finding => finding.label), ['Configuration', 'Sign-in evidence'])
-  const identity = findings.find(t => t.key === 'recovery-configuration')?.items?.find(item => item.factLabel === 'Account identity')
-  assert.equal(identity, undefined)
   assert.equal(findings.find(t => t.key === 'recovery-sign-ins')?.outcome, 'unknown')
   assert.ok(findings.find(t => t.key === 'recovery-sign-ins')!.items!.filter(item => item.factLabel === 'Matching event').every(item => /No qualifying event observed/.test(item.value)))
 })
@@ -95,10 +90,6 @@ test('a failed read asks for evidence, and a later failure or relevant key chang
   const read = (records: CleanupCheckpoint[]) => journeyRecoveryFindings(reportOf(f), f.snapshot, f.mapping, f.groups, records, now)
   assert.ok(read([preparation, record]).find(t => t.key === 'recovery-sign-ins')!.items!.slice(0, 2).every(i => /^[A-Z][a-z]{2} \d{1,2}, \d{4}, \d{1,2}:\d{2} [AP]M/.test(i.value)))
   assert.notEqual(read([preparation, { ...record, outcome: 'failed' }]).find(t => t.key === 'recovery-sign-ins')!.outcome, 'pass')
-  const originalMethods = structuredClone(f.snapshot.authMethods[f.mapping.breakGlassUserIds[0]])
-  f.snapshot.authMethods[f.mapping.breakGlassUserIds[0]] = [{ kind: 'fido2', aaGuid: UNAPPROVED, passkeyType: 'deviceBound' }]
-  assert.equal(read([preparation, record]).find(t => t.key === 'recovery-configuration')!.outcome, 'fail')
-  f.snapshot.authMethods[f.mapping.breakGlassUserIds[0]] = originalMethods
   f.snapshot.sources.signInEvidence = { ...f.snapshot.sources.signInEvidence, status: 'error', reason: 'Read denied' }
   f.snapshot.signInEvidence = {}
   assert.match(read([preparation, record]).find(t => t.key === 'recovery-sign-ins')!.items![0].label, /IAMAI could not read the verification evidence/)

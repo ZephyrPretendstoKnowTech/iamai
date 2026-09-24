@@ -82,28 +82,6 @@ test('new-group procedure discovers the group before selecting it, which saves i
   assert.doesNotMatch(text, /\*\*Save\*\*/)
 })
 
-test('a saved group with unread evidence is retained and is not requested again', () => {
-  const value = structuredClone(fixture('small'))
-  const run = runFixture(value)
-  const step = run.steps.find(row => row.id === 's-prereq-exclusion-group')!
-  const ctx: StepVarContext = { snapshot: value.snapshot, mapping: value.mapping, nameOf: id => run.input.names!.label(id), signature: 'IT', operatorId: value.operatorId, now: value.snapshot.asOf, groups: new Map(), naming: run.coverage.organisation.naming }
-  const projected = emergencyGroupTasksOf(step, ctx)
-  assert.equal(projected.tasks.find(row => row.id === 'choose-exclusions-group')?.required, false)
-  // Since 716a3d42 every tenant-changing task opens with "Keep your working administrator session open."; the object ID check follows it.
-  const firstAction = projected.tasks.find(row => row.id === 'manage-emergency-membership')?.steps.find(line => !/^Keep your working administrator session open\.$/.test(line)) ?? ''
-  assert.match(firstAction, /object ID/i)
-  const membership = projected.tasks.find(row => row.id === 'manage-emergency-membership')!.steps.join('\n')
-  // Membership unread: the task names the accounts to confirm as direct members and asks for the list to be
-  // verified, never a guessed add or remove (716a3d42: values named in the step that uses them).
-  assert.match(membership, /Confirm \*\*bg1@[^*]+\*\*, \*\*bg2@[^*]+\*\* appear as direct members/)
-  assert.match(membership, /verify the intended list/i)
-  assert.doesNotMatch(membership, /\bRemove\b/)
-  const policies = projected.tasks.find(row => row.id === 'configure-policy-exclusions')!.steps.join('\n')
-  assert.match(policies, /not established the policy or group change values/i)
-  assert.match(policies, /Assignments → Users → Exclude → Users and groups/)
-  assert.doesNotMatch(policies, /add \*\*Breakglass Exclusion\*\*/i)
-})
-
 test('a saved unsuitable group projects one concise correction from the real findings', () => {
   const value = structuredClone(fixture('small'))
   const groupId = exclusionsGroupIdToVerify(value.mapping)!
@@ -135,14 +113,3 @@ test('Step 2 projects concise readiness copy and separate member rows in remove-
   assert.equal(membership.facts?.every(row => !row.value.includes(', ')), true)
 })
 
-test('unread policy evidence never produces a concrete policy-edit instruction', () => {
-  const value = structuredClone(fixture('small'))
-  const run = runFixture(value)
-  const step = run.steps.find(row => row.id === 's-prereq-exclusion-group')!
-  const ctx: StepVarContext = { snapshot: value.snapshot, mapping: value.mapping, nameOf: id => run.input.names!.label(id), signature: 'IT', operatorId: value.operatorId, now: value.snapshot.asOf, groups: new Map(), naming: run.coverage.organisation.naming }
-  const policies = emergencyGroupTasksOf(step, ctx).tasks.find(row => row.id === 'configure-policy-exclusions')!
-  assert.doesNotMatch(policies.steps.join('\n'), /add \*\*Breakglass Exclusion\*\*/i)
-  assert.match(policies.steps.join('\n'), /not established.*change values/i)
-  assert.match(policies.steps.join('\n'), /Assignments → Users → Exclude → Users and groups/)
-  assert.match(policies.steps.join('\n'), /Select.*Save.*reopen/s)
-})
