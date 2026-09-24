@@ -56,23 +56,38 @@ const withFoundationCleared = (step: Step): Step => ({
   blockedReason: null,
 })
 
-test('demo first visit: the MFA readiness threshold holds nothing of an exclusions-only correction to an enforced policy', () => {
-  const { r } = demo()
-  const step = r.steps.find((s) => s.id === MFA)
-  assert.ok(step)
-  assert.equal(step.state.lifecycle, 'enforced', 'the premise: the tenant already enforces it')
-  assert.ok(step.action.readinessGate, 'the premise: MFA readiness is below its threshold')
-  assert.equal(addsExclusionsToEnforced(step), true, 'the premise: the correction only adds exclusions')
-  assert.equal(enforcementHeld(step), false, 'the threshold holds nothing of a correction that can stop nobody')
-  assert.equal(unavailableReason(step), null, 'it is no longer withheld as readiness-unmet')
-  assert.equal(policyResult(step).kind, 'implementable', 'the correction is offered')
-  assert.equal(implementationOffered(step), true, 'and the channels are offered with it')
-  // What is left is the plan's foundation, and that is what the row says.
-  assert.deepEqual(holdOf(step), { kind: 'prerequisite' }, 'held by the foundation, not by readiness')
-  assert.equal(step.blockers.some((b) => b.kind === 'step' && b.label === FOUNDATION_WAIT), true, 'the foundation is the wait')
-  const snap = stepSnapshotsOf('demo')[MFA]
-  assert.equal(snap.bar, 'After Prepare Emergency Access Accounts')
-  assert.equal(snap.reason, null, 'the reason line no longer names the readiness threshold')
+test('demo first visit: the MFA readiness threshold holds none of the exclusions-only corrections to enforced policies, and the foundation is what holds them (owner, 2026-09-19)', () => {
+  {
+    const { r } = demo()
+    const step = r.steps.find((s) => s.id === MFA)
+    assert.ok(step)
+    assert.equal(step.state.lifecycle, 'enforced', 'the premise: the tenant already enforces it')
+    assert.ok(step.action.readinessGate, 'the premise: MFA readiness is below its threshold')
+    assert.equal(addsExclusionsToEnforced(step), true, 'the premise: the correction only adds exclusions')
+    assert.equal(enforcementHeld(step), false, 'the threshold holds nothing of a correction that can stop nobody')
+    assert.equal(unavailableReason(step), null, 'it is no longer withheld as readiness-unmet')
+    assert.equal(policyResult(step).kind, 'implementable', 'the correction is offered')
+    assert.equal(implementationOffered(step), true, 'and the channels are offered with it')
+    // What is left is the plan's foundation, and that is what the row says.
+    assert.deepEqual(holdOf(step), { kind: 'prerequisite' }, 'held by the foundation, not by readiness')
+    assert.equal(step.blockers.some((b) => b.kind === 'step' && b.label === FOUNDATION_WAIT), true, 'the foundation is the wait')
+    const snap = stepSnapshotsOf('demo')[MFA]
+    assert.equal(snap.bar, 'After Prepare Emergency Access Accounts')
+    assert.equal(snap.reason, null, 'the reason line no longer names the readiness threshold')
+  }
+  {
+    const { r } = demo()
+    for (const id of SIBLINGS) {
+      const step = r.steps.find((s) => s.id === id)
+      assert.ok(step, id)
+      assert.equal(step.state.lifecycle, 'enforced', `${id}: the premise`)
+      assert.equal(addsExclusionsToEnforced(step), true, `${id}: the correction only adds exclusions`)
+      assert.equal(enforcementHeld(step), false, `${id}: the threshold holds nothing of it`)
+      assert.equal(policyResult(step).kind, 'implementable', `${id}: the correction is offered`)
+      assert.equal(implementationOffered(step), true, `${id}: with its channels`)
+      assert.deepEqual(holdOf(step), { kind: 'prerequisite' }, `${id}: what is left is the foundation`)
+    }
+  }
 })
 
 test('demo first visit with the foundation settled: the correction is offered, dated, and named as the next thing', () => {
@@ -95,87 +110,75 @@ test('demo first visit with the foundation settled: the correction is offered, d
   assert.equal(view.whatToDo.includes(engine.milestone.resolve), false, 'no "Clear what this step is waiting on"')
 })
 
-test('demo first visit: the two sibling exclusions-only corrections are offered too, and the threshold holds none of them', () => {
-  const { r } = demo()
-  for (const id of SIBLINGS) {
-    const step = r.steps.find((s) => s.id === id)
-    assert.ok(step, id)
-    assert.equal(step.state.lifecycle, 'enforced', `${id}: the premise`)
-    assert.equal(addsExclusionsToEnforced(step), true, `${id}: the correction only adds exclusions`)
-    assert.equal(enforcementHeld(step), false, `${id}: the threshold holds nothing of it`)
-    assert.equal(policyResult(step).kind, 'implementable', `${id}: the correction is offered`)
-    assert.equal(implementationOffered(step), true, `${id}: with its channels`)
-    assert.deepEqual(holdOf(step), { kind: 'prerequisite' }, `${id}: what is left is the foundation`)
+test('only a correction that adds exclusions and takes none away is bounded, and any other correction is still held by the threshold', () => {
+  {
+    const current = { state: 'enabled', conditions: { users: { includeUsers: ['All'], excludeGroups: ['a'], excludeUsers: ['u'] } }, grantControls: { builtInControls: ['mfa'] } }
+    const users = (u: Record<string, unknown>) => ({ conditions: { users: u } })
+    assert.equal(addsExclusionsOnly(users({ includeUsers: ['All'], excludeGroups: ['a', 'b'], excludeUsers: ['u'] }), current), true, 'an exclusion added')
+    assert.equal(addsExclusionsOnly(users({ includeUsers: ['All'], excludeGroups: ['b'], excludeUsers: ['u'] }), current), false, 'an exclusion swapped: one taken away')
+    assert.equal(addsExclusionsOnly(users({ includeUsers: ['All'], excludeGroups: ['a', 'b'] }), current), false, 'the section written without an exclusion the tenant has')
+    assert.equal(addsExclusionsOnly(users({ includeUsers: ['All'], excludeGroups: ['a'], excludeUsers: ['u'] }), current), false, 'nothing changes')
+    assert.equal(addsExclusionsOnly(users({ includeUsers: ['All', 'x'], excludeGroups: ['a', 'b'], excludeUsers: ['u'] }), current), false, 'the population widened too')
+    assert.equal(addsExclusionsOnly({ grantControls: { builtInControls: ['compliantDevice'] } }, current), false, 'a grant changed')
+    assert.equal(addsExclusionsOnly(users({ includeUsers: ['All'], excludeGroups: ['a', 'b'], excludeUsers: ['u'] }), null), false, 'a policy this scan did not read')
+  }
+  {
+    // The large tenant's compliant-device policy, already enforced, with device
+    // readiness at 29% against the 80% its own step asks for: the change is not
+    // bounded, so nothing about it moves (roadmap/readinessGate.test.ts case 1).
+    // As there, the baseline's compliant-device policy targets All resources, as
+    // the pinned one does, so the change is a real widening: on the fixture's own
+    // Office 365 baseline policy it was the Nadia D7 defect, an update to the
+    // Office 365 target the policy already had.
+    const f0 = withFoundationSettled(curatedFixture('large'))
+    const f = { ...f0, baseline: { ...f0.baseline, policies: f0.baseline.policies.map((p) => (/CompliantOffice/.test(p.displayName) ? { ...p, conditions: { ...p.conditions, applications: { ...p.conditions.applications, includeApplications: ['All'] } } } : p)) } } as typeof f0
+    const ca = f.snapshot.config.caPolicies!
+    const rows = (ca.rows as Row[]).map((p) => {
+      if (!/Compliant device for Office/.test(String(p.displayName))) return p
+      if (p.displayName !== 'Core - Grant - Compliant device for Office') return { ...p, state: 'enabled' }
+      const conditions = (p.conditions ?? {}) as Row
+      return { ...p, state: 'enabled', conditions: { ...conditions, applications: { ...(conditions.applications as Row), excludeApplications: ['00000003-0000-0ff1-ce00-000000000000'] } } }
+    })
+    const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows } } } as typeof f.snapshot
+    const r = runFixture({ ...f, snapshot }, { snapshot } as never)
+    const step = r.steps.find((s) => s.id === DEVICE)!
+    assert.ok(step.action.readinessGate, 'the premise: a threshold nobody has met')
+    assert.equal(step.action.resolution!.policies[0].addsExclusionsOnly, undefined, 'the change does more than add exclusions')
+    assert.equal(addsExclusionsToEnforced(step), false)
+    assert.equal(enforcementHeld(step), true, 'the threshold still holds it')
+    assert.equal(unavailableReason(step), 'readiness-unmet')
+    assert.equal(implementationOffered(step), false, 'no portal lines, no JSON, no PowerShell, no download')
+    // `unavailable` is the hold: readiness-unmet is why the policy cannot be
+    // written today (roadmap/holds.ts reads unavailableReason first).
+    assert.deepEqual(holdOf(step), { kind: 'unavailable' })
   }
 })
 
-test('a correction that changes anything other than exclusions is still held by the threshold', () => {
-  // The large tenant's compliant-device policy, already enforced, with device
-  // readiness at 29% against the 80% its own step asks for: the change is not
-  // bounded, so nothing about it moves (roadmap/readinessGate.test.ts case 1).
-  // As there, the baseline's compliant-device policy targets All resources, as
-  // the pinned one does, so the change is a real widening: on the fixture's own
-  // Office 365 baseline policy it was the Nadia D7 defect, an update to the
-  // Office 365 target the policy already had.
-  const f0 = withFoundationSettled(curatedFixture('large'))
-  const f = { ...f0, baseline: { ...f0.baseline, policies: f0.baseline.policies.map((p) => (/CompliantOffice/.test(p.displayName) ? { ...p, conditions: { ...p.conditions, applications: { ...p.conditions.applications, includeApplications: ['All'] } } } : p)) } } as typeof f0
-  const ca = f.snapshot.config.caPolicies!
-  const rows = (ca.rows as Row[]).map((p) => {
-    if (!/Compliant device for Office/.test(String(p.displayName))) return p
-    if (p.displayName !== 'Core - Grant - Compliant device for Office') return { ...p, state: 'enabled' }
-    const conditions = (p.conditions ?? {}) as Row
-    return { ...p, state: 'enabled', conditions: { ...conditions, applications: { ...(conditions.applications as Row), excludeApplications: ['00000003-0000-0ff1-ce00-000000000000'] } } }
-  })
-  const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows } } } as typeof f.snapshot
-  const r = runFixture({ ...f, snapshot }, { snapshot } as never)
-  const step = r.steps.find((s) => s.id === DEVICE)!
-  assert.ok(step.action.readinessGate, 'the premise: a threshold nobody has met')
-  assert.equal(step.action.resolution!.policies[0].addsExclusionsOnly, undefined, 'the change does more than add exclusions')
-  assert.equal(addsExclusionsToEnforced(step), false)
-  assert.equal(enforcementHeld(step), true, 'the threshold still holds it')
-  assert.equal(unavailableReason(step), 'readiness-unmet')
-  assert.equal(implementationOffered(step), false, 'no portal lines, no JSON, no PowerShell, no download')
-  // `unavailable` is the hold: readiness-unmet is why the policy cannot be
-  // written today (roadmap/holds.ts reads unavailableReason first).
-  assert.deepEqual(holdOf(step), { kind: 'unavailable' })
-})
-
-test('only a correction that adds exclusions and takes none away is bounded', () => {
-  const current = { state: 'enabled', conditions: { users: { includeUsers: ['All'], excludeGroups: ['a'], excludeUsers: ['u'] } }, grantControls: { builtInControls: ['mfa'] } }
-  const users = (u: Record<string, unknown>) => ({ conditions: { users: u } })
-  assert.equal(addsExclusionsOnly(users({ includeUsers: ['All'], excludeGroups: ['a', 'b'], excludeUsers: ['u'] }), current), true, 'an exclusion added')
-  assert.equal(addsExclusionsOnly(users({ includeUsers: ['All'], excludeGroups: ['b'], excludeUsers: ['u'] }), current), false, 'an exclusion swapped: one taken away')
-  assert.equal(addsExclusionsOnly(users({ includeUsers: ['All'], excludeGroups: ['a', 'b'] }), current), false, 'the section written without an exclusion the tenant has')
-  assert.equal(addsExclusionsOnly(users({ includeUsers: ['All'], excludeGroups: ['a'], excludeUsers: ['u'] }), current), false, 'nothing changes')
-  assert.equal(addsExclusionsOnly(users({ includeUsers: ['All', 'x'], excludeGroups: ['a', 'b'], excludeUsers: ['u'] }), current), false, 'the population widened too')
-  assert.equal(addsExclusionsOnly({ grantControls: { builtInControls: ['compliantDevice'] } }, current), false, 'a grant changed')
-  assert.equal(addsExclusionsOnly(users({ includeUsers: ['All'], excludeGroups: ['a', 'b'], excludeUsers: ['u'] }), null), false, 'a policy this scan did not read')
-})
-
-test('the correction keeps the tenant\'s by-name emergency exclusion, adds none, and a Cleanup row asks for it to come out', () => {
-  const { f, r } = demo()
-  const step = r.steps.find((s) => s.id === MFA)!
-  const op = step.action.resolution!.policies[0]
-  assert.equal(op.mode, 'update')
-  const tenant = f.snapshot.config.caPolicies.rows.find((p) => (p as { id?: string }).id === (op as { policyId: string }).policyId) as { displayName: string; conditions: { users: { excludeUsers: string[] } } }
-  const bg = new Set(f.mapping.breakGlassUserIds.map((id) => id.toLowerCase()))
-  const tenantNamed = tenant.conditions.users.excludeUsers.filter((id) => bg.has(id.toLowerCase()))
-  assert.ok(tenantNamed.length > 0, 'the premise: the tenant excludes an emergency account by name')
-  const submitted = ((op.body as { conditions?: { users?: { excludeUsers?: string[] } } }).conditions?.users?.excludeUsers ?? []).filter((id) => bg.has(id.toLowerCase()))
-  assert.deepEqual([...submitted].sort(), [...tenantNamed].sort(), 'the correction carries exactly the tenant\'s own by-name exclusion, and adds none')
-  const row = cleanupExportViews(r.schedule.cleanup).find((c) => c.kind === 'namedExclusions')
-  assert.ok(row, 'a Cleanup row')
-  assert.equal(row.title, 'Remove Emergency Accounts Excluded by Name')
-  assert.ok(row.whatToDo[0].includes(tenant.displayName) && row.whatToDo[0].includes(r.input.names!.label(tenantNamed[0])), row.whatToDo[0])
-  assert.match(row.whatToDo[1], /exclusions group holds that account and that the policy excludes the group/)
-  // And the prompt pack says what the screen says: each row is its own bounded
-  // block, so an added row cannot clip the last one off.
-  const { ctx } = demo()
-  const pack = promptPack({ view: (s: Step) => stepExportView(s, ctx), tenant: 'Demo', steps: r.steps, schedule: r.schedule, changeRecord: '', announcement: null, cleanup: cleanupExportViews(r.schedule.cleanup) })
-  assert.ok(pack.every((item) => item.prompt.includes(row.title)), 'the prompt pack carries the Cleanup row')
-})
-
-test('a tenant with the exclusions group in place and no by-name exclusion has no such Cleanup row', () => {
-  const r = runFixture(withFoundationSettled(fixture('demo')))
-  assert.equal(cleanupExportViews(r.schedule.cleanup).some((c) => c.kind === 'namedExclusions'), false, 'a row with nothing to say does not render')
+test("the correction keeps the tenant's by-name emergency exclusion and adds none, a Cleanup row asks for it to come out, and a tenant with none has no such row", () => {
+  {
+    const { f, r } = demo()
+    const step = r.steps.find((s) => s.id === MFA)!
+    const op = step.action.resolution!.policies[0]
+    assert.equal(op.mode, 'update')
+    const tenant = f.snapshot.config.caPolicies.rows.find((p) => (p as { id?: string }).id === (op as { policyId: string }).policyId) as { displayName: string; conditions: { users: { excludeUsers: string[] } } }
+    const bg = new Set(f.mapping.breakGlassUserIds.map((id) => id.toLowerCase()))
+    const tenantNamed = tenant.conditions.users.excludeUsers.filter((id) => bg.has(id.toLowerCase()))
+    assert.ok(tenantNamed.length > 0, 'the premise: the tenant excludes an emergency account by name')
+    const submitted = ((op.body as { conditions?: { users?: { excludeUsers?: string[] } } }).conditions?.users?.excludeUsers ?? []).filter((id) => bg.has(id.toLowerCase()))
+    assert.deepEqual([...submitted].sort(), [...tenantNamed].sort(), 'the correction carries exactly the tenant\'s own by-name exclusion, and adds none')
+    const row = cleanupExportViews(r.schedule.cleanup).find((c) => c.kind === 'namedExclusions')
+    assert.ok(row, 'a Cleanup row')
+    assert.equal(row.title, 'Remove Emergency Accounts Excluded by Name')
+    assert.ok(row.whatToDo[0].includes(tenant.displayName) && row.whatToDo[0].includes(r.input.names!.label(tenantNamed[0])), row.whatToDo[0])
+    assert.match(row.whatToDo[1], /exclusions group holds that account and that the policy excludes the group/)
+    // And the prompt pack says what the screen says: each row is its own bounded
+    // block, so an added row cannot clip the last one off.
+    const { ctx } = demo()
+    const pack = promptPack({ view: (s: Step) => stepExportView(s, ctx), tenant: 'Demo', steps: r.steps, schedule: r.schedule, changeRecord: '', announcement: null, cleanup: cleanupExportViews(r.schedule.cleanup) })
+    assert.ok(pack.every((item) => item.prompt.includes(row.title)), 'the prompt pack carries the Cleanup row')
+  }
+  {
+    const r = runFixture(withFoundationSettled(fixture('demo')))
+    assert.equal(cleanupExportViews(r.schedule.cleanup).some((c) => c.kind === 'namedExclusions'), false, 'a row with nothing to say does not render')
+  }
 })

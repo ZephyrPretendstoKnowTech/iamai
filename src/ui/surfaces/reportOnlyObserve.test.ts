@@ -24,7 +24,6 @@ import { stepBodyOf } from './stepBody.ts'
 // everybody seen.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
 // The canonical cases here run on the curated baseline (fixtures/index.ts
 // `curatedFixture`): the same tenant, with the six source groups this baseline's
 // interpretation has not settled read as the author's own environment. They are
@@ -73,8 +72,6 @@ const FIXTURE = 'demo-week2'
 const STEP_ID = 's-goal-block-auth-transfer'
 /** The other week-two policy in report-only: its records are not this step's. */
 const OTHER_ID = 's-goal-token-protection'
-/** The goal one over, whose content step carries an email that names the enforcement day (005.13). */
-const COMMS_STEP_ID = 's-goal-all-users-no-persistence'
 /** The one goal in the plan whose content carries a tenant change to make *before* the policy (005.14). */
 const PREREQ_STEP_ID = 's-goal-device-registration-mfa'
 /** That change: it turns off the setting the policy replaces. */
@@ -119,51 +116,6 @@ function canonical(over: { noRecords?: boolean } = {}): Case {
     reportOnlyAt: r.schedule.reportOnlyAt[step.id] ?? null,
   }
   return { step, ctx, steps: r.steps, snapshot, view: (s: Step) => stepExportView(s, ctx), run: r }
-}
-
-/**
- * The same demo tenant with one more of its own plan's policies already
- * deployed: the step's create operation, submitted `days` ago and found by the
- * scan sitting in report-only with records behind it.
- *
- * Nothing here is written by hand. The policy body is the one IAMAI's own
- * operation would submit for that step — tag, scope, controls and report-only
- * state — so what comes back through the generator is the same canonical case
- * as the fixture's own week-two policies, on a goal whose content step carries a
- * communication template. The canonical fixture step has none, and an email is
- * the one artifact IAMAI writes that leaves the tenant.
- */
-function deployedByThePlan(stepId: string, days = 2): Case {
-  const f = fixture(FIXTURE)
-  const seed = runFixture(f).steps.find((x) => x.id === stepId)
-  assert.ok(seed, `${FIXTURE} no longer carries ${stepId}`)
-  const op = operationsOf(seed).find((o) => o.mode === 'create')
-  assert.ok(op, `${stepId} is no longer a policy the plan would create`)
-  const at = new Date(Date.parse(f.snapshot.asOf) - days * 86_400_000).toISOString()
-  const policyId = 'e5d0d3c6-0b6e-4a2e-9a3f-9c4b7a1d0005'
-  const people = (f.snapshot.users ?? []).slice(0, 20).map((u) => String(u.id))
-  const snapshot = {
-    ...f.snapshot,
-    config: { ...f.snapshot.config, caPolicies: { ...f.snapshot.config.caPolicies!, rows: [...(f.snapshot.config.caPolicies?.rows ?? []), { id: policyId, createdDateTime: at, modifiedDateTime: at, ...(op!.body as Record<string, unknown>) }] } },
-    evidencePolicyResults: [
-      ...(f.snapshot.evidencePolicyResults ?? []),
-      cleanReportOnly({ policyId, displayName: String((op!.body as Record<string, unknown>).displayName), people, asOf: f.snapshot.asOf, firstReportOnlyAt: at }),
-    ],
-  } as TenantSnapshot
-  const r = runFixture({ ...f, snapshot }, { snapshot })
-  const step = r.steps.find((x) => x.id === stepId)
-  assert.ok(step, `${stepId} left the plan once its policy was deployed`)
-  const ctx: StepVarContext = {
-    snapshot,
-    mapping: f.mapping,
-    nameOf: (id: string) => r.input.names!.label(id),
-    signature: 'IT',
-    operatorId: f.operatorId,
-    now: snapshot.asOf,
-    groups: f.groups,
-    reportOnlyAt: r.schedule.reportOnlyAt[step.id] ?? null,
-  }
-  return { step, ctx, steps: r.steps, snapshot, view: (x: Step) => stepExportView(x, ctx), run: r }
 }
 
 /**
@@ -276,54 +228,72 @@ function observingWithAPrerequisite(days = 2): { due: Case; observing: Case } {
   return { due, observing: asCase(runFixture({ ...f, groups, mapping, snapshot }, { snapshot, viability }), snapshot) }
 }
 
-// ---- 1. the case is real, and it is genuinely Report-only and Healthy ----
+// ---- 1, 2, 4, 12. the case is real, genuinely Report-only and Healthy, and observed on its own records ----
 
-test('005.1: the canonical case is a deployed Conditional Access policy in Report-only, in good health', () => {
-  const { step } = canonical()
-  assert.equal(contentStepFor(step)?.kind, 'policy')
-  // Foundation B, and only Foundation B, says where the policy is and how it is
-  // doing. The two axes move independently and both are read here.
-  assert.equal(step.state.lifecycle, 'report-only')
-  assert.equal(step.state.condition, 'healthy', 'the canonical Observe case has no blocker, decision, conflict or review condition')
-  assert.equal(step.state.satisfied, false)
-  assert.equal(step.state.inPlace, false)
-  assert.equal(step.state.setAside, false)
-  assert.equal(step.status, 'in-report-only')
-  assert.notEqual(step.state.lifecycle, 'ready-to-enforce', 'it has not earned enforcement')
-  // Nothing holds it and nothing is wrong with it: no blocker to fix, no
-  // unavailable reason, no review the observation raised.
-  assert.deepEqual(step.blockers, [])
-  assert.equal(unavailableReason(step), null)
-  assert.equal(step.state.observation?.reviewRequired, false)
-  assert.deepEqual(
-    (step.tracking?.members ?? []).map((m) => m.reviewRequired),
-    [false],
-    'and no member of it wants a person to look',
-  )
-  // The row says the state without being opened, and its date column is the
-  // review milestone rather than a rollout day.
-  assert.equal(statusOf(step).word, 'Report-only')
-  assert.equal(rowWhen(step), `ready ${absoluteDate(readyWhen(step)!.date)}`)
-})
-
-// ---- 2. the observation belongs to this deployed policy, and to no other ----
-
-test('005.2: the observation is this step’s own deployed policy, and another policy’s records cannot stand for it', () => {
-  const { step, steps } = canonical()
-  assert.equal(step.state.members.length, 1, 'the canonical case is a single-policy goal')
-  const m = step.state.members[0]
-  const t = step.tracking!
-  assert.ok(t.policyId, 'a deployed policy was matched')
-  assert.equal(m.change.latest.artifact, artifactIdOf(t.policyId), 'the observation names the object the tracking matched')
-  assert.equal(m.change.latest.state, 'report-only')
-  assert.equal(t.state, 'enabledForReportingButNotEnforced')
-  // The other week-two policy is a different object with different records, and
-  // its numbers are nowhere in this step's.
-  const other = steps.find((s) => s.id === OTHER_ID)!
-  assert.notEqual(other.tracking?.policyId ?? null, t.policyId)
-  assert.notEqual(other.tracking?.seenInScope, t.seenInScope, 'the two policies were seen for different people')
-  assert.equal(t.members.length, 1)
-  assert.equal(t.members[0].policyId, t.policyId, 'the member holds its own object, not the step’s idea of one')
+test("005.1/2/4/12: the canonical case is the demo tenant's own tagged week-two policy, in Report-only and healthy, observed on its own records, whose zero failures those records support", () => {
+  {
+    const { step } = canonical()
+    assert.equal(contentStepFor(step)?.kind, 'policy')
+    // Foundation B, and only Foundation B, says where the policy is and how it is
+    // doing. The two axes move independently and both are read here.
+    assert.equal(step.state.lifecycle, 'report-only')
+    assert.equal(step.state.condition, 'healthy', 'the canonical Observe case has no blocker, decision, conflict or review condition')
+    assert.equal(step.state.satisfied, false)
+    assert.equal(step.state.inPlace, false)
+    assert.equal(step.state.setAside, false)
+    assert.equal(step.status, 'in-report-only')
+    assert.notEqual(step.state.lifecycle, 'ready-to-enforce', 'it has not earned enforcement')
+    // Nothing holds it and nothing is wrong with it: no blocker to fix, no
+    // unavailable reason, no review the observation raised.
+    assert.deepEqual(step.blockers, [])
+    assert.equal(unavailableReason(step), null)
+    assert.equal(step.state.observation?.reviewRequired, false)
+    assert.deepEqual(
+      (step.tracking?.members ?? []).map((m) => m.reviewRequired),
+      [false],
+      'and no member of it wants a person to look',
+    )
+    // The row says the state without being opened, and its date column is the
+    // review milestone rather than a rollout day.
+    assert.equal(statusOf(step).word, 'Report-only')
+    assert.equal(rowWhen(step), `ready ${absoluteDate(readyWhen(step)!.date)}`)
+  }
+  {
+    const { step, steps } = canonical()
+    assert.equal(step.state.members.length, 1, 'the canonical case is a single-policy goal')
+    const m = step.state.members[0]
+    const t = step.tracking!
+    assert.ok(t.policyId, 'a deployed policy was matched')
+    assert.equal(m.change.latest.artifact, artifactIdOf(t.policyId), 'the observation names the object the tracking matched')
+    assert.equal(m.change.latest.state, 'report-only')
+    assert.equal(t.state, 'enabledForReportingButNotEnforced')
+    // The other week-two policy is a different object with different records, and
+    // its numbers are nowhere in this step's.
+    const other = steps.find((s) => s.id === OTHER_ID)!
+    assert.notEqual(other.tracking?.policyId ?? null, t.policyId)
+    assert.notEqual(other.tracking?.seenInScope, t.seenInScope, 'the two policies were seen for different people')
+    assert.equal(t.members.length, 1)
+    assert.equal(t.members[0].policyId, t.policyId, 'the member holds its own object, not the step’s idea of one')
+  }
+  {
+    const { step } = canonical()
+    const t = step.tracking!
+    assert.equal(t.evidenceQuality, 'enough', 'enough records to judge on')
+    assert.ok(t.signIns > 0, `records exist (${t.signIns})`)
+    assert.equal(t.failures, 0)
+    assert.deepEqual(t.failuresByUser, [])
+    assert.ok(t.seenInScope !== null && t.activeInScope !== null, 'the policy’s own scope was settled, so the count is a count')
+    assert.ok(t.seenInScope! > 0, 'people were actually seen under it')
+  }
+  {
+    const { step, snapshot } = canonical()
+    const t = step.tracking!
+    const row = (snapshot.config.caPolicies?.rows ?? []).find((p) => String((p as { id?: unknown }).id) === t.policyId) as Record<string, unknown> | undefined
+    assert.ok(row, 'the policy is in the tenant the scan read')
+    assert.match(String(row!.description ?? ''), /\[IAMAI:plan-demo-week2:s-goal-block-auth-transfer/, 'and it carries this plan’s tag for this step')
+    assert.equal(row!.state, 'enabledForReportingButNotEnforced')
+    assert.equal(t.matchedBy, 'tag')
+  }
 })
 
 // ---- 3. the clock is the records', not the calendar's ----
@@ -358,58 +328,62 @@ test('005.3: the observed days and the review date come from the evidence, not f
   assert.ok(bare.step.tracking!.daysInReportOnly < t.daysInReportOnly, 'no records, no earned window')
 })
 
-// ---- 4. the healthy claim is proven, not assumed ----
+// ---- 5, 6, 14. it is not ready, a real gate says why, and the next action is to keep watching ----
 
-test('005.4: “no unresolved failures” is a count the records support, not the absence of records', () => {
-  const { step } = canonical()
-  const t = step.tracking!
-  assert.equal(t.evidenceQuality, 'enough', 'enough records to judge on')
-  assert.ok(t.signIns > 0, `records exist (${t.signIns})`)
-  assert.equal(t.failures, 0)
-  assert.deepEqual(t.failuresByUser, [])
-  assert.ok(t.seenInScope !== null && t.activeInScope !== null, 'the policy’s own scope was settled, so the count is a count')
-  assert.ok(t.seenInScope! > 0, 'people were actually seen under it')
-})
-
-// ---- 5. it is not ready, and a real gate says why ----
-
-test('005.5: at least one observation gate is still open, so the step stays Report-only', () => {
-  const { step, ctx } = canonical()
-  const ready = readyWhen(step)!
-  assert.equal(step.tracking!.readyNow, false, 'the evidence gate has not opened')
-  assert.equal(ready.kind, 'on', 'and the time gate closes in the future')
-  assert.ok(ready.seen! < ready.people!, `people in scope are still unseen (${ready.seen} of ${ready.people})`)
-  assert.equal(step.state.lifecycle, 'report-only')
-  assert.notEqual(step.status, 'ready-to-enforce')
-  // Done when states the gates, so the operator can read what would clear it.
-  const done = stepContract(step, ctx).doneWhen.join(' | ')
-  // The step says what is true of the tenant now, in its own words (close-doors
-  // spec, 2026-09-19): the policy is On and a session no longer travels.
-  assert.match(done, /policy is On.*no longer signs anyone in on another/i)
-  assert.equal(step.tracking!.readyNow, false, 'concise completion text does not bypass observation')
-})
-
-// ---- 6. the next action is to keep watching ----
-
-test('005.6: What to do is keep it in report-only, on the screen and in every artifact', () => {
-  const { step, ctx, view } = canonical()
-  const c = stepContract(step, ctx)
-  const m = nextMilestone(step)
-  assert.equal(m.kind, 'observe')
-  assert.equal(c.milestone.kind, 'observe')
-  assert.equal(c.whatToDo.kind, 'observe')
-  // Editorial batch C: the shared observation label, then its earliest review date.
-  assert.match(c.whatToDo.text, /^Continue observation and collect the missing evidence\. Review from /)
-  assert.match(c.whatToDo.text, new RegExp(absoluteDate(readyWhen(step)!.date)))
-  assert.doesNotMatch(c.whatToDo.text, DOING)
-  // Nothing is presented as a blocker, because nothing is one.
-  assert.deepEqual(c.fix, [])
-  // The export, the calendar entry, the prompt pack and the grounding bundle all
-  // speak from this view: its first line is the contract's own action, and it
-  // carries no instructions for making a change.
-  const v = view(step)
-  assert.equal(v.whatToDo[0], c.whatToDo.text)
-  assert.ok(!v.whatToDo.includes('Verify the workflow:'), 'the removed workflow form is not reintroduced through instructions')
+test('005.5/6/14: a gate is still open, so the step stays Report-only and What to do is to keep watching, on the screen and in every artifact', () => {
+  {
+    const { step, ctx } = canonical()
+    const ready = readyWhen(step)!
+    assert.equal(step.tracking!.readyNow, false, 'the evidence gate has not opened')
+    assert.equal(ready.kind, 'on', 'and the time gate closes in the future')
+    assert.ok(ready.seen! < ready.people!, `people in scope are still unseen (${ready.seen} of ${ready.people})`)
+    assert.equal(step.state.lifecycle, 'report-only')
+    assert.notEqual(step.status, 'ready-to-enforce')
+    // Done when states the gates, so the operator can read what would clear it.
+    const done = stepContract(step, ctx).doneWhen.join(' | ')
+    // The step says what is true of the tenant now, in its own words (close-doors
+    // spec, 2026-09-19): the policy is On and a session no longer travels.
+    assert.match(done, /policy is On.*no longer signs anyone in on another/i)
+    assert.equal(step.tracking!.readyNow, false, 'concise completion text does not bypass observation')
+  }
+  {
+    const { step, ctx, view } = canonical()
+    const c = stepContract(step, ctx)
+    const m = nextMilestone(step)
+    assert.equal(m.kind, 'observe')
+    assert.equal(c.milestone.kind, 'observe')
+    assert.equal(c.whatToDo.kind, 'observe')
+    // Editorial batch C: the shared observation label, then its earliest review date.
+    assert.match(c.whatToDo.text, /^Continue observation and collect the missing evidence\. Review from /)
+    assert.match(c.whatToDo.text, new RegExp(absoluteDate(readyWhen(step)!.date)))
+    assert.doesNotMatch(c.whatToDo.text, DOING)
+    // Nothing is presented as a blocker, because nothing is one.
+    assert.deepEqual(c.fix, [])
+    // The export, the calendar entry, the prompt pack and the grounding bundle all
+    // speak from this view: its first line is the contract's own action, and it
+    // carries no instructions for making a change.
+    const v = view(step)
+    assert.equal(v.whatToDo[0], c.whatToDo.text)
+    assert.ok(!v.whatToDo.includes('Verify the workflow:'), 'the removed workflow form is not reintroduced through instructions')
+  }
+  {
+    const { step, ctx, view } = canonical()
+    const c = stepContract(step, ctx)
+    // The selection ContentStep.tsx renders from: no portal block, no leading
+    // prerequisite lines, no instructions of the step's own.
+    const screen = instructionsOf(step, ctx)
+    assert.equal(screen.held, true, 'an authority holds the change')
+    assert.equal(screen.portal, null)
+    assert.deepEqual(screen.before, [])
+    assert.deepEqual(screen.steps, [])
+    // So the only thing under What to do is the contract's action, and the export
+    // carries the same one line: the screen and the artifacts cannot disagree.
+    const v = view(step)
+    assert.equal(v.whatToDo[0], c.whatToDo.text)
+    assert.ok(!v.whatToDo.includes('Verify the workflow:'))
+    assert.match(c.whatToDo.text, /^Continue observation and collect the missing evidence\./)
+    assert.doesNotMatch(c.whatToDo.text, DOING)
+  }
 })
 
 // ---- 7. no implementation is handed over while the window is open ----
@@ -450,106 +424,105 @@ test('005.7: the four channels stand down — no portal change, no JSON, no Powe
   assert.equal(stepOperations(step).length > 0, impl.offered)
 })
 
-// ---- 8. no enforcement date, wave or calendar entry ----
+// ---- 8, 9. no enforcement date, wave or calendar entry, and the screen and the artifacts say one thing ----
 
-test('005.8: the step is in no enforcement wave, carries no enforce event, and the calendar books the review', () => {
-  const { step, ctx, steps, view, run } = canonical()
-  // The generator dated and placed this step before anything knew its policy
-  // existed: every step's lifecycle is still not-deployed when the schedule is
-  // built, so it went into an enforcement wave and got three dated events.
-  // Tracking settled the lifecycle afterwards and the projection came off the
-  // plan with it (roadmap/forecast.ts settleForecast) — kept, on its own
-  // terms, where nothing reads it as this step's milestone.
-  assert.equal(step.events, null, 'the step carries no enforce event')
-  assert.equal(run.schedule.waveOf[step.id], undefined, 'no wave enforces it')
-  for (const w of run.schedule.waves) assert.ok(!w.stepIds.includes(step.id), `wave ${w.wave} still carries the step`)
-  assert.equal(step.comms, null, 'and no dated announcement draft survives on it')
-  // What was taken off is kept, on its own terms, where nothing reads it as
-  // this step's milestone.
-  const projected = run.schedule.forecastOnly?.[step.id]
-  assert.ok(projected, 'the rollout the schedule drew is kept')
-  assert.ok(projected!.events, 'and it is the enforce event the generator wrote')
-  assert.equal(typeof projected!.wave, 'number', 'and the wave it had been placed in')
-  const timing = enforcementTiming(step)
-  assert.notEqual(timing.basis, 'committed', 'nothing about the step reads as an earned enforcement')
-  assert.deepEqual(statedEnforcement(step), { basis: 'unearned', at: null }, 'no surface has an enforcement instant to state')
-  const forecastAt = projected!.events!.enforce.at
-  const forecastDay = absoluteDate(forecastAt)
-  const ready = readyWhen(step)!
-  assert.notEqual(forecastDay, absoluteDate(ready.date), 'the two days differ, so the assertions below can tell them apart')
-  const v = view(step)
-  assert.ok(v.dates, 'the step is dated')
-  assert.match(v.dates!, /^Report-only since /)
-  assert.match(v.dates!, new RegExp(`Review ${absoluteDate(ready.date)}`))
-  assert.ok(!v.dates!.includes(forecastDay), `no enforcement date on the line: ${v.dates}`)
-  assert.doesNotMatch(v.dates!, /^Announce /, 'and it is not the change-step line')
-  // Nor anywhere else a person reads this step's dates: the row's date column,
-  // what it says to do, and what would finish it.
-  assert.ok(!rowWhen(step).includes(forecastDay), `the row dates the forecast enforcement: ${rowWhen(step)}`)
-  for (const line of [...v.whatToDo, ...v.doneWhen]) assert.ok(!line.includes(forecastDay), `an enforcement date is stated: ${line}`)
-  // And the milestone the frozen contract puts on the step is the observation,
-  // never the enforcement the schedule projected.
-  assert.equal(stepContract(step, ctx).milestone.kind, 'observe')
-  assert.notEqual(nextMilestone(step).at, forecastAt)
-  // One calendar entry, on the review day, lasting the day — not the ring window
-  // the schedule projected for an enforcement.
-  const ics = buildIcs(steps, 'Tenant', 'plan-1', view)
-  const entry = ics.split('BEGIN:VEVENT').find((b) => b.includes(`UID:plan-1-${step.id}@iamai`))
-  assert.ok(entry, 'the step is in the calendar')
-  assert.match(entry!, new RegExp(`DTSTART;VALUE=DATE:${ready.date.slice(0, 10).replace(/-/g, '')}`))
-  assert.doesNotMatch(entry!, new RegExp(`DTSTART;VALUE=DATE:${forecastAt.slice(0, 10).replace(/-/g, '')}`), 'the entry is not booked on the projected enforcement day')
-  assert.doesNotMatch(entry!, /Enable policy/i, 'and it is not a runbook for turning the policy on')
-  assert.ok(!entry!.includes(forecastDay), 'nor does it name the enforcement day')
-})
-
-// ---- 9. the screen and the artifacts say one thing ----
-
-test('005.9: screen, export, calendar, prompt pack and grounding bundle agree', () => {
-  const { step, ctx, steps, snapshot, view, run } = canonical()
-  const c = stepContract(step, ctx)
-  const v = view(step)
-  assert.equal(c.state.stage, 'Report-only')
-  assert.equal(c.state.conditionLabel, 'Healthy')
-  assert.notEqual(c.state.stage, c.state.conditionLabel, 'the two axes are said apart')
-  // The prompt pack is the text a person hands to a model to draft an
-  // announcement from, so the projection is not in it under any wording: this
-  // step's enforcement is not yet dated, and the day it does name is the review
-  // the screen names.
-  // Both instants the plan still holds for this step: the ring the rollout is
-  // drawn from, and the enforcement the schedule had dated it with before its
-  // lifecycle was known, now kept apart in `schedule.forecastOnly`.
-  const projected = [enforcementTiming(step).at, run.schedule.forecastOnly?.[step.id]?.events?.enforce.at ?? null].filter((x): x is string => x !== null)
-  const facts = stepContext(step, view)
-  // The prompt answers "when" with the step's own Dates line and nothing it
-  // composed itself. It used to write a second sentence here ("Takes effect: not
-  // yet dated") that no other surface said, from its own second reading of the
-  // timing; the Dates line is the one authority, and on this step it says the
-  // enforcement is not this step's to state.
-  assert.ok(facts.includes(v.dates!), `the prompt pack dates the step its own way: ${facts}`)
-  for (const at of projected) assert.ok(!facts.includes(absoluteDate(at)), `the prompt pack states the projected enforcement day: ${facts}`)
-  assert.ok(facts.includes(absoluteDate(readyWhen(step)!.date)), 'and it does name the review day')
-  assert.ok(facts.includes(c.whatToDo.text), 'and the action is the screen’s')
-  // The grounding bundle is read by another tool, and a bare instant is
-  // indistinguishable from one a policy has earned: this step has none to give.
-  const bundle = groundingBundle({ view, tenant: 'Tenant', snapshot, coverage: run.coverage, steps, schedule: run.schedule, redacted: false, generated: 'Sep 6, 2026', cleanup: [] }) as unknown as { plan: { steps: Record<string, unknown>[] } }
-  const b = bundle.plan.steps.find((x) => x.id === step.id)!
-  assert.equal(b.status, 'On Hold')
-  assert.deepEqual(b.enforcement, { basis: 'unearned', at: null })
-  assert.deepEqual(b.whatToDo, v.whatToDo)
-  assert.equal(b.dates, v.dates)
-  const json = JSON.stringify(b)
-  for (const at of projected) {
-    assert.ok(!json.includes(at), `the bundle carries the enforcement instant: ${json}`)
-    assert.ok(!json.includes(absoluteDate(at)), `the bundle carries the enforcement day: ${json}`)
+test('005.8/9: the step has no enforcement wave, event or date, the calendar books the review, and every artifact agrees with the screen', () => {
+  {
+    const { step, ctx, steps, view, run } = canonical()
+    // The generator dated and placed this step before anything knew its policy
+    // existed: every step's lifecycle is still not-deployed when the schedule is
+    // built, so it went into an enforcement wave and got three dated events.
+    // Tracking settled the lifecycle afterwards and the projection came off the
+    // plan with it (roadmap/forecast.ts settleForecast) — kept, on its own
+    // terms, where nothing reads it as this step's milestone.
+    assert.equal(step.events, null, 'the step carries no enforce event')
+    assert.equal(run.schedule.waveOf[step.id], undefined, 'no wave enforces it')
+    for (const w of run.schedule.waves) assert.ok(!w.stepIds.includes(step.id), `wave ${w.wave} still carries the step`)
+    assert.equal(step.comms, null, 'and no dated announcement draft survives on it')
+    // What was taken off is kept, on its own terms, where nothing reads it as
+    // this step's milestone.
+    const projected = run.schedule.forecastOnly?.[step.id]
+    assert.ok(projected, 'the rollout the schedule drew is kept')
+    assert.ok(projected!.events, 'and it is the enforce event the generator wrote')
+    assert.equal(typeof projected!.wave, 'number', 'and the wave it had been placed in')
+    const timing = enforcementTiming(step)
+    assert.notEqual(timing.basis, 'committed', 'nothing about the step reads as an earned enforcement')
+    assert.deepEqual(statedEnforcement(step), { basis: 'unearned', at: null }, 'no surface has an enforcement instant to state')
+    const forecastAt = projected!.events!.enforce.at
+    const forecastDay = absoluteDate(forecastAt)
+    const ready = readyWhen(step)!
+    assert.notEqual(forecastDay, absoluteDate(ready.date), 'the two days differ, so the assertions below can tell them apart')
+    const v = view(step)
+    assert.ok(v.dates, 'the step is dated')
+    assert.match(v.dates!, /^Report-only since /)
+    assert.match(v.dates!, new RegExp(`Review ${absoluteDate(ready.date)}`))
+    assert.ok(!v.dates!.includes(forecastDay), `no enforcement date on the line: ${v.dates}`)
+    assert.doesNotMatch(v.dates!, /^Announce /, 'and it is not the change-step line')
+    // Nor anywhere else a person reads this step's dates: the row's date column,
+    // what it says to do, and what would finish it.
+    assert.ok(!rowWhen(step).includes(forecastDay), `the row dates the forecast enforcement: ${rowWhen(step)}`)
+    for (const line of [...v.whatToDo, ...v.doneWhen]) assert.ok(!line.includes(forecastDay), `an enforcement date is stated: ${line}`)
+    // And the milestone the frozen contract puts on the step is the observation,
+    // never the enforcement the schedule projected.
+    assert.equal(stepContract(step, ctx).milestone.kind, 'observe')
+    assert.notEqual(nextMilestone(step).at, forecastAt)
+    // One calendar entry, on the review day, lasting the day — not the ring window
+    // the schedule projected for an enforcement.
+    const ics = buildIcs(steps, 'Tenant', 'plan-1', view)
+    const entry = ics.split('BEGIN:VEVENT').find((b) => b.includes(`UID:plan-1-${step.id}@iamai`))
+    assert.ok(entry, 'the step is in the calendar')
+    assert.match(entry!, new RegExp(`DTSTART;VALUE=DATE:${ready.date.slice(0, 10).replace(/-/g, '')}`))
+    assert.doesNotMatch(entry!, new RegExp(`DTSTART;VALUE=DATE:${forecastAt.slice(0, 10).replace(/-/g, '')}`), 'the entry is not booked on the projected enforcement day')
+    assert.doesNotMatch(entry!, /Enable policy/i, 'and it is not a runbook for turning the policy on')
+    assert.ok(!entry!.includes(forecastDay), 'nor does it name the enforcement day')
   }
-  assert.ok(!json.includes('"state": "enabled"'), 'no artifact carries the enforcing body')
-  // Who this touches is Foundation A's reach, and it is a different fact from
-  // how many of them the records have seen.
-  const pop = reached(step)
-  assert.ok(pop, 'the scope was settled')
-  assert.equal(c.who?.known, true)
-  assert.equal(step.tracking!.activeInScope, pop!.active, 'the policy’s scope is the step’s reach')
-  assert.notEqual(step.tracking!.seenInScope, step.tracking!.activeInScope, 'observed is not the same number as in scope')
+  {
+    const { step, ctx, steps, snapshot, view, run } = canonical()
+    const c = stepContract(step, ctx)
+    const v = view(step)
+    assert.equal(c.state.stage, 'Report-only')
+    assert.equal(c.state.conditionLabel, 'Healthy')
+    assert.notEqual(c.state.stage, c.state.conditionLabel, 'the two axes are said apart')
+    // The prompt pack is the text a person hands to a model to draft an
+    // announcement from, so the projection is not in it under any wording: this
+    // step's enforcement is not yet dated, and the day it does name is the review
+    // the screen names.
+    // Both instants the plan still holds for this step: the ring the rollout is
+    // drawn from, and the enforcement the schedule had dated it with before its
+    // lifecycle was known, now kept apart in `schedule.forecastOnly`.
+    const projected = [enforcementTiming(step).at, run.schedule.forecastOnly?.[step.id]?.events?.enforce.at ?? null].filter((x): x is string => x !== null)
+    const facts = stepContext(step, view)
+    // The prompt answers "when" with the step's own Dates line and nothing it
+    // composed itself. It used to write a second sentence here ("Takes effect: not
+    // yet dated") that no other surface said, from its own second reading of the
+    // timing; the Dates line is the one authority, and on this step it says the
+    // enforcement is not this step's to state.
+    assert.ok(facts.includes(v.dates!), `the prompt pack dates the step its own way: ${facts}`)
+    for (const at of projected) assert.ok(!facts.includes(absoluteDate(at)), `the prompt pack states the projected enforcement day: ${facts}`)
+    assert.ok(facts.includes(absoluteDate(readyWhen(step)!.date)), 'and it does name the review day')
+    assert.ok(facts.includes(c.whatToDo.text), 'and the action is the screen’s')
+    // The grounding bundle is read by another tool, and a bare instant is
+    // indistinguishable from one a policy has earned: this step has none to give.
+    const bundle = groundingBundle({ view, tenant: 'Tenant', snapshot, coverage: run.coverage, steps, schedule: run.schedule, redacted: false, generated: 'Sep 6, 2026', cleanup: [] }) as unknown as { plan: { steps: Record<string, unknown>[] } }
+    const b = bundle.plan.steps.find((x) => x.id === step.id)!
+    assert.equal(b.status, 'On Hold')
+    assert.deepEqual(b.enforcement, { basis: 'unearned', at: null })
+    assert.deepEqual(b.whatToDo, v.whatToDo)
+    assert.equal(b.dates, v.dates)
+    const json = JSON.stringify(b)
+    for (const at of projected) {
+      assert.ok(!json.includes(at), `the bundle carries the enforcement instant: ${json}`)
+      assert.ok(!json.includes(absoluteDate(at)), `the bundle carries the enforcement day: ${json}`)
+    }
+    assert.ok(!json.includes('"state": "enabled"'), 'no artifact carries the enforcing body')
+    // Who this touches is Foundation A's reach, and it is a different fact from
+    // how many of them the records have seen.
+    const pop = reached(step)
+    assert.ok(pop, 'the scope was settled')
+    assert.equal(c.who?.known, true)
+    assert.equal(step.tracking!.activeInScope, pop!.active, 'the policy’s scope is the step’s reach')
+    assert.notEqual(step.tracking!.seenInScope, step.tracking!.activeInScope, 'observed is not the same number as in scope')
+  }
 })
 
 // ---- 10. unknown evidence is not clean evidence ----
@@ -679,59 +652,6 @@ test('005.11: no fixture hands over an enforcement while its policy is still in 
   assert.ok(seen >= 1, `the case is exercised on a real fixture (${seen})`)
 })
 
-// ---- 12. and the fixture is the one the case is named for ----
-
-test('005.12: the canonical case is the demo tenant’s own week-two policy, deployed by the plan it belongs to', () => {
-  const { step, snapshot } = canonical()
-  const t = step.tracking!
-  const row = (snapshot.config.caPolicies?.rows ?? []).find((p) => String((p as { id?: unknown }).id) === t.policyId) as Record<string, unknown> | undefined
-  assert.ok(row, 'the policy is in the tenant the scan read')
-  assert.match(String(row!.description ?? ''), /\[IAMAI:plan-demo-week2:s-goal-block-auth-transfer/, 'and it carries this plan’s tag for this step')
-  assert.equal(row!.state, 'enabledForReportingButNotEnforced')
-  assert.equal(t.matchedBy, 'tag')
-})
-
-// ---- 13. the email is an artifact too ----
-
-test('005.13: a report-only policy retains a useful email without promising an unearned enforcement date', () => {
-  const { step, ctx } = deployedByThePlan(COMMS_STEP_ID)
-  assert.equal(step.state.lifecycle, 'report-only')
-  assert.equal(step.tracking!.readyNow, false)
-  assert.equal(step.events, null)
-  const ex = stepVars(step, ctx) as Record<string, unknown>
-  assert.equal(ex.enforceLong, undefined)
-  const email = stepBodyOf(step, ctx).artifacts.find(a => a.id === 'email')!
-  assert.ok(email && email.text().length > 50, 'useful communication remains available during observation')
-  assert.doesNotMatch(email.text(), /From (Monday|Tuesday|Wednesday|Thursday|Friday)|will be enforced on|undefined|‹/)
-})
-
-// ---- 14. the opened step instructs nothing while the window is open ----
-
-test('005.14: the screen renders its What-to-do instructions from the one selection, and it is empty while the change is held', () => {
-  const { step, ctx, view } = canonical()
-  const c = stepContract(step, ctx)
-  // The selection ContentStep.tsx renders from: no portal block, no leading
-  // prerequisite lines, no instructions of the step's own.
-  const screen = instructionsOf(step, ctx)
-  assert.equal(screen.held, true, 'an authority holds the change')
-  assert.equal(screen.portal, null)
-  assert.deepEqual(screen.before, [])
-  assert.deepEqual(screen.steps, [])
-  // So the only thing under What to do is the contract's action, and the export
-  // carries the same one line: the screen and the artifacts cannot disagree.
-  const v = view(step)
-  assert.equal(v.whatToDo[0], c.whatToDo.text)
-  assert.ok(!v.whatToDo.includes('Verify the workflow:'))
-  assert.match(c.whatToDo.text, /^Continue observation and collect the missing evidence\./)
-  assert.doesNotMatch(c.whatToDo.text, DOING)
-  // The screen has no second reading of the content to fall back on: the JSX
-  // renders `instructions`, and the `whatToDo.before` / `whatToDo.steps` arrays
-  // it used to build unconditionally are no longer reachable from it.
-  const jsx = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
-  assert.doesNotMatch(jsx, /w\.before/, 'ContentStep builds the leading lines itself again')
-  assert.doesNotMatch(jsx, /w\.steps/, 'ContentStep reads the step instructions itself again')
-})
-
 // ---- 15. and the held instruction is the one that would undo the protection ----
 
 test('005.15: device-registration guidance keeps the replacement enforced before retiring the legacy setting', () => {
@@ -753,79 +673,78 @@ test('005.15: device-registration guidance keeps the replacement enforced before
   assert.equal(observing.step.state.satisfied, false, 'configuration alone does not complete the workflow')
 })
 
-// ---- 16. the plan carries no placement for the step at all ----
+// ---- 16, 17. the plan carries no placement for the step, and its exported conclusions are not the step's ----
 
-test('005.16: the whole schedule placement is withdrawn — no start date, no batch, no overrun, no empty wave', () => {
-  const { step, run } = canonical()
-  const sch = run.schedule
-  // `startAt` is the day a step enforces on. The step has no such day.
-  assert.equal(sch.startAt[step.id], undefined, 'the schedule still dates the step’s enforcement')
-  assert.equal(sch.waveOf[step.id], undefined, 'no wave enforces it')
-  for (const w of sch.waves) assert.ok(!w.stepIds.includes(step.id), `wave ${w.wave} still carries the step`)
-  // Nor does any wave survive with nothing in it: an empty wave is a dated
-  // rollout phase with no rollout, and its dates were the withdrawn step’s.
-  for (const w of sch.waves) if (w.wave >= 1) assert.ok(w.stepIds.length > 0, `wave ${w.wave} is empty`)
-  assert.deepEqual(
-    sch.waves.map((w) => w.wave),
-    sch.waves.map((_, i) => i),
-    'and the waves are still numbered without a gap',
-  )
-  // No change window names it, in either direction.
-  assert.equal(sch.batchWith[step.id], undefined, 'the step still shares a change window')
-  for (const [id, ids] of Object.entries(sch.batchWith)) assert.ok(!ids.includes(step.id), `${id} still lands in the same window as the step`)
-  assert.ok(!sch.extendedBy.includes(step.id), 'the step is still counted among those running past the band')
-  // Every wave’s dates come from a step the wave still carries.
-  for (const w of sch.waves) {
-    if (w.wave < 1) continue
-    assert.ok(
-      w.stepIds.some((id) => sch.startAt[id] === w.start),
-      `wave ${w.wave} starts on a day no step in it starts on`,
+test('005.16/17: the whole schedule placement is withdrawn, and the exported plan end, length and critical path are read from a plan without the step', () => {
+  {
+    const { step, run } = canonical()
+    const sch = run.schedule
+    // `startAt` is the day a step enforces on. The step has no such day.
+    assert.equal(sch.startAt[step.id], undefined, 'the schedule still dates the step’s enforcement')
+    assert.equal(sch.waveOf[step.id], undefined, 'no wave enforces it')
+    for (const w of sch.waves) assert.ok(!w.stepIds.includes(step.id), `wave ${w.wave} still carries the step`)
+    // Nor does any wave survive with nothing in it: an empty wave is a dated
+    // rollout phase with no rollout, and its dates were the withdrawn step’s.
+    for (const w of sch.waves) if (w.wave >= 1) assert.ok(w.stepIds.length > 0, `wave ${w.wave} is empty`)
+    assert.deepEqual(
+      sch.waves.map((w) => w.wave),
+      sch.waves.map((_, i) => i),
+      'and the waves are still numbered without a gap',
     )
+    // No change window names it, in either direction.
+    assert.equal(sch.batchWith[step.id], undefined, 'the step still shares a change window')
+    for (const [id, ids] of Object.entries(sch.batchWith)) assert.ok(!ids.includes(step.id), `${id} still lands in the same window as the step`)
+    assert.ok(!sch.extendedBy.includes(step.id), 'the step is still counted among those running past the band')
+    // Every wave’s dates come from a step the wave still carries.
+    for (const w of sch.waves) {
+      if (w.wave < 1) continue
+      assert.ok(
+        w.stepIds.some((id) => sch.startAt[id] === w.start),
+        `wave ${w.wave} starts on a day no step in it starts on`,
+      )
+    }
+    // The plan’s end and its critical path are measured to what the plan carries.
+    const last = Object.values(sch.startAt).reduce((m, x) => (x > m ? x : m), sch.start)
+    assert.ok(sch.targetEnd >= last, 'the plan ends no earlier than its last placed step')
+    assert.ok(!sch.derivation.chain.includes(step.id), `the critical path runs through the withdrawn step: ${sch.derivation.chain.join(' → ')}`)
+    assert.ok(!sch.derivation.criticalPath.includes(contentStepFor(step)!.title as string), `the critical-path sentence names the withdrawn step: ${sch.derivation.criticalPath}`)
+    // What was withdrawn is kept, whole, under the one name that says what it is
+    // worth — and it is not the empty record that would hide the withdrawal.
+    const kept = sch.forecastOnly?.[step.id]
+    assert.ok(kept, 'the rollout the schedule drew is kept')
+    assert.equal(typeof kept!.startAt, 'string', 'including the day it had been dated to enforce on')
+    assert.ok(kept!.events, 'and the events the generator wrote')
   }
-  // The plan’s end and its critical path are measured to what the plan carries.
-  const last = Object.values(sch.startAt).reduce((m, x) => (x > m ? x : m), sch.start)
-  assert.ok(sch.targetEnd >= last, 'the plan ends no earlier than its last placed step')
-  assert.ok(!sch.derivation.chain.includes(step.id), `the critical path runs through the withdrawn step: ${sch.derivation.chain.join(' → ')}`)
-  assert.ok(!sch.derivation.criticalPath.includes(contentStepFor(step)!.title as string), `the critical-path sentence names the withdrawn step: ${sch.derivation.criticalPath}`)
-  // What was withdrawn is kept, whole, under the one name that says what it is
-  // worth — and it is not the empty record that would hide the withdrawal.
-  const kept = sch.forecastOnly?.[step.id]
-  assert.ok(kept, 'the rollout the schedule drew is kept')
-  assert.equal(typeof kept!.startAt, 'string', 'including the day it had been dated to enforce on')
-  assert.ok(kept!.events, 'and the events the generator wrote')
-})
-
-// ---- 17. the exported plan conclusions cannot be the step’s ----
-
-test('005.17: the grounding bundle’s plan end, length and critical path are read from a plan without the step', () => {
-  const { step, steps, snapshot, view, run } = canonical()
-  const bundle = groundingBundle({ view, tenant: 'Tenant', snapshot, coverage: run.coverage, steps, schedule: run.schedule, redacted: false, generated: 'Sep 6, 2026', cleanup: [] }) as unknown as {
-    plan: { targetEnd: string; weeks: number; criticalPath: string }
+  {
+    const { step, steps, snapshot, view, run } = canonical()
+    const bundle = groundingBundle({ view, tenant: 'Tenant', snapshot, coverage: run.coverage, steps, schedule: run.schedule, redacted: false, generated: 'Sep 6, 2026', cleanup: [] }) as unknown as {
+      plan: { targetEnd: string; weeks: number; criticalPath: string }
+    }
+    const withdrawn = new Set(Object.keys(run.schedule.forecastOnly ?? {}))
+    assert.ok(withdrawn.has(step.id), 'the step was settled, or this proves nothing')
+    // The three conclusions the bundle exports are the read-back of a placement
+    // the step is not in — not the build's, patched afterwards.
+    const without = readBackPlacement(run.steps, run.schedule.placement!, withdrawn)
+    // While the plan holds work it requires there is no end and no length to
+    // export at all (derive/finish.ts): the read-back is the rest of the plan, and
+    // a finish measured to it assumes the hold clears.
+    const finish = planFinish(run.steps, run.schedule.cleanup?.end ?? null)
+    assert.equal(bundle.plan.targetEnd, finish.held ? null : without.targetEnd)
+    assert.equal(bundle.plan.weeks, finish.held ? null : without.weeks)
+    assert.equal(bundle.plan.criticalPath, finish.held ? null : without.derivation.criticalPath)
+    // And they are not the step's own: the day the schedule had it enforcing on
+    // ends nothing, and the sentence about what sets the plan's length does not
+    // name it.
+    const projected = run.schedule.forecastOnly?.[step.id]!
+    assert.equal(typeof projected.startAt, 'string', 'the step had a placement to withdraw')
+    assert.ok(!without.derivation.chain.includes(step.id), 'the critical path runs through the withdrawn step')
+    assert.ok(!bundle.plan.criticalPath?.includes(contentStepFor(step)!.title as string), `the exported critical path names the withdrawn step: ${bundle.plan.criticalPath}`)
+    assert.ok(!bundle.plan.criticalPath?.includes(absoluteDate(projected.startAt!)), 'the exported critical path carries the withdrawn enforcement day')
+    // The same read-back with the step still in it is a different plan, so the
+    // withdrawal is what these values are measured without.
+    const with_ = readBackPlacement(run.steps, run.schedule.placement!)
+    assert.notDeepEqual(with_.startAt, without.startAt, 'withdrawing the placement is what makes the difference')
   }
-  const withdrawn = new Set(Object.keys(run.schedule.forecastOnly ?? {}))
-  assert.ok(withdrawn.has(step.id), 'the step was settled, or this proves nothing')
-  // The three conclusions the bundle exports are the read-back of a placement
-  // the step is not in — not the build's, patched afterwards.
-  const without = readBackPlacement(run.steps, run.schedule.placement!, withdrawn)
-  // While the plan holds work it requires there is no end and no length to
-  // export at all (derive/finish.ts): the read-back is the rest of the plan, and
-  // a finish measured to it assumes the hold clears.
-  const finish = planFinish(run.steps, run.schedule.cleanup?.end ?? null)
-  assert.equal(bundle.plan.targetEnd, finish.held ? null : without.targetEnd)
-  assert.equal(bundle.plan.weeks, finish.held ? null : without.weeks)
-  assert.equal(bundle.plan.criticalPath, finish.held ? null : without.derivation.criticalPath)
-  // And they are not the step's own: the day the schedule had it enforcing on
-  // ends nothing, and the sentence about what sets the plan's length does not
-  // name it.
-  const projected = run.schedule.forecastOnly?.[step.id]!
-  assert.equal(typeof projected.startAt, 'string', 'the step had a placement to withdraw')
-  assert.ok(!without.derivation.chain.includes(step.id), 'the critical path runs through the withdrawn step')
-  assert.ok(!bundle.plan.criticalPath?.includes(contentStepFor(step)!.title as string), `the exported critical path names the withdrawn step: ${bundle.plan.criticalPath}`)
-  assert.ok(!bundle.plan.criticalPath?.includes(absoluteDate(projected.startAt!)), 'the exported critical path carries the withdrawn enforcement day')
-  // The same read-back with the step still in it is a different plan, so the
-  // withdrawal is what these values are measured without.
-  const with_ = readBackPlacement(run.steps, run.schedule.placement!)
-  assert.notDeepEqual(with_.startAt, without.startAt, 'withdrawing the placement is what makes the difference')
 })
 
 // ---- 18. withdrawing is the whole read-back, and it is idempotent ----
