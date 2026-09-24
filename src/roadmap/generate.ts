@@ -1271,8 +1271,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     countriesTask = s
   }
   // Confirmed service accounts with no group holding them (prompt 16 §3).
+  // Only while service accounts are picked: None adds no step.
   const saStepId = PREREQ_STEP_ID.serviceAccountsGroup
-  if (canUseConditionalAccess && (mapping.serviceAccountUserIds.length > 0 || mapping.wizardAnswered.serviceAccounts === true)) {
+  if (canUseConditionalAccess && mapping.serviceAccountUserIds.length > 0) {
     const proposed = proposedObjectNames(naming).serviceAccountsGroup
     const members = mapping.serviceAccountsGroupId ? input.groupMembers?.get(mapping.serviceAccountsGroupId) : null
     const matched = !!members && !members.sampled && new Set(members.memberIds).size === new Set(mapping.serviceAccountUserIds).size && mapping.serviceAccountUserIds.every((id) => members.memberIds.includes(id))
@@ -1326,8 +1327,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     steps.push(s)
   }
 
-  // Shared devices, their own policy (prompt 48 item 4).
-  if (canUseConditionalAccess && (sharedDevices.length > 0 || mapping.sharedDeviceUserIds !== undefined || input.manualConfirmations?.['s-shared-devices'])) {
+  // Shared devices, their own policy (prompt 48 item 4). Only while
+  // shared-device accounts are picked (the saved answer, else the detection
+  // while it is unanswered): None adds no step.
+  if (canUseConditionalAccess && (mapping.sharedDeviceUserIds ?? sharedDevices).length > 0) {
     const step = prereq('s-shared-devices')
     // Its own policy, named in the tenant's convention (the baseline holds none; the step's instructions create it).
     step.naming = { proposed: proposedName({ prefix: 'CA', rest: ['Block', 'Shared devices outside trusted networks'], collapsed: 'Block shared devices outside trusted networks' }, naming).name, fromBaseline: null }

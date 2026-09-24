@@ -33,9 +33,22 @@ import { isPhoneOs } from './platforms.ts'
  * the people sets are built, so Today's count and table, the campaign, the
  * readiness strip and the dormant step read one population; Inventory and the
  * emergency step still list them. Every `notPeople` parameter below is this set.
+ *
+ * It carries the saved shared-device answer too, where there is one
+ * (`sharedDeviceUserIds`), which the people sets read in place of the detection,
+ * as they read the saved service accounts.
  */
-export function notPeopleIds(mapping: AccountDecisions): Set<string> {
-  return new Set([...mapping.serviceAccountUserIds, ...mapping.breakGlassUserIds])
+export function notPeopleIds(mapping: AccountDecisions): Set<string> & NotPeople {
+  const out = new Set([...mapping.serviceAccountUserIds, ...mapping.breakGlassUserIds])
+  return mapping.sharedDeviceUserIds === undefined ? out : Object.assign(out, { sharedDeviceUserIds: mapping.sharedDeviceUserIds })
+}
+
+/** The not-people set (`notPeopleIds`), with the saved shared-device answer where there is one. */
+export type NotPeople = ReadonlySet<string> & { readonly sharedDeviceUserIds?: readonly string[] }
+
+/** The shared-device accounts: the saved answer where there is one, the detection (derive/sharedDevices.ts) only while it is unanswered. */
+function sharedIdsOf(snapshot: TenantSnapshot, saved: readonly string[] | undefined): Set<string> {
+  return new Set(saved ?? sharedDeviceIds(snapshot))
 }
 
 // ---------- what an account is ----------
@@ -45,8 +58,8 @@ export type NotPersonKind = 'emergency' | 'service' | 'shared' | 'disabled'
 /** What an account is. One answer per account; every people set in this module is the `person` answer. */
 export type AccountKind = 'person' | NotPersonKind
 
-/** The two decisions the classification reads: the confirmed emergency and service accounts, by object id. */
-export type AccountDecisions = { breakGlassUserIds: readonly string[]; serviceAccountUserIds: readonly string[] }
+/** The decisions the classification reads: the confirmed emergency and service accounts, and the saved shared-device answer (undefined while unanswered), by object id. */
+export type AccountDecisions = { breakGlassUserIds: readonly string[]; serviceAccountUserIds: readonly string[]; sharedDeviceUserIds?: readonly string[] }
 
 /**
  * The one classification of an account, by object id, first answer wins:
@@ -54,8 +67,9 @@ export type AccountDecisions = { breakGlassUserIds: readonly string[]; serviceAc
  *   emergency  the operator chose it on the emergency step (never a nomination)
  *   service    the operator confirmed it, or an enabled account shaped like a
  *              mailbox (isNonPerson)
- *   shared     a Teams Rooms or shared-device licence, or sign-ins only from a
- *              Teams device (derive/sharedDevices.ts)
+ *   shared     the saved shared-device answer; while it is unanswered, a Teams
+ *              Rooms or shared-device licence, or sign-ins only from a Teams
+ *              device (derive/sharedDevices.ts)
  *   disabled   sign-in blocked
  *   person     everyone else, guests included: they sign in too
  *
@@ -66,7 +80,7 @@ export type AccountDecisions = { breakGlassUserIds: readonly string[]; serviceAc
 export function accountKinds(snapshot: TenantSnapshot, decisions: AccountDecisions): Map<string, AccountKind> {
   const emergency = new Set(decisions.breakGlassUserIds)
   const service = new Set(decisions.serviceAccountUserIds)
-  const shared = new Set(sharedDeviceIds(snapshot))
+  const shared = sharedIdsOf(snapshot, decisions.sharedDeviceUserIds)
   return new Map(snapshot.users.map((u) => [u.id, kindOf(u, emergency, service, shared)]))
 }
 
@@ -116,9 +130,9 @@ export function isNonPerson(u: UserRow, confirmedServiceAccountIds: ReadonlySet<
  * registers a passkey for a boardroom, and counting it put 31 active people on
  * one Plan step beside 30 on the next.
  */
-export function personAccounts(snapshot: TenantSnapshot, notPeople: ReadonlySet<string> = new Set()): UserRow[] {
+export function personAccounts(snapshot: TenantSnapshot, notPeople: NotPeople = new Set()): UserRow[] {
   // The signed-in account is a person like any other: the directory decides, never who ran the scan.
-  const shared = new Set(sharedDeviceIds(snapshot))
+  const shared = sharedIdsOf(snapshot, notPeople.sharedDeviceUserIds)
   const chosen = new Set<string>()
   return snapshot.users.filter((u) => kindOf(u, chosen, notPeople, shared) === 'person')
 }
