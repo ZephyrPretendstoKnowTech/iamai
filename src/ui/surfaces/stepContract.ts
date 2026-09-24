@@ -29,6 +29,7 @@ import { appearedEnforced, dimensionWords, watchedArrive } from '../../roadmap/o
 import type { Condition, Lifecycle, Milestone } from '../../roadmap/lifecycle.ts'
 import { heldForReview, nextMilestone, reviewCauses } from '../../roadmap/lifecycle.ts'
 import type { PolicyHold, UnavailableReason } from '../../roadmap/operations.ts'
+import { portalName } from '../../roadmap/portalLines.ts'
 import { awaitsOwnObject, awaitsWorkflowRecord, createWaitsOnReadiness, enforcesOnRun, implementationOffered, isPreserved, operationsOf, policyHold, switchedOffPolicies, unavailableReason, strengthNameIn } from '../../roadmap/operations.ts'
 import { requiredMembers } from '../../roadmap/tracking.ts'
 import { unreadLine } from '../../roadmap/evidence.ts'
@@ -154,6 +155,8 @@ type ContractWords = {
   foundReadinessEnforced: string
   /** Who a readiness measure counts, by its family (copy/reasons.ts READINESS_MEASURE). */
   readinessScope: Record<string, string>
+  /** A deployed policy that moved from the plan, as one card with its fix (driftCardOf; walk list 4.x item 24). */
+  drift: { changed: string; differs: string; setBack: string; setBackTasks: string; set: string; setTasks: string; anyExcept: string; names: Record<string, string> }
   /** Who a finished policy's readiness fact counts, by its family: "19 of 28 people have a method it accepts". */
   acceptedWho: Record<string, string>
   /** Where a readiness number is moved, by family, for a measure this plan runs no step for. */
@@ -1039,8 +1042,9 @@ function fixOf(step: Step, cs: Record<string, unknown> | undefined, ex: Record<s
     for (const m of step.state.members) {
       if (!m.change.reviewRequired) continue
       const name = step.tracking?.members?.find((t) => t.key === m.key)?.policyName || m.sourceName
-      if (m.change.drifted) out.push({ key: `review:${m.key}`, text: fillText(CONTRACT.fixReview, { name }) })
-      if (m.change.unwritten.length > 0) out.push({ key: `review:${m.key}:unwritten`, text: fillText(engine.tracking.correctionManual, { name, fields: dimensionWords(m.change.unwritten) }) })
+      // One fix per member, in the words of its card (driftCardOf; walk list 4.x item 24).
+      if (m.change.unwritten.length > 0) out.push({ key: `review:${m.key}:unwritten`, text: driftFixOf(step, m.key, m.change.unwritten, m.change.drifted) })
+      else if (m.change.drifted) out.push({ key: `review:${m.key}`, text: fillText(CONTRACT.fixReview, { name }) })
     }
   }
   const what = (cs?.whatToDo ?? null) as Record<string, unknown> | null
@@ -2160,6 +2164,62 @@ export function readinessValueOf(gate: NonNullable<Step['action']['readinessGate
   return template !== undefined && gate.value.endsWith('%') ? fillText(template, { value, strength: gate.strength ?? '' }) : value
 }
 
+/**
+ * The whole policy a member works towards: its create, its update's intent, or
+ * the step's intended policy where the goal has no operation.
+ */
+function intendedOf(step: Step, memberKey: string): Record<string, unknown> | null {
+  const op = requiredMembers(step).find((m) => m.key === memberKey)?.op ?? null
+  const body = op === null ? step.action.intended ?? null : op.mode === 'update' ? (op as { intent?: Record<string, unknown> }).intent ?? null : op.body
+  return (body ?? null) as Record<string, unknown> | null
+}
+/**
+ * What the plan asks for in one dimension, by the portal's own names, for the
+ * conditions a person ticks ("Exchange ActiveSync clients and Other clients");
+ * null for anything else, which the fix sends to Implementation Tasks.
+ */
+function intendedWords(dimension: string, body: Record<string, unknown> | null): string | null {
+  const c = (body?.conditions ?? {}) as Record<string, unknown>
+  const named = (kind: Parameters<typeof portalName>[0], values: unknown): string | null => {
+    const all = (Array.isArray(values) ? values : typeof values === 'string' ? values.split(',') : []).map((v) => String(v).trim()).filter((v) => v !== '' && v.toLowerCase() !== 'all')
+    const words = all.map((v) => portalName(kind, v))
+    return all.length > 0 && words.every((w) => w !== null) ? list(words as string[]) : null
+  }
+  switch (dimension) {
+    case 'clientAppTypes': return named('clientApp', c.clientAppTypes)
+    case 'authenticationFlows': return named('flow', (c.authenticationFlows as { transferMethods?: unknown } | undefined)?.transferMethods)
+    case 'platforms': { const p = c.platforms as { includePlatforms?: unknown; excludePlatforms?: unknown } | undefined; const exc = named('platform', p?.excludePlatforms); const inc = named('platform', p?.includePlatforms); return exc === null ? inc : fillText(CONTRACT.drift.anyExcept, { platforms: exc }) }
+    case 'signInRiskLevels': return named('risk', c.signInRiskLevels)
+    case 'userRiskLevels': return named('risk', c.userRiskLevels)
+    default: return null
+  }
+}
+/** The one fix sentence for a member that moved from the plan in parts IAMAI does not write: "Set Client apps back to Exchange ActiveSync clients and Other clients." */
+function driftFixOf(step: Step, memberKey: string, unwritten: readonly string[], changed: boolean): string {
+  const D = CONTRACT.drift
+  const body = intendedOf(step, memberKey)
+  const dims = [...new Set(unwritten.map((d) => d.replace(/^conditions\./, '')))]
+  // "back" only where IAMAI watched it change; a policy first seen this way never had it (R4-25).
+  return dims.map((d) => { const name = D.names[d] ?? D.names.other; const value = intendedWords(d, body); return value === null ? fillText(changed ? D.setBackTasks : D.setTasks, { dimension: name }) : fillText(changed ? D.setBack : D.set, { dimension: name, value }) }).join(' ')
+}
+/**
+ * A deployed policy that is no longer what the plan asked for, as one card:
+ * what changed, and the fix with its values ("Client apps changed · Set Client
+ * apps back to Exchange ActiveSync clients and Other clients."). It replaces
+ * the New evidence card and the two Review cards that said the same change
+ * three ways (walk list 4.x item 24). Null where no member moved in a part
+ * IAMAI does not write.
+ */
+function driftCardOf(step: Step): ReadinessTile | null {
+  const D = CONTRACT.drift
+  const moved = step.state.members.filter((m) => m.change.reviewRequired && m.change.unwritten.length > 0)
+  if (moved.length === 0) return null
+  const dims = [...new Set(moved.flatMap((m) => m.change.unwritten.map((d) => d.replace(/^conditions\./, ''))))]
+  const heading = list(dims.map((d, i) => { const name = D.names[d] ?? D.names.other; return i === 0 ? name : name.charAt(0).toLowerCase() + name.slice(1) }))
+  const changed = moved.some((m) => m.change.drifted)
+  return { key: 'drift', label: fillText(changed ? D.changed : D.differs, { dimensions: heading }), tone: 'warn', value: moved.map((m) => driftFixOf(step, m.key, m.change.unwritten, m.change.drifted)).join(' '), note: null }
+}
+
 /** The tile that says what the step's own state turns on, where the state turns on something. */
 function stateTile(step: Step, c: StepContract, setupAfterEnforcement = false): ReadinessTile | null {
   const s = c.state
@@ -2196,7 +2256,8 @@ function stateTile(step: Step, c: StepContract, setupAfterEnforcement = false): 
     return { key: 'review', label: CONTRACT.foundLabel.awaitingReview, tone: 'wait', value: t2.awaitingReview, note: unread === null ? said : `${said} ${unread}` }
   }
   if (s.satisfied && step.directionQuestions) return { key: 'decision', label: t.decision, tone: 'good', value: s.lane?.label ?? s.stage, note: c.doneWhen.join(' ') }
-  if (s.condition === 'review-required') return { key: 'evidence', label: CONTRACT.foundLabel.observation, tone: 'warn', value: CONTRACT.condition['review-required'], note: step.state.observation?.note ?? c.milestone.gatedBy }
+  // A policy that moved from the plan: one card, the change and its fix (walk list 4.x item 24).
+  if (s.condition === 'review-required') return driftCardOf(step) ?? { key: 'evidence', label: CONTRACT.foundLabel.observation, tone: 'warn', value: CONTRACT.condition['review-required'], note: step.state.observation?.note ?? c.milestone.gatedBy }
   // The value is the substatus's own word (U11); the note is what to decide (B10 P1-1).
   if (s.condition === 'needs-decision') return { key: 'decision', label: t.decision, tone: 'warn', value: t.decisionValue, note: c.decisionNote }
   // A tile's detail says what its value is evidence of, where the contract carries no finding of its own (editorial batch C).
@@ -2244,6 +2305,9 @@ function exclusionsTile(step: Step, c: StepContract): ReadinessTile | null {
   if (!e || c.state.satisfied || c.state.setAside || c.state.condition === 'baseline-conflict') return null
   const t = R().tiles
   const because = c.implementation.offered ? null : c.implementation.because
+  // One card, the problem and its fix: the group under Users → Exclude, opened
+  // on the step that owns that edit (walk list 4.x item 24).
+  if (e.reached.length > 0 && e.group) return { key: 'exclusions', label: t.notExcluded, tone: 'warn', value: fillText(t.notExcludedFix, { group: e.group }), note: null, link: stepLink(GATE_STEP.exclusionGroup, stepById[GATE_STEP.exclusionGroup]?.title ?? GATE_STEP.exclusionGroup) }
   if (e.reached.length > 0) return { key: 'exclusions', label: t.exclusions, tone: 'warn', value: t.exclusionsReached, note: because }
   if (e.unproven.length > 0) return { key: 'exclusions', label: t.exclusions, tone: 'warn', value: t.exclusionsUnproven, note: because }
   return null
@@ -2388,6 +2452,8 @@ function engineTiles(c: StepContract, blockers: readonly PrerequisiteBlocker[], 
       continue
     }
     if ((b.kind === 'sourceConflict' || b.kind === 'baselineSafetyConflict') && present.has('baseline')) continue
+    // A policy that reaches the emergency accounts has its one card (exclusionsTile).
+    if (b.kind === 'baselineSafetyConflict' && present.has('exclusions')) continue
     // A Direction answer the step waits on (roadmap/direction.ts): the tile links to the Direction step that asks it.
     if (b.kind === 'decision' && isDirectionStep(b.id)) {
       if (present.has(`direction:${b.id}`)) continue
@@ -2431,10 +2497,11 @@ function implementationTile(step: Step, c: StepContract): ReadinessTile | null {
   // leads its Implementation, so "Unavailable" here would be the opposite.
   if (awaitsOwnObject(step) && step.objectTask) return null
   if (c.state.satisfied || c.state.setAside || c.state.condition === 'baseline-conflict' || c.state.condition === 'needs-decision' || c.state.condition === 'review-required') return null
-  // A policy the tenant switched off has one thing to do, and the step hands it
-  // over on every channel: "Unavailable" over that procedure said the opposite.
-  const value = c.implementation.reason === 'switched-off' ? structuralWords.switchedOffTask : t.unavailable
-  return { key: 'implementation', label: t.implementation, tone: 'warn', value, note: c.implementation.because }
+  // A policy the tenant switched off has one thing to do, and its policy card and
+  // Implementation Tasks say it: a second card saying it again is gone (walk list
+  // 4.x item 24).
+  if (c.implementation.reason === 'switched-off') return null
+  return { key: 'implementation', label: t.implementation, tone: 'warn', value: t.unavailable, note: c.implementation.because }
 }
 
 /**
@@ -2496,7 +2563,12 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
   const facts = [enforcedReadingTile(step), unwatchedTile(step), ownPolicyTile(step), belowGoalFloorTile(c), followUpTile(c), ...emergencyTiles(step, c), ...configuredTiles, ...((configuration.length && step.id !== 's-prereq-break-glass') || (c.satisfiedFacts?.length ?? 0) > 0 ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), exclusionsTile(step, c), exclusionsReachTile(c), implementationTile(step, c), inventory].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
   // The emergency step's failing checks are its account slots' lines (P0-7): no check tile beside them.
-  const fixes = fixTiles(c.fix, prerequisiteLabel).filter((t) => !(step.emergency && t.key.startsWith('check:')) && !(configuration.length && /passkey.*(?:review|settings)|profile.*review/i.test(`${t.label} ${t.value}`)))
+  // The drift card is the review's one card, and the exclusions card the exposure's
+  // with its link to the step that owns the edit (walk list 4.x item 24).
+  const drawn = new Set(facts.map((t) => t.key))
+  const exposureCard = facts.some((t) => t.key === 'exclusions' && t.link !== undefined)
+  const oneCard = (key: string): boolean => (drawn.has('drift') && key.startsWith('review:')) || (exposureCard && (key === `step:${GATE_STEP.exclusionGroup}` || key === `missing:${GATE_STEP.exclusionGroup}`))
+  const fixes = fixTiles(c.fix, prerequisiteLabel).filter((t) => !oneCard(t.key) && !(step.emergency && t.key.startsWith('check:')) && !(configuration.length && /passkey.*(?:review|settings)|profile.*review/i.test(`${t.label} ${t.value}`)))
   // What holds only the turn-on while the create is the next action: a wait on
   // the enforcement, never a fix before the create (enforcementWaitsOf). Headed
   // "Prerequisites", "when 1 trusted location exists (now 0)" on a step that
@@ -2504,7 +2576,7 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
   // the claim the owner rule took out of Fix (2026-09-11) — so the card says
   // what it holds. The contract's one list, which the exports read too.
   const waits = fixTiles(c.enforcementWaits, prerequisiteLabel).map((t): ReadinessTile => ({ ...t, label: R().tiles.beforeTurnOn, tone: 'wait' }))
-  const present = new Set<string>([...facts.map((t) => t.key), ...fixes.map((t) => t.key), ...waits.map((t) => t.key)])
+  const present = new Set<string>([...facts.map((t) => t.key), ...fixes.map((t) => t.key), ...waits.map((t) => t.key), ...(exposureCard ? [`step:${GATE_STEP.exclusionGroup}`] : [])])
   const lead = facts.filter(unresolved)
   const effectiveBlockers = configuration.length ? blockers.filter(b => !/passkey.*(?:review|settings)|profile.*review/i.test(b.label)) : blockers
   const rowNamed = effectiveBlockers.find((b) => b.primary === true && (b.kind === 'step' || b.kind === 'suspendedPrerequisite'))?.id ?? null

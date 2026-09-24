@@ -637,12 +637,11 @@ test('006.13 (R4-25): a policy first seen with a part IAMAI does not write left 
   for (const line of said) {
     assert.doesNotMatch(line, /no longer the policy IAMAI was watching|what changed|change somebody made|accounted for/i, `a change nobody made: ${line}`)
   }
-  // The Fix names the policy, where it differs, and where a person corrects it.
+  // The Fix names where it differs and what to set it to, never "back" (walk list 4.x item 24).
   const fix = contract.fix.find((x) => x.key.startsWith('review:'))
   assert.ok(fix, `Fix before continuing lost the policy: ${JSON.stringify(contract.fix)}`)
-  assert.match(fix.text, new RegExp(step.tracking!.policyName!))
-  assert.match(fix.text, /device platforms/)
-  assert.match(fix.text, /Entra admin center/)
+  assert.match(fix.text, /^Set Device platforms to Any device except /, fix.text)
+  assert.doesNotMatch(fix.text, /\bback\b/, fix.text)
   assert.match(nextMilestone(step).label, /Correct the policy in the Entra admin center \(device platforms\)/)
   assert.equal(dates, '', 'a held step dates nothing, and this one waits on the correction its action names')
 })
