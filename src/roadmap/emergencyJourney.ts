@@ -26,6 +26,8 @@ import { fillText } from '../content/render.ts'
 // (oneProducer.test, stateAgreement.test); the Plan's own word for a fact that
 // must be corrected is this one.
 const NEEDS_CORRECTION = (app.plan as unknown as { stepContract: { stateWords: { needsCorrection: string } } }).stepContract.stateWords.needsCorrection
+/** Accounts and identity before any account is saved (pages.app.plan.emergencyTasks): nothing is chosen, so nothing needs correcting. */
+const NO_ACCOUNTS_CHOSEN = (app.plan as unknown as { emergencyTasks: { noAccountsChosen: string } }).emergencyTasks.noAccountsChosen
 
 export const EMERGENCY_ACCOUNTS = 's-prereq-break-glass'
 export const EMERGENCY_GROUP = 's-prereq-exclusion-group'
@@ -387,7 +389,7 @@ export function journeyAccountFindings(report: SubjectReport, snapshot: TenantSn
   const identityPending = identityResults.filter(({ result }) => result.outcome !== 'pass')
   const identity: ConfigurationFinding = {
     key: 'account-setup', label: 'Accounts and identity',
-    value: identityPending.some(({ result }) => result.outcome === 'fail') ? NEEDS_CORRECTION : identityPending.length ? 'Could not verify' : 'Verified',
+    value: mapping.breakGlassUserIds.length === 0 ? NO_ACCOUNTS_CHOSEN : identityPending.some(({ result }) => result.outcome === 'fail') ? NEEDS_CORRECTION : identityPending.length ? 'Could not verify' : 'Verified',
     outcome: identityPending.some(({ result }) => result.outcome === 'fail') ? 'fail' : identityPending.length ? 'unknown' : 'pass',
     detail: mapping.breakGlassUserIds.length ? '' : 'Select the intended accounts so IAMAI can evaluate their identity and role evidence.',
     items: identityItems,
@@ -455,7 +457,7 @@ export function journeyAccountFindings(report: SubjectReport, snapshot: TenantSn
 }
 
 export function journeyGroupFindings(report: SubjectReport | null | undefined, name: string | null, selected: boolean, snapshot?: TenantSnapshot, groupId?: string | null, groups?: GroupMembers, accountIds: readonly string[] = []): ConfigurationFinding[] {
-  const choice: ConfigurationFinding = { key: 'group-choice', label: 'Exclusions group', value: selected ? 'Verified' : 'Choose an exclusions group', detail: selected ? '' : 'Select a group under Exclusions group, then Save. To create one, follow Create an emergency exclusions group in Implementation Tasks.', outcome: selected ? 'pass' : 'unknown', items: selected && name ? [{ label: 'Selection', factLabel: 'Selection', value: 'Saved', subjectId: groupId ?? 'group-choice', subjectLabel: name, outcome: 'pass', issueKeys: ['group:choice'] }] : [], taskSafe: false }
+  const choice: ConfigurationFinding = { key: 'group-choice', label: 'Exclusions group', value: selected ? 'Verified' : 'Choose an exclusions group', detail: selected ? '' : 'Select a group under Exclusions group. To create one, follow Create an emergency exclusions group in Implementation Tasks.', outcome: selected ? 'pass' : 'unknown', items: selected && name ? [{ label: 'Selection', factLabel: 'Selection', value: 'Saved', subjectId: groupId ?? 'group-choice', subjectLabel: name, outcome: 'pass', issueKeys: ['group:choice'] }] : [], taskSafe: false }
   if (!report) {
     if (selected) { choice.outcome = 'unknown'; choice.value = 'Could not verify'; choice.detail = 'IAMAI could not read the saved group for this scan. The saved selection has been kept.' }
     return [choice, { key: 'group-members', label: 'Emergency account membership', value: 'Not verified', detail: 'IAMAI could not read the selected group’s direct members. Membership has not been verified.', outcome: 'unknown' }, { key: 'group-policies', label: 'Policy exclusions', value: 'Not verified', detail: 'IAMAI could not verify the applicable policy exclusions for this scan.', outcome: 'unknown' }]

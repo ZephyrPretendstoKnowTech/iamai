@@ -8,7 +8,6 @@
   "rail": "Completed",
   "headings": [
     "About this Step",
-    "Tasks Remaining",
     "Implementation Tasks",
     "Completion Criteria"
   ],
@@ -20,8 +19,6 @@
   ],
   "channels": [
     "Entra",
-    "PowerShell",
-    "JSON",
     "AI Info"
   ],
   "when": "Already in place"

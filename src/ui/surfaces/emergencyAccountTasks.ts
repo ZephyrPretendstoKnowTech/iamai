@@ -12,6 +12,7 @@ import { app } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { list } from '../../copy/statements.ts'
 import { tenantNameOf } from './stepVars.ts'
+import { operatorUserId } from '../../derive/operator.ts'
 import type { StepVarContext } from './stepVars.ts'
 
 export type EmergencyAccountTaskVariant = {
@@ -70,6 +71,8 @@ export type EmergencyAccountStatus = {
   satisfied: boolean
   /** Signals shown beside the account that are not checks: they count toward nothing and gate nothing. */
   notes?: { label: string; value: string }[]
+  /** One line on the account that is signed in to IAMAI (the scan's /me): a fact, never a check. */
+  headsUp?: string
 }
 
 /** Shared task projection used by the connected emergency-access steps. */
@@ -84,7 +87,7 @@ export type EmergencyTaskProjection = {
 }
 
 /** What a procedure says about whether a selected account needs it (pages.app.plan.emergencyTasks). */
-const WORDS = (app.plan as unknown as { emergencyTasks: Record<'configureNotNeeded' | 'passkeyNotNeeded' | 'passkeyUnreadOne' | 'passkeyUnreadMany' | 'passkeyNeededOne' | 'passkeyNeededMany' | 'createNotNeeded' | 'variantsLead', string> }).emergencyTasks
+const WORDS = (app.plan as unknown as { emergencyTasks: Record<'configureNotNeeded' | 'passkeyNotNeeded' | 'passkeyUnreadOne' | 'passkeyUnreadMany' | 'passkeyNeededOne' | 'passkeyNeededMany' | 'createNotNeeded' | 'variantsLead' | 'signedInAccount', string> }).emergencyTasks
 
 const safe = (value: string): string => oneLine(value).trim()
 const userOf = (ctx: StepVarContext, id: string) => ctx.snapshot.users.find(user => user.id.toLowerCase() === id.toLowerCase())
@@ -100,14 +103,13 @@ function tenantLead(ctx: StepVarContext): string[] {
 
 function createSteps(domain: string, replacement: boolean): string[] {
   return [
-    'Keep your working administrator session open.',
     'Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Users → New user → Create new user**.',
     `Enter a unique username, such as **emergency-access-primary** or **emergency-access-secondary**, or choose another account name. Select **${safe(domain)}** from the domain list.`,
     'Enter a display name that identifies the account’s emergency purpose. Leave **Account enabled** selected.',
     'Store the initial password securely where authorized staff can retrieve it without signing in to this tenant.',
     'Select **Review + create**, check the username and domain, then select **Create**.',
     'Return to IAMAI and select **Scan to update the plan**.',
-    'Select the new account under **Emergency access accounts**, then select **Save**.',
+    'Select the new account under **Emergency access accounts**, then select **Done**.',
     ...(replacement ? ['Keep the existing recovery account and its credentials available until the replacement is fully prepared and final verification succeeds.'] : []),
   ]
 }
@@ -118,7 +120,7 @@ export function yubiKeySteps(upn: string, device = 'approved YubiKey'): string[]
     `In a separate browser session, open [Security info](https://mysignins.microsoft.com/security-info) and sign in as ${account}.`,
     'Select **Add sign-in method**, then the passkey or security-key option offered by Microsoft. Choose **Security key** as the storage destination.',
     `Connect the ${device}. Set or enter its PIN and touch the key when prompted.`,
-    `Name the new method and finish registration. Confirm it appears in ${account}’s Security info.`,
+    'Name the new method and finish registration.',
     'Open a separate private browser window and sign in to Microsoft Entra admin center with the new passkey. Confirm the account and tenant, then sign out. Retain the previous working method until this succeeds.',
     `Store the ${device} and its access information securely where authorized staff can retrieve them without this tenant.`,
     'Return to IAMAI and select **Scan to update the plan**.',
@@ -164,8 +166,24 @@ function dedicatedAccountNotes(step: Step): ReadonlyMap<string, { label: string;
   return notes
 }
 
-function accountStatuses(ctx: StepVarContext, preparations: Preparations, notes: ReadonlyMap<string, { label: string; value: string }[]> = new Map()): EmergencyAccountStatus[] {
-  const selected = ctx.mapping.breakGlassUserIds
+/**
+ * Whether an account is the one signed in to IAMAI: the Plan's operator (the
+ * scan's /me, or the account signed in, by sign-in name, as Connect shows it:
+ * planData.ts operatorIdOf), or the scan's /me by object id or sign-in name. A
+ * fact about the account, never a guess about who uses it.
+ */
+function signedInAccount(ctx: StepVarContext): (id: string) => boolean {
+  const me = (ctx.snapshot.config.me?.rows?.[0] ?? null) as { userPrincipalName?: unknown } | null
+  const ids = new Set([ctx.operatorId, operatorUserId(ctx.snapshot)].filter((x): x is string => typeof x === 'string' && x !== '').map(x => x.toLowerCase()))
+  const meUpn = typeof me?.userPrincipalName === 'string' && me.userPrincipalName.trim() ? me.userPrincipalName.trim().toLowerCase() : null
+  return (id) => ids.has(id.toLowerCase()) || (meUpn !== null && userOf(ctx, id)?.userPrincipalName?.trim().toLowerCase() === meUpn)
+}
+
+function accountStatuses(ctx: StepVarContext, preparations: Preparations, notes: ReadonlyMap<string, { label: string; value: string }[]> = new Map(), signedIn: (id: string) => boolean = () => false): EmergencyAccountStatus[] {
+  // Numbered by the account's display name, never by the order they were
+  // picked: the second account picked read as "Emergency access account 1".
+  const displayName = (id: string): string => safe(userOf(ctx, id)?.displayName || targetOf(ctx, id))
+  const selected = [...ctx.mapping.breakGlassUserIds].sort((a, b) => displayName(a).localeCompare(displayName(b), undefined, { sensitivity: 'base', numeric: true }))
   const domain = initialDomain(ctx.snapshot)
   const rows: EmergencyAccountStatus[] = selected.map((id, index) => {
     const user = userOf(ctx, id)
@@ -218,12 +236,16 @@ function accountStatuses(ctx: StepVarContext, preparations: Preparations, notes:
       instruction = 'IAMAI could not fully check this account. Open MFA Readiness and find it under Emergency access, where Evidence read says what could not be read. No account change is established.'
     }
     const remainingCount = checks.every(value => value !== null) ? checks.filter(value => value === false).length : null
-    const note = notes.get(id.toLowerCase())
-    return { key: id, accountId: id, heading, upn, title, instruction, completed, remainingCount, satisfied: checks.every(value => value === true), ...(note ? { notes: note } : {}) }
+    // The account signed in to IAMAI says so in one line, in place of the check's note about it.
+    const note = signedIn(id) ? undefined : notes.get(id.toLowerCase())
+    return { key: id, accountId: id, heading, upn, title, instruction, completed, remainingCount, satisfied: checks.every(value => value === true), ...(note ? { notes: note } : {}), ...(signedIn(id) ? { headsUp: WORDS.signedInAccount } : {}) }
   })
+  // An empty card says only that nothing is chosen: the rail says how to choose.
+  // The first one says where to create an account, once.
   while (rows.length < 2) {
     const slot = rows.length + 1
-    rows.push({ key: `empty-${slot}`, accountId: null, heading: `Emergency access account ${slot}`, upn: null, title: 'No account selected', instruction: 'Select an account under Emergency access accounts, then Save. To create one, follow Create an emergency account in Implementation Tasks.', completed: [], remainingCount: null, satisfied: false })
+    const first = rows.every(row => row.accountId !== null)
+    rows.push({ key: `empty-${slot}`, accountId: null, heading: `Emergency access account ${slot}`, upn: null, title: 'No account selected', instruction: first ? 'To create one, follow Create an emergency account in Implementation Tasks.' : '', completed: [], remainingCount: null, satisfied: false })
   }
   return rows
 }
@@ -251,20 +273,26 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
   const registrationTarget = toPrepare.length === 1 ? toPrepare[0] : 'the account you are preparing'
   const bold = (upns: string[]): string => list(upns.map(upn => `**${upn}**`))
   const unreadLine = unread.length === 0 ? [] : [unread.length === 1 ? fillText(WORDS.passkeyUnreadOne, { account: bold(unread) }) : fillText(WORDS.passkeyUnreadMany, { accounts: bold(unread) })]
-  // More than one account needing a passkey (a new tenant's usual case) used to
-  // merge the session reminder into the account list and point "above": the
-  // reminder is its own first line here as on every emergency task.
+  // More than one account needing a passkey (a new tenant's usual case) names
+  // them all on the procedure's first line.
   const repeatLead = needing.length > 1
-    ? ['Keep your working administrator session open.', fillText(WORDS.passkeyNeededMany, { accounts: bold(needing) }), ...unreadLine]
+    ? [fillText(WORDS.passkeyNeededMany, { accounts: bold(needing) }), ...unreadLine]
     : needing.length === 1
-      ? ['Keep your working administrator session open.', ...(unreadLine.length ? [fillText(WORDS.passkeyNeededOne, { account: bold(needing) }), ...unreadLine] : [])]
+      ? (unreadLine.length ? [fillText(WORDS.passkeyNeededOne, { account: bold(needing) }), ...unreadLine] : [])
       : selected.length
-        ? ['Keep your working administrator session open.', ...(unreadLine.length ? unreadLine : [WORDS.passkeyNotNeeded])]
-        : ['Keep your working administrator session open.']
+        ? (unreadLine.length ? unreadLine : [WORDS.passkeyNotNeeded])
+        : []
   // The existing-account procedure names only the accounts whose check fails.
   type ConfigureCheck = 'initialDomain' | 'enabled' | 'permanentGlobalAdministrator'
-  const needs = (check: ConfigureCheck): string[] => selected.filter(id => preparations.get(id)?.checks.cloudOnly !== false && preparations.get(id)?.checks[check] === false).map(id => targetOf(ctx, id))
+  const needsIds = (check: ConfigureCheck): string[] => selected.filter(id => preparations.get(id)?.checks.cloudOnly !== false && preparations.get(id)?.checks[check] === false)
+  const needs = (check: ConfigureCheck): string[] => needsIds(check).map(id => targetOf(ctx, id))
   const named = (upns: string[]): string => upns.map(upn => `**${upn}**`).join(', ')
+  // Global Administrator that is eligible, or active with an end date, is held
+  // in Privileged Identity Management and is made permanent and active there;
+  // none at all is a direct assignment. The scan's roles say which.
+  const holdsGa = (roles: Record<string, string[]>, id: string): boolean => (roles[id] ?? []).some(role => role.toLowerCase() === GLOBAL_ADMIN_ROLE)
+  const viaPim = needsIds('permanentGlobalAdministrator').filter(id => holdsGa(ctx.snapshot.roles.active, id) || holdsGa(ctx.snapshot.roles.eligible, id))
+  const direct = needsIds('permanentGlobalAdministrator').filter(id => !viaPim.includes(id))
   const CONFIGURE_CHECKS = ['initialDomain', 'enabled', 'permanentGlobalAdministrator'] as const
   const configureNeeded = CONFIGURE_CHECKS.some(check => needs(check).length > 0)
   // "No selected account needs a change" is a finding about the selected
@@ -304,36 +332,32 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
   // someone's daily account and bg.notPersonal's fix is a new one, so saying no
   // new account is needed would steer the reader to keep it.
   const notes = dedicatedAccountNotes(step)
-  const createClear = selected.length >= 2 && selected.every(id => preparations.get(id)?.checks.cloudOnly === true && !notes.has(id.toLowerCase()))
+  const signedIn = signedInAccount(ctx)
+  const createClear = selected.length >= 2 && selected.every(id => preparations.get(id)?.checks.cloudOnly === true && !notes.has(id.toLowerCase()) && !signedIn(id))
   const create = domain ? createSteps(domain, false) : [...tenantLead(ctx), 'Open **Entra ID → Custom domain names** and note the tenant’s initial **onmicrosoft.com** domain.', 'Open **Entra ID → Users → New user → Create new user** and create a cloud-only emergency account on that domain.', 'Return to IAMAI and select **Scan to update the plan**.']
-  // After the session reminder where there is one: the reminder leads every task.
-  const createAt = create[0] === 'Keep your working administrator session open.' ? 1 : 0
-  if (createClear) create.splice(createAt, 0, fillText(WORDS.createNotNeeded, { n: selected.length }))
+  if (createClear) create.unshift(fillText(WORDS.createNotNeeded, { n: selected.length }))
   const tasks: EmergencyAccountTask[] = [
     task({ id: 'create-account', accountId: null, title: 'Create an emergency account', targetUpn: null, required: false, readinessKey: 'account-setup', evidence: null, actionLabel: 'Open creation instructions', steps: create }),
     task({ id: 'configure-account', accountId: null, title: 'Configure an existing account', targetUpn: null, required: false, readinessKey: 'account-setup', evidence: null, actionLabel: 'Open configuration instructions', steps: [
-      'Keep your working administrator session open.',
       'Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Users**.',
-      // Each change names the selected accounts that need it; with none needing
-      // any, every change stays available as a reference.
+      // Each change is listed only for the chosen accounts IAMAI's checks say
+      // need it, and names them; a change no chosen account needs is not listed
+      // (owner, 2026-09-23: four conditional fixes read as work).
       // What this procedure is about, and nothing wider. "No selected account
       // currently needs configuration." sits on a step whose other tile can be
       // saying a passkey is missing, and a reader takes it for the step's
       // all-clear and closes the step. These three changes are the sign-in
       // address, the enabled state and the role; the passkey is its own task.
       ...(configureClear ? [WORDS.configureNotNeeded] : []),
-      ...(!configureNeeded || needs('initialDomain').length ? [`${needs('initialDomain').length ? `Open ${named(needs('initialDomain'))}` : 'To change a sign-in address, open the account'}, select **Properties → Edit properties**, change **User principal name** to the tenant’s initial domain${domain ? ` **${safe(domain)}**` : ''}, and save. Do not use this to convert a synchronized identity.`] : []),
-      ...(!configureNeeded || needs('enabled').length ? [`${needs('enabled').length ? `Open ${named(needs('enabled'))}` : 'To enable an account, open the account'}, select **Properties → Edit properties → Settings**, set **Account enabled** to **Yes**, and save.`] : []),
-      ...(!configureNeeded || needs('permanentGlobalAdministrator').length ? [
-        `For a direct role assignment, open **Entra ID → Roles & admins → Global Administrator → Add assignments**, select ${needs('permanentGlobalAdministrator').length ? named(needs('permanentGlobalAdministrator')) : 'the account'}, and complete the assignment.`,
-        'If Privileged Identity Management manages the role, open **ID Governance → Privileged Identity Management → Microsoft Entra roles → Roles → Global Administrator → Add assignments**. Choose **Assignment type: Active** and **Permanently assigned**.',
-      ] : []),
-      'Save the changes, reopen the account, and confirm the sign-in address, enabled state, cloud-only identity, and permanent active role.',
+      ...(needs('initialDomain').length ? [`Open ${named(needs('initialDomain'))}, select **Properties → Edit properties**, change **User principal name** to the tenant’s initial domain${domain ? ` **${safe(domain)}**` : ''}, and save.`] : []),
+      ...(needs('enabled').length ? [`Open ${named(needs('enabled'))}, select **Properties → Edit properties → Settings**, set **Account enabled** to **Yes**, and save.`] : []),
+      ...(direct.length ? [`Open **Entra ID → Roles & admins → Global Administrator → Add assignments**, select ${named(direct.map(id => targetOf(ctx, id)))}, and complete the assignment.`] : []),
+      ...(viaPim.length ? [`Open **ID Governance → Privileged Identity Management → Microsoft Entra roles → Roles → Global Administrator → Add assignments**, select ${named(viaPim.map(id => targetOf(ctx, id)))}. Choose **Assignment type: Active** and **Permanently assigned**.`] : []),
       'Return to IAMAI and select **Scan to update the plan**.',
     ] }),
     task({ id: 'set-up-passkey', accountId: null, title: 'Set up an approved passkey', targetUpn: null, required: false, readinessKey: 'recovery-methods', evidence: null, actionLabel: 'Open passkey instructions', steps: variants[0].steps, variants, defaultVariantId: variants[0].id }),
   ]
-  const accounts = accountStatuses(ctx, preparations, notes)
+  const accounts = accountStatuses(ctx, preparations, notes, signedIn)
   const confirmedPriority = (row: EmergencyAccountStatus): number => row.accountId === null ? 0
     : row.title === 'Use a cloud-only account' ? 1
       : row.title === 'Change the sign-in address' ? 2

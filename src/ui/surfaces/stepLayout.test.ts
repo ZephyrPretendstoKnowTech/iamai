@@ -51,9 +51,10 @@ test('U2/U5: the action column sits between Readiness and Implementation, and ho
   assert.match(column, /decides && <Decision /, 'the decision controls are not children of the action column')
   assert.equal(CONTENT_STEP.split('<Decision ').length - 1, 1, 'the decision is drawn somewhere besides the action column')
   assert.doesNotMatch(CONTENT_STEP, /StepRail/, 'the old rail is still drawn')
-  // The column is led by the milestone, with no sub-line where the package authors none.
+  // The column is led by the milestone, with no sub-line where the package authors none,
+  // and none at all on a Completed step (owner, 2026-09-23).
   const component = STEP_SECTIONS.slice(STEP_SECTIONS.indexOf('export function StepActionColumn'))
-  assert.match(component, /<aside className="step-action-column surface-inset">\s*<div className="side-block">\s*<div className="key-label">\{CONTRACT\.railMilestone\}<\/div>\s*<p className="metric">\{rail\.metric\}<\/p>\s*\{rail\.sub !== '' && <p className="metric-sub">\{rail\.sub\}<\/p>\}\s*<\/div>\s*\{children\}/)
+  assert.match(component, /<aside className="step-action-column surface-inset">\s*\{rail && <div className="side-block">\s*<div className="key-label">\{CONTRACT\.railMilestone\}<\/div>\s*<p className="metric">\{rail\.metric\}<\/p>\s*\{rail\.sub !== '' && <p className="metric-sub">\{rail\.sub\}<\/p>\}\s*<\/div>\}\s*\{children\}/)
 })
 
 test('U2: the body is a two-column grid, 1fr and 260px, that stacks below 900px', () => {
@@ -83,7 +84,10 @@ test('U3: the milestone sub-line is a written sentence or nothing, never generat
   // Two written sources, no third: the package's own action text, and — on a
   // Direction step, which has no package — the sentence its content writes for
   // what approving its answers does (owner, 2026-09-20). Neither is composed.
-  assert.match(STEP_BODY, /railOf\(contract, pkg\?\.meta\.milestone\?\.actionText \?\? directionMilestoneAction\(step\.id\)\)/, 'the action column does not read the two written sources')
+  // Prepare Emergency Access Accounts with nothing chosen reads its own written
+  // sentence for the choice first (owner, 2026-09-23): a content string, not composed.
+  assert.match(STEP_BODY, /railOf\(contract, choosing \?\? pkg\?\.meta\.milestone\?\.actionText \?\? directionMilestoneAction\(step\.id\)\)/, 'the action column does not read the written sources')
+  assert.match(STEP_BODY, /const choosing = step\.id === 's-prereq-break-glass' && ctx\.mapping\.breakGlassUserIds\.length === 0 \? CHOOSE_ACCOUNTS : null/)
   for (const id of DIRECTION_STEP_IDS) {
     const text = directionMilestoneAction(id)
     assert.ok(text && text.length > 0, `${id}: no written milestone sentence`)

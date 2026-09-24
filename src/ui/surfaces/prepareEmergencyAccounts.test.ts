@@ -1,0 +1,281 @@
+// Step 1.1 Prepare Emergency Access Accounts, as the owner walked it on a real
+// tenant (2026-09-23), and the shared step layout every step draws with it.
+// One test per item the owner approved; each names the item it holds.
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { fixture } from '../../roadmap/fixtures/index.ts'
+import type { Fixture } from '../../roadmap/fixtures/index.ts'
+import { runFixture } from '../../roadmap/fixtures/run.ts'
+import type { StepVarContext } from './stepVars.ts'
+import { laneReadings } from './planLanes.ts'
+import { laneViewOf } from './planBoard.ts'
+import { badgeLabel } from './stepContract.ts'
+import { channelTabsOf, headingsOf, stepBodyOf } from './stepBody.ts'
+import { pickerSaves, pickerSavesAlone } from './pickerRows.ts'
+import { applyStepDecisions } from '../../roadmap/decisions.ts'
+
+const read = (p: string): string => readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
+
+const STEP = 's-prereq-break-glass'
+
+/** The opened step as the board hands it over, on a fixture edited first. */
+function opened(name: Parameters<typeof fixture>[0], edit: (value: Fixture) => void = () => {}, id = STEP) {
+  const value = structuredClone(fixture(name))
+  edit(value)
+  const run = runFixture(value)
+  const step = run.steps.find((s) => s.id === id)!
+  const reading = laneReadings(run.steps).get(id)!
+  const titleOf = (x: string): string | null => run.steps.find((s) => s.id === x)?.title ?? null
+  const lane = laneViewOf(reading, titleOf)
+  const ctx: StepVarContext = { snapshot: value.snapshot, mapping: value.mapping, nameOf: (x) => run.input.names!.label(x), signature: 'IT', operatorId: value.operatorId, now: value.snapshot.asOf, groups: value.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
+  return { value, run, step, lane, ctx, body: stepBodyOf(step, ctx, { lane }) }
+}
+
+const noAccounts = (value: Fixture): void => { value.mapping.breakGlassUserIds = [] }
+
+test('#11 with no account chosen, the row and the badge say the person decides', () => {
+  const { lane, body } = opened('small', noAccounts)
+  assert.equal(lane.lane, 'Ready')
+  assert.equal(lane.substatus, 'Decision', 'choosing the accounts is the next action, not creating one')
+  assert.equal(lane.label, 'Ready · Decision')
+  assert.equal(badgeLabel(body.contract), 'Ready · Decision')
+  // Chosen accounts keep the reading they had.
+  assert.notEqual(opened('demo').lane.substatus, 'Decision')
+})
+
+test('#11 with no account chosen, AI Info says none is chosen yet, not that one needs correction', () => {
+  const { body, step } = opened('small', noAccounts)
+  const identity = (step.configurationFindings ?? []).find((f) => f.key === 'account-setup')!
+  assert.equal(identity.value, 'No accounts chosen yet')
+  const ai = body.artifacts.find((a) => a.id === 'ai')!.text()
+  assert.match(ai, /Accounts and identity: No accounts chosen yet/)
+  assert.doesNotMatch(ai, /Needs correction/)
+})
+
+test('#24 the account cards are numbered by the account display name, not by the order they were picked', () => {
+  // Breakglass2 picked first read as "Emergency access account 1".
+  const { body, value } = opened('demo', (f) => { f.mapping.breakGlassUserIds = [...f.mapping.breakGlassUserIds].reverse() })
+  const nameOf = (id: string | null) => value.snapshot.users.find((u) => u.id === id)?.displayName
+  const cards = body.emergencyAccountTasks!.accounts!
+  assert.deepEqual(cards.map((c) => [c.heading, nameOf(c.accountId)]), [['Emergency access account 1', 'Break-glass 1'], ['Emergency access account 2', 'Break-glass 2']])
+})
+
+test('#12 an emergency account that is the one signed in to IAMAI carries one heads-up line', () => {
+  const HEADS_UP = "You're signed in to IAMAI with this account. Emergency accounts should be ones nobody uses day to day."
+  const cardsWith = (me: (f: Fixture, id: string, upn: string) => Record<string, unknown>) => {
+    const { body, value } = opened('demo-week2', (f) => {
+      const id = f.mapping.breakGlassUserIds[0]
+      const upn = f.snapshot.users.find((u) => u.id === id)!.userPrincipalName!
+      f.snapshot.config.me = { status: 'ok', reason: null, rows: [me(f, id, upn)] }
+    })
+    return { cards: body.emergencyAccountTasks!.accounts!, id: value.mapping.breakGlassUserIds[0] }
+  }
+  // By object id, and by sign-in name.
+  for (const { cards, id } of [cardsWith((_f, id) => ({ id })), cardsWith((_f, _id, upn) => ({ id: '00000000-0000-0000-0000-00000000abcd', userPrincipalName: upn.toUpperCase() }))]) {
+    const signedIn = cards.find((c) => c.accountId === id)!
+    assert.equal(signedIn.headsUp, HEADS_UP)
+    assert.equal(signedIn.notes, undefined, 'one line, not the heads-up and the check note both')
+    assert.ok(cards.filter((c) => c.accountId !== id).every((c) => c.headsUp === undefined))
+  }
+  // The Plan's own operator, as Connect resolves the account signed in, with no /me read.
+  const byPlan = opened('demo-week2', (f) => { f.operatorId = f.mapping.breakGlassUserIds[1]; f.snapshot.config.me = { status: 'error', reason: 'denied', rows: [] } })
+  assert.equal(byPlan.body.emergencyAccountTasks!.accounts!.find((c) => c.accountId === byPlan.value.mapping.breakGlassUserIds[1])!.headsUp, HEADS_UP)
+  // Nobody else's account is flagged.
+  const plain = opened('demo-week2').body.emergencyAccountTasks!.accounts!
+  assert.ok(plain.every((c) => c.headsUp === undefined))
+})
+
+/** A step's decision block in content.json, wherever the step entry sits. */
+function decisionOf(stepId: string): Record<string, unknown> {
+  const content = JSON.parse(read('docs/design/content.json')) as unknown
+  let found: Record<string, unknown> | null = null
+  const walk = (o: unknown): void => {
+    if (found || o === null || typeof o !== 'object') return
+    const row = o as Record<string, unknown>
+    if (row.id === stepId && row.decision && typeof row.decision === 'object') { found = row.decision as Record<string, unknown>; return }
+    for (const v of Object.values(row)) walk(v)
+  }
+  walk(content)
+  assert.ok(found, `${stepId} has a decision`)
+  return found
+}
+
+test('#15 every picker saves from the list: Done saves and closes, taking a chip off saves, and no Save stands beside a picker alone', () => {
+  const picker = read('src/ui/components/Picker.tsx')
+  // Done saves the selection as it stands and closes the list.
+  assert.match(picker, /const done = \(\): void => \{\n\s+setOpen\(false\)\n\s+save\(latest\.current\)\n\s+\}/)
+  assert.match(picker, /<Button size="sm" variant="tertiary" onClick=\{done\}>\n\s+\{T\.done\}/)
+  // Taking a chip off saves what is left; a single-choice pick saves the pick.
+  assert.match(picker, /const next = selected\.filter\(\(s\) => s\.id !== id\)\n\s+onChange\(next\)\n\s+save\(next\)/)
+  assert.match(picker, /if \(single\) \{\n\s+setOpen\(false\)\n\s+save\(\[o\]\)/)
+  // Closing the list another way after a change saves it too: a pick is never left on screen unsaved.
+  assert.match(picker, /if \(ref\.current && !ref\.current\.contains\(e\.target as Node\)\) close\(\)/)
+  assert.match(picker, /if \(idsOf\(latest\.current\) !== openedWith\.current\) save\(latest\.current\)/)
+
+  // The decisions whose picker is their only input draw no Save; the rest keep theirs for their other inputs.
+  for (const id of [STEP, 's-prereq-exclusion-group', 's-prereq-service-accounts-group', 's-shared-devices']) assert.equal(pickerSavesAlone(decisionOf(id), id), true, id)
+  for (const id of ['s-prereq-trusted-location', 's-prereq-allowed-countries', 's-verify-mfa']) assert.equal(pickerSavesAlone(decisionOf(id), id), false, id)
+  // The office network's picker saves from its list too; its Save stays for the typed network.
+  assert.equal(pickerSaves(decisionOf('s-prereq-trusted-location'), 's-prereq-trusted-location'), true)
+  // Not where the decision also asks a question, or the list is read-only: their Save is what saves.
+  for (const id of ['s-prereq-allowed-countries', 's-verify-mfa']) assert.equal(pickerSaves(decisionOf(id), id), false, id)
+  const step = read('src/ui/surfaces/ContentStep.tsx')
+  const single = step.slice(step.indexOf('function SingleDecision('), step.indexOf('export function Options('))
+  assert.match(single, /\{!savesAlone && <Button variant="secondary" disabled=\{!canSave\} onClick=\{\(\) => save\(\)\}>/)
+  assert.match(single, /onCommit=\{saves \? \(picked\) => save\(picked\) : undefined\}/)
+  // The campaign's follow-up list is a picker alone: no Save beside it.
+  const followUp = step.slice(step.indexOf('function FollowUpDecision('), step.indexOf('function DormantDecision('))
+  assert.doesNotMatch(followUp, /<Button/)
+  assert.match(followUp, /onCommit=\{\(next\) => onDecide\?\.\(\{ picked: next\.map\(\(o\) => o\.id\) \}\)\}/)
+  const dormant = step.slice(step.indexOf('function DormantDecision('))
+  assert.match(dormant, /onCommit=\{\(next\) => \{ if \(next\.length === 0 \|\| reason\.trim\(\)\) save\(next\) \}\}/)
+})
+
+test('#15 the emergency accounts the picker saves are the operator-saved decision, the one thing that writes them', () => {
+  const value = structuredClone(fixture('small'))
+  const ids = [...value.mapping.breakGlassUserIds].reverse()
+  const saved = applyStepDecisions({ ...value.mapping, breakGlassUserIds: [] }, { [STEP]: { picked: ids, at: value.snapshot.asOf } })
+  assert.deepEqual(saved.breakGlassUserIds, ids)
+})
+
+test('#13 the instruction is said once: the rail says it, the empty cards do not repeat it, and the milestone names the choice', () => {
+  const { body, ctx } = opened('small', noAccounts)
+  // The rail's line, reworded for the picker that saves on Done.
+  assert.equal(decisionOf(STEP).help, 'Select the accounts dedicated to emergency access, then select Done.')
+  // Each empty card says only that nothing is chosen, and the first one where to create an account.
+  const cards = body.emergencyAccountTasks!.accounts!
+  assert.deepEqual(cards.map((c) => [c.title, c.instruction]), [
+    ['No account selected', 'To create one, follow Create an emergency account in Implementation Tasks.'],
+    ['No account selected', ''],
+  ])
+  const one = opened('small', (f) => { f.mapping.breakGlassUserIds = f.mapping.breakGlassUserIds.slice(0, 1) }).body.emergencyAccountTasks!.accounts!
+  assert.equal(one[1].instruction, 'To create one, follow Create an emergency account in Implementation Tasks.', 'the first empty card carries the pointer')
+  // The bar says nothing on Step 1 while work remains: the cards and the rail already say it.
+  const step = read('src/ui/surfaces/ContentStep.tsx')
+  assert.doesNotMatch(step, /Complete the next task shown for each account\./)
+  // The milestone names the choice while none is made, and the checks after.
+  assert.equal(body.rail.sub, 'Choose your two emergency access accounts.')
+  assert.equal(ctx.mapping.breakGlassUserIds.length, 0)
+  assert.equal(opened('demo').body.rail.sub, 'Complete the remaining emergency access checks.')
+})
+
+test('#19 the emergency tasks carry no filler, and configuring an existing account lists only the fixes it needs', () => {
+  const KEEP = 'Keep your working administrator session open.'
+  const GA = '62e90394-69f5-4237-9190-012177145e10'
+  const tasksOf = (name: Parameters<typeof fixture>[0], edit: (f: Fixture) => void = () => {}, id = STEP) => opened(name, edit, id).body.emergencyAccountTasks!.tasks
+  const linesOf = (tasks: ReturnType<typeof tasksOf>): string[] => tasks.flatMap((t) => [t.steps, ...(t.variants ?? []).map((v) => v.steps)]).flat()
+  for (const name of ['demo', 'demo-week2', 'small'] as const) {
+    const lines = linesOf(tasksOf(name))
+    assert.equal(lines.includes(KEEP), false, `${name}: the session reminder`)
+    for (const filler of [/Do not use this to convert a synchronized identity/, /Save the changes, reopen the account/, /Confirm it appears in .*Security info/]) assert.equal(lines.some((l) => filler.test(l)), false, `${name}: ${filler}`)
+    // The same reminder is gone from the exclusions group and passkey settings tasks.
+    for (const id of ['s-prereq-exclusion-group', 's-prereq-passkey-settings']) assert.equal(linesOf(tasksOf(name, () => {}, id)).includes(KEEP), false, `${name} ${id}`)
+  }
+  const configure = (edit: (f: Fixture) => void = () => {}) => tasksOf('demo-week2', edit).find((t) => t.id === 'configure-account')!.steps
+  const RETURN = 'Return to IAMAI and select **Scan to update the plan**.'
+  // Nothing needed: no fix is listed.
+  const clear = configure()
+  assert.deepEqual(clear, ['Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Users**.', 'No selected account needs a change to its sign-in address, enabled state or role.', RETURN])
+  const has = (steps: string[], re: RegExp): boolean => steps.some((l) => re.test(l))
+  const ADDRESS = /User principal name/, ENABLE = /Account enabled/, DIRECT = /Roles & admins → Global Administrator → Add assignments/, PIM = /Privileged Identity Management/
+  // A custom-domain sign-in address: that fix alone.
+  const address = configure((f) => { f.snapshot.users.find((u) => u.id === f.mapping.breakGlassUserIds[0])!.userPrincipalName = 'emergency@example.com' })
+  assert.deepEqual([ADDRESS, ENABLE, DIRECT, PIM].map((re) => has(address, re)), [true, false, false, false])
+  // Global Administrator eligible only: the PIM fix, naming the account.
+  const eligible = configure((f) => { const id = f.mapping.breakGlassUserIds[0]; f.snapshot.roles.active[id] = []; f.snapshot.roles.eligible[id] = [GA] })
+  assert.deepEqual([ADDRESS, ENABLE, DIRECT, PIM].map((re) => has(eligible, re)), [false, false, false, true])
+  // No Global Administrator assignment at all: the direct assignment.
+  const none = configure((f) => { f.snapshot.roles.active[f.mapping.breakGlassUserIds[0]] = [] })
+  assert.deepEqual([ADDRESS, ENABLE, DIRECT, PIM].map((re) => has(none, re)), [false, false, true, false])
+  for (const steps of [address, eligible, none]) assert.equal(steps.at(-1), RETURN)
+})
+
+test('#20 Completion Criteria is the one line the owner approved', () => {
+  const LINE = 'Each account you chose is cloud-only, enabled, signs in with the onmicrosoft.com address, holds Global Administrator permanently, and has an approved passkey.'
+  for (const [name, edit] of [['demo', () => {}], ['demo-week2', () => {}], ['small', noAccounts]] as const) {
+    assert.deepEqual(opened(name, edit).body.contract.doneWhen, [LINE], name)
+  }
+})
+
+test('#16 #17 the step hands over Entra and AI Info only: its PowerShell and JSON repeated what the scan already read', () => {
+  for (const [name, edit] of [['demo', () => {}], ['demo-week2', () => {}], ['small', noAccounts]] as const) {
+    const { body } = opened(name, edit)
+    assert.deepEqual(channelTabsOf(body.artifacts).map((t) => t.label), ['Entra', 'AI Info'], name)
+  }
+})
+
+test('#18 "Why IAMAI says this" is hidden across the tool, and what it opens is kept', () => {
+  const sections = read('src/ui/surfaces/StepSections.tsx')
+  const step = read('src/ui/surfaces/ContentStep.tsx')
+  // One switch, off.
+  assert.match(sections, /export const WHY_LINK_SHOWN = false\n/)
+  // Every place that draws the link asks it.
+  const links = [...sections.matchAll(/\{W\.why\}/g), ...step.matchAll(/\{CONTRACT\.readiness\.why\}/g)]
+  assert.equal(links.length, 2)
+  assert.match(sections, /\{onWhy && WHY_LINK_SHOWN && \(\n\s+<button type="button" className="inline-link" onClick=\{onWhy\}>\n\s+\{W\.why\}/)
+  assert.match(step, /\{WHY_LINK_SHOWN && <button type="button" className="inline-link" onClick=\{onWhy\}>\{CONTRACT\.readiness\.why\}<\/button>\}/)
+  // Kept for later: the dialog, and the recovery runbook it carries.
+  assert.match(step, /<StepDialog open=\{dialog === 'readiness'\}/)
+  assert.match(step, /\{cs\.lockedOut && \(/)
+  assert.match(read('docs/design/content.json'), /"label": "If a change locks you out"/)
+})
+
+test('#14 the picker list fits the rail and wraps its text', () => {
+  const css = read('src/ui/app.css')
+  const rule = (selector: string): string => {
+    const at = css.indexOf(`\n${selector} {`)
+    assert.ok(at >= 0, `no rule for ${selector}`)
+    return css.slice(at, css.indexOf('}', at))
+  }
+  // The rail is 260px, and a decision lays its inputs on a grid whose track grew
+  // to the list's longest name (about 316px): the picker may shrink to its column.
+  assert.match(css, /grid-template-columns: 1fr 260px;/)
+  assert.match(css, /\.decision-form \.decision \{ display: grid;/)
+  assert.match(rule('.picker'), /min-width: 0;/)
+  assert.match(rule('.picker'), /max-width: 100%;/)
+  // No horizontal scroll inside the list, and names and reasons wrap.
+  assert.match(rule('.picker-list'), /overflow-x: hidden;/)
+  assert.match(rule('.picker-option-name,\n.picker-option-secondary'), /overflow-wrap: anywhere;/)
+})
+
+test('#22 a Completed step shows what was confirmed, open, with no Tasks Remaining and no scan prompt', () => {
+  // On 1.1 and on a policy step, as the board reads them.
+  for (const id of [STEP, 's-goal-mfa-all-users']) {
+    const { lane, body } = opened('demo-week2', () => {}, id)
+    assert.equal(lane.lane, 'Completed', `the premise: ${id} is Completed on demo-week2`)
+    assert.ok(body.emergencyAccountTasks, `${id} draws the task anatomy`)
+    assert.equal(headingsOf(body).includes('Tasks Remaining'), false, `${id}: a finished step draws Tasks Remaining`)
+    assert.deepEqual(headingsOf(body), ['About this Step', 'Implementation Tasks', 'Completion Criteria'], id)
+  }
+  // A step with work left keeps the heading.
+  assert.ok(headingsOf(opened('demo').body).includes('Tasks Remaining'))
+  // The one shared layout: finished, it draws every card in the grid, each card's
+  // completed checks open, and none of the three open-work lines.
+  const step = read('src/ui/surfaces/ContentStep.tsx')
+  const layout = step.slice(step.indexOf('export function EmergencySubjectReadiness('), step.indexOf('/** True when a content line has every variable'))
+  const done = layout.slice(layout.indexOf('if (completed)'), layout.indexOf('return <section className="step-section readiness-section emergency-account-readiness">'))
+  assert.ok(done.length > 0, 'no Completed branch')
+  assert.doesNotMatch(done, /Tasks Remaining|<h4>|No tasks remaining|readiness-satisfied|emergency-account-scan-note|scanControl/)
+  assert.match(done, /<div className="emergency-account-status-grid">\{subjects\.map\(\(subject\) => tile\(subject, true\)\)\}<\/div>/)
+  assert.match(step, /<details className="emergency-account-completed" open=\{printing \|\| open \|\| undefined\}>/)
+  // Every step that draws the layout says whether it is finished.
+  assert.equal((step.match(/completed=\{laneView\.lane === 'Completed'\}/g) ?? []).length, 2)
+})
+
+test('#23 a Completed step draws no milestone block, and 1.1 with accounts saved heads its picker "Your emergency access accounts"', () => {
+  const step = read('src/ui/surfaces/ContentStep.tsx')
+  const sections = read('src/ui/surfaces/StepSections.tsx')
+  const css = read('src/ui/app.css')
+  // The badge already says Completed: the rail's NEXT MILESTONE / Completed block is not drawn.
+  assert.match(step, /const displayRail = laneView\.lane === 'Completed' \? null : /)
+  assert.match(sections, /export function StepActionColumn\(\{ rail, children = null \}: \{ rail: \{ metric: string; sub: string \} \| null; children\?: ReactNode \}\)/)
+  assert.match(sections, /\{rail && <div className="side-block">/)
+  // A column left with nothing in it is not painted; the body keeps its two columns.
+  assert.match(css, /\n\.step-action-column:empty \{\n\s+display: none;\n\}/)
+  // 1.1: once accounts are saved, its line over the picker names them instead of asking.
+  const words = JSON.parse(read('docs/design/content.json')).pages.app.plan.emergencyTasks as Record<string, string>
+  assert.equal(words.yourAccounts, 'Your emergency access accounts')
+  const single = step.slice(step.indexOf('function SingleDecision('), step.indexOf('export function Options('))
+  assert.match(single, /\? <Line s=\{ctx\.mapping\.breakGlassUserIds\.length > 0 \? YOUR_ACCOUNTS : d\.help\} ex=\{ex\} cls="reason" \/>/)
+})

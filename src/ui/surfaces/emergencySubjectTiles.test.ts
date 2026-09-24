@@ -62,7 +62,8 @@ test('Step 2: an unanswered exclusions group states its heading and sentence onc
   assert.equal(tiles.length, 1)
   const [tile] = tiles
   assert.equal(tile.title, 'Choose an exclusions group')
-  assert.match(tile.instruction, /^Select a group under Exclusions group, then Save\./)
+  // The group picker saves the group it is given: there is no Save to press (2026-09-23).
+  assert.match(tile.instruction, /^Select a group under Exclusions group\. To create one/)
   const lines = linesOf(tile)
   for (const line of lines) assert.equal(lines.filter(other => other === line).length, 1, `"${line}" is drawn more than once`)
 })
