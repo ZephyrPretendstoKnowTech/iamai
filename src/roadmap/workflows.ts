@@ -39,23 +39,33 @@ export function checkStep(id: string, title: string, why: string): Step {
 
 /**
  * What the scan read of a service: seen in use, whether the read was complete
- * enough to say it is not, and the sections the reading reads. The words are
- * Direction's (serviceEvidence below).
+ * enough to say it is not, the sections the reading reads, and how many people
+ * the sign-in records show signing in to it in the last 30 days (null where
+ * those records were not read, or were read before they were counted). The
+ * words are Direction's (serviceEvidence below).
  */
-export type ServiceSignal = { used: boolean; complete: boolean; sources: (ConfigSectionKey | SourceKey)[] }
+export type ServiceSignal = { used: boolean; complete: boolean; sources: (ConfigSectionKey | SourceKey)[]; people: number | null }
 
 /**
- * What the scan saw of a service, in Direction's words: seen, or not seen where
- * the reading was complete; null where it was neither, so nothing the scan saw
- * can be said. Direction's evidence line and the Inventory's Detected workloads
- * tooltip both read it.
+ * What the scan saw of a service, in Direction's words: how many people signed
+ * in to it, or that nobody did, from the sign-in records; null where they say
+ * neither, so nothing the scan saw can be said. Direction's evidence line and
+ * the Inventory's Detected workloads tooltip both read it.
  */
 export function serviceEvidence(key: string, signal: ServiceSignal): string | null {
-  if (!signal.used && !signal.complete) return null
   const E = directionWords.questions.serviceEvidence
-  if (key === 'workload') return signal.used ? E.syncSeen : E.syncNotSeen
+  if (key === 'workload') return signal.used ? E.syncSeen : signal.complete ? E.syncNotSeen : null
   const service = (W.names as Record<string, string>)[key] ?? (directionWords.questions.services as Record<string, string>)[key] ?? key
-  return fillText(signal.used ? E.seen : E.notSeen, { service })
+  if (signal.people !== null && signal.people > 0) return fillText(E.seen, { n: signal.people, service })
+  return signal.people === 0 && !signal.used ? fillText(E.notSeen, { service }) : null
+}
+
+/** The title a baseline policy's review row shows on the plan (its guidance title). */
+export function reviewTitleOf(policy: Pick<NotAssessed, 'name'>): string {
+  const key = serviceOf(policy)
+  const name = key ? (W.names as Record<string, string>)[key] : policy.name
+  const words = W.policies.find((p: { pattern: string }) => new RegExp(p.pattern, 'i').test(policy.name))
+  return words?.title ?? fillText(W.reviewTitle, { service: name, policy: policy.name })
 }
 
 /**
@@ -70,11 +80,17 @@ export function serviceReading(snapshot: TenantSnapshot, policies: readonly NotA
   const keys = [...new Set([...goalFacets, ...policies.filter((p) => !HIDDEN_AGENT_POLICY.test(p.name)).map(serviceOf).filter((s): s is string => s !== null)])].sort()
   const detected = detectFacets(snapshot, {})
   const reliable = detectFacets({ ...snapshot, appSignInSummary: ['ok', 'partial'].includes(snapshot.sources.appSignInSummary?.status) ? snapshot.appSignInSummary : [], spActivity: ['ok', 'partial'].includes(snapshot.sources.spActivity?.status) ? snapshot.spActivity : [] }, {})
+  // The people who signed in to each service, from the sign-in records the scan
+  // already folds (derive/evidence.ts serviceSignIns), under the gate the other
+  // sign-in questions read.
+  const counted = ['ok', 'partial'].includes(snapshot.sources.signInEvidence?.status) ? snapshot.scenarioEvidence?.serviceSignIns ?? null : null
   const signal = (key: string): ServiceSignal => {
-    if (key === 'intune') return { used: false, complete: snapshot.config.subscribedSkus?.status === 'ok', sources: ['subscribedSkus'] }
-    if (key === 'workload') return { used: detected.workload.observedUsage === true && snapshot.config.roleAssignments?.status === 'ok', complete: snapshot.config.roleAssignments?.status === 'ok', sources: ['roleAssignments'] }
+    if (key === 'intune') return { used: false, complete: snapshot.config.subscribedSkus?.status === 'ok', sources: ['subscribedSkus'], people: null }
+    if (key === 'workload') return { used: detected.workload.observedUsage === true && snapshot.config.roleAssignments?.status === 'ok', complete: snapshot.config.roleAssignments?.status === 'ok', sources: ['roleAssignments'], people: null }
     const complete = snapshot.sources.appSignInSummary?.status === 'ok' && snapshot.sources.spActivity?.status === 'ok'
-    return { used: reliable[key as Facet]?.observedUsage === true, complete, sources: ['appSignInSummary', 'spActivity'] }
+    const people = counted === null ? null : counted[key] ?? null
+    // People the records show signing in to it are use, whatever the app summary listed.
+    return { used: reliable[key as Facet]?.observedUsage === true || (people ?? 0) > 0, complete, sources: ['appSignInSummary', 'spActivity'], people }
   }
   return { keys, signal }
 }
@@ -113,7 +129,7 @@ export function addWorkflowSteps(steps: Step[], policies: NotAssessed[], mapping
     // The Tasks Remaining card's subject is the baseline policy under review and
     // its check is the state of that review, not the row's own title read back
     // three times (quality audit 2.1).
-    step.guidance = { id: step.id, kind: 'check', title: words?.title ?? title, why: words?.why ?? step.why, card: { ...W.reviewCard }, taskTitle: W.reviewTaskTitle, whatToDo: { steps: [fillText(W.source, { policy: policy.name }), ...(words?.instructions ?? [W.generic]), ...W.reviewInstructions] }, doneWhen: [W.reviewDone], learn: PLAN_CA }
+    step.guidance = { id: step.id, kind: 'check', title: reviewTitleOf(policy), why: words?.why ?? step.why, card: { ...W.reviewCard }, taskTitle: W.reviewTaskTitle, whatToDo: { steps: [fillText(W.source, { policy: policy.name }), ...(words?.instructions ?? [W.generic]), ...W.reviewInstructions] }, doneWhen: [W.reviewDone], learn: PLAN_CA }
     if (applicable === 'no') { step.doesntApply = fillText(W.notUsed, { service: name }); setState(step, { setAside: true }) }
     else if (step.manualReview.confirmedAt) setState(step, { satisfied: true, inPlace: true })
     // The pinned AVD block relies on four source exclusions whose allowed-user
