@@ -219,18 +219,13 @@ type InputRecord = Pick<MappingState, 'questionAnswers' | 'specialCareConfirmed'
 /**
  * `prefilled`: IAMAI has an answer already and is waiting to have it
  * confirmed, not waiting to be told. The two questions genuinely ask the
- * person something the tenant cannot say; the campaign's support list is
- * computed from readiness and opens filled (ui/surfaces/pickerRows.ts
- * defaultDecisions). A row that says "waiting on your answer" over a list of
- * ten names IAMAI worked out itself is telling the reader the wrong thing
- * about who is holding the step.
+ * person something the tenant cannot say. The campaign's support list is gone
+ * (walk list section 3 item 3): IAMAI never read it, and saving it completed
+ * the campaign with people still not ready.
  */
 const CONDITIONAL_INPUTS: readonly { stepId: string; kind: AnswerKind; prefilled?: true; saved?: (mapping: InputRecord) => boolean }[] = [
   { stepId: QUESTION_STEP.mailDevices, kind: 'decision' },
   { stepId: QUESTION_STEP.partner, kind: 'question' },
-  // The campaign's special-care people (B10 P0-10, S-MC-2, A6): saved once a
-  // person's Save confirms the list, an empty one included.
-  { stepId: SPECIAL_CARE_STEP_ID, kind: 'decision', prefilled: true, saved: (mapping) => Array.isArray(mapping.specialCareConfirmed) },
 ]
 
 /** The labels of the conditional inputs on a step nobody has saved; a question its content does not ask is not one. */

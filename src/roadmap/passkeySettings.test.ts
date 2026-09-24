@@ -13,7 +13,7 @@ import { packageBindings, packageStateOf } from '../ui/surfaces/stepPackage.ts'
 import { stepBodyOf } from '../ui/surfaces/stepBody.ts'
 import { BLOCKED_REASON } from '../copy/reasons.ts'
 import { operatorUserId } from '../derive/operator.ts'
-import { OPERATOR_PASSKEY_STEP_ID, PASSKEY_SETTINGS_STEP_ID, PASSKEY_TARGET_AAGUIDS, operatorPasskeyOf, passkeyReadingOf, resolvePasskeyTarget } from './passkeySettings.ts'
+import { OPERATOR_PASSKEY_STEP_ID, PASSKEY_SETTINGS_STEP_ID, PASSKEY_TARGET_AAGUIDS, passkeyReadingOf, resolvePasskeyTarget } from './passkeySettings.ts'
 import type { Fido2Configuration, PasskeyResolution } from './passkeySettings.ts'
 
 const CAMPAIGN = 's-verify-mfa'
@@ -152,7 +152,6 @@ test('A5.3–A5.6 on the demo Step 3 is Up Next with the target resolved from th
 test('A5.7 + A5.8 the operator passkey step: generated where the operator’s methods were read and hold no passkey, after the settings; without Conditional Access neither step is generated', () => {
   const small = fixture('small')
   const operatorId = operatorUserId(small.snapshot)!
-  assert.deepEqual(operatorPasskeyOf(small.snapshot), { operatorId, holds: false })
   const { r, label } = plan(small)
   assert.deepEqual(r.steps.find((s) => s.id === OPERATOR_PASSKEY_STEP_ID)?.population.ids, [operatorId])
   assert.notEqual(label(OPERATOR_PASSKEY_STEP_ID), 'Completed')

@@ -48,6 +48,7 @@ import { planProposedNames, proposedNamesFor } from './proposedNames.ts'
 import { policyPairNames } from '../../coverage/naming.ts'
 import type { ProposedObjectNames } from './proposedNames.ts'
 import { exclusionsGroupChoice, groupEvidence } from '../../mapping/safetyChoice.ts'
+import { prepareVarsOf } from './prepareSteps.ts'
 import type { DirectoryEvidence } from '../../mapping/safetyChoice.ts'
 
 export type StepVarContext = {
@@ -357,26 +358,10 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // emergency/service/admin id sets. A step reads only the keys it uses.
   // With Require MFA for Everyone in place nobody is "registered but never seen to complete MFA" (population.ts campaignBucket).
   Object.assign(v, contentLists({ snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, now: ctx.now, mfaInPlace: ctx.mfaInPlace === true }))
-  // The admins a preparation step still waits on outside its active people
-  // (R4-52), each in the words of what the scan read of them: the engine's
-  // dormant and unread ids (roadmap/generate.ts), filtered by the step's own
-  // missing ids, never worked out again here. Every other list on the campaign
-  // names active people, so it could wait on six admins nobody named.
-  if (step.preparation) {
-    const missing = new Set(step.preparation.missingIds)
-    const waiting = (ids: readonly string[] | undefined): string[] => (ids ?? []).filter((id) => missing.has(id)).map(ctx.nameOf)
-    v.dormantAdminsNotReady = waiting(step.preparation.dormantIds)
-    v.unreadAdminsNotReady = waiting(step.preparation.activityUnreadIds)
-  }
-  // The same unknown people under a heading with no "scan again before assessing
-  // readiness" (who.groups.readinessUnknownBlind), where the step's own reading
-  // names a source the scan could not read (Readiness.blind): no scan settles
-  // them until that source can be read, and the Readiness card says what opens
-  // it (R4-20, Priya D5).
-  if (step.readiness?.blind !== undefined) {
-    v.readinessUnknownBlind = v.readinessUnknown
-    v.readinessUnknown = []
-  }
+  // Register Your Own Passkey's and Prepare Your Team for MFA's own values: the
+  // operator's account and devices, the campaign's people by what each needs,
+  // and the registration campaign as the scan read it (prepareSteps.ts).
+  Object.assign(v, prepareVarsOf(step, ctx))
   // The stored answers in words (E1), for the steps an answer adds; and the
   // device decision's lines (E2): who signs in from a phone or an unjoined
   // computer, one device line per person for the campaign, and the one
