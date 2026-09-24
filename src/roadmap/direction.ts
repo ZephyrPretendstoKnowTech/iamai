@@ -153,21 +153,26 @@ export function externalMethodsEnabled(snapshot: Pick<TenantSnapshot, 'config'>)
 
 function accountQuestions(ctx: Context, nameOf: (id: string) => string): DirectionQuestion[] {
   const { snapshot, mapping } = ctx
-  const usersRead = snapshot.sources.users?.status === 'ok'
+  // Whether the directory's user rows were read. A read without last-sign-in
+  // times (partial: signInActivity is licence-gated) still holds every account.
+  const usersRead = snapshot.sources.users?.status === 'ok' || snapshot.sources.users?.status === 'partial'
   const candidates = detectServiceAccounts(snapshot, [...mapping.breakGlassUserIds, ...mapping.serviceAccountRejectedIds]).map((c) => c.id)
   const shared = sharedDeviceUsers(snapshot).map((u) => u.id).filter((id) => !mapping.breakGlassUserIds.includes(id))
-  const setAside = mapping.breakGlassUserIds.length > 0 ? fillText(W.alreadySetAside, { accounts: mapping.breakGlassUserIds.map(nameOf).join(', ') }) : null
+  const setAside = mapping.breakGlassUserIds.length > 0 ? fillText(W.alreadySetAside, { names: mapping.breakGlassUserIds.map(nameOf).join(', ') }) : null
+  // What the scan saw; where the user rows were not read it holds no fact, and the card shows no evidence line.
+  const seen = (words: { seen: string; seenOne: string; notSeen: string }, n: number): string => !usersRead ? '' : n > 1 ? fillText(words.seen, { n }) : n === 1 ? words.seenOne : words.notSeen
   return [
     question('serviceAccounts', ctx, {
       label: Q.serviceAccounts.label, control: 'accounts', options: optionsOf(Q.accountOptions), pickedWith: 'some',
       suggested: candidates.length > 0 ? answer('some', candidates) : answer('none'),
-      evidence: !usersRead ? W.defaultEvidence : candidates.length > 0 ? fillText(Q.serviceAccounts.seen, { n: candidates.length }) : Q.serviceAccounts.notSeen,
-      note: setAside,
+      evidence: seen(Q.serviceAccounts, candidates.length),
+      note: [Q.serviceAccounts.note, setAside].filter((line): line is string => line !== null).join(' '),
     }),
     question('sharedDevices', ctx, {
       label: Q.sharedDevices.label, control: 'accounts', options: optionsOf(Q.accountOptions), pickedWith: 'some',
       suggested: shared.length > 0 ? answer('some', shared) : answer('none'),
-      evidence: !usersRead ? W.defaultEvidence : shared.length > 0 ? fillText(Q.sharedDevices.seen, { n: shared.length }) : Q.sharedDevices.notSeen,
+      evidence: seen(Q.sharedDevices, shared.length),
+      note: Q.sharedDevices.note,
     }),
   ]
 }
