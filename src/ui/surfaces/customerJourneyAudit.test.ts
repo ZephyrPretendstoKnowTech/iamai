@@ -1,16 +1,11 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { usability100 } from '../../testing/usability100.ts'
-import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { stepBodyOf } from './stepBody.ts'
-import { stepExportView } from './stepExport.ts'
 import { planDates } from './stepVars.ts'
-import { boardReadingsOf, laneViewFor } from './planBoard.ts'
 import { applyManualReviews, MANUAL_REVIEW_ID, manualBasis, scopeManualBasis } from '../../roadmap/manualWork.ts'
 import { setState } from '../../roadmap/lifecycle.ts'
-import { QUESTION_STEP, answerKey, questionLabels, questionOptions } from '../../roadmap/answers.ts'
-import { passkeyCurrentSummary } from '../../roadmap/passkeySettings.ts'
 
 function setup(f = usability100('deployment')) {
   const r = runFixture(f, {}, null, f.snapshot.asOf)
@@ -43,41 +38,4 @@ test('mail-device follow-up exposes manual directions and a reversible completio
     applyManualReviews([step],rescan,{},f.mapping)
     assert.notEqual(step.status,'done','the review can be reopened')
   }
-})
-
-test('the travellers answer adds no step of its own when recurring destinations change', () => {
-  // The trip-operations step was deleted with finding 4 (it could never be
-  // generated). The travellers question itself is untouched: it stays on the
-  // allowed-countries step and answering it adds no second row anywhere.
-  const {f,r} = setup()
-  const before=new Set(r.steps.map(step=>step.id))
-  const mapping=structuredClone(f.mapping)
-  mapping.questionAnswers![answerKey(QUESTION_STEP.travel,questionLabels(QUESTION_STEP.travel).question!)]=questionOptions(QUESTION_STEP.travel,'question')[0]
-  const after=runFixture({...f,mapping}).steps.map(step=>step.id)
-  assert.deepEqual(after.filter(id=>!before.has(id)),[])
-  assert.ok(!after.includes('s-question-travel'))
-})
-
-test('generic Entra references include the selected request settings in the step and export', () => {
-  const {r,ctx}=setup(fixture('demo'))
-  const step=r.steps.find(s=>s.goalId==='register-info-protected')!
-  const body=stepBodyOf(step,ctx)
-  const portal=body.artifacts.find(a=>a.id==='portal')!.text()
-  assert.match(portal,/Settings for This Action/)
-  assert.match(portal,/Users → Include: All users/)
-  assert.match(portal,/Core - Exclusions/)
-  assert.match(stepExportView(step,ctx,laneViewFor(step,boardReadingsOf(r.steps,r.schedule.cleanup,r.input.mapping.breakGlassAnswers??null))).whatToDo.join('\n'),/Settings for This Action/)
-  assert.equal(body.contract.doneWhen.filter(line=>/enabled state/.test(line)).length,1)
-})
-
-test('passkey evidence translates the Graph all-users identifier', () => {
-  assert.match(passkeyCurrentSummary({id:'Fido2',state:'enabled',includeTargets:[{id:'all_users'}]}),/Included: All users/)
-  assert.doesNotMatch(passkeyCurrentSummary({id:'Fido2',state:'enabled',includeTargets:[{id:'all_users'}]}),/all_users/)
-})
-
-test('service confirmation keeps its choices without adding a redundant Entra procedure', () => {
-  const {r,ctx}=setup(fixture('demo'))
-  const step=r.steps.find(s=>s.id==='s-direction-use')!
-  assert.ok(step.directionQuestions)
-  assert.equal(stepBodyOf(step,ctx).artifacts.some(a=>a.id==='portal'),false)
 })

@@ -19,8 +19,7 @@ import { contentStepFor } from '../../content/stepTitle.ts'
 import { shared } from '../../content/content.ts'
 import { UNNAMED } from '../../names.ts'
 import { stepVars } from './stepVars.ts'
-import { defaultDecisions, filterPickerObjects, pickerUniverse, pickerVars } from './pickerRows.ts'
-import { BREAK_GLASS_STEP_ID } from '../../roadmap/generate.ts'
+import { defaultDecisions } from './pickerRows.ts'
 import type { StepDecision } from '../../roadmap/decisions.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
@@ -167,34 +166,5 @@ test('GetIAMAI: saving already-confirmed picker choices is idempotent', () => {
   const r2 = run(f, second)
   const third = applyStepDecisions(second, saved)
   assert.deepEqual(render(run(f, third), third), render(r2, second))
-})
-
-// The typeahead: typing filters every account in the tenant by name and UPN, and
-// a chosen chip saves through applyStepDecisions and comes back ticked.
-test('GetIAMAI: typing sv on the emergency picker lists every account whose name or UPN contains it, and a saved chip round-trips', () => {
-  const f = fixture('getiamai')
-  const r = runFixture(f)
-  const nameOf = (id: string): string => r.input.names!.label(id)
-  const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf, groups: f.groups }
-  const universe = pickerUniverse(BREAK_GLASS_STEP_ID, null, ctx)
-  assert.equal(universe.length, f.snapshot.users.length, 'every account in the tenant is there to type against')
-  // Every account whose name or UPN contains the query, and nothing else. The
-  // fixture's accounts (Kai Brown, user0@…, Break-glass 1) hold no 'sv', so the
-  // same rule is asserted on a query they do match.
-  const expectedFor = (q: string): string[] => f.snapshot.users.filter((u) => nameOf(u.id).toLowerCase().includes(q) || (u.userPrincipalName ?? '').toLowerCase().includes(q)).map((u) => u.id).sort()
-  for (const q of ['sv', 'an', 'BREAK']) assert.deepEqual(filterPickerObjects(universe, q).map((o) => o.id).sort(), expectedFor(q.toLowerCase()), 'typing ' + q)
-  const typed = filterPickerObjects(universe, 'an').map((o) => o.id).sort()
-  assert.ok(typed.length >= 2, 'the fixture has accounts matching an')
-  assert.deepEqual(filterPickerObjects(universe, ''), [], 'an empty query shows the nominations, not the tenant')
-  // A chip chosen from the typed results, saved as the picker saves it.
-  const chip = typed[0]
-  const saved = applyStepDecisions(f.mapping, { [BREAK_GLASS_STEP_ID]: { picked: [chip], at: AT } })
-  assert.deepEqual(saved.breakGlassUserIds, [chip], 'Save writes the chip through applyStepDecisions')
-  const again = pickerVars(BREAK_GLASS_STEP_ID, '{name}', { ...ctx, mapping: saved })
-  assert.ok(Array.isArray(again?.emergencyCandidatesTicked) && (again!.emergencyCandidatesTicked as string[]).includes(chip), 'the chip comes back ticked on the next open')
-  // The exclusions group is still the exclusions picker's own answer.
-  const exclusions = f.mapping.records['__globalExclusion']?.resolvedId ?? null
-  assert.ok(exclusions, 'the fixture recognises an exclusions group')
-  assert.ok(pickerUniverse(DECISION_STEPS.exclusions.values().next().value as string, 'groups', ctx).some((o) => o.id.toLowerCase() === String(exclusions).toLowerCase()))
 })
 

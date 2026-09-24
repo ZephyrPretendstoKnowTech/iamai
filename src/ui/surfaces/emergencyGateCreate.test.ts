@@ -90,43 +90,43 @@ test('an unstarted policy waiting only on emergency access is held, never Ready,
   assert.ok(checked >= 10, `gated creates checked: ${checked}`)
 })
 
-test('the create comes back once the foundation is settled, and a policy Foundation A cannot write still hands over nothing', () => {
-  const { r } = ['getiamai', 'demo', 'small', 'mid'].map(planOf).find((p) => gatedCreates(p.r.steps).length > 0)!
-  const base = gatedCreates(r.steps)[0]!
-  assert.ok(base, 'a gated create to vary')
-  // Clearing the foundation wait is all it takes: the same step is its own control.
-  const released = structuredClone(base)
-  released.blockers = []
-  assert.equal(waitsOnFoundation(released), false)
-  assert.equal(nextMilestone(released).kind, 'deploy')
-  assert.equal(nextSafeAction(released).executable, true)
-  // What the foundation gate does NOT do is make a create safe: a policy naming
-  // an object the tenant does not have is still unwritable and unexecutable.
-  const missing = r.steps.find((s) => (s.kind === 'create' || s.kind === 'adjust') && unavailableReason(s) === 'missing-object')
-  assert.ok(missing, 'the premise: a policy names an object the tenant lacks')
-  assert.equal(nextSafeAction(missing).executable, false)
-})
-
-test('a whole plan with its foundation settled offers creates again', () => {
-  const r = runFixture(withFoundationSettled(fixture('demo')))
-  const offering = r.steps.filter((s) => s.status !== 'done' && s.status !== 'skipped' && implementationOffered(s) && nextSafeAction(s).executable)
-  assert.ok(offering.length > 0, 'no step offers its implementation once the foundation is settled')
-  for (const s of offering) assert.equal(waitsOnFoundation(s), false, s.id)
-})
-
-test('confirmed safe exclusions permit report-only preparation but an unanswered group does not', () => {
-  const f = fixture('demo')
-  const run = runFixture(f)
-  const step = run.steps.find(s => s.id === 's-goal-block-auth-transfer')!
-  // Not Ready, and no create offered: the foundation holds it (owner, 2026-09-19).
-  assert.notEqual(laneReadings(run.steps).get(step.id)?.lane, 'Ready')
-  assert.equal(nextSafeAction(step).kind, 'create-report-only')
-  assert.equal(nextSafeAction(step).executable, false)
-  assert.equal(nextSafeAction(step).enforceable, false)
-  assert.ok(operationsOf(step).every(op => !enforcesOnRun(op)))
-  const unanswered = runFixture(noExclusionsAnswer(f))
-  const held = unanswered.steps.find(s => s.id === step.id)!
-  assert.notEqual(laneReadings(unanswered.steps).get(held.id)?.lane, 'Ready')
-  assert.equal(nextSafeAction(held).executable, false)
-  assert.equal(nextSafeAction(held).enforceable, false)
+test('the create comes back only once the foundation is settled and the exclusions group answered, and a policy Foundation A cannot write still hands over nothing (owner, 2026-09-19)', () => {
+  {
+    const { r } = ['getiamai', 'demo', 'small', 'mid'].map(planOf).find((p) => gatedCreates(p.r.steps).length > 0)!
+    const base = gatedCreates(r.steps)[0]!
+    assert.ok(base, 'a gated create to vary')
+    // Clearing the foundation wait is all it takes: the same step is its own control.
+    const released = structuredClone(base)
+    released.blockers = []
+    assert.equal(waitsOnFoundation(released), false)
+    assert.equal(nextMilestone(released).kind, 'deploy')
+    assert.equal(nextSafeAction(released).executable, true)
+    // What the foundation gate does NOT do is make a create safe: a policy naming
+    // an object the tenant does not have is still unwritable and unexecutable.
+    const missing = r.steps.find((s) => (s.kind === 'create' || s.kind === 'adjust') && unavailableReason(s) === 'missing-object')
+    assert.ok(missing, 'the premise: a policy names an object the tenant lacks')
+    assert.equal(nextSafeAction(missing).executable, false)
+  }
+  {
+    const r = runFixture(withFoundationSettled(fixture('demo')))
+    const offering = r.steps.filter((s) => s.status !== 'done' && s.status !== 'skipped' && implementationOffered(s) && nextSafeAction(s).executable)
+    assert.ok(offering.length > 0, 'no step offers its implementation once the foundation is settled')
+    for (const s of offering) assert.equal(waitsOnFoundation(s), false, s.id)
+  }
+  {
+    const f = fixture('demo')
+    const run = runFixture(f)
+    const step = run.steps.find(s => s.id === 's-goal-block-auth-transfer')!
+    // Not Ready, and no create offered: the foundation holds it (owner, 2026-09-19).
+    assert.notEqual(laneReadings(run.steps).get(step.id)?.lane, 'Ready')
+    assert.equal(nextSafeAction(step).kind, 'create-report-only')
+    assert.equal(nextSafeAction(step).executable, false)
+    assert.equal(nextSafeAction(step).enforceable, false)
+    assert.ok(operationsOf(step).every(op => !enforcesOnRun(op)))
+    const unanswered = runFixture(noExclusionsAnswer(f))
+    const held = unanswered.steps.find(s => s.id === step.id)!
+    assert.notEqual(laneReadings(unanswered.steps).get(held.id)?.lane, 'Ready')
+    assert.equal(nextSafeAction(held).executable, false)
+    assert.equal(nextSafeAction(held).enforceable, false)
+  }
 })

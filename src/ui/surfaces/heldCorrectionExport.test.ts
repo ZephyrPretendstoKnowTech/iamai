@@ -38,16 +38,27 @@ function exportsOf(f: Fixture, ids: readonly string[]) {
   })
 }
 
-test('an enforced correction held on emergency access keeps its readiness action and copyable correction in the export', () => {
-  for (const { step, contract, view } of exportsOf(curatedFixture('demo'), ['s-goal-block-legacy-auth', 's-goal-block-device-code'])) {
-    const where = step.id
-    // The shape this pins: offered, enforced, and not the step's current action.
-    assert.equal(step.state.lifecycle, 'enforced', where)
-    assert.equal(implementationOffered(step), true, where)
-    assert.equal(implementationIsCurrent(step), false, where)
-    assert.equal(contract.whatToDo.text, engine.milestone.resolve, where)
-    assert.equal(view.whatToDo[0], engine.milestone.resolve, where)
-    assert.ok(view.whatToDo.some(line => PORTAL.test(line)), `${where}: correction guidance is missing`)
+test('an enforced correction held on emergency access exports its readiness action first and keeps its correction; a change that is due keeps its portal lines', () => {
+  {
+    for (const { step, contract, view } of exportsOf(curatedFixture('demo'), ['s-goal-block-legacy-auth', 's-goal-block-device-code'])) {
+      const where = step.id
+      // The shape this pins: offered, enforced, and not the step's current action.
+      assert.equal(step.state.lifecycle, 'enforced', where)
+      assert.equal(implementationOffered(step), true, where)
+      assert.equal(implementationIsCurrent(step), false, where)
+      assert.equal(contract.whatToDo.text, engine.milestone.resolve, where)
+      assert.equal(view.whatToDo[0], engine.milestone.resolve, where)
+      assert.ok(view.whatToDo.some(line => PORTAL.test(line)), `${where}: correction guidance is missing`)
+    }
+  }
+  {
+    // Due: the plan's foundation is settled, so nothing is waiting on it — Establish
+    // Emergency Access complete and every Direction answer approved (roadmap/foundations.ts).
+    const due = exportsOf(withFoundationSettled(fixture('getiamai')), ['s-goal-block-legacy-auth', 's-goal-admin-session', 's-goal-token-protection'])
+    for (const { step, view } of due) {
+      assert.equal(implementationIsCurrent(step), true, step.id)
+      assert.ok(view.whatToDo.some((l) => PORTAL.test(l)), `${step.id}: ${JSON.stringify(view.whatToDo)}`)
+    }
   }
 })
 
@@ -73,15 +84,5 @@ test('the same held corrections are a planning preview on screen: resources rema
     const body = stepBodyOf(step, ctx, { lane })
     assert.equal(body.previewNote, null, `${id}: repeated implementation disclaimer returned`)
     assert.ok(body.artifacts.some((a) => !a.unavailable), `${id}: the planned correction draws no channel`)
-  }
-})
-
-test('control: a change that is due keeps its portal lines in the export', () => {
-  // Due: the plan's foundation is settled, so nothing is waiting on it — Establish
-  // Emergency Access complete and every Direction answer approved (roadmap/foundations.ts).
-  const due = exportsOf(withFoundationSettled(fixture('getiamai')), ['s-goal-block-legacy-auth', 's-goal-admin-session', 's-goal-token-protection'])
-  for (const { step, view } of due) {
-    assert.equal(implementationIsCurrent(step), true, step.id)
-    assert.ok(view.whatToDo.some((l) => PORTAL.test(l)), `${step.id}: ${JSON.stringify(view.whatToDo)}`)
   }
 })

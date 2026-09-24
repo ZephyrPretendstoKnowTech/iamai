@@ -28,26 +28,27 @@ const linesOn = (name: 'demo' | 'small'): { lines: string[]; ex: Record<string, 
   return { lines: stepLines(step, ctx), ex: stepVars(step, ctx) as Record<string, unknown>, findings: step.configurationFindings ?? [], status: choice.status, stored: operatorExclusionsDecision(f.mapping)?.id ?? null }
 }
 
-test('two groups qualify and nobody has chosen: the step asks which, and offers to create nothing', () => {
-  const { lines, ex, status, stored } = linesOn('demo')
-  assert.equal(stored, null, 'the demo has no operator answer')
-  assert.equal(status, 'ambiguous', 'the demo has a break-glass group and an exclusions group, and both qualify')
-  assert.equal(ex.needsCreate, false, 'a tenant with two qualifying groups is not told to make a third')
-  assert.equal(ex.exclusionsGroup, undefined, 'no group is named as the one in use')
-  assert.equal(ex.total, undefined, 'no group in use: no checks ran, so no count')
-  assert.ok(!lines.some((l) => /^Name it .+. .+ (?:follows the convention|do not agree on one shape)/.test(l)), 'the create instructions do not render')
-  assert.ok(!lines.some((l) => /0 checks|All 0 checks|checks pass on the next scan|checks fail today/.test(l)), `no check count: ${JSON.stringify(lines.filter((l) => /checks/.test(l)))}`)
-  assert.ok(!lines.some((l) => /No exclusions group recognised/.test(l)), 'not "none recognised": two were')
-  assert.ok(lines.some((l) => /More than one group in .+ could be this one/.test(l)), `the step names them and asks: ${JSON.stringify(lines)}`)
-  assert.ok(Array.isArray(ex.candidateGroups) && (ex.candidateGroups as string[]).length === 2)
-})
-
-test('a group the operator confirmed and the scan read: three non-duplicative topics and the help name it', () => {
-  const { lines, ex, findings, status } = linesOn('small')
-  assert.equal(status, 'confirmed')
-  assert.ok(typeof ex.total === 'number' && ex.total > 0)
-  assert.deepEqual(findings.map(f => f.label), ['Exclusions group', 'Emergency account membership', 'Policy exclusions'])
-  assert.ok(lines.some((l) => l === `The one group every policy excludes. IAMAI recognised ${ex.exclusionsGroup} from the exclusions already in place.`), 'the help names the recognised group')
+test('the exclusions group is never presumed: with two qualifying groups and no answer the step asks which and offers to create nothing; a confirmed group names itself and its three topics', () => {
+  {
+    const { lines, ex, status, stored } = linesOn('demo')
+    assert.equal(stored, null, 'the demo has no operator answer')
+    assert.equal(status, 'ambiguous', 'the demo has a break-glass group and an exclusions group, and both qualify')
+    assert.equal(ex.needsCreate, false, 'a tenant with two qualifying groups is not told to make a third')
+    assert.equal(ex.exclusionsGroup, undefined, 'no group is named as the one in use')
+    assert.equal(ex.total, undefined, 'no group in use: no checks ran, so no count')
+    assert.ok(!lines.some((l) => /^Name it .+. .+ (?:follows the convention|do not agree on one shape)/.test(l)), 'the create instructions do not render')
+    assert.ok(!lines.some((l) => /0 checks|All 0 checks|checks pass on the next scan|checks fail today/.test(l)), `no check count: ${JSON.stringify(lines.filter((l) => /checks/.test(l)))}`)
+    assert.ok(!lines.some((l) => /No exclusions group recognised/.test(l)), 'not "none recognised": two were')
+    assert.ok(lines.some((l) => /More than one group in .+ could be this one/.test(l)), `the step names them and asks: ${JSON.stringify(lines)}`)
+    assert.ok(Array.isArray(ex.candidateGroups) && (ex.candidateGroups as string[]).length === 2)
+  }
+  {
+    const { lines, ex, findings, status } = linesOn('small')
+    assert.equal(status, 'confirmed')
+    assert.ok(typeof ex.total === 'number' && ex.total > 0)
+    assert.deepEqual(findings.map(f => f.label), ['Exclusions group', 'Emergency account membership', 'Policy exclusions'])
+    assert.ok(lines.some((l) => l === `The one group every policy excludes. IAMAI recognised ${ex.exclusionsGroup} from the exclusions already in place.`), 'the help names the recognised group')
+  }
 })
 
 // Taking a member out of the exclusions group is the one instruction on this step
