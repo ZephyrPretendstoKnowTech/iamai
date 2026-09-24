@@ -146,7 +146,7 @@ function EmergencyFacts({ facts }: { facts: EmergencyFact[] }) {
 }
 
 /** The Tasks Remaining tile standard, from Step 1's account tile: subject label, the subject(s) of the next check, the remaining count, the next check and what is wrong, one action, then Completed checks. */
-function EmergencyAccountStatusTile({ account, printing = false, open = false }: { account: EmergencySubjectTile; printing?: boolean; open?: boolean }) {
+function EmergencyAccountStatusTile({ account, printing = false }: { account: EmergencySubjectTile; printing?: boolean }) {
   return <article className={`emergency-account-status${account.satisfied ? ' is-satisfied' : ''}`} data-subject-key={account.key}>
     <p className="emergency-account-label">{account.heading}</p>
     {account.upn && <p className="emergency-account-upn">{account.upn.split('\n').map((line, index) => <span key={index}><Breakable text={line} /></span>)}</p>}
@@ -158,7 +158,7 @@ function EmergencyAccountStatusTile({ account, printing = false, open = false }:
     {account.link && <p><a href={account.link.href}>{account.link.label} →</a></p>}
     {!!account.notes?.length && <div className="emergency-account-note"><EmergencyFacts facts={account.notes} /></div>}
     {account.headsUp && <p className="emergency-account-note">{account.headsUp}</p>}
-    {account.completed.length > 0 && <details className="emergency-account-completed" open={printing || open || undefined}>
+    {account.completed.length > 0 && <details className="emergency-account-completed" open={printing || undefined}>
       <summary>Completed checks · {account.completed.length}</summary>
       <ul>{account.completed.map(item => <li key={item}><Breakable text={item} /></li>)}</ul>
     </details>}
@@ -166,31 +166,21 @@ function EmergencyAccountStatusTile({ account, printing = false, open = false }:
 }
 
 /** Tasks Remaining for the four Establish Emergency Access steps: one tile per subject, the satisfied ones under Satisfied · N (the Emergency Access steps are frozen: their words are what the owner approved). */
-export function EmergencySubjectReadiness({ subjects, printing, barMain, onWhy, completed = false }: { subjects: EmergencySubjectTile[]; printing: boolean; barMain: string; onWhy: (() => void) | null; completed?: boolean }) {
+export function EmergencySubjectReadiness({ subjects, printing, barMain, onWhy }: { subjects: EmergencySubjectTile[]; printing: boolean; barMain: string; onWhy: (() => void) | null }) {
   const remaining = subjects.filter(subject => !subject.satisfied)
   const satisfied = subjects.filter(subject => subject.satisfied)
-  const tile = (subject: EmergencySubjectTile, open = false) => <EmergencyAccountStatusTile key={subject.key} account={subject} printing={printing} open={open} />
+  const tile = (subject: EmergencySubjectTile) => <EmergencyAccountStatusTile key={subject.key} account={subject} printing={printing} />
   // The bar carried the Why IAMAI says this link; with the link hidden its line only
   // repeated the badge and the cards (owner, 2026-09-23), so it is drawn only with the link.
   const bar = onWhy && WHY_LINK_SHOWN && <div className="readiness-bar">{barMain !== '' && <div className="readiness-bar-main"><span className="readiness-bar-head">{barMain}</span></div>}{WHY_LINK_SHOWN && <button type="button" className="inline-link" onClick={onWhy}>{CONTRACT.readiness.why}</button>}</div>
-  // A Completed step shows what was confirmed, open (owner, 2026-09-23): every
-  // card in the grid with its completed checks showing, and no Tasks Remaining
-  // heading, "No tasks remaining" or scan prompt over work that is done. The
-  // cards' words are each step's own and do not change.
-  if (completed) {
-    return <section className="step-section readiness-section emergency-account-readiness is-completed">
-      <div className="emergency-account-status-grid">{subjects.map((subject) => tile(subject, true))}</div>
-      {bar}
-    </section>
-  }
   return <section className="step-section readiness-section emergency-account-readiness">
     <h4>Tasks Remaining</h4>
     {remaining.length > 0
-      ? <div className="emergency-account-status-grid">{remaining.map((subject) => tile(subject))}</div>
+      ? <div className="emergency-account-status-grid">{remaining.map(tile)}</div>
       : <p className="readiness-clear"><span className="readiness-status readiness-status-good" aria-hidden="true">✓</span><strong>No tasks remaining</strong></p>}
     {satisfied.length > 0 && <details className="readiness-satisfied" open={printing || undefined}>
       <summary>Satisfied · {satisfied.length}</summary>
-      <div className="emergency-account-status-grid satisfied">{satisfied.map((subject) => tile(subject))}</div>
+      <div className="emergency-account-status-grid satisfied">{satisfied.map(tile)}</div>
     </details>}
     <p className="emergency-account-scan-note">After making changes, select <strong>{SHARED.scanControl}</strong>.</p>
     {bar}
@@ -454,13 +444,12 @@ export function ContentStep({
               and — where this step's enforcement waits on the people it reaches —
               who they are, handed to MFA Readiness (derive/stepMfaReadiness.ts). */}
           {decisionHead ? <DirectionQuestions key={directionDraftKey(step)} step={step} ctx={ctx} heading={decisionHead.questions} onDecide={onDecide} printing={printing} saving={saveStatus === 'saving'} />
-          : isEmergencyAccounts && emergencyAccountTasks ? <EmergencySubjectReadiness subjects={emergencyAccountTasks.accounts ?? []} printing={printing} barMain={(emergencyAccountTasks.accounts ?? []).some(account => !account.satisfied) ? '' : 'Account preparation is verified.'} onWhy={hasEvidence && !printing ? () => setDialog('readiness') : null} completed={laneView.lane === 'Completed'} />
+          : isEmergencyAccounts && emergencyAccountTasks ? <EmergencySubjectReadiness subjects={emergencyAccountTasks.accounts ?? []} printing={printing} barMain={(emergencyAccountTasks.accounts ?? []).some(account => !account.satisfied) ? '' : 'Account preparation is verified.'} onWhy={hasEvidence && !printing ? () => setDialog('readiness') : null} />
           : isTaskStep && emergencyAccountTasks && !printing ? <EmergencySubjectReadiness
             subjects={taskSubjects}
             printing={printing}
             barMain={isOwnTaskStep ? policyBarOf(taskSubjects) : displayedReadiness.bar.main}
             onWhy={hasEvidence ? () => setDialog('readiness') : null}
-            completed={laneView.lane === 'Completed'}
           /> : <ReadinessSection
             readiness={displayedReadiness}
             heading={taskHead?.remaining}

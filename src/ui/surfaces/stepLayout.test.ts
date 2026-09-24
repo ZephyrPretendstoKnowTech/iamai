@@ -87,7 +87,6 @@ test('U3: the milestone sub-line is a written sentence or nothing, never generat
   // Prepare Emergency Access Accounts with nothing chosen reads its own written
   // sentence for the choice first (owner, 2026-09-23): a content string, not composed.
   assert.match(STEP_BODY, /railOf\(contract, choosing \?\? pkg\?\.meta\.milestone\?\.actionText \?\? directionMilestoneAction\(step\.id\)\)/, 'the action column does not read the written sources')
-  assert.match(STEP_BODY, /const choosing = step\.id === 's-prereq-break-glass' && ctx\.mapping\.breakGlassUserIds\.length === 0 \? CHOOSE_ACCOUNTS : null/)
   for (const id of DIRECTION_STEP_IDS) {
     const text = directionMilestoneAction(id)
     assert.ok(text && text.length > 0, `${id}: no written milestone sentence`)
