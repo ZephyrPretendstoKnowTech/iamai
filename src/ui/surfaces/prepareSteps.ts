@@ -41,7 +41,7 @@ export type PrepareReading = { card: OwnCard | null; milestone: string | null; i
 
 type OperatorWords = { card: { check: string; registered: string; signedIn: string; signedInOn: string; computer: string; phone: string }; milestone: { register: string; signIn: string } }
 type TeamWords = {
-  card: { notReady: string; ready: string; person: string; link: string }
+  card: { notReady: string; ready: string; link: string }
   milestone: string
   instruction: string
   campaign: { managed: string; off: string; on: string; nudging: string; fido2: string; microsoftAuthenticator: string; allUsers: string }
@@ -125,7 +125,7 @@ function teamReading(step: Step, ctx: StepVarContext, satisfied: boolean): Prepa
   // 2026-09-24: the card names its people, and the two pages speak one language):
   // five on the card, the rest under its fold. Somebody the page does not count
   // (an admin with no sign-in in 90 days) keeps the step's own line.
-  const lines = personLines(ctx, team.missing, W.card.person)
+  const lines = personLines(ctx, team.missing)
   return {
     card: { title: fillText(W.card.notReady, { missing: team.missing.length, total: team.total }), detail: lines.slice(0, NAMES_INLINE).join('\n'), upn: null, link: { label: W.card.link, href: TEAM_READINESS_HREF }, ...(lines.length > NAMES_INLINE ? { more: lines.slice(NAMES_INLINE) } : {}) },
     milestone: fillText(W.milestone, { n: team.missing.length }),
