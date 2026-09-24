@@ -3154,12 +3154,12 @@
           "steps": {
             "use": {
               "title": "Confirm What You Use",
-              "why": "IAMAI filled these in from your tenant. Approve them or correct any that are wrong: a service you don't use takes its policies off your plan, and the accounts and partners you name are kept out of the policies that would stop them.",
+              "why": "Approve these answers or correct any that are wrong: a service you don't use takes its policies off your plan, and the accounts and partners you name are kept out of the policies that would stop them.",
               "milestoneAction": "Approving these answers decides which policies your plan contains."
             },
             "accounts": {
               "title": "Identify Service and Shared Accounts",
-              "why": "Some accounts aren't a person: a mailbox a scanner uses, a script's account, a meeting-room device. IAMAI has picked the ones it found below. Approve or correct them: they leave the people counts, and each kind gets a policy of its own.",
+              "why": "Some accounts aren't a person: a mailbox a scanner uses, a script's account, a meeting-room device. Approve or correct them: the MFA campaign stops counting them as people, and each kind gets a policy that fits it.",
               "milestoneAction": "Approving these answers sets which accounts count as people and which get a policy of their own."
             },
             "devices": {
@@ -3866,7 +3866,7 @@
       "kind": "check",
       "title": "Disable or Confirm Dormant Accounts",
       "changeLine": null,
-      "why": "Unused accounts can leave access behind after a person or service stops needing it. IAMAI lists each enabled account with no successful sign-in in the last 90 days.",
+      "why": "An account nobody uses can be taken over without anyone noticing. Disabling the ones nobody needs closes that door.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/monitoring-health/howto-manage-inactive-user-accounts"
       },
@@ -4594,7 +4594,7 @@
       "kind": "object",
       "title": "Create the Baseline's Authentication Strength",
       "changeLine": null,
-      "why": "Create {strengthName}, the authentication strength the baseline's policies require, so those policies can be created in your tenant.",
+      "why": "Create {strengthName}, the authentication strength the admin, guest, device-registration, role-activation and risk policies require. It accepts only a passkey, Windows Hello or a certificate, which a phishing page can't capture, plus a one-time Temporary Access Pass for setting one up.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/authentication/concept-authentication-strength-advanced-options"
       },
@@ -4702,7 +4702,7 @@
         "operatorDevices": "your computer and your phone"
       },
       "aiFocus": "Walk me through creating a passkey in Microsoft Authenticator, or registering an approved security key, and signing in with it on each device I use.",
-      "why": "Your account makes every change in this plan, and Require Phishing-Resistant MFA for Admins will cover it. Prepare Your Team for MFA starts once you have registered a passkey and signed in with it.",
+      "why": "Your account makes every change in this plan. A passkey you've already signed in with means Require Phishing-Resistant MFA for Admins can't lock you out when it turns on.",
       "card": {
         "$comment": "The card and the Next milestone follow the operator's own readiness (walk list section 3 item 41, ui/surfaces/prepareSteps.ts): nothing registered, registered and not signed in with it yet, or signed in with it, which completes the step (items 5 and 43: a passkey or Windows Hello, on any device). The signed-in card is the Satisfied card's fact (item 14). The device words fill {devices} there and {operatorDevices} in the procedure.",
         "subject": "Your passkey",
@@ -4960,7 +4960,7 @@
       "kind": "policy",
       "title": "Require MFA for Everyone",
       "changeLine": null,
-      "why": "A stolen password alone should never be enough to sign in. This policy asks everyone for MFA, the floor the admin and guest policies build on.",
+      "why": "A stolen password alone should never be enough to sign in. This policy asks everyone for MFA.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-mfa-strength"
       },
@@ -5056,7 +5056,7 @@
       "kind": "policy",
       "title": "Require Phishing-Resistant MFA for Admins",
       "changeLine": null,
-      "why": "Admin accounts can change everything in your tenant, so this policy makes everyone in an admin role sign in with a passkey, a security key, Windows Hello, a certificate or a Temporary Access Pass.",
+      "why": "Admin accounts can change everything in your tenant. Requiring a passkey, security key, Windows Hello or certificate means a phishing page can't sign in as one.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-admin-phish-resistant-mfa"
       },
