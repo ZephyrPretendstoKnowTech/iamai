@@ -92,6 +92,15 @@ export type StepObservation = {
    * dimension proves nothing either way.
    */
   fields: Record<string, string>
+  /**
+   * The dimensions this scan's operation asked the policy to take, and to what
+   * (materialFieldsOf): the change the plan asked of this member when this record was
+   * written. A later scan that finds the policy moved to exactly these reads it
+   * as that change, whichever step asked for it (walk list 4.x item 7: the
+   * exclusions group Configure Emergency Exclusions adds to a policy another step
+   * delivers). Absent where the plan asked nothing of it.
+   */
+  asked?: Record<string, string>
   /** The scan (snapshot.asOf) that first saw this state with these semantics. IAMAI's own sighting, not a transition time. */
   firstSeenAt: string
   /**
@@ -416,6 +425,18 @@ function material(value: unknown): unknown {
   return value
 }
 
+/**
+ * The dimensions `semanticFieldsOf` fingerprints, with nothing immaterial in
+ * them (`material`): the empty lists and nulls an operation's body writes and a
+ * deployed policy may leave out read the same. What an operation asked of a
+ * policy is read against what a later scan found this way (StepObservation.asked).
+ */
+export function materialFieldsOf(policy: Record<string, unknown> | null | undefined): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const [key, value] of Object.entries(dimensionsOf(policy))) if (value !== undefined) out[key] = hash(JSON.stringify(canonical(material(value)) ?? null))
+  return out
+}
+
 /** The dimension keys `semanticFieldsOf` uses, over the raw value of each. */
 function dimensionsOf(policy: Record<string, unknown> | null | undefined): Record<string, unknown> {
   const out: Record<string, unknown> = {}
@@ -473,9 +494,24 @@ export function unwrittenDifferences(intent: Record<string, unknown> | null | un
   const out: string[] = []
   for (const d of new Set([...Object.keys(wanted), ...Object.keys(held)])) {
     if (written.has(d)) continue
+    if (d === 'conditions.authenticationFlows' && blocksMoreFlows(intent, deployed)) continue
     if (!sameDimension(wanted[d], held[d])) out.push(d)
   }
   return out.sort((x, y) => dimensionRank(x) - dimensionRank(y) || x.localeCompare(y))
+}
+
+/**
+ * A block policy that blocks every authentication flow the plan's does, and more:
+ * stricter than the target, never a difference to correct (walk list 4.x item
+ * 13). A policy that blocks device code sign-in and authentication transfer meets
+ * Block Device Code Sign-in; asking to take the transfer out would weaken it.
+ */
+function blocksMoreFlows(intent: Record<string, unknown>, deployed: Record<string, unknown>): boolean {
+  const blocks = (p: Record<string, unknown>): boolean => ((p.grantControls as { builtInControls?: unknown } | null | undefined)?.builtInControls as unknown[] | undefined)?.includes('block') === true
+  const flows = (p: Record<string, unknown>): string[] => String(((p.conditions as { authenticationFlows?: { transferMethods?: unknown } } | undefined)?.authenticationFlows?.transferMethods) ?? '').split(',').map((f) => f.trim().toLowerCase()).filter(Boolean)
+  const wanted = flows(intent)
+  const held = new Set(flows(deployed))
+  return blocks(intent) && blocks(deployed) && wanted.length > 0 && wanted.every((f) => held.has(f))
 }
 
 /**
@@ -519,6 +555,10 @@ export type Sighting = {
   unwritten?: readonly string[]
   /** Microsoft's sign-in records show this object evaluated in report-only in the collected window. */
   reportOnlyRecords?: boolean
+  /** The deployed policy's dimensions with nothing immaterial in them (`materialFieldsOf`), read against what the last scan asked of it. */
+  materialFields?: Record<string, string>
+  /** What the step's own operation asks of the policy, the same way (`materialFieldsOf` of its body); kept on the record as `asked`. */
+  askedFields?: Record<string, string>
 }
 
 const STATE_WORD: Record<ObservedState, string> = {
@@ -642,13 +682,15 @@ export function observe(prior: StepObservation | null, sighting: Sighting): Obse
   // the history is.
   const unwritten = sighting.unwritten ?? []
   const differs = unwritten.length > 0 ? fillText(OBS.differs, { fields: dimensionWords(unwritten) }) : null
+  // What this scan's operation asks of the policy, kept for the next scan (StepObservation.asked).
+  const asked = sighting.askedFields && Object.keys(sighting.askedFields).length > 0 ? { asked: sighting.askedFields } : {}
   if (!prior) {
     return {
       // Never `skippedWindow` or `offOnly` here: what a policy found On, or
       // Off, did before IAMAI first looked is not something this scan watched.
       // A policy watched through report-only from another browser, or before
       // Forget, and switched Off after an incident is first seen Off here.
-      latest: { artifact, state, semantics, fields, firstSeenAt: at, since: 'first-scan', lastSeenAt: at, evidenceAt, ...(state === 'enforced' && !recorded ? { neverObserved: true as const } : {}) },
+      latest: { artifact, state, semantics, fields, ...asked, firstSeenAt: at, since: 'first-scan', lastSeenAt: at, evidenceAt, ...(state === 'enforced' && !recorded ? { neverObserved: true as const } : {}) },
       prior: null,
       changed: 'first-scan',
       // A first sighting is nothing the plan can claim to have asked for.
@@ -689,6 +731,13 @@ export function observe(prior: StepObservation | null, sighting: Sighting): Obse
     : null
   const intendedMovement =
     intent !== null && movedFields !== null && movedFields.length > 0 && movedFields.every((d) => intent.controls[d] !== undefined && intent.controls[d] === fields[d])
+  // The change the last scan's operation asked for, now made: the policy moved to
+  // exactly what the plan asked of it, though no operation is left to compare
+  // against because the change delivered the goal (walk list 4.x item 7). A
+  // change that brings a policy to its own target is never a review.
+  const priorAsked = prior.asked ?? null
+  const askedMovement =
+    priorAsked !== null && sighting.materialFields !== undefined && movedFields !== null && movedFields.length > 0 && movedFields.every((d) => priorAsked[d] !== undefined && priorAsked[d] === sighting.materialFields?.[d])
   const changed: ObservationChanged =
     artifactAnswer === 'different' ? 'artifact' : stateMoved && semanticsMoved ? 'both' : semanticsMoved ? 'semantics' : stateMoved ? 'state' : 'none'
   /**
@@ -701,7 +750,7 @@ export function observe(prior: StepObservation | null, sighting: Sighting): Obse
    */
   const continuity: ObservationContinuity =
     artifactAnswer === 'unknown' ? 'unknown' : artifactAnswer === 'different' || semanticsMoved ? 'reset' : 'continues'
-  const expected = changed === 'none' || intendedMovement || (!semanticsMoved && rank(state) > rank(prior.state))
+  const expected = changed === 'none' || intendedMovement || askedMovement || (!semanticsMoved && rank(state) > rank(prior.state))
   /**
    * A person looks when what the policy *means* is not what the plan asked for.
    * Not when the window restarts: a policy replaced by exactly the one the plan
@@ -755,6 +804,7 @@ export function observe(prior: StepObservation | null, sighting: Sighting): Obse
       state,
       semantics,
       fields,
+      ...asked,
       firstSeenAt,
       since,
       lastSeenAt: at,
@@ -816,6 +866,9 @@ function readObservation(raw: unknown): StepObservation | null {
     // cannot say which part of a policy moved, so nothing it carries can
     // show a later movement was the one the plan asked for.
     fields: readFields(o.fields),
+    // What the plan asked of the policy when this was written; absent on a record
+    // written before it existed, which then claims nothing asked.
+    ...(o.asked && typeof o.asked === 'object' && Object.keys(readFields(o.asked)).length > 0 ? { asked: readFields(o.asked) } : {}),
     firstSeenAt,
     since: o.since === 'observed-change' ? 'observed-change' : 'first-scan',
     lastSeenAt: typeof o.lastSeenAt === 'string' && !Number.isNaN(Date.parse(o.lastSeenAt)) ? o.lastSeenAt : firstSeenAt,

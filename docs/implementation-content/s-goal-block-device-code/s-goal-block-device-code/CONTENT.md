@@ -37,7 +37,7 @@ Rename the same policy to **{{policy.target.displayName}}**. IAMAI matches the p
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
-Keep the policy in Report-only while you review the evidence listed for this step. Review device-code use, including command-line tools, shared and meeting-room devices, and enrollment workflows. On each sign-in, check both **Authentication protocol** and **Original transfer method**: a session that began with device code can still be tracked after the original event. Microsoft documents that an authentication-flows policy targeting All resources also applies to Device Registration Service, and some Teams devices depend on device code flow. No events in the available records does not prove device code is unused.
+Keep the policy in Report-only while you review the evidence listed for this step. Review device-code use, including command-line tools, shared and meeting-room devices, and enrollment workflows. On each sign-in, check both **Authentication protocol** and **Original transfer method**: a session that began with device code can still be tracked after the original event. Microsoft documents that an authentication-flows policy targeting All resources also applies to Device Registration Service, and some Teams devices depend on device code flow.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
@@ -152,6 +152,7 @@ Create **{{policy.target.displayName}}** in Report-only: it {{policy.fact}}.
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
 
 Correct **{{policy.current.displayName}}** so it {{policy.fact}}.
+Today {{policy.current.difference}}. [omit this line when unavailable]
 
 This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END

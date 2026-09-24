@@ -168,51 +168,11 @@ test('a read-only policy instruction with nothing matched asks for a review and 
   assert.doesNotMatch(text, /listed on this step|matched to this step/)
 })
 
-// R4-29 (Marcus D10), third part. With "None" saved for "Does anyone use device
-// code sign-in for CLI tools, IoT devices, or display-limited devices?", the
-// step's workflow check still opened on "Identify the legitimate tools or devices
-// using device code. Move each required workflow…" as if nothing had been
-// answered: the saved answer reached the lane's condition (planLanes.ts) and
-// nothing the person reads. The check says what they recorded now.
-//
-// The check itself stays, on every answer. The decision's own effect line asks
-// for None once each workflow has been moved off device code, so None is also
-// the answer saved when there ARE moved workflows to test; and a quiet
-// device-code report can miss infrequent use. Dropping the check on None would
-// take away the one test of the answer before the block stops what it missed.
-test('a saved None on the device code decision is stated in the workflow check, which still checks it', () => {
-  const DC = QUESTION_STEP.deviceCode
-  const key = answerKey(DC, questionLabels(DC).decision!)
-  const LEAD = 'You recorded that nothing uses device code sign-in.'
-  for (const [option, stated] of [[null, false], ['None', true], ['Yes', false]] as const) {
-    const { r, ctx, bodies } = opened('mid', option === null ? {} : { [key]: option })
-    const portal = bodies.get(DC)?.artifacts.find(a => a.id === 'portal')?.text() ?? ''
-    const exported = stepExportView(r.steps.find(s => s.id === DC)!, ctx).whatToDo.join('\n')
-    for (const [where, text] of [['portal', portal], ['export', exported]] as const) {
-      assert.equal(text.includes(LEAD), stated, `${option ?? 'unsaved'} / ${where}: ${text}`)
-      assert.match(text, /Move each required workflow to an alternative supported by that tool/, `${option ?? 'unsaved'} / ${where}: the check itself is gone`)
-    }
-  }
-})
-
-// The heading over those checks was an English literal in stepResources.ts,
-// written on the line d081ad8a rewrote, directly above the content-keyed lead.
-// It reads the step's headings now, the one place a section title is written.
+// Block Device Code Sign-in has no workflow check (walk list 4.x item 3): the
+// scan completes it. The heading those checks carried stays the headings' own
+// line wherever a check is drawn, never an English literal in the code.
 test('the workflow checks are headed by the headings\' own line, never a literal in the code', () => {
-  const { bodies } = opened('mid')
-  const portal = bodies.get(QUESTION_STEP.deviceCode)?.artifacts.find(a => a.id === 'portal')?.text() ?? ''
-  assert.ok(portal.split('\n').includes(HEAD.verifyWorkflow), portal)
   assert.doesNotMatch(readFileSync('src/ui/surfaces/stepResources.ts', 'utf8'), /['"`]Verify the workflow:/)
-})
-
-// R4-29c, integration decision (2026-09-22): with None saved, every check stays —
-// None is also saved once each workflow has moved off device code, so dropping
-// them would remove the one test of the answer — and the record check applies to
-// each workflow that moved, so a tenant with none to move can satisfy it.
-test('the device code record check applies to each workflow moved, so None can satisfy it', () => {
-  const words = JSON.stringify((stepById['block-device-code'] as unknown as { whatToDo: { verification: string[] } }).whatToDo.verification)
-  assert.match(words, /For each workflow moved off device code, record the account/)
-  assert.doesNotMatch(words, /"Record the account/)
 })
 
 // Nadia D2, the second path. A lifecycle resource fills a format the step's own

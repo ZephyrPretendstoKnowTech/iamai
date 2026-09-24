@@ -154,6 +154,8 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.pages.plan.blocked.devicePlan',
   // A Direction step with an answer nobody has approved (roadmap/direction.ts): its row reason.
   '.pages.plan.blocked.direction',
+  // Block Legacy Authentication's turn-on while a named mail account still signs in with legacy authentication (walk list 4.x item 5): the review page's example names none.
+  '.pages.plan.blocked.mailAccounts',
   '.pages.plan.settings.cancelFreeze',
   '.pages.plan.settings.communications',
   '.pages.plan.settings.freezeSaved',

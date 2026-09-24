@@ -333,8 +333,8 @@ test('a policy the tenant enforces never finishes on a report-only period it is 
     const ctxOf = (f: Fixture): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups })
     const hostile = withFoundationSettled(plainFixture('hostile'))
     const run = runFixture(hostile)
-    // Block Device Code Sign-in finishes on what IAMAI sees, alone, where it was found On
-    // (walk list 4.x item 26); the guests policy keeps these lines.
+    // Block Device Code Sign-in has no workflow record left to wait on (walk list 4.x item 3):
+    // the scan completes it, on what IAMAI sees (item 26). The guests policy keeps these lines.
     for (const id of ['s-goal-guests-mfa']) {
       const step = run.steps.find((s) => s.id === id)
       assert.ok(step && step.state.lifecycle === 'enforced' && awaitsWorkflowRecord(step), `the premise: ${id} is enforced and waits on the person`)

@@ -33,11 +33,12 @@ import { portalName } from '../../roadmap/portalLines.ts'
 import { awaitsOwnObject, awaitsWorkflowRecord, createWaitsOnReadiness, enforcesOnRun, implementationOffered, isPreserved, operationsOf, policyHold, switchedOffPolicies, unavailableReason, strengthNameIn } from '../../roadmap/operations.ts'
 import { requiredMembers } from '../../roadmap/tracking.ts'
 import { unreadLine } from '../../roadmap/evidence.ts'
+import { SIGN_INS_FINDING } from '../../roadmap/blockSignIns.ts'
 import { impactReachOf } from '../../derive/population.ts'
 import { affectedIds, populationLine } from '../../derive/whoLine.ts'
 import { app, cleanup, directionWords, engine, shared, stepById } from '../../content/content.ts'
 import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
-import { directionBlockerStep, directionStepsAnswering, directionTitleOf, directionWaitRelayed } from '../../roadmap/direction.ts'
+import { directionBlockerStep, directionTitleOf, directionWaitRelayed } from '../../roadmap/direction.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { CAMPAIGN_STEP_ID } from '../../roadmap/followUp.ts'
 import { effectsOf } from '../../roadmap/strand.ts'
@@ -1244,7 +1245,7 @@ function actionOf(step: Step, reason: UnavailableReason | null, milestone: Contr
  * asks for, which is the same either way: watch it.
  */
 function milestoneSentence(m: Pick<ContractMilestone, 'kind' | 'label' | 'at'>, estimate: boolean): string {
-  if (m.kind !== 'observe') return m.label
+  if (m.kind !== 'observe' || m.label === MILESTONE.moveBlocked) return m.label
   return m.at ? fillText(MILESTONE.observeUntil, { date: shownDay(m.at, estimate, 'sentence') }) : MILESTONE.observe
 }
 
@@ -2327,13 +2328,16 @@ function stateTile(step: Step, c: StepContract, setupAfterEnforcement = false): 
   // read by nothing, so twelve steps of one tenant sat behind "Review the
   // available records and the remaining evidence requirements" for ten days,
   // and a tenant where four hundred people had been stopped said the same.
-  //
-  // A dated report-only week draws no card (walk list 4.x item 21, owner
-  // 2026-09-24): "Observation · Until Aug 31, 2026 · This is the earliest review
-  // date, not a scheduled automatic enforcement." sat on every policy in
-  // report-only, beside the policy card that already says what the week is for.
-  if (c.milestone.kind === 'observe' && !c.milestone.at) {
-    return { key: 'observation', label: t.observation, tone: 'wait', value: s.stage, note: step.evidence.lines[0] ?? notes.observationNote }
+  if (c.milestone.kind === 'observe') {
+    // Block Legacy Authentication's week that would have blocked someone is work,
+    // not a wait: the card is headed by it and names who moves where (walk list
+    // 4.x item 35; lifecycle.ts nextMilestone, evidence.ts).
+    if (c.milestone.label === MILESTONE.moveBlocked && step.evidence.lines[0]) return { key: 'observation', label: MILESTONE.moveBlocked.replace(/\.$/, ''), tone: 'warn', value: step.evidence.lines[0], note: null }
+    // A dated report-only week draws no card (walk list 4.x item 21, owner
+    // 2026-09-24): "Observation · Until Aug 31, 2026 · This is the earliest review
+    // date, not a scheduled automatic enforcement." sat on every policy in
+    // report-only, beside the policy card that already says what the week is for.
+    if (!c.milestone.at) return { key: 'observation', label: t.observation, tone: 'wait', value: s.stage, note: step.evidence.lines[0] ?? notes.observationNote }
   }
   return null
 }
@@ -2580,7 +2584,7 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
   if (configuration.length && ['s-prereq-passkey-settings', 's-prereq-break-glass', 's-prereq-exclusion-group'].includes(step.id)) {
     // Keep independent prerequisites and unsaved choices inside their topic.
     // The validation results already contain the per-rule fixes.
-    const extras = [...unsavedTiles(step), ...engineTiles(c, blockers, new Set(), prerequisiteLabel)]
+    const extras = engineTiles(c, blockers, new Set(), prerequisiteLabel)
     for (const extra of extras) {
       const id = tileStepOf(extra)
       const key = step.id === 's-prereq-exclusion-group' ? id === 's-prereq-break-glass' ? 'group-members' : 'group-choice'
@@ -2610,7 +2614,10 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
   // the row's Impact in other numbers ("3 active people · 3 admins · covers 4
   // enabled" beside "4 accounts") and, on a check step, asked the reader to
   // "Check the listed evidence" over none. Every card left is work.
-  const facts = [enforcedReadingTile(step), unwatchedTile(step), ownPolicyTile(step), belowGoalFloorTile(c), followUpTile(c), ...emergencyTiles(step, c), ...configuredTiles, ...((configuration.length && step.id !== 's-prereq-break-glass') || (c.satisfiedFacts?.length ?? 0) > 0 ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), exclusionsTile(step, c), exclusionsReachTile(c), implementationTile(step, c), inventory].filter((x): x is ReadinessTile => x !== null)
+  // The two blocks' sign-in card (roadmap/blockSignIns.ts) sits beside the
+  // step's own state tile, never in its place.
+  const stateFindings = configuration.filter((f) => f.key !== SIGN_INS_FINDING).length
+  const facts = [enforcedReadingTile(step), unwatchedTile(step), ownPolicyTile(step), belowGoalFloorTile(c), followUpTile(c), ...emergencyTiles(step, c), ...configuredTiles, ...((stateFindings && step.id !== 's-prereq-break-glass') || (c.satisfiedFacts?.length ?? 0) > 0 ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), exclusionsTile(step, c), exclusionsReachTile(c), implementationTile(step, c), inventory].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
   // The emergency step's failing checks are its account slots' lines (P0-7): no check tile beside them.
   // The drift card is the review's one card, and the exclusions card the exposure's
@@ -2630,7 +2637,10 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
   const lead = facts.filter(unresolved)
   const effectiveBlockers = configuration.length ? blockers.filter(b => !/passkey.*(?:review|settings)|profile.*review/i.test(b.label)) : blockers
   const rowNamed = effectiveBlockers.find((b) => b.primary === true && (b.kind === 'step' || b.kind === 'suspendedPrerequisite'))?.id ?? null
-  const tiles = directOnly([...lead, ...unsavedTiles(step), ...fixes, ...waits, ...engineTiles(c, effectiveBlockers, present, prerequisiteLabel)], rowNamed)
+  // A conditional input answered on a Direction step draws no card of its own
+  // here (walk list 4.x item 6): the step waits on that Direction step, and its
+  // tile is the engine's "{step} · Waiting on your answers".
+  const tiles = directOnly([...lead, ...fixes, ...waits, ...engineTiles(c, effectiveBlockers, present, prerequisiteLabel)], rowNamed)
   // A "Before enforcement" tile used to be relabelled here, with a sentence
   // composed in code — "Ready for report-only deployment. Complete X before
   // enforcement. Creating this policy in Report-only does not enforce access
@@ -2740,43 +2750,6 @@ function directOnly(tiles: ReadinessTile[], rowNamed: string | null = null): Rea
     drawn.add(id)
     return true
   })
-}
-
-/** A decision input's tile note, and its words where IAMAI could not read the sign-in records the note speaks of. */
-type Noted = { tileNote?: unknown; tileNoteUnread?: unknown }
-
-/** One tile per conditional input nobody has saved (B10 P1-2, U28): what completion waits on a person to confirm, with the question it asks. */
-function unsavedTiles(step: Step): ReadinessTile[] {
-  const d = (contentStepFor(step) as { decision?: Noted & { label?: unknown; text?: unknown; help?: unknown; tileLabel?: unknown; tileValue?: unknown; question?: Noted & { label?: unknown; text?: unknown; tileValue?: unknown } } | null } | undefined)?.decision
-  // A note that reads the sign-in records has its own words where IAMAI does not
-  // hold enough of them (tileNoteUnread, with the source's own reason). The device code tile
-  // said "The sign-in records cover observed use" on a tenant whose sign-in source
-  // refused every read: a coverage that did not exist, beside the question the
-  // records were meant to help answer. The engine held the reason on the step
-  // (Evidence.unreadable) and the tile never read it (R4-19, Priya D4).
-  const unread = step.evidence?.unreadable
-  const noteOf = (n: Noted): unknown => (unread !== undefined && typeof n.tileNoteUnread === 'string' ? fillText(n.tileNoteUnread, { reason: unread }) : n.tileNote)
-  const ask = (label: string): string | null => {
-    const text = d?.question?.label === label ? (noteOf(d.question) ?? d.question.text) : d?.label === label ? (noteOf(d) ?? d.text ?? d.help) : null
-    return typeof text === 'string' && whole(text, {}) ? text : null
-  }
-  // What the tile asks to confirm, where the input names it (content review S3); otherwise the shared word.
-  const valueOf = (label: string): string => {
-    const value = d?.question?.label === label ? d.question.tileValue : d?.label === label ? d.tileValue : null
-    return typeof value === 'string' ? value : R().tiles.unsaved
-  }
-  // A shorter tile label where the input's own is too long for a tile (content review S5). The
-  // input's label stays its answer's key and the key of the tile.
-  const labelOf = (label: string): string => (d?.label === label && typeof d.tileLabel === 'string' ? d.tileLabel : label)
-  // A question that moved to Direction is answered on the Direction step that
-  // asks it (roadmap/direction.ts ANSWERED_IN), and the tile links there, as a
-  // Direction wait's tile does. It was the one card on the step with nowhere to
-  // go: "Mail-sending devices · Not confirmed" on Block Legacy Authentication,
-  // with the engine already knowing Confirm What You Use asks it (R4-43).
-  const answeredIn = directionStepsAnswering(step.id)
-  const where = answeredIn.length === 1 && isDirectionStep(answeredIn[0]) ? answeredIn[0] : null
-  const link = where !== null ? stepLink(where, directionTitleOf(where)) : undefined
-  return (step.unsavedInputs ?? []).map((label): ReadinessTile => ({ key: `unsaved:${label}`, label: labelOf(label), tone: 'warn', value: valueOf(label), note: ask(label), ...(link ? { link } : {}) }))
 }
 
 /** The exclusions group's reach over the tenant's policies (B10 P0-11, S-EG-1): what the group already covers, and that each policy step owns the rest. */

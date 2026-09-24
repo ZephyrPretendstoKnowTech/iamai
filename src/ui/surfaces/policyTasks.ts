@@ -43,39 +43,40 @@ import type { ContractReadiness, ContractStage, StepContract } from './stepContr
 import { emergencySubjectTileOf, followTask } from './emergencyReadiness.ts'
 import type { EmergencySubjectTile } from './emergencyReadiness.ts'
 import type { EmergencyAccountTask, EmergencyTaskProjection } from './emergencyAccountTasks.ts'
-import { mailDevicesFollowUp } from '../../roadmap/manualWork.ts'
-import { mailDevicesOf } from '../../roadmap/answers.ts'
-import { shared } from '../../content/content.ts'
+import { app, shared } from '../../content/content.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import type { OwnCard } from './prepareSteps.ts'
 import { factSentence } from './policyFact.ts'
 
-/** The folded mail follow-up's words (docs/plans/step-redundancy-analysis.md finding 6). */
-const MAIL = shared.mailDevices as { title: string; target: string; steps: string[]; action: string }
+/** The mail accounts' task words (docs/plans/step-redundancy-analysis.md finding 6; walk list 4.x item 36). */
+const MAIL = shared.mailDevices as { title: string; steps: string[]; action: string }
 
 /**
- * Block Legacy Authentication's second Implementation Task: moving every device
- * the mail-sending answer named onto a supported route and removing its
- * temporary exception. It was a step of its own (`s-question-mail-devices`)
- * drawing a different anatomy beside four policy steps in the same group; it is
- * the second half of this step's own outcome, so it is this step's second task.
+ * Block Legacy Authentication's second Implementation Task: moving each account
+ * named in Confirm What You Use's mail-sending answer that still signs in with
+ * legacy authentication onto a supported mail route (walk list 4.x item 36). It
+ * was a step of its own (`s-question-mail-devices`) drawing a different
+ * anatomy beside four policy steps in the same group; it is the second half of
+ * this step's own outcome, so it is this step's second task.
  *
- * Absent where the answer named nobody: a tenant with no exception device has
- * nothing to move.
+ * The accounts are the step's own reading (Step.mailAccountsToMove,
+ * roadmap/blockSignIns.ts), by name, as the task's target. Absent where none is
+ * left: an account that has moved, or an answer that named nobody, has nothing
+ * to move, and the scan completes the step without a record.
  */
-function mailDevicesTaskOf(step: Step, mapping?: Pick<MappingState, 'questionAnswers'>): EmergencyAccountTask | null {
-  if (!mailDevicesFollowUp(step.id, mapping)) return null
+function mailDevicesTaskOf(step: Step, nameOf: (id: string) => string): EmergencyAccountTask | null {
+  const accounts = step.mailAccountsToMove ?? []
+  if (accounts.length === 0) return null
   return {
     id: 'mail-devices-route',
     accountId: null,
     title: MAIL.title,
     targetUpn: null,
-    targetLabel: MAIL.target,
+    targetLabel: accounts.map(nameOf).join(', '),
     required: true,
     readinessKey: '',
     evidence: null,
     actionLabel: MAIL.action,
-    facts: mailDevicesOf(mapping!).map((id) => ({ label: 'Exception account', value: id })),
     steps: [...MAIL.steps],
   }
 }
@@ -377,8 +378,12 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   // report-only week or a prerequisite still holds. Setting a policy that was
   // switched off to Report-only denies nobody, so it is always handed over.
   const directed = next !== null && (next.id === 'report-only' || (implementationOffered(step) && implementationIsCurrent(step)))
-  const mail = mailDevicesTaskOf(step, input.mapping)
-  return { tasks: mail ? [...tasks, mail] : tasks, recommendedTaskId: directed ? next.id : null, printAll: true }
+  const mail = mailDevicesTaskOf(step, input.nameOf)
+  // Once the policy exists, moving the named mail accounts is the work its
+  // turn-on and its completion wait on (walk list 4.x items 4 and 5), so that task
+  // is the one recommended; before it, the report-only create comes first.
+  const mailFirst = mail !== null && step.state.lifecycle !== null && step.state.lifecycle !== 'not-deployed'
+  return { tasks: mail ? [...tasks, mail] : tasks, recommendedTaskId: mailFirst ? mail.id : directed ? next.id : null, printAll: true }
 }
 
 /** This step's content kind (`policy`, `object`, `check`, `campaign`, `ladder`, `blocker`), or null where the content file has no entry for it. */
@@ -501,8 +506,9 @@ export function portalProcedureOf(text: string): { steps: string[]; facts: { lab
 
 /**
  * This step's Implementation Tasks: one task for the step's one Entra procedure,
- * and — on Block Legacy Authentication with exception devices named — a second
- * for moving them to a supported mail route (finding 6).
+ * and — on Block Legacy Authentication, while a mail account named in Confirm
+ * What You Use still signs in with legacy authentication — a second for moving
+ * it to a supported mail route (finding 6; walk list 4.x item 36).
  *
  * The procedure is whatever the step's portal channel carries, whole: the policy
  * create or update on a policy step, the portal path that makes the named
@@ -518,13 +524,13 @@ export function portalProcedureOf(text: string): { steps: string[]; facts: { lab
  * `fixOf`: such a step asks for nothing), and a task there would be work offered
  * over a step that says there is none.
  */
-export function policyTasksOf(step: Step, title: string, artifacts: readonly PortalArtifact[], mapping?: Pick<MappingState, 'questionAnswers'>): EmergencyTaskProjection | null {
+export function policyTasksOf(step: Step, title: string, artifacts: readonly PortalArtifact[], nameOf: (id: string) => string = (id) => id): EmergencyTaskProjection | null {
   if (step.state.condition === 'baseline-conflict') return null
   const portal = artifacts.find((a) => a.id === 'portal')
   if (!portal) return null
   const { steps, facts } = portalProcedureOf(portal.text())
   if (steps.length === 0) return null
-  const mail = mailDevicesTaskOf(step, mapping)
+  const mail = mailDevicesTaskOf(step, nameOf)
   const task: EmergencyAccountTask = {
     id: 'policy-procedure',
     accountId: null,
@@ -543,11 +549,16 @@ export function policyTasksOf(step: Step, title: string, artifacts: readonly Por
   // anatomy asks for — but nothing on the step directs the operator into it,
   // because the card beside it says to finish Establish Emergency Access or
   // approve the Direction answer first, and two directions is none.
-  return { tasks: mail ? [task, mail] : [task], recommendedTaskId: implementationIsCurrent(step) ? task.id : null, printAll: true }
+  //
+  // Once the policy exists, moving the named mail accounts is the work its
+  // turn-on and its completion wait on (walk list 4.x items 4 and 5), so that task
+  // is the one recommended; before it, the report-only create comes first.
+  const mailFirst = mail !== null && step.state.lifecycle !== null && step.state.lifecycle !== 'not-deployed'
+  return { tasks: mail ? [task, mail] : [task], recommendedTaskId: mailFirst ? mail.id : implementationIsCurrent(step) ? task.id : null, printAll: true }
 }
 
 /** A finished policy's state, as Entra shows it (pages.app.plan.stepContract.policyFact.on). */
-const POLICY_ON = (CONTRACT as unknown as { policyFact: { on: string } }).policyFact.on
+const POLICY_ON = (app.plan as unknown as { stepContract: { policyFact: { on: string } } }).stepContract.policyFact.on
 
 /** The subject a card names where the step delivers one policy; a step that delivers two labels each member ("Policy A") itself. */
 const POLICY_SUBJECT = 'Conditional Access policy'

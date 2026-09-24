@@ -93,11 +93,6 @@ test('P1-1: the Decision tile reads Decision, explains the ask, and names the on
   for (const t of allTiles(group)) assert.doesNotMatch(t.value, /Needs decision/)
 })
 
-test('P1-2: an unsaved conditional input is its own Readiness tile, asking for confirmation', () => {
-  const legacy = bodiesOf(fixture('demo')).get(LEGACY)!
-  assert.deepEqual(legacy.contract ? (legacy.readiness.tiles.find((t) => t.key === 'unsaved:Mail-sending devices') ?? null)?.value : null, 'Not confirmed')
-})
-
 test('P1-3: a prerequisite another prerequisite tile already waits on is not drawn beside it, by the dependency graph', () => {
   const demo = fixture('demo')
   const r = runFixture(demo)
