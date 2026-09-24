@@ -2935,8 +2935,7 @@
               "avd": "Azure Virtual Desktop",
               "sharepoint": "SharePoint and OneDrive from outside the office",
               "azureManagement": "Azure portal, CLI or PowerShell for managing Azure",
-              "inforcer": "Inforcer",
-              "workload": "Sync from on-premises Active Directory (Entra Connect)"
+              "inforcer": "Inforcer"
             },
             "serviceOptions": {
               "yes": "Yes",
