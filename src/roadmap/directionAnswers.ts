@@ -70,7 +70,7 @@ export function directionBlockerStep(b: { kind: string; label: string }): Direct
 /** The retired step whose decision the services have always saved under (workflowAnswers, facetOverrides). */
 export const WORKFLOW_DECISION_STEP = 's-confirm-workloads'
 /** The services D1 asks about, in the order the spec lists them. Intune is not one: it follows D3. */
-export const SERVICE_KEYS = ['avd', 'sharepoint', 'azureManagement', 'inforcer', 'workload'] as const
+export const SERVICE_KEYS = ['avd', 'sharepoint', 'azureManagement', 'inforcer'] as const
 
 /** One answer: the option's value, and the ids picked where the option takes a list. */
 export type DirectionAnswer = { value: string; picked: string[] }
