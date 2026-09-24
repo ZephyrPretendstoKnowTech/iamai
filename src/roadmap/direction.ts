@@ -48,7 +48,7 @@ import type { MappingState } from '../mapping/types.ts'
 import { detectServiceAccounts } from '../mapping/serviceAccounts.ts'
 import { personLabels } from '../names.ts'
 import { sharedDeviceUsers } from '../derive/sharedDevices.ts'
-import { phoneSignInIds } from '../derive/sets.ts'
+import { notPeopleIds, personAccounts, phoneSignInIds } from '../derive/sets.ts'
 import { setState } from './lifecycle.ts'
 import { DEVICE_GOALS } from './deviations.ts'
 import { QUESTION_STEP } from './answers.ts'
@@ -219,10 +219,19 @@ function intuneSeatLine(ctx: Context): string | null {
 
 function deviceQuestions(ctx: Context): DirectionQuestion[] {
   const evidence = ctx.snapshot.scenarioEvidence ?? null
-  const unjoined = evidence?.unjoinedComputers?.people.length
-  const registered = evidence?.registeredComputers?.people.length
+  // Every count here is of the plan's people, the one set every people count
+  // reads (derive/sets.ts personAccounts over notPeopleIds, as generate.ts
+  // takes it): the emergency access, service and shared-device accounts the
+  // sign-in records also name are not people, and Identify Service and Shared
+  // Accounts says they are out of the people counts. Where the user rows were
+  // not read there is no such set, and the cards say nothing about people.
+  const usersRead = ctx.snapshot.sources.users?.status === 'ok' || ctx.snapshot.sources.users?.status === 'partial'
+  const people = new Set(personAccounts(ctx.snapshot, notPeopleIds(ctx.mapping)).map((u) => u.id))
+  const peopleIn = (ids: readonly string[] | null | undefined): number | undefined => !usersRead || ids === null || ids === undefined ? undefined : ids.filter((id) => people.has(id)).length
+  const unjoined = peopleIn(evidence?.unjoinedComputers?.people)
+  const registered = peopleIn(evidence?.registeredComputers?.people)
   // Who signed in from a phone: the one reading MFA Readiness draws its phones from (derive/sets.ts).
-  const phones = phoneSignInIds(ctx.snapshot)?.length
+  const phones = peopleIn(phoneSignInIds(ctx.snapshot))
   // A sign-in line is said only over sign-in records read whole (signInsReadWhole).
   const readWhole = signInsReadWhole(ctx.snapshot)
   const seen = (n: number | undefined, some: string, none: string | null): string | null => !readWhole || n === undefined ? null : n > 0 ? fillText(some, { n }) : none
