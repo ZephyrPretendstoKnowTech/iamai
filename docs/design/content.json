@@ -4388,7 +4388,7 @@
           "Open [Security info](https://mysignins.microsoft.com/security-info), sign in as {operatorAccount} and answer the prompt there.",
           "Suggested: Add sign-in method → Passkey in Microsoft Authenticator. Or a key from 1.3's approved list.",
           "Sign out, then sign in with the passkey on each device you use: {operatorDevices}.",
-          "Return to IAMAI and select Scan to update the plan."
+          "Return to IAMAI and select **Scan to update the plan**."
         ]
       },
       "dates": null,
@@ -4543,13 +4543,13 @@
         "steps": [
           "Send the Email tab's first message to everyone and its admin message to the admins.",
           "Anyone MFA Readiness lists with no method: book ten minutes, open https://aka.ms/mfasetup with them signed in, and register together.",
-          "If they can't sign in to register: Entra ID → Users → the person → Authentication methods → Add authentication method → Temporary Access Pass.",
+          "If they can't sign in to register: open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Users →** the person **→ Authentication methods → Add authentication method → Temporary Access Pass**.",
           "Anyone on text or call only: add Microsoft Authenticator beside it.",
           "Admins: register a passkey or a hardware security key with {list:campaignNeedsPasskey}.",
           "Have each sign in once with the new method.",
           "Today: the registration campaign is {campaignToday}.",
-          "Turn on the registration campaign: Entra ID → Authentication methods → Registration campaign → Edit. State: Enabled. Authentication method: Passkey. Include: All users. Exclude: {campaignExclude}. Days allowed to snooze: 1. Limited number of snoozes: Disabled. Save.",
-          "Return to IAMAI and select Scan to update the plan."
+          "Turn on the registration campaign: open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Authentication methods → Registration campaign → Edit**. State: Enabled. Authentication method: Passkey. Include: All users. Exclude: {campaignExclude}. Days allowed to snooze: 1. Limited number of snoozes: Disabled. Save.",
+          "Return to IAMAI and select **Scan to update the plan**."
         ]
       },
       "dates": null,
