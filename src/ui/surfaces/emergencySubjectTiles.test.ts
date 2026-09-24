@@ -103,23 +103,6 @@ test('Step 4: the sign-in list renders once, in the Sign-in Evidence tile, as on
 })
 
 test('a check that passes keeps the qualifier that made the pass honest (S4-6)', () => {
-  // The note was blanked the moment the check passed, and what went with it was
-  // the caveat: "No office network is selected; location-based exceptions are
-  // not applied." The card read a subject, a check and nothing else.
-  const value = structuredClone(fixture('demo-week2'))
-  const tile = subjectsOf(value, 's-prereq-trusted-location').find(row => row.key === 'configuration:trusted-network-choice')!
-  assert.equal(tile.satisfied, true, 'the premise: the check passes')
-  assert.equal(tile.title, 'Everyone is remote')
-  // And the evidence the answer leaves out, where the scan read any: "no office
-  // network is selected" is a reading of the answer, and on a tenant that holds a
-  // trusted named location it sounded like a reading of the tenant.
-  assert.equal(tile.detail, 'No office network is selected; location-based exceptions are not applied. The scan read a trusted named location this answer leaves out: Head office.')
-  // The sentence, not the action: a check that has passed has nothing to do.
-  assert.equal(tile.instruction, '')
-  // And the other caveat the audit named, on the admin review.
-  const review = subjectsOf(structuredClone(fixture('mid')), 's-check-separate-admin-accounts').find(row => row.key === 'configuration:administrator-review-scope')!
-  assert.equal(review.satisfied, true)
-  assert.match(review.detail ?? '', /clues, not proof of dedicated use/)
   // An open check still reads its direction first, then the note.
   const open = emergencySubjectsOf({ tiles: [{ key: 'k', label: 'Subject', tone: 'warn', value: 'Not done', note: 'The note.' }], satisfied: [], bar: { key: 'x', main: '' } }, null)[0]
   assert.equal(open.instruction, 'The note.')

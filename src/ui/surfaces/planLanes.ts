@@ -59,6 +59,17 @@ const GATE: ReadonlySet<string> = new Set(GATING_SUBJECTS.map(blockerStepId))
 
 export const LANE_ORDER: readonly Lane[] = ['Ready', 'Up Next', 'On Hold', 'Completed', 'Deferred']
 
+/**
+ * The Ready word of a check whose work is a review or a create (walk list item
+ * 18): Disable or Confirm Dormant Accounts goes through each account it lists,
+ * and Use Separate Accounts for Admin Work creates a separate admin account for
+ * each admin it lists. Every other check and campaign reads Ready.
+ */
+const CHECK_WORK: Readonly<Record<string, Substatus>> = {
+  's-check-dormant-accounts': 'Review',
+  's-check-separate-admin-accounts': 'Create',
+}
+
 export type LaneReading = {
   lane: Lane
   substatus: Substatus | null
@@ -434,6 +445,15 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
     // Authentication-method configuration already exists in Entra, even when
     // disabled. This action changes its settings rather than creating an object.
     if (reading?.lane === 'Ready' && step.id === PASSKEY_SETTINGS_STEP_ID && reading.substatus === 'Create') reading.substatus = 'Correct'
+    // The office location picked in Decide How and Where People Sign In is in
+    // Entra without the trusted mark: the step marks it, it makes nothing (walk list 61).
+    if (reading?.lane === 'Ready' && (step.officeToTrust?.length ?? 0) > 0 && reading.substatus === 'Create') reading.substatus = 'Correct'
+    // A strength already named as the baseline's is corrected, not made again;
+    // a saved service accounts group whose members differ is corrected; and one
+    // the scan found holding exactly the picked accounts is only saved, which
+    // creates nothing (walk list section 3, items 7 and 55).
+    if (reading?.lane === 'Ready' && reading.substatus === 'Create' && (step.strengthToCorrect !== undefined || step.serviceGroup?.kind === 'correct')) reading.substatus = 'Correct'
+    if (reading?.lane === 'Ready' && reading.substatus === 'Create' && step.serviceGroup?.kind === 'found') reading.substatus = null
     // A saved exclusions-group choice is an existing object to inspect or
     // correct. Keep the create label only while no group has been saved.
     const savedExclusionsGroup = step.id === EXCLUSION_GROUP_STEP_ID
@@ -442,7 +462,15 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
     // Account checks ask for a review, not creation of a policy or object.
     if (reading && workflowReviewIsCurrent(step)) Object.assign(reading, { lane: 'Ready', substatus: 'Review', reason: null, blockers: [], gates: [] })
     const workflowCheckIsNext = step.manualReview && (!POLICY.includes(step.kind) || workflowReviewIsCurrent(step))
-    if (reading?.lane === 'Ready' && (workflowCheckIsNext || (reading.substatus === 'Create' && step.kind === 'check'))) reading.substatus = 'Review'
+    if (reading?.lane === 'Ready' && workflowCheckIsNext) reading.substatus = 'Review'
+    // Ready's word is the work that is ready (walk list item 18, owner
+    // 2026-09-23). The engine's Create is a policy's or an object's create; every
+    // check's used to become Review here, so Register Your Own Passkey read
+    // Ready · Review with nothing to review, and Prepare Your Team for MFA read
+    // Ready · Create over a campaign, which creates nothing. A check or a
+    // campaign says its own work (CHECK_WORK), and one with nothing to review or
+    // create reads Ready.
+    else if (reading?.lane === 'Ready' && reading.substatus === 'Create' && (step.kind === 'check' || step.kind === 'verify')) reading.substatus = CHECK_WORK[step.id] ?? null
   }
   // One wait, said once (docs/plans/step-redundancy-analysis.md finding 3), on
   // the reading the second tile producer reads. A policy held by "Define the

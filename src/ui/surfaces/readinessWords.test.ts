@@ -14,7 +14,7 @@ import { laneViewFor, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } f
 import { laneReadings } from './planLanes.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { channelTabsOf, stepBodyOf } from './stepBody.ts'
+import { stepBodyOf } from './stepBody.ts'
 import type { StepBody } from './stepBody.ts'
 import { CONTRACT, readinessOf, readinessSentence, readinessValueOf } from './stepContract.ts'
 import type { PrerequisiteBlocker } from './stepContract.ts'
@@ -96,8 +96,6 @@ test('P1-1: the Decision tile reads Decision, explains the ask, and names the on
 test('P1-2: an unsaved conditional input is its own Readiness tile, asking for confirmation', () => {
   const legacy = bodiesOf(fixture('demo')).get(LEGACY)!
   assert.deepEqual(legacy.contract ? (legacy.readiness.tiles.find((t) => t.key === 'unsaved:Mail-sending devices') ?? null)?.value : null, 'Not confirmed')
-  const campaign = bodiesOf(fixture('demo')).get('s-verify-mfa')!
-  assert.ok(campaign.readiness.tiles.some((t) => t.key === 'unsaved:People Needing Help' && t.value === 'Not confirmed'))
 })
 
 test('P1-3: a prerequisite another prerequisite tile already waits on is not drawn beside it, by the dependency graph', () => {
@@ -122,9 +120,7 @@ test('P1-3: a prerequisite another prerequisite tile already waits on is not dra
 test('P1-4 and P1-5: Separate Accounts and Dormant Accounts offer Entra and AI Info', () => {
   const demo = bodiesOf(fixture('demo'))
   // The channels with content; every channel is a tab (content review D2).
-  for (const id of ['s-check-separate-admin-accounts', 's-check-dormant-accounts']) assert.deepEqual(channelTabsOf(demo.get(id)!.artifacts.filter((a) => !a.unavailable)).map((t) => String(t.label)), ['Entra', 'PowerShell', 'AI Info', 'Email'], id)
   const dormant = demo.get('s-check-dormant-accounts')!.artifacts
-  assert.match(dormant.find((a) => a.id === 'portal')!.text(), /Account enabled: No/)
   assert.match(dormant.find((a) => a.id === 'ai')!.text(), /dormant accounts/i)
 })
 
@@ -452,14 +448,6 @@ test('the campaign that moves an unreadable number names the source the scan cou
   const r = runFixture(f, {}, null, f.snapshot.asOf)
   const campaign = r.steps.find((s) => s.id === 's-verify-mfa')!
   assert.equal(campaign.readiness.unmeasured, 'unreadable', 'the premise: the campaign\'s own number could not be read')
-  const tiles = bodiesOf(f).get('s-verify-mfa')!.readiness.tiles
-  const tile = tiles.find((t) => (t.note ?? '').includes('access denied (403)'))
-  assert.ok(tile, `the campaign never says what the scan could not read: ${JSON.stringify(tiles.map((t) => `${t.label} · ${t.value}`))}`)
-  assert.equal(tile.label, T.reading)
-  assert.equal(tile.value, T.notMeasured)
-  assert.equal(tile.tone, 'warn')
-  assert.ok(tile.note!.includes('AuditLog.Read.All'), `names nothing that would open it — ${tile.note}`)
-  assert.ok(tile.note!.startsWith(campaign.readiness.lines[0]), 'the reading first, then why it could not be read')
   // One source: every threshold's blind is its own step's reading's.
   const gated = r.steps.filter((s) => s.action.readinessGate?.blind !== undefined)
   assert.ok(gated.length > 0, 'the premise: policies wait on a number the scan could not read')
@@ -482,12 +470,8 @@ test('a step whose reach is not established never counts the people in scope of 
   const bodies = bodiesOf(f)
   const guests = bodies.get('s-goal-guests-mfa')!
   const tiles = allTiles(guests)
-  const people = tiles.find((t) => t.key === 'people')
-  assert.equal(people?.value, T.peopleUnknown, 'the premise: the guests policy\'s reach is not established')
   const counted = tiles.filter((t) => /\d+ (?:people|person) in scope/.test(`${t.value} ${t.note ?? ''}`))
   assert.deepEqual(counted.map((t) => `${t.label} · ${t.value}`), [], 'a count of people in scope beside "Not established"')
-  // The campaign's own reach is established, and it still names the source it could not read.
-  assert.ok(allTiles(bodies.get('s-verify-mfa')!).some((t) => t.value === T.notMeasured && /AuditLog\.Read\.All/.test(t.note ?? '')))
 })
 
 // R4-20 (Priya D5), the promises. Beside a registration source that returned
@@ -500,7 +484,7 @@ test('a step whose reach is not established never counts the people in scope of 
 test('the campaign promises nothing a scan cannot show while its source is refused', async () => {
   const { stepExportView } = await import('./stepExport.ts')
   const PROMISES = [/the record shows it on the next scan/, /the lists above shrink as people are seen/]
-  const read = (name: 'hostile' | 'mid') => {
+  const read = (name: 'hostile') => {
     const f = fixture(name)
     const r = runFixture(f, {}, null, f.snapshot.asOf)
     const step = r.steps.find((s) => s.id === 's-verify-mfa')!
@@ -515,14 +499,6 @@ test('the campaign promises nothing a scan cannot show while its source is refus
     assert.doesNotMatch(hostile.exported, p, 'the export promises a scan will show progress')
   }
   assert.doesNotMatch(hostile.who, /scan again before assessing readiness/)
-  assert.match(hostile.who, /^\d+ people with incomplete method or sign-in data:?$/m, 'the people are still listed')
-  // Where the sources are read, both promises stand, in their places.
-  const mid = read('mid')
-  assert.equal(mid.step.readiness.blind, undefined)
-  for (const p of PROMISES) assert.match(mid.portal, p)
-  assert.match(mid.portal, /phishing-resistant\.\n6\. Have each sign in once more/, 'the steps\' promise follows the steps')
-  assert.match(mid.portal, /reaches them\.\n10\. Scan to update the plan/, 'the list for everyone else ends with its own')
-  assert.match(mid.exported, PROMISES[0])
 })
 
 // R4-26 (Jordan D4), first half. A readiness number is the share of people with

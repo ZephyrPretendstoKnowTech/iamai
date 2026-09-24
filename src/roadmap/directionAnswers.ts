@@ -25,6 +25,7 @@
 //
 // Pure: no DOM, no network, no engine import.
 import type { MappingState } from '../mapping/types.ts'
+import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { DirectionQuestion } from './types.ts'
 import type { StepDecision, StepDecisionInput } from './decisions.ts'
 import { DEVICE_ANSWER_KEYS, QUESTION_STEP, answerKey, answerOf, answerTextFor, devicePlanOf, questionLabels, questionOptions } from './answers.ts'
@@ -209,14 +210,52 @@ export function savedAnswerOf(key: DirectionQuestionKey, m: Mapping): DirectionA
 }
 
 /** The questions besides the services whose approval keeps the evidence basis it was made against. */
-const BASIS_KEYS = ['mailDevices', 'partner'] as const
+const BASIS_KEYS = ['mailDevices', 'partner', 'officeNetwork'] as const
 
 /**
- * The evidence basis (present, absent, unread) a saved mail or partner answer
- * was approved against; null where none was kept (an answer saved before it was).
+ * The evidence basis a saved mail or partner answer was approved against
+ * (present, absent, unread), or the office network's (the ids of the trusted
+ * IP named locations the scan read then, comma-separated); null where none was
+ * kept (an answer saved before it was).
  */
 export function savedBasisOf(key: (typeof BASIS_KEYS)[number], m: Pick<MappingState, 'questionAnswers'>): string | null {
   return m.questionAnswers?.[answerKey(DIRECTION_STEP.use, `${key}:basis`)] ?? null
+}
+
+/** A named location as the office network reads it. */
+export type OfficeLocation = { id: string; name: string; ranges: string[] }
+
+/**
+ * The IP named locations the scan read that are marked trusted, or null where
+ * named locations were not read. The office network question suggests them,
+ * and Define the Trusted Network is done with them.
+ */
+export function trustedIpLocations(snapshot: Pick<TenantSnapshot, 'config'>): OfficeLocation[] | null {
+  const locations = snapshot.config.namedLocations
+  if (locations?.status !== 'ok') return null
+  return (locations.rows ?? [])
+    .map((raw) => raw as { id?: unknown; displayName?: unknown; isTrusted?: unknown; '@odata.type'?: unknown; ipRanges?: { cidrAddress?: unknown }[] })
+    .filter((l) => typeof l.id === 'string' && l.isTrusted === true && String(l['@odata.type'] ?? '').includes('ipNamedLocation'))
+    .map((l) => ({
+      id: l.id as string,
+      name: (typeof l.displayName === 'string' && l.displayName.trim() !== '' ? l.displayName : (l.id as string)).split(/\s+/).join(' ').trim(),
+      ranges: (l.ipRanges ?? []).map((r) => r?.cidrAddress).filter((c): c is string => typeof c === 'string'),
+    }))
+}
+
+/**
+ * The office location a saved "Not in Entra yet" was waiting for (walk list
+ * item 6): each trusted IP named location the scan reads that was not trusted
+ * when the answer was approved (the answer's basis). Empty while there is none,
+ * or while the answer is another. An answer approved before a basis was kept
+ * counts every trusted location as new. Define the Trusted Network is done
+ * with it, and the office card reopens pre-filled with it.
+ */
+export function officeLocationsCreated(snapshot: Pick<TenantSnapshot, 'config'>, m: Mapping): OfficeLocation[] {
+  if (savedAnswerOf('officeNetwork', m)?.value !== 'notInEntra') return []
+  const basis = savedBasisOf('officeNetwork', m)
+  const before = new Set((basis ?? '').split(',').map((id) => id.trim().toLowerCase()).filter((id) => id !== ''))
+  return (trustedIpLocations(snapshot) ?? []).filter((l) => !before.has(l.id.toLowerCase()))
 }
 
 // ---- the Direction decision, as saved ----

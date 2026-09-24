@@ -15,6 +15,8 @@ import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { operatorUserId } from '../derive/operator.ts'
 import { app } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
+import { deviceTypeOf } from '../scoring/phishingResistant.ts'
+import type { DeviceType, MethodClass, PersonReadiness } from '../scoring/phishingResistant.ts'
 
 export const PASSKEY_SETTINGS_STEP_ID = 's-prereq-passkey-settings'
 /** The operator's own passkey: generated only where the scan read the operator's methods and found none. */
@@ -447,14 +449,45 @@ export function passkeyBindings(snapshot: TenantSnapshot | null, mapping?: Mappi
 }
 
 /**
- * The signed-in operator and whether they hold a passkey (device-bound in an app,
- * or a FIDO2 security key), from the per-user methods read the scan already makes
+ * The signed-in operator and whether they registered a credential Register Your
+ * Own Passkey accepts (a passkey, a FIDO2 security key, Windows Hello, or a Mac's
+ * Platform Credential), from the per-user methods read the scan already makes
  * (UserAuthenticationMethod.Read.All). Null where the scan read neither the
  * operator nor their methods: nothing is claimed either way.
  */
-export function operatorPasskeyOf(snapshot: TenantSnapshot): { operatorId: string; holds: boolean } | null {
+export function operatorPasskeyOf(snapshot: TenantSnapshot): { operatorId: string; registered: boolean } | null {
   const operatorId = operatorUserId(snapshot)
   const methods = operatorId === null ? undefined : snapshot.authMethods?.[operatorId]
   if (operatorId === null || !Array.isArray(methods)) return null
-  return { operatorId, holds: methods.some((m) => m.kind === 'passkey' || m.kind === 'fido2') }
+  return { operatorId, registered: methods.some((m) => OPERATOR_KINDS.has(m.kind)) }
+}
+
+const OPERATOR_KINDS: ReadonlySet<string> = new Set(['passkey', 'fido2', 'windowsHelloForBusiness', 'platformCredential'])
+
+/**
+ * The sign-ins Register Your Own Passkey counts (owner, 2026-09-23, walk list
+ * section 3 items 5 and 43): a passkey or Windows Hello, which on a Mac is its
+ * Platform Credential (scoring/phishingResistant.ts proofClassOn: Microsoft
+ * represents it under Windows Hello for Business). A certificate is not one.
+ */
+const OPERATOR_PROOF: ReadonlySet<MethodClass> = new Set<MethodClass>(['passkey', 'windowsHello', 'platformCredential'])
+
+/** The operator's sign-in with one: the kinds of device it was seen on (a computer, a phone; none where the record named no platform) and the latest day. */
+export type OperatorSignIn = { types: DeviceType[]; at: string }
+
+/**
+ * Whether IAMAI sees the operator sign in with a passkey or Windows Hello, from
+ * the readiness it already holds for them: the proof on each device family in
+ * the window, and the latest proof it knows, kept from an earlier scan too. One
+ * sign-in on any device completes the step; there is no every-kind-of-device
+ * requirement (owner, 2026-09-23). Null where there is none.
+ */
+export function operatorSignInOf(r: Pick<PersonReadiness, 'devices' | 'lastConfirmed'> | null | undefined): OperatorSignIn | null {
+  if (!r) return null
+  const proofs: { type: DeviceType | null; at: string }[] = r.devices.flatMap((d) => (d.proof && OPERATOR_PROOF.has(d.proof.cls) ? [{ type: d.type, at: d.proof.at }] : []))
+  const last = r.lastConfirmed
+  if (last && OPERATOR_PROOF.has(last.cls)) proofs.push({ type: last.os ? deviceTypeOf(last.os) : null, at: last.at })
+  if (proofs.length === 0) return null
+  const types = (['computer', 'phone'] as const).filter((t) => proofs.some((p) => p.type === t))
+  return { types, at: proofs.map((p) => p.at).sort().at(-1)! }
 }

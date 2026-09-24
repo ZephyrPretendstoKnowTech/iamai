@@ -14,10 +14,6 @@
   ],
   "tiles": [
     {
-      "label": "Affected people",
-      "state": "Not established"
-    },
-    {
       "label": "Partner or MSP access",
       "state": "Confirm whether partners access your tenant"
     },

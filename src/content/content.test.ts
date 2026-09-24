@@ -120,6 +120,10 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // (roadmap/lifecycle.ts heldForReview): a scan-to-scan condition, and the
   // review page compares no two scans.
   '.shared.datesReview',
+  // A policy's Description line in its Entra procedure (stepPortal.ts): the
+  // review page draws no policy procedure. Its fragment matched 3.5's old
+  // "Description:" task line, which walk list item 59 deleted.
+  '.shared.descriptionLine',
   // The row's date column for that same step, for the same reason.
   '.pages.plan.heldForReview',
   // The Plan's length tip and Connect's sample tile for a plan that cannot finish
@@ -129,9 +133,6 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // What holds a policy no step of the plan clears, on its row (roadmap/stateReason.ts
   // holdReasonFor): a state the review page's example plan is not in.
   '.pages.plan.blocked.unsettled',
-  // The campaign email while the plan dates nothing (stepExport.ts commsFor): the
-  // review page's example plan dates its enforcement, so it renders the dated body.
-  '.steps[13].comms.bodyUndated',
   '.pages.plan.blocked.pairUnmatched',
   '.pages.plan.blocked.targetAmbiguous',
   '.pages.plan.blocked.noOperation',
@@ -146,9 +147,6 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.pages.plan.blocked.workCountries',
   // The authentication methods policy the scan could not read (A5, copy/reasons.ts BLOCKED_REASON).
   '.pages.plan.blocked.methodsPolicyUnread',
-  // The dormant-accounts step held where no account's sign-in activity was read (R4-49,
-  // copy/reasons.ts BLOCKED_REASON): the review page's example scan read that activity.
-  '.pages.plan.blocked.activityUnread',
   // The Plan usability pass (2026-09-11): words the Plan, its settings and its
   // decision layout read that the review body does not draw.
   '.pages.plan.blocked.devicePlan',
@@ -202,15 +200,29 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.steps[1].who.several',
   '.steps[1].who.none',
   '.steps[3].decision.location.none',
+  // Define the Trusted Network's words for a picked office location Entra holds
+  // without the trusted mark, for no saved ranges, and for sign-ins from the
+  // finished location (walk list items 14, 61, 63, 65; stepVars.ts, stepBody.ts,
+  // generate.ts): states the review page's example does not reach.
+  '.steps[4].rangesUnsaved',
+  '.steps[4].satisfied.signIns',
+  '.steps[4].whatToDoWhen.officeToTrust.lead',
+  '.steps[4].whatToDoWhen.officeToTrust.task',
+  // Held on the office answer (walk list 60), and a strength of the baseline's
+  // name to correct (walk list 55): states the example does not reach.
+  '.steps[4].whatToDoWhen.officeUnanswered.lead',
+  '.steps[10].whatToDoWhen.strengthToCorrect.lead',
   '.steps[5].who.none',
-  // The service-accounts group's list lines: each renders (the example nominates
-  // svc-mailer-1 and svc-mailer-2), but the words after its list begin with the
-  // punctuation the review renderer drops after a list, so the fragment this test
-  // looks for carries a leading "." or ":" the page does not. The mail-sending
-  // sentence rides the list line now ([2]), so it goes with the list where none is
-  // nominated; the ROPC line moved from [4] to [3].
-  '.steps[5].whatToDo.steps[2]',
-  '.steps[5].whatToDo.steps[3]',
+  // The service-accounts group's lead once the scan finds the group holding
+  // exactly the picked accounts and nobody has saved it (stepVars.ts
+  // serviceGroupFound): the example's tenant has no such group, so the review
+  // page draws the create lead.
+  '.steps[5].whatToDoWhen.serviceGroupFound.lead',
+  // Its card once found, and a saved group whose members differ (walk list item 7).
+  '.steps[5].whatToDoWhen.serviceGroupFound.check',
+  '.steps[5].whatToDoWhen.serviceGroupCorrect.check',
+  '.steps[5].whatToDoWhen.serviceGroupCorrect.lead',
+  '.steps[5].whatToDoWhen.serviceGroupCorrect.task',
   '.steps[6].who.none',
   // The lead for a tenant whose security defaults the scan read as already off
   // (who.leadWhen, R4): the example's tenant has them on, so only that sentence
@@ -227,17 +239,6 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.steps[7].whatToDoWhen.securityDefaultsOff.steps[0]',
   '.steps[7].whatToDoWhen.securityDefaultsOff.steps[1]',
   '.steps[10].who.match',
-  '.steps[13].who.groups.noMethod',
-  // The campaign's readiness groups (Step 7): the example lists nobody needing setup with a method and nobody unknown.
-  '.steps[13].who.groups.needsSetup',
-  '.steps[13].who.groups.readinessUnknown',
-  // The same group where the campaign's source was refused (R4-20): the example's sources are all read.
-  '.steps[13].who.groups.readinessUnknownBlind',
-  '.steps[13].who.groups.holdouts',
-  // The admins the campaign waits on outside its active people (R4-52): the
-  // example's tenant has none, dormant or with sign-in activity unread.
-  '.steps[13].who.dormantAdmins',
-  '.steps[13].who.unreadAdmins',
   '.steps[14].who.evidence[1]',
   // Directory-role holders who use the same account for mail or Teams (E6), on the
   // three admin policies (15, 23, 33); the examples list none. The lockout lists
@@ -345,8 +346,12 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
 // A who-line's undated form (who.<key>Undated) is drawn where the step carries no
 // turn-on day (stepExport.ts whoEvidenceLines), and the review page's example
 // dates every step, so it draws the dated line in its place.
+// A step's card.satisfied and card.admin, its keep picker and its procedure are
+// its Tasks Remaining cards and Implementation Task (policyTasks.ts
+// ownCardWordsOf, generate.ts, sectionThreeTasks.ts), and the review page draws
+// no cards and no tasks.
 // These fields are consumed by Plan.tsx, stepContract.ts, stepResources.ts and aiGrounding.ts, not the static content-review renderer.
-const isAppOnly = (p: string): boolean => /^\.steps\[\d+\]\.who\.\w+Undated\./.test(p) ||p === '.pages.plan.howTo.intro' || p.startsWith('.pages.plan.changes.') || p.startsWith('.pages.plan.howTo.legend.') || /^\.pages\.plan\.howTo\.legend\[/.test(p) || p === '.shared.certificatePrompt' || /\.tileNote(Unread)?$/.test(p) || /\.whatToDo\.verification(Lead)?\[/.test(p) || /^\.steps\[\d+\]\.preparation\[\d+\]$/.test(p) || /^\.steps\[\d+\]\.decision\.heading$/.test(p) || /^\.steps\[\d+\]\.(doneEnd|aiFocus|taskTitle)$/.test(p) || /^\.steps\[\d+\]\.card\.(subject|check)$/.test(p) || p.startsWith('.pages.plan.workflows.reviewCard.') || p === '.pages.plan.workflows.reviewTaskTitle' || p.startsWith('.pages.app.') || p.startsWith('.pages.plan.blockedSubject.') || p.startsWith('.pages.plan.settings.mappings.') || p.startsWith('.shared.engine.') || p.startsWith('.shared.deviation.') || p.startsWith('.shared.devicePlan.') || p.startsWith('.shared.mailDevices.') || p === '.pages.plan.footer.notLicensedDevices' || p === '.shared.planPromptTitle' || p === '.shared.policySettingsForAction' || p.startsWith('.shared.deviceBriefing.') || p.startsWith('.shared.passkeyCompatibility.') || p.startsWith('.shared.passkeyRestrictions.') || p === '.shared.policyDoneWhenUnobserved' || p.startsWith('.shared.registrationScope.')
+const isAppOnly = (p: string): boolean => /^\.steps\[\d+\]\.who\.\w+Undated\./.test(p) ||p === '.pages.plan.howTo.intro' || p.startsWith('.pages.plan.changes.') || p.startsWith('.pages.plan.howTo.legend.') || /^\.pages\.plan\.howTo\.legend\[/.test(p) || p === '.shared.certificatePrompt' || /\.tileNote(Unread)?$/.test(p) || /\.whatToDo\.verification(Lead)?\[/.test(p) || /^\.steps\[\d+\]\.preparation\[\d+\]$/.test(p) || /^\.steps\[\d+\]\.decision\.heading$/.test(p) || /^\.steps\[\d+\]\.(doneEnd|aiFocus|taskTitle)$/.test(p) || /^\.steps\[\d+\]\.card\.\w+$/.test(p) || /^\.steps\[\d+\]\.(milestone|instruction)(\.\w+)?$/.test(p) || /^\.steps\[\d+\]\.campaign\.\w+$/.test(p) || /^\.steps\[\d+\]\.(keep|procedure)\./.test(p) || p.startsWith('.pages.plan.workflows.reviewCard.') || p === '.pages.plan.workflows.reviewTaskTitle' || p.startsWith('.pages.app.') || p.startsWith('.pages.plan.blockedSubject.') || p.startsWith('.pages.plan.settings.mappings.') || p.startsWith('.shared.engine.') || p.startsWith('.shared.deviation.') || p.startsWith('.shared.devicePlan.') || p.startsWith('.shared.mailDevices.') || p === '.pages.plan.footer.notLicensedDevices' || p === '.shared.planPromptTitle' || p === '.shared.policySettingsForAction' || p.startsWith('.shared.deviceBriefing.') || p.startsWith('.shared.passkeyCompatibility.') || p.startsWith('.shared.passkeyRestrictions.') || p === '.shared.policyDoneWhenUnobserved' || p.startsWith('.shared.registrationScope.')
 const isStructural = (p: string): boolean =>
   /\.id$/.test(p) || /\.href$/.test(p) || /\.applies$/.test(p) || /pickerSource$/.test(p) || /\.kind$/.test(p) || /\.multi$/.test(p) || /\.mergesGoals\b/.test(p) || /\.learn\.url$/.test(p) || /\.whatToDoReference\b/.test(p) || /\.placement$/.test(p)
 
@@ -376,7 +381,9 @@ test('no orphan content string: every non-structural key renders, or is a known 
     if (isStructural(path) || isAppOnly(path)) continue
     const frags = s.split(/\{[^}]*\}/).map((f) => f.replace(/\s+/g, ' ').trim()).filter((f) => f.length >= 12)
     if (frags.length === 0) continue // a string that is entirely variables
-    if (frags.some((f) => body.includes(f) || body.includes(escHtml(f)))) continue
+    // A procedure line's bold renders as the product draws it (render.ts ol).
+    const bold = (x: string): string => x.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    if (frags.some((f) => body.includes(f) || body.includes(escHtml(f)) || body.includes(bold(escHtml(f))))) continue
     miss.push(path)
   }
   assert.deepEqual(miss.sort(), [...EXAMPLE_SUPPRESSED_OR_APP_ONLY].sort(), 'the set of non-rendered content strings changed; a new entry is a content key no renderer consumes')

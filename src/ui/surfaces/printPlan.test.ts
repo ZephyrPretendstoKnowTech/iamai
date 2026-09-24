@@ -545,7 +545,7 @@ test('the printed step reads the saved decision, and never prints a picker\'s ow
   const saved = initialPicked(ex, key, { picked: ids.slice(0, 1) }, ids, false)
   assert.deepEqual(saved, { picked: ids.slice(0, 1), matched: [] })
   const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
-  assert.equal(print.match(/decision=\{decisions\[s\.id\] \?\? null\}/g)?.length, 1, 'a printed step does not read the saved decision')
+  assert.equal(print.match(/decision=\{decisions\[decisionKeyOf\(s\.id\)\] \?\? null\}/g)?.length, 1, 'a printed step does not read the saved decision')
   // The saved decisions reach the document: the prop is required, and the
   // Export page passes the plan record's. Unwired, a saved 1-of-11 support list
   // printed as an empty "People Needing Help".

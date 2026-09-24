@@ -1,10 +1,10 @@
 {
-  "lane": "Up Next",
+  "lane": "On Hold",
   "substatus": null,
   "reason": null,
   "fact": null,
-  "badge": "Up Next",
-  "bar": "After Define the Trusted Network",
+  "badge": "On Hold",
+  "bar": "Prerequisite on hold: Define the Trusted Network",
   "rail": "Give Shared Devices Their Own Policy",
   "headings": [
     "About this Step",
@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Define the Trusted Network",
-      "state": "Prerequisite · To do"
+      "state": "Prerequisite · Waiting"
     }
   ],
   "channels": [
@@ -25,5 +25,5 @@
     "AI Info",
     "Email"
   ],
-  "when": "Est. Aug 31, 2026"
+  "when": "Est. Sep 14, 2026"
 }

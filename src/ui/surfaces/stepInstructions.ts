@@ -156,6 +156,20 @@ export function rescanLinesOf(step: Step, cs: ContentStepLike): { steps: string[
 }
 
 /**
+ * Prepare Your Team for MFA's procedure, the one list its Entra tab and its AI
+ * Info's What to do both read (walk list item 19): the step's own lines, then
+ * the lines for everyone else, each followed by its promise that a scan shows
+ * progress while a scan can (rescanLinesOf). AI Info read the step's lines
+ * without the lines for everyone else, so it described a different procedure.
+ */
+export function campaignProcedureLines(step: Step, cs: ContentStepLike, ex: Record<string, unknown>): string[] {
+  const w = (whatToDoFor(cs as object | undefined, ex) ?? {}) as Record<string, unknown>
+  const rescan = rescanLinesOf(step, cs)
+  const list = (xs: unknown): unknown[] => (Array.isArray(xs) ? xs : [])
+  return wholeLines([...list(w.steps), ...rescan.steps, ...list(w.generic), ...rescan.generic], ex).filter((line) => line.trim())
+}
+
+/**
  * The step's preparation lines where they stand in for its portal channel
  * (content `preparation`), with the names the plan expects for a pair it cannot
  * match; null where they do not stand in. One rule for the opened step's portal

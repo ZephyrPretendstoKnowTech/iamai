@@ -19,7 +19,7 @@
     },
     {
       "label": "Define the Trusted Network",
-      "state": "Prerequisite · To do"
+      "state": "Prerequisite · Waiting"
     },
     {
       "label": "Prepare Emergency Access Accounts",
@@ -40,5 +40,5 @@
     "JSON",
     "AI Info"
   ],
-  "when": "Est. Sep 7, 2026"
+  "when": "Est. Sep 14, 2026"
 }

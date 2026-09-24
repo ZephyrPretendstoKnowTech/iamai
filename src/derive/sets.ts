@@ -254,14 +254,28 @@ export function adminUsers(snapshot: TenantSnapshot, confirmedServiceAccountIds:
  * No" — an instruction the scan has no evidence for (V1 audit S4-21).
  */
 export function notActiveUsers(snapshot: TenantSnapshot, now: string, confirmedServiceAccountIds: ReadonlySet<string> = new Set()): UserRow[] {
+  return enabledUsers(snapshot, confirmedServiceAccountIds).filter((u) => inactive(snapshot, now, u))
+}
+
+/**
+ * The same rule over the accounts disabled in the directory: people with no
+ * sign-in inside the activity window whose sign-in is off. The dormant step's
+ * finished card counts them beside the accounts kept (walk list item 14): an
+ * account disabled in Entra leaves the dormant list, and this is where it went.
+ */
+export function disabledInactiveUsers(snapshot: TenantSnapshot, now: string, confirmedServiceAccountIds: ReadonlySet<string> = new Set()): UserRow[] {
+  // Not personAccounts: the one classification calls a disabled account `disabled`, never a person (accountKinds).
+  return snapshot.users.filter((u) => u.accountEnabled === false && !confirmedServiceAccountIds.has(u.id) && inactive(snapshot, now, u))
+}
+
+/** No successful sign-in inside the activity window (INACTIVE_DAYS), on activity the scan read. */
+function inactive(snapshot: TenantSnapshot, now: string, u: UserRow): boolean {
   const cutoff = Date.parse(now) - INACTIVE_DAYS * 86_400_000
-  return enabledUsers(snapshot, confirmedServiceAccountIds).filter((u) => {
-    if (activityUnread(snapshot, u)) return false
-    // The directory's last sign-in, for the signed-in account too: the population never depends on who ran the scan.
-    const last = lastSuccessOf(snapshot, u)
-    const at = last ? Date.parse(last) : Number.NaN
-    return !(Number.isFinite(at) && at >= cutoff)
-  })
+  if (activityUnread(snapshot, u)) return false
+  // The directory's last sign-in, for the signed-in account too: the population never depends on who ran the scan.
+  const last = lastSuccessOf(snapshot, u)
+  const at = last ? Date.parse(last) : Number.NaN
+  return !(Number.isFinite(at) && at >= cutoff)
 }
 
 // ---------- steps ----------

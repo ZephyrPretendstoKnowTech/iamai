@@ -49,11 +49,17 @@ export function lifecycleResources(pkg: CompiledPackage, state: PackageState, bi
 // Configure Emergency Exclusions, whose script needed ids typed in by hand and
 // whose JSON was the scan's own GETs, and Configure Passkey Authentication,
 // whose script and JSON only read back the settings the scan reads.
-const NON_MACHINE = new Set(['s-ladder-operator-passkey', 's-prereq-device-plan', 's-confirm-workloads', 's-prereq-break-glass', 's-prereq-exclusion-group', 's-prereq-passkey-settings'])
-const NO_EMAIL = new Set(['s-prereq-break-glass', 's-prereq-passkey-settings', 's-ladder-operator-passkey', 's-confirm-workloads', 's-goal-admin-session', 's-prereq-auth-strength', 's-prereq-exclusion-group'])
+// Section 3 is Entra and AI Info only, with Email kept on Prepare Your Team for
+// MFA (walk list item 8, owner 2026-09-23): each PowerShell tab was a GET the
+// scan already made or a script needing -DisplayName, -IpRangesJson or -GroupId
+// typed by hand, and each Email tab pointed at "the listed accounts" and listed
+// nobody.
+const NON_MACHINE = new Set(['s-ladder-operator-passkey', 's-prereq-device-plan', 's-confirm-workloads', 's-prereq-break-glass', 's-prereq-exclusion-group', 's-prereq-passkey-settings',
+  's-check-dormant-accounts', 's-check-separate-admin-accounts', 's-verify-mfa', 's-prereq-auth-strength', 's-prereq-trusted-location', 's-prereq-service-accounts-group'])
+const NO_EMAIL = new Set(['s-prereq-break-glass', 's-prereq-passkey-settings', 's-ladder-operator-passkey', 's-confirm-workloads', 's-goal-admin-session', 's-prereq-auth-strength', 's-prereq-exclusion-group',
+  's-check-dormant-accounts', 's-check-separate-admin-accounts', 's-prereq-trusted-location', 's-prereq-service-accounts-group'])
 
 export function resourceChannelAllowed(step: Step, channel: Channel): boolean {
-  if (step.id === 's-verify-mfa' && channel === 'json') return false
   if (channel === 'email' && (NO_EMAIL.has(step.id) || (step.id !== 's-verify-mfa' && !EMAILS.steps[step.id]))) return false
   if ((channel === 'ps' || channel === 'json') && NON_MACHINE.has(step.id)) return false
   return true
@@ -62,16 +68,10 @@ export function resourceChannelAllowed(step: Step, channel: Channel): boolean {
 const ENDPOINTS: Record<string, string[]> = {
   's-prereq-break-glass': ['/users?$select=id,displayName,userPrincipalName,accountEnabled', '/roleManagement/directory/roleAssignments'],
   's-prereq-exclusion-group': ['/groups?$select=id,displayName,securityEnabled', '/identity/conditionalAccess/policies'],
-  's-prereq-service-accounts-group': ['/groups?$select=id,displayName,securityEnabled'],
-  's-prereq-auth-strength': ['/identity/conditionalAccess/authenticationStrength/policies?$expand=combinationConfigurations'],
   's-prereq-passkey-settings': ['/policies/authenticationMethodsPolicy/authenticationMethodConfigurations/fido2'],
   's-prereq-allowed-countries': ['/identity/conditionalAccess/namedLocations'],
-  's-prereq-trusted-location': ['/identity/conditionalAccess/namedLocations'],
   's-prereq-security-defaults': ['/policies/identitySecurityDefaultsEnforcementPolicy'],
   's-prereq-per-user-mfa': ['/policies/authenticationMethodsPolicy'],
-  's-check-dormant-accounts': ['/users?$select=id,displayName,userPrincipalName,accountEnabled,signInActivity'],
-  's-check-separate-admin-accounts': ['/roleManagement/directory/roleAssignments', '/roleManagement/directory/roleEligibilityScheduleInstances'],
-  's-verify-mfa': ['/reports/authenticationMethods/userRegistrationDetails'],
 }
 
 function endpoints(step: Step): string[] {
@@ -134,6 +134,17 @@ export function emailResource(step: Step, ctx: StepVarContext, why: string): Art
       : []
   const text = message(template.subject, [template.body, ...extra], ctx)
   return { id: 'email', form: 'markdown', lines: [], text: () => text, note: null }
+}
+
+/**
+ * The MFA preparation step's first message, to everyone, in the parts the Tell
+ * your people box and the Export announcement draw (stepExport.ts commsFor): the
+ * same subject, paragraphs and signature as the Email tab's first message, from
+ * the one set of words (walk list section 3 item 52).
+ */
+export function mfaPreparationStaffMessage(signature: string): { salutation: string; body: string; extra: string[]; signature: string } {
+  const [first] = EMAILS.mfaPreparation
+  return { salutation: fillText(EMAILS.subject, { subject: first.subject }), body: first.paragraphs.join('\n\n'), extra: [], signature: fillText(EMAILS.signOff, { signature }).trim() }
 }
 
 /** The MFA preparation step's three messages (everyone, the admins, the follow-up), each signed. */

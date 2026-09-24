@@ -64,3 +64,17 @@ function exchangeOnly(u: UserRow): boolean {
   const plans = u.assignedPlans.filter((p) => p.capabilityStatus === '' || p.capabilityStatus === 'Enabled')
   return plans.length > 0 && plans.every((p) => EXCHANGE_PLANS.has(p.servicePlanId.toLowerCase()))
 }
+
+/**
+ * Whether a group holds exactly these accounts: every one of them, and nobody
+ * else, on a membership read in full. The one rule for "the service accounts
+ * group holds exactly the accounts you picked": Create or Correct Service
+ * Accounts Group completes on it (roadmap/generate.ts), and its group picker
+ * pre-fills the scanned group it finds with it (ui/surfaces/pickerRows.ts).
+ */
+export function groupHoldsExactly(group: { memberIds: readonly string[]; sampled?: boolean } | null | undefined, ids: readonly string[]): boolean {
+  if (!group || group.sampled || ids.length === 0) return false
+  const want = new Set(ids.map((id) => id.toLowerCase()))
+  const have = new Set(group.memberIds.map((id) => id.toLowerCase()))
+  return have.size === want.size && [...want].every((id) => have.has(id))
+}

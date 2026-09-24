@@ -368,10 +368,6 @@
         "$commentBlindFix": "What reads an unread source, for every step that names one (roadmap/readiness.ts sourceReadFix). It said \"once that is granted, scan again\" and not how. Owner, 2026-09-22: sign in with a Global Reader or Global Administrator account with every permission approved, and nothing about assigning roles. The licence clause (blindFixLicensed) stays only where the tenant lacks it: no account or consent reads a source the tenant is not licensed for.",
         "blindFix": "It is read with the {scope} permission. Sign in with a Global Reader or Global Administrator account, with every permission IAMAI asks for approved, then scan again.",
         "blindFixLicensed": "It needs {capability} and the {scope} permission. With {capability} in place, sign in with a Global Reader or Global Administrator account, with every permission IAMAI asks for approved, then scan again.",
-        "$commentActivityUnread": "The dormant-accounts step's own finding where the directory read fell back to a user list without sign-in activity (roadmap/generate.ts; graph/collect/collectors.ts collectUsers, the Users source partial with the refusal as its reason). Nobody's activity was read, so derive/sets.ts notActiveUsers lists nobody, and the step read Ready · Review over an empty list, told the reader to review each account IAMAI lists, and said the refusal nowhere (R4-49). {reason} is the source's own reason; {fix} is the permission and licence sentence the readiness gates use (roadmap/readiness.ts sourceReadFix). Not drawn on a read that succeeded: Graph leaves sign-in activity out for an account that never signed in, which is a reading, not a refusal.",
-        "activityUnreadLabel": "Sign-in activity",
-        "activityUnreadValue": "Not Fully Read",
-        "activityUnread": "Sign-in activity could not be read for {n} of {total} enabled accounts: {reason}. This check does not list an account whose activity it could not read, so it cannot finish until that activity can be read. {fix}",
         "$commentRouteShortfall": "Naming the campaign beside every MFA gate was keyed on the MEASURE, not on whether that campaign's cohort actually contains the people the gate is short. The campaign prepares people the scan has seen sign in. On a tenant where most people never have, the gate counts them and the campaign cannot: eleven people measured, a cohort of two, a 90% threshold. The reader finished the named step, read \"Nothing left to do\", and the number had not moved a point — with no other action anywhere on the board. Said only where finishing the named step provably cannot reach the threshold.",
         "routeShortfallNone": "“{step}” will not move this number: none of the {short} people it is waiting on are in that step's list, because IAMAI has not seen them sign in. Until they sign in and register a method, or you decide those accounts are not in use, this number cannot reach {threshold}.",
         "routeShortfallSome": "“{step}” covers {covered} of the {short} people this number is waiting on, which is not enough to reach {threshold}. IAMAI has not seen the other {rest} sign in, so that step's list leaves them out.",
@@ -952,8 +948,6 @@
         "manualCorrection": "until the policy is corrected by hand",
         "unverifiedExclusion": "until the group {group} can be read",
         "methodsPolicyUnread": "until the authentication methods policy can be read",
-        "$commentActivityUnread": "What holds the dormant-accounts step where the directory read returned no sign-in activity for anyone (roadmap/generate.ts, R4-49) and nothing is left listed to review: the step cannot tell a dormant account from one in daily use until that read succeeds.",
-        "activityUnread": "until sign-in activity can be read for every enabled account",
         "emergency": "until emergency access is provably out of scope",
         "passkeyProfiles": "until the passkey profile settings are reviewed",
         "passkeyBlockConflict": "until the block list entry for Microsoft Authenticator is reviewed",
@@ -1974,12 +1968,13 @@
           "followUp": {
             "$comment": "Owner decision 9 (2026-09-22): one person on leave need not hold every policy that waits on Prepare Your Team for MFA. The people a person marks there to turn on without, for now, are named on the campaign and on each policy that reaches them, with what happens at their next sign-in.",
             "label": "Follow-Up List",
-            "campaign": "Marked to turn on without them for now: {names}. The policies that waited on this step can go ahead. Each person still needs a method: give each a Temporary Access Pass to register one when they are back.",
-            "campaignOpen": "Marked to turn on without them for now: {names}. The policies waiting on this step can go ahead once everyone else is ready or selected. Each person still needs a method: give each a Temporary Access Pass to register one when they are back.",
+            "$commentCampaign": "Prepare Your Team for MFA's own card (walk list section 3 item 47): headed by the list's own name, and folded under Satisfied once the step completes. The policies that wait on the step keep the Follow-Up List heading until their own audit.",
+            "campaignLabel": "Turn On Without Them",
+            "campaign": "The policies go ahead without {names}. Give each a Temporary Access Pass when they can register.",
+            "campaignOpen": "The policies go ahead without {names} once everyone else is ready. Give each a Temporary Access Pass when they can register.",
             "method": "Marked on {step} to turn on without them for now: {names}. At their next sign-in each must register a method this policy accepts. Give each a Temporary Access Pass to do it when they are back.",
             "risk": "Marked on {step} to turn on without them for now: {names}. Until each registers a method, Entra blocks them whenever it flags their sign-in or account as risky. Give each a Temporary Access Pass to register one when they are back.",
             "pickerLabel": "Turn On Without Them for Now",
-            "pickerHelp": "Select anyone not ready who cannot set up a method soon, such as someone on leave. Once everyone else is ready or selected, the policies waiting on this step can go ahead, and each names the people selected here.",
             "save": "Save Follow-Up List",
             "printed": "Turned on without them for now: {names}.",
             "printedNone": "Nobody is marked to turn on without."
@@ -2138,7 +2133,6 @@
               "baseline": "Baseline definition",
               "conflictValue": "Conflict unresolved",
               "decision": "Decision",
-              "coverage": "Existing coverage",
               "gate": "Threshold",
               "reading": "Readiness",
               "observation": "Observation",
@@ -2148,8 +2142,6 @@
               "exclusions": "Exclusions",
               "exclusionsReached": "Reaches emergency access",
               "exclusionsUnproven": "Not proven",
-              "people": "Affected people",
-              "peopleUnknown": "Not established",
               "blockers": "Prerequisites",
               "$commentBeforeTurnOn": "The label of a wait that holds only the turn-on, on a policy whose next action is its Report-only create (R4-31, Marcus D12). The registration policy read Ready · Create with its MFA threshold on the card and nothing about the Temporary Access Pass it cannot be turned on without: the engine held that wait and the page dropped it until the policy had been built. Headed Prerequisites, the same wait would claim the create is blocked, which readiness never does (owner, 2026-09-11: readiness gates enforcement, not creation). After the create, turning it on is the next action and the wait is a Prerequisite again.",
               "beforeTurnOn": "Before turning on",
@@ -2172,13 +2164,8 @@
               "exclusionsReach": "Policies",
               "exclusionsReachValue": "{n} of {total} policies exclude the group",
               "exclusionsReachNote": "The count shows policies this scan verified. Selecting the group does not change a policy; each policy step adds it where it is missing.",
-              "peopleNote": "This is the population IAMAI resolved for this policy. It is not a prediction that every account will be prompted.",
               "observationNote": "Review the available records and the remaining evidence requirements. Time elapsed alone does not complete this check.",
               "observationDateNote": "This is the earliest review date, not a scheduled automatic enforcement.",
-              "coverageNote": "IAMAI found an existing control that meets the assessed goal. Keep it unless a separate reviewed change is needed.",
-              "peopleStepNote": "These are the accounts this step asks you to review. Check the listed evidence before deciding what each account needs.",
-              "$commentCoverageUnreadable": "A goal an existing policy already delivers reads In place / Completed, and said nothing about whether the people it covers can actually satisfy it. On a tenant whose registration source returned 403 the step read Completed beside a readiness of \"0 of 40 people have a registered method allowed by the target policies. Method compatibility is not yet established for 40\" - which the engine had computed and the completed step did not show. In place describes the policy; it is not a finding about the people, and a reader takes Completed as protection.",
-              "coverageUnreadable": "IAMAI could not read whether the people it covers can satisfy it: {line} This describes the policy, not the people.",
               "notMeasured": "Not measured",
               "$commentAwaitingReview": "A policy that is enforced and waiting on the person to record their workflow test rendered Ready / Enforced, milestone Review now, and ZERO readiness tiles and ZERO findings - three readers reported the same empty step, two of them on the same step id. Its Done-when listed five lines: three that IAMAI checks itself and two that are the person, with nothing saying which of them remained. The step knows: awaitsWorkflowRecord is true and manualReview.confirmedAt is not set.",
               "awaitingReview": "Waiting on you",
@@ -2242,6 +2229,7 @@
               "grant": "Grant",
               "strength": "Authentication strength",
               "accounts": "Accounts IAMAI observed",
+              "namedLocations": "Named locations IAMAI observed",
               "more": "{n} more accounts are not included in this excerpt.",
               "none": "None.",
               "opening": [
@@ -2546,24 +2534,23 @@
               "mfaPreparation": [
                 {
                   "heading": null,
-                  "subject": "Prepare Your Team for MFA",
+                  "subject": "Set Up Your Sign-in Method",
                   "paragraphs": [
-                    "We are preparing stronger sign-in requirements. Please follow the instructions below to register an approved method and test sign-in. Contact IT if you need help or cannot use the required method.",
-                    "Open https://aka.ms/mfasetup, choose Add sign-in method, and register an approved method offered to your account. Follow the setup prompts, then test sign-in using that method."
+                    "We're adding a second sign-in step for everyone. Please set up Microsoft Authenticator this week. Open https://aka.ms/mfasetup, choose Add sign-in method, pick Microsoft Authenticator and follow the prompts. Then sign out and sign in once with it. Contact IT if you get stuck."
                   ]
                 },
                 {
                   "heading": "--- Administrator message ---",
-                  "subject": "Prepare Your Administrator Sign-In Method",
+                  "subject": "Set Up Your Admin Passkey",
                   "paragraphs": [
-                    "Open https://aka.ms/mfasetup with your dedicated administrator account. Register the approved passkey or hardware security key for that account, then complete a test sign-in using it. Contact IT if you need help arranging a test."
+                    "Admin sign-ins will need a passkey or security key. Please set one up on your admin account this week. Open https://aka.ms/mfasetup, choose Add sign-in method, pick Passkey in Microsoft Authenticator or your security key and follow the prompts. Then sign out and sign in once with it. Contact IT if you get stuck."
                   ]
                 },
                 {
                   "heading": "--- Follow-up message ---",
-                  "subject": "Help Completing Your Sign-In Setup",
+                  "subject": "Finish Setting Up Your Sign-in Method",
                   "paragraphs": [
-                    "Your account still needs a suitable registered sign-in method. Open https://aka.ms/mfasetup and complete the approved method setup. Contact IT if you cannot finish so we can arrange hands-on help before the access change."
+                    "Your account still needs a sign-in method. Open https://aka.ms/mfasetup, choose Add sign-in method, pick Microsoft Authenticator and follow the prompts. Then sign out and sign in once with it. Contact IT if you get stuck."
                   ]
                 }
               ]
@@ -2790,7 +2777,6 @@
           "s-ladder-legacy-auth-inventory": "Legacy sign-ins",
           "s-ladder-app-passwords": "App passwords",
           "s-ladder-guest-review": "Guest access",
-          "s-check-dormant-accounts": "Inactive accounts",
           "s-ladder-authenticator-over-sms": "Sign-in methods",
           "s-ladder-global-admin-count": "Global Administrators",
           "s-prereq-per-user-mfa": "Per-user MFA",
@@ -2800,10 +2786,8 @@
           "s-ladder-per-user-mfa-cleanup": "Per-user MFA",
           "s-prereq-break-glass": "Emergency access accounts",
           "s-prereq-exclusion-group": "Policy exclusions",
-          "s-prereq-service-accounts-group": "Service accounts",
           "s-prereq-device-plan": "Phones and computers",
           "s-ladder-phone-access-restriction": "Phone access",
-          "s-check-separate-admin-accounts": "Administrator accounts",
           "s-shared-devices": "Shared-device accounts",
           "s-goal-admin-portals-protected": "Administrator portals"
         },
@@ -3625,7 +3609,7 @@
       "kind": "check",
       "title": "Disable or Confirm Dormant Accounts",
       "changeLine": null,
-      "why": "Unused accounts can leave access behind after a person or service stops needing it. IAMAI lists an account with no successful sign-in for 90 days; Microsoft calls 90 to 180 a reasonable window. A blank record is not proof of disuse: the directory keeps sign-ins only so far back, and never fills the gap in later.",
+      "why": "Unused accounts can leave access behind after a person or service stops needing it. IAMAI lists each enabled account with no successful sign-in in the last 90 days.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/monitoring-health/howto-manage-inactive-user-accounts"
       },
@@ -3636,22 +3620,16 @@
       },
       "decision": null,
       "whatToDo": {
-        "lead": "Review each account with its owner and record the outcome.",
-        "steps": [
-          "Disable it: Entra admin center → Entra ID → Users → the account → Edit properties → Account enabled: No. Keep the mailbox if anything still needs it.",
-          "Or confirm it is in use and have the owner sign in; the directory's record can take a day to catch up.",
-          "Or, if it is a shared mailbox or a resource that should never sign in, block sign-in the same way; it then stays listed under Inventory and nowhere else."
-        ]
+        "lead": "Disable or keep each account."
       },
       "dates": null,
       "doneWhen": [
-        "Each listed account is disabled, blocked from sign-in, or shows a successful sign-in on a later scan.",
-        "An account you keep has a confirmed owner and purpose; IAMAI lists it again while it stays inactive."
+        "Each listed account is disabled, signs in again, or is one you keep."
       ],
       "ifWrong": "Re-enable the account: Users → the account → Edit properties → Account enabled: Yes. Nothing else changes.",
       "comms": null,
       "doesntApply": false,
-      "skip": true,
+      "skip": false,
       "scanControl": true,
       "more": {
         "risks": [
@@ -3683,11 +3661,36 @@
         "from": "Aug 1"
       },
       "aiFocus": "Include each candidate's name, ID, recorded activity and evidence gaps. Separate a keep decision from a successful sign-in and from confirmed inactivity.",
+      "$commentCard": "The Tasks Remaining card (ui/surfaces/policyTasks.ts ownCardWordsOf): check is the open card's title, filled from the step's vars; detail null draws no second line; pointer draws 'Follow {taskTitle} in Implementation Tasks.'; satisfied is the Satisfied card's fact (walk list items 14, 26).",
       "card": {
         "subject": "Dormant accounts",
-        "check": "Not reviewed yet"
+        "check": "{openAccounts} to disable or keep",
+        "detail": null,
+        "pointer": true,
+        "satisfied": "{kept} kept · {disabled} disabled"
       },
-      "taskTitle": "Review each account"
+      "taskTitle": "Disable or keep each account",
+      "$commentKeep": "The rail's keep picker (ui/surfaces/ContentStep.tsx DormantDecision; walk list items 17, 22, 23, 28): its label, the instruction line in the rail's slot, and each option's last sign-in.",
+      "keep": {
+        "label": "Accounts you are keeping",
+        "instruction": "Select the accounts you are keeping, then select Done. Disable the rest in Entra.",
+        "noSignIn": "No sign-in on record",
+        "lastSignIn": "Last signed in {date}",
+        "kept": "kept"
+      },
+      "$commentProcedure": "Disable or keep each account, the step's one Implementation Task (ui/surfaces/sectionThreeTasks.ts dormantTasksOf; walk list items 20, 30, 31): the open accounts one per line with the last sign-in the scan holds, then the two choices under one line.",
+      "procedure": {
+        "list": "Dormant accounts ({n}):",
+        "account": "{account} · {signIn}",
+        "noSignIn": "no sign-in on record",
+        "lastSignIn": "last signed in {date}",
+        "each": "For each account:",
+        "choices": [
+          "Not needed: as at least a User Administrator, open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Users →** the account **→ Edit properties → Settings**, clear **Account enabled**, and select **Save**.",
+          "Still needed: select it under **Accounts you are keeping**, then select **Done**."
+        ],
+        "scan": "Return to IAMAI and select **Scan to update the plan**."
+      }
     },
     {
       "id": "s-prereq-allowed-countries",
@@ -3805,7 +3808,7 @@
       "kind": "object",
       "title": "Define the Trusted Network",
       "changeLine": null,
-      "why": "Some policies apply differently on a trusted network. Confirming the public addresses prevents an unrelated office, VPN or shared provider address from receiving that trust.",
+      "why": "Some policies on your plan treat sign-ins from your office differently. This step puts the office's public IP addresses in Entra as a trusted location.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network"
       },
@@ -3822,28 +3825,34 @@
         "save": "Save"
       },
       "whatToDo": {
-        "lead": "Confirm the office's public IP ranges with the network owner, then create the named location and mark it trusted.",
-        "steps": [
-          "Ask the network owner for the approved public IPv4 and IPv6 ranges, including any VPN exits the organization approves as trusted.",
-          "Entra admin center → Entra ID → Conditional Access → Named locations → + IP ranges location.",
-          "Name it {proposedName}. {proposedNameNote}",
-          "Add each approved range in CIDR notation, as narrow as the network owner's allocation. Entra accepts only masks greater than /8, and no more than two thousand ranges in one location.",
-          "Addresses seen in sign-in records, to compare with the approved ranges (being seen does not approve them): {list:ranges}",
-          "Select \"Mark as trusted location\". Save, then check that an expected sign-in matches; investigate a mismatch instead of widening the range."
-        ],
-        "correct": [
-          "Entra admin center → Entra ID → Conditional Access → Named locations → open {existingName}.",
-          "{list:fixes}"
-        ]
+        "lead": "Create the office's IP ranges location in Entra and mark it trusted."
+      },
+      "$commentWhatToDoWhen": "A location picked as the office in Decide How and Where People Sign In that Entra holds without the trusted mark (walk list 61): the step marks it trusted and makes nothing. {officeToTrust} is its name (ui/surfaces/stepVars.ts); the procedure is the package's entra.correct.trusted (ui/surfaces/stepBody.ts).",
+      "whatToDoWhen": {
+        "officeToTrust": {
+          "lead": "Mark {officeToTrust} as a trusted location in Entra.",
+          "task": "Mark the office location as trusted"
+        },
+        "$commentOfficeUnanswered": "Held on the office answer in Decide How and Where People Sign In (walk list 60): what the step makes follows that answer, so it draws no card of its own (check null) beside the hold card, and its action is the answer.",
+        "officeUnanswered": {
+          "lead": "Answer Office network in Decide How and Where People Sign In.",
+          "check": null
+        }
+      },
+      "$commentRangesUnsaved": "The ranges the Add line names where no public ranges were saved for the office ({officeRanges}, ui/surfaces/stepVars.ts; walk list 65).",
+      "rangesUnsaved": "the office's public IP ranges in CIDR notation",
+      "$commentSatisfied": "The Satisfied card of each office location the step is done with (walk list 14, 63): its name, its ranges, then the sign-ins from it in the scan's records (roadmap/generate.ts).",
+      "satisfied": {
+        "signIns": "{n} sign-ins from it in the last 30 days.",
+        "noSignIns": "No sign-ins from {name} in the last 30 days."
       },
       "dates": null,
       "doneWhen": [
-        "An IP named location in the tenant holds exactly the public ranges the network owner approved, and it is marked as trusted.",
-        "The sign-ins that should match it do, without widening a range to make them."
+        "The office location you picked in Decide How and Where People Sign In is an IP ranges location marked trusted."
       ],
       "ifWrong": null,
       "comms": null,
-      "doesntApply": true,
+      "doesntApply": false,
       "skip": false,
       "scanControl": true,
       "more": {
@@ -3874,6 +3883,7 @@
         "locationsWithMatches": [],
         "topRanges": "The most common sign-in addresses in the records are 67.166.x.x (28 sign-ins) and 174.52.x.x (9).",
         "proposedName": "Core - Trusted - Head office",
+        "officeRanges": "the office's public IP ranges in CIDR notation",
         "ranges": [
           "67.166.12.44/32",
           "2601:681:…::/64"
@@ -3890,14 +3900,14 @@
         "subject": "Trusted network",
         "check": "Not in place"
       },
-      "taskTitle": "Set up the trusted network"
+      "taskTitle": "Create the trusted network"
     },
     {
       "id": "s-prereq-service-accounts-group",
       "kind": "object",
       "title": "Create or Correct Service Accounts Group",
       "changeLine": null,
-      "why": "Unattended jobs may use accounts that cannot complete a person's sign-in prompt. A reviewed group makes those exceptions visible and easier to maintain.",
+      "why": "Block Legacy Authentication and Restrict Service Accounts to the Trusted Network wait on this group. It holds the service accounts you picked in Identify Service and Shared Accounts.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/architecture/secure-service-accounts"
       },
@@ -3907,28 +3917,23 @@
         "none": "No service accounts recognised in {tenant}."
       },
       "decision": {
-        "label": "Service accounts",
-        "help": "Confirm each account's workload and owner before adding it. This group is for user-based service accounts: a policy scoped to users does not block a call made by a service principal, and one assigned to a group is not enforced for a service principal inside it.",
-        "pickerRow": "{name} · {signals}",
+        "label": "Service accounts group",
+        "help": "Select the group that holds your service accounts.",
+        "pickerSource": "groups",
+        "pickerRow": "{name} · {memberCount} members",
+        "accountRow": "{name} · {signals}",
         "save": "Save"
       },
       "whatToDo": {
-        "lead": "Create the group and add only the accounts an application owner confirmed run unattended.",
-        "steps": [
-          "Entra admin center → Entra ID → Groups → New group → Security; membership Assigned.",
-          "Name it {proposedName}. {proposedNameNote}",
-          "Add: {list:serviceAccounts}. Any account named as a mail-sending device in Confirm What You Use is already on that list.",
-          "For {list:ropcAccounts}: these sign in with a password over a script; move each to a service principal or managed identity when you can, and until then keep it in this group."
-        ]
+        "lead": "Create {proposedName} with {serviceAccountNames}."
       },
       "dates": null,
       "doneWhen": [
-        "The group holds exactly the user accounts confirmed as running unattended jobs, the mail-sending devices named in Confirm What You Use among them.",
-        "Each member's workload owner confirmed it runs unattended and no person signs in with it."
+        "{serviceAccountsGroupName} holds exactly the accounts you picked in Identify Service and Shared Accounts."
       ],
       "ifWrong": "Remove the account from the group; the policies apply again on its next sign-in.",
       "comms": null,
-      "doesntApply": true,
+      "doesntApply": false,
       "skip": false,
       "scanControl": true,
       "more": {
@@ -3957,6 +3962,12 @@
           "svc-mailer-2 · name; 1 sign-in by password over ROPC to Azure PowerShell"
         ],
         "proposedName": "Core - Exception - Service accounts",
+        "serviceAccountNames": "svc-mailer-1 and svc-mailer-2",
+        "serviceAccountsGroupName": "Core - Exception - Service accounts",
+        "serviceAccountsGroupMembers": 2,
+        "groups": [
+          "Core - Exception - Service accounts · 2 members"
+        ],
         "serviceAccounts": [
           "svc-mailer-1",
           "svc-mailer-2"
@@ -3969,9 +3980,23 @@
       "aiFocus": "Separate confirmed members from candidates. Include workload purpose, owner information where known, and any modernization opportunity without treating it as completed.",
       "card": {
         "subject": "Service accounts group",
-        "check": "Not in place"
+        "check": "Not in place",
+        "satisfied": "{serviceAccountsGroupName} · {serviceAccountsGroupMembers} members"
       },
-      "taskTitle": "Set up the service accounts group"
+      "$commentWhatToDoWhen": "The scan found a group holding exactly the picked accounts and nobody has saved it on the picker (stepVars.ts serviceGroupFound): saving it is what is left, and the rail's milestone says so (stepBody.ts).",
+      "whatToDoWhen": {
+        "serviceGroupFound": {
+          "lead": "Save {serviceGroupFound} as your service accounts group.",
+          "check": "Not saved yet"
+        },
+        "$commentServiceGroupCorrect": "The saved group holds other members, or is missing a picked account (roadmap/generate.ts serviceGroup; walk list item 7): the task adds and removes them by name (ui/surfaces/prepareProcedures.ts, the package's entra.correct blocks).",
+        "serviceGroupCorrect": {
+          "lead": "Make {serviceGroupCorrect} hold exactly {serviceAccountNames}.",
+          "check": "Members differ",
+          "task": "Correct the service accounts group"
+        }
+      },
+      "taskTitle": "Create the service accounts group"
     },
     {
       "id": "s-shared-devices",
@@ -4297,29 +4322,30 @@
       "kind": "object",
       "title": "Create the Baseline's Authentication Strength",
       "changeLine": null,
-      "why": "An authentication strength defines the methods a policy accepts. Creating the right one keeps related policies consistent and makes any temporary sign-in options explicit.",
+      "why": "Create {strengthName}, the authentication strength the baseline's policies require, so those policies can be created in your tenant.",
       "learn": {
-        "url": "https://learn.microsoft.com/entra/identity/authentication/concept-authentication-strengths"
+        "url": "https://learn.microsoft.com/entra/identity/authentication/concept-authentication-strength-advanced-options"
       },
       "who": {
         "lead": "Custom strengths in {tenant} today: {list:strengths}",
         "match": "{matchedStrength} already allows exactly the baseline's combinations; it is used as is.",
-        "none": "None matches the baseline's {strengthName}: Windows Hello for Business, passkeys (FIDO2), certificate (multifactor), and a Temporary Access Pass in both its one-time and its multi-use form."
+        "none": "None matches the baseline's {strengthName}: {strengthMethods}."
       },
       "decision": null,
       "whatToDo": {
-        "lead": "Create an authentication strength holding exactly the baseline's method combinations, so every policy that requires it accepts the same methods.",
-        "steps": [
-          "Entra admin center → Entra ID → Authentication methods → Authentication strengths → New authentication strength. It takes the Security Administrator role, and it is not under Conditional Access.",
-          "Name: {strengthName}. Description: the baseline's strength: phishing-resistant methods plus Temporary Access Pass (one-time and multi-use) for first sign-ins.",
-          "Select exactly: Windows Hello for Business · Passkeys (FIDO2) · Certificate-based authentication (multifactor) · Temporary Access Pass (one-time) · Temporary Access Pass (multi-use). Nothing else.",
-          "Next → Create. The policies that reference it are created in later steps."
-        ]
+        "lead": "Create {strengthName} with exactly the methods the task lists."
+      },
+      "$commentWhatToDoWhen": "A custom strength already named as the baseline's that allows other methods (roadmap/generate.ts strengthToCorrect; walk list 55): the step corrects it with the package's entra.correct.combinations (ui/surfaces/prepareProcedures.ts) instead of creating a second strength of the same name.",
+      "whatToDoWhen": {
+        "strengthToCorrect": {
+          "lead": "Correct {strengthToCorrect} to allow exactly the methods the task lists.",
+          "task": "Correct the authentication strength"
+        }
       },
       "dates": null,
+      "$commentDoneWhen": "{strengthMethods} is the baseline's own method list (ui/surfaces/stepVars.ts strengthMethodNames), the list the task selects, so the two cannot drift (walk list 58).",
       "doneWhen": [
-        "An authentication strength named \"{strengthName}\" or an equivalent strength matches the baseline’s required method combinations and restrictions. IAMAI detects the match automatically.",
-        "Every policy already using the strength still accepts the methods its users rely on."
+        "An authentication strength in your tenant allows exactly {strengthMethods}."
       ],
       "ifWrong": "Delete the strength; no policy references it yet. Once one does, Entra refuses the delete and asks you to confirm every edit.",
       "comms": null,
@@ -4341,14 +4367,15 @@
         "tenant": "Contoso Pty Ltd",
         "strengths": [],
         "strengthName": "Modern MFA + TAP",
+        "strengthMethods": "Windows Hello for Business, Passkeys (FIDO2), Certificate-based authentication (multifactor) and Temporary Access Pass (one-time use)",
         "from": "Aug 1"
       },
-      "aiFocus": "Explain each allowed combination and both TAP variants. Distinguish this custom strength from Microsoft's built-in Phishing-resistant MFA strength.",
+      "aiFocus": "Explain each allowed method. Distinguish this custom strength from Microsoft's built-in Phishing-resistant MFA strength.",
       "card": {
         "subject": "Authentication strength",
         "check": "Not in place"
       },
-      "taskTitle": "Set up the authentication strength"
+      "taskTitle": "Create the authentication strength"
     },
     {
       "id": "s-ladder-operator-passkey",
@@ -4365,15 +4392,15 @@
       "whatToDo": {
         "lead": "Register a passkey on your own administrator account, then sign in with it once so the record shows it working.",
         "steps": [
-          "Sign in at https://mysignins.microsoft.com/security-info and answer the prompt there. A passkey can only be registered within five minutes of a completed prompt, so an old tab is refused.",
-          "Add sign-in method → Passkey registers a security key; Add sign-in method → Passkey in Microsoft Authenticator registers one in the app. Either one is enough, and Microsoft recommends a security key for elevated privileges. Keep your existing sign-in methods until the new one works.",
-          "Sign out and sign in again with the passkey, so the record shows a phishing-resistant sign-in.",
-          "If the passkey is refused, open Configure Passkey Authentication and read three settings: Allow self-service set up, which stops registration here when it is No; enforced attestation, which stops a passkey made in Authenticator through the browser; and any key restriction that excludes the key you used."
+          "Open [Security info](https://mysignins.microsoft.com/security-info), sign in as {operatorAccount} and answer the prompt there.",
+          "Suggested: Add sign-in method → Passkey in Microsoft Authenticator. Or a key from 1.3's approved list.",
+          "Sign out, then sign in with the passkey on each device you use: {operatorDevices}.",
+          "Return to IAMAI and select **Scan to update the plan**."
         ]
       },
       "dates": null,
       "doneWhen": [
-        "{operator} completed a phishing-resistant sign-in in the records."
+        "IAMAI sees {operator} sign in with a passkey or Windows Hello."
       ],
       "ifWrong": null,
       "comms": null,
@@ -4395,14 +4422,25 @@
         "operator": "Alex Morgan",
         "method": "Phishing-resistant",
         "evidence": "MFA completed 21 hours ago",
-        "from": "Aug 1"
+        "from": "Aug 1",
+        "operatorAccount": "alex.morgan@contoso.com",
+        "operatorDevices": "your computer and your phone"
       },
-      "partner": "Do this before the registration campaign, so you have done what you are about to ask others to do.",
-      "aiFocus": "Separate registration from observed use. State the evidence's date and limits; a method-class sign-in record may not identify the exact credential.",
-      "why": "Test your own strong sign-in method before the rollout depends on it. A registered passkey is only useful if you can actually use it on the device needed for admin work.",
+      "aiFocus": "Walk me through creating a passkey in Microsoft Authenticator, or registering an approved security key, and signing in with it on each device I use.",
+      "why": "Your account makes every change in this plan, and Require Phishing-Resistant MFA for Admins will cover it. Register a passkey and sign in with it now; Prepare Your Team for MFA starts once you have.",
       "card": {
+        "$comment": "The card and the Next milestone follow the operator's own readiness (walk list section 3 item 41, ui/surfaces/prepareSteps.ts): nothing registered, registered and not signed in with it yet, or signed in with it, which completes the step (items 5 and 43: a passkey or Windows Hello, on any device). The signed-in card is the Satisfied card's fact (item 14). The device words fill {devices} there and {operatorDevices} in the procedure.",
         "subject": "Your passkey",
-        "check": "Not registered yet"
+        "check": "Not registered yet",
+        "registered": "Registered, not signed in with it yet",
+        "signedIn": "Signed in with it on {devices}, {date}.",
+        "signedInOn": "Signed in with it on {date}.",
+        "computer": "your computer",
+        "phone": "your phone"
+      },
+      "milestone": {
+        "register": "Register your passkey",
+        "signIn": "Sign in with your passkey"
       },
       "taskTitle": "Register your passkey"
     },
@@ -4492,88 +4530,42 @@
       "kind": "campaign",
       "title": "Prepare Your Team for MFA",
       "changeLine": null,
-      "why": "Help people set up the sign-in methods they will need before the access policies change.",
+      "why": "Everyone the MFA policies cover needs a method those policies accept before they turn on: Microsoft Authenticator for most people, a passkey or security key for admins.",
       "learn": {
-        "url": "https://learn.microsoft.com/entra/identity/authentication/howto-registration-mfa-sspr-combined"
+        "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-mfa-registration-campaign"
       },
       "who": {
-        "$comment": "The campaign prepares every admin, active or not (roadmap/generate.ts adminCandidates), and counts all of them in {cohort} and on the Affected people tile. dormantAdmins and unreadAdmins name the admins it still waits on outside its active people (preparation.missingIds), each by what the scan read of them (ui/surfaces/stepVars.ts): dormantAdminsNotReady are dormant by the dormant step's rule (derive/sets.ts notActiveUsers: no sign-in in 90 days, or none on record, where activity was read); unreadAdminsNotReady are the ones whose sign-in activity the scan could not read, never called dormant. Every other list here names active people, so the step waited on admins it named nowhere (R4-52).",
+        "$comment": "The campaign prepares every admin, active or not (roadmap/generate.ts adminCandidates), and counts all of them in {cohort} and on the Affected people tile.",
         "lead": "{cohort} are included in this preparation step.",
         "timeline": "Enroll by {enrollBy}. Require MFA for Everyone is planned for {mfaEnforce}; enforcing it is still a change someone makes. Whoever has not enrolled is listed below for you to review.",
         "groups": {
-          "$comment": "The campaign's groups are MFA Readiness's states (scoring/phishingResistant.ts, through derive/contentLists.ts), worst first; Ready needs nothing.",
-          "noMethod": "{n} people with no sign-in method; issue a Temporary Access Pass, then set up a passkey in Microsoft Authenticator:",
-          "needsSetup": "{n} people with no phishing-resistant method; set up a passkey in Microsoft Authenticator:",
-          "needsProof": "{n} people with a phishing-resistant method not confirmed in the last 30 days on every kind of device they use; ask each to sign in with it once on each:",
-          "readinessUnknown": "{n} people with incomplete method or sign-in data; scan again before assessing readiness:",
-          "$commentReadinessUnknownBlind": "The same people where a source their readiness is read from was refused (Readiness.blind, R4-20 Priya D5). On a tenant whose registration details returned 403, the campaign told the reader to scan again before assessing readiness, and a scan changes nothing until the permission is granted. The step's Readiness card names the source and what opens it; this heading makes no promise a scan cannot keep.",
-          "readinessUnknownBlind": "{n} people with incomplete method or sign-in data:",
-          "holdouts": "{n} people past the enroll-by date with nothing done; review each before the policy is enforced:"
-        },
-        "overlap": "Each person appears once, in one group; an admin with no sign-in method is in that list with the admin instructions.",
-        "adminsNote": "Admins not yet ready: {list:adminsNotReady}. Each registers a passkey or security key.",
-        "dormantAdmins": "{n} admins with no sign-in in the last 90 days are not yet ready; this step prepares every admin, so it waits on them too: {list:dormantAdminsNotReady}",
-        "unreadAdmins": "{n} admins are not yet ready, and the scan could not read their sign-in activity; this step prepares every admin, so it waits on them too: {list:unreadAdminsNotReady}",
-        "devices": "{deviceIntro} {list:deviceLines}"
-      },
-      "decision": {
-        "label": "People Needing Help",
-        "help": "Select anyone who needs help setting up an approved sign-in method.",
-        "text": "",
-        "tileLabel": "Registration Support",
-        "tileValue": "Not confirmed",
-        "pickerSource": "specialCare",
-        "pickerRow": "{name} · {state}",
-        "save": "Save Support List",
-        "multi": true,
-        "tileNote": "The support list has not been confirmed."
-      },
-      "whatToDo": {
-        "lead": "Help the selected people complete their sign-in setup.",
-        "steps": [
-          "Book ten minutes with each. Open https://aka.ms/mfasetup with them signed in.",
-          "{methodGuidePointer}",
-          "If a person has no usable registration method, use the approved Temporary Access Pass process to help them register.",
-          "Text or call only: register the new method and test it first. Retire an older method only through the approved method-policy change, after checking recovery needs.",
-          "Admins: a passkey or a hardware security key; either is phishing-resistant."
-        ],
-        "generic": [
-          "Send the email below to everyone else; send the admin note to the admins.",
-          "To prompt people during sign-in, open Entra ID → Authentication methods → Registration campaign → Edit. A campaign nudges one method at a time, either Passkey (FIDO2) or Microsoft Authenticator. Review the included and excluded users, set Days allowed to snooze and Limited number of snoozes, enable it, then reopen and verify those settings.",
-          "A passkey campaign does not nudge guests, because a guest cannot register a passkey here; the Authenticator campaign is the one that reaches them."
-        ],
-        "$commentRescan": "The lines that promise a scan will show people's progress: after the steps, and after the lines for everyone else, where they stood. Said only while the scan can read what that progress is measured from (Readiness.blind, stepInstructions.ts rescanLinesOf). On a tenant whose registration details returned 403, Prepare Your Team for MFA promised that the record would show each sign-in and that its lists would shrink as people were seen; neither could happen until the permission was granted, and the step never said which permission (R4-20, Priya D5). There, the Readiness card names the source and what opens it instead.",
-        "rescan": {
-          "steps": [
-            "Have each sign in once more; the record shows it on the next scan."
-          ],
-          "generic": [
-            "Scan to update the plan after each batch; the lists above shrink as people are seen."
-          ]
+          "$comment": "The step's own people not ready (roadmap/generate.ts preparation.missingIds), by what each needs (walk list section 3 item 53): the admins the admin policy covers need a passkey or security key (preparation.passkeyIds), everyone else Microsoft Authenticator. The same count as the step's card, never MFA Readiness's higher bar (ui/surfaces/prepareSteps.ts).",
+          "campaignNeedsPasskey": "{n} admins still need a passkey or security key:",
+          "campaignNeedsAuthenticator": "{n} people still need Microsoft Authenticator:"
         }
+      },
+      "decision": null,
+      "whatToDo": {
+        "lead": "Help each person set up their method.",
+        "steps": [
+          "Send the Email tab's first message to everyone and its admin message to the admins.",
+          "Anyone MFA Readiness lists with no method: book ten minutes, open https://aka.ms/mfasetup with them signed in, and register together.",
+          "If they can't sign in to register: open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Users →** the person **→ Authentication methods → Add authentication method → Temporary Access Pass**.",
+          "Anyone on text or call only: add Microsoft Authenticator beside it.",
+          "Admins: register a passkey or a hardware security key with {list:campaignNeedsPasskey}.",
+          "Have each sign in once with the new method.",
+          "Today: the registration campaign is {campaignToday}.",
+          "Turn on the registration campaign: open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Authentication methods → Registration campaign → Edit**. State: Enabled. Authentication method: Passkey. Include: All users. Exclude: {campaignExclude}. Days allowed to snooze: 1. Limited number of snoozes: Disabled. Save.",
+          "Return to IAMAI and select **Scan to update the plan**."
+        ]
       },
       "dates": null,
       "doneWhen": [
-        "Everyone in this step has a registered MFA method they can use.",
-        "Every administrator has a phishing-resistant method.",
-        "The people who still need help are identified and on the support list."
+        "Everyone the MFA policies cover has a method they accept registered, or is on the Turn On Without Them list.",
+        "Every admin has a passkey or security key registered."
       ],
       "ifWrong": null,
-      "comms": {
-        "audience": "everyone",
-        "salutation": "Hi everyone,",
-        "body": "Signing in to {tenant} is planned to ask for an approved sign-in method from {mfaEnforceLong}. Over the next {enrolWindowDays} days, please complete the sign-in method setup requested by IT. {registerPasskeyLine} Then sign in once using that method. Contact IT if you cannot register or no longer have access to your existing method.",
-        "signature": "{signature}",
-        "extra": "{deviceSentence}",
-        "adminBody": "Admins: admin sign-ins are planned to need a passkey or a hardware security key from {adminEnforce}. Register one now and test it; bring your security key if you want help registering it.",
-        "bodyMfaInPlace": "You already confirm sign-ins to {tenant} with the Microsoft Authenticator app. Over the next {enrolWindowDays} days, add a passkey in the app as IT requested. {registerPasskeyLine} Then sign in once using that method. Contact IT if you cannot register or no longer have access to your existing method.",
-        "bodyUndated": "Please complete the sign-in method setup requested by IT. {registerPasskeyLine} Then sign in once using that method. We will tell you the date before anything changes. Contact IT if you cannot register or no longer have access to your existing method.",
-        "bodyMfaInPlaceUndated": "You already confirm sign-ins to {tenant} with the Microsoft Authenticator app. Add a passkey in the app as IT requested. {registerPasskeyLine} Then sign in once using that method. Contact IT if you cannot register or no longer have access to your existing method.",
-        "extraMfaInPlace": [
-          "{passkeyPolicy} is planned to require a passkey from {passkeyEnforceLong}.",
-          "{deviceSentence}"
-        ]
-      },
+      "comms": null,
       "doesntApply": false,
       "skip": false,
       "scanControl": true,
@@ -4648,12 +4640,39 @@
         "mfaEnforceLong": "Tuesday, September 8",
         "enrolWindowDays": 14,
         "passkeyEnforceLong": "Tuesday, September 15",
-        "passkeyPolicy": "Require Phishing-Resistant MFA for Admins"
+        "passkeyPolicy": "Require Phishing-Resistant MFA for Admins",
+        "campaignNeedsPasskey": [
+          "Alex Morgan"
+        ],
+        "campaignNeedsAuthenticator": [
+          "Shallan Davar"
+        ],
+        "campaignToday": "Microsoft managed",
+        "campaignExclude": "Core - Exception - Emergency access"
       },
       "aiFocus": "Separate campaign configuration, method registration, observed use and holdout decisions. Do not promise every tenant receives the same campaign prompt or call Authenticator push a passkey.",
       "card": {
+        "$comment": "The card states the step's own count (walk list section 3 items 46 and 14, ui/surfaces/prepareSteps.ts): the people not ready, named with what each needs where there are five or fewer, else sent to MFA Readiness; once the step completes, the people ready.",
         "subject": "Sign-in method setup",
-        "check": "Not prepared yet"
+        "check": "Not prepared yet",
+        "notReady": "{missing} of {total} people not ready",
+        "ready": "{ready} of {total} people ready",
+        "needsPasskey": "{name} still needs a passkey.",
+        "needsAuthenticator": "{name} still needs Microsoft Authenticator.",
+        "many": "MFA Readiness lists each one and what they need.",
+        "link": "Open MFA Readiness"
+      },
+      "milestone": "{n} people still need a method",
+      "instruction": "Pick anyone not ready who can't register soon, such as someone on leave: the policies go ahead without them.",
+      "campaign": {
+        "$comment": "The registration campaign as the scan read it (authenticationMethodsPolicy.registrationEnforcement, walk list section 3 item 50): {campaignToday} in the procedure's Today line. Graph's state `default` is the portal's Microsoft managed.",
+        "managed": "Microsoft managed",
+        "off": "off",
+        "on": "on",
+        "nudging": "on, nudging {method} to {scope}",
+        "fido2": "passkeys",
+        "microsoftAuthenticator": "Microsoft Authenticator",
+        "allUsers": "all users"
       },
       "taskTitle": "Help each person set up their method"
     },
@@ -7021,7 +7040,7 @@
       "kind": "check",
       "title": "Use Separate Accounts for Admin Work",
       "changeLine": null,
-      "why": "Personal email is phished constantly, so the account that opens mail should not also hold a directory role. Move the role to an account that does nothing else, and test it before taking access off the everyday one.",
+      "why": "Email is phished constantly, so the account that opens mail should not also hold an admin role. Move the role to an account that does nothing else, and test it before taking the role off the everyday one.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-planning"
       },
@@ -7034,25 +7053,16 @@
       },
       "decision": null,
       "whatToDo": {
-        "lead": "Review active and eligible administrator accounts. If they are already dedicated to admin work, record that outcome. Otherwise test a dedicated replacement before removing everyday access.",
-        "steps": [
-          "Create a second, cloud-only account for the role, named so the purpose is obvious (adm- and their name).",
-          "Give it no mailbox to read, but an email address that reaches the person: role approvals and service notices still have to arrive.",
-          "Register a passkey or security key on the admin account before its first use; the admin policies require one.",
-          "Assign the role to the admin account under the same governance model, keeping PIM eligibility where the everyday account used it: Entra admin center → Entra ID → Roles and administrators → the role → Add assignment.",
-          "Sign in with the admin account and complete the admin task it needs; only then remove the role from the everyday account.",
-          "Keep mail, Teams and files on the everyday account; open admin portals with the admin account only."
-        ]
+        "lead": "Move each admin role to a separate admin account."
       },
       "dates": null,
       "doneWhen": [
-        "The reviewed privileged accounts are confirmed as dedicated to administrator work, or each recorded handover has a tested replacement with the required roles and the everyday account no longer has privileged roles.",
-        "Mailbox licensing and past mail or Teams activity are clues for the review; their absence does not prove separation."
+        "No account that holds an admin role, other than the emergency access accounts, has signed in to Outlook or Teams in the last 30 days."
       ],
       "ifWrong": "Put the role back on the everyday account; nothing else changes.",
       "comms": null,
       "doesntApply": false,
-      "skip": true,
+      "skip": false,
       "scanControl": true,
       "more": {
         "risks": [
@@ -7079,12 +7089,43 @@
           "Kaladin Stormblessed · Microsoft Teams"
         ]
       },
-      "aiFocus": "Distinguish direct roles from PIM and keep the staged handover. Historical mail or Teams events do not mean a completed migration failed.",
+      "aiFocus": "Distinguish direct roles from PIM and keep the staged handover.",
+      "$commentCard": "The Tasks Remaining cards (ui/surfaces/policyTasks.ts ownCardWordsOf): check null draws no card of the step's own while it is open, because each admin to move is a card of their own (generate.ts, card.admin); satisfied is the Satisfied card's fact (walk list items 2, 14).",
       "card": {
         "subject": "Administrator accounts",
-        "check": "Not reviewed yet"
+        "check": null,
+        "detail": null,
+        "satisfied": "No admin signed in to Outlook or Teams in the last 30 days.",
+        "admin": "Holds {roles} and signs in to {apps}"
       },
-      "taskTitle": "Review each administrator account"
+      "taskTitle": "Move the role to a separate admin account",
+      "$commentProcedure": "Move the role to a separate admin account, one task per admin the scan saw on Outlook or Teams (ui/surfaces/sectionThreeTasks.ts separateAdminTasksOf; walk list items 2, 20, 36). Each value is the scan's: {newUpn} and {upn} the new admin account, {everyday} the account that holds the role today, {mail} its email address, {role} one admin role it holds. With no admin to move, the same lines stand with the generic values below, so the procedure reads the same in every state. tapPolicy stands only where the scan read Temporary Access Pass as off; the Active and Eligible lines follow how the role is held and whether the tenant has Privileged Identity Management.",
+      "procedure": {
+        "create": "Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Users → New user → Create new user**, as at least a User Administrator.",
+        "names": "User principal name: **{newUpn}**. Display name: **{displayName}**.",
+        "displayName": "{name} (admin)",
+        "otherEmails": "Under **Properties**, set **Other emails** to **{mail}**, so role approvals and service notices reach {name}. Select **Review + create**, then **Create**.",
+        "tapPolicy": "Open **Entra ID → Authentication methods → Policies → Temporary Access Pass**, select **Enable**, include **All users**, and select **Save**.",
+        "tap": "Open **Entra ID → Users → {upn} → Authentication methods → Add authentication method → Temporary Access Pass**, select **Add**, and copy the pass.",
+        "register": "In a private window, open [Security info](https://mysignins.microsoft.com/security-info), sign in as **{upn}** with the pass, and add a passkey: **Add sign-in method → Passkey in Microsoft Authenticator**, or a security key.",
+        "assign": "Open **Entra ID → Roles & admins → {role} → Add assignments**, select **{upn}**, and select **Add**.",
+        "assignActive": "Open **Entra ID → Roles & admins → {role} → Add assignments**, select **{upn}**, choose **Assignment type: Active**, and select **Assign**.",
+        "assignEligible": "Open **Entra ID → Roles & admins → {role} → Add assignments**, select **{upn}**, choose **Assignment type: Eligible**, and select **Assign**.",
+        "test": "Sign in to [Microsoft Entra admin center](https://entra.microsoft.com/) as **{upn}** with the passkey and do one task the role is for.",
+        "remove": "Then open **Entra ID → Roles & admins → {role}**, select **{everyday}**, and select **Remove assignments**.",
+        "removeEligible": "Then open **Entra ID → Roles & admins → {role} → Eligible assignments**, select **{everyday}**, and select **Remove**.",
+        "keep": "Keep mail, Teams and files on **{everyday}**; open admin portals with **{upn}** only.",
+        "scan": "Return to IAMAI and select **Scan to update the plan**.",
+        "generic": {
+          "name": "the admin",
+          "newUpn": "adm- and their user name, on {domain}",
+          "displayName": "their name followed by (admin)",
+          "upn": "the admin account",
+          "everyday": "their everyday account",
+          "mail": "their everyday email address",
+          "role": "each admin role they hold"
+        }
+      }
     },
     {
       "id": "service-accounts-trusted-network",

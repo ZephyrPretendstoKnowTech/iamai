@@ -55,7 +55,7 @@ export const NOT_ASSESSED = {
  * The rest of the reasons stay on the step, under More.
  */
 export const BLOCKED_REASON_MAX_WORDS = 12
-const BLOCKED = (pages.plan as { blocked: { after: string; readiness: string; count: string; baseline: string; exclusionsGroup: string; devicePlan: string; workCountries: string; direction: string; unsettled: string; sourceMapping: string; pairUnmatched: string; targetAmbiguous: string; noOperation: string; noOperationHeld: string; activityUnread: string; authContextInUse: string; manualCorrection: string; unverifiedExclusion: string; methodsPolicyUnread: string; passkeyProfiles: string; passkeyBlockConflict: string; passkeyPartialRead: string; workloadIdentityUnknown: string; workloadIdentityUnsupported: string; emergency: string } }).blocked
+const BLOCKED = (pages.plan as { blocked: { after: string; readiness: string; count: string; baseline: string; exclusionsGroup: string; devicePlan: string; workCountries: string; direction: string; unsettled: string; sourceMapping: string; pairUnmatched: string; targetAmbiguous: string; noOperation: string; noOperationHeld: string; authContextInUse: string; manualCorrection: string; unverifiedExclusion: string; methodsPolicyUnread: string; passkeyProfiles: string; passkeyBlockConflict: string; passkeyPartialRead: string; workloadIdentityUnknown: string; workloadIdentityUnsupported: string; emergency: string } }).blocked
 export const BLOCKED_REASON = {
   after: (stepTitle: string): string => fillText(BLOCKED.after, { stepTitle }),
   reaches: (measure: string, threshold: string, now: string): string => fillText(BLOCKED.readiness, { measure, threshold, value: now }),
@@ -95,8 +95,6 @@ export const BLOCKED_REASON = {
   unverifiedExclusion: (group: string): string => fillText(BLOCKED.unverifiedExclusion, { group }),
   /** The authentication methods policy this scan could not read (roadmap/passkeySettings.ts): the passkey settings cannot be compared until it can. */
   methodsPolicyUnread: BLOCKED.methodsPolicyUnread,
-  /** Enabled accounts whose sign-in activity this scan could not read (roadmap/generate.ts, derive/sets.ts activityUnreadUsers): the dormant check cannot judge them until it can. */
-  activityUnread: BLOCKED.activityUnread,
   /** Passkey settings IAMAI cannot change without overwriting something (roadmap/passkeySettings.ts): a profile-based policy, a block list that blocks Authenticator, or a partial read. */
   passkeyProfiles: BLOCKED.passkeyProfiles,
   passkeyBlockConflict: BLOCKED.passkeyBlockConflict,

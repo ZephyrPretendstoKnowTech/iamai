@@ -34,13 +34,30 @@ const IMPACT_TOPICS: Record<string, string> = {
 // including inactive accounts. Other prerequisites can carry an empty placeholder
 // population, so their topic must not turn into a misleading zero.
 const ACCOUNT_REVIEW_STEPS = new Set([
-  's-check-dormant-accounts', 's-prereq-per-user-mfa',
-  's-ladder-per-user-mfa-cleanup', 's-check-separate-admin-accounts',
+  's-prereq-per-user-mfa',
+  's-ladder-per-user-mfa-cleanup',
   's-shared-devices',
 ])
+/**
+ * The Prepare steps' Impact, counted in what each changes (walk list item 16,
+ * owner 2026-09-23; roadmap/generate.ts sets `impactCount`): the dormant
+ * accounts still to disable or keep, the admins seen on Outlook or Teams, the
+ * service accounts picked, and the plan's policies that wait on the
+ * authentication strength and on the trusted network. Never a label, and "no
+ * accounts" once nothing is left.
+ */
+const COUNTED: Readonly<Record<string, readonly [string, string]>> = {
+  's-check-dormant-accounts': ['account', 'accounts'],
+  's-check-separate-admin-accounts': ['account', 'accounts'],
+  's-prereq-service-accounts-group': ['account', 'accounts'],
+  's-prereq-auth-strength': ['policy', 'policies'],
+  's-prereq-trusted-location': ['policy', 'policies'],
+}
 export function rowWho(step: Step): string {
   // A preparation cohort names its guests beside its people (owner, 2026-09-19): the lead reads the same words.
   if (step.preparation) return step.preparation.ids.length ? cohortWords(step.preparation.ids.length, guestsAmong(step.preparation.ids, step.preparation.guestIds)) : 'User Authentication'
+  const counted = COUNTED[step.id]
+  if (counted && step.impactCount !== undefined) return count(step.impactCount, counted[0], counted[1])
   // Through count(), as the tile beside it: "3,671 accounts" on both, never "3671".
   if (ACCOUNT_REVIEW_STEPS.has(step.id) && step.population.total > 0) return count(step.population.total, 'account')
   // Prepare Emergency Access Accounts is its accounts: the ones chosen, and never

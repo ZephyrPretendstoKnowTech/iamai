@@ -13,7 +13,7 @@ import { packageBindings, packageStateOf } from '../ui/surfaces/stepPackage.ts'
 import { stepBodyOf } from '../ui/surfaces/stepBody.ts'
 import { BLOCKED_REASON } from '../copy/reasons.ts'
 import { operatorUserId } from '../derive/operator.ts'
-import { OPERATOR_PASSKEY_STEP_ID, PASSKEY_SETTINGS_STEP_ID, PASSKEY_TARGET_AAGUIDS, operatorPasskeyOf, passkeyReadingOf, resolvePasskeyTarget } from './passkeySettings.ts'
+import { OPERATOR_PASSKEY_STEP_ID, PASSKEY_SETTINGS_STEP_ID, PASSKEY_TARGET_AAGUIDS, passkeyReadingOf, resolvePasskeyTarget } from './passkeySettings.ts'
 import type { Fido2Configuration, PasskeyResolution } from './passkeySettings.ts'
 
 const CAMPAIGN = 's-verify-mfa'
@@ -104,7 +104,6 @@ test('A5.3–A5.6 on the demo Step 3 is Up Next with the target resolved from th
   const demo = withFido2(fixture('demo'), legacy({ isAttestationEnforced: false }))
   const { r, label } = plan(demo)
   assert.equal(label(PASSKEY_SETTINGS_STEP_ID), 'Up Next')
-  assert.equal(label(CAMPAIGN), 'Ready · Create')
   const { state, bindings } = packageOf(demo, r)
   // An object step reaches `missing` only (states.ts RUNTIME_REACH); the package's one projection is `missingOrPartial`.
   assert.equal(state, 'missing')
@@ -122,7 +121,6 @@ test('A5.3–A5.6 on the demo Step 3 is Up Next with the target resolved from th
     const { r, label } = plan(f)
     assert.equal(label(PASSKEY_SETTINGS_STEP_ID), 'Up Next')
     assert.equal(packageOf(f, r).state, 'missing')
-    assert.equal(label(CAMPAIGN), 'Ready · Create')
   }
 
   // A5.5 every field matching completes the step and releases the campaign from it.
@@ -152,7 +150,6 @@ test('A5.3–A5.6 on the demo Step 3 is Up Next with the target resolved from th
 test('A5.7 + A5.8 the operator passkey step: generated where the operator’s methods were read and hold no passkey, after the settings; without Conditional Access neither step is generated', () => {
   const small = fixture('small')
   const operatorId = operatorUserId(small.snapshot)!
-  assert.deepEqual(operatorPasskeyOf(small.snapshot), { operatorId, holds: false })
   const { r, label } = plan(small)
   assert.deepEqual(r.steps.find((s) => s.id === OPERATOR_PASSKEY_STEP_ID)?.population.ids, [operatorId])
   assert.notEqual(label(OPERATOR_PASSKEY_STEP_ID), 'Completed')

@@ -46,7 +46,7 @@ test('service defaults propose detected use without confirming, an unread servic
   }
 })
 
-test('retained foundational rows re-evaluate and dormant Keep requires a reason', () => {
+test('retained foundational rows re-evaluate and dormant Keep completes the step', () => {
   const f = fixture('demo')
   const first = runFixture(f)
   const dormant = first.steps.find(s => s.id === 's-check-dormant-accounts')!
@@ -57,11 +57,6 @@ test('retained foundational rows re-evaluate and dormant Keep requires a reason'
   assert.equal(after.steps.find(s => s.id === dormant.id)?.state.satisfied, true)
   assert.ok(after.steps.some(s => s.id === 's-prereq-security-defaults'), 'disabled Security Defaults remains discoverable')
   assert.ok(!after.steps.some(s => /s-review-baseline-iac-agent-block/.test(s.id)))
-  if (dormant.dormantChoices!.length) {
-    outcomes[`reason:${dormant.dormantChoices![0].id}`] = ''
-    const invalid = applyStepDecisions(f.mapping, { [dormant.id]: { at: f.snapshot.asOf, answers: outcomes } })
-    assert.equal(runFixture({ ...f, mapping: invalid }).steps.find(s => s.id === dormant.id)?.state.satisfied, false)
-  }
 })
 
 test('manual review bases: the folded mail follow-up ignores unrelated policy edits, and per-user MFA review is shared across aliases while migrationComplete proves nothing', () => {

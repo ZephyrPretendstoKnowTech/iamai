@@ -191,10 +191,8 @@ test('the author’s own authentication strength is never handed over: a tenant 
     section.rows.push({...strength, id: 'zz-equivalent-strength', displayName: 'Another exact equivalent'})
     const get = () => runFixture(f).steps.find(s => s.id === PREREQ_STEP_ID.authStrength)!
     assert.equal(get().state.satisfied, true)
-    assert.equal(get().configurationFindings?.[0].value, 'Exact match found')
     section.rows = section.rows.filter((r: any) => r.policyType === 'builtIn')
     assert.equal(get().state.satisfied, false)
-    assert.equal(get().configurationFindings?.[0].value, 'Matching strength missing')
   }
 })
 

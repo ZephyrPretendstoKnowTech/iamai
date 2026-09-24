@@ -15,7 +15,7 @@ import type { Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { absoluteDate, longDate } from '../../copy/dates.ts'
-import { list } from '../../copy/statements.ts'
+import { count, list } from '../../copy/statements.ts'
 import { countryName } from '../../mapping/countries.ts'
 import { hoursAsDuration, needsPasskey, sessionWantedForGoal, sessionWantedLongForGoal, strengthForGoal, strengthNameOf, promptsPersonForGoal, pairBaselineNames } from './stepPortal.ts'
 import { hoursInWords } from '../../coverage/verdict.ts'
@@ -24,11 +24,11 @@ import { contentTitle } from '../../content/stepTitle.ts'
 import { contentLists } from '../../derive/contentLists.ts'
 import { watchedArrive } from '../../roadmap/observation.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
-import { phoneSignInIds } from '../../derive/sets.ts'
+import { disabledInactiveUsers, notPeopleIds, phoneSignInIds } from '../../derive/sets.ts'
 import { securityDefaultsState, signInsNeedP1 } from '../../derive/readinessContext.ts'
 import { cohortWords, guestsAmong } from '../../derive/whoLine.ts'
 import { pickerVars } from './pickerRows.ts'
-import { DECISION_STEPS } from '../../roadmap/decisions.ts'
+import { DECISION_STEPS, decisionKeyOf } from '../../roadmap/decisions.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import type { NamingConvention } from '../../coverage/naming.ts'
@@ -48,6 +48,8 @@ import { planProposedNames, proposedNamesFor } from './proposedNames.ts'
 import { policyPairNames } from '../../coverage/naming.ts'
 import type { ProposedObjectNames } from './proposedNames.ts'
 import { exclusionsGroupChoice, groupEvidence } from '../../mapping/safetyChoice.ts'
+import { prepareVarsOf } from './prepareSteps.ts'
+import { networkDraftOf } from '../../mapping/networkDraft.ts'
 import type { DirectoryEvidence } from '../../mapping/safetyChoice.ts'
 
 export type StepVarContext = {
@@ -97,6 +99,26 @@ function long(iso: string | null | undefined): string | undefined {
 /** The short form, one format everywhere (walk-51 item 5). */
 function short(iso: string | null | undefined): string | undefined {
   return iso ? absoluteDate(iso) : undefined
+}
+
+/** The Entra portal's name for each method an authentication strength allows. */
+const STRENGTH_METHOD_NAMES: Readonly<Record<string, string>> = { windowsHelloForBusiness: 'Windows Hello for Business', fido2: 'Passkeys (FIDO2)', x509CertificateMultiFactor: 'Certificate-based authentication (multifactor)', temporaryAccessPassOneTime: 'Temporary Access Pass (one-time use)', temporaryAccessPassMultiUse: 'Temporary Access Pass (multi-use)' }
+
+/** The methods a strength's allowed combinations select, as the portal names them: the one list the strength step's task, completion and package read. */
+export function strengthMethodNames(combinations: readonly string[]): string[] {
+  return combinations.map((value) => STRENGTH_METHOD_NAMES[value] ?? value)
+}
+
+/**
+ * The ranges Define the Trusted Network's task adds: the public ranges saved for
+ * the office where there are any, otherwise the content's words for the
+ * office's own public ranges (walk list 65).
+ */
+export function officeRangesOf(step: Pick<Step, 'id' | 'goalId' | 'guidance'>, mapping: MappingState): string | undefined {
+  const draft = networkDraftOf(mapping)
+  if (draft) return list(draft.ranges)
+  const unsaved = (contentStepFor(step) as { rangesUnsaved?: unknown } | undefined)?.rangesUnsaved
+  return typeof unsaved === 'string' ? unsaved : undefined
 }
 
 /** The tenant's own name, from the one place a snapshot carries it: every surface that names the tenant reads this. */
@@ -327,6 +349,26 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     // place of an unfinished reading. The who-line mechanism draws the
     // unresolved sentence in that slot instead (stepExport.ts whoEvidenceLines).
     if (ctx.snapshot.config.authStrengths?.status !== 'ok') v.evidenceNotRead = true
+    // The methods the baseline's strength allows, in the portal's own names:
+    // the task selects them and the completion names them, from one list.
+    const methods = strengthMethodNames(step.authenticationStrengthTarget?.allowedCombinations ?? [])
+    if (methods.length > 0) v.strengthMethods = list(methods)
+    // A strength of the baseline's name that allows other methods: the step
+    // corrects it (whatToDoWhen.strengthToCorrect; walk list 55).
+    if (step.strengthToCorrect && !step.state.satisfied) v.strengthToCorrect = step.strengthToCorrect.name
+  }
+
+  // Define the Trusted Network: the office ranges its task adds (the ranges
+  // saved for the office where there are any, walk list 65), and the picked
+  // location it marks trusted instead of making one (walk list 61).
+  if (step.id === PREREQ_STEP_ID.trustedLocation) {
+    v.officeRanges = officeRangesOf(step, ctx.mapping)
+    if (step.officeToTrust?.length) v.officeToTrust = list(step.officeToTrust.map((l) => l.name))
+    // Held on the office answer in Decide How and Where People Sign In (walk
+    // list 60): what the step makes, if anything, follows that answer, so it
+    // draws no card of its own and its action is the answer
+    // (whatToDoWhen.officeUnanswered).
+    if (step.blockers.some((b) => b.kind === 'decision' && b.label.startsWith('direction:'))) v.officeUnanswered = true
   }
 
   // Nobody affected (timing.ts, the one definition): the records show nobody
@@ -357,26 +399,19 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // emergency/service/admin id sets. A step reads only the keys it uses.
   // With Require MFA for Everyone in place nobody is "registered but never seen to complete MFA" (population.ts campaignBucket).
   Object.assign(v, contentLists({ snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, now: ctx.now, mfaInPlace: ctx.mfaInPlace === true }))
-  // The admins a preparation step still waits on outside its active people
-  // (R4-52), each in the words of what the scan read of them: the engine's
-  // dormant and unread ids (roadmap/generate.ts), filtered by the step's own
-  // missing ids, never worked out again here. Every other list on the campaign
-  // names active people, so it could wait on six admins nobody named.
-  if (step.preparation) {
-    const missing = new Set(step.preparation.missingIds)
-    const waiting = (ids: readonly string[] | undefined): string[] => (ids ?? []).filter((id) => missing.has(id)).map(ctx.nameOf)
-    v.dormantAdminsNotReady = waiting(step.preparation.dormantIds)
-    v.unreadAdminsNotReady = waiting(step.preparation.activityUnreadIds)
+  // Disable or Confirm Dormant Accounts' card (walk list items 14, 26): the
+  // accounts still to disable or keep, and once none are, how many the person
+  // keeps and how many accounts with no sign-in in the last 90 days are
+  // disabled in the directory.
+  if (step.dormantChoices) {
+    v.openAccounts = count(step.dormantChoices.filter((row) => !row.kept).length, 'account')
+    v.kept = step.dormantChoices.filter((row) => row.kept).length
+    v.disabled = disabledInactiveUsers(ctx.snapshot, ctx.snapshot.asOf, notPeopleIds(ctx.mapping)).length
   }
-  // The same unknown people under a heading with no "scan again before assessing
-  // readiness" (who.groups.readinessUnknownBlind), where the step's own reading
-  // names a source the scan could not read (Readiness.blind): no scan settles
-  // them until that source can be read, and the Readiness card says what opens
-  // it (R4-20, Priya D5).
-  if (step.readiness?.blind !== undefined) {
-    v.readinessUnknownBlind = v.readinessUnknown
-    v.readinessUnknown = []
-  }
+  // Register Your Own Passkey's and Prepare Your Team for MFA's own values: the
+  // operator's account and devices, the campaign's people by what each needs,
+  // and the registration campaign as the scan read it (prepareSteps.ts).
+  Object.assign(v, prepareVarsOf(step, ctx))
   // The stored answers in words (E1), for the steps an answer adds; and the
   // device decision's lines (E2): who signs in from a phone or an unjoined
   // computer, one device line per person for the campaign, and the one
@@ -386,8 +421,30 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // The step's own picker rows (prune B): the emergency, exclusions-group,
   // countries, trusted-network, service-accounts and shared-devices pickers,
   // from the detections the plan runs, in the content file's row shape.
-  const pickerRow = (contentStepFor(step) as { decision?: { pickerRow?: string } } | undefined)?.decision?.pickerRow
-  if (typeof pickerRow === 'string') Object.assign(v, pickerVars(step.id, pickerRow, { snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, groups: ctx.groups, directory: ctx.directory }) ?? {})
+  const decision = (contentStepFor(step) as { decision?: { pickerRow?: string; accountRow?: string } } | undefined)?.decision
+  const pickerCtx = { snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, groups: ctx.groups, directory: ctx.directory }
+  // Create or Correct Service Accounts Group picks a group (decisions.ts
+  // decisionKeyOf); the accounts it holds keep their rows with the signals
+  // that nominated them, which the step's evidence lines name.
+  if (typeof decision?.accountRow === 'string') Object.assign(v, pickerVars(step.id, decision.accountRow, pickerCtx) ?? {})
+  if (typeof decision?.pickerRow === 'string') Object.assign(v, pickerVars(decisionKeyOf(step.id), decision.pickerRow, pickerCtx) ?? {})
+
+  // The service accounts group: the one the picker saved (else the name the
+  // plan proposes), how many it holds once it holds exactly the picked
+  // accounts, and the picked accounts by name. `serviceGroupFound` names the
+  // scanned group the picker pre-fills while nothing is saved.
+  if (step.id === PREREQ_STEP_ID.serviceAccountsGroup) {
+    const groupId = ctx.mapping.serviceAccountsGroupId
+    const group = groupId ? ctx.groups?.get(groupId) : undefined
+    const name = groupId ? (group?.displayName ?? ctx.nameOf(groupId)) : step.naming?.proposed
+    if (name) v.serviceAccountsGroupName = name
+    if (group && step.state.satisfied) v.serviceAccountsGroupMembers = group.memberCount
+    v.serviceAccountNames = list(ctx.mapping.serviceAccountUserIds.map(ctx.nameOf))
+    // The group the scan found holding exactly them, nobody has saved it yet;
+    // or the saved group whose members differ (roadmap/generate.ts serviceGroup).
+    if (step.serviceGroup?.kind === 'found') v.serviceGroupFound = step.serviceGroup.name
+    if (step.serviceGroup?.kind === 'correct' && !step.state.satisfied) v.serviceGroupCorrect = step.serviceGroup.name
+  }
 
   // The emergency-access and exclusions-group steps (walk-51 item 14): the
   // failing checks routed through the content checkFixes, the counts for the

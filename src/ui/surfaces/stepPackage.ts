@@ -48,9 +48,10 @@ import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
 import { GATING_SUBJECTS, blockerStepId } from '../../roadmap/blockerSteps.ts'
 import { PASSKEY_SETTINGS_STEP_ID, passkeyBindings } from '../../roadmap/passkeySettings.ts'
 import { SYNC_WORKLOAD_GOAL_ID, syncIdentitySupportOf } from '../../roadmap/workloadIdentity.ts'
-import { stepVars, tenantNameOf } from './stepVars.ts'
+import { officeRangesOf, stepVars, strengthMethodNames, tenantNameOf } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { portalNamesFor, stepPortalLines, plannedPortalLines } from './stepPortal.ts'
+import { lifecycleResources } from './stepResources.ts'
 
 const PACKAGES = (registry as unknown as { packages: Record<string, CompiledPackage> }).packages
 
@@ -481,6 +482,36 @@ function previewName(step: Step, pkg: CompiledPackage, binding: string): string 
   if ((pkg.meta.baselineAuthority?.members ?? []).length > 1) return null
   const proposed = step.naming?.proposed
   return typeof proposed === 'string' && proposed !== '' ? proposed : null
+}
+
+/**
+ * The state a non-policy step's package writes its work for: a preparation, a
+ * check or a campaign with work outstanding reads `missing` (packageStateOf;
+ * content/implementation/states.ts RUNTIME_REACH), `groupMissing` included,
+ * which the compiler normalises to it.
+ */
+const WORK_STATE: PackageState = 'missing'
+
+/**
+ * A non-policy step's procedure, from its content folder, in every state (walk
+ * list item 19, owner 2026-09-23): the Entra procedure its package writes for
+ * the work itself, with the values IAMAI holds. The screen draws it wherever
+ * the state the scan read projects no procedure of its own — the step
+ * Completed, Deferred, set aside or held — and AI Info's What to do reads it
+ * there too (stepExport.ts), so a step says one procedure however it stands.
+ *
+ * Before this such a step switched to a second, differently worded copy in
+ * content.json (`whatToDo.steps`) the moment it was Completed or Deferred, and
+ * AI Info read that copy in every state. Null for a policy step, whose
+ * procedure is the translator's and its package's own, and where the package
+ * writes no procedure or one naming a value IAMAI does not hold
+ * (stepResources.ts lifecycleResources).
+ */
+export function workProcedureOf(pkg: CompiledPackage, step: Step, bindings: Bindings, confirmations: Readonly<Record<string, OwnerConfirmation>> = {}, baselineCommit: string = BASELINE_COMMIT): ChannelArtifact | null {
+  if ((contentStepFor(step) as { kind?: unknown } | undefined)?.kind === 'policy') return null
+  if (pkg.meta.projection[WORK_STATE] === undefined) return null
+  const { runtime } = packageRuntime(pkg, WORK_STATE, bindings, confirmations, baselineCommit)
+  return lifecycleResources(pkg, WORK_STATE, bindings, runtime).find((a) => a.channel === 'entra') ?? null
 }
 
 /**
@@ -981,10 +1012,13 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
     put('strength.target.displayName', step.naming?.proposed)
     const combinations = step.authenticationStrengthTarget?.allowedCombinations
     if (combinations?.length) {
-      const names: Record<string, string> = { windowsHelloForBusiness: 'Windows Hello for Business', fido2: 'Passkeys (FIDO2)', x509CertificateMultiFactor: 'Certificate-based authentication (multifactor)', temporaryAccessPassOneTime: 'Temporary Access Pass (one-time use)', temporaryAccessPassMultiUse: 'Temporary Access Pass (multi-use)' }
       put('strength.target.allowedCombinations', combinations)
-      put('strength.target.methodNames', combinations.map(value => names[value] ?? value))
+      // One sentence's list ("A, B, C and D"), as the step's completion names it (stepVars.ts strengthMethods).
+      put('strength.target.methodNames', list(strengthMethodNames(combinations)))
     }
+    // The ranges Define the Trusted Network's task adds: the ranges saved for the
+    // office, or the words for the office's own public ranges (walk list 65).
+    if (step.id === 's-prereq-trusted-location') put('location.target.ipRangesText', officeRangesOf(step, ctx.mapping))
     if (step.id === 's-prereq-service-accounts-group') put('group.target.displayName', step.naming?.proposed)
   }
   putSome('location.target.countryCodes', (ctx.mapping.allowedCountries ?? []).map((code) => code.toUpperCase()))
@@ -1007,6 +1041,16 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   // lists", and the only channel that listed them was the AI briefing.
   const serviceLabels = (ctx.mapping.serviceAccountUserIds ?? []).map(accountLabel)
   if (serviceLabels.length > 0 && serviceLabels.every((l): l is string => l !== null)) put('serviceAccounts.accountsSummary', serviceLabels.join(', '))
+  // The same accounts by sign-in address, each in bold, for the create's Members
+  // line in 1.2's words ("Under **Members**, add **a@…**, **b@…**.").
+  const serviceUpns = (ctx.mapping.serviceAccountUserIds ?? []).map((id) => ctx.snapshot.users.find((u) => u.id === id)?.userPrincipalName ?? null)
+  if (serviceUpns.length > 0 && serviceUpns.every((u): u is string => typeof u === 'string' && u.length > 0)) put('serviceAccounts.memberUpns', serviceUpns.map((u) => `**${u}**`))
+  // The picked service accounts the sign-in records show using a password from
+  // a script (ROPC), by name: one, or several, for AI Info's modernisation line.
+  const ropc = new Set(ctx.snapshot.scenarioEvidence?.ropcAutomation?.people ?? [])
+  const ropcNames = (ctx.mapping.serviceAccountUserIds ?? []).filter((id) => ropc.has(id)).map(ctx.nameOf)
+  put('service.ropcAccount', ropcNames.length === 1 ? ropcNames[0] : undefined)
+  putSome('service.ropcAccounts', ropcNames.length > 1 ? ropcNames : [])
   put('emergency.target.exclusionsGroupId', exclusionsGroupId)
   // The operator's confirmed emergency accounts, every one of them: the set the
   // step's own words name. Only where the directory names each; a set short of an
