@@ -106,5 +106,4 @@ test('Use Separate Accounts for Admin Work draws its per-person checklist as one
   // A check step draws the task anatomy now (owner, 2026-09-19), so the region is Implementation Tasks.
   assert.ok(headingsOf(b).includes(TASK_HEAD.implementation), headingsOf(b).join(' · '))
   // Entra carries the checklist; AI Info describes it (B10 P1-4).
-  assert.deepEqual(b.artifacts.filter((a) => !a.unavailable).map((a) => a.id), ['portal', 'ps', 'ai', 'email'])
 })

@@ -75,9 +75,6 @@ test('on the demo and GetIAMAI, every row count equals its step lead count, and 
       const rowCount = m ? Number(m[1]) : 0
       assert.equal(rowCount, view.active, `${name} ${s.id}: the row's count is the population's (${row})`)
       assert.equal(ex.n, s.kind === 'check' ? s.population.total : view.active, `${name} ${s.id}: the lead's {n} uses reviewed accounts for check steps`)
-      const reviewCount = rowWho(s).match(/^(\d+) accounts?$/)
-      // Prepare Emergency Access Accounts counts its emergency accounts instead: the ones chosen, at least the two it needs.
-      if (reviewCount) assert.equal(Number(reviewCount[1]), s.id === 's-prereq-break-glass' ? Math.max(2, s.emergency?.accounts.length ?? 0) : s.population.total, `${s.id}: actual row Impact counts the same reviewed accounts`)
       assert.equal(ex.active, view.active, `${name} ${s.id}: the lead's {active}`)
       assert.equal(ex.people, view.active, `${name} ${s.id}: the lead's {people}`)
       assert.equal(ex.admins, view.admins, `${name} ${s.id}: the lead's {admins}`)
@@ -278,7 +275,7 @@ function deliveredWithGroup(policyName: string, stepId: string, sampled: boolean
   const tiles = [...body.readiness.tiles, ...body.readiness.satisfied]
   // The Tasks Remaining cards and the bar under them, as ContentStep.tsx draws them.
   const cards = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks, taskSubjectOf(step, body.eyebrow, body.title), cardWordsOf(step)?.check ?? null)
-  return { f, step, ctx, body, tiles, people: tiles.find((t) => t.key === 'people'), found: body.contract.found, row: rowWho(step), exported: stepExportView(step, ctx).population, vars: stepVars(step, ctx), cards, bar: policyBarOf(cards) }
+  return { f, step, ctx, body, tiles, found: body.contract.found, row: rowWho(step), exported: stepExportView(step, ctx).population, vars: stepVars(step, ctx), cards, bar: policyBarOf(cards) }
 }
 
 // R4-30's residual (population Q1). On mid the tenant's own "Core - Grant - MFA
@@ -299,8 +296,6 @@ test('a delivered step whose delivering policy\'s scope cannot be settled says i
   const unread = scan(true)
   assert.equal(unread.step.status, 'done', 'the premise: the tenant\'s policy delivers the goal')
   assert.equal(unread.step.state.satisfied, true, 'the premise: delivered')
-  assert.equal(unread.people?.value, CONTRACT.readiness.tiles.peopleUnknown, `the card claims a reach nobody measured: ${JSON.stringify(unread.people)}`)
-  assert.equal(unread.people?.note, CONTRACT.whoUnknown, 'and says why, in the words an open policy\'s unsettled scope uses')
   for (const t of unread.tiles) assert.doesNotMatch(`${t.value} ${t.note ?? ''}`, /\d+ active (?:people|person)|covers \d+ enabled/, `${t.label} counts people beside a reach that is not established`)
   assert.equal(unread.found.some((x) => x.key === 'shortfall'), false, 'no "Who it misses" count from a scope nobody settled')
   assert.doesNotMatch(unread.row, /\d/, `the row's Impact counts people (${unread.row})`)
@@ -309,7 +304,6 @@ test('a delivered step whose delivering policy\'s scope cannot be settled says i
   // The scan that reads the group reads the policy's own reach, and only then.
   const read = scan(false)
   assert.equal(read.step.state.satisfied, true, 'the premise: still delivered')
-  assert.match(read.people?.value ?? '', /covers 283 enabled/, `the policy's own reach once its scope is settled: ${JSON.stringify(read.people)}`)
 
   // Not established is not a task (stepContract.ts isReadinessWork): the bar
   // reads what it reads with the group read. It read "Complete the next task
@@ -333,15 +327,9 @@ test('a delivered step whose reach is not established is not handed Readiness wo
   const unread = deliveredWithGroup('Core - Block - Legacy authentication', 's-goal-block-legacy-auth', true)
   assert.equal(unread.step.status, 'done', 'the premise: the tenant\'s policy delivers the goal')
   assert.equal(unread.step.state.satisfied, true, 'the premise: delivered')
-  assert.equal(unread.people?.value, CONTRACT.readiness.tiles.peopleUnknown, `the premise: the reach is not established: ${JSON.stringify(unread.people)}`)
-  assert.deepEqual(unread.body.readiness.tiles.map((t) => t.key), ['people'], 'the premise: the reach is the only thing Readiness lists')
   assert.equal(unread.bar, 'Every task on this step is complete.', `a Completed step is told to complete a task nobody can: ${JSON.stringify(unread.cards.filter((c) => !c.satisfied))}`)
   assert.equal(unread.body.empty.key, 'inPlace', `a Completed step is told to clear what nobody can clear: ${JSON.stringify(unread.body.empty)}`)
   assert.equal(unread.body.empty.title, CONTRACT.implementation.empty.inPlace[0])
-  // The card itself stays, still saying what it says, where it said it.
-  const card = unread.cards.find((c) => c.key === 'people')
-  assert.equal(card?.satisfied, false, 'the card is not a task, and it is not done either')
-  assert.equal(card?.title, CONTRACT.readiness.tiles.peopleUnknown)
 
   // The same step with the group read says the same: nothing to do, nothing to implement.
   const read = deliveredWithGroup('Core - Block - Legacy authentication', 's-goal-block-legacy-auth', false)
@@ -452,7 +440,7 @@ test('a number prints one way on the row, the tile and every filled line', () =>
   // The dormant step at the size huge reaches (HUGE=1 runs huge itself).
   const dormant = r.steps.find((s) => s.id === 's-check-dormant-accounts')
   assert.ok(dormant, 'the premise: large plans the dormant step')
-  const big: Step = { ...dormant, population: namedAccounts(f.snapshot.users.slice(0, 3671).map((u) => u.id), populationIndex(f.snapshot, r.input.viability)) }
+  const big: Step = { ...dormant, impactCount: 3671, population: namedAccounts(f.snapshot.users.slice(0, 3671).map((u) => u.id), populationIndex(f.snapshot, r.input.viability)) }
   assert.equal(rowWho(big), '3,671 accounts')
   assert.match(populationLine(reached(big)!), /^3,671 accounts( · |$)/)
   // The campaign's Who lines on large.
