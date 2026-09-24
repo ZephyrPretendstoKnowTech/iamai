@@ -56,7 +56,7 @@ import { REDACTED, exportClipboard, unredactedFrom } from '../exportGuard.ts'
 import { CONTRACT, implementationEmptyOf, partnerLinkOf, readinessLeadOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
 import { HARDENING_DEFERRAL_ID } from '../../validation/emergencyTiers.ts'
-import { AuthoredText, DoneWhen, EmergencySlotBody, PolicyMembers, ReadinessSection, ScanNote, StepActionColumn, StepDialog, StepFooter, StepHead, StepSection, StepState, WHY_LINK_SHOWN, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
+import { AuthoredText, DoneWhen, EmergencySlotBody, PolicyMembers, ReadinessSection, StepActionColumn, StepDialog, StepFooter, StepHead, StepSection, StepState, WHY_LINK_SHOWN, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
 import { MfaHandoff } from './MfaHandoff.tsx'
 import { HEAD, decisionHeadingsOf, taskHeadingsOf } from './stepHeadings.ts'
 import { AnsweredInDirection, DirectionQuestions, directionDraftKey } from './DirectionQuestions.tsx'
@@ -180,7 +180,7 @@ export function EmergencySubjectReadiness({ subjects, printing, barMain, onWhy }
       <summary>Satisfied · {satisfied.length}</summary>
       <div className="emergency-account-status-grid satisfied">{satisfied.map(tile)}</div>
     </details>}
-    <ScanNote />
+    <p className="emergency-account-scan-note">After making changes, select <strong>{SHARED.scanControl}</strong>.</p>
     {bar}
   </section>
 }
@@ -452,7 +452,6 @@ export function ContentStep({
           /> : <ReadinessSection
             readiness={displayedReadiness}
             heading={taskHead?.remaining}
-            scanNote={isTaskStep}
             showClosedCount={!isTaskStep}
             lead={instructed || hasPasskeyFindings || leadInRail ? null : actionLead}
             onWhy={hasEvidence && !printing ? () => setDialog('readiness') : null}
