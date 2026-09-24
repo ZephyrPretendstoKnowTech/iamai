@@ -24,7 +24,7 @@ This policy already exists. Correct only the settings below, which IAMAI found d
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Set Grant to **Require authentication strength** and select the custom strength resolved for this tenant. Its ID is **{{authStrength.target.id}}**. Remove built-in MFA or any other strength from this policy's grant. This strength also accepts a Temporary Access Pass; Microsoft's built-in Phishing-resistant MFA strength does not. Replacing that built-in strength with this one lets administrators sign in with a Temporary Access Pass where they could not before, so review that effect before you save.
+Set Grant to **Require authentication strength** and select the custom strength resolved for this tenant. Its ID is **{{authStrength.target.id}}**. Remove built-in MFA or any other strength from this policy's grant.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-session","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -41,7 +41,7 @@ Rename the same policy (same policy ID) to **{{policy.target.displayName}}**. Fi
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
-Keep the policy in Report-only while you review the evidence listed for this step. Review Report-only sign-in results for each affected administrator and check that each one can use a method the custom strength accepts. An admin who cannot is a readiness issue to fix, not a reason to weaken the grant. A Temporary Access Pass also satisfies this strength, but it is temporary: an admin relying on one still needs a lasting accepted method.
+Keep the policy in Report-only while you review the evidence listed for this step. Review Report-only sign-in results for each affected administrator and check that each one can use a method the custom strength accepts. An admin who cannot is a readiness issue to fix, not a reason to weaken the grant.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
@@ -150,13 +150,13 @@ $actual=IG GET $uri
 
 This state creates the administrator policy for {{tenant.displayName}} in Report-only. It targets the exact built-in directory roles in the baseline, with the intended exclusions, All resources and all client apps. It requires the tenant's custom authentication strength and has no session controls.
 
-That strength accepts Windows Hello for Business, passkeys and FIDO2 security keys, certificate-based multifactor authentication and Temporary Access Pass. Passkeys and security keys reduce phishing risk, but the accepted set as a whole is not exclusively phishing-resistant because it includes Temporary Access Pass. Microsoft's generic administrator template uses the built-in Phishing-resistant MFA strength; this baseline keeps the custom strength.
+That strength accepts Windows Hello for Business, passkeys and FIDO2 security keys, certificate-based multifactor authentication and Temporary Access Pass.
 
 Directory-role targeting does not reach custom roles or administrative-unit-scoped role assignments.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-This policy requires administrators in the baseline's built-in directory roles to satisfy the tenant's custom authentication strength. That strength accepts Windows Hello for Business, passkeys and FIDO2 security keys, certificate-based multifactor authentication and Temporary Access Pass. Passkeys and security keys reduce phishing risk but do not make phishing impossible, and the accepted set is not exclusively phishing-resistant because it includes Temporary Access Pass. Microsoft's built-in Phishing-resistant MFA strength does not accept a Temporary Access Pass.
+This policy requires administrators in the baseline's built-in directory roles to satisfy the tenant's custom authentication strength. That strength accepts Windows Hello for Business, passkeys and FIDO2 security keys, certificate-based multifactor authentication and Temporary Access Pass.
 
 Unlike the "MFA for Everyone" policy, which accepts any registered MFA method, this policy limits which methods count. Whether admins have an accepted method registered is shown on MFA Readiness, and the Prepare Your Team for MFA step helps them register one. The policy has no session controls, so it does not by itself require a new prompt at every sign-in.
 
@@ -169,7 +169,7 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 
-The administrator policy is in Report-only. Admins not ready: {{admins.notReady}}. Report-only evidence: {{evidence.reportOnly}}. An admin who cannot satisfy the strength needs an accepted method registered and tested; removing roles or weakening the grant would change the baseline. A Temporary Access Pass satisfies the strength but is temporary, so a sign-in with one does not show that the admin has a lasting accepted method.
+The administrator policy is in Report-only. Admins not ready: {{admins.notReady}}. Report-only evidence: {{evidence.reportOnly}}. An admin who cannot satisfy the strength needs an accepted method registered and tested; removing roles or weakening the grant would change the baseline.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
@@ -200,7 +200,7 @@ We are preparing stronger authentication for admin access. Please test the appro
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["missing","partial","reportOnly","readyToEnforce"],"format":"json-template","kind":"template"}
-{"tiles":[{"id":"admins","label":"Admins in scope","result":{{json:admins.affected.count}},"line":"Review the selected built-in roles and each affected admin's ability to use an accepted method. The target strength also permits Temporary Access Pass."},{"id":"notReady","label":"Admins not ready","result":{{json:admins.notReady}},"line":"Check that each affected admin can satisfy the selected authentication strength."},{"id":"state","label":"Policy state","result":{{json:policy.current.state}},"line":"Client rollout is Report-only first."}],"baselineStrength":"Modern MFA + TAP, resolved by tenant-local strength ID and exact allowed combinations."}
+{"tiles":[{"id":"admins","label":"Admins in scope","result":{{json:admins.affected.count}},"line":"Review the selected built-in roles and each affected admin's ability to use an accepted method."},{"id":"notReady","label":"Admins not ready","result":{{json:admins.notReady}},"line":"Check that each affected admin can satisfy the selected authentication strength."},{"id":"state","label":"Policy state","result":{{json:policy.current.state}},"line":"Client rollout is Report-only first."}],"baselineStrength":"Modern MFA + TAP, resolved by tenant-local strength ID and exact allowed combinations."}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["missing","partial","reportOnly","readyToEnforce","inPlace"],"format":"json","kind":"referenceOnly"}

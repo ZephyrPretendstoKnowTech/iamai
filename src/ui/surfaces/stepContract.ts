@@ -138,8 +138,6 @@ type ContractWords = {
   foundEnforcedBelowThresholdFloor: string
   /** A tenant's own policy delivering the goal, where it differs from the baseline's (Action.ownPolicyDiffers). */
   ownPolicyDiffers: { label: string; note: string }
-  /** The plan's policy asking for less than its goal's grant floor (Action.belowGoalFloor). */
-  belowGoalFloor: { label: string; value: string; note: string; floors: Record<string, string>; grantMfa: string; grantStrength: string }
   /** A finished policy this plan owns that went live with no report-only period IAMAI watched (doneWhen.ts enforcedUnwatched; owner decision 3). */
   foundEnforcedUnwatched: string
   /** The people marked on the campaign to turn on without, for now (roadmap/followUp.ts). */
@@ -485,8 +483,6 @@ export type StepContract = {
   inventory?: ContractInventory | null
   /** The people marked on the campaign to turn this policy on without, for now, and what happens to them; null where there are none. */
   followUp: { count: number; text: string } | null
-  /** Where the policy the plan writes asks for less than the goal's grant floor, the sentence that says so (Action.belowGoalFloor); null elsewhere. */
-  belowGoalFloor: { text: string; floor: string } | null
   whatToDo: ContractAction
   fix: ContractFix[]
   /**
@@ -1525,7 +1521,6 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     who: whoOf(step, ctx),
     inventory,
     followUp: followUpOf(step, ctx),
-    belowGoalFloor: belowGoalFloorOf(step, ctx),
     whatToDo,
     fix,
     enforcementWaits: enforcementWaitsOf(step),
@@ -2011,31 +2006,6 @@ function followUpOf(step: Step, ctx: StepVarContext): StepContract['followUp'] {
 }
 
 /**
- * The pinned baseline asking for less than the goal it is filed under (owner,
- * 2026-09-22, R4-11): the plan builds and turns on the policy as written, and
- * the step says its grant is weaker, by the tenant's own name for the strength.
- */
-function belowGoalFloorOf(step: Step, ctx: StepVarContext): StepContract['belowGoalFloor'] {
-  const b = step.action.belowGoalFloor
-  if (!b) return null
-  const W = CONTRACT.belowGoalFloor
-  const floor = W.floors[b.floor]
-  if (floor === undefined) return null
-  const strength = b.strengthId === null ? null : strengthNameIn(b.strengthId, ctx.snapshot, ctx.mapping)
-  const grant = strength !== null ? fillText(W.grantStrength, { strength }) : b.builtIn.includes('mfa') ? W.grantMfa : null
-  return grant === null ? null : { text: fillText(W.note, { grant, floor }), floor }
-}
-
-/** The key of that tile: a fact about what the baseline writes, never a task (FINISHED_FINDINGS). */
-export const BELOW_GOAL_FLOOR = 'below-goal-floor'
-
-/** Its tile: a warning that holds nothing, on every stage of the step. */
-function belowGoalFloorTile(c: StepContract): ReadinessTile | null {
-  if (c.belowGoalFloor == null) return null
-  return { key: BELOW_GOAL_FLOOR, label: CONTRACT.belowGoalFloor.label, tone: 'warn', value: fillText(CONTRACT.belowGoalFloor.value, { floor: c.belowGoalFloor.floor }), note: c.belowGoalFloor.text }
-}
-
-/**
  * Their tile: a warning, never a hold — the person chose to go ahead without
  * them. On the campaign itself it is headed by the list's own name, Turn On
  * Without Them, and once the campaign is complete it is a fact of the finished
@@ -2086,7 +2056,7 @@ export const UNWATCHED_ENFORCEMENT = 'enforced-unwatched'
  * Readiness" and "Complete the next task shown for each item." on a Completed
  * step whose tile says IAMAI does not ask for a change.
  */
-export const SETTLED_FINDINGS: ReadonlySet<string> = new Set([UNWATCHED_ENFORCEMENT, OWN_POLICY_DIFFERS, BELOW_GOAL_FLOOR])
+export const SETTLED_FINDINGS: ReadonlySet<string> = new Set([UNWATCHED_ENFORCEMENT, OWN_POLICY_DIFFERS])
 
 /**
  * The findings a finished step can leave behind: facts about the tenant, never
@@ -2487,7 +2457,7 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
   // the row's Impact in other numbers ("3 active people · 3 admins · covers 4
   // enabled" beside "4 accounts") and, on a check step, asked the reader to
   // "Check the listed evidence" over none. Every card left is work.
-  const facts = [enforcedReadingTile(step), unwatchedTile(step), ownPolicyTile(step), belowGoalFloorTile(c), followUpTile(c), ...emergencyTiles(step, c), ...configuredTiles, ...((configuration.length && step.id !== 's-prereq-break-glass') || (c.satisfiedFacts?.length ?? 0) > 0 ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), exclusionsTile(step, c), exclusionsReachTile(c), implementationTile(step, c), inventory].filter((x): x is ReadinessTile => x !== null)
+  const facts = [enforcedReadingTile(step), unwatchedTile(step), ownPolicyTile(step), followUpTile(c), ...emergencyTiles(step, c), ...configuredTiles, ...((configuration.length && step.id !== 's-prereq-break-glass') || (c.satisfiedFacts?.length ?? 0) > 0 ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), exclusionsTile(step, c), exclusionsReachTile(c), implementationTile(step, c), inventory].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
   // The emergency step's failing checks are its account slots' lines (P0-7): no check tile beside them.
   const fixes = fixTiles(c.fix, prerequisiteLabel).filter((t) => !(step.emergency && t.key.startsWith('check:')) && !(configuration.length && /passkey.*(?:review|settings)|profile.*review/i.test(`${t.label} ${t.value}`)))
