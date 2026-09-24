@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "On Hold",
   "bar": "After Register Your Own Passkey",
-  "rail": "Help each person set up their method",
+  "rail": "65 people still need a method",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -14,17 +14,12 @@
   ],
   "tiles": [
     {
-      "label": "Registration Support",
-      "state": "Not confirmed"
-    },
-    {
       "label": "Register Your Own Passkey",
       "state": "Prerequisite · Waiting"
     }
   ],
   "channels": [
     "Entra",
-    "PowerShell",
     "AI Info",
     "Email"
   ],

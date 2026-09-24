@@ -1,24 +1,26 @@
 {
-  "lane": "Ready",
-  "substatus": "Create",
-  "reason": null,
+  "lane": "On Hold",
+  "substatus": null,
+  "reason": "after: Decide How and Where People Sign In",
   "fact": null,
-  "badge": "Ready · Create",
-  "bar": "Ready now",
-  "rail": "Set up the trusted network",
+  "badge": "On Hold",
+  "bar": "Waiting on your answers",
+  "rail": "Create the trusted network",
   "headings": [
     "About this Step",
     "Tasks Remaining",
     "Implementation Tasks",
     "Completion Criteria"
   ],
-  "tiles": [],
+  "tiles": [
+    {
+      "label": "Decide How and Where People Sign In",
+      "state": "Waiting on your answers"
+    }
+  ],
   "channels": [
     "Entra",
-    "PowerShell",
-    "JSON",
-    "AI Info",
-    "Email"
+    "AI Info"
   ],
-  "when": "Est. Aug 31, 2026"
+  "when": "Est. Sep 7, 2026"
 }

@@ -1,26 +1,20 @@
 {
   "lane": "Ready",
-  "substatus": "Create",
+  "substatus": null,
   "reason": null,
   "fact": null,
-  "badge": "Ready · Create",
+  "badge": "Ready",
   "bar": "Ready now",
-  "rail": "Help each person set up their method",
+  "rail": "10 people still need a method",
   "headings": [
     "About this Step",
     "Tasks Remaining",
     "Implementation Tasks",
     "Completion Criteria"
   ],
-  "tiles": [
-    {
-      "label": "Registration Support",
-      "state": "Not confirmed"
-    }
-  ],
+  "tiles": [],
   "channels": [
     "Entra",
-    "PowerShell",
     "AI Info",
     "Email"
   ],
