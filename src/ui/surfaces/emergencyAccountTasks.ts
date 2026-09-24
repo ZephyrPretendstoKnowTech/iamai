@@ -288,10 +288,14 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
   const needs = (check: ConfigureCheck): string[] => needsIds(check).map(id => targetOf(ctx, id))
   const named = (upns: string[]): string => upns.map(upn => `**${upn}**`).join(', ')
   // Global Administrator that is eligible, or active with an end date, is held
-  // in Privileged Identity Management and is made permanent and active there;
-  // none at all is a direct assignment. The scan's roles say which.
+  // in Privileged Identity Management and is made permanent and active there.
+  // So is an account holding none, in a tenant with PIM (its licence, or any
+  // eligible assignment): there Roles & admins → Add assignments opens PIM's
+  // wizard, which defaults to Eligible, and an eligible assignment fails the
+  // check. Only a tenant with neither gets the direct assignment.
   const holdsGa = (roles: Record<string, string[]>, id: string): boolean => (roles[id] ?? []).some(role => role.toLowerCase() === GLOBAL_ADMIN_ROLE)
-  const viaPim = needsIds('permanentGlobalAdministrator').filter(id => holdsGa(ctx.snapshot.roles.active, id) || holdsGa(ctx.snapshot.roles.eligible, id))
+  const tenantHasPim = ctx.snapshot.capabilities?.pim?.enabled === true || Object.values(ctx.snapshot.roles.eligible).some(roles => roles.length > 0)
+  const viaPim = needsIds('permanentGlobalAdministrator').filter(id => tenantHasPim || holdsGa(ctx.snapshot.roles.active, id) || holdsGa(ctx.snapshot.roles.eligible, id))
   const direct = needsIds('permanentGlobalAdministrator').filter(id => !viaPim.includes(id))
   const CONFIGURE_CHECKS = ['initialDomain', 'enabled', 'permanentGlobalAdministrator'] as const
   const configureNeeded = CONFIGURE_CHECKS.some(check => needs(check).length > 0)
@@ -355,7 +359,7 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
       ...(configureClear ? [WORDS.configureNotNeeded] : []),
       ...(needs('initialDomain').length ? [`Open ${named(needs('initialDomain'))}, select **Properties → Edit properties**, change **User principal name** to the tenant’s initial domain${domain ? ` **${safe(domain)}**` : ''}, and save.`] : []),
       ...(needs('enabled').length ? [`Open ${named(needs('enabled'))}, select **Properties → Edit properties → Settings**, set **Account enabled** to **Yes**, and save.`] : []),
-      ...(direct.length ? [`Open **Entra ID → Roles & admins → Global Administrator → Add assignments**, select ${named(direct.map(id => targetOf(ctx, id)))}, and complete the assignment.`] : []),
+      ...(direct.length ? [`Open **Entra ID → Roles & admins → Global Administrator → Add assignments**, select ${named(direct.map(id => targetOf(ctx, id)))}, and complete the assignment. If it asks for an assignment type, choose **Active** and **Permanently assigned**.`] : []),
       ...(viaPim.length ? [`Open **ID Governance → Privileged Identity Management → Microsoft Entra roles → Roles → Global Administrator → Add assignments**, select ${named(viaPim.map(id => targetOf(ctx, id)))}. Choose **Assignment type: Active** and **Permanently assigned**.`] : []),
       'Return to IAMAI and select **Scan to update the plan**.',
     ] })]),
