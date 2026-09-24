@@ -327,6 +327,21 @@ export function workflowReviewIsCurrent(step: Step): boolean {
  * steps this one waits on first." - a held create stopped saying to create the
  * policy in report-only while the Implementation region still offered it.
  */
+/**
+ * The next thing on a Turn On MFA for Everyone policy whose report-only week
+ * would have blocked someone (walk list 4.x item 35): the blocks move the
+ * accounts off what they block, the MFA policies get them a method. Null on
+ * every other step, which keeps its observation.
+ */
+export function blockedMilestoneOf(stepId: string): string | null {
+  if (stepId === LEGACY_AUTH_STEP_ID || stepId === 's-goal-block-device-code') return MILESTONE.moveBlocked
+  if (stepId === 's-goal-admins-phishing-resistant' || stepId === 's-goal-mfa-all-users') return MILESTONE.readyBlocked
+  return null
+}
+
+/** The milestones a report-only week that would have blocked someone reads (blockedMilestoneOf). */
+export const BLOCKED_MILESTONES: ReadonlySet<string> = new Set([MILESTONE.moveBlocked, MILESTONE.readyBlocked])
+
 export function nextMilestone(step: Step, opts: { undated?: boolean } = {}): Milestone {
   const undated = opts.undated === true
   const s = step.state
@@ -373,7 +388,7 @@ export function nextMilestone(step: Step, opts: { undated?: boolean } = {}): Mil
   // Held on its records, it is still being watched: until they are clear, with no date.
   // Block Legacy Authentication's week that would have blocked someone names the
   // work instead (walk list 4.x item 35): the accounts move first.
-  if (hold?.kind === 'evidence') return { kind: 'observe', label: step.id === LEGACY_AUTH_STEP_ID && (readyWhen(step)?.failures ?? 0) > 0 ? MILESTONE.moveBlocked : MILESTONE.observeRecords, at: null, gatedBy: null }
+  if (hold?.kind === 'evidence') return { kind: 'observe', label: ((readyWhen(step)?.failures ?? 0) > 0 ? blockedMilestoneOf(step.id) : null) ?? MILESTONE.observeRecords, at: null, gatedBy: null }
   // Held on a readiness threshold while already in report-only: the threshold
   // gates turning it on and nothing else (A1a; roadmap/operations.ts
   // enforcementHeld), so the policy goes on being watched, and what the hold

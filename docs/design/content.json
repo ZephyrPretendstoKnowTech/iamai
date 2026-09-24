@@ -175,7 +175,25 @@
       "card": {
         "reportOnlyUntil": "Report-only until {date}",
         "blockedNoOne": "Report-only blocked no one.",
-        "after": "After {items}."
+        "after": "After {items}.",
+        "$commentExclusionsEdit": "The card of a policy whose only change left is the exclusions group, which Configure Emergency Exclusions adds itself (walk list 4.x item 7): it read Correct the policy, beside that step's own task for the same edit.",
+        "exclusionsEdit": "{step} adds {group} to it."
+      },
+      "$commentWaits": "What a held turn-on waits for beyond the plan's own steps, each said two ways: after \"Wait for\" in the turn-on's held line (app.plan.enforceOutstanding) and after \"After\" on the policy card (card.after). The mail accounts named in Confirm What You Use (walk list 4.x item 5), a report-only week that would have blocked someone (item 35) and a readiness threshold (item 44) held nothing on the procedure, so the turn-on still read Set Enable policy to On.",
+      "waits": {
+        "mail": "{names} to move to a supported mail route",
+        "mailAfterOne": "{names} moves to a supported mail route",
+        "mailAfterMany": "{names} move to a supported mail route",
+        "blocked": "the blocked accounts to move",
+        "blockedAfter": "the blocked accounts move",
+        "blockedMethod": "the blocked accounts to have a method it accepts",
+        "blockedMethodAfter": "the blocked accounts have a method it accepts",
+        "blockedAny": "report-only to block no one",
+        "blockedAnyAfter": "report-only blocks no one",
+        "admins": "every admin to have a method it accepts",
+        "adminsAfter": "every admin has a method it accepts",
+        "readiness": "{measure} to reach {threshold}",
+        "readinessAfter": "{measure} reaches {threshold}"
       }
     },
     "passkeyRestrictions": {
@@ -399,6 +417,8 @@
         "observeRecords": "Continue observation and collect the missing evidence.",
         "$commentMoveBlocked": "Block Legacy Authentication's next thing while its report-only week shows people it would have blocked (walk list 4.x item 35): the evidence line (evidence.legacyBlocked) names them and says where to move them.",
         "moveBlocked": "Move the blocked accounts.",
+        "$commentReadyBlocked": "moveBlocked on the two MFA policies (walk list 4.x item 35's shape): the people a report-only week would have blocked need a method the policy accepts, not a move.",
+        "readyBlocked": "Get the blocked accounts ready.",
         "enforce": "Enable the reviewed policy, then verify the result.",
         "$commentEnforceScheduled": "A policy whose evidence is complete says \"Enable the reviewed policy\" and \"ready now: 0 failures in 8 days\", and the date beside it was the plan's own placement - eighteen days out on one tenant. Both are right and they read as a contradiction: the wait is not the evidence any more, it is the notice the people affected are owed. The milestone says which wait it is.",
         "enforceScheduled": "The evidence for this policy is complete, so it is ready to be turned on. The plan schedules the turn-on for {date}, which leaves the {days} working days of notice a change this size asks for.",
@@ -508,6 +528,9 @@
         "$commentLegacyBlocked": "Block Legacy Authentication's report-only week that would have blocked someone (walk list 4.x item 35, roadmap/evidence.ts): the accounts by name and address, and where they move. legacyBlockedMail where every one of them is a mail account named in Confirm What You Use, which moves to a mail route rather than a mail app.",
         "legacyBlocked": "Report-only would have blocked {names}. Move them to a modern mail app before you turn this on.",
         "legacyBlockedMail": "Report-only would have blocked {names}. Move each to a supported mail route before you turn this on.",
+        "$commentDeviceCodeBlocked": "Item 35's shape on Block Device Code Sign-in and on the two MFA policies: it read \"The records show 1 person this policy stopped while it was in report-only. Review them before enforcing: time elapsed alone does not complete this check.\"",
+        "deviceCodeBlocked": "Report-only would have blocked {names}. Move them off device code sign-in before you turn this on.",
+        "methodBlocked": "Report-only would have blocked {names}. Get them a method this policy accepts before you turn it on.",
         "$commentUnreadable": "The one sentence for sign-in records IAMAI does not hold enough of (roadmap/evidence.ts unreadLine): Evidence.lines carries it to the AI briefing, and the observation tile and the awaiting-review tile state it. It read \"This check reads the sign-in records, which IAMAI could not read in this tenant - {reason}. Time in report-only cannot complete it until they can be read.\" That was written for a report-only policy on a tenant where nothing was read, and it reached two other cases. The AI briefing of a policy already enforced, or already in place, said time in report-only would complete a check on a policy past report-only (hostile: the device code block, guest MFA, MFA for all users, legacy authentication). And a production read that stops short of 24 hours is \"insufficient\" with some records read (graph/collect/laneBCore.ts), where \"could not read\" is false. It now says only what holds for every lifecycle and every status that sets it: IAMAI does not hold enough to rely on, and no check of its own that reads them completes by waiting.",
         "unreadable": "IAMAI does not hold enough of this tenant's sign-in records to rely on — {reason} — so no IAMAI check on this step that reads them can complete, however long the policy runs.",
         "$commentStatus": "What fills {reason} where the sign-in source states no reason of its own, by its status (roadmap/evidence.ts). The bare status word filled it, so a scan with no sign-in source read \"— pending —\".",
@@ -526,13 +549,16 @@
         "both": "{people} people and {guests} guests"
       },
       "blockSignIns": {
-        "$comment": "Who the sign-in records show using what a block stops, in the last 30 days (walk list 4.x items 33 and 38; roadmap/blockSignIns.ts): an open card naming them while the step still has work, a Satisfied card once nobody does or the policy is on. {n} is a count, so it reads \"1 account\" and \"1 person\". The names are the card's detail, at most five, then more.",
+        "$comment": "Who the sign-in records show using what a block stops, in the last 30 days (walk list 4.x items 33 and 38; roadmap/blockSignIns.ts): an open card naming them while the policy is not On, a Satisfied card once nobody does, and no card once the policy is On and blocks them. {n} is a count, so it reads \"1 account\" and \"1 person\". The names are the card's detail, at most five, then more.",
         "legacyLabel": "Legacy sign-ins",
         "legacySome": "{n} accounts signed in with legacy authentication in the last 30 days",
         "legacyNone": "Nobody signed in with legacy authentication in the last 30 days.",
         "deviceCodeLabel": "Device-code sign-ins",
         "deviceCodeSome": "{n} people signed in with device code in the last 30 days",
         "deviceCodeNone": "No device-code sign-ins in the last 30 days.",
+        "$commentMove": "The open card's instruction (walk list 4.x items 33 and 38, the checkers' 2026-09-24 reading): the people it names had no task and gated nothing. Item 35's words; a named mail account has its own card and task, so it is not named here.",
+        "legacyMove": "Move {names} to a modern mail app before you turn this on.",
+        "deviceCodeMove": "Move {names} off device code sign-in before you turn this on.",
         "more": "and {n} more"
       },
       "coverage": {
@@ -578,11 +604,19 @@
     "mailDevices": {
       "$comment": "Block Legacy Authentication's second task (ui/surfaces/policyTasks.ts): the mail accounts named in Confirm What You Use that still sign in with legacy authentication, each by name (walk list 4.x item 36). There is no exception to remove: the policy does not leave them out, and its turn-on waits until they have moved (item 5).",
       "title": "Move each mail account to a supported mail route",
-      "steps": [
-        "Move each device to SMTP AUTH with OAuth, an Exchange Online connector, or Direct Send (internal recipients only).",
-        "Return to IAMAI and select **Scan to update the plan**."
-      ],
+      "$commentRoute": "The task's line names the accounts it moves (the checkers' 2026-09-24 reading of item 36): it read \"Move each device to …\" under a target that named them.",
+      "routeOne": "Move the device or app that signs in as {names} to SMTP AUTH with OAuth, an Exchange Online connector, or Direct Send (internal recipients only).",
+      "routeMany": "Move the devices or apps that sign in as {names} to SMTP AUTH with OAuth, an Exchange Online connector, or Direct Send (internal recipients only).",
+      "scan": "Return to IAMAI and select **Scan to update the plan**.",
       "action": "Open mail route instructions",
+      "$commentCard": "The one Tasks Remaining card for the named mail accounts still on legacy authentication (walk list 4.x items 5 and 36): it was a wait headed \"Before turning on\" before the create and \"Prerequisites\" after it, reading \"until each mail account you named moves to a supported mail route\", and it named nobody. moveBefore while the policy is not On; move once it is, when it is already blocking them.",
+      "cardLabel": "Mail accounts",
+      "cardOne": "{names} still signs in with legacy authentication",
+      "cardMany": "{names} still sign in with legacy authentication",
+      "moveBeforeOne": "Move it to a supported mail route before you turn this on.",
+      "moveBeforeMany": "Move them to a supported mail route before you turn this on.",
+      "moveOne": "Move it to a supported mail route.",
+      "moveMany": "Move them to a supported mail route.",
       "$commentDone": "Block Legacy Authentication's Completion Criteria line for its mail half, where the mail question named accounts (stepContract.ts policyDoneWhen; walk list 4.x items 4 and 26): the mail half is done when none of the named accounts has signed in with legacy authentication in the last 30 days. {accounts} are their names.",
       "done": "No legacy authentication sign-in by {accounts} in the last 30 days."
     },
@@ -2127,6 +2161,7 @@
             "set": "Set {dimension} to {value}.",
             "setTasks": "Set {dimension} as Implementation Tasks shows.",
             "anyExcept": "Any device except {platforms}",
+            "notConfigured": "Not configured",
             "names": {
               "users": "Users",
               "applications": "Target resources",
@@ -2223,6 +2258,8 @@
           "doneOn": "IAMAI sees {policy} On, {fact}.",
           "doneOnPlain": "IAMAI sees {policy} On.",
           "donePeriod": "Its report-only period showed no sign-in it would have stopped.",
+          "$commentDonePeriodMail": "The second line where Confirm What You Use named mail accounts (walk list 4.x item 26: two lines): the report-only line and the mail half in one sentence. It was a third line.",
+          "donePeriodMail": "Its report-only period showed no sign-in it would have stopped, and {accounts} used no legacy authentication in the last 30 days.",
           "doneBlocked": "Everything Readiness lists is cleared.",
           "doneConflict": "The baseline author publishes a version that resolves the contradiction between the policy's documentation and its definition.",
           "doneDecision": "The question on this step is answered and saved.",
@@ -2352,7 +2389,6 @@
               "exclusionsReach": "Policies",
               "exclusionsReachValue": "{n} of {total} policies exclude the group",
               "exclusionsReachNote": "The count shows policies this scan verified. Selecting the group does not change a policy; each policy step adds it where it is missing.",
-              "observationNote": "Review the available records and the remaining evidence requirements. Time elapsed alone does not complete this check.",
               "notMeasured": "Not measured",
               "$commentAwaitingReview": "A policy that is enforced and waiting on the person to record their workflow test rendered Ready / Enforced, milestone Review now, and ZERO readiness tiles and ZERO findings - three readers reported the same empty step, two of them on the same step id. Its Done-when listed five lines: three that IAMAI checks itself and two that are the person, with nothing saying which of them remained. The step knows: awaitsWorkflowRecord is true and manualReview.confirmedAt is not set.",
               "awaitingReview": "Waiting on you",

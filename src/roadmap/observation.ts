@@ -818,7 +818,10 @@ export function observe(prior: StepObservation | null, sighting: Sighting): Obse
       // later scan seeing it enforced again does not make that untrue. A scan
       // whose records show the object in report-only does, as it does for
       // `skippedWindow`.
-      ...(!recorded && artifactAnswer === 'same' && !moved && prior.neverObserved ? { neverObserved: true as const } : {}),
+      // An edit to a policy that stays On does not make it one IAMAI watched in
+      // report-only (walk list 4.x item 26): Configure Emergency Exclusions adding
+      // its group to a policy found On kept the fact from the scan that saw it.
+      ...(!recorded && artifactAnswer === 'same' && prior.neverObserved && (!moved || (prior.state === 'enforced' && state === 'enforced')) ? { neverObserved: true as const } : {}),
       ...(!recorded && prior.state === 'absent' && state === 'enforced' ? { neverObserved: true as const } : {}),
       // Watched go On with no report-only state between (`skippedWindow`), and
       // carried with the object the same way.
