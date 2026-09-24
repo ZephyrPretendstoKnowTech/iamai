@@ -49,7 +49,7 @@ import { usesDecisionAnatomy } from '../../roadmap/stepGroups.ts'
 import { directionMilestoneAction } from '../../roadmap/directionAnswers.ts'
 import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
 import type { WhoBlock } from './whoBlocks.ts'
-import { BASELINE_COMMIT, artifactText, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageRuntime, packageSourceLine, packageStateOf, planningPreview, reviewedPackageFor, setupAfterEnforcementOf, sourceCheckedLine, jsonWithPlanTag, workProcedureOf } from './stepPackage.ts'
+import { BASELINE_COMMIT, artifactText, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageRuntime, packageSourceLine, packageStateOf, planningPreview, policyProcedureExtras, reviewedPackageFor, setupAfterEnforcementOf, sourceCheckedLine, jsonWithPlanTag, workProcedureOf } from './stepPackage.ts'
 import { lifecycleResources, policyInspectionLines, resourceChannelAllowed, inspectionResource, emailResource, mfaPreparationEmail, deviceSetupResource, namedPortalResource, switchedOffRequest, switchedOffResources, verificationResourceLines, withWorkflowVerification } from './stepResources.ts'
 import { bindText, projectSafely, projectExplanation, readinessSafely, troubleshootingSafely } from '../../content/implementation/project.ts'
 import type { ChannelArtifact, OutputChannel, OwnerConfirmation, TroubleshootingScenario } from '../../content/implementation/project.ts'
@@ -644,7 +644,7 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // for each state, and the Entra tab carries the same words.
   const outstandingForEnforce = [...new Set([...blockers.map((b) => b.title ?? b.label).filter((x): x is string => typeof x === 'string' && x.length > 0), ...(o.enforceWaits ?? [])])]
   const procedure = machine && drawsTaskAnatomy(step.id)
-    ? policyProcedureOf(step, { nameOf: portalNames.nameOf, strengthNameOf: (id) => portalNames.strengthNameFor?.(id) ?? null, rows: ctx.snapshot.config.caPolicies?.rows ?? [], before: wholeLines(w.before, ex), contract, outstanding: outstandingForEnforce, estimate: estimatedDay(step), proposed: proposedNamesFor(ctx), mapping: ctx.mapping })
+    ? policyProcedureOf(step, { nameOf: portalNames.nameOf, strengthNameOf: (id) => portalNames.strengthNameFor?.(id) ?? null, rows: ctx.snapshot.config.caPolicies?.rows ?? [], before: wholeLines(w.before, ex), contract, outstanding: outstandingForEnforce, estimate: estimatedDay(step), proposed: proposedNamesFor(ctx), mapping: ctx.mapping, extras: policyProcedureExtras(step, pkg, pkgBindings ?? (pkg ? packageBindings(step, ctx, contract) : null)) })
     : null
   if (procedure !== null) {
     const text = emergencyAccountTasksText(procedure)

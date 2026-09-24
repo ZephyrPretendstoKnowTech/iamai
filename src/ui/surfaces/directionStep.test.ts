@@ -198,15 +198,11 @@ test("an unsaved question that moved to Direction links to the Direction step th
       }
     }
     assert.ok(checked > 5, `only ${checked} procedure lines checked`)
-    // The fact the line carried stays. It is a numbered line, and a numbered line
-    // is something to do (the passkey preparation's rule above): it was left a
-    // bare statement, "Your answer about partner or MSP technicians decides …",
-    // and it is now the check that the policy's guest types follow that answer.
+    // The guest types the partner answer decides are the procedure's own users
+    // line (roadmap/policyProcedure.ts), the same in every state, so no line
+    // restates the answer's effect (walk list item 19).
     const guests = r.steps.find((s) => s.id === 's-goal-guests-mfa')!
     const body = stepBodyOf(guests, ctx)
-    const partner = (body.emergencyAccountTasks?.tasks ?? []).flatMap((t) => emergencyTaskSteps(t)).filter((l) => /service-provider external-user type/.test(l))
-    assert.equal(partner.length, 1, 'the partner answer\'s effect is no longer stated, or stated twice')
-    assert.match(partner[0], /^(?:\d+\.\s*)?Check\b/, `a numbered line that instructs nothing: "${partner[0]}"`)
     // Its decision note — the Decision tile's words — said "saving an answer
     // here does not establish trust" on a step that takes no answer: the partner
     // answer is saved on Confirm What You Use.

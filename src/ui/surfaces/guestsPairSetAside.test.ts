@@ -60,15 +60,16 @@ test('a pair package describing none of the policies the step resolves does not 
   }
 })
 
-test('the guests step hands over its own create in Report-only, with its name and plan tag, and never the pair procedure or a stand-in, held or not', () => {
+test('the guests step hands over its own create in Report-only, with its name (and its plan tag where Entra takes one), and never the pair procedure or a stand-in, held or not', () => {
   {
     const name = (create.body as { displayName: string }).displayName
     const tag = (create.body as { description: string }).description
     const b = stepBodyOf(unblocked(), ctx)
     const portal = b.artifacts.find((a) => a.id === 'portal')!.text()
-    assert.match(portal, new RegExp(`Name: ${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`))
-    assert.ok(portal.includes(tag), portal)
-    assert.match(portal, /Enable policy: Report-only/)
+    // The portal names the policy; its form has no Description field, so the
+    // tag travels in the JSON and the script (roadmap/policyProcedure.ts createLines).
+    assert.match(portal, new RegExp(`Name: \\*\\*${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\*\\*`))
+    assert.match(portal, /Set \*\*Enable policy\*\* to \*\*Report-only\*\* and select \*\*Create\*\*/)
     const json = JSON.parse(b.artifacts.find((a) => a.id === 'json')!.text()) as { displayName?: string; state?: string; description?: string }
     assert.equal(json.displayName, name)
     assert.equal(json.state, 'enabledForReportingButNotEnforced')

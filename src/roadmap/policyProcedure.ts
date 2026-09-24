@@ -33,8 +33,13 @@ type Words = Record<string, string> & {
 /** shared.procedure: every line and fragment the procedures are written in. */
 export const PROCEDURE = (shared as unknown as { procedure: Words }).procedure
 
-/** A template with its {placeholders} filled; a value the caller did not supply is left empty. */
-const fill = (template: string, vars: Record<string, string>): string => template.replace(/\{(\w+)\}/g, (_m, key: string) => vars[key] ?? '')
+/**
+ * A template with its {placeholders} filled; a value the caller did not supply is
+ * left empty. A tenant name holding a line break stays on its line: every value
+ * is one line, so a name never ends the instruction it is in (R6-1).
+ */
+const LINE_BREAK = new RegExp(`\\s*[\\r\\n${String.fromCharCode(0x2028, 0x2029, 0x85)}]\\s*`, 'g')
+const fill = (template: string, vars: Record<string, string>): string => template.replace(/\{(\w+)\}/g, (_m, key: string) => (vars[key] ?? '').replace(LINE_BREAK, ' '))
 const bold = (s: string): string => `**${s}**`
 const lc = (s: string): string => s.toLowerCase()
 const sameId = (a: string, b: string | null | undefined): boolean => b != null && lc(a) === lc(b)
@@ -49,6 +54,8 @@ export type ProcedureContext = {
   exclusionsGroupId?: string | null
   /** The emergency access accounts: excluded through the exclusions group, never by name. */
   emergencyIds?: readonly string[]
+  /** The name the plan proposes for an authentication context it makes itself, or null: IAMAI reads no contexts. */
+  contextNameOf?: (id: string) => string | null
 }
 
 const facts = (policy: Record<string, unknown>): PolicyFacts => policyFacts(policy, new Map())
@@ -97,23 +104,26 @@ function guestWords(types: readonly string[] | null): string {
 /**
  * Who a policy includes. All users reaches every guest type, and Entra cannot
  * select All users and Guest or external users together, so All users is said
- * alone (walk list item 19).
+ * alone (walk list item 19). Guest or external users leads: it carries no
+ * article, and after "the group **A** and" it read as a second group.
  */
 function includeWords(f: PolicyFacts, ctx: ProcedureContext): string[] {
   if (f.who.all) return [PROCEDURE.allUsers]
   const out: string[] = []
+  if (f.who.guests !== null) out.push(guestWords(f.who.guests))
   if (f.who.roles.size > 0) out.push(fill(PROCEDURE.directoryRoles, { names: list(names(f.who.roles, ctx)) }))
   const groups = groupsWords([...f.who.groups], ctx)
   if (groups) out.push(groups)
   const users = accountsWords([...f.who.users], ctx)
   if (users) out.push(users)
-  if (f.who.guests !== null) out.push(guestWords(f.who.guests))
   return out
 }
 
 /**
  * Who a policy excludes, each object by the tenant's name. The emergency
  * accounts are members of the exclusions group and are never named beside it.
+ * Guest or external users leads, as it does on the include side, then the
+ * exclusions group.
  */
 function excludeWords(f: PolicyFacts, ctx: ProcedureContext): string[] {
   const included = (id: string): boolean => [...f.who.groups].some((g) => sameId(g, id))
@@ -124,13 +134,9 @@ function excludeWords(f: PolicyFacts, ctx: ProcedureContext): string[] {
   const ordered = [...groups.filter((g) => sameId(g, ctx.exclusionsGroupId)), ...groups.filter((g) => !sameId(g, ctx.exclusionsGroupId))]
   const users = [...f.whoNot.users].filter((u) => !f.who.users.has(u) && !(viaGroup && emergency.has(lc(u))))
   const roles = [...f.whoNot.roles].filter((r) => ![...f.who.roles].some((x) => sameId(x, r)))
-  const out = [groupsWords(ordered, ctx), accountsWords(users, ctx), rolesWords(roles, ctx)].filter((w): w is string => w !== null)
-  if (f.whoNot.guests) {
-    const types = f.whoNot.guestTypes ?? []
-    const includedAll = f.who.guests !== null && f.who.guests.length === 0 && !f.who.all
-    if (!includedAll) out.push(guestWords(types))
-  }
-  return out
+  const includedAll = f.who.guests !== null && f.who.guests.length === 0 && !f.who.all
+  const guests = f.whoNot.guests && !includedAll ? guestWords(f.whoNot.guestTypes ?? []) : null
+  return [guests, groupsWords(ordered, ctx), accountsWords(users, ctx), rolesWords(roles, ctx)].filter((w): w is string => w !== null)
 }
 
 function usersLine(f: PolicyFacts, ctx: ProcedureContext): string {
@@ -161,7 +167,14 @@ const excludedApps = (f: PolicyFacts): string[] => [...f.apps.excludedIds].filte
 function resourcesLine(f: PolicyFacts, ctx: ProcedureContext): string | null {
   const action = [...f.apps.userActions].map((a) => portalName('userAction', a)).find((a): a is string => a !== null)
   if (action) return fill(PROCEDURE.userAction, { action })
-  if (f.apps.authContexts.size > 0) return fill(PROCEDURE.authContext, { contexts: boldList(names(f.apps.authContexts, ctx)) })
+  if (f.apps.authContexts.size > 0) {
+    // A context the plan makes is named as it proposes it, with its ID; any other by its ID.
+    const context = (id: string): string => {
+      const name = ctx.contextNameOf?.(id) ?? null
+      return name ? fill(PROCEDURE.contextNamed, { name: bold(name), id: `\`${id}\`` }) : bold(id)
+    }
+    return fill(PROCEDURE.authContext, { contexts: list([...f.apps.authContexts].map(context)) })
+  }
   const include = resourceInclude(f, ctx)
   if (include.length === 0) return null
   const exclude = excludedApps(f)
@@ -271,23 +284,28 @@ function settingsOf(policy: Record<string, unknown>, ctx: ProcedureContext): str
 }
 
 /**
- * The create: open New policy, name it, tag it, set who and what it reaches,
- * its conditions, its grant and session controls, create it in Report-only,
- * and scan (walk list items 14 and 16). Nothing follows the Report-only line
- * but the scan.
+ * The create: open New policy, name it, set who and what it reaches, its
+ * conditions, its grant and session controls, create it in Report-only, and
+ * scan (walk list items 14 and 16). Nothing follows the Report-only line but
+ * the scan.
+ *
+ * No Description line: the Entra form for a Conditional Access policy has no
+ * Description field (Graph documents the property as "Not used"), so the line
+ * item 16 asked for could not be followed. The name is what the next scan
+ * recognises a policy created by hand by (generate.ts claimedPolicy); the JSON
+ * and the script still carry the plan tag.
  *
  * `baseline` is the same policy without the person's answers, where an answer
  * changed it: a line the answer moved carries the baseline's version beside it
  * (shared.deviation), so the person's choice is always shown beside what the
  * baseline said.
  */
-export function createLines(policy: Record<string, unknown>, ctx: ProcedureContext, opts: { name: string; description?: string | null; baseline?: Record<string, unknown> | null }): string[] {
+export function createLines(policy: Record<string, unknown>, ctx: ProcedureContext, opts: { name: string; baseline?: Record<string, unknown> | null }): string[] {
   const settings = settingsOf(policy, ctx)
   const annotated = opts.baseline ? besideBaseline(settings, settingsOf(opts.baseline, ctx)) : settings
   return [
     openLine(null),
     fill(PROCEDURE.name, { name: opts.name }),
-    ...(opts.description ? [fill(PROCEDURE.description, { description: opts.description })] : []),
     ...annotated,
     PROCEDURE.create,
     PROCEDURE.scan,

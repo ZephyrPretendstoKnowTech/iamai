@@ -19,7 +19,7 @@ import { stepPortalLines, portalNamesFor, unwrittenCorrectionLines } from './ste
 import { campaignProcedureLines, instructionsHeld, preparationLines, preparesWhileCreateWaits, rescanLinesOf, wholeLines } from './stepInstructions.ts'
 import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, objectTaskLeads, readinessHeldLine, stepContract } from './stepContract.ts'
 import type { LaneView, PrerequisiteLabel, StepContract } from './stepContract.ts'
-import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, previewNoteLines, selectedPolicyBodiesOf, workProcedureOf } from './stepPackage.ts'
+import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, policyProcedureExtras, previewNoteLines, selectedPolicyBodiesOf, workProcedureOf } from './stepPackage.ts'
 import { projectSafely } from '../../content/implementation/project.ts'
 import { BOARD, SUBSTATUS_WORD, boardHolds, laneViewAlone, laneViewFor, laneViewOf, laneWordOf, prerequisiteLabelFor } from './planBoard.ts'
 import type { BoardReadings } from './planBoard.ts'
@@ -474,10 +474,16 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // contradiction; there is nothing to submit." — was in no artifact at all.
   // Where the reason line and the action are the same sentence (a missing
   // object, an emergency account in reach) the guard below keeps it once.
+  // A policy step's procedures, as its Implementation Tasks draw them
+  // (policyTasks.ts policyProcedureOf; walk list items 14–18). They stand in for
+  // the package's own Entra text, which wrote a different copy for each state.
   const pkg = implementationPackageFor(step)
   const state = pkg ? packageStateOf(step, contract, ctx.snapshot) : null
+  const procedure = cs.kind === 'policy' && drawsTaskAnatomy(step.id)
+    ? policyProcedureOf(step, { nameOf: names.nameOf, strengthNameOf: (id) => names.strengthNameFor?.(id) ?? null, rows: ctx.snapshot.config.caPolicies?.rows ?? [], before: wholeLines(w.before, ex), contract, outstanding: [], estimate: estimatedDay(step), proposed: proposedNamesFor(ctx), mapping: ctx.mapping, extras: policyProcedureExtras(step, pkg, pkg ? packageBindings(step, ctx, contract) : null) })
+    : null
   let hasPackagePortal = false
-  if (pkg && state && cs.kind === 'policy') {
+  if (pkg && state && cs.kind === 'policy' && procedure === null) {
     const bindings = packageBindings(step, ctx, contract)
     const { runtime } = packageRuntime(pkg, state, bindings, {})
     const projection = projectSafely(pkg, state, bindings, runtime)
@@ -532,19 +538,15 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // preparesWhileCreateWaits): the contract's action, why the create waits,
   // leads, and the content's "before" lines follow it.
   const preparation = preparesWhileCreateWaits(step, cs) ? wholeLines(w.before, ex) : []
-  // A policy step's procedures, as its Implementation Tasks draw them, in every
-  // state (policyTasks.ts policyProcedureOf; walk list items 14–18): the export,
-  // AI Info and the print say what the screen says.
-  const procedure = cs.kind === 'policy' && drawsTaskAnatomy(step.id)
-    ? policyProcedureOf(step, { nameOf: names.nameOf, strengthNameOf: (id) => names.strengthNameFor?.(id) ?? null, rows: ctx.snapshot.config.caPolicies?.rows ?? [], before: wholeLines(w.before, ex), contract, outstanding: [], estimate: estimatedDay(step), proposed: proposedNamesFor(ctx), mapping: ctx.mapping })
-    : null
-  // What to do is the task the rail names, the first still to do: a policy
-  // switched off is set to Report-only before anything turns it on, and a new
-  // one is created before its turn-on. A finished step keeps the line above that
-  // says what delivers it.
+  // What to do is the task the rail names, the first still to do, as the screen
+  // draws it — but never a turn-on the step has not handed over: while the
+  // report-only week runs or something the turn-on waits on is open, the export
+  // carries what it waits on and no procedure, so nothing it gives an assistant
+  // turns a policy on early.
   if (procedure !== null) {
-    const next = procedure.tasks.find((task) => task.required)
-    if (next) lines.splice(0, lines.length, ...next.steps.map((line, i) => `${i + 1}. ${line.replace(/\*\*/g, '')}`))
+    const first = procedure.tasks.find((task) => task.required)
+    const next = procedure.tasks.find((task) => task.id === procedure.recommendedTaskId) ?? (first && first.id !== 'turn-on' ? first : undefined)
+    lines.splice(0, lines.length, ...(next ? next.steps.map((line, i) => `${i + 1}. ${line.replace(/\*\*/g, '')}`) : []))
   } else if (switchedOff) lines.splice(0, lines.length, ...policyInspectionLines(step))
   else if (preparation.length > 0 || (!conflicted && !inPlace && !hasPackagePortal && cs.kind === 'policy' && !(portal?.length && implementationIsCurrent(step)))) lines.splice(0, lines.length, ...(preparation.length > 0 ? preparation : policyInspectionLines(step)))
   // The correction a person owes in a part IAMAI does not write, as the screen's

@@ -74,11 +74,10 @@
     "descriptionLine": "Description: {description}",
     "changeUntouched": "Change only the settings listed above; leave every other setting on this policy as it is.",
     "procedure": {
-      "$comment": "Every Conditional Access policy step's Implementation Tasks, from one producer (roadmap/policyProcedure.ts; ui/surfaces/policyTasks.ts policyProcedureOf) in every state (walk list section 4 items 14-18, owner 2026-09-24). Each package wrote its own create, correction and turn-on, and none named the group, the roles or the accounts. A create names its Include and its Exclude by the tenant's names; a correction names only what differs, with the values it adds or removes; the turn-on is two lines. The first line opens the Microsoft Entra admin center as section 1 does ({target} is New policy on a create, else the policy's name), and a create or a correction ends on the scan line. Everything after the Report-only line went (item 16): the consequence of Configure at No, the create-reopen-compare line, the 'make sure' lines, 'Keep the policy's current state'.",
+      "$comment": "Every Conditional Access policy step's Implementation Tasks, from one producer (roadmap/policyProcedure.ts; ui/surfaces/policyTasks.ts policyProcedureOf) in every state (walk list section 4 items 14-18, owner 2026-09-24). Each package wrote its own create, correction and turn-on, and none named the group, the roles or the accounts. A create names its Include and its Exclude by the tenant's names; a correction names only what differs, with the values it adds or removes; the turn-on is two lines. The first line opens the Microsoft Entra admin center as section 1 does ({target} is New policy on a create, else the policy's name), and a create or a correction ends on the scan line. The create names no Description: the Entra form has no such field (Graph documents it as not used), and the name is what the next scan recognises a hand-made policy by. Everything after the Report-only line went (item 16): the consequence of Configure at No, the create-reopen-compare line, the 'make sure' lines, 'Keep the policy's current state'.",
       "open": "Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Conditional Access → Policies → {target}**.",
       "newPolicy": "New policy",
       "name": "Name: **{name}**.",
-      "description": "Description: **{description}**.",
       "users": "Under **Users**, include {include} and exclude {exclude}.",
       "usersIncludeOnly": "Under **Users**, include {include}.",
       "$commentUsersRoles": "The users line where the policy includes directory roles: the baseline's admin policy lists 46, and 'include … and exclude the group' lost the exclusion at the end of the list, so the exclusion comes first.",
@@ -88,6 +87,8 @@
       "resourcesExclude": "Under **Target resources**, include {include} and exclude {exclude}.",
       "userAction": "Under **Target resources**, select **User actions** → **{action}**.",
       "authContext": "Under **Target resources**, select **Authentication context** → {contexts}.",
+      "$commentContextNamed": "An authentication context the plan makes for its own policy, by the name it proposes and its ID (Require MFA at Every Role Activation); a context the plan did not make is named by its ID alone.",
+      "contextNamed": "{name} (ID {id})",
       "locations": "Under **Conditions → Locations**, set **Configure** to **Yes** and include {include}.",
       "locationsExclude": "Under **Conditions → Locations**, set **Configure** to **Yes**, include {include} and exclude {exclude}.",
       "clientApps": "Under **Conditions → Client apps**, set **Configure** to **Yes** and select only {values}.",
@@ -166,7 +167,9 @@
         "reportOnly": "Set the policy to Report-only",
         "reportOnlyMany": "Set the policies to Report-only",
         "turnOn": "Turn the policy on",
-        "turnOnMany": "Turn the policies on"
+        "turnOnMany": "Turn the policies on",
+        "$commentPimSettings": "Require MFA at Every Role Activation: the PIM role settings that make role activation ask for the policy's authentication context, after the policy is On (package entra.pim.configure). Without them the enforced policy requires nothing of anyone.",
+        "pimSettings": "Require the context on role activation"
       },
       "$commentCard": "The policy's Tasks Remaining card (ui/surfaces/policyTasks.ts policyCardsOf; walk list item 20) names the task, never Blocked or the step's title. reportOnlyUntil stands while the report-only week runs. Once it is over the card reads Turn the policy on, with blockedNoOne under it and, where the turn-on still waits on something, after.",
       "card": {
@@ -398,7 +401,7 @@
         "$commentEnforceScheduled": "A policy whose evidence is complete says \"Enable the reviewed policy\" and \"ready now: 0 failures in 8 days\", and the date beside it was the plan's own placement - eighteen days out on one tenant. Both are right and they read as a contradiction: the wait is not the evidence any more, it is the notice the people affected are owed. The milestone says which wait it is.",
         "enforceScheduled": "The evidence for this policy is complete, so it is ready to be turned on. The plan schedules the turn-on for {date}, which leaves the {days} working days of notice a change this size asks for.",
         "enforceScheduledOther": "The evidence for this policy is complete, so it is ready to be turned on. The plan schedules the turn-on for {date}.",
-        "$commentEnforceWaits": "A policy whose evidence is complete and whose turn-on waits on the plan's own prerequisites (roadmap/enforceWaits.ts: the emergency-access recovery test; security defaults still on). It read \"ready to be turned on. The plan turns it on on Sep 21\" with the turn-on handed over in every channel and one Stop line in one of them, and a reader enforced eight policies beside security defaults. The turn-on is withheld now, and this says what it waits on. The day stays on the milestone (sequencing, owner Step 4) and is not repeated in the sentence, because the board already reads \"After prerequisites\" for a row held this way.",
+        "$commentEnforceWaits": "A policy whose evidence is complete and whose turn-on waits on the plan's own prerequisites (roadmap/enforceWaits.ts: the emergency-access recovery test; security defaults still on). It read \"ready to be turned on. The plan turns it on on Sep 21\" with the turn-on handed over in every channel and one Stop line in one of them, and a reader enforced eight policies beside security defaults. The turn-on is withheld now, and this says what it waits on. The day stays on the milestone (sequencing, owner Step 4) and is not repeated in the sentence, because the board already reads \"After prerequisites\" for a row held this way. The turn-on task stands in every state (walk list section 4 item 18) and, while held, reads this sentence in place of its instruction (policyTasks.ts policyProcedureOf).",
         "enforceWaitsOne": "The evidence for this policy is complete. It stays in Report-only until {items} is finished, and the instruction that turns it on comes back then.",
         "enforceWaitsMany": "The evidence for this policy is complete. It stays in Report-only until {items} are finished, and the instruction that turns it on comes back then.",
         "$commentEnforceWaitsSecurityDefaults": "Said where security defaults are among the waits. Entra refuses to turn on a Conditional Access policy while security defaults are on and points at turning them off, and turning them off before the replacements can go on in the same change window removes the MFA they require.",

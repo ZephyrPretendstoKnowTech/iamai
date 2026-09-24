@@ -13,7 +13,9 @@
 // added back is the tile's own link, which the strip drew and the card would
 // otherwise drop.
 //
-// The Implementation Tasks are the step's own Entra procedure — the portal
+// A policy step's Implementation Tasks are its procedures (policyProcedureOf,
+// from roadmap/policyProcedure.ts). Where it has none, and on every other step,
+// the Implementation Tasks are the step's own Entra procedure — the portal
 // artifact stepBody.ts already built for this step, read back as the numbered
 // steps it is — under a title the step's resolved operations
 // (roadmap/operations.ts) already decide. The resolved settings the procedure
@@ -28,7 +30,8 @@ import { contentStepFor, contentStepForPackage } from '../../content/stepTitle.t
 import { EMERGENCY_ACCESS_GROUP, isGroupMember, usesTaskAnatomy } from '../../roadmap/stepGroups.ts'
 import { enforcesByStateOnly, stepOperations } from './stepJson.ts'
 import { CONTRACT, FINISHED_FINDINGS } from './stepContract.ts'
-import { operationsOf, switchedOffPolicies, toReportOnly } from '../../roadmap/operations.ts'
+import { createWaitsOnReadiness, implementationOffered, operationsOf, policyHold, switchedOffPolicies, toReportOnly, unavailableReason } from '../../roadmap/operations.ts'
+import type { UnavailableReason } from '../../roadmap/operations.ts'
 import { PROCEDURE, besideBaseline, correctionLines, correctionSettings, createLines, reportOnlyLines, turnOnLines } from '../../roadmap/policyProcedure.ts'
 import type { CorrectionSection, ProcedureContext } from '../../roadmap/policyProcedure.ts'
 import { shownDay } from '../../roadmap/stepSchedule.ts'
@@ -77,8 +80,8 @@ function mailDevicesTaskOf(step: Step, mapping?: Pick<MappingState, 'questionAns
 }
 
 /** A policy step's Implementation Task ids, in doing order (walk list item 18). */
-export type PolicyTaskId = 'create' | 'report-only' | 'correct' | 'turn-on'
-const POLICY_TASK_IDS: readonly string[] = ['create', 'report-only', 'correct', 'turn-on'] satisfies PolicyTaskId[]
+export type PolicyTaskId = 'create' | 'report-only' | 'correct' | 'turn-on' | 'pim-settings'
+const POLICY_TASK_IDS: readonly string[] = ['create', 'report-only', 'correct', 'turn-on', 'pim-settings'] satisfies PolicyTaskId[]
 
 /** Whether a task is one of a policy step's own procedures (policyProcedureOf). */
 export const isPolicyProcedureTask = (task: Pick<EmergencyAccountTask, 'id'>): boolean => POLICY_TASK_IDS.includes(task.id)
@@ -102,6 +105,21 @@ export type PolicyProcedureInput = {
   /** The names the plan proposes for the objects a policy may name before they exist. */
   proposed: ProposedObjectNames
   mapping?: Pick<MappingState, 'questionAnswers'>
+  /** What the step's package says beside the procedure (stepPackage.ts policyProcedureExtras). */
+  extras?: PolicyProcedureExtras
+}
+
+/**
+ * What a policy step's own package adds to the procedure every policy step
+ * draws: the object its create needs first, the setup after the policy is On,
+ * and the name the plan proposes for an authentication context it makes.
+ */
+export type PolicyProcedureExtras = {
+  contextNameOf: (id: string) => string | null
+  /** Lines the create does first, before it opens the policy list. */
+  createFirst: readonly string[]
+  /** Tasks after the turn-on, in order. */
+  after: readonly { id: PolicyTaskId; title: string; steps: string[]; required: boolean }[]
 }
 
 /** The object each object-making step makes, by the key its proposed name is kept under. */
@@ -176,7 +194,7 @@ const patched = (policy: Record<string, unknown>, patch: Record<string, unknown>
  * on a goal already delivered, from the create the plan would hand over for it
  * (Action.planned, Action.intended).
  */
-function membersOf(step: Step, input: PolicyProcedureInput, ctx: ProcedureContext): ProcedureMember[] {
+function membersOf(step: Step, input: PolicyProcedureInput, ctx: ProcedureContext, exclusionIds: readonly string[]): ProcedureMember[] {
   const rows = input.rows.map(asRecord).filter((r): r is Record<string, unknown> => r !== null)
   const rowOf = (id: string | null | undefined): Record<string, unknown> | null => (id ? rows.find((r) => String(r.id).toLowerCase() === id.toLowerCase()) ?? null : null)
   const tracked = step.tracking?.members ?? []
@@ -204,8 +222,10 @@ function membersOf(step: Step, input: PolicyProcedureInput, ctx: ProcedureContex
         continue
       }
       const current = rowOf(op.policyId) ?? asRecord(op.target)
-      const whole = asRecord(op.intent) ?? asRecord(op.target)
-      const target = asRecord(op.target) ?? (current ? { ...current, ...op.body } : null)
+      // A policy that names an object the tenant does not have yet is read with
+      // that object in it (PolicyOperation.pending), named as the plan proposes it.
+      const whole = asRecord(op.pending) ?? asRecord(op.intent) ?? asRecord(op.target)
+      const target = asRecord(op.pending) ?? asRecord(op.target) ?? (current ? { ...current, ...op.body } : null)
       const written = sectionsOfBody(op.body)
       // An answer that moved a setting shows the baseline's version beside it,
       // on the correction as on the create (shared.deviation).
@@ -219,8 +239,9 @@ function membersOf(step: Step, input: PolicyProcedureInput, ctx: ProcedureContex
       // policy does not exclude it, the correction adds it, whatever else the
       // change writes (walk list item 15: a grant-only correction left the
       // emergency accounts in the policy).
-      if (!step.state.satisfied && current && whole && ctx.exclusionsGroupId && excludesGroup(whole, ctx.exclusionsGroupId) && !excludesGroup(current, ctx.exclusionsGroupId) && !written.sections.has('users')) {
-        correction.unshift(...correctionSettings(current, { ...current, conditions: { ...(asRecord(current.conditions) ?? {}), users: { ...(asRecord(asRecord(current.conditions)?.users) ?? {}), excludeGroups: [...groupsExcluded(current), ctx.exclusionsGroupId] } } }, ctx, new Set<CorrectionSection>(['users'])))
+      const exclusionsId = whole ? exclusionIds.find((id) => excludesGroup(whole, id)) : undefined
+      if (!step.state.satisfied && current && exclusionsId && !excludesGroup(current, exclusionsId) && !written.sections.has('users')) {
+        correction.unshift(...correctionSettings(current, { ...current, conditions: { ...(asRecord(current.conditions) ?? {}), users: { ...(asRecord(asRecord(current.conditions)?.users) ?? {}), excludeGroups: [...groupsExcluded(current), exclusionsId] } } }, ctx, new Set<CorrectionSection>(['users'])))
       }
       out.push({
         name: String(current?.displayName ?? t?.policyName ?? whole?.displayName ?? ''),
@@ -236,17 +257,21 @@ function membersOf(step: Step, input: PolicyProcedureInput, ctx: ProcedureContex
   // A goal already delivered: the create the plan would hand over for it. Where
   // the policy delivering it is the plan's own (Action.intended), the tasks
   // open that policy; where it is one the tenant wrote, they describe the
-  // plan's policy whole, under the plan's name, as the reference for the step.
-  // Either way the goal is delivered, so neither task is still to do.
+  // plan's policy whole as the reference for the step, under the name of the
+  // tenant's policy that delivers the goal on its own (Step.satisfiedBy), or
+  // the plan's where none does alone: a turn-on of the plan's name opened a
+  // policy the tenant does not have. Either way the goal is delivered, so
+  // neither task is still to do.
   const own = step.action.intended !== undefined
   const planned = step.action.planned?.policies ?? (own ? [{ body: step.action.intended!, baseline: undefined }] : [])
+  const delivering = !own && planned.length === 1 ? step.satisfiedBy?.sufficient ?? null : null
   const dims = sectionsOfDimensions(unwritten)
   for (const [i, { body, baseline }] of planned.entries()) {
     const t = tracked[i] ?? (planned.length === 1 ? tracked[0] : undefined)
     const row = own ? rowOf(t?.policyId) : null
     const correction = row && unwritten.length > 0 ? correctionSettings(row, step.action.intended!, ctx, dims.sections, dims.conditions) : []
     out.push({
-      name: String(row?.displayName ?? body.displayName ?? ''),
+      name: String(row?.displayName ?? delivering ?? body.displayName ?? ''),
       create: { body, baseline: baseline ?? null },
       exists: true,
       on: row !== null ? row.state === 'enabled' : true,
@@ -256,6 +281,9 @@ function membersOf(step: Step, input: PolicyProcedureInput, ctx: ProcedureContex
   }
   return out
 }
+
+/** The holds that withhold every procedure: the carve-out a policy relies on is not proven safe. */
+const SAFETY_HOLDS: ReadonlySet<string> = new Set<UnavailableReason>(['unsafe-emergency-access', 'unverified-emergency-exclusion', 'escape-hatch-unverified'])
 
 /**
  * A policy step's Implementation Tasks, the same in every state (walk list
@@ -276,10 +304,20 @@ function membersOf(step: Step, input: PolicyProcedureInput, ctx: ProcedureContex
  * Null where the plan can state no policy for the step (a pair it cannot match,
  * a goal that names an object the plan cannot resolve and nothing delivers)
  * and where the baseline contradicts itself: nothing done in the portal
- * resolves that.
+ * resolves that. Null too while the carve-out the policy relies on is not
+ * proven safe (SAFETY_HOLDS): the step waits on that foundation.
  */
 export function policyProcedureOf(step: Step, input: PolicyProcedureInput): EmergencyTaskProjection | null {
   if (step.state.condition === 'baseline-conflict') return null
+  // A create the readiness threshold holds is held whole: in report-only a
+  // policy that requires a compliant device can prompt for a certificate, so the
+  // step hands over its preparation instead (owner, 2026-09-23: "Hold the create
+  // for that policy until ready"; operations.ts createWaitsOnReadiness).
+  if (createWaitsOnReadiness(step)) return null
+  // While the emergency access or the exclusions group is not proven safe, no
+  // channel hands over a policy that relies on that carve-out (Foundation A):
+  // the step names the foundation it waits on instead.
+  if (SAFETY_HOLDS.has(unavailableReason(step) ?? '')) return null
   // An object the tenant does not have yet is named as the plan proposes it,
   // where a step of the plan makes it: "exclude **CA - Trusted - Head office**".
   // A reference only the baseline's author or a person's mapping can settle has
@@ -291,15 +329,19 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
     return key ? [[m.token.toLowerCase(), input.proposed[key]] as const] : []
   }))
   const tenant = step.action.resolution?.tenant ?? step.action.planned?.tenant ?? null
-  const ctx: ProcedureContext = { nameOf: (id) => pendingName.get(id.toLowerCase()) ?? input.nameOf(id), strengthNameOf: input.strengthNameOf, exclusionsGroupId: tenant?.exclusionsGroupId ?? null, emergencyIds: tenant?.emergencyIds ?? [] }
-  const members = membersOf(step, input, ctx).filter((m) => m.name !== '' || m.create !== null)
+  const ctx: ProcedureContext = { nameOf: (id) => pendingName.get(id.toLowerCase()) ?? input.nameOf(id), strengthNameOf: input.strengthNameOf, exclusionsGroupId: tenant?.exclusionsGroupId ?? null, emergencyIds: tenant?.emergencyIds ?? [], contextNameOf: input.extras?.contextNameOf }
+  // The exclusions group, or the one the plan proposes while it is still to be made.
+  const exclusionIds = [ctx.exclusionsGroupId, ...missing.filter((m) => m.stepId === PREREQ_STEP_ID.exclusionsGroup).map((m) => m.token)].filter((id): id is string => typeof id === 'string' && id !== '')
+  const members = membersOf(step, input, ctx, exclusionIds).filter((m) => m.name !== '' || m.create !== null)
   if (members.length === 0 || members.every((m) => m.create === null)) return null
   const many = members.length > 1
   const title = (key: string): string => PW.tasks[many ? `${key}Many` : key]
   const task = (id: PolicyTaskId, key: string, steps: string[], required: boolean): EmergencyAccountTask => ({ id, accountId: null, title: title(key), targetUpn: null, required, readinessKey: '', evidence: null, actionLabel: title(key), steps })
   const tasks: EmergencyAccountTask[] = []
   const creates = members.filter((m) => m.create !== null)
-  tasks.push(task('create', 'create', [...input.before, ...creates.flatMap((m) => createLines(m.create!.body, ctx, { name: String(m.create!.body.displayName ?? m.name), description: typeof m.create!.body.description === 'string' ? m.create!.body.description : null, baseline: m.create!.baseline }))], members.some((m) => !m.exists)))
+  // What the create needs first (the authentication context it targets), only while the policy is still to be made.
+  const toCreate = members.some((m) => !m.exists)
+  tasks.push(task('create', 'create', [...input.before, ...(toCreate ? input.extras?.createFirst ?? [] : []), ...creates.flatMap((m) => createLines(m.create!.body, ctx, { name: m.name || String(m.create!.body.displayName ?? ''), baseline: m.create!.baseline }))], toCreate))
   // A policy the tenant switched off goes back through Report-only, whatever
   // else the step waits on: Report-only denies nobody (owner, 2026-09-23). The
   // step's tracking names each one (operations.ts switchedOffPolicies).
@@ -307,7 +349,16 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   if (off.length > 0) tasks.push(task('report-only', 'reportOnly', off.flatMap((name) => reportOnlyLines(name)), true))
   const correct = members.filter((m) => m.correction.length > 0)
   if (correct.length > 0) tasks.push(task('correct', 'correct', correct.flatMap((m) => correctionLines(m.name, m.correction)), true))
-  tasks.push(task('turn-on', 'turnOn', members.flatMap((m) => turnOnLines(m.name || String(m.create?.body.displayName ?? ''))), !step.state.satisfied && members.some((m) => !m.on)))
+  // The turn-on is the same task in every state, but while the plan's own
+  // prerequisites hold it (roadmap/enforceWaits.ts: the recovery test not
+  // recorded, security defaults still on) it hands over no instruction that
+  // turns the policy on: a reader enforced eight policies beside security
+  // defaults (Sam D2). It says what it waits on, the milestone's words.
+  const turnOnHeld = policyHold(step) === 'prerequisite-unmet' && input.contract.milestone.label !== ''
+  tasks.push(task('turn-on', 'turnOn', turnOnHeld ? [input.contract.milestone.label] : members.flatMap((m) => turnOnLines(m.name || String(m.create?.body.displayName ?? ''))), !step.state.satisfied && members.some((m) => !m.on)))
+  // What the step's package says comes after the policy is On, in every state:
+  // the PIM role settings that make role activation ask for the context.
+  for (const after of input.extras?.after ?? []) if (after.steps.length > 0) tasks.push({ id: after.id, accountId: null, title: after.title, targetUpn: null, required: after.required, readinessKey: '', evidence: null, actionLabel: after.title, steps: after.steps })
   // The Tasks Remaining card names the first task still to do (walk list item
   // 20): while the report-only week runs, the day it ends; once it is over, the
   // turn-on, that report-only blocked no one, and what it still waits on.
@@ -320,8 +371,13 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
       next.readinessDirection = `${PW.card.blockedNoOne}${waits}`
     }
   }
+  // The step directs into its first task still to do only where that is what it
+  // hands over today (operations.ts implementationOffered): never a turn-on its
+  // report-only week or a prerequisite still holds. Setting a policy that was
+  // switched off to Report-only denies nobody, so it is always handed over.
+  const directed = next !== null && (next.id === 'report-only' || (implementationOffered(step) && implementationIsCurrent(step)))
   const mail = mailDevicesTaskOf(step, input.mapping)
-  return { tasks: mail ? [...tasks, mail] : tasks, recommendedTaskId: next && implementationIsCurrent(step) ? next.id : null, printAll: true }
+  return { tasks: mail ? [...tasks, mail] : tasks, recommendedTaskId: directed ? next.id : null, printAll: true }
 }
 
 /** This step's content kind (`policy`, `object`, `check`, `campaign`, `ladder`, `blocker`), or null where the content file has no entry for it. */

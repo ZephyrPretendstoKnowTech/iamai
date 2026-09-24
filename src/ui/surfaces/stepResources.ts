@@ -233,7 +233,7 @@ export function namedPortalResource(artifact: Artifact, ctx: StepVarContext): Ar
     'trusted locations display names': 'the named locations selected in Define the Trusted Network',
     'browser session policy name': 'the browser-session policy named in this step',
     'authentication strength name': 'the strength configured in Create the Baseline’s Authentication Strength',
-    'grant controls': 'the access controls listed in Settings for This Action',
+    'grant controls': 'the access controls this step’s policy requires',
   }
   const fill = (line: string) => line.replace(/‹([^›]+)›/g, (match, key: string) => references[key] ?? match).replace(/\b(?:ID\s+)?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b/gi, (match, id: string) => {
     directory ??= buildNameDirectory(ctx.snapshot, ctx.groups)

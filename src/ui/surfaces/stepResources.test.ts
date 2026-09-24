@@ -286,7 +286,10 @@ test('with one of a pair resolved, the screen hands over the same create the exp
     assert.deepEqual(task.steps.map(plain), view.whatToDo.slice(1, checks < 0 ? undefined : checks).map(plain), `${role}: the screen and the export hand over one procedure`)
     const portal = b.artifacts.find((a) => a.id === 'portal')!.text()
     assert.match(portal, new RegExp(`Name: \\*\\*Sample ${role}\\*\\*`), `${role}: the create names the policy IAMAI holds`)
-    assert.match(portal, /\[IAMAI:plan-/, `${role}: with the plan tag IAMAI recognises it by`)
+    // The Entra form has no Description field, so the portal carries no plan tag:
+    // IAMAI recognises a policy made there by the name the plan gives it
+    // (roadmap/policyProcedure.ts createLines).
+    assert.doesNotMatch(portal, /\[IAMAI:plan-|Description:/, `${role}: a Description line the Entra form has no field for`)
     assert.doesNotMatch(portal, /Review the two guest policies separately/, `${role}: not the preparation lines in its place`)
   }
 })
