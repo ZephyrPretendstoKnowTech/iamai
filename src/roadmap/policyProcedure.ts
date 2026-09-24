@@ -107,11 +107,14 @@ function guestWords(types: readonly string[] | null): string {
  * alone (walk list item 19). Guest or external users leads: it carries no
  * article, and after "the group **A** and" it read as a second group.
  */
-function includeWords(f: PolicyFacts, ctx: ProcedureContext): string[] {
+/** Above this many, a role list is counted in the step and listed in a fold under it. */
+const ROLES_INLINE = 5
+
+function includeWords(f: PolicyFacts, ctx: ProcedureContext, counted = false): string[] {
   if (f.who.all) return [PROCEDURE.allUsers]
   const out: string[] = []
   if (f.who.guests !== null) out.push(guestWords(f.who.guests))
-  if (f.who.roles.size > 0) out.push(fill(PROCEDURE.directoryRoles, { names: list(names(f.who.roles, ctx)) }))
+  if (f.who.roles.size > 0) out.push(counted && f.who.roles.size > ROLES_INLINE ? fill(PROCEDURE.directoryRolesCounted, { n: String(f.who.roles.size) }) : fill(PROCEDURE.directoryRoles, { names: list(names(f.who.roles, ctx)) }))
   const groups = groupsWords([...f.who.groups], ctx)
   if (groups) out.push(groups)
   const users = accountsWords([...f.who.users], ctx)
@@ -144,12 +147,15 @@ function usersLine(f: PolicyFacts, ctx: ProcedureContext): string {
     const sps = f.workload.sps.size > 0 ? boldList(names(f.workload.sps, ctx)) : bold(f.workload.filterRule ?? '')
     return fill(PROCEDURE.workload, { include: sps })
   }
-  const include = list(includeWords(f, ctx))
+  const include = list(includeWords(f, ctx, true))
   const exclude = excludeWords(f, ctx)
-  if (exclude.length === 0) return fill(PROCEDURE.usersIncludeOnly, { include })
+  // A long role list folds under the step (AuthoredText reads a "+ " sub-line as a fold).
+  const fold = !f.who.all && f.who.roles.size > ROLES_INLINE ? `
+  + ${fill(PROCEDURE.rolesFold, { n: String(f.who.roles.size) })}: ${list(names(f.who.roles, ctx))}` : ''
+  if (exclude.length === 0) return fill(PROCEDURE.usersIncludeOnly, { include }) + fold
   // A list of directory roles runs to dozens of names, and an exclusion said
   // after it is lost at the end of the line: the exclusion comes first there.
-  return fill(!f.who.all && f.who.roles.size > 0 ? PROCEDURE.usersRoles : PROCEDURE.users, { include, exclude: list(exclude) })
+  return fill(!f.who.all && f.who.roles.size > 0 ? PROCEDURE.usersRoles : PROCEDURE.users, { include, exclude: list(exclude) }) + fold
 }
 
 /** The resources a policy includes, in the portal's words. */

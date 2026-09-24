@@ -147,6 +147,9 @@
       "allUsers": "**All users**",
       "allResources": "**All resources**",
       "directoryRoles": "**Directory roles**: {names}",
+      "$commentDirectoryRolesCounted": "A role list longer than five names is counted in the step and listed in a fold under it (owner, 2026-09-24: 4.3 read as a wall of 46 names).",
+      "directoryRolesCounted": "**Directory roles**: the {n} roles listed below",
+      "rolesFold": "Roles to include ({n})",
       "group": "the group {name}",
       "groups": "the groups {names}",
       "account": "the account {name}",
@@ -2251,6 +2254,8 @@
             "guests": "guests",
             "fact": "{verb} {what} for {who}",
             "except": "{who} except {excluded}",
+            "$commentExceptMore": "More than two exclusions: the first by name and the rest counted (owner, 2026-09-24: 4.4's criterion read as a run-on list).",
+            "exceptMore": "{who} except {first} and {n} other exclusions",
             "resources": "across All resources",
             "resourcesExcept": "across All resources except {apps}"
           },
