@@ -3733,7 +3733,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nIAMAI found {{policy.current.displayName}} for **Block Device Code Sign-in**, and {{policy.current.difference}}.\nCorrect it on the same policy: it blocks device code sign-in for All users except {{exclusions.group.displayName}}, across all resources. Keep the policy's current state. If it is On, the changed rule can affect access after you save.\n\nThis change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
+          "text": "\nIAMAI found {{policy.current.displayName}} for **Block Device Code Sign-in**, and {{policy.current.difference}}.\nCorrect it on the same policy: it blocks device code sign-in for All users except {{exclusions.group.displayName}}, across all resources.\nKeep the policy's current state. If it is On, the changed rule can affect access after you save.\n\nThis change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
         },
         "ai.observe": {
           "meta": {
