@@ -77,6 +77,9 @@ function QuestionTile({ q, tag, answer, onAnswer, ctx, printing }: { q: Directio
   const suggestions: PickerOption[] = q.suggested.picked.map((id) => byId.get(id) ?? { id, name: nameOf(id) })
   const labelId = `direction-${q.key.replace(/[^a-z0-9]+/gi, '-')}`
   const picks = q.pickedWith !== null && answer.value === q.pickedWith
+  // What None does to "these accounts" reads only while there are some: the
+  // scan's (its suggestion picks them) or the answer's own picks.
+  const noneNote = q.noneNote && (q.suggested.picked.length > 0 || answer.picked.length > 0) ? q.noneNote : null
   // An Emergency Access subject card (ContentStep.tsx EmergencyAccountStatusTile),
   // filled with a question: the state where that card carries its subject label,
   // the question where it carries its title, then the control on a row of its
@@ -92,6 +95,7 @@ function QuestionTile({ q, tag, answer, onAnswer, ctx, printing }: { q: Directio
       )}
       {q.evidence && <p>{q.evidence}</p>}
       {q.today && <p>{q.today}</p>}
+      {noneNote && <p>{noneNote}</p>}
       {q.note && <p>{q.note}</p>}
       {!printing && picks && (
         <div className="direction-question-picker">

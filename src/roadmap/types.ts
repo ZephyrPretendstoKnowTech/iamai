@@ -545,6 +545,12 @@ export type DirectionQuestion = {
   today: string | null
   /** Anything else the tile says (the emergency accounts already set aside). */
   note: string | null
+  /**
+   * What answering None does to the accounts an account question picks, said
+   * only while there are any: the scan found accounts of that kind (the
+   * suggestion picks them) or the answer on screen picks some (DirectionQuestions.tsx).
+   */
+  noneNote?: string | null
   saved: { value: string; picked: string[] } | null
   /** A saved answer new evidence contradicts: a saved No, and the scan now sees it in use. */
   needsReview: boolean
