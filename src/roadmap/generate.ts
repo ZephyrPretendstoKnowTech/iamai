@@ -2,7 +2,7 @@ import { networkDraftOf } from '../mapping/networkDraft.ts'
 import { emergencyAccountPreparationComplete, emergencyAccountPreparationOf } from './emergencyAccountPreparation.ts'
 import { followUpIdsOf, settleFollowUp } from './followUp.ts'
 import { addWorkflowSteps } from './workflows.ts'
-import { directionSteps } from './direction.ts'
+import { countDirectionImpact, directionSteps } from './direction.ts'
 import { answeredReasonOf } from './directionAnswers.ts'
 import { applyManualReviews, perUserMfaReading } from './manualWork.ts'
 // Step generation (roadmap.md §1–§6; 2026-08-27 redesign: collapsed phase 0,
@@ -3082,6 +3082,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   if (canUseConditionalAccess) {
     steps.unshift(...directionSteps({ snapshot, mapping, notAssessed: input.coverage.organisation.notAssessed, availableGoalIds: input.coverage.results.filter((r) => r.status !== 'licence-limited').map((r) => r.goal.id), nameOf }))
     addWorkflowSteps(steps, input.coverage.organisation.notAssessed, mapping, input.manualConfirmations)
+    countDirectionImpact(steps)
   }
   applyManualReviews(steps, snapshot, input.manualConfirmations, mapping, popIndex)
   for (const s of steps.filter(s => s.id === 's-check-dormant-accounts')) {

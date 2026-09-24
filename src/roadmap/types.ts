@@ -620,7 +620,9 @@ export type Step = {
    * who its policies reach (ui/surfaces/rowWho.ts): Configure Emergency
    * Exclusions, the policies the exclusions group must be excluded from;
    * Configure Passkey Authentication, the people the passkey policy lets
-   * register. Absent where the scan did not read what it counts.
+   * register; a Direction step, the plan steps its answers decide
+   * (direction.ts countDirectionImpact). Absent where the scan did not read
+   * what it counts.
    */
   impactCount?: number
   guidance?: import('../content/content.ts').ContentStep

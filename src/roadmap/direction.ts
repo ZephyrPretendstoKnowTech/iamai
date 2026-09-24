@@ -421,6 +421,28 @@ export function directionDependenciesOf(step: Pick<Step, 'goalId' | 'baselineRev
   return out
 }
 
+/** A step only an answer puts on the plan: Keep Company Data Off Phones, while phones are Blocked from company data (generate.ts). */
+const ADDED_BY_ANSWER: Readonly<Record<string, readonly DirectionQuestionKey[]>> = {
+  's-ladder-phone-access-restriction': ['phones'],
+}
+
+/**
+ * Each Direction step's Impact (walk list item 25, ui/surfaces/rowWho.ts): how
+ * many plan steps its answers decide — a step an answer puts on the plan or
+ * takes off it, and a policy that waits on it (directionDependenciesOf, the
+ * moved questions of ANSWERED_IN). Only questions the step asks count.
+ */
+export function countDirectionImpact(steps: Step[]): void {
+  const asked = new Set(steps.filter((s) => isDirectionStep(s.id)).flatMap((s) => (s.directionQuestions ?? []).map((q) => q.key)))
+  const counts = new Map<string, number>()
+  for (const step of steps) {
+    if (isDirectionStep(step.id)) continue
+    const keys = [...directionDependenciesOf(step), ...(ANSWERED_IN[step.id] ?? []), ...(ADDED_BY_ANSWER[step.id] ?? [])].filter((k) => asked.has(k))
+    for (const id of new Set(keys.map(directionStepOf))) counts.set(id, (counts.get(id) ?? 0) + 1)
+  }
+  for (const step of steps) if (isDirectionStep(step.id)) step.impactCount = counts.get(step.id) ?? 0
+}
+
 /**
  * Per-answer gating (owner decision 3): every open step whose policy depends on
  * a Direction answer nobody has saved waits on the Direction step that asks it,
