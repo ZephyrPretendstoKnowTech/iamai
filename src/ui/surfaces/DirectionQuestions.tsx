@@ -17,7 +17,7 @@ import { useMemo, useState } from 'react'
 import type { Step } from '../../roadmap/types.ts'
 import type { DirectionQuestion } from '../../roadmap/types.ts'
 import type { StepDecisionInput } from '../../roadmap/decisions.ts'
-import { directionAnswerComplete, directionDecisionOf } from '../../roadmap/directionAnswers.ts'
+import { directionAnswerComplete, directionDecisionOf, directionDraftOf } from '../../roadmap/directionAnswers.ts'
 import type { DirectionAnswer } from '../../roadmap/directionAnswers.ts'
 import { answerTextOf, answeredInOf } from '../../roadmap/direction.ts'
 import { directionWords } from '../../content/content.ts'
@@ -79,7 +79,7 @@ function QuestionTile({ q, answer, onAnswer, ctx, printing }: { q: DirectionQues
 }
 
 /** The saved answers, as the Questions section's key: a save starts its draft again from them. */
-export const directionDraftKey = (step: Step): string => JSON.stringify((step.directionQuestions ?? []).map((q) => q.saved))
+export const directionDraftKey = (step: Step): string => JSON.stringify((step.directionQuestions ?? []).map((q) => [q.saved, q.needsReview]))
 
 /**
  * The Questions section: one tile per question, the Not sure line, and the one
@@ -87,8 +87,8 @@ export const directionDraftKey = (step: Step): string => JSON.stringify((step.di
  */
 export function DirectionQuestions({ step, ctx, heading, onDecide, printing = false, saving = false }: { step: Step; ctx: StepVarContext; heading: string; onDecide?: (decision: StepDecisionInput) => void; printing?: boolean; saving?: boolean }) {
   const questions = step.directionQuestions ?? []
-  const [draft, setDraft] = useState<Record<string, DirectionAnswer>>(() => Object.fromEntries(questions.map((q) => [q.key, q.saved ?? q.suggested])))
-  const answerOf = (q: DirectionQuestion): DirectionAnswer => draft[q.key] ?? q.saved ?? q.suggested
+  const [draft, setDraft] = useState<Record<string, DirectionAnswer>>(() => Object.fromEntries(questions.map((q) => [q.key, directionDraftOf(q)])))
+  const answerOf = (q: DirectionQuestion): DirectionAnswer => draft[q.key] ?? directionDraftOf(q)
   const ready = questions.every((q) => directionAnswerComplete(q, answerOf(q)))
   const approve = (): void => {
     if (!ready) return

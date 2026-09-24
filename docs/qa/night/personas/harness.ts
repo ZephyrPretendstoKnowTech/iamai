@@ -25,7 +25,7 @@ import { appliedMapping } from '../../../../src/ui/surfaces/pickerRows.ts'
 import { customerPlanSteps } from '../../../../src/ui/surfaces/customerPlanSteps.ts'
 import { BREAK_GLASS_STEP_ID } from '../../../../src/roadmap/stepIds.ts'
 import type { StepDecisionInput } from '../../../../src/roadmap/decisions.ts'
-import { directionAnswerComplete, directionDecisionOf } from '../../../../src/roadmap/directionAnswers.ts'
+import { directionAnswerComplete, directionDecisionOf, directionDraftOf } from '../../../../src/roadmap/directionAnswers.ts'
 import type { DirectionAnswer } from '../../../../src/roadmap/directionAnswers.ts'
 import { allWorkGroups, BOARD, boardOf, TAB_OF } from '../../../../src/ui/surfaces/planBoard.ts'
 import type { Board } from '../../../../src/ui/surfaces/planBoard.ts'
@@ -619,7 +619,7 @@ export function acceptDirection(t: Tenant, r: FixtureRun): Tenant {
     if (questions.length === 0) continue
     const values: Record<string, DirectionAnswer> = {}
     for (const q of questions) {
-      const draft = q.saved ?? q.suggested
+      const draft = directionDraftOf(q)
       values[q.key] = { value: draft.value, picked: [...draft.picked] }
     }
     if (!questions.every((q) => directionAnswerComplete(q, values[q.key]))) continue
