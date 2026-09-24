@@ -56,7 +56,7 @@ import { REDACTED, exportClipboard, unredactedFrom } from '../exportGuard.ts'
 import { CONTRACT, implementationEmptyOf, partnerLinkOf, readinessLeadOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
 import { HARDENING_DEFERRAL_ID } from '../../validation/emergencyTiers.ts'
-import { AuthoredText, DoneWhen, EmergencySlotBody, PolicyMembers, ReadinessSection, StepActionColumn, StepDialog, StepFooter, StepHead, StepSection, StepState, WHY_LINK_SHOWN, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
+import { AuthoredText, DoneWhen, EmergencySlotBody, PolicyMembers, ReadinessSection, ScanNote, StepActionColumn, StepDialog, StepFooter, StepHead, StepSection, StepState, WHY_LINK_SHOWN, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
 import { MfaHandoff } from './MfaHandoff.tsx'
 import { HEAD, decisionHeadingsOf, taskHeadingsOf } from './stepHeadings.ts'
 import { AnsweredInDirection, DirectionQuestions, directionDraftKey } from './DirectionQuestions.tsx'
@@ -180,7 +180,7 @@ export function EmergencySubjectReadiness({ subjects, printing, barMain, onWhy }
       <summary>Satisfied · {satisfied.length}</summary>
       <div className="emergency-account-status-grid satisfied">{satisfied.map(tile)}</div>
     </details>}
-    <p className="emergency-account-scan-note">After making changes, select <strong>{SHARED.scanControl}</strong>.</p>
+    <ScanNote />
     {bar}
   </section>
 }
@@ -452,6 +452,7 @@ export function ContentStep({
           /> : <ReadinessSection
             readiness={displayedReadiness}
             heading={taskHead?.remaining}
+            scanNote={isTaskStep}
             showClosedCount={!isTaskStep}
             lead={instructed || hasPasskeyFindings || leadInRail ? null : actionLead}
             onWhy={hasEvidence && !printing ? () => setDialog('readiness') : null}
@@ -481,12 +482,6 @@ export function ContentStep({
           >
             {step.id === 's-verify-mfa' ? <p><a href="#/readiness/step/s-verify-mfa">Open MFA Readiness</a></p> : <MfaHandoff step={step} snapshot={ctx.snapshot} mapping={ctx.mapping} />}
           </ReadinessSection>}
-          {isPasskeySettings && (
-            <section className="step-section passkey-methodology">
-              <h4>Methodology</h4>
-              <ul>{PASSKEY_METHODOLOGY.map(line => <li key={line}>{line}</li>)}</ul>
-            </section>
-          )}
 
           {/* The baseline defines this policy two ways (roadmap/baselineConflict.ts):
               the approved design's danger attention, under Readiness. The words
@@ -521,6 +516,18 @@ export function ContentStep({
               column below Completion Criteria — a sixth section, outside the four
               the anatomy has, on twelve steps. */}
           {step.manualReview && !printing && <ManualReviewForm key={`${step.id}:${step.manualReview.basis}:${step.manualReview.record?.at ?? ''}`} review={step.manualReview} ctx={ctx} printing={false} onConfirm={onConfirm} onUnconfirm={onUnconfirm} />}
+          {/* Configure Passkey Settings' settings: the approved models and the
+              models an owner adds, in the column with every other control
+              (owner, 2026-09-23). They stood under the step, right of the scan. */}
+          {isPasskeySettings && !printing && (
+            <div className="rail-settings">
+              <ApprovedAuthenticatorModels models={emergencyAccountTasks?.approvedModels ?? []} />
+              <details className="passkey-model-disclosure">
+                <summary>Add additional AAGUIDs</summary>
+                <PasskeyModelDecision mapping={ctx.mapping} saved={decision ?? null} onDecide={onDecide} />
+              </details>
+            </div>
+          )}
         </StepActionColumn>
 
         <div className="step-main step-main-rest">
@@ -560,6 +567,16 @@ export function ContentStep({
 
           {/* Every step has a completion, and it is concrete (stepContract.ts doneWhenOf). */}
           <DoneWhen heading={taskHead?.doneWhen ?? decisionHead?.doneWhen ?? HEAD.doneWhen} lines={contract.doneWhen} />
+          {/* Configure Passkey Settings' methodology, folded under the four
+              sections every Emergency Access step draws, as Verify Emergency
+              Access folds its recovery procedure (owner, 2026-09-23: the four
+              steps draw the same sections in the same order). */}
+          {isPasskeySettings && (
+            <details className="step-section passkey-methodology" open={printing || undefined}>
+              <summary><strong>Methodology</strong></summary>
+              <ul>{PASSKEY_METHODOLOGY.map(line => <li key={line}>{line}</li>)}</ul>
+            </details>
+          )}
           {/* Printing keeps it in the main column: a printed plan is one column,
               and the recorded result belongs with the step it is about. */}
           {step.manualReview && printing && <ManualReviewForm key={`${step.id}:${step.manualReview.basis}:${step.manualReview.record?.at ?? ''}`} review={step.manualReview} ctx={ctx} printing onConfirm={onConfirm} onUnconfirm={onUnconfirm} />}
@@ -607,7 +624,7 @@ export function ContentStep({
         </div>
       </div>
       {!printing && (saveStatus === 'saving' || saveStatus === 'failed') && <p className="reason step-save-feedback" role="status">{saveStatus === 'saving' ? 'Saving plan…' : 'Plan could not be saved. Use Retry Saving above.'}</p>}
-      <StepFooter controls={exceptions.length > 0 ? exceptions : null} onScan={printing ? null : (onScan ?? null)} auxiliary={isPasskeySettings && !printing ? <><ApprovedAuthenticatorModels models={emergencyAccountTasks?.approvedModels ?? []} /><details className="passkey-model-disclosure"><summary>Add additional AAGUIDs</summary><PasskeyModelDecision mapping={ctx.mapping} saved={decision ?? null} onDecide={onDecide} /></details></> : null} />
+      <StepFooter controls={exceptions.length > 0 ? exceptions : null} onScan={printing ? null : (onScan ?? null)} />
       {!printing && (
         <>
           <StepDialog open={dialog === 'readiness'} onClose={closeDialog} eyebrow={CONTRACT.readiness.dialogEyebrow} title={CONTRACT.readiness.dialogTitle} closeLabel={CONTRACT.readiness.close}>
