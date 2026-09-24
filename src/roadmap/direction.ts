@@ -55,7 +55,7 @@ import { QUESTION_STEP } from './answers.ts'
 import { PREREQ_STEP_ID, stepIdForGoal } from './stepIds.ts'
 import { HIDDEN_AGENT_POLICY, checkStep, reviewTitleOf, serviceEvidence, serviceOf, serviceReading } from './workflows.ts'
 import type { ServiceSignal } from './workflows.ts'
-import { DIRECTION_BLOCKER, DIRECTION_STEP, SERVICE_KEYS, directionComplete, directionStepOf, isDirectionStep, savedAnswerOf } from './directionAnswers.ts'
+import { DIRECTION_BLOCKER, DIRECTION_STEP, SERVICE_KEYS, directionComplete, directionStepOf, isDirectionStep, savedAnswerOf, savedBasisOf } from './directionAnswers.ts'
 export { DIRECTION_BLOCKER, directionBlockerStep, directionComplete } from './directionAnswers.ts'
 import type { DirectionQuestionKey, DirectionStepId } from './directionAnswers.ts'
 import type { DirectionQuestion, Step } from './types.ts'
@@ -131,20 +131,30 @@ function useQuestions(ctx: Context, services: { keys: string[]; signal: (key: st
   // the ones the picker offers (mailPickable).
   const senders = mailSenderIds(snapshot)
   const pickable = (senders ?? []).filter(mailPickable(snapshot, ctx.mapping))
+  const mailSeen = senders === null ? '' : senders.length > 0 ? fillText(Q.mailDevices.seen, { n: senders.length }) : Q.mailDevices.notSeen
+  // A saved None the scan now contradicts reopens, as a service's No does,
+  // unless it was approved while that use was already seen (its basis).
+  const mailReview = savedAnswerOf('mailDevices', ctx.mapping)?.value === 'none' && pickable.length > 0 && savedBasisOf('mailDevices', ctx.mapping) !== 'present'
   out.push(question('mailDevices', ctx, {
     label: Q.mailDevices.label, control: 'accounts', options: optionsOf(Q.accountOptions), pickedWith: 'some',
     suggested: pickable.length > 0 ? answer('some', pickable) : answer('none'),
-    evidence: senders === null ? '' : senders.length > 0 ? fillText(Q.mailDevices.seen, { n: senders.length }) : Q.mailDevices.notSeen,
+    evidence: mailReview && mailSeen !== '' ? fillText(W.reopened, { answer: Q.accountOptions.none, evidence: mailSeen }) : mailSeen,
     note: Q.mailDevices.consequence,
+    needsReview: mailReview,
+    basis: senders === null ? 'unread' : pickable.length > 0 ? 'present' : 'absent',
   }))
   const partners = snapshot.scenarioEvidence?.serviceProviderSignIns ?? null
+  const partnersUsed = partners !== null && partners.count > 0
   // Accounts, never sign-ins: records that name no account say nothing either way.
   const partnerSeen = partners === null || !signInsRead(snapshot) ? '' : partners.people.length > 0 ? fillText(Q.partner.seen, { n: partners.people.length }) : partners.count === 0 ? Q.partner.notSeen : ''
+  const partnerReview = savedAnswerOf('partner', ctx.mapping)?.value === 'no' && partnersUsed && savedBasisOf('partner', ctx.mapping) !== 'present'
   out.push(question('partner', ctx, {
     label: Q.partner.label, control: 'choice', options: optionsOf(Q.partner.options),
-    suggested: answer(partners !== null && partners.count > 0 ? 'yes' : 'no'),
-    evidence: partnerSeen,
+    suggested: answer(partnersUsed ? 'yes' : 'no'),
+    evidence: partnerReview && partnerSeen !== '' ? fillText(W.reopened, { answer: Q.partner.options.no, evidence: partnerSeen }) : partnerSeen,
     note: Q.partner.consequence,
+    needsReview: partnerReview,
+    basis: partnersUsed ? 'present' : partners !== null && signInsRead(snapshot) ? 'absent' : 'unread',
   }))
   return out
 }
