@@ -15,78 +15,111 @@ const sku = (over: Record<string, unknown>) => ({
   ...over,
 })
 
-test('free tenant: no matching plans, nothing enabled', () => {
-  const caps = deriveTenantCapabilities([
-    sku({ servicePlans: [{ servicePlanId: 'aaaaaaaa-0000-0000-0000-000000000000', servicePlanName: 'EXCHANGE_S_STANDARD' }] }),
-  ])
-  assert.equal(caps.entraP1.enabled, false)
-  assert.equal(caps.entraP2.enabled, false)
+test('tenant capabilities: free, P1, P2, mixed seats, trial and suspended SKUs, a disabled plan', () => {
+  // free tenant: no matching plans, nothing enabled
+  {
+    const caps = deriveTenantCapabilities([
+      sku({ servicePlans: [{ servicePlanId: 'aaaaaaaa-0000-0000-0000-000000000000', servicePlanName: 'EXCHANGE_S_STANDARD' }] }),
+    ])
+    assert.equal(caps.entraP1.enabled, false)
+    assert.equal(caps.entraP2.enabled, false)
+  }
+
+  // P1-only tenant
+  {
+    const caps = deriveTenantCapabilities([
+      sku({ servicePlans: [{ servicePlanId: AAD_P1, servicePlanName: 'AAD_PREMIUM' }] }),
+    ])
+    assert.equal(caps.entraP1.enabled, true)
+    assert.equal(caps.entraP1.seats, 25)
+    assert.equal(caps.entraP1.consumed, 10)
+    assert.equal(caps.entraP2.enabled, false)
+  }
+
+  // P2 SKU carries both P1 and P2 plans
+  {
+    const caps = deriveTenantCapabilities([
+      sku({
+        servicePlans: [
+          { servicePlanId: AAD_P1, servicePlanName: 'AAD_PREMIUM' },
+          { servicePlanId: AAD_P2, servicePlanName: 'AAD_PREMIUM_P2' },
+        ],
+      }),
+    ])
+    assert.equal(caps.entraP1.enabled, true)
+    assert.equal(caps.entraP2.enabled, true)
+    assert.equal(caps.entraP2.seats, 25)
+  }
+
+  // mixed tenant: fewer P2 seats than P1 seats
+  {
+    const caps = deriveTenantCapabilities([
+      sku({ prepaidUnits: { enabled: 100 }, servicePlans: [{ servicePlanId: AAD_P1, servicePlanName: 'AAD_PREMIUM' }] }),
+      sku({
+        prepaidUnits: { enabled: 5 },
+        servicePlans: [
+          { servicePlanId: AAD_P1, servicePlanName: 'AAD_PREMIUM' },
+          { servicePlanId: AAD_P2, servicePlanName: 'AAD_PREMIUM_P2' },
+        ],
+      }),
+    ])
+    assert.equal(caps.entraP1.seats, 105)
+    assert.equal(caps.entraP2.seats, 5)
+  }
+
+  // trial (capabilityStatus Warning) still counts; Suspended does not
+  {
+    const trial = deriveTenantCapabilities([
+      sku({ capabilityStatus: 'Warning', servicePlans: [{ servicePlanId: AAD_P1, servicePlanName: 'AAD_PREMIUM' }] }),
+    ])
+    assert.equal(trial.entraP1.enabled, true)
+    const suspended = deriveTenantCapabilities([
+      sku({ capabilityStatus: 'Suspended', servicePlans: [{ servicePlanId: AAD_P1, servicePlanName: 'AAD_PREMIUM' }] }),
+    ])
+    assert.equal(suspended.entraP1.enabled, false)
+  }
+
+  // disabled service plan inside an enabled SKU does not count
+  {
+    const caps = deriveTenantCapabilities([
+      sku({ servicePlans: [{ servicePlanId: AAD_P2, servicePlanName: 'AAD_PREMIUM_P2', provisioningStatus: 'Disabled' }] }),
+    ])
+    assert.equal(caps.entraP2.enabled, false)
+  }
 })
 
-test('P1-only tenant', () => {
-  const caps = deriveTenantCapabilities([
-    sku({ servicePlans: [{ servicePlanId: AAD_P1, servicePlanName: 'AAD_PREMIUM' }] }),
-  ])
-  assert.equal(caps.entraP1.enabled, true)
-  assert.equal(caps.entraP1.seats, 25)
-  assert.equal(caps.entraP1.consumed, 10)
-  assert.equal(caps.entraP2.enabled, false)
-})
+test('per-user capabilities count Enabled plans only; PIM is licensed by Entra ID P2 or Governance, never by P1 alone (R4-37)', () => {
+  // per-user capabilities from assignedPlans, Enabled only
+  {
+    const caps = deriveUserCapabilities([
+      { servicePlanId: AAD_P1, capabilityStatus: 'Enabled' },
+      { servicePlanId: AAD_P2, capabilityStatus: 'Deleted' },
+    ])
+    assert.equal(caps.has('entraP1'), true)
+    assert.equal(caps.has('entraP2'), false)
+  }
 
-test('P2 SKU carries both P1 and P2 plans', () => {
-  const caps = deriveTenantCapabilities([
-    sku({
-      servicePlans: [
-        { servicePlanId: AAD_P1, servicePlanName: 'AAD_PREMIUM' },
-        { servicePlanId: AAD_P2, servicePlanName: 'AAD_PREMIUM_P2' },
-      ],
-    }),
-  ])
-  assert.equal(caps.entraP1.enabled, true)
-  assert.equal(caps.entraP2.enabled, true)
-  assert.equal(caps.entraP2.seats, 25)
-})
+  // R4-37: P1 plus Microsoft Entra ID Governance licenses PIM, and is still not Entra ID P2
+  {
+    const caps = deriveTenantCapabilities([
+      sku({ servicePlans: [{ servicePlanId: AAD_P1, servicePlanName: 'AAD_PREMIUM' }] }),
+      sku({ prepaidUnits: { enabled: 10 }, consumedUnits: 4, servicePlans: [{ servicePlanId: GOVERNANCE, servicePlanName: 'Entra_Identity_Governance' }] }),
+    ])
+    assert.equal(caps.pim.enabled, true)
+    assert.equal(caps.pim.seats, 10)
+    // ID Protection's risk policies still need P2: Governance does not carry it.
+    assert.equal(caps.entraP2.enabled, false)
+    // Matched by plan id alone too, the way a user's assignedPlans are.
+    assert.equal(deriveUserCapabilities([{ servicePlanId: GOVERNANCE, capabilityStatus: 'Enabled' }]).has('pim'), true)
+  }
 
-test('mixed tenant: fewer P2 seats than P1 seats', () => {
-  const caps = deriveTenantCapabilities([
-    sku({ prepaidUnits: { enabled: 100 }, servicePlans: [{ servicePlanId: AAD_P1, servicePlanName: 'AAD_PREMIUM' }] }),
-    sku({
-      prepaidUnits: { enabled: 5 },
-      servicePlans: [
-        { servicePlanId: AAD_P1, servicePlanName: 'AAD_PREMIUM' },
-        { servicePlanId: AAD_P2, servicePlanName: 'AAD_PREMIUM_P2' },
-      ],
-    }),
-  ])
-  assert.equal(caps.entraP1.seats, 105)
-  assert.equal(caps.entraP2.seats, 5)
-})
-
-test('trial (capabilityStatus Warning) still counts; Suspended does not', () => {
-  const trial = deriveTenantCapabilities([
-    sku({ capabilityStatus: 'Warning', servicePlans: [{ servicePlanId: AAD_P1, servicePlanName: 'AAD_PREMIUM' }] }),
-  ])
-  assert.equal(trial.entraP1.enabled, true)
-  const suspended = deriveTenantCapabilities([
-    sku({ capabilityStatus: 'Suspended', servicePlans: [{ servicePlanId: AAD_P1, servicePlanName: 'AAD_PREMIUM' }] }),
-  ])
-  assert.equal(suspended.entraP1.enabled, false)
-})
-
-test('disabled service plan inside an enabled SKU does not count', () => {
-  const caps = deriveTenantCapabilities([
-    sku({ servicePlans: [{ servicePlanId: AAD_P2, servicePlanName: 'AAD_PREMIUM_P2', provisioningStatus: 'Disabled' }] }),
-  ])
-  assert.equal(caps.entraP2.enabled, false)
-})
-
-test('per-user capabilities from assignedPlans, Enabled only', () => {
-  const caps = deriveUserCapabilities([
-    { servicePlanId: AAD_P1, capabilityStatus: 'Enabled' },
-    { servicePlanId: AAD_P2, capabilityStatus: 'Deleted' },
-  ])
-  assert.equal(caps.has('entraP1'), true)
-  assert.equal(caps.has('entraP2'), false)
+  // R4-37: Entra ID P2 licenses PIM, and P1 alone does not
+  {
+    const p2 = deriveTenantCapabilities([sku({ servicePlans: [{ servicePlanId: AAD_P2, servicePlanName: 'AAD_PREMIUM_P2' }] })])
+    assert.equal(p2.pim.enabled, true)
+    const p1 = deriveTenantCapabilities([sku({ servicePlans: [{ servicePlanId: AAD_P1, servicePlanName: 'AAD_PREMIUM' }] })])
+    assert.equal(p1.pim.enabled, false)
+  }
 })
 
 // R4-37: Privileged Identity Management is licensed by Entra ID P2 OR Microsoft
@@ -95,26 +128,6 @@ test('per-user capabilities from assignedPlans, Enabled only', () => {
 // carries only the Entra_Identity_Governance plan, so reading PIM as `entraP2`
 // told such a tenant it needed P2 and never read its eligible admins.
 const GOVERNANCE = 'e866a266-3cff-43a3-acca-0c90a7e00c8b'
-
-test('R4-37: P1 plus Microsoft Entra ID Governance licenses PIM, and is still not Entra ID P2', () => {
-  const caps = deriveTenantCapabilities([
-    sku({ servicePlans: [{ servicePlanId: AAD_P1, servicePlanName: 'AAD_PREMIUM' }] }),
-    sku({ prepaidUnits: { enabled: 10 }, consumedUnits: 4, servicePlans: [{ servicePlanId: GOVERNANCE, servicePlanName: 'Entra_Identity_Governance' }] }),
-  ])
-  assert.equal(caps.pim.enabled, true)
-  assert.equal(caps.pim.seats, 10)
-  // ID Protection's risk policies still need P2: Governance does not carry it.
-  assert.equal(caps.entraP2.enabled, false)
-  // Matched by plan id alone too, the way a user's assignedPlans are.
-  assert.equal(deriveUserCapabilities([{ servicePlanId: GOVERNANCE, capabilityStatus: 'Enabled' }]).has('pim'), true)
-})
-
-test('R4-37: Entra ID P2 licenses PIM, and P1 alone does not', () => {
-  const p2 = deriveTenantCapabilities([sku({ servicePlans: [{ servicePlanId: AAD_P2, servicePlanName: 'AAD_PREMIUM_P2' }] })])
-  assert.equal(p2.pim.enabled, true)
-  const p1 = deriveTenantCapabilities([sku({ servicePlans: [{ servicePlanId: AAD_P1, servicePlanName: 'AAD_PREMIUM' }] })])
-  assert.equal(p1.pim.enabled, false)
-})
 
 test('R4-37: a scan saved before `pim` existed gets it from the licence rows it read, and keeps what it recorded', () => {
   // Reading `capabilities.pim.enabled` on a scan kept from before the

@@ -57,88 +57,101 @@ const SNAPSHOT = {
 
 const VOCAB = tenantVocabulary(SNAPSHOT)
 
-test('every class of name is in the vocabulary', () => {
-  for (const [kind, value] of Object.entries(SECRETS)) {
-    assert.ok(VOCAB.has(value.toLowerCase()), `${kind} ("${value}") is not redacted at all`)
+test('every class of tenant name is redacted, in prose, at depth, in arrays and as an object key', () => {
+  // every class of name is in the vocabulary
+  {
+    for (const [kind, value] of Object.entries(SECRETS)) {
+      assert.ok(VOCAB.has(value.toLowerCase()), `${kind} ("${value}") is not redacted at all`)
+    }
+  }
+
+  // nested positions: prose, depth, arrays and object keys
+  {
+    // The awkward shapes, all at once.
+    const artifact = {
+      summary: `${SECRETS.policy} excludes the group ${SECRETS.group}, covering ${SECRETS.user} in ${SECRETS.department}.`,
+      findings: [
+        {
+          statement: `Delivered by ${SECRETS.policy}, from ${SECRETS.location} (${SECRETS.cidr}).`,
+          detail: { nested: { deeper: { note: `${SECRETS.device} belongs to ${SECRETS.upn}` } } },
+        },
+      ],
+      byGroup: { [SECRETS.group]: { holders: [SECRETS.user, SECRETS.role] } },
+      tenant: { name: SECRETS.organisation, domains: [SECRETS.domain] },
+    }
+
+    const out = JSON.stringify(redactDeep(artifact, VOCAB))
+    for (const [kind, value] of Object.entries(SECRETS)) {
+      assert.ok(!out.includes(value), `${kind} ("${value}") survived redaction: ${out.slice(0, 300)}`)
+    }
+    // And the tenant id, which the identifier regexes handle.
+    assert.ok(!out.includes('3f2b9c14-7d85-4a61-b0e2-5c9a18d4f7e3'), 'the tenant id survived')
+  }
+
+  // the object key itself is redacted, not just the value
+  {
+    const out = redactDeep({ [SECRETS.group]: 'x' }, VOCAB)
+    assert.deepEqual(Object.keys(out), ['[a group 1]'])
   }
 })
 
-test('nested positions: prose, depth, arrays and object keys', () => {
-  // The awkward shapes, all at once.
-  const artifact = {
-    summary: `${SECRETS.policy} excludes the group ${SECRETS.group}, covering ${SECRETS.user} in ${SECRETS.department}.`,
-    findings: [
-      {
-        statement: `Delivered by ${SECRETS.policy}, from ${SECRETS.location} (${SECRETS.cidr}).`,
-        detail: { nested: { deeper: { note: `${SECRETS.device} belongs to ${SECRETS.upn}` } } },
-      },
-    ],
-    byGroup: { [SECRETS.group]: { holders: [SECRETS.user, SECRETS.role] } },
-    tenant: { name: SECRETS.organisation, domains: [SECRETS.domain] },
+test('redactText: readable placeholders, longest name first, any case, metacharacters, short names left alone, identifiers always', () => {
+  // placeholders say what the thing was, so the sentence still reads
+  {
+    const s = redactText(`Excluded by the group ${SECRETS.group} on policy ${SECRETS.policy}.`, VOCAB)
+    assert.match(s, /Excluded by the group \[a group \d+\] on policy \[a policy \d+\]\./)
   }
 
-  const out = JSON.stringify(redactDeep(artifact, VOCAB))
-  for (const [kind, value] of Object.entries(SECRETS)) {
-    assert.ok(!out.includes(value), `${kind} ("${value}") survived redaction: ${out.slice(0, 300)}`)
+  // the longest name wins, so a shorter one cannot leave a fragment behind
+  {
+    // "Sales" inside "Sales Managers" would otherwise produce "[a group 1] Managers",
+    // which both corrupts the text and leaks the half that did not match.
+    const snap = {
+      users: [],
+      devices: [],
+      appSignInSummary: [],
+      config: { groups: { rows: [{ displayName: 'Sales' }, { displayName: 'Sales Managers' }] } },
+    } as unknown as TenantSnapshot
+    const v = tenantVocabulary(snap)
+    const out = redactText('Members of Sales Managers and of Sales.', v)
+    assert.ok(!out.includes('Sales'), `a fragment survived: ${out}`)
+    assert.match(out, /Members of \[a group \d+\] and of \[a group \d+\]\./)
   }
-  // And the tenant id, which the identifier regexes handle.
-  assert.ok(!out.includes('3f2b9c14-7d85-4a61-b0e2-5c9a18d4f7e3'), 'the tenant id survived')
-})
 
-test('the object key itself is redacted, not just the value', () => {
-  const out = redactDeep({ [SECRETS.group]: 'x' }, VOCAB)
-  assert.deepEqual(Object.keys(out), ['[a group 1]'])
-})
+  // casing does not matter
+  {
+    const out = redactText(`the ${SECRETS.group.toUpperCase()} group`, VOCAB)
+    assert.ok(!out.toLowerCase().includes('break glass'), `case-different name survived: ${out}`)
+  }
 
-test('placeholders say what the thing was, so the sentence still reads', () => {
-  const s = redactText(`Excluded by the group ${SECRETS.group} on policy ${SECRETS.policy}.`, VOCAB)
-  assert.match(s, /Excluded by the group \[a group \d+\] on policy \[a policy \d+\]\./)
-})
+  // names with regex metacharacters do not break the substitution
+  {
+    const snap = {
+      users: [],
+      devices: [],
+      appSignInSummary: [],
+      config: { caPolicies: { rows: [{ displayName: 'CA (all) [prod] +MFA *required*' }] } },
+    } as unknown as TenantSnapshot
+    const v = tenantVocabulary(snap)
+    const out = redactText('Policy CA (all) [prod] +MFA *required* applies.', v)
+    assert.ok(!out.includes('[prod]'), `metacharacter name survived: ${out}`)
+  }
 
-test('the longest name wins, so a shorter one cannot leave a fragment behind', () => {
-  // "Sales" inside "Sales Managers" would otherwise produce "[a group 1] Managers",
-  // which both corrupts the text and leaks the half that did not match.
-  const snap = {
-    users: [],
-    devices: [],
-    appSignInSummary: [],
-    config: { groups: { rows: [{ displayName: 'Sales' }, { displayName: 'Sales Managers' }] } },
-  } as unknown as TenantSnapshot
-  const v = tenantVocabulary(snap)
-  const out = redactText('Members of Sales Managers and of Sales.', v)
-  assert.ok(!out.includes('Sales'), `a fragment survived: ${out}`)
-  assert.match(out, /Members of \[a group \d+\] and of \[a group \d+\]\./)
-})
+  // short names are left alone rather than corrupting the text
+  {
+    // A three-letter group name would rewrite those letters inside every unrelated
+    // word. The identifier regexes still cover anything genuinely identifying.
+    const snap = { users: [], devices: [], appSignInSummary: [], config: { groups: { rows: [{ displayName: 'IT' }] } } } as unknown as TenantSnapshot
+    const v = tenantVocabulary(snap)
+    assert.equal(redactText('The situation is critical.', v), 'The situation is critical.')
+  }
 
-test('casing does not matter', () => {
-  const out = redactText(`the ${SECRETS.group.toUpperCase()} group`, VOCAB)
-  assert.ok(!out.toLowerCase().includes('break glass'), `case-different name survived: ${out}`)
-})
-
-test('names with regex metacharacters do not break the substitution', () => {
-  const snap = {
-    users: [],
-    devices: [],
-    appSignInSummary: [],
-    config: { caPolicies: { rows: [{ displayName: 'CA (all) [prod] +MFA *required*' }] } },
-  } as unknown as TenantSnapshot
-  const v = tenantVocabulary(snap)
-  const out = redactText('Policy CA (all) [prod] +MFA *required* applies.', v)
-  assert.ok(!out.includes('[prod]'), `metacharacter name survived: ${out}`)
-})
-
-test('short names are left alone rather than corrupting the text', () => {
-  // A three-letter group name would rewrite those letters inside every unrelated
-  // word. The identifier regexes still cover anything genuinely identifying.
-  const snap = { users: [], devices: [], appSignInSummary: [], config: { groups: { rows: [{ displayName: 'IT' }] } } } as unknown as TenantSnapshot
-  const v = tenantVocabulary(snap)
-  assert.equal(redactText('The situation is critical.', v), 'The situation is critical.')
-})
-
-test('redaction is not applied when it is not asked for', () => {
-  // The vocabulary is empty for an unredacted export; the identifier regexes
-  // still run, because a GUID is never wanted in prose.
-  const empty = new Map<string, string>()
-  assert.equal(redactText(SECRETS.policy, empty), SECRETS.policy)
-  assert.match(redactText('id 3f2b9c14-7d85-4a61-b0e2-5c9a18d4f7e3', empty), /guid-0001/)
+  // redaction is not applied when it is not asked for
+  {
+    // The vocabulary is empty for an unredacted export; the identifier regexes
+    // still run, because a GUID is never wanted in prose.
+    const empty = new Map<string, string>()
+    assert.equal(redactText(SECRETS.policy, empty), SECRETS.policy)
+    assert.match(redactText('id 3f2b9c14-7d85-4a61-b0e2-5c9a18d4f7e3', empty), /guid-0001/)
+  }
 })

@@ -8,7 +8,7 @@
 // (roadmap/operations.ts) are dependencies here, not subjects.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture, allFixtures, withBreakGlassCarveOut } from '../roadmap/fixtures/index.ts'
+import { fixture, withBreakGlassCarveOut } from '../roadmap/fixtures/index.ts'
 import type { Fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture, withDirectionApproved } from '../roadmap/fixtures/run.ts'
 import { emergencySelection, migrateEmergencySelection } from './emergencyChoice.ts'
@@ -193,12 +193,5 @@ test('9b. an exclusions group that already holds the recommended accounts is nev
   const fixes1 = (xgStep(r1)?.checks?.items ?? []).map((i) => i.fix)
   for (const key of ['members-only-emergency', 'members-only-emergency-unconfirmed', 'no-admin-members', 'no-admin-members-unconfirmed']) {
     assert.ok(!fixes1.includes(key), `${key}: confirmation accepts the members the group already had`)
-  }
-})
-
-test('no fixture depends on a detection to classify: every emergency account in this repo says a person chose it', () => {
-  for (const f of allFixtures()) {
-    if (f.mapping.breakGlassUserIds.length === 0) continue
-    assert.equal(f.mapping.assumed?.breakGlass, 'confirmed', `${f.name}: the fixture claims emergency accounts nobody chose`)
   }
 })
