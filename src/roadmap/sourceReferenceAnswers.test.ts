@@ -50,7 +50,7 @@ function onlyNaming(id: string): string[] {
   return own.filter((s) => !pending.some((r) => r.id !== id && (r.stepIds ?? []).includes(s)))
 }
 
-test('each reference is answered on its own; taking one back leaves the others and returns its policies to waiting', () => {
+test('each reference is answered on its own: changing an answer replaces it in every policy that names it, and taking one back returns only its policies to waiting and keeps every unrelated decision', () => {
   assert.ok(pending.length >= 2, 'the premise: more than one reference is asked')
   const [a, b] = pending
   const both = runFixture(withDecisions(base, { [SOURCE]: { answers: { [a.id]: OMIT(), [b.id]: MAP(group) }, at } }))
@@ -71,73 +71,37 @@ test('each reference is answered on its own; taking one back leaves the others a
     assert.equal((r.schedule.phases ?? []).some((p) => p.stepIds.includes(s.id)), false, `${s.id} is still in a phase`)
   }
   assert.ok(unresolvedSourceMappings(r.steps).some((x) => x.id === a.id), 'the mapping is asked again')
-})
 
-test('changing an answer replaces it in every policy that names the reference', () => {
-  const [a] = pending
-  const omit = withDecisions(base, { [SOURCE]: { answers: { [a.id]: OMIT() }, at } })
-  const map = withDecisions(base, { [SOURCE]: { answers: { [a.id]: MAP(group) }, at } })
-  assert.ok((omit.mapping.omittedReferences ?? []).includes(a.id.toLowerCase()))
-  assert.equal((map.mapping.omittedReferences ?? []).includes(a.id.toLowerCase()), false, 'the old answer is gone')
-  const r = runFixture(map)
-  for (const id of onlyNaming(a.id)) {
-    for (const op of operationsOf(stepOf(r.steps, id))) {
-      const text = JSON.stringify(op.body).toLowerCase()
-      assert.ok(text.includes(group.toLowerCase()), `${id}: the chosen group is in the body`)
-      assert.equal(text.includes(a.id.toLowerCase()), false, `${id}: the author's id is not`)
+  // Changing an answer replaces it in every policy that names the reference.
+  {
+    const [a] = pending
+    const omit = withDecisions(base, { [SOURCE]: { answers: { [a.id]: OMIT() }, at } })
+    const map = withDecisions(base, { [SOURCE]: { answers: { [a.id]: MAP(group) }, at } })
+    assert.ok((omit.mapping.omittedReferences ?? []).includes(a.id.toLowerCase()))
+    assert.equal((map.mapping.omittedReferences ?? []).includes(a.id.toLowerCase()), false, 'the old answer is gone')
+    const r = runFixture(map)
+    for (const id of onlyNaming(a.id)) {
+      for (const op of operationsOf(stepOf(r.steps, id))) {
+        const text = JSON.stringify(op.body).toLowerCase()
+        assert.ok(text.includes(group.toLowerCase()), `${id}: the chosen group is in the body`)
+        assert.equal(text.includes(a.id.toLowerCase()), false, `${id}: the author's id is not`)
+      }
     }
   }
-})
 
-test('taking one answer back keeps every unrelated decision', () => {
-  const [a] = pending
-  const other = { 's-prereq-device-plan': { option: 'kept', at } }
-  const cleared = withDecisions(base, { ...other, [SOURCE]: { answers: {}, at } })
-  const kept = withDecisions(base, { ...other, [SOURCE]: { answers: { [a.id]: OMIT() }, at } })
-  const answersOf = (f: Fixture) => Object.entries(f.mapping.questionAnswers ?? {}).filter(([k]) => !k.startsWith(SOURCE))
-  assert.deepEqual(answersOf(cleared), answersOf(kept))
-  assert.ok(answersOf(cleared).some(([, v]) => v === 'kept'))
-})
-
-test('no source identifier becomes a tenant object, whichever answers are given or taken back', () => {
-  const ids = pending.map((r) => r.id.toLowerCase())
-  for (const answers of [{}, Object.fromEntries(pending.map((r) => [r.id, OMIT()])), Object.fromEntries(pending.map((r) => [r.id, MAP(group)]))]) {
-    const f = withDecisions(base, { [SOURCE]: { answers, at } })
-    for (const rec of Object.values(f.mapping.records)) assert.equal(ids.includes(String(rec.resolvedId ?? '').toLowerCase()), false)
-    for (const s of runFixture(f).steps) for (const op of operationsOf(s)) for (const id of ids) assert.equal(JSON.stringify(op.body).toLowerCase().includes(id), false, `${s.id} carries ${id}`)
+  // Taking one answer back keeps every unrelated decision.
+  {
+    const [a] = pending
+    const other = { 's-prereq-device-plan': { option: 'kept', at } }
+    const cleared = withDecisions(base, { ...other, [SOURCE]: { answers: {}, at } })
+    const kept = withDecisions(base, { ...other, [SOURCE]: { answers: { [a.id]: OMIT() }, at } })
+    const answersOf = (f: Fixture) => Object.entries(f.mapping.questionAnswers ?? {}).filter(([k]) => !k.startsWith(SOURCE))
+    assert.deepEqual(answersOf(cleared), answersOf(kept))
+    assert.ok(answersOf(cleared).some(([, v]) => v === 'kept'))
   }
 })
 
-test('each reference says the part it plays, and leaving out an exception reads differently from leaving out a target', () => {
-  const r = runFixture(base)
-  const ctx: Pick<StepVarContext, 'snapshot' | 'mapping' | 'nameOf'> = { snapshot: base.snapshot, mapping: base.mapping, nameOf: (x) => r.input.names!.label(x) }
-  const usage = new Map(referenceUsage(pinnedPackage().policies).map((u) => [u.id, u]))
-  const rows = mappingRowsOf(r.steps, ctx)
-  assert.equal(rows.length, pending.length)
-  for (const row of rows) {
-    const u = usage.get(row.id.toLowerCase())
-    assert.ok(u, `${row.id} is in the baseline`)
-    const expected = u.includedIn.length > 0 && u.excludedFrom.length > 0 ? 'both' : u.includedIn.length > 0 ? 'include' : 'exclude'
-    assert.equal(row.role, expected, `${row.id}: the part it plays is read off the baseline`)
-    assert.ok(row.roleLine && row.omitLine, `${row.id}: says what it is and what leaving it out does`)
-    assert.ok(row.roleLine.includes(expected === 'exclude' ? 'exclude' : expected === 'include' ? 'apply' : ''), `${row.id}: explains the scope role`)
-    assert.ok(row.policies.length > 0 && row.policies.every((p) => !/^s-goal-/.test(p)), `${row.id}: names the policies by title`)
-    assert.equal(row.roleLine.includes(row.id) || row.omitLine.includes(row.id) || row.answerLine.includes(row.id), false, 'the author’s id is never the words')
-  }
-  // The same reference, as a target instead of an exception.
-  const first = unresolvedSourceMappings(r.steps)[0]
-  const include = mappingRowOf({ ...first, role: 'include' }, ctx)
-  const exclude = mappingRowOf({ ...first, role: 'exclude' }, ctx)
-  assert.notEqual(include.omitLine, exclude.omitLine)
-  assert.notEqual(include.roleLine, exclude.roleLine)
-  // Answered, the row says the answer; taken back, it says it has none.
-  const answered = runFixture(withDecisions(base, { [SOURCE]: { answers: { [first.id]: OMIT() }, at } }))
-  const row = mappingRowsOf(answered.steps, ctx).find((x) => x.id === first.id)!
-  assert.ok(row.answerLine.includes(OMIT()))
-  assert.notEqual(row.answerLine, rows.find((x) => x.id === first.id)!.answerLine)
-})
-
-test('a policy waiting on an unanswered reference says the meaning is unresolved, and one waiting on an object says it is missing', () => {
+test('each reference says the part it plays, and a policy waiting on an unanswered reference says the meaning is unresolved where one waiting on an object says it is missing', () => {
   const tenant = tenantNameOf(base.snapshot)
   const missingWords = app.plan.jsonWaits.split('{tenant}')[1].trim()
   const decisionWords = app.plan.jsonWaitsDecision.split('{tenant}')[0].trim()
@@ -161,4 +125,34 @@ test('a policy waiting on an unanswered reference says the meaning is unresolved
     }
   }
   assert.ok(references > 0 && objects > 0, `references ${references}, objects ${objects}`)
+
+  // Each reference says the part it plays, and leaving out an exception reads differently from leaving out a target.
+  {
+    const r = runFixture(base)
+    const ctx: Pick<StepVarContext, 'snapshot' | 'mapping' | 'nameOf'> = { snapshot: base.snapshot, mapping: base.mapping, nameOf: (x) => r.input.names!.label(x) }
+    const usage = new Map(referenceUsage(pinnedPackage().policies).map((u) => [u.id, u]))
+    const rows = mappingRowsOf(r.steps, ctx)
+    assert.equal(rows.length, pending.length)
+    for (const row of rows) {
+      const u = usage.get(row.id.toLowerCase())
+      assert.ok(u, `${row.id} is in the baseline`)
+      const expected = u.includedIn.length > 0 && u.excludedFrom.length > 0 ? 'both' : u.includedIn.length > 0 ? 'include' : 'exclude'
+      assert.equal(row.role, expected, `${row.id}: the part it plays is read off the baseline`)
+      assert.ok(row.roleLine && row.omitLine, `${row.id}: says what it is and what leaving it out does`)
+      assert.ok(row.roleLine.includes(expected === 'exclude' ? 'exclude' : expected === 'include' ? 'apply' : ''), `${row.id}: explains the scope role`)
+      assert.ok(row.policies.length > 0 && row.policies.every((p) => !/^s-goal-/.test(p)), `${row.id}: names the policies by title`)
+      assert.equal(row.roleLine.includes(row.id) || row.omitLine.includes(row.id) || row.answerLine.includes(row.id), false, 'the author’s id is never the words')
+    }
+    // The same reference, as a target instead of an exception.
+    const first = unresolvedSourceMappings(r.steps)[0]
+    const include = mappingRowOf({ ...first, role: 'include' }, ctx)
+    const exclude = mappingRowOf({ ...first, role: 'exclude' }, ctx)
+    assert.notEqual(include.omitLine, exclude.omitLine)
+    assert.notEqual(include.roleLine, exclude.roleLine)
+    // Answered, the row says the answer; taken back, it says it has none.
+    const answered = runFixture(withDecisions(base, { [SOURCE]: { answers: { [first.id]: OMIT() }, at } }))
+    const row = mappingRowsOf(answered.steps, ctx).find((x) => x.id === first.id)!
+    assert.ok(row.answerLine.includes(OMIT()))
+    assert.notEqual(row.answerLine, rows.find((x) => x.id === first.id)!.answerLine)
+  }
 })

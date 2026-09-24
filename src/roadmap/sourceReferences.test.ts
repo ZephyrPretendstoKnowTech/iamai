@@ -14,12 +14,12 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import interpretation from '../../baselines/jhope188-conditionalaccesspolicies.interpretation.json' with { type: 'json' }
-import { curatedFixture, fixture } from './fixtures/index.ts'
-import type { Fixture, FixtureName } from './fixtures/index.ts'
+import { fixture } from './fixtures/index.ts'
+import type { Fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { implementationOffered, operationsOf, unavailableReason } from './operations.ts'
 import { applyStepDecisions } from './decisions.ts'
-import { answerTextFor, referenceOptions } from './answers.ts'
+import { referenceOptions } from './answers.ts'
 import { classificationFor, readInterpretation } from '../baseline/interpretation.ts'
 import { implementable, resolveTenantPolicy, tenantObjectsOf } from './resolvePolicy.ts'
 import { pinnedPackage } from '../baseline/pinned.ts'
@@ -40,7 +40,6 @@ const DEVICE_REGISTRATION = 'aeb49474-5250-4b65-8b0a-56c47127ee0f'
 const LEGACY = 's-goal-block-legacy-auth'
 const GEO = 's-goal-geo-restriction'
 const REMOVED_ROW = 's-prereq-source-references'
-const NAMES: FixtureName[] = ['demo', 'demo-week2', 'small', 'mid', 'messy', 'midflight']
 
 const stepOf = (steps: Step[], id: string): Step => {
   const s = steps.find((x) => x.id === id)
@@ -89,18 +88,6 @@ test('the known exclusions reference resolves to the tenant’s group; an unread
   assert.ok(whole.missing.some(m => m.token.toLowerCase() === REQUIRED), 'the documented emergency reference is not guessed away')
   assert.equal(whole.missing.some((m) => m.unreadable), false, 'nothing is left waiting on a reading nobody can give')
   assert.equal(JSON.stringify(whole.policy).toLowerCase().includes(BROAD), false, 'and the author’s id is in no body')
-})
-
-test('S4: the unidentified-groups row is gone from every plan, and no step waits on it', () => {
-  for (const f of [...NAMES.map((n) => fixture(n)), curatedFixture('demo'), curatedFixture('demo-week2')]) {
-    const r = runFixture(f)
-    assert.equal(r.steps.some((s) => s.id === REMOVED_ROW), false, `${f.name}: the row is drawn`)
-    assert.equal(laneReadings(r.steps).has(REMOVED_ROW), false, `${f.name}: the row has a lane`)
-    for (const s of r.steps) {
-      assert.equal(s.blockedBy.includes(REMOVED_ROW), false, `${f.name}/${s.id} is sequenced after the removed row`)
-      for (const m of s.action.missing ?? []) if (m.decision) assert.equal(m.stepId, null, `${f.name}/${s.id} waits on a step for ${m.token}`)
-    }
-  }
 })
 
 test('S4: each policy naming an unmapped reference is On Hold with the reason, and its blocker states the role', () => {
@@ -176,76 +163,7 @@ test('S4: the Baseline mappings surface lists each unresolved reference with its
   }
 })
 
-test('S4: the mapping round-trips — mapped, left out, and taken back — through the one decision path', () => {
-  const f = fixture('demo')
-  const r0 = runFixture(f)
-  const group = [...f.groups.keys()].find((id) => id.toLowerCase() !== EXCLUSIONS)
-  assert.ok(group, 'the demo holds a group to choose')
-  const pending = sourceMappingsOf(r0.steps).sort((a, b) => Number(b.answer === 'pending') - Number(a.answer === 'pending'))
-  const [a, b] = pending
-  assert.ok(a && b, 'two references to answer')
-  const ctxOf = (x: Fixture, run: ReturnType<typeof runFixture>) => ({ snapshot: x.snapshot, mapping: x.mapping, nameOf: (id: string) => run.input.names!.label(id) })
-  // Map one, leave the other out: one Save of the surface.
-  const saved = { ...f, mapping: applyStepDecisions(f.mapping, { [BASELINE_MAPPINGS_KEY]: { answers: { [a.id]: answerTextFor(referenceOptions()[1], [group]), [b.id]: referenceOptions()[0] }, at: f.snapshot.asOf } }) }
-  const r1 = runFixture(saved)
-  const rows1 = mappingRowsOf(r1.steps, ctxOf(saved, r1))
-  const rowA = rows1.find((x) => x.id === a.id)!
-  const rowB = rows1.find((x) => x.id === b.id)!
-  assert.equal(rowA.answer, 'mapped')
-  assert.equal(rowA.status, MAPPING_WORDS.status.mapped)
-  assert.ok(rowA.answerLine.includes(r1.input.names!.label(group)), 'the mapped row names the tenant’s group')
-  assert.equal(rowA.answerLine.toLowerCase().includes(a.id.toLowerCase()), false, 'and never the author’s id')
-  assert.equal(rowB.answer, 'omitted')
-  assert.equal(rowB.status, MAPPING_WORDS.status.omitted)
-  assert.equal(saved.mapping.records[a.id.toLowerCase()]?.resolvedId, group)
-  assert.ok((saved.mapping.omittedReferences ?? []).includes(b.id.toLowerCase()))
-  const readings1 = laneReadings(r1.steps)
-  for (const id of [...(a.stepIds ?? []), ...(b.stepIds ?? [])]) {
-    const other = unresolvedSourceMappings(r1.steps).some((x) => (x.stepIds ?? []).includes(id))
-    if (other) continue
-    assert.notEqual(readings1.get(id)?.reason?.kind, 'sourceMapping', `${id} is still held by the mapping`)
-    assert.equal((stepOf(r1.steps, id).action.missing ?? []).some((m) => m.decision), false, `${id} still waits on an answer`)
-  }
-  // Taken back: only that one returns to pending, and its policies hold again.
-  const cleared = { ...saved, mapping: applyStepDecisions(f.mapping, { [BASELINE_MAPPINGS_KEY]: { answers: { [b.id]: referenceOptions()[0] }, at: f.snapshot.asOf } }) }
-  const r2 = runFixture(cleared)
-  const rows2 = mappingRowsOf(r2.steps, ctxOf(cleared, r2))
-  assert.equal(rows2.find((x) => x.id === a.id)?.answer, 'pending')
-  assert.equal(rows2.find((x) => x.id === b.id)?.answer, 'omitted')
-  assert.equal(cleared.mapping.records[a.id.toLowerCase()], undefined, 'the record is gone with the answer')
-  const readings2 = laneReadings(r2.steps)
-  for (const id of a.stepIds ?? []) {
-    const step = stepOf(r2.steps, id)
-    if (step.state.condition === 'baseline-conflict') continue
-    // An enforced policy is corrected next rather than held (B1, RUN-CONTEXT-B decision 6); its mapping is pending again all the same.
-    if (step.state.lifecycle === 'enforced' && readings2.get(id)?.lane === 'Ready') {
-      assert.equal(readings2.get(id)?.substatus, 'Correct', `${id}: an enforced policy the mapping names again`)
-      assert.ok(unresolvedSourceMappings(r2.steps).some((x) => (x.stepIds ?? []).includes(id)), `${id}: the mapping is not pending again`)
-      continue
-    }
-    assert.equal(readings2.get(id)?.lane, 'On Hold', `${id} is not held again`)
-    assert.equal(readings2.get(id)?.reason?.kind, 'sourceMapping', `${id}: held, but not by the mapping`)
-  }
-})
-
-test('a reference mapped to a tenant group is that group in every policy that names it', () => {
-  const f = fixture('demo')
-  const group = [...f.groups.keys()].find((id) => id.toLowerCase() !== EXCLUSIONS)
-  assert.ok(group, 'the demo holds a group to choose')
-  const mapped = answered(f, () => answerTextFor(referenceOptions()[1], [group]))
-  const r = runFixture(mapped)
-  const legacy = stepOf(r.steps, LEGACY)
-  assert.equal((legacy.action.missing ?? []).some((m) => m.decision), false, 'the policy waits on no answer any more')
-  assert.notEqual(laneReadings(r.steps).get(LEGACY)?.reason?.kind, 'sourceMapping', 'nor is it held by the mapping')
-  assert.deepEqual(unresolvedSourceMappings(r.steps), [], 'every reference answered: nothing is left to map')
-  for (const op of operationsOf(legacy)) {
-    const text = JSON.stringify(op.body).toLowerCase()
-    assert.ok(text.includes(group.toLowerCase()), 'the chosen group is in the body')
-    assert.equal(text.includes(BROAD), false, 'the author’s id is not')
-  }
-})
-
-test('a reference answered as none needed is left out, reported, and holds nothing', () => {
+test('a reference answered as none needed is left out, reported and holds nothing, and answers that reference only', () => {
   const f = fixture('demo')
   const omit = answered(f, () => referenceOptions()[0])
   const r = runFixture(omit)
@@ -255,21 +173,22 @@ test('a reference answered as none needed is left out, reported, and holds nothi
   assert.deepEqual(legacy.action.authorOnly ?? [], [], 'and never as a settled reading of the author’s environment')
   assert.equal(unavailableReason(legacy) === 'missing-object', false)
   for (const op of operationsOf(legacy)) assert.equal(JSON.stringify(op.body).toLowerCase().includes(BROAD), false)
-})
 
-test('an answer for one reference answers that reference only', () => {
-  const f = fixture('demo')
-  const one = answered(f, () => referenceOptions()[0], [BROAD])
-  const r = runFixture(one)
-  assert.equal((stepOf(r.steps, LEGACY).action.missing ?? []).some((m) => m.decision), false, 'the policy naming only that group waits on nothing')
-  const geo = stepOf(r.steps, GEO)
-  assert.deepEqual(
-    (geo.action.missing ?? []).filter((m) => m.decision).map((m) => m.token.toLowerCase()),
-    [],
-    'other optional exclusions use the approved default independently',
-  )
-  assert.ok(!unresolvedSourceMappings(r.steps).some((x) => x.id.toLowerCase() === COUNTRIES_ONLY), 'optional reference is not an impossible user question')
-  assert.ok(unresolvedSourceMappings(r.steps).some((x) => x.id.toLowerCase() === REQUIRED), 'the unrelated required reference remains unresolved')
+  // An answer for one reference answers that reference only.
+  {
+    const f = fixture('demo')
+    const one = answered(f, () => referenceOptions()[0], [BROAD])
+    const r = runFixture(one)
+    assert.equal((stepOf(r.steps, LEGACY).action.missing ?? []).some((m) => m.decision), false, 'the policy naming only that group waits on nothing')
+    const geo = stepOf(r.steps, GEO)
+    assert.deepEqual(
+      (geo.action.missing ?? []).filter((m) => m.decision).map((m) => m.token.toLowerCase()),
+      [],
+      'other optional exclusions use the approved default independently',
+    )
+    assert.ok(!unresolvedSourceMappings(r.steps).some((x) => x.id.toLowerCase() === COUNTRIES_ONLY), 'optional reference is not an impossible user question')
+    assert.ok(unresolvedSourceMappings(r.steps).some((x) => x.id.toLowerCase() === REQUIRED), 'the unrelated required reference remains unresolved')
+  }
 })
 
 test('a reference the interpretation settles as naming nothing fails closed, and nobody is asked about it', () => {

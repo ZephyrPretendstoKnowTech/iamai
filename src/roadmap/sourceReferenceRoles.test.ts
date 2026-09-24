@@ -63,7 +63,7 @@ function resolve(policy: RawPolicy, answers: Record<string, string>) {
   return { resolved, whole, users: conditions.users, locations: conditions.locations, waitsOn, text: JSON.stringify(whole.policy).toLowerCase() }
 }
 
-test('an exception left out keeps the people it spared in scope; mapped, it is the tenant’s group', () => {
+test('an exception left out keeps the people it spared in scope, mapped it is the tenant’s group, and a reference that is also a target stands left out only as the exception', () => {
   const pending = resolve(policyOf(DEVICE_REGISTRATION), {})
   assert.deepEqual(pending.waitsOn(BROAD), { token: pending.waitsOn(BROAD)?.token, stepId: null, decision: true })
   const omit = resolve(policyOf(DEVICE_REGISTRATION), { [BROAD]: OMIT() })
@@ -76,9 +76,23 @@ test('an exception left out keeps the people it spared in scope; mapped, it is t
   assert.ok((map.users.excludeGroups as string[]).includes('tenant-group'), 'the tenant’s group is the exception')
   assert.equal(map.waitsOn(BROAD), undefined)
   assert.equal(map.text.includes(BROAD), false)
+
+  // A reference that is a target in one policy and an exception in another: left out, only the exception stands.
+  {
+    const exception = resolve(policyOf(RISK), { [EAM]: OMIT() })
+    assert.equal(exception.waitsOn(EAM), undefined)
+    assert.equal((exception.users.excludeGroups as string[]).some((g) => g.toLowerCase() === EAM), false)
+    assert.deepEqual(exception.users.includeUsers, ['All'])
+    const target = resolve(policyOf(EAM_RISK), { [EAM]: OMIT() })
+    assert.ok(target.waitsOn(EAM)?.decision, 'the policy whose whole target it is waits')
+    const mappedException = resolve(policyOf(RISK), { [EAM]: MAP('tenant-group') })
+    const mappedTarget = resolve(policyOf(EAM_RISK), { [EAM]: MAP('tenant-group') })
+    assert.ok((mappedException.users.excludeGroups as string[]).includes('tenant-group'))
+    assert.deepEqual(mappedTarget.users.includeGroups, ['tenant-group'])
+  }
 })
 
-test('the whole of who a policy reaches is never left out: the reference is asked again and the policy waits', () => {
+test('the whole of who or where a policy applies is never left out (the reference is asked again and the policy waits); part of who it reaches left out narrows it, and stands', () => {
   const omit = resolve(policyOf(PASSKEY_REGISTRATION), { [PASSKEY_PILOT]: OMIT() })
   assert.deepEqual(omit.waitsOn(PASSKEY_PILOT), { token: omit.waitsOn(PASSKEY_PILOT)?.token, stepId: null, decision: true }, 'a users condition with nobody included was handed over')
   assert.equal(omit.resolved.decisions.get(PASSKEY_PILOT)?.answer, 'pending')
@@ -87,39 +101,28 @@ test('the whole of who a policy reaches is never left out: the reference is aske
   const map = resolve(policyOf(PASSKEY_REGISTRATION), { [PASSKEY_PILOT]: MAP('tenant-group') })
   assert.deepEqual(map.users.includeGroups, ['tenant-group'], 'mapped, the tenant’s group is who it reaches')
   assert.equal(map.waitsOn(PASSKEY_PILOT), undefined)
-})
 
-test('the only location a block names is never left out: a block without it would block everywhere', () => {
-  const omit = resolve(policyOf(COUNTRIES_NO_EXCLUSIONS), { [BLOCKED_COUNTRIES]: OMIT(), [BROAD]: OMIT() })
-  assert.ok(omit.waitsOn(BLOCKED_COUNTRIES)?.decision, JSON.stringify(omit.locations))
-  assert.equal(omit.waitsOn(BROAD), undefined, 'the exception beside it still stands left out')
-  const map = resolve(policyOf(COUNTRIES_NO_EXCLUSIONS), { [BLOCKED_COUNTRIES]: MAP('tenant-location'), [BROAD]: OMIT() })
-  assert.deepEqual(map.locations?.includeLocations, ['tenant-location'])
-  assert.equal(map.whole.missing.length, 0, JSON.stringify(map.whole.missing))
-})
+  // The only location a block names is never left out: a block without it would block everywhere.
+  {
+    const omit = resolve(policyOf(COUNTRIES_NO_EXCLUSIONS), { [BLOCKED_COUNTRIES]: OMIT(), [BROAD]: OMIT() })
+    assert.ok(omit.waitsOn(BLOCKED_COUNTRIES)?.decision, JSON.stringify(omit.locations))
+    assert.equal(omit.waitsOn(BROAD), undefined, 'the exception beside it still stands left out')
+    const map = resolve(policyOf(COUNTRIES_NO_EXCLUSIONS), { [BLOCKED_COUNTRIES]: MAP('tenant-location'), [BROAD]: OMIT() })
+    assert.deepEqual(map.locations?.includeLocations, ['tenant-location'])
+    assert.equal(map.whole.missing.length, 0, JSON.stringify(map.whole.missing))
+  }
 
-test('part of who a policy reaches left out narrows it, and stands', () => {
-  const policy = structuredClone(policyOf(PASSKEY_REGISTRATION))
-  ;((policy.conditions as { users: Record<string, unknown> }).users).includeGroups = [PASSKEY_PILOT, ADMIN_PASSKEYS]
-  const narrowed = resolve(policy, { [PASSKEY_PILOT]: OMIT(), [ADMIN_PASSKEYS]: MAP('tenant-group') })
-  assert.deepEqual(narrowed.users.includeGroups, ['tenant-group'])
-  assert.equal(narrowed.waitsOn(PASSKEY_PILOT), undefined)
-  assert.ok(narrowed.whole.omitted.map((x) => x.toLowerCase()).includes(PASSKEY_PILOT))
-  const emptied = resolve(policy, { [PASSKEY_PILOT]: OMIT(), [ADMIN_PASSKEYS]: OMIT() })
-  for (const id of [PASSKEY_PILOT, ADMIN_PASSKEYS]) assert.ok(emptied.waitsOn(id)?.decision, `${id}: leaving out every group it reaches emptied the policy`)
-})
-
-test('a reference that is a target in one policy and an exception in another: left out, only the exception stands', () => {
-  const exception = resolve(policyOf(RISK), { [EAM]: OMIT() })
-  assert.equal(exception.waitsOn(EAM), undefined)
-  assert.equal((exception.users.excludeGroups as string[]).some((g) => g.toLowerCase() === EAM), false)
-  assert.deepEqual(exception.users.includeUsers, ['All'])
-  const target = resolve(policyOf(EAM_RISK), { [EAM]: OMIT() })
-  assert.ok(target.waitsOn(EAM)?.decision, 'the policy whose whole target it is waits')
-  const mappedException = resolve(policyOf(RISK), { [EAM]: MAP('tenant-group') })
-  const mappedTarget = resolve(policyOf(EAM_RISK), { [EAM]: MAP('tenant-group') })
-  assert.ok((mappedException.users.excludeGroups as string[]).includes('tenant-group'))
-  assert.deepEqual(mappedTarget.users.includeGroups, ['tenant-group'])
+  // Part of who a policy reaches left out narrows it, and stands.
+  {
+    const policy = structuredClone(policyOf(PASSKEY_REGISTRATION))
+    ;((policy.conditions as { users: Record<string, unknown> }).users).includeGroups = [PASSKEY_PILOT, ADMIN_PASSKEYS]
+    const narrowed = resolve(policy, { [PASSKEY_PILOT]: OMIT(), [ADMIN_PASSKEYS]: MAP('tenant-group') })
+    assert.deepEqual(narrowed.users.includeGroups, ['tenant-group'])
+    assert.equal(narrowed.waitsOn(PASSKEY_PILOT), undefined)
+    assert.ok(narrowed.whole.omitted.map((x) => x.toLowerCase()).includes(PASSKEY_PILOT))
+    const emptied = resolve(policy, { [PASSKEY_PILOT]: OMIT(), [ADMIN_PASSKEYS]: OMIT() })
+    for (const id of [PASSKEY_PILOT, ADMIN_PASSKEYS]) assert.ok(emptied.waitsOn(id)?.decision, `${id}: leaving out every group it reaches emptied the policy`)
+  }
 })
 
 // ---- on the plan ----

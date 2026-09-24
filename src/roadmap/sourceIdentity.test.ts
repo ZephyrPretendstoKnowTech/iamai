@@ -86,7 +86,17 @@ test('nothing the plan offers carries an identifier out of the author’s tenant
   assert.ok(offered > 20, `the sweep saw real work (${offered} offered steps)`)
 })
 
-test('the author’s own authentication strength is never handed over, and the step says what it waits on', () => {
+/** The demo's snapshot with its authentication-strength rows rewritten. */
+function withStrengthRows(f: Fixture, map: (row: Record<string, unknown>) => Record<string, unknown> | null): Fixture {
+  const section = f.snapshot.config.authStrengths ?? { status: 'ok' as const, reason: null, rows: [] }
+  const rows = (section.rows ?? []).map((r) => map(r as Record<string, unknown>)).filter((r): r is Record<string, unknown> => r !== null)
+  return { ...f, snapshot: { ...f.snapshot, config: { ...f.snapshot.config, authStrengths: { ...section, rows } } } }
+}
+
+const DEVICE_REGISTRATION_STEP = 's-goal-device-registration-mfa'
+const AUTHORS_STRENGTH = '42de22a7-5339-4a58-b560-28565d53b14d'
+
+test('the author’s own authentication strength is never handed over: a tenant strength stands in only where it demands the same thing, restrictions and all, and the strength step completes from exact scanned settings', () => {
   // On the curated baseline: this is about the strength, and the same policy's
   // unexplained carve-outs are the case below.
   const base = curatedFixture('demo-week2')
@@ -118,6 +128,74 @@ test('the author’s own authentication strength is never handed over, and the s
   const tenantStrength = (base.snapshot.config.authStrengths?.rows ?? []).map((x) => x as { id?: string; policyType?: string }).find((x) => x.policyType !== 'builtIn')
   assert.equal(body.grantControls?.authenticationStrength?.id, tenantStrength?.id, 'the body names the tenant’s own strength')
   assert.ok(r.steps.length > 0)
+
+  // A tenant strength standing in for the author’s must demand the same thing, restrictions and all.
+  {
+    // A strength is not its list of combination names. `combinationConfigurations`
+    // says what those combinations will actually take — which security keys a
+    // fido2 combination accepts, which issuers and policy OIDs an
+    // x509CertificateMultiFactor one does — and it is part of the requirement.
+    //
+    // The match used to read the names alone, so a tenant strength listing
+    // windowsHelloForBusiness, fido2, x509CertificateMultiFactor and
+    // temporaryAccessPassOneTime *was* the baseline's "Modern MFA + TAP" even when
+    // it took three models of key and the baseline took any. The policy was
+    // resolved and offered, and the people it newly demanded a particular key from
+    // are the ones the readiness figures had just counted as able to sign in.
+    const base = curatedFixture('demo-week2')
+    const stepOf = (f: Fixture) => runFixture(f, { snapshot: f.snapshot } as never).steps.find((s) => s.id === DEVICE_REGISTRATION_STEP)!
+
+    // The tenant whose own strength demands exactly what the baseline's does —
+    // same combinations, same (absent) restrictions. Still the same requirement
+    // under another name, so it still resolves and the body names the tenant's id.
+    const same = stepOf(base)
+    assert.equal(implementationOffered(same), true, 'an equivalent tenant strength answers the author’s')
+    const body = operationsOf(same)[0].body as { grantControls?: { authenticationStrength?: { id?: string } } }
+    const own = (base.snapshot.config.authStrengths?.rows ?? []).map((x) => x as { id?: string; policyType?: string }).find((x) => x.policyType !== 'builtIn')
+    assert.equal(body.grantControls?.authenticationStrength?.id, own?.id, 'and the body names the tenant’s own strength')
+
+    // The same tenant, with its strength restricted to three models of security
+    // key. Same four combination names, a materially different requirement.
+    const restricted = withStrengthRows(base, (r) =>
+      r.policyType === 'builtIn'
+        ? r
+        : { ...r, combinationConfigurations: [{ '@odata.type': '#microsoft.graph.fido2CombinationConfiguration', id: 'a1b2c3d4-0000-4000-8000-000000000001', appliesToCombinations: ['fido2'], allowedAAGUIDs: ['de1e552d-db1d-4423-a619-566b625cdc84', '90a3ccdf-635c-4729-a248-9b709135078f', 'd8522d9f-575b-4866-88a9-ba99fa02f35b'] }] },
+    )
+    const narrowed = stepOf(restricted)
+    assert.equal(implementationOffered(narrowed), false, 'a strength that restricts what it accepts is not the author’s')
+    assert.deepEqual(operationsOf(narrowed), [], 'and there is no operation to run')
+    assert.deepEqual(
+      (narrowed.action.missing ?? []).filter((m) => m.token.toLowerCase() === AUTHORS_STRENGTH).map((m) => m.stepId),
+      [PREREQ_STEP_ID.authStrength],
+      'the policy waits on the step that creates the strength the baseline asks for',
+    )
+
+    // And the tenant whose restrictions nothing read — a scan taken before IAMAI
+    // asked Graph for them. Unread is not "restricts nothing": nobody can say the
+    // two strengths are the same requirement, so nobody substitutes one.
+    const unread = withStrengthRows(base, (r) => {
+      const { combinationConfigurations: _dropped, ...rest } = r
+      return rest
+    })
+    const unknown = stepOf(unread)
+    assert.equal(implementationOffered(unknown), false, 'restrictions nobody read cannot be shown to match')
+    assert.deepEqual(operationsOf(unknown), [], 'and there is no operation to run')
+  }
+
+  // Authentication strength completes from exact scanned settings without a selector, including duplicate equivalents.
+  {
+    const f = curatedFixture('demo-week2')
+    const section = f.snapshot.config.authStrengths!
+    const strength = section.rows.find((r: any) => r.policyType !== 'builtIn') as Record<string, unknown>
+    assert.ok(strength)
+    section.rows.push({...strength, id: 'zz-equivalent-strength', displayName: 'Another exact equivalent'})
+    const get = () => runFixture(f).steps.find(s => s.id === PREREQ_STEP_ID.authStrength)!
+    assert.equal(get().state.satisfied, true)
+    assert.equal(get().configurationFindings?.[0].value, 'Exact match found')
+    section.rows = section.rows.filter((r: any) => r.policyType === 'builtIn')
+    assert.equal(get().state.satisfied, false)
+    assert.equal(get().configurationFindings?.[0].value, 'Matching strength missing')
+  }
 })
 
 /** The author's groups this baseline's interpretation settles as nothing (its own list, by id). */
@@ -127,7 +205,7 @@ function unsettledGroups(): string[] {
     .map((r) => r.id.toLowerCase())
 }
 
-test('a group of the author’s that nothing settles waits on a person’s answer: no operation, and no channel offers one', () => {
+test('a group of the author’s that nothing settles waits on a person’s answer and nothing is left out without a settled reading; a settled authorEnvironment reference is left out and holds nothing', () => {
   // The case the reviewer named. The author's Device Registration policy carves
   // three groups of his own out of a requirement for Modern MFA + TAP. Nothing
   // he published says what any of them is, so nothing here can say who a copy of
@@ -149,105 +227,45 @@ test('a group of the author’s that nothing settles waits on a person’s answe
   assert.equal(implementationOffered(step), false, 'no channel offers a policy this tenant cannot honestly copy')
   assert.deepEqual(operationsOf(step), [], 'and there is no operation to run')
   assert.equal(step.action.json, null, 'nothing is written for the plan file or the exports either')
-})
 
-test('nothing is left out as the author’s own without a settled reading, anywhere on the demo', () => {
-  // `authorOnly` is the one list whose entries are dropped from a body an
-  // implementation channel carries and do not hold the step. Reaching it takes a
-  // reading settled in this baseline's interpretation file with the evidence it
-  // rests on (`authorEnvironment`), and this baseline settles no such reading —
-  // so on the demo the list is empty everywhere, however many groups the author
-  // only ever excludes.
-  const r = runFixture(fixture('demo-week2'))
-  let steps = 0
-  for (const step of r.steps) {
-    steps += 1
-    assert.deepEqual(step.action.authorOnly ?? [], [], `${step.id} leaves out a source object nothing settles`)
+  // Nothing is left out as the author’s own without a settled reading, anywhere on the demo.
+  {
+    // `authorOnly` is the one list whose entries are dropped from a body an
+    // implementation channel carries and do not hold the step. Reaching it takes a
+    // reading settled in this baseline's interpretation file with the evidence it
+    // rests on (`authorEnvironment`), and this baseline settles no such reading —
+    // so on the demo the list is empty everywhere, however many groups the author
+    // only ever excludes.
+    const r = runFixture(fixture('demo-week2'))
+    let steps = 0
+    for (const step of r.steps) {
+      steps += 1
+      assert.deepEqual(step.action.authorOnly ?? [], [], `${step.id} leaves out a source object nothing settles`)
+    }
+    assert.ok(steps > 10, `the sweep saw the whole plan (${steps})`)
   }
-  assert.ok(steps > 10, `the sweep saw the whole plan (${steps})`)
-})
 
-test('a settled authorEnvironment reference is left out, and does not hold the policy', () => {
-  // The other half of the same rule. A curator who establishes that a source
-  // reference is the author's own environment — a vendor's service principal,
-  // one dependency's own addresses — records it, and then the adopting tenant's
-  // copy is whole without it: dropped from every body, reported as the author's
-  // own, and holding nothing. `asCuratedBaseline` is that one change to the
-  // interpretation file and nothing else.
-  const base = curatedFixture('demo-week2')
-  const r = runFixture(base)
-  const step = r.steps.find((s) => s.id === 's-goal-device-registration-mfa')
-  assert.ok(step, 'the device-registration step is on the plan')
-  assert.equal(implementationOffered(step), true, 'the policy can be written once the readings are settled')
-  const reported = step.action.authorOnly ?? []
-  assert.ok(reported.length >= 3, `and what it does without is named (${reported.length})`)
-  for (const id of reported) {
-    assert.ok(unsettledGroups().includes(id.toLowerCase()), `${id} is one of the settled readings, not a guess`)
-    for (const op of operationsOf(step)) assert.doesNotMatch(JSON.stringify(op.body).toLowerCase(), new RegExp(id.toLowerCase()), `${step.id}: ${id} is in a body`)
+  // A settled authorEnvironment reference is left out, and does not hold the policy.
+  {
+    // The other half of the same rule. A curator who establishes that a source
+    // reference is the author's own environment — a vendor's service principal,
+    // one dependency's own addresses — records it, and then the adopting tenant's
+    // copy is whole without it: dropped from every body, reported as the author's
+    // own, and holding nothing. `asCuratedBaseline` is that one change to the
+    // interpretation file and nothing else.
+    const base = curatedFixture('demo-week2')
+    const r = runFixture(base)
+    const step = r.steps.find((s) => s.id === 's-goal-device-registration-mfa')
+    assert.ok(step, 'the device-registration step is on the plan')
+    assert.equal(implementationOffered(step), true, 'the policy can be written once the readings are settled')
+    const reported = step.action.authorOnly ?? []
+    assert.ok(reported.length >= 3, `and what it does without is named (${reported.length})`)
+    for (const id of reported) {
+      assert.ok(unsettledGroups().includes(id.toLowerCase()), `${id} is one of the settled readings, not a guess`)
+      for (const op of operationsOf(step)) assert.doesNotMatch(JSON.stringify(op.body).toLowerCase(), new RegExp(id.toLowerCase()), `${step.id}: ${id} is in a body`)
+    }
+    assert.deepEqual((step.action.missing ?? []).filter((m) => m.unreadable), [], 'and nothing is waiting on them')
   }
-  assert.deepEqual((step.action.missing ?? []).filter((m) => m.unreadable), [], 'and nothing is waiting on them')
-})
-
-/** The demo's snapshot with its authentication-strength rows rewritten. */
-function withStrengthRows(f: Fixture, map: (row: Record<string, unknown>) => Record<string, unknown> | null): Fixture {
-  const section = f.snapshot.config.authStrengths ?? { status: 'ok' as const, reason: null, rows: [] }
-  const rows = (section.rows ?? []).map((r) => map(r as Record<string, unknown>)).filter((r): r is Record<string, unknown> => r !== null)
-  return { ...f, snapshot: { ...f.snapshot, config: { ...f.snapshot.config, authStrengths: { ...section, rows } } } }
-}
-
-const DEVICE_REGISTRATION_STEP = 's-goal-device-registration-mfa'
-const AUTHORS_STRENGTH = '42de22a7-5339-4a58-b560-28565d53b14d'
-
-test('a tenant strength standing in for the author’s must demand the same thing, restrictions and all', () => {
-  // A strength is not its list of combination names. `combinationConfigurations`
-  // says what those combinations will actually take — which security keys a
-  // fido2 combination accepts, which issuers and policy OIDs an
-  // x509CertificateMultiFactor one does — and it is part of the requirement.
-  //
-  // The match used to read the names alone, so a tenant strength listing
-  // windowsHelloForBusiness, fido2, x509CertificateMultiFactor and
-  // temporaryAccessPassOneTime *was* the baseline's "Modern MFA + TAP" even when
-  // it took three models of key and the baseline took any. The policy was
-  // resolved and offered, and the people it newly demanded a particular key from
-  // are the ones the readiness figures had just counted as able to sign in.
-  const base = curatedFixture('demo-week2')
-  const stepOf = (f: Fixture) => runFixture(f, { snapshot: f.snapshot } as never).steps.find((s) => s.id === DEVICE_REGISTRATION_STEP)!
-
-  // The tenant whose own strength demands exactly what the baseline's does —
-  // same combinations, same (absent) restrictions. Still the same requirement
-  // under another name, so it still resolves and the body names the tenant's id.
-  const same = stepOf(base)
-  assert.equal(implementationOffered(same), true, 'an equivalent tenant strength answers the author’s')
-  const body = operationsOf(same)[0].body as { grantControls?: { authenticationStrength?: { id?: string } } }
-  const own = (base.snapshot.config.authStrengths?.rows ?? []).map((x) => x as { id?: string; policyType?: string }).find((x) => x.policyType !== 'builtIn')
-  assert.equal(body.grantControls?.authenticationStrength?.id, own?.id, 'and the body names the tenant’s own strength')
-
-  // The same tenant, with its strength restricted to three models of security
-  // key. Same four combination names, a materially different requirement.
-  const restricted = withStrengthRows(base, (r) =>
-    r.policyType === 'builtIn'
-      ? r
-      : { ...r, combinationConfigurations: [{ '@odata.type': '#microsoft.graph.fido2CombinationConfiguration', id: 'a1b2c3d4-0000-4000-8000-000000000001', appliesToCombinations: ['fido2'], allowedAAGUIDs: ['de1e552d-db1d-4423-a619-566b625cdc84', '90a3ccdf-635c-4729-a248-9b709135078f', 'd8522d9f-575b-4866-88a9-ba99fa02f35b'] }] },
-  )
-  const narrowed = stepOf(restricted)
-  assert.equal(implementationOffered(narrowed), false, 'a strength that restricts what it accepts is not the author’s')
-  assert.deepEqual(operationsOf(narrowed), [], 'and there is no operation to run')
-  assert.deepEqual(
-    (narrowed.action.missing ?? []).filter((m) => m.token.toLowerCase() === AUTHORS_STRENGTH).map((m) => m.stepId),
-    [PREREQ_STEP_ID.authStrength],
-    'the policy waits on the step that creates the strength the baseline asks for',
-  )
-
-  // And the tenant whose restrictions nothing read — a scan taken before IAMAI
-  // asked Graph for them. Unread is not "restricts nothing": nobody can say the
-  // two strengths are the same requirement, so nobody substitutes one.
-  const unread = withStrengthRows(base, (r) => {
-    const { combinationConfigurations: _dropped, ...rest } = r
-    return rest
-  })
-  const unknown = stepOf(unread)
-  assert.equal(implementationOffered(unknown), false, 'restrictions nobody read cannot be shown to match')
-  assert.deepEqual(operationsOf(unknown), [], 'and there is no operation to run')
 })
 
 const WORKLOAD_STEP = 's-goal-workload-identity-block'
@@ -259,7 +277,7 @@ function withWorkloadIdentities(f: Fixture): Fixture {
   return { ...f, snapshot: { ...f.snapshot, capabilities: { ...f.snapshot.capabilities, workloadIdPremium: { enabled: true, seats: 25, consumed: 4 } } } }
 }
 
-test('a named location of the author’s that nothing settles sends nobody to the Trusted network step', () => {
+test('a named location of the author’s that nothing settles sends nobody to the Trusted network step, and the two it does settle keep their Preparation steps', () => {
   // The author's Entra Connect policy carves one named location out of a block:
   // a range holding that dependency's own sync addresses, which this baseline's
   // interpretation records as unknown — not the tenant's trusted network, and
@@ -292,48 +310,35 @@ test('a named location of the author’s that nothing settles sends nobody to th
     assert.deepEqual(operationsOf(step), [], 'and there is no operation to run')
     assert.equal(step.action.json, null, 'nothing is written for the plan file or the exports either')
   }
-})
 
-test('the two named locations this baseline does settle keep their Preparation steps', () => {
-  // The narrow behaviour the case above must not take with it. A location the
-  // interpretation settles as the trusted network waits on the step that marks
-  // one; the countries goal's own location waits on the step that builds the
-  // allowed-countries list, on a baseline with tokens (the pin) and on one
-  // without (the synthetic fixtures), because that goal *is* that list.
-  const demo = runFixture(fixture('demo-week2'))
-  const network = demo.steps.find((s) => s.id === 's-goal-service-accounts-trusted-network')
-  assert.ok(network, 'the trusted-network step is on the demo plan')
-  assert.deepEqual(
-    (network.action.missing ?? []).filter((m) => m.stepId === PREREQ_STEP_ID.trustedLocation).map((m) => m.token.toLowerCase()),
-    ['0403d368-f07f-4e4c-b75d-aa169d5b6683'],
-    'the settled trusted-network location still waits on the step that marks one',
-  )
-  for (const name of ['demo-week2', 'small', 'mid'] as FixtureName[]) {
-    const geo = runFixture(fixture(name)).steps.find((s) => s.id === 's-goal-geo-restriction')
-    assert.ok(geo, `${name}: the countries step is on the plan`)
-    // Made by the countries step itself, as its own task, since Stage 3.
-    assert.equal(
-      (geo.action.missing ?? []).some((m) => m.stepId === geo.id),
-      true,
-      `${name}: the countries goal's own location is not the countries step's own task`,
+  // The two named locations this baseline does settle keep their Preparation steps.
+  {
+    // The narrow behaviour the case above must not take with it. A location the
+    // interpretation settles as the trusted network waits on the step that marks
+    // one; the countries goal's own location waits on the step that builds the
+    // allowed-countries list, on a baseline with tokens (the pin) and on one
+    // without (the synthetic fixtures), because that goal *is* that list.
+    const demo = runFixture(fixture('demo-week2'))
+    const network = demo.steps.find((s) => s.id === 's-goal-service-accounts-trusted-network')
+    assert.ok(network, 'the trusted-network step is on the demo plan')
+    assert.deepEqual(
+      (network.action.missing ?? []).filter((m) => m.stepId === PREREQ_STEP_ID.trustedLocation).map((m) => m.token.toLowerCase()),
+      ['0403d368-f07f-4e4c-b75d-aa169d5b6683'],
+      'the settled trusted-network location still waits on the step that marks one',
     )
+    for (const name of ['demo-week2', 'small', 'mid'] as FixtureName[]) {
+      const geo = runFixture(fixture(name)).steps.find((s) => s.id === 's-goal-geo-restriction')
+      assert.ok(geo, `${name}: the countries step is on the plan`)
+      // Made by the countries step itself, as its own task, since Stage 3.
+      assert.equal(
+        (geo.action.missing ?? []).some((m) => m.stepId === geo.id),
+        true,
+        `${name}: the countries goal's own location is not the countries step's own task`,
+      )
+    }
   }
 })
 
-
-test('authentication strength completes from exact scanned settings without a selector, including duplicate equivalents', () => {
-  const f = curatedFixture('demo-week2')
-  const section = f.snapshot.config.authStrengths!
-  const strength = section.rows.find((r: any) => r.policyType !== 'builtIn') as Record<string, unknown>
-  assert.ok(strength)
-  section.rows.push({...strength, id: 'zz-equivalent-strength', displayName: 'Another exact equivalent'})
-  const get = () => runFixture(f).steps.find(s => s.id === PREREQ_STEP_ID.authStrength)!
-  assert.equal(get().state.satisfied, true)
-  assert.equal(get().configurationFindings?.[0].value, 'Exact match found')
-  section.rows = section.rows.filter((r: any) => r.policyType === 'builtIn')
-  assert.equal(get().state.satisfied, false)
-  assert.equal(get().configurationFindings?.[0].value, 'Matching strength missing')
-})
 
 test('admin-session corrections never repurpose an unrelated MFA grant policy', () => {
  for (const name of ['demo', 'mid', 'messy'] as const) {
