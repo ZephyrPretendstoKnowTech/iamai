@@ -231,6 +231,15 @@ export function directionAnswerComplete(q: Pick<DirectionQuestion, 'control' | '
   return q.pickedWith !== null && a.value === q.pickedWith ? a.picked.length > 0 : true
 }
 
+/**
+ * What a question's card starts from before anyone changes it: the saved
+ * answer, or the suggestion where nothing is saved or a later scan reopened the
+ * saved answer (owner, 2026-09-23: a reopened card pre-fills the new
+ * suggestion, not the old answer). DirectionQuestions.tsx draws it; anything
+ * that approves on a person's behalf starts from the same answer.
+ */
+export const directionDraftOf = (q: Pick<DirectionQuestion, 'saved' | 'suggested' | 'needsReview'>): DirectionAnswer => q.needsReview ? q.suggested : q.saved ?? q.suggested
+
 /** The answers a Direction step's Approve writes: every question at once, the picked ids beside each, a question's evidence basis beside it. */
 export function directionDecisionOf(answers: Readonly<Record<string, DirectionAnswer>>, basis: Readonly<Record<string, string>> = {}): StepDecisionInput {
   const out: Record<string, string> = {}
