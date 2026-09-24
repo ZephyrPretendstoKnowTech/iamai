@@ -20,7 +20,8 @@ export type AffectedPasskeyProjection = {
   state: 'known' | 'unknown'
   users: AffectedPasskeyUser[]
   unassessable: string[]
-  coverage: string[]
+  /** What the projection did not settle, by kind; any makes `state` unknown. Never shown (owner, 2026-09-23). */
+  coverage: ('configuration' | 'methods' | 'passkeys')[]
   /**
    * Accounts the intended settings would leave with no passkey IAMAI can confirm
    * they allow: every passkey the account holds is stopped by them, or could not
@@ -232,27 +233,19 @@ export function recoveryPasskeyCandidateSet(snapshot: TenantSnapshot, accountId:
   return ids.length ? { state: 'complete', ids, reason: 'Every potentially usable registered passkey is known and compliant.' } : { state: 'incompatible', ids: [], reason: 'No registered passkey is usable under the current and intended configuration.' }
 }
 
-/**
- * The projection's `coverage` where some account's registered methods were not
- * read: the Existing passkeys affected tile shows it under Could not verify, and
- * Prepare affected passkeys repeats it beside whatever it names from the rest
- * (ui/surfaces/emergencyPasskeyTasks.ts). One sentence, read from here by both.
- */
-export const REGISTERED_METHODS_UNREAD = 'Some users’ registered authentication methods were not readable.'
-
 /** Registered methods that are usable now and not under the exact proposed target. */
 export function affectedPasskeysByProposedChange(snapshot: TenantSnapshot, mapping?: MappingState, groups: GroupMembers = new Map()): AffectedPasskeyProjection {
   const reading = passkeyReadingOf(snapshot, mapping)
-  if (!reading.current || reading.resolution?.kind !== 'target') return { state: 'unknown', users: [], unassessable: [], coverage: ['The current and intended passkey configuration could not be compared exactly.'], stranded: [] }
+  if (!reading.current || reading.resolution?.kind !== 'target') return { state: 'unknown', users: [], unassessable: [], coverage: ['configuration'], stranded: [] }
   const target = reading.resolution.target
   const users: AffectedPasskeyUser[] = []
   const unassessable = new Set<string>()
   const stranded = new Set<string>()
-  const coverage = new Set<string>()
+  const coverage = new Set<AffectedPasskeyProjection['coverage'][number]>()
   for (const user of snapshot.users) {
     const accountId = user.id
     const methods = snapshot.authMethods[accountId]
-    if (!Array.isArray(methods)) { coverage.add(REGISTERED_METHODS_UNREAD); continue }
+    if (!Array.isArray(methods)) { coverage.add('methods'); continue }
     const keys = methods.filter(isPasskey)
     if (!keys.length) continue
     const states = keys.map(method => {
@@ -260,7 +253,7 @@ export function affectedPasskeysByProposedChange(snapshot: TenantSnapshot, mappi
       return { method, current: policyCompatibility(one, [accountId], reading.current, groups, 'policyUnread', 'runtime')[0], future: policyCompatibility(one, [accountId], target, groups, 'policyUnread', 'runtime')[0] }
     })
     if (states.some(state => state.current.state === 'unknown' || state.future.state === 'unknown')) {
-      coverage.add('Some passkeys could not be assessed because model, storage, profile, or group-membership evidence was incomplete.')
+      coverage.add('passkeys')
       unassessable.add(accountId)
     }
     const affected = states.filter(state => state.current.state === 'eligible' && state.future.state !== 'eligible' && state.future.state !== 'unknown')

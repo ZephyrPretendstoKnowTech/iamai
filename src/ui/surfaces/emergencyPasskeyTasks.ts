@@ -1,4 +1,4 @@
-import { affectedPasskeysByProposedChange, REGISTERED_METHODS_UNREAD } from '../../roadmap/passkeyCompatibility.ts'
+import { affectedPasskeysByProposedChange } from '../../roadmap/passkeyCompatibility.ts'
 import { PASSKEY_TARGET, assignedPasskeyProfiles, passkeyReadingOf, requiredModels, samePasskeyValue } from '../../roadmap/passkeySettings.ts'
 import { approvedPasskeyModels } from '../../roadmap/emergencyJourney.ts'
 import type { EmergencyAccountTask, EmergencyTaskProjection, EmergencyAccountTaskVariant } from './emergencyAccountTasks.ts'
@@ -226,30 +226,19 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
         return [`Open **${clean(profile.name || profile.id)}**.`, ...profileSteps(from, to, required, modelNames, restricts(from, to))]
       })
     : ['Open **Configure**.', ...legacySteps(current as Record<string, any> | null, target, required, modelNames, restricts(current, target))]
-  // Prepare affected passkeys opens on what the scan found in what it read: the
-  // accounts the planned settings would stop or could not judge, the affected
-  // accounts, or how many it could not judge.
+  // Prepare affected passkeys opens on what the scan found: the accounts the
+  // planned settings would stop, or the affected accounts. The lines that said
+  // IAMAI could not tell which passkeys the settings affect, or had not read
+  // some accounts' methods, are gone (owner, 2026-09-23).
   const namedFromRead = restriction.stranded.length > 0
     ? strandedSentence(restriction, ctx, protectionFields.length > 0)
     : affected.users.length
     ? `Keep the existing working method available while preparing each affected account: ${affected.users.map(user => `**${upnOf(ctx, user.accountId)}**`).join(', ')}.`
-    // Could not judge is not the same as not affected, and saying the
-    // second over the first is an unhedged all-clear before a change that
-    // can cost people their sign-in method. The tile beside this already
-    // reads "Existing passkeys affected · Could not verify"; the task said
-    // the opposite four lines below it.
-    : affected.unassessable.length
-      ? `IAMAI could not tell whether the planned settings affect the passkeys on ${affected.unassessable.length} ${affected.unassessable.length === 1 ? 'account' : 'accounts'}, because it could not read their key model. Check those before applying restrictions, and keep the existing working method available.`
       : null
-  // What was read is not everything where some account's registered methods were
-  // not: the line said "Each keeps Microsoft Authenticator, so none is locked out"
-  // over a tenant most of whose accounts it had not read, under a tile reading
-  // "Could not verify". Every reading says so, in the tile's own sentence.
-  const unreadAlso = affected.coverage.includes(REGISTERED_METHODS_UNREAD) ? ` ${fillText(PR().unreadAlso, { unread: REGISTERED_METHODS_UNREAD })}` : ''
   // With nobody named the procedure opens on what to keep, with no all-clear
   // and no qualifier about what the scan read (owner, 2026-09-23): the
   // Existing passkeys affected card says what it found.
-  const prepareLead = namedFromRead !== null ? `${namedFromRead}${unreadAlso}` : 'Keep the existing working method available while preparing an account.'
+  const prepareLead = namedFromRead ?? 'Keep the existing working method available while preparing an account.'
   const tasks: EmergencyAccountTask[] = [
     {
       id: 'make-passkey-registration-available', accountId: null, title: 'Configure passkey registration', targetUpn: null,
@@ -278,7 +267,7 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
   return { tasks, printAll: true, approvedModels: intendedModels, ...(prepareFirst ? { recommendedTaskId: 'prepare-affected-passkeys' } : {}) }
 }
 
-type PasskeyRestrictionWords = { stranded: string; strandedAfter: string; strandedAfterLocked: string; withheld: string; withheldTask: string; keptMany: string; unreadAlso: string }
+type PasskeyRestrictionWords = { stranded: string; strandedAfter: string; strandedAfterLocked: string; withheld: string; withheldTask: string; keptMany: string }
 const PR = (): PasskeyRestrictionWords => (shared as unknown as { passkeyRestrictions: PasskeyRestrictionWords }).passkeyRestrictions
 
 /** Accounts by sign-in name, the first NAMES_INLINE of them, the rest counted. */

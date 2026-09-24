@@ -221,21 +221,23 @@ function accountStatuses(ctx: StepVarContext, preparations: Preparations, notes:
       const missing = preparation.passkeyCount === 0
       title = missing ? 'Approved passkey needed' : 'Passkey does not meet planned settings'
       instruction = 'Follow Set up an approved passkey in Implementation Tasks.'
+    // A check this scan did not settle has no title of its own: it said only
+    // that the check could not be verified (owner, 2026-09-23).
     } else if (cloudOnly === null) {
-      title = 'Account source could not be verified'
+      title = ''
       instruction = 'Scan again so IAMAI can confirm this is a cloud-only account.'
     } else if (rightDomain === null) {
-      title = 'Tenant sign-in domain could not be verified'
+      title = ''
       instruction = 'Scan again so IAMAI can confirm the account uses the tenant onmicrosoft.com domain.'
     } else if (enabled === null) {
-      title = 'Account status could not be verified'
+      title = ''
       instruction = 'Scan again so IAMAI can confirm the account is enabled.'
     } else if (permanentGa === null) {
-      title = 'Global Administrator assignment could not be verified'
+      title = ''
       instruction = 'Scan again so IAMAI can confirm the account has permanent, active Global Administrator access.'
     } else if (compatible === null) {
       title = 'Passkey check incomplete'
-      instruction = 'IAMAI could not fully check this account. Open MFA Readiness and find it under Emergency access, where Evidence read says what could not be read. No account change is established.'
+      instruction = 'Open MFA Readiness and find it under Emergency access.'
     }
     const remainingCount = checks.every(value => value !== null) ? checks.filter(value => value === false).length : null
     // The account signed in to IAMAI says so in one line, in place of the check's note about it.
@@ -364,7 +366,8 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
     : row.title === 'Use a cloud-only account' ? 1
       : row.title === 'Change the sign-in address' ? 2
         : row.title === 'Account disabled' ? 3
-          : /Global Administrator/.test(row.title) ? 4
+          // The unsettled Global Administrator check has no title; its instruction names the role.
+          : /Global Administrator/.test(row.title) || (row.title === '' && /Global Administrator/.test(row.instruction)) ? 4
             : row.title === 'Approved passkey needed' || row.title === 'Passkey does not meet planned settings' ? 5
               : Number.POSITIVE_INFINITY
   const next = accounts.map((row, index) => ({ row, index, priority: confirmedPriority(row) })).filter(value => Number.isFinite(value.priority)).sort((a, b) => a.priority - b.priority || a.index - b.index)[0]?.row
@@ -374,7 +377,7 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
       ? 'create-account'
     : next?.title === 'Approved passkey needed' || next?.title === 'Passkey does not meet planned settings'
       ? 'set-up-passkey'
-      : next && !/could not be verified|check incomplete/i.test(next.title)
+      : next && next.title !== '' && !/check incomplete/i.test(next.title)
         ? 'configure-account'
         : null
   return { tasks, accounts, recommendedTaskId, printAll: true, approvedModels, tapAvailable: null }
