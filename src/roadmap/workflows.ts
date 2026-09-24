@@ -60,14 +60,6 @@ export function serviceEvidence(key: string, signal: ServiceSignal): string | nu
   return signal.people === 0 && !signal.used ? fillText(E.notSeen, { service }) : null
 }
 
-/** The title a baseline policy's review row shows on the plan (its guidance title). */
-export function reviewTitleOf(policy: Pick<NotAssessed, 'name'>): string {
-  const key = serviceOf(policy)
-  const name = key ? (W.names as Record<string, string>)[key] : policy.name
-  const words = W.policies.find((p: { pattern: string }) => new RegExp(p.pattern, 'i').test(policy.name))
-  return words?.title ?? fillText(W.reviewTitle, { service: name, policy: policy.name })
-}
-
 /**
  * The services this plan's baseline has something to protect (a goal whose
  * applicability is the service, or a baseline policy IAMAI does not assess),
@@ -129,7 +121,7 @@ export function addWorkflowSteps(steps: Step[], policies: NotAssessed[], mapping
     // The Tasks Remaining card's subject is the baseline policy under review and
     // its check is the state of that review, not the row's own title read back
     // three times (quality audit 2.1).
-    step.guidance = { id: step.id, kind: 'check', title: reviewTitleOf(policy), why: words?.why ?? step.why, card: { ...W.reviewCard }, taskTitle: W.reviewTaskTitle, whatToDo: { steps: [fillText(W.source, { policy: policy.name }), ...(words?.instructions ?? [W.generic]), ...W.reviewInstructions] }, doneWhen: [W.reviewDone], learn: PLAN_CA }
+    step.guidance = { id: step.id, kind: 'check', title: words?.title ?? title, why: words?.why ?? step.why, card: { ...W.reviewCard }, taskTitle: W.reviewTaskTitle, whatToDo: { steps: [fillText(W.source, { policy: policy.name }), ...(words?.instructions ?? [W.generic]), ...W.reviewInstructions] }, doneWhen: [W.reviewDone], learn: PLAN_CA }
     if (applicable === 'no') { step.doesntApply = fillText(W.notUsed, { service: name }); setState(step, { setAside: true }) }
     else if (step.manualReview.confirmedAt) setState(step, { satisfied: true, inPlace: true })
     // The pinned AVD block relies on four source exclusions whose allowed-user

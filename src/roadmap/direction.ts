@@ -52,8 +52,8 @@ import { phoneSignInIds } from '../derive/sets.ts'
 import { setState } from './lifecycle.ts'
 import { DEVICE_GOALS } from './deviations.ts'
 import { QUESTION_STEP } from './answers.ts'
-import { PREREQ_STEP_ID, stepIdForGoal } from './stepIds.ts'
-import { HIDDEN_AGENT_POLICY, checkStep, reviewTitleOf, serviceEvidence, serviceOf, serviceReading } from './workflows.ts'
+import { PREREQ_STEP_ID } from './stepIds.ts'
+import { checkStep, serviceEvidence, serviceOf, serviceReading } from './workflows.ts'
 import type { ServiceSignal } from './workflows.ts'
 import { DIRECTION_BLOCKER, DIRECTION_STEP, SERVICE_KEYS, directionComplete, directionStepOf, isDirectionStep, savedAnswerOf, savedBasisOf } from './directionAnswers.ts'
 export { DIRECTION_BLOCKER, directionBlockerStep, directionComplete } from './directionAnswers.ts'
@@ -75,18 +75,7 @@ function question(key: DirectionQuestionKey, ctx: Context, q: Omit<DirectionQues
 
 // ---- D1 Confirm What You Use ----
 
-/**
- * The plan steps a service's No takes off the plan, by the titles the plan
- * shows them under: the goals whose policy protects it, and the review rows of
- * the baseline policies it names (workflows.ts addWorkflowSteps).
- */
-function offPlanTitles(key: string, notAssessed: readonly NotAssessed[], availableGoalIds: readonly string[]): string[] {
-  const goalTitles = goals.goals.filter((g) => g.applicability === key && availableGoalIds.includes(g.id)).map((g) => contentTitle({ id: stepIdForGoal(g.id), goalId: g.id, title: g.id }))
-  const reviewTitles = notAssessed.filter((p) => !HIDDEN_AGENT_POLICY.test(p.name) && serviceOf(p) === key).map(reviewTitleOf)
-  return [...new Set([...goalTitles, ...reviewTitles])]
-}
-
-function serviceQuestion(key: string, signal: ServiceSignal, offPlan: readonly string[], ctx: Context): DirectionQuestion {
+function serviceQuestion(key: string, signal: ServiceSignal, ctx: Context): DirectionQuestion {
   const saved = savedAnswerOf(`service:${key}`, ctx.mapping)
   // A saved No the scan now contradicts reopens the step; a saved answer whose
   // evidence merely went missing does not (the basis it was saved against says
@@ -99,7 +88,8 @@ function serviceQuestion(key: string, signal: ServiceSignal, offPlan: readonly s
   // nothing that can be said, the card says nothing.
   const seen = serviceEvidence(key, signal)
   return {
-    ...question(`service:${key}`, ctx, { label, control: 'choice', options: optionsOf(Q.serviceOptions), suggested, evidence: seen ?? '', note: offPlan.length > 0 ? fillText(Q.serviceConsequence, { steps: list([...offPlan]) }) : null }),
+    // Its consequence line names the plan's steps, so it is written once the plan is whole (noteServiceConsequences).
+    ...question(`service:${key}`, ctx, { label, control: 'choice', options: optionsOf(Q.serviceOptions), suggested, evidence: seen ?? '' }),
     needsReview,
     basis: signal.used ? 'present' : signal.complete ? 'absent' : 'unread',
     ...(needsReview && seen !== null ? { evidence: fillText(W.reopened, { answer: Q.serviceOptions.no, evidence: seen }) } : {}),
@@ -124,9 +114,9 @@ export function mailPickable(snapshot: Pick<TenantSnapshot, 'users'>, mapping: P
   return (id) => !guests.has(id) && !mapping.breakGlassUserIds.includes(id)
 }
 
-function useQuestions(ctx: Context, services: { keys: string[]; signal: (key: string) => ServiceSignal }, offPlan: (key: string) => string[]): DirectionQuestion[] {
+function useQuestions(ctx: Context, services: { keys: string[]; signal: (key: string) => ServiceSignal }): DirectionQuestion[] {
   const { snapshot } = ctx
-  const out = SERVICE_KEYS.filter((k) => services.keys.includes(k)).map((k) => serviceQuestion(k, services.signal(k), offPlan(k), ctx))
+  const out = SERVICE_KEYS.filter((k) => services.keys.includes(k)).map((k) => serviceQuestion(k, services.signal(k), ctx))
   // The evidence counts every sender the records show; the suggestion picks only
   // the ones the picker offers (mailPickable).
   const senders = mailSenderIds(snapshot)
@@ -359,7 +349,7 @@ export function directionSteps(input: DirectionInput): Step[] {
   const nameOf = input.nameOf ?? ((labels) => (id: string) => labels.get(id) ?? id)(personLabels(input.snapshot.users))
   const at = (id: DirectionStepId): string | null => input.approvedAt?.[id] ?? (id === DIRECTION_STEP.use ? input.mapping.workflowConfirmedAt ?? null : null)
   return [
-    directionStep(DIRECTION_STEP.use, useQuestions(ctx, services, (key) => offPlanTitles(key, input.notAssessed, input.availableGoalIds)), at(DIRECTION_STEP.use)),
+    directionStep(DIRECTION_STEP.use, useQuestions(ctx, services), at(DIRECTION_STEP.use)),
     directionStep(DIRECTION_STEP.accounts, accountQuestions(ctx, nameOf), at(DIRECTION_STEP.accounts)),
     directionStep(DIRECTION_STEP.devices, deviceQuestions(ctx), at(DIRECTION_STEP.devices)),
   ]
@@ -462,6 +452,22 @@ export function directionDependenciesOf(step: Pick<Step, 'goalId' | 'baselineRev
   const service = SERVICE_GOAL.get(step.goalId) ?? (step.baselineReviewSource ? serviceOf(step.baselineReviewSource) : null)
   if (service !== null && (SERVICE_KEYS as readonly string[]).includes(service)) out.push(`service:${service}`)
   return out
+}
+
+/**
+ * Each service card's consequence line: the plan steps its No takes off the
+ * plan, by the titles the plan shows — every step whose policy depends on that
+ * service's answer (directionDependenciesOf), already set aside or not. Written
+ * over the finished plan (progress.ts applyProgress), so it names only steps
+ * the plan holds.
+ */
+export function noteServiceConsequences(steps: Step[]): void {
+  const use = steps.find((s) => s.id === DIRECTION_STEP.use)
+  for (const q of use?.directionQuestions ?? []) {
+    if (!q.key.startsWith('service:')) continue
+    const titles = [...new Set(steps.filter((s) => !isDirectionStep(s.id) && directionDependenciesOf(s).includes(q.key as DirectionQuestionKey)).map((s) => contentTitle(s)))]
+    q.note = titles.length > 0 ? fillText(Q.serviceConsequence, { steps: list(titles) }) : null
+  }
 }
 
 /**
