@@ -200,7 +200,9 @@ test('a policy in place, or at its last stage with nothing to submit, is a satis
     // step under Satisfied, never an open card (walk list 4.x item 2).
     assert.equal(cards.filter((item) => !item.satisfied).length, 0)
     assert.ok(cards.some((item) => item.key === FINISHED_READING && item.satisfied))
-    assert.equal(cards[0].title, 'In place')
+    // A finished policy in Turn On MFA for Everyone states its fact (walk list 4.x item 22).
+    assert.equal(cards[0].title, 'On')
+    assert.equal(cards[0].detail, 'Requires MFA for All users except Core - Exclusions')
     assert.equal(cards[0].instruction, '')
     // The stages it passed through are not checks anybody completed (S4-5): this
     // policy was found in place, on a scan that recorded no date, no evidence and

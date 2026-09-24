@@ -71,12 +71,7 @@
         "entra.verify"
       ],
       "json": [],
-      "powershell": [
-        {
-          "block": "powershell.run",
-          "mode": "Verify"
-        }
-      ],
+      "powershell": [],
       "aiInfo": [
         "ai.verify"
       ],

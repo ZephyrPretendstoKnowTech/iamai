@@ -842,7 +842,9 @@ test('a policy this plan built straight to On stays Completed, says it went live
     assertWentLiveUnwatched(scan, UNSUPPORTED)
   }
 
-  // Watched in report-only, then turned on: it had its window, keeps the check, and no tile says it missed one.
+  // Watched in report-only, then turned on: it had its window, and no tile says it missed one. A policy in
+  // Turn On MFA for Everyone finishes on its report-only period, with no check after the change: that check
+  // is only for a policy turned on without a watched period (walk list 4.x item 26, owner 2026-09-24).
   const d = withFoundationSettled(fixture('demo'))
   const d1 = runFixture(d)
   const before = d1.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!
@@ -853,7 +855,9 @@ test('a policy this plan built straight to On stays Completed, says it went live
   const d2 = runFixture(on, {}, observationsOf(d1.steps), on.snapshot.asOf)
   const watched = d2.steps.find((s) => s.id === before.id)!
   assert.equal(watched.state.lifecycle === 'enforced' && watched.state.satisfied, true, 'the premise: watched on, and finished')
-  assert.ok(stepContract(watched, unwatchedCtx(on, d2)).doneWhen.includes(POLICY_VERIFY_AFTER))
+  const watchedDone = stepContract(watched, unwatchedCtx(on, d2)).doneWhen
+  assert.equal(watchedDone.includes(POLICY_VERIFY_AFTER), false, watchedDone.join(" | "))
+  assert.ok(watchedDone.includes((CONTRACT as unknown as { donePeriod: string }).donePeriod), watchedDone.join(" | "))
   assert.deepEqual(unwatchedWarnings(watched, unwatchedCtx(on, d2)), [], 'a policy IAMAI watched in report-only is said to have gone live unwatched')
 
   // In place: a policy the tenant already had, found enforced on the first scan.

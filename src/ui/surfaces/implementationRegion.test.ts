@@ -49,10 +49,11 @@ const named = (name: FixtureName) => bodiesOf(fixture(name))
 
 test('held policy resources stay copyable, useful and free of repeated disclaimer panels', () => {
   const bodies = bodiesOf(noExclusionsAnswer(fixture('mid')))
-  for (const id of ['s-goal-block-legacy-auth', 's-goal-guests-mfa']) {
+  // No read-only PowerShell or JSON stands in, and Block Legacy Authentication has no Email tab (walk list 4.x item 29).
+  for (const [id, expected] of [['s-goal-block-legacy-auth', ['Entra', 'AI Info']], ['s-goal-guests-mfa', ['Entra', 'AI Info', 'Email']]] as const) {
     const body = bodies.get(id)!
     assert.equal(body.contract.state.lifecycle, 'enforced')
-    assert.deepEqual(tabs(body), ['Entra', 'PowerShell', 'JSON', 'AI Info', 'Email'])
+    assert.deepEqual(tabs(body), expected)
     assert.equal(body.previewNote, null)
     for (const a of body.artifacts) {
       assert.notEqual(a.unavailable, true)

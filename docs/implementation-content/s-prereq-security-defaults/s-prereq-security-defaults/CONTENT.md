@@ -15,7 +15,7 @@ Re-open **Manage security defaults** and confirm it reads **Disabled (not recomm
 {"isEnabled":false}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["readyToDisable","verificationRequired"],"format":"powershell","kind":"template"}
+@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["readyToDisable"],"format":"powershell","kind":"template"}
 param([Parameter(Mandatory=$true)][ValidateSet('Disable','Verify')][string]$Mode,[switch]$ReplacementProtectionReady)
 $ErrorActionPreference='Stop'
 if($Mode -eq 'Disable'){
