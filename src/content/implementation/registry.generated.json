@@ -1394,7 +1394,8 @@
           "evidence.reportOnly",
           "dependencies.blockers",
           "signature",
-          "policy.target.json"
+          "policy.target.json",
+          "authStrength.target.displayName"
         ],
         "projection": {
           "missing": {
@@ -1701,7 +1702,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Set Grant to **Require authentication strength** and select the custom strength resolved for this tenant. Its ID is **{{authStrength.target.id}}**. Remove built-in MFA or any other strength from this policy's grant.\n"
+          "text": "Under **Grant**, select **Require authentication strength** → **{{authStrength.target.displayName}}**, and clear any other grant.\n"
         },
         "entra.correct-session": {
           "meta": {
@@ -1713,7 +1714,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Remove session controls from this policy. Admin session duration and persistence are implemented by separate baseline steps.\n"
+          "text": "Under **Session**, clear every control.\n"
         },
         "entra.correct-name": {
           "meta": {
@@ -1725,7 +1726,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Rename the same policy (same policy ID) to **{{policy.target.displayName}}**. Find it by its policy ID, not by display name alone.\n"
+          "text": "Name: **{{policy.target.displayName}}**.\n"
         },
         "entra.correct-verify": {
           "meta": {

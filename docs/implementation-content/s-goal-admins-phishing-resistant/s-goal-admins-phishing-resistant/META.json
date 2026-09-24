@@ -67,7 +67,8 @@
     "evidence.reportOnly",
     "dependencies.blockers",
     "signature",
-    "policy.target.json"
+    "policy.target.json",
+    "authStrength.target.displayName"
   ],
   "projection": {
     "missing": {
