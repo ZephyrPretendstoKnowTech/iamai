@@ -128,7 +128,7 @@ export type CleanupBoardRead = { undated: boolean; laneOf: (id: string) => LaneV
 export function cleanupWhenOf(row: CleanupPhase['rows'][number], undated: boolean, lane: LaneView | null, compact = false): string {
   const completed = lane?.lane === 'Completed'
   if (compact) return completed && row.done ? doneDay(row.done) : ''
-  return cleanupWhen(row, undated, completed, lane?.lane === 'Ready' && lane.substatus === 'Review', lane && !lane.alone ? (lane.estimate ?? null) : null)
+  return cleanupWhen(row, undated, completed, lane?.lane === 'Ready', lane && !lane.alone ? (lane.estimate ?? null) : null)
 }
 
 /** The row's When column on the board, from its reading (the Plan's CleanupRow reads cleanupWhenOf too). */

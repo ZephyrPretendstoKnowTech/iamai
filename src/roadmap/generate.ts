@@ -75,6 +75,11 @@ import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 import { learnRoleNames, roleLabel, roleListSummary, adminUserIdsWithEligible } from '../roles.ts'
+
+/** Exchange Online service plans that give an account a mailbox (validation/rules.ts MAILBOX_PLANS). */
+const MAILBOX_PLAN_IDS = new Set(['9aaf7827-d63c-4b61-89c3-182f06f82e5c', 'efb87545-963c-4e0d-99df-69c6916d9eb0', '4a82b400-a79f-41a4-b4e2-e94f5787b113', '1126bef5-da20-4f07-b45e-ad25d2581aa8', '9f431833-0334-42de-a7dc-70aa40db46db'])
+/** The Microsoft Teams service plan (TEAMS1). */
+const TEAMS_PLAN_ID = '57ff2da0-773e-42df-b2af-ffb7a2317929'
 import { policyPairNames, proposedPolicyName } from '../coverage/naming.ts'
 import { rolloutBucket } from '../scoring/mfaViability.ts'
 import { isReady } from '../scoring/phishingResistant.ts'
@@ -1399,21 +1404,33 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // sees there is a card of its own (item 2), naming the admin roles held and
   // the apps signed in to; the task beside it moves those roles to a separate
   // admin account (ui/surfaces/sectionThreeTasks.ts).
-  const adminsWithWorkload = adminsWithWorkloadOf(snapshot, new Set(mapping.breakGlassUserIds)).map(([id]) => id)
+  // An admin is also used for everyday work when the account holds a mailbox or
+  // Teams licence, whatever it signed in to lately (owner, 2026-09-24): a licence
+  // is a fact about the account, where 30 days of sign-ins is behaviour.
+  const emergency = new Set(mapping.breakGlassUserIds)
+  const enabledPlans = (id: string): string[] => (snapshot.users.find((u) => u.id === id)?.assignedPlans ?? []).filter((p) => p.capabilityStatus === 'Enabled').map((p) => p.servicePlanId.toLowerCase())
+  const everydayUse = (id: string): { apps: string[]; mailbox: boolean; teams: boolean } => {
+    const plans = enabledPlans(id)
+    return { apps: officeAppsOf(snapshot, id), mailbox: plans.some((p) => MAILBOX_PLAN_IDS.has(p)), teams: plans.includes(TEAMS_PLAN_ID) }
+  }
+  const adminIds = [...adminUserIdsWithEligible(snapshot.roles)].filter((id) => !emergency.has(id) && snapshot.users.some((u) => u.id === id))
+  const adminsWithWorkload = [...new Set([...adminsWithWorkloadOf(snapshot, emergency).map(([id]) => id), ...adminIds.filter((id) => { const e = everydayUse(id); return e.mailbox || e.teams })])]
   {
     const s = prereq(SEPARATE_ADMIN_ACCOUNTS_STEP_ID)
     s.kind = 'check'
     s.action = { ...s.action, kind: 'check' }
     s.population = population(adminsWithWorkload, popIndex)
-    if (adminsWithWorkload.length === 0 && snapshot.scenarioEvidence?.officeSignIns && snapshot.sources.signInEvidence?.status === 'ok' && snapshot.config.roleAssignments?.status === 'ok') {
+    const card = (contentStepById[SEPARATE_ADMIN_ACCOUNTS_STEP_ID] as unknown as { card: { admin: string; signsIn: string; mailboxLicence: string; teamsLicence: string; satisfied: string } }).card
+    if (adminsWithWorkload.length === 0 && snapshot.scenarioEvidence?.officeSignIns && snapshot.sources.signInEvidence?.status === 'ok' && snapshot.config.roleAssignments?.status === 'ok' && snapshot.sources.users?.status === 'ok') {
       setState(s, { satisfied: true, inPlace: true })
-      s.deliveredBy = ['No admin signed in to Outlook or Teams in the last 30 days.']
+      s.deliveredBy = [card.satisfied]
     }
-    const holds = (contentStepById[SEPARATE_ADMIN_ACCOUNTS_STEP_ID] as unknown as { card: { admin: string } }).card.admin
     s.configurationFindings = adminsWithWorkload.map((id) => {
       const roles = adminRolesOf(snapshot, id)
       // Headed by the person's name: the card's next line is the account's own address.
-      return { key: `admin:${id}`, label: snapshot.users.find((u) => u.id === id)?.displayName || nameOf(id), value: fillText(holds, { roles: list([...roles.active, ...roles.eligible].map(roleLabel)), apps: list(officeAppsOf(snapshot, id)) }), detail: '', outcome: 'fail' as const }
+      const e = everydayUse(id)
+      const uses = list([...(e.apps.length > 0 ? [fillText(card.signsIn, { apps: list(e.apps) })] : []), ...(e.mailbox ? [card.mailboxLicence] : []), ...(e.teams ? [card.teamsLicence] : [])])
+      return { key: `admin:${id}`, label: snapshot.users.find((u) => u.id === id)?.displayName || nameOf(id), value: fillText(card.admin, { roles: list([...roles.active, ...roles.eligible].map(roleLabel)), uses }), detail: '', outcome: 'fail' as const }
     })
     steps.push(s)
   }

@@ -444,10 +444,10 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     v.openAccounts = count(step.dormantChoices.filter((row) => !row.kept).length, 'account')
     v.kept = step.dormantChoices.filter((row) => row.kept).length
     v.disabled = disabledInactiveUsers(ctx.snapshot, ctx.snapshot.asOf, notPeopleIds(ctx.mapping)).length
-    // The Satisfied card's fact names only what happened: "1 disabled", never "0 kept".
-    const K = (stepById['s-check-dormant-accounts'] as unknown as { card: { keptPart: string; disabledPart: string; noneDormant: string } }).card
-    const kept = v.kept as number, disabled = v.disabled as number
-    v.dormantDone = [kept > 0 ? fillText(K.keptPart, { n: kept }) : null, disabled > 0 ? fillText(K.disabledPart, { n: disabled }) : null].filter((x): x is string => x !== null).join(' · ') || K.noneDormant
+    // The Satisfied card states what the step guarantees, apart from the accounts kept on purpose.
+    const K = (stepById['s-check-dormant-accounts'] as unknown as { card: { allActive: string; allActiveKept: string } }).card
+    const kept = v.kept as number
+    v.dormantDone = kept > 0 ? fillText(K.allActiveKept, { n: kept }) : K.allActive
   }
   // Register Your Own Passkey's and Prepare Your Team for MFA's own values: the
   // operator's account and devices, the campaign's people by what each needs,
