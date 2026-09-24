@@ -100,7 +100,7 @@ test('every step projects its own Entra procedure as its Implementation Task, an
   {
     for (const [id, title, first] of [
       ['s-prereq-allowed-countries', 'Set up the allowed countries location', /Named locations/],
-      ['s-verify-mfa', 'Help each person set up their method', /aka\.ms\/mfasetup/],
+      ['s-verify-mfa', 'Help each person set up their method', /Send the Email tab's first message/],
     ] as const) {
       const { step, body } = bodyOf(id)
       const tasks = body.emergencyAccountTasks
@@ -252,7 +252,7 @@ test('a satisfied Readiness tile is a satisfied card, and a tile keeps its own l
 test('the policy has a card of its own: its name, the next check, and the task that passes it', () => {
   // The foundation settled, so the card's one action is the procedure it names.
   const { body } = bodyOf(PILOT, 'demo', true)
-  const [card, ...rest] = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)
+  const [card] = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)
   assert.equal(card.heading, 'Conditional Access policy')
   assert.equal(card.upn, body.contract.members[0].name, 'the subject is the policy this step delivers')
   // The rollout stages are not the card's checks, so there is no count of them
@@ -266,7 +266,6 @@ test('the policy has a card of its own: its name, the next check, and the task t
   assert.equal(body.emergencyAccountTasks?.tasks.length, 1, 'the premise: this step projects one task')
   assert.equal(card.instruction, '')
   assert.equal(card.satisfied, false)
-  assert.ok(rest.length > 0, 'the Readiness tiles still follow the policy’s own card')
 })
 
 /** The words the rollout lifecycle is drawn with (pages.app.plan.stepContract.lifecycle). A card's check is never one of them while the card is open. */

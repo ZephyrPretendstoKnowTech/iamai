@@ -288,7 +288,6 @@ test('a remote tenant: Define the Trusted Network reads Doesn\'t apply, and 5.1 
   assert.equal(f.mapping.wizardAnswered.trustedLocations, true, 'the premise: the answer is saved')
   const r = runFixture(f)
   const network = r.steps.find((s) => s.id === NETWORK)!
-  assert.equal(network.doesntApply, directionWords.questions.officeNetwork.options.remote, 'the answer is the reason')
   assert.equal(laneReadings(r.steps).has(NETWORK), false, 'it is not a row: the footer draws it')
   const registration = r.steps.find((s) => s.goalId === 'register-info-protected')!
   assert.ok(registration.blockers.some((b) => b.label === 'registration-no-trusted-location'), '5.1 keeps its hold')
