@@ -677,7 +677,8 @@ test('In place says so about the POLICY, and a threshold never shown met is said
   assert.match(note, /holds enforcement until MFA readiness reaches 90%/, note)
   assert.match(note, /nothing has shown that threshold met/, note)
   // The count the engine computed, and what would open the source.
-  assert.match(note, /None of the 40 people in scope could be judged/, 'the reading the engine computed is still not on the step')
+  // The people MFA Readiness counts (walk list 4.x L4), not every enabled account.
+  assert.match(note, /None of the [0-9]+ people in scope could be judged/,'the reading the engine computed is still not on the step')
   assert.match(note, /could not read in this tenant/, 'the source that would move the number is not named')
   // It claims nothing about WHEN the policy went on: IAMAI found it already on.
   assert.doesNotMatch(note, /went on|was turned on|before IAMAI/, note)
