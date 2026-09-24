@@ -116,13 +116,6 @@ test('legacy approved-model changes expose exact nonblank AAGUID values', () => 
   for (const aaguid of PASSKEY_TARGET_AAGUIDS) assert.match(fact.value, new RegExp(aaguid, 'i'))
 })
 
-test('include-target changes are set in the step, never "None"', () => {
-  const task = projectLegacyChange(current => { current.includeTargets = [] }).tasks.find(row => row.id === 'make-passkey-registration-available')!
-  assert.equal(task.facts, undefined)
-  assert.ok(task.steps.includes('Under **Include**, add the users or groups who register passkeys, including the emergency accounts.'), task.steps.join('\n'))
-  assert.doesNotMatch(task.steps.join('\n'), /target \*\*None\*\*|use the resolved target list/i)
-})
-
 test('the same approved models in a different order produce no Approved models row', () => {
   assert.notDeepEqual(GRAPH_ORDER, [...PASSKEY_TARGET_AAGUIDS])
   assert.deepEqual(protectionFacts(allow(GRAPH_ORDER)).map(row => row.label), ['Authenticator · Enforce attestation'])

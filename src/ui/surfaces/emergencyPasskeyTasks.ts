@@ -1,5 +1,5 @@
 import { affectedPasskeysByProposedChange, REGISTERED_METHODS_UNREAD } from '../../roadmap/passkeyCompatibility.ts'
-import { assignedPasskeyProfiles, passkeyReadingOf, requiredModels, samePasskeyValue } from '../../roadmap/passkeySettings.ts'
+import { PASSKEY_TARGET, assignedPasskeyProfiles, passkeyReadingOf, requiredModels, samePasskeyValue } from '../../roadmap/passkeySettings.ts'
 import { approvedPasskeyModels } from '../../roadmap/emergencyJourney.ts'
 import type { EmergencyAccountTask, EmergencyTaskProjection, EmergencyAccountTaskVariant } from './emergencyAccountTasks.ts'
 import { emergencyRegistrationVariants, yubiKeySteps } from './emergencyAccountTasks.ts'
@@ -156,7 +156,6 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
   const profiles = current ? assignedPasskeyProfiles(current) : null
   const profileNames = profiles?.profiles.map(profile => clean(profile.name || profile.id)) ?? []
   const subject = profileNames.length === 1 ? profileNames[0] : profileNames.length > 1 ? 'Applicable passkey profiles' : 'Passkey (FIDO2) policy'
-  const profileInstruction = profileNames.length === 1 ? `Open **${profileNames[0]}**.` : profileNames.length > 1 ? `Open each applicable profile: ${profileNames.map(name => `**${name}**`).join(', ')}.` : 'Open **Configure**.'
   const resolution = reading.resolution?.kind === 'target' ? reading.resolution : null
   const intendedModels = approvedPasskeyModels(ctx.snapshot, ctx.mapping)
   const modelNames = new Map(intendedModels.map(model => [model.aaguid.toLowerCase(), model.name]))
@@ -197,23 +196,31 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
   // not (owner, 2026-09-23): they read "Review … No save is required." once the
   // settings matched. The values are the resolved target's. Where the scan
   // resolves none (the settings unread, or a policy the step holds for review)
-  // registration takes the plan's own values and keeps the tenant's targets,
-  // and the protections name no value the step has not resolved.
-  const include = resolution?.target.includeTargets
+  // they are the plan's own: the pinned settings, the tenant's included targets
+  // or All users, and each allow list keeping the models it already allows and
+  // adding the approved ones. The protections had named no value at all there.
+  const restrictionsOf = (raw: unknown): unknown => raw && typeof raw === 'object' ? (raw as Record<string, unknown>).keyRestrictions : undefined
+  const planKeys = (raw: unknown): Record<string, unknown> => {
+    const kr = restrictionsOf(raw) as Record<string, unknown> | undefined
+    const kept = kr?.isEnforced === true && kr.enforcementType === 'allow' ? lowerIds(kr.aaGuids) : []
+    return { isEnforced: true, enforcementType: 'allow', aaGuids: [...kept, ...required.filter(id => !kept.includes(id))] }
+  }
+  const include = [resolution?.target.includeTargets, current?.includeTargets, PASSKEY_TARGET.includeTargets].map(displayTargets).find(words => words !== '' && words !== 'None')
   const registrationSteps = [
     `Set **Enable** to **${resolution?.target.state === 'disabled' ? 'Off' : 'On'}**.`,
-    Array.isArray(include) && include.length ? `Under **Include**, target **${displayTargets(include)}**.` : 'Under **Include**, add the users or groups who register passkeys, including the emergency accounts.',
+    `Under **Include**, target **${include}**.`,
     `Set **Allow self-service set up** to **${resolution?.target.isSelfServiceRegistrationAllowed === false ? 'No' : 'Yes'}**.`,
   ]
-  const target = resolution?.target as Record<string, any> | undefined
-  const targetProfiles = new Map((Array.isArray(target?.passkeyProfiles) ? target.passkeyProfiles as unknown[] : []).flatMap(raw => raw && typeof raw === 'object' && !Array.isArray(raw) && typeof (raw as Record<string, unknown>).id === 'string' ? [[String((raw as Record<string, unknown>).id).toLowerCase(), raw] as const] : []))
   const assignedProfiles = profiles?.profiles ?? []
+  const target = (resolution?.target ?? { ...PASSKEY_TARGET, keyRestrictions: planKeys(current) }) as Record<string, any>
+  const targetProfiles = resolution
+    ? new Map((Array.isArray(target.passkeyProfiles) ? target.passkeyProfiles as unknown[] : []).flatMap(raw => raw && typeof raw === 'object' && !Array.isArray(raw) && typeof (raw as Record<string, unknown>).id === 'string' ? [[String((raw as Record<string, unknown>).id).toLowerCase(), raw] as const] : []))
+    : new Map(assignedProfiles.map(profile => [profile.id.toLowerCase(), { ...profile, passkeyTypes: 'deviceBound', attestationEnforcement: 'registrationOnly', keyRestrictions: planKeys(profile) }] as const))
   // The allow list is stated unless it is withheld (roadmap/passkeyRestrictions.ts),
   // and always where the tenant already has it as planned.
-  const restrictionsOf = (raw: unknown): unknown => raw && typeof raw === 'object' ? (raw as Record<string, unknown>).keyRestrictions : undefined
   const restricts = (from: unknown, to: unknown): boolean => !withheld || samePasskeyValue(restrictionsOf(from), restrictionsOf(to))
-  const protectionSteps = !target ? [profileInstruction]
-    : assignedProfiles.length && targetProfiles.size ? assignedProfiles.flatMap(profile => {
+  const protectionSteps = assignedProfiles.length && targetProfiles.size
+    ? assignedProfiles.flatMap(profile => {
         const from = currentProfiles.get(profile.id)
         const to = targetProfiles.get(profile.id.toLowerCase())
         return [`Open **${clean(profile.name || profile.id)}**.`, ...profileSteps(from, to, required, modelNames, restricts(from, to))]

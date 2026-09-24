@@ -17,6 +17,7 @@ import { cleanupRowWho, rowWho } from './rowWho.ts'
 import { readGroup } from '../../graph/collect/onDemand.ts'
 import { campaignIds } from '../../derive/population.ts'
 import { count } from '../../copy/statements.ts'
+import { PASSKEY_TARGET_AAGUIDS, passkeyReadingOf } from '../../roadmap/passkeySettings.ts'
 
 const GROUP = 's-prereq-exclusion-group'
 const PASSKEY = 's-prereq-passkey-settings'
@@ -112,6 +113,23 @@ test('1.3 #11 with the settings matching, every task is the procedure with its v
   const protection = task('apply-passkey-settings').steps.join('\n')
   assert.match(protection, /Set \*\*Enforce attestation\*\* to \*\*Yes\*\*\./)
   assert.match(protection, /Add AAGUID/)
+})
+
+test('1.3 #11 where the scan resolves no target, the tasks state the plan\'s own values', () => {
+  const blocklist = copy('demo-week2')
+  const fido = (blocklist.snapshot.config.authMethodsPolicy.rows[0] as { authenticationMethodConfigurations: Record<string, unknown>[] }).authenticationMethodConfigurations.find((c) => c.id === 'Fido2')!
+  fido.keyRestrictions = { isEnforced: true, enforcementType: 'block', aaGuids: ['00000000-0000-4000-8000-000000000001'] }
+  const unread = copy('demo-week2')
+  unread.snapshot.config.authMethodsPolicy = { ...unread.snapshot.config.authMethodsPolicy, status: 'error', rows: [] }
+  for (const [label, value, state] of [['a block list', blocklist, 'review'], ['the policy unread', unread, 'unread']] as const) {
+    assert.equal(passkeyReadingOf(value.snapshot, value.mapping).state, state, `${label}: the premise`)
+    const { task } = opened(value, PASSKEY)
+    const registration = task('make-passkey-registration-available').steps
+    assert.ok(registration.includes('Under **Include**, target **All users**.'), `${label}:\n${registration.join('\n')}`)
+    const protection = task('apply-passkey-settings').steps
+    for (const line of ['Set **Enforce attestation** to **Yes**.', 'Set **Enforce key restrictions** to **Yes**.', 'Set **Restrict specific keys** to **Allow**.']) assert.ok(protection.includes(line), `${label}: ${line}\n${protection.join('\n')}`)
+    for (const aaguid of PASSKEY_TARGET_AAGUIDS) assert.ok(protection.some((l) => l.includes(`**${aaguid}**`)), `${label}: ${aaguid}`)
+  }
 })
 
 test('1.3 #12 the Methodology block is gone', async () => {
