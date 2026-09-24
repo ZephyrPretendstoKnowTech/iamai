@@ -242,6 +242,12 @@ const SUBJECT_RE = new RegExp(`(?<![\\d,.])\\b1 (?:of them|(?:[A-Za-z-]+ )?(?:${
 // section could not be read", "1 person needs to register". The count's verb is
 // the modal, which does not bend (Phase 2 audit: "could not be reads").
 const GOVERNED_RE = /\b(?:be|been|being|can|cannot|could|will|would|may|might|must|shall|should|not|to)\s+$/i
+// A word after a preposition is its object, a noun ("in use", "on hold", "at
+// work"), never the count's verb, and never bends: "1 of 300 licences in use"
+// read "in uses". Be, have and do are never an object: after a stranded
+// preposition ("the 1 person it is waiting on is") they are still the verb.
+const PREPOSITION_RE = /\b(?:in|of|for|on|at|by|with|from|into|per|without)\s+$/i
+const NEVER_OBJECT = new Set(['are', 'were', 'have', 'do', "aren't", 'aren’t'])
 
 function pluralise(text: string): string {
   // The noun a count governs is the word after it, or the word after one
@@ -265,6 +271,7 @@ function pluralise(text: string): string {
     let governed = false
     const conjugated = rest.replace(VERB_RE, (v, _w, offset: number) => {
       const before = rest.slice(0, offset)
+      if (PREPOSITION_RE.test(before) && !NEVER_OBJECT.has(v)) return v
       // Only a verb directly after the subject, or joined to the first by "and".
       const joined = / and $/.test(before)
       if (first || joined) {
