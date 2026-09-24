@@ -95,11 +95,17 @@ test('1.2 #9 the deleted lines are gone, and adding the accounts stands whole in
 })
 
 test('1.2 #10 the empty group card reads No group selected and says once where to create one', () => {
-  const { cards } = opened(noExclusionsAnswer(copy('small')), GROUP)
+  const { cards, step, body } = opened(noExclusionsAnswer(copy('small')), GROUP)
   const card = cards.find((c) => c.key === 'configuration:group-choice')!
   assert.equal(card.title, 'No group selected')
   assert.equal(card.instruction, 'To create one, follow Create an emergency exclusions group in Implementation Tasks.')
   assert.doesNotMatch(JSON.stringify(cards), /Choose an exclusions group|Select a group under Exclusions group/)
+  // The findings are what AI Info, the prompt pack and the calendar carry: with
+  // no group there is no membership or policy exclusion to report on.
+  assert.deepEqual((step.configurationFindings ?? []).map((f) => f.key), ['group-choice'])
+  const ai = body.artifacts.find((a) => a.id === 'ai')!.text()
+  assert.match(ai, /No group selected/)
+  assert.doesNotMatch(ai, /could not read the selected group|could not verify the applicable policy exclusions|Not verified/)
 })
 
 // ---- 1.3 Configure Passkey Authentication ----
