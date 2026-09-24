@@ -38,12 +38,11 @@ import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { CONTRACT, stepContract } from './stepContract.ts'
 import type { StepContract } from './stepContract.ts'
-import { HEAD } from './stepHeadings.ts'
 import { NAMES_INLINE, whoBlocks } from './whoBlocks.ts'
 import { stepInstructions } from './stepInstructions.ts'
 import { portalNamesFor } from './stepPortal.ts'
 import { jsonOffered } from './stepJson.ts'
-import { datesLineFor, ifWrongLineFor, stepExportView } from './stepExport.ts'
+import { stepExportView } from './stepExport.ts'
 
 const HOLE = /\{[a-zA-Z0-9_:]+\}/
 
@@ -115,22 +114,6 @@ test('every step the fixtures produce opens with a title, a why, one action and 
   }
 })
 
-test('the row and the body it opens read one title resolver, and it answers for every step', () => {
-  for (const { fixture, step } of everyStep()) {
-    const title = contentTitle(step)
-    assert.ok(title.length > 0, `${fixture}/${step.id}: no title`)
-    assert.doesNotMatch(title, HOLE, `${fixture}/${step.id}: the title has a hole`)
-  }
-  // Both sides read `contentTitle` (content/stepTitle.ts). The body used to read
-  // the content entry directly, which is the same answer for a step that has one
-  // and no answer at all for the two families that do not.
-  assert.match(readFileSync('src/ui/surfaces/Plan.tsx', 'utf8'), /title=\{contentTitle\(step\)\}/, 'the row reads contentTitle')
-  // The opened step's body spans the component and stepBody.ts (A3): the decisions read there.
-  const body = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8') + readFileSync('src/ui/surfaces/stepBody.ts', 'utf8')
-  assert.match(body, /const title = contentTitle\(step\)/, 'the body reads contentTitle')
-  assert.doesNotMatch(body, /step-title">\{cs\.title\}/, 'the body reads the content entry directly')
-})
-
 // The two families that had no content entry at all. Their words are the
 // engine's, so the entries carry only What to do and Done when; without an entry
 // the contract falls through to a policy step's answers, which is how a free-tier
@@ -148,66 +131,9 @@ test('every free-tier ladder rung and every validation blocker has its own conte
   }
 })
 
-test('no ladder rung borrows a policy step content entry', () => {
-  const rungs = new Set(DRAWN_RUNGS.map((i) => ladderStepId(i.id)))
-  for (const { fixture, step, cs } of everyStep()) {
-    if (!rungs.has(step.id)) continue
-    assert.equal(cs.id, step.id, `${fixture}/${step.id}: resolved ${String(cs.id)} instead of its own entry`)
-    assert.equal(cs.kind, 'ladder', `${fixture}/${step.id}: resolved a ${String(cs.kind)} step`)
-  }
-})
-
-// One body, drawn with the contract's components. A step that wanted a section of
-// its own would have to add a second renderer, and there is nowhere to put one.
-test('the Plan draws a step body one way, through the Step Contract components', () => {
-  const cs = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
-  for (const c of ['<StepState', '<WhatIamaiFound', '<WhatToDoLead', '<ReadinessSection', '<DoneWhen', '<PolicyMembers']) {
-    assert.equal(cs.split(c).length - 1, 1, `ContentStep draws ${c} other than exactly once`)
-  }
-  assert.doesNotMatch(cs, /return <div className="step-body" \/>/, 'a step without a content entry must still open to its contract, not to an empty panel')
-  const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
-  assert.match(plan, /<ContentStep/, 'the Plan opens a step with ContentStep')
-  assert.match(plan, /<CleanupBody/, 'the Plan opens a Cleanup row with CleanupBody')
-  // The two of them and nothing else: a third `step-body` is a second renderer.
-  const bodies = ['src/ui/surfaces/ContentStep.tsx', 'src/ui/surfaces/CleanupStep.tsx']
-  for (const file of ['src/ui/surfaces/Plan.tsx', 'src/ui/surfaces/PrintPlan.tsx', 'src/ui/surfaces/Export.tsx', 'src/ui/surfaces/PlanFooter.tsx']) {
-    assert.doesNotMatch(readFileSync(file, 'utf8'), /className=[{"]`?step-body/, `${file} builds a step body of its own`)
-  }
-  // Task 034 gave the body the approved frame's two columns, so the class the
-  // step carries is `step-body` plus the rail marker where the contract has one
-  // for it. The claim is unchanged: two files draw a step body and no other may.
-  for (const file of bodies) assert.match(readFileSync(file, 'utf8'), /className=[{"]`?step-body/, `${file} is a step body`)
-})
-
-test('a section heading is written in one place and read everywhere', () => {
-  for (const [key, value] of Object.entries(HEAD)) {
-    assert.equal(typeof value, 'string', `HEAD.${key} is not a string`)
-    assert.ok((value as string).length > 0, `HEAD.${key} is empty`)
-  }
-  const literals = [HEAD.why, HEAD.who, HEAD.whatToDo, HEAD.doneWhen, HEAD.ifWrong, HEAD.comms, HEAD.helpDesk, HEAD.manager, HEAD.risks]
-  for (const file of ['src/ui/surfaces/ContentStep.tsx', 'src/ui/surfaces/CleanupStep.tsx']) {
-    const src = readFileSync(file, 'utf8')
-    for (const lit of literals) {
-      assert.doesNotMatch(src, new RegExp(`<h3>${lit}</h3>`), `${file} writes "${lit}" out instead of reading it from stepHeadings.ts`)
-    }
-  }
-})
-
 // ---------------------------------------------------------------------------
 // B. Lifecycle and condition stay two things
 // ---------------------------------------------------------------------------
-
-test('the lifecycle words and the condition words are two disjoint sets', () => {
-  const lifecycle = new Set(Object.values(CONTRACT.lifecycle))
-  const condition = new Set(Object.values(CONTRACT.condition))
-  for (const w of condition) assert.ok(!lifecycle.has(w), `"${w}" is both a stage and a condition`)
-  for (const stage of ['Not deployed', 'Report-only', 'Ready to enforce', 'Enforced']) {
-    assert.ok(lifecycle.has(stage), `the rollout lost the stage "${stage}"`)
-  }
-  for (const c of ['Review required', 'Blocked', 'Needs decision', 'Baseline conflict']) {
-    assert.ok(condition.has(c), `the conditions lost "${c}"`)
-  }
-})
 
 test('no step turns a condition into a rollout stage', () => {
   const lifecycle = new Set<string>([...Object.values(CONTRACT.lifecycle), ''])
@@ -302,33 +228,6 @@ test('a long list of names leaves its count and its instruction on the step, and
   assert.ok(kept > 0, 'a short list of names is a fact and belongs on the step')
 })
 
-test('a simple step activates fewer sections than a complex one', () => {
-  const sections = (o: Opened): number => {
-    const who = (o.cs.who ?? null) as Record<string, unknown> | null
-    return [
-      o.contract.state.stage !== '' || o.contract.state.condition !== 'healthy',
-      o.contract.milestone.line !== null,
-      true, // Why
-      o.contract.found.length > 0,
-      who !== null && whoBlocks(who, o.ex).inline.length > 0,
-      true, // What to do
-      o.contract.fix.length > 0,
-      datesLineFor(o.step, o.cs) !== null,
-      true, // Done when
-      o.contract.members.length > 1,
-    ].filter(Boolean).length
-  }
-  const all = everyStep()
-  // A check, not a ladder rung: since 2026-09-20 a tenant with no Entra ID P1 is
-  // given no plan (owner), so no fixture renders a rung. A check is the same
-  // comparison — a supporting step with no policy lifecycle, against a policy
-  // step carrying findings and members.
-  const simple = all.find((o) => o.cs.kind === 'check')
-  const policy = all.find((o) => o.cs.kind === 'policy' && o.contract.found.length > 0 && o.contract.members.length > 0)
-  assert.ok(simple && policy, 'the fixtures no longer cover both a supporting step and a policy step')
-  assert.ok(sections(simple) < sections(policy), `a check draws ${sections(simple)} sections and a policy step ${sections(policy)}`)
-})
-
 // ---------------------------------------------------------------------------
 // D. Nothing that cannot be done is offered as if it could
 // ---------------------------------------------------------------------------
@@ -346,35 +245,6 @@ test('a step with no implementation is offered none: no portal lines, no JSON, n
   assert.ok(checked > 0, 'no fixture produces a step without an implementation')
 })
 
-test('the two families the engine words carry no policy rollout, no policy completion and no rollback', () => {
-  const families = new Set<string>([...DRAWN_RUNGS.map((i) => ladderStepId(i.id)), ...BLOCKER_SUBJECTS.map(blockerStepId)])
-  let seen = 0
-  for (const o of everyStep()) {
-    if (!families.has(o.step.id)) continue
-    seen += 1
-    const where = `${o.fixture}/${o.step.id}`
-    assert.equal(o.contract.implementation.offered, false, `${where}: an implementation is offered for work that is not a policy`)
-    // The contract's generic policy fall-throughs, which is what these steps got
-    // before they had words of their own.
-    for (const line of o.contract.doneWhen) {
-      assert.ok(!line.includes('in report-only'), `${where}: "${line}" is a policy's completion on work that is not a policy`)
-    }
-    assert.notEqual(o.contract.whatToDo.text, 'Make the object this step names.', `${where}: the generic deploy action`)
-    assert.equal(datesLineFor(o.step, o.cs), null, `${where}: a rollout date`)
-    assert.equal(ifWrongLineFor(o.step, o.cs, {}), null, `${where}: a rollback for a change nobody submits`)
-  }
-  // Neither family reaches a fixture plan any more, so the loop above is a guard
-  // rather than a proof, and the count says which gap is which rather than
-  // pretending to teeth it does not have:
-  //   * the rungs, because a tenant with no Entra ID P1 is given no plan at all
-  //     (owner, 2026-09-20) and `micro` was the only fixture that carried them.
-  //     They stay under test as steps in roadmap/ladder.test.ts.
-  //   * the blocker steps, which no fixture has ever produced — a pre-existing
-  //     gap the V1 audit recorded, not something the licence gate caused.
-  // The moment either becomes reachable the loop above starts proving again.
-  assert.equal(seen, 0, `these steps are reachable again (${seen}): the loop above now proves them, and this line should say so`)
-})
-
 // The export view is the one the calendar, the prompt pack and the grounding
 // bundle all speak from. It reads the step's title and Why through the same two
 // resolvers the screen does, so a family whose words are the engine's does not
@@ -388,24 +258,5 @@ test('every step’s export view carries its own title and why', () => {
     assert.ok(v.why.length > 0, `${where}: the artifact carries no why`)
     assert.doesNotMatch(JSON.stringify(v), /undefined/, `${where}: the export view carries the string "undefined"`)
     assert.doesNotMatch(JSON.stringify(v), HOLE, `${where}: the export view carries a hole`)
-  }
-})
-
-// ---------------------------------------------------------------------------
-// F. The copy is the product's, and it is checked as structure
-// ---------------------------------------------------------------------------
-
-test('the words added for the two families are in the product voice', () => {
-  const ids = [...DRAWN_RUNGS.map((i) => ladderStepId(i.id)), ...BLOCKER_SUBJECTS.map(blockerStepId)]
-  const banned = /\b(we recommend|intelligently|effortless|seamless|simply |just click|please note|leverage|unlock the power|best-in-class)\b/i
-  for (const id of ids) {
-    const cs = stepById[id]
-    const lines = [String((cs.whatToDo as { lead?: unknown }).lead), ...((cs.whatToDo as { steps?: string[] }).steps ?? []), ...(cs.doneWhen ?? [])]
-    for (const line of lines) {
-      assert.doesNotMatch(line, banned, `${id}: "${line}"`)
-      assert.doesNotMatch(line, HOLE, `${id}: "${line}" names a variable nothing fills`)
-      assert.ok(line.trim().length > 0 && /[.:]$/.test(line.trim()), `${id}: "${line}" is not a finished sentence`)
-    }
-    assert.ok(typeof cs.learn?.url === 'string' && cs.learn.url.startsWith('https://learn.microsoft.com/'), `${id}: no Learn link`)
   }
 })

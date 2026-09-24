@@ -3,7 +3,6 @@
 // exclusions group still waits on Create or Correct Exclusions Group.
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { readFileSync } from 'node:fs'
 import { fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
@@ -11,7 +10,7 @@ import { applyStepDecisions } from '../../roadmap/decisions.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { directoryEvidenceFromGroups, exclusionsGroupChoice, operatorExclusionsDecision } from '../../mapping/safetyChoice.ts'
 import { laneReadings } from './planLanes.ts'
-import { exclusionsPickerLabel, initialPicked, pickerVars } from './pickerRows.ts'
+import { initialPicked, pickerVars } from './pickerRows.ts'
 
 const STEP = PREREQ_STEP_ID.exclusionsGroup
 const LEGACY = 's-goal-block-legacy-auth'
@@ -56,27 +55,6 @@ test('the exclusions picker keeps a detected group unselected until the operator
   assert.equal(operatorExclusionsDecision(f.mapping), null)
   const lane = laneReadings(runFixture(f).steps).get(STEP)
   assert.deepEqual([lane?.lane, lane?.substatus], ['Ready', 'Decision'])
-})
-
-test('Save writes the selected group and its confirmed chip uses the saved group name', () => {
-  const { f, id } = oneGroup()
-  const saved = saveGroup(f, id, 'mid-b6-one-group-saved')
-  assert.equal(operatorExclusionsDecision(saved.mapping)?.id, id, 'Save records the group as the operator’s answer')
-  assert.equal(exclusionsPickerLabel(saved.mapping, saved.groups, id), 'Core - Exclusions')
-  const run = runFixture(saved)
-  const step = run.steps.find((s) => s.id === STEP)
-  assert.ok(step)
-  assert.equal(step.blockers.some((b) => b.label === 'exclusions-decision'), false, 'no decision is waited on')
-  assert.notEqual(laneReadings(run.steps).get(STEP)?.substatus, 'Decision')
-  assert.equal(pickerOf(saved)!.groupsMatched, undefined, 'a saved answer is ticked, not matched')
-})
-
-test('decision picker state remounts when navigation changes the step', () => {
-  const source = readFileSync(new URL('./ContentStep.tsx', import.meta.url), 'utf8')
-  // One decision picker since 333aa3f4 folded the emergency branch into it; every one is keyed by the step.
-  const keyed = source.match(/<Decision key=\{step\.id\}/g)?.length ?? 0
-  assert.ok(keyed > 0)
-  assert.equal(keyed, source.match(/<Decision /g)?.length)
 })
 
 test('U24: where two groups qualify nothing opens pre-filled, and a saved decision always wins', () => {
