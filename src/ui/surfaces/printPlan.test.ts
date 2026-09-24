@@ -171,11 +171,13 @@ test('no at-pace finish is stated from a rollout that placed none of the held wo
 // ---- Completed is the board's lane, on the cover and in the section ----
 
 test('Completed on paper is the board\'s Completed lane, and a delivered step the board still has work for prints in full', () => {
-  // Midflight: Block Legacy Authentication is enforced (status done) but its
+  // Small: Block Legacy Authentication is enforced (status done) but its
   // mail-sending answer in Confirm What You Use was never saved, so the board
   // holds it On Hold on that answer (walk list 4.x item 6). The print filed it
   // under Completed and printed its body, where the open question is stated, nowhere.
-  const p = plan('midflight')
+  // (Small's records show legacy sign-ins: where they show nobody, the answer
+  // changes nothing and nothing waits on it, net-new 26.)
+  const p = plan('small')
   const legacy = byId(p.steps, 's-goal-block-legacy-auth')
   assert.equal(legacy.status, 'done', 'the premise: the policy is delivered')
   assert.equal(p.board.laneOf(legacy.id).lane, 'On Hold', 'the premise: the board still holds it on its answer')
@@ -617,10 +619,11 @@ test('every printed row carries the number its board row shows, and every board 
 })
 
 test('a finished row prints as its line, and work still to do prints in full, in its section', () => {
-  // Midflight: Block Legacy Authentication is enforced (status done) but its
-  // mail-sending answer was never saved, so the board holds it On Hold on that
-  // answer (walk list 4.x item 6): it prints in full, where the wait is stated.
-  const p = plan('midflight')
+  // Small: Block Legacy Authentication is enforced (status done) but its
+  // mail-sending answer was never saved, and its records show legacy sign-ins,
+  // so the board holds it On Hold on that answer (walk list 4.x item 6;
+  // net-new 26): it prints in full, where the wait is stated.
+  const p = plan('small')
   const rows = printSectionsOf(p.board).flatMap((s) => s.rows)
   const legacy = rows.find((r) => r.id === 's-goal-block-legacy-auth')
   assert.ok(legacy && legacy.step?.status === 'done', 'the premise: the policy is delivered')

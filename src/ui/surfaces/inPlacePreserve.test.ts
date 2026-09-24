@@ -681,7 +681,8 @@ test('In place says so about the POLICY, and a threshold never shown met is said
   // A fact under Satisfied (walk list 4.x item 2): the count, and nothing open.
   // The people MFA Readiness counts (walk list 4.x L4), not every enabled account.
   assert.equal(shortReading.tone, 'good')
-  assert.equal(shortReading.value, '3,031 of 4,169 people have a method it accepts')
+  // Counted against the one policy that delivers the goal, not the admins' phishing-resistant one beside it (net-new 25).
+  assert.equal(shortReading.value, '3,064 of 4,169 people have a method it accepts')
 
   // Never where the threshold is met, and never on a step that is not finished.
   for (const f of allFixtures()) {
