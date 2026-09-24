@@ -628,7 +628,7 @@ test("R4-22: a step the board holds behind the drill is exported in the board's 
     const board = boardReadingsOf(run.steps, run.schedule.cleanup, answers)
     assert.equal(step.status, 'ready-to-enforce', 'the premise: the policy is ready to enforce on its own evidence')
     assert.equal(board.readings.get(step.id)?.reason?.id, 'cleanup-drill', 'the premise: the board holds it behind the drill')
-    assert.equal(laneViewOf(laneReadings(run.steps).get(step.id)!, board.titleOf).label, 'Ready · Ready to enforce', 'the premise: without the Cleanup rows it reads Ready to enforce')
+    assert.equal(laneViewOf(laneReadings(run.steps).get(step.id)!, board.titleOf).label, 'Ready · Turn on', 'the premise: without the Cleanup rows it reads Ready · Turn on')
     const nameOf = (id: string): string => run.input.names?.label(id) ?? id
     const ctx = (s: Step): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: run.schedule.reportOnlyAt[s.id] ?? null, groups: f.groups }) as StepVarContext
     // The Export page's own construction, as Export.tsx calls it.
@@ -639,7 +639,7 @@ test("R4-22: a step the board holds behind the drill is exported in the board's 
     // the prompt pack's step block) states the board's lane, never Ready to enforce.
     const runbook = stepArtifactLines(view(step))
     assert.ok(runbook.includes('Up Next'), 'the runbook does not state the board\'s lane')
-    assert.equal(runbook.join('\n').includes('Ready to enforce'), false, 'the runbook calls a policy the board holds behind the drill Ready to enforce')
+    assert.equal(runbook.join('\n').includes('Ready · Turn on'), false, 'the runbook calls a policy the board holds behind the drill Ready · Turn on')
     // Its day is the turn-on, which the drill holds (owner decision 6), so the
     // board reads "After prerequisites" and the calendar books nothing for it
     // (owner decision 2, R4-55): the entry it used to get was dated on the turn-on.

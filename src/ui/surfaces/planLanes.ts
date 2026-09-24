@@ -223,7 +223,7 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
     // The window closed over records that were read: what they show can be reviewed now,
     // though it has not cleared the gate (time alone never does).
     const reviewable = ready !== null && ready.kind === 'since' && ready.read && ready.failures !== null
-    gates.push({ id: 'evidence:observation', satisfied: lifecycle === 'ready-to-enforce' || lifecycle === 'enforced', minDays: observationWindowDays(step), reason: ready ? readyBasis(ready) : null, ...(reviewable ? { reviewable } : {}) })
+    gates.push({ id: 'evidence:observation', satisfied: lifecycle === 'ready-to-enforce' || lifecycle === 'enforced', minDays: observationWindowDays(step), reason: ready ? readyBasis(ready) : null, ...(reviewable ? { reviewable } : {}), ...(ready ? { until: ready.date } : {}) })
   }
   // A policy the plan cannot write as it stands (the legacy `unavailable` hold). A missing
   // object is Action.missing below, the baseline conflict is the condition above, an unmet
@@ -370,8 +370,9 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
     for (const r of list) {
       if (!known.has(r.id)) continue
       const blockers = r.result.blockers.map(hold).filter((b): b is HoldBlocker => b !== null)
-      // An open evidence gate is the reason a report-only policy waits On Hold, and the board says so.
-      const reason = r.result.reason === null ? null : lane === 'On Hold' ? (r.result.reason as HoldBlocker) : hold(r.result.reason)
+      // An open evidence gate is the reason a report-only policy waits, On Hold or, its
+      // report-only week alone, Up Next (walk list 4.x item 11), and the board says so.
+      const reason = r.result.reason === null ? null : lane === 'On Hold' || lane === 'Up Next' ? (r.result.reason as HoldBlocker) : hold(r.result.reason)
       out.set(r.id, { lane, substatus: r.result.substatus, reason, blockers, gates: r.result.gates, order: counts[lane]++, fromEngine: true })
     }
   }
