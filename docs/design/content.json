@@ -4100,6 +4100,11 @@
           "lead": "Mark {officeToTrust} as a trusted location in Entra.",
           "task": "Mark the office location as trusted"
         },
+        "$commentOfficeUnansweredInEntra": "Held on the office answer while Entra already trusts a location (net-new 20, owner 2026-09-24): the step says the location exists and sends the person to the one answer that uses it. No card of its own and no create procedure (stepBody.ts).",
+        "officeUnansweredInEntra": {
+          "lead": "Entra already trusts {officeUnansweredInEntra}. If that's your office, pick it under Office network in Decide How and Where People Sign In.",
+          "check": null
+        },
         "$commentOfficeUnanswered": "Held on the office answer in Decide How and Where People Sign In (walk list 60): what the step makes follows that answer, so it draws no card of its own (check null) beside the hold card, and its action is the answer.",
         "officeUnanswered": {
           "lead": "Answer Office network in Decide How and Where People Sign In.",
