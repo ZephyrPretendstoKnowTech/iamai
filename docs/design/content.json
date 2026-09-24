@@ -2961,8 +2961,9 @@
                 "yes": "Yes",
                 "no": "No"
               },
-              "seen": "{n} service-provider accounts signed in to this tenant.",
-              "notSeen": "No service-provider sign-ins in the last 30 days."
+              "seen": "{n} partner or MSP accounts signed in to your tenant in the last 30 days.",
+              "notSeen": "No partner or MSP sign-ins in the last 30 days.",
+              "consequence": "Answering Yes keeps partner and MSP technicians out of Require MFA for Guests and Block Sign-ins From Countries Not Allowed."
             },
             "accountOptions": {
               "none": "None",

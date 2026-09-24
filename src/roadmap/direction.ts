@@ -138,10 +138,13 @@ function useQuestions(ctx: Context, services: { keys: string[]; signal: (key: st
     note: Q.mailDevices.consequence,
   }))
   const partners = snapshot.scenarioEvidence?.serviceProviderSignIns ?? null
+  // Accounts, never sign-ins: records that name no account say nothing either way.
+  const partnerSeen = partners === null || !signInsRead(snapshot) ? '' : partners.people.length > 0 ? fillText(Q.partner.seen, { n: partners.people.length }) : partners.count === 0 ? Q.partner.notSeen : ''
   out.push(question('partner', ctx, {
     label: Q.partner.label, control: 'choice', options: optionsOf(Q.partner.options),
     suggested: answer(partners !== null && partners.count > 0 ? 'yes' : 'no'),
-    evidence: partners === null || !signInsRead(snapshot) ? W.defaultEvidence : partners.count > 0 ? fillText(Q.partner.seen, { n: partners.people.length || partners.count }) : Q.partner.notSeen,
+    evidence: partnerSeen,
+    note: Q.partner.consequence,
   }))
   return out
 }
