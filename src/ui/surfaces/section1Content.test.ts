@@ -13,7 +13,10 @@ import { consolidateEmergencyReadiness, emergencySubjectsOf, recoverySubjectsOf 
 import { passkeyReadiness } from './passkeyPresentation.ts'
 import { emergencyVerificationArtifacts, emergencyVerificationTasksOf } from './emergencyVerificationTasks.ts'
 import { cleanupEntry, cleanupSourceLine } from './cleanupExport.ts'
+import { cleanupRowWho, rowWho } from './rowWho.ts'
 import { readGroup } from '../../graph/collect/onDemand.ts'
+import { campaignIds } from '../../derive/population.ts'
+import { count } from '../../copy/statements.ts'
 
 const GROUP = 's-prereq-exclusion-group'
 const PASSKEY = 's-prereq-passkey-settings'
@@ -142,4 +145,22 @@ test('1.4 #19 Verify emergency sign-in keeps no session reminder and no optional
 test('1.4 #20 Verify Emergency Access hands over Entra and AI Info only', () => {
   const { phase } = drillOf(copy('demo'))
   assert.deepEqual(emergencyVerificationArtifacts(phase).map((a) => a.id), ['portal', 'ai'])
+})
+
+// ---- #4 Impact: each row counts what it changes ----
+
+test('#4 Impact counts what each step changes: policies to exclude the group from, people who can register, the accounts to sign in with', () => {
+  for (const name of ['small', 'demo-week2'] as const) {
+    const value = copy(name)
+    const run = runFixture(value)
+    // 1.2: every policy On or in Report-only excludes the group (validation/exclusionsGroupPolicies.ts).
+    const policies = (value.snapshot.config.caPolicies.rows as { state?: string }[]).filter((p) => p.state !== 'disabled').length
+    assert.equal(rowWho(run.steps.find((s) => s.id === GROUP)!), count(policies, 'policy', 'policies'), `${name}: 1.2`)
+    // 1.3: the target is all users, so everyone registers: the plan's active people, guests registering at home.
+    const people = campaignIds(run.viability, value.snapshot, value.mapping).filter((id) => value.snapshot.users.find((u) => u.id === id)?.userType !== 'guest').length
+    assert.equal(rowWho(run.steps.find((s) => s.id === PASSKEY)!), count(people, 'person', 'people'), `${name}: 1.3`)
+    // 1.4: the emergency access accounts, as 1.1 counts them, never people.
+    const { phase, row } = drillOf(value)
+    assert.equal(cleanupRowWho(phase, row), '2 accounts', `${name}: 1.4`)
+  }
 })
