@@ -67,6 +67,8 @@ export type ScenarioEvidence = {
   azureSignIns?: Derived
   /** How many accounts signed in to each service's apps (coverage/facetApps.ts), by facet: Confirm What You Use's evidence. Absent on snapshots from before it. */
   serviceSignIns?: Record<string, number>
+  /** The accounts behind serviceSignIns, by facet, so Confirm What You Use counts only the plan's people. Absent on snapshots from before it. */
+  serviceSignInIds?: Record<string, string[]>
 }
 
 type App = { appId: string; displayName: string; role?: string }
@@ -323,6 +325,12 @@ export function azureSignIns(rows: Iterable<StoredSignIn>): Derived {
  * or its name. Counts only; the ids stay in the worker.
  */
 export function serviceSignInsFold(): RowFold<Record<string, number>> {
+  const ids = serviceSignInIdsFold()
+  return { add: (row) => ids.add(row), finish: () => Object.fromEntries(Object.entries(ids.finish()).map(([facet, list]) => [facet, list.length])) }
+}
+
+/** The accounts that signed in to each service, by facet (see serviceSignInsFold). */
+export function serviceSignInIdsFold(): RowFold<Record<string, string[]>> {
   const specs = Object.entries(FACET_APPS).map(([facet, spec]) => ({ facet, ids: new Set(spec.ids.map((id) => id.toLowerCase())), name: spec.namePattern }))
   const people = new Map<string, Set<string>>()
   return {
@@ -336,7 +344,7 @@ export function serviceSignInsFold(): RowFold<Record<string, number>> {
         set.add(row.userId)
       }
     },
-    finish: () => Object.fromEntries(specs.map((s) => [s.facet, people.get(s.facet)?.size ?? 0])),
+    finish: () => Object.fromEntries(specs.map((s) => [s.facet, [...(people.get(s.facet) ?? [])]])),
   }
 }
 
@@ -429,6 +437,7 @@ export function scenarioFold(compliantOwners: ReadonlySet<string> | null = null)
     officeSignIns: officeSignInsFold(),
     azureSignIns: azureSignInsFold(),
     serviceSignIns: serviceSignInsFold(),
+    serviceSignInIds: serviceSignInIdsFold(),
   }
   const all: RowFold<unknown>[] = Object.values(folds)
   return {
@@ -465,5 +474,6 @@ export function emptyScenarioEvidence(): ScenarioEvidence {
     officeSignIns: { ...empty(), byPerson: {} },
     azureSignIns: empty(),
     serviceSignIns: {},
+    serviceSignInIds: {},
   }
 }

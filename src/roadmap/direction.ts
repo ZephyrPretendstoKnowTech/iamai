@@ -352,7 +352,7 @@ export type DirectionInput = {
 /** The three Direction steps, built from the snapshot and the saved answers. */
 export function directionSteps(input: DirectionInput): Step[] {
   const ctx = { snapshot: input.snapshot, mapping: input.mapping }
-  const services = serviceReading(input.snapshot, input.notAssessed, input.availableGoalIds)
+  const services = serviceReading(input.snapshot, input.notAssessed, input.availableGoalIds, new Set(personAccounts(input.snapshot, notPeopleIds(input.mapping)).map((u) => u.id)))
   // A caller that passes no namer gets the one rule for naming a person (names.ts personLabels).
   const nameOf = input.nameOf ?? ((labels) => (id: string) => labels.get(id) ?? id)(personLabels(input.snapshot.users))
   const at = (id: DirectionStepId): string | null => input.approvedAt?.[id] ?? (id === DIRECTION_STEP.use ? input.mapping.workflowConfirmedAt ?? null : null)
