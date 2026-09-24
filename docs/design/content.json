@@ -2903,7 +2903,6 @@
           "waiting": "Waiting on your answers",
           "waitingNote": "Answer it in {step}.",
           "answeredIn": "Answered in {step}",
-          "notAnswered": "Not answered yet: the suggestion is {answer}.",
           "$commentDoesntApplyAnswered": "The reason on every Doesn't apply here row a Direction answer put there (walk list item 17, roadmap/directionAnswers.ts answeredReasonOf): the option as its card shows it, the card's label, and the Direction step that asks it. It replaced the hard-coded reasons each producer wrote for itself.",
           "doesntApplyAnswered": "You answered {option} to “{question}” in {step}.",
           "suggested": "Suggested",

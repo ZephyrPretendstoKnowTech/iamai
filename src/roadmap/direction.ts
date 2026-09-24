@@ -356,9 +356,9 @@ export function answerTextOf(q: Pick<DirectionQuestion, 'options' | 'pickedWith'
 }
 
 /**
- * The steps whose question moved to Direction, and which questions: each one
- * shows "Answered in <Direction step>" with the answer and a link, where it used
- * to ask (docs/plans/direction-spec.md, Retire or fold).
+ * The steps whose question moved to Direction, and which questions (docs/plans/
+ * direction-spec.md, Retire or fold). Such a step no longer asks it, and shows
+ * no Answered in block where it used to (walk list item 19).
  */
 export const ANSWERED_IN: Readonly<Record<string, readonly DirectionQuestionKey[]>> = {
   [PREREQ_STEP_ID.trustedLocation]: ['officeNetwork'],
@@ -394,27 +394,6 @@ export function directionWaitRelayed(step: Pick<Step, 'goalId' | 'baselineReview
   if (carried.size === 0) return false
   const mine = (step ? directionDependenciesOf(step) : []).filter((k) => directionStepOf(k) === direction)
   return mine.length > 0 ? mine.every((k) => carried.has(k)) : [...carried].some((k) => directionStepOf(k) === direction)
-}
-
-export type AnsweredIn = { step: DirectionStepId; title: string; lines: { key: string; label: string; value: string; saved: boolean }[] }
-
-/**
- * Where a step's moved question is answered now, and what the answer is: the
- * saved answer, or that it is not answered yet and what the suggestion is.
- * Null for a step whose questions never moved.
- */
-export function answeredInOf(stepId: string, ctx: { snapshot: TenantSnapshot; mapping: MappingState; nameOf: (id: string) => string }): AnsweredIn | null {
-  const keys = ANSWERED_IN[stepId]
-  if (!keys) return null
-  const questions = directionSteps({ snapshot: ctx.snapshot, mapping: ctx.mapping, notAssessed: [], availableGoalIds: [], nameOf: ctx.nameOf }).flatMap((s) => s.directionQuestions ?? [])
-  const locations = new Map((ctx.snapshot.config.namedLocations?.rows ?? []).map((raw) => raw as { id?: string; displayName?: string }).filter((l) => typeof l.id === 'string').map((l) => [l.id as string, l.displayName ?? (l.id as string)]))
-  const lines = keys.map((key) => questions.find((q) => q.key === key)).filter((q): q is DirectionQuestion => q !== undefined).map((q) => {
-    const nameOf = q.control === 'locations' ? (id: string) => locations.get(id) ?? id : ctx.nameOf
-    const value = answerTextOf(q, q.saved ?? q.suggested, nameOf)
-    return { key: q.key, label: q.label, value: q.saved ? value : fillText(W.notAnswered, { answer: value }), saved: q.saved !== null }
-  })
-  const step = directionStepOf(keys[0])
-  return { step, title: directionTitleOf(step), lines }
 }
 
 // ---- per-answer gating ----

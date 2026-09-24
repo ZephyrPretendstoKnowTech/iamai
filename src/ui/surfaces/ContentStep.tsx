@@ -59,7 +59,7 @@ import { HARDENING_DEFERRAL_ID } from '../../validation/emergencyTiers.ts'
 import { AuthoredText, DoneWhen, EmergencySlotBody, PolicyMembers, ReadinessSection, StepActionColumn, StepDialog, StepFooter, StepHead, StepSection, StepState, WHY_LINK_SHOWN, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
 import { MfaHandoff } from './MfaHandoff.tsx'
 import { HEAD, decisionHeadingsOf, taskHeadingsOf } from './stepHeadings.ts'
-import { AnsweredInDirection, DirectionQuestions, directionDraftKey } from './DirectionQuestions.tsx'
+import { DirectionQuestions, directionDraftKey } from './DirectionQuestions.tsx'
 import { ANSWERED_IN } from '../../roadmap/direction.ts'
 import { channelTabsOf, stepBodyOf, truthy } from './stepBody.ts'
 import type { Artifact, Channel } from './stepBody.ts'
@@ -505,9 +505,9 @@ export function ContentStep({
             the action: IAMAI cannot choose, so nothing is offered to submit until
             a person has (Foundation C). */}
         <StepActionColumn rail={rail}>
-          {/* A question that moved to Define Your Rollout Scope is answered there; this step says where, and what (roadmap/direction.ts ANSWERED_IN). */}
+          {/* A question that moved to Define Your Rollout Scope is answered there, and this step draws nothing in its place: no Answered in block (walk list item 19; roadmap/direction.ts ANSWERED_IN). */}
           {/* The picker is the step's own, or — on a step that makes an object itself and asks nothing of its own — the object's, saved under the object's id (stepBody.ts taskDecision; Stage 3: the countries location's Work Countries, on the countries step). */}
-          {ANSWERED_IN[step.id] ? <AnsweredInDirection stepId={step.id} ctx={ctx} /> : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && <Decision key={step.id} d={taskDecision?.d ?? d} ex={taskDecision?.ex ?? ex} saved={taskDecision ? objectTask?.saved ?? null : decision} onDecide={taskDecision ? objectTask?.onDecide : onDecide} stepId={taskDecision?.stepId ?? step.id} ctx={ctx} printing={printing} railInstruction={!taskDecision && rail.instruction !== null} />}
+          {ANSWERED_IN[step.id] ? null : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && <Decision key={step.id} d={taskDecision?.d ?? d} ex={taskDecision?.ex ?? ex} saved={taskDecision ? objectTask?.saved ?? null : decision} onDecide={taskDecision ? objectTask?.onDecide : onDecide} stepId={taskDecision?.stepId ?? step.id} ctx={ctx} printing={printing} railInstruction={!taskDecision && rail.instruction !== null} />}
           {step.id === SPECIAL_CARE_STEP_ID && (followUp || printing) && <FollowUpDecision key={`${step.id}:follow-up`} step={step} ctx={ctx} saved={followUp?.saved ?? null} onDecide={followUp?.onDecide} printing={printing} />}
           {/* The one thing a scan cannot see, recorded where every other control
               on a step is (owner, 2026-09-20). It used to stand in the main
