@@ -3878,8 +3878,7 @@
       },
       "who": {
         "lead": "{n} enabled accounts with no successful sign-in for 90 days, or none on record:",
-        "accounts": "{list:accountsWithState}",
-        "licenceNote": "Last sign-in dates need Entra ID P1; without it this scan cannot tell a dormant account from one in daily use, so it lists none and the review is yours."
+        "accounts": "{list:accountsWithState}"
       },
       "decision": null,
       "whatToDo": {
@@ -7324,8 +7323,7 @@
         "lead": "Review the {n} administrator accounts for dedicated administration.",
         "evidence": [
           "Recent mail or Teams activity: {list:adminsWithWorkload}"
-        ],
-        "licenceNote": "Mail and Teams activity needs Entra ID P1; without it IAMAI sees no everyday use here, and the review is yours."
+        ]
       },
       "decision": null,
       "whatToDo": {

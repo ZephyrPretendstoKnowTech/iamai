@@ -13,8 +13,6 @@ import { pages } from '../../content/content.ts'
 import { goalLine, needsActionWords, nextCell, noDevicesWord, rowCells, signInsUnavailableFor, summaryLine } from './readinessCells.ts'
 import { fillText } from '../../content/render.ts'
 import { cohortWords } from '../../derive/whoLine.ts'
-import { whoEvidenceLines } from './stepExport.ts'
-import { stepById } from '../../content/content.ts'
 import { activityKnown, notActiveUsers } from '../../derive/sets.ts'
 
 const DORMANT = 's-check-dormant-accounts'
@@ -146,14 +144,5 @@ test('no-P1: the headline, the second line and the licence caveat claim nothing 
     assert.match(W2.summaryNoneNoP1, /Entra ID P1/)
     assert.doesNotMatch(W2.summaryNoneNoP1, /No active people/)
     assert.match(W2.summaryNone, /No active people/, 'unchanged for a tenant whose activity WAS read')
-  }
-  {
-    const dormant = stepById['s-check-dormant-accounts'] as unknown as { who: Record<string, unknown> }
-    const note = String(dormant.who.licenceNote)
-    assert.match(note, /need Entra ID P1/)
-    // The gate: whoEvidenceLines skips it unless the step's vars say the licence withheld them.
-    assert.ok(whoEvidenceLines(dormant.who, { signInsNeedP1: true, n: 0 }).includes(note), 'drawn on the free-tier tenant')
-    assert.ok(!whoEvidenceLines(dormant.who, { signInsNeedP1: false, n: 3, accountsWithState: ['a', 'b', 'c'] }).includes(note), 'not drawn on the seven fixtures that hold P1')
-    assert.ok(!whoEvidenceLines(dormant.who, { n: 3 }).includes(note), 'and never by default: the note has no placeholder, so whole() could not gate it')
   }
 })

@@ -27,7 +27,7 @@ import { contentLists, NAMES_UP_TO } from '../../derive/contentLists.ts'
 import { watchedArrive } from '../../roadmap/observation.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
 import { disabledInactiveUsers, notPeopleIds, phoneSignInIds } from '../../derive/sets.ts'
-import { securityDefaultsState, signInsNeedP1 } from '../../derive/readinessContext.ts'
+import { securityDefaultsState } from '../../derive/readinessContext.ts'
 import { cohortWords, guestsAmong } from '../../derive/whoLine.ts'
 import { pickerVars } from './pickerRows.ts'
 import { DECISION_STEPS, decisionKeyOf } from '../../roadmap/decisions.ts'
@@ -176,10 +176,6 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   const v: Record<string, unknown> = {
     tenant: tenantNameOf(ctx.snapshot),
     tenantName: tenantNameOf(ctx.snapshot),
-    // A licence caveat is a fact about THIS tenant, not a standing note: a step's
-    // `who.licenceNote` is drawn only where the licence actually withheld the
-    // sign-in records (stepExport.ts whoEvidenceLines).
-    signInsNeedP1: signInsNeedP1(ctx.snapshot),
     // Which state the scan read security defaults in, as two facts rather than
     // one flag: on, off, or neither where the section was not read. The
     // security-defaults step has a lead per state (content who.leadWhen) and no
