@@ -116,7 +116,8 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     key: 'prepare',
     titleKey: 'pages.app.plan.groups.prepare.title',
     completedTitleKey: 'pages.app.plan.groups.prepare.completedTitle',
-    members: ['s-check-dormant-accounts', 's-check-separate-admin-accounts', 's-ladder-operator-passkey', 's-verify-mfa', 's-prereq-auth-strength', 's-prereq-trusted-location', 's-prereq-service-accounts-group'],
+    // Create the Policies in Report-only closes the section, once its objects exist (owner, 2026-09-24).
+    members: ['s-check-dormant-accounts', 's-check-separate-admin-accounts', 's-ladder-operator-passkey', 's-verify-mfa', 's-prereq-auth-strength', 's-prereq-trusted-location', 's-prereq-service-accounts-group', 's-create-report-only'],
     anatomy: 'task',
   },
   // The four policies that replace security defaults, then the switch itself:

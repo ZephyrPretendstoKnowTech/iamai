@@ -12,7 +12,16 @@
     "Implementation Tasks",
     "Completion Criteria"
   ],
-  "tiles": [],
+  "tiles": [
+    {
+      "label": "Temporary Access Pass",
+      "state": "Off, and 7 people have no method to register with"
+    },
+    {
+      "label": "Text or Call Only",
+      "state": "1 person signs in with only a text or a call"
+    }
+  ],
   "channels": [
     "Entra",
     "AI Info",

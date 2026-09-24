@@ -76,7 +76,12 @@ test('demo: the managed-device create waits on device readiness and says why; on
     const step = r.steps.find((s) => s.id === DEVICE)!
     assert.equal(step.action.readinessGate, undefined, 'the premise: readiness is met')
     assert.equal(createWaitsOnReadiness(step), false)
-    assert.equal(label(step), 'Ready · Create')
+    // The demo works from an office (Decide How and Where People Sign In, 9c7d3386):
+    // the create comes after Define the Trusted Network, as sequencing, never a
+    // hold on readiness.
+    const { board } = run(f)
+    assert.equal(label(step), 'Up Next')
+    assert.equal(holdLabelOf(board.readings.get(DEVICE)!, board.titleOf), 'After Define the Trusted Network')
     assert.equal(scheduleOf(step).transition, 'createReportOnly')
   }
 })

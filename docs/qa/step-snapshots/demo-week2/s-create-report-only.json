@@ -1,0 +1,38 @@
+{
+  "lane": "On Hold",
+  "substatus": null,
+  "reason": "after: Confirm What You Use",
+  "fact": null,
+  "badge": "On Hold",
+  "bar": "Waiting on your answers",
+  "rail": "3 policies to create in Report-only",
+  "headings": [
+    "About this Step",
+    "Tasks Remaining",
+    "Implementation Tasks",
+    "Completion Criteria"
+  ],
+  "tiles": [
+    {
+      "label": "Shorten Admin Sessions",
+      "state": "Create in Report-only"
+    },
+    {
+      "label": "Block Unsupported Device Platforms",
+      "state": "Create in Report-only"
+    },
+    {
+      "label": "Limit How Long Sessions Last",
+      "state": "Create in Report-only"
+    },
+    {
+      "label": "Confirm What You Use",
+      "state": "Waiting on your answers"
+    }
+  ],
+  "channels": [
+    "Entra",
+    "AI Info"
+  ],
+  "when": "Est. Sep 7, 2026"
+}

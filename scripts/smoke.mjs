@@ -645,21 +645,6 @@ try {
   await send('Emulation.clearDeviceMetricsOverride')
   await sleep(400)
   check('Plan: at phone width, All work’s sections and finished rows fit the page', !!phone && phone.heads >= 1 && phone.headsFit && phone.rowsFit && phone.board, JSON.stringify(phone))
-  // Decision H, tried as a visible line: while the board has policies at
-  // Ready · Create, one line above the board counts them (a count, never a
-  // name) and its control shows exactly those rows. This tenant may draw no
-  // line; the demo's Follow-up scan with Direction approved always does, and
-  // is where the line is checked for certain (below).
-  const createLine = await evaluate(`((document.querySelector('main.page .plan-create-now') || {}).textContent || '').trim()`)
-  if (createLine) {
-    const n = Number((/^(\d+) polic/.exec(createLine) || [])[1])
-    await clickText('/^Show them$/', 'main.page .plan-create-now')
-    await sleep(200)
-    const createRows = await evaluate(`[...document.querySelectorAll('main.page .plan-board .plan-row .lane')].map((e) => (e.textContent || '').trim())`)
-    check('Plan: the line above the board counts the policies ready to create in report-only, and shows exactly them', /^\d+ polic(y is|ies are) ready to create in report-only now\. Show them$/.test(createLine) && createRows.length === n && createRows.every((l) => l === 'Ready · Create'), `${createLine} | ${JSON.stringify(createRows.slice(0, 4))}`)
-    await clickText('/^Show the full plan$/')
-    await sleep(200)
-  }
   // A step opened from a link keeps the tab where the tab shows it, and
   // otherwise opens on All work in its own section, with the page moved to it
   // (owner, roadmap flow V2; planBoard.ts followOpenStep).
@@ -1416,30 +1401,22 @@ try {
     openedByTitle(phoneOpened) && foldedByTitle(phoneFolded) && openedByTitle(deskOpened) && foldedByTitle(deskFolded),
     JSON.stringify({ phoneOpened, phoneFolded, deskOpened, deskFolded }),
   )
-  // Decision H's line where the board draws it (roadmap flow V2): the Follow-up
-  // scan with its last Direction step approved has policies at Ready · Create.
-  // The line above the board counts them — a count, never a name — and Show
-  // them lists exactly those rows. The Plan section's tenants draw no line, so
-  // this is the check that exercises it.
+  // Create the Policies in Report-only (3.8, owner 2026-09-24; it replaced
+  // decision H's line above the board): with the Follow-up scan's last
+  // Direction step approved, the step draws one card per policy it can create
+  // in Report-only, each headed by its policy step's title.
   await evaluate(`location.hash = '#/plan/s-direction-devices'`)
   const devicesOpen = await waitFor(`!!document.querySelector('main.page .plan-row[data-step="s-direction-devices"][aria-expanded="true"]') && !!document.querySelector('main.page .step-body .direction-section')`, 6000)
   const devicesApproved = devicesOpen && (await clickText(`/^${CONTENT_PAGES.app.plan.direction.approve}$/`, 'main.page .direction-approve'))
-  const createLineOf = `((document.querySelector('main.page .plan-create-now') || {}).textContent || '').trim()`
-  const createDrawn = devicesApproved && (await waitFor(`/^[0-9]+ polic(y is|ies are) ready to create in report-only now[.] Show them$/.test(${createLineOf})`, 8000))
-  const createText = await evaluate(createLineOf)
-  const createCount = Number((/^(\d+) polic/.exec(createText) || [])[1])
-  let createShown = []
-  if (createDrawn) {
-    await clickText('/^Show them$/', 'main.page .plan-create-now')
-    await waitFor(`/^Showing policies ready to create in report-only/.test(((document.querySelector('main.page p.actions strong') || {}).textContent || '').trim())`, 4000)
-    createShown = await evaluate(`[...document.querySelectorAll('main.page .plan-board .plan-row')].map((r) => ({ lane: ((r.querySelector('.lane') || {}).textContent || '').trim(), step: r.dataset.step || '' }))`)
-  }
+  await evaluate(`location.hash = '#/plan/s-create-report-only'`)
+  const batchOpen = devicesApproved && (await waitFor(`!!document.querySelector('main.page .plan-row[data-step="s-create-report-only"][aria-expanded="true"]') && !!document.querySelector('main.page .step-body .emergency-account-status')`, 8000))
+  const batchCards = batchOpen ? await evaluate(`[...document.querySelectorAll('main.page .step-body .emergency-account-status:not(.is-satisfied)')].map((c) => ({ heading: ((c.querySelector('.emergency-account-label') || {}).textContent || '').trim(), title: ((c.querySelector('h5') || {}).textContent || '').trim() }))`) : []
+  const toCreate = batchCards.filter((c) => c.title === 'Create in Report-only')
   check(
-    'Demo: with Direction approved, the line above the board counts the policies ready to create in report-only, and Show them lists exactly them',
-    createDrawn && createCount > 0 && createShown.length === createCount && createShown.every((r) => r.lane === 'Ready · Create') && (await evaluate(createLineOf)) === '',
-    `open ${devicesOpen}, approved ${devicesApproved}, line "${createText}", shown ${JSON.stringify(createShown.slice(0, 6))}`,
+    'Demo: with Direction approved, Create the Policies in Report-only draws a card per policy to create, each headed by its step',
+    batchOpen && toCreate.length > 0 && toCreate.every((c) => c.heading.length > 0),
+    `open ${devicesOpen}, approved ${devicesApproved}, batch ${batchOpen}, cards ${JSON.stringify(batchCards.slice(0, 6))}`,
   )
-  if (createDrawn) await clickText('/^Show the full plan$/')
   await sleep(200)
   // One template on the four Establish Emergency Access steps (owner,
   // 2026-09-23: "Uniformity is a BIG deal"), 1.1–1.3 drawn by ContentStep and

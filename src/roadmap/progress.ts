@@ -7,6 +7,7 @@ import { trackExecution } from './tracking.ts'
 import { markHoldChains } from './holds.ts'
 import { gateOnDirection, noteServiceConsequences } from './direction.ts'
 import { gateOnFoundations } from './foundations.ts'
+import { settleReportOnlyBatch, tenantPoliciesOf } from './reportOnlyBatch.ts'
 import { noteTurnOns } from './enforceWaits.ts'
 import type { TrackingEvidence } from './tracking.ts'
 import { isEmergencyAccess } from './blockerSteps.ts'
@@ -120,6 +121,9 @@ export function applyProgress(
   // A wait on a held step is a hold before tracking asks who is ready (roadmap/holds.ts).
   markHoldChains(steps)
   trackExecution(steps, snapshot, coverage, planId, now, observations ?? {}, scopeEvidence)
+  // Create the Policies in Report-only reads every policy's lifecycle, so it is
+  // settled once tracking has written them, and before the completed days.
+  settleReportOnlyBatch(steps, tenantPoliciesOf(snapshot.config.caPolicies?.status === 'ok' ? snapshot.config.caPolicies.rows : null))
   // Every status is this scan's now: each complete step gets its completed day.
   recordCompletion(steps, completedAt, snapshot.asOf)
   // Per-answer gating (roadmap/direction.ts), once every lifecycle is this

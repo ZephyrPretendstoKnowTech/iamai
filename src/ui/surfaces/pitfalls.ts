@@ -24,7 +24,8 @@ import { fillText } from '../../content/render.ts'
 import { readinessView } from '../../derive/mfaReadiness.ts'
 import { tenantSetupChecks } from '../../derive/readinessSetup.ts'
 import { readinessContextOf } from '../../derive/readinessContext.ts'
-import { smsRetirementOf } from '../../derive/smsRetirement.ts'
+import { SMS_RETIREMENT_DATES, smsRetirementOf } from '../../derive/smsRetirement.ts'
+import { absoluteDate } from '../../copy/dates.ts'
 import { unprovenIdsOf } from '../../derive/contentLists.ts'
 import { personLines } from './personNext.ts'
 import { personLabels } from '../../names.ts'
@@ -68,7 +69,7 @@ function campaignPitfalls(step: Step, ctx: StepVarContext): ReadinessTile[] {
   const windowStart = readinessContextOf(ctx.snapshot, ctx.mapping, ctx.now).windowStart
   const textOnly = smsRetirementOf(ctx.snapshot, step.preparation?.ids ?? [], windowStart).people.filter((p) => p.onlySmsVoice).map((p) => p.userId)
   if (textOnly.length > 0) {
-    out.push({ key: 'pitfall:text-only', label: W.textOnlyLabel, tone: 'warn', value: fillText(W.textOnlyValue, { n: textOnly.length }), note: W.textOnlyNote, names: personLines(ctx, textOnly) })
+    out.push({ key: 'pitfall:text-only', label: W.textOnlyLabel, tone: 'warn', value: fillText(W.textOnlyValue, { n: textOnly.length }), note: fillText(W.textOnlyNote, { smsEveryone: absoluteDate(SMS_RETIREMENT_DATES.everyone), smsAdmins: absoluteDate(SMS_RETIREMENT_DATES.adminsAndExternal) }), names: personLines(ctx, textOnly) })
   }
   return out
 }

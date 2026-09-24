@@ -28,7 +28,7 @@ import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { Button, Callout, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { ALL_WORK_TAB, BOARD, DEFAULT_TAB, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupNumberOf, groupSummary, groupTotalsOf, groupsFor, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, sectionNumbersOf, tileSections, togglesOf, waveStartOf, drawsCompact, drawsImpact, finishedDayOf, followOpenStep, followLaneChange, groupClosed, nextInPlanOrder, pressKeyOf, readyToCreateOf, releaseFor } from './planBoard.ts'
+import { ALL_WORK_TAB, BOARD, DEFAULT_TAB, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupNumberOf, groupSummary, groupTotalsOf, groupsFor, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, sectionNumbersOf, tileSections, togglesOf, waveStartOf, drawsCompact, drawsImpact, finishedDayOf, followOpenStep, followLaneChange, groupClosed, nextInPlanOrder, pressKeyOf, releaseFor } from './planBoard.ts'
 import type { BoardGroup, BoardItem, BoardTab, Focus, LaneTab, WorkType } from './planBoard.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
@@ -111,7 +111,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // The board's four tabs (planBoard.ts). All work is the default and sits
   // leftmost (owner, 2026-09-23): the whole plan, section by section, from the
   // top. Ready, Up Next and On Hold are filters over the same list.
-  const [summaryFilter, setSummaryFilter] = useState<'input' | 'observing' | 'completed' | 'create' | null>(null)
+  const [summaryFilter, setSummaryFilter] = useState<'input' | 'observing' | 'completed' | null>(null)
   const [tab, setTab] = useState<BoardTab>(DEFAULT_TAB)
   const [focus, setFocus] = useState<Focus>(NO_FOCUS)
   // Which groups the operator has collapsed, keyed by lane and group, so
@@ -276,11 +276,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // the toggles reveal are drawn after it, never inside a tab.
   const inputIds = new Set(c.steps.filter((s) => !s.doesntApply && s.status !== 'done' && s.status !== 'skipped' && (s.state.condition === 'needs-decision' || (s.unsavedInputs ?? []).length > 0 || s.action.missing?.some((m) => m.decision === true))).map((s) => s.id))
   const observingIds = new Set(c.steps.filter((s) => !s.doesntApply && s.status !== 'skipped' && s.state.lifecycle === 'report-only').map((s) => s.id))
-  // The policies ready to create in report-only now (planBoard.ts
-  // readyToCreateOf, decision H): the line above the board counts them and its
-  // control shows exactly them, in section order.
-  const createIds = new Set(readyToCreateOf(board.rows))
-  const summaryItems = summaryFilter === 'input' ? items.filter((i) => inputIds.has(i.id)) : summaryFilter === 'observing' ? items.filter((i) => observingIds.has(i.id)) : summaryFilter === 'completed' ? items.filter((i) => i.lane === 'Completed') : summaryFilter === 'create' ? items.filter((i) => createIds.has(i.id)) : items
+  const summaryItems = summaryFilter === 'input' ? items.filter((i) => inputIds.has(i.id)) : summaryFilter === 'observing' ? items.filter((i) => observingIds.has(i.id)) : summaryFilter === 'completed' ? items.filter((i) => i.lane === 'Completed') : items
   const shown = summaryFilter ? summaryItems.filter((i) => (!focus.search || i.title.toLowerCase().includes(focus.search.toLowerCase())) && (!focus.workType || focus.workType === i.workType)) : applyFocus(items, tab, focus)
   // Sections never move (owner, roadmap flow V2): nothing is lifted above the
   // tabs while it is open and nothing is sunk below them once it is finished.
@@ -449,17 +445,6 @@ export function Plan({ scan: lastScan, baseline, account }: {
           `planBoard.ts` groups them and decides nothing else. `renderById` is why
           there is one row renderer and not three: a tab hands back ids, and the
           id comes back to the same `<Row>` or `<CleanupRow>` whichever tab shows it. */}
-      {/* Decision H (owner, roadmap flow V2), tried as a visible line: every
-          policy the board has at Ready · Create can be created in report-only
-          today, whatever section it sits in. A count, never a name. */}
-      {createIds.size > 0 && summaryFilter !== 'create' && (
-        <div className="plan-create-now no-print">
-          <Callout kind="info">
-            {fillText(BOARD.createNow, { n: createIds.size })}{' '}
-            <Button variant="tertiary" size="sm" onClick={() => selectSummary('create')}>{BOARD.createNowShow}</Button>
-          </Callout>
-        </div>
-      )}
       <TabFollowsOpenStep open={open} lane={openLane} follow={follow} linked={linked} onFollow={onFollow} onShow={onShow} onMoved={onMoved} />
       <OpensNextStep approved={approved} board={items} onOpen={(next) => { moveTo.current = next; setOpen(next); window.history.replaceState(null, '', `#/plan/${next}`) }} />
       <PlanControls

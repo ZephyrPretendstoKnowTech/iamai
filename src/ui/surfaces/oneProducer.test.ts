@@ -188,7 +188,7 @@ const notForbidden = (text: string, message: string): void => assert.equal(forbi
 test('no retired word renders on the Plan or on an opened step: Blocked, Held, Needs attention, Skipped, Set aside', () => {
   // The board's own words first: the lanes, the substatus words, the tabs, the
   // toggles, the group headings, the header tiles and the deferral controls.
-  const board: string[] = [...Object.values(BOARD.lanes), ...Object.values(SUBSTATUS_WORD), ...Object.values(BOARD.blockers), BOARD.showCompleted, BOARD.showDeferred, BOARD.allWorkTab, BOARD.groupRemaining, BOARD.groupAllCompleted, BOARD.groupCompleted, BOARD.groupFinished, BOARD.createNow, BOARD.createNowShow, ...Object.values(BOARD.columns), WHEN.none, ...Object.values(CONTRACT.readiness.bar), CONTRACT.rollout.control, CONTRACT.rollout.title, CONTRACT.rollout.body, (shared as { doesntApplyControl: string }).doesntApplyControl, (app.plan as { putBack: string }).putBack, doesntApplyView().label]
+  const board: string[] = [...Object.values(BOARD.lanes), ...Object.values(SUBSTATUS_WORD), ...Object.values(BOARD.blockers), BOARD.showCompleted, BOARD.showDeferred, BOARD.allWorkTab, BOARD.groupRemaining, BOARD.groupAllCompleted, BOARD.groupCompleted, BOARD.groupFinished, ...Object.values(BOARD.columns), WHEN.none, ...Object.values(CONTRACT.readiness.bar), CONTRACT.rollout.control, CONTRACT.rollout.title, CONTRACT.rollout.body, (shared as { doesntApplyControl: string }).doesntApplyControl, (app.plan as { putBack: string }).putBack, doesntApplyView().label]
   const progress = (app as unknown as { plan: Record<string, unknown> }).plan
   void progress
   for (const word of board) notForbidden(word, `the board's own vocabulary says "${word}"`)

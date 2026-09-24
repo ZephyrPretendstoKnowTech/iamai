@@ -19,6 +19,7 @@ import { placeholdersIn, resolveTemplate } from './template.ts'
 import { PLACEHOLDER_STEP, implementable, matchedStrengthIds, resolveTenantPolicy, tenantObjectsOf, unmatchedStrengths } from './resolvePolicy.ts'
 import { applies, effectOf, emergencyExposureOf, enforcementHeld, isOpenPolicy, isValidOperation, operationsOf, stepEffects, strengthLookupOf, submitsEnforcement, tenantStrengthsOf, validOperations, unavailableReason } from './operations.ts'
 import type { PolicyEffect } from './operations.ts'
+import { REPORT_ONLY_STEP_ID, batchable } from './reportOnlyBatch.ts'
 import type { GrantFloor } from '../coverage/types.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
 import type { PolicyOperation, SourceReference } from './types.ts'
@@ -3288,6 +3289,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // all render around three steps that are not the thing being asked for. The
   // surfaces say what is needed instead (derive/notLicensed.ts).
   //
+  // Create the Policies in Report-only (3.8, owner 2026-09-24): at the end of
+  // Prepare Accounts and Objects, wherever a policy of this plan could be
+  // created in Report-only ahead of its own step. Its list and its state are
+  // settled once tracking has read every lifecycle (roadmap/reportOnlyBatch.ts,
+  // progress.ts applyProgress).
+  if (steps.some((s) => batchable(s))) steps.push(prereq(REPORT_ONLY_STEP_ID))
   // One rule in one place, and it is the whole switch.
   if (!canUseConditionalAccess) steps.length = 0
   // Per-answer gating (roadmap/direction.ts gateOnDirection) runs once tracking

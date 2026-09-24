@@ -2,6 +2,7 @@
 // step reads Ready until Emergency Access and Direction are settled — Establish Emergency
 // Access complete, and every Define Your Rollout Scope answer approved.
 import { test } from 'node:test'
+import { REPORT_ONLY_STEP_ID } from './stepIds.ts'
 import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import { runFixture, withDirectionApproved } from './fixtures/run.ts'
@@ -29,7 +30,8 @@ test('the foundation is Emergency Access and Direction, Emergency Access first, 
   {
     const r = runFixture(fixture('demo'))
     for (const step of r.steps) {
-      if (POLICY.includes(step.kind) && !isFoundationStep(step.id)) continue
+      // Create the Policies in Report-only creates policies, and waits on the foundation as they do (owner, 2026-09-24).
+      if ((POLICY.includes(step.kind) || step.id === REPORT_ONLY_STEP_ID) && !isFoundationStep(step.id)) continue
       assert.ok(!step.blockers.some((b) => b.label === FOUNDATION_WAIT), `${step.id} was gated`)
     }
     // Running it again adds nothing: the wait a step already carries is the one wait it has.

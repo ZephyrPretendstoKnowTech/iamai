@@ -55,7 +55,6 @@ import {
   rowNumbersOf,
   sectionProgressOf,
   tileSections,
-  readyToCreateOf,
   boardOf,
   followOpenStep,
   followLaneChange,
@@ -845,38 +844,6 @@ test('the how-to starts at the top of All work, says every Ready · Create polic
   // One copy of the words: the intro and the legend. `items` repeated both.
   assert.equal('items' in howTo, false, 'the how-to keeps a second copy of its words')
   assert.match(readFileSync('src/ui/surfaces/Plan.tsx', 'utf8'), /<p>\{PP\.howTo\.intro\}<\/p>/)
-})
-
-test('the line above the board counts the policies ready to create in report-only, off the board, and names none', () => {
-  // Owner, roadmap flow V2 decision H, tried as a visible line: it appears only
-  // while there are such rows, counts the board's own Ready · Create rows of
-  // Conditional Access work — never a row the board holds — and its control
-  // shows exactly those rows.
-  // With the first two sections settled (withFoundationSettled): until then no
-  // policy is Ready (roadmap/foundations.ts), so there is nothing to count.
-  let counted = 0
-  for (const name of [...FIXTURES, 'demo-week2', 'small', 'mid'] as const) {
-    const r = runFixture(withFoundationSettled(fixture(name)))
-    const board = boardOf(r.steps, r.schedule.cleanup, r.input.mapping.breakGlassAnswers ?? null)
-    const ids = readyToCreateOf(board.rows)
-    const expected = board.rows.filter((row) => row.lane.lane === 'Ready' && row.lane.substatus === 'Create' && row.item.workType === 'ca').map((row) => row.item.id)
-    assert.deepEqual(ids, expected, `${name}: the line counts something other than the Ready · Create policies`)
-    for (const id of ids) {
-      const row = board.rows.find((x) => x.item.id === id)!
-      assert.equal(row.lane.lane, 'Ready', `${name}/${id}: a row the board holds is counted`)
-      assert.equal((contentStepFor(row.step!) as { kind?: string } | undefined)?.kind, 'policy', `${name}/${id}: not a policy`)
-    }
-    counted += ids.length
-  }
-  assert.ok(counted > 0, 'no fixture has a policy ready to create, so this proves little')
-  // The words, counted through fillText: never a hand-built plural.
-  assert.equal(fillText(BOARD.createNow, { n: 12 }), '12 policies are ready to create in report-only now.')
-  assert.equal(fillText(BOARD.createNow, { n: 1 }), '1 policy is ready to create in report-only now.')
-  const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
-  assert.match(plan, /const createIds = new Set\(readyToCreateOf\(board\.rows\)\)/, 'the line does not count off the board')
-  assert.match(plan, /\{createIds\.size > 0 && summaryFilter !== 'create' && \(/, 'the line is drawn where there is nothing to create')
-  assert.match(plan, /summaryFilter === 'create' \? items\.filter\(\(i\) => createIds\.has\(i\.id\)\)/, 'its control shows something other than the rows it counted')
-  assert.match(plan, /onClick=\{\(\) => selectSummary\('create'\)\}>\{BOARD\.createNowShow\}/)
 })
 
 test('the board vocabulary is one record, and All work is the leftmost tab and the one the Plan opens on', () => {
