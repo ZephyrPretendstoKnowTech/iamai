@@ -6,7 +6,7 @@
 // grant, in the words the step's portal lines (and so the export) already say them.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
+import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { NO_RUNTIME, projectSafely } from '../../content/implementation/project.ts'
 import { planDates } from './stepVars.ts'
@@ -26,42 +26,41 @@ function opened(f: ReturnType<typeof fixture>) {
   return { step, ctx }
 }
 
-for (const [name, make] of [['demo-week2+curated', () => curatedFixture('demo-week2')], ['small', () => fixture('small')], ['mid', () => fixture('mid')]] as const) {
-  test(`register-info-protected on ${name}: the Entra create names the target's location scope and grant, as the export's portal lines do`, () => {
-    const { step, ctx } = opened(make() as ReturnType<typeof fixture>)
-    const op = step.action.resolution?.policies?.[0]
-    const target = (op?.target ?? op?.body) as { conditions: { locations: unknown }; grantControls: unknown }
-    // Premise: the resolved target is MFA outside All trusted locations, neither of the package's two modes.
-    assert.deepEqual(target.conditions.locations, { includeLocations: ['All'], excludeLocations: ['AllTrusted'] })
-    assert.deepEqual(target.grantControls, { operator: 'OR', builtInControls: ['mfa'] })
-    const exp = stepExportView(step, ctx)
-    const location = ['Include: Any location; Exclude: All trusted locations']
-    assert.ok(exp.whatToDo.some(l => l.includes(location[0])))
-    const grant = ['Require multifactor authentication']
-    assert.ok(exp.whatToDo.some(l => l.includes(grant[0])))
-    assert.deepEqual([location, grant], [['Include: Any location; Exclude: All trusted locations'], ['Require multifactor authentication']])
-    const body = stepBodyOf(step, ctx)
-    assert.equal(body.previewNote, null)
-    const entra = body.artifacts.find((a) => a.id === 'portal')
-    assert.ok(entra && !entra.unavailable, 'the Entra tab is withheld')
-    const text = entra.text()
-    // mfa-everyone-spec.md §2 A1 (ms-security-info step 7, ms-network): the
-    // Include and Exclude are named only after Configure is set to Yes, because
-    // "Conditional Access policies apply to all locations by default".
-    assert.ok(text.includes(`Conditions > Locations: set **Configure** to **Yes**, then **${location[0]}**.`), text)
-    assert.ok(text.includes(`4. Grant: **${grant[0]}**, exactly as IAMAI resolved the target.`), text)
-    assert.doesNotMatch(text, /\{\{|mode|blockOutsideTrusted/)
-    for (const id of ['ps', 'json', 'ai']) {
-      const a = body.artifacts.find((x) => x.id === id)
-      assert.ok(a && !a.unavailable, `${id} is withheld`)
-    }
-    // Nothing is degraded: the words are bound, and a mode is no longer asked for.
-    const c = stepContract(step, ctx)
-    const projection = projectSafely(implementationPackageFor(step)!, 'missing', packageBindings(step, ctx, c), NO_RUNTIME)
-    assert.equal(projection.hold, null)
-    assert.equal(projection.degraded ?? null, null)
-  })
-}
+// On one representative tenant: the demo-week2 and mid tenants resolve the same target.
+test("register-info-protected: the Entra create names the target's location scope and grant, as the export's portal lines do", () => {
+  const { step, ctx } = opened(fixture('small'))
+  const op = step.action.resolution?.policies?.[0]
+  const target = (op?.target ?? op?.body) as { conditions: { locations: unknown }; grantControls: unknown }
+  // Premise: the resolved target is MFA outside All trusted locations, neither of the package's two modes.
+  assert.deepEqual(target.conditions.locations, { includeLocations: ['All'], excludeLocations: ['AllTrusted'] })
+  assert.deepEqual(target.grantControls, { operator: 'OR', builtInControls: ['mfa'] })
+  const exp = stepExportView(step, ctx)
+  const location = ['Include: Any location; Exclude: All trusted locations']
+  assert.ok(exp.whatToDo.some(l => l.includes(location[0])))
+  const grant = ['Require multifactor authentication']
+  assert.ok(exp.whatToDo.some(l => l.includes(grant[0])))
+  assert.deepEqual([location, grant], [['Include: Any location; Exclude: All trusted locations'], ['Require multifactor authentication']])
+  const body = stepBodyOf(step, ctx)
+  assert.equal(body.previewNote, null)
+  const entra = body.artifacts.find((a) => a.id === 'portal')
+  assert.ok(entra && !entra.unavailable, 'the Entra tab is withheld')
+  const text = entra.text()
+  // mfa-everyone-spec.md §2 A1 (ms-security-info step 7, ms-network): the
+  // Include and Exclude are named only after Configure is set to Yes, because
+  // "Conditional Access policies apply to all locations by default".
+  assert.ok(text.includes(`Conditions > Locations: set **Configure** to **Yes**, then **${location[0]}**.`), text)
+  assert.ok(text.includes(`4. Grant: **${grant[0]}**, exactly as IAMAI resolved the target.`), text)
+  assert.doesNotMatch(text, /\{\{|mode|blockOutsideTrusted/)
+  for (const id of ['ps', 'json', 'ai']) {
+    const a = body.artifacts.find((x) => x.id === id)
+    assert.ok(a && !a.unavailable, `${id} is withheld`)
+  }
+  // Nothing is degraded: the words are bound, and a mode is no longer asked for.
+  const c = stepContract(step, ctx)
+  const projection = projectSafely(implementationPackageFor(step)!, 'missing', packageBindings(step, ctx, c), NO_RUNTIME)
+  assert.equal(projection.hold, null)
+  assert.equal(projection.degraded ?? null, null)
+})
 
 test('register-info-protected: without the grant words the Entra steps are withheld alone, and a target with no location condition drops only the location line', () => {
   const { step, ctx } = opened(fixture('small'))

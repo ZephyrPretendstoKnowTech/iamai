@@ -32,44 +32,44 @@ const withSignIns = (s: SourceState): TenantSnapshot => {
   return { ...demo, sources: { ...demo.sources, signInEvidence: s }, signInEvidence: {} }
 }
 
-test('the sign-in records need P1 exactly when the licence, not a permission, keeps them from IAMAI', () => {
-  assert.equal(signInsNeedP1(withSignIns(source('disabled', 'not available on this licence (needs Entra ID P1)'))), true, 'the worker skipped them on the licence it read')
-  assert.equal(signInsNeedP1(withSignIns(source('disabled', "Neither tenant is B2C or tenant doesn't have premium license"))), true, 'Graph refused them for want of P1')
-  assert.equal(signInsNeedP1(withSignIns(source('disabled', 'access denied (403)'))), false, 'a missing permission is not a missing licence')
-  assert.equal(signInsNeedP1(withSignIns(source('error', 'needs Entra ID P1'))), false)
-  assert.equal(signInsNeedP1(fixture('demo').snapshot), false)
-})
-
-test('without P1 no person is marked "not read": the row says nothing is to do, and the page says why once', () => {
-  const f = fixture('demo')
-  const view = readinessView(withSignIns(source('disabled', 'not available on this licence (needs Entra ID P1)')), f.snapshot.asOf, f.mapping)
-  const unavailable = view.rows.filter(signInsUnavailableFor)
-  assert.ok(unavailable.length > 0, 'the premise: people holding a phishing-resistant method cannot be confirmed')
-  for (const r of unavailable) {
-    assert.equal(noDevicesWord(r), '', `${r.user.id}: no "Not read" chip`)
-    assert.equal(nextCell(r), W.next.none, `${r.user.id}: the row repeats nothing about the licence`)
-    assert.ok(!rowCells(r).join(' ').includes(W.chip.unread), `${r.user.id}: the CSV row says it no more than the screen`)
+test('without P1 no person is marked "not read" and the page says why once; only the licence needs P1, and a person merely not read still says so', () => {
+  {
+    assert.equal(signInsNeedP1(withSignIns(source('disabled', 'not available on this licence (needs Entra ID P1)'))), true, 'the worker skipped them on the licence it read')
+    assert.equal(signInsNeedP1(withSignIns(source('disabled', "Neither tenant is B2C or tenant doesn't have premium license"))), true, 'Graph refused them for want of P1')
+    assert.equal(signInsNeedP1(withSignIns(source('disabled', 'access denied (403)'))), false, 'a missing permission is not a missing licence')
+    assert.equal(signInsNeedP1(withSignIns(source('error', 'needs Entra ID P1'))), false)
+    assert.equal(signInsNeedP1(fixture('demo').snapshot), false)
   }
-  // The page: one sentence under the answer, and the Unknown group's own words when only the licence put people there.
-  const page = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
-  assert.match(page, /summaryLine\(counted, \{ needP1: signInsNeedP1\(snapshot\)/)
-  const counted = view.rows.filter((r) => r.state !== null)
-  assert.ok(counted.length > 0)
-  assert.equal(summaryLine(counted, { needP1: true, proofRead: false }), fillText(W.summaryNoP1, { cohort: cohortWords(counted.length, counted.filter((r) => r.guest).length) }))
-  assert.match(page, /rows\.every\(signInsUnavailableFor\) \? T\.groupNoP1 : T\.groups\[state\]/)
-  assert.match(page, /noDevicesWord\(r\) && \(/, 'the chip for an unseen device is the one cell function the CSV reads')
-  assert.match(W.summaryNoP1, /Entra ID P1/)
-  assert.doesNotMatch(`${W.groupNoP1.title} ${W.groupNoP1.why}`, /couldn.t read|not read|next scan/i)
-})
-
-test('a person whose records were merely not read still says so', () => {
-  const f = fixture('demo')
-  const view = readinessView(withSignIns(source('error', 'request failed after retries (timeout)')), f.snapshot.asOf, f.mapping)
-  const unread = view.rows.filter((r) => r.state === 'unknown' && r.readiness?.unknown === 'signIns')
-  assert.ok(unread.length > 0)
-  for (const r of unread) {
-    assert.equal(signInsUnavailableFor(r), false)
-    assert.equal(noDevicesWord(r), W.chip.unread)
+  {
+    const f = fixture('demo')
+    const view = readinessView(withSignIns(source('disabled', 'not available on this licence (needs Entra ID P1)')), f.snapshot.asOf, f.mapping)
+    const unavailable = view.rows.filter(signInsUnavailableFor)
+    assert.ok(unavailable.length > 0, 'the premise: people holding a phishing-resistant method cannot be confirmed')
+    for (const r of unavailable) {
+      assert.equal(noDevicesWord(r), '', `${r.user.id}: no "Not read" chip`)
+      assert.equal(nextCell(r), W.next.none, `${r.user.id}: the row repeats nothing about the licence`)
+      assert.ok(!rowCells(r).join(' ').includes(W.chip.unread), `${r.user.id}: the CSV row says it no more than the screen`)
+    }
+    // The page: one sentence under the answer, and the Unknown group's own words when only the licence put people there.
+    const page = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
+    assert.match(page, /summaryLine\(counted, \{ needP1: signInsNeedP1\(snapshot\)/)
+    const counted = view.rows.filter((r) => r.state !== null)
+    assert.ok(counted.length > 0)
+    assert.equal(summaryLine(counted, { needP1: true, proofRead: false }), fillText(W.summaryNoP1, { cohort: cohortWords(counted.length, counted.filter((r) => r.guest).length) }))
+    assert.match(page, /rows\.every\(signInsUnavailableFor\) \? T\.groupNoP1 : T\.groups\[state\]/)
+    assert.match(page, /noDevicesWord\(r\) && \(/, 'the chip for an unseen device is the one cell function the CSV reads')
+    assert.match(W.summaryNoP1, /Entra ID P1/)
+    assert.doesNotMatch(`${W.groupNoP1.title} ${W.groupNoP1.why}`, /couldn.t read|not read|next scan/i)
+  }
+  {
+    const f = fixture('demo')
+    const view = readinessView(withSignIns(source('error', 'request failed after retries (timeout)')), f.snapshot.asOf, f.mapping)
+    const unread = view.rows.filter((r) => r.state === 'unknown' && r.readiness?.unknown === 'signIns')
+    assert.ok(unread.length > 0)
+    for (const r of unread) {
+      assert.equal(signInsUnavailableFor(r), false)
+      assert.equal(noDevicesWord(r), W.chip.unread)
+    }
   }
 })
 
@@ -109,58 +109,59 @@ const MICRO = () => {
   return { f, view: readinessView(f.snapshot, f.snapshot.asOf, f.mapping) }
 }
 
-test('no-P1: nobody has a readiness state, because nobody\'s activity was read', () => {
-  const { f, view } = MICRO()
-  assert.equal(signInsNeedP1(f.snapshot), true)
-  assert.ok(view.rows.length > 0, 'the people are read; only their activity is not')
-  assert.equal(view.rows.filter((r) => r.state !== null).length, 0, 'an unknown activity puts nobody in the rollout')
-  assert.ok(view.rows.every((r) => (r.readiness?.devices ?? []).length === 0), 'no device record was read for anybody')
+test("no-P1: nobody's activity was read, so nobody has a readiness state and no account is called dormant", () => {
+  {
+    const { f, view } = MICRO()
+    assert.equal(signInsNeedP1(f.snapshot), true)
+    assert.ok(view.rows.length > 0, 'the people are read; only their activity is not')
+    assert.equal(view.rows.filter((r) => r.state !== null).length, 0, 'an unknown activity puts nobody in the rollout')
+    assert.ok(view.rows.every((r) => (r.readiness?.devices ?? []).length === 0), 'no device record was read for anybody')
+  }
+  {
+    const { f } = MICRO()
+    assert.deepEqual(notActiveUsers(f.snapshot, f.snapshot.asOf), [], 'absence of a date the licence withheld is not absence of sign-in')
+    assert.ok(f.snapshot.users.every((u) => !activityKnown(u)))
+    // A tenant that holds P1 still lists the accounts it read no recent sign-in for.
+    const g = fixture('getiamai')
+    assert.ok(g.snapshot.users.every(activityKnown), 'the premise: their activity was read')
+    assert.ok(notActiveUsers(g.snapshot, g.snapshot.asOf).length > 0, 'and the dormant list is unchanged')
+  }
 })
 
-test('no-P1: the second line does not name a device cause the scan never read', () => {
-  const { view } = MICRO()
-  const counted = view.rows.filter((r) => r.state !== null)
-  const W2 = pages.readiness as unknown as { seamlessNotRead: string; seamlessNotPossible: string }
-  assert.equal(goalLine(counted), W2.seamlessNotRead)
-  assert.notEqual(goalLine(counted), W2.seamlessNotPossible, 'it said everyone signs in from a device with no built-in option, over zero device records')
-  assert.match(W2.seamlessNotRead, /read no record of the devices/)
-  // A tenant whose records WERE read still gets the device reading it earns.
-  const demo = fixture('demo')
-  const demoCounted = readinessView(demo.snapshot, demo.snapshot.asOf, demo.mapping).rows.filter((r) => r.state !== null)
-  assert.notEqual(goalLine(demoCounted), W2.seamlessNotRead)
-})
-
-test('no-P1: the headline says the activity was not read, never "No active people to count"', () => {
-  const { f } = MICRO()
-  const W2 = pages.readiness as unknown as { summaryNone: string; summaryNoneNoP1: string }
-  const page = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
-  assert.match(page, /summaryLine\(counted, \{ needP1: signInsNeedP1\(snapshot\)/)
-  assert.equal(signInsNeedP1(f.snapshot), true, 'so this tenant reads the second of the two')
-  assert.equal(summaryLine([], { needP1: true, proofRead: false }), W2.summaryNoneNoP1)
-  assert.equal(summaryLine([], { needP1: false, proofRead: true }), W2.summaryNone)
-  assert.match(W2.summaryNoneNoP1, /Entra ID P1/)
-  assert.doesNotMatch(W2.summaryNoneNoP1, /No active people/)
-  assert.match(W2.summaryNone, /No active people/, 'unchanged for a tenant whose activity WAS read')
-})
-
-test('no-P1: a licence caveat is drawn only where the licence withheld the records', () => {
-  const dormant = stepById['s-check-dormant-accounts'] as unknown as { who: Record<string, unknown> }
-  const note = String(dormant.who.licenceNote)
-  assert.match(note, /need Entra ID P1/)
-  // The gate: whoEvidenceLines skips it unless the step's vars say the licence withheld them.
-  assert.ok(whoEvidenceLines(dormant.who, { signInsNeedP1: true, n: 0 }).includes(note), 'drawn on the free-tier tenant')
-  assert.ok(!whoEvidenceLines(dormant.who, { signInsNeedP1: false, n: 3, accountsWithState: ['a', 'b', 'c'] }).includes(note), 'not drawn on the seven fixtures that hold P1')
-  assert.ok(!whoEvidenceLines(dormant.who, { n: 3 }).includes(note), 'and never by default: the note has no placeholder, so whole() could not gate it')
-})
-
-test('no-P1: no account is called dormant, because no account\'s activity was read', () => {
-  const { f } = MICRO()
-  assert.deepEqual(notActiveUsers(f.snapshot, f.snapshot.asOf), [], 'absence of a date the licence withheld is not absence of sign-in')
-  assert.ok(f.snapshot.users.every((u) => !activityKnown(u)))
-  // A tenant that holds P1 still lists the accounts it read no recent sign-in for.
-  const g = fixture('getiamai')
-  assert.ok(g.snapshot.users.every(activityKnown), 'the premise: their activity was read')
-  assert.ok(notActiveUsers(g.snapshot, g.snapshot.asOf).length > 0, 'and the dormant list is unchanged')
+test('no-P1: the headline, the second line and the licence caveat claim nothing the scan did not read', () => {
+  {
+    const { view } = MICRO()
+    const counted = view.rows.filter((r) => r.state !== null)
+    const W2 = pages.readiness as unknown as { seamlessNotRead: string; seamlessNotPossible: string }
+    assert.equal(goalLine(counted), W2.seamlessNotRead)
+    assert.notEqual(goalLine(counted), W2.seamlessNotPossible, 'it said everyone signs in from a device with no built-in option, over zero device records')
+    assert.match(W2.seamlessNotRead, /read no record of the devices/)
+    // A tenant whose records WERE read still gets the device reading it earns.
+    const demo = fixture('demo')
+    const demoCounted = readinessView(demo.snapshot, demo.snapshot.asOf, demo.mapping).rows.filter((r) => r.state !== null)
+    assert.notEqual(goalLine(demoCounted), W2.seamlessNotRead)
+  }
+  {
+    const { f } = MICRO()
+    const W2 = pages.readiness as unknown as { summaryNone: string; summaryNoneNoP1: string }
+    const page = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
+    assert.match(page, /summaryLine\(counted, \{ needP1: signInsNeedP1\(snapshot\)/)
+    assert.equal(signInsNeedP1(f.snapshot), true, 'so this tenant reads the second of the two')
+    assert.equal(summaryLine([], { needP1: true, proofRead: false }), W2.summaryNoneNoP1)
+    assert.equal(summaryLine([], { needP1: false, proofRead: true }), W2.summaryNone)
+    assert.match(W2.summaryNoneNoP1, /Entra ID P1/)
+    assert.doesNotMatch(W2.summaryNoneNoP1, /No active people/)
+    assert.match(W2.summaryNone, /No active people/, 'unchanged for a tenant whose activity WAS read')
+  }
+  {
+    const dormant = stepById['s-check-dormant-accounts'] as unknown as { who: Record<string, unknown> }
+    const note = String(dormant.who.licenceNote)
+    assert.match(note, /need Entra ID P1/)
+    // The gate: whoEvidenceLines skips it unless the step's vars say the licence withheld them.
+    assert.ok(whoEvidenceLines(dormant.who, { signInsNeedP1: true, n: 0 }).includes(note), 'drawn on the free-tier tenant')
+    assert.ok(!whoEvidenceLines(dormant.who, { signInsNeedP1: false, n: 3, accountsWithState: ['a', 'b', 'c'] }).includes(note), 'not drawn on the seven fixtures that hold P1')
+    assert.ok(!whoEvidenceLines(dormant.who, { n: 3 }).includes(note), 'and never by default: the note has no placeholder, so whole() could not gate it')
+  }
 })
 
 // ---------------------------------------------------------------------------
@@ -174,67 +175,68 @@ test('no-P1: no account is called dormant, because no account\'s activity was re
 // as a directory with nothing dormant.
 // ---------------------------------------------------------------------------
 
-test('R4-49: a directory read that returned nobody\'s sign-in activity holds the dormant check on that fact, and says why', () => {
-  const f = fixture('small')
-  const reason = 'signInActivity unavailable: access denied (403)'
-  const snapshot = structuredClone(f.snapshot)
-  snapshot.sources.users = { ...snapshot.sources.users!, status: 'partial', reason }
-  for (const u of snapshot.users) {
-    u.successfulSignInActivityRead = false
-    u.lastSuccessfulSignIn = null
-    u.lastSignInAttempt = null
+test("R4-49: a directory read that returned nobody's sign-in activity holds the dormant check on that fact and says why; an account that never signed in, on a read that succeeded, is not unread", () => {
+  {
+    const f = fixture('small')
+    const reason = 'signInActivity unavailable: access denied (403)'
+    const snapshot = structuredClone(f.snapshot)
+    snapshot.sources.users = { ...snapshot.sources.users!, status: 'partial', reason }
+    for (const u of snapshot.users) {
+      u.successfulSignInActivityRead = false
+      u.lastSuccessfulSignIn = null
+      u.lastSignInAttempt = null
+    }
+    // The sign-in log is read with the same permission, refused with it.
+    snapshot.sources.signInEvidence = { ...snapshot.sources.signInEvidence!, status: 'disabled', reason: 'access denied (403)', coveredWindow: null }
+    snapshot.signInEvidence = {}
+    const run = runFixture({ ...f, snapshot })
+    const step = run.steps.find((s) => s.id === DORMANT)
+    assert.ok(step, 'the premise: the plan carries the dormant check')
+    assert.equal(step.population?.total ?? 0, 0, 'the premise: nobody is listed, because nobody\'s activity was read')
+
+    // The step says how many accounts it could not judge, the source's own
+    // reason, and what reads them — the same fix sentence a blind readiness gate states.
+    const finding = (step.configurationFindings ?? []).find((x) => x.key === 'activity-unread')
+    assert.ok(finding, 'the refusal is on the step')
+    const n = enabledUsers(snapshot, notPeopleIds(f.mapping)).length
+    assert.ok(n > 0)
+    assert.ok(finding.detail.includes(`${n} of ${n} enabled accounts`), finding.detail)
+    assert.ok(finding.detail.includes(reason), finding.detail)
+    assert.ok(finding.detail.includes(sourceReadFix('users', snapshot)), finding.detail)
+    assert.match(finding.detail, /AuditLog\.Read\.All/)
+    assert.notEqual(finding.outcome, 'pass')
+
+    // Not finished, and not Ready · Review: it holds on the read.
+    assert.equal(step.state.satisfied, false)
+    const titleOf = (id: string): string | null => run.steps.find((s) => s.id === id)?.title ?? null
+    const readings = laneReadings(run.steps)
+    const reading = readings.get(DORMANT)!
+    const view = laneViewOf(reading, titleOf)
+    assert.equal(reading.lane, 'On Hold', `the step read ${view.label}`)
+    assert.ok(step.blockers.some((b) => b.binding === BLOCKED_REASON.activityUnread))
+
+    // The opened step leads with it, and no longer asks for a review of a list it does not have.
+    const ctx = { snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: snapshot.asOf, groups: f.groups }
+    const body = stepBodyOf(step, ctx, { lane: view, blockers: readinessBlockersOf(reading, titleOf), prerequisiteLabel: prerequisiteLabelFor(readings) })
+    assert.equal(body.readiness.tiles[0]?.note, finding.detail, 'the first tile is the refusal')
+    const portal = body.artifacts.find((a) => a.id === 'portal')?.text() ?? ''
+    assert.doesNotMatch(portal, /Review each account IAMAI lists/)
   }
-  // The sign-in log is read with the same permission, refused with it.
-  snapshot.sources.signInEvidence = { ...snapshot.sources.signInEvidence!, status: 'disabled', reason: 'access denied (403)', coveredWindow: null }
-  snapshot.signInEvidence = {}
-  const run = runFixture({ ...f, snapshot })
-  const step = run.steps.find((s) => s.id === DORMANT)
-  assert.ok(step, 'the premise: the plan carries the dormant check')
-  assert.equal(step.population?.total ?? 0, 0, 'the premise: nobody is listed, because nobody\'s activity was read')
-
-  // The step says how many accounts it could not judge, the source's own
-  // reason, and what reads them — the same fix sentence a blind readiness gate states.
-  const finding = (step.configurationFindings ?? []).find((x) => x.key === 'activity-unread')
-  assert.ok(finding, 'the refusal is on the step')
-  const n = enabledUsers(snapshot, notPeopleIds(f.mapping)).length
-  assert.ok(n > 0)
-  assert.ok(finding.detail.includes(`${n} of ${n} enabled accounts`), finding.detail)
-  assert.ok(finding.detail.includes(reason), finding.detail)
-  assert.ok(finding.detail.includes(sourceReadFix('users', snapshot)), finding.detail)
-  assert.match(finding.detail, /AuditLog\.Read\.All/)
-  assert.notEqual(finding.outcome, 'pass')
-
-  // Not finished, and not Ready · Review: it holds on the read.
-  assert.equal(step.state.satisfied, false)
-  const titleOf = (id: string): string | null => run.steps.find((s) => s.id === id)?.title ?? null
-  const readings = laneReadings(run.steps)
-  const reading = readings.get(DORMANT)!
-  const view = laneViewOf(reading, titleOf)
-  assert.equal(reading.lane, 'On Hold', `the step read ${view.label}`)
-  assert.ok(step.blockers.some((b) => b.binding === BLOCKED_REASON.activityUnread))
-
-  // The opened step leads with it, and no longer asks for a review of a list it does not have.
-  const ctx = { snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: snapshot.asOf, groups: f.groups }
-  const body = stepBodyOf(step, ctx, { lane: view, blockers: readinessBlockersOf(reading, titleOf), prerequisiteLabel: prerequisiteLabelFor(readings) })
-  assert.equal(body.readiness.tiles[0]?.note, finding.detail, 'the first tile is the refusal')
-  const portal = body.artifacts.find((a) => a.id === 'portal')?.text() ?? ''
-  assert.doesNotMatch(portal, /Review each account IAMAI lists/)
-})
-
-test('R4-49: an account without sign-in activity on a read that succeeded is not called unread', () => {
-  // Graph leaves signInActivity out for an account that never signed in
-  // (Microsoft Learn, user resource type). On a read that succeeded that is a
-  // reading, not a refusal, and the dormant check says nothing of a read that
-  // did not fail.
-  const f = fixture('small')
-  const snapshot = structuredClone(f.snapshot)
-  assert.equal(snapshot.sources.users?.status, 'ok', 'the premise: the directory read succeeded')
-  const never = enabledUsers(snapshot, notPeopleIds(f.mapping))[0]
-  never.successfulSignInActivityRead = false
-  never.lastSuccessfulSignIn = null
-  never.lastSignInAttempt = null
-  delete snapshot.signInEvidence[never.id]
-  const step = runFixture({ ...f, snapshot }).steps.find((s) => s.id === DORMANT)!
-  assert.equal((step.configurationFindings ?? []).some((x) => x.key === 'activity-unread'), false)
-  assert.equal(step.blockers.some((b) => b.binding === BLOCKED_REASON.activityUnread), false)
+  {
+    // Graph leaves signInActivity out for an account that never signed in
+    // (Microsoft Learn, user resource type). On a read that succeeded that is a
+    // reading, not a refusal, and the dormant check says nothing of a read that
+    // did not fail.
+    const f = fixture('small')
+    const snapshot = structuredClone(f.snapshot)
+    assert.equal(snapshot.sources.users?.status, 'ok', 'the premise: the directory read succeeded')
+    const never = enabledUsers(snapshot, notPeopleIds(f.mapping))[0]
+    never.successfulSignInActivityRead = false
+    never.lastSuccessfulSignIn = null
+    never.lastSignInAttempt = null
+    delete snapshot.signInEvidence[never.id]
+    const step = runFixture({ ...f, snapshot }).steps.find((s) => s.id === DORMANT)!
+    assert.equal((step.configurationFindings ?? []).some((x) => x.key === 'activity-unread'), false)
+    assert.equal(step.blockers.some((b) => b.binding === BLOCKED_REASON.activityUnread), false)
+  }
 })

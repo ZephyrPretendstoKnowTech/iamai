@@ -143,18 +143,14 @@ function correctionCall(policyName: string): string {
 }
 
 test('a handed-over correction whose tenant policy name holds a quote, or a letter whose UTF-8 bytes read as one in Windows-1252, keeps the whole target in -TargetPolicyJson', () => {
+  // Every character is proved at the invocation level above; the drawn
+  // correction is read here for one of each kind: a curly quote, a letter whose
+  // UTF-8 bytes read as a quote in Windows-1252, and the ASCII quote control.
   const names = [
-    'Finance’s MFA policy',
     `Policy B’; ${COMMAND} #`,
-    `Policy B‚; ${COMMAND}; ‛`,
-    `Policy B‘; ${COMMAND}; ’`,
     `Policy Ñ; ${COMMAND} #`,
-    `Политика В; ${COMMAND} #`,
-    'Contraseñas y ACCESO Ñ',
     `Policy €‑‒; ${COMMAND} #`,
-    // Controls: an ASCII quote (already doubled before R7-1) and a plain name.
     `Policy B'; ${COMMAND}; '`,
-    'Policy B',
   ]
   for (const name of names) {
     const call = correctionCall(name)

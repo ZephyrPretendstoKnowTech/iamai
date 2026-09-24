@@ -55,35 +55,35 @@ function opened(rowOf: (g: Groups) => ReturnType<typeof pol>) {
   return { tab, nameOf, exported: stepExportView(step, ctx).whatToDo, preview: body.previewNote }
 }
 
-test('a correction dropping the guest exclusion names it in the Entra procedure, AI Info and the script it hands over', () => {
-  const { tab, exported, preview } = opened(({ staffGroup, excl }) => pol({ includeGroups: [staffGroup], excludeGroups: [excl], excludeGuestsOrExternalUsers: GUESTS }))
-  assert.equal(preview, null, 'the premise: the correction is handed over, not previewed')
-  const line = said('guest or external users')
-  assert.ok(exported.includes(line), 'the export line these tabs now match')
-  const entra = tab('portal')
-  assert.ok(entra.includes(line), entra)
-  // The consequence appears before the operator starts changing the policy.
-  assert.ok(entra.indexOf(line) < entra.search(/^\d+\. Go to\b/m), entra)
-  assert.ok(tab('ai').includes(line), tab('ai'))
-  const ps = tab('ps')
-  assert.ok(ps.includes(`# This change removes guest or external users from the policy's exclusions. If the policy is On, it applies to them as soon as the correction is saved.`), ps.slice(0, 400))
-  assert.match(ps, /^Invoke-IAMAIStep -Mode 'CorrectConditions'/m, 'the script the line sits in is the called correction')
-  for (const text of [entra, tab('ai'), ps]) assert.doesNotMatch(text, /\{\{|\[omit /)
-})
-
-test('a correction replacing the excluded application names the application, never its id, in every tab', () => {
-  const { tab, nameOf } = opened(({ staffGroup, excl }) => pol({ includeGroups: [staffGroup], excludeGroups: [excl] }, { includeApplications: ['All'], excludeApplications: [EXO] }))
-  const line = said(nameOf(EXO))
-  for (const id of ['portal', 'ai']) assert.ok(tab(id).includes(line), `${id}: ${tab(id)}`)
-  assert.ok(tab('ps').includes(`# This change removes ${nameOf(EXO)} from the policy's exclusions.`))
-  for (const id of ['portal', 'ai', 'ps']) assert.ok(!tab(id).split('\n').some((l) => l.includes('This change removes') && l.includes(EXO)), `${id} names the id`)
-})
-
-test('control: a correction that keeps every exclusion draws no removal line in any tab', () => {
-  const { tab } = opened(({ staffGroup, excl }) => pol({ includeGroups: [staffGroup], excludeGroups: [excl] }, { includeApplications: ['All'], excludeApplications: [INTUNE_ENROLLMENT] }))
-  for (const id of ['portal', 'ai', 'ps']) {
-    assert.doesNotMatch(tab(id), /This change removes/, id)
-    assert.doesNotMatch(tab(id), /\{\{|\[omit /, id)
+test('a correction names each exclusion it removes (a guest exclusion; an application by its name, never its id) in the Entra procedure, AI Info and the script, and one that removes nothing draws no such line', () => {
+  {
+    const { tab, exported, preview } = opened(({ staffGroup, excl }) => pol({ includeGroups: [staffGroup], excludeGroups: [excl], excludeGuestsOrExternalUsers: GUESTS }))
+    assert.equal(preview, null, 'the premise: the correction is handed over, not previewed')
+    const line = said('guest or external users')
+    assert.ok(exported.includes(line), 'the export line these tabs now match')
+    const entra = tab('portal')
+    assert.ok(entra.includes(line), entra)
+    // The consequence appears before the operator starts changing the policy.
+    assert.ok(entra.indexOf(line) < entra.search(/^\d+\. Go to\b/m), entra)
+    assert.ok(tab('ai').includes(line), tab('ai'))
+    const ps = tab('ps')
+    assert.ok(ps.includes(`# This change removes guest or external users from the policy's exclusions. If the policy is On, it applies to them as soon as the correction is saved.`), ps.slice(0, 400))
+    assert.match(ps, /^Invoke-IAMAIStep -Mode 'CorrectConditions'/m, 'the script the line sits in is the called correction')
+    for (const text of [entra, tab('ai'), ps]) assert.doesNotMatch(text, /\{\{|\[omit /)
+  }
+  {
+    const { tab, nameOf } = opened(({ staffGroup, excl }) => pol({ includeGroups: [staffGroup], excludeGroups: [excl] }, { includeApplications: ['All'], excludeApplications: [EXO] }))
+    const line = said(nameOf(EXO))
+    for (const id of ['portal', 'ai']) assert.ok(tab(id).includes(line), `${id}: ${tab(id)}`)
+    assert.ok(tab('ps').includes(`# This change removes ${nameOf(EXO)} from the policy's exclusions.`))
+    for (const id of ['portal', 'ai', 'ps']) assert.ok(!tab(id).split('\n').some((l) => l.includes('This change removes') && l.includes(EXO)), `${id} names the id`)
+  }
+  {
+    const { tab } = opened(({ staffGroup, excl }) => pol({ includeGroups: [staffGroup], excludeGroups: [excl] }, { includeApplications: ['All'], excludeApplications: [INTUNE_ENROLLMENT] }))
+    for (const id of ['portal', 'ai', 'ps']) {
+      assert.doesNotMatch(tab(id), /This change removes/, id)
+      assert.doesNotMatch(tab(id), /\{\{|\[omit /, id)
+    }
   }
 })
 

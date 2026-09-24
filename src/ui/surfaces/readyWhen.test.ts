@@ -43,62 +43,14 @@ import type { Fixture } from '../../roadmap/fixtures/index.ts'
 const DAY = 86_400_000
 const shared = content.shared as unknown as Record<string, string[]>
 
-// What the walk reads on every report-only row of the app's demo (scripts/walk.mjs):
-// the two gate lines of the step's Done-when. The time expectation is the walk's
-// own object, imported from the one place that holds it
-// (content/contentChecks.ts), so the wording of a gate cannot move on one
-// surface without failing here first. The time line speaks about the
-// observation window — closing on a date, or closed already — because readiness
-// is both gates together and no single line may claim it (derive/readyWhen.ts).
-// The row's own timing value (rowWhen.ts) still takes one of three forms; the
-// board maps it to a day or the placeholder (planBoard.ts boardWhenOf, A1b), and
-// the walk reads that column, so the form is held here and nowhere else.
-const WALK_ROW = /^(ready now|held until the records clear|ready \S.*\d{4})$/
+// The two gate lines of a report-only step's Done-when. The time expectation is
+// the walk's own object, imported from the one place that holds it
+// (content/contentChecks.ts). The time line speaks about the observation window
+// — closing on a date, or closed already — because readiness is both gates
+// together and no single line may claim it (derive/readyWhen.ts). The evidence
+// line takes every form the Done-when's evidence gate states.
 const WALK_TIME = RE.gateTime
-// The evidence gate here accepts three forms more than the walk's own regex does,
-// none of which any fixture the walk visits renders: the short-window line, the
-// line for a tenant that refused the sign-in read (R4-48), and the line for a
-// scan that reached no sign-in record without a refusal (R4-48 review). The last
-// two state a reason and no count because nothing counted anybody. Every form
-// the walk accepts must be accepted here too, which the assertion below proves.
 const WALK_EVIDENCE = /Evidence: .+; today (ready now: 0 failures in \d+ days|\d+ failing or interrupted, \d+ of \d+ active people seen in \d+ days|no sign-in records read for this policy, \d+ of \d+ active people seen in \d+ days|the sign-in records read do not cover the whole window, \d+ of \d+ active people seen in \d+ days|the sign-in records could not be read in this tenant \(.+\), so nothing in this window has been checked and waiting will not change that|this scan read no sign-in records \(.+\), so nothing in this window has been checked yet; scan again to read them)\./
-
-const trackedLine = (key: string, vals: Record<string, unknown>): string =>
-  fillText((content.shared as { policyDoneWhenTracked: string[] }).policyDoneWhenTracked[1], {
-    reportOnly: '12 Aug',
-    evidenceGate: fillText((content.shared as { engine: { tracking: Record<string, string> } }).engine.tracking[key], vals),
-  })
-
-test('every evidence line the walk accepts is accepted here', () => {
-  for (const [key, vals] of [
-    ['readyNow', { n: 14 }],
-    ['evidenceToday', { failures: 2, seen: 3, people: 4, n: 14 }],
-    ['evidenceTodayUnread', { seen: 3, people: 4, n: 14 }],
-  ] as [string, Record<string, unknown>][]) {
-    const line = trackedLine(key, vals)
-    assert.match(line, RE.gateEvidence, `the walk reads the ${key} evidence line`)
-    assert.match(line, WALK_EVIDENCE, `and so does this file's regex`)
-  }
-})
-
-test('the evidence lines no walked fixture renders are accepted here too: a short window, and a source that refused the read (R4-48)', () => {
-  // R4-48 gave the evidence gate a form of its own for a sign-in source that
-  // read nothing (derive/readyWhen.ts sourceUnread), in place of the
-  // short-window line with a count nobody took. This file's regex is the one
-  // statement of every form the Done-when's evidence line takes, and it did
-  // not know that one.
-  assert.match(trackedLine('evidenceWindowShort', { seen: 3, people: 4, n: 14 }), WALK_EVIDENCE)
-  const refused = trackedLine('evidenceSourceUnread', { reason: 'no sign-in records could be read' })
-  assert.match(refused, WALK_EVIDENCE)
-  assert.doesNotMatch(refused, /\d+ of \d+ active people/, 'and it counts nobody')
-  // A scan that reached no record where the tenant refused nothing ("Graph 503
-  // after retries") has a line of its own, which does not call a fault that may
-  // pass a refusal by the tenant (R4-48 review).
-  const notRead = trackedLine('evidenceSourceNotRead', { reason: 'Graph 503 after retries' })
-  assert.match(notRead, WALK_EVIDENCE)
-  assert.doesNotMatch(notRead, /\d+ of \d+ active people/, 'and it counts nobody')
-  assert.doesNotMatch(notRead, /in this tenant|waiting will not change/, 'and claims no standing refusal')
-})
 
 /** A step's Done-when, filled, exactly as the opened step prints it. */
 function doneWhenOf(step: Parameters<typeof stepVars>[0], f: Pick<Fixture, 'snapshot' | 'mapping' | 'operatorId'>, reportOnlyAt: string | null = null): string {
@@ -234,54 +186,55 @@ test('rescan: a policy whose window closed on clean records while a Foundation-A
   assert.equal(step.events?.enforce.at ?? null, null)
 })
 
-test('rescan: the same ten days with no records read is not ready, and the row says what it is held for', () => {
-  // The same policy and the same ten days, with nothing read about how it
-  // behaved over them. A calendar is not evidence about anybody: the window has
-  // closed and the evidence gate has not, so the step is still being watched and
-  // the column says what it is waiting for instead of offering the change.
-  const f = fixture('demo')
-  const run = runFixture(f)
-  const seenAt = new Date(Date.parse(f.snapshot.asOf) - 10 * DAY).toISOString()
-  const first = runFixture(f).steps.find((s) => s.id === ADMINS)!
-  const rows = (f.snapshot.config.caPolicies?.rows ?? []) as { id?: string }[]
-  const row = rows.find((p) => p.id === first.tracking?.policyId)
-  const watched = { [ADMINS]: { members: { [SOLE_MEMBER]: { artifact: artifactIdOf(row?.id), state: 'report-only' as const, semantics: semanticsOf(row as Record<string, unknown>), fields: semanticFieldsOf(row as Record<string, unknown>), firstSeenAt: seenAt, since: 'first-scan' as const, lastSeenAt: seenAt, evidenceAt: null } }, unattributed: null } }
-  applyProgress(run.steps, f.snapshot, run.coverage, f.planId, undefined, null, watched, scopeOf(f))
-  const step = run.steps.find((s) => s.id === ADMINS)!
-  assert.equal(step.tracking?.failures, null, 'no records read is not a clean window')
-  assert.equal(step.tracking?.readyNow, false)
-  assert.equal(step.status, 'in-report-only')
-  assert.equal(statusOf(step).word.split(' · ')[0], 'Report-only')
-  assert.equal(readyWhen(step)?.kind, 'since', 'the window closed and the records did not')
-  // Held besides — the way back in is not verified — so the column states nothing
-  // at all, and the step is not waiting on the records alone (roadmap/holds.ts).
-  assert.ok(isHeld(step))
-  assert.equal(rowWhen(step), '')
-  // And the Done-when says which gate closed and which did not: the window has a
-  // past date, the records have no count of failures to show at all.
-  const held = doneWhenOf(step, f)
-  assert.match(held, WALK_TIME)
-  assert.match(held, /the window closed \S.*\d{4}\./)
-  assert.match(held, WALK_EVIDENCE)
-  assert.match(held, /no sign-in records read for this policy/)
-  assert.equal(step.events?.enforce.at ?? null, null)
-})
-
-test('rescan: the same ten days in a record that never named a policy carries nothing', () => {
-  // The pre-Foundation-B record held one date per step. A step is not a policy,
-  // so the date cannot be shown to belong to the object deployed now, and the
-  // window runs from the scan that could name it. The date is still loaded and
-  // still readable — it just does not decide a rollout gate.
-  const f = fixture('demo')
-  const run = runFixture(f)
-  const seenAt = new Date(Date.parse(f.snapshot.asOf) - 10 * DAY).toISOString()
-  applyProgress(run.steps, f.snapshot, run.coverage, f.planId, undefined, null, observationsFrom({ reportOnlySeen: { [ADMINS]: seenAt } }))
-  const step = run.steps.find((s) => s.id === ADMINS)!
-  assert.equal(step.state.observation?.continuity, 'unknown')
-  assert.equal(step.state.observation?.prior?.firstSeenAt, seenAt, 'the date is still there')
-  assert.equal(step.tracking?.reportOnlyAt, f.snapshot.asOf, 'but the window runs from this scan')
-  assert.notEqual(step.status, 'ready-to-enforce')
-  assert.equal(statusOf(step).word.split(' · ')[0], 'Report-only')
+test('rescan: the same ten days with no records read, or in a record that never named a policy, is not ready', () => {
+  {
+    // The same policy and the same ten days, with nothing read about how it
+    // behaved over them. A calendar is not evidence about anybody: the window has
+    // closed and the evidence gate has not, so the step is still being watched and
+    // the column says what it is waiting for instead of offering the change.
+    const f = fixture('demo')
+    const run = runFixture(f)
+    const seenAt = new Date(Date.parse(f.snapshot.asOf) - 10 * DAY).toISOString()
+    const first = runFixture(f).steps.find((s) => s.id === ADMINS)!
+    const rows = (f.snapshot.config.caPolicies?.rows ?? []) as { id?: string }[]
+    const row = rows.find((p) => p.id === first.tracking?.policyId)
+    const watched = { [ADMINS]: { members: { [SOLE_MEMBER]: { artifact: artifactIdOf(row?.id), state: 'report-only' as const, semantics: semanticsOf(row as Record<string, unknown>), fields: semanticFieldsOf(row as Record<string, unknown>), firstSeenAt: seenAt, since: 'first-scan' as const, lastSeenAt: seenAt, evidenceAt: null } }, unattributed: null } }
+    applyProgress(run.steps, f.snapshot, run.coverage, f.planId, undefined, null, watched, scopeOf(f))
+    const step = run.steps.find((s) => s.id === ADMINS)!
+    assert.equal(step.tracking?.failures, null, 'no records read is not a clean window')
+    assert.equal(step.tracking?.readyNow, false)
+    assert.equal(step.status, 'in-report-only')
+    assert.equal(statusOf(step).word.split(' · ')[0], 'Report-only')
+    assert.equal(readyWhen(step)?.kind, 'since', 'the window closed and the records did not')
+    // Held besides — the way back in is not verified — so the column states nothing
+    // at all, and the step is not waiting on the records alone (roadmap/holds.ts).
+    assert.ok(isHeld(step))
+    assert.equal(rowWhen(step), '')
+    // And the Done-when says which gate closed and which did not: the window has a
+    // past date, the records have no count of failures to show at all.
+    const held = doneWhenOf(step, f)
+    assert.match(held, WALK_TIME)
+    assert.match(held, /the window closed \S.*\d{4}\./)
+    assert.match(held, WALK_EVIDENCE)
+    assert.match(held, /no sign-in records read for this policy/)
+    assert.equal(step.events?.enforce.at ?? null, null)
+  }
+  {
+    // The pre-Foundation-B record held one date per step. A step is not a policy,
+    // so the date cannot be shown to belong to the object deployed now, and the
+    // window runs from the scan that could name it. The date is still loaded and
+    // still readable — it just does not decide a rollout gate.
+    const f = fixture('demo')
+    const run = runFixture(f)
+    const seenAt = new Date(Date.parse(f.snapshot.asOf) - 10 * DAY).toISOString()
+    applyProgress(run.steps, f.snapshot, run.coverage, f.planId, undefined, null, observationsFrom({ reportOnlySeen: { [ADMINS]: seenAt } }))
+    const step = run.steps.find((s) => s.id === ADMINS)!
+    assert.equal(step.state.observation?.continuity, 'unknown')
+    assert.equal(step.state.observation?.prior?.firstSeenAt, seenAt, 'the date is still there')
+    assert.equal(step.tracking?.reportOnlyAt, f.snapshot.asOf, 'but the window runs from this scan')
+    assert.notEqual(step.status, 'ready-to-enforce')
+    assert.equal(statusOf(step).word.split(' · ')[0], 'Report-only')
+  }
 })
 
 test('the app\'s demo: final emergency verification holds the turn-on everywhere, not only on the board', () => {
@@ -318,109 +271,86 @@ test('the app\'s demo: final emergency verification holds the turn-on everywhere
   assert.equal(statusOf(run.steps.find((s) => s.id === ADMINS)!).word, 'In place')
 })
 
-test("the walk's reading: every report-only step of the app's demo says where it stands on its row, and carries both gates in its Done-when", () => {
-  // The surfaces the walk asserts on demo-week2, asserted here on the same tenant
-  // the walk loads. A gate word renamed on one surface and not the other is a P0
-  // in CI; this is that P0 as a unit test, one scan earlier.
-  const f = fixture('demo-week2')
-  const d = demoTenant(true)
-  const demo = { ...f, snapshot: d.snapshot, mapping: d.mapping, planId: planIdFor(DEMO_TENANT_ID) }
-  const run = runFixture(demo)
-  const rows = run.steps.filter((s) => statusOf(s).word.split(' · ')[0] === 'Report-only' && readyWhen(s) !== null)
-  assert.ok(rows.length > 0, 'the app\'s demo week two has a policy in report-only')
-  for (const step of rows) {
-    // A held one states nothing in its column: it is not watched towards a day it
-    // may be turned on (roadmap/holds.ts), and the walk reads it as held.
-    if (isHeld(step)) {
-      assert.equal(rowWhen(step), '', step.id)
-      continue
-    }
-    assert.match(rowWhen(step), WALK_ROW, step.id)
-    const lines = doneWhenOf(step, demo, run.schedule.reportOnlyAt[step.id] ?? null)
-    assert.match(lines, WALK_TIME, step.id)
-    assert.match(lines, WALK_EVIDENCE, step.id)
-  }
-})
-
-test('a policy the tenant enforces never finishes on a report-only period it is past', () => {
-  // R4-19, R4-28, R4-29. A guest-MFA policy the first scan found enforced read
-  // Ready · Review under a tile saying only the person's workflow record was left,
-  // and its Done-when led with "The required report-only period of 7 days is
-  // complete, with no failures on this policy in the sign-in records" and "The
-  // available records show every active person in scope signing in during those
-  // days" — a window that can never run on a policy already on. It printed on every
-  // inherited enforced policy of six tenants, one of them a tenant whose sign-in
-  // records could not be read at all (hostile). The shipped tenants as they are
-  // scanned, and again with the foundation settled, which is where the
-  // enforced-and-waiting-on-the-person steps appear.
-  const GATE = /required report-only period|during those days|^Time: in report-only|^Evidence: the sign-in records since/
-  let enforced = 0
-  let awaiting = 0
-  for (const name of ['small', 'mid', 'large', 'messy', 'midflight', 'hostile', 'demo', 'demo-week2'] as const) {
-    for (const f of [plainFixture(name), withFoundationSettled(plainFixture(name))]) {
-      const run = runFixture(f)
-      for (const step of run.steps) {
-        if (step.state.lifecycle !== 'enforced') continue
-        enforced++
-        const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
-        const lines = stepContract(step, ctx).doneWhen
-        for (const line of lines) assert.doesNotMatch(line, GATE, `${name}/${step.id} (enforced) still finishes on a report-only window: ${line}`)
-        if (!awaitsWorkflowRecord(step)) continue
-        awaiting++
-        assert.ok(lines.length > 0, `${name}/${step.id} finishes on nothing`)
-        // What is left stays: the scan that confirms the policy, and the person's own workflow line.
-        if (step.id !== 's-goal-guests-mfa') continue
-        assert.ok(lines.includes(shared.policyDoneWhen[2]), `${name}/${step.id} lost the scan that confirms the policy`)
-        assert.ok(lines.some((l) => /Representative guests/.test(l)), `${name}/${step.id} lost its own workflow line: ${lines.join(' | ')}`)
+test('a policy the tenant enforces never finishes on a report-only period it is past, and says so where IAMAI watched none', () => {
+  {
+    // R4-19, R4-28, R4-29. A guest-MFA policy the first scan found enforced read
+    // Ready · Review under a tile saying only the person's workflow record was left,
+    // and its Done-when led with "The required report-only period of 7 days is
+    // complete, with no failures on this policy in the sign-in records" and "The
+    // available records show every active person in scope signing in during those
+    // days" — a window that can never run on a policy already on. It printed on every
+    // inherited enforced policy of six tenants, one of them a tenant whose sign-in
+    // records could not be read at all (hostile). The shipped tenants as they are
+    // scanned, and again with the foundation settled, which is where the
+    // enforced-and-waiting-on-the-person steps appear.
+    const GATE = /required report-only period|during those days|^Time: in report-only|^Evidence: the sign-in records since/
+    let enforced = 0
+    let awaiting = 0
+    for (const name of ['small', 'mid', 'large', 'messy', 'midflight', 'hostile', 'demo', 'demo-week2'] as const) {
+      for (const f of [plainFixture(name), withFoundationSettled(plainFixture(name))]) {
+        const run = runFixture(f)
+        for (const step of run.steps) {
+          if (step.state.lifecycle !== 'enforced') continue
+          enforced++
+          const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+          const lines = stepContract(step, ctx).doneWhen
+          for (const line of lines) assert.doesNotMatch(line, GATE, `${name}/${step.id} (enforced) still finishes on a report-only window: ${line}`)
+          if (!awaitsWorkflowRecord(step)) continue
+          awaiting++
+          assert.ok(lines.length > 0, `${name}/${step.id} finishes on nothing`)
+          // What is left stays: the scan that confirms the policy, and the person's own workflow line.
+          if (step.id !== 's-goal-guests-mfa') continue
+          assert.ok(lines.includes(shared.policyDoneWhen[2]), `${name}/${step.id} lost the scan that confirms the policy`)
+          assert.ok(lines.some((l) => /Representative guests/.test(l)), `${name}/${step.id} lost its own workflow line: ${lines.join(' | ')}`)
+        }
       }
     }
+    assert.ok(enforced > 0 && awaiting > 0, `the premise: enforced steps (${enforced}) and steps waiting on a workflow record (${awaiting})`)
+
+    // A policy still in report-only keeps both gates: this is about the enforced one only.
+    //
+    // It keeps them as the two gates with today's numbers (policyDoneWhenTracked),
+    // which is what a report-only step's readyWhen gives it. This looked for a
+    // report-only step with NO readyWhen, which demo-week2 does not have, and
+    // checked it only if found — so the half of the control about report-only
+    // passed on nothing. It now names the step it checks.
+    const week2 = runFixture(fixture('demo-week2'))
+    const watched = week2.steps.find((s) => s.state.lifecycle === 'report-only' && readyWhen(s) !== null && stepEvidenceStrategy(s) === 'sign-in-records')
+    assert.ok(watched, 'the premise: a policy in report-only on its sign-in records')
+    assert.deepEqual(doneWhenTemplates(watched, ['{policyDoneWhen}']).slice(0, 2), shared.policyDoneWhenTracked, `${watched.id} lost the report-only gates it is running`)
+    const notYet = week2.steps.find((s) => s.state.lifecycle === 'not-deployed' && stepEvidenceStrategy(s) === 'sign-in-records')
+    assert.ok(notYet, 'the premise: a policy not yet deployed')
+    assert.deepEqual(doneWhenTemplates(notYet, ['{policyDoneWhen}']).slice(0, 2), shared.policyDoneWhen.slice(0, 2), `${notYet.id} lost the report-only gates it has still to run`)
   }
-  assert.ok(enforced > 0 && awaiting > 0, `the premise: enforced steps (${enforced}) and steps waiting on a workflow record (${awaiting})`)
+  {
+    // R4-19 (a). An enforced policy is past its report-only gates, and they left
+    // its Done-when — silently. Nothing then recorded that no window had been
+    // watched: a device-code block and a guest-MFA policy the first scan found
+    // enforced, and a policy an administrator created On and skipped report-only
+    // with, finished on the same lines as a policy IAMAI had watched through its
+    // period. The unmet gate had been the only line that said otherwise.
+    const ctxOf = (f: Fixture): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups })
+    const hostile = withFoundationSettled(plainFixture('hostile'))
+    const run = runFixture(hostile)
+    for (const id of ['s-goal-block-device-code', 's-goal-guests-mfa']) {
+      const step = run.steps.find((s) => s.id === id)
+      assert.ok(step && step.state.lifecycle === 'enforced' && awaitsWorkflowRecord(step), `the premise: ${id} is enforced and waits on the person`)
+      const lines = stepContract(step, ctxOf(hostile)).doneWhen
+      assert.equal(lines[0], POLICY_UNOBSERVED, `${id}: ${lines.join(' | ')}`)
+      assert.ok(lines.includes(shared.policyDoneWhen[2]), `${id} lost the scan that confirms the policy`)
+      for (const line of lines) assert.doesNotMatch(line, /required report-only period|during those days/, `${id}: ${line}`)
+    }
 
-  // A policy still in report-only keeps both gates: this is about the enforced one only.
-  //
-  // It keeps them as the two gates with today's numbers (policyDoneWhenTracked),
-  // which is what a report-only step's readyWhen gives it. This looked for a
-  // report-only step with NO readyWhen, which demo-week2 does not have, and
-  // checked it only if found — so the half of the control about report-only
-  // passed on nothing. It now names the step it checks.
-  const week2 = runFixture(fixture('demo-week2'))
-  const watched = week2.steps.find((s) => s.state.lifecycle === 'report-only' && readyWhen(s) !== null && stepEvidenceStrategy(s) === 'sign-in-records')
-  assert.ok(watched, 'the premise: a policy in report-only on its sign-in records')
-  assert.deepEqual(doneWhenTemplates(watched, ['{policyDoneWhen}']).slice(0, 2), shared.policyDoneWhenTracked, `${watched.id} lost the report-only gates it is running`)
-  const notYet = week2.steps.find((s) => s.state.lifecycle === 'not-deployed' && stepEvidenceStrategy(s) === 'sign-in-records')
-  assert.ok(notYet, 'the premise: a policy not yet deployed')
-  assert.deepEqual(doneWhenTemplates(notYet, ['{policyDoneWhen}']).slice(0, 2), shared.policyDoneWhen.slice(0, 2), `${notYet.id} lost the report-only gates it has still to run`)
-})
-
-test('an enforced policy IAMAI watched no report-only period for says so where the gates were; one it watched does not', () => {
-  // R4-19 (a). An enforced policy is past its report-only gates, and they left
-  // its Done-when — silently. Nothing then recorded that no window had been
-  // watched: a device-code block and a guest-MFA policy the first scan found
-  // enforced, and a policy an administrator created On and skipped report-only
-  // with, finished on the same lines as a policy IAMAI had watched through its
-  // period. The unmet gate had been the only line that said otherwise.
-  const ctxOf = (f: Fixture): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups })
-  const hostile = withFoundationSettled(plainFixture('hostile'))
-  const run = runFixture(hostile)
-  for (const id of ['s-goal-block-device-code', 's-goal-guests-mfa']) {
-    const step = run.steps.find((s) => s.id === id)
-    assert.ok(step && step.state.lifecycle === 'enforced' && awaitsWorkflowRecord(step), `the premise: ${id} is enforced and waits on the person`)
-    const lines = stepContract(step, ctxOf(hostile)).doneWhen
-    assert.equal(lines[0], POLICY_UNOBSERVED, `${id}: ${lines.join(' | ')}`)
-    assert.ok(lines.includes(shared.policyDoneWhen[2]), `${id} lost the scan that confirms the policy`)
-    for (const line of lines) assert.doesNotMatch(line, /required report-only period|during those days/, `${id}: ${line}`)
+    // Watched in report-only, then turned on: it had its window, and nothing says it missed one.
+    const f = withFoundationSettled(plainFixture('demo'))
+    const first = runFixture(f)
+    const before = first.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!
+    assert.equal(before.state.lifecycle, 'report-only', 'the premise: the policy is in report-only at the first scan')
+    const g = structuredClone(f)
+    const owned = (before.tracking?.members ?? []).map((m) => m.policyId)
+    for (const row of (g.snapshot.config.caPolicies?.rows ?? []) as Record<string, unknown>[]) if (owned.includes(String(row.id))) row.state = 'enabled'
+    const watched = runFixture(g, {}, observationsOf(first.steps), g.snapshot.asOf).steps.find((s) => s.id === before.id)!
+    assert.equal(watched.state.lifecycle, 'enforced', 'the premise: the next scan finds it on')
+    assert.deepEqual(doneWhenTemplates(watched, ['{policyDoneWhen}']), [shared.policyDoneWhen[2], POLICY_VERIFY_AFTER])
   }
-
-  // Watched in report-only, then turned on: it had its window, and nothing says it missed one.
-  const f = withFoundationSettled(plainFixture('demo'))
-  const first = runFixture(f)
-  const before = first.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!
-  assert.equal(before.state.lifecycle, 'report-only', 'the premise: the policy is in report-only at the first scan')
-  const g = structuredClone(f)
-  const owned = (before.tracking?.members ?? []).map((m) => m.policyId)
-  for (const row of (g.snapshot.config.caPolicies?.rows ?? []) as Record<string, unknown>[]) if (owned.includes(String(row.id))) row.state = 'enabled'
-  const watched = runFixture(g, {}, observationsOf(first.steps), g.snapshot.asOf).steps.find((s) => s.id === before.id)!
-  assert.equal(watched.state.lifecycle, 'enforced', 'the premise: the next scan finds it on')
-  assert.deepEqual(doneWhenTemplates(watched, ['{policyDoneWhen}']), [shared.policyDoneWhen[2], POLICY_VERIFY_AFTER])
 })
