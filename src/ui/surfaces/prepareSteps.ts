@@ -176,7 +176,6 @@ function teamVars(step: Step, ctx: StepVarContext): Record<string, unknown> {
   if (team === null) return {}
   const W = words<TeamWords>(step)
   const passkey = team.missing.filter((id) => team.passkey.has(id))
-  const authenticator = team.missing.filter((id) => !team.passkey.has(id))
   const account = accountsOf(ctx)
   const out: Record<string, unknown> = {
     // The one Authenticator procedure's reader: the person being helped (content/passkeySetup.ts).
@@ -184,10 +183,12 @@ function teamVars(step: Step, ctx: StepVarContext): Record<string, unknown> {
     passkeyAccount: passkeyWords.accountTheirs,
     // The emails' own values, so Tell your people and the Email tab fill the first message alike.
     mfaEmail: mfaEmailValues(ctx),
+    // The admins the procedure names for a security key (whatToDo.steps).
     campaignNeedsPasskey: passkey.map(account),
     campaignNeedsPasskeyIds: passkey,
-    campaignNeedsAuthenticator: authenticator.map(account),
-    campaignNeedsAuthenticatorIds: authenticator,
+    // Everyone not ready, each with MFA Readiness's next step for them (who.groups).
+    campaignNotReady: personLines(ctx, team.missing),
+    campaignNotReadyIds: team.missing,
   }
   const choice = exclusionsGroupChoice({ snapshot: ctx.snapshot, mapping: ctx.mapping, groups: ctx.groups, directory: ctx.directory })
   const groupId = choice.actionableId

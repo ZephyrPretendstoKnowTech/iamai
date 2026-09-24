@@ -4814,7 +4814,7 @@
       "kind": "campaign",
       "title": "Prepare Your Team for MFA",
       "changeLine": null,
-      "why": "Everyone the MFA policies cover needs a method those policies accept before they turn on: Microsoft Authenticator for most people, a passkey or security key for admins.",
+      "why": "Everyone the MFA policies cover needs a method they accept before they turn on. A passkey in Microsoft Authenticator works for everyone and can't be phished; admins must have one.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-mfa-registration-campaign"
       },
@@ -4823,9 +4823,8 @@
         "lead": "{cohort} are included in this preparation step.",
         "timeline": "Enroll by {enrollBy}. Require MFA for Everyone is planned for {mfaEnforce}; enforcing it is still a change someone makes. Whoever has not enrolled is listed below for you to review.",
         "groups": {
-          "$comment": "The step's own people not ready (roadmap/generate.ts preparation.missingIds), by what each needs (walk list section 3 item 53): the admins the admin policy covers need a passkey or security key (preparation.passkeyIds), everyone else Microsoft Authenticator. The same count as the step's card, never MFA Readiness's higher bar (ui/surfaces/prepareSteps.ts).",
-          "campaignNeedsPasskey": "{n} admins still need a passkey or security key:",
-          "campaignNeedsAuthenticator": "{n} people still need Microsoft Authenticator:"
+          "$comment": "The step's own people not ready (roadmap/generate.ts preparation.missingIds), each with MFA Readiness's own next step for them (ui/surfaces/personNext.ts personLines; owner 2026-09-24: the Plan and MFA Readiness speak one language, and passkeys are the goal for everyone). It split them into admins needing a passkey and everyone else needing Microsoft Authenticator.",
+          "campaignNotReady": "{n} not ready yet, each with their next step:"
         }
       },
       "decision": null,
@@ -4933,8 +4932,8 @@
         "campaignNeedsPasskey": [
           "Alex Morgan"
         ],
-        "campaignNeedsAuthenticator": [
-          "Shallan Davar"
+        "campaignNotReady": [
+          "Shallan Davar (shallan@example.com): Set up a passkey in Microsoft Authenticator"
         ],
         "campaignToday": "Microsoft managed",
         "campaignExclude": "Core - Exception - Emergency access"
