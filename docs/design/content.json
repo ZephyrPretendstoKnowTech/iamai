@@ -2254,6 +2254,8 @@
             "guests": "guests",
             "fact": "{verb} {what} for {who}",
             "except": "{who} except {excluded}",
+            "$commentAdminRoles": "A role list the fact would count reads as admin roles, with no number: the create task beside it counts the baseline's roles, and the tenant's own policy can hold more (owner, 2026-09-24: 4.3 read 133 beside 46).",
+            "adminRoles": "admin roles",
             "$commentExceptMore": "More than two exclusions: the first by name and the rest counted (owner, 2026-09-24: 4.4's criterion read as a run-on list).",
             "exceptMore": "{who} except {first} and {n} other exclusions",
             "resources": "across All resources",
@@ -3889,9 +3891,8 @@
         "detail": null,
         "pointer": true,
         "satisfied": "{dormantDone}",
-        "keptPart": "{n} kept",
-        "disabledPart": "{n} disabled",
-        "noneDormant": "No enabled account without a sign-in in the last 90 days"
+        "allActive": "Every enabled account has signed in in the last 90 days",
+        "allActiveKept": "Every enabled account has signed in in the last 90 days, apart from the {n} you keep"
       },
       "taskTitle": "Disable or keep each account",
       "$commentKeep": "The rail's keep picker (ui/surfaces/ContentStep.tsx DormantDecision; walk list items 17, 22, 23, 28): its label, the instruction line in the rail's slot, and each option's last sign-in.",
@@ -4660,7 +4661,7 @@
         "operatorDevices": "your computer and your phone"
       },
       "aiFocus": "Walk me through creating a passkey in Microsoft Authenticator, or registering an approved security key, and signing in with it on each device I use.",
-      "why": "Your account makes every change in this plan, and Require Phishing-Resistant MFA for Admins will cover it. Register a passkey and sign in with it now; Prepare Your Team for MFA starts once you have.",
+      "why": "Your account makes every change in this plan, and Require Phishing-Resistant MFA for Admins will cover it. Prepare Your Team for MFA starts once you have registered a passkey and signed in with it.",
       "card": {
         "$comment": "The card and the Next milestone follow the operator's own readiness (walk list section 3 item 41, ui/surfaces/prepareSteps.ts): nothing registered, registered and not signed in with it yet, or signed in with it, which completes the step (items 5 and 43: a passkey or Windows Hello, on any device). The signed-in card is the Satisfied card's fact (item 14). The device words fill {devices} there and {operatorDevices} in the procedure.",
         "subject": "Your passkey",
@@ -7264,7 +7265,7 @@
       },
       "dates": null,
       "doneWhen": [
-        "No account that holds an admin role, other than the emergency access accounts, has signed in to Outlook or Teams in the last 30 days."
+        "No account that holds an admin role, other than the emergency access accounts, has a mailbox or Teams licence or has signed in to Outlook or Teams in the last 30 days."
       ],
       "ifWrong": "Put the role back on the everyday account; nothing else changes.",
       "comms": null,
@@ -7302,8 +7303,11 @@
         "subject": "Administrator accounts",
         "check": null,
         "detail": null,
-        "satisfied": "No admin signed in to Outlook or Teams in the last 30 days.",
-        "admin": "Holds {roles} and signs in to {apps}"
+        "satisfied": "No admin has a mailbox or Teams licence or signed in to Outlook or Teams in the last 30 days.",
+        "admin": "Holds {roles} and {uses}",
+        "signsIn": "signs in to {apps}",
+        "mailboxLicence": "has a mailbox licence",
+        "teamsLicence": "has a Teams licence"
       },
       "taskTitle": "Move the role to a separate admin account",
       "$commentProcedure": "Move the role to a separate admin account, one task per admin the scan saw on Outlook or Teams (ui/surfaces/sectionThreeTasks.ts separateAdminTasksOf; walk list items 2, 20, 36). Each value is the scan's: {newUpn} and {upn} the new admin account, {everyday} the account that holds the role today, {mail} its email address, {role} one admin role it holds. With no admin to move, the same lines stand with the generic values below, so the procedure reads the same in every state. tapPolicy stands only where the scan read Temporary Access Pass as off; the Active and Eligible lines follow how the role is held and whether the tenant has Privileged Identity Management.",

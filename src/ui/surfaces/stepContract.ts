@@ -1368,7 +1368,9 @@ function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<str
     const mail = step.id === QUESTION_STEP.mailDevices && mapping ? mailDevicesOf(mapping).map((id) => ctx?.nameOf(id) ?? id) : []
     // The policy by its name: the tracked one where the tenant has it, else the one the plan proposes.
     const tracked = (step.tracking?.members ?? []).map((m) => m.policyName).find((n): n is string => typeof n === 'string' && n.trim() !== '')
-    return policyDoneWhen(step, fact, tracked ?? String(ex.policyName ?? contentTitle(step)), mail)
+    // Several tenant policies delivering it together are named together, as the Satisfied card names them.
+    const together = step.state.satisfied && step.satisfiedBy && step.satisfiedBy.sufficient === null && step.satisfiedBy.policies.length > 1 ? list(step.satisfiedBy.policies) : null
+    return policyDoneWhen(step, fact, together ?? tracked ?? String(ex.policyName ?? contentTitle(step)), mail)
   }
   // Emergency access in place with its hardening deferred is not fully resilient,
   // and Done when does not say it is (owner, 2026-09-11).

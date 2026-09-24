@@ -84,6 +84,9 @@ export const LANE_ORDER: readonly Lane[] = ['Ready', 'Up Next', 'On Hold', 'Comp
  * and Use Separate Accounts for Admin Work creates a separate admin account for
  * each admin it lists. Every other check and campaign reads Ready.
  */
+/** Verify Emergency Access's board row. */
+const DRILL_ROW = 'cleanup-drill'
+
 const CHECK_WORK: Readonly<Record<string, Substatus>> = {
   's-check-dormant-accounts': 'Review',
   's-check-separate-admin-accounts': 'Create',
@@ -435,7 +438,7 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
   }
   for (const r of rows) {
     if (out.has(r.id)) continue
-    rest.push({ id: r.id, reading: r.complete ? { lane: 'Completed', substatus: null, reason: null, blockers: [], gates: [] } : { lane: 'Ready', substatus: 'Review', reason: null, blockers: [], gates: [] } })
+    rest.push({ id: r.id, reading: r.complete ? { lane: 'Completed', substatus: null, reason: null, blockers: [], gates: [] } : { lane: 'Ready', substatus: r.id === DRILL_ROW ? null : 'Review', reason: null, blockers: [], gates: [] } })
   }
   rest.sort((a, b) => a.id.localeCompare(b.id))
   for (const { id, reading } of rest) out.set(id, { ...reading, order: counts[reading.lane]++, fromEngine: false })
@@ -521,7 +524,8 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
     const step = byId.get(id) ?? null
     reading.blockers = reading.blockers.filter((b) => !(b.kind === 'decision' && isDirectionStep(b.id) && directionWaitRelayed(step, via, b.id)))
   }
-  for (const row of rows) { const reading = out.get(row.id); if (reading?.lane === 'Ready') reading.substatus = 'Review' }
+  // Verify Emergency Access is a sign-in, not a review: it reads Ready.
+  for (const row of rows) { const reading = out.get(row.id); if (reading?.lane === 'Ready') reading.substatus = row.id === DRILL_ROW ? null : 'Review' }
   const rolloutPending = steps.some(step => POLICY.includes(step.kind) && step.status !== 'done' && step.status !== 'skipped' && !step.doesntApply)
   if (rolloutPending) for (const row of rows.filter(row => row.afterRollout && !row.complete)) {
     const reading = out.get(row.id)

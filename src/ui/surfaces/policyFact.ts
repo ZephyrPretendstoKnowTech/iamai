@@ -50,6 +50,7 @@ type FactWords = {
   fact: string
   except: string
   exceptMore: string
+  adminRoles: string
   resources: string
   resourcesExcept: string
 }
@@ -70,6 +71,8 @@ function policyOf(step: Step, rows: readonly Row[]): Row | null {
   const byId = (id: string): Row | null => rows.find((r) => String(r.id ?? '').toLowerCase() === id.toLowerCase()) ?? null
   const tracked = (step.tracking?.members ?? []).map((m) => (m.policyId ? byId(m.policyId) : null)).filter((r): r is Row => r !== null)
   if (step.state.satisfied) {
+    // Several policies delivering it together: no one policy's fact stands for them all (owner, 2026-09-24).
+    if (step.satisfiedBy && step.satisfiedBy.sufficient === null && step.satisfiedBy.policies.length > 1) return null
     if (tracked.length === 1) return tracked[0]
     const by = step.satisfiedBy
     const name = by?.sufficient ?? (by?.policies.length === 1 ? by.policies[0] : null)
@@ -174,7 +177,7 @@ export function policyFactOf(step: Step, ctx: Pick<StepVarContext, 'snapshot' | 
   }
   const accounts = (ids: readonly string[]): string[] => (ids.length > NAMED ? [count(ids.length, 'account')] : ids.map(name))
   // A few roles by name ("Global Administrator"); the baseline's long list counted ("46 admin roles").
-  const roles = (ids: readonly string[]): string[] => (ids.length === 0 ? [] : ids.length > NAMED || ids.some((id) => roleName(id) === null) ? [count(ids.length, 'admin role')] : ids.map((id) => roleName(id) as string))
+  const roles = (ids: readonly string[]): string[] => (ids.length === 0 ? [] : ids.length > NAMED || ids.some((id) => roleName(id) === null) ? [W().adminRoles] : ids.map((id) => roleName(id) as string))
   const s = e.scope
   const who = [
     ...(s.allUsers ? [w.allUsers] : []),

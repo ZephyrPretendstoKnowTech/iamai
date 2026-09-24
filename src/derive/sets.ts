@@ -273,6 +273,9 @@ function inactive(snapshot: TenantSnapshot, now: string, u: UserRow): boolean {
   const cutoff = Date.parse(now) - INACTIVE_DAYS * 86_400_000
   if (activityUnread(snapshot, u)) return false
   // The directory's last sign-in, for the signed-in account too: the population never depends on who ran the scan.
+  // An account created inside the window has not had the chance to go dormant.
+  const created = u.createdDateTime ? Date.parse(u.createdDateTime) : Number.NaN
+  if (Number.isFinite(created) && created >= cutoff) return false
   const last = lastSuccessOf(snapshot, u)
   const at = last ? Date.parse(last) : Number.NaN
   return !(Number.isFinite(at) && at >= cutoff)
