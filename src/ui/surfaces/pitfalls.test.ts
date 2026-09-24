@@ -16,6 +16,7 @@ import { prepareReadingOf, turnOnWithoutChoices } from './prepareSteps.ts'
 import { personLines, readinessNextOf } from './personNext.ts'
 import { unprovenIdsOf } from '../../derive/contentLists.ts'
 import { pitfallTilesOf } from './pitfalls.ts'
+import { stepBodyOf } from './stepBody.ts'
 import { rowWho } from './rowWho.ts'
 import type { StepVarContext } from './stepVars.ts'
 
@@ -152,4 +153,17 @@ test("3.4's Who this touches is its Impact: the guest counted once", () => {
   const who = stepContract(step, ctx).who?.text
   assert.equal(who, rowWho(step))
   assert.match(who ?? '', /^\d+ people and 1 guest$/)
+})
+
+test('3.4 speaks MFA Readiness’s language: About says passkeys for everyone, and AI Info lists each person not ready with their next step', () => {
+  const { step, ctx } = campaign(curatedFixture('demo'))
+  const body = stepBodyOf(step, ctx)
+  assert.doesNotMatch(body.contract.why ?? '', /Microsoft Authenticator for most people/)
+  assert.match(body.contract.why ?? '', /A passkey in Microsoft Authenticator works for everyone/)
+  const ai = body.artifacts.find((a) => a.id === 'ai')!.text()
+  assert.doesNotMatch(ai, /still need Microsoft Authenticator|still need a passkey or security key/, 'no second vocabulary beside the cards')
+  const next = readinessNextOf(ctx.snapshot, ctx.now, ctx.mapping)
+  const named = step.preparation!.missingIds.filter((id) => next.has(id))
+  assert.ok(named.length > 0, 'the premise')
+  for (const id of named.slice(0, 5)) assert.ok(ai.split('\n').some((l) =>l.includes(ctx.nameOf(id)) && l.includes(`: ${next.get(id)}`)), `${id}: named with the step MFA Readiness gives`)
 })
