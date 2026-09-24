@@ -75,8 +75,9 @@ const byId = (steps: readonly Step[], id: string): Step => {
 // ---- Completed: the warnings a finished step keeps ----
 
 test('a finished policy prints the warnings its opened step keeps: enforced below readiness, and ahead of a prerequisite', () => {
-  // Large: the admins policy is enforced while 12 of 60 admins hold a method it
-  // accepts, and ahead of Configure Passkey Authentication. The paper said only
+  // Large: the admins policy is enforced while 9 of its 51 active admins hold a
+  // method it accepts (walk list 4.x L4: the gate counts the people MFA Readiness
+  // counts), and ahead of Configure Passkey Authentication. The paper said only
   // "Require Phishing-Resistant MFA for Admins · Completed".
   const large = plan('large')
   const admins = byId(large.steps, 's-goal-admins-phishing-resistant')
@@ -84,7 +85,7 @@ test('a finished policy prints the warnings its opened step keeps: enforced belo
   const line = lines.find((l) => l.id === admins.id)
   assert.ok(line, 'the premise: the admins policy is listed as Completed')
   const said = line.warnings.map((t) => `${t.label}: ${t.value}`)
-  assert.ok(said.some((w) => w.includes('12 of 60 admins')), `the readiness warning is not printed: ${said.join(' | ')}`)
+  assert.ok(said.some((w) => w.includes('9 of 51 admins')),`the readiness warning is not printed: ${said.join(' | ')}`)
   assert.ok(said.some((w) => w.startsWith('Configure Passkey Authentication:')), `the prerequisite it went ahead of is not printed: ${said.join(' | ')}`)
   // Hostile: Require MFA for Everyone is enforced where readiness cannot be measured.
   const hostile = plan('hostile')
