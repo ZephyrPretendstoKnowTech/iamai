@@ -33,6 +33,7 @@ import { settleForecast } from '../../roadmap/forecast.ts'
 import { observationsOf } from '../../roadmap/tracking.ts'
 import type { PlanDecisions, StepDecision } from '../../roadmap/progress.ts'
 import { appliedMapping } from './pickerRows.ts'
+import { heldPlan } from './planChanges.ts'
 import { effectiveFirstDeployment, proposedStart } from '../../derive/planStart.ts'
 import { HARDENING_DEFERRAL_ID } from '../../validation/emergencyTiers.ts'
 import { BREAK_GLASS_STEP_ID } from '../../roadmap/stepIds.ts'
@@ -397,6 +398,17 @@ export function usePlanData(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [snapshot, baseline, applied, groupsLoaded, loaded, groups, directory, saved, planId, version, startDate, firstDeployment, band, freeze, mappingFor, groupsFor])
 
+  // The plan on screen (planChanges.ts heldPlan): while the plan recomputes for
+  // the snapshot on screen — a Save reads the groups again — the page keeps the
+  // plan it last computed for that snapshot, and updates in place when the new
+  // one lands. A new snapshot loads.
+  const held = useRef<{ snapshot: TenantSnapshot; plan: PlanComputed } | null>(null)
+  useEffect(() => {
+    if (!snapshot) held.current = null
+    else if (computed) held.current = { snapshot, plan: computed }
+  }, [snapshot, computed])
+  const shown = heldPlan(computed, held.current, snapshot)
+
   // Step 4 records its baseline and qualifying sign-ins from the completed scan.
   // It has no parallel manual result path: the same checkpoints drive the tile,
   // milestone, cleanup completion and export.
@@ -470,7 +482,7 @@ export function usePlanData(
     retrySave: () => { if (pendingMapping.current) persistMapping(pendingMapping.current); setSaveAttempt(value => value + 1) },
     recordForExport: saved ? { ...saved, observations: observationsOf(computed?.steps ?? [], saved.observations ?? null) } : null,
     ready: loaded && groupsLoaded,
-    computed,
+    computed: shown,
     // The mapping the plan derives from: the stored record with every step
     // decision applied, so a step's variables agree with the plan around it.
     mapping: applied,
