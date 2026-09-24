@@ -41,10 +41,14 @@ const CONSENT = consentRows()
  * Their content entries carry What to do and Done when and nothing else, so the
  * name is read from where it is written rather than copied here.
  */
-const ENGINE_TITLE: Record<string, string> = {
+// Built on first use, never at load: copy/validation.ts reaches this module
+// through copy/inventory.ts, so where it loads first SUBJECT_PLAIN is not yet
+// initialised while this module runs (a load-order cycle).
+let engineTitles: Record<string, string> | null = null
+const engineTitle = (id: string): string | undefined => (engineTitles ??= {
   ...Object.fromEntries((ladderData.items as { id: string; name: string }[]).map((i) => [`s-ladder-${i.id}`, i.name])),
   ...Object.fromEntries(Object.entries(SUBJECT_PLAIN).map(([k, v]) => [`s-blocker-${k.replace(/[A-Z]/g, (ch) => `-${ch.toLowerCase()}`)}`, v as string])),
-}
+})[id]
 const TRANSLATED = translatorOutput as unknown as Record<string, { steps: string[] }>
 
 export function esc(s: unknown): string {
@@ -1041,14 +1045,14 @@ export function reviewBody(): string {
   body.push('<div class="legend"><var class="v">Underlined green</var> is filled by the engine from the tenant; everything else is fixed text from the content file. Chips, buttons and pickers are drawn as they would appear. <var class="v miss">{orange}</var> marks a variable the example did not fill.</div>')
   body.push(
     '<h3>Titles</h3><ol class="index">' +
-      [...prep, ...sharedDev, ...rungs, ...pol].map((x) => `<li>${esc(x.title ?? ENGINE_TITLE[x.id] ?? x.id)}` + (x.licence ? ` <span class="sub">— ${esc(x.licence)}</span>` : '') + '</li>').join('') +
+      [...prep, ...sharedDev, ...rungs, ...pol].map((x) => `<li>${esc(x.title ?? engineTitle(x.id) ?? x.id)}` + (x.licence ? ` <span class="sub">— ${esc(x.licence)}</span>` : '') + '</li>').join('') +
       Object.values(C.cleanup).map((c: any) => `<li>${esc(c.title)} <span class="sub">— Cleanup</span></li>`).join('') +
       '</ol>',
   )
   body.push('<div class="phase"><h3>Preparation · Sep 1 → Sep 7</h3></div>')
-  for (const x of [...prep, ...sharedDev]) body.push(renderStep(x, ENGINE_TITLE[x.id]))
+  for (const x of [...prep, ...sharedDev]) body.push(renderStep(x, engineTitle(x.id)))
   body.push('<div class="phase"><h3>The free-tier ladder — dormant</h3><p class="sub">A tenant with no Entra ID P1 is given no plan at all (owner, 2026-09-20); it reads the sentence below and nothing else. These rungs stay in the tree, behind <code>FREE_TIER_LADDER</code>, for a later comparison. Their titles and Why come from the engine.</p>' + p(C.pages.plan.conditionalAccessNeedsP1, {}) + '</div>')
-  for (const x of rungs) body.push(renderStep(x, ENGINE_TITLE[x.id]))
+  for (const x of rungs) body.push(renderStep(x, engineTitle(x.id)))
   body.push('<div class="phase"><h3>Phase 1 · Sep 8 → Sep 13 &nbsp;/&nbsp; Phase 2 · Sep 15 → Sep 20 &nbsp;/&nbsp; Phase 3 · Sep 22 → Sep 27</h3><p class="sub">Policy steps, one box each; which phase a step lands in is the engine&#8217;s call.</p></div>')
   for (const x of pol) body.push(renderStep(x))
   body.push('<div class="phase"><h3>Cleanup · after the last enforcement</h3></div>')
