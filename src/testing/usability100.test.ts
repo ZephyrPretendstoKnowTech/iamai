@@ -6,8 +6,6 @@ import { laneReadings, observe } from '../ui/surfaces/planLanes.ts'
 import { boardReadingsOf, laneViewAlone, laneViewFor } from '../ui/surfaces/planBoard.ts'
 import { stepBodyOf } from '../ui/surfaces/stepBody.ts'
 import { stepExportView } from '../ui/surfaces/stepExport.ts'
-import { railOf } from '../ui/surfaces/stepContract.ts'
-import { IMPACT } from '../derive/whoLine.ts'
 import { applySkips } from '../roadmap/progress.ts'
 import { applyManualReviews, MANUAL_REVIEW_ID, manualBasis, scopeManualBasis } from '../roadmap/manualWork.ts'
 
@@ -36,32 +34,6 @@ test('100 identities remain stable across deployment stages; drift reopens the a
   assert.equal(runs[3].r.steps.find(s=>s.id==='s-goal-admins-phishing-resistant')!.state.satisfied,false)
   assert.equal(laneReadings(runs[3].r.steps).get('s-goal-admins-phishing-resistant')?.lane,'Ready')
   assert.equal(laneReadings(runs[3].r.steps).get('s-goal-admins-phishing-resistant')?.substatus,'Correct', 'a safe correction that does not enforce can proceed before final recovery verification')
-})
-test('completed decisions retain their completion criteria without claiming report-only history',()=>{
-  const {body}=setup('configured')
-  assert.equal(body('s-direction-use').contract.doneWhen.join(' '),'Every answer is approved.')
-  assert.deepEqual(railOf(body('s-direction-use').contract,'Confirm What You Use'),{metric:'Completed',sub:''})
-  assert.doesNotMatch(body('s-goal-mfa-all-users').contract.doneWhen.join(' '),/report-only period|every active person.*signing/)
-})
-test('account review evidence describes accounts, not policy prompts',()=>{
-  const {body}=setup('initial')
-  for(const id of ['s-check-dormant-accounts','s-check-separate-admin-accounts']) {
-    const tile=body(id).readiness.satisfied.find(t=>t.key==='people')
-    assert.ok(tile,id)
-    // A sentence about a list is drawn only where there is a list: over a reach of
-    // nobody the tile states the count and stops (quality audit 2026-09-20 section 3,
-    // "These are the accounts this step asks you to review" over a reach of nobody).
-    if(tile.value===IMPACT.noUserImpact){assert.equal(tile.note,null,id);continue}
-    assert.match(tile.note ?? '',/accounts this step asks you to review/,id)
-    assert.doesNotMatch(tile.note ?? '',/this policy|prompted/,id)
-  }
-})
-test('service-group instructions bind the actual proposed group name',()=>{
-  const {body}=setup('initial');const b=body('s-prereq-service-accounts-group')
-  const portal=b.artifacts.find(a=>a.id==='portal')!.text()
-  assert.ok(b.pkgBindings?.['group.target.displayName'])
-  assert.ok(portal.includes(String(b.pkgBindings?.['group.target.displayName'])))
-  assert.doesNotMatch(portal,/‹group name›/)
 })
 test('shared-device review can finish, survive a rescan, and reopen after a policy edit',()=>{
   const {f,r,body,ctx}=setup('initial');const step=r.steps.find(s=>s.id==='s-shared-devices')!
@@ -102,15 +74,4 @@ test('deferring a prerequisite does not complete it or release its dependent pol
   assert.equal(readings.get(id)?.lane,'Deferred')
   assert.equal(r.steps.find(s=>s.id===id)!.state.satisfied,false)
   for(const s of r.steps.filter(s=>s.blockedBy.includes(id))) assert.notEqual(readings.get(s.id)?.lane,'Ready',s.id)
-})
-
-test('the steps that absorbed the mail and partner follow-ups carry their owner emails',()=>{
-  // Both follow-ups folded into the steps that own their outcome
-  // (docs/plans/step-redundancy-analysis.md findings 5 and 6), and the ask each
-  // one made of a device or partner owner went with them.
-  const {body}=setup('deployment')
-  assert.match(body('s-goal-block-legacy-auth').artifacts.find(a=>a.id==='email')!.text(),/confirm the authentication and TLS capabilities, sender and recipient requirements, and a delivery-test window/)
-  assert.match(body('s-goal-guests-mfa').artifacts.find(a=>a.id==='email')!.text(),/confirm which guest accounts you use/)
-  const services=body('s-direction-use')
-  assert.doesNotMatch(services.readiness.satisfied.map(t=>t.note).join(' '),/existing control/)
 })

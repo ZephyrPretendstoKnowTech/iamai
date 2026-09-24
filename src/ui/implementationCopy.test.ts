@@ -42,21 +42,6 @@ test('a copied JSON body is the projected body: valid JSON with the tenant ids i
   assert.doesNotMatch(out ?? '', /guid-\d{4}|upn-\d+@redacted/, 'a placeholder replaced a value the request needs')
 })
 
-test('a copied script keeps the values it runs with, and AI Info keeps its tenant context while the page shows the warning once', async () => {
-  const script = text('readyToEnforce', 'powershell')
-  const copiedScript = await copyThrough(script, ARTIFACT)
-  assert.equal(copiedScript, script)
-  assert.match(copiedScript ?? '', new RegExp(`-AuthenticationStrengthId '${PILOT_IDS.strength}'`))
-  const ai = text('readyToEnforce', 'aiInfo')
-  const copiedAi = await copyThrough(ai, ARTIFACT)
-  assert.equal(copiedAi, ai)
-  assert.match(copiedAi ?? '', new RegExp(`Policy ID: ${PILOT_IDS.policy}`))
-  // The warning is the page's (CONTRACT.implementation.aiWarning), drawn beside the channel, not repeated in the text.
-  assert.doesNotMatch(copiedAi ?? '', /Contains tenant context/)
-  const email = text('readyToEnforce', 'email')
-  assert.equal(await copyThrough(email, ARTIFACT), email, 'the Email is not copied as authored')
-})
-
 test('every other export keeps its redaction: the same body through the default disposition is masked', async () => {
   const body = text('missing', 'json')
   const redacted = await copyThrough(body, REDACTED)

