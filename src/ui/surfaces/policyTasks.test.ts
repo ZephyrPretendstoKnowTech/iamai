@@ -18,7 +18,8 @@ import { laneReadings } from './planLanes.ts'
 import { readinessBlockersOf } from './planBoard.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { TASK_HEAD, taskHeadingsOf } from './stepHeadings.ts'
-import { cardWordsOf, drawsTaskAnatomy, policyBarOf, policyCardsOf, policySubjectsOf, portalProcedureOf, taskSubjectOf } from './policyTasks.ts'
+import { cardWordsOf, drawsTaskAnatomy, isPolicyProcedureTask, policyBarOf, policyCardsOf, policySubjectsOf, portalProcedureOf, taskSubjectOf } from './policyTasks.ts'
+import { unavailableReason } from '../../roadmap/operations.ts'
 import { DIRECTION_STEP_IDS, EMERGENCY_ACCESS_GROUP, isGroupMember, usesTaskAnatomy } from '../../roadmap/stepGroups.ts'
 import { CONTRACT, FINISHED_READING } from './stepContract.ts'
 import type { ContractReadiness, ReadinessTile, StepContract } from './stepContract.ts'
@@ -325,7 +326,13 @@ test('a policy card states no stage it is not at, and no check the plan never re
     const held = bodyOf('s-goal-admins-phishing-resistant', 'demo')
     assert.equal(held.body.contract.state.lifecycle, 'report-only', 'the premise: the policy is sitting in report-only')
     const firstTask = (b: typeof held.body): string => b.emergencyAccountTasks!.tasks.find((t) => t.required)!.title
-    assert.equal(policySubjectsOf(held.body.contract, held.body.readiness, held.body.emergencyAccountTasks)[0].title, firstTask(held.body), 'the card names the task, never Blocked (item 20)')
+    // Emergency access is not proven, so no procedure is handed over (Foundation
+    // A; policyTasks.ts SAFETY_HOLDS): the card names what holds it.
+    assert.equal(unavailableReason(held.step), 'escape-hatch-unverified', 'the premise: the way back in holds the policy')
+    assert.equal((held.body.emergencyAccountTasks?.tasks ?? []).some(isPolicyProcedureTask), false, 'a procedure is handed over while emergency access is unproven')
+    const [heldCard] = policySubjectsOf(held.body.contract, held.body.readiness, held.body.emergencyAccountTasks)
+    assert.equal(heldCard.title, 'Blocked')
+    assert.match(heldCard.detail ?? '', /Prepare Emergency Access Accounts/)
     const correction = bodyOf('s-goal-block-legacy-auth', 'demo')
     assert.equal(correction.body.contract.state.stage, 'Enforced', 'the premise: the policy is enforced and needs correction')
     assert.equal(policySubjectsOf(correction.body.contract, correction.body.readiness, correction.body.emergencyAccountTasks)[0].title, 'Correct the policy')
@@ -368,11 +375,12 @@ test('the folds read as Emergency Access reads them: a card’s finished checks,
   assert.equal((contentStep.match(/Satisfied · \{/g) ?? []).length, 1, 'the satisfied fold is drawn more than once, or not at all')
 })
 
-// The turn-on waits on the emergency drill: it stands as its two lines in every
-// state (walk list section 4 items 17 and 18), and the policy's card says what
-// it waits on, "Turn the policy on · Report-only blocked no one. After Verify
-// Emergency Access." (item 20), where the whole turn-on used to be withheld.
-test('while the emergency drill is outstanding the turn-on stands, and the card names the drill', () => {
+// The turn-on waits on the emergency drill: the task stands in every state
+// (walk list section 4 item 18), and the policy's card says what it waits on,
+// "Turn the policy on · Report-only blocked no one. After Verify Emergency
+// Access." (item 20). Its Enable policy: On lines wait with it (enforceWaits.test.ts):
+// the task reads the wait until the drill is recorded.
+test('while the emergency drill is outstanding the turn-on stands, reads the wait, and the card names the drill', () => {
   const f = withFoundationSettled(structuredClone(fixture('demo-week2')))
   const run = runFixture(f)
   const step = run.steps.find((s) => s.id === 's-goal-token-protection')
@@ -387,8 +395,9 @@ test('while the emergency drill is outstanding the turn-on stands, and the card 
   const body = stepBodyOf(step, ctx, { enforceWaits: [title] })
   const turnOn = body.emergencyAccountTasks?.tasks.find((t) => t.title === 'Turn the policy on')
   assert.ok(turnOn, 'the turn-on is drawn')
-  assert.equal(turnOn.steps.length, 2)
-  assert.match(turnOn.steps[1], /Enable policy\*\* to \*\*On/)
+  assert.deepEqual(turnOn.steps, [body.contract.milestone.label], 'the turn-on reads the wait')
+  assert.match(turnOn.steps[0], new RegExp(`until ${title} is finished`))
+  assert.doesNotMatch(turnOn.steps.join('\n'), /Enable policy\*\* to \*\*On/, 'the turn-on is handed over before the drill')
   const [card] = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)
   assert.equal(card.title, 'Turn the policy on')
   assert.equal(card.detail, `Report-only blocked no one. After ${title}.`)

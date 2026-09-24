@@ -60,11 +60,13 @@ test('a correction names each exclusion it removes (a guest exclusion; an applic
     const { tab, exported, preview } = opened(({ staffGroup, excl }) => pol({ includeGroups: [staffGroup], excludeGroups: [excl], excludeGuestsOrExternalUsers: GUESTS }))
     assert.equal(preview, null, 'the premise: the correction is handed over, not previewed')
     const line = said('guest or external users')
-    assert.ok(exported.includes(line), 'the export line these tabs now match')
+    // The Entra procedure and the export name the removal as the correction's
+    // own value, before its Save (roadmap/policyProcedure.ts correctionSettings).
+    const removal = 'Under **Users → Exclude**, remove **Guest or external users** → **B2B collaboration guest users**.'
+    assert.ok(exported.some((l) => l.endsWith(removal.replace(/\*\*/g, ''))), `the export line these tabs now match: ${exported.join('\n')}`)
     const entra = tab('portal')
-    assert.ok(entra.includes(line), entra)
-    // The consequence appears before the operator starts changing the policy.
-    assert.ok(entra.indexOf(line) < entra.search(/^\d+\. Go to\b/m), entra)
+    assert.ok(entra.includes(removal), entra)
+    assert.ok(entra.indexOf(removal) < entra.indexOf('Select **Save**'), entra)
     assert.ok(tab('ai').includes(line), tab('ai'))
     const ps = tab('ps')
     assert.ok(ps.includes(`# This change removes guest or external users from the policy's exclusions. If the policy is On, it applies to them as soon as the correction is saved.`), ps.slice(0, 400))
@@ -74,12 +76,15 @@ test('a correction names each exclusion it removes (a guest exclusion; an applic
   {
     const { tab, nameOf } = opened(({ staffGroup, excl }) => pol({ includeGroups: [staffGroup], excludeGroups: [excl] }, { includeApplications: ['All'], excludeApplications: [EXO] }))
     const line = said(nameOf(EXO))
-    for (const id of ['portal', 'ai']) assert.ok(tab(id).includes(line), `${id}: ${tab(id)}`)
+    assert.ok(tab('ai').includes(line), tab('ai'))
+    assert.ok(tab('portal').includes(`remove **${nameOf(EXO)}**.`), tab('portal'))
     assert.ok(tab('ps').includes(`# This change removes ${nameOf(EXO)} from the policy's exclusions.`))
-    for (const id of ['portal', 'ai', 'ps']) assert.ok(!tab(id).split('\n').some((l) => l.includes('This change removes') && l.includes(EXO)), `${id} names the id`)
+    assert.ok(!tab('portal').split('\n').some((l) => /\bremove\b/.test(l) && l.includes(EXO)), 'portal names the id')
+    for (const id of ['ai', 'ps']) assert.ok(!tab(id).split('\n').some((l) => l.includes('This change removes') && l.includes(EXO)), `${id} names the id`)
   }
   {
     const { tab } = opened(({ staffGroup, excl }) => pol({ includeGroups: [staffGroup], excludeGroups: [excl] }, { includeApplications: ['All'], excludeApplications: [INTUNE_ENROLLMENT] }))
+    assert.doesNotMatch(tab('portal'), /→ Exclude\*\*, (?:add .+ and )?remove /, 'portal')
     for (const id of ['portal', 'ai', 'ps']) {
       assert.doesNotMatch(tab(id), /This change removes/, id)
       assert.doesNotMatch(tab(id), /\{\{|\[omit /, id)

@@ -127,8 +127,8 @@ test('D4: the device answer that narrows the platforms puts them in the Entra pr
     const json = drawn(b, 'json')
     // The JSON always carried the exclusion; before this wave the Entra procedure did not name it at all.
     assert.match(json, /"excludePlatforms":\["android","iOS"\]/)
-    assert.match(entra, /Device platforms: set \*\*Configure\*\* to \*\*Yes\*\*/)
-    assert.match(entra, /Exclude: Android, iOS/)
+    assert.match(entra, /Under \*\*Conditions → Device platforms\*\*, set \*\*Configure\*\* to \*\*Yes\*\*/)
+    assert.match(entra, /exclude \*\*Android\*\* and \*\*iOS\*\*/)
   }
   {
     // The demo with the device decision unanswered is the pinned baseline's own
@@ -138,7 +138,7 @@ test('D4: the device answer that narrows the platforms puts them in the Entra pr
     const entra = drawn(bodyOf('demo', MANAGED, withDevicesReady), 'portal')
     assert.doesNotMatch(entra, /Device platforms/)
     assert.doesNotMatch(entra, /\[omit |\{\{/)
-    assert.match(entra, /Locations: set \*\*Configure\*\* to \*\*Yes\*\*/)
+    assert.match(entra, /Under \*\*Conditions → Locations\*\*, set \*\*Configure\*\* to \*\*Yes\*\*/)
   }
 })
 

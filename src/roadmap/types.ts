@@ -144,11 +144,12 @@ type PolicyOperationBase = {
    */
   baseline?: Record<string, unknown>
   /**
-   * On a create that names an object the tenant does not have yet
-   * (`Action.missing`): the same policy with those references left where they
+   * Where the policy names an object the tenant does not have yet
+   * (`Action.missing`): the whole policy with those references left where they
    * stand, so the step's procedure names each by the object the step that makes
    * it proposes (ui/surfaces/policyTasks.ts policyProcedureOf) rather than
-   * describing a policy without it. Never submitted.
+   * describing a policy without it — the create, or what a correction brings the
+   * tenant's policy to. Never submitted.
    */
   pending?: Record<string, unknown>
   /**

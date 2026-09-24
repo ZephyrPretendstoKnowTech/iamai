@@ -33,7 +33,7 @@ import type { Drift } from '../../content/implementation/drift.ts'
 import { CHANGED_FIELDS_BINDING } from '../../content/implementation/protocol.ts'
 import type { Bindings, ChannelArtifact, Hold, OwnerConfirmation, PackageReadiness, PackageState, PrerequisiteStatus, Projection, RuntimeContext } from '../../content/implementation/project.ts'
 import { list } from '../../copy/statements.ts'
-import { NO_ACTION_STATES, planSafely, prerequisiteStatus, projectSafely, sourceUpdatedOn } from '../../content/implementation/project.ts'
+import { NO_ACTION_STATES, bindText, planSafely, prerequisiteStatus, projectSafely, sourceUpdatedOn } from '../../content/implementation/project.ts'
 import { fillText } from '../../content/render.ts'
 import { shared } from '../../content/content.ts'
 import { contentStepFor, contentStepForPackage } from '../../content/stepTitle.ts'
@@ -394,6 +394,42 @@ export function setupAfterEnforcementOf(step: Step): PackageState | null {
   if (!awaitsWorkflowRecord(step)) return null
   const projection = implementationPackageFor(step)?.meta.projection as Record<string, unknown> | undefined
   return projection?.[SETUP_AFTER_ENFORCEMENT] !== undefined ? (SETUP_AFTER_ENFORCEMENT as PackageState) : null
+}
+
+/**
+ * What a policy step's own package says beside the procedure every policy step
+ * draws (policyTasks.ts policyProcedureOf), where no procedure line can: Require
+ * MFA at Every Role Activation's authentication context, which its create needs
+ * first (`entra.context.prepare`; policyProcedureOf draws it only while the policy is still to be made), and the
+ * PIM role settings after the policy is On (`entra.pim.configure`), without
+ * which role activation never asks for the context. The context is named as the
+ * plan proposes it only where the package binds that name (packageBindings: the
+ * plan's own policy on its own context); a tenant's context goes by its ID.
+ */
+export function policyProcedureExtras(step: Step, pkg: CompiledPackage | null, bindings: Bindings | null): {
+  contextNameOf: (id: string) => string | null
+  createFirst: string[]
+  after: { id: 'pim-settings'; title: string; steps: string[]; required: boolean }[]
+} {
+  const b = bindings ?? {}
+  const contextId = typeof b['authContext.target.id'] === 'string' ? b['authContext.target.id'] : null
+  const contextName = typeof b['authContext.target.displayName'] === 'string' ? b['authContext.target.displayName'] : null
+  const contextNameOf = (id: string): string | null => (contextId !== null && contextName !== null && id.toLowerCase() === contextId.toLowerCase() ? contextName : null)
+  if (!pkg) return { contextNameOf, createFirst: [], after: [] }
+  // Each block is one thing to do, and its note (the name the plan proposed for
+  // the context) belongs to it, so the block is one numbered line, never a note
+  // numbered as a step of its own.
+  const linesOf = (id: string): string[] => {
+    const block = pkg.blocks[id]
+    if (!block) return []
+    const bound = bindText(block.text, b, new Set())
+    const text = 'text' in bound ? bound.text.split('\n').map((line) => line.trim()).filter((line) => line !== '').join(' ') : ''
+    return text === '' ? [] : [text]
+  }
+  const createFirst = linesOf('entra.context.prepare')
+  const pim = linesOf('entra.pim.configure')
+  const title = (shared as unknown as { procedure: { tasks: Record<string, string> } }).procedure.tasks.pimSettings
+  return { contextNameOf, createFirst, after: pim.length > 0 ? [{ id: 'pim-settings', title, steps: pim, required: setupAfterEnforcementOf(step) !== null }] : [] }
 }
 
 /**

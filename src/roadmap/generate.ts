@@ -618,6 +618,9 @@ export function buildCreateAction(
     for (const [id, d] of p.resolved.decisions ?? []) if (!sourceReferences.has(id) || (d.answer === 'pending' && sourceReferences.get(id)!.answer !== 'pending')) sourceReferences.set(id, { id, kind: d.kind, answer: d.answer })
     const wholeBaseline = deviated ? implementable(artifact(p.resolved.body, p, tag), p.resolved).policy : undefined
     const target = p.target ?? null
+    // The same policy with the objects it waits on left in, and nothing else the
+    // body leaves out, for the step's procedure to name (PolicyOperation.pending).
+    const pending = whole.missing.length > 0 ? implementable(drawn, { ...p.resolved, keep: new Set(whole.missing.map((m) => m.token.toLowerCase())) }).policy : undefined
     if (target) {
       const patch = patchOf(whole.policy, sections)
       // The policy the change leaves behind: the tenant's own policy with this
@@ -640,11 +643,9 @@ export function buildCreateAction(
         // object against every dimension the plan asked for and not only the
         // ones this patch writes (roadmap/tracking.ts, observation.ts).
         intent: whole.policy,
+        ...(pending ? { pending } : {}),
       })
     } else {
-      // The same policy with the objects it waits on left in, and nothing else
-      // the body leaves out, for the step's procedure to name (PolicyOperation.pending).
-      const pending = whole.missing.length > 0 ? implementable(drawn, { ...p.resolved, keep: new Set(whole.missing.map((m) => m.token.toLowerCase())) }).policy : undefined
       operations.push({ sourceName: p.sourceName, memberKey, mode: 'create', policyId: null, body: whole.policy, baseline: wholeBaseline, ...(pending ? { pending } : {}) })
     }
   }
