@@ -233,11 +233,12 @@ export function App() {
         setSession({ getToken: async () => (params.get('roles') === 'none' ? noRolesToken() : tokenWithRoles([GLOBAL_ADMINISTRATOR])) })
         // ?policies=0: a tenant with no Conditional Access policies at all (prompt 31 §4.19).
         if (params.get('policies') === '0') snapshot.config.caPolicies = { status: 'ok', reason: null, rows: [] }
-        // ?state=<signedOut|noScan|scanning|scanned>: which state the synthetic
-        // tenant is in (prompt 46 Part 1 item 2). The contract reaches each
-        // surface in a named state, and the inventory has to be able to put the
-        // app there without a sign-in or a worker. 'scanned' is the default
-        // and today's behaviour.
+        // ?state=<signedOut|noScan|scanning|rescanning|scanned>: which state the
+        // synthetic tenant is in (prompt 46 Part 1 item 2). The contract reaches
+        // each surface in a named state, and the inventory has to be able to put
+        // the app there without a sign-in or a worker. 'scanned' is the default
+        // and today's behaviour; 'rescanning' is the same scan in flight over a
+        // stored one, as a step's Scan to update the plan starts it.
         const state = params.get('state') ?? 'scanned'
         if (state === 'signedOut') {
           // ?auth=consent|personal|cancelled: tile 1 after a sign-in that did not succeed.
@@ -258,11 +259,12 @@ export function App() {
           tenantName: 'Contoso Pty Ltd',
         })
         setSession({ baseline: fixtureBaseline() })
-        if (state === 'scanning') {
+        if (state === 'scanning' || state === 'rescanning') {
           // A scan frozen two lanes in (configuration read, people in progress),
           // for the 'scanning' mock state (prompt 46 Part 1 item 2): the progress
           // view is otherwise unreachable by a harness, as it lasts as long as
           // the worker takes, and the synthetic tenant has no worker.
+          if (state === 'rescanning') setSession({ lastScan: { snapshot, at: snapshot.asOf } })
           setScan({
             ...IDLE_SCAN,
             state: 'running',

@@ -5,7 +5,7 @@
 // so. The scan's state is the session's (ui/session.ts); the buttons are
 // ui/actions.ts. The section list and the diagnostics bundle are developer
 // tools, under ?dev=1 only.
-import { app } from '../../content/content.ts'
+import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { lowerFirst } from '../../copy/statements.ts'
 import { ACCESS } from '../../copy/access.ts'
@@ -18,10 +18,12 @@ import { Button, Callout, ProgressBar } from '../components/index.ts'
 import { resumeScan } from '../actions.ts'
 import { useAction } from '../useAction.ts'
 import type { ScanState } from '../session.ts'
+import { elapsedLabel } from '../format.ts'
 
 const DEV = import.meta.env.DEV && new URLSearchParams(window.location.search).get('dev') === '1'
 const CONNECT = app.connect
 const SCAN = app.scan
+const SCAN_WORDS = (pages.connect as unknown as { scan: { scanning: { state: string } } }).scan.scanning
 // The sections the scan reads and reports progress for (coreSections.ts), not
 // every label: the directory audit read has a label for the unread list and no
 // progress row of its own.
@@ -43,6 +45,11 @@ export function laneOf(scan: Pick<ScanState, 'sections' | 'laneB'>): { lane: str
   const onSignIns = signIns !== undefined && signIns.status === 'started' && inProgress.length === 0
   const lane = onSignIns ? (laneB === null ? CONNECT.waitingSignIns : fillText(CONNECT.readingSignIns, { pages: laneB.pages, rows: laneB.rows })) : readingLine(inProgress)
   return { lane, percent: onSignIns && finished >= total ? null : percent }
+}
+
+/** The scan in flight as one line, the lane and the elapsed time ("reading people · 6s"): the shell's line under the header, and the footer of the step whose Scan started it. */
+export function scanLineText(scan: ScanState): string {
+  return fillText(SCAN_WORDS.state, { lane: lowerFirst(laneOf(scan).lane), elapsed: elapsedLabel(scan.startedAt ?? scan.nowTick, scan.nowTick) })
 }
 
 /** The paused notice with Sign in again (ui/actions.ts resumeScan); a failure to resume renders beside the button. */

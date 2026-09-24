@@ -2338,12 +2338,6 @@ footer.app a {
   grid-column: 1;
   grid-row: 2;
 }
-/* A Completed step draws no milestone (owner, 2026-09-23). Where it has no
-   control either, its action column is empty and is not painted; the body
-   keeps its two columns. */
-.step-action-column:empty {
-  display: none;
-}
 .step-main {
   min-width: 0;
   padding: 4px 27px 26px;
@@ -2611,6 +2605,8 @@ footer.app a {
   background: var(--secondary-surface);
 }
 .step-footer-end { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-left: auto; }
+/* The scan in flight over the Scan that started it, in the scan line's own type. */
+.step-footer-scan-status { margin: 0; color: var(--secondary-text); font-size: var(--t-2); }
 
 /* ---- Readiness: the approved `.readiness-strip` over `.readiness-bar` ----
    The one prerequisite surface (A1 §16.1): one tile per unresolved
