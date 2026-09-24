@@ -43,6 +43,18 @@ const roleName = (id: string): string => ROLE_TEMPLATES.find((r) => r.templateId
 const people = (ev: { people: string[] } | undefined | null): string[] => ev?.people ?? []
 
 /**
+ * The people Require MFA for Everyone would prompt for the first time: they hold
+ * a method it accepts and have no MFA sign-in in the records. With the policy in
+ * place every sign-in completes MFA, so nobody is. One rule, read by the list
+ * below and by the policy's pitfall card (ui/surfaces/pitfalls.ts).
+ */
+export function unprovenIdsOf(ctx: Pick<ListContext, 'snapshot' | 'mapping' | 'now' | 'mfaInPlace'>): string[] {
+  if (ctx.mfaInPlace === true) return []
+  const l = ladder(ctx.snapshot, ctx.mapping, ctx.now)
+  return READINESS_STATES.flatMap((s) => l.states[s].map((p) => p.viability)).filter((v) => v.mfaCapable && v.mfa !== 'verified').map((v) => v.userId)
+}
+
+/**
  * Every list variable the content file can fill from this tenant, resolved to
  * names. A step reads only the keys it uses; extra keys are harmless. A list the
  * scan cannot produce is simply absent (the renderer's none-branch handles it).
@@ -77,7 +89,7 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
   // Ordinary MFA, for the policy that requires it: a method, and no MFA sign-in
   // in the records. With Require MFA for Everyone in place every sign-in
   // completes MFA, so nobody is in it.
-  const unproven = ctx.mfaInPlace === true ? [] : active.filter((v) => v.mfaCapable && v.mfa !== 'verified')
+  const unprovenIds = unprovenIdsOf(ctx)
   const smsOnly = active.filter((v) => v.signals.smsVoiceOnly || (v.methodTiers.length > 0 && v.methodTiers.every((t) => t === 'smsVoice')))
   const bucketName = (rows: MfaViability[]): string[] => rows.map((v) => nameOf(v.userId))
 
@@ -145,9 +157,7 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
     needsSetup: bucketName(needsSetup),
     needsProof: bucketName(needsProof),
     readinessUnknown: bucketName(readinessUnknown),
-    unproven: bucketName(unproven),
-    // The ordinary-MFA list by id, for Require MFA for Everyone's card, which names each person with MFA Readiness's next step (ui/surfaces/pitfalls.ts).
-    unprovenIds: unproven.map((v) => v.userId),
+    unproven: names(unprovenIds),
     // Lockout-scenario people (scenarioEvidence, from the sign-in rows).
     legacyUsers: names(people(scen?.legacyClients)),
     // The mail accounts named in Confirm What You Use's mail-sending answer:

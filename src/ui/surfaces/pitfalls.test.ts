@@ -13,7 +13,8 @@ import { smsRetirementOf } from '../../derive/smsRetirement.ts'
 import { readinessContextOf } from '../../derive/readinessContext.ts'
 import { readinessOf, stepContract } from './stepContract.ts'
 import { prepareReadingOf } from './prepareSteps.ts'
-import { readinessNextOf } from './personNext.ts'
+import { personLines, readinessNextOf } from './personNext.ts'
+import { unprovenIdsOf } from '../../derive/contentLists.ts'
 import { pitfallTilesOf } from './pitfalls.ts'
 import type { StepVarContext } from './stepVars.ts'
 
@@ -75,6 +76,43 @@ test('the people whose only method is a text or a call are named, with the retir
 
 test('a finished step draws no pitfall card', () => {
   const { step, ctx } = campaign(curatedFixture('demo'))
-  assert.deepEqual(pitfallTilesOf(step, ctx, true), [])
-  assert.deepEqual(pitfallTilesOf({ ...step, status: 'done' }, ctx, false), [])
+  assert.deepEqual(pitfallTilesOf(step, ctx, true, () => undefined), [])
+  assert.deepEqual(pitfallTilesOf({ ...step, status: 'done' }, ctx, false, () => undefined), [])
+})
+
+// 4.4: the people Require MFA for Everyone would prompt for the first time.
+function stepAt(name: 'getiamai' | 'demo' | 'small', id: string) {
+  const f = curatedFixture(name)
+  const run = runFixture(f)
+  const step = run.steps.find((s) => s.id === id)!
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => run.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+  return { step, ctx, tiles: readinessOf(step, stepContract(step, ctx)).tiles }
+}
+
+test('4.4 names the people who hold a method and have no MFA sign-in in 30 days, with their next step, and opens 3.4; nothing once the policy is On', () => {
+  const { step, ctx, tiles } = stepAt('getiamai', 's-goal-mfa-all-users')
+  assert.notEqual(step.state.lifecycle, 'enforced', 'the premise: the policy is not On')
+  const ids = unprovenIdsOf({ snapshot: ctx.snapshot, mapping: ctx.mapping, now: ctx.now })
+  assert.ok(ids.length > 0, 'the premise: the fixture holds someone with a method and no MFA sign-in')
+  const tile = tiles.find((t) => t.key === 'pitfall:unproven')
+  assert.ok(tile)
+  assert.match(tile.value, /have a method but no MFA sign-in in the last 30 days|has a method but no MFA sign-in in the last 30 days/)
+  assert.deepEqual(tile.names, personLines(ctx, ids), 'each named with MFA Readiness’s next step')
+  assert.match(tile.note ?? '', /^Before you turn this on, get each one signed in once with the method named beside them\. For a passkey: After the username, choose Other ways to sign in, then Face, fingerprint, PIN or security key\.$/)
+  assert.equal(tile.link?.href.endsWith(CAMPAIGN_STEP_ID), true, 'it opens Prepare Your Team for MFA')
+  // The policy On: every sign-in completes MFA, and the card goes.
+  const on = stepAt('demo', 's-goal-mfa-all-users')
+  assert.equal(on.step.state.lifecycle, 'enforced')
+  assert.equal(on.tiles.find((t) => t.key === 'pitfall:unproven'), undefined)
+})
+
+test('4.3 names each admin it waits for with the method and device MFA Readiness gives, and its sentence says to sign in with that method', () => {
+  const { ctx, tiles } = stepAt('small', 's-goal-admins-phishing-resistant')
+  const gate = tiles.find((t) => t.key === 'gate')
+  assert.ok(gate?.names?.length, 'the premise: small waits on admins')
+  const next = readinessNextOf(ctx.snapshot, ctx.now, ctx.mapping)
+  for (const line of gate.names) assert.match(line, /^.+ \(.+@.+\): .+$/, 'Name (address): next step')
+  assert.ok(gate.names.some((line) => [...next.values()].some((n) => line.endsWith(`: ${n}`))), 'in MFA Readiness’s own words')
+  assert.doesNotMatch(gate.names.join('\n'), /needs a passkey, security key or Windows Hello/, 'no generic line in place of the method')
+  assert.match(gate.note ?? '', /^Get each one signed in once with the method named beside them\. For a passkey: After the username, choose Other ways to sign in, then Face, fingerprint, PIN or security key\. Prepare Your Team for MFA gets them ready\.$/)
 })

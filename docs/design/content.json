@@ -2064,6 +2064,8 @@
           "saving": "Saving plan…",
           "$commentCardMore": "The fold on a Tasks Remaining card that names people: the first five are named on the card, the rest under this (ContentStep.tsx, whoBlocks.ts NAMES_INLINE).",
           "cardMore": "{n} more",
+          "$commentCardPerson": "A person on a Tasks Remaining card, with MFA Readiness's own next step for them (ui/surfaces/personNext.ts; owner 2026-09-24: the Plan and MFA Readiness speak one language, and every direction names the method).",
+          "cardPerson": "{name}: {next}",
           "saveFailed": "Plan could not be saved. Use Retry Saving above.",
           "railImplementation": "Implementation",
           "$commentRailExisting": "The In-place variant's own side block (task 036; docs/design/approved/plan-step-v1.html V4 draws `Existing implementation` over the policy's name). The name is Step.satisfiedBy — the coverage result that decided the goal was satisfied — so the rail names the tenant's own policy and never the baseline's. `railExistingKeep` is the sub under one sufficient policy; `railExistingTogether` is the sub where two cover the goal between them and neither covers it alone.",
@@ -2147,7 +2149,9 @@
             "signIn": "{names} needs to sign in once with the method they registered.",
             "signInMany": "{names} need to sign in once with the method they registered.",
             "signInListed": "{n} admins need to sign in once with the method they registered.",
-            "route": "{step} gets them ready."
+            "route": "{step} gets them ready.",
+            "$commentPeople": "The admin gate's card names each admin short with MFA Readiness's next step (round 1, owner 2026-09-24); this is its sentence, and the route follows it.",
+            "people": "Get each one signed in once with the method named beside them. For a passkey: {passkeySignIn}"
           },
           "ownPolicyDiffers": {
             "$comment": "Owner, 2026-09-22: a policy the tenant wrote delivers the goal and differs from the baseline's in a part coverage does not judge (token protection without the Cloud PC filter; a compliant-device policy on every platform). The step stays Completed and states the difference; it never asks the tenant to change a policy that works, which could weaken it.",
@@ -4941,9 +4945,11 @@
         "check": "Not prepared yet",
         "notReady": "{missing} of {total} people not ready",
         "ready": "{ready} of {total} people ready",
-        "person": "{name}: {next}",
-        "link": "Open MFA Readiness",
-        "$commentPitfalls": "The two cards the campaign draws beside its own while it is open (ui/surfaces/pitfalls.ts, round 1, owner 2026-09-24): Temporary Access Pass off while people with no method need one to register, and the people whose only method is a text or a call, named, with Microsoft's retirement dates (concept-sms-voice-retirement).",
+        "link": "Open MFA Readiness"
+      },
+      "milestone": "{n} people still need a method",
+      "pitfalls": {
+        "$comment": "The two cards the campaign draws beside its own while it is open (ui/surfaces/pitfalls.ts, round 1, owner 2026-09-24): Temporary Access Pass off while people with no method need one to register, and the people whose only method is a text or a call, named, with Microsoft's retirement dates (concept-sms-voice-retirement).",
         "tapOffLabel": "Temporary Access Pass",
         "tapOffValue": "Off, and {n} people have no method to register with",
         "tapOffNote": "Turn it on before you issue one. {tapEnable}",
@@ -4951,7 +4957,6 @@
         "textOnlyValue": "{n} people sign in with only a text or a call",
         "textOnlyNote": "Microsoft retires text and call sign-in on February 1, 2027 (July 1, 2027 for Global Administrators), and anyone with nothing else must register a passkey before they can sign in. Set each one up now with the method named beside them."
       },
-      "milestone": "{n} people still need a method",
       "instruction": "Pick anyone not ready who can't register soon, such as someone on leave: the policies go ahead without them.",
       "campaign": {
         "$comment": "The registration campaign as the scan read it (authenticationMethodsPolicy.registrationEnforcement, walk list section 3 item 50): {campaignToday} in the procedure's Today line. Graph's state `default` is the portal's Microsoft managed.",
@@ -4967,6 +4972,12 @@
     },
     {
       "id": "mfa-all-users",
+      "pitfalls": {
+        "$comment": "The card Require MFA for Everyone draws while it is not On (ui/surfaces/pitfalls.ts, round 1, owner 2026-09-24): the people who hold a method this policy accepts and have no MFA sign-in in the last 30 days (derive/contentLists.ts unproven), each with MFA Readiness's next step. The policy's first prompt is otherwise the first time they use it. It informs; it never holds the turn-on.",
+        "unprovenLabel": "People Who Haven't Used MFA",
+        "unprovenValue": "{n} people have a method but no MFA sign-in in the last 30 days",
+        "unprovenNote": "Before you turn this on, get each one signed in once with the method named beside them. For a passkey: {passkeySignIn}"
+      },
       "kind": "policy",
       "title": "Require MFA for Everyone",
       "changeLine": null,

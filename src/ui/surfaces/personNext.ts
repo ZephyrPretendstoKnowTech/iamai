@@ -10,8 +10,12 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { personLabels } from '../../names.ts'
 import { fillText } from '../../content/render.ts'
+import { app } from '../../content/content.ts'
 import { nextCell, nextWords } from './readinessCells.ts'
 import type { StepVarContext } from './stepVars.ts'
+
+/** A person on a card: "{name}: {next}" (pages.app.plan.stepContract.cardPerson). */
+const PERSON = (app.plan as unknown as { stepContract: { cardPerson: string } }).stepContract.cardPerson
 
 // One reading per snapshot and mapping: several cards on one step read it.
 const cache = new WeakMap<TenantSnapshot, WeakMap<object, ReadonlyMap<string, string>>>()
@@ -40,7 +44,8 @@ export function readinessNextOf(snapshot: TenantSnapshot, now: string, mapping: 
  * in 90 days, or one whose methods it could not read) gets the page's own
  * passkey-in-Authenticator step, so every line reads the same way.
  */
-export function personLines(ctx: StepVarContext, ids: readonly string[], line: string): string[] {
+export function personLines(ctx: StepVarContext, ids: readonly string[]): string[] {
+  const line = PERSON
   const next = readinessNextOf(ctx.snapshot, ctx.now, ctx.mapping)
   const labels = personLabels(ctx.snapshot.users, { address: true })
   const passkey = nextWords({ kind: 'setUp', option: 'authenticatorPasskey', os: null })

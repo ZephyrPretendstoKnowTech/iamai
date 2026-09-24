@@ -8,29 +8,43 @@
 //
 // Each card reads the one reading its fact already has: MFA Readiness's setup
 // checks (derive/readinessSetup.ts), Microsoft's SMS and voice retirement
-// (derive/smsRetirement.ts), and each person's next step on MFA Readiness
-// (personNext.ts). None holds a turn-on: they inform, and the fix is the
-// person's to make.
+// (derive/smsRetirement.ts), the people Require MFA for Everyone would prompt
+// for the first time (derive/contentLists.ts unprovenIdsOf), and each person's
+// next step on MFA Readiness (personNext.ts). None holds a turn-on: they
+// inform, and the fix is the person's to make.
+//
+// The words are each step's own `pitfalls` block in docs/design/content.json.
 //
 // Pure: no DOM, no React, no network.
 import type { Step } from '../../roadmap/types.ts'
 import { CAMPAIGN_STEP_ID } from '../../roadmap/followUp.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
+import { stepById } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { readinessView } from '../../derive/mfaReadiness.ts'
 import { tenantSetupChecks } from '../../derive/readinessSetup.ts'
 import { readinessContextOf } from '../../derive/readinessContext.ts'
 import { smsRetirementOf } from '../../derive/smsRetirement.ts'
+import { unprovenIdsOf } from '../../derive/contentLists.ts'
 import { personLines } from './personNext.ts'
 import type { ReadinessTile } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
 
-type CampaignPitfallWords = { person: string; tapOffLabel: string; tapOffValue: string; tapOffNote: string; textOnlyLabel: string; textOnlyValue: string; textOnlyNote: string }
+const MFA_EVERYONE_STEP_ID = 's-goal-mfa-all-users'
+
+type Words = Record<string, string>
+const wordsOf = (step: Step): Words => ((contentStepFor(step) as unknown as { pitfalls?: Words }).pitfalls ?? {})
+// A card draws no bold: a line the procedures share, as plain text.
+const plain = (s: string): string => s.replace(/\*\*/g, '')
+
+/** How a card opens another step, handed in by the contract (stepContract.ts stepLink), so this module imports no value from it. */
+export type StepLinkOf = (id: string, title: string) => ReadinessTile['link']
 
 /** The step's pitfall cards, open steps only; none on a step that names none. */
-export function pitfallTilesOf(step: Step, ctx: StepVarContext, satisfied: boolean): ReadinessTile[] {
+export function pitfallTilesOf(step: Step, ctx: StepVarContext, satisfied: boolean, stepLink: StepLinkOf): ReadinessTile[] {
   if (satisfied || step.status === 'done' || step.status === 'skipped' || step.state.setAside) return []
   if (step.id === CAMPAIGN_STEP_ID) return campaignPitfalls(step, ctx)
+  if (step.id === MFA_EVERYONE_STEP_ID) return mfaEveryonePitfalls(step, ctx, stepLink)
   return []
 }
 
@@ -43,18 +57,33 @@ export function pitfallTilesOf(step: Step, ctx: StepVarContext, satisfied: boole
  *   left with nothing else then meets a blocking passkey prompt.
  */
 function campaignPitfalls(step: Step, ctx: StepVarContext): ReadinessTile[] {
-  const W = (contentStepFor(step) as unknown as { card: CampaignPitfallWords }).card
+  const W = wordsOf(step)
   const out: ReadinessTile[] = []
   const view = readinessView(ctx.snapshot, ctx.now, ctx.mapping)
   const tap = tenantSetupChecks(ctx.snapshot, view).find((c) => c.key === 'tap')
   if (tap?.outcome === 'fail' && tap.affects > 0) {
-    // A card draws no bold: the procedure's line, as plain text.
-    out.push({ key: 'pitfall:tap-off', label: W.tapOffLabel, tone: 'warn', value: fillText(W.tapOffValue, { n: tap.affects }), note: fillText(W.tapOffNote, {}).replace(/\*\*/g, '') })
+    out.push({ key: 'pitfall:tap-off', label: W.tapOffLabel, tone: 'warn', value: fillText(W.tapOffValue, { n: tap.affects }), note: plain(fillText(W.tapOffNote, {})) })
   }
   const windowStart = readinessContextOf(ctx.snapshot, ctx.mapping, ctx.now).windowStart
   const textOnly = smsRetirementOf(ctx.snapshot, step.preparation?.ids ?? [], windowStart).people.filter((p) => p.onlySmsVoice).map((p) => p.userId)
   if (textOnly.length > 0) {
-    out.push({ key: 'pitfall:text-only', label: W.textOnlyLabel, tone: 'warn', value: fillText(W.textOnlyValue, { n: textOnly.length }), note: W.textOnlyNote, names: personLines(ctx, textOnly, W.person) })
+    out.push({ key: 'pitfall:text-only', label: W.textOnlyLabel, tone: 'warn', value: fillText(W.textOnlyValue, { n: textOnly.length }), note: W.textOnlyNote, names: personLines(ctx, textOnly) })
   }
   return out
+}
+
+/**
+ * Require MFA for Everyone, while it is not On: the people who hold a method it
+ * accepts and have no MFA sign-in in the last 30 days. Its first prompt would be
+ * the first time they use it, and a phone that has gone since is a lockout
+ * found on turn-on day. Each is named with MFA Readiness's next step, and the
+ * card opens the step that sets them up.
+ */
+function mfaEveryonePitfalls(step: Step, ctx: StepVarContext, stepLink: StepLinkOf): ReadinessTile[] {
+  if (step.state.lifecycle === 'enforced') return []
+  const W = wordsOf(step)
+  const ids = unprovenIdsOf({ snapshot: ctx.snapshot, mapping: ctx.mapping, now: ctx.now })
+  if (ids.length === 0) return []
+  const campaign = stepById[CAMPAIGN_STEP_ID]?.title ?? CAMPAIGN_STEP_ID
+  return [{ key: 'pitfall:unproven', label: W.unprovenLabel, tone: 'warn', value: fillText(W.unprovenValue, { n: ids.length }), note: plain(fillText(W.unprovenNote, {})), names: personLines(ctx, ids), link: stepLink(CAMPAIGN_STEP_ID, campaign) }]
 }

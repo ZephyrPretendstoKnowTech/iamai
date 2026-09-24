@@ -76,6 +76,7 @@ import { QUESTION_STEP, mailDevicesOf } from '../../roadmap/answers.ts'
 import { isGroupMember } from '../../roadmap/stepGroups.ts'
 import { rowWho } from './rowWho.ts'
 import { pitfallTilesOf } from './pitfalls.ts'
+import { personLines } from './personNext.ts'
 
 /**
  * The one state reading of a step (A1b, RUN-CONTEXT-A decision 1): the lane
@@ -152,7 +153,7 @@ type ContractWords = {
   /** The signed-in account a policy would leave with no way in (walk list 4.x item 43). */
   operatorCard: { label: string; value: string; admin: string; other: string; fix: string }
   /** A gate on people's methods: who is short and what moves them (walk list 4.x items 42, 48). */
-  methodGate: { adminValue: string; needs: string; needMany: string; needListed: string; signIn: string; signInMany: string; signInListed: string; route: string }
+  methodGate: { adminValue: string; needs: string; needMany: string; needListed: string; signIn: string; signInMany: string; signInListed: string; route: string; people: string }
   /** A finished policy this plan owns that went live with no report-only period IAMAI watched (doneWhen.ts enforcedUnwatched; owner decision 3). */
   /** The people marked on the campaign to turn on without, for now (roadmap/followUp.ts). */
   followUp: { label: string; campaignLabel: string; campaign: string; campaignOpen: string; method: string; risk: string; pickerLabel: string; save: string; printed: string; printedNone: string }
@@ -500,6 +501,8 @@ export type StepContract = {
   dormant: { value: string; text: string } | null
   /** What the scan knows will bite if the step is done as written, as Tasks Remaining cards (pitfalls.ts). */
   pitfalls: ReadinessTile[]
+  /** The admin gate's card lines: each admin it is short of, with MFA Readiness's next step (round 1); null on every other gate. */
+  gateNames: string[] | null
   /** The signed-in account this policy would leave with no method it accepts, named, with the step that fixes it (walk list 4.x item 43); null elsewhere. */
   operator: { text: string; id: string } | null
   whatToDo: ContractAction
@@ -1614,7 +1617,8 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     inventory,
     followUp: followUpOf(step, ctx),
     dormant: dormantOf(step, ctx),
-    pitfalls: pitfallTilesOf(step, ctx, step.state.satisfied),
+    pitfalls: pitfallTilesOf(step, ctx, step.state.satisfied, stepLink),
+    gateNames: adminGateNamesOf(step, ctx),
     operator,
     whatToDo,
     fix,
@@ -2406,6 +2410,9 @@ function methodGateSentence(step: Step, gate: NonNullable<Step['action']['readin
     const line = step.readiness.lines[0]
     return typeof line === 'string' && /\d+ of \d+/.test(line) ? [line, route].filter((x): x is string => x !== null).join(' ') : null
   }
+  // Anybody short is named on the card with their next step (adminGateNamesOf):
+  // the sentence says what to do with the names, then where they get ready.
+  if (adminShortIds(step, gate, operatorId).length > 0) return [fillText(W.people, {}).replace(/\*\*/g, ''), route].filter((x): x is string => x !== null).join(' ')
   const ready = new Set(p.readyIds)
   const unknown = new Set(p.unknownIds)
   const nameOf = (id: string): string => labels?.get(id) ?? id
@@ -2420,6 +2427,31 @@ function methodGateSentence(step: Step, gate: NonNullable<Step['action']['readin
     named(p.staleIds ?? [], W.signIn, W.signInMany, W.signInListed),
     route,
   ].filter((x): x is string => x !== null).join(' ') || null
+}
+
+/**
+ * The admin gate's card lines (round 1, owner 2026-09-24): each admin it is
+ * short of, by name, with MFA Readiness's own next step, which names the method
+ * and the device ("Sign in once with the passkey on Windows"). Short means no
+ * method the policy accepts, or one whose proving sign-in has aged out; the
+ * signed-in admin has a card of their own (walk list 4.x item 43).
+ */
+function adminGateNamesOf(step: Step, ctx: StepVarContext): string[] | null {
+  const gate = step.action.readinessGate
+  if (!gate || step.state.satisfied || step.state.lifecycle === 'enforced') return null
+  const ids = adminShortIds(step, gate, ctx.operatorId)
+  return ids.length > 0 ? personLines(ctx, ids) : null
+}
+
+/** The admins the admin gate is short of, the signed-in one aside; none on any other gate. The card's lines and its sentence read this one list. */
+function adminShortIds(step: Step, gate: NonNullable<Step['action']['readinessGate']>, operatorId: string | null): string[] {
+  const p = methodGateOf(step, gate)
+  if (p === null || familyOf(gate) !== 'admin') return []
+  const ready = new Set(p.readyIds)
+  const unknown = new Set(p.unknownIds)
+  const stale = new Set(p.staleIds ?? [])
+  const operator = operatorId?.toLowerCase() ?? null
+  return p.ids.filter((id) => !ready.has(id) && (!unknown.has(id) || stale.has(id)) && id.toLowerCase() !== operator)
 }
 
 /** Whether the signed-in account is the only admin the admin gate is short of (walk list 4.x item 43). */
@@ -2503,11 +2535,13 @@ function stateTile(step: Step, c: StepContract, setupAfterEnforcement = false): 
     const people = methodGateOf(step, gate) !== null
     const route = people ? gateRouteOf(step, gate) : c.routeStart ?? gateRouteOf(step, gate)
     const note = c.found.find((f) => f.key === 'gate')?.text ?? readinessSentence(step, gate, c.routeStart)
+    // The admin gate names each admin on the card with their next step (round 1).
+    const admins = familyOf(gate) === 'admin' ? c.gateNames : null
     // Where the card states its count ("21 of 30 people have a method it
     // accepts"), the percentage beside it carries no "At least" (walk list 4.x
     // item 48): the count is exact, and the hedge was IAMAI's to carry.
     const value = methodGateValueOf(step, gate) ?? readinessValueOf(people ? (({ floor: _floor, ...rest }) => rest)(gate) : gate)
-    return { key: 'gate', label: t.gate, tone: 'warn', value, note, ...(route !== null ? { link: stepLink(route.id, route.title) } : {}) }
+    return { key: 'gate', label: t.gate, tone: 'warn', value, note, ...(admins?.length ? { names: admins } : {}), ...(route !== null ? { link: stepLink(route.id, route.title) } : {}) }
   }
   // An observation with no date says WHY it has no date, where the step knows:
   // the people the policy stopped in report-only, or the records that could not
