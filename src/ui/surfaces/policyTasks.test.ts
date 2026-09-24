@@ -78,7 +78,6 @@ test('a step with no policy of its own heads its card with the thing the card is
   // used to be the step's name (quality audit 2.1).
   for (const [id, subject, check] of [
     ['s-prereq-trusted-location', 'Trusted network', 'Not in place'],
-    ['s-check-dormant-accounts', 'Dormant accounts', 'Not reviewed yet'],
     ['s-verify-mfa', 'Sign-in method setup', 'Not prepared yet'],
     ['s-ladder-operator-passkey', 'Your passkey', 'Not registered yet'],
   ] as const) {
@@ -104,7 +103,6 @@ test('every step projects its own Entra procedure as its Implementation Task, an
       ['s-prereq-allowed-countries', 'Set up the allowed countries location', /Named locations/],
       ['s-prereq-service-accounts-group', 'Set up the service accounts group', /Groups/],
       ['s-verify-mfa', 'Help each person set up their method', /aka\.ms\/mfasetup/],
-      ['s-check-dormant-accounts', 'Review each account', /Review each account/],
     ] as const) {
       const { step, body } = bodyOf(id)
       const tasks = body.emergencyAccountTasks

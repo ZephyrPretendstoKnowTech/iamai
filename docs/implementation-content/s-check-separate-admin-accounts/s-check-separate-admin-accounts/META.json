@@ -44,9 +44,7 @@
   ],
   "projection": {
     "missing": {
-      "entra": [
-        "entra.separate"
-      ],
+      "entra": [],
       "json": [],
       "powershell": [],
       "aiInfo": [
@@ -201,7 +199,7 @@
   "stepId": "s-check-separate-admin-accounts",
   "title": "Use Separate Accounts for Admin Work",
   "milestone": {
-    "actionText": "Test the new admin account, then move the role."
+    "actionText": "Move each admin role to a separate admin account"
   },
   "baseline": "jon-hope-pinned",
   "packagePath": "docs/implementation-content/s-check-separate-admin-accounts/",

@@ -132,8 +132,6 @@ test('#15 every picker saves from the list: Done saves and closes, taking a chip
   const followUp = step.slice(step.indexOf('function FollowUpDecision('), step.indexOf('function DormantDecision('))
   assert.doesNotMatch(followUp, /<Button/)
   assert.match(followUp, /onCommit=\{\(next\) => onDecide\?\.\(\{ picked: next\.map\(\(o\) => o\.id\) \}\)\}/)
-  const dormant = step.slice(step.indexOf('function DormantDecision('))
-  assert.match(dormant, /onCommit=\{\(next\) => \{ if \(next\.length === 0 \|\| reason\.trim\(\)\) save\(next\) \}\}/)
 })
 
 test('#15 no instruction sends the person to a Save beside the picker: 1.1 ends on Done, 1.2 on the choice that saves', () => {

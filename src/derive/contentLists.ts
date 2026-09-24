@@ -10,14 +10,17 @@ import type { MappingState } from '../mapping/types.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 import { READINESS_STATES, isReady } from '../scoring/phishingResistant.ts'
 import type { ReadinessState } from '../scoring/phishingResistant.ts'
-import { adminUserIds, ROLE_TEMPLATES } from '../roles.ts'
+import { ADMIN_ROLE_IDS, adminUserIds, ROLE_TEMPLATES } from '../roles.ts'
 import { CORE_ADMIN_ROLE_IDS } from '../coverage/classify.ts'
 import { sharedDeviceIds } from './sharedDevices.ts'
 import { notActiveUsers, notPeopleIds, lastSuccessOf } from './sets.ts'
 import { ladder } from './ladder.ts'
 import { riskIds } from '../roadmap/evidence.ts'
 import { absoluteDate } from '../copy/dates.ts'
-import { pages } from '../content/content.ts'
+import { pages, stepById } from '../content/content.ts'
+
+/** Disable or Confirm Dormant Accounts' keep words (steps[s-check-dormant-accounts].keep). */
+const DORMANT_KEEP = (stepById['s-check-dormant-accounts'] as unknown as { keep: { kept: string } }).keep
 
 export type ListContext = {
   snapshot: TenantSnapshot
@@ -180,7 +183,8 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
     // The dormant accounts (no sign-in for 90 days, or none on record) with their
     // state, for the problematic-accounts check (walk of f3d140b): the state is
     // the last sign-in date, or the content example's own "no sign-in on record".
-    accountsWithState: dormant.map((u) => { const last = lastSuccessOf(snapshot, u); return `${nameOf(u.id)} · ${last ? absoluteDate(last) : 'no sign-in on record'}` }),
+    // An account the person keeps says so (walk list item 33), so a briefing tells a kept account from one still to disable or keep.
+    accountsWithState: dormant.map((u) => { const last = lastSuccessOf(snapshot, u); return [nameOf(u.id), last ? absoluteDate(last) : 'no sign-in on record', ...(mapping.dormantAccountChoices?.[u.id]?.outcome === 'keep' ? [DORMANT_KEEP.kept] : [])].join(' · ') }),
     accountsWithStateIds: dormant.map((u) => u.id),
     // Directory-role holders who read mail or join Teams on the same account (E6),
     // with the apps: the separate-accounts step lists them, and the admin policies
@@ -226,6 +230,25 @@ export function adminsWithWorkloadOf(snapshot: TenantSnapshot, exclude: Readonly
   const active = adminUserIds(snapshot.roles)
   const eligible = adminUserIds({ active: snapshot.roles.eligible ?? {} })
   return [...new Set([...active, ...eligible])].filter((id) => users.has(id) && !exclude.has(id) && (office.byPerson[id] ?? []).length > 0).map((id) => [id, active.has(id) ? office.byPerson[id] : office.byPerson[id].map(app => `${app} (eligible administrator)`)] )
+}
+
+/**
+ * The admin roles one account holds, as the scan read them: active, and
+ * eligible through Privileged Identity Management, each the role's template id.
+ * Only roles in the admin catalogue (roles.ts ADMIN_ROLE_IDS), the ones that make
+ * the account an admin: these are what Use Separate Accounts for Admin Work
+ * moves to a separate admin account, and once they are off the everyday account
+ * it is no longer an admin (walk list item 2).
+ */
+export function adminRolesOf(snapshot: TenantSnapshot, id: string): { active: string[]; eligible: string[] } {
+  const admin = (roles: readonly string[] | undefined): string[] => [...new Set((roles ?? []).filter((r) => ADMIN_ROLE_IDS.has(r.toLowerCase())))]
+  const active = admin(snapshot.roles.active[id])
+  return { active, eligible: admin(snapshot.roles.eligible?.[id]).filter((r) => !active.includes(r)) }
+}
+
+/** The mail and Teams apps one account signed in to in the scan's sign-in window, as the sign-in records name them (E6). */
+export function officeAppsOf(snapshot: TenantSnapshot, id: string): string[] {
+  return [...new Set(snapshot.scenarioEvidence?.officeSignIns?.byPerson[id] ?? [])]
 }
 
 function upnOf(snapshot: TenantSnapshot, id: string): string | undefined {

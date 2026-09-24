@@ -15,7 +15,7 @@ import type { Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { absoluteDate, longDate } from '../../copy/dates.ts'
-import { list } from '../../copy/statements.ts'
+import { count, list } from '../../copy/statements.ts'
 import { countryName } from '../../mapping/countries.ts'
 import { hoursAsDuration, needsPasskey, sessionWantedForGoal, sessionWantedLongForGoal, strengthForGoal, strengthNameOf, promptsPersonForGoal, pairBaselineNames } from './stepPortal.ts'
 import { hoursInWords } from '../../coverage/verdict.ts'
@@ -24,7 +24,7 @@ import { contentTitle } from '../../content/stepTitle.ts'
 import { contentLists } from '../../derive/contentLists.ts'
 import { watchedArrive } from '../../roadmap/observation.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
-import { phoneSignInIds } from '../../derive/sets.ts'
+import { disabledInactiveUsers, notPeopleIds, phoneSignInIds } from '../../derive/sets.ts'
 import { securityDefaultsState, signInsNeedP1 } from '../../derive/readinessContext.ts'
 import { cohortWords, guestsAmong } from '../../derive/whoLine.ts'
 import { pickerVars } from './pickerRows.ts'
@@ -367,6 +367,15 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     const waiting = (ids: readonly string[] | undefined): string[] => (ids ?? []).filter((id) => missing.has(id)).map(ctx.nameOf)
     v.dormantAdminsNotReady = waiting(step.preparation.dormantIds)
     v.unreadAdminsNotReady = waiting(step.preparation.activityUnreadIds)
+  }
+  // Disable or Confirm Dormant Accounts' card (walk list items 14, 26): the
+  // accounts still to disable or keep, and once none are, how many the person
+  // keeps and how many accounts with no sign-in in the last 90 days are
+  // disabled in the directory.
+  if (step.dormantChoices) {
+    v.openAccounts = count(step.dormantChoices.filter((row) => !row.kept).length, 'account')
+    v.kept = step.dormantChoices.filter((row) => row.kept).length
+    v.disabled = disabledInactiveUsers(ctx.snapshot, ctx.snapshot.asOf, notPeopleIds(ctx.mapping)).length
   }
   // The same unknown people under a heading with no "scan again before assessing
   // readiness" (who.groups.readinessUnknownBlind), where the step's own reading

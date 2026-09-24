@@ -3612,7 +3612,7 @@
       "kind": "check",
       "title": "Disable or Confirm Dormant Accounts",
       "changeLine": null,
-      "why": "Unused accounts can leave access behind after a person or service stops needing it. IAMAI lists an account with no successful sign-in for 90 days; Microsoft calls 90 to 180 a reasonable window. A blank record is not proof of disuse: the directory keeps sign-ins only so far back, and never fills the gap in later.",
+      "why": "Unused accounts can leave access behind after a person or service stops needing it. IAMAI lists each enabled account with no successful sign-in in the last 90 days.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/monitoring-health/howto-manage-inactive-user-accounts"
       },
@@ -3623,12 +3623,11 @@
       },
       "decision": null,
       "whatToDo": {
-        "lead": "Review each account with its owner and record the outcome."
+        "lead": "Disable or keep each account."
       },
       "dates": null,
       "doneWhen": [
-        "Each listed account is disabled, blocked from sign-in, or shows a successful sign-in on a later scan.",
-        "An account you keep has a confirmed owner and purpose; IAMAI lists it again while it stays inactive."
+        "Each listed account is disabled, signs in again, or is one you keep."
       ],
       "ifWrong": "Re-enable the account: Users → the account → Edit properties → Account enabled: Yes. Nothing else changes.",
       "comms": null,
@@ -3665,11 +3664,36 @@
         "from": "Aug 1"
       },
       "aiFocus": "Include each candidate's name, ID, recorded activity and evidence gaps. Separate a keep decision from a successful sign-in and from confirmed inactivity.",
+      "$commentCard": "The Tasks Remaining card (ui/surfaces/policyTasks.ts ownCardWordsOf): check is the open card's title, filled from the step's vars; detail null draws no second line; pointer draws 'Follow {taskTitle} in Implementation Tasks.'; satisfied is the Satisfied card's fact (walk list items 14, 26).",
       "card": {
         "subject": "Dormant accounts",
-        "check": "Not reviewed yet"
+        "check": "{openAccounts} to disable or keep",
+        "detail": null,
+        "pointer": true,
+        "satisfied": "{kept} kept · {disabled} disabled"
       },
-      "taskTitle": "Review each account"
+      "taskTitle": "Disable or keep each account",
+      "$commentKeep": "The rail's keep picker (ui/surfaces/ContentStep.tsx DormantDecision; walk list items 17, 22, 23, 28): its label, the instruction line in the rail's slot, and each option's last sign-in.",
+      "keep": {
+        "label": "Accounts you are keeping",
+        "instruction": "Select the accounts you are keeping, then select Done. Disable the rest in Entra.",
+        "noSignIn": "No sign-in on record",
+        "lastSignIn": "Last signed in {date}",
+        "kept": "kept"
+      },
+      "$commentProcedure": "Disable or keep each account, the step's one Implementation Task (ui/surfaces/sectionThreeTasks.ts dormantTasksOf; walk list items 20, 30, 31): the open accounts one per line with the last sign-in the scan holds, then the two choices under one line.",
+      "procedure": {
+        "list": "Dormant accounts ({n}):",
+        "account": "{account} · {signIn}",
+        "noSignIn": "no sign-in on record",
+        "lastSignIn": "last signed in {date}",
+        "each": "For each account:",
+        "choices": [
+          "Not needed: as at least a User Administrator, open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Users →** the account **→ Edit properties → Settings**, clear **Account enabled**, and select **Save**.",
+          "Still needed: select it under **Accounts you are keeping**, then select **Done**."
+        ],
+        "scan": "Return to IAMAI and select **Scan to update the plan**."
+      }
     },
     {
       "id": "s-prereq-allowed-countries",
@@ -6989,7 +7013,7 @@
       "kind": "check",
       "title": "Use Separate Accounts for Admin Work",
       "changeLine": null,
-      "why": "Personal email is phished constantly, so the account that opens mail should not also hold a directory role. Move the role to an account that does nothing else, and test it before taking access off the everyday one.",
+      "why": "Email is phished constantly, so the account that opens mail should not also hold an admin role. Move the role to an account that does nothing else, and test it before taking the role off the everyday one.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-planning"
       },
@@ -7002,12 +7026,11 @@
       },
       "decision": null,
       "whatToDo": {
-        "lead": "Review active and eligible administrator accounts. If they are already dedicated to admin work, record that outcome. Otherwise test a dedicated replacement before removing everyday access."
+        "lead": "Move each admin role to a separate admin account."
       },
       "dates": null,
       "doneWhen": [
-        "The reviewed privileged accounts are confirmed as dedicated to administrator work, or each recorded handover has a tested replacement with the required roles and the everyday account no longer has privileged roles.",
-        "Mailbox licensing and past mail or Teams activity are clues for the review; their absence does not prove separation."
+        "No account that holds an admin role, other than the emergency access accounts, has signed in to Outlook or Teams in the last 30 days."
       ],
       "ifWrong": "Put the role back on the everyday account; nothing else changes.",
       "comms": null,
@@ -7039,12 +7062,43 @@
           "Kaladin Stormblessed · Microsoft Teams"
         ]
       },
-      "aiFocus": "Distinguish direct roles from PIM and keep the staged handover. Historical mail or Teams events do not mean a completed migration failed.",
+      "aiFocus": "Distinguish direct roles from PIM and keep the staged handover.",
+      "$commentCard": "The Tasks Remaining cards (ui/surfaces/policyTasks.ts ownCardWordsOf): check null draws no card of the step's own while it is open, because each admin to move is a card of their own (generate.ts, card.admin); satisfied is the Satisfied card's fact (walk list items 2, 14).",
       "card": {
         "subject": "Administrator accounts",
-        "check": "Not reviewed yet"
+        "check": null,
+        "detail": null,
+        "satisfied": "No admin signed in to Outlook or Teams in the last 30 days.",
+        "admin": "Holds {roles} and signs in to {apps}"
       },
-      "taskTitle": "Review each administrator account"
+      "taskTitle": "Move the role to a separate admin account",
+      "$commentProcedure": "Move the role to a separate admin account, one task per admin the scan saw on Outlook or Teams (ui/surfaces/sectionThreeTasks.ts separateAdminTasksOf; walk list items 2, 20, 36). Each value is the scan's: {newUpn} and {upn} the new admin account, {everyday} the account that holds the role today, {mail} its email address, {role} one admin role it holds. With no admin to move, the same lines stand with the generic values below, so the procedure reads the same in every state. tapPolicy stands only where the scan read Temporary Access Pass as off; the Active and Eligible lines follow how the role is held and whether the tenant has Privileged Identity Management.",
+      "procedure": {
+        "create": "Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Users → New user → Create new user**, as at least a User Administrator.",
+        "names": "User principal name: **{newUpn}**. Display name: **{displayName}**.",
+        "displayName": "{name} (admin)",
+        "otherEmails": "Under **Properties**, set **Other emails** to **{mail}**, so role approvals and service notices reach {name}. Select **Review + create**, then **Create**.",
+        "tapPolicy": "Open **Entra ID → Authentication methods → Policies → Temporary Access Pass**, select **Enable**, include **All users**, and select **Save**.",
+        "tap": "Open **Entra ID → Users → {upn} → Authentication methods → Add authentication method → Temporary Access Pass**, select **Add**, and copy the pass.",
+        "register": "In a private window, open [Security info](https://mysignins.microsoft.com/security-info), sign in as **{upn}** with the pass, and add a passkey: **Add sign-in method → Passkey in Microsoft Authenticator**, or a security key.",
+        "assign": "Open **Entra ID → Roles & admins → {role} → Add assignments**, select **{upn}**, and select **Add**.",
+        "assignActive": "Open **Entra ID → Roles & admins → {role} → Add assignments**, select **{upn}**, choose **Assignment type: Active**, and select **Assign**.",
+        "assignEligible": "Open **Entra ID → Roles & admins → {role} → Add assignments**, select **{upn}**, choose **Assignment type: Eligible**, and select **Assign**.",
+        "test": "Sign in to [Microsoft Entra admin center](https://entra.microsoft.com/) as **{upn}** with the passkey and do one task the role is for.",
+        "remove": "Then open **Entra ID → Roles & admins → {role}**, select **{everyday}**, and select **Remove assignments**.",
+        "removeEligible": "Then open **Entra ID → Roles & admins → {role} → Eligible assignments**, select **{everyday}**, and select **Remove**.",
+        "keep": "Keep mail, Teams and files on **{everyday}**; open admin portals with **{upn}** only.",
+        "scan": "Return to IAMAI and select **Scan to update the plan**.",
+        "generic": {
+          "name": "the admin",
+          "newUpn": "adm- and their user name, on {domain}",
+          "displayName": "their name followed by (admin)",
+          "upn": "the admin account",
+          "everyday": "their everyday account",
+          "mail": "their everyday email address",
+          "role": "each admin role they hold"
+        }
+      }
     },
     {
       "id": "service-accounts-trusted-network",

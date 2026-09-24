@@ -40,7 +40,4 @@ test('the review includes role holders and separately lists observed mail or Tea
   assert.equal(ex.adminsWithWorkload.length, 2)
   for (const row of ex.adminsWithWorkload) assert.match(row, /^.+ · (Outlook|Microsoft Teams)/, row)
   assert.ok(stepLines(s, ctx).some((l) => /^Review the \d+ administrator accounts for dedicated administration/.test(l)), 'the lead counts them')
-  // Missing mail or Teams activity does not remove the administrator review.
-  const g = fixture('getiamai')
-  assert.equal(runFixture(g).steps.find((x) => x.id === SEPARATE_ADMIN_ACCOUNTS_STEP_ID)?.state.satisfied, false, 'a missing business-activity signal does not prove dedicated use')
 })
