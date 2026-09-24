@@ -38,43 +38,54 @@ function walk(dir: string, out: string[] = []): string[] {
 const files = [...walk('src'), ...walk('home'), 'index.html']
 const HOST = /https?:\/\/([a-z0-9.-]+)/gi
 
-test('every host in the source is either a request destination on the list or a link a person clicks', () => {
-  const offenders: string[] = []
-  for (const file of files) {
-    const text = readFileSync(file, 'utf8')
-    for (const m of text.matchAll(HOST)) {
-      const host = m[1].toLowerCase()
-      if (REQUEST_HOSTS.has(host) || LINK_HOSTS.has(host)) continue
-      offenders.push(`${file}: ${host}`)
-    }
-  }
-  assert.deepEqual(offenders, [])
-})
-
-test('requests, imports, scripts, styles, fonts, images, beacons and sockets never reach a host off the list', () => {
-  const offenders: string[] = []
-  const requestish = [
-    /fetch\(\s*[`'"](https?:\/\/[^`'"]+)/gi,
-    /new\s+(?:WebSocket|EventSource|Worker|Image)\(\s*[`'"](https?:\/\/[^`'"]+)/gi,
-    /sendBeacon\(\s*[`'"](https?:\/\/[^`'"]+)/gi,
-    /import\(\s*[`'"](https?:\/\/[^`'"]+)/gi,
-    /\b(?:src|href)\s*=\s*["'](https?:\/\/[^"']+)["'][^>]*\brel=["']stylesheet/gi,
-    /<script[^>]+src=["'](https?:\/\/[^"']+)/gi,
-    /<link[^>]+href=["'](https?:\/\/[^"']+)/gi,
-    /@import\s+(?:url\()?["']?(https?:\/\/[^"')]+)/gi,
-    /url\(\s*["']?(https?:\/\/[^"')]+)/gi,
-    /<img[^>]+src=["'](https?:\/\/[^"']+)/gi,
-  ]
-  for (const file of files) {
-    const text = readFileSync(file, 'utf8')
-    for (const re of requestish) {
-      for (const m of text.matchAll(re)) {
-        const host = new URL(m[1]).hostname.toLowerCase()
-        if (!REQUEST_HOSTS.has(host)) offenders.push(`${file}: ${m[0].slice(0, 80)}`)
+test('every host in the source is a listed request destination or a link a person clicks, and nothing is requested off the list', () => {
+  // every host in the source is either a request destination on the list or a link a person clicks
+  {
+    const offenders: string[] = []
+    for (const file of files) {
+      const text = readFileSync(file, 'utf8')
+      for (const m of text.matchAll(HOST)) {
+        const host = m[1].toLowerCase()
+        if (REQUEST_HOSTS.has(host) || LINK_HOSTS.has(host)) continue
+        offenders.push(`${file}: ${host}`)
       }
     }
+    assert.deepEqual(offenders, [])
   }
-  assert.deepEqual(offenders, [])
+
+  // requests, imports, scripts, styles, fonts, images, beacons and sockets never reach a host off the list
+  {
+    const offenders: string[] = []
+    const requestish = [
+      /fetch\(\s*[`'"](https?:\/\/[^`'"]+)/gi,
+      /new\s+(?:WebSocket|EventSource|Worker|Image)\(\s*[`'"](https?:\/\/[^`'"]+)/gi,
+      /sendBeacon\(\s*[`'"](https?:\/\/[^`'"]+)/gi,
+      /import\(\s*[`'"](https?:\/\/[^`'"]+)/gi,
+      /\b(?:src|href)\s*=\s*["'](https?:\/\/[^"']+)["'][^>]*\brel=["']stylesheet/gi,
+      /<script[^>]+src=["'](https?:\/\/[^"']+)/gi,
+      /<link[^>]+href=["'](https?:\/\/[^"']+)/gi,
+      /@import\s+(?:url\()?["']?(https?:\/\/[^"')]+)/gi,
+      /url\(\s*["']?(https?:\/\/[^"')]+)/gi,
+      /<img[^>]+src=["'](https?:\/\/[^"']+)/gi,
+    ]
+    for (const file of files) {
+      const text = readFileSync(file, 'utf8')
+      for (const re of requestish) {
+        for (const m of text.matchAll(re)) {
+          const host = new URL(m[1]).hostname.toLowerCase()
+          if (!REQUEST_HOSTS.has(host)) offenders.push(`${file}: ${m[0].slice(0, 80)}`)
+        }
+      }
+    }
+    assert.deepEqual(offenders, [])
+  }
+
+  // the styles self-host every font and import nothing remote
+  {
+    const css = ['src/ui/tokens.css'].map((f) => readFileSync(f, 'utf8')).join('\n')
+    for (const m of css.matchAll(/url\(([^)]+)\)/g)) assert.ok(!/^["']?https?:/i.test(m[1].trim()), `remote url in css: ${m[1]}`)
+    assert.doesNotMatch(css, /@import\s+(?:url\()?["']?https?:/i)
+  }
 })
 
 test('the Graph and login hosts are the only ones the collectors and MSAL call', () => {
@@ -84,12 +95,6 @@ test('the Graph and login hosts are the only ones the collectors and MSAL call',
   for (const m of registry.matchAll(HOST)) assert.equal(m[1].toLowerCase(), 'graph.microsoft.com')
   const github = readFileSync('src/baseline/github.ts', 'utf8')
   for (const m of github.matchAll(HOST)) assert.ok(['raw.githubusercontent.com', 'github.com'].includes(m[1].toLowerCase()), m[0])
-})
-
-test('the styles self-host every font and import nothing remote', () => {
-  const css = ['src/ui/tokens.css'].map((f) => readFileSync(f, 'utf8')).join('\n')
-  for (const m of css.matchAll(/url\(([^)]+)\)/g)) assert.ok(!/^["']?https?:/i.test(m[1].trim()), `remote url in css: ${m[1]}`)
-  assert.doesNotMatch(css, /@import\s+(?:url\()?["']?https?:/i)
 })
 
 // ---- the built artifact, not just the source ----
@@ -140,36 +145,40 @@ const built = (): string[] => {
   }
 }
 
-test('the built bundle addresses no host outside the list', () => {
-  const files = built()
-  if (files.length === 0) return // no build to check; CI always has one
-  const offenders: string[] = []
-  for (const f of files) {
-    for (const m of readFileSync(f, 'utf8').matchAll(HOST)) {
-      const host = m[1].toLowerCase()
-      if (REQUEST_HOSTS.has(host) || LINK_HOSTS.has(host) || ARTIFACT_ONLY.has(host)) continue
-      offenders.push(`${f}: ${host}`)
+test('the built bundle addresses no host outside the lists and ships no dev spike harness', () => {
+  // the built bundle addresses no host outside the list
+  {
+    const files = built()
+    if (files.length === 0) return // no build to check; CI always has one
+    const offenders: string[] = []
+    for (const f of files) {
+      for (const m of readFileSync(f, 'utf8').matchAll(HOST)) {
+        const host = m[1].toLowerCase()
+        if (REQUEST_HOSTS.has(host) || LINK_HOSTS.has(host) || ARTIFACT_ONLY.has(host)) continue
+        offenders.push(`${f}: ${host}`)
+      }
     }
-  }
-  assert.deepEqual([...new Set(offenders)], [], 'the built bundle names a host that is on no list')
+    assert.deepEqual([...new Set(offenders)], [], 'the built bundle names a host that is on no list')
 
-  // A documented exception that stops being present is an exception to delete.
-  const text = files.map((f) => readFileSync(f, 'utf8')).join('')
-  const stale = [...ARTIFACT_ONLY.keys()].filter((h) => !text.includes(h))
-  assert.deepEqual(stale, [], 'these hosts are no longer in the bundle; remove them from ARTIFACT_ONLY')
-})
-
-test('the dev spike harness is absent from the built bundle', () => {
-  const files = built()
-  if (files.length === 0) return
-  // Markers unique to the harness. Deliberately not 'authentication/methods' or
-  // 'applicationSignInDetailedSummary': those are real collector endpoints and
-  // matching on them would fail on correct code.
-  const SPIKE_ONLY = ['__spike', '__spike1', '[spike1]', 'runSpike1', 'not%20startswith']
-  const found: string[] = []
-  for (const f of files) {
-    const text = readFileSync(f, 'utf8')
-    for (const marker of SPIKE_ONLY) if (text.includes(marker)) found.push(`${f}: ${marker}`)
+    // A documented exception that stops being present is an exception to delete.
+    const text = files.map((f) => readFileSync(f, 'utf8')).join('')
+    const stale = [...ARTIFACT_ONLY.keys()].filter((h) => !text.includes(h))
+    assert.deepEqual(stale, [], 'these hosts are no longer in the bundle; remove them from ARTIFACT_ONLY')
   }
-  assert.deepEqual(found, [], 'the dev-only Graph probe harness ships in the production bundle')
+
+  // the dev spike harness is absent from the built bundle
+  {
+    const files = built()
+    if (files.length === 0) return
+    // Markers unique to the harness. Deliberately not 'authentication/methods' or
+    // 'applicationSignInDetailedSummary': those are real collector endpoints and
+    // matching on them would fail on correct code.
+    const SPIKE_ONLY = ['__spike', '__spike1', '[spike1]', 'runSpike1', 'not%20startswith']
+    const found: string[] = []
+    for (const f of files) {
+      const text = readFileSync(f, 'utf8')
+      for (const marker of SPIKE_ONLY) if (text.includes(marker)) found.push(`${f}: ${marker}`)
+    }
+    assert.deepEqual(found, [], 'the dev-only Graph probe harness ships in the production bundle')
+  }
 })
