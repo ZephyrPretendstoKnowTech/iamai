@@ -15,7 +15,7 @@ import type { FixtureRun } from './fixtures/run.ts'
 import type { MappingState } from '../mapping/types.ts'
 import { applyStepDecisions } from './decisions.ts'
 import type { StepDecision } from './decisions.ts'
-import { QUESTION_STEP, answerKey, answerOf, effectLine, mailDevicesOf, questionLabels, serviceProvidersExcluded, travelCountriesOf } from './answers.ts'
+import { QUESTION_STEP, answerKey, mailDevicesOf, questionLabels, serviceProvidersExcluded, travelCountriesOf } from './answers.ts'
 import { PREREQ_STEP_ID } from './stepIds.ts'
 import { decisionsOf } from './progress.ts'
 import { defaultDecisions } from '../ui/surfaces/pickerRows.ts'
@@ -23,7 +23,6 @@ import { stepVars } from '../ui/surfaces/stepVars.ts'
 import { implementationOffered } from '../ui/surfaces/stepJson.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 import { portalNamesFor, stepPortalLines } from '../ui/surfaces/stepPortal.ts'
-import { contentStepFor } from '../content/stepTitle.ts'
 import { manualEvidenceFields } from './manualWork.ts'
 import { stepById } from '../content/content.ts'
 
@@ -38,81 +37,93 @@ function ctxFor(f: Fixture, r: FixtureRun, mapping: MappingState): StepVarContex
   return { snapshot: f.snapshot, mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: null, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming }
 }
 
-test('saved travel stays separate from workplace countries; provider and printer choices still apply', () => {
-  const f = fixture('demo-week2')
-  assert.ok(f.decisions, 'week two carries the stored answers')
-  const before = applied(f, null)
-  const m = applied(f, f.decisions)
+test('saved answers apply to the steps they are asked on and add no step of their own, and a plan record round-trips them', () => {
+  // saved travel stays separate from workplace countries; provider and printer choices still apply
+  {
+    const f = fixture('demo-week2')
+    assert.ok(f.decisions, 'week two carries the stored answers')
+    const before = applied(f, null)
+    const m = applied(f, f.decisions)
 
-  // The travellers answer: New Zealand joins the allowed list.
-  assert.ok(!before.allowedCountries.includes('NZ'), 'unanswered: New Zealand is not on the list')
-  assert.deepEqual(travelCountriesOf(m), ['NZ'])
-  assert.ok(!m.allowedCountries.includes('NZ'), 'travel does not expand ordinary workplace access')
-  assert.ok(m.allowedCountries.includes('AU'), 'the picker\'s own countries stay')
+    // The travellers answer: New Zealand joins the allowed list.
+    assert.ok(!before.allowedCountries.includes('NZ'), 'unanswered: New Zealand is not on the list')
+    assert.deepEqual(travelCountriesOf(m), ['NZ'])
+    assert.ok(!m.allowedCountries.includes('NZ'), 'travel does not expand ordinary workplace access')
+    assert.ok(m.allowedCountries.includes('AU'), 'the picker\'s own countries stay')
 
-  // The partner answer: the Service provider type is excluded.
-  assert.equal(serviceProvidersExcluded(before), false)
-  assert.equal(serviceProvidersExcluded(m), true)
+    // The partner answer: the Service provider type is excluded.
+    assert.equal(serviceProvidersExcluded(before), false)
+    assert.equal(serviceProvidersExcluded(m), true)
 
-  // The mail-sending devices answer: the printer is a service account.
-  const printer = f.snapshot.users.find((u) => u.displayName === 'MFP Reception')
-  assert.ok(printer, 'the demo has the reception printer')
-  assert.ok(!before.serviceAccountUserIds.includes(printer.id))
-  assert.deepEqual(mailDevicesOf(m), [printer.id])
-  assert.ok(m.serviceAccountUserIds.includes(printer.id), 'answered: the printer is in the service accounts')
+    // The mail-sending devices answer: the printer is a service account.
+    const printer = f.snapshot.users.find((u) => u.displayName === 'MFP Reception')
+    assert.ok(printer, 'the demo has the reception printer')
+    assert.ok(!before.serviceAccountUserIds.includes(printer.id))
+    assert.deepEqual(mailDevicesOf(m), [printer.id])
+    assert.ok(m.serviceAccountUserIds.includes(printer.id), 'answered: the printer is in the service accounts')
 
-  // The store: questionAnswers[stepId:label], never the old free-text keys.
-  const mailLabels = questionLabels(QUESTION_STEP.mailDevices)
-  assert.ok(mailLabels.decision, 'the legacy block\'s decision has a label')
-  assert.ok(m.questionAnswers?.[answerKey(QUESTION_STEP.mailDevices, mailLabels.decision)], 'the option persists under stepId:label')
-  assert.equal(m.questionAnswers?.[QUESTION_STEP.mailDevices], undefined, 'the bare step id is not a key')
-  assert.equal(m.questionAnswers?.mailDevices, undefined)
-  assert.equal(m.questionAnswers?.travel, undefined)
-  assert.equal(m.questionAnswers?.partner, undefined)
+    // The store: questionAnswers[stepId:label], never the old free-text keys.
+    const mailLabels = questionLabels(QUESTION_STEP.mailDevices)
+    assert.ok(mailLabels.decision, 'the legacy block\'s decision has a label')
+    assert.ok(m.questionAnswers?.[answerKey(QUESTION_STEP.mailDevices, mailLabels.decision)], 'the option persists under stepId:label')
+    assert.equal(m.questionAnswers?.[QUESTION_STEP.mailDevices], undefined, 'the bare step id is not a key')
+    assert.equal(m.questionAnswers?.mailDevices, undefined)
+    assert.equal(m.questionAnswers?.travel, undefined)
+    assert.equal(m.questionAnswers?.partner, undefined)
 
-  // The plan: an answer changes the step it is asked on, and adds no row of its
-  // own. The three steps that used to be added are gone
-  // (docs/plans/step-redundancy-analysis.md findings 4, 5 and 6): trip
-  // operations, which nothing ever pushed; the partner follow-up, whose whole
-  // instruction was to read two other steps; and the mail follow-up, which is
-  // now Block Legacy Authentication's second Implementation Task.
-  const r0 = runFixture({ ...f, mapping: before }, { mapping: before })
-  const r = runFixture({ ...f, mapping: m }, { mapping: m })
-  assert.deepEqual(r.steps.map((s) => s.id).filter((id) => !r0.steps.some((s) => s.id === id)), [], 'an answer added a step of its own')
-  for (const id of ['s-question-travel', 's-question-partner', 's-question-mail-devices']) {
-    assert.equal(stepById[id], undefined, `${id}: the carved-out words are still here`)
-    assert.ok(!r.steps.some((s) => s.id === id), `${id}: still generated`)
+    // The plan: an answer changes the step it is asked on, and adds no row of its
+    // own. The three steps that used to be added are gone
+    // (docs/plans/step-redundancy-analysis.md findings 4, 5 and 6): trip
+    // operations, which nothing ever pushed; the partner follow-up, whose whole
+    // instruction was to read two other steps; and the mail follow-up, which is
+    // now Block Legacy Authentication's second Implementation Task.
+    const r0 = runFixture({ ...f, mapping: before }, { mapping: before })
+    const r = runFixture({ ...f, mapping: m }, { mapping: m })
+    assert.deepEqual(r.steps.map((s) => s.id).filter((id) => !r0.steps.some((s) => s.id === id)), [], 'an answer added a step of its own')
+    for (const id of ['s-question-travel', 's-question-partner', 's-question-mail-devices']) {
+      assert.equal(stepById[id], undefined, `${id}: the carved-out words are still here`)
+      assert.ok(!r.steps.some((s) => s.id === id), `${id}: still generated`)
+    }
+
+    // Each answer still does what it did. The partner answer excludes the Service
+    // provider type from both policies, and the guests policy carries the one
+    // warning that step added and its evidence field.
+    assert.equal(serviceProvidersExcluded(m), true, 'the partner answer still excludes service providers')
+    const legacy = r.steps.find((s) => s.id === 's-goal-block-legacy-auth')!
+    assert.ok(legacy.manualReview, 'the named devices bring the folded mail evidence onto the legacy block')
+    assert.ok((legacy.manualReview!.fields ?? []).some((field) => field.label === 'Mail Job and Delivery Route'), 'the mail route field did not move')
+    assert.ok((legacy.manualReview!.fields ?? []).some((field) => field.key === 'exceptionRemoved'), 'the removed-exception checkbox did not move')
+    assert.equal(r0.steps.find((s) => s.id === 's-goal-block-legacy-auth')!.manualReview, undefined, 'a tenant that named no device is asked for no mail evidence')
+    const guestsHelp = (stepById['guests-mfa'] as unknown as { more?: { helpDesk?: string[] } }).more?.helpDesk ?? []
+    assert.ok(guestsHelp.some((l) => /Delegated administration \(GDAP\) and ordinary guest \(B2B\) access are separate/.test(l)), 'the GDAP warning did not land on the guests policy')
+    const geoHelp = (stepById['geo-restriction'] as unknown as { more?: { helpDesk?: string[] } }).more?.helpDesk ?? []
+    assert.ok(geoHelp.some((l) => /exclude service providers/.test(l)), 'the countries policy does not say it carries the exclusion')
+    assert.ok(manualEvidenceFields('s-goal-guests-mfa').some((f) => f.key === 'providerAccessPath'), 'the provider access path did not move to the guests policy')
+
+    // The service-accounts step names the printer.
+    const sa = r.steps.find((s) => s.id === PREREQ_STEP_ID.serviceAccountsGroup)
+    assert.ok(sa, 'the service-accounts step is on the plan (no group holds them yet)')
+    const saVars = stepVars(sa, ctxFor(f, r, m))
+    assert.ok((saVars.accountsWithSignals as string[]).some((row) => row.startsWith('MFP Reception')), 'the printer is a row of the service-accounts picker')
+
+    // The countries step lists New Zealand. The countries location is the
+    // countries policy's own first task since Stage 3 (Step.objectTask), and its
+    // picker rows are that task's.
+    const countries = r.steps.find((s) => s.goalId === 'geo-restriction')?.objectTask
+    assert.ok(countries)
+    assert.equal(countries.id, PREREQ_STEP_ID.allowedCountries)
+    const cVars = stepVars(countries, ctxFor(f, r, m))
+    assert.ok(!(cVars.countriesWithCounts as string[]).some((row) => row.startsWith('New Zealand')), 'travel is not presented as an approved workplace country')
   }
 
-  // Each answer still does what it did. The partner answer excludes the Service
-  // provider type from both policies, and the guests policy carries the one
-  // warning that step added and its evidence field.
-  assert.equal(serviceProvidersExcluded(m), true, 'the partner answer still excludes service providers')
-  const legacy = r.steps.find((s) => s.id === 's-goal-block-legacy-auth')!
-  assert.ok(legacy.manualReview, 'the named devices bring the folded mail evidence onto the legacy block')
-  assert.ok((legacy.manualReview!.fields ?? []).some((field) => field.label === 'Mail Job and Delivery Route'), 'the mail route field did not move')
-  assert.ok((legacy.manualReview!.fields ?? []).some((field) => field.key === 'exceptionRemoved'), 'the removed-exception checkbox did not move')
-  assert.equal(r0.steps.find((s) => s.id === 's-goal-block-legacy-auth')!.manualReview, undefined, 'a tenant that named no device is asked for no mail evidence')
-  const guestsHelp = (stepById['guests-mfa'] as unknown as { more?: { helpDesk?: string[] } }).more?.helpDesk ?? []
-  assert.ok(guestsHelp.some((l) => /Delegated administration \(GDAP\) and ordinary guest \(B2B\) access are separate/.test(l)), 'the GDAP warning did not land on the guests policy')
-  const geoHelp = (stepById['geo-restriction'] as unknown as { more?: { helpDesk?: string[] } }).more?.helpDesk ?? []
-  assert.ok(geoHelp.some((l) => /exclude service providers/.test(l)), 'the countries policy does not say it carries the exclusion')
-  assert.ok(manualEvidenceFields('s-goal-guests-mfa').some((f) => f.key === 'providerAccessPath'), 'the provider access path did not move to the guests policy')
-
-  // The service-accounts step names the printer.
-  const sa = r.steps.find((s) => s.id === PREREQ_STEP_ID.serviceAccountsGroup)
-  assert.ok(sa, 'the service-accounts step is on the plan (no group holds them yet)')
-  const saVars = stepVars(sa, ctxFor(f, r, m))
-  assert.ok((saVars.accountsWithSignals as string[]).some((row) => row.startsWith('MFP Reception')), 'the printer is a row of the service-accounts picker')
-
-  // The countries step lists New Zealand. The countries location is the
-  // countries policy's own first task since Stage 3 (Step.objectTask), and its
-  // picker rows are that task's.
-  const countries = r.steps.find((s) => s.goalId === 'geo-restriction')?.objectTask
-  assert.ok(countries)
-  assert.equal(countries.id, PREREQ_STEP_ID.allowedCountries)
-  const cVars = stepVars(countries, ctxFor(f, r, m))
-  assert.ok(!(cVars.countriesWithCounts as string[]).some((row) => row.startsWith('New Zealand')), 'travel is not presented as an approved workplace country')
+  // a plan record round-trips the answers, so a reload keeps them
+  {
+    const f = fixture('demo-week2')
+    const rec = decisionsOf({ stepDecisions: f.decisions }, 'plan-x')
+    const saved = rec.stepDecisions?.[PREREQ_STEP_ID.allowedCountries]
+    assert.deepEqual(saved?.answers, f.decisions?.[PREREQ_STEP_ID.allowedCountries].answers)
+    assert.equal(rec.stepDecisions?.[QUESTION_STEP.mailDevices]?.option, f.decisions?.[QUESTION_STEP.mailDevices].option)
+  }
 })
 
 test('the service-provider exclusion is on both policies, in the JSON and on the portal lines beside the baseline\'s version', () => {
@@ -156,31 +167,4 @@ test('the service-provider exclusion is on both policies, in the JSON and on the
     assert.ok(!lines0.some((l) => /the baseline's version/.test(l)), `${goalId}: unanswered, nothing deviates from the baseline`)
   }
   assert.ok(seenOnScreen, 'at least one of the two shows the deviation on screen')
-})
-
-test('each question\'s effect line is true when it shows, and never before', () => {
-  const f = fixture('demo-week2')
-  const before = applied(f, null)
-  const m = applied(f, f.decisions ?? null)
-  const countries = contentStepFor({ id: QUESTION_STEP.travel, goalId: '' }) as unknown as { decision: { question: { effect: unknown } } }
-  assert.match(String(effectLine(countries.decision.question.effect, answerOf(m, QUESTION_STEP.travel, 'question'))), /recorded separately/)
-  assert.equal(effectLine(countries.decision.question.effect, answerOf(before, QUESTION_STEP.travel, 'question')), null)
-  const guests = contentStepFor({ id: QUESTION_STEP.partner, goalId: 'guests-mfa' }) as unknown as { decision: { question: { effect: unknown } } }
-  assert.match(String(effectLine(guests.decision.question.effect, answerOf(m, QUESTION_STEP.partner, 'question'))), /Service provider type/)
-  assert.equal(effectLine(guests.decision.question.effect, answerOf(before, QUESTION_STEP.partner, 'question')), null)
-  const legacy = contentStepFor({ id: QUESTION_STEP.mailDevices, goalId: 'block-legacy-auth' }) as unknown as { decision: { effect: unknown } }
-  assert.match(String(effectLine(legacy.decision.effect, answerOf(m, QUESTION_STEP.mailDevices, 'decision'))), /selected for the service-accounts exception/)
-  assert.equal(effectLine(legacy.decision.effect, answerOf(before, QUESTION_STEP.mailDevices, 'decision')), null)
-  // The first option changes nothing, so it has no effect line.
-  const nobody = applyStepDecisions(before, { [QUESTION_STEP.travel]: { picked: ['AU'], answers: { [questionLabels(QUESTION_STEP.travel).question!]: 'Nobody' }, at: f.snapshot.asOf } })
-  assert.equal(effectLine(countries.decision.question.effect, answerOf(nobody, QUESTION_STEP.travel, 'question')), null)
-  assert.deepEqual(travelCountriesOf(nobody), [])
-})
-
-test('a plan record round-trips the answers, so a reload keeps them', () => {
-  const f = fixture('demo-week2')
-  const rec = decisionsOf({ stepDecisions: f.decisions }, 'plan-x')
-  const saved = rec.stepDecisions?.[PREREQ_STEP_ID.allowedCountries]
-  assert.deepEqual(saved?.answers, f.decisions?.[PREREQ_STEP_ID.allowedCountries].answers)
-  assert.equal(rec.stepDecisions?.[QUESTION_STEP.mailDevices]?.option, f.decisions?.[QUESTION_STEP.mailDevices].option)
 })

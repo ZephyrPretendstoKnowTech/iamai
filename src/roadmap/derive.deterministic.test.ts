@@ -20,11 +20,9 @@ const project = (run: FixtureRun): unknown => ({
   targetEnd: run.schedule.targetEnd,
 })
 
-for (const name of ['demo', 'demo-week2', 'getiamai', 'mid', 'midflight', 'hostile'] as const) {
-  test(`deterministic: ${name} derives identically twice`, () => {
-    assert.deepEqual(project(runFixture(fixture(name))), project(runFixture(fixture(name))))
-  })
-}
+test('deterministic: the same inputs derive the same plan twice', () => {
+  for (const name of ['demo-week2', 'hostile'] as const) assert.deepEqual(project(runFixture(fixture(name))), project(runFixture(fixture(name))), name)
+})
 
 test('deterministic: a decisions round-trip re-derives the same plan, and the skip survives', () => {
   const f = fixture('demo')

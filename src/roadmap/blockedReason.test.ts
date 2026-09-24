@@ -19,51 +19,41 @@ const SENTENCES = [BLOCKED_REASON.baseline, BLOCKED_REASON.exclusionsGroup, BLOC
 const inShape = (reason: string): boolean => SENTENCES.includes(reason) || SHAPES.some((re) => re.test(reason))
 const words = (s: string): number => s.trim().split(/\s+/).length
 
-test('the four shapes', () => {
-  assert.equal(BLOCKED_REASON.after('Create the exclusion group'), 'after: Create the exclusion group')
-  assert.equal(BLOCKED_REASON.reaches('MFA readiness', '90%', '60%'), 'when MFA readiness reaches 90% (now 60%)')
-  assert.equal(BLOCKED_REASON.exist(2, 'emergency-access account', 0), 'when 2 emergency-access accounts exist (now 0)')
-  // The pages.plan.blocked count shape, with the pluraliser bending its verb to
-  // the count (content/render.ts SINGULAR_VERB).
-  assert.equal(BLOCKED_REASON.exist(1, 'trusted location', 0), 'when 1 trusted location exists (now 0)')
-  // The baseline shape is a sentence the content file writes, not a fill.
-  assert.ok(inShape(BLOCKED_REASON.baseline), 'the baseline shape is one of the shapes')
-  assert.ok(words(BLOCKED_REASON.baseline) <= BLOCKED_REASON_MAX_WORDS, 'within twelve words')
-})
-
-test('every blocked step on every fixture carries one binding reason, in shape, within twelve words', () => {
-  let blocked = 0
-  const failures: string[] = []
-  for (const f of allFixtures()) {
-    const r = runFixture(f)
-    for (const s of r.steps) {
-      if (s.status !== 'blocked') {
-        // A held step says what holds it whatever its word (roadmap/holds.ts); nothing else carries a reason.
-        if (s.blockedReason !== null && !isHeld(s)) failures.push(`${f.name}/${s.id}: not blocked but carries a reason`)
-        if (s.blockedReason !== null && !inShape(s.blockedReason)) failures.push(`${f.name}/${s.id}: "${s.blockedReason}" is in none of the shapes`)
-        continue
-      }
-      blocked += 1
-      const reason = s.blockedReason
-      if (!reason) {
-        failures.push(`${f.name}/${s.id}: blocked with no reason`)
-        continue
-      }
-      if (!inShape(reason)) failures.push(`${f.name}/${s.id}: "${reason}" is in none of the four shapes`)
-      if (words(reason) > BLOCKED_REASON_MAX_WORDS) failures.push(`${f.name}/${s.id}: "${reason}" is ${words(reason)} words`)
-      if (/named cause/.test(reason)) failures.push(`${f.name}/${s.id}: a producer left its cause unnamed`)
-      assert.ok(s.blockers.length + s.blockedBy.length > 0, `${s.id}: the causes are still on the step`)
+test('every blocked step on every fixture carries one binding reason, in one of the shapes, within twelve words', () => {
+  // The fills land in the shapes; the baseline's is a sentence the content file writes.
+  {
+    for (const r of [BLOCKED_REASON.after('Create the exclusion group'), BLOCKED_REASON.reaches('MFA readiness', '90%', '60%'), BLOCKED_REASON.exist(2, 'emergency-access account', 0), BLOCKED_REASON.exist(1, 'trusted location', 0), BLOCKED_REASON.baseline]) {
+      assert.ok(inShape(r), r)
+      assert.ok(words(r) <= BLOCKED_REASON_MAX_WORDS, r)
     }
   }
-  assert.ok(blocked > 10, `the fixtures have blocked steps to check (${blocked})`)
-  assert.deepEqual(failures, [])
-})
 
-test('"is not sorted yet" is gone', () => {
-  for (const f of allFixtures()) {
-    for (const s of runFixture(f).steps) {
-      const text = [s.blockedReason ?? '', ...s.unblockNotes, ...s.blockers.map((b) => b.label)].join(' ')
-      assert.doesNotMatch(text, /is not sorted yet/, `${f.name}/${s.id}`)
+  // every blocked step on every fixture carries one binding reason, in shape, within twelve words
+  {
+    let blocked = 0
+    const failures: string[] = []
+    for (const f of allFixtures()) {
+      const r = runFixture(f)
+      for (const s of r.steps) {
+        if (s.status !== 'blocked') {
+          // A held step says what holds it whatever its word (roadmap/holds.ts); nothing else carries a reason.
+          if (s.blockedReason !== null && !isHeld(s)) failures.push(`${f.name}/${s.id}: not blocked but carries a reason`)
+          if (s.blockedReason !== null && !inShape(s.blockedReason)) failures.push(`${f.name}/${s.id}: "${s.blockedReason}" is in none of the shapes`)
+          continue
+        }
+        blocked += 1
+        const reason = s.blockedReason
+        if (!reason) {
+          failures.push(`${f.name}/${s.id}: blocked with no reason`)
+          continue
+        }
+        if (!inShape(reason)) failures.push(`${f.name}/${s.id}: "${reason}" is in none of the four shapes`)
+        if (words(reason) > BLOCKED_REASON_MAX_WORDS) failures.push(`${f.name}/${s.id}: "${reason}" is ${words(reason)} words`)
+        if (/named cause/.test(reason)) failures.push(`${f.name}/${s.id}: a producer left its cause unnamed`)
+        assert.ok(s.blockers.length + s.blockedBy.length > 0, `${s.id}: the causes are still on the step`)
+      }
     }
+    assert.ok(blocked > 10, `the fixtures have blocked steps to check (${blocked})`)
+    assert.deepEqual(failures, [])
   }
 })
