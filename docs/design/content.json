@@ -3412,7 +3412,7 @@
           "Enter a unique username, such as emergency-access-primary or emergency-access-secondary, or choose another account name. Select the observed initial domain from the domain list.",
           "Keep the account cloud-only and enabled, then assign Global Administrator through the applicable direct-assignment or PIM route.",
           "Store the initial password securely where authorized staff can retrieve it without signing in to this tenant.",
-          "Register an approved passkey, scan again, select the new account and Save."
+          "Register an approved passkey, scan again, select the new account, then select Done."
         ],
         "checkFixes": {
           "second-account": "Create a second account: one account is a single point of failure.",
@@ -3536,7 +3536,7 @@
         "members": "{list:members}",
         "unverified": "IAMAI could not check {list:unverifiedGroup} in this scan, so no policy here names it yet. Your choice is kept and stands again the moment a scan can read the group.",
         "missing": "{list:missingGroup} is not in {tenant} any more. Your choice is kept: IAMAI has not chosen another group and has not created one.",
-        "suggested": "Suggested: {list:suggestedGroup} · {suggestedMemberCount} members · excluded from {suggestedExcludedFrom} of {policyCount} policies. This is not saved intent; nothing uses it until you choose it and select Save.",
+        "suggested": "Suggested: {list:suggestedGroup} · {suggestedMemberCount} members · excluded from {suggestedExcludedFrom} of {policyCount} policies. This is not saved intent; nothing uses it until you choose it.",
         "several": "More than one group in {tenant} could be this one: {list:candidateGroups}. IAMAI does not choose between them.",
         "cannotTell": "IAMAI cannot say whether a group in {tenant} already does this: {list:detectionGap}. Nothing has been chosen and nothing has been created.",
         "none": "No exclusions group recognised in {tenant}."

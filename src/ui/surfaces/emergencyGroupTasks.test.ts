@@ -70,14 +70,16 @@ test('uncertain policy evidence does not become a required tenant-change task', 
   assert.equal(task.evidence, null)
 })
 
-test('new-group procedure discovers the group before selection and save', () => {
+test('new-group procedure discovers the group before selecting it, which saves it', () => {
   const create = projection().tasks.find(row => row.id === 'create-exclusions-group')!
   const text = create.steps.join('\n')
-  // Wording since 716a3d42: create, scan to discover it, then select the new group and save.
+  // Create, scan to discover it, then select the new group: the single-choice
+  // list saves the choice (owner, 2026-09-23: no Save beside a picker).
   const discover = text.indexOf('Scan to update the plan')
   const select = text.indexOf('Select the new group')
   assert.ok(discover >= 0 && select > discover)
-  assert.match(text.slice(select), /Save.*scan again/i)
+  assert.match(text.slice(select), /^Select the new group under \*\*Exclusions group\*\*\. Scan again/)
+  assert.doesNotMatch(text, /\*\*Save\*\*/)
 })
 
 test('a saved group with unread evidence is retained and is not requested again', () => {
