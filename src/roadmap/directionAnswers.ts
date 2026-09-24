@@ -149,14 +149,17 @@ const answer = (value: string, picked: readonly string[] = []): DirectionAnswer 
 /** A picker's own answer was saved by a person, never by the detected pass (pickerRows.ts defaultDecisions). */
 const confirmed = (m: Mapping, q: string): boolean => m.wizardAnswered?.[q] === true && m.assumed?.[q] !== 'detected'
 
-/** Phones, as the four D3 options, from the device answers however they were saved. */
+/**
+ * Phones, as the three D3 options, from the device answers however they were
+ * saved. "App protection only" and "Unmanaged" are one option now, No device
+ * requirement, stored as apps: an old answer of either reads as it.
+ */
 export function phonesOf(m: Pick<MappingState, 'questionAnswers'>): string | null {
   const plan = devicePlanOf(m)
   if (!plan) return null
   if (plan.phoneManagement === 'enrolled' || (plan.phoneManagement === undefined && plan.phones === 'enrol')) return 'enrolled'
   if (plan.phoneManagement === 'blocked' || plan.noWorkPhones || (plan.phoneManagement === undefined && plan.phones === 'none')) return 'blocked'
-  if (plan.phoneAppProtection === 'required' || (plan.phoneAppProtection === undefined && plan.phones === 'apps')) return 'apps'
-  return 'unmanaged'
+  return 'apps'
 }
 
 /**
@@ -187,8 +190,9 @@ export function savedAnswerOf(key: DirectionQuestionKey, m: Mapping): DirectionA
     case 'sharedDevices':
       return m.sharedDeviceUserIds === undefined ? null : m.sharedDeviceUserIds.length > 0 ? answer('some', m.sharedDeviceUserIds) : answer('none')
     case 'computers': {
+      // Hybrid joined is part of Managed now: an old hybrid answer reads as it.
       const c = devicePlanOf(m)?.computers ?? null
-      return c === null ? null : answer(c === 'enrol' ? 'managed' : c)
+      return c === null ? null : answer(c === 'unmanaged' ? 'unmanaged' : 'managed')
     }
     case 'phones': {
       const p = phonesOf(m)

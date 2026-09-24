@@ -284,7 +284,11 @@ export function devicePlanOf(mapping: Pick<MappingState, 'questionAnswers'>): De
       computers: computer === 'enrolled' ? 'enrol' : computer as 'hybrid' | 'unmanaged',
       blockPhones: false,
       phoneManagement,
-      phoneAppProtection: apps as NonNullable<DevicePlan['phoneAppProtection']>,
+      // The phone option decides it: "App protection only" and "Unmanaged" are
+      // one answer now, No device requirement, which keeps app protection as
+      // Compliant does; only Blocked from company data leaves it. An older
+      // Unmanaged answer stored not-required and reads as No device requirement.
+      phoneAppProtection: management === 'blocked' ? 'not-required' : 'required',
       noWorkPhones: management === 'blocked',
       phonesText: ({ enrolled: 'Enrolled in Intune', registered: 'Registered in Entra', unmanaged: 'No device management', blocked: 'Keep company data off phones' })[phoneManagement],
       computersText: ({ enrolled: 'Enrolled in Intune', hybrid: 'Hybrid-joined Windows computers', unmanaged: 'Unmanaged computers' })[computer as 'enrolled' | 'hybrid' | 'unmanaged'],
