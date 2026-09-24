@@ -2899,7 +2899,6 @@
           "suggested": "Suggested",
           "approved": "Approved",
           "defaultEvidence": "A default, not something the scan saw.",
-          "baselineEvidence": "The baseline's recommendation.",
           "reopened": "You said No, but the scan now sees it in use. {evidence}",
           "alreadySetAside": "The Emergency Access accounts are already set aside: {accounts}.",
           "none": "None",
@@ -2915,10 +2914,10 @@
               "milestoneAction": "Approving these answers takes these accounts out of the people counts and gives them their own rules."
             },
             "devices": {
-              "$comment": "Stage 3 (roadmap-flow V1 decision 3): today's devices step plus the office network question from Decide Where People Sign In From, which is no longer drawn. Its title is the V1 outline's name for the merged step. why and milestoneAction are the two steps' words combined as they were; the only edit is the countries clause each carried (\"which countries are allowed and\", \"and the countries your policies allow\"), false once work countries moved to Block Sign-ins From Countries Not Allowed.",
+              "$comment": "Stage 3 (roadmap-flow V1 decision 3): today's devices step plus the office network question from Decide Where People Sign In From, which is no longer drawn. Its title is the V1 outline's name for the merged step. why and milestoneAction are the owner's section 2 walk words (walk list 62, 63).",
               "title": "Decide How and Where People Sign In",
-              "why": "Choose where your devices are heading. It's fine if today looks different: the plan prepares the gap before anything is enforced. Tell us where your people work from. This sets which network counts as the office.",
-              "milestoneAction": "Approving these answers decides which device policies your plan contains. Approving these answers defines the office network."
+              "why": "Choose how company computers and phones are managed, and which network is your office. The plan's device and location policies follow these answers.",
+              "milestoneAction": "Approving these answers sets which device policies your plan holds and which network counts as the office."
             }
           },
           "questions": {
@@ -2992,16 +2991,13 @@
                 "unmanaged": "Unmanaged"
               },
               "$commentToday": "This line said \"{n} people signed in from computers that aren't joined\" and filled {n} from unjoinedComputers, which counts devices with NO trust type at all. A registered device is not joined — Entra has three trust types and only two are a join — so the sentence claimed a population far wider than the one it measured. On a 4,900-person tenant it read 3 where 2,339 people were on registered computers, and this question decides whether every company computer gets joined and enrolled: at 3 that is a Tuesday afternoon, at 2,339 it is a change board and a pilot. Both numbers are stated now, each saying what it counted.",
-              "today": "Today: {n} people signed in from computers IAMAI could not identify — not joined, not registered, not compliant, not managed.",
-              "todayNone": "Today: every computer sign-in came from a device IAMAI could identify.",
-              "todayRegistered": "Today: {n} people signed in from computers registered to the tenant but not joined. Managed means joined and enrolled, so these are in scope for this answer.",
-              "todayRegisteredNone": "No sign-ins came from registered-but-unjoined computers.",
-              "$commentTodayPartial": "The two computer counts where the sign-in read was not whole (sources.signInEvidence anything but ok; roadmap/direction.ts deviceQuestions). A read stopped at the memory ceiling (gone since the sign-in read streams, signInStream.ts) or interrupted counts only the hours it reached, and \"Today: 3 people signed in from computers IAMAI could not identify\" stated that as the tenant's number beside a choice to require managed computers, where an undercount makes the requirement look cheaper than it is (NEW-Nadia-D4 review). Each line says it counts only the part that was read.",
-              "todayPartial": "In the part of the sign-in records this scan read, {n} people signed in from computers IAMAI could not identify — not joined, not registered, not compliant, not managed. There may be more.",
-              "todayRegisteredPartial": "In the part of the sign-in records this scan read, {n} people signed in from computers registered to the tenant but not joined. There may be more. Managed means joined and enrolled, so these are in scope for this answer.",
+              "today": "{n} people signed in from unregistered computers in the last 30 days.",
+              "todayNone": "No sign-ins from unregistered computers in the last 30 days.",
+              "todayRegistered": "{n} people signed in from registered computers that aren't joined, in the last 30 days.",
               "$commentIntuneSeats": "The device question chooses between Managed, Hybrid joined and Left unmanaged, and Managed means joined AND enrolled - which needs an Intune licence per device. The question offered the baseline recommendation and nothing about the tenant, on a tenant holding 300 seats with 41 in use. A reader picking the suggested answer was committing to enrolment without being shown whether the licences for it existed.",
-              "intuneSeats": "Intune: {consumed} of {seats} licences in use. Managed means joined and enrolled, so each computer under this answer needs one.",
-              "intuneAbsent": "No Intune licences were read in this tenant. Managed means joined and enrolled, and enrollment needs them."
+              "intuneSeats": "Intune: {consumed} of {seats} licences assigned. Each person who uses a managed computer needs one.",
+              "intuneAbsent": "No Intune licences were read in this tenant. Managed means joined and enrolled, and enrollment needs them.",
+              "note": "Answering Unmanaged takes Require a Managed Device Outside the Office and Require a Fresh Sign-in for Intune Enrollment off your plan."
             },
             "phones": {
               "label": "Phones",
@@ -3010,11 +3006,11 @@
                 "apps": "No device requirement",
                 "blocked": "Blocked from company data"
               },
-              "today": "Today: {n} people signed in from phones.",
-              "todayNone": "Today: no phone sign-ins were seen.",
-              "$commentTodayPartial": "The phone count where the sign-in read was not whole (sources.signInEvidence partial; roadmap/direction.ts deviceQuestions). A read stopped at the memory ceiling (gone since the sign-in read streams, signInStream.ts) or interrupted reaches only its most recent hours and the people read on their own, and \"Today: 3 people signed in from phones.\" stated that as the tenant's number beside Blocked from company data, where an undercount argues for blocking (NEW-Nadia-D4 review). It says it counts only the part that was read.",
-              "todayPartial": "In the part of the sign-in records this scan read, {n} people signed in from phones. There may be more.",
-              "note": "Blocked from company data adds a policy of its own, Keep Company Data Off Phones, with its own report-only week and two tests from a phone before it is enforced."
+              "today": "{n} people signed in from a phone in the last 30 days.",
+              "todayNone": "No phone sign-ins in the last 30 days.",
+              "note": "Answering Blocked from company data adds Keep Company Data Off Phones: a block policy you build, a report-only week, then a test from an iPhone and an Android phone.",
+              "$commentNoteIntune": "Said after note only where the tenant has Intune licences (capabilities.intune.enabled; roadmap/direction.ts deviceQuestions).",
+              "noteIntune": "Answering Compliant adds phones to Require a Managed Device Outside the Office."
             },
             "officeNetwork": {
               "label": "Office network",
@@ -3023,11 +3019,11 @@
                 "notInEntra": "Not in Entra yet",
                 "remote": "Everyone works remotely"
               },
-              "seen": "{n} named locations are marked trusted.",
+              "seen": "{n} named locations are marked trusted: {names}.",
               "notSeen": "No named location is marked trusted.",
-              "note": "Answering that it is not in Entra yet keeps Define the Trusted Network on your plan, where you name the office and its approved public ranges. IAMAI does not read sign-in addresses, so it cannot suggest them.",
+              "note": "Answering that it is not in Entra yet keeps Define the Trusted Network on your plan, where you name the office and its approved public ranges.",
               "$commentUnused": "A saved answer of \"Everyone works remotely\" sat beside the evidence line \"1 named location is marked trusted\" with nothing connecting them. The evidence is true and argues for the OPPOSITE answer, and the suggestion was in fact office - so a careful reader met a contradiction on one line and no way to tell which half to believe. The downstream prerequisite step already says this well (\"The scan read a trusted named location this answer leaves out: Head office\"); the question that SETS the answer said nothing. Said only where the saved answer is remote and the scan read a trusted location.",
-              "savedRemoteUnused": "This answer leaves {n} of them unused; nothing location-based will apply."
+              "savedRemoteUnused": "{names} is marked trusted in Entra; this answer doesn't use it as your office."
             },
             "$commentWorkCountries": "The work countries question, asked since Stage 3 on Block Sign-ins From Countries Not Allowed rather than in Direction. Its words are kept here as Direction wrote them: the label heads that step's countries picker, and the seen line sits under it where the scan saw sign-in countries (ui/surfaces/stepBody.ts withObjectTask).",
             "workCountries": {
