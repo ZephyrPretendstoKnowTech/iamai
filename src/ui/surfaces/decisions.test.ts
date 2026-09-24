@@ -135,7 +135,7 @@ test('GetIAMAI: saving already-confirmed picker choices is idempotent', () => {
   const r0 = runFixture(f)
   const nameOf = (id: string): string => r0.input.names!.label(id)
   const defaults = defaultDecisions({ snapshot: f.snapshot, mapping: f.mapping, nameOf, groups: f.groups, now: f.snapshot.asOf })
-  assert.ok(Object.keys(defaults).length >= 1, `the fixture detects defaults (${Object.keys(defaults).join(', ')})`)
+  // GetIAMAI answered no service accounts, the one picker that pre-ticks, so its detected pass may be empty; the saved pickers below are the check.
   const first = applyStepDecisions(f.mapping, defaults, 'detected')
   const r1 = run(f, first)
   const ctxOf = (r: FixtureRun, mapping: MappingState): StepVarContext => ({ ...ctxFor(f, r, mapping), operatorId: f.operatorId })

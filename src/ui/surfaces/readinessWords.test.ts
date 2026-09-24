@@ -72,11 +72,13 @@ test('P0-11: the exclusions step owns policy exclusions and states the shared co
     const b = bodiesOf(f).get(EXCLUSIONS)!
     const policies = allTiles(b).find((t) => t.key === 'configuration:group-policies')
     assert.ok(policies, `${name}: no policy-exclusions topic`)
-    // Each policy is two facts, its mode and its group exclusion (cff043a2); the correction is the step's, not repeated on the tile.
+    // Each policy is its mode and its group exclusion (cff043a2); a fact the scan
+    // did not settle has no row (owner, 2026-09-23). The correction is the step's,
+    // not repeated on the tile.
     assert.equal(policies.note ?? null, null)
     assert.ok(policies.items?.length)
     assert.ok(policies.items?.every(item => item.label === 'Mode' || item.label === 'Group exclusion'))
-    for (const policy of new Set(policies.items?.map(item => item.subjectLabel))) assert.deepEqual(policies.items?.filter(item => item.subjectLabel === policy).map(item => item.label), ['Mode', 'Group exclusion'], `${name}: ${policy}`)
+    for (const policy of new Set(policies.items?.map(item => item.subjectLabel))) assert.ok(['Mode,Group exclusion', 'Mode'].includes(String(policies.items?.filter(item => item.subjectLabel === policy).map(item => item.label))), `${name}: ${policy}`)
     assert.doesNotMatch(JSON.stringify(policies.items), /Add the group exclusion/)
   }
 })

@@ -422,7 +422,7 @@ const heldCampaignOf = (f: Fixture) => {
   return { r, step, mfa, onBoard, ctxWith, bodyOf, lane: laneViewFor(step, board) }
 }
 
-test('Prepare Your Team for MFA, held while Require MFA for Everyone has no day, sends the undated email', () => {
+test('Prepare Your Team for MFA, held while Require MFA for Everyone has no day, sends an email that names no day', () => {
   const f = withFoundationSettled(curatedFixture('getiamai'))
   const { r, step, mfa, onBoard, ctxWith, bodyOf, lane } = heldCampaignOf(f)
   // Forged, as the device-line test below forges it: since walk list 4.x L4 the
@@ -434,10 +434,9 @@ test('Prepare Your Team for MFA, held while Require MFA for Everyone has no day,
   assert.equal(dates.mfaEnforce, null, `the premise: ${mfa.id} has no turn-on day`)
   assert.ok(typeof dates.firstEnforce === 'string', 'the premise: another policy has one')
   const ex = bodyOf(ctxWith(dates)).ex as Record<string, unknown>
-  const cs = (contentStepFor(step) ?? {}) as { comms: { bodyUndated: string } }
-  const comms = commsFor(cs as unknown as Record<string, unknown>, ex, step)
+  // Its email is the Email tab's first message (walk list section 3 item 52), which names no day.
+  const comms = commsFor((contentStepFor(step) ?? {}) as Record<string, unknown>, ex, step)
   assert.ok(comms, 'the campaign still sends its email')
-  assert.equal(comms!.body, fillText(cs.comms.bodyUndated, ex), `the held campaign's email is not the undated one: ${comms!.body}`)
   assert.doesNotMatch([comms!.body, ...comms!.extra].join('\n'), DATE, 'a day in the held campaign\'s email')
 })
 

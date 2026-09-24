@@ -339,7 +339,8 @@ test('004.19: across every fixture, a message names a projected enforcement date
       const email = commsFor(cs, stepVars(s, ctx) as Record<string, unknown>, s)
       if (!email) continue
       // Only a message that states this step's own enforcement day is at issue.
-      const names = String((cs.comms as Record<string, unknown>).body ?? '').includes('{enforceLong}')
+      // Prepare Your Team for MFA sends the Email tab's message and has no content email of its own.
+      const names = String((cs.comms as Record<string, unknown> | undefined)?.body ?? '').includes('{enforceLong}')
       const qualified = email.extra.includes(FORECAST_NOTE)
       if (!names) {
         assert.equal(qualified, false, `${f.name}/${s.id}: a message that names no enforcement date is qualified anyway`)

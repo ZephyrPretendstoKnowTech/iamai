@@ -116,8 +116,11 @@ test('013.A: every artifact reads one step, and that step is the frozen Step Con
         assert.deepEqual(v.doneWhen, k.doneWhen, `${where}: done when`)
         assert.equal(v.implementation, k.implementation.offered, `${where}: implementation offered`)
         assert.equal(v.implementation, implementationOffered(s), `${where}: the channels and the view disagree`)
-        // The next action is in the artifact, always, and it is the screen's.
-        assert.ok(v.whatToDo.includes(k.whatToDo.text), `${where}: the artifact drops the screen's action — ${v.whatToDo.join(' | ')}`)
+        // The next action is in the artifact, always, and it is the screen's. A
+        // finished supporting step's procedure stands as its What to do, with no
+        // no-op line in front of it (walk list item 19, stepExport.ts procedureStands).
+        const procedureStands = k.state.lane?.lane === 'Completed' && (contentStepFor(s) as { kind?: string } | undefined)?.kind !== 'policy' && v.whatToDo.length > 0
+        assert.ok(procedureStands || v.whatToDo.includes(k.whatToDo.text), `${where}: the artifact drops the screen's action — ${v.whatToDo.join(' | ')}`)
         checked += 1
       }
     }
