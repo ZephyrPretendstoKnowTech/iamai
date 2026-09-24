@@ -87,7 +87,8 @@ test('the create names the authentication context the plan targets, and prepares
     assert.equal(bindings['authContext.target.id'], 'c1')
     assert.equal(bindings['authContext.target.displayName'], 'Privileged role activation')
     const portal = channelText(body, 'portal')
-    assert.match(portal, /Target resources → Authentication context: `Privileged role activation` \(`c1`\)/)
+    // The procedure every policy step draws names the context the plan proposes, with its ID.
+    assert.match(portal, /Under \*\*Target resources\*\*, select \*\*Authentication context\*\* → \*\*Privileged role activation\*\* \(ID `c1`\)/)
     assert.doesNotMatch(portal, /the ID of that context|configured for the intended PIM role/)
     // Executable, every channel: the request the JSON tab carries targets the same context.
     const json = channelText(body, 'json')
@@ -277,12 +278,17 @@ test('an enforced activation policy asks for the PIM role settings that make it 
   const portal = channelText(body, 'portal')
   assert.match(portal, /Privileged Identity Management → Microsoft Entra roles → Roles\. For each selected role, open \*\*Role settings\*\* → \*\*Edit\*\* and enable \*\*On activation, require Microsoft Entra Conditional Access authentication context\*\*, selecting the authentication context with ID `c1` — the context this policy targets — then \*\*Update\*\*/)
   // The plan built this policy on its own context, so the name its create
-  // proposed is said as that, on its own line.
-  assert.match(portal, /^This plan proposed the name `Privileged role activation` for that context\.$/m)
+  // proposed is said as that, in the same numbered line (a note is not a step).
+  assert.match(portal, /then \*\*Update\*\*\..* This plan proposed the name `Privileged role activation` for that context\.$/m)
   // IAMAI selects no roles, so the procedure does not say it did.
   assert.doesNotMatch(portal, /IAMAI-selected/)
-  const task = body.emergencyAccountTasks?.tasks[0]
-  assert.ok(task && /On activation, require Microsoft Entra Conditional Access authentication context/.test(task.steps[0]), JSON.stringify(task?.steps))
+  // It is the policy step's own task after the turn-on, the one still to do, and the card names it.
+  const tasks = body.emergencyAccountTasks?.tasks ?? []
+  const task = tasks.find((t) => t.id === 'pim-settings')
+  assert.ok(task && /On activation, require Microsoft Entra Conditional Access authentication context/.test(task.steps[0]), JSON.stringify(tasks.map((t) => t.id)))
+  assert.equal(task.required, true)
+  assert.equal(tasks.find((t) => t.required)?.id, 'pim-settings', 'the create or the turn-on is still to do on an enforced policy')
+  assert.ok(tasks.findIndex((t) => t.id === 'pim-settings') > tasks.findIndex((t) => t.id === 'turn-on'), 'the PIM settings come before the policy is On')
 })
 
 /**

@@ -9,8 +9,8 @@ import { buildNameDirectory } from '../../names.ts'
 import { countryName } from '../../mapping/countries.ts'
 import { answerOf, devicePlanOf, effectLine, travelCountriesOf } from '../../roadmap/answers.ts'
 import type { MappingState } from '../../mapping/types.ts'
-import { HEAD, taskHeadingsOf } from './stepHeadings.ts'
-import { app, structuralWords } from '../../content/content.ts'
+import { HEAD } from './stepHeadings.ts'
+import { app } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { reportOnlyPatchesOf, toReportOnly } from '../../roadmap/operations.ts'
 import type { PolicyOperation } from '../../roadmap/types.ts'
@@ -54,39 +54,23 @@ export function lifecycleResources(pkg: CompiledPackage, state: PackageState, bi
 // scan already made or a script needing -DisplayName, -IpRangesJson or -GroupId
 // typed by hand, and each Email tab pointed at "the listed accounts" and listed
 // nobody.
+// Finish Moving Off Per-User MFA too (walk list 4.x item 29, owner 2026-09-24):
+// its PowerShell read back the per-user states the scan reads, or disabled them
+// from user ids typed in by hand.
 const NON_MACHINE = new Set(['s-ladder-operator-passkey', 's-prereq-device-plan', 's-confirm-workloads', 's-prereq-break-glass', 's-prereq-exclusion-group', 's-prereq-passkey-settings',
-  's-check-dormant-accounts', 's-check-separate-admin-accounts', 's-verify-mfa', 's-prereq-auth-strength', 's-prereq-trusted-location', 's-prereq-service-accounts-group'])
+  's-check-dormant-accounts', 's-check-separate-admin-accounts', 's-verify-mfa', 's-prereq-auth-strength', 's-prereq-trusted-location', 's-prereq-service-accounts-group', 's-prereq-per-user-mfa'])
+// Block Legacy Authentication and Require MFA for Everyone have no Email tab
+// either (walk list 4.x item 29, owner 2026-09-24): 4.1's "Review Older Sign-In
+// and Email Methods" named nobody, and 4.4's "Stronger Sign-in Protection"
+// repeated Prepare Your Team for MFA's email, and still showed once the policy
+// was on.
 const NO_EMAIL = new Set(['s-prereq-break-glass', 's-prereq-passkey-settings', 's-ladder-operator-passkey', 's-confirm-workloads', 's-goal-admin-session', 's-prereq-auth-strength', 's-prereq-exclusion-group',
-  's-check-dormant-accounts', 's-check-separate-admin-accounts', 's-prereq-trusted-location', 's-prereq-service-accounts-group'])
+  's-check-dormant-accounts', 's-check-separate-admin-accounts', 's-prereq-trusted-location', 's-prereq-service-accounts-group', 's-goal-block-legacy-auth', 's-goal-mfa-all-users'])
 
 export function resourceChannelAllowed(step: Step, channel: Channel): boolean {
   if (channel === 'email' && (NO_EMAIL.has(step.id) || (step.id !== 's-verify-mfa' && !EMAILS.steps[step.id]))) return false
   if ((channel === 'ps' || channel === 'json') && NON_MACHINE.has(step.id)) return false
   return true
-}
-
-const ENDPOINTS: Record<string, string[]> = {
-  's-prereq-break-glass': ['/users?$select=id,displayName,userPrincipalName,accountEnabled', '/roleManagement/directory/roleAssignments'],
-  's-prereq-exclusion-group': ['/groups?$select=id,displayName,securityEnabled', '/identity/conditionalAccess/policies'],
-  's-prereq-passkey-settings': ['/policies/authenticationMethodsPolicy/authenticationMethodConfigurations/fido2'],
-  's-prereq-allowed-countries': ['/identity/conditionalAccess/namedLocations'],
-  's-prereq-security-defaults': ['/policies/identitySecurityDefaultsEnforcementPolicy'],
-  's-prereq-per-user-mfa': ['/policies/authenticationMethodsPolicy'],
-}
-
-function endpoints(step: Step): string[] {
-  return ENDPOINTS[step.id] ?? ['/identity/conditionalAccess/policies']
-}
-
-/** A real inspection request when no resolved mutation exists. It never invents a target. */
-export function inspectionResource(step: Step, channel: 'ps' | 'json'): Artifact {
-  const requests = endpoints(step).map((url, index) => ({ id: String(index + 1), method: 'GET', url }))
-  const title = contentTitle(step).replace(/[\r\n]/g, ' ')
-  const text = channel === 'json'
-    ? JSON.stringify({ requests }, null, 2)
-    : [`# ${title}: inspect the current configuration`, '# Run in a Microsoft Graph PowerShell session with the corresponding read permissions.',
-      ...requests.flatMap(r => [`$uri = '${('https://graph.microsoft.com/v1.0' + r.url).replace(/'/g, "''")}'`, 'do {', '  $result = Invoke-MgGraphRequest -Method GET -Uri $uri', '  if ($result.ContainsKey("value")) { $result.value | ConvertTo-Json -Depth 30 } else { $result | ConvertTo-Json -Depth 30 }', '  $uri = $result["@odata.nextLink"]', '} while ($uri)', ''])].join('\n')
-  return { id: channel, form: 'code', lines: [], text: () => text, note: channel === 'json' ? 'POST https://graph.microsoft.com/v1.0/$batch · read-only GET requests' : null }
 }
 
 /**
@@ -153,25 +137,6 @@ export function mfaPreparationEmail(ctx: StepVarContext): Artifact {
   return { id: 'email', form: 'markdown', lines: [], text: () => text, note: null }
 }
 
-/**
- * The policies this plan tracks that the tenant has switched off, set to
- * Report-only (operations.ts toReportOnly): for each, open the one that is
- * there, check it, set Enable policy to Report-only
- * (pages.app.plan.switchedOffSteps); then scan, once
- * (pages.app.plan.switchedOffRescan). Never On, and never a second policy; the
- * step's ordinary report-only watch decides the turn-on after the next scan.
- * A pair's member already in report-only or on is not named. Null on every
- * other step.
- */
-export function switchedOffLines(step: Step, tenant: string): string[] | null {
-  const off = toReportOnly(step)
-  if (off.length === 0) return null
-  return [
-    ...off.flatMap((p) => structuralWords.switchedOffSteps.map((line) => fillText(line, { policy: p.name, id: p.id, tenant }))),
-    fillText(structuralWords.switchedOffRescan, { tenant }),
-  ]
-}
-
 const GRAPH = 'https://graph.microsoft.com/v1.0'
 
 /**
@@ -192,21 +157,21 @@ export function switchedOffRequest(step: Step, ctx: StepVarContext): { ops: Poli
 }
 
 /**
- * The channels a step with policies found Off draws, all saying the same
- * change: the portal lines, and the patches as JSON and as PowerShell. Empty
- * on every other step. Where the scan does not hold a policy's own object the
- * patch cannot be stated, and the JSON and PowerShell fall back to inspecting it.
+ * The machine channels a step with policies found Off draws: the patches that
+ * set each to Report-only, as JSON and as PowerShell. The Entra procedure for
+ * the same change is the step's own task, Set the policy to Report-only
+ * (policyTasks.ts policyProcedureOf). Empty on every other step, and where the
+ * scan does not hold a policy's own object, so the JSON and PowerShell fall
+ * back to inspecting it.
  */
-export function switchedOffResources(step: Step, ctx: StepVarContext, tenant: string): Artifact[] {
-  const lines = switchedOffLines(step, tenant)
-  if (lines === null) return []
-  const out: Artifact[] = [{ id: 'portal', form: 'list', lines, text: () => lines.map((line, i) => `${i + 1}. ${line}`).join('\n'), note: null }]
-  const request = switchedOffRequest(step, ctx)
-  if (request === null) return out
+export function switchedOffResources(step: Step, ctx: StepVarContext): Artifact[] {
+  const request = toReportOnly(step).length > 0 ? switchedOffRequest(step, ctx) : null
+  if (request === null) return []
   const ps = powershellFor(request.ops)
-  out.push({ id: 'ps', form: 'code', lines: [], text: () => ps, note: null })
-  out.push({ id: 'json', form: 'code', lines: [], text: () => request.text, note: request.note })
-  return out
+  return [
+    { id: 'ps', form: 'code', lines: [], text: () => ps, note: null },
+    { id: 'json', form: 'code', lines: [], text: () => request.text, note: request.note },
+  ]
 }
 
 /** Read-only portal work when an executable policy target is not yet resolved. */
@@ -217,19 +182,12 @@ export function policyInspectionLines(step: Step): string[] {
     'Open Conditional Access → Policies and review policies targeting this application, including broader policies that apply to all resources. Check user assignments, exclusions, MFA access controls and policy state.',
     'After a representative Inforcer sign-in, scan again to update the application evidence and policy findings.',
   ]
-  const open = 'Open Entra admin center → Entra ID → Conditional Access → Policies.'
-  // The policies IAMAI matched to this step, by name and object id
-  // (roadmap/tracking.ts `members`). A step reaches these lines only when it has
-  // no operation to hand over — it is already enforced, or its target cannot be
-  // resolved — and such a step lists no configuration. The instruction used to
-  // send the operator to compare "with the configuration listed on this step",
-  // which listed none, so the comparison could not be made and the step was put
-  // down. The match is a fact the engine already holds; the criteria it is
-  // checked against are this step's own, under its last heading.
-  const matched = (step.tracking?.members ?? []).filter((m) => m.policyName)
-  const criteria = taskHeadingsOf(step.id)?.doneWhen ?? HEAD.doneWhen
-  if (matched.length === 0) return [open, `Review the policies that affect ${contentTitle(step)}: their assignments, conditions, access controls and current state.`]
-  return [open, ...matched.map((m) => `Open “${m.policyName}”${m.policyId ? ` (${m.policyId})` : ''} — the policy IAMAI matched to this step — and check its assignments, conditions, access controls and state against ${criteria} on this step.`)]
+  // A policy step whose procedures the plan can state draws them in every state
+  // (policyTasks.ts policyProcedureOf): a Completed step no longer switches to
+  // "Open “{policy}” … and check its assignments, conditions, access controls
+  // and state against Completion Criteria" (walk list item 18). These lines are
+  // left for a step the plan cannot state a policy for.
+  return ['Open Entra admin center → Entra ID → Conditional Access → Policies.', `Review the policies that affect ${contentTitle(step)}: their assignments, conditions, access controls and current state.`]
 }
 
 /** Essential setup belongs beside the decision, not exclusively in the AI prompt. */
@@ -270,7 +228,7 @@ export function namedPortalResource(artifact: Artifact, ctx: StepVarContext): Ar
     'trusted locations display names': 'the named locations selected in Define the Trusted Network',
     'browser session policy name': 'the browser-session policy named in this step',
     'authentication strength name': 'the strength configured in Create the Baseline’s Authentication Strength',
-    'grant controls': 'the access controls listed in Settings for This Action',
+    'grant controls': 'the access controls this step’s policy requires',
   }
   const fill = (line: string) => line.replace(/‹([^›]+)›/g, (match, key: string) => references[key] ?? match).replace(/\b(?:ID\s+)?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b/gi, (match, id: string) => {
     directory ??= buildNameDirectory(ctx.snapshot, ctx.groups)

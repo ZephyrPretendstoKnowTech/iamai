@@ -43,13 +43,32 @@ import type { LaneRow } from '../../actionability/sorting.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { FOUNDATION_WAIT, isHeld } from '../../roadmap/holds.ts'
 import { driftOutcomeOf } from '../../roadmap/tracking.ts'
-import { submitsEnforcementOnly, switchedOffPolicies, unavailableReason, implementationOffered, operationsOf, enforcesOnRun, createWaitsOnReadiness } from '../../roadmap/operations.ts'
+import { awaitsMailMove, submitsEnforcementOnly, switchedOffPolicies, unavailableReason, implementationOffered, operationsOf, enforcesOnRun, createWaitsOnReadiness } from '../../roadmap/operations.ts'
 import { GATING_SUBJECTS, blockerStepId } from '../../roadmap/blockerSteps.ts'
 import { observationWindowDays, readyBasis, readyWhen } from '../../derive/readyWhen.ts'
 import { planStateOf } from './planState.ts'
 import { directionBlockerStep, directionWaitRelayed } from '../../roadmap/direction.ts'
 import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
 import type { PlanState } from './planState.ts'
+import { pages } from '../../content/content.ts'
+import { fillText } from '../../content/render.ts'
+import { readinessFamilyOf } from '../../copy/reasons.ts'
+
+/** The row sub-lines a gate or a blocker writes for itself (pages.plan.when; walk list 4.x item 27). */
+const ROW = (pages.plan as unknown as { when: { readinessAdmins: string; notExcluded: string } }).when
+
+/**
+ * A readiness wait as its row says it (walk list 4.x item 27, owner
+ * 2026-09-24): the admin threshold as the people it counts, "When every admin
+ * has a method it accepts (2 of 3)", and any other threshold as its own
+ * binding, starting with a capital: "When MFA readiness reaches 90% (now 85%)".
+ */
+function readinessRowWords(step: Step, label: string, binding: string): string {
+  const gate = step.action.readinessGate
+  const count = label === 'readiness' && gate !== undefined && readinessFamilyOf(gate) === 'admin' ? /(\d[\d,]*) of (\d[\d,]*)/.exec(step.readiness.lines?.[0] ?? '') : null
+  if (count !== null) return fillText(ROW.readinessAdmins, { ready: count[1], total: count[2] })
+  return binding.charAt(0).toUpperCase() + binding.slice(1)
+}
 
 const GRAPH = buildGraph(data as DependencyData)
 /** §12.1 counts leave the Security Defaults cutover edges out (BLOCKED.md · S2). */
@@ -69,6 +88,13 @@ const CHECK_WORK: Readonly<Record<string, Substatus>> = {
   's-check-dormant-accounts': 'Review',
   's-check-separate-admin-accounts': 'Create',
 }
+
+/**
+ * Preparation steps that turn a tenant setting off and create nothing: Turn Off
+ * Security Defaults and Finish Moving Off Per-User MFA read Ready, never Ready ·
+ * Create (walk list 4.x item 55, as section 3 item 18).
+ */
+const TURNS_OFF: ReadonlySet<string> = new Set(['s-prereq-security-defaults', 's-prereq-per-user-mfa'])
 
 export type LaneReading = {
   lane: Lane
@@ -97,8 +123,6 @@ export type LaneReading = {
   unsaved?: readonly string[]
   /** True where those inputs are IAMAI's to have confirmed rather than its questions (Step.unsavedInputsPrefilled). */
   unsavedPrefilled?: boolean
-  /** Completed: hard prerequisites of the action it already took that the scan still finds unmet (lanes.ts `unmetPrerequisites`). */
-  overtaken?: readonly HoldBlocker[]
   /** Where the plan expects the row to happen (roadmap/forecast.ts planForecast), set by the board (planBoard.ts boardReadingsOf): the day a row with none of its own is dated by. */
   estimate?: string
 }
@@ -199,7 +223,7 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
     else if (b.kind === 'readiness' && b.label === 'session-loop' && exists) blockers.push({ kind: 'fact', id: 'fact:session-loop' })
     // The readiness threshold holds a compliant-device policy's create as well as its
     // enforcement (roadmap/operations.ts createWaitsOnReadiness; owner, 2026-09-23).
-    else if (b.kind === 'readiness' && b.binding) gates.push({ id: `evidence:readiness:${b.label}`, satisfied: false, minDays: null, reason: b.binding, ...(b.label === 'readiness' && holdsCreate ? { holdsCreate } : {}) })
+    else if (b.kind === 'readiness' && b.binding) gates.push({ id: `evidence:readiness:${b.label}`, satisfied: false, minDays: null, reason: readinessRowWords(step, b.label, b.binding), ...(b.label === 'readiness' && holdsCreate ? { holdsCreate } : {}) })
     // A tenant fact this scan could not read — a group a policy names whose
     // members nobody could list — holds the step; it is not a gate the policy
     // earns by being watched (§8.4: a fact still to be established holds).
@@ -208,9 +232,10 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
     // A Direction answer the step depends on and nobody has saved holds it whole
     // (owner decision 3, roadmap/direction.ts): the step's own policy is written
     // from that answer, so neither its creation nor its enforcement can go first.
-    // An enforced policy is not held back by it: its correction and its recorded
-    // inputs are available now (the engine's own rule for an enforced policy).
-    else if (b.kind === 'decision' && lifecycle !== 'enforced') {
+    // An enforced policy carries one only where the answer decides whether the
+    // step is finished (roadmap/direction.ts gateOnDirection; walk list 4.x item
+    // 6), and it waits on it the same way.
+    else if (b.kind === 'decision') {
       const direction = directionBlockerStep(b)
       if (direction !== null && !blockers.some((x) => x.kind === 'decision' && x.id === direction)) blockers.push({ kind: 'decision', id: direction })
     }
@@ -225,14 +250,18 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
     // The window closed over records that were read: what they show can be reviewed now,
     // though it has not cleared the gate (time alone never does).
     const reviewable = ready !== null && ready.kind === 'since' && ready.read && ready.failures !== null
-    gates.push({ id: 'evidence:observation', satisfied: lifecycle === 'ready-to-enforce' || lifecycle === 'enforced', minDays: observationWindowDays(step), reason: ready ? readyBasis(ready) : null, ...(reviewable ? { reviewable } : {}) })
+    // A week that is over with clear records is done, whatever else holds the
+    // turn-on (walk list 4.x items 11 and 28): the row read "Report-only until
+    // Sep 4, 2026" on Sep 15 while Prepare Emergency Access Accounts held it.
+    gates.push({ id: 'evidence:observation', satisfied: lifecycle === 'ready-to-enforce' || lifecycle === 'enforced' || ready?.kind === 'now', minDays: observationWindowDays(step), reason: ready ? readyBasis(ready) : null, ...(reviewable ? { reviewable } : {}), ...(ready ? { until: ready.date } : {}) })
   }
   // A policy the plan cannot write as it stands (the legacy `unavailable` hold). A missing
   // object is Action.missing below, the baseline conflict is the condition above, an unmet
   // threshold is the gate above, and the unverified escape hatch is the gate's step edge.
   const unavailable = policy && open ? unavailableReason(step) : null
   if (unavailable === 'unmatched-pair' || unavailable === 'no-operation') blockers.push({ kind: 'unsupported', id: unavailable })
-  else if (unavailable === 'unsafe-emergency-access') blockers.push({ kind: 'baselineSafetyConflict', id: `baselineSafetyConflict:${unavailable}` })
+  // Its row says what is wrong: "Doesn't exclude Core - Exclusions" (walk list 4.x item 27).
+  else if (unavailable === 'unsafe-emergency-access') blockers.push({ kind: 'baselineSafetyConflict', id: `baselineSafetyConflict:${unavailable}`, ...(step.action.emergencyExposure?.group ? { text: fillText(ROW.notExcluded, { group: step.action.emergencyExposure.group }) } : {}) })
   else if (unavailable === 'unverified-emergency-exclusion') blockers.push({ kind: 'fact', id: `fact:${unavailable}` })
   for (const m of step.action.missing ?? []) {
     // A source reference only a person can answer (resolvePolicy.ts unsettled / decisions) holds the policy
@@ -261,7 +290,9 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
     kind: decides ? 'decision' : policy ? 'policy' : undefined,
     exists,
     drift,
-    evidenceSatisfied: lifecycle === 'ready-to-enforce' || lifecycle === 'enforced',
+    // A report-only week that is over with clear records is done, whatever else
+    // holds the turn-on (walk list 4.x items 11 and 28).
+    evidenceSatisfied: lifecycle === 'ready-to-enforce' || lifecycle === 'enforced' || (policy && exists && readyWhen(step)?.kind === 'now'),
     enforced: lifecycle === 'enforced',
     complete: done || step.doesntApply != null,
     milestones,
@@ -372,10 +403,10 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
     for (const r of list) {
       if (!known.has(r.id)) continue
       const blockers = r.result.blockers.map(hold).filter((b): b is HoldBlocker => b !== null)
-      // An open evidence gate is the reason a report-only policy waits On Hold, and the board says so.
-      const reason = r.result.reason === null ? null : lane === 'On Hold' ? (r.result.reason as HoldBlocker) : hold(r.result.reason)
-      const overtaken = r.result.unmetPrerequisites.map(hold).filter((b): b is HoldBlocker => b !== null)
-      out.set(r.id, { lane, substatus: r.result.substatus, reason, blockers, gates: r.result.gates, order: counts[lane]++, fromEngine: true, ...(overtaken.length > 0 ? { overtaken } : {}) })
+      // An open evidence gate is the reason a report-only policy waits, On Hold or, its
+      // report-only week alone, Up Next (walk list 4.x item 11), and the board says so.
+      const reason = r.result.reason === null ? null : lane === 'On Hold' || lane === 'Up Next' ? (r.result.reason as HoldBlocker) : hold(r.result.reason)
+      out.set(r.id, { lane, substatus: r.result.substatus, reason, blockers, gates: r.result.gates, order: counts[lane]++, fromEngine: true })
     }
   }
   place('Ready', groups.ready)
@@ -408,11 +439,6 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
   }
   rest.sort((a, b) => a.id.localeCompare(b.id))
   for (const { id, reading } of rest) out.set(id, { ...reading, order: counts[reading.lane]++, fromEngine: false })
-  for (const step of steps) {
-    const unsaved = step.doesntApply == null ? step.unsavedInputs ?? [] : []
-    const own = out.get(step.id)
-    if (own && unsaved.length > 0) out.set(step.id, { ...own, unsaved, unsavedPrefilled: step.unsavedInputsPrefilled === true })
-  }
   for (const step of steps) {
     const reading = out.get(step.id)
     // A policy waiting on the plan's foundation (roadmap/foundations.ts) is not
@@ -461,6 +487,9 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
     if (reading?.lane === 'Ready' && savedExclusionsGroup && reading.substatus === 'Create') reading.substatus = 'Correct'
     // Account checks ask for a review, not creation of a policy or object.
     if (reading && workflowReviewIsCurrent(step)) Object.assign(reading, { lane: 'Ready', substatus: 'Review', reason: null, blockers: [], gates: [] })
+    // Block Legacy Authentication's policy is on and a named mail account is still
+    // to move (walk list 4.x item 4): moving it is the work, and it is ready now.
+    if (reading && awaitsMailMove(step)) Object.assign(reading, { lane: 'Ready', substatus: null, reason: null, blockers: [], gates: [] })
     const workflowCheckIsNext = step.manualReview && (!POLICY.includes(step.kind) || workflowReviewIsCurrent(step))
     if (reading?.lane === 'Ready' && workflowCheckIsNext) reading.substatus = 'Review'
     // Ready's word is the work that is ready (walk list item 18, owner
@@ -471,6 +500,7 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
     // campaign says its own work (CHECK_WORK), and one with nothing to review or
     // create reads Ready.
     else if (reading?.lane === 'Ready' && reading.substatus === 'Create' && (step.kind === 'check' || step.kind === 'verify')) reading.substatus = CHECK_WORK[step.id] ?? null
+    else if (reading?.lane === 'Ready' && reading.substatus === 'Create' && TURNS_OFF.has(step.id)) reading.substatus = null
   }
   // One wait, said once (docs/plans/step-redundancy-analysis.md finding 3), on
   // the reading the second tile producer reads. A policy held by "Define the

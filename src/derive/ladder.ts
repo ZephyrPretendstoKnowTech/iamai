@@ -21,7 +21,7 @@ import { scoreMfaViability, sortViability } from '../scoring/mfaViability.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 import { CLASS_ORDER, READINESS_STATES, classOfKind, classOfRegistered } from '../scoring/phishingResistant.ts'
 import type { MethodClass, ReadinessState } from '../scoring/phishingResistant.ts'
-import { adminUserIds } from '../roles.ts'
+import { adminUserIdsWithEligible } from '../roles.ts'
 import { campaignIds } from './population.ts'
 import { accountKinds, notPeopleIds } from './sets.ts'
 import type { NotPersonKind } from './sets.ts'
@@ -56,7 +56,7 @@ export function ladder(snapshot: TenantSnapshot, mapping: LadderMapping, now: st
   const scored = sortViability(buildViabilityInputs(snapshot, now, notPeople, mapping as Partial<MappingState>).map(scoreMfaViability))
   const viability = new Map(scored.map((v) => [v.userId, v]))
   const pop = new Set(campaignIds(scored, snapshot, mapping))
-  const admins = adminUserIds(snapshot.roles ?? { active: {} })
+  const admins = adminUserIdsWithEligible(snapshot.roles ?? { active: {} })
   const states = Object.fromEntries(READINESS_STATES.map((s) => [s, [] as LadderPerson[]])) as Record<ReadinessState, LadderPerson[]>
   for (const v of scored) {
     if (!pop.has(v.userId)) continue

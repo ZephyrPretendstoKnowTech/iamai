@@ -369,6 +369,13 @@ function evaluateGoal(
 
   const { floor, raised } = raiseFloor(goal, baselineMatches)
   base.floorRaised = raised
+  // A floor the baseline lowered to its own strength (classify.ts raiseFloor) is
+  // named by that strength: "passwordless sign-in" is the tier, and Modern MFA +
+  // TAP is what the plan writes.
+  const loweredTo = raised === null && floor.grant !== impl.floor.grant
+    ? baselineMatches.map((b) => ((rawByFacts.get(b) as { grantControls?: { authenticationStrength?: { displayName?: unknown } } } | undefined)?.grantControls?.authenticationStrength?.displayName)).find((n): n is string => typeof n === 'string' && n.length > 0) ?? null
+    : null
+  const floorWords = (): string => loweredTo ?? describeFloor(floor)
 
   // Expected population E. The service accounts are the mapping's (E9): the
   // directory cannot name them.
@@ -531,10 +538,10 @@ function evaluateGoal(
         reasons.push({
           kind: sessionOnly ? 'session-weaker' : 'weaker-control',
           userIds: [...pop],
-          detail: meetsCatalogueFloor ? REASON.belowBaseline(c.name, describeFloor(floor)) : REASON.weakerControl(c.name, describeFloor(floor)),
+          detail: meetsCatalogueFloor ? REASON.belowBaseline(c.name, floorWords()) : REASON.weakerControl(c.name, floorWords()),
           ...(meetsCatalogueFloor ? { belowBaseline: true } : {}),
           current: sessionOnly ? describeSession(c.session) : describeGrant(c.grant),
-          floor: describeFloor(floor),
+          floor: floorWords(),
         })
       }
     } else if (meetsFloor) {
@@ -554,10 +561,10 @@ function evaluateGoal(
         reasons.push({
           kind: sessionOnly ? 'session-weaker' : 'weaker-control',
           userIds: [...pop],
-          detail: meetsCatalogueFloor ? REASON.belowBaseline(c.name, describeFloor(floor)) : REASON.weakerControl(c.name, describeFloor(floor)),
+          detail: meetsCatalogueFloor ? REASON.belowBaseline(c.name, floorWords()) : REASON.weakerControl(c.name, floorWords()),
           ...(meetsCatalogueFloor ? { belowBaseline: true } : {}),
           current: sessionOnly ? describeSession(c.session) : describeGrant(c.grant),
-          floor: describeFloor(floor),
+          floor: floorWords(),
         })
       }
     }

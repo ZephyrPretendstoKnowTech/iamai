@@ -265,7 +265,8 @@ test('the app\'s demo: final emergency verification holds the turn-on everywhere
   const transfer = run.steps.find((s) => s.id === TRANSFER)!
   assert.equal(statusOf(transfer).word.split(' · ')[0], 'Report-only')
   assert.equal(isHeld(transfer), false)
-  assert.equal(laneReadings(run.steps).get(TRANSFER)?.lane, 'On Hold', 'its evidence gate remains open independently of the safe token-policy path')
+  // Its report-only week is still running, independently of the safe token-policy path: Up Next (walk list 4.x item 11).
+  assert.equal(laneReadings(run.steps).get(TRANSFER)?.lane, 'Up Next', 'its evidence gate remains open independently of the safe token-policy path')
   // And the tenant's own admins policy, which no tag of this plan's touches,
   // reads as what it is: a control already in place, not one the plan enforced.
   assert.equal(statusOf(run.steps.find((s) => s.id === ADMINS)!).word, 'In place')
@@ -332,7 +333,9 @@ test('a policy the tenant enforces never finishes on a report-only period it is 
     const ctxOf = (f: Fixture): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups })
     const hostile = withFoundationSettled(plainFixture('hostile'))
     const run = runFixture(hostile)
-    for (const id of ['s-goal-block-device-code', 's-goal-guests-mfa']) {
+    // Block Device Code Sign-in has no workflow record left to wait on (walk list 4.x item 3):
+    // the scan completes it, on what IAMAI sees (item 26). The guests policy keeps these lines.
+    for (const id of ['s-goal-guests-mfa']) {
       const step = run.steps.find((s) => s.id === id)
       assert.ok(step && step.state.lifecycle === 'enforced' && awaitsWorkflowRecord(step), `the premise: ${id} is enforced and waits on the person`)
       const lines = stepContract(step, ctxOf(hostile)).doneWhen

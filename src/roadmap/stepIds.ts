@@ -16,6 +16,8 @@ export const EXCLUSION_GROUP_STEP_ID = 's-prereq-exclusion-group'
 export const SEPARATE_ADMIN_ACCOUNTS_STEP_ID = 's-check-separate-admin-accounts'
 /** Break-glass: the plan's escape hatch, checked and gated by the validation rules. */
 export const BREAK_GLASS_STEP_ID = 's-prereq-break-glass'
+/** Finish Moving Off Per-User MFA: the accounts still on legacy per-user MFA (roadmap/manualWork.ts). */
+export const PER_USER_MFA_STEP_ID = 's-prereq-per-user-mfa'
 
 /** The Wave 0 steps that create the objects the plan's policies reference. */
 export const PREREQ_STEP_ID = {

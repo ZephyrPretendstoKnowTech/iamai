@@ -15,18 +15,18 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "At least 27% ready for Modern MFA + TAP"
+      "state": "At least 26% ready for Modern MFA + TAP"
     },
     {
       "label": "Baseline mapping",
       "state": "Baseline references an unmapped group"
     },
     {
-      "label": "Prepare Emergency Access Accounts",
+      "label": "Configure Emergency Exclusions",
       "state": "Prerequisite · To do"
     },
     {
-      "label": "Configure Emergency Exclusions",
+      "label": "Prepare Emergency Access Accounts",
       "state": "Prerequisite · To do"
     },
     {
@@ -40,8 +40,6 @@
   ],
   "channels": [
     "Entra",
-    "PowerShell",
-    "JSON",
     "AI Info"
   ],
   "when": "Est. Sep 7, 2026"

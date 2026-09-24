@@ -782,8 +782,9 @@ test('nothing new reads the goal family or the floor for a policy consequence', 
     'src/roadmap/stateReason.ts': { family: 2, floor: 0, why: 'the words for a readiness blocker' },
     'src/ui/surfaces/stepContract.ts': { family: 1, floor: 0, why: 'the scope noun beside a finished rollout’s reading (shortReadingOf): admins, people in scope. It picks a word and decides nothing about the policy' },
     'src/derive/finish.ts': { family: 2, floor: 0, why: 'which readiness measure a waiting step is counted under' },
-    'src/coverage/classify.ts': { family: 0, floor: 1, why: 'the baseline floor a tenant policy is compared against' },
-    'src/coverage/coverage.ts': { family: 0, floor: 1, why: 'the same comparison' },
+    // Two since walk list 4.x item 1: the catalogue floor the baseline's own strength lowers, and whether it did.
+    'src/coverage/classify.ts': { family: 0, floor: 2, why: 'the baseline floor a tenant policy is compared against, and the catalogue floor the baseline’s own strength lowers' },
+    'src/coverage/coverage.ts': { family: 0, floor: 2, why: 'the same comparison, and whether the baseline lowered it, to name the floor by its strength' },
     'src/coverage/goalIdentity.ts': { family: 0, floor: 2, why: 'which goal a baseline policy implements' },
     'src/coverage/naming.ts': { family: 0, floor: 2, why: 'the proposed policy name' },
     'src/scoring/priority.ts': { family: 0, floor: 1, why: 'the order goals are worked in' },
@@ -1058,7 +1059,10 @@ test('the boundary is the group: every policy that protects the emergency accoun
     }
   }
   assert.ok(proved > 0, 'fixtures do offer policies that protect the emergency accounts')
-  assert.ok(carried > 0, 'a fixture corrects a policy the tenant excluded an emergency account from by name (the demo first visit)')
+  // No fixture reaches a carried by-name exclusion any more: the demo first
+  // visit's policies wait on Configure Emergency Exclusions, the one step that
+  // asks for that edit (walk list 4.x item 7), so none of them is offered here.
+  void carried
 })
 
 test('with no policy-usable exclusions group there is no direct-user fallback: the policy is simply not offered', () => {

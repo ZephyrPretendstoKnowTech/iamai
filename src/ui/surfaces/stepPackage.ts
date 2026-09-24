@@ -33,13 +33,14 @@ import type { Drift } from '../../content/implementation/drift.ts'
 import { CHANGED_FIELDS_BINDING } from '../../content/implementation/protocol.ts'
 import type { Bindings, ChannelArtifact, Hold, OwnerConfirmation, PackageReadiness, PackageState, PrerequisiteStatus, Projection, RuntimeContext } from '../../content/implementation/project.ts'
 import { list } from '../../copy/statements.ts'
-import { NO_ACTION_STATES, planSafely, prerequisiteStatus, projectSafely, sourceUpdatedOn } from '../../content/implementation/project.ts'
+import { NO_ACTION_STATES, bindText, planSafely, prerequisiteStatus, projectSafely, sourceUpdatedOn } from '../../content/implementation/project.ts'
 import { fillText } from '../../content/render.ts'
-import { shared } from '../../content/content.ts'
+import { engine, shared, stepById } from '../../content/content.ts'
+import { directionTitleOf } from '../../roadmap/direction.ts'
 import { contentStepFor, contentStepForPackage } from '../../content/stepTitle.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { actionableExclusionsGroupId } from '../../mapping/safetyChoice.ts'
-import { memberKeyOf } from '../../roadmap/observation.ts'
+import { dimensionWords, memberKeyOf } from '../../roadmap/observation.ts'
 import { phoneSignInIds } from '../../derive/sets.ts'
 import { personLabels } from '../../names.ts'
 import type { ContractReadiness, ReadinessTile, ReadinessTone, StepContract } from './stepContract.ts'
@@ -50,7 +51,7 @@ import { PASSKEY_SETTINGS_STEP_ID, passkeyBindings } from '../../roadmap/passkey
 import { SYNC_WORKLOAD_GOAL_ID, syncIdentitySupportOf } from '../../roadmap/workloadIdentity.ts'
 import { officeRangesOf, stepVars, strengthMethodNames, tenantNameOf } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { portalNamesFor, stepPortalLines, plannedPortalLines } from './stepPortal.ts'
+import { portalNamesFor, stepPortalLines } from './stepPortal.ts'
 import { lifecycleResources } from './stepResources.ts'
 
 const PACKAGES = (registry as unknown as { packages: Record<string, CompiledPackage> }).packages
@@ -325,6 +326,9 @@ export function packageStateOf(step: Step, c: StepContract, snapshot: TenantSnap
   if (s.setAside) return null
   if (s.condition === 'baseline-conflict') return 'sourceConflict'
   if (s.condition === 'needs-decision') return 'needsDecision'
+  // The correction is Configure Emergency Exclusions' own edit, asked there
+  // (Action.correctionAskedBy; walk list 4.x item 7): this step does not ask it again.
+  if (step.action.correctionAskedBy) return 'blocked'
   // A correction that cannot lock anyone out is owed whatever else stops the
   // policy being written (U19): an enforced block policy missing the exclusions
   // group is made safer by adding it, and hiding that hid the safest change.
@@ -397,6 +401,42 @@ export function setupAfterEnforcementOf(step: Step): PackageState | null {
 }
 
 /**
+ * What a policy step's own package says beside the procedure every policy step
+ * draws (policyTasks.ts policyProcedureOf), where no procedure line can: Require
+ * MFA at Every Role Activation's authentication context, which its create needs
+ * first (`entra.context.prepare`; policyProcedureOf draws it only while the policy is still to be made), and the
+ * PIM role settings after the policy is On (`entra.pim.configure`), without
+ * which role activation never asks for the context. The context is named as the
+ * plan proposes it only where the package binds that name (packageBindings: the
+ * plan's own policy on its own context); a tenant's context goes by its ID.
+ */
+export function policyProcedureExtras(step: Step, pkg: CompiledPackage | null, bindings: Bindings | null): {
+  contextNameOf: (id: string) => string | null
+  createFirst: string[]
+  after: { id: 'pim-settings'; title: string; steps: string[]; required: boolean }[]
+} {
+  const b = bindings ?? {}
+  const contextId = typeof b['authContext.target.id'] === 'string' ? b['authContext.target.id'] : null
+  const contextName = typeof b['authContext.target.displayName'] === 'string' ? b['authContext.target.displayName'] : null
+  const contextNameOf = (id: string): string | null => (contextId !== null && contextName !== null && id.toLowerCase() === contextId.toLowerCase() ? contextName : null)
+  if (!pkg) return { contextNameOf, createFirst: [], after: [] }
+  // Each block is one thing to do, and its note (the name the plan proposed for
+  // the context) belongs to it, so the block is one numbered line, never a note
+  // numbered as a step of its own.
+  const linesOf = (id: string): string[] => {
+    const block = pkg.blocks[id]
+    if (!block) return []
+    const bound = bindText(block.text, b, new Set())
+    const text = 'text' in bound ? bound.text.split('\n').map((line) => line.trim()).filter((line) => line !== '').join(' ') : ''
+    return text === '' ? [] : [text]
+  }
+  const createFirst = linesOf('entra.context.prepare')
+  const pim = linesOf('entra.pim.configure')
+  const title = (shared as unknown as { procedure: { tasks: Record<string, string> } }).procedure.tasks.pimSettings
+  return { contextNameOf, createFirst, after: pim.length > 0 ? [{ id: 'pim-settings', title, steps: pim, required: setupAfterEnforcementOf(step) !== null }] : [] }
+}
+
+/**
  * The package state whose implementation a step will eventually need, where its
  * own state has nothing to implement now (owner, 2026-09-11: the Plan is a
  * planning surface; state controls executability, not whether the planned work
@@ -417,6 +457,9 @@ export function plannedPackageStateOf(step: Step, c: StepContract, snapshot: Ten
   // work: a create would be the duplicate its hold rules out, and a correction
   // would name a policy it will not guess (review R2-N1).
   if (step.action.ambiguousTarget === true) return null
+  // A correction another step asks for is that step's planned work, not this
+  // one's (Action.correctionAskedBy; walk list 4.x item 7).
+  if (step.action.correctionAskedBy) return null
   // A policy this plan tagged that the tenant switched off is not a policy to
   // build: its package's missing-state projection is the create, and AI Info
   // previewed it — "IAMAI did not find Block Device Code Sign-in… The next action
@@ -642,46 +685,6 @@ export function jsonWithPlanTag(text: string, step: Step): string {
   // any heuristic over the whole text, and was reflowed.
   const indent = pristine === text.trim() ? 0 : 2
   return JSON.stringify(parsed, null, indent)
-}
-
-/** References to a resolved target need the actual settings beside the directions.
- * Read the same selected request bodies as JSON; never substitute a different policy. */
-export function entraWithSettings(text: string, step: Step, ctx: StepVarContext, c: StepContract, projection: Projection): string {
-  if (!/resolved|match the target|target settings/i.test(text)) return text
-  const json = projection.channels.find(a => a.channel === 'json')
-  const selected = json ? policyBodiesOfChannel(json, projection.preview === true) : null
-  if (!selected || !selected.some(s => 'conditions' in s.body || 'grantControls' in s.body || 'sessionControls' in s.body)) return text
-  // The procedure already covers navigation, saving and removed exclusions.
-  // This supplement carries only the selected policy's settings and pair labels.
-  // A field still waiting on a reference is not shown as a setting to copy.
-  //
-  // The binding layer already refuses to bind one (`incompleteFieldsOf`): "what
-  // is left of its conditions, grant and users is not the target — an exclusion
-  // set short of the groups still to answer read as complete". This block read
-  // the request bodies directly and rendered every line, so before the
-  // exclusions group was chosen a step showed "Users → Include: All users." as
-  // a settings line, under a procedure that carefully said "the resolved admin
-  // roles, with the resolved exclusions". Saving the selection changed that one
-  // line to directory roles plus the exclusions group — so the earlier version
-  // was not a narrower statement of the same thing, it was a different and much
-  // wider policy, fully copyable.
-  const openFields = incompleteFieldsOf(step, plannedOperationsOf(step)[0] ?? null)
-  const FIELD_OF: [RegExp, string][] = [
-    [/^Users →/, 'conditions.users'],
-    [/^(?:Target resources|Cloud apps)/, 'conditions.applications'],
-    [/^Grant →/, 'grantControls'],
-    [/^Session →/, 'sessionControls'],
-  ]
-  const settled = (line: string): boolean => {
-    const field = FIELD_OF.find(([re]) => re.test(line))?.[1]
-    return field === undefined || !touches(openFields, field)
-  }
-  const lines = plannedPortalLines(step, portalNamesFor(ctx, stepVars(step, ctx), c.title), selected)
-    ?.filter(line => /^(?:Policy [AB] —|Name:|Description:|Users →|Target resources|Cloud apps|Conditions →|Grant →|Session →)/.test(line))
-    .filter(settled)
-    .map(line => line.replace(/: Entra admin center.*$/, ''))
-  if (!lines?.length) return text
-  return `${text.trim()}\n\n### ${shared.policySettingsForAction}\n\n${lines.map(line => `- ${line}`).join('\n')}`
 }
 
 /**
@@ -1052,6 +1055,12 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   put('service.ropcAccount', ropcNames.length === 1 ? ropcNames[0] : undefined)
   putSome('service.ropcAccounts', ropcNames.length > 1 ? ropcNames : [])
   put('emergency.target.exclusionsGroupId', exclusionsGroupId)
+  // The exclusions group by name, and what a correction changes in words (walk
+  // list 4.x item 40): AI Info says the policy "doesn't exclude Core - Exclusions",
+  // never a module id such as conditions.canonical.
+  const exclusionsGroupName = exclusionsGroupId ? ctx.groups?.get(exclusionsGroupId)?.displayName ?? undefined : undefined
+  put('exclusions.group.displayName', exclusionsGroupName)
+  put('policy.current.difference', correctionWordsOf(step, ctx.snapshot, exclusionsGroupId, exclusionsGroupName ?? null))
   // The operator's confirmed emergency accounts, every one of them: the set the
   // step's own words name. Only where the directory names each; a set short of an
   // account is not the set.
@@ -1103,6 +1112,12 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
     put('emergency.passkey.compatibility', rows.length ? rows.flatMap(row => W[row.reason] ? [`${ctx.nameOf(row.accountId)}: ${W[row.reason]}`] : []).join('\n') : W.noAccounts)
   }
   put('tenant.displayName', tenantNameOf(ctx.snapshot))
+  // What the step's policy does, with the resources it reaches (policyFact.ts):
+  // the AI Info lead states the action with it (walk list 4.x item 31) —
+  // "requires MFA for All users except Core - Exclusions, across All resources
+  // except Microsoft Intune Enrollment". A policy in Turn On MFA for Everyone only.
+  const fact = c.policyFact
+  put('policy.fact', fact ? (fact.resources ? `${fact.does}, ${fact.resources}` : fact.does) : null)
   const affected = stepPopulation(step)
   put('people.affected.count', affected?.active)
   // The people the step is about, by name, and not only how many of them there
@@ -1127,6 +1142,16 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   // binding's, and the renderer drops a template's stop after a value that
   // already ends a sentence (project.ts bindText; Phase 2 export finding 18).
   put('dependencies.blockers', c.fix.length > 0 ? c.fix.map((f) => f.text.trim()).map((t) => (/[.!?]$/.test(t) ? t : `${t}.`)).join(' ') : undefined)
+  // The steps it waits on, by title, once each (walk list 4.x items 23 and 31):
+  // the Turn On MFA for Everyone leads read "cannot proceed yet. Known blockers
+  // and decisions: Finish Configure Emergency Exclusions first. … Resolve these
+  // before creating or changing the policy."
+  const waits = [...new Set(c.fix.flatMap((f) => {
+    const [kind, ...rest] = f.key.split(':')
+    const id = rest.join(':')
+    return kind === 'step' || kind === 'missing' ? [stepById[id]?.title ?? null] : kind === 'direction' ? [directionTitleOf(id as never)] : []
+  }).filter((t): t is string => typeof t === 'string' && t !== ''))]
+  put('dependencies.waits', waits.length > 0 ? list(waits) : undefined)
   return out
 }
 
@@ -1237,4 +1262,24 @@ export function mergeReadiness(runtime: ContractReadiness, pkg: PackageReadiness
     .map((t) => ({ key: t.id, label: t.gate, tone: RESULT_TONE[t.result] ?? 'info', value: CONTRACT.readiness.results[t.result] ?? t.result, note: t.line, ...(t.confirm ? { confirm: t.confirm } : {}) }))
   const open = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait' || (t.confirm !== undefined && !t.confirm.satisfied)
   return { ...runtime, tiles: [...runtime.tiles, ...packaged.filter(open)], satisfied: [...runtime.satisfied, ...packaged.filter((t) => !open(t))] }
+}
+
+/**
+ * What the step's correction changes on the tenant's policy, in words (walk list
+ * 4.x item 40): the exclusions group it adds, by name, where the policy does not
+ * exclude it; otherwise the parts of the policy that differ from the intended
+ * target. Undefined where the step corrects nothing.
+ */
+function correctionWordsOf(step: Step, snapshot: TenantSnapshot, groupId: string | null, groupName: string | null): string | undefined {
+  const fields = correctionFieldsOf(step, snapshot)
+  if (fields.length === 0) return undefined
+  const O = engine.observation as Record<string, string>
+  const rows = (snapshot.config?.caPolicies?.rows ?? []) as Record<string, unknown>[]
+  const lacksGroup = groupId !== null && groupName !== null && plannedOperationsOf(step).some((op) => {
+    if (op.mode !== 'update' || typeof op.policyId !== 'string') return false
+    const current = rows.find((r) => r.id === op.policyId)
+    return current !== undefined && !excludedGroupsOf(current).some((g) => g.toLowerCase() === groupId.toLowerCase())
+  })
+  if (lacksGroup && fields.every((f) => f === SAFE_CORRECTION_FIELD)) return fillText(O.missingGroup, { group: groupName })
+  return fillText(O.differsIn, { fields: dimensionWords([...new Set(fields.map((f) => f.split('.').slice(0, 2).join('.')))]) })
 }

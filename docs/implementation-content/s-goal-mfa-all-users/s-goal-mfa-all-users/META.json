@@ -65,7 +65,9 @@
     "evidence.reportOnly",
     "dependencies.blockers",
     "signature",
-    "policy.target.json"
+    "policy.target.json",
+    "policy.fact",
+    "dependencies.waits"
   ],
   "projection": {
     "missing": {

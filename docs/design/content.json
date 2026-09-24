@@ -3,7 +3,6 @@
   "version": 1.3,
   "shared": {
     "signatureDefault": "IT",
-    "policySettingsForAction": "Settings for This Action",
     "adaptLine": "Paste this into your own assistant to match your voice.",
     "deviation": {
       "line": "{line} · your choice; the baseline's version: {baseline}",
@@ -66,14 +65,140 @@
     "changeIfWrong": "Put the settings back to what they were (shown above); nothing else in the tenant changes. If you are locked out, see Prepare Emergency Access Accounts.",
     "datesNew": "Announce {announce} · Report-only from {reportOnly} · Enforce {enforce}",
     "datesChange": "Announce {announce} · Change {enforce}",
-    "datesDeploy": "Report-only from {reportOnly} · Enforcement is dated once the policy has been watched in report-only",
-    "datesObserve": "Report-only since {reportOnly} · Review {readyOn} · Enforcement is dated once the observation window closes and the sign-in records are clear and complete",
+    "datesDeploy": "Report-only from {reportOnly}",
+    "datesObserve": "Report-only since {reportOnly}, until {readyOn}",
     "datesReview": "Report-only since {reportOnly} · Held until the change somebody made to the policy has been looked at · No enforcement date while it is held",
     "commsForecastNote": "That date is our target, not a commitment: where the policy supports it, we run the change in report-only first, watch who it would have affected, and confirm the date with you before anything changes.",
     "portalRoot": "Entra admin center → Entra ID → Conditional Access → Policies → New policy",
     "portalOpen": "Entra admin center → Entra ID → Conditional Access → Policies → open \"{policy}\"",
-    "descriptionLine": "Description: {description} — paste this exactly; it is how IAMAI recognises the policy it planned when it next reads the tenant.",
+    "descriptionLine": "Description: {description}",
     "changeUntouched": "Change only the settings listed above; leave every other setting on this policy as it is.",
+    "procedure": {
+      "$comment": "Every Conditional Access policy step's Implementation Tasks, from one producer (roadmap/policyProcedure.ts; ui/surfaces/policyTasks.ts policyProcedureOf) in every state (walk list section 4 items 14-18, owner 2026-09-24). Each package wrote its own create, correction and turn-on, and none named the group, the roles or the accounts. A create names its Include and its Exclude by the tenant's names; a correction names only what differs, with the values it adds or removes; the turn-on is two lines. The first line opens the Microsoft Entra admin center as section 1 does ({target} is New policy on a create, else the policy's name), and a create or a correction ends on the scan line. The create names no Description: the Entra form has no such field (Graph documents it as not used), and the name is what the next scan recognises a hand-made policy by. Everything after the Report-only line went (item 16): the consequence of Configure at No, the create-reopen-compare line, the 'make sure' lines, 'Keep the policy's current state'.",
+      "open": "Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Conditional Access → Policies → {target}**.",
+      "newPolicy": "New policy",
+      "name": "Name: **{name}**.",
+      "users": "Under **Users**, include {include} and exclude {exclude}.",
+      "usersIncludeOnly": "Under **Users**, include {include}.",
+      "$commentUsersRoles": "The users line where the policy includes directory roles: the baseline's admin policy lists 46, and 'include … and exclude the group' lost the exclusion at the end of the list, so the exclusion comes first.",
+      "usersRoles": "Under **Users**, exclude {exclude}, and include {include}.",
+      "workload": "Under **Users or workload identities**, select **Workload identities** and include {include}.",
+      "resources": "Under **Target resources**, include {include}.",
+      "resourcesExclude": "Under **Target resources**, include {include} and exclude {exclude}.",
+      "userAction": "Under **Target resources**, select **User actions** → **{action}**.",
+      "authContext": "Under **Target resources**, select **Authentication context** → {contexts}.",
+      "$commentContextNamed": "An authentication context the plan makes for its own policy, by the name it proposes and its ID (Require MFA at Every Role Activation); a context the plan did not make is named by its ID alone.",
+      "contextNamed": "{name} (ID {id})",
+      "locations": "Under **Conditions → Locations**, set **Configure** to **Yes** and include {include}.",
+      "locationsExclude": "Under **Conditions → Locations**, set **Configure** to **Yes**, include {include} and exclude {exclude}.",
+      "clientApps": "Under **Conditions → Client apps**, set **Configure** to **Yes** and select only {values}.",
+      "flows": "Under **Conditions → Authentication flows**, set **Configure** to **Yes** and select {values}.",
+      "platforms": "Under **Conditions → Device platforms**, set **Configure** to **Yes** and include {include}.",
+      "platformsExclude": "Under **Conditions → Device platforms**, set **Configure** to **Yes**, include {include} and exclude {exclude}.",
+      "deviceFilter": "Under **Conditions → Filter for devices**, set **Configure** to **Yes**, select **{mode}** and enter the rule **{rule}**.",
+      "deviceFilterInclude": "Include filtered devices in policy",
+      "deviceFilterExclude": "Exclude filtered devices from policy",
+      "signInRisk": "Under **Conditions → Sign-in risk**, set **Configure** to **Yes** and select {values}.",
+      "userRisk": "Under **Conditions → User risk**, set **Configure** to **Yes** and select {values}.",
+      "conditionOff": "Under **Conditions → {condition}**, set **Configure** to **No**.",
+      "conditions": {
+        "locations": "Locations",
+        "clientApps": "Client apps",
+        "flows": "Authentication flows",
+        "platforms": "Device platforms",
+        "deviceFilter": "Filter for devices",
+        "signInRisk": "Sign-in risk",
+        "userRisk": "User risk"
+      },
+      "grantBlock": "Under **Grant**, select **Block access**.",
+      "grant": "Under **Grant**, select {controls}.",
+      "grantAll": "Under **Grant**, select {controls}, then **Require all the selected controls**.",
+      "grantOne": "Under **Grant**, select {controls}, then **Require one of the selected controls**.",
+      "grantOnly": "Under **Grant**, select {controls}, and clear any other grant.",
+      "strength": "**Require authentication strength** → **{strength}**",
+      "sessionEveryTime": "Under **Session**, set **Sign-in frequency** to **Every time**.",
+      "sessionPeriodic": "Under **Session**, set **Sign-in frequency** to **Periodic reauthentication**, **{interval}**.",
+      "sessionNeverPersistent": "Under **Session**, set **Persistent browser session** to **Never persistent**.",
+      "sessionAlwaysPersistent": "Under **Session**, set **Persistent browser session** to **Always persistent**.",
+      "sessionAppEnforced": "Under **Session**, select **Use app enforced restrictions**.",
+      "sessionAppControl": "Under **Session**, select **Use Conditional Access App Control** → **{mode}**.",
+      "appControl": {
+        "blockDownloads": "Block downloads",
+        "monitorOnly": "Monitor only",
+        "mcasConfigured": "Use custom policy"
+      },
+      "sessionTokenProtection": "Under **Session**, select **Require token protection for sign-in sessions**.",
+      "sessionClear": "Under **Session**, clear every control.",
+      "hours": "{n} hours",
+      "day": "1 day",
+      "days": "{n} days",
+      "create": "Set **Enable policy** to **Report-only** and select **Create**.",
+      "turnOn": "Set **Enable policy** to **On** and select **Save**.",
+      "reportOnly": "Set **Enable policy** to **Report-only** and select **Save**.",
+      "save": "Select **Save**.",
+      "scan": "Return to IAMAI and select **Scan to update the plan**.",
+      "usersInclude": "Under **Users → Include**, {change}.",
+      "usersExclude": "Under **Users → Exclude**, {change}.",
+      "resourcesExcludeChange": "Under **Target resources → Exclude**, {change}.",
+      "add": "add {items}",
+      "remove": "remove {items}",
+      "addRemove": "add {added} and remove {removed}",
+      "selectOnly": "select only {items}",
+      "allUsers": "**All users**",
+      "allResources": "**All resources**",
+      "directoryRoles": "**Directory roles**: {names}",
+      "group": "the group {name}",
+      "groups": "the groups {names}",
+      "account": "the account {name}",
+      "accounts": "the accounts {names}",
+      "role": "the directory role {name}",
+      "roles": "the directory roles {names}",
+      "guests": "**Guest or external users**",
+      "guestTypes": "**Guest or external users** → {types}",
+      "anyDevice": "**Any device**",
+      "anyLocation": "**Any location**",
+      "allTrusted": "**All trusted locations**",
+      "$commentTasks": "A policy step's Implementation Tasks, the same in every state (walk list item 18): the create and the turn-on always, the correction and the switch to Report-only where they apply. The plural stands on a step the baseline implements with two policies. The rail names the first one still to do, and so does the step's Tasks Remaining card (item 20).",
+      "tasks": {
+        "create": "Create the policy in Report-only",
+        "createMany": "Create the policies in Report-only",
+        "correct": "Correct the policy",
+        "correctMany": "Correct the policies",
+        "reportOnly": "Set the policy to Report-only",
+        "reportOnlyMany": "Set the policies to Report-only",
+        "turnOn": "Turn the policy on",
+        "turnOnMany": "Turn the policies on",
+        "$commentPimSettings": "Require MFA at Every Role Activation: the PIM role settings that make role activation ask for the policy's authentication context, after the policy is On (package entra.pim.configure). Without them the enforced policy requires nothing of anyone.",
+        "pimSettings": "Require the context on role activation"
+      },
+      "$commentCard": "The policy's Tasks Remaining card (ui/surfaces/policyTasks.ts policyCardsOf; walk list item 20) names the task, never Blocked or the step's title. reportOnlyUntil stands while the report-only week runs. Once it is over the card reads Turn the policy on, with blockedNoOne under it and, where the turn-on still waits on something, after.",
+      "card": {
+        "reportOnlyUntil": "Report-only until {date}",
+        "blockedNoOne": "Report-only blocked no one.",
+        "after": "After {items}.",
+        "$commentExclusionsEdit": "The card of a policy whose only change left is the exclusions group, which Configure Emergency Exclusions adds itself (walk list 4.x item 7): it read Correct the policy, beside that step's own task for the same edit.",
+        "exclusionsEdit": "{step} adds {group} to it."
+      },
+      "$commentFocus": "AI Info's Focus on a Turn On MFA for Everyone policy that is already in the tenant (ui/surfaces/aiGrounding.ts; walk list 4.x item 31): the create sentence (steps[].aiFocus) stands only while the policy is still to create.",
+      "focusTurnOn": "Walk me through turning this policy on after its report-only period.",
+      "focusCorrect": "Walk me through correcting this policy.",
+      "$commentWaits": "What a held turn-on waits for beyond the plan's own steps, each said two ways: after \"Wait for\" in the turn-on's held line (app.plan.enforceOutstanding) and after \"After\" on the policy card (card.after). The mail accounts named in Confirm What You Use (walk list 4.x item 5), a report-only week that would have blocked someone (item 35) and a readiness threshold (item 44) held nothing on the procedure, so the turn-on still read Set Enable policy to On.",
+      "waits": {
+        "mail": "{names} to move to a supported mail route",
+        "mailAfterOne": "{names} moves to a supported mail route",
+        "mailAfterMany": "{names} move to a supported mail route",
+        "blocked": "the blocked accounts to move",
+        "blockedAfter": "the blocked accounts move",
+        "blockedMethod": "the blocked accounts to have a method it accepts",
+        "blockedMethodAfter": "the blocked accounts have a method it accepts",
+        "blockedAny": "report-only to block no one",
+        "blockedAnyAfter": "report-only blocks no one",
+        "admins": "every admin to have a method it accepts",
+        "adminsAfter": "every admin has a method it accepts",
+        "readiness": "{measure} to reach {threshold}",
+        "readinessAfter": "{measure} reaches {threshold}"
+      }
+    },
     "passkeyRestrictions": {
       "$comment": "Configure Passkey Authentication's key restrictions, read from roadmap/passkeyRestrictions.ts. The step opened on \"Set Enforce key restrictions to Yes… Add AAGUID… Save\" four lines below a hedge that the passkeys on eleven accounts could not be judged, naming none of them (Jordan D13); after the settings were applied the same hedge still said \"before applying restrictions\" (Marcus D8). An allow list stops every passkey it does not name: the accounts it would stop are named, with what each keeps; and where one would keep nothing, the restrictions are not handed over at all. The clauses saying IAMAI could not judge a passkey, or could not confirm another way in, were deleted (owner, 2026-09-23).",
       "stranded": "An allow list stops every passkey it does not name. The planned restrictions would stop the passkeys on {count}: {names}. Each keeps {kept}, so none is locked out, but tell them before you save: afterwards, one whose passkey stops working registers an approved one.",
@@ -85,9 +210,9 @@
     },
     "changeRemoves": "This change removes {removed} from the policy's exclusions. If the policy is On, it applies to them as soon as you save.",
     "changeRemovesGuests": "guest or external users",
-    "enableLine": "Enable policy: On → Save — only when all of this is true now: the required report-only period is complete, with no failures on this policy in the sign-in records; the policy is still Report-only and its settings still match the target above, exclusions included; and emergency access is prepared and tested. If any one of them is not true, leave the policy in Report-only.",
-    "exclusionsLine": "Users → Exclude → Groups: {exclusionsGroup}. Never exclude the emergency accounts directly; they are members of this group.",
-    "reportOnlyLine": "Enable policy: Report-only → Create. Not On: a policy created On applies to everyone it covers from the moment you save, before anyone has seen who it would have stopped — the failure this plan exists to prevent.",
+    "enableLine": "Enable policy: On → Save.",
+    "exclusionsLine": "Users → Exclude → Groups: {exclusionsGroup}.",
+    "reportOnlyLine": "Enable policy: Report-only → Create.",
     "existingCoverage": "{tenant} already covers this with {list:existingPolicies}. This step creates the baseline's version; Consolidate Overlapping Policies (Cleanup) reviews whether the older ones can be retired once it is enforced.",
     "whoUnresolved": "IAMAI could not finish this line from what it read, so it is not saying either way. Check this one in Entra yourself.",
     "syncRoleNote": "Also exclude the Directory Synchronization Accounts role: Entra Connect signs in with it and cannot answer a prompt.",
@@ -290,20 +415,25 @@
         "correct": "Correct the identified settings, then rescan. Keep the policy's current state. If it is On, the changed rule can affect access after you save.",
         "review": "Keep the policy in Report-only, find out what changed on it and why, then rescan.",
         "correctManual": "Correct the policy in the Entra admin center ({fields}), then scan again.",
-        "observe": "Continue observation and collect the missing evidence.",
-        "observeUntil": "Continue observation and collect the missing evidence. Review from {date}.",
-        "observeRecords": "Continue observation and collect the missing evidence.",
-        "enforce": "Enable the reviewed policy, then verify the result.",
+        "$commentObserve": "The report-only week in the policy card's own words (walk list 4.x items 11 and 20): it read \"Continue observation and collect the missing evidence. Review from Aug 31, 2026.\", homework for a wait that time delivers.",
+        "observe": "Leave the policy in Report-only.",
+        "observeUntil": "Report-only until {date}.",
+        "observeRecords": "Leave the policy in Report-only.",
+        "$commentMoveBlocked": "Block Legacy Authentication's next thing while its report-only week shows people it would have blocked (walk list 4.x item 35): the evidence line (evidence.legacyBlocked) names them and says where to move them.",
+        "moveBlocked": "Move the blocked accounts.",
+        "$commentReadyBlocked": "moveBlocked on the two MFA policies (walk list 4.x item 35's shape): the people a report-only week would have blocked need a method the policy accepts, not a move.",
+        "readyBlocked": "Get the blocked accounts ready.",
+        "enforce": "Report-only blocked no one. Turn the policy on.",
         "$commentEnforceScheduled": "A policy whose evidence is complete says \"Enable the reviewed policy\" and \"ready now: 0 failures in 8 days\", and the date beside it was the plan's own placement - eighteen days out on one tenant. Both are right and they read as a contradiction: the wait is not the evidence any more, it is the notice the people affected are owed. The milestone says which wait it is.",
-        "enforceScheduled": "The evidence for this policy is complete, so it is ready to be turned on. The plan schedules the turn-on for {date}, which leaves the {days} working days of notice a change this size asks for.",
-        "enforceScheduledOther": "The evidence for this policy is complete, so it is ready to be turned on. The plan schedules the turn-on for {date}.",
-        "$commentEnforceWaits": "A policy whose evidence is complete and whose turn-on waits on the plan's own prerequisites (roadmap/enforceWaits.ts: the emergency-access recovery test; security defaults still on). It read \"ready to be turned on. The plan turns it on on Sep 21\" with the turn-on handed over in every channel and one Stop line in one of them, and a reader enforced eight policies beside security defaults. The turn-on is withheld now, and this says what it waits on. The day stays on the milestone (sequencing, owner Step 4) and is not repeated in the sentence, because the board already reads \"After prerequisites\" for a row held this way.",
-        "enforceWaitsOne": "The evidence for this policy is complete. It stays in Report-only until {items} is finished, and the instruction that turns it on comes back then.",
-        "enforceWaitsMany": "The evidence for this policy is complete. It stays in Report-only until {items} are finished, and the instruction that turns it on comes back then.",
+        "enforceScheduled": "Report-only blocked no one. Turn the policy on {date}.",
+        "enforceScheduledOther": "Report-only blocked no one. Turn the policy on {date}.",
+        "$commentEnforceWaits": "A policy whose evidence is complete and whose turn-on waits on the plan's own prerequisites (roadmap/enforceWaits.ts: the emergency-access recovery test; security defaults still on). It read \"ready to be turned on. The plan turns it on on Sep 21\" with the turn-on handed over in every channel and one Stop line in one of them, and a reader enforced eight policies beside security defaults. The turn-on is withheld now, and this says what it waits on. The day stays on the milestone (sequencing, owner Step 4) and is not repeated in the sentence, because the board already reads \"After prerequisites\" for a row held this way. The turn-on task stands in every state (walk list section 4 item 18) and, while held, reads this sentence in place of its instruction (policyTasks.ts policyProcedureOf).",
+        "enforceWaitsOne": "Report-only blocked no one. It turns on after {items}.",
+        "enforceWaitsMany": "Report-only blocked no one. It turns on after {items}.",
         "$commentEnforceWaitsSecurityDefaults": "Said where security defaults are among the waits. Entra refuses to turn on a Conditional Access policy while security defaults are on and points at turning them off, and turning them off before the replacements can go on in the same change window removes the MFA they require.",
-        "enforceWaitsSecurityDefaults": "Entra does not let a Conditional Access policy go On while security defaults are on, and turning them off early removes the MFA they require: {step} turns them off and turns the replacements on together.",
+        "enforceWaitsSecurityDefaults": "{step} turns security defaults off and this policy on together.",
         "verify": "Verify the change and rescan.",
-        "preserve": "No change needed.",
+        "preserve": "Nothing left to do.",
         "none": "Nothing left to do."
       },
       "baselineConflict": {
@@ -330,7 +460,10 @@
         "appearedReportOnly": "not deployed at the last scan; created in report-only by {date}, and the observation window starts from here",
         "appearedEnforced": "not deployed at the last scan and enforced by {date}: it went live without a report-only period IAMAI could watch, so nothing here was observed before it started applying",
         "continuityUnknown": "this plan does not record which policy it watched before {date}, so the window starts again on the one deployed now",
-        "differs": "not what the plan asked for in {fields}, and IAMAI does not write that part: a person corrects it in the Entra admin center, then scans again",
+        "differs": "not what the plan asked for in {fields}",
+        "$commentDifference": "What a step's correction changes, in words, for AI Info's lead (ui/surfaces/stepPackage.ts correctionWordsOf; walk list 4.x item 40): it read \"differs from the intended target: conditions.canonical\".",
+        "missingGroup": "it doesn't exclude {group}",
+        "differsIn": "it differs from the intended target in {fields}",
         "dimensions": {
           "$comment": "A policy's material dimensions by their Graph field names (roadmap/observation.ts semanticFieldsOf), for the sentence that names where a deployed policy is not what the plan asked for.",
           "users": "who it applies to",
@@ -374,15 +507,21 @@
         "$commentNoneJudged": "\"0 of 39 people have a registered method allowed by the target policies\" is the same construction as a MEASURED zero — the post-grant line on the same tenant reads \"0 of 2 people have a registered method\". Where nobody could be judged at all, leading with a bare zero puts an unread count in the shape of a measurement, and a reader had to reach the third clause to learn which kind of zero it was. Said only where the ready count is zero AND every person in scope is unestablished.",
         "noneJudged": "None of the {n} people in scope could be judged: method compatibility is not established for any of them.",
         "noneJudgedOne": "The one person in scope could not be judged: method compatibility is not established for them.",
-        "$commentMethodLine": "Three totals on one step - \"246 active people\", \"covers 283 enabled\", \"209 of 279 people\" - each derivable and none explained. The readiness denominator is its own population: the people the target policies actually include, which is not the step's active count and not its enabled count. The line said \"people\" and left the reader to work out which. It then said \"in scope of these policies\", and two steps over different policies read as one number: 200 of 265 on one step and 209 of 279 on the next, both headed MFA readiness (R4-14). It names this step's own policies now, which is why two steps can read two numbers.",
-        "methodLine": "{ready} of {total} people this step's policies include have a registered method those policies accept and this tenant lets them use.",
-        "methodLineUnknown": "Method compatibility is not yet established for {unknown}.",
-        "$commentMethodLineStale": "Admin readiness fell 5 -> 4 -> 0 of 60 over thirty days on a tenant where fourteen admins held a phishing-resistant method throughout, and nothing in the tenant changed: the sign-in that confirmed each method had aged out of the 30-day proof window. \"0 of 60 people have a registered method the policies allow\" is a claim about registration driven by a reading about proof, and a number that falls on its own, on a gate that has to reach 100%, reads as the tenant getting worse. The line now says which of the unestablished were confirmed once, and what makes them count again. It is the line's last sentence, after methodLine and methodLineOff; methodLineUnknown is the same sentence where nobody's confirmation aged out. It said the aged-out people were ones \"nothing about\" had changed; the scan cannot know that - there is no registration history, and a person counted here may have signed in since with another method - so it says only how old the sign-in is and what counts them again.",
-        "methodLineStale": "Method compatibility is not yet established for {unknown} — {stale} of those were confirmed by a sign-in that is now older than 30 days: ask them to sign in once with that method and the next scan counts them again.",
-        "$commentMethodLineOff": "A reader of a 4,900-person tenant took 669 people who had registered a phone as a measurement error (R4-41, Sam D7): Require multifactor authentication accepts a phone, and the line said they lacked \"a registered method the policies allow\". What stopped them was not the Conditional Access policy but the tenant's Authentication methods policy, which switches text and voice off. On another tenant 38 people whose only method was text were called unknowable (R4-15, Marcus D5). The engine told \"registered only what the tenant does not allow\" from \"registered nothing\" and the line had no slot for it. It then said \"have registered only methods this tenant's Authentication methods policy does not let them use\" of five administrators on a phishing-resistant step who held only a phone: true of their registrations, and read as the reason, when the strength refuses a phone whatever the methods policy says - the one change it invites, switching text back on for administrators, weakens the tenant and counts nobody. So the line says the counterfactual itself, and counts exactly the people it is true of: every method they registered is one the methods policy stops, every policy of this step that refused them would accept those methods if it did not, and no policy of the step left them unjudged (methodReadiness.ts offIds; a passkey with no key on record is not counted, since that is a missing key, not a setting). Said straight after methodLine; methodLine itself names both authorities. Worded without \"have\" or \"use\": the renderer bends the first such verb after a count of one, modal or not (\"1 of the 2 people without one would has one\").",
-        "methodLineOff": "{off} of the {short} people without one would be counted if this tenant's Authentication methods policy allowed the methods they registered.",
-        "$commentMethodLineOffAll": "methodLineOff where it is every one of them: \"38 of the 38 people\" read as a count that forgot to differ.",
-        "methodLineOffAll": "The {short} people without one would be counted if this tenant's Authentication methods policy allowed the methods they registered.",
+        "$commentMethodLine": "Three totals on one step - \"246 active people\", \"covers 283 enabled\", \"209 of 279 people\" - each derivable and none explained. The readiness denominator is the people the step's own policies include among the plan's active people (walk list 4.x L4: the ones MFA Readiness and Prepare Your Team for MFA count). It read \"{ready} of {total} people this step's policies include have a registered method those policies accept and this tenant lets them use\"; owner, 2026-09-24 (walk list 4.x item 48): \"23 of 27 people have a method it accepts\".",
+        "methodLine": "{ready} of {total} people have a method it accepts.",
+        "$commentMethodLineSignIn": "The people one sign-in would count (methodReadiness.ts staleIds): the sign-in that confirmed their method aged out of the 30-day window, and the same sign-in made today counts them again (R4-15: said of anybody else it promises a number that will not move). It replaced methodLineUnknown and methodLineStale, whose \"Method compatibility is not yet established\" put IAMAI's uncertainty on the reader; the people nothing would settle are left out of the count and not described.",
+        "methodLineSignIn": "{n} people need to sign in once with the method they registered.",
+        "$commentMethodLineOff": "The people counted without a method who registered one, every one of which this tenant's Authentication methods policy turns off, and which the step's policy would accept if it did not (methodReadiness.ts offIds; R4-41, R4-15: 669 people holding only a phone read as a measurement error). Said straight after methodLine, naming what they registered (offMethods). Owner, 2026-09-24 (walk list 4.x item 48): \"2 registered {method}, which your Authentication methods policy turns off.\"",
+        "methodLineOff": "{off} registered only {methods}, which your Authentication methods policy turns off.",
+        "$commentOffMethods": "What the people in methodLineOff registered, in words, by kind (methodReadiness.ts offMethodWords). A method no MFA policy accepts (email, security questions) is not named.",
+        "offMethods": {
+          "phone": "a phone for texts or calls",
+          "authenticator": "Microsoft Authenticator",
+          "code": "an authenticator app code",
+          "passkey": "a passkey",
+          "windowsHello": "Windows Hello",
+          "other": "a method"
+        },
         "$commentDeviceLine": "The device gate printed a bare percentage and no line, where every MFA gate prints \"N of M people\". Three readers hand-counted it and all three got a different number, because the ratio counts people with a compliant device WITHIN THE DEVICE DECISION SCOPE - computers only, where that is the answer - and the sentence said \"of people on a compliant device\" with no mention of scope. Every instance read optimistic, and enrolling the phones would not have moved the number the reader was told to move.",
         "deviceComputers": "{ready} of {total} people have a compliant computer. Phones are outside this answer, so they are not counted here.",
         "deviceBoth": "{ready} of {total} people have a compliant device on a platform this answer covers."
@@ -390,6 +529,12 @@
       "evidence": {
         "$comment": "Why a report-only observation has not completed, in the two cases where the reason is known and was said nowhere. The tile read \"Review the available records and the remaining evidence requirements\" over both: over a tenant whose records refused every read, and over a tenant where four hundred people had been stopped in report-only. Both numbers were on the step already — Evidence.affectedUserIds had the four hundred and Evidence.lines was empty — and no surface read either. Said only while the observation is still open.",
         "failures": "The records show {n} people this policy stopped while it was in report-only. Review them before enforcing: time elapsed alone does not complete this check.",
+        "$commentLegacyBlocked": "Block Legacy Authentication's report-only week that would have blocked someone (walk list 4.x item 35, roadmap/evidence.ts): the accounts by name and address, and where they move. legacyBlockedMail where every one of them is a mail account named in Confirm What You Use, which moves to a mail route rather than a mail app.",
+        "legacyBlocked": "Report-only would have blocked {names}. Move them to a modern mail app before you turn this on.",
+        "legacyBlockedMail": "Report-only would have blocked {names}. Move each to a supported mail route before you turn this on.",
+        "$commentDeviceCodeBlocked": "Item 35's shape on Block Device Code Sign-in and on the two MFA policies: it read \"The records show 1 person this policy stopped while it was in report-only. Review them before enforcing: time elapsed alone does not complete this check.\"",
+        "deviceCodeBlocked": "Report-only would have blocked {names}. Move them off device code sign-in before you turn this on.",
+        "methodBlocked": "Report-only would have blocked {names}. Get them a method this policy accepts before you turn it on.",
         "$commentUnreadable": "The one sentence for sign-in records IAMAI does not hold enough of (roadmap/evidence.ts unreadLine): Evidence.lines carries it to the AI briefing, and the observation tile and the awaiting-review tile state it. It read \"This check reads the sign-in records, which IAMAI could not read in this tenant - {reason}. Time in report-only cannot complete it until they can be read.\" That was written for a report-only policy on a tenant where nothing was read, and it reached two other cases. The AI briefing of a policy already enforced, or already in place, said time in report-only would complete a check on a policy past report-only (hostile: the device code block, guest MFA, MFA for all users, legacy authentication). And a production read that stops short of 24 hours is \"insufficient\" with some records read (graph/collect/laneBCore.ts), where \"could not read\" is false. It now says only what holds for every lifecycle and every status that sets it: IAMAI does not hold enough to rely on, and no check of its own that reads them completes by waiting.",
         "unreadable": "IAMAI does not hold enough of this tenant's sign-in records to rely on — {reason} — so no IAMAI check on this step that reads them can complete, however long the policy runs.",
         "$commentStatus": "What fills {reason} where the sign-in source states no reason of its own, by its status (roadmap/evidence.ts). The bare status word filled it, so a scan with no sign-in source read \"— pending —\".",
@@ -407,16 +552,18 @@
         "guests": "{n} guests",
         "both": "{people} people and {guests} guests"
       },
-      "perUserMfa": {
-        "$comment": "The Legacy Per-User MFA tile on Finish Moving Off Per-User MFA (roadmap/manualWork.ts). {accounts} is copy/statements.ts count(), so it reads \"4,902 accounts\" and \"1 account\". Per-user MFA is a state every account in the directory has, emergency accounts included, so the unread count is the whole directory where the scan read no state at all; detailUnreadAll says so, because every other count on the plan leaves the emergency accounts out and the two numbers otherwise read as a mistake (R4-54). These were inline template strings with no separator and \"1 accounts\".",
-        "label": "Legacy Per-User MFA",
-        "valueOn": "{accounts} Enabled or Enforced",
-        "valueUnread": "Not fully read",
-        "valueOff": "Disabled",
-        "detailUsersUnread": "The account list was not fully read; the tenant-wide per-user MFA state is not established.",
-        "detailUnreadAll": "The scan read no per-user MFA state, so every account in the directory needs a check: all {accounts}, the emergency accounts included.",
-        "detailUnreadSome": "{accounts} need a per-user MFA state check: the scan could not read their state.",
-        "detailOff": "No current account has legacy per-user MFA enabled or enforced."
+      "blockSignIns": {
+        "$comment": "Who the sign-in records show using what a block stops, in the last 30 days (walk list 4.x items 33 and 38; roadmap/blockSignIns.ts): an open card naming them while the policy is not On, a Satisfied card once nobody does, and no card once the policy is On and blocks them. {n} is a count, so it reads \"1 account\" and \"1 person\". The names are the card's detail, at most five, then more.",
+        "legacyLabel": "Legacy sign-ins",
+        "legacySome": "{n} accounts signed in with legacy authentication in the last 30 days",
+        "legacyNone": "Nobody signed in with legacy authentication in the last 30 days.",
+        "deviceCodeLabel": "Device-code sign-ins",
+        "deviceCodeSome": "{n} people signed in with device code in the last 30 days",
+        "deviceCodeNone": "No device-code sign-ins in the last 30 days.",
+        "$commentMove": "The open card's instruction (walk list 4.x items 33 and 38, the checkers' 2026-09-24 reading): the people it names had no task and gated nothing. Item 35's words; a named mail account has its own card and task, so it is not named here.",
+        "legacyMove": "Move {names} to a modern mail app before you turn this on.",
+        "deviceCodeMove": "Move {names} off device code sign-in before you turn this on.",
+        "more": "and {n} more"
       },
       "coverage": {
         "$comment": "Why an existing policy that is this goal's policy does not put the goal in place (src/coverage/coverage.ts): the reason under the goal, the gap a plan row shows, and the sentence the goal's statement adds. A gap never contains the word \"and\": the row keeps only what comes before it (coverage/verdict.ts gapClauseOf).",
@@ -459,14 +606,23 @@
       "Test the actual workflow with representative users, including registration or recovery where applicable. Report-only results do not prove that these user actions work."
     ],
     "mailDevices": {
-      "title": "Move each exception device to a supported mail route",
-      "target": "Devices named in the mail-sending answer",
-      "steps": [
-        "Record each device's supported authentication and TLS options, the recipients it sends to, and a test window.",
-        "Until each device moves, Create or Correct Service Accounts Group keeps these accounts out of this policy. That exclusion does not keep SMTP AUTH working if the mail service no longer accepts basic authentication.",
-        "Choose a supported route: SMTP AUTH with OAuth, an Exchange Online connector, or Direct Send for internal recipients only. A device that cannot do any of them sends through an application that can, such as the Graph sendMail API. Confirm the device and network meet that route's requirements, send test messages, then remove its old account exception."
-      ],
-      "action": "Record the route and the removed exception"
+      "$comment": "Block Legacy Authentication's second task (ui/surfaces/policyTasks.ts): the mail accounts named in Confirm What You Use that still sign in with legacy authentication, each by name (walk list 4.x item 36). There is no exception to remove: the policy does not leave them out, and its turn-on waits until they have moved (item 5).",
+      "title": "Move each mail account to a supported mail route",
+      "$commentRoute": "The task's line names the accounts it moves (the checkers' 2026-09-24 reading of item 36): it read \"Move each device to …\" under a target that named them.",
+      "routeOne": "Move the device or app that signs in as {names} to SMTP AUTH with OAuth, an Exchange Online connector, or Direct Send (internal recipients only).",
+      "routeMany": "Move the devices or apps that sign in as {names} to SMTP AUTH with OAuth, an Exchange Online connector, or Direct Send (internal recipients only).",
+      "scan": "Return to IAMAI and select **Scan to update the plan**.",
+      "action": "Open mail route instructions",
+      "$commentCard": "The one Tasks Remaining card for the named mail accounts still on legacy authentication (walk list 4.x items 5 and 36): it was a wait headed \"Before turning on\" before the create and \"Prerequisites\" after it, reading \"until each mail account you named moves to a supported mail route\", and it named nobody. moveBefore while the policy is not On; move once it is, when it is already blocking them.",
+      "cardLabel": "Mail accounts",
+      "cardOne": "{names} still signs in with legacy authentication",
+      "cardMany": "{names} still sign in with legacy authentication",
+      "moveBeforeOne": "Move it to a supported mail route before you turn this on.",
+      "moveBeforeMany": "Move them to a supported mail route before you turn this on.",
+      "moveOne": "Move it to a supported mail route.",
+      "moveMany": "Move them to a supported mail route.",
+      "$commentDone": "Block Legacy Authentication's Completion Criteria line for its mail half, where the mail question named accounts (stepContract.ts policyDoneWhen; walk list 4.x items 4 and 26): the mail half is done when none of the named accounts has signed in with legacy authentication in the last 30 days. {accounts} are their names.",
+      "done": "No legacy authentication sign-in by {accounts} in the last 30 days."
     },
     "deviceBriefing": {
       "evidence": "{n} devices in the directory: {managed} marked managed, {compliant} compliant and {hybrid} hybrid joined. Directory inventory does not prove that every device people use is covered.",
@@ -789,6 +945,11 @@
         "none": "Not scheduled",
         "after": "After {step}",
         "afterPrerequisites": "After prerequisites",
+        "$commentReportOnly": "The Up Next tail of a policy waiting out its report-only week (planBoard.ts holdLabelOf; walk list 4.x item 11, owner 2026-09-24): a wait, not a stop. {date} is the week's last day.",
+        "reportOnly": "Report-only until {date}",
+        "$commentRowWords": "Row sub-lines a wait writes for itself (planLanes.ts; walk list 4.x item 27, owner 2026-09-24): the admin readiness threshold as the admins it counts, and a policy that reaches the emergency accounts as the group it does not exclude.",
+        "readinessAdmins": "When every admin has a method it accepts ({ready} of {total})",
+        "notExcluded": "Doesn't exclude {group}",
         "waiting": "After prerequisites",
         "review": "After review",
         "reviewNow": "Review now",
@@ -819,7 +980,8 @@
         "needsDecision": "Decision",
         "observing": "Observing",
         "review": "Review",
-        "readyToEnforce": "Ready to enforce"
+        "$commentReadyToEnforce": "Walk list 4.x item 11 (owner, 2026-09-24): the report-only week reads Up Next, then Ready · Turn on.",
+        "readyToEnforce": "Turn on"
       },
       "progress": {
         "$comment": "The Plan header's four tiles (A1b, decision 11): Steps, Completed (the lane count), Projected finish (A2: the estimate at pace, with the committed day under it when it differs; the placeholder without an estimate) and Started.",
@@ -834,8 +996,8 @@
       },
       "howTo": {
         "link": "How to use this plan",
-        "$commentIntro": "Where to start, and what can be done at once (owner, roadmap flow V2 decision H): the plan lets every policy that can be written be created in report-only on the same day once Emergency Access and the rollout answers are done, and orders only the turn-on. The All work view reads top to bottom, so this says the creates need not wait for the sections above them, and that a turn-on waits on its own row reading Ready · Ready to enforce, never on its section's place: section position gates nothing (V2 research), and a later section's policy can be ready to enforce while an earlier section is on hold. The legend below is the lane words' one explanation; the intro and legend replaced an items list that repeated both.",
-        "intro": "Start at the top of All work and open a step to see its findings, instructions and next action. Once the first two sections are done, every policy marked Ready · Create can be created in report-only straight away. Turn each one on when its own row reads Ready · Ready to enforce. Save your choices, make the changes in Entra or the service named in the instructions, then scan again to check the result. Estimated dates adjust as the plan changes.",
+        "$commentIntro": "Where to start, and what can be done at once (owner, roadmap flow V2 decision H): the plan lets every policy that can be written be created in report-only on the same day once Emergency Access and the rollout answers are done, and orders only the turn-on. The All work view reads top to bottom, so this says the creates need not wait for the sections above them, and that a turn-on waits on its own row reading Ready · Turn on (walk list 4.x item 11), never on its section's place: section position gates nothing (V2 research), and a later section's policy can be ready to enforce while an earlier section is on hold. The legend below is the lane words' one explanation; the intro and legend replaced an items list that repeated both.",
+        "intro": "Start at the top of All work and open a step to see its findings, instructions and next action. Once the first two sections are done, every policy marked Ready · Create can be created in report-only straight away. Turn each one on when its own row reads Ready · Turn on. Save your choices, make the changes in Entra or the service named in the instructions, then scan again to check the result. Estimated dates adjust as the plan changes.",
         "legend": [
           {
             "label": "Ready",
@@ -843,7 +1005,7 @@
           },
           {
             "label": "Up Next",
-            "description": "Complete the linked Ready prerequisites first."
+            "description": "Complete the linked Ready prerequisites first, or let the policy finish its report-only week."
           },
           {
             "label": "On Hold",
@@ -930,6 +1092,8 @@
       },
       "blocked": {
         "after": "after: {stepTitle}",
+        "$commentOperator": "The row reason on a policy that would leave the signed-in account with no way to sign in (roadmap/generate.ts, strand verdict). It read \"when 1 safe way in for the signed-in account exists (now 0)\" (walk list 4.x item 43).",
+        "operator": "when your account has a method this policy accepts",
         "readiness": "when {measure} reaches {threshold} (now {value})",
         "count": "when {n} {thing} exist (now {have})",
         "baseline": "the baseline defines this policy two ways",
@@ -940,6 +1104,8 @@
         "direction": "until every answer is approved",
         "unsettled": "until the groups the source policy leaves out are identified",
         "sourceMapping": "Baseline references an unmapped group",
+        "$commentMailAccounts": "Block Legacy Authentication's turn-on while an account named in Confirm What You Use's mail-sending answer still signs in with legacy authentication (walk list 4.x item 5, option b): the pinned policy does not leave those accounts out, so turning it on would stop their mail.",
+        "mailAccounts": "until each mail account you named moves to a supported mail route",
         "pairUnmatched": "until both policies of the pair can be matched",
         "targetAmbiguous": "until one policy stands out as this goal's own",
         "noOperation": "until a scan rebuilds this step",
@@ -1772,7 +1938,10 @@
         "jsonWaits": "{steps} first: this policy names an object {tenant} does not have yet.",
         "jsonWaitsDecision": "Baseline mappings first (Plan settings): the baseline names a group of its author's, and IAMAI does not yet know whether it stands for something in {tenant} or is left out.",
         "jsonWaitsUnreadable": "The source policy leaves out a group IAMAI cannot identify, so a copy made in {tenant} would reach people the author's own tenant left alone.",
-        "inPlaceKeep": "This is in place already: nothing to create. Keep the policy as it is.",
+        "$commentInPlaceKeep": "A goal already delivered, as its action (stepContract.ts actionOf): the policy by name and that it is On (walk list 4.x items 22 and 31). It read \"This is in place already: nothing to create. Keep the policy as it is.\" on every Satisfied policy card and in AI Info. inPlaceKeep stands where the scan names no policy.",
+        "inPlaceKeep": "Nothing left to do.",
+        "inPlaceOn": "Nothing left to do: {policy} is On.",
+        "inPlaceOnMany": "Nothing left to do: {policy} are On.",
         "pairReviewExpected": "Expected policy name: {name}. Confirm its scope and authentication requirement before assigning this name to an existing policy. Rescan after making an approved correction.",
         "pairUnmatched": "IAMAI found existing guest coverage in {tenant}, but cannot match it to the two baseline policies. Compare the existing policies with the expected pair before creating or renaming anything. See Entra for the names to check.",
         "targetAmbiguous": "{tenant} has more than one policy this goal could correct, and nothing about them says which is its own. IAMAI does not guess: correcting the wrong one would change who another policy applies to. Decide which policy stands for this goal (for example, widen it to everyone, or retire the extra one), then scan again.",
@@ -1786,16 +1955,6 @@
         "switchedOff": "{policy} is already in {tenant} and switched off. Setting it to Report-only is the change here, not a new policy and not On: open it in the Entra admin center, check its settings still match this step, and set Enable policy to Report-only. IAMAI then watches it there, and this step says when it can be turned on.",
         "$commentSwitchedOffMany": "switchedOff for a step the baseline implements with two policies when both are switched off (ui/surfaces/stepContract.ts reasonLine; {policies} is their names, listed). A pair with one member Off reads switchedOff, naming that member. Read off the step's own policy alone, a pair was never read as switched off: with one member Off it handed over a batch that created both guest policies again, and once its gates cleared a PATCH that took the Off one straight to On; with both Off it said to create the two guest policies.",
         "switchedOffMany": "{policies} are already in {tenant} and switched off. Setting each to Report-only is the change here, not new policies and not On: open each in the Entra admin center, check its settings still match this step, and set Enable policy to Report-only. IAMAI then watches them there, and this step says when they can be turned on.",
-        "$commentSwitchedOffSteps": "The portal procedure for each policy this plan tracks that the tenant has switched off (ui/surfaces/stepResources.ts switchedOffLines): the Entra channel, the Implementation Task drawn from it and the exports. A pair with both members Off repeats these lines for each, then switchedOffRescan once. It used to be the inspection lines, \"check its assignments, conditions, access controls and state\", with no instruction for the state itself. The JSON and PowerShell channels carry the same change as a one-field patch, state enabledForReportingButNotEnforced, to each policy's own id.",
-        "switchedOffSteps": [
-          "Open Entra admin center → Entra ID → Conditional Access → Policies, and open “{policy}” ({id}). It belongs to this step and is switched off: do not create another.",
-          "Check its assignments, conditions and access controls still match this step.",
-          "Set Enable policy to Report-only and select Save. Not On: a policy that was switched off goes back through Report-only, and this step says when it can be turned on."
-        ],
-        "$commentSwitchedOffRescan": "The last line of the switched-off procedure (ui/surfaces/stepResources.ts switchedOffLines), said once after every switched-off policy's own lines (switchedOffSteps). It was the last entry of switchedOffSteps and said \"finds it in Report-only\", which a pair with both members Off would have read twice, about one policy.",
-        "switchedOffRescan": "Scan {tenant} again: the next scan reads the change, and IAMAI watches in Report-only from there.",
-        "$commentSwitchedOffTask": "The Implementation Task's title on a switched-off policy (ui/surfaces/policyTasks.ts taskTitle), and the value of its Implementation readiness tile (stepContract.ts implementationTile). The operation the engine still resolves for the step is a create, so the task was titled \"Create the policy in Report-only\" over a procedure that opens the policy that is there, and the tile read \"Unavailable\" over the procedure the step hands over.",
-        "switchedOffTask": "Set the policy to Report-only",
         "manualCorrection": "IAMAI does not write this change: the policy is not what the plan asked for in {fields}. Correct it in the Entra admin center, then scan {tenant} again.",
         "emergencyUnsafe": "This policy would apply to {tenant}'s emergency access accounts. IAMAI writes nothing until the exclusions group carves them out: fix the exclusions-group step, then scan again.",
         "emergencyUnproven": "IAMAI cannot prove this policy leaves {tenant}'s emergency access accounts out of scope, because it could not read who is in the group the policy excludes. Nothing is offered on a reading that did not finish: scan again.",
@@ -1847,17 +2006,18 @@
           "$commentMilestone": "Verify Emergency Access's line under its milestone while an account still has to sign in (cleanupExport.ts drillMilestone), in place of \"Verify every selected account after the final configuration is observed.\". Owner wording, 2026-09-23.",
           "milestone": "Sign in with each emergency access account."
         },
-        "escapeHatchHeld": "Running this would turn the policy on straight away, and the way back in to {tenant} is not verified yet. Finish {steps} first; the instructions come back when its checks pass.",
+        "escapeHatchHeld": "It turns on after {steps}.",
         "$commentReadinessHeldCreate": "Owner, 2026-09-23: \"Hold the create for that policy until ready.\" A policy whose grant requires a compliant device is not created in report-only while the device readiness that gates its turn-on is unmet (roadmap/operations.ts createWaitsOnReadiness), because report-only prompts for a certificate (Microsoft Learn, concept-conditional-access-report-only). The fact, then what it waits on; no instruction.",
         "readinessHeldCreate": "{certificatePrompt} So creating this policy waits, as turning it on does, until {measure} reaches {threshold}; it is {value} now.",
         "$commentReadinessHeldSwitchedOff": "The same wait for a compliant-device policy the scan found in the tenant switched off: its Report-only patch waits on the same threshold (roadmap/operations.ts createWaitsOnReadiness), and the line says the policy was found, so it never reads as a policy still to create.",
         "readinessHeldSwitchedOff": "{certificatePrompt} {policy} is already in {tenant}, switched off. So setting it to Report-only waits, as turning it on does, until {measure} reaches {threshold}; it is {value} now.",
-        "readinessHeld": "Running this would change what {tenant}'s people have to do straight away, and {measure} is {value} - this step waits until it reaches {threshold}. The instruction being withheld is the one that turns the policy on; the rest of this step stays available, and turning it on comes back when {measure} reaches {threshold}.",
+        "readinessHeld": "It stays until {measure} reaches {threshold} ({value} today).",
+        "$commentReadinessHeldAdmin": "readinessHeld on the admin policy, whose gate is every admin (walk list 4.x item 44): the admins' own count (roadmap/methodReadiness.ts).",
+        "readinessHeldAdmin": "It stays until every admin has a method it accepts ({ready} of {total} today).",
         "footerJson": "JSON",
         "cleanupDoneOn": "Done on",
         "cleanupDone": "Done",
         "cleanupDoneRow": "done {date}",
-        "lockoutSuffix": "{n} would be stopped",
         "stepContract": {
           "$comment": "The Step Contract (Foundation D, src/ui/surfaces/stepContract.ts). Every Plan step answers the same questions in the same order: where it is now and what happens next, why, what IAMAI found, who it touches, what to do, what to fix first, how you will know it is done, and More. These are the words the contract itself supplies; each step's own sentences stay in its steps[] entry.",
           "lifecycle": {
@@ -1925,9 +2085,7 @@
           "member": "Policy {label}",
           "memberLine": "{name}: {lifecycle}",
           "memberWatched": "{name}: {lifecycle}, watched since {date}",
-          "memberReview": "{name}: {lifecycle}, and it needs a look",
-          "whoUnknown": "IAMAI cannot establish exactly who this reaches: this scan could not settle the policy's scope, so no count is shown.",
-          "whoUnknownDecision": "IAMAI cannot establish who this reaches until the baseline's references are mapped in Plan settings, so no count is shown.",
+          "memberReview": "{name}: {lifecycle}, and not what the plan asks",
           "stateWords": {
             "$comment": "The Plan state words the one projection adds (src/ui/surfaces/planState.ts): a policy the tenant already enforces that the plan must change and cannot yet, and emergency access whose minimum is in place while its hardening is deferred to Cleanup.",
             "needsCorrection": "Needs correction",
@@ -1942,21 +2100,32 @@
           "foundEnforcedShort": "This policy is enforced, and {line} Anyone it does not accept is refused where it applies until they register a method it does.",
           "$commentFoundEnforcedUnmeasured": "The readiness gate is computed only for an unfinished step, so a policy enforced in the portal while IAMAI was holding it back lost every trace of the hold. A reader enforced the admin policy with neither admin's method readable (the registration source was 403); the step read Completed, its Done-when satisfied, and nothing said the threshold had never been met - a gate that congratulates you for walking around it. The finished step now states the threshold and that nothing showed it met. It holds nothing: the work is done, and this is a fact about the tenant. It claims nothing about WHEN the policy went on, which IAMAI cannot know for a policy it found already enforced.",
           "foundEnforcedUnmeasured": "This policy is enforced. The plan holds enforcement until {measure} reaches {threshold}, and IAMAI cannot measure it, so nothing has shown that threshold met. Anyone it does not accept is refused where it applies until they register a method it does.",
-          "$commentFoundEnforcedBelowThreshold": "Said after foundEnforcedShort where the reading is below the plan's own threshold, which the finished step otherwise never named once the gate was gone. The value now, never when the policy went on.",
-          "foundEnforcedBelowThreshold": "The plan holds enforcement until {measure} reaches {threshold}; it is {value} now.",
-          "foundEnforcedBelowThresholdFloor": "The plan holds enforcement until {measure} reaches {threshold}; it is at least {value} now.",
-          "belowGoalFloor": {
-            "$comment": "Owner, 2026-09-22 (R4-11): the pinned baseline's admin policy grants \"Modern MFA + TAP\" under a goal whose floor is phishing-resistant MFA. The pinned baseline wins: IAMAI builds it and turns it on as written, and says the grant is weaker. It never asks the admin to change it.",
-            "label": "Baseline Grant",
-            "value": "Weaker than {floor}",
-            "note": "The baseline writes this policy to ask for {grant}, which is weaker than the {floor} this goal names. IAMAI builds it and turns it on as the baseline wrote it.",
-            "floors": {
-              "mfa": "multifactor authentication",
-              "passwordless": "passwordless sign-in",
-              "phishingResistant": "phishing-resistant MFA"
-            },
-            "grantMfa": "multifactor authentication",
-            "grantStrength": "the {strength} authentication strength"
+          "dormantNoMethod": {
+            "$comment": "Require MFA for Everyone's card for the accounts its policy reaches that have not signed in for 90 days, or ever, and hold no method it accepts, the ones kept in Disable or Confirm Dormant Accounts aside (stepContract.ts dormantOf). Owner, 2026-09-24 (walk list 4.x item 10 and L4): they no longer hold the step's 90% gate, which counts the people MFA Readiness counts; whoever signs in to one first registers its method, so the step names them and where to disable them. Up to twenty by name; past that, the step that disables them lists them.",
+            "label": "Dormant Accounts",
+            "value": "{n} accounts haven't signed in for 90 days and have no method",
+            "valueOne": "1 account hasn't signed in for 90 days and has no method",
+            "names": "Disable {names} in {step}.",
+            "listed": "Disable them in {step}, which lists them."
+          },
+          "operatorCard": {
+            "$comment": "The card on a policy that would leave the signed-in account with no way to sign in (stepContract.ts operatorOf). Owner, 2026-09-24 (walk list 4.x item 43): one heading in every state, the account named, and the step that fixes it. It was headed \"Before turning on\" in one state and \"Prerequisites\" in another, over \"Your safe way in · when 1 safe way in for the signed-in account exists (now 0)\".",
+            "label": "Your account",
+            "value": "No method this policy accepts",
+            "admin": "{name} holds an admin role and has no passkey or security key.",
+            "other": "{name} has no passkey or security key.",
+            "fix": "{step} fixes this before it turns on."
+          },
+          "methodGate": {
+            "$comment": "The Threshold card on a step whose turn-on waits on people's methods (mfa, admin and guest gates; stepContract.ts methodGateSentence). Owner, 2026-09-24 (walk list 4.x items 42, 48): the admin gate counts admins and names up to five of those short, with what each needs; every other method gate keeps its percentage and states the engine's count line (engine.readiness.methodLine). Both end on the step that gets them ready, and link to it. It replaced \"Enforcement waits for {measure} to reach {threshold}; it is {value} today.\" and \"…; it waits on X, which is where to start\" on these gates: the row and the value state the threshold.",
+            "adminValue": "{ready} of {total} admins have a method it accepts",
+            "needs": "{names} needs a passkey, security key or Windows Hello.",
+            "needMany": "{names} need a passkey, security key or Windows Hello.",
+            "needListed": "{n} admins need a passkey, security key or Windows Hello; MFA Readiness lists them.",
+            "signIn": "{names} needs to sign in once with the method they registered.",
+            "signInMany": "{names} need to sign in once with the method they registered.",
+            "signInListed": "{n} admins need to sign in once with the method they registered.",
+            "route": "{step} gets them ready."
           },
           "ownPolicyDiffers": {
             "$comment": "Owner, 2026-09-22: a policy the tenant wrote delivers the goal and differs from the baseline's in a part coverage does not judge (token protection without the Cloud PC filter; a compliant-device policy on every platform). The step stays Completed and states the difference; it never asks the tenant to change a policy that works, which could weaken it.",
@@ -1964,7 +2133,6 @@
             "note": "{policy} delivers this goal and differs from the baseline's policy in {dimensions}. That may be deliberate: IAMAI reads the goal as delivered and does not ask you to change it."
           },
           "$commentFoundEnforcedUnwatched": "Owner decision 3 (2026-09-22; R4-12, Jordan D7): a finished policy this plan owns (its tag on the satisfying policy, enforced) that went live with no report-only period IAMAI watched stays Completed, and its Readiness says so on a warning tile (ui/surfaces/doneWhen.ts enforcedUnwatched: IAMAI watched every policy member go On from not deployed at the scan before, or from Off on the same object after a scan that recorded it not deployed, with no report-only state between, and the scan's sign-in records show no report-only result for it, observation.ts skippedWindow). A record must have seen the step's policy not deployed. Never on a policy a first scan found On or Off, which is also how a policy this plan built and watched through report-only reads from a second browser or after Forget: IAMAI cannot know that one skipped anything. Never on a different object replacing the one recorded, which the record only sighted and the scan before may have seen in report-only. Built straight to On, policies on the pinned baseline filed under Completed with the scan's sentence alone, and the one note saying nobody watched them sat under New evidence. This tile is that fact's one home on the step: the New evidence note that says the same (observations.appearedEnforced) is left out where it draws. It states what IAMAI could watch, never when the policy went on, which IAMAI cannot know. Never on a policy the tenant already had (In place): nothing went live under this plan there. The check after the change stays in the Done-when (shared.policyVerifyAfter), and this sentence does not repeat it.",
-          "foundEnforcedUnwatched": "This policy went live without a report-only period IAMAI could watch, so IAMAI observed nothing of it before it started applying to sign-ins.",
           "followUp": {
             "$comment": "Owner decision 9 (2026-09-22): one person on leave need not hold every policy that waits on Prepare Your Team for MFA. The people a person marks there to turn on without, for now, are named on the campaign and on each policy that reaches them, with what happens at their next sign-in.",
             "label": "Follow-Up List",
@@ -1985,6 +2153,41 @@
             "guest": "guests in scope",
             "admin": "admins",
             "device": "people in scope"
+          },
+          "drift": {
+            "$comment": "A deployed policy no longer what the plan asked for in a part IAMAI does not write, as one card with its fix (stepContract.ts driftCardOf; walk list 4.x item 24, owner 2026-09-24). names are the portal's own names for each dimension (roadmap/observation.ts semanticFieldsOf keys).",
+            "changed": "{dimensions} changed",
+            "setBack": "Set {dimension} back to {value}.",
+            "setBackTasks": "Set {dimension} back as Implementation Tasks shows.",
+            "$commentDiffers": "A policy first seen already different from the plan never had the setting (R4-25): it differs, and the fix sets it, never back.",
+            "differs": "{dimensions} differ from the plan",
+            "set": "Set {dimension} to {value}.",
+            "setTasks": "Set {dimension} as Implementation Tasks shows.",
+            "anyExcept": "Any device except {platforms}",
+            "notConfigured": "Not configured",
+            "names": {
+              "users": "Users",
+              "applications": "Target resources",
+              "clientAppTypes": "Client apps",
+              "platforms": "Device platforms",
+              "locations": "Locations",
+              "devices": "Filter for devices",
+              "signInRiskLevels": "Sign-in risk",
+              "userRiskLevels": "User risk",
+              "servicePrincipalRiskLevels": "Service principal risk",
+              "insiderRiskLevels": "Insider risk",
+              "authenticationFlows": "Authentication flows",
+              "grantControls": "Grant",
+              "sessionControls": "Session",
+              "other": "A condition"
+            }
+          },
+          "acceptedWho": {
+            "$comment": "Who a finished policy's readiness fact counts, by its family (readiness.tiles.accepted; walk list 4.x item 2).",
+            "mfa": "people",
+            "guest": "guests",
+            "admin": "admins",
+            "device": "people"
           },
           "readinessRoute": {
             "$comment": "Where a readiness number is moved, by its family (copy/reasons.ts READINESS_MEASURE), for a measure the plan itself has no step for. A family with no entry states the number alone.",
@@ -2025,15 +2228,38 @@
           "$commentInventoryNames": "The Guest Directory tile joined its note and its names with newlines and nothing between them, so on a tenant with one guest the tile read as two sentences and then a person's name on a line of its own, with nothing saying what the name was. A list says it is a list.",
           "inventoryNames": "The accounts, as the directory names them:",
           "foundTaggedDisabled": "{policy} already carries this step's tag in {tenant} and is switched off, so it is doing nothing today. IAMAI does not turn a policy on: review its settings in the Entra admin center and, if it is the one you want, set Enable policy to Report-only there, not On.",
-          "foundDiffers": "{policy} is deployed, but not as this step asked: {fields} differ from the target above. Compare them in the Entra admin center, or re-run this step's instructions to write the intended settings.",
+          "foundDiffers": "{policy} differs from the plan in {fields}.",
           "$commentFoundWatched": "A step IAMAI WATCHED move is not a report of coverage that was already there (stepContract.ts foundOf, observation.ts since === 'observed-change'). Saying \"already delivered ... so there is nothing to create\" on the step somebody has just created, watched for a week and enforced erases their work and describes it as a policy they never needed to build.",
-          "$commentFoundInherited": "A tenant IAMAI has planned before arrives carrying policies with IAMAI's own tag, and the step said \"Already delivered by X, so there is nothing to create\" — the wording for coverage somebody else put there. Neither half of the existing pair fits. The first version of this said the policy was written \"before IAMAI's first scan\", which IAMAI cannot know and which its own record disproved: a reader found it on a policy recorded ABSENT on three consecutive scans and watched appearing on the fourth, eight days after the first scan, with `neverObserved` set. What the tag proves is authorship, not a date, so that is all it now says. `neverObserved` cannot rescue the date either: it is set both for a policy the first scan found enforced and for one deployed straight to enforced under the watch. Where IAMAI watched a rollout go On with no report-only period (observation.ts skippedWindow), the Readiness tile (stepContract.foundEnforcedUnwatched) says so in its own words beside this line.",
-          "foundInherited": "{policies} carries this step's tag, so it was written from this plan rather than by hand. This scan did not watch it change; it reads it as it stands in {tenant} now.",
-          "foundInheritedTogether": "{policies} carry this step's tag, so they were written from this plan rather than by hand, and no one of them covers the whole goal on its own. This scan did not watch them change; it reads them as they stand in {tenant} now.",
           "foundInPlaceWatched": "{policies} is in place. IAMAI watched it get there.",
           "foundInPlaceWatchedTogether": "{policies} are in place together, and no one of them covers the whole goal on its own. IAMAI watched them get there.",
           "foundInPlaceTogether": "Already delivered by {policies} together — none of them covers the whole goal on its own — so there is nothing to create.",
           "doneSatisfied": "The scan found the assessed configuration in place.",
+          "$commentPolicyFact": "What a policy in Turn On MFA for Everyone does, read from the policy IAMAI will see (ui/surfaces/policyFact.ts): the policy the step writes while it is open, and the tenant policy that delivers it once done. Its Satisfied card states it (walk list 4.x item 22: \"On · Requires MFA for All users except Core - Exclusions\"), its Completion Criteria's first line (item 26) and its AI Info lead (item 31). verbs holds each verb in the third person and as a participle; controls names the built-in grant controls a fact can state. A policy with anything these words cannot say gets no fact.",
+          "policyFact": {
+            "on": "On",
+            "verbs": { "blocks": ["blocks", "blocking"], "requires": ["requires", "requiring"] },
+            "legacyClients": "Exchange ActiveSync and Other clients",
+            "exchangeActiveSync": "Exchange ActiveSync clients",
+            "otherClients": "Other clients",
+            "deviceCode": "device code sign-in",
+            "authenticationTransfer": "authentication transfer",
+            "signIn": "sign-in",
+            "mfa": "MFA",
+            "controls": { "compliantdevice": "a compliant device", "domainjoineddevice": "a hybrid joined device", "approvedapplication": "an approved client app", "compliantapplication": "an app protection policy", "passwordchange": "a password change" },
+            "either": "{a} or {b}",
+            "allUsers": "All users",
+            "guests": "guests",
+            "fact": "{verb} {what} for {who}",
+            "except": "{who} except {excluded}",
+            "resources": "across All resources",
+            "resourcesExcept": "across All resources except {apps}"
+          },
+          "$commentDoneOn": "Completion Criteria on a policy in Turn On MFA for Everyone (walk list 4.x item 26, owner 2026-09-24): two lines, the same in every state. doneOn is what IAMAI will see ({fact} is policyFact's participle form); the second line is the report-only period the policy has to pass (\"period\", not the owner's \"week\": Block Legacy Authentication and Block Device Code Sign-in watch 3 days where nobody used the flow), left out where the scan found the policy already On, and shared.policyVerifyAfter in its place where the policy went On without a report-only period IAMAI watched (owner, 2026-09-22). doneOnPlain is the first line where IAMAI holds no fact for the policy.",
+          "doneOn": "IAMAI sees {policy} On, {fact}.",
+          "doneOnPlain": "IAMAI sees {policy} On.",
+          "donePeriod": "Its report-only period showed no sign-in it would have stopped.",
+          "$commentDonePeriodMail": "The second line where Confirm What You Use named mail accounts (walk list 4.x item 26: two lines): the report-only line and the mail half in one sentence. It was a third line.",
+          "donePeriodMail": "Its report-only period showed no sign-in it would have stopped, and {accounts} used no legacy authentication in the last 30 days.",
           "doneBlocked": "Everything Readiness lists is cleared.",
           "doneConflict": "The baseline author publishes a version that resolves the contradiction between the policy's documentation and its definition.",
           "doneDecision": "The question on this step is answered and saved.",
@@ -2056,17 +2282,12 @@
           "setAsideAction": "Put this step back if you want it on the plan again.",
           "$commentLeadUnverified": "The lead of a finished step, other than the one with the emergency-access tiers, whose open findings are all unread (outcome unknown). It read its milestone, \"No change needed.\", over a tile saying Could not verify: on the Follow-up snapshot Configure Passkey Settings said so over \"Existing passkeys affected - Could not verify\", whose note said some registered authentication methods were not readable. An absolute all-clear over a check IAMAI could not make is a claim it cannot know; this scopes the all-clear to what was read and names the check that was not. A finished step with an open failing finding keeps its milestone words: an owner question, not settled here.",
           "leadUnverified": "Nothing IAMAI could read here needs a change. It could not verify {findings}, and says there what was not read.",
-          "fixStep": "Finish {step} first.",
-          "$commentFixStepOvertaken": "Completed answers \"what is left to do\", so a completed step carried no prerequisites and the record of one going unmet was erased. A reader enforced ten policies in the portal with the emergency-access drill still undone — every \"Prerequisite · To do\" tile disappeared as the last one went on, the steps read \"moved to enforced, as the plan asked\", and nothing anywhere said the recovery path had never been verified. The prerequisite is not work on the completed step any more, but it is still unmet, and the order not followed is a fact about the tenant.",
-          "$commentFixStepOvertaken": "It ended \"so that order was not followed\": a verdict on the person, and false where the policy was on before the plan existed (the first scan found it enforced). The fact stays, in the present tense: this step is done and the step the plan puts first is not.",
-          "fixStepOvertaken": "This step is finished, and {step}, which the plan puts before it, is not finished yet.",
-          "$commentFixStepOvertakenOpen": "The overtaken note is the engine's: the step reached its outcome (a policy enforced as pinned) ahead of a hard prerequisite. The board can still draw that step outside Completed — a policy already on with a workflow record or an unmatched guest pair to review reads Ready · Review — and the note said \"This step is finished\" beside a badge saying there is work left on it (R4-NEW-jordanb-1). The fact stays: the change went in before the prerequisite. Only the claim that the step is finished goes, where the board does not say it is.",
-          "fixStepOvertakenOpen": "This step's change is already in place, and {step}, which the plan puts before it, is not finished yet.",
-          "$commentFixStepAt": "A prerequisite is not always waited on until it is FINISHED (src/actionability/dependency-data.json carries the milestone on every edge). Turn Off Security Defaults waits for the replacement policies to be ready to enforce; those policies wait for it to be complete. Both tiles said \"Finish the other first\", so the pair read as a deadlock that the data does not contain — and the way out of an apparent deadlock is to turn security defaults off, which is the one thing the step's own words say not to do yet.",
+          "fixStep": "After {step}.",
+          "$commentFixStepAt": "A prerequisite is not always waited on until it is FINISHED (src/actionability/dependency-data.json carries the milestone on every edge). Turn Off Security Defaults waits for the replacement policies to be ready to enforce; those policies wait for it to be complete. Both tiles said \"Finish the other first\", so the pair read as a deadlock that the data does not contain — and the way out of an apparent deadlock is to turn security defaults off, which is the one thing the step's own words say not to do yet. A null milestone draws no note under the card: Turn Off Security Defaults' own card already says to turn them off the day the four policies below it are ready (walk list 4.x item 50).",
           "fixStepAt": {
-            "ready-to-enforce": "{step} needs to be ready to enforce first — not finished, just ready.",
+            "ready-to-enforce": null,
             "created": "{step} needs to exist first.",
-            "enforced": "{step} needs to be enforced first.",
+            "enforced": null,
             "resolved": "{step} needs to be resolved first.",
             "minimum-satisfied": "{step} needs its minimum safety checks passed first.",
             "hardening-complete": "{step} needs its hardening cleared or deferred first.",
@@ -2135,13 +2356,18 @@
               "decision": "Decision",
               "gate": "Threshold",
               "reading": "Readiness",
+              "$commentAccepted": "A finished policy's readiness, stated under Satisfied: a Completed step shows no open card (walk list 4.x item 2, owner 2026-09-24). {who} is acceptedWho by family.",
+              "accepted": "{ready} of {total} {who} have a method it accepts",
               "observation": "Observation",
-              "observationUntil": "Until {date}",
-              "$commentUnwatched": "The short value of the Observation tile a finished policy this plan owns draws where it went live with no report-only period IAMAI watched (owner decision 3, 2026-09-22; R4-12). Its note is stepContract.foundEnforcedUnwatched.",
-              "unwatched": "No report-only period watched",
+              "$commentUnwatched": "The Satisfied fact a finished policy this plan owns states where IAMAI watched it go live with no report-only period (owner decision 3, 2026-09-22; R4-12; walk list 4.x item 2, owner 2026-09-24). {date} is the scan that first saw it On, or Microsoft's own date for it.",
+              "unwatched": "On since {date}, without a report-only week",
+              "turnedOn": "Turned on",
               "exclusions": "Exclusions",
               "exclusionsReached": "Reaches emergency access",
               "exclusionsUnproven": "Not proven",
+              "$commentNotExcluded": "A policy that reaches the emergency accounts, as one card with its fix, opened on Configure Emergency Exclusions (stepContract.ts exclusionsTile; walk list 4.x item 24).",
+              "notExcluded": "Emergency accounts not excluded",
+              "notExcludedFix": "Add {group} under Users → Exclude.",
               "blockers": "Prerequisites",
               "$commentBeforeTurnOn": "The label of a wait that holds only the turn-on, on a policy whose next action is its Report-only create (R4-31, Marcus D12). The registration policy read Ready · Create with its MFA threshold on the card and nothing about the Temporary Access Pass it cannot be turned on without: the engine held that wait and the page dropped it until the policy had been built. Headed Prerequisites, the same wait would claim the create is blocked, which readiness never does (owner, 2026-09-11: readiness gates enforcement, not creation). After the create, turning it on is the next action and the wait is a Prerequisite again.",
               "beforeTurnOn": "Before turning on",
@@ -2164,8 +2390,6 @@
               "exclusionsReach": "Policies",
               "exclusionsReachValue": "{n} of {total} policies exclude the group",
               "exclusionsReachNote": "The count shows policies this scan verified. Selecting the group does not change a policy; each policy step adds it where it is missing.",
-              "observationNote": "Review the available records and the remaining evidence requirements. Time elapsed alone does not complete this check.",
-              "observationDateNote": "This is the earliest review date, not a scheduled automatic enforcement.",
               "notMeasured": "Not measured",
               "$commentAwaitingReview": "A policy that is enforced and waiting on the person to record their workflow test rendered Ready / Enforced, milestone Review now, and ZERO readiness tiles and ZERO findings - three readers reported the same empty step, two of them on the same step id. Its Done-when listed five lines: three that IAMAI checks itself and two that are the person, with nothing saying which of them remained. The step knows: awaitsWorkflowRecord is true and manualReview.confirmedAt is not set.",
               "awaitingReview": "Waiting on you",
@@ -2216,7 +2440,6 @@
               "existing": "Tenant policies already delivering this goal",
               "current": "Current tenant policy",
               "currentState": "Current state",
-              "changedFields": "Fields that differ from the target",
               "removedExclusions": "Exclusions the correction removes",
               "target": "Names and IDs in the intended target",
               "targetName": "Policy name",
@@ -2247,14 +2470,13 @@
               },
               "tenant": "Tenant",
               "scanned": "Latest scan",
-              "proposed": "IAMAI proposes these settings. The step cannot hand them over yet; What remains says why.",
               "previewValues": "Values shown as ‹…› are not resolved yet. Do not run this output.",
               "unresolvedFields": "Not available in this scan: {fields}",
               "request": "Request",
               "focus": "Focus for this step",
               "unavailable": "Not available in this scan."
             },
-            "excludeUsersNone": "none: the resolved target excludes no individual accounts",
+            "excludeUsersNone": "none",
             "copy": "Copy implementation",
             "expand": "Expand implementation",
             "dialogEyebrow": "Implementation",
@@ -2779,7 +3001,6 @@
           "s-ladder-guest-review": "Guest access",
           "s-ladder-authenticator-over-sms": "Sign-in methods",
           "s-ladder-global-admin-count": "Global Administrators",
-          "s-prereq-per-user-mfa": "Per-user MFA",
           "s-blocker-allowed-countries": "Allowed countries",
           "s-prereq-allowed-countries": "Allowed countries",
           "s-ladder-security-defaults": "Tenant sign-in protection",
@@ -2788,8 +3009,7 @@
           "s-prereq-exclusion-group": "Policy exclusions",
           "s-prereq-device-plan": "Phones and computers",
           "s-ladder-phone-access-restriction": "Phone access",
-          "s-shared-devices": "Shared-device accounts",
-          "s-goal-admin-portals-protected": "Administrator portals"
+          "s-shared-devices": "Shared-device accounts"
         },
         "impactDefault": "Tenant settings",
         "impactPolicy": "Policy scope",
@@ -2930,7 +3150,7 @@
               "label": "Devices or apps that send email by signing in (printers, scanners, line-of-business apps)",
               "seen": "{n} accounts signed in to send email in the last 30 days.",
               "notSeen": "No email-sending sign-ins in the last 30 days.",
-              "consequence": "Answering Pick accounts makes them service accounts: they leave the people counts, and Block Legacy Authentication gets a task to move each to a supported mail route.",
+              "consequence": "Answering Pick accounts makes them service accounts: they leave the people counts, and Block Legacy Authentication waits until each moves to a supported mail route.",
               "why": "Signed in to send email in the last 30 days."
             },
             "partner": {
@@ -3010,15 +3230,11 @@
         },
         "$commentNoOperationDisabled": "\"This step has no policy for IAMAI to write in this plan. Scan again to rebuild it.\" was said over a step whose policy EXISTS in the tenant and is switched off - the step was tracking it, state disabled, on both the latest scan and the one before. So the sentence was false and its remedy did nothing: a reader scanned three times, got byte-identical output, and stopped. Said where every policy this step tracks is disabled.",
         "noOperationDisabled": "A policy for this step already exists in {tenant} and is switched off, so there is nothing for IAMAI to create. Set Enable policy to Report-only in the Entra admin center, not On: IAMAI watches it there, and this step says when it can be turned on. Scan again once it is in Report-only.",
-        "$commentEnforceOutstanding": "The enforce checklist is headed \"Do not turn it on unless all of these are true now\" and lists three conditions, authored identically in forty-odd packages. It never carried the step own unresolved prerequisites - so a tenant with security defaults still ON had a tile reading \"Turn Off Security Defaults - Prerequisite - Waiting\" four lines above a checklist that did not mention them, on a policy the security-defaults step names as one of its four replacements. Eight policies were enforced into a state the product itself calls unsupported and irreversible. Spliced into the list rather than authored per package, so every package gets it and none can be missed.",
-        "$commentEnforceOutstanding": "This was spliced INTO the checklist, under the line \"Do not turn it on unless all of these are true now\" - so a list of conditions that must be true opened with a sentence saying something is not finished. Two readers hit it independently; one followed it literally and enforced ten policies with the prerequisite unmet. It now stands above the checklist as the stop it is, and says plainly not to continue.",
-        "enforceOutstanding": "Stop: {items} is not finished, and this policy is part of it. Leave this policy in Report-only until it is.",
-        "enforceOutstandingMany": "Stop: these are not finished, and this policy is part of them: {items}. Leave this policy in Report-only until they are.",
-        "$commentSecurityDefaultsCoexist": "The plan states its own ordering invariant on this step - \"security defaults must be off before the policies replacing them can take over, and once these policies exist you cannot turn security defaults back on... That is why nothing in this plan enforces before this step.\" A reader enforced eight policies with security defaults still on, swept all thirty-three steps, and found no warning anywhere; the board read Completed and the tile said \"IAMAI watched it get there.\" The step that owns the invariant is the one place that must notice it has been broken.",
+        "$commentEnforceOutstanding": "Owner, 2026-09-24 (walk list 4.x items 17 and 44): the turn-on task's one line while the plan's own prerequisites hold it (ui/surfaces/policyTasks.ts policyProcedureOf). It read \"Stop: {items} is not finished, and this policy is part of it\", and the policy is not part of that step; it stood inside a checklist the two-line turn-on no longer has.",
+        "enforceOutstanding": "Wait for {items}; leave this policy in Report-only until then.",
         "$commentSecurityDefaultsCoexistPointer": "It ended \"and this is the step that turns them off\", which reads as the way out. On the tenant where it fired the plan's own MFA policy was still held below its threshold, and turning security defaults off then removes the MFA they require from everybody (Sam D2). The step turns them off only once the replacements can go On in the same change window, and the line says that instead.",
-        "securityDefaultsCoexist": "{n} Conditional Access policies are enforced in this tenant while security defaults are still on, which Microsoft does not support. Do not turn security defaults off to settle it: this step does that only once the policies that replace them can go On in the same change window.",
         "$commentSecurityDefaultsNeverOn": "Turn Off Security Defaults read Completed on a tenant whose security defaults were already off when this plan first scanned it: a row claiming work nobody did (roadmap-flow V1 decision 6, Stage 3). The plan records the day a scan first read them on (PlanDecisions.securityDefaultsSeenOnAt); where there is none the step does not apply, and this is the reason the Doesn't apply here footer states for it. The scan says so, not a person, so it is drawn without the you-said prefix (pages.plan.footer.doesntApplyScanRow).",
-        "securityDefaultsNeverOn": "No scan of this plan has read security defaults on, so there is nothing to turn off."
+        "securityDefaultsNeverOn": "Security defaults are already off."
       },
       "readiness": {
         "$commentLineNoRecordsReason": "It read \"no sign-in records ({reason})\" beside a count of 0, and the reason often said the same thing or carried its own parentheses. One sentence now, and a reason that only restates it is left out.",
@@ -3910,7 +4126,7 @@
       "kind": "object",
       "title": "Create or Correct Service Accounts Group",
       "changeLine": null,
-      "why": "Block Legacy Authentication and Restrict Service Accounts to the Trusted Network wait on this group. It holds the service accounts you picked in Identify Service and Shared Accounts.",
+      "why": "Restrict Service Accounts to the Trusted Network waits on this group. It holds the service accounts you picked in Identify Service and Shared Accounts.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/architecture/secure-service-accounts"
       },
@@ -4092,51 +4308,37 @@
       "kind": "object",
       "title": "Turn Off Security Defaults",
       "changeLine": null,
-      "why": "Replacing Security Defaults gives you more control over access rules. The changeover needs care so the tenant does not lose protection between the two configurations.",
+      "why": "Security defaults and Conditional Access can't run together. Turn security defaults off on the day the policies that replace them turn on, so the tenant is never without MFA.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/fundamentals/security-defaults"
       },
       "who": {
         "$comment": "A lead per read state: the scan read security defaults on, or read them off. Where it read neither, the lead is unresolved rather than the sentence for a state nobody confirmed.",
         "leadWhen": {
-          "securityDefaultsOn": "Everyone in {tenant}: security defaults require MFA, block legacy authentication and block device code sign-in today, and four policies of this plan take over all of it.",
-          "securityDefaultsOff": "Everyone in {tenant}: security defaults are already off, so nothing requires MFA, blocks legacy authentication or blocks device code sign-in tenant-wide until the four policies of this plan that replace them are enforced."
+          "securityDefaultsOn": "Everyone in {tenant}: security defaults require MFA, block legacy authentication and block device code sign-in today, and the policies of this plan that replace them take over all of it.",
+          "securityDefaultsOff": "Everyone in {tenant}: security defaults are already off."
         }
       },
       "decision": null,
+      "$commentWhatToDo": "One procedure in every state (walk list 4.x items 8, 18 and 51): turn security defaults off, then turn on in the same change the four policies that replace them, each by the name it has in the tenant (turnOn1 to turnOn4, in the Plan's order: roadmap/enforceWaits.ts noteTurnOns, ui/surfaces/stepVars.ts). A policy not on the plan has no name, and its line is not drawn. The step completes when a scan reads security defaults off; every other policy turns on from its own step after that.",
       "whatToDo": {
-        "lead": "Security defaults and Conditional Access are not meant to run together, and the rule runs both ways: security defaults must be off before the policies replacing them can take over, and once these policies exist you cannot turn security defaults back on. That is why nothing in this plan enforces before this step. One order works, and it is the one this plan follows: create all four replacements in Report-only while security defaults are still on, watch them there, then turn security defaults off and enable all four in the same change window. Turn them off on that day and not before.",
+        "lead": "Turn security defaults off in the same change that turns on the policies that replace them.",
         "steps": [
-          "Check each policy that takes over: Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins. Any one of them not enforced already must have run in report-only with no failures before you turn it on today.",
-          "Entra admin center → Entra ID → Overview → Properties → Manage security defaults → Disabled (not recommended) → Save. You need at least the Conditional Access Administrator role.",
-          "Right after saving, enable Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins in the same change window, then test sign-in."
+          "As at least a Conditional Access Administrator, open [Microsoft Entra admin center](https://entra.microsoft.com/) → Entra ID → Overview → Properties → Manage security defaults.",
+          "Select Disabled (not recommended), then Save.",
+          "Go to Entra ID → Conditional Access → Policies.",
+          "Open {turnOn1}, set Enable policy to On and select Save.",
+          "Open {turnOn2}, set Enable policy to On and select Save.",
+          "Open {turnOn3}, set Enable policy to On and select Save.",
+          "Open {turnOn4}, set Enable policy to On and select Save.",
+          "Return to IAMAI and select Scan to update the plan."
         ]
-      },
-      "$commentWhatToDoWhen": "The procedure for the state the scan read, beside doneWhenWhen: where the fact holds this object replaces whatToDo whole (content/render.ts whatToDoFor), on the screen, every export and the review page. whatToDo above is the cutover this step performs where security defaults were read on or could not be read. Where the scan read them already off, the step is Completed on that fact alone, and its Implementation Tasks — drawn as reference, still readable — told the reader to disable security defaults and, right after saving, to enable Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins in the same change window: on hostile the admin policy was Not deployed and held by its own readiness gate, and only a report-only guard two lines up stood between the reader and turning it on (R4-38 follow-up). There is nothing to turn off in that state, and each replacement turns on from its own step, under its own gates. No lead: a Completed step's action is the contract's milestone.",
-      "whatToDoWhen": {
-        "securityDefaultsOff": {
-          "steps": [
-            "Entra admin center → Entra ID → Overview → Properties → Manage security defaults: check it reads Disabled (not recommended). There is nothing to change on this step.",
-            "Turn on Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins each from its own step, when that step says it is ready. None of them is turned on from here."
-          ]
-        }
       },
       "dates": null,
       "doneWhen": [
-        "Security defaults are off; Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins are enforced.",
-        "Test sign-in for representative users and admins right after the changeover."
+        "IAMAI reads security defaults as Disabled."
       ],
-      "$commentDoneWhenWhen": "The Done-when for the state the scan read, beside who.leadWhen. The lines above are the cutover this step performs where the scan read security defaults on (or could not read them): turn them off and enforce the four replacements in the same window. The step completes on security defaults being off and on nothing else (roadmap/generate.ts); it cannot also wait for the four policies, because each of them waits on this step. Where the scan read them already off, the step is Completed and the cutover lines claimed four policies enforced that nothing checked — on a tenant with no admin phishing-resistant policy at all, whose own row read Not deployed on the same board (R4-38). There is no changeover to test either. So that read state's Done-when is what completes the step, and only that; what the four replacements still need is their own steps', and the who lead already says nothing replaces security defaults until they are enforced.",
-      "doneWhenWhen": {
-        "securityDefaultsOff": [
-          "Security defaults are off."
-        ]
-      },
-      "ifWrong": "If the changeover fails, use your tested emergency access and the agreed rollback procedure. Re-enabling Security Defaults may require changing active Conditional Access policies first; coordinate the rollback to avoid a protection gap.",
-      "$commentIfWrongWhen": "The way back for the state the scan read (content/render.ts ifWrongFor); null says that state has none. ifWrong above undoes the cutover this step performs. Where the scan read security defaults already off, IAMAI cannot know that any changeover was made, by this plan or anyone: \"If the changeover fails … Re-enabling Security Defaults\" described undoing a change IAMAI cannot know was made. Each replacement policy's own step carries its own way back.",
-      "ifWrongWhen": {
-        "securityDefaultsOff": null
-      },
+      "ifWrong": "Set the policy that blocks sign-in back to Report-only. If you are locked out, sign in with an emergency access account.",
       "comms": null,
       "doesntApply": false,
       "skip": false,
@@ -4163,13 +4365,18 @@
       "example": {
         "tenant": "Contoso Pty Ltd",
         "from": "Aug 1",
-        "securityDefaultsOn": true
+        "securityDefaultsOn": true,
+        "turnOn1": "IAC - GLOBAL – BLOCK - Legacy Authentication",
+        "turnOn2": "IAC - GLOBAL - BLOCK - Device Code Auth Flow",
+        "turnOn3": "IAC - GLOBAL - GRANT - MFA - AllAdmins",
+        "turnOn4": "IAC - GLOBAL - GRANT - MFA - AllUsers"
       },
       "placement": "Placed on the day Require MFA for Everyone enforces, with Block Legacy Authentication and Require Phishing-Resistant MFA for Admins enforced the same day; its row carries that date. Shown only when security defaults are on.",
-      "aiFocus": "Describe the ordered cutover and replacement policy identities. Report-only preparation is not replacement protection until enforcement is verified.",
+      "aiFocus": "Walk me through turning off security defaults and turning on the policies that replace them in the same change.",
       "card": {
         "subject": "Security defaults",
-        "check": "Still on"
+        "check": "On",
+        "satisfied": "Off"
       },
       "taskTitle": "Turn security defaults off"
     },
@@ -4178,7 +4385,7 @@
       "kind": "object",
       "title": "Finish Moving Off Per-User MFA",
       "changeLine": null,
-      "why": "An account left on Enforced is asked for MFA at every sign-in whatever the policy decides, and Microsoft says not to keep per-user MFA where Conditional Access is in use. Keep the existing protection until the replacement is actually enabled for the affected accounts.",
+      "why": "An account left on per-user MFA is asked for MFA at every sign-in, whatever Conditional Access decides. Turn it off for each account once Require MFA for Everyone is On.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/monitoring-health/recommendation-turn-off-per-user-mfa"
       },
@@ -4187,20 +4394,32 @@
         "accounts": "{list:accounts}"
       },
       "decision": null,
+      "$commentWhatToDo": "One procedure in every state (walk list 4.x item 57). Deleting app passwords takes the Authentication Administrator role (Microsoft Learn, howto-mfa-userdevicesettings: Manage user settings); changing the state takes the Authentication Policy Administrator role, so the first line names both. Where the scan reads twenty or fewer accounts on, the task selects each by name and sign-in address (perUserNamed, ui/surfaces/stepVars.ts); with more, or once none is on, it selects every account the page marks Enabled or Enforced. The scan reads each state back, so nothing asks anyone to.",
       "whatToDo": {
-        "lead": "On the day Require MFA for Everyone enforces, and not before, disable every legacy per-user MFA state.",
+        "lead": "Turn off per-user MFA for each account once Require MFA for Everyone is On.",
         "steps": [
-          "Check first that every method these people use is enabled under Entra admin center → Entra ID → Authentication methods → Policies. That policy decides what they may register; it never requires MFA, so finishing its migration is not what finishes this step.",
-          "Once Require MFA for Everyone is On: Entra admin center → Entra ID → Users → All users → Per-user MFA. Use that page’s own Enabled and Enforced views, select every account they list, and choose Disable MFA. You need at least the Authentication Policy Administrator role.",
-          "Read each state back as Disabled, then delete any app password those accounts still hold, because an app password bypasses MFA on its own."
+          "As at least an Authentication Policy Administrator and an Authentication Administrator, open [Microsoft Entra admin center](https://entra.microsoft.com/) → Entra ID → Users → All users → Per-user MFA.",
+          "Select every account marked Enabled or Enforced, then Disable MFA.",
+          "Select them again, then Manage user settings: tick Delete all existing app passwords generated by the selected users and select Save.",
+          "Return to IAMAI and select Scan to update the plan."
         ]
+      },
+      "whatToDoWhen": {
+        "perUserNamed": {
+          "lead": "Turn off per-user MFA for each account once Require MFA for Everyone is On.",
+          "steps": [
+            "As at least an Authentication Policy Administrator and an Authentication Administrator, open [Microsoft Entra admin center](https://entra.microsoft.com/) → Entra ID → Users → All users → Per-user MFA.",
+            "Select {perUserNamed}, then Disable MFA.",
+            "Select them again, then Manage user settings: tick Delete all existing app passwords generated by the selected users and select Save.",
+            "Return to IAMAI and select Scan to update the plan."
+          ]
+        }
       },
       "dates": null,
       "doneWhen": [
-        "The legacy per-user MFA states have been reviewed and disabled for the intended accounts after replacement protection is verified.",
-        "Authentication-method policy migration is tracked separately; its completion does not prove that legacy per-user MFA is disabled."
+        "IAMAI reads per-user MFA as Disabled for every account."
       ],
-      "ifWrong": "Per-user MFA can be set back to Enabled or Enforced one account at a time, which restores the old requirement while you investigate.",
+      "ifWrong": "To undo it, select the accounts on the same page and select Enable MFA.",
       "comms": null,
       "doesntApply": false,
       "skip": false,
@@ -4232,15 +4451,21 @@
           "Kaladin Stormblessed · Enforced",
           "Breakglass · Enabled"
         ],
-        "from": "Aug 1"
+        "from": "Aug 1",
+        "perUserOn": "2 accounts",
+        "perUserNames": "Kaladin Stormblessed (kaladin@contoso.com), Breakglass (breakglass@contoso.com)",
+        "perUserNamed": "Kaladin Stormblessed (kaladin@contoso.com) and Breakglass (breakglass@contoso.com)"
       },
-      "placement": "Shown only when at least one account has per-user MFA set.",
-      "aiFocus": "Explain the difference between method availability, methods-policy migration and the policy that requires MFA. Never call migration itself a replacement MFA control.",
+      "placement": "On the plan once a scan reads an account with per-user MFA on; Completed once every account reads Disabled.",
+      "aiFocus": "Walk me through turning off per-user MFA for these accounts.",
+      "$commentCard": "One card (walk list 4.x item 55; ui/surfaces/policyTasks.ts ownCardWordsOf): how many accounts the scan reads on, and, where there are twenty or fewer, who they are; once none is, the Satisfied card's fact.",
       "card": {
-        "subject": "Per-user MFA states",
-        "check": "Not in place"
+        "subject": "Per-user MFA",
+        "check": "{perUserOn} still on it",
+        "detail": "{perUserNames}",
+        "satisfied": "Disabled for every account"
       },
-      "taskTitle": "Disable the per-user MFA states"
+      "taskTitle": "Turn off per-user MFA"
     },
     {
       "id": "s-prereq-passkey-settings",
@@ -4684,7 +4909,7 @@
       "kind": "policy",
       "title": "Require MFA for Everyone",
       "changeLine": null,
-      "why": "MFA makes a stolen password less useful. Reviewing who has a usable method—and who has actually used one—helps catch access problems before enforcement.",
+      "why": "A stolen password alone should never be enough to sign in. This policy asks everyone for MFA, the floor the admin and guest policies build on.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-mfa-strength"
       },
@@ -4692,12 +4917,10 @@
         "lead": "{active} active people · {admins} admins · {guests} guests",
         "evidenceUndated": {
           "$comment": "The evidence lines that name the turn-on day ({enforce}), without it, keyed by the dated line's place in evidence: for a step that carries no such day - held on the board (owner decision 2, 2026-09-22), held by the roadmap, or finished - whose people the scan still read. Each keeps the rest of its dated line and says no more than it did (stepExport.ts whoEvidenceLines).",
-          "1": "{n} people have no method and will be stopped until they register one: {list:noMethod}"
+          "0": "{n} people have no method and will be stopped until they register one: {list:noMethod}"
         },
         "evidence": [
-          "This policy uses Require multifactor authentication. Stronger method requirements belong to the separate policies that select an authentication strength.",
           "{n} people have no method and will be stopped; register before {enforce}: {list:noMethod}",
-          "{n} people have a registered method and no MFA sign-in in the records: enforcement is its first test: {list:unproven}",
           "Your account is in scope: {operatorSignIns} sign-ins since {from}.",
           "{operatorNoRecords}, your own account, is in scope: it signed in for this scan and has no sign-in records in the window.",
           "{existingCoverage}"
@@ -4775,14 +4998,14 @@
           "{reportOnlyLine}"
         ]
       },
-      "aiFocus": "State the built-in MFA grant and Intune Enrollment exception. Existing MFA claims may satisfy the policy without a new prompt on every sign-in."
+      "aiFocus": "Walk me through creating this policy in Report-only and turning it on after its report-only period."
     },
     {
       "id": "admins-phishing-resistant",
       "kind": "policy",
       "title": "Require Phishing-Resistant MFA for Admins",
       "changeLine": null,
-      "why": "Administrator access deserves stronger sign-in protection. Checking accepted methods and recent use helps identify admins who would struggle to meet the policy when it is enabled.",
+      "why": "Admin accounts can change everything in your tenant, so this policy makes everyone in an admin role sign in with a passkey, a security key, Windows Hello, a certificate or a Temporary Access Pass.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-admin-phish-resistant-mfa"
       },
@@ -4790,15 +5013,12 @@
         "lead": "{admins} people hold an admin role",
         "evidenceUndated": {
           "$comment": "The evidence lines that name the turn-on day ({enforce}), without it, keyed by the dated line's place in evidence: for a step that carries no such day - held on the board (owner decision 2, 2026-09-22), held by the roadmap, or finished - whose people the scan still read. Each keeps the rest of its dated line and says no more than it did (stepExport.ts whoEvidenceLines).",
-          "1": "{n} admins are not yet Ready for phishing-resistant MFA; get each Ready: {list:adminsWithout}",
-          "2": "{adminsWithoutCount} admins are not yet Ready for phishing-resistant MFA; get each Ready."
+          "0": "{n} admins need a passkey, security key or Windows Hello: {list:adminsWithout}",
+          "1": "{adminsWithoutCount} admins need a passkey, security key or Windows Hello."
         },
         "evidence": [
-          "No session control here on purpose: the baseline keeps sign-in frequency and persistence in their own policies (Shorten Admin Sessions, Limit How Long Sessions Last).",
-          "{n} admins are not yet Ready for phishing-resistant MFA; get each Ready before {enforce}: {list:adminsWithout}",
-          "{adminsWithoutCount} admins are not yet Ready for phishing-resistant MFA; get each Ready before {enforce}.",
-          "{n} of them use the same account for mail or Teams; see Use Separate Accounts for Admin Work: {list:adminsWithWorkload}",
-          "Roles held through Privileged Identity Management are in scope only while activated.",
+          "{n} admins need a passkey, security key or Windows Hello before {enforce}: {list:adminsWithout}",
+          "{adminsWithoutCount} admins need a passkey, security key or Windows Hello before {enforce}.",
           "Your account is in scope: {operatorSignIns} sign-ins since {from}.",
           "{operatorNoRecords}, your own account, is in scope: it signed in for this scan and has no sign-in records in the window.",
           "{existingCoverage}"
@@ -4837,11 +5057,11 @@
           }
         ],
         "helpDesk": [
-          "A Temporary Access Pass satisfies this policy's strength in both its forms; Microsoft's own phishing-resistant strength accepts neither.",
+          "An admin who cannot sign in: issue a Temporary Access Pass, which this policy accepts, and register a passkey or security key with them.",
           "Anything the strength does not list is refused, including a code or an approval; do not add exclusions.",
           "An admin who signed in with a password first is never prompted for Windows Hello: they restart the sign-in and choose Sign-in options."
         ],
-        "manager": "Admin sign-ins use methods that are much harder to phish than codes or approvals. The accepted set also includes a Temporary Access Pass, which is temporary but can be issued for repeated use.",
+        "manager": "Admin sign-ins use methods that are much harder to phish than codes or approvals.",
         "waits": null
       },
       "example": {
@@ -4890,7 +5110,7 @@
           "{reportOnlyLine}"
         ]
       },
-      "aiFocus": "Explain exact role coverage, accepted method combinations and the TAP exception. Do not label the entire allowed set exclusively phishing-resistant or guarantee a new prompt each time."
+      "aiFocus": "Walk me through creating this policy in Report-only and turning it on after its report-only period."
     },
     {
       "id": "admin-portals-protected",
@@ -5230,21 +5450,17 @@
       "kind": "policy",
       "title": "Block Legacy Authentication",
       "changeLine": null,
-      "why": "Legacy authentication protocols cannot complete multifactor authentication, so a password on its own gets through them. Exchange Online already refuses a password for POP, IMAP and ActiveSync, and SMTP AUTH is the last route that accepts one; Microsoft is retiring that route too. Review the clients and jobs still using one before that path closes.",
+      "why": "Legacy authentication can't ask for MFA, so a password alone gets through it. This policy blocks it for everyone except the emergency access accounts.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-legacy-authentication"
       },
       "who": {
         "lead": "{active} active people",
-        "evidenceUndated": {
-          "$comment": "The evidence lines that name the turn-on day ({enforce}), without it, keyed by the dated line's place in evidence: for a step that carries no such day - held on the board (owner decision 2, 2026-09-22), held by the roadmap, or finished - whose people the scan still read. Each keeps the rest of its dated line and says no more than it did (stepExport.ts whoEvidenceLines).",
-          "0": "{n} accounts signed in by a legacy protocol since {from}; fix each: {list:legacyUsers}"
-        },
         "evidence": [
-          "{n} accounts signed in by a legacy protocol since {from}: fix before {enforce}: {list:legacyUsers}",
+          "{n} accounts signed in with legacy authentication in the last 30 days: {list:legacyUsers}",
           "{existingCoverage}"
         ],
-        "none": "Nobody used a legacy protocol since {from}."
+        "none": "Nobody signed in with legacy authentication in the last 30 days."
       },
       "decision": {
         "label": "Mail-sending devices",
@@ -5253,18 +5469,13 @@
           "None",
           "Temporary exception accounts: {devices}"
         ],
-        "effect": "These accounts are selected for the service-accounts exception. Review the actual policy exclusions, limit the exception and plan migration to a supported mail-sending method.",
-        "save": "Save mail-sending choices",
-        "tileValue": "Not confirmed",
-        "tileNote": "A quiet sign-in history does not establish that every scheduled mail job has stopped using basic authentication.",
-        "$commentTileNoteUnread": "The mail-sending devices tile note where IAMAI does not hold enough of the sign-in records to rely on (stepContract.ts unsavedTiles reads it where the step carries Evidence.unreadable; {reason} is the source's own reason, else its status in words). tileNote speaks of a quiet sign-in history, and on a tenant whose sign-in source refused every read it said so over a history IAMAI had never read (hostile, Block Legacy Authentication as scanned) - the same defect the device code tile had (R4-19 c). This says what IAMAI does not hold, and where the answer has to come from instead.",
-        "tileNoteUnread": "IAMAI does not hold enough of this tenant's sign-in records to rely on — {reason} — so they cannot show that no scheduled mail job still uses basic authentication. Check each printer, scanner and application's mail settings and confirm with its owner."
+        "save": "Save mail-sending choices"
       },
       "dates": "{datesNew}",
       "doneEnd": "The policy is enforced and matches the baseline: it blocks legacy authentication for all users, excludes the exclusions group, and every mail-sending device is accounted for.",
       "doneWhen": [
         "A scan confirms legacy authentication is blocked for the intended users, with the approved exclusions.",
-        "Every mail-sending device and application sends through a supported route, and any temporary exception account named for one has been removed."
+        "IAMAI sees no legacy sign-in from {list:mailAccounts} in the last 30 days."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
@@ -5295,8 +5506,7 @@
           "Identify the failing account, client and protocol in its settings and sign-in result. Test a supported client or authentication method before retiring the old path.",
           "A blocked Exchange ActiveSync device gets one quarantine email with the reason; later attempts are silent, so the person may only report that mail stopped.",
           "A device moved from a password to a certificate is still on legacy authentication, and this policy still blocks it. Move it to a client that uses modern authentication.",
-          "Scan-to-email stopped: check the device is still in the service-accounts group, then move it to a connector.",
-          "For mail jobs, use this step's Move each exception device to a supported mail route task to record the replacement route and successful delivery. A temporary Conditional Access exception does not restore a protocol the mail service no longer accepts."
+          "Scan-to-email stopped: move the device to an Exchange Online connector."
         ],
         "manager": "Older sign-in paths that cannot complete MFA are turned off. Without this, a password alone can still work through them.",
         "waits": null
@@ -5320,41 +5530,36 @@
         "steps": [
           "{portalRoot}",
           "Name: {policyName}",
-          "Users → Include: All users. {exclusionsLine} Also exclude the service accounts group {serviceAccountsGroup}.",
+          "Users → Include: All users. {exclusionsLine}",
           "Target resources → Resources → All resources",
           "Conditions → Client apps → Configure: Yes, then check only Exchange ActiveSync clients and Other clients",
           "Grant → Block access",
           "{reportOnlyLine}"
         ]
       },
-      "aiFocus": "Explain the actual client-app target and observed authentication flow. Do not infer that every native mail app or OAuth SMTP connection is blocked solely from its name."
+      "aiFocus": "Walk me through creating this policy in Report-only and turning it on after its report-only period."
     },
     {
       "id": "block-device-code",
       "kind": "policy",
       "title": "Block Device Code Sign-in",
       "changeLine": null,
-      "why": "Device-code phishing can persuade a person to approve a sign-in for someone else. Blocking this flow reduces that route of attack, but legitimate devices and tools need a checked alternative.",
+      "why": "Device-code phishing tricks a person into entering a code that signs an attacker in as them. Blocking device code sign-in closes that route.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-authentication-flows"
       },
       "who": {
         "lead": "{active} active people",
-        "evidenceUndated": {
-          "$comment": "The evidence lines that name the turn-on day ({enforce}), without it, keyed by the dated line's place in evidence: for a step that carries no such day - held on the board (owner decision 2, 2026-09-22), held by the roadmap, or finished - whose people the scan still read. Each keeps the rest of its dated line and says no more than it did (stepExport.ts whoEvidenceLines).",
-          "0": "{deviceCodeCount} device-code sign-ins since {from} by {list:deviceCodeUsers}; usually a script or a TV app; move each."
-        },
         "evidence": [
-          "{deviceCodeCount} device-code sign-ins since {from} by {list:deviceCodeUsers}; usually a script or a TV app; move each before {enforce}.",
+          "{deviceCodeCount} device-code sign-ins in the last 30 days, by {list:deviceCodeUsers}",
           "{existingCoverage}"
         ],
-        "none": "No device-code sign-ins in the records since {from}; that does not prove nothing uses it."
+        "none": "No device-code sign-ins in the last 30 days."
       },
       "dates": "{datesNew}",
-      "doneEnd": "No sign-in to {tenant} completes through device code flow, the exclusions group is applied, and every tool, shared device and enrollment job that used the flow has a tested alternative.",
+      "doneEnd": "No sign-in to {tenant} completes through device code flow, and the exclusions group is applied.",
       "doneWhen": [
-        "{policyDoneWhen}",
-        "Tools, shared devices and enrollment workflows that used device code have a tested alternative."
+        "{policyDoneWhen}"
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -5412,13 +5617,7 @@
           "{reportOnlyLine}"
         ]
       },
-      "aiFocus": "Explain both malicious and legitimate uses. Include actual observed workflows and do not treat missing events as proof that device code is unused.",
-      "whatToDo": {
-        "verification": [
-          "Identify the legitimate tools or devices using device code. Move each required workflow to an alternative supported by that tool, then run the actual task with a representative account.",
-          "For each workflow moved off device code, record the account, tool/task, replacement sign-in path, date and result. A quiet device-code report alone does not demonstrate that a required workflow was replaced."
-        ]
-      }
+      "aiFocus": "Walk me through creating this policy in Report-only and turning it on after its report-only period."
     },
     {
       "id": "block-auth-transfer",
@@ -5703,7 +5902,7 @@
           "Name: {policyName}",
           "Users → Include: Directory roles → {list:coreAdminRoles}. {exclusionsLine}",
           "Target resources → Resources → All resources",
-          "Conditions → Client apps → Configure: Yes, then Browser. Left at No it reaches every client app.",
+          "Conditions → Client apps → Configure: Yes, then Browser",
           "Session → Sign-in frequency → Periodic reauthentication → {wantedValue}; Persistent browser session → Never persistent",
           "{reportOnlyLine}"
         ]
@@ -6511,7 +6710,7 @@
           "Before this policy: turn off Remember multifactor authentication on trusted devices; the two together prompt people unexpectedly.",
           "Users → Include: All users. {exclusionsLine} Also exclude the shared-device accounts {list:sharedDevices}",
           "Target resources → Resources → All resources",
-          "Conditions → Client apps → Configure: Yes, then Browser. Left at No it reaches every client app.",
+          "Conditions → Client apps → Configure: Yes, then Browser",
           "Session → Sign-in frequency → Periodic reauthentication → {wantedValue}; Persistent browser session → Never persistent",
           "{reportOnlyLine}"
         ]

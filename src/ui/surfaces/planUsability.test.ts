@@ -27,6 +27,7 @@ import { projectSafely } from '../../content/implementation/project.ts'
 import { pilotStepAt } from '../../testing/pilotFixture.ts'
 import { statusOf } from './statusWord.ts'
 import { stepById } from '../../content/content.ts'
+import { contentStepFor } from '../../content/stepTitle.ts'
 import { currentAnswerText, parseAnswer } from '../../roadmap/answers.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { decisionsOf } from '../../roadmap/progress.ts'
@@ -152,7 +153,7 @@ test('every row reads a When value: a day or the placeholder — never blank, ne
   assert.ok(complete > 0 && placeholder > 0 && dated > 0, `complete ${complete}, placeholder ${placeholder}, dated ${dated}`)
 })
 
-test('every row reads an Impact value: people, No user impact, the package’s fallback label or —, or Not established — never blank, never zero for unknown, never Configuration only (U13)', () => {
+test('every row reads an Impact value: a count, No user impact, or a non-policy step’s fallback label or — — never blank, never zero for unknown, never Configuration only (U13; walk list 4.x item 25)', () => {
   const seen = new Set<string>()
   for (const { name, r } of RUNS) {
     for (const s of r.steps as Step[]) {
@@ -165,15 +166,21 @@ test('every row reads an Impact value: people, No user impact, the package’s f
         assert.match(impact, /^([\d,]+|no) (polic(y|ies)|person|people|accounts?|steps?)$/, `${name}/${s.id}: "${impact}"`)
         seen.add('known')
       } else if (pop === null) {
-        assert.ok(impact.length > 0 && !/^0\b/.test(impact) && impact !== 'Not established', `${name}/${s.id}: use the topic when exact reach is unknown`)
+        // A policy whose reach is not settled still counts (walk list 4.x item 25): never a topic.
+        assert.match(impact, /^([\d,]+ (person|people|admins?|guests?|accounts?)|No user impact)$/, `${name}/${s.id}: "${impact}"`)
         seen.add('unknown')
+      } else if (s.id === 's-prereq-security-defaults' || s.id === 's-prereq-per-user-mfa') {
+        // The policies that take over from security defaults, and the accounts still on per-user MFA.
+        assert.match(impact, s.id === 's-prereq-security-defaults' ? /^4 policies$/ : /^([\d,]+|no) accounts?$/, `${name}/${s.id}: "${impact}"`)
+        seen.add('known')
       } else if (/^\d+ accounts?$/.test(impact)) {
         // Prepare Emergency Access Accounts counts its emergency accounts: the ones chosen, at least the two it needs.
         assert.equal(Number.parseInt(impact), s.id === 's-prereq-break-glass' ? Math.max(2, s.emergency?.accounts.length ?? 0) : new Set(pop.ids).size, `${name}/${s.id}: account review count must match its named inventory`)
         seen.add('known')
       } else if ((pop.activeIds ?? pop.ids).length === 0) {
         // The fallback chain: no people → the package's impact.fallbackLabel → the placeholder.
-        const expected = s.impactLabel ?? (structuralWords.impactLabels as Record<string, string>)[s.id] ?? (effectsOf(s) === null ? (implementationPackageFor(s)?.meta.impact?.fallbackLabel ?? structuralWords.impactDefault) : 'No user impact')
+        const policy = (stepById[s.id] ?? stepById[s.goalId])?.kind === 'policy' || (contentStepFor(s) as { kind?: string } | undefined)?.kind === 'policy'
+        const expected = s.impactLabel ?? (structuralWords.impactLabels as Record<string, string>)[s.id] ?? (policy || effectsOf(s) !== null ? 'No user impact' : (implementationPackageFor(s)?.meta.impact?.fallbackLabel ?? structuralWords.impactDefault))
         assert.equal(impact.split(' · ')[0], expected, `${name}/${s.id}: "${impact}"`)
         seen.add(effectsOf(s) === null ? 'configuration' : 'none')
       } else {

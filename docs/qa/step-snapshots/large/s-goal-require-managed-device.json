@@ -12,20 +12,9 @@
     "Implementation Tasks",
     "Completion Criteria"
   ],
-  "tiles": [
-    {
-      "label": "Readiness",
-      "state": "1,210 of 4,169 people in scope"
-    },
-    {
-      "label": "Verify Emergency Access",
-      "state": "Prerequisite · Waiting"
-    }
-  ],
+  "tiles": [],
   "channels": [
     "Entra",
-    "PowerShell",
-    "JSON",
     "AI Info"
   ],
   "when": "Aug 28, 2026"

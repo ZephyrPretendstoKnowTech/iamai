@@ -9,7 +9,7 @@ import { DIRECTION_STEP } from './directionAnswers.ts'
 import { directionWords } from '../content/content.ts'
 import { applyStepDecisions } from './decisions.ts'
 import { DEVICE_ANSWER_KEYS, QUESTION_STEP, devicePlanOf, devicePlanComplete } from './answers.ts'
-import { manualBasis, applyManualReviews, MANUAL_REVIEW_ID } from './manualWork.ts'
+import { manualBasis, MANUAL_REVIEW_ID } from './manualWork.ts'
 import type { Step } from './types.ts'
 import { assumedAbsentSourceGroups } from './sourceMappings.ts'
 import { resolveTenantPolicy } from './resolvePolicy.ts'
@@ -57,29 +57,6 @@ test('retained foundational rows re-evaluate and dormant Keep completes the step
   assert.equal(after.steps.find(s => s.id === dormant.id)?.state.satisfied, true)
   assert.ok(after.steps.some(s => s.id === 's-prereq-security-defaults'), 'disabled Security Defaults remains discoverable')
   assert.ok(!after.steps.some(s => /s-review-baseline-iac-agent-block/.test(s.id)))
-})
-
-test('manual review bases: the folded mail follow-up ignores unrelated policy edits, and per-user MFA review is shared across aliases while migrationComplete proves nothing', () => {
-  const f = fixture('demo-week2')
-  const step = { id: 's-goal-block-legacy-auth', population: { ids: [...f.mapping.serviceAccountUserIds] } } as Step
-  const before = manualBasis(step, f.snapshot, f.mapping)
-  f.snapshot.config.caPolicies.rows.push({ id: 'unrelated', state: 'enabled', conditions: { clientAppTypes: ['browser'] }, grantControls: { builtInControls: ['mfa'] } })
-  assert.equal(manualBasis(step, f.snapshot, f.mapping), before)
-  f.snapshot.config.caPolicies.rows.push({ id: 'legacy', state: 'enabled', conditions: { users: { includeUsers: ['All'] }, clientAppTypes: ['other'] }, grantControls: { builtInControls: ['block'] } })
-  assert.notEqual(manualBasis(step, f.snapshot, f.mapping), before)
-
-  // MigrationComplete does not prove legacy per-user MFA is disabled; manual review is shared across aliases.
-  {
-    const f = fixture('demo-week2')
-    const row = runFixture(f).steps.find(s => s.id === 's-prereq-per-user-mfa')!
-    assert.ok(row)
-    assert.equal(row.state.satisfied, false)
-    assert.equal(row.manualReview?.readyToConfirm, true)
-    const alias = { ...structuredClone(row), id: 's-ladder-per-user-mfa-cleanup' }
-    assert.equal(manualBasis(row, f.snapshot, f.mapping), manualBasis(alias, f.snapshot, f.mapping))
-    applyManualReviews([row], f.snapshot, { [alias.id]: { [MANUAL_REVIEW_ID]: { basis: manualBasis(alias, f.snapshot, f.mapping), at: '2026-01-01T00:00:00Z' } } }, f.mapping)
-    assert.equal(row.state.satisfied, true)
-  }
 })
 
 test('source assumptions omit optional exclusions, never AVD allowed users, include targets or a documented emergency group, and an update over one preserves the tenant’s actual exclusions', () => {

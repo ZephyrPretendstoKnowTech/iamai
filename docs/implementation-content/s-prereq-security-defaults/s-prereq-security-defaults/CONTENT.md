@@ -15,7 +15,7 @@ Re-open **Manage security defaults** and confirm it reads **Disabled (not recomm
 {"isEnabled":false}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["readyToDisable","verificationRequired"],"format":"powershell","kind":"template"}
+@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["readyToDisable"],"format":"powershell","kind":"template"}
 param([Parameter(Mandatory=$true)][ValidateSet('Disable','Verify')][string]$Mode,[switch]$ReplacementProtectionReady)
 $ErrorActionPreference='Stop'
 if($Mode -eq 'Disable'){
@@ -54,8 +54,4 @@ We plan to replace Security Defaults with the reviewed access policies in one ch
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["blocked","readyToDisable","verificationRequired"],"format":"json-template","kind":"referenceOnly"}
 {"tiles":[{"id":"current","label":"Security Defaults","result":"{{securityDefaults.current.isEnabled}}","line":"This tenant-wide setting is the one this step changes."},{"id":"replacement","label":"Replacement protection","result":"{{dependencies.replacementProtectionSummary}}","line":"Prepare and review the replacement policies before the changeover. Confirm them enabled immediately after Security Defaults is disabled."}],"whyIamaiSaysThis":"Microsoft recommends no gap between disabling Security Defaults and enabling the replacement Conditional Access protections."}
-@@IAMAI-END
-
-@@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["readyToDisable","verificationRequired","inPlace"],"format":"json","kind":"referenceOnly"}
-{"scenarios":[{"id":"protection-gap","classification":"documented","symptom":"Security Defaults is off but replacement Conditional Access protection is not active.","check":"Verify the Security Defaults singleton and the intended replacement policies immediately.","fix":"Complete the approved replacement cutover or use the coordinated rollback; do not leave both protection models inactive.","then":"Rescan IAMAI.","sources":["ms-sd"]},{"id":"graph-403","classification":"documented","symptom":"Graph rejects the Security Defaults update.","check":"Verify Policy.Read.All plus Policy.ReadWrite.ConditionalAccess for write and an appropriate admin role.","fix":"Reconnect with supported permissions/role and retry only the singleton patch.","then":"Read the singleton back.","sources":["ms-sd-graph"]}]}
 @@IAMAI-END

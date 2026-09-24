@@ -12,20 +12,9 @@
     "Implementation Tasks",
     "Completion Criteria"
   ],
-  "tiles": [
-    {
-      "label": "Readiness",
-      "state": "2 of 3 admins"
-    },
-    {
-      "label": "Prepare Your Team for MFA",
-      "state": "Prerequisite · To do"
-    }
-  ],
+  "tiles": [],
   "channels": [
     "Entra",
-    "PowerShell",
-    "JSON",
     "AI Info"
   ],
   "when": "Aug 28, 2026"

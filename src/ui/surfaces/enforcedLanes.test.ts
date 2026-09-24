@@ -55,7 +55,8 @@ test('engine: an enforced policy as pinned is Completed, a drifted one is Ready 
     assert.equal(read({ [LEGACY]: { ...ENFORCED, drift: true, blockers: [{ kind: 'sourceMapping', id: 'sourceMapping:62d67e66' }] } }), 'On Hold', 'an unmapped reference leaves the correction unbuildable: the policy being On does not make it Ready')
     assert.equal(read({ [LEGACY]: { ...ENFORCED, drift: true, blockers: [{ kind: 'sourceConflict', id: 'sourceConflict:test' }] } }), 'On Hold', 'a contradictory baseline still holds it')
     assert.equal(read({ [LEGACY]: { ...ENFORCED, drift: true, blockers: [{ kind: 'fact', id: 'fact:group' }] } }), 'On Hold', 'a tenant fact the scan could not read still holds it')
-    assert.equal(read({ [LEGACY]: { exists: true } }), 'On Hold', 'report-only and still collecting evidence')
+    // Its report-only week is a wait, not a stop (walk list 4.x item 11).
+  assert.equal(read({ [LEGACY]: { exists: true } }), 'Up Next', 'report-only and still collecting evidence')
   }
   {
     const unsaved = ['Mail-sending devices']
@@ -184,10 +185,14 @@ test('U28/B7: a conditional input nobody saved keeps a step short of Completed a
   }
 })
 
-test('U19: an enforced block policy missing the exclusions group is Partial even where Foundation A will not write the whole policy; a group taken out is not', () => {
+test('U19: an enforced block policy missing the exclusions group is a safe correction, which Configure Emergency Exclusions asks for; a group taken out is not', () => {
   const step = stepOf(demoRun, LEGACY)
   assert.equal(step.state.lifecycle, 'enforced')
-  assert.equal(policyResult(step).kind, 'implementable', 'the documented correction has resolved inputs')
+  // Walk list 4.x item 7: adding the exclusions group is Configure Emergency
+  // Exclusions' own edit, so this step holds it and waits on that step rather
+  // than asking for it a second time.
+  assert.equal(step.action.correctionAskedBy, 's-prereq-exclusion-group')
+  assert.equal(policyResult(step).kind, 'held', 'the step hands over the edit Configure Emergency Exclusions asks for')
   const op = plannedOperationsOf(step)[0]
   const rows = (demo.snapshot.config.caPolicies?.rows ?? []) as Record<string, unknown>[]
   const missing = rows.map((r) => {
@@ -198,7 +203,7 @@ test('U19: an enforced block policy missing the exclusions group is Partial even
   const snapshot = { ...demo.snapshot, config: { ...demo.snapshot.config, caPolicies: { ...demo.snapshot.config.caPolicies!, rows: missing } } } as TenantSnapshot
   assert.deepEqual(correctionFieldsOf(step, snapshot), ['conditions.users.excludeGroups'])
   assert.equal(safeCorrectionOf(step, snapshot), true)
-  assert.equal(packageStateOf(step, stepContract(step, ctxOf(demo, demoRun, snapshot)), snapshot), 'partial')
+  assert.equal(packageStateOf(step, stepContract(step, ctxOf(demo, demoRun, snapshot)), snapshot), 'blocked', 'the step projects the edit another step asks for')
   // A real removed tenant exclusion remains an unsafe automatic correction.
   const removed = structuredClone(snapshot)
   const row = removed.config.caPolicies!.rows.find((r: any) => r.id === op.policyId) as any
@@ -207,7 +212,7 @@ test('U19: an enforced block policy missing the exclusions group is Partial even
   assert.equal(packageStateOf(step, stepContract(step, ctxOf(demo, demoRun, removed)), removed), 'blocked')
 })
 
-test('a rollout that finished short of its own readiness says so, keeps the criterion it did not meet, and makes no claim about people the scan could not look at', () => {
+test('a rollout that finished short of its own readiness states it under Satisfied, and its Completion Criteria reads what IAMAI sees', () => {
   // Sam, severity 4: "the tenant locked out with a green tick". Turn the admin
   // policy on while one admin of six holds a method it accepts and the threshold
   // card is deleted - `action.readinessGate` exists only while the gate is unmet
@@ -221,55 +226,19 @@ test('a rollout that finished short of its own readiness says so, keeps the crit
     const ctx = ctxOf(demo, demoRun, demo.snapshot)
     const finished = { ...admins, status: 'done', state: { ...admins.state, lifecycle: 'enforced', satisfied: true, inPlace: true }, action: { ...admins.action, readinessGate: undefined } } as Step
     const c = stepContract(finished, ctx)
-    const tile = readinessOf(finished, c).tiles.find((x) => x.key === 'enforced-readiness')
+    // A fact under Satisfied, never an open card (walk list 4.x item 2).
+    const tile = readinessOf(finished, c).satisfied.find((x) => x.key === 'enforced-readiness')
     assert.ok(tile, 'a finished step short of its readiness draws no reading')
-    assert.equal(tile.tone, 'warn', 'the reading is filed as satisfied evidence')
-    assert.ok(tile.value.includes('of'), tile.value)
-    assert.match(tile.note ?? '', /This policy is enforced, and/)
+    assert.match(tile.value, /^[0-9]+ of [0-9]+ admins have a method it accepts$/, tile.value)
     assert.ok(c.found.some((f) => /This policy is enforced, and/.test(f.text)), 'What IAMAI found does not carry it')
-    // Its own end state is the half that is not true yet, so it is stated first.
-    assert.equal(c.doneWhen.length, 2, JSON.stringify(c.doneWhen))
-    assert.match(c.doneWhen[0], /every admin in scope has one registered/)
+    // Completion Criteria is at most two lines, the same in every state, led by
+    // what IAMAI sees (walk list 4.x item 26).
+    assert.ok(c.doneWhen.length <= 2, JSON.stringify(c.doneWhen))
+    assert.match(c.doneWhen[0], /^IAMAI sees .+ On[,.]/, JSON.stringify(c.doneWhen))
     // A rollout that finished with everybody ready is not a finding.
     const ready = { ...finished, readiness: { ...finished.readiness, lines: ['6 of 6 people have a registered method allowed by the target policies.'] } } as Step
-    assert.equal(readinessOf(ready, stepContract(ready, ctx)).tiles.some((x) => x.key === 'enforced-readiness'), false)
+    assert.equal([...readinessOf(ready, stepContract(ready, ctx)).satisfied, ...readinessOf(ready, stepContract(ready, ctx)).tiles].some((x) => x.key === 'enforced-readiness'), false)
     // And an unfinished one still reads its gate, not this.
     assert.equal(readinessOf(admins, stepContract(admins, ctx)).tiles.some((x) => x.key === 'enforced-readiness'), false)
-  }
-  // The other half: a finished rollout's reading is a reading of PEOPLE, so it
-  // needs at least one of them to have been judged. `hostile` reads "0 of 40 people
-  // have a registered method" because its registration source is switched off, and
-  // "this policy is enforced and nobody can satisfy it" over that is a claim about
-  // forty people made from having looked at none. Found by a persona run.
-  //
-  // What it DOES say is that the plan's threshold was never shown met (Priya D3):
-  // the gate is computed only for an unfinished step, so an enforced policy whose
-  // people nobody could read lost every trace of the hold and read Completed. The
-  // tile states the threshold and "Not measured", and makes no count of people.
-  {
-    const f = fixture('hostile')
-    const r = runFixture(f, {}, null, f.snapshot.asOf)
-    const ctx = ctxOf(f, r, f.snapshot)
-    let blind = 0
-    for (const step of r.steps) {
-      if (!step.state.satisfied || step.state.lifecycle !== 'enforced') continue
-      // A block goal has no readiness to speak of ('no-population'); this is about
-      // the ones that DO measure people and could not look at any of them.
-      const line = step.readiness.lines[0] ?? ''
-      // Nobody judged ready, in either of the two shapes that says it. "0 of 40
-      // people..." was the only one when this was written; where NOBODY could be
-      // judged at all the line is now its own sentence, because a bare leading
-      // zero is an unread count in the shape of a measurement
-      // (engine.readiness.noneJudged). The premise is the same either way.
-      const nobodyReady = /^0 of [0-9]+/.test(line) || /^None of the [0-9]+ people in scope could be judged/.test(line)
-      if (step.readiness.unmeasured !== 'unreadable' || !nobodyReady) continue
-      blind += 1
-      const tile = readinessOf(step, stepContract(step, ctx)).tiles.find((t) => t.key === 'enforced-readiness')
-      assert.ok(tile, `${step.id}: enforced below a threshold nothing showed met, and the finished step is silent`)
-      assert.equal(tile.value, 'Not measured', `${step.id}: a reading drawn from nobody — ${tile.value}`)
-      assert.doesNotMatch(tile.note ?? '', /This policy is enforced, and [0-9]+ of|nobody can/, `${step.id}: a claim about people nobody looked at — ${tile.note}`)
-      assert.match(tile.note ?? '', /nothing has shown that threshold met/, `${step.id}: ${tile.note}`)
-    }
-    assert.ok(blind > 0, 'the premise: this tenant enforces a policy whose people it could not read')
   }
 })

@@ -25,7 +25,7 @@ import { KINDS, ladder, methodClassesOf } from './ladder.ts'
 import type { Kind, Ladder, LadderMapping } from './ladder.ts'
 import { factsOf } from './facts.ts'
 import type { Facts } from './facts.ts'
-import { adminUserIds } from '../roles.ts'
+import { adminUserIdsWithEligible } from '../roles.ts'
 import { readinessContextOf } from './readinessContext.ts'
 import type { MappingState } from '../mapping/types.ts'
 
@@ -115,7 +115,8 @@ export function explainedOf(u: UserRow, v: MfaViability | undefined, now: string
 export function readinessView(snapshot: TenantSnapshot, now: string, mapping: LadderMapping = { breakGlassUserIds: [], serviceAccountUserIds: [] }): ReadinessView {
   const l = ladder(snapshot, mapping, now)
   const context = readinessContextOf(snapshot, mapping as Partial<MappingState>, now)
-  const admins = adminUserIds(snapshot.roles ?? { active: {} })
+  // PIM-eligible admins are admins here too (walk list 4.x L2).
+  const admins = adminUserIdsWithEligible(snapshot.roles ?? { active: {} })
   const byId = new Map(snapshot.users.map((u) => [u.id, u]))
   const rows: ReadinessRow[] = []
   const person = (u: UserRow, v: MfaViability, active: boolean): ReadinessRow => {

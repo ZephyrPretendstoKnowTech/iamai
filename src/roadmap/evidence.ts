@@ -8,6 +8,8 @@ import { readInPart } from '../graph/collect/coreSections.ts'
 import type { Evidence, SourceUnread } from './types.ts'
 import { engine } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
+import { personLabels } from '../names.ts'
+import { list } from '../copy/statements.ts'
 
 /** Why an observation has not completed, where the reason is known (shared.engine.evidence). */
 const W = engine.evidence
@@ -71,6 +73,7 @@ export function evidenceFor(
   goalId: string,
   snapshot: TenantSnapshot,
   matchedPolicyIds: readonly string[],
+  mailAccounts: readonly string[] = [],
 ): Evidence {
   const src = snapshot.sources.signInEvidence
   const status = (src?.status ?? 'pending') as Evidence['status']
@@ -117,8 +120,43 @@ export function evidenceFor(
     // signals above: those are people a block is FOR, not a result it produced.
     if (failedUsers.length > 0) {
       base.affectedUserIds = failedUsers
-      base.lines = [fillText(W.failures, { n: failedUsers.length })]
+      base.lines = [goalId === 'block-legacy-auth' ? legacyBlockedLine(snapshot, failedUsers, mailAccounts) : BLOCKED_LINE[goalId] ? blockedLine(snapshot, failedUsers, BLOCKED_LINE[goalId]) : fillText(W.failures, { n: failedUsers.length })]
     }
   }
   return base
+}
+
+/**
+ * The other three policies of Turn On MFA for Everyone, in item 35's shape
+ * (walk list 4.x): who report-only would have blocked, by name and sign-in
+ * address, and what they need before the turn-on.
+ */
+const BLOCKED_LINE: Record<string, string> = {
+  'block-device-code': W.deviceCodeBlocked,
+  'admins-phishing-resistant': W.methodBlocked,
+  'mfa-all-users': W.methodBlocked,
+}
+
+/** The people a report-only week would have blocked, named with their addresses (at most five, then "and N more"), in the line given. */
+function blockedLine(snapshot: TenantSnapshot, failed: readonly string[], template: string): string {
+  const labels = personLabels(snapshot.users, { address: true })
+  const shown = failed.slice(0, 5).map((id) => labels.get(id) ?? id)
+  return fillText(template, { names: list(failed.length > 5 ? [...shown, fillText(engine.blockSignIns.more, { n: failed.length - 5 })] : shown) })
+}
+
+/**
+ * Block Legacy Authentication's report-only week that would have blocked
+ * someone (walk list 4.x item 35): each account by name and sign-in address, at
+ * most five, and where it moves. A mail account named in Confirm What You Use
+ * moves to a supported mail route, and the step's own task says how; where the
+ * week blocked only those, the line says that instead of a mail app.
+ */
+function legacyBlockedLine(snapshot: TenantSnapshot, failed: readonly string[], mailAccounts: readonly string[]): string {
+  const labels = personLabels(snapshot.users, { address: true })
+  const named = new Set(mailAccounts.map((id) => id.toLowerCase()))
+  const people = failed.filter((id) => !named.has(id.toLowerCase()))
+  const who = people.length > 0 ? people : [...failed]
+  const shown = who.slice(0, 5).map((id) => labels.get(id) ?? id)
+  const names = list(who.length > 5 ? [...shown, fillText(engine.blockSignIns.more, { n: who.length - 5 })] : shown)
+  return fillText(people.length > 0 ? W.legacyBlocked : W.legacyBlockedMail, { names })
 }

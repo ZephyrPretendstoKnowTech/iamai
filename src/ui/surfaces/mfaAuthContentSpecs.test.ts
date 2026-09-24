@@ -74,70 +74,16 @@ test('every correction procedure keeps the state it finds, says what a save does
   assert.match(channel('s-goal-mfa-all-users', ['entra.correct-verify']), /emergency access still works/)
 })
 
-test('s-goal-block-device-code: on a tenant whose sign-in records IAMAI could not read, the device code tile never says the records cover observed use', () => {
-  // R4-19 (c), Priya D4. On hostile, whose sign-in source refused every read, the
-  // unsaved decision's tile read "The sign-in records cover observed use; they can
-  // miss infrequent CLI, shared-device and enrollment workflows." IAMAI had read no
-  // record at all: the engine held the reason on the step (Evidence.unreadable) and
-  // the tile stated a coverage that did not exist, beside the very question the
-  // records were supposed to help answer. It says what IAMAI does not hold, and why.
-  // A tenant whose records were read keeps the step's own note.
-  //
-  // The words hold for every status that sets the reason. They said "IAMAI could
-  // not read the sign-in records … so nothing here shows whether anything uses
-  // device code sign-in", and a production read that stops short of 24 hours is
-  // 'insufficient' with the rows it did read kept (graph/collect/laneBCore.ts):
-  // there, "could not read" is false, and the rows can show use. What they cannot
-  // show is that nothing uses it.
-  const DEVICE = 's-goal-block-device-code'
-  const body = bodiesOf(fixture('hostile')).get(DEVICE)
-  assert.ok(body, 'the hostile plan has the device code step')
-  const tile = tilesOf(body).find((t) => t.key === 'unsaved:Device code sign-in')
-  assert.ok(tile, 'the premise: hostile has not saved the device code decision')
-  assert.equal(tile.value, 'Confirm no legitimate use')
-  assert.doesNotMatch(String(tile.note), /records cover observed use/, String(tile.note))
-  assert.match(String(tile.note), /^IAMAI does not hold enough of this tenant's sign-in records to rely on — no sign-in records could be read — so they cannot show that nothing uses device code sign-in\./, String(tile.note))
-
-  // A production-shaped short read: some hours read, two people seen using device code.
-  const reason = 'stopped at time budget with only 6 h covered (minimum 24 h)'
-  const mid = fixture('mid')
-  const usage = mid.snapshot.evidenceUsage
-  assert.ok(usage, 'the premise: mid carries the usage a short read keeps')
-  const short: Fixture = {
-    ...mid,
-    snapshot: {
-      ...mid.snapshot,
-      sources: { ...mid.snapshot.sources, signInEvidence: { ...mid.snapshot.sources.signInEvidence!, status: 'insufficient', reason } },
-      evidenceUsage: { ...usage, deviceCode: { ...usage.deviceCode, count: 3, userIds: mid.snapshot.users.slice(0, 2).map((u) => u.id) } },
-    },
-  }
-  const shortBody = bodiesOf(short).get(DEVICE)
-  assert.ok(shortBody, 'the short-read plan has the device code step')
-  const shortTile = tilesOf(shortBody).find((t) => t.key === 'unsaved:Device code sign-in')
-  assert.ok(shortTile, 'the premise: the short-read plan has not saved the device code decision')
-  const note = String(shortTile.note)
-  assert.ok(note.startsWith(`IAMAI does not hold enough of this tenant's sign-in records to rely on — ${reason} — so they cannot show that nothing uses device code sign-in.`), note)
-  assert.doesNotMatch(note, /could not read|nothing here shows whether|records cover observed use/, note)
-})
-
-test('s-goal-block-legacy-auth: on a tenant whose sign-in records IAMAI does not hold, the mail-sending tile never speaks of a quiet sign-in history', () => {
-  // The device code tile's defect, on the other tile that reads the records.
-  // On hostile, whose sign-in source refused every read, the unsaved decision's
-  // tile read "A quiet sign-in history does not establish that every scheduled
-  // mail job has stopped using basic authentication": a history IAMAI had never
-  // read. It says what IAMAI does not hold, and why, and where the answer comes from.
+test('s-goal-block-legacy-auth: the mail-sending question draws no card on the step, whether or not IAMAI holds the sign-in records', () => {
+  // The question is answered on Confirm What You Use, and the step waits there
+  // (walk list 4.x item 6). The card it drew said "A quiet sign-in history does
+  // not establish…" where the records were read, and "…no sign-in records could
+  // be read…" on hostile, the one tenant that reached it (item 37).
   const LEGACY = 's-goal-block-legacy-auth'
-  const body = bodiesOf(fixture('hostile')).get(LEGACY)
-  assert.ok(body, 'the hostile plan has the legacy authentication step')
-  const tile = tilesOf(body).find((t) => t.key === 'unsaved:Mail-sending devices')
-  assert.ok(tile, 'the premise: hostile has not saved the mail-sending decision')
-  assert.doesNotMatch(String(tile.note), /quiet sign-in history/, String(tile.note))
-  assert.match(String(tile.note), /^IAMAI does not hold enough of this tenant's sign-in records to rely on — no sign-in records could be read — so they cannot show that no scheduled mail job still uses basic authentication\./, String(tile.note))
-
-  // A tenant whose records were read keeps the step's own note.
-  const read = bodiesOf(fixture('mid')).get(LEGACY)
-  assert.ok(read, 'the mid plan has the legacy authentication step')
-  const readTile = tilesOf(read).find((t) => t.key === 'unsaved:Mail-sending devices')
-  assert.ok(readTile, 'the premise: mid has not saved the mail-sending decision')
-  assert.match(String(readTile.note), /^A quiet sign-in history does not establish/, String(readTile.note))
+  for (const name of ['hostile', 'mid'] as const) {
+    const body = bodiesOf(fixture(name)).get(LEGACY)
+    assert.ok(body, `the ${name} plan has the legacy authentication step`)
+    assert.equal(tilesOf(body).some((t) => t.key.startsWith('unsaved:')), false, `${name}: the mail-sending question still draws a card`)
+    assert.doesNotMatch(tilesOf(body).map((t) => String(t.note)).join('\n'), /quiet sign-in history|no sign-in records could be read/)
+  }
 })

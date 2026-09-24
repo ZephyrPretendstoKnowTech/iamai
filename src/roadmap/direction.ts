@@ -511,20 +511,28 @@ export function noteServiceConsequences(steps: Step[]): void {
  * Per-answer gating (owner decision 3): every open step whose policy depends on
  * a Direction answer nobody has saved waits on the Direction step that asks it,
  * as a decision blocker the lane engine holds the step on (planLanes.ts
- * observe) and the row reads as Waiting on your answers. A policy already
- * enforced is not held by it: the engine asks its questions there instead. A dependency the plan
+ * observe) and the row reads as Waiting on your answers. A dependency the plan
  * does not ask (a service this baseline has nothing for) waits on nothing, and
  * a step that depends on no answer is left exactly as it was.
+ *
+ * A policy already enforced, or already delivering its goal, is not held by an
+ * answer it is written from: it is on either way. It waits only on an answer
+ * that decides whether the step is finished, a conditional input it carries
+ * (Step.unsavedInputs: the mail-sending accounts, partner access), which it
+ * never asks itself (walk list 4.x item 6): the one wait, shown the same way on
+ * every step and every tenant.
  */
 export function gateOnDirection(steps: Step[]): void {
   const questions = new Map<string, DirectionQuestion>()
   for (const s of steps) if (isDirectionStep(s.id)) for (const q of s.directionQuestions ?? []) questions.set(q.key, q)
   if (questions.size === 0) return
   for (const step of steps) {
-    // An already enforced policy is never held by it: it asks its question where
-    // it is (unsavedInputs), so it carries no wait at all.
-    if (isDirectionStep(step.id) || step.status === 'done' || step.status === 'skipped' || step.doesntApply != null || step.state.satisfied || step.state.lifecycle === 'enforced') continue
-    const waiting = [...new Set(directionDependenciesOf(step).filter((k) => { const q = questions.get(k); return q !== undefined && q.saved === null }).map(directionStepOf))]
+    if (isDirectionStep(step.id) || step.status === 'skipped' || step.doesntApply != null || step.state.setAside) continue
+    const on = step.status === 'done' || step.state.satisfied || step.state.lifecycle === 'enforced'
+    const inputs = (step.unsavedInputs ?? []).length > 0 ? ANSWERED_IN[step.id] ?? [] : []
+    if (on && inputs.length === 0) continue
+    const keys = on ? inputs : directionDependenciesOf(step)
+    const waiting = [...new Set(keys.filter((k) => { const q = questions.get(k); return q !== undefined && q.saved === null }).map(directionStepOf))]
     if (waiting.length === 0) continue
     // The wait holds the step (holds.ts; owner, 2026-09-19): it is undated until
     // the answer is approved, like every other hold. The schedule withdraws it once
@@ -533,7 +541,8 @@ export function gateOnDirection(steps: Step[]): void {
     // Its reason names the Direction step, in the shape a wait on another step reads.
     for (const id of waiting) step.blockers.push({ kind: 'decision', label: `${DIRECTION_BLOCKER}${id}`, binding: BLOCKED_REASON.after(directionTitleOf(id)) })
     // A step that waits is not Ready (lifecycle.ts conditionFor): it reads
-    // Blocked, as a step waiting on another step does.
-    if (step.state.condition === 'healthy') setState(step, { condition: 'blocked' })
+    // Blocked, as a step waiting on another step does. A goal already delivered
+    // is not blocked (tracking.ts advance); the wait alone keeps it open.
+    if (step.state.condition === 'healthy' && !step.state.satisfied) setState(step, { condition: 'blocked' })
   }
 }

@@ -90,12 +90,14 @@ test('a removed exclusion named with a line break stays one comment line in the 
     const k = psLines.findIndex((l) => l.startsWith(`# ${said}`))
     assert.deepEqual([psLines[k - 1], psLines[k + 1]], ['function Invoke-IAMAIStep {', 'param('], ps.slice(0, 500))
     assert.doesNotMatch(ps, /^\s*Remove-MgGroup/m)
+    // Entra names the removal in the correction itself (roadmap/policyProcedure.ts), one item.
+    const removal = `Under **Users → Exclude**, remove the group **Contractors ${COMMAND}**.`
     const entra = tab('portal')
-    assert.ok(entra.startsWith(said), entra)
+    assert.ok(entra.split('\n').some((l) => l.endsWith(removal)), entra)
     assert.doesNotMatch(entra, /^\s*Remove-MgGroup/m)
     assert.ok(tab('ai').includes(said))
-    const exported = stepExportView(step, ctx).whatToDo.filter((l) => l.includes('This change removes'))
+    const exported = stepExportView(step, ctx).whatToDo.filter((l) => l.includes('remove the group Contractors'))
     assert.equal(exported.length, 1)
-    assert.ok(exported[0].startsWith(said) && !/[\r\n]/.test(exported[0]), JSON.stringify(exported))
+    assert.ok(exported[0].endsWith(removal.replace(/\*\*/g, '')) && !/[\r\n]/.test(exported[0]), JSON.stringify(exported))
   }
 })

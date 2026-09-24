@@ -10,6 +10,7 @@ import { DIRECTION_STEP, directionMilestoneAction } from '../../roadmap/directio
 import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { directionWords } from '../../content/content.ts'
 import { headingsOf, stepBodyOf } from './stepBody.ts'
+import { laneReadings } from './planLanes.ts'
 import { DIRECTION_STEP_IDS } from '../../roadmap/stepGroups.ts'
 import { emergencyTaskSteps, emergencyTaskText } from './emergencyAccountTasks.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
@@ -148,32 +149,27 @@ test('the text fixes the owner approved on the frozen steps, 2026-09-20: the six
   }
 })
 
-test("an unsaved question that moved to Direction links to the Direction step that asks it, and the step's own procedure asks for no answer", () => {
-  // R4-43: a Ready-tab row whose one open input is a question that moved to
-  // Direction drew "Mail-sending devices · Not confirmed" with no link, while
-  // every other wait on a Direction answer links to the step that asks it and
-  // the engine already knew which step that is (directionStepsAnswering). The
-  // card is the step's one outstanding item, so it is the one that has to lead
-  // somewhere.
+test("an unsaved question that moved to Direction is one wait on the Direction step that asks it, and the step's own procedure asks for no answer", () => {
+  // Walk list 4.x item 6: an input answered on a Direction step never draws a
+  // card or a decision lane of its own on the step it changes. The step waits on
+  // the Direction step, and its one tile is the wait every other Direction
+  // answer draws ("{step} · Waiting on your answers"), linking there (R4-43).
   {
     const f = fixture('midflight')
     const r = runFixture(f)
     const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: null } as StepVarContext
     const legacy = r.steps.find((s) => s.id === 's-goal-block-legacy-auth')!
     assert.deepEqual(legacy.unsavedInputs, ['Mail-sending devices'], 'the premise: the mail-devices answer is unsaved on a first scan')
-    const tile = stepBodyOf(legacy, ctx).readiness.tiles.find((t) => t.key === 'unsaved:Mail-sending devices')
-    assert.ok(tile, 'the unsaved question has no tile')
-    assert.ok(tile!.link && 'href' in tile!.link, 'the unsaved question\'s tile leads nowhere')
-    assert.equal((tile!.link as { href: string }).href, '#/plan/s-direction-use')
-    // Every step whose question moved: its unsaved tile links to the one step that answers it.
-    let checked = 0
+    assert.equal(stepBodyOf(legacy, ctx).readiness.tiles.some((t) => t.key.startsWith('unsaved:')), false, 'the question still draws a card of its own')
+    // The board holds the step On Hold on the Direction step, as it holds every
+    // step waiting on an answer; that reading is the tile the step draws.
+    const reading = laneReadings(r.steps).get(legacy.id)!
+    assert.equal(reading.lane, 'On Hold')
+    assert.deepEqual([reading.reason?.kind, reading.reason?.id], ['decision', 's-direction-use'])
+    assert.equal(reading.unsaved, undefined, 'the row still says it is waiting on your answer to the question')
     for (const step of r.steps.filter((s) => ANSWERED_IN[s.id] && (s.unsavedInputs ?? []).length > 0)) {
-      for (const t of stepBodyOf(step, ctx).readiness.tiles.filter((x) => x.key.startsWith('unsaved:'))) {
-        assert.ok(t.link && 'href' in t.link && t.link.href.startsWith('#/plan/s-direction-'), `${step.id}: ${t.key} does not link to a Direction step`)
-        checked++
-      }
+      assert.equal(stepBodyOf(step, ctx).readiness.tiles.some((t) => t.key.startsWith('unsaved:')), false, `${step.id}: an answered-on-Direction question draws a card`)
     }
-    assert.ok(checked >= 1, `only ${checked} unsaved Direction tiles checked`)
   }
   // R4-46: Require MFA for Guests' procedure still said "Answer the IT Provider
   // Access question" after that question moved to Confirm What You Use. The step
@@ -198,15 +194,11 @@ test("an unsaved question that moved to Direction links to the Direction step th
       }
     }
     assert.ok(checked > 5, `only ${checked} procedure lines checked`)
-    // The fact the line carried stays. It is a numbered line, and a numbered line
-    // is something to do (the passkey preparation's rule above): it was left a
-    // bare statement, "Your answer about partner or MSP technicians decides …",
-    // and it is now the check that the policy's guest types follow that answer.
+    // The guest types the partner answer decides are the procedure's own users
+    // line (roadmap/policyProcedure.ts), the same in every state, so no line
+    // restates the answer's effect (walk list item 19).
     const guests = r.steps.find((s) => s.id === 's-goal-guests-mfa')!
     const body = stepBodyOf(guests, ctx)
-    const partner = (body.emergencyAccountTasks?.tasks ?? []).flatMap((t) => emergencyTaskSteps(t)).filter((l) => /service-provider external-user type/.test(l))
-    assert.equal(partner.length, 1, 'the partner answer\'s effect is no longer stated, or stated twice')
-    assert.match(partner[0], /^(?:\d+\.\s*)?Check\b/, `a numbered line that instructs nothing: "${partner[0]}"`)
     // Its decision note — the Decision tile's words — said "saving an answer
     // here does not establish trust" on a step that takes no answer: the partner
     // answer is saved on Confirm What You Use.

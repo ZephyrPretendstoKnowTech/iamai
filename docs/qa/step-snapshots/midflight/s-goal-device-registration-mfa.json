@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "18% ready for Modern MFA + TAP"
+      "state": "22% ready for Modern MFA + TAP"
     },
     {
       "label": "Baseline mapping",
@@ -36,8 +36,6 @@
   ],
   "channels": [
     "Entra",
-    "PowerShell",
-    "JSON",
     "AI Info"
   ],
   "when": "Est. Sep 7, 2026"

@@ -27,16 +27,18 @@ import type { StepCheckItem } from '../../validation/checkFixes.ts'
 import { SET_LEVEL } from '../../validation/report.ts'
 import { appearedEnforced, dimensionWords, watchedArrive } from '../../roadmap/observation.ts'
 import type { Condition, Lifecycle, Milestone } from '../../roadmap/lifecycle.ts'
-import { heldForReview, nextMilestone, reviewCauses } from '../../roadmap/lifecycle.ts'
+import { BLOCKED_MILESTONES, heldForReview, nextMilestone, reviewCauses } from '../../roadmap/lifecycle.ts'
 import type { PolicyHold, UnavailableReason } from '../../roadmap/operations.ts'
+import { portalName } from '../../roadmap/portalLines.ts'
 import { awaitsOwnObject, awaitsWorkflowRecord, createWaitsOnReadiness, enforcesOnRun, implementationOffered, isPreserved, operationsOf, policyHold, switchedOffPolicies, unavailableReason, strengthNameIn } from '../../roadmap/operations.ts'
 import { requiredMembers } from '../../roadmap/tracking.ts'
 import { unreadLine } from '../../roadmap/evidence.ts'
-import { reached, stepPopulation } from '../../derive/population.ts'
-import { populationLine } from '../../derive/whoLine.ts'
-import { app, cleanup, directionWords, engine, shared, stepById, structuralWords } from '../../content/content.ts'
+import { MAIL_ACCOUNTS_WAIT, SIGN_INS_FINDING } from '../../roadmap/blockSignIns.ts'
+import { impactReachOf } from '../../derive/population.ts'
+import { affectedIds, populationLine } from '../../derive/whoLine.ts'
+import { app, cleanup, directionWords, engine, shared, stepById } from '../../content/content.ts'
 import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
-import { directionBlockerStep, directionStepsAnswering, directionTitleOf, directionWaitRelayed } from '../../roadmap/direction.ts'
+import { directionBlockerStep, directionTitleOf, directionWaitRelayed } from '../../roadmap/direction.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { CAMPAIGN_STEP_ID } from '../../roadmap/followUp.ts'
 import { effectsOf } from '../../roadmap/strand.ts'
@@ -44,6 +46,10 @@ import { NAMES_INLINE } from './whoBlocks.ts'
 import { doneWhenFor, fillText, whatToDoFor, whole } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { list, plural } from '../../copy/statements.ts'
+import { personLabels } from '../../names.ts'
+import { adminUserIds } from '../../roles.ts'
+import { DORMANT_STEP_ID } from './sectionThreeTasks.ts'
+import type { MethodPreparation } from '../../roadmap/methodReadiness.ts'
 import { BLOCKED_REASON, BLOCKED_SUBJECT, readinessFamilyOf } from '../../copy/reasons.ts'
 import type { StatusTone } from '../components/index.ts'
 import { isHeld } from '../../roadmap/holds.ts'
@@ -64,6 +70,11 @@ import dependencyData from '../../actionability/dependency-data.json' with { typ
 import type { DependencyData } from '../../actionability/parseDependencyDoc.ts'
 import { buildGraph } from '../../actionability/lanes.ts'
 import { exclusionsGroupChoice } from '../../mapping/safetyChoice.ts'
+import { policyFactOf } from './policyFact.ts'
+import type { PolicyFact } from './policyFact.ts'
+import { QUESTION_STEP, mailDevicesOf } from '../../roadmap/answers.ts'
+import { isGroupMember } from '../../roadmap/stepGroups.ts'
+import { rowWho } from './rowWho.ts'
 
 /**
  * The one state reading of a step (A1b, RUN-CONTEXT-A decision 1): the lane
@@ -92,6 +103,8 @@ export type LaneView = {
   alone?: true
   /** The day the plan expects the row to happen (LaneReading.estimate): what its When column reads, as an estimate, where the row has no day of its own. */
   estimate?: string
+  /** Up Next behind its own report-only week: the week's last day (planBoard.ts reportOnlyUntilOf), which the row keeps as its own date. */
+  reportOnlyUntil?: string
 }
 
 /** The contract's own words (pages.app.plan.stepContract). */
@@ -121,9 +134,6 @@ type ContractWords = {
   memberLine: string
   memberWatched: string
   memberReview: string
-  whoUnknown: string
-  /** The reach is not established because the baseline's own references still wait for a person's answer (resolvePolicy.ts `decisions`). */
-  whoUnknownDecision: string
   /** The words the Plan's one presentation state adds (planState.ts). */
   stateWords: Record<'needsCorrection' | 'minimumInPlace' | 'hardeningDeferred', string>
   foundReadiness: string
@@ -132,16 +142,15 @@ type ContractWords = {
   foundEnforcedShort: string
   /** A finished rollout whose readiness the plan's threshold waits for and IAMAI cannot measure (Action.enforcedBelowReadiness). */
   foundEnforcedUnmeasured: string
-  /** After foundEnforcedShort, where the reading is below the plan's own threshold. */
-  foundEnforcedBelowThreshold: string
-  /** The same, where the value is a floor the scan could prove (readiness.atLeast). */
-  foundEnforcedBelowThresholdFloor: string
   /** A tenant's own policy delivering the goal, where it differs from the baseline's (Action.ownPolicyDiffers). */
   ownPolicyDiffers: { label: string; note: string }
-  /** The plan's policy asking for less than its goal's grant floor (Action.belowGoalFloor). */
-  belowGoalFloor: { label: string; value: string; note: string; floors: Record<string, string>; grantMfa: string; grantStrength: string }
+  /** Require MFA for Everyone's dormant accounts with no method (walk list 4.x item 10). */
+  dormantNoMethod: { label: string; value: string; valueOne: string; names: string; listed: string }
+  /** The signed-in account a policy would leave with no way in (walk list 4.x item 43). */
+  operatorCard: { label: string; value: string; admin: string; other: string; fix: string }
+  /** A gate on people's methods: who is short and what moves them (walk list 4.x items 42, 48). */
+  methodGate: { adminValue: string; needs: string; needMany: string; needListed: string; signIn: string; signInMany: string; signInListed: string; route: string }
   /** A finished policy this plan owns that went live with no report-only period IAMAI watched (doneWhen.ts enforcedUnwatched; owner decision 3). */
-  foundEnforcedUnwatched: string
   /** The people marked on the campaign to turn on without, for now (roadmap/followUp.ts). */
   followUp: { label: string; campaignLabel: string; campaign: string; campaignOpen: string; method: string; risk: string; pickerLabel: string; save: string; printed: string; printedNone: string }
   /** The threshold where the scan could prove only a floor under the value. */
@@ -152,6 +161,10 @@ type ContractWords = {
   foundReadinessEnforced: string
   /** Who a readiness measure counts, by its family (copy/reasons.ts READINESS_MEASURE). */
   readinessScope: Record<string, string>
+  /** A deployed policy that moved from the plan, as one card with its fix (driftCardOf; walk list 4.x item 24). */
+  drift: { changed: string; differs: string; setBack: string; setBackTasks: string; set: string; setTasks: string; anyExcept: string; notConfigured: string; names: Record<string, string> }
+  /** Who a finished policy's readiness fact counts, by its family: "19 of 28 people have a method it accepts". */
+  acceptedWho: Record<string, string>
   /** Where a readiness number is moved, by family, for a measure this plan runs no step for. */
   readinessRoute: Record<string, string>
   foundReadinessRouteStep: string
@@ -171,8 +184,6 @@ type ContractWords = {
   /** The line that heads the directory tile's name list, so a name is never a paragraph of its own. */
   inventoryNames: string
   foundInPlaceWatched: string
-  foundInherited: string
-  foundInheritedTogether: string
   foundInPlaceWatchedTogether: string
   foundInPlaceTogether: string
   doneSatisfied: string
@@ -200,11 +211,8 @@ type ContractWords = {
   /** A finished step's lead where every open finding is unread (actionOf). */
   leadUnverified: string
   fixStep: string
-  fixStepAt: Record<string, string>
-  /** A completed step whose own hard prerequisite the scan still finds unmet. */
-  fixStepOvertaken: string
-  /** The same fact on a step the board does not call Completed: its change is in place, and there is still work on it. */
-  fixStepOvertakenOpen: string
+  /** By milestone; a null note draws none (walk list 4.x item 50). */
+  fixStepAt: Record<string, string | null>
   fixConfirmExclusions: string
   /** A policy naming a reference of the baseline's nobody has mapped yet: the fix is the mapping, in Plan settings (S4). */
   fixMapping: string
@@ -232,7 +240,7 @@ type ContractWords = {
     email: string
     aiWarning: string
     /** The grounding every AI Info carries after the package's own words (aiGrounding.ts). */
-    aiFacts: { heading: string; boundary: string; observed: string; members: string; existing: string; current: string; currentState: string; changedFields: string; removedExclusions: string; target: string; targetName: string; includeUsers: string; includeRoles: string; excludeGroups: string; excludeUsers: string; locations: string; grant: string; strength: string; accounts: string; more: string; none: string }
+    aiFacts: { heading: string; boundary: string; observed: string; members: string; existing: string; current: string; currentState: string; removedExclusions: string; target: string; targetName: string; includeUsers: string; includeRoles: string; excludeGroups: string; excludeUsers: string; locations: string; grant: string; strength: string; accounts: string; more: string; none: string }
     /** The session policy's excluded accounts where the resolved target excludes nobody (stepPackage.ts). */
     excludeUsersNone: string
     copy: string
@@ -485,8 +493,10 @@ export type StepContract = {
   inventory?: ContractInventory | null
   /** The people marked on the campaign to turn this policy on without, for now, and what happens to them; null where there are none. */
   followUp: { count: number; text: string } | null
-  /** Where the policy the plan writes asks for less than the goal's grant floor, the sentence that says so (Action.belowGoalFloor); null elsewhere. */
-  belowGoalFloor: { text: string; floor: string } | null
+  /** Require MFA for Everyone: the dormant accounts its policy reaches with no method, and where to disable them (Step.dormantWithoutMethod); null elsewhere. */
+  dormant: { value: string; text: string } | null
+  /** The signed-in account this policy would leave with no method it accepts, named, with the step that fixes it (walk list 4.x item 43); null elsewhere. */
+  operator: { text: string; id: string } | null
   whatToDo: ContractAction
   fix: ContractFix[]
   /**
@@ -543,6 +553,13 @@ export type StepContract = {
    * plan show, and the AI Info briefing all read it (R4-33).
    */
   routeStart: { id: string; title: string } | null
+  /**
+   * What the step's policy does, read from the policy IAMAI will see
+   * (policyFact.ts), on a policy in Turn On MFA for Everyone; null elsewhere.
+   * Its Satisfied card and its Completion Criteria state it (walk list 4.x
+   * items 22 and 26).
+   */
+  policyFact: PolicyFact | null
 }
 
 /**
@@ -591,7 +608,12 @@ function heldLine(step: Step): string | null {
  */
 export function readinessHeldLine(step: Step, tenant: string): string {
   const vars = { tenant, ...(step.action.readinessGate ?? {}) }
-  if (!createWaitsOnReadiness(step)) return fillText(app.plan.readinessHeld, vars)
+  if (!createWaitsOnReadiness(step)) {
+    // The admin gate is every admin, said in the admins' own count (walk list 4.x item 44).
+    const gate = step.action.readinessGate
+    const p = gate === undefined ? null : methodGateOf(step, gate)
+    return p !== null && familyOf(gate!) === 'admin' ? fillText(app.plan.readinessHeldAdmin, { ready: p.readyIds.length, total: p.ids.length }) : fillText(app.plan.readinessHeld, vars)
+  }
   // A policy the scan found switched off is not one to create: say it was found.
   const off = switchedOffPolicies(step).map((p) => p.name)
   return off.length > 0 ? fillText(app.plan.readinessHeldSwitchedOff, { ...vars, policy: list([...new Set(off)]) }) : fillText(app.plan.readinessHeldCreate, vars)
@@ -634,7 +656,8 @@ function reasonLine(step: Step, reason: UnavailableReason, tenant: string, exclu
       return fillText(app.plan.noOperation, { tenant })
     }
     case 'manual-correction':
-      return fillText(app.plan.manualCorrection, { tenant, fields: dimensionWords(step.state.observation?.unwritten ?? []) })
+      // The drift card's own fix, with its values (walk list 4.x item 24), where it has one.
+      return driftCardOf(step)?.value ?? fillText(app.plan.manualCorrection, { tenant, fields: dimensionWords(step.state.observation?.unwritten ?? []) })
     case 'unsafe-emergency-access':
       return fillText(app.plan.emergencyUnsafe, { tenant })
     case 'unverified-emergency-exclusion':
@@ -719,22 +742,8 @@ const found = (key: string, text: string): ContractFound => ({ key, label: CONTR
  * whatever the observation had to say about what changed. Nothing is invented to
  * fill the section, and an unknown is never written down as a zero.
  */
-/** The step that owns the security-defaults ordering invariant, and so the one that reports it broken. */
-const SECURITY_DEFAULTS_STEP_ID = 's-prereq-security-defaults'
-
-function foundOf(step: Step, tenant: string, said: string | null, routeStart: StepContract['routeStart'] = null): ContractFound[] {
+function foundOf(step: Step, tenant: string, said: string | null, routeStart: StepContract['routeStart'] = null, labels: ReadonlyMap<string, string> | null = null, operatorId: string | null = null): ContractFound[] {
   const out: ContractFound[] = []
-  // The one step that states the ordering invariant is the one that has to
-  // notice it has been broken. A reader enforced eight policies with security
-  // defaults still on, swept all thirty-three steps, and found no warning
-  // anywhere — the board read Completed and the tile said "IAMAI watched it get
-  // there." The generator writes the count onto this step's readiness
-  // (generate.ts); a step with no threshold renders none of its readiness, so
-  // it is said here, where a finding about the tenant belongs.
-  if (step.id === SECURITY_DEFAULTS_STEP_ID) {
-    const line = step.readiness.lines.find((l) => l.includes(app.plan.securityDefaultsCoexist.split('{')[0].trim()))
-    if (line !== undefined) out.push(found('readiness', line))
-  }
   const gate = step.action.readinessGate
   // The same sentence the Threshold card says, with the same start of its route's
   // chain (StepContract.routeStart): the finding the Evidence dialog, the printed
@@ -742,7 +751,13 @@ function foundOf(step: Step, tenant: string, said: string | null, routeStart: St
   // the card is ('gate'), under the readiness label: the security-defaults line
   // and the short-reading note share that label and are not the threshold, and
   // the export reads the threshold from this one finding (stepExport.ts).
-  if (gate && step.status !== 'done' && step.status !== 'skipped') out.push(found('gate', readinessSentence(step, gate, routeStart)))
+  // A policy already On states a count it has, and never "it is not measured
+  // today" for a turn-on that already happened (walk list 4.x item 2).
+  const unmeasuredOn = step.state.lifecycle === 'enforced' && gate !== undefined && !/[0-9]/.test(gate.value)
+  if (gate && step.status !== 'done' && step.status !== 'skipped' && !unmeasuredOn) {
+    // The signed-in admin alone short is said by its own card (walk list 4.x item 43).
+    if (operatorId === null || !operatorAloneShort(step, gate, operatorId)) out.push(found('gate', readinessSentence(step, gate, routeStart, labels, operatorId)))
+  }
   // And on a step that has finished short of it, where the gate is already gone.
   else { const short = shortReadingOf(step); if (short !== null) out.push(found('readiness', short.note)) }
   // A policy this plan tagged, switched off, on a step that is proposing to
@@ -818,14 +833,17 @@ function foundOf(step: Step, tenant: string, said: string | null, routeStart: St
     // watched the rollout itself go On with no report-only period
     // (observation.ts `skippedWindow`), the Readiness tile says so
     // (unwatchedTile), which is a different fact and renders beside this one.
-    const inherited = !watched && step.tracking?.matchedBy === 'tag'
+    // (The inherited-tag wording is gone, walk list 4.x item 31: "This scan did
+    // not watch it change; it reads it as it stands in {tenant} now." protected
+    // IAMAI and told the reader nothing. A policy that went live with no watched
+    // report-only week is said by its own line, unwatchedLine, once.)
     const text =
       by === null
         ? fillText(CONTRACT.foundInPlace, { tenant })
         : by.together
-          ? fillText(inherited ? CONTRACT.foundInheritedTogether : watched ? CONTRACT.foundInPlaceWatchedTogether : CONTRACT.foundInPlaceTogether, { policies: list(by.names), tenant })
-          : fillText(inherited ? CONTRACT.foundInherited : watched ? CONTRACT.foundInPlaceWatched : CONTRACT.foundInPlaceNamed, { policies: by.names[0], tenant })
-    out.push(found('in-place', text))
+          ? fillText(watched ? CONTRACT.foundInPlaceWatchedTogether : CONTRACT.foundInPlaceTogether, { policies: list(by.names), tenant })
+          : fillText(watched ? CONTRACT.foundInPlaceWatched : CONTRACT.foundInPlaceNamed, { policies: by.names[0], tenant })
+    if (!enforcedUnwatched(step)) out.push(found('in-place', text))
   }
   // Who the goal does not reach, where it is delivered anyway (roadmap/types.ts
   // coverageShortfall). "Already delivered ... so there is nothing to create" is
@@ -865,7 +883,11 @@ function foundOf(step: Step, tenant: string, said: string | null, routeStart: St
   // The scan that saw the policy arrive On also wrote it as this note, and the
   // step said it twice, once under New evidence and once in Readiness.
   const toldByTile = obs ? enforcedUnwatched(step) && appearedEnforced(obs) : false
-  if (obs && !toldByTile && (obs.reviewRequired || obs.continuity === 'reset' || (obs.changed !== 'none' && obs.changed !== 'first-scan')) && !(said ?? '').includes(obs.note)) out.push(found('observation', obs.note))
+  // An edit the plan asked for on a policy that stays On is no news (walk list
+  // 4.x item 7): "the policy itself changed … what was watched before this is no
+  // longer what is deployed" followed Configure Emergency Exclusions' own edit.
+  const askedEdit = obs !== null && obs !== undefined && obs.expected && !obs.reviewRequired && obs.latest.state === 'enforced' && obs.changed === 'semantics'
+  if (obs && !toldByTile && !askedEdit && (obs.reviewRequired || obs.continuity === 'reset' || (obs.changed !== 'none' && obs.changed !== 'first-scan')) && !(said ?? '').includes(obs.note)) out.push(found('observation', obs.note))
   return out
 }
 
@@ -886,28 +908,23 @@ export function existingOf(step: Step): ContractExisting | null {
   return { names: [...by.policies], together: by.policies.length > 1 }
 }
 
-/** Who the policy reaches, from the reach Foundation A settled — never the goal's population standing in for it. */
-function whoOf(step: Step, ctx: StepVarContext): ContractWho | null {
-  const pop = reached(step)
-  // Where the scope waits on a person's answer about the baseline's own groups, that is the reason, not the scan.
-  if (pop === null) {
-    const source = ctx.snapshot.sources.users
-    const missing = [...new Set((step.action.missing ?? []).map(m => m.stepId ? stepById[m.stepId]?.title : null).filter(Boolean))]
-    // A step with no policy of its own is unsettled only where the tenant's
-    // policies deliver it and their scope could not be read (derive/population.ts
-    // reached): the reason is the scan's, never the plan's own missing
-    // references, which that policy does not wait on. It read the goal's people.
-    const text = source && source.status !== 'ok'
-      ? `Directory read incomplete${source.reason ? `: ${source.reason}` : '.'}`
-      : effectsOf(step) === null ? CONTRACT.whoUnknown
-      : missing.length ? `Policy scope awaits: ${missing.join('; ')}.`
-      : step.goalId === 'guests-mfa' ? 'Exact guest-policy reach needs the external-user type, home organization and applicable exclusions for each account.'
-      : 'Policy applicability is not fully resolved. Review the named policy assignments and prerequisites on this step.'
-    return { known: false, text }
+/**
+ * Who the policy reaches, from the reach Foundation A settled. A policy whose
+ * reach is not settled counts what its Impact counts (derive/population.ts
+ * impactReachOf; walk list 4.x item 31): "Who this touches: Policy
+ * applicability is not fully resolved…" told the person what IAMAI lacked
+ * instead of a count.
+ */
+function whoOf(step: Step): ContractWho | null {
+  // A Turn On MFA for Everyone policy's reach is its row's Impact, a count
+  // (walk list 4.x items 25 and 31): "30 people", never "30 active people · 3
+  // admins · 1 guest · covers 36 enabled", in AI Info and every export.
+  if (isGroupMember(step.id, 'core') && (contentStepFor(step) as { kind?: unknown } | undefined)?.kind === 'policy') {
+    const impact = rowWho(step)
+    if (/^[0-9]/.test(impact)) return { known: true, text: impact }
   }
-  const view = stepPopulation(step)
-  if (view === null) return { known: false, text: CONTRACT.whoUnknown }
-  if (view.active === 0 && view.enabledCovered === 0) return null
+  const pop = impactReachOf(step)
+  if (affectedIds(pop).length === 0 && (pop.inScope ?? 0) === 0) return null
   return { known: true, text: populationLine(pop) }
 }
 
@@ -1003,7 +1020,8 @@ function waitTextOf(b: Step['blockers'][number]): string | null {
 function enforcementWaitsOf(step: Step): ContractFix[] {
   if (step.state.condition === 'baseline-conflict') return []
   const threshold = thresholdBinding(step)
-  const waits = step.blockers.filter((b) => b.kind === 'readiness' && !isThresholdWait(b, threshold))
+  // The named mail accounts are their own card, by name (blockSignIns.ts mailAccountsCard; walk list 4.x item 5).
+  const waits = step.blockers.filter((b) => b.kind === 'readiness' && !isThresholdWait(b, threshold) && b.label !== MAIL_ACCOUNTS_WAIT)
   // The schedule is asked only where there is a wait to state: the contract is
   // built for every step on every render, and most hold no readiness wait at all.
   if (waits.length === 0 || scheduleOf(step).transition !== 'createReportOnly') return []
@@ -1039,8 +1057,9 @@ function fixOf(step: Step, cs: Record<string, unknown> | undefined, ex: Record<s
     for (const m of step.state.members) {
       if (!m.change.reviewRequired) continue
       const name = step.tracking?.members?.find((t) => t.key === m.key)?.policyName || m.sourceName
-      if (m.change.drifted) out.push({ key: `review:${m.key}`, text: fillText(CONTRACT.fixReview, { name }) })
-      if (m.change.unwritten.length > 0) out.push({ key: `review:${m.key}:unwritten`, text: fillText(engine.tracking.correctionManual, { name, fields: dimensionWords(m.change.unwritten) }) })
+      // One fix per member, in the words of its card (driftCardOf; walk list 4.x item 24).
+      if (m.change.unwritten.length > 0) out.push({ key: `review:${m.key}:unwritten`, text: driftFixOf(step, m.key, m.change.unwritten, m.change.drifted) })
+      else if (m.change.drifted) out.push({ key: `review:${m.key}`, text: fillText(CONTRACT.fixReview, { name }) })
     }
   }
   const what = (cs?.whatToDo ?? null) as Record<string, unknown> | null
@@ -1085,7 +1104,7 @@ function fixOf(step: Step, cs: Record<string, unknown> | undefined, ex: Record<s
     // The threshold this step waits on is a wait, not a fix (isThresholdWait).
     // Everything else a readiness blocker names is work — and while the create
     // is next, it is the turn-on's wait, stated as one (enforcementWaitsOf).
-    if (b.kind === 'readiness' && (creating || isThresholdWait(b, threshold))) continue
+    if (b.kind === 'readiness' && (creating || isThresholdWait(b, threshold) || b.label === MAIL_ACCOUNTS_WAIT)) continue
     if (b.kind === 'step') {
       const title = stepById[b.stepId]?.title ?? b.stepId
       out.push({ key: `step:${b.stepId}`, text: fillText(CONTRACT.fixStep, { step: title }) })
@@ -1206,7 +1225,12 @@ function actionOf(step: Step, reason: UnavailableReason | null, milestone: Contr
   // (2026-09-23), and their cards now carry none.
   const unverified = !step.emergency && step.id !== 's-prereq-exclusion-group' && step.id !== 's-prereq-passkey-settings' && open.length > 0 && open.every((f) => f.outcome === 'unknown')
   if (unverified && (isPreserved(step) || step.state.satisfied)) return { kind: 'preserve', text: fillText(CONTRACT.leadUnverified, { findings: list(open.map((f) => f.label)) }) }
-  if (isPreserved(step)) return { kind: 'preserve', text: app.plan.inPlaceKeep }
+  // What is true of it, by name (walk list 4.x items 22 and 31): "This is in
+  // place already: nothing to create. Keep the policy as it is." said neither.
+  if (isPreserved(step)) {
+    const names = existingOf(step)?.names ?? (step.tracking?.members ?? []).map((m) => m.policyName).filter((n): n is string => typeof n === 'string' && n.trim() !== '')
+    return { kind: 'preserve', text: names.length === 0 ? app.plan.inPlaceKeep : fillText(names.length === 1 ? app.plan.inPlaceOn : app.plan.inPlaceOnMany, { policy: list(names) }) }
+  }
   if (step.state.satisfied) return { kind: 'preserve', text: milestone.label }
   if (step.state.condition === 'needs-decision') return { kind: 'decide', text: milestone.label }
   if (step.state.lifecycle === 'report-only' && step.blockers.some(b => b.kind === 'readiness' && b.label === 'session-loop')) return { kind: 'resolve', text: shared.sessionLoopHold as string }
@@ -1244,7 +1268,7 @@ function actionOf(step: Step, reason: UnavailableReason | null, milestone: Contr
  * asks for, which is the same either way: watch it.
  */
 function milestoneSentence(m: Pick<ContractMilestone, 'kind' | 'label' | 'at'>, estimate: boolean): string {
-  if (m.kind !== 'observe') return m.label
+  if (m.kind !== 'observe' || BLOCKED_MILESTONES.has(m.label)) return m.label
   return m.at ? fillText(MILESTONE.observeUntil, { date: shownDay(m.at, estimate, 'sentence') }) : MILESTONE.observe
 }
 
@@ -1301,8 +1325,51 @@ function objectTaskDoneWhen(task: Record<string, unknown> | undefined, ex: Recor
   return lines.filter((l) => whole(l, ex)).map((l) => fillText(l, ex))
 }
 
-function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<string, unknown> | undefined, ex: Record<string, unknown>, fix: ContractFix[], tenant: string, mapping?: StepVarContext['mapping']): string[] {
+/** Completion Criteria's words on a policy in Turn On MFA for Everyone (walk list 4.x item 26). */
+type DoneOnWords = { doneOn: string; doneOnPlain: string; donePeriod: string; donePeriodMail: string }
+const DONE_ON = (): DoneOnWords => CONTRACT as unknown as DoneOnWords
+/** The completion of the mail half of Block Legacy Authentication, where the mail question named accounts (shared.mailDevices.done). */
+const MAIL_DONE = (): string => (shared.mailDevices as unknown as { done: string }).done
+
+/**
+ * A policy in Turn On MFA for Everyone finishes on two lines, the same in
+ * every state (walk list 4.x item 26, owner 2026-09-24): what IAMAI will see —
+ * the policy On, and what it does for whom — and the report-only period it
+ * has to pass. The period's line goes where the scan found the policy already
+ * On, since there was none to pass; where the plan's policy went On without a
+ * report-only period IAMAI watched, the check after the change stands in its
+ * place (owner, 2026-09-22). Block Legacy Authentication adds its mail half
+ * where the mail question named accounts. Up to six lines changed with the
+ * state before: the report-only gates with today's numbers, "A later scan
+ * confirms…", "Verify after the change…", "Representative users can satisfy
+ * MFA…" and "The scan found the assessed configuration in place."
+ */
+function policyDoneWhen(step: Step, fact: PolicyFact | null, policy: string, mailAccounts: readonly string[]): string[] {
+  const W = DONE_ON()
+  const on = fact === null ? fillText(W.doneOnPlain, { policy }) : fillText(W.doneOn, { policy: fact.policy, fact: fact.doing })
+  // Found already On: first seen enforced (observation.ts neverObserved), or, where
+  // nothing is tracked, the tenant's own policy in place. A tenant policy IAMAI
+  // watched go from Report-only to On passed its period like any other.
+  const members = step.state.members
+  const foundOn = members.length > 0 ? members.every((m) => m.change.latest.neverObserved === true) : step.state.inPlace
+  const period = enforcedUnwatched(step) ? [POLICY_VERIFY_AFTER] : foundOn ? [] : [W.donePeriod]
+  if (mailAccounts.length === 0) return [on, ...period]
+  // Two lines with the mail half too (walk list 4.x item 26): it joins the report-only line.
+  const accounts = list([...mailAccounts])
+  return period[0] === W.donePeriod ? [on, fillText(W.donePeriodMail, { accounts })] : [on, ...period, fillText(MAIL_DONE(), { accounts })]
+}
+
+/** A policy in Turn On MFA for Everyone: the steps policyDoneWhen finishes. */
+const isSectionPolicy = (step: Step, cs: Record<string, unknown> | undefined): boolean => isGroupMember(step.id, 'core') && cs?.kind === 'policy'
+
+function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<string, unknown> | undefined, ex: Record<string, unknown>, fix: ContractFix[], tenant: string, mapping?: StepVarContext['mapping'], ctx?: StepVarContext, fact: PolicyFact | null = null): string[] {
   if (step.state.setAside) return [CONTRACT.doneSetAside]
+  if (isSectionPolicy(step, cs) && step.state.condition !== 'baseline-conflict') {
+    const mail = step.id === QUESTION_STEP.mailDevices && mapping ? mailDevicesOf(mapping).map((id) => ctx?.nameOf(id) ?? id) : []
+    // The policy by its name: the tracked one where the tenant has it, else the one the plan proposes.
+    const tracked = (step.tracking?.members ?? []).map((m) => m.policyName).find((n): n is string => typeof n === 'string' && n.trim() !== '')
+    return policyDoneWhen(step, fact, tracked ?? String(ex.policyName ?? contentTitle(step)), mail)
+  }
   // Emergency access in place with its hardening deferred is not fully resilient,
   // and Done when does not say it is (owner, 2026-09-11).
   if (step.state.satisfied && step.emergency?.deferredAt) return [CONTRACT.hardening.doneDeferred]
@@ -1445,7 +1512,13 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
   const waitsOnGroup = (step.action.missing ?? []).some((x) => x.token === '{exclusionsGroup}')
   const choice = waitsOnGroup ? exclusionsGroupChoice({ snapshot: ctx.snapshot, mapping: ctx.mapping, groups: ctx.groups, directory: ctx.directory }) : null
   const exclusionsUnconfirmed = choice !== null && choice.actionableId === null && choice.candidates.length > 0
-  const action = actionOf(step, reason, bare, tenant, cs, ex, exclusionsUnconfirmed, ownTask)
+  const acted = actionOf(step, reason, bare, tenant, cs, ex, exclusionsUnconfirmed, ownTask)
+  // "Finish the steps this one waits on first." names none of them (walk list
+  // 4.x item 23): where the board handed its reading down, the action is the
+  // wait in the row's own words ("After Prepare Emergency Access Accounts."),
+  // on the rail, in AI Info and in every export.
+  const waitWords = acted.text === MILESTONE.resolve && lane != null && (lane.lane === 'Up Next' || lane.lane === 'On Hold') ? lane.waitingFor ?? null : null
+  const action = waitWords !== null ? { ...acted, text: /[.!?]$/.test(waitWords) ? waitWords : `${waitWords}.` } : acted
   // What the action waits on, where the action IS the wait (`ContractAction.gatedBy`):
   // Foundation B's gate, said in the board's own words for it where a board
   // handed its reading down — the lane's tail on the two waiting lanes is that
@@ -1461,8 +1534,10 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
   // anybody to do, its own paragraph is the explanation
   // (roadmap/baselineConflict.ts), and nothing in the tenant clears it anyway.
   const waitTail = lane !== undefined && lane !== null && (lane.lane === 'Up Next' || lane.lane === 'On Hold') ? lane.tail : null
-  const saysWait = action.kind === 'resolve' && step.state.condition !== 'baseline-conflict'
-  const gatedBy = saysWait && typeof bare.gatedBy === 'string' && bare.gatedBy.trim().length > 0 ? waitTail ?? bare.gatedBy : null
+  // A readiness hold's action already names its threshold ("It stays until every
+  // admin has a method it accepts (0 of 1 today)."): the row's tail beside it said it twice.
+  const saysWait = action.kind === 'resolve' && step.state.condition !== 'baseline-conflict' && reason !== 'readiness-unmet'
+  const gatedBy = saysWait && waitWords === null && typeof bare.gatedBy === 'string' && bare.gatedBy.trim().length > 0 ? waitTail ?? bare.gatedBy : null
   const whatToDo: ContractAction = { ...action, gatedBy }
   const actionText = whatToDo.text
   whatToDo.text = namedPortalResource({ id: 'portal', form: 'list', lines: [actionText], text: () => actionText, note: null }, ctx).text()
@@ -1480,7 +1555,12 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     ...bare,
     line: m.at === null || whatToDo.text === sentence ? null : carriesDate ? fillText(CONTRACT.next, { label: sentence }) : fillText(CONTRACT.nextOn, { label: sentence, date: shownDay(m.at, estimatedDay(step), 'sentence') }),
   }
-  const fix = fixOf(step, cs, ex, exclusionsUnconfirmed)
+  // The signed-in account's blocker says whose account and what fixes it
+  // wherever it is handed over: the card, and the AI Info briefing's blockers
+  // (walk list 4.x item 43).
+  const operator = operatorOf(step, ctx)
+  const named = (fixes: ContractFix[]): ContractFix[] => operator === null ? fixes : fixes.map((f) => (f.key === 'readiness:operator' ? { ...f, text: operator.text } : f))
+  const fix = named(fixOf(step, cs, ex, exclusionsUnconfirmed))
   const members = membersOf(step)
   // Where the chain to the step that moves the readiness number starts (R4-33),
   // once: the card built from this contract and every finding read from it say
@@ -1489,7 +1569,8 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
   // campaign, and the printed plan said the threshold twice in two versions.
   const gateNow = step.action.readinessGate
   const routeStart = gateNow ? routeStartOf(step, gateNow, startOf) : null
-  const found = foundOf(step, tenant, milestone.line, routeStart)
+  const found = foundOf(step, tenant, milestone.line, routeStart, personLabels(ctx.snapshot.users, { address: true }), operator?.id ?? null)
+  const policyFact = policyFactOf(step, ctx)
   const inventory = inventoryOf(step, ctx)
   if (inventory) found.push({ key: 'directory-inventory', label: inventory.label, text: `${inventory.complete ? '' : 'At least '}${inventory.count} guest ${plural(inventory.count, 'account')}. ${inventory.names.join('; ')}` })
   // The object a step makes itself comes first, as its task does (Stage 3;
@@ -1522,15 +1603,16 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     track: stepTrack(step),
     why,
     found,
-    who: whoOf(step, ctx),
+    who: whoOf(step),
     inventory,
     followUp: followUpOf(step, ctx),
-    belowGoalFloor: belowGoalFloorOf(step, ctx),
+    dormant: dormantOf(step, ctx),
+    operator,
     whatToDo,
     fix,
-    enforcementWaits: enforcementWaitsOf(step),
+    enforcementWaits: named(enforcementWaitsOf(step)),
     // A step set aside has nothing left to finish, its object's task included.
-    doneWhen: [...(step.state.setAside ? [] : objectTaskDoneWhen(task, ex)), ...doneWhenOf(step, reason, cs, ex, fix, tenant, ctx.mapping)],
+    doneWhen: [...(step.state.setAside ? [] : objectTaskDoneWhen(task, ex)), ...doneWhenOf(step, reason, cs, ex, fix, tenant, ctx.mapping, ctx, policyFact)],
     members,
     multiPolicy: members.length > 1,
     existing: existingOf(step),
@@ -1548,6 +1630,7 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     decisionNote: decisionNoteOf(step, cs, ex),
     exclusionsReach: step.id === GATE_STEP.exclusionGroup && typeof ex.excludedFrom === 'number' && typeof ex.policyCount === 'number' ? { excludedFrom: ex.excludedFrom, policyCount: ex.policyCount } : null,
     routeStart,
+    policyFact,
   }
 }
 
@@ -1829,8 +1912,6 @@ export type PrerequisiteLabel = ((id: string) => string | null) & { startOf?: (i
  * to be complete — into an apparent deadlock with no way out.
  */
 export type PrerequisiteBlocker = { kind: BlockerKind; id: string; abnormal: boolean; label: string; title: string | null; milestone?: string | null
-  /** The step is finished and this prerequisite of it is not: a fact, not work left on this step (lanes.ts `unmetPrerequisites`). */
-  overtaken?: true
   /** The engine's reason for the step's lane (lanes.ts `reason`): the prerequisite the board's row names (planBoard.ts holdLabelOf). */
   primary?: true }
 
@@ -1854,7 +1935,14 @@ const R = (): ContractWords['readiness'] => CONTRACT.readiness
  * on, and the fact alone once it is enforced — enforcement is no longer waiting
  * for the number. A value never measured keeps the gate's own words.
  */
-export function readinessSentence(step: Step, gate: NonNullable<Step['action']['readinessGate']>, start: StepContract['routeStart'] = null): string {
+export function readinessSentence(step: Step, gate: NonNullable<Step['action']['readinessGate']>, start: StepContract['routeStart'] = null, labels: ReadonlyMap<string, string> | null = null, operatorId: string | null = null): string {
+  // A gate on people's methods says who is short and what moves them, and
+  // nothing about the threshold the row and the value already state (walk list
+  // 4.x items 42, 48): "23 of 27 people have a method it accepts. 2 registered
+  // only a phone for texts or calls, which your Authentication methods policy
+  // turns off. Prepare Your Team for MFA gets them ready."
+  const people = methodGateSentence(step, gate, labels, operatorId)
+  if (people !== null) return people
   // A threshold stated against a non-number is a dead end. "It is not measured
   // today" is true and unactionable: it names nothing the reader could go and
   // change, and the step said it three times while the one sentence that DOES
@@ -1958,7 +2046,7 @@ export function readinessSentence(step: Step, gate: NonNullable<Step['action']['
  * was half a sentence inside the green coverage tile (Priya D3). The generator
  * carries the threshold onto the finished step, and this states it.
  */
-function shortReadingOf(step: Step): { value: string; note: string } | null {
+function shortReadingOf(step: Step): { value: string; note: string; counted: { ready: string; total: string; who: string } | null } | null {
   if (!step.state.satisfied || step.state.lifecycle !== 'enforced') return null
   const below = step.action.enforcedBelowReadiness
   const line = step.readiness?.lines?.[0]
@@ -1976,18 +2064,21 @@ function shortReadingOf(step: Step): { value: string; note: string } | null {
   // established" — the count is a reading and stands.
   const counted = m !== null && typeof line === 'string' && ready < total && !(step.readiness?.unmeasured === 'unreadable' && ready === 0)
   if (counted) {
-    const scope = CONTRACT.readinessScope[step.readiness?.family ?? ''] ?? CONTRACT.readinessScope.mfa
+    const family = step.readiness?.family ?? ''
+    const scope = CONTRACT.readinessScope[family] ?? CONTRACT.readinessScope.mfa
     const short = fillText(CONTRACT.foundEnforcedShort, { line })
     // The plan's own threshold, where the reading is under it: the gate the
     // finished step otherwise stopped naming the moment the policy went on.
-    const threshold = below === undefined ? null : fillText(below.floor === true ? CONTRACT.foundEnforcedBelowThresholdFloor : CONTRACT.foundEnforcedBelowThreshold, { ...below })
-    return { value: `${m[1]} of ${m[2]} ${scope}`, note: threshold === null ? short : `${short} ${threshold}` }
+    // Not the threshold beside it (walk list 4.x item 2): "The plan holds
+    // enforcement until Phishing-resistant MFA readiness reaches 90%" on a policy
+    // that is On, under another step's measure.
+    return { value: `${m[1]} of ${m[2]} ${scope}`, note: short, counted: { ready: m[1], total: m[2], who: CONTRACT.acceptedWho[family] ?? CONTRACT.acceptedWho.mfa } }
   }
   if (below === undefined) return null
   // Never read: the threshold, that nothing showed it met, why (the reading's
   // own line, where it has one) and what would open the source.
   const said = [fillText(CONTRACT.foundEnforcedUnmeasured, { measure: below.measure, threshold: below.threshold }), typeof line === 'string' ? line : null, below.blind ?? null]
-  return { value: R().tiles.notMeasured, note: said.filter((x): x is string => x !== null && x.length > 0).join(' ') }
+  return { value: R().tiles.notMeasured, note: said.filter((x): x is string => x !== null && x.length > 0).join(' '), counted: null }
 }
 
 /**
@@ -2011,28 +2102,60 @@ function followUpOf(step: Step, ctx: StepVarContext): StepContract['followUp'] {
 }
 
 /**
- * The pinned baseline asking for less than the goal it is filed under (owner,
- * 2026-09-22, R4-11): the plan builds and turns on the policy as written, and
- * the step says its grant is weaker, by the tenant's own name for the strength.
+ * The dormant accounts Require MFA for Everyone reaches that hold no method
+ * (walk list 4.x item 10): the gate no longer counts them (generate.ts, L4), and
+ * whoever signs in to one first registers its method, so the step names them
+ * and where to disable them. Up to five by name; past that, the step that
+ * disables them lists them. Not once the step is finished.
  */
-function belowGoalFloorOf(step: Step, ctx: StepVarContext): StepContract['belowGoalFloor'] {
-  const b = step.action.belowGoalFloor
-  if (!b) return null
-  const W = CONTRACT.belowGoalFloor
-  const floor = W.floors[b.floor]
-  if (floor === undefined) return null
-  const strength = b.strengthId === null ? null : strengthNameIn(b.strengthId, ctx.snapshot, ctx.mapping)
-  const grant = strength !== null ? fillText(W.grantStrength, { strength }) : b.builtIn.includes('mfa') ? W.grantMfa : null
-  return grant === null ? null : { text: fillText(W.note, { grant, floor }), floor }
+/** The most dormant accounts Require MFA for Everyone's card names before it points at the step that lists them. */
+const DORMANT_NAMED = 20
+
+function dormantOf(step: Step, ctx: StepVarContext): StepContract['dormant'] {
+  const ids = step.dormantWithoutMethod ?? []
+  if (ids.length === 0 || step.status === 'done' || step.status === 'skipped') return null
+  const W = CONTRACT.dormantNoMethod
+  const labels = personLabels(ctx.snapshot.users, { address: true })
+  const step31 = stepById[DORMANT_STEP_ID]?.title ?? DORMANT_STEP_ID
+  const value = ids.length === 1 ? W.valueOne : fillText(W.value, { n: ids.length })
+  // Every one by name (walk list 4.x item 10, "…no method: {names}"): the five-name
+  // cap was the admin gate's (item 42), and getiamai read "9 accounts" naming none.
+  const text = ids.length > DORMANT_NAMED ? fillText(W.listed, { step: step31 })
+    : fillText(W.names, { names: list(ids.map((id) => labels.get(id) ?? ctx.nameOf(id))), step: step31 })
+  return { value, text }
 }
 
-/** The key of that tile: a fact about what the baseline writes, never a task (FINISHED_FINDINGS). */
-export const BELOW_GOAL_FLOOR = 'below-goal-floor'
+/** The step that registers the signed-in account's passkey (3.3). */
+const OPERATOR_PASSKEY_STEP_ID = 's-ladder-operator-passkey'
 
-/** Its tile: a warning that holds nothing, on every stage of the step. */
-function belowGoalFloorTile(c: StepContract): ReadinessTile | null {
-  if (c.belowGoalFloor == null) return null
-  return { key: BELOW_GOAL_FLOOR, label: CONTRACT.belowGoalFloor.label, tone: 'warn', value: fillText(CONTRACT.belowGoalFloor.value, { floor: c.belowGoalFloor.floor }), note: c.belowGoalFloor.text }
+/**
+ * The signed-in account a policy would leave with no method it accepts
+ * (roadmap/generate.ts, the strand verdict's 'operator' blocker), named, with
+ * the step that fixes it (walk list 4.x item 43). One card, whichever list it
+ * sits in: it held the turn-on under "Before turning on" while the create was
+ * next and under "Prerequisites" after, over the same sentence.
+ */
+function operatorOf(step: Step, ctx: StepVarContext): StepContract['operator'] {
+  if (ctx.operatorId == null || step.state.satisfied || !step.blockers.some((b) => b.kind === 'readiness' && b.label === 'operator')) return null
+  const W = CONTRACT.operatorCard
+  const id = ctx.operatorId
+  const name = personLabels(ctx.snapshot.users, { address: true }).get(id) ?? ctx.nameOf(id)
+  const admin = adminUserIds(ctx.snapshot.roles).has(id) || (ctx.snapshot.roles.eligible?.[id] ?? []).length > 0
+  const step33 = stepById[OPERATOR_PASSKEY_STEP_ID]?.title ?? OPERATOR_PASSKEY_STEP_ID
+  return { text: [fillText(admin ? W.admin : W.other, { name }), fillText(W.fix, { step: step33 })].join(' '), id }
+}
+
+/** Its tile, keyed as the blocker it replaces, so no other list draws that blocker again. It opens the step that fixes it. */
+function operatorTile(c: StepContract): ReadinessTile | null {
+  if (c.operator == null) return null
+  return { key: 'readiness:operator', label: CONTRACT.operatorCard.label, tone: 'warn', value: CONTRACT.operatorCard.value, note: c.operator.text, link: stepLink(OPERATOR_PASSKEY_STEP_ID, stepById[OPERATOR_PASSKEY_STEP_ID]?.title ?? OPERATOR_PASSKEY_STEP_ID) }
+}
+
+/** Its tile: work the step names, never a hold: the gate does not count these accounts. It opens the step that disables them. */
+function dormantTile(c: StepContract): ReadinessTile | null {
+  if (c.dormant == null || c.state.satisfied) return null
+  const title = stepById[DORMANT_STEP_ID]?.title ?? DORMANT_STEP_ID
+  return { key: 'dormant-no-method', label: CONTRACT.dormantNoMethod.label, tone: 'warn', value: c.dormant.value, note: c.dormant.text, link: stepLink(DORMANT_STEP_ID, title) }
 }
 
 /**
@@ -2060,17 +2183,24 @@ function ownPolicyTile(step: Step): ReadinessTile | null {
   const d = step.action.ownPolicyDiffers
   if (!d || !step.state.satisfied) return null
   const dimensions = dimensionWords(d.dimensions)
-  return { key: OWN_POLICY_DIFFERS, label: CONTRACT.ownPolicyDiffers.label, tone: 'warn', value: dimensions, note: fillText(CONTRACT.ownPolicyDiffers.note, { policy: d.policyName, dimensions }) }
+  // A fact of the finished step, under Satisfied: a Completed step shows no open card (walk list 4.x item 2).
+  return { key: OWN_POLICY_DIFFERS, label: CONTRACT.ownPolicyDiffers.label, tone: 'good', value: dimensions, note: fillText(CONTRACT.ownPolicyDiffers.note, { policy: d.policyName, dimensions }) }
 }
 
 /** The key of that reading's tile: a finding on a finished step, which is not a task anybody can do here. */
 export const FINISHED_READING = 'enforced-readiness'
 
-/** The tile that reading draws: a warning on a finished step, never a hold. */
+/**
+ * The tile that reading draws: a fact of the finished step, under Satisfied
+ * ("19 of 28 people have a method it accepts"). A Completed step shows no open
+ * card (walk list 4.x item 2, owner 2026-09-24): the people short of a method
+ * are Prepare Your Team for MFA's work and MFA Readiness's list, not this
+ * step's. A reading that counted nobody states nothing.
+ */
 function enforcedReadingTile(step: Step): ReadinessTile | null {
   const short = shortReadingOf(step)
-  if (short === null) return null
-  return { key: FINISHED_READING, label: R().tiles.reading, tone: 'warn', value: short.value, note: short.note }
+  if (short === null || short.counted === null) return null
+  return { key: FINISHED_READING, label: R().tiles.reading, tone: 'good', value: fillText(R().tiles.accepted, short.counted), note: null }
 }
 
 /** The key of the tile a finished policy draws where it went live with no report-only period IAMAI watched: a finding, not a task. */
@@ -2086,7 +2216,7 @@ export const UNWATCHED_ENFORCEMENT = 'enforced-unwatched'
  * Readiness" and "Complete the next task shown for each item." on a Completed
  * step whose tile says IAMAI does not ask for a change.
  */
-export const SETTLED_FINDINGS: ReadonlySet<string> = new Set([UNWATCHED_ENFORCEMENT, OWN_POLICY_DIFFERS, BELOW_GOAL_FLOOR])
+export const SETTLED_FINDINGS: ReadonlySet<string> = new Set([UNWATCHED_ENFORCEMENT, OWN_POLICY_DIFFERS])
 
 /**
  * The findings a finished step can leave behind: facts about the tenant, never
@@ -2106,8 +2236,21 @@ export const FINISHED_FINDINGS: ReadonlySet<string> = new Set([FINISHED_READING,
  * tile draws); the Done-when keeps the check after the change (doneWhenOf).
  */
 function unwatchedTile(step: Step): ReadinessTile | null {
+  const value = unwatchedLine(step)
+  return value === null ? null : { key: UNWATCHED_ENFORCEMENT, label: R().tiles.turnedOn, tone: 'good', value, note: null }
+}
+
+/**
+ * "On since Aug 28, 2026, without a report-only week": a finished policy that
+ * went live with no report-only period IAMAI watched, dated by the scan that
+ * first saw it On, or Microsoft's own date for it where the tenant gives one.
+ * A fact of the finished step, under Satisfied (walk list 4.x item 2, owner
+ * 2026-09-24), and AI Info's one line for it (item 31). Null elsewhere.
+ */
+export function unwatchedLine(step: Step): string | null {
   if (!enforcedUnwatched(step)) return null
-  return { key: UNWATCHED_ENFORCEMENT, label: R().tiles.observation, tone: 'warn', value: R().tiles.unwatched, note: CONTRACT.foundEnforcedUnwatched }
+  const on = step.state.members.map((m) => m.change.latest.evidenceAt ?? m.change.latest.firstSeenAt).sort()[0]
+  return on === undefined ? null : fillText(R().tiles.unwatched, { date: absoluteDate(on) })
 }
 
 /**
@@ -2149,6 +2292,135 @@ export function readinessValueOf(gate: NonNullable<Step['action']['readinessGate
   return template !== undefined && gate.value.endsWith('%') ? fillText(template, { value, strength: gate.strength ?? '' }) : value
 }
 
+/**
+ * The whole policy a member works towards: its create, its update's intent, or
+ * the step's intended policy where the goal has no operation.
+ */
+function intendedOf(step: Step, memberKey: string): Record<string, unknown> | null {
+  const op = requiredMembers(step).find((m) => m.key === memberKey)?.op ?? null
+  const body = op === null ? step.action.intended ?? null : op.mode === 'update' ? (op as { intent?: Record<string, unknown> }).intent ?? null : op.body
+  return (body ?? null) as Record<string, unknown> | null
+}
+/**
+ * What the plan asks for in one dimension, by the portal's own names, for the
+ * conditions a person ticks ("Exchange ActiveSync clients and Other clients");
+ * null for anything else, which the fix sends to Implementation Tasks.
+ */
+function intendedWords(dimension: string, body: Record<string, unknown> | null): string | null {
+  const c = (body?.conditions ?? {}) as Record<string, unknown>
+  const named = (kind: Parameters<typeof portalName>[0], values: unknown): string | null => {
+    const all = (Array.isArray(values) ? values : typeof values === 'string' ? values.split(',') : []).map((v) => String(v).trim()).filter((v) => v !== '' && v.toLowerCase() !== 'all')
+    // A condition the plan leaves unconfigured is set back to that, in the portal's word (walk list 4.x item 24).
+    if (all.length === 0 && body !== null) return CONTRACT.drift.notConfigured
+    const words = all.map((v) => portalName(kind, v))
+    return all.length > 0 && words.every((w) => w !== null) ? list(words as string[]) : null
+  }
+  switch (dimension) {
+    case 'clientAppTypes': return named('clientApp', c.clientAppTypes)
+    case 'authenticationFlows': return named('flow', (c.authenticationFlows as { transferMethods?: unknown } | undefined)?.transferMethods)
+    case 'platforms': { const p = c.platforms as { includePlatforms?: unknown; excludePlatforms?: unknown } | undefined; const exc = named('platform', p?.excludePlatforms); const inc = named('platform', p?.includePlatforms); return exc === null ? inc : fillText(CONTRACT.drift.anyExcept, { platforms: exc }) }
+    case 'signInRiskLevels': return named('risk', c.signInRiskLevels)
+    case 'userRiskLevels': return named('risk', c.userRiskLevels)
+    default: return null
+  }
+}
+/** The one fix sentence for a member that moved from the plan in parts IAMAI does not write: "Set Client apps back to Exchange ActiveSync clients and Other clients." */
+function driftFixOf(step: Step, memberKey: string, unwritten: readonly string[], changed: boolean): string {
+  const D = CONTRACT.drift
+  const body = intendedOf(step, memberKey)
+  const dims = [...new Set(unwritten.map((d) => d.replace(/^conditions\./, '')))]
+  // "back" only where IAMAI watched it change; a policy first seen this way never had it (R4-25).
+  return dims.map((d) => { const name = D.names[d] ?? D.names.other; const value = intendedWords(d, body); return value === null ? fillText(changed ? D.setBackTasks : D.setTasks, { dimension: name }) : fillText(changed ? D.setBack : D.set, { dimension: name, value }) }).join(' ')
+}
+/**
+ * A deployed policy that is no longer what the plan asked for, as one card:
+ * what changed, and the fix with its values ("Client apps changed · Set Client
+ * apps back to Exchange ActiveSync clients and Other clients."). It replaces
+ * the New evidence card and the two Review cards that said the same change
+ * three ways (walk list 4.x item 24). Null where no member moved in a part
+ * IAMAI does not write.
+ */
+function driftCardOf(step: Step): ReadinessTile | null {
+  const D = CONTRACT.drift
+  const moved = step.state.members.filter((m) => m.change.reviewRequired && m.change.unwritten.length > 0)
+  if (moved.length === 0) return null
+  const dims = [...new Set(moved.flatMap((m) => m.change.unwritten.map((d) => d.replace(/^conditions\./, ''))))]
+  const heading = list(dims.map((d, i) => { const name = D.names[d] ?? D.names.other; return i === 0 ? name : name.charAt(0).toLowerCase() + name.slice(1) }))
+  const changed = moved.some((m) => m.change.drifted)
+  return { key: 'drift', label: fillText(changed ? D.changed : D.differs, { dimensions: heading }), tone: 'warn', value: moved.map((m) => driftFixOf(step, m.key, m.change.unwritten, m.change.drifted)).join(' '), note: null }
+}
+
+/** The families whose gate counts people with a method the step's policy accepts (roadmap/methodReadiness.ts). */
+const METHOD_FAMILIES: ReadonlySet<string> = new Set(['mfa', 'admin', 'guest'])
+/** The most people a gate names before it points at MFA Readiness instead (walk list 4.x item 42). */
+const GATE_NAMES_UP_TO = 5
+
+/**
+ * The count a method gate is waiting on, where it waits on people's methods and
+ * the scan counted them: the step's own preparation (generate.ts
+ * `methodPreparation`), null elsewhere.
+ */
+function methodGateOf(step: Step, gate: NonNullable<Step['action']['readinessGate']>): MethodPreparation | null {
+  const p = step.methodPreparation
+  const family = familyOf(gate)
+  if (p === undefined || family === undefined || !METHOD_FAMILIES.has(family)) return null
+  if (gate.blind !== undefined || gate.routeShortfall !== undefined) return null
+  if (!p.completeScope || p.ids.length === 0 || (p.readyIds.length === 0 && p.unknownIds.length === p.ids.length)) return null
+  return p
+}
+
+/**
+ * The admin gate's value: how many admins have a method the policy accepts
+ * (walk list 4.x item 42), where the threshold is every one of them. Null for
+ * any other gate, which keeps its percentage.
+ */
+function methodGateValueOf(step: Step, gate: NonNullable<Step['action']['readinessGate']>): string | null {
+  const p = methodGateOf(step, gate)
+  if (p === null || familyOf(gate) !== 'admin') return null
+  return fillText(CONTRACT.methodGate.adminValue, { ready: p.readyIds.length, total: p.ids.length })
+}
+
+/**
+ * A method gate's sentence (walk list 4.x items 42, 48): the admins by name and
+ * what each needs, or everyone else's count, then the step that gets them ready.
+ * Null where the gate is not one on people's methods, and the threshold sentence
+ * stands.
+ */
+function methodGateSentence(step: Step, gate: NonNullable<Step['action']['readinessGate']>, labels: ReadonlyMap<string, string> | null, operatorId: string | null = null): string | null {
+  const p = methodGateOf(step, gate)
+  if (p === null) return null
+  const W = CONTRACT.methodGate
+  // A policy already On waits for nobody: the count stands alone.
+  const route = gate.route !== undefined && step.state.lifecycle !== 'enforced' ? fillText(W.route, { step: gate.route }) : null
+  if (familyOf(gate) !== 'admin') {
+    const line = step.readiness.lines[0]
+    return typeof line === 'string' && /\d+ of \d+/.test(line) ? [line, route].filter((x): x is string => x !== null).join(' ') : null
+  }
+  const ready = new Set(p.readyIds)
+  const unknown = new Set(p.unknownIds)
+  const nameOf = (id: string): string => labels?.get(id) ?? id
+  const named = (ids: readonly string[], one: string, many: string, listed: string | null): string | null =>
+    ids.length === 0 ? null
+      : ids.length > GATE_NAMES_UP_TO && listed !== null ? fillText(listed, { n: ids.length })
+      : fillText(ids.length === 1 ? one : many, { names: list(ids.map(nameOf)) })
+  // The signed-in account has its own card with its own fix (walk list 4.x item 43): not named here too.
+  const other = (id: string): boolean => operatorId === null || id.toLowerCase() !== operatorId.toLowerCase()
+  return [
+    named(p.ids.filter((id) => !ready.has(id) && !unknown.has(id) && other(id)), W.needs, W.needMany, W.needListed),
+    named(p.staleIds ?? [], W.signIn, W.signInMany, W.signInListed),
+    route,
+  ].filter((x): x is string => x !== null).join(' ') || null
+}
+
+/** Whether the signed-in account is the only admin the admin gate is short of (walk list 4.x item 43). */
+function operatorAloneShort(step: Step, gate: NonNullable<Step['action']['readinessGate']>, operatorId: string): boolean {
+  const p = methodGateOf(step, gate)
+  if (p === null || familyOf(gate) !== 'admin') return false
+  const ready = new Set(p.readyIds.map((id) => id.toLowerCase()))
+  const short = p.ids.filter((id) => !ready.has(id.toLowerCase()))
+  return short.length > 0 && short.every((id) => id.toLowerCase() === operatorId.toLowerCase())
+}
+
 /** The tile that says what the step's own state turns on, where the state turns on something. */
 function stateTile(step: Step, c: StepContract, setupAfterEnforcement = false): ReadinessTile | null {
   const s = c.state
@@ -2185,11 +2457,17 @@ function stateTile(step: Step, c: StepContract, setupAfterEnforcement = false): 
     return { key: 'review', label: CONTRACT.foundLabel.awaitingReview, tone: 'wait', value: t2.awaitingReview, note: unread === null ? said : `${said} ${unread}` }
   }
   if (s.satisfied && step.directionQuestions) return { key: 'decision', label: t.decision, tone: 'good', value: s.lane?.label ?? s.stage, note: c.doneWhen.join(' ') }
-  if (s.condition === 'review-required') return { key: 'evidence', label: CONTRACT.foundLabel.observation, tone: 'warn', value: CONTRACT.condition['review-required'], note: step.state.observation?.note ?? c.milestone.gatedBy }
+  // A policy that moved from the plan: one card, the change and its fix (walk list
+  // 4.x item 24). Not on a step that is finished: a Completed step shows no open
+  // card (item 2), and the change stays under What IAMAI found.
+  if (s.condition === 'review-required' && !s.satisfied) return driftCardOf(step) ?? { key: 'evidence', label: CONTRACT.foundLabel.observation, tone: 'warn', value: CONTRACT.condition['review-required'], note: step.state.observation?.note ?? c.milestone.gatedBy }
+  // The same card where another hold is what the lane reads (a readiness
+  // threshold raised it to blocked): the change and its fix, never "Implementation
+  // · Unavailable · IAMAI does not write this change" (walk list 4.x item 24).
+  const drift = s.satisfied ? null : driftCardOf(step)
+  if (drift !== null) return drift
   // The value is the substatus's own word (U11); the note is what to decide (B10 P1-1).
   if (s.condition === 'needs-decision') return { key: 'decision', label: t.decision, tone: 'warn', value: t.decisionValue, note: c.decisionNote }
-  // A tile's detail says what its value is evidence of, where the contract carries no finding of its own (editorial batch C).
-  const notes = t as unknown as { observationNote: string; observationDateNote: string }
   // A finished step draws no "Existing coverage" card (walk list item 11, owner
   // 2026-09-23): "In place · IAMAI found an existing control that meets the
   // assessed goal" sat on every Completed step, a check or a preparation with no
@@ -2200,14 +2478,26 @@ function stateTile(step: Step, c: StepContract, setupAfterEnforcement = false): 
   // The threshold is on the action only while it is unmet (roadmap/types.ts
   // `readinessGate`), so its mark is never a tick.
   const gate = step.action.readinessGate
-  if (gate && step.status !== 'done' && step.status !== 'skipped') {
+  // A policy already On has no turn-on left for the threshold to hold (walk list
+  // 4.x item 2): "Threshold · not measured · Enforcement waits for admin
+  // readiness to reach 100%" sat beside a drifted admin policy that was on.
+  if (gate && step.status !== 'done' && step.status !== 'skipped' && !policyOn(c)) {
     // The step its sentence names opens from the card, as every prerequisite
     // tile's step does (R4-24): a title with nothing to click sent the reader to
     // search the board for it. Where that step cannot be done today, the card
     // opens where its chain starts, which is what the sentence says to do (R4-33).
     // Both read the contract's one answer (`routeStart`), as its finding does.
-    const route = c.routeStart ?? gateRouteOf(step, gate)
-    return { key: 'gate', label: t.gate, tone: 'warn', value: readinessValueOf(gate), note: readinessSentence(step, gate, c.routeStart), ...(route !== null ? { link: stepLink(route.id, route.title) } : {}) }
+    // A method gate names the step that gets its people ready and opens it (walk list 4.x item 42).
+    // The signed-in admin alone short has one card, its own (walk list 4.x item 43).
+    if (c.operator != null && operatorAloneShort(step, gate, c.operator.id)) return null
+    const people = methodGateOf(step, gate) !== null
+    const route = people ? gateRouteOf(step, gate) : c.routeStart ?? gateRouteOf(step, gate)
+    const note = c.found.find((f) => f.key === 'gate')?.text ?? readinessSentence(step, gate, c.routeStart)
+    // Where the card states its count ("21 of 30 people have a method it
+    // accepts"), the percentage beside it carries no "At least" (walk list 4.x
+    // item 48): the count is exact, and the hedge was IAMAI's to carry.
+    const value = methodGateValueOf(step, gate) ?? readinessValueOf(people ? (({ floor: _floor, ...rest }) => rest)(gate) : gate)
+    return { key: 'gate', label: t.gate, tone: 'warn', value, note, ...(route !== null ? { link: stepLink(route.id, route.title) } : {}) }
   }
   // An observation with no date says WHY it has no date, where the step knows:
   // the people the policy stopped in report-only, or the records that could not
@@ -2216,8 +2506,19 @@ function stateTile(step: Step, c: StepContract, setupAfterEnforcement = false): 
   // available records and the remaining evidence requirements" for ten days,
   // and a tenant where four hundred people had been stopped said the same.
   if (c.milestone.kind === 'observe') {
-    const why = c.milestone.at ? notes.observationDateNote : (step.evidence.lines[0] ?? notes.observationNote)
-    return { key: 'observation', label: t.observation, tone: 'wait', value: c.milestone.at ? fillText(t.observationUntil, { date: shownDay(c.milestone.at, c.estimate, 'label') }) : s.stage, note: why }
+    // Block Legacy Authentication's week that would have blocked someone is work,
+    // not a wait: the card is headed by it and names who moves where (walk list
+    // 4.x item 35; lifecycle.ts nextMilestone, evidence.ts).
+    // The same on the other three policies of Turn On MFA for Everyone, each in its own words.
+    if (BLOCKED_MILESTONES.has(c.milestone.label) && step.evidence.lines[0]) return { key: 'observation', label: c.milestone.label.replace(/\.$/, ''), tone: 'warn', value: step.evidence.lines[0], note: null }
+    // A dated report-only week draws no card (walk list 4.x item 21, owner
+    // 2026-09-24): "Observation · Until Aug 31, 2026 · This is the earliest review
+    // date, not a scheduled automatic enforcement." sat on every policy in
+    // report-only, beside the policy card that already says what the week is for.
+    // Nor does an undated one with nothing to say: "Review the available records
+    // and the remaining evidence requirements. Time elapsed alone does not
+    // complete this check." was homework and a lecture (item 21).
+    if (!c.milestone.at && step.evidence.lines[0]) return { key: 'observation', label: t.observation, tone: 'wait', value: s.stage, note: step.evidence.lines[0] }
   }
   return null
 }
@@ -2233,6 +2534,9 @@ function exclusionsTile(step: Step, c: StepContract): ReadinessTile | null {
   if (!e || c.state.satisfied || c.state.setAside || c.state.condition === 'baseline-conflict') return null
   const t = R().tiles
   const because = c.implementation.offered ? null : c.implementation.because
+  // One card, the problem and its fix: the group under Users → Exclude, opened
+  // on the step that owns that edit (walk list 4.x item 24).
+  if (e.reached.length > 0 && e.group) return { key: 'exclusions', label: t.notExcluded, tone: 'warn', value: fillText(t.notExcludedFix, { group: e.group }), note: null, link: stepLink(GATE_STEP.exclusionGroup, stepById[GATE_STEP.exclusionGroup]?.title ?? GATE_STEP.exclusionGroup) }
   if (e.reached.length > 0) return { key: 'exclusions', label: t.exclusions, tone: 'warn', value: t.exclusionsReached, note: because }
   if (e.unproven.length > 0) return { key: 'exclusions', label: t.exclusions, tone: 'warn', value: t.exclusionsUnproven, note: because }
   return null
@@ -2264,15 +2568,19 @@ function emergencyTiles(step: Step, c: StepContract): ReadinessTile[] {
 }
 
 /**
- * What a prerequisite has to reach, in words. 'complete' is the common case and
- * keeps the plain sentence; anything else says which milestone, because a step
+ * What a prerequisite has to reach, where it is short of finished: a step
  * waiting for another to be READY is not waiting for it to be finished, and a
  * reader told to "finish" both halves of a reciprocal pair has been handed a
- * deadlock that the dependency data does not contain.
+ * deadlock that the dependency data does not contain. 'complete', the common
+ * case, has no note: the card names the step and its state, and "Finish {step}
+ * first." under it said the heading again (walk list 4.x item 23).
  */
-function fixStepNote(title: string, milestone: string | null | undefined): string {
-  const at = milestone && milestone !== 'complete' ? (CONTRACT.fixStepAt as Record<string, string>)[milestone] : undefined
-  return fillText(at ?? CONTRACT.fixStep, { step: title })
+function fixStepNote(title: string, milestone: string | null | undefined): string | null {
+  const at = milestone && milestone !== 'complete' ? CONTRACT.fixStepAt[milestone] : undefined
+  // A milestone whose note is null draws none: Turn Off Security Defaults' own
+  // card says the four policies it waits on need to be ready, and each of their
+  // cards said it again (walk list 4.x item 50).
+  return at === undefined || at === null ? null : fillText(at, { step: title })
 }
 
 /** A step prerequisite's link: the step it names, opened on the Plan. */
@@ -2307,7 +2615,9 @@ function fixTiles(fixes: readonly ContractFix[], prerequisiteLabel: (id: string)
       const id = rest.join(':')
       const title = stepById[id]?.title ?? cleanupTitleOf(id) ?? id
       if (kind === 'missing' && prerequisiteLabel(id) === 'Prerequisite · Completed') return { key: f.key, label: title, tone: 'warn', value: t.mapping, note: fillText((CONTRACT as unknown as { fixCompletedReference: string }).fixCompletedReference, { step: title }), link: mappingsLink() }
-      return { key: f.key, label: title, tone: 'warn', value: prerequisiteLabel(id) ?? t.prerequisite, note: f.text, link: stepLink(id, title) }
+      // "Finish {step} first." is the card's heading said again (walk list 4.x item 23).
+      const note = f.text === fillText(CONTRACT.fixStep, { step: title }) ? null : f.text
+      return { key: f.key, label: title, tone: 'warn', value: prerequisiteLabel(id) ?? t.prerequisite, note, link: stepLink(id, title) }
     }
     if (kind === 'direction' && isDirectionStep(rest.join(':'))) {
       const id = rest.join(':') as Parameters<typeof directionTitleOf>[0]
@@ -2359,21 +2669,17 @@ function engineTiles(c: StepContract, blockers: readonly PrerequisiteBlocker[], 
     const tone: ReadinessTone = b.abnormal ? 'warn' : 'wait'
     if (b.kind === 'step' || b.kind === 'suspendedPrerequisite') {
       if (present.has(`step:${b.id}`) || present.has(`missing:${b.id}`)) continue
+      // A prerequisite of the turn-on alone holds nothing once the policy is On
+      // (walk list 4.x items 2 and 23): "Verify Emergency Access · Prerequisite ·
+      // Waiting" sat on a held Block Legacy Authentication whose policy was on.
+      if (policyOn(c) && enforceOnly(c.id, b.id)) continue
       // A Cleanup row is `cleanup-<kind>` and its words live under
       // content.cleanup, not content.steps, so neither lookup above finds it and
       // the tile printed the raw id — the one prerequisite that does
       // (Register Your Own Passkey waiting on Verify Emergency Access,
       // docs/plans/protect-admins-spec.md section 2).
       const title = stepById[b.id]?.title ?? b.title ?? cleanupTitleOf(b.id) ?? b.id
-      // The engine records a prerequisite a step went ahead of only on a step it
-      // reads Completed, and the board can still draw that step elsewhere: a
-      // policy already on with a review left reads Ready · Review. "This step is
-      // finished" beside that badge contradicted it (R4-NEW-jordanb-1), so the
-      // note is worded by the lane the step is drawn in; the fact — the change
-      // went in before its prerequisite — is kept either way.
-      const overtakenNote = c.state.lane?.lane === 'Completed' ? CONTRACT.fixStepOvertaken : CONTRACT.fixStepOvertakenOpen
-      const note = b.overtaken ? fillText(overtakenNote, { step: title }) : fixStepNote(title, b.milestone)
-      out.push({ key: `engine:${b.kind}:${b.id}`, label: title, tone: b.overtaken ? 'warn' : tone, value: prerequisiteLabel(b.id) ?? b.label, note, link: stepLink(b.id, title) })
+      out.push({ key: `engine:${b.kind}:${b.id}`, label: title, tone, value: prerequisiteLabel(b.id) ?? b.label, note: fixStepNote(title, b.milestone), link: stepLink(b.id, title) })
       continue
     }
     if (b.kind === 'sourceMapping') {
@@ -2382,6 +2688,8 @@ function engineTiles(c: StepContract, blockers: readonly PrerequisiteBlocker[], 
       continue
     }
     if ((b.kind === 'sourceConflict' || b.kind === 'baselineSafetyConflict') && present.has('baseline')) continue
+    // A policy that reaches the emergency accounts has its one card (exclusionsTile).
+    if (b.kind === 'baselineSafetyConflict' && present.has('exclusions')) continue
     // A Direction answer the step waits on (roadmap/direction.ts): the tile links to the Direction step that asks it.
     if (b.kind === 'decision' && isDirectionStep(b.id)) {
       if (present.has(`direction:${b.id}`)) continue
@@ -2425,10 +2733,19 @@ function implementationTile(step: Step, c: StepContract): ReadinessTile | null {
   // leads its Implementation, so "Unavailable" here would be the opposite.
   if (awaitsOwnObject(step) && step.objectTask) return null
   if (c.state.satisfied || c.state.setAside || c.state.condition === 'baseline-conflict' || c.state.condition === 'needs-decision' || c.state.condition === 'review-required') return null
-  // A policy the tenant switched off has one thing to do, and the step hands it
-  // over on every channel: "Unavailable" over that procedure said the opposite.
-  const value = c.implementation.reason === 'switched-off' ? structuralWords.switchedOffTask : t.unavailable
-  return { key: 'implementation', label: t.implementation, tone: 'warn', value, note: c.implementation.because }
+  // A policy in Report-only whose turn-on waits on readiness draws no card of its
+  // own (walk list 4.x item 21, owner 2026-09-24): "Implementation · Unavailable ·
+  // Running this would change what Fixture small's people have to do straight
+  // away…" said again what the Threshold card beside it says. A create the
+  // threshold holds keeps it: there the create itself is what waits.
+  if (c.implementation.reason === 'readiness-unmet' && !createWaitsOnReadiness(step)) return null
+  // A policy the tenant switched off has one thing to do, and its policy card and
+  // Implementation Tasks say it: a second card saying it again is gone (walk list
+  // 4.x item 24).
+  if (c.implementation.reason === 'switched-off') return null
+  // A difference IAMAI does not write is the drift card's, with its fix (driftCardOf; item 24).
+  if (c.implementation.reason === 'manual-correction' && driftCardOf(step) !== null) return null
+  return { key: 'implementation', label: t.implementation, tone: 'warn', value: t.unavailable, note: c.implementation.because }
 }
 
 /**
@@ -2457,7 +2774,7 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
   if (configuration.length && ['s-prereq-passkey-settings', 's-prereq-break-glass', 's-prereq-exclusion-group'].includes(step.id)) {
     // Keep independent prerequisites and unsaved choices inside their topic.
     // The validation results already contain the per-rule fixes.
-    const extras = [...unsavedTiles(step), ...engineTiles(c, blockers, new Set(), prerequisiteLabel)]
+    const extras = engineTiles(c, blockers, new Set(), prerequisiteLabel)
     for (const extra of extras) {
       const id = tileStepOf(extra)
       const key = step.id === 's-prereq-exclusion-group' ? id === 's-prereq-break-glass' ? 'group-members' : 'group-choice'
@@ -2487,10 +2804,18 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
   // the row's Impact in other numbers ("3 active people · 3 admins · covers 4
   // enabled" beside "4 accounts") and, on a check step, asked the reader to
   // "Check the listed evidence" over none. Every card left is work.
-  const facts = [enforcedReadingTile(step), unwatchedTile(step), ownPolicyTile(step), belowGoalFloorTile(c), followUpTile(c), ...emergencyTiles(step, c), ...configuredTiles, ...((configuration.length && step.id !== 's-prereq-break-glass') || (c.satisfiedFacts?.length ?? 0) > 0 ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), exclusionsTile(step, c), exclusionsReachTile(c), implementationTile(step, c), inventory].filter((x): x is ReadinessTile => x !== null)
+  // The two blocks' sign-in card (roadmap/blockSignIns.ts) sits beside the
+  // step's own state tile, never in its place.
+  const stateFindings = configuration.filter((f) => f.key !== SIGN_INS_FINDING).length
+  const facts = [enforcedReadingTile(step), unwatchedTile(step), ownPolicyTile(step), followUpTile(c), ...emergencyTiles(step, c), ...configuredTiles, ...((stateFindings && step.id !== 's-prereq-break-glass') || (c.satisfiedFacts?.length ?? 0) > 0 ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), dormantTile(c), exclusionsTile(step, c), exclusionsReachTile(c), implementationTile(step, c), inventory].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
   // The emergency step's failing checks are its account slots' lines (P0-7): no check tile beside them.
-  const fixes = fixTiles(c.fix, prerequisiteLabel).filter((t) => !(step.emergency && t.key.startsWith('check:')) && !(configuration.length && /passkey.*(?:review|settings)|profile.*review/i.test(`${t.label} ${t.value}`)))
+  // The drift card is the review's one card, and the exclusions card the exposure's
+  // with its link to the step that owns the edit (walk list 4.x item 24).
+  const drawn = new Set(facts.map((t) => t.key))
+  const exposureCard = facts.some((t) => t.key === 'exclusions' && t.link !== undefined)
+  const oneCard = (key: string): boolean => (drawn.has('drift') && key.startsWith('review:')) || (exposureCard && (key === `step:${GATE_STEP.exclusionGroup}` || key === `missing:${GATE_STEP.exclusionGroup}`))
+  const fixes = fixTiles(c.fix, prerequisiteLabel).filter((t) => !oneCard(t.key) && !(step.emergency && t.key.startsWith('check:')) && !(configuration.length && /passkey.*(?:review|settings)|profile.*review/i.test(`${t.label} ${t.value}`)))
   // What holds only the turn-on while the create is the next action: a wait on
   // the enforcement, never a fix before the create (enforcementWaitsOf). Headed
   // "Prerequisites", "when 1 trusted location exists (now 0)" on a step that
@@ -2498,11 +2823,17 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
   // the claim the owner rule took out of Fix (2026-09-11) — so the card says
   // what it holds. The contract's one list, which the exports read too.
   const waits = fixTiles(c.enforcementWaits, prerequisiteLabel).map((t): ReadinessTile => ({ ...t, label: R().tiles.beforeTurnOn, tone: 'wait' }))
-  const present = new Set<string>([...facts.map((t) => t.key), ...fixes.map((t) => t.key), ...waits.map((t) => t.key)])
+  // The signed-in account's card replaces the fix or the wait that carried it (walk list 4.x item 43).
+  const operator = operatorTile(c)
+  const own = (t: ReadinessTile): boolean => operator === null || t.key !== operator.key
+  const present = new Set<string>([...facts.map((t) => t.key), ...fixes.map((t) => t.key), ...waits.map((t) => t.key), ...(operator ? [operator.key] : []), ...(exposureCard ? [`step:${GATE_STEP.exclusionGroup}`] : [])])
   const lead = facts.filter(unresolved)
   const effectiveBlockers = configuration.length ? blockers.filter(b => !/passkey.*(?:review|settings)|profile.*review/i.test(b.label)) : blockers
   const rowNamed = effectiveBlockers.find((b) => b.primary === true && (b.kind === 'step' || b.kind === 'suspendedPrerequisite'))?.id ?? null
-  const tiles = directOnly([...lead, ...unsavedTiles(step), ...fixes, ...waits, ...engineTiles(c, effectiveBlockers, present, prerequisiteLabel)], rowNamed)
+  // A conditional input answered on a Direction step draws no card of its own
+  // here (walk list 4.x item 6): the step waits on that Direction step, and its
+  // tile is the engine's "{step} · Waiting on your answers".
+  const tiles = directOnly([...lead, ...fixes.filter(own), ...waits.filter(own), ...(operator ? [operator] : []), ...engineTiles(c, effectiveBlockers, present, prerequisiteLabel)], rowNamed)
   // A "Before enforcement" tile used to be relabelled here, with a sentence
   // composed in code — "Ready for report-only deployment. Complete X before
   // enforcement. Creating this policy in Report-only does not enforce access
@@ -2526,6 +2857,15 @@ const GATE_STEP: Readonly<Record<string, string>> = Object.fromEntries(GATING_SU
 
 /** The dependency graph the lane engine reads (src/actionability/dependency-data.json). */
 const GRAPH = buildGraph(dependencyData as DependencyData)
+
+/** Whether `prerequisite` holds only the turn-on of `stepId` in the graph: every edge between them is on its enforcement. */
+function enforceOnly(stepId: string, prerequisite: string): boolean {
+  const edges = (dependencyData as DependencyData).edges.filter((e) => e.step === stepId && e.prerequisite === prerequisite)
+  return edges.length > 0 && edges.every((e) => e.action === 'enforce')
+}
+
+/** Whether every policy the step delivers is On in the tenant. */
+const policyOn = (c: Pick<StepContract, 'members' | 'state'>): boolean => c.members.length > 0 ? c.members.every((m) => m.lifecycle === 'enforced') : c.state.lifecycle === 'enforced'
 
 /** Every step that waits on `id`, directly or through another step (the walk actionability/sorting.ts unlockCounts makes). */
 function dependentsOf(id: string): ReadonlySet<string> {
@@ -2612,43 +2952,6 @@ function directOnly(tiles: ReadinessTile[], rowNamed: string | null = null): Rea
     drawn.add(id)
     return true
   })
-}
-
-/** A decision input's tile note, and its words where IAMAI could not read the sign-in records the note speaks of. */
-type Noted = { tileNote?: unknown; tileNoteUnread?: unknown }
-
-/** One tile per conditional input nobody has saved (B10 P1-2, U28): what completion waits on a person to confirm, with the question it asks. */
-function unsavedTiles(step: Step): ReadinessTile[] {
-  const d = (contentStepFor(step) as { decision?: Noted & { label?: unknown; text?: unknown; help?: unknown; tileLabel?: unknown; tileValue?: unknown; question?: Noted & { label?: unknown; text?: unknown; tileValue?: unknown } } | null } | undefined)?.decision
-  // A note that reads the sign-in records has its own words where IAMAI does not
-  // hold enough of them (tileNoteUnread, with the source's own reason). The device code tile
-  // said "The sign-in records cover observed use" on a tenant whose sign-in source
-  // refused every read: a coverage that did not exist, beside the question the
-  // records were meant to help answer. The engine held the reason on the step
-  // (Evidence.unreadable) and the tile never read it (R4-19, Priya D4).
-  const unread = step.evidence?.unreadable
-  const noteOf = (n: Noted): unknown => (unread !== undefined && typeof n.tileNoteUnread === 'string' ? fillText(n.tileNoteUnread, { reason: unread }) : n.tileNote)
-  const ask = (label: string): string | null => {
-    const text = d?.question?.label === label ? (noteOf(d.question) ?? d.question.text) : d?.label === label ? (noteOf(d) ?? d.text ?? d.help) : null
-    return typeof text === 'string' && whole(text, {}) ? text : null
-  }
-  // What the tile asks to confirm, where the input names it (content review S3); otherwise the shared word.
-  const valueOf = (label: string): string => {
-    const value = d?.question?.label === label ? d.question.tileValue : d?.label === label ? d.tileValue : null
-    return typeof value === 'string' ? value : R().tiles.unsaved
-  }
-  // A shorter tile label where the input's own is too long for a tile (content review S5). The
-  // input's label stays its answer's key and the key of the tile.
-  const labelOf = (label: string): string => (d?.label === label && typeof d.tileLabel === 'string' ? d.tileLabel : label)
-  // A question that moved to Direction is answered on the Direction step that
-  // asks it (roadmap/direction.ts ANSWERED_IN), and the tile links there, as a
-  // Direction wait's tile does. It was the one card on the step with nowhere to
-  // go: "Mail-sending devices · Not confirmed" on Block Legacy Authentication,
-  // with the engine already knowing Confirm What You Use asks it (R4-43).
-  const answeredIn = directionStepsAnswering(step.id)
-  const where = answeredIn.length === 1 && isDirectionStep(answeredIn[0]) ? answeredIn[0] : null
-  const link = where !== null ? stepLink(where, directionTitleOf(where)) : undefined
-  return (step.unsavedInputs ?? []).map((label): ReadinessTile => ({ key: `unsaved:${label}`, label: labelOf(label), tone: 'warn', value: valueOf(label), note: ask(label), ...(link ? { link } : {}) }))
 }
 
 /** The exclusions group's reach over the tenant's policies (B10 P0-11, S-EG-1): what the group already covers, and that each policy step owns the rest. */
@@ -2772,7 +3075,9 @@ export function railOf(c: StepContract, o: RailWords = {}): RailReading {
   const engineWords = FILLER.has(label.trim().replace(/[.:]$/, '')) || sentenceCount(label) > 1 ? null : label
   const days = [c.milestone.at, c.schedule?.at ?? null, c.scheduledOn].filter((d): d is string => d !== null).map(absoluteDate)
   const headline = milestoneHeadlineOf(l?.lane === 'Completed' ? l.label : null, [o.words, drawn !== null && sentenceCount(drawn) <= 1 ? drawn : null, o.task, first, engineWords], days)
-  const barLead = lead === null || headline === lead ? null : first !== null && headline === first ? lead.slice(first.length).trim() || null : lead
+  // The same words with or without their stop are the same sentence (the wait the rail names, walk list 4.x item 23).
+  const same = (a: string, b: string): boolean => a.trim().replace(/[.]$/, '') === b.trim().replace(/[.]$/, '')
+  const barLead = lead === null || same(headline, lead) ? null : first !== null && headline === first ? lead.slice(first.length).trim() || null : lead
   return { headline, instruction: o.instruction ?? null, barLead }
 }
 

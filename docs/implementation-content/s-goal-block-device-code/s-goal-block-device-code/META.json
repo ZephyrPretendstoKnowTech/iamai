@@ -64,7 +64,10 @@
     "signature",
     "evidence.deviceCodeSignIns",
     "evidence.originalTransferMethod",
-    "dependencies.deviceCodeWorkflows"
+    "dependencies.deviceCodeWorkflows",
+    "policy.fact",
+    "policy.current.difference",
+    "dependencies.waits"
   ],
   "projection": {
     "missing": {

@@ -1,10 +1,10 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "after: Prepare Emergency Access Accounts",
+  "reason": "after: Configure Emergency Exclusions",
   "fact": "Report-only",
   "badge": "On Hold",
-  "bar": "when admin readiness reaches 100% (now 66%)",
+  "bar": "When every admin has a method it accepts (2 of 3)",
   "rail": "Require Phishing-Resistant MFA for Admins",
   "headings": [
     "About this Step",
@@ -14,12 +14,12 @@
   ],
   "tiles": [
     {
-      "label": "Baseline Grant",
-      "state": "Weaker than phishing-resistant MFA"
+      "label": "Threshold",
+      "state": "2 of 3 admins have a method it accepts"
     },
     {
-      "label": "Threshold",
-      "state": "66% of admins phishing-resistant"
+      "label": "Configure Emergency Exclusions",
+      "state": "Prerequisite · To do"
     },
     {
       "label": "Prepare Emergency Access Accounts",
@@ -28,8 +28,6 @@
   ],
   "channels": [
     "Entra",
-    "PowerShell",
-    "JSON",
     "AI Info"
   ],
   "when": "Est. Sep 7, 2026"

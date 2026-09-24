@@ -86,6 +86,8 @@ export type EmergencyTaskProjection = {
   printAll?: boolean
   /** The step's Next milestone where its task state names one (Configure Emergency Exclusions). */
   milestone?: string | null
+  /** A policy step's card where its own tasks are all done and the step still waits (policyTasks.ts policyProcedureOf). */
+  waiting?: { title: string; detail: string } | null
 }
 
 /** What a procedure says about whether a selected account needs it (pages.app.plan.emergencyTasks). */

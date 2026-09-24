@@ -125,11 +125,13 @@ function usersLine(f: PolicyFacts, ctx: PortalContext): string {
   if (f.who.all) include.push('All users')
   if (f.who.roles.size > 0) include.push(`Directory roles → ${names(f.who.roles, ctx)}`)
   // All users reaches every guest type (facts.ts reads it as an all-types guest
-  // include). Where the policy then excludes guests, that reach is not a guest
-  // include to name, and the exclusion is not "the same as the include": All users
-  // minus every guest type read "Include: All users, Guest or external users → all
-  // types" with the exclusion dropped, the opposite of the policy (Medium user risk).
-  const implicitGuests = f.who.all && f.whoNot.guests && f.who.guests !== null && f.who.guests.length === 0
+  // include), and Entra cannot select All users and Guest or external users
+  // together, so that reach is never a guest include to name (walk list section 4
+  // item 19). Nor is a guest exclusion beside it "the same as the include": All
+  // users minus every guest type read "Include: All users, Guest or external users
+  // → all types" with the exclusion dropped, the opposite of the policy (Medium
+  // user risk).
+  const implicitGuests = f.who.all && f.who.guests !== null && f.who.guests.length === 0
   if (f.who.guests !== null && !implicitGuests) {
     const kinds = f.who.guests.length > 0 ? f.who.guests.map((t) => GUEST_TYPE_LABEL[lc(t)] ?? t).join(', ') : 'all types'
     include.push(`Guest or external users → ${kinds}`)
@@ -159,9 +161,9 @@ function usersLine(f: PolicyFacts, ctx: PortalContext): string {
   // confirmed is not swallowed by the sentence about the exclusions group.
   if (knowsIds) {
     const otherGroups = [...f.whoNot.groups].filter((g) => !is(g, ctx.exclusionsGroupId) && !is(g, ctx.serviceAccountsGroupId) && !included(g))
-    if (otherGroups.length > 0) parts.push(`Also exclude the groups ${names(otherGroups, ctx)}.`)
+    if (otherGroups.length > 0) parts.push(`Also exclude the ${otherGroups.length === 1 ? 'group' : 'groups'} ${names(otherGroups, ctx)}.`)
     const excludedRoles = [...f.whoNot.roles].filter((r) => ![...f.who.roles].some((x) => lc(x) === lc(r)))
-    if (excludedRoles.length > 0) parts.push(`Also exclude the directory roles ${names(excludedRoles, ctx)}.`)
+    if (excludedRoles.length > 0) parts.push(`Also exclude the ${excludedRoles.length === 1 ? 'directory role' : 'directory roles'} ${names(excludedRoles, ctx)}.`)
     // The emergency accounts are members of the exclusions group and are never
     // named on a line; the shared-device accounts have their own line above.
     const covered = new Set([...(ctx.sharedDeviceIds ?? []), ...(ctx.emergencyIds ?? [])].map(lc))
@@ -247,7 +249,7 @@ function conditionLines(f: PolicyFacts, ctx: PortalContext): string[] {
     out.push(`Conditions → Locations → Configure: Yes, then Include: ${inc || 'Any location'}${exc ? `; Exclude: ${exc}` : ''}`)
   }
   const clientApps = [...f.clientApps].filter((c) => c !== 'all')
-  if (clientApps.length > 0) out.push(`Conditions → Client apps → Configure: Yes, then ${clientApps.map((c) => CLIENT_APP_LABEL[c] ?? c).join(', ')}. Left at No it reaches every client app.`)
+  if (clientApps.length > 0) out.push(`Conditions → Client apps → Configure: Yes, then ${clientApps.map((c) => CLIENT_APP_LABEL[c] ?? c).join(', ')}`)
   if (f.flows.size > 0) out.push(`Conditions → Authentication flows → Configure: Yes, then ${[...f.flows].map((t) => FLOW_LABEL[lc(t)] ?? t).join(', ')}`)
   if (f.platforms && (f.platforms.include.size > 0 || f.platforms.exclude.size > 0)) {
     // Graph's `all` is the portal's Any device, never a name.
@@ -265,7 +267,8 @@ function conditionLines(f: PolicyFacts, ctx: PortalContext): string[] {
   return out
 }
 
-const GRANT_LABEL: Record<string, string> = {
+/** A built-in grant control as the portal names it; the policy procedure reads it too (roadmap/policyProcedure.ts). */
+export const GRANT_LABEL: Record<string, string> = {
   compliantdevice: 'Require device to be marked as compliant',
   domainjoineddevice: 'Require Microsoft Entra hybrid joined device',
   compliantapplication: 'Require app protection policy',
@@ -365,10 +368,9 @@ export function portalLines(f: PolicyFacts, ctx: PortalContext, opts: { mode?: P
   const out: string[] = []
   out.push(mode === 'change' ? (ctx.portalOpen ?? ctx.portalRoot) : ctx.portalRoot)
   if (mode !== 'change') out.push(`Name: ${ctx.policyName}`)
-  // The description the operation writes, on the create that writes it: without
-  // it the policy a person types by hand is not the policy IAMAI planned, and
-  // the next scan cannot match it to this step.
-  if (mode !== 'change' && ctx.descriptionLine) out.push(ctx.descriptionLine)
+  // No Description line (walk list 4.x item 16): the Entra form has no such
+  // field, so the step's procedure names none, and neither does anything that
+  // describes the same create. The plan tag stays in the JSON and PowerShell.
   out.push(usersLine(f, ctx))
   const res = resourcesLine(f, ctx)
   if (res) out.push(res)

@@ -1,32 +1,21 @@
 {
-  "lane": "Ready",
-  "substatus": "Review",
-  "reason": null,
+  "lane": "Completed",
+  "substatus": null,
+  "reason": "Satisfied by Core - Block - Device code flow — no change needed",
   "fact": "Enforced",
-  "badge": "Ready · Review",
-  "bar": "Complete the review below",
-  "rail": "Block Device Code Sign-in",
+  "badge": "Completed",
+  "bar": "Enforced",
+  "rail": "Completed",
   "headings": [
     "About this Step",
     "Tasks Remaining",
     "Implementation Tasks",
     "Completion Criteria"
   ],
-  "tiles": [
-    {
-      "label": "Your review",
-      "state": "Waiting on you"
-    },
-    {
-      "label": "Verify Emergency Access",
-      "state": "Prerequisite · Waiting"
-    }
-  ],
+  "tiles": [],
   "channels": [
     "Entra",
-    "PowerShell",
-    "JSON",
     "AI Info"
   ],
-  "when": "Review now"
+  "when": "Aug 28, 2026"
 }

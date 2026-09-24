@@ -18,11 +18,7 @@
       "state": "not measured"
     },
     {
-      "label": "Partner or MSP access",
-      "state": "Confirm whether partners access your tenant"
-    },
-    {
-      "label": "Prepare Emergency Access Accounts",
+      "label": "Configure Emergency Exclusions",
       "state": "Prerequisite · To do"
     },
     {
@@ -32,8 +28,6 @@
   ],
   "channels": [
     "Entra",
-    "PowerShell",
-    "JSON",
     "AI Info",
     "Email"
   ],

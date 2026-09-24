@@ -662,7 +662,9 @@ test('Done when is prose on every step, and the footer carries the rollout excep
 
   assert.match(SECTIONS.slice(SECTIONS.indexOf('export function DoneWhen(')), /<p key=\{i\} className="done-line">/, 'Done when is not prose')
   assert.match(CONTRACT.rollout.body, /does not count as implemented/, 'the exception no longer says it does not count as implemented')
-  assert.match(CONTENT_STEP, /cs\.skip \? <Button key="exclude" variant="secondary" className="rollout-exception"/, 'the exception is offered on a step the content does not mark excludable')
+  assert.match(CONTENT_STEP, /deferrable \? <Button key="exclude" variant="secondary" className="rollout-exception"/, 'the exception is offered on a step the content does not mark excludable')
+  // Never on a Completed step (walk list 4.x item 32).
+  assert.match(CONTENT_STEP, /const deferrable = Boolean\(cs\.skip\) && laneView\.lane !== 'Completed'/)
   assert.match(atWidth(650), /\.step-footer \{\n\s*flex-direction: column;/, 'the footer does not stack on a phone')
 })
 
@@ -790,7 +792,8 @@ test('the five canonical states are one frame whose content the state changes', 
   const satisfied = (m: Mock): string[] => readinessOf(m.step, m.c).satisfied.map((t) => `${t.key}:${t.tone}`)
   assert.deepEqual(tiles(S['not-deployed']), [])
   assert.deepEqual(satisfied(S['not-deployed']), ['people:info'])
-  assert.deepEqual(tiles(S['report-only']), ['observation:wait'])
+  // A dated report-only week draws no card (walk list 4.x item 21).
+  assert.deepEqual(tiles(S['report-only']), [])
   assert.deepEqual(tiles(S['review-required']), ['evidence:warn', ...S['review-required'].c.fix.map((f) => `${f.key}:warn`)])
   assert.deepEqual(tiles(S['in-place']), [])
   assert.deepEqual(satisfied(S['in-place']), ['coverage:good', 'people:info'])

@@ -79,6 +79,9 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // draft add under the day they name. It is composed at render time from the
   // step's lifecycle, and the review page has no lifecycle to read.
   '.shared.commsForecastNote',
+  // The plan tag's line in the translator's settings (stepPortal.ts contextFor):
+  // the review page draws no created policy, so it carries no tag.
+  '.shared.descriptionLine',
   '.shared.enableLine',
   '.shared.syncRoleNote',
   // What a claim leaves behind when the tenant's values cannot complete it (R4,
@@ -140,6 +143,7 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // (roadmap/stateReason.ts, types.ts Action.nothingOwed): a later scan's state,
   // which the review page's example plan is not in.
   '.pages.plan.blocked.noOperationHeld',
+  '.pages.plan.blocked.operator',
   // A4 (2026-09-12): the row reasons for a correction only a person can make and
   // for a group the scan could not read (copy/reasons.ts BLOCKED_REASON).
   '.pages.plan.blocked.manualCorrection',
@@ -152,6 +156,8 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.pages.plan.blocked.devicePlan',
   // A Direction step with an answer nobody has approved (roadmap/direction.ts): its row reason.
   '.pages.plan.blocked.direction',
+  // Block Legacy Authentication's turn-on while a named mail account still signs in with legacy authentication (walk list 4.x item 5): the review page's example names none.
+  '.pages.plan.blocked.mailAccounts',
   '.pages.plan.settings.cancelFreeze',
   '.pages.plan.settings.communications',
   '.pages.plan.settings.freezeSaved',
@@ -229,21 +235,15 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // renders. The review page draws the one the example's facts earn, as the
   // product does.
   '.steps[7].who.leadWhen.securityDefaultsOff',
-  // Its Done-when for the same read state (doneWhenWhen, R4-38): the step is
-  // complete there and claims only that. The example's security defaults are
-  // on, so the review page draws the cutover's own lines, as the product does.
-  '.steps[7].doneWhenWhen.securityDefaultsOff[0]',
-  // Its procedure for the same read state (whatToDoWhen): nothing to turn off,
-  // each replacement from its own step. The example's are on, so the review
-  // page draws the cutover's procedure, as the product does.
-  '.steps[7].whatToDoWhen.securityDefaultsOff.steps[0]',
-  '.steps[7].whatToDoWhen.securityDefaultsOff.steps[1]',
+  // Finish Moving Off Per-User MFA's select line for more than five accounts, or
+  // none (walk list 4.x item 57): the example names two, so the review page
+  // draws the line that selects them by name, as the product does.
+  '.steps[8].whatToDo.steps[1]',
   '.steps[10].who.match',
-  '.steps[14].who.evidence[1]',
+  '.steps[14].who.evidence[0]',
   // Directory-role holders who use the same account for mail or Teams (E6), on the
-  // three admin policies (15, 23, 33); the examples list none. The lockout lists
-  // (E8) render through their count lines, so those are no longer suppressed.
-  '.steps[15].who.evidence[3]',
+  // two admin policies that still name them (23, 33); the examples list none. The
+  // lockout lists (E8) render through their count lines, so those are no longer suppressed.
   '.steps[23].who.evidence[2]',
   '.steps[33].who.evidence[2]',
   '.steps[16].who.evidence[0]',
@@ -350,8 +350,10 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
 // its Tasks Remaining cards and Implementation Task (policyTasks.ts
 // ownCardWordsOf, generate.ts, sectionThreeTasks.ts), and the review page draws
 // no cards and no tasks.
+// shared.procedure is every policy step's Implementation Tasks (roadmap/policyProcedure.ts,
+// policyTasks.ts policyProcedureOf), and the review page draws no tasks.
 // These fields are consumed by Plan.tsx, stepContract.ts, stepResources.ts and aiGrounding.ts, not the static content-review renderer.
-const isAppOnly = (p: string): boolean => /^\.steps\[\d+\]\.who\.\w+Undated\./.test(p) ||p === '.pages.plan.howTo.intro' || p.startsWith('.pages.plan.changes.') || p.startsWith('.pages.plan.howTo.legend.') || /^\.pages\.plan\.howTo\.legend\[/.test(p) || p === '.shared.certificatePrompt' || /\.tileNote(Unread)?$/.test(p) || /\.whatToDo\.verification(Lead)?\[/.test(p) || /^\.steps\[\d+\]\.preparation\[\d+\]$/.test(p) || /^\.steps\[\d+\]\.decision\.heading$/.test(p) || /^\.steps\[\d+\]\.(doneEnd|aiFocus|taskTitle)$/.test(p) || /^\.steps\[\d+\]\.card\.\w+$/.test(p) || /^\.steps\[\d+\]\.(milestone|instruction)(\.\w+)?$/.test(p) || /^\.steps\[\d+\]\.campaign\.\w+$/.test(p) || /^\.steps\[\d+\]\.(keep|procedure)\./.test(p) || p.startsWith('.pages.plan.workflows.reviewCard.') || p === '.pages.plan.workflows.reviewTaskTitle' || p.startsWith('.pages.app.') || p.startsWith('.pages.plan.blockedSubject.') || p.startsWith('.pages.plan.settings.mappings.') || p.startsWith('.shared.engine.') || p.startsWith('.shared.deviation.') || p.startsWith('.shared.devicePlan.') || p.startsWith('.shared.mailDevices.') || p === '.pages.plan.footer.notLicensedDevices' || p === '.shared.planPromptTitle' || p === '.shared.policySettingsForAction' || p.startsWith('.shared.deviceBriefing.') || p.startsWith('.shared.passkeyCompatibility.') || p.startsWith('.shared.passkeyRestrictions.') || p === '.shared.policyDoneWhenUnobserved' || p.startsWith('.shared.registrationScope.')
+const isAppOnly = (p: string): boolean => /^\.steps\[\d+\]\.who\.\w+Undated\./.test(p) ||p === '.pages.plan.howTo.intro' || p.startsWith('.pages.plan.changes.') || p.startsWith('.pages.plan.howTo.legend.') || /^\.pages\.plan\.howTo\.legend\[/.test(p) || p === '.shared.certificatePrompt' || /\.tileNote(Unread)?$/.test(p) || /\.whatToDo\.verification(Lead)?\[/.test(p) || /^\.steps\[\d+\]\.preparation\[\d+\]$/.test(p) || /^\.steps\[\d+\]\.decision\.heading$/.test(p) || /^\.steps\[\d+\]\.(doneEnd|aiFocus|taskTitle)$/.test(p) || /^\.steps\[\d+\]\.card\.\w+$/.test(p) || /^\.steps\[\d+\]\.(milestone|instruction)(\.\w+)?$/.test(p) || /^\.steps\[\d+\]\.campaign\.\w+$/.test(p) || /^\.steps\[\d+\]\.(keep|procedure)\./.test(p) || p.startsWith('.pages.plan.workflows.reviewCard.') || p === '.pages.plan.workflows.reviewTaskTitle' || p.startsWith('.pages.app.') || p.startsWith('.pages.plan.blockedSubject.') || p.startsWith('.pages.plan.settings.mappings.') || p.startsWith('.shared.engine.') || p.startsWith('.shared.deviation.') || p.startsWith('.shared.devicePlan.') || p.startsWith('.shared.mailDevices.') || p === '.pages.plan.footer.notLicensedDevices' || p === '.shared.planPromptTitle' || p.startsWith('.shared.procedure.') || p.startsWith('.shared.deviceBriefing.') || p.startsWith('.shared.passkeyCompatibility.') || p.startsWith('.shared.passkeyRestrictions.') || p === '.shared.policyDoneWhenUnobserved' || p.startsWith('.shared.registrationScope.')
 const isStructural = (p: string): boolean =>
   /\.id$/.test(p) || /\.href$/.test(p) || /\.applies$/.test(p) || /pickerSource$/.test(p) || /\.kind$/.test(p) || /\.multi$/.test(p) || /\.mergesGoals\b/.test(p) || /\.learn\.url$/.test(p) || /\.whatToDoReference\b/.test(p) || /\.placement$/.test(p)
 

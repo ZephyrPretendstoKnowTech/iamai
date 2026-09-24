@@ -90,10 +90,9 @@ test('saved answers apply to the steps they are asked on and add no step of thei
     // warning that step added and its evidence field.
     assert.equal(serviceProvidersExcluded(m), true, 'the partner answer still excludes service providers')
     const legacy = r.steps.find((s) => s.id === 's-goal-block-legacy-auth')!
-    assert.ok(legacy.manualReview, 'the named devices bring the folded mail evidence onto the legacy block')
-    assert.ok((legacy.manualReview!.fields ?? []).some((field) => field.label === 'Mail Job and Delivery Route'), 'the mail route field did not move')
-    assert.ok((legacy.manualReview!.fields ?? []).some((field) => field.key === 'exceptionRemoved'), 'the removed-exception checkbox did not move')
-    assert.equal(r0.steps.find((s) => s.id === 's-goal-block-legacy-auth')!.manualReview, undefined, 'a tenant that named no device is asked for no mail evidence')
+    // The named devices' move is read from the sign-in records, never recorded
+    // (walk list 4.x item 4): no mail evidence form on the legacy block.
+    assert.equal(legacy.manualReview, undefined, 'the legacy block still asks for a mail record')
     const guestsHelp = (stepById['guests-mfa'] as unknown as { more?: { helpDesk?: string[] } }).more?.helpDesk ?? []
     assert.ok(guestsHelp.some((l) => /Delegated administration \(GDAP\) and ordinary guest \(B2B\) access are separate/.test(l)), 'the GDAP warning did not land on the guests policy')
     const geoHelp = (stepById['geo-restriction'] as unknown as { more?: { helpDesk?: string[] } }).more?.helpDesk ?? []

@@ -28,7 +28,7 @@ import { schedulingWords } from '../../content/content.ts'
 // `title.includes('MFA')` is a classifier nobody maintains and that silently
 // mis-files the first step somebody renames.
 import type { ExportOrder, Step } from '../../roadmap/types.ts'
-import type { HoldBlocker, Lane, Substatus } from '../../actionability/lanes.ts'
+import type { Lane, Substatus } from '../../actionability/lanes.ts'
 import type { StatusTone } from '../components/index.ts'
 import { content, directionWords, pages } from '../../content/content.ts'
 import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
@@ -55,7 +55,7 @@ import { cleanupTitleOf } from './stepContract.ts'
 import { sectionPositions } from '../../roadmap/stepGroups.ts'
 
 /** The When column's placeholder where a row has no date (A1b: a date, or this), and the Up Next label's tail words. */
-export const WHEN = (pages.plan as unknown as { when: { none: string; after: string; afterPrerequisites: string } }).when
+export const WHEN = (pages.plan as unknown as { when: { none: string; after: string; afterPrerequisites: string; reportOnly: string } }).when
 /** The lane and substatus words (pages.plan.lanes, pages.plan.substatus): the one vocabulary every surface says a state in (A1b decision 11). */
 const LANE_WORDS = (pages.plan as unknown as { lanes: Record<'ready' | 'upNext' | 'onHold' | 'completed' | 'deferred' | 'doesntApply', string>; unsavedAnswer: string; unsavedConfirm: string; nothingReady: string; substatus: Record<'create' | 'correct' | 'needsDecision' | 'observing' | 'review' | 'readyToEnforce', string> })
 /** The words the All work tab brought with it (pages.app.plan.board): its label, and the line a section drawn whole reads. */
@@ -242,6 +242,7 @@ export function laneTailOf(r: LaneReading, titleOf: (id: string) => string | nul
     case 'Ready':
       return r.substatus ? SUBSTATUS_WORD[r.substatus] : null
     case 'Up Next': {
+      if (reportOnlyUntilOf(r) !== null) return holdLabelOf(r, titleOf)
       const after = r.reason?.kind === 'step' ? titleOf(r.reason.id) : null
       return after !== null ? fillText(WHEN.after, { step: after }) : r.reason ? BOARD.blockers[r.reason.kind] : WHEN.afterPrerequisites
     }
@@ -276,7 +277,21 @@ export function laneLabelOf(r: LaneReading, titleOf: (id: string) => string | nu
  * apply here has no engine reading and reads `Doesn't apply` (decision 3).
  */
 export function laneViewOf(r: LaneReading, titleOf: (id: string) => string | null): LaneView {
-  return { lane: r.lane, substatus: r.substatus, label: laneLabelOf(r, titleOf), tail: laneTailOf(r, titleOf), waitingFor: waitingForOf(r, titleOf), tone: LANE_TONE[r.lane], ...(r.estimate ? { estimate: r.estimate } : {}) }
+  const until = reportOnlyUntilOf(r)
+  return { lane: r.lane, substatus: r.substatus, label: laneLabelOf(r, titleOf), tail: laneTailOf(r, titleOf), waitingFor: waitingForOf(r, titleOf), tone: LANE_TONE[r.lane], ...(r.estimate ? { estimate: r.estimate } : {}), ...(until !== null ? { reportOnlyUntil: until } : {}) }
+}
+
+/** The engine's id for a policy's report-only window (planLanes.ts observe). */
+const REPORT_ONLY_WEEK = 'evidence:observation'
+
+/**
+ * The last day of the report-only week a row waits on, where that week is its
+ * reason (the lane engine reads it Up Next: a wait, not a stop; walk list 4.x
+ * item 11, owner 2026-09-24). Null on every other row.
+ */
+export function reportOnlyUntilOf(r: LaneReading): string | null {
+  if (r.reason?.kind !== 'evidence' || r.reason.id !== REPORT_ONLY_WEEK) return null
+  return r.gates.find((g) => g.id === REPORT_ONLY_WEEK)?.until ?? null
 }
 
 /**
@@ -342,7 +357,15 @@ export function boardReadingsOf(
   const forecast = planForecast(forecastRowsOf(steps, readings, titleOf, cleanupRows))
   for (const [id, span] of forecast.spans) {
     const r = readings.get(id)
-    if (r) r.estimate = span.at
+    if (!r) continue
+    // A policy already in report-only has its turn-on next: a held row reads the
+    // later of the day its wait clears and the turn-on the plan schedules
+    // (span.turnOn), so clearing the wait never moves the row's day later, and a
+    // wait read again on the next scan does not walk it forward (walk list 4.x
+    // item 28, owner 2026-09-24).
+    const step = byId.get(id)
+    const turnOnNext = step !== undefined && (step.state.lifecycle === 'report-only' || step.state.lifecycle === 'ready-to-enforce')
+    r.estimate = turnOnNext && span.turnOn !== null ? span.turnOn : span.at
   }
   return { readings, titleOf, cleanupRows, forecast }
 }
@@ -475,8 +498,9 @@ export function holdLabelOf(r: LaneReading, titleOf: (id: string) => string | nu
   if (r.reason?.id === 'after-security-rollout') return 'After security rollout'
   if (r.reason === null) return BOARD.lanes.onHold
   if (waitsOnDirection(r)) return directionWords.waiting
-  // A healthy prerequisite that is still more than one action away: the wait reads as Up Next's does.
-  if (r.reason.kind === 'step' && !r.reason.abnormal) {
+  // A prerequisite step, healthy or itself held: the wait reads as Up Next's
+  // does, "After Block Legacy Authentication" (walk list 4.x item 27).
+  if (r.reason.kind === 'step') {
     const title = titleOf(r.reason.id)
     return title !== null ? fillText(WHEN.after, { step: title }) : WHEN.afterPrerequisites
   }
@@ -489,8 +513,13 @@ export function holdLabelOf(r: LaneReading, titleOf: (id: string) => string | nu
   // Nobody watching a report-only policy moves a readiness number. Without
   // words the row says no more than its lane: never a claim it is observing.
   if (r.reason.kind === 'evidence' && r.reason.id.startsWith(READINESS_GATE)) return r.reason.text ?? BOARD.lanes.onHold
+  // Its report-only week: "Report-only until Sep 4, 2026" (walk list 4.x item 11).
+  const until = reportOnlyUntilOf(r)
+  if (until !== null) return fillText(WHEN.reportOnly, { date: dayLabel(until) })
+  // A blocker that says what is wrong in its own words: "Doesn't exclude Core - Exclusions" (item 27).
+  if (r.reason.kind === 'baselineSafetyConflict' && r.reason.text) return r.reason.text
   const kind = BOARD.blockers[r.reason.kind]
-  if (r.reason.kind === 'step' || r.reason.kind === 'suspendedPrerequisite') {
+  if (r.reason.kind === 'suspendedPrerequisite') {
     const title = titleOf(r.reason.id)
     return title !== null ? `${kind}: ${title}` : kind
   }
@@ -557,17 +586,13 @@ const waitsOnDirection = (r: LaneReading): boolean => r.reason?.kind === 'decisi
  */
 export function readinessBlockersOf(r: LaneReading | null | undefined, titleOf: (id: string) => string | null): PrerequisiteBlocker[] {
   if (!r) return []
-  const read = (b: HoldBlocker, overtaken: boolean): PrerequisiteBlocker => {
+  return r.blockers.map((b): PrerequisiteBlocker => {
     const direction = b.kind === 'decision' && isDirectionStep(b.id)
     // Which of them the row names (holdLabelOf reads `r.reason`), so the opened
     // step can never leave out the one prerequisite its row is showing.
-    const primary = !overtaken && r.reason !== null && r.reason.kind === b.kind && r.reason.id === b.id
-    return { kind: b.kind, id: b.id, abnormal: b.abnormal, label: direction ? directionWords.waiting : BOARD.blockers[b.kind], title: b.kind === 'step' || b.kind === 'suspendedPrerequisite' || direction ? titleOf(b.id) : null, milestone: b.milestone ?? null, ...(overtaken ? { overtaken: true as const } : {}), ...(primary ? { primary: true as const } : {}) }
-  }
-  // A completed step's own prerequisites that the scan still finds unmet: not
-  // work on this step any more, but the reader is owed the fact that it went
-  // ahead of them (Marcus D2 — ten policies enforced, the drill never done).
-  return [...r.blockers.map((b) => read(b, false)), ...(r.overtaken ?? []).map((b) => read(b, true))]
+    const primary = r.reason !== null && r.reason.kind === b.kind && r.reason.id === b.id
+    return { kind: b.kind, id: b.id, abnormal: b.abnormal, label: direction ? directionWords.waiting : BOARD.blockers[b.kind], title: b.kind === 'step' || b.kind === 'suspendedPrerequisite' || direction ? titleOf(b.id) : null, milestone: b.milestone ?? null, ...(primary ? { primary: true as const } : {}) }
+  })
 }
 
 /**
@@ -760,7 +785,8 @@ function boardTimingOf(step: Step, waveStart: string | null, read: LaneView | nu
   // "Turn the policy on" for the day (R4-55). A day for a create, a preparation
   // or a check still stands on Up Next: that work waits on nothing held.
   if (read !== null && read.lane === 'On Hold' && read.substatus === null && read.tail !== BOARD.blockers.evidence) return { kind: 'held' }
-  if (read !== null && (read.lane === 'Up Next' || read.lane === 'On Hold') && turnsOn(step, scheduled)) return { kind: 'held' }
+  // Its own report-only week is not such a wait: the week's last day is the row's own (walk list 4.x item 11).
+  if (read !== null && (read.lane === 'Up Next' || read.lane === 'On Hold') && read.reportOnlyUntil === undefined && turnsOn(step, scheduled)) return { kind: 'held' }
   return { kind: 'day', text: estimatedDay(step) ? fillText(schedulingWords.estimate, { date: result }) : result }
 }
 

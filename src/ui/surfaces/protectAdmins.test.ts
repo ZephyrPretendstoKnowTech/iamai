@@ -172,18 +172,20 @@ test("D1: the client-apps condition is Configure: Yes, then Browser, in the tran
       exclusionsLine: (shared.exclusionsLine as string).replace('{exclusionsGroup}', 'the exclusions group'),
     })
     assert.ok(
-      lines.includes('Conditions → Client apps → Configure: Yes, then Browser. Left at No it reaches every client app.'),
+      lines.includes('Conditions → Client apps → Configure: Yes, then Browser'),
       lines.join('\n'),
     )
     // The step's reviewer reference says the same, so the two cannot drift.
     const ref = ((stepById['admin-session'] as unknown as { whatToDoReference?: { new?: string[] } }).whatToDoReference?.new ?? []).join('\n')
-    assert.ok(ref.includes('Conditions → Client apps → Configure: Yes, then Browser. Left at No it reaches every client app.'), ref)
+    assert.ok(ref.includes('Conditions → Client apps → Configure: Yes, then Browser'), ref)
   }
   {
-    // The demo has no such policy, so the create procedure is the one on screen.
+    // The demo has no such policy, so the create procedure is the one on screen
+    // (roadmap/policyProcedure.ts): the toggle and the value, and nothing after them
+    // about what No does (walk list section 4 item 16).
     const tasks = tasksTextOf(bodiesOf('demo').get(SESSION)!)
-    assert.match(tasks, /set \*\*Configure\*\* to \*\*Yes\*\*, then select \*\*Browser\*\* only/)
-    assert.match(tasks, /Left at \*\*No\*\*, the condition reaches every client app/)
+    assert.match(tasks, /Under \*\*Conditions → Client apps\*\*, set \*\*Configure\*\* to \*\*Yes\*\* and select only \*\*Browser\*\*/)
+    assert.doesNotMatch(tasks, /Left at \*\*No\*\*/)
     // And the correction, for the state no fixture is in.
     assert.match(blockText(SESSION, 'entra.correct-conditions'), /Conditions → Client apps → Configure: Yes, then Browser only, because at No the condition reaches every client app/)
   }

@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "On Hold",
   "bar": "Waiting on your answers",
-  "rail": "Block Sign-ins From Countries Not Allowed",
+  "rail": "Create the policy in Report-only",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -18,18 +18,20 @@
       "state": "Decision"
     },
     {
-      "label": "Prepare Emergency Access Accounts",
+      "label": "Configure Emergency Exclusions",
       "state": "Prerequisite · To do"
     },
     {
       "label": "Confirm What You Use",
       "state": "Waiting on your answers"
+    },
+    {
+      "label": "Prepare Emergency Access Accounts",
+      "state": "Prerequisite · To do"
     }
   ],
   "channels": [
     "Entra",
-    "PowerShell",
-    "JSON",
     "AI Info"
   ],
   "when": "Est. Sep 7, 2026"

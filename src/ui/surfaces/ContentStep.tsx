@@ -381,14 +381,16 @@ export function ContentStep({
   // The footer's deferral (A1b decision 3): `Defer this step` is the existing
   // skip, offered only where the step's content entry marks it deferrable, and
   // `Doesn't apply here` where the step is flagged for it. A deferred step
-  // offers the way back.
+  // offers the way back. A Completed step has nothing left to put off, so it
+  // offers no deferral (walk list 4.x item 32).
   const RO = CONTRACT.rollout
+  const deferrable = Boolean(cs.skip) && laneView.lane !== 'Completed'
   const exceptions: ReactNode[] = printing
     ? []
     : step.status === 'skipped'
       ? [<Button key="put-back" variant="secondary" onClick={onUnskip}>{app.plan.putBack}</Button>]
       : [
-          cs.skip ? <Button key="exclude" variant="secondary" className="rollout-exception" onClick={() => setDialog('rollout')}>{RO.control}</Button> : null,
+          deferrable ? <Button key="exclude" variant="secondary" className="rollout-exception" onClick={() => setDialog('rollout')}>{RO.control}</Button> : null,
           offersDoesntApply(cs, step) && onDoesntApply ? <Button key="doesnt-apply" variant="secondary" onClick={() => setDialog('doesnt-apply')}>{SHARED.doesntApplyControl}</Button> : null,
         ].filter((x) => x !== null)
   const partnerLink = step.id === 's-prereq-exclusion-group' ? null : partnerLinkOf(cs)
@@ -558,7 +560,6 @@ export function ContentStep({
               chosenTaskId={isTaskStep ? emergencyTaskId : null}
               onChooseTask={isTaskStep ? chooseEmergencyTask : null}
               taskPreferenceKey={isTaskStep ? emergencyTaskPreferenceKey : null}
-              taskSettings={isOwnTaskStep}
               heading={taskHead?.implementation}
             />
           )}
@@ -608,6 +609,7 @@ export function ContentStep({
                   onSkip={onSkip}
                   onUnskip={onUnskip}
                   onDoesntApply={onDoesntApply}
+                  deferrable={deferrable}
                   copy={copy}
                   copied={copied}
                   open
@@ -758,7 +760,7 @@ export function copyImplementationArtifact(text: string): Promise<boolean> {
   return exportClipboard(text, unredactedFrom('implementation-artifact'))
 }
 
-export function Implementation({ artifacts, drawnBy, preview, notes, title, empty, source, learn, onTroubleshooting, open, onOpen, onClose, copy, copied, printing, tasks, chosenChannel, onChooseChannel, chosenTaskId, onChooseTask, taskPreferenceKey, taskSettings = false, emptyTaskText, heading }: {
+export function Implementation({ artifacts, drawnBy, preview, notes, title, empty, source, learn, onTroubleshooting, open, onOpen, onClose, copy, copied, printing, tasks, chosenChannel, onChooseChannel, chosenTaskId, onChooseTask, taskPreferenceKey, emptyTaskText, heading }: {
   artifacts: Artifact[]
   /** Who draws the region: the step's implementation-content package, or the translator's own channels (stepPackage.ts packageDrawsImplementation). */
   drawnBy: 'package' | 'translator'
@@ -786,7 +788,6 @@ export function Implementation({ artifacts, drawnBy, preview, notes, title, empt
   onChooseTask: ((taskId: string | null) => void) | null
   taskPreferenceKey?: string | null
   /** The one policy the owner is judging the resolved settings on (policyTasks.ts): its task's facts stand under the procedure, folded. */
-  taskSettings?: boolean
   emptyTaskText?: string
   heading?: string
 }) {
@@ -817,15 +818,6 @@ export function Implementation({ artifacts, drawnBy, preview, notes, title, empt
       {(item.targetUpn || item.targetLabel) && <p className="emergency-task-target">{item.targetUpn ?? item.targetLabel}</p>}
       {printing && !!taskFacts.length && <dl className="emergency-task-facts">{taskFacts.map((row, index) => <div key={`${row.label}-${index}`}><dt>{row.label}</dt><dd><AuthoredText text={row.value} /></dd></div>)}</dl>}
       <ol>{emergencyTaskSteps(item, variant).map((line, index) => <li key={index}><AuthoredText text={line} /></li>)}</ol>
-      {/* The resolved settings this procedure was written against, on the one
-          policy the owner is judging them on (owner, 2026-09-19). They are the
-          task's own facts — printed and copied already — under the heading the
-          artifact gave them, in the disclosure this file already draws a
-          resolved list in (Approved authenticator models). */}
-      {!printing && taskSettings && !!taskFacts.length && <details className="approved-model-disclosure">
-        <summary>{SHARED.policySettingsForAction}</summary>
-        <dl className="emergency-task-facts">{taskFacts.map((row, index) => <div key={`${row.label}-${index}`}><dt>{row.label}</dt><dd><AuthoredText text={row.value} /></dd></div>)}</dl>
-      </details>}
     </section>
   }
   const printableTasks = tasks?.printAll ? taskList : taskList.filter(item => item.required)
@@ -1400,7 +1392,7 @@ function MoreReading({ cs, ex, ifWrong, comms, copy, copied }: {
  *
  * `open` while printing, so a printed step is the whole step (§7).
  */
-function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onDoesntApply, copy, copied, open = false }: {
+function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onDoesntApply, deferrable, copy, copied, open = false }: {
   cs: Record<string, any>
   ex: Ex
   step: Step
@@ -1413,6 +1405,8 @@ function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onD
   onSkip: (r: string) => void
   onUnskip: () => void
   onDoesntApply?: (reason: string) => void
+  /** Whether Defer this step is offered: the step's content allows it and the step is not Completed. */
+  deferrable: boolean
   copy: (id: string, t: string) => void
   copied: string | null
   open?: boolean
@@ -1440,7 +1434,7 @@ function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onD
           required, that goes on the plan; the step then leaves its phase for the footer. */}
       {step.status !== 'skipped' && (
         <p className="actions">
-          {cs.skip && <Button variant="tertiary" onClick={() => onSkip('Not needed for this tenant')}>{CONTRACT.rollout.control}</Button>}
+          {deferrable && <Button variant="tertiary" onClick={() => onSkip('Not needed for this tenant')}>{CONTRACT.rollout.control}</Button>}
           {offersDoesntApply(cs, step) && onDoesntApply && !asking && <Button variant="tertiary" onClick={() => setAsking(true)}>{SHARED.doesntApplyControl}</Button>}
         </p>
       )}

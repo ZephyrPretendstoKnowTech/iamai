@@ -13,13 +13,13 @@ import type { FixtureName } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withFoundationSettled, withRecoveryTested } from '../../roadmap/fixtures/run.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
-import { policyTasksOf } from './policyTasks.ts'
 import { cleanupEntry } from './cleanupExport.ts'
 import { laneReadings } from './planLanes.ts'
 import { readinessBlockersOf } from './planBoard.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { TASK_HEAD, taskHeadingsOf } from './stepHeadings.ts'
-import { cardWordsOf, drawsTaskAnatomy, policyBarOf, policyCardsOf, policySubjectsOf, portalProcedureOf, taskSubjectOf } from './policyTasks.ts'
+import { cardWordsOf, drawsTaskAnatomy, isPolicyProcedureTask, policyBarOf, policyCardsOf, policySubjectsOf, portalProcedureOf, taskSubjectOf } from './policyTasks.ts'
+import { unavailableReason } from '../../roadmap/operations.ts'
 import { DIRECTION_STEP_IDS, EMERGENCY_ACCESS_GROUP, isGroupMember, usesTaskAnatomy } from '../../roadmap/stepGroups.ts'
 import { CONTRACT, FINISHED_READING } from './stepContract.ts'
 import type { ContractReadiness, ReadinessTile, StepContract } from './stepContract.ts'
@@ -135,25 +135,28 @@ test('every step projects its own Entra procedure as its Implementation Task, an
     const { body } = bodyOf(PILOT, 'demo', true)
     const tasks = body.emergencyAccountTasks
     assert.ok(tasks, 'the pilot step has a task projection')
-    assert.equal(tasks.tasks.length, 1)
-    const [task] = tasks.tasks
-    assert.equal(task.title, 'Create the policy in Report-only')
+    // A policy step's tasks are its procedures, the same in every state (walk
+    // list section 4 item 18): the create and the turn-on.
+    assert.deepEqual(tasks.tasks.map((t) => t.title), ['Create the policy in Report-only', 'Turn the policy on'])
+    const [task, turnOn] = tasks.tasks
     assert.equal(tasks.recommendedTaskId, task.id)
-    // Every step of the task is a line of the step's own portal channel.
+    // The Entra tab carries the same words.
     const portal = body.artifacts.find((a) => a.id === 'portal')!
-    const procedure = portalProcedureOf(portal.text())
-    assert.deepEqual(task.steps, procedure.steps)
+    for (const line of [...task.steps, ...turnOn.steps]) assert.ok(portal.text().includes(line), line)
     assert.ok(task.steps.length > 1, 'the whole procedure is carried, not its first line')
     assert.ok(task.steps.some((line) => /Report-only/.test(line)))
-    // The resolved settings the procedure lists below it are the task's facts.
-    assert.ok((task.facts ?? []).some((fact) => fact.label === 'Name'))
+    // No settings fold: the procedure names its values itself (item 19).
+    assert.deepEqual(task.facts ?? [], [])
+    assert.equal(turnOn.steps.length, 2, 'the turn-on is two lines (item 17)')
   }
   {
     for (const id of ['s-goal-mfa-all-users', 's-goal-block-legacy-auth', 's-goal-token-protection']) {
       const { body } = bodyOf(id)
-      assert.equal(body.emergencyAccountTasks?.tasks.length, 1, `${id} projects its one procedure`)
+      const titles = body.emergencyAccountTasks?.tasks.map((t) => t.title) ?? []
+      assert.equal(titles[0], 'Create the policy in Report-only', `${id} projects its create`)
+      assert.ok(titles.includes('Turn the policy on'), `${id} projects its turn-on`)
       const portal = body.artifacts.find((a) => a.id === 'portal')!
-      assert.deepEqual(body.emergencyAccountTasks!.tasks[0].steps, portalProcedureOf(portal.text()).steps, `${id} carries its own lines`)
+      for (const line of body.emergencyAccountTasks!.tasks.flatMap((t) => t.steps)) assert.ok(portal.text().includes(line), `${id} carries its own lines: ${line}`)
     }
     // A step whose baseline contradicts itself has no task: nothing done in the portal resolves it.
     const conflict = bodyOf('s-goal-admin-portals-protected')
@@ -195,18 +198,20 @@ test('a policy in place, or at its last stage with nothing to submit, is a satis
     const { body } = bodyOf('s-goal-mfa-all-users', 'demo-week2')
     assert.equal(body.contract.state.satisfied, true, 'the premise: nothing to create; keep it as it is')
     const cards = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)
-    // Every card but one: this policy is enforced over a tenant where eleven of
-    // thirty-three cannot satisfy it, and that reading is a finding rather than a
-    // task, because nothing on this step moves the number (stepContract.ts
-    // shortReadingOf). The bar says both halves.
-    assert.equal(cards.filter((item) => !item.satisfied).map((item) => item.key).join(), FINISHED_READING)
-    assert.equal(cards[0].title, 'In place')
+    // Every card: this policy is enforced over a tenant where eleven of
+    // thirty-three cannot satisfy it, and that reading is a fact of the finished
+    // step under Satisfied, never an open card (walk list 4.x item 2).
+    assert.equal(cards.filter((item) => !item.satisfied).length, 0)
+    assert.ok(cards.some((item) => item.key === FINISHED_READING && item.satisfied))
+    // A finished policy in Turn On MFA for Everyone states its fact (walk list 4.x item 22).
+    assert.equal(cards[0].title, 'On')
+    assert.equal(cards[0].detail, 'Requires MFA for All users except Core - Exclusions')
     assert.equal(cards[0].instruction, '')
     // The stages it passed through are not checks anybody completed (S4-5): this
     // policy was found in place, on a scan that recorded no date, no evidence and
     // no actor for any stage of it.
     assert.deepEqual(cards[0].completed, [])
-    assert.equal(policyBarOf(cards), 'Every task on this step is complete, and it left something behind.')
+    assert.equal(policyBarOf(cards), 'Every task on this step is complete.')
   }
   {
     const contract = {
@@ -259,11 +264,9 @@ test('the policy has a card of its own: its name, the next check, and the task t
   // and no list of them (S4-5).
   assert.equal(card.remainingCount, null)
   assert.deepEqual(card.completed, [])
+  // The card names the task (walk list section 4 item 20): no second line, no pointer.
   assert.equal(card.title, 'Create the policy in Report-only', 'the next check is the task that passes it')
-  assert.equal(card.detail, body.contract.whatToDo.text, 'what that check means is the step’s own one action')
-  // One task needs no pointer (owner, 2026-09-20): the Implementation Tasks
-  // section below carries the same words.
-  assert.equal(body.emergencyAccountTasks?.tasks.length, 1, 'the premise: this step projects one task')
+  assert.equal(card.detail, '')
   assert.equal(card.instruction, '')
   assert.equal(card.satisfied, false)
 })
@@ -323,14 +326,32 @@ test('a policy card states no stage it is not at, and no check the plan never re
     // report-only and blocked, the other `Enforced` over one needing correction.
     const held = bodyOf('s-goal-admins-phishing-resistant', 'demo')
     assert.equal(held.body.contract.state.lifecycle, 'report-only', 'the premise: the policy is sitting in report-only')
-    assert.equal(policySubjectsOf(held.body.contract, held.body.readiness, held.body.emergencyAccountTasks)[0].title, 'Blocked')
+    const firstTask = (b: typeof held.body): string => b.emergencyAccountTasks!.tasks.find((t) => t.required)!.title
+    // Emergency access is not proven: the procedure still stands, and its
+    // turn-on names what it waits for and hands over no On line (walk list 4.x
+    // items 18 and 44). The card names the task, never Blocked (item 20).
+    assert.equal(unavailableReason(held.step), 'escape-hatch-unverified', 'the premise: the way back in holds the policy')
+    const turnOn = held.body.emergencyAccountTasks?.tasks.find((t) => t.id === 'turn-on')
+    assert.ok(turnOn, 'the turn-on is gone while emergency access is unproven')
+    assert.doesNotMatch(turnOn.steps.join(' '), /\*\*On\*\*/, 'the turn-on is handed over while emergency access is unproven')
+    assert.match(turnOn.steps.join(' '), /^Wait for .*Configure Emergency Exclusions/)
+    const [heldCard] = policySubjectsOf(held.body.contract, held.body.readiness, held.body.emergencyAccountTasks)
+    assert.equal(heldCard.title, 'Turn the policy on')
+    assert.match(heldCard.detail ?? '', /Configure Emergency Exclusions/)
+    // The exclusions edit is Configure Emergency Exclusions' own (item 7): the
+    // enforced legacy policy asks for no correction, and its card says who makes it.
     const correction = bodyOf('s-goal-block-legacy-auth', 'demo')
-    assert.equal(correction.body.contract.state.stage, 'Enforced', 'the premise: the policy is enforced and needs correction')
-    assert.equal(policySubjectsOf(correction.body.contract, correction.body.readiness, correction.body.emergencyAccountTasks)[0].title, 'Blocked')
+    assert.equal(correction.body.contract.state.stage, 'Enforced', 'the premise: the policy is enforced and lacks the exclusions group')
+    assert.equal((correction.body.emergencyAccountTasks?.tasks ?? []).some((t) => t.id === 'correct'), false, 'the step asks for the edit Configure Emergency Exclusions makes')
+    const [card] = policySubjectsOf(correction.body.contract, correction.body.readiness, correction.body.emergencyAccountTasks)
+    assert.equal(card.title, 'On')
+    assert.equal(card.detail, 'Configure Emergency Exclusions adds Core - Exclusions to it.')
+    void firstTask
   }
   {
     const rows = corpus()
-    assert.ok(rows.length > 200, `the corpus still holds these cards (${rows.length})`)
+    // Finish Moving Off Per-User MFA left every fixture's plan: no fixture reads an account on per-user MFA (walk list 4.x item 54).
+    assert.ok(rows.length > 190, `the corpus still holds these cards (${rows.length})`)
     for (const row of rows) {
       assert.deepEqual(row.card.completed, [], `${row.where}: the card lists checks somebody completed`)
       assert.equal(row.card.remainingCount, null, `${row.where}: the card counts stages as checks remaining`)
@@ -365,136 +386,30 @@ test('the folds read as Emergency Access reads them: a card’s finished checks,
   assert.equal((contentStep.match(/Satisfied · \{/g) ?? []).length, 1, 'the satisfied fold is drawn more than once, or not at all')
 })
 
-test('the enforce checklist carries the step\'s own unresolved prerequisites, not three fixed conditions', () => {
-  // "Do not turn it on unless all of these are true now:" is authored
-  // identically in forty-odd packages and listed three things, none of them
-  // about THIS step. On a tenant with security defaults still on, a tile read
-  // "Turn Off Security Defaults · Prerequisite · Waiting" four lines above that
-  // checklist — on a policy the security-defaults step names as one of its four
-  // replacements. Eight policies went on into a state the product itself calls
-  // unsupported and irreversible, and the board then said Completed.
-  //
-  // Spliced into the parsed procedure rather than authored, so one change
-  // reaches every package and no package can be missed.
-  const run = runFixture(fixture('demo'))
-  const step = run.steps.find((x) => x.id === PILOT)!
-  const procedure = [
-    'Reopen the policy by its ID. Confirm it is still **Report-only**.',
-    'Do not turn it on unless all of these are true now:',
-    'The required report-only period is complete, with no failures on this policy in the sign-in records.',
-    'Emergency access is prepared and tested.',
-    'If any one of them is not true, leave the policy in Report-only.',
-    'Change **Enable policy** to **On** and save.',
-  ]
-  const portal = [{ id: 'portal', text: () => procedure.map((line, i) => `${i + 1}. ${line}`).join('\n') }] as never
-  const linesOf = (outstanding: string[]): string[] =>
-    (policyTasksOf(step, step.title, portal, undefined, outstanding)?.tasks ?? []).flatMap((t) => t.steps)
-
-  // Nothing outstanding: the checklist is exactly what the package authored.
-  assert.deepEqual(linesOf([]).filter((l) => /is not finished yet/.test(l)), [], 'a step with nothing outstanding is warned about nothing')
-
-  // One outstanding prerequisite, named, as the FIRST condition — above the
-  // three, because it decides whether the rest even apply.
-  const one = linesOf(['Turn Off Security Defaults'])
-  const at = one.findIndex((l) => /Do not turn it on unless/i.test(l))
-  assert.ok(at >= 0, 'the checklist heading was lost')
-  // ABOVE the heading. Spliced below it, the sentence became an item in a list
-  // of conditions that must be TRUE while saying something was NOT finished;
-  // two readers hit the inversion and one enforced ten policies through it.
-  assert.equal(one[at - 1], 'Stop: Turn Off Security Defaults is not finished, and this policy is part of it. Leave this policy in Report-only until it is.')
-  // A condition, never a replacement: the three that were always there stay.
-  assert.ok(one.some((l) => /report-only period is complete/i.test(l)), 'the report-only condition was displaced')
-  assert.ok(one.some((l) => /Emergency access is prepared and tested/i.test(l)), 'the emergency-access condition was displaced')
-  assert.ok(one.some((l) => /Change/.test(l) && /Enable policy/.test(l)), 'the action itself was displaced')
-
-  // Several read as one sentence, not a stack of near-identical lines.
-  const many = linesOf(['Turn Off Security Defaults', 'Prepare Your Team for MFA'])
-  assert.match(many[at - 1], /Turn Off Security Defaults/)
-  assert.match(many[at - 1], /Prepare Your Team for MFA/)
-  assert.equal(many.filter((l) => /^Stop: /.test(l)).length, 1, 'one line per prerequisite instead of one line for all of them')
-})
-
-test('a field still waiting on a reference is not printed as a setting to copy', () => {
-  // The numbered procedure is careful: "Users: the resolved admin roles, with
-  // the resolved exclusions." The machine-written "Settings for This Action"
-  // block under it — the copy-paste half — read the request bodies directly and
-  // printed every line, so before the exclusions group was chosen it said
-  // "Users → Include: All users." with no exclusions line at all.
-  //
-  // Saving the selection changed that line to directory roles plus the
-  // exclusions group. So the earlier version was not a vaguer statement of the
-  // same policy; it was a different and much wider one, fully copyable, on a
-  // tenant where nine steps were waiting on that reference.
-  //
-  // The binding layer already refuses to bind a field a waiting reference is in
-  // — "an exclusion set short of the groups still to answer read as complete".
-  // This block now obeys the same rule.
-  const f = fixture('midflight')
-  const run = runFixture(f)
-  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => run.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
-
-  const waiting = run.steps.filter((s) => (s.action.missing ?? []).length > 0)
-  assert.ok(waiting.length > 0, 'the premise: midflight has steps waiting on a reference')
-  let printed = 0
-  for (const step of waiting) {
-    // The policy's own procedure: a step that makes its object itself leads with
-    // that object's Implementation while it is to be made (stepBody.ts; Stage 3).
-    const portal = stepBodyOf({ ...step, objectTask: undefined }, ctx).artifacts.find((a) => a.id === 'portal')
-    const text = portal?.text() ?? ''
-    const at = text.indexOf('Settings for This Action')
-    if (at < 0) continue
-    printed++
-    const settings = text.slice(at)
-    // The scope is the field those references live in, so it is the one that
-    // must not appear as a value while they are unanswered.
-    assert.equal(/Users → Include:/.test(settings), false, `${step.id} prints a Users scope while waiting on ${JSON.stringify(step.action.missing)}`)
-  }
-  assert.ok(printed > 0, 'no waiting step prints a settings block, so this proves nothing')
-
-  // And a step with nothing outstanding still prints its scope: this withholds
-  // an unresolved field, it does not empty the block.
-  const settled = run.steps.find((s) => (s.action.missing ?? []).length === 0 && (stepBodyOf(s, ctx).artifacts.find((a) => a.id === 'portal')?.text() ?? '').includes('Users → Include:'))
-  assert.ok(settled, 'no settled step prints a Users scope any more')
-})
-
-// The condition nobody could act on, and then the instruction that ignored it.
-//
-// "Emergency access is prepared and tested." is a condition in forty-odd
-// packages, and the thing that tests it is a Cleanup row, not a step. The first
-// fix named the drill in a "Stop" line spliced above the checklist and left
-// "Change Enable policy to On" beneath it — and the JSON, the PowerShell Enforce
-// mode and AI Info's "the next action is enforcement" untouched (Nadia D1). A
-// warning beside an instruction is still the instruction. While the drill is
-// outstanding the turn-on is not drawn at all (roadmap/enforceWaits.ts): the
-// step keeps its policy in Report-only and says what it waits for.
-test('while the emergency drill is outstanding the enforce checklist is not drawn at all; once it is done, the checklist stands', () => {
+// The turn-on waits on the emergency drill: the task stands in every state
+// (walk list section 4 item 18), and the policy's card says what it waits on,
+// "Turn the policy on · Report-only blocked no one. After Verify Emergency
+// Access." (item 20). Its Enable policy: On lines wait with it (enforceWaits.test.ts):
+// the task reads the wait until the drill is recorded.
+test('while the emergency drill is outstanding the turn-on stands, reads the wait, and the card names the drill', () => {
   const f = withFoundationSettled(structuredClone(fixture('demo-week2')))
   const run = runFixture(f)
   const step = run.steps.find((s) => s.id === 's-goal-token-protection')
   assert.ok(step, 'the premise: demo-week2 plans the token-protection step')
-  assert.equal(step.state.lifecycle, 'ready-to-enforce', 'the premise: the step draws the enforce procedure')
+  assert.equal(step.state.lifecycle, 'ready-to-enforce', 'the premise: the step is ready to turn on')
   const drill = (run.schedule.cleanup?.rows ?? []).find((r) => r.kind === 'drill')
   assert.ok(drill && drill.done === null, 'the premise: the drill has not been done')
-
-  const ctx = { snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, nameOf: (id: string) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: null } as unknown as StepVarContext
-  const body = stepBodyOf(step, ctx)
   const title = cleanupEntry('drill')?.title
   assert.ok(title, 'the drill row has a title to name it by')
-  const held = (policyTasksOf(step, body.title, body.artifacts as never, f.mapping, [title])?.tasks ?? []).flatMap((t) => t.steps)
-  assert.equal(held.some((l) => /Do not turn it on unless|Enable policy\*\* to \*\*On/i.test(l)), false, `the turn-on is drawn with the drill outstanding: ${JSON.stringify(held)}`)
-  assert.ok(held.some((l) => /Report-only/.test(l)), 'the held step does not say to keep the policy in Report-only')
-  assert.ok(body.contract.whatToDo.text.includes(`stays in Report-only until ${title} is finished`), body.contract.whatToDo.text)
 
-  // Once the recovery test is recorded, the checklist is drawn with its authored conditions.
-  const tested = withRecoveryTested(f)
-  const done = runFixture(tested).steps.find((s) => s.id === 's-goal-token-protection')!
-  const doneBody = stepBodyOf(done, { ...ctx, snapshot: tested.snapshot } as StepVarContext)
-  const lines = (policyTasksOf(done, doneBody.title, doneBody.artifacts as never, tested.mapping, [])?.tasks ?? []).flatMap((t) => t.steps)
-  assert.ok(lines.some((l) => /Do not turn it on unless/i.test(l)), 'the step does not draw the enforce checklist once the drill is done')
-  assert.ok(lines.some((l) => /Emergency access is prepared and tested/i.test(l)), 'the authored condition was displaced')
-
-  // And a bare list marker is not an instruction: the conditions are authored
-  // as an indented list under a numbered item, so the number lands on a line
-  // of its own and used to render as a step reading "3.".
-  assert.equal(lines.some((l) => /^s*d+.s*$/.test(l)), false, `a bare list marker rendered as an instruction: ${JSON.stringify(lines.filter((l) => /^s*d+.s*$/.test(l)))}`)
+  const ctx = { snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, nameOf: (id: string) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: null } as unknown as StepVarContext
+  const body = stepBodyOf(step, ctx, { enforceWaits: [title] })
+  const turnOn = body.emergencyAccountTasks?.tasks.find((t) => t.title === 'Turn the policy on')
+  assert.ok(turnOn, 'the turn-on is drawn')
+  // It names what it waits for (walk list 4.x item 44).
+  assert.deepEqual(turnOn.steps, [`Wait for ${title}; leave this policy in Report-only until then.`], 'the turn-on reads the wait')
+  assert.doesNotMatch(turnOn.steps.join('\n'), /Enable policy\*\* to \*\*On/, 'the turn-on is handed over before the drill')
+  const [card] = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)
+  assert.equal(card.title, 'Turn the policy on')
+  assert.equal(card.detail, `Report-only blocked no one. After ${title}.`)
 })

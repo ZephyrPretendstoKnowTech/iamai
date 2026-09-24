@@ -1,7 +1,7 @@
 // Populations as user-id sets (intents.md §6). Pure — group members are
 // passed in (fetched on demand by the caller; counts-and-sample above the
 // cap yields the estimate path).
-import { adminUserIds } from '../roles.ts'
+import { adminUserIdsWithEligible } from '../roles.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { PolicyFacts, PopulationSpec, ResolvedPopulation } from './types.ts'
 import type { DirectoryMemberEvidence, MemberEvidence } from '../graph/collect/presence.ts'
@@ -55,7 +55,8 @@ export function resolvePopulation(
       break
     case 'coreAdmins':
       // One admin set everywhere (ux-review-05 §4): the admin catalogue, not only the core roles.
-      for (const id of adminUserIds(snapshot.roles)) ids.add(id)
+      // PIM-eligible admins too (walk list 4.x L2).
+      for (const id of adminUserIdsWithEligible(snapshot.roles)) ids.add(id)
       break
     case 'workload':
       break // not user-based; scored structurally

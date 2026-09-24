@@ -15,14 +15,14 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "At least 67% MFA-ready"
+      "state": "At least 68% MFA-ready"
     },
     {
       "label": "Define the Trusted Network",
       "state": "Prerequisite · Waiting"
     },
     {
-      "label": "Prepare Emergency Access Accounts",
+      "label": "Configure Emergency Exclusions",
       "state": "Prerequisite · To do"
     },
     {
@@ -32,6 +32,10 @@
     {
       "label": "Prerequisites",
       "state": "People without a method"
+    },
+    {
+      "label": "Prepare Emergency Access Accounts",
+      "state": "Prerequisite · To do"
     }
   ],
   "channels": [
