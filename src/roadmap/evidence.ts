@@ -120,10 +120,28 @@ export function evidenceFor(
     // signals above: those are people a block is FOR, not a result it produced.
     if (failedUsers.length > 0) {
       base.affectedUserIds = failedUsers
-      base.lines = [goalId === 'block-legacy-auth' ? legacyBlockedLine(snapshot, failedUsers, mailAccounts) : fillText(W.failures, { n: failedUsers.length })]
+      base.lines = [goalId === 'block-legacy-auth' ? legacyBlockedLine(snapshot, failedUsers, mailAccounts) : BLOCKED_LINE[goalId] ? blockedLine(snapshot, failedUsers, BLOCKED_LINE[goalId]) : fillText(W.failures, { n: failedUsers.length })]
     }
   }
   return base
+}
+
+/**
+ * The other three policies of Turn On MFA for Everyone, in item 35's shape
+ * (walk list 4.x): who report-only would have blocked, by name and sign-in
+ * address, and what they need before the turn-on.
+ */
+const BLOCKED_LINE: Record<string, string> = {
+  'block-device-code': W.deviceCodeBlocked,
+  'admins-phishing-resistant': W.methodBlocked,
+  'mfa-all-users': W.methodBlocked,
+}
+
+/** The people a report-only week would have blocked, named with their addresses (at most five, then "and N more"), in the line given. */
+function blockedLine(snapshot: TenantSnapshot, failed: readonly string[], template: string): string {
+  const labels = personLabels(snapshot.users, { address: true })
+  const shown = failed.slice(0, 5).map((id) => labels.get(id) ?? id)
+  return fillText(template, { names: list(failed.length > 5 ? [...shown, fillText(engine.blockSignIns.more, { n: failed.length - 5 })] : shown) })
 }
 
 /**

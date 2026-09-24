@@ -4,6 +4,7 @@ import { emergencyAccountTasksOf } from './emergencyAccountTasks.ts'
 import type { EmergencyTaskProjection } from './emergencyAccountTasks.ts'
 import { emergencyGroupTasksOf } from './emergencyGroupTasks.ts'
 import { emergencyPasskeyTasksOf } from './emergencyPasskeyTasks.ts'
+import { BLOCKED_MILESTONES } from '../../roadmap/lifecycle.ts'
 import { drawsTaskAnatomy, ownCardWordsOf, policyProcedureOf, policyTasksOf } from './policyTasks.ts'
 import { emergencyAccountTasksText } from './emergencyAccountTasks.ts'
 import { estimatedDay } from '../../roadmap/stepSchedule.ts'
@@ -26,7 +27,7 @@ import { prepareReadingOf } from './prepareSteps.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { fillText, whatToDoFor, whole } from '../../content/render.ts'
-import { app, directionWords } from '../../content/content.ts'
+import { app, directionWords, stepById } from '../../content/content.ts'
 import { suggestCountries } from '../../mapping/countries.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { baselineConflictWords } from '../../roadmap/baselineConflict.ts'
@@ -55,6 +56,9 @@ import { bindText, projectSafely, projectExplanation, readinessSafely, troublesh
 import type { ChannelArtifact, OutputChannel, OwnerConfirmation, TroubleshootingScenario } from '../../content/implementation/project.ts'
 
 type Ex = Record<string, unknown>
+
+/** A step's title by its id, from the content file; null for an id it has none for. */
+const contentTitleOfId = (id: string): string | null => stepById[id]?.title ?? null
 
 /** Prepare Emergency Access Accounts' milestone while nothing is chosen (pages.app.plan.emergencyTasks). */
 const CHOOSE_ACCOUNTS = (app.plan as unknown as { emergencyTasks: { chooseAccounts: string } }).emergencyTasks.chooseAccounts
@@ -663,7 +667,11 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // apply (policyTasks.ts policyProcedureOf; walk list items 14–18). They stand
   // in for the package's own Entra blocks, which each wrote a different copy
   // for each state, and the Entra tab carries the same words.
-  const outstandingForEnforce = [...new Set([...blockers.map((b) => b.title ?? b.label).filter((x): x is string => typeof x === 'string' && x.length > 0), ...(o.enforceWaits ?? [])])]
+  // The steps the step's own blockers name too: Configure Emergency Exclusions
+  // holds a policy whose exclusions edit it makes (walk list 4.x item 7), and the
+  // board's reading of the next action does not carry it.
+  const ownWaits = step.blockers.flatMap((b) => (b.kind === 'step' ? [contentTitleOfId(b.stepId)] : [])).filter((x): x is string => x !== null)
+  const outstandingForEnforce = [...new Set([...blockers.map((b) => b.title ?? b.label).filter((x): x is string => typeof x === 'string' && x.length > 0), ...ownWaits, ...(o.enforceWaits ?? [])])]
   const procedure = machine && drawsTaskAnatomy(step.id)
     ? policyProcedureOf(step, { nameOf: portalNames.nameOf, strengthNameOf: (id) => portalNames.strengthNameFor?.(id) ?? null, rows: ctx.snapshot.config.caPolicies?.rows ?? [], before: wholeLines(w.before, ex), contract, outstanding: outstandingForEnforce, estimate: estimatedDay(step), proposed: proposedNamesFor(ctx), mapping: ctx.mapping, extras: policyProcedureExtras(step, pkg, pkgBindings ?? (pkg ? packageBindings(step, ctx, contract) : null)) })
     : null
@@ -700,7 +708,17 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // its next task by the title its task selector shows: the one it recommends,
   // or the first it needs.
   const railTasks = taskProjection?.tasks ?? []
-  const nextTask = (railTasks.find((t) => t.id === taskProjection?.recommendedTaskId) ?? railTasks.find((t) => t.required))?.title ?? null
+  const firstTask = (railTasks.find((t) => t.id === taskProjection?.recommendedTaskId) ?? railTasks.find((t) => t.required))?.title ?? null
+  // A report-only week that would have blocked someone is the work before the
+  // turn-on, and its card says so (walk list 4.x item 35): the rail names it.
+  const blockedWork = procedure !== null && contract.milestone.kind === 'observe' && BLOCKED_MILESTONES.has(contract.milestone.label) ? contract.milestone.label.replace(/\.$/, '') : null
+  // A policy step whose own tasks are all done while the step still waits names
+  // what it waits for, in its row's words ("After Configure Emergency
+  // Exclusions", "Waiting on your answers"): the contract's action there read
+  // "This is in place already: nothing to create." or "Finish the steps this one
+  // waits on first." (walk list 4.x items 18 and 23).
+  const waitWords = procedure !== null && firstTask === null && laneView.lane !== 'Completed' && laneView.lane !== 'Deferred' ? laneView.waitingFor ?? null : null
+  const nextTask = blockedWork ?? firstTask ?? waitWords
   // A policy step whose tasks are all done names none, so its headline reads
   // the step's own action (railOf), as a step with no task list does.
   const leadDrawn = !usesDecisionAnatomy(step.id) && (procedure !== null ? nextTask === null : !instructed && taskProjection === null)

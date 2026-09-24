@@ -328,18 +328,26 @@ test('a policy card states no stage it is not at, and no check the plan never re
     const held = bodyOf('s-goal-admins-phishing-resistant', 'demo')
     assert.equal(held.body.contract.state.lifecycle, 'report-only', 'the premise: the policy is sitting in report-only')
     const firstTask = (b: typeof held.body): string => b.emergencyAccountTasks!.tasks.find((t) => t.required)!.title
-    // Emergency access is not proven, so no procedure is handed over (Foundation
-    // A; policyTasks.ts SAFETY_HOLDS): the card names what holds it.
+    // Emergency access is not proven: the procedure still stands, and its
+    // turn-on names what it waits for and hands over no On line (walk list 4.x
+    // items 18 and 44). The card names the task, never Blocked (item 20).
     assert.equal(unavailableReason(held.step), 'escape-hatch-unverified', 'the premise: the way back in holds the policy')
-    assert.equal((held.body.emergencyAccountTasks?.tasks ?? []).some(isPolicyProcedureTask), false, 'a procedure is handed over while emergency access is unproven')
+    const turnOn = held.body.emergencyAccountTasks?.tasks.find((t) => t.id === 'turn-on')
+    assert.ok(turnOn, 'the turn-on is gone while emergency access is unproven')
+    assert.doesNotMatch(turnOn.steps.join(' '), /\*\*On\*\*/, 'the turn-on is handed over while emergency access is unproven')
+    assert.match(turnOn.steps.join(' '), /^Wait for .*Configure Emergency Exclusions/)
     const [heldCard] = policySubjectsOf(held.body.contract, held.body.readiness, held.body.emergencyAccountTasks)
-    assert.equal(heldCard.title, 'Blocked')
-    // The emergency-access set check is filed under Configure Emergency Exclusions (walk list 4.x item 23).
+    assert.equal(heldCard.title, 'Turn the policy on')
     assert.match(heldCard.detail ?? '', /Configure Emergency Exclusions/)
+    // The exclusions edit is Configure Emergency Exclusions' own (item 7): the
+    // enforced legacy policy asks for no correction, and its card says who makes it.
     const correction = bodyOf('s-goal-block-legacy-auth', 'demo')
-    assert.equal(correction.body.contract.state.stage, 'Enforced', 'the premise: the policy is enforced and needs correction')
-    assert.equal(policySubjectsOf(correction.body.contract, correction.body.readiness, correction.body.emergencyAccountTasks)[0].title, 'Correct the policy')
-    assert.equal(firstTask(correction.body), 'Correct the policy')
+    assert.equal(correction.body.contract.state.stage, 'Enforced', 'the premise: the policy is enforced and lacks the exclusions group')
+    assert.equal((correction.body.emergencyAccountTasks?.tasks ?? []).some((t) => t.id === 'correct'), false, 'the step asks for the edit Configure Emergency Exclusions makes')
+    const [card] = policySubjectsOf(correction.body.contract, correction.body.readiness, correction.body.emergencyAccountTasks)
+    assert.equal(card.title, 'On')
+    assert.equal(card.detail, 'Configure Emergency Exclusions adds Core - Exclusions to it.')
+    void firstTask
   }
   {
     const rows = corpus()

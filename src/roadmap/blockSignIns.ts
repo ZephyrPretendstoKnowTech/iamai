@@ -18,7 +18,7 @@ import type { MappingState } from '../mapping/types.ts'
 import type { ConfigurationFinding, Step } from './types.ts'
 import { mailDevicesOf } from './answers.ts'
 import { setState } from './lifecycle.ts'
-import { engine } from '../content/content.ts'
+import { engine, shared } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import { list } from '../copy/statements.ts'
 
@@ -85,17 +85,31 @@ export function namesOf(ids: readonly string[], nameOf: (id: string) => string, 
 }
 
 /**
- * The step's sign-in card: who the records show, named, as an open card while
- * the step still has work, and under Satisfied once it does not; "nobody" is
- * always Satisfied.
+ * The step's sign-in card: who the records show, named, with where they move
+ * before the turn-on, as an open card while the policy is not On (walk list 4.x
+ * items 33 and 38). "Nobody" is Satisfied. Once the policy is On it blocks
+ * whoever still tries, so the card goes: a Satisfied card naming people who
+ * "signed in with legacy authentication" read as an open problem.
  */
-function signInsCard(label: string, some: string, none: string, ids: readonly string[], nameOf: (id: string) => string, open: boolean): ConfigurationFinding {
+function signInsCard(label: string, some: string, none: string, move: string, ids: readonly string[], nameOf: (id: string) => string, on: boolean): ConfigurationFinding | null {
   if (ids.length === 0) return { key: SIGN_INS_FINDING, label, value: none, detail: '', outcome: 'pass' }
-  return { key: SIGN_INS_FINDING, label, value: fillText(some, { n: ids.length }), detail: namesOf(ids, nameOf), outcome: open ? 'fail' : 'pass' }
+  if (on) return null
+  return { key: SIGN_INS_FINDING, label, value: fillText(some, { n: ids.length }), detail: fillText(move, { names: namesOf(ids, nameOf, 'sentence') }), outcome: 'fail' }
 }
 
-function withCard(step: Step, card: ConfigurationFinding): void {
-  step.configurationFindings = [...(step.configurationFindings ?? []).filter((f) => f.key !== SIGN_INS_FINDING), card]
+/** The key of Block Legacy Authentication's mail accounts card (ConfigurationFinding.key). */
+export const MAIL_ACCOUNTS_FINDING = 'mail-accounts'
+const MAIL = shared.mailDevices as unknown as Record<string, string>
+
+/** The named mail accounts that still sign in with legacy authentication, and where they move. */
+function mailAccountsCard(ids: readonly string[], nameOf: (id: string) => string, on: boolean): ConfigurationFinding {
+  const one = ids.length === 1
+  const names = namesOf(ids, nameOf, 'sentence')
+  return { key: MAIL_ACCOUNTS_FINDING, label: MAIL.cardLabel, value: fillText(one ? MAIL.cardOne : MAIL.cardMany, { names }), detail: on ? (one ? MAIL.moveOne : MAIL.moveMany) : one ? MAIL.moveBeforeOne : MAIL.moveBeforeMany, outcome: 'fail' }
+}
+
+function withCard(step: Step, card: ConfigurationFinding | null): void {
+  step.configurationFindings = [...(step.configurationFindings ?? []).filter((f) => f.key !== SIGN_INS_FINDING), ...(card ? [card] : [])]
 }
 
 /**
@@ -121,12 +135,19 @@ export function settleBlockSignIns(steps: Step[], snapshot: SignInRead, mapping:
       legacy.mailAccountsToMove = toMove
       if (delivered) setState(legacy, { satisfied: false, inPlace: false })
     } else delete legacy.mailAccountsToMove
+    // The named accounts still to move: one card, by name (items 5 and 36).
+    const mailCard = toMove.length > 0 ? mailAccountsCard(toMove, nameOf, delivered || legacy.state.lifecycle === 'enforced') : null
+    legacy.configurationFindings = [...(legacy.configurationFindings ?? []).filter((f) => f.key !== MAIL_ACCOUNTS_FINDING), ...(mailCard ? [mailCard] : [])]
     const ids = legacySignInIds(snapshot)
-    if (ids !== null) withCard(legacy, signInsCard(W.legacyLabel, W.legacySome, W.legacyNone, reached(ids), nameOf, !delivered || toMove.length > 0))
+    // A named mail account still to move has its own card and task (item 36): not named twice.
+    const moving = new Set(toMove.map((id) => id.toLowerCase()))
+    const others = ids === null ? null : reached(ids).filter((id) => !moving.has(id.toLowerCase()))
+    if (others !== null && !(others.length === 0 && toMove.length > 0)) withCard(legacy, signInsCard(W.legacyLabel, W.legacySome, W.legacyNone, W.legacyMove, others, nameOf, delivered || legacy.state.lifecycle === 'enforced'))
+    else if (others !== null) withCard(legacy, null)
   }
   const device = steps.find((s) => s.id === DEVICE_CODE_STEP_ID)
   if (device && !device.state.setAside) {
     const ids = deviceCodeSignInIds(snapshot)
-    if (ids !== null) withCard(device, signInsCard(W.deviceCodeLabel, W.deviceCodeSome, W.deviceCodeNone, reached(ids), nameOf, !device.state.satisfied))
+    if (ids !== null) withCard(device, signInsCard(W.deviceCodeLabel, W.deviceCodeSome, W.deviceCodeNone, W.deviceCodeMove, reached(ids), nameOf, device.state.satisfied || device.state.lifecycle === 'enforced'))
   }
 }

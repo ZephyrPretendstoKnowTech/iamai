@@ -76,11 +76,32 @@ function policyOf(step: Step, rows: readonly Row[]): Row | null {
   }
   const ops = step.action.resolution?.policies ?? []
   if (ops.length === 1) {
-    const op = ops[0] as { mode?: string; body?: unknown; target?: unknown }
+    const op = ops[0] as { mode?: string; body?: unknown; target?: unknown; intent?: unknown }
     const body = (op.mode === 'update' ? op.target : op.body) as Row | undefined
-    return body && typeof body === 'object' ? body : null
+    if (!body || typeof body !== 'object') return null
+    // What IAMAI will see is the plan's policy (walk list 4.x item 26): a part the
+    // correction does not write keeps the tenant's value in the target, so under
+    // drift the line read "blocking Other clients", the drifted policy.
+    const intent = op.mode === 'update' && op.intent && typeof op.intent === 'object' ? (op.intent as Row) : null
+    return intent === null ? body : withIntended(body, intent, step.state.observation?.unwritten ?? [])
   }
   return ops.length === 0 && tracked.length === 1 ? tracked[0] : null
+}
+
+/** The target with each part the plan asks for and the correction does not write taken from the plan's whole policy. */
+function withIntended(target: Row, intent: Row, unwritten: readonly string[]): Row {
+  if (unwritten.length === 0) return target
+  const conditions = { ...((target.conditions ?? {}) as Row) }
+  const wanted = (intent.conditions ?? {}) as Row
+  const out: Row = { ...target }
+  for (const d of unwritten) {
+    if (d.startsWith('conditions.')) {
+      const key = d.slice('conditions.'.length)
+      if (wanted[key] === undefined) delete conditions[key]
+      else conditions[key] = wanted[key]
+    } else if (d === 'grantControls' || d === 'sessionControls') out[d] = intent[d]
+  }
+  return { ...out, conditions }
 }
 
 /** What the policy stops or asks for, as a verb and its object; null for a grant this does not read. */
