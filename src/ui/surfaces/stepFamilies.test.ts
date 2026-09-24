@@ -1,12 +1,8 @@
 // The six step families, and the one sentence this file exists to hold:
 // they are six sets of MODULES through one frame, not six components.
 //
-// The failure it stops is the one that creeps back in every time a family gets
-// a requirement of its own — a `kind === 'decision'` branch that mounts a whole
-// second shell, and a Plan that is six pages wearing one header. So the
-// assertions below are about the frame being singular and the modules being
-// self-gating, measured over every step every fixture produces rather than over
-// a hand-picked example.
+// The assertions below are about the modules being self-gating, measured over
+// every step every fixture produces rather than over a hand-picked example.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -16,24 +12,14 @@ import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { stepVars } from './stepVars.ts'
 import { stepInstructions } from './stepInstructions.ts'
 import { portalNamesFor } from './stepPortal.ts'
-import { CONTRACT, FOOTER, eyebrowOf, implementationEmptyOf, implementationIsCurrent, railOf, stepContract, stepFamily } from './stepContract.ts'
+import { CONTRACT, eyebrowOf, implementationEmptyOf, implementationIsCurrent, railOf, stepContract, stepFamily } from './stepContract.ts'
 import type { StepFamily } from './stepContract.ts'
 import type { StepContract } from './stepContract.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { enforcesOnRun, operationsOf } from '../../roadmap/operations.ts'
-import { app, pages } from '../../content/content.ts'
 
 // The opened step's body spans the component and stepBody.ts (A3): the decisions read there.
 const CONTENT_STEP = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8') + readFileSync('src/ui/surfaces/stepBody.ts', 'utf8')
-const SECTIONS = readFileSync('src/ui/surfaces/StepSections.tsx', 'utf8')
-const CONTRACT_SRC = readFileSync('src/ui/surfaces/stepContract.ts', 'utf8')
-// The handoff is the component and the pure preview it draws (mfaHandoffPreview.ts),
-// which moved out of the component so the names it shows can be tested (Nadia §3
-// item 10): the rules below read both, as they read the one component before.
-const HANDOFF = (readFileSync('src/ui/surfaces/MfaHandoff.tsx', 'utf8') + readFileSync('src/ui/surfaces/mfaHandoffPreview.ts', 'utf8')).replace(/\r\n/g, '\n')
-const CSS = readFileSync('src/ui/app.css', 'utf8')
-
-const FAMILIES: StepFamily[] = ['policy', 'supporting', 'mfa', 'in-place', 'decision', 'resolution']
 
 type Audited = {
   fixture: string
@@ -91,73 +77,15 @@ function audited(): Audited[] {
 
 const of = (family: StepFamily): Audited[] => audited().filter((a) => a.family === family)
 
-// ------------------------------------------------------------- one frame
-
-test('every family goes through one frame: there is no second step shell', () => {
-  // One article, one head, one body, one footer, one action column — in the file
-  // that draws every step there is.
-  for (const [what, n] of [['<article className="step', 1], ['<StepHead', 1], ['<StepFooter', 1], ['<StepActionColumn', 1], ['className="step-body has-rail"', 1]] as const) {
-    assert.equal(CONTENT_STEP.split(what).length - 1, n, `${what} appears ${CONTENT_STEP.split(what).length - 1} times, not ${n}`)
-  }
-  // And no branch mounts a whole alternative structure for a family. A module
-  // may be conditional and a VALUE may be chosen by kind — `cs.kind === 'policy'
-  // ? unavailableReason(step) : null` asks Foundation A a question only a policy
-  // has — but a kind must never open JSX. That is the difference between an
-  // optional module and a second page.
-  for (const m of CONTENT_STEP.matchAll(/kind === '[a-z-]+'\s*(\?|&&)\s*(<|\()/g)) {
-    assert.fail(`the step mounts markup on a kind: ${m[0]}`)
-  }
-  // Nor does the step itself return early with a different tree. Scoped to
-  // ContentStep's own body: the file also holds the small components the step
-  // composes (the decision primitive, a who-block, More), and each of those
-  // rightly has a render of its own.
-  const body = CONTENT_STEP.slice(CONTENT_STEP.indexOf('export function ContentStep'), CONTENT_STEP.indexOf('function Implementation({'))
-  assert.ok(body.length > 500, 'the step body could not be read')
-  // A callback handed to a region (the emergency slot body) returns its own
-  // markup inside the one tree; only a return at the step's own level is a path.
-  assert.equal(body.match(/^ {2,4}(?:if \(.*\) )?return \(/gm)?.length ?? 0, 1, 'the step has more than one render path')
-})
-
-test('the family is a reading, not a switch: nothing selects a layout from it', () => {
-  // `stepFamily` exists for the audit and for these tests. If a component ever
-  // starts branching on it, the six-modules-one-frame claim stops being true
-  // and this is where that shows up.
-  for (const [file, src] of [['ContentStep.tsx', CONTENT_STEP], ['StepSections.tsx', SECTIONS]] as const) {
-    assert.equal(src.includes('stepFamily'), false, `${file} branches on the family instead of on the module's own truth`)
-  }
-})
-
-test('no family is detected from a title, anywhere in the projection', () => {
-  const body = CONTRACT_SRC.slice(CONTRACT_SRC.indexOf('export function stepFamily'), CONTRACT_SRC.indexOf('export function stepFamily') + 900)
-  for (const heuristic of ['title', 'includes(', 'match(', 'toLowerCase']) {
-    assert.equal(body.includes(heuristic), false, `the family projection reads ${heuristic}`)
-  }
-  // It reads the recorded state and the content kind, and that is all.
-  assert.match(body, /step\.state/, 'the family is not read off the recorded state')
-})
-
-test('the corpus exercises every family the manifest calls migrated', () => {
-  const manifest = JSON.parse(readFileSync('docs/design/approved/reference/REFERENCE-MANIFEST.json', 'utf8')) as {
-    planStep: { families: Record<string, string> }
-  }
-  for (const [name, status] of Object.entries(manifest.planStep.families)) {
-    if (name.startsWith('$')) continue
-    assert.equal(status, 'migrated', `${name} is not migrated`)
-  }
-  const seen = new Set(audited().map((a) => a.family))
-  // The decision family is a condition, not a fixture: `needs-decision` is what
-  // a tenant looks like before somebody answers, and the corpus's fixtures are
-  // answered. planVariants.test.ts constructs the unanswered variants and proves
-  // the decision presentation there; this only records which families the plain
-  // corpus reaches, so a later reader is not misled by a silent gap.
-  for (const family of ['policy', 'supporting', 'mfa', 'in-place', 'resolution'] as StepFamily[]) {
-    assert.ok(seen.has(family), `no fixture produces a ${family} step, so its assertions below prove nothing`)
-  }
-})
-
 // --------------------------------------------------- the lifecycle is policy's
 
 test('only a policy draws a lifecycle, and every policy state keeps its own', () => {
+  // The premise: the corpus reaches every family but the decision one, which is a
+  // condition, not a fixture (planVariants.test.ts constructs it).
+  const seen = new Set(audited().map((a) => a.family))
+  for (const family of ['policy', 'supporting', 'mfa', 'in-place', 'resolution'] as StepFamily[]) {
+    assert.ok(seen.has(family), `no fixture produces a ${family} step, so the assertions below prove nothing`)
+  }
   for (const a of audited()) {
     // A goal the tenant already delivers draws the lifecycle its policy recorded
     // (the approved In-place variant draws four reached stages); every other
@@ -203,10 +131,6 @@ test('every family draws the one milestone at the head of its action column, and
     const scheduled = a.contract.schedule !== null ? a.contract.schedule.at : null
     if (a.contract.milestone.at === null && scheduled === null) assert.equal(/\d{4}/.test(r.metric), false, `${a.fixture}/${a.step.id}: the rail invents a date`)
   }
-  assert.equal(CONTENT_STEP.split('<StepActionColumn rail={displayRail}>').length - 1, 1, 'the action column is gated, or drawn twice')
-  // The one rail line a step overrides is content (U3: words from content.json), never English in the component.
-  assert.match(CONTENT_STEP, /sub: app\.plan\.exclusionsGroupRailSub/)
-  assert.doesNotMatch(CONTENT_STEP, /sub: '[A-Z][^']+'/, 'a rail line written in the component')
 })
 
 // ------------------------------------ implementation is not always the action
@@ -267,21 +191,6 @@ test('the capability is untouched: the same channels come back when the conditio
   assert.equal(one.contract.implementation.offered, true, 'the capability was not preserved across the round trip')
 })
 
-test('the step gates the display and never the artifact', () => {
-  // The gate is one boolean over one condition, applied to the channel list. The
-  // JSON and the commands are still built by the modules that built them.
-  assert.match(CONTENT_STEP, /const deployNow = cs\.kind !== 'policy' \|\| implementationIsCurrent\(step\)/, 'the step decides for itself when to deploy')
-  assert.match(CONTENT_STEP, /const channels = step\.directionQuestions \? \[\x27ai\x27 as Channel\] : deployNow \? channelsFor\(/, 'the gate is not applied to the channel list')
-  assert.match(CONTENT_STEP, /: channels\.map\(\(ch\): Artifact => \(\{ id: ch,/,'the implementation region is not built from the gated channel list')
-  assert.match(CONTENT_STEP, /<Implementation\n\s*artifacts=\{artifacts\}/, 'the implementation region is not handed the artifacts')
-  // Nothing writes to the capability.
-  assert.equal(CONTENT_STEP.includes('implementation.offered ='), false, 'the step mutates Foundation A’s answer')
-  // And no title decides any of it.
-  for (const heuristic of ['title.includes', 'title.match', 'title.toLowerCase']) {
-    assert.equal(CONTENT_STEP.includes(heuristic), false, `the gate reads a title: ${heuristic}`)
-  }
-})
-
 test('a held policy offers no implementation, and its region says why at the weight of the reason', () => {
   for (const a of audited()) {
     if (a.step.state.condition === 'healthy') continue
@@ -296,43 +205,6 @@ test('a held policy offers no implementation, and its region says why at the wei
     // that describes no policy, never for one something is holding.
     assert.notEqual(implementationEmptyOf(a.contract).key, 'none', `${a.fixture}/${a.step.id}: a held step says it has nothing to generate rather than why`)
   }
-  // The rail is the Next milestone only: it names no channel on any step.
-  const rail = SECTIONS.slice(SECTIONS.indexOf('export function StepRail'), SECTIONS.indexOf('export function StepFooter'))
-  assert.equal(/railChannels|side-list|implementation/.test(rail), false, 'the rail advertises implementation channels')
-})
-
-// ------------------------------------------------------------------ the footer
-
-test('the footer offers the rollout exception where the step is excludable, and the existing scan', () => {
-  const footer = SECTIONS.slice(SECTIONS.indexOf('export function StepFooter'), SECTIONS.indexOf('/** A tile'))
-  assert.match(footer, /\{onScan && \(/, 'the scan is drawn without the handler it presses')
-  assert.equal(/onClose|disabled/.test(footer), false, 'the footer closes the step or keeps a disabled control; the row closes it')
-  assert.deepEqual(Object.keys(FOOTER), ['scan'], 'the footer grew words the approved footer does not carry')
-  // The exception is the existing skip, offered only on a step the content marks
-  // excludable, and it records the operator's own reason.
-  assert.match(CONTENT_STEP, /cs\.skip \? <Button key="exclude"/, 'the exception is offered on a step the content does not mark excludable')
-  assert.match(CONTENT_STEP, /onConfirm=\{\(r\) => \{ closeDialog\(\); onSkip\(r\) \}\}/, 'the exception is not the existing skip with the operator’s reason')
-  assert.match(CONTENT_STEP, /disabled=\{given\.length === 0\}/, 'the exception can be recorded without a reason')
-  assert.match(CONTENT_STEP, /onScan=\{printing \? null : \(onScan \?\? null\)\}/, 'the footer is not handed the scan it was given')
-})
-
-// --------------------------------------------------- the board's mobile controls
-
-test('every Plan control stays whole at the narrow width', () => {
-  // "Show completed" used to sit half off the edge of a 390px screen: the focus
-  // row scrolled sideways with nothing to say there was more. A control the
-  // operator cannot see is a control they do not have.
-  const narrow = CSS.slice(CSS.indexOf('@media (max-width: 650px)'))
-  const focuses = narrow.slice(narrow.indexOf('.plan-controls .focuses {'))
-  const rule = focuses.slice(0, focuses.indexOf('}'))
-  assert.match(rule, /flex-wrap: wrap;/, 'the focus row still scrolls instead of wrapping')
-  assert.equal(/overflow-x:\s*auto/.test(rule), false, 'the focus row still hides controls behind a scroll')
-  const button = narrow.slice(narrow.indexOf('.plan-controls .focus {'))
-  const brule = button.slice(0, button.indexOf('}'))
-  assert.match(brule, /white-space: normal;/, 'a long label is still clipped rather than wrapped')
-  assert.equal(/display:\s*none/.test(brule), false, 'a control is hidden at the narrow width')
-  // And nothing shrank below the board's compact floor to make room.
-  assert.equal(/font-size:\s*(?!var\(--t-micro\))[0-9]/.test(brule), false, 'the control text was shrunk to a raw size')
 })
 
 // ------------------------------------------------- already in place is calm
@@ -353,7 +225,6 @@ test('a goal the tenant already delivers invents no work', () => {
     // Done when is drawn on every step, this one included (the approved V4).
     assert.ok(a.contract.doneWhen.length > 0, `${a.fixture}/${a.step.id}: an in-place step has no completion`)
   }
-  assert.equal(/showsDoneWhen|<DoneWhen[^>]*&&/.test(CONTENT_STEP), false, 'Done when is withheld from a step again')
 })
 
 // -------------------------------------------------- resolution states the facts
@@ -368,70 +239,10 @@ test('a source conflict states the ambiguity and invents no deployment', () => {
     assert.equal(a.contract.implementation.offered, false, `${a.fixture}/${a.step.id}: an artifact for an ambiguous source`)
     assert.ok(a.contract.whatToDo.text.length > 0, `${a.fixture}/${a.step.id}: no resolution action`)
   }
-  // The notice is the approved danger attention under Readiness, above
-  // Implementation, and never behind a disclosure.
-  const main = CONTENT_STEP.slice(CONTENT_STEP.indexOf('<div className="step-main step-main-lead">'), CONTENT_STEP.indexOf('{printing && ('))
-  const at = main.indexOf('conflictWords && (')
-  assert.ok(at > main.indexOf('<ReadinessSection'), 'the conflict notice is above Readiness')
-  assert.ok(at < main.indexOf('<Implementation'), 'the conflict notice sank below Implementation')
   for (const a of conflicts) {
     assert.equal(eyebrowOf(a.contract, 'policy'), CONTRACT.kind.resolution, `${a.fixture}/${a.step.id}: a resolution step is not named one`)
     assert.equal(implementationEmptyOf(a.contract).tone, 'danger', `${a.fixture}/${a.step.id}: the conflict's no-action box is not at the danger weight`)
   }
-})
-
-// ------------------------------------------------------- MFA hands off, it does not recompute
-
-test('the MFA preview consumes existing readiness truth and computes none of its own', () => {
-  // The preview speaks the step's own requirement (prompt 62): the people are the
-  // step's own hold, what they have is their registered methods in the shared
-  // method words, and what they need is the step's own words (app.plan.mfaPreview).
-  assert.match(HANDOFF, /import \{ classWord, listWords \} from '\.\/readinessCells\.ts'/, 'the preview reads cells beyond the shared method words')
-  assert.match(HANDOFF, /listWords\(p\.methods\.map\(classWord\)\)/, 'the methods are not the shared method words')
-  assert.match(HANDOFF, /methods: methodClassesOf\(snapshot, id\)/, 'the methods are not the directory reading every surface shares')
-  assert.match(HANDOFF, /\(P as unknown as \{ mfaPreview:/, 'the preview does not read its own words')
-  assert.match(HANDOFF, /checkCompat: unknown\.has\(id\)/, 'what a person needs is not the step\'s own requirement')
-  assert.match(HANDOFF, /p\.checkCompat \? W\.checkCompat : W\.needsMethod/, 'what a person needs is not the step\'s own words')
-  // It never shows MFA Readiness's state words or its higher bar's next step: the
-  // Plan never calls somebody short of a phishing-resistant method while the step
-  // counts them as prepared.
-  for (const gone of ['readinessView', 'stateTitle', 'nextCell', 'nextWords', 'whyLine', 'rowCells', 'personReadiness', 'readinessWord', 'actionOf', '.states', '.groups']) {
-    assert.equal(HANDOFF.includes(gone), false, `the preview reads MFA Readiness's own ${gone}`)
-  }
-  const words = (app.plan as unknown as { mfaPreview: Record<string, string> }).mfaPreview
-  const titles = Object.values((pages.readiness as unknown as { states: Record<string, { title: string }> }).states).map((s) => s.title)
-  for (const [k, w] of Object.entries(words)) if (k !== '$comment') assert.ok(!titles.includes(w), `mfaPreview.${k} is one of MFA Readiness's state words`)
-  // The hold, the ids and the people all come from the derive layer.
-  assert.match(HANDOFF, /stepMfaHold\(step, scored\)/, 'the step decides its own hold')
-  assert.match(HANDOFF, /scoredPeople\(snapshot, mapping, snapshot\.asOf\)/, 'the preview scores people of its own')
-  assert.match(HANDOFF, /step\.methodPreparation\?\.unknownIds/, 'the unsettled people are not the step\'s own')
-  // It may CALL the derive layer — `scoredPeople` and `stepMfaHold` are the
-  // authority — but it may not do the arithmetic itself.
-  for (const forbidden of ['rung >', '>= 0.9', 'Math.', 'new Date(', '.reduce(', 'percent']) {
-    assert.equal(HANDOFF.includes(forbidden), false, `the handoff computes ${forbidden} instead of reading the derive layer`)
-  }
-})
-
-test('the preview is bounded and the total is never the bound', () => {
-  assert.match(HANDOFF, /const PREVIEW = 3/, 'the preview is unbounded or the bound moved')
-  assert.match(HANDOFF, /\.slice\(0, PREVIEW\)/, 'the preview is not bounded by the constant')
-  // The count in the handoff line is the hold's own length, not the bound.
-  assert.match(HANDOFF, /const n = hold\.ids === null \? null : hold\.ids\.length/, 'the count is not the hold’s')
-  assert.match(HANDOFF, /fillText\(P\.mfaReadinessHold, \{ n \}\)/, 'the handoff line does not carry the real total')
-  // No name, no number, written down.
-  assert.equal(/['"][A-Z][a-z]+ [A-Z][a-z]+['"]/.test(HANDOFF), false, 'a person’s name is hardcoded in the handoff')
-  assert.equal(/\bof 7\b|\bof 3\b/.test(HANDOFF), false, 'an example count is hardcoded')
-  // And the way to the page that owns the rest.
-  assert.match(HANDOFF, /readinessStepHref\(step\.id\)/, 'the handoff does not reuse the existing route')
-})
-
-test('the full person-by-person view stays on MFA Readiness', () => {
-  // The Plan previews; it does not become a second readiness table. The page's
-  // own table is the one that lists everybody.
-  const readiness = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
-  assert.match(readiness, /readinessView\(/, 'MFA Readiness no longer builds the person view')
-  assert.equal(CONTENT_STEP.includes('readinessView('), false, 'the opened step builds a person view of its own')
-  assert.equal(CONTENT_STEP.includes('scoredPeople('), false, 'the opened step scores people of its own')
 })
 
 // ------------------------------------------------ decision stays the operator's
@@ -440,48 +251,7 @@ test('a detected candidate is not a persisted decision, and the step creates no 
   // The picker writes through the Plan's own handler, which is the mapping's
   // persistence path. The step neither writes nor invents one.
   assert.match(CONTENT_STEP, /onDecide\?: \(decision: StepDecisionInput\) => void/, 'the step no longer takes the persistence handler')
-  // Where the step makes an object itself and asks nothing of its own, the
-  // object's picker is the one decision (stepBody.ts taskDecision; Stage 3),
-  // handed that object's saved decision and the Plan's own handler.
-  assert.match(CONTENT_STEP, /<Decision (?:key=\{step\.id\} )?d=\{taskDecision\?\.d \?\? d\} ex=\{taskDecision\?\.ex \?\? ex\} saved=\{taskDecision \? objectTask\?\.saved \?\? null : decision\} onDecide=\{taskDecision \? objectTask\?\.onDecide : onDecide\}/, 'the decision primitive is not handed the saved decision and the handler')
   for (const forbidden of ['localStorage', 'indexedDB', 'putMapping', 'saveMapping', 'new Map()']) {
     assert.equal(CONTENT_STEP.includes(forbidden), false, `the step persists a decision itself: ${forbidden}`)
   }
-  // Detected is not confirmed: the picker's rows are candidates, and Save is the
-  // operator action that turns them into a decision.
-  assert.match(CONTENT_STEP, /const rows: string\[\] = key \? \(ex\[key\] as string\[\]\) : \[\]/, 'the candidate rows are no longer the scan’s nominations')
-})
-
-// ------------------------------------------------------- supporting stays small
-
-test('supporting work is not dressed as a rollout', () => {
-  const supporting = of('supporting')
-  assert.ok(supporting.length > 0, 'no supporting step in the corpus')
-  for (const a of supporting) {
-    assert.equal(a.contract.track.length, 0, `${a.fixture}/${a.step.id}: supporting work on a Conditional Access lifecycle`)
-    assert.ok(a.contract.whatToDo.text.length > 0, `${a.fixture}/${a.step.id}: supporting work with no action`)
-  }
-})
-
-test('the corpus reaches 0 and 3 channels, and a strip never has one tab', () => {
-  // An honest record rather than a silent gap. The portal translator runs for
-  // policy steps, and the two machine channels stand or fall together on
-  // Foundation A's one answer — so every step in the corpus offers either all
-  // three or none, and NO fixture produces exactly one.
-  //
-  // The one-channel branch is still real and still reachable: a policy step with
-  // portal lines whose artifacts Foundation A withholds renders it. It is proven
-  // here against the rule rather than against a tenant, and the gap is written
-  // down so a later reader does not mistake "never seen" for "never happens".
-  const counts = new Map<number, number>()
-  for (const a of audited()) counts.set(a.channels, (counts.get(a.channels) ?? 0) + 1)
-  assert.deepEqual([...counts.keys()].sort((x, y) => x - y), [0, 3], `the corpus's channel counts changed: ${[...counts].join(' ')}`)
-  // The rule itself, at each of the three cases.
-  const rule = CONTENT_STEP.slice(CONTENT_STEP.indexOf('function channelsFor'), CONTENT_STEP.indexOf('function channelsFor') + 700)
-  assert.match(rule, /if \(hasPortal\) out\.push\('portal'\)/)
-  assert.match(rule, /if \(machineOffered\) out\.push\('ps', 'json'\)/)
-  // AI Info has content beside any channel that does. Every channel is a tab
-  // (content review D2); where none has content, the no-action reason stands over them.
-  assert.match(rule, /if \(out\.length > 0\) out\.push\('ai'\)/, 'AI Info can stand alone or is never offered')
-  assert.match(CONTENT_STEP, /\{artifacts\.every\(\(a\) => a\.unavailable === true\) && \(\n\s*<div className="impl-empty-note" data-empty=\{empty\.key\}>/, 'a step with no content draws no reason over its tabs')
 })

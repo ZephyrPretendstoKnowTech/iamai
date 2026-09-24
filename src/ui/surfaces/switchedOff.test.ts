@@ -274,13 +274,9 @@ test('a pair with one policy switched Off sets that one to Report-only, and neve
   // The one in Report-only is not touched: its turn-on waits for the pair.
   const { body } = drawn(scan, GUESTS)
   for (const a of body.artifacts.filter((x) => x.id === 'json' || x.id === 'ps')) assert.equal(a.text().includes(PAIR_IDS[1]), false, `${a.id} changes the member already in Report-only`)
-})
-
-test('a pair with one policy Off is set to Report-only even where nothing holds the turn-on', () => {
-  // With the readiness threshold and the prerequisites met, the batch PATCHed
-  // {"state":"enabled"} onto the policy that was Off: straight from Off to On.
-  const scan = guestsPair(['disabled', REPORT_ONLY_STATE])
-  const step = scan.run.steps.find((s) => s.id === GUESTS)!
+  // And where nothing holds the turn-on: with the readiness threshold and the
+  // prerequisites met, the batch PATCHed {"state":"enabled"} onto the policy
+  // that was Off, straight from Off to On.
   delete step.action.readinessGate
   delete step.action.enforceWaitsOn
   assertReportOnlyEverywhere(scan, GUESTS, 'one Off, nothing holding the turn-on')

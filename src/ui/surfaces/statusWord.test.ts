@@ -20,9 +20,10 @@ function step(status: StepStatus, over: Partial<StepState> = {}): Step {
   return setState(built, { ...stateForStatus(status), ...over })
 }
 
-test('every engine status maps to one of the eight words', () => {
+test('every engine status maps to one of the eight words, and none is a verb', () => {
   const statuses: StepStatus[] = ['done', 'ready', 'blocked', 'in-report-only', 'ready-to-enforce', 'skipped']
   for (const s of statuses) assert.ok(WORDS.has(statusOf(step(s)).word), `${s} → ${statusOf(step(s)).word}`)
+  for (const s of statuses) assert.doesNotMatch(statusOf(step(s)).word, /^(Create|Change|Check|Run|Give|Stop|Make)/)
   // The three stages of a deployed policy are three words, and no two of them
   // are the same: a policy being watched, one whose gates have closed, and one
   // the tenant has on.
@@ -49,9 +50,4 @@ test('a done goal reads Enforced only where the plan drove its own policy to enf
   // over a rollout that never happened.
   assert.equal(statusOf(step('done', { inPlace: false, lifecycle: null })).word, 'In place', 'nothing was deployed, so nothing was enforced')
   assert.equal(statusOf(step('done', { inPlace: false, lifecycle: 'report-only' })).word, 'In place', 'a policy still being watched is not one the plan turned on')
-})
-
-test('no status word is a verb', () => {
-  const statuses: StepStatus[] = ['done', 'ready', 'blocked', 'in-report-only', 'ready-to-enforce', 'skipped']
-  for (const s of statuses) assert.doesNotMatch(statusOf(step(s)).word, /^(Create|Change|Check|Run|Give|Stop|Make)/)
 })

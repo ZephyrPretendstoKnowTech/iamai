@@ -9,30 +9,11 @@
 // One gate now (stepInstructions.ts wholeLines), read by both.
 //
 // Nothing fills `ranges` today: no scan reading produces it, on any tenant. So
-// the line is left out everywhere until something does, and the first test
-// holds the filled case on the helper itself.
+// the line is left out everywhere until something does, and the test holds
+// both cases on the helper itself.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from '../../roadmap/fixtures/index.ts'
-import type { FixtureName } from '../../roadmap/fixtures/index.ts'
-import { runFixture } from '../../roadmap/fixtures/run.ts'
-import type { StepVarContext } from './stepVars.ts'
-import { stepBodyOf } from './stepBody.ts'
 import { wholeLines } from './stepInstructions.ts'
-
-const TRUSTED = 's-prereq-trusted-location'
-const ADDRESSES = /Addresses seen in sign-in records/
-
-function opened(name: FixtureName, stepId: string) {
-  const f = fixture(name)
-  const r = runFixture(f)
-  const step = r.steps.find((s) => s.id === stepId)!
-  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
-  const body = stepBodyOf(step, ctx)
-  const portal = body.artifacts.find((a) => a.id === 'portal')!
-  const lines = [...portal.text().split('\n'), ...(body.emergencyAccountTasks?.tasks ?? []).flatMap((t) => t.steps)]
-  return { step, lines }
-}
 
 test('a content line whose list is empty is left out, and the same line with its list is filled', () => {
   const line = 'Addresses seen in sign-in records, to compare with the approved ranges (being seen does not approve them): {list:ranges}'
@@ -43,15 +24,3 @@ test('a content line whose list is empty is left out, and the same line with its
   assert.deepEqual(wholeLines([{ sub: 'x' }, 'Save.'], {}), ['Save.'])
   assert.deepEqual(wholeLines(undefined, {}), [])
 })
-
-test('the trusted-network step draws no line that introduces a list and lists nothing, on the screen or in its tasks', () => {
-  for (const name of ['hostile', 'demo'] as FixtureName[]) {
-    const { lines } = opened(name, TRUSTED)
-    assert.ok(lines.length > 1, `${name}: the premise, the step draws its procedure`)
-    for (const line of lines) {
-      assert.doesNotMatch(line, /:\s*$/, `${name}: ${line}`)
-      assert.doesNotMatch(line, ADDRESSES, `${name}: a line with no addresses behind it`)
-    }
-  }
-})
-

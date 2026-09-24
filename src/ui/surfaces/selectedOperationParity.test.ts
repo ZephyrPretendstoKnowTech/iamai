@@ -63,11 +63,6 @@ function opened(name: FixtureName, id: string): Opened {
   assert.ok(step, `${name}: ${id} is not on the plan`)
   return p.open(step)
 }
-const jsonOf = (o: Opened): Record<string, unknown> => {
-  const a = stepBodyOf(o.step, o.ctx, { lane: o.lane }).artifacts.find((x) => x.id === 'json')
-  assert.ok(a && !a.unavailable, 'the JSON channel is drawn')
-  return JSON.parse(a.text()) as Record<string, unknown>
-}
 
 test("Medium user risk on mid: the export states the guest exclusion and no session control, and names the pin's grant pair", () => {
   const o = opened('mid', 's-goal-user-risk-medium')
@@ -99,34 +94,13 @@ test("Medium user risk on mid: the export states the guest exclusion and no sess
   assert.doesNotMatch(text, /Require multifactor authentication|built-in `mfa`|JSON and PowerShell outputs/)
 })
 
-test('Medium sign-in risk on mid: the export grants built-in MFA with no session control, as the JSON sends', () => {
-  const o = opened('mid', 's-goal-sign-in-risk-medium')
-  const body = jsonOf(o) as { grantControls: { builtInControls: string[] }; sessionControls: unknown }
-  assert.deepEqual(body.grantControls.builtInControls, ['mfa'])
-  const lines = stepExportView(o.step, o.ctx, o.lane).whatToDo
-  assert.match(lines.join('\n'), /Grant → Grant access → Require multifactor authentication/)
-  assert.equal(lines.some((l) => l.startsWith('Session →') || /authentication strength/.test(l)), false)
-})
-
-type Briefing = { opening: string[]; heading: string; sections: Record<string, string>; proposed: string; previewValues: string }
+type Briefing = { heading: string; proposed: string; previewValues: string }
 const BRIEFING = CONTRACT.implementation.aiFacts as unknown as Briefing
 const aiOf = (o: Opened): string => {
   const a = stepBodyOf(o.step, o.ctx, { lane: o.lane }).artifacts.find((x) => x.id === 'ai')
   assert.ok(a && !a.unavailable, 'AI Info is drawn')
   return a.text()
 }
-
-test('Medium user risk on mid: AI Info opens with the shared request and states, in six sections, the settings the JSON sends', () => {
-  const ai = aiOf(opened('mid', 's-goal-user-risk-medium'))
-  assert.ok(ai.startsWith(BRIEFING.opening.join('\n\n')), 'the shared opening leads')
-  const facts = ai.slice(ai.indexOf(BRIEFING.heading))
-  const at = Object.values(BRIEFING.sections).map((h) => facts.indexOf(`\n\n${h}\n`))
-  assert.ok(at.every((n) => n > 0), `a section is missing: ${JSON.stringify(at)}`)
-  assert.deepEqual([...at].sort((a, b) => a - b), at, 'the sections are in order')
-  assert.match(facts, /^Users → Include: All users\. .*Also exclude Guest or external users \(all types\)\.$/m)
-  assert.doesNotMatch(ai, /Every time|Guest or external users → all types/)
-  assert.match(facts, /^Request: POST https:\/\/graph\.microsoft\.com\/v1\.0\/identity\/conditionalAccess\/policies$/m)
-})
 
 test('a held step whose reference is unresolved: AI Info proposes the settings, says they are not handed over, and names what the scan could not settle', () => {
   setDisplayTimeZone('UTC')

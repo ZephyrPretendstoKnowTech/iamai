@@ -90,7 +90,7 @@ test('severity is fixed: a blocker cannot be quietly downgraded', () => {
   }
 })
 
-test('every rule carries a source, or says plainly that it is field practice', () => {
+test('every rule carries a source (or says it is field practice) and says what it checks and why', () => {
   // audit-program §6, adjusted by guidance-audit-01: a citation, or an explicit
   // field-practice label. A rule with neither is a rule nobody has verified.
   const missing: string[] = []
@@ -103,9 +103,7 @@ test('every rule carries a source, or says plainly that it is field practice', (
     }
   }
   assert.deepEqual(missing, [], 'rules with no source')
-})
-
-test('every rule says what it checks and why it matters, for the reference page', () => {
+  // And what it checks and why it matters, for the reference page.
   for (const rule of REGISTRY) {
     const text = ruleText(rule.id)
     assert.ok(RULE_TEXT[rule.id], `${rule.id}: no copy`)
@@ -499,48 +497,51 @@ const CASES: Record<string, Case> = {
   'str.matchesBaseline': { target: goodStrength, fail: () => ({ ...goodStrength(), baselineCombinations: ['password,voice'] }) },
 }
 
-test('every rule in the registry has a case', () => {
+// One table per outcome, every rule a row: a rule without a case is a rule that
+// can regress, so the registry and the cases are held to one set first.
+test('every rule passes on a healthy tenant', () => {
   const missing = REGISTRY.map((r) => r.id).filter((id) => !CASES[id])
   assert.deepEqual(missing, [], 'a rule without a test is a rule that can regress')
-})
-
-for (const rule of REGISTRY) {
-  const c = CASES[rule.id]
-  if (!c) continue
-
-  test(`${rule.id}: passes on a healthy tenant`, () => {
+  for (const rule of REGISTRY) {
+    const c = CASES[rule.id]
     const b = base()
     const fromPass = c.pass?.(b)
     const target = fromPass ?? c.target(b)
     const r = run(rule.id, target, b)
     assert.equal(r.outcome, 'pass', `${rule.id}: ${r.finding ?? ''}`)
-  })
+  }
+})
 
-  test(`${rule.id}: fails on the state it exists to catch`, () => {
+test('every rule fails on the state it exists to catch, naming the fact', () => {
+  for (const rule of REGISTRY) {
+    const c = CASES[rule.id]
     const b = base()
     const target = c.fail(b) ?? c.target(b)
     const r = run(rule.id, target, b)
     if (c.neverFails) {
       assert.notEqual(r.outcome, 'fail', `${rule.id} claims it can never fail`)
-      return
+      continue
     }
     if (rule.severity === 'note') {
       // A note never fails; it reports the other fact.
-      assert.equal(r.outcome, 'pass')
+      assert.equal(r.outcome, 'pass', rule.id)
       assert.ok(r.finding, `${rule.id}: a note always says something`)
     } else {
       assert.equal(r.outcome, 'fail', `${rule.id} did not fail`)
       assert.ok(r.finding && r.finding.length > 5, `${rule.id}: the finding names the fact`)
       assert.doesNotMatch(r.finding, /[0-9a-f]{8}-[0-9a-f]{4}-/i, `${rule.id}: names, never ids`)
     }
-  })
+  }
+})
 
-  test(`${rule.id}: reports unknown rather than passing when the data is missing`, () => {
+test('every rule reports unknown rather than passing when its data is missing', () => {
+  for (const rule of REGISTRY) {
+    const c = CASES[rule.id]
     const how = c.unknown ?? 'needs'
     if (how === 'never') {
       // A rule with nothing to collect cannot be unknown; assert that shape.
       assert.equal(rule.needs.length === 0 || rule.id === 'bg.notInDynamicScope', true, `${rule.id}: declared needs but claims it can never be unknown`)
-      return
+      continue
     }
     const b = base()
     let target = c.target(b)
@@ -550,8 +551,8 @@ for (const rule of REGISTRY) {
     const r = run(rule.id, target, b)
     assert.equal(r.outcome, 'unknown', `${rule.id} passed silently with its data missing`)
     assert.ok(r.finding, `${rule.id}: unknown says what could not be read`)
-  })
-}
+  }
+})
 
 // ---- worst-state fixtures (design §6) --------------------------------------
 

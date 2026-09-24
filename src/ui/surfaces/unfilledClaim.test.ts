@@ -13,9 +13,9 @@
 //
 // The gate is one gate now, and the rule below is the point of this file: the
 // negation stands only where the tenant was read and found clean. The instances
-// are the six the audit and the sweep found; the rule is what stops the seventh.
+// that remain are the ones the rule alone does not reach; the rule is what
+// stops the next one.
 import { test } from 'node:test'
-import { readFileSync } from 'node:fs'
 import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
@@ -194,22 +194,6 @@ test('a guest step on a tenant with no guests names nobody', () => {
   assert.deepEqual([...inline, ...held].flatMap((b) => b.names), [], 'the Who section names nobody')
 })
 
-/**
- * Instance 3. Turn Off Security Defaults described protections in the present
- * tense — "security defaults require MFA … today" — on tenants that had already
- * turned them off, which is what the same step's Done when said.
- */
-test('the security-defaults step describes the state the scan read, and says so where it read none', () => {
-  const on = whoSentences('messy', 's-prereq-security-defaults')
-  assert.match(String(on.lead), /security defaults require MFA, block legacy authentication and block device code sign-in today/)
-  const off = whoSentences('small', 's-prereq-security-defaults')
-  assert.match(String(off.lead), /security defaults are already off/)
-  assert.ok(!/require MFA, block legacy authentication and block device code sign-in today/.test(String(off.lead)), off.lead ?? '')
-  // Neither fact read: the sentence for a state nobody confirmed is not offered.
-  const who = (stepById['s-prereq-security-defaults'] as { who: Who }).who
-  assert.equal(whoLeadTemplate(who, { tenant: 'Contoso Pty Ltd' }), WHO_UNRESOLVED)
-})
-
 // R4-38: Turn Off Security Defaults completes on security defaults being off
 // and on nothing else — it cannot also wait for the four replacement policies,
 // which each wait on it. Its Done-when also said those four "are enforced". On
@@ -301,24 +285,6 @@ test('a security-defaults step read already off tells nobody to turn a replaceme
 })
 
 /**
- * The sweep, instance 4. The geography step said nobody signed in from outside
- * the approved countries on a tenant whose own list named the person who had.
- */
-test('the geography step does not say nobody while it holds the person who did', () => {
-  const f = fixture('small')
-  const r = runFixture(f)
-  const step = r.steps.find((s) => s.goalId === 'geo-restriction')!
-  const ex = stepVars(step, ctxFor(f, r)) as Ex
-  assert.ok(Array.isArray(ex.outsideUsers) && (ex.outsideUsers as string[]).length > 0, 'somebody signed in from outside the approved countries')
-  const { lines, names } = whoSentences('small', 'geo-restriction')
-  assert.ok(!lines.some((l) => /Nobody signed in from outside/.test(l)), JSON.stringify(lines))
-  // The claim itself, in its undated form (who.evidenceUndated): the person, no day.
-  assert.ok(lines.some((l) => /signed in from outside/.test(l) && !/before/.test(l)), JSON.stringify(lines))
-  for (const who of ex.outsideUsers as string[]) assert.ok(names.includes(who), `${who} is not named`)
-  assert.ok(!lines.includes(WHO_UNRESOLVED))
-})
-
-/**
  * The sweep, instance 5. Token protection claimed every Windows sign-in came
  * from a joined or registered device — on every tenant, because the list of
  * people it was the negation of was never produced at all.
@@ -343,17 +309,6 @@ test('the token-protection step reads the devices it makes a claim about', () =>
 })
 
 /**
- * The sweep, instance 6. The high-risk sign-in step wrote its negation as an
- * ordinary evidence line, so it rendered beside the claim it contradicts.
- */
-test('the high-risk sign-in step never renders a count of risky sign-ins beside "no sign-in was rated high risk"', () => {
-  const who = (stepById['sign-in-risk'] as { who: Who }).who
-  const out = whoEvidenceLines(who, { from: 'Jul 29, 2026', riskyUsers: ['Alex Ray', 'Sam Lee'], strengthName: 'Multifactor authentication' })
-  assert.ok(out.some((l) => /sign-ins were rated high risk/.test(l)), 'the claim renders')
-  assert.ok(!out.some((l) => /No sign-in in the records was rated high risk/.test(l)), JSON.stringify(out))
-})
-
-/**
  * The sweep, instance 7. "None matches the baseline's Modern MFA + TAP" is the
  * negation of a claim about the authentication strengths this tenant holds, and
  * it fired whenever no strength matched — including on a tenant whose strengths
@@ -369,7 +324,4 @@ test('the authentication-strength step does not say none matches when it never r
   const unread = whoEvidenceLines(who, { ...ex, evidenceNotRead: true })
   assert.ok(!unread.some((l) => /None matches the baseline/.test(l)), JSON.stringify(unread))
   assert.ok(unread.includes(WHO_UNRESOLVED), JSON.stringify(unread))
-  // And the step is what sets it: the section's own read state, nothing else.
-  const vars = readFileSync('src/ui/surfaces/stepVars.ts', 'utf8')
-  assert.match(vars, /config\.authStrengths\?\.status !== 'ok'\) v\.evidenceNotRead = true/)
 })

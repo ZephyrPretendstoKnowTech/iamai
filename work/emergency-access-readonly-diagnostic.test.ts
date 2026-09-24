@@ -79,26 +79,24 @@ test('collector preserves source-specific enums, sentinels, and cross-source joi
   assert.deepEqual((artifact.group?.properties as any).groupTypes, ['DynamicMembership'])
   const entitlement = artifact.advancedRoutes.find(row => row.route === 'entitlement-resources')?.records?.[0] as any
   assert.equal(entitlement.accessPackageResources[0].originId, artifact.group?.id)
-})
 
-test('known MFA combinations and FIDO2 audit targets remain complete and join', async () => {
-  const { artifact } = await capture({}, url => {
+  // Known MFA combinations and FIDO2 audit targets remain complete and join.
+  const strengths = (await capture({}, url => {
     if (url.includes('/authenticationStrength/policies')) return { value: [{ id: 'built-in-mfa', policyType: 'builtIn', requirementsSatisfied: 'mfa', allowedCombinations: ['fido2', 'password,microsoftAuthenticatorPush'] }] }
     if (url.includes('/directoryAudits')) return { value: [{ id: 'audit-passkey', activityDateTime: '2026-01-01T00:00:00Z', activityDisplayName: 'Update authentication methods policy', category: 'Policy', targetResources: [{ id: 'Fido2', type: 'Policy', modifiedProperties: [] }] }] }
     return graphBody(url)
-  })
-  assert.equal(artifact.requests.find(row => row.source === 'authentication-strengths')?.status, 'ok')
-  assert.deepEqual((artifact.policy.authenticationStrengths?.[0] as any).allowedCombinations, ['fido2', 'password,microsoftAuthenticatorPush'])
-  assert.equal(artifact.audits?.[0].targets[0].id, (artifact.policy.configurations?.[0] as any).id)
-})
+  })).artifact
+  assert.equal(strengths.requests.find(row => row.source === 'authentication-strengths')?.status, 'ok')
+  assert.deepEqual((strengths.policy.authenticationStrengths?.[0] as any).allowedCombinations, ['fido2', 'password,microsoftAuthenticatorPush'])
+  assert.equal(strengths.audits?.[0].targets[0].id, (strengths.policy.configurations?.[0] as any).id)
 
-test('non-selected passkey target membership uses the same group identity', async () => {
-  const { artifact } = await capture({}, url => {
+  // Non-selected passkey target membership uses the same group identity.
+  const nonSelected = (await capture({}, url => {
     if (url.includes('/authenticationMethodConfigurations/Fido2')) return { id: 'Fido2', state: 'enabled', isSelfServiceRegistrationAllowed: true, includeTargets: [{ id: 'group-b', targetType: 'group', allowedPasskeyProfiles: ['profile-a'] }], excludeTargets: [], passkeyProfiles: [{ id: 'profile-a', passkeyTypes: 'deviceBound', attestationEnforcement: 'registrationOnly', keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids: [AAGUID] } }] }
     if (url.includes('/transitiveMemberOf')) return { value: [{ id: 'group-b', '@odata.type': '#microsoft.graph.group' }] }
     return graphBody(url)
-  })
-  assert.equal(artifact.accounts[0].memberships?.[0], (artifact.policy.configurations?.[0] as any).includeTargets[0].id)
+  })).artifact
+  assert.equal(nonSelected.accounts[0].memberships?.[0], (nonSelected.policy.configurations?.[0] as any).includeTargets[0].id)
 })
 
 test('nested profile continuation is followed and a later-page failure retains earlier records as incomplete', async () => {
@@ -245,11 +243,23 @@ test('logical proof rejects candidate replacement, expired or scoped GA, and pro
   const other = '19083c3d-8383-4b18-bc03-8f1c9ab2fd1b'; const deniedBaseline = validArtifact('baseline'); const deniedConfirming = validArtifact('confirming')
   for (const value of [deniedBaseline, deniedConfirming]) { value.context.approvedAaguids.push(other); value.accounts[0].methods!.push({ ...value.accounts[0].methods![0], id: 'other-key', aaguid: other }) }
   assert.equal(evaluateDiagnosticPair(deniedBaseline, deniedConfirming).logicalSupported, false)
+
+  // Baseline candidates and endpoint configuration are mandatory proof inputs.
+  const missing = mutate(validArtifact('baseline'), value => { value.accounts[0].methods = [] })
+  assert.equal(evaluateDiagnosticPair(missing, validArtifact('confirming')).logicalSupported, false)
+  const changed = mutate(validArtifact('confirming'), value => { (value.policy.configurations![0] as any).state = 'disabled' })
+  assert.equal(evaluateDiagnosticPair(validArtifact('baseline'), changed).logicalSupported, false)
+
+  // A relevant mutation observed during baseline acquisition invalidates the window.
+  const mutated = mutate(validArtifact('baseline'), value => { value.audits = [{ id: 'baseline-change', at: '2026-01-01T00:00:30Z', category: null, activityKind: 'conditional-access', relevant: true, targets: [{ id: 'policy-a', kind: 'policy', modified: [] }] }] })
+  assert.equal(evaluateDiagnosticPair(mutated, validArtifact('confirming')).logicalSupported, false)
 })
 
-test('logical proof compares semantically identical unordered role data', () => {
+test('logical proof survives unordered role data and unrelated audit activity', () => {
   const baseline = validArtifact('baseline'); const confirming = validArtifact('confirming'); confirming.roles = [...(confirming.roles as any[])].reverse()
   assert.equal(evaluateDiagnosticPair(baseline, confirming).logicalSupported, true)
+  const unrelated = mutate(validArtifact('confirming'), value => { value.audits = [{ id: 'new-audit', at: '2026-01-01T00:06:00Z', category: null, activityKind: 'group-membership', relevant: true, targets: [{ id: 'other-group', kind: 'group', modified: [] }] }] })
+  assert.equal(evaluateDiagnosticPair(validArtifact('baseline'), unrelated).logicalSupported, true)
 })
 
 const negatives: [string, (artifact: EmergencyDiagnosticArtifact) => void][] = [
@@ -274,23 +284,12 @@ const negatives: [string, (artifact: EmergencyDiagnosticArtifact) => void][] = [
   ['relevant configuration change', value => { value.audits = [{ id: 'new-audit', at: '2026-01-01T00:06:00Z', category: null, activityKind: 'passkey-policy', relevant: true, targets: [] }] }],
   ['change and revert evidence', value => { value.audits = [{ id: 'new-audit', at: '2026-01-01T00:06:00Z', category: null, activityKind: 'passkey-policy', relevant: true, targets: [{ id: 'group-a', kind: 'group', modified: [{ property: null, oldValue: { unsupported: true }, newValue: { unsupported: true }, preserved: false }] }] }] }],
 ]
-for (const [name, change] of negatives) test(`logical proof rejects ${name}`, () => { const result = evaluateDiagnosticPair(validArtifact('baseline'), mutate(validArtifact('confirming'), change)); assert.equal(result.logicalSupported, false, name); assert.ok(result.accounts.some(account => account.result !== 'supported') || result.assertions.some(assertion => assertion.result === 'unsupported')) })
-
-test('unrelated audit activity does not reset the logical window', () => {
-  const confirming = mutate(validArtifact('confirming'), value => { value.audits = [{ id: 'new-audit', at: '2026-01-01T00:06:00Z', category: null, activityKind: 'group-membership', relevant: true, targets: [{ id: 'other-group', kind: 'group', modified: [] }] }] })
-  assert.equal(evaluateDiagnosticPair(validArtifact('baseline'), confirming).logicalSupported, true)
-})
-
-test('baseline candidates and endpoint configuration are mandatory proof inputs', () => {
-  const missing = mutate(validArtifact('baseline'), value => { value.accounts[0].methods = [] })
-  assert.equal(evaluateDiagnosticPair(missing, validArtifact('confirming')).logicalSupported, false)
-  const changed = mutate(validArtifact('confirming'), value => { (value.policy.configurations![0] as any).state = 'disabled' })
-  assert.equal(evaluateDiagnosticPair(validArtifact('baseline'), changed).logicalSupported, false)
-})
-
-test('a relevant mutation observed during baseline acquisition invalidates the window', () => {
-  const baseline = mutate(validArtifact('baseline'), value => { value.audits = [{ id: 'baseline-change', at: '2026-01-01T00:00:30Z', category: null, activityKind: 'conditional-access', relevant: true, targets: [{ id: 'policy-a', kind: 'policy', modified: [] }] }] })
-  assert.equal(evaluateDiagnosticPair(baseline, validArtifact('confirming')).logicalSupported, false)
+test('logical proof rejects every broken confirming capture', () => {
+  for (const [name, change] of negatives) {
+    const result = evaluateDiagnosticPair(validArtifact('baseline'), mutate(validArtifact('confirming'), change))
+    assert.equal(result.logicalSupported, false, name)
+    assert.ok(result.accounts.some(account => account.result !== 'supported') || result.assertions.some(assertion => assertion.result === 'unsupported'), name)
+  }
 })
 
 test('a changed tenant, account set, or configuration intent invalidates the pair', () => {
