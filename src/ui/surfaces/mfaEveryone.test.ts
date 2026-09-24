@@ -293,10 +293,10 @@ test('G12: on a partial read the per-user MFA tile names what it read and counts
 test('every step of the group shows the date its Microsoft sources were checked', () => {
   const demo = bodiesOf('demo')
   for (const id of [REGISTER, DEVICE_REG, CAMPAIGN, ALL_USERS, GUESTS, PER_USER]) {
-    assert.equal(checkedOn(id), '2026-09-20', id)
-    assert.equal(demo.get(id)!.sourceLine, 'Source checked Sep 20, 2026', id)
+    assert.equal(checkedOn(id), '2026-09-25', id)
+    assert.equal(demo.get(id)!.sourceLine, 'Source checked Sep 25, 2026', id)
   }
   // A plan that saw security defaults on draws that step (V1 decision 6: one that never did reads Doesn't apply, in the footer).
-  assert.equal(checkedOn(SECURITY_DEFAULTS), '2026-09-20')
-  assert.equal(bodiesOf('demo', undefined, { securityDefaultsSeenOnAt: '2026-08-01T00:00:00.000Z' }).get(SECURITY_DEFAULTS)!.sourceLine, 'Source checked Sep 20, 2026')
+  assert.equal(checkedOn(SECURITY_DEFAULTS), '2026-09-25')
+  assert.equal(bodiesOf('demo', undefined, { securityDefaultsSeenOnAt: '2026-08-01T00:00:00.000Z' }).get(SECURITY_DEFAULTS)!.sourceLine, 'Source checked Sep 25, 2026')
 })

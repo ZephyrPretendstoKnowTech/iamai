@@ -173,16 +173,12 @@ test('How credits CA Policy Analyzer and the baseline without claiming an endors
 // deploy-pages.yml checks out that SHA, builds the site and deploys it; a
 // failed install or build deploys nothing. What ci.yml runs, and on which
 // pushes, is the owner's to change and is not pinned here.
-test('the deploy workflow publishes the pushed main commit, built, and only after ci passed on it', () => {
+test('the deploy workflow publishes the pushed main commit, built first, and no pull request publishes', () => {
+  // Owner, 2026-09-23: deploy on push to main, with the build as the gate; ci runs on demand for major changes.
   const uncommented = (yml: string): string => yml.split('\n').filter(l => !/^\s*#/.test(l)).join('\n')
   const config = uncommented(read('.github/workflows/deploy-pages.yml'))
-  // Deploy: after ci, on main only, the validated commit, built then published.
-  assert.match(config, /on:\n  workflow_run:\n    workflows: \[ci\]\n    types: \[completed\]\n    branches: \[main\]/, 'the deploy no longer waits for ci')
-  assert.match(config, /conclusion == 'success'/, 'a failed ci run can publish')
+  assert.match(config, /on:\n  push:\n    branches: \[main\]/, 'the deploy does not publish main on push')
   assert.doesNotMatch(config, /pull_request/, 'a pull request can publish')
-  const checkouts = config.match(/uses: actions\/checkout@/g) ?? []
-  assert.equal(checkouts.length, 1)
-  assert.equal((config.match(/ref: \$\{\{ github\.event\.workflow_run\.head_sha \|\| github\.sha \}\}/g) ?? []).length, checkouts.length, 'the build is not pinned to the commit ci validated')
   assert.ok(config.indexOf('npm run build:site') > 0 && config.indexOf('npm run build:site') < config.indexOf('actions/deploy-pages@'), 'the site is deployed without being built first')
   assert.doesNotMatch(config, /npm run walk|workflow_call|night-1|\/next\/|TOOL_PATH_PREFIX|ref: +main\s*$/m)
   assert.doesNotMatch(read('scripts/toolPath.ts'), /process\.env/)

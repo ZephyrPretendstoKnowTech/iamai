@@ -275,13 +275,13 @@ test('the source date comes from the package’s verified sources, never a clock
     // concept-conditional-access-cloud-apps, manage-device-identities), so the
     // latest checked date is theirs. The date is still the sources', not a clock:
     // the clone below moves it.
-    assert.equal(sourceUpdatedOn(PKG), '2026-09-20')
+    assert.equal(sourceUpdatedOn(PKG), '2026-09-25')
     const later = structuredClone(PKG)
     later.meta.verifiedSources = [...(later.meta.verifiedSources ?? []), { id: 'x', title: 'x', url: 'https://learn.microsoft.com/x', checkedOn: '2026-10-01', userFacing: true }, { id: 'y', title: 'y', url: 'https://learn.microsoft.com/y', checkedOn: '2027-01-01', userFacing: false }]
     // Every verified source dates the line, user-facing or not (batch A decision 10): the latest checked date wins.
     assert.equal(sourceUpdatedOn(later), '2027-01-01', 'the latest checked source is not the date')
     const W = CONTRACT.implementation
-    assert.equal(packageSourceLine(PKG, W), fillText(W.sourceChecked, { date: absoluteDate('2026-09-20T12:00:00Z') }))
+    assert.equal(packageSourceLine(PKG, W), fillText(W.sourceChecked, { date: absoluteDate('2026-09-25T12:00:00Z') }))
   }
   // troubleshooting is the package’s, for the state, and nothing where it authors none
   {

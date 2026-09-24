@@ -145,5 +145,5 @@ test('B4: the exception devices are one step\u2019s second task, and the step th
   assert.deepEqual(tasks.map((t) => t.id), ['policy-procedure', 'mail-devices-route'])
   assert.match(tasks[1].title, /Move each exception device to a supported mail route/)
   assert.match(tasks[1].steps.join('\n'), /remove its old account exception/)
-  assert.equal(checkedOn(LEGACY), '2026-09-19')
+  assert.equal(checkedOn(LEGACY), '2026-09-25')
 })
