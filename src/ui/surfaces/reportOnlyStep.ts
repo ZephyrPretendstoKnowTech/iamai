@@ -4,7 +4,7 @@
 //
 // One card per policy: still to create, headed by its step's title and naming
 // the policy; or created, a Satisfied fact ("Report-only until Oct 1", "On").
-// One task per policy, in plan order, and each task is that policy's own create
+// One task per policy still to create, in plan order, and each task is that policy's own create
 // procedure, read from its own step (policyTasks.ts policyProcedureOf through
 // stepBody.ts), so the two can never say different things. A policy's own step
 // keeps its create task too: whichever the person follows, the scan closes both.
@@ -73,19 +73,20 @@ export function reportOnlyMilestoneOf(step: Step): string | null {
 }
 
 /**
- * One task per policy, each its own step's create procedure (`createOf` reads it
- * from that step's body; stepBody.ts hands it in, so this module imports none of
- * it). A task still to do is required, and the first of those is the one the
- * card and the rail point at.
+ * One task per policy still to create, each its own step's create procedure
+ * (`createOf` reads it from that step's body; stepBody.ts hands it in, so this
+ * module imports none of it). A policy already created is a Satisfied card and
+ * no task: it has nothing left to do here. The first task is the one the card
+ * and the rail point at.
  */
 export function reportOnlyTasksOf(step: Step, ctx: StepVarContext, createOf: (member: Step) => string[] | null): EmergencyTaskProjection | null {
   if (step.id !== REPORT_ONLY_STEP_ID) return null
-  const tasks: EmergencyAccountTask[] = membersOf(step, ctx).flatMap((m) => {
+  const tasks: EmergencyAccountTask[] = membersOf(step, ctx).filter((m) => m.toCreate).flatMap((m) => {
     const steps = createOf(m.step)
     if (steps === null || steps.length === 0) return []
     const title = contentTitle(m.step)
-    return [{ id: `create:${m.id}`, accountId: null, title, targetUpn: null, required: m.toCreate, readinessKey: `batch:${m.id}`, evidence: null, actionLabel: title, steps }]
+    return [{ id: `create:${m.id}`, accountId: null, title, targetUpn: null, required: true, readinessKey: `batch:${m.id}`, evidence: null, actionLabel: title, steps }]
   })
   if (tasks.length === 0) return null
-  return { tasks, recommendedTaskId: tasks.find((t) => t.required)?.id ?? null, printAll: true }
+  return { tasks, recommendedTaskId: tasks[0].id, printAll: true }
 }
