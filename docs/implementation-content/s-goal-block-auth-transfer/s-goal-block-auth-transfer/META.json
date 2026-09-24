@@ -316,7 +316,7 @@
       "authority": "Microsoft Learn",
       "title": "Block authentication flows with Conditional Access policy",
       "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-authentication-flows",
-      "checkedOn": "2026-09-19",
+      "checkedOn": "2026-09-25",
       "userFacing": true
     },
     {
@@ -324,7 +324,7 @@
       "authority": "Microsoft Learn",
       "title": "Authentication flows as a condition in Conditional Access policy",
       "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-authentication-flows",
-      "checkedOn": "2026-09-19",
+      "checkedOn": "2026-09-25",
       "userFacing": true
     }
   ],

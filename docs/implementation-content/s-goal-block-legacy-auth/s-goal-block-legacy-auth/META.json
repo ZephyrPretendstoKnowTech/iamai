@@ -309,7 +309,7 @@
       "authority": "Microsoft Learn",
       "title": "Block legacy authentication with Conditional Access",
       "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-legacy-authentication",
-      "checkedOn": "2026-09-19",
+      "checkedOn": "2026-09-25",
       "userFacing": true
     },
     {
@@ -317,7 +317,7 @@
       "authority": "Microsoft Learn",
       "title": "How to Use Conditions in Conditional Access Policies",
       "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-conditions",
-      "checkedOn": "2026-09-19",
+      "checkedOn": "2026-09-25",
       "userFacing": true
     },
     {
@@ -325,7 +325,7 @@
       "authority": "Microsoft Learn",
       "title": "Deprecation of Basic authentication in Exchange Online",
       "url": "https://learn.microsoft.com/exchange/clients-and-mobile-in-exchange-online/deprecation-of-basic-authentication-exchange-online",
-      "checkedOn": "2026-09-19",
+      "checkedOn": "2026-09-25",
       "userFacing": true
     }
   ],

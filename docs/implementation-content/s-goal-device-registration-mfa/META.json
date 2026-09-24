@@ -390,7 +390,7 @@
       "title": "Require multifactor authentication for device registration",
       "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-device-registration",
       "purpose": "Primary portal procedure, built-in MFA authentication strength, external-auth-method warning, legacy device-setting warning.",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": true,
       "priority": "primary",
       "audience": [
@@ -406,7 +406,7 @@
       "title": "Conditional Access: Target resources",
       "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-cloud-apps",
       "purpose": "User Action limitations: only MFA/auth strength access controls; Client apps, device filters, and Device state unavailable; WHfB/device-bound passkeys unsupported for first registration.",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": true,
       "priority": "technical",
       "audience": [
@@ -421,7 +421,7 @@
       "title": "Analyze Conditional Access Policy Impact",
       "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-report-only",
       "purpose": "Report-only excludes User Actions from evaluation.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-25",
       "userFacing": true,
       "priority": "troubleshooting",
       "audience": [
@@ -437,7 +437,7 @@
       "title": "Manage devices in Microsoft Entra ID using the Microsoft Entra admin center",
       "url": "https://learn.microsoft.com/en-us/entra/identity/devices/manage-device-identities",
       "purpose": "Legacy device-registration MFA tenant setting must be No when Conditional Access user action is used.",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": false,
       "priority": "technical",
       "audience": [
@@ -452,7 +452,7 @@
       "title": "Bulk enrollment for Windows devices",
       "url": "https://learn.microsoft.com/en-us/intune/intune-service/enrollment/windows-bulk-enroll",
       "purpose": "Windows Configuration Designer package_{GUID} bulk enrollment cannot satisfy MFA and needs deliberate workflow handling.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-25",
       "userFacing": true,
       "priority": "troubleshooting",
       "audience": [
@@ -468,7 +468,7 @@
       "title": "Microsoft Entra licensing",
       "url": "https://learn.microsoft.com/en-us/entra/fundamentals/licensing",
       "purpose": "Conditional Access requires Entra ID P1; Business Premium includes Conditional Access rights.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-25",
       "userFacing": false,
       "priority": "researchOnly",
       "audience": [
@@ -481,7 +481,7 @@
       "title": "conditionalAccessConditionSet resource type",
       "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessconditionset?view=graph-rest-1.0",
       "purpose": "Graph v1.0 required condition-set properties and supported clientAppTypes enum.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-25",
       "userFacing": false,
       "priority": "technical",
       "audience": [
@@ -495,7 +495,7 @@
       "title": "conditionalAccessGrantControls resource type",
       "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessgrantcontrols?view=graph-rest-1.0",
       "purpose": "Graph v1.0 grant-controls shape and authenticationStrength relationship.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-25",
       "userFacing": false,
       "priority": "technical",
       "audience": [
@@ -509,7 +509,7 @@
       "title": "conditionalAccessPolicy resource type",
       "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccesspolicy?view=graph-rest-1.0",
       "purpose": "Graph v1.0 policy properties and lifecycle enum.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-25",
       "userFacing": false,
       "priority": "technical",
       "audience": [
@@ -523,7 +523,7 @@
       "title": "Create conditionalAccessPolicy",
       "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0",
       "purpose": "POST endpoint, least delegated permissions, supported admin roles.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-25",
       "userFacing": true,
       "priority": "technical",
       "audience": [
@@ -538,7 +538,7 @@
       "title": "Update conditionalAccessPolicy",
       "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0",
       "purpose": "PATCH endpoint, permissions, roles, omitted-root-property preservation.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-25",
       "userFacing": true,
       "priority": "technical",
       "audience": [
@@ -553,7 +553,7 @@
       "title": "List authenticationStrengthPolicies",
       "url": "https://learn.microsoft.com/en-us/graph/api/authenticationstrengthroot-list-policies?view=graph-rest-1.0",
       "purpose": "Confirms built-in Multifactor authentication ID 00000000-0000-0000-0000-000000000002 and requirementsSatisfied=mfa.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-25",
       "userFacing": false,
       "priority": "technical",
       "audience": [
@@ -567,7 +567,7 @@
       "title": "Invoke-MgGraphRequest",
       "url": "https://learn.microsoft.com/en-us/powershell/module/microsoft.graph.authentication/invoke-mggraphrequest?view=graph-powershell-1.0",
       "purpose": "Supported Microsoft.Graph.Authentication REST request cmdlet; Body required for POST/PATCH.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-25",
       "userFacing": true,
       "priority": "technical",
       "audience": [
@@ -581,7 +581,7 @@
       "title": "Get conditionalAccessPolicy",
       "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-get?view=graph-rest-1.0",
       "purpose": "Stable-ID read-back endpoint and Policy.Read.All read permission.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-25",
       "userFacing": false,
       "priority": "technical",
       "audience": [
@@ -596,7 +596,7 @@
       "title": "Troubleshoot Conditional Access authentication strengths",
       "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/troubleshoot-authentication-strengths",
       "purpose": "User method must be registered and enabled to satisfy the required authentication strength; supports rollout troubleshooting.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-25",
       "userFacing": true,
       "priority": "troubleshooting",
       "audience": [

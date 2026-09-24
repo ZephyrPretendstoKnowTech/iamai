@@ -124,7 +124,7 @@
             "authority": "Microsoft Learn",
             "title": "How to manage inactive user accounts",
             "url": "https://learn.microsoft.com/entra/identity/monitoring-health/howto-manage-inactive-user-accounts",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -132,7 +132,7 @@
             "authority": "Microsoft Graph",
             "title": "signInActivity resource type",
             "url": "https://learn.microsoft.com/graph/api/resources/signinactivity",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           }
         ],
@@ -448,7 +448,7 @@
             "authority": "Microsoft Learn",
             "title": "Secure access practices for administrators in Microsoft Entra ID",
             "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-planning",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -456,7 +456,7 @@
             "authority": "Microsoft Learn",
             "title": "Best practices for Microsoft Entra roles",
             "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/best-practices",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -464,7 +464,7 @@
             "authority": "Microsoft Learn",
             "title": "Securing privileged access accounts",
             "url": "https://learn.microsoft.com/security/privileged-access-workstations/privileged-access-accounts",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": false
           }
         ],
@@ -726,7 +726,7 @@
             "authority": "Microsoft Learn",
             "title": "Targeting Resources in Conditional Access Policies",
             "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-cloud-apps",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           }
         ],
@@ -1001,7 +1001,7 @@
             "authority": "Microsoft Learn",
             "title": "Configure adaptive session lifetime policies",
             "url": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-session-lifetime",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -1009,7 +1009,7 @@
             "authority": "Microsoft Learn",
             "title": "How to use conditions in Conditional Access policies",
             "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-conditions",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -1017,7 +1017,7 @@
             "authority": "Microsoft Learn",
             "title": "Microsoft Entra multifactor authentication prompts and session lifetime",
             "url": "https://learn.microsoft.com/entra/identity/authentication/concepts-azure-multi-factor-authentication-prompts-session-lifetime",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           }
         ],
@@ -1642,7 +1642,7 @@
             "authority": "Microsoft Learn",
             "title": "Require phishing-resistant multifactor authentication for Microsoft Entra administrator roles",
             "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-admin-phish-resistant-mfa",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -1650,7 +1650,7 @@
             "authority": "Microsoft Learn",
             "title": "Overview of Conditional Access authentication strengths",
             "url": "https://learn.microsoft.com/entra/identity/authentication/concept-authentication-strengths",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -1658,7 +1658,7 @@
             "authority": "Microsoft Learn",
             "title": "Conditional Access: Users, groups, agents, and workload identities",
             "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-users-groups",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -1666,7 +1666,7 @@
             "authority": "Microsoft Learn",
             "title": "How to use conditions in Conditional Access policies",
             "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-conditions",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           }
         ],
@@ -2883,7 +2883,7 @@
             "authority": "Microsoft Learn",
             "title": "Block authentication flows with Conditional Access policy",
             "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-authentication-flows",
-            "checkedOn": "2026-09-19",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -2891,7 +2891,7 @@
             "authority": "Microsoft Learn",
             "title": "Authentication flows as a condition in Conditional Access policy",
             "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-authentication-flows",
-            "checkedOn": "2026-09-19",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           }
         ],
@@ -3496,7 +3496,7 @@
             "authority": "Microsoft Learn",
             "title": "Block authentication flows with Conditional Access policy",
             "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-authentication-flows",
-            "checkedOn": "2026-09-19",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -3504,7 +3504,7 @@
             "authority": "Microsoft Learn",
             "title": "Authentication flows as a condition in Conditional Access policy",
             "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-authentication-flows",
-            "checkedOn": "2026-09-19",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           }
         ],
@@ -4108,7 +4108,7 @@
             "authority": "Microsoft Learn",
             "title": "Block legacy authentication with Conditional Access",
             "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-legacy-authentication",
-            "checkedOn": "2026-09-19",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -4116,7 +4116,7 @@
             "authority": "Microsoft Learn",
             "title": "How to Use Conditions in Conditional Access Policies",
             "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-conditions",
-            "checkedOn": "2026-09-19",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -4124,7 +4124,7 @@
             "authority": "Microsoft Learn",
             "title": "Deprecation of Basic authentication in Exchange Online",
             "url": "https://learn.microsoft.com/exchange/clients-and-mobile-in-exchange-online/deprecation-of-basic-authentication-exchange-online",
-            "checkedOn": "2026-09-19",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           }
         ],
@@ -4722,7 +4722,7 @@
             "authority": "Microsoft Learn",
             "title": "How to Use Conditions in Conditional Access Policies",
             "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-conditions",
-            "checkedOn": "2026-09-19",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           }
         ],
@@ -5412,7 +5412,7 @@
             "title": "Require multifactor authentication for device registration",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-device-registration",
             "purpose": "Primary portal procedure, built-in MFA authentication strength, external-auth-method warning, legacy device-setting warning.",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true,
             "priority": "primary",
             "audience": [
@@ -5428,7 +5428,7 @@
             "title": "Conditional Access: Target resources",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-cloud-apps",
             "purpose": "User Action limitations: only MFA/auth strength access controls; Client apps, device filters, and Device state unavailable; WHfB/device-bound passkeys unsupported for first registration.",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true,
             "priority": "technical",
             "audience": [
@@ -5443,7 +5443,7 @@
             "title": "Analyze Conditional Access Policy Impact",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-report-only",
             "purpose": "Report-only excludes User Actions from evaluation.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-25",
             "userFacing": true,
             "priority": "troubleshooting",
             "audience": [
@@ -5459,7 +5459,7 @@
             "title": "Manage devices in Microsoft Entra ID using the Microsoft Entra admin center",
             "url": "https://learn.microsoft.com/en-us/entra/identity/devices/manage-device-identities",
             "purpose": "Legacy device-registration MFA tenant setting must be No when Conditional Access user action is used.",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -5474,7 +5474,7 @@
             "title": "Bulk enrollment for Windows devices",
             "url": "https://learn.microsoft.com/en-us/intune/intune-service/enrollment/windows-bulk-enroll",
             "purpose": "Windows Configuration Designer package_{GUID} bulk enrollment cannot satisfy MFA and needs deliberate workflow handling.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-25",
             "userFacing": true,
             "priority": "troubleshooting",
             "audience": [
@@ -5490,7 +5490,7 @@
             "title": "Microsoft Entra licensing",
             "url": "https://learn.microsoft.com/en-us/entra/fundamentals/licensing",
             "purpose": "Conditional Access requires Entra ID P1; Business Premium includes Conditional Access rights.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-25",
             "userFacing": false,
             "priority": "researchOnly",
             "audience": [
@@ -5503,7 +5503,7 @@
             "title": "conditionalAccessConditionSet resource type",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessconditionset?view=graph-rest-1.0",
             "purpose": "Graph v1.0 required condition-set properties and supported clientAppTypes enum.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-25",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -5517,7 +5517,7 @@
             "title": "conditionalAccessGrantControls resource type",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessgrantcontrols?view=graph-rest-1.0",
             "purpose": "Graph v1.0 grant-controls shape and authenticationStrength relationship.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-25",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -5531,7 +5531,7 @@
             "title": "conditionalAccessPolicy resource type",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccesspolicy?view=graph-rest-1.0",
             "purpose": "Graph v1.0 policy properties and lifecycle enum.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-25",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -5545,7 +5545,7 @@
             "title": "Create conditionalAccessPolicy",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0",
             "purpose": "POST endpoint, least delegated permissions, supported admin roles.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-25",
             "userFacing": true,
             "priority": "technical",
             "audience": [
@@ -5560,7 +5560,7 @@
             "title": "Update conditionalAccessPolicy",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0",
             "purpose": "PATCH endpoint, permissions, roles, omitted-root-property preservation.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-25",
             "userFacing": true,
             "priority": "technical",
             "audience": [
@@ -5575,7 +5575,7 @@
             "title": "List authenticationStrengthPolicies",
             "url": "https://learn.microsoft.com/en-us/graph/api/authenticationstrengthroot-list-policies?view=graph-rest-1.0",
             "purpose": "Confirms built-in Multifactor authentication ID 00000000-0000-0000-0000-000000000002 and requirementsSatisfied=mfa.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-25",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -5589,7 +5589,7 @@
             "title": "Invoke-MgGraphRequest",
             "url": "https://learn.microsoft.com/en-us/powershell/module/microsoft.graph.authentication/invoke-mggraphrequest?view=graph-powershell-1.0",
             "purpose": "Supported Microsoft.Graph.Authentication REST request cmdlet; Body required for POST/PATCH.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-25",
             "userFacing": true,
             "priority": "technical",
             "audience": [
@@ -5603,7 +5603,7 @@
             "title": "Get conditionalAccessPolicy",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-get?view=graph-rest-1.0",
             "purpose": "Stable-ID read-back endpoint and Policy.Read.All read permission.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-25",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -5618,7 +5618,7 @@
             "title": "Troubleshoot Conditional Access authentication strengths",
             "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/troubleshoot-authentication-strengths",
             "purpose": "User method must be registered and enabled to satisfy the required authentication strength; supports rollout troubleshooting.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-25",
             "userFacing": true,
             "priority": "troubleshooting",
             "audience": [
@@ -6311,7 +6311,7 @@
             "authority": "Microsoft Learn",
             "title": "Block access by location with Conditional Access policy",
             "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-by-location",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -6319,7 +6319,7 @@
             "authority": "Microsoft Learn",
             "title": "Network assignment in Conditional Access policy",
             "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           }
         ],
@@ -6911,7 +6911,7 @@
             "authority": "Microsoft Learn",
             "title": "Authentication and Conditional Access for External ID",
             "url": "https://learn.microsoft.com/entra/external-id/authentication-conditional-access",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -6919,7 +6919,7 @@
             "authority": "Microsoft Learn",
             "title": "Configure cross-tenant access settings for B2B collaboration",
             "url": "https://learn.microsoft.com/entra/external-id/cross-tenant-access-settings-b2b-collaboration",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -6927,7 +6927,7 @@
             "authority": "Microsoft Learn",
             "title": "Require multifactor authentication for B2B collaboration users",
             "url": "https://learn.microsoft.com/entra/external-id/b2b-tutorial-require-mfa",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": false
           }
         ],
@@ -7509,7 +7509,7 @@
             "authority": "Microsoft Learn",
             "title": "Targeting Resources in Conditional Access Policies",
             "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-cloud-apps",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -7517,7 +7517,7 @@
             "authority": "Microsoft Learn",
             "title": "How to Use Conditions in Conditional Access Policies",
             "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-conditions",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           }
         ],
@@ -8207,7 +8207,7 @@
             "title": "Common ways to use Conditional Access with Intune",
             "url": "https://learn.microsoft.com/en-us/intune/device-security/conditional-access-integration/scenarios",
             "purpose": "Confirms Microsoft Intune Enrollment is the CA application for enrollment workflow.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-intune-enrollment-mfa",
@@ -8215,7 +8215,7 @@
             "title": "Require multifactor authentication for Intune device enrollment",
             "url": "https://learn.microsoft.com/en-us/intune/device-enrollment/configure-multifactor-authentication",
             "purpose": "Confirms Intune Enrollment app ID/service-principal caveat, enrollment targeting, Every time option, and warns not to use device-based access rules for enrollment.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-session-lifetime",
@@ -8223,7 +8223,7 @@
             "title": "Conditional Access adaptive session lifetime policies",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-session-lifetime",
             "purpose": "Confirms Every time is supported for Microsoft Intune enrollment and describes full reauthentication behavior and loop warning without MFA.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-signin-frequency-v1",
@@ -8231,7 +8231,7 @@
             "title": "signInFrequencySessionControl resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/signinfrequencysessioncontrol?view=graph-rest-1.0",
             "purpose": "Graph v1.0 Every time session-control shape.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-ca-create-v1",
@@ -8239,7 +8239,7 @@
             "title": "Create conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0",
             "purpose": "Graph v1.0 create endpoint and permissions.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-ca-update-v1",
@@ -8247,7 +8247,7 @@
             "title": "Update conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0",
             "purpose": "Graph v1.0 update endpoint.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-sp-create-v1",
@@ -8255,7 +8255,7 @@
             "title": "Create servicePrincipal - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/serviceprincipal-post-serviceprincipals?view=graph-rest-1.0",
             "purpose": "Supported prerequisite creation when the Intune Enrollment service principal is absent.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-autopilot-selfdeploy",
@@ -8263,7 +8263,7 @@
             "title": "Windows Autopilot self-deploying mode",
             "url": "https://learn.microsoft.com/en-us/autopilot/self-deploying",
             "purpose": "Self-deploying mode authenticates the device with its own TPM and no user credentials, so it produces no user reauthentication evidence.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           }
         ],
         "baselineAuthority": {
@@ -8928,7 +8928,7 @@
             "authority": "Microsoft Learn",
             "title": "Require MFA for all users with Conditional Access",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-mfa-strength",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -8936,7 +8936,7 @@
             "authority": "Microsoft Learn",
             "title": "Conditional Access authentication strength",
             "url": "https://learn.microsoft.com/entra/identity/authentication/concept-authentication-strengths",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -8944,7 +8944,7 @@
             "authority": "Microsoft Learn",
             "title": "Microsoft-managed policies in Conditional Access",
             "url": "https://learn.microsoft.com/entra/identity/conditional-access/managed-policies",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -8952,7 +8952,7 @@
             "authority": "Microsoft Learn",
             "title": "Passkeys by default and retirement of Microsoft-provided SMS and voice authentication",
             "url": "https://learn.microsoft.com/entra/identity/authentication/concept-sms-voice-retirement",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           }
         ],
@@ -10369,7 +10369,7 @@
             "title": "Configure Microsoft Entra role settings in PIM",
             "url": "https://learn.microsoft.com/en-us/entra/id-governance/privileged-identity-management/pim-how-to-change-default-settings",
             "purpose": "Current authentication-context ordering, backup-MFA behavior, Every time reauthentication, 10-minute activation window, and PIM configuration guidance.",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true,
             "priority": "primary",
             "audience": [
@@ -10387,7 +10387,7 @@
             "title": "Create or Update authenticationContextClassReference - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/authenticationcontextclassreference-update?view=graph-rest-1.0",
             "purpose": "Graph v1.0 create/update endpoint, publish flag, permissions and roles for authentication context.",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -10401,7 +10401,7 @@
             "title": "Conditional Access: Target resources",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-cloud-apps",
             "purpose": "Current Conditional Access authentication-context targeting behavior.",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true,
             "priority": "primary",
             "audience": [
@@ -10417,7 +10417,7 @@
             "title": "Update unifiedRoleManagementPolicyRule - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/unifiedrolemanagementpolicyrule-update?view=graph-rest-1.0",
             "purpose": "Graph v1.0 PIM rule PATCH endpoint, authentication-context rule support, delegated permissions and Privileged Role Administrator requirement.",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -10432,7 +10432,7 @@
             "title": "Get unifiedRoleManagementPolicyRule - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/unifiedrolemanagementpolicyrule-get?view=graph-rest-1.0",
             "purpose": "Graph v1.0 verification of the PIM authentication-context rule.",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -10446,7 +10446,7 @@
             "title": "License requirements to use Privileged Identity Management",
             "url": "https://learn.microsoft.com/en-us/entra/id-governance/licensing-fundamentals",
             "purpose": "PIM licensing requirement context.",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true,
             "priority": "supporting",
             "audience": [
@@ -10460,7 +10460,7 @@
             "title": "Configure authentication session management with Conditional Access",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-session-lifetime",
             "purpose": "Every time sign-in-frequency semantics used by the CA policy.",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true,
             "priority": "supporting",
             "audience": [
@@ -11233,7 +11233,7 @@
             "authority": "Microsoft Learn",
             "title": "Control security information registration with Conditional Access",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-security-info-registration",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -11241,7 +11241,7 @@
             "authority": "Microsoft Learn",
             "title": "Network condition in Conditional Access policy",
             "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           }
         ],
@@ -11856,7 +11856,7 @@
             "authority": "Microsoft Learn",
             "title": "How to Require Device Compliance with Conditional Access",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-device-compliance",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -11865,7 +11865,7 @@
             "title": "Conditional Access: Grant controls",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-grant",
             "purpose": "What compliant device and Microsoft Entra hybrid joined device each accept, and the Edge InPrivate and device-code limits.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-intune-compliance",
@@ -11873,7 +11873,7 @@
             "title": "Device compliance overview",
             "url": "https://learn.microsoft.com/en-us/intune/device-security/compliance/overview",
             "purpose": "The Compliance policy settings path, the Not compliant default and the 30-day compliance status validity period.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-intune-noncompliance",
@@ -11881,7 +11881,7 @@
             "title": "Configure actions for noncompliant devices",
             "url": "https://learn.microsoft.com/en-us/intune/device-security/compliance/configure-noncompliance-actions",
             "purpose": "Mark device noncompliant is built in at zero days, and Schedule (days after noncompliance) is the grace period.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-ca-conditions",
@@ -11889,7 +11889,7 @@
             "title": "Conditional Access: Conditions",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-conditions",
             "purpose": "The device-platform condition applies to every platform until it is configured, and the platform is what the client reports.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-ca-platform-configure",
@@ -11897,7 +11897,7 @@
             "title": "Require approved client app or app protection policy",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-approved-app-or-app-protection",
             "purpose": "Microsoft's own procedure sets Configure to Yes on the Device platforms condition.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-ca-location-configure",
@@ -11905,7 +11905,7 @@
             "title": "Require multifactor authentication for security info registration",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-security-info-registration",
             "purpose": "Microsoft's own procedure sets Configure to Yes on the Locations condition.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           }
         ],
         "baselineAuthority": {
@@ -12636,7 +12636,7 @@
             "authority": "Microsoft Learn",
             "title": "Network assignment in Conditional Access policy",
             "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -12644,7 +12644,7 @@
             "authority": "Microsoft Learn",
             "title": "Block access by location with Conditional Access policy",
             "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-by-location",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -12652,7 +12652,7 @@
             "authority": "Microsoft Learn",
             "title": "Conditional Access for workload identities",
             "url": "https://learn.microsoft.com/entra/identity/conditional-access/workload-identity",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -12660,7 +12660,7 @@
             "authority": "Microsoft Learn",
             "title": "Securing cloud-based service accounts",
             "url": "https://learn.microsoft.com/entra/architecture/secure-service-accounts",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": false
           },
           {
@@ -12669,7 +12669,7 @@
             "title": "conditionalAccessLocations resource type - v1.0",
             "url": "https://learn.microsoft.com/graph/api/resources/conditionalaccesslocations?view=graph-rest-1.0",
             "purpose": "includeLocations/excludeLocations v1.0 schema.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-ca-create-v1",
@@ -12677,7 +12677,7 @@
             "title": "Create conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0",
             "purpose": "v1.0 create endpoint and location-policy example.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-ca-update-v1",
@@ -12685,7 +12685,7 @@
             "title": "Update conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0",
             "purpose": "Stable-ID update endpoint.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-ca-get-v1",
@@ -12693,7 +12693,7 @@
             "title": "Get conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/graph/api/conditionalaccesspolicy-get?view=graph-rest-1.0",
             "purpose": "Stable-ID readback.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           }
         ],
         "baselineAuthority": {
@@ -13412,7 +13412,7 @@
             "title": "Configure Microsoft Entra multifactor authentication settings",
             "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/howto-mfa-mfasettings",
             "purpose": "Where Remember multifactor authentication on trusted devices lives, and that it is not compatible with the sign-in frequency Conditional Access control.",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true,
             "priority": "primary",
             "audience": [
@@ -13427,7 +13427,7 @@
             "title": "Configure adaptive session lifetime policies",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/howto-conditional-access-session-lifetime",
             "purpose": "Current portal configuration, Report-only rollout, What If validation, sign-in frequency and persistent browser behavior.",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true,
             "priority": "primary",
             "audience": [
@@ -13444,7 +13444,7 @@
             "title": "Configure authentication session management with Conditional Access",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-session-lifetime",
             "purpose": "Current sign-in-frequency semantics and reauthentication behavior.",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true,
             "priority": "primary",
             "audience": [
@@ -13460,7 +13460,7 @@
             "title": "conditionalAccessSessionControls resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccesssessioncontrols?view=graph-rest-1.0",
             "purpose": "Graph v1.0 session-control shape and requirement that persistentBrowser target All apps/resources.",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -13474,7 +13474,7 @@
             "title": "signInFrequencySessionControl resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/signinfrequencysessioncontrol?view=graph-rest-1.0",
             "purpose": "Graph v1.0 sign-in frequency properties.",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -13488,7 +13488,7 @@
             "title": "persistentBrowserSessionControl resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/persistentbrowsersessioncontrol?view=graph-rest-1.0",
             "purpose": "Graph v1.0 persistent-browser mode values always/never.",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -13502,7 +13502,7 @@
             "title": "conditionalAccessDevices resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessdevices?view=graph-rest-1.0",
             "purpose": "Graph v1.0 device filter container used by the unmanaged-device companion policy.",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -14226,7 +14226,7 @@
             "title": "Require multifactor authentication for risky sign-ins",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-risk-based-sign-in",
             "purpose": "The page the step links: what sign-in risk represents, the Configure toggle on the sign-in-risk condition, the MFA registration prerequisite and AADSTS53004, and the report-only rollout.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-risk-detection-types",
@@ -14234,7 +14234,7 @@
             "title": "Risk detection types and levels",
             "url": "https://learn.microsoft.com/en-us/entra/id-protection/concept-risk-detection-types",
             "purpose": "Which detections are real-time and which are calculated offline, what High and Medium mean, and the reporting latency.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-risk-remediate",
@@ -14242,7 +14242,7 @@
             "title": "Remediate risks and unblock users",
             "url": "https://learn.microsoft.com/en-us/entra/id-protection/howto-identity-protection-remediate-unblock",
             "purpose": "What answering the prompt does to the sign-in risk state, and the detections that are no longer cleared by it.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-risk-policy",
@@ -14250,7 +14250,7 @@
             "title": "Risk policies",
             "url": "https://learn.microsoft.com/en-us/entra/id-protection/howto-identity-protection-configure-risk-policies",
             "purpose": "Current sign-in risk Conditional Access guidance, MFA/authentication-strength options, Every time, and Report-only rollout.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-risk-concept",
@@ -14258,7 +14258,7 @@
             "title": "Risk-based access policies",
             "url": "https://learn.microsoft.com/en-us/entra/id-protection/concept-identity-protection-policies",
             "purpose": "Current risk semantics, P2 requirement, self-remediation, and legacy risk-policy retirement date.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-risk-reports",
@@ -14266,7 +14266,7 @@
             "title": "ID Protection Risk Reports",
             "url": "https://learn.microsoft.com/en-us/entra/id-protection/concept-risk-reports",
             "purpose": "Risky sign-in evidence fields and current reporting window.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-auth-strength",
@@ -14274,7 +14274,7 @@
             "title": "Conditional Access authentication strengths",
             "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/concept-authentication-strengths",
             "purpose": "Authentication-strength semantics and allowed method combinations.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-session-lifetime",
@@ -14282,7 +14282,7 @@
             "title": "Conditional Access adaptive session lifetime policies",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-session-lifetime",
             "purpose": "Every-time reauthentication semantics for risky sign-ins.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-ca-condition-v1",
@@ -14290,7 +14290,7 @@
             "title": "conditionalAccessConditionSet resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessconditionset?view=graph-rest-1.0",
             "purpose": "Graph v1.0 signInRiskLevels schema.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-signin-frequency-v1",
@@ -14298,7 +14298,7 @@
             "title": "signInFrequencySessionControl resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/signinfrequencysessioncontrol?view=graph-rest-1.0",
             "purpose": "Graph v1.0 Every time session-control shape.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-ca-create-v1",
@@ -14306,7 +14306,7 @@
             "title": "Create conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0",
             "purpose": "Graph v1.0 policy create endpoint and permissions.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-ca-update-v1",
@@ -14314,7 +14314,7 @@
             "title": "Update conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0",
             "purpose": "Graph v1.0 policy update endpoint.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           }
         ],
         "baselineAuthority": {
@@ -15022,7 +15022,7 @@
             "title": "Configure and enable risk policies",
             "url": "https://learn.microsoft.com/en-us/entra/id-protection/howto-identity-protection-configure-risk-policies",
             "purpose": "Current sign-in-risk policy guidance, Medium/High recommendation, MFA requirement, Report-only rollout, and Every-time recommendation.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-risk-concept",
@@ -15030,7 +15030,7 @@
             "title": "Risk-based access policies",
             "url": "https://learn.microsoft.com/en-us/entra/id-protection/concept-identity-protection-policies",
             "purpose": "Sign-in-risk semantics, P2 requirement, self-remediation, and legacy-policy retirement.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-ca-condition-v1",
@@ -15038,7 +15038,7 @@
             "title": "conditionalAccessConditionSet resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessconditionset?view=graph-rest-1.0",
             "purpose": "v1.0 signInRiskLevels and clientAppTypes schema.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-ca-grant-v1",
@@ -15046,7 +15046,7 @@
             "title": "conditionalAccessGrantControls resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessgrantcontrols?view=graph-rest-1.0",
             "purpose": "v1.0 built-in MFA grant support.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-ca-create-v1",
@@ -15054,7 +15054,7 @@
             "title": "Create conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0",
             "purpose": "v1.0 create endpoint and permissions.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-ca-update-v1",
@@ -15062,7 +15062,7 @@
             "title": "Update conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0",
             "purpose": "v1.0 stable-ID update endpoint and partial update semantics.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-ca-get-v1",
@@ -15070,7 +15070,7 @@
             "title": "Get conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-get?view=graph-rest-1.0",
             "purpose": "v1.0 stable-ID verification readback.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           }
         ],
         "baselineAuthority": {
@@ -15834,7 +15834,7 @@
             "title": "Token protection",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-token-protection",
             "purpose": "The platform and client availability table: which platforms and application kinds token protection reaches, and which resources it can enforce on. What falls outside it is not evaluated by the policy.",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true,
             "priority": "primary",
             "audience": [
@@ -15849,7 +15849,7 @@
             "title": "Token Protection Deployment Guide - Windows",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/deployment-guide-token-protection-windows",
             "purpose": "Supported Windows resources/clients, known limitations, device-filter examples, report-only rollout, sign-in log status codes, and the portal procedure — including setting Configure to Yes on both the Device platforms and the Client apps conditions, and the warning that not configuring Client apps can block browser-based web apps.",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true,
             "priority": "primary",
             "audience": [
@@ -15867,7 +15867,7 @@
             "title": "conditionalAccessSessionControls resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccesssessioncontrols?view=graph-rest-1.0",
             "purpose": "Confirms secureSignInSession is not present in the current v1.0 session-controls schema.",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -15881,7 +15881,7 @@
             "title": "conditionalAccessSessionControls resource type - beta",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccesssessioncontrols?view=graph-rest-beta",
             "purpose": "Confirms secureSignInSession is exposed in the beta session-controls schema and that beta APIs are not supported for production use.",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true,
             "priority": "technical",
             "audience": [
@@ -15897,7 +15897,7 @@
             "title": "secureSignInSessionControl resource type - beta",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/securesigninsessioncontrol?view=graph-rest-beta",
             "purpose": "Confirms the secure sign-in session control shape and isEnabled property.",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -15911,7 +15911,7 @@
             "title": "Create conditionalAccessPolicy - beta",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-beta",
             "purpose": "Beta POST endpoint, permissions, roles, response, and production-support warning.",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true,
             "priority": "technical",
             "audience": [
@@ -15926,7 +15926,7 @@
             "title": "Update conditionalAccessPolicy - beta",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-beta",
             "purpose": "Beta PATCH endpoint, permissions, roles, omitted-property preservation, and production-support warning.",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true,
             "priority": "technical",
             "audience": [
@@ -17221,7 +17221,7 @@
             "title": "Require remediation for risky users",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-risk-based-user",
             "purpose": "Current portal configuration for Require risk remediation at High user risk and mandatory Every-time reauthentication.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-risk-policy",
@@ -17229,7 +17229,7 @@
             "title": "Configure and enable risk policies",
             "url": "https://learn.microsoft.com/en-us/entra/id-protection/howto-identity-protection-configure-risk-policies",
             "purpose": "P2 requirement, MFA registration prerequisite, hybrid password-writeback prerequisite, guest/external limitation, and Report-only rollout.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-risk-concept",
@@ -17237,7 +17237,7 @@
             "title": "Risk-based access policies",
             "url": "https://learn.microsoft.com/en-us/entra/id-protection/concept-identity-protection-policies",
             "purpose": "Adaptive risk-remediation behavior, precedence, guest/external limitation, and secure remediation flow.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-risk-remediation",
@@ -17245,7 +17245,7 @@
             "title": "Remediate risks and unblock users",
             "url": "https://learn.microsoft.com/en-us/entra/id-protection/howto-identity-protection-remediate-unblock",
             "purpose": "Distinguishes Conditional Access password-change remediation from SSPR recovery.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-writeback",
@@ -17253,7 +17253,7 @@
             "title": "Enable Microsoft Entra password writeback",
             "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/tutorial-enable-sspr-writeback",
             "purpose": "Hybrid password-writeback configuration when on-premises-synced users are in scope.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-ca-grant-v1",
@@ -17261,7 +17261,7 @@
             "title": "conditionalAccessGrantControls resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessgrantcontrols?view=graph-rest-1.0",
             "purpose": "v1.0 riskRemediation enum and requirement to pair riskRemediation with authenticationStrength using AND.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-ca-condition-v1",
@@ -17269,7 +17269,7 @@
             "title": "conditionalAccessConditionSet resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessconditionset?view=graph-rest-1.0",
             "purpose": "v1.0 userRiskLevels and condition schema.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-ca-create-v1",
@@ -17277,7 +17277,7 @@
             "title": "Create conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0",
             "purpose": "v1.0 create endpoint and least-privileged permissions/roles.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-ca-update-v1",
@@ -17285,7 +17285,7 @@
             "title": "Update conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0",
             "purpose": "v1.0 update semantics and stable-ID PATCH endpoint.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-ca-get-v1",
@@ -17293,7 +17293,7 @@
             "title": "Get conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-get?view=graph-rest-1.0",
             "purpose": "v1.0 stable-ID verification readback.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           }
         ],
         "baselineAuthority": {
@@ -18054,7 +18054,7 @@
             "title": "Risk policies",
             "url": "https://learn.microsoft.com/en-us/entra/id-protection/howto-identity-protection-configure-risk-policies",
             "purpose": "P2, MFA registration, hybrid writeback, and risk remediation behavior.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-ca-grant",
@@ -18062,7 +18062,7 @@
             "title": "Conditional Access: Grant",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-grant",
             "purpose": "Password-change flow, MFA prerequisite, All-resources restriction, and supported condition restrictions.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-ca-grant-v1",
@@ -18070,7 +18070,7 @@
             "title": "conditionalAccessGrantControls resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessgrantcontrols?view=graph-rest-1.0",
             "purpose": "passwordChange must be paired with mfa using AND; riskRemediation is separate.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-risk-concept",
@@ -18078,7 +18078,7 @@
             "title": "Risk-based access policies",
             "url": "https://learn.microsoft.com/en-us/entra/id-protection/concept-identity-protection-policies",
             "purpose": "User-risk semantics and secure password-change remediation.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-ca-create-v1",
@@ -18086,7 +18086,7 @@
             "title": "Create conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0",
             "purpose": "v1.0 create endpoint and permissions.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-ca-update-v1",
@@ -18094,7 +18094,7 @@
             "title": "Update conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0",
             "purpose": "Stable-ID update endpoint.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-ca-get-v1",
@@ -18102,7 +18102,7 @@
             "title": "Get conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-get?view=graph-rest-1.0",
             "purpose": "Stable-ID verification readback.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           }
         ],
         "baselineAuthority": {
@@ -18887,7 +18887,7 @@
             "title": "Conditional Access for workload identities",
             "url": "https://learn.microsoft.com/entra/identity/conditional-access/workload-identity",
             "purpose": "Workload scope, licensing, direct service-principal assignment, location policy, report-only, sign-in logs, and Enterprise applications Object ID requirement.",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true,
             "priority": "primary",
             "audience": [
@@ -18904,7 +18904,7 @@
             "title": "Frequently asked questions about Microsoft Entra Workload ID",
             "url": "https://learn.microsoft.com/entra/workload-id/workload-identities-faqs",
             "purpose": "Current Workload ID Premium licensing behavior.",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -18918,7 +18918,7 @@
             "title": "conditionalAccessClientApplications resource type - v1.0",
             "url": "https://learn.microsoft.com/graph/api/resources/conditionalaccessclientapplications?view=graph-rest-1.0",
             "purpose": "v1.0 workload/service-principal include/exclude schema.",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -18932,7 +18932,7 @@
             "title": "ipNamedLocation resource type - v1.0",
             "url": "https://learn.microsoft.com/graph/api/resources/ipnamedlocation?view=graph-rest-1.0",
             "purpose": "IP named-location shape and CIDR range semantics.",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -18946,7 +18946,7 @@
             "title": "Create namedLocation - v1.0",
             "url": "https://learn.microsoft.com/graph/api/conditionalaccessroot-post-namedlocations?view=graph-rest-1.0",
             "purpose": "v1.0 named-location POST endpoint, required IP-range fields, permissions, and roles.",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true,
             "priority": "technical",
             "audience": [
@@ -18961,7 +18961,7 @@
             "title": "Update ipNamedLocation - v1.0",
             "url": "https://learn.microsoft.com/graph/api/ipnamedlocation-update?view=graph-rest-1.0",
             "purpose": "v1.0 named-location PATCH behavior; complete desired ipRanges must be supplied because omitted ranges are removed.",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true,
             "priority": "technical",
             "audience": [
@@ -18976,7 +18976,7 @@
             "title": "List namedLocations - v1.0",
             "url": "https://learn.microsoft.com/graph/api/conditionalaccessroot-list-namedlocations?view=graph-rest-1.0",
             "purpose": "Stable list/collision-check surface and Policy.Read.All read permission.",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -18988,7 +18988,7 @@
             "authority": "Microsoft Learn",
             "title": "Network assignment in Conditional Access policy",
             "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -18996,7 +18996,7 @@
             "authority": "Microsoft Learn",
             "title": "Microsoft Entra Connect: accounts and permissions",
             "url": "https://learn.microsoft.com/entra/identity/hybrid/connect/reference-connect-accounts-permissions",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -19004,7 +19004,7 @@
             "authority": "Microsoft Learn",
             "title": "Microsoft Entra Cloud Sync FAQ",
             "url": "https://learn.microsoft.com/entra/identity/hybrid/cloud-sync/reference-cloud-sync-faq",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           }
         ],
@@ -19570,7 +19570,7 @@
             "authority": "Microsoft Learn",
             "title": "Register a passkey with a FIDO2 security key",
             "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-register-passkey-with-security-key",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -19578,7 +19578,7 @@
             "authority": "Microsoft Learn",
             "title": "Register passkeys in Authenticator on Android and iOS devices",
             "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-register-passkey-authenticator",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -19586,7 +19586,7 @@
             "authority": "Microsoft Learn",
             "title": "How to enable passkeys (FIDO2) in Microsoft Entra ID",
             "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-authentication-passkeys-fido2",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           }
         ],
@@ -19789,7 +19789,7 @@
             "authority": "Microsoft Learn",
             "title": "Network assignment in Conditional Access policy",
             "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -19797,7 +19797,7 @@
             "authority": "Microsoft Learn",
             "title": "countryNamedLocation resource type",
             "url": "https://learn.microsoft.com/graph/api/resources/countrynamedlocation",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": false
           }
         ],
@@ -20147,7 +20147,7 @@
             "authority": "Microsoft Learn",
             "title": "Create and Manage Custom Conditional Access Authentication Strengths",
             "url": "https://learn.microsoft.com/entra/identity/authentication/concept-authentication-strength-advanced-options",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -20155,7 +20155,7 @@
             "authority": "Microsoft Learn",
             "title": "Overview of Conditional Access authentication strengths",
             "url": "https://learn.microsoft.com/entra/identity/authentication/concept-authentication-strengths",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           }
         ],
@@ -20497,7 +20497,7 @@
             "authority": "Microsoft Learn",
             "title": "Manage emergency access admin accounts",
             "url": "https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/security-emergency-access",
-            "checkedOn": "2026-09-12",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           }
         ],
@@ -21079,7 +21079,7 @@
             "authority": "Microsoft Learn",
             "title": "Manage emergency access admin accounts",
             "url": "https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/security-emergency-access",
-            "checkedOn": "2026-09-12",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           }
         ],
@@ -21447,7 +21447,7 @@
             "title": "Enable passkeys in Microsoft Authenticator",
             "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-enable-authenticator-passkey",
             "purpose": "Microsoft Authenticator AAGUIDs for iOS and Android, pinned as the key-restriction allow list (decision 9). Page dated 2026-07-05.",
-            "checkedOn": "2026-09-12",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           }
         ],
@@ -21805,7 +21805,7 @@
             "authority": "Microsoft Learn",
             "title": "Microsoft Entra recommendation: Turn off per-user MFA",
             "url": "https://learn.microsoft.com/entra/identity/monitoring-health/recommendation-turn-off-per-user-mfa",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -21813,7 +21813,7 @@
             "authority": "Microsoft Learn",
             "title": "Enable per-user Microsoft Entra multifactor authentication",
             "url": "https://learn.microsoft.com/entra/identity/authentication/howto-mfa-userstates",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -21821,7 +21821,7 @@
             "authority": "Microsoft Learn",
             "title": "Configure Microsoft Entra multifactor authentication settings",
             "url": "https://learn.microsoft.com/entra/identity/authentication/howto-mfa-mfasettings",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           }
         ]
@@ -22053,7 +22053,7 @@
             "authority": "Microsoft Learn",
             "title": "Security defaults in Microsoft Entra ID",
             "url": "https://learn.microsoft.com/entra/fundamentals/security-defaults",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -22061,7 +22061,7 @@
             "authority": "Microsoft Learn",
             "title": "Plan a Conditional Access deployment",
             "url": "https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           }
         ],
@@ -22339,7 +22339,7 @@
             "authority": "Microsoft Learn",
             "title": "Securing cloud-based service accounts",
             "url": "https://learn.microsoft.com/entra/architecture/secure-service-accounts",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -22347,7 +22347,7 @@
             "authority": "Microsoft Learn",
             "title": "Conditional Access for workload identities",
             "url": "https://learn.microsoft.com/entra/identity/conditional-access/workload-identity",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -22355,7 +22355,7 @@
             "authority": "Microsoft Learn",
             "title": "Block access by location with Conditional Access policy",
             "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-by-location",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": false
           }
         ],
@@ -22738,7 +22738,7 @@
             "authority": "Microsoft Learn",
             "title": "Network assignment in Conditional Access policy",
             "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -22746,7 +22746,7 @@
             "authority": "Microsoft Learn",
             "title": "ipNamedLocation resource type",
             "url": "https://learn.microsoft.com/graph/api/resources/ipnamedlocation",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": false
           }
         ],
@@ -23213,7 +23213,7 @@
             "title": "Conditional Access and Intune compliance for Microsoft Teams Rooms",
             "url": "https://learn.microsoft.com/en-us/microsoftteams/rooms/conditional-access-and-compliance-for-devices",
             "purpose": "Exclude resource accounts from the policies written for people, give them one policy of their own, and never require user-interactive MFA of them.",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -23222,7 +23222,7 @@
             "title": "Supported Conditional Access and Intune compliance policies for Microsoft Teams devices",
             "url": "https://learn.microsoft.com/en-us/microsoftteams/rooms/supported-ca-and-compliance-policies",
             "purpose": "Sign-in frequency and authentication strength are not supported on Teams devices; network, device platforms and compliant device are.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-ca-location-configure",
@@ -23230,7 +23230,7 @@
             "title": "Require multifactor authentication for security info registration",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-security-info-registration",
             "purpose": "Microsoft's own procedure sets Configure to Yes on the Locations condition.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           },
           {
             "id": "ms-assignment-network",
@@ -23238,7 +23238,7 @@
             "title": "Conditional Access: Network assignment",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-assignment-network",
             "purpose": "Conditional Access policies apply to all locations by default, so the condition has to be configured to narrow one.",
-            "checkedOn": "2026-09-20"
+            "checkedOn": "2026-09-25"
           }
         ],
         "baselineAuthority": {
@@ -23802,7 +23802,7 @@
             "authority": "Microsoft Learn",
             "title": "Run a Registration Campaign to Set Up a Passkey or Microsoft Authenticator",
             "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/how-to-mfa-registration-campaign",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           },
           {
@@ -23810,7 +23810,7 @@
             "authority": "Microsoft Learn",
             "title": "Enable passkeys (FIDO2) for your organization",
             "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-authentication-passkeys-fido2",
-            "checkedOn": "2026-09-20",
+            "checkedOn": "2026-09-25",
             "userFacing": true
           }
         ],

@@ -344,7 +344,7 @@
       "title": "Configure and enable risk policies",
       "url": "https://learn.microsoft.com/en-us/entra/id-protection/howto-identity-protection-configure-risk-policies",
       "purpose": "Current sign-in-risk policy guidance, Medium/High recommendation, MFA requirement, Report-only rollout, and Every-time recommendation.",
-      "checkedOn": "2026-09-20"
+      "checkedOn": "2026-09-25"
     },
     {
       "id": "ms-risk-concept",
@@ -352,7 +352,7 @@
       "title": "Risk-based access policies",
       "url": "https://learn.microsoft.com/en-us/entra/id-protection/concept-identity-protection-policies",
       "purpose": "Sign-in-risk semantics, P2 requirement, self-remediation, and legacy-policy retirement.",
-      "checkedOn": "2026-09-20"
+      "checkedOn": "2026-09-25"
     },
     {
       "id": "ms-ca-condition-v1",
@@ -360,7 +360,7 @@
       "title": "conditionalAccessConditionSet resource type - v1.0",
       "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessconditionset?view=graph-rest-1.0",
       "purpose": "v1.0 signInRiskLevels and clientAppTypes schema.",
-      "checkedOn": "2026-09-20"
+      "checkedOn": "2026-09-25"
     },
     {
       "id": "ms-ca-grant-v1",
@@ -368,7 +368,7 @@
       "title": "conditionalAccessGrantControls resource type - v1.0",
       "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessgrantcontrols?view=graph-rest-1.0",
       "purpose": "v1.0 built-in MFA grant support.",
-      "checkedOn": "2026-09-20"
+      "checkedOn": "2026-09-25"
     },
     {
       "id": "ms-ca-create-v1",
@@ -376,7 +376,7 @@
       "title": "Create conditionalAccessPolicy - v1.0",
       "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0",
       "purpose": "v1.0 create endpoint and permissions.",
-      "checkedOn": "2026-09-20"
+      "checkedOn": "2026-09-25"
     },
     {
       "id": "ms-ca-update-v1",
@@ -384,7 +384,7 @@
       "title": "Update conditionalAccessPolicy - v1.0",
       "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0",
       "purpose": "v1.0 stable-ID update endpoint and partial update semantics.",
-      "checkedOn": "2026-09-20"
+      "checkedOn": "2026-09-25"
     },
     {
       "id": "ms-ca-get-v1",
@@ -392,7 +392,7 @@
       "title": "Get conditionalAccessPolicy - v1.0",
       "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-get?view=graph-rest-1.0",
       "purpose": "v1.0 stable-ID verification readback.",
-      "checkedOn": "2026-09-20"
+      "checkedOn": "2026-09-25"
     }
   ],
   "integrationGaps": [],

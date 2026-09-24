@@ -238,7 +238,7 @@
       "authority": "Microsoft Learn",
       "title": "Network assignment in Conditional Access policy",
       "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": true
     },
     {
@@ -246,7 +246,7 @@
       "authority": "Microsoft Learn",
       "title": "ipNamedLocation resource type",
       "url": "https://learn.microsoft.com/graph/api/resources/ipnamedlocation",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": false
     }
   ],

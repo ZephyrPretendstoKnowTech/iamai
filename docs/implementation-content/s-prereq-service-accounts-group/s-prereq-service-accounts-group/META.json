@@ -242,7 +242,7 @@
       "authority": "Microsoft Learn",
       "title": "Securing cloud-based service accounts",
       "url": "https://learn.microsoft.com/entra/architecture/secure-service-accounts",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": true
     },
     {
@@ -250,7 +250,7 @@
       "authority": "Microsoft Learn",
       "title": "Conditional Access for workload identities",
       "url": "https://learn.microsoft.com/entra/identity/conditional-access/workload-identity",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": true
     },
     {
@@ -258,7 +258,7 @@
       "authority": "Microsoft Learn",
       "title": "Block access by location with Conditional Access policy",
       "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-by-location",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": false
     }
   ]

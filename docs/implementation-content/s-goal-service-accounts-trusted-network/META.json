@@ -365,7 +365,7 @@
       "authority": "Microsoft Learn",
       "title": "Network assignment in Conditional Access policy",
       "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": true
     },
     {
@@ -373,7 +373,7 @@
       "authority": "Microsoft Learn",
       "title": "Block access by location with Conditional Access policy",
       "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-by-location",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": true
     },
     {
@@ -381,7 +381,7 @@
       "authority": "Microsoft Learn",
       "title": "Conditional Access for workload identities",
       "url": "https://learn.microsoft.com/entra/identity/conditional-access/workload-identity",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": true
     },
     {
@@ -389,7 +389,7 @@
       "authority": "Microsoft Learn",
       "title": "Securing cloud-based service accounts",
       "url": "https://learn.microsoft.com/entra/architecture/secure-service-accounts",
-      "checkedOn": "2026-09-20",
+      "checkedOn": "2026-09-25",
       "userFacing": false
     },
     {
@@ -398,7 +398,7 @@
       "title": "conditionalAccessLocations resource type - v1.0",
       "url": "https://learn.microsoft.com/graph/api/resources/conditionalaccesslocations?view=graph-rest-1.0",
       "purpose": "includeLocations/excludeLocations v1.0 schema.",
-      "checkedOn": "2026-09-20"
+      "checkedOn": "2026-09-25"
     },
     {
       "id": "ms-ca-create-v1",
@@ -406,7 +406,7 @@
       "title": "Create conditionalAccessPolicy - v1.0",
       "url": "https://learn.microsoft.com/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0",
       "purpose": "v1.0 create endpoint and location-policy example.",
-      "checkedOn": "2026-09-20"
+      "checkedOn": "2026-09-25"
     },
     {
       "id": "ms-ca-update-v1",
@@ -414,7 +414,7 @@
       "title": "Update conditionalAccessPolicy - v1.0",
       "url": "https://learn.microsoft.com/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0",
       "purpose": "Stable-ID update endpoint.",
-      "checkedOn": "2026-09-20"
+      "checkedOn": "2026-09-25"
     },
     {
       "id": "ms-ca-get-v1",
@@ -422,7 +422,7 @@
       "title": "Get conditionalAccessPolicy - v1.0",
       "url": "https://learn.microsoft.com/graph/api/conditionalaccesspolicy-get?view=graph-rest-1.0",
       "purpose": "Stable-ID readback.",
-      "checkedOn": "2026-09-20"
+      "checkedOn": "2026-09-25"
     }
   ],
   "authoringReviewNotes": [
