@@ -75,6 +75,7 @@ import type { PolicyFact } from './policyFact.ts'
 import { QUESTION_STEP, mailDevicesOf } from '../../roadmap/answers.ts'
 import { isGroupMember } from '../../roadmap/stepGroups.ts'
 import { rowWho } from './rowWho.ts'
+import { pitfallTilesOf } from './pitfalls.ts'
 
 /**
  * The one state reading of a step (A1b, RUN-CONTEXT-A decision 1): the lane
@@ -109,6 +110,8 @@ export type LaneView = {
 
 /** The contract's own words (pages.app.plan.stepContract). */
 type ContractWords = {
+  /** The fold on a card that names people past the first five ("{n} more"). */
+  cardMore: string
   lifecycle: Record<string, string>
   condition: Record<string, string>
   /** The opened step's eyebrow, one label per steps[].kind (task 034). */
@@ -495,6 +498,8 @@ export type StepContract = {
   followUp: { count: number; text: string } | null
   /** Require MFA for Everyone: the dormant accounts its policy reaches with no method, and where to disable them (Step.dormantWithoutMethod); null elsewhere. */
   dormant: { value: string; text: string } | null
+  /** What the scan knows will bite if the step is done as written, as Tasks Remaining cards (pitfalls.ts). */
+  pitfalls: ReadinessTile[]
   /** The signed-in account this policy would leave with no method it accepts, named, with the step that fixes it (walk list 4.x item 43); null elsewhere. */
   operator: { text: string; id: string } | null
   whatToDo: ContractAction
@@ -1609,6 +1614,7 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     inventory,
     followUp: followUpOf(step, ctx),
     dormant: dormantOf(step, ctx),
+    pitfalls: pitfallTilesOf(step, ctx, step.state.satisfied),
     operator,
     whatToDo,
     fix,
@@ -1878,6 +1884,8 @@ export type ReadinessTile = {
   /** The tile's explanation, behind its disclosure; null where the value says it all. */
   note: string | null
   items?: import('../../roadmap/types.ts').ConfigurationFindingItem[]
+  /** The people a pitfall card names, each a line (ui/surfaces/pitfalls.ts): the first five on the card, the rest under its fold. */
+  names?: string[]
   /** Emergency-only short fact grouping; legacy consumers keep their old list. */
   structuredItems?: boolean
   /**
@@ -2809,7 +2817,7 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
   // The two blocks' sign-in card (roadmap/blockSignIns.ts) sits beside the
   // step's own state tile, never in its place.
   const stateFindings = configuration.filter((f) => f.key !== SIGN_INS_FINDING).length
-  const facts = [enforcedReadingTile(step), unwatchedTile(step), ownPolicyTile(step), followUpTile(c), ...emergencyTiles(step, c), ...configuredTiles, ...((stateFindings && step.id !== 's-prereq-break-glass') || (c.satisfiedFacts?.length ?? 0) > 0 ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), dormantTile(c), exclusionsTile(step, c), exclusionsReachTile(c), implementationTile(step, c), inventory].filter((x): x is ReadinessTile => x !== null)
+  const facts = [enforcedReadingTile(step), unwatchedTile(step), ownPolicyTile(step), followUpTile(c), ...emergencyTiles(step, c), ...configuredTiles, ...((stateFindings && step.id !== 's-prereq-break-glass') || (c.satisfiedFacts?.length ?? 0) > 0 ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), dormantTile(c), ...c.pitfalls, exclusionsTile(step, c), exclusionsReachTile(c), implementationTile(step, c), inventory].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
   // The emergency step's failing checks are its account slots' lines (P0-7): no check tile beside them.
   // The drift card is the review's one card, and the exclusions card the exposure's

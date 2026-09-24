@@ -155,6 +155,11 @@ function EmergencyAccountStatusTile({ account, printing = false }: { account: Em
     <h5>{account.title}</h5>
     {/* A line each: Verify Emergency Access lists the last change and the last sign-in under its sentence. */}
     {account.detail && <p className="emergency-account-lines">{account.detail.split('\n').map((line, index) => <span key={index}><Breakable text={line} /></span>)}</p>}
+    {/* The people past the first five, under the card's one fold (NAMES_INLINE). */}
+    {!!account.more?.length && <details className="emergency-account-more" open={printing || undefined}>
+      <summary>{fillText(CONTRACT.cardMore, { n: account.more.length })}</summary>
+      <p className="emergency-account-lines">{account.more.map((line, index) => <span key={index}><Breakable text={line} /></span>)}</p>
+    </details>}
     {account.instruction && <p>{account.instruction}</p>}
     {account.link && <p><a href={account.link.href}>{account.link.label} →</a></p>}
     {!!account.notes?.length && <div className="emergency-account-note"><EmergencyFacts facts={account.notes} /></div>}

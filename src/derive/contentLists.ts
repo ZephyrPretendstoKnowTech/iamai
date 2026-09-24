@@ -146,6 +146,8 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
     needsProof: bucketName(needsProof),
     readinessUnknown: bucketName(readinessUnknown),
     unproven: bucketName(unproven),
+    // The ordinary-MFA list by id, for Require MFA for Everyone's card, which names each person with MFA Readiness's next step (ui/surfaces/pitfalls.ts).
+    unprovenIds: unproven.map((v) => v.userId),
     // Lockout-scenario people (scenarioEvidence, from the sign-in rows).
     legacyUsers: names(people(scen?.legacyClients)),
     // The mail accounts named in Confirm What You Use's mail-sending answer:

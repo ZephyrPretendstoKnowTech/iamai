@@ -119,7 +119,7 @@ export function separateAdminTasksOf(step: Step, ctx: StepVarContext): Emergency
       P.create,
       fillText(P.names, v),
       fillText(P.otherEmails, v),
-      ...(tapOff ? [P.tapPolicy] : []),
+      ...(tapOff ? [fillText(P.tapPolicy, v)] : []),
       fillText(P.tap, v),
       open,
       create,

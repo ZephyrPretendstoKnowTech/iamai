@@ -1,6 +1,7 @@
 import type { ContractReadiness, ReadinessTile } from './stepContract.ts'
 import type { EmergencyAccountStatus, EmergencyTaskProjection } from './emergencyAccountTasks.ts'
 import type { ConfigurationFinding, ConfigurationFindingItem } from '../../roadmap/types.ts'
+import { NAMES_INLINE } from './whoBlocks.ts'
 
 /** Interactive emergency-step presentation. Exact issue metadata allows an action
  * to replace its own evidence row without hiding another finding for the same
@@ -41,7 +42,8 @@ export type EmergencyFact = { label: string; value: string; link?: { label: stri
  * the subject(s) the next check concerns, the one next check and what is wrong,
  * one action (the owning step's link or the Implementation Task), then the
  * completed checks. Everything else waits behind the remaining count. */
-export type EmergencySubjectTile = EmergencyAccountStatus & { detail?: string; link?: { label: string; href: string } }
+/** `more`: the names a card holds past the first five (whoBlocks.ts NAMES_INLINE), drawn under a fold. */
+export type EmergencySubjectTile = EmergencyAccountStatus & { detail?: string; link?: { label: string; href: string }; more?: string[] }
 
 const rank = (outcome: string | undefined): number => outcome === 'fail' ? 0 : outcome === 'unknown' ? 1 : 2
 
@@ -74,7 +76,9 @@ export function emergencySubjectTileOf(tile: ReadinessTile, projected: Emergency
     // subject, a check and nothing else. It is the card's sentence and not its
     // action, because a check that has passed has nothing left to do.
     const note = tile.note ?? ''
-    return { ...base, upn: labels.length === 1 ? labels[0] : task?.subjectLabel ?? null, title: satisfied ? tile.value : task?.readinessTitle ?? tile.value, ...(satisfied && note ? { detail: note } : {}), instruction: satisfied ? '' : direction ?? note }
+    // A pitfall card names its people: five on the card, the rest under the fold.
+    const named = !satisfied && tile.names?.length ? { detail: tile.names.slice(0, NAMES_INLINE).join('\n'), ...(tile.names.length > NAMES_INLINE ? { more: tile.names.slice(NAMES_INLINE) } : {}) } : {}
+    return { ...base, upn: labels.length === 1 ? labels[0] : task?.subjectLabel ?? null, title: satisfied ? tile.value : task?.readinessTitle ?? tile.value, ...(satisfied && note ? { detail: note } : {}), ...named, instruction: satisfied ? '' : direction ?? note }
   }
   // The next check, and every subject it applies to alike (two accounts both needing a sign-in).
   const name = (item: ConfigurationFindingItem): string => item.factLabel ?? item.label

@@ -132,7 +132,7 @@ export const SINGLE_CHOICE_SOURCES = ['groups', 'countryLocations', 'strengths']
  * anything this tenant was read for. A line whose only variables are these says
  * nothing about the tenant (stepExport.ts readsTenant).
  */
-export const SHARED_REF_KEYS = new Set(['portalRoot', 'reportOnlyLine', 'exclusionsLine', 'signature', 'policyIfWrong', 'changeIfWrong', 'enforceIfWrong', 'datesNew', 'datesChange', 'datesDeploy', 'datesObserve', 'datesReview', 'portalOpen', 'existingCoverage', 'syncRoleNote', 'strengthName', 'certificatePrompt', 'registerPasskeyLine', 'methodGuidePointer', 'guestNoTap', 'passkeyOpen', 'passkeyCreate', 'passkeyPrompts', 'passkeyProvider', 'passkeySignIn'])
+export const SHARED_REF_KEYS = new Set(['portalRoot', 'reportOnlyLine', 'exclusionsLine', 'signature', 'policyIfWrong', 'changeIfWrong', 'enforceIfWrong', 'datesNew', 'datesChange', 'datesDeploy', 'datesObserve', 'datesReview', 'portalOpen', 'existingCoverage', 'syncRoleNote', 'strengthName', 'certificatePrompt', 'registerPasskeyLine', 'methodGuidePointer', 'guestNoTap', 'passkeyOpen', 'passkeyCreate', 'passkeyPrompts', 'passkeyProvider', 'passkeySignIn', 'tapEnable'])
 
 /**
  * The string behind a shared reference. Most are a key of `shared`; the three
@@ -156,6 +156,7 @@ function passkeyRefs(): Record<string, unknown> {
     passkeyPrompts: common.authenticatorPrompts,
     passkeyProvider: common.authenticatorProvider,
     passkeySignIn: common.passkeySignIn,
+    tapEnable: common.tapEnable,
   }
 }
 
