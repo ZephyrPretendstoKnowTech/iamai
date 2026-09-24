@@ -2375,7 +2375,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // Safe means known to be safe: a verdict the scan could not settle is not one.
     const operatorSafe = opVerdict === null ? null : !opVerdict.stranded && !opVerdict.unknown
     if (opVerdict?.stranded && !state.satisfied) {
-      blockers.push({ kind: 'readiness', label: 'operator', binding: BLOCKED_REASON.exist(1, 'safe way in for the signed-in account', 0) })
+      blockers.push({ kind: 'readiness', label: 'operator', binding: BLOCKED_REASON.operator })
       state = { ...state, condition: conditionFor(blockers) }
     }
     // A policy the plan would put on an authentication context another of the

@@ -936,6 +936,8 @@
       },
       "blocked": {
         "after": "after: {stepTitle}",
+        "$commentOperator": "The row reason on a policy that would leave the signed-in account with no way to sign in (roadmap/generate.ts, strand verdict). It read \"when 1 safe way in for the signed-in account exists (now 0)\" (walk list 4.x item 43).",
+        "operator": "when your account has a method this policy accepts",
         "readiness": "when {measure} reaches {threshold} (now {value})",
         "count": "when {n} {thing} exist (now {have})",
         "baseline": "the baseline defines this policy two ways",
@@ -1959,6 +1961,14 @@
             "names": "{names}. Disable them in {step}.",
             "nameOne": "{names}. Disable it in {step}.",
             "listed": "Disable them in {step}, which lists them."
+          },
+          "operatorCard": {
+            "$comment": "The card on a policy that would leave the signed-in account with no way to sign in (stepContract.ts operatorOf). Owner, 2026-09-24 (walk list 4.x item 43): one heading in every state, the account named, and the step that fixes it. It was headed \"Before turning on\" in one state and \"Prerequisites\" in another, over \"Your safe way in · when 1 safe way in for the signed-in account exists (now 0)\".",
+            "label": "Your account",
+            "value": "No method this policy accepts",
+            "admin": "{name} holds an admin role and has no passkey or security key.",
+            "other": "{name} has no passkey or security key.",
+            "fix": "{step} fixes this before it turns on."
           },
           "methodGate": {
             "$comment": "The Threshold card on a step whose turn-on waits on people's methods (mfa, admin and guest gates; stepContract.ts methodGateSentence). Owner, 2026-09-24 (walk list 4.x items 42, 48): the admin gate counts admins and names up to five of those short, with what each needs; every other method gate keeps its percentage and states the engine's count line (engine.readiness.methodLine). Both end on the step that gets them ready, and link to it. It replaced \"Enforcement waits for {measure} to reach {threshold}; it is {value} today.\" and \"…; it waits on X, which is where to start\" on these gates: the row and the value state the threshold.",

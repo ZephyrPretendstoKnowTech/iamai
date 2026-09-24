@@ -45,6 +45,7 @@ import { doneWhenFor, fillText, whatToDoFor, whole } from '../../content/render.
 import { absoluteDate } from '../../copy/dates.ts'
 import { list, plural } from '../../copy/statements.ts'
 import { personLabels } from '../../names.ts'
+import { adminUserIds } from '../../roles.ts'
 import { DORMANT_STEP_ID } from './sectionThreeTasks.ts'
 import type { MethodPreparation } from '../../roadmap/methodReadiness.ts'
 import { BLOCKED_REASON, BLOCKED_SUBJECT, readinessFamilyOf } from '../../copy/reasons.ts'
@@ -143,6 +144,8 @@ type ContractWords = {
   ownPolicyDiffers: { label: string; note: string }
   /** Require MFA for Everyone's dormant accounts with no method (walk list 4.x item 10). */
   dormantNoMethod: { label: string; value: string; valueOne: string; names: string; nameOne: string; listed: string }
+  /** The signed-in account a policy would leave with no way in (walk list 4.x item 43). */
+  operatorCard: { label: string; value: string; admin: string; other: string; fix: string }
   /** A gate on people's methods: who is short and what moves them (walk list 4.x items 42, 48). */
   methodGate: { adminValue: string; needs: string; needMany: string; needListed: string; signIn: string; signInMany: string; signInListed: string; route: string }
   /** A finished policy this plan owns that went live with no report-only period IAMAI watched (doneWhen.ts enforcedUnwatched; owner decision 3). */
@@ -492,6 +495,8 @@ export type StepContract = {
   followUp: { count: number; text: string } | null
   /** Require MFA for Everyone: the dormant accounts its policy reaches with no method, and where to disable them (Step.dormantWithoutMethod); null elsewhere. */
   dormant: { value: string; text: string } | null
+  /** The signed-in account this policy would leave with no method it accepts, named, with the step that fixes it (walk list 4.x item 43); null elsewhere. */
+  operator: { text: string } | null
   whatToDo: ContractAction
   fix: ContractFix[]
   /**
@@ -1485,7 +1490,12 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     ...bare,
     line: m.at === null || whatToDo.text === sentence ? null : carriesDate ? fillText(CONTRACT.next, { label: sentence }) : fillText(CONTRACT.nextOn, { label: sentence, date: shownDay(m.at, estimatedDay(step), 'sentence') }),
   }
-  const fix = fixOf(step, cs, ex, exclusionsUnconfirmed)
+  // The signed-in account's blocker says whose account and what fixes it
+  // wherever it is handed over: the card, and the AI Info briefing's blockers
+  // (walk list 4.x item 43).
+  const operator = operatorOf(step, ctx)
+  const named = (fixes: ContractFix[]): ContractFix[] => operator === null ? fixes : fixes.map((f) => (f.key === 'readiness:operator' ? { ...f, text: operator.text } : f))
+  const fix = named(fixOf(step, cs, ex, exclusionsUnconfirmed))
   const members = membersOf(step)
   // Where the chain to the step that moves the readiness number starts (R4-33),
   // once: the card built from this contract and every finding read from it say
@@ -1531,9 +1541,10 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     inventory,
     followUp: followUpOf(step, ctx),
     dormant: dormantOf(step, ctx),
+    operator,
     whatToDo,
     fix,
-    enforcementWaits: enforcementWaitsOf(step),
+    enforcementWaits: named(enforcementWaitsOf(step)),
     // A step set aside has nothing left to finish, its object's task included.
     doneWhen: [...(step.state.setAside ? [] : objectTaskDoneWhen(task, ex)), ...doneWhenOf(step, reason, cs, ex, fix, tenant, ctx.mapping)],
     members,
@@ -2039,6 +2050,32 @@ function dormantOf(step: Step, ctx: StepVarContext): StepContract['dormant'] {
   const text = ids.length > GATE_NAMES_UP_TO ? fillText(W.listed, { step: step31 })
     : fillText(ids.length === 1 ? W.nameOne : W.names, { names: list(ids.map((id) => labels.get(id) ?? ctx.nameOf(id))), step: step31 })
   return { value, text }
+}
+
+/** The step that registers the signed-in account's passkey (3.3). */
+const OPERATOR_PASSKEY_STEP_ID = 's-ladder-operator-passkey'
+
+/**
+ * The signed-in account a policy would leave with no method it accepts
+ * (roadmap/generate.ts, the strand verdict's 'operator' blocker), named, with
+ * the step that fixes it (walk list 4.x item 43). One card, whichever list it
+ * sits in: it held the turn-on under "Before turning on" while the create was
+ * next and under "Prerequisites" after, over the same sentence.
+ */
+function operatorOf(step: Step, ctx: StepVarContext): StepContract['operator'] {
+  if (ctx.operatorId == null || step.state.satisfied || !step.blockers.some((b) => b.kind === 'readiness' && b.label === 'operator')) return null
+  const W = CONTRACT.operatorCard
+  const id = ctx.operatorId
+  const name = personLabels(ctx.snapshot.users, { address: true }).get(id) ?? ctx.nameOf(id)
+  const admin = adminUserIds(ctx.snapshot.roles).has(id) || (ctx.snapshot.roles.eligible?.[id] ?? []).length > 0
+  const step33 = stepById[OPERATOR_PASSKEY_STEP_ID]?.title ?? OPERATOR_PASSKEY_STEP_ID
+  return { text: [fillText(admin ? W.admin : W.other, { name }), fillText(W.fix, { step: step33 })].join(' ') }
+}
+
+/** Its tile, keyed as the blocker it replaces, so no other list draws that blocker again. It opens the step that fixes it. */
+function operatorTile(c: StepContract): ReadinessTile | null {
+  if (c.operator == null) return null
+  return { key: 'readiness:operator', label: CONTRACT.operatorCard.label, tone: 'warn', value: CONTRACT.operatorCard.value, note: c.operator.text, link: stepLink(OPERATOR_PASSKEY_STEP_ID, stepById[OPERATOR_PASSKEY_STEP_ID]?.title ?? OPERATOR_PASSKEY_STEP_ID) }
 }
 
 /** Its tile: work the step names, never a hold: the gate does not count these accounts. It opens the step that disables them. */
@@ -2574,11 +2611,14 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
   // the claim the owner rule took out of Fix (2026-09-11) — so the card says
   // what it holds. The contract's one list, which the exports read too.
   const waits = fixTiles(c.enforcementWaits, prerequisiteLabel).map((t): ReadinessTile => ({ ...t, label: R().tiles.beforeTurnOn, tone: 'wait' }))
-  const present = new Set<string>([...facts.map((t) => t.key), ...fixes.map((t) => t.key), ...waits.map((t) => t.key)])
+  // The signed-in account's card replaces the fix or the wait that carried it (walk list 4.x item 43).
+  const operator = operatorTile(c)
+  const own = (t: ReadinessTile): boolean => operator === null || t.key !== operator.key
+  const present = new Set<string>([...facts.map((t) => t.key), ...fixes.map((t) => t.key), ...waits.map((t) => t.key), ...(operator ? [operator.key] : [])])
   const lead = facts.filter(unresolved)
   const effectiveBlockers = configuration.length ? blockers.filter(b => !/passkey.*(?:review|settings)|profile.*review/i.test(b.label)) : blockers
   const rowNamed = effectiveBlockers.find((b) => b.primary === true && (b.kind === 'step' || b.kind === 'suspendedPrerequisite'))?.id ?? null
-  const tiles = directOnly([...lead, ...unsavedTiles(step), ...fixes, ...waits, ...engineTiles(c, effectiveBlockers, present, prerequisiteLabel)], rowNamed)
+  const tiles = directOnly([...lead, ...unsavedTiles(step), ...fixes.filter(own), ...waits.filter(own), ...(operator ? [operator] : []), ...engineTiles(c, effectiveBlockers, present, prerequisiteLabel)], rowNamed)
   // A "Before enforcement" tile used to be relabelled here, with a sentence
   // composed in code — "Ready for report-only deployment. Complete X before
   // enforcement. Creating this policy in Report-only does not enforce access
