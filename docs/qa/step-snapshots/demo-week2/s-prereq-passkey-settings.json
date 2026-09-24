@@ -12,12 +12,7 @@
     "Implementation Tasks",
     "Completion Criteria"
   ],
-  "tiles": [
-    {
-      "label": "Existing passkeys affected",
-      "state": "Could not verify"
-    }
-  ],
+  "tiles": [],
   "channels": [
     "Entra",
     "AI Info"
