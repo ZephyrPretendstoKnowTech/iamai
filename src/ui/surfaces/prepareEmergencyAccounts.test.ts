@@ -38,3 +38,12 @@ test('#11 with no account chosen, the row and the badge say the person decides',
   // Chosen accounts keep the reading they had.
   assert.notEqual(opened('demo').lane.substatus, 'Decision')
 })
+
+test('#11 with no account chosen, AI Info says none is chosen yet, not that one needs correction', () => {
+  const { body, step } = opened('small', noAccounts)
+  const identity = (step.configurationFindings ?? []).find((f) => f.key === 'account-setup')!
+  assert.equal(identity.value, 'No accounts chosen yet')
+  const ai = body.artifacts.find((a) => a.id === 'ai')!.text()
+  assert.match(ai, /Accounts and identity: No accounts chosen yet/)
+  assert.doesNotMatch(ai, /Needs correction/)
+})

@@ -1822,7 +1822,9 @@
           "$commentCreate": "The create procedure's line when the selection needs no new account (NEW-Nadia-D12): two or more selected, every one read as cloud-only, and none carrying the dedicated-account signal (bg.notPersonal: signed in to IAMAI now, or a job title, department or office) - that check's fix is a new account, so the line would steer the reader to keep a daily account. The configuration procedure said it was not needed and this one never did, so with two verified accounts selected a printed plan and the task list offered \"Create an emergency account\" as work at the same weight as the one task that remained.",
           "createNotNeeded": "No new emergency account is needed: {n} cloud-only accounts are selected. The steps below stay here as a reference.",
           "$commentVariants": "The line that introduces a task's alternatives where they are written out together - the export, AI Info and the Entra artifact, which cannot offer the screen's picker (emergencyAccountTasks.ts emergencyTaskAlternativesText). They used to carry the default alternative alone, unlabelled and numbered as mandatory, so a reader was told to register a YubiKey on every affected account and the Authenticator procedures were gone (R4-32).",
-          "variantsLead": "Use the steps for the authenticator being registered:"
+          "variantsLead": "Use the steps for the authenticator being registered:",
+          "$commentNoAccountsChosen": "Accounts and identity before any emergency access account is saved (src/roadmap/emergencyJourney.ts journeyAccountFindings). It read Needs correction in AI Info while the cards said No account selected: nothing is chosen yet, so there is nothing to correct.",
+          "noAccountsChosen": "No accounts chosen yet"
         },
         "$commentRecoverySignIn": "Verify Emergency Access: what an account's Sign-in evidence card, its print and its exports say while the account waits for a passkey sign-in (src/roadmap/emergencyJourney.ts recoveryWaitingLine).",
         "recoverySignIn": {
