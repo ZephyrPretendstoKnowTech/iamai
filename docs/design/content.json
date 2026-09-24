@@ -3836,6 +3836,11 @@
         "officeToTrust": {
           "lead": "Mark {officeToTrust} as a trusted location in Entra.",
           "task": "Mark the office location as trusted"
+        },
+        "$commentOfficeUnanswered": "Held on the office answer in Decide How and Where People Sign In (walk list 60): what the step makes follows that answer, so it draws no card of its own (check null) beside the hold card, and its action is the answer.",
+        "officeUnanswered": {
+          "lead": "Answer Office network in Decide How and Where People Sign In.",
+          "check": null
         }
       },
       "$commentRangesUnsaved": "The ranges the Add line names where no public ranges were saved for the office ({officeRanges}, ui/surfaces/stepVars.ts; walk list 65).",
@@ -3985,7 +3990,14 @@
       "$commentWhatToDoWhen": "The scan found a group holding exactly the picked accounts and nobody has saved it on the picker (stepVars.ts serviceGroupFound): saving it is what is left, and the rail's milestone says so (stepBody.ts).",
       "whatToDoWhen": {
         "serviceGroupFound": {
-          "lead": "Save {serviceGroupFound} as your service accounts group."
+          "lead": "Save {serviceGroupFound} as your service accounts group.",
+          "check": "Not saved yet"
+        },
+        "$commentServiceGroupCorrect": "The saved group holds other members, or is missing a picked account (roadmap/generate.ts serviceGroup; walk list item 7): the task adds and removes them by name (ui/surfaces/prepareProcedures.ts, the package's entra.correct blocks).",
+        "serviceGroupCorrect": {
+          "lead": "Make {serviceGroupCorrect} hold exactly {serviceAccountNames}.",
+          "check": "Members differ",
+          "task": "Correct the service accounts group"
         }
       },
       "taskTitle": "Create the service accounts group"
@@ -4325,15 +4337,14 @@
       },
       "decision": null,
       "whatToDo": {
-        "lead": "Create {strengthName} with exactly the methods the task lists.",
-        "steps": [
-          "Open [Microsoft Entra admin center](https://entra.microsoft.com/) → Entra ID → Authentication methods → Authentication strengths as a Security Administrator.",
-          "Select New authentication strength.",
-          "Name: {strengthName}.",
-          "Select exactly these methods: {strengthMethods}.",
-          "Select Next, then Create.",
-          "Return to IAMAI and select Scan to update the plan."
-        ]
+        "lead": "Create {strengthName} with exactly the methods the task lists."
+      },
+      "$commentWhatToDoWhen": "A custom strength already named as the baseline's that allows other methods (roadmap/generate.ts strengthToCorrect; walk list 55): the step corrects it with the package's entra.correct.combinations (ui/surfaces/prepareProcedures.ts) instead of creating a second strength of the same name.",
+      "whatToDoWhen": {
+        "strengthToCorrect": {
+          "lead": "Correct {strengthToCorrect} to allow exactly the methods the task lists.",
+          "task": "Correct the authentication strength"
+        }
       },
       "dates": null,
       "$commentDoneWhen": "{strengthMethods} is the baseline's own method list (ui/surfaces/stepVars.ts strengthMethodNames), the list the task selects, so the two cannot drift (walk list 58).",

@@ -112,6 +112,5 @@ test('s-prereq-auth-strength: Why explains a strength, the action says what to d
   // the strength differs from Microsoft's built-in one, and policies reference it by object ID, not by name.
   assert.match(ai, /This custom strength accepts exactly: \{\{strength.target.methodNames\}\}/)
   assert.match(ai, /^Phone call, text message and Authenticator push notifications are not accepted\.$/m)
-  assert.match(ai, /^Several baseline policies use this strength\. Create it once in this tenant; those policies reference it by its object ID\.$/m)
   assert.doesNotMatch(ai, /pinned five|source-tenant|all phishing-resistant or temporary|by name/)
 })

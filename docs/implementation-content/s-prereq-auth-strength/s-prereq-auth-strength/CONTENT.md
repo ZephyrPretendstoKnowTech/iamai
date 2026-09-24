@@ -16,10 +16,11 @@ Change the display name to **{{strength.target.displayName}}** only when IAMAI r
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.combinations","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-1. Review **Usage** for the resolved strength so you know which Conditional Access policies will be affected, including any that are already On.
-2. Edit allowed methods to exactly {{strength.target.methodNames}}.
-3. Do not add any other method.
-4. Save and re-read the same strength.
+1. Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Authentication methods → Authentication strengths** as a Security Administrator.
+2. Select **{{strength.current.displayName}}**, then **Edit**.
+3. Select exactly these methods: {{strength.target.methodNames}}.
+4. Select **Next**, then **Save**.
+5. Return to IAMAI and select **Scan to update the plan**.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.verify","channel":"entra","states":["partial","verificationRequired"],"format":"markdown","kind":"template"}
@@ -74,7 +75,7 @@ Windows Hello for Business, FIDO2 and multifactor certificate authentication are
 
 Phone call, text message and Authenticator push notifications are not accepted.
 
-Several baseline policies use this strength. Create it once in this tenant; those policies reference it by its object ID.
+Several baseline policies use this strength and reference it by its object ID.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}

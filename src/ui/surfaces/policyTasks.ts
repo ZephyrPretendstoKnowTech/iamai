@@ -30,7 +30,7 @@ import { enforcesByStateOnly, stepOperations } from './stepJson.ts'
 import { CONTRACT, FINISHED_FINDINGS } from './stepContract.ts'
 import { app, structuralWords } from '../../content/content.ts'
 import { toReportOnly } from '../../roadmap/operations.ts'
-import { fillText, whole } from '../../content/render.ts'
+import { fillText, whatToDoFor, whole } from '../../content/render.ts'
 import { list } from '../../copy/statements.ts'
 
 /** The line every package authors above the enforce conditions, and the one place a step's own prerequisites belong. */
@@ -114,10 +114,16 @@ export function cardWordsOf(step: CardStep): { subject: string; check: string | 
  */
 export type OwnCardWords = { check: string | null; noDetail: boolean; pointer: boolean; satisfied: string | null }
 export function ownCardWordsOf(step: CardStep, ex: Record<string, unknown>): OwnCardWords | null {
-  const card = entryOf(step)?.card as { check?: unknown; detail?: unknown; pointer?: unknown; satisfied?: unknown } | null | undefined
-  if (!card || !('detail' in card || 'pointer' in card || 'satisfied' in card)) return null
+  const entry = entryOf(step)
+  const card = entry?.card as { check?: unknown; detail?: unknown; pointer?: unknown; satisfied?: unknown } | null | undefined
+  // The check for the state the scan read, where the step's whatToDoWhen writes
+  // one (content/render.ts whatToDoFor): 3.7's "Not saved yet" once its group is
+  // found, and no card of its own on 3.6 while it waits on the office answer.
+  const state = whatToDoFor(entry, ex) as { check?: unknown } | null
+  const stateCheck = state !== null && 'check' in state ? state.check : undefined
+  if (!card || (!('detail' in card || 'pointer' in card || 'satisfied' in card) && stateCheck === undefined)) return null
   const filled = (s: unknown): string | null => (typeof s === 'string' && whole(s, ex) ? fillText(s, ex) : null)
-  return { check: filled(card.check), noDetail: card.detail === null, pointer: card.pointer === true, satisfied: filled(card.satisfied) }
+  return { check: filled(stateCheck !== undefined ? stateCheck : card.check), noDetail: card.detail === null, pointer: card.pointer === true, satisfied: filled(card.satisfied) }
 }
 
 /**

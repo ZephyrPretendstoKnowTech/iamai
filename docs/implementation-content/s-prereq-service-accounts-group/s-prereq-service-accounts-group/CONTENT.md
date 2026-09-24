@@ -6,18 +6,19 @@
 5. Under **Members**, add {{serviceAccounts.memberUpns}}.
 6. Select **Create**.
 7. Return to IAMAI and select **Scan to update the plan**.
+8. Under **Service accounts group**, select **{{group.target.displayName}}**, then **Save**.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open the service-accounts group IAMAI resolved, ID **{{group.current.id}}**. Correct only the difference IAMAI reports.
+Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Groups → All groups → {{group.current.displayName}} → Members**.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.add","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Add only the confirmed service-account user IAMAI identifies as missing. Check the user's object ID before saving.
+Select **Add members**, add {{serviceAccounts.missingUpns}}, and select **Select**.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.remove","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Remove only the direct member IAMAI identifies as outside the confirmed service-account set. Do not delete or disable the user. Once removed, the account is no longer excluded by the policies that exclude this group.
+Select {{serviceAccounts.extraUpns}}, then **Remove**.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.type","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -25,7 +26,7 @@ The selected group is not an assigned, non-mail-enabled security group. Do not c
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.verify","channel":"entra","states":["partial","verificationRequired"],"format":"markdown","kind":"template"}
-Verify that the same group (same ID) is an assigned, non-mail-enabled security group and its direct members are exactly the confirmed service-account users, with no service principals or managed identities. Then rescan IAMAI.
+Return to IAMAI and select **Scan to update the plan**.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.create","channel":"json","states":["groupMissing"],"format":"json-template","kind":"template"}
@@ -101,7 +102,7 @@ The owner recorded that no user-based service accounts need this group. No empty
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["groupMissing"],"format":"markdown","kind":"template"}
 
-The service-accounts group does not exist yet. The planned change creates one assigned security group named {{group.target.displayName}} containing only the confirmed user-based service accounts. A rescan after creation lets the policies that exclude it reference its object ID.
+The service accounts group is one assigned security group holding exactly the service accounts picked in Identify Service and Shared Accounts. The policies that wait on it reference it once it is saved on this step.
 
 {{service.ropcAccount}} signs in with a password from a script: move it to a managed identity or service principal when you can. [omit this line when unavailable]
 {{service.ropcAccounts}} sign in with a password from a script: move each to a managed identity or service principal when you can. [omit this line when unavailable]

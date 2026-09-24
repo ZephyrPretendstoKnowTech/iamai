@@ -133,9 +133,6 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // What holds a policy no step of the plan clears, on its row (roadmap/stateReason.ts
   // holdReasonFor): a state the review page's example plan is not in.
   '.pages.plan.blocked.unsettled',
-  // The campaign email while the plan dates nothing (stepExport.ts commsFor): the
-  // review page's example plan dates its enforcement, so it renders the dated body.
-  '.steps[13].comms.bodyUndated',
   '.pages.plan.blocked.pairUnmatched',
   '.pages.plan.blocked.targetAmbiguous',
   '.pages.plan.blocked.noOperation',
@@ -213,12 +210,21 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.steps[4].satisfied.signIns',
   '.steps[4].whatToDoWhen.officeToTrust.lead',
   '.steps[4].whatToDoWhen.officeToTrust.task',
+  // Held on the office answer (walk list 60), and a strength of the baseline's
+  // name to correct (walk list 55): states the example does not reach.
+  '.steps[4].whatToDoWhen.officeUnanswered.lead',
+  '.steps[10].whatToDoWhen.strengthToCorrect.lead',
   '.steps[5].who.none',
   // The service-accounts group's lead once the scan finds the group holding
   // exactly the picked accounts and nobody has saved it (stepVars.ts
   // serviceGroupFound): the example's tenant has no such group, so the review
   // page draws the create lead.
   '.steps[5].whatToDoWhen.serviceGroupFound.lead',
+  // Its card once found, and a saved group whose members differ (walk list item 7).
+  '.steps[5].whatToDoWhen.serviceGroupFound.check',
+  '.steps[5].whatToDoWhen.serviceGroupCorrect.check',
+  '.steps[5].whatToDoWhen.serviceGroupCorrect.lead',
+  '.steps[5].whatToDoWhen.serviceGroupCorrect.task',
   '.steps[6].who.none',
   // The lead for a tenant whose security defaults the scan read as already off
   // (who.leadWhen, R4): the example's tenant has them on, so only that sentence
@@ -377,7 +383,9 @@ test('no orphan content string: every non-structural key renders, or is a known 
     if (isStructural(path) || isAppOnly(path)) continue
     const frags = s.split(/\{[^}]*\}/).map((f) => f.replace(/\s+/g, ' ').trim()).filter((f) => f.length >= 12)
     if (frags.length === 0) continue // a string that is entirely variables
-    if (frags.some((f) => body.includes(f) || body.includes(escHtml(f)))) continue
+    // A procedure line's bold renders as the product draws it (render.ts ol).
+    const bold = (x: string): string => x.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    if (frags.some((f) => body.includes(f) || body.includes(escHtml(f)) || body.includes(bold(escHtml(f))))) continue
     miss.push(path)
   }
   assert.deepEqual(miss.sort(), [...EXAMPLE_SUPPRESSED_OR_APP_ONLY].sort(), 'the set of non-rendered content strings changed; a new entry is a content key no renderer consumes')

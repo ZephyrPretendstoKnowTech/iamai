@@ -353,6 +353,9 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     // the task selects them and the completion names them, from one list.
     const methods = strengthMethodNames(step.authenticationStrengthTarget?.allowedCombinations ?? [])
     if (methods.length > 0) v.strengthMethods = list(methods)
+    // A strength of the baseline's name that allows other methods: the step
+    // corrects it (whatToDoWhen.strengthToCorrect; walk list 55).
+    if (step.strengthToCorrect && !step.state.satisfied) v.strengthToCorrect = step.strengthToCorrect.name
   }
 
   // Define the Trusted Network: the office ranges its task adds (the ranges
@@ -361,6 +364,11 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   if (step.id === PREREQ_STEP_ID.trustedLocation) {
     v.officeRanges = officeRangesOf(step, ctx.mapping)
     if (step.officeToTrust?.length) v.officeToTrust = list(step.officeToTrust.map((l) => l.name))
+    // Held on the office answer in Decide How and Where People Sign In (walk
+    // list 60): what the step makes, if anything, follows that answer, so it
+    // draws no card of its own and its action is the answer
+    // (whatToDoWhen.officeUnanswered).
+    if (step.blockers.some((b) => b.kind === 'decision' && b.label.startsWith('direction:'))) v.officeUnanswered = true
   }
 
   // Nobody affected (timing.ts, the one definition): the records show nobody
@@ -432,8 +440,10 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     if (name) v.serviceAccountsGroupName = name
     if (group && step.state.satisfied) v.serviceAccountsGroupMembers = group.memberCount
     v.serviceAccountNames = list(ctx.mapping.serviceAccountUserIds.map(ctx.nameOf))
-    const matched = v.groupsMatched
-    if (!groupId && Array.isArray(matched) && matched.length === 1) v.serviceGroupFound = ctx.groups?.get(String(matched[0]))?.displayName ?? ctx.nameOf(String(matched[0]))
+    // The group the scan found holding exactly them, nobody has saved it yet;
+    // or the saved group whose members differ (roadmap/generate.ts serviceGroup).
+    if (step.serviceGroup?.kind === 'found') v.serviceGroupFound = step.serviceGroup.name
+    if (step.serviceGroup?.kind === 'correct' && !step.state.satisfied) v.serviceGroupCorrect = step.serviceGroup.name
   }
 
   // The emergency-access and exclusions-group steps (walk-51 item 14): the

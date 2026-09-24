@@ -448,6 +448,12 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
     // The office location picked in Decide How and Where People Sign In is in
     // Entra without the trusted mark: the step marks it, it makes nothing (walk list 61).
     if (reading?.lane === 'Ready' && (step.officeToTrust?.length ?? 0) > 0 && reading.substatus === 'Create') reading.substatus = 'Correct'
+    // A strength already named as the baseline's is corrected, not made again;
+    // a saved service accounts group whose members differ is corrected; and one
+    // the scan found holding exactly the picked accounts is only saved, which
+    // creates nothing (walk list section 3, items 7 and 55).
+    if (reading?.lane === 'Ready' && reading.substatus === 'Create' && (step.strengthToCorrect !== undefined || step.serviceGroup?.kind === 'correct')) reading.substatus = 'Correct'
+    if (reading?.lane === 'Ready' && reading.substatus === 'Create' && step.serviceGroup?.kind === 'found') reading.substatus = null
     // A saved exclusions-group choice is an existing object to inspect or
     // correct. Keep the create label only while no group has been saved.
     const savedExclusionsGroup = step.id === EXCLUSION_GROUP_STEP_ID

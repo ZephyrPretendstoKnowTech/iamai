@@ -275,7 +275,21 @@ export function pickerVars(stepId: string, template: string, ctx: PickerContext)
       const members = new Set((ctx.groups?.get(id)?.memberIds ?? []).map(lc))
       return picked.length > 0 && picked.every((a) => members.has(lc(a))) ? 1 : 0
     }
-    const ids = [...known.values()].sort((a, b) => isSaved(b) - isSaved(a) || exact(b) - exact(a) || holdsAll(b) - holdsAll(a) || nameOf(a).localeCompare(nameOf(b)))
+    // Only a group that holds a picked account is offered (walk list item 7):
+    // the exclusions group and every other group the plan knows were offered
+    // too, and saving one made it the group every policy excludes as the service
+    // accounts. The one saved stays, so the step can say what to correct in it.
+    const holdsAny = (id: string): boolean => {
+      const members = new Set((ctx.groups?.get(id)?.memberIds ?? []).map(lc))
+      return picked.some((a) => members.has(lc(a)))
+    }
+    const held = (id: string): number => {
+      const members = new Set((ctx.groups?.get(id)?.memberIds ?? []).map(lc))
+      return picked.filter((a) => members.has(lc(a))).length
+    }
+    const others = (id: string): number => ctx.groups?.get(id)?.memberCount ?? Number.MAX_SAFE_INTEGER
+    const ids = [...known.values()].filter((id) => isSaved(id) === 1 || (holdsAny(id) && !holdsEmergencyAccount(id, ctx)))
+      .sort((a, b) => isSaved(b) - isSaved(a) || exact(b) - exact(a) || holdsAll(b) - holdsAll(a) || held(b) - held(a) || others(a) - others(b) || nameOf(a).localeCompare(nameOf(b)))
     const rows = ids.map((id) => {
       const g = ctx.groups?.get(id)
       return row(template, { name: g?.displayName ?? nameOf(id), memberCount: g?.memberCount })
@@ -385,6 +399,12 @@ export function pickerKind(stepId: string, source: string | null): PickerKind {
  * name and UPN, the groups the plan knows, the named locations, the countries
  * seen or allowed, the authentication strengths.
  */
+/** Whether a group the plan read holds one of the emergency access accounts. */
+function holdsEmergencyAccount(id: string, ctx: PickerContext): boolean {
+  const emergency = new Set(ctx.mapping.breakGlassUserIds.map(lc))
+  return (ctx.groups?.get(id)?.memberIds ?? []).some((m) => emergency.has(lc(m)))
+}
+
 export function pickerUniverse(stepId: string, source: string | null, ctx: PickerContext): PickerObject[] {
   const { snapshot, mapping, nameOf } = ctx
   const kind = pickerKind(stepId, source)
@@ -398,9 +418,12 @@ export function pickerUniverse(stepId: string, source: string | null, ctx: Picke
   if (kind === 'accounts') return snapshot.users.map((u) => ({ id: u.id, name: nameOf(u.id), secondary: u.userPrincipalName ?? undefined }))
   if (kind === 'groups') {
     const known = new Map<string, string>()
+    // The service accounts group is never one that holds an emergency account:
+    // every policy excludes it (walk list item 7).
+    const offered = (id: string): boolean => stepId !== DECISION_STEPS.serviceAccountsGroup || !holdsEmergencyAccount(id, ctx)
     for (const [id] of ctx.groups ?? []) known.set(lc(id), id)
     for (const p of snapshot.config.caPolicies?.rows ?? []) for (const id of [...policyGroups(p).include, ...policyGroups(p).exclude]) if (!known.has(lc(id))) known.set(lc(id), id)
-    return [...known.values()].map((id) => {
+    return [...known.values()].filter(offered).map((id) => {
         const g = ctx.groups?.get(id)
         return { id, name: g?.displayName ?? nameOf(id), secondary: g ? `${g.memberCount} members` : undefined }
       })
