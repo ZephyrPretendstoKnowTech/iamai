@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "Up Next",
   "bar": "After Prepare Emergency Access Accounts",
-  "rail": "Require Token Protection on Windows",
+  "rail": "Create the policy in Report-only",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -24,8 +24,6 @@
   ],
   "channels": [
     "Entra",
-    "PowerShell",
-    "JSON",
     "AI Info"
   ],
   "when": "Est. Sep 7, 2026"

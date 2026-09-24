@@ -4,7 +4,7 @@
   "reason": null,
   "fact": null,
   "badge": "On Hold",
-  "bar": "After Require Phishing-Resistant MFA for Admins",
+  "bar": "After Block Legacy Authentication",
   "rail": "Turn security defaults off",
   "headings": [
     "About this Step",
@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Block Legacy Authentication",
-      "state": "Prerequisite · To do"
+      "state": "Prerequisite · Waiting"
     },
     {
       "label": "Require Phishing-Resistant MFA for Admins",
@@ -24,8 +24,6 @@
   ],
   "channels": [
     "Entra",
-    "PowerShell",
-    "JSON",
     "AI Info"
   ],
   "when": "Est. Sep 15, 2026"

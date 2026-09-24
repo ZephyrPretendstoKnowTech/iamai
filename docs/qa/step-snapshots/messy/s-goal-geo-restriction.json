@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "On Hold",
   "bar": "Waiting on your answers",
-  "rail": "Block Sign-ins From Countries Not Allowed",
+  "rail": "Create the policy in Report-only",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -37,7 +37,6 @@
   "channels": [
     "Entra",
     "PowerShell",
-    "JSON",
     "AI Info",
     "Email"
   ],

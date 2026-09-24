@@ -4,7 +4,7 @@
   "reason": "until a scan rebuilds this step",
   "fact": "Enforced",
   "badge": "On Hold",
-  "bar": "Not supported",
+  "bar": "Waiting on your answers",
   "rail": "Require MFA for Guests",
   "headings": [
     "About this Step",
@@ -14,12 +14,12 @@
   ],
   "tiles": [
     {
-      "label": "Partner or MSP access",
-      "state": "Confirm whether partners access your tenant"
-    },
-    {
       "label": "Prepare Emergency Access Accounts",
       "state": "Prerequisite · To do"
+    },
+    {
+      "label": "Confirm What You Use",
+      "state": "Waiting on your answers"
     },
     {
       "label": "Not supported",
@@ -28,8 +28,6 @@
   ],
   "channels": [
     "Entra",
-    "PowerShell",
-    "JSON",
     "AI Info",
     "Email"
   ],

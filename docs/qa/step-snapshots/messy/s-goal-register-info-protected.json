@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "Up Next",
   "bar": "After Prepare Emergency Access Accounts",
-  "rail": "Protect Sign-in Method Registration",
+  "rail": "Create the policy in Report-only",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "At least 77% MFA-ready"
+      "state": "At least 80% MFA-ready"
     },
     {
       "label": "Configure Emergency Exclusions",
@@ -36,8 +36,6 @@
   ],
   "channels": [
     "Entra",
-    "PowerShell",
-    "JSON",
     "AI Info"
   ],
   "when": "Est. Sep 7, 2026"
