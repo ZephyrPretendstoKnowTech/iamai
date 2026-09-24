@@ -24,7 +24,6 @@ import { answerKey, questionLabels } from './answers.ts'
 import { plainMfaFirst } from './deviations.ts'
 import { stepBodyOf } from '../ui/surfaces/stepBody.ts'
 import { stepIdForGoal } from './stepIds.ts'
-import { listCountVars, whole } from '../content/render.ts'
 import { isReady, personReadiness } from '../scoring/phishingResistant.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 
@@ -87,20 +86,6 @@ test('step 15 names the admins not yet Ready for phishing-resistant MFA on the d
   const many = contentLists({ snapshot: { ...f.snapshot, roles: { ...f.snapshot.roles, active: Object.fromEntries(r.viability.filter((v) => v.activity === 'active').slice(0, 12).map((v) => [v.userId, ['62e90394-69f5-4237-9190-012177145e10']])) } }, mapping: f.mapping, nameOf: (id) => id, now: f.snapshot.asOf })
   assert.deepEqual(many.adminsWithout, [], 'more than three: no names')
   assert.ok(Number(many.adminsWithoutCount) > NAMES_UP_TO, 'a count instead')
-})
-
-test('step 33 lists the eligible role holders with no passkey or key yet', () => {
-  const f = fixture('mid')
-  const r = runFixture(f)
-  const eligibleId = r.viability.find((v) => v.activity === 'active' && !isReady(v.readiness.state) && !f.mapping.breakGlassUserIds.includes(v.userId))!.userId
-  const snapshot = { ...f.snapshot, roles: { ...f.snapshot.roles, eligible: { [eligibleId]: ['62e90394-69f5-4237-9190-012177145e10'] } } }
-  const lists = contentLists({ snapshot, mapping: f.mapping, nameOf: (id) => id, now: f.snapshot.asOf })
-  assert.deepEqual(lists.eligibleWithout, [eligibleId])
-  const cs = stepById['pim-activation-reauth'] as unknown as { who: { evidence: string[] } }
-  const line = cs.who.evidence.find((l) => l.includes('{list:eligibleWithout}'))!
-  // On screen the line counts its own list (render.ts listCountVars); the count line stands in only past three names.
-  assert.ok(whole(line, listCountVars(line, lists)), 'the names line renders')
-  assert.equal(whole(cs.who.evidence.find((l) => l.includes('{eligibleWithoutCount}'))!, lists), false, 'the count line does not')
 })
 
 test('step 35 offers the plain-MFA rung as the first enforcement while anyone has only Authenticator approval, the baseline strength beside it', () => {

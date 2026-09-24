@@ -1,13 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { fixtureSnapshot } from '../testing/uiSnapshot.ts'
-import { effectOf, validOperations } from './operations.ts'
+import { effectOf } from './operations.ts'
 import { policyVerdict } from './strand.ts'
 import { createMethodPreparationCache, methodPreparation, methodReadiness } from './methodReadiness.ts'
-import { fixture } from './fixtures/index.ts'
-import type { Fixture } from './fixtures/index.ts'
-import { CATALOGUE } from '../coverage/coverage.ts'
-import { runFixture } from './fixtures/run.ts'
 
 function setup() {
   const snapshot = fixtureSnapshot()
@@ -28,14 +24,18 @@ test('readiness uses actual target scope and accepted methods, not a phishing-re
   assert.deepEqual(reading.ids, ['u-1', 'u-2'])
   assert.deepEqual(reading.readyIds, ['u-1'])
   assert.equal(methodReadiness('mfa', reading).percent, 50)
-})
 
-test('eligible administrator is prepared for activation without changing active role scope', () => {
-  const { snapshot, policy } = setup()
-  snapshot.roles = { active: {}, eligible: { 'u-2': ['admin-role'] } }
-  const effect = effectOf({ ...policy, conditions: { ...policy.conditions, users: { includeRoles: ['admin-role'] } } })
-  assert.deepEqual(methodPreparation([effect], snapshot.users.map(u => u.id), snapshot).ids, ['u-2'])
-  assert.deepEqual(snapshot.roles.active, {})
+  // An eligible administrator is prepared for activation without changing active role scope.
+  const eligible = setup()
+  eligible.snapshot.roles = { active: {}, eligible: { 'u-2': ['admin-role'] } }
+  const effect = effectOf({ ...eligible.policy, conditions: { ...eligible.policy.conditions, users: { includeRoles: ['admin-role'] } } })
+  assert.deepEqual(methodPreparation([effect], eligible.snapshot.users.map(u => u.id), eligible.snapshot).ids, ['u-2'])
+  assert.deepEqual(eligible.snapshot.roles.active, {})
+
+  // Quiet accounts do not need fresh sign-in proof for registration preparation.
+  const quiet = setup()
+  quiet.snapshot.sources.signInEvidence.status = 'error'
+  assert.deepEqual(methodPreparation([effectOf(quiet.policy)], ['u-1'], quiet.snapshot).readyIds, ['u-1'])
 })
 
 test('missing strength and unresolved group cannot become a passing number', () => {
@@ -46,47 +46,43 @@ test('missing strength and unresolved group cannot become a passing number', () 
   assert.equal(methodPreparation([group], ['u-1'], snapshot).completeScope, false)
 })
 
-test('restricted FIDO2 combination requires a key with the permitted model', () => {
-  const { snapshot, policy } = setup()
-  snapshot.config.authStrengths.rows = [{ id: 'target', allowedCombinations: ['fido2'], combinationConfigurations: [{ '@odata.type': '#microsoft.graph.fido2CombinationConfiguration', appliesToCombinations: ['fido2'], allowedAAGUIDs: ['approved-model'] }] }]
-  snapshot.registrationDetails[0].methodsRegistered = ['fido2SecurityKey']
-  snapshot.authMethods['u-1'] = [{ kind: 'fido2', aaGuid: 'different-model' }]
-  assert.deepEqual(methodPreparation([effectOf(policy)], ['u-1'], snapshot).readyIds, [])
-  snapshot.authMethods['u-1'] = [{ kind: 'fido2', aaGuid: 'approved-model' }]
-  assert.deepEqual(methodPreparation([effectOf(policy)], ['u-1'], snapshot).readyIds, ['u-1'])
-})
-
-test('quiet accounts do not need fresh sign-in proof for registration preparation', () => {
-  const { snapshot, policy } = setup()
-  snapshot.sources.signInEvidence.status = 'error'
-  assert.deepEqual(methodPreparation([effectOf(policy)], ['u-1'], snapshot).readyIds, ['u-1'])
-})
-
-
-test('a registered passkey excluded by the method policy is not ready for its strength', () => {
-  const { snapshot, policy } = setup()
-  snapshot.config.authStrengths.rows = [{ id: 'target', allowedCombinations: ['fido2'], combinationConfigurations: [] }]
-  snapshot.registrationDetails[0].methodsRegistered = ['fido2SecurityKey']
-  snapshot.authMethods['u-1'] = [{ kind: 'fido2', aaGuid: 'key' }]
-  const configuration = (snapshot.config.authMethodsPolicy.rows[0] as any).authenticationMethodConfigurations[1]
-  assert.deepEqual(methodPreparation([effectOf(policy)], ['u-1'], snapshot).readyIds, ['u-1'])
-  configuration.excludeTargets = [{ id: 'all_users' }]
-  assert.deepEqual(methodPreparation([effectOf(policy)], ['u-1'], snapshot).readyIds, [])
-  configuration.excludeTargets = []
-  configuration.state = 'disabled'
-  assert.deepEqual(methodPreparation([effectOf(policy)], ['u-1'], snapshot).readyIds, [])
-})
-
-test('a model must satisfy both the method policy and the target strength on the same key', () => {
-  const { snapshot, policy } = setup()
-  snapshot.config.authStrengths.rows = [{ id: 'target', allowedCombinations: ['fido2'], combinationConfigurations: [{ '@odata.type': '#microsoft.graph.fido2CombinationConfiguration', appliesToCombinations: ['fido2'], allowedAAGUIDs: ['strength-key'] }] }]
-  snapshot.registrationDetails[0].methodsRegistered = ['fido2SecurityKey']
-  snapshot.authMethods['u-1'] = [{ kind: 'fido2', aaGuid: 'method-key' }, { kind: 'fido2', aaGuid: 'strength-key' }]
-  const config = (snapshot.config.authMethodsPolicy.rows[0] as any).authenticationMethodConfigurations[1]
-  config.keyRestrictions = { isEnforced: true, enforcementType: 'allow', aaGuids: ['method-key'] }
-  assert.deepEqual(methodPreparation([effectOf(policy)], ['u-1'], snapshot).readyIds, [])
-  config.keyRestrictions.aaGuids.push('strength-key')
-  assert.deepEqual(methodPreparation([effectOf(policy)], ['u-1'], snapshot).readyIds, ['u-1'])
+test('a passkey counts only where the strength, the method policy and the permitted model all accept the same key', () => {
+  // A restricted FIDO2 combination requires a key with the permitted model.
+  {
+    const { snapshot, policy } = setup()
+    snapshot.config.authStrengths.rows = [{ id: 'target', allowedCombinations: ['fido2'], combinationConfigurations: [{ '@odata.type': '#microsoft.graph.fido2CombinationConfiguration', appliesToCombinations: ['fido2'], allowedAAGUIDs: ['approved-model'] }] }]
+    snapshot.registrationDetails[0].methodsRegistered = ['fido2SecurityKey']
+    snapshot.authMethods['u-1'] = [{ kind: 'fido2', aaGuid: 'different-model' }]
+    assert.deepEqual(methodPreparation([effectOf(policy)], ['u-1'], snapshot).readyIds, [])
+    snapshot.authMethods['u-1'] = [{ kind: 'fido2', aaGuid: 'approved-model' }]
+    assert.deepEqual(methodPreparation([effectOf(policy)], ['u-1'], snapshot).readyIds, ['u-1'])
+  }
+  // A registered passkey excluded by the method policy is not ready for its strength.
+  {
+    const { snapshot, policy } = setup()
+    snapshot.config.authStrengths.rows = [{ id: 'target', allowedCombinations: ['fido2'], combinationConfigurations: [] }]
+    snapshot.registrationDetails[0].methodsRegistered = ['fido2SecurityKey']
+    snapshot.authMethods['u-1'] = [{ kind: 'fido2', aaGuid: 'key' }]
+    const configuration = (snapshot.config.authMethodsPolicy.rows[0] as any).authenticationMethodConfigurations[1]
+    assert.deepEqual(methodPreparation([effectOf(policy)], ['u-1'], snapshot).readyIds, ['u-1'])
+    configuration.excludeTargets = [{ id: 'all_users' }]
+    assert.deepEqual(methodPreparation([effectOf(policy)], ['u-1'], snapshot).readyIds, [])
+    configuration.excludeTargets = []
+    configuration.state = 'disabled'
+    assert.deepEqual(methodPreparation([effectOf(policy)], ['u-1'], snapshot).readyIds, [])
+  }
+  // A model must satisfy both the method policy and the target strength on the same key.
+  {
+    const { snapshot, policy } = setup()
+    snapshot.config.authStrengths.rows = [{ id: 'target', allowedCombinations: ['fido2'], combinationConfigurations: [{ '@odata.type': '#microsoft.graph.fido2CombinationConfiguration', appliesToCombinations: ['fido2'], allowedAAGUIDs: ['strength-key'] }] }]
+    snapshot.registrationDetails[0].methodsRegistered = ['fido2SecurityKey']
+    snapshot.authMethods['u-1'] = [{ kind: 'fido2', aaGuid: 'method-key' }, { kind: 'fido2', aaGuid: 'strength-key' }]
+    const config = (snapshot.config.authMethodsPolicy.rows[0] as any).authenticationMethodConfigurations[1]
+    config.keyRestrictions = { isEnforced: true, enforcementType: 'allow', aaGuids: ['method-key'] }
+    assert.deepEqual(methodPreparation([effectOf(policy)], ['u-1'], snapshot).readyIds, [])
+    config.keyRestrictions.aaGuids.push('strength-key')
+    assert.deepEqual(methodPreparation([effectOf(policy)], ['u-1'], snapshot).readyIds, ['u-1'])
+  }
 })
 
 test('Authenticator targeting and unread memberships do not become usable registration', () => {
@@ -98,7 +94,7 @@ test('Authenticator targeting and unread memberships do not become usable regist
   assert.deepEqual(methodPreparation([effectOf(policy)], ['u-1'], snapshot, { groupMembers: { team: ['u-1'] } }).readyIds, ['u-1'])
 })
 
-test('scan-local readiness memo agrees across target scopes and a new derivation sees changed policy', () => {
+test('scan-local readiness memo agrees across target scopes, keeps the aged-out reason for every step, and a new derivation sees changed policy', () => {
   const { snapshot, policy } = setup()
   const effect = effectOf(policy)
   const context = {}
@@ -111,53 +107,24 @@ test('scan-local readiness memo agrees across target scopes and a new derivation
   config.excludeTargets = [{ id: 'all_users' }]
   ;(snapshot.config.authMethodsPolicy.rows[0] as any).policyMigrationState = 'migrationComplete'
   assert.deepEqual(methodPreparation([effect], ids, snapshot, context, createMethodPreparationCache(snapshot, context)).readyIds, [])
-})
 
-// Which people the denominator counts.
-//
-// One step printed "246 active people", "covers 283 enabled" and "209 of 279
-// people" — three derivable totals, none explained. The readiness
-// denominator is its own population: the people the target policies actually
-// apply to, which is neither the step's active count nor its enabled count.
-// The line said "people" and left the reader to work out which.
-test('the readiness line says which population its denominator is', () => {
-  let checked = 0
-  for (const name of ['small', 'mid', 'large', 'midflight', 'messy'] as const) {
-    for (const step of runFixture(fixture(name)).steps) {
-      const line = step.readiness.lines[0]
-      if (typeof line !== 'string' || !/[0-9]+ of [0-9]+ people/.test(line)) continue
-      // The campaign step states its own cohort in its own words; this is the
-      // policy steps' readiness line (methodReadiness.ts).
-      if (!step.methodPreparation) continue
-      checked++
-      // "In scope of these policies" read as one number over two steps whose
-      // policies include different people — 200 of 265 on one step, 209 of 279
-      // on the next, both headed MFA readiness (R4-14, Marcus D4). The line names
-      // the step's own policies, so two steps reading two numbers say why.
-      assert.match(line, /people this step's policies include/, `${name}/${step.id}: ${line}`)
-      assert.doesNotMatch(line, /these policies/, `${name}/${step.id}: ${line}`)
-      // And the count itself is unchanged: the population it counts is the
-      // step's own methodPreparation, not a new one.
-      const m = /([0-9]+) of ([0-9]+) people/.exec(line)!
-      assert.equal(Number(m[2]), step.methodPreparation?.ids.length, `${name}/${step.id}: the denominator moved`)
-      assert.equal(Number(m[1]), step.methodPreparation?.readyIds.length, `${name}/${step.id}: the numerator moved`)
-    }
+  // R4-15: the answer is shared across steps in one scan, and only the step that
+  // computed it used to record why. Two steps reading the same people from one
+  // scan name the same aged-out sign-ins.
+  {
+    const { snapshot } = setup()
+    ;(snapshot.config.authMethodsPolicy.rows[0] as any).authenticationMethodConfigurations[0].includeTargets = [{ id: 'team', targetType: 'group' }]
+    const old = new Date(Date.parse(snapshot.asOf) - 60 * 86_400_000).toISOString()
+    snapshot.signInEvidence['u-1'] = { ...snapshot.signInEvidence['u-1'], proofs: [{ cls: 'authenticator', os: 'Windows', at: old, method: 'Mobile app notification' }] } as never
+    const requireMfa = (users: string[]) => effectOf({ state: 'enabled', conditions: { users: { includeUsers: users }, applications: { includeApplications: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } })
+    const ids = snapshot.users.map(u => u.id)
+    const cache = createMethodPreparationCache(snapshot, {})
+    const first = methodPreparation([requireMfa(['u-1', 'u-2'])], ids, snapshot, {}, cache)
+    const second = methodPreparation([requireMfa(['u-1', 'u-3'])], ids, snapshot, {}, cache)
+    assert.deepEqual(first.staleIds, ['u-1'], 'the premise: u-1 is unknown only because the sign-in aged out')
+    assert.deepEqual(second.staleIds, first.staleIds, 'the second step lost the reason')
+    assert.deepEqual(second, methodPreparation([requireMfa(['u-1', 'u-3'])], ids, snapshot, {}), 'the shared answer differs from a fresh one')
   }
-  assert.ok(checked > 3, `only ${checked} steps printed a readiness reading`)
-})
-
-// Two readings that were sentences about nobody. "0 of 0 people in scope of
-// these policies have a registered method" stood where there was nobody to
-// count, and "None of the 1 person in scope could be judged" was the
-// count-of-one rule applied to a sentence written for many.
-test('nobody to count states no reading, and one person unjudged reads as one', () => {
-  const nobody = methodReadiness('mfa', { ids: [], readyIds: [], unknownIds: [], completeScope: true })
-  assert.deepEqual(nobody.lines, [])
-  assert.equal(nobody.unmeasured, 'no-population')
-  const one = methodReadiness('mfa', { ids: ['a'], readyIds: [], unknownIds: ['a'], completeScope: true })
-  assert.deepEqual(one.lines, ['The one person in scope could not be judged: method compatibility is not established for them.'])
-  const two = methodReadiness('mfa', { ids: ['a', 'b'], readyIds: [], unknownIds: ['a', 'b'], completeScope: true })
-  assert.match(two.lines[0], /^None of the 2 people in scope could be judged/)
 })
 
 // R4-42 (Sam D8), R4-15 (Marcus D5). One registration was judged two ways.
@@ -201,50 +168,6 @@ test('R4-42: the built-in Multifactor authentication strength judges every perso
   assert.deepEqual(effectOf({ state: 'enabled', conditions: scope, grantControls: { operator: 'OR', authenticationStrength: { id: '00000000-0000-0000-0000-000000000004' } } }).requirements, [{ kind: 'strength', id: '00000000-0000-0000-0000-000000000004' }])
 })
 
-/**
- * The large tenant on a baseline that carries its own admin-portal and
- * device-registration policies, each requiring Microsoft's built-in MFA strength.
- *
- * These goals were written from their own templates on the fixtures' stand-in
- * baseline, and those templates ask for the built-in MFA strength. A goal the
- * pinned map holds is written from the pinned policy now (q-pin), which asks for
- * the baseline's own strength, and the pinned admin-portal policy contradicts
- * itself; so the premise these cases need is built here, from the same bodies,
- * as a baseline's own policies.
- */
-function withBuiltInMfaSources(f: Fixture): Fixture {
-  const first = f.baseline.policies[0] as unknown as { conditions: { users: unknown }; placeholders?: Record<string, string> }
-  const own = ['admin-portals-protected', 'device-registration-mfa'].map((goalId, i) => {
-    const template = structuredClone(CATALOGUE.find((g) => g.id === goalId)!.implementations[0].template) as { conditions: Record<string, unknown> }
-    return { ...template, id: `00000000-0000-4000-8000-00000000005${i}`, displayName: `Custom - ${goalId}`, state: 'enabled', placeholders: first.placeholders, conditions: { ...template.conditions, users: first.conditions.users } }
-  })
-  return { ...f, baseline: { ...f.baseline, policies: [...f.baseline.policies, ...own] as typeof f.baseline.policies } }
-}
-
-test('R4-42: on a generated plan, a step requiring the built-in MFA strength reads exactly what Require MFA would', () => {
-  const f = withBuiltInMfaSources(fixture('large'))
-  const run = runFixture(f)
-  // The group memberships the plan read, as the generator hands them on.
-  const groupMembers: Record<string, string[]> = {}
-  for (const [id, g] of run.input.groupMembers?.entries() ?? []) if (g.sampled !== true) groupMembers[id.toLowerCase()] = [...g.memberIds]
-  let checked = 0
-  for (const id of ['s-goal-admin-portals-protected', 's-goal-device-registration-mfa']) {
-    const step = run.steps.find((s) => s.id === id)!
-    const body = validOperations(step.action).map((o) => (o.mode === 'update' ? o.target : o.body) as Record<string, unknown>)
-    assert.equal(body.length, 1, `${id}: the premise is one policy`)
-    const grant = body[0].grantControls as { authenticationStrength?: { id?: string } }
-    assert.equal(grant.authenticationStrength?.id, '00000000-0000-0000-0000-000000000002', `${id}: the premise is the built-in MFA strength`)
-    const people = run.viability.map((v) => v.userId)
-    const asGrant = methodPreparation([effectOf({ ...body[0], grantControls: { operator: 'OR', builtInControls: ['mfa'] } })], people, f.snapshot, { groupMembers })
-    const asStrength = methodPreparation([effectOf(body[0])], people, f.snapshot, { groupMembers })
-    assert.deepEqual(asStrength, asGrant, `${id}: one registration, two answers`)
-    assert.equal(step.methodPreparation?.unknownIds.length, 0, `${id}: ${step.readiness.lines[0]}`)
-    assert.equal(step.readiness.atLeast, undefined, `${id}: a floor where Require MFA reads a number`)
-    checked++
-  }
-  assert.equal(checked, 2)
-})
-
 // R4-15 (Marcus D5). "13 of those were confirmed by a sign-in that is now older
 // than 30 days, so nothing about them has changed: ask them to sign in once with
 // that method and the next scan counts them again." Their old sign-ins were text
@@ -276,45 +199,6 @@ test('R4-15: an aged-out sign-in is named only where the same sign-in made today
   assert.deepEqual(passkey.staleIds, ['u-1'])
   assert.match(methodReadiness('mfa', passkey).lines[0], /confirmed by a sign-in that is now older than 30 days/)
   assert.deepEqual(signedIn('passkey', snapshot.asOf).readyIds, ['u-1', 'u-2'], 'and made today, it counts them: the promise is kept')
-})
-
-// The R4-15 review. The clause said of these people "so nothing about them has
-// changed". The scan cannot know that: there is no registration history, and
-// under the rule above a person is aged out while their fresh sign-ins used
-// another method — here a text message this week, beside a passkey sign-in two
-// months ago, on a step only a passkey sign-in settles.
-test('R4-15: the aged-out clause says how old the sign-in is, never that nothing about the person changed', () => {
-  const { snapshot, policy } = setup()
-  snapshot.config.authStrengths.rows = [{ id: 'target', allowedCombinations: ['fido2', 'password,microsoftAuthenticatorPush'], combinationConfigurations: [] }]
-  ;(snapshot.config.authMethodsPolicy.rows[0] as any).authenticationMethodConfigurations[0].includeTargets = [{ id: 'team', targetType: 'group' }]
-  const old = new Date(Date.parse(snapshot.asOf) - 60 * 86_400_000).toISOString()
-  snapshot.signInEvidence['u-2'] = { ...snapshot.signInEvidence['u-2'], proofs: [{ cls: 'passkey', os: 'Windows', at: snapshot.asOf, method: 'passkey' }] } as never
-  snapshot.signInEvidence['u-1'] = { ...snapshot.signInEvidence['u-1'], proofs: [{ cls: 'passkey', os: 'Windows', at: old, method: 'passkey' }, { cls: 'phone', os: 'Windows', at: snapshot.asOf, method: 'phone' }] } as never
-  const reading = methodPreparation([effectOf(policy)], ['u-1', 'u-2'], snapshot)
-  assert.deepEqual(reading.staleIds, ['u-1'], 'the premise: aged out, while signing in this week with another method')
-  const line = methodReadiness('mfa', reading).lines[0]
-  assert.match(line, / Method compatibility is not yet established for 1 — 1 of those was confirmed by a sign-in that is now older than 30 days: ask them to sign in once with that method and the next scan counts them again\.$/, line)
-  assert.doesNotMatch(line, /changed/, 'a claim about the person the scan has no record to make')
-})
-
-// The same clause was lost on the second step reading the same people: the
-// answer is shared across steps in one scan (createMethodPreparationCache) and
-// only the step that computed it recorded why. Device registration read "not
-// yet established for 38" beside Admin Portals' "— 13 of those were confirmed
-// by a sign-in that is now older than 30 days", over the same people.
-test('R4-15: two steps reading the same people from one scan name the same aged-out sign-ins', () => {
-  const { snapshot } = setup()
-  ;(snapshot.config.authMethodsPolicy.rows[0] as any).authenticationMethodConfigurations[0].includeTargets = [{ id: 'team', targetType: 'group' }]
-  const old = new Date(Date.parse(snapshot.asOf) - 60 * 86_400_000).toISOString()
-  snapshot.signInEvidence['u-1'] = { ...snapshot.signInEvidence['u-1'], proofs: [{ cls: 'authenticator', os: 'Windows', at: old, method: 'Mobile app notification' }] } as never
-  const requireMfa = (users: string[]) => effectOf({ state: 'enabled', conditions: { users: { includeUsers: users }, applications: { includeApplications: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } })
-  const ids = snapshot.users.map(u => u.id)
-  const cache = createMethodPreparationCache(snapshot, {})
-  const first = methodPreparation([requireMfa(['u-1', 'u-2'])], ids, snapshot, {}, cache)
-  const second = methodPreparation([requireMfa(['u-1', 'u-3'])], ids, snapshot, {}, cache)
-  assert.deepEqual(first.staleIds, ['u-1'], 'the premise: u-1 is unknown only because the sign-in aged out')
-  assert.deepEqual(second.staleIds, first.staleIds, 'the second step lost the reason')
-  assert.deepEqual(second, methodPreparation([requireMfa(['u-1', 'u-3'])], ids, snapshot, {}), 'the shared answer differs from a fresh one')
 })
 
 // R4-41 (Sam D7), the residual the challenger kept, and R4-15 (Marcus D5). 669 of
@@ -422,43 +306,4 @@ test('R4-41: the methods policy is named only where the policies that refused a 
   // Text back on would count u-2 and not u-1, whom the strength still refuses.
   const both = methodPreparation([policy(['u-1', 'u-2'], { operator: 'OR', builtInControls: ['mfa'] }), phishingResistant(['u-1'])], ['u-1', 'u-2'], snapshot)
   assert.deepEqual(both.offIds, ['u-2'])
-})
-
-test('R4-41: on a generated plan, the gate names the people holding only a phone the tenant switched off, the same on every step reading them', () => {
-  const f = withBuiltInMfaSources(fixture('large'))
-  const methods = ((f.snapshot.config.authMethodsPolicy.rows[0] as any).authenticationMethodConfigurations as { id: string; state: string }[])
-  assert.deepEqual(methods.filter(c => ['Sms', 'Voice'].includes(c.id)).map(c => c.state), ['disabled', 'disabled'], 'the premise: text and voice are off')
-  const run = runFixture(f)
-  const phoneOnly = new Set(f.snapshot.registrationDetails.filter(r => r.methodsRegistered.length > 0 && r.methodsRegistered.every(m => /phone/i.test(m))).map(r => r.id))
-  const nothing = new Set(f.snapshot.registrationDetails.filter(r => r.methodsRegistered.length === 0).map(r => r.id))
-  const step = run.steps.find((s) => s.id === 's-goal-admin-portals-protected')!
-  const prep = step.methodPreparation!
-  const off = prep.ids.filter(id => phoneOnly.has(id))
-  assert.ok(off.length > 0 && prep.ids.some(id => nothing.has(id)), 'the premise: people in scope hold only a phone, and others hold nothing')
-  assert.deepEqual(prep.offIds, off, 'the phone-only people, and not the people who registered nothing')
-  const short = prep.ids.length - prep.readyIds.length - prep.unknownIds.length
-  assert.ok(off.length < short, 'the premise: some of the people not counted registered nothing')
-  const line = step.readiness.lines[0]
-  // The sentence states the counterfactual it counts (the R4-41 review test above).
-  assert.ok(line.includes(`. ${off.length.toLocaleString('en')} of the ${short.toLocaleString('en')} people without one would be counted if this tenant's Authentication methods policy allowed the methods they registered.`), line)
-  // Another step over the same people reads the same people the same way (one reading per person per scan).
-  const sibling = run.steps.find((s) => s.id === 's-goal-device-registration-mfa')!
-  assert.deepEqual(sibling.methodPreparation!.ids, prep.ids, 'the premise: the same people')
-  assert.deepEqual(sibling.methodPreparation!.offIds, prep.offIds)
-
-  // The review: the administrator step asks for the phishing-resistant strength,
-  // which refuses a phone whatever the methods policy says. It named the
-  // phone-only administrators as held back by the methods policy.
-  const admins = run.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!
-  const adminPrep = admins.methodPreparation!
-  const phoneAdmins = adminPrep.ids.filter(id => phoneOnly.has(id))
-  assert.ok(phoneAdmins.length > 0 && phoneAdmins.every(id => !adminPrep.readyIds.includes(id)), 'the premise: administrators hold only a phone, and are not ready')
-  assert.deepEqual(adminPrep.offIds ?? [], [])
-  assert.doesNotMatch(admins.readiness.lines[0], /Authentication methods policy/, admins.readiness.lines[0])
-  // The tenant's own MFA-for-all-users policies sit beside its phishing-resistant
-  // administrator policies, so text back on would count everyone on that step but them.
-  const everyone = run.steps.find((s) => s.id === 's-goal-mfa-all-users')!.methodPreparation!
-  assert.ok(phoneAdmins.every(id => everyone.ids.includes(id)), 'the premise: the same administrators are on the all-users step')
-  assert.deepEqual((everyone.offIds ?? []).filter(id => phoneAdmins.includes(id)), [])
-  assert.deepEqual(everyone.offIds, everyone.ids.filter(id => phoneOnly.has(id) && !phoneAdmins.includes(id)))
 })

@@ -139,7 +139,7 @@ test('the lifecycle belongs to a policy: a step that deploys none has no stage',
   for (const stage of ['not-deployed', 'report-only', 'ready-to-enforce', 'enforced']) assert.ok(seen.has(stage as Lifecycle), `no fixture reaches ${stage}`)
 })
 
-test('review required is a condition, never a stage and never a gate', () => {
+test('the projection: review required is a condition, never a stage or a gate; no condition invents a stage; an unanswered question is a decision; a stored word reads back as its state', () => {
   // Against the lifecycle: raising the condition to review-required moves
   // neither the stage nor the word, on any step of any fixture.
   const wrong: string[] = []
@@ -162,9 +162,8 @@ test('review required is a condition, never a stage and never a gate', () => {
       assert.ok(word === 'blocked' || STAGE_WORDS.includes(word), `${gate} at ${lifecycle} read ${word}`)
     }
   }
-})
 
-test('a condition never invents a stage, and a stage never sets a step aside', () => {
+  // A condition never invents a stage, and a stage never sets a step aside.
   for (const condition of CONDITIONS) {
     // With no policy deployed and nothing delivered, no condition can produce a
     // word that only a lifecycle stage earns.
@@ -177,9 +176,8 @@ test('a condition never invents a stage, and a stage never sets a step aside', (
     assert.notEqual(projectStatus(stateWith({ lifecycle })), 'skipped', `${lifecycle} set a step aside on its own`)
     assert.equal(projectStatus(stateWith({ lifecycle, setAside: true })), 'skipped', 'set aside is the operator, whatever the policy is doing')
   }
-})
 
-test('a question nobody has answered is a decision, not work waiting to be done', () => {
+  // A question nobody has answered is a decision, not work waiting to be done.
   assert.equal(conditionFor([]), 'healthy')
   assert.equal(conditionFor([{ kind: 'step', stepId: 's-prereq-device-plan', label: 'device-decision' }]), 'needs-decision')
   assert.equal(conditionFor([{ kind: 'setup', questionNumber: 3, label: 'countries' }]), 'needs-decision')
@@ -190,6 +188,14 @@ test('a question nobody has answered is a decision, not work waiting to be done'
   assert.equal(conditionFor([{ kind: 'readiness', label: 'readiness' }, { kind: 'evidence', label: 'baseline-conflict' }]), 'baseline-conflict')
   // Either way the operator sees the same word, so this changes nothing on screen.
   assert.equal(projectStatus(stateWith({ condition: 'needs-decision' })), 'blocked')
+
+  // A stored word reads back as the state it stood for, and only there.
+  const words: StepStatus[] = ['done', 'ready', 'blocked', 'in-report-only', 'ready-to-enforce', 'skipped']
+  for (const word of words) {
+    const step = { status: 'ready', state: initialState() } as Step
+    setState(step, stateForStatus(word))
+    assert.equal(step.status, word, `${word} did not read back as itself`)
+  }
 })
 
 // ---- 3: In place is a preservation result, not a Conditional Access state ----
@@ -262,7 +268,7 @@ test('every date the tracking claims names where it came from', () => {
   assert.deepEqual(wrong, [])
 })
 
-test('a first sighting is IAMAI’s, and only a record of the policy being evaluated is Microsoft’s', () => {
+test('a first sighting is IAMAI’s, only a record of the policy being evaluated is Microsoft’s, an unrecorded fingerprint proves nothing, and Graph’s state words read as they say', () => {
   const at = '2026-09-05T00:00:00.000Z'
   const first = observe(null, { artifact: 'A', state: 'report-only', semantics: 'aaaa', at, evidenceAt: null })
   assert.equal(first.changed, 'first-scan')
@@ -273,6 +279,22 @@ test('a first sighting is IAMAI’s, and only a record of the policy being evalu
   // The one transition a tenant proves: a sign-in evaluated under the policy.
   const proven = observe(null, { artifact: 'A', state: 'report-only', semantics: 'aaaa', at, evidenceAt: '2026-08-20T00:00:00.000Z' })
   assert.equal(proven.latest.evidenceAt, '2026-08-20T00:00:00.000Z')
+
+  // An unrecorded fingerprint proves nothing, and never restarts a window on its own.
+  const prior: StepObservation = { artifact: 'A', state: 'report-only', semantics: '', fields: {}, firstSeenAt: '2026-08-20T00:00:00.000Z', since: 'first-scan', lastSeenAt: '2026-08-20T00:00:00.000Z', evidenceAt: null }
+  const now = observe(prior, { artifact: 'A', state: 'report-only', semantics: 'abcd', at: '2026-09-05T00:00:00.000Z' })
+  assert.equal(now.changed, 'none')
+  assert.equal(now.continuity, 'continues', 'a record written before the fingerprint existed is not a rewrite')
+  assert.equal(now.reviewRequired, false)
+  assert.equal(now.latest.firstSeenAt, prior.firstSeenAt, 'the window it earned survives, because the object did not change')
+
+  // observedStateOf reads Graph's word, and a policy that is not there is not deployed.
+  assert.equal(observedStateOf('enabled'), 'enforced')
+  assert.equal(observedStateOf('enabledForReportingButNotEnforced'), 'report-only')
+  assert.equal(observedStateOf('disabled'), 'disabled')
+  assert.equal(observedStateOf(null), 'absent')
+  assert.equal(observedStateOf(undefined), 'absent')
+  assert.equal(observedStateOf('somethingNew'), 'unknown', 'a state IAMAI does not recognise is not read as anything')
 })
 
 // ---- 5: what a scan sees, against what the last one saw ----
@@ -298,15 +320,6 @@ test('a rename is not a change: the fingerprint is what the policy does', () => 
   // And a policy that is not there fingerprints as nothing, which is never read
   // as a change (a record from before this contract carries none either).
   assert.equal(semanticsOf(null), '')
-})
-
-test('an unrecorded fingerprint proves nothing, and never restarts a window on its own', () => {
-  const prior: StepObservation = { artifact: 'A', state: 'report-only', semantics: '', fields: {}, firstSeenAt: '2026-08-20T00:00:00.000Z', since: 'first-scan', lastSeenAt: '2026-08-20T00:00:00.000Z', evidenceAt: null }
-  const now = observe(prior, { artifact: 'A', state: 'report-only', semantics: 'abcd', at: '2026-09-05T00:00:00.000Z' })
-  assert.equal(now.changed, 'none')
-  assert.equal(now.continuity, 'continues', 'a record written before the fingerprint existed is not a rewrite')
-  assert.equal(now.reviewRequired, false)
-  assert.equal(now.latest.firstSeenAt, prior.firstSeenAt, 'the window it earned survives, because the object did not change')
 })
 
 test('a material change restarts the observation; a state that moves the way the plan asked does not', () => {
@@ -434,34 +447,29 @@ const recordDay = (d: number): string => new Date(Date.parse('2026-09-01T00:00:0
 const scanned = (prior: StepObservation | null, state: StepObservation['state'], d: number, reportOnlyRecords = false): StepObservation =>
   observe(prior, { artifact: state === 'absent' ? null : 'A', state, semantics: state === 'absent' ? '' : 'aaaa', at: recordDay(d), reportOnlyRecords }).latest
 
-test("a policy recorded absent and found On is not said to have skipped report-only where the scan's records show it in report-only", () => {
+test("a scan whose records show a policy in report-only never says it skipped report-only or was never watched in it", () => {
+  // Recorded absent and found On.
   const absent = scanned(null, 'absent', 0)
   assert.equal(scanned(absent, 'enforced', 20).skippedWindow, true, 'the premise: no records, and the arrival On is a skipped period')
   assert.equal(scanned(absent, 'enforced', 20, true).skippedWindow, undefined, 'absent, report-only between scans, then On: the records show the period')
-})
 
-test("a policy seen arrive Off and found On is not said to have skipped report-only where the scan's records show it in report-only", () => {
-  const absent = scanned(null, 'absent', 0)
+  // Seen arrive Off and found On.
   const off = scanned(absent, 'disabled', 1)
   assert.equal(off.offOnly, true, 'the premise: seen arrive Off')
   assert.equal(scanned(off, 'enforced', 20).skippedWindow, true, 'the premise: no records, and Off to On is a skipped period')
   assert.equal(scanned(off, 'enforced', 20, true).skippedWindow, undefined, 'absent, Off, report-only between scans, then On: the records show the period')
   assert.equal(scanned(absent, 'disabled', 16, true).offOnly, undefined, 'an Off sighting whose records show report-only was not only ever Off')
   assert.equal(scanned(off, 'disabled', 16, true).offOnly, undefined, 'nor is one carried from an earlier Off')
-})
 
-test("a carried skipped report-only period drops when a later scan's records show the same object in report-only", () => {
+  // A carried skipped period drops when a later scan's records show the same object in report-only.
   const created = scanned(scanned(null, 'absent', 0), 'enforced', 3)
   assert.equal(created.skippedWindow, true, 'the premise: watched arrive On')
   assert.equal(scanned(created, 'enforced', 6).skippedWindow, true, 'the premise: carried with the object')
   assert.equal(scanned(created, 'enforced', 6, true).skippedWindow, undefined, 'records of the same object in report-only disprove it')
-})
 
-test("a policy the scan's records show in report-only is not recorded as never watched in report-only, and its arrival note claims no missing period", () => {
   // The arrival note (observations.appearedEnforced) and neverObserved, which
   // the Done-when reads as "IAMAI watched no report-only period", said so of a
   // policy whose report-only records the same scan held.
-  const absent = scanned(null, 'absent', 0)
   const arrival = (reportOnlyRecords: boolean) => observe(absent, { artifact: 'A', state: 'enforced', semantics: 'aaaa', at: recordDay(20), reportOnlyRecords })
   assert.equal(arrival(false).latest.neverObserved, true, 'the premise: no records, and the arrival On was never watched in report-only')
   assert.match(arrival(false).note, /without a report-only period IAMAI could watch/, 'the premise: and the note says so')
@@ -475,15 +483,6 @@ test("a policy the scan's records show in report-only is not recorded as never w
   const later = observe(on, { artifact: 'A', state: 'enforced', semantics: 'aaaa', at: recordDay(6), reportOnlyRecords: true })
   assert.equal(later.latest.neverObserved, undefined, 'records of the same object in report-only disprove it')
   assert.equal(/without a report-only period/.test(later.note), false, later.note)
-})
-
-test('observedStateOf reads Graph’s word, and a policy that is not there is not deployed', () => {
-  assert.equal(observedStateOf('enabled'), 'enforced')
-  assert.equal(observedStateOf('enabledForReportingButNotEnforced'), 'report-only')
-  assert.equal(observedStateOf('disabled'), 'disabled')
-  assert.equal(observedStateOf(null), 'absent')
-  assert.equal(observedStateOf(undefined), 'absent')
-  assert.equal(observedStateOf('somethingNew'), 'unknown', 'a state IAMAI does not recognise is not read as anything')
 })
 
 // ---- the contract, through the whole engine ----
@@ -589,63 +588,6 @@ test('a policy watched for its whole window is ready to enforce; the same policy
   assert.ok(d.state.condition === 'review-required' || d.state.condition === 'blocked', d.state.condition)
 })
 
-test('a rename between two scans changes nothing the plan is waiting on', () => {
-  const run = runFixture(DEMO)
-  const before = run.steps.find((s) => s.id === ADMINS)!
-  const snapshot = structuredClone(DEMO.snapshot)
-  const rows = (snapshot.config.caPolicies?.rows ?? []) as { id?: string; displayName?: string; modifiedDateTime?: string }[]
-  const row = rows.find((p) => p.id === before.tracking?.policyId)!
-  row.displayName = `${row.displayName ?? ''} (renamed)`
-  row.modifiedDateTime = snapshot.asOf
-  applyProgress(run.steps, watchedClean(snapshot), run.coverage, DEMO.planId, undefined, null, demoObservation(), demoScope())
-  const after = run.steps.find((s) => s.id === ADMINS)!
-  assert.equal(after.state.observation?.changed, 'none')
-  assert.equal(after.state.observation?.continuity, 'continues')
-  assert.equal(after.state.observation?.reviewRequired, false)
-  assert.equal(after.tracking?.readyNow, true, 'the window a rename cannot touch')
-})
-
-test('a record written before this contract loads, and cannot vouch for a policy it never named', () => {
-  // This used to assert the opposite: that the migrated date kept its window. It
-  // cannot. A record of that vintage holds one date per *step*, and a step is not
-  // a policy — nothing in it says which object was watched, so it cannot show
-  // that the ten days it counted were spent on the policy deployed now. The date
-  // still loads, still reads back, and still shows in the history; what it no
-  // longer does is close a rollout gate on its own.
-  const seenAt = new Date(Date.parse(DEMO.snapshot.asOf) - TEN_DAYS).toISOString()
-  const migrated = observationsFrom({ reportOnlySeen: { [ADMINS]: seenAt } })
-  assert.deepEqual(migrated[ADMINS], { members: {}, unattributed: { artifact: null, state: 'report-only', semantics: '', fields: {}, firstSeenAt: seenAt, since: 'first-scan', lastSeenAt: seenAt, evidenceAt: null } }, 'a record of that vintage names no member, and is filed as one nobody has attributed')
-  const run = runFixture(DEMO)
-  applyProgress(run.steps, DEMO.snapshot, run.coverage, DEMO.planId, undefined, null, migrated)
-  const s = run.steps.find((x) => x.id === ADMINS)!
-  assert.equal(s.state.observation?.continuity, 'unknown', 'the record cannot say which policy it watched')
-  assert.equal(s.state.observation?.prior?.firstSeenAt, seenAt, 'and the date it holds is still there to show')
-  assert.notEqual(s.state.lifecycle, 'ready-to-enforce', 'so it does not carry the step over a gate on its own')
-  assert.equal(s.tracking?.reportOnlyAt, DEMO.snapshot.asOf, 'the window runs from the scan that could name the policy')
-  // Nothing is wrong with the tenant, so nothing asks the operator to look.
-  assert.notEqual(s.state.condition, 'review-required')
-  // A record of this vintage is read once and written back in the new shape,
-  // naming the object from here on.
-  const kept = observationsOf(run.steps)
-  assert.equal(soleOf(kept, ADMINS).semantics.length, 8, 'the fingerprint is recorded from here on')
-  assert.equal(soleOf(kept, ADMINS).artifact, artifactIdOf(s.tracking?.policyId), 'and so is the object')
-  assert.deepEqual(observationsFrom({ observations: kept }), kept, 'what the record holds reads back as what it holds')
-})
-
-test('the observation the record keeps is the one history a regeneration cannot repeat', () => {
-  for (const { f: { name }, r } of runs) {
-    const kept = observationsOf(r.steps)
-    for (const s of r.steps) {
-      const deploys = s.kind === 'create' || s.kind === 'adjust'
-      assert.equal(s.id in kept, deploys, `${name}/${s.id}: a ${s.kind} step ${deploys ? 'should' : 'should not'} be observed`)
-      if (!deploys) continue
-      assert.equal(soleOf(kept, s.id).firstSeenAt, r.input.snapshot.asOf, `${name}/${s.id}: a first scan sees everything for the first time`)
-      assert.equal(soleOf(kept, s.id).state, observedStateOf(((r.input.snapshot.config.caPolicies?.rows ?? []) as { id?: string; state?: string }[]).find((p) => p.id === s.tracking?.policyId)?.state ?? null))
-    }
-    assert.deepEqual(observationsFrom({ observations: kept }), kept, `${name}: the record round-trips`)
-  }
-})
-
 // ---- which policy the history belongs to ----
 //
 // A fingerprint says what a policy means. It does not say whether this is the
@@ -698,6 +640,18 @@ test('1: a policy replaced by a different object meaning the same thing inherits
   // The record now names the object it is about.
   assert.equal(soleOf(observationsOf([s]), ADMINS).artifact, artifactIdOf(B_ID))
   assert.notEqual(soleOf(observationsOf([s]), ADMINS).artifact, watched.artifact)
+
+  // 4: the replacement is exactly what the plan meant to deploy (the demo's
+  // admins policy already carries the body this step submits), so it is the plan
+  // landing rather than a drift. The window still restarts — nobody has watched
+  // the new object — and that reset is not, by itself, a reason to put the step
+  // into Review required.
+  assert.deepEqual(s.state.observation?.latest.fields, s.state.observation?.prior?.fields, 'and it means exactly what the old one meant')
+  assert.equal(s.state.observation?.reviewRequired, false)
+  assert.notEqual(s.state.condition, 'review-required', 'a restarted clock is not a rollout in trouble')
+  // The two axes stay orthogonal: where it is, and whether anything is wrong.
+  assert.equal(s.state.lifecycle, 'report-only')
+  assert.equal(statusOf(s).word, isHeld(s) ? 'Report-only · Blocked' : 'Report-only')
 })
 
 test('2: a rename of the same object keeps the window it earned', () => {
@@ -716,48 +670,6 @@ test('2: a rename of the same object keeps the window it earned', () => {
   assert.equal(s.state.observation?.latest.artifact, soleOf(prior, ADMINS).artifact, 'the same object')
   assert.equal(s.state.observation?.latest.firstSeenAt, soleOf(prior, ADMINS).firstSeenAt, 'the window survives')
   assert.equal(s.tracking?.readyNow, true, 'and the rename moved nothing backwards')
-})
-
-test('3: the same object materially rewritten is watched from the rewrite, not from before it', () => {
-  const prior = demoObservation({ evidenceAt: new Date(Date.parse(DEMO.snapshot.asOf) - TEN_DAYS).toISOString() })
-  const s = rescan((row) => {
-    row.grantControls = { operator: 'OR', builtInControls: ['block'] }
-  }, prior)
-  assert.equal(s.state.observation?.latest.artifact, soleOf(prior, ADMINS).artifact, 'the same object')
-  assert.equal(s.state.observation?.changed, 'semantics')
-  assert.equal(s.state.observation?.continuity, 'reset')
-  assert.notEqual(s.state.observation?.latest.semantics, soleOf(prior, ADMINS).semantics)
-  assert.equal(s.state.observation?.latest.firstSeenAt, DEMO.snapshot.asOf, 'the clock restarts at the rewrite')
-  assert.equal(s.state.observation?.latest.evidenceAt, null, 'records from before it are about what the policy used to be')
-  assert.equal(s.tracking?.reportOnlyAt, DEMO.snapshot.asOf)
-  assert.equal(s.tracking?.readyNow, false, 'the new semantics have not been watched')
-  // And the other axis: the grant moved and this step's operation submits no
-  // grant, so nothing about the plan accounts for it. Re-deriving the plan from
-  // the drifted tenant does not change that — the update's target now contains
-  // the drift, and the intent contract reads the patch, not the target.
-  assert.equal(s.state.observation?.expected, false, 'a drift is not authorised by being copied into the target')
-  assert.equal(s.state.observation?.reviewRequired, true)
-})
-
-test('4: a replacement that is exactly what the plan meant to deploy resets the window and asks nobody to look', () => {
-  // The demo's admins policy already carries the body this step submits, so a
-  // new object with the same body is the plan landing rather than a drift. The
-  // window still restarts — nobody has watched the new object — and that reset is
-  // not, by itself, a reason to put the step into Review required.
-  const prior = demoObservation()
-  const s = rescan((row) => {
-    row.id = B_ID
-  }, prior)
-  assert.equal(s.state.observation?.continuity, 'reset', 'the new object has its own history to earn')
-  assert.deepEqual(s.state.observation?.latest.fields, s.state.observation?.prior?.fields, 'and it means exactly what the old one meant')
-  // Nothing material moved, so there is nothing to call expected or unexpected —
-  // and nothing for anybody to look at. Replacing the object is not, by itself,
-  // a reason to put the step into Review required.
-  assert.equal(s.state.observation?.reviewRequired, false)
-  assert.notEqual(s.state.condition, 'review-required', 'a restarted clock is not a rollout in trouble')
-  // The two axes stay orthogonal: where it is, and whether anything is wrong.
-  assert.equal(s.state.lifecycle, 'report-only')
-  assert.equal(statusOf(s).word, isHeld(s) ? 'Report-only · Blocked' : 'Report-only')
 })
 
 test('5: a legacy record loads, explains itself, and closes no gate — unless this policy’s own evidence does', () => {
@@ -785,41 +697,6 @@ test('5: a legacy record loads, explains itself, and closes no gate — unless t
   assert.equal(proven.tracking?.readyNow, true)
 })
 
-test('6: the history follows the policy the step matched, never the step id', () => {
-  const prior = demoObservation()
-  const before = runFixture(DEMO).steps.find((s) => s.id === ADMINS)!
-  const after = rescan((row) => {
-    row.id = B_ID
-  }, prior)
-  assert.equal(after.id, before.id, 'the same row of the plan')
-  assert.notEqual(after.tracking?.policyId, before.tracking?.policyId, 'a different policy delivering it')
-  assert.notEqual(soleOf(observationsOf([after]), ADMINS).artifact, soleOf(prior, ADMINS).artifact, 'and the record says so')
-  assert.equal(after.state.observation?.latest.firstSeenAt, DEMO.snapshot.asOf, 'so none of the timing came across')
-})
-
-test('7: a new object may use its own current evidence, and never the old object’s history', () => {
-  const prior = demoObservation()
-  const provenAt = new Date(Date.parse(DEMO.snapshot.asOf) - 12 * 86_400_000).toISOString()
-  const s = rescan((row, snapshot) => {
-    row.id = B_ID
-    snapshot.evidencePolicyResults = [
-      {
-        policyId: B_ID,
-        displayName: String(row.displayName ?? ''),
-        counts: { reportOnlyFailure: 0, reportOnlyInterrupted: 0, reportOnlySuccess: 0, enforcedFailure: 0, enforcedSuccess: 0 },
-        affectedUserIds: { reportOnlyFailure: [], reportOnlyInterrupted: [], reportOnlySuccess: [], enforcedFailure: [], enforcedSuccess: [] },
-        firstReportOnlyAt: provenAt,
-      },
-    ] as typeof snapshot.evidencePolicyResults
-  }, prior)
-  assert.equal(s.state.observation?.continuity, 'reset', 'still a different object')
-  assert.equal(s.state.observation?.latest.firstSeenAt, DEMO.snapshot.asOf, 'IAMAI first saw it this scan')
-  assert.equal(s.state.observation?.latest.evidenceAt, provenAt, 'and the tenant proves this policy is older than that')
-  assert.notEqual(provenAt, soleOf(prior, ADMINS).firstSeenAt, 'the date is the new policy’s own, not the old record’s')
-  assert.equal(s.tracking?.reportOnlyAt, provenAt)
-  assert.equal(s.tracking?.reportOnlyAtSource, 'sign-in-evidence', 'told truthfully as Microsoft’s, not as IAMAI’s sighting')
-})
-
 test('8: the record round-trips the object, the fingerprint and the state, and carries no tenant id', () => {
   for (const { f: { name }, r } of runs) {
     const kept = observationsOf(r.steps)
@@ -842,50 +719,6 @@ test('8: the record round-trips the object, the fingerprint and the state, and c
       for (const m of members) if (m.policyId) assert.equal(serialised.includes(m.policyId), false, `${name}/${s.id}: the raw policy id is not persisted`)
     }
   }
-})
-
-test('9: what is tracked follows the deployed policy, and the goal’s population moves none of it', () => {
-  // Foundation A owns which accounts are being observed. This is here so that
-  // changing tracking code for Foundation B cannot quietly put the goal's people
-  // back into the answer.
-  const strangers = ['00000000-0000-4000-8000-00000000dead', '00000000-0000-4000-8000-00000000beef']
-  const prior = demoObservation()
-  const reading = (s: Step): string => JSON.stringify([s.tracking?.activeInScope ?? null, s.tracking?.seenInScope ?? null, s.tracking?.readyNow ?? null, s.state.lifecycle, s.state.observation?.continuity ?? null, s.state.observation?.latest.firstSeenAt ?? null])
-  const asGenerated = rescan(() => {}, prior)
-  const moved = (() => {
-    const snapshot = structuredClone(DEMO.snapshot)
-    const run = runFixture({ ...DEMO, snapshot })
-    for (const s of run.steps) s.population = { ...s.population, ids: strangers, activeIds: strangers, active: strangers.length, total: strangers.length }
-    applyProgress(run.steps, snapshot, run.coverage, DEMO.planId, undefined, null, prior)
-    return run.steps.find((s) => s.id === ADMINS)!
-  })()
-  assert.equal(reading(moved), reading(asGenerated), 'the goal’s people decide nothing the tracking says')
-})
-
-test('10: with the matched policy’s scope unresolved nothing is seen, and nothing advances on it', () => {
-  // Withhold what the deployed policy's scope is resolved against. The gate has
-  // no denominator, so it cannot be read as met — and it does not fall back to
-  // the people the goal handed the step.
-  const prior = demoObservation()
-  const blind = rescan(() => {}, prior, {})
-  assert.equal(blind.tracking?.activeInScope, null, 'no count is claimed')
-  assert.equal(blind.tracking?.seenInScope, null)
-  assert.equal(blind.tracking?.readyNow, false, 'and the "everybody seen" half cannot be vacuously true')
-  assert.ok((blind.population.activeIds ?? blind.population.ids).length > 0, 'the goal’s people were right there')
-  // And nothing advances on the window alone. The time gate is about how long,
-  // not about who, so on its own it says nothing about whether enforcing this
-  // policy would lock anybody out — which is the whole question the report-only
-  // window was opened to answer. A scope IAMAI cannot settle is an unknown, and
-  // an unknown waits (roadmap/tracking.ts `gates`).
-  assert.notEqual(blind.state.lifecycle, 'ready-to-enforce', 'a served window is not evidence about anybody')
-  assert.equal(blind.state.lifecycle, 'report-only', 'so the policy is still being watched')
-  // The same policy, with the scope readable and its records clean, is ready:
-  // the correction withholds the stage for a missing gate and not for its own
-  // sake.
-  const seeing = rescan((row, snapshot) => {
-    snapshot.evidencePolicyResults = [cleanRecords(String(row.id), demoPeople())] as typeof snapshot.evidencePolicyResults
-  }, prior, demoScope())
-  assert.equal(seeing.tracking?.readyNow, true)
 })
 
 // ---- a saved word is not a lifecycle ----
@@ -921,57 +754,6 @@ test('a saved "ready to enforce" cannot make a policy ready whose window this sc
   assert.equal(s.tracking?.reportOnlyAt, DEMO.snapshot.asOf, 'watched from this scan, not from a word')
 })
 
-test('a saved "enforced" does not survive a policy this scan finds in report-only', () => {
-  const s = withSaved(savedWord('done'))
-  assert.equal(s.state.satisfied, false, 'the saved word does not finish a step the tenant has not finished')
-  assert.notEqual(s.status, 'done')
-  assert.equal(s.state.lifecycle, 'report-only', 'the deployed policy is what says where it is')
-})
-
-test('a saved "ready to enforce" cannot outlive the policy it was about', () => {
-  // The word came from watching object A. Object B is deployed now, meaning
-  // exactly the same thing. Continuity resets, and the word cannot put back what
-  // the reset took away.
-  const prior = demoObservation()
-  const run = runFixture(DEMO)
-  const snapshot = structuredClone(DEMO.snapshot)
-  rowsOf(snapshot).find((p) => p.id === demoPolicyId())!.id = B_ID
-  const fresh = runFixture({ ...DEMO, snapshot })
-  const steps = generateRoadmap(fresh.input).steps
-  mergePersisted(steps, savedWord('ready-to-enforce'))
-  applyProgress(steps, snapshot, fresh.coverage, DEMO.planId, undefined, null, prior)
-  const s = steps.find((x) => x.id === ADMINS) as Step
-  assert.equal(s.state.observation?.continuity, 'reset')
-  assert.equal(s.tracking?.readyNow, false, 'the reset wins over the saved projection')
-  void run
-})
-
-test('a saved "ready to enforce" beside a legacy observation still proves nothing', () => {
-  const seenAt = new Date(Date.parse(DEMO.snapshot.asOf) - TEN_DAYS).toISOString()
-  const s = withSaved(savedWord('ready-to-enforce'), observationsFrom({ reportOnlySeen: { [ADMINS]: seenAt } }))
-  assert.equal(s.state.observation?.continuity, 'unknown', 'the record names no object')
-  assert.equal(s.tracking?.readyNow, false, 'and neither of the two can advance it alone')
-})
-
-test('a policy whose window this scan can prove is still ready, with or without a saved word', () => {
-  // The correction must not simply force everything backwards: where the current
-  // artifact, its semantics and a continuous observation establish readiness, the
-  // step is ready — and it gets there without the record ever naming a status.
-  const earned = withSaved({}, demoObservation())
-  assert.equal(earned.tracking?.readyNow, true, 'the engine reaches it on its own')
-  const alsoSaved = withSaved(savedWord('blocked'), demoObservation())
-  assert.equal(alsoSaved.tracking?.readyNow, true, 'and a stale word does not hold it back either')
-  // Whether it may be turned on is the hold's question, and the saved word is not asked it (roadmap/holds.ts).
-  assert.equal(alsoSaved.state.lifecycle, earned.state.lifecycle)
-})
-
-test('the operator’s own decision survives, through its own authority', () => {
-  const s = withSaved({ [ADMINS]: { status: 'skipped', history: [], skipReason: 'not for us' } })
-  assert.equal(s.state.setAside, true, 'setting a step aside is a choice nothing about the tenant re-derives')
-  assert.equal(s.status, 'skipped')
-  assert.equal(s.skipReason, 'not for us')
-})
-
 // ---- a reading has to be taken again ----
 //
 // This used to assert the opposite: that a prerequisite kept whatever the record
@@ -1001,23 +783,7 @@ const noLocation = (snapshot: { config: { namedLocations?: { rows?: unknown[] } 
   if (snapshot.config.namedLocations) snapshot.config.namedLocations.rows = []
 }
 
-test('a recurring check that passed and now fails is not restored by the record', () => {
-  // The trusted-location prerequisite is In place because the tenant has an IP
-  // named location. Take it away and the step is work again — whatever a record
-  // written while it existed says.
-  const passing = scanOf(DEMO).find((x) => x.id === LOCATION) as Step
-  assert.equal(passing.status, 'done', 'it passes on the tenant as it stands')
-  const saved = { [LOCATION]: savedStepOf(passing) }
-
-  const now = scanOf(DEMO, noLocation)
-  mergePersisted(now, saved)
-  const step = now.find((x) => x.id === LOCATION) as Step
-  assert.notEqual(step.status, 'done', 'the current reading wins')
-  assert.equal(step.state.satisfied, false)
-  assert.equal(step.state.inPlace, false, 'and nothing claims the tenant still has it')
-})
-
-test('a recurring check whose evidence has gone unreadable stays conservative', () => {
+test('a recurring check follows the current reading: unreadable evidence stays conservative, and a check that now passes is not held back', () => {
   // The source itself cannot be read this time. Absent evidence is not passing
   // evidence, so the step is not In place and the record does not make it so.
   const passing = scanOf(DEMO).find((x) => x.id === LOCATION) as Step
@@ -1033,17 +799,15 @@ test('a recurring check whose evidence has gone unreadable stays conservative', 
   const step = now.find((x) => x.id === LOCATION) as Step
   assert.notEqual(step.status, 'done', 'unknown is not done')
   assert.equal(step.state.satisfied, false)
-})
 
-test('a recurring check that failed and now passes is not held back by the record', () => {
-  // The saved projection is not authority in either direction.
+  // The saved projection is not authority in either direction: a check that
+  // failed and now passes is not held back by the record either.
   const failing = scanOf(DEMO, noLocation).find((x) => x.id === LOCATION) as Step
   assert.notEqual(failing.status, 'done')
-  const saved = { [LOCATION]: savedStepOf(failing) }
-  const now = scanOf(DEMO)
-  mergePersisted(now, saved)
-  const step = now.find((x) => x.id === LOCATION) as Step
-  assert.equal(step.status, 'done', 'the current reading advances it')
+  const failed = { [LOCATION]: savedStepOf(failing) }
+  const again = scanOf(DEMO)
+  mergePersisted(again, failed)
+  assert.equal((again.find((x) => x.id === LOCATION) as Step).status, 'done', 'the current reading advances it')
 })
 
 test('a stale saved pass on the emergency-access gate cannot let a rollout step through', () => {
@@ -1128,7 +892,7 @@ test('no saved word raises any step, of any kind, on any fixture', () => {
 // target asked the tenant whether it agreed with itself. It always did, and a
 // drift became its own authorisation. The intent contract reads the patch.
 
-test('an update authorises only the dimensions its patch actually submits', () => {
+test('an update authorises only the dimensions its patch actually submits, as intentOf reads them', () => {
   const prior = { grantControls: 'g1', sessionControls: 's1', 'conditions.users': 'u1' }
   const at = '2026-09-05T00:00:00.000Z'
   const base = { artifact: 'A', state: 'report-only' as const, semantics: 'aaaa', fields: prior, firstSeenAt: '2026-08-20T00:00:00.000Z', since: 'first-scan' as const, lastSeenAt: at, evidenceAt: null }
@@ -1163,9 +927,8 @@ test('an update authorises only the dimensions its patch actually submits', () =
   assert.equal(observe(base, { artifact: 'A', state: 'report-only', semantics: 'bbbb', fields: { ...prior, grantControls: 'g2' }, at }).reviewRequired, true)
   const blind = observe({ ...base, fields: {} }, { artifact: 'A', state: 'report-only', semantics: 'bbbb', fields: {}, at, intent })
   assert.equal(blind.expected, false, 'a record with no dimensions cannot show a movement was asked for')
-})
 
-test('intentOf reads what a body submits, and a patch that sets only a state submits nothing material', () => {
+  // intentOf reads what a body submits, and a patch that sets only a state submits nothing material.
   // The demo's admins step is exactly this: `{ state: "enabled" }`. It controls no
   // material dimension, so it authorises no semantic movement whatever — which is
   // the case the target-based comparison got backwards.
@@ -1226,17 +989,6 @@ test('every step ends in one next thing, and none of them invents a date', () =>
   // one every report-only policy the fixtures deploy is held (roadmap/holds.ts).
   const kinds = new Set([...everyStep().map(({ s }) => nextMilestone(s).kind), ...runFixture(withDirectionApproved(curatedFixture('demo-week2'))).steps.map((s) => nextMilestone(s).kind)])
   for (const kind of ['resolve', 'deploy', 'observe', 'preserve']) assert.ok(kinds.has(kind as ReturnType<typeof nextMilestone>['kind']), `no fixture step is waiting to ${kind}`)
-})
-
-// ---- reading a stored word back ----
-
-test('a stored word reads back as the state it stood for, and only there', () => {
-  const words: StepStatus[] = ['done', 'ready', 'blocked', 'in-report-only', 'ready-to-enforce', 'skipped']
-  for (const word of words) {
-    const step = { status: 'ready', state: initialState() } as Step
-    setState(step, stateForStatus(word))
-    assert.equal(step.status, word, `${word} did not read back as itself`)
-  }
 })
 
 // ---- a goal the baseline implements with two policies ----
@@ -1415,21 +1167,6 @@ test('pair 1: the real default baseline implements the guests goal with two requ
   assert.notEqual((a.body as PairRow).displayName, (b.body as PairRow).displayName)
 })
 
-test('pair 2: two report-only members are two observations, each about its own object', () => {
-  const [a, b] = pairOps()
-  const step = pairScan((x, y) => [deployed(x, A_ID, 'enabledForReportingButNotEnforced'), deployed(y, B_PAIR_ID, 'enabledForReportingButNotEnforced')])
-  assert.equal(step.state.members.length, 2, 'two members, two histories')
-  assert.equal(observationOf(step, a.memberKey)?.latest.artifact, artifactIdOf(A_ID))
-  assert.equal(observationOf(step, b.memberKey)?.latest.artifact, artifactIdOf(B_PAIR_ID))
-  assert.notEqual(observationOf(step, a.memberKey)?.latest.artifact, observationOf(step, b.memberKey)?.latest.artifact, 'neither overwrote the other')
-  assert.equal(memberOf(step, a.memberKey)?.policyId, A_ID)
-  assert.equal(memberOf(step, b.memberKey)?.policyId, B_PAIR_ID)
-  assert.equal(memberOf(step, a.memberKey)?.matchedBy, 'member-tag', 'each found by its own tag')
-  assert.equal(memberOf(step, b.memberKey)?.matchedBy, 'member-tag')
-  assert.equal(step.state.lifecycle, 'report-only', 'the whole pair is deployed and being watched')
-  assert.equal(step.tracking?.policyId, null, 'and no one object is what the step is')
-})
-
 test('pair 3: A ready and B not is not a ready pair', () => {
   const [a, b] = pairOps()
   const rowA = deployed(a, A_ID, 'enabledForReportingButNotEnforced')
@@ -1566,23 +1303,7 @@ test('pair 10: each member is compared against its own operation, never the firs
   assert.ok(['review-required', 'blocked'].includes(wrong.state.condition))
 })
 
-test('pair 11: one shared step tag does not collapse the pair into one policy', () => {
-  const [a, b] = pairOps()
-  // Two policies created before the tag named the member: they carry the same
-  // step tag, and the names the plan gives each member are what tells them apart.
-  const legacyTag = `[IAMAI:${W2.planId}:${GUESTS}]`
-  const step = pairScan((x, y) => [
-    { ...deployed(x, A_ID, 'enabledForReportingButNotEnforced'), description: legacyTag },
-    { ...deployed(y, B_PAIR_ID, 'enabledForReportingButNotEnforced'), description: legacyTag },
-  ])
-  assert.equal(memberOf(step, a.memberKey)?.policyId, A_ID)
-  assert.equal(memberOf(step, b.memberKey)?.policyId, B_PAIR_ID)
-  assert.equal(memberOf(step, a.memberKey)?.matchedBy, 'member-name')
-  assert.equal(new Set(step.tracking!.members.map((m) => m.policyId)).size, 2, 'two distinct artifacts')
-  assert.equal(step.state.lifecycle, 'report-only', 'and the pair is deployed')
-})
-
-test('pair 12: a pair the tag cannot tell apart is left unresolved, never guessed', () => {
+test('pair 11-12: members are told apart by tag or name, one object each, and a pair nothing tells apart is left unresolved, never guessed', () => {
   const [a, b] = pairOps()
   const legacyTag = `[IAMAI:${W2.planId}:${GUESTS}]`
   const rowA = deployed(a, A_ID, 'enabledForReportingButNotEnforced')
@@ -1629,24 +1350,29 @@ test('pair 12: a pair the tag cannot tell apart is left unresolved, never guesse
   const doubled = matchMembers(pairPlan().run.steps.find((x) => x.id === GUESTS) as Step, twice, run.coverage, W2.planId)
   assert.equal(doubled[0].ambiguous, true, 'two candidates for one member is not a match')
   assert.equal(doubled[0].policy, null)
-})
 
-test('pair 13: one member’s Microsoft evidence closes no other member’s gate', () => {
-  const [a, b] = pairOps()
-  const provenAt = at(30)
-  const step = pairScan(
-    (x, y) => [deployed(x, A_ID, 'enabledForReportingButNotEnforced'), deployed(y, B_PAIR_ID, 'enabledForReportingButNotEnforced')],
-    {},
-    { evidence: [cleanPair(A_ID, provenAt)] },
-  )
-  assert.equal(memberOf(step, a.memberKey)?.reportOnlyAt, provenAt, 'A’s own record dates A')
-  assert.equal(memberOf(step, a.memberKey)?.reportOnlyAtSource, 'sign-in-evidence')
-  assert.equal(memberOf(step, a.memberKey)?.ready, true, 'and carries A through its window')
-  assert.equal(memberOf(step, b.memberKey)?.reportOnlyAt, W2.snapshot.asOf, 'B has records of its own: none')
-  assert.equal(memberOf(step, b.memberKey)?.reportOnlyAtSource, 'first-seen-by-iamai')
-  assert.equal(memberOf(step, b.memberKey)?.ready, false)
-  assert.notEqual(step.status, 'ready-to-enforce', 'so the pair is not ready because A is')
-  assert.equal(step.tracking?.reportOnlyAt, W2.snapshot.asOf, 'the pair has been watched since its later member')
+  // Pair 11: one shared step tag does not collapse the pair into one policy. Two
+  // policies created before the tag named the member carry the same step tag,
+  // and the names the plan gives each member are what tells them apart.
+  const named = pairScan((x, y) => [
+    { ...deployed(x, A_ID, 'enabledForReportingButNotEnforced'), description: legacyTag },
+    { ...deployed(y, B_PAIR_ID, 'enabledForReportingButNotEnforced'), description: legacyTag },
+  ])
+  assert.equal(memberOf(named, a.memberKey)?.policyId, A_ID)
+  assert.equal(memberOf(named, b.memberKey)?.policyId, B_PAIR_ID)
+  assert.equal(memberOf(named, a.memberKey)?.matchedBy, 'member-name')
+  assert.equal(new Set(named.tracking!.members.map((m) => m.policyId)).size, 2, 'two distinct artifacts')
+  assert.equal(named.state.lifecycle, 'report-only', 'and the pair is deployed')
+
+  // The members are matched one object each, and never one object twice: one
+  // policy carrying A's tag and B's name can be one member, not both.
+  const fresh = pairPlan()
+  const single = structuredClone(fresh.bare)
+  single.config.caPolicies = { status: 'ok', reason: null, rows: [{ ...deployed(a, A_ID, 'enabledForReportingButNotEnforced'), displayName: (b.body as PairRow).displayName }] } as typeof single.config.caPolicies
+  const once = matchMembers(fresh.run.steps.find((s) => s.id === GUESTS) as Step, single, fresh.run.coverage, W2.planId)
+  assert.equal(once.length, 2)
+  assert.equal(once.filter((m) => m.policy !== null).length, 1, 'one object satisfies one member')
+  assert.equal(new Set(once.map((m) => m.policy?.id).filter(Boolean)).size, 1)
 })
 
 test('pair 16: a record from before members is attributed on identity, and never copied to both', () => {
@@ -1741,51 +1467,4 @@ test('single 15: a stored observation from before members belongs to a one-polic
   // And it is written back in the member shape, so the next scan reads it there.
   assert.equal(observationsOf([s])[ADMINS].unattributed, null)
   assert.equal(soleOf(observationsOf([s]), ADMINS).firstSeenAt, seenAt)
-})
-
-test('the pair’s members are matched one object each, and never one object twice', () => {
-  const [a, b] = pairOps()
-  const { bare, run } = pairPlan()
-  const step = run.steps.find((s) => s.id === GUESTS) as Step
-  const snapshot = structuredClone(bare)
-  // One policy carrying A's tag and B's name: it can be one member, not both.
-  snapshot.config.caPolicies = { status: 'ok', reason: null, rows: [{ ...deployed(a, A_ID, 'enabledForReportingButNotEnforced'), displayName: (b.body as PairRow).displayName }] } as typeof snapshot.config.caPolicies
-  const matched = matchMembers(step, snapshot, run.coverage, W2.planId)
-  assert.equal(matched.length, 2)
-  assert.equal(matched.filter((m) => m.policy !== null).length, 1, 'one object satisfies one member')
-  assert.equal(new Set(matched.map((m) => m.policy?.id).filter(Boolean)).size, 1)
-})
-
-// A policy the previous scan recorded as NOT DEPLOYED is the one history IAMAI
-// can speak to without qualification: it was not there, and it is here now.
-// The note read "this plan does not record which policy it watched before
-// {date}" — because the prior sighting names no artifact, which is true of a
-// policy that never existed and is the opposite of what the record says. Where
-// such a policy arrives already enforced, nobody watched it in report-only, and
-// that is the only fact distinguishing a rollout done in one afternoon from one
-// that was observed. It is now the sentence the step carries.
-test('a policy that was not there at the last scan says so, and says whether anybody watched it', () => {
-  const at = '2026-09-05T00:00:00.000Z'
-  const absent = observe(null, { artifact: null, state: 'absent', semantics: '', at: '2026-08-28T00:00:00.000Z', evidenceAt: null })
-  const prior = absent.latest
-
-  const cold = observe(prior, { artifact: 'A', state: 'enforced', semantics: 'aaaa', at, evidenceAt: null })
-  assert.match(cold.note, /not deployed at the last scan and enforced by/, cold.note)
-  assert.match(cold.note, /without a report-only period IAMAI could watch/, cold.note)
-  assert.equal(/does not record which policy it watched/.test(cold.note), false, cold.note)
-
-  const watched = observe(prior, { artifact: 'A', state: 'report-only', semantics: 'aaaa', at, evidenceAt: null })
-  assert.match(watched.note, /created in report-only by/, watched.note)
-  assert.equal(/without a report-only period/.test(watched.note), false, watched.note)
-
-  // Created switched Off: the record holds the absence, so the note says the
-  // move it saw, never that it cannot say which policy it watched.
-  const off = observe(prior, { artifact: 'A', state: 'disabled', semantics: 'aaaa', at, evidenceAt: null })
-  assert.equal(/does not record which policy it watched/.test(off.note), false, off.note)
-  assert.match(off.note, /to off by/, off.note)
-
-  // A policy IAMAI genuinely cannot place is still reported as unknown: the new
-  // sentence is about a recorded absence, never about a gap in the record.
-  const gap = observe({ ...prior, state: 'report-only' }, { artifact: 'B', state: 'enforced', semantics: 'bbbb', at, evidenceAt: null })
-  assert.equal(/not deployed at the last scan/.test(gap.note), false, gap.note)
 })

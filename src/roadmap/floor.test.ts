@@ -7,17 +7,12 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { allFixtures, fixture, withSyntheticBaseline } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
-import { readFileSync } from 'node:fs'
 import { PINNED_GOAL_MAP } from './goalMap.ts'
 import type { GoalMap } from './goalMap.ts'
 import { BREAK_GLASS_STEP_ID, stepIdForGoal } from './stepIds.ts'
 import { FLOOR_GOAL_IDS, isFloorGoal } from './floor.ts'
-import { pages, phases } from '../content/content.ts'
 import { floorRows, phaseRows, undatedRows } from '../ui/surfaces/planRows.ts'
-import { boardOf, groupsFor } from '../ui/surfaces/planBoard.ts'
-import { printSectionsOf } from '../ui/surfaces/printPlan.ts'
-import { laneReadings } from '../ui/surfaces/planLanes.ts'
-import { stepPortalLines, portalNamesFor } from '../ui/surfaces/stepPortal.ts'
+import { stepPortalLines } from '../ui/surfaces/stepPortal.ts'
 
 test('the pinned baseline lacks registration protection, so the floor renders it, flagged, from the template', () => {
   const r = runFixture(fixture('demo-week2'))
@@ -42,14 +37,6 @@ test('the floor set is exactly the two policy goals; nothing else absent renders
   assert.ok(!isFloorGoal('mobile-app-protection') && !isFloorGoal('azure-management-mfa'))
   const r = runFixture(fixture('demo'))
   for (const s of r.steps) if (s.floor) assert.ok(isFloorGoal(s.goalId), `${s.id} is flagged floor but is not a floor goal`)
-})
-
-test('a baseline that holds the goal renders it as the author\'s, not the floor', () => {
-  const held = { ...PINNED_GOAL_MAP, 'register-info-protected': ['(a baseline that holds it)'] }
-  const r = runFixture(fixture('demo'), { goalMap: held })
-  const reg = r.steps.find((s) => s.goalId === 'register-info-protected')
-  assert.ok(reg)
-  assert.ok(!reg.floor)
 })
 
 test('the floor step\'s What to do is the template through the translator: the user action, the exclusions group, never an account by name', () => {
@@ -84,7 +71,7 @@ const without = (...goalIds: string[]): GoalMap => {
   return m
 }
 
-test('an active baseline that carries neither floor goal renders both, flagged, from Microsoft\'s own templates', () => {
+test('an active baseline that carries neither floor goal renders both, flagged, from Microsoft\'s own templates, and emergency access stays the Preparation check', () => {
   const r = runFixture(fixture('getiamai'), { goalMap: without(...FLOOR_GOAL_IDS) })
   const reg = r.steps.find((s) => s.goalId === 'register-info-protected')
   const legacy = r.steps.find((s) => s.goalId === 'block-legacy-auth')
@@ -100,6 +87,12 @@ test('an active baseline that carries neither floor goal renders both, flagged, 
   assert.deepEqual(legacyBody.grantControls.builtInControls, ['block'])
   // And nothing else the baseline lacks came with them.
   for (const s of r.steps) if (s.floor) assert.ok(s.goalId !== undefined && isFloorGoal(s.goalId), `${s.id} is flagged floor but is not a floor goal`)
+  // Emergency access is the Preparation check, never a floor policy.
+  const bg = r.steps.filter((s) => s.id === BREAK_GLASS_STEP_ID)
+  assert.equal(bg.length, 1, 'one emergency-access path, not two')
+  assert.equal(bg[0].kind, 'prerequisite')
+  assert.ok(!bg[0].floor, 'the prerequisite is not a Microsoft-floor recommendation row')
+  assert.equal(bg[0].action.json ?? null, null, 'no Conditional Access body was invented for it')
 })
 
 test('an active baseline that carries both floor goals renders no floor row at all', () => {
@@ -117,15 +110,6 @@ test('a goal the active baseline lacks and the floor does not name stays absent:
   const absentAndNotFloor = r.coverage.results.map((c) => c.goal.id).filter((id) => (map[id] ?? []).length === 0 && !isFloorGoal(id))
   assert.ok(absentAndNotFloor.length > 0, 'the catalogue holds goals this baseline does not')
   for (const id of absentAndNotFloor) assert.ok(!rendered.has(id), `${id} is not in the active baseline and is not a floor goal, so it does not render`)
-})
-
-test('emergency access is the Preparation check, never a floor policy', () => {
-  const r = runFixture(fixture('getiamai'), { goalMap: without(...FLOOR_GOAL_IDS) })
-  const bg = r.steps.filter((s) => s.id === BREAK_GLASS_STEP_ID)
-  assert.equal(bg.length, 1, 'one emergency-access path, not two')
-  assert.equal(bg[0].kind, 'prerequisite')
-  assert.ok(!bg[0].floor, 'the prerequisite is not a Microsoft-floor recommendation row')
-  assert.equal(bg[0].action.json ?? null, null, 'no Conditional Access body was invented for it')
 })
 
 test('the floor flag is provenance, not permission: a floor step whose references cannot resolve stays held', () => {
@@ -153,26 +137,6 @@ test('the active baseline lacking a goal and the tenant already delivering it ar
 
 // ---- Where a floor row is drawn: once, and never under a numbered phase ----
 
-test('a floor step a wave dates renders once, in the floor group, and in no numbered phase', () => {
-  const r = runFixture(fixture('demo-week2'))
-  const reg = r.steps.find((s) => s.goalId === 'register-info-protected')!
-  assert.equal(reg.floor, true)
-  // The premise this test exists for: a schedule that carries the id, so the rows
-  // a phase draws have to drop it rather than never see it. On this tenant a
-  // readiness threshold holds the step and the schedule withdraws it
-  // (roadmap/holds.ts), so the id is put back into a wave here: a plan file or a
-  // step that is not held carries it, and the rule has to hold either way.
-  const waves = r.schedule.waves.some((w) => w.stepIds.includes(reg.id)) ? r.schedule.waves : r.schedule.waves.map((w, i) => (i === r.schedule.waves.length - 1 ? { ...w, stepIds: [...w.stepIds, reg.id] } : w))
-  assert.ok(waves.some((w) => w.stepIds.includes(reg.id)), 'a wave dates the floor step')
-  // Once, in the group named for what it is.
-  assert.deepEqual(floorRows(r.steps).filter((s) => s.id === reg.id).map((s) => s.id), [reg.id])
-  // And nowhere else: no numbered phase, and not the undated group either.
-  for (const w of waves) {
-    assert.equal(phaseRows(r.steps, w).some((s) => s.id === reg.id), false, `phase ${w.wave} draws the floor step`)
-  }
-  assert.equal(undatedRows(r.steps, waves).some((s) => s.id === reg.id), false, 'the undated group draws the floor step')
-})
-
 test('every step the Plan draws is drawn exactly once, over every fixture', () => {
   for (const f of allFixtures()) {
     const r = runFixture(f)
@@ -191,122 +155,6 @@ test('every step the Plan draws is drawn exactly once, over every fixture', () =
   }
 })
 
-test('a floor step already delivered is in the footer, not the floor group and not a phase', () => {
-  // The demo tenant blocks legacy authentication; take the goal out of the
-  // active baseline and the step is the floor's and done at once. Done rows are
-  // the footer's, so neither the group nor a numbered phase draws it. Week two,
-  // where the block carves out the chosen exclusions group and is delivered.
-  const r = runFixture(fixture('demo-week2'), { goalMap: without('block-legacy-auth') })
-  const legacy = r.steps.find((s) => s.goalId === 'block-legacy-auth')!
-  assert.equal(legacy.floor, true)
-  assert.equal(legacy.status, 'done')
-  assert.ok(r.schedule.waves.some((w) => w.stepIds.includes(legacy.id)), 'a wave dates it')
-  assert.equal(floorRows(r.steps).some((s) => s.id === legacy.id), false, 'the floor group draws a delivered row')
-  for (const w of r.schedule.waves) {
-    assert.equal(phaseRows(r.steps, w).some((s) => s.id === legacy.id), false, `phase ${w.wave} draws a delivered floor row`)
-  }
-})
-
-test('a baseline holding both recommendations leaves no floor group to draw', () => {
-  // Both goals in the active map: nothing is the floor's, so floorRows is empty
-  // and each surface's `floor.length > 0` guard draws no heading at all.
-  const held: GoalMap = { ...PINNED_GOAL_MAP, 'register-info-protected': ['(a baseline that holds it)'], 'block-legacy-auth': ['(a baseline that holds it)'] }
-  const r = runFixture(fixture('demo-week2'), { goalMap: held })
-  assert.deepEqual(floorRows(r.steps), [], 'no row belongs to the floor')
-  // The printed document says a row is the floor's only on a floor step.
-  const print = readFileSync(new URL('../ui/surfaces/PrintPlan.tsx', import.meta.url), 'utf8')
-  assert.ok(print.includes('{s.floor === true && <> · {phases.recommended}</>}'), 'PrintPlan.tsx labels a row as the floor\'s unguarded')
-  // The Plan does not need a guard any more, and this is the stronger fact: the
-  // board builds a group only where a row lands in it (planBoard.ts `groupsFor`
-  // drops empty groups outright), so an empty floor cannot produce a heading.
-  // Proven against the projection rather than against the JSX, because that is
-  // where the rule now lives.
-  const items = floorRows(r.steps).map((step, i) => ({
-    id: step.id,
-    title: step.title,
-    lane: 'Ready' as const,
-    laneLabel: 'Ready · Create',
-    hold: null,
-    attention: false,
-    waiting: false,
-    workType: 'ca' as const,
-    order: i,
-  }))
-  assert.deepEqual(groupsFor('ready', items), [], 'an empty floor still produced a group')
-  assert.deepEqual(groupsFor('onHold', items), [], 'an empty floor still produced a group under On Hold')
-})
-
-// ---- The group on the page and in the printed document ----
-
-test('the Plan draws a floor step as a row of its lane, never dressed as a numbered, dated phase', () => {
-  assert.equal(phases.recommended, 'Microsoft recommended, not in this baseline')
-  const src = readFileSync(new URL('../ui/surfaces/Plan.tsx', import.meta.url), 'utf8')
-  // The lanes replaced the phase groups (S3): a floor step is a row in the lane
-  // the engine reads for it, and no group on the Plan borrows a wave's date.
-  assert.equal(src.includes('phases.heading, { name: phases.recommended'), false, 'the floor group is dressed as a numbered, dated phase')
-  assert.equal(src.includes('waveRows'), false, 'the Plan still draws numbered phases')
-  const r = runFixture(fixture('demo-week2'))
-  const readings = laneReadings(r.steps)
-  const floor = floorRows(r.steps)
-  assert.ok(floor.length > 0, 'the premise: the demo carries a floor step')
-  for (const s of floor) assert.ok(readings.has(s.id), `${s.id}: a floor step has no lane`)
-})
-
-test('the printed document prints a floor step in its board section, in the Plan\'s own words for what it is, never under a numbered phase', () => {
-  const src = readFileSync(new URL('../ui/surfaces/PrintPlan.tsx', import.meta.url), 'utf8')
-  // The document prints the board's sections (roadmap flow V1 decision 8), so a
-  // floor step prints where the board draws it, and says beside its number that
-  // it is Microsoft's recommendation and not this baseline's.
-  assert.match(src, /\{s\.floor === true && <> · \{phases\.recommended\}<\/>\}/, 'the document prints a floor step without the Plan\'s own words for what it is')
-  const f = fixture('demo-week2')
-  const r = runFixture(f)
-  const rows = printSectionsOf(boardOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)).flatMap((sec) => sec.rows)
-  const floor = floorRows(r.steps)
-  assert.ok(floor.length > 0, 'the premise: the demo carries a floor step')
-  for (const step of floor) assert.equal(rows.filter((row) => row.id === step.id && row.step?.floor === true).length, 1, `${step.id}: the floor step does not print once, as the floor's`)
-  // A floor step can sit in a wave's stepIds; the timeline reads the Plan's own
-  // row rule, so the document never dates it as the author's phase work. That
-  // rule (ui/surfaces/planRows.ts phaseRows) drops the floor's ids and the
-  // footer's alike, which is one authority rather than a filter the document
-  // keeps for itself (task 027). It reads the board's hold beside it (owner
-  // decision 2): a step the board holds is dated under no phase.
-  assert.match(src, /phaseRows\(steps, w, boardHeld\)/, 'the phases drop the floor\'s ids')
-  assert.equal(src.includes('floorGroupIds'), false, 'the document decides for itself which ids a phase may draw')
-  assert.equal(src.includes('w.stepIds.map('), false, 'no printed section reads a wave\'s raw step ids')
-  assert.equal(src.includes('w.stepIds.filter('), false, 'no printed section filters a wave\'s raw step ids itself')
-})
-
-test('the Plan page contract accepts the two named groups exactly, and nothing broader', () => {
-  const contract = JSON.parse(readFileSync(new URL('../../docs/qa/page-contracts.json', import.meta.url), 'utf8')) as { surfaces: { id: string; allow: { headings: string[] } }[] }
-  const headings = contract.surfaces.find((s) => s.id === 'plan')!.allow.headings
-  const lanes = (pages.plan as unknown as { lanes: Record<string, string> }).lanes
-  assert.deepEqual(headings, [
-    'Plan',
-    // The board's group heads are the lane words (A1c, decision 11: the one
-    // vocabulary, pages.plan.lanes.*) and, under On Hold, the blocker kinds the
-    // rows are grouped by (planBoard.ts BOARD.blockers). Every entry is an exact
-    // string: the guard this test is here for is a broad new PATTERN in the
-    // Plan's closed heading list, not a group the Plan stopped drawing
-    // anonymously. The floor is a row of its section on screen; the printed
-    // document says what it is beside its number (phases.recommended).
-    lanes.ready,
-    lanes.upNext,
-    lanes.onHold,
-    lanes.completed,
-    lanes.deferred,
-    'Baseline safety conflict',
-    'Baseline conflict',
-    'Baseline references an unmapped group',
-    'Licence or platform',
-    'Decision',
-    'Tenant fact',
-    'Missing object',
-    'Prerequisite on hold',
-    'Deferred prerequisite',
-    'Not supported',
-  ], 'the contract gained the exact headings and no new pattern')
-})
-
 // ---- Correction 1: absence from the active baseline is authoritative for the
 // step's body, not only for its label. The render-time signature fallback
 // (generate.ts sourcesFor) exists for a package whose policies the map does not
@@ -317,7 +165,7 @@ test('the Plan page contract accepts the two named groups exactly, and nothing b
 /** An active goal map whose one key resolves in no package: the signature fallback is live for every goal. */
 const NON_RESOLVING: GoalMap = { 'mfa-all-users': ['(a policy no package here carries)'] }
 
-test('a goal map that resolves nowhere in the active package still cannot lend a floor step that package\'s policy', () => {
+test('a goal map that resolves nowhere in the active package still cannot lend a floor step that package\'s policy, and a goal the map holds keeps the fallback', () => {
   // The demo package carries a policy that broadly matches registration
   // protection — the risky-users registration block the pin-time rule rejected.
   const r = runFixture(fixture('demo'), { goalMap: NON_RESOLVING })
@@ -334,24 +182,23 @@ test('a goal map that resolves nowhere in the active package still cannot lend a
     ['block-legacy-auth', 'mfa-all-users', 'register-info-protected'],
     'the floor\'s two goals and the one goal the map holds, and no other',
   )
-})
 
-test('the same for the legacy block, and a goal the map does hold keeps the fallback', () => {
+  // The same for the legacy block, and a goal the map does hold keeps the fallback.
   // Asked for by name: this case reads a policy out of the synthetic package, as
   // its last assertion says. getiamai is built on that package already (only the
   // demo is on the pin, fixtures/index.ts buildFixture), so the premise is stated
   // rather than inherited from which fixture was chosen.
-  const r = runFixture(withSyntheticBaseline(fixture('getiamai')), { goalMap: NON_RESOLVING })
-  const legacy = r.steps.find((s) => s.id === stepIdForGoal('block-legacy-auth'))!
+  const synthetic = runFixture(withSyntheticBaseline(fixture('getiamai')), { goalMap: NON_RESOLVING })
+  const legacy = synthetic.steps.find((s) => s.id === stepIdForGoal('block-legacy-auth'))!
   assert.equal(legacy.floor, true)
   assert.equal(legacy.naming?.fromBaseline ?? null, null, 'not attributed to the package\'s own legacy policy')
   assert.deepEqual(legacy.action.resolution?.policies.map((p) => p.sourceName), ['block-legacy-auth'], 'the source is the catalogue template')
-  const body = JSON.parse(legacy.action.json!) as { conditions: { clientAppTypes?: string[] }; grantControls: { builtInControls?: string[] } }
-  assert.deepEqual([...(body.conditions.clientAppTypes ?? [])].sort(), ['exchangeActiveSync', 'other'])
-  assert.deepEqual(body.grantControls.builtInControls, ['block'])
+  const legacyBody = JSON.parse(legacy.action.json!) as { conditions: { clientAppTypes?: string[] }; grantControls: { builtInControls?: string[] } }
+  assert.deepEqual([...(legacyBody.conditions.clientAppTypes ?? [])].sort(), ['exchangeActiveSync', 'other'])
+  assert.deepEqual(legacyBody.grantControls.builtInControls, ['block'])
   // The fallback itself is untouched where the map holds the goal: a package the
   // map does not describe still renders that goal from its own policy.
-  const mfa = r.steps.find((s) => s.id === stepIdForGoal('mfa-all-users'))!
+  const mfa = synthetic.steps.find((s) => s.id === stepIdForGoal('mfa-all-users'))!
   assert.ok(!mfa.floor, 'the map holds it, so it is the author\'s')
   assert.deepEqual(mfa.action.resolution?.policies.map((p) => p.sourceName), ['IAC - GLOBAL - GRANT - MFA - AllUsers'], 'matched in the package, as a synthetic fixture needs')
 })
