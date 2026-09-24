@@ -28,6 +28,7 @@ import type { Step } from '../../roadmap/types.ts'
 import { laneReadings } from './planLanes.ts'
 import { laneViewOf, readinessBlockersOf } from './planBoard.ts'
 import { stepBodyOf } from './stepBody.ts'
+import { stepOperations } from './stepJson.ts'
 import { stepExportView, stepLines } from './stepExport.ts'
 import { CONTRACT } from './stepContract.ts'
 import { app } from '../../content/content.ts'
@@ -338,4 +339,23 @@ test('no step with a tracked policy Off builds a second one or turns one on, in 
       assert.ok(seen > 0, `${name}: the premise: a step tracks a policy that is now Off`)
     }
   }
+})
+
+test('an untagged policy found Off under the name the plan gives it is the step\'s own: set to Report-only, never a "(2)" beside it', () => {
+  // Walk list 4.x item 12 (owner, 2026-09-24): an Off "CA - Block - Device code
+  // flow" that already matched the target made the step propose "CA - Block -
+  // Device code flow (2)", because a first scan never claimed a disabled policy
+  // and uniqueName counted its name as taken.
+  const f = withFoundationSettled({ ...structuredClone(fixture('getiamai')), baseline: pinnedPackage() })
+  const op = stepOperations(runFixture(f).steps.find((s) => s.id === STEP)!).find((o) => o.mode === 'create')
+  assert.ok(op, 'the premise: the step creates its policy')
+  const body = structuredClone(op.body) as Record<string, unknown>
+  delete body.description
+  const rows = (f.snapshot.config.caPolicies!.rows ?? []) as Record<string, unknown>[]
+  rows.push({ ...body, state: 'disabled', id: '0f0f0f0f-2222-4222-a333-444444444444', createdDateTime: f.snapshot.asOf, modifiedDateTime: f.snapshot.asOf })
+  const scan = scanOf(f)
+  assertReportOnlyEverywhere(scan, STEP, 'untagged, found Off')
+  const { lane, body: drawnBody } = drawn(scan, STEP)
+  assert.equal(lane.label, 'Ready · Correct')
+  for (const a of drawnBody.artifacts) assert.doesNotMatch(a.text(), /\(2\)/, `${a.id} proposes a second name`)
 })

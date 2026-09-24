@@ -20,8 +20,8 @@
 // and so does a started one whose correction is what puts it into report-only (the
 // same grant, found switched off).
 // The owner's status contract supersedes "evidence is never a hold":
-// a started policy behind an open gate waits On Hold with the gate as its reason, and
-// reads Ready · Observing (the review) only where the gate says what was collected can
+// a started policy behind an open gate waits On Hold with the gate as its reason (Up
+// Next where the gate is its report-only week alone), and reads Ready · Observing (the review) only where the gate says what was collected can
 // be reviewed. Ready means the next action can be performed now; Up Next means every
 // unfinished prerequisite is Ready and finishing it leaves nothing more to wait for.
 // Every kind of hold the legacy roadmap/holds.ts knew has a counterpart here (A1a).
@@ -47,6 +47,8 @@ export type ObservedBlocker = {
   role?: SourceRole
   /** The one action it holds; unstated, it holds whichever action is next. */
   action?: Action
+  /** Its own words for the row, where the kind's label would not say what is wrong. */
+  text?: string
 }
 
 /** A step edge the graph does not carry: the plan's own wait on a maker step, or the
@@ -70,6 +72,8 @@ export type EvidenceGate = {
    *  On a started policy it holds the correction, which for that grant found switched off is the
    *  Report-only patch that prompts as the create would. */
   holdsCreate?: boolean
+  /** The report-only window's last day, where the gate is that window (`evidence:observation`). */
+  until?: string
 }
 
 export type StepObservation = {
@@ -141,7 +145,7 @@ export type Blocker = {
   ordinal: number
   /** `sourceMapping` only: include | exclude | both, as the observed blocker stated it. */
   role?: SourceRole
-  /** `evidence` only: the gate's own words (a threshold, the records' state). */
+  /** `evidence`: the gate's own words (a threshold, the records' state); an observed blocker's own words. */
   text?: string
 }
 
@@ -150,7 +154,7 @@ export type LaneResult = {
   substatus: Substatus | null
   nextAction: Action | null
   started: boolean
-  /** On Hold: the primary blocker. Up Next: the nearest unresolved prerequisite.
+  /** On Hold: the primary blocker. Up Next: the nearest unresolved prerequisite, or the report-only week.
    *  Ready · Observing: the open evidence gate, else the nearest unresolved prerequisite. Otherwise null. */
   reason: Blocker | null
   /** On Hold: §15 order, primary first. Ready / Up Next: the unresolved prerequisites of the next action. */
@@ -159,8 +163,6 @@ export type LaneResult = {
   gates: EvidenceGate[]
   /** §14 rule 1: distinct not-yet-completed steps before the next action is executable. */
   layers: number
-  /** Completed: hard prerequisites of the action it already took that the scan still finds unmet. */
-  unmetPrerequisites: Blocker[]
 }
 
 const BLOCKER_ORDER: readonly BlockerKind[] = [
@@ -360,31 +362,6 @@ function unresolvedOn(ctx: Ctx, id: string, action: Action): Blocker[] {
   return out
 }
 
-/**
- * The hard prerequisites of the action a completed step already took, that the
- * scan still finds unmet, and the conditional ones whose condition this plan has
- * resolved to applicable. An unresolved condition is left out: it may simply not
- * apply, and "that order was not followed" is a claim. A resolved one is not:
- * eight policies enforced while security defaults were on read Completed with a
- * tile naming the recovery test and nothing naming the cutover, because every
- * security-defaults edge is conditional (Sam D2). Evidence edges are gates on
- * enforcement, not facts (§7).
- */
-function completedWithout(ctx: Ctx, id: string): Blocker[] {
-  const kind = kindOf(ctx, id)
-  const action: Action = kind === 'policy' ? 'enforce' : kind === 'decision' ? 'decide' : 'complete'
-  const out: Blocker[] = []
-  for (const e of edgesOf(ctx, id)) {
-    if (e.action !== action || isEvidenceEdge(e)) continue
-    if (e.edgeKind !== 'hard' && !(e.edgeKind === 'conditional' && conditionState(ctx, e.condition) === 'applicable')) continue
-    if (e.prerequisite === id || edgeSatisfied(ctx, e)) continue
-    const kindOfBlocker = e.prerequisiteKind === 'step' ? 'step' : nonStepKind(e, prerequisiteState(ctx, e.prerequisite))
-    if (out.some((b) => b.kind === kindOfBlocker && b.id === e.prerequisite)) continue
-    out.push(blocker(kindOfBlocker, e.prerequisite, e, true))
-  }
-  return out.sort(byTaxonomy)
-}
-
 function byTaxonomy(a: Blocker, b: Blocker): number {
   return BLOCKER_ORDER.indexOf(a.kind) - BLOCKER_ORDER.indexOf(b.kind) || a.id.localeCompare(b.id)
 }
@@ -426,7 +403,7 @@ function layersOf(ctx: Ctx, id: string, action: Action): number {
 }
 
 function result(lane: Lane, partial: Partial<LaneResult> = {}): LaneResult {
-  return { lane, substatus: null, nextAction: null, started: false, reason: null, blockers: [], gates: [], layers: 0, unmetPrerequisites: [], ...partial }
+  return { lane, substatus: null, nextAction: null, started: false, reason: null, blockers: [], gates: [], layers: 0, ...partial }
 }
 
 function derive(ctx: Ctx, id: string): LaneResult {
@@ -446,16 +423,10 @@ function deriveUncached(ctx: Ctx, id: string): LaneResult {
   const obs = observation(ctx, id)
   const kind = kindOf(ctx, id)
 
-  // 1. Terminal intended outcome reached this scan.
-  //
-  // Completed answers "what is left to do", so it carried no blockers, and a
-  // step enforced AHEAD of a hard prerequisite lost the record of it: ten
-  // policies went on with the emergency-access drill still undone, every
-  // "Prerequisite · To do" tile vanished with the last of them, and nothing
-  // anywhere said the recovery path had never been verified. The prerequisite
-  // is not work on this step any more, but it is still unmet, and that is a
-  // fact about the tenant the reader is owed.
-  if (isComplete(ctx, id)) return result('Completed', { unmetPrerequisites: completedWithout(ctx, id) })
+  // 1. Terminal intended outcome reached this scan. A Completed step carries
+  // nothing open (walk list 4.x L3 and item 2, owner 2026-09-24): a prerequisite
+  // it went ahead of is that prerequisite's own row, and its work is there.
+  if (isComplete(ctx, id)) return result('Completed')
   // 2. Owner-deferred.
   if (ctx.owner.deferred?.includes(id)) return result('Deferred')
 
@@ -476,7 +447,7 @@ function deriveUncached(ctx: Ctx, id: string): LaneResult {
   const abnormal = [
     ...(obs.blockers ?? [])
       .filter((b) => b.action === undefined || b.action === nextAction)
-      .map((b) => ({ ...blocker(b.kind, b.id, null, true), ...(b.role ? { role: b.role } : {}) })),
+      .map((b) => ({ ...blocker(b.kind, b.id, null, true), ...(b.role ? { role: b.role } : {}), ...(b.text ? { text: b.text } : {}) })),
     ...unresolved.filter((b) => b.abnormal),
   ].sort(byTaxonomy)
   // Every abnormal blocker holds the next action, an enforced policy's correction included
@@ -519,13 +490,16 @@ function deriveUncached(ctx: Ctx, id: string): LaneResult {
       return result('Ready', { substatus: 'Decision', nextAction, started, reason: open[0] ? evidenceBlocker(open[0]) : null, blockers: healthy, gates, layers })
     }
     // A report-only policy (owner's status contract): while its evidence is still being
-    // collected it waits On Hold; once what was collected can be reviewed, the review is
-    // Ready (`Observing`); elapsed time alone never makes it Ready to enforce.
+    // collected it waits; once what was collected can be reviewed, the review is
+    // Ready (`Observing`); elapsed time alone never makes it Ready to enforce. Its
+    // report-only week alone is a wait that time closes, not a stop: Up Next (walk
+    // list 4.x item 11, owner 2026-09-24). Any other open gate holds it On Hold.
     if (kind === 'policy') {
       const waiting = open.length > 0 ? open : obs.evidenceSatisfied ? [] : [OBSERVATION]
       const review = waiting.find((g) => g.reviewable === true)
       if (review) return result('Ready', { substatus: 'Observing', nextAction, started, reason: evidenceBlocker(review), blockers: healthy, gates, layers })
-      if (waiting.length > 0) return result('On Hold', { nextAction, started, reason: evidenceBlocker(waiting[0]!), blockers: healthy, gates, layers })
+      const week = waiting.length > 0 && waiting.every((g) => g.id === OBSERVATION.id)
+      if (waiting.length > 0) return result(week ? 'Up Next' : 'On Hold', { nextAction, started, reason: evidenceBlocker(waiting[0]!), blockers: healthy, gates, layers })
     }
     if (healthy.length > 0) return queued()
     if (nextAction === 'enforce') return result('Ready', { substatus: 'Ready to enforce', nextAction, started, gates, layers })

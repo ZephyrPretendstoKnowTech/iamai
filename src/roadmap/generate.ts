@@ -16,7 +16,7 @@ import type { BaselinePackage } from '../baseline/types.ts'
 import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
 import { PLACEHOLDER_STEP, implementable, matchedStrengthIds, resolveTenantPolicy, tenantObjectsOf, unmatchedStrengths } from './resolvePolicy.ts'
-import { accountApplicability, effectOf, emergencyExposureOf, enforcementHeld, isOpenPolicy, isValidOperation, operationsOf, stepEffects, strengthLookupOf, submitsEnforcement, tenantStrengthsOf, validOperations, unavailableReason } from './operations.ts'
+import { applies, effectOf, emergencyExposureOf, enforcementHeld, isOpenPolicy, isValidOperation, operationsOf, stepEffects, strengthLookupOf, submitsEnforcement, tenantStrengthsOf, validOperations, unavailableReason } from './operations.ts'
 import type { PolicyEffect } from './operations.ts'
 import type { GrantFloor } from '../coverage/types.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
@@ -233,6 +233,9 @@ import { ladderSteps } from './ladder.ts'
  * came for. The ladder itself is untouched and this is the only switch.
  */
 const FREE_TIER_LADDER = false
+
+/** The emergency-access check that every enforcing policy leaves the accounts out: Configure Emergency Exclusions' work. */
+const EXCLUDED_FROM_POLICIES = 'bg.excludedFromAllPolicies'
 import { EMERGENCY_ACCESS_STEP_IDS, attachConfigurationFindings, blockerStepId, canonicalBlockerStepId, blockerSteps, gateFor, gateReason } from './blockerSteps.ts'
 import { stepChecks } from '../validation/checkFixes.ts'
 import { buildContext, breakGlassReport, exclusionGroupPolicySafety, reportFor } from '../validation/report.ts'
@@ -1031,6 +1034,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const exclusionsGroupId = tenantObjects.exclusionsGroupId
   const existingNames = new Set((snapshot.config.caPolicies?.rows ?? []).map((p) => String((p as RawPolicy).displayName ?? '').trim().toLowerCase()).filter(Boolean))
   const proposedTaken = new Set<string>()
+  const switchedOffNames = new Set((snapshot.config.caPolicies?.rows ?? []).filter((p) => (p as RawPolicy).state === 'disabled').map((p) => String((p as RawPolicy).displayName ?? '').trim().toLowerCase()).filter(Boolean))
   /** The names of the policies this plan tagged for one step, lower-cased. */
   const taggedNamesFor = (stepId: string): Set<string> => {
     const rows = (snapshot.config.caPolicies?.rows ?? []) as RawPolicy[]
@@ -1052,6 +1056,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const uniqueName = (goal: Goal, stepId: string): { name: string; note: string | null } => {
     const base = proposedPolicyName(goal, naming)
     const mine = taggedNamesFor(stepId)
+    // A switched-off policy carrying the name is the step's own too: the step
+    // sets it to Report-only (tracking.ts matchMembers, rule 5), never builds a
+    // "(2)" beside it (walk list 4.x item 12, owner 2026-09-24).
+    if (switchedOffNames.has(base.trim().toLowerCase())) mine.add(base.trim().toLowerCase())
     const taken = (name: string): boolean => (existingNames.has(name) && !mine.has(name)) || proposedTaken.has(name)
     if (!taken(base.toLowerCase())) {
       proposedTaken.add(base.toLowerCase())
@@ -1609,9 +1617,17 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // pass because it is In place.
   // Emergency access gates on its minimum safety checks; its hardening holds the
   // plan through the step not being done until it is fixed or deferred.
-  const gatingReports = bgStanding ? validationReports.map((r) => (r === bgReport ? { ...r, blocking: bgStanding!.minimum } : r)) : validationReports
+  // Whether every enforcing policy leaves the emergency accounts out is
+  // Configure Emergency Exclusions' work, so a policy it holds waits on that
+  // step. Filed under Prepare Emergency Access Accounts, a policy read "Prepare
+  // Emergency Access Accounts · Prerequisite · Completed" with the note to
+  // finish it first (walk list 4.x item 23).
+  const exclusionMinimum = bgStanding ? bgStanding.minimum.filter((r) => r.id === EXCLUDED_FROM_POLICIES) : []
+  const accountMinimum = bgStanding ? bgStanding.minimum.filter((r) => r.id !== EXCLUDED_FROM_POLICIES) : []
+  const gatingReports = bgStanding ? validationReports.map((r) => (r === bgReport ? { ...r, blocking: accountMinimum } : r)) : validationReports
   let gate = canUseConditionalAccess ? gateReason(gatingReports) : null
-  if (gate === null && bgStanding && bgAccountStanding && (bgStanding.minimum.length > 0 || (bgAccountStanding.hardening.length > 0 && !hardeningDeferred(bgAccountStanding.hardening, input.hardeningDeferral)))) gate = gateFor('breakGlass')
+  if (gate === null && canUseConditionalAccess && exclusionMinimum.length > 0) gate = gateFor('exclusionGroup')
+  if (gate === null && bgStanding && bgAccountStanding && (accountMinimum.length > 0 || (bgAccountStanding.hardening.length > 0 && !hardeningDeferred(bgAccountStanding.hardening, input.hardeningDeferral)))) gate = gateFor('breakGlass')
   // Accounts not yet prepared are an unverified escape hatch too: since the
   // connected journey (c1cacf21) Step 1 is done only with an approved recovery
   // passkey on each account, which no validation check carries, so the reports
@@ -2107,7 +2123,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       const probe = { goalId: goal.id, kind, status: statusNow(), action } as unknown as Step
       const finalEffects = isOpenPolicy(probe) ? stepEffects(probe) : []
       const exposure = emergencyExposureOf(finalEffects, mapping.breakGlassUserIds, snapshot, strandContext)
-      if (exposure !== null) action = { ...action, emergencyExposure: exposure }
+      if (exposure !== null) action = { ...action, emergencyExposure: { ...exposure, ...(exclusions.actionableName ? { group: exclusions.actionableName } : {}) } }
     }
 
 
@@ -2328,7 +2344,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // policies that had delivered it, said the signed-in member account was in
     // scope, and on small was given a stranding verdict it never had.
     const deliveredReachesOperator = deliveredReach === null && operatorId !== null
-      ? (deliveringEffects ?? []).some((e) => accountApplicability(e.scope, operatorId, snapshot as never, strandContext) !== 'out')
+      ? (deliveringEffects ?? []).some((e) => applies(e, operatorId, snapshot, strandContext) !== 'out')
       : undefined
     // The denominator. A goal can be delivered and still reach a fraction of the
     // tenant: a policy excluding a group that holds 116 of 122 accounts delivers

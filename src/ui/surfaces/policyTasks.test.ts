@@ -195,18 +195,18 @@ test('a policy in place, or at its last stage with nothing to submit, is a satis
     const { body } = bodyOf('s-goal-mfa-all-users', 'demo-week2')
     assert.equal(body.contract.state.satisfied, true, 'the premise: nothing to create; keep it as it is')
     const cards = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)
-    // Every card but one: this policy is enforced over a tenant where eleven of
-    // thirty-three cannot satisfy it, and that reading is a finding rather than a
-    // task, because nothing on this step moves the number (stepContract.ts
-    // shortReadingOf). The bar says both halves.
-    assert.equal(cards.filter((item) => !item.satisfied).map((item) => item.key).join(), FINISHED_READING)
+    // Every card: this policy is enforced over a tenant where eleven of
+    // thirty-three cannot satisfy it, and that reading is a fact of the finished
+    // step under Satisfied, never an open card (walk list 4.x item 2).
+    assert.equal(cards.filter((item) => !item.satisfied).length, 0)
+    assert.ok(cards.some((item) => item.key === FINISHED_READING && item.satisfied))
     assert.equal(cards[0].title, 'In place')
     assert.equal(cards[0].instruction, '')
     // The stages it passed through are not checks anybody completed (S4-5): this
     // policy was found in place, on a scan that recorded no date, no evidence and
     // no actor for any stage of it.
     assert.deepEqual(cards[0].completed, [])
-    assert.equal(policyBarOf(cards), 'Every task on this step is complete, and it left something behind.')
+    assert.equal(policyBarOf(cards), 'Every task on this step is complete.')
   }
   {
     const contract = {

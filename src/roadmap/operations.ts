@@ -910,6 +910,30 @@ export function accountApplicability(
   return unsure ? 'unknown' : 'in'
 }
 
+/** What `applies` needs of a directory: the users, and who holds which role, active and PIM-eligible. */
+export type RoleDirectory = { roles?: { active?: Record<string, string[]>; eligible?: Record<string, string[]> }; users?: DirectoryRow[] }
+
+/**
+ * Whether a policy reaches one account, its PIM-eligible roles counted as
+ * roles it holds: the one reading of role scope (walk list 4.x L2, owner
+ * 2026-09-24). An eligible admin is reached the moment the role is activated,
+ * so readiness, Affected people, the admin count and the emergency-access
+ * boundary all count them. It read eligible roles for readiness alone
+ * (roadmap/methodReadiness.ts), so one admin was ready to be counted and not
+ * there to be affected. A policy that names no role reads as the account's
+ * own scope.
+ */
+export function applies(effect: Pick<PolicyEffect, 'scope'>, accountId: string, snapshot: RoleDirectory, evidence: ScopeEvidence = {}): Applicability {
+  const current = accountApplicability(effect.scope, accountId, snapshot, evidence)
+  if (!effect.scope.roles.include.length && !effect.scope.roles.exclude.length) return current
+  const answers = [current]
+  for (const role of snapshot.roles?.eligible?.[accountId] ?? []) {
+    const roles = { active: { ...(snapshot.roles?.active ?? {}), [accountId]: [...(snapshot.roles?.active?.[accountId] ?? []), role] } }
+    answers.push(accountApplicability(effect.scope, accountId, { users: snapshot.users, roles }, evidence))
+  }
+  return answers.includes('in') ? 'in' : answers.includes('unknown') ? 'unknown' : 'out'
+}
+
 /**
  * The emergency-access boundary, as one reading of a finished policy set.
  *
@@ -930,14 +954,14 @@ export function accountApplicability(
 export function emergencyExposureOf(
   effects: readonly PolicyEffect[],
   emergencyIds: readonly string[],
-  snapshot: { roles?: { active?: Record<string, string[]> }; users?: DirectoryRow[] },
+  snapshot: RoleDirectory,
   evidence: ScopeEvidence = {},
 ): { reached: string[]; unproven: string[] } | null {
   if (emergencyIds.length === 0 || effects.length === 0) return null
   const reached: string[] = []
   const unproven: string[] = []
   for (const id of emergencyIds) {
-    const answers = effects.map((e) => accountApplicability(e.scope, id, snapshot, evidence))
+    const answers = effects.map((e) => applies(e, id, snapshot, evidence))
     if (answers.some((a) => a === 'in')) reached.push(id)
     else if (answers.some((a) => a === 'unknown')) unproven.push(id)
   }

@@ -152,8 +152,9 @@ test('a report-only window reads its review day, or that its review is due once 
     const f = noDrill(withDirectionApproved(curatedFixture('demo-week2')))
     const r = runFixture(f)
     const board = boardReadingsOf(r.steps, r.schedule.cleanup, null)
-    const watched = r.steps.filter((s) => { const l = laneViewFor(s, board); return l.lane === 'On Hold' && l.tail === BOARD.blockers.evidence && s.scheduled?.class === 'observing' && s.blockedBy.length === 0 })
-    assert.ok(watched.length > 0, 'the premise: a watched policy On Hold · Observing with no wait of its own on the roadmap')
+    // Its report-only week reads Up Next (walk list 4.x item 11), and keeps its own day.
+    const watched = r.steps.filter((s) => { const l = laneViewFor(s, board); return l.lane === 'Up Next' && l.reportOnlyUntil !== undefined && s.scheduled?.class === 'observing' && s.blockedBy.length === 0 })
+    assert.ok(watched.length > 0, 'the premise: a watched policy Up Next in its report-only week with no wait of its own on the roadmap')
     for (const s of watched) {
       const at = s.scheduled!.at!
       assert.equal(boardWhenOf(s, waveStartOf(s), laneViewFor(s, board)), absoluteDate(at), `${s.id}: the review day, not "After prerequisites"`)

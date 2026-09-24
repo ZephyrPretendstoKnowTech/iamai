@@ -54,7 +54,7 @@ test('demo: the managed-device create waits on device readiness and says why; on
     assert.equal(unavailableReason(step), 'readiness-unmet')
     assert.equal(label(step), 'On Hold', 'never Ready · Create')
     const reading = board.readings.get(DEVICE)!
-    assert.equal(holdLabelOf(reading, board.titleOf), `when device readiness reaches ${gate.threshold} (now ${gate.value})`, 'the row names the number it waits for')
+    assert.equal(holdLabelOf(reading, board.titleOf), `When device readiness reaches ${gate.threshold} (now ${gate.value})`, 'the row names the number it waits for, starting with a capital (walk list 4.x item 27)')
     const sch = scheduleOf(step)
     assert.equal(sch.class, 'waiting')
     assert.equal(sch.at, null, 'no report-only day')

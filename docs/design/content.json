@@ -789,6 +789,11 @@
         "none": "Not scheduled",
         "after": "After {step}",
         "afterPrerequisites": "After prerequisites",
+        "$commentReportOnly": "The Up Next tail of a policy waiting out its report-only week (planBoard.ts holdLabelOf; walk list 4.x item 11, owner 2026-09-24): a wait, not a stop. {date} is the week's last day.",
+        "reportOnly": "Report-only until {date}",
+        "$commentRowWords": "Row sub-lines a wait writes for itself (planLanes.ts; walk list 4.x item 27, owner 2026-09-24): the admin readiness threshold as the admins it counts, and a policy that reaches the emergency accounts as the group it does not exclude.",
+        "readinessAdmins": "When every admin has a method it accepts ({ready} of {total})",
+        "notExcluded": "Doesn't exclude {group}",
         "waiting": "After prerequisites",
         "review": "After review",
         "reviewNow": "Review now",
@@ -819,7 +824,8 @@
         "needsDecision": "Decision",
         "observing": "Observing",
         "review": "Review",
-        "readyToEnforce": "Ready to enforce"
+        "$commentReadyToEnforce": "Walk list 4.x item 11 (owner, 2026-09-24): the report-only week reads Up Next, then Ready · Turn on.",
+        "readyToEnforce": "Turn on"
       },
       "progress": {
         "$comment": "The Plan header's four tiles (A1b, decision 11): Steps, Completed (the lane count), Projected finish (A2: the estimate at pace, with the committed day under it when it differs; the placeholder without an estimate) and Started.",
@@ -834,8 +840,8 @@
       },
       "howTo": {
         "link": "How to use this plan",
-        "$commentIntro": "Where to start, and what can be done at once (owner, roadmap flow V2 decision H): the plan lets every policy that can be written be created in report-only on the same day once Emergency Access and the rollout answers are done, and orders only the turn-on. The All work view reads top to bottom, so this says the creates need not wait for the sections above them, and that a turn-on waits on its own row reading Ready · Ready to enforce, never on its section's place: section position gates nothing (V2 research), and a later section's policy can be ready to enforce while an earlier section is on hold. The legend below is the lane words' one explanation; the intro and legend replaced an items list that repeated both.",
-        "intro": "Start at the top of All work and open a step to see its findings, instructions and next action. Once the first two sections are done, every policy marked Ready · Create can be created in report-only straight away. Turn each one on when its own row reads Ready · Ready to enforce. Save your choices, make the changes in Entra or the service named in the instructions, then scan again to check the result. Estimated dates adjust as the plan changes.",
+        "$commentIntro": "Where to start, and what can be done at once (owner, roadmap flow V2 decision H): the plan lets every policy that can be written be created in report-only on the same day once Emergency Access and the rollout answers are done, and orders only the turn-on. The All work view reads top to bottom, so this says the creates need not wait for the sections above them, and that a turn-on waits on its own row reading Ready · Turn on (walk list 4.x item 11), never on its section's place: section position gates nothing (V2 research), and a later section's policy can be ready to enforce while an earlier section is on hold. The legend below is the lane words' one explanation; the intro and legend replaced an items list that repeated both.",
+        "intro": "Start at the top of All work and open a step to see its findings, instructions and next action. Once the first two sections are done, every policy marked Ready · Create can be created in report-only straight away. Turn each one on when its own row reads Ready · Turn on. Save your choices, make the changes in Entra or the service named in the instructions, then scan again to check the result. Estimated dates adjust as the plan changes.",
         "legend": [
           {
             "label": "Ready",
@@ -843,7 +849,7 @@
           },
           {
             "label": "Up Next",
-            "description": "Complete the linked Ready prerequisites first."
+            "description": "Complete the linked Ready prerequisites first, or let the policy finish its report-only week."
           },
           {
             "label": "On Hold",
@@ -1986,6 +1992,40 @@
             "admin": "admins",
             "device": "people in scope"
           },
+          "drift": {
+            "$comment": "A deployed policy no longer what the plan asked for in a part IAMAI does not write, as one card with its fix (stepContract.ts driftCardOf; walk list 4.x item 24, owner 2026-09-24). names are the portal's own names for each dimension (roadmap/observation.ts semanticFieldsOf keys).",
+            "changed": "{dimensions} changed",
+            "setBack": "Set {dimension} back to {value}.",
+            "setBackTasks": "Set {dimension} back as Implementation Tasks shows.",
+            "$commentDiffers": "A policy first seen already different from the plan never had the setting (R4-25): it differs, and the fix sets it, never back.",
+            "differs": "{dimensions} differ from the plan",
+            "set": "Set {dimension} to {value}.",
+            "setTasks": "Set {dimension} as Implementation Tasks shows.",
+            "anyExcept": "Any device except {platforms}",
+            "names": {
+              "users": "Users",
+              "applications": "Target resources",
+              "clientAppTypes": "Client apps",
+              "platforms": "Device platforms",
+              "locations": "Locations",
+              "devices": "Filter for devices",
+              "signInRiskLevels": "Sign-in risk",
+              "userRiskLevels": "User risk",
+              "servicePrincipalRiskLevels": "Service principal risk",
+              "insiderRiskLevels": "Insider risk",
+              "authenticationFlows": "Authentication flows",
+              "grantControls": "Grant",
+              "sessionControls": "Session",
+              "other": "A condition"
+            }
+          },
+          "acceptedWho": {
+            "$comment": "Who a finished policy's readiness fact counts, by its family (readiness.tiles.accepted; walk list 4.x item 2).",
+            "mfa": "people",
+            "guest": "guests",
+            "admin": "admins",
+            "device": "people"
+          },
           "readinessRoute": {
             "$comment": "Where a readiness number is moved, by its family (copy/reasons.ts READINESS_MEASURE), for a measure the plan itself has no step for. A family with no entry states the number alone.",
             "device": "Device readiness moves in Intune, not here: enroll the devices on the chosen platforms and assign a compliance policy, then scan again. No step of this plan enrolls a device for you."
@@ -2057,11 +2097,6 @@
           "$commentLeadUnverified": "The lead of a finished step, other than the one with the emergency-access tiers, whose open findings are all unread (outcome unknown). It read its milestone, \"No change needed.\", over a tile saying Could not verify: on the Follow-up snapshot Configure Passkey Settings said so over \"Existing passkeys affected - Could not verify\", whose note said some registered authentication methods were not readable. An absolute all-clear over a check IAMAI could not make is a claim it cannot know; this scopes the all-clear to what was read and names the check that was not. A finished step with an open failing finding keeps its milestone words: an owner question, not settled here.",
           "leadUnverified": "Nothing IAMAI could read here needs a change. It could not verify {findings}, and says there what was not read.",
           "fixStep": "Finish {step} first.",
-          "$commentFixStepOvertaken": "Completed answers \"what is left to do\", so a completed step carried no prerequisites and the record of one going unmet was erased. A reader enforced ten policies in the portal with the emergency-access drill still undone — every \"Prerequisite · To do\" tile disappeared as the last one went on, the steps read \"moved to enforced, as the plan asked\", and nothing anywhere said the recovery path had never been verified. The prerequisite is not work on the completed step any more, but it is still unmet, and the order not followed is a fact about the tenant.",
-          "$commentFixStepOvertaken": "It ended \"so that order was not followed\": a verdict on the person, and false where the policy was on before the plan existed (the first scan found it enforced). The fact stays, in the present tense: this step is done and the step the plan puts first is not.",
-          "fixStepOvertaken": "This step is finished, and {step}, which the plan puts before it, is not finished yet.",
-          "$commentFixStepOvertakenOpen": "The overtaken note is the engine's: the step reached its outcome (a policy enforced as pinned) ahead of a hard prerequisite. The board can still draw that step outside Completed — a policy already on with a workflow record or an unmatched guest pair to review reads Ready · Review — and the note said \"This step is finished\" beside a badge saying there is work left on it (R4-NEW-jordanb-1). The fact stays: the change went in before the prerequisite. Only the claim that the step is finished goes, where the board does not say it is.",
-          "fixStepOvertakenOpen": "This step's change is already in place, and {step}, which the plan puts before it, is not finished yet.",
           "$commentFixStepAt": "A prerequisite is not always waited on until it is FINISHED (src/actionability/dependency-data.json carries the milestone on every edge). Turn Off Security Defaults waits for the replacement policies to be ready to enforce; those policies wait for it to be complete. Both tiles said \"Finish the other first\", so the pair read as a deadlock that the data does not contain — and the way out of an apparent deadlock is to turn security defaults off, which is the one thing the step's own words say not to do yet.",
           "fixStepAt": {
             "ready-to-enforce": "{step} needs to be ready to enforce first — not finished, just ready.",
@@ -2135,13 +2170,18 @@
               "decision": "Decision",
               "gate": "Threshold",
               "reading": "Readiness",
+              "$commentAccepted": "A finished policy's readiness, stated under Satisfied: a Completed step shows no open card (walk list 4.x item 2, owner 2026-09-24). {who} is acceptedWho by family.",
+              "accepted": "{ready} of {total} {who} have a method it accepts",
               "observation": "Observation",
               "observationUntil": "Until {date}",
-              "$commentUnwatched": "The short value of the Observation tile a finished policy this plan owns draws where it went live with no report-only period IAMAI watched (owner decision 3, 2026-09-22; R4-12). Its note is stepContract.foundEnforcedUnwatched.",
-              "unwatched": "No report-only period watched",
+              "$commentUnwatched": "The Satisfied fact a finished policy this plan owns states where IAMAI watched it go live with no report-only period (owner decision 3, 2026-09-22; R4-12; walk list 4.x item 2, owner 2026-09-24). {date} is the scan that first saw it On, or Microsoft's own date for it.",
+              "unwatched": "On since {date}, without a report-only week",
               "exclusions": "Exclusions",
               "exclusionsReached": "Reaches emergency access",
               "exclusionsUnproven": "Not proven",
+              "$commentNotExcluded": "A policy that reaches the emergency accounts, as one card with its fix, opened on Configure Emergency Exclusions (stepContract.ts exclusionsTile; walk list 4.x item 24).",
+              "notExcluded": "Emergency accounts not excluded",
+              "notExcludedFix": "Add {group} under Users → Exclude.",
               "blockers": "Prerequisites",
               "$commentBeforeTurnOn": "The label of a wait that holds only the turn-on, on a policy whose next action is its Report-only create (R4-31, Marcus D12). The registration policy read Ready · Create with its MFA threshold on the card and nothing about the Temporary Access Pass it cannot be turned on without: the engine held that wait and the page dropped it until the policy had been built. Headed Prerequisites, the same wait would claim the create is blocked, which readiness never does (owner, 2026-09-11: readiness gates enforcement, not creation). After the create, turning it on is the next action and the wait is a Prerequisite again.",
               "beforeTurnOn": "Before turning on",
