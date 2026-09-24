@@ -95,8 +95,9 @@ test('a ready-to-enforce policy hands over its turn-on only when nothing holds i
     assert.doesNotMatch(text, TURN_ON, `a channel still turns the policy on:\n${text}`)
     assert.doesNotMatch(exported, TURN_ON, `the export still turns the policy on:\n${exported}`)
     const m = nextMilestone(step)
-    assert.match(m.label, /stays in Report-only until Turn Off Security Defaults is finished/, m.label)
-    assert.match(m.label, /Entra does not let a Conditional Access policy go On while security defaults are on/, m.label)
+    // The policy card's own words (walk list 4.x items 17 and 20).
+    assert.match(m.label, /It turns on after Turn Off Security Defaults/, m.label)
+    assert.match(m.label, /Turn Off Security Defaults turns security defaults off and this policy on together/, m.label)
     assert.doesNotMatch(m.label, /ready to be turned on/)
   }
   {
@@ -106,7 +107,7 @@ test('a ready-to-enforce policy hands over its turn-on only when nothing holds i
     assert.doesNotMatch(text, TURN_ON, `a channel still turns the policy on:\n${text}`)
     assert.doesNotMatch(exported, TURN_ON, `the export still turns the policy on:\n${exported}`)
     const m = nextMilestone(step)
-    assert.match(m.label, /stays in Report-only until Verify Emergency Access is finished/, m.label)
+    assert.match(m.label, /It turns on after Verify Emergency Access/, m.label)
     assert.doesNotMatch(m.label, /security defaults/i, 'a wait that is not there is named')
     // The day stays: waiting on a step the plan schedules is sequencing (owner, Step 4).
     assert.equal(m.at, step.events?.enforce.at ?? null)

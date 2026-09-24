@@ -74,6 +74,7 @@ import { policyFactOf } from './policyFact.ts'
 import type { PolicyFact } from './policyFact.ts'
 import { QUESTION_STEP, mailDevicesOf } from '../../roadmap/answers.ts'
 import { isGroupMember } from '../../roadmap/stepGroups.ts'
+import { rowWho } from './rowWho.ts'
 
 /**
  * The one state reading of a step (A1b, RUN-CONTEXT-A decision 1): the lane
@@ -915,6 +916,13 @@ export function existingOf(step: Step): ContractExisting | null {
  * instead of a count.
  */
 function whoOf(step: Step): ContractWho | null {
+  // A Turn On MFA for Everyone policy's reach is its row's Impact, a count
+  // (walk list 4.x items 25 and 31): "30 people", never "30 active people · 3
+  // admins · 1 guest · covers 36 enabled", in AI Info and every export.
+  if (isGroupMember(step.id, 'core') && (contentStepFor(step) as { kind?: unknown } | undefined)?.kind === 'policy') {
+    const impact = rowWho(step)
+    if (/^[0-9]/.test(impact)) return { known: true, text: impact }
+  }
   const pop = impactReachOf(step)
   if (affectedIds(pop).length === 0 && (pop.inScope ?? 0) === 0) return null
   return { known: true, text: populationLine(pop) }
@@ -3061,7 +3069,9 @@ export function railOf(c: StepContract, o: RailWords = {}): RailReading {
   const engineWords = FILLER.has(label.trim().replace(/[.:]$/, '')) || sentenceCount(label) > 1 ? null : label
   const days = [c.milestone.at, c.schedule?.at ?? null, c.scheduledOn].filter((d): d is string => d !== null).map(absoluteDate)
   const headline = milestoneHeadlineOf(l?.lane === 'Completed' ? l.label : null, [o.words, drawn !== null && sentenceCount(drawn) <= 1 ? drawn : null, o.task, first, engineWords], days)
-  const barLead = lead === null || headline === lead ? null : first !== null && headline === first ? lead.slice(first.length).trim() || null : lead
+  // The same words with or without their stop are the same sentence (the wait the rail names, walk list 4.x item 23).
+  const same = (a: string, b: string): boolean => a.trim().replace(/[.]$/, '') === b.trim().replace(/[.]$/, '')
+  const barLead = lead === null || same(headline, lead) ? null : first !== null && headline === first ? lead.slice(first.length).trim() || null : lead
   return { headline, instruction: o.instruction ?? null, barLead }
 }
 

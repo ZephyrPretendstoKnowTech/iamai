@@ -5456,10 +5456,6 @@
       },
       "who": {
         "lead": "{active} active people",
-        "evidenceUndated": {
-          "$comment": "The evidence lines that name the turn-on day ({enforce}), without it, keyed by the dated line's place in evidence: for a step that carries no such day - held on the board (owner decision 2, 2026-09-22), held by the roadmap, or finished - whose people the scan still read. Each keeps the rest of its dated line and says no more than it did (stepExport.ts whoEvidenceLines).",
-          "0": "{n} accounts signed in with legacy authentication in the last 30 days: {list:legacyUsers}"
-        },
         "evidence": [
           "{n} accounts signed in with legacy authentication in the last 30 days: {list:legacyUsers}",
           "{existingCoverage}"
@@ -5554,10 +5550,6 @@
       },
       "who": {
         "lead": "{active} active people",
-        "evidenceUndated": {
-          "$comment": "The evidence lines that name the turn-on day ({enforce}), without it, keyed by the dated line's place in evidence: for a step that carries no such day - held on the board (owner decision 2, 2026-09-22), held by the roadmap, or finished - whose people the scan still read. Each keeps the rest of its dated line and says no more than it did (stepExport.ts whoEvidenceLines).",
-          "0": "{deviceCodeCount} device-code sign-ins in the last 30 days, by {list:deviceCodeUsers}"
-        },
         "evidence": [
           "{deviceCodeCount} device-code sign-ins in the last 30 days, by {list:deviceCodeUsers}",
           "{existingCoverage}"
@@ -5910,7 +5902,7 @@
           "Name: {policyName}",
           "Users → Include: Directory roles → {list:coreAdminRoles}. {exclusionsLine}",
           "Target resources → Resources → All resources",
-          "Conditions → Client apps → Configure: Yes, then Browser. Left at No it reaches every client app.",
+          "Conditions → Client apps → Configure: Yes, then Browser",
           "Session → Sign-in frequency → Periodic reauthentication → {wantedValue}; Persistent browser session → Never persistent",
           "{reportOnlyLine}"
         ]
@@ -6718,7 +6710,7 @@
           "Before this policy: turn off Remember multifactor authentication on trusted devices; the two together prompt people unexpectedly.",
           "Users → Include: All users. {exclusionsLine} Also exclude the shared-device accounts {list:sharedDevices}",
           "Target resources → Resources → All resources",
-          "Conditions → Client apps → Configure: Yes, then Browser. Left at No it reaches every client app.",
+          "Conditions → Client apps → Configure: Yes, then Browser",
           "Session → Sign-in frequency → Periodic reauthentication → {wantedValue}; Persistent browser session → Never persistent",
           "{reportOnlyLine}"
         ]

@@ -46,8 +46,6 @@ import { emergencyGroupTasksOf } from './emergencyGroupTasks.ts'
 import { emergencyPasskeyTasksOf } from './emergencyPasskeyTasks.ts'
 import { emergencyAccountTasksOf, emergencyAccountTasksText } from './emergencyAccountTasks.ts'
 import { objectTaskOwner } from '../../roadmap/stepIds.ts'
-import { isGroupMember } from '../../roadmap/stepGroups.ts'
-import { rowWho } from './rowWho.ts'
 
 export type { ExportStep }
 
@@ -354,10 +352,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
     reason: laneView.lane === 'Ready' ? null : laneView.tail,
     fact: factOf(step),
     next: contract.milestone.line,
-    // A Turn On MFA for Everyone step's reach is its row's Impact, a count (walk
-    // list 4.x items 25 and 31): "30 people", never "30 active people · 3 admins
-    // · 1 guest · covers 36 enabled", in AI Info and every export.
-    who: sectionFourCount(step) ?? contract.who?.text ?? null,
+    who: contract.who?.text ?? null,
     // The count behind that sentence, from the one population authority
     // (derive/population.ts), and null on exactly the steps whose scope
     // Foundation A could not settle — the same steps the contract's `who` says
@@ -917,11 +912,4 @@ export function copyBoxes(step: Step, ctx: StepVarContext): { kind: 'comms' | 'h
   const manager = managerText(cs, ex)
   if (manager) out.push({ kind: 'manager', text: manager, after })
   return out
-}
-
-/** A Turn On MFA for Everyone step's Impact where it is a count (rowWho.ts): the one reach its row, AI Info and exports state. */
-function sectionFourCount(step: Step): string | null {
-  if (!isGroupMember(step.id, 'core')) return null
-  const impact = rowWho(step)
-  return /^[0-9]/.test(impact) ? impact : null
 }

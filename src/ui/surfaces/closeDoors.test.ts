@@ -137,7 +137,7 @@ test('B4: the exception devices are one step\u2019s second task, and the step th
   assert.equal(STEP_GROUPS.some((g) => g.members.includes('s-question-mail-devices')), false)
   // No mail account named: the policy's procedures alone, as every other policy
   // step draws. One named that still signs in with legacy authentication: one more
-  // task after them, naming it (walk list 4.x item 36). One named that no longer
+  // task, naming it, before the turn-on that waits for it (walk list 4.x items 5 and 36). One named that no longer
   // does has moved, and there is nothing to do.
   const alone = bodiesOf('demo').get(LEGACY)!.emergencyAccountTasks?.tasks.map((t) => t.id) ?? []
   assert.equal(alone.includes('mail-devices-route'), false)
@@ -147,8 +147,9 @@ test('B4: the exception devices are one step\u2019s second task, and the step th
   const naming = (id: string) => ({ ...f.mapping, questionAnswers: { ...(f.mapping.questionAnswers ?? {}), [key]: answerTextFor(questionOptions(QUESTION_STEP.mailDevices, 'decision')[1], [id]) } })
   const sender = f.snapshot.users.find((u) => u.userPrincipalName === 'svc-mailer-1@demo.example.com')!.id
   const tasks = bodiesOf('demo', naming(sender)).get(LEGACY)!.emergencyAccountTasks!.tasks
-  const mail = tasks[tasks.length - 1]
+  const mail = tasks[tasks.length - 2]
   assert.equal(mail.id, 'mail-devices-route')
+  assert.equal(tasks[tasks.length - 1].id, 'turn-on')
   assert.equal(mail.title, 'Move each mail account to a supported mail route')
   assert.match(mail.targetLabel ?? '', /svc-mailer-1/)
   assert.match(mail.steps.join('\n'), /SMTP AUTH with OAuth, an Exchange Online connector, or Direct Send \(internal recipients only\)/)
