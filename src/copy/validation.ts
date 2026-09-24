@@ -162,7 +162,6 @@ export const RULE_CITATION: Record<string, Citation> = {
   'loc.notWholeInternet': NETWORK,
   'loc.notTooWide': NETWORK,
   'loc.isTrusted': NETWORK,
-  'loc.redundancy': FIELD_PRACTICE,
   'loc.seenInSignIns': NETWORK,
   'cty.atLeastOne': COUNTRY_BLOCK,
   'cty.includesOperator': COUNTRY_BLOCK,
@@ -347,7 +346,6 @@ export const RULE_TEXT: Record<string, { what: string; why: string; label?: stri
   'loc.notWholeInternet': { label: 'Whole-Internet Range', what: 'No range covers the whole internet.', why: 'A location that trusts everything makes every policy that relaxes inside it unconditional.' },
   'loc.notTooWide': { label: 'Broad Ranges', what: 'Review broad IPv4 ranges (shorter than /16) and IPv6 ranges (shorter than /48) with the network owner.', why: 'A wide range quietly includes networks nobody meant to trust.' },
   'loc.isTrusted': { label: 'Marked as Trusted', what: 'The location is marked as trusted.', why: 'Policies that relax inside a trusted location do nothing until the flag is set.' },
-  'loc.redundancy': { label: 'Address Redundancy', what: 'More than a single address.', why: 'One address means one broken link takes the office out of its own trusted location.' },
   'loc.seenInSignIns': { label: 'Sign-ins From This Location', what: 'Sign-in records identify this named location.', why: 'Recorded location matches help confirm office usage; an unmatched window does not prove the location is unused.' },
   // ---- allowed countries ----
   'cty.atLeastOne': { label: 'Countries Allowed', what: 'At least one country is allowed.', why: 'An empty list blocks everyone, everywhere, including the person who set it.' },
@@ -468,7 +466,6 @@ export const FINDING = {
   locWholeInternet: (cidr: string): string => `${cidr} trusts the entire internet`,
   locTooWide: (cidr: string): string => `${cidr} covers a broad network range; verify its boundaries with the network owner`,
   locNotTrusted: 'not marked as trusted',
-  locSingle: (cidr: string): string => `${cidr} is the only address in the location`,
   locUnseen: (cidrs: string[]): string => `no sign-in in the window came from ${list(cidrs)}`,
 
   ctyNone: 'no country is allowed, which blocks everyone',

@@ -8,7 +8,7 @@
     "aiInfo": true,
     "email": true,
     "readiness": true,
-    "troubleshooting": true
+    "troubleshooting": false
   },
   "implementationProfile": {
     "entra": "full",
@@ -30,8 +30,7 @@
       "windowsHelloForBusiness",
       "fido2",
       "x509CertificateMultiFactor",
-      "temporaryAccessPassOneTime",
-      "temporaryAccessPassMultiUse"
+      "temporaryAccessPassOneTime"
     ],
     "targetRequirementsSatisfied": "mfa"
   },
@@ -162,9 +161,6 @@
   "supportBlocks": {
     "readiness": [
       "readiness.model"
-    ],
-    "troubleshooting": [
-      "troubleshooting.model"
     ]
   },
   "emailArtifacts": [

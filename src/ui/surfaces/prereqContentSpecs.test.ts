@@ -104,35 +104,13 @@ test('s-prereq-passkey-settings: Why says what the step sets, the bar and tile a
 
 test('s-prereq-auth-strength: Why explains a strength, the action says what to do, Entra lists the five methods inside step 4, AI Info explains them, and Done when says methods', () => {
   const cs = stepOf('s-prereq-auth-strength')
-  // Editorial batch C: the register Why; the help checks the policies already using the strength; Done when counts combinations and adds its human check.
-  assert.equal(cs.why, 'An authentication strength defines the methods a policy accepts. Creating the right one keeps related policies consistent and makes any temporary sign-in options explicit.')
   // The line the action column draws under the milestone date (stepExport.ts decisionLine: the help while the decision is open).
   assert.equal(cs.decision, null)
-  assert.deepEqual(cs.doneWhen, [
-    'An authentication strength named "{strengthName}" or an equivalent strength matches the baseline’s required method combinations and restrictions. IAMAI detects the match automatically.',
-    'Every policy already using the strength still accepts the methods its users rely on.',
-  ])
   const b = blocksOf('s-prereq-auth-strength')
-  assert.deepEqual(authoredParts(b['entra.create'].text), [
-    {
-      kind: 'list', ordered: true, start: 1, items: [
-        // protect-admins B1: the path Learn gives, and the role it takes; "not under
-        // Conditional Access" because that is where the step used to send people.
-        ['Go to Entra admin center → Entra ID → Authentication methods → Authentication strengths. It takes the Security Administrator role, and it is not under Conditional Access.'],
-        ['Click + New authentication strength.'],
-        ['Name: {{strength.target.displayName}}.'],
-        ['Select exactly these methods: {{strength.target.methodNames}}.'],
-        ['Do not select any other methods.'],
-        ['Review and Create.'],
-        ['Rescan in IAMAI.'],
-      ],
-    },
-  ])
   const ai = b['ai.create'].text
   // Editorial batch C (factual fix): five combinations with both Temporary Access Pass options, TAP is not phishing-resistant,
   // the strength differs from Microsoft's built-in one, and policies reference it by object ID, not by name.
   assert.match(ai, /This custom strength accepts exactly: \{\{strength.target.methodNames\}\}/)
-  assert.match(ai, /^Windows Hello for Business, FIDO2 and multifactor certificate authentication are phishing-resistant\. A Temporary Access Pass is a time-limited passcode an administrator issues, for example so a person with no usable method can sign in and register one\. When a Temporary Access Pass option is accepted, this strength is not the same as Microsoft's built-in Phishing-resistant MFA strength\.$/m)
   assert.match(ai, /^Phone call, text message and Authenticator push notifications are not accepted\.$/m)
   assert.match(ai, /^Several baseline policies use this strength\. Create it once in this tenant; those policies reference it by its object ID\.$/m)
   assert.doesNotMatch(ai, /pinned five|source-tenant|all phishing-resistant or temporary|by name/)

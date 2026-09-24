@@ -343,6 +343,11 @@ function atLastStage(track: readonly ContractStage[], lifecycle: Lifecycle | nul
  * that Implementation Tasks still lists.
  */
 export function policyCardsOf(contract: StepContract, projected: EmergencyTaskProjection | null, subject: string = POLICY_SUBJECT, check: string | null = null): EmergencySubjectTile[] {
+  // A finished preparation step states its fact, one card each, in place of
+  // "In place · No change needed." (step template rule 6).
+  if ((contract.satisfiedFacts?.length ?? 0) > 0) {
+    return contract.satisfiedFacts.map((fact, index) => ({ key: `fact:${index}`, accountId: null, heading: fact.heading, upn: null, title: fact.title, detail: fact.detail ?? '', instruction: '', completed: [], remainingCount: null, satisfied: true }))
+  }
   const task = projected?.tasks.find((item) => item.required) ?? projected?.tasks[0] ?? null
   // One task needs no pointer sentence (owner, 2026-09-20). On Emergency Access
   // the sentence earns its place because the step has three or four tasks and

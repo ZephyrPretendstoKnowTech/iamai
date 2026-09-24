@@ -48,6 +48,7 @@ import { planProposedNames, proposedNamesFor } from './proposedNames.ts'
 import { policyPairNames } from '../../coverage/naming.ts'
 import type { ProposedObjectNames } from './proposedNames.ts'
 import { exclusionsGroupChoice, groupEvidence } from '../../mapping/safetyChoice.ts'
+import { networkDraftOf } from '../../mapping/networkDraft.ts'
 import type { DirectoryEvidence } from '../../mapping/safetyChoice.ts'
 
 export type StepVarContext = {
@@ -97,6 +98,26 @@ function long(iso: string | null | undefined): string | undefined {
 /** The short form, one format everywhere (walk-51 item 5). */
 function short(iso: string | null | undefined): string | undefined {
   return iso ? absoluteDate(iso) : undefined
+}
+
+/** The Entra portal's name for each method an authentication strength allows. */
+const STRENGTH_METHOD_NAMES: Readonly<Record<string, string>> = { windowsHelloForBusiness: 'Windows Hello for Business', fido2: 'Passkeys (FIDO2)', x509CertificateMultiFactor: 'Certificate-based authentication (multifactor)', temporaryAccessPassOneTime: 'Temporary Access Pass (one-time use)', temporaryAccessPassMultiUse: 'Temporary Access Pass (multi-use)' }
+
+/** The methods a strength's allowed combinations select, as the portal names them: the one list the strength step's task, completion and package read. */
+export function strengthMethodNames(combinations: readonly string[]): string[] {
+  return combinations.map((value) => STRENGTH_METHOD_NAMES[value] ?? value)
+}
+
+/**
+ * The ranges Define the Trusted Network's task adds: the public ranges saved for
+ * the office where there are any, otherwise the content's words for the
+ * office's own public ranges (walk list 65).
+ */
+export function officeRangesOf(step: Pick<Step, 'id' | 'goalId' | 'guidance'>, mapping: MappingState): string | undefined {
+  const draft = networkDraftOf(mapping)
+  if (draft) return list(draft.ranges)
+  const unsaved = (contentStepFor(step) as { rangesUnsaved?: unknown } | undefined)?.rangesUnsaved
+  return typeof unsaved === 'string' ? unsaved : undefined
 }
 
 /** The tenant's own name, from the one place a snapshot carries it: every surface that names the tenant reads this. */
@@ -327,6 +348,18 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     // place of an unfinished reading. The who-line mechanism draws the
     // unresolved sentence in that slot instead (stepExport.ts whoEvidenceLines).
     if (ctx.snapshot.config.authStrengths?.status !== 'ok') v.evidenceNotRead = true
+    // The methods the baseline's strength allows, in the portal's own names:
+    // the task selects them and the completion names them, from one list.
+    const methods = strengthMethodNames(step.authenticationStrengthTarget?.allowedCombinations ?? [])
+    if (methods.length > 0) v.strengthMethods = list(methods)
+  }
+
+  // Define the Trusted Network: the office ranges its task adds (the ranges
+  // saved for the office where there are any, walk list 65), and the picked
+  // location it marks trusted instead of making one (walk list 61).
+  if (step.id === PREREQ_STEP_ID.trustedLocation) {
+    v.officeRanges = officeRangesOf(step, ctx.mapping)
+    if (step.officeToTrust?.length) v.officeToTrust = list(step.officeToTrust.map((l) => l.name))
   }
 
   // Nobody affected (timing.ts, the one definition): the records show nobody

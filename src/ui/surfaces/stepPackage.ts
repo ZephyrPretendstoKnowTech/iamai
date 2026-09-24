@@ -48,7 +48,7 @@ import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
 import { GATING_SUBJECTS, blockerStepId } from '../../roadmap/blockerSteps.ts'
 import { PASSKEY_SETTINGS_STEP_ID, passkeyBindings } from '../../roadmap/passkeySettings.ts'
 import { SYNC_WORKLOAD_GOAL_ID, syncIdentitySupportOf } from '../../roadmap/workloadIdentity.ts'
-import { stepVars, tenantNameOf } from './stepVars.ts'
+import { officeRangesOf, stepVars, strengthMethodNames, tenantNameOf } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { portalNamesFor, stepPortalLines, plannedPortalLines } from './stepPortal.ts'
 
@@ -981,10 +981,13 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
     put('strength.target.displayName', step.naming?.proposed)
     const combinations = step.authenticationStrengthTarget?.allowedCombinations
     if (combinations?.length) {
-      const names: Record<string, string> = { windowsHelloForBusiness: 'Windows Hello for Business', fido2: 'Passkeys (FIDO2)', x509CertificateMultiFactor: 'Certificate-based authentication (multifactor)', temporaryAccessPassOneTime: 'Temporary Access Pass (one-time use)', temporaryAccessPassMultiUse: 'Temporary Access Pass (multi-use)' }
       put('strength.target.allowedCombinations', combinations)
-      put('strength.target.methodNames', combinations.map(value => names[value] ?? value))
+      // One sentence's list ("A, B, C and D"), as the step's completion names it (stepVars.ts strengthMethods).
+      put('strength.target.methodNames', list(strengthMethodNames(combinations)))
     }
+    // The ranges Define the Trusted Network's task adds: the ranges saved for the
+    // office, or the words for the office's own public ranges (walk list 65).
+    if (step.id === 's-prereq-trusted-location') put('location.target.ipRangesText', officeRangesOf(step, ctx.mapping))
     if (step.id === 's-prereq-service-accounts-group') put('group.target.displayName', step.naming?.proposed)
   }
   putSome('location.target.countryCodes', (ctx.mapping.allowedCountries ?? []).map((code) => code.toUpperCase()))

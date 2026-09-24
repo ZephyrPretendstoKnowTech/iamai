@@ -1,11 +1,10 @@
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
-1. Go to Entra admin center → Entra ID → Authentication methods → Authentication strengths. It takes the Security Administrator role, and it is not under Conditional Access.
-2. Click + New authentication strength.
+1. Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Authentication methods → Authentication strengths** as a Security Administrator.
+2. Select **New authentication strength**.
 3. Name: {{strength.target.displayName}}.
 4. Select exactly these methods: {{strength.target.methodNames}}.
-5. Do not select any other methods.
-6. Review and Create.
-7. Rescan in IAMAI.
+5. Select **Next**, then **Create**.
+6. Return to IAMAI and select **Scan to update the plan**.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -32,13 +31,12 @@ Verify after the change: review each Conditional Access policy that uses this st
 @@IAMAI-BEGIN {"id":"json.create","channel":"json","states":["missing"],"format":"json-template","kind":"template","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/authenticationStrength/policies"}
 {
   "displayName": {{json:strength.target.displayName}},
-  "description": "IAMAI pinned-baseline authentication strength",
   "allowedCombinations": {{json:strength.target.allowedCombinations}}
 }
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.correct.metadata","channel":"json","states":["partial"],"format":"json-template","kind":"template"}
-{"displayName":{{json:strength.target.displayName}},"description":"IAMAI pinned-baseline authentication strength"}
+{"displayName":{{json:strength.target.displayName}}}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.correct.combinations","channel":"json","states":["partial"],"format":"json-template","kind":"template"}
@@ -61,8 +59,8 @@ function IG([string]$Method,[string]$Uri,$Body=$null){
 }
 function ReadStrength([string]$Id){IG 'GET' "$G/policies/authenticationStrengthPolicies/$Id"}
 switch($Mode){
- 'Create'{if([string]::IsNullOrWhiteSpace($DisplayName)){throw 'DisplayName required'};IG 'POST' "$G/policies/authenticationStrengthPolicies" @{displayName=$DisplayName;description='IAMAI pinned-baseline authentication strength';allowedCombinations=$Desired}}
- 'CorrectMetadata'{if(-not $StrengthId){throw 'StrengthId required'};IG 'PATCH' "$G/policies/authenticationStrengthPolicies/$StrengthId" @{displayName=$DisplayName;description='IAMAI pinned-baseline authentication strength'}|Out-Null;ReadStrength $StrengthId}
+ 'Create'{if([string]::IsNullOrWhiteSpace($DisplayName)){throw 'DisplayName required'};IG 'POST' "$G/policies/authenticationStrengthPolicies" @{displayName=$DisplayName;allowedCombinations=$Desired}}
+ 'CorrectMetadata'{if(-not $StrengthId){throw 'StrengthId required'};IG 'PATCH' "$G/policies/authenticationStrengthPolicies/$StrengthId" @{displayName=$DisplayName}|Out-Null;ReadStrength $StrengthId}
  'CorrectCombinations'{if(-not $StrengthId){throw 'StrengthId required'};$s=ReadStrength $StrengthId;if($s.policyType -ne 'custom'){throw 'Built-in strengths cannot be modified'};IG 'GET' "$G/policies/authenticationStrengthPolicies/$StrengthId/usage"|Out-Host;IG 'POST' "$G/policies/authenticationStrengthPolicies/$StrengthId/updateAllowedCombinations" @{allowedCombinations=$Desired}|Out-Host;ReadStrength $StrengthId}
  'Verify'{if(-not $StrengthId){throw 'StrengthId required'};$s=ReadStrength $StrengthId;$a=@($s.allowedCombinations|Sort-Object);$d=@($Desired|Sort-Object);if(($a -join '|') -ne ($d -join '|')){throw 'Allowed combinations do not match the pinned target'};$s}
 }
@@ -72,7 +70,7 @@ switch($Mode){
 
 An authentication strength is a named set of sign-in methods that a Conditional Access policy can require. The grant "Require multifactor authentication" accepts any second factor the tenant allows, including phone call and text message. This custom strength accepts exactly: {{strength.target.methodNames}}.
 
-Windows Hello for Business, FIDO2 and multifactor certificate authentication are phishing-resistant. A Temporary Access Pass is a time-limited passcode an administrator issues, for example so a person with no usable method can sign in and register one. When a Temporary Access Pass option is accepted, this strength is not the same as Microsoft's built-in Phishing-resistant MFA strength.
+Windows Hello for Business, FIDO2 and multifactor certificate authentication are phishing-resistant. A Temporary Access Pass is a time-limited passcode an administrator issues, for example so a person with no usable method can sign in and register one. Because it accepts a Temporary Access Pass, it is not Microsoft's built-in Phishing-resistant MFA strength.
 
 Phone call, text message and Authenticator push notifications are not accepted.
 
@@ -102,13 +100,9 @@ IAMAI found a conflict about which authentication strength this step should use:
 @@IAMAI-BEGIN {"id":"email.admin-change","channel":"email","states":["partial"],"format":"markdown","kind":"template"}
 Subject: Action needed: Create the Baseline's Authentication Strength
 
-Please review the policies using this authentication strength before we change its accepted methods. The target includes Temporary Access Pass as well as phishing-resistant methods.
+Please review the policies using this authentication strength before we change its accepted methods. The target allows exactly {{strength.target.methodNames}}.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["missing","partial","verificationRequired"],"format":"json-template","kind":"referenceOnly"}
-{"tiles":[{"id":"target","label":"Target strength","result":{{json:strength.target.displayName}},"line":"Baseline: Windows Hello for Business, Passkeys (FIDO2), multifactor certificate, TAP one-time, TAP multi-use."},{"id":"usage","label":"Current usage","result":{{json:strength.current.usage}},"line":"Check the five allowed combinations and every policy already using this strength before changing it."}],"whyIamaiSaysThis":"The policies that require this strength need one custom strength in this tenant with the baseline's combinations; the source tenant's object ID cannot be reused."}
-@@IAMAI-END
-
-@@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["missing","partial","verificationRequired"],"format":"json","kind":"referenceOnly"}
-{"scenarios":[{"id":"built-in-selected","classification":"documented","symptom":"The resolved object is a built-in authentication strength.","check":"Read policyType on the resolved strength.","fix":"Do not modify it; resolve or create a tenant-local custom strength instead.","then":"Rescan IAMAI.","sources":["ms-strength-update"]},{"id":"dependent-policies","classification":"documented","symptom":"Changing combinations reports Conditional Access references.","check":"Review the usage result and every returned policy reference.","fix":"Change only the baseline combinations in a controlled window; use previousCombinations for rollback if required.","then":"Re-read the strength and dependent policies.","sources":["ms-strength-combos","ms-strength-usage"]},{"id":"duplicate-strength","classification":"derived","symptom":"More than one custom strength appears equivalent.","check":"Compare object IDs and exact allowed combinations.","fix":"Do not create or change a strength until the intended object is resolved.","then":"Rescan after resolution.","sources":["ms-strength-create"]}]}
+{"tiles":[{"id":"target","label":"Target strength","result":{{json:strength.target.displayName}},"line":"Baseline: {{strength.target.methodNames}}."},{"id":"usage","label":"Current usage","result":{{json:strength.current.usage}},"line":"Check the allowed combinations and every policy already using this strength before changing it."}],"whyIamaiSaysThis":"The policies that require this strength need one custom strength in this tenant with the baseline's combinations; the source tenant's object ID cannot be reused."}
 @@IAMAI-END
