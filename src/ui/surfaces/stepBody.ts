@@ -21,7 +21,7 @@ import { networkDraftOf } from '../../mapping/networkDraft.ts'
 // Pure: no DOM, no React, no network.
 import type { Step } from '../../roadmap/types.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
-import { fillText, whatToDoFor } from '../../content/render.ts'
+import { fillText, whatToDoFor, whole } from '../../content/render.ts'
 import { app, directionWords } from '../../content/content.ts'
 import { suggestCountries } from '../../mapping/countries.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
@@ -55,6 +55,8 @@ type Ex = Record<string, unknown>
 /** Prepare Emergency Access Accounts' milestone while nothing is chosen (pages.app.plan.emergencyTasks). */
 const CHOOSE_ACCOUNTS = (app.plan as unknown as { emergencyTasks: { chooseAccounts: string } }).emergencyTasks.chooseAccounts
 const CHOOSE_SECOND_ACCOUNT = (app.plan as unknown as { emergencyTasks: { chooseSecondAccount: string } }).emergencyTasks.chooseSecondAccount
+/** Configure Emergency Exclusions' milestone (pages.app.plan.exclusionsGroupRailSub). */
+const EXCLUSIONS_MILESTONE = (app.plan as unknown as { exclusionsGroupRailSub: string }).exclusionsGroupRailSub
 
 const NO_CONFIRMATIONS: Readonly<Record<string, OwnerConfirmation>> = {}
 const NO_BLOCKERS: readonly PrerequisiteBlocker[] = []
@@ -365,17 +367,23 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   const implementing = packaged ? preview === null && (projection?.channels.length ?? 0) > 0 : Boolean(portal) && channels.length > 0
   const ownSteps = !implementing && (hasSteps || before.length > 0)
   const instructed = decides || createIfNeeded || creates || ownSteps
-  // The milestone the action column leads with, over the package's own words for
-  // it or none (stepContract.ts railOf, U3).
-  // The rail's sub-line: the package's own action text, or — on a Direction
-  // step, which has no package — the sentence its content writes for what
-  // approving its answers does. Both are written; neither is composed here
-  // (stepLayout.test.ts U3).
+  // The step's own words for its next milestone, which the action column's
+  // headline reads (stepContract.ts railOf; owner, 2026-09-23): the package's
+  // own action text, or — on a Direction step, which has no package — the
+  // sentence its content writes for what approving its answers does. Both are
+  // written; neither is composed here (U3).
   // Prepare Emergency Access Accounts with no account chosen: the choice is the
   // milestone (pages.app.plan.emergencyTasks.chooseAccounts), not the checks after it.
   const chosen = ctx.mapping.breakGlassUserIds.length
   const choosing = step.id === 's-prereq-break-glass' && chosen < 2 ? (chosen === 0 ? CHOOSE_ACCOUNTS : CHOOSE_SECOND_ACCOUNT) : null
-  const rail = railOf(contract, choosing ?? pkg?.meta.milestone?.actionText ?? directionMilestoneAction(step.id))
+  // The instruction line under the milestone, on the two Emergency Access steps
+  // that take a choice: the decision's help, said once. Configure Emergency
+  // Exclusions' milestone is its group line; where its help has a hole, that line
+  // moves down to be the instruction rather than being said twice.
+  const help = d && typeof d.help === 'string' && whole(d.help, ex) ? fillText(d.help, ex) : null
+  const exclusions = step.id === 's-prereq-exclusion-group'
+  const railWords = choosing ?? (exclusions && help !== null ? EXCLUSIONS_MILESTONE : null) ?? pkg?.meta.milestone?.actionText ?? directionMilestoneAction(step.id)
+  const railInstruction = step.id === 's-prereq-break-glass' ? help : exclusions ? help ?? EXCLUSIONS_MILESTONE : null
   // What kind of step this is, and "Resolution step" for one whose source
   // contradicts itself (stepContract.ts eyebrowOf).
   const eyebrow = eyebrowOf(contract, typeof cs.kind === 'string' ? cs.kind : null)
@@ -597,6 +605,12 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // Access steps keep their own producers above and are never this.
   const outstandingForEnforce = [...new Set([...blockers.map((b) => b.title ?? b.label).filter((x): x is string => typeof x === 'string' && x.length > 0), ...(o.enforceWaits ?? [])])]
   const taskProjection: EmergencyTaskProjection | null = emergencyAccountTasks ?? (drawsTaskAnatomy(step.id) ? policyTasksOf(step, title, artifacts, ctx.mapping, outstandingForEnforce) : null)
+  // The action column's Next milestone and its instruction line (stepContract.ts
+  // railOf): the step's own words above, and after them its next task by the
+  // title its task selector shows — the one it recommends, or the first it needs.
+  const railTasks = taskProjection?.tasks ?? []
+  const nextTask = (railTasks.find((t) => t.id === taskProjection?.recommendedTaskId) ?? railTasks.find((t) => t.required))?.title ?? null
+  const rail = railOf(contract, railWords, nextTask, railInstruction)
   const W = CONTRACT.implementation
   // Guidance stays copyable. Concrete unresolved findings remain in Readiness.
   const previewNote = null as { lines: string[] } | null

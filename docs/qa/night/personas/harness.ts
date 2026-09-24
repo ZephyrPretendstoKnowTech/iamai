@@ -330,7 +330,7 @@ export function render(t: Tenant, r: FixtureRun, step: Step): {
     // report a sentence it was never shown, which made every round's reading of
     // comprehension softer than it looked.
     found: b.contract.found.map((f: { label: string; text: string }) => `${f.label} · ${f.text}`),
-    milestone: `${b.rail.metric}${b.rail.sub ? ` — ${b.rail.sub}` : ''}`,
+    milestone: b.rail.headline,
     // A task's VARIANTS are part of it. A task can end 'continue with the
     // steps below to register a replacement' and carry those steps in three
     // variant procedures, which the page draws and this used to drop - so a

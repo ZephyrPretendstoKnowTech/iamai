@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "On Hold",
   "bar": "Baseline conflict",
-  "rail": "Not scheduled",
+  "rail": "This step is on hold until the baseline author resolves a contradiction. There is nothing for you to do.",
   "headings": [
     "About this Step",
     "Tasks Remaining",

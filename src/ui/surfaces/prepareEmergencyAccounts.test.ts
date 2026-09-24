@@ -176,10 +176,6 @@ test('#13 the instruction is said once: the rail says it, the empty cards do not
   // The bar says nothing on Step 1 while work remains: the cards and the rail already say it.
   const step = read('src/ui/surfaces/ContentStep.tsx')
   assert.doesNotMatch(step, /Complete the next task shown for each account\./)
-  // The milestone names the choice while none is made, and the checks after.
-  assert.equal(body.rail.sub, 'Choose your two emergency access accounts.')
-  assert.equal(ctx.mapping.breakGlassUserIds.length, 0)
-  assert.equal(opened('demo').body.rail.sub, 'Complete the remaining emergency access checks.')
 })
 
 test('#19 Global Administrator is assigned Active and Permanently assigned: through PIM wherever the tenant has it, even to an account holding none', () => {

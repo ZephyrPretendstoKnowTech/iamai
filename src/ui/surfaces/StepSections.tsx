@@ -16,7 +16,7 @@ import { Button, Icon, Status } from '../components/index.ts'
 import type { StatusTone } from '../components/index.ts'
 import type { ContractFound, ContractMember, ContractReadiness, ContractStage, ImplementationEmpty, ReadinessTile, ReadinessTone, StepContract } from './stepContract.ts'
 import { CONTRACT, FOOTER, badgeLabel, nextCaption, readinessLeadOf, stageClass } from './stepContract.ts'
-import type { ContractEmergencySlot, ContractHardening } from './stepContract.ts'
+import type { ContractEmergencySlot, ContractHardening, StepRail } from './stepContract.ts'
 import { fillText } from '../../content/render.ts'
 import { autoOpenTiles } from './tileExpansion.ts'
 import { useSession } from '../session.ts'
@@ -237,22 +237,23 @@ export function LifecycleTrack({ track }: { track: ContractStage[] }) {
 
 /**
  * The opened step's action column (U2): what the person does here, in IAMAI.
- * The milestone leads it — the day the plan schedules where it holds one and the
- * lane's own label where it does not, over the package's own words for it or
- * none (stepContract.ts `railOf`, U3) — and under it the controls the step takes:
- * a picker, a decision, a question, and their Save. Every step has a milestone,
- * so every step has the column, inputs or not. It sits between Readiness and
- * Implementation in the DOM (U5), so a screen reader meets it where a narrow
+ * Top to bottom, on every step (owner, 2026-09-23): the Next milestone — what
+ * it is, in words, never a day or a lane word (stepContract.ts `railOf`) — the
+ * divider under it, the instruction line where the step carries one, then the
+ * controls the step takes: a picker, a decision, a question, a setting, and
+ * their Save. Every step has a milestone, so every step has the column, inputs
+ * or not, on the inset surface down the whole body. It sits between Readiness
+ * and Implementation in the DOM (U5), so a screen reader meets it where a narrow
  * screen stacks it; the grid draws it on the right.
  */
-export function StepActionColumn({ rail, children = null }: { rail: { metric: string; sub: string }; children?: ReactNode }) {
+export function StepActionColumn({ rail, children = null }: { rail: StepRail; children?: ReactNode }) {
   return (
     <aside className="step-action-column surface-inset">
       <div className="side-block">
         <div className="key-label">{CONTRACT.railMilestone}</div>
-        <p className="metric">{rail.metric}</p>
-        {rail.sub !== '' && <p className="metric-sub">{rail.sub}</p>}
+        <p className="metric">{rail.headline}</p>
       </div>
+      {rail.instruction && <p className="reason rail-instruction">{rail.instruction}</p>}
       {children}
     </aside>
   )

@@ -208,8 +208,6 @@ test('Step 4: a verified account reads its sign-in time once; a completed step s
   const journey = readFileSync('src/roadmap/emergencyJourney.ts', 'utf8')
   assert.match(journey, /const value = current \? verifiedAt!/)
   assert.doesNotMatch(journey, /Signed in after configuration/)
-  const cleanup = readFileSync('src/ui/surfaces/CleanupStep.tsx', 'utf8')
-  assert.match(cleanup, /sub: row\.done \? 'Every selected account is verified\.' : 'Verify every selected account after the final configuration is observed\.'/)
 })
 
 test('Step 2 Entra text lists each policy missing the group exclusion by name (foundation audit A1)', async () => {

@@ -128,7 +128,7 @@ function snapshotOf(step: Step, ctx: StepVarContext, lane: LaneView, blockers: P
     fact: factOf(step),
     badge: badgeLabel(b.contract),
     bar: b.readiness.bar.main,
-    rail: b.rail.metric,
+    rail: b.rail.headline,
     headings: headingsOf(b),
     tiles: b.readiness.tiles.map((t) => ({ label: t.label, state: t.value })),
     channels: channelTabsOf(b.artifacts).map((t) => String(t.label)),

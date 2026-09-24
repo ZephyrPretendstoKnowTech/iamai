@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "On Hold",
   "bar": "After Verify Emergency Access",
-  "rail": "After prerequisites",
+  "rail": "Verify the change and rescan.",
   "headings": [
     "About this Step",
     "Tasks Remaining",
