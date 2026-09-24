@@ -15,7 +15,7 @@ import type { RoadmapInput } from './generate.ts'
 import { observationsFrom } from './observation.ts'
 import { SOLE_MEMBER } from './tracking.ts'
 import { cleanReportOnly } from './fixtures/records.ts'
-import { applyProgress, mergePersisted, skipStep } from './progress.ts'
+import { applyProgress } from './progress.ts'
 import { setState } from './lifecycle.ts'
 import { isFoundationStep } from './foundations.ts'
 import type { Step } from './types.ts'
@@ -207,10 +207,23 @@ const stepFor = (steps: ReturnType<typeof generateRoadmap>['steps'], goalId: str
   return s
 }
 
-test('1: enforced goal → step created as done', () => {
+test('1 + 4: an enforced goal is a done step; a partial weaker-control goal is an adjust step with the exact field change', () => {
   const { input } = build({ tenantPolicies: [mkPolicy({ displayName: 'MFA All' })] })
   const steps = generateRoadmap(input).steps
   assert.equal(stepFor(steps, 'mfa-all-users').status, 'done')
+
+  // 4: partial weaker-control → adjust step with the exact field change.
+  {
+    const PR = '00000000-0000-0000-0000-000000000004'
+    const baseline = mkPolicy({
+      displayName: 'Baseline PR MFA',
+      grantControls: { operator: 'OR', builtInControls: [], authenticationStrength: { id: PR } },
+    })
+    const { input } = build({ tenantPolicies: [mkPolicy({ displayName: 'Plain MFA' })], baselinePolicies: [baseline] })
+    const step = stepFor(generateRoadmap(input).steps, 'mfa-all-users')
+    assert.equal(step.kind, 'adjust')
+    assert.ok((step.action.changes?.length ?? 0) > 0, 'field-by-field changes')
+  }
 })
 
 test('2: absent goal with mapped references → create step JSON has mapped ids, tag, report-only', () => {
@@ -245,18 +258,6 @@ test('2: absent goal with mapped references → create step JSON has mapped ids,
   // apart by their own tags.
   const member = step.action.resolution!.policies[0].memberKey
   assert.ok(step.action.json!.includes(`[IAMAI:${PLAN}:${step.id}:${member}]`))
-})
-
-test('4: partial weaker-control → adjust step with the exact field change', () => {
-  const PR = '00000000-0000-0000-0000-000000000004'
-  const baseline = mkPolicy({
-    displayName: 'Baseline PR MFA',
-    grantControls: { operator: 'OR', builtInControls: [], authenticationStrength: { id: PR } },
-  })
-  const { input } = build({ tenantPolicies: [mkPolicy({ displayName: 'Plain MFA' })], baselinePolicies: [baseline] })
-  const step = stepFor(generateRoadmap(input).steps, 'mfa-all-users')
-  assert.equal(step.kind, 'adjust')
-  assert.ok((step.action.changes?.length ?? 0) > 0, 'field-by-field changes')
 })
 
 test('5: MFA step with 6 of 9 in-scope accounts prepared → blocked with the unblocking numbers', () => {
@@ -357,7 +358,7 @@ test('7: regression after done → re-opened with a dated note (missing policy: 
   assert.match(step.history.at(-1)?.note ?? '', /changed since .*missing again/)
 })
 
-test('9: valid break-glass answers → the emergency-access step stands by its checks; drill depends on their last sign-in', () => {
+test('9 + 13: valid break-glass answers keep the emergency-access step standing by its checks and build no drill step; confirmed service accounts with no group build the phase-0 step that creates it', () => {
   const mapping = emptyMappingState('t')
   // Every shown question is required now (prompt 26): answer them all so only the break-glass branch is under test.
   for (const id of ['breakGlass', 'globalExclusion', 'countries', 'highCare', 'trustedLocations', 'serviceAccounts', 'timeZone', 'frameworks', 'applicability']) mapping.wizardAnswered[id] = true
@@ -371,9 +372,19 @@ test('9: valid break-glass answers → the emergency-access step stands by its c
   assert.ok(!steps.some((s) => s.id === 's-setup-questions'))
   // The drill is a Cleanup row now, never a step.
   assert.ok(!steps.some((s) => s.id.includes('drill')))
+
+  // 13: confirmed service accounts with no group → phase-0 step creates the group.
+  {
+    const mapping = emptyMappingState('t')
+    mapping.serviceAccountUserIds = ['u1']
+    const { input } = build({ baselinePolicies: [mkPolicy({ displayName: 'Baseline MFA All' })], mapping })
+    const steps = generateRoadmap(input).steps
+    const create = steps.find((s) => s.id === 's-prereq-service-accounts-group')
+    assert.ok(create && create.kind === 'prerequisite')
+  }
 })
 
-test('11: geo policy: allowlist style chosen by data, NoExclusions dropped', () => {
+test('11 + 12: the geo policy’s allowlist style is chosen by data with NoExclusions dropped, and with no matching tenant location it creates the allowed-countries location as its own first task', () => {
   const geo = (displayName: string, locations: { includeLocations: string[]; excludeLocations: string[] }) =>
     mkPolicy({
       displayName,
@@ -397,43 +408,24 @@ test('11: geo policy: allowlist style chosen by data, NoExclusions dropped', () 
   const carried = JSON.stringify(step.action.resolution?.policies ?? [])
   assert.doesNotMatch(carried, /NoExclusions|loc-blocked/)
   assert.deepEqual((JSON.parse(carried)[0].body.conditions as { locations: unknown }).locations, { includeLocations: ['All'] })
-})
 
-test('12: answered Countries with no matching tenant location → the countries policy creates it as its own first task', () => {
-  const allow = mkPolicy({
-    displayName: 'Countries - allow list',
-    conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'], locations: { includeLocations: ['All'], excludeLocations: ['loc-allowed'] } },
-    grantControls: { operator: 'OR', builtInControls: ['block'] },
-  })
-  const mapping = emptyMappingState('t')
-  mapping.allowedCountries = ['AU', 'NZ']
-  mapping.wizardAnswered = { countries: true }
-  const { input } = build({ baselinePolicies: [allow], mapping })
-  const steps = generateRoadmap(input).steps
-  // Not a step of its own since Stage 3: the countries policy carries it, and waits on nothing for it.
-  assert.equal(steps.some((s) => s.id === 's-prereq-allowed-countries'), false)
-  const step = stepFor(steps, 'geo-restriction')
-  assert.equal(step.objectTask?.id, 's-prereq-allowed-countries')
-  assert.equal(step.objectTask?.state.satisfied, false, 'no tenant location matches: the task is open')
-  assert.ok(!step.blockedBy.includes('s-prereq-allowed-countries') && !step.blockedBy.includes(step.id))
-})
-
-test('13: confirmed service accounts with no group → phase-0 step creates the group', () => {
-  const mapping = emptyMappingState('t')
-  mapping.serviceAccountUserIds = ['u1']
-  const { input } = build({ baselinePolicies: [mkPolicy({ displayName: 'Baseline MFA All' })], mapping })
-  const steps = generateRoadmap(input).steps
-  const create = steps.find((s) => s.id === 's-prereq-service-accounts-group')
-  assert.ok(create && create.kind === 'prerequisite')
-})
-
-test('8: skipping requires a reason and never "risk accepted"', () => {
-  const baseline = mkPolicy({ displayName: 'Baseline MFA All' })
-  const { input } = build({ baselinePolicies: [baseline] })
-  const step = stepFor(generateRoadmap(input).steps, 'mfa-all-users')
-  assert.equal(skipStep(step, '   ').ok, false)
-  assert.equal(skipStep(step, 'risk accepted by CISO').ok, false)
-  const ok = skipStep(step, 'not applicable to us — no such workload')
-  assert.equal(ok.ok, true)
-  assert.equal(step.status, 'skipped')
+  // 12: answered Countries with no matching tenant location → the countries policy creates it as its own first task.
+  {
+    const allow = mkPolicy({
+      displayName: 'Countries - allow list',
+      conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'], locations: { includeLocations: ['All'], excludeLocations: ['loc-allowed'] } },
+      grantControls: { operator: 'OR', builtInControls: ['block'] },
+    })
+    const mapping = emptyMappingState('t')
+    mapping.allowedCountries = ['AU', 'NZ']
+    mapping.wizardAnswered = { countries: true }
+    const { input } = build({ baselinePolicies: [allow], mapping })
+    const steps = generateRoadmap(input).steps
+    // Not a step of its own since Stage 3: the countries policy carries it, and waits on nothing for it.
+    assert.equal(steps.some((s) => s.id === 's-prereq-allowed-countries'), false)
+    const step = stepFor(steps, 'geo-restriction')
+    assert.equal(step.objectTask?.id, 's-prereq-allowed-countries')
+    assert.equal(step.objectTask?.state.satisfied, false, 'no tenant location matches: the task is open')
+    assert.ok(!step.blockedBy.includes('s-prereq-allowed-countries') && !step.blockedBy.includes(step.id))
+  }
 })

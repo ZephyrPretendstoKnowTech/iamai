@@ -23,7 +23,7 @@ const f = fixture('midflight')
 type Row = { id?: string; state?: string; description?: string; displayName?: string }
 const policies = (): Row[] => f.snapshot.config.caPolicies.rows as Row[]
 
-test('midflight: tagged policies are matched by tag and carry the policy dates; the disabled one is not done', () => {
+test('midflight: policies are matched by tag and carry the policy dates, the disabled one is not done, and one created outside the plan is matched by what it does', () => {
   const run = runFixture(f)
   const mfa = run.steps.find((s) => s.id === stepIdForGoal('mfa-all-users'))!
   assert.equal(mfa.status, 'done')
@@ -39,26 +39,25 @@ test('midflight: tagged policies are matched by tag and carry the policy dates; 
   assert.equal(admins.status, 'in-report-only')
   assert.ok(admins.tracking?.reportOnlyAt)
   assert.equal(admins.tracking?.evidenceQuality, 'thin', 'no report-only results in the fixture: says so rather than claiming a soak')
-})
 
-test('midflight: a policy created outside the plan is matched by what it does, with a note', () => {
-  const run = runFixture(f)
-  // Strip the tag from the guests policy: it still delivers the goal.
-  const guests = policies().find((p) => p.description?.includes(stepIdForGoal('guests-mfa')))!
-  const saved = guests.description
-  guests.description = ''
-  try {
-    const again = runFixture(f)
-    const step = again.steps.find((s) => s.id === stepIdForGoal('guests-mfa'))!
-    assert.equal(step.state.lifecycle, 'enforced')
-    assert.notEqual(step.status, 'done', 'a fingerprint match is not a guest workflow result')
-    assert.equal(step.manualReview?.confirmedAt, null)
-    assert.equal(step.tracking?.matchedBy, 'fingerprint')
-    assert.match(step.tracking?.note ?? '', /already existed and covers this step/)
-  } finally {
-    guests.description = saved
+  // Midflight: a policy created outside the plan is matched by what it does, with a note.
+  {
+    // Strip the tag from the guests policy: it still delivers the goal.
+    const guests = policies().find((p) => p.description?.includes(stepIdForGoal('guests-mfa')))!
+    const saved = guests.description
+    guests.description = ''
+    try {
+      const again = runFixture(f)
+      const step = again.steps.find((s) => s.id === stepIdForGoal('guests-mfa'))!
+      assert.equal(step.state.lifecycle, 'enforced')
+      assert.notEqual(step.status, 'done', 'a fingerprint match is not a guest workflow result')
+      assert.equal(step.manualReview?.confirmedAt, null)
+      assert.equal(step.tracking?.matchedBy, 'fingerprint')
+      assert.match(step.tracking?.note ?? '', /already existed and covers this step/)
+    } finally {
+      guests.description = saved
+    }
   }
-  void run
 })
 
 test('midflight: an enforced policy later disabled reopens the step with a dated note; a deleted one reopens as a create', () => {
@@ -246,13 +245,4 @@ test('a correction that would change nothing is not a drift', () => {
   })
   assert.ok(matching.length > 0, 'the premise: a member whose deployed policy matches the plan')
   for (const s of matching) assert.equal(driftOutcomeOf(s), null, `${s.id}: offers a correction with nothing to correct`)
-
-  // A member nothing was compared for carries no `differsIn` at all, and must
-  // not be read as "nothing differs": absent is unknown, empty is a finding.
-  const unknown = r.steps.filter((s) => (s.tracking?.members ?? []).some((m) => m.differsIn === undefined))
-  for (const s of unknown) {
-    const members = s.tracking?.members ?? []
-    if (members.every((m) => Array.isArray(m.differsIn) && m.differsIn.length === 0)) continue
-    assert.ok(true, `${s.id}: unknown members are not silently treated as matching`)
-  }
 })

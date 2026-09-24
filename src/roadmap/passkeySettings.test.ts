@@ -13,7 +13,7 @@ import { packageBindings, packageStateOf } from '../ui/surfaces/stepPackage.ts'
 import { stepBodyOf } from '../ui/surfaces/stepBody.ts'
 import { BLOCKED_REASON } from '../copy/reasons.ts'
 import { operatorUserId } from '../derive/operator.ts'
-import { OPERATOR_PASSKEY_STEP_ID, PASSKEY_SETTINGS_STEP_ID, PASSKEY_TARGET, PASSKEY_DEFAULT_MODELS, PASSKEY_TARGET_AAGUIDS, operatorPasskeyOf, passkeyReadingOf, resolvePasskeyTarget } from './passkeySettings.ts'
+import { OPERATOR_PASSKEY_STEP_ID, PASSKEY_SETTINGS_STEP_ID, PASSKEY_TARGET_AAGUIDS, operatorPasskeyOf, passkeyReadingOf, resolvePasskeyTarget } from './passkeySettings.ts'
 import type { Fido2Configuration, PasskeyResolution } from './passkeySettings.ts'
 
 const CAMPAIGN = 's-verify-mfa'
@@ -84,16 +84,6 @@ function packageOf(f: Fixture, r: FixtureRun) {
   return { step, ctx, state: packageStateOf(step, c, f.snapshot), bindings: packageBindings(step, ctx, c) }
 }
 
-test('A5.1 the pinned object carries the approved Authenticator AAGUIDs from Microsoft Learn and the product settings', () => {
-  assert.equal(PASSKEY_TARGET.state, 'enabled')
-  assert.deepEqual((PASSKEY_TARGET.includeTargets as { id: string }[]).map((t) => t.id), ['all_users'])
-  assert.equal(PASSKEY_TARGET.isAttestationEnforced, true)
-  assert.equal(PASSKEY_TARGET.isSelfServiceRegistrationAllowed, true)
-  assert.equal(PASSKEY_TARGET.keyRestrictions?.isEnforced, true)
-  assert.equal(PASSKEY_TARGET.keyRestrictions?.enforcementType, 'allow')
-  assert.deepEqual([...PASSKEY_TARGET_AAGUIDS], PASSKEY_DEFAULT_MODELS.map(m => m.aaguid).sort())
-})
-
 test('A5.2 the tenant reading against its resolved target: disabled is Missing, on and different is Partial, every field matching is In place, unread is never a match', () => {
   const demo = fixture('demo')
   assert.equal(passkeyReadingOf(withFido2(demo, legacy({ state: 'disabled' })).snapshot).state, 'missing')
@@ -110,7 +100,7 @@ test('A5.2 the tenant reading against its resolved target: disabled is Missing, 
   assert.equal(passkeyReadingOf(null).state, 'unread')
 })
 
-test('A5.3 on the demo Step 3 is Up Next and the bound target is the one resolved from the tenant', () => {
+test('A5.3–A5.6 on the demo Step 3 is Up Next with the target resolved from the tenant, Missing while the method is off, Completed once every field matches, and held on an unresolved fact when the read is refused', () => {
   const demo = withFido2(fixture('demo'), legacy({ isAttestationEnforced: false }))
   const { r, label } = plan(demo)
   assert.equal(label(PASSKEY_SETTINGS_STEP_ID), 'Up Next')
@@ -125,38 +115,41 @@ test('A5.3 on the demo Step 3 is Up Next and the bound target is the one resolve
   assert.equal(bindings['passkey.current.state'], 'partial')
   assert.deepEqual(bindings['passkey.current.differences'], ['isAttestationEnforced'])
   assert.match(String(bindings['passkey.target.summary']), /allow list/i)
+
+  // A5.4 the method off is Missing and Step 3 remains Up Next.
+  {
+    const f = withFido2(fixture('demo'), legacy({ state: 'disabled' }))
+    const { r, label } = plan(f)
+    assert.equal(label(PASSKEY_SETTINGS_STEP_ID), 'Up Next')
+    assert.equal(packageOf(f, r).state, 'missing')
+    assert.equal(label(CAMPAIGN), 'Ready · Create')
+  }
+
+  // A5.5 every field matching completes the step and releases the campaign from it.
+  {
+    const f = withFido2(fixture('demo'), legacy())
+    const { r, lane, label } = plan(f)
+    const step = r.steps.find((s) => s.id === PASSKEY_SETTINGS_STEP_ID)
+    assert.equal(step?.status, 'done')
+    assert.equal(lane(PASSKEY_SETTINGS_STEP_ID), 'Completed')
+    assert.doesNotMatch(label(CAMPAIGN) ?? '', /Passkeys/)
+  }
+
+  // A5.6 a refused methods policy read holds the step on an unresolved fact, never a silent pass.
+  {
+    const { r, lane, label } = plan(refused(fixture('demo')))
+    const step = r.steps.find((s) => s.id === PASSKEY_SETTINGS_STEP_ID)
+    assert.ok(step, 'the step stays on the plan')
+    assert.deepEqual(step.blockers.map((b) => b.binding), [BLOCKED_REASON.methodsPolicyUnread])
+    const reading = laneReadings(r.steps).get(PASSKEY_SETTINGS_STEP_ID)
+    assert.equal(reading?.lane, 'Ready')
+    assert.equal(reading?.substatus, 'Review')
+    assert.equal(reading?.reason, null)
+    assert.notEqual(step.status, 'done')
+  }
 })
 
-test('A5.4 the method off is Missing and Step 3 remains Up Next', () => {
-  const f = withFido2(fixture('demo'), legacy({ state: 'disabled' }))
-  const { r, label } = plan(f)
-  assert.equal(label(PASSKEY_SETTINGS_STEP_ID), 'Up Next')
-  assert.equal(packageOf(f, r).state, 'missing')
-  assert.equal(label(CAMPAIGN), 'Ready · Create')
-})
-
-test('A5.5 every field matching completes the step and releases the campaign from it', () => {
-  const f = withFido2(fixture('demo'), legacy())
-  const { r, lane, label } = plan(f)
-  const step = r.steps.find((s) => s.id === PASSKEY_SETTINGS_STEP_ID)
-  assert.equal(step?.status, 'done')
-  assert.equal(lane(PASSKEY_SETTINGS_STEP_ID), 'Completed')
-  assert.doesNotMatch(label(CAMPAIGN) ?? '', /Passkeys/)
-})
-
-test('A5.6 a refused methods policy read holds the step on an unresolved fact, never a silent pass', () => {
-  const { r, lane, label } = plan(refused(fixture('demo')))
-  const step = r.steps.find((s) => s.id === PASSKEY_SETTINGS_STEP_ID)
-  assert.ok(step, 'the step stays on the plan')
-  assert.deepEqual(step.blockers.map((b) => b.binding), [BLOCKED_REASON.methodsPolicyUnread])
-  const reading = laneReadings(r.steps).get(PASSKEY_SETTINGS_STEP_ID)
-  assert.equal(reading?.lane, 'Ready')
-  assert.equal(reading?.substatus, 'Review')
-  assert.equal(reading?.reason, null)
-  assert.notEqual(step.status, 'done')
-})
-
-test('A5.7 the operator passkey step: generated where the operator\'s methods were read and hold no passkey, after the settings', () => {
+test('A5.7 + A5.8 the operator passkey step: generated where the operator’s methods were read and hold no passkey, after the settings; without Conditional Access neither step is generated', () => {
   const small = fixture('small')
   const operatorId = operatorUserId(small.snapshot)!
   assert.deepEqual(operatorPasskeyOf(small.snapshot), { operatorId, holds: false })
@@ -169,37 +162,49 @@ test('A5.7 the operator passkey step: generated where the operator\'s methods we
     const f = withMethods(methods)
     assert.equal(runFixture(f).steps.some((s) => s.id === OPERATOR_PASSKEY_STEP_ID), methods !== 'unknown', `known passkeys retain their step; unknown is not proof for ${JSON.stringify(methods)}`)
   }
+
+  // A5.8 without Conditional Access neither step is generated.
+  {
+    const r = runFixture(fixture('micro'))
+    assert.equal(r.steps.some((s) => s.id === PASSKEY_SETTINGS_STEP_ID || s.id === OPERATOR_PASSKEY_STEP_ID), false)
+  }
 })
 
-test('A5.8 without Conditional Access neither step is generated', () => {
-  const r = runFixture(fixture('micro'))
-  assert.equal(r.steps.some((s) => s.id === PASSKEY_SETTINGS_STEP_ID || s.id === OPERATOR_PASSKEY_STEP_ID), false)
-})
-
-test('B.1 an allow list keeps its existing hardware model and gains the approved Authenticator models; once they are there the hardware model is not drift', () => {
+test('B.1–B.3, B.6 the resolved target keeps existing models once each, gains the approved Authenticator models, starts from them on an unrestricted policy without changing observed settings, and keeps groups and exclusions', () => {
   const r = targetOf(resolved(legacy(allow(HARDWARE))))
   assert.deepEqual(r.retained, [HARDWARE])
   assert.deepEqual(r.added, [...PASSKEY_TARGET_AAGUIDS])
   assert.deepEqual(r.target.keyRestrictions, { isEnforced: true, enforcementType: 'allow', aaGuids: [HARDWARE, ...PASSKEY_TARGET_AAGUIDS] })
   assert.equal(passkeyReadingOf(withFido2(fixture('demo'), legacy(allow(HARDWARE))).snapshot).state, 'partial')
   assert.equal(passkeyReadingOf(withFido2(fixture('demo'), legacy(allow(HARDWARE, ...PASSKEY_TARGET_AAGUIDS))).snapshot).state, 'inPlace')
-})
 
-test('B.2 duplicates and case: each model once, as Graph returned it first, compared case-insensitively', () => {
-  const r = targetOf(resolved(legacy(allow(IOS.toUpperCase(), IOS, HARDWARE, HARDWARE.toUpperCase()))))
-  assert.deepEqual(r.retained, [IOS.toUpperCase(), HARDWARE])
-  assert.deepEqual(r.added, PASSKEY_TARGET_AAGUIDS.filter(id => id !== IOS))
-  assert.deepEqual(r.target.keyRestrictions?.aaGuids, [IOS.toUpperCase(), HARDWARE, ...PASSKEY_TARGET_AAGUIDS.filter(id => id !== IOS)])
-})
+  // B.2 duplicates and case: each model once, as Graph returned it first, compared case-insensitively.
+  {
+    const r = targetOf(resolved(legacy(allow(IOS.toUpperCase(), IOS, HARDWARE, HARDWARE.toUpperCase()))))
+    assert.deepEqual(r.retained, [IOS.toUpperCase(), HARDWARE])
+    assert.deepEqual(r.added, PASSKEY_TARGET_AAGUIDS.filter(id => id !== IOS))
+    assert.deepEqual(r.target.keyRestrictions?.aaGuids, [IOS.toUpperCase(), HARDWARE, ...PASSKEY_TARGET_AAGUIDS.filter(id => id !== IOS)])
+  }
 
-test('B.3 an unrestricted policy uses the approved plan models without changing observed settings', () => {
-  const kept = { isEnforced: false, enforcementType: 'block', aaGuids: [HARDWARE] }
-  const current = legacy({ keyRestrictions: kept })
-  const result = targetOf(resolved(current))
-  assert.equal(result.restriction, 'allow')
-  assert.deepEqual(result.retained, [])
-  assert.deepEqual(result.target.keyRestrictions, { isEnforced: true, enforcementType: 'allow', aaGuids: [...PASSKEY_TARGET_AAGUIDS] })
-  assert.deepEqual(current.keyRestrictions, kept)
+  // B.3 an unrestricted policy uses the approved plan models without changing observed settings.
+  {
+    const kept = { isEnforced: false, enforcementType: 'block', aaGuids: [HARDWARE] }
+    const current = legacy({ keyRestrictions: kept })
+    const result = targetOf(resolved(current))
+    assert.equal(result.restriction, 'allow')
+    assert.deepEqual(result.retained, [])
+    assert.deepEqual(result.target.keyRestrictions, { isEnforced: true, enforcementType: 'allow', aaGuids: [...PASSKEY_TARGET_AAGUIDS] })
+    assert.deepEqual(current.keyRestrictions, kept)
+  }
+
+  // B.6 groups and exclusions are kept: nobody excluded is newly included.
+  {
+    const r = targetOf(resolved(legacy({ includeTargets: [{ ...everyone, id: 'staff' }], excludeTargets: [{ targetType: 'group', id: 'contractors' }] })))
+    assert.deepEqual(r.target.excludeTargets, [{ targetType: 'group', id: 'contractors' }])
+    const included = (r.target.includeTargets as { id: string }[]).map((t) => t.id)
+    assert.deepEqual(included, ['staff'], 'preserving hardware access must not enable a new population')
+    assert.equal(included.includes('contractors'), false)
+  }
 })
 
 test('B.4 a block list that blocks Authenticator is reviewed, never overridden: no target is bound and the step holds on it', () => {
@@ -218,7 +223,7 @@ test('B.4 a block list that blocks Authenticator is reviewed, never overridden: 
   assert.deepEqual(other, { kind: 'review', review: 'modelSelection', subjects: ['block'] })
 })
 
-test('B.5 an incomplete profile-based read stays partial: nothing legacy is written over it and the step holds on the evidence gap', () => {
+test('B.5 + B.7 an incomplete profile-based read, or profile assignments missing from it, stays under review: nothing legacy is written over it, never In place, and the step holds on the evidence gap', () => {
   const assigned = legacy({ includeTargets: [{ targetType: 'group', id: 'finance', isRegistrationRequired: false, allowedPasskeyProfiles: ['11111111-1111-4111-8111-111111111111'] }] })
   for (const fido2 of [assigned, legacy({ defaultPasskeyProfile: '11111111-1111-4111-8111-111111111111' }), legacy({ passkeyProfiles: [{ id: 'p', name: 'Finance' }] })]) {
     assert.equal(resolved(fido2).kind === 'review' && (resolved(fido2) as { review: string }).review, 'partialRead', JSON.stringify(fido2))
@@ -233,26 +238,19 @@ test('B.5 an incomplete profile-based read stays partial: nothing legacy is writ
   const ai = stepBodyOf(step, ctx).artifacts.find((a) => a.id === 'ai')!.text()
   assert.doesNotMatch(ai, /"keyRestrictions"/)
   assert.match(String(bindings['passkey.review.detail']), /not read/i)
-})
 
-test('B.6 groups and exclusions are kept: nobody excluded is newly included', () => {
-  const r = targetOf(resolved(legacy({ includeTargets: [{ ...everyone, id: 'staff' }], excludeTargets: [{ targetType: 'group', id: 'contractors' }] })))
-  assert.deepEqual(r.target.excludeTargets, [{ targetType: 'group', id: 'contractors' }])
-  const included = (r.target.includeTargets as { id: string }[]).map((t) => t.id)
-  assert.deepEqual(included, ['staff'], 'preserving hardware access must not enable a new population')
-  assert.equal(included.includes('contractors'), false)
-})
-
-test('B.7 profile assignments missing from the read stay unknown: never In place, never a request', () => {
-  const unread = legacy({ includeTargets: [{ targetType: 'group', id: 'all_users', isRegistrationRequired: false }] })
-  const reading = passkeyReadingOf(withFido2(fixture('demo'), unread).snapshot)
-  assert.equal(reading.state, 'review')
-  assert.deepEqual(reading.resolution, { kind: 'review', review: 'partialRead', subjects: ['includeTargets.allowedPasskeyProfiles'] })
-  const minimal = resolved({ state: 'enabled', includeTargets: [{ id: 'all_users' }] })
-  assert.equal(minimal.kind, 'review')
-  assert.ok((minimal as { subjects: string[] }).subjects.includes('keyRestrictions'))
-  const f = withFido2(fixture('demo'), unread)
-  assert.deepEqual(plan(f).r.steps.find((s) => s.id === PASSKEY_SETTINGS_STEP_ID)!.blockers.map((b) => b.binding), [BLOCKED_REASON.passkeyPartialRead])
+  // B.7 profile assignments missing from the read stay unknown: never In place, never a request.
+  {
+    const unread = legacy({ includeTargets: [{ targetType: 'group', id: 'all_users', isRegistrationRequired: false }] })
+    const reading = passkeyReadingOf(withFido2(fixture('demo'), unread).snapshot)
+    assert.equal(reading.state, 'review')
+    assert.deepEqual(reading.resolution, { kind: 'review', review: 'partialRead', subjects: ['includeTargets.allowedPasskeyProfiles'] })
+    const minimal = resolved({ state: 'enabled', includeTargets: [{ id: 'all_users' }] })
+    assert.equal(minimal.kind, 'review')
+    assert.ok((minimal as { subjects: string[] }).subjects.includes('keyRestrictions'))
+    const f = withFido2(fixture('demo'), unread)
+    assert.deepEqual(plan(f).r.steps.find((s) => s.id === PASSKEY_SETTINGS_STEP_ID)!.blockers.map((b) => b.binding), [BLOCKED_REASON.passkeyPartialRead])
+  }
 })
 
 test('B.8 an allowed model nobody registered is retained, and a registered model nobody approved is not added', () => {

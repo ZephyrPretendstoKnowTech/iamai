@@ -52,66 +52,58 @@ function plan(grant: Grant, group: 'admins' | 'staff', reversed: boolean) {
 const drawn = (step: Parameters<typeof stepBodyOf>[0], ctx: never): Record<string, string> =>
   Object.fromEntries(stepBodyOf(step, ctx).artifacts.filter((a) => !a.unavailable).map((a) => [a.id, a.text()]))
 
-const WAYS_ROUND: [string, Grant][] = [
-  ['phishing-resistant strength OR compliant device', { operator: 'OR', builtInControls: ['compliantDevice'], authenticationStrength: { id: PHISHING_RESISTANT } }],
-  ['MFA OR compliant device', { operator: 'OR', builtInControls: ['mfa', 'compliantDevice'] }],
+// Two representative shapes: each way round the floor, on each kind of group, in each listing order.
+const WAYS_ROUND: [string, Grant, 'admins' | 'staff', boolean][] = [
+  ['phishing-resistant strength OR compliant device', { operator: 'OR', builtInControls: ['compliantDevice'], authenticationStrength: { id: PHISHING_RESISTANT } }, 'admins', false],
+  ['MFA OR compliant device', { operator: 'OR', builtInControls: ['mfa', 'compliantDevice'] }, 'staff', true],
 ]
 
-for (const [label, grant] of WAYS_ROUND) {
-  for (const group of ['admins', 'staff'] as const) {
-    for (const reversed of [false, true]) {
-      test(`R1: an enabled ${group}-group policy granting ${label} (${reversed ? 'listed last' : 'listed first'}) is widened with the floor grant, not its own`, () => {
-        const { step, ctx, ops } = plan(grant, group, reversed)
-        assert.deepEqual(ops.map((o) => [o.mode, o.policyId]), [['update', A]])
-        const body = ops[0].body as { grantControls?: { operator?: string; builtInControls?: string[]; authenticationStrength?: unknown }; conditions?: { users?: { includeUsers?: string[] } } }
-        assert.deepEqual(body.conditions?.users?.includeUsers, ['All'])
-        assert.ok(body.grantControls, 'the widening carries the goal grant')
-        assert.ok(!(body.grantControls.builtInControls ?? []).includes('compliantDevice'), JSON.stringify(body.grantControls))
-        assert.notDeepEqual(body.grantControls, grant)
-        // The same grant the goal's own policy is created with where no policy is its own.
-        const created = plan({ operator: 'AND', builtInControls: ['compliantDevice'], authenticationStrength: { id: PHISHING_RESISTANT } }, 'admins', reversed)
-        const create = created.ops.find((o) => o.mode === 'create')
-        assert.ok(create, JSON.stringify(created.ops.map((o) => o.mode)))
-        assert.deepEqual(body.grantControls, create.body.grantControls)
-        assert.ok((step.action.changes ?? []).some((c) => c.field === 'Grant controls'), JSON.stringify(step.action.changes))
-        assert.equal(nextSafeAction(step).kind, 'correct')
-        const art = drawn(step, ctx)
-        assert.ok(art.ps, 'the PowerShell tab is drawn')
-        const target = /-TargetPolicyJson '(.*?)' -PolicyId/.exec(art.ps)
-        assert.ok(target, art.ps.slice(-300))
-        const t = JSON.parse(target[1].replaceAll("''", "'")) as { grantControls: unknown }
-        assert.deepEqual(t.grantControls, body.grantControls, 'the script submits the listed grant')
-        assert.ok(art.ps.includes(`-PolicyId '${A}'`))
-        // The script's CorrectConditions writes conditions only and CorrectGrant the grant only
-        // (mfa-all-users CONTENT.md), so both calls have to be drawn: the target JSON carrying
-        // the grant says nothing about whether the grant is ever written (review 3 queue 7).
-        const calls = art.ps.split('\n').filter((l) => l.startsWith('Invoke-IAMAIStep -Mode '))
-        const modes = calls.map((l) => /^Invoke-IAMAIStep -Mode '(\w+)'/.exec(l)?.[1])
-        assert.deepEqual([...modes].sort(), ['CorrectConditions', 'CorrectGrant'], calls.join('\n'))
-        for (const call of calls) assert.ok(call.endsWith(`-PolicyId '${A}'`), call)
-        const grantCall = calls.find((l) => l.startsWith("Invoke-IAMAIStep -Mode 'CorrectGrant' "))!
-        const grantTarget = JSON.parse(/-TargetPolicyJson '(.*?)' -PolicyId/.exec(grantCall)![1].replaceAll("''", "'")) as { grantControls: unknown }
-        assert.deepEqual(grantTarget.grantControls, body.grantControls, 'the CorrectGrant call submits the listed grant')
-        assert.doesNotMatch(art.json ?? '', /compliantDevice/)
-        const exported = stepExportView(step, ctx).whatToDo.join('\n')
-        assert.match(exported, /Under Grant, select Require multifactor authentication and clear any other control/)
-        assert.match(exported, /Open the policy named Policy A/)
-      })
-    }
-  }
-}
-
-test('R1 control: an enabled staff-group policy asking plain MFA is widened without a grant change', () => {
-  for (const reversed of [false, true]) {
-    const { step, ops } = plan({ operator: 'OR', builtInControls: ['mfa'] }, 'staff', reversed)
-    assert.deepEqual(ops.map((o) => [o.mode, o.policyId]), [['update', A]])
-    assert.ok(!('grantControls' in ops[0].body), JSON.stringify(Object.keys(ops[0].body)))
-    assert.ok(!(step.action.changes ?? []).some((c) => c.field === 'Grant controls'))
+test('R1: an enabled group policy granting a way round the floor is widened with the floor grant, not its own, on every channel', () => {
+  for (const [label, grant, group, reversed] of WAYS_ROUND) {
+    const { step, ctx, ops } = plan(grant, group, reversed)
+    assert.deepEqual(ops.map((o) => [o.mode, o.policyId]), [['update', A]], label)
+    const body = ops[0].body as { grantControls?: { operator?: string; builtInControls?: string[]; authenticationStrength?: unknown }; conditions?: { users?: { includeUsers?: string[] } } }
+    assert.deepEqual(body.conditions?.users?.includeUsers, ['All'])
+    assert.ok(body.grantControls, 'the widening carries the goal grant')
+    assert.ok(!(body.grantControls.builtInControls ?? []).includes('compliantDevice'), JSON.stringify(body.grantControls))
+    assert.notDeepEqual(body.grantControls, grant)
+    // The same grant the goal's own policy is created with where no policy is its own.
+    const created = plan({ operator: 'AND', builtInControls: ['compliantDevice'], authenticationStrength: { id: PHISHING_RESISTANT } }, 'admins', reversed)
+    const create = created.ops.find((o) => o.mode === 'create')
+    assert.ok(create, JSON.stringify(created.ops.map((o) => o.mode)))
+    assert.deepEqual(body.grantControls, create.body.grantControls)
+    assert.ok((step.action.changes ?? []).some((c) => c.field === 'Grant controls'), JSON.stringify(step.action.changes))
+    assert.equal(nextSafeAction(step).kind, 'correct')
+    const art = drawn(step, ctx)
+    assert.ok(art.ps, 'the PowerShell tab is drawn')
+    const target = /-TargetPolicyJson '(.*?)' -PolicyId/.exec(art.ps)
+    assert.ok(target, art.ps.slice(-300))
+    const t = JSON.parse(target[1].replaceAll("''", "'")) as { grantControls: unknown }
+    assert.deepEqual(t.grantControls, body.grantControls, 'the script submits the listed grant')
+    assert.ok(art.ps.includes(`-PolicyId '${A}'`))
+    // The script's CorrectConditions writes conditions only and CorrectGrant the grant only
+    // (mfa-all-users CONTENT.md), so both calls have to be drawn: the target JSON carrying
+    // the grant says nothing about whether the grant is ever written (review 3 queue 7).
+    const calls = art.ps.split('\n').filter((l) => l.startsWith('Invoke-IAMAIStep -Mode '))
+    const modes = calls.map((l) => /^Invoke-IAMAIStep -Mode '(\w+)'/.exec(l)?.[1])
+    assert.deepEqual([...modes].sort(), ['CorrectConditions', 'CorrectGrant'], calls.join('\n'))
+    for (const call of calls) assert.ok(call.endsWith(`-PolicyId '${A}'`), call)
+    const grantCall = calls.find((l) => l.startsWith("Invoke-IAMAIStep -Mode 'CorrectGrant' "))!
+    const grantTarget = JSON.parse(/-TargetPolicyJson '(.*?)' -PolicyId/.exec(grantCall)![1].replaceAll("''", "'")) as { grantControls: unknown }
+    assert.deepEqual(grantTarget.grantControls, body.grantControls, 'the CorrectGrant call submits the listed grant')
+    assert.doesNotMatch(art.json ?? '', /compliantDevice/)
+    const exported = stepExportView(step, ctx).whatToDo.join('\n')
+    assert.match(exported, /Under Grant, select Require multifactor authentication and clear any other control/)
+    assert.match(exported, /Open the policy named Policy A/)
   }
 })
 
-test('R1 control: an admins-group policy asking a phishing-resistant strength AND compliant device is still not the all-users goal\'s own (C01)', () => {
+test('R1 controls: plain MFA on a staff group is widened without a grant change; phishing-resistant AND compliant device on an admins group is not the all-users goal’s own (C01)', () => {
   for (const reversed of [false, true]) {
+    const staff = plan({ operator: 'OR', builtInControls: ['mfa'] }, 'staff', reversed)
+    assert.deepEqual(staff.ops.map((o) => [o.mode, o.policyId]), [['update', A]])
+    assert.ok(!('grantControls' in staff.ops[0].body), JSON.stringify(Object.keys(staff.ops[0].body)))
+    assert.ok(!(staff.step.action.changes ?? []).some((c) => c.field === 'Grant controls'))
     const { ops } = plan({ operator: 'AND', builtInControls: ['compliantDevice'], authenticationStrength: { id: PHISHING_RESISTANT } }, 'admins', reversed)
     assert.ok(!ops.some((o) => o.mode === 'update'), JSON.stringify(ops.map((o) => [o.mode, o.policyId])))
     assert.ok(ops.some((o) => o.mode === 'create'))

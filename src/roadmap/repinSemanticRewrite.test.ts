@@ -60,23 +60,25 @@ const pinned = JSON.parse(readFileSync('baselines/jhope188-conditionalaccesspoli
 
 // ---- the member the re-pin moved ----
 
-test('the goal still names the same source policy after the rename', () => {
+test('the re-pinned member keeps its goal and its baseline key across the rename, and asks for the stronger strength', () => {
   assert.deepEqual(PINNED_GOAL_MAP['device-registration-mfa'], [MEMBER], 'a same-id rename must not remap the goal by display name')
   const member = pinned.policies.find((p) => p.id === MEMBER)
   assert.ok(member, 'the member left the baseline')
   assert.equal(member.displayName, NEW_NAME)
-})
 
-test('the re-pinned baseline asks for the stronger strength', () => {
-  const strength = pinned.policies.find((p) => p.id === MEMBER)!.grantControls?.authenticationStrength
-  assert.equal(strength?.id, MODERN)
-  assert.equal(strength?.displayName, 'Modern MFA + TAP')
-  assert.deepEqual([...(strength?.allowedCombinations ?? [])].sort(), ['fido2', 'temporaryAccessPassOneTime', 'windowsHelloForBusiness', 'x509CertificateMultiFactor'])
-})
+  // The re-pinned baseline asks for the stronger strength.
+  {
+    const strength = pinned.policies.find((p) => p.id === MEMBER)!.grantControls?.authenticationStrength
+    assert.equal(strength?.id, MODERN)
+    assert.equal(strength?.displayName, 'Modern MFA + TAP')
+    assert.deepEqual([...(strength?.allowedCombinations ?? [])].sort(), ['fido2', 'temporaryAccessPassOneTime', 'windowsHelloForBusiness', 'x509CertificateMultiFactor'])
+  }
 
-test('the member is identified by the baseline key, so the rename does not move it', () => {
-  assert.equal(memberKeyOf(MEMBER, 0), memberKeyOf(MEMBER, 3), 'the key is the source key, never the position')
-  assert.notEqual(memberKeyOf(OLD_NAME, 0), memberKeyOf(MEMBER, 0), 'and it is the id, so a baseline that carried a name key is a different member')
+  // The member is identified by the baseline key, so the rename does not move it.
+  {
+    assert.equal(memberKeyOf(MEMBER, 0), memberKeyOf(MEMBER, 3), 'the key is the source key, never the position')
+    assert.notEqual(memberKeyOf(OLD_NAME, 0), memberKeyOf(MEMBER, 0), 'and it is the id, so a baseline that carried a name key is a different member')
+  }
 })
 
 // ---- the fingerprint ----
@@ -87,39 +89,40 @@ const body = (strengthId: string) => ({
   sessionControls: null,
 })
 
-test('a referenced object is its id: two strengths are two requirements', () => {
+test('a referenced object is its id: two strengths are two requirements, and the window earned against the old one does not carry across the change', () => {
   assert.notEqual(semanticsOf(body(BUILTIN)), semanticsOf(body(MODERN)), 'requiring seventeen combinations and requiring four are not the same policy')
   assert.notEqual(semanticFieldsOf(body(BUILTIN)).grantControls, semanticFieldsOf(body(MODERN)).grantControls, 'and the grant is the dimension that moved')
   // What is still cosmetic about a referenced object: what it is called.
   const renamedStrength = { ...body(MODERN), grantControls: { operator: 'OR', builtInControls: [], authenticationStrength: { id: MODERN, displayName: 'Modern MFA + TAP (2026)' } } }
   assert.equal(semanticsOf(renamedStrength), semanticsOf(body(MODERN)), 'renaming the strength is not rewriting the policy')
-})
 
-test('the window earned against the old strength does not carry across the change', () => {
-  const at = '2026-09-07T00:00:00.000Z'
-  const prior: StepObservation = {
-    artifact: 'A',
-    state: 'report-only',
-    semantics: semanticsOf(body(BUILTIN)),
-    fields: semanticFieldsOf(body(BUILTIN)),
-    firstSeenAt: '2026-08-14T00:00:00.000Z',
-    since: 'first-scan',
-    lastSeenAt: '2026-09-06T00:00:00.000Z',
-    evidenceAt: '2026-08-14T00:00:00.000Z',
+  // The window earned against the old strength does not carry across the change.
+  {
+    const at = '2026-09-07T00:00:00.000Z'
+    const prior: StepObservation = {
+      artifact: 'A',
+      state: 'report-only',
+      semantics: semanticsOf(body(BUILTIN)),
+      fields: semanticFieldsOf(body(BUILTIN)),
+      firstSeenAt: '2026-08-14T00:00:00.000Z',
+      since: 'first-scan',
+      lastSeenAt: '2026-09-06T00:00:00.000Z',
+      evidenceAt: '2026-08-14T00:00:00.000Z',
+    }
+    const now = observe(prior, { artifact: 'A', state: 'report-only', semantics: semanticsOf(body(MODERN)), fields: semanticFieldsOf(body(MODERN)), at, evidenceAt: '2026-08-14T00:00:00.000Z' })
+    assert.equal(now.changed, 'semantics')
+    assert.equal(now.continuity, 'reset', 'the policy now requires something else and has been watched for no time at all')
+    assert.equal(now.reviewRequired, true, 'and nobody asked for it, so somebody looks')
+    assert.equal(now.latest.evidenceAt, null, 'records made under the weaker requirement are about the policy it used to be')
+    assert.equal(now.latest.firstSeenAt, at)
+
+    // The same object left alone keeps everything it earned.
+    const still = observe(prior, { artifact: 'A', state: 'report-only', semantics: semanticsOf(body(BUILTIN)), fields: semanticFieldsOf(body(BUILTIN)), at, evidenceAt: '2026-08-14T00:00:00.000Z' })
+    assert.equal(still.changed, 'none')
+    assert.equal(still.continuity, 'continues')
+    assert.equal(still.latest.firstSeenAt, prior.firstSeenAt)
+    assert.equal(still.latest.evidenceAt, '2026-08-14T00:00:00.000Z')
   }
-  const now = observe(prior, { artifact: 'A', state: 'report-only', semantics: semanticsOf(body(MODERN)), fields: semanticFieldsOf(body(MODERN)), at, evidenceAt: '2026-08-14T00:00:00.000Z' })
-  assert.equal(now.changed, 'semantics')
-  assert.equal(now.continuity, 'reset', 'the policy now requires something else and has been watched for no time at all')
-  assert.equal(now.reviewRequired, true, 'and nobody asked for it, so somebody looks')
-  assert.equal(now.latest.evidenceAt, null, 'records made under the weaker requirement are about the policy it used to be')
-  assert.equal(now.latest.firstSeenAt, at)
-
-  // The same object left alone keeps everything it earned.
-  const still = observe(prior, { artifact: 'A', state: 'report-only', semantics: semanticsOf(body(BUILTIN)), fields: semanticFieldsOf(body(BUILTIN)), at, evidenceAt: '2026-08-14T00:00:00.000Z' })
-  assert.equal(still.changed, 'none')
-  assert.equal(still.continuity, 'continues')
-  assert.equal(still.latest.firstSeenAt, prior.firstSeenAt)
-  assert.equal(still.latest.evidenceAt, '2026-08-14T00:00:00.000Z')
 })
 
 // ---- what a person sees ----
@@ -154,7 +157,7 @@ function deployed(strengthId: string) {
   return runFixture({ ...f, snapshot }, { snapshot }).steps.find((s) => s.id === STEP)!
 }
 
-test('a tenant deployed with what the baseline now asks earns its window', () => {
+test('a tenant deployed with what the baseline now asks earns its window; one still on the built-in strength does not inherit it', () => {
   const step = deployed(TENANT_MODERN())
   // Both gates close on it. Whether it may then be turned on is the hold's
   // question, and on this baseline the policy names objects it has not settled
@@ -162,22 +165,23 @@ test('a tenant deployed with what the baseline now asks earns its window', () =>
   assert.equal(step.tracking?.readyNow, true)
   assert.equal(step.action.resolution?.policies?.[0]?.mode, 'update', 'the one change left is turning on the policy the tenant has')
   assert.equal(step.tracking?.policyId, PID)
-})
 
-test('a tenant still on the built-in strength does not inherit that window', () => {
-  const step = deployed(BUILTIN)
-  assert.notEqual(step.state?.lifecycle, 'ready-to-enforce', 'the window was earned against a requirement the baseline no longer makes')
-  assert.equal(step.state?.lifecycle, 'report-only')
-  // The policy carries the name the plan gives this goal's policy, so it is the
-  // goal's policy however far it has drifted (A3 of the drift audit): the step
-  // reads it against the whole plan intent, names the grant as the part a person
-  // corrects, and hands nothing over — the tenant is not told the policy it has
-  // is the policy the plan asked for.
-  assert.equal(step.action.resolution?.policies?.[0]?.mode, 'update', 'the goal\'s own policy is corrected, never re-created beside itself')
-  // On this baseline the policy still names source groups nobody has mapped, so
-  // the step holds on those and the plan does not read the object against an
-  // intent it has not resolved; the review that names the grant is the curated
-  // case (tracking.drift.test.ts A3).
-  assert.equal(step.tracking?.members[0]?.ready, false)
-  assert.equal(nextSafeAction(step).executable, false, 'nothing is handed over against a policy that is not the plan\'s')
+  // A tenant still on the built-in strength does not inherit that window.
+  {
+    const step = deployed(BUILTIN)
+    assert.notEqual(step.state?.lifecycle, 'ready-to-enforce', 'the window was earned against a requirement the baseline no longer makes')
+    assert.equal(step.state?.lifecycle, 'report-only')
+    // The policy carries the name the plan gives this goal's policy, so it is the
+    // goal's policy however far it has drifted (A3 of the drift audit): the step
+    // reads it against the whole plan intent, names the grant as the part a person
+    // corrects, and hands nothing over — the tenant is not told the policy it has
+    // is the policy the plan asked for.
+    assert.equal(step.action.resolution?.policies?.[0]?.mode, 'update', 'the goal\'s own policy is corrected, never re-created beside itself')
+    // On this baseline the policy still names source groups nobody has mapped, so
+    // the step holds on those and the plan does not read the object against an
+    // intent it has not resolved; the review that names the grant is the curated
+    // case (tracking.drift.test.ts A3).
+    assert.equal(step.tracking?.members[0]?.ready, false)
+    assert.equal(nextSafeAction(step).executable, false, 'nothing is handed over against a policy that is not the plan\'s')
+  }
 })

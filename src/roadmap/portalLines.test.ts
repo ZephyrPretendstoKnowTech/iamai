@@ -129,7 +129,7 @@ test('every condition line the translator emits names the Configure toggle', () 
   assert.deepEqual(offenders, [], 'a condition line with no Configure toggle: at No the condition is not applied and the policy reaches everything it was meant to narrow')
 })
 
-test('every pinned baseline policy renders non-empty portal lines that end in a grant or session control, with no unresolved placeholder', () => {
+test('every pinned baseline policy renders non-empty portal lines that end in a grant or session control, with no unresolved placeholder, and a grant with risk remediation says so', () => {
   const failures: string[] = []
   for (const p of pinned.policies as Pol[]) {
     const facts = policyFacts(p, EMPTY)
@@ -139,9 +139,26 @@ test('every pinned baseline policy renders non-empty portal lines that end in a 
     if (hasUnresolvedPlaceholder(lines)) failures.push(`${p.displayName}: unresolved placeholder in ${lines.find((l) => hasUnresolvedPlaceholder([l]))}`)
   }
   assert.deepEqual(failures, [], 'a policy the translator cannot render is a build failure — reconcile, never hand-patch')
+
+  // A grant with risk remediation says so on its Grant line.
+  // The pinned High-Risk Users policies grant riskRemediation with the baseline's
+  // authentication strength. grantLine had no label for the control and dropped
+  // it, so the step's task read "Grant → Require authentication strength": a
+  // policy built from that line is not the pinned one and does not meet the
+  // goal's floor (a password change or risk remediation, coverage/goalIdentity.ts).
+  // Microsoft's portal: "Select Require risk remediation. The Require
+  // authentication strength grant control is automatically selected."
+  {
+    const risky = pinned.policies.filter((p) => ((p.grantControls as { builtInControls?: string[] } | null)?.builtInControls ?? []).includes('riskRemediation'))
+    assert.ok(risky.length > 0, 'the premise: the pin grants risk remediation')
+    for (const p of risky) {
+      const grant = portalLines(policyFacts(p as never, EMPTY), contextFor(p)).find((l) => l.startsWith('Grant → ')) ?? ''
+      assert.match(grant, /^Grant → Require risk remediation\b/, `${p.displayName}: ${grant}`)
+    }
+  }
 })
 
-test('a two-policy goal renders Policy A and Policy B, each a full block', () => {
+test('the translator’s variants: a two-policy goal renders two full blocks, the registration fallback swaps Block access for MFA, and a correction keeps the location and device conditions it submits', () => {
   const a = pinned.policies[0] as Pol
   const b = pinned.policies[1] as Pol
   const lines = portalLinesAB(
@@ -153,33 +170,35 @@ test('a two-policy goal renders Policy A and Policy B, each a full block', () =>
   assert.ok(lines.some((l) => l.startsWith('Policy B — ')), 'Policy B block present')
   assert.ok(endsInControl(lines), 'both blocks carry a control')
   assert.ok(!hasUnresolvedPlaceholder(lines), 'no unresolved placeholder across both blocks')
-})
 
-test('the registration fallback swaps Block access for Require multifactor authentication', () => {
-  // A block policy (register-info-protected shape): with the mfa override the
-  // grant becomes Require multifactor authentication, everything else unchanged.
-  const blocker = (pinned.policies as Pol[]).find((p) => {
-    const g = p.grantControls as { builtInControls?: string[] } | null
-    return (g?.builtInControls ?? []).some((c) => /^block$/i.test(c))
-  })
-  assert.ok(blocker, 'the pinned baseline has at least one block policy')
-  if (!blocker) return
-  const facts = policyFacts(blocker, EMPTY)
-  const ctx = contextFor(blocker)
-  const withBlock = portalLines(facts, ctx)
-  const withMfa = portalLines(facts, ctx, { grantOverride: 'mfa' })
-  assert.ok(withBlock.includes('Grant → Block access'))
-  assert.ok(withMfa.includes('Grant → Require multifactor authentication'))
-  assert.ok(!withMfa.includes('Grant → Block access'))
-})
+  // The registration fallback swaps Block access for Require multifactor authentication.
+  {
+    // A block policy (register-info-protected shape): with the mfa override the
+    // grant becomes Require multifactor authentication, everything else unchanged.
+    const blocker = (pinned.policies as Pol[]).find((p) => {
+      const g = p.grantControls as { builtInControls?: string[] } | null
+      return (g?.builtInControls ?? []).some((c) => /^block$/i.test(c))
+    })
+    assert.ok(blocker, 'the pinned baseline has at least one block policy')
+    if (!blocker) return
+    const facts = policyFacts(blocker, EMPTY)
+    const ctx = contextFor(blocker)
+    const withBlock = portalLines(facts, ctx)
+    const withMfa = portalLines(facts, ctx, { grantOverride: 'mfa' })
+    assert.ok(withBlock.includes('Grant → Block access'))
+    assert.ok(withMfa.includes('Grant → Require multifactor authentication'))
+    assert.ok(!withMfa.includes('Grant → Block access'))
+  }
 
-test('correction instructions retain location and device conditions from the submitted body', () => {
-  const p = { id:null, displayName:'Device and location correction', placeholders:{}, conditions:{ users:{includeUsers:['All']}, applications:{includeApplications:['All']}, locations:{includeLocations:['All'],excludeLocations:['AllTrusted']}, platforms:{includePlatforms:['windows'],excludePlatforms:[]} }, grantControls:{operator:'OR',builtInControls:['compliantDevice']}, sessionControls:null } as unknown as Pol
-  const lines=portalLines(policyFacts(p,EMPTY),contextFor(p),{mode:'change',only:new Set(['conditions','grant'])})
-  assert.ok(lines.some(line=>line.includes('Locations')&&line.includes('All trusted locations')))
-  assert.ok(lines.some(line=>line.includes('Device platforms')&&line.includes('Windows')))
-  assert.ok(lines.some(line=>line.includes('marked as compliant')))
-  assert.ok(!lines.some(line=>line.startsWith('Users →')||line.startsWith('Enable policy:')),'fields outside this correction are not instructed')
+  // Correction instructions retain location and device conditions from the submitted body.
+  {
+    const p = { id:null, displayName:'Device and location correction', placeholders:{}, conditions:{ users:{includeUsers:['All']}, applications:{includeApplications:['All']}, locations:{includeLocations:['All'],excludeLocations:['AllTrusted']}, platforms:{includePlatforms:['windows'],excludePlatforms:[]} }, grantControls:{operator:'OR',builtInControls:['compliantDevice']}, sessionControls:null } as unknown as Pol
+    const lines=portalLines(policyFacts(p,EMPTY),contextFor(p),{mode:'change',only:new Set(['conditions','grant'])})
+    assert.ok(lines.some(line=>line.includes('Locations')&&line.includes('All trusted locations')))
+    assert.ok(lines.some(line=>line.includes('Device platforms')&&line.includes('Windows')))
+    assert.ok(lines.some(line=>line.includes('marked as compliant')))
+    assert.ok(!lines.some(line=>line.startsWith('Users →')||line.startsWith('Enable policy:')),'fields outside this correction are not instructed')
+  }
 })
 
 // R4-18 (Marcus D9). A strength nothing names was written "Require
@@ -206,20 +225,4 @@ test('a strength nothing names is written by its own reference, never as the bui
   assert.ok(![...lines, ...preview].some((l) => /Multifactor authentication/.test(l)))
   // A strength the context names is still named.
   assert.ok(portalLines(policyFacts(body(custom), EMPTY), { ...unnamed, strengthName: 'Modern MFA + TAP' }).includes('Grant → Require authentication strength: Modern MFA + TAP'))
-})
-
-// The pinned High-Risk Users policies grant riskRemediation with the baseline's
-// authentication strength. grantLine had no label for the control and dropped
-// it, so the step's task read "Grant → Require authentication strength": a
-// policy built from that line is not the pinned one and does not meet the
-// goal's floor (a password change or risk remediation, coverage/goalIdentity.ts).
-// Microsoft's portal: "Select Require risk remediation. The Require
-// authentication strength grant control is automatically selected."
-test('a grant with risk remediation says so on its Grant line', () => {
-  const risky = pinned.policies.filter((p) => ((p.grantControls as { builtInControls?: string[] } | null)?.builtInControls ?? []).includes('riskRemediation'))
-  assert.ok(risky.length > 0, 'the premise: the pin grants risk remediation')
-  for (const p of risky) {
-    const grant = portalLines(policyFacts(p as never, EMPTY), contextFor(p)).find((l) => l.startsWith('Grant → ')) ?? ''
-    assert.match(grant, /^Grant → Require risk remediation\b/, `${p.displayName}: ${grant}`)
-  }
 })

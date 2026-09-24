@@ -35,86 +35,101 @@ const open = (s: Step): boolean => s.status !== 'done' && s.status !== 'skipped'
 const offered = (s: Step): boolean =>
   (s.status === 'ready' || s.status === 'ready-to-enforce' || s.status === 'in-report-only') && s.state.condition === 'healthy'
 
-for (const name of NAMES) {
+// Every fixture's plan, built once and shared by the properties below: each
+// property is checked on every tenant the fixtures build.
+const RUNS = NAMES.map((name) => {
   const { steps } = runFixture(fixture(name))
-  const byId = new Map(steps.map((s) => [s.id, s]))
-  const order = new Map(steps.map((s, i) => [s.id, i]))
+  return { name, steps, byId: new Map(steps.map((s) => [s.id, s])), order: new Map(steps.map((s, i) => [s.id, i])) }
+})
 
-  test(`${name}: nothing that can deny access is offered before the escape hatch is verified`, () => {
+test('every fixture: nothing that can deny access is offered before the escape hatch is verified', () => {
+  for (const { name, steps } of RUNS) {
     const gates = steps.filter((s) => GATING_SUBJECTS.some((subject) => blockerStepId(subject) === s.id) && open(s))
-    if (gates.length === 0) return
+    if (gates.length === 0) continue
     for (const s of steps) {
       if (!canDenyAccess(s) || !open(s)) continue
       if (s.manualReview?.readyToConfirm && s.state.lifecycle === 'enforced') {
-        assert.deepEqual(operationsOf(s), [], `${s.id}: workflow review must not write a policy`)
+        assert.deepEqual(operationsOf(s), [], `${name}/${s.id}: workflow review must not write a policy`)
         continue
       }
       // Ready is the state that invites action, so nothing deny-capable may sit
       // there. A policy the tenant already has in report-only reports reality
       // instead, and still has to carry the gate before it can be enforced.
-      assert.notEqual(s.status, 'ready', `${s.id} is Ready while emergency access is unverified`)
+      assert.notEqual(s.status, 'ready', `${name}/${s.id} is Ready while emergency access is unverified`)
       assert.ok(
         gates.some((g) => s.blockedBy.includes(g.id)),
-        `${s.id} does not wait on the emergency-access step`,
+        `${name}/${s.id} does not wait on the emergency-access step`,
       )
     }
-  })
+  }
+})
 
-  test(`${name}: no step waits on an object whose own step is missing or later`, () => {
+test('every fixture: no step waits on an object whose own step is missing or later', () => {
+  for (const { name, steps, byId, order } of RUNS) {
     for (const s of steps) {
       for (const id of s.blockedBy) {
         const dep = byId.get(id)
-        assert.ok(dep, `${s.id} waits on ${id}, which is not in the plan`)
+        assert.ok(dep, `${name}/${s.id} waits on ${id}, which is not in the plan`)
         // A dependency that has already been carried out needs no position.
         if (dep && open(dep)) {
           assert.ok(
             (order.get(id) as number) < (order.get(s.id) as number),
-            `${s.id} is ordered before ${id}, which it waits on`,
+            `${name}/${s.id} is ordered before ${id}, which it waits on`,
           )
         }
       }
     }
-  })
+  }
+})
 
-  test(`${name}: no MFA requirement is offered while people still have no method`, () => {
+test('every fixture: no MFA or device requirement is offered below its readiness threshold', () => {
+  for (const { name, steps } of RUNS) {
     for (const s of steps) {
       if (!open(s) || !offered(s)) continue
       if (s.manualReview?.readyToConfirm && s.state.lifecycle === 'enforced') { assert.deepEqual(operationsOf(s), []); continue }
+      if (s.readiness.percent === null) continue
       // The campaign is the step that runs at low readiness by design: it is
       // how readiness gets to the threshold in the first place.
-      if (s.kind === 'verify') continue
-      if (s.readiness.family !== 'mfa' && s.readiness.family !== 'guest') continue
-      if (s.readiness.percent === null) continue
-      assert.ok(
-        s.readiness.percent >= 90,
-        `${s.id} is offered at ${s.readiness.percent}% readiness`,
-      )
+      if ((s.readiness.family === 'mfa' || s.readiness.family === 'guest') && s.kind !== 'verify') {
+        assert.ok(s.readiness.percent >= 90, `${name}/${s.id} is offered at ${s.readiness.percent}% readiness`)
+      }
+      if (s.readiness.family === 'device') {
+        assert.ok(s.readiness.percent >= READINESS_THRESHOLD_DEVICES_PERCENT, `${name}/${s.id} is offered at ${s.readiness.percent}% device readiness`)
+      }
     }
-  })
+  }
+})
 
-  test(`${name}: nothing that enforces, or makes an enforced policy stricter, is offered or dated while a readiness prerequisite is unmet`, () => {
-    // The plan names a threshold and tells the operator to wait for it. That has
-    // to be a fact about the implementation, not a word beside one: the step used
-    // to carry the portal lines, the JSON, the PowerShell, the download, its
-    // rings, its enforcement event and its calendar entry while the number it
-    // named was less than half of what it asked for.
-    //
-    // Deliberately not "a blocker means no implementation": a safe report-only
-    // preparation is still offered, because it denies nobody and it is how
-    // readiness reaches the threshold in the first place. What is held is every
-    // operation that changes what people have to do the moment it is submitted,
-    // and every date that promises one.
-    //
-    // Nor "an enabled policy is never touched": a correction that only adds
-    // exclusions to a policy the tenant already enforces is not stricter (owner,
-    // 2026-09-19). It can stop nobody and only makes the way back in safer, so
-    // the threshold holds nothing of it and it is offered and dated like any
-    // other change. Every operation it runs has to be that, or the step is held.
+test('every fixture: an unmet readiness prerequisite holds every enforcement and its dates, and never the report-only preparation', () => {
+  // The plan names a threshold and tells the operator to wait for it. That has
+  // to be a fact about the implementation, not a word beside one: the step used
+  // to carry the portal lines, the JSON, the PowerShell, the download, its
+  // rings, its enforcement event and its calendar entry while the number it
+  // named was less than half of what it asked for.
+  //
+  // Deliberately not "a blocker means no implementation": a safe report-only
+  // preparation is still offered, because it denies nobody and it is how
+  // readiness reaches the threshold in the first place. What is held is every
+  // operation that changes what people have to do the moment it is submitted,
+  // and every date that promises one.
+  //
+  // Nor "an enabled policy is never touched": a correction that only adds
+  // exclusions to a policy the tenant already enforces is not stricter (owner,
+  // 2026-09-19). It can stop nobody and only makes the way back in safer, so
+  // the threshold holds nothing of it and it is offered and dated like any
+  // other change. Every operation it runs has to be that, or the step is held.
+  for (const { name, steps } of RUNS) {
     for (const s of steps) {
       const gate = s.action.readinessGate
       if (!gate || !open(s)) continue
-      const where = `${s.id} (${gate.measure} is ${gate.value}, wants ${gate.threshold})`
+      const where = `${name}/${s.id} (${gate.measure} is ${gate.value}, wants ${gate.threshold})`
       const ops = s.action.resolution?.policies ?? []
+      // The other half of the same rule, so it cannot be satisfied by withholding
+      // everything: where a held step's own operations all land in report-only,
+      // they stay on offer.
+      if (unavailableReason(s) === null && ops.length > 0 && !ops.some(enforcesOnRun)) {
+        assert.equal(implementationOffered(s), true, `${where}: a report-only preparation is withheld by a readiness threshold`)
+      }
       const bounded = ops.length > 0 && ops.every((o) => o.mode === 'update' && o.addsExclusionsOnly === true && (o.target as { state?: unknown } | undefined)?.state === 'enabled' && (o.body as { state?: unknown }).state === undefined)
       if (bounded) {
         assert.equal(addsExclusionsToEnforced(s), true, `${where}: the exclusions-only correction is read as one`)
@@ -126,84 +141,58 @@ for (const name of NAMES) {
       assert.deepEqual(s.rings, [], `${where} carries a ring plan`)
       assert.equal(enforcementHeld(s), true, `${where} is not recorded as held`)
     }
-  })
+  }
+})
 
-  test(`${name}: a readiness prerequisite holds the enforcement and not the preparation`, () => {
-    // The other half of the same rule, so it cannot be satisfied by withholding
-    // everything: where a held step's own operations all land in report-only,
-    // they stay on offer.
-    for (const s of steps) {
-      if (!s.action.readinessGate || !open(s) || unavailableReason(s) !== null) continue
-      const ops = s.action.resolution?.policies ?? []
-      if (ops.length === 0 || ops.some(enforcesOnRun)) continue
-      assert.equal(implementationOffered(s), true, `${s.id}: a report-only preparation is withheld by a readiness threshold`)
-    }
-  })
-
-  test(`${name}: no device requirement is offered before enrolment coverage`, () => {
-    for (const s of steps) {
-      if (!open(s) || !offered(s) || s.readiness.family !== 'device') continue
-      if (s.readiness.percent === null) continue
-      assert.ok(
-        s.readiness.percent >= READINESS_THRESHOLD_DEVICES_PERCENT,
-        `${s.id} is offered at ${s.readiness.percent}% device readiness`,
-      )
-    }
-  })
-
-  test(`${name}: no country block is offered while the allowed list is unsettled`, () => {
-    const gate = steps.find((s) => s.id === 's-blocker-allowed-countries' && open(s))
-    if (!gate) return
-    for (const s of steps) {
-      if (s.readiness.family !== 'location' || !open(s)) continue
-      assert.equal(s.status, 'blocked', `${s.id} is offered while the allowed-countries list is unsettled`)
-    }
-  })
-
-  test(`${name}: no session control can put the person applying it in a loop`, () => {
+test('every fixture: no session control can put the person applying it in a loop', () => {
+  for (const { name, steps } of RUNS) {
     for (const s of steps) {
       if (!offered(s)) continue
       const loops = s.unblockNotes.some((n) => /sign-in loop/i.test(n))
-      assert.equal(loops, false, `${s.id} is offered with a sign-in-loop hazard`)
+      assert.equal(loops, false, `${name}/${s.id} is offered with a sign-in-loop hazard`)
     }
-  })
+  }
+})
 
-  test(`${name}: no Conditional Access policy is offered while security defaults are on`, () => {
+test('every fixture: no Conditional Access policy is offered while security defaults are on', () => {
+  for (const { name, steps } of RUNS) {
     const secDefaults = steps.find((s) => s.id === 's-prereq-security-defaults' && open(s))
-    if (!secDefaults) return
+    if (!secDefaults) continue
     for (const s of steps) {
       if ((s.kind !== 'create' && s.kind !== 'adjust') || !open(s)) continue
       if (s.manualReview?.readyToConfirm && s.state.lifecycle === 'enforced') { assert.deepEqual(operationsOf(s), []); continue }
-      assert.notEqual(s.status, 'ready', `${s.id} is Ready while security defaults are still on`)
-      assert.ok(s.blockedBy.includes(secDefaults.id), `${s.id} does not wait on turning security defaults off`)
+      assert.notEqual(s.status, 'ready', `${name}/${s.id} is Ready while security defaults are still on`)
+      assert.ok(s.blockedBy.includes(secDefaults.id), `${name}/${s.id} does not wait on turning security defaults off`)
     }
-  })
-
-  test(`${name}: security-info registration waits for a way out to exist`, () => {
-    const reg = steps.find((s) => s.goalId === 'register-info-protected')
-    if (!reg || !open(reg)) return
-    // Offered only when a Temporary Access Pass can be issued, a trusted
-    // location means something, and nobody active is without a method.
-    if (offered(reg)) {
-      const notes = reg.unblockNotes.join(' ')
-      assert.doesNotMatch(notes, /Temporary Access Pass is not enabled/, `${reg.id} offered with no way out`)
-      assert.doesNotMatch(notes, /no trusted location is confirmed/, `${reg.id} offered with no trusted location`)
-    }
-  })
-}
+  }
+})
 
 // ---- the stranding this audit was written for ----
 
-test('a remote-only tenant with no trusted location never offers the registration policy', () => {
+test('no country block or registration policy is offered without its way out, and a remote-only tenant never offers the registration policy', () => {
+  for (const { name, steps } of RUNS) {
+    const gate = steps.find((s) => s.id === 's-blocker-allowed-countries' && open(s))
+    if (gate) {
+      for (const s of steps) {
+        if (s.readiness.family !== 'location' || !open(s)) continue
+        assert.equal(s.status, 'blocked', `${name}/${s.id} is offered while the allowed-countries list is unsettled`)
+      }
+    }
+    // Security-info registration is offered only when a Temporary Access Pass can
+    // be issued, a trusted location means something, and nobody active is without a method.
+    const reg = steps.find((s) => s.goalId === 'register-info-protected')
+    if (reg && open(reg) && offered(reg)) {
+      const notes = reg.unblockNotes.join(' ')
+      assert.doesNotMatch(notes, /Temporary Access Pass is not enabled/, `${name}/${reg.id} offered with no way out`)
+      assert.doesNotMatch(notes, /no trusted location is confirmed/, `${name}/${reg.id} offered with no trusted location`)
+    }
+  }
   const spec = FIXTURE_SPECS.find((s) => s.name === 'small')
   assert.ok(spec)
-  const f = buildFixture(spec)
-  const remote = structuredClone(f)
+  const remote = structuredClone(buildFixture(spec))
   remote.mapping.trustedLocationIds = []
-  const { steps } = runFixture(remote)
-  const reg = steps.find((s) => s.goalId === 'register-info-protected')
+  const reg = runFixture(remote).steps.find((s) => s.goalId === 'register-info-protected')
   if (!reg) return
   assert.equal(reg.status, 'blocked')
   assert.ok(reg.blockers.some((b) => b.label === 'registration-no-trusted-location'), 'the registration policy waits for a trusted location')
 })
-

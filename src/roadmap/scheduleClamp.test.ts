@@ -16,26 +16,27 @@ const isWeekend = (iso: string): boolean => {
   return d === 0 || d === 6
 }
 
-test('toWeekday is idempotent: clamping an effective start again does not move it', () => {
+test('toWeekday is idempotent and never a weekend; nextWorkingDay (the engine’s fallback) is never today and never a weekend, in Denver and in Sydney', () => {
   // Noon UTC so the calendar day reads the same in every display zone.
   for (const day of ['2026-09-20', '2026-09-21', '2026-09-19', '2026-09-25', '2026-09-26']) {
     const once = toWeekday(`${day}T12:00:00.000Z`)
     assert.equal(toWeekday(once), once, `${day}: re-clamping the effective start moved it`)
     assert.ok(!isWeekend(once), `${day}: the effective start is a weekend`)
   }
-})
 
-test("nextWorkingDay (the engine's fallback when no start is proposed) is never today, never a weekend, in Denver and in Sydney", () => {
-  // A Monday, a Friday and a weekend, viewed from a zone behind and ahead of UTC.
-  const days: Record<string, string> = { Monday: '2026-08-31', Friday: '2026-09-04', Saturday: '2026-09-05', Sunday: '2026-09-06' }
-  for (const [label, day] of Object.entries(days)) {
-    const start = nextWorkingDay(`${day}T09:00:00.000Z`)
-    assert.ok(!isWeekend(start), `${label}: the default start is a weekend in UTC (${start})`)
-    for (const tz of ['America/Denver', 'Australia/Sydney']) {
-      assert.ok(!isWeekendIn(start, tz), `${label}: the default start reads as a weekend in ${tz} (${start})`)
+  // NextWorkingDay (the engine's fallback when no start is proposed) is never today, never a weekend, in Denver and in Sydney.
+  {
+    // A Monday, a Friday and a weekend, viewed from a zone behind and ahead of UTC.
+    const days: Record<string, string> = { Monday: '2026-08-31', Friday: '2026-09-04', Saturday: '2026-09-05', Sunday: '2026-09-06' }
+    for (const [label, day] of Object.entries(days)) {
+      const start = nextWorkingDay(`${day}T09:00:00.000Z`)
+      assert.ok(!isWeekend(start), `${label}: the default start is a weekend in UTC (${start})`)
+      for (const tz of ['America/Denver', 'Australia/Sydney']) {
+        assert.ok(!isWeekendIn(start, tz), `${label}: the default start reads as a weekend in ${tz} (${start})`)
+      }
+      // The next working day is never today and never a weekend.
+      assert.notEqual(start.slice(0, 10), day, `${label}: the default is the same day, not the next working day`)
     }
-    // The next working day is never today and never a weekend.
-    assert.notEqual(start.slice(0, 10), day, `${label}: the default is the same day, not the next working day`)
   }
 })
 
