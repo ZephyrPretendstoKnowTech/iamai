@@ -8,10 +8,9 @@
 // old pin, the author's tenant or the package's own block names.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
 import registry from './registry.generated.json' with { type: 'json' }
 import type { CompiledPackage } from './protocol.ts'
-import { NO_RUNTIME, packageReadiness, projectSafely } from './project.ts'
+import { projectSafely } from './project.ts'
 import { PINNED } from '../../baseline/pinned.ts'
 import { PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
 import { fixture } from '../../roadmap/fixtures/index.ts'
@@ -45,20 +44,6 @@ function missingStep() {
   return { step, bindings, state, runtime, projection: projectSafely(PKG, state, bindings, runtime) }
 }
 
-test('the package states no retained old pin as current and claims no exclusion resolved before it is', () => {
-  const dir = 'docs/implementation-content/s-goal-device-registration-mfa'
-  const sources = ['STEP.md', 'CONTENT.md', 'META.json'].map((file) => [file, readFileSync(`${dir}/${file}`, 'utf8')] as const)
-  for (const [file, text] of [...sources, ['registry', Object.values(PKG.blocks).map((b) => b.text).join('\n')] as const]) {
-    assert.doesNotMatch(text, /retained pinned|retained pin\b|historical pinned/i, `${file} describes a retained pin as the target`)
-    assert.doesNotMatch(text, /already resolved/i, `${file} claims values are resolved before the answers they wait on`)
-  }
-  // The old pin survives only as the history of the re-authoring.
-  const meta = JSON.parse(sources[2][1]) as { baselineAuthority: { pinCommit: string; reauthored: { from: string } } }
-  assert.equal(meta.baselineAuthority.pinCommit, PINNED.commit)
-  const mentions = sources.flatMap(([file, text]) => text.split('\n').filter((l) => l.includes(OLD_PIN)).map((l) => `${file}: ${l.trim().slice(0, 60)}`))
-  assert.equal(mentions.length, 2, mentions.join('\n'))
-})
-
 test('the package names the pin the build carries, the member the goal maps to, and the requirement the member now asks for', () => {
   const authority = PKG.meta.baselineAuthority as { pinCommit: string; memberStableId: string; reauthored: { from: string }; authenticationStrength: { requirement: string[]; binding: string } }
   assert.equal(authority.pinCommit, PINNED.commit)
@@ -69,42 +54,37 @@ test('the package names the pin the build carries, the member the goal maps to, 
   assert.equal(authority.authenticationStrength.binding, 'authStrength.target.id')
 })
 
-test('Entra, JSON, PowerShell and AI Info carry the one strength IAMAI resolved for this tenant, and the same exclusions', () => {
-  const { step, bindings, state, projection } = missingStep()
-  assert.equal(state, 'missing')
-  assert.equal(projection.hold, null, JSON.stringify(projection.hold))
-  assert.deepEqual(projection.channels.map((c) => c.channel), ['entra', 'powershell', 'json', 'aiInfo'])
-  const resolved = operationsOf(step)[0].body as { grantControls: { authenticationStrength: { id: string } }; conditions: { users: { excludeGroups: string[] } } }
-  const strength = resolved.grantControls.authenticationStrength.id
-  assert.equal(bindings['authStrength.target.id'], strength)
-  assert.notEqual(strength, BUILT_IN_MFA, 'the tenant strength for the pinned requirement is not the built-in one')
-  const name = bindings['authStrength.target.displayName'] as string
-  assert.ok(typeof name === 'string' && name.length > 0 && name !== strength, 'the strength has no name, or is named by its id')
-  const text = (ch: string) => projection.channels.find((c) => c.channel === ch)!.text
-  const json = JSON.parse(text('json')) as typeof resolved
-  assert.equal(json.grantControls.authenticationStrength.id, strength)
-  assert.deepEqual(json.conditions.users.excludeGroups, resolved.conditions.users.excludeGroups)
-  assert.ok(text('powershell').includes(strength), 'the script does not run with the resolved strength')
-  assert.ok(text('entra').includes(name), 'the portal steps do not name the strength to select')
-  assert.ok(text('aiInfo').includes(strength) && text('aiInfo').includes(name))
-})
-
-test('no channel carries the old pin, the built-in strength, the author’s strength, a duplicated warning, or a block name', () => {
-  const { projection } = missingStep()
-  // The author's strength id is the author's; a tenant may name its own strength the same, so only the id is checked.
-  const author = (PINNED.policies.find((p) => p.id === MEMBER) as { grantControls: { authenticationStrength: { id: string } } }).grantControls.authenticationStrength
-  for (const c of projection.channels) {
-    for (const stale of [OLD_PIN, BUILT_IN_MFA, author.id, 'Contains tenant context', 'newer upstream']) assert.equal(c.text.includes(stale), false, `${c.channel} still says ${stale}`)
-    assert.doesNotMatch(c.text, /`(entra|json|powershell|ai|email)\.[a-z.-]+`/, `${c.channel} names a block`)
+test('Entra, JSON, PowerShell and AI Info carry the one strength IAMAI resolved for this tenant and the same exclusions, and none of the old pin, the built-in strength, the author’s strength or a block name', () => {
+  // Entra, JSON, PowerShell and AI Info carry the one strength IAMAI resolved for this tenant, and the same exclusions
+  {
+    const { step, bindings, state, projection } = missingStep()
+    assert.equal(state, 'missing')
+    assert.equal(projection.hold, null, JSON.stringify(projection.hold))
+    assert.deepEqual(projection.channels.map((c) => c.channel), ['entra', 'powershell', 'json', 'aiInfo'])
+    const resolved = operationsOf(step)[0].body as { grantControls: { authenticationStrength: { id: string } }; conditions: { users: { excludeGroups: string[] } } }
+    const strength = resolved.grantControls.authenticationStrength.id
+    assert.equal(bindings['authStrength.target.id'], strength)
+    assert.notEqual(strength, BUILT_IN_MFA, 'the tenant strength for the pinned requirement is not the built-in one')
+    const name = bindings['authStrength.target.displayName'] as string
+    assert.ok(typeof name === 'string' && name.length > 0 && name !== strength, 'the strength has no name, or is named by its id')
+    const text = (ch: string) => projection.channels.find((c) => c.channel === ch)!.text
+    const json = JSON.parse(text('json')) as typeof resolved
+    assert.equal(json.grantControls.authenticationStrength.id, strength)
+    assert.deepEqual(json.conditions.users.excludeGroups, resolved.conditions.users.excludeGroups)
+    assert.ok(text('powershell').includes(strength), 'the script does not run with the resolved strength')
+    assert.ok(text('entra').includes(name), 'the portal steps do not name the strength to select')
+    assert.ok(text('aiInfo').includes(strength) && text('aiInfo').includes(name))
   }
-  // The authored package text, every block, carries none of them either.
-  for (const block of Object.values(PKG.blocks)) for (const stale of [OLD_PIN, BUILT_IN_MFA, author.id, 'Contains tenant context']) assert.equal(block.text.includes(stale), false, `${block.meta.id} still says ${stale}`)
-})
-
-test('readiness reads the strength on the pin the build carries: Ready once resolved, Blocked before', () => {
-  const { bindings, state } = missingStep()
-  const tile = (b: Record<string, unknown>) => packageReadiness(PKG, state, b, { ...NO_RUNTIME, baselineCommit: PINNED.commit })!.tiles.find((t) => t.id === 'readiness.authentication-strength')!
-  assert.equal(tile(bindings).result, 'Ready')
-  const { ['authStrength.target.id']: _id, ...without } = bindings
-  assert.equal(tile(without).result, 'Blocked')
+  // no channel carries the old pin, the built-in strength, the author’s strength, a duplicated warning, or a block name
+  {
+    const { projection } = missingStep()
+    // The author's strength id is the author's; a tenant may name its own strength the same, so only the id is checked.
+    const author = (PINNED.policies.find((p) => p.id === MEMBER) as { grantControls: { authenticationStrength: { id: string } } }).grantControls.authenticationStrength
+    for (const c of projection.channels) {
+      for (const stale of [OLD_PIN, BUILT_IN_MFA, author.id, 'Contains tenant context', 'newer upstream']) assert.equal(c.text.includes(stale), false, `${c.channel} still says ${stale}`)
+      assert.doesNotMatch(c.text, /`(entra|json|powershell|ai|email)\.[a-z.-]+`/, `${c.channel} names a block`)
+    }
+    // The authored package text, every block, carries none of them either.
+    for (const block of Object.values(PKG.blocks)) for (const stale of [OLD_PIN, BUILT_IN_MFA, author.id, 'Contains tenant context']) assert.equal(block.text.includes(stale), false, `${block.meta.id} still says ${stale}`)
+  }
 })

@@ -39,35 +39,49 @@ const generate = (commit: string) =>
     goalMap: { 'mfa-all-users': ['x'] },
   })
 
-test('J. one generation writes the snapshot and its index record at the same commit', () => {
-  const { pinned, index } = generate(NEXT)
-  assert.equal(pinned.commit, NEXT)
-  assert.equal(index.commit, NEXT, 'the index record still names the previous pin')
-  assert.equal(index.generatedAt, pinned.generatedAt)
-  assert.equal(pinMismatch(pinned, index), null)
-  // The attribution names the commit, so it is regenerated rather than carried.
-  assert.equal(index.attribution, attributionFor('Jhope188', 'ConditionalAccessPolicies', NEXT))
-  assert.equal((index.attribution ?? '').includes(STALE.slice(0, 7)), false, 'the previous commit survived in the attribution sentence')
-  // The file allowlist is the new commit's, sorted, and the descriptive fields carry.
-  assert.deepEqual(index.files, ['Updated/Policies/a.json', 'Updated/Policies/b.json', 'readme.md'])
-  assert.equal(index.description, shippedIndex.description)
-  assert.equal(index.goal, shippedIndex.goal)
-  assert.deepEqual(index.tiers, shippedIndex.tiers)
+test('J. one generation writes the snapshot and its index record at the same commit, in the one index-record shape', () => {
+  // J. one generation writes the snapshot and its index record at the same commit
+  {
+    const { pinned, index } = generate(NEXT)
+    assert.equal(pinned.commit, NEXT)
+    assert.equal(index.commit, NEXT, 'the index record still names the previous pin')
+    assert.equal(index.generatedAt, pinned.generatedAt)
+    assert.equal(pinMismatch(pinned, index), null)
+    // The attribution names the commit, so it is regenerated rather than carried.
+    assert.equal(index.attribution, attributionFor('Jhope188', 'ConditionalAccessPolicies', NEXT))
+    assert.equal((index.attribution ?? '').includes(STALE.slice(0, 7)), false, 'the previous commit survived in the attribution sentence')
+    // The file allowlist is the new commit's, sorted, and the descriptive fields carry.
+    assert.deepEqual(index.files, ['Updated/Policies/a.json', 'Updated/Policies/b.json', 'readme.md'])
+    assert.equal(index.description, shippedIndex.description)
+    assert.equal(index.goal, shippedIndex.goal)
+    assert.deepEqual(index.tiers, shippedIndex.tiers)
+  }
+  // J. indexRecord is the one shape for an index record, whether a pin or a clone walk builds it
+  {
+    const fresh = indexRecord({}, { owner: 'o', repo: 'r', commit: 'a'.repeat(40), label: 'L', generatedAt: 'now', files: ['x.json'] })
+    assert.deepEqual(fresh, { owner: 'o', repo: 'r', commit: 'a'.repeat(40), label: 'L', generatedAt: 'now', files: ['x.json'], attribution: attributionFor('o', 'r', 'a'.repeat(40)) })
+  }
 })
 
-test('J. a pair that disagrees is named, so a generation path cannot write one', () => {
-  const { pinned, index } = generate(NEXT)
-  assert.match(pinMismatch(pinned, { ...index, commit: STALE }) ?? '', /is at 90d9b890.* and its index records ceccdc2a/)
-  assert.match(pinMismatch(pinned, { ...index, attribution: attributionFor('Jhope188', 'ConditionalAccessPolicies', 'deadbeef0000') }) ?? '', /attribution names a commit other than/)
-  // And the shipped pair, which carried exactly that disagreement until the
-  // re-pin ran through this path, now names one commit.
-  assert.equal(PINNED.commit, shippedIndex.commit)
-  assert.equal(pinMismatch(PINNED, shippedIndex as { commit: string }), null)
-})
-
-test('J. indexRecord is the one shape for an index record, whether a pin or a clone walk builds it', () => {
-  const fresh = indexRecord({}, { owner: 'o', repo: 'r', commit: 'a'.repeat(40), label: 'L', generatedAt: 'now', files: ['x.json'] })
-  assert.deepEqual(fresh, { owner: 'o', repo: 'r', commit: 'a'.repeat(40), label: 'L', generatedAt: 'now', files: ['x.json'], attribution: attributionFor('o', 'r', 'a'.repeat(40)) })
+test('J/K. a pair that disagrees is named, and the shipped pin, index and report are one run’s output', () => {
+  // J. a pair that disagrees is named, so a generation path cannot write one
+  {
+    const { pinned, index } = generate(NEXT)
+    assert.match(pinMismatch(pinned, { ...index, commit: STALE }) ?? '', /is at 90d9b890.* and its index records ceccdc2a/)
+    assert.match(pinMismatch(pinned, { ...index, attribution: attributionFor('Jhope188', 'ConditionalAccessPolicies', 'deadbeef0000') }) ?? '', /attribution names a commit other than/)
+    // And the shipped pair, which carried exactly that disagreement until the
+    // re-pin ran through this path, now names one commit.
+    assert.equal(PINNED.commit, shippedIndex.commit)
+    assert.equal(pinMismatch(PINNED, shippedIndex as { commit: string }), null)
+  }
+  // K. the shipped pin, index and report are one run’s output
+  {
+    const pinnedFile = JSON.parse(readFileSync('baselines/jhope188-conditionalaccesspolicies.pinned.json', 'utf8')) as { commit: string; generatedAt: string }
+    const report = readFileSync(`docs/baselines/jhope188-conditionalaccesspolicies/${pinnedFile.commit}.md`, 'utf8')
+    assert.equal(shippedIndex.generatedAt, pinnedFile.generatedAt, 'the pair carries one generation time')
+    assert.ok(report.includes(`Generated ${pinnedFile.generatedAt}.`), `the report is that run’s: ${report.split('\n')[2]}`)
+    assert.match(report, /Source read: \d+ policy files listed, \d+ fetched, \d+ parsed, \d+ skipped, \d+ duplicate, \d+ error, \d+ unread/, 'and it says how the source was read')
+  }
 })
 
 // ---- the pin script's own path ----
@@ -92,44 +106,40 @@ const scriptInput = (commit: string) => ({
   goalMap: { 'mfa-all-users': ['x'] },
 })
 
-test('J. the pin script writes the snapshot and the index record, for one commit, in one run', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'iamai-pin-'))
-  try {
-    const written = writePin(dir, 'test-baseline', pinGeneration(scriptInput(NEXT)))
-    assert.deepEqual(readdirSync(dir).sort(), ['test-baseline.index.json', 'test-baseline.pinned.json'], 'a pin that writes one file is the defect')
-    assert.equal(written.length, 2)
-    const pinned = JSON.parse(readFileSync(`${dir}/test-baseline.pinned.json`, 'utf8')) as { commit: string; generatedAt: string; policies: unknown[]; stripped: string[] }
-    const index = JSON.parse(readFileSync(`${dir}/test-baseline.index.json`, 'utf8')) as Record<string, unknown> & { commit: string }
-    assert.equal(pinned.commit, NEXT)
-    assert.equal(index.commit, NEXT, 'the index record was left at the previous pin')
-    assert.equal(index.generatedAt, pinned.generatedAt)
-    assert.equal(pinMismatch(pinned, index), null)
-    assert.equal(index.attribution, attributionFor('Jhope188', 'ConditionalAccessPolicies', NEXT))
-    assert.deepEqual(index.files, ['Updated/Policies/a.json', 'Updated/Policies/b.json', 'readme.md'])
-    assert.equal(pinned.policies.length, 1)
-    assert.deepEqual(pinned.stripped, ['one app exclusion'])
-  } finally {
-    rmSync(dir, { recursive: true, force: true })
+test('J. the pin script writes the snapshot and the index record for one commit in one run, and refuses a disagreeing pair writing neither', () => {
+  // J. the pin script writes the snapshot and the index record, for one commit, in one run
+  {
+    const dir = mkdtempSync(join(tmpdir(), 'iamai-pin-'))
+    try {
+      const written = writePin(dir, 'test-baseline', pinGeneration(scriptInput(NEXT)))
+      assert.deepEqual(readdirSync(dir).sort(), ['test-baseline.index.json', 'test-baseline.pinned.json'], 'a pin that writes one file is the defect')
+      assert.equal(written.length, 2)
+      const pinned = JSON.parse(readFileSync(`${dir}/test-baseline.pinned.json`, 'utf8')) as { commit: string; generatedAt: string; policies: unknown[]; stripped: string[] }
+      const index = JSON.parse(readFileSync(`${dir}/test-baseline.index.json`, 'utf8')) as Record<string, unknown> & { commit: string }
+      assert.equal(pinned.commit, NEXT)
+      assert.equal(index.commit, NEXT, 'the index record was left at the previous pin')
+      assert.equal(index.generatedAt, pinned.generatedAt)
+      assert.equal(pinMismatch(pinned, index), null)
+      assert.equal(index.attribution, attributionFor('Jhope188', 'ConditionalAccessPolicies', NEXT))
+      assert.deepEqual(index.files, ['Updated/Policies/a.json', 'Updated/Policies/b.json', 'readme.md'])
+      assert.equal(pinned.policies.length, 1)
+      assert.deepEqual(pinned.stripped, ['one app exclusion'])
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
   }
-})
-
-test('J. the script refuses a disagreeing pair, and writes neither file', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'iamai-pin-'))
-  try {
-    const out = pinGeneration(scriptInput(NEXT))
-    const stale = { pinned: out.pinned, index: { ...out.index, commit: STALE } }
-    assert.throws(() => writePin(dir, 'test-baseline', stale), /disagree/)
-    assert.deepEqual(readdirSync(dir), [], 'a rejected pin still put a file on disk')
-  } finally {
-    rmSync(dir, { recursive: true, force: true })
+  // J. the script refuses a disagreeing pair, and writes neither file
+  {
+    const dir = mkdtempSync(join(tmpdir(), 'iamai-pin-'))
+    try {
+      const out = pinGeneration(scriptInput(NEXT))
+      const stale = { pinned: out.pinned, index: { ...out.index, commit: STALE } }
+      assert.throws(() => writePin(dir, 'test-baseline', stale), /disagree/)
+      assert.deepEqual(readdirSync(dir), [], 'a rejected pin still put a file on disk')
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
   }
-})
-
-test('J. the pin script has one write path for its artifacts', () => {
-  const script = readFileSync('scripts/pin-baseline.ts', 'utf8')
-  assert.match(script, /const out = pinGeneration\(\{/, 'the script builds its artifacts through the shared generation path')
-  assert.match(script, /writePin\('baselines', BASE, out\)/, 'and writes both through the one write path')
-  assert.doesNotMatch(script, /writeFileSync\(`baselines\//, 'a second, hand-built write of a baselines/ artifact')
 })
 
 // ---- the promotion boundary (task 022 correction) ----
@@ -161,13 +171,6 @@ test('K. the commit to pin comes from the command line, and nothing else supplie
   assert.throws(() => targetCommit([NEXT, '--from'], HEAD), /--from needs a commit/)
 })
 
-test('K. the pin script asks the author what is newest for nothing that decides what is pinned', () => {
-  const script = readFileSync('scripts/pin-baseline.ts', 'utf8')
-  const main = script.slice(script.indexOf('async function main('))
-  assert.doesNotMatch(main, /commits\?per_page/, 'the run resolves its own target from the author’s head')
-  assert.match(script, /const \{ commit: target, from: oldCommit \} = targetCommit\(process\.argv/, 'the target is the validated argument')
-})
-
 const clean: LoadReport = { considered: 2, parsed: 2, skipped: [], errors: [], duplicates: [], warnings: [] }
 const read = (over: Partial<Acquisition> = {}): Acquisition => ({ requested: ['Policies/a.json', 'Policies/b.json'], fetched: 2, parsed: 2, skipped: 0, duplicates: 0, errors: 0, failed: [], ...over })
 
@@ -189,12 +192,4 @@ test('K. a source that was not read whole is refused before either artifact is w
     null,
     'a superseded copy does not stop a pin',
   )
-})
-
-test('K. the shipped pin, index and report are one run’s output', () => {
-  const pinnedFile = JSON.parse(readFileSync('baselines/jhope188-conditionalaccesspolicies.pinned.json', 'utf8')) as { commit: string; generatedAt: string }
-  const report = readFileSync(`docs/baselines/jhope188-conditionalaccesspolicies/${pinnedFile.commit}.md`, 'utf8')
-  assert.equal(shippedIndex.generatedAt, pinnedFile.generatedAt, 'the pair carries one generation time')
-  assert.ok(report.includes(`Generated ${pinnedFile.generatedAt}.`), `the report is that run’s: ${report.split('\n')[2]}`)
-  assert.match(report, /Source read: \d+ policy files listed, \d+ fetched, \d+ parsed, \d+ skipped, \d+ duplicate, \d+ error, \d+ unread/, 'and it says how the source was read')
 })

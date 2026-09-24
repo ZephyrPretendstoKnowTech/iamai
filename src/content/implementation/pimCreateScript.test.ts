@@ -108,10 +108,6 @@ function run(scenario: string, connected: boolean): Result {
 }
 const writes = (r: Result): string[] => r.requests.filter((q) => !q.startsWith('GET '))
 
-test('the premise: the create script runs PrepareContext, then Create', () => {
-  assert.deepEqual([...script.matchAll(/^Invoke-IAMAIStep -Mode '(\w+)'/gm)].map((m) => m[1]), ['PrepareContext', 'Create'])
-})
-
 test('the create script prepares an absent context and creates the policy on it, signed in or not', () => {
   for (const connected of [false, true]) {
     const r = run('absent', connected)

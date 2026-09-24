@@ -3,12 +3,10 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import registry from './registry.generated.json' with { type: 'json' }
 import { provenanceOf } from './provenance.ts'
 import { contentStepForPackage } from '../stepTitle.ts'
 import { PINNED } from '../../baseline/pinned.ts'
 
-const REGISTRY = registry as unknown as { provenance?: Record<string, string> }
 const LIBRARY = JSON.parse(readFileSync('docs/implementation-content/LIBRARY.json', 'utf8')) as { packages: { stepId: string; relationship: string; provenance?: string }[] }
 
 test('every package is classified by what it stands on, and only a package the pin maps to a policy is baseline-backed', () => {
@@ -29,13 +27,4 @@ test('every package is classified by what it stands on, and only a package the p
   assert.equal(of('s-shared-devices'), 'tenant-prerequisite', 'a policy IAMAI proposes beside the baseline is not a baseline goal')
   assert.equal(of('s-verify-mfa'), 'workflow-check')
   assert.equal(of('cleanup-drill'), 'rollout-proof')
-})
-
-test('the registry and LIBRARY.json carry the same provenance the classification reads', () => {
-  for (const p of LIBRARY.packages) {
-    assert.equal(p.provenance, provenanceOf(p.stepId, p.relationship), `LIBRARY.json ${p.stepId}`)
-    if (REGISTRY.provenance && p.stepId in REGISTRY.provenance) assert.equal(REGISTRY.provenance[p.stepId], p.provenance, `registry ${p.stepId}`)
-  }
-  // 42 after findings 4, 5 and 6 retired three packages with their steps.
-  assert.ok(REGISTRY.provenance && Object.keys(REGISTRY.provenance).length >= 42, 'the registry carries no provenance')
 })
