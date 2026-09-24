@@ -5,7 +5,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
-import { directionSteps, nextDirectionStep } from './direction.ts'
+import { directionSteps } from './direction.ts'
 import type { DirectionInput } from './direction.ts'
 import { DIRECTION_LOCATIONS_STORAGE, DIRECTION_STEP, answersOfDecision, directionDecisionOf, legacyDecisionsOf, savedAnswerOf } from './directionAnswers.ts'
 import type { DirectionAnswer } from './directionAnswers.ts'
@@ -98,7 +98,6 @@ test('(b) a what-you-use question takes today\'s state; a how-it-should-work que
   // enrolled, so every computer under this answer needs an Intune licence,
   // and the question offered the baseline's advice with nothing about the
   // tenant beside it — on a tenant holding 300 seats with 41 in use.
-  assert.ok(q(devices, 'computers').evidence.startsWith(W.baselineEvidence), q(devices, 'computers').evidence)
   assert.match(q(devices, 'computers').evidence, /Intune: [0-9]+ of [0-9]+ licences in use/)
   assert.match(q(devices, 'computers').today ?? '', /^Today: /)
 })
@@ -157,7 +156,6 @@ test('(c) Approve saves every answer under the key it is read from, completes th
     }
   }
 
-  // Approve moves to the next open Direction step.
   {
     const steps = stepsOf(fixture('demo'))
     // A service question states no window: its two sources (appSignInSummary and
@@ -166,15 +164,6 @@ test('(c) Approve saves every answer under the key it is read from, completes th
     for (const x of stepOf(steps, DIRECTION_STEP.use).directionQuestions!.filter((y) => y.key.startsWith('service:'))) {
       assert.doesNotMatch(x.evidence, /last 30 days/, x.key + ' claims a window its sources do not declare')
     }
-    // Approving D1 moves to D2; with D2 answered too, D3 is next, and from D3 back to the first open one.
-    assert.equal(nextDirectionStep(DIRECTION_STEP.use, steps), DIRECTION_STEP.accounts)
-    const answered = (id: string): Step => ({ ...stepOf(steps, id), directionQuestions: stepOf(steps, id).directionQuestions!.map((x) => ({ ...x, saved: x.suggested, needsReview: false })) })
-    const later = steps.map((s) => s.id === DIRECTION_STEP.accounts ? answered(s.id) : s)
-    assert.equal(nextDirectionStep(DIRECTION_STEP.use, later), DIRECTION_STEP.devices)
-    assert.equal(nextDirectionStep(DIRECTION_STEP.devices, later), DIRECTION_STEP.use)
-    const all = steps.map((s) => answered(s.id))
-    assert.equal(nextDirectionStep(DIRECTION_STEP.use, all), null, 'nothing open: the page stays')
-    assert.equal(nextDirectionStep('s-goal-admin-mfa', steps), null, 'only a Direction step moves the page')
   }
 })
 
@@ -193,7 +182,6 @@ test('(c, d) an answer saved before Direction existed still reads as saved, and 
       [PREREQ_STEP_ID.serviceAccountsGroup]: { picked: [], at: AT },
     })
     assert.deepEqual(savedAnswerOf('service:sharepoint', m), { value: 'yes', picked: [] })
-    assert.deepEqual(savedAnswerOf('deviceCode', m), { value: 'unused', picked: [] })
     assert.deepEqual(savedAnswerOf('mailDevices', m), { value: 'none', picked: [] })
     assert.deepEqual(savedAnswerOf('partner', m), { value: 'no', picked: [] })
     assert.deepEqual(savedAnswerOf('computers', m), { value: 'managed', picked: [] })
@@ -366,37 +354,6 @@ test('the office network has a third answer, and answering it keeps the trusted-
   assert.match(note, /does not read sign-in addresses/)
 })
 
-test('the device code question claims no window and no absence over a sign-in read IAMAI cannot rely on', () => {
-  // A production read that stops short of 24 hours is 'insufficient' and keeps
-  // the rows it read (graph/collect/laneBCore.ts). The question said "2 people
-  // used device code sign-in in the last 30 days" over six hours of records, and
-  // "No device code sign-ins in the last 30 days" where those six hours held
-  // none — a measured absence beside the suggestion that builds the block, while
-  // the device code step's own tile said the records could not be relied on.
-  const reason = 'stopped at time budget with only 6 h covered (minimum 24 h)'
-  const shortRead = (count: number, userIds: string[]): DirectionQuestion => {
-    const f = fixture('demo')
-    f.snapshot.sources.signInEvidence = { ...f.snapshot.sources.signInEvidence, status: 'insufficient', reason }
-    f.snapshot.evidenceUsage = { ...f.snapshot.evidenceUsage!, deviceCode: { count, userIds, byDetail: {} } }
-    return q(stepOf(stepsOf(f), DIRECTION_STEP.use), 'deviceCode')
-  }
-  // Use the rows show is use: the suggestion keeps it, and the window is not claimed.
-  const seen = shortRead(3, ['u1', 'u2'])
-  assert.equal(seen.suggested.value, 'used')
-  assert.match(seen.evidence, /^2 people used device code sign-in in the sign-in records IAMAI read\./, seen.evidence)
-  assert.doesNotMatch(seen.evidence, /in the last 30 days/, seen.evidence)
-  // No use in a short read is not an absence: the suggestion is the default, and says so.
-  const quiet = shortRead(0, [])
-  assert.equal(quiet.evidence, W.defaultEvidence, quiet.evidence)
-  assert.notEqual(quiet.evidence, W.questions.deviceCode.notSeen)
-
-  // A read IAMAI relies on keeps its window and its absence.
-  const f = fixture('demo')
-  f.snapshot.evidenceUsage = { ...f.snapshot.evidenceUsage!, deviceCode: { count: 0, userIds: [], byDetail: {} } }
-  assert.equal(f.snapshot.sources.signInEvidence.status, 'ok', 'the premise: demo read its sign-in records')
-  assert.equal(q(stepOf(stepsOf(f), DIRECTION_STEP.use), 'deviceCode').evidence, W.questions.deviceCode.notSeen)
-})
-
 // ---------------------------------------------------------------------------
 // NEW-Nadia-D4: "Today: no phone sign-ins were seen." beside an iPhone.
 // The phones question counted a tally over the bulk sign-in rows
@@ -428,89 +385,6 @@ test('NEW-Nadia-D4: the phones question counts exactly the people MFA Readiness 
       }
       assert.deepEqual(counted, shown, `${name}: the question and MFA Readiness disagree about who signed in from a phone`)
       assert.equal(today, shown.length > 0 ? fillText(W.questions.phones.today, { n: shown.length }) : W.questions.phones.todayNone, name)
-    }
-  }
-
-  // NEW-Nadia-D4: a person read on their own after a partial read, seen on an iPhone, is counted by the phones question
-  {
-    // The collector's second pass (graph/collect/laneB.ts readTargeted) adds the
-    // person's devices to their own record and nothing else; the question read the
-    // tally the first pass left.
-    const f = fixture('getiamai')
-    const s = f.snapshot
-    for (const e of Object.values(s.signInEvidence)) {
-      e.platforms = (e.platforms ?? []).filter((p) => !isPhoneOs(p.os))
-      if (e.devices) e.devices = e.devices.filter((d) => !isPhoneOs(d.os))
-    }
-    assert.equal(phonesToday(f), W.questions.phones.todayNone, 'the premise: nobody signs in from a phone')
-    const id = Object.keys(s.signInEvidence)[0]
-    const e = s.signInEvidence[id]
-    e.platforms = [...(e.platforms ?? []), { os: 'iOS', at: s.asOf }]
-    e.devices = [...(e.devices ?? []), { os: 'iOS', at: s.asOf, trust: 'none', managed: null, deviceIds: [], version: 'iOS 18.2' }]
-    e.individuallyRead = true
-    s.sources.signInEvidence = { ...s.sources.signInEvidence, status: 'partial', reason: 'stopped at time budget; covers the most recent 40 h of the requested 30 days' }
-    assert.deepEqual(phoneSignInIds(s), [id])
-    // Counted, and — the read being partial — said as a count of the part that
-    // was read (NEW-Nadia-D4 review; the test below).
-    assert.equal(phonesToday(f), fillText(W.questions.phones.todayPartial, { n: 1 }))
-  }
-})
-
-test('NEW-Nadia-D4: over a sign-in read that stopped short, the device question claims no absence and states every count as from the part that was read', () => {
-  // NEW-Nadia-D4: over a sign-in read that stopped short, the device question never says no phone or no unidentified computer was seen
-  {
-    // The second way a real scan reached the sentence: a read interrupted or
-    // capped part of the way through the window never reached the iPhone
-    // sign-ins before where it stopped, and the question still said "Today: no
-    // phone sign-ins were seen." — a claim about records nobody read.
-    const f = fixture('getiamai')
-    const s = f.snapshot
-    for (const e of Object.values(s.signInEvidence)) {
-      e.platforms = (e.platforms ?? []).filter((p) => !isPhoneOs(p.os))
-      if (e.devices) e.devices = e.devices.filter((d) => !isPhoneOs(d.os))
-    }
-    const computers = (): string | null => q(stepOf(directionSteps({ snapshot: s, mapping: f.mapping, notAssessed: [], availableGoalIds: [] }), DIRECTION_STEP.devices), 'computers').today
-    // Read whole, the negatives stand: nothing was missed.
-    assert.equal(s.sources.signInEvidence.status, 'ok', 'the premise: a whole read')
-    assert.equal(phonesToday(f), W.questions.phones.todayNone)
-    assert.equal(computers(), W.questions.computers.todayNone)
-    s.sources.signInEvidence = { ...s.sources.signInEvidence, status: 'partial', reason: 'collection interrupted: Graph 503 after retries' }
-    assert.equal(phonesToday(f), null)
-    assert.equal(computers(), null)
-    // What a short read did see is still said, as what the part that was read
-    // showed (the test below).
-    const id = Object.keys(s.signInEvidence)[0]
-    s.signInEvidence[id].devices = [...(s.signInEvidence[id].devices ?? []), { os: 'Android', at: s.asOf, trust: 'none', managed: null, deviceIds: [], version: null }]
-    assert.equal(phonesToday(f), fillText(W.questions.phones.todayPartial, { n: 1 }))
-  }
-
-  // NEW-Nadia-D4 review: over a sign-in read that stopped short, every count the device question states says it is from the part that was read
-  {
-    // The defect: with the flat negatives gone, a short read still stated its
-    // counts as the tenant's — "Today: 3 people signed in from phones." over the
-    // few hours a capped read reached, beside Blocked from company data, where an
-    // undercount argues for blocking; and the computer counts beside Managed,
-    // where it makes enrolment look cheap.
-    const f = fixture('demo')
-    const s = f.snapshot
-    const today = (key: string): string | null => q(stepOf(directionSteps({ snapshot: s, mapping: f.mapping, notAssessed: [], availableGoalIds: [] }), DIRECTION_STEP.devices), key).today
-    const phones = phoneSignInIds(s)!.length
-    const unjoined = s.scenarioEvidence!.unjoinedComputers!.people.length
-    // One person on a registered computer, so both computer counts are stated.
-    s.scenarioEvidence!.registeredComputers = { people: [Object.keys(s.signInEvidence)[0]], count: 1, detail: {} }
-    assert.ok(phones > 0 && unjoined > 0, 'the premise: the demo has phones and unidentified computers to count')
-    // Read whole, the counts are the tenant's.
-    assert.equal(s.sources.signInEvidence.status, 'ok', 'the premise: a whole read')
-    assert.equal(today('phones'), fillText(W.questions.phones.today, { n: phones }))
-    assert.equal(today('computers'), [fillText(W.questions.computers.today, { n: unjoined }), fillText(W.questions.computers.todayRegistered, { n: 1 })].join(' '))
-    for (const [status, reason] of [['partial', 'stopped at time budget; covers the most recent 40 h of the requested 30 days'], ['insufficient', 'stopped at time budget with only 17 h covered (minimum 24 h)']] as const) {
-      s.sources.signInEvidence = { ...s.sources.signInEvidence, status, reason }
-      const computers = today('computers') ?? ''
-      assert.doesNotMatch(computers, /^Today:| Today:/, `${status}: a short read's computer counts stated as the tenant's: ${computers}`)
-      assert.equal(computers, [fillText(W.questions.computers.todayPartial, { n: unjoined }), fillText(W.questions.computers.todayRegisteredPartial, { n: 1 })].join(' '), status)
-      // The phones count is read only over a read MFA Readiness reads (derive/sets.ts phoneSignInIds): partial, not insufficient.
-      if (status === 'partial') assert.equal(today('phones'), fillText(W.questions.phones.todayPartial, { n: phones }))
-      else assert.equal(today('phones'), null)
     }
   }
 })

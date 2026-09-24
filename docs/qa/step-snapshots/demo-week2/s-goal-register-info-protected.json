@@ -26,10 +26,6 @@
       "state": "People without a method"
     },
     {
-      "label": "Prerequisites",
-      "state": "Trusted network"
-    },
-    {
       "label": "Confirm What You Use",
       "state": "Waiting on your answers"
     }

@@ -30,7 +30,8 @@ import type { StepDecision, StepDecisionInput } from './decisions.ts'
 import { DEVICE_ANSWER_KEYS, QUESTION_STEP, answerKey, answerOf, answerTextFor, devicePlanOf, questionLabels, questionOptions } from './answers.ts'
 import { PREREQ_STEP_ID } from './stepIds.ts'
 import { DIRECTION_STEP_IDS } from './stepGroups.ts'
-import { directionWords } from '../content/content.ts'
+import { directionWords, workflowWords } from '../content/content.ts'
+import { fillText } from '../content/render.ts'
 
 export const DIRECTION_STEP = {
   use: DIRECTION_STEP_IDS[0],
@@ -70,7 +71,7 @@ export function directionBlockerStep(b: { kind: string; label: string }): Direct
 /** The retired step whose decision the services have always saved under (workflowAnswers, facetOverrides). */
 export const WORKFLOW_DECISION_STEP = 's-confirm-workloads'
 /** The services D1 asks about, in the order the spec lists them. Intune is not one: it follows D3. */
-export const SERVICE_KEYS = ['avd', 'sharepoint', 'azureManagement', 'inforcer', 'workload'] as const
+export const SERVICE_KEYS = ['avd', 'sharepoint', 'azureManagement', 'inforcer'] as const
 
 /** One answer: the option's value, and the ids picked where the option takes a list. */
 export type DirectionAnswer = { value: string; picked: string[] }
@@ -83,7 +84,7 @@ export type DirectionAnswer = { value: string; picked: string[] }
  */
 export type DirectionQuestionKey =
   | `service:${string}`
-  | 'mailDevices' | 'deviceCode' | 'partner'
+  | 'mailDevices' | 'partner'
   | 'serviceAccounts' | 'sharedDevices'
   | 'computers' | 'phones' | 'officeNetwork'
 
@@ -94,9 +95,8 @@ export type DirectionQuestionKey =
  */
 export const DIRECTION_QUESTIONS: Readonly<Record<Exclude<DirectionQuestionKey, `service:${string}`> | 'service', { step: DirectionStepId; storedAs: string }>> = {
   service: { step: DIRECTION_STEP.use, storedAs: `stepDecisions['${WORKFLOW_DECISION_STEP}'] → workflowAnswers[<service>], facetOverrides[<service>]` },
-  mailDevices: { step: DIRECTION_STEP.use, storedAs: `questionAnswers['${QUESTION_STEP.mailDevices}:<decision label>']` },
-  deviceCode: { step: DIRECTION_STEP.use, storedAs: `questionAnswers['${QUESTION_STEP.deviceCode}:<decision label>']` },
-  partner: { step: DIRECTION_STEP.use, storedAs: `questionAnswers['${QUESTION_STEP.partner}:<question label>']` },
+  mailDevices: { step: DIRECTION_STEP.use, storedAs: `questionAnswers['${QUESTION_STEP.mailDevices}:<decision label>'], its basis questionAnswers['${DIRECTION_STEP.use}:mailDevices:basis']` },
+  partner: { step: DIRECTION_STEP.use, storedAs: `questionAnswers['${QUESTION_STEP.partner}:<question label>'], its basis questionAnswers['${DIRECTION_STEP.use}:partner:basis']` },
   serviceAccounts: { step: DIRECTION_STEP.accounts, storedAs: 'serviceAccountUserIds, wizardAnswered.serviceAccounts' },
   sharedDevices: { step: DIRECTION_STEP.accounts, storedAs: 'sharedDeviceUserIds' },
   computers: { step: DIRECTION_STEP.devices, storedAs: `questionAnswers['${QUESTION_STEP.devices}:${DEVICE_ANSWER_KEYS.computers}']` },
@@ -117,6 +117,22 @@ export function directionStepOf(key: DirectionQuestionKey): DirectionStepId {
 }
 
 /**
+ * The reason on a Doesn't apply here row a Direction answer put there (walk
+ * list item 17): the option as its card shows it, the card's label, and the
+ * Direction step that asks it. The words are the ones direction.ts draws the
+ * card with; the two account questions share one option list.
+ */
+export function answeredReasonOf(key: DirectionQuestionKey, value: string): string {
+  const Q = directionWords.questions
+  const service = key.startsWith('service:') ? key.slice('service:'.length) : null
+  const own = service === null ? (Q as unknown as Record<string, { label: string; options?: Record<string, string> }>)[key] : null
+  const label = own?.label ?? (Q.services as Record<string, string>)[service ?? ''] ?? (workflowWords.names as Record<string, string>)[service ?? ''] ?? key
+  const options: Record<string, string> = service !== null ? Q.serviceOptions : own?.options ?? Q.accountOptions
+  const stepKey = (Object.entries(DIRECTION_STEP) as [keyof typeof DIRECTION_STEP, string][]).find(([, id]) => id === directionStepOf(key))![0]
+  return fillText(directionWords.doesntApplyAnswered, { option: options[value] ?? value, question: label, step: directionWords.steps[stepKey].title })
+}
+
+/**
  * The office network's three answers, persisted under its own storage id
  * (DIRECTION_LOCATIONS_STORAGE) *as well as* the trusted-location decision
  * (owner, 2026-09-20): an answer saved before Direction existed still has to
@@ -133,14 +149,17 @@ const answer = (value: string, picked: readonly string[] = []): DirectionAnswer 
 /** A picker's own answer was saved by a person, never by the detected pass (pickerRows.ts defaultDecisions). */
 const confirmed = (m: Mapping, q: string): boolean => m.wizardAnswered?.[q] === true && m.assumed?.[q] !== 'detected'
 
-/** Phones, as the four D3 options, from the device answers however they were saved. */
-function phonesOf(m: Mapping): string | null {
+/**
+ * Phones, as the three D3 options, from the device answers however they were
+ * saved. "App protection only" and "Unmanaged" are one option now, No device
+ * requirement, stored as apps: an old answer of either reads as it.
+ */
+export function phonesOf(m: Pick<MappingState, 'questionAnswers'>): string | null {
   const plan = devicePlanOf(m)
   if (!plan) return null
   if (plan.phoneManagement === 'enrolled' || (plan.phoneManagement === undefined && plan.phones === 'enrol')) return 'enrolled'
   if (plan.phoneManagement === 'blocked' || plan.noWorkPhones || (plan.phoneManagement === undefined && plan.phones === 'none')) return 'blocked'
-  if (plan.phoneAppProtection === 'required' || (plan.phoneAppProtection === undefined && plan.phones === 'apps')) return 'apps'
-  return 'unmanaged'
+  return 'apps'
 }
 
 /**
@@ -162,10 +181,6 @@ export function savedAnswerOf(key: DirectionQuestionKey, m: Mapping): DirectionA
       const a = answerOf(m, QUESTION_STEP.mailDevices, 'decision')
       return a === null ? null : a.index === 0 ? answer('none') : answer('some', a.picked)
     }
-    case 'deviceCode': {
-      const a = answerOf(m, QUESTION_STEP.deviceCode, 'decision')
-      return a === null ? null : answer(a.index === 0 ? 'unused' : 'used')
-    }
     case 'partner': {
       const a = answerOf(m, QUESTION_STEP.partner, 'question')
       return a === null ? null : answer(a.index === 0 ? 'no' : 'yes')
@@ -175,8 +190,9 @@ export function savedAnswerOf(key: DirectionQuestionKey, m: Mapping): DirectionA
     case 'sharedDevices':
       return m.sharedDeviceUserIds === undefined ? null : m.sharedDeviceUserIds.length > 0 ? answer('some', m.sharedDeviceUserIds) : answer('none')
     case 'computers': {
+      // Hybrid joined is part of Managed now: an old hybrid answer reads as it.
       const c = devicePlanOf(m)?.computers ?? null
-      return c === null ? null : answer(c === 'enrol' ? 'managed' : c)
+      return c === null ? null : answer(c === 'unmanaged' ? 'unmanaged' : 'managed')
     }
     case 'phones': {
       const p = phonesOf(m)
@@ -192,6 +208,17 @@ export function savedAnswerOf(key: DirectionQuestionKey, m: Mapping): DirectionA
   }
 }
 
+/** The questions besides the services whose approval keeps the evidence basis it was made against. */
+const BASIS_KEYS = ['mailDevices', 'partner'] as const
+
+/**
+ * The evidence basis (present, absent, unread) a saved mail or partner answer
+ * was approved against; null where none was kept (an answer saved before it was).
+ */
+export function savedBasisOf(key: (typeof BASIS_KEYS)[number], m: Pick<MappingState, 'questionAnswers'>): string | null {
+  return m.questionAnswers?.[answerKey(DIRECTION_STEP.use, `${key}:basis`)] ?? null
+}
+
 // ---- the Direction decision, as saved ----
 
 /**
@@ -204,7 +231,16 @@ export function directionAnswerComplete(q: Pick<DirectionQuestion, 'control' | '
   return q.pickedWith !== null && a.value === q.pickedWith ? a.picked.length > 0 : true
 }
 
-/** The answers a Direction step's Approve writes: every question at once, the picked ids beside each, a service's evidence basis beside it. */
+/**
+ * What a question's card starts from before anyone changes it: the saved
+ * answer, or the suggestion where nothing is saved or a later scan reopened the
+ * saved answer (owner, 2026-09-23: a reopened card pre-fills the new
+ * suggestion, not the old answer). DirectionQuestions.tsx draws it; anything
+ * that approves on a person's behalf starts from the same answer.
+ */
+export const directionDraftOf = (q: Pick<DirectionQuestion, 'saved' | 'suggested' | 'needsReview'>): DirectionAnswer => q.needsReview ? q.suggested : q.saved ?? q.suggested
+
+/** The answers a Direction step's Approve writes: every question at once, the picked ids beside each, a question's evidence basis beside it. */
 export function directionDecisionOf(answers: Readonly<Record<string, DirectionAnswer>>, basis: Readonly<Record<string, string>> = {}): StepDecisionInput {
   const out: Record<string, string> = {}
   for (const [key, a] of Object.entries(answers)) {
@@ -259,17 +295,20 @@ export function legacyDecisionsOf(_stepId: DirectionStepId | typeof DIRECTION_LO
     const text = mail.value === 'some' && mail.picked.length > 0 ? option(QUESTION_STEP.mailDevices, 'decision', 1, mail.picked) : option(QUESTION_STEP.mailDevices, 'decision', 0)
     if (text !== null) out.push([QUESTION_STEP.mailDevices, { option: text, at }])
   }
-  const code = answers.deviceCode
-  if (code) {
-    const text = option(QUESTION_STEP.deviceCode, 'decision', code.value === 'used' ? 1 : 0)
-    if (text !== null) out.push([QUESTION_STEP.deviceCode, { option: text, at }])
-  }
   const partner = answers.partner
   const partnerLabel = questionLabels(QUESTION_STEP.partner).question
   if (partner && partnerLabel) {
     const text = option(QUESTION_STEP.partner, 'question', partner.value === 'yes' ? 1 : 0)
     if (text !== null) out.push([QUESTION_STEP.partner, { ...previous[QUESTION_STEP.partner], answers: { ...(previous[QUESTION_STEP.partner]?.answers ?? {}), [partnerLabel]: text }, at }])
   }
+  // The evidence the mail and partner answers were approved against, under the
+  // key it is read from (savedBasisOf), as a service's basis is kept beside it.
+  const basis: Record<string, string> = {}
+  for (const key of BASIS_KEYS) {
+    const b = d.answers?.[`${key}:basis`]
+    if (answers[key] && typeof b === 'string') basis[`${key}:basis`] = b
+  }
+  if (Object.keys(basis).length > 0) out.push([DIRECTION_STEP.use, { answers: basis, at }])
   if (answers.serviceAccounts) out.push([PREREQ_STEP_ID.serviceAccountsGroup, { picked: answers.serviceAccounts.value === 'some' ? answers.serviceAccounts.picked : [], at }])
   if (answers.sharedDevices) out.push(['s-shared-devices', { picked: answers.sharedDevices.value === 'some' ? answers.sharedDevices.picked : [], at }])
   const computers = answers.computers

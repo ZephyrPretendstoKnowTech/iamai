@@ -2,7 +2,8 @@ import { networkDraftOf } from '../mapping/networkDraft.ts'
 import { emergencyAccountPreparationComplete, emergencyAccountPreparationOf } from './emergencyAccountPreparation.ts'
 import { followUpIdsOf, settleFollowUp } from './followUp.ts'
 import { addWorkflowSteps } from './workflows.ts'
-import { directionSteps } from './direction.ts'
+import { countDirectionImpact, directionSteps } from './direction.ts'
+import { answeredReasonOf } from './directionAnswers.ts'
 import { applyManualReviews, perUserMfaReading } from './manualWork.ts'
 // Step generation (roadmap.md §1–§6; 2026-08-27 redesign: collapsed phase 0,
 // per-tenant impact, safe-today lane, handle-with-care gating, comms drafts,
@@ -66,7 +67,7 @@ import { eventsFor, nobodyAffected as nobodyAffectedBy } from './timing.ts'
 import { MANAGER, MANAGER_BY_CONTROL, MANAGER_BY_GOAL } from '../copy/plain.ts'
 import { contentTitle } from '../content/stepTitle.ts'
 import { settleEnforceWaits } from './enforceWaits.ts'
-import { app, directionWords, engine, shared, stepById } from '../content/content.ts'
+import { app, engine, shared, stepById } from '../content/content.ts'
 import { countryName as countryLabel } from '../mapping/countries.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
@@ -1166,14 +1167,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // one exists (the picker says which of them are the team's own).
   //
   // It is the DOING of the office-network answer (Decide How and Where People
-  // Sign In since Stage 3), and it says so: direction.ts ANSWERED_IN swaps its
-  // decision control for the "Answered in" panel. So it does not ask the
+  // Sign In since Stage 3): direction.ts ANSWERED_IN takes its decision control
+  // away, with no Answered in panel in its place (walk list item 19). So it does not ask the
   // question again. Until that answer is saved this step's tile used to read
   // "Trusted Network: Choose your office networks", with the detail "Select your
   // office networks or confirm that everyone is remote" — word for word the
   // question D4 asks, on a second row of the board
   // (docs/plans/step-redundancy-analysis.md finding 2, the owner's own example).
-  // Now nothing is drawn there: the panel above it is the step's statement, and
+  // Now nothing is drawn there, and
   // the one thing the tile has to add — a network the scan drafted, waiting to be
   // created — is still drawn, because that is work and not a question.
   const locStepId = PREREQ_STEP_ID.trustedLocation
@@ -1214,7 +1215,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // Only the person's own saved answer says remote; nothing assumes it.
     if (networkConfirmed && mapping.trustedLocationIds.length === 0) {
       const network = steps[steps.length - 1]
-      network.doesntApply = directionWords.questions.officeNetwork.options.remote
+      network.doesntApply = answeredReasonOf('officeNetwork', 'remote')
+      network.doesntApplyByAnswer = true
       setState(network, { setAside: true, satisfied: false, inPlace: false })
     }
   }
@@ -1269,16 +1271,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     countriesTask = s
   }
   // Confirmed service accounts with no group holding them (prompt 16 §3).
+  // Only while service accounts are picked: None adds no step.
   const saStepId = PREREQ_STEP_ID.serviceAccountsGroup
-  if (canUseConditionalAccess && (mapping.serviceAccountUserIds.length > 0 || mapping.wizardAnswered.serviceAccounts === true)) {
+  if (canUseConditionalAccess && mapping.serviceAccountUserIds.length > 0) {
     const proposed = proposedObjectNames(naming).serviceAccountsGroup
     const members = mapping.serviceAccountsGroupId ? input.groupMembers?.get(mapping.serviceAccountsGroupId) : null
     const matched = !!members && !members.sampled && new Set(members.memberIds).size === new Set(mapping.serviceAccountUserIds).size && mapping.serviceAccountUserIds.every((id) => members.memberIds.includes(id))
     const step = { ...prereq(saStepId), ...stateFields(matched ? { satisfied: true, inPlace: true } : {}), naming: { proposed: proposed.name, fromBaseline: null }, deliveredBy: matched ? ['The scanned group includes exactly the selected service accounts.'] : [] }
-    if (mapping.serviceAccountUserIds.length === 0) {
-      step.doesntApply = 'No service accounts are selected. No group or group protection is claimed.'
-      setState(step, { setAside: true, satisfied: false, inPlace: false })
-    }
     steps.push(step)
   }
 
@@ -1323,17 +1322,16 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     steps.push(s)
   }
 
-  // Shared devices, their own policy (prompt 48 item 4).
-  if (canUseConditionalAccess && (sharedDevices.length > 0 || mapping.sharedDeviceUserIds !== undefined || input.manualConfirmations?.['s-shared-devices'])) {
+  // Shared devices, their own policy (prompt 48 item 4). Only while
+  // shared-device accounts are picked (the saved answer, else the detection
+  // while it is unanswered): None adds no step, and neither do picks the
+  // directory read no longer holds enabled, which left a Doesn't apply row in
+  // hard-coded words (walk list 17, 45).
+  if (canUseConditionalAccess && (mapping.sharedDeviceUserIds ?? sharedDevices).length > 0 && !(sharedDevices.length === 0 && snapshot.sources.users?.status === 'ok')) {
     const step = prereq('s-shared-devices')
     // Its own policy, named in the tenant's convention (the baseline holds none; the step's instructions create it).
     step.naming = { proposed: proposedName({ prefix: 'CA', rest: ['Block', 'Shared devices outside trusted networks'], collapsed: 'Block shared devices outside trusted networks' }, naming).name, fromBaseline: null }
     step.population = namedAccounts(sharedDevices.map((u) => u.id), popIndex)
-    if (sharedDevices.length === 0 && snapshot.sources.users?.status === 'ok') {
-      step.doesntApply = (mapping.sharedDeviceUserIds?.length ?? 0) > 0 ? 'The selected shared accounts are no longer enabled in the directory. Previous test records remain history.' : 'No shared accounts are selected. No shared-device policy protection is claimed.'
-      setState(step, { setAside: true, satisfied: false, inPlace: false })
-      step.configurationFindings = [{ key: 'sharedAccounts', label: 'Shared Accounts', value: 'No active selected accounts', detail: step.doesntApply, outcome: 'pass' }]
-    }
     steps.push(step)
   }
 
@@ -1624,7 +1622,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       if (result.goal.id === 'inforcer-mfa' && result.status === 'not-applicable' && inBaseline(result.goal)) {
         const s = prereq('s-goal-inforcer-mfa', 'Require MFA for Inforcer Access')
         s.goalId = result.goal.id
-        s.doesntApply = 'Inforcer is confirmed not in use. MFA protection for this service is not claimed.'
+        s.doesntApply = answeredReasonOf('service:inforcer', 'no')
+        s.doesntApplyByAnswer = true
         setState(s, { setAside: true })
         steps.push(s)
       }
@@ -2806,7 +2805,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       : (methodsPolicyRow.authenticationMethodConfigurations ?? []).some(
           (c) => c.id?.toLowerCase() === 'temporaryaccesspass' && c.state === 'enabled',
         )
-  const trustedLocationCount = mapping.trustedLocationIds.length
+  // The trusted named locations Entra holds, whatever the office network answer
+  // says: registration's hold waits on one existing, not on the answer naming it.
+  const trustedLocationCount = (snapshot.config.namedLocations?.rows ?? []).filter((l) => (l as { isTrusted?: boolean }).isTrusted === true).length
 
   // ---- Sequence safety (audit-program Layer C, guidance-audit-01) ----
   // Ordering rules that hold for any tenant, each one a way somebody gets
@@ -3051,6 +3052,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   for (const s of steps) {
     if (!doesntApply(s.id)) continue
     s.doesntApply = notApplicable[s.id].trim()
+    // The person's own reason, which a Put back can take away (planRows.ts canPutBack).
+    delete s.doesntApplyByAnswer
     s.skipReason = s.doesntApply
     setState(s, { setAside: true })
   }
@@ -3063,6 +3066,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const reason = deviceStepDoesntApply(s.goalId, mapping)
     if (reason === null) continue
     s.doesntApply = reason
+    s.doesntApplyByAnswer = true
     s.skipReason = reason
     setState(s, { setAside: true })
   }
@@ -3070,8 +3074,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // Define Your Rollout Scope (roadmap/direction.ts): the four decision
   // steps, and the review rows whose services D1 asks about.
   if (canUseConditionalAccess) {
-    steps.unshift(...directionSteps({ snapshot, mapping, notAssessed: input.coverage.organisation.notAssessed, availableGoalIds: input.coverage.results.filter((r) => r.status !== 'licence-limited').map((r) => r.goal.id), nameOf }))
+    const availableGoalIds = input.coverage.results.filter((r) => r.status !== 'licence-limited').map((r) => r.goal.id)
+    steps.unshift(...directionSteps({ snapshot, mapping, notAssessed: input.coverage.organisation.notAssessed, availableGoalIds, nameOf }))
     addWorkflowSteps(steps, input.coverage.organisation.notAssessed, mapping, input.manualConfirmations)
+    countDirectionImpact(steps, availableGoalIds)
   }
   applyManualReviews(steps, snapshot, input.manualConfirmations, mapping, popIndex)
   for (const s of steps.filter(s => s.id === 's-check-dormant-accounts')) {

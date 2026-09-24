@@ -14,10 +14,6 @@
   ],
   "tiles": [
     {
-      "label": "Device code sign-in",
-      "state": "Confirm no legitimate use"
-    },
-    {
       "label": "Prepare Emergency Access Accounts",
       "state": "Prerequisite · To do"
     }

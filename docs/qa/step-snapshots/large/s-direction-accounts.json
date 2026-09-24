@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "Ready · Decision",
   "bar": "Needs a decision",
-  "rail": "Approving these answers takes these accounts out of the people counts and gives them their own rules.",
+  "rail": "Approving these answers sets which accounts count as people and which get a policy of their own.",
   "headings": [
     "About this Step",
     "Questions",

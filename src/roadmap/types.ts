@@ -620,7 +620,9 @@ export type Step = {
    * who its policies reach (ui/surfaces/rowWho.ts): Configure Emergency
    * Exclusions, the policies the exclusions group must be excluded from;
    * Configure Passkey Authentication, the people the passkey policy lets
-   * register. Absent where the scan did not read what it counts.
+   * register; a Direction step, the plan steps its answers decide
+   * (direction.ts countDirectionImpact). Absent where the scan did not read
+   * what it counts.
    */
   impactCount?: number
   guidance?: import('../content/content.ts').ContentStep
@@ -734,6 +736,13 @@ export type Step = {
    * because no answer of anybody's put it there.
    */
   doesntApplyByScan?: true
+  /**
+   * True where a Direction answer, not a reason typed on this step, says the step
+   * does not apply (directionAnswers.ts answeredReasonOf): the footer states the
+   * answer as the reason instead of "you said", and offers no Put back, because
+   * the answer is changed on its Direction step.
+   */
+  doesntApplyByAnswer?: true
   /**
    * The object this step makes itself, as its own task (roadmap-flow Stage 3;
    * stepIds.ts OBJECT_TASK): the countries location, on Block Sign-ins From
