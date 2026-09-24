@@ -44,7 +44,7 @@ const displayTargets = (value: unknown): string => {
     if (typeof row.id !== 'string' || !row.id.trim()) return []
     const name = row.id.toLowerCase() === 'all_users' ? 'All users' : row.id
     const profiles = Array.isArray(row.allowedPasskeyProfiles) ? row.allowedPasskeyProfiles.filter((id): id is string => typeof id === 'string' && !!id.trim()) : []
-    return [`${name}${profiles.length ? ` (profiles: ${profiles.join(', ')})` : ''}`]
+    return [name]
   }).join(', ') || 'None'
 }
 const fieldLabel = (field: string): string => ({
@@ -244,7 +244,7 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
       id: 'make-passkey-registration-available', accountId: null, title: 'Configure passkey registration', targetUpn: null,
       required: availabilityFields.length > 0, readinessKey: 'registration', evidence: availabilityFields.length ? availabilityFields.join(', ') : null, actionLabel: 'Open registration instructions',
       issueKeys: availabilityFields.map(field => `passkey:${field === 'state' ? 'method' : field === 'isSelfServiceRegistrationAllowed' ? 'selfService' : 'targets'}`),
-      steps: ['Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Authentication methods → Policies → Passkey (FIDO2) → Enable and target**.', ...registrationSteps, 'Preserve unrelated inclusions and exclusions. Select **Save**.', 'Return to IAMAI and select **Scan to update the plan**.'],
+      steps: ['Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Authentication methods → Policies → Passkey (FIDO2) → Enable and target**.', ...registrationSteps, 'Select **Save**.', 'Return to IAMAI and select **Scan to update the plan**.'],
     },
     {
       id: 'prepare-affected-passkeys', accountId: null, title: 'Prepare affected passkeys', targetUpn: null,

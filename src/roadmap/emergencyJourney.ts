@@ -298,7 +298,7 @@ export function journeyPasskeyFindings(snapshot: TenantSnapshot, mapping: Mappin
     value: affected.users.length
       ? `${affected.users.length} ${affected.users.length === 1 ? 'user has' : 'users have'} a passkey that loses access`
       : affected.state === 'known'
-        ? 'No existing passkeys were identified as losing sign-in access under this change.'
+        ? 'No existing passkey stops working under this change.'
         : fillText(ACCOUNTS_TO_PREPARE, { count: count(affected.stranded.length, 'account') }),
     outcome: affected.users.length ? 'fail' : affected.state === 'known' ? 'pass' : 'unknown',
     detail: '',
@@ -555,7 +555,7 @@ export function journeyGroupFindings(report: SubjectReport | null | undefined, n
         ? 'Could not verify'
         : needing.length === 0
           ? 'Nothing to exclude yet'
-          : 'Required references present'
+          : `Every policy excludes ${name || 'the group'}`
   }
   // A mode or an exclusion this scan did not settle has no row (owner, 2026-09-23); the outcome is taken above.
   policies.items = (policies.items ?? []).filter(item => item.outcome !== 'unknown')
