@@ -218,6 +218,8 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.steps[4].whatToDoWhen.officeUnanswered.lead',
   // Entra already trusts a location and none is saved as the office (stepVars.ts officeInEntra).
   '.steps[4].whatToDoWhen.officeInEntra.lead',
+  // Held on the office answer while Entra already trusts a location (net-new 20).
+  '.steps[4].whatToDoWhen.officeUnansweredInEntra.lead',
   '.steps[10].whatToDoWhen.strengthToCorrect.lead',
   '.steps[5].who.none',
   // The service-accounts group's lead once the scan finds the group holding

@@ -392,7 +392,14 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     // list 60): what the step makes, if anything, follows that answer, so it
     // draws no card of its own and its action is the answer
     // (whatToDoWhen.officeUnanswered).
-    if (step.blockers.some((b) => b.kind === 'decision' && b.label.startsWith('direction:'))) v.officeUnanswered = true
+    if (step.blockers.some((b) => b.kind === 'decision' && b.label.startsWith('direction:'))) {
+      v.officeUnanswered = true
+      // Entra already trusts a location: the step says so and sends the person
+      // to the one answer that uses it, with no create beside it (net-new 20,
+      // owner 2026-09-24; whatToDoWhen.officeUnansweredInEntra).
+      const trusted = trustedIpLocations(ctx.snapshot) ?? []
+      if (!step.state.satisfied && trusted.length > 0) v.officeUnansweredInEntra = list(trusted.map((l) => l.name))
+    }
     // Entra already trusts a location and none is saved as the office: the step
     // asks for the pick on its rail before any create (whatToDoWhen.officeInEntra).
     else if (!step.state.satisfied && !step.officeToTrust?.length && ctx.mapping.trustedLocationIds.length === 0 && (trustedIpLocations(ctx.snapshot) ?? []).length > 0) v.officeInEntra = true

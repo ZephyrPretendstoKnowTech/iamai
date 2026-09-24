@@ -3,7 +3,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { fixture } from '../../roadmap/fixtures/index.ts'
+import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { ANSWERED_IN } from '../../roadmap/direction.ts'
 import { DIRECTION_STEP, directionMilestoneAction } from '../../roadmap/directionAnswers.ts'
@@ -201,4 +201,16 @@ test("an unsaved question that moved to Direction is one wait on the Direction s
     assert.doesNotMatch(body.contract.decisionNote, /\bhere\b/, `the decision note places the answer on this step: "${body.contract.decisionNote}"`)
     assert.match(body.contract.decisionNote, /does not establish/, 'the note no longer says an answer does not establish trust')
   }
+})
+
+test('3.6 held on the office answer while Entra already trusts a location says it exists and draws no create procedure (net-new 20)', () => {
+  const f = curatedFixture('demo')
+  const r = runFixture(f)
+  const step = r.steps.find((s) => s.id === PREREQ_STEP_ID.trustedLocation)!
+  assert.ok(step.blockers.some((b) => b.label.startsWith('direction:')), 'the premise: held on the office answer')
+  const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups } as StepVarContext
+  const body = stepBodyOf(step, ctx)
+  assert.equal(body.rail.barLead, "Entra already trusts Head office. If that's your office, pick it under Office network in Decide How and Where People Sign In.")
+  assert.equal(body.emergencyAccountTasks, null, 'no create task')
+  assert.ok(!body.artifacts.some((a) => a.id === 'portal'), 'no Entra procedure')
 })

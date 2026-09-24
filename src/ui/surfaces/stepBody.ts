@@ -684,6 +684,10 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
     const ai = produced.find(a => a.id === 'ai')
     if (ai) ai.text = () => emergencyAccountAiInfo(step, ctx, accountTasks)
   }
+  // Define the Trusted Network held on the office answer while Entra already
+  // trusts a location: nothing to create until that answer says which is the
+  // office, so no create procedure stands (net-new 20, owner 2026-09-24).
+  if (truthy(ex.officeUnansweredInEntra)) supported.delete('portal')
   const artifacts: Artifact[] = CHANNEL_TABS.filter(t => supported.has(t.id as Channel)).flatMap(t => produced.filter(a => a.id === t.id).slice(0, 1)).map(a => withWorkflowVerification(namedPortalResource(a, ctx), step, ctx.mapping))
   // A policy step's Implementation Tasks are its procedures, from the one
   // producer every policy step draws, the same in every state: the create and
