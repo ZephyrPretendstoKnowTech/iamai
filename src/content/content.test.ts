@@ -222,7 +222,7 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // draws the line that selects them by name, as the product does.
   '.steps[8].whatToDo.steps[1]',
   '.steps[10].who.match',
-  '.steps[14].who.evidence[1]',
+  '.steps[14].who.evidence[0]',
   // Directory-role holders who use the same account for mail or Teams (E6), on the
   // two admin policies that still name them (23, 33); the examples list none. The
   // lockout lists (E8) render through their count lines, so those are no longer suppressed.
