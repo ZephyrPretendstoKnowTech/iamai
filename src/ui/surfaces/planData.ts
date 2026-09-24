@@ -90,6 +90,8 @@ export type PlanData = {
   freeze: ChangeFreeze | null
   /** Save a new mapping (an assumptions edit) and regenerate. */
   saveMapping: (next: MappingState) => void
+  /** Counts the person's own changes (every setter below bumps it): the Plan's change line tells a Save from the plan settling after it (planChanges.ts observePlan). */
+  revision: number
   /** Move the locked start (Plan settings' Plan starts): a deliberate re-plan, with the first deployment anchored beside it. */
   setStart: (iso: string) => void
   /** When the plan's start was locked (derive/planStart.ts lockedStart): the first time it was computed for the tenant. */
@@ -489,6 +491,7 @@ export function usePlanData(
     freeze,
     groups,
     directory,
+    revision: version,
     saveMapping: (next) => {
       setMapping(next)
       persistMapping(next)
