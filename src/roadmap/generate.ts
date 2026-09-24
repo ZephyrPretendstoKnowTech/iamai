@@ -1167,14 +1167,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // one exists (the picker says which of them are the team's own).
   //
   // It is the DOING of the office-network answer (Decide How and Where People
-  // Sign In since Stage 3), and it says so: direction.ts ANSWERED_IN swaps its
-  // decision control for the "Answered in" panel. So it does not ask the
+  // Sign In since Stage 3): direction.ts ANSWERED_IN takes its decision control
+  // away, with no Answered in panel in its place (walk list item 19). So it does not ask the
   // question again. Until that answer is saved this step's tile used to read
   // "Trusted Network: Choose your office networks", with the detail "Select your
   // office networks or confirm that everyone is remote" — word for word the
   // question D4 asks, on a second row of the board
   // (docs/plans/step-redundancy-analysis.md finding 2, the owner's own example).
-  // Now nothing is drawn there: the panel above it is the step's statement, and
+  // Now nothing is drawn there, and
   // the one thing the tile has to add — a network the scan drafted, waiting to be
   // created — is still drawn, because that is work and not a question.
   const locStepId = PREREQ_STEP_ID.trustedLocation
