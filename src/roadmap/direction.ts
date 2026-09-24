@@ -108,16 +108,34 @@ function serviceQuestion(key: string, signal: ServiceSignal, offPlan: readonly s
 
 const signInsRead = (s: TenantSnapshot): boolean => s.sources.signInEvidence?.status === 'ok' || s.sources.signInEvidence?.status === 'partial'
 
+/**
+ * Devices or apps that send mail by signing in: the accounts the old-protocol
+ * sign-in records show sending by SMTP in the last 30 days; null where those
+ * records were not read.
+ */
+export function mailSenderIds(snapshot: TenantSnapshot): string[] | null {
+  const legacy = signInsRead(snapshot) ? snapshot.scenarioEvidence?.legacyClients ?? null : null
+  return legacy === null ? null : Object.entries(legacy.byPerson).filter(([, clients]) => clients.some((c) => /smtp/i.test(c))).map(([id]) => id).sort()
+}
+
+/** Whether the mail-sending picker offers an account: never an emergency access account or a guest. */
+export function mailPickable(snapshot: Pick<TenantSnapshot, 'users'>, mapping: Pick<MappingState, 'breakGlassUserIds'>): (id: string) => boolean {
+  const guests = new Set(snapshot.users.filter((u) => u.userType === 'guest').map((u) => u.id))
+  return (id) => !guests.has(id) && !mapping.breakGlassUserIds.includes(id)
+}
+
 function useQuestions(ctx: Context, services: { keys: string[]; signal: (key: string) => ServiceSignal }, offPlan: (key: string) => string[]): DirectionQuestion[] {
   const { snapshot } = ctx
   const out = SERVICE_KEYS.filter((k) => services.keys.includes(k)).map((k) => serviceQuestion(k, services.signal(k), offPlan(k), ctx))
-  // Devices or apps that send mail by signing in: the accounts the old-protocol records show sending by SMTP.
-  const legacy = signInsRead(snapshot) ? snapshot.scenarioEvidence?.legacyClients ?? null : null
-  const senders = legacy ? Object.entries(legacy.byPerson).filter(([, clients]) => clients.some((c) => /smtp/i.test(c))).map(([id]) => id).sort() : []
+  // The evidence counts every sender the records show; the suggestion picks only
+  // the ones the picker offers (mailPickable).
+  const senders = mailSenderIds(snapshot)
+  const pickable = (senders ?? []).filter(mailPickable(snapshot, ctx.mapping))
   out.push(question('mailDevices', ctx, {
-    label: Q.mailDevices.label, control: 'accounts', options: optionsOf(Q.mailDevices.options), pickedWith: 'some',
-    suggested: senders.length > 0 ? answer('some', senders) : answer('none'),
-    evidence: legacy === null ? W.defaultEvidence : senders.length > 0 ? fillText(Q.mailDevices.seen, { n: senders.length }) : Q.mailDevices.notSeen,
+    label: Q.mailDevices.label, control: 'accounts', options: optionsOf(Q.accountOptions), pickedWith: 'some',
+    suggested: pickable.length > 0 ? answer('some', pickable) : answer('none'),
+    evidence: senders === null ? '' : senders.length > 0 ? fillText(Q.mailDevices.seen, { n: senders.length }) : Q.mailDevices.notSeen,
+    note: Q.mailDevices.consequence,
   }))
   const partners = snapshot.scenarioEvidence?.serviceProviderSignIns ?? null
   out.push(question('partner', ctx, {

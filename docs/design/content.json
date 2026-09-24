@@ -2950,12 +2950,10 @@
             },
             "mailDevices": {
               "label": "Devices or apps that send email by signing in (printers, scanners, line-of-business apps)",
-              "options": {
-                "none": "None",
-                "some": "Some"
-              },
-              "seen": "{n} accounts used old-protocol email sign-ins in the last 30 days.",
-              "notSeen": "No old-protocol email sign-ins in the last 30 days."
+              "seen": "{n} accounts signed in to send email in the last 30 days.",
+              "notSeen": "No email-sending sign-ins in the last 30 days.",
+              "consequence": "Answering Pick accounts makes them service accounts: they leave the people counts, and Block Legacy Authentication leaves them out until each moves to a supported mail route.",
+              "why": "Signed in to send email in the last 30 days."
             },
             "partner": {
               "label": "Partner or MSP technicians who sign in to your tenant",
