@@ -37,7 +37,7 @@ import { stepVars, withoutScheduleDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { portalNamesFor, unwrittenCorrectionLines } from './stepPortal.ts'
 import { preparationLines, preparesWhileCreateWaits, rescanLinesOf, stepInstructions, wholeLines } from './stepInstructions.ts'
-import { CONTRACT, SETTLED_FINDINGS, eyebrowOf, implementationEmptyOf, implementationIsCurrent, isReadinessWork, objectTaskLeads, proceduresAreReference, railOf, readinessOf, stepContract } from './stepContract.ts'
+import { CONTRACT, SETTLED_FINDINGS, eyebrowOf, implementationEmptyOf, implementationIsCurrent, isReadinessWork, objectTaskLeads, railOf, readinessOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
 import { boardHolds, laneViewAlone } from './planBoard.ts'
 import { DECISION_HEAD, HEAD, taskHeadingsOf } from './stepHeadings.ts'
@@ -597,16 +597,6 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // Access steps keep their own producers above and are never this.
   const outstandingForEnforce = [...new Set([...blockers.map((b) => b.title ?? b.label).filter((x): x is string => typeof x === 'string' && x.length > 0), ...(o.enforceWaits ?? [])])]
   const taskProjection: EmergencyTaskProjection | null = emergencyAccountTasks ?? (drawsTaskAnatomy(step.id) ? policyTasksOf(step, title, artifacts, ctx.mapping, outstandingForEnforce) : null)
-  // A finished step's procedures are reference, not instructions.
-  //
-  // They stay on purpose (emergencyAccountTasks.ts: "with none needing any,
-  // every change stays available as a reference") and they are typeset as
-  // commands, so a step reading Completed drew three task blocks of eight,
-  // nine and ten imperative lines and a reader took them for work that
-  // remained. The words do not change; what changes is whether they are open.
-  // The board's own reading, so the page and the row cannot disagree about
-  // whether this step is finished.
-  const implementationReference = taskProjection !== null && proceduresAreReference(laneView)
   const W = CONTRACT.implementation
   // Guidance stays copyable. Concrete unresolved findings remain in Readiness.
   const previewNote = null as { lines: string[] } | null
@@ -700,7 +690,6 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
     eyebrow,
     artifacts,
     emergencyAccountTasks: taskProjection,
-    implementationReference,
     previewNote,
     notes,
     showImplementation,

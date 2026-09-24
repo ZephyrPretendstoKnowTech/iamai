@@ -17,7 +17,7 @@ import { stepVars, withoutScheduleDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor, unwrittenCorrectionLines } from './stepPortal.ts'
 import { instructionsHeld, preparationLines, preparesWhileCreateWaits, rescanLinesOf, wholeLines } from './stepInstructions.ts'
-import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, objectTaskLeads, proceduresAreReference, readinessHeldLine, stepContract } from './stepContract.ts'
+import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, objectTaskLeads, readinessHeldLine, stepContract } from './stepContract.ts'
 import type { LaneView, PrerequisiteLabel, StepContract } from './stepContract.ts'
 import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, previewNoteLines, selectedPolicyBodiesOf, entraWithSettings } from './stepPackage.ts'
 import { projectSafely } from '../../content/implementation/project.ts'
@@ -545,8 +545,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
     // Open … New user → Create new user" — while the screen folded the same
     // words under the reference label and the print listed the step by title
     // (R4-45). Same words, same label, same rule as the screen.
-    const reference = proceduresAreReference(laneView) ? [CONTRACT.implementation.reference] : []
-    lines.splice(0, lines.length, ...reference, ...emergencyAccountTasksText(emergencyTasks).replace(/\*\*/g, '').split(/\r?\n/).map(line => line.trim()).filter(Boolean))
+    lines.splice(0, lines.length, ...emergencyAccountTasksText(emergencyTasks).replace(/\*\*/g, '').split(/\r?\n/).map(line => line.trim()).filter(Boolean))
     // The export opens with the screen's action, as every artifact does (013.A).
     if (action.trim().length > 0 && !lines.includes(action)) lines.unshift(action)
   }
