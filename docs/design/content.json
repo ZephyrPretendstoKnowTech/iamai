@@ -4558,21 +4558,7 @@
         "Every admin has a passkey or security key registered."
       ],
       "ifWrong": null,
-      "comms": {
-        "audience": "everyone",
-        "salutation": "Hi everyone,",
-        "body": "Signing in to {tenant} is planned to ask for an approved sign-in method from {mfaEnforceLong}. Over the next {enrolWindowDays} days, please complete the sign-in method setup requested by IT. {registerPasskeyLine} Then sign in once using that method. Contact IT if you cannot register or no longer have access to your existing method.",
-        "signature": "{signature}",
-        "extra": "{deviceSentence}",
-        "adminBody": "Admins: admin sign-ins are planned to need a passkey or a hardware security key from {adminEnforce}. Register one now and test it; bring your security key if you want help registering it.",
-        "bodyMfaInPlace": "You already confirm sign-ins to {tenant} with the Microsoft Authenticator app. Over the next {enrolWindowDays} days, add a passkey in the app as IT requested. {registerPasskeyLine} Then sign in once using that method. Contact IT if you cannot register or no longer have access to your existing method.",
-        "bodyUndated": "Please complete the sign-in method setup requested by IT. {registerPasskeyLine} Then sign in once using that method. We will tell you the date before anything changes. Contact IT if you cannot register or no longer have access to your existing method.",
-        "bodyMfaInPlaceUndated": "You already confirm sign-ins to {tenant} with the Microsoft Authenticator app. Add a passkey in the app as IT requested. {registerPasskeyLine} Then sign in once using that method. Contact IT if you cannot register or no longer have access to your existing method.",
-        "extraMfaInPlace": [
-          "{passkeyPolicy} is planned to require a passkey from {passkeyEnforceLong}.",
-          "{deviceSentence}"
-        ]
-      },
+      "comms": null,
       "doesntApply": false,
       "skip": false,
       "scanControl": true,

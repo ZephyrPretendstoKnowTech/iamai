@@ -136,6 +136,17 @@ export function emailResource(step: Step, ctx: StepVarContext, why: string): Art
   return { id: 'email', form: 'markdown', lines: [], text: () => text, note: null }
 }
 
+/**
+ * The MFA preparation step's first message, to everyone, in the parts the Tell
+ * your people box and the Export announcement draw (stepExport.ts commsFor): the
+ * same subject, paragraphs and signature as the Email tab's first message, from
+ * the one set of words (walk list section 3 item 52).
+ */
+export function mfaPreparationStaffMessage(signature: string): { salutation: string; body: string; extra: string[]; signature: string } {
+  const [first] = EMAILS.mfaPreparation
+  return { salutation: fillText(EMAILS.subject, { subject: first.subject }), body: first.paragraphs.join('\n\n'), extra: [], signature: fillText(EMAILS.signOff, { signature }).trim() }
+}
+
 /** The MFA preparation step's three messages (everyone, the admins, the follow-up), each signed. */
 export function mfaPreparationEmail(ctx: StepVarContext): Artifact {
   const text = EMAILS.mfaPreparation.map((m) => (m.heading ? `${m.heading}\n` : '') + message(m.subject, m.paragraphs, ctx)).join('\n\n')

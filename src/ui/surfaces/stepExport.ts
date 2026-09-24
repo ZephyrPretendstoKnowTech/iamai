@@ -38,7 +38,7 @@ import { stepPopulation } from '../../derive/population.ts'
 import { list } from '../../copy/statements.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
 import { isHeld } from '../../roadmap/holds.ts'
-import { namedPortalResource, policyInspectionLines, lifecycleResources, switchedOffLines, verificationResourceLines } from './stepResources.ts'
+import { mfaPreparationStaffMessage, namedPortalResource, policyInspectionLines, lifecycleResources, switchedOffLines, verificationResourceLines } from './stepResources.ts'
 import { scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import { EMERGENCY_ACCOUNTS, EMERGENCY_GROUP, PASSKEY_SETTINGS } from '../../roadmap/emergencyJourney.ts'
 import { emergencyGroupTasksOf } from './emergencyGroupTasks.ts'
@@ -773,10 +773,13 @@ export type CommsView = { salutation: string; body: string; extra: string[]; sig
  * (`exportAnnouncementOf`).
  */
 export function commsFor(cs: Record<string, unknown>, ex: Record<string, unknown>, step: Step): CommsView | null {
-  const comms = (cs.comms ?? null) as Record<string, unknown> | null
-  if (!comms) return null
   // A step already in place asks nobody to do anything: no email (stepVars stepDone).
   if (ex.stepDone) return null
+  // Prepare Your Team for MFA sends the Email tab's first message, word for
+  // word: its email had a second, older copy here (walk list section 3 item 52).
+  if (step.id === 's-verify-mfa') return mfaPreparationStaffMessage(String(ex.signature ?? ''))
+  const comms = (cs.comms ?? null) as Record<string, unknown> | null
+  if (!comms) return null
   const inPlace = Boolean(ex.mfaInPlace) && typeof comms.bodyMfaInPlace === 'string'
   const dated = inPlace ? comms.bodyMfaInPlace : comms.body
   // The campaign is work for today: it is how readiness reaches the number the
