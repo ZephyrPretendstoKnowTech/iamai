@@ -10,26 +10,27 @@ const memory = () => {
   return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v), map: m }
 }
 
-test('the first preload failure reloads and marks the session; the second does not reload', () => {
-  const store = memory()
-  let reloads = 0
-  assert.equal(reloadOnceOnPreloadError(store, () => reloads++), true)
-  assert.equal(reloads, 1)
-  assert.equal(store.map.get(PRELOAD_RELOAD_KEY), '1')
-  assert.equal(reloadOnceOnPreloadError(store, () => reloads++), false)
-  assert.equal(reloads, 1, 'once per session')
-})
-
-test('a storage that throws still reloads', () => {
-  let reloads = 0
-  const broken = {
-    getItem: () => {
-      throw new Error('blocked')
-    },
-    setItem: () => {
-      throw new Error('blocked')
-    },
+test('a preload failure reloads once per session, and a storage that throws still reloads', () => {
+  {
+    const store = memory()
+    let reloads = 0
+    assert.equal(reloadOnceOnPreloadError(store, () => reloads++), true)
+    assert.equal(reloads, 1)
+    assert.equal(store.map.get(PRELOAD_RELOAD_KEY), '1')
+    assert.equal(reloadOnceOnPreloadError(store, () => reloads++), false)
+    assert.equal(reloads, 1, 'once per session')
   }
-  assert.equal(reloadOnceOnPreloadError(broken, () => reloads++), true)
-  assert.equal(reloads, 1)
+  {
+    let reloads = 0
+    const broken = {
+      getItem: () => {
+        throw new Error('blocked')
+      },
+      setItem: () => {
+        throw new Error('blocked')
+      },
+    }
+    assert.equal(reloadOnceOnPreloadError(broken, () => reloads++), true)
+    assert.equal(reloads, 1)
+  }
 })

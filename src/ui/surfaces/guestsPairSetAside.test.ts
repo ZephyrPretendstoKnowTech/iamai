@@ -42,47 +42,49 @@ const asMember = (role: string): PolicyOperation => {
 }
 const everyLine = (b: ReturnType<typeof stepBodyOf>): string[] => [...b.artifacts.map((a) => a.text()), ...(b.emergencyAccountTasks?.tasks ?? []).flatMap((t) => t.steps)]
 
-test('the premise: the pair names two members, and getiamai resolves one create neither of them is', () => {
-  assert.deepEqual(members.map((m) => m.role).sort(), ['mixed', 'strong'])
-  assert.equal((step.action.resolution!.policies as PolicyOperation[]).length, 1)
-  assert.equal(create.mode, 'create')
-  assert.equal(members.some((m) => memberKeyOf(m.memberStableId, 0) === create.memberKey), false)
-})
-
 test('a pair package describing none of the policies the step resolves does not apply to it', () => {
-  assert.equal(implementationPackageFor(step), null)
-  assert.equal(implementationPackageFor(unblocked()), null)
-  // A member resolved: the package describes the step, and applies.
-  assert.notEqual(implementationPackageFor(unblocked([asMember('strong'), asMember('mixed')])), null)
-  assert.notEqual(implementationPackageFor(unblocked([asMember('strong')])), null)
-  // Nothing resolved yet: the planning preview's case, nothing to contradict the package.
-  assert.notEqual(implementationPackageFor(unblocked([])), null)
-})
-
-test('the guests step hands over its own create: its name, its plan tag, Report-only, and never the pair or a stand-in', () => {
-  const name = (create.body as { displayName: string }).displayName
-  const tag = (create.body as { description: string }).description
-  const b = stepBodyOf(unblocked(), ctx)
-  const portal = b.artifacts.find((a) => a.id === 'portal')!.text()
-  assert.match(portal, new RegExp(`Name: ${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`))
-  assert.ok(portal.includes(tag), portal)
-  assert.match(portal, /Enable policy: Report-only/)
-  const json = JSON.parse(b.artifacts.find((a) => a.id === 'json')!.text()) as { displayName?: string; state?: string; description?: string }
-  assert.equal(json.displayName, name)
-  assert.equal(json.state, 'enabledForReportingButNotEnforced')
-  assert.equal(json.description, tag)
-  for (const line of everyLine(b)) {
-    assert.doesNotMatch(line, /‹[^›]+›/, 'a raw stand-in where a policy name goes')
-    assert.doesNotMatch(line, /two guest (MFA )?policies|both policies in one Graph batch/, 'the pair this step does not run')
+  {
+    assert.deepEqual(members.map((m) => m.role).sort(), ['mixed', 'strong'])
+    assert.equal((step.action.resolution!.policies as PolicyOperation[]).length, 1)
+    assert.equal(create.mode, 'create')
+    assert.equal(members.some((m) => memberKeyOf(m.memberStableId, 0) === create.memberKey), false)
+  }
+  {
+    assert.equal(implementationPackageFor(step), null)
+    assert.equal(implementationPackageFor(unblocked()), null)
+    // A member resolved: the package describes the step, and applies.
+    assert.notEqual(implementationPackageFor(unblocked([asMember('strong'), asMember('mixed')])), null)
+    assert.notEqual(implementationPackageFor(unblocked([asMember('strong')])), null)
+    // Nothing resolved yet: the planning preview's case, nothing to contradict the package.
+    assert.notEqual(implementationPackageFor(unblocked([])), null)
   }
 })
 
-// The held step's own preparation lines (content: "Review the two guest policies separately")
-// still assume the pair; whether this goal should resolve to one tenant-wide policy at all
-// is R4-23's. What this asserts is that the pair's CREATE procedure and its stand-ins are gone.
-test('on the first scan, held behind emergency access, the step hands over no pair procedure either', () => {
-  for (const line of everyLine(stepBodyOf(step, ctx))) {
-    assert.doesNotMatch(line, /‹[^›]+›/)
-    assert.doesNotMatch(line, /Create the two guest policies|both policies in one Graph batch/)
+test('the guests step hands over its own create in Report-only, with its name and plan tag, and never the pair procedure or a stand-in, held or not', () => {
+  {
+    const name = (create.body as { displayName: string }).displayName
+    const tag = (create.body as { description: string }).description
+    const b = stepBodyOf(unblocked(), ctx)
+    const portal = b.artifacts.find((a) => a.id === 'portal')!.text()
+    assert.match(portal, new RegExp(`Name: ${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`))
+    assert.ok(portal.includes(tag), portal)
+    assert.match(portal, /Enable policy: Report-only/)
+    const json = JSON.parse(b.artifacts.find((a) => a.id === 'json')!.text()) as { displayName?: string; state?: string; description?: string }
+    assert.equal(json.displayName, name)
+    assert.equal(json.state, 'enabledForReportingButNotEnforced')
+    assert.equal(json.description, tag)
+    for (const line of everyLine(b)) {
+      assert.doesNotMatch(line, /‹[^›]+›/, 'a raw stand-in where a policy name goes')
+      assert.doesNotMatch(line, /two guest (MFA )?policies|both policies in one Graph batch/, 'the pair this step does not run')
+    }
+  }
+  // The held step's own preparation lines (content: "Review the two guest policies separately")
+  // still assume the pair; whether this goal should resolve to one tenant-wide policy at all
+  // is R4-23's. What this asserts is that the pair's CREATE procedure and its stand-ins are gone.
+  {
+    for (const line of everyLine(stepBodyOf(step, ctx))) {
+      assert.doesNotMatch(line, /‹[^›]+›/)
+      assert.doesNotMatch(line, /Create the two guest policies|both policies in one Graph batch/)
+    }
   }
 })

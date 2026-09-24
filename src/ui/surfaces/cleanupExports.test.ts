@@ -9,7 +9,6 @@ import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { cleanupArtifactLines } from '../../roadmap/artifactLines.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
 import { isHeld } from '../../roadmap/holds.ts'
-import { groundingBundle, promptPack } from '../../roadmap/prompts.ts'
 import { stepFacts } from '../../derive/facts.ts'
 import { doneSteps, trackableSteps } from '../../derive/sets.ts'
 import { exportCleanupViewsOf, stepExportView } from './stepExport.ts'
@@ -71,48 +70,31 @@ test("the print cover's step count is the Plan header's: the steps and the Clean
   assert.equal(stepFacts(r.steps, r.schedule.cleanup, denied).done, counts.done, 'a declined attestation completed a row')
 })
 
-test('the prompt pack and the bundle list Cleanup under cleanup; the bundle drops the v2 field names', () => {
-  const { f, r, view, cleanup } = setUp()
-  const pack = promptPack({ view, tenant: 'Contoso', steps: r.steps, schedule: r.schedule, changeRecord: '', announcement: null, cleanup })
-  const summarise = pack.find((p) => /Summarise/i.test(p.title))!
-  assert.ok(summarise, 'the pack has the summarise prompt')
-  assert.ok(summarise.prompt.includes('Cleanup (data from'), 'the Cleanup block is labelled')
-  for (const c of cleanup) assert.ok(summarise.prompt.includes(c.title), `the block names ${c.title}`)
-  const bundle = groundingBundle({ view, tenant: 'Contoso', snapshot: f.snapshot, coverage: r.coverage, steps: r.steps, schedule: r.schedule, redacted: true, generated: 'Sep 3, 2026', cleanup }) as { plan: { cleanup: { kind: string; title: string; day: string }[]; steps: Record<string, unknown>[] } }
-  assert.equal(bundle.plan.cleanup.length, cleanup.length, 'every row is under cleanup')
-  assert.deepEqual(bundle.plan.cleanup.map((c) => c.kind), cleanup.map((c) => c.kind))
-  for (const s of bundle.plan.steps) {
-    assert.ok(!('rings' in s), `${String(s.id)}: no rings`)
-    assert.ok(!('events' in s), `${String(s.id)}: no events`)
-    assert.ok('dates' in s && 'whatToDo' in s, `${String(s.id)}: what the screen says`)
+test('a cleanup export keeps its scoped evidence, the tested account and a failed alert outcome, and claims no completion', () => {
+  {
+    const { r } = setUp()
+    const phase = r.schedule.cleanup!
+    const row = {
+      kind: 'consolidation' as const, day: '2026-09-04', done: null, lists: { overlaps: ['Earlier policy'] },
+      verification: 'changed' as const, verificationReason: 'The retained policy changed.',
+      record: { cleanup: 'consolidation' as const, at: '2026-09-03T12:00:00Z', date: '2026-09-03', outcome: 'passed' as const, replacementPolicyId: 'keep', retiredPolicyIds: ['old'], coverageVerified: true, reference: 'CHG-42', policyNames: { keep: 'Baseline MFA', old: 'Earlier MFA' } },
+    }
+    const view = cleanupExportView(phase, row)!
+    assert.equal(view.done, null)
+    assert.ok(view.manualEvidence?.includes('Evidence status: changed'))
+    assert.ok(view.manualEvidence?.includes('Retained policy: Baseline MFA (keep)'))
+    assert.ok(view.manualEvidence?.includes('Retired policies: Earlier MFA (old)'))
+    assert.ok(view.manualEvidence?.includes('Change record: CHG-42'))
+    assert.ok(cleanupArtifactLines(view).some(line => line.includes('Workflow Check:') && line.includes('Evidence status: changed')))
   }
-})
-
-
-test('cleanup export retains scoped historical evidence and policy names without claiming completion', () => {
-  const { r } = setUp()
-  const phase = r.schedule.cleanup!
-  const row = {
-    kind: 'consolidation' as const, day: '2026-09-04', done: null, lists: { overlaps: ['Earlier policy'] },
-    verification: 'changed' as const, verificationReason: 'The retained policy changed.',
-    record: { cleanup: 'consolidation' as const, at: '2026-09-03T12:00:00Z', date: '2026-09-03', outcome: 'passed' as const, replacementPolicyId: 'keep', retiredPolicyIds: ['old'], coverageVerified: true, reference: 'CHG-42', policyNames: { keep: 'Baseline MFA', old: 'Earlier MFA' } },
+  {
+    const { r } = setUp()
+    const phase = { ...r.schedule.cleanup!, accountIds: ['ea-1'] }
+    const row = { kind: 'alerting' as const, day: '2026-09-04', done: null, lists: { emergencyAccountUpns: ['recovery@example.test'] }, verification: 'incomplete' as const,
+      record: { cleanup: 'alerting' as const, at: '2026-09-03T12:00:00Z', date: '2026-09-03', accountIds: ['ea-1'], outcome: 'failed' as const, recipient: 'Operations' } }
+    const lines = cleanupExportView(phase, row)!.manualEvidence!
+    assert.ok(lines.includes('Accounts: recovery@example.test (ea-1)'))
+    assert.ok(lines.includes('Recorded outcome: Failed'))
+    assert.ok(lines.includes('Alert recipient: Operations'))
   }
-  const view = cleanupExportView(phase, row)!
-  assert.equal(view.done, null)
-  assert.ok(view.manualEvidence?.includes('Evidence status: changed'))
-  assert.ok(view.manualEvidence?.includes('Retained policy: Baseline MFA (keep)'))
-  assert.ok(view.manualEvidence?.includes('Retired policies: Earlier MFA (old)'))
-  assert.ok(view.manualEvidence?.includes('Change record: CHG-42'))
-  assert.ok(cleanupArtifactLines(view).some(line => line.includes('Workflow Check:') && line.includes('Evidence status: changed')))
-})
-
-test('cleanup export names the tested account and preserves a failed alert outcome', () => {
-  const { r } = setUp()
-  const phase = { ...r.schedule.cleanup!, accountIds: ['ea-1'] }
-  const row = { kind: 'alerting' as const, day: '2026-09-04', done: null, lists: { emergencyAccountUpns: ['recovery@example.test'] }, verification: 'incomplete' as const,
-    record: { cleanup: 'alerting' as const, at: '2026-09-03T12:00:00Z', date: '2026-09-03', accountIds: ['ea-1'], outcome: 'failed' as const, recipient: 'Operations' } }
-  const lines = cleanupExportView(phase, row)!.manualEvidence!
-  assert.ok(lines.includes('Accounts: recovery@example.test (ea-1)'))
-  assert.ok(lines.includes('Recorded outcome: Failed'))
-  assert.ok(lines.includes('Alert recipient: Operations'))
 })

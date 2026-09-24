@@ -4,39 +4,39 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { isAuthResponseHash, resolveHash } from './routes.ts'
 
-test('baseline help links and their legacy redirects land on How without bouncing to Connect', () => {
-  const destination = { route: 'how', redirect: null }
-  assert.deepEqual(resolveHash('#/how#package'), destination)
-  for (const legacy of ['#/package', '#/baseline/package']) {
-    const first = resolveHash(legacy)
-    assert.equal(first.route, 'how')
-    assert.deepEqual(resolveHash(first.redirect!), destination)
+test('an auth response in the fragment is home and never rewritten; every other route and legacy redirect resolves as it was', () => {
+  {
+    const responses = [
+      '#code=0.AXkA…&client_info=eyJ1aWQi…&state=eyJpZCI6…&session_state=abc',
+      '#error=interaction_required&error_description=AADSTS50058&state=eyJpZCI6…',
+      '#access_token=eyJ0eXAi…&token_type=Bearer&expires_in=3599&state=abc&client_info=def',
+      '#id_token=eyJ0eXAi…&state=abc&client_info=def',
+      '#state=ghi&client_info=def&something=else',
+    ]
+    for (const h of responses) {
+      assert.equal(isAuthResponseHash(h), true, h)
+      assert.deepEqual(resolveHash(h), { route: 'home', redirect: null }, h)
+    }
   }
-})
-
-test('an auth response in the fragment is home, and is never rewritten', () => {
-  const responses = [
-    '#code=0.AXkA…&client_info=eyJ1aWQi…&state=eyJpZCI6…&session_state=abc',
-    '#error=interaction_required&error_description=AADSTS50058&state=eyJpZCI6…',
-    '#access_token=eyJ0eXAi…&token_type=Bearer&expires_in=3599&state=abc&client_info=def',
-    '#id_token=eyJ0eXAi…&state=abc&client_info=def',
-    '#state=ghi&client_info=def&something=else',
-  ]
-  for (const h of responses) {
-    assert.equal(isAuthResponseHash(h), true, h)
-    assert.deepEqual(resolveHash(h), { route: 'home', redirect: null }, h)
+  {
+    const destination = { route: 'how', redirect: null }
+    assert.deepEqual(resolveHash('#/how#package'), destination)
+    for (const legacy of ['#/package', '#/baseline/package']) {
+      const first = resolveHash(legacy)
+      assert.equal(first.route, 'how')
+      assert.deepEqual(resolveHash(first.redirect!), destination)
+    }
   }
-})
+  {
+    assert.deepEqual(resolveHash('#/connect'), { route: 'connect', redirect: null })
+    assert.deepEqual(resolveHash('#/start'), { route: 'connect', redirect: '#/connect' })
+    assert.deepEqual(resolveHash('#'), { route: 'home', redirect: null })
+    assert.deepEqual(resolveHash(''), { route: 'home', redirect: null })
+    assert.deepEqual(resolveHash('#/roadmap/step/x'), { route: 'plan', redirect: '#/plan/x' })
+    assert.deepEqual(resolveHash('#/plan/s-goal-mfa-all-users'), { route: 'plan', redirect: null })
+    assert.deepEqual(resolveHash('#/plan'), { route: 'plan', redirect: null })
 
-test('routes and redirects are as they were', () => {
-  assert.deepEqual(resolveHash('#/connect'), { route: 'connect', redirect: null })
-  assert.deepEqual(resolveHash('#/start'), { route: 'connect', redirect: '#/connect' })
-  assert.deepEqual(resolveHash('#'), { route: 'home', redirect: null })
-  assert.deepEqual(resolveHash(''), { route: 'home', redirect: null })
-  assert.deepEqual(resolveHash('#/roadmap/step/x'), { route: 'plan', redirect: '#/plan/x' })
-  assert.deepEqual(resolveHash('#/plan/s-goal-mfa-all-users'), { route: 'plan', redirect: null })
-  assert.deepEqual(resolveHash('#/plan'), { route: 'plan', redirect: null })
-
-  assert.deepEqual(resolveHash('#/nonsense'), { route: 'connect', redirect: '#/connect' })
-  for (const h of ['#/connect', '#/start', '#', '#/roadmap/step/x', '#/today?state=1']) assert.equal(isAuthResponseHash(h), false, h)
+    assert.deepEqual(resolveHash('#/nonsense'), { route: 'connect', redirect: '#/connect' })
+    for (const h of ['#/connect', '#/start', '#', '#/roadmap/step/x', '#/today?state=1']) assert.equal(isAuthResponseHash(h), false, h)
+  }
 })

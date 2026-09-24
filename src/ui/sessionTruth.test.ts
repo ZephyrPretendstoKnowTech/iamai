@@ -31,49 +31,68 @@ function sources(dir: string, out: string[] = []): string[] {
   return out
 }
 
-test("a full local store is never a sign-in: the account decides the shell, and the stored scan is read only for that account's tenant", () => {
-  // Signed out is decided by the account and nothing else; no branch reaches a
-  // scanned shell from a record the store happens to hold.
-  assert.match(app, /const shellState: ShellState = !account \? 'signedOut'/)
-  const path = app.slice(app.indexOf('initAuth()'), app.indexOf('.catch((e: unknown) => setAuthError'))
-  assert.ok(path.length > 0, 'the sign-in path in App.tsx has moved')
-  const guard = path.indexOf('if (a) {')
-  assert.ok(guard >= 0, 'the sign-in path no longer guards on an account')
-  // Whether this device's store can be written to at all is a device fact, so
-  // it is asked here — but only once there is an account, as before.
-  assert.ok(path.indexOf('probeStorage') > guard, 'probeStorage is reached without an account')
-  // The tenant's own records are not read here at all. They are read by the one
-  // action (ui/actions.ts restoreSession), which reads them in the tenant's turn
-  // so Sign out and Forget this tenant can cancel a read still in flight; a
-  // record read from a component is a record no trust action can take back.
-  assert.doesNotMatch(app, /loadSnapshotRecord|loadBaselineRecord|fetchTenantName/, 'App.tsx reads a tenant record itself')
-  assert.match(path, /await restoreSession\(a\)/, 'the sign-in path no longer restores through the action')
-  const restore = actions.slice(actions.indexOf('export async function restoreSession'))
-  assert.ok(restore.length > 0, 'the restore action has moved')
-  assert.match(restore, /if \(!account\) return/, 'the restore reaches the store with nobody signed in')
-  assert.match(restore, /loadSnapshotRecord<ScanRecord>\(account\.tenantId\)/)
-  assert.match(restore, /loadBaselineRecord<BaselineResult\['origin'\]>\(account\.tenantId\)/)
-})
-
-test("MSAL's session is this tab's, and the account the app takes is the one the redirect returned", () => {
-  assert.match(msal, /cache: \{ cacheLocation: 'sessionStorage' \}/, 'MSAL no longer keeps its session per tab')
-  const body = msal.slice(msal.indexOf('export function initAuth'), msal.indexOf('let authorityWarm'))
-  const returned = body.indexOf('result.account')
-  const cached = body.indexOf('msal.getActiveAccount()')
-  assert.ok(returned >= 0 && cached > returned, 'an account already in the cache is taken before the one a redirect just returned')
-})
-
-test('nothing about a tenant reaches web storage: what a browser keeps outside IndexedDB is a theme, a page tip and one reload flag', () => {
-  const allowed: Record<string, RegExp> = {
-    'src/ui/shell/AppShell.tsx': /const THEME_KEY = 'iamai-theme'/,
-    'src/ui/tipState.ts': /const KEY = \(page: string\): string => `iamai\.tip\.\$\{page\}`/,
-    'src/ui/preloadError.ts': /export const PRELOAD_RELOAD_KEY = 'iamai\.preloadReloaded'/,
+test("a full local store is never a sign-in: the account, from this tab's MSAL session and the redirect it returned, decides the shell, and the stored scan is read only for that account's tenant", () => {
+  {
+    // Signed out is decided by the account and nothing else; no branch reaches a
+    // scanned shell from a record the store happens to hold.
+    assert.match(app, /const shellState: ShellState = !account \? 'signedOut'/)
+    const path = app.slice(app.indexOf('initAuth()'), app.indexOf('.catch((e: unknown) => setAuthError'))
+    assert.ok(path.length > 0, 'the sign-in path in App.tsx has moved')
+    const guard = path.indexOf('if (a) {')
+    assert.ok(guard >= 0, 'the sign-in path no longer guards on an account')
+    // Whether this device's store can be written to at all is a device fact, so
+    // it is asked here — but only once there is an account, as before.
+    assert.ok(path.indexOf('probeStorage') > guard, 'probeStorage is reached without an account')
+    // The tenant's own records are not read here at all. They are read by the one
+    // action (ui/actions.ts restoreSession), which reads them in the tenant's turn
+    // so Sign out and Forget this tenant can cancel a read still in flight; a
+    // record read from a component is a record no trust action can take back.
+    assert.doesNotMatch(app, /loadSnapshotRecord|loadBaselineRecord|fetchTenantName/, 'App.tsx reads a tenant record itself')
+    assert.match(path, /await restoreSession\(a\)/, 'the sign-in path no longer restores through the action')
+    const restore = actions.slice(actions.indexOf('export async function restoreSession'))
+    assert.ok(restore.length > 0, 'the restore action has moved')
+    assert.match(restore, /if \(!account\) return/, 'the restore reaches the store with nobody signed in')
+    assert.match(restore, /loadSnapshotRecord<ScanRecord>\(account\.tenantId\)/)
+    assert.match(restore, /loadBaselineRecord<BaselineResult\['origin'\]>\(account\.tenantId\)/)
   }
-  const writers = sources('src').filter((f) => /\.setItem\(/.test(readFileSync(f, 'utf8')))
-  assert.deepEqual(writers.sort(), Object.keys(allowed).sort(), 'a source writes to web storage that this test has not been told about')
-  for (const [file, key] of Object.entries(allowed)) assert.match(readFileSync(file, 'utf8'), key, `${file} writes a key this test does not allow`)
-  // And the tenant's own records have one home, which is the store Forget empties.
-  assert.match(readFileSync('src/graph/collect/cache.ts', 'utf8'), /openDB<IamaiDB>\('iamai', \d+/)
+  {
+    assert.match(msal, /cache: \{ cacheLocation: 'sessionStorage' \}/, 'MSAL no longer keeps its session per tab')
+    const body = msal.slice(msal.indexOf('export function initAuth'), msal.indexOf('let authorityWarm'))
+    const returned = body.indexOf('result.account')
+    const cached = body.indexOf('msal.getActiveAccount()')
+    assert.ok(returned >= 0 && cached > returned, 'an account already in the cache is taken before the one a redirect just returned')
+  }
+})
+
+test('nothing about a tenant outlives Forget: web storage holds only a theme, a page tip and one reload flag, and a baseline nobody picked is never recorded', () => {
+  {
+    const allowed: Record<string, RegExp> = {
+      'src/ui/shell/AppShell.tsx': /const THEME_KEY = 'iamai-theme'/,
+      'src/ui/tipState.ts': /const KEY = \(page: string\): string => `iamai\.tip\.\$\{page\}`/,
+      'src/ui/preloadError.ts': /export const PRELOAD_RELOAD_KEY = 'iamai\.preloadReloaded'/,
+    }
+    const writers = sources('src').filter((f) => /\.setItem\(/.test(readFileSync(f, 'utf8')))
+    assert.deepEqual(writers.sort(), Object.keys(allowed).sort(), 'a source writes to web storage that this test has not been told about')
+    for (const [file, key] of Object.entries(allowed)) assert.match(readFileSync(file, 'utf8'), key, `${file} writes a key this test does not allow`)
+    // And the tenant's own records have one home, which is the store Forget empties.
+    assert.match(readFileSync('src/graph/collect/cache.ts', 'utf8'), /openDB<IamaiDB>\('iamai', \d+/)
+  }
+  {
+    const connect = readFileSync('src/ui/surfaces/Connect.tsx', 'utf8')
+    // Tile 2 loads the author's baseline for itself whenever nothing is stored —
+    // on a first sign-in, and again on the Connect that Forget this tenant lands
+    // on. That is a default, not a pick.
+    assert.match(connect, /void loadPinned\(false\)/, "the tile's own default load now claims to be a choice")
+    // The picker's two answers are picks, and are remembered.
+    assert.match(connect, /void loadPinned\(true\)/)
+    assert.match(connect, /chooseBaseline\(async \(\) => \{[\s\S]*loadUploadedBaseline\(files\)[\s\S]*\}, true\)/)
+    // And only a pick reaches the store, from the one action that applies a
+    // baseline, so forgetting a tenant leaves no row of it behind and none is
+    // written back a moment later.
+    const actions = readFileSync('src/ui/actions.ts', 'utf8')
+    assert.match(actions, /if \(!chosen \|\| !account\) return\s+baselineSave = storeLib\.saveBaselineRecord\(account\.tenantId, result\.origin\)/)
+    assert.doesNotMatch(app, /saveBaselineRecord/, "App writes the tenant's baseline row itself again")
+  }
 })
 
 test('the app routes by hash: the folder the bundle is published under is one deploy constant, not a route', () => {
@@ -103,21 +122,4 @@ test('the app routes by hash: the folder the bundle is published under is one de
   assert.match(msal, /redirectUri: window\.location\.origin \+ \(import\.meta\.env\.BASE_URL \?\? '\/'\)/)
   // And it names the path the app actually sends, not merely some path.
   assert.match(readFileSync('docs/RELEASE-CHECKLIST.md', 'utf8'), new RegExp(`https://getiamai\\.com/${TOOL_PATH}/`), 'the release checklist must name the redirect URI the app sends')
-})
-
-test('a baseline nobody picked is not recorded for the tenant, so the page Forget lands on cannot undo it', () => {
-  const connect = readFileSync('src/ui/surfaces/Connect.tsx', 'utf8')
-  // Tile 2 loads the author's baseline for itself whenever nothing is stored —
-  // on a first sign-in, and again on the Connect that Forget this tenant lands
-  // on. That is a default, not a pick.
-  assert.match(connect, /void loadPinned\(false\)/, "the tile's own default load now claims to be a choice")
-  // The picker's two answers are picks, and are remembered.
-  assert.match(connect, /void loadPinned\(true\)/)
-  assert.match(connect, /chooseBaseline\(async \(\) => \{[\s\S]*loadUploadedBaseline\(files\)[\s\S]*\}, true\)/)
-  // And only a pick reaches the store, from the one action that applies a
-  // baseline, so forgetting a tenant leaves no row of it behind and none is
-  // written back a moment later.
-  const actions = readFileSync('src/ui/actions.ts', 'utf8')
-  assert.match(actions, /if \(!chosen \|\| !account\) return\s+baselineSave = storeLib\.saveBaselineRecord\(account\.tenantId, result\.origin\)/)
-  assert.doesNotMatch(app, /saveBaselineRecord/, "App writes the tenant's baseline row itself again")
 })

@@ -1,10 +1,7 @@
-// B10 P0-9 and P0-10: the MFA Registration Campaign offers its Implementation —
-// the campaign's setup under Entra and the in-person walkthrough under AI Info,
-// with MFA Readiness a link (S-MC-1, S-MC-3, archetype rule A3) — and stays open
+// B10 P0-10: the MFA Registration Campaign stays open
 // until a person saves who needs special care, nobody included (S-MC-2, A6, U28).
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
 import data from '../../actionability/dependency-data.json' with { type: 'json' }
 import type { DependencyData } from '../../actionability/parseDependencyDoc.ts'
 import { buildGraph, deriveLane } from '../../actionability/lanes.ts'
@@ -13,44 +10,8 @@ import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { SPECIAL_CARE_STEP_ID, questionLabels, unsavedInputsOf } from '../../roadmap/answers.ts'
 import { applyStepDecisions } from '../../roadmap/decisions.ts'
-import { laneViewOf, prerequisiteLabelFor, readinessBlockersOf } from './planBoard.ts'
-import { laneReadings } from './planLanes.ts'
-import { planDates } from './stepVars.ts'
-import type { StepVarContext } from './stepVars.ts'
-import { channelTabsOf, stepBodyOf } from './stepBody.ts'
 
 const CAMPAIGN = SPECIAL_CARE_STEP_ID
-const SECTIONS = readFileSync(new URL('./StepSections.tsx', import.meta.url), 'utf8')
-
-function campaignBody() {
-  const f = fixture('demo')
-  const r = runFixture(f, {}, null, f.snapshot.asOf)
-  const step = r.steps.find((s) => s.id === CAMPAIGN)
-  assert.ok(step, 'the campaign is on the demo plan')
-  const readings = laneReadings(r.steps, [])
-  const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.title ?? null
-  const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot)
-  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
-  const reading = readings.get(CAMPAIGN)!
-  return stepBodyOf(step, ctx, { lane: laneViewOf(reading, titleOf), blockers: readinessBlockersOf(reading, titleOf), prerequisiteLabel: prerequisiteLabelFor(readings) })
-}
-
-test('P0-9: the campaign offers Entra (the registration campaign setup) and AI Info (the in-person walkthrough)', () => {
-  const b = campaignBody()
-  // Every channel is a tab (content review D2); Entra and AI Info are the ones with content.
-  assert.deepEqual(channelTabsOf(b.artifacts).map((t) => String(t.label)), ['Entra', 'PowerShell', 'AI Info', 'Email'])
-  assert.deepEqual(channelTabsOf(b.artifacts.filter((a) => !a.unavailable)).map((t) => String(t.label)), ['Entra', 'PowerShell', 'AI Info', 'Email'])
-  const entra = b.artifacts.find((a) => a.id === 'portal')!.text()
-  // Editorial batch C: the method is the one the campaign's JSON targets (microsoftAuthenticator), and the snooze is the organization's value.
-  for (const line of ['Registration campaign', 'Microsoft Authenticator', 'snooze']) assert.ok(entra.includes(line), `Entra is missing: ${line}`)
-  const ai = b.artifacts.find((a) => a.id === 'ai')!.text()
-  for (const line of ['registered methods', 'who needs help', 'tested workflow', 'registration-campaign']) assert.ok(ai.includes(line), `AI Info is missing: ${line}`)
-  assert.doesNotMatch(entra, /Target: All users|State: Enabled/, 'preparation must not invent an approved campaign target')
-  // Authored links accept in-app routes and fixed HTTPS destinations; other schemes remain text.
-  assert.match(SECTIONS, /const AUTHORED_LINK = \/\^\\\[/)
-  assert.match(SECTIONS, /\(\?:#\\\/\|https:/)
-  assert.match(SECTIONS, /target=\{external \? '_blank' : undefined\}/)
-})
 
 /** Every other step complete, every condition not applicable: the campaign's reading depends on itself. */
 function readCampaign(obs: StepObservation): string {

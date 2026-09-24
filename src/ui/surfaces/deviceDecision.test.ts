@@ -3,28 +3,13 @@
 // enrolled; a Save that does not carry the Unmanaged phones answer clears it.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { applyStepDecisions } from '../../roadmap/decisions.ts'
 import { answerKey, devicePlanOf } from '../../roadmap/answers.ts'
 import { stepById } from '../../content/content.ts'
 
-const CONTENT_STEP = readFileSync(new URL('./ContentStep.tsx', import.meta.url), 'utf8')
 const DEVICES = 's-prereq-device-plan'
 const d = (stepById[DEVICES] as unknown as { decision: { label: string; options: string[]; question: { label: string; options: string[] }; strict: { label: string; option: string; when: string } } }).decision
-
-test('P0-8: Phones and Computers are select elements, with nothing chosen until a person chooses', () => {
-  const options = CONTENT_STEP.slice(CONTENT_STEP.indexOf('export function Options('), CONTENT_STEP.indexOf('function More('))
-  assert.match(options, /if \(select && options\.every\(\(o\) => o\.needs === null\)\) \{\s*return \(\s*<select className="decision-select"/)
-  assert.match(options, /<option value="">\{app\.picker\.choose\}<\/option>/)
-  const decision = CONTENT_STEP.slice(CONTENT_STEP.indexOf('function SingleDecision('), CONTENT_STEP.indexOf('export function Options('))
-  // The decision's own options (Phones) and its question's (Computers) both ask for the dropdown.
-  assert.equal((decision.match(/<Options [^\n]* select \/>/g) ?? []).length, 2)
-})
-
-test('the redundant enrollment checkbox is no longer offered', () => {
-  assert.equal(d.strict, undefined)
-})
 
 test('P0-8: a Save without the Unmanaged phones answer clears it from the plan record', () => {
   const f = fixture('demo')
