@@ -2226,9 +2226,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
 
     // The tenant policies that deliver the goal, where it is delivered (the
     // classifier's satisfaction): what the step's method readiness and its reach
-    // read once nothing is left to create (R4-30).
+    // read once nothing is left to create (R4-30). The one policy that covers
+    // the goal by itself, where one does: the whole contributing set brought in
+    // the admins' phishing-resistant policy, and Require MFA for Everyone
+    // counted an admin short of its own requirement (net-new 25).
+    const delivering = result.satisfaction?.sufficientId != null ? [result.satisfaction.sufficientId] : (result.satisfaction?.policyIds ?? [])
     const deliveringEffects: PolicyEffect[] | null = state.satisfied
-      ? (snapshot.config.caPolicies.rows as RawPolicy[]).filter(p => (result.satisfaction?.policyIds ?? []).includes(String(p.id))).map(effectOf)
+      ? (snapshot.config.caPolicies.rows as RawPolicy[]).filter(p => delivering.includes(String(p.id))).map(effectOf)
       : null
 
     // The resolved target determines method suitability and its denominator.

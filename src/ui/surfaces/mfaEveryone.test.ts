@@ -16,7 +16,7 @@ import assert from 'node:assert/strict'
 import { stepById } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import registry from '../../content/implementation/registry.generated.json' with { type: 'json' }
-import { fixture } from '../../roadmap/fixtures/index.ts'
+import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import type { Fixture, FixtureName } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { setDisplayTimeZone } from '../../copy/dates.ts'
@@ -219,4 +219,16 @@ test('every step of the group shows the date its Microsoft sources were checked'
   // A plan that saw security defaults on draws that step (V1 decision 6: one that never did reads Doesn't apply, in the footer).
   assert.equal(checkedOn(SECURITY_DEFAULTS), '2026-09-25')
   assert.equal(bodiesOf('demo', undefined, { securityDefaultsSeenOnAt: '2026-08-01T00:00:00.000Z' }).get(SECURITY_DEFAULTS)!.sourceLine, 'Source checked Sep 25, 2026')
+})
+
+test('once 4.3 is On, 4.4 counts people against its own policy, never the admins’ phishing-resistant requirement (net-new 25)', () => {
+  const f = curatedFixture('demo-week2')
+  const r = runFixture(f)
+  const mfa = r.steps.find((s) => s.id === 's-goal-mfa-all-users')!
+  const admins = r.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!
+  assert.equal(admins.state.lifecycle, 'enforced', 'the premise: 4.3 is On')
+  assert.ok(mfa.state.satisfied && mfa.satisfiedBy?.sufficient, 'the premise: one policy delivers 4.4 by itself')
+  assert.ok(mfa.satisfiedBy!.policies.some((n) => /Admins phishing-resistant/.test(n)), 'the premise: the admins’ policy is among those that deliver it too')
+  // 20 counted the admin short of a phishing-resistant method as short of a method 4.4 accepts.
+  assert.match(mfa.readiness.lines[0] ?? '', /^21 of 30 people have a method it accepts\./)
 })
