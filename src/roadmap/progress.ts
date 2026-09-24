@@ -238,6 +238,7 @@ export function decisionsOf(
     checkpoints: rec?.checkpoints ?? [],
     planCreatedAt: rec?.planCreatedAt,
     ...(typeof rec?.securityDefaultsSeenOnAt === 'string' ? { securityDefaultsSeenOnAt: rec.securityDefaultsSeenOnAt } : {}),
+    ...(typeof rec?.perUserMfaSeenOnAt === 'string' ? { perUserMfaSeenOnAt: rec.perUserMfaSeenOnAt } : {}),
     ...(Object.keys(completedAt).length > 0 ? { completedAt } : {}),
     stepDecisions,
     ...(Object.keys(confirmations).length > 0 ? { confirmations } : {}),

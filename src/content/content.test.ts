@@ -211,6 +211,10 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // renders. The review page draws the one the example's facts earn, as the
   // product does.
   '.steps[7].who.leadWhen.securityDefaultsOff',
+  // Finish Moving Off Per-User MFA's select line for more than five accounts, or
+  // none (walk list 4.x item 57): the example names two, so the review page
+  // draws the line that selects them by name, as the product does.
+  '.steps[8].whatToDo.steps[1]',
   '.steps[10].who.match',
   '.steps[14].who.evidence[1]',
   // Directory-role holders who use the same account for mail or Teams (E6), on the

@@ -407,17 +407,6 @@
         "guests": "{n} guests",
         "both": "{people} people and {guests} guests"
       },
-      "perUserMfa": {
-        "$comment": "The Legacy Per-User MFA tile on Finish Moving Off Per-User MFA (roadmap/manualWork.ts). {accounts} is copy/statements.ts count(), so it reads \"4,902 accounts\" and \"1 account\". Per-user MFA is a state every account in the directory has, emergency accounts included, so the unread count is the whole directory where the scan read no state at all; detailUnreadAll says so, because every other count on the plan leaves the emergency accounts out and the two numbers otherwise read as a mistake (R4-54). These were inline template strings with no separator and \"1 accounts\".",
-        "label": "Legacy Per-User MFA",
-        "valueOn": "{accounts} Enabled or Enforced",
-        "valueUnread": "Not fully read",
-        "valueOff": "Disabled",
-        "detailUsersUnread": "The account list was not fully read; the tenant-wide per-user MFA state is not established.",
-        "detailUnreadAll": "The scan read no per-user MFA state, so every account in the directory needs a check: all {accounts}, the emergency accounts included.",
-        "detailUnreadSome": "{accounts} need a per-user MFA state check: the scan could not read their state.",
-        "detailOff": "No current account has legacy per-user MFA enabled or enforced."
-      },
       "coverage": {
         "$comment": "Why an existing policy that is this goal's policy does not put the goal in place (src/coverage/coverage.ts): the reason under the goal, the gap a plan row shows, and the sentence the goal's statement adds. A gap never contains the word \"and\": the row keeps only what comes before it (coverage/verdict.ts gapClauseOf).",
         "reason": {
@@ -4078,7 +4067,6 @@
       "title": "Turn Off Security Defaults",
       "changeLine": null,
       "why": "Security defaults and Conditional Access can't run together. Turn security defaults off on the day the four policies below turn on, so the tenant is never without MFA.",
-      "$commentWhatToDo": "One procedure in every state (walk list 4.x items 8, 18 and 51): turn security defaults off, then turn on in the same change the four policies that replace them, each by the name it has in the tenant (turnOn1 to turnOn4, in the Plan's order: roadmap/enforceWaits.ts noteTurnOns, ui/surfaces/stepVars.ts). A policy not on the plan has no name, and its line is not drawn. The step completes when a scan reads security defaults off; every other policy turns on from its own step after that.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/fundamentals/security-defaults"
       },
@@ -4090,6 +4078,7 @@
         }
       },
       "decision": null,
+      "$commentWhatToDo": "One procedure in every state (walk list 4.x items 8, 18 and 51): turn security defaults off, then turn on in the same change the four policies that replace them, each by the name it has in the tenant (turnOn1 to turnOn4, in the Plan's order: roadmap/enforceWaits.ts noteTurnOns, ui/surfaces/stepVars.ts). A policy not on the plan has no name, and its line is not drawn. The step completes when a scan reads security defaults off; every other policy turns on from its own step after that.",
       "whatToDo": {
         "lead": "Turn off the day the four policies below are ready to turn on.",
         "steps": [
@@ -4154,7 +4143,7 @@
       "kind": "object",
       "title": "Finish Moving Off Per-User MFA",
       "changeLine": null,
-      "why": "An account left on Enforced is asked for MFA at every sign-in whatever the policy decides, and Microsoft says not to keep per-user MFA where Conditional Access is in use. Keep the existing protection until the replacement is actually enabled for the affected accounts.",
+      "why": "An account left on per-user MFA is asked for MFA at every sign-in, whatever Conditional Access decides. Turn it off for each account once Require MFA for Everyone is On.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/monitoring-health/recommendation-turn-off-per-user-mfa"
       },
@@ -4163,18 +4152,30 @@
         "accounts": "{list:accounts}"
       },
       "decision": null,
+      "$commentWhatToDo": "One procedure in every state (walk list 4.x item 57). Where the scan reads five or fewer accounts on, the task selects each by name and sign-in address (perUserNamed, ui/surfaces/stepVars.ts); with more, or once none is on, it selects every account the page marks Enabled or Enforced. The scan reads each state back, so nothing asks anyone to.",
       "whatToDo": {
-        "lead": "On the day Require MFA for Everyone enforces, and not before, disable every legacy per-user MFA state.",
+        "lead": "Turn off per-user MFA for each account once Require MFA for Everyone is On.",
         "steps": [
-          "Check first that every method these people use is enabled under Entra admin center → Entra ID → Authentication methods → Policies. That policy decides what they may register; it never requires MFA, so finishing its migration is not what finishes this step.",
-          "Once Require MFA for Everyone is On: Entra admin center → Entra ID → Users → All users → Per-user MFA. Use that page’s own Enabled and Enforced views, select every account they list, and choose Disable MFA. You need at least the Authentication Policy Administrator role.",
-          "Read each state back as Disabled, then delete any app password those accounts still hold, because an app password bypasses MFA on its own."
+          "As at least an Authentication Policy Administrator, open [Microsoft Entra admin center](https://entra.microsoft.com/) → Entra ID → Users → All users → Per-user MFA.",
+          "Select every account marked Enabled or Enforced, then Disable MFA.",
+          "Select them again, then User MFA settings: tick Delete all existing app passwords generated by the selected users and select Save.",
+          "Return to IAMAI and select Scan to update the plan."
         ]
+      },
+      "whatToDoWhen": {
+        "perUserNamed": {
+          "lead": "Turn off per-user MFA for each account once Require MFA for Everyone is On.",
+          "steps": [
+            "As at least an Authentication Policy Administrator, open [Microsoft Entra admin center](https://entra.microsoft.com/) → Entra ID → Users → All users → Per-user MFA.",
+            "Select {perUserNamed}, then Disable MFA.",
+            "Select them again, then User MFA settings: tick Delete all existing app passwords generated by the selected users and select Save.",
+            "Return to IAMAI and select Scan to update the plan."
+          ]
+        }
       },
       "dates": null,
       "doneWhen": [
-        "The legacy per-user MFA states have been reviewed and disabled for the intended accounts after replacement protection is verified.",
-        "Authentication-method policy migration is tracked separately; its completion does not prove that legacy per-user MFA is disabled."
+        "IAMAI reads per-user MFA as Disabled for every account."
       ],
       "ifWrong": "Per-user MFA can be set back to Enabled or Enforced one account at a time, which restores the old requirement while you investigate.",
       "comms": null,
@@ -4208,15 +4209,21 @@
           "Kaladin Stormblessed · Enforced",
           "Breakglass · Enabled"
         ],
-        "from": "Aug 1"
+        "from": "Aug 1",
+        "perUserOn": "2 accounts",
+        "perUserNames": "Kaladin Stormblessed (kaladin@contoso.com), Breakglass (breakglass@contoso.com)",
+        "perUserNamed": "Kaladin Stormblessed (kaladin@contoso.com) and Breakglass (breakglass@contoso.com)"
       },
-      "placement": "Shown only when at least one account has per-user MFA set.",
-      "aiFocus": "Explain the difference between method availability, methods-policy migration and the policy that requires MFA. Never call migration itself a replacement MFA control.",
+      "placement": "On the plan once a scan reads an account with per-user MFA on; Completed once every account reads Disabled.",
+      "aiFocus": "Walk me through turning off per-user MFA for these accounts.",
+      "$commentCard": "One card (walk list 4.x item 55; ui/surfaces/policyTasks.ts ownCardWordsOf): how many accounts the scan reads on, and, where there are five or fewer, who they are; once none is, the Satisfied card's fact.",
       "card": {
-        "subject": "Per-user MFA states",
-        "check": "Not in place"
+        "subject": "Per-user MFA",
+        "check": "{perUserOn} on per-user MFA",
+        "detail": "{perUserNames}",
+        "satisfied": "Disabled for every account"
       },
-      "taskTitle": "Disable the per-user MFA states"
+      "taskTitle": "Turn off per-user MFA"
     },
     {
       "id": "s-prereq-passkey-settings",
