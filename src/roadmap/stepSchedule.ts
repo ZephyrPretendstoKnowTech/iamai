@@ -233,15 +233,20 @@ export function scheduleOf(step: Step): StepSchedule {
 }
 
 /**
- * The day the plan gives a step is an estimate: the step is a person's review
- * (`manualReview`) or a Direction step's questions (`directionQuestions`), and
- * nothing in the tenant settles when either is done. The board's When column
- * says so ("Est. {date}", pages.plan.when.estimate; ui/surfaces/planBoard.ts
+ * The day the plan gives a step is an estimate: every day it proposes for work
+ * still open (owner, 2026-09-23) — a creation, a preparation, a turn-on, a
+ * person's review, a Direction step's questions. Nothing in the tenant settles
+ * when any of them is done, and the old rule, which marked only a person's
+ * review and a Direction step's questions, read "Up Next · Est. Aug 31, 2026"
+ * beside "Up Next · Aug 31, 2026" for the same kind of work. Two days are fixed
+ * and read bare: the day a step was completed, and a report-only policy's
+ * review day, on which the window it was created with closes. The board's When
+ * column says so ("Est. {date}", pages.plan.when.estimate; ui/surfaces/planBoard.ts
  * boardWhenOf), and every other place that prints the day says it in the same
  * words (`shownDay`).
  */
-export function estimatedDay(step: Pick<Step, 'manualReview' | 'directionQuestions'>): boolean {
-  return Boolean(step.manualReview || step.directionQuestions)
+export function estimatedDay(step: Pick<Step, 'status' | 'state'>): boolean {
+  return step.status !== 'done' && step.status !== 'skipped' && step.state.lifecycle !== 'report-only'
 }
 
 /**

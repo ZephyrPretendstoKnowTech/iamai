@@ -209,7 +209,7 @@ test('a change that turns a policy on has no day of its own on a waiting lane, a
   assert.equal(scheduleOf(as('not-deployed')).transition, 'change', 'the premise: a change')
   assert.equal(boardWhenOf(as('not-deployed'), waveStartOf(token), lane), estimated(lane), 'a change that turns it on')
   assert.equal(scheduleOf(as('enforced')).transition, 'change', 'the premise: a change')
-  assert.equal(boardWhenOf(as('enforced'), waveStartOf(token), lane), absoluteDate(scheduleOf(as('enforced')).at!), 'a correction to a policy already on')
+  assert.equal(boardWhenOf(as('enforced'), waveStartOf(token), lane), fillText(schedulingWords.estimate, { date: absoluteDate(scheduleOf(as('enforced')).at!) }), 'a correction to a policy already on keeps its day, as an estimate')
 })
 
 // R4-34 (Marcus D7): "the milestone date recedes as you make progress, and is
@@ -518,8 +518,8 @@ test('an On Hold row, not Observing, carries no day whatever waits the roadmap r
   // The premise: a create with a day, sequenced behind waits the roadmap records on it, and not held on the board.
   assert.ok(step.blockedBy.length > 0, `${where}: the premise, the roadmap records a wait on it`)
   assert.equal(scheduleOf(step).transition, 'createReportOnly', `${where}: the premise, its day is a create, not a turn-on`)
-  const day = absoluteDate(scheduleOf(step).at!)
-  assert.equal(boardWhenOf(step, waveStartOf(step), read), day, `${where}: the premise, its row reads its day`)
+  const day = fillText(schedulingWords.estimate, { date: absoluteDate(scheduleOf(step).at!) })
+  assert.equal(boardWhenOf(step, waveStartOf(step), read), day, `${where}: the premise, its row reads its day, as an estimate`)
   // Forged: the lane engine files it On Hold behind the same step, not Observing.
   const lane = { ...read, lane: 'On Hold' as const, substatus: null }
   assert.notEqual(lane.tail, BOARD.blockers.evidence, `${where}: the premise, not Observing`)
