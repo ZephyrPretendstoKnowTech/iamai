@@ -140,7 +140,7 @@ function findingsFor(current: Fido2Configuration | null, mapping?: MappingState)
     for (const id of requiredModels(mapping).map(m => m.aaguid)) {
       const platform = requiredModels(mapping).find(m => m.aaguid === id)!.name
       const known = kr?.isEnforced === true && kr.enforcementType === 'allow' && Array.isArray(kr.aaGuids)
-      add(`authenticator.${platform}`, `Authenticator ${platform}`, known ? models.includes(id) ? 'pass' : 'fail' : 'unknown', known ? models.includes(id) ? 'Allowed' : 'AAGUID missing' : 'Allow list not established', `${platform} AAGUID: ${id}.`)
+      add(`authenticator.${platform}`, `Authenticator ${platform}`, known ? models.includes(id) ? 'pass' : 'fail' : 'unknown', known ? models.includes(id) ? 'Allowed' : 'AAGUID missing' : 'No allow list', `${platform} AAGUID: ${id}.`)
     }
   } else {
     const assigned = assignedPasskeyProfiles(current)

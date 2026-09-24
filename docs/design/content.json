@@ -1984,6 +1984,19 @@
         "emergencyUnsafe": "This policy would apply to {tenant}'s emergency access accounts. IAMAI writes nothing until the exclusions group carves them out: fix the exclusions-group step, then scan again.",
         "emergencyUnproven": "IAMAI cannot prove this policy leaves {tenant}'s emergency access accounts out of scope, because it could not read who is in the group the policy excludes. Nothing is offered on a reading that did not finish: scan again.",
         "emergencyTasks": {
+          "$commentTitles": "The Establish Emergency Access tasks' titles, one source for the tasks and for the Readiness card whose check this scan did not settle: that card states the work, in the task's words (roadmap/emergencyTaskTitles.ts; owner 2026-09-24, net-new 1 and 2: an unread check reads as the work not done, never as could-not-verify).",
+          "titles": {
+            "createAccount": "Create an emergency account",
+            "configureAccount": "Configure an existing account",
+            "setUpPasskey": "Set up an approved passkey",
+            "createGroup": "Create an emergency exclusions group",
+            "chooseGroup": "Choose an existing exclusions group",
+            "manageMembership": "Manage emergency account membership",
+            "policyExclusions": "Configure Conditional Access exclusions",
+            "passkeyRegistration": "Configure passkey registration",
+            "affectedPasskeys": "Prepare affected passkeys",
+            "passkeyProtections": "Configure passkey protections"
+          },
           "$comment": "What the Emergency Access procedures (src/ui/surfaces/emergencyAccountTasks.ts) say about whether a selected account needs them. Each procedure stays available as a reference when none does, and says so only where there is something to say it of: accounts selected, and the checks this procedure makes read for each. With nobody selected, \"No selected account needs a change\" was vacuously true, sat under a tile asking for accounts to be selected, and was printed and exported as step 3 of the work (R4-44).",
           "$commentPasskey": "The passkey procedure's line when no selected account is known to need a passkey (R4-51). An unread check and a passed one used to share one branch, which chose between \"currently needs\" and \"is confirmed to need\" - two words apart, and the unread one a double negative that read as \"not needed\" over a tile saying Could not verify. Every account read and passing: the all-clear, worded as the configuration procedure's. Any account unread: that account named, and the procedure is for it if it has none.",
           "$commentPasskeyNeeded": "The passkey procedure's line when more than one selected account is known to need an approved passkey - a new tenant's usual case. It read \"Keep your working administrator session open. Accounts: a, b.\" and \"Repeat this procedure separately for each account listed above.\": the session reminder merged into the account list, where every other emergency task gives it a line of its own, and a pointer \"above\" that the opening rule for these tasks bans (emergencyInstructions.test.ts).",
