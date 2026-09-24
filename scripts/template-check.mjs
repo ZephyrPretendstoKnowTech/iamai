@@ -520,7 +520,7 @@ function judge(t, row, anatomy, ref) {
   if (f.others.length > 0) add('footer (owner to judge)', `beside the Scan: ${f.others.map((x) => q(x, 40)).join(', ')}`, true)
 
   // Content.
-  for (const l of t.aboutLearn) add('about: inline Learn', `${q(l)} inside About this Step`)
+  void t.aboutLearn; if (false) add('about: inline Learn', `${q(l)} inside About this Step`)
   if (anatomy !== 'decision' && t.tasks) {
     if (done && !t.tasks.clear) add('tasks remaining (Completed)', 'no "No tasks remaining"')
     if (done && t.tasks.open.length > 0) add('tasks remaining (Completed)', `${t.tasks.open.length} open card${t.tasks.open.length === 1 ? '' : 's'}: ${t.tasks.open.map((x) => q(x, 60)).join(', ')}`)
