@@ -104,28 +104,6 @@ function useQuestions(ctx: Context, services: { keys: string[]; signal: (key: st
     suggested: senders.length > 0 ? answer('some', senders) : answer('none'),
     evidence: legacy === null ? W.defaultEvidence : senders.length > 0 ? fillText(Q.mailDevices.seen, { n: senders.length }) : Q.mailDevices.notSeen,
   }))
-  // Use the records show is use, however few of them were read, and keeps its
-  // suggestion. What a read IAMAI cannot rely on (neither ok nor partial) cannot
-  // say is the window, or that nothing uses it: a read that stops short of 24
-  // hours is 'insufficient' and keeps the rows it read
-  // (graph/collect/signInStream.ts; since the read streams, only a time budget
-  // stops it there), and this said "No device code sign-ins in the last 30
-  // days" over six hours of records, beside the suggestion that builds the
-  // block — while the step's own tile said the records could not be relied
-  // on. The same gate the mail-sending and partner questions read.
-  const code = snapshot.evidenceUsage?.deviceCode ?? null
-  const read = signInsRead(snapshot)
-  const codeUsers = code === null ? 0 : code.userIds.length || code.count
-  out.push(question('deviceCode', ctx, {
-    label: Q.deviceCode.label, control: 'choice', options: optionsOf(Q.deviceCode.options),
-    suggested: answer(code !== null && code.count > 0 ? 'used' : 'unused'),
-    evidence: code === null ? W.defaultEvidence : code.count > 0 ? fillText(read ? Q.deviceCode.seen : Q.deviceCode.seenShort, { n: codeUsers }) : read ? Q.deviceCode.notSeen : W.defaultEvidence,
-    // What the answer does, which the question never said (owner, 2026-09-20).
-    // The policy step carries protocol tracking as a risk
-    // (docs/plans/close-doors-spec.md section 4, ms-auth-flows); the question
-    // that decides whether the policy is built showed only its suggestion.
-    note: Q.deviceCode.note,
-  }))
   const partners = snapshot.scenarioEvidence?.serviceProviderSignIns ?? null
   out.push(question('partner', ctx, {
     label: Q.partner.label, control: 'choice', options: optionsOf(Q.partner.options),
@@ -365,7 +343,6 @@ export const ANSWERED_IN: Readonly<Record<string, readonly DirectionQuestionKey[
   [PREREQ_STEP_ID.serviceAccountsGroup]: ['serviceAccounts'],
   's-shared-devices': ['sharedDevices'],
   [QUESTION_STEP.mailDevices]: ['mailDevices'],
-  [QUESTION_STEP.deviceCode]: ['deviceCode'],
   [QUESTION_STEP.partner]: ['partner'],
 }
 
@@ -422,7 +399,6 @@ export function answeredInOf(stepId: string, ctx: { snapshot: TenantSnapshot; ma
 /** The Direction answers each goal's policy depends on (docs/plans/direction-spec.md, owner decision 3). */
 const GOAL_DEPENDS: Readonly<Record<string, readonly DirectionQuestionKey[]>> = {
   'block-legacy-auth': ['mailDevices'],
-  'block-device-code': ['deviceCode'],
   'guests-mfa': ['partner'],
   // Work countries are asked on the countries step itself (6.3), which holds its
   // own decision until one is saved; travel was retired (Stage 3).
