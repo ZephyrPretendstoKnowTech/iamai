@@ -53,7 +53,7 @@ test('s-prereq-break-glass: preparation owns account identity, role and approved
   const artifacts = bodiesOf(fixture('demo')).get('s-prereq-break-glass')!.artifacts
   const entra = artifacts.find((artifact) => artifact.id === 'portal')!.text()
   assert.doesNotMatch(entra, /exclusions group|controlled drill|confirmed credential custody/i)
-  assert.doesNotMatch(artifacts.find((artifact) => artifact.id === 'ps')!.text(), /exclusions group|group membership/i)
+  assert.equal(artifacts.some((artifact) => artifact.id === 'ps' || artifact.id === 'json'), false, 'the scan reads what its script and JSON read')
   assert.doesNotMatch(artifacts.find((artifact) => artifact.id === 'ai')!.text(), /credential custody|controlled (?:sign-in|drill)|exclusions group/i)
 })
 
