@@ -687,7 +687,7 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // the object, the campaign's preparation, the review's reading — so the task
   // frame draws exactly what this step drew. The four Emergency Access steps
   // keep their own producers above and are never this.
-  const taskProjection: EmergencyTaskProjection | null = emergencyAccountTasks ?? sectionThree ?? procedure ?? (drawsTaskAnatomy(step.id) ? policyTasksOf(step, title, artifacts, ctx.mapping) : null)
+  const taskProjection: EmergencyTaskProjection | null = emergencyAccountTasks ?? sectionThree ?? procedure ?? (drawsTaskAnatomy(step.id) ? policyTasksOf(step, title, artifacts, ctx.nameOf) : null)
   // The task that marks a picked office location trusted is called what it does
   // (whatToDoWhen.officeToTrust.task), and the rail's headline reads it.
   if (taskProjection && step.id === 's-prereq-trusted-location' && (step.officeToTrust?.length ?? 0) > 0 && typeof w.task === 'string' && whole(w.task, ex)) {

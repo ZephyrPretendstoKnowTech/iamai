@@ -1607,18 +1607,6 @@
     {
       "step": "s-goal-block-legacy-auth",
       "action": "enforce",
-      "prerequisite": "s-prereq-service-accounts-group",
-      "prerequisiteKind": "step",
-      "milestone": "complete",
-      "condition": null,
-      "edgeKind": "hard",
-      "source": "package",
-      "status": "ok",
-      "table": "10.2"
-    },
-    {
-      "step": "s-goal-block-legacy-auth",
-      "action": "enforce",
       "prerequisite": "s-question-mail-devices",
       "prerequisiteKind": "step",
       "milestone": "complete",

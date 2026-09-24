@@ -397,6 +397,8 @@
         "observe": "Continue observation and collect the missing evidence.",
         "observeUntil": "Continue observation and collect the missing evidence. Review from {date}.",
         "observeRecords": "Continue observation and collect the missing evidence.",
+        "$commentMoveBlocked": "Block Legacy Authentication's next thing while its report-only week shows people it would have blocked (walk list 4.x item 35): the evidence line (evidence.legacyBlocked) names them and says where to move them.",
+        "moveBlocked": "Move the blocked accounts.",
         "enforce": "Enable the reviewed policy, then verify the result.",
         "$commentEnforceScheduled": "A policy whose evidence is complete says \"Enable the reviewed policy\" and \"ready now: 0 failures in 8 days\", and the date beside it was the plan's own placement - eighteen days out on one tenant. Both are right and they read as a contradiction: the wait is not the evidence any more, it is the notice the people affected are owed. The milestone says which wait it is.",
         "enforceScheduled": "The evidence for this policy is complete, so it is ready to be turned on. The plan schedules the turn-on for {date}, which leaves the {days} working days of notice a change this size asks for.",
@@ -435,6 +437,9 @@
         "appearedEnforced": "not deployed at the last scan and enforced by {date}: it went live without a report-only period IAMAI could watch, so nothing here was observed before it started applying",
         "continuityUnknown": "this plan does not record which policy it watched before {date}, so the window starts again on the one deployed now",
         "differs": "not what the plan asked for in {fields}, and IAMAI does not write that part: a person corrects it in the Entra admin center, then scans again",
+        "$commentDifference": "What a step's correction changes, in words, for AI Info's lead (ui/surfaces/stepPackage.ts correctionWordsOf; walk list 4.x item 40): it read \"differs from the intended target: conditions.canonical\".",
+        "missingGroup": "it doesn't exclude {group}",
+        "differsIn": "it differs from the intended target in {fields}",
         "dimensions": {
           "$comment": "A policy's material dimensions by their Graph field names (roadmap/observation.ts semanticFieldsOf), for the sentence that names where a deployed policy is not what the plan asked for.",
           "users": "who it applies to",
@@ -494,6 +499,9 @@
       "evidence": {
         "$comment": "Why a report-only observation has not completed, in the two cases where the reason is known and was said nowhere. The tile read \"Review the available records and the remaining evidence requirements\" over both: over a tenant whose records refused every read, and over a tenant where four hundred people had been stopped in report-only. Both numbers were on the step already — Evidence.affectedUserIds had the four hundred and Evidence.lines was empty — and no surface read either. Said only while the observation is still open.",
         "failures": "The records show {n} people this policy stopped while it was in report-only. Review them before enforcing: time elapsed alone does not complete this check.",
+        "$commentLegacyBlocked": "Block Legacy Authentication's report-only week that would have blocked someone (walk list 4.x item 35, roadmap/evidence.ts): the accounts by name and address, and where they move. legacyBlockedMail where every one of them is a mail account named in Confirm What You Use, which moves to a mail route rather than a mail app.",
+        "legacyBlocked": "Report-only would have blocked {names}. Move them to a modern mail app before you turn this on.",
+        "legacyBlockedMail": "Report-only would have blocked {names}. Move each to a supported mail route before you turn this on.",
         "$commentUnreadable": "The one sentence for sign-in records IAMAI does not hold enough of (roadmap/evidence.ts unreadLine): Evidence.lines carries it to the AI briefing, and the observation tile and the awaiting-review tile state it. It read \"This check reads the sign-in records, which IAMAI could not read in this tenant - {reason}. Time in report-only cannot complete it until they can be read.\" That was written for a report-only policy on a tenant where nothing was read, and it reached two other cases. The AI briefing of a policy already enforced, or already in place, said time in report-only would complete a check on a policy past report-only (hostile: the device code block, guest MFA, MFA for all users, legacy authentication). And a production read that stops short of 24 hours is \"insufficient\" with some records read (graph/collect/laneBCore.ts), where \"could not read\" is false. It now says only what holds for every lifecycle and every status that sets it: IAMAI does not hold enough to rely on, and no check of its own that reads them completes by waiting.",
         "unreadable": "IAMAI does not hold enough of this tenant's sign-in records to rely on — {reason} — so no IAMAI check on this step that reads them can complete, however long the policy runs.",
         "$commentStatus": "What fills {reason} where the sign-in source states no reason of its own, by its status (roadmap/evidence.ts). The bare status word filled it, so a scan with no sign-in source read \"— pending —\".",
@@ -510,6 +518,16 @@
         "people": "{n} people",
         "guests": "{n} guests",
         "both": "{people} people and {guests} guests"
+      },
+      "blockSignIns": {
+        "$comment": "Who the sign-in records show using what a block stops, in the last 30 days (walk list 4.x items 33 and 38; roadmap/blockSignIns.ts): an open card naming them while the step still has work, a Satisfied card once nobody does or the policy is on. {n} is a count, so it reads \"1 account\" and \"1 person\". The names are the card's detail, at most five, then more.",
+        "legacyLabel": "Legacy sign-ins",
+        "legacySome": "{n} accounts signed in with legacy authentication in the last 30 days",
+        "legacyNone": "Nobody signed in with legacy authentication in the last 30 days.",
+        "deviceCodeLabel": "Device-code sign-ins",
+        "deviceCodeSome": "{n} people signed in with device code in the last 30 days",
+        "deviceCodeNone": "No device-code sign-ins in the last 30 days.",
+        "more": "and {n} more"
       },
       "perUserMfa": {
         "$comment": "The Legacy Per-User MFA tile on Finish Moving Off Per-User MFA (roadmap/manualWork.ts). {accounts} is copy/statements.ts count(), so it reads \"4,902 accounts\" and \"1 account\". Per-user MFA is a state every account in the directory has, emergency accounts included, so the unread count is the whole directory where the scan read no state at all; detailUnreadAll says so, because every other count on the plan leaves the emergency accounts out and the two numbers otherwise read as a mistake (R4-54). These were inline template strings with no separator and \"1 accounts\".",
@@ -563,14 +581,13 @@
       "Test the actual workflow with representative users, including registration or recovery where applicable. Report-only results do not prove that these user actions work."
     ],
     "mailDevices": {
-      "title": "Move each exception device to a supported mail route",
-      "target": "Devices named in the mail-sending answer",
+      "$comment": "Block Legacy Authentication's second task (ui/surfaces/policyTasks.ts): the mail accounts named in Confirm What You Use that still sign in with legacy authentication, each by name (walk list 4.x item 36). There is no exception to remove: the policy does not leave them out, and its turn-on waits until they have moved (item 5).",
+      "title": "Move each mail account to a supported mail route",
       "steps": [
-        "Record each device's supported authentication and TLS options, the recipients it sends to, and a test window.",
-        "Until each device moves, Create or Correct Service Accounts Group keeps these accounts out of this policy. That exclusion does not keep SMTP AUTH working if the mail service no longer accepts basic authentication.",
-        "Choose a supported route: SMTP AUTH with OAuth, an Exchange Online connector, or Direct Send for internal recipients only. A device that cannot do any of them sends through an application that can, such as the Graph sendMail API. Confirm the device and network meet that route's requirements, send test messages, then remove its old account exception."
+        "Move each device to SMTP AUTH with OAuth, an Exchange Online connector, or Direct Send (internal recipients only).",
+        "Return to IAMAI and select **Scan to update the plan**."
       ],
-      "action": "Record the route and the removed exception",
+      "action": "Open mail route instructions",
       "$commentDone": "Block Legacy Authentication's Completion Criteria line for its mail half, where the mail question named accounts (stepContract.ts policyDoneWhen; walk list 4.x items 4 and 26): the mail half is done when none of the named accounts has signed in with legacy authentication in the last 30 days. {accounts} are their names.",
       "done": "No legacy authentication sign-in by {accounts} in the last 30 days."
     },
@@ -1052,6 +1069,8 @@
         "direction": "until every answer is approved",
         "unsettled": "until the groups the source policy leaves out are identified",
         "sourceMapping": "Baseline references an unmapped group",
+        "$commentMailAccounts": "Block Legacy Authentication's turn-on while an account named in Confirm What You Use's mail-sending answer still signs in with legacy authentication (walk list 4.x item 5, option b): the pinned policy does not leave those accounts out, so turning it on would stop their mail.",
+        "mailAccounts": "until each mail account you named moves to a supported mail route",
         "pairUnmatched": "until both policies of the pair can be matched",
         "targetAmbiguous": "until one policy stands out as this goal's own",
         "noOperation": "until a scan rebuilds this step",
@@ -3083,7 +3102,7 @@
               "label": "Devices or apps that send email by signing in (printers, scanners, line-of-business apps)",
               "seen": "{n} accounts signed in to send email in the last 30 days.",
               "notSeen": "No email-sending sign-ins in the last 30 days.",
-              "consequence": "Answering Pick accounts makes them service accounts: they leave the people counts, and Block Legacy Authentication leaves them out until each moves to a supported mail route.",
+              "consequence": "Answering Pick accounts makes them service accounts: they leave the people counts, and Block Legacy Authentication waits until each moves to a supported mail route.",
               "why": "Signed in to send email in the last 30 days."
             },
             "partner": {
@@ -4051,7 +4070,7 @@
       "kind": "object",
       "title": "Create or Correct Service Accounts Group",
       "changeLine": null,
-      "why": "Block Legacy Authentication and Restrict Service Accounts to the Trusted Network wait on this group. It holds the service accounts you picked in Identify Service and Shared Accounts.",
+      "why": "Restrict Service Accounts to the Trusted Network waits on this group. It holds the service accounts you picked in Identify Service and Shared Accounts.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/architecture/secure-service-accounts"
       },
@@ -5380,7 +5399,7 @@
       "kind": "policy",
       "title": "Block Legacy Authentication",
       "changeLine": null,
-      "why": "Legacy authentication protocols cannot complete multifactor authentication, so a password on its own gets through them. Exchange Online already refuses a password for POP, IMAP and ActiveSync, and SMTP AUTH is the last route that accepts one; Microsoft is retiring that route too. Review the clients and jobs still using one before that path closes.",
+      "why": "Legacy authentication can't ask for MFA, so a password alone gets through it. This policy blocks it for everyone except the emergency access accounts.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-legacy-authentication"
       },
@@ -5403,18 +5422,13 @@
           "None",
           "Temporary exception accounts: {devices}"
         ],
-        "effect": "These accounts are selected for the service-accounts exception. Review the actual policy exclusions, limit the exception and plan migration to a supported mail-sending method.",
-        "save": "Save mail-sending choices",
-        "tileValue": "Not confirmed",
-        "tileNote": "A quiet sign-in history does not establish that every scheduled mail job has stopped using basic authentication.",
-        "$commentTileNoteUnread": "The mail-sending devices tile note where IAMAI does not hold enough of the sign-in records to rely on (stepContract.ts unsavedTiles reads it where the step carries Evidence.unreadable; {reason} is the source's own reason, else its status in words). tileNote speaks of a quiet sign-in history, and on a tenant whose sign-in source refused every read it said so over a history IAMAI had never read (hostile, Block Legacy Authentication as scanned) - the same defect the device code tile had (R4-19 c). This says what IAMAI does not hold, and where the answer has to come from instead.",
-        "tileNoteUnread": "IAMAI does not hold enough of this tenant's sign-in records to rely on — {reason} — so they cannot show that no scheduled mail job still uses basic authentication. Check each printer, scanner and application's mail settings and confirm with its owner."
+        "save": "Save mail-sending choices"
       },
       "dates": "{datesNew}",
       "doneEnd": "The policy is enforced and matches the baseline: it blocks legacy authentication for all users, excludes the exclusions group, and every mail-sending device is accounted for.",
       "doneWhen": [
         "A scan confirms legacy authentication is blocked for the intended users, with the approved exclusions.",
-        "Every mail-sending device and application sends through a supported route, and any temporary exception account named for one has been removed."
+        "IAMAI sees no legacy sign-in from {list:mailAccounts} in the last 30 days."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
@@ -5445,8 +5459,7 @@
           "Identify the failing account, client and protocol in its settings and sign-in result. Test a supported client or authentication method before retiring the old path.",
           "A blocked Exchange ActiveSync device gets one quarantine email with the reason; later attempts are silent, so the person may only report that mail stopped.",
           "A device moved from a password to a certificate is still on legacy authentication, and this policy still blocks it. Move it to a client that uses modern authentication.",
-          "Scan-to-email stopped: check the device is still in the service-accounts group, then move it to a connector.",
-          "For mail jobs, use this step's Move each exception device to a supported mail route task to record the replacement route and successful delivery. A temporary Conditional Access exception does not restore a protocol the mail service no longer accepts."
+          "Scan-to-email stopped: move the device to an Exchange Online connector."
         ],
         "manager": "Older sign-in paths that cannot complete MFA are turned off. Without this, a password alone can still work through them.",
         "waits": null
@@ -5470,7 +5483,7 @@
         "steps": [
           "{portalRoot}",
           "Name: {policyName}",
-          "Users → Include: All users. {exclusionsLine} Also exclude the service accounts group {serviceAccountsGroup}.",
+          "Users → Include: All users. {exclusionsLine}",
           "Target resources → Resources → All resources",
           "Conditions → Client apps → Configure: Yes, then check only Exchange ActiveSync clients and Other clients",
           "Grant → Block access",
@@ -5484,7 +5497,7 @@
       "kind": "policy",
       "title": "Block Device Code Sign-in",
       "changeLine": null,
-      "why": "Device-code phishing can persuade a person to approve a sign-in for someone else. Blocking this flow reduces that route of attack, but legitimate devices and tools need a checked alternative.",
+      "why": "Device-code phishing tricks a person into entering a code that signs an attacker in as them. Blocking device code sign-in closes that route.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-authentication-flows"
       },
@@ -5498,13 +5511,12 @@
           "{deviceCodeCount} device-code sign-ins since {from} by {list:deviceCodeUsers}; usually a script or a TV app; move each before {enforce}.",
           "{existingCoverage}"
         ],
-        "none": "No device-code sign-ins in the records since {from}; that does not prove nothing uses it."
+        "none": "No device-code sign-ins in the last 30 days."
       },
       "dates": "{datesNew}",
-      "doneEnd": "No sign-in to {tenant} completes through device code flow, the exclusions group is applied, and every tool, shared device and enrollment job that used the flow has a tested alternative.",
+      "doneEnd": "No sign-in to {tenant} completes through device code flow, and the exclusions group is applied.",
       "doneWhen": [
-        "{policyDoneWhen}",
-        "Tools, shared devices and enrollment workflows that used device code have a tested alternative."
+        "{policyDoneWhen}"
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -5562,13 +5574,7 @@
           "{reportOnlyLine}"
         ]
       },
-      "aiFocus": "Walk me through creating this policy in Report-only and turning it on after its report-only period.",
-      "whatToDo": {
-        "verification": [
-          "Identify the legitimate tools or devices using device code. Move each required workflow to an alternative supported by that tool, then run the actual task with a representative account.",
-          "For each workflow moved off device code, record the account, tool/task, replacement sign-in path, date and result. A quiet device-code report alone does not demonstrate that a required workflow was replaced."
-        ]
-      }
+      "aiFocus": "Walk me through creating this policy in Report-only and turning it on after its report-only period."
     },
     {
       "id": "block-auth-transfer",

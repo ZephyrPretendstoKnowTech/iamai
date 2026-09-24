@@ -3261,7 +3261,8 @@
           "evidence.deviceCodeSignIns",
           "evidence.originalTransferMethod",
           "dependencies.deviceCodeWorkflows",
-          "policy.fact"
+          "policy.fact",
+          "policy.current.difference"
         ],
         "projection": {
           "missing": {
@@ -3570,7 +3571,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Keep the policy in Report-only while you review the evidence listed for this step. Review device-code use, including command-line tools, shared and meeting-room devices, and enrollment workflows. On each sign-in, check both **Authentication protocol** and **Original transfer method**: a session that began with device code can still be tracked after the original event. Microsoft documents that an authentication-flows policy targeting All resources also applies to Device Registration Service, and some Teams devices depend on device code flow. No events in the available records does not prove device code is unused.\n"
+          "text": "Keep the policy in Report-only while you review the evidence listed for this step. Review device-code use, including command-line tools, shared and meeting-room devices, and enrollment workflows. On each sign-in, check both **Authentication protocol** and **Original transfer method**: a session that began with device code can still be tracked after the original event. Microsoft documents that an authentication-flows policy targeting All resources also applies to Device Registration Service, and some Teams devices depend on device code flow.\n"
         },
         "entra.enforce": {
           "meta": {
@@ -3733,7 +3734,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nCorrect **{{policy.current.displayName}}** so it {{policy.fact}}.\n\nThis change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
+          "text": "\nCorrect **{{policy.current.displayName}}** so it {{policy.fact}}.\nToday {{policy.current.difference}}. [omit this line when unavailable]\n\nThis change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
         },
         "ai.observe": {
           "meta": {
@@ -4452,7 +4453,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Review observed use and ask owners about infrequent jobs. No events in the available records does not prove there are no dependencies. Ready only when the intended exclusions and the service-account and mail-device decisions are resolved, recent legacy use has been reviewed, and Report-only results show no unexplained legitimate dependency.\n"
+          "text": "Review observed use and ask owners about infrequent jobs. Ready only when the intended exclusions and the service-account and mail-device decisions are resolved, recent legacy use has been reviewed, and Report-only results show no unexplained legitimate dependency.\n"
         },
         "troubleshooting.model": {
           "meta": {

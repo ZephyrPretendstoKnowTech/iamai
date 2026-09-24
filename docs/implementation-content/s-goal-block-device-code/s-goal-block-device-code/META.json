@@ -65,7 +65,8 @@
     "evidence.deviceCodeSignIns",
     "evidence.originalTransferMethod",
     "dependencies.deviceCodeWorkflows",
-    "policy.fact"
+    "policy.fact",
+    "policy.current.difference"
   ],
   "projection": {
     "missing": {

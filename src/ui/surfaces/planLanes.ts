@@ -43,7 +43,7 @@ import type { LaneRow } from '../../actionability/sorting.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { FOUNDATION_WAIT, isHeld } from '../../roadmap/holds.ts'
 import { driftOutcomeOf } from '../../roadmap/tracking.ts'
-import { submitsEnforcementOnly, switchedOffPolicies, unavailableReason, implementationOffered, operationsOf, enforcesOnRun, createWaitsOnReadiness } from '../../roadmap/operations.ts'
+import { awaitsMailMove, submitsEnforcementOnly, switchedOffPolicies, unavailableReason, implementationOffered, operationsOf, enforcesOnRun, createWaitsOnReadiness } from '../../roadmap/operations.ts'
 import { GATING_SUBJECTS, blockerStepId } from '../../roadmap/blockerSteps.ts'
 import { observationWindowDays, readyBasis, readyWhen } from '../../derive/readyWhen.ts'
 import { planStateOf } from './planState.ts'
@@ -225,9 +225,10 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
     // A Direction answer the step depends on and nobody has saved holds it whole
     // (owner decision 3, roadmap/direction.ts): the step's own policy is written
     // from that answer, so neither its creation nor its enforcement can go first.
-    // An enforced policy is not held back by it: its correction and its recorded
-    // inputs are available now (the engine's own rule for an enforced policy).
-    else if (b.kind === 'decision' && lifecycle !== 'enforced') {
+    // An enforced policy carries one only where the answer decides whether the
+    // step is finished (roadmap/direction.ts gateOnDirection; walk list 4.x item
+    // 6), and it waits on it the same way.
+    else if (b.kind === 'decision') {
       const direction = directionBlockerStep(b)
       if (direction !== null && !blockers.some((x) => x.kind === 'decision' && x.id === direction)) blockers.push({ kind: 'decision', id: direction })
     }
@@ -427,11 +428,6 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
   rest.sort((a, b) => a.id.localeCompare(b.id))
   for (const { id, reading } of rest) out.set(id, { ...reading, order: counts[reading.lane]++, fromEngine: false })
   for (const step of steps) {
-    const unsaved = step.doesntApply == null ? step.unsavedInputs ?? [] : []
-    const own = out.get(step.id)
-    if (own && unsaved.length > 0) out.set(step.id, { ...own, unsaved, unsavedPrefilled: step.unsavedInputsPrefilled === true })
-  }
-  for (const step of steps) {
     const reading = out.get(step.id)
     // A policy waiting on the plan's foundation (roadmap/foundations.ts) is not
     // promoted back into Ready by any of the readings below: Emergency Access
@@ -473,6 +469,9 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
     if (reading?.lane === 'Ready' && savedExclusionsGroup && reading.substatus === 'Create') reading.substatus = 'Correct'
     // Account checks ask for a review, not creation of a policy or object.
     if (reading && workflowReviewIsCurrent(step)) Object.assign(reading, { lane: 'Ready', substatus: 'Review', reason: null, blockers: [], gates: [] })
+    // Block Legacy Authentication's policy is on and a named mail account is still
+    // to move (walk list 4.x item 4): moving it is the work, and it is ready now.
+    if (reading && awaitsMailMove(step)) Object.assign(reading, { lane: 'Ready', substatus: null, reason: null, blockers: [], gates: [] })
     const workflowCheckIsNext = step.manualReview && (!POLICY.includes(step.kind) || workflowReviewIsCurrent(step))
     if (reading?.lane === 'Ready' && workflowCheckIsNext) reading.substatus = 'Review'
     // Ready's word is the work that is ready (walk list item 18, owner

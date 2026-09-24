@@ -480,6 +480,15 @@ export type Action = {
    */
   enforceWaitsOn?: { id: string; title: string }[]
   /**
+   * The step whose own task already asks for this step's correction (walk list
+   * 4.x item 7): every operation only adds the plan's exclusions group to a
+   * policy the tenant has, which is Configure Emergency Exclusions' "Configure
+   * Conditional Access exclusions". This step does not ask for it again: it
+   * waits on that step, and its operations are held (operations.ts
+   * `policyResult`, hold `prerequisite-unmet`). Absent on every other step.
+   */
+  correctionAskedBy?: string
+  /**
    * An update with nothing in it, because the tenant policy it targets already
    * holds every section this step writes (generate.ts). `gaps` is what still
    * keeps the goal short that no update writes — a condition narrower than the
@@ -913,6 +922,14 @@ export type Step = {
   unsavedInputs?: string[]
   /** True where every open input is one IAMAI filled and is waiting to have confirmed, not one it is asking (roadmap/answers.ts openInputsOf). */
   unsavedInputsPrefilled?: true
+  /**
+   * Block Legacy Authentication: the accounts named in Confirm What You Use's
+   * mail-sending answer that the sign-in records still show using legacy
+   * authentication in the last 30 days (roadmap/blockSignIns.ts). The turn-on
+   * waits for them, and the step is not complete until none is left (walk list
+   * 4.x items 4 and 5). Absent where none.
+   */
+  mailAccountsToMove?: string[]
   /** Three sentences for a manager: the risk closed, the cost to people, what happens if not done (§3.3). */
   forManager: string
   /** Microsoft recommended, not in this baseline (target-state §13, floor.ts): rendered from Microsoft's template because the active baseline lacks the goal. */
