@@ -149,7 +149,9 @@ test("an unsaved question that moved to Direction is one wait on the Direction s
   // the Direction step, and its one tile is the wait every other Direction
   // answer draws ("{step} · Waiting on your answers"), linking there (R4-43).
   {
-    const f = fixture('midflight')
+    // A tenant whose records show legacy authentication: where they show nobody,
+    // the answer can change nothing and nothing waits on it (net-new 26).
+    const f = fixture('small')
     const r = runFixture(f)
     const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: null } as StepVarContext
     const legacy = r.steps.find((s) => s.id === 's-goal-block-legacy-auth')!

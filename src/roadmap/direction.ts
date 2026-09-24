@@ -52,6 +52,7 @@ import { notPeopleIds, personAccounts } from '../derive/sets.ts'
 import { setState } from './lifecycle.ts'
 import { DEVICE_GOALS } from './deviations.ts'
 import { QUESTION_STEP } from './answers.ts'
+import { mailAnswerMoot } from './blockSignIns.ts'
 import { PREREQ_STEP_ID, stepIdForGoal } from './stepIds.ts'
 import { checkStep, serviceEvidence, serviceOf, serviceReading } from './workflows.ts'
 import type { ServiceSignal } from './workflows.ts'
@@ -461,7 +462,9 @@ export function noteServiceConsequences(steps: Step[]): void {
  * never asks itself (walk list 4.x item 6): the one wait, shown the same way on
  * every step and every tenant.
  */
-export function gateOnDirection(steps: Step[]): void {
+export function gateOnDirection(steps: Step[], snapshot?: TenantSnapshot): void {
+  // An answer the records say cannot change the step holds nothing (blockSignIns.ts mailAnswerMoot).
+  const moot = (k: DirectionQuestionKey): boolean => k === 'mailDevices' && snapshot !== undefined && mailAnswerMoot(snapshot)
   const questions = new Map<string, DirectionQuestion>()
   for (const s of steps) if (isDirectionStep(s.id)) for (const q of s.directionQuestions ?? []) questions.set(q.key, q)
   if (questions.size === 0) return
@@ -471,7 +474,7 @@ export function gateOnDirection(steps: Step[]): void {
     const inputs = (step.unsavedInputs ?? []).length > 0 ? ANSWERED_IN[step.id] ?? [] : []
     if (on && inputs.length === 0) continue
     const keys = on ? inputs : directionDependenciesOf(step)
-    const waiting = [...new Set(keys.filter((k) => { const q = questions.get(k); return q !== undefined && q.saved === null }).map(directionStepOf))]
+    const waiting = [...new Set(keys.filter((k) => { const q = questions.get(k); return q !== undefined && q.saved === null && !moot(k) }).map(directionStepOf))]
     if (waiting.length === 0) continue
     // The wait holds the step (holds.ts; owner, 2026-09-19): it is undated until
     // the answer is approved, like every other hold. The schedule withdraws it once

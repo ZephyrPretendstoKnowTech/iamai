@@ -6,7 +6,7 @@ import { countDirectionImpact, directionSteps } from './direction.ts'
 import dependencyData from '../actionability/dependency-data.json' with { type: 'json' }
 import { answeredReasonOf, officeLocationsCreated, savedAnswerOf, trustedIpLocations } from './directionAnswers.ts'
 import { applyManualReviews, perUserMfaReading } from './manualWork.ts'
-import { LEGACY_AUTH_STEP_ID, MAIL_ACCOUNTS_WAIT, mailAccountsToMove, settleBlockSignIns } from './blockSignIns.ts'
+import { LEGACY_AUTH_STEP_ID, MAIL_ACCOUNTS_WAIT, mailAccountsToMove, mailAnswerMoot, settleBlockSignIns } from './blockSignIns.ts'
 // Step generation (roadmap.md §1–§6; 2026-08-27 redesign: collapsed phase 0,
 // per-tenant impact, safe-today lane, handle-with-care gating, comms drafts,
 // operator self-safety, Learn links, auto-scheduling). Pure.
@@ -3409,8 +3409,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   for (const s of steps) s.plainTitle = contentTitle(s)
   // A conditional input nobody saved (U28): the step names it, and the lane
   // engine keeps the step short of Completed and Ready to enforce until a Save.
+  // The mail-sending answer asks nothing where nobody used legacy authentication (blockSignIns.ts mailAnswerMoot).
+  const mailMoot = mailAnswerMoot(snapshot)
   for (const s of steps) {
-    const open = openInputsOf(s.id, mapping)
+    const open = s.id === LEGACY_AUTH_STEP_ID && mailMoot ? [] : openInputsOf(s.id, mapping)
     if (open.length === 0) continue
     s.unsavedInputs = open.map((input) => input.label)
     // Whether the row should say "confirm" or "answer": IAMAI filled the

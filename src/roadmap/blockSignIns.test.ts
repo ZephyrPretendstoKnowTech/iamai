@@ -3,13 +3,13 @@
 // items 4, 5 and 7). One behaviour each.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from './fixtures/index.ts'
+import { curatedFixture, fixture } from './fixtures/index.ts'
 import type { Fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { observationsOf } from './tracking.ts'
 import { policyResult } from './operations.ts'
 import { QUESTION_STEP, answerKey, answerTextFor, questionLabels, questionOptions } from './answers.ts'
-import { LEGACY_AUTH_STEP_ID, MAIL_ACCOUNTS_WAIT } from './blockSignIns.ts'
+import { LEGACY_AUTH_STEP_ID, MAIL_ACCOUNTS_WAIT, mailAnswerMoot } from './blockSignIns.ts'
 import { EXCLUSION_GROUP_STEP_ID } from './stepIds.ts'
 
 /** The tenant with `id` named in Confirm What You Use's mail-sending answer, and signing in by SMTP or not. */
@@ -66,4 +66,19 @@ test('item 7: the exclusions edit Configure Emergency Exclusions asks for is not
   assert.equal(next.state.satisfied, true, 'the premise: the policy now delivers the goal')
   assert.equal(next.state.members[0].change.reviewRequired, false, 'the edit the plan asked for reads as a change to review')
   assert.notEqual(next.state.condition, 'review-required')
+})
+
+test('4.1 waits on no mail answer where the records, read whole, show nobody using legacy authentication (net-new 26)', () => {
+  const legacy = (name: 'getiamai' | 'small' | 'hostile') => runFixture(curatedFixture(name)).steps.find((s) => s.id === LEGACY_AUTH_STEP_ID)!
+  const directionWait = (s: ReturnType<typeof legacy>) => s.blockers.some((b) => b.label === 'direction:s-direction-use')
+  // getiamai: read whole, nobody.
+  assert.equal(mailAnswerMoot(curatedFixture('getiamai').snapshot), true, 'the premise')
+  assert.equal(directionWait(legacy('getiamai')), false)
+  assert.equal(legacy('getiamai').unsavedInputs, undefined, 'nor is the answer asked of it')
+  // small: someone used it, so the answer can still move an account.
+  assert.equal(mailAnswerMoot(curatedFixture('small').snapshot), false, 'the premise')
+  assert.equal(directionWait(legacy('small')), true)
+  // hostile: the records were not read, so nothing shows nobody.
+  assert.equal(mailAnswerMoot(curatedFixture('hostile').snapshot), false)
+  assert.equal(directionWait(legacy('hostile')), true)
 })
