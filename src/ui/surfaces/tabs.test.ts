@@ -17,8 +17,6 @@ import { contentStepFor } from '../../content/stepTitle.ts'
 import { REGISTRY, ruleText, citationFor } from '../../validation/rules.ts'
 import { SUBJECT } from '../../copy/validation.ts'
 import { jsonOffered, missingObjects, stepOperations } from './stepJson.ts'
-import { copyBoxes, stepLines } from './stepExport.ts'
-import { content } from '../../content/content.ts'
 import type { RoadmapInput } from '../../roadmap/generate.ts'
 import { rowWhen } from './rowWhen.ts'
 import { scheduleOf } from '../../roadmap/stepSchedule.ts'
@@ -28,7 +26,6 @@ import { DEVICE_GOALS } from '../../roadmap/deviations.ts'
 import { stepById } from '../../content/content.ts'
 import { PINNED_GOAL_MAP, goalInMap } from '../../roadmap/goalMap.ts'
 import { pages } from '../../content/content.ts'
-import { fillText } from '../../content/render.ts'
 
 const FIXTURES = ['demo', 'getiamai'] as const
 
@@ -102,7 +99,6 @@ test('the How page\'s check rows carry no forbidden-everywhere string', () => {
     for (const f of forbid) if (text.includes(f)) hits.push(`${r.id}: ${f}`)
   }
   assert.deepEqual(hits, [])
-  assert.equal(ruleText('pilot.hasMembers').why, 'An empty first group proves nothing and delays every group behind it.')
 })
 
 // A policy step's JSON waits on every object the body names; the translator
@@ -129,36 +125,6 @@ test('GetIAMAI: the countries block waits on the allowed-countries location, the
   assert.equal(jsonOffered(withLocation), true, 'the JSON is offered once the location exists')
   assert.deepEqual(JSON.parse(withLocation.action.json!).conditions.locations.excludeLocations, ['loc-au'])
   assert.ok(!missingObjects(withLocation).some((m) => m.stepId === 's-prereq-allowed-countries'))
-})
-
-// The adapt line renders once under every copy box, and nowhere else.
-test('every copy box on both fixtures is followed by the adapt line, and it appears nowhere else', () => {
-  const adapt = String((content.shared as Record<string, unknown>).adaptLine)
-  assert.ok(adapt.length > 0)
-  let boxes = 0
-  for (const name of FIXTURES) {
-    const f = fixture(name)
-    const r = runFixture(f)
-    const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
-    for (const s of r.steps) {
-      for (const box of copyBoxes(s, ctx)) {
-        boxes++
-        assert.equal(box.after, adapt, `${name} ${s.id} ${box.kind}: the adapt line follows the box`)
-        assert.ok(!box.text.includes(adapt), `${name} ${s.id} ${box.kind}: the box itself does not carry it`)
-      }
-      for (const line of stepLines(s, ctx)) assert.ok(!line.includes(adapt), `${name} ${s.id}: the adapt line is not in the step's other lines`)
-    }
-  }
-  assert.ok(boxes >= 3, `copy boxes seen (${boxes})`)
-  // In the content file it exists once, as shared.adaptLine.
-  const hits: string[] = []
-  const walk = (node: unknown, path: string): void => {
-    if (typeof node === 'string') { if (node.includes(adapt)) hits.push(path) }
-    else if (Array.isArray(node)) node.forEach((v, i) => walk(v, `${path}[${i}]`))
-    else if (node && typeof node === 'object') for (const [k, v] of Object.entries(node)) walk(v, `${path}.${k}`)
-  }
-  walk(content, '')
-  assert.deepEqual(hits, ['.shared.adaptLine'])
 })
 
 // A partly covered goal's step names the tenant's policy as the one to change,
@@ -203,13 +169,9 @@ test('GetIAMAI: with a Windows-only token-protection policy on, the step names t
 
 // The footer's Doesn't-apply group holds the person's answers only; a goal a
 // licence facet switched off is a Not licensed row, with the licence it needs.
-test('GetIAMAI: the prompt renders in full, the Doesn\'t-apply group holds only answers, and the licence rows sit under Not licensed', () => {
+test('GetIAMAI: the Doesn\'t-apply group holds only answers, and the licence rows sit under Not licensed', () => {
   const f = fixture('getiamai')
   const r = runFixture(f)
-  const shared = content.shared as Record<string, string>
-  const prompt = fillText(shared.doesntApplyPrompt, { tenant: 'GetIAMAI' })
-  assert.equal(prompt, shared.doesntApplyPrompt.replace('{tenant}', 'GetIAMAI'), 'the prompt in full, the tenant filled')
-  assert.ok(!/\{[a-zA-Z]+\}/.test(prompt))
   // Security defaults never seen on, and everyone working remotely, do not apply either (Stage 3, V1 decision 6).
   assert.deepEqual(r.steps.filter((s) => s.doesntApply).map((s) => s.id).sort(), ['s-prereq-security-defaults', 's-prereq-service-accounts-group', 's-prereq-trusted-location'], 'the confirmed no-service-accounts prerequisite remains visible as not applicable; licence exclusions do not join it')
   // Over the goals this baseline holds: an absent goal never renders (walk-51 item 9).

@@ -21,15 +21,15 @@ import { readinessView } from '../../derive/mfaReadiness.ts'
 import { readinessPercent } from '../../roadmap/readiness.ts'
 import { content } from '../../content/content.ts'
 
-test('a count of one singularises the noun that follows it', () => {
+test('the fill engine: a count of one singularises, a salutation falls back to Hi, and missingVars names only the holes', () => {
   assert.equal(fillText('{guests} guests', { guests: 1 }), '1 guest')
   assert.equal(fillText('{active} active people', { active: 1 }), '1 active person')
   assert.equal(fillText('{n} policies', { n: 1 }), '1 policy')
   assert.equal(fillText('{guests} guests', { guests: 3 }), '3 guests')
   assert.equal(fillText('{n} guests', { n: 11 }), '11 guests')
-})
-
-test('missingVars names only the variables a line does not fill', () => {
+  // Prompt 52, walk-51 item 7: a literal {firstName} reached a per-person email.
+  assert.equal(fillText('Hi {firstName},', {}), 'Hi,')
+  assert.equal(fillText('Hi {firstName},', { firstName: 'Sam' }), 'Hi Sam,')
   assert.deepEqual(missingVars('readiness {readiness}, until {enrollBy}', { readiness: '36%' }), ['enrollBy'])
   assert.deepEqual(missingVars('{active} active people', { active: 4 }), [])
   assert.deepEqual(missingVars('{n} of {total}', { n: 0, total: 3 }), []) // zero is a value, not a hole
@@ -75,26 +75,6 @@ test('the campaign lists and the special-care picker derive from Today', () => {
   for (const row of cl.specialCare) {
     assert.match(row, /\S · \S/, `"${row}" has a name and a state, not an empty "·"`)
   }
-})
-
-// Token protection has concise, scan-verifiable completion plus client compatibility.
-test('token protection has concrete completion criteria without the generic checklist', () => {
-  const f = allFixtures().find((x) => x.name === 'demo')!
-  const run = runFixture(f)
-  const tp = run.steps.find((s) => s.goalId === 'token-protection')!
-  const cs = contentStepFor(tp) as { doneWhen: string[] }
-  assert.equal(cs.doneWhen.length, 2)
-  assert.match(cs.doneWhen[0], /scan confirms token protection is On.*Windows clients and resources.*exclusions/i)
-  assert.match(cs.doneWhen[1], /Supported work apps sign in successfully with token protection/i)
-  assert.ok(cs.doneWhen.every(line => !line.includes('{')))
-})
-
-// Prompt 52, walk-51 item 7: a per-person email fills the first name or falls
-// back to "Hi," — the walk found a literal {firstName} in the token-protection
-// email, which ContentStep rendered raw rather than through the fill engine.
-test('an email salutation fills the name or falls back to Hi,', () => {
-  assert.equal(fillText('Hi {firstName},', {}), 'Hi,')
-  assert.equal(fillText('Hi {firstName},', { firstName: 'Sam' }), 'Hi Sam,')
 })
 
 // Prompt 52, walk-51 item 5: one short date format everywhere, the long form

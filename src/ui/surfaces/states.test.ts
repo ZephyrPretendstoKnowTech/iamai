@@ -31,9 +31,7 @@ test('every step on every fixture carries exactly one of the status words', () =
     // A held report-only policy reads its stage and its condition (correction batch 1.1): "Report-only · Blocked".
     for (const s of runFixture(f).steps) assert.ok(WORDS.has(statusOf(s).word) || /^Report-only · \S/.test(statusOf(s).word), `${f.name} ${s.id} → ${statusOf(s).word}`)
   }
-})
-
-test('a re-scan that tracked policies moves rows to Report-only and Enforced (midflight)', () => {
+  // A re-scan that tracked policies moves rows to Report-only and Enforced (midflight).
   const r = runFixture(fixture('midflight'))
   const words = new Set(r.steps.map((s) => statusOf(s).word))
   assert.ok(words.has('Enforced'), 'a tracked enforced policy reads Enforced')

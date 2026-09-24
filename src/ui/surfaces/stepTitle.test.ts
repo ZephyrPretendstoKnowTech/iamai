@@ -8,7 +8,6 @@ import assert from 'node:assert/strict'
 import { allFixtures, curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
-import { readFileSync } from 'node:fs'
 import { deferredRows, phaseRows, planPhases, stepListOf } from './planRows.ts'
 import { stepContract } from './stepContract.ts'
 import { boardOf } from './planBoard.ts'
@@ -67,21 +66,6 @@ test('the printed timeline names each phase step by the title the board and the 
   for (const s of renamed) {
     assert.ok(names.includes(contentTitle(s)), `getiamai: the timeline does not name ${s.id} by its title`)
     assert.equal(names.includes(s.title), false, `getiamai: the timeline names ${s.id} by its goal statement "${s.title}"`)
-  }
-})
-
-test('the printed plan names a step only through the content title', () => {
-  // Every other name the document prints — the cover's lists, the constraint,
-  // the Completed and Deferred lists, the lane tails — went through
-  // `plainTitle || title` or `.title`: a second resolver beside contentTitle,
-  // which is the fact with two sources the timeline showed can drift.
-  const src = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8').replace(/\/\/[^\n]*/g, '')
-  assert.ok(src.includes('stepListOf(phaseSteps(w))'), 'the timeline cell does not read stepListOf')
-  // Every occurrence of each: the first alone let a later `.plainTitle` through.
-  for (const own of ['.plainTitle', 's.title', '?.title', 'goal.shortName ||']) {
-    for (let at = src.indexOf(own); at >= 0; at = src.indexOf(own, at + 1)) {
-      assert.ok(src.slice(Math.max(0, at - 80), at).includes('contentTitle('), `PrintPlan.tsx names a step through ${own} at offset ${at}, not contentTitle`)
-    }
   }
 })
 

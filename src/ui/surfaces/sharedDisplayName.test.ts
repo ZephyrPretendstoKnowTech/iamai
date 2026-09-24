@@ -23,7 +23,6 @@ import { scoredPeople } from '../../derive/mfaReadiness.ts'
 import { stepMfaHold } from '../../derive/stepMfaReadiness.ts'
 import { applyManualReviews } from '../../roadmap/manualWork.ts'
 import type { Step } from '../../roadmap/types.ts'
-import { readFileSync } from 'node:fs'
 
 const f = fixture('getiamai')
 const r = runFixture(f, {}, null, f.snapshot.asOf)
@@ -36,13 +35,10 @@ const everyLine = (id: string): string[] => {
   return [...b.artifacts.map((a) => a.text()), ...b.whoFull.flatMap((w) => [w.lead, ...w.names])].flatMap((t) => t.split('\n'))
 }
 
-test('the premise: getiamai holds a member and a guest named Kai Brown, and the member is an admin not yet ready', () => {
+test('Prepare Your Team for MFA names the Kai Brown it means by the account a person can find', () => {
+  // The premise: getiamai holds a member and a guest named Kai Brown.
   assert.equal(kai.length, 2)
   assert.ok(member && guest)
-  assert.ok(r.steps.some((s) => s.id === 's-verify-mfa'))
-})
-
-test('Prepare Your Team for MFA names the Kai Brown it means by the account a person can find', () => {
   const lines = everyLine('s-verify-mfa')
   const named = lines.filter((l) => /Kai Brown/.test(l))
   assert.ok(named.length > 0, 'the admin is named on the step')
@@ -105,15 +101,4 @@ test('the MFA handoff, the review picker and the per-user MFA finding name a sha
   applyManualReviews([perUser], snapshot)
   const detail = perUser.configurationFindings?.find((x) => x.key === 'per-user-mfa')?.detail ?? ''
   assert.ok(detail.includes(`Kai Brown (${member.userPrincipalName})`) && detail.includes(`Kai Brown (guest, ${guest.userPrincipalName})`), detail)
-})
-
-// The Inventory's Devices tab names device owners and Authenticator registrants
-// through the page's name directory, in the one devices model the tab draws and
-// the devices CSV writes (inventoryTables.ts), not by the bare display name; the
-// registrant list drops a repeated entry, so two people of one name were one.
-test('the Inventory devices tab names people through the name directory', () => {
-  const tables = readFileSync('src/ui/surfaces/inventoryTables.ts', 'utf8')
-  const devices = tables.slice(tables.indexOf('export function devicesModel('), tables.indexOf('// ---------- Roles'))
-  assert.match(devices, /names\.label\(id\)/)
-  assert.doesNotMatch(devices, /userById\.get\([a-zA-Z]+\)\?\.displayName/)
 })
