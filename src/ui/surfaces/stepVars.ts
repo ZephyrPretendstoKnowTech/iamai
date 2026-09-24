@@ -16,6 +16,8 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { absoluteDate, longDate } from '../../copy/dates.ts'
 import { count, list } from '../../copy/statements.ts'
+import { personLabels } from '../../names.ts'
+import { NAMES_INLINE } from './whoBlocks.ts'
 import { countryName } from '../../mapping/countries.ts'
 import { hoursAsDuration, needsPasskey, sessionWantedForGoal, sessionWantedLongForGoal, strengthForGoal, strengthNameOf, promptsPersonForGoal, pairBaselineNames } from './stepPortal.ts'
 import { hoursInWords } from '../../coverage/verdict.ts'
@@ -43,7 +45,7 @@ import { fillText } from '../../content/render.ts'
 import { QUESTION_STEP, answerOf, devicePlanOf } from '../../roadmap/answers.ts'
 import { nobodyAffected } from '../../roadmap/timing.ts'
 import { SERVICE_ACCOUNTS_TRUSTED_GOAL } from '../../roadmap/generate.ts'
-import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
+import { PER_USER_MFA_STEP_ID, PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { planProposedNames, proposedNamesFor } from './proposedNames.ts'
 import { policyPairNames } from '../../coverage/naming.ts'
 import type { ProposedObjectNames } from './proposedNames.ts'
@@ -353,6 +355,26 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     // the task selects them and the completion names them, from one list.
     const methods = strengthMethodNames(step.authenticationStrengthTarget?.allowedCombinations ?? [])
     if (methods.length > 0) v.strengthMethods = list(methods)
+  }
+
+  // Turn Off Security Defaults: the policies it turns on in the same change, in
+  // the Plan's order, one task line each (roadmap/enforceWaits.ts noteTurnOns;
+  // walk list 4.x item 8). A policy not on the plan leaves its line undrawn.
+  for (const [i, t] of (step.turnsOn ?? []).entries()) v[`turnOn${i + 1}`] = t.policy
+
+  // Finish Moving Off Per-User MFA: the accounts the scan reads on (its
+  // population, roadmap/manualWork.ts), counted on its card and, five or fewer,
+  // named with their sign-in addresses on the card and in its task (walk list
+  // 4.x items 55 and 57).
+  if (step.id === PER_USER_MFA_STEP_ID && step.population.ids.length > 0) {
+    const ids = step.population.ids
+    v.perUserOn = count(ids.length, 'account')
+    if (ids.length <= NAMES_INLINE) {
+      const labels = personLabels(ctx.snapshot.users, { address: true })
+      const names = ids.map((id) => labels.get(id) ?? ctx.nameOf(id))
+      v.perUserNames = names.join(', ')
+      v.perUserNamed = list(names)
+    }
   }
 
   // Define the Trusted Network: the office ranges its task adds (the ranges

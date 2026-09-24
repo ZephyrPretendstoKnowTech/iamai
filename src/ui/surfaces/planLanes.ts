@@ -89,6 +89,13 @@ const CHECK_WORK: Readonly<Record<string, Substatus>> = {
   's-check-separate-admin-accounts': 'Create',
 }
 
+/**
+ * Preparation steps that turn a tenant setting off and create nothing: Turn Off
+ * Security Defaults and Finish Moving Off Per-User MFA read Ready, never Ready ·
+ * Create (walk list 4.x item 55, as section 3 item 18).
+ */
+const TURNS_OFF: ReadonlySet<string> = new Set(['s-prereq-security-defaults', 's-prereq-per-user-mfa'])
+
 export type LaneReading = {
   lane: Lane
   substatus: Substatus | null
@@ -482,6 +489,7 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
     // campaign says its own work (CHECK_WORK), and one with nothing to review or
     // create reads Ready.
     else if (reading?.lane === 'Ready' && reading.substatus === 'Create' && (step.kind === 'check' || step.kind === 'verify')) reading.substatus = CHECK_WORK[step.id] ?? null
+    else if (reading?.lane === 'Ready' && reading.substatus === 'Create' && TURNS_OFF.has(step.id)) reading.substatus = null
   }
   // One wait, said once (docs/plans/step-redundancy-analysis.md finding 3), on
   // the reading the second tile producer reads. A policy held by "Define the

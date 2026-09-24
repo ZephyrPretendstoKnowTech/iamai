@@ -419,19 +419,23 @@ export function cardWordsOf(step: CardStep): { subject: string; check: string | 
  *   where each thing the step works on is a card of its own (Use Separate
  *   Accounts for Admin Work: one card per admin to move), so the step draws no
  *   card of its own while it is open;
- * - `detail: null`, no second line under the title;
+ * - `detail: null`, no second line under the title; a `detail` string is that
+ *   line where the scan holds every value it names, and no line where it does
+ *   not (Finish Moving Off Per-User MFA names five accounts or fewer, walk list
+ *   4.x item 55);
  * - `pointer`, the open card points at the step's task by its title;
  * - `satisfied`, the fact the Satisfied card states ("2 kept · 7 disabled";
  *   3.7's "Core - Exception - Service accounts · 2 members"), in place of the
  *   state word, where the scan holds every value it names.
  * Null for a step whose card says none of these, which keeps the card it always had.
  */
-export type OwnCardWords = { check: string | null; noDetail: boolean; pointer: boolean; satisfied: string | null }
+export type OwnCardWords = { check: string | null; noDetail: boolean; detail: string | null; pointer: boolean; satisfied: string | null }
 export function ownCardWordsOf(step: CardStep, ex: Record<string, unknown>): OwnCardWords | null {
   const card = entryOf(step)?.card as { check?: unknown; detail?: unknown; pointer?: unknown; satisfied?: unknown } | null | undefined
   if (!card || !('detail' in card || 'pointer' in card || 'satisfied' in card)) return null
   const filled = (s: unknown): string | null => (typeof s === 'string' && whole(s, ex) ? fillText(s, ex) : null)
-  return { check: filled(card.check), noDetail: card.detail === null, pointer: card.pointer === true, satisfied: filled(card.satisfied) }
+  const detail = filled(card.detail)
+  return { check: filled(card.check), noDetail: card.detail === null || (typeof card.detail === 'string' && detail === null), detail, pointer: card.pointer === true, satisfied: filled(card.satisfied) }
 }
 
 /**
@@ -734,7 +738,7 @@ export function policyCardsOf(contract: StepContract, projected: EmergencyTaskPr
       // action (Foundation B's milestone where nothing overrules it, and the more
       // specific sentence where something does — "this policy names an object
       // Contoso does not have yet", "in place already: nothing to create").
-      detail: words !== null && (words.noDetail || (satisfied && words.satisfied !== null)) ? '' : contract.whatToDo.text,
+      detail: words !== null && (words.noDetail || (satisfied && words.satisfied !== null)) ? '' : words?.detail ?? contract.whatToDo.text,
       instruction: satisfied ? '' : words?.pointer && task !== null ? followTask(task.title) : directed === null || !pointer ? '' : followTask(directed.title),
       // The rollout lifecycle is not a list of checks anybody completed, and
       // stages left are not checks remaining (S4-5): the card claims neither.

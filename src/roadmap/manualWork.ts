@@ -5,10 +5,7 @@ import { GLOBAL_ADMIN_ROLE_ID } from './ladder.ts'
 import type { TenantSnapshot, UserRow } from '../graph/collect/types.ts'
 import type { OwnerConfirmation, ManualEvidenceField } from './decisions.ts'
 import { setState } from './lifecycle.ts'
-import type { ConfigurationFinding, Step } from './types.ts'
-import { engine } from '../content/content.ts'
-import { fillText } from '../content/render.ts'
-import { count } from '../copy/statements.ts'
+import type { Step } from './types.ts'
 import type { MappingState } from '../mapping/types.ts'
 import { QUESTION_STEP, answerOf } from './answers.ts'
 import { namedAccounts, population, populationIndex } from '../derive/population.ts'
@@ -205,13 +202,6 @@ export function completeManualEvidence(stepId: string, record: OwnerConfirmation
 /** Review only facts material to this task, not every scan timestamp. */
 export function manualBasis(step: Step, snapshot: TenantSnapshot, mapping?: MappingState, accountCache?: Map<string, string>): string {
   if (SCOPED_MANUAL.has(step.id)) return scopedBasis(step, snapshot, mapping, undefined, accountCache)
-  if (['s-prereq-per-user-mfa', 's-ladder-per-user-mfa-cleanup'].includes(step.id)) {
-    const policies = (snapshot.config.caPolicies?.rows ?? []).filter(raw => {
-      const p = raw as Record<string, any>
-      return p.grantControls?.authenticationStrength || p.grantControls?.builtInControls?.includes('mfa')
-    }).map(raw => { const p = raw as Record<string, unknown>; return [p.id, p.state, p.conditions, p.grantControls] }).sort((a, b) => String(a[0]).localeCompare(String(b[0])))
-    return JSON.stringify(['per-user-mfa-review', snapshot.users.map(u => [u.id, u.accountEnabled]).sort(), snapshot.perUserMfa ?? null, snapshot.config.authMethodsPolicy?.rows, snapshot.config.securityDefaults?.rows, policies])
-  }
   if (step.id === 's-shared-devices') {
     const byId = (a: Record<string, unknown>, b: Record<string, unknown>) => String(a.id).localeCompare(String(b.id))
     const policies = relevantPolicies(step, snapshot)
@@ -241,53 +231,26 @@ function indexFor(step: Step, snapshot: TenantSnapshot, index: PopulationIndex |
 
 /**
  * What this scan read of legacy per-user MFA, the one reading of it: the
- * accounts read as Enabled or Enforced, the accounts whose state was not read,
- * and whether the read is clean — the Users read ok, a per-user reading
- * present, no account unknown, none Enabled or Enforced. Only a clean read
- * leaves Finish Moving Off Per-User MFA off the plan (generate.ts); anything
- * short of it keeps the step, because unknown is never hidden
- * (v2-research/peruser.md).
+ * accounts read as Enabled or Enforced. Finish Moving Off Per-User MFA is on the
+ * plan once a scan has read one (generate.ts; progress.ts perUserMfaSeenOnAtOf),
+ * and complete once none is (walk list 4.x items 9 and 54). A scan reads every
+ * account's state (graph/collect/registry.ts), so the step never asks anyone to
+ * check a state IAMAI reads.
  */
-export function perUserMfaReading(snapshot: Pick<TenantSnapshot, 'users' | 'perUserMfa' | 'sources'>): { enabled: UserRow[]; unknown: UserRow[]; clean: boolean } {
+export function perUserMfaReading(snapshot: Pick<TenantSnapshot, 'users' | 'perUserMfa'>): { enabled: UserRow[] } {
   const byId = snapshot.perUserMfa
-  const enabled = snapshot.users.filter(u => ['enabled', 'enforced'].includes(byId?.[u.id]?.state ?? 'unknown'))
-  const unknown = snapshot.users.filter(u => !byId?.[u.id] || byId[u.id].state === 'unknown')
-  const clean = snapshot.sources.users?.status === 'ok' && !!byId && unknown.length === 0 && enabled.length === 0
-  return { enabled, unknown, clean }
+  return { enabled: snapshot.users.filter(u => ['enabled', 'enforced'].includes(byId?.[u.id]?.state ?? '')) }
 }
 
 /**
- * The Legacy Per-User MFA tile, in content.json's words (shared.engine.perUserMfa)
- * with its counts through count(). Per-user MFA is a state of every account in
- * the directory, the emergency accounts included, so where the scan read none of
- * them the count is the whole directory, and the tile says that is what it is:
- * "4902 accounts need a per-user state check" sat beside 4,900 on every other
- * step with nothing to say why, no separator, and "1 accounts" waiting for a
- * directory of one (R4-54).
+ * When a scan of this plan first read an account with legacy per-user MFA on
+ * (PlanDecisions.perUserMfaSeenOnAt; progress.ts securityDefaultsSeenOnAtOf is its twin): the date already recorded, else this
+ * scan's own time where it read one Enabled or Enforced, else null. A recorded
+ * date is never replaced (walk list 4.x item 9).
  */
-function perUserMfaFinding(snapshot: TenantSnapshot, enabled: readonly UserRow[], unknown: readonly UserRow[]): ConfigurationFinding {
-  const W = engine.perUserMfa
-  const usersRead = snapshot.sources.users?.status === 'ok'
-  const accounts = (n: number): string => count(n, 'account')
-  const value = enabled.length ? fillText(W.valueOn, { accounts: accounts(enabled.length) }) : !usersRead || unknown.length ? W.valueUnread : W.valueOff
-  // The names are what the scan read as Enabled or Enforced. Where it could not
-  // read every state (the collector leaves a throttled or failed sub-request
-  // 'unknown', graph/collect/collectors.ts) the tile says how many it did not
-  // read beside them: "3 accounts Enabled or Enforced" over three names read as
-  // the complete list while 2,000 states were never read, and the step had no
-  // other line saying so.
-  // By the one naming rule (names.ts personLabels): a display name another account shares carries its address.
-  const labels = personLabels(snapshot.users)
-  const names = enabled.map(u => labels.get(u.id) || u.userPrincipalName || u.id).join(', ')
-  const notRead = !usersRead ? W.detailUsersUnread : unknown.length ? fillText(W.detailUnreadSome, { accounts: accounts(unknown.length) }) : null
-  const detail = enabled.length
-    ? notRead === null ? names : `${names}. ${notRead}`
-    : !usersRead
-      ? W.detailUsersUnread
-      : unknown.length
-        ? fillText(unknown.length === snapshot.users.length ? W.detailUnreadAll : W.detailUnreadSome, { accounts: accounts(unknown.length) })
-        : W.detailOff
-  return { key: 'per-user-mfa', label: W.label, value, detail, outcome: enabled.length ? 'fail' : !usersRead || unknown.length ? 'unknown' : 'pass' }
+export function perUserMfaSeenOnAtOf(recorded: string | null | undefined, snapshot: Pick<TenantSnapshot, 'asOf' | 'users' | 'perUserMfa'>): string | null {
+  if (typeof recorded === 'string' && recorded !== '') return recorded
+  return perUserMfaReading(snapshot).enabled.length > 0 ? snapshot.asOf : null
 }
 
 /**
@@ -319,23 +282,19 @@ export function applyManualReviews(steps: Step[], snapshot: TenantSnapshot, conf
     }
     const perUser = step.id === 's-prereq-per-user-mfa' || item === 'per-user-mfa-cleanup'
     if (perUser) {
-      const { enabled, unknown, clean } = perUserMfaReading(snapshot)
-      step.configurationFindings = [perUserMfaFinding(snapshot, enabled, unknown)]
+      const { enabled } = perUserMfaReading(snapshot)
       // The accounts the scan read as Enabled or Enforced, active or not, the
-      // emergency accounts among them: the step names them, and they are its
-      // impact (namedAccounts). "Active" here meant "the account is enabled".
+      // emergency accounts among them: the step names them on its one card, and
+      // they are its impact (namedAccounts; walk list 4.x item 55). Nothing is
+      // recorded by hand: the scan reads each state, and the step is complete
+      // once none reads on (item 9).
       step.population = namedAccounts(enabled.map(u => u.id), indexFor(step, snapshot, index))
-      if (clean) {
-        delete step.manualReview
-        step.deliveredBy = ['The scan read every account and found legacy per-user MFA disabled.']
+      delete step.manualReview
+      if (enabled.length === 0) {
+        step.deliveredBy = ['The scan read legacy per-user MFA as Disabled for every account.']
         setState(step, { satisfied: true, inPlace: true })
-        continue
-      }
-      if (enabled.length > 0) {
-        delete step.manualReview
-        setState(step, { satisfied: false, inPlace: false })
-        continue
-      }
+      } else setState(step, { satisfied: false, inPlace: false })
+      continue
     }
     if (item === 'guest-review' && snapshot.sources.users?.status === 'ok' && !snapshot.users.some(u => u.userType === 'guest')) {
       setState(step, { satisfied: true, inPlace: true })
@@ -356,10 +315,7 @@ export function applyManualReviews(steps: Step[], snapshot: TenantSnapshot, conf
     const basis = manualBasis(step, snapshot, mapping, accountCache)
     // A record saved under the ladder's own id before its rung was merged into
     // this step still counts (finding 9): the two were one step's evidence.
-    const alias = step.id === 's-prereq-per-user-mfa' ? 's-ladder-per-user-mfa-cleanup'
-      : step.id === 's-ladder-per-user-mfa-cleanup' ? 's-prereq-per-user-mfa'
-      : step.id === 's-check-dormant-accounts' ? 's-ladder-stale-accounts'
-      : null
+    const alias = step.id === 's-check-dormant-accounts' ? 's-ladder-stale-accounts' : null
     const confirmation = confirmations[step.id]?.[MANUAL_REVIEW_ID] ?? (alias ? confirmations[alias]?.[MANUAL_REVIEW_ID] : undefined)
     const readyToConfirm = item === 'global-admin-count' ? evidenceRead(step, snapshot) : POLICY_WORKFLOWS[step.id] ? step.state.satisfied : !SCAN_REQUIRED.has(item) || step.state.satisfied
     const confirmedAt = readyToConfirm && confirmation?.basis === basis && Date.parse(confirmation.at) <= Date.now() ? confirmation.at : null

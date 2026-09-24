@@ -192,8 +192,6 @@ export type EngineWords = {
   cohort: { people: string; guests: string; both: string }
   /** Who the sign-in records show using what Block Legacy Authentication and Block Device Code Sign-in stop (roadmap/blockSignIns.ts); {n} is a count. */
   blockSignIns: { legacyLabel: string; legacySome: string; legacyNone: string; deviceCodeLabel: string; deviceCodeSome: string; deviceCodeNone: string; more: string }
-  /** The Legacy Per-User MFA tile (roadmap/manualWork.ts); {accounts} is a count() of accounts. */
-  perUserMfa: { label: string; valueOn: string; valueUnread: string; valueOff: string; detailUsersUnread: string; detailUnreadAll: string; detailUnreadSome: string; detailOff: string }
   /** Why an existing policy that is the goal's policy does not put it in place (coverage/coverage.ts). */
   coverage: {
     reason: { exclusionMissing: string; conditionsNarrower: string; guestTypes: string }
