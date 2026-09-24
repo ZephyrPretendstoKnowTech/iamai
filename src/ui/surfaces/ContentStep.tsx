@@ -47,7 +47,7 @@ import { exclusionsPickerLabel, filterPickerObjects, initialPicked, matchedNoteO
 import type { PickerObject } from './pickerRows.ts'
 import { answerParts, answerText, optionsOf, questionFor, valueSource } from './stepQuestion.ts'
 import type { QuestionOption } from './stepQuestion.ts'
-import { answerKey } from '../../roadmap/decisions.ts'
+import { answerKey, decisionKeyOf } from '../../roadmap/decisions.ts'
 import { SPECIAL_CARE_STEP_ID, answerOf, effectLine } from '../../roadmap/answers.ts'
 import { commsFor, datesLineFor, managerText, decisionLine } from './stepExport.ts'
 import { stepVars } from './stepVars.ts'
@@ -58,6 +58,7 @@ import type { ImplementationEmpty, LaneView, PrerequisiteBlocker, PrerequisiteLa
 import { HARDENING_DEFERRAL_ID } from '../../validation/emergencyTiers.ts'
 import { AuthoredText, DoneWhen, EmergencySlotBody, PolicyMembers, ReadinessSection, StepActionColumn, StepDialog, StepFooter, StepHead, StepSection, StepState, WHY_LINK_SHOWN, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
 import { MfaHandoff } from './MfaHandoff.tsx'
+import { TEAM_READINESS_HREF } from './prepareSteps.ts'
 import { HEAD, decisionHeadingsOf, taskHeadingsOf } from './stepHeadings.ts'
 import { ApproveAnswers, DirectionQuestions, useDirectionDraft } from './DirectionQuestions.tsx'
 import { ANSWERED_IN } from '../../roadmap/direction.ts'
@@ -75,6 +76,7 @@ import { emergencyTaskFacts, emergencyTaskSteps, emergencyTaskText } from './eme
 import type { EmergencyAccountTask, EmergencyTaskProjection } from './emergencyAccountTasks.ts'
 import { consolidateEmergencyReadiness, emergencySubjectsOf } from './emergencyReadiness.ts'
 import { cardWordsOf, drawsTaskAnatomy, policyBarOf, policySubjectsOf, taskSubjectOf } from './policyTasks.ts'
+import { DORMANT_WORDS, lastSignInWords } from './sectionThreeTasks.ts'
 import type { EmergencyFact, EmergencySubjectTile } from './emergencyReadiness.ts'
 import type { ApprovedModel } from '../../roadmap/emergencyJourney.ts'
 import { operatorExclusionsDecision } from '../../mapping/safetyChoice.ts'
@@ -284,7 +286,7 @@ export function ContentStep({
   // sections this step draws and the words under Implementation when it draws
   // none. Everything below renders it; nothing below asks again.
   const body = stepBodyOf(step, ctx, { lane, blockers, prerequisiteLabel, confirmations, baselineCommit, enforceWaits })
-  const { cs, ex, laneView, contract, title, d, taskDecision, reason, conflictWords, pkg, pkgBindings, pkgRuntime, pkgReadiness, scenarios, packaged, whoInline, whoHeld, lead, showWho, whoFull, hasEvidence, readiness, allTiles, decides, instructed, rail, eyebrow, artifacts, emergencyAccountTasks, previewNote, notes, showImplementation, empty, sourceLine, learnUrl, ifWrong } = body
+  const { cs, ex, laneView, contract, title, d, taskDecision, reason, conflictWords, pkg, pkgBindings, pkgRuntime, pkgReadiness, scenarios, packaged, whoInline, whoHeld, lead, showWho, whoFull, hasEvidence, readiness, allTiles, decides, instructed, rail, eyebrow, artifacts, emergencyAccountTasks, ownCard, prepareCard, previewNote, notes, showImplementation, empty, sourceLine, learnUrl, ifWrong } = body
   const isPasskeySettings = step.id === 's-prereq-passkey-settings'
   const isEmergencyAccounts = step.id === 's-prereq-break-glass'
   // Which steps draw the task anatomy (the Tasks Remaining cards and the
@@ -329,7 +331,7 @@ export function ContentStep({
   // tiles — each of them a thing it waits on — everywhere this module produces
   // the subjects, and the Readiness tiles alone on Emergency Access Steps 2–3.
   // The bar reads them, so they are decided once.
-  const taskSubjects = isOwnTaskStep ? policySubjectsOf(contract, displayedReadiness, emergencyAccountTasks, taskSubjectOf(step, eyebrow, title), cardWordsOf(step)?.check ?? null) : emergencySubjectsOf(displayedReadiness, emergencyAccountTasks)
+  const taskSubjects = isOwnTaskStep ? policySubjectsOf(contract, displayedReadiness, emergencyAccountTasks, taskSubjectOf(step, eyebrow, title), cardWordsOf(step)?.check ?? null, ownCard, prepareCard) : emergencySubjectsOf(displayedReadiness, emergencyAccountTasks)
   const emergencyTaskPreferenceKey = `iamai:emergency-task:${ctx.mapping.tenantId}:${step.id}`
   const [implementationChannel, setImplementationChannel] = useState<Channel | null>(null)
   const [emergencyTaskId, setEmergencyTaskId] = useState<string | null>(() => readEmergencyTaskPreference(emergencyTaskPreferenceKey).taskId ?? null)
@@ -481,7 +483,7 @@ export function ContentStep({
               )
             }}
           >
-            {step.id === 's-verify-mfa' ? <p><a href="#/readiness/step/s-verify-mfa">Open MFA Readiness</a></p> : <MfaHandoff step={step} snapshot={ctx.snapshot} mapping={ctx.mapping} />}
+            {step.id === SPECIAL_CARE_STEP_ID ? <p><a href={TEAM_READINESS_HREF}>{String(cs.card?.link ?? '')}</a></p> : <MfaHandoff step={step} snapshot={ctx.snapshot} mapping={ctx.mapping} />}
           </ReadinessSection>}
 
           {/* The baseline defines this policy two ways (roadmap/baselineConflict.ts):
@@ -509,9 +511,9 @@ export function ContentStep({
             a person has (Foundation C). */}
         <StepActionColumn rail={rail}>
           {decisionHead && !printing && <ApproveAnswers draft={directionDraft} onDecide={onDecide} saving={saveStatus === 'saving'} />}
-          {/* A question that moved to Define Your Rollout Scope is answered there, and this step draws nothing in its place: no Answered in block (walk list item 19; roadmap/direction.ts ANSWERED_IN). */}
+          {/* A question that moved to Define Your Rollout Scope is answered there, and this step draws nothing in its place: no Answered in block (walk list item 19; roadmap/direction.ts ANSWERED_IN). A step whose own picker saves under a key of its own still draws it: Create or Correct Service Accounts Group's group picker (decisions.ts decisionKeyOf). */}
           {/* The picker is the step's own, or — on a step that makes an object itself and asks nothing of its own — the object's, saved under the object's id (stepBody.ts taskDecision; Stage 3: the countries location's Work Countries, on the countries step). */}
-          {ANSWERED_IN[step.id] ? null : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && <Decision key={step.id} d={taskDecision?.d ?? d} ex={taskDecision?.ex ?? ex} saved={taskDecision ? objectTask?.saved ?? null : decision} onDecide={taskDecision ? objectTask?.onDecide : onDecide} stepId={taskDecision?.stepId ?? step.id} ctx={ctx} printing={printing} railInstruction={!taskDecision && rail.instruction !== null} />}
+          {ANSWERED_IN[step.id] && decisionKeyOf(step.id) === step.id ? null : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && <Decision key={step.id} d={taskDecision?.d ?? d} ex={taskDecision?.ex ?? ex} saved={taskDecision ? objectTask?.saved ?? null : decision} onDecide={taskDecision ? objectTask?.onDecide : onDecide} stepId={taskDecision?.stepId ?? decisionKeyOf(step.id)} ctx={ctx} printing={printing} railInstruction={!taskDecision && rail.instruction !== null} />}
           {step.id === SPECIAL_CARE_STEP_ID && (followUp || printing) && <FollowUpDecision key={`${step.id}:follow-up`} step={step} ctx={ctx} saved={followUp?.saved ?? null} onDecide={followUp?.onDecide} printing={printing} />}
           {/* The one thing a scan cannot see, recorded where every other control
               on a step is (owner, 2026-09-20). It used to stand in the main
@@ -1137,7 +1139,13 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false,
   // as ever (pickerRows.ts pickerSaves). Where the picker is the decision's
   // only input no Save button stands beside it (pickerSavesAlone).
   const saves = pickerSaves(d, stepId)
-  const savesAlone = hasPicker && pickerSavesAlone(d, stepId)
+  // A pre-filled match nobody has saved (initialPicked `matched`: the service
+  // accounts group the scan found holding exactly the picked accounts) keeps its
+  // Save, so the chip it opens with is saved with one press; once saved it is
+  // an ordinary chip.
+  const prefilled = initial.matched.length > 0
+  const savesAlone = hasPicker && pickerSavesAlone(d, stepId) && !prefilled
+  const shownChips = prefilled ? chips : chips.map((c) => (c.badge === app.picker.matched ? { ...c, badge: undefined } : c))
   const save = (picked: PickerOption[] = chips): void => {
     if (!canSaveWith(picked)) return
     onDecide?.({
@@ -1182,7 +1190,7 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false,
             the heading over nothing. */}
         {(hasPicker || isNetwork) && !remote && (printing && initial.defaulted && !isExclusionsGroup
           ? <p className="reason">{printedDefaultLine(chips.map((c) => c.name))}</p>
-          : <Picker labelledBy={`${base}-decision`} selected={chips} options={results} suggestions={isNetwork ? nominated.slice(0, 3) : nominated} onChange={setChips} onSearch={setQuery} single={single} readOnly={stepId === SPECIAL_CARE_STEP_ID} onCommit={saves ? (picked) => save(picked) : undefined} />)}
+          : <Picker labelledBy={`${base}-decision`} selected={shownChips} options={results} suggestions={isNetwork ? nominated.slice(0, 3) : nominated} onChange={setChips} onSearch={setQuery} single={single} readOnly={stepId === SPECIAL_CARE_STEP_ID} onCommit={saves ? (picked) => save(picked) : undefined} />)}
         {isNetwork && !remote && chips.length === 0 && <div className="decision-fields">
           {universe.length === 0 && <p className="reason">{ctx.snapshot.config.namedLocations?.status === 'ok' ? 'No IP named locations were found in this scan.' : 'Named locations could not be fully read. Scan again to load existing office networks.'}</p>}
           <div className="decision-field"><label htmlFor={`${base}-network-name`}><strong>Office Network Name</strong></label><input type="text" id={`${base}-network-name`} value={networkName} onChange={e => setNetworkName(e.target.value)} /></div>
@@ -1449,20 +1457,17 @@ function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onD
 }
 
 /**
- * Disable or Confirm Dormant Accounts, as one control.
+ * Disable or Confirm Dormant Accounts, as one control: the accounts the person
+ * keeps (walk list items 22, 23, 28, 29).
  *
- * It drew a dropdown and a text box per account — two controls on the demo, and
- * **1,462 on a directory with 731 dormant accounts**, in the action column of one
- * step. Nobody works a list that long through a form (owner, 2026-09-20: if a
- * step looks like too much, it is).
- *
- * Only one of the three answers was ever needed here. The step completes when
- * every listed account is disabled, active again, or kept with a recorded reason
- * (generate.ts), and the first two the scan sees for itself — an account
- * disabled in Entra reads back disabled. "Investigate" clears nothing. So the
- * only thing a person has to tell IAMAI is which accounts they are **keeping**,
- * and why: the picker Establish Emergency Access already uses for exactly this
- * shape of answer, and one reason for the set.
+ * The step completes when every dormant account is disabled, signs in again, or
+ * is kept (generate.ts), and the first two the scan sees for itself. So the one
+ * thing a person tells IAMAI is which accounts they keep, and the picker's Done
+ * saves it: an account taken off the picker is no longer kept. There is no
+ * reason to give, because IAMAI never read one, and no Save beside it. Nothing
+ * is suggested, because no fact picks an account to keep; each option says when
+ * the account last signed in. The instruction stands in the rail's slot above it
+ * (stepBody.ts), and a finished step with nothing listed draws nothing.
  */
 /**
  * The campaign's "Turn on without them for now" list (roadmap/followUp.ts, owner
@@ -1484,40 +1489,28 @@ function FollowUpDecision({ step, ctx, saved, onDecide, printing }: { step: Step
   const results = options.filter((o) => o.name.toLowerCase().includes(query.toLowerCase()))
   return <div className="decision">
     <h5 className="dlabel" id={labelId}>{F.pickerLabel}</h5>
-    <p className="reason">{F.pickerHelp}</p>
-    <Picker labelledBy={labelId} selected={picked} options={results} suggestions={options.slice(0, 3)} onSearch={setQuery} onChange={setPicked} onCommit={(next) => onDecide?.({ picked: next.map((o) => o.id) })} />
+    {/* Its instruction is the action column's (stepBody.ts rail.instruction), and nothing is suggested: no fact picks anyone, so the list holds everyone not ready (walk list section 3 items 17 and 22). */}
+    <Picker labelledBy={labelId} selected={picked} options={results} suggestions={[]} listAll onSearch={setQuery} onChange={setPicked} onCommit={(next) => onDecide?.({ picked: next.map((o) => o.id) })} />
   </div>
 }
 
 function DormantDecision({ step, onDecide, printing }: { step: Step; onDecide?: (d: StepDecisionInput) => void; printing: boolean }) {
+  const K = DORMANT_WORDS.keep
   const rows = step.dormantChoices ?? []
-  const open = rows.filter(row => !row.disabled)
-  const kept = rows.filter(row => row.outcome === 'keep')
-  const [picked, setPicked] = useState<PickerOption[]>(() => kept.map(row => ({ id: row.id, name: row.name })))
-  const [reason, setReason] = useState<string>(() => kept.find(row => row.reason.trim())?.reason ?? '')
+  const optionOf = (row: (typeof rows)[number]): PickerOption => ({ id: row.id, name: row.name, secondary: lastSignInWords(row.lastSignIn) })
+  const [picked, setPicked] = useState<PickerOption[]>(() => rows.filter((row) => row.kept).map(optionOf))
   const [query, setQuery] = useState('')
+  if (rows.length === 0) return null
   const labelId = `dormant-${step.id}`
-  const options: PickerOption[] = open.map(row => ({ id: row.id, name: row.name }))
-  const results = options.filter(option => option.name.toLowerCase().includes(query.toLowerCase()))
-  const disabled = rows.filter(row => row.disabled).length
-  if (printing) return <div className="decision">
-    <p className="reason">{kept.length > 0 ? `Kept: ${kept.map(row => row.name).join(', ')}${reason ? ` — ${reason}` : ''}` : 'No account is recorded as kept.'}</p>
-    {disabled > 0 && <p className="reason">{disabled} already disabled in the directory.</p>}
-  </div>
-  // Every account the picker does not hold is expected to be disabled in Entra;
-  // the next scan is what completes it, so nothing is saved for them here.
-  const save = (keeping: PickerOption[] = picked): void => onDecide?.({ answers: Object.fromEntries(rows.flatMap(row => {
-    const keep = keeping.some(option => option.id === row.id)
-    return [[`outcome:${row.id}`, keep ? 'keep' : ''], [`reason:${row.id}`, keep ? reason.trim() : '']]
-  })) })
+  const kept = rows.filter((row) => row.kept)
+  if (printing) return kept.length > 0 ? <div className="decision"><p className="reason">{K.label}: {kept.map((row) => row.name).join(', ')}</p></div> : null
+  const options = rows.map(optionOf)
+  const results = options.filter((option) => option.name.toLowerCase().includes(query.toLowerCase()))
+  // Every dormant account is answered on each Done: kept, or not.
+  const save = (keeping: PickerOption[]): void => onDecide?.({ answers: Object.fromEntries(rows.map((row) => [`outcome:${row.id}`, keeping.some((option) => option.id === row.id) ? 'keep' : ''])) })
   return <div className="decision">
-    <h5 className="dlabel" id={labelId}>Accounts you are keeping</h5>
-    {/* The picker's Done saves as every picker's does, once there is a reason for
-        what it keeps; the Save below is the reason's. */}
-    <Picker labelledBy={labelId} selected={picked} options={results} suggestions={options.slice(0, 3)} onSearch={setQuery} onChange={setPicked} onCommit={(next) => { if (next.length === 0 || reason.trim()) save(next) }} />
-    <label className="dlabel" htmlFor={`${labelId}-reason`}>Why they are kept</label>
-    <input id={`${labelId}-reason`} value={reason} onChange={e => setReason(e.currentTarget.value)} />
-    <p className="reason">Disable the rest in Entra, then scan again. {disabled > 0 ? `${disabled} of these are already disabled.` : 'None of these are disabled yet.'}</p>
-    <Button variant="primary" disabled={picked.length > 0 && !reason.trim()} onClick={() => save()}>Save</Button>
+    <h5 className="dlabel" id={labelId}>{K.label}</h5>
+    {/* Nothing is suggested, and the list holds every account still listed, each with its last sign-in (walk list item 22). */}
+    <Picker labelledBy={labelId} selected={picked} options={results} listAll onSearch={setQuery} onChange={setPicked} onCommit={save} />
   </div>
 }

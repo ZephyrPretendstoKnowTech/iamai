@@ -55,7 +55,7 @@ const EXPECTED: Record<RuleSubject, string[]> = {
     'bg.mfaSeen',
   ],
   exclusionGroup: ['xg.containsEmergency', 'xg.membersApproved', 'xg.noExtraAdmins', 'xg.notDynamic', 'xg.usedConsistently', 'xg.sizeReasonable', 'xg.notMailEnabled'],
-  trustedLocation: ['loc.notWholeInternet', 'loc.notTooWide', 'loc.isTrusted', 'loc.redundancy', 'loc.seenInSignIns'],
+  trustedLocation: ['loc.notWholeInternet', 'loc.notTooWide', 'loc.isTrusted', 'loc.seenInSignIns'],
   allowedCountries: ['cty.atLeastOne', 'cty.includesOperator', 'cty.unknownCountries', 'cty.seenCountriesIncluded'],
   pilotGroup: ['pilot.hasMembers', 'pilot.noBreakGlass', 'pilot.spread', 'pilot.hasAdmin', 'pilot.membersReady', 'pilot.passkeyEnabled', 'pilot.tapEnabled'],
   serviceAccount: ['svc.noInteractive', 'svc.noAdminRole', 'svc.excludedFromBlocks'],
@@ -365,7 +365,6 @@ const CASES: Record<string, Case> = {
   'loc.notWholeInternet': { target: goodLocation, unknown: 'target', fail: () => ({ ...goodLocation(), ipRanges: [{ cidrAddress: '0.0.0.0/0' }] }) },
   'loc.notTooWide': { target: goodLocation, unknown: 'target', fail: () => ({ ...goodLocation(), ipRanges: [{ cidrAddress: '10.0.0.0/8' }] }) },
   'loc.isTrusted': { target: goodLocation, unknown: 'target', fail: () => ({ ...goodLocation(), isTrusted: false }) },
-  'loc.redundancy': { target: goodLocation, unknown: 'target', fail: () => ({ ...goodLocation(), ipRanges: [{ cidrAddress: '203.0.113.7/32' }] }) },
   'loc.seenInSignIns': {
     target: goodLocation,
     unknown: 'target',
@@ -685,7 +684,6 @@ test('network findings require location-specific evidence and validate IPv4 and 
   b.snapshot.config.namedLocations.rows = [loc]
   b.snapshot.scenarioEvidence = { ...b.snapshot.scenarioEvidence, trustedLocationMatches: { total: 0, byLocation: {}, trusted: [] } } as any
   assert.equal(run('loc.seenInSignIns', loc, b).outcome, 'unknown', 'unrelated activity is not a location match')
-  assert.equal(run('loc.redundancy', loc, b).outcome, 'pass', 'IPv6 /64 contains more than one address')
   assert.equal(run('loc.notWholeInternet', loc, b).outcome, 'pass')
   loc.ipRanges = [{ cidrAddress: '2001:db8::/0' }]
   assert.equal(run('loc.notWholeInternet', loc, b).outcome, 'fail', 'any /0 denotes the whole address family')

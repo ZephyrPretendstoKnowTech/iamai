@@ -26,14 +26,15 @@
   },
   "baselineAuthority": {
     "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-    "productContract": "Use IAMAI readiness evidence and an Authenticator-targeted registration campaign to reduce MFA enrollment risk before enforcement; admins still receive passkey/security-key remediation separately.",
-    "currentDocsDifference": "Microsoft registration campaigns now support either Microsoft Authenticator or passkeys, and Microsoft-managed campaign behavior is changing during a rollout expected to finish by end of September 2026. This package preserves IAMAI's existing Authenticator-targeted campaign contract rather than silently changing the target method.",
+    "productContract": "Use IAMAI readiness evidence and a passkey-targeted registration campaign (owner V7 answer; walk list section 3 item 4) to reduce MFA enrollment risk before enforcement; people register Microsoft Authenticator and admins a passkey or security key.",
+    "currentDocsDifference": "Microsoft registration campaigns support either Microsoft Authenticator or passkeys (Learn, how-to-mfa-registration-campaign, checked 2026-09-23). The campaign targets passkeys with the snooze settings Microsoft applies to its managed passkey campaign: one day, unlimited snoozes.",
     "targetCampaign": {
       "state": "enabled",
       "includeId": "all_users",
       "targetType": "group",
-      "targetedAuthenticationMethod": "microsoftAuthenticator",
-      "enforceRegistrationAfterAllowedSnoozes": true
+      "targetedAuthenticationMethod": "fido2",
+      "snoozeDurationInDays": 1,
+      "enforceRegistrationAfterAllowedSnoozes": false
     }
   },
   "requiredBindings": [

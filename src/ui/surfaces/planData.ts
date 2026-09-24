@@ -59,6 +59,24 @@ import { cleanupRecord, withCleanupDone, cleanupBasis, recoveryAccountBasis, rec
 // migrated on load by decisionsOf and rewritten in this shape.
 type LegacyOrDecisions = Partial<PlanDecisions> & { steps?: Record<string, { status: string; skipReason?: string | null; history?: { at: string }[] }> }
 
+/** The most picked service accounts whose group memberships a scan reads to find the service accounts group (one Graph read each). */
+const SERVICE_GROUP_LOOKUP_CEILING = 25
+/** The most of the groups holding them that a scan reads for that (one read each): those holding the most picked accounts. */
+const SERVICE_GROUP_READ_CEILING = 10
+/** Those memberships, read once per scan: a Save re-reads the plan's groups, and the scan's answer has not changed. */
+const serviceMemberships = new Map<string, Promise<string[] | null>>()
+const membershipsAt = (snapshot: TenantSnapshot, userId: string): Promise<string[] | null> => {
+  const key = `${snapshot.tenantId}|${snapshot.asOf}|${userId}`
+  let read = serviceMemberships.get(key)
+  if (!read) {
+    read = readUserTransitiveGroupIds(userId)
+    serviceMemberships.set(key, read)
+    // A read that failed is tried again on the next pass, not remembered.
+    void read.then((ids) => { if (ids === null) serviceMemberships.delete(key) })
+  }
+  return read
+}
+
 export type PlanComputed = {
   steps: Step[]
   schedule: Schedule
@@ -266,6 +284,24 @@ export function usePlanData(
     void (async () => {
       const map: GroupMembers = new Map()
       const reads: GroupRead[] = []
+      // The group a person makes on Create or Correct Service Accounts Group is
+      // named by no policy yet, so nothing above reads it. The groups that hold
+      // the picked service accounts are read too, the ones holding the most of
+      // them first: the scan after the group is created finds it and the step's
+      // picker offers it, pre-filled, and a service accounts group the tenant
+      // already has, with other members, is offered to save and correct (walk
+      // list item 7).
+      const service = decided.serviceAccountUserIds
+      if (service.length > 0 && service.length <= SERVICE_GROUP_LOOKUP_CEILING) {
+        const memberships = (await Promise.all(service.map((id) => membershipsAt(snapshot, id)))).filter((m): m is string[] => m !== null)
+        const known = new Set([...ids].map((id) => id.toLowerCase()))
+        const held = new Map<string, { id: string; n: number }>()
+        for (const m of memberships) for (const g of m) {
+          const key = g.toLowerCase()
+          if (!known.has(key)) held.set(key, { id: g, n: (held.get(key)?.n ?? 0) + 1 })
+        }
+        for (const { id } of [...held.values()].sort((a, b) => b.n - a.n).slice(0, SERVICE_GROUP_READ_CEILING)) ids.add(id)
+      }
       for (const id of ids) {
         // Existence and membership are read as two facts and kept as two
         // (readGroup): a group Graph says is gone is absent, a request that

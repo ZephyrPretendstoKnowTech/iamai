@@ -139,8 +139,8 @@ test('Step 5: the Impact column says who a step reaches, never the state, and a 
       const impact = rowWho(s)
       assert.ok(!impact.includes(REPORT_ONLY_GAP), `${where}: "${impact}" restates the state`)
       if (s.impactCount !== undefined) {
-        // Configure Emergency Exclusions and Configure Passkey Authentication count what they change (rowWho.ts).
-        assert.match(impact, /^([\d,]+|no) (polic(y|ies)|person|people)$/, `${where}: "${impact}"`)
+        // Configure Emergency Exclusions, Configure Passkey Authentication and the Prepare steps count what they change (rowWho.ts).
+        assert.match(impact, /^([\d,]+|no) (polic(y|ies)|person|people|accounts?|steps?)$/, `${where}: "${impact}"`)
       } else if (/^\d+ accounts?$/.test(impact)) {
         // Prepare Emergency Access Accounts counts its emergency accounts: the ones chosen, at least the two it needs.
         assert.equal(Number(impact.split(' ')[0]), s.id === 's-prereq-break-glass' ? Math.max(2, s.emergency?.accounts.length ?? 0) : s.population.ids.length, `${where}: account inventory count must match named accounts`)
@@ -179,27 +179,4 @@ test('Step 5: the header says what holds the plan, and names no step a held row 
   assert.equal(FINISH.unwritable(3, ['Create or Correct Exclusions Group']), '3 steps wait on Create or Correct Exclusions Group')
   assert.equal(FINISH.unwritable(3, [], 0), '3 held steps are cleared')
   assert.equal(FINISH.unwritable(16, ['Create or Correct Allowed Countries Location'], 2), '16 held steps are cleared, 2 of them after Create or Correct Allowed Countries Location')
-})
-
-// ---- 4. the campaign email while nothing is dated ----
-
-test('Step 5: while the plan dates nothing the campaign email is written without a day, and a dated plan keeps its day', () => {
-  const comms = (content.steps.find((s) => s.id === 's-verify-mfa') as { comms: Record<string, string> }).comms
-  const NO_DAY = /\b(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|January|February|March|April|May|June|July|August|September|October|November|December)\b|over the next|\d{4}/
-  for (const [p, key] of [[plans()[0], 'bodyUndated'], [plans()[1], 'bodyMfaInPlaceUndated']] as [Plan, string][]) {
-    const camp = p.r.steps.find((s) => s.id === 's-verify-mfa')!
-    assert.equal(camp.events, null, `${p.label}: the campaign itself has no scheduled action`)
-    const ex = stepVars(camp, { ...p.ctx(camp), firstEnforce: null, mfaEnforce: null, enrolWindowDays: null, passkeyEnforce: null, passkeyPolicy: null }) as Record<string, unknown>
-    const email = commsFor(contentStepFor(camp) as Record<string, unknown>, ex, camp)
-    assert.ok(email, `${p.label}: the campaign has an email to send today`)
-    assert.equal(email!.body, fillText(comms[key], ex), `${p.label}: the undated form`)
-    assert.doesNotMatch([email!.body, ...email!.extra].join(' '), NO_DAY, `${p.label}: the email names a day or a window`)
-  }
-  // A plan that dates the MFA enforcement keeps the email that states it. Until
-  // the plan's foundation is settled no plan dates one at all (roadmap/foundations.ts),
-  // so the dated case is week two with its direction approved.
-  const g = planOf('demo week two settled', withDirectionApproved(curatedFixture('demo-week2')))
-  const camp = g.r.steps.find((s) => s.id === 's-verify-mfa')!
-  const dated = commsFor(contentStepFor(camp) as Record<string, unknown>, stepVars(camp, g.ctx(camp)) as Record<string, unknown>, camp)
-  assert.match(dated?.body ?? '', new RegExp(NO_DAY.source, 'i'), 'the dated form states the day or the window it runs over')
 })

@@ -4,9 +4,11 @@ import { emergencyAccountTasksOf } from './emergencyAccountTasks.ts'
 import type { EmergencyTaskProjection } from './emergencyAccountTasks.ts'
 import { emergencyGroupTasksOf } from './emergencyGroupTasks.ts'
 import { emergencyPasskeyTasksOf } from './emergencyPasskeyTasks.ts'
-import { drawsTaskAnatomy, policyTasksOf } from './policyTasks.ts'
+import { drawsTaskAnatomy, ownCardWordsOf, policyTasksOf } from './policyTasks.ts'
+import { DORMANT_STEP_ID, DORMANT_WORDS, sectionThreeTasksOf, sectionThreeTasksText } from './sectionThreeTasks.ts'
 import { oneLine } from '../../content/implementation/project.ts'
-import { networkDraftOf } from '../../mapping/networkDraft.ts'
+import { prepareReadingOf } from './prepareSteps.ts'
+import { existingObjectProcedureOf } from './prepareProcedures.ts'
 // The opened step's body, worked out once (A3): everything ContentStep.tsx draws
 // that is not a React concern — the contract under the lane engine's reading,
 // the instructions, the implementation channels and artifacts, the package's
@@ -36,8 +38,8 @@ import { ifWrongLineFor, stepExportView } from './stepExport.ts'
 import { stepVars, withoutScheduleDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { portalNamesFor, unwrittenCorrectionLines } from './stepPortal.ts'
-import { preparationLines, preparesWhileCreateWaits, rescanLinesOf, stepInstructions, wholeLines } from './stepInstructions.ts'
-import { CONTRACT, SETTLED_FINDINGS, eyebrowOf, implementationEmptyOf, implementationIsCurrent, isReadinessWork, objectTaskLeads, railOf, readinessOf, stepContract } from './stepContract.ts'
+import { campaignProcedureLines, preparationLines, preparesWhileCreateWaits, stepInstructions } from './stepInstructions.ts'
+import { CONTRACT, SETTLED_FINDINGS, eyebrowOf, implementationEmptyOf, implementationIsCurrent, objectTaskLeads, railOf, readinessOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
 import { boardHolds, laneViewAlone } from './planBoard.ts'
 import { DECISION_HEAD, HEAD, taskHeadingsOf } from './stepHeadings.ts'
@@ -45,7 +47,7 @@ import { usesDecisionAnatomy } from '../../roadmap/stepGroups.ts'
 import { directionMilestoneAction } from '../../roadmap/directionAnswers.ts'
 import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
 import type { WhoBlock } from './whoBlocks.ts'
-import { BASELINE_COMMIT, artifactText, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageRuntime, packageSourceLine, packageStateOf, planningPreview, reviewedPackageFor, setupAfterEnforcementOf, sourceCheckedLine, entraWithSettings, jsonWithPlanTag } from './stepPackage.ts'
+import { BASELINE_COMMIT, artifactText, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageRuntime, packageSourceLine, packageStateOf, planningPreview, reviewedPackageFor, setupAfterEnforcementOf, sourceCheckedLine, entraWithSettings, jsonWithPlanTag, workProcedureOf } from './stepPackage.ts'
 import { lifecycleResources, policyInspectionLines, resourceChannelAllowed, inspectionResource, emailResource, mfaPreparationEmail, deviceSetupResource, namedPortalResource, switchedOffRequest, switchedOffResources, withWorkflowVerification } from './stepResources.ts'
 import { projectSafely, projectExplanation, readinessSafely, troubleshootingSafely } from '../../content/implementation/project.ts'
 import type { ChannelArtifact, OutputChannel, OwnerConfirmation, TroubleshootingScenario } from '../../content/implementation/project.ts'
@@ -361,7 +363,13 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // content for the per-step pass to move into Implementation. The one next
   // action stays under the Readiness bar on a step whose action it was, and
   // leaves with What to do where it led instructions.
-  const decides = Boolean(d) && (typeof d.applies !== 'string' || truthy(ex[d.applies]))
+  // Create or Correct Service Accounts Group draws its picker while there is a
+  // group to pick: one the scan found holding a picked account, or the one
+  // saved. Before the group exists, and once it is saved holding exactly the
+  // picked accounts, the rail holds no picker (walk list item 7).
+  const noServicePicker = step.id === PREREQ_STEP_ID.serviceAccountsGroup
+    && (contract.state.satisfied || (!ctx.mapping.serviceAccountsGroupId && !(Array.isArray(ex.groupsIds) && ex.groupsIds.length > 0)))
+  const decides = Boolean(d) && (typeof d.applies !== 'string' || truthy(ex[d.applies])) && !noServicePicker
   const createIfNeeded = truthy(ex.createIfNeeded) && typeof w.createIfNeeded === 'string'
   const creates = (truthy(ex.needsCreate) || truthy(ex.createIfNeeded)) && Array.isArray(w.create)
   const implementing = packaged ? preview === null && (projection?.channels.length ?? 0) > 0 : Boolean(portal) && channels.length > 0
@@ -382,8 +390,24 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // (emergencyGroupTasks.ts), read once its tasks are built below.
   const help = d && typeof d.help === 'string' && whole(d.help, ex) ? fillText(d.help, ex) : null
   const exclusions = step.id === 's-prereq-exclusion-group'
-  const ownRailWords = choosing ?? pkg?.meta.milestone?.actionText ?? directionMilestoneAction(step.id)
-  const railInstruction = step.id === 's-prereq-break-glass' ? help : exclusions ? EXCLUSIONS_MILESTONE : null
+  // Register Your Own Passkey and Prepare Your Team for MFA read their people
+  // (prepareSteps.ts): the milestone follows the operator's readiness, or counts
+  // the people still without a method, and the campaign's Turn On Without Them
+  // picker has its instruction here, in place of its own help (walk list
+  // section 3 items 17, 41 and 46).
+  const prepare = prepareReadingOf(step, ctx, contract.state.satisfied)
+  // Create or Correct Service Accounts Group once the scan finds a group that
+  // holds exactly the picked accounts and nobody has saved it: saving it is the
+  // milestone, in the step's own words for that state (whatToDoWhen).
+  const serviceGroupFound = step.id === PREREQ_STEP_ID.serviceAccountsGroup && truthy(ex.serviceGroupFound) && typeof w.lead === 'string' && whole(w.lead, ex) ? fillText(w.lead, ex) : null
+  const ownRailWords = choosing ?? prepare?.milestone ?? serviceGroupFound ?? pkg?.meta.milestone?.actionText ?? directionMilestoneAction(step.id)
+  // Disable or Confirm Dormant Accounts takes a choice too, the accounts kept:
+  // its instruction stands in the same slot while any account is open (walk
+  // list item 17), and a finished step draws none (item 29).
+  const keeping = step.id === DORMANT_STEP_ID && (step.dormantChoices ?? []).some((row) => !row.kept) ? DORMANT_WORDS.keep.instruction : null
+  // 1.1's decision help, 1.2's group line, and 3.7's group picker line: the
+  // instruction under the milestone of a step whose rail takes a choice.
+  const railInstruction = step.id === 's-prereq-break-glass' || (step.id === PREREQ_STEP_ID.serviceAccountsGroup && !noServicePicker) ? help : step.id === PREREQ_STEP_ID.serviceAccountsGroup ? null : exclusions ? EXCLUSIONS_MILESTONE : keeping ?? prepare?.instruction ?? null
   // What kind of step this is, and "Resolution step" for one whose source
   // contradicts itself (stepContract.ts eyebrowOf).
   const eyebrow = eyebrowOf(contract, typeof cs.kind === 'string' ? cs.kind : null)
@@ -480,11 +504,21 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
     const artifact = packageArtifact(explanation, grounding)
     if (!produced.some((a) => a.id === artifact.id) && artifact.text().trim() !== '') produced.push(artifact)
   }
-  // An explanatory-only package must not replace a supporting step's existing
-  // portal instructions with an unavailable placeholder.
-  if (!machine && !step.directionQuestions && portalLines.length > 0 && !produced.some(a => a.id === 'portal')) {
-    supported.add('portal')
-    produced.push({ id: 'portal', form: 'list', lines: portalLines, text: () => portalLines.map((line, index) => `${index + 1}. ${line}`).join('\n'), note: null })
+  // One procedure in every state (walk list item 19, owner 2026-09-23): a
+  // supporting step whose state projects no procedure of its own — Completed,
+  // Deferred, set aside or held — draws the one its content folder writes for
+  // the work (stepPackage.ts workProcedureOf), never a second copy. A step whose
+  // package writes none keeps its own lines, and an explanatory-only package
+  // never replaces them with an unavailable placeholder.
+  if (!machine && !step.directionQuestions && !produced.some(a => a.id === 'portal')) {
+    const work = pkg ? workProcedureOf(pkg, step, pkgBindings ?? packageBindings(step, ctx, contract), confirmations, baselineCommit) : null
+    if (work !== null) {
+      supported.add('portal')
+      produced.push(packageArtifact(work))
+    } else if (portalLines.length > 0) {
+      supported.add('portal')
+      produced.push({ id: 'portal', form: 'list', lines: portalLines, text: () => portalLines.map((line, index) => `${index + 1}. ${line}`).join('\n'), note: null })
+    }
   }
   // Keep each validated model on its own copyable line without allowing arbitrary
   // tenant text to inject new template lines or script content.
@@ -510,20 +544,17 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
     produced.push({ id: 'portal', form: 'list', lines, text: () => lines.map((line: string, index: number) => `${index + 1}. ${line}`).join('\n'), note: null })
     supported.add('portal')
   }
-  if (step.id === 's-prereq-trusted-location') {
-    const draft = networkDraftOf(ctx.mapping)
-    const portal = produced.find(a => a.id === 'portal')
-    if (draft && portal && !step.state.satisfied) {
-      const intro = `Saved office network: ${draft.name}. Public IP ranges: ${draft.ranges.join(', ')}.`
-      const original = portal.text
-      portal.text = () => `${intro}\n\n${original()}`
-      if (portal.form === 'list') portal.lines = [intro, ...portal.lines]
-    }
-  }
-  if (step.id === 's-prereq-auth-strength' && step.state.satisfied) {
-    const lines = ['An existing authentication strength already matches the baseline’s method combinations and restrictions. No new strength is needed.', 'Keep that strength in place. Scan again after any authentication-strength changes to verify it still matches.']
-    for (let i = produced.length - 1; i >= 0; i--) if (['portal', 'ps', 'json'].includes(produced[i].id)) produced.splice(i, 1)
-    produced.push({id: 'portal', form: 'list', lines, text: () => lines.join('\n'), note: null})
+  // The object is already in the tenant (prepareProcedures.ts): the office
+  // location picked in Decide How and Where People Sign In is marked trusted
+  // (walk list 61), and once done with locations that were already there, that
+  // procedure stands (item 19); a strength of the baseline's name is corrected
+  // (item 55); a saved service accounts group's members are corrected (item 7).
+  // Each is the package's own correction block, naming the object; an object
+  // step's package projects only its create, so the step reads the block itself.
+  const existing = existingObjectProcedureOf(step, pkg, pkgBindings ?? (pkg ? packageBindings(step, ctx, contract) : null), ex as Record<string, unknown>, { upnOf: (id) => ctx.snapshot.users.find((u) => u.id.toLowerCase() === id.toLowerCase())?.userPrincipalName ?? ctx.nameOf(id) })
+  if (existing !== null) {
+    for (let i = produced.length - 1; i >= 0; i--) if (produced[i].id === 'portal') produced.splice(i, 1)
+    produced.push({ id: 'portal', form: 'markdown', lines: [], text: () => existing.text, note: null })
     supported.add('portal')
   }
   for (const channel of [...supported]) if (!resourceChannelAllowed(step, channel)) supported.delete(channel)
@@ -541,17 +572,15 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
     produced.push(step.id === 's-verify-mfa' ? mfaPreparationEmail(ctx) : emailResource(step, ctx, contract.why))
   }
   if (step.id === 's-verify-mfa') {
-    // Each list's promise that a scan shows progress follows it, while a scan can (stepInstructions.ts rescanLinesOf, R4-20).
-    const rescan = rescanLinesOf(step, cs)
-    const lines = wholeLines([...(Array.isArray(w.steps) ? w.steps : []), ...rescan.steps, ...(Array.isArray(w.generic) ? w.generic : []), ...rescan.generic], ex).filter(line => line.trim())
-    for (const channel of ['portal', 'ps', 'ai'] as const) {
+    // Each list's promise that a scan shows progress follows it, while a scan can (stepInstructions.ts campaignProcedureLines, R4-20).
+    const lines = campaignProcedureLines(step, cs, ex)
+    for (const channel of ['portal', 'ai'] as const) {
       const existing = produced.findIndex(a => a.id === channel)
       if (existing >= 0) produced.splice(existing, 1)
       supported.add(channel)
     }
     produced.push({ id: 'portal', form: 'list', lines, text: () => lines.map((line, i) => `${i + 1}. ${line}`).join('\n'), note: null })
-    produced.push(inspectionResource(step, 'ps'))
-    produced.push({ id: 'ai', form: 'markdown', lines: [], text: () => aiBriefingText('Help prepare the people in this plan for their actual MFA requirements. Explain who needs a method, which registered methods satisfy their target, and who needs help. Distinguish registered-method readiness from a tested workflow. Explain useful Microsoft Authenticator registration-campaign options without claiming a campaign object is required or already configured.', grounding('')), note: null })
+    produced.push({ id: 'ai', form: 'markdown', lines: [], text: () => aiBriefingText('Help prepare the people in this plan for their actual MFA requirements. Explain who needs a method, which registered methods satisfy their target, and who needs help. Distinguish registered-method readiness from a tested workflow. Explain the registration campaign settings.', grounding('')), note: null })
   }
   if (step.id === 's-prereq-device-plan') {
     const existing = produced.findIndex(a => a.id === 'portal')
@@ -592,6 +621,16 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
     supported.add('portal')
     produced.push({ id: 'portal', form: 'markdown', lines: [], text: () => emergencyPortal, note: null })
   }
+  // Disable or Confirm Dormant Accounts and Use Separate Accounts for Admin
+  // Work: their tasks name every account with the scan's values
+  // (sectionThreeTasks.ts), and the Entra tab carries the same procedure.
+  const sectionThree = sectionThreeTasksOf(step, ctx)
+  if (sectionThree !== null) {
+    for (let i = produced.length - 1; i >= 0; i--) if (produced[i].id === 'portal') produced.splice(i, 1)
+    supported.add('portal')
+    const text = sectionThreeTasksText(sectionThree)
+    produced.push({ id: 'portal', form: 'markdown', lines: [], text: () => text, note: null })
+  }
   if (step.id === 's-prereq-break-glass' && accountTasks) {
     const ai = produced.find(a => a.id === 'ai')
     if (ai) ai.text = () => emergencyAccountAiInfo(step, ctx, accountTasks)
@@ -604,7 +643,13 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // — so the task frame draws exactly what this step drew. The four Emergency
   // Access steps keep their own producers above and are never this.
   const outstandingForEnforce = [...new Set([...blockers.map((b) => b.title ?? b.label).filter((x): x is string => typeof x === 'string' && x.length > 0), ...(o.enforceWaits ?? [])])]
-  const taskProjection: EmergencyTaskProjection | null = emergencyAccountTasks ?? (drawsTaskAnatomy(step.id) ? policyTasksOf(step, title, artifacts, ctx.mapping, outstandingForEnforce) : null)
+  const taskProjection: EmergencyTaskProjection | null = emergencyAccountTasks ?? sectionThree ?? (drawsTaskAnatomy(step.id) ? policyTasksOf(step, title, artifacts, ctx.mapping, outstandingForEnforce) : null)
+  // A task on an object already in the tenant is called what it does (the
+  // step's whatToDoWhen task words: mark the office location trusted, correct
+  // the strength, correct the group), and the rail's headline reads it.
+  if (taskProjection && existing?.title) {
+    for (const task of taskProjection.tasks) if (task.id === 'policy-procedure') task.title = existing.title
+  }
   // The action column's Next milestone and its instruction line (stepContract.ts
   // railOf): the step's own words above, the one action its Readiness bar draws
   // — which it draws on screen only where the step has no task list, no
@@ -637,12 +682,11 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // a value IAMAI does not hold. None of them is ever offered an artifact.
   const hold = packaged ? (projection?.hold ?? null) : null
   const heldBox = (key: string): ImplementationEmpty => ({ key, tone: 'warn', title: W.empty[key][0], text: W.empty[key][1] })
-  // The open Readiness work a delivered step still waits on: the cards that
-  // are work (stepContract.ts isReadinessWork, never the people card), less a
+  // The open Readiness work a delivered step still waits on: its cards, less a
   // fact the finished step states and nothing in Readiness can clear (a policy
   // that went live unwatched, a tenant's own policy that differs from the
   // baseline's, a baseline grant below the goal's floor: SETTLED_FINDINGS).
-  const openWork = readiness.tiles.filter((t) => isReadinessWork(t) && !SETTLED_FINDINGS.has(t.key)).length
+  const openWork = readiness.tiles.filter((t) => !SETTLED_FINDINGS.has(t.key)).length
   const empty: ImplementationEmpty =
     hold === null
       ? implementationEmptyOf(contract, openWork)
@@ -706,9 +750,13 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
     ownSteps,
     instructed,
     rail,
+    /** The step's own Tasks Remaining card words beyond its subject, filled (policyTasks.ts ownCardWordsOf). */
+    ownCard: ownCardWordsOf(step, ex as Record<string, unknown>),
     eyebrow,
     artifacts,
     emergencyAccountTasks: taskProjection,
+    /** The step's own Tasks Remaining card where it reads its people (prepareSteps.ts), in place of its content's fixed check. */
+    prepareCard: prepare?.card ?? null,
     previewNote,
     notes,
     showImplementation,

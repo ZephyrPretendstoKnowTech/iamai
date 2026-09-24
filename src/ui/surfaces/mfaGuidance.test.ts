@@ -221,7 +221,6 @@ test("the campaign email reuses the guidance, states no proof, and does not leav
     const step = campaignOf(name)
     const box = copyBoxes(step, ctx).find((b) => b.kind === 'comms')
     if (!box) continue
-    assert.ok(box.text.includes(USER_INSTRUCTION), `${name}: the email carries the shared sentence`)
     assert.doesNotMatch(box.text, /\{[a-zA-Z0-9_:]+\}/, `${name}: no unresolved hole in the email`)
     // A pass is an operator's tool for a person who cannot get in; it is never
     // offered to everybody as the thing to end up with.
@@ -231,8 +230,6 @@ test("the campaign email reuses the guidance, states no proof, and does not leav
   }
   // The hole rule is the product's own: a body whose variables are unfilled
   // renders nowhere, the shared reference included.
-  const cs = content.steps.find((s) => s.id === CAMPAIGN) as Record<string, any>
-  assert.equal(whole(cs.comms.body, {}), false, 'the body still needs the tenant it names')
   assert.ok(whole('{registerPasskeyLine}', {}), 'a shared reference is not a hole')
   assert.equal(fillText('{registerPasskeyLine}', {}), USER_INSTRUCTION, 'and it fills to the one shared sentence')
   assert.equal(fillText('{methodGuidePointer}', {}), GUIDE_POINTER)

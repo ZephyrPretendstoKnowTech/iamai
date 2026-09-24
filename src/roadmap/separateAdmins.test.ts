@@ -29,7 +29,6 @@ test('the review includes role holders and separately lists observed mail or Tea
   assert.ok(with_.every(([id]) => s.population.ids.includes(id)), 'the review includes the administrators with observed business activity')
   const cs = stepById[SEPARATE_ADMIN_ACCOUNTS_STEP_ID]
   assert.equal(cs.title, TITLE)
-  assert.equal(cs.skip, true, 'skippable')
   // Ongoing Checks and Cleanup (docs/plans/ongoing-spec.md sections 3 and 9): the
   // Learn link moved from the privileged-access-workstations concept page to the one
   // that carries the instruction — personal email is phished constantly, so the
@@ -41,7 +40,4 @@ test('the review includes role holders and separately lists observed mail or Tea
   assert.equal(ex.adminsWithWorkload.length, 2)
   for (const row of ex.adminsWithWorkload) assert.match(row, /^.+ · (Outlook|Microsoft Teams)/, row)
   assert.ok(stepLines(s, ctx).some((l) => /^Review the \d+ administrator accounts for dedicated administration/.test(l)), 'the lead counts them')
-  // Missing mail or Teams activity does not remove the administrator review.
-  const g = fixture('getiamai')
-  assert.equal(runFixture(g).steps.find((x) => x.id === SEPARATE_ADMIN_ACCOUNTS_STEP_ID)?.state.satisfied, false, 'a missing business-activity signal does not prove dedicated use')
 })

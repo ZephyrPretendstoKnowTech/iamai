@@ -33,7 +33,7 @@ import { awaitsOwnObject, awaitsWorkflowRecord, createWaitsOnReadiness, enforces
 import { requiredMembers } from '../../roadmap/tracking.ts'
 import { unreadLine } from '../../roadmap/evidence.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
-import { IMPACT, populationLine } from '../../derive/whoLine.ts'
+import { populationLine } from '../../derive/whoLine.ts'
 import { app, cleanup, directionWords, engine, shared, stepById, structuralWords } from '../../content/content.ts'
 import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
 import { directionBlockerStep, directionStepsAnswering, directionTitleOf, directionWaitRelayed } from '../../roadmap/direction.ts'
@@ -143,7 +143,7 @@ type ContractWords = {
   /** A finished policy this plan owns that went live with no report-only period IAMAI watched (doneWhen.ts enforcedUnwatched; owner decision 3). */
   foundEnforcedUnwatched: string
   /** The people marked on the campaign to turn on without, for now (roadmap/followUp.ts). */
-  followUp: { label: string; campaign: string; campaignOpen: string; method: string; risk: string; pickerLabel: string; pickerHelp: string; save: string; printed: string; printedNone: string }
+  followUp: { label: string; campaignLabel: string; campaign: string; campaignOpen: string; method: string; risk: string; pickerLabel: string; save: string; printed: string; printedNone: string }
   /** The threshold where the scan could prove only a floor under the value. */
   foundReadinessFloor: string
   /** That floor, wrapped before the family template. */
@@ -505,6 +505,8 @@ export type StepContract = {
   multiPolicy: boolean
   /** The tenant's own policy already delivering this goal; null where there is none to name. */
   existing: ContractExisting | null
+  /** What a finished preparation step's Satisfied cards state (Step.satisfiedFacts); empty while it is not finished. */
+  satisfiedFacts: readonly { heading: string; title: string; detail: string | null }[]
   implementation: ContractImplementation
   /** The first day of the phase the Plan schedules the step in, where the Plan gave one (StepVarContext.scheduledOn): the day its row's When reads. */
   scheduledOn: string | null
@@ -1532,6 +1534,7 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     members,
     multiPolicy: members.length > 1,
     existing: existingOf(step),
+    satisfiedFacts: step.state.satisfied ? step.satisfiedFacts ?? [] : [],
     implementation: implementationOffered(step)
       ? { offered: true, operations: operationsOf(step).length }
       : { offered: false, reason, hold: policyHold(step), because: reason === null ? null : reasonLine(step, reason, tenant, exclusionsUnconfirmed) },
@@ -2032,10 +2035,16 @@ function belowGoalFloorTile(c: StepContract): ReadinessTile | null {
   return { key: BELOW_GOAL_FLOOR, label: CONTRACT.belowGoalFloor.label, tone: 'warn', value: fillText(CONTRACT.belowGoalFloor.value, { floor: c.belowGoalFloor.floor }), note: c.belowGoalFloor.text }
 }
 
-/** Their tile: a warning, never a hold — the person chose to go ahead without them. */
+/**
+ * Their tile: a warning, never a hold — the person chose to go ahead without
+ * them. On the campaign itself it is headed by the list's own name, Turn On
+ * Without Them, and once the campaign is complete it is a fact of the finished
+ * step, folded under Satisfied (walk list section 3 item 47).
+ */
 function followUpTile(c: StepContract): ReadinessTile | null {
   if (c.followUp == null) return null
-  return { key: 'follow-up', label: CONTRACT.followUp.label, tone: 'warn', value: `${c.followUp.count} ${plural(c.followUp.count, 'person', 'people')}`, note: c.followUp.text }
+  const campaign = c.id === CAMPAIGN_STEP_ID
+  return { key: 'follow-up', label: campaign ? CONTRACT.followUp.campaignLabel : CONTRACT.followUp.label, tone: campaign && c.state.satisfied ? 'good' : 'warn', value: `${c.followUp.count} ${plural(c.followUp.count, 'person', 'people')}`, note: c.followUp.text }
 }
 
 /** The key of the tile below: a fact about the tenant's own policy, never a task (FINISHED_FINDINGS). */
@@ -2099,37 +2108,6 @@ export const FINISHED_FINDINGS: ReadonlySet<string> = new Set([FINISHED_READING,
 function unwatchedTile(step: Step): ReadinessTile | null {
   if (!enforcedUnwatched(step)) return null
   return { key: UNWATCHED_ENFORCEMENT, label: R().tiles.observation, tone: 'warn', value: R().tiles.unwatched, note: CONTRACT.foundEnforcedUnwatched }
-}
-
-/** The key of the tile a step's unreadable reading draws where no threshold or finished reading states it. */
-const BLIND_READING = 'readiness-blind'
-
-/**
- * A step's own reading that a refused source kept the scan from working out
- * (roadmap/types.ts `Readiness.blind`), where nothing else on the step says
- * so: no threshold waits on it and no finished reading states it. That is the
- * campaign that moves the number. On a tenant whose registration details
- * returned 403, Prepare Your Team for MFA read Ready with a support-list tile
- * and a count of people. It never said that the number it exists to move
- * could not be read, or which permission would let a scan read it, while the
- * four policies waiting on that number each said both (R4-20, Priya D5).
- *
- * Only where the step's own reach is established. The reading counts "the
- * people in scope", and on a step whose people card says its reach is Not
- * established those people are somebody else's: on hostile the guests policy,
- * enforced by the tenant's all-users policy, drew "None of the 40 people in
- * scope could be judged" (the all-users population) directly above "Affected
- * people · Not established". That is a count of a scope the same page says it
- * does not know.
- */
-function blindReadingTile(step: Step, c: StepContract): ReadinessTile | null {
-  const r = step.readiness
-  if (r?.blind === undefined || step.status === 'skipped') return null
-  if (step.action.readinessGate !== undefined || step.action.enforcedBelowReadiness !== undefined) return null
-  if (c.who === null || !c.who.known) return null
-  if (c.state.setAside || c.state.condition === 'baseline-conflict') return null
-  const note = [r.lines[0], r.blind].filter((x): x is string => typeof x === 'string' && x.length > 0).join(' ')
-  return { key: BLIND_READING, label: R().tiles.reading, tone: 'warn', value: R().tiles.notMeasured, note }
 }
 
 /**
@@ -2211,21 +2189,14 @@ function stateTile(step: Step, c: StepContract, setupAfterEnforcement = false): 
   // The value is the substatus's own word (U11); the note is what to decide (B10 P1-1).
   if (s.condition === 'needs-decision') return { key: 'decision', label: t.decision, tone: 'warn', value: t.decisionValue, note: c.decisionNote }
   // A tile's detail says what its value is evidence of, where the contract carries no finding of its own (editorial batch C).
-  const notes = t as unknown as { coverageNote: string; observationNote: string; observationDateNote: string; coverageUnreadable: string }
-  if (s.satisfied) {
-    // A goal an existing policy already delivers reads In place, and said
-    // nothing about whether the people it covers can satisfy it. On a tenant
-    // whose registration source returned 403 this step read Completed beside a
-    // readiness of "0 of 40 people have a registered method allowed by the
-    // target policies" — computed by the engine, shown nowhere on the finished
-    // step. In place is a fact about the POLICY, and a reader takes Completed
-    // as protection.
-    // Once, where the finished reading's own tile does not already say it
-    // (shortReadingOf): the same unread count twice on one step was two sources.
-    const unreadable = step.readiness?.unmeasured === 'unreadable' && shortReadingOf(step) === null ? fillText(notes.coverageUnreadable, { line: step.readiness.lines?.[0] ?? '' }).trim() : null
-    const found = c.found.find((f) => f.key === 'in-place')?.text ?? notes.coverageNote
-    return { key: 'coverage', label: t.coverage, tone: 'good', value: s.stage, note: unreadable === null ? found : `${found} ${unreadable}` }
-  }
+  const notes = t as unknown as { observationNote: string; observationDateNote: string }
+  // A finished step draws no "Existing coverage" card (walk list item 11, owner
+  // 2026-09-23): "In place · IAMAI found an existing control that meets the
+  // assessed goal" sat on every Completed step, a check or a preparation with no
+  // control among them, and added "IAMAI could not read whether the people it
+  // covers can satisfy it" where the scan read no registrations. The step's own
+  // Satisfied items state what it found.
+  if (s.satisfied) return null
   // The threshold is on the action only while it is unmet (roadmap/types.ts
   // `readinessGate`), so its mark is never a tick.
   const gate = step.action.readinessGate
@@ -2290,42 +2261,6 @@ function emergencyTiles(step: Step, c: StepContract): ReadinessTile[] {
     if (s.state === 'hardening') return { ...tile, tone: 'good', value: e.deferredAt ? t.deferred : t.hardeningOpen, note: lead }
     return { ...tile, tone: 'good', value: t.meets, note: null }
   })
-}
-
-/** The key of the people card (peopleTile). */
-const PEOPLE_TILE = 'people'
-
-/** Who the policy reaches: the contract's one population line, or its one line saying the reach is not established. */
-function peopleTile(c: StepContract): ReadinessTile | null {
-  if (c.who === null || (!c.who.known && c.who.text.startsWith('Policy applicability is not fully resolved.'))) return null
-  const t = R().tiles
-  const peopleNote = c.policy ? t.peopleNote : (t as unknown as { peopleStepNote: string }).peopleStepNote
-  // "These are the accounts this step asks you to review" over a reach of nobody
-  // was a sentence about a list that is not there. An empty reach states the
-  // count and stops; the note belongs to the accounts, and there are none.
-  const note = c.who.text === IMPACT.noUserImpact ? null : peopleNote
-  return c.who.known ? { key: PEOPLE_TILE, label: t.people, tone: 'info', value: c.who.text, note } : { key: PEOPLE_TILE, label: t.people, tone: 'warn', value: t.peopleUnknown, note: c.who.text }
-}
-
-/**
- * Whether a Readiness card is work the step still waits on: the one answer the
- * Implementation box (stepBody.ts, through implementationEmptyOf) and the task
- * bar (policyTasks.ts policyBarOf) both read.
- *
- * Every card is, except the people card. It states who the policy reaches, a
- * fact about scope, and no Implementation Task points at it. Unresolved, it says
- * the reach is not established (a group the scan read only a sample of, a
- * directory read that came back incomplete), and what settles that is what a
- * later scan reads, not anything done on this step. That holds on every step,
- * open or Completed, so the rule is the same on every step: the card is still
- * drawn, warn, under Tasks Remaining, and is never counted as work. Counted, a
- * Completed step whose delivering policy excludes a group read only in part went
- * from "Every task on this step is complete." to "Complete the next task shown
- * for each item.", and from "No implementation needed" to "Waiting on
- * Readiness": an instruction nobody can carry out.
- */
-export function isReadinessWork(tile: { key: string }): boolean {
-  return tile.key !== PEOPLE_TILE
 }
 
 /**
@@ -2548,7 +2483,11 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
     return { tiles, satisfied: configuredTiles.filter(t => t.tone === 'good'), bar: barOf(c) }
   }
   const inventory: ReadinessTile | null = c.inventory ? { key: 'directory-inventory', label: c.inventory.label, value: `${c.inventory.complete ? '' : 'At least '}${c.inventory.count} ${plural(c.inventory.count, 'guest')}`, note: [c.inventory.note, c.inventory.names.length > 0 ? CONTRACT.inventoryNames : null, ...c.inventory.names].filter((x): x is string => x !== null).join('\n'), tone: 'info' } : null
-  const facts = [enforcedReadingTile(step), unwatchedTile(step), ownPolicyTile(step), belowGoalFloorTile(c), followUpTile(c), blindReadingTile(step, c), ...emergencyTiles(step, c), ...configuredTiles, ...(configuration.length && step.id !== 's-prereq-break-glass' ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), exclusionsTile(step, c), exclusionsReachTile(c), peopleTile(c), implementationTile(step, c), inventory].filter((x): x is ReadinessTile => x !== null)
+  // No "Affected people" card (walk list item 11, owner 2026-09-23): it repeated
+  // the row's Impact in other numbers ("3 active people · 3 admins · covers 4
+  // enabled" beside "4 accounts") and, on a check step, asked the reader to
+  // "Check the listed evidence" over none. Every card left is work.
+  const facts = [enforcedReadingTile(step), unwatchedTile(step), ownPolicyTile(step), belowGoalFloorTile(c), followUpTile(c), ...emergencyTiles(step, c), ...configuredTiles, ...((configuration.length && step.id !== 's-prereq-break-glass') || (c.satisfiedFacts?.length ?? 0) > 0 ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), exclusionsTile(step, c), exclusionsReachTile(c), implementationTile(step, c), inventory].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
   // The emergency step's failing checks are its account slots' lines (P0-7): no check tile beside them.
   const fixes = fixTiles(c.fix, prerequisiteLabel).filter((t) => !(step.emergency && t.key.startsWith('check:')) && !(configuration.length && /passkey.*(?:review|settings)|profile.*review/i.test(`${t.label} ${t.value}`)))

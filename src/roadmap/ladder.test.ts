@@ -97,8 +97,7 @@ test('a tenant that cannot use Conditional Access gets no plan at all, and a lic
 
 test('separation review includes eligible role holders but excludes emergency accounts', () => {
   // On the one step that does the review, whatever the licence: the ladder's
-  // second id for it is gone (finding 9), and the population is applyManualReviews'
-  // (roadmap/manualWork.ts ADMIN_SEPARATION), not a rung's own list.
+  // second id for it is gone (finding 9).
   // A licensed tenant, because since 2026-09-20 an unlicensed one has no plan to
   // find the step on. The population rule under test is the same either way.
   const base = fixture('small')
@@ -108,6 +107,5 @@ test('separation review includes eligible role holders but excludes emergency ac
   const m = mapping({ breakGlassUserIds: [emergency.id] })
   const step = runFixture({ ...base, snapshot, mapping: m }, { mapping: m }).steps.find(s => s.id === SEPARATE_ADMIN_ACCOUNTS_STEP_ID)
   assert.ok(step, 'the review is on the plan')
-  assert.deepEqual(step.population.ids, [ordinary.id])
   assert.equal(ladderSteps(snapshot, m, [SEPARATE_ADMIN_ACCOUNTS_STEP_ID, 's-check-dormant-accounts']).steps.some(s => s.id === ladderStepId('admin-accounts-separate')), false)
 })

@@ -26,9 +26,7 @@
         ],
         "projection": {
           "missing": {
-            "entra": [
-              "entra.dormant"
-            ],
+            "entra": [],
             "json": [],
             "powershell": [],
             "aiInfo": [
@@ -113,9 +111,6 @@
           "readiness": [
             "readiness.review",
             "readiness.model"
-          ],
-          "troubleshooting": [
-            "troubleshooting.model"
           ]
         },
         "verifiedSources": [
@@ -144,18 +139,6 @@
         }
       },
       "blocks": {
-        "entra.dormant": {
-          "meta": {
-            "id": "entra.dormant",
-            "channel": "entra",
-            "states": [
-              "missing"
-            ],
-            "format": "markdown",
-            "kind": "template"
-          },
-          "text": "Review each account IAMAI lists with its owner before changing it.\n\nAccounts to review ({{people.affected.count}}): {{people.affected.summary}}. [omit this line when unavailable]\n An old or missing sign-in record is a reason to investigate, not proof that the account is unused: the directory keeps sign-ins only so far back, and never fills the gap in later. Record one outcome for each account:\n1. No longer needed: disable sign-in, as at least a User Administrator. Entra admin center → Entra ID → Users → the account → Edit properties → Account enabled: No. Do not delete the account or remove mailbox data.\n2. Still needed: confirm its purpose and owner, and verify legitimate use. Once the owner signs in, the directory's record can take a day to catch up, so scan again after that.\n3. Shared mailbox or resource account: confirm whether direct sign-in should be blocked. If so, block sign-in the same way; it then stays listed under Inventory and nowhere else.\n"
-        },
         "ai.dormant": {
           "meta": {
             "id": "ai.dormant",
@@ -166,7 +149,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nIAMAI lists enabled accounts with no successful sign-in recorded in the last 90 days, or none on record. It reads the directory's last successful sign-in together with the sign-in records it collected; a failed attempt is not use. They are review candidates: a missing or old record can mean the account is unused, that its activity predates the retained history, or that activity data could not be read. For each account the outcomes are: keep it for a confirmed purpose and owner; disable sign-in once the owner confirms it is no longer needed; or block direct sign-in for a shared mailbox or resource account that should never sign in. This step does not delete accounts, remove licences or change mailbox data.\n"
+          "text": "\nIAMAI lists enabled accounts with no successful sign-in recorded in the last 90 days, or none on record. It reads the directory's last successful sign-in together with the sign-in records it collected; a failed attempt is not use. For each account: disable sign-in if nobody needs it, or keep it. This step does not delete accounts, remove licences or change mailbox data.\n"
         },
         "entra.disable": {
           "meta": {
@@ -308,21 +291,6 @@
             "kind": "referenceOnly"
           },
           "text": "{\n  \"tiles\": [],\n  \"whyIamaiSaysThis\": \"The only tenant change in this step is turning off Account enabled for an account whose owner approved it.\",\n  \"whyIamAISaysThis\": {\n    \"sections\": {\n      \"whyItMatters\": \"The only tenant change in this step is turning off Account enabled for an account whose owner approved it.\"\n    }\n  }\n}\n"
-        },
-        "troubleshooting.model": {
-          "meta": {
-            "id": "troubleshooting.model",
-            "channel": "troubleshooting",
-            "states": [
-              "needsDecision",
-              "disableConfirmed",
-              "verificationRequired",
-              "inPlace"
-            ],
-            "format": "json",
-            "kind": "referenceOnly"
-          },
-          "text": "{\n  \"scenarios\": [\n    {\n      \"id\": \"blank-signin\",\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Determine whether the account never signed in, activity predates retained history, or the required activity data could not be read.\"\n      ],\n      \"fix\": [\n        \"Keep the account in review; obtain owner context before any disable action.\"\n      ],\n      \"then\": [\n        \"Save an explicit disposition and rescan.\"\n      ],\n      \"sources\": [\n        \"ms-inactive\",\n        \"ms-signinactivity\"\n      ],\n      \"states\": [\n        \"needsDecision\",\n        \"inPlace\"\n      ],\n      \"title\": \"The account has no last sign-in timestamp\"\n    },\n    {\n      \"id\": \"failed-attempt-newer\",\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Compare with lastSuccessfulSignInDateTime; lastSignInDateTime includes failed interactive attempts.\"\n      ],\n      \"fix\": [\n        \"Use successful access plus owner context for the decision.\"\n      ],\n      \"then\": [\n        \"Do not change the account until disposition is explicit.\"\n      ],\n      \"sources\": [\n        \"ms-signinactivity\"\n      ],\n      \"states\": [\n        \"needsDecision\",\n        \"inPlace\"\n      ],\n      \"title\": \"lastSignInDateTime is recent but actual use is unclear\"\n    },\n    {\n      \"id\": \"wrong-user-risk\",\n      \"classification\": \"derived\",\n      \"check\": [\n        \"Resolve the exact user ID and UPN.\"\n      ],\n      \"fix\": [\n        \"Stop the change and target only the saved object ID.\"\n      ],\n      \"then\": [\n        \"Re-read the user before retrying.\"\n      ],\n      \"sources\": [\n        \"ms-user-update\"\n      ],\n      \"states\": [\n        \"needsDecision\",\n        \"inPlace\"\n      ],\n      \"title\": \"The proposed action targets a display name rather than the saved object ID\"\n    },\n    {\n      \"id\": \"graph-403\",\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Verify User.EnableDisableAccount.All plus User.Read.All and an administrator role appropriate to the target user.\"\n      ],\n      \"fix\": [\n        \"Reconnect with the required authorization; do not broaden the operation.\"\n      ],\n      \"then\": [\n        \"Retry the same single-user action.\"\n      ],\n      \"sources\": [\n        \"ms-user-update\"\n      ],\n      \"states\": [\n        \"needsDecision\",\n        \"inPlace\"\n      ],\n      \"title\": \"PowerShell returns 403 while changing accountEnabled\"\n    }\n  ]\n}\n"
         }
       }
     },
@@ -346,9 +314,7 @@
         ],
         "projection": {
           "missing": {
-            "entra": [
-              "entra.separate"
-            ],
+            "entra": [],
             "json": [],
             "powershell": [],
             "aiInfo": [
@@ -469,7 +435,7 @@
           }
         ],
         "milestone": {
-          "actionText": "Test the new admin account, then move the role."
+          "actionText": "Move each admin role to a separate admin account"
         },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
@@ -478,18 +444,6 @@
         }
       },
       "blocks": {
-        "entra.separate": {
-          "meta": {
-            "id": "entra.separate",
-            "channel": "entra",
-            "states": [
-              "missing"
-            ],
-            "format": "markdown",
-            "kind": "template"
-          },
-          "text": "Review the listed active and eligible administrator accounts. Record Already dedicated to admin work when that is true. For an account also used for everyday work:\n1. Create a second, cloud-only account for the role: Entra admin center → Entra ID → Users → New user → Create new user. Name it so the purpose is obvious (adm- and their name). Cloud-only keeps the role clear of a compromised on-premises directory.\n2. Give the admin account no mailbox to read, but an email address that reaches the person: role approvals and service notices still have to arrive.\n3. Before the admin account is used for admin work, register an approved phishing-resistant method on it, such as a passkey or security key: sign in as the admin account at https://mysignins.microsoft.com/security-info. If it has no method yet, use a Temporary Access Pass for that first sign-in. The admin policies require a method that meets their authentication strength.\n4. Add the same directory role to it: Entra admin center → Entra ID → Roles and administrators → the role → Add assignments → the admin account. A role held through Privileged Identity Management stays eligible on the new account; do not make it permanent. This is the moment to count: Microsoft asks for fewer than five Global Administrators, and fewer than ten privileged role assignments in all.\n5. Sign in to an admin portal with the admin account and complete the administrative task the role is needed for. Only then remove the role from the everyday account.\n6. Keep mail, Teams and files on the everyday account; open admin portals with the admin account only.\n"
-        },
         "ai.separate": {
           "meta": {
             "id": "ai.separate",
@@ -658,6 +612,7 @@
             "id": "troubleshooting.model",
             "channel": "troubleshooting",
             "states": [
+              "missing",
               "actionRequired",
               "credentialProofRequired",
               "roleCutoverRequired",
@@ -667,7 +622,7 @@
             "format": "json",
             "kind": "referenceOnly"
           },
-          "text": "{\n  \"scenarios\": [\n    {\n      \"id\": \"new-admin-cannot-sign-in\",\n      \"classification\": \"derived\",\n      \"check\": [\n        \"Confirm passkey/security-key registration and applicable Conditional Access prerequisites.\"\n      ],\n      \"fix\": [\n        \"Keep the old role assignment while correcting the new account's sign-in path; do not weaken the admin policy.\"\n      ],\n      \"then\": [\n        \"Prove the new sign-in before cutover.\"\n      ],\n      \"sources\": [\n        \"ms-privileged-accounts\"\n      ],\n      \"states\": [\n        \"inPlace\"\n      ],\n      \"title\": \"The dedicated admin account has a role but cannot complete the required phishing-resistant sign-in\"\n    },\n    {\n      \"id\": \"pim-became-permanent\",\n      \"classification\": \"derived\",\n      \"check\": [\n        \"Compare assignment governance on the old and new principals.\"\n      ],\n      \"fix\": [\n        \"Restore the intended PIM eligibility/activation model and remove the unintended permanent path only after safe access is confirmed.\"\n      ],\n      \"then\": [\n        \"Re-review role governance.\"\n      ],\n      \"sources\": [\n        \"ms-zero-trust-privileged\"\n      ],\n      \"states\": [\n        \"inPlace\"\n      ],\n      \"title\": \"A PIM-eligible role was recreated as a permanent direct assignment on the new account\"\n    },\n    {\n      \"id\": \"daily-account-still-privileged\",\n      \"classification\": \"derived\",\n      \"check\": [\n        \"Read role assignments for both accounts by object ID.\"\n      ],\n      \"fix\": [\n        \"After the new admin path is proven, remove the old assignment using the correct direct/PIM governance surface.\"\n      ],\n      \"then\": [\n        \"Rescan IAMAI and watch subsequent admin sign-ins.\"\n      ],\n      \"sources\": [\n        \"ms-identity-best-practices\"\n      ],\n      \"states\": [\n        \"inPlace\"\n      ],\n      \"title\": \"The dedicated account works, but the everyday account still holds the migrated directory role\"\n    }\n  ]\n}\n"
+          "text": "{\n  \"scenarios\": [\n    {\n      \"id\": \"new-admin-cannot-sign-in\",\n      \"classification\": \"derived\",\n      \"check\": [\n        \"Confirm passkey/security-key registration and applicable Conditional Access prerequisites.\"\n      ],\n      \"fix\": [\n        \"Keep the old role assignment while correcting the new account's sign-in path; do not weaken the admin policy.\"\n      ],\n      \"then\": [\n        \"Prove the new sign-in before cutover.\"\n      ],\n      \"sources\": [\n        \"ms-privileged-accounts\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"inPlace\"\n      ],\n      \"title\": \"The dedicated admin account has a role but cannot complete the required phishing-resistant sign-in\"\n    },\n    {\n      \"id\": \"pim-became-permanent\",\n      \"classification\": \"derived\",\n      \"check\": [\n        \"Compare assignment governance on the old and new principals.\"\n      ],\n      \"fix\": [\n        \"Restore the intended PIM eligibility/activation model and remove the unintended permanent path only after safe access is confirmed.\"\n      ],\n      \"then\": [\n        \"Re-review role governance.\"\n      ],\n      \"sources\": [\n        \"ms-zero-trust-privileged\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"inPlace\"\n      ],\n      \"title\": \"A PIM-eligible role was recreated as a permanent direct assignment on the new account\"\n    },\n    {\n      \"id\": \"daily-account-still-privileged\",\n      \"classification\": \"derived\",\n      \"check\": [\n        \"Read role assignments for both accounts by object ID.\"\n      ],\n      \"fix\": [\n        \"After the new admin path is proven, remove the old assignment using the correct direct/PIM governance surface.\"\n      ],\n      \"then\": [\n        \"Rescan IAMAI and watch subsequent admin sign-ins.\"\n      ],\n      \"sources\": [\n        \"ms-identity-best-practices\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"inPlace\"\n      ],\n      \"title\": \"The dedicated account works, but the everyday account still holds the migrated directory role\"\n    }\n  ]\n}\n"
         }
       }
     },
@@ -20136,9 +20091,6 @@
         "supportBlocks": {
           "readiness": [
             "readiness.model"
-          ],
-          "troubleshooting": [
-            "troubleshooting.model"
           ]
         },
         "verifiedSources": [
@@ -20170,8 +20122,7 @@
             "windowsHelloForBusiness",
             "fido2",
             "x509CertificateMultiFactor",
-            "temporaryAccessPassOneTime",
-            "temporaryAccessPassMultiUse"
+            "temporaryAccessPassOneTime"
           ],
           "targetRequirementsSatisfied": "mfa"
         }
@@ -20187,7 +20138,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Go to Entra admin center → Entra ID → Authentication methods → Authentication strengths. It takes the Security Administrator role, and it is not under Conditional Access.\n2. Click + New authentication strength.\n3. Name: {{strength.target.displayName}}.\n4. Select exactly these methods: {{strength.target.methodNames}}.\n5. Do not select any other methods.\n6. Review and Create.\n7. Rescan in IAMAI.\n"
+          "text": "1. Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Authentication methods → Authentication strengths** as a Security Administrator.\n2. Select **New authentication strength**.\n3. Name: {{strength.target.displayName}}.\n4. Select exactly these methods: {{strength.target.methodNames}}.\n5. Select **Next**, then **Create**.\n6. Return to IAMAI and select **Scan to update the plan**.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -20223,7 +20174,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Review **Usage** for the resolved strength so you know which Conditional Access policies will be affected, including any that are already On.\n2. Edit allowed methods to exactly {{strength.target.methodNames}}.\n3. Do not add any other method.\n4. Save and re-read the same strength.\n"
+          "text": "1. Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Authentication methods → Authentication strengths** as a Security Administrator.\n2. Select **{{strength.current.displayName}}**, then **Edit**.\n3. Select exactly these methods: {{strength.target.methodNames}}.\n4. Select **Next**, then **Save**.\n5. Return to IAMAI and select **Scan to update the plan**.\n"
         },
         "entra.verify": {
           "meta": {
@@ -20250,7 +20201,7 @@
             "method": "POST",
             "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/authenticationStrength/policies"
           },
-          "text": "{\n  \"displayName\": {{json:strength.target.displayName}},\n  \"description\": \"IAMAI pinned-baseline authentication strength\",\n  \"allowedCombinations\": {{json:strength.target.allowedCombinations}}\n}\n"
+          "text": "{\n  \"displayName\": {{json:strength.target.displayName}},\n  \"allowedCombinations\": {{json:strength.target.allowedCombinations}}\n}\n"
         },
         "json.correct.metadata": {
           "meta": {
@@ -20262,7 +20213,7 @@
             "format": "json-template",
             "kind": "template"
           },
-          "text": "{\"displayName\":{{json:strength.target.displayName}},\"description\":\"IAMAI pinned-baseline authentication strength\"}\n"
+          "text": "{\"displayName\":{{json:strength.target.displayName}}}\n"
         },
         "json.correct.combinations": {
           "meta": {
@@ -20288,7 +20239,7 @@
             "format": "powershell",
             "kind": "template"
           },
-          "text": "param(\n [ValidateSet('Create','CorrectMetadata','CorrectCombinations','Verify')][string]$Mode,\n [string]$StrengthId,\n [string]$DisplayName\n)\n$ErrorActionPreference='Stop'\nConnect-MgGraph -Scopes 'Policy.ReadWrite.ConditionalAccess','Policy.Read.All' -NoWelcome\n$G='https://graph.microsoft.com/v1.0'\n$Desired=@(ConvertFrom-Json -InputObject '{{json:strength.target.allowedCombinations}}')\nfunction IG([string]$Method,[string]$Uri,$Body=$null){\n $p=@{Method=$Method;Uri=$Uri}; if($null-ne $Body){$p.Body=($Body|ConvertTo-Json -Depth 20);$p.ContentType='application/json'}\n Invoke-MgGraphRequest @p\n}\nfunction ReadStrength([string]$Id){IG 'GET' \"$G/policies/authenticationStrengthPolicies/$Id\"}\nswitch($Mode){\n 'Create'{if([string]::IsNullOrWhiteSpace($DisplayName)){throw 'DisplayName required'};IG 'POST' \"$G/policies/authenticationStrengthPolicies\" @{displayName=$DisplayName;description='IAMAI pinned-baseline authentication strength';allowedCombinations=$Desired}}\n 'CorrectMetadata'{if(-not $StrengthId){throw 'StrengthId required'};IG 'PATCH' \"$G/policies/authenticationStrengthPolicies/$StrengthId\" @{displayName=$DisplayName;description='IAMAI pinned-baseline authentication strength'}|Out-Null;ReadStrength $StrengthId}\n 'CorrectCombinations'{if(-not $StrengthId){throw 'StrengthId required'};$s=ReadStrength $StrengthId;if($s.policyType -ne 'custom'){throw 'Built-in strengths cannot be modified'};IG 'GET' \"$G/policies/authenticationStrengthPolicies/$StrengthId/usage\"|Out-Host;IG 'POST' \"$G/policies/authenticationStrengthPolicies/$StrengthId/updateAllowedCombinations\" @{allowedCombinations=$Desired}|Out-Host;ReadStrength $StrengthId}\n 'Verify'{if(-not $StrengthId){throw 'StrengthId required'};$s=ReadStrength $StrengthId;$a=@($s.allowedCombinations|Sort-Object);$d=@($Desired|Sort-Object);if(($a -join '|') -ne ($d -join '|')){throw 'Allowed combinations do not match the pinned target'};$s}\n}\n"
+          "text": "param(\n [ValidateSet('Create','CorrectMetadata','CorrectCombinations','Verify')][string]$Mode,\n [string]$StrengthId,\n [string]$DisplayName\n)\n$ErrorActionPreference='Stop'\nConnect-MgGraph -Scopes 'Policy.ReadWrite.ConditionalAccess','Policy.Read.All' -NoWelcome\n$G='https://graph.microsoft.com/v1.0'\n$Desired=@(ConvertFrom-Json -InputObject '{{json:strength.target.allowedCombinations}}')\nfunction IG([string]$Method,[string]$Uri,$Body=$null){\n $p=@{Method=$Method;Uri=$Uri}; if($null-ne $Body){$p.Body=($Body|ConvertTo-Json -Depth 20);$p.ContentType='application/json'}\n Invoke-MgGraphRequest @p\n}\nfunction ReadStrength([string]$Id){IG 'GET' \"$G/policies/authenticationStrengthPolicies/$Id\"}\nswitch($Mode){\n 'Create'{if([string]::IsNullOrWhiteSpace($DisplayName)){throw 'DisplayName required'};IG 'POST' \"$G/policies/authenticationStrengthPolicies\" @{displayName=$DisplayName;allowedCombinations=$Desired}}\n 'CorrectMetadata'{if(-not $StrengthId){throw 'StrengthId required'};IG 'PATCH' \"$G/policies/authenticationStrengthPolicies/$StrengthId\" @{displayName=$DisplayName}|Out-Null;ReadStrength $StrengthId}\n 'CorrectCombinations'{if(-not $StrengthId){throw 'StrengthId required'};$s=ReadStrength $StrengthId;if($s.policyType -ne 'custom'){throw 'Built-in strengths cannot be modified'};IG 'GET' \"$G/policies/authenticationStrengthPolicies/$StrengthId/usage\"|Out-Host;IG 'POST' \"$G/policies/authenticationStrengthPolicies/$StrengthId/updateAllowedCombinations\" @{allowedCombinations=$Desired}|Out-Host;ReadStrength $StrengthId}\n 'Verify'{if(-not $StrengthId){throw 'StrengthId required'};$s=ReadStrength $StrengthId;$a=@($s.allowedCombinations|Sort-Object);$d=@($Desired|Sort-Object);if(($a -join '|') -ne ($d -join '|')){throw 'Allowed combinations do not match the pinned target'};$s}\n}\n"
         },
         "ai.create": {
           "meta": {
@@ -20300,7 +20251,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nAn authentication strength is a named set of sign-in methods that a Conditional Access policy can require. The grant \"Require multifactor authentication\" accepts any second factor the tenant allows, including phone call and text message. This custom strength accepts exactly: {{strength.target.methodNames}}.\n\nWindows Hello for Business, FIDO2 and multifactor certificate authentication are phishing-resistant. A Temporary Access Pass is a time-limited passcode an administrator issues, for example so a person with no usable method can sign in and register one. When a Temporary Access Pass option is accepted, this strength is not the same as Microsoft's built-in Phishing-resistant MFA strength.\n\nPhone call, text message and Authenticator push notifications are not accepted.\n\nSeveral baseline policies use this strength. Create it once in this tenant; those policies reference it by its object ID.\n"
+          "text": "\nAn authentication strength is a named set of sign-in methods that a Conditional Access policy can require. The grant \"Require multifactor authentication\" accepts any second factor the tenant allows, including phone call and text message. This custom strength accepts exactly: {{strength.target.methodNames}}.\n\nWindows Hello for Business, FIDO2 and multifactor certificate authentication are phishing-resistant. A Temporary Access Pass is a time-limited passcode an administrator issues, for example so a person with no usable method can sign in and register one. Because it accepts a Temporary Access Pass, it is not Microsoft's built-in Phishing-resistant MFA strength.\n\nPhone call, text message and Authenticator push notifications are not accepted.\n\nSeveral baseline policies use this strength and reference it by its object ID.\n"
         },
         "ai.correct": {
           "meta": {
@@ -20361,7 +20312,7 @@
             "kind": "template",
             "communicationTrigger": "before-correction"
           },
-          "text": "Subject: Action needed: Create the Baseline's Authentication Strength\n\nPlease review the policies using this authentication strength before we change its accepted methods. The target includes Temporary Access Pass as well as phishing-resistant methods.\n"
+          "text": "Subject: Action needed: Create the Baseline's Authentication Strength\n\nPlease review the policies using this authentication strength before we change its accepted methods. The target allows exactly {{strength.target.methodNames}}.\n"
         },
         "readiness.model": {
           "meta": {
@@ -20376,20 +20327,6 @@
             "kind": "referenceOnly"
           },
           "text": "{\n  \"tiles\": [],\n  \"whyIamaiSaysThis\": \"The policies that require this strength need one custom strength in this tenant with the baseline's combinations; the source tenant's object ID cannot be reused.\",\n  \"whyIamAISaysThis\": {\n    \"sections\": {\n      \"whyItMatters\": \"The policies that require this strength need one custom strength in this tenant with the baseline's combinations; the source tenant's object ID cannot be reused.\"\n    }\n  }\n}\n"
-        },
-        "troubleshooting.model": {
-          "meta": {
-            "id": "troubleshooting.model",
-            "channel": "troubleshooting",
-            "states": [
-              "missing",
-              "partial",
-              "verificationRequired"
-            ],
-            "format": "json",
-            "kind": "referenceOnly"
-          },
-          "text": "{\n  \"scenarios\": [\n    {\n      \"id\": \"built-in-selected\",\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Read policyType on the resolved strength.\"\n      ],\n      \"fix\": [\n        \"Do not modify it; resolve or create a tenant-local custom strength instead.\"\n      ],\n      \"then\": [\n        \"Rescan IAMAI.\"\n      ],\n      \"sources\": [\n        \"ms-strength-update\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"partial\"\n      ],\n      \"title\": \"The resolved object is a built-in authentication strength\"\n    },\n    {\n      \"id\": \"dependent-policies\",\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Review the usage result and every returned policy reference.\"\n      ],\n      \"fix\": [\n        \"Change only the baseline combinations in a controlled window; use previousCombinations for rollback if required.\"\n      ],\n      \"then\": [\n        \"Re-read the strength and dependent policies.\"\n      ],\n      \"sources\": [\n        \"ms-strength-combos\",\n        \"ms-strength-usage\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"partial\"\n      ],\n      \"title\": \"Changing combinations reports Conditional Access references\"\n    },\n    {\n      \"id\": \"duplicate-strength\",\n      \"classification\": \"derived\",\n      \"check\": [\n        \"Compare object IDs and exact allowed combinations.\"\n      ],\n      \"fix\": [\n        \"Do not create or change a strength until the intended object is resolved.\"\n      ],\n      \"then\": [\n        \"Rescan after resolution.\"\n      ],\n      \"sources\": [\n        \"ms-strength-create\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"partial\"\n      ],\n      \"title\": \"More than one custom strength appears equivalent\"\n    }\n  ]\n}\n"
         }
       }
     },
@@ -22222,7 +22159,12 @@
           "service.ropcAccounts",
           "service.migrationNotes",
           "dependencies.blockers",
-          "serviceAccounts.accountsSummary"
+          "serviceAccounts.accountsSummary",
+          "serviceAccounts.memberUpns",
+          "service.ropcAccount",
+          "group.current.displayName",
+          "serviceAccounts.missingUpns",
+          "serviceAccounts.extraUpns"
         ],
         "projection": {
           "needsDecision": {
@@ -22378,7 +22320,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Go to **Entra admin center → Entra ID → Groups → All groups → New group**.\n2. Group type: **Security**.\n3. Membership type: **Assigned**.\n4. Name: **{{group.target.displayName}}**.\n5. Add only the service-account users whose application owners confirmed them: {{serviceAccounts.accountsSummary}}. [omit this line when unavailable] Any account named as a mail-sending device in Confirm What You Use is already on that list.\n6. Do not add service principals or managed identities. A policy scoped to users does not block a call made by a service principal, and a policy assigned to a group is not enforced for a service principal inside it, so one added here would be protected by nothing.\n7. Create the group and rescan IAMAI before changing the policies that use it.\n"
+          "text": "1. Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Groups → All groups → New group**.\n2. Group type: **Security**.\n3. Membership type: **Assigned**.\n4. Name: **{{group.target.displayName}}**.\n5. Under **Members**, add {{serviceAccounts.memberUpns}}.\n6. Select **Create**.\n7. Return to IAMAI and select **Scan to update the plan**.\n8. Under **Service accounts group**, select **{{group.target.displayName}}**, then **Save**.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -22390,7 +22332,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open the service-accounts group IAMAI resolved, ID **{{group.current.id}}**. Correct only the difference IAMAI reports.\n"
+          "text": "Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Groups → All groups → {{group.current.displayName}} → Members**.\n"
         },
         "entra.correct.add": {
           "meta": {
@@ -22402,7 +22344,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Add only the confirmed service-account user IAMAI identifies as missing. Check the user's object ID before saving.\n"
+          "text": "Select **Add members**, add {{serviceAccounts.missingUpns}}, and select **Select**.\n"
         },
         "entra.correct.remove": {
           "meta": {
@@ -22414,7 +22356,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Remove only the direct member IAMAI identifies as outside the confirmed service-account set. Do not delete or disable the user. Once removed, the account is no longer excluded by the policies that exclude this group.\n"
+          "text": "Select {{serviceAccounts.extraUpns}}, then **Remove**.\n"
         },
         "entra.correct.type": {
           "meta": {
@@ -22439,7 +22381,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Verify that the same group (same ID) is an assigned, non-mail-enabled security group and its direct members are exactly the confirmed service-account users, with no service principals or managed identities. Then rescan IAMAI.\n"
+          "text": "Return to IAMAI and select **Scan to update the plan**.\n"
         },
         "json.create": {
           "meta": {
@@ -22529,7 +22471,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nThe service-accounts group does not exist yet. The planned change creates one assigned security group named {{group.target.displayName}} containing only the confirmed user-based service accounts. A rescan after creation lets the policies that exclude it reference its object ID.\n"
+          "text": "\nThe service accounts group is one assigned security group holding exactly the service accounts picked in Identify Service and Shared Accounts. The policies that wait on it reference it once it is saved on this step.\n\n{{service.ropcAccount}} signs in with a password from a script: move it to a managed identity or service principal when you can. [omit this line when unavailable]\n{{service.ropcAccounts}} sign in with a password from a script: move each to a managed identity or service principal when you can. [omit this line when unavailable]\n"
         },
         "ai.correct": {
           "meta": {
@@ -22623,7 +22565,7 @@
             "format": "json",
             "kind": "referenceOnly"
           },
-          "text": "{\n  \"scenarios\": [\n    {\n      \"id\": \"candidate-not-authority\",\n      \"classification\": \"derived\",\n      \"check\": [\n        \"Find workload owner and confirm no person signs in as that identity.\"\n      ],\n      \"fix\": [\n        \"Keep it out until owner-confirmed.\"\n      ],\n      \"then\": [\n        \"Save the decision and rescan.\"\n      ],\n      \"sources\": [\n        \"ms-service\"\n      ],\n      \"states\": [\n        \"needsDecision\",\n        \"partial\",\n        \"inPlace\",\n        \"missing\"\n      ],\n      \"title\": \"An account is proposed for the group only because its name starts with svc or it lacks interactive sign-ins\"\n    },\n    {\n      \"id\": \"new-group-replication\",\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Confirm the group/user IDs are correct and the group was just created.\"\n      ],\n      \"fix\": [\n        \"Retry after directory replication; do not create a duplicate group.\"\n      ],\n      \"then\": [\n        \"Read membership back.\"\n      ],\n      \"sources\": [\n        \"ms-group-add\"\n      ],\n      \"states\": [\n        \"needsDecision\",\n        \"partial\",\n        \"inPlace\",\n        \"missing\"\n      ],\n      \"title\": \"Adding a member to a newly created group returns 400 that the referenced object does not exist\"\n    },\n    {\n      \"id\": \"dangerous-delete-shape\",\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Inspect the exact request path.\"\n      ],\n      \"fix\": [\n        \"Use DELETE `/groups/{group-id}/members/{member-id}/$ref`.\"\n      ],\n      \"then\": [\n        \"Verify the user still exists and only membership changed.\"\n      ],\n      \"sources\": [\n        \"ms-group-remove\"\n      ],\n      \"states\": [\n        \"needsDecision\",\n        \"partial\",\n        \"inPlace\",\n        \"missing\"\n      ],\n      \"title\": \"A membership removal URI omits `/$ref`\"\n    },\n    {\n      \"id\": \"group-type-wrong\",\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Inspect groupTypes, mailEnabled, securityEnabled.\"\n      ],\n      \"fix\": [\n        \"Resolve the approved assigned security-group identity; do not silently convert a materially different object.\"\n      ],\n      \"then\": [\n        \"Rescan before downstream use.\"\n      ],\n      \"sources\": [\n        \"ms-group-overview\"\n      ],\n      \"states\": [\n        \"needsDecision\",\n        \"partial\",\n        \"inPlace\",\n        \"missing\"\n      ],\n      \"title\": \"The selected group is dynamic or mail-enabled\"\n    },\n    {\n      \"id\": \"graph-403\",\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Verify GroupMember.ReadWrite.All and a supported group-management role; creation in delegated context uses Group.ReadWrite.All.\"\n      ],\n      \"fix\": [\n        \"Reconnect with the permissions required for the intended operation.\"\n      ],\n      \"then\": [\n        \"Retry only the bounded group action.\"\n      ],\n      \"sources\": [\n        \"ms-group-create\",\n        \"ms-group-add\"\n      ],\n      \"states\": [\n        \"needsDecision\",\n        \"partial\",\n        \"inPlace\",\n        \"missing\"\n      ],\n      \"title\": \"Graph returns 403 for group membership\"\n    }\n  ]\n}\n"
+          "text": "{\n  \"scenarios\": [\n    {\n      \"id\": \"candidate-not-authority\",\n      \"classification\": \"derived\",\n      \"check\": [\n        \"Find workload owner and confirm no person signs in as that identity.\"\n      ],\n      \"fix\": [\n        \"Keep it out until owner-confirmed.\"\n      ],\n      \"then\": [\n        \"Save the decision and rescan.\"\n      ],\n      \"sources\": [\n        \"ms-service\"\n      ],\n      \"states\": [\n        \"needsDecision\",\n        \"partial\",\n        \"inPlace\",\n        \"missing\"\n      ],\n      \"title\": \"An account is proposed for the group only because its name starts with svc or it lacks interactive sign-ins\"\n    },\n    {\n      \"id\": \"group-type-wrong\",\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Inspect groupTypes, mailEnabled, securityEnabled.\"\n      ],\n      \"fix\": [\n        \"Resolve the approved assigned security-group identity; do not silently convert a materially different object.\"\n      ],\n      \"then\": [\n        \"Rescan before downstream use.\"\n      ],\n      \"sources\": [\n        \"ms-group-overview\"\n      ],\n      \"states\": [\n        \"needsDecision\",\n        \"partial\",\n        \"inPlace\",\n        \"missing\"\n      ],\n      \"title\": \"The selected group is dynamic or mail-enabled\"\n    }\n  ]\n}\n"
         }
       }
     },
@@ -22643,6 +22585,8 @@
           "location.current.displayName",
           "location.current.ipRanges",
           "location.current.isTrusted",
+          "location.target.ipRangesText",
+          "location.correct.displayName",
           "evidence.signInIpSummary",
           "network.ownerNotes",
           "dependencies.blockers"
@@ -22771,7 +22715,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Go to **Entra admin center → Entra ID → Conditional Access → Named locations → + IP ranges location**.\n2. Name: {{location.target.displayName}}.\n3. Confirm the public IP ranges with the network owner before adding them. An address seen in sign-ins, or from a \"what is my IP\" check, is not approval. Do not use private LAN ranges: behind a private network Entra sees the address the network uses to reach the internet, not the device's own.\n4. Add only the approved public ranges in CIDR notation, including VPN exits only where the network owner has approved that trust. Entra accepts only masks greater than /8, and no more than two thousand ranges in one location.\n5. Check \"Mark as trusted location.\"\n6. Create.\n7. Rescan in IAMAI and check that an expected sign-in from the approved network matches this location. If it does not, investigate instead of adding more addresses.\n"
+          "text": "1. Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Conditional Access → Named locations → IP ranges location**.\n2. Name: {{location.target.displayName}}.\n3. Add {{location.target.ipRangesText}}.\n4. Select **Mark as trusted location**.\n5. Select **Create**.\n6. Return to IAMAI and select **Scan to update the plan**.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -22807,7 +22751,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Set **Mark as trusted location** on for this exact object. Do not mark any other named location trusted. A location that carries the trusted mark cannot be deleted until the mark is taken off, so remove the mark first if you ever retire this one.\n"
+          "text": "1. Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Conditional Access**.\n2. Open **{{location.correct.displayName}}** in Named locations.\n3. Select **Mark as trusted location**, then **Save**.\n4. Return to IAMAI and select **Scan to update the plan**.\n"
         },
         "entra.correct.name": {
           "meta": {
@@ -22907,7 +22851,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "A trusted location tells Microsoft Entra that sign-ins from these public IP addresses come from a network the organization controls. Some baseline policies apply differently inside a trusted network.\n\nAdd only public IPv4 and IPv6 ranges the network owner approves, including VPN exits only where that trust is approved. An address seen in sign-ins is not automatically trusted: an unrelated office, a VPN or a shared provider address can appear there too.\n\nDon't add home IP addresses. They change, and the organization does not control them.\n\nIf nobody works from an office (fully remote, no VPN), you can mark this step as \"Doesn't apply here.\"\n"
+          "text": "A trusted location tells Microsoft Entra that sign-ins from these public IP addresses come from a network the organization controls. Some baseline policies apply differently inside a trusted network.\n"
         },
         "ai.correct": {
           "meta": {
@@ -22998,7 +22942,7 @@
             "format": "json",
             "kind": "referenceOnly"
           },
-          "text": "{\n  \"scenarios\": [\n    {\n      \"id\": \"private-ip\",\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Compare with the public address Microsoft Entra sees at sign-in.\"\n      ],\n      \"fix\": [\n        \"Use only the confirmed public egress CIDR.\"\n      ],\n      \"then\": [\n        \"Rescan evidence after correction.\"\n      ],\n      \"sources\": [\n        \"ms-network\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"partial\",\n        \"inPlace\"\n      ],\n      \"title\": \"A proposed range is a private intranet address rather than public egress\"\n    },\n    {\n      \"id\": \"range-replaced\",\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Compare the submitted ipRanges collection with the pre-change and target sets.\"\n      ],\n      \"fix\": [\n        \"PATCH the same object with the complete intended collection.\"\n      ],\n      \"then\": [\n        \"Read back exact ranges.\"\n      ],\n      \"sources\": [\n        \"ms-ip-update\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"partial\",\n        \"inPlace\"\n      ],\n      \"title\": \"An update accidentally drops an existing valid range\"\n    },\n    {\n      \"id\": \"dynamic-egress\",\n      \"classification\": \"derived\",\n      \"check\": [\n        \"Confirm whether the ISP/VPN public egress changed.\"\n      ],\n      \"fix\": [\n        \"Update to the newly confirmed CIDR; do not broaden to cover guessed future addresses.\"\n      ],\n      \"then\": [\n        \"Verify sign-in evidence and rescan.\"\n      ],\n      \"sources\": [\n        \"ms-network\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"partial\",\n        \"inPlace\"\n      ],\n      \"title\": \"The trusted location stops matching office sign-ins\"\n    },\n    {\n      \"id\": \"graph-403\",\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Verify Policy.Read.All + Policy.ReadWrite.ConditionalAccess and Security Administrator or Conditional Access Administrator.\"\n      ],\n      \"fix\": [\n        \"Reconnect with supported authorization.\"\n      ],\n      \"then\": [\n        \"Retry against the same named location.\"\n      ],\n      \"sources\": [\n        \"ms-ip-update\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"partial\",\n        \"inPlace\"\n      ],\n      \"title\": \"Graph returns 403\"\n    }\n  ]\n}\n"
+          "text": "{\n  \"scenarios\": [\n    {\n      \"id\": \"private-ip\",\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Compare with the public address Microsoft Entra sees at sign-in.\"\n      ],\n      \"fix\": [\n        \"Use only the confirmed public egress CIDR.\"\n      ],\n      \"then\": [\n        \"Rescan evidence after correction.\"\n      ],\n      \"sources\": [\n        \"ms-network\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"partial\",\n        \"inPlace\"\n      ],\n      \"title\": \"A proposed range is a private intranet address rather than public egress\"\n    },\n    {\n      \"id\": \"range-replaced\",\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Compare the submitted ipRanges collection with the pre-change and target sets.\"\n      ],\n      \"fix\": [\n        \"PATCH the same object with the complete intended collection.\"\n      ],\n      \"then\": [\n        \"Read back exact ranges.\"\n      ],\n      \"sources\": [\n        \"ms-ip-update\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"partial\",\n        \"inPlace\"\n      ],\n      \"title\": \"An update accidentally drops an existing valid range\"\n    },\n    {\n      \"id\": \"dynamic-egress\",\n      \"classification\": \"derived\",\n      \"check\": [\n        \"Confirm whether the ISP/VPN public egress changed.\"\n      ],\n      \"fix\": [\n        \"Update to the newly confirmed CIDR; do not broaden to cover guessed future addresses.\"\n      ],\n      \"then\": [\n        \"Verify sign-in evidence and rescan.\"\n      ],\n      \"sources\": [\n        \"ms-network\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"partial\",\n        \"inPlace\"\n      ],\n      \"title\": \"The trusted location stops matching office sign-ins\"\n    }\n  ]\n}\n"
         }
       }
     },
@@ -23816,14 +23760,15 @@
         ],
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-          "productContract": "Use IAMAI readiness evidence and an Authenticator-targeted registration campaign to reduce MFA enrollment risk before enforcement; admins still receive passkey/security-key remediation separately.",
-          "currentDocsDifference": "Microsoft registration campaigns now support either Microsoft Authenticator or passkeys, and Microsoft-managed campaign behavior is changing during a rollout expected to finish by end of September 2026. This package preserves IAMAI's existing Authenticator-targeted campaign contract rather than silently changing the target method.",
+          "productContract": "Use IAMAI readiness evidence and a passkey-targeted registration campaign (owner V7 answer; walk list section 3 item 4) to reduce MFA enrollment risk before enforcement; people register Microsoft Authenticator and admins a passkey or security key.",
+          "currentDocsDifference": "Microsoft registration campaigns support either Microsoft Authenticator or passkeys (Learn, how-to-mfa-registration-campaign, checked 2026-09-23). The campaign targets passkeys with the snooze settings Microsoft applies to its managed passkey campaign: one day, unlimited snoozes.",
           "targetCampaign": {
             "state": "enabled",
             "includeId": "all_users",
             "targetType": "group",
-            "targetedAuthenticationMethod": "microsoftAuthenticator",
-            "enforceRegistrationAfterAllowedSnoozes": true
+            "targetedAuthenticationMethod": "fido2",
+            "snoozeDurationInDays": 1,
+            "enforceRegistrationAfterAllowedSnoozes": false
           }
         }
       },
@@ -23862,7 +23807,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Open **Entra ID > Authentication methods > Registration campaign > Edit**.\n2. Set State to **Enabled** to choose the method yourself. Left at **Microsoft managed**, Microsoft runs the campaign: it targets passkeys where the included people are enabled for them, Microsoft Authenticator where they are not, and it reaches everyone who can do MFA rather than only the people on a text message or a voice call.\n3. Authentication method: **Microsoft Authenticator**, or **Passkey (FIDO2)** where this tenant's people can register one. Only one at a time.\n   For an Authenticator campaign, check **Entra ID > Authentication methods > Policies > Microsoft Authenticator** first: with **Authentication mode** set to **Passwordless**, nobody is eligible and the campaign nudges no one. It must be **Any** or **Push**.\n4. Target: **All users**, then apply only IAMAI-resolved exclusions if the tenant campaign should omit non-person populations.\n5. **Days allowed to snooze**: the value your organization approved, between 0 and 14; IAMAI does not hold one.\n6. Keep **Limited number of snoozes** enabled, so a person may skip the prompt three times and must then register, where the tenant's current rollout exposes that control.\n7. Save, reopen the campaign and verify the target before announcing the rollout. Then rescan IAMAI.\n"
+          "text": "1. Open **Entra ID > Authentication methods > Registration campaign > Edit**.\n2. Set State to **Enabled** to choose the method yourself. Left at **Microsoft managed**, Microsoft runs the campaign: it targets passkeys where the included people are enabled for them, Microsoft Authenticator where they are not, and it reaches everyone who can do MFA rather than only the people on a text message or a voice call.\n3. Authentication method: **Passkey**.\n4. Target: **All users**, then apply only IAMAI-resolved exclusions if the tenant campaign should omit non-person populations.\n5. **Days allowed to snooze**: **1**.\n6. **Limited number of snoozes**: **Disabled**.\n7. Save, reopen the campaign and verify the target before announcing the rollout. Then rescan IAMAI.\n"
         },
         "entra.run-workflow": {
           "meta": {
@@ -23910,7 +23855,7 @@
             "format": "json-template",
             "kind": "template"
           },
-          "text": "{\"registrationEnforcement\":{\"authenticationMethodsRegistrationCampaign\":{\"snoozeDurationInDays\":{{json:campaign.snoozeDurationInDays}},\"enforceRegistrationAfterAllowedSnoozes\":true,\"state\":\"enabled\",\"excludeTargets\":{{json:campaign.excludeTargets}},\"includeTargets\":[{\"id\":\"all_users\",\"targetType\":\"group\",\"targetedAuthenticationMethod\":\"microsoftAuthenticator\"}]}}}\n"
+          "text": "{\"registrationEnforcement\":{\"authenticationMethodsRegistrationCampaign\":{\"snoozeDurationInDays\":{{json:campaign.snoozeDurationInDays}},\"enforceRegistrationAfterAllowedSnoozes\":false,\"state\":\"enabled\",\"excludeTargets\":{{json:campaign.excludeTargets}},\"includeTargets\":[{\"id\":\"all_users\",\"targetType\":\"group\",\"targetedAuthenticationMethod\":\"fido2\"}]}}}\n"
         },
         "powershell.run": {
           "meta": {
@@ -23924,7 +23869,7 @@
             "format": "powershell",
             "kind": "template"
           },
-          "text": "param(\n [Parameter(Mandatory=$true)][ValidateSet('Configure','Verify')][string]$Mode,\n [ValidateRange(0,14)][int]$SnoozeDurationInDays=1,\n [string]$ExcludeTargetsJson='[]'\n)\n$ErrorActionPreference='Stop'\nConnect-MgGraph -Scopes 'Policy.ReadWrite.AuthenticationMethod','Policy.Read.AuthenticationMethod' -NoWelcome\n$G='https://graph.microsoft.com/v1.0'\nfunction IG($m,$u,$b=$null){if($null -eq $b){return Invoke-MgGraphRequest -Method $m -Uri $u -OutputType PSObject};Invoke-MgGraphRequest -Method $m -Uri $u -Body ($b|ConvertTo-Json -Depth 30) -ContentType 'application/json' -OutputType PSObject}\nif($Mode -eq 'Configure'){\n $exclude=@($ExcludeTargetsJson|ConvertFrom-Json)\n $campaign=@{snoozeDurationInDays=$SnoozeDurationInDays;enforceRegistrationAfterAllowedSnoozes=$true;state='enabled';excludeTargets=$exclude;includeTargets=@(@{id='all_users';targetType='group';targetedAuthenticationMethod='microsoftAuthenticator'})}\n IG PATCH \"$G/policies/authenticationMethodsPolicy\" @{registrationEnforcement=@{authenticationMethodsRegistrationCampaign=$campaign}} | Out-Null\n}\n$p=IG GET \"$G/policies/authenticationMethodsPolicy\"\n$p.registrationEnforcement.authenticationMethodsRegistrationCampaign\n"
+          "text": "param(\n [Parameter(Mandatory=$true)][ValidateSet('Configure','Verify')][string]$Mode,\n [ValidateRange(0,14)][int]$SnoozeDurationInDays=1,\n [string]$ExcludeTargetsJson='[]'\n)\n$ErrorActionPreference='Stop'\nConnect-MgGraph -Scopes 'Policy.ReadWrite.AuthenticationMethod','Policy.Read.AuthenticationMethod' -NoWelcome\n$G='https://graph.microsoft.com/v1.0'\nfunction IG($m,$u,$b=$null){if($null -eq $b){return Invoke-MgGraphRequest -Method $m -Uri $u -OutputType PSObject};Invoke-MgGraphRequest -Method $m -Uri $u -Body ($b|ConvertTo-Json -Depth 30) -ContentType 'application/json' -OutputType PSObject}\nif($Mode -eq 'Configure'){\n $exclude=@($ExcludeTargetsJson|ConvertFrom-Json)\n $campaign=@{snoozeDurationInDays=$SnoozeDurationInDays;enforceRegistrationAfterAllowedSnoozes=$false;state='enabled';excludeTargets=$exclude;includeTargets=@(@{id='all_users';targetType='group';targetedAuthenticationMethod='fido2'})}\n IG PATCH \"$G/policies/authenticationMethodsPolicy\" @{registrationEnforcement=@{authenticationMethodsRegistrationCampaign=$campaign}} | Out-Null\n}\n$p=IG GET \"$G/policies/authenticationMethodsPolicy\"\n$p.registrationEnforcement.authenticationMethodsRegistrationCampaign\n"
         },
         "ai.configure": {
           "meta": {
@@ -23936,7 +23881,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nThe registration campaign for {{tenant.displayName}} needs to be configured. Intended campaign: State Enabled (not Microsoft managed); method Microsoft Authenticator; target All users; exclusions {{campaign.excludeTargets}}; snooze duration {{campaign.snoozeDurationInDays}} day(s), with registration required after the allowed snoozes where the tenant exposes that control. Switching the method to passkeys would change the saved plan and needs an owner decision. Microsoft is changing campaign behavior in a rollout expected to finish by the end of September 2026, so the portal may show different controls. Prompts depend on each user's eligibility and the snooze settings.\n"
+          "text": "\nThe registration campaign for {{tenant.displayName}} needs to be configured. Intended campaign: State Enabled; method Passkey; target All users; exclusions {{campaign.excludeTargets}}; snooze duration {{campaign.snoozeDurationInDays}} day(s), with unlimited snoozes. Microsoft is changing campaign behavior in a rollout expected to finish by the end of September 2026, so the portal may show different controls. Prompts depend on each user's eligibility and the snooze settings.\n"
         },
         "ai.running": {
           "meta": {

@@ -27,10 +27,10 @@ import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
 import { contentStepFor, contentStepForPackage } from '../../content/stepTitle.ts'
 import { EMERGENCY_ACCESS_GROUP, isGroupMember, usesTaskAnatomy } from '../../roadmap/stepGroups.ts'
 import { enforcesByStateOnly, stepOperations } from './stepJson.ts'
-import { CONTRACT, FINISHED_FINDINGS, isReadinessWork } from './stepContract.ts'
+import { CONTRACT, FINISHED_FINDINGS } from './stepContract.ts'
 import { app, structuralWords } from '../../content/content.ts'
 import { toReportOnly } from '../../roadmap/operations.ts'
-import { fillText } from '../../content/render.ts'
+import { fillText, whatToDoFor, whole } from '../../content/render.ts'
 import { list } from '../../copy/statements.ts'
 
 /** The line every package authors above the enforce conditions, and the one place a step's own prerequisites belong. */
@@ -43,6 +43,7 @@ import { mailDevicesFollowUp } from '../../roadmap/manualWork.ts'
 import { mailDevicesOf } from '../../roadmap/answers.ts'
 import { shared } from '../../content/content.ts'
 import type { MappingState } from '../../mapping/types.ts'
+import type { OwnCard } from './prepareSteps.ts'
 
 /** The folded mail follow-up's words (docs/plans/step-redundancy-analysis.md finding 6). */
 const MAIL = shared.mailDevices as { title: string; target: string; steps: string[]; action: string }
@@ -81,7 +82,7 @@ function contentKindOf(stepId: string): string | null {
 
 /** The step a card is on, as the content file has it: its own entry, or the guidance a generated step carries (a baseline-review row). */
 type CardStep = { id: string; goalId?: string; guidance?: { card?: { subject: string; check: string } | null; taskTitle?: string | null } }
-const entryOf = (step: CardStep): { card?: { subject: string; check: string } | null; taskTitle?: string | null } | undefined =>
+const entryOf = (step: CardStep): { card?: { subject: string; check: string; satisfied?: string } | null; taskTitle?: string | null } | undefined =>
   contentStepFor({ id: step.id, goalId: step.goalId ?? (step.id.startsWith('s-goal-') ? step.id.slice('s-goal-'.length) : ''), guidance: step.guidance as never })
 
 /**
@@ -92,9 +93,37 @@ const entryOf = (step: CardStep): { card?: { subject: string; check: string } | 
  * without these words the card was headed by the step's kind and checked by the
  * step's own title.
  */
-export function cardWordsOf(step: CardStep): { subject: string; check: string } | null {
-  const card = entryOf(step)?.card
-  return card && typeof card.subject === 'string' && typeof card.check === 'string' ? card : null
+export function cardWordsOf(step: CardStep): { subject: string; check: string | null } | null {
+  const card = entryOf(step)?.card as { subject?: unknown; check?: unknown } | null | undefined
+  return card && typeof card.subject === 'string' && (typeof card.check === 'string' || card.check === null) ? { subject: card.subject, check: card.check } : null
+}
+
+/**
+ * A step's own card as its content writes it beyond the subject (walk list
+ * items 2, 14, 26), with the step's values filled in:
+ * - `check`, the open card's title ("7 accounts to disable or keep"), or null
+ *   where each thing the step works on is a card of its own (Use Separate
+ *   Accounts for Admin Work: one card per admin to move), so the step draws no
+ *   card of its own while it is open;
+ * - `detail: null`, no second line under the title;
+ * - `pointer`, the open card points at the step's task by its title;
+ * - `satisfied`, the fact the Satisfied card states ("2 kept · 7 disabled";
+ *   3.7's "Core - Exception - Service accounts · 2 members"), in place of the
+ *   state word, where the scan holds every value it names.
+ * Null for a step whose card says none of these, which keeps the card it always had.
+ */
+export type OwnCardWords = { check: string | null; noDetail: boolean; pointer: boolean; satisfied: string | null }
+export function ownCardWordsOf(step: CardStep, ex: Record<string, unknown>): OwnCardWords | null {
+  const entry = entryOf(step)
+  const card = entry?.card as { check?: unknown; detail?: unknown; pointer?: unknown; satisfied?: unknown } | null | undefined
+  // The check for the state the scan read, where the step's whatToDoWhen writes
+  // one (content/render.ts whatToDoFor): 3.7's "Not saved yet" once its group is
+  // found, and no card of its own on 3.6 while it waits on the office answer.
+  const state = whatToDoFor(entry, ex) as { check?: unknown } | null
+  const stateCheck = state !== null && 'check' in state ? state.check : undefined
+  if (!card || (!('detail' in card || 'pointer' in card || 'satisfied' in card) && stateCheck === undefined)) return null
+  const filled = (s: unknown): string | null => (typeof s === 'string' && whole(s, ex) ? fillText(s, ex) : null)
+  return { check: filled(stateCheck !== undefined ? stateCheck : card.check), noDetail: card.detail === null, pointer: card.pointer === true, satisfied: filled(card.satisfied) }
 }
 
 /**
@@ -281,10 +310,7 @@ export function taskSubjectOf(step: CardStep, eyebrow: string | null, title: str
  * cards' ("task", "complete"), not new vocabulary.
  */
 export function policyBarOf(subjects: readonly EmergencySubjectTile[]): string {
-  // The cards that are work (stepContract.ts isReadinessWork): the people card
-  // stands under Tasks Remaining where its reach is not established, and is not
-  // a task anybody can complete.
-  const open = subjects.filter((subject) => !subject.satisfied && isReadinessWork(subject))
+  const open = subjects.filter((subject) => !subject.satisfied)
   if (open.length === 0) return 'Every task on this step is complete.'
   // What a finished rollout left behind is a finding, not a task: the policy is
   // on, and nothing on this step moves the number (stepContract.ts
@@ -342,7 +368,12 @@ function atLastStage(track: readonly ContractStage[], lifecycle: Lifecycle | nul
  * step has no task left to do, so "No tasks remaining" cannot be shown over work
  * that Implementation Tasks still lists.
  */
-export function policyCardsOf(contract: StepContract, projected: EmergencyTaskProjection | null, subject: string = POLICY_SUBJECT, check: string | null = null): EmergencySubjectTile[] {
+export function policyCardsOf(contract: StepContract, projected: EmergencyTaskProjection | null, subject: string = POLICY_SUBJECT, check: string | null = null, words: OwnCardWords | null = null, own: OwnCard | null = null): EmergencySubjectTile[] {
+  // A finished preparation step states its fact, one card each, in place of
+  // "In place · No change needed." (step template rule 6).
+  if ((contract.satisfiedFacts?.length ?? 0) > 0) {
+    return contract.satisfiedFacts.map((fact, index) => ({ key: `fact:${index}`, accountId: null, heading: fact.heading, upn: null, title: fact.title, detail: fact.detail ?? '', instruction: '', completed: [], remainingCount: null, satisfied: true }))
+  }
   const task = projected?.tasks.find((item) => item.required) ?? projected?.tasks[0] ?? null
   // One task needs no pointer sentence (owner, 2026-09-20). On Emergency Access
   // the sentence earns its place because the step has three or four tasks and
@@ -356,6 +387,10 @@ export function policyCardsOf(contract: StepContract, projected: EmergencyTaskPr
   const subjects = contract.members.length > 0
     ? contract.members.map((member) => ({ key: `policy:${member.key}`, heading: member.label ?? subject, name: member.name, lifecycle: member.lifecycle ?? contract.state.lifecycle }))
     : [{ key: 'policy', heading: subject, name: contract.existing?.names.join(', ') ?? null, lifecycle: contract.state.lifecycle }]
+  // A step whose content draws each thing it works on as a card of its own
+  // (ownCardWordsOf: no `check`) draws no card of its own while it is open. A
+  // step that reads its people (prepareSteps.ts OwnCard) always draws its own.
+  if (own === null && words !== null && words.check === null && !contract.state.satisfied) return []
   return subjects.map((subject) => {
     // Nothing is left on the policy itself when the goal is already delivered
     // (Foundation B's own `satisfied`: "nothing to create; keep it as it is"),
@@ -387,18 +422,23 @@ export function policyCardsOf(contract: StepContract, projected: EmergencyTaskPr
       ?? (contract.state.condition !== 'healthy' ? CONTRACT.condition[contract.state.condition] : null)
       ?? (contract.whatToDo.kind === 'decide' ? CONTRACT.condition['needs-decision'] : null)
       ?? task?.title ?? null
+    // A step that reads its people states them itself, open or satisfied
+    // (prepareSteps.ts): who it is about, and the fact, never "In place · No
+    // change needed." (walk list section 3 items 14, 41 and 46).
+    if (own !== null) return { key: subject.key, accountId: null, heading: subject.heading, upn: own.upn ?? subject.name, title: own.title, detail: own.detail, instruction: '', completed: [], remainingCount: null, satisfied, ...(own.link ? { link: own.link } : {}) }
     return {
       key: subject.key,
       accountId: null,
       heading: subject.heading,
       upn: subject.name,
-      title: satisfied ? here : next ?? here,
+      // A finished card states its fact where the step's content writes one (walk list item 14).
+      title: satisfied ? words?.satisfied ?? here : next ?? here,
       // What that check means, in the contract's own words for this step: its one
       // action (Foundation B's milestone where nothing overrules it, and the more
       // specific sentence where something does — "this policy names an object
       // Contoso does not have yet", "in place already: nothing to create").
-      detail: contract.whatToDo.text,
-      instruction: satisfied || directed === null || !pointer ? '' : followTask(directed.title),
+      detail: words !== null && (words.noDetail || (satisfied && words.satisfied !== null)) ? '' : contract.whatToDo.text,
+      instruction: satisfied ? '' : words?.pointer && task !== null ? followTask(task.title) : directed === null || !pointer ? '' : followTask(directed.title),
       // The rollout lifecycle is not a list of checks anybody completed, and
       // stages left are not checks remaining (S4-5): the card claims neither.
       completed: [],
@@ -418,7 +458,7 @@ export function policyCardsOf(contract: StepContract, projected: EmergencyTaskPr
  * satisfied card, so it folds under the completed disclosure the way it folded
  * under the strip's own.
  */
-export function policySubjectsOf(contract: StepContract, readiness: ContractReadiness, projected: EmergencyTaskProjection | null, subject: string = POLICY_SUBJECT, check: string | null = null): EmergencySubjectTile[] {
+export function policySubjectsOf(contract: StepContract, readiness: ContractReadiness, projected: EmergencyTaskProjection | null, subject: string = POLICY_SUBJECT, check: string | null = null, words: OwnCardWords | null = null, own: OwnCard | null = null): EmergencySubjectTile[] {
   // One task needs no pointer sentence (owner, 2026-09-20): the one pointer the
   // adapter can write on this step is to the step's only task, and the section
   // below it carries the same words.
@@ -436,6 +476,6 @@ export function policySubjectsOf(contract: StepContract, readiness: ContractRead
   // — the two cards read identically. The card that names the subject the
   // sentence is about keeps it; the general one drops it and states its check.
   const said = new Set(rest.map((c) => (c.instruction ?? '').trim()).filter((s) => s !== ''))
-  const own = policyCardsOf(contract, projected, subject, check).map((c) => (said.has((c.detail ?? '').trim()) ? { ...c, detail: '' } : c))
-  return [...own, ...rest]
+  const cards = policyCardsOf(contract, projected, subject, words?.check ?? check, words, own).map((c) => (said.has((c.detail ?? '').trim()) ? { ...c, detail: '' } : c))
+  return [...cards, ...rest]
 }

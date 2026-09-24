@@ -1,16 +1,6 @@
-@@IAMAI-BEGIN {"id":"entra.dormant","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
-Review each account IAMAI lists with its owner before changing it.
-
-Accounts to review ({{people.affected.count}}): {{people.affected.summary}}. [omit this line when unavailable]
- An old or missing sign-in record is a reason to investigate, not proof that the account is unused: the directory keeps sign-ins only so far back, and never fills the gap in later. Record one outcome for each account:
-1. No longer needed: disable sign-in, as at least a User Administrator. Entra admin center → Entra ID → Users → the account → Edit properties → Account enabled: No. Do not delete the account or remove mailbox data.
-2. Still needed: confirm its purpose and owner, and verify legitimate use. Once the owner signs in, the directory's record can take a day to catch up, so scan again after that.
-3. Shared mailbox or resource account: confirm whether direct sign-in should be blocked. If so, block sign-in the same way; it then stays listed under Inventory and nowhere else.
-@@IAMAI-END
-
 @@IAMAI-BEGIN {"id":"ai.dormant","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 
-IAMAI lists enabled accounts with no successful sign-in recorded in the last 90 days, or none on record. It reads the directory's last successful sign-in together with the sign-in records it collected; a failed attempt is not use. They are review candidates: a missing or old record can mean the account is unused, that its activity predates the retained history, or that activity data could not be read. For each account the outcomes are: keep it for a confirmed purpose and owner; disable sign-in once the owner confirms it is no longer needed; or block direct sign-in for a shared mailbox or resource account that should never sign in. This step does not delete accounts, remove licences or change mailbox data.
+IAMAI lists enabled accounts with no successful sign-in recorded in the last 90 days, or none on record. It reads the directory's last successful sign-in together with the sign-in records it collected; a failed attempt is not use. For each account: disable sign-in if nobody needs it, or keep it. This step does not delete accounts, remove licences or change mailbox data.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.disable","channel":"entra","states":["disableConfirmed"],"format":"markdown","kind":"template"}
@@ -106,7 +96,3 @@ Please confirm whether {{account.current.displayName}} is still needed and what 
 {"tiles":[{"id":"identity","label":"Account","result":"{{account.current.displayName}}","line":"The change applies only to user object ID {{account.current.id}}."},{"id":"decision","label":"Owner disposition","result":"{{account.decision.disposition}}","line":"Disabling sign-in is allowed only after an explicit decision for this account."},{"id":"state","label":"Account enabled","result":"{{account.current.accountEnabled}}","line":"Verification reads back the same user object."}],"whyIamaiSaysThis":"The only tenant change in this step is turning off Account enabled for an account whose owner approved it."}
 @@IAMAI-END
 
-
-@@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["needsDecision","disableConfirmed","verificationRequired","inPlace"],"format":"json","kind":"referenceOnly"}
-{"scenarios":[{"id":"blank-signin","classification":"documented","symptom":"The account has no last sign-in timestamp.","check":"Determine whether the account never signed in, activity predates retained history, or the required activity data could not be read.","fix":"Keep the account in review; obtain owner context before any disable action.","then":"Save an explicit disposition and rescan.","sources":["ms-inactive","ms-signinactivity"]},{"id":"failed-attempt-newer","classification":"documented","symptom":"lastSignInDateTime is recent but actual use is unclear.","check":"Compare with lastSuccessfulSignInDateTime; lastSignInDateTime includes failed interactive attempts.","fix":"Use successful access plus owner context for the decision.","then":"Do not change the account until disposition is explicit.","sources":["ms-signinactivity"]},{"id":"wrong-user-risk","classification":"derived","symptom":"The proposed action targets a display name rather than the saved object ID.","check":"Resolve the exact user ID and UPN.","fix":"Stop the change and target only the saved object ID.","then":"Re-read the user before retrying.","sources":["ms-user-update"]},{"id":"graph-403","classification":"documented","symptom":"PowerShell returns 403 while changing accountEnabled.","check":"Verify User.EnableDisableAccount.All plus User.Read.All and an administrator role appropriate to the target user.","fix":"Reconnect with the required authorization; do not broaden the operation.","then":"Retry the same single-user action.","sources":["ms-user-update"]}]}
-@@IAMAI-END

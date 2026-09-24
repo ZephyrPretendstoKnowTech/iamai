@@ -3,7 +3,8 @@ import { emergencyAccountPreparationComplete, emergencyAccountPreparationOf } fr
 import { followUpIdsOf, settleFollowUp } from './followUp.ts'
 import { addWorkflowSteps } from './workflows.ts'
 import { countDirectionImpact, directionSteps } from './direction.ts'
-import { answeredReasonOf } from './directionAnswers.ts'
+import dependencyData from '../actionability/dependency-data.json' with { type: 'json' }
+import { answeredReasonOf, officeLocationsCreated, trustedIpLocations } from './directionAnswers.ts'
 import { applyManualReviews, perUserMfaReading } from './manualWork.ts'
 // Step generation (roadmap.md §1–§6; 2026-08-27 redesign: collapsed phase 0,
 // per-tenant impact, safe-today lane, handle-with-care gating, comms drafts,
@@ -14,7 +15,7 @@ import { referenceUsage } from '../baseline/interpretation.ts'
 import type { BaselinePackage } from '../baseline/types.ts'
 import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
-import { PLACEHOLDER_STEP, implementable, resolveTenantPolicy, tenantObjectsOf, unmatchedStrengths } from './resolvePolicy.ts'
+import { PLACEHOLDER_STEP, implementable, matchedStrengthIds, resolveTenantPolicy, tenantObjectsOf, unmatchedStrengths } from './resolvePolicy.ts'
 import { accountApplicability, effectOf, emergencyExposureOf, enforcementHeld, isOpenPolicy, isValidOperation, operationsOf, stepEffects, strengthLookupOf, submitsEnforcement, tenantStrengthsOf, validOperations, unavailableReason } from './operations.ts'
 import type { PolicyEffect } from './operations.ts'
 import type { GrantFloor } from '../coverage/types.ts'
@@ -57,8 +58,9 @@ import { proposeRings, ringContextIndexes } from './rings.ts'
 import { createMethodPreparationCache, methodPreparation, methodReadiness } from './methodReadiness.ts'
 import type { PolicyEffect as MethodTarget } from './operations.ts'
 import { campaignIds, isActivePerson, namedAccounts, population, populationIndex } from '../derive/population.ts'
-import { activityUnreadUsers, enabledUsers, notActiveUsers, notPeopleIds, personAccounts } from '../derive/sets.ts'
-import { adminsWithWorkloadOf } from '../derive/contentLists.ts'
+import { lastSuccessOf, notActiveUsers, notPeopleIds, personAccounts } from '../derive/sets.ts'
+import { adminRolesOf, adminsWithWorkloadOf, officeAppsOf } from '../derive/contentLists.ts'
+import { list } from '../copy/statements.ts'
 import { affectedIds } from '../derive/whoLine.ts'
 import { lockoutCount } from './lockout.ts'
 import { accountVerdict, effectsOf, familyReading, measuredReach, operationReach, scopeCohort, stepAccountVerdict } from './strand.ts'
@@ -72,7 +74,7 @@ import { countryName as countryLabel } from '../mapping/countries.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
-import { adminUserIds, learnRoleNames, roleListSummary } from '../roles.ts'
+import { adminUserIds, learnRoleNames, roleLabel, roleListSummary } from '../roles.ts'
 import { policyPairNames, proposedPolicyName } from '../coverage/naming.ts'
 import { rolloutBucket } from '../scoring/mfaViability.ts'
 import { isReady } from '../scoring/phishingResistant.ts'
@@ -92,7 +94,7 @@ import {
   SEVERITY_STRENGTH_OR_DEVICE,
 } from './constants.ts'
 import { evidenceFor } from './evidence.ts'
-import { blindOf, goalFamily, mfaReady, readinessFor, routeShortfallOf, strengthMeasuredOf, blindSourceOf, sourceReadFix } from './readiness.ts'
+import { blindOf, goalFamily, mfaReady, readinessFor, routeShortfallOf, strengthMeasuredOf, blindSourceOf } from './readiness.ts'
 import { cantSeeFor, scenarioContext, scenarioLinesFor } from './scenarioLines.ts'
 import { SCENARIO } from '../copy/scenarios.ts'
 import { sharedDeviceUsers } from '../derive/sharedDevices.ts'
@@ -238,6 +240,7 @@ import type { SubjectReport } from '../validation/report.ts'
 import { STEP_EXTRAS } from './stepDefaults.ts'
 import { awaitsOperator, exclusionsGroupChoice, operatorExclusionsDecision } from '../mapping/safetyChoice.ts'
 import type { DirectoryEvidence } from '../mapping/safetyChoice.ts'
+import { groupHoldsExactly } from '../mapping/serviceAccounts.ts'
 import { conditionFor, initialState, projectStatus, raiseCondition, setState, stateFields } from './lifecycle.ts'
 import type { StepState } from './lifecycle.ts'
 
@@ -323,7 +326,7 @@ const EXTRAS = STEP_EXTRAS
 // importing the engine); re-exported here for the modules that import them from the engine.
 export { idFor, stepIdForGoal, EXCLUSION_GROUP_STEP_ID, BREAK_GLASS_STEP_ID, PREREQ_STEP_ID } from './stepIds.ts'
 import { idFor, BREAK_GLASS_STEP_ID, PREREQ_STEP_ID, SEPARATE_ADMIN_ACCOUNTS_STEP_ID } from './stepIds.ts'
-import { OPERATOR_PASSKEY_STEP_ID, PASSKEY_SETTINGS_STEP_ID, PASSKEY_TARGET, operatorPasskeyOf, passkeyReadingOf, passkeyReadinessFindingsOf } from './passkeySettings.ts'
+import { OPERATOR_PASSKEY_STEP_ID, PASSKEY_SETTINGS_STEP_ID, PASSKEY_TARGET, operatorPasskeyOf, operatorSignInOf, passkeyReadingOf, passkeyReadinessFindingsOf } from './passkeySettings.ts'
 import { SYNC_WORKLOAD_GOAL_ID, WORKLOAD_IDENTITY_BLOCKER, syncIdentitySupportOf } from './workloadIdentity.ts'
 
 /**
@@ -1179,33 +1182,50 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // created — is still drawn, because that is work and not a question.
   const locStepId = PREREQ_STEP_ID.trustedLocation
   if (canUseConditionalAccess) {
-    const ipLocations = (snapshot.config.namedLocations?.rows ?? [])
-      .map((l) => l as { id?: string; displayName?: string; isTrusted?: boolean; '@odata.type'?: string })
-      .filter((l) => String(l['@odata.type'] ?? '').includes('ipNamedLocation') && l.isTrusted === true && mapping.trustedLocationIds.includes(l.id ?? ''))
-    // Every trusted IP named location the scan read, selected or not. A tenant
-    // whose answer is "everyone works remotely" still has whatever its
-    // directory holds, and the tile said only "No office network is selected" —
-    // so a tenant carrying a trusted "Head office" read Completed beside a
-    // sentence that sounded like a reading of the tenant and was a reading of
-    // the answer. The answer still decides (decisions capture intent); the
-    // evidence stands beside it.
-    const trustedInTenant = (snapshot.config.namedLocations?.rows ?? [])
-      .map((l) => l as { id?: string; displayName?: string; isTrusted?: boolean; '@odata.type'?: string })
-      .filter((l) => String(l['@odata.type'] ?? '').includes('ipNamedLocation') && l.isTrusted === true)
-      .map((l) => (l.displayName ?? l.id ?? '').split(/\s+/).join(' ').trim())
-      .filter((n) => n.length > 0)
+    const networkRead = snapshot.config.namedLocations?.status === 'ok'
+    const trustedNow = trustedIpLocations(snapshot) ?? []
+    const picked = mapping.trustedLocationIds
     const proposed = proposedObjectNames(naming).trustedLocation
     const networkDraft = networkDraftOf(mapping)
     const networkConfirmed = mapping.wizardAnswered.trustedLocations === true && mapping.assumed?.trustedLocations !== 'detected'
-    const networkRead = snapshot.config.namedLocations?.status === 'ok'
-    // In place names the locations that make it so: the evidence a done step carries.
+    // The office the step is done with: the locations picked in Decide How and
+    // Where People Sign In, each one trusted; or, after "Not in Entra yet", the
+    // trusted location the scan found since (walk list item 6), which reopens
+    // that answer pre-filled with it (direction.ts officeNetworkQuestion).
+    const pickedTrusted = trustedNow.filter((l) => picked.includes(l.id))
+    const created = officeLocationsCreated(snapshot, mapping)
+    const office = networkRead && networkConfirmed && picked.length > 0 && pickedTrusted.length === picked.length ? pickedTrusted : created
+    const satisfied = networkRead && ((networkConfirmed && picked.length === 0) || office.length > 0)
+    // A picked location the scan reads without the trusted mark is marked
+    // trusted, not made again (walk list item 61).
+    const officeToTrust = !satisfied && networkRead && networkConfirmed
+      ? (snapshot.config.namedLocations?.rows ?? [])
+        .map((l) => l as { id?: string; displayName?: string; isTrusted?: boolean; '@odata.type'?: string })
+        .filter((l) => typeof l.id === 'string' && picked.includes(l.id) && l.isTrusted !== true && String(l['@odata.type'] ?? '').includes('ipNamedLocation'))
+        .map((l) => ({ id: l.id as string, name: (l.displayName ?? l.id ?? '').split(/\s+/).join(' ').trim() }))
+      : []
+    // Each office location, as the Satisfied card states it (walk list 14, 63):
+    // its ranges and the sign-ins from it. The scan checked every sign-in it
+    // collected, so none is a fact; where it collected none, no line is drawn.
+    const words = (contentStepById[locStepId] as unknown as { satisfied: { signIns: string; noSignIns: string } }).satisfied
+    const matches = snapshot.scenarioEvidence?.trustedLocationMatches?.byLocation ?? null
+    const facts = office.map((l) => ({
+      heading: l.name,
+      title: l.ranges.join(', '),
+      detail: matches === null ? null : (matches[l.name] ?? 0) > 0 ? fillText(words.signIns, { n: matches[l.name] }) : fillText(words.noSignIns, { name: l.name }),
+    }))
     steps.push({
       ...prereq(locStepId),
       naming: { proposed: networkDraft?.name ?? proposed.name, fromBaseline: null },
-      configurationFindings: networkRead && !networkConfirmed && !networkDraft ? [] : [{ key: 'trusted-network-choice', label: 'Trusted Network', value: !networkRead ? 'Locations not read' : !networkConfirmed ? 'Create the saved network' : mapping.trustedLocationIds.length === 0 ? 'Everyone is remote' : ipLocations.length === mapping.trustedLocationIds.length ? 'Confirmed locations found' : 'Selected location needs correction', detail: networkDraft && !networkConfirmed ? `${networkDraft.name}: ${networkDraft.ranges.join(', ')}. Create this IP named location in Entra, mark it trusted, then scan again and select it.` : !networkRead ? 'The named-location scan must succeed before IAMAI can verify the selected networks.' : mapping.trustedLocationIds.length === 0 ? `No office network is selected; location-based exceptions are not applied.${trustedInTenant.length > 0 ? ` The scan read ${trustedInTenant.length === 1 ? 'a trusted named location' : `${trustedInTenant.length} trusted named locations`} this answer leaves out: ${trustedInTenant.join(', ')}.` : ''}` : 'Each selected location must exist as a trusted IP named location in the scan.', outcome: !networkRead ? 'unknown' : networkConfirmed && (mapping.trustedLocationIds.length === 0 || ipLocations.length === mapping.trustedLocationIds.length) ? 'pass' : 'fail' }],
       // A tenant that already has an IP named location is preserving one, not making one.
-      ...stateFields(snapshot.config.namedLocations?.status === 'ok' && mapping.wizardAnswered.trustedLocations === true && mapping.assumed?.trustedLocations !== 'detected' && (mapping.trustedLocationIds.length === 0 || ipLocations.length === mapping.trustedLocationIds.length) ? { satisfied: true, inPlace: true } : {}),
-      deliveredBy: ipLocations.map((l) => l.displayName ?? l.id ?? '').filter((n) => n.length > 0),
+      ...stateFields(satisfied ? { satisfied: true, inPlace: true } : {}),
+      ...(satisfied && facts.length > 0 ? { satisfiedFacts: facts } : {}),
+      ...(officeToTrust.length > 0 ? { officeToTrust } : {}),
+      // Done with locations picked from those already in Entra: the procedure
+      // that stands is the one that marks them trusted, not the create.
+      ...(satisfied && office === pickedTrusted && pickedTrusted.length > 0 ? { officeExisting: pickedTrusted.map((l) => ({ id: l.id, name: l.name })) } : {}),
+      // In place names the locations that make it so: the evidence a done step carries.
+      deliveredBy: office.map((l) => l.name),
     })
     // Everyone works remotely: there is no network to define, so the step does
     // not apply (V1 decision 6), with the answer as its reason. It was Completed,
@@ -1239,10 +1259,26 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const s = name ? { ...prereq(strengthStepId), naming: { proposed: name, fromBaseline: name } } : prereq(strengthStepId)
     s.authenticationStrengthTarget = { allowedCombinations: requiredStrengths[0].allowedCombinations }
     const strengthRead = snapshot.config.authStrengths?.status === 'ok'
-    s.configurationFindings = [{ key: 'authentication-strength', label: 'Authentication Strength', value: !strengthRead ? 'Configuration not read' : strengthsUnanswered.length ? 'Matching strength missing' : 'Exact match found', detail: !strengthRead ? 'The scan did not read authentication strengths. Scan again to compare the allowed methods and model restrictions.' : strengthsUnanswered.length ? `No scanned strength matches all required method combinations and restrictions. Create ${name || 'the required strength'} using the instructions below, then scan again.` : 'A scanned strength matches the baseline’s allowed method combinations and restrictions. IAMAI uses that existing object automatically.', outcome: !strengthRead ? 'unknown' : strengthsUnanswered.length ? 'fail' : 'pass' }]
+    // The step's own card says what is left and, once done, names the strength
+    // that matched (walk list 14, 15): no second card repeats it in other words.
     if (strengthsUnanswered.length === 0 && strengthRead) {
       setState(s, { satisfied: true, inPlace: true })
-      s.deliveredBy = ['Scanned authentication strengths match the resolved baseline method combinations and restrictions.']
+      const rows = (snapshot.config.authStrengths?.rows ?? []) as { id?: unknown; displayName?: unknown }[]
+      const matched = matchedStrengthIds(planPolicies, tenantObjects)
+        .map((id) => rows.find((r) => typeof r.id === 'string' && r.id.toLowerCase() === id.toLowerCase()))
+        .map((r) => (typeof r?.displayName === 'string' && r.displayName.trim() !== '' ? r.displayName.trim() : null))
+        .filter((n): n is string => n !== null)
+      const subject = (contentStepById[strengthStepId] as unknown as { card?: { subject?: string } } | undefined)?.card?.subject ?? null
+      s.deliveredBy = matched
+      if (matched.length > 0 && subject) s.satisfiedFacts = matched.map((title) => ({ heading: subject, title, detail: null }))
+    } else if (strengthRead && name) {
+      // A custom strength already carries the baseline's name but allows other
+      // methods (the older five-method list with the multi-use pass, walk list
+      // 55): the step corrects that one rather than asking for a second strength
+      // of the same name.
+      const same = ((snapshot.config.authStrengths?.rows ?? []) as { id?: unknown; displayName?: unknown; policyType?: unknown }[])
+        .find((r) => typeof r.id === 'string' && r.policyType !== 'builtIn' && typeof r.displayName === 'string' && r.displayName.trim().toLowerCase() === name.trim().toLowerCase())
+      if (same) s.strengthToCorrect = { id: same.id as string, name: (same.displayName as string).trim() }
     }
     steps.push(s)
   }
@@ -1275,9 +1311,32 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const saStepId = PREREQ_STEP_ID.serviceAccountsGroup
   if (canUseConditionalAccess && mapping.serviceAccountUserIds.length > 0) {
     const proposed = proposedObjectNames(naming).serviceAccountsGroup
+    // Done when the group chosen on this step's picker (decisions.ts
+    // SERVICE_ACCOUNTS_GROUP_KEY) holds exactly the accounts picked in Identify
+    // Service and Shared Accounts.
     const members = mapping.serviceAccountsGroupId ? input.groupMembers?.get(mapping.serviceAccountsGroupId) : null
-    const matched = !!members && !members.sampled && new Set(members.memberIds).size === new Set(mapping.serviceAccountUserIds).size && mapping.serviceAccountUserIds.every((id) => members.memberIds.includes(id))
-    const step = { ...prereq(saStepId), ...stateFields(matched ? { satisfied: true, inPlace: true } : {}), naming: { proposed: proposed.name, fromBaseline: null }, deliveredBy: matched ? ['The scanned group includes exactly the selected service accounts.'] : [] }
+    const matched = groupHoldsExactly(members, mapping.serviceAccountUserIds)
+    const step: Step = { ...prereq(saStepId), ...stateFields(matched ? { satisfied: true, inPlace: true } : {}), naming: { proposed: proposed.name, fromBaseline: null }, deliveredBy: matched ? ['The scanned group includes exactly the selected service accounts.'] : [] }
+    // Where the step stands short of done (walk list item 7): a saved group read
+    // in full whose members differ is corrected, naming the accounts to add and
+    // the members to remove; with nothing saved, the one scanned group that holds
+    // exactly the picked accounts is found and saving it is what is left.
+    const lc = (id: string): string => id.toLowerCase()
+    const groupName = (id: string, g: { displayName?: string | null } | null | undefined): string => g?.displayName?.trim() || nameOf(id)
+    if (!matched && mapping.serviceAccountsGroupId && members && !members.sampled) {
+      const want = new Set(mapping.serviceAccountUserIds.map(lc))
+      const have = new Set(members.memberIds.map(lc))
+      step.serviceGroup = {
+        kind: 'correct',
+        id: mapping.serviceAccountsGroupId,
+        name: groupName(mapping.serviceAccountsGroupId, members),
+        missing: mapping.serviceAccountUserIds.filter((id) => !have.has(lc(id))),
+        extra: members.memberIds.filter((id) => !want.has(lc(id))),
+      }
+    } else if (!matched && !mapping.serviceAccountsGroupId) {
+      const exact = [...(input.groupMembers ?? new Map()).entries()].filter(([, g]) => groupHoldsExactly(g, mapping.serviceAccountUserIds))
+      if (exact.length === 1) step.serviceGroup = { kind: 'found', id: exact[0][0], name: groupName(exact[0][0], exact[0][1]) }
+    }
     steps.push(step)
   }
 
@@ -1309,6 +1368,15 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // On every plan, for the same reason as the dormant check above: the ladder's
   // admin-accounts-separate rung was this step under a second id, with the same
   // Completion Criteria word for word (finding 9).
+  //
+  // The scan decides it (walk list item 1): it is done when no account holding
+  // an admin role, the emergency access accounts aside, signed in to Outlook or
+  // Teams in the sign-in window the scan reads (the last 30 days). There is no
+  // review to record, so a tenant without Entra ID P2, whose eligible roles
+  // Graph withholds, completes it on the same reading. Each admin the scan still
+  // sees there is a card of its own (item 2), naming the admin roles held and
+  // the apps signed in to; the task beside it moves those roles to a separate
+  // admin account (ui/surfaces/sectionThreeTasks.ts).
   const adminsWithWorkload = adminsWithWorkloadOf(snapshot, new Set(mapping.breakGlassUserIds)).map(([id]) => id)
   {
     const s = prereq(SEPARATE_ADMIN_ACCOUNTS_STEP_ID)
@@ -1317,8 +1385,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     s.population = population(adminsWithWorkload, popIndex)
     if (adminsWithWorkload.length === 0 && snapshot.scenarioEvidence?.officeSignIns && snapshot.sources.signInEvidence?.status === 'ok' && snapshot.config.roleAssignments?.status === 'ok') {
       setState(s, { satisfied: true, inPlace: true })
-      s.deliveredBy = ['The scanned directory-role holders have no Outlook or Teams activity in the collected sign-in window.']
+      s.deliveredBy = ['No admin signed in to Outlook or Teams in the last 30 days.']
     }
+    const holds = (contentStepById[SEPARATE_ADMIN_ACCOUNTS_STEP_ID] as unknown as { card: { admin: string } }).card.admin
+    s.configurationFindings = adminsWithWorkload.map((id) => {
+      const roles = adminRolesOf(snapshot, id)
+      // Headed by the person's name: the card's next line is the account's own address.
+      return { key: `admin:${id}`, label: snapshot.users.find((u) => u.id === id)?.displayName || nameOf(id), value: fillText(holds, { roles: list([...roles.active, ...roles.eligible].map(roleLabel)), apps: list(officeAppsOf(snapshot, id)) }), detail: '', outcome: 'fail' as const }
+    })
     steps.push(s)
   }
 
@@ -1374,16 +1448,19 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     }
     steps.push(s)
   }
-  // The operator's own passkey (A5): only where the scan read the signed-in
-  // account's methods and found no passkey. Their account makes every change, so
-  // the admin policies reach it first.
+  // The operator's own passkey (A5), where the scan read the signed-in account's
+  // methods. Their account makes every change, so the admin policies reach it
+  // first. Completed when IAMAI sees them sign in with a passkey or Windows
+  // Hello, on any device (owner, 2026-09-23, walk list section 3 items 5 and
+  // 43): a Windows Hello sign-in counts, a registered key alone does not, and
+  // there is no every-kind-of-device requirement.
   const operatorPasskey = operatorPasskeyOf(snapshot)
   if (canUseConditionalAccess && operatorPasskey !== null) {
     const s = prereq(OPERATOR_PASSKEY_STEP_ID)
     s.kind = 'check'
     s.action = { ...s.action, kind: 'check' }
     s.population = population([operatorPasskey.operatorId], popIndex)
-    if (operatorPasskey.holds && isReady(viability.find(v => v.userId === operatorPasskey.operatorId)?.readiness.state ?? 'unknown')) setState(s, { satisfied: true, inPlace: true })
+    if (operatorSignInOf(viability.find(v => v.userId === operatorPasskey.operatorId)?.readiness) !== null) setState(s, { satisfied: true, inPlace: true })
     steps.push(s)
   }
 
@@ -2711,6 +2788,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         guestIds: preparationIds.filter(id => popIndex.guests.has(id)),
         dormantIds: preparationIds.filter(id => dormantSet.has(id)),
         activityUnreadIds: preparationIds.filter(id => viabilityById.get(id)?.activity === 'unknown'),
+        // The people Require Phishing-Resistant MFA for Admins covers: each needs
+        // a passkey or security key, everyone else a method Require MFA accepts
+        // (walk list section 3 items 46 and 53).
+        passkeyIds: methodPreparation(methodTargets.get('admins-phishing-resistant') ?? [], preparationIds, snapshot, strandContext, methodPreparationCache).ids,
         ...(followUpIds.length > 0 ? { followUpIds } : {}),
       },
       phase: 2,
@@ -3081,11 +3162,16 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   }
   applyManualReviews(steps, snapshot, input.manualConfirmations, mapping, popIndex)
   for (const s of steps.filter(s => s.id === 's-check-dormant-accounts')) {
-    const dormantIds = new Set(dormant.map(u => u.id))
+    // Every account still dormant, with the last sign-in the scan holds, and
+    // whether the person keeps it: picked under Accounts you are keeping, whose
+    // Done saves the keeps (walk list item 28). A keep needs no reason: IAMAI
+    // never read one. An account disabled in Entra, or signed in again, is no
+    // longer dormant and leaves the list; the rest are the step's open work.
     const reviewed = mapping.dormantAccountChoices ?? {}
-    const accounts = snapshot.users.filter(u => dormantIds.has(u.id) || Object.hasOwn(reviewed, u.id))
-    s.dormantChoices = accounts.map(u => ({ id: u.id, name: nameOf(u.id), outcome: reviewed[u.id]?.outcome ?? '', reason: reviewed[u.id]?.reason ?? '', disabled: u.accountEnabled === false }))
-    const remaining = accounts.filter(u => dormantIds.has(u.id) && u.accountEnabled !== false && !(reviewed[u.id]?.outcome === 'keep' && reviewed[u.id].reason.trim()))
+    const kept = (id: string): boolean => reviewed[id]?.outcome === 'keep'
+    const accounts = dormant
+    s.dormantChoices = accounts.map(u => ({ id: u.id, name: nameOf(u.id), lastSignIn: lastSuccessOf(snapshot, u), kept: kept(u.id) }))
+    const remaining = accounts.filter(u => !kept(u.id))
     // The dormant step names never-signed-in accounts (§8.1, and the dormant
     // step above sets the same builder): `population()` derives activeIds from
     // the active index, which is empty for dormant accounts by definition, and
@@ -3094,41 +3180,27 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // admins and guests are counted over them (derive/population.ts namedAccounts).
     s.population = namedAccounts(accounts.map(u => u.id), popIndex)
     delete s.manualReview
-    // The accounts the list could not judge. The directory read falls back to a
-    // user list without signInActivity where Graph refuses that property
-    // (graph/collect/collectors.ts collectUsers), and the Users source is then
-    // `partial` with the refusal as its reason — the only way it is ever partial
-    // (graph/collect/worker.ts). Nobody's activity was read, so nobody is listed
-    // (derive/sets.ts notActiveUsers), and the step read "Ready · Review" over no
-    // accounts, told the reader to review "each account IAMAI lists", and said
-    // the refusal nowhere (R4-49). An empty list made that way is not a
-    // directory with nothing dormant. The step now says how many accounts it
-    // could not judge, why, and what reads them; and where nothing is left
-    // listed to review, the read is the only thing it waits on, so it holds on
-    // that fact the way the passkey settings step holds on an unread methods
-    // policy. It finishes only on a whole read, as before.
-    //
-    // Only on that fallback. On a read that succeeded, Graph leaves
-    // signInActivity out for an account that never signed in (Microsoft Learn,
-    // user resource), so an account without it there was read, not unread.
-    const users = snapshot.sources.users
-    const unread = users?.status === 'partial' ? activityUnreadUsers(snapshot, notPeopleIds(mapping)) : []
-    if (unread.length > 0) {
-      s.configurationFindings = [{
-        key: 'activity-unread',
-        label: engine.readiness.activityUnreadLabel,
-        value: engine.readiness.activityUnreadValue,
-        detail: fillText(engine.readiness.activityUnread, { n: unread.length, total: enabledUsers(snapshot, notPeopleIds(mapping)).length, reason: users?.reason ?? users?.status, fix: sourceReadFix('users', snapshot, 'entraP1') }),
-        outcome: 'unknown',
-      }]
-      if (remaining.length === 0) {
-        s.blockers = [...s.blockers, { kind: 'evidence', label: 'activity-unread', binding: BLOCKED_REASON.activityUnread, unverified: true }]
-        setState(s, { condition: conditionFor(s.blockers) })
-      }
-    }
+    // Impact (ui/surfaces/rowWho.ts; walk list item 16): the accounts still to
+    // disable or keep, so a step with nothing left reads "no accounts".
+    s.impactCount = remaining.length
     const complete = remaining.length === 0 && snapshot.sources.users?.status === 'ok'
     setState(s, { satisfied: complete, inPlace: complete })
-    if (complete) s.deliveredBy = [accounts.length === 0 ? 'The scanned directory has no outstanding dormant accounts.' : 'Every listed dormant account is disabled, active again, or retained with a recorded reason.']
+    if (complete) s.deliveredBy = [accounts.length === 0 ? 'The scanned directory has no outstanding dormant accounts.' : 'Every dormant account left is one you keep.']
+  }
+  // Impact (ui/surfaces/rowWho.ts; walk list item 16, owner 2026-09-23): what
+  // each Prepare step changes, counted. Use Separate Accounts for Admin Work, the
+  // admins seen on Outlook or Teams (not every role holder); the service accounts
+  // group, the service accounts picked; the authentication strength and the
+  // trusted network, the plan's policies that wait on them, by the dependency
+  // graph's own edges (actionability/dependency-data.json), each on the plan and
+  // not set aside.
+  for (const s of steps) {
+    if (s.id === SEPARATE_ADMIN_ACCOUNTS_STEP_ID) s.impactCount = adminsWithWorkload.length
+    else if (s.id === saStepId) s.impactCount = mapping.serviceAccountUserIds.length
+    else if (s.id === strengthStepId || s.id === PREREQ_STEP_ID.trustedLocation) {
+      const waiting = new Set((dependencyData as { edges: { step: string; prerequisite: string }[] }).edges.filter((e) => e.prerequisite === s.id).map((e) => e.step))
+      s.impactCount = steps.filter((w) => waiting.has(w.id) && !w.doesntApply && !w.state.setAside).length
+    }
   }
   // No Entra ID P1, no plan (owner, 2026-09-20). Three non-policy steps survive
   // the gates above — dormant accounts, administrator separation, the MFA

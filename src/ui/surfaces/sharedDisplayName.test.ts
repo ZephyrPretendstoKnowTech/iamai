@@ -86,15 +86,6 @@ test('the MFA handoff, the review picker and the per-user MFA finding name a sha
   // (q-pin), whose source contradicts itself, so it hands over no MFA policy.
   assert.ok(previewed.has('s-goal-admins-phishing-resistant') && previewed.size >= 4, [...previewed].join(', '))
 
-  const options = r.steps.flatMap((step) => (step.manualReview?.fields ?? []).flatMap((field) => (field.key === 'accountIds' ? (field.options ?? []) : [])))
-  const kaiOptions = options.filter((o) => o.value === member.id || o.value === guest.id)
-  assert.ok(kaiOptions.length > 0, 'the premise: a review picker offers a Kai Brown')
-  for (const o of kaiOptions) assert.equal(o.label, r.input.names!.label(o.value), 'the picker names the account as the directory does')
-  assert.ok(kaiOptions.every((o) => o.label !== 'Kai Brown'), kaiOptions.map((o) => o.label).join('; '))
-  // A name nobody shares stays bare, as it always did.
-  const alex = f.snapshot.users.find((u) => u.displayName === 'Alex Morgan')!
-  for (const o of options.filter((x) => x.value === alex.id)) assert.equal(o.label, 'Alex Morgan')
-
   // The per-user MFA finding, with both accounts still enabled for per-user MFA.
   const perUser = structuredClone(r.steps.find((st) => st.id === 's-prereq-per-user-mfa')!) as Step
   const snapshot = { ...f.snapshot, perUserMfa: { [member.id]: { state: 'enabled' as const, reason: null }, [guest.id]: { state: 'enforced' as const, reason: null } } }

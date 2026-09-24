@@ -78,7 +78,6 @@ test('a step with no policy of its own heads its card with the thing the card is
   // used to be the step's name (quality audit 2.1).
   for (const [id, subject, check] of [
     ['s-prereq-trusted-location', 'Trusted network', 'Not in place'],
-    ['s-check-dormant-accounts', 'Dormant accounts', 'Not reviewed yet'],
     ['s-verify-mfa', 'Sign-in method setup', 'Not prepared yet'],
     ['s-ladder-operator-passkey', 'Your passkey', 'Not registered yet'],
   ] as const) {
@@ -100,11 +99,8 @@ test('a step with no policy of its own heads its card with the thing the card is
 test('every step projects its own Entra procedure as its Implementation Task, and a baseline conflict projects none', () => {
   {
     for (const [id, title, first] of [
-      ['s-prereq-trusted-location', 'Set up the trusted network', /Named locations/],
       ['s-prereq-allowed-countries', 'Set up the allowed countries location', /Named locations/],
-      ['s-prereq-service-accounts-group', 'Set up the service accounts group', /Groups/],
-      ['s-verify-mfa', 'Help each person set up their method', /aka\.ms\/mfasetup/],
-      ['s-check-dormant-accounts', 'Review each account', /Review each account/],
+      ['s-verify-mfa', 'Help each person set up their method', /Send the Email tab's first message/],
     ] as const) {
       const { step, body } = bodyOf(id)
       const tasks = body.emergencyAccountTasks
@@ -181,12 +177,6 @@ test('"No tasks remaining" is shown only where nothing is left, and never over a
     const done = policySubjectsOf(inPlace.contract, inPlace.readiness, inPlace.emergencyAccountTasks, taskSubjectOf(secDefaults, inPlace.eyebrow, inPlace.title), cardWordsOf(secDefaults)?.check ?? null)
     assert.equal(done.some((card) => !card.satisfied), false)
     assert.equal(policyBarOf(done), 'Every task on this step is complete.')
-    // An object step with no Readiness tile at all still has its own work to show.
-    const { step: trusted, body: open } = bodyOf('s-prereq-trusted-location')
-    assert.deepEqual(open.readiness.tiles, [], 'the premise: no tile stands in this step’s way')
-    const cards = policySubjectsOf(open.contract, open.readiness, open.emergencyAccountTasks, taskSubjectOf(trusted, open.eyebrow, open.title), cardWordsOf(trusted)?.check ?? null)
-    assert.equal(cards.filter((card) => !card.satisfied).length, 1, '"No tasks remaining" cannot stand over work Implementation Tasks lists')
-    assert.equal(policyBarOf(cards), 'Complete the next task shown for each item.')
   }
   {
     const { body } = bodyOf(PILOT, 'demo-week2', true)
@@ -262,7 +252,7 @@ test('a satisfied Readiness tile is a satisfied card, and a tile keeps its own l
 test('the policy has a card of its own: its name, the next check, and the task that passes it', () => {
   // The foundation settled, so the card's one action is the procedure it names.
   const { body } = bodyOf(PILOT, 'demo', true)
-  const [card, ...rest] = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)
+  const [card] = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)
   assert.equal(card.heading, 'Conditional Access policy')
   assert.equal(card.upn, body.contract.members[0].name, 'the subject is the policy this step delivers')
   // The rollout stages are not the card's checks, so there is no count of them
@@ -276,7 +266,6 @@ test('the policy has a card of its own: its name, the next check, and the task t
   assert.equal(body.emergencyAccountTasks?.tasks.length, 1, 'the premise: this step projects one task')
   assert.equal(card.instruction, '')
   assert.equal(card.satisfied, false)
-  assert.ok(rest.length > 0, 'the Readiness tiles still follow the policy’s own card')
 })
 
 /** The words the rollout lifecycle is drawn with (pages.app.plan.stepContract.lifecycle). A card's check is never one of them while the card is open. */

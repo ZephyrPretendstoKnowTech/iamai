@@ -976,21 +976,6 @@ const locIsTrusted: ValidationRule<LocationTarget> = {
   },
 }
 
-const locRedundancy: ValidationRule<LocationTarget> = {
-  id: 'loc.redundancy',
-  subject: 'trustedLocation',
-  severity: 'warning',
-  needs: ['namedLocations'],
-  evaluate: (loc) => {
-    if (!loc) return unknown(UNKNOWN.needs([NEED_LABEL.namedLocations]))
-    const list = cidrs(loc)
-    if (list.length !== 1) return PASS
-    const range = cidrParts(list[0])
-    if (!range) return unknown('The configured CIDR range could not be interpreted.')
-    return range.prefix < range.bits ? PASS : fail(F.locSingle(list[0]))
-  },
-}
-
 const locSeenInSignIns: ValidationRule<LocationTarget> = {
   id: 'loc.seenInSignIns',
   subject: 'trustedLocation',
@@ -1315,7 +1300,6 @@ export const REGISTRY: ValidationRule<any>[] = [
   locNotWholeInternet,
   locNotTooWide,
   locIsTrusted,
-  locRedundancy,
   locSeenInSignIns,
   ctyAtLeastOne,
   ctyIncludesOperator,

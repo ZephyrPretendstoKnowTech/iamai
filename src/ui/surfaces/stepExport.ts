@@ -16,10 +16,12 @@ import { SHARED_REF_KEYS, fillText, ifWrongFor, listCountVars, whatToDoFor, whol
 import { stepVars, withoutScheduleDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor, unwrittenCorrectionLines } from './stepPortal.ts'
-import { instructionsHeld, preparationLines, preparesWhileCreateWaits, rescanLinesOf, wholeLines } from './stepInstructions.ts'
+import { campaignProcedureLines, instructionsHeld, preparationLines, preparesWhileCreateWaits, rescanLinesOf, wholeLines } from './stepInstructions.ts'
 import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, objectTaskLeads, readinessHeldLine, stepContract } from './stepContract.ts'
 import type { LaneView, PrerequisiteLabel, StepContract } from './stepContract.ts'
-import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, previewNoteLines, selectedPolicyBodiesOf, entraWithSettings } from './stepPackage.ts'
+import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, previewNoteLines, selectedPolicyBodiesOf, entraWithSettings, workProcedureOf } from './stepPackage.ts'
+import { sectionThreeTasksOf } from './sectionThreeTasks.ts'
+import { existingObjectProcedureOf } from './prepareProcedures.ts'
 import { projectSafely } from '../../content/implementation/project.ts'
 import { BOARD, SUBSTATUS_WORD, boardHolds, laneViewAlone, laneViewFor, laneViewOf, laneWordOf, prerequisiteLabelFor } from './planBoard.ts'
 import type { BoardReadings } from './planBoard.ts'
@@ -37,7 +39,7 @@ import { stepPopulation } from '../../derive/population.ts'
 import { list } from '../../copy/statements.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
 import { isHeld } from '../../roadmap/holds.ts'
-import { namedPortalResource, policyInspectionLines, lifecycleResources, switchedOffLines, verificationResourceLines } from './stepResources.ts'
+import { mfaPreparationStaffMessage, namedPortalResource, policyInspectionLines, lifecycleResources, switchedOffLines, verificationResourceLines } from './stepResources.ts'
 import { scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import { EMERGENCY_ACCOUNTS, EMERGENCY_GROUP, PASSKEY_SETTINGS } from '../../roadmap/emergencyJourney.ts'
 import { emergencyGroupTasksOf } from './emergencyGroupTasks.ts'
@@ -456,7 +458,9 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   else if (inPlace) lines.push(...contract.found.filter((x) => x.key === 'in-place').map((x) => x.text))
   // The steps' promise that a scan shows progress follows them while a scan can
   // (stepInstructions.ts rescanLinesOf, R4-20), in the artifacts as on the screen.
-  else if (!unearned && Array.isArray(w.steps)) lines.push(...wholeLines([...w.steps, ...rescanLinesOf(step, cs).steps], ex))
+  // Plain text, as the package procedures below are: a step's own lines carry
+  // the product's bold (walk list item 20), which the export and AI Info drop.
+  else if (!unearned && Array.isArray(w.steps)) lines.push(...wholeLines([...w.steps, ...rescanLinesOf(step, cs).steps], ex).map(plain))
   // The next action the screen states, in the artifact. Where the step's content
   // carries a lead it is already the first line above and the contract's action
   // is that same sentence; where it carries none the contract falls back to
@@ -492,6 +496,44 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
       lines.push(...(preparation ?? [...(projectedEntra ? entraWithSettings(entra.text, step, ctx, contract, preview ?? projection) : entra.text).replace(/\*\*(.*?)\*\*/g, '$1').split(/\r?\n/).map(line => line.trim()).filter(Boolean), ...(preview ? previewNoteLines(step, contract, preview.hold) : [])]))
     }
   }
+  // A supporting step's What to do is the procedure its Entra tab draws, in the
+  // artifacts as on the screen (walk list item 19, owner 2026-09-23): its
+  // package's for the state the scan read, else the one its content folder
+  // writes for the work, in every state (stepPackage.ts workProcedureOf). AI
+  // Info read the content's second copy (`whatToDo.steps`), a differently
+  // worded procedure from the tab's. Prepare Your Team for MFA's tab draws its
+  // campaign lines, and so does its What to do (campaignProcedureLines).
+  // Disable or Confirm Dormant Accounts' and Use Separate Accounts for Admin
+  // Work's tabs draw their tasks, built from the scan's values
+  // (sectionThreeTasks.ts), and so does their What to do: their content folders
+  // write no Entra procedure of their own, so the package reading below left AI
+  // Info with the lead alone. Each admin's task is headed by its account where
+  // there are several.
+  const sectionThree = sectionThreeTasksOf(step, ctx)
+  if (step.id === 's-verify-mfa') lines.splice(0, lines.length, ...campaignProcedureLines(step, cs, ex).map(plain))
+  else if (sectionThree !== null) {
+    const tasks = sectionThree.tasks
+    lines.splice(0, lines.length, ...tasks.flatMap((task) => [
+      ...(tasks.length > 1 ? [`${task.title}${task.targetUpn ? ` · ${task.targetUpn}` : ''}`] : []),
+      ...task.steps.flatMap((line, index) => `${index + 1}. ${line}`.split(/\r?\n/)),
+    ]).map((line) => line.replace(/\*\*(.*?)\*\*/g, '$1').trim()).filter(Boolean))
+  } else if (pkg && cs.kind !== 'policy' && !step.directionQuestions) {
+    const bindings = packageBindings(step, ctx, contract)
+    const runtime = state === null ? null : packageRuntime(pkg, state, bindings, {}).runtime
+    const projection = state === null || runtime === null ? null : projectSafely(pkg, state, bindings, runtime)
+    const preview = state === null || runtime === null ? null : planningPreview(pkg, step, contract, ctx.snapshot, bindings, runtime, projection)
+    // Where the object is already in the tenant, the correction the Entra tab
+    // draws (prepareProcedures.ts), never the create the package projects.
+    const existing = existingObjectProcedureOf(step, pkg, bindings, ex, { upnOf: (id) => ctx.snapshot.users.find((u) => u.id.toLowerCase() === id.toLowerCase())?.userPrincipalName ?? ctx.nameOf(id) })
+    const entra = (existing !== null ? { text: existing.text } : null)
+      ?? (preview ?? projection)?.channels.find((channel) => channel.channel === 'entra')
+      ?? (state === null || runtime === null ? undefined : lifecycleResources(pkg, state, bindings, runtime).find((channel) => channel.channel === 'entra'))
+      ?? workProcedureOf(pkg, step, bindings)
+    if (entra) {
+      hasPackagePortal = true
+      lines.splice(0, lines.length, ...entra.text.replace(/\*\*(.*?)\*\*/g, '$1').split(/\r?\n/).map((line) => line.trim()).filter(Boolean))
+    }
+  }
   // A policy the tenant has switched off is set to Report-only, in every
   // channel that carries these lines: the screen's own procedure for it
   // (stepResources.ts switchedOffLines), never straight to On.
@@ -519,7 +561,16 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   }
   lines.push(...verificationResourceLines(step, ctx.mapping))
   const action = contract.whatToDo.text
-  if (cs.kind !== 'policy' && contract.state.lane?.lane === 'Completed') lines.splice(0)
+  // A finished supporting step keeps its one procedure here too, as its Entra
+  // tab does (walk list item 19, step template rule 7): the lines were cleared
+  // for every Completed step, just after the block above put the procedure in,
+  // so AI Info read "What to do: No change needed." and no procedure. Where a
+  // procedure stands it is the What to do, with no no-op line in front of it; a
+  // finished step with none still clears, as before.
+  const finished = cs.kind !== 'policy' && contract.state.lane?.lane === 'Completed'
+  const procedureStands = finished && !step.directionQuestions && lines.length > 0
+    && (step.id === 's-verify-mfa' || sectionThree !== null || hasPackagePortal || (Array.isArray(w.steps) && w.steps.length > 0))
+  if (finished && !procedureStands) lines.splice(0)
   // What the action waits on, beside the action, where the action is the wait
   // (stepContract.ts `ContractAction.gatedBy`). The screen said "Waiting on your
   // direction" on the row and the badge and nothing here did, so a step this
@@ -528,7 +579,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // contract's own words: nothing is composed and nothing is decided again.
   const gate = gateLine(contract.whatToDo.gatedBy, laneView)
   if (gate !== null && !lines.includes(gate)) lines.unshift(gate)
-  if (action.trim().length > 0 && !lines.includes(action)) lines.unshift(action)
+  if (action.trim().length > 0 && !lines.includes(action) && !procedureStands) lines.unshift(action)
   // The three emergency preparation steps export the task text the screen shows
   // (stepBody.ts), not the content's older What to do lines (overnight review B5).
   const emergencyTasks = step.id === EMERGENCY_ACCOUNTS ? emergencyAccountTasksOf(step, ctx)
@@ -585,6 +636,9 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
     dates: !undated && reason === null && whole(datesLineFor(step, cs), ex) && datesLineFor(step, cs) ? fillText(datesLineFor(step, cs), ex) : null,
   }
 }
+
+/** A procedure line without its markdown bold. */
+const plain = (line: string): string => line.replace(/\*\*(.*?)\*\*/g, '$1')
 
 const truthy = (v: unknown): boolean => (Array.isArray(v) ? v.length > 0 : typeof v === 'string' ? v.length > 0 : typeof v === 'number' ? v !== 0 : Boolean(v))
 const listKeys = (line: string): string[] => [...line.matchAll(/\{list:([^}]+)\}/g)].map((m) => m[1])
@@ -738,10 +792,13 @@ export type CommsView = { salutation: string; body: string; extra: string[]; sig
  * (`exportAnnouncementOf`).
  */
 export function commsFor(cs: Record<string, unknown>, ex: Record<string, unknown>, step: Step): CommsView | null {
-  const comms = (cs.comms ?? null) as Record<string, unknown> | null
-  if (!comms) return null
   // A step already in place asks nobody to do anything: no email (stepVars stepDone).
   if (ex.stepDone) return null
+  // Prepare Your Team for MFA sends the Email tab's first message, word for
+  // word: its email had a second, older copy here (walk list section 3 item 52).
+  if (step.id === 's-verify-mfa') return mfaPreparationStaffMessage(String(ex.signature ?? ''))
+  const comms = (cs.comms ?? null) as Record<string, unknown> | null
+  if (!comms) return null
   const inPlace = Boolean(ex.mfaInPlace) && typeof comms.bodyMfaInPlace === 'string'
   const dated = inPlace ? comms.bodyMfaInPlace : comms.body
   // The campaign is work for today: it is how readiness reaches the number the

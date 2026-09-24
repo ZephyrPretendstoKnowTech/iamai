@@ -633,10 +633,49 @@ export type Step = {
   impactCount?: number
   guidance?: import('../content/content.ts').ContentStep
   baselineReviewSource?: { name: string; json: string | null; reason: string }
-  dormantChoices?: { id: string; name: string; outcome: 'keep' | 'disable' | 'investigate' | ''; reason: string; disabled: boolean }[]
+  /**
+   * Disable or Confirm Dormant Accounts: every enabled account with no
+   * successful sign-in in the last 90 days, with the last sign-in the scan
+   * holds (null: none on record) and whether the person keeps it
+   * (mapping.dormantAccountChoices). The rail's keep picker offers them; the
+   * accounts not kept are the step's open work (walk list items 22, 26, 30).
+   */
+  dormantChoices?: { id: string; name: string; lastSignIn: string | null; kept: boolean }[]
   /** A Define Your Rollout Scope step's questions (roadmap/direction.ts), one tile each. */
   directionQuestions?: DirectionQuestion[]
   authenticationStrengthTarget?: { allowedCombinations: string[] }
+  /**
+   * What a finished preparation step's Satisfied cards state, one card each, in
+   * place of its "In place" card (step template rule 6): the strength that
+   * matched, the office location and the sign-ins from it. Set by the step's
+   * producer (generate.ts) only while the step is satisfied.
+   */
+  satisfiedFacts?: { heading: string; title: string; detail: string | null }[]
+  /**
+   * Define the Trusted Network: the office locations the person picked in
+   * Decide How and Where People Sign In that the scan reads without the trusted
+   * mark. The step marks them trusted (Ready · Correct) instead of making one.
+   */
+  officeToTrust?: { id: string; name: string }[]
+  /**
+   * Define the Trusted Network, done with office locations the person picked
+   * that were already in Entra: its procedure is the one that marks them
+   * trusted, not the create (walk list item 19, one procedure in every state).
+   */
+  officeExisting?: { id: string; name: string }[]
+  /**
+   * Create the Baseline's Authentication Strength: a custom strength already
+   * named as the baseline's that allows other methods. The step corrects it
+   * (Ready · Correct) instead of creating a second of the same name.
+   */
+  strengthToCorrect?: { id: string; name: string }
+  /**
+   * Create or Correct Service Accounts Group: the group the scan found holding
+   * exactly the picked accounts, which nobody has saved yet (`found`), or the
+   * saved group whose members differ from them (`correct`), with the accounts to
+   * add and the members to remove.
+   */
+  serviceGroup?: { kind: 'found'; id: string; name: string } | { kind: 'correct'; id: string; name: string; missing: string[]; extra: string[] }
   configurationFindings?: ConfigurationFinding[]
   /**
    * A preparation cohort. `guestIds` are the guests among `ids`: guests stay in the MFA
@@ -647,7 +686,7 @@ export type Step = {
    * record, where activity was read (derive/sets.ts notActiveUsers, the dormant step's
    * list); `activityUnreadIds` the ones whose sign-in activity was not read at all.
    */
-  preparation?: { ids: string[]; readyIds: string[]; missingIds: string[]; unknownIds?: string[]; guestIds: string[]; dormantIds?: string[]; activityUnreadIds?: string[]; /** Not ready, and marked to turn on without for now (roadmap/followUp.ts). */ followUpIds?: string[] }
+  preparation?: { ids: string[]; readyIds: string[]; missingIds: string[]; unknownIds?: string[]; guestIds: string[]; dormantIds?: string[]; activityUnreadIds?: string[]; /** Those Require Phishing-Resistant MFA for Admins covers: each needs a passkey or security key (walk list section 3 item 53). */ passkeyIds?: string[]; /** Not ready, and marked to turn on without for now (roadmap/followUp.ts). */ followUpIds?: string[] }
   /**
    * The people marked on the campaign to turn the policies on without, for now,
    * that this step reaches (roadmap/followUp.ts settleFollowUp): on the campaign,

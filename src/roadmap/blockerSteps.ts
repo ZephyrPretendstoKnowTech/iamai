@@ -152,7 +152,15 @@ export function attachConfigurationFindings(steps: Step[], reports: SubjectRepor
     const step = steps.find(s => s.id === canonicalBlockerStepId(report.subject))
     if (!step) continue
     // User method preparation belongs to each referring policy, not strength object creation.
-    const results = report.targets.flatMap(target => target.results.filter(r => r.id !== 'str.achievable').map(r => ({ r, name: target.label })))
+    // Define the Trusted Network says two of its checks itself: a picked
+    // location without the trusted mark is its own task (walk list 61), and the
+    // sign-ins from the office are its Satisfied card's fact (walk list 63).
+    // Its breadth check goes too: it asked the person to verify a range with the
+    // network owner, and stood as an open card on a Completed step (step
+    // template rules 6 and 12); the step is done when the picked location is
+    // marked trusted (walk list 66).
+    const said = new Set(['str.achievable', 'loc.isTrusted', 'loc.seenInSignIns', 'loc.notTooWide'])
+    const results = report.targets.flatMap(target => target.results.filter(r => !said.has(r.id)).map(r => ({ r, name: target.label })))
     // Each finding is headed by its check (RULE_TEXT's label), and the object it
     // is about opens the note: a finding is "the object, then the fact". They
     // were headed by the object, so every check on one object shared a heading —
