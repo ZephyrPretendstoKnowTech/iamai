@@ -564,11 +564,11 @@ export type DirectionQuestion = {
   /** Anything else the tile says (the emergency accounts already set aside). */
   note: string | null
   /**
-   * What answering None does to the accounts an account question picks, said
-   * only while there are any: the scan found accounts of that kind (the
-   * suggestion picks them) or the answer on screen picks some (DirectionQuestions.tsx).
+   * What an answer does, one line per option that does something, drawn under
+   * the answer while it is the one on screen (DirectionQuestions.tsx; owner,
+   * 2026-09-24: every card says what the chosen answer does).
    */
-  noneNote?: string | null
+  chosen: Readonly<Record<string, string>> | null
   saved: { value: string; picked: string[] } | null
   /** A saved answer new evidence contradicts: a saved No, and the scan now sees it in use. */
   needsReview: boolean

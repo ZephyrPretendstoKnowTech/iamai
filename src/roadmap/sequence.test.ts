@@ -169,7 +169,7 @@ test('every fixture: no Conditional Access policy is offered while security defa
 
 // ---- the stranding this audit was written for ----
 
-test('no country block or registration policy is offered without its way out, and a remote-only tenant never offers the registration policy', () => {
+test('no country block or registration policy is offered without its way out, and a remote team\'s registration policy waits for no trusted location', () => {
   for (const { name, steps } of RUNS) {
     const gate = steps.find((s) => s.id === 's-blocker-allowed-countries' && open(s))
     if (gate) {
@@ -196,6 +196,6 @@ test('no country block or registration policy is offered without its way out, an
   if (locations) locations.rows = locations.rows.map((l) => ({ ...(l as Record<string, unknown>), isTrusted: false }))
   const reg = runFixture(remote).steps.find((s) => s.goalId === 'register-info-protected')
   if (!reg) return
-  assert.equal(reg.status, 'blocked')
-  assert.ok(reg.blockers.some((b) => b.label === 'registration-no-trusted-location'), 'the registration policy waits for a trusted location')
+  // Everyone works remotely: the policy requires MFA to register from anywhere (owner, 2026-09-24).
+  assert.ok(!reg.blockers.some((b) => b.label === 'registration-no-trusted-location'), 'a remote team waits for a trusted location that never comes')
 })

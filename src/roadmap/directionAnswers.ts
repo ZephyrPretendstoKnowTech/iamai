@@ -26,7 +26,7 @@
 // Pure: no DOM, no network, no engine import.
 import type { MappingState } from '../mapping/types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
-import type { DirectionQuestion } from './types.ts'
+import type { DirectionQuestion, Step } from './types.ts'
 import type { StepDecision, StepDecisionInput } from './decisions.ts'
 import { DEVICE_ANSWER_KEYS, QUESTION_STEP, answerKey, answerOf, answerTextFor, devicePlanOf, questionLabels, questionOptions } from './answers.ts'
 import { PREREQ_STEP_ID } from './stepIds.ts'
@@ -142,7 +142,7 @@ export function answeredReasonOf(key: DirectionQuestionKey, value: string): stri
  * has answered" — both are the office-network option with nothing picked — so
  * the own key carries the answer and the legacy reading remains the fallback.
  */
-const OFFICE_NETWORK = ['office', 'notInEntra', 'remote'] as const
+const OFFICE_NETWORK = ['office', 'remote'] as const
 
 type Mapping = Pick<MappingState, 'questionAnswers' | 'workflowAnswers' | 'facetOverrides' | 'serviceAccountUserIds' | 'sharedDeviceUserIds' | 'wizardAnswered' | 'assumed' | 'trustedLocationIds'>
 
@@ -201,7 +201,10 @@ export function savedAnswerOf(key: DirectionQuestionKey, m: Mapping): DirectionA
     }
     case 'officeNetwork': {
       const own = m.questionAnswers?.[answerKey(DIRECTION_LOCATIONS_STORAGE, 'officeNetwork')]
-      if (typeof own === 'string' && (OFFICE_NETWORK as readonly string[]).includes(own)) return own === 'office' ? answer('office', m.trustedLocationIds) : answer(own)
+      // "Not in Entra yet" was an office answer; whether the office is in Entra
+      // is the scan's to read, so it reads as the office (owner, 2026-09-24).
+      if (own === 'remote') return answer('remote')
+      if (own === 'office' || own === 'notInEntra') return answer('office', m.trustedLocationIds)
       return confirmed(m, 'trustedLocations') ? (m.trustedLocationIds.length > 0 ? answer('office', m.trustedLocationIds) : answer('remote')) : null
     }
     default:
@@ -252,7 +255,7 @@ export function trustedIpLocations(snapshot: Pick<TenantSnapshot, 'config'>): Of
  * with it, and the office card reopens pre-filled with it.
  */
 export function officeLocationsCreated(snapshot: Pick<TenantSnapshot, 'config'>, m: Mapping): OfficeLocation[] {
-  if (savedAnswerOf('officeNetwork', m)?.value !== 'notInEntra') return []
+  if (savedAnswerOf('officeNetwork', m)?.value !== 'office') return []
   const basis = savedBasisOf('officeNetwork', m)
   const before = new Set((basis ?? '').split(',').map((id) => id.trim().toLowerCase()).filter((id) => id !== ''))
   return (trustedIpLocations(snapshot) ?? []).filter((l) => !before.has(l.id.toLowerCase()))
@@ -280,6 +283,19 @@ export function directionAnswerComplete(q: Pick<DirectionQuestion, 'control' | '
 export const directionDraftOf = (q: Pick<DirectionQuestion, 'saved' | 'suggested' | 'needsReview'>): DirectionAnswer => q.needsReview ? q.suggested : q.saved ?? q.suggested
 
 /** The answers a Direction step's Approve writes: every question at once, the picked ids beside each, a question's evidence basis beside it. */
+/**
+ * A Direction step's saved answers with one of them changed, as its own
+ * Approve would save them: how another step answers a question this step asks
+ * without a second stored copy of it (Define the Trusted Network's office
+ * network; owner, 2026-09-24). Only saved answers are carried.
+ */
+export function directionDecisionWith(step: Pick<Step, 'directionQuestions'>, key: string, changed: DirectionAnswer): StepDecisionInput {
+  const questions = step.directionQuestions ?? []
+  const answers = Object.fromEntries(questions.filter((q) => q.saved !== null || q.key === key).map((q) => [q.key, q.key === key ? changed : q.saved!]))
+  const basis = Object.fromEntries(questions.filter((q) => q.basis !== null && q.key in answers).map((q) => [q.key, q.basis as string]))
+  return directionDecisionOf(answers, basis)
+}
+
 export function directionDecisionOf(answers: Readonly<Record<string, DirectionAnswer>>, basis: Readonly<Record<string, string>> = {}): StepDecisionInput {
   const out: Record<string, string> = {}
   for (const [key, a] of Object.entries(answers)) {
@@ -366,12 +382,14 @@ export function legacyDecisionsOf(_stepId: DirectionStepId | typeof DIRECTION_LO
   }
   const network = answers.officeNetwork
   if (network) {
-    // Three answers, two legacy shapes. "Everyone works remotely" sets the step
-    // aside; both "we have one" answers keep it, and the one with nothing picked
-    // is the tenant whose office is not a named location yet (decisions.ts:
-    // office-network with an empty pick leaves its own question unanswered).
+    // "Everyone works remotely" sets the step aside; the office keeps it, with
+    // the locations Define the Trusted Network picked, and with none picked it is
+    // the office not in Entra yet (decisions.ts: office-network with an empty
+    // pick leaves its own question unanswered).
     const remote = network.value === 'remote'
-    if ((OFFICE_NETWORK as readonly string[]).includes(network.value)) own.officeNetwork = network.value
+    // A plan saved before 2026-09-24 may hold "Not in Entra yet": the office.
+    const value = network.value === 'notInEntra' ? 'office' : network.value
+    if ((OFFICE_NETWORK as readonly string[]).includes(value)) own.officeNetwork = value
     const kept = previous[PREREQ_STEP_ID.trustedLocation]?.answers
     out.push([PREREQ_STEP_ID.trustedLocation, { picked: network.value === 'office' ? network.picked : [], option: remote ? 'remote' : 'office-network', ...(kept ? { answers: kept } : {}), at }])
   }

@@ -278,14 +278,11 @@ test('security defaults: seen on then off reads Completed; never seen on reads D
   assert.deepEqual(seen.steps.filter((s) => s.blockers.some((b) => b.label === 'security-defaults-first')).map((s) => s.id), [], 'and still holds nothing')
 })
 
-// Stage 3 (V1 decision 6). "Everyone works remotely" made Define the Trusted
-// Network read Completed: there is no network to define, so it does not apply.
-// Protect Sign-in Method Registration waits for a trusted location to mean
-// something, and that hold read "is the network step done?": a Doesn't apply
-// step is not done, so the hold went — on exactly the tenants that have no
-// trusted location at all. It treats Doesn't apply as done, and nothing waits on
-// a step that does not apply.
-test('a remote tenant: Define the Trusted Network reads Doesn\'t apply, and 5.1 keeps its no-trusted-location hold', () => {
+// Stage 3 (V1 decision 6): "Everyone works remotely" means there is no network
+// to define, so Define the Trusted Network does not apply. Protect Sign-in
+// Method Registration then requires MFA to register from anywhere, and waits for
+// no trusted location a remote team will never have (owner, 2026-09-24).
+test('a remote tenant: Define the Trusted Network reads Doesn\'t apply, and 5.1 waits for no trusted location', () => {
   const NETWORK = 's-prereq-trusted-location'
   const f = structuredClone(fixture('small'))
   assert.equal(f.mapping.trustedLocationIds.length, 0, 'the premise: small answered that everyone works remotely')
@@ -297,7 +294,7 @@ test('a remote tenant: Define the Trusted Network reads Doesn\'t apply, and 5.1 
   const network = r.steps.find((s) => s.id === NETWORK)!
   assert.equal(laneReadings(r.steps).has(NETWORK), false, 'it is not a row: the footer draws it')
   const registration = r.steps.find((s) => s.goalId === 'register-info-protected')!
-  assert.ok(registration.blockers.some((b) => b.label === 'registration-no-trusted-location'), '5.1 keeps its hold')
+  assert.ok(!registration.blockers.some((b) => b.label === 'registration-no-trusted-location'), '5.1 waits for no trusted location')
   assert.ok(!registration.blockedBy.includes(NETWORK), 'and waits on no step that does not apply')
   const sa = r.steps.find((s) => s.goalId === 'service-accounts-trusted-network')
   if (sa) assert.ok(!sa.blockedBy.includes(NETWORK), 'nor does the service accounts block')

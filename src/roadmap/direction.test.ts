@@ -7,7 +7,7 @@ import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { directionSteps } from './direction.ts'
 import type { DirectionInput } from './direction.ts'
-import { DIRECTION_LOCATIONS_STORAGE, DIRECTION_STEP, answersOfDecision, directionDecisionOf, legacyDecisionsOf, savedAnswerOf, trustedIpLocations } from './directionAnswers.ts'
+import { DIRECTION_LOCATIONS_STORAGE, DIRECTION_STEP, answersOfDecision, directionDecisionOf, directionDecisionWith, legacyDecisionsOf, savedAnswerOf, trustedIpLocations } from './directionAnswers.ts'
 import type { DirectionAnswer } from './directionAnswers.ts'
 import { applyStepDecisions } from './decisions.ts'
 import type { StepDecision } from './decisions.ts'
@@ -17,8 +17,6 @@ import { directionWords } from '../content/content.ts'
 import type { DirectionQuestion, Step } from './types.ts'
 import type { Fixture } from './fixtures/index.ts'
 import { isPhoneOs } from '../derive/platforms.ts'
-import { phoneSignInIds } from '../derive/sets.ts'
-import { fillText } from '../content/render.ts'
 
 const W = directionWords
 const AT = '2026-09-18T00:00:00Z'
@@ -63,7 +61,7 @@ test('(b) with no signal every suggestion is the safe default, and no evidence l
   // scan reads nothing either way (owner, 2026-09-20): the safe default is the
   // one that keeps Define the Trusted Network on the plan. Asked on D3 since
   // Stage 3.
-  assert.equal(q(stepOf(steps, DIRECTION_STEP.devices), 'officeNetwork').suggested.value, 'notInEntra')
+  assert.equal(q(stepOf(steps, DIRECTION_STEP.devices), 'officeNetwork').suggested.value, 'office')
   assert.equal(q(stepOf(steps, DIRECTION_STEP.devices), 'officeNetwork').evidence, '')
 })
 
@@ -89,11 +87,10 @@ test('(b) a what-you-use question takes today\'s state; a how-it-should-work que
   const devices = stepOf(steps, DIRECTION_STEP.devices)
   assert.equal(q(devices, 'computers').suggested.value, 'managed')
   assert.equal(q(devices, 'phones').suggested.value, 'apps')
-  // The recommendation, and what it costs HERE. Managed means joined and
-  // enrolled, so every computer under this answer needs an Intune licence,
-  // and the question offered the baseline's advice with nothing about the
-  // tenant beside it — on a tenant holding 300 seats with 41 in use.
-  assert.match(q(devices, 'computers').evidence, /Intune: [0-9]+ of [0-9]+ licences assigned/)
+  // 2.3 asks how people should sign in, not what the tenant has today: no count
+  // lines, and one line for the answer on screen (owner, 2026-09-24).
+  for (const key of ['computers', 'phones', 'officeNetwork']) assert.equal(q(devices, key).evidence, '', key)
+  assert.match(q(devices, 'computers').chosen?.managed ?? '', /^Outside the office, sign-ins need a managed computer\.$/)
 })
 
 test('(c) Approve saves every answer under the key it is read from, completes the step, and moves to the next open Direction step', () => {
@@ -135,7 +132,7 @@ test('(c) Approve saves every answer under the key it is read from, completes th
   // read from s-direction-locations only — so "we have one, not in Entra yet" and
   // "everyone is remote" were lost, and the step never completed.
   {
-    for (const value of ['notInEntra', 'remote']) {
+    for (const value of ['office', 'remote']) {
       const f = fixture('demo')
       f.mapping.questionAnswers = {}
       const devices = stepOf(stepsOf(f), 's-direction-devices')
@@ -303,72 +300,62 @@ test('(e) a policy with an unanswered Direction dependency is held Waiting on yo
   assert.ok(after.find((s) => s.goalId === 'geo-restriction')?.blockers.some((b) => b.kind === 'decision') ?? true, 'a policy waiting on another step\'s answers still waits')
 })
 
-test('the office network has a third answer, and answering it keeps the trusted-network step on the plan', () => {
-  // Owner, 2026-09-20: most small tenants have never created a trusted network,
-  // so the only answer they could give was "Everyone works remotely" — untrue,
-  // and it switched off the step that would have defined the office network in
-  // the first place.
+test('Define the Trusted Network answers the office network through 2.3\'s own decision: remote sets it aside, a picked trusted location completes it', () => {
+  // One stored answer, two doors (owner, 2026-09-24): 3.6's rail saves 2.3's
+  // decision with the office network changed, and 2.3's other answers stand.
+  const f = fixture('demo')
+  const devices = stepOf(stepsOf(f), DIRECTION_STEP.devices)
+  const saveFrom36 = (a: DirectionAnswer) => applyStepDecisions(f.mapping, { [DIRECTION_STEP.devices]: { ...directionDecisionWith(devices, 'officeNetwork', a), at: AT } })
+  const network = (mapping: typeof f.mapping) => runFixture({ ...f, mapping }, { mapping }).steps.find((s) => s.id === PREREQ_STEP_ID.trustedLocation)!
+
+  const remote = saveFrom36({ value: 'remote', picked: [] })
+  assert.equal(savedAnswerOf('officeNetwork', remote)?.value, 'remote')
+  for (const key of ['computers', 'phones']) assert.deepEqual(savedAnswerOf(key as never, remote), savedAnswerOf(key as never, f.mapping), `${key} stands`)
+  assert.equal(network(remote).doesntApply, directionWords.doesntApplyAnswered.replace('{option}', directionWords.questions.officeNetwork.options.remote).replace('{question}', directionWords.questions.officeNetwork.label).replace('{step}', directionWords.steps.devices.title))
+
+  const trusted = trustedIpLocations(f.snapshot) ?? []
+  assert.ok(trusted.length > 0, 'the premise: the demo trusts a location in Entra')
+  const office = saveFrom36({ value: 'office', picked: [trusted[0].id] })
+  assert.equal(savedAnswerOf('officeNetwork', office)?.value, 'office')
+  assert.equal(network(office).state.satisfied, true, 'the picked trusted location is the office')
+})
+
+test('every Direction card says what its chosen answer does in one line, and no line opens on the answer it follows', () => {
+  // The questions read alike on 2.1, 2.2 and 2.3 (owner, 2026-09-24): the line
+  // follows the answer on screen, so it never repeats "Answering X".
+  const qs = runFixture(fixture('demo')).steps.flatMap((s) => s.directionQuestions ?? [])
+  const card = (key: string): DirectionQuestion => qs.find((x) => x.key === key)!
+  assert.match(card('mailDevices').chosen?.some ?? '', /^The accounts you pick become service accounts/)
+  assert.match(card('partner').chosen?.yes ?? '', /^Keeps partner and MSP technicians out of/)
+  assert.match(card('serviceAccounts').chosen?.none ?? '', /^Takes Restrict Service Accounts to the Trusted Network off your plan/)
+  assert.ok(qs.some((x) => x.key.startsWith('service:') && /^Takes .+ off your plan[.]$/.test(x.chosen?.no ?? '')), 'a service card says what No takes off')
+  for (const x of qs) for (const line of [...Object.values(x.chosen ?? {}), x.note ?? '']) assert.doesNotMatch(line, /^Answering /, x.key)
+})
+
+test('the office network asks one thing, an office or everyone remote; an old Not in Entra yet reads as the office', () => {
+  // Owner, 2026-09-24: whether the office is in Entra is the scan's to read and
+  // Define the Trusted Network's to do. The question asks only the decision.
   const f = fixture('demo')
   const q = stepsOf(f).flatMap((s) => s.directionQuestions ?? []).find((x) => x.key === 'officeNetwork')!
-  assert.deepEqual(q.options.map((o) => o.value), ['office', 'notInEntra', 'remote'])
+  assert.deepEqual(q.options.map((o) => o.value), ['office', 'remote'])
+  assert.equal(q.control, 'choice', 'no location picker on 2.3: Define the Trusted Network picks the office')
 
   const apply = (value: string) => {
     const decision = directionDecisionOf({ officeNetwork: { value, picked: [] } })
     const legacy = legacyDecisionsOf(DIRECTION_STEP.devices, { ...decision, at: AT } as never)
     return Object.fromEntries(legacy)
   }
-
-  // "Not in Entra yet" is the office-network option with nothing picked, which
-  // is the shape decisions.ts already reads as "the step stands, and its own
-  // question is unanswered". "Everyone works remotely" sets it aside.
-  assert.equal(apply('notInEntra')[PREREQ_STEP_ID.trustedLocation].option, 'office-network')
-  assert.deepEqual(apply('notInEntra')[PREREQ_STEP_ID.trustedLocation].picked, [])
-  assert.equal(apply('remote')[PREREQ_STEP_ID.trustedLocation].option, 'remote')
+  // The office with nothing picked is the office not in Entra yet: the step stands.
   assert.equal(apply('office')[PREREQ_STEP_ID.trustedLocation].option, 'office-network')
+  assert.deepEqual(apply('office')[PREREQ_STEP_ID.trustedLocation].picked, [])
+  assert.equal(apply('remote')[PREREQ_STEP_ID.trustedLocation].option, 'remote')
+  for (const value of ['office', 'remote']) assert.equal(savedAnswerOf('officeNetwork', applyStepDecisions(f.mapping, apply(value) as never))?.value, value, value)
+  // A plan saved with "Not in Entra yet" reads as the office, wherever it was stored.
+  assert.equal(savedAnswerOf('officeNetwork', applyStepDecisions(f.mapping, apply('notInEntra') as never))?.value, 'office')
+  assert.equal(savedAnswerOf('officeNetwork', { ...f.mapping, questionAnswers: { ...f.mapping.questionAnswers, [`${DIRECTION_LOCATIONS_STORAGE}:officeNetwork`]: 'notInEntra' } })?.value, 'office')
 
-  // And the answer reads back, which the legacy decision alone cannot do: it
-  // cannot tell "not in Entra yet" from "nobody has answered".
-  for (const value of ['office', 'notInEntra', 'remote']) {
-    const m = applyStepDecisions(f.mapping, apply(value) as never)
-    assert.equal(savedAnswerOf('officeNetwork', m)?.value, value, value)
-  }
-
-  // What answering it leaves to do: the step that defines the office network.
-  const note = q.note ?? ''
-  assert.match(note, /Define the Trusted Network/)
+  // What each answer does, one line each.
+  assert.match(q.chosen?.office ?? '', /Define the Trusted Network sets that up in Entra\.$/)
+  assert.match(q.chosen?.remote ?? '', /Define the Trusted Network leaves your plan\.$/)
 })
 
-// ---------------------------------------------------------------------------
-// NEW-Nadia-D4: "Today: no phone sign-ins were seen." beside an iPhone.
-// The phones question counted a tally over the bulk sign-in rows
-// (scenarioEvidence.phoneSignIns) while MFA Readiness drew each person's phone
-// from their own record. A person read on their own after a partial bulk read
-// reached the record and never the tally, and every shipped fixture built the
-// tally from rows of its own: getiamai, small, mid, messy and midflight said no
-// phone was seen beside MFA Readiness's phones, and the public demo said 3
-// beside 7. One source now (derive/sets.ts phoneSignInIds).
-// ---------------------------------------------------------------------------
-
-const phonesToday = (f: Fixture): string | null => q(stepOf(directionSteps({ snapshot: f.snapshot, mapping: f.mapping, notAssessed: [], availableGoalIds: [] }), DIRECTION_STEP.devices), 'phones').evidence || null
-
-test('NEW-Nadia-D4: the phones question counts exactly the people MFA Readiness shows a phone for, a person read on their own included', async () => {
-  // NEW-Nadia-D4: on every shipped fixture the phones question counts exactly the people MFA Readiness shows a phone for
-  {
-    const { readinessView } = await import('../derive/mfaReadiness.ts')
-    const { deviceChips } = await import('../ui/surfaces/readinessCells.ts')
-    for (const name of ['getiamai', 'demo', 'micro'] as const) {
-      const f = fixture(name)
-      const shown = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.filter((r) => deviceChips(r).chips.some((c) => c.kind === 'phone')).map((r) => r.user.id).sort()
-      const counted = phoneSignInIds(f.snapshot)
-      const today = phonesToday(f)
-      if (counted === null) {
-        // Records not read: nobody was seen, which says nothing about phones.
-        assert.equal(today, null, `${name}: a line about phones over records nobody read`)
-        assert.deepEqual(shown, [], `${name}: MFA Readiness shows a phone over records nobody read`)
-        continue
-      }
-      assert.deepEqual(counted, shown, `${name}: the question and MFA Readiness disagree about who signed in from a phone`)
-      assert.equal(today, shown.length > 0 ? fillText(W.questions.phones.today, { n: shown.length }) : W.questions.phones.todayNone, name)
-    }
-  }
-})

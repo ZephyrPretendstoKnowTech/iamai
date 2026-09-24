@@ -3130,8 +3130,8 @@
             "devices": {
               "$comment": "Stage 3 (roadmap-flow V1 decision 3): today's devices step plus the office network question from Decide Where People Sign In From, which is no longer drawn. Its title is the V1 outline's name for the merged step. why and milestoneAction are the owner's section 2 walk words (walk list 62, 63).",
               "title": "Decide How and Where People Sign In",
-              "why": "Choose how company computers and phones are managed, and which network is your office. The plan's device and location policies follow these answers.",
-              "milestoneAction": "Approving these answers sets which device policies your plan holds and which network counts as the office."
+              "why": "Choose how company computers and phones are managed, and whether people work from an office. Your plan's device and location policies follow these answers.",
+              "milestoneAction": "Approving these answers sets which device policies your plan holds and whether it uses an office network."
             }
           },
           "questions": {
@@ -3145,7 +3145,7 @@
               "yes": "Yes",
               "no": "No"
             },
-            "serviceConsequence": "Answering No takes {steps} off your plan.",
+            "serviceConsequence": "Takes {steps} off your plan.",
             "serviceEvidence": {
               "seen": "{n} people signed in to {service} in the last 30 days.",
               "notSeen": "No {service} sign-ins in the last 30 days.",
@@ -3156,7 +3156,7 @@
               "label": "Devices or apps that send email by signing in (printers, scanners, line-of-business apps)",
               "seen": "{n} accounts signed in to send email in the last 30 days.",
               "notSeen": "No email-sending sign-ins in the last 30 days.",
-              "consequence": "Answering Pick accounts makes them service accounts: they leave the people counts, and Block Legacy Authentication waits until each moves to a supported mail route.",
+              "consequence": "The accounts you pick become service accounts: they leave the people counts, and Block Legacy Authentication waits until each moves to a supported mail route.",
               "why": "Signed in to send email in the last 30 days."
             },
             "partner": {
@@ -3167,7 +3167,7 @@
               },
               "seen": "{n} partner or MSP accounts signed in to your tenant in the last 30 days.",
               "notSeen": "No partner or MSP sign-ins in the last 30 days.",
-              "consequence": "Answering Yes keeps partner and MSP technicians out of Require MFA for Guests and Block Sign-ins From Countries Not Allowed."
+              "consequence": "Keeps partner and MSP technicians out of Require MFA for Guests and Block Sign-ins From Countries Not Allowed."
             },
             "accountOptions": {
               "none": "None",
@@ -3178,53 +3178,53 @@
               "seen": "{n} accounts look like service accounts.",
               "seenOne": "1 account looks like a service account.",
               "notSeen": "No account looks like a service account.",
-              "note": "Answering None takes Restrict Service Accounts to the Trusted Network off your plan and counts these accounts as people."
+              "note": "Takes Restrict Service Accounts to the Trusted Network off your plan and counts these accounts as people."
             },
             "sharedDevices": {
               "label": "Shared-device accounts",
               "seen": "{n} accounts look like shared-device accounts.",
               "seenOne": "1 account looks like a shared-device account.",
               "notSeen": "No account looks like a shared-device account.",
-              "note": "Answering None takes Give Shared Devices Their Own Policy off your plan and counts these accounts as people."
+              "note": "Takes Give Shared Devices Their Own Policy off your plan and counts these accounts as people."
             },
+            "$commentChosen": "Each card says what the chosen answer does, in one line (roadmap/direction.ts chosen; owner, 2026-09-24). 2.3 draws no scan counts: it asks how people should sign in, not what the tenant has today.",
             "computers": {
               "label": "Company computers",
               "options": {
-                "managed": "Managed (compliant in Intune, or hybrid joined)",
-                "unmanaged": "Unmanaged"
+                "managed": "Managed (Intune or hybrid joined)",
+                "unmanaged": "Not managed"
               },
-              "$commentToday": "This line said \"{n} people signed in from computers that aren't joined\" and filled {n} from unjoinedComputers, which counts devices with NO trust type at all. A registered device is not joined — Entra has three trust types and only two are a join — so the sentence claimed a population far wider than the one it measured. On a 4,900-person tenant it read 3 where 2,339 people were on registered computers, and this question decides whether every company computer gets joined and enrolled: at 3 that is a Tuesday afternoon, at 2,339 it is a change board and a pilot. Both numbers are stated now, each saying what it counted.",
-              "today": "{n} people signed in from unregistered computers in the last 30 days.",
-              "todayNone": "No sign-ins from unregistered computers in the last 30 days.",
-              "todayRegistered": "{n} people signed in from registered computers that aren't joined, in the last 30 days.",
-              "$commentIntuneSeats": "The device question chooses between Managed, Hybrid joined and Left unmanaged, and Managed means joined AND enrolled - which needs an Intune licence per device. The question offered the baseline recommendation and nothing about the tenant, on a tenant holding 300 seats with 41 in use. A reader picking the suggested answer was committing to enrolment without being shown whether the licences for it existed.",
-              "intuneSeats": "Intune: {consumed} of {seats} licences assigned. Each person who uses a managed computer needs one.",
-              "note": "Answering Unmanaged takes Require a Managed Device Outside the Office and Require a Fresh Sign-in for Intune Enrollment off your plan."
+              "chosen": {
+                "managed": "Outside the office, sign-ins need a managed computer.",
+                "unmanaged": "Any computer can sign in. Require a Managed Device Outside the Office and Require a Fresh Sign-in for Intune Enrollment leave your plan.",
+                "$commentUnmanagedPhonesEnrolled": "Not managed while phones are Enrolled in Intune: the two managed-device steps stay on the plan for phones (deviations.ts deviceStepDoesntApply).",
+                "unmanagedPhonesEnrolled": "Any computer can sign in."
+              }
             },
             "phones": {
               "label": "Phones",
               "options": {
-                "enrolled": "Compliant (enrolled in Intune)",
-                "apps": "No device requirement",
+                "enrolled": "Enrolled in Intune",
+                "apps": "Protected apps only",
                 "blocked": "Blocked from company data"
               },
-              "today": "{n} people signed in from a phone in the last 30 days.",
-              "todayNone": "No phone sign-ins in the last 30 days.",
-              "note": "Answering Blocked from company data adds Keep Company Data Off Phones: a block policy you build, a report-only week, then a test from an iPhone and an Android phone.",
-              "$commentNoteIntune": "Said after note only where the tenant has Intune licences (capabilities.intune.enabled; roadmap/direction.ts deviceQuestions).",
-              "noteIntune": "Answering Compliant adds phones to Require a Managed Device Outside the Office."
+              "chosen": {
+                "enrolled": "Phones must be enrolled in Intune to reach company data outside the office.",
+                "apps": "Phones aren't enrolled; company data stays in protected apps like Outlook and Teams.",
+                "blocked": "Phones can't reach company data. Adds Keep Company Data Off Phones: a block policy you build, a report-only week, then a test from an iPhone and an Android phone."
+              }
             },
             "officeNetwork": {
               "label": "Office network",
               "options": {
-                "office": "Pick locations",
-                "notInEntra": "Not in Entra yet",
+                "office": "An office or VPN",
                 "remote": "Everyone works remotely"
               },
-              "seen": "{n} named locations are marked trusted: {names}.",
-              "notSeen": "No named location is marked trusted.",
-              "note": "Answering Not in Entra yet leaves Define the Trusted Network for you to do: add your office's public IP addresses to Entra.",
-              "$commentUnused": "A saved answer of \"Everyone works remotely\" sat beside the evidence line \"1 named location is marked trusted\" with nothing connecting them. The evidence is true and argues for the OPPOSITE answer, and the suggestion was in fact office - so a careful reader met a contradiction on one line and no way to tell which half to believe. The downstream prerequisite step already says this well (\"The scan read a trusted named location this answer leaves out: Head office\"); the question that SETS the answer said nothing. Said only where the saved answer is remote and the scan read a trusted location.",
+              "chosen": {
+                "office": "Sign-ins from your office count as trusted. Define the Trusted Network sets that up in Entra.",
+                "remote": "Every sign-in counts as outside the office. Define the Trusted Network leaves your plan."
+              },
+              "$commentUnused": "A saved answer of \"Everyone works remotely\" beside a location Entra marks trusted says what the answer does with it.",
               "savedRemoteUnused": "{names} is marked trusted in Entra; this answer doesn't use it as your office."
             },
             "$commentWorkCountries": "The work countries question, asked since Stage 3 on Block Sign-ins From Countries Not Allowed rather than in Direction. Its words are kept here as Direction wrote them: the label heads that step's countries picker, and the seen line sits under it where the scan saw sign-in countries (ui/surfaces/stepBody.ts withObjectTask).",
@@ -4061,6 +4061,10 @@
         "officeUnanswered": {
           "lead": "Answer Office network in Decide How and Where People Sign In.",
           "check": null
+        },
+        "$commentOfficeInEntra": "Entra already trusts a location and none is saved as the office (owner, 2026-09-24): pick it on the rail, or create it.",
+        "officeInEntra": {
+          "lead": "Pick your office under Office network and save it. If it isn't listed, create it with the task below."
         }
       },
       "$commentRangesUnsaved": "The ranges the Add line names where no public ranges were saved for the office ({officeRanges}, ui/surfaces/stepVars.ts; walk list 65).",

@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "Ready · Decision",
   "bar": "Needs a decision",
-  "rail": "Approving these answers sets which device policies your plan holds and which network counts as the office.",
+  "rail": "Approving these answers sets which device policies your plan holds and whether it uses an office network.",
   "headings": [
     "About this Step",
     "Questions",

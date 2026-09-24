@@ -83,7 +83,8 @@ test('open: the step asks, phones are out of readiness, and only the device step
   assert.equal(ds.state.condition, 'needs-decision')
   // Who signed in from a phone is read from the people's own records, the ones MFA Readiness reads (NEW-Nadia-D4).
   assert.ok((phoneSignInIds(f.snapshot)?.length ?? 0) >= 2, 'the demo signs in from two phones')
-  assert.match(ds.directionQuestions!.find((q) => q.key === 'phones')!.evidence ?? '', /^\d+ people signed in from a phone in the last 30 days\./)
+  // 2.3 draws no count lines (owner, 2026-09-24).
+  assert.equal(ds.directionQuestions!.find((q) => q.key === 'phones')!.evidence, '')
   for (const goalId of [COMPLIANT_DEVICE_GOAL, INTUNE_ENROLMENT_GOAL]) {
     const s = r.steps.find((x) => x.goalId === goalId)
     assert.ok(s, `${goalId}: on the plan`)
@@ -159,7 +160,7 @@ test('the other answers: enrol keeps phones in, block phones keeps them in, noth
   const f = fixture('demo')
   const enrol = applied(f, decided('Enrol phones in Intune', 'Enrol in Intune'))
   assert.deepEqual(excludedPlatforms(enrol), [], 'enrol: the baseline stands')
-  assert.match(deviceStepDoesntApply(APP_PROTECTION_GOAL, enrol) ?? '', /^You answered Compliant \(enrolled in Intune\) to “Phones”/, 'the app-protection step leaves with the answer as reason')
+  assert.match(deviceStepDoesntApply(APP_PROTECTION_GOAL, enrol) ?? '', /^You answered Enrolled in Intune to “Phones”/, 'the app-protection step leaves with the answer as reason')
   const strict = applied(f, decided('No company data on phones', 'Hybrid-joined is enough', true))
   assert.equal(devicePlanOf(strict)?.blockPhones, true)
   assert.deepEqual(excludedPlatforms(strict), [], 'block phones: phones stay in the policy, so a phone not enrolled is blocked')
@@ -169,7 +170,7 @@ test('the other answers: enrol keeps phones in, block phones keeps them in, noth
   for (const goalId of [COMPLIANT_DEVICE_GOAL, INTUNE_ENROLMENT_GOAL]) {
     const s = r.steps.find((x) => x.goalId === goalId)!
     assert.equal(s.status, 'skipped', `${goalId}: leaves the plan`)
-    assert.match(s.doesntApply ?? '', /^You answered Unmanaged to “Company computers”/, `${goalId}: the answer is the reason`)
+    assert.match(s.doesntApply ?? '', /^You answered Not managed to “Company computers”/, `${goalId}: the answer is the reason`)
   }
 })
 
