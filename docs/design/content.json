@@ -2915,7 +2915,7 @@
           "steps": {
             "use": {
               "title": "Confirm What You Use",
-              "why": "Tell us which services and sign-in paths your organisation uses, so the plan only includes the policies you need, and closes the ones you don't.",
+              "why": "IAMAI filled these in from your tenant. Approve them or correct any that are wrong: a service you don't use takes its policies off your plan, and the accounts and partners you name are kept out of the policies that would stop them.",
               "milestoneAction": "Approving these answers decides which policies your plan contains."
             },
             "accounts": {
