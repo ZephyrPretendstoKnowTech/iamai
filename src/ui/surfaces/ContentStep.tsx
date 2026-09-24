@@ -1489,8 +1489,8 @@ function FollowUpDecision({ step, ctx, saved, onDecide, printing }: { step: Step
   const results = options.filter((o) => o.name.toLowerCase().includes(query.toLowerCase()))
   return <div className="decision">
     <h5 className="dlabel" id={labelId}>{F.pickerLabel}</h5>
-    {/* Its instruction is the action column's (stepBody.ts rail.instruction), and nothing is suggested: no fact picks anyone (walk list section 3 items 17 and 22). */}
-    <Picker labelledBy={labelId} selected={picked} options={results} suggestions={[]} onSearch={setQuery} onChange={setPicked} onCommit={(next) => onDecide?.({ picked: next.map((o) => o.id) })} />
+    {/* Its instruction is the action column's (stepBody.ts rail.instruction), and nothing is suggested: no fact picks anyone, so the list holds everyone not ready (walk list section 3 items 17 and 22). */}
+    <Picker labelledBy={labelId} selected={picked} options={results} suggestions={[]} listAll onSearch={setQuery} onChange={setPicked} onCommit={(next) => onDecide?.({ picked: next.map((o) => o.id) })} />
   </div>
 }
 
@@ -1510,6 +1510,7 @@ function DormantDecision({ step, onDecide, printing }: { step: Step; onDecide?: 
   const save = (keeping: PickerOption[]): void => onDecide?.({ answers: Object.fromEntries(rows.map((row) => [`outcome:${row.id}`, keeping.some((option) => option.id === row.id) ? 'keep' : ''])) })
   return <div className="decision">
     <h5 className="dlabel" id={labelId}>{K.label}</h5>
-    <Picker labelledBy={labelId} selected={picked} options={results} onSearch={setQuery} onChange={setPicked} onCommit={save} />
+    {/* Nothing is suggested, and the list holds every account still listed, each with its last sign-in (walk list item 22). */}
+    <Picker labelledBy={labelId} selected={picked} options={results} listAll onSearch={setQuery} onChange={setPicked} onCommit={save} />
   </div>
 }
