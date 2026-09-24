@@ -357,7 +357,15 @@ export function boardReadingsOf(
   const forecast = planForecast(forecastRowsOf(steps, readings, titleOf, cleanupRows))
   for (const [id, span] of forecast.spans) {
     const r = readings.get(id)
-    if (r) r.estimate = span.at
+    if (!r) continue
+    // A policy already in report-only has its turn-on next: a held row reads the
+    // later of the day its wait clears and the turn-on the plan schedules
+    // (span.turnOn), so clearing the wait never moves the row's day later, and a
+    // wait read again on the next scan does not walk it forward (walk list 4.x
+    // item 28, owner 2026-09-24).
+    const step = byId.get(id)
+    const turnOnNext = step !== undefined && (step.state.lifecycle === 'report-only' || step.state.lifecycle === 'ready-to-enforce')
+    r.estimate = turnOnNext && span.turnOn !== null ? span.turnOn : span.at
   }
   return { readings, titleOf, cleanupRows, forecast }
 }
