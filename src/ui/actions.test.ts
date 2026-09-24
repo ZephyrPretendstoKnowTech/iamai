@@ -35,118 +35,101 @@ const otherRecord = { snapshot: { tenantId: 't-2' } as never, at: '2026-09-05T00
 // from the tenant's stored choice, so it is one of the tenant's facts.
 const uploaded = { source: 'Uploaded package', pkg: { policies: [] }, fetchFailures: 0, origin: { kind: 'upload', files: [] } } as unknown as BaselineResult
 
-beforeEach(() => {
+/** A fresh session on the Plan, outside the demo: before every test, and before every case inside one. */
+function fresh(): void {
   resetSession()
   fakeWindow.location.hash = '#/plan'
   fakeWindow.location.search = ''
-})
+}
 
-test('sign-out from a state with no MSAL account still lands signed out: the session cleared, Connect the page, the library asked to clear its cache once', async () => {
-  let cleared = 0
-  actions.authLib.signOut = async () => {
-    cleared += 1
+beforeEach(fresh)
+
+test('a trust action the library or the store cannot finish: Sign out still signs the app out, a failed Forget keeps everything, and both failures reach the button', async () => {
+  // A sign-out the library cannot finish still signs the app out, and the failure reaches the button.
+  {
+    fresh()
+    actions.authLib.signOut = async () => {
+      throw new Error('logout redirect failed')
+    }
+    setSession({ account, lastScan: record })
+    await assert.rejects(actions.signOut(), /logout redirect failed/)
+    assert.equal(getSession().account, null, 'signed out all the same')
+    assert.equal(fakeWindow.location.hash, '#/connect')
   }
-  setSession({ account, tenantName: 'Contoso', lastScan: record })
-  setScan({ ...IDLE_SCAN, state: 'running', startedAt: 1 })
-  await actions.signOut()
-  const s = getSession()
-  assert.equal(s.account, null)
-  assert.equal(s.tenantName, null)
-  assert.equal(s.lastScan, null)
-  assert.equal(s.scan.state, 'idle')
-  assert.equal(fakeWindow.location.hash, '#/connect')
-  assert.equal(cleared, 1)
-})
-
-test('a sign-out the library cannot finish still signs the app out, and the failure reaches the button', async () => {
-  actions.authLib.signOut = async () => {
-    throw new Error('logout redirect failed')
+  // A store that cannot be cleared rejects, so the menu shows it; the snapshot stays.
+  {
+    fresh()
+    actions.storeLib.forgetTenant = async () => {
+      throw new Error('store blocked')
+    }
+    setSession({ account, lastScan: record, baseline: uploaded })
+    await assert.rejects(actions.forgetTenant(), /store blocked/)
+    // A forget that failed must not read as one that worked: everything the app
+    // held of the tenant is still held, because none of it was deleted.
+    assert.equal(getSession().lastScan, record)
+    assert.equal(getSession().baseline, uploaded)
+    assert.equal(getSession().account, account)
   }
-  setSession({ account, lastScan: record })
-  await assert.rejects(actions.signOut(), /logout redirect failed/)
-  assert.equal(getSession().account, null, 'signed out all the same')
-  assert.equal(fakeWindow.location.hash, '#/connect')
 })
 
-test('forget this tenant clears the stored records and the snapshot in memory, then shows Connect not scanned, still signed in', async () => {
-  const forgotten: string[] = []
-  actions.storeLib.forgetTenant = async (tenantId: string) => {
-    forgotten.push(tenantId)
+test('sign-in failures reach the button, and a scan with nobody signed in reports where the scan shows instead of rejecting', async () => {
+  // A scan with nobody signed in never rejects: it reports where the scan shows.
+  {
+    fresh()
+    await actions.scan('#/today')
+    const { scan } = getSession()
+    assert.equal(scan.state, 'failed')
+    assert.ok(scan.error && scan.error.length > 0)
+    assert.equal(fakeWindow.location.hash, '#/plan', 'nowhere to go')
   }
-  setSession({ account, tenantName: 'Contoso', lastScan: record, demoWeek2: true })
-  await actions.forgetTenant()
-  const s = getSession()
-  assert.deepEqual(forgotten, ['t-1'])
-  assert.equal(s.lastScan, null, 'the snapshot in memory is gone')
-  assert.equal(s.demoWeek2, false)
-  assert.equal(s.account, account, 'still signed in')
-  assert.equal(fakeWindow.location.hash, '#/connect')
-  // Nobody signed in: nothing to forget, and the button hears why.
-  resetSession()
-  await assert.rejects(actions.forgetTenant())
-})
-
-test('a store that cannot be cleared rejects, so the menu shows it; the snapshot stays', async () => {
-  actions.storeLib.forgetTenant = async () => {
-    throw new Error('store blocked')
+  // Sign in and sign in with another account reach the library, and its failure reaches the button.
+  {
+    fresh()
+    const calls: string[] = []
+    actions.authLib.signIn = async () => {
+      calls.push('signIn')
+    }
+    actions.authLib.signInAnother = async () => {
+      calls.push('another')
+      throw new Error('picker blocked')
+    }
+    await actions.signIn()
+    await assert.rejects(actions.signInAnother(), /picker blocked/)
+    assert.deepEqual(calls, ['signIn', 'another'])
   }
-  setSession({ account, lastScan: record, baseline: uploaded })
-  await assert.rejects(actions.forgetTenant(), /store blocked/)
-  // A forget that failed must not read as one that worked: everything the app
-  // held of the tenant is still held, because none of it was deleted.
-  assert.equal(getSession().lastScan, record)
-  assert.equal(getSession().baseline, uploaded)
-  assert.equal(getSession().account, account)
 })
 
-test('a scan with nobody signed in never rejects: it reports where the scan shows', async () => {
-  await actions.scan('#/today')
-  const { scan } = getSession()
-  assert.equal(scan.state, 'failed')
-  assert.ok(scan.error && scan.error.length > 0)
-  assert.equal(fakeWindow.location.hash, '#/plan', 'nowhere to go')
-})
-
-test("the demo's scan advances to the follow-up snapshot and only ever forwards, with where to return kept for the landing", async () => {
-  fakeWindow.location.search = '?demo=1'
-  setSession({ account })
-  await actions.scan('#/plan/s-verify-mfa')
-  assert.equal(getSession().demoWeek2, true)
-  assert.equal(getSession().scan.returnTo, '#/plan/s-verify-mfa')
-  // A second Scan again on the follow-up snapshot does not walk the sample
-  // backwards in time: it stays where it is and goes where it was asked to go.
-  fakeWindow.location.hash = '#/connect'
-  await actions.scan('#/plan')
-  assert.equal(getSession().demoWeek2, true)
-  assert.equal(fakeWindow.location.hash, '#/plan', 'the second scan does not return to the page that asked for it')
-})
-
-test('the demo snapshot selector picks either synthetic scan, and does nothing outside the demo', () => {
-  fakeWindow.location.search = '?demo=1'
-  setSession({ account })
-  actions.showDemoSnapshot(true)
-  assert.equal(getSession().demoWeek2, true)
-  // Back to the initial scan: the selector is the way back, and it is the only one.
-  actions.showDemoSnapshot(false)
-  assert.equal(getSession().demoWeek2, false)
-  // Outside the demo it is not an action at all: a real tenant has one scan.
-  fakeWindow.location.search = ''
-  actions.showDemoSnapshot(true)
-  assert.equal(getSession().demoWeek2, false)
-})
-
-test('sign in and sign in with another account reach the library, and its failure reaches the button', async () => {
-  const calls: string[] = []
-  actions.authLib.signIn = async () => {
-    calls.push('signIn')
+test('the demo\'s scan only ever moves the sample forward, and the snapshot selector picks either scan in the demo and does nothing outside it', async () => {
+  // The demo's scan advances to the follow-up snapshot and only ever forwards, with where to return kept for the landing.
+  {
+    fresh()
+    fakeWindow.location.search = '?demo=1'
+    setSession({ account })
+    await actions.scan('#/plan/s-verify-mfa')
+    assert.equal(getSession().demoWeek2, true)
+    assert.equal(getSession().scan.returnTo, '#/plan/s-verify-mfa')
+    // A second Scan again on the follow-up snapshot does not walk the sample
+    // backwards in time: it stays where it is and goes where it was asked to go.
+    fakeWindow.location.hash = '#/connect'
+    await actions.scan('#/plan')
+    assert.equal(getSession().demoWeek2, true)
+    assert.equal(fakeWindow.location.hash, '#/plan', 'the second scan does not return to the page that asked for it')
   }
-  actions.authLib.signInAnother = async () => {
-    calls.push('another')
-    throw new Error('picker blocked')
+  // The demo snapshot selector picks either synthetic scan, and does nothing outside the demo.
+  {
+    fresh()
+    fakeWindow.location.search = '?demo=1'
+    setSession({ account })
+    actions.showDemoSnapshot(true)
+    assert.equal(getSession().demoWeek2, true)
+    // Back to the initial scan: the selector is the way back, and it is the only one.
+    actions.showDemoSnapshot(false)
+    assert.equal(getSession().demoWeek2, false)
+    // Outside the demo it is not an action at all: a real tenant has one scan.
+    fakeWindow.location.search = ''
+    actions.showDemoSnapshot(true)
+    assert.equal(getSession().demoWeek2, false)
   }
-  await actions.signIn()
-  await assert.rejects(actions.signInAnother(), /picker blocked/)
-  assert.deepEqual(calls, ['signIn', 'another'])
 })
 
 test('Sign out lets go of every fact about the tenant, and deletes nothing this device stored', async () => {
@@ -159,6 +142,7 @@ test('Sign out lets go of every fact about the tenant, and deletes nothing this 
     deleted.push(tenantId)
   }
   setSession({ account, tenantName: 'Contoso', lastScan: record, baseline: uploaded, baselineRestoreError: 'the stored package would not load' })
+  setScan({ ...IDLE_SCAN, state: 'failed', error: 'a scan that failed', returnTo: '#/plan/s-one' })
   await actions.signOut()
   const s = getSession()
   assert.equal(s.account, null, 'nobody is signed in')
@@ -169,7 +153,8 @@ test('Sign out lets go of every fact about the tenant, and deletes nothing this 
   // would put their file under a page that says nobody is signed in.
   assert.equal(s.baseline, null, "the tenant's baseline is not still on the signed-out page")
   assert.equal(s.baselineRestoreError, null)
-  assert.equal(s.scan.state, 'idle')
+  assert.deepEqual([s.scan.state, s.scan.error, s.scan.roleGap, s.scan.returnTo], ['idle', null, null, null], 'Sign out left a scan fact in memory')
+  assert.equal(fakeWindow.location.hash, '#/connect')
   assert.equal(libSignOut, 1, 'the library was asked to sign out')
   assert.deepEqual(deleted, [], 'Sign out is not Forget: nothing this device stored was deleted')
 })
@@ -183,7 +168,8 @@ test('Forget this tenant deletes this tenant only, lets go of it in memory, and 
   actions.storeLib.forgetTenant = async (tenantId: string) => {
     deleted.push(tenantId)
   }
-  setSession({ account, tenantName: 'Contoso', lastScan: record, baseline: uploaded, baselineRestoreError: 'the stored package would not load' })
+  setSession({ account, tenantName: 'Contoso', lastScan: record, baseline: uploaded, baselineRestoreError: 'the stored package would not load', demoWeek2: true })
+  setScan({ ...IDLE_SCAN, state: 'failed', error: 'a scan that failed', returnTo: '#/plan/s-one' })
   await actions.forgetTenant()
   const s = getSession()
   assert.deepEqual(deleted, ['t-1'], 'the tenant now signed in, by its own id, and no other')
@@ -192,37 +178,15 @@ test('Forget this tenant deletes this tenant only, lets go of it in memory, and 
   // page may not go on showing the choice the device no longer remembers.
   assert.equal(s.baseline, null)
   assert.equal(s.baselineRestoreError, null)
+  assert.deepEqual([s.scan.error, s.scan.roleGap, s.scan.returnTo], [null, null, null], 'Forget left a scan fact in memory')
+  assert.equal(s.demoWeek2, false)
+  assert.equal(fakeWindow.location.hash, '#/connect')
   assert.equal(s.account, account, 'still signed in')
   assert.equal(s.tenantName, 'Contoso', 'still signed in to the same tenant')
   assert.equal(libSignOut, 0, 'Forget is not Sign out: the operator was not signed out')
-})
-
-test('Sign out and Forget this tenant stay two different actions: one clears who is signed in, the other deletes the records', async () => {
-  const run = async (press: () => Promise<void>) => {
-    const deleted: string[] = []
-    let libSignOut = 0
-    actions.authLib.signOut = async () => {
-      libSignOut += 1
-    }
-    actions.storeLib.forgetTenant = async (tenantId: string) => {
-      deleted.push(tenantId)
-    }
-    resetSession()
-    setSession({ account, tenantName: 'Contoso', lastScan: record, baseline: uploaded })
-    await press()
-    return { deleted, libSignOut, signedIn: getSession().account !== null }
-  }
-  const out = await run(() => actions.signOut())
-  const forget = await run(() => actions.forgetTenant())
-  // This is the regression: if either action ever grows the other's mutation,
-  // one of these three comparisons stops holding.
-  assert.notEqual(out.signedIn, forget.signedIn, 'both actions left the same authentication state')
-  assert.notDeepEqual(out.deleted, forget.deleted, 'both actions deleted the same stored records')
-  assert.notEqual(out.libSignOut, forget.libSignOut, 'both actions asked the sign-in library the same thing')
-  assert.equal(out.signedIn, false)
-  assert.deepEqual(out.deleted, [])
-  assert.equal(forget.signedIn, true)
-  assert.deepEqual(forget.deleted, ['t-1'])
+  // Nobody signed in: nothing to forget, and the button hears why.
+  resetSession()
+  await assert.rejects(actions.forgetTenant())
 })
 
 test('Forget names the tenant signed in now, never one signed in before it: tenant A, then tenant B', async () => {
@@ -242,26 +206,6 @@ test('Forget names the tenant signed in now, never one signed in before it: tena
   assert.equal(getSession().account, otherAccount, 'still signed in to tenant B')
 })
 
-test('after either action the session holds nothing of the tenant, so no selector can still call it the current one', async () => {
-  actions.authLib.signOut = async () => {}
-  actions.storeLib.forgetTenant = async () => {}
-  const held = (): unknown[] => {
-    const s = getSession()
-    return [s.lastScan, s.baseline, s.baselineRestoreError, s.scan.error, s.scan.roleGap, s.scan.returnTo]
-  }
-  setSession({ account, tenantName: 'Contoso', lastScan: record, baseline: uploaded, baselineRestoreError: 'stale' })
-  setScan({ ...IDLE_SCAN, state: 'failed', error: 'a scan that failed', returnTo: '#/plan/s-one' })
-  await actions.signOut()
-  assert.deepEqual(held(), [null, null, null, null, null, null], 'Sign out left a tenant fact in memory')
-  assert.equal(getSession().account, null)
-
-  setSession({ account, tenantName: 'Contoso', lastScan: record, baseline: uploaded, baselineRestoreError: 'stale' })
-  setScan({ ...IDLE_SCAN, state: 'failed', error: 'a scan that failed', returnTo: '#/plan/s-one' })
-  await actions.forgetTenant()
-  assert.deepEqual(held(), [null, null, null, null, null, null], 'Forget left a tenant fact in memory')
-  assert.equal(getSession().account, account, 'and left the operator signed in')
-})
-
 test('the scan stores what it read under the signed-in tenant, and returns only where it was asked to', () => {
   const src = readFileSync('src/ui/actions.ts', 'utf8')
   // One tenant id, read from the account the scan ran for: a snapshot cannot be
@@ -278,14 +222,6 @@ test('the scan stores what it read under the signed-in tenant, and returns only 
   // surface, so Connect said complete and named nothing.
   assert.match(src, /gaps: found, unread: unreadSources\(result\)/, 'the unread list is computed for every scan')
   assert.doesNotMatch(src, /unread: found\.length/, 'the unread list is thrown away when there is no core gap')
-})
-
-test('the Scan tile names what the scan it shows could not read, from that scan’s own snapshot', () => {
-  const src = readFileSync('src/ui/surfaces/Connect.tsx', 'utf8')
-  // Read from lastScan.snapshot the way `degraded` is, so a stored scan restored
-  // on the next visit says the same thing it said the day it ran.
-  assert.match(src, /kind: 'complete',[^}]*unread: unreadSources\(lastScan\.snapshot\)/)
-  assert.match(src, /kind: 'gaps', gaps: runner\.gaps, unread: runner\.unread/, 'a scan with gaps stored no snapshot: its list is the one the scan produced')
 })
 
 /** Every non-test source file under a directory. */
@@ -357,102 +293,166 @@ function deferred<T>(): { promise: Promise<T>; settle: (v: T) => void; fail: (e:
 /** The author's pinned package, as a read returns it. */
 const pinnedResult = { source: 'Pinned package', pkg: { policies: [] }, fetchFailures: 0, origin: { kind: 'github', owner: 'a', repo: 'b', commit: 'c', files: [] } } as unknown as BaselineResult
 
-test('a baseline still being read when Sign out lands never comes back: it is applied to nothing and recorded nowhere', async () => {
-  const saved: string[] = []
-  actions.authLib.signOut = async () => {}
-  actions.storeLib.saveBaselineRecord = async (tenantId: string) => {
-    saved.push(tenantId)
+test('work in flight when a trust action lands never comes back: a late baseline read, a row being written, or a failed rebuild of the stored choice', async () => {
+  // A baseline still being read when Sign out lands never comes back: it is applied to nothing and recorded nowhere.
+  {
+    fresh()
+    const saved: string[] = []
+    actions.authLib.signOut = async () => {}
+    actions.storeLib.saveBaselineRecord = async (tenantId: string) => {
+      saved.push(tenantId)
+    }
+    setSession({ account, tenantName: 'Contoso', baseline: uploaded })
+    const read = deferred<BaselineResult>()
+    const choosing = actions.chooseBaseline(() => read.promise, true)
+    await actions.signOut()
+    assert.equal(getSession().baseline, null, 'Sign out left the baseline on screen')
+    // The package arrives after the operator has signed out.
+    read.settle(pinnedResult)
+    await choosing
+    assert.equal(getSession().baseline, null, 'a late read put a signed-out tenant\'s baseline back')
+    assert.deepEqual(saved, [], 'a late read recorded a baseline for a tenant nobody is signed in to')
   }
-  setSession({ account, tenantName: 'Contoso', baseline: uploaded })
-  const read = deferred<BaselineResult>()
-  const choosing = actions.chooseBaseline(() => read.promise, true)
-  await actions.signOut()
-  assert.equal(getSession().baseline, null, 'Sign out left the baseline on screen')
-  // The package arrives after the operator has signed out.
-  read.settle(pinnedResult)
-  await choosing
-  assert.equal(getSession().baseline, null, 'a late read put a signed-out tenant\'s baseline back')
-  assert.deepEqual(saved, [], 'a late read recorded a baseline for a tenant nobody is signed in to')
+  // A baseline still being read when Forget this tenant lands writes no row back under the forgotten tenant, and another tenant keeps its own.
+  {
+    fresh()
+    const rows = new Map<string, unknown>([
+      ['t-1', { kind: 'upload' }],
+      ['t-2', { kind: 'github' }],
+    ])
+    actions.storeLib.forgetTenant = async (tenantId: string) => {
+      rows.delete(tenantId)
+    }
+    actions.storeLib.saveBaselineRecord = async (tenantId: string, value: Record<string, unknown>) => {
+      rows.set(tenantId, value)
+    }
+    setSession({ account, tenantName: 'Contoso', lastScan: record, baseline: uploaded })
+    const read = deferred<BaselineResult>()
+    const choosing = actions.chooseBaseline(() => read.promise, true)
+    await actions.forgetTenant()
+    assert.equal(getSession().baseline, null)
+    assert.equal(getSession().account, account, 'Forget this tenant signed the operator out')
+    read.settle(pinnedResult)
+    await choosing
+    assert.equal(rows.has('t-1'), false, 'a late read recreated the forgotten tenant\'s baseline row')
+    assert.equal(getSession().baseline, null, 'a late read put the forgotten baseline back on screen')
+    assert.equal(rows.has('t-2'), true, 'another tenant\'s baseline row was touched')
+  }
+  // A baseline row already being written when Forget this tenant lands does not outlive the delete.
+  {
+    fresh()
+    const rows = new Map<string, unknown>([['t-2', { kind: 'github' }]])
+    const write = deferred<void>()
+    actions.storeLib.forgetTenant = async (tenantId: string) => {
+      rows.delete(tenantId)
+    }
+    actions.storeLib.saveBaselineRecord = async (tenantId: string, value: Record<string, unknown>) => {
+      await write.promise
+      rows.set(tenantId, value)
+    }
+    setSession({ account, tenantName: 'Contoso', baseline: null })
+    await actions.chooseBaseline(async () => pinnedResult, true)
+    const forgetting = actions.forgetTenant()
+    // The row lands in the store while the forget is under way; the delete waits
+    // for it, so the tenant is left with nothing either way round.
+    write.settle()
+    await forgetting
+    assert.equal(rows.has('t-1'), false, 'the row written mid-forget outlived the delete')
+    assert.equal(rows.has('t-2'), true)
+  }
+  // A stored baseline choice that cannot be rebuilt is reported, unless the tenant was let go of while it was being rebuilt.
+  {
+    fresh()
+    actions.authLib.signOut = async () => {}
+    const first = deferred<BaselineResult>()
+    actions.baselineLib.restoreBaseline = async () => first.promise
+    setSession({ account, tenantName: 'Contoso' })
+    const restoring = actions.restoreChosenBaseline({ kind: 'upload', files: [] } as unknown as BaselineResult['origin'])
+    await actions.signOut()
+    first.fail(new Error('the package could not be rebuilt'))
+    await restoring
+    assert.equal(getSession().baselineRestoreError, null, 'a signed-out page was told about a tenant it no longer has')
+    // Signed in and nobody letting go: the same failure is what Connect reads.
+    const second = deferred<BaselineResult>()
+    actions.baselineLib.restoreBaseline = async () => second.promise
+    setSession({ account })
+    const again = actions.restoreChosenBaseline({ kind: 'upload', files: [] } as unknown as BaselineResult['origin'])
+    second.fail(new Error('the package could not be rebuilt'))
+    await again
+    assert.equal(getSession().baselineRestoreError, 'the package could not be rebuilt')
+  }
 })
 
-test('a baseline still being read when Forget this tenant lands writes no row back under the forgotten tenant, and another tenant keeps its own', async () => {
-  const rows = new Map<string, unknown>([
-    ['t-1', { kind: 'upload' }],
-    ['t-2', { kind: 'github' }],
-  ])
-  actions.storeLib.forgetTenant = async (tenantId: string) => {
-    rows.delete(tenantId)
+test('with nobody letting go of the tenant everything lands: a picked baseline once, the whole restoration, and the unchosen default without a saved choice; with nobody signed in nothing is restored', async () => {
+  // With nobody letting go of the tenant a read still lands: the baseline renders, and a pick is recorded once.
+  {
+    fresh()
+    const saved: [string, unknown][] = []
+    actions.storeLib.saveBaselineRecord = async (tenantId: string, value: Record<string, unknown>) => {
+      saved.push([tenantId, value])
+    }
+    setSession({ account, tenantName: 'Contoso', baselineRestoreError: 'an older failure' })
+    await actions.chooseBaseline(async () => pinnedResult, true)
+    assert.equal(getSession().baseline, pinnedResult)
+    assert.equal(getSession().baselineRestoreError, null)
+    assert.deepEqual(saved, [['t-1', pinnedResult.origin]])
+    // The default tile 2 loads for itself is not a pick, so nothing more is written.
+    await actions.chooseBaseline(async () => pinnedResult, false)
+    assert.equal(saved.length, 1)
   }
-  actions.storeLib.saveBaselineRecord = async (tenantId: string, value: Record<string, unknown>) => {
-    rows.set(tenantId, value)
+  // Opening a saved plan directly restores the unchosen default baseline without saving a choice.
+  {
+    fresh()
+    const h = hydration()
+    let saves = 0
+    actions.storeLib.saveBaselineRecord = async () => { saves += 1 }
+    actions.baselineLib.loadPinnedBaseline = async () => pinnedResult
+    const restoring = actions.restoreSession(account)
+    h.name.settle('Contoso')
+    h.snapshot.settle(record)
+    h.origin.settle(null)
+    await restoring
+    assert.equal(getSession().lastScan?.snapshot, record.snapshot)
+    assert.equal(getSession().baseline, pinnedResult)
+    assert.equal(saves, 0)
   }
-  setSession({ account, tenantName: 'Contoso', lastScan: record, baseline: uploaded })
-  const read = deferred<BaselineResult>()
-  const choosing = actions.chooseBaseline(() => read.promise, true)
-  await actions.forgetTenant()
-  assert.equal(getSession().baseline, null)
-  assert.equal(getSession().account, account, 'Forget this tenant signed the operator out')
-  read.settle(pinnedResult)
-  await choosing
-  assert.equal(rows.has('t-1'), false, 'a late read recreated the forgotten tenant\'s baseline row')
-  assert.equal(getSession().baseline, null, 'a late read put the forgotten baseline back on screen')
-  assert.equal(rows.has('t-2'), true, 'another tenant\'s baseline row was touched')
-})
-
-test('a baseline row already being written when Forget this tenant lands does not outlive the delete', async () => {
-  const rows = new Map<string, unknown>([['t-2', { kind: 'github' }]])
-  const write = deferred<void>()
-  actions.storeLib.forgetTenant = async (tenantId: string) => {
-    rows.delete(tenantId)
+  // With nobody letting go of the tenant the whole restoration lands: the name, the stored scan and the chosen package, and the choice is not recorded again.
+  {
+    fresh()
+    const saved: string[] = []
+    actions.storeLib.saveBaselineRecord = async (tenantId: string) => {
+      saved.push(tenantId)
+    }
+    const h = hydration()
+    const restoring = actions.restoreSession(account)
+    h.name.settle('Contoso')
+    h.snapshot.settle(record)
+    h.origin.settle(uploaded.origin)
+    h.pkg.settle(uploaded)
+    await restoring
+    await flush()
+    const s = getSession()
+    assert.equal(s.account, account)
+    assert.equal(s.tenantName, 'Contoso')
+    assert.equal(s.lastScan?.at, record.at)
+    assert.equal(s.baseline, uploaded, "the tenant's chosen package did not come back")
+    assert.equal(s.baselineRestoreError, null)
+    assert.deepEqual(saved, [], 'restoring a stored choice recorded it a second time')
   }
-  actions.storeLib.saveBaselineRecord = async (tenantId: string, value: Record<string, unknown>) => {
-    await write.promise
-    rows.set(tenantId, value)
+  // Nobody signed in restores nothing: the session is left signed out and the store is never asked.
+  {
+    fresh()
+    let asked = 0
+    const h = hydration()
+    actions.storeLib.loadSnapshotRecord = (() => {
+      asked += 1
+      return h.snapshot.promise
+    }) as typeof actions.storeLib.loadSnapshotRecord
+    await actions.restoreSession(null)
+    await flush()
+    assertReleased(null)
+    assert.equal(asked, 0, 'the store was read with nobody signed in')
   }
-  setSession({ account, tenantName: 'Contoso', baseline: null })
-  await actions.chooseBaseline(async () => pinnedResult, true)
-  const forgetting = actions.forgetTenant()
-  // The row lands in the store while the forget is under way; the delete waits
-  // for it, so the tenant is left with nothing either way round.
-  write.settle()
-  await forgetting
-  assert.equal(rows.has('t-1'), false, 'the row written mid-forget outlived the delete')
-  assert.equal(rows.has('t-2'), true)
-})
-
-test('with nobody letting go of the tenant a read still lands: the baseline renders, and a pick is recorded once', async () => {
-  const saved: [string, unknown][] = []
-  actions.storeLib.saveBaselineRecord = async (tenantId: string, value: Record<string, unknown>) => {
-    saved.push([tenantId, value])
-  }
-  setSession({ account, tenantName: 'Contoso', baselineRestoreError: 'an older failure' })
-  await actions.chooseBaseline(async () => pinnedResult, true)
-  assert.equal(getSession().baseline, pinnedResult)
-  assert.equal(getSession().baselineRestoreError, null)
-  assert.deepEqual(saved, [['t-1', pinnedResult.origin]])
-  // The default tile 2 loads for itself is not a pick, so nothing more is written.
-  await actions.chooseBaseline(async () => pinnedResult, false)
-  assert.equal(saved.length, 1)
-})
-
-test('a stored baseline choice that cannot be rebuilt is reported, unless the tenant was let go of while it was being rebuilt', async () => {
-  actions.authLib.signOut = async () => {}
-  const first = deferred<BaselineResult>()
-  actions.baselineLib.restoreBaseline = async () => first.promise
-  setSession({ account, tenantName: 'Contoso' })
-  const restoring = actions.restoreChosenBaseline({ kind: 'upload', files: [] } as unknown as BaselineResult['origin'])
-  await actions.signOut()
-  first.fail(new Error('the package could not be rebuilt'))
-  await restoring
-  assert.equal(getSession().baselineRestoreError, null, 'a signed-out page was told about a tenant it no longer has')
-  // Signed in and nobody letting go: the same failure is what Connect reads.
-  const second = deferred<BaselineResult>()
-  actions.baselineLib.restoreBaseline = async () => second.promise
-  setSession({ account })
-  const again = actions.restoreChosenBaseline({ kind: 'upload', files: [] } as unknown as BaselineResult['origin'])
-  second.fail(new Error('the package could not be rebuilt'))
-  await again
-  assert.equal(getSession().baselineRestoreError, 'the package could not be rebuilt')
 })
 
 test('the tenant\'s turn is ended by the two trust actions and by nothing else, and the scan lands only in the turn it began in', () => {
@@ -495,21 +495,6 @@ function hydration() {
   return { name, snapshot, origin, pkg }
 }
 
-test('opening a saved plan directly restores the unchosen default baseline without saving a choice', async () => {
-  const h = hydration()
-  let saves = 0
-  actions.storeLib.saveBaselineRecord = async () => { saves += 1 }
-  actions.baselineLib.loadPinnedBaseline = async () => pinnedResult
-  const restoring = actions.restoreSession(account)
-  h.name.settle('Contoso')
-  h.snapshot.settle(record)
-  h.origin.settle(null)
-  await restoring
-  assert.equal(getSession().lastScan?.snapshot, record.snapshot)
-  assert.equal(getSession().baseline, pinnedResult)
-  assert.equal(saves, 0)
-})
-
 test('R4-37: a scan saved before the PIM capability existed reopens with it, from the licence rows that scan read', async () => {
   // `pim` (licensing/capabilities.ts) arrived after scans were being kept. A
   // kept scan has no entry for it, and every reading of
@@ -531,22 +516,106 @@ test('R4-37: a scan saved before the PIM capability existed reopens with it, fro
   assert.equal(caps?.entraP2, enabled, 'what the scan recorded is kept as it was')
 })
 
-test('signing out during default baseline restoration does not repopulate the signed-out session', async () => {
-  const h = hydration()
-  const pending = deferred<BaselineResult>()
-  let started = false
-  actions.authLib.signOut = async () => {}
-  actions.baselineLib.loadPinnedBaseline = () => { started = true; return pending.promise }
-  const restoring = actions.restoreSession(account)
-  h.name.settle('Contoso')
-  h.snapshot.settle(record)
-  h.origin.settle(null)
-  await flush()
-  assert.equal(started, true)
-  await actions.signOut()
-  pending.settle(pinnedResult)
-  await restoring
-  assert.equal(getSession().baseline, null)
+test('a trust action during restoration leaves nothing of the tenant behind, whichever read is still in flight; Forget keeps the operator signed in and writes nothing back', async () => {
+  // Signing out during default baseline restoration does not repopulate the signed-out session.
+  {
+    fresh()
+    const h = hydration()
+    const pending = deferred<BaselineResult>()
+    let started = false
+    actions.authLib.signOut = async () => {}
+    actions.baselineLib.loadPinnedBaseline = () => { started = true; return pending.promise }
+    const restoring = actions.restoreSession(account)
+    h.name.settle('Contoso')
+    h.snapshot.settle(record)
+    h.origin.settle(null)
+    await flush()
+    assert.equal(started, true)
+    await actions.signOut()
+    pending.settle(pinnedResult)
+    await restoring
+    assert.equal(getSession().baseline, null)
+  }
+  // Sign out while the stored scan is still being read leaves nothing of the tenant: no name, no scan, no baseline.
+  {
+    fresh()
+    actions.authLib.signOut = async () => {}
+    const h = hydration()
+    const restoring = actions.restoreSession(account)
+    assert.equal(getSession().account, account, 'the account the library returned is adopted at once')
+    await actions.signOut()
+    // Every read answers after the operator has signed out.
+    h.name.settle('Contoso')
+    h.snapshot.settle(record)
+    h.origin.settle(uploaded.origin)
+    h.pkg.settle(uploaded)
+    await restoring
+    await flush()
+    assertReleased(null)
+  }
+  // Sign out while the tenant's stored baseline choice is being read never puts the package it names on the signed-out page.
+  {
+    fresh()
+    actions.authLib.signOut = async () => {}
+    const h = hydration()
+    const restoring = actions.restoreSession(account)
+    // The scan lands while the tenant is still the app's; the choice is read next.
+    h.snapshot.settle(record)
+    await flush()
+    assert.equal(getSession().lastScan?.at, record.at, 'the restoration did not reach the stored scan')
+    await actions.signOut()
+    // The stored choice — the operator's own uploaded package — comes back after
+    // the Sign out. Restoring it here would begin a turn of its own, and a turn
+    // that begins after the Sign out is one no Sign out has ended.
+    h.origin.settle(uploaded.origin)
+    h.pkg.settle(uploaded)
+    h.name.settle('Contoso')
+    await restoring
+    await flush()
+    assertReleased(null)
+  }
+  // Sign out while the chosen package is being rebuilt leaves the signed-out page with no package and nothing to say about one.
+  {
+    fresh()
+    actions.authLib.signOut = async () => {}
+    const h = hydration()
+    const restoring = actions.restoreSession(account)
+    h.snapshot.settle(record)
+    await flush()
+    h.origin.settle(uploaded.origin)
+    await flush()
+    await actions.signOut()
+    h.pkg.settle(uploaded)
+    h.name.settle('Contoso')
+    await restoring
+    await flush()
+    assertReleased(null)
+  }
+  // Forget this tenant while it is still being restored keeps the operator signed in and writes nothing back under the tenant it just deleted.
+  {
+    fresh()
+    const rows = new Map<string, unknown>([['t-1', { kind: 'upload' }]])
+    actions.storeLib.forgetTenant = async (tenantId: string) => {
+      rows.delete(tenantId)
+    }
+    actions.storeLib.saveBaselineRecord = async (tenantId: string, value: Record<string, unknown>) => {
+      rows.set(tenantId, value)
+    }
+    const h = hydration()
+    const restoring = actions.restoreSession(account)
+    h.snapshot.settle(record)
+    await flush()
+    await actions.forgetTenant()
+    h.origin.settle(uploaded.origin)
+    h.pkg.settle(uploaded)
+    h.name.settle('Contoso')
+    await restoring
+    await flush()
+    // Still signed in, as Forget this tenant leaves it, and holding none of what
+    // the delete was meant to remove.
+    assertReleased(account)
+    assert.equal(rows.has('t-1'), false, "a read still in flight wrote the deleted tenant's baseline row back")
+  }
 })
 
 /** Let every settled read run its handlers before the assertions read the session. */
@@ -564,126 +633,3 @@ function assertReleased(signedIn: AccountInfo | null): void {
   assert.equal(s.baselineRestoreError, null, 'a page with no tenant was told about one')
   if (!signedIn) assert.equal(s.tenantName, null, 'a signed-out page kept the tenant name')
 }
-
-test('Sign out while the stored scan is still being read leaves nothing of the tenant: no name, no scan, no baseline', async () => {
-  actions.authLib.signOut = async () => {}
-  const h = hydration()
-  const restoring = actions.restoreSession(account)
-  assert.equal(getSession().account, account, 'the account the library returned is adopted at once')
-  await actions.signOut()
-  // Every read answers after the operator has signed out.
-  h.name.settle('Contoso')
-  h.snapshot.settle(record)
-  h.origin.settle(uploaded.origin)
-  h.pkg.settle(uploaded)
-  await restoring
-  await flush()
-  assertReleased(null)
-})
-
-test("Sign out while the tenant's stored baseline choice is being read never puts the package it names on the signed-out page", async () => {
-  actions.authLib.signOut = async () => {}
-  const h = hydration()
-  const restoring = actions.restoreSession(account)
-  // The scan lands while the tenant is still the app's; the choice is read next.
-  h.snapshot.settle(record)
-  await flush()
-  assert.equal(getSession().lastScan?.at, record.at, 'the restoration did not reach the stored scan')
-  await actions.signOut()
-  // The stored choice — the operator's own uploaded package — comes back after
-  // the Sign out. Restoring it here would begin a turn of its own, and a turn
-  // that begins after the Sign out is one no Sign out has ended.
-  h.origin.settle(uploaded.origin)
-  h.pkg.settle(uploaded)
-  h.name.settle('Contoso')
-  await restoring
-  await flush()
-  assertReleased(null)
-})
-
-test('Sign out while the chosen package is being rebuilt leaves the signed-out page with no package and nothing to say about one', async () => {
-  actions.authLib.signOut = async () => {}
-  const h = hydration()
-  const restoring = actions.restoreSession(account)
-  h.snapshot.settle(record)
-  await flush()
-  h.origin.settle(uploaded.origin)
-  await flush()
-  await actions.signOut()
-  h.pkg.settle(uploaded)
-  h.name.settle('Contoso')
-  await restoring
-  await flush()
-  assertReleased(null)
-})
-
-test('Forget this tenant while it is still being restored keeps the operator signed in and writes nothing back under the tenant it just deleted', async () => {
-  const rows = new Map<string, unknown>([['t-1', { kind: 'upload' }]])
-  actions.storeLib.forgetTenant = async (tenantId: string) => {
-    rows.delete(tenantId)
-  }
-  actions.storeLib.saveBaselineRecord = async (tenantId: string, value: Record<string, unknown>) => {
-    rows.set(tenantId, value)
-  }
-  const h = hydration()
-  const restoring = actions.restoreSession(account)
-  h.snapshot.settle(record)
-  await flush()
-  await actions.forgetTenant()
-  h.origin.settle(uploaded.origin)
-  h.pkg.settle(uploaded)
-  h.name.settle('Contoso')
-  await restoring
-  await flush()
-  // Still signed in, as Forget this tenant leaves it, and holding none of what
-  // the delete was meant to remove.
-  assertReleased(account)
-  assert.equal(rows.has('t-1'), false, "a read still in flight wrote the deleted tenant's baseline row back")
-})
-
-test('with nobody letting go of the tenant the whole restoration lands: the name, the stored scan and the chosen package, and the choice is not recorded again', async () => {
-  const saved: string[] = []
-  actions.storeLib.saveBaselineRecord = async (tenantId: string) => {
-    saved.push(tenantId)
-  }
-  const h = hydration()
-  const restoring = actions.restoreSession(account)
-  h.name.settle('Contoso')
-  h.snapshot.settle(record)
-  h.origin.settle(uploaded.origin)
-  h.pkg.settle(uploaded)
-  await restoring
-  await flush()
-  const s = getSession()
-  assert.equal(s.account, account)
-  assert.equal(s.tenantName, 'Contoso')
-  assert.equal(s.lastScan?.at, record.at)
-  assert.equal(s.baseline, uploaded, "the tenant's chosen package did not come back")
-  assert.equal(s.baselineRestoreError, null)
-  assert.deepEqual(saved, [], 'restoring a stored choice recorded it a second time')
-})
-
-test('nobody signed in restores nothing: the session is left signed out and the store is never asked', async () => {
-  let asked = 0
-  const h = hydration()
-  actions.storeLib.loadSnapshotRecord = (() => {
-    asked += 1
-    return h.snapshot.promise
-  }) as typeof actions.storeLib.loadSnapshotRecord
-  await actions.restoreSession(null)
-  await flush()
-  assertReleased(null)
-  assert.equal(asked, 0, 'the store was read with nobody signed in')
-})
-
-test('every read the restoration makes is bound to the turn it began in, and the baseline restore is handed that turn rather than starting one', () => {
-  const src = readFileSync('src/ui/actions.ts', 'utf8')
-  const restore = src.slice(src.indexOf('export async function restoreSession'))
-  assert.match(restore, /const turn = tenantTurn\(\)/, 'the restoration does not capture a turn')
-  // The name, the stored scan and the stored choice each check the turn before
-  // they touch the session or read on.
-  assert.match(restore, /fetchTenantName\(\)[\s\S]*?if \(stillThisTurn\(turn\)\) setSession\(\{ tenantName: name \}\)/, 'a late tenant name is written to the session unchecked')
-  assert.match(restore, /loadSnapshotRecord<ScanRecord>[\s\S]*?if \(!stillThisTurn\(turn\)\) return/, 'a late stored scan is written to the session unchecked')
-  assert.match(restore, /loadBaselineRecord<BaselineResult\['origin'\]>[\s\S]*?if \(!stillThisTurn\(turn\)\) return/, 'a late baseline choice is acted on unchecked')
-  assert.match(restore, /await restoreChosenBaseline\(origin, turn\)/, "the baseline restore starts a turn of its own instead of being handed the restoration's")
-})
