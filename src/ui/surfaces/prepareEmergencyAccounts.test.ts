@@ -255,3 +255,20 @@ test('#22 a Completed step shows what was confirmed, open, with no Tasks Remaini
   // Every step that draws the layout says whether it is finished.
   assert.equal((step.match(/completed=\{laneView\.lane === 'Completed'\}/g) ?? []).length, 2)
 })
+
+test('#23 a Completed step draws no milestone block, and 1.1 with accounts saved heads its picker "Your emergency access accounts"', () => {
+  const step = read('src/ui/surfaces/ContentStep.tsx')
+  const sections = read('src/ui/surfaces/StepSections.tsx')
+  const css = read('src/ui/app.css')
+  // The badge already says Completed: the rail's NEXT MILESTONE / Completed block is not drawn.
+  assert.match(step, /const displayRail = laneView\.lane === 'Completed' \? null : /)
+  assert.match(sections, /export function StepActionColumn\(\{ rail, children = null \}: \{ rail: \{ metric: string; sub: string \} \| null; children\?: ReactNode \}\)/)
+  assert.match(sections, /\{rail && <div className="side-block">/)
+  // A column left with nothing in it is not painted; the body keeps its two columns.
+  assert.match(css, /\n\.step-action-column:empty \{\n\s+display: none;\n\}/)
+  // 1.1: once accounts are saved, its line over the picker names them instead of asking.
+  const words = JSON.parse(read('docs/design/content.json')).pages.app.plan.emergencyTasks as Record<string, string>
+  assert.equal(words.yourAccounts, 'Your emergency access accounts')
+  const single = step.slice(step.indexOf('function SingleDecision('), step.indexOf('export function Options('))
+  assert.match(single, /\? <Line s=\{ctx\.mapping\.breakGlassUserIds\.length > 0 \? YOUR_ACCOUNTS : d\.help\} ex=\{ex\} cls="reason" \/>/)
+})

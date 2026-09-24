@@ -241,14 +241,15 @@ export function LifecycleTrack({ track }: { track: ContractStage[] }) {
  * Implementation in the DOM (U5), so a screen reader meets it where a narrow
  * screen stacks it; the grid draws it on the right.
  */
-export function StepActionColumn({ rail, children = null }: { rail: { metric: string; sub: string }; children?: ReactNode }) {
+export function StepActionColumn({ rail, children = null }: { rail: { metric: string; sub: string } | null; children?: ReactNode }) {
+  // No milestone on a Completed step (owner, 2026-09-23): the badge says it.
   return (
     <aside className="step-action-column surface-inset">
-      <div className="side-block">
+      {rail && <div className="side-block">
         <div className="key-label">{CONTRACT.railMilestone}</div>
         <p className="metric">{rail.metric}</p>
         {rail.sub !== '' && <p className="metric-sub">{rail.sub}</p>}
-      </div>
+      </div>}
       {children}
     </aside>
   )

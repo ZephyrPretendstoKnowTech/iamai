@@ -108,6 +108,8 @@ function offersDoesntApply(cs: Record<string, any>, step: Step): boolean {
   return true
 }
 const SHARED = content.shared as Record<string, string>
+/** Prepare Emergency Access Accounts' line over its picker once accounts are saved (pages.app.plan.emergencyTasks). */
+const YOUR_ACCOUNTS = (app.plan as unknown as { emergencyTasks: { yourAccounts: string } }).emergencyTasks.yourAccounts
 
 /** One who block: the sentence, and its names under it. */
 function WhoBlockView({ block }: { block: WhoBlock }) {
@@ -335,7 +337,8 @@ export function ContentStep({
   // the subjects, and the Readiness tiles alone on Emergency Access Steps 2–3.
   // The bar reads them, so they are decided once.
   const taskSubjects = isOwnTaskStep ? policySubjectsOf(contract, displayedReadiness, emergencyAccountTasks, taskSubjectOf(step, eyebrow, title), cardWordsOf(step)?.check ?? null) : emergencySubjectsOf(displayedReadiness, emergencyAccountTasks)
-  const displayRail = step.id === 's-prereq-exclusion-group' ? { ...rail, sub: app.plan.exclusionsGroupRailSub } : rail
+  // A Completed step draws no milestone: NEXT MILESTONE / Completed repeated the badge (owner, 2026-09-23).
+  const displayRail = laneView.lane === 'Completed' ? null : step.id === 's-prereq-exclusion-group' ? { ...rail, sub: app.plan.exclusionsGroupRailSub } : rail
   const emergencyTaskPreferenceKey = `iamai:emergency-task:${ctx.mapping.tenantId}:${step.id}`
   const [implementationChannel, setImplementationChannel] = useState<Channel | null>(null)
   const [emergencyTaskId, setEmergencyTaskId] = useState<string | null>(() => readEmergencyTaskPreference(emergencyTaskPreferenceKey).taskId ?? null)
@@ -1158,8 +1161,10 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false 
   // (stepExport.ts decisionLine): one line, never both.
   return (
     <>
+      {/* Prepare Emergency Access Accounts: once accounts are saved, the line over
+          the picker names them rather than asking for them (owner, 2026-09-23). */}
       {stepId === 's-prereq-break-glass'
-        ? <Line s={d.help} ex={ex} cls="reason" />
+        ? <Line s={ctx.mapping.breakGlassUserIds.length > 0 ? YOUR_ACCOUNTS : d.help} ex={ex} cls="reason" />
         : !isExclusionsGroup && decisionAnswer === null && <Line s={decisionLine(d, null)} ex={ex} cls="reason" />}
       <div className="decision">
         {/* Each label is an element the controls under it can name (task 017):
