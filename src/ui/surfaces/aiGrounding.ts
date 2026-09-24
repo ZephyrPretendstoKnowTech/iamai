@@ -178,7 +178,9 @@ export function aiGroundingText(i: GroundingInput, own = ''): string {
     }
     intended.push(...i.json.requests.map((r) => `${W.request}: ${r.method} ${r.endpoint}`), body)
   }
-  if (intended.length > 0 && i.json?.preview) intended.push(W.previewValues)
+  // Said only where a value in it is still a ‹…› stand-in (walk list 4.x item
+  // 31): a preview whose values IAMAI holds has nothing unresolved to warn about.
+  if (intended.some((l) => /‹[^›]+›/.test(l))) intended.push(W.previewValues)
   const intendedLines = new Set(intended)
 
   // Step and purpose.
@@ -292,7 +294,10 @@ export function aiGroundingText(i: GroundingInput, own = ''): string {
 
   // Implementation and verification: the request the step's JSON sends, and the
   // step's own focus for the assistant.
-  const focus = typeof i.cs.aiFocus === 'string' && i.cs.aiFocus.trim() !== '' ? `${W.focus}: ${i.cs.aiFocus}` : null
+  // A policy in Turn On MFA for Everyone asks to be walked through creating it
+  // and turning it on (walk list 4.x item 31), which is nothing to ask once it is on.
+  const done = c.policyFact !== null && c.state.satisfied
+  const focus = !done && typeof i.cs.aiFocus === 'string' && i.cs.aiFocus.trim() !== '' ? `${W.focus}: ${i.cs.aiFocus}` : null
   section(S.implementation, [...(c.policy && i.json ? i.json.requests.map((r) => `${W.request}: ${r.method} ${r.endpoint}`) : []), focus])
 
   if (text('emergency.passkey.compatibility')) section((shared.passkeyCompatibility as Record<string, string>).heading, [text('emergency.passkey.compatibility')])
