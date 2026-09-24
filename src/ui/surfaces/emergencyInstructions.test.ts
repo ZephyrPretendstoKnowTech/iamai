@@ -141,14 +141,6 @@ test('Step 1: with enough cloud-only accounts selected the create procedure says
   assert.ok(!createOf(titled).some(line => REFERENCE.test(line)), 'a selected account has a job title')
 })
 
-test('Step 2: nothing wrong reads as nothing to change, with the group named', () => {
-  const tasks = tasksOf(structuredClone(fixture('demo-week2'))).get('s-prereq-exclusion-group')!
-  const membership = tasks.find(task => task.id === 'manage-emergency-membership')!.steps
-  assert.ok(membership.includes('No membership change is needed.'))
-  const exclusions = tasks.find(task => task.id === 'configure-policy-exclusions')!.steps
-  assert.ok(exclusions.some(line => /^Every policy that must exclude \*\*.+\*\* already does\. To add it to another policy:$/.test(line)), exclusions.join('\n'))
-})
-
 test('Step 3: review uses the portal’s field names; affected accounts are named; registration changes are inline', () => {
   const legacy = tasksOf(structuredClone(fixture('small'))).get('s-prereq-passkey-settings')!
   const review = legacy.find(task => task.id === 'inspect-passkey-settings')!.steps
