@@ -60,18 +60,20 @@ export function emergencyGroupTasksOf(step: Step, ctx: StepVarContext): Emergenc
     ? exclusionsGroupPolicies({ policies: ctx.snapshot.config.caPolicies.rows, groupId, accountIds: selected, activeRoles: ctx.snapshot.roles.active, membersOf: groupLookup(ctx.groups) })
       .flatMap(policy => policy.outcome === 'fail' && policy.id && policy.mode ? [{ id: clean(policy.id), name: clean(policy.name), mode: policy.mode }] : [])
     : []
+  // Exclusions group is a single-choice list: choosing a group saves it and
+  // closes the list (Picker.tsx pick), so no line sends anyone to a Save.
   const tasks: EmergencyAccountTask[] = [
     {
       id: 'create-exclusions-group', accountId: null, title: 'Create an emergency exclusions group', targetUpn: null, required: choice.status === 'none-found' && selected.length > 0, readinessKey: 'group-choice', evidence: null, actionLabel: 'Open creation instructions',
       readinessTitle: 'Choose an exclusions group', readinessDirection: 'Select a group under Exclusions group. To create one, follow Create an emergency exclusions group in Implementation Tasks.',
-      steps: ['Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Groups → All groups → New group**.', 'Choose **Security**, enter the group name, and choose **Assigned** membership.', ...(selected.length ? [`Under **Members**, add ${accounts}.`] : []), 'Select **Create**. Return to IAMAI and select **Scan to update the plan**.', 'Select the new group under **Exclusions group**, then **Save**. Scan again to verify its membership and settings.'],
+      steps: ['Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Groups → All groups → New group**.', 'Choose **Security**, enter the group name, and choose **Assigned** membership.', ...(selected.length ? [`Under **Members**, add ${accounts}.`] : []), 'Select **Create**. Return to IAMAI and select **Scan to update the plan**.', 'Select the new group under **Exclusions group**. Scan again to verify its membership and settings.'],
     },
     {
       id: 'choose-exclusions-group', accountId: null, title: 'Choose an existing exclusions group', targetUpn: null, required: (!saved && choice.status !== 'none-found') || choice.status === 'invalidated' || unsuitableGroup, readinessKey: 'group-choice', evidence: null, actionLabel: 'Open selection instructions',
       readinessTitle: unsuitableGroup ? 'Use a suitable exclusions group' : 'Choose an exclusions group', readinessDirection: unsuitableGroup ? 'Choose a dedicated assigned security group, or follow Create an emergency exclusions group in Implementation Tasks.' : 'Select a group under Exclusions group. To create one, follow Create an emergency exclusions group in Implementation Tasks.',
       issueKeys: groupFinding?.items?.flatMap(item => item.issueKeys ?? []) ?? [],
       facts: unsuitableGroup ? groupMismatchFacts : [],
-      steps: ['Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Groups → All groups** and open the intended exclusions group.', 'Check its name and object ID. Confirm **Security** group type and **Assigned** membership.', 'In IAMAI, select that group under **Exclusions group**, then **Save**.', 'Select **Scan to update the plan**.'],
+      steps: ['Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Groups → All groups** and open the intended exclusions group.', 'Check its name and object ID. Confirm **Security** group type and **Assigned** membership.', 'In IAMAI, select that group under **Exclusions group**.', 'Select **Scan to update the plan**.'],
     },
     {
       id: 'manage-emergency-membership', accountId: null, title: 'Manage emergency account membership', targetUpn: null, required: !!groupId && completeMembers && (missing.length > 0 || extra.length > 0), readinessKey: 'group-members', evidence: !groupId || !completeMembers ? null : missing.length ? `${missing.length} selected account${missing.length === 1 ? ' is' : 's are'} missing.` : extra.length ? `${extra.length} additional direct member${extra.length === 1 ? '' : 's'} require review.` : null, actionLabel: 'Open membership instructions',

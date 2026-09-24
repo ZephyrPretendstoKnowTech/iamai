@@ -36,14 +36,14 @@ function project(edit: (value: Fixture) => void = () => {}) {
   return { value, projected: emergencyAccountTasksOf(step, ctx) }
 }
 
-test('Step 1 exposes the three preparation procedures', () => {
-  for (const edit of [() => {}, (value: Fixture) => { value.mapping.breakGlassUserIds = [] }]) {
+test('Step 1 exposes the three preparation procedures, configuring an existing account only once one is chosen', () => {
+  // With no account chosen there is nothing to configure, so that procedure is not offered (review of #19).
+  for (const [edit, titles] of [
+    [() => {}, ['Create an emergency account', 'Configure an existing account', 'Set up an approved passkey']],
+    [(value: Fixture) => { value.mapping.breakGlassUserIds = [] }, ['Create an emergency account', 'Set up an approved passkey']],
+  ] as const) {
     const { projected } = project(edit)
-    assert.deepEqual(projected.tasks.map(task => task.title), [
-      'Create an emergency account',
-      'Configure an existing account',
-      'Set up an approved passkey',
-    ])
+    assert.deepEqual(projected.tasks.map(task => task.title), titles)
     assert.equal(projected.tasks.every(task => task.required === false), true)
     assert.equal(projected.printAll, true)
   }
@@ -148,16 +148,15 @@ test('approved passkey setup keeps the three understandable methods in one task'
 test('the create and passkey procedures remain complete when no account is selected', () => {
   const { projected } = project(value => { value.mapping.breakGlassUserIds = [] })
   const create = emergencyTaskText(projected.tasks.find(item => item.id === 'create-account')!)
-  const configure = emergencyTaskText(projected.tasks.find(item => item.id === 'configure-account')!)
   const passkey = emergencyTaskText(projected.tasks.find(item => item.id === 'set-up-passkey')!)
   assert.match(create, /emergency-access-primary/)
   assert.match(create, /onmicrosoft\.com/)
   // Configuring an existing account lists only the fixes a chosen account needs,
-  // so with none chosen it lists none (owner, 2026-09-23).
-  assert.doesNotMatch(configure, /Roles & admins → Global Administrator → Add assignments|Privileged Identity Management/)
+  // so with none chosen it is not offered (owner, 2026-09-23; review of #19).
+  assert.equal(projected.tasks.some(item => item.id === 'configure-account'), false)
   assert.match(passkey, /Troubleshooting → Temporary Access Pass/)
   assert.match(passkey, /separate private browser window/)
-  assert.doesNotMatch([create, configure, passkey].join('\n'), /enter.*the emergency account you are preparing/i)
+  assert.doesNotMatch([create, passkey].join('\n'), /enter.*the emergency account you are preparing/i)
 })
 
 test('Step 1 preparation does not depend on sign-in-log evidence', () => {
@@ -365,7 +364,8 @@ test('the procedures on a finished step are reference, and on an open one they a
 // whose three checks were read, and says it in the content's words.
 test('the configuration procedure says no account needs it only over selected accounts it could read', () => {
   const noLine = (steps: string[]) => steps.filter(line => /^No selected account/.test(line))
-  const configure = (edit: (value: Fixture) => void) => project(edit).projected.tasks.find(task => task.id === 'configure-account')!.steps
+  // An absent procedure has no lines (review of #19: it is not offered with nothing to give).
+  const configure = (edit: (value: Fixture) => void) => project(edit).projected.tasks.find(task => task.id === 'configure-account')?.steps ?? []
 
   // Nobody selected: no negation, and no change listed for an account nobody chose (owner, 2026-09-23).
   const empty = configure(value => { value.mapping.breakGlassUserIds = [] })

@@ -14,6 +14,7 @@ import { badgeLabel } from './stepContract.ts'
 import { channelTabsOf, headingsOf, stepBodyOf } from './stepBody.ts'
 import { pickerSaves, pickerSavesAlone } from './pickerRows.ts'
 import { applyStepDecisions } from '../../roadmap/decisions.ts'
+import { stepLines } from './stepExport.ts'
 
 const read = (p: string): string => readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
 
@@ -86,20 +87,23 @@ test('#12 an emergency account that is the one signed in to IAMAI carries one he
   assert.ok(plain.every((c) => c.headsUp === undefined))
 })
 
-/** A step's decision block in content.json, wherever the step entry sits. */
-function decisionOf(stepId: string): Record<string, unknown> {
+/** A step's entry in content.json (the one with a decision), wherever it sits. */
+function entryOf(stepId: string): Record<string, unknown> {
   const content = JSON.parse(read('docs/design/content.json')) as unknown
   let found: Record<string, unknown> | null = null
   const walk = (o: unknown): void => {
     if (found || o === null || typeof o !== 'object') return
     const row = o as Record<string, unknown>
-    if (row.id === stepId && row.decision && typeof row.decision === 'object') { found = row.decision as Record<string, unknown>; return }
+    if (row.id === stepId && row.decision && typeof row.decision === 'object') { found = row; return }
     for (const v of Object.values(row)) walk(v)
   }
   walk(content)
   assert.ok(found, `${stepId} has a decision`)
   return found
 }
+
+/** A step's decision block in content.json. */
+const decisionOf = (stepId: string): Record<string, unknown> => entryOf(stepId).decision as Record<string, unknown>
 
 test('#15 every picker saves from the list: Done saves and closes, taking a chip off saves, and no Save stands beside a picker alone', () => {
   const picker = read('src/ui/components/Picker.tsx')
@@ -130,6 +134,24 @@ test('#15 every picker saves from the list: Done saves and closes, taking a chip
   assert.match(followUp, /onCommit=\{\(next\) => onDecide\?\.\(\{ picked: next\.map\(\(o\) => o\.id\) \}\)\}/)
   const dormant = step.slice(step.indexOf('function DormantDecision('))
   assert.match(dormant, /onCommit=\{\(next\) => \{ if \(next\.length === 0 \|\| reason\.trim\(\)\) save\(next\) \}\}/)
+})
+
+test('#15 no instruction sends the person to a Save beside the picker: 1.1 ends on Done, 1.2 on the choice that saves', () => {
+  // 1.1's export and print, where a second account is needed: its list saves on Done.
+  const one = opened('small', (f) => { f.mapping.breakGlassUserIds = f.mapping.breakGlassUserIds.slice(0, 1) })
+  const lines = stepLines(one.step, one.ctx)
+  assert.ok(lines.includes('Entra admin center → Entra ID → Users → New user → Create new user.'), 'the premise: the create steps are exported')
+  assert.ok(lines.includes('Register an approved passkey, scan again, select the new account, then select Done.'), JSON.stringify(lines))
+  assert.equal(lines.some((l) => /\bSave\b/.test(l)), false, 'no exported 1.1 line says Save')
+  // 1.2's exclusions group is a single-choice list: choosing the group saves it
+  // and closes the list (Picker.tsx pick), so its lines end on the choice.
+  const group = opened('small', () => {}, 's-prereq-exclusion-group').body.emergencyAccountTasks!.tasks.flatMap((t) => t.steps)
+  assert.deepEqual(group.filter((l) => /under \*\*Exclusions group\*\*/.test(l)), [
+    'Select the new group under **Exclusions group**. Scan again to verify its membership and settings.',
+    'In IAMAI, select that group under **Exclusions group**.',
+  ])
+  const who = entryOf('s-prereq-exclusion-group').who as Record<string, string>
+  assert.equal(who.suggested.endsWith('This is not saved intent; nothing uses it until you choose it.'), true, who.suggested)
 })
 
 test('#15 the emergency accounts the picker saves are the operator-saved decision, the one thing that writes them', () => {
@@ -185,10 +207,49 @@ test('#19 the emergency tasks carry no filler, and configuring an existing accou
   // Global Administrator eligible only: the PIM fix, naming the account.
   const eligible = configure((f) => { const id = f.mapping.breakGlassUserIds[0]; f.snapshot.roles.active[id] = []; f.snapshot.roles.eligible[id] = [GA] })
   assert.deepEqual([ADDRESS, ENABLE, DIRECT, PIM].map((re) => has(eligible, re)), [false, false, false, true])
-  // No Global Administrator assignment at all: the direct assignment.
+  // No Global Administrator assignment at all, in a tenant with no PIM licence
+  // and no eligible assignment (the premise): the direct assignment.
   const none = configure((f) => { f.snapshot.roles.active[f.mapping.breakGlassUserIds[0]] = [] })
   assert.deepEqual([ADDRESS, ENABLE, DIRECT, PIM].map((re) => has(none, re)), [false, false, true, false])
   for (const steps of [address, eligible, none]) assert.equal(steps.at(-1), RETURN)
+})
+
+test('#19 Global Administrator is assigned Active and Permanently assigned: through PIM wherever the tenant has it, even to an account holding none', () => {
+  const configure = (edit: (f: Fixture) => void) => opened('demo-week2', edit).body.emergencyAccountTasks!.tasks.find((t) => t.id === 'configure-account')!.steps
+  const noGa = (f: Fixture): void => { f.snapshot.roles.active[f.mapping.breakGlassUserIds[0]] = [] }
+  const DIRECT = /Roles & admins → Global Administrator → Add assignments/
+  const PIM_LINE = /^Open \*\*ID Governance → Privileged Identity Management → Microsoft Entra roles → Roles → Global Administrator → Add assignments\*\*, select \*\*[^*]+\*\*\. Choose \*\*Assignment type: Active\*\* and \*\*Permanently assigned\*\*\.$/
+  // Licensed for PIM: Roles & admins opens the PIM wizard, which defaults to
+  // Eligible, so the account goes through PIM, Active and Permanently assigned.
+  const licensed = configure((f) => { noGa(f); f.snapshot.capabilities.pim = { enabled: true, seats: 5, consumed: 1 } })
+  assert.equal(licensed.some((l) => PIM_LINE.test(l)), true, JSON.stringify(licensed))
+  assert.equal(licensed.some((l) => DIRECT.test(l)), false)
+  // Any eligible assignment in the tenant is PIM at work, licence read or not.
+  const eligibleElsewhere = configure((f) => {
+    noGa(f)
+    const other = f.snapshot.users.find((u) => !f.mapping.breakGlassUserIds.includes(u.id))!.id
+    f.snapshot.roles.eligible[other] = ['fe930be7-5e62-47db-91af-98c3a49a38b1']
+  })
+  assert.equal(eligibleElsewhere.some((l) => PIM_LINE.test(l)), true, JSON.stringify(eligibleElsewhere))
+  assert.equal(eligibleElsewhere.some((l) => DIRECT.test(l)), false)
+  // No PIM signal: the direct line, which keeps Active and Permanently assigned for an assignment that asks.
+  const plain = configure(noGa)
+  assert.equal(plain.find((l) => DIRECT.test(l)), 'Open **Entra ID → Roles & admins → Global Administrator → Add assignments**, select **bg1@demo-fixture.onmicrosoft.com**, and complete the assignment. If it asks for an assignment type, choose **Active** and **Permanently assigned**.')
+})
+
+test('#19 Configure an existing account is offered only when it has a fix, or the all-clear, to give', () => {
+  const idsOf = (name: Parameters<typeof fixture>[0], edit: (f: Fixture) => void = () => {}) => opened(name, edit).body.emergencyAccountTasks!.tasks.map((t) => t.id)
+  // No account chosen: nothing to configure, so no procedure that opens Users and returns.
+  assert.deepEqual(idsOf('small', noAccounts), ['create-account', 'set-up-passkey'])
+  // Chosen, but a configure check was not read and none is known to fail: the same.
+  const unread = (f: Fixture): void => { for (const id of f.mapping.breakGlassUserIds) delete (f.snapshot.users.find((u) => u.id === id) as { accountEnabled?: boolean }).accountEnabled }
+  assert.deepEqual(idsOf('demo-week2', unread), ['create-account', 'set-up-passkey'])
+  // Chosen and read: offered, with its fix or its all-clear between the two ends.
+  assert.deepEqual(idsOf('demo-week2'), ['create-account', 'configure-account', 'set-up-passkey'])
+  assert.deepEqual(idsOf('demo-week2', (f) => { f.snapshot.users.find((u) => u.id === f.mapping.breakGlassUserIds[0])!.accountEnabled = false }), ['create-account', 'configure-account', 'set-up-passkey'])
+  // The export and print carry what the screen offers.
+  const { step, ctx } = opened('small', noAccounts)
+  assert.equal(stepLines(step, ctx).includes('Configure an existing account'), false)
 })
 
 test('#20 Completion Criteria is the one line the owner approved', () => {
