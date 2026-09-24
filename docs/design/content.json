@@ -466,7 +466,9 @@
         "Until each device moves, Create or Correct Service Accounts Group keeps these accounts out of this policy. That exclusion does not keep SMTP AUTH working if the mail service no longer accepts basic authentication.",
         "Choose a supported route: SMTP AUTH with OAuth, an Exchange Online connector, or Direct Send for internal recipients only. A device that cannot do any of them sends through an application that can, such as the Graph sendMail API. Confirm the device and network meet that route's requirements, send test messages, then remove its old account exception."
       ],
-      "action": "Record the route and the removed exception"
+      "action": "Record the route and the removed exception",
+      "$commentDone": "Block Legacy Authentication's Completion Criteria line for its mail half, where the mail question named accounts (stepContract.ts policyDoneWhen; walk list 4.x items 4 and 26): the mail half is done when none of the named accounts has signed in with legacy authentication in the last 30 days. {accounts} are their names.",
+      "done": "No legacy authentication sign-in by {accounts} in the last 30 days."
     },
     "deviceBriefing": {
       "evidence": "{n} devices in the directory: {managed} marked managed, {compliant} compliant and {hybrid} hybrid joined. Directory inventory does not prove that every device people use is covered.",
@@ -2033,6 +2035,30 @@
           "foundInPlaceWatchedTogether": "{policies} are in place together, and no one of them covers the whole goal on its own. IAMAI watched them get there.",
           "foundInPlaceTogether": "Already delivered by {policies} together — none of them covers the whole goal on its own — so there is nothing to create.",
           "doneSatisfied": "The scan found the assessed configuration in place.",
+          "$commentPolicyFact": "What a policy in Turn On MFA for Everyone does, read from the policy IAMAI will see (ui/surfaces/policyFact.ts): the policy the step writes while it is open, and the tenant policy that delivers it once done. Its Satisfied card states it (walk list 4.x item 22: \"On · Requires MFA for All users except Core - Exclusions\"), its Completion Criteria's first line (item 26) and its AI Info lead (item 31). verbs holds each verb in the third person and as a participle; controls names the built-in grant controls a fact can state. A policy with anything these words cannot say gets no fact.",
+          "policyFact": {
+            "on": "On",
+            "verbs": { "blocks": ["blocks", "blocking"], "requires": ["requires", "requiring"] },
+            "legacyClients": "Exchange ActiveSync and Other clients",
+            "exchangeActiveSync": "Exchange ActiveSync clients",
+            "otherClients": "Other clients",
+            "deviceCode": "device code sign-in",
+            "authenticationTransfer": "authentication transfer",
+            "signIn": "sign-in",
+            "mfa": "MFA",
+            "controls": { "compliantdevice": "a compliant device", "domainjoineddevice": "a hybrid joined device", "approvedapplication": "an approved client app", "compliantapplication": "an app protection policy", "passwordchange": "a password change" },
+            "either": "{a} or {b}",
+            "allUsers": "All users",
+            "guests": "guests",
+            "fact": "{verb} {what} for {who}",
+            "except": "{who} except {excluded}",
+            "resources": "across All resources",
+            "resourcesExcept": "across All resources except {apps}"
+          },
+          "$commentDoneOn": "Completion Criteria on a policy in Turn On MFA for Everyone (walk list 4.x item 26, owner 2026-09-24): two lines, the same in every state. doneOn is what IAMAI will see ({fact} is policyFact's participle form); the second line is the report-only period the policy has to pass (\"period\", not the owner's \"week\": Block Legacy Authentication and Block Device Code Sign-in watch 3 days where nobody used the flow), left out where the scan found the policy already On, and shared.policyVerifyAfter in its place where the policy went On without a report-only period IAMAI watched (owner, 2026-09-22). doneOnPlain is the first line where IAMAI holds no fact for the policy.",
+          "doneOn": "IAMAI sees {policy} On, {fact}.",
+          "doneOnPlain": "IAMAI sees {policy} On.",
+          "donePeriod": "Its report-only period showed no sign-in it would have stopped.",
           "doneBlocked": "Everything Readiness lists is cleared.",
           "doneConflict": "The baseline author publishes a version that resolves the contradiction between the policy's documentation and its definition.",
           "doneDecision": "The question on this step is answered and saved.",
@@ -4148,6 +4174,7 @@
       "placement": "Placed on the day Require MFA for Everyone enforces, with Block Legacy Authentication and Require Phishing-Resistant MFA for Admins enforced the same day; its row carries that date. Shown only when security defaults are on.",
       "aiFocus": "Describe the ordered cutover and replacement policy identities. Report-only preparation is not replacement protection until enforcement is verified.",
       "card": {
+        "satisfied": "Off",
         "subject": "Security defaults",
         "check": "Still on"
       },

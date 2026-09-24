@@ -200,7 +200,9 @@ test('a policy in place, or at its last stage with nothing to submit, is a satis
     // task, because nothing on this step moves the number (stepContract.ts
     // shortReadingOf). The bar says both halves.
     assert.equal(cards.filter((item) => !item.satisfied).map((item) => item.key).join(), FINISHED_READING)
-    assert.equal(cards[0].title, 'In place')
+    // A finished policy in Turn On MFA for Everyone states its fact (walk list 4.x item 22).
+    assert.equal(cards[0].title, 'On')
+    assert.equal(cards[0].detail, 'Requires MFA for All users except Core - Exclusions')
     assert.equal(cards[0].instruction, '')
     // The stages it passed through are not checks anybody completed (S4-5): this
     // policy was found in place, on a scan that recorded no date, no evidence and
