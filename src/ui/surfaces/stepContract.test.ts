@@ -364,9 +364,12 @@ test('a prerequisite waited on short of completion says which milestone, not "fi
     return [...ready.tiles, ...ready.satisfied].find((t) => t.key === 'engine:step:s-goal-mfa-all-users')?.note ?? null
   }
   assert.ok(f && r, 'the fixture ran')
-  const short = noteFor('enforced')
-  assert.match(short ?? '', /needs to be enforced first/, String(short))
+  const short = noteFor('created')
+  assert.match(short ?? '', /needs to exist first/, String(short))
   assert.equal(/Finish .* first\./.test(short ?? ''), false, String(short))
+  // Enforced draws no note: Finish Moving Off Per-User MFA's card named Require
+  // MFA for Everyone and said it again underneath (walk list 4.x item 23).
+  assert.equal(noteFor('enforced'), null)
   // Ready to enforce draws no note: Turn Off Security Defaults' own card says
   // the four policies below it need to be ready (walk list 4.x item 50).
   assert.equal(noteFor('ready-to-enforce'), null)

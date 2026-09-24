@@ -88,6 +88,16 @@ function policyOf(step: Step, rows: readonly Row[]): Row | null {
   return ops.length === 0 && tracked.length === 1 ? tracked[0] : null
 }
 
+/** The policy with the exclusions group excluded, where its users section does not exclude it yet. */
+function withGroupExcluded(policy: Row, group: string): Row {
+  const conditions = (policy.conditions ?? {}) as Row
+  const users = conditions.users as Row | undefined
+  if (!users) return policy
+  const groups = Array.isArray(users.excludeGroups) ? (users.excludeGroups as string[]) : []
+  if (groups.some((g) => g.toLowerCase() === group.toLowerCase())) return policy
+  return { ...policy, conditions: { ...conditions, users: { ...users, excludeGroups: [...groups, group] } } }
+}
+
 /** The target with each part the plan asks for and the correction does not write taken from the plan's whole policy. */
 function withIntended(target: Row, intent: Row, unwritten: readonly string[]): Row {
   if (unwritten.length === 0) return target
@@ -140,7 +150,12 @@ function actionOf(e: PolicyEffect, row: Row, strengthName: (id: string) => strin
 export function policyFactOf(step: Step, ctx: Pick<StepVarContext, 'snapshot' | 'mapping' | 'nameOf'>): PolicyFact | null {
   if (!isGroupMember(step.id, SECTION)) return null
   if ((contentStepFor(step) as { kind?: unknown } | undefined)?.kind !== 'policy') return null
-  const row = policyOf(step, (ctx.snapshot.config.caPolicies?.rows ?? []) as Row[])
+  const found = policyOf(step, (ctx.snapshot.config.caPolicies?.rows ?? []) as Row[])
+  // Every policy the plan leaves behind excludes the exclusions group, whichever
+  // step adds it (walk list 4.x items 7 and 26): a policy Configure Emergency
+  // Exclusions corrects is finished with the group in it.
+  const group = step.state.satisfied ? null : step.action.resolution?.tenant?.exclusionsGroupId ?? step.action.planned?.tenant?.exclusionsGroupId ?? null
+  const row = found !== null && group ? withGroupExcluded(found, group) : found
   if (row === null) return null
   const policy = typeof row.displayName === 'string' ? row.displayName.trim() : ''
   if (policy === '') return null

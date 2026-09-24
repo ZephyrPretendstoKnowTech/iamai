@@ -141,10 +141,6 @@ type ContractWords = {
   foundEnforcedShort: string
   /** A finished rollout whose readiness the plan's threshold waits for and IAMAI cannot measure (Action.enforcedBelowReadiness). */
   foundEnforcedUnmeasured: string
-  /** After foundEnforcedShort, where the reading is below the plan's own threshold. */
-  foundEnforcedBelowThreshold: string
-  /** The same, where the value is a floor the scan could prove (readiness.atLeast). */
-  foundEnforcedBelowThresholdFloor: string
   /** A tenant's own policy delivering the goal, where it differs from the baseline's (Action.ownPolicyDiffers). */
   ownPolicyDiffers: { label: string; note: string }
   /** Require MFA for Everyone's dormant accounts with no method (walk list 4.x item 10). */
@@ -659,7 +655,8 @@ function reasonLine(step: Step, reason: UnavailableReason, tenant: string, exclu
       return fillText(app.plan.noOperation, { tenant })
     }
     case 'manual-correction':
-      return fillText(app.plan.manualCorrection, { tenant, fields: dimensionWords(step.state.observation?.unwritten ?? []) })
+      // The drift card's own fix, with its values (walk list 4.x item 24), where it has one.
+      return driftCardOf(step)?.value ?? fillText(app.plan.manualCorrection, { tenant, fields: dimensionWords(step.state.observation?.unwritten ?? []) })
     case 'unsafe-emergency-access':
       return fillText(app.plan.emergencyUnsafe, { tenant })
     case 'unverified-emergency-exclusion':
@@ -753,7 +750,10 @@ function foundOf(step: Step, tenant: string, said: string | null, routeStart: St
   // the card is ('gate'), under the readiness label: the security-defaults line
   // and the short-reading note share that label and are not the threshold, and
   // the export reads the threshold from this one finding (stepExport.ts).
-  if (gate && step.status !== 'done' && step.status !== 'skipped') {
+  // A policy already On states a count it has, and never "it is not measured
+  // today" for a turn-on that already happened (walk list 4.x item 2).
+  const unmeasuredOn = step.state.lifecycle === 'enforced' && gate !== undefined && !/[0-9]/.test(gate.value)
+  if (gate && step.status !== 'done' && step.status !== 'skipped' && !unmeasuredOn) {
     // The signed-in admin alone short is said by its own card (walk list 4.x item 43).
     if (operatorId === null || !operatorAloneShort(step, gate, operatorId)) out.push(found('gate', readinessSentence(step, gate, routeStart, labels, operatorId)))
   }
@@ -2059,8 +2059,10 @@ function shortReadingOf(step: Step): { value: string; note: string; counted: { r
     const short = fillText(CONTRACT.foundEnforcedShort, { line })
     // The plan's own threshold, where the reading is under it: the gate the
     // finished step otherwise stopped naming the moment the policy went on.
-    const threshold = below === undefined ? null : fillText(below.floor === true ? CONTRACT.foundEnforcedBelowThresholdFloor : CONTRACT.foundEnforcedBelowThreshold, { ...below })
-    return { value: `${m[1]} of ${m[2]} ${scope}`, note: threshold === null ? short : `${short} ${threshold}`, counted: { ready: m[1], total: m[2], who: CONTRACT.acceptedWho[family] ?? CONTRACT.acceptedWho.mfa } }
+    // Not the threshold beside it (walk list 4.x item 2): "The plan holds
+    // enforcement until Phishing-resistant MFA readiness reaches 90%" on a policy
+    // that is On, under another step's measure.
+    return { value: `${m[1]} of ${m[2]} ${scope}`, note: short, counted: { ready: m[1], total: m[2], who: CONTRACT.acceptedWho[family] ?? CONTRACT.acceptedWho.mfa } }
   }
   if (below === undefined) return null
   // Never read: the threshold, that nothing showed it met, why (the reading's
