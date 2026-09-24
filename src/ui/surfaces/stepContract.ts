@@ -2256,8 +2256,10 @@ function stateTile(step: Step, c: StepContract, setupAfterEnforcement = false): 
     return { key: 'review', label: CONTRACT.foundLabel.awaitingReview, tone: 'wait', value: t2.awaitingReview, note: unread === null ? said : `${said} ${unread}` }
   }
   if (s.satisfied && step.directionQuestions) return { key: 'decision', label: t.decision, tone: 'good', value: s.lane?.label ?? s.stage, note: c.doneWhen.join(' ') }
-  // A policy that moved from the plan: one card, the change and its fix (walk list 4.x item 24).
-  if (s.condition === 'review-required') return driftCardOf(step) ?? { key: 'evidence', label: CONTRACT.foundLabel.observation, tone: 'warn', value: CONTRACT.condition['review-required'], note: step.state.observation?.note ?? c.milestone.gatedBy }
+  // A policy that moved from the plan: one card, the change and its fix (walk list
+  // 4.x item 24). Not on a step that is finished: a Completed step shows no open
+  // card (item 2), and the change stays under What IAMAI found.
+  if (s.condition === 'review-required' && !s.satisfied) return driftCardOf(step) ?? { key: 'evidence', label: CONTRACT.foundLabel.observation, tone: 'warn', value: CONTRACT.condition['review-required'], note: step.state.observation?.note ?? c.milestone.gatedBy }
   // The value is the substatus's own word (U11); the note is what to decide (B10 P1-1).
   if (s.condition === 'needs-decision') return { key: 'decision', label: t.decision, tone: 'warn', value: t.decisionValue, note: c.decisionNote }
   // A tile's detail says what its value is evidence of, where the contract carries no finding of its own (editorial batch C).
