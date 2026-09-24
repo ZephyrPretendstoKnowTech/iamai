@@ -35,6 +35,8 @@ test('nothing fires on clean rows, and every shape is present', () => {
     if (k === 'trustedLocationMatches') continue
     // A clean row is a Teams sign-in, which is what the mail-or-Teams derivation reports (E6).
     if (k === 'officeSignIns') continue
+    // Per-service people, by facet: a record, not a count.
+    if (k === 'serviceSignIns' || k === 'serviceSignInIds') continue
     assert.equal((e[k] as { count: number }).count, 0, `${k} is silent`)
     assert.deepEqual((e[k] as { people: string[] }).people, [], `${k} names nobody`)
   }

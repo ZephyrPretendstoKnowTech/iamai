@@ -71,7 +71,7 @@ export function serviceEvidence(key: string, signal: ServiceSignal): string | nu
  * and what the scan read of each. The Direction step asks about them
  * (roadmap/direction.ts); the answers persist as workflowAnswers.
  */
-export function serviceReading(snapshot: TenantSnapshot, policies: readonly NotAssessed[], availableGoalIds: readonly string[]): { keys: string[]; signal: (key: string) => ServiceSignal } {
+export function serviceReading(snapshot: TenantSnapshot, policies: readonly NotAssessed[], availableGoalIds: readonly string[], people?: ReadonlySet<string>): { keys: string[]; signal: (key: string) => ServiceSignal } {
   const existing = new Set(availableGoalIds)
   const goalFacets = goals.goals.filter((g) => existing.has(g.id) && g.applicability).map((g) => String(g.applicability))
   const keys = [...new Set([...goalFacets, ...policies.filter((p) => !HIDDEN_AGENT_POLICY.test(p.name)).map(serviceOf).filter((s): s is string => s !== null)])].sort()
@@ -82,7 +82,10 @@ export function serviceReading(snapshot: TenantSnapshot, policies: readonly NotA
   // serviceSignIns), over records read whole: a read that stopped short says
   // nothing about sign-ins, as Decide How and Where People Sign In reads them
   // (walk list 64).
-  const counted = snapshot.sources.signInEvidence?.status === 'ok' ? snapshot.scenarioEvidence?.serviceSignIns ?? null : null
+  // Only the plan's people are counted where the scan kept the accounts (2.3 counts the same way).
+  const whole = snapshot.sources.signInEvidence?.status === 'ok'
+  const ids = whole ? snapshot.scenarioEvidence?.serviceSignInIds ?? null : null
+  const counted = ids && people ? Object.fromEntries(Object.entries(ids).map(([facet, list]) => [facet, list.filter((id) => people.has(id)).length])) : whole ? snapshot.scenarioEvidence?.serviceSignIns ?? null : null
   const signal = (key: string): ServiceSignal => {
     if (key === 'intune') return { used: false, complete: snapshot.config.subscribedSkus?.status === 'ok', sources: ['subscribedSkus'], people: null }
     if (key === 'workload') return { used: detected.workload.observedUsage === true && snapshot.config.roleAssignments?.status === 'ok', complete: snapshot.config.roleAssignments?.status === 'ok', sources: ['roleAssignments'], people: null }
