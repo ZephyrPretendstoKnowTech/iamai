@@ -4,7 +4,7 @@
   "reason": null,
   "fact": null,
   "badge": "On Hold",
-  "bar": "After Block Legacy Authentication",
+  "bar": "After Require Phishing-Resistant MFA for Admins",
   "rail": "Turn security defaults off",
   "headings": [
     "About this Step",
@@ -13,10 +13,6 @@
     "Completion Criteria"
   ],
   "tiles": [
-    {
-      "label": "Block Legacy Authentication",
-      "state": "Prerequisite · Waiting"
-    },
     {
       "label": "Require Phishing-Resistant MFA for Admins",
       "state": "Prerequisite · Waiting"
