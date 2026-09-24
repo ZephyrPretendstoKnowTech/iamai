@@ -22,7 +22,7 @@ const DECISIONS: Record<string, StepDecision> = {
   's-goal-guests-mfa': { picked: [], option: 'Prompt them like any guest', at: '2026-09-01T10:02:00.000Z' },
 }
 
-test('a plan-file round-trip preserves every decision: the ticked ids, the option, and when', () => {
+test('a plan-file round-trip preserves every decision (the ticked ids, the option, and when), and a record from before the pickers carries none, never a hole', () => {
   const skipped = run.steps.find((s) => s.status === 'skipped')
   void skipped
   const file = buildPlanFile({
@@ -44,13 +44,14 @@ test('a plan-file round-trip preserves every decision: the ticked ids, the optio
   assert.deepEqual(back.stepDecisions, DECISIONS, 'every picker decision comes back as saved')
   assert.equal(back.startDate, '2026-09-07')
   assert.deepEqual(back.freeze, { from: '2026-09-21T00:00:00.000Z', to: '2026-09-25T00:00:00.000Z' })
-})
 
-test('a record or file from before the pickers were live carries no decisions, never a hole', () => {
-  const back = decisionsOf({ planId: 'p', skips: {}, startDate: '2026-09-07' }, 'p')
-  assert.deepEqual(back.stepDecisions, {})
-  const junk = decisionsOf({ planId: 'p', skips: {}, stepDecisions: { 'x': { picked: 'not-a-list', at: 5 } } } as never, 'p')
-  assert.deepEqual(junk.stepDecisions, { x: { at: '5' } }, 'a malformed decision keeps only what is well-formed')
+  // A record or file from before the pickers were live carries no decisions, never a hole.
+  {
+    const back = decisionsOf({ planId: 'p', skips: {}, startDate: '2026-09-07' }, 'p')
+    assert.deepEqual(back.stepDecisions, {})
+    const junk = decisionsOf({ planId: 'p', skips: {}, stepDecisions: { 'x': { picked: 'not-a-list', at: 5 } } } as never, 'p')
+    assert.deepEqual(junk.stepDecisions, { x: { at: '5' } }, 'a malformed decision keeps only what is well-formed')
+  }
 })
 
 test('the special-care picker rows carry their ids, one per row, in the same order', () => {

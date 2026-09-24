@@ -74,29 +74,25 @@ const RUNS: [string, () => Fixture][] = [
   ['midflight', () => fixture('midflight')],
 ]
 
-test('every dated row falls inside its phase, every phase spans its rows, and a waiting row sits in none', () => {
+test('every dated row falls inside its phase, every phase spans its rows, a waiting row sits in none, and waiting is exactly held with nothing scheduled', () => {
   let dated = 0
   for (const [name, make] of RUNS) {
     const r = runFixture(make())
     assert.deepEqual(violations(r.steps, r.schedule), [], name)
     dated += r.steps.filter((s) => drawn(s) && s.scheduled?.at != null).length
+    // Waiting is exactly held with nothing scheduled, and finished or scheduled work never waits.
+    for (const s of r.steps) {
+      const sc = s.scheduled!
+      if (s.status === 'done') assert.equal(sc.class, 'complete', `${name}/${s.id}`)
+      const gatedCreate = sc.transition === 'createReportOnly' && sc.enforcement === 'gated'
+      if (s.status !== 'done' && s.status !== 'skipped') assert.equal(sc.class === 'waiting', isHeld(s) && !gatedCreate, `${name}/${s.id}: ${sc.class}`)
+      if (sc.class === 'scheduled') assert.notEqual(sc.at, null, `${name}/${s.id}: scheduled with no day`)
+    }
   }
   assert.ok(dated > 50, `dated rows checked: ${dated}`)
 })
 
-test('waiting is exactly held with nothing scheduled, and finished or scheduled work never waits', () => {
-  for (const [name, make] of RUNS) {
-    for (const s of runFixture(make()).steps) {
-      const r = s.scheduled!
-      if (s.status === 'done') assert.equal(r.class, 'complete', `${name}/${s.id}`)
-      const gatedCreate = r.transition === 'createReportOnly' && r.enforcement === 'gated'
-      if (s.status !== 'done' && s.status !== 'skipped') assert.equal(r.class === 'waiting', isHeld(s) && !gatedCreate, `${name}/${s.id}: ${r.class}`)
-      if (r.class === 'scheduled') assert.notEqual(r.at, null, `${name}/${s.id}: scheduled with no day`)
-    }
-  }
-})
-
-test('readiness gates enforcement, not creation: a create only a threshold holds keeps its report-only day', () => {
+test('readiness gates enforcement, not creation: a create only a threshold holds keeps its report-only day, and enforcement stays gated below the threshold with no day, ring or wave', () => {
   const r = runFixture(omitted(fixture('demo')))
   const step = r.steps.find((s) => s.id === DEVICE_REGISTRATION)!
   assert.equal(holdOf(step)?.kind, 'readiness', 'the premise: a readiness threshold holds it')
@@ -117,16 +113,17 @@ test('readiness gates enforcement, not creation: a create only a threshold holds
   const m = nextMilestone(released)
   assert.equal(m.at, s.at, 'the next milestone is that day')
   assert.match(m.label, new RegExp(step.action.readinessGate!.threshold), 'and says turning it on waits for the threshold')
-})
 
-test('enforcement stays gated below the threshold: no enforcement day, ring or wave', () => {
-  const r = runFixture(omitted(fixture('demo')))
-  const step = r.steps.find((s) => s.id === DEVICE_REGISTRATION)!
-  assert.ok(isHeld(step))
-  assert.equal(step.events, null, 'no enforcement event')
-  assert.deepEqual(step.rings, [], 'no rings')
-  assert.equal(r.schedule.waveOf[step.id], undefined, 'no enforcement wave')
-  assert.notEqual(step.status, 'ready-to-enforce')
+  // Enforcement stays gated below the threshold: no enforcement day, ring or wave.
+  {
+    const r = runFixture(omitted(fixture('demo')))
+    const step = r.steps.find((s) => s.id === DEVICE_REGISTRATION)!
+    assert.ok(isHeld(step))
+    assert.equal(step.events, null, 'no enforcement event')
+    assert.deepEqual(step.rings, [], 'no rings')
+    assert.equal(r.schedule.waveOf[step.id], undefined, 'no enforcement wave')
+    assert.notEqual(step.status, 'ready-to-enforce')
+  }
 })
 
 test('a real prerequisite still holds creation: a missing object, an unverified way back in, or an open decision', () => {
@@ -167,21 +164,22 @@ test('answering the references recalculates the phases, and taking the answers b
   assert.equal(policyPhases({ ...base, mapping: applyStepDecisions(base.mapping, { [SOURCE]: { answers: {}, at: base.snapshot.asOf } }) }), initial, 'taking answers back restores the approved default schedule')
 })
 
-test('moving the plan start moves every phase with it', () => {
+test('moving the plan start moves every phase with it, and the first deployment is respected: nothing is created in report-only before it', () => {
   const f = omitted(fixture('demo'))
   const a = runFixture(f)
   const b = runFixture(f, { startDate: '2026-09-14' })
   assert.deepEqual(violations(b.steps, b.schedule), [])
   assert.equal(t(b.schedule.phases![0].start) - t(a.schedule.phases![0].start), 14 * DAY)
   for (const p of b.schedule.phases!) assert.ok(t(p.start) >= t(b.schedule.start), `phase ${p.wave} starts before the plan`)
-})
 
-test('the first deployment is respected: nothing is created in report-only before it, and the phases still hold their rows', () => {
-  const f = omitted(fixture('demo'))
-  const first = '2026-09-02T12:00:00.000Z'
-  const r = runFixture(f, { firstDeployment: first })
-  assert.deepEqual(violations(r.steps, r.schedule), [])
-  const creates = r.steps.filter((s) => s.scheduled?.transition === 'createReportOnly')
-  assert.ok(creates.length > 0)
-  for (const s of creates) assert.ok(t(s.scheduled!.at!) >= t(first), `${s.id} is created on ${s.scheduled!.at}`)
+  // The first deployment is respected: nothing is created in report-only before it, and the phases still hold their rows.
+  {
+    const f = omitted(fixture('demo'))
+    const first = '2026-09-02T12:00:00.000Z'
+    const r = runFixture(f, { firstDeployment: first })
+    assert.deepEqual(violations(r.steps, r.schedule), [])
+    const creates = r.steps.filter((s) => s.scheduled?.transition === 'createReportOnly')
+    assert.ok(creates.length > 0)
+    for (const s of creates) assert.ok(t(s.scheduled!.at!) >= t(first), `${s.id} is created on ${s.scheduled!.at}`)
+  }
 })

@@ -100,33 +100,35 @@ const typical = () => [
   step({ id: 'done', phase: 3, status: 'done', rings: [] }),
 ]
 
-test('nextMonday lands on a Monday after the given date', () => {
+test('calendar rules: nextMonday lands on a Monday, bands follow target-state §9, and enforcement starts on a Tuesday, Wednesday or Thursday, never a Friday or a weekend', () => {
   const m = nextMonday('2026-08-26T10:00:00Z') // a Wednesday
   assert.equal(day(m), 1)
   assert.equal(m.slice(0, 10), '2026-08-31')
-})
 
-test('bands follow target-state §9: small ≤50, mid 51–300, large >300', () => {
-  // The band sets the expected length, the weekly cap and the ring shape; the
-  // registration window is measured from the people who need a method, never
-  // from the band.
-  assert.equal(bandForActiveUsers(12), 'small')
-  assert.equal(bandForActiveUsers(50), 'small')
-  assert.equal(bandForActiveUsers(51), 'mid')
-  assert.equal(bandForActiveUsers(300), 'mid')
-  assert.equal(bandForActiveUsers(301), 'large')
-  // Past 500 the plan still builds; it is a scale test, not a band this product
-  // is designed around.
-  assert.equal(bandForActiveUsers(5000), 'large')
-})
+  // Bands follow target-state §9: small ≤50, mid 51–300, large >300.
+  {
+    // The band sets the expected length, the weekly cap and the ring shape; the
+    // registration window is measured from the people who need a method, never
+    // from the band.
+    assert.equal(bandForActiveUsers(12), 'small')
+    assert.equal(bandForActiveUsers(50), 'small')
+    assert.equal(bandForActiveUsers(51), 'mid')
+    assert.equal(bandForActiveUsers(300), 'mid')
+    assert.equal(bandForActiveUsers(301), 'large')
+    // Past 500 the plan still builds; it is a scale test, not a band this product
+    // is designed around.
+    assert.equal(bandForActiveUsers(5000), 'large')
+  }
 
-test('enforcement starts on a Tuesday, a Wednesday or a Thursday, never a Friday or a weekend (target-state §9)', () => {
-  assert.equal(day(toEnforcementDay('2026-09-04T12:00:00.000Z')), 2) // Friday → Tuesday
-  assert.equal(day(toEnforcementDay('2026-09-05T12:00:00.000Z')), 2)
-  assert.equal(day(toEnforcementDay('2026-09-06T12:00:00.000Z')), 2)
-  assert.equal(day(toEnforcementDay('2026-08-31T12:00:00.000Z')), 2) // Monday → Tuesday
-  assert.equal(toEnforcementDay('2026-09-03T12:00:00.000Z'), '2026-09-03T12:00:00.000Z') // Thursday stays
-  assert.equal(toEnforcementDay('2026-09-02T12:00:00.000Z'), '2026-09-02T12:00:00.000Z') // Wednesday stays
+  // Enforcement starts on a Tuesday, a Wednesday or a Thursday, never a Friday or a weekend (target-state §9).
+  {
+    assert.equal(day(toEnforcementDay('2026-09-04T12:00:00.000Z')), 2) // Friday → Tuesday
+    assert.equal(day(toEnforcementDay('2026-09-05T12:00:00.000Z')), 2)
+    assert.equal(day(toEnforcementDay('2026-09-06T12:00:00.000Z')), 2)
+    assert.equal(day(toEnforcementDay('2026-08-31T12:00:00.000Z')), 2) // Monday → Tuesday
+    assert.equal(toEnforcementDay('2026-09-03T12:00:00.000Z'), '2026-09-03T12:00:00.000Z') // Thursday stays
+    assert.equal(toEnforcementDay('2026-09-02T12:00:00.000Z'), '2026-09-02T12:00:00.000Z') // Wednesday stays
+  }
 })
 
 test('the graph names the rule dependencies: exclusion group first, break-glass before a block, campaign before MFA', () => {
@@ -151,7 +153,7 @@ test('the graph names the rule dependencies: exclusion group first, break-glass 
   )
 })
 
-test('12 active users: small band, registration window, rings dated after their dependencies', () => {
+test('12 active users: small band, registration window, rings dated after their dependencies, each ring one soak long and the next starting when it ends', () => {
   const steps = typical()
   const s = buildSchedule(steps, MON, 12, null, { registrationDays: 10 })
   assert.equal(s.band, 'small')
@@ -174,15 +176,16 @@ test('12 active users: small band, registration window, rings dated after their 
   assert.ok(['verification', 'soft', 'phase', 'rings', 'cap'].includes(s.derivation.constraint), s.derivation.constraint)
   assert.deepEqual(s.waves[0].stepIds.sort(), ['done', 's-prereq-exclusion-group', 's-verify-mfa'])
   assert.equal(s.waveOf.done, 0)
-})
 
-test('a ring window is one soak long and the next ring starts when the previous ends', () => {
-  const steps = typical()
-  buildSchedule(steps, MON, 12)
-  const mfa = steps.find((x) => x.id === 'mfa')!
-  const [pilot, everyone] = mfa.rings
-  assert.equal(Math.round((Date.parse(pilot.plannedEnd) - Date.parse(pilot.plannedStart)) / 86_400_000), 3)
-  assert.ok(everyone.plannedStart >= pilot.plannedEnd)
+  // A ring window is one soak long and the next ring starts when the previous ends.
+  {
+    const steps = typical()
+    buildSchedule(steps, MON, 12)
+    const mfa = steps.find((x) => x.id === 'mfa')!
+    const [pilot, everyone] = mfa.rings
+    assert.equal(Math.round((Date.parse(pilot.plannedEnd) - Date.parse(pilot.plannedStart)) / 86_400_000), 3)
+    assert.ok(everyone.plannedStart >= pilot.plannedEnd)
+  }
 })
 
 
@@ -201,16 +204,46 @@ test('the weekly cap counts change days: a small tenant gets two a week, and the
   for (const [wk, days] of weeks) assert.ok(days.size <= s.enforcementCap, `${wk} has ${days.size} change days`)
 })
 
-test('a change freeze moves every ring around it and the derivation names it', () => {
+test('a change freeze moves every ring around it and the derivation names it; a from-only or reversed freeze is rejected with its reason, and its last day is inside it', () => {
   const steps = [step({ id: 'a', phase: 1, readiness: { family: 'block', percent: null, lines: [] } })]
   const freeze = { from: '2026-09-07T00:00:00.000Z', to: '2026-10-30T23:59:59.000Z' }
   const s = buildSchedule(steps, MON, 12, null, { freeze })
   for (const r of steps[0].rings) assert.ok(r.plannedStart < freeze.from || r.plannedStart > freeze.to, `${r.plannedStart} is outside the freeze`)
   assert.equal(s.derivation.constraint, 'freeze')
   assert.ok(s.freeze)
+
+  // A from-only freeze, or one ending before it starts, is rejected with its reason rather than stored and dropped.
+  {
+    // The from input used to copy itself into `to`, and buildSchedule then dropped the freeze (`from < to`) without a word.
+    assert.deepEqual(freezeInputOf('', ''), { freeze: null, reason: null })
+    assert.deepEqual(freezeInputOf('', '2026-09-11'), { freeze: null, reason: null })
+    assert.deepEqual(freezeInputOf('2026-09-07', ''), { freeze: null, reason: 'needsTo' })
+    assert.deepEqual(freezeInputOf('2026-09-07', '2026-09-04'), { freeze: null, reason: 'order' })
+    // A freeze is stored from midnight on its first day to noon on its last: schedule cursors carry T12:00.
+    assert.deepEqual(freezeInputOf('2026-09-07', '2026-09-11'), { freeze: { from: '2026-09-07T00:00:00.000Z', to: '2026-09-11T12:00:00.000Z' }, reason: null })
+    // A one-day freeze is a freeze (from < to holds at buildSchedule because to is at noon).
+    const oneDay = freezeInputOf('2026-09-07', '2026-09-07').freeze
+    assert.ok(oneDay && oneDay.from < oneDay.to)
+  }
+
+  // The last freeze day is inside the freeze: a ring the calendar would start on it starts after it.
+  {
+    const block = { family: 'block', percent: null, lines: [] } as Step['readiness']
+    const plain = [step({ id: 'a', phase: 1, readiness: block })]
+    buildSchedule(plain, MON, 12, null, {})
+    const day = plain[0].rings[0].plannedStart.slice(0, 10)
+    // A one-day freeze on the very day the ring would start. With `to` at midnight the T12:00 cursor compared greater than the freeze and the ring landed inside it.
+    const { freeze } = freezeInputOf(day, day)
+    assert.ok(freeze)
+    const steps = [step({ id: 'a', phase: 1, readiness: block })]
+    const s = buildSchedule(steps, MON, 12, null, { freeze })
+    assert.ok(s.freeze, 'the one-day freeze is accepted')
+    for (const r of steps[0].rings) assert.ok(r.plannedStart.slice(0, 10) !== day && r.plannedStart > freeze.to, `${r.plannedStart} is not inside the freeze that ends ${freeze.to}`)
+    assert.equal(s.derivation.constraint, 'freeze')
+  }
 })
 
-test('the registration window is the measured working days, alongside the first soak, and the bands stay within their length', () => {
+test('the registration window is the measured working days, alongside the first soak, the bands stay within their length, and the band can be overridden', () => {
   const mid = buildSchedule(typical(), MON, 100, null, { registrationDays: 10 })
   const large = buildSchedule(typical(), MON, 1000, null, { registrationDays: 20 })
   assert.equal(mid.band, 'mid')
@@ -226,13 +259,14 @@ test('the registration window is the measured working days, alongside the first 
   assert.ok(large.withinBand)
   // Without a measurement there is no window: the band has no number of its own.
   assert.equal(buildSchedule(typical(), MON, 100).verification.days, 0)
-})
 
-test('the band can be overridden', () => {
-  const s = buildSchedule(typical(), MON, 12, 'large')
-  assert.equal(s.band, 'large')
-  assert.equal(s.bandSource, 'override')
-  assert.equal(s.enforcementCap, 2)
+  // The band can be overridden.
+  {
+    const s = buildSchedule(typical(), MON, 12, 'large')
+    assert.equal(s.band, 'large')
+    assert.equal(s.bandSource, 'override')
+    assert.equal(s.enforcementCap, 2)
+  }
 })
 
 test('verification complete on a re-scan pulls the steps that waited on it forward', () => {
@@ -273,7 +307,7 @@ test('all done → no windows, finishes on day 0', () => {
   assert.equal(s.derivation.constraint, 'none')
 })
 
-test('the weekly cap counts change windows, not steps (prompt 41 §5)', () => {
+test('the weekly cap counts change windows, not steps (prompt 41 §5), and a batch never mixes a zero-affected change with one that has a blast radius (§6)', () => {
   // Eight steps of one class, all eligible at once. Before batching the cap was
   // applied per step, so eight steps meant eight slots and a plan that ran for
   // weeks; they share a supervised window and should land together.
@@ -291,61 +325,47 @@ test('the weekly cap counts change windows, not steps (prompt 41 §5)', () => {
   assert.equal(days.size, 1, `eight changes of one class share one change window, not ${days.size}`)
   // And the plan says so: each step names the others it goes with.
   for (const x of steps) assert.equal(s.batchWith[x.id]?.length, 7, `${x.id} names the other seven`)
+
+  // A batch never mixes a zero-affected change with one that has a blast radius (prompt 41 §6).
+  {
+    // Same phase, same day available, deliberately different disruption classes.
+    // Phase order does not separate these, so only the batch class can.
+    // The zero is the measured answer: the records show this policy touching
+    // nobody (roadmap/strand.ts measuredReach, carried on the step).
+    const zero = step({
+      id: 'block-legacy',
+      phase: 1,
+      readiness: { family: 'block', percent: null, lines: [] },
+      evidence: { status: 'ok', lines: [], affectedUserIds: [] },
+      measured: { ids: [] },
+      population: { total: 20, active: 20, admins: 0, guests: 0, ids: people(20) },
+      rings: [ring(0, 3, people(20))],
+    })
+    const loud = step({
+      id: 'require-mfa',
+      phase: 1,
+      readiness: { family: 'mfa', percent: 100, lines: [] },
+      evidence: { status: 'ok', lines: [], affectedUserIds: people(9, 'a') },
+      measured: { ids: people(9, 'a') },
+      population: { total: 20, active: 20, admins: 0, guests: 0, ids: people(20) },
+      rings: [ring(0, 3, people(20))],
+    })
+    assert.equal(batchClassOf(zero), 'zero')
+    assert.equal(batchClassOf(loud), 'mfa')
+    const s = buildSchedule([zero, loud], MON, 12)
+    // They may share a DAY - a small tenant is allowed two change windows in one
+    // day - but never a WINDOW. Each is supervised on its own terms: the block is
+    // watched for a surprise, the MFA enforcement for a queue at the help desk.
+    assert.deepEqual(s.batchWith['block-legacy'], [], 'the zero-affected change is its own window')
+    assert.deepEqual(s.batchWith['require-mfa'], [], 'the MFA change is its own window')
+    assert.ok(
+      !(s.batchWith['block-legacy'] as string[]).includes('require-mfa'),
+      'a change nobody notices is never bundled with one that interrupts nine people',
+    )
+  }
 })
 
-test('a batch never mixes a zero-affected change with one that has a blast radius (prompt 41 §6)', () => {
-  // Same phase, same day available, deliberately different disruption classes.
-  // Phase order does not separate these, so only the batch class can.
-  // The zero is the measured answer: the records show this policy touching
-  // nobody (roadmap/strand.ts measuredReach, carried on the step).
-  const zero = step({
-    id: 'block-legacy',
-    phase: 1,
-    readiness: { family: 'block', percent: null, lines: [] },
-    evidence: { status: 'ok', lines: [], affectedUserIds: [] },
-    measured: { ids: [] },
-    population: { total: 20, active: 20, admins: 0, guests: 0, ids: people(20) },
-    rings: [ring(0, 3, people(20))],
-  })
-  const loud = step({
-    id: 'require-mfa',
-    phase: 1,
-    readiness: { family: 'mfa', percent: 100, lines: [] },
-    evidence: { status: 'ok', lines: [], affectedUserIds: people(9, 'a') },
-    measured: { ids: people(9, 'a') },
-    population: { total: 20, active: 20, admins: 0, guests: 0, ids: people(20) },
-    rings: [ring(0, 3, people(20))],
-  })
-  assert.equal(batchClassOf(zero), 'zero')
-  assert.equal(batchClassOf(loud), 'mfa')
-  const s = buildSchedule([zero, loud], MON, 12)
-  // They may share a DAY - a small tenant is allowed two change windows in one
-  // day - but never a WINDOW. Each is supervised on its own terms: the block is
-  // watched for a surprise, the MFA enforcement for a queue at the help desk.
-  assert.deepEqual(s.batchWith['block-legacy'], [], 'the zero-affected change is its own window')
-  assert.deepEqual(s.batchWith['require-mfa'], [], 'the MFA change is its own window')
-  assert.ok(
-    !(s.batchWith['block-legacy'] as string[]).includes('require-mfa'),
-    'a change nobody notices is never bundled with one that interrupts nine people',
-  )
-})
-
-test('a wave is named by every goal area it holds, not by one dominant phase (prompt 40 §20)', () => {
-  const steps = [
-    step({ id: 's-prereq-exclusion-group', phase: 0, kind: 'prerequisite', rings: [], readiness: { family: 'other', percent: null, lines: [] } }),
-    step({ id: 'admin', phase: 3, readiness: { family: 'admin', percent: 100, lines: [] }, population: { total: 2, active: 2, admins: 2, guests: 0, ids: ['a0', 'a1'] }, rings: [ring(0, 3, ['a0'])] }),
-    step({ id: 'devices', phase: 5, readiness: { family: 'device', percent: 100, lines: [] }, population: { total: 2, active: 2, admins: 0, guests: 0, ids: ['d0', 'd1'] }, rings: [ring(0, 3, ['d0'])] }),
-  ]
-  const s = buildSchedule(steps, MON, 12)
-  const withBoth = s.waves.filter((w) => w.wave >= 1).find((w) => w.stepIds.includes('admin') && w.stepIds.includes('devices'))
-  // Phases are numbered, not named (target-state §5): the wave still records the
-  // goal-area bands it holds, but the wave-name table that labelled them is gone.
-  if (withBoth) assert.deepEqual(withBoth.phases, [3, 5], 'the wave records both areas it holds')
-  // Every wave records at least the phase it is ordered by, whatever it holds.
-  for (const w of s.waves) assert.ok(w.phases.length > 0 && w.phases.includes(w.phase), `wave ${w.wave} records its own phase`)
-})
-
-test('phase order (ux-review-07 §3): no step starts before the last start of any lower phase, and waves are named by their dominant phase', () => {
+test('phase order (ux-review-07 §3): no step starts before the last start of any lower phase, waves read in phase order, and a wave records every goal area it holds (prompt 40 §20)', () => {
   const steps = [
     step({ id: 's-prereq-exclusion-group', phase: 0, kind: 'prerequisite', rings: [], readiness: { family: 'other', percent: null, lines: [] } }),
     step({ id: 'admin', phase: 3, readiness: { family: 'admin', percent: 100, lines: [] }, population: { total: 2, active: 2, admins: 2, guests: 0, ids: ['a0', 'a1'] }, rings: [ring(0, 3, ['a0']), ring(1, 3, ['a1'])] }),
@@ -359,34 +379,21 @@ test('phase order (ux-review-07 §3): no step starts before the last start of an
   const phases = s.waves.filter((w) => w.wave > 0).map((w) => w.phase)
   assert.deepEqual([...phases], [...phases].sort((a, b) => a - b), 'waves read in phase order')
   assert.ok(!phases.includes(0), 'no enforcement wave is named Foundations')
+
+  // A wave is named by every goal area it holds, not by one dominant phase (prompt 40 §20).
+  {
+    const steps = [
+      step({ id: 's-prereq-exclusion-group', phase: 0, kind: 'prerequisite', rings: [], readiness: { family: 'other', percent: null, lines: [] } }),
+      step({ id: 'admin', phase: 3, readiness: { family: 'admin', percent: 100, lines: [] }, population: { total: 2, active: 2, admins: 2, guests: 0, ids: ['a0', 'a1'] }, rings: [ring(0, 3, ['a0'])] }),
+      step({ id: 'devices', phase: 5, readiness: { family: 'device', percent: 100, lines: [] }, population: { total: 2, active: 2, admins: 0, guests: 0, ids: ['d0', 'd1'] }, rings: [ring(0, 3, ['d0'])] }),
+    ]
+    const s = buildSchedule(steps, MON, 12)
+    const withBoth = s.waves.filter((w) => w.wave >= 1).find((w) => w.stepIds.includes('admin') && w.stepIds.includes('devices'))
+    // Phases are numbered, not named (target-state §5): the wave still records the
+    // goal-area bands it holds, but the wave-name table that labelled them is gone.
+    if (withBoth) assert.deepEqual(withBoth.phases, [3, 5], 'the wave records both areas it holds')
+    // Every wave records at least the phase it is ordered by, whatever it holds.
+    for (const w of s.waves) assert.ok(w.phases.length > 0 && w.phases.includes(w.phase), `wave ${w.wave} records its own phase`)
+  }
 })
 
-// ------------------------------------------------------------ the freeze as typed (A2, R-SCHED §6)
-
-test('a from-only freeze, or one ending before it starts, is rejected with its reason rather than stored and dropped', () => {
-  // The from input used to copy itself into `to`, and buildSchedule then dropped the freeze (`from < to`) without a word.
-  assert.deepEqual(freezeInputOf('', ''), { freeze: null, reason: null })
-  assert.deepEqual(freezeInputOf('', '2026-09-11'), { freeze: null, reason: null })
-  assert.deepEqual(freezeInputOf('2026-09-07', ''), { freeze: null, reason: 'needsTo' })
-  assert.deepEqual(freezeInputOf('2026-09-07', '2026-09-04'), { freeze: null, reason: 'order' })
-  // A freeze is stored from midnight on its first day to noon on its last: schedule cursors carry T12:00.
-  assert.deepEqual(freezeInputOf('2026-09-07', '2026-09-11'), { freeze: { from: '2026-09-07T00:00:00.000Z', to: '2026-09-11T12:00:00.000Z' }, reason: null })
-  // A one-day freeze is a freeze (from < to holds at buildSchedule because to is at noon).
-  const oneDay = freezeInputOf('2026-09-07', '2026-09-07').freeze
-  assert.ok(oneDay && oneDay.from < oneDay.to)
-})
-
-test('the last freeze day is inside the freeze: a ring the calendar would start on it starts after it', () => {
-  const block = { family: 'block', percent: null, lines: [] } as Step['readiness']
-  const plain = [step({ id: 'a', phase: 1, readiness: block })]
-  buildSchedule(plain, MON, 12, null, {})
-  const day = plain[0].rings[0].plannedStart.slice(0, 10)
-  // A one-day freeze on the very day the ring would start. With `to` at midnight the T12:00 cursor compared greater than the freeze and the ring landed inside it.
-  const { freeze } = freezeInputOf(day, day)
-  assert.ok(freeze)
-  const steps = [step({ id: 'a', phase: 1, readiness: block })]
-  const s = buildSchedule(steps, MON, 12, null, { freeze })
-  assert.ok(s.freeze, 'the one-day freeze is accepted')
-  for (const r of steps[0].rings) assert.ok(r.plannedStart.slice(0, 10) !== day && r.plannedStart > freeze.to, `${r.plannedStart} is not inside the freeze that ends ${freeze.to}`)
-  assert.equal(s.derivation.constraint, 'freeze')
-})
