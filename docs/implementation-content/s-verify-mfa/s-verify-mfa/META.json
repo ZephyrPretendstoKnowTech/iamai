@@ -55,14 +55,10 @@
   ],
   "projection": {
     "missing": {
-      "entra": [
-        "entra.campaign"
-      ],
+      "entra": [],
       "json": [],
       "powershell": [],
-      "aiInfo": [
-        "ai.walkthrough"
-      ],
+      "aiInfo": [],
       "email": []
     },
     "setupRequired": {
@@ -81,15 +77,10 @@
       "aiInfo": [
         "ai.configure"
       ],
-      "email": [
-        "email.everyone",
-        "email.admins"
-      ]
+      "email": []
     },
     "campaignRunning": {
-      "entra": [
-        "entra.run-workflow"
-      ],
+      "entra": [],
       "json": [],
       "powershell": [
         {
@@ -111,9 +102,7 @@
       "aiInfo": [
         "ai.holdouts"
       ],
-      "email": [
-        "email.holdout"
-      ]
+      "email": []
     },
     "ready": {
       "entra": [
@@ -151,9 +140,6 @@
   "supportBlocks": {
     "readiness": [
       "readiness.model"
-    ],
-    "troubleshooting": [
-      "troubleshooting.model"
     ]
   },
   "emailArtifacts": [

@@ -39,9 +39,7 @@
   ],
   "projection": {
     "register": {
-      "entra": [
-        "entra.register"
-      ],
+      "entra": [],
       "json": [],
       "powershell": [],
       "aiInfo": [
@@ -80,9 +78,6 @@
   "supportBlocks": {
     "readiness": [
       "readiness.model"
-    ],
-    "troubleshooting": [
-      "troubleshooting.model"
     ]
   },
   "emailArtifacts": [],

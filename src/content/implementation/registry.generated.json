@@ -19484,9 +19484,7 @@
         ],
         "projection": {
           "register": {
-            "entra": [
-              "entra.register"
-            ],
+            "entra": [],
             "json": [],
             "powershell": [],
             "aiInfo": [
@@ -19525,9 +19523,6 @@
         "supportBlocks": {
           "readiness": [
             "readiness.model"
-          ],
-          "troubleshooting": [
-            "troubleshooting.model"
           ]
         },
         "verifiedSources": [
@@ -19563,18 +19558,6 @@
         }
       },
       "blocks": {
-        "entra.register": {
-          "meta": {
-            "id": "entra.register",
-            "channel": "entra",
-            "states": [
-              "register"
-            ],
-            "format": "markdown",
-            "kind": "template"
-          },
-          "text": "1. Sign in as **{{operator.displayName}}** on a device you control, at **Security info** (`https://mysignins.microsoft.com/security-info`), and complete multifactor authentication there.\n2. Register within five minutes of that check: Microsoft requires an MFA completed in the last five minutes before a passkey (FIDO2) can be registered, so an old browser tab is refused.\n3. Choose the method by its own menu entry: **Add sign-in method > Passkey** registers a FIDO2 security key; **Add sign-in method > Passkey in Microsoft Authenticator** registers one in the app. Microsoft recommends a security key for users with elevated privileges. Do not change tenant passkey policy here.\n4. Finish the authenticator's local PIN, biometric or security-key interaction. A passkey in Authenticator also needs a screen lock on the phone and Authenticator enabled as the device's passkey provider.\n5. Leave existing recovery methods intact unless another IAMAI step explicitly removes them.\n"
-        },
         "entra.prove": {
           "meta": {
             "id": "entra.prove",
@@ -19635,19 +19618,6 @@
             "kind": "referenceOnly"
           },
           "text": "{\n  \"tiles\": [],\n  \"whyIamaiSaysThis\": \"The operator must be able to satisfy the stronger admin policy before it becomes an enforcement dependency.\",\n  \"whyIamAISaysThis\": {\n    \"sections\": {\n      \"whyItMatters\": \"The operator must be able to satisfy the stronger admin policy before it becomes an enforcement dependency.\"\n    }\n  }\n}\n"
-        },
-        "troubleshooting.model": {
-          "meta": {
-            "id": "troubleshooting.model",
-            "channel": "troubleshooting",
-            "states": [
-              "register",
-              "verificationRequired"
-            ],
-            "format": "json",
-            "kind": "referenceOnly"
-          },
-          "text": "{\n  \"scenarios\": []\n}\n"
         }
       }
     },
@@ -23627,14 +23597,10 @@
         ],
         "projection": {
           "missing": {
-            "entra": [
-              "entra.campaign"
-            ],
+            "entra": [],
             "json": [],
             "powershell": [],
-            "aiInfo": [
-              "ai.walkthrough"
-            ],
+            "aiInfo": [],
             "email": []
           },
           "setupRequired": {
@@ -23653,15 +23619,10 @@
             "aiInfo": [
               "ai.configure"
             ],
-            "email": [
-              "email.everyone",
-              "email.admins"
-            ]
+            "email": []
           },
           "campaignRunning": {
-            "entra": [
-              "entra.run-workflow"
-            ],
+            "entra": [],
             "json": [],
             "powershell": [
               {
@@ -23683,9 +23644,7 @@
             "aiInfo": [
               "ai.holdouts"
             ],
-            "email": [
-              "email.holdout"
-            ]
+            "email": []
           },
           "ready": {
             "entra": [
@@ -23723,9 +23682,6 @@
         "supportBlocks": {
           "readiness": [
             "readiness.model"
-          ],
-          "troubleshooting": [
-            "troubleshooting.model"
           ]
         },
         "verifiedSources": [
@@ -23761,30 +23717,6 @@
         }
       },
       "blocks": {
-        "entra.campaign": {
-          "meta": {
-            "id": "entra.campaign",
-            "channel": "entra",
-            "states": [
-              "missing"
-            ],
-            "format": "markdown",
-            "kind": "template"
-          },
-          "text": "1. Go to Entra admin center → Entra ID → Authentication methods → Registration campaign → Edit.\n2. State: Enabled.\n3. Target: All users, keeping any existing exclusions.\n4. Authentication method: **Passkey (FIDO2)** or **Microsoft Authenticator**. A campaign nudges one of them at a time. A passkey campaign does not reach guests, who cannot register a passkey in this tenant; an Authenticator campaign does.\n5. **Days allowed to snooze**: the value your organization approved, between 0 and 14; IAMAI does not hold one. With **Limited number of snoozes** enabled, a person may skip the prompt three times and must then register.\n6. Save, reopen the settings and rescan.\n\nA person sees the prompt after an interactive sign-in that completed MFA here. It is skipped where they arrive by single sign-on, and an Authenticator campaign does not prompt on a mobile device.\n"
-        },
-        "ai.walkthrough": {
-          "meta": {
-            "id": "ai.walkthrough",
-            "channel": "aiInfo",
-            "states": [
-              "missing"
-            ],
-            "format": "markdown",
-            "kind": "template"
-          },
-          "text": "After enabling the campaign, help each special-care person register in person:\n\n1. Book 10 minutes with each person listed under \"People who need special care.\"\n2. Open aka.ms/mfasetup with them signed in.\n3. If they have no method at all: issue a Temporary Access Pass first (Entra admin center → Users → [user] → Authentication methods → Add → Temporary Access Pass). This gives them a time-limited passcode to sign in and register.\n4. If they only have text message or phone call: register the replacement method with them. Test the replacement method first. Retire an older method only through the approved method-policy change, after checking recovery needs.\n5. Admins: register a passkey or a hardware security key — either counts as phishing-resistant.\n6. Have each person sign in once more using the new method. IAMAI looks for that sign-in record on the next scan.\n\nTrack progress on the MFA Readiness page — it shows who still needs setup and who still needs a verified sign-in.\n\n[MFA Readiness →](#/readiness)\n"
-        },
         "entra.configure": {
           "meta": {
             "id": "entra.configure",
@@ -23796,18 +23728,6 @@
             "kind": "template"
           },
           "text": "1. Open **Entra ID > Authentication methods > Registration campaign > Edit**.\n2. Set State to **Enabled** to choose the method yourself. Left at **Microsoft managed**, Microsoft runs the campaign: it targets passkeys where the included people are enabled for them, Microsoft Authenticator where they are not, and it reaches everyone who can do MFA rather than only the people on a text message or a voice call.\n3. Authentication method: **Passkey**.\n4. Target: **All users**, then apply only IAMAI-resolved exclusions if the tenant campaign should omit non-person populations.\n5. **Days allowed to snooze**: **1**.\n6. **Limited number of snoozes**: **Disabled**.\n7. Save, reopen the campaign and verify the target before announcing the rollout. Then rescan IAMAI.\n"
-        },
-        "entra.run-workflow": {
-          "meta": {
-            "id": "entra.run-workflow",
-            "channel": "entra",
-            "states": [
-              "campaignRunning"
-            ],
-            "format": "markdown",
-            "kind": "template"
-          },
-          "text": "1. Work the current special-care list: {{readiness.specialCare}}.\n2. For a person with no usable method, use the approved Temporary Access Pass/recovery workflow and register a supported method with them.\n3. For a registered-but-unproven person, have them sign in with the intended method so the next scan can record a successful use.\n4. For admins still below the phishing-resistant target {{readiness.adminsNeedingPasskey}}, register and test a passkey/security key; Authenticator push alone does not satisfy that admin requirement.\n5. Test the replacement method first. Retire an older method only through the approved method-policy change, after checking recovery needs.\n6. Rescan IAMAI after each batch. Do not reconfigure the campaign just because the readiness list changed.\n"
         },
         "entra.holdouts": {
           "meta": {
@@ -23919,48 +23839,6 @@
           },
           "text": "\nThis step is blocked. Blockers IAMAI recorded: {{dependencies.blockers}}.\n"
         },
-        "email.everyone": {
-          "meta": {
-            "id": "email.everyone",
-            "channel": "email",
-            "states": [
-              "setupRequired"
-            ],
-            "format": "markdown",
-            "kind": "template",
-            "audience": "all-users",
-            "communicationTrigger": "during-setup-required"
-          },
-          "text": "Subject: Action needed: Prepare Your Team for MFA\n\nPlease complete the sign-in method setup requested by IT, then sign in once using that method. Contact IT if you cannot register or no longer have access to your existing method.\n"
-        },
-        "email.admins": {
-          "meta": {
-            "id": "email.admins",
-            "channel": "email",
-            "states": [
-              "setupRequired"
-            ],
-            "format": "markdown",
-            "kind": "template",
-            "audience": "administrators",
-            "communicationTrigger": "during-setup-required"
-          },
-          "text": "Subject: Action needed: Prepare Your Team for MFA\n\nAdmin sign-ins need a stronger method than the general setup request. If IT has asked you to, register a passkey or hardware security key for your admin sign-in, then sign in once using it. Contact IT if you cannot register or no longer have access to your existing method.\n"
-        },
-        "email.holdout": {
-          "meta": {
-            "id": "email.holdout",
-            "channel": "email",
-            "states": [
-              "holdoutReview"
-            ],
-            "format": "markdown",
-            "kind": "template",
-            "audience": "rollout-administrators",
-            "communicationTrigger": "during-holdout-review"
-          },
-          "text": "Subject: Action needed: Prepare Your Team for MFA\n\nThe enrollment date has passed and some active people still have not shown a successful sign-in with a registered method. Please review each remaining account for its status, contact and recovery needs, and manager follow-up. A policy exclusion is not the default resolution.\n"
-        },
         "readiness.model": {
           "meta": {
             "id": "readiness.model",
@@ -23975,21 +23853,6 @@
             "kind": "referenceOnly"
           },
           "text": "{\n  \"tiles\": [],\n  \"whyIamaiSaysThis\": \"The campaign helps people register; MFA Readiness evidence, not the campaign settings, shows whether they are ready.\",\n  \"whyIamAISaysThis\": {\n    \"sections\": {\n      \"whyItMatters\": \"The campaign helps people register; MFA Readiness evidence, not the campaign settings, shows whether they are ready.\"\n    }\n  }\n}\n"
-        },
-        "troubleshooting.model": {
-          "meta": {
-            "id": "troubleshooting.model",
-            "channel": "troubleshooting",
-            "states": [
-              "setupRequired",
-              "campaignRunning",
-              "holdoutReview",
-              "ready"
-            ],
-            "format": "json",
-            "kind": "referenceOnly"
-          },
-          "text": "{\n  \"scenarios\": []\n}\n"
         }
       }
     }
