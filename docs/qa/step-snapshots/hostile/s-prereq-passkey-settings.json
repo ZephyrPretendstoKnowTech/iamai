@@ -18,10 +18,6 @@
       "state": "Review required"
     },
     {
-      "label": "Existing passkeys affected",
-      "state": "Could not verify"
-    },
-    {
       "label": "Passkey protections",
       "state": "Needs correction"
     }

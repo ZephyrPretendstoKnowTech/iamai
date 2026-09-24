@@ -220,7 +220,7 @@ This state needs a controlled recovery drill. Account state: {{emergency.evidenc
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked"],"format":"markdown","kind":"template"}
 
-Emergency access work for {{tenant.displayName}} is blocked: {{dependencies.blockers}}. Account changes wait until these are resolved, for example an unsaved account selection, evidence IAMAI could not read, or an exclusions group that is not yet resolved.
+Emergency access work for {{tenant.displayName}} is blocked: {{dependencies.blockers}}. Account changes wait until these are resolved, for example an unsaved account selection or an exclusions group that is not yet resolved.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.admins.drill","channel":"email","states":["verificationRequired"],"format":"markdown","kind":"template","audience":"authorized-emergency-administrators"}

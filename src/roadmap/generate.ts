@@ -1306,11 +1306,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const members = mapping.serviceAccountsGroupId ? input.groupMembers?.get(mapping.serviceAccountsGroupId) : null
     const matched = groupHoldsExactly(members, mapping.serviceAccountUserIds)
     const step = { ...prereq(saStepId), ...stateFields(matched ? { satisfied: true, inPlace: true } : {}), naming: { proposed: proposed.name, fromBaseline: null }, deliveredBy: matched ? ['The scanned group includes exactly the selected service accounts.'] : [] }
-    if (mapping.serviceAccountUserIds.length === 0) {
-      step.doesntApply = answeredReasonOf('serviceAccounts', 'none')
-      step.doesntApplyByAnswer = true
-      setState(step, { setAside: true, satisfied: false, inPlace: false })
-    }
     steps.push(step)
   }
 
@@ -1372,20 +1367,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
 
   // Shared devices, their own policy (prompt 48 item 4). Only while
   // shared-device accounts are picked (the saved answer, else the detection
-  // while it is unanswered): None adds no step.
-  if (canUseConditionalAccess && (mapping.sharedDeviceUserIds ?? sharedDevices).length > 0) {
+  // while it is unanswered): None adds no step, and neither do picks the
+  // directory read no longer holds enabled, which left a Doesn't apply row in
+  // hard-coded words (walk list 17, 45).
+  if (canUseConditionalAccess && (mapping.sharedDeviceUserIds ?? sharedDevices).length > 0 && !(sharedDevices.length === 0 && snapshot.sources.users?.status === 'ok')) {
     const step = prereq('s-shared-devices')
     // Its own policy, named in the tenant's convention (the baseline holds none; the step's instructions create it).
     step.naming = { proposed: proposedName({ prefix: 'CA', rest: ['Block', 'Shared devices outside trusted networks'], collapsed: 'Block shared devices outside trusted networks' }, naming).name, fromBaseline: null }
     step.population = namedAccounts(sharedDevices.map((u) => u.id), popIndex)
-    if (sharedDevices.length === 0 && snapshot.sources.users?.status === 'ok') {
-      // Answered None on Identify Service and Shared Accounts: the answer is the reason (walk list item 17).
-      const answeredNone = mapping.sharedDeviceUserIds?.length === 0
-      step.doesntApply = (mapping.sharedDeviceUserIds?.length ?? 0) > 0 ? 'The selected shared accounts are no longer enabled in the directory. Previous test records remain history.' : answeredNone ? answeredReasonOf('sharedDevices', 'none') : 'No shared accounts are selected. No shared-device policy protection is claimed.'
-      if (answeredNone) step.doesntApplyByAnswer = true
-      setState(step, { setAside: true, satisfied: false, inPlace: false })
-      step.configurationFindings = [{ key: 'sharedAccounts', label: 'Shared Accounts', value: 'No active selected accounts', detail: step.doesntApply, outcome: 'pass' }]
-    }
     steps.push(step)
   }
 
@@ -3135,9 +3124,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // Define Your Rollout Scope (roadmap/direction.ts): the four decision
   // steps, and the review rows whose services D1 asks about.
   if (canUseConditionalAccess) {
-    steps.unshift(...directionSteps({ snapshot, mapping, notAssessed: input.coverage.organisation.notAssessed, availableGoalIds: input.coverage.results.filter((r) => r.status !== 'licence-limited').map((r) => r.goal.id), nameOf }))
+    const availableGoalIds = input.coverage.results.filter((r) => r.status !== 'licence-limited').map((r) => r.goal.id)
+    steps.unshift(...directionSteps({ snapshot, mapping, notAssessed: input.coverage.organisation.notAssessed, availableGoalIds, nameOf }))
     addWorkflowSteps(steps, input.coverage.organisation.notAssessed, mapping, input.manualConfirmations)
-    countDirectionImpact(steps)
+    countDirectionImpact(steps, availableGoalIds)
   }
   applyManualReviews(steps, snapshot, input.manualConfirmations, mapping, popIndex)
   for (const s of steps.filter(s => s.id === 's-check-dormant-accounts')) {

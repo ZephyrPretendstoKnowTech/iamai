@@ -14,7 +14,7 @@ What the owner set on 1.1–1.4 (2026-09-23) and wants on every step. Every sect
 4. **Footer.** One full-width strip holds "Scan to update the plan" at the right, with the scan status line while a scan runs. There is no Close button.
 
 ## Content rules
-5. **About** is one or two sentences on why the step matters. It carries no lecture and no qualifier, and no inline "Learn →": the Learn link sits under Implementation Tasks with its Source checked date.
+5. **About** is one or two sentences on why the step matters, ending "Learn →" as on 1.1–1.4. It carries no lecture and no qualifier.
 6. **Tasks Remaining** shows only open tasks, each as a card. Satisfied holds only satisfied items, each stating its fact, never "In place · No change needed."
    - A Completed step keeps the Tasks Remaining header, "No tasks remaining" and the folded Satisfied items.
    - "After making changes, select Scan to update the plan." sits under Tasks Remaining.

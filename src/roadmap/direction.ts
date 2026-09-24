@@ -16,11 +16,11 @@
 //
 // Every question has a suggestion and nothing is hidden on evidence alone:
 //   * a "what you use" question is pre-filled with today's state, from the scan;
-//   * a "how it should work" question with the baseline's recommendation, today
-//     shown beside it;
+//   * a "how it should work" question with the baseline's recommendation, what
+//     the scan saw shown beside it;
 //   * with no signal, the safe answer: a service is Yes (it keeps its policy),
-//     an exception is None or Not used (no exception is granted), and the tile
-//     says the suggestion is a default and not something the scan saw.
+//     an exception is None or Not used (no exception is granted), and the card
+//     shows no evidence line (walk list 14).
 // Only data the snapshot already holds is read: no Graph permission, no new
 // collection.
 //
@@ -52,7 +52,7 @@ import { phoneSignInIds } from '../derive/sets.ts'
 import { setState } from './lifecycle.ts'
 import { DEVICE_GOALS } from './deviations.ts'
 import { QUESTION_STEP } from './answers.ts'
-import { PREREQ_STEP_ID } from './stepIds.ts'
+import { PREREQ_STEP_ID, stepIdForGoal } from './stepIds.ts'
 import { checkStep, serviceEvidence, serviceOf, serviceReading } from './workflows.ts'
 import type { ServiceSignal } from './workflows.ts'
 import { DIRECTION_BLOCKER, DIRECTION_STEP, SERVICE_KEYS, directionComplete, directionStepOf, isDirectionStep, officeLocationsCreated, savedAnswerOf, savedBasisOf, trustedIpLocations } from './directionAnswers.ts'
@@ -83,9 +83,9 @@ function serviceQuestion(key: string, signal: ServiceSignal, ctx: Context): Dire
   const needsReview = saved?.value === 'no' && signal.used && ctx.mapping.workflowEvidenceBasis?.[key] !== 'present'
   const suggested = signal.used ? answer('yes') : signal.complete ? answer('no') : answer('yes')
   const label = (Q.services as Record<string, string>)[key] ?? key
-  // What the sign-in records show, in the one sentence the Inventory's Detected
-  // workloads shows too (workflows.ts serviceEvidence); where they show
-  // nothing that can be said, the card says nothing.
+  // What the scan saw, in the one sentence the Inventory's Detected workloads
+  // shows too (workflows.ts serviceEvidence); where it saw nothing that can be
+  // said, the card says nothing.
   const seen = serviceEvidence(key, signal)
   return {
     // Its consequence line names the plan's steps, so it is written once the plan is whole (noteServiceConsequences).
@@ -97,6 +97,12 @@ function serviceQuestion(key: string, signal: ServiceSignal, ctx: Context): Dire
 }
 
 const signInsRead = (s: TenantSnapshot): boolean => s.sources.signInEvidence?.status === 'ok' || s.sources.signInEvidence?.status === 'partial'
+/**
+ * Whether the sign-in records were read whole, 30 days of them: a sign-in line
+ * is said only then, on all three Direction steps. Over a read that stopped
+ * short a card says nothing about sign-ins (walk list 14, 64).
+ */
+const signInsReadWhole = (s: TenantSnapshot): boolean => s.sources?.signInEvidence?.status === 'ok'
 
 /**
  * Devices or apps that send mail by signing in: the accounts the old-protocol
@@ -121,7 +127,7 @@ function useQuestions(ctx: Context, services: { keys: string[]; signal: (key: st
   // the ones the picker offers (mailPickable).
   const senders = mailSenderIds(snapshot)
   const pickable = (senders ?? []).filter(mailPickable(snapshot, ctx.mapping))
-  const mailSeen = senders === null ? '' : senders.length > 0 ? fillText(Q.mailDevices.seen, { n: senders.length }) : Q.mailDevices.notSeen
+  const mailSeen = senders === null || !signInsReadWhole(snapshot) ? '' : senders.length > 0 ? fillText(Q.mailDevices.seen, { n: senders.length }) : Q.mailDevices.notSeen
   // A saved None the scan now contradicts reopens, as a service's No does,
   // unless it was approved while that use was already seen (its basis).
   const mailReview = savedAnswerOf('mailDevices', ctx.mapping)?.value === 'none' && pickable.length > 0 && savedBasisOf('mailDevices', ctx.mapping) !== 'present'
@@ -136,7 +142,7 @@ function useQuestions(ctx: Context, services: { keys: string[]; signal: (key: st
   const partners = snapshot.scenarioEvidence?.serviceProviderSignIns ?? null
   const partnersUsed = partners !== null && partners.count > 0
   // Accounts, never sign-ins: records that name no account say nothing either way.
-  const partnerSeen = partners === null || !signInsRead(snapshot) ? '' : partners.people.length > 0 ? fillText(Q.partner.seen, { n: partners.people.length }) : partners.count === 0 ? Q.partner.notSeen : ''
+  const partnerSeen = partners === null || !signInsReadWhole(snapshot) ? '' : partners.people.length > 0 ? fillText(Q.partner.seen, { n: partners.people.length }) : partners.count === 0 ? Q.partner.notSeen : ''
   const partnerReview = savedAnswerOf('partner', ctx.mapping)?.value === 'no' && partnersUsed && savedBasisOf('partner', ctx.mapping) !== 'present'
   out.push(question('partner', ctx, {
     label: Q.partner.label, control: 'choice', options: optionsOf(Q.partner.options),
@@ -198,12 +204,14 @@ function accountQuestions(ctx: Context, nameOf: (id: string) => string): Directi
  *
  * Null where Intune was never read: an absent capability is not the same as
  * zero seats, and inventing a licence position is the failure this whole
- * question exists to avoid.
+ * question exists to avoid. Null too where the tenant holds no Intune licence:
+ * evidence comes in the walk's shapes only, and the one this said is not one
+ * of them (walk list 14).
  */
 function intuneSeatLine(ctx: Context): string | null {
   const intune = ctx.snapshot.capabilities?.intune
   if (intune === undefined || intune === null) return null
-  if (intune.enabled !== true) return Q.computers.intuneAbsent
+  if (intune.enabled !== true) return null
   const { seats, consumed } = intune
   if (typeof seats !== 'number' || typeof consumed !== 'number') return null
   return fillText(Q.computers.intuneSeats, { consumed, seats })
@@ -215,12 +223,12 @@ function deviceQuestions(ctx: Context): DirectionQuestion[] {
   const registered = evidence?.registeredComputers?.people.length
   // Who signed in from a phone: the one reading MFA Readiness draws its phones from (derive/sets.ts).
   const phones = phoneSignInIds(ctx.snapshot)?.length
-  // A sign-in line is said only over sign-in records read whole, 30 days of
-  // them; over a read that stopped short the card says nothing about sign-ins
-  // (walk list 64).
-  const readWhole = ctx.snapshot.sources?.signInEvidence?.status === 'ok'
+  // A sign-in line is said only over sign-in records read whole (signInsReadWhole).
+  const readWhole = signInsReadWhole(ctx.snapshot)
   const seen = (n: number | undefined, some: string, none: string | null): string | null => !readWhole || n === undefined ? null : n > 0 ? fillText(some, { n }) : none
   const lines = (...all: (string | null)[]): string => all.filter((line): line is string => line !== null).join(' ')
+  // The device policies are on the plan only with Intune licences (their goals' applicability).
+  const intune = ctx.snapshot.capabilities?.intune?.enabled === true
   return [
     question('computers', ctx, {
       label: Q.computers.label, control: 'choice', options: optionsOf(Q.computers.options),
@@ -234,7 +242,10 @@ function deviceQuestions(ctx: Context): DirectionQuestion[] {
         seen(unjoined, Q.computers.today, Q.computers.todayNone),
         unjoined === undefined ? null : seen(registered, Q.computers.todayRegistered, null),
       ),
-      note: Q.computers.note,
+      // Only where Unmanaged does take the two steps off: the plan holds them
+      // only with Intune licences, and phones answered Compliant keep them on,
+      // scoped to phones (deviations.ts deviceStepDoesntApply).
+      note: intune && (savedAnswerOf('phones', ctx.mapping)?.value ?? 'apps') !== 'enrolled' ? Q.computers.note : null,
     }),
     question('phones', ctx, {
       label: Q.phones.label, control: 'choice', options: optionsOf(Q.phones.options),
@@ -243,7 +254,7 @@ function deviceQuestions(ctx: Context): DirectionQuestion[] {
       // Blocked from company data adds a policy step of its own (generate.ts
       // s-ladder-phone-access-restriction); Compliant adds phones to the
       // managed-device policy, which only a tenant with Intune licences can use.
-      note: lines(Q.phones.note, ctx.snapshot.capabilities?.intune?.enabled === true ? Q.phones.noteIntune : null),
+      note: lines(Q.phones.note, intune ? Q.phones.noteIntune : null),
     }),
     officeNetworkQuestion(ctx),
   ]
@@ -435,26 +446,39 @@ export function directionDependenciesOf(step: Pick<Step, 'goalId' | 'baselineRev
   return out
 }
 
-/** A step only an answer puts on the plan: Keep Company Data Off Phones, while phones are Blocked from company data (generate.ts). */
-const ADDED_BY_ANSWER: Readonly<Record<string, readonly DirectionQuestionKey[]>> = {
-  's-ladder-phone-access-restriction': ['phones'],
+/**
+ * The steps only an answer puts on the plan, so the plan may not hold them
+ * now: Keep Company Data Off Phones while phones are Blocked from company data
+ * (generate.ts); the service accounts group and Restrict Service Accounts to
+ * the Trusted Network while service accounts are picked, and Give Shared
+ * Devices Their Own Policy while shared-device accounts are (walk list 45). A
+ * goal's step is one only where the plan's baseline holds that goal.
+ */
+const ADDED_BY_ANSWER: Readonly<Record<string, { keys: readonly DirectionQuestionKey[]; goal?: string }>> = {
+  's-ladder-phone-access-restriction': { keys: ['phones'] },
+  [PREREQ_STEP_ID.serviceAccountsGroup]: { keys: ['serviceAccounts'] },
+  's-shared-devices': { keys: ['sharedDevices'] },
+  [stepIdForGoal('service-accounts-trusted-network')]: { keys: GOAL_DEPENDS['service-accounts-trusted-network'], goal: 'service-accounts-trusted-network' },
 }
 
 /**
  * Each Direction step's Impact (walk list item 25, ui/surfaces/rowWho.ts): how
  * many plan steps its answers decide — a step an answer puts on the plan or
  * takes off it, and a policy that waits on it (directionDependenciesOf, the
- * moved questions of ANSWERED_IN). Only questions the step asks count.
+ * moved questions of ANSWERED_IN). Only questions the step asks count. A step
+ * only an answer puts on the plan counts whether the answers have put it there
+ * or not, so the count is the same whatever they are.
  */
-export function countDirectionImpact(steps: Step[]): void {
+export function countDirectionImpact(steps: Step[], availableGoalIds: readonly string[]): void {
   const asked = new Set(steps.filter((s) => isDirectionStep(s.id)).flatMap((s) => (s.directionQuestions ?? []).map((q) => q.key)))
-  const counts = new Map<string, number>()
-  for (const step of steps) {
-    if (isDirectionStep(step.id)) continue
-    const keys = [...directionDependenciesOf(step), ...(ANSWERED_IN[step.id] ?? []), ...(ADDED_BY_ANSWER[step.id] ?? [])].filter((k) => asked.has(k))
-    for (const id of new Set(keys.map(directionStepOf))) counts.set(id, (counts.get(id) ?? 0) + 1)
+  const decided = new Map<string, Set<string>>()
+  const add = (stepId: string, keys: readonly DirectionQuestionKey[]): void => {
+    for (const id of new Set(keys.filter((k) => asked.has(k)).map(directionStepOf))) decided.set(id, (decided.get(id) ?? new Set<string>()).add(stepId))
   }
-  for (const step of steps) if (isDirectionStep(step.id)) step.impactCount = counts.get(step.id) ?? 0
+  for (const step of steps) if (!isDirectionStep(step.id)) add(step.id, [...directionDependenciesOf(step), ...(ANSWERED_IN[step.id] ?? []), ...(ADDED_BY_ANSWER[step.id]?.keys ?? [])])
+  const available = new Set(availableGoalIds)
+  for (const [stepId, { keys, goal }] of Object.entries(ADDED_BY_ANSWER)) if (goal === undefined || available.has(goal)) add(stepId, keys)
+  for (const step of steps) if (isDirectionStep(step.id)) step.impactCount = decided.get(step.id)?.size ?? 0
 }
 
 /**
