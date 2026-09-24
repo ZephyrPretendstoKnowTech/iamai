@@ -54,6 +54,7 @@ type Ex = Record<string, unknown>
 
 /** Prepare Emergency Access Accounts' milestone while nothing is chosen (pages.app.plan.emergencyTasks). */
 const CHOOSE_ACCOUNTS = (app.plan as unknown as { emergencyTasks: { chooseAccounts: string } }).emergencyTasks.chooseAccounts
+const CHOOSE_SECOND_ACCOUNT = (app.plan as unknown as { emergencyTasks: { chooseSecondAccount: string } }).emergencyTasks.chooseSecondAccount
 
 const NO_CONFIRMATIONS: Readonly<Record<string, OwnerConfirmation>> = {}
 const NO_BLOCKERS: readonly PrerequisiteBlocker[] = []
@@ -372,7 +373,8 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // (stepLayout.test.ts U3).
   // Prepare Emergency Access Accounts with no account chosen: the choice is the
   // milestone (pages.app.plan.emergencyTasks.chooseAccounts), not the checks after it.
-  const choosing = step.id === 's-prereq-break-glass' && ctx.mapping.breakGlassUserIds.length === 0 ? CHOOSE_ACCOUNTS : null
+  const chosen = ctx.mapping.breakGlassUserIds.length
+  const choosing = step.id === 's-prereq-break-glass' && chosen < 2 ? (chosen === 0 ? CHOOSE_ACCOUNTS : CHOOSE_SECOND_ACCOUNT) : null
   const rail = railOf(contract, choosing ?? pkg?.meta.milestone?.actionText ?? directionMilestoneAction(step.id))
   // What kind of step this is, and "Resolution step" for one whose source
   // contradicts itself (stepContract.ts eyebrowOf).
