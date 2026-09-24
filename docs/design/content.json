@@ -1927,8 +1927,6 @@
           "memberLine": "{name}: {lifecycle}",
           "memberWatched": "{name}: {lifecycle}, watched since {date}",
           "memberReview": "{name}: {lifecycle}, and it needs a look",
-          "whoUnknown": "IAMAI cannot establish exactly who this reaches: this scan could not settle the policy's scope, so no count is shown.",
-          "whoUnknownDecision": "IAMAI cannot establish who this reaches until the baseline's references are mapped in Plan settings, so no count is shown.",
           "stateWords": {
             "$comment": "The Plan state words the one projection adds (src/ui/surfaces/planState.ts): a policy the tenant already enforces that the plan must change and cannot yet, and emergency access whose minimum is in place while its hardening is deferred to Cleanup.",
             "needsCorrection": "Needs correction",
@@ -2277,7 +2275,7 @@
               "focus": "Focus for this step",
               "unavailable": "Not available in this scan."
             },
-            "excludeUsersNone": "none: the resolved target excludes no individual accounts",
+            "excludeUsersNone": "none",
             "copy": "Copy implementation",
             "expand": "Expand implementation",
             "dialogEyebrow": "Implementation",
@@ -4797,7 +4795,7 @@
           "{reportOnlyLine}"
         ]
       },
-      "aiFocus": "State the built-in MFA grant and Intune Enrollment exception. Existing MFA claims may satisfy the policy without a new prompt on every sign-in."
+      "aiFocus": "Walk me through creating this policy in Report-only and turning it on after its report-only period."
     },
     {
       "id": "admins-phishing-resistant",
@@ -4912,7 +4910,7 @@
           "{reportOnlyLine}"
         ]
       },
-      "aiFocus": "Explain exact role coverage, accepted method combinations and the TAP exception. Do not label the entire allowed set exclusively phishing-resistant or guarantee a new prompt each time."
+      "aiFocus": "Walk me through creating this policy in Report-only and turning it on after its report-only period."
     },
     {
       "id": "admin-portals-protected",
@@ -5349,7 +5347,7 @@
           "{reportOnlyLine}"
         ]
       },
-      "aiFocus": "Explain the actual client-app target and observed authentication flow. Do not infer that every native mail app or OAuth SMTP connection is blocked solely from its name."
+      "aiFocus": "Walk me through creating this policy in Report-only and turning it on after its report-only period."
     },
     {
       "id": "block-device-code",
@@ -5434,7 +5432,7 @@
           "{reportOnlyLine}"
         ]
       },
-      "aiFocus": "Explain both malicious and legitimate uses. Include actual observed workflows and do not treat missing events as proof that device code is unused.",
+      "aiFocus": "Walk me through creating this policy in Report-only and turning it on after its report-only period.",
       "whatToDo": {
         "verification": [
           "Identify the legitimate tools or devices using device code. Move each required workflow to an alternative supported by that tool, then run the actual task with a representative account.",

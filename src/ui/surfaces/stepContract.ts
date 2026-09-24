@@ -32,8 +32,8 @@ import type { PolicyHold, UnavailableReason } from '../../roadmap/operations.ts'
 import { awaitsOwnObject, awaitsWorkflowRecord, createWaitsOnReadiness, enforcesOnRun, implementationOffered, isPreserved, operationsOf, policyHold, switchedOffPolicies, unavailableReason, strengthNameIn } from '../../roadmap/operations.ts'
 import { requiredMembers } from '../../roadmap/tracking.ts'
 import { unreadLine } from '../../roadmap/evidence.ts'
-import { reached, stepPopulation } from '../../derive/population.ts'
-import { populationLine } from '../../derive/whoLine.ts'
+import { impactReachOf } from '../../derive/population.ts'
+import { affectedIds, populationLine } from '../../derive/whoLine.ts'
 import { app, cleanup, directionWords, engine, shared, stepById, structuralWords } from '../../content/content.ts'
 import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
 import { directionBlockerStep, directionStepsAnswering, directionTitleOf, directionWaitRelayed } from '../../roadmap/direction.ts'
@@ -125,9 +125,6 @@ type ContractWords = {
   memberLine: string
   memberWatched: string
   memberReview: string
-  whoUnknown: string
-  /** The reach is not established because the baseline's own references still wait for a person's answer (resolvePolicy.ts `decisions`). */
-  whoUnknownDecision: string
   /** The words the Plan's one presentation state adds (planState.ts). */
   stateWords: Record<'needsCorrection' | 'minimumInPlace' | 'hardeningDeferred', string>
   foundReadiness: string
@@ -897,28 +894,16 @@ export function existingOf(step: Step): ContractExisting | null {
   return { names: [...by.policies], together: by.policies.length > 1 }
 }
 
-/** Who the policy reaches, from the reach Foundation A settled — never the goal's population standing in for it. */
-function whoOf(step: Step, ctx: StepVarContext): ContractWho | null {
-  const pop = reached(step)
-  // Where the scope waits on a person's answer about the baseline's own groups, that is the reason, not the scan.
-  if (pop === null) {
-    const source = ctx.snapshot.sources.users
-    const missing = [...new Set((step.action.missing ?? []).map(m => m.stepId ? stepById[m.stepId]?.title : null).filter(Boolean))]
-    // A step with no policy of its own is unsettled only where the tenant's
-    // policies deliver it and their scope could not be read (derive/population.ts
-    // reached): the reason is the scan's, never the plan's own missing
-    // references, which that policy does not wait on. It read the goal's people.
-    const text = source && source.status !== 'ok'
-      ? `Directory read incomplete${source.reason ? `: ${source.reason}` : '.'}`
-      : effectsOf(step) === null ? CONTRACT.whoUnknown
-      : missing.length ? `Policy scope awaits: ${missing.join('; ')}.`
-      : step.goalId === 'guests-mfa' ? 'Exact guest-policy reach needs the external-user type, home organization and applicable exclusions for each account.'
-      : 'Policy applicability is not fully resolved. Review the named policy assignments and prerequisites on this step.'
-    return { known: false, text }
-  }
-  const view = stepPopulation(step)
-  if (view === null) return { known: false, text: CONTRACT.whoUnknown }
-  if (view.active === 0 && view.enabledCovered === 0) return null
+/**
+ * Who the policy reaches, from the reach Foundation A settled. A policy whose
+ * reach is not settled counts what its Impact counts (derive/population.ts
+ * impactReachOf; walk list 4.x item 31): "Who this touches: Policy
+ * applicability is not fully resolved…" told the person what IAMAI lacked
+ * instead of a count.
+ */
+function whoOf(step: Step): ContractWho | null {
+  const pop = impactReachOf(step)
+  if (affectedIds(pop).length === 0 && (pop.inScope ?? 0) === 0) return null
   return { known: true, text: populationLine(pop) }
 }
 
@@ -1574,7 +1559,7 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     track: stepTrack(step),
     why,
     found,
-    who: whoOf(step, ctx),
+    who: whoOf(step),
     inventory,
     followUp: followUpOf(step, ctx),
     belowGoalFloor: belowGoalFloorOf(step, ctx),

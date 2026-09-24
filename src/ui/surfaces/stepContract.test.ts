@@ -297,17 +297,6 @@ test('contract 9: a baseline conflict renders with no implementation and nothing
   }
 })
 
-// ---- 10. unknown is unknown ----
-
-test('contract 10: a reach IAMAI could not settle is never a count of nobody', () => {
-  const unknown = [...contracts('demo').all, ...contracts('demo-week2').all].filter(({ c }) => c.who !== null && !c.who.known)
-  assert.ok(unknown.length > 0, 'no step on the demo has an unsettled reach; the case is not covered')
-  for (const { step, c } of unknown) {
-    assert.doesNotMatch(c.who!.text, /\b0\b|nobody|no people|none/i, `${step.id}: an unknown reach reads "${c.who!.text}"`)
-    assert.match(c.who!.text, /cannot establish|Policy scope awaits|Policy applicability|Exact guest-policy reach|directory/i, `${step.id}: an unknown reach does not say so`)
-  }
-})
-
 // A threshold stated against a non-number is a dead end. "Enforcement waits for
 // MFA readiness to reach 90%; it is not measured today" appeared three times on
 // one step — the finding, the Threshold tile and its note — and named nothing

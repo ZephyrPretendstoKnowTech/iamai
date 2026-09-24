@@ -1394,7 +1394,8 @@
           "evidence.reportOnly",
           "dependencies.blockers",
           "signature",
-          "policy.target.json"
+          "policy.target.json",
+          "policy.fact"
         ],
         "projection": {
           "missing": {
@@ -1900,7 +1901,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nThis state creates the administrator policy for {{tenant.displayName}} in Report-only. It targets the exact built-in directory roles in the baseline, with the intended exclusions, All resources and all client apps. It requires the tenant's custom authentication strength and has no session controls.\n\nThat strength accepts Windows Hello for Business, passkeys and FIDO2 security keys, certificate-based multifactor authentication and Temporary Access Pass. Passkeys and security keys reduce phishing risk, but the accepted set as a whole is not exclusively phishing-resistant because it includes Temporary Access Pass. Microsoft's generic administrator template uses the built-in Phishing-resistant MFA strength; this baseline keeps the custom strength.\n\nDirectory-role targeting does not reach custom roles or administrative-unit-scoped role assignments.\n"
+          "text": "\nCreate **{{policy.target.displayName}}** in Report-only: it {{policy.fact}}.\n"
         },
         "ai.correct": {
           "meta": {
@@ -1912,7 +1913,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "This policy requires administrators in the baseline's built-in directory roles to satisfy the tenant's custom authentication strength. That strength accepts Windows Hello for Business, passkeys and FIDO2 security keys, certificate-based multifactor authentication and Temporary Access Pass. Passkeys and security keys reduce phishing risk but do not make phishing impossible, and the accepted set is not exclusively phishing-resistant because it includes Temporary Access Pass. Microsoft's built-in Phishing-resistant MFA strength does not accept a Temporary Access Pass.\n\nUnlike the \"MFA for Everyone\" policy, which accepts any registered MFA method, this policy limits which methods count. Whether admins have an accepted method registered is shown on MFA Readiness, and the Prepare Your Team for MFA step helps them register one. The policy has no session controls, so it does not by itself require a new prompt at every sign-in.\n\nThe correction changes only the settings IAMAI found different from the baseline: the role list and exclusions, grant, session controls or name.\n\nKeep the policy's current state. If it is On, the changed rule can affect access after you save. An admin newly included by the corrected role list will then need an accepted method to sign in.\n\nThis change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
+          "text": "Correct **{{policy.current.displayName}}** so it {{policy.fact}}.\n\nThis change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
         },
         "ai.observe": {
           "meta": {
@@ -1924,7 +1925,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nThe administrator policy is in Report-only. Admins not ready: {{admins.notReady}}. Report-only evidence: {{evidence.reportOnly}}. An admin who cannot satisfy the strength needs an accepted method registered and tested; removing roles or weakening the grant would change the baseline. A Temporary Access Pass satisfies the strength but is temporary, so a sign-in with one does not show that the admin has a lasting accepted method.\n"
+          "text": "\n**{{policy.current.displayName}}** is in Report-only: it {{policy.fact}}.\n"
         },
         "ai.enforce": {
           "meta": {
@@ -1936,7 +1937,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nThe administrator policy for {{tenant.displayName}} is ready to enforce. Before it is set On, the same policy ID should still be Report-only with the exact baseline built-in role list, the tenant's custom strength, no extra conditions and no session controls, and each affected admin should have a working accepted method. After enforcement, an admin sign-in with an accepted method and an emergency access sign-in still need to be verified.\n"
+          "text": "\nTurn **{{policy.current.displayName}}** on: it {{policy.fact}}.\n\nIts report-only period showed no sign-in it would have stopped.\n"
         },
         "ai.blocked": {
           "meta": {
@@ -3259,7 +3260,8 @@
           "signature",
           "evidence.deviceCodeSignIns",
           "evidence.originalTransferMethod",
-          "dependencies.deviceCodeWorkflows"
+          "dependencies.deviceCodeWorkflows",
+          "policy.fact"
         ],
         "projection": {
           "missing": {
@@ -3719,7 +3721,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nIAMAI did not find **Block Device Code Sign-in** in {{tenant.displayName}}. The next action is to create it in Report-only. It blocks Conditions → Authentication flows → Configure: Yes, then Device code flow for all users except the resolved exclusions, across all resources, with Client apps left at All and no session controls. Because it targets All resources, it also applies to Device Registration Service, and some Teams devices, command-line tools and enrollment workflows use device code legitimately.\n"
+          "text": "\nCreate **{{policy.target.displayName}}** in Report-only: it {{policy.fact}}.\n"
         },
         "ai.correct": {
           "meta": {
@@ -3731,7 +3733,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nIAMAI found policy {{policy.current.id}} for **Block Device Code Sign-in**, but it differs from the intended target: {{policy.current.semanticMismatches}}. The next action is to correct those settings on the same policy ID. The intended target blocks Conditions → Authentication flows → Configure: Yes, then Device code flow for all users except the resolved exclusions, across all resources, with Client apps left at All and no session controls. Keep the policy's current state. If it is On, the changed rule can affect access after you save.\n\nThis change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
+          "text": "\nCorrect **{{policy.current.displayName}}** so it {{policy.fact}}.\n\nThis change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
         },
         "ai.observe": {
           "meta": {
@@ -3743,7 +3745,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\n**Block Device Code Sign-in** is in Report-only in {{tenant.displayName}}. Report-only evidence: {{evidence.reportOnly}}. Review both direct device-code sign-ins and sessions tracked by Original transfer method, including tools, shared devices, Teams devices and enrollment workflows. No events in the available records does not prove device code is unused.\n"
+          "text": "\n**{{policy.current.displayName}}** is in Report-only: it {{policy.fact}}.\n\nMove any tool or device it would have blocked to another sign-in method before it turns on.\n"
         },
         "ai.enforce": {
           "meta": {
@@ -3755,7 +3757,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\n**Block Device Code Sign-in** is in Report-only in {{tenant.displayName}}, and the next action is enforcement. Before setting it to On, confirm the same policy ID still matches the intended target, direct and transferred device-code activity has been reviewed, Teams-device and Device Registration Service impact is understood, and required workflows have a tested alternative or separately approved handling. Once On, device code sign-in is blocked for everyone the policy covers.\n"
+          "text": "\nTurn **{{policy.current.displayName}}** on: it {{policy.fact}}.\n\nIts report-only period showed no sign-in it would have stopped.\n"
         },
         "ai.blocked": {
           "meta": {
@@ -3871,7 +3873,9 @@
           "signature",
           "evidence.legacySignIns",
           "dependencies.serviceAccountDecision",
-          "dependencies.mailDevices"
+          "dependencies.mailDevices",
+          "policy.fact",
+          "policy.current.displayName"
         ],
         "projection": {
           "missing": {
@@ -4340,7 +4344,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nIAMAI did not find **Block Legacy Authentication** in {{tenant.displayName}}. The next action is to create it in Report-only. It blocks sign-ins to all resources from the client-app categories Exchange ActiveSync clients and Other clients, for all users except the resolved exclusions, with no session controls. A mail app or protocol name alone does not show which category a sign-in falls into; the client app recorded on the sign-in does.\n"
+          "text": "\nCreate **{{policy.target.displayName}}** in Report-only: it {{policy.fact}}.\n"
         },
         "ai.correct": {
           "meta": {
@@ -4352,7 +4356,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Policy {{policy.current.id}} for **Block Legacy Authentication** differs from the intended target: {{policy.current.semanticMismatches}}. The next action is to correct those settings on the same policy. The intended target blocks Exchange ActiveSync clients and Other clients for all users except the resolved exclusions, across all resources, with no session controls. Keep the policy's current state. If it is On, the changed rule can affect access after you save.\n\nThis change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
+          "text": "Correct **{{policy.current.displayName}}** so it {{policy.fact}}.\n\nThis change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
         },
         "ai.observe": {
           "meta": {
@@ -4364,7 +4368,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\n**Block Legacy Authentication** is in Report-only in {{tenant.displayName}}. Report-only evidence: {{evidence.reportOnly}}. Would-be blocks can include mail clients, printers, scanners and scheduled jobs that still use older authentication. No events in the available records does not prove there are no dependencies, because some jobs run infrequently.\n"
+          "text": "\n**{{policy.current.displayName}}** is in Report-only: it {{policy.fact}}.\n\nMove any mail client, printer, scanner or job it would have blocked to modern authentication before it turns on.\n"
         },
         "ai.enforce": {
           "meta": {
@@ -4376,7 +4380,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\n**Block Legacy Authentication** is in Report-only in {{tenant.displayName}}, and the next action is enforcement. Before setting it to On, confirm the same policy ID still matches the intended target, legacy sign-ins from the observation period have been reviewed, owners of infrequent jobs have been asked, and required applications and devices have a supported sign-in path. Once On, Exchange ActiveSync clients and Other clients are blocked for everyone the policy covers.\n"
+          "text": "\nTurn **{{policy.current.displayName}}** on: it {{policy.fact}}.\n\nIts report-only period showed no sign-in it would have stopped.\n"
         },
         "ai.blocked": {
           "meta": {
@@ -8683,7 +8687,8 @@
           "evidence.reportOnly",
           "dependencies.blockers",
           "signature",
-          "policy.target.json"
+          "policy.target.json",
+          "policy.fact"
         ],
         "projection": {
           "missing": {
@@ -9183,7 +9188,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nState: the MFA-for-everyone policy does not exist in {{tenant.displayName}} yet. The next action creates it in Report-only: All users with the exclusions IAMAI resolved, All resources except Microsoft Intune Enrollment, no additional conditions, Grant: Require multifactor authentication, and no session controls. It does not prompt anyone until it is enabled.\n\nThis policy uses the built-in Require multifactor authentication grant, not an authentication strength. A separate step sets the requirement for Intune enrollment.\n"
+          "text": "\nCreate **{{policy.target.displayName}}** in Report-only: it {{policy.fact}}.\n"
         },
         "ai.correct": {
           "meta": {
@@ -9195,7 +9200,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "This policy requires multifactor authentication for the users it covers. It uses the built-in Require multifactor authentication grant, not an authentication strength. Stronger method requirements belong to the separate policies that select an authentication strength.\n\nThe policy already exists on your tenant. The correction changes only the settings IAMAI found different from the intended target:\n— Users: All users, excluding the exclusions IAMAI resolved, including the exclusions group.\n— Target resources: All resources, excluding Microsoft Intune Enrollment. A separate step sets the requirement for Intune enrollment.\n— Conditions: no location, device platform or risk conditions; client apps remains All.\n— Grant: Require multifactor authentication. Session controls: none.\n\nAn existing MFA claim may satisfy the policy, so people are not necessarily prompted at every sign-in. Whether each person has a usable method is shown on MFA Readiness; the Prepare Your Team for MFA step helps people register one.\n\nKeep the policy's current state. If it is On, the changed rule can affect access after you save.\n\nThis change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
+          "text": "Correct **{{policy.current.displayName}}** so it {{policy.fact}}.\n\nThis change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
         },
         "ai.observe": {
           "meta": {
@@ -9207,7 +9212,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nState: the MFA-for-everyone policy is in Report-only in {{tenant.displayName}}; it does not prompt anyone yet. Report-only evidence: {{evidence.reportOnly}}.\n\nSeparate people who could not satisfy MFA from accounts excluded as intended. A registered method is not the same as a successful MFA sign-in, and few records do not show that everyone is ready.\n"
+          "text": "\n**{{policy.current.displayName}}** is in Report-only: it {{policy.fact}}.\n"
         },
         "ai.enforce": {
           "meta": {
@@ -9219,7 +9224,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nState: the MFA-for-everyone policy is in Report-only in {{tenant.displayName}} and the next action is to enable it. Before setting it to On, the same policy ID should still be Report-only and match the intended target: All resources except Microsoft Intune Enrollment, Require multifactor authentication, no session controls. After enabling, test an ordinary user in scope and emergency access.\n"
+          "text": "\nTurn **{{policy.current.displayName}}** on: it {{policy.fact}}.\n\nIts report-only period showed no sign-in it would have stopped.\n"
         },
         "ai.blocked": {
           "meta": {

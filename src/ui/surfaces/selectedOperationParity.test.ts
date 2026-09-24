@@ -116,7 +116,8 @@ test('a held step whose reference is unresolved: AI Info proposes the settings, 
   const facts = ai.slice(ai.indexOf(BRIEFING.heading))
   assert.ok(facts.includes(BRIEFING.proposed), 'the settings are proposed, not handed over')
   assert.match(facts, /^Not available in this scan: conditions\.users$/m)
-  assert.ok(facts.includes(BRIEFING.previewValues), 'the unresolved preview values are named as unresolved')
+  // "Values shown as ‹…› are not resolved yet" only beside a ‹…› value (walk list 4.x item 31).
+  assert.equal(facts.includes(BRIEFING.previewValues), /‹[^›]+›/.test(facts.replace(BRIEFING.previewValues, '')), 'the unresolved-values line shows exactly where a ‹…› value does')
   assert.match(facts, /Also exclude Guest or external users \(all types\)\./)
 })
 

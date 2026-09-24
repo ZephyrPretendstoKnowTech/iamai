@@ -148,33 +148,25 @@ $actual=IG GET $uri
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 
-This state creates the administrator policy for {{tenant.displayName}} in Report-only. It targets the exact built-in directory roles in the baseline, with the intended exclusions, All resources and all client apps. It requires the tenant's custom authentication strength and has no session controls.
-
-That strength accepts Windows Hello for Business, passkeys and FIDO2 security keys, certificate-based multifactor authentication and Temporary Access Pass. Passkeys and security keys reduce phishing risk, but the accepted set as a whole is not exclusively phishing-resistant because it includes Temporary Access Pass. Microsoft's generic administrator template uses the built-in Phishing-resistant MFA strength; this baseline keeps the custom strength.
-
-Directory-role targeting does not reach custom roles or administrative-unit-scoped role assignments.
+Create **{{policy.target.displayName}}** in Report-only: it {{policy.fact}}.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-This policy requires administrators in the baseline's built-in directory roles to satisfy the tenant's custom authentication strength. That strength accepts Windows Hello for Business, passkeys and FIDO2 security keys, certificate-based multifactor authentication and Temporary Access Pass. Passkeys and security keys reduce phishing risk but do not make phishing impossible, and the accepted set is not exclusively phishing-resistant because it includes Temporary Access Pass. Microsoft's built-in Phishing-resistant MFA strength does not accept a Temporary Access Pass.
-
-Unlike the "MFA for Everyone" policy, which accepts any registered MFA method, this policy limits which methods count. Whether admins have an accepted method registered is shown on MFA Readiness, and the Prepare Your Team for MFA step helps them register one. The policy has no session controls, so it does not by itself require a new prompt at every sign-in.
-
-The correction changes only the settings IAMAI found different from the baseline: the role list and exclusions, grant, session controls or name.
-
-Keep the policy's current state. If it is On, the changed rule can affect access after you save. An admin newly included by the corrected role list will then need an accepted method to sign in.
+Correct **{{policy.current.displayName}}** so it {{policy.fact}}.
 
 This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 
-The administrator policy is in Report-only. Admins not ready: {{admins.notReady}}. Report-only evidence: {{evidence.reportOnly}}. An admin who cannot satisfy the strength needs an accepted method registered and tested; removing roles or weakening the grant would change the baseline. A Temporary Access Pass satisfies the strength but is temporary, so a sign-in with one does not show that the admin has a lasting accepted method.
+**{{policy.current.displayName}}** is in Report-only: it {{policy.fact}}.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 
-The administrator policy for {{tenant.displayName}} is ready to enforce. Before it is set On, the same policy ID should still be Report-only with the exact baseline built-in role list, the tenant's custom strength, no extra conditions and no session controls, and each affected admin should have a working accepted method. After enforcement, an admin sign-in with an accepted method and an emergency access sign-in still need to be verified.
+Turn **{{policy.current.displayName}}** on: it {{policy.fact}}.
+
+Its report-only period showed no sign-in it would have stopped.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}
