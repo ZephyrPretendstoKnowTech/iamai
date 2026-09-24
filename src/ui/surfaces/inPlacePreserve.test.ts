@@ -679,8 +679,9 @@ test('In place says so about the POLICY, and a threshold never shown met is said
   const shortReading = tileOf(readinessOf(short.step, stepContract(short.step, short.ctx)), FINISHED_READING)
   assert.ok(shortReading)
   // A fact under Satisfied (walk list 4.x item 2): the count, and nothing open.
+  // The people MFA Readiness counts (walk list 4.x L4), not every enabled account.
   assert.equal(shortReading.tone, 'good')
-  assert.equal(shortReading.value, '3,569 of 4,900 people have a method it accepts')
+  assert.equal(shortReading.value, '3,031 of 4,169 people have a method it accepts')
 
   // Never where the threshold is met, and never on a step that is not finished.
   for (const f of allFixtures()) {
