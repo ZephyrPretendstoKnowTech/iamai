@@ -4708,7 +4708,7 @@
       "kind": "policy",
       "title": "Require MFA for Everyone",
       "changeLine": null,
-      "why": "MFA makes a stolen password less useful. Reviewing who has a usable method—and who has actually used one—helps catch access problems before enforcement.",
+      "why": "A stolen password alone should never be enough to sign in. This policy asks everyone for MFA, the floor the admin and guest policies build on.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-mfa-strength"
       },
@@ -4806,7 +4806,7 @@
       "kind": "policy",
       "title": "Require Phishing-Resistant MFA for Admins",
       "changeLine": null,
-      "why": "Administrator access deserves stronger sign-in protection. Checking accepted methods and recent use helps identify admins who would struggle to meet the policy when it is enabled.",
+      "why": "Admin accounts can change everything in your tenant, so this policy makes everyone in an admin role sign in with a passkey, a security key, Windows Hello, a certificate or a Temporary Access Pass.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-admin-phish-resistant-mfa"
       },
