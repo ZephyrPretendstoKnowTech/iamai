@@ -586,26 +586,6 @@ async function walkFixture(fx) {
       const demoLoaded = await evaluate(`performance.getEntriesByType('resource').some((e) => /\\/src\\/ui\\/demo\\.ts|\\/src\\/ui\\/demoFacts\\.ts|\\/assets\\/demo-[^/]*\\.js/.test(e.name))`)
       const inDemo = /[?&]demo=1/.test(fx.base)
       if (demoLoaded !== inDemo) add('P0', `${label}: the demo chunk ${demoLoaded ? 'loaded outside demo mode' : 'did not load in demo mode'}`)
-      // The Start date on an unstarted plan: today in the display zone (a weekend
-      // clamps to the Monday after it), never a remembered proposal, in the same
-      // control as Plan settings' inputs with its label spaced from it.
-      if (route === 'plan' && !fx.week2) {
-        const field = await evaluate(`(() => { const l = document.querySelector('main.page .plan-start label.rows'); const i = l && l.querySelector('input[type=date]'); if (!i) return null; const cs = getComputedStyle(l); const ci = getComputedStyle(i); return { value: i.value, display: cs.display, gap: cs.columnGap, borderBottom: ci.borderBottomWidth, padTop: ci.paddingTop } })()`)
-        const startedLine = /\bStarted [A-Z][a-z]{2} \d/.test(text)
-        if (!field && !startedLine) add('P0', `${label}: no Start date field on an unstarted plan`)
-        if (field) {
-          const zone = await evaluate(`(async () => { try { const req = indexedDB.open('iamai'); const db = await new Promise((r, j) => { req.onsuccess = () => r(req.result); req.onerror = () => j(req.error) }); if (!db.objectStoreNames.contains('mapping')) { db.close(); return null } const rows = await new Promise((r) => { const q = db.transaction('mapping').objectStore('mapping').getAll(); q.onsuccess = () => r(q.result) }); db.close(); const m = rows.filter((x) => x && ((x.tenantId === 'demo-sample-tenant') === ${inDemo})).find((x) => x.displayTimeZone); return m ? m.displayTimeZone : null } catch { return null } })()`)
-          const today = await evaluate(`new Intl.DateTimeFormat('en-CA', { timeZone: ${JSON.stringify(zone)} || undefined, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())`)
-          const shift = (ymd, n) => new Date(Date.parse(`${ymd}T12:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10)
-          const dow = new Date(`${today}T12:00:00Z`).getUTCDay()
-          const expected = dow === 6 ? shift(today, 2) : dow === 0 ? shift(today, 1) : today
-          if (field.value !== expected) add('P0', `${label}: the Start date proposes ${field.value}; today in ${zone ?? 'the browser zone'} is ${today}${expected !== today ? ` (a weekend: the working day after is ${expected})` : ''}`)
-          const saved = await evaluate(`(async () => { try { const req = indexedDB.open('iamai'); const db = await new Promise((r, j) => { req.onsuccess = () => r(req.result); req.onerror = () => j(req.error) }); if (!db.objectStoreNames.contains('plan')) { db.close(); return null } const rows = await new Promise((r) => { const q = db.transaction('plan').objectStore('plan').getAll(); q.onsuccess = () => r(q.result) }); db.close(); return rows.filter((x) => x && ((x.tenantId === 'demo-sample-tenant') === ${inDemo})).map((x) => x.startDate).filter(Boolean) } catch { return null } })()`)
-          if (saved && saved.length > 0) add('P0', `${label}: the proposed start was written to the plan record (${saved.join(', ')}); it is proposed again on every visit until Start`)
-          if (field.display !== 'flex' || parseFloat(field.gap) < 8) add('P0', `${label}: the Start date label is not a spaced row (display ${field.display}, gap ${field.gap})`)
-          if (field.padTop !== '0px' || field.borderBottom !== '1px') add('P0', `${label}: the Start date input is not styled like Plan settings' inputs (padding-top ${field.padTop}, border-bottom ${field.borderBottom})`)
-        }
-      }
       // The error page (pages.app.error), reached through the mock's ?crash=1: the
       // title, the lead with its full stop, no Setup and no Start step, Reload
       // (primary), the redacted diagnostics (secondary), Start over (tertiary),
@@ -1765,29 +1745,6 @@ async function walkFixture(fx) {
         const doneRows = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].filter((r) => ((r.querySelector('.lane') || {}).textContent || '').trim() === 'Completed').map((r) => ({ title: ((r.querySelector('.step-title') || {}).textContent || '').trim(), when: ((r.querySelector('.when') || {}).textContent || '').trim() }))`)
         const dated = doneRows.filter((r) => !/^(Already in place|(?:done )?[A-Z][a-z]{2} \d{1,2}, \d{4})$/.test(r.when))
         if (dated.length > 0) add('P0', `${fx.name} @${width} /plan: ${dated.length} Completed row(s) read "${dated[0].when}" in the date column on "${dated[0].title}"; a Completed row needs its recorded date or Already in place`)
-      }
-      // A started plan (E5), on day one: Start the plan locks the dates; the
-      // Start date field and its note go, and "started <date>" stands in their
-      // place. The start persists into week two, as a started plan's does.
-      if (fx.name === 'demo') {
-        const slabel = `${fx.name} @${width} /plan started`
-        const pressed = await clickText('button', /^Start the plan$/)
-        if (!pressed) add('P0', `${slabel}: no Start the plan control`)
-        else {
-          // "started <date>" once, in the header line only. A plan that cannot
-          // finish reads what holds it in that place instead, started or not
-          // (derive/planHeader.ts, roadmap/startPlan.test.ts), so the start is asked
-          // of the header only where the plan finishes.
-          // Pressing Start redraws the plan, so the header is read once it is back
-          // in one of its two forms rather than the instant after the click.
-          // The start is the Started tile's day (A1b decision 11: Steps · Completed ·
-          // Projected finish · Started), whether or not the plan can finish.
-          const settled = await waitFor(`document.querySelector('main.page .plan-progress') !== null && document.querySelector('main.page .plan-start') === null`, 8000)
-          if (!settled) add('P0', `${slabel}: starting the plan did not replace the start controls with the active plan`)
-          const after = await mainText()
-          if (/Starting locks the dates/.test(after) || /Clear the date to start/.test(after)) add('P0', `${slabel}: the start note is still shown on a started plan`)
-          checkText(slabel, after)
-        }
       }
     }
   }

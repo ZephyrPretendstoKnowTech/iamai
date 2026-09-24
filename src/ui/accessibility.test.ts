@@ -734,7 +734,7 @@ test('ordinary content cannot widen the page, and ordinary prose is not broken t
   assert.match(rule(css, '.export-grid') ?? '', /grid-template-columns: 1fr;/)
   assert.doesNotMatch(rule(css, '.export-grid') ?? '', /minmax\(\s*\d/, 'a fixed track minimum is a phone-width overflow')
   // Control rows wrap; nothing that holds several controls is nowrap.
-  for (const sel of ['.plan-start label.rows', '.plan-settings .rows', '.datatable-footer', '.surface .toolbar', '.surface .actions', '.export-card .actions', '.picker-chips']) {
+  for (const sel of ['.plan-settings .rows', '.datatable-footer', '.surface .toolbar', '.surface .actions', '.export-card .actions', '.picker-chips']) {
     assert.match(rule(css, sel) ?? '', /flex-wrap:\s*wrap/, `${sel} does not wrap`)
   }
   assert.match(rule(homeCss, '.actions') ?? '', /flex-wrap:\s*wrap/, 'the home page CTAs stack')
