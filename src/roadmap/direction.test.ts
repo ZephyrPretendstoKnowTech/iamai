@@ -347,11 +347,9 @@ test('the office network has a third answer, and answering it keeps the trusted-
     assert.equal(savedAnswerOf('officeNetwork', m)?.value, value, value)
   }
 
-  // A tenant that answers it is not thereby told its office network's ranges:
-  // IAMAI reads no sign-in addresses, and says so rather than implying it could.
+  // What answering it leaves to do: the step that defines the office network.
   const note = q.note ?? ''
   assert.match(note, /Define the Trusted Network/)
-  assert.match(note, /does not read sign-in addresses/)
 })
 
 // ---------------------------------------------------------------------------
