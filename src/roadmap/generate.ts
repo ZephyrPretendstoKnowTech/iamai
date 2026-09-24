@@ -101,7 +101,8 @@ import { namedEmergencyExclusions } from './cleanup.ts'
 import { addsExclusionsOnly } from './changedFields.ts'
 import type { CleanupRecord } from './cleanupDone.ts'
 import { recoveryAccountBasis, recoveryCandidateReadings, recoveryPreparation, recoveryEvidenceSource } from './cleanupDone.ts'
-import { recoveryPasskeyCandidateSet } from './passkeyCompatibility.ts'
+import { passkeyTargetsReach, recoveryPasskeyCandidateSet } from './passkeyCompatibility.ts'
+import { exclusionsGroupPolicies, groupLookup } from '../validation/exclusionsGroupPolicies.ts'
 import { journeyPasskeyFindings, journeyAccountFindings, journeyGroupFindings, journeyRecoveryFindings } from './emergencyJourney.ts'
 import { isFloorGoal } from './floor.ts'
 import { devicePlanOf, devicePlanComplete, deviceScopeOf, openInputsOf, travelCountriesOf } from './answers.ts'
@@ -321,7 +322,7 @@ const EXTRAS = STEP_EXTRAS
 // importing the engine); re-exported here for the modules that import them from the engine.
 export { idFor, stepIdForGoal, EXCLUSION_GROUP_STEP_ID, BREAK_GLASS_STEP_ID, PREREQ_STEP_ID } from './stepIds.ts'
 import { idFor, BREAK_GLASS_STEP_ID, PREREQ_STEP_ID, SEPARATE_ADMIN_ACCOUNTS_STEP_ID } from './stepIds.ts'
-import { OPERATOR_PASSKEY_STEP_ID, PASSKEY_SETTINGS_STEP_ID, operatorPasskeyOf, passkeyReadingOf, passkeyReadinessFindingsOf } from './passkeySettings.ts'
+import { OPERATOR_PASSKEY_STEP_ID, PASSKEY_SETTINGS_STEP_ID, PASSKEY_TARGET, operatorPasskeyOf, passkeyReadingOf, passkeyReadinessFindingsOf } from './passkeySettings.ts'
 import { SYNC_WORKLOAD_GOAL_ID, WORKLOAD_IDENTITY_BLOCKER, syncIdentitySupportOf } from './workloadIdentity.ts'
 
 /**
@@ -1352,6 +1353,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const passkey = passkeyReadingOf(snapshot, mapping)
     s.configurationFindings = journeyPasskeyFindings(snapshot, mapping, input.groupMembers)
     s.readiness.lines = s.configurationFindings.map(f => `${f.label}: ${f.value}.`)
+    // Impact (rowWho.ts): the plan's active people the passkey policy lets
+    // register once this step is done, under the target it sets, or the
+    // tenant's own targets where it resolves none. Guests register in their
+    // home tenant. A target whose membership was not read counts nobody it names.
+    const registering = passkey.resolution?.kind === 'target' ? passkey.resolution.target : passkey.current ?? PASSKEY_TARGET
+    const registrant = (id: string): boolean => userById.get(id)?.userType !== 'guest' && passkeyTargetsReach(registering.includeTargets, id, input.groupMembers ?? new Map()) === true && passkeyTargetsReach(registering.excludeTargets ?? [], id, input.groupMembers ?? new Map()) === false
+    s.impactCount = campaignIds(viability, snapshot, mapping).filter(registrant).length
     if (passkey.state === 'inPlace') setState(s, { satisfied: true, inPlace: true })
     else if (passkey.state === 'unread') {
       s.blockers = [{ kind: 'evidence', label: 'passkey-settings-unread', binding: BLOCKED_REASON.methodsPolicyUnread, unverified: true }]
@@ -1574,6 +1582,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   if (bgStep && bgReport) bgStep.configurationFindings = journeyAccountFindings(bgReport, snapshot, mapping, input.groupMembers)
   if (geStep) {
     const savedExclusions = operatorExclusionsDecision(mapping)
+    // Impact (rowWho.ts): the policies the group must be excluded from, every
+    // one On or in Report-only (validation/exclusionsGroupPolicies.ts), chosen group or not.
+    if (snapshot.config.caPolicies?.status === 'ok') geStep.impactCount = exclusionsGroupPolicies({ policies: snapshot.config.caPolicies.rows, groupId: savedExclusions?.id ?? exclusions.actionableId ?? '', accountIds: mapping.breakGlassUserIds, activeRoles: snapshot.roles.active, membersOf: groupLookup(input.groupMembers) }).length
     geStep.configurationFindings = journeyGroupFindings(geReport, savedExclusions?.name ?? exclusions.actionableName ?? exclusions.suggested?.name ?? null, savedExclusions !== null, snapshot, savedExclusions?.id ?? exclusions.actionableId, input.groupMembers, mapping.breakGlassUserIds)
   }
   const validationSteps = blockerSteps(validationReports)

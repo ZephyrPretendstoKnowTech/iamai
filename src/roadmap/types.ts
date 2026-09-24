@@ -615,6 +615,14 @@ export type ConfigurationFindingItem = {
 
 export type Step = {
   impactLabel?: string
+  /**
+   * What the row's Impact counts where the step changes something other than
+   * who its policies reach (ui/surfaces/rowWho.ts): Configure Emergency
+   * Exclusions, the policies the exclusions group must be excluded from;
+   * Configure Passkey Authentication, the people the passkey policy lets
+   * register. Absent where the scan did not read what it counts.
+   */
+  impactCount?: number
   guidance?: import('../content/content.ts').ContentStep
   baselineReviewSource?: { name: string; json: string | null; reason: string }
   dormantChoices?: { id: string; name: string; outcome: 'keep' | 'disable' | 'investigate' | ''; reason: string; disabled: boolean }[]
