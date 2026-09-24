@@ -1199,7 +1199,10 @@ function actionOf(step: Step, reason: UnavailableReason | null, milestone: Contr
   // could not make: the lead scopes it to what was read and names the check that
   // was not. An open failing finding on such a step keeps the milestone words
   // for now; what it should lead with is an owner question.
-  const unverified = !step.emergency && open.length > 0 && open.every((f) => f.outcome === 'unknown')
+  // Not on Configure Emergency Exclusions or Configure Passkey Authentication:
+  // the owner deleted every line there saying IAMAI could not verify a check
+  // (2026-09-23), and their cards now carry none.
+  const unverified = !step.emergency && step.id !== 's-prereq-exclusion-group' && step.id !== 's-prereq-passkey-settings' && open.length > 0 && open.every((f) => f.outcome === 'unknown')
   if (unverified && (isPreserved(step) || step.state.satisfied)) return { kind: 'preserve', text: fillText(CONTRACT.leadUnverified, { findings: list(open.map((f) => f.label)) }) }
   if (isPreserved(step)) return { kind: 'preserve', text: app.plan.inPlaceKeep }
   if (step.state.satisfied) return { kind: 'preserve', text: milestone.label }

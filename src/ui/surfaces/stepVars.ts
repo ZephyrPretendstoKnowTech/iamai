@@ -399,8 +399,8 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // The exclusions group's four facts kept apart (Foundation C,
   // mapping/safetyChoice.ts): the group in use is the one the operator
   // confirmed *and* this scan read, so only that state fills {exclusionsGroup}
-  // and its counts. A choice this scan could not verify says so and keeps the
-  // operator's answer; one Graph proved gone says that instead; a candidate is
+  // and its counts. A choice this scan did not read keeps the operator's answer
+  // and has no line (owner, 2026-09-23); one Graph proved gone says so; a candidate is
   // named as a suggestion and nothing more; and the create instructions show
   // only where the detection was complete enough to say nothing qualifies.
   if (DECISION_STEPS.exclusions.has(step.id)) {
@@ -445,11 +445,9 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
         v.members = (g?.memberIds ?? []).map(ctx.nameOf)
       }
     }
-    // The operator's own answer, named back to them wherever it cannot be used.
-    // Two different sentences, because they are two different facts: "IAMAI
-    // could not check it" is not "it was deleted".
+    // The operator's own answer, named back to them where Graph proved it gone.
+    // A choice this scan did not read has no line (owner, 2026-09-23).
     const chosen = choice.storedId === null ? null : (choice.storedName ?? ctx.nameOf(choice.storedId))
-    if (choice.status === 'unverified' && chosen) v.unverifiedGroup = [chosen]
     if (choice.status === 'invalidated' && chosen) v.missingGroup = [chosen]
     // The group IAMAI found, named and not chosen (safetyChoice.ts `suggested`):
     // the recommendation, or the one verified candidate a partial reading found.

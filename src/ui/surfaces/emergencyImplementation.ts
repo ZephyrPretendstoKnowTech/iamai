@@ -73,7 +73,7 @@ export function emergencyImplementation(step: Step, ctx: StepVarContext, project
     // hedged about the passkeys nobody could judge (Jordan D13).
     const restriction = passkeyRestrictionReading(snapshot, mapping, ctx.groups)
     const configurationAction = !current || reading.state === 'unread'
-      ? 'The current passkey configuration was not fully read. Resolve the named read failure and scan again before changing restrictions; use the intended list only to prepare account choices.'
+      ? 'Resolve the named read failure and scan again before changing restrictions; use the intended list only to prepare account choices.'
       : restriction.lockedOut.length > 0
       ? `${profileMode ? 'In the applicable profiles named in Readiness, use device-bound passkeys and attestation as listed.' : 'In the existing legacy configuration, apply the listed attestation setting.'} ${strandedSentence(restriction, ctx, true)}`
       : profileMode
