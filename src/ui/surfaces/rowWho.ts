@@ -4,7 +4,7 @@
 // passkey"). Pure.
 import type { Step } from '../../roadmap/types.ts'
 import { app, structuralWords } from '../../content/content.ts'
-import { count } from '../../copy/statements.ts'
+import { count, figure, plural } from '../../copy/statements.ts'
 import { fillText } from '../../content/render.ts'
 import { IMPACT, cohortWords, guestsAmong, whoLine } from '../../derive/whoLine.ts'
 import { reached } from '../../derive/population.ts'
@@ -69,8 +69,8 @@ export function rowWho(step: Step): string {
   // the policies the group must be excluded from, and the people who can register.
   if (step.impactCount !== undefined && step.id === EXCLUSIONS_GROUP_STEP_ID) return count(step.impactCount, 'policy', 'policies')
   if (step.impactCount !== undefined && step.id === PASSKEY_SETTINGS_STEP_ID) return count(step.impactCount, 'person', 'people')
-  // A Direction step counts the plan steps its answers decide (walk list item 25; roadmap/direction.ts countDirectionImpact).
-  if (step.impactCount !== undefined && isDirectionStep(step.id)) return count(step.impactCount, 'step')
+  // A Direction step counts the plan steps its answers decide (walk list item 25; roadmap/direction.ts countDirectionImpact): "N steps", a number even at 0.
+  if (step.impactCount !== undefined && isDirectionStep(step.id)) return `${figure(step.impactCount)} ${plural(step.impactCount, 'step')}`
   const namedImpact = step.impactLabel ?? (structuralWords.impactLabels as Record<string, string>)[step.id]
   if (namedImpact) return namedImpact
   // Who the row names is who the step's own policies name (derive/population.ts

@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Existing passkeys affected",
-      "state": "Could not verify"
+      "state": "33 accounts to prepare"
     },
     {
       "label": "Passkey protections",

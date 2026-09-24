@@ -75,15 +75,13 @@
     "descriptionLine": "Description: {description} — paste this exactly; it is how IAMAI recognises the policy it planned when it next reads the tenant.",
     "changeUntouched": "Change only the settings listed above; leave every other setting on this policy as it is.",
     "passkeyRestrictions": {
-      "$comment": "Configure Passkey Authentication's key restrictions, read from roadmap/passkeyRestrictions.ts. The step opened on \"Set Enforce key restrictions to Yes… Add AAGUID… Save\" four lines below a hedge that the passkeys on eleven accounts could not be judged, naming none of them (Jordan D13); after the settings were applied the same hedge still said \"before applying restrictions\" (Marcus D8). An allow list stops every passkey it does not name: the accounts it would stop, or that IAMAI could not judge, are named, with what each keeps; and where one would keep nothing, the restrictions are not handed over at all.",
-      "stranded": "An allow list stops every passkey it does not name. The planned restrictions would stop the passkeys on {count}, or IAMAI could not judge them: {names}. Each keeps {kept}, so none is locked out, but tell them before you save: afterwards, one whose passkey stops working registers an approved one.",
-      "strandedAfter": "The passkey settings are applied. IAMAI could not judge the passkeys on {count}: {names}. Have each sign in once with their passkey to confirm it still works; each keeps {kept} if it does not.",
-      "strandedAfterLocked": "The passkey settings are applied. IAMAI could not judge the passkeys on {count}: {names}, and cannot confirm another way in for them (for an administrator, another phishing-resistant method). Have each sign in with their passkey now; where it no longer works, register an approved passkey for that account.",
-      "withheld": "Key restrictions stay off for now: they would lock out {count} — {names}. Every passkey those accounts hold is one the allow list would stop, or one IAMAI could not judge, and none has another way in that IAMAI can confirm (for an administrator, another phishing-resistant method). Register an approved passkey for each, then scan again: the restrictions are offered once nobody would be locked out.",
+      "$comment": "Configure Passkey Authentication's key restrictions, read from roadmap/passkeyRestrictions.ts. The step opened on \"Set Enforce key restrictions to Yes… Add AAGUID… Save\" four lines below a hedge that the passkeys on eleven accounts could not be judged, naming none of them (Jordan D13); after the settings were applied the same hedge still said \"before applying restrictions\" (Marcus D8). An allow list stops every passkey it does not name: the accounts it would stop are named, with what each keeps; and where one would keep nothing, the restrictions are not handed over at all. The clauses saying IAMAI could not judge a passkey, or could not confirm another way in, were deleted (owner, 2026-09-23).",
+      "stranded": "An allow list stops every passkey it does not name. The planned restrictions would stop the passkeys on {count}: {names}. Each keeps {kept}, so none is locked out, but tell them before you save: afterwards, one whose passkey stops working registers an approved one.",
+      "strandedAfter": "The passkey settings are applied. Have each of {count} sign in once with their passkey to confirm it still works: {names}. Each keeps {kept} if it does not.",
+      "strandedAfterLocked": "The passkey settings are applied. Have each of {count} sign in with their passkey now: {names}. Where it no longer works, register an approved passkey for that account.",
+      "withheld": "Key restrictions stay off for now: they would lock out {count} — {names}. Every passkey those accounts hold is one the allow list would stop, and none has another way in (for an administrator, another phishing-resistant method). Register an approved passkey for each, then scan again: the restrictions are offered once nobody would be locked out.",
       "withheldTask": "Key restrictions are not part of this change yet: {count} would be locked out by them. Prepare affected passkeys says who and what to do first.",
-      "keptMany": "another sign-in method ({methods})",
-      "$commentUnreadAlso": "Prepare affected passkeys, after the first line has named what it read (the accounts the planned settings would stop or could not judge: stranded, withheld, strandedAfter, strandedAfterLocked; the affected accounts; or the count it could not judge), where the scan did not read every account's registered methods (ui/surfaces/emergencyPasskeyTasks.ts). {unread} is the projection's own coverage sentence, the one the Existing passkeys affected tile shows under Could not verify (roadmap/passkeyCompatibility.ts REGISTERED_METHODS_UNREAD). The line read as complete there: on small with every other account's methods unread it said \"Each keeps Microsoft Authenticator, so none is locked out\" under a tile reading Could not verify, and said nothing of what it had not read.",
-      "unreadAlso": "{unread} The planned settings may stop passkeys on those accounts too."
+      "keptMany": "another sign-in method ({methods})"
     },
     "changeRemoves": "This change removes {removed} from the policy's exclusions. If the policy is On, it applies to them as soon as you save.",
     "changeRemovesGuests": "guest or external users",
@@ -493,9 +491,8 @@
       "notTargeted": "The account is not in a confirmed passkey target. Review targeting before registration.",
       "membershipUnread": "Group membership is incomplete; account eligibility is unknown.",
       "profileOrPartial": "Review the applicable passkey profile or unread policy fields before registering a key.",
-      "methodsUnread": "Registered methods were not read. Key compatibility is unknown.",
       "newKey": "No passkey was found. Confirm the intended hardware model, profile and attestation requirements before registration.",
-      "modelsUnread": "The key model or restriction list was not read. Verify the AAGUID in Entra before relying on it.",
+      "modelsUnread": "Verify the AAGUID in Entra before relying on it.",
       "modelRestricted": "No registered key was confirmed allowed by the model restriction. Preserve other working recovery methods while correcting this.",
       "eligible": "Targeting and the global model restriction allow at least one registered key. This does not prove recovery works; perform and record a controlled sign-in test."
     },
@@ -1814,6 +1811,8 @@
           "variantsLead": "Use the steps for the authenticator being registered:",
           "$commentNoAccountsChosen": "Accounts and identity before any emergency access account is saved (src/roadmap/emergencyJourney.ts journeyAccountFindings). It read Needs correction in AI Info while the cards said No account selected: nothing is chosen yet, so there is nothing to correct.",
           "noAccountsChosen": "No accounts chosen yet",
+          "$commentAccountsToPrepare": "Existing passkeys affected on Configure Passkey Authentication where the planned settings would leave accounts without a passkey they allow (src/roadmap/emergencyJourney.ts journeyPasskeyFindings, the projection’s stranded accounts): how many accounts Prepare affected passkeys is for. It read Could not verify on every tenant with such accounts (owner, 2026-09-23).",
+          "accountsToPrepare": "{count} to prepare",
           "$commentSignedInAccount": "The one line on an emergency access account card when that account is the one signed in to IAMAI (the scan's /me, by object id or sign-in name; emergencyAccountTasks.ts). A fact, not a check: it replaces the bg.notPersonal note on that card and gates nothing. Owner wording, 2026-09-23.",
           "signedInAccount": "You're signed in to IAMAI with this account. Emergency accounts should be ones nobody uses day to day.",
           "$commentChooseAccounts": "Prepare Emergency Access Accounts' milestone under Next milestone while no emergency access account is saved (stepBody.ts), in place of its package's \"Complete the remaining emergency access checks.\": the choice is the next thing to do. Owner wording, 2026-09-23.",
@@ -2974,7 +2973,6 @@
               "todayRegistered": "{n} people signed in from registered computers that aren't joined, in the last 30 days.",
               "$commentIntuneSeats": "The device question chooses between Managed, Hybrid joined and Left unmanaged, and Managed means joined AND enrolled - which needs an Intune licence per device. The question offered the baseline recommendation and nothing about the tenant, on a tenant holding 300 seats with 41 in use. A reader picking the suggested answer was committing to enrolment without being shown whether the licences for it existed.",
               "intuneSeats": "Intune: {consumed} of {seats} licences assigned. Each person who uses a managed computer needs one.",
-              "intuneAbsent": "No Intune licences were read in this tenant. Managed means joined and enrolled, and enrollment needs them.",
               "note": "Answering Unmanaged takes Require a Managed Device Outside the Office and Require a Fresh Sign-in for Intune Enrollment off your plan."
             },
             "phones": {
@@ -3507,13 +3505,11 @@
       "who": {
         "lead": "The group and its members:",
         "group": "{exclusionsGroup} · {memberCount} members · excluded from {excludedFrom} of {policyCount} policies",
-        "groupMembersUnread": "{list:exclusionsGroupNoMembers} · excluded from {excludedFrom} of {policyCount} policies. IAMAI could not read who is in it in this scan.",
+        "groupMembersUnread": "{list:exclusionsGroupNoMembers} · excluded from {excludedFrom} of {policyCount} policies",
         "members": "{list:members}",
-        "unverified": "IAMAI could not check {list:unverifiedGroup} in this scan, so no policy here names it yet. Your choice is kept and stands again the moment a scan can read the group.",
         "missing": "{list:missingGroup} is not in {tenant} any more. Your choice is kept: IAMAI has not chosen another group and has not created one.",
         "suggested": "Suggested: {list:suggestedGroup} · {suggestedMemberCount} members · excluded from {suggestedExcludedFrom} of {policyCount} policies. This is not saved intent; nothing uses it until you choose it.",
         "several": "More than one group in {tenant} could be this one: {list:candidateGroups}. IAMAI does not choose between them.",
-        "cannotTell": "IAMAI cannot say whether a group in {tenant} already does this: {list:detectionGap}. Nothing has been chosen and nothing has been created.",
         "none": "No exclusions group recognised in {tenant}."
       },
       "decision": {
@@ -3526,7 +3522,7 @@
       },
       "whatToDo": {
         "lead": "Fix each failing check. {failing} of {total} checks fail today.",
-        "createIfNeeded": "Create one if {tenant} does not already have an exclusions group. IAMAI reads the groups your policies name, not every group in the tenant, so it cannot tell you there is none.",
+        "createIfNeeded": "Create one if {tenant} does not already have an exclusions group.",
         "create": [
           "Entra admin center → Entra ID → Groups → New group → Security; membership Assigned, never Dynamic.",
           "Name it {proposedName}. {proposedNameNote}",

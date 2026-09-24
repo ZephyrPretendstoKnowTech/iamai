@@ -355,9 +355,9 @@ export type PickerObject = { id: string; name: string; secondary?: string; why?:
 /**
  * Why the detection picked each account a Direction account question offers,
  * for its chip, by account id: a service candidate's own detection signals, a
- * shared-device account's signal in words (shared.sharedDeviceSignals). The
- * same detections the questions suggest from (roadmap/direction.ts); any other
- * question has none.
+ * shared-device account's signal in words (shared.sharedDeviceSignals), a
+ * suggested mail sender's reason (walk list 33). The same detections the
+ * questions suggest from (roadmap/direction.ts); any other question has none.
  */
 export function accountBadges(questionKey: string, ctx: PickerContext): Map<string, string> {
   const { snapshot, mapping } = ctx
@@ -366,6 +366,7 @@ export function accountBadges(questionKey: string, ctx: PickerContext): Map<stri
     const words = shared.sharedDeviceSignals as Record<string, string>
     return new Map(sharedDeviceUsers(snapshot).map((u) => [u.id, sharedDeviceSignals(u, snapshot).map((s) => words[s] ?? s).join('; ')]))
   }
+  if (questionKey === 'mailDevices') return new Map((mailSenderIds(snapshot) ?? []).map((id) => [id, directionWords.questions.mailDevices.why]))
   return new Map()
 }
 

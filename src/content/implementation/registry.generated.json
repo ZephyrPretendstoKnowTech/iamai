@@ -20681,7 +20681,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nEmergency access work for {{tenant.displayName}} is blocked: {{dependencies.blockers}}. Account changes wait until these are resolved, for example an unsaved account selection, evidence IAMAI could not read, or an exclusions group that is not yet resolved.\n"
+          "text": "\nEmergency access work for {{tenant.displayName}} is blocked: {{dependencies.blockers}}. Account changes wait until these are resolved, for example an unsaved account selection or an exclusions group that is not yet resolved.\n"
         },
         "email.admins.drill": {
           "meta": {
@@ -21237,7 +21237,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nState: IAMAI cannot act on the exclusions group in {{tenant.displayName}} yet. Known blockers or decisions: {{dependencies.blockers}}. A group with a likely name, or one whose membership could not be read, is not a confirmed exclusions group. No group or policy change is offered until the group's object ID and the owner-confirmed emergency accounts are known.\n"
+          "text": "\nState: IAMAI cannot act on the exclusions group in {{tenant.displayName}} yet. Known blockers or decisions: {{dependencies.blockers}}. A group with a likely name is not a confirmed exclusions group. No group or policy change is offered until the group's object ID and the owner-confirmed emergency accounts are known.\n"
         },
         "email.admins.exclusion-change": {
           "meta": {
