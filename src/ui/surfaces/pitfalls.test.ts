@@ -16,6 +16,7 @@ import { prepareReadingOf, turnOnWithoutChoices } from './prepareSteps.ts'
 import { personLines, readinessNextOf } from './personNext.ts'
 import { unprovenIdsOf } from '../../derive/contentLists.ts'
 import { pitfallTilesOf } from './pitfalls.ts'
+import { rowWho } from './rowWho.ts'
 import type { StepVarContext } from './stepVars.ts'
 
 function campaign(f: Fixture) {
@@ -143,4 +144,12 @@ test('Turn On Without Them for Now offers everyone not ready except the operator
   assert.equal(offered.length, missing.length - 1, 'the operator is left out, whatever the case of the id')
   assert.ok(!offered.includes(operator))
   assert.deepEqual(turnOnWithoutChoices(step, null), missing, 'with no operator known, everyone not ready')
+})
+
+test("3.4's Who this touches is its Impact: the guest counted once", () => {
+  const { step, ctx } = campaign(curatedFixture('demo'))
+  assert.ok((step.preparation!.guestIds ?? []).length > 0, 'the premise: the demo cohort holds a guest')
+  const who = stepContract(step, ctx).who?.text
+  assert.equal(who, rowWho(step))
+  assert.match(who ?? '', /^\d+ people and 1 guest$/)
 })

@@ -930,7 +930,10 @@ function whoOf(step: Step): ContractWho | null {
   // A Turn On MFA for Everyone policy's reach is its row's Impact, a count
   // (walk list 4.x items 25 and 31): "30 people", never "30 active people · 3
   // admins · 1 guest · covers 36 enabled", in AI Info and every export.
-  if (isGroupMember(step.id, 'core') && (contentStepFor(step) as { kind?: unknown } | undefined)?.kind === 'policy') {
+  // Prepare Your Team for MFA's is its Impact too (net-new 17): "29 people and 1
+  // guest", never "30 active people · 3 admins · 1 guest", which counted the
+  // guest among the people and again beside them.
+  if (step.preparation || (isGroupMember(step.id, 'core') && (contentStepFor(step) as { kind?: unknown } | undefined)?.kind === 'policy')) {
     const impact = rowWho(step)
     if (/^[0-9]/.test(impact)) return { known: true, text: impact }
   }
