@@ -4,7 +4,7 @@
   "reason": null,
   "fact": null,
   "badge": "On Hold",
-  "bar": "Prerequisite on hold: Define the Trusted Network",
+  "bar": "After Define the Trusted Network",
   "rail": "Give Shared Devices Their Own Policy",
   "headings": [
     "About this Step",
@@ -20,8 +20,6 @@
   ],
   "channels": [
     "Entra",
-    "PowerShell",
-    "JSON",
     "AI Info",
     "Email"
   ],

@@ -74,25 +74,19 @@ const byId = (steps: readonly Step[], id: string): Step => {
 
 // ---- Completed: the warnings a finished step keeps ----
 
-test('a finished policy prints the warnings its opened step keeps: enforced below readiness, and ahead of a prerequisite', () => {
-  // Large: the admins policy is enforced while 12 of 60 admins hold a method it
-  // accepts, and ahead of Configure Passkey Authentication. The paper said only
-  // "Require Phishing-Resistant MFA for Admins · Completed".
+test('a finished policy prints the warnings its opened step keeps, and nothing its opened step moved under Satisfied', () => {
+  // Large: the admins policy is enforced while 9 of its 51 active admins hold a
+  // method it accepts (walk list 4.x L4: the gate counts the people MFA Readiness
+  // counts). That reading is a fact under Satisfied (walk list 4.x item 2), and a
+  // prerequisite it went ahead of is that prerequisite's own row (L3): neither
+  // is a warning on paper.
   const large = plan('large')
   const admins = byId(large.steps, 's-goal-admins-phishing-resistant')
   const lines = completedLinesOf(completedRows(large.steps, large.board.laneOf), large.printBoard, large.ctx)
   const line = lines.find((l) => l.id === admins.id)
   assert.ok(line, 'the premise: the admins policy is listed as Completed')
   const said = line.warnings.map((t) => `${t.label}: ${t.value}`)
-  assert.ok(said.some((w) => w.includes('12 of 60 admins')), `the readiness warning is not printed: ${said.join(' | ')}`)
-  assert.ok(said.some((w) => w.startsWith('Configure Passkey Authentication:')), `the prerequisite it went ahead of is not printed: ${said.join(' | ')}`)
-  // Hostile: Require MFA for Everyone is enforced where readiness cannot be measured.
-  const hostile = plan('hostile')
-  const mfa = completedLinesOf(completedRows(hostile.steps, hostile.board.laneOf), hostile.printBoard, hostile.ctx).find((l) => l.id === 's-goal-mfa-all-users')
-  assert.ok(mfa, 'the premise: Require MFA for Everyone is listed as Completed')
-  const hostileSaid = mfa.warnings.map((t) => `${t.label}: ${t.value}`)
-  assert.ok(hostileSaid.some((w) => w.includes('Not measured')), `the unmeasured readiness is not printed: ${hostileSaid.join(' | ')}`)
-  assert.ok(hostileSaid.some((w) => w.startsWith('Verify Emergency Access:')), `the recovery test it went ahead of is not printed: ${hostileSaid.join(' | ')}`)
+  assert.ok(!said.some((w) => /\d+ of \d+ admins/.test(w) || w.startsWith('Configure Passkey Authentication:')), said.join(' | '))
   // A finished step with nothing to warn about prints its line alone.
   for (const l of lines) for (const t of l.warnings) assert.equal(t.tone, 'warn', `${l.id}: a tile that is not a warning printed under a finished step`)
   // The document draws these lines, and nothing of its own beside them: a
@@ -178,13 +172,13 @@ test('no at-pace finish is stated from a rollout that placed none of the held wo
 
 test('Completed on paper is the board\'s Completed lane, and a delivered step the board still has work for prints in full', () => {
   // Midflight: Block Legacy Authentication is enforced (status done) but its
-  // mail-sending-devices input was never saved, so the board reads it
-  // "Ready · Decision". The print filed it under Completed and printed its body,
-  // where the open question is stated, nowhere.
+  // mail-sending answer in Confirm What You Use was never saved, so the board
+  // holds it On Hold on that answer (walk list 4.x item 6). The print filed it
+  // under Completed and printed its body, where the open question is stated, nowhere.
   const p = plan('midflight')
   const legacy = byId(p.steps, 's-goal-block-legacy-auth')
   assert.equal(legacy.status, 'done', 'the premise: the policy is delivered')
-  assert.equal(p.board.laneOf(legacy.id).label, 'Ready · Decision', 'the premise: the board still has a decision for it')
+  assert.equal(p.board.laneOf(legacy.id).lane, 'On Hold', 'the premise: the board still holds it on its answer')
   assert.equal(completedRows(p.steps, p.board.laneOf).some((s) => s.id === legacy.id), false, 'a step the board reads Ready is listed as Completed')
   // It prints in full, in its own section, under the lane the board reads (printPlan.ts printSectionsOf).
   const row = printSectionsOf(p.board).flatMap((s) => s.rows).find((r) => r.id === legacy.id)
@@ -626,13 +620,13 @@ test('every printed row carries the number its board row shows, and every board 
 
 test('a finished row prints as its line, and work still to do prints in full, in its section', () => {
   // Midflight: Block Legacy Authentication is enforced (status done) but its
-  // mail-sending-devices input was never saved, so the board reads it
-  // "Ready · Decision": it prints in full, where the open question is stated.
+  // mail-sending answer was never saved, so the board holds it On Hold on that
+  // answer (walk list 4.x item 6): it prints in full, where the wait is stated.
   const p = plan('midflight')
   const rows = printSectionsOf(p.board).flatMap((s) => s.rows)
   const legacy = rows.find((r) => r.id === 's-goal-block-legacy-auth')
   assert.ok(legacy && legacy.step?.status === 'done', 'the premise: the policy is delivered')
-  assert.equal(legacy.lane.label, 'Ready · Decision', 'the premise: the board still has a decision for it')
+  assert.equal(legacy.lane.lane, 'On Hold', 'the premise: the board still holds it on its answer')
   assert.equal(legacy.print, 'body', 'a delivered step the board still has work for prints as a line')
   for (const r of rows) assert.equal(r.print, r.cleanup === null && (r.lane.lane === 'Completed' || r.lane.lane === 'Deferred') ? 'line' : 'body', `${r.id}: ${r.lane.label} prints as ${r.print}`)
   // A deferred step prints once, as its line, never in full with a date and live instructions.

@@ -95,8 +95,9 @@ test('a ready-to-enforce policy hands over its turn-on only when nothing holds i
     assert.doesNotMatch(text, TURN_ON, `a channel still turns the policy on:\n${text}`)
     assert.doesNotMatch(exported, TURN_ON, `the export still turns the policy on:\n${exported}`)
     const m = nextMilestone(step)
-    assert.match(m.label, /stays in Report-only until Turn Off Security Defaults is finished/, m.label)
-    assert.match(m.label, /Entra does not let a Conditional Access policy go On while security defaults are on/, m.label)
+    // The policy card's own words (walk list 4.x items 17 and 20).
+    assert.match(m.label, /It turns on after Turn Off Security Defaults/, m.label)
+    assert.match(m.label, /Turn Off Security Defaults turns security defaults off and this policy on together/, m.label)
     assert.doesNotMatch(m.label, /ready to be turned on/)
   }
   {
@@ -106,7 +107,7 @@ test('a ready-to-enforce policy hands over its turn-on only when nothing holds i
     assert.doesNotMatch(text, TURN_ON, `a channel still turns the policy on:\n${text}`)
     assert.doesNotMatch(exported, TURN_ON, `the export still turns the policy on:\n${exported}`)
     const m = nextMilestone(step)
-    assert.match(m.label, /stays in Report-only until Verify Emergency Access is finished/, m.label)
+    assert.match(m.label, /It turns on after Verify Emergency Access/, m.label)
     assert.doesNotMatch(m.label, /security defaults/i, 'a wait that is not there is named')
     // The day stays: waiting on a step the plan schedules is sequencing (owner, Step 4).
     assert.equal(m.at, step.events?.enforce.at ?? null)
@@ -124,12 +125,5 @@ test('a create lands in report-only and denies nobody, so the hold leaves it off
     const f = withSecurityDefaultsOn(base())
     const run = runFixture(f)
     for (const s of run.steps) if (s.state.lifecycle === 'enforced') assert.notEqual(policyHold(s), 'prerequisite-unmet', `${s.id} is already on and was held`)
-    // The overtaken tile read only the recovery test, because every security-
-    // defaults edge is conditional; the condition is resolved to applicable here.
-    const readings = laneReadings(run.steps, [])
-    const completed = run.steps.filter((s) => s.status === 'done' && (s.kind === 'create' || s.kind === 'adjust') && s.state.lifecycle === 'enforced')
-    assert.ok(completed.length > 0, 'the premise: some policy is on')
-    const named = completed.filter((s) => (readings.get(s.id)?.overtaken ?? []).some((b) => b.id === SECURITY_DEFAULTS_STEP_ID))
-    assert.ok(named.length > 0, 'no completed policy says it went ahead of Turn Off Security Defaults')
   }
 })

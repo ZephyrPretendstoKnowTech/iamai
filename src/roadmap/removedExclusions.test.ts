@@ -3,7 +3,8 @@ import { readyEvidence } from './fixtures/readyEvidence.ts'
 // whole, so a tenant exclusion the baseline does not carry is gone once it is saved.
 // The request is the baseline's; what was missing was saying so. The export named only
 // the new target ("Users → Include: All users …"). Each removed exclusion is now named
-// beside the change, with what saving does to a policy that is On.
+// in the correction itself, as a value to remove (roadmap/policyProcedure.ts
+// correctionSettings, walk list item 15).
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { curatedFixture } from './fixtures/index.ts'
@@ -18,7 +19,7 @@ const MFA = { operator: 'OR', builtInControls: ['mfa'] }
 const EXO = '00000002-0000-0ff1-ce00-000000000000'
 const INTUNE_ENROLLMENT = 'd4ebce55-015a-49b5-a083-c84d1797ae8c'
 const GUESTS = { guestOrExternalUserTypes: 'b2bCollaborationGuest', externalTenants: { membershipKind: 'all' } }
-const REMOVES = /^This change removes (.+) from the policy's exclusions\. If the policy is On, it applies to them as soon as you save\.$/
+const REMOVES = /^\d+\. Under (?:Users|Target resources) → Exclude, (?:add .+ and )?remove (.+)\.$/
 const UNTOUCHED = 'Change only the settings listed above; leave every other setting on this policy as it is.'
 
 type Groups = { staffGroup: string; excl: string }
@@ -52,8 +53,8 @@ test('a correction that drops the tenant’s guest or external user exclusion, o
   assert.deepEqual(op.removes, { guestsOrExternalUsers: true, ids: [] })
   const at = lines.findIndex((l) => REMOVES.test(l))
   assert.ok(at >= 0, lines.join('\n'))
-  assert.equal(REMOVES.exec(lines[at])![1], 'guest or external users')
-  assert.ok(at < lines.findIndex((line) => /Go to|Open.*policy/i.test(line)), 'named above "Change only the settings listed above"')
+  assert.match(REMOVES.exec(lines[at])![1], /^Guest or external users\b/)
+  assert.ok(at > lines.findIndex((line) => /Open.*Policy B/.test(line)), 'named in the correction of the policy it changes')
 
   // A correction that replaces the tenant's excluded application names the application it removes.
   {

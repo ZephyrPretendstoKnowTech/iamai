@@ -4,8 +4,8 @@
   "reason": "until a scan rebuilds this step",
   "fact": "Enforced",
   "badge": "On Hold",
-  "bar": "Not supported",
-  "rail": "Require MFA for Guests",
+  "bar": "Waiting on your answers",
+  "rail": "Core - Grant - MFA for all users found.",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -14,12 +14,12 @@
   ],
   "tiles": [
     {
-      "label": "Partner or MSP access",
-      "state": "Confirm whether partners access your tenant"
-    },
-    {
       "label": "Configure Passkey Authentication",
       "state": "Prerequisite · To do"
+    },
+    {
+      "label": "Confirm What You Use",
+      "state": "Waiting on your answers"
     },
     {
       "label": "Not supported",
@@ -28,8 +28,6 @@
   ],
   "channels": [
     "Entra",
-    "PowerShell",
-    "JSON",
     "AI Info",
     "Email"
   ],

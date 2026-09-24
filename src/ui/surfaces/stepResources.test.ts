@@ -8,7 +8,7 @@ import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { manualEvidenceLines, stepExportView } from './stepExport.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { planDates } from './stepVars.ts'
-import { emailResource, inspectionResource, lifecycleResources, namedPortalResource } from './stepResources.ts'
+import { emailResource, lifecycleResources, namedPortalResource } from './stepResources.ts'
 import { QUESTION_STEP, answerKey, questionLabels } from '../../roadmap/answers.ts'
 import { BASELINE_COMMIT, memberBindings, packageForEntry } from './stepPackage.ts'
 import { memberKeyOf } from '../../roadmap/observation.ts'
@@ -52,14 +52,15 @@ test('guest vendor email is substantive and does not disclose the whole guest di
   assert.doesNotMatch(text, /Guest accounts in this tenant:/)
 })
 
-test('fallback JSON is labelled actual read-only inspection, never a guessed mutation', () => {
-  const { r } = opened('demo')
-  const step = r.steps.find(s => s.id === 's-prereq-break-glass')!
-  const resource = inspectionResource(step, 'json')
-  assert.match(resource.note!, /read-only GET requests/)
-  const data = JSON.parse(resource.text())
-  assert.ok(data.requests.length > 0)
-  assert.ok(data.requests.every((r: { method: string }) => r.method === 'GET'))
+test('PowerShell and JSON only where they write: no read-only script or GET batch stands in (walk list 4.x item 29)', () => {
+  for (const name of ['demo', 'demo-week2', 'mid'] as const) {
+    for (const [id, body] of opened(name).bodies) {
+      for (const a of body.artifacts) {
+        if (a.id === 'ps') assert.doesNotMatch(a.text(), /inspect the current configuration|-Mode '(?:Observe|Verify)'/, `${name} ${id}`)
+        if (a.id === 'json') assert.doesNotMatch(a.note ?? '', /read-only GET requests/, `${name} ${id}`)
+      }
+    }
+  }
 })
 
 test('MFA preparation retains useful campaign guidance and audience emails without an invented campaign target', () => {
@@ -155,38 +156,9 @@ test('removed workflow forms do not leave recording instructions in copied guida
   }
 })
 
-// A step whose target the engine resolves to no operation — already enforced, or
-// unresolvable — still drew the portal channel, and its instruction sent the
-// operator to compare the tenant's policies "with the configuration listed on this
-// step". Such a step lists no configuration: its JSON is a read-only GET and its
-// Implementation section says nothing is generated. The instruction pointed at
-// nothing, and the five administrators put the step down rather than guess.
-test('a read-only policy instruction names the matched policy and the criteria it is checked against, never an absent listing', () => {
-  for (const name of ['demo-week2', 'mid'] as const) {
-    const { r, bodies } = opened(name)
-    let checked = 0
-    for (const [id, body] of bodies) {
-      const portal = body.artifacts.find(a => a.id === 'portal')
-      if (!portal) continue
-      const text = portal.text()
-      assert.doesNotMatch(text, /configuration listed on this step/, id)
-      const step = r.steps.find(x => x.id === id)!
-      const matched = (step.tracking?.members ?? []).filter(m => m.policyName)
-      if (!/the policy IAMAI matched to this step/.test(text)) continue
-      checked++
-      assert.ok(matched.length > 0, id)
-      for (const m of matched) {
-        assert.ok(text.includes(m.policyName!), `${id}: ${m.policyName} is not named`)
-        assert.ok(m.policyId === null || text.includes(m.policyId), `${id}: ${m.policyId} is not named`)
-      }
-      assert.match(text, /Completion Criteria on this step/, id)
-    }
-    assert.ok(checked > 0, `${name}: no step reached the read-only instruction`)
-  }
-})
-
-// The other half: a step with nothing matched cannot name a policy, so it asks for
-// a review of the policies that affect it and points nowhere.
+// A step the plan can state no policy for cannot name one, so it asks for a
+// review of the policies that affect it and points nowhere. (A step it can state
+// one for draws its procedures in every state: policyTasks.ts policyProcedureOf.)
 test('a read-only policy instruction with nothing matched asks for a review and claims no listing', () => {
   const { r, bodies } = opened('demo')
   const step = r.steps.find(x => x.id === 's-goal-admin-portals-protected')!
@@ -196,51 +168,11 @@ test('a read-only policy instruction with nothing matched asks for a review and 
   assert.doesNotMatch(text, /listed on this step|matched to this step/)
 })
 
-// R4-29 (Marcus D10), third part. With "None" saved for "Does anyone use device
-// code sign-in for CLI tools, IoT devices, or display-limited devices?", the
-// step's workflow check still opened on "Identify the legitimate tools or devices
-// using device code. Move each required workflow…" as if nothing had been
-// answered: the saved answer reached the lane's condition (planLanes.ts) and
-// nothing the person reads. The check says what they recorded now.
-//
-// The check itself stays, on every answer. The decision's own effect line asks
-// for None once each workflow has been moved off device code, so None is also
-// the answer saved when there ARE moved workflows to test; and a quiet
-// device-code report can miss infrequent use. Dropping the check on None would
-// take away the one test of the answer before the block stops what it missed.
-test('a saved None on the device code decision is stated in the workflow check, which still checks it', () => {
-  const DC = QUESTION_STEP.deviceCode
-  const key = answerKey(DC, questionLabels(DC).decision!)
-  const LEAD = 'You recorded that nothing uses device code sign-in.'
-  for (const [option, stated] of [[null, false], ['None', true], ['Yes', false]] as const) {
-    const { r, ctx, bodies } = opened('mid', option === null ? {} : { [key]: option })
-    const portal = bodies.get(DC)?.artifacts.find(a => a.id === 'portal')?.text() ?? ''
-    const exported = stepExportView(r.steps.find(s => s.id === DC)!, ctx).whatToDo.join('\n')
-    for (const [where, text] of [['portal', portal], ['export', exported]] as const) {
-      assert.equal(text.includes(LEAD), stated, `${option ?? 'unsaved'} / ${where}: ${text}`)
-      assert.match(text, /Move each required workflow to an alternative supported by that tool/, `${option ?? 'unsaved'} / ${where}: the check itself is gone`)
-    }
-  }
-})
-
-// The heading over those checks was an English literal in stepResources.ts,
-// written on the line d081ad8a rewrote, directly above the content-keyed lead.
-// It reads the step's headings now, the one place a section title is written.
+// Block Device Code Sign-in has no workflow check (walk list 4.x item 3): the
+// scan completes it. The heading those checks carried stays the headings' own
+// line wherever a check is drawn, never an English literal in the code.
 test('the workflow checks are headed by the headings\' own line, never a literal in the code', () => {
-  const { bodies } = opened('mid')
-  const portal = bodies.get(QUESTION_STEP.deviceCode)?.artifacts.find(a => a.id === 'portal')?.text() ?? ''
-  assert.ok(portal.split('\n').includes(HEAD.verifyWorkflow), portal)
   assert.doesNotMatch(readFileSync('src/ui/surfaces/stepResources.ts', 'utf8'), /['"`]Verify the workflow:/)
-})
-
-// R4-29c, integration decision (2026-09-22): with None saved, every check stays —
-// None is also saved once each workflow has moved off device code, so dropping
-// them would remove the one test of the answer — and the record check applies to
-// each workflow that moved, so a tenant with none to move can satisfy it.
-test('the device code record check applies to each workflow moved, so None can satisfy it', () => {
-  const words = JSON.stringify((stepById['block-device-code'] as unknown as { whatToDo: { verification: string[] } }).whatToDo.verification)
-  assert.match(words, /For each workflow moved off device code, record the account/)
-  assert.doesNotMatch(words, /"Record the account/)
 })
 
 // Nadia D2, the second path. A lifecycle resource fills a format the step's own
@@ -301,7 +233,7 @@ test('with one of a pair resolved, the screen hands over the same create the exp
     action: { ...step.action, resolution: { ...step.action.resolution!, policies: members.filter((m) => roles.includes(m.role)).map((m) => ({ ...create, memberKey: memberKeyOf(m.memberStableId, 0), body: { ...(create.body as Record<string, unknown>), displayName: `Sample ${m.role}` } })) } },
   }) as Step
   const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
-  const plain = (line: string): string => line.replace(/^\d+\.\s+/, '')
+  const plain = (line: string): string => line.replace(/^\d+\.\s+/, '').replace(/\*\*/g, '')
   for (const role of ['strong', 'mixed']) {
     const s = resolving([role])
     const b = stepBodyOf(s, ctx)
@@ -310,10 +242,15 @@ test('with one of a pair resolved, the screen hands over the same create the exp
     assert.ok(task, `${role}: the step draws its create task`)
     // The export opens with the step's action; every line after it is the task's.
     assert.equal(view.whatToDo[0], b.contract.whatToDo.text)
-    assert.deepEqual(task.steps.map(plain), view.whatToDo.slice(1).map(plain), `${role}: the screen and the export hand over one procedure`)
+    // The workflow checks follow the procedure in the export, as their own task does on screen.
+    const checks = view.whatToDo.indexOf(HEAD.verifyWorkflow)
+    assert.deepEqual(task.steps.map(plain), view.whatToDo.slice(1, checks < 0 ? undefined : checks).map(plain), `${role}: the screen and the export hand over one procedure`)
     const portal = b.artifacts.find((a) => a.id === 'portal')!.text()
-    assert.match(portal, new RegExp(`Name: Sample ${role}`), `${role}: the create names the policy IAMAI holds`)
-    assert.match(portal, /\[IAMAI:plan-/, `${role}: with the plan tag IAMAI recognises it by`)
+    assert.match(portal, new RegExp(`Name: \\*\\*Sample ${role}\\*\\*`), `${role}: the create names the policy IAMAI holds`)
+    // The Entra form has no Description field, so the portal carries no plan tag:
+    // IAMAI recognises a policy made there by the name the plan gives it
+    // (roadmap/policyProcedure.ts createLines).
+    assert.doesNotMatch(portal, /\[IAMAI:plan-|Description:/, `${role}: a Description line the Entra form has no field for`)
     assert.doesNotMatch(portal, /Review the two guest policies separately/, `${role}: not the preparation lines in its place`)
   }
 })
@@ -356,7 +293,8 @@ test('every email IAMAI hands over is signed with the plan signature and carries
       signedOff(text, `${name}/template ${id}`)
     }
   }
-  assert.ok(seen >= 20, `the premise: the fixtures hand over emails (${seen})`)
+  // Block Legacy Authentication and Require MFA for Everyone hand over none (walk list 4.x item 29).
+  assert.ok(seen >= 15, `the premise: the fixtures hand over emails (${seen})`)
   // The guests email names who to contact, not a bracket.
   const f = fixture('mid')
   const r = runFixture(f, {}, null, f.snapshot.asOf)

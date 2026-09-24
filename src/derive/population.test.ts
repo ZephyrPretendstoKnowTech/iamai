@@ -288,7 +288,7 @@ function deliveredWithGroup(policyName: string, stepId: string, sampled: boolean
 // (Foundation A): the card says the reach is not established and why, the way
 // an open policy's does, and nothing on the step counts people it did not
 // measure.
-test('a delivered step whose delivering policy\'s scope cannot be settled says its reach is not established, and counts nobody', () => {
+test('a delivered step whose delivering policy\'s scope cannot be settled counts nobody on its cards, and its row still counts (walk list 4.x item 25)', () => {
   const scan = (sampled: boolean) => deliveredWithGroup('Core - Grant - MFA for all users', 's-goal-mfa-all-users', sampled)
 
   const unread = scan(true)
@@ -296,7 +296,8 @@ test('a delivered step whose delivering policy\'s scope cannot be settled says i
   assert.equal(unread.step.state.satisfied, true, 'the premise: delivered')
   for (const t of unread.tiles) assert.doesNotMatch(`${t.value} ${t.note ?? ''}`, /\d+ active (?:people|person)|covers \d+ enabled/, `${t.label} counts people beside a reach that is not established`)
   assert.equal(unread.found.some((x) => x.key === 'shortfall'), false, 'no "Who it misses" count from a scope nobody settled')
-  assert.doesNotMatch(unread.row, /\d/, `the row's Impact counts people (${unread.row})`)
+  // Impact is a count, never a label (owner, 2026-09-24): the row counts the goal's people there.
+  assert.match(unread.row, /^[\d,]+ people$/, `the row's Impact reads ${unread.row}`)
   assert.equal(unread.exported, null, 'the export writes no count either')
 
   // The scan that reads the group reads the policy's own reach, and only then.
@@ -306,7 +307,8 @@ test('a delivered step whose delivering policy\'s scope cannot be settled says i
   // Not established is not a task (stepContract.ts isReadinessWork): the bar
   // reads what it reads with the group read. It read "Complete the next task
   // shown for each item." over a card nobody can complete.
-  assert.equal(read.bar, 'Every task on this step is complete, and it left something behind.', 'the premise: the bar with the group read')
+  // The finished reading is a fact under Satisfied (walk list 4.x item 2), so nothing is left open.
+  assert.equal(read.bar, 'Every task on this step is complete.', 'the premise: the bar with the group read')
   assert.equal(unread.bar, read.bar, 'the step is handed a task because its reach is not established')
 })
 
@@ -460,7 +462,8 @@ test('the readiness and "Who it misses" lines carry separators', () => {
   const raw = /(?<![\w@.,])\d{4,}(?= )/
   const mfa = r.steps.find((s) => s.id === 's-goal-mfa-all-users')
   assert.ok(mfa, 'the premise: large plans the MFA policy')
-  assert.ok(mfa.readiness.lines.some((l) => /^3,569 of 4,900 people this step's policies include/.test(l)), JSON.stringify(mfa.readiness.lines))
+  // The active people its policy includes (walk list 4.x L4), in the count line's own words (item 48).
+  assert.ok(mfa.readiness.lines.some((l) => /^3,031 of 4,169 people have a method it accepts\./.test(l)), JSON.stringify(mfa.readiness.lines))
   for (const s of r.steps) {
     for (const l of s.readiness.lines) assert.doesNotMatch(l, raw, `${s.id}: ${l}`)
     for (const x of stepContract(s, ctx).found) assert.doesNotMatch(x.text, raw, `${s.id}: ${x.text}`)

@@ -6,6 +6,7 @@ import { countDirectionImpact, directionSteps } from './direction.ts'
 import dependencyData from '../actionability/dependency-data.json' with { type: 'json' }
 import { answeredReasonOf, officeLocationsCreated, trustedIpLocations } from './directionAnswers.ts'
 import { applyManualReviews, perUserMfaReading } from './manualWork.ts'
+import { LEGACY_AUTH_STEP_ID, MAIL_ACCOUNTS_WAIT, mailAccountsToMove, settleBlockSignIns } from './blockSignIns.ts'
 // Step generation (roadmap.md §1–§6; 2026-08-27 redesign: collapsed phase 0,
 // per-tenant impact, safe-today lane, handle-with-care gating, comms drafts,
 // operator self-safety, Learn links, auto-scheduling). Pure.
@@ -16,7 +17,7 @@ import type { BaselinePackage } from '../baseline/types.ts'
 import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
 import { PLACEHOLDER_STEP, implementable, matchedStrengthIds, resolveTenantPolicy, tenantObjectsOf, unmatchedStrengths } from './resolvePolicy.ts'
-import { accountApplicability, effectOf, emergencyExposureOf, enforcementHeld, isOpenPolicy, isValidOperation, operationsOf, stepEffects, strengthLookupOf, submitsEnforcement, tenantStrengthsOf, validOperations, unavailableReason } from './operations.ts'
+import { applies, effectOf, emergencyExposureOf, enforcementHeld, isOpenPolicy, isValidOperation, operationsOf, stepEffects, strengthLookupOf, submitsEnforcement, tenantStrengthsOf, validOperations, unavailableReason } from './operations.ts'
 import type { PolicyEffect } from './operations.ts'
 import type { GrantFloor } from '../coverage/types.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
@@ -49,7 +50,6 @@ import { PINNED_GOAL_MAP, goalInMap, pinnedSource, policiesForGoal, policyKey } 
 import { COVERAGE_JUDGED, memberKeyOf, sameDimension, unwrittenDifferences } from './observation.ts'
 import type { GoalMap } from './goalMap.ts'
 import type { StrengthLookup } from '../coverage/strength.ts'
-import { satisfiesFloor } from '../coverage/strength.ts'
 import type { CoverageReport, Goal, GoalResult } from '../coverage/types.ts'
 import { ownCandidate } from '../coverage/coverage.ts'
 import { resolvePopulation } from '../coverage/population.ts'
@@ -74,7 +74,7 @@ import { countryName as countryLabel } from '../mapping/countries.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
-import { adminUserIds, learnRoleNames, roleLabel, roleListSummary } from '../roles.ts'
+import { learnRoleNames, roleLabel, roleListSummary, adminUserIdsWithEligible } from '../roles.ts'
 import { policyPairNames, proposedPolicyName } from '../coverage/naming.ts'
 import { rolloutBucket } from '../scoring/mfaViability.ts'
 import { isReady } from '../scoring/phishingResistant.ts'
@@ -108,7 +108,7 @@ import { passkeyTargetsReach, recoveryPasskeyCandidateSet } from './passkeyCompa
 import { exclusionsReach } from '../validation/exclusionsGroupPolicies.ts'
 import { journeyPasskeyFindings, journeyAccountFindings, journeyGroupFindings, journeyRecoveryFindings } from './emergencyJourney.ts'
 import { isFloorGoal } from './floor.ts'
-import { devicePlanOf, devicePlanComplete, deviceScopeOf, openInputsOf, travelCountriesOf } from './answers.ts'
+import { devicePlanOf, devicePlanComplete, deviceScopeOf, mailDevicesOf, openInputsOf, travelCountriesOf } from './answers.ts'
 import { DEVICE_GOALS, applyDeviations, deviceStepDoesntApply } from './deviations.ts'
 
 /** The baseline's block of the service accounts outside the trusted network (E9): step 6 gains it as Restrict Service Accounts to the Trusted Network. */
@@ -233,6 +233,9 @@ import { ladderSteps } from './ladder.ts'
  * came for. The ladder itself is untouched and this is the only switch.
  */
 const FREE_TIER_LADDER = false
+
+/** The emergency-access check that every enforcing policy leaves the accounts out: Configure Emergency Exclusions' work. */
+const EXCLUDED_FROM_POLICIES = 'bg.excludedFromAllPolicies'
 import { EMERGENCY_ACCESS_STEP_IDS, attachConfigurationFindings, blockerStepId, canonicalBlockerStepId, blockerSteps, gateFor, gateReason } from './blockerSteps.ts'
 import { stepChecks } from '../validation/checkFixes.ts'
 import { buildContext, breakGlassReport, exclusionGroupPolicySafety, reportFor } from '../validation/report.ts'
@@ -311,6 +314,14 @@ export type RoadmapInput = {
    * them on, and Doesn't apply where it never did (V1 decision 6).
    */
   securityDefaultsSeenOnAt?: string | null
+  /**
+   * When a scan of this plan first read an account with legacy per-user MFA on
+   * (PlanDecisions.perUserMfaSeenOnAt, progress.ts perUserMfaSeenOnAtOf); null or
+   * absent where no scan has. Finish Moving Off Per-User MFA stays on the plan
+   * from then on, and reads Completed once every account reads Disabled (walk
+   * list 4.x item 9).
+   */
+  perUserMfaSeenOnAt?: string | null
 }
 
 export type RoadmapResult = {
@@ -325,7 +336,7 @@ const EXTRAS = STEP_EXTRAS
 // The step ids live in stepIds.ts (the answer readers name them without
 // importing the engine); re-exported here for the modules that import them from the engine.
 export { idFor, stepIdForGoal, EXCLUSION_GROUP_STEP_ID, BREAK_GLASS_STEP_ID, PREREQ_STEP_ID } from './stepIds.ts'
-import { idFor, BREAK_GLASS_STEP_ID, PREREQ_STEP_ID, SEPARATE_ADMIN_ACCOUNTS_STEP_ID } from './stepIds.ts'
+import { idFor, BREAK_GLASS_STEP_ID, EXCLUSION_GROUP_STEP_ID, PREREQ_STEP_ID, SEPARATE_ADMIN_ACCOUNTS_STEP_ID } from './stepIds.ts'
 import { OPERATOR_PASSKEY_STEP_ID, PASSKEY_SETTINGS_STEP_ID, PASSKEY_TARGET, operatorPasskeyOf, operatorSignInOf, passkeyReadingOf, passkeyReadinessFindingsOf } from './passkeySettings.ts'
 import { SYNC_WORKLOAD_GOAL_ID, WORKLOAD_IDENTITY_BLOCKER, syncIdentitySupportOf } from './workloadIdentity.ts'
 
@@ -597,7 +608,8 @@ export function buildCreateAction(
     const deviated = answered !== clone
     // Nothing is dropped silently: an object the tenant does not have comes back
     // in `missing`, and while any does there is no operation to run.
-    const whole = implementable(artifact(answered, p, tag), p.resolved)
+    const drawn = artifact(answered, p, tag)
+    const whole = implementable(drawn, p.resolved)
     // The approved absent-source assumption concerns the source export only.
     // It must not remove any exclusion already configured in this tenant.
     if (p.target?.policy && whole.omitted.length > 0) {
@@ -617,6 +629,9 @@ export function buildCreateAction(
     for (const [id, d] of p.resolved.decisions ?? []) if (!sourceReferences.has(id) || (d.answer === 'pending' && sourceReferences.get(id)!.answer !== 'pending')) sourceReferences.set(id, { id, kind: d.kind, answer: d.answer })
     const wholeBaseline = deviated ? implementable(artifact(p.resolved.body, p, tag), p.resolved).policy : undefined
     const target = p.target ?? null
+    // The same policy with the objects it waits on left in, and nothing else the
+    // body leaves out, for the step's procedure to name (PolicyOperation.pending).
+    const pending = whole.missing.length > 0 ? implementable(drawn, { ...p.resolved, keep: new Set(whole.missing.map((m) => m.token.toLowerCase())) }).policy : undefined
     if (target) {
       const patch = patchOf(whole.policy, sections)
       // The policy the change leaves behind: the tenant's own policy with this
@@ -639,9 +654,10 @@ export function buildCreateAction(
         // object against every dimension the plan asked for and not only the
         // ones this patch writes (roadmap/tracking.ts, observation.ts).
         intent: whole.policy,
+        ...(pending ? { pending } : {}),
       })
     } else {
-      operations.push({ sourceName: p.sourceName, memberKey, mode: 'create', policyId: null, body: whole.policy, baseline: wholeBaseline })
+      operations.push({ sourceName: p.sourceName, memberKey, mode: 'create', policyId: null, body: whole.policy, baseline: wholeBaseline, ...(pending ? { pending } : {}) })
     }
   }
   // `json` is a projection of the operations, for the plan file and the exports;
@@ -722,9 +738,9 @@ function changedSections(result: GoalResult): Set<ChangedSection> {
  * grant, so the pinned baseline's admin policy, built exactly as written, was
  * handed its own grant on every scan and never the switch (R4-11 on the pin).
  * The pinned baseline wins (owner, 2026-09-22): it is turned on as written, and
- * the step states that its grant is weaker than the goal's floor
- * (Action.belowGoalFloor). A below-floor policy that does not yet hold the plan's
- * grant still takes the correction first.
+ * the goal's floor is the baseline's own strength (coverage/classify.ts
+ * raiseFloor), so it no longer reads below it. A below-floor policy that does
+ * not yet hold the plan's grant still takes the correction first.
  *
  * An enforced policy is read the same way, with no switch to offer: a section it
  * already holds is not submitted. It used to stay, and the update was a
@@ -855,7 +871,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // in a readiness denominator.
   {
     const allActive = viability.map((v) => v.userId)
-    const adminIds = [...adminUserIds(snapshot.roles)]
+    // PIM-eligible admins too (walk list 4.x L2): one reading of role scope.
+    const adminIds = [...adminUserIdsWithEligible(snapshot.roles)]
     const guestIds = snapshot.users.filter((u) => u.userType === 'guest').map((u) => u.id)
     readinessCache.set('mfa', readinessFor('mfa-all-users', allActive, viability, snapshot))
     readinessCache.set('device', readinessFor('require-managed-device', allActive, viability, snapshot, deviceScope))
@@ -1031,6 +1048,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const exclusionsGroupId = tenantObjects.exclusionsGroupId
   const existingNames = new Set((snapshot.config.caPolicies?.rows ?? []).map((p) => String((p as RawPolicy).displayName ?? '').trim().toLowerCase()).filter(Boolean))
   const proposedTaken = new Set<string>()
+  const switchedOffNames = new Set((snapshot.config.caPolicies?.rows ?? []).filter((p) => (p as RawPolicy).state === 'disabled').map((p) => String((p as RawPolicy).displayName ?? '').trim().toLowerCase()).filter(Boolean))
   /** The names of the policies this plan tagged for one step, lower-cased. */
   const taggedNamesFor = (stepId: string): Set<string> => {
     const rows = (snapshot.config.caPolicies?.rows ?? []) as RawPolicy[]
@@ -1052,6 +1070,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const uniqueName = (goal: Goal, stepId: string): { name: string; note: string | null } => {
     const base = proposedPolicyName(goal, naming)
     const mine = taggedNamesFor(stepId)
+    // A switched-off policy carrying the name is the step's own too: the step
+    // sets it to Report-only (tracking.ts matchMembers, rule 5), never builds a
+    // "(2)" beside it (walk list 4.x item 12, owner 2026-09-24).
+    if (switchedOffNames.has(base.trim().toLowerCase())) mine.add(base.trim().toLowerCase())
     const taken = (name: string): boolean => (existingNames.has(name) && !mine.has(name)) || proposedTaken.has(name)
     if (!taken(base.toLowerCase())) {
       proposedTaken.add(base.toLowerCase())
@@ -1490,31 +1512,19 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         setState(s, { satisfied: true, inPlace: true })
         s.deliveredBy = ['Security Defaults is disabled in the scanned tenant configuration.']
       }
-    } else if (snapshot.config.securityDefaults?.status === 'ok' && secDefaults?.isEnabled === true) {
-      // The invariant this step owns, checked against what the tenant actually
-      // holds. The plan says it in its own voice — "nothing in this plan
-      // enforces before this step" — and a reader enforced eight policies with
-      // security defaults still on, swept all thirty-three steps, and found no
-      // warning anywhere: the board read Completed and the tile said "IAMAI
-      // watched it get there." The step that states the rule is the one place
-      // that has to notice it has been broken.
-      const enforced = ((snapshot.config.caPolicies?.rows ?? []) as { state?: string }[]).filter((p) => p.state === 'enabled').length
-      if (enforced > 0) s.readiness.lines = [fillText(app.plan.securityDefaultsCoexist, { n: enforced }), ...s.readiness.lines]
     }
+    // (No line for Conditional Access policies enforced beside security defaults
+    // on: Entra does not let a policy go On while they are, so no tenant reads
+    // that way, and the step built a contingency for it; walk list 4.x item 49.)
     steps.push(s)
   }
-  // Per-user MFA still on (migration not complete): a conflict named up front (roadmap-v2.md §7, messy).
-  // Built only when needed (v2-research/peruser.md): a clean read — every
-  // account's per-user state read, none Enabled or Enforced — has nothing for
-  // the step to do, the way the service-accounts group step is built only when
-  // its condition holds. An absent reading, an unknown account or a partial
-  // Users read keeps it: unknown is never hidden (manualWork.ts perUserMfaReading).
-  const methodsPolicy = (snapshot.config.authMethodsPolicy?.rows?.[0] ?? null) as { policyMigrationState?: string } | null
-  if (canUseConditionalAccess && !perUserMfaReading(snapshot).clean) {
-    const s = prereq('s-prereq-per-user-mfa')
-    s.readiness.lines = [`Authentication methods migration: ${methodsPolicy?.policyMigrationState ?? 'not read'}. Legacy per-user MFA states require a separate check in Entra.`]
-    steps.push(s)
-  }
+  // Per-user MFA still on: a conflict named up front (roadmap-v2.md §7, messy).
+  // On the plan once a scan of it has read an account with per-user MFA on, as
+  // Turn Off Security Defaults is once one read them on: open while any account
+  // reads Enabled or Enforced, and Completed, not gone, once none does
+  // (manualWork.ts; walk list 4.x item 9). A plan that never saw one has nothing
+  // for the step to do.
+  if (canUseConditionalAccess && (perUserMfaReading(snapshot).enabled.length > 0 || input.perUserMfaSeenOnAt)) steps.push(prereq('s-prereq-per-user-mfa'))
 
   // ---- The free-tier ladder (SPEC §12): the plan spine when no policy can exist ----
   // Every catalogue goal is licence-limited without Entra ID P1, so the ladder
@@ -1640,9 +1650,17 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // pass because it is In place.
   // Emergency access gates on its minimum safety checks; its hardening holds the
   // plan through the step not being done until it is fixed or deferred.
-  const gatingReports = bgStanding ? validationReports.map((r) => (r === bgReport ? { ...r, blocking: bgStanding!.minimum } : r)) : validationReports
+  // Whether every enforcing policy leaves the emergency accounts out is
+  // Configure Emergency Exclusions' work, so a policy it holds waits on that
+  // step. Filed under Prepare Emergency Access Accounts, a policy read "Prepare
+  // Emergency Access Accounts · Prerequisite · Completed" with the note to
+  // finish it first (walk list 4.x item 23).
+  const exclusionMinimum = bgStanding ? bgStanding.minimum.filter((r) => r.id === EXCLUDED_FROM_POLICIES) : []
+  const accountMinimum = bgStanding ? bgStanding.minimum.filter((r) => r.id !== EXCLUDED_FROM_POLICIES) : []
+  const gatingReports = bgStanding ? validationReports.map((r) => (r === bgReport ? { ...r, blocking: accountMinimum } : r)) : validationReports
   let gate = canUseConditionalAccess ? gateReason(gatingReports) : null
-  if (gate === null && bgStanding && bgAccountStanding && (bgStanding.minimum.length > 0 || (bgAccountStanding.hardening.length > 0 && !hardeningDeferred(bgAccountStanding.hardening, input.hardeningDeferral)))) gate = gateFor('breakGlass')
+  if (gate === null && canUseConditionalAccess && exclusionMinimum.length > 0) gate = gateFor('exclusionGroup')
+  if (gate === null && bgStanding && bgAccountStanding && (accountMinimum.length > 0 || (bgAccountStanding.hardening.length > 0 && !hardeningDeferred(bgAccountStanding.hardening, input.hardeningDeferral)))) gate = gateFor('breakGlass')
   // Accounts not yet prepared are an unverified escape hatch too: since the
   // connected journey (c1cacf21) Step 1 is done only with an approved recovery
   // passkey on each account, which no validation check carries, so the reports
@@ -1788,7 +1806,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // Every policy this plan tagged for the step, not the first: a pair's two
     // halves both belong to it (evidence.ts).
     const matchedPolicyIds = findTaggedPolicies(snapshot, planId, stepId).map((t) => t.policyId)
-    const evidence = evidenceFor(goal.id, snapshot, matchedPolicyIds)
+    const evidence = evidenceFor(goal.id, snapshot, matchedPolicyIds, mailDevicesOf(mapping))
 
     const doc = source ? docFor(input.baseline.docs, source.facts.name) : undefined
     const rawWhy = doc?.intent ?? goal.tldr ?? goal.description
@@ -1880,6 +1898,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       const policies = !own ? [] : stepSources.length > 0 ? stepPolicies() : templatePolicy()
       const would = policies.length === 1 ? buildCreateAction(named(policies, proposedPolicyName(goal, naming)), mapping, planId, stepId, goal.id) : null
       const intended = would && (would.missing ?? []).length === 0 ? would.resolution?.policies[0]?.body : undefined
+      // The same create, whoever's policy delivers the goal, for the step's
+      // procedure alone (Action.planned): a finished step still hands over how
+      // its policy is created and turned on (walk list item 18). Every
+      // reference resolved, or nothing.
+      const plannedCreate = policies.length === 1 ? would : buildCreateAction(named(stepSources.length > 0 ? stepPolicies() : templatePolicy(), proposedPolicyName(goal, naming)), mapping, planId, stepId, goal.id)
+      const planned = plannedCreate && (plannedCreate.missing ?? []).length === 0 ? plannedCreate.resolution : undefined
       // A policy the tenant wrote delivers the goal: where it is not the policy
       // the plan would write, in the parts coverage does not judge, the step says
       // so and asks nothing (owner, 2026-09-22; Action.ownPolicyDiffers). One
@@ -1900,6 +1924,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         json: null,
         portalSteps: [],
         ...(intended ? { intended } : {}),
+        ...(planned ? { planned } : {}),
         ...(ownPolicyDiffers ? { ownPolicyDiffers } : {}),
       }
     } else if (result.status === 'unknown') {
@@ -2113,6 +2138,18 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // instruction names the object the body actually holds rather than looking
     // one up in the mapping again.
     if (action.resolution) action.resolution = { ...action.resolution, tenant: { exclusionsGroupId: tenantObjects.exclusionsGroupId, serviceAccountsGroupId: tenantObjects.serviceAccountsGroupId, emergencyIds: [...mapping.breakGlassUserIds] } }
+    if (action.planned) action.planned = { ...action.planned, tenant: { exclusionsGroupId: tenantObjects.exclusionsGroupId, serviceAccountsGroupId: tenantObjects.serviceAccountsGroupId, emergencyIds: [...mapping.breakGlassUserIds] } }
+
+    // Configure Emergency Exclusions already asks for this edit (walk list 4.x
+    // item 7): a correction whose every operation only adds the plan's exclusions
+    // group to a policy the tenant has is that step's "Configure Conditional Access
+    // exclusions". This step does not ask for it a second time: it waits on that
+    // step, and its operations are held until the scan finds the group excluded
+    // (operations.ts policyResult).
+    if (steps.some((s) => s.id === EXCLUSION_GROUP_STEP_ID) && addsOnlyExclusionsGroup(action.resolution?.policies ?? [], tenantObjects.exclusionsGroupId, snapshot)) {
+      action = { ...action, correctionAskedBy: EXCLUSION_GROUP_STEP_ID }
+      blockByStep(EXCLUSION_GROUP_STEP_ID, 'exclusions-edit')
+    }
 
     // ---- The emergency-access boundary (Foundation A) ----
     // The last thing asked of a policy before anything is offered for it, and
@@ -2138,7 +2175,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       const probe = { goalId: goal.id, kind, status: statusNow(), action } as unknown as Step
       const finalEffects = isOpenPolicy(probe) ? stepEffects(probe) : []
       const exposure = emergencyExposureOf(finalEffects, mapping.breakGlassUserIds, snapshot, strandContext)
-      if (exposure !== null) action = { ...action, emergencyExposure: exposure }
+      if (exposure !== null) action = { ...action, emergencyExposure: { ...exposure, ...(exclusions.actionableName ? { group: exclusions.actionableName } : {}) } }
     }
 
 
@@ -2178,14 +2215,32 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // another (roadmap/readiness.ts strengthMeasuredOf): the gate below is stated
     // against it.
     let measuredStrength: string | null = null
+    // The dormant accounts this step's policy reaches that hold no method it
+    // accepts, for Require MFA for Everyone (walk list 4.x item 10).
+    let dormantWithoutMethod: string[] = []
     if (['mfa', 'admin', 'guest'].includes(readinessKey)) {
       const effects = deliveringEffects ?? validOperations(action).map(operation => effectOf(operation.mode === 'update' ? operation.target as Record<string, unknown> : operation.body))
       methodTargets.set(goal.id, effects)
       measuredStrength = strengthMeasuredOf(effects, readinessKey, snapshot, mapping)
-      policyPreparation = methodPreparation(effects, viability.map(v => v.userId), snapshot, strandContext, methodPreparationCache)
+      // The people MFA Readiness and Prepare Your Team for MFA count: the plan's
+      // active people (walk list 4.x L4, item 10). The gate counted every enabled
+      // account the policy reaches, so accounts nobody has signed in to for 90
+      // days, or ever, held Require MFA for Everyone below 90% for good: nine of
+      // getiamai's eleven, which no step but disabling them could move.
+      policyPreparation = methodPreparation(effects, [...popIndex.active], snapshot, strandContext, methodPreparationCache)
       const reading = methodReadiness(readinessKey, policyPreparation)
       Object.assign(readiness, reading)
       if (!reading.unmeasured) delete readiness.unmeasured
+      // Those accounts are named instead, with where to disable them: whoever
+      // signs in to one first registers its method. Not the ones kept in
+      // Disable or Confirm Dormant Accounts.
+      if (goal.id === 'mfa-all-users') {
+        const kept = mapping.dormantAccountChoices ?? {}
+        const open = dormant.map((u) => u.id).filter((id) => kept[id]?.outcome !== 'keep')
+        const idle = methodPreparation(effects, open, snapshot, strandContext, methodPreparationCache)
+        const judged = new Set([...idle.readyIds, ...idle.unknownIds])
+        dormantWithoutMethod = idle.ids.filter((id) => !judged.has(id))
+      }
     }
     // What the scan could not read, where a refused source is why the number is
     // missing: the reading's own fact, worked out once (types.ts
@@ -2359,7 +2414,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // policies that had delivered it, said the signed-in member account was in
     // scope, and on small was given a stranding verdict it never had.
     const deliveredReachesOperator = deliveredReach === null && operatorId !== null
-      ? (deliveringEffects ?? []).some((e) => accountApplicability(e.scope, operatorId, snapshot as never, strandContext) !== 'out')
+      ? (deliveringEffects ?? []).some((e) => applies(e, operatorId, snapshot, strandContext) !== 'out')
       : undefined
     // The denominator. A goal can be delivered and still reach a fraction of the
     // tenant: a policy excluding a group that holds 116 of 122 accounts delivers
@@ -2389,7 +2444,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // Safe means known to be safe: a verdict the scan could not settle is not one.
     const operatorSafe = opVerdict === null ? null : !opVerdict.stranded && !opVerdict.unknown
     if (opVerdict?.stranded && !state.satisfied) {
-      blockers.push({ kind: 'readiness', label: 'operator', binding: BLOCKED_REASON.exist(1, 'safe way in for the signed-in account', 0) })
+      blockers.push({ kind: 'readiness', label: 'operator', binding: BLOCKED_REASON.operator })
       state = { ...state, condition: conditionFor(blockers) }
     }
     // A policy the plan would put on an authentication context another of the
@@ -2592,20 +2647,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       action = { ...action, widerThan: impl.expectedWho.kind }
     }
     if (readinessGate) action = { ...action, readinessGate }
-    // What the plan writes, against the goal's own grant floor: the pinned
-    // baseline can ask for less than the goal it is filed under, and the step
-    // says so (Action.belowGoalFloor). One policy, and a grant floor, or nothing.
-    {
-      const floorGrant = goal.implementations[0]?.floor.grant
-      const writes = (action.resolution?.policies ?? []).map((o) => (o.mode === 'create' ? o.body : o.intent ?? null)).filter((b): b is Record<string, unknown> => b !== null && typeof b === 'object')
-      if (floorGrant !== undefined && writes.length === 1 && (kind === 'create' || kind === 'adjust')) {
-        const facts = policyFacts(writes[0], input.strengths)
-        if (!satisfiesFloor(facts.grant, facts.session, { grant: floorGrant })) {
-          const grant = (writes[0].grantControls ?? {}) as { authenticationStrength?: { id?: string } | null; builtInControls?: string[] }
-          action = { ...action, belowGoalFloor: { strengthId: grant.authenticationStrength?.id ?? null, builtIn: grant.builtInControls ?? [], floor: floorGrant } }
-        }
-      }
-    }
     if (enforcedBelowReadiness) action = { ...action, enforcedBelowReadiness }
 
     steps.push({
@@ -2627,6 +2668,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       ...(coverageShortfall !== null ? { coverageShortfall } : {}),
       readiness,
       ...(policyPreparation ? { methodPreparation: policyPreparation } : {}),
+      ...(dormantWithoutMethod.length > 0 ? { dormantWithoutMethod } : {}),
       evidence,
       action,
       history: [],
@@ -3055,6 +3097,17 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     if (loops) blockLate(s, 'session-loop', BLOCKED_REASON.after(shared.sessionLoopHold as string))
   }
 
+  // 5. Block Legacy Authentication is not turned on while an account named in
+  // Confirm What You Use's mail-sending answer still signs in with legacy
+  // authentication (walk list 4.x item 5, option b): the pinned policy does not
+  // leave those accounts out, so turning it on would stop their mail. The
+  // report-only create goes ahead; only the turn-on waits. A policy the tenant
+  // already enforces has nothing left to turn on (roadmap/blockSignIns.ts keeps
+  // that step open until the accounts have moved).
+  const legacyStep = steps.find((s) => s.id === LEGACY_AUTH_STEP_ID)
+  const legacyEnforced = (input.coverage.results.find((r) => r.goal.id === legacyStep?.goalId)?.enforcedIds.length ?? 0) > 0
+  if (legacyStep && !legacyEnforced && mailAccountsToMove(snapshot, mapping).length > 0) blockLate(legacyStep, MAIL_ACCOUNTS_WAIT, BLOCKED_REASON.mailAccounts)
+
   // ---- Ordering: phase, then risk score ----
   const stepSeverity = (s: Step): number => {
     if (/^block/i.test(s.title)) return SEVERITY_BLOCK
@@ -3161,6 +3214,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     countDirectionImpact(steps, availableGoalIds)
   }
   applyManualReviews(steps, snapshot, input.manualConfirmations, mapping, popIndex)
+  // Block Legacy Authentication and Block Device Code Sign-in read the sign-in
+  // records for who uses what they block, and the legacy block's mail half
+  // completes from them (walk list 4.x items 4, 33 and 38).
+  settleBlockSignIns(steps, snapshot, mapping, nameOf, (goalId) => (input.coverage.results.find((r) => r.goal.id === goalId)?.enforcedIds.length ?? 0) > 0)
   for (const s of steps.filter(s => s.id === 's-check-dormant-accounts')) {
     // Every account still dormant, with the last sign-in the scan holds, and
     // whether the person keeps it: picked under Accounts you are keeping, whose
@@ -3401,4 +3458,29 @@ export function findTaggedPolicies(snapshot: TenantSnapshot, planId: string, ste
  */
 export function findTaggedPolicy(snapshot: TenantSnapshot, planId: string, stepId: string): string | null {
   return findTaggedPolicies(snapshot, planId, stepId)[0]?.policyId ?? null
+}
+
+/**
+ * True when every operation is an update that only adds the plan's exclusions
+ * group to a policy the tenant already has: no other group, account or role,
+ * and nothing else changed (PolicyOperation.addsExclusionsOnly). That is the
+ * edit Configure Emergency Exclusions' own task asks for, policy by policy
+ * (walk list 4.x item 7).
+ */
+function addsOnlyExclusionsGroup(ops: readonly PolicyOperation[], exclusionsGroupId: string | null, snapshot: TenantSnapshot): boolean {
+  if (ops.length === 0 || exclusionsGroupId === null) return false
+  const group = exclusionsGroupId.toLowerCase()
+  const rows = (snapshot.config.caPolicies?.rows ?? []) as RawPolicy[]
+  return ops.every((o) => {
+    if (o.mode !== 'update' || o.addsExclusionsOnly !== true) return false
+    const row = rows.find((r) => String(r.id ?? '').toLowerCase() === String(o.policyId ?? '').toLowerCase())
+    const before = (((row?.conditions ?? {}) as RawPolicy).users ?? {}) as RawPolicy
+    const after = (((o.body.conditions ?? {}) as RawPolicy).users ?? {}) as RawPolicy
+    const added = (key: string): string[] => {
+      const was = new Set((Array.isArray(before[key]) ? (before[key] as string[]) : []).map((id) => id.toLowerCase()))
+      return (Array.isArray(after[key]) ? (after[key] as string[]) : []).filter((id) => !was.has(id.toLowerCase()))
+    }
+    const groups = added('excludeGroups')
+    return groups.length > 0 && groups.every((id) => id.toLowerCase() === group) && added('excludeUsers').length === 0 && added('excludeRoles').length === 0
+  })
 }

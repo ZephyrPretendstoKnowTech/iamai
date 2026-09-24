@@ -71,7 +71,7 @@ switch($Mode){
 
 An authentication strength is a named set of sign-in methods that a Conditional Access policy can require. The grant "Require multifactor authentication" accepts any second factor the tenant allows, including phone call and text message. This custom strength accepts exactly: {{strength.target.methodNames}}.
 
-Windows Hello for Business, FIDO2 and multifactor certificate authentication are phishing-resistant. A Temporary Access Pass is a time-limited passcode an administrator issues, for example so a person with no usable method can sign in and register one. Because it accepts a Temporary Access Pass, it is not Microsoft's built-in Phishing-resistant MFA strength.
+Windows Hello for Business, FIDO2 and multifactor certificate authentication are phishing-resistant. A Temporary Access Pass is a time-limited passcode an administrator issues, for example so a person with no usable method can sign in and register one.
 
 Phone call, text message and Authenticator push notifications are not accepted.
 

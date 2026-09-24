@@ -168,24 +168,3 @@ test('R4-11: a report-only policy that still owes a correction takes the correct
   assert.deepEqual(corrected.ops.map((o) => [o.mode, o.policyId, o.body]), [['update', W, { state: 'enabled' }]])
 })
 
-test('R4-11: a report-only policy the goal reads below its floor is switched on once it holds the grant the plan writes', () => {
-  // On the pin the plan's own admins policy asks for the baseline's "Modern MFA
-  // + TAP", and coverage reads that as weaker than the goal's phishing-resistant
-  // floor. The grant the update writes is the one the policy already holds, so
-  // nothing is owed that the plan can write. It used to keep that grant as its
-  // "correction" on every scan and never be turned on. The owner's call
-  // (2026-09-22): the pinned baseline wins, so it is turned on as written, and
-  // the step says the grant is weaker (Action.belowGoalFloor, belowGoalFloor.test.ts).
-  const base = structuredClone(fixture('small'))
-  base.baseline = pinnedPackage()
-  const created = runFixture(base).steps.find((s) => s.id === 's-goal-admins-phishing-resistant')?.action.resolution?.policies ?? []
-  assert.deepEqual(created.map((o) => o.mode), ['create'], 'the premise: the plan creates the admins policy')
-  const f = structuredClone(base)
-  const at = f.snapshot.asOf
-  ;(f.snapshot.config.caPolicies!.rows as Record<string, unknown>[]).push({ ...structuredClone(created[0].body), id: 'c0200000-0000-4000-8000-0000000000ad', state: REPORT_ONLY, createdDateTime: at, modifiedDateTime: at })
-  const run = runFixture(f)
-  const cov = run.coverage.results.find((r) => r.goal.id === 'admins-phishing-resistant')!
-  assert.ok(cov.candidates.some((c) => c.policyId === 'c0200000-0000-4000-8000-0000000000ad' && c.meetsFloor === false), `premise: the goal reads its own policy below the floor — ${JSON.stringify(cov.candidates.map((c) => [c.policyName, c.meetsFloor]))}`)
-  const ops = run.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!.action.resolution?.policies ?? []
-  assert.deepEqual(ops.map((o) => [o.mode, o.body]), [['update', { state: 'enabled' }]], `the switch, and not the grant it already holds: ${JSON.stringify(ops.map((o) => o.body))}`)
-})

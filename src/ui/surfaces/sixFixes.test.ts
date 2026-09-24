@@ -15,7 +15,6 @@ import { fillText } from '../../content/render.ts'
 import { holdOf } from '../../roadmap/holds.ts'
 import { rowWho } from './rowWho.ts'
 import { REPORT_ONLY_GAP } from '../../coverage/verdict.ts'
-import { whoLine } from '../../derive/whoLine.ts'
 
 const ctxFor = (f: ReturnType<typeof fixture>, r: ReturnType<typeof runFixture>): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, ...planDates(r.steps, r.schedule.start) })
 
@@ -46,7 +45,7 @@ test('(2) the pluraliser conjugates the verb with the count; step 15\'s Who line
   assert.deepEqual(stepLines(s2, ctxFor(g, ready)).filter((l) => /not yet Ready for phishing-resistant MFA; get each Ready before/.test(l)), [], 'and no deadline is written')
 })
 
-test("(6) a strength policy's row carries its lockout count in the who-column when it is not zero", () => {
+test("(6) a strength policy's row counts its admins and leaves the lockout count to the step (walk list 4.x item 25)", () => {
   // Isolate the Impact renderer from policy/source readiness: its lockout
   // assessment is already covered by the engine's dedicated lockout tests.
   const f = fixture('demo-week2')
@@ -54,7 +53,9 @@ test("(6) a strength policy's row carries its lockout count in the who-column wh
   const source = r.steps.find(x => x.goalId === 'admins-phishing-resistant')!
   const s = { ...source, cohort: source.population, lockout: 1 }
   const who = rowWho(s)
-  assert.equal(who, `${whoLine(s.population, null)} · 1 would be stopped`)
+  const admins = (s.population.activeIds ?? s.population.ids).length
+  assert.equal(who, `${admins} ${admins === 1 ? 'admin' : 'admins'}`)
+  assert.ok(!who.includes('would be stopped'), 'the lockout count is the Threshold card’s, not the row’s')
   assert.ok(!who.includes(REPORT_ONLY_GAP), 'Impact does not repeat the lifecycle state')
   const block = r.steps.find((x) => x.goalId === 'block-legacy-auth')!
   assert.equal(block.lockout, undefined)

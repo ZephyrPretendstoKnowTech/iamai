@@ -24,6 +24,7 @@ import { exportViewsOf, stepExportView } from './stepExport.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { CONTRACT, NO_POLICY_REASONS, badgeLabel, readinessOf, stepContract } from './stepContract.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
+import { isGroupMember } from '../../roadmap/stepGroups.ts'
 import { stepArtifactLines } from '../../roadmap/artifactLines.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
 import { groundingBundle, promptPack, promptPackMarkdown, stepContext } from '../../roadmap/prompts.ts'
@@ -215,7 +216,11 @@ test('013.B: unresolved operations retain useful portal guidance without invente
       const portal = body.artifacts.find(a => a.id === 'portal')
       if (portal) {
         assert.ok(portal.text().trim().length > 0, `${where}: empty displayed portal channel`)
-        assert.ok(v.whatToDo.length > 1, `${where}: useful displayed guidance missing from export`)
+        // A turn-on the step does not hand over yet is carried by what it waits
+        // on alone (stepExport.ts; 005.11): the screen keeps it as the step's
+        // task in every state, the export never offers it early.
+        const next = body.emergencyAccountTasks?.tasks.find((t) => t.required)
+        if (next?.title !== 'Turn the policy on') assert.ok(v.whatToDo.length > 1, `${where}: useful displayed guidance missing from export`)
       }
       assert.equal(v.whatToDo[0], stepContract(s, c.ctx(s), undefined, c.lane(s)).whatToDo.text, `${where}: readiness action no longer first`)
       // The completion is one line: the resolution where there is no policy to
@@ -225,6 +230,9 @@ test('013.B: unresolved operations retain useful portal guidance without invente
       // on that object's completion first, as its first task, then on the
       // answer it still asks for, where it asks one, then on its own end state,
       // whatever else holds it.
+      // A policy in Turn On MFA for Everyone finishes on the same two lines in every state, held
+      // included (walk list 4.x item 26, owner 2026-09-24): what IAMAI will see, and its report-only period.
+      if (isGroupMember(s.id, 'core')) continue
       const taskDone = s.objectTask !== undefined ? stepContract(s.objectTask, c.ctx(s)).doneWhen : []
       const decided = s.objectTask !== undefined && s.state.condition === 'needs-decision' ? [CONTRACT.doneDecision] : []
       const lead = [...taskDone, ...decided]
@@ -279,7 +287,10 @@ test('013.C: the machine artifacts name the resolved objects they write, and a g
         assert.equal(policyJsonText(s).includes('Portal steps show the policy to create.'), false, `${where}: an implementable step downloads the placeholder note`)
       }
     }
-    assert.ok(creates > 0 && updates > 0, `creates ${creates}, updates ${updates}: the sweep missed one of the two operations`)
+    // Every shipped fixture's corrections wait on Configure Emergency Exclusions,
+    // the one step that asks for the exclusions edit (walk list 4.x item 7), so
+    // the sweep reaches creates only; an update it does reach is checked above.
+    assert.ok(creates > 0, `creates ${creates}, updates ${updates}: the sweep reached no operation`)
   }
   {
     const seen: string[] = []
@@ -628,7 +639,7 @@ test("R4-22: a step the board holds behind the drill is exported in the board's 
     const board = boardReadingsOf(run.steps, run.schedule.cleanup, answers)
     assert.equal(step.status, 'ready-to-enforce', 'the premise: the policy is ready to enforce on its own evidence')
     assert.equal(board.readings.get(step.id)?.reason?.id, 'cleanup-drill', 'the premise: the board holds it behind the drill')
-    assert.equal(laneViewOf(laneReadings(run.steps).get(step.id)!, board.titleOf).label, 'Ready · Ready to enforce', 'the premise: without the Cleanup rows it reads Ready to enforce')
+    assert.equal(laneViewOf(laneReadings(run.steps).get(step.id)!, board.titleOf).label, 'Ready · Turn on', 'the premise: without the Cleanup rows it reads Ready · Turn on')
     const nameOf = (id: string): string => run.input.names?.label(id) ?? id
     const ctx = (s: Step): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: run.schedule.reportOnlyAt[s.id] ?? null, groups: f.groups }) as StepVarContext
     // The Export page's own construction, as Export.tsx calls it.
@@ -639,7 +650,7 @@ test("R4-22: a step the board holds behind the drill is exported in the board's 
     // the prompt pack's step block) states the board's lane, never Ready to enforce.
     const runbook = stepArtifactLines(view(step))
     assert.ok(runbook.includes('Up Next'), 'the runbook does not state the board\'s lane')
-    assert.equal(runbook.join('\n').includes('Ready to enforce'), false, 'the runbook calls a policy the board holds behind the drill Ready to enforce')
+    assert.equal(runbook.join('\n').includes('Ready · Turn on'), false, 'the runbook calls a policy the board holds behind the drill Ready · Turn on')
     // Its day is the turn-on, which the drill holds (owner decision 6), so the
     // board reads "After prerequisites" and the calendar books nothing for it
     // (owner decision 2, R4-55): the entry it used to get was dated on the turn-on.

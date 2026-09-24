@@ -817,8 +817,10 @@ test('007.4/6: the one operation updates the exact matched policy and enforces t
     assert.ok(ps.includes(json), 'the PowerShell body is the JSON tab’s body')
     // The screen's own What to do is the same set of lines the export carries.
     assert.deepEqual(instructionsOf(c.step, c.ctx).portal, portal)
-    const actual = stepBodyOf(c.step, c.ctx).artifacts.find(a => a.id === 'portal' && !a.unavailable)!
-    const rendered = actual.text().replace(/\*\*(.*?)\*\*/g, '$1').split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+    // The export carries the task the screen opens on, the turn-on, word for word.
+    const next = stepBodyOf(c.step, c.ctx).emergencyAccountTasks!.tasks.find((t) => t.required)!
+    assert.equal(next.title, 'Turn the policy on')
+    const rendered = next.steps.map((l, i) => `${i + 1}. ${l.replace(/\*\*(.*?)\*\*/g, '$1')}`)
     assert.deepEqual(c.view(c.step).whatToDo.slice(-rendered.length), rendered)
   }
 })
@@ -1076,6 +1078,14 @@ test("007.14: an enforced policy, found on by a later scan or the tenant's own, 
         assert.deepEqual(operationsOf(step), [], 'workflow review does not invent a policy mutation')
         continue
       }
+      if ((step.mailAccountsToMove ?? []).length > 0) {
+        // Block Legacy Authentication's mail half (walk list 4.x item 4): a mail
+        // account the answer named still signs in with legacy authentication, so
+        // the step has work left, and none of it is a policy change.
+        assert.equal(step.state.satisfied, false, `${step.id}: done while a named mail account still uses legacy authentication`)
+        assert.deepEqual(operationsOf(step), [], `${step.id}: moving mail accounts invents a policy mutation`)
+        continue
+      }
       assert.equal(step.state.satisfied, true, `${step.id}: enforced and not delivered`)
       assert.equal(step.status, 'done', step.id)
       assert.deepEqual(findTaggedPolicies(run.input.snapshot, run.input.planId, step.id), [], `${step.id}: this plan deployed a policy for it after all`)
@@ -1154,8 +1164,8 @@ test('a policy ready to enforce with a later date says the wait is the notice, n
 
     const milestone = nextMilestone(step)
     assert.equal(milestone.kind, 'enforce')
-    assert.match(milestone.label, /evidence for this policy is complete/)
-    assert.match(milestone.label, /working days of notice/, 'the milestone does not say what the date is for')
+    // The policy card's own words (walk list 4.x item 20), with the day it turns on.
+    assert.match(milestone.label, /^Report-only blocked no one\. Turn the policy on [A-Z][a-z]{2} [0-9]/, 'the milestone does not say what the date is for')
     assert.equal(milestone.at, at, 'the milestone moved the date rather than explaining it')
 
     // The date the sentence names is the date the row shows, and not a second reading of it.

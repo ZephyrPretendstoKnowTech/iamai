@@ -198,7 +198,7 @@ test('6.3 draws the location as its own task in its one frame: the picker saved 
   const portal = body.artifacts.find((a) => a.id === 'portal')
   assert.ok(portal, 'the location task hands over no Entra procedure')
   assert.ok(portal.text().includes('Named locations → + Countries location'), portal.text())
-  assert.deepEqual(body.emergencyAccountTasks?.tasks.map((t) => t.title), ['Set up the allowed countries location', 'Block Sign-ins From Countries Not Allowed'])
+  assert.deepEqual(body.emergencyAccountTasks?.tasks.map((t) => t.title), ['Set up the allowed countries location', 'Create the policy in Report-only', 'Turn the policy on'])
   // The location's words, first: its About sentence, its completion, its evidence and its risks.
   const location = objectTaskBodyOf(geo, ctx)!
   assert.ok(body.contract.why.startsWith(String(location.cs.why)), body.contract.why)

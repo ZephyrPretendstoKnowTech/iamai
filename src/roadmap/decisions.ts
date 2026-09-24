@@ -116,6 +116,14 @@ export type PlanDecisions = {
    */
   securityDefaultsSeenOnAt?: string
   /**
+   * When a scan of this plan first read an account with legacy per-user MFA on
+   * (walk list 4.x item 9): Finish Moving Off Per-User MFA stays on the plan from
+   * then on and reads Completed once none does, where before it left the plan
+   * the scan after the work was done. Written by the first scan that reads one on
+   * and kept (progress.ts perUserMfaSeenOnAtOf).
+   */
+  perUserMfaSeenOnAt?: string
+  /**
    * By step id, the day the plan first found the step complete (Step.completedAt):
    * the day its Completed row states. A step the scan finds complete records
    * nothing else, so without this its day moved to every later scan's. Written

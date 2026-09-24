@@ -27,14 +27,14 @@ import { findTaggedPolicies } from './generate.ts'
 import { inBaselineConflict } from './baselineConflict.ts'
 import { observationDaysFor } from './schedule.ts'
 import { readyBasis, readyWhen } from '../derive/readyWhen.ts'
-import { awaitsWorkflowRecord, effectOf } from './operations.ts'
+import { awaitsMailMove, awaitsWorkflowRecord, effectOf } from './operations.ts'
 import { evidenceStrategyOf } from './evidenceStrategy.ts'
 import { scopeCohort } from './strand.ts'
 import { engine } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import { advanceState, aggregateObservation, raiseCondition, setState } from './lifecycle.ts'
 import type { Lifecycle, MemberObservation, StepState } from './lifecycle.ts'
-import { COVERAGE_JUDGED, artifactIdOf, dimensionWords, historyReset, intentOf, observe, observedStateOf, priorFor, semanticFieldsOf, semanticsOf, unwrittenDifferences } from './observation.ts'
+import { COVERAGE_JUDGED, artifactIdOf, dimensionWords, historyReset, intentOf, materialFieldsOf, observe, observedStateOf, priorFor, semanticFieldsOf, semanticsOf, unwrittenDifferences } from './observation.ts'
 import type { ObservedState } from './observation.ts'
 import type { ObservationChange, StepObservation, StepObservationRecord } from './observation.ts'
 
@@ -119,6 +119,10 @@ function advance(step: Step, to: Partial<StepState>, note: string, at: string): 
   // Observing an enforced policy proves deployment, not the separately recorded
   // workflow check. Keep that lifecycle visible without completing its task.
   if (to.satisfied === true && step.manualReview && !step.manualReview.confirmedAt) return
+  // Block Legacy Authentication's mail half is not done while a named mail
+  // account still signs in with legacy authentication (roadmap/blockSignIns.ts;
+  // walk list 4.x item 4): the policy being on does not move it.
+  if (to.satisfied === true && (step.mailAccountsToMove?.length ?? 0) > 0) return
   const from = step.status
   if (!advanceState(step, to)) return
   // The step HAS advanced, so its waits are spent. A `step` blocker is a
@@ -375,6 +379,18 @@ export function matchMembers(step: Step, snapshot: TenantSnapshot, coverage: Cov
     const candidate = own ?? (tied ? null : find((c) => delivering.has(c.policyId))) ?? null
     const policy = candidate ? byId.get(candidate.policyId) : undefined
     if (policy && !claimed.has(policy.id as string)) claim(out[0], policy, 'fingerprint')
+  }
+
+  // 5. a switched-off policy carrying the exact name the plan gives the member:
+  // the member's own, which the step sets to Report-only, never a policy to
+  // build a "(2)" beside (walk list 4.x item 12, owner 2026-09-24; generate.ts
+  // uniqueName leaves that name to it).
+  for (const m of out) {
+    if (m.policy || m.ambiguous) continue
+    const want = nameKey(m.displayName)
+    if (want.length === 0) continue
+    const off = all.filter((p) => p.state === 'disabled' && !claimed.has(p.id as string) && nameKey(p.displayName) === want)
+    if (off.length === 1) claim(m, off[0], 'member-name')
   }
   return out
 }
@@ -967,6 +983,11 @@ export function trackExecution(
         // expected, or manufacture a review against a change nobody submitted.
         intent: m.op ? intentOf(m.op.body) : null,
         unwritten,
+        // What this member's operation asks, and what the tenant holds, with nothing
+        // immaterial in either: the next scan reads a policy moved to exactly what
+        // was asked as the change the plan asked for (walk list 4.x item 7).
+        askedFields: m.op ? materialFieldsOf(m.op.body) : {},
+        materialFields: materialFieldsOf(policyRow as Record<string, unknown> | null),
       })
       observed.push(observedState)
       memberObservations.push({ key: m.key, sourceName: m.sourceName, change })
@@ -1034,10 +1055,14 @@ export function trackExecution(
       // asked for — a narrowing condition left at Configure: No, which is the
       // trap the step's own procedure warns about — rendered identically to one
       // built exactly right. The instruction warned; nothing ever checked.
-      const differsIn = asked === null || policyRow === null
+      // A policy switched off reads as nothing deployed, so every dimension read
+      // as different on midflight (walk list 4.x item 24): its one task is
+      // Report-only, and the scan after that compares what it holds.
+      const differs = asked === null || policyRow === null
         ? []
         : Object.entries(asked.controls).filter(([dimension, value]) => deployedFields[dimension] !== value).map(([dimension]) => dimension)
-      const asPlanned = asked !== null && differsIn.length === 0
+      const differsIn = (policyRow as { state?: unknown } | null)?.state === 'disabled' ? [] : differs
+      const asPlanned = asked !== null && differs.length === 0
       // `memberGates.readyNow` is both gates already (`gates`), so this line adds
       // the reasons that have nothing to do with the window or the records and
       // takes nothing away from them: there is one place where a member becomes
@@ -1282,8 +1307,9 @@ export type DriftOutcome = 'correctable' | 'review-required' | 'on-hold'
  * no policy delivers yet, one that is done, or one set aside.
  */
 export function driftOutcomeOf(step: Step): DriftOutcome | null {
-  // A goal the tenant's enforced policy delivers, open only for its workflow record, has not drifted.
-  if (awaitsWorkflowRecord(step)) return null
+  // A goal the tenant's enforced policy delivers, open only for its workflow record
+  // or for Block Legacy Authentication's mail accounts to move, has not drifted.
+  if (awaitsWorkflowRecord(step) || awaitsMailMove(step)) return null
   if (step.status === 'done' || step.status === 'skipped') return null
   const members = step.tracking?.members ?? []
   if (!members.some((m) => m.policyId !== null)) return null

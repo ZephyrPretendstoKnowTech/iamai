@@ -12,20 +12,9 @@
     "Implementation Tasks",
     "Completion Criteria"
   ],
-  "tiles": [
-    {
-      "label": "Readiness",
-      "state": "4 of 13 admins"
-    },
-    {
-      "label": "Configure Passkey Authentication",
-      "state": "Prerequisite · To do"
-    }
-  ],
+  "tiles": [],
   "channels": [
     "Entra",
-    "PowerShell",
-    "JSON",
     "AI Info"
   ],
   "when": "Aug 28, 2026"

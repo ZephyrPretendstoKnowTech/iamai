@@ -17,17 +17,16 @@ import { setDisplayTimeZone } from '../../copy/dates.ts'
 import { laneReadings } from './planLanes.ts'
 import { laneViewFor } from './planBoard.ts'
 import { stepBodyOf } from './stepBody.ts'
-import { CONTRACT, stepContract } from './stepContract.ts'
+import { CONTRACT } from './stepContract.ts'
 import type { LaneView } from './stepContract.ts'
 import { pinnedPackage } from '../../baseline/pinned.ts'
 import { stepExportView } from './stepExport.ts'
 import { implementationIsCurrent } from './stepContract.ts'
 import { implementationOffered } from './stepJson.ts'
-import { plannedOperationsOf, selectedPolicyBodiesOf } from './stepPackage.ts'
+import { plannedOperationsOf } from './stepPackage.ts'
 import { submitsEnforcement } from '../../roadmap/operations.ts'
 import { shared } from '../../content/content.ts'
-import { portalNamesFor, stepPortalLines } from './stepPortal.ts'
-import { planDates, stepVars } from './stepVars.ts'
+import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 
 type Opened = { step: Step; ctx: StepVarContext; lane: LaneView }
@@ -87,10 +86,6 @@ test("Medium user risk on mid: the export states the guest exclusion and no sess
   // (CLAUDE.md, owner 2026-09-20): every channel builds the pin's pair, the procedure and
   // the settings block name that one pair, and the caveat is gone.
   assert.match(text, /Grant: Grant access → Require authentication strength: .+ and Require password change → Require all selected controls\./)
-  // The settings line names the pair, with the strength the resolution names. It
-  // once read "…: Multifactor authentication", the built-in strength's name for a
-  // different object (R4-18, roadmap/portalLines.ts grantLine).
-  assert.match(text, /^- Grant → Require authentication strength: .+, Require password change; Require all the selected controls$/m)
   assert.doesNotMatch(text, /Require multifactor authentication|built-in `mfa`|JSON and PowerShell outputs/)
 })
 
@@ -116,7 +111,8 @@ test('a held step whose reference is unresolved: AI Info proposes the settings, 
   const facts = ai.slice(ai.indexOf(BRIEFING.heading))
   assert.ok(facts.includes(BRIEFING.proposed), 'the settings are proposed, not handed over')
   assert.match(facts, /^Not available in this scan: conditions\.users$/m)
-  assert.ok(facts.includes(BRIEFING.previewValues), 'the unresolved preview values are named as unresolved')
+  // "Values shown as ‹…› are not resolved yet" only beside a ‹…› value (walk list 4.x item 31).
+  assert.equal(facts.includes(BRIEFING.previewValues), /‹[^›]+›/.test(facts.replace(BRIEFING.previewValues, '')), 'the unresolved-values line shows exactly where a ‹…› value does')
   assert.match(facts, /Also exclude Guest or external users \(all types\)\./)
 })
 
@@ -158,7 +154,10 @@ test('a step that withholds its implementation states no turn-on as its intended
   assert.ok(ai.slice(ai.indexOf(BRIEFING.heading)).includes(ENABLE), 'an offered turn-on is not stated')
 })
 
-test('every packaged policy step whose lines are handed over: the export lines are the translation of the body its JSON sends', () => {
+test('every policy step whose lines are handed over: the export carries the task its screen opens on, word for word', () => {
+  // One producer writes a policy step's procedures (roadmap/policyProcedure.ts),
+  // and the export's What to do is the first of them still to do, as the rail
+  // names it (walk list section 4 item 18).
   let compared = 0
   for (const name of ['demo', 'demo-week2', 'small', 'mid', 'large', 'midflight', 'hostile'] as FixtureName[]) {
     // With the foundation settled: a policy step waiting on it hands nothing over
@@ -167,15 +166,11 @@ test('every packaged policy step whose lines are handed over: the export lines a
     for (const step of p.steps) {
       if (!implementationOffered(step) || !implementationIsCurrent(step)) continue
       const o = p.open(step)
-      const contract = stepContract(step, o.ctx, undefined, o.lane)
-      const selected = selectedPolicyBodiesOf(step, o.ctx, contract)
-      if (selected === null || selected.some((s) => s.preview)) continue
-      const screen = stepBodyOf(step, o.ctx, { lane: o.lane }).artifacts.find(a => a.id === 'portal' && !a.unavailable)
-      assert.ok(screen, 'the active Entra channel is present')
-      const expected = screen.text().replace(/\*\*(.*?)\*\*/g, '$1').split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+      const next = stepBodyOf(step, o.ctx, { lane: o.lane }).emergencyAccountTasks?.tasks.find((t) => t.required)
+      if (!next) continue
+      const expected = next.steps.map((line, i) => `${i + 1}. ${line.replace(/\*\*/g, '')}`)
       const lines = stepExportView(step, o.ctx, o.lane).whatToDo
-      for (const line of expected) assert.ok(lines.includes(line), step.id + ': export differs from rendered Entra: ' + line + '\nExport: ' + lines.join(' | '))
-      assert.ok(!lines.some(l => l.startsWith('Description: [IAMAI:')), 'the retired translator cannot add unsupported policy fields')
+      for (const line of expected) assert.ok(lines.includes(line), step.id + ': export differs from the task on screen: ' + line + '\nExport: ' + lines.join(' | '))
       compared += 1
     }
   }

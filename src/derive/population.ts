@@ -24,11 +24,19 @@ import { adminUserIds } from '../roles.ts'
  */
 export type PopulationIndex = { active: ReadonlySet<string>; admins: ReadonlySet<string>; guests: ReadonlySet<string>; enabled: ReadonlySet<string> }
 
+/** Every role each account holds, active or PIM-eligible. */
+function withEligible(roles: TenantSnapshot['roles']): Record<string, string[]> {
+  const out: Record<string, string[]> = { ...roles.active }
+  for (const [id, eligible] of Object.entries(roles.eligible ?? {})) out[id] = [...(out[id] ?? []), ...eligible]
+  return out
+}
+
 export function populationIndex(snapshot: TenantSnapshot, viability: readonly MfaViability[]): PopulationIndex {
   return {
     // The plan's active people: a step's reach counts the people MFA Readiness counts.
     active: new Set(viability.filter(isActivePerson).map((v) => v.userId)),
-    admins: adminUserIds(snapshot.roles),
+    // Active and PIM-eligible alike: the one reading of role scope (operations.ts applies; walk list 4.x L2).
+    admins: adminUserIds({ active: withEligible(snapshot.roles) }),
     guests: new Set(snapshot.users.filter((u) => u.userType === 'guest').map((u) => u.id)),
     // "covers N enabled" counts these and nothing else.
     enabled: new Set(snapshot.users.filter((u) => u.accountEnabled !== false).map((u) => u.id)),
@@ -119,6 +127,20 @@ export type StepPopulationView = {
 export function reached(step: Step): StepPopulation | null {
   if (effectsOf(step) === null) return step.state?.satisfied === true && step.deliveredReach !== undefined ? step.deliveredReach : step.population
   return step.cohort ?? null
+}
+
+/**
+ * Who a policy step's Impact and its "Who this touches" line count (walk list
+ * 4.x items 25 and 31, owner 2026-09-24): its reach where that is settled
+ * (`reached`), and where it is not — a group the scan could not read in full,
+ * an operation still withheld — the tenant policies that deliver it while they
+ * still do, else the people its goal is about. A count, never "Not established"
+ * or "Policy applicability is not fully resolved": the tool carries that, the
+ * person does not.
+ */
+export function impactReachOf(step: Step): StepPopulation {
+  const delivered = step.state?.satisfied === true ? step.deliveredReach ?? null : null
+  return reached(step) ?? delivered ?? step.population
 }
 
 /** The single population object for a step; the row and the step body read it. */

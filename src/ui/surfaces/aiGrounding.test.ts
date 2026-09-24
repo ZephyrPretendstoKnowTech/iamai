@@ -88,7 +88,8 @@ test('a policy briefing names the tenant policy, its state and resolved exclusio
     assert.equal(o.step.state.lifecycle, 'enforced', 'the premise: the policy is On')
     assert.match(facts, new RegExp(`^${F.current}: Core - Block - Legacy authentication \\([0-9a-f-]{36}\\)$`, 'm'))
     assert.match(facts, new RegExp(`^${F.currentState}: ${CONTRACT.lifecycle.enforced}$`, 'm'))
-    assert.match(facts, new RegExp(`^${F.changedFields}: conditions\\.users\\.excludeGroups$`, 'm'))
+    // The raw field path is gone (walk list 4.x item 40): the Observed line says what differs in words.
+    assert.doesNotMatch(facts, /conditions\.users\.excludeGroups/)
     assert.doesNotMatch(facts, new RegExp(`^${F.removedExclusions}: Core - Break glass$`, 'm'), 'approved optional-source omission preserves existing tenant exclusions')
     assert.doesNotMatch(facts, /Map the baseline's reference under Plan settings, Baseline mappings/)
     // The package's own words are not repeated in the facts.

@@ -43,7 +43,8 @@ function opened(f: Fixture) {
   const step = run.steps.find((s) => s.id === TOKEN)!
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
   const c = stepContract(step, ctx)
-  const tile = readinessOf(step, c).tiles.find((t) => t.key === 'own-policy-differs') ?? null
+  const r = readinessOf(step, c)
+  const tile = [...r.tiles, ...r.satisfied].find((t) => t.key === 'own-policy-differs') ?? null
   return { step, c, tile }
 }
 
@@ -59,7 +60,8 @@ test("a tenant's own policy that differs from the baseline in a part coverage do
   assert.equal(step.state.inPlace, true, "by the tenant's own policy")
   assert.equal(implementationOffered(step), false, 'nothing is handed over to change it')
   assert.ok(tile, 'the difference is stated')
-  assert.equal(tile.tone, 'warn')
+  // A fact under Satisfied: a Completed step shows no open card (walk list 4.x item 2).
+  assert.equal(tile.tone, 'good')
   assert.match(tile.note ?? '', /^Contoso token binding delivers this goal and differs from the baseline's policy in the device filter\./, tile.note ?? '')
   assert.match(tile.note ?? '', /does not ask you to change it/)
   assert.doesNotMatch([tile.note, ...c.doneWhen, c.whatToDo.text].join(' '), /\b(add|remove|change|update) the device filter\b/i, 'no instruction to reshape it')
@@ -69,7 +71,7 @@ test("a tenant's own policy that differs from the baseline in a part coverage do
   assert.equal(same.tile, null)
 })
 
-test("a Completed step's own-policy and weaker-grant findings are stated, and never turn it into Readiness work", () => {
+test("a Completed step's own-policy finding is stated, and never turns it into Readiness work", () => {
   // Both tiles say IAMAI asks for no change (owner, 2026-09-22). On a Completed
   // step, the one below drew them beside "Complete the next task shown for each
   // item." over the evidence link, and an Implementation box that read "Waiting
@@ -86,13 +88,8 @@ test("a Completed step's own-policy and weaker-grant findings are stated, and ne
     const body = stepBodyOf(s, ctx)
     assert.deepEqual(body.readiness.tiles.map((x) => x.key), keys, `the premise (${label}): the findings are its only open tiles`)
     assert.equal(body.empty.key, 'inPlace', `${label}: ${body.empty.title}`)
-    assert.equal(policyBarOf(policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)), 'Every task on this step is complete, and it left something behind.', label)
+    assert.equal(policyBarOf(policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)), keys.length === 0 ? 'Every task on this step is complete.' : 'Every task on this step is complete, and it left something behind.', label)
   }
-  finished(step, "the tenant's own policy", ['own-policy-differs'])
-  // The weaker-grant tile draws on every stage of a step the plan writes; on a
-  // finished one it is the same kind of finding, alone or beside the other.
-  const floor = { strengthId: null, builtIn: ['mfa'], floor: 'phishingResistant' }
-  const { ownPolicyDiffers: _own, ...rest } = step.action
-  finished({ ...step, action: { ...rest, belowGoalFloor: floor } } as Step, 'a weaker grant', ['below-goal-floor'])
-  finished({ ...step, action: { ...step.action, belowGoalFloor: floor } } as Step, 'both', ['own-policy-differs', 'below-goal-floor'])
+  // The difference is a fact under Satisfied (walk list 4.x item 2): no open tile.
+  finished(step, "the tenant's own policy", [])
 })

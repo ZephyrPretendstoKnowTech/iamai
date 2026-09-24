@@ -16,12 +16,14 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { absoluteDate, longDate } from '../../copy/dates.ts'
 import { count, list } from '../../copy/statements.ts'
+import { personLabels } from '../../names.ts'
+import { NAMES_INLINE } from './whoBlocks.ts'
 import { countryName } from '../../mapping/countries.ts'
 import { hoursAsDuration, needsPasskey, sessionWantedForGoal, sessionWantedLongForGoal, strengthForGoal, strengthNameOf, promptsPersonForGoal, pairBaselineNames } from './stepPortal.ts'
 import { hoursInWords } from '../../coverage/verdict.ts'
 import { analysisUnknown, effectsOf, promptsPeople } from '../../roadmap/strand.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
-import { contentLists } from '../../derive/contentLists.ts'
+import { contentLists, NAMES_UP_TO } from '../../derive/contentLists.ts'
 import { watchedArrive } from '../../roadmap/observation.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
 import { disabledInactiveUsers, notPeopleIds, phoneSignInIds } from '../../derive/sets.ts'
@@ -43,7 +45,7 @@ import { fillText } from '../../content/render.ts'
 import { QUESTION_STEP, answerOf, devicePlanOf } from '../../roadmap/answers.ts'
 import { nobodyAffected } from '../../roadmap/timing.ts'
 import { SERVICE_ACCOUNTS_TRUSTED_GOAL } from '../../roadmap/generate.ts'
-import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
+import { PER_USER_MFA_STEP_ID, PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { planProposedNames, proposedNamesFor } from './proposedNames.ts'
 import { policyPairNames } from '../../coverage/naming.ts'
 import type { ProposedObjectNames } from './proposedNames.ts'
@@ -358,6 +360,29 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     if (step.strengthToCorrect && !step.state.satisfied) v.strengthToCorrect = step.strengthToCorrect.name
   }
 
+  // Turn Off Security Defaults: the policies it turns on in the same change, in
+  // the Plan's order, one task line each (roadmap/enforceWaits.ts noteTurnOns;
+  // walk list 4.x item 8). A policy not on the plan leaves its line undrawn.
+  for (const [i, t] of (step.turnsOn ?? []).entries()) v[`turnOn${i + 1}`] = t.policy
+
+  // Finish Moving Off Per-User MFA: the accounts the scan reads on (its
+  // population, roadmap/manualWork.ts), counted on its card and, twenty or fewer,
+  // named with their sign-in addresses on the card and in its task (walk list
+  // 4.x items 55 and 57).
+  const PER_USER_NAMED = 20
+  if (step.id === PER_USER_MFA_STEP_ID && step.population.ids.length > 0) {
+    const ids = step.population.ids
+    v.perUserOn = count(ids.length, 'account')
+    // Every one of them up to twenty (walk list 4.x item 55, the checkers' reading):
+    // a Business Premium tenant's list is short, and "7 accounts" named nobody.
+    if (ids.length <= PER_USER_NAMED) {
+      const labels = personLabels(ctx.snapshot.users, { address: true })
+      const names = ids.map((id) => labels.get(id) ?? ctx.nameOf(id))
+      v.perUserNames = names.join(', ')
+      v.perUserNamed = list(names)
+    }
+  }
+
   // Define the Trusted Network: the office ranges its task adds (the ranges
   // saved for the office where there are any, walk list 65), and the picked
   // location it marks trusted instead of making one (walk list 61).
@@ -399,6 +424,18 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // emergency/service/admin id sets. A step reads only the keys it uses.
   // With Require MFA for Everyone in place nobody is "registered but never seen to complete MFA" (population.ts campaignBucket).
   Object.assign(v, contentLists({ snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, now: ctx.now, mfaInPlace: ctx.mfaInPlace === true }))
+  // The admins the admin policy's own gate counts short (walk list 4.x item 46):
+  // "1 admin is not yet Ready for phishing-resistant MFA" read MFA Readiness's
+  // state beside a gate at 100%. The admins judged without a method the policy
+  // accepts (roadmap/methodReadiness.ts), by name when three or fewer.
+  if (step.goalId === 'admins-phishing-resistant' && step.methodPreparation) {
+    const p = step.methodPreparation
+    const judged = new Set([...p.readyIds, ...p.unknownIds])
+    const short = p.ids.filter((id) => !judged.has(id))
+    v.adminsWithout = short.length <= NAMES_UP_TO ? short.map(ctx.nameOf) : []
+    if (short.length > NAMES_UP_TO) v.adminsWithoutCount = short.length
+    else delete v.adminsWithoutCount
+  }
   // Disable or Confirm Dormant Accounts' card (walk list items 14, 26): the
   // accounts still to disable or keep, and once none are, how many the person
   // keeps and how many accounts with no sign-in in the last 90 days are

@@ -145,28 +145,32 @@ $actual=IG GET $uri
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 
-IAMAI did not find **Block Legacy Authentication** in {{tenant.displayName}}. The next action is to create it in Report-only. It blocks sign-ins to all resources from the client-app categories Exchange ActiveSync clients and Other clients, for all users except the resolved exclusions, with no session controls. A mail app or protocol name alone does not show which category a sign-in falls into; the client app recorded on the sign-in does.
+Create **{{policy.target.displayName}}** in Report-only: it {{policy.fact}}.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-Policy {{policy.current.id}} for **Block Legacy Authentication** differs from the intended target: {{policy.current.semanticMismatches}}. The next action is to correct those settings on the same policy. The intended target blocks Exchange ActiveSync clients and Other clients for all users except the resolved exclusions, across all resources, with no session controls. Keep the policy's current state. If it is On, the changed rule can affect access after you save.
+Correct **{{policy.current.displayName}}** so it {{policy.fact}}.
 
 This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 
-**Block Legacy Authentication** is in Report-only in {{tenant.displayName}}. Report-only evidence: {{evidence.reportOnly}}. Would-be blocks can include mail clients, printers, scanners and scheduled jobs that still use older authentication. No events in the available records does not prove there are no dependencies, because some jobs run infrequently.
+**{{policy.current.displayName}}** is in Report-only: it {{policy.fact}}.
+
+Move any mail client, printer, scanner or job it would have blocked to modern authentication before it turns on.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 
-**Block Legacy Authentication** is in Report-only in {{tenant.displayName}}, and the next action is enforcement. Before setting it to On, confirm the same policy ID still matches the intended target, legacy sign-ins from the observation period have been reviewed, owners of infrequent jobs have been asked, and required applications and devices have a supported sign-in path. Once On, Exchange ActiveSync clients and Other clients are blocked for everyone the policy covers.
+Turn **{{policy.current.displayName}}** on: it {{policy.fact}}.
+
+Its report-only period showed no sign-in it would have stopped.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}
 
-**Block Legacy Authentication** cannot proceed yet. Known blockers and decisions: {{dependencies.blockers}}. Resolve these before creating or changing the policy.
+**Block Legacy Authentication** waits for {{dependencies.waits}}. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-licensed","channel":"aiInfo","states":["notLicensed"],"format":"markdown","kind":"template"}
@@ -195,7 +199,7 @@ Please tell IT about older mail clients, printers or applications that still use
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["missing","partial","reportOnly","readyToEnforce","inPlace","blocked","needsDecision"],"format":"markdown","kind":"template"}
-Review observed use and ask owners about infrequent jobs. No events in the available records does not prove there are no dependencies. Ready only when the intended exclusions and the service-account and mail-device decisions are resolved, recent legacy use has been reviewed, and Report-only results show no unexplained legitimate dependency.
+Review observed use and ask owners about infrequent jobs. Ready only when the intended exclusions and the service-account and mail-device decisions are resolved, recent legacy use has been reviewed, and Report-only results show no unexplained legitimate dependency.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["missing","partial","reportOnly","readyToEnforce","inPlace"],"format":"markdown","kind":"template"}

@@ -19,7 +19,7 @@ import { stepPortalLines, portalNamesFor, unwrittenCorrectionLines } from './ste
 import { campaignProcedureLines, instructionsHeld, preparationLines, preparesWhileCreateWaits, rescanLinesOf, wholeLines } from './stepInstructions.ts'
 import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, objectTaskLeads, readinessHeldLine, stepContract } from './stepContract.ts'
 import type { LaneView, PrerequisiteLabel, StepContract } from './stepContract.ts'
-import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, previewNoteLines, selectedPolicyBodiesOf, entraWithSettings, workProcedureOf } from './stepPackage.ts'
+import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, policyProcedureExtras, previewNoteLines, selectedPolicyBodiesOf, workProcedureOf } from './stepPackage.ts'
 import { sectionThreeTasksOf } from './sectionThreeTasks.ts'
 import { existingObjectProcedureOf } from './prepareProcedures.ts'
 import { projectSafely } from '../../content/implementation/project.ts'
@@ -39,8 +39,10 @@ import { stepPopulation } from '../../derive/population.ts'
 import { list } from '../../copy/statements.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
 import { isHeld } from '../../roadmap/holds.ts'
-import { mfaPreparationStaffMessage, namedPortalResource, policyInspectionLines, lifecycleResources, switchedOffLines, verificationResourceLines } from './stepResources.ts'
-import { scheduledEventOf } from '../../roadmap/stepSchedule.ts'
+import { mfaPreparationStaffMessage, namedPortalResource, policyInspectionLines, lifecycleResources, verificationResourceLines } from './stepResources.ts'
+import { drawsTaskAnatomy, policyProcedureOf } from './policyTasks.ts'
+import { proposedNamesFor } from './proposedNames.ts'
+import { estimatedDay, scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import { EMERGENCY_ACCOUNTS, EMERGENCY_GROUP, PASSKEY_SETTINGS } from '../../roadmap/emergencyJourney.ts'
 import { emergencyGroupTasksOf } from './emergencyGroupTasks.ts'
 import { emergencyPasskeyTasksOf } from './emergencyPasskeyTasks.ts'
@@ -476,10 +478,16 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // contradiction; there is nothing to submit." — was in no artifact at all.
   // Where the reason line and the action are the same sentence (a missing
   // object, an emergency account in reach) the guard below keeps it once.
+  // A policy step's procedures, as its Implementation Tasks draw them
+  // (policyTasks.ts policyProcedureOf; walk list items 14–18). They stand in for
+  // the package's own Entra text, which wrote a different copy for each state.
   const pkg = implementationPackageFor(step)
   const state = pkg ? packageStateOf(step, contract, ctx.snapshot) : null
+  const procedure = cs.kind === 'policy' && drawsTaskAnatomy(step.id)
+    ? policyProcedureOf(step, { nameOf: names.nameOf, strengthNameOf: (id) => names.strengthNameFor?.(id) ?? null, rows: ctx.snapshot.config.caPolicies?.rows ?? [], before: wholeLines(w.before, ex), contract, outstanding: [], estimate: estimatedDay(step), proposed: proposedNamesFor(ctx), mapping: ctx.mapping, extras: policyProcedureExtras(step, pkg, pkg ? packageBindings(step, ctx, contract) : null) })
+    : null
   let hasPackagePortal = false
-  if (pkg && state && cs.kind === 'policy') {
+  if (pkg && state && cs.kind === 'policy' && procedure === null) {
     const bindings = packageBindings(step, ctx, contract)
     const { runtime } = packageRuntime(pkg, state, bindings, {})
     const projection = projectSafely(pkg, state, bindings, runtime)
@@ -493,7 +501,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
       // stands in for the package's procedure (stepInstructions.ts
       // preparationLines), else the package's own.
       const preparation = preparationLines(step, cs, true)
-      lines.push(...(preparation ?? [...(projectedEntra ? entraWithSettings(entra.text, step, ctx, contract, preview ?? projection) : entra.text).replace(/\*\*(.*?)\*\*/g, '$1').split(/\r?\n/).map(line => line.trim()).filter(Boolean), ...(preview ? previewNoteLines(step, contract, preview.hold) : [])]))
+      lines.push(...(preparation ?? [...entra.text.replace(/\*\*(.*?)\*\*/g, '$1').split(/\r?\n/).map(line => line.trim()).filter(Boolean), ...(preview ? previewNoteLines(step, contract, preview.hold) : [])]))
     }
   }
   // A supporting step's What to do is the procedure its Entra tab draws, in the
@@ -551,11 +559,21 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // preparesWhileCreateWaits): the contract's action, why the create waits,
   // leads, and the content's "before" lines follow it.
   const preparation = preparesWhileCreateWaits(step, cs) ? wholeLines(w.before, ex) : []
-  if (switchedOff) lines.splice(0, lines.length, ...(switchedOffLines(step, String(ex.tenant ?? '')) ?? policyInspectionLines(step)))
+  // What to do is the task the rail names, the first still to do, as the screen
+  // draws it — but never a turn-on the step has not handed over: while the
+  // report-only week runs or something the turn-on waits on is open, the export
+  // carries what it waits on and no procedure, so nothing it gives an assistant
+  // turns a policy on early.
+  if (procedure !== null) {
+    const first = procedure.tasks.find((task) => task.required)
+    const next = procedure.tasks.find((task) => task.id === procedure.recommendedTaskId) ?? (first && first.id !== 'turn-on' ? first : undefined)
+    lines.splice(0, lines.length, ...(next ? next.steps.map((line, i) => `${i + 1}. ${line.replace(/\*\*/g, '')}`) : []))
+  } else if (switchedOff) lines.splice(0, lines.length, ...policyInspectionLines(step))
   else if (preparation.length > 0 || (!conflicted && !inPlace && !hasPackagePortal && cs.kind === 'policy' && !(portal?.length && implementationIsCurrent(step)))) lines.splice(0, lines.length, ...(preparation.length > 0 ? preparation : policyInspectionLines(step)))
   // The correction a person owes in a part IAMAI does not write, as the screen's
-  // portal carries it (stepPortal.ts unwrittenCorrectionLines), once.
-  if (cs.kind === 'policy') {
+  // portal carries it (stepPortal.ts unwrittenCorrectionLines), once. A step
+  // with its procedures carries it in its own correction.
+  if (cs.kind === 'policy' && procedure === null) {
     const correction = unwrittenCorrectionLines(step, names, String(ex.tenant ?? ''))
     lines.unshift(...correction.filter((l) => !lines.includes(l)))
   }

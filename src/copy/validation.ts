@@ -271,14 +271,12 @@ export const RULE_TEXT: Record<string, { what: string; why: string; label?: stri
     what: 'The tenant has finished migrating to the authentication methods policy.',
     // What the rule reads is the migration state. The why was about per-user MFA
     // prompting, a fact this check never reads; the scan reads each account's
-    // own state, and the s-prereq-per-user-mfa step is on the plan only when
-    // that read is not clean (roadmap/manualWork.ts perUserMfaReading), so the
-    // why says when to look for it (Phase 2 audit; v2-research/peruser.md).
-    // Not clean includes a partial Users read (signInActivity refused) where
-    // every per-user state read Disabled, so the why names that case too. What
-    // is read and when the step is on the plan are two sentences, the second
-    // within 25 words.
-    why: `Until the migration finishes, the legacy settings still decide which methods are offered. Each account's own per-user MFA state, the emergency accounts' included, is read on every scan. The plan carries ${PER_USER_MFA_TITLE} only while an account has it on, its state went unread, or the directory read was incomplete.`,
+    // own state, and the s-prereq-per-user-mfa step is on the plan once a scan
+    // reads an account with it on (roadmap/manualWork.ts perUserMfaReading;
+    // walk list 4.x item 9), so the why says when to look for it (Phase 2 audit;
+    // v2-research/peruser.md). What is read and when the step is on the plan are
+    // two sentences, the second within 25 words.
+    why: `Until the migration finishes, the legacy settings still decide which methods are offered. Each account's own per-user MFA state, the emergency accounts' included, is read on every scan. The plan carries ${PER_USER_MFA_TITLE} once a scan reads an account with it on.`,
   },
   'bg.noLicenceNeeded': {
     // What the rule reads: an enabled mailbox service plan (rules.ts MAILBOX_PLANS).

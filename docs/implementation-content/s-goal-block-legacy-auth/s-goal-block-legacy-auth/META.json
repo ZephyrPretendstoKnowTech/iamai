@@ -64,7 +64,10 @@
     "signature",
     "evidence.legacySignIns",
     "dependencies.serviceAccountDecision",
-    "dependencies.mailDevices"
+    "dependencies.mailDevices",
+    "policy.fact",
+    "policy.current.displayName",
+    "dependencies.waits"
   ],
   "projection": {
     "missing": {

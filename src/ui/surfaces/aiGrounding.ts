@@ -30,17 +30,17 @@
 // identifiable by design, and the redacted exports are a separate, explicit choice.
 // Pure: no DOM, no network. It reads the step's export view and its already-projected
 // JSON channel; it never renders the step body.
+import { PROCEDURE } from '../../roadmap/policyProcedure.ts'
+import { validOperations } from '../../roadmap/operations.ts'
 import { directionWords, workflowWords, shared } from '../../content/content.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { stepArtifactLines } from '../../roadmap/artifactLines.ts'
-import { CHANGED_FIELDS_BINDING } from '../../content/implementation/protocol.ts'
 import type { ChannelArtifact } from '../../content/implementation/project.ts'
 import { fillText } from '../../content/render.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { stepExportView } from './stepExport.ts'
-import { CONTRACT } from './stepContract.ts'
-import { enforcedUnwatched } from './doneWhen.ts'
+import { CONTRACT, unwatchedLine } from './stepContract.ts'
 import type { LaneView, PrerequisiteLabel, StepContract } from './stepContract.ts'
 import { implementationOffered } from './stepJson.ts'
 import { createWaitsOnReadiness, submitsEnforcementOnly, toReportOnly } from '../../roadmap/operations.ts'
@@ -72,7 +72,6 @@ type AiFactWords = typeof CONTRACT.implementation.aiFacts & {
   sections: { purpose: string; scope: string; observed: string; intended: string; remains: string; implementation: string }
   tenant: string
   scanned: string
-  proposed: string
   previewValues: string
   unresolvedFields: string
   request: string
@@ -165,7 +164,6 @@ export function aiGroundingText(i: GroundingInput, own = ''): string {
     const createWaits = createWaitsOnReadiness(i.step)
     const lines = (!offered && turnOnOnly) || switchedOff || createWaits ? [] : plannedPortalLines(i.step, offered ? names : { ...names, withholdTurnOn: true }, selected) ?? []
     intended.push(...lines)
-    if (lines.length > 0 && !offered) intended.push(W.proposed)
     const open = [...new Set(plannedOperationsOf(i.step).flatMap((op) => [...incompleteFieldsOf(i.step, op)]))].sort()
     if (open.length > 0) intended.push(fillText(W.unresolvedFields, { fields: open.join(', ') }))
   } else if (i.json && selected === null && i.json.text.trim() !== '') {
@@ -178,7 +176,9 @@ export function aiGroundingText(i: GroundingInput, own = ''): string {
     }
     intended.push(...i.json.requests.map((r) => `${W.request}: ${r.method} ${r.endpoint}`), body)
   }
-  if (intended.length > 0 && i.json?.preview) intended.push(W.previewValues)
+  // Said only where a value in it is still a ‹…› stand-in (walk list 4.x item
+  // 31): a preview whose values IAMAI holds has nothing unresolved to warn about.
+  if (intended.some((l) => /‹[^›]+›/.test(l))) intended.push(W.previewValues)
   const intendedLines = new Set(intended)
 
   // Step and purpose.
@@ -239,7 +239,8 @@ export function aiGroundingText(i: GroundingInput, own = ''): string {
   // it out of What IAMAI found; this briefing reads the findings and no tile, so
   // it said only "IAMAI watched it get there" and an assistant read the rollout
   // as watched. The tile's own words, once.
-  const unwatched = enforcedUnwatched(i.step) ? [`${CONTRACT.readiness.tiles.observation}: ${CONTRACT.foundEnforcedUnwatched}`] : []
+  const unwatchedFact = unwatchedLine(i.step)
+  const unwatched = unwatchedFact === null ? [] : [`${unwatchedFact}.`]
   section(S.observed, [
     ...labelled(W.observed, [...c.found.map((f) => `${f.label}: ${f.text}`), ...unwatched]),
     ...labelled(W.members, c.members.map((m) => m.line)),
@@ -248,7 +249,6 @@ export function aiGroundingText(i: GroundingInput, own = ''): string {
       ? [
           currentName || currentId ? `${W.current}: ${currentName && currentId ? `${currentName} (${currentId})` : (currentName ?? currentId)}` : null,
           currentState ? `${W.currentState}: ${stateWord(currentState)}` : null,
-          ...labelled(W.changedFields, asList(b[CHANGED_FIELDS_BINDING])),
           ...labelled(W.removedExclusions, asList(b['policy.current.removedExclusions'])),
         ]
       : []),
@@ -292,7 +292,19 @@ export function aiGroundingText(i: GroundingInput, own = ''): string {
 
   // Implementation and verification: the request the step's JSON sends, and the
   // step's own focus for the assistant.
-  const focus = typeof i.cs.aiFocus === 'string' && i.cs.aiFocus.trim() !== '' ? `${W.focus}: ${i.cs.aiFocus}` : null
+  // A policy in Turn On MFA for Everyone asks to be walked through creating it
+  // and turning it on (walk list 4.x item 31), which is nothing to ask once it is on.
+  const done = c.policyFact !== null && c.state.satisfied
+  // By where the policy is (walk list 4.x item 31): "creating this policy" read
+  // on a policy already in the tenant.
+  const P = PROCEDURE as unknown as { focusTurnOn: string; focusCorrect: string }
+  const lifecycle = i.step.state.lifecycle
+  const ownCorrection = validOperations(i.step.action).length > 0 && !i.step.action.correctionAskedBy
+  const ask = c.policyFact === null ? i.cs.aiFocus
+    : lifecycle === 'report-only' || lifecycle === 'ready-to-enforce' ? P.focusTurnOn
+      : lifecycle === 'enforced' ? (ownCorrection ? P.focusCorrect : null)
+        : i.cs.aiFocus
+  const focus = !done && typeof ask === 'string' && ask.trim() !== '' ? `${W.focus}: ${ask}` : null
   section(S.implementation, [...(c.policy && i.json ? i.json.requests.map((r) => `${W.request}: ${r.method} ${r.endpoint}`) : []), focus])
 
   if (text('emergency.passkey.compatibility')) section((shared.passkeyCompatibility as Record<string, string>).heading, [text('emergency.passkey.compatibility')])

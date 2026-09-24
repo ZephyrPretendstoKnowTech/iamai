@@ -302,11 +302,12 @@ test('(e) a policy with an unanswered Direction dependency is held Waiting on yo
     assert.ok(!s.blockers.some((b) => b.kind === 'decision' && b.label.startsWith('direction:')), goal)
     assert.notEqual(readings.get(s.id)?.reason?.kind, 'decision', goal)
   }
-  // A policy already enforced is never held by it: its question is asked where it is, as before.
+  // A policy already enforced is not held by an answer it is written from, and
+  // asks nothing on the step itself (walk list 4.x item 6).
   const code = r.steps.find((s) => s.goalId === 'block-device-code')!
   assert.equal(code.state.lifecycle, 'enforced', 'the premise: the demo already blocks device code')
-  assert.notEqual(readings.get(code.id)?.lane, 'On Hold')
-  assert.ok((code.unsavedInputs ?? []).length > 0, 'it still asks its question until it is answered')
+  assert.ok(!code.blockers.some((b) => b.kind === 'decision' && b.label.startsWith('direction:')), 'an enforced policy waits on an answer it does not need')
+  assert.equal(code.unsavedInputs, undefined, 'Block Device Code Sign-in asks a question of its own')
   // Saving the one answer it depends on releases it; the rest of D1 can stay open.
   const saved = applyStepDecisions(f.mapping, { [DIRECTION_STEP.devices]: { ...directionDecisionOf({ computers: { value: 'managed', picked: [] }, phones: { value: 'apps', picked: [] }, officeNetwork: { value: 'notInEntra', picked: [] } }), at: AT } })
   const after = runFixture({ ...f, mapping: saved }).steps

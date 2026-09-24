@@ -25,12 +25,14 @@
 // derived here from the state and nowhere else — `projectStatus` is the only
 // writer. That is the whole point of the module: one authority, one direction,
 // no two representations to keep in step. Pure, no DOM.
-import { engine } from '../content/content.ts'
+import { engine, shared } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import type { ObservationChange } from './observation.ts'
 import { dimensionWords, historyReset } from './observation.ts'
 import { holdOf, waitsOnFoundation } from './holds.ts'
-import { addsExclusionsToEnforced, awaitsWorkflowRecord, implementationOffered, operationsOf, policyHold, unavailableReason } from './operations.ts'
+import { readyWhen } from '../derive/readyWhen.ts'
+import { LEGACY_AUTH_STEP_ID } from './blockSignIns.ts'
+import { addsExclusionsToEnforced, awaitsMailMove, awaitsWorkflowRecord, implementationOffered, operationsOf, policyHold, unavailableReason } from './operations.ts'
 import { SECURITY_DEFAULTS_STEP_ID } from './enforceWaits.ts'
 import { list } from '../copy/statements.ts'
 import { estimatedDay, scheduleOf, shownDay } from './stepSchedule.ts'
@@ -38,6 +40,8 @@ import type { Blocker, Step, StepStatus } from './types.ts'
 import { DIRECTION_BLOCKER, directionBlockerStep } from './directionAnswers.ts'
 
 const MILESTONE = engine.milestone
+/** Block Legacy Authentication's mail task, by its title (shared.mailDevices; ui/surfaces/policyTasks.ts). */
+const MAIL_TASK_TITLE = (shared.mailDevices as { title: string }).title
 
 /** The Conditional Access lifecycle. `null` on a step that deploys no policy: a prerequisite is not a stage of one. */
 export type Lifecycle = 'not-deployed' | 'report-only' | 'ready-to-enforce' | 'enforced'
@@ -323,6 +327,21 @@ export function workflowReviewIsCurrent(step: Step): boolean {
  * steps this one waits on first." - a held create stopped saying to create the
  * policy in report-only while the Implementation region still offered it.
  */
+/**
+ * The next thing on a Turn On MFA for Everyone policy whose report-only week
+ * would have blocked someone (walk list 4.x item 35): the blocks move the
+ * accounts off what they block, the MFA policies get them a method. Null on
+ * every other step, which keeps its observation.
+ */
+export function blockedMilestoneOf(stepId: string): string | null {
+  if (stepId === LEGACY_AUTH_STEP_ID || stepId === 's-goal-block-device-code') return MILESTONE.moveBlocked
+  if (stepId === 's-goal-admins-phishing-resistant' || stepId === 's-goal-mfa-all-users') return MILESTONE.readyBlocked
+  return null
+}
+
+/** The milestones a report-only week that would have blocked someone reads (blockedMilestoneOf). */
+export const BLOCKED_MILESTONES: ReadonlySet<string> = new Set([MILESTONE.moveBlocked, MILESTONE.readyBlocked])
+
 export function nextMilestone(step: Step, opts: { undated?: boolean } = {}): Milestone {
   const undated = opts.undated === true
   const s = step.state
@@ -338,6 +357,9 @@ export function nextMilestone(step: Step, opts: { undated?: boolean } = {}): Mil
   // Delivered by the tenant's enforced policy, with an input nobody saved: the
   // answer comes before the workflow record, and nothing else is left to do.
   if (awaitsWorkflowRecord(step)) return { kind: 'decide', label: MILESTONE.decide, at: null, gatedBy: null }
+  // Block Legacy Authentication's policy is on, and a named mail account is still
+  // to move (walk list 4.x item 4): moving it is the next thing, in the task's words.
+  if (awaitsMailMove(step)) return { kind: 'resolve', label: `${MAIL_TASK_TITLE}.`, at: null, gatedBy: null }
   // A deployed policy that is no longer what the plan asked for is held until
   // somebody has looked at it, and that comes before the stage's own next move:
   // a window closing does not settle a change nobody has explained, and there is
@@ -364,7 +386,9 @@ export function nextMilestone(step: Step, opts: { undated?: boolean } = {}): Mil
     return { kind: 'resolve', label: fillText(MILESTONE.correctManual, { fields: dimensionWords(s.observation?.unwritten ?? []) }), at: null, gatedBy: s.observation?.note ?? null }
   }
   // Held on its records, it is still being watched: until they are clear, with no date.
-  if (hold?.kind === 'evidence') return { kind: 'observe', label: MILESTONE.observeRecords, at: null, gatedBy: null }
+  // Block Legacy Authentication's week that would have blocked someone names the
+  // work instead (walk list 4.x item 35): the accounts move first.
+  if (hold?.kind === 'evidence') return { kind: 'observe', label: ((readyWhen(step)?.failures ?? 0) > 0 ? blockedMilestoneOf(step.id) : null) ?? MILESTONE.observeRecords, at: null, gatedBy: null }
   // Held on a readiness threshold while already in report-only: the threshold
   // gates turning it on and nothing else (A1a; roadmap/operations.ts
   // enforcementHeld), so the policy goes on being watched, and what the hold

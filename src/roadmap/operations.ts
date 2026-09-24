@@ -910,6 +910,30 @@ export function accountApplicability(
   return unsure ? 'unknown' : 'in'
 }
 
+/** What `applies` needs of a directory: the users, and who holds which role, active and PIM-eligible. */
+export type RoleDirectory = { roles?: { active?: Record<string, string[]>; eligible?: Record<string, string[]> }; users?: DirectoryRow[] }
+
+/**
+ * Whether a policy reaches one account, its PIM-eligible roles counted as
+ * roles it holds: the one reading of role scope (walk list 4.x L2, owner
+ * 2026-09-24). An eligible admin is reached the moment the role is activated,
+ * so readiness, Affected people, the admin count and the emergency-access
+ * boundary all count them. It read eligible roles for readiness alone
+ * (roadmap/methodReadiness.ts), so one admin was ready to be counted and not
+ * there to be affected. A policy that names no role reads as the account's
+ * own scope.
+ */
+export function applies(effect: Pick<PolicyEffect, 'scope'>, accountId: string, snapshot: RoleDirectory, evidence: ScopeEvidence = {}): Applicability {
+  const current = accountApplicability(effect.scope, accountId, snapshot, evidence)
+  if (!effect.scope.roles.include.length && !effect.scope.roles.exclude.length) return current
+  const answers = [current]
+  for (const role of snapshot.roles?.eligible?.[accountId] ?? []) {
+    const roles = { active: { ...(snapshot.roles?.active ?? {}), [accountId]: [...(snapshot.roles?.active?.[accountId] ?? []), role] } }
+    answers.push(accountApplicability(effect.scope, accountId, { users: snapshot.users, roles }, evidence))
+  }
+  return answers.includes('in') ? 'in' : answers.includes('unknown') ? 'unknown' : 'out'
+}
+
 /**
  * The emergency-access boundary, as one reading of a finished policy set.
  *
@@ -930,14 +954,14 @@ export function accountApplicability(
 export function emergencyExposureOf(
   effects: readonly PolicyEffect[],
   emergencyIds: readonly string[],
-  snapshot: { roles?: { active?: Record<string, string[]> }; users?: DirectoryRow[] },
+  snapshot: RoleDirectory,
   evidence: ScopeEvidence = {},
 ): { reached: string[]; unproven: string[] } | null {
   if (emergencyIds.length === 0 || effects.length === 0) return null
   const reached: string[] = []
   const unproven: string[] = []
   for (const id of emergencyIds) {
-    const answers = effects.map((e) => accountApplicability(e.scope, id, snapshot, evidence))
+    const answers = effects.map((e) => applies(e, id, snapshot, evidence))
     if (answers.some((a) => a === 'in')) reached.push(id)
     else if (answers.some((a) => a === 'unknown')) unproven.push(id)
   }
@@ -1260,7 +1284,7 @@ export function submitsEnforcementOnly(op: PolicyOperation): boolean {
 }
 
 /** What any of this applies to: a step that describes a policy. */
-type PolicyStep = Pick<Step, 'goalId' | 'action'> & Partial<Pick<Step, 'kind' | 'status' | 'state' | 'manualReview' | 'tracking'>>
+type PolicyStep = Pick<Step, 'goalId' | 'action'> & Partial<Pick<Step, 'kind' | 'status' | 'state' | 'manualReview' | 'tracking' | 'mailAccountsToMove'>>
 
 /**
  * True when a policy the tenant already enforces delivers the goal and the step
@@ -1274,6 +1298,19 @@ type PolicyStep = Pick<Step, 'goalId' | 'action'> & Partial<Pick<Step, 'kind' | 
 export function awaitsWorkflowRecord(step: PolicyStep): boolean {
   const s = step.state
   return !!step.manualReview?.readyToConfirm && !step.manualReview.confirmedAt && s?.lifecycle === 'enforced' && s.condition === 'healthy' && !s.satisfied && !s.setAside
+}
+
+/**
+ * True when Block Legacy Authentication's policy is on and delivers the goal,
+ * and the step stays open for its mail half alone: a mail account named in
+ * Confirm What You Use that still signs in with legacy authentication
+ * (Step.mailAccountsToMove, roadmap/blockSignIns.ts; walk list 4.x item 4).
+ * Nothing is left for IAMAI to write; the next scan reads whether each has moved.
+ * A policy that has drifted, or that something else holds, is that first.
+ */
+export function awaitsMailMove(step: PolicyStep): boolean {
+  const s = step.state
+  return (step.mailAccountsToMove?.length ?? 0) > 0 && s?.lifecycle === 'enforced' && s.condition === 'healthy' && !s.satisfied && !s.setAside && validOperations(step.action).length === 0
 }
 
 /**
@@ -1488,8 +1525,15 @@ export function policyResult(step: PolicyStep): PolicyResult {
   // workflow test: nothing to write, and nothing a scan has to rebuild. Not
   // preserved either — the step is not finished until the test is recorded.
   if (valid.length === 0 && step.status !== 'done' && awaitsWorkflowRecord(step)) return { kind: 'not-policy' }
+  // Block Legacy Authentication's policy is on and the named mail accounts are
+  // still to move (awaitsMailMove): the same answer, nothing to write.
+  if (valid.length === 0 && step.status !== 'done' && awaitsMailMove(step)) return { kind: 'not-policy' }
   if (valid.length === 0) return step.status === 'done' ? { kind: 'preserved' } : { kind: 'unavailable', reason: 'no-operation' }
   if (step.status === 'done') return { kind: 'preserved' }
+  // The correction is Configure Emergency Exclusions' own edit (Action.correctionAskedBy;
+  // walk list 4.x item 7): that step asks for it, so this one holds it and
+  // waits, rather than asking for the same edit twice.
+  if (step.action.correctionAskedBy) return { kind: 'held', hold: 'prerequisite-unmet', operations: valid }
   // Foundation B's gate, in the one place that decides whether IAMAI hands an
   // implementation over. The policy is deployed and being watched and the only
   // thing left to submit turns it on; the window has not closed and the records

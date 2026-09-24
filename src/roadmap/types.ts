@@ -144,6 +144,15 @@ type PolicyOperationBase = {
    */
   baseline?: Record<string, unknown>
   /**
+   * Where the policy names an object the tenant does not have yet
+   * (`Action.missing`): the whole policy with those references left where they
+   * stand, so the step's procedure names each by the object the step that makes
+   * it proposes (ui/surfaces/policyTasks.ts policyProcedureOf) rather than
+   * describing a policy without it — the create, or what a correction brings the
+   * tenant's policy to. Never submitted.
+   */
+  pending?: Record<string, unknown>
+  /**
    * The whole policy the operation is working towards, where the operation
    * itself is a partial update. Explanation, impact and audit read it; it is not
    * a second actionable body and no channel submits it.
@@ -282,6 +291,15 @@ export type Action = {
    */
   intended?: Record<string, unknown>
   /**
+   * On a goal the tenant already delivers, whoever's policy delivers it: the
+   * create the plan would hand over for it, every reference resolved. Only the
+   * step's procedure reads it (ui/surfaces/policyTasks.ts policyProcedureOf), so
+   * a finished step still says how its policy is created and turned on (walk
+   * list item 18). Never an operation: nothing submits it, and nothing reads it
+   * to judge the goal.
+   */
+  planned?: StepResolution
+  /**
    * On a goal a policy the tenant wrote under its own name delivers: where that
    * policy differs from the one the plan would write, in the parts coverage does
    * not judge (observation.ts unwrittenDifferences, COVERAGE_JUDGED). Stated on
@@ -290,15 +308,6 @@ export type Action = {
    * weaken it (the large fixture's compliant-device policy on every platform).
    */
   ownPolicyDiffers?: { policyName: string; dimensions: string[] }
-  /**
-   * Where the policy the plan writes asks for less than its goal's own grant
-   * floor (coverage/strength.ts satisfiesFloor over coverage/facts.ts
-   * policyFacts): the pinned baseline's admin policy grants "Modern MFA + TAP"
-   * under a goal whose floor is phishing-resistant MFA. The pinned baseline
-   * wins (owner, 2026-09-22): the plan builds it and turns it on as written,
-   * and the step says the grant is weaker — never an instruction to change it.
-   */
-  belowGoalFloor?: { strengthId: string | null; builtIn: string[]; floor: import('../coverage/types.ts').GrantFloor }
   /**
    * Why the step offers no implementation although nothing it names is missing:
    * the plan cannot tell which of the tenant's policies is which half of a pair,
@@ -322,7 +331,7 @@ export type Action = {
    * all — the step then has no operation, no cohort, no rings and no dates,
    * exactly as a missing object leaves it.
    */
-  emergencyExposure?: { reached: string[]; unproven: string[] }
+  emergencyExposure?: { reached: string[]; unproven: string[]; /** The exclusions group the policy has to leave out, by its name, where one is chosen. */ group?: string }
   /**
    * The readiness prerequisite this step's *enforcement* is held behind: the
    * measure, what it has to reach, and where it is now (roadmap/constants.ts
@@ -461,6 +470,15 @@ export type Action = {
    * plan schedules is sequencing (owner, Step 4).
    */
   enforceWaitsOn?: { id: string; title: string }[]
+  /**
+   * The step whose own task already asks for this step's correction (walk list
+   * 4.x item 7): every operation only adds the plan's exclusions group to a
+   * policy the tenant has, which is Configure Emergency Exclusions' "Configure
+   * Conditional Access exclusions". This step does not ask for it again: it
+   * waits on that step, and its operations are held (operations.ts
+   * `policyResult`, hold `prerequisite-unmet`). Absent on every other step.
+   */
+  correctionAskedBy?: string
   /**
    * An update with nothing in it, because the tenant policy it targets already
    * holds every section this step writes (generate.ts). `gaps` is what still
@@ -699,6 +717,13 @@ export type Step = {
    * here had no slot for offIds, so what the engine knew had no type on the step.
    */
   methodPreparation?: import('./methodReadiness.ts').MethodPreparation
+  /**
+   * Require MFA for Everyone only: the accounts its policy reaches that have not
+   * signed in for 90 days (or ever) and hold no method it accepts, the ones kept
+   * in Disable or Confirm Dormant Accounts aside (walk list 4.x item 10). The
+   * gate no longer counts them; the step names them to disable.
+   */
+  dormantWithoutMethod?: string[]
 
   manualReview?: { basis: string; confirmedAt: string | null; readyToConfirm: boolean; fields?: import('./decisions.ts').ManualEvidenceField[]; record?: import('./decisions.ts').OwnerConfirmation; verification?: 'current' | 'unread' | 'changed' | 'incomplete' | 'historical'; staleReason?: string; pendingAccountIds?: string[] }
   id: string
@@ -781,6 +806,12 @@ export type Step = {
    * because no answer of anybody's put it there.
    */
   doesntApplyByScan?: true
+  /**
+   * Turn Off Security Defaults only: the policies it turns on in the same change,
+   * each by the name it has in the tenant, or the name the plan creates it under,
+   * in the Plan's order (roadmap/enforceWaits.ts noteTurnOns; walk list 4.x item 8).
+   */
+  turnsOn?: { stepId: string; policy: string }[]
   /**
    * True where a Direction answer, not a reason typed on this step, says the step
    * does not apply (directionAnswers.ts answeredReasonOf): the footer states the
@@ -920,6 +951,14 @@ export type Step = {
   unsavedInputs?: string[]
   /** True where every open input is one IAMAI filled and is waiting to have confirmed, not one it is asking (roadmap/answers.ts openInputsOf). */
   unsavedInputsPrefilled?: true
+  /**
+   * Block Legacy Authentication: the accounts named in Confirm What You Use's
+   * mail-sending answer that the sign-in records still show using legacy
+   * authentication in the last 30 days (roadmap/blockSignIns.ts). The turn-on
+   * waits for them, and the step is not complete until none is left (walk list
+   * 4.x items 4 and 5). Absent where none.
+   */
+  mailAccountsToMove?: string[]
   /** Three sentences for a manager: the risk closed, the cost to people, what happens if not done (§3.3). */
   forManager: string
   /** Microsoft recommended, not in this baseline (target-state §13, floor.ts): rendered from Microsoft's template because the active baseline lacks the goal. */

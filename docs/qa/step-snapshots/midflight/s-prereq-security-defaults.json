@@ -15,8 +15,6 @@
   "tiles": [],
   "channels": [
     "Entra",
-    "PowerShell",
-    "JSON",
     "AI Info"
   ],
   "when": "Not scheduled"

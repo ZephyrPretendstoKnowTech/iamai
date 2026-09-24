@@ -237,6 +237,7 @@ test('every tab groups by the step group and nothing else, in the registry order
 })
 
 test('a row is numbered by its place in its group and keeps that number when a tab filters the list', () => {
+  const gaps: string[] = []
   for (const name of FIXTURES) {
     const items = itemsFor(name)
     const numbers = rowNumbersOf(items)
@@ -265,10 +266,11 @@ test('a row is numbered by its place in its group and keeps that number when a t
         for (const i of g.items) assert.equal(numbers.get(i.id), rowNumbersOf(items).get(i.id), `${name}/${tab}/${i.id}: the tab renumbered the row`)
       }
     }
-    // The premise this exists for: at least one tab shows a gap.
-    const gapped = LANES.some((tab) => groupsFor(tab, applyFocus(items, tab, NO_FOCUS)).some((g) => g.items.some((i, at) => at > 0 && numbers.get(i.id)! !== numbers.get(g.items[at - 1].id)! + 1)))
-    assert.ok(gapped, `${name}: no filtered tab showed a gap, so this proves nothing`)
+    // The premise this exists for: a tab that shows a gap, on some fixture (a
+    // fixture whose tabs happen to hold whole groups proves nothing either way).
+    if (LANES.some((tab) => groupsFor(tab, applyFocus(items, tab, NO_FOCUS)).some((g) => g.items.some((i, at) => at > 0 && numbers.get(i.id)! !== numbers.get(g.items[at - 1].id)! + 1)))) gaps.push(name)
   }
+  assert.ok(gaps.length > 0, 'no filtered tab on any fixture showed a gap, so this proves nothing')
 })
 
 // --------------------------------------------------------------- the focuses
@@ -387,7 +389,8 @@ test('the row label is Lane · substatus or reason, from one function', () => {
   assert.equal(waitingForOf(held, titleOf), BOARD.blockers.sourceMapping, 'the held row names the unmapped reference')
   const heldOnStep = { ...held, reason: { ...blocker, abnormal: true } }
   assert.equal(laneLabelOf(heldOnStep, titleOf), 'On Hold')
-  assert.equal(waitingForOf(heldOnStep, titleOf), BOARD.blockers.step + ': Emergency Access Accounts', 'a prerequisite on hold names the step by title')
+  // Held or not, a prerequisite step reads "After <step>" (walk list 4.x item 27).
+  assert.equal(waitingForOf(heldOnStep, titleOf), 'After Emergency Access Accounts', 'a prerequisite on hold names the step by title')
   // A deeper healthy prerequisite holds without anything abnormal, and reads as the wait it is.
   const heldBehind = { ...held, reason: blocker }
   assert.equal(laneLabelOf(heldBehind, titleOf), 'On Hold')
