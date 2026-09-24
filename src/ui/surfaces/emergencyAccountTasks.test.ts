@@ -97,17 +97,15 @@ test('a confirmed missing passkey remains the next action when policy evidence i
   assert.match(row.instruction, /Set up an approved passkey/)
 })
 
-test('an IAMAI passkey evidence gap is not presented as another account correction', () => {
+test('a passkey check the scan did not settle reads as the passkey not set up, with the task that sets it up (net-new 1)', () => {
   const { value, projected } = project(value => {
     value.snapshot.config.authMethodsPolicy = { status: 'error', reason: 'denied', rows: [] }
   })
   const row = projected.accounts.find(account => account.accountId === value.mapping.breakGlassUserIds[0])!
-  assert.equal(row.title, 'Passkey check incomplete')
-  // The one instruction on the frozen steps that sent the admin somewhere
-  // without saying where (owner, 2026-09-20). It names the place now.
-  assert.match(row.instruction, /MFA Readiness/)
-  assert.match(row.instruction, /Emergency access/)
-  assert.doesNotMatch(row.instruction, /Scan to update|Set up an approved passkey/)
+  // Unread is not done (owner, 2026-09-24): never "Passkey check incomplete".
+  assert.equal(row.title, 'Approved passkey needed')
+  assert.equal(row.instruction, 'Follow Set up an approved passkey in Implementation Tasks.')
+  assert.equal(projected.recommendedTaskId, 'set-up-passkey')
 })
 
 test('approved passkey setup keeps the three understandable methods in one task', () => {

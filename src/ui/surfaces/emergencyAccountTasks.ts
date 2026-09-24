@@ -14,6 +14,7 @@ import { authenticatorPasskeyLines } from '../../content/passkeySetup.ts'
 import { list } from '../../copy/statements.ts'
 import { tenantNameOf } from './stepVars.ts'
 import { operatorUserId } from '../../derive/operator.ts'
+import { EMERGENCY_TASK } from '../../roadmap/emergencyTaskTitles.ts'
 import type { StepVarContext } from './stepVars.ts'
 
 export type EmergencyAccountTaskVariant = {
@@ -237,8 +238,10 @@ function accountStatuses(ctx: StepVarContext, preparations: Preparations, notes:
       title = ''
       instruction = 'Scan again so IAMAI can confirm the account has permanent, active Global Administrator access.'
     } else if (compatible === null) {
-      title = 'Passkey check incomplete'
-      instruction = 'Open MFA Readiness and find it under Emergency access.'
+      // Unread reads as not done (owner, 2026-09-24; net-new 1): the account
+      // needs its approved passkey until a scan reads one, and the task says how.
+      title = 'Approved passkey needed'
+      instruction = 'Follow Set up an approved passkey in Implementation Tasks.'
     }
     const remainingCount = checks.every(value => value !== null) ? checks.filter(value => value === false).length : null
     // The account signed in to IAMAI says so in one line, in place of the check's note about it.
@@ -334,8 +337,8 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
   // failed, it was "open Users" then "return and scan" with nothing between
   // (review of #19); the cards and the rail already say to choose the accounts.
   const tasks: EmergencyAccountTask[] = [
-    task({ id: 'create-account', accountId: null, title: 'Create an emergency account', targetUpn: null, required: false, readinessKey: 'account-setup', evidence: null, actionLabel: 'Open creation instructions', steps: create }),
-    task({ id: 'configure-account', accountId: null, title: 'Configure an existing account', targetUpn: null, required: false, readinessKey: 'account-setup', evidence: null, actionLabel: 'Open configuration instructions', steps: [
+    task({ id: 'create-account', accountId: null, title: EMERGENCY_TASK.createAccount, targetUpn: null, required: false, readinessKey: 'account-setup', evidence: null, actionLabel: 'Open creation instructions', steps: create }),
+    task({ id: 'configure-account', accountId: null, title: EMERGENCY_TASK.configureAccount, targetUpn: null, required: false, readinessKey: 'account-setup', evidence: null, actionLabel: 'Open configuration instructions', steps: [
       'Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Users**.',
       // Each change is listed only for the chosen accounts IAMAI's checks say
       // need it, and names them; a change no chosen account needs is not listed
@@ -360,7 +363,7 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
       ...(viaPim.length ? [`Open **ID Governance → Privileged Identity Management → Microsoft Entra roles → Roles → Global Administrator → Add assignments**, select ${named(viaPim.map(id => targetOf(ctx, id)))}. Choose **Assignment type: Active** and **Permanently assigned**.`] : []),
       'Return to IAMAI and select **Scan to update the plan**.',
     ] }),
-    task({ id: 'set-up-passkey', accountId: null, title: 'Set up an approved passkey', targetUpn: null, required: false, readinessKey: 'recovery-methods', evidence: null, actionLabel: 'Open passkey instructions', steps: variants[0].steps, variants, defaultVariantId: variants[0].id }),
+    task({ id: 'set-up-passkey', accountId: null, title: EMERGENCY_TASK.setUpPasskey, targetUpn: null, required: false, readinessKey: 'recovery-methods', evidence: null, actionLabel: 'Open passkey instructions', steps: variants[0].steps, variants, defaultVariantId: variants[0].id }),
   ]
   const accounts = accountStatuses(ctx, preparations, notes, signedIn)
   const confirmedPriority = (row: EmergencyAccountStatus): number => row.accountId === null ? 0
@@ -378,7 +381,7 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
       ? 'create-account'
     : next?.title === 'Approved passkey needed' || next?.title === 'Passkey does not meet planned settings'
       ? 'set-up-passkey'
-      : next && next.title !== '' && !/check incomplete/i.test(next.title)
+      : next && next.title !== ''
         ? 'configure-account'
         : null
   return { tasks, accounts, recommendedTaskId, printAll: true, approvedModels, tapAvailable: null }

@@ -6,6 +6,7 @@ import type { Step } from '../../roadmap/types.ts'
 import { app } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { list } from '../../copy/statements.ts'
+import { EMERGENCY_TASK } from '../../roadmap/emergencyTaskTitles.ts'
 
 /** Configure Emergency Exclusions' Next milestone words (pages.app.plan.emergencyTasks). */
 const M = (app.plan as unknown as { emergencyTasks: Record<'chooseExclusionsGroup' | 'createExclusionsGroup' | 'addToExclusionsGroup' | 'removeFromExclusionsGroup' | 'excludeFromPolicy' | 'excludeFromPolicies', string> }).emergencyTasks
@@ -75,19 +76,19 @@ export function emergencyGroupTasksOf(step: Step, ctx: StepVarContext): Emergenc
   const noGroup = { readinessTitle: 'No group selected', readinessDirection: 'To create one, follow Create an emergency exclusions group in Implementation Tasks.' }
   const tasks: EmergencyAccountTask[] = [
     {
-      id: 'create-exclusions-group', accountId: null, title: 'Create an emergency exclusions group', targetUpn: null, required: choice.status === 'none-found' && selected.length > 0, readinessKey: 'group-choice', evidence: null, actionLabel: 'Open creation instructions',
+      id: 'create-exclusions-group', accountId: null, title: EMERGENCY_TASK.createGroup, targetUpn: null, required: choice.status === 'none-found' && selected.length > 0, readinessKey: 'group-choice', evidence: null, actionLabel: 'Open creation instructions',
       ...noGroup,
       steps: ['Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Groups → All groups → New group**.', 'Choose **Security**, enter the group name, and choose **Assigned** membership.', ...(selected.length ? [`Under **Members**, add ${accounts}.`] : []), 'Select **Create**. Return to IAMAI and select **Scan to update the plan**.', 'Select the new group under **Exclusions group**.'],
     },
     {
-      id: 'choose-exclusions-group', accountId: null, title: 'Choose an existing exclusions group', targetUpn: null, required: (!saved && choice.status !== 'none-found') || choice.status === 'invalidated' || unsuitableGroup, readinessKey: 'group-choice', evidence: null, actionLabel: 'Open selection instructions',
+      id: 'choose-exclusions-group', accountId: null, title: EMERGENCY_TASK.chooseGroup, targetUpn: null, required: (!saved && choice.status !== 'none-found') || choice.status === 'invalidated' || unsuitableGroup, readinessKey: 'group-choice', evidence: null, actionLabel: 'Open selection instructions',
       ...(unsuitableGroup ? { readinessTitle: 'Use a suitable exclusions group', readinessDirection: 'Choose a dedicated assigned security group, or follow Create an emergency exclusions group in Implementation Tasks.' } : noGroup),
       issueKeys: groupFinding?.items?.flatMap(item => item.issueKeys ?? []) ?? [],
       facts: unsuitableGroup ? groupMismatchFacts : [],
       steps: ['Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Groups → All groups** and open the intended exclusions group.', 'In IAMAI, select that group under **Exclusions group**.', 'Select **Scan to update the plan**.'],
     },
     {
-      id: 'manage-emergency-membership', accountId: null, title: 'Manage emergency account membership', targetUpn: null, required: !!groupId && completeMembers && (missing.length > 0 || extra.length > 0), readinessKey: 'group-members', evidence: !groupId || !completeMembers ? null : missing.length ? `${missing.length} selected account${missing.length === 1 ? ' is' : 's are'} missing.` : extra.length ? `${extra.length} additional direct member${extra.length === 1 ? '' : 's'} require review.` : null, actionLabel: 'Open membership instructions',
+      id: 'manage-emergency-membership', accountId: null, title: EMERGENCY_TASK.manageMembership, targetUpn: null, required: !!groupId && completeMembers && (missing.length > 0 || extra.length > 0), readinessKey: 'group-members', evidence: !groupId || !completeMembers ? null : missing.length ? `${missing.length} selected account${missing.length === 1 ? ' is' : 's are'} missing.` : extra.length ? `${extra.length} additional direct member${extra.length === 1 ? '' : 's'} require review.` : null, actionLabel: 'Open membership instructions',
       readinessTitle: missing.length && extra.length ? 'Correct emergency account membership' : extra.length ? 'Remove unexpected members' : 'Add the missing emergency accounts', readinessDirection: 'Follow Manage emergency account membership in Implementation Tasks.',
       issueKeys: ['group:xg.containsEmergency', 'group:xg.membersApproved', 'group:xg.noExtraAdmins'],
       facts: [
@@ -117,7 +118,7 @@ export function emergencyGroupTasksOf(step: Step, ctx: StepVarContext): Emergenc
       ],
     },
     {
-      id: 'configure-policy-exclusions', accountId: null, title: 'Configure Conditional Access exclusions', targetUpn: null, required: !!actionableGroupId && missingPolicies.length > 0, readinessKey: 'group-policies', evidence: missingPolicies.length ? `${missingPolicies.length} policy exclusion${missingPolicies.length === 1 ? '' : 's'} need attention.` : null, actionLabel: 'Open exclusion instructions',
+      id: 'configure-policy-exclusions', accountId: null, title: EMERGENCY_TASK.policyExclusions, targetUpn: null, required: !!actionableGroupId && missingPolicies.length > 0, readinessKey: 'group-policies', evidence: missingPolicies.length ? `${missingPolicies.length} policy exclusion${missingPolicies.length === 1 ? '' : 's'} need attention.` : null, actionLabel: 'Open exclusion instructions',
       readinessTitle: 'Add the group to the listed policy exclusions', readinessDirection: 'Follow Configure Conditional Access exclusions in Implementation Tasks.',
       issueKeys: policyFinding?.items?.flatMap(item => item.issueKeys ?? []) ?? [],
       facts: missingPolicies.map(policy => ({ label: policy.name, value: `${policy.mode} · ${policy.id}` })),

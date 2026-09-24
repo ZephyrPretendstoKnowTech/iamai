@@ -12,6 +12,7 @@ import { fillText } from '../../content/render.ts'
 import { count, list } from '../../copy/statements.ts'
 import { methodName } from '../../copy/inventory.ts'
 import { NAMES_INLINE } from './whoBlocks.ts'
+import { EMERGENCY_TASK } from '../../roadmap/emergencyTaskTitles.ts'
 
 const clean = (value: string): string => value.replace(/[\r\n]+/g, ' ').trim()
 const upnOf = (ctx: StepVarContext, id: string): string => clean(ctx.snapshot.users.find(user => user.id.toLowerCase() === id.toLowerCase())?.userPrincipalName || ctx.nameOf(id) || id)
@@ -241,19 +242,19 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
   const prepareLead = namedFromRead ?? 'Keep the existing working method available while preparing an account.'
   const tasks: EmergencyAccountTask[] = [
     {
-      id: 'make-passkey-registration-available', accountId: null, title: 'Configure passkey registration', targetUpn: null,
+      id: 'make-passkey-registration-available', accountId: null, title: EMERGENCY_TASK.passkeyRegistration, targetUpn: null,
       required: availabilityFields.length > 0, readinessKey: 'registration', evidence: availabilityFields.length ? availabilityFields.join(', ') : null, actionLabel: 'Open registration instructions',
       issueKeys: availabilityFields.map(field => `passkey:${field === 'state' ? 'method' : field === 'isSelfServiceRegistrationAllowed' ? 'selfService' : 'targets'}`),
       steps: ['Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Authentication methods → Policies → Passkey (FIDO2) → Enable and target**.', ...registrationSteps, 'Select **Save**.', 'Return to IAMAI and select **Scan to update the plan**.'],
     },
     {
-      id: 'prepare-affected-passkeys', accountId: null, title: 'Prepare affected passkeys', targetUpn: null,
+      id: 'prepare-affected-passkeys', accountId: null, title: EMERGENCY_TASK.affectedPasskeys, targetUpn: null,
       required: affected.users.length > 0 || restriction.stranded.length > 0, readinessKey: 'affected-passkeys', evidence: affected.users.length ? `${affected.users.length} user${affected.users.length === 1 ? '' : 's'} confirmed affected.` : null, actionLabel: 'Open preparation instructions',
       issueKeys: affected.users.map(user => `passkey:affected:${user.accountId.toLowerCase()}`), facts: affectedFacts, variants, defaultVariantId: variants[0].id,
       steps: [prepareLead, '**Compatible alternative:** sign in with the registered compatible alternative in a separate session, confirm the account, then continue to the final scan action.', '**Replacement registration, only if needed:** where no compatible alternative is registered, continue with the steps below to register a replacement.', protectionFields.length > 0 ? 'Return to IAMAI and select **Scan to update the plan** before applying restrictions.' : 'Return to IAMAI and select **Scan to update the plan**.'],
     },
     {
-      id: 'apply-passkey-settings', accountId: null, title: 'Configure passkey protections', subjectLabel: subject, targetUpn: null,
+      id: 'apply-passkey-settings', accountId: null, title: EMERGENCY_TASK.passkeyProtections, subjectLabel: subject, targetUpn: null,
       required: protectionFields.length > 0, readinessKey: 'protection', readinessKeys: ['protection'], evidence: protectionFields.length ? protectionFields.join(', ') : null, actionLabel: 'Open protection instructions',
       issueKeys: (step.configurationFindings ?? []).filter(finding => finding.key === 'protection').flatMap(finding => finding.items?.flatMap(item => item.issueKeys ?? []) ?? []),
       // The changes are the tile's facts; the procedure applies each value at the point of action.
