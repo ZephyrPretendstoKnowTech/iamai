@@ -14,6 +14,7 @@ import { badgeLabel } from './stepContract.ts'
 import { channelTabsOf, headingsOf, stepBodyOf } from './stepBody.ts'
 import { pickerSaves, pickerSavesAlone } from './pickerRows.ts'
 import { applyStepDecisions } from '../../roadmap/decisions.ts'
+import { stepLines } from './stepExport.ts'
 
 const read = (p: string): string => readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
 
@@ -86,20 +87,23 @@ test('#12 an emergency account that is the one signed in to IAMAI carries one he
   assert.ok(plain.every((c) => c.headsUp === undefined))
 })
 
-/** A step's decision block in content.json, wherever the step entry sits. */
-function decisionOf(stepId: string): Record<string, unknown> {
+/** A step's entry in content.json (the one with a decision), wherever it sits. */
+function entryOf(stepId: string): Record<string, unknown> {
   const content = JSON.parse(read('docs/design/content.json')) as unknown
   let found: Record<string, unknown> | null = null
   const walk = (o: unknown): void => {
     if (found || o === null || typeof o !== 'object') return
     const row = o as Record<string, unknown>
-    if (row.id === stepId && row.decision && typeof row.decision === 'object') { found = row.decision as Record<string, unknown>; return }
+    if (row.id === stepId && row.decision && typeof row.decision === 'object') { found = row; return }
     for (const v of Object.values(row)) walk(v)
   }
   walk(content)
   assert.ok(found, `${stepId} has a decision`)
   return found
 }
+
+/** A step's decision block in content.json. */
+const decisionOf = (stepId: string): Record<string, unknown> => entryOf(stepId).decision as Record<string, unknown>
 
 test('#15 every picker saves from the list: Done saves and closes, taking a chip off saves, and no Save stands beside a picker alone', () => {
   const picker = read('src/ui/components/Picker.tsx')
@@ -130,6 +134,24 @@ test('#15 every picker saves from the list: Done saves and closes, taking a chip
   assert.match(followUp, /onCommit=\{\(next\) => onDecide\?\.\(\{ picked: next\.map\(\(o\) => o\.id\) \}\)\}/)
   const dormant = step.slice(step.indexOf('function DormantDecision('))
   assert.match(dormant, /onCommit=\{\(next\) => \{ if \(next\.length === 0 \|\| reason\.trim\(\)\) save\(next\) \}\}/)
+})
+
+test('#15 no instruction sends the person to a Save beside the picker: 1.1 ends on Done, 1.2 on the choice that saves', () => {
+  // 1.1's export and print, where a second account is needed: its list saves on Done.
+  const one = opened('small', (f) => { f.mapping.breakGlassUserIds = f.mapping.breakGlassUserIds.slice(0, 1) })
+  const lines = stepLines(one.step, one.ctx)
+  assert.ok(lines.includes('Entra admin center → Entra ID → Users → New user → Create new user.'), 'the premise: the create steps are exported')
+  assert.ok(lines.includes('Register an approved passkey, scan again, select the new account, then select Done.'), JSON.stringify(lines))
+  assert.equal(lines.some((l) => /\bSave\b/.test(l)), false, 'no exported 1.1 line says Save')
+  // 1.2's exclusions group is a single-choice list: choosing the group saves it
+  // and closes the list (Picker.tsx pick), so its lines end on the choice.
+  const group = opened('small', () => {}, 's-prereq-exclusion-group').body.emergencyAccountTasks!.tasks.flatMap((t) => t.steps)
+  assert.deepEqual(group.filter((l) => /under \*\*Exclusions group\*\*/.test(l)), [
+    'Select the new group under **Exclusions group**. Scan again to verify its membership and settings.',
+    'In IAMAI, select that group under **Exclusions group**.',
+  ])
+  const who = entryOf('s-prereq-exclusion-group').who as Record<string, string>
+  assert.equal(who.suggested.endsWith('This is not saved intent; nothing uses it until you choose it.'), true, who.suggested)
 })
 
 test('#15 the emergency accounts the picker saves are the operator-saved decision, the one thing that writes them', () => {
