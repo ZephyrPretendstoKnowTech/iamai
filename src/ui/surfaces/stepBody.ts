@@ -746,7 +746,9 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // Exclusions", "Waiting on your answers"): the contract's action there read
   // "This is in place already: nothing to create." or "Finish the steps this one
   // waits on first." (walk list 4.x items 18 and 23).
-  const waitWords = procedure !== null && firstTask === null && laneView.lane !== 'Completed' && laneView.lane !== 'Deferred' ? laneView.waitingFor ?? null : null
+  // So does Define the Trusted Network held on the office answer while Entra
+  // already trusts a location: it draws no task (net-new 20).
+  const waitWords = (procedure !== null || truthy(ex.officeUnansweredInEntra)) && firstTask === null && laneView.lane !== 'Completed' && laneView.lane !== 'Deferred' ? laneView.waitingFor ?? null : null
   const nextTask = blockedWork ?? firstTask ?? waitWords
   // A policy step whose tasks are all done names none, so its headline reads
   // the step's own action (railOf), as a step with no task list does.
