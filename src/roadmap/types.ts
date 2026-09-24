@@ -144,6 +144,14 @@ type PolicyOperationBase = {
    */
   baseline?: Record<string, unknown>
   /**
+   * On a create that names an object the tenant does not have yet
+   * (`Action.missing`): the same policy with those references left where they
+   * stand, so the step's procedure names each by the object the step that makes
+   * it proposes (ui/surfaces/policyTasks.ts policyProcedureOf) rather than
+   * describing a policy without it. Never submitted.
+   */
+  pending?: Record<string, unknown>
+  /**
    * The whole policy the operation is working towards, where the operation
    * itself is a partial update. Explanation, impact and audit read it; it is not
    * a second actionable body and no channel submits it.
@@ -281,6 +289,15 @@ export type Action = {
    * policies, or a policy that names an object the tenant does not have.
    */
   intended?: Record<string, unknown>
+  /**
+   * On a goal the tenant already delivers, whoever's policy delivers it: the
+   * create the plan would hand over for it, every reference resolved. Only the
+   * step's procedure reads it (ui/surfaces/policyTasks.ts policyProcedureOf), so
+   * a finished step still says how its policy is created and turned on (walk
+   * list item 18). Never an operation: nothing submits it, and nothing reads it
+   * to judge the goal.
+   */
+  planned?: StepResolution
   /**
    * On a goal a policy the tenant wrote under its own name delivers: where that
    * policy differs from the one the plan would write, in the parts coverage does

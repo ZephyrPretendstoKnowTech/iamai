@@ -34,7 +34,7 @@ import { requiredMembers } from '../../roadmap/tracking.ts'
 import { unreadLine } from '../../roadmap/evidence.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
 import { populationLine } from '../../derive/whoLine.ts'
-import { app, cleanup, directionWords, engine, shared, stepById, structuralWords } from '../../content/content.ts'
+import { app, cleanup, directionWords, engine, shared, stepById } from '../../content/content.ts'
 import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
 import { directionBlockerStep, directionStepsAnswering, directionTitleOf, directionWaitRelayed } from '../../roadmap/direction.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
@@ -64,6 +64,9 @@ import dependencyData from '../../actionability/dependency-data.json' with { typ
 import type { DependencyData } from '../../actionability/parseDependencyDoc.ts'
 import { buildGraph } from '../../actionability/lanes.ts'
 import { exclusionsGroupChoice } from '../../mapping/safetyChoice.ts'
+
+/** A policy step's task names (shared.procedure.tasks; roadmap/policyProcedure.ts). */
+const PROCEDURE_TASKS = (shared as unknown as { procedure: { tasks: Record<string, string> } }).procedure.tasks
 
 /**
  * The one state reading of a step (A1b, RUN-CONTEXT-A decision 1): the lane
@@ -2427,7 +2430,7 @@ function implementationTile(step: Step, c: StepContract): ReadinessTile | null {
   if (c.state.satisfied || c.state.setAside || c.state.condition === 'baseline-conflict' || c.state.condition === 'needs-decision' || c.state.condition === 'review-required') return null
   // A policy the tenant switched off has one thing to do, and the step hands it
   // over on every channel: "Unavailable" over that procedure said the opposite.
-  const value = c.implementation.reason === 'switched-off' ? structuralWords.switchedOffTask : t.unavailable
+  const value = c.implementation.reason === 'switched-off' ? PROCEDURE_TASKS.reportOnly : t.unavailable
   return { key: 'implementation', label: t.implementation, tone: 'warn', value, note: c.implementation.because }
 }
 

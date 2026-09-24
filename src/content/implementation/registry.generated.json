@@ -21979,9 +21979,6 @@
         "supportBlocks": {
           "readiness": [
             "readiness.model"
-          ],
-          "troubleshooting": [
-            "troubleshooting.model"
           ]
         },
         "verifiedSources": [
@@ -22121,20 +22118,6 @@
             "kind": "referenceOnly"
           },
           "text": "{\n  \"tiles\": [],\n  \"whyIamaiSaysThis\": \"Microsoft recommends no gap between disabling Security Defaults and enabling the replacement Conditional Access protections.\",\n  \"whyIamAISaysThis\": {\n    \"sections\": {\n      \"whyItMatters\": \"Microsoft recommends no gap between disabling Security Defaults and enabling the replacement Conditional Access protections.\"\n    }\n  }\n}\n"
-        },
-        "troubleshooting.model": {
-          "meta": {
-            "id": "troubleshooting.model",
-            "channel": "troubleshooting",
-            "states": [
-              "readyToDisable",
-              "verificationRequired",
-              "inPlace"
-            ],
-            "format": "json",
-            "kind": "referenceOnly"
-          },
-          "text": "{\n  \"scenarios\": [\n    {\n      \"id\": \"protection-gap\",\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Verify the Security Defaults singleton and the intended replacement policies immediately.\"\n      ],\n      \"fix\": [\n        \"Complete the approved replacement cutover or use the coordinated rollback; do not leave both protection models inactive.\"\n      ],\n      \"then\": [\n        \"Rescan IAMAI.\"\n      ],\n      \"sources\": [\n        \"ms-sd\"\n      ],\n      \"states\": [\n        \"inPlace\"\n      ],\n      \"title\": \"Security Defaults is off but replacement Conditional Access protection is not active\"\n    },\n    {\n      \"id\": \"graph-403\",\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Verify Policy.Read.All plus Policy.ReadWrite.ConditionalAccess for write and an appropriate admin role.\"\n      ],\n      \"fix\": [\n        \"Reconnect with supported permissions/role and retry only the singleton patch.\"\n      ],\n      \"then\": [\n        \"Read the singleton back.\"\n      ],\n      \"sources\": [\n        \"ms-sd-graph\"\n      ],\n      \"states\": [\n        \"inPlace\"\n      ],\n      \"title\": \"Graph rejects the Security Defaults update\"\n    }\n  ]\n}\n"
         }
       }
     },
