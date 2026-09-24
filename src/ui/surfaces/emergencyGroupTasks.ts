@@ -64,7 +64,7 @@ export function emergencyGroupTasksOf(step: Step, ctx: StepVarContext): Emergenc
     {
       id: 'create-exclusions-group', accountId: null, title: 'Create an emergency exclusions group', targetUpn: null, required: choice.status === 'none-found' && selected.length > 0, readinessKey: 'group-choice', evidence: null, actionLabel: 'Open creation instructions',
       readinessTitle: 'Choose an exclusions group', readinessDirection: 'Select a group under Exclusions group. To create one, follow Create an emergency exclusions group in Implementation Tasks.',
-      steps: ['Keep your working administrator session open.', 'Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Groups → All groups → New group**.', 'Choose **Security**, enter the group name, and choose **Assigned** membership.', ...(selected.length ? [`Under **Members**, add ${accounts}.`] : []), 'Select **Create**. Return to IAMAI and select **Scan to update the plan**.', 'Select the new group under **Exclusions group**, then **Save**. Scan again to verify its membership and settings.'],
+      steps: ['Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Groups → All groups → New group**.', 'Choose **Security**, enter the group name, and choose **Assigned** membership.', ...(selected.length ? [`Under **Members**, add ${accounts}.`] : []), 'Select **Create**. Return to IAMAI and select **Scan to update the plan**.', 'Select the new group under **Exclusions group**, then **Save**. Scan again to verify its membership and settings.'],
     },
     {
       id: 'choose-exclusions-group', accountId: null, title: 'Choose an existing exclusions group', targetUpn: null, required: (!saved && choice.status !== 'none-found') || choice.status === 'invalidated' || unsuitableGroup, readinessKey: 'group-choice', evidence: null, actionLabel: 'Open selection instructions',
@@ -82,7 +82,6 @@ export function emergencyGroupTasksOf(step: Step, ctx: StepVarContext): Emergenc
         ...missing.map(id => ({ label: 'Add', value: upnOf(ctx, id) })),
       ],
       steps: [
-        'Keep your working administrator session open.',
         ...(groupId ? [`Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Groups → All groups → ${groupName} → Members**. Check object ID **${groupId}**.`] : ['Select and save an exclusions group in IAMAI first.']),
         ...(missing.length ? [`Select **Add members**, choose ${missing.map(id => `**${upnOf(ctx, id)}**`).join(', ')}, then select **Select** to confirm.`] : []),
         // The consequence goes WITH the instruction, not four paragraphs away.
@@ -109,7 +108,7 @@ export function emergencyGroupTasksOf(step: Step, ctx: StepVarContext): Emergenc
       readinessTitle: 'Add the group to the listed policy exclusions', readinessDirection: 'Follow Configure Conditional Access exclusions in Implementation Tasks.',
       issueKeys: policyFinding?.items?.flatMap(item => item.issueKeys ?? []) ?? [],
       facts: missingPolicies.map(policy => ({ label: policy.name, value: `${policy.mode} · ${policy.id}` })),
-      steps: ['Keep your working administrator session open.', 'Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Conditional Access → Policies**.', ...(missingPolicies.length ? missingPolicies.flatMap(policy => [`Open **${policy.name}** and verify policy ID **${policy.id}**.`, `Open **Assignments → Users → Exclude → Users and groups**, add **${groupName}**, then select **Select**.`, `Retain the policy’s current mode **${policy.mode}**, other exclusions and other settings. Select **Save**, then reopen the policy and confirm the group remains excluded.`]) : [
+      steps: ['Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Conditional Access → Policies**.', ...(missingPolicies.length ? missingPolicies.flatMap(policy => [`Open **${policy.name}** and verify policy ID **${policy.id}**.`, `Open **Assignments → Users → Exclude → Users and groups**, add **${groupName}**, then select **Select**.`, `Retain the policy’s current mode **${policy.mode}**, other exclusions and other settings. Select **Save**, then reopen the policy and confirm the group remains excluded.`]) : [
         ...(!actionableGroupId || groupFinding?.taskSafe !== true ? ['IAMAI has not established the policy or group change values for this scan. Use the remaining steps as a reference; do not save guessed changes.'] : [`Every policy that must exclude **${groupName}** already does. To add it to another policy:`]),
         'Open the policy, then open **Assignments → Users → Exclude → Users and groups**.',
         `Add **${groupName}**, then select **Select**. Preserve the policy mode, other exclusions and all unrelated settings.`,

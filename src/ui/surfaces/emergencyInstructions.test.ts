@@ -89,13 +89,14 @@ test('Step 1: configuring an existing account names the account and only the cha
   assert.ok(!text.includes(value.snapshot.users.find(row => row.id === second)!.userPrincipalName!))
 })
 
-test('Step 1: with no account needing configuration the procedure stays available and says so', () => {
+test('Step 1: with no account needing configuration the procedure says so and lists no change', () => {
   const steps = tasksOf(structuredClone(fixture('demo-week2'))).get('s-prereq-break-glass')!.find(task => task.id === 'configure-account')!.steps
   // And says what it is saying it about: this procedure is the sign-in
   // address, the enabled state and the role, and the step has another tile
   // that can be asking for a passkey at the same time.
-  assert.equal(steps[2], 'No selected account needs a change to its sign-in address, enabled state or role. The steps below stay here as a reference.')
-  assert.ok(steps.some(line => line.startsWith('To change a sign-in address, open the account, select')))
+  assert.equal(steps[1], 'No selected account needs a change to its sign-in address, enabled state or role.')
+  // A change no chosen account needs is not listed (owner, 2026-09-23).
+  assert.ok(!steps.some(line => /sign-in address, open the account|User principal name|Account enabled|Global Administrator/.test(line)))
 })
 
 // NEW-Nadia-D12. The configuration procedure said it was not needed and the
@@ -109,8 +110,7 @@ test('Step 1: with enough cloud-only accounts selected the create procedure says
   const verified = structuredClone(fixture('demo-week2'))
   assert.equal(verified.mapping.breakGlassUserIds.length, 2, 'the premise: two accounts selected')
   const steps = createOf(verified)
-  assert.equal(steps[0], KEEP)
-  assert.match(steps[1], REFERENCE)
+  assert.match(steps[0], REFERENCE)
   assert.ok(steps.some(line => /New user → Create new user/.test(line)), 'the procedure stays as a reference')
 
   // One account selected: a second is needed.
@@ -163,7 +163,7 @@ test('Step 3: review uses the portal’s field names; affected accounts are name
   const fido = row.fido2Configuration ?? row.authenticationMethodConfigurations.find((c: Record<string, unknown>) => String(c.id).toLowerCase() === 'fido2')
   fido.isSelfServiceRegistrationAllowed = false
   const registration = tasksOf(value).get('s-prereq-passkey-settings')!.find(task => task.id === 'make-passkey-registration-available')!.steps
-  assert.deepEqual(registration.slice(0, 3), [KEEP, `${ENTRA}Entra ID → Authentication methods → Policies → Passkey (FIDO2) → Enable and target**.`, 'Set **Allow self-service set up** to **Yes**.'])
+  assert.deepEqual(registration.slice(0, 2), [`${ENTRA}Entra ID → Authentication methods → Policies → Passkey (FIDO2) → Enable and target**.`, 'Set **Allow self-service set up** to **Yes**.'])
   assert.ok(registration.includes('Preserve unrelated inclusions and exclusions. Select **Save**.'))
 })
 

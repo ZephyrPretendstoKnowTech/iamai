@@ -152,3 +152,34 @@ test('#13 the instruction is said once: the rail says it, the empty cards do not
   assert.equal(ctx.mapping.breakGlassUserIds.length, 0)
   assert.equal(opened('demo').body.rail.sub, 'Complete the remaining emergency access checks.')
 })
+
+test('#19 the emergency tasks carry no filler, and configuring an existing account lists only the fixes it needs', () => {
+  const KEEP = 'Keep your working administrator session open.'
+  const GA = '62e90394-69f5-4237-9190-012177145e10'
+  const tasksOf = (name: Parameters<typeof fixture>[0], edit: (f: Fixture) => void = () => {}, id = STEP) => opened(name, edit, id).body.emergencyAccountTasks!.tasks
+  const linesOf = (tasks: ReturnType<typeof tasksOf>): string[] => tasks.flatMap((t) => [t.steps, ...(t.variants ?? []).map((v) => v.steps)]).flat()
+  for (const name of ['demo', 'demo-week2', 'small'] as const) {
+    const lines = linesOf(tasksOf(name))
+    assert.equal(lines.includes(KEEP), false, `${name}: the session reminder`)
+    for (const filler of [/Do not use this to convert a synchronized identity/, /Save the changes, reopen the account/, /Confirm it appears in .*Security info/]) assert.equal(lines.some((l) => filler.test(l)), false, `${name}: ${filler}`)
+    // The same reminder is gone from the exclusions group and passkey settings tasks.
+    for (const id of ['s-prereq-exclusion-group', 's-prereq-passkey-settings']) assert.equal(linesOf(tasksOf(name, () => {}, id)).includes(KEEP), false, `${name} ${id}`)
+  }
+  const configure = (edit: (f: Fixture) => void = () => {}) => tasksOf('demo-week2', edit).find((t) => t.id === 'configure-account')!.steps
+  const RETURN = 'Return to IAMAI and select **Scan to update the plan**.'
+  // Nothing needed: no fix is listed.
+  const clear = configure()
+  assert.deepEqual(clear, ['Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Users**.', 'No selected account needs a change to its sign-in address, enabled state or role.', RETURN])
+  const has = (steps: string[], re: RegExp): boolean => steps.some((l) => re.test(l))
+  const ADDRESS = /User principal name/, ENABLE = /Account enabled/, DIRECT = /Roles & admins → Global Administrator → Add assignments/, PIM = /Privileged Identity Management/
+  // A custom-domain sign-in address: that fix alone.
+  const address = configure((f) => { f.snapshot.users.find((u) => u.id === f.mapping.breakGlassUserIds[0])!.userPrincipalName = 'emergency@example.com' })
+  assert.deepEqual([ADDRESS, ENABLE, DIRECT, PIM].map((re) => has(address, re)), [true, false, false, false])
+  // Global Administrator eligible only: the PIM fix, naming the account.
+  const eligible = configure((f) => { const id = f.mapping.breakGlassUserIds[0]; f.snapshot.roles.active[id] = []; f.snapshot.roles.eligible[id] = [GA] })
+  assert.deepEqual([ADDRESS, ENABLE, DIRECT, PIM].map((re) => has(eligible, re)), [false, false, false, true])
+  // No Global Administrator assignment at all: the direct assignment.
+  const none = configure((f) => { f.snapshot.roles.active[f.mapping.breakGlassUserIds[0]] = [] })
+  assert.deepEqual([ADDRESS, ENABLE, DIRECT, PIM].map((re) => has(none, re)), [false, false, true, false])
+  for (const steps of [address, eligible, none]) assert.equal(steps.at(-1), RETURN)
+})
