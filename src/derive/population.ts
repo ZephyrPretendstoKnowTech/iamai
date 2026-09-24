@@ -121,6 +121,20 @@ export function reached(step: Step): StepPopulation | null {
   return step.cohort ?? null
 }
 
+/**
+ * Who a policy step's Impact and its "Who this touches" line count (walk list
+ * 4.x items 25 and 31, owner 2026-09-24): its reach where that is settled
+ * (`reached`), and where it is not — a group the scan could not read in full,
+ * an operation still withheld — the tenant policies that deliver it while they
+ * still do, else the people its goal is about. A count, never "Not established"
+ * or "Policy applicability is not fully resolved": the tool carries that, the
+ * person does not.
+ */
+export function impactReachOf(step: Step): StepPopulation {
+  const delivered = step.state?.satisfied === true ? step.deliveredReach ?? null : null
+  return reached(step) ?? delivered ?? step.population
+}
+
 /** The single population object for a step; the row and the step body read it. */
 export function stepPopulation(step: Step): StepPopulationView | null {
   const p = reached(step)

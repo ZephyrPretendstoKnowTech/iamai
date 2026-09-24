@@ -131,7 +131,7 @@ test('Step 5: a held step still handing over its report-only create says to crea
 
 // ---- 2. Impact is who the step reaches ----
 
-test('Step 5: the Impact column says who a step reaches, never the state, and a topic where the reach is unknown', () => {
+test('Step 5: the Impact column says who a step reaches, never the state, and still counts where the reach is unknown (walk list 4.x item 25)', () => {
   let unknown = 0
   for (const p of plans()) {
     for (const s of p.r.steps) {
@@ -145,13 +145,13 @@ test('Step 5: the Impact column says who a step reaches, never the state, and a 
         // Prepare Emergency Access Accounts counts its emergency accounts: the ones chosen, at least the two it needs.
         assert.equal(Number(impact.split(' ')[0]), s.id === 's-prereq-break-glass' ? Math.max(2, s.emergency?.accounts.length ?? 0) : s.population.ids.length, `${where}: account inventory count must match named accounts`)
       } else if (reached(s) === null) {
-        assert.ok(impact.length > 0 && !/^\d+ (person|people)/.test(impact), `${where}: unknown scope uses a topic without inventing a count`)
+        assert.match(impact, /^([\d,]+ (person|people|admins?|guests?|accounts?)|No user impact)$/, `${where}: "${impact}"`)
         unknown += 1
       } else {
         const head = impact.split(' · ')[0]
         const fallback = implementationPackageFor(s)?.meta.impact?.fallbackLabel ?? null
         // A preparation cohort names its guests beside its people (derive/whoLine.ts cohortWords).
-        assert.ok(/^(\d+ (person|people)( and \d+ guests?)?|\d+ guests?)$/.test(head) || ['No user impact', structuralWords.impactDefault, s.impactLabel, ...Object.values(structuralWords.impactLabels), fallback].includes(head), `${where}: "${impact}"`)
+        assert.ok(/^([\d,]+ (person|people|admins?|accounts?)( and \d+ guests?)?|[\d,]+ guests?|no accounts|\d+ polic(y|ies))$/.test(head) || ['No user impact', structuralWords.impactDefault, s.impactLabel, ...Object.values(structuralWords.impactLabels), fallback].includes(head), `${where}: "${impact}"`)
       }
     }
   }
