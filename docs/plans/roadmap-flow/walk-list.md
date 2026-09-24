@@ -59,3 +59,10 @@ Audit numbers from the 1.2–1.4 walk (2026-09-23). All approved.
 | — | About, Completion Criteria and 1.4 milestone rewrites, word for word | fixed |
 
 Item 5 (the change line reporting section 7 steps reopening) is for when the walk reaches section 7.
+
+## 5.1 Protect Sign-in Method Registration (noted early, owner 2026-09-23; fix when the walk reaches 5.1)
+| # | Item | Status |
+|---|---|---|
+| — | Create task never says Include: All users or Exclude: the emergency exclusions group; step 3's "Apply the IAMAI-resolved users and exclusions" names neither | noted |
+| — | Name suggests "Core - Require - Security info registration (2)" while that policy already exists | noted |
+| — | Filler per the standing rules: "Do not add or swap a control", step 6 (session controls), step 7's explanation after "create it", step 8 (compare and rescan) | noted |
