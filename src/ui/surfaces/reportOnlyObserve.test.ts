@@ -505,7 +505,7 @@ test('005.8/9: the step has no enforcement wave, event or date, the calendar boo
     // indistinguishable from one a policy has earned: this step has none to give.
     const bundle = groundingBundle({ view, tenant: 'Tenant', snapshot, coverage: run.coverage, steps, schedule: run.schedule, redacted: false, generated: 'Sep 6, 2026', cleanup: [] }) as unknown as { plan: { steps: Record<string, unknown>[] } }
     const b = bundle.plan.steps.find((x) => x.id === step.id)!
-    assert.equal(b.status, 'On Hold')
+    assert.equal(b.status, 'Up Next', 'its report-only week is a wait (walk list 4.x item 11)')
     assert.deepEqual(b.enforcement, { basis: 'unearned', at: null })
     assert.deepEqual(b.whatToDo, v.whatToDo)
     assert.equal(b.dates, v.dates)
