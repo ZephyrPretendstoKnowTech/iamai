@@ -36,7 +36,7 @@ import { ifWrongLineFor, stepExportView } from './stepExport.ts'
 import { stepVars, withoutScheduleDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { portalNamesFor, unwrittenCorrectionLines } from './stepPortal.ts'
-import { preparationLines, preparesWhileCreateWaits, rescanLinesOf, stepInstructions, wholeLines } from './stepInstructions.ts'
+import { campaignProcedureLines, preparationLines, preparesWhileCreateWaits, stepInstructions } from './stepInstructions.ts'
 import { CONTRACT, SETTLED_FINDINGS, eyebrowOf, implementationEmptyOf, implementationIsCurrent, objectTaskLeads, railOf, readinessOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
 import { boardHolds, laneViewAlone } from './planBoard.ts'
@@ -45,7 +45,7 @@ import { usesDecisionAnatomy } from '../../roadmap/stepGroups.ts'
 import { directionMilestoneAction } from '../../roadmap/directionAnswers.ts'
 import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
 import type { WhoBlock } from './whoBlocks.ts'
-import { BASELINE_COMMIT, artifactText, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageRuntime, packageSourceLine, packageStateOf, planningPreview, reviewedPackageFor, setupAfterEnforcementOf, sourceCheckedLine, entraWithSettings, jsonWithPlanTag } from './stepPackage.ts'
+import { BASELINE_COMMIT, artifactText, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageRuntime, packageSourceLine, packageStateOf, planningPreview, reviewedPackageFor, setupAfterEnforcementOf, sourceCheckedLine, entraWithSettings, jsonWithPlanTag, workProcedureOf } from './stepPackage.ts'
 import { lifecycleResources, policyInspectionLines, resourceChannelAllowed, inspectionResource, emailResource, mfaPreparationEmail, deviceSetupResource, namedPortalResource, switchedOffRequest, switchedOffResources, withWorkflowVerification } from './stepResources.ts'
 import { projectSafely, projectExplanation, readinessSafely, troubleshootingSafely } from '../../content/implementation/project.ts'
 import type { ChannelArtifact, OutputChannel, OwnerConfirmation, TroubleshootingScenario } from '../../content/implementation/project.ts'
@@ -480,11 +480,21 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
     const artifact = packageArtifact(explanation, grounding)
     if (!produced.some((a) => a.id === artifact.id) && artifact.text().trim() !== '') produced.push(artifact)
   }
-  // An explanatory-only package must not replace a supporting step's existing
-  // portal instructions with an unavailable placeholder.
-  if (!machine && !step.directionQuestions && portalLines.length > 0 && !produced.some(a => a.id === 'portal')) {
-    supported.add('portal')
-    produced.push({ id: 'portal', form: 'list', lines: portalLines, text: () => portalLines.map((line, index) => `${index + 1}. ${line}`).join('\n'), note: null })
+  // One procedure in every state (walk list item 19, owner 2026-09-23): a
+  // supporting step whose state projects no procedure of its own — Completed,
+  // Deferred, set aside or held — draws the one its content folder writes for
+  // the work (stepPackage.ts workProcedureOf), never a second copy. A step whose
+  // package writes none keeps its own lines, and an explanatory-only package
+  // never replaces them with an unavailable placeholder.
+  if (!machine && !step.directionQuestions && !produced.some(a => a.id === 'portal')) {
+    const work = pkg ? workProcedureOf(pkg, step, pkgBindings ?? packageBindings(step, ctx, contract), confirmations, baselineCommit) : null
+    if (work !== null) {
+      supported.add('portal')
+      produced.push(packageArtifact(work))
+    } else if (portalLines.length > 0) {
+      supported.add('portal')
+      produced.push({ id: 'portal', form: 'list', lines: portalLines, text: () => portalLines.map((line, index) => `${index + 1}. ${line}`).join('\n'), note: null })
+    }
   }
   // Keep each validated model on its own copyable line without allowing arbitrary
   // tenant text to inject new template lines or script content.
@@ -520,12 +530,6 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
       if (portal.form === 'list') portal.lines = [intro, ...portal.lines]
     }
   }
-  if (step.id === 's-prereq-auth-strength' && step.state.satisfied) {
-    const lines = ['An existing authentication strength already matches the baseline’s method combinations and restrictions. No new strength is needed.', 'Keep that strength in place. Scan again after any authentication-strength changes to verify it still matches.']
-    for (let i = produced.length - 1; i >= 0; i--) if (['portal', 'ps', 'json'].includes(produced[i].id)) produced.splice(i, 1)
-    produced.push({id: 'portal', form: 'list', lines, text: () => lines.join('\n'), note: null})
-    supported.add('portal')
-  }
   for (const channel of [...supported]) if (!resourceChannelAllowed(step, channel)) supported.delete(channel)
   // A retained format always contains actual work or inspection, never a message
   // saying the format has nothing to offer. Resolved mutations remain first choice.
@@ -541,10 +545,9 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
     produced.push(step.id === 's-verify-mfa' ? mfaPreparationEmail(ctx) : emailResource(step, ctx, contract.why))
   }
   if (step.id === 's-verify-mfa') {
-    // Each list's promise that a scan shows progress follows it, while a scan can (stepInstructions.ts rescanLinesOf, R4-20).
-    const rescan = rescanLinesOf(step, cs)
-    const lines = wholeLines([...(Array.isArray(w.steps) ? w.steps : []), ...rescan.steps, ...(Array.isArray(w.generic) ? w.generic : []), ...rescan.generic], ex).filter(line => line.trim())
-    for (const channel of ['portal', 'ps', 'ai'] as const) {
+    // Each list's promise that a scan shows progress follows it, while a scan can (stepInstructions.ts campaignProcedureLines, R4-20).
+    const lines = campaignProcedureLines(step, cs, ex)
+    for (const channel of ['portal', 'ai'] as const) {
       const existing = produced.findIndex(a => a.id === channel)
       if (existing >= 0) produced.splice(existing, 1)
       supported.add(channel)

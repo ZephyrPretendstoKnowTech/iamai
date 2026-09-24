@@ -16,10 +16,10 @@ import { SHARED_REF_KEYS, fillText, ifWrongFor, listCountVars, whatToDoFor, whol
 import { stepVars, withoutScheduleDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor, unwrittenCorrectionLines } from './stepPortal.ts'
-import { instructionsHeld, preparationLines, preparesWhileCreateWaits, rescanLinesOf, wholeLines } from './stepInstructions.ts'
+import { campaignProcedureLines, instructionsHeld, preparationLines, preparesWhileCreateWaits, rescanLinesOf, wholeLines } from './stepInstructions.ts'
 import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, objectTaskLeads, readinessHeldLine, stepContract } from './stepContract.ts'
 import type { LaneView, PrerequisiteLabel, StepContract } from './stepContract.ts'
-import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, previewNoteLines, selectedPolicyBodiesOf, entraWithSettings } from './stepPackage.ts'
+import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, previewNoteLines, selectedPolicyBodiesOf, entraWithSettings, workProcedureOf } from './stepPackage.ts'
 import { projectSafely } from '../../content/implementation/project.ts'
 import { BOARD, SUBSTATUS_WORD, boardHolds, laneViewAlone, laneViewFor, laneViewOf, laneWordOf, prerequisiteLabelFor } from './planBoard.ts'
 import type { BoardReadings } from './planBoard.ts'
@@ -490,6 +490,27 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
       // preparationLines), else the package's own.
       const preparation = preparationLines(step, cs, true)
       lines.push(...(preparation ?? [...(projectedEntra ? entraWithSettings(entra.text, step, ctx, contract, preview ?? projection) : entra.text).replace(/\*\*(.*?)\*\*/g, '$1').split(/\r?\n/).map(line => line.trim()).filter(Boolean), ...(preview ? previewNoteLines(step, contract, preview.hold) : [])]))
+    }
+  }
+  // A supporting step's What to do is the procedure its Entra tab draws, in the
+  // artifacts as on the screen (walk list item 19, owner 2026-09-23): its
+  // package's for the state the scan read, else the one its content folder
+  // writes for the work, in every state (stepPackage.ts workProcedureOf). AI
+  // Info read the content's second copy (`whatToDo.steps`), a differently
+  // worded procedure from the tab's. Prepare Your Team for MFA's tab draws its
+  // campaign lines, and so does its What to do (campaignProcedureLines).
+  if (step.id === 's-verify-mfa') lines.splice(0, lines.length, ...campaignProcedureLines(step, cs, ex))
+  else if (pkg && cs.kind !== 'policy' && !step.directionQuestions) {
+    const bindings = packageBindings(step, ctx, contract)
+    const runtime = state === null ? null : packageRuntime(pkg, state, bindings, {}).runtime
+    const projection = state === null || runtime === null ? null : projectSafely(pkg, state, bindings, runtime)
+    const preview = state === null || runtime === null ? null : planningPreview(pkg, step, contract, ctx.snapshot, bindings, runtime, projection)
+    const entra = (preview ?? projection)?.channels.find((channel) => channel.channel === 'entra')
+      ?? (state === null || runtime === null ? undefined : lifecycleResources(pkg, state, bindings, runtime).find((channel) => channel.channel === 'entra'))
+      ?? workProcedureOf(pkg, step, bindings)
+    if (entra) {
+      hasPackagePortal = true
+      lines.splice(0, lines.length, ...entra.text.replace(/\*\*(.*?)\*\*/g, '$1').split(/\r?\n/).map((line) => line.trim()).filter(Boolean))
     }
   }
   // A policy the tenant has switched off is set to Report-only, in every
