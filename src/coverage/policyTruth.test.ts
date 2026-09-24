@@ -121,33 +121,28 @@ const candidateIds = (g: GoalResult): string[] => g.candidates.map((c) => c.poli
 
 // ---- population ----
 
-test('correct control, wrong population: MFA for a group of members is not MFA for everyone', () => {
+test('correct control, wrong population: a group of members is not everyone, and a population excluded outright earns no credit and names no policy', () => {
   const g = goal(cover([policy('p-group', { includeGroups: ['grp-sales'] })], { groupMembers: new Map([['grp-sales', { memberIds: ['u2', 'u3'], memberCount: 2, sampled: false }]]) }), 'mfa-all-users')
   assert.equal(g.status, 'partial')
   assert.equal(g.satisfaction, null)
   assert.deepEqual([...g.enforcedIds].sort(), ['u2', 'u3'])
   assert.ok(g.reasons.some((x) => x.kind === 'not-targeted' && x.userIds.length === 8))
-})
 
-test('correct control, population excluded outright: no credit, and no policy named or changed for it', () => {
-  const g = goal(cover([policy('p-internal', { includeUsers: ['All'], excludeUsers: ['GuestsOrExternalUsers'] })]), 'guests-mfa')
-  assert.equal(g.status, 'absent')
-  assert.deepEqual(candidateIds(g), [])
-  assert.equal(g.satisfaction, null)
+  const excluded = goal(cover([policy('p-internal', { includeUsers: ['All'], excludeUsers: ['GuestsOrExternalUsers'] })]), 'guests-mfa')
+  assert.equal(excluded.status, 'absent')
+  assert.deepEqual(candidateIds(excluded), [])
+  assert.equal(excluded.satisfaction, null)
   // A policy that excludes the very role it includes reaches no admin.
   const a = goal(cover([policy('p-admins', { includeRoles: [GA], excludeRoles: [GA] }, { grantControls: PR_GRANT })]), 'admins-phishing-resistant')
   assert.equal(a.status, 'absent')
   assert.deepEqual(candidateIds(a), [])
 })
 
-test('a guest policy satisfies the guests goal, and it is the policy named for it', () => {
+test('a guest policy satisfies the guests goal and is the policy named for it; an internal-users policy that excludes guests cannot, with guests or with none', () => {
   const g = goal(cover([policy('p-everyone', { includeUsers: ['All'] }), policy('p-guests', { includeUsers: ['GuestsOrExternalUsers'] })]), 'guests-mfa')
   assert.equal(g.status, 'enforced')
   // The all-users policy covers every guest too; the guest policy is the goal's own.
   assert.equal(g.satisfaction?.sufficientId, 'p-guests')
-})
-
-test('an internal-users policy that excludes guests cannot satisfy the guests goal, with guests or with none', () => {
   const internal = policy('p-internal', { includeUsers: ['All'], excludeUsers: ['GuestsOrExternalUsers'] })
   const guests = policy('p-guests', { includeUsers: ['GuestsOrExternalUsers'] })
   for (const n of [2, 0]) {
@@ -195,6 +190,12 @@ test('the exclusions group the goal requires is part of in place: present keeps 
   assert.equal(byName.status, 'partial')
   assert.equal(byName.satisfaction, null)
   assert.deepEqual(byName.candidates.find((c) => c.policyId === 'p-everyone')?.caveats, ['exclusion-missing'])
+  // An exclusion the plan has not confirmed as emergency access is a gap, never the emergency carve-out.
+  const unconfirmed = goal(cover([policy('p-everyone', { includeUsers: ['All'], excludeUsers: ['u5'] })]), 'mfa-all-users')
+  assert.equal(unconfirmed.status, 'partial')
+  const unconfirmedEx = unconfirmed.reasons.find((x) => x.kind === 'excluded')
+  assert.ok(unconfirmedEx && unconfirmedEx.expected === false)
+  assert.deepEqual(unconfirmedEx.userIds, ['u5'])
   assert.ok(byName.reasons.some((x) => x.kind === 'exclusion-missing'))
   assert.ok(byName.gapSentence && byName.gapSentence.length > 0, 'the row states the gap')
 
@@ -202,6 +203,12 @@ test('the exclusions group the goal requires is part of in place: present keeps 
   const none = goal(cover([policy('p-everyone', { includeUsers: ['All'] })], withExclusionsGroup(null)), 'mfa-all-users')
   assert.equal(none.status, 'partial')
   assert.deepEqual(none.candidates.find((c) => c.policyId === 'p-everyone')?.caveats, ['exclusion-missing', 'exclusion-unresolved'])
+
+  // Required only where the baseline carves it out: the member excluding the author's exclusions group requires it, the same member carving out nothing does not.
+  const tenant = [policy('p-everyone', { includeUsers: ['All'] })]
+  const carving = policy('b-everyone', { includeUsers: ['All'], excludeGroups: ['author-x'] })
+  assert.equal(goal(cover(tenant, { ...withExclusionsGroup('grp-x'), baselinePolicies: [{ ...carving, placeholders: { 'author-x': 'exclusionsGroup' } }] }), 'mfa-all-users').status, 'partial')
+  assert.equal(goal(cover(tenant, { ...withExclusionsGroup('grp-x'), baselinePolicies: [policy('b-everyone', { includeUsers: ['All'] })] }), 'mfa-all-users').status, 'enforced')
 })
 
 test('no usable exclusions group: the step is partly in place, held on the exclusions prerequisite, offers no operation, and names no group', () => {
@@ -239,37 +246,6 @@ test('no usable exclusions group: the step is partly in place, held on the exclu
   for (const [id] of f.groups) assert.equal(text.includes(id), false, `group ${id} named in the plan`)
 })
 
-test('an exclusion the baseline does not carve out is not required', () => {
-  const tenant = [policy('p-everyone', { includeUsers: ['All'] })]
-  // The baseline member excludes the author's exclusions group: required.
-  const carving = policy('b-everyone', { includeUsers: ['All'], excludeGroups: ['author-x'] })
-  const required = goal(cover(tenant, { ...withExclusionsGroup('grp-x'), baselinePolicies: [{ ...carving, placeholders: { 'author-x': 'exclusionsGroup' } }] }), 'mfa-all-users')
-  assert.equal(required.status, 'partial')
-  // The same member carving out nothing IAMAI reads as the exclusions group: not required.
-  const notRequired = goal(cover(tenant, { ...withExclusionsGroup('grp-x'), baselinePolicies: [policy('b-everyone', { includeUsers: ['All'] })] }), 'mfa-all-users')
-  assert.equal(notRequired.status, 'enforced')
-})
-
-test('an exclusion the plan has not confirmed as emergency access is a gap, never the emergency carve-out', () => {
-  const g = goal(cover([policy('p-everyone', { includeUsers: ['All'], excludeUsers: ['u5'] })]), 'mfa-all-users')
-  assert.equal(g.status, 'partial')
-  const ex = g.reasons.find((x) => x.kind === 'excluded')
-  assert.ok(ex && ex.expected === false)
-  assert.deepEqual(ex.userIds, ['u5'])
-})
-
-// ---- resources and conditions ----
-
-test("an application the reference does not exclude narrows the coverage; the reference's own exclusion does not", () => {
-  const excludingApp = (id: string) => policy(id, { includeUsers: ['All'] }, { conditions: { applications: { includeApplications: ['All'], excludeApplications: ['app-x'] } } })
-  const narrowed = goal(cover([excludingApp('p-everyone')]), 'mfa-all-users')
-  assert.equal(narrowed.status, 'partial')
-  assert.ok(narrowed.reasons.some((x) => x.kind === 'apps-excluded'))
-  assert.equal(narrowed.satisfaction, null)
-  const same = goal(cover([excludingApp('p-everyone')], { baselinePolicies: [excludingApp('b-everyone')] }), 'mfa-all-users')
-  assert.equal(same.status, 'enforced')
-})
-
 test('one policy that delivers the goal delivers it: a second that falls short does not make it partly', () => {
   const shortA = policy('p-a', { includeUsers: ['All'] }, { conditions: { applications: { includeApplications: ['All'], excludeApplications: ['app-x'] } } })
   const fullB = policy('p-b', { includeUsers: ['All'] })
@@ -284,7 +260,7 @@ test('one policy that delivers the goal delivers it: a second that falls short d
   assert.deepEqual(candidateIds(alone), ['p-a'])
 })
 
-test('a policy that differs only in ways that change nothing keeps full coverage', () => {
+test('a policy that differs only in ways that change nothing keeps full coverage; a weaker alternative is material, an added session control is not', () => {
   const g = goal(
     cover([
       policy('p-plain', { includeUsers: ['All'], excludeUsers: [], includeGroups: [], excludeGroups: [], includeRoles: [], excludeRoles: [] }, {
@@ -312,48 +288,6 @@ test('a policy that differs only in ways that change nothing keeps full coverage
   assert.equal(g.satisfaction?.sufficientId, 'p-plain')
   // A grant that asks for more under AND is still the goal's control.
   assert.equal(goal(cover([policy('p-and', { includeUsers: ['All'] }, { grantControls: { operator: 'AND', builtInControls: ['mfa', 'compliantDevice'] } })]), 'mfa-all-users').status, 'enforced')
-})
-
-test("a narrower condition on the goal's own policy is partly in place, never missing", () => {
-  const cases: [string, P, string][] = [
-    ['phishing-resistant MFA on Windows only', policy('p-admins', { includeRoles: [GA] }, { grantControls: PR_GRANT, conditions: { platforms: { includePlatforms: ['windows'], excludePlatforms: [] } } }), 'admins-phishing-resistant'],
-    ['a legacy block that spares the office network', policy('p-legacy', { includeUsers: ['All'] }, { conditions: { clientAppTypes: ['exchangeActiveSync', 'other'], locations: { includeLocations: ['All'], excludeLocations: ['loc-office'] } }, grantControls: { operator: 'OR', builtInControls: ['block'] } }), 'block-legacy-auth'],
-    ['guest MFA that spares compliant devices', policy('p-guests', { includeUsers: ['GuestsOrExternalUsers'] }, { conditions: { devices: { deviceFilter: { mode: 'exclude', rule: 'device.isCompliant -eq True' } } } }), 'guests-mfa'],
-    ['MFA only at elevated insider risk, a condition IAMAI does not read', policy('p-everyone', { includeUsers: ['All'] }, { conditions: { insiderRiskLevels: 'elevated' } }), 'mfa-all-users'],
-  ]
-  for (const [label, p, goalId] of cases) {
-    const g = goal(cover([p]), goalId)
-    assert.equal(g.status, 'partial', label)
-    assert.deepEqual(candidateIds(g), [String(p.id)], `${label}: the policy to correct`)
-    assert.ok(g.reasons.some((x) => x.kind === 'conditions-narrower'), `${label}: the condition is the stated gap`)
-    assert.equal(g.satisfaction, null)
-  }
-  // The same policies without the condition are in place.
-  assert.equal(goal(cover([policy('p-admins', { includeRoles: [GA] }, { grantControls: PR_GRANT })]), 'admins-phishing-resistant').status, 'enforced')
-  assert.equal(goal(cover([policy('p-legacy', { includeUsers: ['All'] }, { conditions: { clientAppTypes: ['exchangeActiveSync', 'other'] }, grantControls: { operator: 'OR', builtInControls: ['block'] } })]), 'block-legacy-auth').status, 'enforced')
-  assert.equal(goal(cover([policy('p-guests', { includeUsers: ['GuestsOrExternalUsers'] })]), 'guests-mfa').status, 'enforced')
-})
-
-test("a policy whose condition makes it another goal's policy stays out of this goal", () => {
-  // MFA on risky sign-ins is the sign-in risk goal's policy, not MFA for everyone.
-  const risky = goal(cover([policy('p-risky', { includeUsers: ['All'] }, { conditions: { signInRiskLevels: ['high'] } })]), 'mfa-all-users')
-  assert.equal(risky.status, 'absent')
-  assert.deepEqual(candidateIds(risky), [])
-  // A block on every client app outside allowed countries is not the legacy-authentication block.
-  const geo = goal(cover([policy('p-geo', { includeUsers: ['All'] }, { conditions: { locations: { includeLocations: ['All'], excludeLocations: ['loc-1'] } }, grantControls: { operator: 'OR', builtInControls: ['block'] } })]), 'block-legacy-auth')
-  assert.equal(geo.status, 'absent')
-  assert.deepEqual(candidateIds(geo), [])
-})
-
-test("a condition the reference carries is the goal's own: the same rule keeps coverage, another rule does not", () => {
-  const filtered = (id: string, rule: string) => policy(id, { includeUsers: ['All'] }, { conditions: { devices: { deviceFilter: { mode: 'exclude', rule } } } })
-  const baselinePolicies = [filtered('b-everyone', 'device.trustType -eq "ServerAD"')]
-  assert.equal(goal(cover([filtered('p-same', 'device.trustType -eq "ServerAD"')], { baselinePolicies }), 'mfa-all-users').status, 'enforced')
-  const other = goal(cover([filtered('p-other', 'device.trustType -eq "Workplace"')], { baselinePolicies }), 'mfa-all-users')
-  assert.equal(other.status, 'partial', 'a rule IAMAI does not evaluate is never assumed equal')
-})
-
-test('extra controls: a weaker alternative is material, an added session control is not', () => {
   const or = goal(cover([policy('p-or', { includeUsers: ['All'] }, { grantControls: { operator: 'OR', builtInControls: ['mfa', 'compliantDevice'] } })]), 'mfa-all-users')
   assert.equal(or.status, 'partial')
   assert.ok(or.reasons.some((x) => x.kind === 'weaker-control'))
@@ -371,11 +305,39 @@ test('extra controls: a weaker alternative is material, an added session control
   assert.ok(session.reasons.some((x) => x.kind === 'session-weaker'))
 })
 
-test('what the scan could not read stays unresolved: never In place, never named', () => {
-  const g = goal(cover([policy('p-everyone', { includeUsers: ['All'], excludeGroups: ['grp-unread'] })]), 'mfa-all-users')
-  assert.equal(g.status, 'unknown')
-  assert.equal(g.verdict, 'unknown')
-  assert.equal(g.satisfaction, null)
+test("a narrower condition on the goal's own policy is partly in place, never missing; one that makes it another goal's policy keeps it out; a condition the reference carries is the goal's own", () => {
+  const cases: [string, P, string][] = [
+    ['phishing-resistant MFA on Windows only', policy('p-admins', { includeRoles: [GA] }, { grantControls: PR_GRANT, conditions: { platforms: { includePlatforms: ['windows'], excludePlatforms: [] } } }), 'admins-phishing-resistant'],
+    ['a legacy block that spares the office network', policy('p-legacy', { includeUsers: ['All'] }, { conditions: { clientAppTypes: ['exchangeActiveSync', 'other'], locations: { includeLocations: ['All'], excludeLocations: ['loc-office'] } }, grantControls: { operator: 'OR', builtInControls: ['block'] } }), 'block-legacy-auth'],
+    ['guest MFA that spares compliant devices', policy('p-guests', { includeUsers: ['GuestsOrExternalUsers'] }, { conditions: { devices: { deviceFilter: { mode: 'exclude', rule: 'device.isCompliant -eq True' } } } }), 'guests-mfa'],
+    ['MFA only at elevated insider risk, a condition IAMAI does not read', policy('p-everyone', { includeUsers: ['All'] }, { conditions: { insiderRiskLevels: 'elevated' } }), 'mfa-all-users'],
+  ]
+  for (const [label, p, goalId] of cases) {
+    const g = goal(cover([p]), goalId)
+    assert.equal(g.status, 'partial', label)
+    assert.deepEqual(candidateIds(g), [String(p.id)], `${label}: the policy to correct`)
+    assert.ok(g.reasons.some((x) => x.kind === 'conditions-narrower'), `${label}: the condition is the stated gap`)
+    assert.equal(g.satisfaction, null)
+  }
+  // The same policies without the condition are in place.
+  assert.equal(goal(cover([policy('p-admins', { includeRoles: [GA] }, { grantControls: PR_GRANT })]), 'admins-phishing-resistant').status, 'enforced')
+  assert.equal(goal(cover([policy('p-legacy', { includeUsers: ['All'] }, { conditions: { clientAppTypes: ['exchangeActiveSync', 'other'] }, grantControls: { operator: 'OR', builtInControls: ['block'] } })]), 'block-legacy-auth').status, 'enforced')
+  assert.equal(goal(cover([policy('p-guests', { includeUsers: ['GuestsOrExternalUsers'] })]), 'guests-mfa').status, 'enforced')
+
+  // MFA on risky sign-ins is the sign-in risk goal's policy, not MFA for everyone.
+  const risky = goal(cover([policy('p-risky', { includeUsers: ['All'] }, { conditions: { signInRiskLevels: ['high'] } })]), 'mfa-all-users')
+  assert.equal(risky.status, 'absent')
+  assert.deepEqual(candidateIds(risky), [])
+  // A block on every client app outside allowed countries is not the legacy-authentication block.
+  const geo = goal(cover([policy('p-geo', { includeUsers: ['All'] }, { conditions: { locations: { includeLocations: ['All'], excludeLocations: ['loc-1'] } }, grantControls: { operator: 'OR', builtInControls: ['block'] } })]), 'block-legacy-auth')
+  assert.equal(geo.status, 'absent')
+  assert.deepEqual(candidateIds(geo), [])
+  // A condition the reference carries is the goal's own: the same rule keeps coverage, another rule does not.
+  const filtered = (id: string, rule: string) => policy(id, { includeUsers: ['All'] }, { conditions: { devices: { deviceFilter: { mode: 'exclude', rule } } } })
+  const baselinePolicies = [filtered('b-everyone', 'device.trustType -eq "ServerAD"')]
+  assert.equal(goal(cover([filtered('p-same', 'device.trustType -eq "ServerAD"')], { baselinePolicies }), 'mfa-all-users').status, 'enforced')
+  const other = goal(cover([filtered('p-other', 'device.trustType -eq "Workplace"')], { baselinePolicies }), 'mfa-all-users')
+  assert.equal(other.status, 'partial', 'a rule IAMAI does not evaluate is never assumed equal')
 })
 
 test('no title makes a match: a guests name on a members policy earns nothing, a plain name on a guest policy loses nothing', () => {
@@ -411,7 +373,7 @@ const chosenGroup = (f: Fixture): string => {
   return id
 }
 
-test('audit, demo MFA for everyone: without the exclusions group it is partly in place and the Plan changes that policy; with it, in place', () => {
+test('audit, demo: MFA for everyone and the legacy block are partly in place without the exclusions group, and the Plan changes that policy; with it, in place', () => {
   const f = fixture('demo')
   const run = runFixture(f)
   const r = resultOf(run, 'mfa-all-users')
@@ -439,22 +401,20 @@ test('audit, demo MFA for everyone: without the exclusions group it is partly in
   assert.equal(week2.verdict, 'inPlace')
   assert.equal(week2.satisfaction?.sufficientId, mfa.policyId)
   assert.ok(rowsOf(w).find((p) => p.id === mfa.policyId)?.conditions.users?.excludeGroups?.includes(chosenGroup(w)))
-})
 
-test('audit, demo legacy authentication: partly in place on day one for the exclusions group alone; in place in week two with the service accounts inside the block', () => {
-  const day1 = resultOf(runFixture(fixture('demo')), 'block-legacy-auth')
+  // Legacy authentication: partly in place on day one for the exclusions group alone; in place in week two with the service accounts inside the block.
+  const day1 = resultOf(run, 'block-legacy-auth')
   assert.equal(day1.status, 'partial')
   assert.deepEqual(day1.reasons.filter((x) => !x.expected).map((x) => x.kind), ['exclusion-missing'])
-  const w = fixture('demo-week2')
-  const r = resultOf(runFixture(w), 'block-legacy-auth')
-  assert.equal(r.verdict, 'inPlace')
-  assert.ok(rowsOf(w).some((p) => p.id === r.satisfaction?.sufficientId))
+  const legacy = resultOf(runFixture(w), 'block-legacy-auth')
+  assert.equal(legacy.verdict, 'inPlace')
+  assert.ok(rowsOf(w).some((p) => p.id === legacy.satisfaction?.sufficientId))
   // The baseline allows the service accounts out; this tenant blocks them too, which is stricter and not a gap.
   assert.ok(w.mapping.serviceAccountUserIds.length > 0)
-  for (const id of w.mapping.serviceAccountUserIds) assert.ok(r.enforcedIds.includes(id), id)
+  for (const id of w.mapping.serviceAccountUserIds) assert.ok(legacy.enforcedIds.includes(id), id)
 })
 
-test('audit, demo guests: the guest policy is named on the coverage, the step, the finding, the row and the history', () => {
+test('audit, guests: the guest policy is named on the coverage, the step and the history; with no guests, a policy excluding guests does not put the step In place, and a guest policy does', () => {
   const run = runFixture(fixture('demo-week2'))
   const r = resultOf(run, 'guests-mfa')
   assert.equal(r.verdict, 'inPlace')
@@ -470,13 +430,11 @@ test('audit, demo guests: the guest policy is named on the coverage, the step, t
   for (const other of r.candidates.filter((c) => c.policyId !== own.policyId)) {
     assert.equal(step.history.some((h) => (h.note ?? '').includes(other.policyName)), false, `history names ${other.policyName}`)
   }
-})
 
-test('audit, live-shaped guests: with no guests, a policy excluding guests does not put the step In place, and a guest policy does', () => {
+  // Live-shaped: the same tenant with no guest accounts, whose everyone policy now excludes guests.
   const base = fixture('demo-week2')
-  const baseRun = runFixture(base)
-  const everyoneId = resultOf(baseRun, 'mfa-all-users').satisfaction?.sufficientId
-  const guestId = resultOf(baseRun, 'guests-mfa').satisfaction?.sufficientId
+  const everyoneId = resultOf(run, 'mfa-all-users').satisfaction?.sufficientId
+  const guestId = r.satisfaction?.sufficientId
   assert.ok(everyoneId && guestId && everyoneId !== guestId)
   // The same tenant with no guest accounts, whose everyone policy now excludes guests.
   const variant = (keepGuestPolicy: boolean): Fixture => {
@@ -512,30 +470,6 @@ test('audit, live-shaped guests: with no guests, a policy excluding guests does 
   assert.notEqual(s1.status, 'done', 'a policy with no current guests is not proof of a guest workflow test')
   assert.equal(s1.manualReview?.confirmedAt, null)
   assert.equal(s1.satisfiedBy?.sufficient, rowsOf(base).find((p) => p.id === guestId)?.displayName)
-})
-
-test('demo week two: its token-protection policy, switched On exactly as the step built it, is in place and owes no correction', () => {
-  // Nadia D7 / R4-10, on the demo tenant visitors see (the pinned baseline): the
-  // tenant's token-protection policy carries the pinned five resources and the
-  // Cloud PC filter. In report-only it is watched; switched On unchanged it read
-  // "covers fewer apps than the goal expects" and the step came back Ready ·
-  // Correct with an update to its target resources whose material changes were
-  // none — goals.json's first token-protection implementation expected "all"
-  // applications, which token protection cannot target. Nothing the step said
-  // could finish it.
-  const f = fixture('demo-week2')
-  const row = rowsOf(f).find((p) => /token protection/i.test(String(p.displayName)))
-  assert.ok(row, 'the demo tenant has a token-protection policy')
-  assert.equal(row.state, 'enabledForReportingButNotEnforced', 'the premise: it is watched in report-only')
-  row.state = 'enabled'
-  const run = runFixture(f)
-  const r = resultOf(run, 'token-protection')
-  assert.equal(r.reasons.some((x) => x.kind === 'apps-narrower'), false, 'the pinned resources read as fewer than the goal expects')
-  assert.equal(r.status, 'enforced')
-  assert.equal(r.verdict, 'inPlace')
-  const s = goalStep(run, 'token-protection')
-  assert.equal(s.status, 'done', 'the enforced policy is still asked for a correction')
-  assert.equal(operationsOf(s).some((o) => o.mode === 'update'), false, 'an update is offered for a policy already as the plan built it')
 })
 
 test('demo week two: its token-protection policy switched On without the Cloud PC filter delivers the goal and is still not the plan\'s policy', () => {

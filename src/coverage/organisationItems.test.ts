@@ -36,12 +36,16 @@ function report(over: Partial<OrganisationReport['naming']> = {}, consolidation:
   } as OrganisationReport
 }
 
-test('a tidy tenant produces no items at all', () => {
-  const items = organisationItems(report(), snapshot([{ displayName: 'CA001 - Require MFA', state: 'enabled' }]), [])
-  assert.deepEqual(items, [])
+test('nothing to say is no item: a tidy tenant, a report-only policy inside the window, meaningful group names', () => {
+  assert.deepEqual(organisationItems(report(), snapshot([{ displayName: 'CA001 - Require MFA', state: 'enabled' }]), []), [])
+  const fresh = snapshot([{ displayName: 'Recent', state: 'enabledForReportingButNotEnforced', modifiedDateTime: daysAgo(STALE_REPORT_ONLY_DAYS - 1) }])
+  assert.deepEqual(organisationItems(report(), fresh, []), [], 'inside the window it is being observed, not forgotten')
+  assert.deepEqual(organisationItems(report(), snapshot([]), ['CA - Exclusion - Break-glass', 'Finance team']), [])
+  const opaque = organisationItems(report(), snapshot([]), ['Group1', 'temp', 'CA - Exclusion - Break-glass'])
+  assert.deepEqual(opaque.find((i) => i.kind === 'groupName')!.names, ['Group1', 'temp'], 'a name that says its purpose is left alone')
 })
 
-test('every item states what, why here, and the exact change', () => {
+test('every item states what, why here, and the exact change, and never proposes a delete', () => {
   const items = organisationItems(
     report({ outliers: ['Old policy'], unprefixed: ['Old policy'], share: 0.75, names: ['CA001 - a', 'CA002 - b', 'CA003 - c', 'Old policy'] }, [
       { goalId: 'g1', goalName: 'MFA for everyone', policyNames: ['CA001 - a', 'CA002 - b'] },
@@ -59,36 +63,11 @@ test('every item states what, why here, and the exact change', () => {
     assert.ok(i.change.length > 0, `${i.kind} names the exact change`)
     assert.ok(i.id.length > 0, `${i.kind} has an id to key on`)
   }
-})
-
-test('a report-only policy inside the window is not stale', () => {
-  const fresh = organisationItems(
-    report(),
-    snapshot([{ displayName: 'Recent', state: 'enabledForReportingButNotEnforced', modifiedDateTime: daysAgo(STALE_REPORT_ONLY_DAYS - 1) }]),
-    [],
-  )
-  assert.deepEqual(fresh, [], 'inside the window it is being observed, not forgotten')
-})
-
-test('consolidation names the policies and points at the six stages, never a delete', () => {
-  const items = organisationItems(report(), snapshot([]), [])
-  assert.deepEqual(items, [])
-  const withDupes = organisationItems(report({}, [{ goalId: 'g', goalName: 'MFA', policyNames: ['A', 'B'] }]), snapshot([]), [])
-  const c = withDupes.find((i) => i.kind === 'consolidate')!
-  assert.deepEqual(c.names, ['A', 'B'], 'the policies are named')
+  // Consolidation names the policies and points at the safe procedure.
+  const c = items.find((i) => i.kind === 'consolidate')!
+  assert.deepEqual(c.names, ['CA001 - a', 'CA002 - b'], 'the policies are named')
   assert.match(c.change, /report-only/, 'the change is the safe procedure')
   assert.doesNotMatch(c.change, /\bdelete\b/i, 'and never a delete')
-})
-
-test('a disabled policy is the user’s call, not IAMAI’s', () => {
-  const items = organisationItems(report(), snapshot([{ displayName: 'Old', state: 'disabled' }]), [])
-  const d = items.find((i) => i.kind === 'disabled')!
-  assert.match(d.change, /your call/, 'IAMAI never proposes the deletion itself')
-})
-
-test('opaque group names are flagged; meaningful ones are not', () => {
-  const opaque = organisationItems(report(), snapshot([]), ['Group1', 'temp', 'CA - Exclusion - Break-glass'])
-  const g = opaque.find((i) => i.kind === 'groupName')!
-  assert.deepEqual(g.names, ['Group1', 'temp'], 'a name that says its purpose is left alone')
-  assert.deepEqual(organisationItems(report(), snapshot([]), ['CA - Exclusion - Break-glass', 'Finance team']), [])
+  // A disabled policy is the user's call, not IAMAI's.
+  assert.match(items.find((i) => i.kind === 'disabled')!.change, /your call/, 'IAMAI never proposes the deletion itself')
 })
