@@ -313,6 +313,12 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // And the empty Ready tab's line (planBoard.ts nothingReadyLine): a reading
   // of the live lane counts, and the review page has no board.
   '.pages.plan.nothingReady',
+  // The Plan's alerts when this browser could not save or read the plan
+  // (Plan.tsx SaveAlert, net-new 11): a storage failure the review page never has.
+  '.pages.plan.saveFailed',
+  '.pages.plan.retrySave',
+  '.pages.plan.loadFailed',
+  '.pages.plan.retryLoad',
   // The trusted-location step's completion under its other answer
   // (doneWhen.ts): the review page draws each step once, under the answer the
   // example records, and the example records a selected network.
