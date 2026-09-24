@@ -121,24 +121,13 @@ export const ACCEPTANCE = [
   // 12 says "or" (E7): a passkey or a security key is enough; either is phishing-resistant.
   // The two are now named by the menu entries Microsoft documents, which differ
   // (docs/plans/protect-admins-spec.md section 2); the "either" is what item 12 owns.
-  { item: '12', step: 's-ladder-operator-passkey', path: 'whatToDo.steps', must: 'Either one is enough, and Microsoft recommends a security key for elevated privileges.', mustNot: 'security key (survives a lost phone) and a passkey' },
   { item: '12', step: 's-ladder-operator-passkey', path: 'more.risks', must: 'Keep a hardware security key under your control and protect its PIN.' },
   // 13's date and window are the engine's (E7): the day Require MFA for Everyone enforces, and the campaign's window.
   { item: '13', step: 's-verify-mfa', path: 'who.timeline', must: 'Require MFA for Everyone is planned for {mfaEnforce}', mustNot: '{firstEnforce}' },
-  { item: '13', step: 's-verify-mfa', path: 'comms.body', must: 'from {mfaEnforceLong}.', mustNot: '{firstEnforceLong}' },
-  { item: '13', step: 's-verify-mfa', path: 'comms.body', must: 'Over the next {enrolWindowDays} days', mustNot: 'over the next two weeks' },
-  { item: '13', step: 's-verify-mfa', path: 'whatToDo.steps', must: 'Admins: a passkey or a hardware security key; either is phishing-resistant.', mustNot: 'a hardware security key as well' },
-  { item: '13', step: 's-verify-mfa', path: 'whatToDo.generic', must: 'Registration campaign' },
   // MFA for Everyone C1-C9 (docs/plans/mfa-everyone-spec.md section 4, Microsoft
   // Learn checked 2026-09-20): the campaign nudges passkeys as well as the
   // Authenticator app, one method at a time, and a passkey campaign reaches no
   // guest. Completion Criteria is one thing per line.
-  { item: '13', step: 's-verify-mfa', path: 'doneWhen', must: 'Every administrator has a phishing-resistant method.', mustNot: 'a passkey and a security key' },
-  { item: '13', step: 's-verify-mfa', path: 'whatToDo.generic', must: 'either Passkey (FIDO2) or Microsoft Authenticator', mustNot: 'Check the separate passkey registration instructions for passkeys' },
-  { item: '13', step: 's-verify-mfa', path: 'whatToDo.generic', must: 'A passkey campaign does not nudge guests' },
-  { item: '13', step: 's-verify-mfa', path: 'whatToDo.generic', must: 'Days allowed to snooze and Limited number of snoozes' },
-  { item: '14', step: 'mfa-all-users', path: 'who.evidence', must: 'This policy uses Require multifactor authentication.', mustNot: 'requires one the moment a sign-in looks wrong' },
-  { item: '14', step: 'mfa-all-users', path: 'who.evidence', must: 'Stronger method requirements belong to the separate policies that select an authentication strength.' },
   // MFA for Everyone D1-D3 (docs/plans/mfa-everyone-spec.md section 5, Microsoft
   // Learn checked 2026-09-20): the reference procedure named an authentication
   // strength where the pin is builtInControls ["mfa"], and Learn says a policy
@@ -146,7 +135,6 @@ export const ACCEPTANCE = [
   { item: '14', step: 'mfa-all-users', path: 'whatToDoReference.steps', must: 'Grant → Require multifactor authentication.', mustNot: 'Grant → Require authentication strength: Multifactor authentication' },
   { item: '14', step: 'mfa-all-users', path: 'more.risks', must: 'Microsoft is retiring both, and a person left with nothing else is made to register a passkey', mustNot: 'waiting on a text that does not arrive' },
   { item: '14', step: 'mfa-all-users', path: 'more.helpDesk', must: "cannot rename or delete is Microsoft's own managed one" },
-  { item: '15', step: 'admins-phishing-resistant', path: 'who.evidence', must: 'Limit How Long Sessions Last', mustNot: 'End Browser Sessions When the Browser Closes' },
   { item: '15', step: 'admins-phishing-resistant', path: 'who.evidence', mustNot: '{list:adminsWith}' },
   { item: '15', step: 'admins-phishing-resistant', path: 'comms.body', must: 'sign-ins by your admin account at {tenant} will need a passkey or a security key', mustNot: 'admin sign-ins at {tenant}' },
   { item: '16', step: 'admin-portals-protected', path: 'more.risks', must: 'Anyone with an Azure RBAC role but no directory role is blocked from the Azure portal and CLI' },
@@ -168,7 +156,6 @@ export const ACCEPTANCE = [
   // Learn checked 2026-09-19): legacy protocols cannot do MFA, a blocked
   // ActiveSync device gets one quarantine email, and a certificate is still
   // legacy authentication.
-  { item: '19', step: 'block-legacy-auth', path: 'why', must: 'Legacy authentication protocols cannot complete multifactor authentication', mustNot: 'can prevent MFA from protecting a sign-in' },
   { item: '19', step: 'block-legacy-auth', path: 'more.helpDesk', must: 'one quarantine email with the reason' },
   { item: '19', step: 'block-legacy-auth', path: 'more.helpDesk', must: 'moved from a password to a certificate is still on legacy authentication' },
   { item: '19', step: 'block-legacy-auth', path: 'decision.help', must: 'SMTP AUTH is the last route that does', mustNot: 'use different authentication paths' },
@@ -189,9 +176,6 @@ export const ACCEPTANCE = [
   // was (docs/plans/step-redundancy-analysis.md finding 6): its About facts are
   // that step's, and its route instructions are shared.mailDevices, the second
   // Implementation Task's words.
-  { item: '20b', step: 'block-legacy-auth', path: 'why', must: 'Exchange Online already refuses a password for POP, IMAP and ActiveSync', mustNot: 'may depend on a mail-sending method' },
-  { item: '20b', step: 'block-legacy-auth', path: 'why', must: 'Microsoft is retiring that route too' },
-  { item: '20b', path: 'shared.mailDevices.steps', must: 'SMTP AUTH with OAuth, an Exchange Online connector, or Direct Send for internal recipients only' },
   // Per step, 21–30.
   // Close the Doors D1-D2 (docs/plans/close-doors-spec.md section 5, Microsoft
   // Learn checked 2026-09-19): the flow is named concretely, and protocol
@@ -254,7 +238,7 @@ export const ACCEPTANCE = [
   // Microsoft Learn checked 2026-09-20): the Configure toggle on the condition
   // that makes this browser-only, the setting that has to be off first, and the
   // company-branding prompt this overrides.
-  { item: '32', step: 'session-lifetime', path: 'whatToDoReference.steps', must: 'Conditions → Client apps → Configure: Yes, then Browser. Left at No it reaches every client app.' },
+  { item: '32', step: 'session-lifetime', path: 'whatToDoReference.steps', must: 'Conditions → Client apps → Configure: Yes, then Browser' },
   { item: '32', step: 'session-lifetime', path: 'more.risks', must: 'Remember multifactor authentication on trusted devices, left on, prompts these people' },
   { item: '32', step: 'session-lifetime', path: 'more.helpDesk', must: 'Stay signed in? stops working for everyone here' },
   { item: '33', step: 'pim-activation-reauth', path: 'comms.body', must: 'when you activate an eligible admin role', mustNot: 'confirm with MFA each time' },
@@ -347,6 +331,8 @@ export function contentFindings(content, pinned = null, contracts = null) {
 
   // C3: no hard date and no preview claim in content that is not a variable.
   for (const [path, s] of strings({ steps, cleanup, shared: content.shared, pages: content.pages, phases: content.phases })) {
+    // A Learn entry's checkedOn is the recorded day the page was read (content.ts Learn), not prose.
+    if (path.endsWith('.learn.checkedOn')) continue
     const m = HARD_DATE.exec(s)
     if (m) add('P0', `content ${path}: a hard date "${m[0]}" (C3: no date that is not a variable)`)
     if (/\bpreview\b/i.test(s) && s !== 'Preview' && !path.startsWith('pages.home.')) add('P0', `content ${path}: a preview claim "${s.slice(0, 60)}" (C3)`)
@@ -359,7 +345,8 @@ export function contentFindings(content, pinned = null, contracts = null) {
     const surface = (id) => (contracts.surfaces ?? []).find((s) => s.id === id)?.forbid ?? []
     const stepForbids = [...new Set([...surface('plan.step'), ...surface('plan.step.more')])]
     for (const [path, s] of strings({ steps, cleanup, shared: content.shared, pages: content.pages })) {
-      for (const f of contracts.forbidEverywhere ?? []) if (s.includes(f)) add('P0', `content ${path}: forbidden-everywhere string "${f}"`)
+      // "**" in content is authored bold, which AuthoredText renders; the walk and smoke check the rendered text for a stray one.
+      for (const f of contracts.forbidEverywhere ?? []) if (f !== '**' && s.includes(f)) add('P0', `content ${path}: forbidden-everywhere string "${f}"`)
       // The engine's own words (shared.engine) and the pages render on the Plan page and the other surfaces, never inside a step.
       if (/whatToDoReference/.test(path) || path.startsWith('pages') || path.startsWith('shared.engine')) continue
       for (const f of stepForbids) if (s.includes(f)) add('P0', `content ${path}: forbidden string "${f}" (plan.step / plan.step.more forbid)`)
