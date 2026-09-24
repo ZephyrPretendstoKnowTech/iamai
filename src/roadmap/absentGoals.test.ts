@@ -17,53 +17,61 @@ import { isFloorGoal } from './floor.ts'
 // item 3); the rest never produce a step.
 const ABSENT = ['byod-session-controls', 'mobile-app-protection', 'block-downloads-unmanaged', 'azure-management-mfa']
 
-test('no fixture renders a goal the pinned goal map does not hold, except the floor, flagged', () => {
-  for (const f of allFixtures()) {
-    const { steps } = runFixture(f)
-    for (const s of steps) {
-      if (!s.id.startsWith('s-goal-')) continue
-      if (goalInMap(PINNED_GOAL_MAP, s.goalId)) {
-        assert.ok(!s.floor, `${f.name}: ${s.id} is held by the baseline and is not the floor`)
-        continue
+test('the plan holds exactly the goals the goal map holds, plus the floor flagged, on every fixture and under a narrower map', () => {
+  // no fixture renders a goal the pinned goal map does not hold, except the floor, flagged
+  {
+    for (const f of allFixtures()) {
+      const { steps } = runFixture(f)
+      for (const s of steps) {
+        if (!s.id.startsWith('s-goal-')) continue
+        if (goalInMap(PINNED_GOAL_MAP, s.goalId)) {
+          assert.ok(!s.floor, `${f.name}: ${s.id} is held by the baseline and is not the floor`)
+          continue
+        }
+        assert.ok(isFloorGoal(s.goalId) && s.floor === true, `${f.name}: ${s.id} renders a goal the baseline does not hold`)
       }
-      assert.ok(isFloorGoal(s.goalId) && s.floor === true, `${f.name}: ${s.id} renders a goal the baseline does not hold`)
+      for (const g of ABSENT) assert.equal(steps.find((s) => s.goalId === g), undefined, `${f.name}: ${g} is absent from the baseline and must not render`)
     }
-    for (const g of ABSENT) assert.equal(steps.find((s) => s.goalId === g), undefined, `${f.name}: ${g} is absent from the baseline and must not render`)
+  }
+
+  // an explicit goal map narrows the plan to the goals it holds, plus the floor it lacks
+  {
+    const narrow = { 'mfa-all-users': PINNED_GOAL_MAP['mfa-all-users'], 'block-legacy-auth': PINNED_GOAL_MAP['block-legacy-auth'] }
+    const { steps } = runFixture(fixture('mid'), { goalMap: narrow })
+    const goalSteps = steps.filter((s) => s.id.startsWith('s-goal-')).map((s) => s.goalId).sort()
+    // Registration protection is the floor's (target-state §13): rendered because
+    // this map lacks it, flagged; the legacy block is held, so it is the author's.
+    assert.deepEqual(goalSteps, ['block-legacy-auth', 'mfa-all-users', 'register-info-protected'])
+    assert.equal(steps.find((s) => s.goalId === 'register-info-protected')?.floor, true)
+    assert.ok(!steps.find((s) => s.goalId === 'block-legacy-auth')?.floor)
   }
 })
 
-test('the demo derives through the same pinned baseline as the product', () => {
-  for (const name of ['demo', 'demo-week2'] as const) {
-    const f = fixture(name)
-    assert.equal(f.baseline, pinnedPackage(), `${name} carries a baseline of its own`)
-    assert.equal(f.baseline.policies.length, PINNED.policies.length)
+test('the demo derives through the pinned baseline, and the map\'s policy stands for a held goal, never a signature match', () => {
+  // the demo derives through the same pinned baseline as the product
+  {
+    for (const name of ['demo', 'demo-week2'] as const) {
+      const f = fixture(name)
+      assert.equal(f.baseline, pinnedPackage(), `${name} carries a baseline of its own`)
+      assert.equal(f.baseline.policies.length, PINNED.policies.length)
+    }
   }
-})
 
-test("the map's policy stands for a held goal, never a signature match", () => {
-  const { steps } = runFixture(fixture('demo'))
-  // The signature match picks the admin persistence policy for the all-users
-  // goal and the risky-users block for registration; the map decides instead.
-  const persistence = steps.find((s) => s.goalId === 'all-users-no-persistence')
-  assert.ok(persistence, 'the demo holds the all-users persistence goal')
-  assert.equal(persistence.naming?.fromBaseline, 'IAC - GLOBAL – SESSION – All Users Persistence (9-12 Hours)')
-  const geo = steps.find((s) => s.goalId === 'geo-restriction')
-  assert.ok(geo)
-  assert.equal(geo.naming?.fromBaseline, 'IAC - GLOBAL – BLOCK – Countries not Allowed')
-  for (const s of steps) {
-    if (!s.id.startsWith('s-goal-') || !s.naming?.fromBaseline) continue
-    const mapped = PINNED_GOAL_MAP[s.goalId].map((k) => PINNED.policies.find((p) => (p.id ?? p.displayName) === k)?.displayName)
-    assert.ok(mapped.includes(s.naming.fromBaseline), `${s.id} renders ${s.naming.fromBaseline}, not one of the map's policies (${mapped.join(' | ')})`)
+  // the map's policy stands for a held goal, never a signature match
+  {
+    const { steps } = runFixture(fixture('demo'))
+    // The signature match picks the admin persistence policy for the all-users
+    // goal and the risky-users block for registration; the map decides instead.
+    const persistence = steps.find((s) => s.goalId === 'all-users-no-persistence')
+    assert.ok(persistence, 'the demo holds the all-users persistence goal')
+    assert.equal(persistence.naming?.fromBaseline, 'IAC - GLOBAL – SESSION – All Users Persistence (9-12 Hours)')
+    const geo = steps.find((s) => s.goalId === 'geo-restriction')
+    assert.ok(geo)
+    assert.equal(geo.naming?.fromBaseline, 'IAC - GLOBAL – BLOCK – Countries not Allowed')
+    for (const s of steps) {
+      if (!s.id.startsWith('s-goal-') || !s.naming?.fromBaseline) continue
+      const mapped = PINNED_GOAL_MAP[s.goalId].map((k) => PINNED.policies.find((p) => (p.id ?? p.displayName) === k)?.displayName)
+      assert.ok(mapped.includes(s.naming.fromBaseline), `${s.id} renders ${s.naming.fromBaseline}, not one of the map's policies (${mapped.join(' | ')})`)
+    }
   }
-})
-
-test('an explicit goal map narrows the plan to the goals it holds, plus the floor it lacks', () => {
-  const narrow = { 'mfa-all-users': PINNED_GOAL_MAP['mfa-all-users'], 'block-legacy-auth': PINNED_GOAL_MAP['block-legacy-auth'] }
-  const { steps } = runFixture(fixture('mid'), { goalMap: narrow })
-  const goalSteps = steps.filter((s) => s.id.startsWith('s-goal-')).map((s) => s.goalId).sort()
-  // Registration protection is the floor's (target-state §13): rendered because
-  // this map lacks it, flagged; the legacy block is held, so it is the author's.
-  assert.deepEqual(goalSteps, ['block-legacy-auth', 'mfa-all-users', 'register-info-protected'])
-  assert.equal(steps.find((s) => s.goalId === 'register-info-protected')?.floor, true)
-  assert.ok(!steps.find((s) => s.goalId === 'block-legacy-auth')?.floor)
 })

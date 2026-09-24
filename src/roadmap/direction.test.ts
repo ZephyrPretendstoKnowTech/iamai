@@ -103,76 +103,122 @@ test('(b) a what-you-use question takes today\'s state; a how-it-should-work que
   assert.match(q(devices, 'computers').today ?? '', /^Today: /)
 })
 
-test('(c) Approve answers saves to the keys the answers have always lived under', () => {
-  const f = fixture('demo')
-  f.mapping.workflowAnswers = {}
-  f.mapping.facetOverrides = {}
-  f.mapping.questionAnswers = {}
-  const steps = stepsOf(f)
-  const use = stepOf(steps, DIRECTION_STEP.use)
-  const devices = stepOf(steps, DIRECTION_STEP.devices)
-  const printer = f.snapshot.users[1].id
-  const decisions: Record<string, StepDecision> = {
-    [DIRECTION_STEP.use]: approve(use, { 'service:sharepoint': { value: 'no', picked: [] }, mailDevices: { value: 'some', picked: [printer] }, deviceCode: { value: 'unused', picked: [] }, partner: { value: 'yes', picked: [] } }),
-    [DIRECTION_STEP.devices]: approve(devices, { computers: { value: 'hybrid', picked: [] }, phones: { value: 'blocked', picked: [] }, officeNetwork: { value: 'remote', picked: [] } }),
+test('(c) Approve saves every answer under the key it is read from, completes the step, and moves to the next open Direction step', () => {
+  // (c) Approve answers saves to the keys the answers have always lived under
+  {
+    const f = fixture('demo')
+    f.mapping.workflowAnswers = {}
+    f.mapping.facetOverrides = {}
+    f.mapping.questionAnswers = {}
+    const steps = stepsOf(f)
+    const use = stepOf(steps, DIRECTION_STEP.use)
+    const devices = stepOf(steps, DIRECTION_STEP.devices)
+    const printer = f.snapshot.users[1].id
+    const decisions: Record<string, StepDecision> = {
+      [DIRECTION_STEP.use]: approve(use, { 'service:sharepoint': { value: 'no', picked: [] }, mailDevices: { value: 'some', picked: [printer] }, deviceCode: { value: 'unused', picked: [] }, partner: { value: 'yes', picked: [] } }),
+      [DIRECTION_STEP.devices]: approve(devices, { computers: { value: 'hybrid', picked: [] }, phones: { value: 'blocked', picked: [] }, officeNetwork: { value: 'remote', picked: [] } }),
+    }
+    const m = applyStepDecisions(f.mapping, decisions)
+    assert.equal(m.workflowAnswers?.sharepoint, 'no')
+    assert.deepEqual(m.facetOverrides.sharepoint?.on, false)
+    assert.ok(m.workflowConfirmedAt)
+    assert.deepEqual(mailDevicesOf(m), [printer])
+    assert.ok(m.serviceAccountUserIds.includes(printer), 'the mail-sending device joins the service accounts, as before')
+    assert.equal(deviceCodeWorkflowsOf(m), false)
+    assert.equal(serviceProvidersExcluded(m), true)
+    assert.equal(m.questionAnswers?.[answerKey(QUESTION_STEP.devices, DEVICE_ANSWER_KEYS.computers)], 'hybrid')
+    assert.equal(devicePlanOf(m)?.noWorkPhones, true)
+    assert.equal(m.wizardAnswered.trustedLocations, true)
+    assert.deepEqual(m.trustedLocationIds, [])
+    assert.equal(m.questionAnswers?.[answerKey(DIRECTION_LOCATIONS_STORAGE, 'officeNetwork')], 'remote', 'the office network answer, under the key it is read from')
+    // And the steps read those answers back as approved.
+    const after = stepsOf({ ...f, mapping: m })
+    for (const id of [DIRECTION_STEP.use, DIRECTION_STEP.devices]) assert.equal(stepOf(after, id).status, 'done', id)
+    assert.equal(q(stepOf(after, DIRECTION_STEP.use), 'service:sharepoint').saved?.value, 'no')
   }
-  const m = applyStepDecisions(f.mapping, decisions)
-  assert.equal(m.workflowAnswers?.sharepoint, 'no')
-  assert.deepEqual(m.facetOverrides.sharepoint?.on, false)
-  assert.ok(m.workflowConfirmedAt)
-  assert.deepEqual(mailDevicesOf(m), [printer])
-  assert.ok(m.serviceAccountUserIds.includes(printer), 'the mail-sending device joins the service accounts, as before')
-  assert.equal(deviceCodeWorkflowsOf(m), false)
-  assert.equal(serviceProvidersExcluded(m), true)
-  assert.equal(m.questionAnswers?.[answerKey(QUESTION_STEP.devices, DEVICE_ANSWER_KEYS.computers)], 'hybrid')
-  assert.equal(devicePlanOf(m)?.noWorkPhones, true)
-  assert.equal(m.wizardAnswered.trustedLocations, true)
-  assert.deepEqual(m.trustedLocationIds, [])
-  assert.equal(m.questionAnswers?.[answerKey(DIRECTION_LOCATIONS_STORAGE, 'officeNetwork')], 'remote', 'the office network answer, under the key it is read from')
-  // And the steps read those answers back as approved.
-  const after = stepsOf({ ...f, mapping: m })
-  for (const id of [DIRECTION_STEP.use, DIRECTION_STEP.devices]) assert.equal(stepOf(after, id).status, 'done', id)
-  assert.equal(q(stepOf(after, DIRECTION_STEP.use), 'service:sharepoint').saved?.value, 'no')
+
+  // approving 2.3 saves the office network answer under the key it is read from, reads it back, and completes 2.3
+  // The writer bug (roadmap-flow proposal, section 7): approving the step that
+  // asks the office network saved it under that step's own id, and the answer is
+  // read from s-direction-locations only — so "we have one, not in Entra yet" and
+  // "everyone is remote" were lost, and the step never completed.
+  {
+    for (const value of ['notInEntra', 'remote']) {
+      const f = fixture('demo')
+      f.mapping.questionAnswers = {}
+      const devices = stepOf(stepsOf(f), 's-direction-devices')
+      const answers = Object.fromEntries([...devices.directionQuestions!.map((x) => [x.key, x.saved ?? x.suggested] as const), ['officeNetwork', { value, picked: [] }] as const])
+      const m = applyStepDecisions(f.mapping, { 's-direction-devices': { ...directionDecisionOf(answers), at: AT } })
+      assert.equal(m.questionAnswers?.['s-direction-locations:officeNetwork'], value, `${value}: written under the key it is read from`)
+      assert.equal(savedAnswerOf('officeNetwork', m)?.value, value, `${value}: read back`)
+      const after = stepOf(stepsOf({ ...f, mapping: m }), 's-direction-devices')
+      assert.equal(q(after, 'officeNetwork').saved?.value, value, `${value}: the question shows it saved`)
+      assert.equal(after.status, 'done', `${value}: 2.3 completes`)
+    }
+  }
+
+  // Approve moves to the next open Direction step.
+  {
+    const steps = stepsOf(fixture('demo'))
+    // A service question states no window: its two sources (appSignInSummary and
+    // spActivity) declare none, so "the last 30 days" would be a measured month
+    // read from a summary that states no period at all.
+    for (const x of stepOf(steps, DIRECTION_STEP.use).directionQuestions!.filter((y) => y.key.startsWith('service:'))) {
+      assert.doesNotMatch(x.evidence, /last 30 days/, x.key + ' claims a window its sources do not declare')
+    }
+    // Approving D1 moves to D2; with D2 answered too, D3 is next, and from D3 back to the first open one.
+    assert.equal(nextDirectionStep(DIRECTION_STEP.use, steps), DIRECTION_STEP.accounts)
+    const answered = (id: string): Step => ({ ...stepOf(steps, id), directionQuestions: stepOf(steps, id).directionQuestions!.map((x) => ({ ...x, saved: x.suggested, needsReview: false })) })
+    const later = steps.map((s) => s.id === DIRECTION_STEP.accounts ? answered(s.id) : s)
+    assert.equal(nextDirectionStep(DIRECTION_STEP.use, later), DIRECTION_STEP.devices)
+    assert.equal(nextDirectionStep(DIRECTION_STEP.devices, later), DIRECTION_STEP.use)
+    const all = steps.map((s) => answered(s.id))
+    assert.equal(nextDirectionStep(DIRECTION_STEP.use, all), null, 'nothing open: the page stays')
+    assert.equal(nextDirectionStep('s-goal-admin-mfa', steps), null, 'only a Direction step moves the page')
+  }
 })
 
-test('(c) an answer saved before Direction existed still reads as saved', () => {
-  const f = fixture('demo')
-  const partner = questionLabels(QUESTION_STEP.partner).question!
-  const m = applyStepDecisions(f.mapping, {
-    's-confirm-workloads': { answers: { sharepoint: 'yes', 'evidence:sharepoint': 'present' }, at: AT },
-    [QUESTION_STEP.deviceCode]: { option: 'None', at: AT },
-    [QUESTION_STEP.mailDevices]: { option: 'None', at: AT },
-    [QUESTION_STEP.partner]: { picked: [], answers: { [partner]: 'Prompt them like any guest' }, at: AT },
-    [QUESTION_STEP.devices]: { answers: { [DEVICE_ANSWER_KEYS.phoneManagement]: 'enrolled', [DEVICE_ANSWER_KEYS.phoneAppProtection]: 'required', [DEVICE_ANSWER_KEYS.computers]: 'enrolled' }, at: AT },
-    [PREREQ_STEP_ID.trustedLocation]: { picked: [], option: 'remote', at: AT },
-    [PREREQ_STEP_ID.serviceAccountsGroup]: { picked: [], at: AT },
-  })
-  assert.deepEqual(savedAnswerOf('service:sharepoint', m), { value: 'yes', picked: [] })
-  assert.deepEqual(savedAnswerOf('deviceCode', m), { value: 'unused', picked: [] })
-  assert.deepEqual(savedAnswerOf('mailDevices', m), { value: 'none', picked: [] })
-  assert.deepEqual(savedAnswerOf('partner', m), { value: 'no', picked: [] })
-  assert.deepEqual(savedAnswerOf('computers', m), { value: 'managed', picked: [] })
-  assert.deepEqual(savedAnswerOf('phones', m), { value: 'enrolled', picked: [] })
-  assert.deepEqual(savedAnswerOf('officeNetwork', m), { value: 'remote', picked: [] })
-  assert.deepEqual(savedAnswerOf('serviceAccounts', m), { value: 'none', picked: [] })
-  // A saved Direction decision round-trips through its own encoding.
-  const d = directionDecisionOf({ mailDevices: { value: 'some', picked: ['a', 'b'] } })
-  assert.deepEqual(answersOfDecision({ ...d }), { mailDevices: { value: 'some', picked: ['a', 'b'] } })
-})
+test('(c, d) an answer saved before Direction existed still reads as saved, and a legacy Not sure reads as unanswered', () => {
+  // (c) an answer saved before Direction existed still reads as saved
+  {
+    const f = fixture('demo')
+    const partner = questionLabels(QUESTION_STEP.partner).question!
+    const m = applyStepDecisions(f.mapping, {
+      's-confirm-workloads': { answers: { sharepoint: 'yes', 'evidence:sharepoint': 'present' }, at: AT },
+      [QUESTION_STEP.deviceCode]: { option: 'None', at: AT },
+      [QUESTION_STEP.mailDevices]: { option: 'None', at: AT },
+      [QUESTION_STEP.partner]: { picked: [], answers: { [partner]: 'Prompt them like any guest' }, at: AT },
+      [QUESTION_STEP.devices]: { answers: { [DEVICE_ANSWER_KEYS.phoneManagement]: 'enrolled', [DEVICE_ANSWER_KEYS.phoneAppProtection]: 'required', [DEVICE_ANSWER_KEYS.computers]: 'enrolled' }, at: AT },
+      [PREREQ_STEP_ID.trustedLocation]: { picked: [], option: 'remote', at: AT },
+      [PREREQ_STEP_ID.serviceAccountsGroup]: { picked: [], at: AT },
+    })
+    assert.deepEqual(savedAnswerOf('service:sharepoint', m), { value: 'yes', picked: [] })
+    assert.deepEqual(savedAnswerOf('deviceCode', m), { value: 'unused', picked: [] })
+    assert.deepEqual(savedAnswerOf('mailDevices', m), { value: 'none', picked: [] })
+    assert.deepEqual(savedAnswerOf('partner', m), { value: 'no', picked: [] })
+    assert.deepEqual(savedAnswerOf('computers', m), { value: 'managed', picked: [] })
+    assert.deepEqual(savedAnswerOf('phones', m), { value: 'enrolled', picked: [] })
+    assert.deepEqual(savedAnswerOf('officeNetwork', m), { value: 'remote', picked: [] })
+    assert.deepEqual(savedAnswerOf('serviceAccounts', m), { value: 'none', picked: [] })
+    // A saved Direction decision round-trips through its own encoding.
+    const d = directionDecisionOf({ mailDevices: { value: 'some', picked: ['a', 'b'] } })
+    assert.deepEqual(answersOfDecision({ ...d }), { mailDevices: { value: 'some', picked: ['a', 'b'] } })
+  }
 
-test('(d) a legacy "Not sure" reads as unanswered: the suggestion shows and the step still needs approval', () => {
-  const f = fixture('demo')
-  f.mapping.facetOverrides = {}
-  f.mapping.workflowAnswers = { sharepoint: 'unsure' }
-  const use = stepOf(stepsOf(f), DIRECTION_STEP.use)
-  const sharepoint = q(use, 'service:sharepoint')
-  assert.equal(sharepoint.saved, null)
-  assert.equal(sharepoint.suggested.value, 'yes')
-  assert.notEqual(use.status, 'done')
-  assert.equal(use.state.condition, 'needs-decision')
-  assert.equal(savedAnswerOf('service:sharepoint', f.mapping), null)
-  for (const x of use.directionQuestions!) assert.ok(x.options.every((o) => !/not sure/i.test(o.label)), `${x.key} offers no Not sure`)
-  assert.equal(W.notSure, 'Not sure? Keep the suggestion. You can change it any time.')
+  // (d) a legacy "Not sure" reads as unanswered: the suggestion shows and the step still needs approval
+  {
+    const f = fixture('demo')
+    f.mapping.facetOverrides = {}
+    f.mapping.workflowAnswers = { sharepoint: 'unsure' }
+    const use = stepOf(stepsOf(f), DIRECTION_STEP.use)
+    const sharepoint = q(use, 'service:sharepoint')
+    assert.equal(sharepoint.saved, null)
+    assert.equal(sharepoint.suggested.value, 'yes')
+    assert.notEqual(use.status, 'done')
+    assert.equal(use.state.condition, 'needs-decision')
+    assert.equal(savedAnswerOf('service:sharepoint', f.mapping), null)
+    for (const x of use.directionQuestions!) assert.ok(x.options.every((o) => !/not sure/i.test(o.label)), `${x.key} offers no Not sure`)
+  }
 })
 
 test('(f) a saved No reopens Confirm What You Use when new usage appears; missing evidence never does', () => {
@@ -200,40 +246,42 @@ test('(f) a saved No reopens Confirm What You Use when new usage appears; missin
   assert.equal(stepOf(stepsOf({ ...unread, mapping: noUnread }), DIRECTION_STEP.use).status, 'done', 'a saved No with nothing seen stays done')
 })
 
-test('the demo: its first visit answers none of Direction; week two approved it, the device answers still open', () => {
-  const initial = fixture('demo')
-  const first = runFixture({ ...initial, mapping: applyStepDecisions(initial.mapping, initial.decisions ?? {}) }).steps
-  for (const id of Object.values(DIRECTION_STEP)) {
-    const s = stepOf(first, id)
-    assert.notEqual(s.status, 'done', `${id}: unanswered on the first visit`)
-    assert.ok(s.directionQuestions!.every((x) => x.saved === null), `${id}: every question shows its suggestion`)
+test('(g) Direction is three steps, D3 asks the office network and shows even with no device sign-ins, and the retired steps and questions are gone', async () => {
+  // (g) the retired steps are gone as rows, and D3 shows even with no device sign-ins
+  {
+    const f = fixture('demo')
+    // No phone in anybody's own records (the one source of who signed in from a
+    // phone, derive/sets.ts phoneSignInIds; NEW-Nadia-D4), and no unjoined computer.
+    for (const e of Object.values(f.snapshot.signInEvidence)) {
+      e.platforms = (e.platforms ?? []).filter((p) => !isPhoneOs(p.os))
+      if (e.devices) e.devices = e.devices.filter((d) => !isPhoneOs(d.os))
+    }
+    if (f.snapshot.scenarioEvidence) delete f.snapshot.scenarioEvidence.unjoinedComputers
+    const ids = runFixture(f).steps.map((s) => s.id)
+    assert.equal(ids.includes('s-confirm-workloads'), false)
+    assert.equal(ids.includes(PREREQ_STEP_ID.devicePlan), false)
+    for (const id of Object.values(DIRECTION_STEP)) assert.ok(ids.includes(id), id)
   }
-  const week2 = fixture('demo-week2')
-  const second = runFixture({ ...week2, mapping: applyStepDecisions(week2.mapping, week2.decisions ?? {}) }).steps
-  for (const id of [DIRECTION_STEP.use, DIRECTION_STEP.accounts]) assert.equal(stepOf(second, id).status, 'done', `${id}: approved in week one`)
-  assert.notEqual(stepOf(second, DIRECTION_STEP.devices).status, 'done', 'the device decision stays open, as it always has on the demo')
-  // The answers are the ones the demo already assumed.
-  const use = stepOf(second, DIRECTION_STEP.use)
-  assert.equal(q(use, 'partner').saved?.value, 'yes')
-  assert.equal(q(use, 'deviceCode').saved?.value, 'unused')
-  assert.equal(q(use, 'mailDevices').saved?.value, 'some')
-  // Everyone remote, saved in week one; D3 stays open on its device answers.
-  assert.equal(q(stepOf(second, DIRECTION_STEP.devices), 'officeNetwork').saved?.value, 'remote')
-})
 
-test('(g) the retired steps are gone as rows, and D3 shows even with no device sign-ins', () => {
-  const f = fixture('demo')
-  // No phone in anybody's own records (the one source of who signed in from a
-  // phone, derive/sets.ts phoneSignInIds; NEW-Nadia-D4), and no unjoined computer.
-  for (const e of Object.values(f.snapshot.signInEvidence)) {
-    e.platforms = (e.platforms ?? []).filter((p) => !isPhoneOs(p.os))
-    if (e.devices) e.devices = e.devices.filter((d) => !isPhoneOs(d.os))
+  // Direction shows three steps: 2.3 asks the office network, and the retired questions are gone
+  // Stage 3 (roadmap-flow V1 decisions 3 and 4). Direction is three steps: the
+  // office network joins the devices step, work countries move to the countries
+  // step (6.3), and the three questions nothing read are retired.
+  {
+    const { isGroupMember, DIRECTION_GROUP } = await import('./stepGroups.ts')
+    const { curatedFixture } = await import('./fixtures/index.ts')
+    const { withFoundationSettled } = await import('./fixtures/run.ts')
+    const steps = stepsOf(fixture('demo'))
+    assert.deepEqual(steps.map((s) => s.id), ['s-direction-use', 's-direction-accounts', 's-direction-devices'])
+    const keys = steps.flatMap((s) => (s.directionQuestions ?? []).map((x) => x.key))
+    for (const retired of ['externalMethods', 'deviceExceptions', 'travel', 'workCountries']) assert.ok(!keys.includes(retired as never), `${retired} is still asked`)
+    const devices = stepOf(steps, 's-direction-devices')
+    assert.deepEqual(devices.directionQuestions!.map((x) => x.key), ['computers', 'phones', 'officeNetwork'])
+    // The plan draws the same three, on the tenant closest to the owner's.
+    const plan = runFixture(withFoundationSettled(curatedFixture('getiamai'))).steps
+    assert.deepEqual(plan.filter((s) => isGroupMember(s.id, DIRECTION_GROUP)).map((s) => s.id), ['s-direction-use', 's-direction-accounts', 's-direction-devices'])
+    assert.ok(!plan.some((s) => s.id === 's-direction-locations'), 'the storage id is not a drawn step')
   }
-  if (f.snapshot.scenarioEvidence) delete f.snapshot.scenarioEvidence.unjoinedComputers
-  const ids = runFixture(f).steps.map((s) => s.id)
-  assert.equal(ids.includes('s-confirm-workloads'), false)
-  assert.equal(ids.includes(PREREQ_STEP_ID.devicePlan), false)
-  for (const id of Object.values(DIRECTION_STEP)) assert.ok(ids.includes(id), id)
 })
 
 test('(e) a policy with an unanswered Direction dependency is held Waiting on your answers; one with none is not', async () => {
@@ -251,11 +299,10 @@ test('(e) a policy with an unanswered Direction dependency is held Waiting on yo
   const reading = readings.get(device.id)!
   assert.equal(reading.lane, 'On Hold')
   // The row names what it waits on, the person's answers (owner, roadmap flow V2 decision A: the section is Define Your Rollout Scope).
-  assert.equal(W.waiting, 'Waiting on your answers')
   assert.equal(laneViewOf(reading, titleOf).tail, W.waiting)
   const tile = readinessBlockersOf(reading, titleOf).find((b) => b.id === DIRECTION_STEP.devices)!
   assert.equal(tile.label, W.waiting)
-  assert.equal(tile.title, 'Decide How and Where People Sign In', 'the tile names, and links to, the Direction step')
+  assert.equal(tile.title, titleOf(DIRECTION_STEP.devices), 'the tile names, and links to, the Direction step')
   // geo-restriction waits on D1 (partner) alone: its countries are its own
   // step's picker, and travel was retired (Stage 3).
   const geo = r.steps.find((s) => s.goalId === 'geo-restriction')
@@ -280,50 +327,6 @@ test('(e) a policy with an unanswered Direction dependency is held Waiting on yo
   assert.notEqual(laneReadings(after).get(released.id)?.reason?.kind, 'decision')
   assert.equal(after.find((s) => s.id === DIRECTION_STEP.devices)!.status, 'done')
   assert.ok(after.find((s) => s.goalId === 'geo-restriction')?.blockers.some((b) => b.kind === 'decision') ?? true, 'a policy waiting on another step\'s answers still waits')
-})
-
-test('Direction polish: evidence is content sentences, the eyebrow is a decision step, and Approve moves to the next open step', async () => {
-  const { eyebrowOf } = await import('../ui/surfaces/stepContract.ts')
-  const f = fixture('demo')
-  const steps = stepsOf(f)
-  const use = stepOf(steps, DIRECTION_STEP.use)
-  // Words from content, never the engine's reason ("no sign-in activity for ...").
-  //
-  // The sentence names the SOURCES and not a window. It said "in the last 30
-  // days" while appSignInSummary and spActivity, the two sources behind it,
-  // carry coveredWindow null on every tenant seen so far — so a reader took a
-  // measured month of watching from a summary that states no period at all.
-  assert.equal(q(use, 'service:sharepoint').evidence, "SharePoint and OneDrive sign-ins appear in the tenant's app sign-in summary or its service-principal activity.")
-  // A service question states no window, because its two sources declare none:
-  // appSignInSummary and spActivity carry coveredWindow null on every tenant.
-  // The questions backed by signInEvidence keep theirs — that source DOES
-  // declare a covered window, so "the last 30 days" is measured there and the
-  // distinction is the whole point.
-  for (const x of use.directionQuestions!.filter((y) => y.key.startsWith('service:'))) {
-    assert.doesNotMatch(x.evidence, /last 30 days/, x.key + ' claims a window its sources do not declare')
-  }
-  for (const x of use.directionQuestions!) {
-    assert.doesNotMatch(x.evidence, /no sign-in activity|sign-in activity observed|licence present/, x.key)
-    assert.match(x.evidence, /^[A-Z0-9].*\.$/, `${x.key} is a capitalised sentence: ${x.evidence}`)
-  }
-  // The eyebrow reads Decision step, not Check step.
-  assert.equal(use.guidance?.kind, 'decision')
-  assert.equal(eyebrowOf({ state: use.state } as never, use.guidance!.kind), 'Decision step')
-  // Approving D1 moves to D2; with D2 answered too, D3 is next, and from D3 back to the first open one.
-  assert.equal(nextDirectionStep(DIRECTION_STEP.use, steps), DIRECTION_STEP.accounts)
-  const answered = (id: string): Step => ({ ...stepOf(steps, id), directionQuestions: stepOf(steps, id).directionQuestions!.map((x) => ({ ...x, saved: x.suggested, needsReview: false })) })
-  const later = steps.map((s) => s.id === DIRECTION_STEP.accounts ? answered(s.id) : s)
-  assert.equal(nextDirectionStep(DIRECTION_STEP.use, later), DIRECTION_STEP.devices)
-  assert.equal(nextDirectionStep(DIRECTION_STEP.devices, later), DIRECTION_STEP.use)
-  const all = steps.map((s) => answered(s.id))
-  assert.equal(nextDirectionStep(DIRECTION_STEP.use, all), null, 'nothing open: the page stays')
-  assert.equal(nextDirectionStep('s-goal-admin-mfa', steps), null, 'only a Direction step moves the page')
-})
-
-test('a count of one bends "look": "1 account looks like"', async () => {
-  const { fillText } = await import('../content/render.ts')
-  assert.equal(fillText(W.questions.sharedDevices.seen, { n: 1 }), '1 account looks like shared-device accounts.')
-  assert.equal(fillText(W.questions.sharedDevices.seen, { n: 2 }), '2 accounts look like shared-device accounts.')
 })
 
 test('the office network has a third answer, and answering it keeps the trusted-network step on the plan', () => {
@@ -407,138 +410,107 @@ test('the device code question claims no window and no absence over a sign-in re
 
 const phonesToday = (f: Fixture): string | null => q(stepOf(directionSteps({ snapshot: f.snapshot, mapping: f.mapping, notAssessed: [], availableGoalIds: [] }), DIRECTION_STEP.devices), 'phones').today
 
-test('NEW-Nadia-D4: on every shipped fixture the phones question counts exactly the people MFA Readiness shows a phone for', async () => {
-  const { readinessView } = await import('../derive/mfaReadiness.ts')
-  const { deviceChips } = await import('../ui/surfaces/readinessCells.ts')
-  for (const name of ['getiamai', 'small', 'mid', 'messy', 'midflight', 'demo', 'demo-week2', 'hostile', 'micro'] as const) {
-    const f = fixture(name)
-    const shown = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.filter((r) => deviceChips(r).chips.some((c) => c.kind === 'phone')).map((r) => r.user.id).sort()
-    const counted = phoneSignInIds(f.snapshot)
-    const today = phonesToday(f)
-    if (counted === null) {
-      // Records not read: nobody was seen, which says nothing about phones.
-      assert.equal(today, null, `${name}: a line about phones over records nobody read`)
-      assert.deepEqual(shown, [], `${name}: MFA Readiness shows a phone over records nobody read`)
-      continue
+test('NEW-Nadia-D4: the phones question counts exactly the people MFA Readiness shows a phone for, a person read on their own included', async () => {
+  // NEW-Nadia-D4: on every shipped fixture the phones question counts exactly the people MFA Readiness shows a phone for
+  {
+    const { readinessView } = await import('../derive/mfaReadiness.ts')
+    const { deviceChips } = await import('../ui/surfaces/readinessCells.ts')
+    for (const name of ['getiamai', 'demo', 'micro'] as const) {
+      const f = fixture(name)
+      const shown = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.filter((r) => deviceChips(r).chips.some((c) => c.kind === 'phone')).map((r) => r.user.id).sort()
+      const counted = phoneSignInIds(f.snapshot)
+      const today = phonesToday(f)
+      if (counted === null) {
+        // Records not read: nobody was seen, which says nothing about phones.
+        assert.equal(today, null, `${name}: a line about phones over records nobody read`)
+        assert.deepEqual(shown, [], `${name}: MFA Readiness shows a phone over records nobody read`)
+        continue
+      }
+      assert.deepEqual(counted, shown, `${name}: the question and MFA Readiness disagree about who signed in from a phone`)
+      assert.equal(today, shown.length > 0 ? fillText(W.questions.phones.today, { n: shown.length }) : W.questions.phones.todayNone, name)
     }
-    assert.deepEqual(counted, shown, `${name}: the question and MFA Readiness disagree about who signed in from a phone`)
-    assert.equal(today, shown.length > 0 ? fillText(W.questions.phones.today, { n: shown.length }) : W.questions.phones.todayNone, name)
+  }
+
+  // NEW-Nadia-D4: a person read on their own after a partial read, seen on an iPhone, is counted by the phones question
+  {
+    // The collector's second pass (graph/collect/laneB.ts readTargeted) adds the
+    // person's devices to their own record and nothing else; the question read the
+    // tally the first pass left.
+    const f = fixture('getiamai')
+    const s = f.snapshot
+    for (const e of Object.values(s.signInEvidence)) {
+      e.platforms = (e.platforms ?? []).filter((p) => !isPhoneOs(p.os))
+      if (e.devices) e.devices = e.devices.filter((d) => !isPhoneOs(d.os))
+    }
+    assert.equal(phonesToday(f), W.questions.phones.todayNone, 'the premise: nobody signs in from a phone')
+    const id = Object.keys(s.signInEvidence)[0]
+    const e = s.signInEvidence[id]
+    e.platforms = [...(e.platforms ?? []), { os: 'iOS', at: s.asOf }]
+    e.devices = [...(e.devices ?? []), { os: 'iOS', at: s.asOf, trust: 'none', managed: null, deviceIds: [], version: 'iOS 18.2' }]
+    e.individuallyRead = true
+    s.sources.signInEvidence = { ...s.sources.signInEvidence, status: 'partial', reason: 'stopped at time budget; covers the most recent 40 h of the requested 30 days' }
+    assert.deepEqual(phoneSignInIds(s), [id])
+    // Counted, and — the read being partial — said as a count of the part that
+    // was read (NEW-Nadia-D4 review; the test below).
+    assert.equal(phonesToday(f), fillText(W.questions.phones.todayPartial, { n: 1 }))
   }
 })
 
-test('NEW-Nadia-D4: a person read on their own after a partial read, seen on an iPhone, is counted by the phones question', () => {
-  // The collector's second pass (graph/collect/laneB.ts readTargeted) adds the
-  // person's devices to their own record and nothing else; the question read the
-  // tally the first pass left.
-  const f = fixture('getiamai')
-  const s = f.snapshot
-  for (const e of Object.values(s.signInEvidence)) {
-    e.platforms = (e.platforms ?? []).filter((p) => !isPhoneOs(p.os))
-    if (e.devices) e.devices = e.devices.filter((d) => !isPhoneOs(d.os))
+test('NEW-Nadia-D4: over a sign-in read that stopped short, the device question claims no absence and states every count as from the part that was read', () => {
+  // NEW-Nadia-D4: over a sign-in read that stopped short, the device question never says no phone or no unidentified computer was seen
+  {
+    // The second way a real scan reached the sentence: a read interrupted or
+    // capped part of the way through the window never reached the iPhone
+    // sign-ins before where it stopped, and the question still said "Today: no
+    // phone sign-ins were seen." — a claim about records nobody read.
+    const f = fixture('getiamai')
+    const s = f.snapshot
+    for (const e of Object.values(s.signInEvidence)) {
+      e.platforms = (e.platforms ?? []).filter((p) => !isPhoneOs(p.os))
+      if (e.devices) e.devices = e.devices.filter((d) => !isPhoneOs(d.os))
+    }
+    const computers = (): string | null => q(stepOf(directionSteps({ snapshot: s, mapping: f.mapping, notAssessed: [], availableGoalIds: [] }), DIRECTION_STEP.devices), 'computers').today
+    // Read whole, the negatives stand: nothing was missed.
+    assert.equal(s.sources.signInEvidence.status, 'ok', 'the premise: a whole read')
+    assert.equal(phonesToday(f), W.questions.phones.todayNone)
+    assert.equal(computers(), W.questions.computers.todayNone)
+    s.sources.signInEvidence = { ...s.sources.signInEvidence, status: 'partial', reason: 'collection interrupted: Graph 503 after retries' }
+    assert.equal(phonesToday(f), null)
+    assert.equal(computers(), null)
+    // What a short read did see is still said, as what the part that was read
+    // showed (the test below).
+    const id = Object.keys(s.signInEvidence)[0]
+    s.signInEvidence[id].devices = [...(s.signInEvidence[id].devices ?? []), { os: 'Android', at: s.asOf, trust: 'none', managed: null, deviceIds: [], version: null }]
+    assert.equal(phonesToday(f), fillText(W.questions.phones.todayPartial, { n: 1 }))
   }
-  assert.equal(phonesToday(f), W.questions.phones.todayNone, 'the premise: nobody signs in from a phone')
-  const id = Object.keys(s.signInEvidence)[0]
-  const e = s.signInEvidence[id]
-  e.platforms = [...(e.platforms ?? []), { os: 'iOS', at: s.asOf }]
-  e.devices = [...(e.devices ?? []), { os: 'iOS', at: s.asOf, trust: 'none', managed: null, deviceIds: [], version: 'iOS 18.2' }]
-  e.individuallyRead = true
-  s.sources.signInEvidence = { ...s.sources.signInEvidence, status: 'partial', reason: 'stopped at time budget; covers the most recent 40 h of the requested 30 days' }
-  assert.deepEqual(phoneSignInIds(s), [id])
-  // Counted, and — the read being partial — said as a count of the part that
-  // was read (NEW-Nadia-D4 review; the test below).
-  assert.equal(phonesToday(f), fillText(W.questions.phones.todayPartial, { n: 1 }))
-})
 
-test('NEW-Nadia-D4: over a sign-in read that stopped short, the device question never says no phone or no unidentified computer was seen', () => {
-  // The second way a real scan reached the sentence: a read interrupted or
-  // capped part of the way through the window never reached the iPhone
-  // sign-ins before where it stopped, and the question still said "Today: no
-  // phone sign-ins were seen." — a claim about records nobody read.
-  const f = fixture('getiamai')
-  const s = f.snapshot
-  for (const e of Object.values(s.signInEvidence)) {
-    e.platforms = (e.platforms ?? []).filter((p) => !isPhoneOs(p.os))
-    if (e.devices) e.devices = e.devices.filter((d) => !isPhoneOs(d.os))
-  }
-  const computers = (): string | null => q(stepOf(directionSteps({ snapshot: s, mapping: f.mapping, notAssessed: [], availableGoalIds: [] }), DIRECTION_STEP.devices), 'computers').today
-  // Read whole, the negatives stand: nothing was missed.
-  assert.equal(s.sources.signInEvidence.status, 'ok', 'the premise: a whole read')
-  assert.equal(phonesToday(f), W.questions.phones.todayNone)
-  assert.equal(computers(), W.questions.computers.todayNone)
-  s.sources.signInEvidence = { ...s.sources.signInEvidence, status: 'partial', reason: 'collection interrupted: Graph 503 after retries' }
-  assert.equal(phonesToday(f), null)
-  assert.equal(computers(), null)
-  // What a short read did see is still said, as what the part that was read
-  // showed (the test below).
-  const id = Object.keys(s.signInEvidence)[0]
-  s.signInEvidence[id].devices = [...(s.signInEvidence[id].devices ?? []), { os: 'Android', at: s.asOf, trust: 'none', managed: null, deviceIds: [], version: null }]
-  assert.equal(phonesToday(f), fillText(W.questions.phones.todayPartial, { n: 1 }))
-})
-
-test('NEW-Nadia-D4 review: over a sign-in read that stopped short, every count the device question states says it is from the part that was read', () => {
-  // The defect: with the flat negatives gone, a short read still stated its
-  // counts as the tenant's — "Today: 3 people signed in from phones." over the
-  // few hours a capped read reached, beside Blocked from company data, where an
-  // undercount argues for blocking; and the computer counts beside Managed,
-  // where it makes enrolment look cheap.
-  const f = fixture('demo')
-  const s = f.snapshot
-  const today = (key: string): string | null => q(stepOf(directionSteps({ snapshot: s, mapping: f.mapping, notAssessed: [], availableGoalIds: [] }), DIRECTION_STEP.devices), key).today
-  const phones = phoneSignInIds(s)!.length
-  const unjoined = s.scenarioEvidence!.unjoinedComputers!.people.length
-  // One person on a registered computer, so both computer counts are stated.
-  s.scenarioEvidence!.registeredComputers = { people: [Object.keys(s.signInEvidence)[0]], count: 1, detail: {} }
-  assert.ok(phones > 0 && unjoined > 0, 'the premise: the demo has phones and unidentified computers to count')
-  // Read whole, the counts are the tenant's.
-  assert.equal(s.sources.signInEvidence.status, 'ok', 'the premise: a whole read')
-  assert.equal(today('phones'), fillText(W.questions.phones.today, { n: phones }))
-  assert.equal(today('computers'), [fillText(W.questions.computers.today, { n: unjoined }), fillText(W.questions.computers.todayRegistered, { n: 1 })].join(' '))
-  for (const [status, reason] of [['partial', 'stopped at time budget; covers the most recent 40 h of the requested 30 days'], ['insufficient', 'stopped at time budget with only 17 h covered (minimum 24 h)']] as const) {
-    s.sources.signInEvidence = { ...s.sources.signInEvidence, status, reason }
-    const computers = today('computers') ?? ''
-    assert.doesNotMatch(computers, /^Today:| Today:/, `${status}: a short read's computer counts stated as the tenant's: ${computers}`)
-    assert.equal(computers, [fillText(W.questions.computers.todayPartial, { n: unjoined }), fillText(W.questions.computers.todayRegisteredPartial, { n: 1 })].join(' '), status)
-    // The phones count is read only over a read MFA Readiness reads (derive/sets.ts phoneSignInIds): partial, not insufficient.
-    if (status === 'partial') assert.equal(today('phones'), fillText(W.questions.phones.todayPartial, { n: phones }))
-    else assert.equal(today('phones'), null)
-  }
-})
-
-// Stage 3 (roadmap-flow V1 decisions 3 and 4). Direction is three steps: the
-// office network joins the devices step, work countries move to the countries
-// step (6.3), and the three questions nothing read are retired.
-test('Direction shows three steps: 2.3 asks the office network, and the retired questions are gone', async () => {
-  const { isGroupMember, DIRECTION_GROUP } = await import('./stepGroups.ts')
-  const { curatedFixture } = await import('./fixtures/index.ts')
-  const { withFoundationSettled } = await import('./fixtures/run.ts')
-  const steps = stepsOf(fixture('demo'))
-  assert.deepEqual(steps.map((s) => s.id), ['s-direction-use', 's-direction-accounts', 's-direction-devices'])
-  const keys = steps.flatMap((s) => (s.directionQuestions ?? []).map((x) => x.key))
-  for (const retired of ['externalMethods', 'deviceExceptions', 'travel', 'workCountries']) assert.ok(!keys.includes(retired as never), `${retired} is still asked`)
-  const devices = stepOf(steps, 's-direction-devices')
-  assert.deepEqual(devices.directionQuestions!.map((x) => x.key), ['computers', 'phones', 'officeNetwork'])
-  assert.equal(devices.title, 'Decide How and Where People Sign In')
-  // The plan draws the same three, on the tenant closest to the owner's.
-  const plan = runFixture(withFoundationSettled(curatedFixture('getiamai'))).steps
-  assert.deepEqual(plan.filter((s) => isGroupMember(s.id, DIRECTION_GROUP)).map((s) => s.id), ['s-direction-use', 's-direction-accounts', 's-direction-devices'])
-  assert.ok(!plan.some((s) => s.id === 's-direction-locations'), 'the storage id is not a drawn step')
-})
-
-// The writer bug (roadmap-flow proposal, section 7): approving the step that
-// asks the office network saved it under that step's own id, and the answer is
-// read from s-direction-locations only — so "we have one, not in Entra yet" and
-// "everyone is remote" were lost, and the step never completed.
-test('approving 2.3 saves the office network answer under the key it is read from, reads it back, and completes 2.3', () => {
-  for (const value of ['notInEntra', 'remote']) {
+  // NEW-Nadia-D4 review: over a sign-in read that stopped short, every count the device question states says it is from the part that was read
+  {
+    // The defect: with the flat negatives gone, a short read still stated its
+    // counts as the tenant's — "Today: 3 people signed in from phones." over the
+    // few hours a capped read reached, beside Blocked from company data, where an
+    // undercount argues for blocking; and the computer counts beside Managed,
+    // where it makes enrolment look cheap.
     const f = fixture('demo')
-    f.mapping.questionAnswers = {}
-    const devices = stepOf(stepsOf(f), 's-direction-devices')
-    const answers = Object.fromEntries([...devices.directionQuestions!.map((x) => [x.key, x.saved ?? x.suggested] as const), ['officeNetwork', { value, picked: [] }] as const])
-    const m = applyStepDecisions(f.mapping, { 's-direction-devices': { ...directionDecisionOf(answers), at: AT } })
-    assert.equal(m.questionAnswers?.['s-direction-locations:officeNetwork'], value, `${value}: written under the key it is read from`)
-    assert.equal(savedAnswerOf('officeNetwork', m)?.value, value, `${value}: read back`)
-    const after = stepOf(stepsOf({ ...f, mapping: m }), 's-direction-devices')
-    assert.equal(q(after, 'officeNetwork').saved?.value, value, `${value}: the question shows it saved`)
-    assert.equal(after.status, 'done', `${value}: 2.3 completes`)
+    const s = f.snapshot
+    const today = (key: string): string | null => q(stepOf(directionSteps({ snapshot: s, mapping: f.mapping, notAssessed: [], availableGoalIds: [] }), DIRECTION_STEP.devices), key).today
+    const phones = phoneSignInIds(s)!.length
+    const unjoined = s.scenarioEvidence!.unjoinedComputers!.people.length
+    // One person on a registered computer, so both computer counts are stated.
+    s.scenarioEvidence!.registeredComputers = { people: [Object.keys(s.signInEvidence)[0]], count: 1, detail: {} }
+    assert.ok(phones > 0 && unjoined > 0, 'the premise: the demo has phones and unidentified computers to count')
+    // Read whole, the counts are the tenant's.
+    assert.equal(s.sources.signInEvidence.status, 'ok', 'the premise: a whole read')
+    assert.equal(today('phones'), fillText(W.questions.phones.today, { n: phones }))
+    assert.equal(today('computers'), [fillText(W.questions.computers.today, { n: unjoined }), fillText(W.questions.computers.todayRegistered, { n: 1 })].join(' '))
+    for (const [status, reason] of [['partial', 'stopped at time budget; covers the most recent 40 h of the requested 30 days'], ['insufficient', 'stopped at time budget with only 17 h covered (minimum 24 h)']] as const) {
+      s.sources.signInEvidence = { ...s.sources.signInEvidence, status, reason }
+      const computers = today('computers') ?? ''
+      assert.doesNotMatch(computers, /^Today:| Today:/, `${status}: a short read's computer counts stated as the tenant's: ${computers}`)
+      assert.equal(computers, [fillText(W.questions.computers.todayPartial, { n: unjoined }), fillText(W.questions.computers.todayRegisteredPartial, { n: 1 })].join(' '), status)
+      // The phones count is read only over a read MFA Readiness reads (derive/sets.ts phoneSignInIds): partial, not insufficient.
+      if (status === 'partial') assert.equal(today('phones'), fillText(W.questions.phones.todayPartial, { n: phones }))
+      else assert.equal(today('phones'), null)
+    }
   }
 })

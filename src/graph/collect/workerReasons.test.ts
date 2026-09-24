@@ -95,25 +95,29 @@ async function scanWith(skus: unknown[], tag: string): Promise<{ snapshot: { cap
   }
 }
 
-test('worker (R4-37): a P1 tenant holding Microsoft Entra ID Governance has its eligible role assignments read, and is never told it needs Entra ID P2', async () => {
-  const { snapshot, asked } = await scanWith([P1_SKU, GOVERNANCE_SKU], 'governance')
-  assert.equal(snapshot.capabilities.entraP2.enabled, false, 'the premise: no Entra ID P2')
-  assert.equal(snapshot.capabilities.pim.enabled, true, 'Governance licenses PIM')
-  assert.ok(asked.some((u) => u.includes('/roleManagement/directory/roleEligibilitySchedules')), 'the eligibility read is attempted')
-  assert.equal(snapshot.config.pimEligibility.status, 'ok')
-  assert.equal(snapshot.config.pimEligibility.reason, null)
-})
+test('worker (R4-37): Governance licenses the eligible-role read on P1; without either licence the read is skipped as a licence gate', async () => {
+  // worker (R4-37): a P1 tenant holding Microsoft Entra ID Governance has its eligible role assignments read, and is never told it needs Entra ID P2
+  {
+    const { snapshot, asked } = await scanWith([P1_SKU, GOVERNANCE_SKU], 'governance')
+    assert.equal(snapshot.capabilities.entraP2.enabled, false, 'the premise: no Entra ID P2')
+    assert.equal(snapshot.capabilities.pim.enabled, true, 'Governance licenses PIM')
+    assert.ok(asked.some((u) => u.includes('/roleManagement/directory/roleEligibilitySchedules')), 'the eligibility read is attempted')
+    assert.equal(snapshot.config.pimEligibility.status, 'ok')
+    assert.equal(snapshot.config.pimEligibility.reason, null)
+  }
 
-test('worker (R4-37): a P1 tenant with no PIM licence skips the read in the collector\'s own words, naming both licences that would read it', async () => {
-  const { snapshot, asked } = await scanWith([P1_SKU], 'p1')
-  assert.equal(snapshot.capabilities.pim.enabled, false)
-  assert.ok(!asked.some((u) => u.includes('/roleManagement/directory/roleEligibilitySchedules')), 'no request is spent on a licence gap the SKUs show')
-  assert.equal(snapshot.config.pimEligibility.status, 'disabled')
-  assert.equal(snapshot.config.pimEligibility.reason, licenceGateReason('pim'))
-  assert.equal(snapshot.config.pimEligibility.reason, 'not available on this licence (needs Entra ID P2 or Microsoft Entra ID Governance)')
-  assert.ok(isLicenceGate(snapshot.config.pimEligibility.reason), 'and it reads as a licence gate, not a refusal')
-  // The shipped fixtures say what this collector says: they said "needs Entra ID P2".
-  const f = fixture('small')
-  assert.equal(f.snapshot.capabilities.pim.enabled, false, 'the premise: small holds no PIM licence')
-  assert.equal(f.snapshot.config.pimEligibility?.reason, snapshot.config.pimEligibility.reason)
+  // worker (R4-37): a P1 tenant with no PIM licence skips the read in the collector's own words, naming both licences that would read it
+  {
+    const { snapshot, asked } = await scanWith([P1_SKU], 'p1')
+    assert.equal(snapshot.capabilities.pim.enabled, false)
+    assert.ok(!asked.some((u) => u.includes('/roleManagement/directory/roleEligibilitySchedules')), 'no request is spent on a licence gap the SKUs show')
+    assert.equal(snapshot.config.pimEligibility.status, 'disabled')
+    assert.equal(snapshot.config.pimEligibility.reason, licenceGateReason('pim'))
+    assert.equal(snapshot.config.pimEligibility.reason, 'not available on this licence (needs Entra ID P2 or Microsoft Entra ID Governance)')
+    assert.ok(isLicenceGate(snapshot.config.pimEligibility.reason), 'and it reads as a licence gate, not a refusal')
+    // The shipped fixtures say what this collector says: they said "needs Entra ID P2".
+    const f = fixture('small')
+    assert.equal(f.snapshot.capabilities.pim.enabled, false, 'the premise: small holds no PIM licence')
+    assert.equal(f.snapshot.config.pimEligibility?.reason, snapshot.config.pimEligibility.reason)
+  }
 })

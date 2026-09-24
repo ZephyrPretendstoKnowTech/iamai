@@ -15,8 +15,22 @@ import { scheduleRationale } from '../copy/statements.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { campaignTargetsPasskeys } from './campaign.ts'
 
-test('the Authenticator registration campaign is not misidentified as a passkey campaign', () => {
-  assert.equal(campaignTargetsPasskeys(), false)
+test('someone to set up: the campaign is a live step the pace includes, and it is not a passkey campaign', () => {
+  // the Authenticator registration campaign is not misidentified as a passkey campaign
+  {
+    assert.equal(campaignTargetsPasskeys(), false)
+  }
+
+  // someone to set up: the campaign is a live step, the pace includes it, the Overview never says none needed
+  {
+    const p = plan(fixtureSnapshot())
+    assert.ok(p.rollout.toSetUp > 0, 'the fixture has enabled users without a proven method')
+    assert.ok(p.verify, 'a verification campaign step exists')
+    assert.notEqual(p.verify.status, 'done')
+    assert.ok(p.schedule.verification.days > 0, 'the pace includes the campaign window')
+    assert.doesNotMatch(p.rationale, /no verification campaign needed/)
+    assert.match(p.rationale, /verification campaign/)
+  }
 })
 
 function plan(snapshot: TenantSnapshot) {
@@ -53,51 +67,45 @@ function plan(snapshot: TenantSnapshot) {
   return { steps, schedule, rollout, rationale, verify: steps.find((s) => s.kind === 'verify') }
 }
 
-test('someone to set up: the campaign is a live step, the pace includes it, the Overview never says none needed', () => {
-  const p = plan(fixtureSnapshot())
-  assert.ok(p.rollout.toSetUp > 0, 'the fixture has enabled users without a proven method')
-  assert.ok(p.verify, 'a verification campaign step exists')
-  assert.notEqual(p.verify.status, 'done')
-  assert.ok(p.schedule.verification.days > 0, 'the pace includes the campaign window')
-  assert.doesNotMatch(p.rationale, /no verification campaign needed/)
-  assert.match(p.rationale, /verification campaign/)
-})
-
-test('registered proof does not complete preparation while the admin target is unresolved', () => {
-  const s = fixtureSnapshot()
-  // Every enabled user is Ready (Step 7): a passkey, and a sign-in with it on the
-  // one platform they use, inside the window.
-  for (const u of s.users) {
-    s.signInEvidence[u.id] = { signInCount: 5, lastSignIn: s.asOf, lastMfaSuccess: { at: s.asOf, method: 'Passkey (device-bound)' }, proofs: [{ cls: 'passkey', os: 'Windows', at: s.asOf, method: 'Passkey (device-bound)' }], platforms: [{ os: 'Windows', at: s.asOf }] }
-    u.lastSuccessfulSignIn = s.asOf
-    s.authMethods[u.id] = [{ kind: 'microsoftAuthenticator', phoneAppVersion: '6.2508.0' }, { kind: 'passkey' }]
+test('registered proof does not complete preparation while the admin target is unresolved, and a disabled account never counts', () => {
+  // registered proof does not complete preparation while the admin target is unresolved
+  {
+    const s = fixtureSnapshot()
+    // Every enabled user is Ready (Step 7): a passkey, and a sign-in with it on the
+    // one platform they use, inside the window.
+    for (const u of s.users) {
+      s.signInEvidence[u.id] = { signInCount: 5, lastSignIn: s.asOf, lastMfaSuccess: { at: s.asOf, method: 'Passkey (device-bound)' }, proofs: [{ cls: 'passkey', os: 'Windows', at: s.asOf, method: 'Passkey (device-bound)' }], platforms: [{ os: 'Windows', at: s.asOf }] }
+      u.lastSuccessfulSignIn = s.asOf
+      s.authMethods[u.id] = [{ kind: 'microsoftAuthenticator', phoneAppVersion: '6.2508.0' }, { kind: 'passkey' }]
+    }
+    s.registrationDetails = s.users.map(u => ({ ...s.registrationDetails[0], id: u.id, userType: u.userType }))
+    for (const r of s.registrationDetails) {
+      r.isMfaCapable = true
+      r.isMfaRegistered = true
+      r.methodsRegistered = ['microsoftAuthenticatorPush', 'passKeyDeviceBound']
+    }
+    // Preparation measures the resolved admin target, not a guessed family floor.
+    const admin = s.config.caPolicies.rows.find(raw => (raw as Record<string, unknown>).id === 'p-3') as Record<string, unknown>
+    admin.state = 'enabled'
+    const p = plan(s)
+    assert.equal(p.rollout.toSetUp, 0)
+    assert.ok(p.verify)
+    assert.equal(p.verify.readiness.unmeasured, 'unreadable')
+    assert.notEqual(p.verify.status, 'done')
+    assert.ok(p.schedule.verification.days > 0)
+    assert.doesNotMatch(p.rationale, /no verification campaign needed/)
   }
-  s.registrationDetails = s.users.map(u => ({ ...s.registrationDetails[0], id: u.id, userType: u.userType }))
-  for (const r of s.registrationDetails) {
-    r.isMfaCapable = true
-    r.isMfaRegistered = true
-    r.methodsRegistered = ['microsoftAuthenticatorPush', 'passKeyDeviceBound']
-  }
-  // Preparation measures the resolved admin target, not a guessed family floor.
-  const admin = s.config.caPolicies.rows.find(raw => (raw as Record<string, unknown>).id === 'p-3') as Record<string, unknown>
-  admin.state = 'enabled'
-  const p = plan(s)
-  assert.equal(p.rollout.toSetUp, 0)
-  assert.ok(p.verify)
-  assert.equal(p.verify.readiness.unmeasured, 'unreadable')
-  assert.notEqual(p.verify.status, 'done')
-  assert.ok(p.schedule.verification.days > 0)
-  assert.doesNotMatch(p.rationale, /no verification campaign needed/)
-})
 
-test('a disabled account never counts: it is neither proven nor to set up', () => {
-  const s = fixtureSnapshot()
-  const disabled = s.users.find((u) => u.id === 'u-3')
-  assert.ok(disabled)
-  disabled.accountEnabled = false
-  const before = summarizeTenant(buildViabilityInputs(fixtureSnapshot(), s.asOf).map(scoreMfaViability)).rollout
-  const after = summarizeTenant(buildViabilityInputs(s, s.asOf).map(scoreMfaViability)).rollout
-  assert.equal(after.active, before.active - 1)
-  assert.equal(after.noMethod, before.noMethod - 1, 'u-3 had no method and is now out of the picture')
-  assert.equal(after.proven + after.toSetUp, after.active, 'the buckets still sum to the active people')
+  // a disabled account never counts: it is neither proven nor to set up
+  {
+    const s = fixtureSnapshot()
+    const disabled = s.users.find((u) => u.id === 'u-3')
+    assert.ok(disabled)
+    disabled.accountEnabled = false
+    const before = summarizeTenant(buildViabilityInputs(fixtureSnapshot(), s.asOf).map(scoreMfaViability)).rollout
+    const after = summarizeTenant(buildViabilityInputs(s, s.asOf).map(scoreMfaViability)).rollout
+    assert.equal(after.active, before.active - 1)
+    assert.equal(after.noMethod, before.noMethod - 1, 'u-3 had no method and is now out of the picture')
+    assert.equal(after.proven + after.toSetUp, after.active, 'the buckets still sum to the active people')
+  }
 })

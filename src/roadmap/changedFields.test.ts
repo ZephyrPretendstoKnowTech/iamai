@@ -17,28 +17,35 @@ const current = {
   grantControls: { operator: 'OR', builtInControls: ['mfa'], authenticationStrength: null },
 }
 
-test('only the leaves whose values differ are changes, whatever section the patch carries whole', () => {
-  const patch = {
-    conditions: { users: { includeUsers: ['All'], excludeUsers: [], includeGroups: [], excludeGroups: ['a', 'b', 'c'] } },
-    grantControls: { operator: 'OR', builtInControls: [], authenticationStrength: { id: '00000000-0000-0000-0000-000000000002' } },
+test('changed fields are the material leaves whose values differ: id lists unordered, empty is empty, name and state ignored, a cleared condition at its path', () => {
+  // only the leaves whose values differ are changes, whatever section the patch carries whole
+  {
+    const patch = {
+      conditions: { users: { includeUsers: ['All'], excludeUsers: [], includeGroups: [], excludeGroups: ['a', 'b', 'c'] } },
+      grantControls: { operator: 'OR', builtInControls: [], authenticationStrength: { id: '00000000-0000-0000-0000-000000000002' } },
+    }
+    assert.deepEqual(changedFieldsOf(patch, current), ['conditions.users.excludeGroups', 'grantControls.authenticationStrength.id', 'grantControls.builtInControls'])
   }
-  assert.deepEqual(changedFieldsOf(patch, current), ['conditions.users.excludeGroups', 'grantControls.authenticationStrength.id', 'grantControls.builtInControls'])
-})
 
-test('a list of ids has no order, and empty is empty however it is written', () => {
-  const patch = { conditions: { users: { excludeGroups: ['a', 'b'], excludeUsers: null }, locations: {} } }
-  assert.deepEqual(changedFieldsOf(patch, current), [])
-})
+  // a list of ids has no order, and empty is empty however it is written
+  {
+    const patch = { conditions: { users: { excludeGroups: ['a', 'b'], excludeUsers: null }, locations: {} } }
+    assert.deepEqual(changedFieldsOf(patch, current), [])
+  }
 
-test('the lifecycle and the name are not semantic facts', () => {
-  assert.deepEqual(changedFieldsOf({ state: 'enabledForReportingButNotEnforced', displayName: 'Renamed' }, current), [])
-})
+  // the lifecycle and the name are not semantic facts
+  {
+    assert.deepEqual(changedFieldsOf({ state: 'enabledForReportingButNotEnforced', displayName: 'Renamed' }, current), [])
+  }
 
-test('a policy this scan did not read makes every submitted leaf a change', () => {
-  assert.deepEqual(changedFieldsOf({ grantControls: { operator: 'OR' } }, null), ['grantControls.operator'])
-})
+  // a policy this scan did not read makes every submitted leaf a change
+  {
+    assert.deepEqual(changedFieldsOf({ grantControls: { operator: 'OR' } }, null), ['grantControls.operator'])
+  }
 
-test('a condition the patch clears is a change at its own path', () => {
-  const withLocation = { ...current, conditions: { ...current.conditions, locations: { includeLocations: ['All'] } } }
-  assert.deepEqual(changedFieldsOf({ conditions: { locations: null } }, withLocation), ['conditions.locations'])
+  // a condition the patch clears is a change at its own path
+  {
+    const withLocation = { ...current, conditions: { ...current.conditions, locations: { includeLocations: ['All'] } } }
+    assert.deepEqual(changedFieldsOf({ conditions: { locations: null } }, withLocation), ['conditions.locations'])
+  }
 })

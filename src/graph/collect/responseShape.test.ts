@@ -32,101 +32,114 @@ function withFetch<T>(steps: Step[], run: (calls: string[]) => Promise<T>): Prom
 
 const page = (value: unknown[], next?: string): Step => ({ body: JSON.stringify(next ? { value, '@odata.nextLink': next } : { value }) })
 
-test('a real empty collection is an empty success', async () => {
-  assert.deepEqual(await withFetch([page([])], () => graphPaged(tokens, URL0)), [])
-})
+test('a success that is not a Graph body is a failed read; a real empty collection, a $count and cancellation keep their meaning', async () => {
+  // a real empty collection is an empty success
+  {
+    assert.deepEqual(await withFetch([page([])], () => graphPaged(tokens, URL0)), [])
+  }
 
-test('a success that is not a collection body fails the paged read', async () => {
-  for (const body of ['not-json', '{}', '{"foo":1}', '{"value":{"id":"x"}}', 'null', '[]', '"text"', '{"value":[],"@odata.nextLink":7}']) {
+  // a success that is not a collection body fails the paged read
+  {
+    for (const body of ['not-json', '{}', '{"foo":1}', '{"value":{"id":"x"}}', 'null', '[]', '"text"', '{"value":[],"@odata.nextLink":7}']) {
+      await assert.rejects(
+        withFetch([{ body }], () => graphPaged(tokens, URL0)),
+        (e: unknown) => e instanceof GraphResponseShapeError,
+        body,
+      )
+    }
+  }
+
+  // valid pages follow nextLink; a malformed later page fails the read after the earlier page arrived
+  {
+    const rows = await withFetch([page([{ id: 'a' }], `${URL0}?p=2`), page([{ id: 'b' }])], () => graphPaged(tokens, URL0))
+    assert.deepEqual(rows, [{ id: 'a' }, { id: 'b' }])
+    const seen: unknown[][] = []
     await assert.rejects(
-      withFetch([{ body }], () => graphPaged(tokens, URL0)),
+      withFetch([page([{ id: 'a' }], `${URL0}?p=2`), { body: 'not-json' }], () => graphPaged(tokens, URL0, { onPage: (r) => void seen.push(r) })),
       (e: unknown) => e instanceof GraphResponseShapeError,
-      body,
     )
+    assert.deepEqual(seen, [[{ id: 'a' }]], 'the first page was delivered; the read still fails')
   }
-})
 
-test('valid pages follow nextLink; a malformed later page fails the read after the earlier page arrived', async () => {
-  const rows = await withFetch([page([{ id: 'a' }], `${URL0}?p=2`), page([{ id: 'b' }])], () => graphPaged(tokens, URL0))
-  assert.deepEqual(rows, [{ id: 'a' }, { id: 'b' }])
-  const seen: unknown[][] = []
-  await assert.rejects(
-    withFetch([page([{ id: 'a' }], `${URL0}?p=2`), { body: 'not-json' }], () => graphPaged(tokens, URL0, { onPage: (r) => void seen.push(r) })),
-    (e: unknown) => e instanceof GraphResponseShapeError,
-  )
-  assert.deepEqual(seen, [[{ id: 'a' }]], 'the first page was delivered; the read still fails')
-})
+  // a bare-number $count body stays a count, zero included; an empty success body stays empty
+  {
+    assert.deepEqual(await withFetch([{ body: '42' }], () => graphRequest(tokens, `${URL0}/$count`)), { count: 42 })
+    assert.deepEqual(await withFetch([{ body: '0' }], () => graphRequest(tokens, `${URL0}/$count`)), { count: 0 })
+    assert.deepEqual(await withFetch([{ body: '' }], () => graphRequest(tokens, URL0)), {})
+  }
 
-test('a bare-number $count body stays a count, zero included; an empty success body stays empty', async () => {
-  assert.deepEqual(await withFetch([{ body: '42' }], () => graphRequest(tokens, `${URL0}/$count`)), { count: 42 })
-  assert.deepEqual(await withFetch([{ body: '0' }], () => graphRequest(tokens, `${URL0}/$count`)), { count: 0 })
-  assert.deepEqual(await withFetch([{ body: '' }], () => graphRequest(tokens, URL0)), {})
-})
-
-test('a non-JSON failure keeps its status; a malformed success after a retry is not retried again', async () => {
-  await assert.rejects(
-    withFetch([{ status: 404, body: '<html>' }], () => graphRequest(tokens, URL0)),
-    (e: unknown) => e instanceof GraphRequestError && e.status === 404,
-  )
-  const calls = await withFetch([{ status: 503, body: '' }, { body: 'not-json' }, page([{ id: 'late' }])], async (c) => {
-    await assert.rejects(graphRequest(tokens, URL0, { wait: noWait }), (e: unknown) => e instanceof GraphResponseShapeError && e.status === 200)
-    return c
-  })
-  assert.equal(calls.length, 2)
-})
-
-test('cancellation stays cancellation, before the request and while its body is read', async () => {
-  const before = new AbortController()
-  before.abort()
-  await withFetch([page([])], async (calls) => {
-    await assert.rejects(graphPaged(tokens, URL0, { signal: before.signal }), (e: unknown) => (e as Error).name === 'AbortError')
-    assert.equal(calls.length, 0)
-  })
-  const during = new AbortController()
-  const readAborted = (): Response =>
-    ({ status: 200, ok: true, headers: new Headers(), text: async () => { during.abort(); throw new DOMException('aborted', 'AbortError') } }) as unknown as Response
-  await assert.rejects(withFetch([readAborted], () => graphPaged(tokens, URL0, { signal: during.signal })), (e: unknown) => (e as Error).name === 'AbortError')
-  // The same broken body read without a cancellation is a failed read, not an empty page.
-  const readBroken = (): Response => ({ status: 200, ok: true, headers: new Headers(), text: async () => { throw new TypeError('network') } }) as unknown as Response
-  await assert.rejects(withFetch([readBroken], () => graphPaged(tokens, URL0)), (e: unknown) => e instanceof GraphResponseShapeError)
-})
-
-test('a scan section whose collection read is malformed records an error, not ok with no rows', async () => {
-  const key = COLLECTOR_REGISTRY.find((s) => s.lane === '0' && s.configKey && s.paged)?.configKey
-  assert.ok(key, 'a paged config section exists')
-  const ctx = { tokens, signal: new AbortController().signal }
-  const empty = await withFetch([page([])], () => collectConfigSection(ctx, key))
-  assert.equal(empty.status, 'ok')
-  assert.deepEqual(empty.rows, [])
-  const broken = await withFetch([{ body: '{}' }], () => collectConfigSection(ctx, key))
-  assert.equal(broken.status, 'error')
-  assert.equal(broken.httpStatus, 200)
-})
-
-test('a sign-in page without its value array is a failed read, not history exhausted', async () => {
-  const nowMs = Date.parse('2026-08-26T00:00:00Z')
-  const recent = { id: 'r1', createdDateTime: new Date(nowMs - 3_600_000).toISOString(), userId: 'u1', status: { errorCode: 0 } }
-  const run = (bodies: { value?: unknown; '@odata.nextLink'?: string | null }[]) => {
-    let i = 0
-    return runLaneB({
-      pageUrl: (through) => (through === null ? 'start' : `le:${through}`),
-      windowDays: 30,
-      nowMs,
-      clock: () => 0,
-      fetchPage: () => Promise.resolve(bodies[Math.min(i++, bodies.length - 1)] as { value?: unknown[] }),
-      store: discardStore(),
+  // a non-JSON failure keeps its status; a malformed success after a retry is not retried again
+  {
+    await assert.rejects(
+      withFetch([{ status: 404, body: '<html>' }], () => graphRequest(tokens, URL0)),
+      (e: unknown) => e instanceof GraphRequestError && e.status === 404,
+    )
+    const calls = await withFetch([{ status: 503, body: '' }, { body: 'not-json' }, page([{ id: 'late' }])], async (c) => {
+      await assert.rejects(graphRequest(tokens, URL0, { wait: noWait }), (e: unknown) => e instanceof GraphResponseShapeError && e.status === 200)
+      return c
     })
+    assert.equal(calls.length, 2)
   }
-  assert.equal((await run([{ value: [] }])).status, 'ok', 'a real empty history is complete')
-  const broken = await run([{ value: [recent], '@odata.nextLink': 'page-1' }, {}])
-  assert.notEqual(broken.status, 'ok')
-  assert.match(broken.reason ?? '', /without a value array/)
+
+  // cancellation stays cancellation, before the request and while its body is read
+  {
+    const before = new AbortController()
+    before.abort()
+    await withFetch([page([])], async (calls) => {
+      await assert.rejects(graphPaged(tokens, URL0, { signal: before.signal }), (e: unknown) => (e as Error).name === 'AbortError')
+      assert.equal(calls.length, 0)
+    })
+    const during = new AbortController()
+    const readAborted = (): Response =>
+      ({ status: 200, ok: true, headers: new Headers(), text: async () => { during.abort(); throw new DOMException('aborted', 'AbortError') } }) as unknown as Response
+    await assert.rejects(withFetch([readAborted], () => graphPaged(tokens, URL0, { signal: during.signal })), (e: unknown) => (e as Error).name === 'AbortError')
+    // The same broken body read without a cancellation is a failed read, not an empty page.
+    const readBroken = (): Response => ({ status: 200, ok: true, headers: new Headers(), text: async () => { throw new TypeError('network') } }) as unknown as Response
+    await assert.rejects(withFetch([readBroken], () => graphPaged(tokens, URL0)), (e: unknown) => e instanceof GraphResponseShapeError)
+  }
 })
 
-test('a $batch answer without responses, or missing a user, leaves those methods unknown, never empty', async () => {
-  const ctx = { tokens, signal: new AbortController().signal }
-  const none = await withFetch([{ body: '{}' }], () => collectMethodsForUsers(ctx, ['u1', 'u2']))
-  assert.deepEqual(none, { u1: 'unknown', u2: 'unknown' })
-  const partial = await withFetch([{ body: JSON.stringify({ responses: [{ id: '0', status: 200, body: { value: [] } }] }) }], () => collectMethodsForUsers(ctx, ['u1', 'u2']))
-  assert.deepEqual(partial, { u1: [], u2: 'unknown' }, 'an answered empty inventory stays empty')
+test('a malformed answer leaves a section, a sign-in read or a methods batch failed or unknown, never empty', async () => {
+  // a scan section whose collection read is malformed records an error, not ok with no rows
+  {
+    const key = COLLECTOR_REGISTRY.find((s) => s.lane === '0' && s.configKey && s.paged)?.configKey
+    assert.ok(key, 'a paged config section exists')
+    const ctx = { tokens, signal: new AbortController().signal }
+    const empty = await withFetch([page([])], () => collectConfigSection(ctx, key))
+    assert.equal(empty.status, 'ok')
+    assert.deepEqual(empty.rows, [])
+    const broken = await withFetch([{ body: '{}' }], () => collectConfigSection(ctx, key))
+    assert.equal(broken.status, 'error')
+    assert.equal(broken.httpStatus, 200)
+  }
+
+  // a sign-in page without its value array is a failed read, not history exhausted
+  {
+    const nowMs = Date.parse('2026-08-26T00:00:00Z')
+    const recent = { id: 'r1', createdDateTime: new Date(nowMs - 3_600_000).toISOString(), userId: 'u1', status: { errorCode: 0 } }
+    const run = (bodies: { value?: unknown; '@odata.nextLink'?: string | null }[]) => {
+      let i = 0
+      return runLaneB({
+        pageUrl: (through) => (through === null ? 'start' : `le:${through}`),
+        windowDays: 30,
+        nowMs,
+        clock: () => 0,
+        fetchPage: () => Promise.resolve(bodies[Math.min(i++, bodies.length - 1)] as { value?: unknown[] }),
+        store: discardStore(),
+      })
+    }
+    assert.equal((await run([{ value: [] }])).status, 'ok', 'a real empty history is complete')
+    const broken = await run([{ value: [recent], '@odata.nextLink': 'page-1' }, {}])
+    assert.notEqual(broken.status, 'ok')
+    assert.match(broken.reason ?? '', /without a value array/)
+  }
+
+  // a $batch answer without responses, or missing a user, leaves those methods unknown, never empty
+  {
+    const ctx = { tokens, signal: new AbortController().signal }
+    const none = await withFetch([{ body: '{}' }], () => collectMethodsForUsers(ctx, ['u1', 'u2']))
+    assert.deepEqual(none, { u1: 'unknown', u2: 'unknown' })
+    const partial = await withFetch([{ body: JSON.stringify({ responses: [{ id: '0', status: 200, body: { value: [] } }] }) }], () => collectMethodsForUsers(ctx, ['u1', 'u2']))
+    assert.deepEqual(partial, { u1: [], u2: 'unknown' }, 'an answered empty inventory stays empty')
+  }
 })

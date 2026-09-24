@@ -20,33 +20,37 @@ import { runFixture } from './fixtures/run.ts'
 
 const ROOT = join(import.meta.dirname, '..')
 
-test('the service-principal commands are one line each and use only documented cmdlets', () => {
-  const c = createCommands({ appId: '00000003-0000-0000-c000-000000000000', displayName: 'Microsoft Graph' })
-  for (const [key, line] of Object.entries(c)) {
-    assert.equal(line.includes('\n'), false, `${key} is one line`)
-    assert.equal(line.includes(';'), false, `${key} is one statement, not two joined`)
-    assert.equal(/\|\s*ForEach|foreach|\bfor\b|\bwhile\b|try\s*{/.test(line), false, `${key} has no loop or error handling`)
-    const cmdlet = line.split(/\s+/)[0]
-    assert.ok((ALLOWED_CMDLETS as readonly string[]).includes(cmdlet), `${key} uses a documented cmdlet, got ${cmdlet}`)
-  }
-})
-
-test('every PowerShell string a step can render is a single line', () => {
-  // From the generated plans, which is what a user actually sees: the PowerShell
-  // tab renders the JSON tab's body (stepPowerShell.ts).
-  const offenders: string[] = []
-  for (const f of allFixtures()) {
-    for (const s of runFixture(f).steps) {
-      if (!s.action.json) continue
-      const ps = powershellFor(stepOperations(s))
-      for (const line of ps.split('\n')) {
-        const t = line.trim()
-        if (t === '' || t.startsWith('#')) continue
-        if (/\bforeach\b|\bfor\s*\(|\bwhile\b|try\s*{|\bfunction\b/i.test(t)) offenders.push(`${f.name}/${s.id}: ${t.slice(0, 80)}`)
-      }
+test('every command IAMAI renders is one line with no loop, function or error handling, using only documented cmdlets', () => {
+  // the service-principal commands are one line each and use only documented cmdlets
+  {
+    const c = createCommands({ appId: '00000003-0000-0000-c000-000000000000', displayName: 'Microsoft Graph' })
+    for (const [key, line] of Object.entries(c)) {
+      assert.equal(line.includes('\n'), false, `${key} is one line`)
+      assert.equal(line.includes(';'), false, `${key} is one statement, not two joined`)
+      assert.equal(/\|\s*ForEach|foreach|\bfor\b|\bwhile\b|try\s*{/.test(line), false, `${key} has no loop or error handling`)
+      const cmdlet = line.split(/\s+/)[0]
+      assert.ok((ALLOWED_CMDLETS as readonly string[]).includes(cmdlet), `${key} uses a documented cmdlet, got ${cmdlet}`)
     }
   }
-  assert.deepEqual(offenders, [], 'no step ships a loop, a function, or error handling')
+
+  // every PowerShell string a step can render is a single line
+  {
+    // From the generated plans, which is what a user actually sees: the PowerShell
+    // tab renders the JSON tab's body (stepPowerShell.ts).
+    const offenders: string[] = []
+    for (const f of allFixtures()) {
+      for (const s of runFixture(f).steps) {
+        if (!s.action.json) continue
+        const ps = powershellFor(stepOperations(s))
+        for (const line of ps.split('\n')) {
+          const t = line.trim()
+          if (t === '' || t.startsWith('#')) continue
+          if (/\bforeach\b|\bfor\s*\(|\bwhile\b|try\s*{|\bfunction\b/i.test(t)) offenders.push(`${f.name}/${s.id}: ${t.slice(0, 80)}`)
+        }
+      }
+    }
+    assert.deepEqual(offenders, [], 'no step ships a loop, a function, or error handling')
+  }
 })
 
 test('no copy module hides a multi-line script in a template literal', () => {
