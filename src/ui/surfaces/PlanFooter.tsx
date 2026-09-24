@@ -55,8 +55,8 @@ export function PlanFooter({ computed, mapping, nameOf, onPutBack }: { computed:
           <ul className="sections">
             {said.map((s) => (
               <li key={s.id}>
-                {/* The scan's own reading (Step.doesntApplyByScan) is not something the person said. Put back only where a person's reason is saved to take back (planRows.ts canPutBack). */}
-                {fillText(s.doesntApplyByScan ? F.doesntApplyScanRow : F.doesntApplyRow, { stepTitle: contentTitle(s), reason: s.doesntApply })}{' '}
+                {/* The scan's own reading (Step.doesntApplyByScan) is not something the person said, and a Direction answer (Step.doesntApplyByAnswer) says so itself. Put back only where a person's reason is saved to take back (planRows.ts canPutBack). */}
+                {fillText(s.doesntApplyByScan || s.doesntApplyByAnswer ? F.doesntApplyScanRow : F.doesntApplyRow, { stepTitle: contentTitle(s), reason: s.doesntApply })}{' '}
                 {canPutBack(s, mapping) && (
                   <Button variant="tertiary" onClick={() => onPutBack(s.id)}>
                     {app.plan.putBack}

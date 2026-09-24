@@ -1,10 +1,10 @@
 {
-  "lane": "On Hold",
+  "lane": "Up Next",
   "substatus": null,
   "reason": "after: Configure Passkey Authentication",
   "fact": null,
-  "badge": "On Hold",
-  "bar": "Waiting on your answers",
+  "badge": "Up Next",
+  "bar": "After Configure Passkey Authentication",
   "rail": "Set the policy to Report-only",
   "headings": [
     "About this Step",
@@ -13,14 +13,6 @@
     "Completion Criteria"
   ],
   "tiles": [
-    {
-      "label": "Device code sign-in",
-      "state": "Confirm no legitimate use"
-    },
-    {
-      "label": "Confirm What You Use",
-      "state": "Waiting on your answers"
-    },
     {
       "label": "Configure Passkey Authentication",
       "state": "Prerequisite · To do"

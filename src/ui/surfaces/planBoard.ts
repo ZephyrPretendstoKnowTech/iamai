@@ -1143,6 +1143,19 @@ export function allWorkGroups(shown: readonly BoardItem[], board: readonly Board
 }
 
 /**
+ * The row after `id` in plan order — All work's order, section by section from
+ * the top (allWorkGroups over the whole board) — whatever its lane; null for
+ * the last row or a row the board does not draw. Approving a Direction step's
+ * answers opens it (Plan.tsx): 2.1 → 2.2 → 2.3 → the first row of section 3
+ * (owner, 2026-09-23). Pure.
+ */
+export function nextInPlanOrder(id: string, board: readonly BoardItem[], groups: readonly StepGroup[] = STEP_GROUPS): string | null {
+  const order = allWorkGroups(board, board, groups).flatMap((g) => g.items.map((i) => i.id))
+  const at = order.indexOf(id)
+  return at < 0 ? null : order[at + 1] ?? null
+}
+
+/**
  * The Completed and Deferred groups the toggles revealed among the rows a focus
  * left on a LANE tab, drawn after the tab panel and never inside it (A6). All
  * work draws finished rows in their own sections instead. Pure.

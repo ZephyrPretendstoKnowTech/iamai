@@ -479,16 +479,7 @@
       "unread": "The device inventory was not read. Device management and compliance are unknown.",
       "phones": "{n} people used phones in the sign-in records that were read.",
       "computers": "{n} people used computers without a join state in the sign-in records that were read.",
-      "intune": "Intune capability: {state}. A licence does not prove enrollment, compliance policies or app protection are configured.",
-      "options": "Device choices and technical meaning",
-      "details": [
-        "Intune enrollment lets the organisation manage a device. Enrollment alone does not make it compliant: configure compliance policies, assign them and confirm the device reports compliant before requiring compliance.",
-        "App protection protects work data in supported iOS and Android apps, including on unenrolled phones. It requires the appropriate Intune app protection policies and supported apps. It does not manage the whole phone or cover every browser and application.",
-        "Keeping company data off phones requires an access restriction that blocks those platforms. Excluding phones from a compliant-device policy does not block them. Verify that restriction separately before treating this choice as implemented.",
-        "Microsoft Entra hybrid join connects an on-premises domain-joined Windows device to Entra. It is not the same as Intune enrollment or compliance. Read the proposed policy grant: requiring compliance still requires a compliant device even when it is hybrid joined.",
-        "No computer management requirement leaves those computers out of the planned device requirement. Other applicable Conditional Access policies still apply.",
-        "Saving a choice changes the plan. It does not enroll a device or configure Intune."
-      ]
+      "intune": "Intune capability: {state}. A licence does not prove enrollment, compliance policies or app protection are configured."
     },
     "registrationScope": {
       "unknown": "Guest coverage is not resolved yet. Review the target policy before relying on it.",
@@ -984,7 +975,7 @@
         "inPlace": "Already in place ({n})",
         "doesntApply": "Doesn't apply here ({n})",
         "doesntApplyRow": "{stepTitle}: you said: {reason}",
-        "$commentDoesntApplyScanRow": "A Doesn't apply here row the scan decided rather than a person (Step.doesntApplyByScan: Turn Off Security Defaults on a plan that never read them on, Stage 3). The you-said row put the plan's own reading in the person's mouth, and its Put back had no answer to take back.",
+        "$commentDoesntApplyScanRow": "A Doesn't apply here row the scan decided rather than a person (Step.doesntApplyByScan: Turn Off Security Defaults on a plan that never read them on, Stage 3). The you-said row put the plan's own reading in the person's mouth, and its Put back had no answer to take back. A row a Direction answer put there (Step.doesntApplyByAnswer, walk list item 17) is drawn with it too: its reason, pages.app.plan.direction.doesntApplyAnswered, already says what the person answered.",
         "doesntApplyScanRow": "{stepTitle}: {reason}",
         "notLicensed": "Not licensed ({n})",
         "notLicensedRow": "{stepTitle}: needs a licence this tenant does not hold: {licence}",
@@ -1897,6 +1888,8 @@
           },
           "trackLabel": "Rollout lifecycle",
           "railMilestone": "Next milestone",
+          "saving": "Saving plan…",
+          "saveFailed": "Plan could not be saved. Use Retry Saving above.",
           "railImplementation": "Implementation",
           "$commentRailExisting": "The In-place variant's own side block (task 036; docs/design/approved/plan-step-v1.html V4 draws `Existing implementation` over the policy's name). The name is Step.satisfiedBy — the coverage result that decided the goal was satisfied — so the rail names the tenant's own policy and never the baseline's. `railExistingKeep` is the sub under one sufficient policy; `railExistingTogether` is the sub where two cover the goal between them and neither covers it alone.",
           "railExisting": "Existing implementation",
@@ -2709,7 +2702,6 @@
             "unsure": "Not sure"
           },
           "save": "Save service choices",
-          "notUsed": "You confirmed that {service} is not in use.",
           "reviewTitle": "Review access protection for {service}",
           "reviewWhy": "Check the baseline's control for {service} against the way this tenant really uses it, before deciding whether it belongs here.",
           "source": "Baseline reference: {policy}. Open View Baseline Definition below to inspect the original settings.",
@@ -2899,35 +2891,38 @@
           },
           "notSure": "Not sure? Keep the suggestion. You can change it any time.",
           "approve": "Approve answers",
+          "pickAccount": "Pick at least one account, or choose None.",
+          "pickLocation": "Pick at least one location, or choose another answer.",
+          "notApproved": "Not approved yet",
           "done": "Every answer is approved.",
           "$commentWaiting": "The row label and Readiness tile of a policy held on a Direction answer nobody has approved (ui/surfaces/planBoard.ts). Owner, roadmap flow V2 decision A: it read 'Waiting on your direction' until section 2 became Define Your Rollout Scope; the wait is on the person's answers.",
           "waiting": "Waiting on your answers",
           "waitingNote": "Answer it in {step}.",
           "answeredIn": "Answered in {step}",
-          "notAnswered": "Not answered yet: the suggestion is {answer}.",
+          "$commentDoesntApplyAnswered": "The reason on every Doesn't apply here row a Direction answer put there (walk list item 17, roadmap/directionAnswers.ts answeredReasonOf): the option as its card shows it, the card's label, and the Direction step that asks it. It replaced the hard-coded reasons each producer wrote for itself.",
+          "doesntApplyAnswered": "You answered {option} to “{question}” in {step}.",
           "suggested": "Suggested",
           "approved": "Approved",
           "defaultEvidence": "A default, not something the scan saw.",
-          "baselineEvidence": "The baseline's recommendation.",
-          "reopened": "You said No, but the scan now sees it in use. {evidence}",
-          "alreadySetAside": "The Emergency Access accounts are already set aside: {accounts}.",
+          "reopened": "You answered {answer}. {evidence}",
+          "alreadySetAside": "Your emergency access accounts are already out of the people counts: {names}.",
           "none": "None",
           "steps": {
             "use": {
               "title": "Confirm What You Use",
-              "why": "Tell us which services and sign-in paths your organisation uses, so the plan only includes the policies you need, and closes the ones you don't.",
+              "why": "IAMAI filled these in from your tenant. Approve them or correct any that are wrong: a service you don't use takes its policies off your plan, and the accounts and partners you name are kept out of the policies that would stop them.",
               "milestoneAction": "Approving these answers decides which policies your plan contains."
             },
             "accounts": {
               "title": "Identify Service and Shared Accounts",
-              "why": "Some accounts aren't a person: a mailbox a scanner uses, a script's account, a meeting-room device. Mark them, so every count on the plan is about people, and these accounts get their own rules.",
-              "milestoneAction": "Approving these answers takes these accounts out of the people counts and gives them their own rules."
+              "why": "Some accounts aren't a person: a mailbox a scanner uses, a script's account, a meeting-room device. IAMAI has picked the ones it found below. Approve or correct them: they leave the people counts, and each kind gets a policy of its own.",
+              "milestoneAction": "Approving these answers sets which accounts count as people and which get a policy of their own."
             },
             "devices": {
-              "$comment": "Stage 3 (roadmap-flow V1 decision 3): today's devices step plus the office network question from Decide Where People Sign In From, which is no longer drawn. Its title is the V1 outline's name for the merged step. why and milestoneAction are the two steps' words combined as they were; the only edit is the countries clause each carried (\"which countries are allowed and\", \"and the countries your policies allow\"), false once work countries moved to Block Sign-ins From Countries Not Allowed.",
+              "$comment": "Stage 3 (roadmap-flow V1 decision 3): today's devices step plus the office network question from Decide Where People Sign In From, which is no longer drawn. Its title is the V1 outline's name for the merged step. why and milestoneAction are the owner's section 2 walk words (walk list 62, 63).",
               "title": "Decide How and Where People Sign In",
-              "why": "Choose where your devices are heading. It's fine if today looks different: the plan prepares the gap before anything is enforced. Tell us where your people work from. This sets which network counts as the office.",
-              "milestoneAction": "Approving these answers decides which device policies your plan contains. Approving these answers defines the office network."
+              "why": "Choose how company computers and phones are managed, and which network is your office. The plan's device and location policies follow these answers.",
+              "milestoneAction": "Approving these answers sets which device policies your plan holds and which network counts as the office."
             }
           },
           "questions": {
@@ -2935,41 +2930,25 @@
               "avd": "Azure Virtual Desktop",
               "sharepoint": "SharePoint and OneDrive from outside the office",
               "azureManagement": "Azure portal, CLI or PowerShell for managing Azure",
-              "inforcer": "Inforcer",
-              "workload": "Sync from on-premises Active Directory (Entra Connect)"
+              "inforcer": "Inforcer"
             },
             "serviceOptions": {
               "yes": "Yes",
               "no": "No"
             },
+            "serviceConsequence": "Answering No takes {steps} off your plan.",
             "serviceEvidence": {
-              "seen": "{service} sign-ins appear in the tenant's app sign-in summary or its service-principal activity.",
-              "$commentSeen": "These said \"in the last 30 days\" over two sources that declare no window at all: appSignInSummary and spActivity both carry coveredWindow null on every tenant seen so far. A reader who trusts the window reads a measured negative — IAMAI watched for a month and saw nothing — where what happened is that a summary with no stated period does not list the app. The named window is gone; what the sources are is said instead. Whether an undeclared window should still suggest removing a policy from the plan is a separate question, and a bigger one: it decides plan composition.",
-              "$commentNotSeen": "The sentence named the service as its subject, \"{service} does not appear …\", so a plural or joined name read \"Agent identities does not appear\" and \"SharePoint and OneDrive does not appear\" (the Inventory's Detected workloads tooltip and Direction's Confirm What You Use). The two sources are the subject now, and the service names the sign-ins.",
-              "notSeen": "The tenant's app sign-in summary and its service-principal activity show no {service} sign-ins.",
+              "seen": "{n} people signed in to {service} in the last 30 days.",
+              "notSeen": "No {service} sign-ins in the last 30 days.",
               "syncSeen": "An account holds the Directory Synchronization Accounts role, so a sync service is likely in use.",
               "syncNotSeen": "No account holds the Directory Synchronization Accounts role."
             },
             "mailDevices": {
               "label": "Devices or apps that send email by signing in (printers, scanners, line-of-business apps)",
-              "options": {
-                "none": "None",
-                "some": "Some"
-              },
-              "seen": "{n} accounts used old-protocol email sign-ins in the last 30 days.",
-              "notSeen": "No old-protocol email sign-ins in the last 30 days."
-            },
-            "deviceCode": {
-              "label": "Device code sign-in (CLI tools, meeting-room devices)",
-              "options": {
-                "unused": "Not used",
-                "used": "In use"
-              },
-              "seen": "{n} people used device code sign-in in the last 30 days.",
-              "notSeen": "No device code sign-ins in the last 30 days.",
-              "$commentSeenShort": "What the question says where IAMAI does not hold enough of the sign-in records to rely on (roadmap/direction.ts, the source neither ok nor partial) and the rows it did read show device code use. A read that stops short of 24 hours is insufficient and keeps those rows (graph/collect/signInStream.ts; since the read streams, \"insufficient\" comes only from a time budget), and the question said \"2 people used device code sign-in in the last 30 days\" over six hours of records, and \"No device code sign-ins in the last 30 days\" where six hours held none - a measured absence beside the suggestion that builds the block. Use the rows show is still use, so it keeps its suggestion; the window is not claimed, and an absence over a short read is the default it is (defaultEvidence).",
-              "seenShort": "{n} people used device code sign-in in the sign-in records IAMAI read. Those do not cover the last 30 days, so there may be others.",
-              "note": "Answering Not used builds the policy that blocks it. A session that once used device code stays tracked, so later requests in it can be blocked too, and a device can be signed out."
+              "seen": "{n} accounts signed in to send email in the last 30 days.",
+              "notSeen": "No email-sending sign-ins in the last 30 days.",
+              "consequence": "Answering Pick accounts makes them service accounts: they leave the people counts, and Block Legacy Authentication leaves them out until each moves to a supported mail route.",
+              "why": "Signed in to send email in the last 30 days."
             },
             "partner": {
               "label": "Partner or MSP technicians who sign in to your tenant",
@@ -2977,68 +2956,67 @@
                 "yes": "Yes",
                 "no": "No"
               },
-              "seen": "{n} service-provider accounts signed in to this tenant.",
-              "notSeen": "No service-provider sign-ins in the last 30 days."
+              "seen": "{n} partner or MSP accounts signed in to your tenant in the last 30 days.",
+              "notSeen": "No partner or MSP sign-ins in the last 30 days.",
+              "consequence": "Answering Yes keeps partner and MSP technicians out of Require MFA for Guests and Block Sign-ins From Countries Not Allowed."
             },
             "accountOptions": {
               "none": "None",
               "some": "Pick accounts"
             },
             "serviceAccounts": {
-              "label": "Service accounts (includes script accounts)",
-              "seen": "{n} accounts look like service accounts (names, non-interactive use).",
-              "notSeen": "No account looks like a service account."
+              "label": "Service and script accounts",
+              "seen": "{n} accounts look like service accounts.",
+              "seenOne": "1 account looks like a service account.",
+              "notSeen": "No account looks like a service account.",
+              "note": "Answering None takes Restrict Service Accounts to the Trusted Network off your plan and counts these accounts as people."
             },
             "sharedDevices": {
-              "label": "Shared device accounts",
+              "label": "Shared-device accounts",
               "seen": "{n} accounts look like shared-device accounts.",
-              "notSeen": "No account looks like a shared-device account."
+              "seenOne": "1 account looks like a shared-device account.",
+              "notSeen": "No account looks like a shared-device account.",
+              "note": "Answering None takes Give Shared Devices Their Own Policy off your plan and counts these accounts as people."
             },
             "computers": {
               "label": "Company computers",
               "options": {
-                "managed": "Managed (joined to Entra and enrolled)",
-                "hybrid": "Hybrid joined",
-                "unmanaged": "Left unmanaged"
+                "managed": "Managed (compliant in Intune, or hybrid joined)",
+                "unmanaged": "Unmanaged"
               },
               "$commentToday": "This line said \"{n} people signed in from computers that aren't joined\" and filled {n} from unjoinedComputers, which counts devices with NO trust type at all. A registered device is not joined — Entra has three trust types and only two are a join — so the sentence claimed a population far wider than the one it measured. On a 4,900-person tenant it read 3 where 2,339 people were on registered computers, and this question decides whether every company computer gets joined and enrolled: at 3 that is a Tuesday afternoon, at 2,339 it is a change board and a pilot. Both numbers are stated now, each saying what it counted.",
-              "today": "Today: {n} people signed in from computers IAMAI could not identify — not joined, not registered, not compliant, not managed.",
-              "todayNone": "Today: every computer sign-in came from a device IAMAI could identify.",
-              "todayRegistered": "Today: {n} people signed in from computers registered to the tenant but not joined. Managed means joined and enrolled, so these are in scope for this answer.",
-              "todayRegisteredNone": "No sign-ins came from registered-but-unjoined computers.",
-              "$commentTodayPartial": "The two computer counts where the sign-in read was not whole (sources.signInEvidence anything but ok; roadmap/direction.ts deviceQuestions). A read stopped at the memory ceiling (gone since the sign-in read streams, signInStream.ts) or interrupted counts only the hours it reached, and \"Today: 3 people signed in from computers IAMAI could not identify\" stated that as the tenant's number beside a choice to require managed computers, where an undercount makes the requirement look cheaper than it is (NEW-Nadia-D4 review). Each line says it counts only the part that was read.",
-              "todayPartial": "In the part of the sign-in records this scan read, {n} people signed in from computers IAMAI could not identify — not joined, not registered, not compliant, not managed. There may be more.",
-              "todayRegisteredPartial": "In the part of the sign-in records this scan read, {n} people signed in from computers registered to the tenant but not joined. There may be more. Managed means joined and enrolled, so these are in scope for this answer.",
+              "today": "{n} people signed in from unregistered computers in the last 30 days.",
+              "todayNone": "No sign-ins from unregistered computers in the last 30 days.",
+              "todayRegistered": "{n} people signed in from registered computers that aren't joined, in the last 30 days.",
               "$commentIntuneSeats": "The device question chooses between Managed, Hybrid joined and Left unmanaged, and Managed means joined AND enrolled - which needs an Intune licence per device. The question offered the baseline recommendation and nothing about the tenant, on a tenant holding 300 seats with 41 in use. A reader picking the suggested answer was committing to enrolment without being shown whether the licences for it existed.",
-              "intuneSeats": "Intune: {consumed} of {seats} licences in use. Managed means joined and enrolled, so each computer under this answer needs one.",
-              "intuneAbsent": "No Intune licences were read in this tenant. Managed means joined and enrolled, and enrollment needs them."
+              "intuneSeats": "Intune: {consumed} of {seats} licences assigned. Each person who uses a managed computer needs one.",
+              "note": "Answering Unmanaged takes Require a Managed Device Outside the Office and Require a Fresh Sign-in for Intune Enrollment off your plan."
             },
             "phones": {
               "label": "Phones",
               "options": {
-                "enrolled": "Enrolled in Intune",
-                "apps": "App protection only",
-                "unmanaged": "Unmanaged",
+                "enrolled": "Compliant (enrolled in Intune)",
+                "apps": "No device requirement",
                 "blocked": "Blocked from company data"
               },
-              "today": "Today: {n} people signed in from phones.",
-              "todayNone": "Today: no phone sign-ins were seen.",
-              "$commentTodayPartial": "The phone count where the sign-in read was not whole (sources.signInEvidence partial; roadmap/direction.ts deviceQuestions). A read stopped at the memory ceiling (gone since the sign-in read streams, signInStream.ts) or interrupted reaches only its most recent hours and the people read on their own, and \"Today: 3 people signed in from phones.\" stated that as the tenant's number beside Blocked from company data, where an undercount argues for blocking (NEW-Nadia-D4 review). It says it counts only the part that was read.",
-              "todayPartial": "In the part of the sign-in records this scan read, {n} people signed in from phones. There may be more.",
-              "note": "Blocked from company data adds a policy of its own, Keep Company Data Off Phones, with its own report-only week and two tests from a phone before it is enforced."
+              "today": "{n} people signed in from a phone in the last 30 days.",
+              "todayNone": "No phone sign-ins in the last 30 days.",
+              "note": "Answering Blocked from company data adds Keep Company Data Off Phones: a block policy you build, a report-only week, then a test from an iPhone and an Android phone.",
+              "$commentNoteIntune": "Said after note only where the tenant has Intune licences (capabilities.intune.enabled; roadmap/direction.ts deviceQuestions).",
+              "noteIntune": "Answering Compliant adds phones to Require a Managed Device Outside the Office."
             },
             "officeNetwork": {
-              "label": "The office network",
+              "label": "Office network",
               "options": {
-                "office": "Trusted locations",
-                "notInEntra": "We have an office network, but it is not in Entra yet",
+                "office": "Pick locations",
+                "notInEntra": "Not in Entra yet",
                 "remote": "Everyone works remotely"
               },
-              "seen": "{n} named locations are marked trusted.",
+              "seen": "{n} named locations are marked trusted: {names}.",
               "notSeen": "No named location is marked trusted.",
-              "note": "Answering that it is not in Entra yet keeps Define the Trusted Network on your plan, where you name the office and its approved public ranges. IAMAI does not read sign-in addresses, so it cannot suggest them.",
+              "note": "Answering that it is not in Entra yet keeps Define the Trusted Network on your plan, where you name the office and its approved public ranges.",
               "$commentUnused": "A saved answer of \"Everyone works remotely\" sat beside the evidence line \"1 named location is marked trusted\" with nothing connecting them. The evidence is true and argues for the OPPOSITE answer, and the suggestion was in fact office - so a careful reader met a contradiction on one line and no way to tell which half to believe. The downstream prerequisite step already says this well (\"The scan read a trusted named location this answer leaves out: Head office\"); the question that SETS the answer said nothing. Said only where the saved answer is remote and the scan read a trusted location.",
-              "savedRemoteUnused": "This answer leaves {n} of them unused; nothing location-based will apply."
+              "savedRemoteUnused": "{names} is marked trusted in Entra; this answer doesn't use it as your office."
             },
             "$commentWorkCountries": "The work countries question, asked since Stage 3 on Block Sign-ins From Countries Not Allowed rather than in Direction. Its words are kept here as Direction wrote them: the label heads that step's countries picker, and the seen line sits under it where the scan saw sign-in countries (ui/surfaces/stepBody.ts withObjectTask).",
             "workCountries": {
@@ -5353,20 +5331,6 @@
         ],
         "none": "No device-code sign-ins in the records since {from}; that does not prove nothing uses it."
       },
-      "decision": {
-        "label": "Device code sign-in",
-        "tileValue": "Confirm no legitimate use",
-        "help": "Does anyone use device code sign-in for CLI tools, IoT devices, or display-limited devices?",
-        "options": [
-          "None",
-          "Yes"
-        ],
-        "effect": "Enforcement waits while device code sign-in is in use; move each workflow off it, then save None.",
-        "save": "Save",
-        "tileNote": "The sign-in records cover observed use; they can miss infrequent CLI, shared-device and enrollment workflows.",
-        "$commentTileNoteUnread": "The device code tile note where IAMAI could not read the sign-in records (stepContract.ts unsavedTiles reads it where the step carries Evidence.unreadable; {reason} is the source's own reason). tileNote says the sign-in records cover observed use, and on a tenant whose sign-in source refused every read it said so over records IAMAI had never read: a coverage that did not exist, beside the very question the records were meant to help answer (R4-19, Priya D4). This states what IAMAI does not hold and where the answer has to come from instead. It said \"could not read\" and \"nothing here shows whether anything uses device code sign-in\": a production read that stops short of 24 hours is insufficient with some records read, and those can show use, so what they cannot show is that nothing uses it.",
-        "tileNoteUnread": "IAMAI does not hold enough of this tenant's sign-in records to rely on — {reason} — so they cannot show that nothing uses device code sign-in. Check CLI tools, shared devices and enrollment workflows with the people who run them."
-      },
       "dates": "{datesNew}",
       "doneEnd": "No sign-in to {tenant} completes through device code flow, the exclusions group is applied, and every tool, shared device and enrollment job that used the flow has a tested alternative.",
       "doneWhen": [
@@ -5434,11 +5398,6 @@
         "verification": [
           "Identify the legitimate tools or devices using device code. Move each required workflow to an alternative supported by that tool, then run the actual task with a representative account.",
           "For each workflow moved off device code, record the account, tool/task, replacement sign-in path, date and result. A quiet device-code report alone does not demonstrate that a required workflow was replaced."
-        ],
-        "$commentVerificationLead": "The line the workflow check opens on, by the saved answer to the device code decision (options: None, Yes), read the way a decision's per-option effect is read (answers.ts effectLine; stepResources.ts verificationResourceLines). With None saved the check still opened on \"Identify the legitimate tools or devices using device code. Move each required workflow...\" as if nothing had been answered (R4-29, Marcus D10). The checks stay under None: the decision's effect asks for None once each workflow is moved off, so None is also the answer saved when there are moved workflows to test, and a quiet device-code report can miss infrequent use. Yes adds nothing: the checks are that answer's work.",
-        "verificationLead": [
-          "You recorded that nothing uses device code sign-in. Confirm it with the checks below: infrequent CLI, shared-device and enrollment use is easy to miss.",
-          ""
         ]
       }
     },

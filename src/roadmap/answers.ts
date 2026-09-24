@@ -204,8 +204,7 @@ export function deviceCodeWorkflowsOf(mapping: Pick<MappingState, 'questionAnswe
 
 /**
  * The conditional inputs (U28): questions whose answer changes the plan and that
- * the scan can only suggest — the mail-sending devices, device code sign-in,
- * partner access. Each is asked in Define Your Rollout Scope (roadmap/
+ * the scan can only suggest — the mail-sending devices, partner access. Each is asked in Define Your Rollout Scope (roadmap/
  * direction.ts) and persists as questionAnswers[stepId:label] on the step it
  * changes; evidence may pre-fill one, and only an approval records it, "None"
  * included. Until then the step it changes is short of Completed.
@@ -219,7 +218,7 @@ type InputRecord = Pick<MappingState, 'questionAnswers' | 'specialCareConfirmed'
 
 /**
  * `prefilled`: IAMAI has an answer already and is waiting to have it
- * confirmed, not waiting to be told. The three questions genuinely ask the
+ * confirmed, not waiting to be told. The two questions genuinely ask the
  * person something the tenant cannot say; the campaign's support list is
  * computed from readiness and opens filled (ui/surfaces/pickerRows.ts
  * defaultDecisions). A row that says "waiting on your answer" over a list of
@@ -228,7 +227,6 @@ type InputRecord = Pick<MappingState, 'questionAnswers' | 'specialCareConfirmed'
  */
 const CONDITIONAL_INPUTS: readonly { stepId: string; kind: AnswerKind; prefilled?: true; saved?: (mapping: InputRecord) => boolean }[] = [
   { stepId: QUESTION_STEP.mailDevices, kind: 'decision' },
-  { stepId: QUESTION_STEP.deviceCode, kind: 'decision' },
   { stepId: QUESTION_STEP.partner, kind: 'question' },
   // The campaign's special-care people (B10 P0-10, S-MC-2, A6): saved once a
   // person's Save confirms the list, an empty one included.
@@ -286,7 +284,11 @@ export function devicePlanOf(mapping: Pick<MappingState, 'questionAnswers'>): De
       computers: computer === 'enrolled' ? 'enrol' : computer as 'hybrid' | 'unmanaged',
       blockPhones: false,
       phoneManagement,
-      phoneAppProtection: apps as NonNullable<DevicePlan['phoneAppProtection']>,
+      // The phone option decides it: "App protection only" and "Unmanaged" are
+      // one answer now, No device requirement, which keeps app protection as
+      // Compliant does; only Blocked from company data leaves it. An older
+      // Unmanaged answer stored not-required and reads as No device requirement.
+      phoneAppProtection: management === 'blocked' ? 'not-required' : 'required',
       noWorkPhones: management === 'blocked',
       phonesText: ({ enrolled: 'Enrolled in Intune', registered: 'Registered in Entra', unmanaged: 'No device management', blocked: 'Keep company data off phones' })[phoneManagement],
       computersText: ({ enrolled: 'Enrolled in Intune', hybrid: 'Hybrid-joined Windows computers', unmanaged: 'Unmanaged computers' })[computer as 'enrolled' | 'hybrid' | 'unmanaged'],

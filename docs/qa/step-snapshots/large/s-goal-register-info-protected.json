@@ -28,10 +28,6 @@
     {
       "label": "Before turning on",
       "state": "People without a method"
-    },
-    {
-      "label": "Before turning on",
-      "state": "Trusted network"
     }
   ],
   "channels": [

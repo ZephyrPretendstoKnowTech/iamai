@@ -1,14 +1,12 @@
 // Define Your Rollout Scope on the Plan (DirectionQuestions.tsx, ContentStep.tsx,
-// stepBody.ts): the decision anatomy, one Approve answers button, and the
-// "Answered in" line where a question used to be asked.
+// stepBody.ts): the decision anatomy and one Approve answers button.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
-import { answeredInOf, ANSWERED_IN } from '../../roadmap/direction.ts'
-import { DIRECTION_STEP, directionDecisionOf, directionMilestoneAction } from '../../roadmap/directionAnswers.ts'
-import { applyStepDecisions } from '../../roadmap/decisions.ts'
+import { ANSWERED_IN } from '../../roadmap/direction.ts'
+import { DIRECTION_STEP, directionMilestoneAction } from '../../roadmap/directionAnswers.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { directionWords } from '../../content/content.ts'
 import { headingsOf, stepBodyOf } from './stepBody.ts'
@@ -69,44 +67,21 @@ test('a Direction step draws About this Step, Questions and Completion Criteria 
   }
 })
 
-test('a step whose question moved says where it is answered now, with the answer and a link, and never asks it again', () => {
+test('a step whose question moved never asks it again', () => {
   {
-    const { f, ctx } = setup()
     // The countries step asks its own work countries since Stage 3: nothing about it is answered in Direction.
-    assert.deepEqual(Object.keys(ANSWERED_IN).sort(), [PREREQ_STEP_ID.serviceAccountsGroup, PREREQ_STEP_ID.trustedLocation, 's-goal-block-device-code', 's-goal-block-legacy-auth', 's-goal-guests-mfa', 's-shared-devices'].sort())
-    f.mapping.questionAnswers = {}
-    const open = answeredInOf('s-goal-block-device-code', { ...ctx, mapping: f.mapping })!
-    assert.equal(open.step, DIRECTION_STEP.use)
-    assert.equal(open.title, 'Confirm What You Use')
-    assert.match(open.lines[0].value, /^Not answered yet: the suggestion is /)
-    const saved = applyStepDecisions(f.mapping, { [DIRECTION_STEP.use]: { ...directionDecisionOf({ deviceCode: { value: 'used', picked: [] } }), at: f.snapshot.asOf } })
-    const answered = answeredInOf('s-goal-block-device-code', { ...ctx, mapping: saved })!
-    assert.deepEqual(answered.lines.map((l) => [l.label, l.value, l.saved]), [[W.questions.deviceCode.label, 'In use', true]])
-    assert.equal(answeredInOf(PREREQ_STEP_ID.allowedCountries, ctx), null)
-    const network = answeredInOf(PREREQ_STEP_ID.trustedLocation, ctx)!
-    assert.equal(network.step, DIRECTION_STEP.devices, 'the office network is answered on D3 now')
-    assert.deepEqual(network.lines.map((l) => l.key), ['officeNetwork'])
-    assert.equal(answeredInOf('s-goal-mfa-all-users', ctx), null)
-    // The step draws it in place of its old picker.
-    assert.match(CONTENT_STEP, /\{ANSWERED_IN\[step\.id\] \? <AnsweredInDirection stepId=\{step\.id\} ctx=\{ctx\} \/> :/)
-    assert.match(QUESTIONS, /fillText\(W\.answeredIn, \{ step: answered\.title \}\)/)
-    assert.match(QUESTIONS, /href=\{returnToStep\(answered\.step\)\}/)
+    assert.deepEqual(Object.keys(ANSWERED_IN).sort(), [PREREQ_STEP_ID.serviceAccountsGroup, PREREQ_STEP_ID.trustedLocation, 's-goal-block-legacy-auth', 's-goal-guests-mfa', 's-shared-devices'].sort())
   }
   {
     // The owner's own example (docs/plans/step-redundancy-analysis.md finding 2).
-    // This step is the doing of D4's office-network answer and says so through the
-    // "Answered in" panel; it used to draw a tile beside that panel reading
-    // "Trusted Network: Choose your office networks", with the detail "Select your
-    // office networks or confirm that everyone is remote" — D4's question again,
-    // on a second row of the board.
+    // This step is the doing of D4's office-network answer; it used to draw a
+    // tile reading "Trusted Network: Choose your office networks", with the
+    // detail "Select your office networks or confirm that everyone is remote" —
+    // D4's question again, on a second row of the board.
     const f = fixture('demo')
     const unanswered = { ...f.mapping, wizardAnswered: { ...f.mapping.wizardAnswered, trustedLocations: false } }
     const open = runFixture({ ...f, mapping: unanswered }, { mapping: unanswered }).steps.find((s) => s.id === PREREQ_STEP_ID.trustedLocation)!
     assert.deepEqual(open.configurationFindings ?? [], [], 'the step asks the question again')
-    // It still says where the answer lives, and what it is so far.
-    const panel = answeredInOf(PREREQ_STEP_ID.trustedLocation, { snapshot: f.snapshot, mapping: unanswered, nameOf: (id: string) => id })!
-    assert.equal(panel.title, 'Decide How and Where People Sign In')
-    assert.deepEqual(panel.lines.map((l) => l.key), ['officeNetwork'])
 
     // Answered, the tile is about the tenant's objects rather than the question,
     // so it comes back: nothing was hidden, only the second asking removed.

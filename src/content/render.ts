@@ -242,11 +242,24 @@ const SUBJECT_RE = new RegExp(`(?<![\\d,.])\\b1 (?:of them|(?:[A-Za-z-]+ )?(?:${
 // section could not be read", "1 person needs to register". The count's verb is
 // the modal, which does not bend (Phase 2 audit: "could not be reads").
 const GOVERNED_RE = /\b(?:be|been|being|can|cannot|could|will|would|may|might|must|shall|should|not|to)\s+$/i
+// A word after a preposition is its object, a noun ("in use", "on hold", "at
+// work"), never the count's verb, and never bends: "1 of 300 licences in use"
+// read "in uses". Be, have and do are never an object: after a stranded
+// preposition ("the 1 person it is waiting on is") they are still the verb.
+const PREPOSITION_RE = /\b(?:in|of|for|on|at|by|with|from|into|per|without)\s+$/i
+const NEVER_OBJECT = new Set(['are', 'were', 'have', 'do', "aren't", 'aren’t'])
+// A verb after "that", "which" or "who" that follows a plural noun is that
+// noun's, in a clause of its own, never the count's, and so is a verb its
+// auxiliary governs there: "1 person signed in from registered computers that
+// aren't joined" read "that isn't joined".
+const RELATIVE_RE = /\b[A-Za-z-]*[^\Wsiu]s\s+(?:that|which|who)\s+(?:(?:are|were|have|had|do|did|aren't|aren’t|weren't|weren’t|don't|don’t|haven't|haven’t)\s+(?:not\s+)?)?$/i
 
 function pluralise(text: string): string {
   // The noun a count governs is the word after it, or the word after one
-  // adjective ("1 active people" → "1 active person").
-  const nouns = text.replace(/(?<![\d,.])\b1 ([A-Za-z-]+)( [A-Za-z-]+)?/g, (m, w1: string, w2?: string) => {
+  // adjective ("1 active people" → "1 active person"), or after two joined by
+  // "or" ("1 partner or MSP accounts" → "1 partner or MSP account").
+  const joined = text.replace(/(?<![\d,.])\b1 ([A-Za-z-]+) or ([A-Za-z-]+) ([A-Za-z-]+)/g, (m, a: string, b: string, n: string) => SINGULAR[n] && !SINGULAR[a] ? `1 ${a} or ${b} ${SINGULAR[n]}` : m)
+  const nouns = joined.replace(/(?<![\d,.])\b1 ([A-Za-z-]+)( [A-Za-z-]+)?/g, (m, w1: string, w2?: string) => {
     if (SINGULAR[w1]) return `1 ${SINGULAR[w1]}${w2 ?? ''}`
     const n2 = w2?.trim()
     if (n2 && SINGULAR[n2]) return `1 ${w1} ${SINGULAR[n2]}`
@@ -265,6 +278,7 @@ function pluralise(text: string): string {
     let governed = false
     const conjugated = rest.replace(VERB_RE, (v, _w, offset: number) => {
       const before = rest.slice(0, offset)
+      if ((PREPOSITION_RE.test(before) && !NEVER_OBJECT.has(v)) || RELATIVE_RE.test(before)) return v
       // Only a verb directly after the subject, or joined to the first by "and".
       const joined = / and $/.test(before)
       if (first || joined) {
