@@ -728,11 +728,6 @@ export function whoEvidenceLines(who: Record<string, unknown>, ex: Record<string
   for (const [k, v] of Object.entries(who)) {
     // A key ending in Undated holds another key's undated forms (below), never lines of its own.
     if (k.startsWith('$comment') || k.endsWith('Undated') || ['lead', 'leadWhen', 'groups', 'adminsNote', 'timeline', 'overlap'].includes(k)) continue
-    // A licence caveat has no placeholders, so `whole()` can never gate it: it
-    // was drawn on every tenant, seven of eight of which hold Entra ID P1, which
-    // made the one honest sentence about the licence carry no information at all
-    // (V1 audit S4-21). It is drawn only where the licence withheld the records.
-    if (k === 'licenceNote' && !truthy(ex.signInsNeedP1)) continue
     if (k === 'none') {
       none = typeof v === 'string' ? v : null
       continue
@@ -756,9 +751,8 @@ export function whoEvidenceLines(who: Record<string, unknown>, ex: Record<string
       const lk = listKeys(line)
       if (lk.length > 0 && lk.every((k2) => !truthy(ex[k2]))) continue
       if (lk.length === 0 && line.includes('{n}') && (ex.n ?? 1) === 0) continue
-      // The existing-coverage line reads the plan, not the tenant's people; the
-      // licence caveat is a reading of what the scan was allowed to see.
-      const reading = line !== coverage && (readsTenant(line) || k === 'licenceNote')
+      // The existing-coverage line reads the plan, not the tenant's people.
+      const reading = line !== coverage && readsTenant(line)
       const undated = undatedForms?.[String(i)]
       if (!whole(line, listCountVars(line, ex) as Record<string, unknown>) && typeof undated === 'string' && whole(undated, listCountVars(undated, ex) as Record<string, unknown>)) line = undated
       if (!whole(line, listCountVars(line, ex) as Record<string, unknown>)) {
