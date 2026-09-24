@@ -33,6 +33,7 @@ import { badgeLabel } from '../../../../src/ui/surfaces/stepContract.ts'
 import { stepOperations } from '../../../../src/ui/surfaces/stepJson.ts'
 import { contentTitle } from '../../../../src/content/stepTitle.ts'
 import { passkeyReadingOf, requiredModels } from '../../../../src/roadmap/passkeySettings.ts'
+import { passkeyRestrictionReading } from '../../../../src/roadmap/passkeyRestrictions.ts'
 import { methodAvailability } from '../../../../src/roadmap/methodAvailability.ts'
 import { observationsOf } from '../../../../src/roadmap/tracking.ts'
 import { activePeopleIds } from '../../../../src/derive/population.ts'
@@ -573,6 +574,15 @@ export function configurePasskeys(t: Tenant): Tenant {
   const next = structuredClone(t) as Tenant
   const reading = passkeyReadingOf(next.snapshot, mappingOf(next))
   if (reading.resolution?.kind !== 'target') return next
+  // The step withholds the key restrictions while they would lock anyone out,
+  // and Prepare affected passkeys asks for an approved passkey on each such
+  // account first; the person does that before applying them (net-new 4: the
+  // step is never Completed while an account the allow list locks out remains).
+  const models = requiredModels(mappingOf(next))
+  for (const [i, id] of passkeyRestrictionReading(next.snapshot, mappingOf(next), next.groups).lockedOut.entries()) {
+    const existing = Array.isArray(next.snapshot.authMethods[id]) ? next.snapshot.authMethods[id] : []
+    next.snapshot.authMethods[id] = [...existing, { kind: 'fido2', id: `approved-passkey-${i + 1}`, aaGuid: models[0].aaguid, passkeyType: 'deviceBound', attestationLevel: 'attested' }] as never
+  }
   const section = next.snapshot.config.authMethodsPolicy
   const rows = (section?.rows ?? []) as Record<string, unknown>[]
   const row = (rows[0] ?? {}) as Record<string, unknown>
