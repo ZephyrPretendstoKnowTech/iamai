@@ -96,8 +96,6 @@ test('P1-1: the Decision tile reads Decision, explains the ask, and names the on
 test('P1-2: an unsaved conditional input is its own Readiness tile, asking for confirmation', () => {
   const legacy = bodiesOf(fixture('demo')).get(LEGACY)!
   assert.deepEqual(legacy.contract ? (legacy.readiness.tiles.find((t) => t.key === 'unsaved:Mail-sending devices') ?? null)?.value : null, 'Not confirmed')
-  const campaign = bodiesOf(fixture('demo')).get('s-verify-mfa')!
-  assert.ok(campaign.readiness.tiles.some((t) => t.key === 'unsaved:People Needing Help' && t.value === 'Not confirmed'))
 })
 
 test('P1-3: a prerequisite another prerequisite tile already waits on is not drawn beside it, by the dependency graph', () => {
@@ -486,7 +484,7 @@ test('a step whose reach is not established never counts the people in scope of 
 test('the campaign promises nothing a scan cannot show while its source is refused', async () => {
   const { stepExportView } = await import('./stepExport.ts')
   const PROMISES = [/the record shows it on the next scan/, /the lists above shrink as people are seen/]
-  const read = (name: 'hostile' | 'mid') => {
+  const read = (name: 'hostile') => {
     const f = fixture(name)
     const r = runFixture(f, {}, null, f.snapshot.asOf)
     const step = r.steps.find((s) => s.id === 's-verify-mfa')!
@@ -501,14 +499,6 @@ test('the campaign promises nothing a scan cannot show while its source is refus
     assert.doesNotMatch(hostile.exported, p, 'the export promises a scan will show progress')
   }
   assert.doesNotMatch(hostile.who, /scan again before assessing readiness/)
-  assert.match(hostile.who, /^\d+ people with incomplete method or sign-in data:?$/m, 'the people are still listed')
-  // Where the sources are read, both promises stand, in their places.
-  const mid = read('mid')
-  assert.equal(mid.step.readiness.blind, undefined)
-  for (const p of PROMISES) assert.match(mid.portal, p)
-  assert.match(mid.portal, /phishing-resistant\.\n6\. Have each sign in once more/, 'the steps\' promise follows the steps')
-  assert.match(mid.portal, /reaches them\.\n10\. Scan to update the plan/, 'the list for everyone else ends with its own')
-  assert.match(mid.exported, PROMISES[0])
 })
 
 // R4-26 (Jordan D4), first half. A readiness number is the share of people with

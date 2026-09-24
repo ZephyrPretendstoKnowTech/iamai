@@ -13,14 +13,8 @@ import { generateRoadmap } from './generate.ts'
 import { emptyMappingState } from '../mapping/types.ts'
 import { scheduleRationale } from '../copy/statements.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
-import { campaignTargetsPasskeys } from './campaign.ts'
 
-test('someone to set up: the campaign is a live step the pace includes, and it is not a passkey campaign', () => {
-  // the Authenticator registration campaign is not misidentified as a passkey campaign
-  {
-    assert.equal(campaignTargetsPasskeys(), false)
-  }
-
+test('someone to set up: the campaign is a live step the pace includes', () => {
   // someone to set up: the campaign is a live step, the pace includes it, the Overview never says none needed
   {
     const p = plan(fixtureSnapshot())

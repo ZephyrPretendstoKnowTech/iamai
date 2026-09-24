@@ -218,17 +218,6 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.steps[7].whatToDoWhen.securityDefaultsOff.steps[0]',
   '.steps[7].whatToDoWhen.securityDefaultsOff.steps[1]',
   '.steps[10].who.match',
-  '.steps[13].who.groups.noMethod',
-  // The campaign's readiness groups (Step 7): the example lists nobody needing setup with a method and nobody unknown.
-  '.steps[13].who.groups.needsSetup',
-  '.steps[13].who.groups.readinessUnknown',
-  // The same group where the campaign's source was refused (R4-20): the example's sources are all read.
-  '.steps[13].who.groups.readinessUnknownBlind',
-  '.steps[13].who.groups.holdouts',
-  // The admins the campaign waits on outside its active people (R4-52): the
-  // example's tenant has none, dormant or with sign-in activity unread.
-  '.steps[13].who.dormantAdmins',
-  '.steps[13].who.unreadAdmins',
   '.steps[14].who.evidence[1]',
   // Directory-role holders who use the same account for mail or Teams (E6), on the
   // three admin policies (15, 23, 33); the examples list none. The lockout lists
@@ -341,7 +330,7 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
 // ownCardWordsOf, generate.ts, sectionThreeTasks.ts), and the review page draws
 // no cards and no tasks.
 // These fields are consumed by Plan.tsx, stepContract.ts, stepResources.ts and aiGrounding.ts, not the static content-review renderer.
-const isAppOnly = (p: string): boolean => /^\.steps\[\d+\]\.who\.\w+Undated\./.test(p) ||p === '.pages.plan.howTo.intro' || p.startsWith('.pages.plan.changes.') || p.startsWith('.pages.plan.howTo.legend.') || /^\.pages\.plan\.howTo\.legend\[/.test(p) || p === '.shared.certificatePrompt' || /\.tileNote(Unread)?$/.test(p) || /\.whatToDo\.verification(Lead)?\[/.test(p) || /^\.steps\[\d+\]\.preparation\[\d+\]$/.test(p) || /^\.steps\[\d+\]\.decision\.heading$/.test(p) || /^\.steps\[\d+\]\.(doneEnd|aiFocus|taskTitle)$/.test(p) || /^\.steps\[\d+\]\.card\.(subject|check|satisfied|admin)$/.test(p) || /^\.steps\[\d+\]\.(keep|procedure)\./.test(p) || p.startsWith('.pages.plan.workflows.reviewCard.') || p === '.pages.plan.workflows.reviewTaskTitle' || p.startsWith('.pages.app.') || p.startsWith('.pages.plan.blockedSubject.') || p.startsWith('.pages.plan.settings.mappings.') || p.startsWith('.shared.engine.') || p.startsWith('.shared.deviation.') || p.startsWith('.shared.devicePlan.') || p.startsWith('.shared.mailDevices.') || p === '.pages.plan.footer.notLicensedDevices' || p === '.shared.planPromptTitle' || p === '.shared.policySettingsForAction' || p.startsWith('.shared.deviceBriefing.') || p.startsWith('.shared.passkeyCompatibility.') || p.startsWith('.shared.passkeyRestrictions.') || p === '.shared.policyDoneWhenUnobserved' || p.startsWith('.shared.registrationScope.')
+const isAppOnly = (p: string): boolean => /^\.steps\[\d+\]\.who\.\w+Undated\./.test(p) ||p === '.pages.plan.howTo.intro' || p.startsWith('.pages.plan.changes.') || p.startsWith('.pages.plan.howTo.legend.') || /^\.pages\.plan\.howTo\.legend\[/.test(p) || p === '.shared.certificatePrompt' || /\.tileNote(Unread)?$/.test(p) || /\.whatToDo\.verification(Lead)?\[/.test(p) || /^\.steps\[\d+\]\.preparation\[\d+\]$/.test(p) || /^\.steps\[\d+\]\.decision\.heading$/.test(p) || /^\.steps\[\d+\]\.(doneEnd|aiFocus|taskTitle)$/.test(p) || /^\.steps\[\d+\]\.card\.\w+$/.test(p) || /^\.steps\[\d+\]\.(milestone|instruction)(\.\w+)?$/.test(p) || /^\.steps\[\d+\]\.campaign\.\w+$/.test(p) || /^\.steps\[\d+\]\.(keep|procedure)\./.test(p) || p.startsWith('.pages.plan.workflows.reviewCard.') || p === '.pages.plan.workflows.reviewTaskTitle' || p.startsWith('.pages.app.') || p.startsWith('.pages.plan.blockedSubject.') || p.startsWith('.pages.plan.settings.mappings.') || p.startsWith('.shared.engine.') || p.startsWith('.shared.deviation.') || p.startsWith('.shared.devicePlan.') || p.startsWith('.shared.mailDevices.') || p === '.pages.plan.footer.notLicensedDevices' || p === '.shared.planPromptTitle' || p === '.shared.policySettingsForAction' || p.startsWith('.shared.deviceBriefing.') || p.startsWith('.shared.passkeyCompatibility.') || p.startsWith('.shared.passkeyRestrictions.') || p === '.shared.policyDoneWhenUnobserved' || p.startsWith('.shared.registrationScope.')
 const isStructural = (p: string): boolean =>
   /\.id$/.test(p) || /\.href$/.test(p) || /\.applies$/.test(p) || /pickerSource$/.test(p) || /\.kind$/.test(p) || /\.multi$/.test(p) || /\.mergesGoals\b/.test(p) || /\.learn\.url$/.test(p) || /\.whatToDoReference\b/.test(p) || /\.placement$/.test(p)
 

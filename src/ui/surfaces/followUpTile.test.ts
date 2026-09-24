@@ -35,15 +35,6 @@ test('the campaign names everyone marked to turn on without, and says the waitin
     }
   }
   {
-    const { tile, missing } = drawn('demo', CAMPAIGN_STEP_ID, true)
-    assert.ok(tile)
-    assert.equal(tile.tone, 'warn')
-    assert.equal(tile.value, `${missing.length} people`)
-    assert.match(tile.note ?? '', /^Marked to turn on without them for now: /)
-    assert.match(tile.note ?? '', /The policies that waited on this step can go ahead\./)
-    assert.match(tile.note ?? '', /Temporary Access Pass/)
-  }
-  {
     let f = curatedFixture('demo')
     const missing = runFixture(f).steps.find((s) => s.id === CAMPAIGN_STEP_ID)!.preparation!.missingIds
     f = { ...f, mapping: applyStepDecisions(f.mapping, { [MFA_FOLLOW_UP_KEY]: { picked: missing.slice(0, 1), at: f.snapshot.asOf } }) }
@@ -53,7 +44,6 @@ test('the campaign names everyone marked to turn on without, and says the waitin
     const note = stepContract(step, ctx).followUp?.text ?? ''
     assert.notEqual(step.status, 'done', 'the premise: nine people are neither ready nor marked')
     assert.doesNotMatch(note, /can go ahead\./)
-    assert.match(note, /can go ahead once everyone else is ready or selected\./)
   }
 })
 

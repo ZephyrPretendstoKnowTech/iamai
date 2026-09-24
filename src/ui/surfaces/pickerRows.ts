@@ -22,7 +22,6 @@ import { exclusionsGroupChoice, operatorExclusionsDecision } from '../../mapping
 import { exclusionsReach } from '../../validation/exclusionsGroupPolicies.ts'
 import type { DirectoryEvidence } from '../../mapping/safetyChoice.ts'
 import type { StepDecision } from '../../roadmap/decisions.ts'
-import { contentLists } from '../../derive/contentLists.ts'
 import { fillText, missingVars } from '../../content/render.ts'
 import { app, directionWords, engine, shared } from '../../content/content.ts'
 import { QUESTION_STEP, SPECIAL_CARE_STEP_ID } from '../../roadmap/answers.ts'
@@ -285,7 +284,7 @@ export type DefaultsContext = PickerContext & { now: string }
 
 /**
  * Every picker's pre-ticked default as a decision: the allowed countries,
- * trusted network, service accounts and special care. The derivation applies
+ * trusted network and service accounts. The derivation applies
  * these as if saved, so the step, its checks and every portal line read them on
  * first open; a Save only overrides. The shared-devices picker has no mapping
  * field and is not here.
@@ -308,8 +307,6 @@ export function defaultDecisions(ctx: DefaultsContext): Record<string, StepDecis
   // Countries are suggested in the picker; only Save applies them.
   // Trusted locations require explicit operator confirmation.
   pick(DECISION_STEPS.serviceAccounts, 'accountsWithSignals')
-  const care = contentLists({ snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, now: ctx.now }).specialCareIds
-  if (care.length > 0) out[DECISION_STEPS.campaign] = { picked: care, at }
   return out
 }
 

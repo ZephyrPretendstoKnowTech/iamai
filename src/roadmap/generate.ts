@@ -325,7 +325,7 @@ const EXTRAS = STEP_EXTRAS
 // importing the engine); re-exported here for the modules that import them from the engine.
 export { idFor, stepIdForGoal, EXCLUSION_GROUP_STEP_ID, BREAK_GLASS_STEP_ID, PREREQ_STEP_ID } from './stepIds.ts'
 import { idFor, BREAK_GLASS_STEP_ID, PREREQ_STEP_ID, SEPARATE_ADMIN_ACCOUNTS_STEP_ID } from './stepIds.ts'
-import { OPERATOR_PASSKEY_STEP_ID, PASSKEY_SETTINGS_STEP_ID, PASSKEY_TARGET, operatorPasskeyOf, passkeyReadingOf, passkeyReadinessFindingsOf } from './passkeySettings.ts'
+import { OPERATOR_PASSKEY_STEP_ID, PASSKEY_SETTINGS_STEP_ID, PASSKEY_TARGET, operatorPasskeyOf, operatorSignInOf, passkeyReadingOf, passkeyReadinessFindingsOf } from './passkeySettings.ts'
 import { SYNC_WORKLOAD_GOAL_ID, WORKLOAD_IDENTITY_BLOCKER, syncIdentitySupportOf } from './workloadIdentity.ts'
 
 /**
@@ -1404,16 +1404,19 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     }
     steps.push(s)
   }
-  // The operator's own passkey (A5): only where the scan read the signed-in
-  // account's methods and found no passkey. Their account makes every change, so
-  // the admin policies reach it first.
+  // The operator's own passkey (A5), where the scan read the signed-in account's
+  // methods. Their account makes every change, so the admin policies reach it
+  // first. Completed when IAMAI sees them sign in with a passkey or Windows
+  // Hello, on any device (owner, 2026-09-23, walk list section 3 items 5 and
+  // 43): a Windows Hello sign-in counts, a registered key alone does not, and
+  // there is no every-kind-of-device requirement.
   const operatorPasskey = operatorPasskeyOf(snapshot)
   if (canUseConditionalAccess && operatorPasskey !== null) {
     const s = prereq(OPERATOR_PASSKEY_STEP_ID)
     s.kind = 'check'
     s.action = { ...s.action, kind: 'check' }
     s.population = population([operatorPasskey.operatorId], popIndex)
-    if (operatorPasskey.holds && isReady(viability.find(v => v.userId === operatorPasskey.operatorId)?.readiness.state ?? 'unknown')) setState(s, { satisfied: true, inPlace: true })
+    if (operatorSignInOf(viability.find(v => v.userId === operatorPasskey.operatorId)?.readiness) !== null) setState(s, { satisfied: true, inPlace: true })
     steps.push(s)
   }
 
@@ -2741,6 +2744,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         guestIds: preparationIds.filter(id => popIndex.guests.has(id)),
         dormantIds: preparationIds.filter(id => dormantSet.has(id)),
         activityUnreadIds: preparationIds.filter(id => viabilityById.get(id)?.activity === 'unknown'),
+        // The people Require Phishing-Resistant MFA for Admins covers: each needs
+        // a passkey or security key, everyone else a method Require MFA accepts
+        // (walk list section 3 items 46 and 53).
+        passkeyIds: methodPreparation(methodTargets.get('admins-phishing-resistant') ?? [], preparationIds, snapshot, strandContext, methodPreparationCache).ids,
         ...(followUpIds.length > 0 ? { followUpIds } : {}),
       },
       phase: 2,
