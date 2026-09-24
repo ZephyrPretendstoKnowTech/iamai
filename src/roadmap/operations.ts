@@ -1490,6 +1490,10 @@ export function policyResult(step: PolicyStep): PolicyResult {
   if (valid.length === 0 && step.status !== 'done' && awaitsWorkflowRecord(step)) return { kind: 'not-policy' }
   if (valid.length === 0) return step.status === 'done' ? { kind: 'preserved' } : { kind: 'unavailable', reason: 'no-operation' }
   if (step.status === 'done') return { kind: 'preserved' }
+  // The correction is Configure Emergency Exclusions' own edit (Action.correctionAskedBy;
+  // walk list 4.x item 7): that step asks for it, so this one holds it and
+  // waits, rather than asking for the same edit twice.
+  if (step.action.correctionAskedBy) return { kind: 'held', hold: 'prerequisite-unmet', operations: valid }
   // Foundation B's gate, in the one place that decides whether IAMAI hands an
   // implementation over. The policy is deployed and being watched and the only
   // thing left to submit turns it on; the window has not closed and the records

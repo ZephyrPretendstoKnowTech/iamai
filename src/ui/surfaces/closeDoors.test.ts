@@ -89,9 +89,6 @@ test('the create procedures carry the settings that decide who the block reaches
     const create = blockText('s-goal-block-legacy-auth', 'entra.create')
     assert.match(create, /set \*\*Configure\*\* to \*\*Yes\*\*/)
     assert.match(create, /Left at \*\*No\*\*, the condition matches every client app/)
-    // Correct: the demo's policy differs from the target, so this is on screen.
-    const tasks = tasksTextOf(bodiesOf('demo').get('s-goal-block-legacy-auth')!)
-    assert.match(tasks, /"Configure" is set to "Yes"/)
   }
   {
     assert.ok(risksOf('block-device-code').some((t) => /must exclude the Device Registration Service/.test(t)), risksOf('block-device-code').join('\n'))

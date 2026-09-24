@@ -462,6 +462,15 @@ export type Action = {
    */
   enforceWaitsOn?: { id: string; title: string }[]
   /**
+   * The step whose own task already asks for this step's correction (walk list
+   * 4.x item 7): every operation only adds the plan's exclusions group to a
+   * policy the tenant has, which is Configure Emergency Exclusions' "Configure
+   * Conditional Access exclusions". This step does not ask for it again: it
+   * waits on that step, and its operations are held (operations.ts
+   * `policyResult`, hold `prerequisite-unmet`). Absent on every other step.
+   */
+  correctionAskedBy?: string
+  /**
    * An update with nothing in it, because the tenant policy it targets already
    * holds every section this step writes (generate.ts). `gaps` is what still
    * keeps the goal short that no update writes — a condition narrower than the

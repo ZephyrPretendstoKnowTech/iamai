@@ -34,7 +34,7 @@ import { engine } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import { advanceState, aggregateObservation, raiseCondition, setState } from './lifecycle.ts'
 import type { Lifecycle, MemberObservation, StepState } from './lifecycle.ts'
-import { COVERAGE_JUDGED, artifactIdOf, dimensionWords, historyReset, intentOf, observe, observedStateOf, priorFor, semanticFieldsOf, semanticsOf, unwrittenDifferences } from './observation.ts'
+import { COVERAGE_JUDGED, artifactIdOf, dimensionWords, historyReset, intentOf, materialFieldsOf, observe, observedStateOf, priorFor, semanticFieldsOf, semanticsOf, unwrittenDifferences } from './observation.ts'
 import type { ObservedState } from './observation.ts'
 import type { ObservationChange, StepObservation, StepObservationRecord } from './observation.ts'
 
@@ -967,6 +967,11 @@ export function trackExecution(
         // expected, or manufacture a review against a change nobody submitted.
         intent: m.op ? intentOf(m.op.body) : null,
         unwritten,
+        // What this member's operation asks, and what the tenant holds, with nothing
+        // immaterial in either: the next scan reads a policy moved to exactly what
+        // was asked as the change the plan asked for (walk list 4.x item 7).
+        askedFields: m.op ? materialFieldsOf(m.op.body) : {},
+        materialFields: materialFieldsOf(policyRow as Record<string, unknown> | null),
       })
       observed.push(observedState)
       memberObservations.push({ key: m.key, sourceName: m.sourceName, change })

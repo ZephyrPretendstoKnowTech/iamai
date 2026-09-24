@@ -325,6 +325,9 @@ export function packageStateOf(step: Step, c: StepContract, snapshot: TenantSnap
   if (s.setAside) return null
   if (s.condition === 'baseline-conflict') return 'sourceConflict'
   if (s.condition === 'needs-decision') return 'needsDecision'
+  // The correction is Configure Emergency Exclusions' own edit, asked there
+  // (Action.correctionAskedBy; walk list 4.x item 7): this step does not ask it again.
+  if (step.action.correctionAskedBy) return 'blocked'
   // A correction that cannot lock anyone out is owed whatever else stops the
   // policy being written (U19): an enforced block policy missing the exclusions
   // group is made safer by adding it, and hiding that hid the safest change.
@@ -417,6 +420,9 @@ export function plannedPackageStateOf(step: Step, c: StepContract, snapshot: Ten
   // work: a create would be the duplicate its hold rules out, and a correction
   // would name a policy it will not guess (review R2-N1).
   if (step.action.ambiguousTarget === true) return null
+  // A correction another step asks for is that step's planned work, not this
+  // one's (Action.correctionAskedBy; walk list 4.x item 7).
+  if (step.action.correctionAskedBy) return null
   // A policy this plan tagged that the tenant switched off is not a policy to
   // build: its package's missing-state projection is the create, and AI Info
   // previewed it — "IAMAI did not find Block Device Code Sign-in… The next action
