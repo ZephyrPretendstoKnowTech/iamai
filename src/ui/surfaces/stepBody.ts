@@ -610,21 +610,24 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
     }
     if (!produced.some(a => a.id === channel)) supported.delete(channel)
   }
-  if (supported.has('email')) {
+  if (supported.has('email') && step.id !== 's-verify-mfa') {
     const existing = produced.findIndex(a => a.id === 'email')
     if (existing >= 0) produced.splice(existing, 1)
-    produced.push(step.id === 's-verify-mfa' ? mfaPreparationEmail(ctx) : emailResource(step, ctx, contract.why))
+    produced.push(emailResource(step, ctx, contract.why))
   }
+  // Prepare Your Team for MFA draws its three tabs from its own content, in
+  // every state: its package writes none of them (net-new 16, owner 2026-09-24).
   if (step.id === 's-verify-mfa') {
     // Each list's promise that a scan shows progress follows it, while a scan can (stepInstructions.ts campaignProcedureLines, R4-20).
     const lines = campaignProcedureLines(step, cs, ex)
-    for (const channel of ['portal', 'ai'] as const) {
+    for (const channel of ['portal', 'ai', 'email'] as const) {
       const existing = produced.findIndex(a => a.id === channel)
       if (existing >= 0) produced.splice(existing, 1)
       supported.add(channel)
     }
     produced.push({ id: 'portal', form: 'list', lines, text: () => lines.map((line, i) => `${i + 1}. ${line}`).join('\n'), note: null })
     produced.push({ id: 'ai', form: 'markdown', lines: [], text: () => aiBriefingText('Help prepare the people in this plan for their actual MFA requirements. Explain who needs a method, which registered methods satisfy their target, and who needs help. Distinguish registered-method readiness from a tested workflow. Explain the registration campaign settings.', grounding('')), note: null })
+    produced.push(mfaPreparationEmail(ctx))
   }
   if (step.id === 's-prereq-device-plan') {
     const existing = produced.findIndex(a => a.id === 'portal')

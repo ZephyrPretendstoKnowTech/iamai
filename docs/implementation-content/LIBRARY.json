@@ -1247,7 +1247,7 @@
       "status": "SELF-VERIFIED",
       "validationResult": "parts-withheld",
       "sourceFiles": 3,
-      "contentBlocks": 7,
+      "contentBlocks": 5,
       "outputs": {
         "entra": true,
         "json": false,
@@ -1255,7 +1255,7 @@
         "aiInfo": true,
         "email": false,
         "readiness": true,
-        "troubleshooting": true
+        "troubleshooting": false
       },
       "statesSupported": [
         "register",
@@ -1272,7 +1272,7 @@
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "human-action",
-      "strictValidationErrors": 7,
+      "strictValidationErrors": 3,
       "registered": true,
       "provenance": "workflow-check",
       "review": "current"
@@ -1718,15 +1718,15 @@
       "status": "SELF-VERIFIED",
       "validationResult": "parts-withheld",
       "sourceFiles": 3,
-      "contentBlocks": 18,
+      "contentBlocks": 11,
       "outputs": {
         "entra": true,
         "json": true,
         "powershell": true,
         "aiInfo": true,
-        "email": true,
+        "email": false,
         "readiness": true,
-        "troubleshooting": true
+        "troubleshooting": false
       },
       "statesSupported": [
         "missing",
@@ -1746,7 +1746,7 @@
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "campaign",
-      "strictValidationErrors": 20,
+      "strictValidationErrors": 4,
       "registered": true,
       "provenance": "workflow-check",
       "review": "current"
@@ -6169,7 +6169,7 @@
     "packageCount": 43,
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
-    "contentBlocks": 931,
+    "contentBlocks": 922,
     "uniqueBindings": 272,
     "bindingsRequiredByAtLeastOneProjection": 86,
     "bindingsOptionalInAtLeastOnePackage": 190,
