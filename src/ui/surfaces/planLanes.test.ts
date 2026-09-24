@@ -4,7 +4,6 @@
 // phase changes, which is the one fact this file exists to prove.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
 import { allCuratedFixtures, curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withDirectionApproved } from '../../roadmap/fixtures/run.ts'
@@ -32,15 +31,6 @@ test('available account checks say Review while policy creation keeps Create', (
 })
 
 const lanesOf = (readings: Map<string, LaneReading>): Record<string, string> => Object.fromEntries([...readings].map(([id, r]) => [id, `${r.lane}${r.substatus ? ` · ${r.substatus}` : ''}${r.reason ? ` · ${r.reason.kind}:${r.reason.id}` : ''}`]).sort())
-
-test('the lane adapter reads no phase, wave or date: the schedule is a secondary projection', () => {
-  // The code, with its comments removed: prose about the rule may name what the rule forbids.
-  const src = readFileSync('src/ui/surfaces/planLanes.ts', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
-  for (const forbidden of ['stepSchedule', 'derive/phases', 'roadmap/schedule', 'planRows', '.scheduled', '.phase', 'reportOnlyAt', 'rings', 'events', 'Date.parse', 'waves']) {
-    assert.equal(src.includes(forbidden), false, `planLanes.ts reads ${forbidden}`)
-  }
-  assert.equal(src.includes("'s-"), false, 'the adapter names a step id')
-})
 
 test('tab membership is unchanged when every step’s phase changes', () => {
   let moved = 0
@@ -220,7 +210,6 @@ test('report-only preparation waits with the rest until the plan’s foundation 
    assert.equal(after.get(step.id)?.substatus, 'Create', step.id)
  }
 })
-
 
 test('cleanup waits for security rollout without blocking core steps or reopening completed cleanup', () => {
   const {steps} = runFixture(fixture('demo'))

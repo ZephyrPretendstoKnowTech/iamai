@@ -63,12 +63,10 @@ test("a tenant's own policy that differs from the baseline in a part coverage do
   assert.match(tile.note ?? '', /^Contoso token binding delivers this goal and differs from the baseline's policy in the device filter\./, tile.note ?? '')
   assert.match(tile.note ?? '', /does not ask you to change it/)
   assert.doesNotMatch([tile.note, ...c.doneWhen, c.whatToDo.text].join(' '), /\b(add|remove|change|update) the device filter\b/i, 'no instruction to reshape it')
-})
-
-test("a tenant's own policy exactly as the baseline has it draws no tile", () => {
-  const { step, tile } = opened(withOwnPolicy(curatedFixture('demo'), () => {}))
-  assert.equal(step.state.satisfied, true)
-  assert.equal(tile, null)
+  // The control: the tenant's own policy exactly as the baseline has it draws no tile.
+  const same = opened(withOwnPolicy(base, () => {}))
+  assert.equal(same.step.state.satisfied, true)
+  assert.equal(same.tile, null)
 })
 
 test("a Completed step's own-policy and weaker-grant findings are stated, and never turn it into Readiness work", () => {

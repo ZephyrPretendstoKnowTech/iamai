@@ -6,14 +6,11 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { nextCaption, type StepContract } from './stepContract.ts'
 
-const held = (kind: string, gatedBy: string): StepContract => ({ milestone: { line: null, gatedBy, kind } }) as unknown as StepContract
+const held = (kind: string, gatedBy: string, line: string | null = null): StepContract => ({ milestone: { line, gatedBy, kind } }) as unknown as StepContract
 
-test('a hold to resolve, decide or prepare carries no caption', () => {
+test('a hold to resolve, decide or prepare carries no caption, and a milestone with its own dated line keeps it', () => {
   assert.equal(nextCaption(held('resolve', 'until the groups the source policy leaves out are identified')), null)
   assert.equal(nextCaption(held('decide', 'after: Create the Exclusions Group')), null)
   assert.equal(nextCaption(held('deploy', 'when Registered for MFA reaches 90% (now 40%)')), null)
-})
-
-test('a milestone with its own dated line keeps it', () => {
-  assert.equal(nextCaption({ milestone: { line: 'Next: watch it.', gatedBy: 'until x', kind: 'resolve' } } as unknown as StepContract), 'Next: watch it.')
+  assert.equal(nextCaption(held('resolve', 'until x', 'Next: watch it.')), 'Next: watch it.')
 })

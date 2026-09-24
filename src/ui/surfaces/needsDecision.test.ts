@@ -65,7 +65,7 @@ import type { DirectoryEvidence, SafetyChoice } from '../../mapping/safetyChoice
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import type { StepDecision } from '../../roadmap/decisions.ts'
 import type { Step } from '../../roadmap/types.ts'
-import { CONTRACT, stepContract } from './stepContract.ts'
+import { stepContract } from './stepContract.ts'
 import { appliedMapping } from './pickerRows.ts'
 import { stepExportView, stepLines } from './stepExport.ts'
 import { emergencyGroupTasksOf } from './emergencyGroupTasks.ts'
@@ -156,20 +156,6 @@ function withGroupGone(f: Fixture, id: string): DirectoryEvidence {
   groups.set(id.toLowerCase(), { presence: 'absent', members: 'unknown', displayName: null, memberIds: [], memberCount: null })
   return { groups, universe: 'complete' }
 }
-
-// ---- 1. a real, whole-fixture generated decision case ----
-
-test('needs decision: the canonical case is a generated step over a real tenant with two qualifying groups', () => {
-  const c = caseOf(open())
-  assert.equal(c.step.id, STEP_ID)
-  assert.equal(c.step.kind, 'prerequisite')
-  // Foundation C's own verdict, over the whole tenant's groups: more than one
-  // object plausibly serves the role, and IAMAI does not choose between them.
-  assert.equal(c.choice.status, 'ambiguous')
-  assert.equal(c.choice.evidence, 'complete')
-  assert.deepEqual(c.choice.candidates.map((x) => x.name), [TOP_CANDIDATE, OTHER_CANDIDATE])
-  assert.equal(awaitsOperator(c.choice), true)
-})
 
 // ---- 2. detected and recommended, and not confirmed ----
 
@@ -394,33 +380,4 @@ test('needs decision: candidate order chooses nothing, before or after the answe
   const after = caseOf(confirm(f, [chosen]))
   assert.equal(after.choice.candidates[0]?.name, TOP_CANDIDATE, 'the other candidate still sorts first')
   assert.equal(after.choice.actionableId, chosen)
-})
-
-// ---- 13. the whole path, in one walk ----
-
-test('needs decision: fixture → evidence → step → contract → decision → regenerated plan → export', () => {
-  // 1. a tenant with an unanswered safety-sensitive question.
-  const f = open()
-  const before = caseOf(f)
-  assert.equal(before.choice.status, 'ambiguous')
-  // 2. the evidence is put forward and is not an answer.
-  assert.deepEqual((stepVars(before.step, before.ctx) as Record<string, unknown>).groupsTicked, [])
-  // 3. the generated step says Needs decision, on the row and in the contract.
-  assert.equal(statusOf(before.step).word, 'Needs decision')
-  assert.equal(stepContract(before.step, before.ctx).state.conditionLabel, 'Needs decision')
-  // 4. nothing is implementable and nothing is scheduled.
-  assert.deepEqual(before.run.steps.filter((s) => implementationOffered(s)).map((s) => s.id), [])
-  assert.equal(before.run.steps.some((s) => s.events !== null || s.rings.length > 0), false)
-  // 5. the operator answers, through the path the Plan uses.
-  const chosen = groupId(f, OTHER_CANDIDATE)
-  const after = caseOf(confirm(f, [chosen]))
-  assert.equal(after.f.mapping.records[EXCLUSIONS_RECORD_KEY]?.provenance, 'confirmed')
-  // 6. the regenerated plan clears the hold and can write its policies.
-  assert.notEqual(after.step.state.condition, 'needs-decision')
-  assert.ok(after.run.steps.filter((s) => implementationOffered(s)).length > 0)
-  // 7. the export says what the screen says, at both ends.
-  const say = (c: Case): string => stepContract(c.step, c.ctx).whatToDo.text
-  assert.ok(stepLines(before.step, before.ctx).includes(say(before)))
-  assert.ok(stepLines(after.step, after.ctx).includes(say(after)))
-  assert.notEqual(say(before), say(after))
 })

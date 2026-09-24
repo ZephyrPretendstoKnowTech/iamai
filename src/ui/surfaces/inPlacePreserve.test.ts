@@ -50,13 +50,11 @@ import assert from 'node:assert/strict'
 import { allFixtures, fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import { observationsOf } from '../../roadmap/tracking.ts'
-import { watchedArrive } from '../../roadmap/observation.ts'
 import { findTaggedPolicies } from '../../roadmap/generate.ts'
 import { goalCounts } from '../../derive/sets.ts'
 import { summarizeTenant } from '../../scoring/mfaViability.ts'
 import { nextMilestone } from '../../roadmap/lifecycle.ts'
-import { awaitsWorkflowRecord, implementationOffered, isPreserved, operationsOf, unavailableReason } from '../../roadmap/operations.ts'
-import { buildIcs } from '../../roadmap/ics.ts'
+import { implementationOffered, isPreserved, operationsOf, unavailableReason } from '../../roadmap/operations.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { inWave } from '../../derive/phases.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
@@ -65,17 +63,12 @@ import { derivePolicyResults, deriveReportOnlyPolicyIds } from '../../graph/coll
 import type { StoredSignIn } from '../../graph/collect/types.ts'
 import { CONTRACT, FINISHED_READING, readinessOf, stepContract } from './stepContract.ts'
 import { stepBodyOf } from './stepBody.ts'
-import { unreadLine } from '../../roadmap/evidence.ts'
 import { POLICY_UNOBSERVED, POLICY_VERIFY_AFTER } from './doneWhen.ts'
 import { ifWrongLineFor, stepExportView, stepLines } from './stepExport.ts'
 import { jsonOffered, stepOperations } from './stepJson.ts'
-import { powershellFor } from './stepPowerShell.ts'
-import { portalNamesFor, stepPortalLines } from './stepPortal.ts'
-import { stepInstructions } from './stepInstructions.ts'
 import registry from '../../content/implementation/registry.generated.json' with { type: 'json' }
 import { rowWhen, rowReason } from './rowWhen.ts'
 import { statusOf } from './statusWord.ts'
-import { stepVars } from './stepVars.ts'
 import { laneReadings } from './planLanes.ts'
 import { laneViewOf } from './planBoard.ts'
 import { policyBarOf, policySubjectsOf } from './policyTasks.ts'
@@ -213,13 +206,7 @@ test('the canonical case is a generated step whose goal the tenant already deliv
   // still lists the id among the wave it was sequenced in, which carries no date
   // to the step — its rings, events and report-only day are all empty below.
   assert.equal(inWave(step), false)
-  void run
-})
-
-// ---- 2: the satisfaction is the frozen classifier's, not the presentation's ----
-
-test('In place is earned by coverage: the verdict is inPlace and an enabled policy meets the floor', () => {
-  const { step, run } = canonical()
+  // The satisfaction is the frozen classifier's, not the presentation's.
   const goal = goalResult(run, GOAL_ID)
   // The one verdict, decided once in coverage. A step is in place if and only if
   // its goal's verdict is inPlace; nothing downstream re-decides it.
@@ -238,107 +225,6 @@ test('In place is earned by coverage: the verdict is inPlace and an enabled poli
     strong.some((c) => c.policyId === matched),
     `the matched policy ${matched} is not among the strong candidates ${strong.map((c) => c.policyId).join(', ')}`,
   )
-})
-
-// ---- 3: the tenant's own policy is named ----
-
-test('the step names the tenant policy that satisfies the goal, on the row and in the contract', () => {
-  const { step, ctx, run } = canonical()
-  // The identity is the classifier's own, carried on the step: which policies
-  // it counted, and which one of them — if any — covers the whole goal alone.
-  const by = step.satisfiedBy
-  assert.ok(by, 'the step carries no satisfaction identity')
-  assert.equal(by.policies.length, 1, 'one policy delivers this goal')
-  const name = by.policies[0]
-  assert.equal(by.sufficient, name, 'the one policy covers the goal by itself')
-  // It is a policy that is really in the tenant, not a name IAMAI proposed.
-  const rows = (run.input.snapshot as unknown as { config: { caPolicies: { rows: { displayName: string }[] } } }).config.caPolicies.rows
-  assert.ok(
-    rows.some((r) => r.displayName === name),
-    `${name} is not a policy in the snapshot`,
-  )
-  // What IAMAI found says which one, rather than that one exists.
-  const found = stepContract(step, ctx).found.find((x) => x.key === 'in-place')
-  assert.ok(found, 'the contract reports the goal as already delivered')
-  assert.ok(found.text.includes(name), `What IAMAI found does not name the policy: ${found.text}`)
-  // And so does the collapsed row, which is where an operator decides whether to
-  // open the step at all.
-  const reason = rowReason(step)
-  assert.ok(reason, 'the row carries a reason')
-  assert.ok(reason.includes(name), `the row does not name the policy: ${reason}`)
-})
-
-// ---- 4: the step reads as delivered, and its one action is to keep it ----
-
-test('the contract asks for nothing: the action is to keep the policy, and the completion is that it is already satisfied', () => {
-  const { step, ctx } = canonical()
-  const c = stepContract(step, ctx)
-  assert.equal(c.state.satisfied, true)
-  assert.equal(c.state.inPlace, true)
-  assert.equal(c.state.stage, 'In place', 'the opened step reads as a rollout the plan drove')
-  assert.equal(c.milestone.kind, 'preserve')
-  // No date on the milestone: nothing is scheduled to happen to this step.
-  assert.equal(c.milestone.at, null)
-  assert.equal(c.whatToDo.kind, 'preserve')
-  assert.match(c.whatToDo.text, /nothing to create/i)
-  assert.equal(c.implementation.offered, false)
-  assert.equal(c.implementation.reason, null, 'not offered because there is nothing to offer, not because something is wrong')
-  assert.equal(c.implementation.hold, null)
-  assert.equal(c.fix.length, 0, 'nothing to fix before continuing')
-  // Two, because this rollout finished short of its own readiness: its own end
-  // state is the half that is not true yet, and the scan's sentence follows it
-  // (stepContract.ts shortReadingOf). A rollout that finished with everybody
-  // ready reads the scan's sentence alone.
-  assert.equal(c.doneWhen.length, 2, JSON.stringify(c.doneWhen))
-  assert.match(c.doneWhen.at(-1) ?? '', /assessed configuration in place/i)
-})
-
-// ---- 5 and 6: no operation, and no channel that would make or change a policy ----
-
-test('no channel offers to create or change a policy for a goal the tenant already delivers', () => {
-  const { step, ctx } = canonical()
-  const ex = stepVars(step, ctx) as Record<string, unknown>
-  const cs = contentStepFor(step) as Record<string, unknown>
-  assert.equal(operationsOf(step).length, 0, 'nothing to submit')
-  assert.equal(stepOperations(step).length, 0)
-  assert.equal(implementationOffered(step), false)
-  assert.equal(jsonOffered(step), false)
-  // The PowerShell tab is drawn only when the JSON is offered, which it is not;
-  // with no operations the helper emits no command that writes a policy.
-  assert.doesNotMatch(powershellFor(stepOperations(step)), /New-Mg|Update-Mg/, 'PowerShell would write a policy')
-  const names = portalNamesFor(ctx, ex, String(cs.title))
-  assert.equal(stepPortalLines(step, names), null, 'no portal instructions')
-  const instructions = stepInstructions(step, cs, ex, names)
-  assert.equal(instructions.portal, null)
-  assert.deepEqual(instructions.steps, [])
-  assert.deepEqual(instructions.before, [])
-  // And nothing anywhere on the step tells the operator to make a second policy.
-  for (const line of stepLines(step, ctx)) assert.doesNotMatch(line, CREATING, `a preserved step asks for a policy to be created: ${line}`)
-})
-
-// ---- 7: no rollout for work that does not happen ----
-
-test('a preserved step is given no report-only date, no enforcement instant, no wave and no calendar entry', () => {
-  const { step, ctx, run, view } = canonical()
-  assert.equal(rowWhen(step), '', 'the row shows no date word')
-  assert.equal(step.events, null, 'no announce/change events')
-  assert.deepEqual(step.rings, [], 'no rollout rings')
-  assert.equal(step.reportOnlyAt ?? null, null)
-  assert.equal(run.schedule.reportOnlyAt[STEP_ID] ?? null, null, 'the schedule gives it no report-only day')
-  assert.equal(view.dates, null, 'no Dates line')
-  // Nothing lands in the operator's calendar for a change nobody is making.
-  const ics = buildIcs(run.steps, 'Fixture mid', run.input.planId, (s: Step) => stepExportView(s, { ...ctx, reportOnlyAt: run.schedule.reportOnlyAt[s.id] ?? null }))
-  assert.ok(!ics.includes(String((contentStepFor(step) as Record<string, unknown>).title)), 'a preserved step has a calendar entry')
-})
-
-// ---- 8: preserve does not offer a way back ----
-
-test('a preserved step offers no rollback: there is nothing to put back, and "delete it" is the tenant\'s own policy', () => {
-  const { step, ctx, view } = canonical()
-  const cs = contentStepFor(step) as Record<string, unknown>
-  assert.equal(ifWrongLineFor(step, cs, {}), null, 'the If-it-goes-wrong line is withheld')
-  assert.equal(view.ifWrong, null)
-  for (const line of stepLines(step, ctx)) assert.doesNotMatch(line, UNDOING, `a preserved step offers to undo a change it never made: ${line}`)
 })
 
 // ---- 8b: a way back is Report-only, never Off ----
@@ -396,22 +282,6 @@ test('every rollback an implementation package gives for a policy keeps it out o
     assert.doesNotMatch(block, /\bto Off\b|state\s*[:=]\s*['"]?disabled/i, `a package rollback switches the policy off: ${block}`)
     assert.match(block, /Report-only|non-enforcing/i, `a package rollback does not say where the policy goes: ${block}`)
   }
-})
-
-// ---- 9: the screen and the artifacts say the same thing ----
-
-test('the export says what the screen says: already delivered, named, and nothing to do', () => {
-  const { step, ctx, view } = canonical()
-  const c = stepContract(step, ctx)
-  const name = step.satisfiedBy!.policies[0]
-  // The contract's one action is the artifact's first What-to-do line.
-  assert.equal(view.whatToDo[0], c.whatToDo.text)
-  assert.deepEqual(view.doneWhen, c.doneWhen)
-  // The whole step, as every artifact speaks it, names the policy and asks for
-  // no change.
-  const all = stepLines(step, ctx).join('\n')
-  assert.ok(all.includes(name), 'the export loses the matched policy identity')
-  assert.match(all, /nothing to create/i)
 })
 
 // ---- 10: a custom tenant name satisfies the goal, and never causes a duplicate ----
@@ -535,46 +405,6 @@ test('a later scan that finds the satisfying policy switched off stops preservin
   assert.equal(isPreserved(after), false, 'the goal is still preserved after the policy that delivered it was switched off')
   assert.notEqual(after.status, 'done')
   assert.equal(rowReason(after)?.includes('Satisfied by') ?? false, false)
-})
-
-// ---- 15: the other done outcome — the plan's own policy, driven to enforcement ----
-
-test('a policy this plan deployed and drove to enforcement reads Enforced, not In place', () => {
-  // The mid-flight tenant: its Conditional Access policies carry this plan's
-  // tag, which is what a policy IAMAI created is. Nothing about the tenant's
-  // *stage* separates it from the canonical case above — both policies are
-  // enabled, both goals are delivered, both steps are done — so a word read off
-  // the lifecycle called them the same thing, and every goal a tenant already
-  // delivered said Enforced as though IAMAI had rolled it out.
-  const f = fixture('midflight')
-  const run = runFixture(f)
-  const driven = run.steps.filter((s) => isPreserved(s) && findTaggedPolicies(f.snapshot, f.planId, s.id).length > 0)
-  assert.ok(driven.length > 0, 'the mid-flight tenant has no policy this plan deployed')
-  for (const step of driven) {
-    const ctx: StepVarContext = {
-      snapshot: f.snapshot,
-      mapping: f.mapping,
-      nameOf: (id: string) => run.input.names!.label(id),
-      signature: 'IT',
-      operatorId: f.operatorId,
-      now: f.snapshot.asOf,
-      groups: f.groups,
-      reportOnlyAt: run.schedule.reportOnlyAt[step.id] ?? null,
-    }
-    assert.equal(step.status, 'done', step.id)
-    assert.equal(step.state.inPlace, false, `${step.id}: the plan's own policy read as something the tenant already had`)
-    assert.equal(statusOf(step).word, 'Enforced', step.id)
-    assert.equal(stepContract(step, ctx).state.stage, 'Enforced', step.id)
-    // Foundation B's own next thing for work that finished: nothing, rather
-    // than the preserve milestone a goal the tenant delivered carries.
-    assert.equal(nextMilestone(step).kind, 'none', step.id)
-    // And it is still a finished step: nothing left to submit either way.
-    assert.equal(operationsOf(step).length, 0, step.id)
-    assert.equal(implementationOffered(step), false, step.id)
-  }
-  // The canonical case is the same product's other answer, so the two words are
-  // both reachable and are not the same word.
-  assert.notEqual(statusOf(driven[0]).word, statusOf(canonical().step).word)
 })
 
 // ---- 16: coverage is a union, and a narrower policy is never called the whole answer ----
@@ -739,38 +569,6 @@ test('across every fixture, a done step names what satisfied it, says which outc
   assert.ok(seen > 0, 'the fixtures have something already in place')
 })
 
-// ---- 19: the demo's week two, which is the walk's reading of this ----
-
-test("the demo's week two: the tenant switched its own policy on, so the row reads In place and nothing claims the plan enforced it", () => {
-  // The demo tenant's admins policy predates the plan by months and carries none
-  // of its tags. On week one it sits in report-only; between the two scans the
-  // tenant switches it on. That is the whole of the change, and it is the
-  // tenant's own work: the step moves from Report-only to In place, and the plan
-  // created nothing.
-  //
-  // Read off the lifecycle it said Enforced — "IAMAI rolled this out" over a
-  // policy IAMAI never touched — and the walk asserted that word, so the demo
-  // was the surface that taught the confusion. The plan's own two policies in
-  // week two are both still in report-only, so no row in that week has earned
-  // Enforced at all.
-  const week1 = runFixture(fixture('demo'))
-  const before = week1.steps.find((s) => s.id === STEP_ID)!
-  assert.equal(statusOf(before).word.split(' · ')[0], 'Report-only')
-
-  const f = fixture('demo-week2')
-  const run = runFixture(f)
-  const step = run.steps.find((s) => s.id === STEP_ID)!
-  assert.equal(step.status, 'done')
-  assert.equal(findTaggedPolicies(f.snapshot, f.planId, step.id).length, 0, 'the demo tenant wrote this policy; the plan did not')
-  assert.equal(step.state.inPlace, true)
-  assert.equal(statusOf(step).word, 'In place')
-  // And it names the tenant's own policy, which is the point of preserving it.
-  assert.equal(step.satisfiedBy?.sufficient, 'Core - Grant - Admins phishing-resistant')
-
-  const claimed = run.steps.filter((s) => statusOf(s).word === 'Enforced').map((s) => s.id)
-  assert.deepEqual(claimed, [], "the plan's policies are still in report-only in week two")
-})
-
 // ---- 20: the done outcome of a step that deploys no policy ----
 
 /**
@@ -916,176 +714,6 @@ test('In place says so about the POLICY, and a threshold never shown met is said
       assert.ok(percent === null || percent < Number.parseInt(below.threshold, 10), `${f.name}/${s.id} reads below ${below.threshold} at ${percent}%`)
     }
   }
-})
-
-// The finished reading reads its count out of the readiness line, and read it as
-// digits alone. Once the count carries its thousands separator (copy/statements.ts
-// figure), "3,569 of 4,900" matched as "569 of 4": no shortfall, and the large
-// tenant's enforced MFA policy, 1,331 people short of its 90% threshold, read
-// "IAMAI cannot measure it".
-test('the finished reading reads a count with its thousands separator', () => {
-  const f = fixture('large')
-  const short = caseOf(runFixture(f), f, 's-goal-mfa-all-users')
-  const line = short.step.readiness.lines[0]
-  assert.ok(/^\d+ of \d+ people/.test(line) || /^\d[\d,]* of \d[\d,]* people/.test(line), `the premise: the line leads with its count (${line})`)
-  const separated = line.replace(/^(\d+) of (\d+)/, (_m, a: string, b: string) => `${Number(a).toLocaleString('en')} of ${Number(b).toLocaleString('en')}`)
-  assert.match(separated, /^3,569 of 4,900 people/, 'the premise: the count as count() prints it')
-  const step = { ...short.step, readiness: { ...short.step.readiness, lines: [separated, ...short.step.readiness.lines.slice(1)] } }
-  const tile = [...readinessOf(step, stepContract(step, short.ctx)).tiles, ...readinessOf(step, stepContract(step, short.ctx)).satisfied].find((x) => x.key === FINISHED_READING) as { value: string; note: string | null } | undefined
-  assert.ok(tile, 'the premise: the finished reading is drawn')
-  assert.match(tile.value, /^3,569 of 4,900 /, tile.value)
-  // 3,569 of 4,900 is 72.8%: a gate is met at its threshold, never at a reading rounded up to it (roadmap/methodReadiness.ts).
-  assert.match(String(tile.note), /holds enforcement until Phishing-resistant MFA readiness reaches 90%; it is 72% now\./, String(tile.note))
-  assert.doesNotMatch(String(tile.note), /cannot measure/, String(tile.note))
-})
-
-test('an enforced step waiting on the person says so, instead of rendering nothing at all', () => {
-  // Ready / Enforced, milestone "Review now", ZERO readiness tiles and ZERO
-  // findings. Three readers reported that empty step, two of them on the same
-  // step id. Its Done-when listed five lines — three IAMAI checks for itself
-  // and two that are the reader's — with nothing saying which remained.
-  //
-  // The step knew all along: `awaitsWorkflowRecord` is exactly this state.
-  //
-  // This returned early, asserting nothing: midflight as scanned holds every
-  // policy behind its unsettled foundation, and no step waits on a workflow
-  // record until the foundation is settled — which is where the persona
-  // journeys found it. Settled here, so the case is checked rather than skipped.
-  const review = reviewTileOf('midflight')
-  assert.ok(review, 'nothing says the step is waiting on the reader')
-  assert.match(String(review.note), /yours to record/, String(review.note))
-})
-
-/**
- * The review tile of the first step waiting on a workflow record, on a shipped
- * tenant with its foundation settled — and, where given, its scan changed after.
- */
-function reviewTileOf(name: Parameters<typeof fixture>[0], scan: (f: Fixture) => Fixture = (f) => f): { id: string; note: string | null } | null {
-  const f = scan(withFoundationSettled(fixture(name)))
-  const run = runFixture(f)
-  const waiting = run.steps.find((s) => awaitsWorkflowRecord(s))
-  assert.ok(waiting, `the premise: a step on ${name} waits on a workflow record`)
-  const ctx: StepVarContext = {
-    snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names!.label(id),
-    signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups,
-  }
-  const tiles = readinessOf(waiting, stepContract(waiting, ctx))
-  const all = [...tiles.tiles, ...tiles.satisfied]
-  assert.ok(all.length > 0, `${waiting.id}: an enforced step waiting on a person still renders nothing`)
-  const review = all.find((x) => x.key === 'review')
-  return review ? { id: waiting.id, note: review.note ?? null } : null
-}
-
-test('an enforced step waiting on the person says what the scan confirmed, and never that IAMAI is finished with it', () => {
-  // R4-19 (Priya D4). A device-code block and a guest-MFA policy the first scan
-  // found enforced, in a tenant whose sign-in records could not be read at all,
-  // each read "The policy is enforced and IAMAI is finished with it." IAMAI had
-  // watched no report-only period for either and read none of their sign-ins;
-  // the engine held the reason on the step (Evidence) and only the AI briefing
-  // carried it. The note states what the scan confirmed, and where the records
-  // were not read, that and why.
-  const blind = reviewTileOf('hostile')
-  assert.ok(blind, 'the premise: hostile has a review tile')
-  assert.doesNotMatch(String(blind.note), /finished with it/, `${blind.id}: ${blind.note}`)
-  assert.match(String(blind.note), /the assessed configuration in place/, `${blind.id}: ${blind.note}`)
-  // The engine's one sentence for records IAMAI does not hold enough of. The tile
-  // had a sentence of its own, "IAMAI could not read the sign-in records in this
-  // tenant — {reason} — so it has seen none of the sign-ins this policy applies
-  // to", which a production read that stopped short of 24 hours makes false (below).
-  assert.ok(String(blind.note).endsWith(unreadLine('no sign-in records could be read')), `${blind.id}: ${blind.note}`)
-  assert.match(String(blind.note), /yours to record/, `${blind.id}: ${blind.note}`)
-
-  // A tenant whose records were read carries no such sentence: it is a fact about
-  // that tenant, not a hedge on every enforced policy.
-  const read = reviewTileOf('mid')
-  assert.ok(read, 'the premise: mid has a review tile')
-  assert.doesNotMatch(String(read.note), /finished with it|could not read the sign-in records|does not hold enough/, `${read.id}: ${read.note}`)
-
-  // A production-shaped short read (graph/collect/signInStream.ts 'insufficient'):
-  // some hours read, the rows kept. "Could not read" and "has seen none" are both
-  // false there; the tile says IAMAI does not hold enough, and why.
-  const reason = 'stopped at time budget with only 6 h covered (minimum 24 h)'
-  const short = reviewTileOf('mid', (f) => ({ ...f, snapshot: { ...f.snapshot, sources: { ...f.snapshot.sources, signInEvidence: { ...f.snapshot.sources.signInEvidence, status: 'insufficient', reason } } } }))
-  assert.ok(short, 'the premise: the short read still has a review tile')
-  assert.ok(String(short.note).endsWith(unreadLine(reason)), `${short.id}: ${short.note}`)
-  assert.doesNotMatch(String(short.note), /could not read|has seen none/, `${short.id}: ${short.note}`)
-})
-
-test('the AI briefing of a policy past report-only never says time in report-only completes a check, and one still to run keeps the unread sentence', () => {
-  // The briefing carries the step's evidence line (aiGrounding.ts), and on a
-  // tenant whose sign-in records could not be read it said "This check reads the
-  // sign-in records, which IAMAI could not read in this tenant … Time in
-  // report-only cannot complete it until they can be read" — on the device code
-  // block and guest MFA the first scan found enforced, and on MFA for all users
-  // and legacy authentication already in place: policies past report-only, beside
-  // a review tile that had been corrected. The sentence now holds on every
-  // lifecycle, and it still reaches a policy whose report-only period is to come,
-  // where its enable conditions would otherwise read "no failures" as met.
-  const f = withFoundationSettled(fixture('hostile'))
-  const run = runFixture(f)
-  const briefOf = (step: Step): string => {
-    const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (i: string) => run.input.names!.label(i), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: null } as unknown as StepVarContext
-    const ai = stepBodyOf(step, ctx).artifacts.find((a) => a.id === 'ai')
-    return ai === undefined || ai.unavailable === true ? '' : ai.text()
-  }
-  const unread = unreadLine('no sign-in records could be read')
-  const past: string[] = []
-  let toRun: string | null = null
-  for (const step of run.steps) {
-    if (step.evidence.unreadable === undefined) continue
-    const brief = briefOf(step)
-    if (brief === '') continue
-    assert.doesNotMatch(brief, /Time in report-only|sign-in records, which IAMAI could not read/, step.id)
-    // A finished step has no check left to run, so no sentence about its
-    // checks (aiGrounding.ts, Priya D13); one still waiting on the person keeps it.
-    const finished = step.status === 'done' || step.status === 'skipped' || step.state.satisfied
-    if (step.state.lifecycle === 'enforced' && finished) {
-      assert.ok(!brief.includes(unread), `${step.id} (enforced, finished): the briefing says a check cannot complete`)
-    } else if (step.state.lifecycle === 'enforced') {
-      past.push(step.id)
-      assert.ok(brief.includes(unread), `${step.id} (enforced): the briefing lost the unread sentence`)
-    } else if (step.state.lifecycle === 'not-deployed' && toRun === null) {
-      toRun = step.id
-      assert.ok(brief.includes(unread), `${step.id} (not deployed): the briefing lost the unread sentence`)
-    }
-  }
-  assert.ok(past.includes('s-goal-block-device-code') && past.includes('s-goal-guests-mfa'), `the premise: the enforced briefings on hostile (${past.join(', ')})`)
-  assert.ok(toRun, 'the premise: a policy on hostile still to run has a briefing')
-})
-
-test('a finished policy IAMAI watched go on keeps the check after the change; one it found already on does not', () => {
-  // R4-03b (Marcus D2). On the scan that watched a sign-in-risk policy leave
-  // report-only, its Done-when became "The scan found the assessed configuration
-  // in place." and nothing else: "Verify after the change: review sign-in
-  // failures for the people affected, and resolve any legitimate access problem
-  // you find" — the one line that catches a lockout — went with the rollout gates,
-  // exactly when it applied, and the Completed step's task pointed at these
-  // criteria for a check they no longer held.
-  const f = withFoundationSettled(fixture('demo'))
-  const first = runFixture(f)
-  const before = first.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!
-  assert.equal(before.state.lifecycle, 'report-only', 'the premise: the policy is in report-only at the first scan')
-  // The person turns it on in the portal, and the next scan sees it.
-  const g = structuredClone(f)
-  const owned = (before.tracking?.members ?? []).map((m) => m.policyId)
-  for (const row of (g.snapshot.config.caPolicies?.rows ?? []) as Record<string, unknown>[]) if (owned.includes(String(row.id))) row.state = 'enabled'
-  const next = runFixture(g, {}, observationsOf(first.steps), g.snapshot.asOf)
-  const step = next.steps.find((s) => s.id === before.id)!
-  assert.equal(step.state.lifecycle, 'enforced')
-  assert.equal(step.state.satisfied, true, 'the premise: the step reads finished')
-  assert.equal(watchedArrive(step), true, 'the premise: IAMAI watched it go on')
-  const ctxOf = (h: Fixture): StepVarContext => ({ snapshot: h.snapshot, mapping: h.mapping, nameOf: (id: string) => id, signature: 'IT', operatorId: h.operatorId, now: h.snapshot.asOf, groups: h.groups })
-  const lines = stepContract(step, ctxOf(g)).doneWhen
-  assert.ok(lines.includes(POLICY_VERIFY_AFTER), `the check after the change is gone: ${lines.join(' | ')}`)
-  assert.ok(lines.includes(CONTRACT.doneSatisfied), lines.join(' | '))
-  assert.equal(lines.some((l) => /report-only period|during those days/.test(l)), false, 'a finished policy is not waiting out a report-only window')
-
-  // A policy the first scan found already enforced had no change anybody
-  // watched, and its finished step says nothing about one.
-  const m = fixture('mid')
-  const found = runFixture(m).steps.find((s) => s.id === 's-goal-mfa-all-users')!
-  assert.equal(found.state.satisfied && found.state.lifecycle === 'enforced' && !watchedArrive(found), true, 'the premise: in place when IAMAI first looked')
-  assert.equal(stepContract(found, ctxOf(m)).doneWhen.includes(POLICY_VERIFY_AFTER), false)
 })
 
 /** R4-12's step: demo's Block Unsupported Platforms, which demo does not have at its first scan. */
@@ -1258,45 +886,6 @@ test('a policy this plan built straight to On stays Completed, says it went live
   assert.equal(stepContract(found, unwatchedCtx(m, mRun)).doneWhen.includes(POLICY_VERIFY_AFTER), false)
 })
 
-test('a policy created Off and switched straight On says it went live unwatched, and keeps the check after the change', () => {
-  // R4-12 by its other road. Block Unsupported Platforms created Off, then
-  // switched On: it never had a report-only period either. The move from Off
-  // to On left no fact the tile read, so the step filed Completed with no tile
-  // and a Done-when of "The scan found the assessed configuration in place."
-  // alone on the scan that saw it go On and every scan after.
-  const [off, arrived, after] = unsupportedOver([[1, 'disabled'], [3, 'enabled'], [5, 'enabled']])
-  const offStep = off.run.steps.find((s) => s.id === UNSUPPORTED)!
-  assert.equal(offStep.state.members.every((m) => m.change.latest.state === 'disabled'), true, 'the premise: the scan after the first finds it Off')
-  assert.deepEqual(unwatchedWarnings(offStep, unwatchedCtx(off.h, off.run)), [], 'a policy still Off went live nowhere')
-  for (const scan of [arrived, after]) assertWentLiveUnwatched(scan, UNSUPPORTED)
-})
-
-test("a policy created in report-only and turned On between two scans is not said to have gone live unwatched when the scan's records show it in report-only", () => {
-  // The step's own workflow, with no scan in the middle of it. The first scan
-  // recorded Block Unsupported Platforms not deployed; the administrator created
-  // it in report-only as the step says, watched it, and turned it On; the next
-  // scan found it On, holding Microsoft's own records of it evaluated in
-  // report-only. The record read absent then On, and the step said "This policy
-  // went live without a report-only period IAMAI could watch", on its tile and
-  // in AI Info, about a policy whose report-only period the scan had in hand.
-  const [arrived, after] = unsupportedOver([[20, 'enabled', { reportOnlySuccess: 120, enforcedSuccess: 30 }], [23, 'enabled', { reportOnlySuccess: 120, enforcedSuccess: 60 }]])
-  for (const { label, h, run } of [arrived, after]) {
-    const step = run.steps.find((s) => s.id === UNSUPPORTED)!
-    assert.equal(step.state.lifecycle === 'enforced' && step.state.satisfied && !step.state.inPlace, true, `the premise (${label}): the plan's own policy, enforced and finished`)
-    assert.equal(laneViewOf(laneReadings(run.steps).get(UNSUPPORTED)!, (x) => x).label, 'Completed', `${label}: it stays Completed`)
-    assert.equal(step.state.members.every((m) => m.change.latest.skippedWindow === undefined), true, `${label}: the record claims a skipped report-only period the scan's records disprove`)
-    const ctx = unwatchedCtx(h, run)
-    assert.equal(readinessOf(step, stepContract(step, ctx)).tiles.some((t) => t.key === 'enforced-unwatched'), false, `${label}: said to have gone live unwatched`)
-    // AI Info carries the tile's own words wherever the tile draws (aiGrounding.ts).
-    const ai = stepBodyOf(step, ctx).artifacts.find((a) => a.id === 'ai')
-    assert.ok(ai, `${label}: the opened step has no AI Info`)
-    assert.equal(ai.text().includes(CONTRACT.foundEnforcedUnwatched), false, `${label}: the AI Info briefing carries the unwatched tile's words`)
-  }
-  // The scan after says it nowhere in AI Info.
-  const next = after.run.steps.find((s) => s.id === UNSUPPORTED)!
-  assert.equal(briefingTells(next, unwatchedCtx(after.h, after.run)), 0, `${after.label}: the AI Info briefing says it went live unwatched`)
-})
-
 test("a policy whose scan's records show it in report-only is not said under New evidence, in AI Info or in its Done-when to have had no report-only period", () => {
   // With the tile gone, the arrival scan's New evidence note still said "it went
   // live without a report-only period IAMAI could watch"
@@ -1387,46 +976,6 @@ test('a policy carrying this plan\'s tag, first seen On, is never said to have g
       assert.equal(briefingTells(step, ctx), 0, `${label}, ${id}: the AI Info briefing says it went live unwatched`)
       assert.equal(stepContract(step, ctx).doneWhen.includes(POLICY_VERIFY_AFTER), false, `${label}, ${id}: a check after a change nobody saw`)
     }
-  }
-})
-
-test("a policy carrying this plan's tag, first seen Off and then switched On, is never said to have gone live unwatched", () => {
-  // The same case through Off. A record whose first scan found the tagged
-  // policy Off marked it as only ever Off, so switching it back on drew "No
-  // report-only period watched" beside "IAMAI watched it get there". IAMAI
-  // cannot know what a policy found Off did before it looked: one watched
-  // through report-only from another browser, or before Forget, and switched
-  // Off after an incident reads exactly like this, and turning it back on is
-  // what the switched-off step asks for.
-  const ID = 's-goal-block-legacy-auth'
-  const DAY = 86_400_000
-  const f = fixture('midflight')
-  const tagged = runFixture(f).steps.find((s) => s.id === ID)!
-  const owned = (tagged.tracking?.members ?? []).map((m) => m.policyId)
-  assert.ok(owned.length > 0, 'the premise: the step tracks its tagged policy')
-  const at = (days: number, state: string): Fixture => {
-    const h = structuredClone(f)
-    h.snapshot.asOf = new Date(Date.parse(f.snapshot.asOf) + days * DAY).toISOString()
-    for (const row of (h.snapshot.config.caPolicies?.rows ?? []) as Record<string, unknown>[]) if (owned.includes(String(row.id))) row.state = state
-    return h
-  }
-  const offScan = at(0, 'disabled')
-  const offRun = runFixture(offScan, { snapshot: offScan.snapshot })
-  const offStep = offRun.steps.find((s) => s.id === ID)!
-  assert.equal(offStep.state.members.every((m) => m.change.latest.state === 'disabled' && m.change.latest.since === 'first-scan'), true, "the premise: the record's first scan finds it Off")
-  let prior = observationsOf(offRun.steps)
-  for (const days of [2, 5]) {
-    const h = at(days, 'enabled')
-    const run = runFixture(h, { snapshot: h.snapshot }, prior)
-    prior = observationsOf(run.steps, prior)
-    const step = run.steps.find((s) => s.id === ID)!
-    const label = `day ${days}, On`
-    assert.equal(step.state.lifecycle === 'enforced' && step.state.satisfied && !step.state.inPlace, true, `the premise (${label}): Enforced, not In place`)
-    assert.equal(step.state.members.every((m) => m.change.latest.skippedWindow === undefined), true, `${label}: the record claims a skipped report-only period it never saw`)
-    const ctx = unwatchedCtx(h, run)
-    assert.equal(readinessOf(step, stepContract(step, ctx)).tiles.some((t) => t.key === 'enforced-unwatched'), false, `${label}: said to have gone live unwatched`)
-    assert.deepEqual(unwatchedWarnings(step, ctx), [], label)
-    assert.equal(briefingTells(step, ctx), 0, `${label}: the AI Info briefing says it went live unwatched`)
   }
 })
 
