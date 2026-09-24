@@ -213,3 +213,21 @@ test('#18 "Why IAMAI says this" is hidden across the tool, and what it opens is 
   assert.match(step, /\{cs\.lockedOut && \(/)
   assert.match(read('docs/design/content.json'), /"label": "If a change locks you out"/)
 })
+
+test('#14 the picker list fits the rail and wraps its text', () => {
+  const css = read('src/ui/app.css')
+  const rule = (selector: string): string => {
+    const at = css.indexOf(`\n${selector} {`)
+    assert.ok(at >= 0, `no rule for ${selector}`)
+    return css.slice(at, css.indexOf('}', at))
+  }
+  // The rail is 260px, and a decision lays its inputs on a grid whose track grew
+  // to the list's longest name (about 316px): the picker may shrink to its column.
+  assert.match(css, /grid-template-columns: 1fr 260px;/)
+  assert.match(css, /\.decision-form \.decision \{ display: grid;/)
+  assert.match(rule('.picker'), /min-width: 0;/)
+  assert.match(rule('.picker'), /max-width: 100%;/)
+  // No horizontal scroll inside the list, and names and reasons wrap.
+  assert.match(rule('.picker-list'), /overflow-x: hidden;/)
+  assert.match(rule('.picker-option-name,\n.picker-option-secondary'), /overflow-wrap: anywhere;/)
+})
