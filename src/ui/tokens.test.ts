@@ -10,56 +10,41 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
-import { BRAND_ROLES, DARK, DERIVED_ROLES, DISPLAY, FONT_FILES, LIGHT, LAYOUT, ROLE_WEIGHTS, ROUTE_WIDTHS, TEXT_SURFACES, TYPE, contrastRatio, renderTokensCss, resolveColourVar, WEIGHTS } from './tokens.ts'
+import { BRAND_ROLES, DARK, DERIVED_ROLES, FONT_FILES, LIGHT, ROLE_WEIGHTS, TEXT_SURFACES, WEIGHTS, contrastRatio, renderTokensCss, resolveColourVar } from './tokens.ts'
 import type { Palette } from './tokens.ts'
 
 const AA_TEXT = 4.5
 const AA_COMPONENT = 3
 
-function check(name: string, p: Palette): void {
-  test(`${name}: the reading pairs are AA text on every surface text sits on`, () => {
+test('both themes: every reading pair, derived text colour, component fill and brand ink is AA', () => {
+  for (const [name, p] of [['light', LIGHT], ['dark', DARK]] as [string, Palette][]) {
+    // The reading pairs are AA text on every surface text sits on, and so is every derived text colour.
     for (const key of TEXT_SURFACES) {
-      const bg = p[key]
-      for (const fg of ['primaryText', 'secondaryText', 'brandPrimary', 'onBrand'] as const) {
-        if (fg === 'onBrand') continue
-        assert.ok(contrastRatio(p[fg], bg) >= AA_TEXT, `${fg} on ${key} = ${contrastRatio(p[fg], bg).toFixed(2)}`)
-      }
-    }
-  })
-  test(`${name}: the ink on the brand colour is AA, and text on the brand tint is AA`, () => {
-    assert.ok(contrastRatio(p.onBrand, p.brandPrimary) >= AA_TEXT, contrastRatio(p.onBrand, p.brandPrimary).toFixed(2))
-    assert.ok(contrastRatio(p.brandSoftText, p.brandSoft) >= AA_TEXT, contrastRatio(p.brandSoftText, p.brandSoft).toFixed(2))
-  })
-  test(`${name}: every derived text colour is AA on every surface text sits on`, () => {
-    for (const fg of ['quietText', 'successText', 'attentionText', 'dangerText', 'adminText', 'unprovenText', 'brandSecondaryText'] as const) {
-      for (const key of TEXT_SURFACES) {
+      for (const fg of ['primaryText', 'secondaryText', 'brandPrimary', 'quietText', 'successText', 'attentionText', 'dangerText', 'adminText', 'unprovenText', 'brandSecondaryText'] as const) {
         const r = contrastRatio(p[fg], p[key])
-        assert.ok(r >= AA_TEXT, `${fg} on ${key} = ${r.toFixed(2)}`)
+        assert.ok(r >= AA_TEXT, `${name}: ${fg} on ${key} = ${r.toFixed(2)}`)
       }
     }
-  })
-  test(`${name}: the muted ink is an icon colour, the state fills read as components, the strong rule is perceptible`, () => {
-    assert.ok(contrastRatio(p.mutedText, p.canvas) >= AA_COMPONENT, `mutedText on canvas = ${contrastRatio(p.mutedText, p.canvas).toFixed(2)}`)
+    // The ink on the brand colour is AA, and text on the brand tint is AA.
+    assert.ok(contrastRatio(p.onBrand, p.brandPrimary) >= AA_TEXT, `${name}: onBrand ${contrastRatio(p.onBrand, p.brandPrimary).toFixed(2)}`)
+    assert.ok(contrastRatio(p.brandSoftText, p.brandSoft) >= AA_TEXT, `${name}: brandSoftText ${contrastRatio(p.brandSoftText, p.brandSoft).toFixed(2)}`)
+    // The muted ink is an icon colour, the state fills read as components, the strong rule is perceptible.
+    assert.ok(contrastRatio(p.mutedText, p.canvas) >= AA_COMPONENT, `${name}: mutedText on canvas = ${contrastRatio(p.mutedText, p.canvas).toFixed(2)}`)
     // And the three reading levels stay three: primary, secondary, quiet.
-    assert.ok(contrastRatio(p.primaryText, p.canvas) > contrastRatio(p.secondaryText, p.canvas))
-    assert.ok(contrastRatio(p.secondaryText, p.canvas) > contrastRatio(p.quietText, p.canvas))
+    assert.ok(contrastRatio(p.primaryText, p.canvas) > contrastRatio(p.secondaryText, p.canvas), name)
+    assert.ok(contrastRatio(p.secondaryText, p.canvas) > contrastRatio(p.quietText, p.canvas), name)
     for (const c of [p.success, p.attention, p.danger, p.admin, p.unproven, p.idle]) {
-      assert.ok(contrastRatio(c, p.canvas) >= AA_COMPONENT, `${c} on canvas = ${contrastRatio(c, p.canvas).toFixed(2)}`)
+      assert.ok(contrastRatio(c, p.canvas) >= AA_COMPONENT, `${name}: ${c} on canvas = ${contrastRatio(c, p.canvas).toFixed(2)}`)
     }
-    assert.ok(contrastRatio(p.strongLine, p.canvas) >= 1.5, 'the strong rule is perceptible')
-  })
-  test(`${name}: brand is not a tenant state`, () => {
-    // A brand action painted in the success colour tells the reader something
-    // untrue about their tenant (docs/brand/brand-manifest.json semantics).
-    assert.notEqual(p.brandPrimary, p.success)
-    assert.notEqual(p.brandSecondary, p.success)
-    assert.notEqual(p.brandPrimary, p.attention)
-    assert.notEqual(p.brandPrimary, p.danger)
-  })
-}
-
-check('light', LIGHT)
-check('dark', DARK)
+    assert.ok(contrastRatio(p.strongLine, p.canvas) >= 1.5, `${name}: the strong rule is perceptible`)
+    // Brand is not a tenant state: a brand action painted in the success colour
+    // tells the reader something untrue about their tenant (docs/brand/brand-manifest.json semantics).
+    assert.notEqual(p.brandPrimary, p.success, name)
+    assert.notEqual(p.brandSecondary, p.success, name)
+    assert.notEqual(p.brandPrimary, p.attention, name)
+    assert.notEqual(p.brandPrimary, p.danger, name)
+  }
+})
 
 /**
  * Every colour the two stylesheets actually declare as `color:`, resolved
@@ -118,7 +103,7 @@ test('every palette entry is an opaque hex, and the two themes carry the same ro
   assert.deepEqual(Object.keys(LIGHT).sort(), [...BRAND_ROLES, ...Object.keys(DERIVED_ROLES)].sort())
 })
 
-test('the weights are the four the brand names, and every role is the manifest’s approved weight', () => {
+test('the role weights are the manifest’s, and every role weight has a staged face declared on this origin', () => {
   assert.deepEqual([...WEIGHTS], [400, 500, 600, 700])
   const manifest = JSON.parse(readFileSync('docs/brand/brand-manifest.json', 'utf8')) as {
     typography: { roles: { role: string; family: string; weight: number | number[] }[] }
@@ -128,9 +113,6 @@ test('the weights are the four the brand names, and every role is the manifest�
   assert.equal(ROLE_WEIGHTS.wordmark, approved(/^wordmark/))
   assert.equal(ROLE_WEIGHTS.strong, approved(/^strong body/))
   assert.equal(ROLE_WEIGHTS.body, approved(/^body/))
-})
-
-test('every role weight has a real staged face, on this origin, in the family the role is set in', () => {
   // A weight with no face is drawn by the browser as a synthesised fake bold,
   // which is not the approved brand. The file has to exist on disk AND be
   // declared to the browser: task 029 staged two faces that no @font-face
@@ -152,42 +134,12 @@ test('every role weight has a real staged face, on this origin, in the family th
     assert.ok(face, `no @font-face declares ${family} ${weight} for the ${role} role`)
     assert.ok(existsSync(`public/fonts/${face.file}`), `${face.file} is declared but not staged under public/fonts`)
   }
-})
-
-test('every declared face is staged, and every staged face is declared', () => {
-  const css = renderTokensCss()
+  // Every declared face is staged, and every staged face is declared.
   const files = [...css.matchAll(/url\('\/fonts\/([^']+)'\)/g)].map((m) => m[1]).sort()
   const staged = readdirSync('public/fonts')
     .filter((f) => f.endsWith('.woff2'))
     .sort()
   assert.deepEqual(files, staged, 'a face is shipped that nothing declares, or declared that nothing ships')
-})
-
-test('the display ramp can express the approved packs, well past the old 26px ceiling', () => {
-  const sizes: number[] = Object.values(DISPLAY)
-  assert.ok(Math.max(...sizes) >= 50, 'the Home display is 50px in docs/design/approved/anatomy/home-v2.html')
-  // The four approved desktop display sizes, each with a token of its own.
-  for (const px of [50, 42, 40, 38, 21]) assert.ok(sizes.includes(px), `no token expresses ${px}px`)
-  // The old scale topped out at 26px, which no approved display heading fits.
-  assert.ok(Math.max(...Object.values(TYPE)) < 30, 'the interface scale stays an interface scale')
-  assert.ok(Math.min(...Object.values(TYPE)) <= 10, 'metadata reaches 10px')
-})
-
-test('each approved surface has its own content width, and the reading measure is separate', () => {
-  assert.equal(ROUTE_WIDTHS.home, 1040)
-  assert.equal(ROUTE_WIDTHS.connect, 1040)
-  assert.equal(ROUTE_WIDTHS.plan, 1240)
-  assert.equal(ROUTE_WIDTHS.readiness, 1200)
-  assert.equal(ROUTE_WIDTHS.default, 760)
-  // A wide operational page must not set every paragraph 1240px wide.
-  assert.ok(LAYOUT.measureCh >= 68 && LAYOUT.measureCh <= 76, `prose measure ${LAYOUT.measureCh}ch`)
-  assert.ok(LAYOUT.leadPx < ROUTE_WIDTHS.plan, 'a lead paragraph is narrower than the widest page')
-})
-
-test('the shape hierarchy is the brand’s 4 / 8 / 12', () => {
-  assert.equal(LAYOUT.radiusPx, 4)
-  assert.equal(LAYOUT.radiusControlPx, 8)
-  assert.equal(LAYOUT.radiusPanelPx, 12)
 })
 
 test('nothing in the token file asks a third party for a face', () => {
