@@ -1945,19 +1945,6 @@
           "$commentFoundEnforcedBelowThreshold": "Said after foundEnforcedShort where the reading is below the plan's own threshold, which the finished step otherwise never named once the gate was gone. The value now, never when the policy went on.",
           "foundEnforcedBelowThreshold": "The plan holds enforcement until {measure} reaches {threshold}; it is {value} now.",
           "foundEnforcedBelowThresholdFloor": "The plan holds enforcement until {measure} reaches {threshold}; it is at least {value} now.",
-          "belowGoalFloor": {
-            "$comment": "Owner, 2026-09-22 (R4-11): the pinned baseline's admin policy grants \"Modern MFA + TAP\" under a goal whose floor is phishing-resistant MFA. The pinned baseline wins: IAMAI builds it and turns it on as written, and says the grant is weaker. It never asks the admin to change it.",
-            "label": "Baseline Grant",
-            "value": "Weaker than {floor}",
-            "note": "The baseline writes this policy to ask for {grant}, which is weaker than the {floor} this goal names. IAMAI builds it and turns it on as the baseline wrote it.",
-            "floors": {
-              "mfa": "multifactor authentication",
-              "passwordless": "passwordless sign-in",
-              "phishingResistant": "phishing-resistant MFA"
-            },
-            "grantMfa": "multifactor authentication",
-            "grantStrength": "the {strength} authentication strength"
-          },
           "ownPolicyDiffers": {
             "$comment": "Owner, 2026-09-22: a policy the tenant wrote delivers the goal and differs from the baseline's in a part coverage does not judge (token protection without the Cloud PC filter; a compliant-device policy on every platform). The step stays Completed and states the difference; it never asks the tenant to change a policy that works, which could weaken it.",
             "label": "Differs From the Baseline",
@@ -4837,11 +4824,11 @@
           }
         ],
         "helpDesk": [
-          "A Temporary Access Pass satisfies this policy's strength in both its forms; Microsoft's own phishing-resistant strength accepts neither.",
+          "An admin who cannot sign in: issue a Temporary Access Pass, which this policy accepts, and register a passkey or security key with them.",
           "Anything the strength does not list is refused, including a code or an approval; do not add exclusions.",
           "An admin who signed in with a password first is never prompted for Windows Hello: they restart the sign-in and choose Sign-in options."
         ],
-        "manager": "Admin sign-ins use methods that are much harder to phish than codes or approvals. The accepted set also includes a Temporary Access Pass, which is temporary but can be issued for repeated use.",
+        "manager": "Admin sign-ins use methods that are much harder to phish than codes or approvals.",
         "waits": null
       },
       "example": {
