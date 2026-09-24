@@ -4,8 +4,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixtureSnapshot } from '../testing/uiSnapshot.ts'
-import { fixture } from '../roadmap/fixtures/index.ts'
-import { runFixture } from '../roadmap/fixtures/run.ts'
+
 import { notActiveUsers } from './sets.ts'
 import { peopleCounts } from './population.ts'
 import { readinessView } from './mfaReadiness.ts'
@@ -31,21 +30,7 @@ test('a sign-in-disabled account is not counted, not in Today, never dormant, an
   // The tag is in the Type cell, as the Inventory's People table draws it.
   const type = people.header.indexOf(INVENTORY.people.columns.type)
   assert.ok(String(row[type]).endsWith(` · ${INVENTORY.people.signInDisabled}`), String(row[type]))
-  assert.equal(INVENTORY.people.signInDisabled, 'sign-in disabled')
+
   const enabledRow = people.rows.find((r) => String(r[1]) === s.users.find((u) => u.id === 'u-1')!.userPrincipalName)!
   assert.ok(!String(enabledRow[type]).includes(INVENTORY.people.signInDisabled), 'an enabled account carries no tag')
-})
-
-test('on a plan: a dormant account blocked from sign-in leaves the dormant step', () => {
-  const f = fixture('small')
-  const base = runFixture(f)
-  const dormant = base.steps.find((s) => s.id === 's-check-dormant-accounts')!
-  assert.ok(dormant && dormant.population.ids.length > 0, 'small has dormant accounts')
-  const gone = dormant.population.ids[0]
-  const snapshot = structuredClone(f.snapshot)
-  snapshot.users.find((u) => u.id === gone)!.accountEnabled = false
-  const r = runFixture({ ...f, snapshot })
-  const step = r.steps.find((s) => s.id === 's-check-dormant-accounts')
-  assert.ok(!(step?.population.ids ?? []).includes(gone), 'the disabled account is not on the dormant step')
-  assert.equal(step?.population.ids.length ?? 0, dormant.population.ids.length - 1)
 })

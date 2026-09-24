@@ -39,59 +39,65 @@ async function readAll(rows: StoredSignIn[], from: string, to: string, size: num
   return { batches, opened, expected: sorted.filter((r) => r.createdDateTime >= from && r.createdDateTime <= to) }
 }
 
-test('the saved records come back newest first, each once, in batches that never split a second', async () => {
-  const rows = saved()
-  const times = rows.map((r) => r.createdDateTime).sort()
-  const { batches, expected } = await readAll(rows, times[0], times[times.length - 1], CACHE_READ_BATCH)
-  assert.deepEqual(batches.flat().map((r) => r.id), expected.map((r) => r.id), 'every record once, in the index order read backwards')
-  assert.equal(batches.flat().length, rows.length)
-  const perSecond = new Map<string, number>()
-  for (const r of rows) perSecond.set(r.createdDateTime, (perSecond.get(r.createdDateTime) ?? 0) + 1)
-  const largestSecond = Math.max(...perSecond.values())
-  for (const [i, batch] of batches.entries()) {
-    assert.ok(batch.length <= Math.max(CACHE_READ_BATCH + largestSecond - 1, largestSecond), `batch ${i} holds ${batch.length}`)
-    const next = batches[i + 1]
-    if (next) assert.notEqual(batch[batch.length - 1].createdDateTime, next[0].createdDateTime, `batch ${i} does not split a second`)
+test('the saved records come back newest first, each once, in batches that never split a second, both range ends inclusive, and an empty range reads no batch', async () => {
+  // the saved records come back newest first, each once, in batches that never split a second
+  {
+    const rows = saved()
+    const times = rows.map((r) => r.createdDateTime).sort()
+    const { batches, expected } = await readAll(rows, times[0], times[times.length - 1], CACHE_READ_BATCH)
+    assert.deepEqual(batches.flat().map((r) => r.id), expected.map((r) => r.id), 'every record once, in the index order read backwards')
+    assert.equal(batches.flat().length, rows.length)
+    const perSecond = new Map<string, number>()
+    for (const r of rows) perSecond.set(r.createdDateTime, (perSecond.get(r.createdDateTime) ?? 0) + 1)
+    const largestSecond = Math.max(...perSecond.values())
+    for (const [i, batch] of batches.entries()) {
+      assert.ok(batch.length <= Math.max(CACHE_READ_BATCH + largestSecond - 1, largestSecond), `batch ${i} holds ${batch.length}`)
+      const next = batches[i + 1]
+      if (next) assert.notEqual(batch[batch.length - 1].createdDateTime, next[0].createdDateTime, `batch ${i} does not split a second`)
+    }
+    assert.equal(batches.filter((b) => b.some((r) => r.id.startsWith('burst-'))).length, 1, 'a second larger than a batch stays whole, in one batch')
   }
-  assert.equal(batches.filter((b) => b.some((r) => r.id.startsWith('burst-'))).length, 1, 'a second larger than a batch stays whole, in one batch')
+  // both ends of the range are inclusive, and a later batch opens strictly below the last second taken
+  {
+    const rows = saved()
+    const times = [...new Set(rows.map((r) => r.createdDateTime))].sort()
+    const from = times[10]
+    const to = times[times.length - 10]
+    const { batches, opened, expected } = await readAll(rows, from, to, 50)
+    const read = batches.flat()
+    assert.deepEqual(read.map((r) => r.id), expected.map((r) => r.id))
+    assert.ok(read.some((r) => r.createdDateTime === from) && read.some((r) => r.createdDateTime === to), 'both end seconds are read')
+    assert.equal(opened[0], null)
+    for (const [i, upper] of opened.slice(1).entries()) assert.equal(upper, batches[i][batches[i].length - 1].createdDateTime)
+  }
+  // an empty range reads no batch
+  {
+    const { batches } = await readAll(saved(), '2030-01-01T00:00:00Z', '2030-01-02T00:00:00Z', CACHE_READ_BATCH)
+    assert.deepEqual(batches, [])
+  }
 })
 
-test('both ends of the range are inclusive, and a later batch opens strictly below the last second taken', async () => {
-  const rows = saved()
-  const times = [...new Set(rows.map((r) => r.createdDateTime))].sort()
-  const from = times[10]
-  const to = times[times.length - 10]
-  const { batches, opened, expected } = await readAll(rows, from, to, 50)
-  const read = batches.flat()
-  assert.deepEqual(read.map((r) => r.id), expected.map((r) => r.id))
-  assert.ok(read.some((r) => r.createdDateTime === from) && read.some((r) => r.createdDateTime === to), 'both end seconds are read')
-  assert.equal(opened[0], null)
-  for (const [i, upper] of opened.slice(1).entries()) assert.equal(upper, batches[i][batches[i].length - 1].createdDateTime)
-})
-
-test('an empty range reads no batch', async () => {
-  const { batches } = await readAll(saved(), '2030-01-01T00:00:00Z', '2030-01-02T00:00:00Z', CACHE_READ_BATCH)
-  assert.deepEqual(batches, [])
-})
-
-test('an open still pending when its time is up is refused only while an older tab blocks it', () => {
-  // idb's `blocked`: a tab on an older version did not close for the upgrade, which cannot start.
-  assert.equal(openRefused({ blocked: true, upgradeStarted: false }), true)
-  // Only slow: nothing reported blocking it (a busy device), so it is waited for.
-  assert.equal(openRefused({ blocked: false, upgradeStarted: false }), false)
-  // The version 8 index is built over every saved record inside the upgrade: 2.9 s for 150,000 in Chrome, more on a slower device.
-  assert.equal(openRefused({ blocked: false, upgradeStarted: true }), false)
-  // Blocked, then the older tab closed and the upgrade began.
-  assert.equal(openRefused({ blocked: true, upgradeStarted: true }), false)
-})
-
-test('the open is refused at its time only when an older tab blocks it; a slow or upgrading open is waited for', async () => {
-  const opensAt = (ms: number): Promise<string> => new Promise((resolve) => setTimeout(() => resolve('open'), ms))
-  await assert.rejects(withinOpenTimeout(opensAt(40), () => ({ blocked: true, upgradeStarted: false }), 10), StorageBlockedError)
-  assert.equal(await withinOpenTimeout(opensAt(40), () => ({ blocked: false, upgradeStarted: false }), 10), 'open', 'no tab reported blocking it')
-  const progress = { blocked: false, upgradeStarted: false }
-  setTimeout(() => (progress.upgradeStarted = true), 2)
-  assert.equal(await withinOpenTimeout(opensAt(40), () => progress, 10), 'open', 'its upgrade is running')
+test('an open still pending at its time is refused only while an older tab blocks it; a slow or upgrading open is waited for', async () => {
+  // an open still pending when its time is up is refused only while an older tab blocks it
+  {
+    // idb's `blocked`: a tab on an older version did not close for the upgrade, which cannot start.
+    assert.equal(openRefused({ blocked: true, upgradeStarted: false }), true)
+    // Only slow: nothing reported blocking it (a busy device), so it is waited for.
+    assert.equal(openRefused({ blocked: false, upgradeStarted: false }), false)
+    // The version 8 index is built over every saved record inside the upgrade: 2.9 s for 150,000 in Chrome, more on a slower device.
+    assert.equal(openRefused({ blocked: false, upgradeStarted: true }), false)
+    // Blocked, then the older tab closed and the upgrade began.
+    assert.equal(openRefused({ blocked: true, upgradeStarted: true }), false)
+  }
+  // the open is refused at its time only when an older tab blocks it; a slow or upgrading open is waited for
+  {
+    const opensAt = (ms: number): Promise<string> => new Promise((resolve) => setTimeout(() => resolve('open'), ms))
+    await assert.rejects(withinOpenTimeout(opensAt(40), () => ({ blocked: true, upgradeStarted: false }), 10), StorageBlockedError)
+    assert.equal(await withinOpenTimeout(opensAt(40), () => ({ blocked: false, upgradeStarted: false }), 10), 'open', 'no tab reported blocking it')
+    const progress = { blocked: false, upgradeStarted: false }
+    setTimeout(() => (progress.upgradeStarted = true), 2)
+    assert.equal(await withinOpenTimeout(opensAt(40), () => progress, 10), 'open', 'its upgrade is running')
+  }
 })
 
 test('without IndexedDB the store degrades to no saved records, never to a failed scan', async () => {
