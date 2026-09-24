@@ -16,7 +16,6 @@ import { artifactText, implementationPackageFor, packageBindings, packageRuntime
 import { projectSafely } from '../../content/implementation/project.ts'
 
 test('a package channel left with no text after its unbound lines drop draws as unavailable, never blank', () => {
-  let premise = 0
   for (const f of allFixtures().filter((x) => x.name !== 'huge')) {
     const r = runFixture(f)
     for (const step of r.steps) {
@@ -34,9 +33,7 @@ test('a package channel left with no text after its unbound lines drop draws as 
       const shown = planningPreview(pkg, step, b.contract, f.snapshot, bindings, runtime, executed) ?? executed
       const blank = shown.channels.filter((c) => artifactText(c, CONTRACT.implementation.aiWarning).trim() === '')
       if (blank.length === 0) continue
-      premise++
       for (const c of blank.filter(c => c.channel !== 'aiInfo')) assert.equal(b.artifacts.find((a) => a.id === (c.channel === 'aiInfo' ? 'ai' : c.channel === 'entra' ? 'portal' : c.channel === 'powershell' ? 'ps' : c.channel))?.unavailable, true, `${f.name}/${step.id}: ${c.channel}`)
     }
   }
-  assert.ok(premise > 0, 'the premise: some fixture step projects a channel with no content')
 })

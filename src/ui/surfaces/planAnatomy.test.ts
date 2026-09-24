@@ -792,7 +792,8 @@ test('the five canonical states are one frame whose content the state changes', 
   const satisfied = (m: Mock): string[] => readinessOf(m.step, m.c).satisfied.map((t) => `${t.key}:${t.tone}`)
   assert.deepEqual(tiles(S['not-deployed']), [])
   assert.deepEqual(satisfied(S['not-deployed']), ['people:info'])
-  assert.deepEqual(tiles(S['report-only']), ['observation:wait'])
+  // A dated report-only week draws no card (walk list 4.x item 21).
+  assert.deepEqual(tiles(S['report-only']), [])
   assert.deepEqual(tiles(S['review-required']), ['evidence:warn', ...S['review-required'].c.fix.map((f) => `${f.key}:warn`)])
   assert.deepEqual(tiles(S['in-place']), [])
   assert.deepEqual(satisfied(S['in-place']), ['coverage:good', 'people:info'])

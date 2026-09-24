@@ -466,7 +466,9 @@
         "Until each device moves, Create or Correct Service Accounts Group keeps these accounts out of this policy. That exclusion does not keep SMTP AUTH working if the mail service no longer accepts basic authentication.",
         "Choose a supported route: SMTP AUTH with OAuth, an Exchange Online connector, or Direct Send for internal recipients only. A device that cannot do any of them sends through an application that can, such as the Graph sendMail API. Confirm the device and network meet that route's requirements, send test messages, then remove its old account exception."
       ],
-      "action": "Record the route and the removed exception"
+      "action": "Record the route and the removed exception",
+      "$commentDone": "Block Legacy Authentication's Completion Criteria line for its mail half, where the mail question named accounts (stepContract.ts policyDoneWhen; walk list 4.x items 4 and 26): the mail half is done when none of the named accounts has signed in with legacy authentication in the last 30 days. {accounts} are their names.",
+      "done": "No legacy authentication sign-in by {accounts} in the last 30 days."
     },
     "deviceBriefing": {
       "evidence": "{n} devices in the directory: {managed} marked managed, {compliant} compliant and {hybrid} hybrid joined. Directory inventory does not prove that every device people use is covered.",
@@ -1863,7 +1865,6 @@
         "cleanupDoneOn": "Done on",
         "cleanupDone": "Done",
         "cleanupDoneRow": "done {date}",
-        "lockoutSuffix": "{n} would be stopped",
         "stepContract": {
           "$comment": "The Step Contract (Foundation D, src/ui/surfaces/stepContract.ts). Every Plan step answers the same questions in the same order: where it is now and what happens next, why, what IAMAI found, who it touches, what to do, what to fix first, how you will know it is done, and More. These are the words the contract itself supplies; each step's own sentences stay in its steps[] entry.",
           "lifecycle": {
@@ -1932,8 +1933,6 @@
           "memberLine": "{name}: {lifecycle}",
           "memberWatched": "{name}: {lifecycle}, watched since {date}",
           "memberReview": "{name}: {lifecycle}, and it needs a look",
-          "whoUnknown": "IAMAI cannot establish exactly who this reaches: this scan could not settle the policy's scope, so no count is shown.",
-          "whoUnknownDecision": "IAMAI cannot establish who this reaches until the baseline's references are mapped in Plan settings, so no count is shown.",
           "stateWords": {
             "$comment": "The Plan state words the one projection adds (src/ui/surfaces/planState.ts): a policy the tenant already enforces that the plan must change and cannot yet, and emergency access whose minimum is in place while its hardening is deferred to Cleanup.",
             "needsCorrection": "Needs correction",
@@ -2074,6 +2073,30 @@
           "foundInPlaceWatchedTogether": "{policies} are in place together, and no one of them covers the whole goal on its own. IAMAI watched them get there.",
           "foundInPlaceTogether": "Already delivered by {policies} together — none of them covers the whole goal on its own — so there is nothing to create.",
           "doneSatisfied": "The scan found the assessed configuration in place.",
+          "$commentPolicyFact": "What a policy in Turn On MFA for Everyone does, read from the policy IAMAI will see (ui/surfaces/policyFact.ts): the policy the step writes while it is open, and the tenant policy that delivers it once done. Its Satisfied card states it (walk list 4.x item 22: \"On · Requires MFA for All users except Core - Exclusions\"), its Completion Criteria's first line (item 26) and its AI Info lead (item 31). verbs holds each verb in the third person and as a participle; controls names the built-in grant controls a fact can state. A policy with anything these words cannot say gets no fact.",
+          "policyFact": {
+            "on": "On",
+            "verbs": { "blocks": ["blocks", "blocking"], "requires": ["requires", "requiring"] },
+            "legacyClients": "Exchange ActiveSync and Other clients",
+            "exchangeActiveSync": "Exchange ActiveSync clients",
+            "otherClients": "Other clients",
+            "deviceCode": "device code sign-in",
+            "authenticationTransfer": "authentication transfer",
+            "signIn": "sign-in",
+            "mfa": "MFA",
+            "controls": { "compliantdevice": "a compliant device", "domainjoineddevice": "a hybrid joined device", "approvedapplication": "an approved client app", "compliantapplication": "an app protection policy", "passwordchange": "a password change" },
+            "either": "{a} or {b}",
+            "allUsers": "All users",
+            "guests": "guests",
+            "fact": "{verb} {what} for {who}",
+            "except": "{who} except {excluded}",
+            "resources": "across All resources",
+            "resourcesExcept": "across All resources except {apps}"
+          },
+          "$commentDoneOn": "Completion Criteria on a policy in Turn On MFA for Everyone (walk list 4.x item 26, owner 2026-09-24): two lines, the same in every state. doneOn is what IAMAI will see ({fact} is policyFact's participle form); the second line is the report-only period the policy has to pass (\"period\", not the owner's \"week\": Block Legacy Authentication and Block Device Code Sign-in watch 3 days where nobody used the flow), left out where the scan found the policy already On, and shared.policyVerifyAfter in its place where the policy went On without a report-only period IAMAI watched (owner, 2026-09-22). doneOnPlain is the first line where IAMAI holds no fact for the policy.",
+          "doneOn": "IAMAI sees {policy} On, {fact}.",
+          "doneOnPlain": "IAMAI sees {policy} On.",
+          "donePeriod": "Its report-only period showed no sign-in it would have stopped.",
           "doneBlocked": "Everything Readiness lists is cleared.",
           "doneConflict": "The baseline author publishes a version that resolves the contradiction between the policy's documentation and its definition.",
           "doneDecision": "The question on this step is answered and saved.",
@@ -2173,7 +2196,6 @@
               "$commentAccepted": "A finished policy's readiness, stated under Satisfied: a Completed step shows no open card (walk list 4.x item 2, owner 2026-09-24). {who} is acceptedWho by family.",
               "accepted": "{ready} of {total} {who} have a method it accepts",
               "observation": "Observation",
-              "observationUntil": "Until {date}",
               "$commentUnwatched": "The Satisfied fact a finished policy this plan owns states where IAMAI watched it go live with no report-only period (owner decision 3, 2026-09-22; R4-12; walk list 4.x item 2, owner 2026-09-24). {date} is the scan that first saw it On, or Microsoft's own date for it.",
               "unwatched": "On since {date}, without a report-only week",
               "exclusions": "Exclusions",
@@ -2205,7 +2227,6 @@
               "exclusionsReachValue": "{n} of {total} policies exclude the group",
               "exclusionsReachNote": "The count shows policies this scan verified. Selecting the group does not change a policy; each policy step adds it where it is missing.",
               "observationNote": "Review the available records and the remaining evidence requirements. Time elapsed alone does not complete this check.",
-              "observationDateNote": "This is the earliest review date, not a scheduled automatic enforcement.",
               "notMeasured": "Not measured",
               "$commentAwaitingReview": "A policy that is enforced and waiting on the person to record their workflow test rendered Ready / Enforced, milestone Review now, and ZERO readiness tiles and ZERO findings - three readers reported the same empty step, two of them on the same step id. Its Done-when listed five lines: three that IAMAI checks itself and two that are the person, with nothing saying which of them remained. The step knows: awaitsWorkflowRecord is true and manualReview.confirmedAt is not set.",
               "awaitingReview": "Waiting on you",
@@ -2294,7 +2315,7 @@
               "focus": "Focus for this step",
               "unavailable": "Not available in this scan."
             },
-            "excludeUsersNone": "none: the resolved target excludes no individual accounts",
+            "excludeUsersNone": "none",
             "copy": "Copy implementation",
             "expand": "Expand implementation",
             "dialogEyebrow": "Implementation",
@@ -2819,7 +2840,6 @@
           "s-ladder-guest-review": "Guest access",
           "s-ladder-authenticator-over-sms": "Sign-in methods",
           "s-ladder-global-admin-count": "Global Administrators",
-          "s-prereq-per-user-mfa": "Per-user MFA",
           "s-blocker-allowed-countries": "Allowed countries",
           "s-prereq-allowed-countries": "Allowed countries",
           "s-ladder-security-defaults": "Tenant sign-in protection",
@@ -2828,8 +2848,7 @@
           "s-prereq-exclusion-group": "Policy exclusions",
           "s-prereq-device-plan": "Phones and computers",
           "s-ladder-phone-access-restriction": "Phone access",
-          "s-shared-devices": "Shared-device accounts",
-          "s-goal-admin-portals-protected": "Administrator portals"
+          "s-shared-devices": "Shared-device accounts"
         },
         "impactDefault": "Tenant settings",
         "impactPolicy": "Policy scope",
@@ -4193,6 +4212,7 @@
       "placement": "Placed on the day Require MFA for Everyone enforces, with Block Legacy Authentication and Require Phishing-Resistant MFA for Admins enforced the same day; its row carries that date. Shown only when security defaults are on.",
       "aiFocus": "Describe the ordered cutover and replacement policy identities. Report-only preparation is not replacement protection until enforcement is verified.",
       "card": {
+        "satisfied": "Off",
         "subject": "Security defaults",
         "check": "Still on"
       },
@@ -4815,7 +4835,7 @@
           "{reportOnlyLine}"
         ]
       },
-      "aiFocus": "State the built-in MFA grant and Intune Enrollment exception. Existing MFA claims may satisfy the policy without a new prompt on every sign-in."
+      "aiFocus": "Walk me through creating this policy in Report-only and turning it on after its report-only period."
     },
     {
       "id": "admins-phishing-resistant",
@@ -4930,7 +4950,7 @@
           "{reportOnlyLine}"
         ]
       },
-      "aiFocus": "Explain exact role coverage, accepted method combinations and the TAP exception. Do not label the entire allowed set exclusively phishing-resistant or guarantee a new prompt each time."
+      "aiFocus": "Walk me through creating this policy in Report-only and turning it on after its report-only period."
     },
     {
       "id": "admin-portals-protected",
@@ -5367,7 +5387,7 @@
           "{reportOnlyLine}"
         ]
       },
-      "aiFocus": "Explain the actual client-app target and observed authentication flow. Do not infer that every native mail app or OAuth SMTP connection is blocked solely from its name."
+      "aiFocus": "Walk me through creating this policy in Report-only and turning it on after its report-only period."
     },
     {
       "id": "block-device-code",
@@ -5452,7 +5472,7 @@
           "{reportOnlyLine}"
         ]
       },
-      "aiFocus": "Explain both malicious and legitimate uses. Include actual observed workflows and do not treat missing events as proof that device code is unused.",
+      "aiFocus": "Walk me through creating this policy in Report-only and turning it on after its report-only period.",
       "whatToDo": {
         "verification": [
           "Identify the legitimate tools or devices using device code. Move each required workflow to an alternative supported by that tool, then run the actual task with a representative account.",

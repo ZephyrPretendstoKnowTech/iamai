@@ -54,39 +54,23 @@ export function lifecycleResources(pkg: CompiledPackage, state: PackageState, bi
 // scan already made or a script needing -DisplayName, -IpRangesJson or -GroupId
 // typed by hand, and each Email tab pointed at "the listed accounts" and listed
 // nobody.
+// Finish Moving Off Per-User MFA too (walk list 4.x item 29, owner 2026-09-24):
+// its PowerShell read back the per-user states the scan reads, or disabled them
+// from user ids typed in by hand.
 const NON_MACHINE = new Set(['s-ladder-operator-passkey', 's-prereq-device-plan', 's-confirm-workloads', 's-prereq-break-glass', 's-prereq-exclusion-group', 's-prereq-passkey-settings',
-  's-check-dormant-accounts', 's-check-separate-admin-accounts', 's-verify-mfa', 's-prereq-auth-strength', 's-prereq-trusted-location', 's-prereq-service-accounts-group'])
+  's-check-dormant-accounts', 's-check-separate-admin-accounts', 's-verify-mfa', 's-prereq-auth-strength', 's-prereq-trusted-location', 's-prereq-service-accounts-group', 's-prereq-per-user-mfa'])
+// Block Legacy Authentication and Require MFA for Everyone have no Email tab
+// either (walk list 4.x item 29, owner 2026-09-24): 4.1's "Review Older Sign-In
+// and Email Methods" named nobody, and 4.4's "Stronger Sign-in Protection"
+// repeated Prepare Your Team for MFA's email, and still showed once the policy
+// was on.
 const NO_EMAIL = new Set(['s-prereq-break-glass', 's-prereq-passkey-settings', 's-ladder-operator-passkey', 's-confirm-workloads', 's-goal-admin-session', 's-prereq-auth-strength', 's-prereq-exclusion-group',
-  's-check-dormant-accounts', 's-check-separate-admin-accounts', 's-prereq-trusted-location', 's-prereq-service-accounts-group'])
+  's-check-dormant-accounts', 's-check-separate-admin-accounts', 's-prereq-trusted-location', 's-prereq-service-accounts-group', 's-goal-block-legacy-auth', 's-goal-mfa-all-users'])
 
 export function resourceChannelAllowed(step: Step, channel: Channel): boolean {
   if (channel === 'email' && (NO_EMAIL.has(step.id) || (step.id !== 's-verify-mfa' && !EMAILS.steps[step.id]))) return false
   if ((channel === 'ps' || channel === 'json') && NON_MACHINE.has(step.id)) return false
   return true
-}
-
-const ENDPOINTS: Record<string, string[]> = {
-  's-prereq-break-glass': ['/users?$select=id,displayName,userPrincipalName,accountEnabled', '/roleManagement/directory/roleAssignments'],
-  's-prereq-exclusion-group': ['/groups?$select=id,displayName,securityEnabled', '/identity/conditionalAccess/policies'],
-  's-prereq-passkey-settings': ['/policies/authenticationMethodsPolicy/authenticationMethodConfigurations/fido2'],
-  's-prereq-allowed-countries': ['/identity/conditionalAccess/namedLocations'],
-  's-prereq-security-defaults': ['/policies/identitySecurityDefaultsEnforcementPolicy'],
-  's-prereq-per-user-mfa': ['/policies/authenticationMethodsPolicy'],
-}
-
-function endpoints(step: Step): string[] {
-  return ENDPOINTS[step.id] ?? ['/identity/conditionalAccess/policies']
-}
-
-/** A real inspection request when no resolved mutation exists. It never invents a target. */
-export function inspectionResource(step: Step, channel: 'ps' | 'json'): Artifact {
-  const requests = endpoints(step).map((url, index) => ({ id: String(index + 1), method: 'GET', url }))
-  const title = contentTitle(step).replace(/[\r\n]/g, ' ')
-  const text = channel === 'json'
-    ? JSON.stringify({ requests }, null, 2)
-    : [`# ${title}: inspect the current configuration`, '# Run in a Microsoft Graph PowerShell session with the corresponding read permissions.',
-      ...requests.flatMap(r => [`$uri = '${('https://graph.microsoft.com/v1.0' + r.url).replace(/'/g, "''")}'`, 'do {', '  $result = Invoke-MgGraphRequest -Method GET -Uri $uri', '  if ($result.ContainsKey("value")) { $result.value | ConvertTo-Json -Depth 30 } else { $result | ConvertTo-Json -Depth 30 }', '  $uri = $result["@odata.nextLink"]', '} while ($uri)', ''])].join('\n')
-  return { id: channel, form: 'code', lines: [], text: () => text, note: channel === 'json' ? 'POST https://graph.microsoft.com/v1.0/$batch · read-only GET requests' : null }
 }
 
 /**

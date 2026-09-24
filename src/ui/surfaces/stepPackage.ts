@@ -1103,6 +1103,12 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
     put('emergency.passkey.compatibility', rows.length ? rows.flatMap(row => W[row.reason] ? [`${ctx.nameOf(row.accountId)}: ${W[row.reason]}`] : []).join('\n') : W.noAccounts)
   }
   put('tenant.displayName', tenantNameOf(ctx.snapshot))
+  // What the step's policy does, with the resources it reaches (policyFact.ts):
+  // the AI Info lead states the action with it (walk list 4.x item 31) —
+  // "requires MFA for All users except Core - Exclusions, across All resources
+  // except Microsoft Intune Enrollment". A policy in Turn On MFA for Everyone only.
+  const fact = c.policyFact
+  put('policy.fact', fact ? (fact.resources ? `${fact.does}, ${fact.resources}` : fact.does) : null)
   const affected = stepPopulation(step)
   put('people.affected.count', affected?.active)
   // The people the step is about, by name, and not only how many of them there

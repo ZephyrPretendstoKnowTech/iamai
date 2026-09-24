@@ -148,37 +148,25 @@ $actual=IG GET $uri
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 
-State: the MFA-for-everyone policy does not exist in {{tenant.displayName}} yet. The next action creates it in Report-only: All users with the exclusions IAMAI resolved, All resources except Microsoft Intune Enrollment, no additional conditions, Grant: Require multifactor authentication, and no session controls. It does not prompt anyone until it is enabled.
-
-This policy uses the built-in Require multifactor authentication grant, not an authentication strength. A separate step sets the requirement for Intune enrollment.
+Create **{{policy.target.displayName}}** in Report-only: it {{policy.fact}}.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-This policy requires multifactor authentication for the users it covers. It uses the built-in Require multifactor authentication grant, not an authentication strength. Stronger method requirements belong to the separate policies that select an authentication strength.
-
-The policy already exists on your tenant. The correction changes only the settings IAMAI found different from the intended target:
-— Users: All users, excluding the exclusions IAMAI resolved, including the exclusions group.
-— Target resources: All resources, excluding Microsoft Intune Enrollment. A separate step sets the requirement for Intune enrollment.
-— Conditions: no location, device platform or risk conditions; client apps remains All.
-— Grant: Require multifactor authentication. Session controls: none.
-
-An existing MFA claim may satisfy the policy, so people are not necessarily prompted at every sign-in. Whether each person has a usable method is shown on MFA Readiness; the Prepare Your Team for MFA step helps people register one.
-
-Keep the policy's current state. If it is On, the changed rule can affect access after you save.
+Correct **{{policy.current.displayName}}** so it {{policy.fact}}.
 
 This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 
-State: the MFA-for-everyone policy is in Report-only in {{tenant.displayName}}; it does not prompt anyone yet. Report-only evidence: {{evidence.reportOnly}}.
-
-Separate people who could not satisfy MFA from accounts excluded as intended. A registered method is not the same as a successful MFA sign-in, and few records do not show that everyone is ready.
+**{{policy.current.displayName}}** is in Report-only: it {{policy.fact}}.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 
-State: the MFA-for-everyone policy is in Report-only in {{tenant.displayName}} and the next action is to enable it. Before setting it to On, the same policy ID should still be Report-only and match the intended target: All resources except Microsoft Intune Enrollment, Require multifactor authentication, no session controls. After enabling, test an ordinary user in scope and emergency access.
+Turn **{{policy.current.displayName}}** on: it {{policy.fact}}.
+
+Its report-only period showed no sign-in it would have stopped.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}

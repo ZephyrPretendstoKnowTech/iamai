@@ -8,7 +8,7 @@ import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { manualEvidenceLines, stepExportView } from './stepExport.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { planDates } from './stepVars.ts'
-import { emailResource, inspectionResource, lifecycleResources, namedPortalResource } from './stepResources.ts'
+import { emailResource, lifecycleResources, namedPortalResource } from './stepResources.ts'
 import { QUESTION_STEP, answerKey, questionLabels } from '../../roadmap/answers.ts'
 import { BASELINE_COMMIT, memberBindings, packageForEntry } from './stepPackage.ts'
 import { memberKeyOf } from '../../roadmap/observation.ts'
@@ -52,14 +52,15 @@ test('guest vendor email is substantive and does not disclose the whole guest di
   assert.doesNotMatch(text, /Guest accounts in this tenant:/)
 })
 
-test('fallback JSON is labelled actual read-only inspection, never a guessed mutation', () => {
-  const { r } = opened('demo')
-  const step = r.steps.find(s => s.id === 's-prereq-break-glass')!
-  const resource = inspectionResource(step, 'json')
-  assert.match(resource.note!, /read-only GET requests/)
-  const data = JSON.parse(resource.text())
-  assert.ok(data.requests.length > 0)
-  assert.ok(data.requests.every((r: { method: string }) => r.method === 'GET'))
+test('PowerShell and JSON only where they write: no read-only script or GET batch stands in (walk list 4.x item 29)', () => {
+  for (const name of ['demo', 'demo-week2', 'mid'] as const) {
+    for (const [id, body] of opened(name).bodies) {
+      for (const a of body.artifacts) {
+        if (a.id === 'ps') assert.doesNotMatch(a.text(), /inspect the current configuration|-Mode '(?:Observe|Verify)'/, `${name} ${id}`)
+        if (a.id === 'json') assert.doesNotMatch(a.note ?? '', /read-only GET requests/, `${name} ${id}`)
+      }
+    }
+  }
 })
 
 test('MFA preparation retains useful campaign guidance and audience emails without an invented campaign target', () => {
@@ -356,7 +357,8 @@ test('every email IAMAI hands over is signed with the plan signature and carries
       signedOff(text, `${name}/template ${id}`)
     }
   }
-  assert.ok(seen >= 20, `the premise: the fixtures hand over emails (${seen})`)
+  // Block Legacy Authentication and Require MFA for Everyone hand over none (walk list 4.x item 29).
+  assert.ok(seen >= 15, `the premise: the fixtures hand over emails (${seen})`)
   // The guests email names who to contact, not a bracket.
   const f = fixture('mid')
   const r = runFixture(f, {}, null, f.snapshot.asOf)
