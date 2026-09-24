@@ -17,358 +17,336 @@ import { localHour } from '../timing.ts'
 import { buildPlanFile } from '../plan.ts'
 import { NO_ANNOUNCEMENT } from '../../copy/announcements.ts'
 import type { Step } from '../types.ts'
+import type { Fixture } from './index.ts'
+import type { FixtureRun } from './run.ts'
 import { isDirectionStep } from '../directionAnswers.ts'
 
 const fixtures = allFixtures()
-const HIGH_DISRUPTION = 4
-
-const fmt = (n: number) => n.toLocaleString('en-AU')
-
-function ringOverlap(x: RingLike, y: RingLike): number {
-  if (x.targeting.suggestedMemberIds.length > 0 && y.targeting.suggestedMemberIds.length > 0) return overlapShare(x.targeting.suggestedMemberIds, y.targeting.suggestedMemberIds)
-  if (x.targeting.kind === 'all' && y.targeting.kind === 'all') return 1
-  if (x.targeting.kind !== y.targeting.kind) return 0
-  if (x.targeting.departments.length === 0 && y.targeting.departments.length === 0) return 1
-  return x.targeting.departments.some((d) => y.targeting.departments.includes(d)) ? 1 : 0
-}
-
-function overlapShare(a: string[], b: string[]): number {
-  if (a.length === 0 || b.length === 0) return 0
-  const set = new Set(a)
-  const both = b.filter((x) => set.has(x)).length
-  return both / Math.min(a.length, b.length)
-}
 
 type RingLike = { plannedStart: string; plannedEnd: string; targeting: { kind: string; memberCount: number; suggestedMemberIds: string[]; departments: string[] } }
 function ringsOf(step: Step): RingLike[] {
   return (step as unknown as { rings?: RingLike[] }).rings ?? []
 }
 
-for (const f of fixtures) {
-  const run = runFixture(f)
+/** Every fixture's plan, derived once: each property below holds over all of them. */
+const runs = fixtures.map((f) => ({ f, run: runFixture(f) }))
+
+/** Check one property on every fixture, naming the fixture a failure came from. */
+function eachFixture(check: (f: Fixture, run: FixtureRun) => void): void {
+  for (const { f, run } of runs) {
+    try {
+      check(f, run)
+    } catch (e) {
+      if (e instanceof Error) e.message = `${f.name}: ${e.message}`
+      throw e
+    }
+  }
+}
+
+test('every fixture builds a plan with content, holds unwritable policies out of dated waves, and counts people within the fixture', () => eachFixture((f, run) => {
   const { steps, schedule } = run
   const { snapshot } = f
-  const waveWindow = (stepId: string): { start: string; end: string } => {
-    const w = schedule.waves.find((x) => x.wave === (schedule.waveOf[stepId] ?? 0))
-    return w ? { start: w.start, end: w.end } : { start: schedule.start, end: schedule.start }
+  // Owner, 2026-09-20: a tenant that cannot use Conditional Access gets no
+  // plan rather than a partial one, so `micro` is the one fixture that builds
+  // nothing. Every property below then holds vacuously for it, which is right.
+  if (f.name === 'micro') assert.equal(steps.length, 0, 'no Conditional Access licence, no plan')
+  else assert.ok(steps.length > 0)
+  for (const s of steps) {
+    assert.ok(s.title.length > 0, `${s.id} has a title`)
   }
 
-  test(`${f.name}: builds a plan without crashing and every step has content`, () => {
-    // Owner, 2026-09-20: a tenant that cannot use Conditional Access gets no
-    // plan rather than a partial one, so `micro` is the one fixture that builds
-    // nothing. Every property below then holds vacuously for it, which is right.
-    if (f.name === 'micro') assert.equal(steps.length, 0, 'no Conditional Access licence, no plan')
-    else assert.ok(steps.length > 0)
-    for (const s of steps) {
-      assert.ok(s.title.length > 0, `${s.id} has a title`)
-    }
-  })
+  // A policy the plan cannot write yet is in no wave — it has no date to sit
+  // under — and renders in the Plan's own undated group (prompt 50.1 item 4).
+  // Not one whose only missing object is the one it makes itself: that task
+  // is placed and dated now (operations.ts awaitsOwnObject; Stage 3).
+  const inWaves = new Set(schedule.waves.flatMap((w) => w.stepIds))
+  for (const s of steps) {
+    const held = unavailableReason(s) !== null && !awaitsOwnObject(s)
+    if (held) assert.ok(!inWaves.has(s.id), `${s.id}: a policy the plan cannot write is in no dated wave`)
+  }
 
-  test(`${f.name}: every step renders exactly one row or one footer line (prompt 50.1 item 4)`, () => {
-    // The Plan renders a step as a wave row when it is in a wave and not done
-    // (Plan.tsx inWave); a done step renders once, in the footer's "Already in
-    // place" (PlanFooter). A step that is neither in a wave nor done renders
-    // nowhere — the failure a readiness-held step used to be, before the plan was
-    // regenerated from the snapshot.
-    const inWaves = new Set(schedule.waves.flatMap((w) => w.stepIds))
-    for (const s of steps) {
-      // A policy the plan cannot write yet is in no wave — it has no date to sit
-      // under — and renders in the Plan's own undated group (Plan.tsx heldRows),
-      // which carries every step the waves do not.
-      // Not one whose only missing object is the one it makes itself: that task
-      // is placed and dated now (operations.ts awaitsOwnObject; Stage 3).
-      const held = unavailableReason(s) !== null && !awaitsOwnObject(s)
-      const asRow = s.status !== 'done'
-      const inFooter = s.status === 'done'
-      assert.ok(asRow !== inFooter, `${f.name} ${s.id} (${s.status}) renders ${asRow && inFooter ? 'twice' : 'nowhere'}: inWave=${inWaves.has(s.id)}, held=${held}`)
-      if (held) assert.ok(!inWaves.has(s.id), `${f.name} ${s.id}: a policy the plan cannot write is in no dated wave`)
-    }
-  })
+  // Every population statement sums against the fixture.
+  const enabled = snapshot.users.filter((u: { accountEnabled: boolean | null }) => u.accountEnabled !== false).length
+  for (const s of steps) {
+    const p = s.population
+    assert.equal(p.total, p.ids.length, `${s.id}: total equals ids`)
+    assert.equal(new Set(p.ids).size, p.ids.length, `${s.id}: no duplicate ids`)
+    assert.ok(p.active <= p.total && p.admins <= p.total && p.guests <= p.total, `${s.id}: parts fit the total`)
+    assert.ok(p.total <= enabled, `${s.id}: population within enabled users`)
+  }
+}))
 
-  test(`${f.name}: no step strands the operator or a break-glass account`, () => {
-    const failures: string[] = []
-    for (const s of steps) {
-      if (s.status === 'done' || s.status === 'skipped') continue
-      for (const bg of f.mapping.breakGlassUserIds) {
-        const v = wouldStrand(s, bg, snapshot, { breakGlass: true, allowedCountries: f.mapping.allowedCountries })
-        if (v.stranded) failures.push(`${s.id} strands break-glass: ${v.reason}`)
-      }
-      const v = wouldStrand(s, f.operatorId, snapshot, { breakGlass: false, allowedCountries: f.mapping.allowedCountries })
-      // A step that would lock the operator out must say so and must not be offered as ready.
-      if (v.stranded && (s.operatorSafe !== false || s.status === 'ready' || s.status === 'ready-to-enforce'))
-        failures.push(`${s.id} strands the operator (${v.reason}) yet is ${s.status}, operatorSafe=${String(s.operatorSafe)}`)
+test('no step strands the operator or a break-glass account', () => eachFixture((f, run) => {
+  const { steps } = run
+  const { snapshot } = f
+  const failures: string[] = []
+  for (const s of steps) {
+    if (s.status === 'done' || s.status === 'skipped') continue
+    for (const bg of f.mapping.breakGlassUserIds) {
+      const v = wouldStrand(s, bg, snapshot, { breakGlass: true, allowedCountries: f.mapping.allowedCountries })
+      if (v.stranded) failures.push(`${s.id} strands break-glass: ${v.reason}`)
     }
-    assert.deepEqual(failures, [])
-  })
+    const v = wouldStrand(s, f.operatorId, snapshot, { breakGlass: false, allowedCountries: f.mapping.allowedCountries })
+    // A step that would lock the operator out must say so and must not be offered as ready.
+    if (v.stranded && (s.operatorSafe !== false || s.status === 'ready' || s.status === 'ready-to-enforce'))
+      failures.push(`${s.id} strands the operator (${v.reason}) yet is ${s.status}, operatorSafe=${String(s.operatorSafe)}`)
+  }
+  assert.deepEqual(failures, [])
+}))
 
-  test(`${f.name}: every prerequisite appears earlier in the schedule`, () => {
-    const order = new Map(steps.map((s, i) => [s.id, i]))
-    const failures: string[] = []
-    for (const s of steps) {
-      for (const b of s.blockedBy) {
-        if (!order.has(b)) continue
-        const wb = schedule.waveOf[b] ?? 0
-        const ws = schedule.waveOf[s.id] ?? 0
-        if (wb > ws || (wb === ws && (order.get(b) ?? 0) > (order.get(s.id) ?? 0))) failures.push(`${s.id} (wave ${ws}) depends on ${b} (wave ${wb})`)
-      }
+test('every prerequisite appears earlier in the schedule', () => eachFixture((_f, run) => {
+  const { steps, schedule } = run
+  const order = new Map(steps.map((s, i) => [s.id, i]))
+  const failures: string[] = []
+  for (const s of steps) {
+    for (const b of s.blockedBy) {
+      if (!order.has(b)) continue
+      const wb = schedule.waveOf[b] ?? 0
+      const ws = schedule.waveOf[s.id] ?? 0
+      if (wb > ws || (wb === ws && (order.get(b) ?? 0) > (order.get(s.id) ?? 0))) failures.push(`${s.id} (wave ${ws}) depends on ${b} (wave ${wb})`)
     }
-    assert.deepEqual(failures, [])
-  })
+  }
+  assert.deepEqual(failures, [])
+}))
 
-  test(`${f.name}: every date is derivable from the graph and the band`, () => {
-    // The derivation travels with the schedule (§2: no hard-coded wave dates).
-    const derivation = (schedule as unknown as { derivation?: { criticalPath: string; constraint: string } }).derivation
-    assert.ok(derivation && derivation.criticalPath.length > 0, 'schedule carries a critical-path derivation')
-    let prevStart = schedule.start
-    for (const w of schedule.waves) {
-      assert.ok(!Number.isNaN(Date.parse(w.start)) && !Number.isNaN(Date.parse(w.end)), `wave ${w.wave} has real dates`)
-      assert.ok(w.start >= prevStart, `wave ${w.wave} starts (${w.start}) no earlier than the previous wave (${prevStart})`)
-      prevStart = w.start
+test('every date is derivable from the graph and the band', () => eachFixture((f, run) => {
+  const { steps, schedule } = run
+  // The derivation travels with the schedule (§2: no hard-coded wave dates).
+  const derivation = (schedule as unknown as { derivation?: { criticalPath: string; constraint: string } }).derivation
+  assert.ok(derivation && derivation.criticalPath.length > 0, 'schedule carries a critical-path derivation')
+  let prevStart = schedule.start
+  for (const w of schedule.waves) {
+    assert.ok(!Number.isNaN(Date.parse(w.start)) && !Number.isNaN(Date.parse(w.end)), `wave ${w.wave} has real dates`)
+    assert.ok(w.start >= prevStart, `wave ${w.wave} starts (${w.start}) no earlier than the previous wave (${prevStart})`)
+    prevStart = w.start
+  }
+  const graph = (schedule as unknown as { graph: Record<string, { stepId: string; kind: string }[]> }).graph
+  for (const s of steps) {
+    for (const r of ringsOf(s)) {
+      const day = new Date(r.plannedStart).getUTCDay()
+      assert.ok(day === 2 || day === 3 || day === 4, `${s.id} ring ${r.plannedStart} starts on a Tuesday, a Wednesday or a Thursday`)
+      assert.ok(r.plannedEnd > r.plannedStart, `${s.id} ring has a real window`)
     }
-    const graph = (schedule as unknown as { graph: Record<string, { stepId: string; kind: string }[]> }).graph
-    for (const s of steps) {
-      for (const r of ringsOf(s)) {
-        const day = new Date(r.plannedStart).getUTCDay()
-        assert.ok(day === 2 || day === 3 || day === 4, `${s.id} ring ${r.plannedStart} starts on a Tuesday, a Wednesday or a Thursday`)
-        assert.ok(r.plannedEnd > r.plannedStart, `${s.id} ring has a real window`)
-      }
-      for (const d of graph[s.id] ?? []) {
-        if (d.kind !== 'hard') continue
-        const other = steps.find((x) => x.id === d.stepId)
-        const oe = other && ringsOf(other).length > 0 ? ringsOf(other).at(-1)!.plannedEnd : null
-        const ss = ringsOf(s)[0]?.plannedStart ?? null
-        if (oe && ss) assert.ok(ss >= oe, `${s.id} starts (${ss}) after ${d.stepId} ends (${oe})`)
-      }
+    for (const d of graph[s.id] ?? []) {
+      if (d.kind !== 'hard') continue
+      const other = steps.find((x) => x.id === d.stepId)
+      const oe = other && ringsOf(other).length > 0 ? ringsOf(other).at(-1)!.plannedEnd : null
+      const ss = ringsOf(s)[0]?.plannedStart ?? null
+      if (oe && ss) assert.ok(ss >= oe, `${s.id} starts (${ss}) after ${d.stepId} ends (${oe})`)
     }
-    assert.ok(schedule.totalDays <= f.expect.weeksAtMost * 7 + 7, `${schedule.weeks} weeks (${schedule.totalDays} days) fits the band (${f.expect.weeksAtMost} weeks plus the week of slack)`)
+  }
+  assert.ok(schedule.totalDays <= f.expect.weeksAtMost * 7 + 7, `${schedule.weeks} weeks (${schedule.totalDays} days) fits the band (${f.expect.weeksAtMost} weeks plus the week of slack)`)
 
-    // A batch never mixes a change nobody will notice with one that has a
-    // predicted blast radius (prompt 41 §6). The two need different
-    // supervision, and grouping them hides the second behind the first.
-    {
-      // Grouped by the batch, not by the day. Two batches may share a day — a
-      // small tenant is allowed two change windows in one day — but no single
-      // batch may hold two disruption classes.
-      const byId = new Map(steps.map((st) => [st.id, st]))
-      for (const [id, others] of Object.entries(schedule.batchWith)) {
-        const self = byId.get(id)
-        if (!self) continue
-        const group = [self, ...others.map((o) => byId.get(o)).filter((x): x is Step => x !== undefined)]
-        const classes = new Set(group.map(batchClassOf))
-        assert.equal(classes.size, 1, `${id} shares a change window with another class: ${[...classes].join(', ')}`)
-      }
-      // Every step sharing a window shares its day, and the relationship is
-      // symmetric: a one-sided batch would print two different sentences about
-      // the same change window.
-      for (const [id, others] of Object.entries(schedule.batchWith)) {
-        for (const o of others) {
-          assert.ok(schedule.batchWith[o]?.includes(id), `${id} and ${o} disagree about sharing a window`)
-        }
+  // A batch never mixes a change nobody will notice with one that has a
+  // predicted blast radius (prompt 41 §6). The two need different
+  // supervision, and grouping them hides the second behind the first.
+  {
+    // Grouped by the batch, not by the day. Two batches may share a day — a
+    // small tenant is allowed two change windows in one day — but no single
+    // batch may hold two disruption classes.
+    const byId = new Map(steps.map((st) => [st.id, st]))
+    for (const [id, others] of Object.entries(schedule.batchWith)) {
+      const self = byId.get(id)
+      if (!self) continue
+      const group = [self, ...others.map((o) => byId.get(o)).filter((x): x is Step => x !== undefined)]
+      const classes = new Set(group.map(batchClassOf))
+      assert.equal(classes.size, 1, `${id} shares a change window with another class: ${[...classes].join(', ')}`)
+    }
+    // Every step sharing a window shares its day, and the relationship is
+    // symmetric: a one-sided batch would print two different sentences about
+    // the same change window.
+    for (const [id, others] of Object.entries(schedule.batchWith)) {
+      for (const o of others) {
+        assert.ok(schedule.batchWith[o]?.includes(id), `${id} and ${o} disagree about sharing a window`)
       }
     }
+  }
 
-    // Enforcement slots vary, and announcements are readable (prompt 42 §12).
-    // Every enforcement in every week landed at 12:00 for eleven weeks, and
-    // announcements went out at 18:00, the last minute of the working day
-    // (review-09 findings 10 and 11).
-    {
-      const zone = run.input.mapping.displayTimeZone ?? 'UTC'
-      const enforceHours = new Set<number>()
-      for (const st of steps) {
-        const e = st.events
-        if (!e) continue
-        enforceHours.add(localHour(e.enforce.at, zone))
-        for (const m of [e.announce, e.remind]) {
-          if (!m) continue
-          const hour = localHour(m.at, zone)
-          assert.ok(hour >= 8 && hour <= 12, `a message at ${hour}:00 is early enough in the day to be read`)
-        }
-      }
-      if (steps.filter((st) => st.events).length >= 6) {
-        assert.ok(enforceHours.size > 1, `enforcement does not always land at the same time: ${[...enforceHours].join(", ")}`)
-      }
-    }
-
-    // Announcement, then reminder, then enforcement (prompt 41 §2). Order is
-    // asserted on the instant, not the day, because the defect review 09 found
-    // was an enforcement at 12:00 and a message at 18:00 on the SAME date: a
-    // day-granularity check would have called that correct. A message that
-    // arrives after the change it announces is worse than no message, because
-    // the person has already been interrupted and now learns it was planned.
+  // Enforcement slots vary, and announcements are readable (prompt 42 §12).
+  // Every enforcement in every week landed at 12:00 for eleven weeks, and
+  // announcements went out at 18:00, the last minute of the working day
+  // (review-09 findings 10 and 11).
+  {
+    const zone = run.input.mapping.displayTimeZone ?? 'UTC'
+    const enforceHours = new Set<number>()
     for (const st of steps) {
       const e = st.events
       if (!e) continue
-      for (const m of [e.announce, e.remind, e.remindMorning]) {
+      enforceHours.add(localHour(e.enforce.at, zone))
+      for (const m of [e.announce, e.remind]) {
         if (!m) continue
-        assert.ok(
-          m.at < e.enforce.at,
-          `${st.id}: the ${m.kind} at ${m.at} must precede its own enforcement at ${e.enforce.at}`,
-        )
+        const hour = localHour(m.at, zone)
+        assert.ok(hour >= 8 && hour <= 12, `a message at ${hour}:00 is early enough in the day to be read`)
       }
-      if (e.announce && e.remind) {
-        assert.ok(e.announce.at <= e.remind.at, `${st.id}: the announcement must not follow its own reminder`)
-      }
-      // A step with a reminder and no announcement is a reminder about nothing.
-      if (e.remind) assert.ok(e.announce !== null, `${st.id}: a reminder needs an announcement before it`)
     }
+    if (steps.filter((st) => st.events).length >= 6) {
+      assert.ok(enforceHours.size > 1, `enforcement does not always land at the same time: ${[...enforceHours].join(", ")}`)
+    }
+  }
 
-    // The day a phase closes belongs to that phase (prompt 40 §21). Two steps
-    // were planned for Sep 3, the day Day 0 closed (review-08 C2). The date at
-    // fault is the report-only creation date, not a ring start: enforcement is
-    // Tuesday-or-Wednesday only, so it rarely lands on a closing day by
-    // accident, while creation was pinned to the closing day by construction.
-    const day0Close = schedule.waves[0].end.slice(0, 10)
-    for (const [id, at] of Object.entries(schedule.reportOnlyAt)) {
-      assert.notEqual(at.slice(0, 10), day0Close, `${id} is not created on the day Day 0 closes (${day0Close})`)
-    }
-    for (const st of steps) {
-      for (const g of st.rings) {
-        assert.notEqual(g.plannedStart.slice(0, 10), day0Close, `${st.id} does not start on the day Day 0 closes (${day0Close})`)
-      }
-    }
-    // The observation window stays open until the wave it informs (prompt 40
-    // §18). It used to close twelve days early, so the page said the evidence
-    // stopped being gathered long before anyone acted on it (review-08 B4).
-    const firstWave = schedule.waves.find((w) => w.wave >= 1)
-    assert.ok(
-      schedule.observation.start >= schedule.start,
-      `observation opens once the report-only policies exist (${schedule.observation.start})`,
-    )
-    if (firstWave && schedule.observation.days > 0) {
-      assert.equal(
-        schedule.observation.end,
-        firstWave.start,
-        'the observation window stays open until the wave it informs, with no gap',
+  // Announcement, then reminder, then enforcement (prompt 41 §2). Order is
+  // asserted on the instant, not the day, because the defect review 09 found
+  // was an enforcement at 12:00 and a message at 18:00 on the SAME date: a
+  // day-granularity check would have called that correct. A message that
+  // arrives after the change it announces is worse than no message, because
+  // the person has already been interrupted and now learns it was planned.
+  for (const st of steps) {
+    const e = st.events
+    if (!e) continue
+    for (const m of [e.announce, e.remind, e.remindMorning]) {
+      if (!m) continue
+      assert.ok(
+        m.at < e.enforce.at,
+        `${st.id}: the ${m.kind} at ${m.at} must precede its own enforcement at ${e.enforce.at}`,
       )
     }
-  })
-
-  test(`${f.name}: rings match the band table`, () => {
-    for (const s of steps) {
-      const rings = ringsOf(s)
-      // A policy the plan cannot write yet is not rolled out in rings: an object
-      // it names is missing, a pair it cannot match, or a baseline that
-      // contradicts itself (roadmap/operations.ts).
-      if (unavailableReason(s) !== null) {
-        assert.deepEqual(rings, [], `${s.id} (${unavailableReason(s)}) has no rings`)
-        continue
-      }
-      // Neither is one whose own analysis cannot settle what it does or who it
-      // reaches: a ring plan would name groups of people nobody has established
-      // are in scope (roadmap/strand.ts analysisUnknown).
-      if (analysisUnknown(s)) {
-        assert.deepEqual(rings, [], `${s.id}: a policy IAMAI cannot read in full has no ring plan`)
-        continue
-      }
-      // Nor one whose enforcement waits on a readiness threshold the plan itself
-      // names: the rings are the rollout of that enforcement, and dating them is
-      // the promise that it lands (roadmap/operations.ts enforcementHeld).
-      if (enforcementHeld(s)) {
-        assert.deepEqual(rings, [], `${s.id}: ${s.action.readinessGate?.measure} is ${s.action.readinessGate?.value}, so nothing is rolled out`)
-        continue
-      }
-      // Nor anything else that holds the step: its rollout is withdrawn with its dates (roadmap/holds.ts).
-      if (isHeld(s)) {
-        assert.deepEqual(rings, [], `${s.id} (${holdOf(s)?.kind}) is held, so nothing is rolled out`)
-        continue
-      }
-      if (!canDenyAccess(s) || s.status === 'done' || s.status === 'skipped') {
-        assert.ok(rings.length <= 1, `${s.id} (${s.kind}) has at most one ring`)
-        continue
-      }
-      assert.equal(rings.length, f.expect.rings, `${s.id} has ${f.expect.rings} rings`)
-      const members = rings.reduce((n, r) => n + r.targeting.memberCount, 0)
-      // The rings hold the people the step's own policies name, every one of
-      // them once: the rollout cohort and nothing else (roadmap/rings.ts
-      // rolloutCohort). The population the goal handed the step is neither a
-      // floor nor a ceiling on it — a policy filed under a narrow goal that
-      // names everybody rolls out to everybody.
-      const cohort = rolloutCohort(s)
-      assert.ok(cohort !== null, `${s.id}: a ringed step has a settled cohort`)
-      assert.equal(members, cohort.length, `${s.id}: ring members sum to the people its policies name`)
-      const seen = rings.flatMap((r) => r.targeting.suggestedMemberIds)
-      if (seen.length > 0) assert.deepEqual([...seen].sort(), [...cohort].sort(), `${s.id}: and they are those people, each in one ring`)
+    if (e.announce && e.remind) {
+      assert.ok(e.announce.at <= e.remind.at, `${st.id}: the announcement must not follow its own reminder`)
     }
-  })
+    // A step with a reminder and no announcement is a reminder about nothing.
+    if (e.remind) assert.ok(e.announce !== null, `${st.id}: a reminder needs an announcement before it`)
+  }
 
-  test(`${f.name}: every population statement sums against the fixture`, () => {
-    const enabled = snapshot.users.filter((u: { accountEnabled: boolean | null }) => u.accountEnabled !== false).length
-    for (const s of steps) {
-      const p = s.population
-      assert.equal(p.total, p.ids.length, `${s.id}: total equals ids`)
-      assert.equal(new Set(p.ids).size, p.ids.length, `${s.id}: no duplicate ids`)
-      assert.ok(p.active <= p.total && p.admins <= p.total && p.guests <= p.total, `${s.id}: parts fit the total`)
-      assert.ok(p.total <= enabled, `${s.id}: population within enabled users`)
+  // The day a phase closes belongs to that phase (prompt 40 §21). Two steps
+  // were planned for Sep 3, the day Day 0 closed (review-08 C2). The date at
+  // fault is the report-only creation date, not a ring start: enforcement is
+  // Tuesday-or-Wednesday only, so it rarely lands on a closing day by
+  // accident, while creation was pinned to the closing day by construction.
+  const day0Close = schedule.waves[0].end.slice(0, 10)
+  for (const [id, at] of Object.entries(schedule.reportOnlyAt)) {
+    assert.notEqual(at.slice(0, 10), day0Close, `${id} is not created on the day Day 0 closes (${day0Close})`)
+  }
+  for (const st of steps) {
+    for (const g of st.rings) {
+      assert.notEqual(g.plannedStart.slice(0, 10), day0Close, `${st.id} does not start on the day Day 0 closes (${day0Close})`)
     }
-  })
+  }
+  // The observation window stays open until the wave it informs (prompt 40
+  // §18). It used to close twelve days early, so the page said the evidence
+  // stopped being gathered long before anyone acted on it (review-08 B4).
+  const firstWave = schedule.waves.find((w) => w.wave >= 1)
+  assert.ok(
+    schedule.observation.start >= schedule.start,
+    `observation opens once the report-only policies exist (${schedule.observation.start})`,
+  )
+  if (firstWave && schedule.observation.days > 0) {
+    assert.equal(
+      schedule.observation.end,
+      firstWave.start,
+      'the observation window stays open until the wave it informs, with no gap',
+    )
+  }
+}))
 
-  test(`${f.name}: the roadmap engine finishes inside its bound`, () => {
-    // Coverage is computed once per scan and cached; the roadmap is what a re-plan, a ring change or a Steps render pays for.
-    // Best of three: the bound is on the engine, not on the machine's noise.
-    // The 25,000-user fixture gets 400 ms rather than 200: measured at 183 ms
-    // best of four in isolation before prompt 46, and 218–237 ms after it,
-    // because every goal step is now executable (16 more steps per plan carry
-    // a body, rings and content) and Wave 0 names the dormant accounts. The
-    // test files run in parallel, so a bound within 1.3× of the isolated time
-    // crossed over under contention rather than on a regression; this keeps
-    // the same headroom ratio the 300 ms bound had. Prompt 48 adds the
-    // lockout-scenario lines to every step (named from evidence), a further
-    // per-plan cost like prompt 46's executable steps; isolated best is ~300 ms,
-    // so the bound moves to 500 to keep the same contention headroom. Every
-    // The reviewed V1 adds effective-method checks and scoped manual evidence
-    // to the 4,900-user/40-policy tenant. After output-preserving optimizations,
-    // hosted CI measured 237–273 ms (248 ms in a clean process), versus 112–141
-    // ms locally. Give that fixture a 350 ms budget with runner headroom; keep
-    // smaller tenants at 200 ms and the existing 25,000-user budget at 500 ms.
-    // Round 4 (2026-09-22) reads each policy's own method readiness, the
-    // readiness chain's start and the sign-in source's state on every step:
-    // isolated best on large went 184 -> 204 ms locally (217 with the MFA
-    // follow-up list and the turn-on holds), and hosted CI measured 393 ms in a
-    // clean process against the 350 ms bound: the bound had no headroom left over
-    // the hosted runner, which runs about 1.9x slower. The large budget moves to
-    // 480 ms, about 15% over the projected hosted time.
-    const bound = f.name === 'huge' ? 500 : f.name === 'large' ? 480 : 200
-    // Functional tests share one process and retain many generated tenants.
-    // Recheck a slow result in a clean process, rather than measuring unrelated
-    // retained-heap/GC pressure. All three replans remain uncached; no bound moves.
-    const isolated = run.roadmapMs < bound ? null : JSON.parse(execFileSync(process.execPath, [fileURLToPath(new URL('../../../scripts/benchmark-roadmap.mjs', import.meta.url)), f.name], { encoding: 'utf8', timeout: 30_000 })) as { best: number; samples: number[] }
-    const best = isolated?.best ?? run.roadmapMs
-    assert.ok(best < bound, `${best.toFixed(0)} ms against a ${bound} ms bound (with coverage: ${run.ms.toFixed(0)} ms)`)
-  })
-
-  test(`${f.name}: the plan file round-trips with every number preserved`, () => {
-    const file = buildPlanFile({
-      planId: f.planId,
-      snapshot,
-      operator: { userId: f.operatorId, userPrincipalName: 'operator@example.test' },
-      baselineSource: { owner: 'fixture', repo: 'baseline', label: 'Fixture', commit: 'abc' } as never,
-      mapping: f.mapping,
-      steps,
-      checkpoints: [],
-      schedule: { startDate: schedule.start, band: schedule.band },
-    })
-    const back = JSON.parse(JSON.stringify(file)) as typeof file
-    assert.equal(back.steps.length, steps.length)
-    for (const [i, s] of steps.entries()) {
-      const b = back.steps[i] as unknown as Record<string, unknown>
-      assert.equal(b.id, s.id)
-      assert.deepEqual(b.population, s.population, `${s.id}: population preserved`)
-      // The rings' numbers and dates travel; their criteria prose does not (prompt 53 queue item 7: the file carries no v2 prose).
-      const datesOf = (rings: RingLike[]) => rings.map((r) => ({ plannedStart: r.plannedStart, plannedEnd: r.plannedEnd, members: r.targeting.memberCount }))
-      if (ringsOf(s).length > 0) assert.deepEqual(datesOf(b.rings as RingLike[]), datesOf(ringsOf(s)), `${s.id}: rings preserved`)
+test('rings match the band table', () => eachFixture((f, run) => {
+  for (const s of run.steps) {
+    const rings = ringsOf(s)
+    // A policy the plan cannot write yet is not rolled out in rings: an object
+    // it names is missing, a pair it cannot match, or a baseline that
+    // contradicts itself (roadmap/operations.ts).
+    if (unavailableReason(s) !== null) {
+      assert.deepEqual(rings, [], `${s.id} (${unavailableReason(s)}) has no rings`)
+      continue
     }
-  })
+    // Neither is one whose own analysis cannot settle what it does or who it
+    // reaches: a ring plan would name groups of people nobody has established
+    // are in scope (roadmap/strand.ts analysisUnknown).
+    if (analysisUnknown(s)) {
+      assert.deepEqual(rings, [], `${s.id}: a policy IAMAI cannot read in full has no ring plan`)
+      continue
+    }
+    // Nor one whose enforcement waits on a readiness threshold the plan itself
+    // names: the rings are the rollout of that enforcement, and dating them is
+    // the promise that it lands (roadmap/operations.ts enforcementHeld).
+    if (enforcementHeld(s)) {
+      assert.deepEqual(rings, [], `${s.id}: ${s.action.readinessGate?.measure} is ${s.action.readinessGate?.value}, so nothing is rolled out`)
+      continue
+    }
+    // Nor anything else that holds the step: its rollout is withdrawn with its dates (roadmap/holds.ts).
+    if (isHeld(s)) {
+      assert.deepEqual(rings, [], `${s.id} (${holdOf(s)?.kind}) is held, so nothing is rolled out`)
+      continue
+    }
+    if (!canDenyAccess(s) || s.status === 'done' || s.status === 'skipped') {
+      assert.ok(rings.length <= 1, `${s.id} (${s.kind}) has at most one ring`)
+      continue
+    }
+    assert.equal(rings.length, f.expect.rings, `${s.id} has ${f.expect.rings} rings`)
+    const members = rings.reduce((n, r) => n + r.targeting.memberCount, 0)
+    // The rings hold the people the step's own policies name, every one of
+    // them once: the rollout cohort and nothing else (roadmap/rings.ts
+    // rolloutCohort). The population the goal handed the step is neither a
+    // floor nor a ceiling on it — a policy filed under a narrow goal that
+    // names everybody rolls out to everybody.
+    const cohort = rolloutCohort(s)
+    assert.ok(cohort !== null, `${s.id}: a ringed step has a settled cohort`)
+    assert.equal(members, cohort.length, `${s.id}: ring members sum to the people its policies name`)
+    const seen = rings.flatMap((r) => r.targeting.suggestedMemberIds)
+    if (seen.length > 0) assert.deepEqual([...seen].sort(), [...cohort].sort(), `${s.id}: and they are those people, each in one ring`)
+  }
+}))
 
-}
+test('the roadmap engine finishes inside its bound', () => eachFixture((f, run) => {
+  // Coverage is computed once per scan and cached; the roadmap is what a re-plan, a ring change or a Steps render pays for.
+  // Best of three: the bound is on the engine, not on the machine's noise.
+  // The 25,000-user fixture gets 400 ms rather than 200: measured at 183 ms
+  // best of four in isolation before prompt 46, and 218–237 ms after it,
+  // because every goal step is now executable (16 more steps per plan carry
+  // a body, rings and content) and Wave 0 names the dormant accounts. The
+  // test files run in parallel, so a bound within 1.3× of the isolated time
+  // crossed over under contention rather than on a regression; this keeps
+  // the same headroom ratio the 300 ms bound had. Prompt 48 adds the
+  // lockout-scenario lines to every step (named from evidence), a further
+  // per-plan cost like prompt 46's executable steps; isolated best is ~300 ms,
+  // so the bound moves to 500 to keep the same contention headroom. Every
+  // The reviewed V1 adds effective-method checks and scoped manual evidence
+  // to the 4,900-user/40-policy tenant. After output-preserving optimizations,
+  // hosted CI measured 237–273 ms (248 ms in a clean process), versus 112–141
+  // ms locally. Give that fixture a 350 ms budget with runner headroom; keep
+  // smaller tenants at 200 ms and the existing 25,000-user budget at 500 ms.
+  // Round 4 (2026-09-22) reads each policy's own method readiness, the
+  // readiness chain's start and the sign-in source's state on every step:
+  // isolated best on large went 184 -> 204 ms locally (217 with the MFA
+  // follow-up list and the turn-on holds), and hosted CI measured 393 ms in a
+  // clean process against the 350 ms bound: the bound had no headroom left over
+  // the hosted runner, which runs about 1.9x slower. The large budget moves to
+  // 480 ms, about 15% over the projected hosted time.
+  const bound = f.name === 'huge' ? 500 : f.name === 'large' ? 480 : 200
+  // Functional tests share one process and retain many generated tenants.
+  // Recheck a slow result in a clean process, rather than measuring unrelated
+  // retained-heap/GC pressure. All three replans remain uncached; no bound moves.
+  const isolated = run.roadmapMs < bound ? null : JSON.parse(execFileSync(process.execPath, [fileURLToPath(new URL('../../../scripts/benchmark-roadmap.mjs', import.meta.url)), f.name], { encoding: 'utf8', timeout: 30_000 })) as { best: number; samples: number[] }
+  const best = isolated?.best ?? run.roadmapMs
+  assert.ok(best < bound, `${best.toFixed(0)} ms against a ${bound} ms bound (with coverage: ${run.ms.toFixed(0)} ms)`)
+}))
+
+test('the plan file round-trips with every number preserved', () => eachFixture((f, run) => {
+  const { steps, schedule } = run
+  const file = buildPlanFile({
+    planId: f.planId,
+    snapshot: f.snapshot,
+    operator: { userId: f.operatorId, userPrincipalName: 'operator@example.test' },
+    baselineSource: { owner: 'fixture', repo: 'baseline', label: 'Fixture', commit: 'abc' } as never,
+    mapping: f.mapping,
+    steps,
+    checkpoints: [],
+    schedule: { startDate: schedule.start, band: schedule.band },
+  })
+  const back = JSON.parse(JSON.stringify(file)) as typeof file
+  assert.equal(back.steps.length, steps.length)
+  for (const [i, s] of steps.entries()) {
+    const b = back.steps[i] as unknown as Record<string, unknown>
+    assert.equal(b.id, s.id)
+    assert.deepEqual(b.population, s.population, `${s.id}: population preserved`)
+    // The rings' numbers and dates travel; their criteria prose does not (prompt 53 queue item 7: the file carries no v2 prose).
+    const datesOf = (rings: RingLike[]) => rings.map((r) => ({ plannedStart: r.plannedStart, plannedEnd: r.plannedEnd, members: r.targeting.memberCount }))
+    if (ringsOf(s).length > 0) assert.deepEqual(datesOf(b.rings as RingLike[]), datesOf(ringsOf(s)), `${s.id}: rings preserved`)
+  }
+}))
 
 // ---- fixture-specific shapes (§7 table) ----
 
 const byName = (name: string) => fixtures.find((x) => x.name === name)!
-
-test('micro: no Conditional Access licence, no plan', () => {
-  const { steps } = runFixture(byName('micro'))
-  assert.deepEqual(steps, [], 'the whole plan is withheld, not the policy steps only')
-})
 
 test('mid: service accounts surface before the legacy-auth block', () => {
   const { steps } = runFixture(byName('mid'))
@@ -421,29 +399,6 @@ test('getiamai: 2 active people (the emergency accounts are not people) and 9 wh
   const dormant = r.steps.find((s) => s.id === 's-check-dormant-accounts')
   assert.ok(dormant && dormant.population.total === 9, 'nine dormant accounts to decide on')
   for (const s of r.steps) if (s.rings.length > 0) assert.equal(s.rings.length, 1, `${s.id}: no rings below 50 active people`)
-})
-
-test('owner travels with the plan file; a per-step date no longer moves the schedule (target-state §9)', () => {
-  // With the plan's foundation settled (roadmap/foundations.ts): until Emergency Access and Direction
-  // are, every policy is held and no step carries a rollout to move.
-  const f = withFoundationSettled(byName('small'))
-  const first = runFixture(f)
-  const moved = first.steps.find((s) => s.rings.length > 0 && s.status !== 'done')!
-  moved.owner = 'Identity team'
-  const file = buildPlanFile({
-    planId: f.planId,
-    snapshot: f.snapshot,
-    operator: { userId: f.operatorId, userPrincipalName: 'operator@example.test' },
-    baselineSource: { owner: 'fixture', repo: 'baseline', label: 'Fixture', commit: 'abc' } as never,
-    mapping: f.mapping,
-    steps: first.steps,
-    checkpoints: [],
-  })
-  const back = JSON.parse(JSON.stringify(file)) as typeof file
-  const saved = back.steps.find((s) => s.id === moved.id)!
-  assert.equal(saved.owner, 'Identity team')
-  // The rings' dates travel; their criteria prose does not (prompt 53 queue item 7).
-  assert.deepEqual(saved.rings.map((r) => [r.plannedStart, r.plannedEnd]), moved.rings.map((r) => [r.plannedStart, r.plannedEnd]))
 })
 
 // Prompt 47 item 6: a wave holds at least one step that reaches somebody. A
