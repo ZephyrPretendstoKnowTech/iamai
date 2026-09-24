@@ -40,6 +40,8 @@ import goals from '../../data/goals.json' with { type: 'json' }
 import { directionWords } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import { BLOCKED_REASON } from '../copy/reasons.ts'
+import { list } from '../copy/statements.ts'
+import { contentTitle } from '../content/stepTitle.ts'
 import type { NotAssessed } from '../coverage/types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
@@ -50,8 +52,8 @@ import { phoneSignInIds } from '../derive/sets.ts'
 import { setState } from './lifecycle.ts'
 import { DEVICE_GOALS } from './deviations.ts'
 import { QUESTION_STEP } from './answers.ts'
-import { PREREQ_STEP_ID } from './stepIds.ts'
-import { checkStep, serviceEvidence, serviceOf, serviceReading } from './workflows.ts'
+import { PREREQ_STEP_ID, stepIdForGoal } from './stepIds.ts'
+import { HIDDEN_AGENT_POLICY, checkStep, reviewTitleOf, serviceEvidence, serviceOf, serviceReading } from './workflows.ts'
 import type { ServiceSignal } from './workflows.ts'
 import { DIRECTION_BLOCKER, DIRECTION_STEP, SERVICE_KEYS, directionComplete, directionStepOf, isDirectionStep, savedAnswerOf } from './directionAnswers.ts'
 export { DIRECTION_BLOCKER, directionBlockerStep, directionComplete } from './directionAnswers.ts'
@@ -73,7 +75,18 @@ function question(key: DirectionQuestionKey, ctx: Context, q: Omit<DirectionQues
 
 // ---- D1 Confirm What You Use ----
 
-function serviceQuestion(key: string, signal: ServiceSignal, ctx: Context): DirectionQuestion {
+/**
+ * The plan steps a service's No takes off the plan, by the titles the plan
+ * shows them under: the goals whose policy protects it, and the review rows of
+ * the baseline policies it names (workflows.ts addWorkflowSteps).
+ */
+function offPlanTitles(key: string, notAssessed: readonly NotAssessed[], availableGoalIds: readonly string[]): string[] {
+  const goalTitles = goals.goals.filter((g) => g.applicability === key && availableGoalIds.includes(g.id)).map((g) => contentTitle({ id: stepIdForGoal(g.id), goalId: g.id, title: g.id }))
+  const reviewTitles = notAssessed.filter((p) => !HIDDEN_AGENT_POLICY.test(p.name) && serviceOf(p) === key).map(reviewTitleOf)
+  return [...new Set([...goalTitles, ...reviewTitles])]
+}
+
+function serviceQuestion(key: string, signal: ServiceSignal, offPlan: readonly string[], ctx: Context): DirectionQuestion {
   const saved = savedAnswerOf(`service:${key}`, ctx.mapping)
   // A saved No the scan now contradicts reopens the step; a saved answer whose
   // evidence merely went missing does not (the basis it was saved against says
@@ -81,21 +94,23 @@ function serviceQuestion(key: string, signal: ServiceSignal, ctx: Context): Dire
   const needsReview = saved?.value === 'no' && signal.used && ctx.mapping.workflowEvidenceBasis?.[key] !== 'present'
   const suggested = signal.used ? answer('yes') : signal.complete ? answer('no') : answer('yes')
   const label = (Q.services as Record<string, string>)[key] ?? key
-  // What the scan saw, in the one sentence the Inventory's Detected workloads shows too (workflows.ts serviceEvidence).
+  // What the sign-in records show, in the one sentence the Inventory's Detected
+  // workloads shows too (workflows.ts serviceEvidence); where they show
+  // nothing that can be said, the card says nothing.
   const seen = serviceEvidence(key, signal)
   return {
-    ...question(`service:${key}`, ctx, { label, control: 'choice', options: optionsOf(Q.serviceOptions), suggested, evidence: seen ?? W.defaultEvidence }),
+    ...question(`service:${key}`, ctx, { label, control: 'choice', options: optionsOf(Q.serviceOptions), suggested, evidence: seen ?? '', note: offPlan.length > 0 ? fillText(Q.serviceConsequence, { steps: list([...offPlan]) }) : null }),
     needsReview,
     basis: signal.used ? 'present' : signal.complete ? 'absent' : 'unread',
-    ...(needsReview && seen !== null ? { evidence: fillText(W.reopened, { evidence: seen }) } : {}),
+    ...(needsReview && seen !== null ? { evidence: fillText(W.reopened, { answer: Q.serviceOptions.no, evidence: seen }) } : {}),
   }
 }
 
 const signInsRead = (s: TenantSnapshot): boolean => s.sources.signInEvidence?.status === 'ok' || s.sources.signInEvidence?.status === 'partial'
 
-function useQuestions(ctx: Context, services: { keys: string[]; signal: (key: string) => ServiceSignal }): DirectionQuestion[] {
+function useQuestions(ctx: Context, services: { keys: string[]; signal: (key: string) => ServiceSignal }, offPlan: (key: string) => string[]): DirectionQuestion[] {
   const { snapshot } = ctx
-  const out = SERVICE_KEYS.filter((k) => services.keys.includes(k)).map((k) => serviceQuestion(k, services.signal(k), ctx))
+  const out = SERVICE_KEYS.filter((k) => services.keys.includes(k)).map((k) => serviceQuestion(k, services.signal(k), offPlan(k), ctx))
   // Devices or apps that send mail by signing in: the accounts the old-protocol records show sending by SMTP.
   const legacy = signInsRead(snapshot) ? snapshot.scenarioEvidence?.legacyClients ?? null : null
   const senders = legacy ? Object.entries(legacy.byPerson).filter(([, clients]) => clients.some((c) => /smtp/i.test(c))).map(([id]) => id).sort() : []
@@ -313,7 +328,7 @@ export function directionSteps(input: DirectionInput): Step[] {
   const nameOf = input.nameOf ?? ((labels) => (id: string) => labels.get(id) ?? id)(personLabels(input.snapshot.users))
   const at = (id: DirectionStepId): string | null => input.approvedAt?.[id] ?? (id === DIRECTION_STEP.use ? input.mapping.workflowConfirmedAt ?? null : null)
   return [
-    directionStep(DIRECTION_STEP.use, useQuestions(ctx, services), at(DIRECTION_STEP.use)),
+    directionStep(DIRECTION_STEP.use, useQuestions(ctx, services, (key) => offPlanTitles(key, input.notAssessed, input.availableGoalIds)), at(DIRECTION_STEP.use)),
     directionStep(DIRECTION_STEP.accounts, accountQuestions(ctx, nameOf), at(DIRECTION_STEP.accounts)),
     directionStep(DIRECTION_STEP.devices, deviceQuestions(ctx), at(DIRECTION_STEP.devices)),
   ]
