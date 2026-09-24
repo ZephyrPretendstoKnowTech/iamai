@@ -3439,8 +3439,7 @@
       },
       "dates": null,
       "doneWhen": [
-        "The selected dedicated accounts are enabled, cloud-only identities on the tenant's onmicrosoft.com domain with permanent active Global Administrator assignments.",
-        "Each selected account has an approved passkey compatible with the current and planned settings."
+        "Each account you chose is cloud-only, enabled, signs in with the onmicrosoft.com address, holds Global Administrator permanently, and has an approved passkey."
       ],
       "ifWrong": null,
       "lockedOut": {

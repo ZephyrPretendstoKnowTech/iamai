@@ -183,3 +183,10 @@ test('#19 the emergency tasks carry no filler, and configuring an existing accou
   assert.deepEqual([ADDRESS, ENABLE, DIRECT, PIM].map((re) => has(none, re)), [false, false, true, false])
   for (const steps of [address, eligible, none]) assert.equal(steps.at(-1), RETURN)
 })
+
+test('#20 Completion Criteria is the one line the owner approved', () => {
+  const LINE = 'Each account you chose is cloud-only, enabled, signs in with the onmicrosoft.com address, holds Global Administrator permanently, and has an approved passkey.'
+  for (const [name, edit] of [['demo', () => {}], ['demo-week2', () => {}], ['small', noAccounts]] as const) {
+    assert.deepEqual(opened(name, edit).body.contract.doneWhen, [LINE], name)
+  }
+})
