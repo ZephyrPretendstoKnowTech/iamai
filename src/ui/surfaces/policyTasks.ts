@@ -237,9 +237,7 @@ export function policyTasksOf(step: Step, title: string, artifacts: readonly Por
   const spliced = [
     outstanding.length === 0
       ? null
-      : outstanding.length === 1
-        ? fillText(app.plan.enforceOutstanding, { items: outstanding[0] })
-        : fillText(app.plan.enforceOutstandingMany, { items: list([...outstanding]) }),
+      : fillText(app.plan.enforceOutstanding, { items: list([...outstanding]) }),
   ].filter((line): line is string => line !== null)
   // ABOVE the heading, not inside the list.
   //

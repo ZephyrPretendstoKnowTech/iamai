@@ -261,7 +261,7 @@ test('5 + 6: a material change to an already-enabled policy is held while its re
 
   // The step says why, in its own words, rather than going quiet.
   const view = stepExportView(step, ctxFor(f, r, snapshot))
-  assert.ok(view.whatToDo.some((l) => l.includes('admin readiness is 66%') && l.includes('100%')), view.whatToDo.join(' | '))
+  assert.ok(view.whatToDo.some((l) => l.includes('It stays until every admin has a method it accepts (2 of 3 today).')), view.whatToDo.join(' | '))
 
   // With the prerequisite met, the readiness gate releases the same operation.
   const readySnapshot = structuredClone(snapshot)
@@ -353,8 +353,9 @@ test('the held step says which instruction is withheld, and is right about it', 
   // word, looked at what was on screen, and concluded the step was lying about
   // what it was holding. It was holding one thing: the operation that turns the
   // policy on. The sentence now says so, and this asserts it is true to say it.
+  // Owner, 2026-09-24 (walk list 4.x item 44): "It stays until {measure} reaches {threshold}".
   const sentence = String((pages.app as { plan: Record<string, string> }).plan.readinessHeld)
-  assert.ok(sentence.includes('turns the policy on'), 'the sentence does not name what is withheld')
+  assert.ok(sentence.startsWith('It stays until'), 'the sentence does not say what it waits for')
   assert.equal(sentence.includes('The instructions come back'), false, 'the unqualified claim is back')
 
   let seen = 0
