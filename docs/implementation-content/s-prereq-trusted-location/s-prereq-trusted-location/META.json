@@ -55,6 +55,8 @@
     "location.current.displayName",
     "location.current.ipRanges",
     "location.current.isTrusted",
+    "location.target.ipRangesText",
+    "location.correct.displayName",
     "evidence.signInIpSummary",
     "network.ownerNotes",
     "dependencies.blockers"

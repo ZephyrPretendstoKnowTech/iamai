@@ -4,7 +4,7 @@ import { followUpIdsOf, settleFollowUp } from './followUp.ts'
 import { addWorkflowSteps } from './workflows.ts'
 import { countDirectionImpact, directionSteps } from './direction.ts'
 import dependencyData from '../actionability/dependency-data.json' with { type: 'json' }
-import { answeredReasonOf } from './directionAnswers.ts'
+import { answeredReasonOf, officeLocationsCreated, trustedIpLocations } from './directionAnswers.ts'
 import { applyManualReviews, perUserMfaReading } from './manualWork.ts'
 // Step generation (roadmap.md §1–§6; 2026-08-27 redesign: collapsed phase 0,
 // per-tenant impact, safe-today lane, handle-with-care gating, comms drafts,
@@ -15,7 +15,7 @@ import { referenceUsage } from '../baseline/interpretation.ts'
 import type { BaselinePackage } from '../baseline/types.ts'
 import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
-import { PLACEHOLDER_STEP, implementable, resolveTenantPolicy, tenantObjectsOf, unmatchedStrengths } from './resolvePolicy.ts'
+import { PLACEHOLDER_STEP, implementable, matchedStrengthIds, resolveTenantPolicy, tenantObjectsOf, unmatchedStrengths } from './resolvePolicy.ts'
 import { accountApplicability, effectOf, emergencyExposureOf, enforcementHeld, isOpenPolicy, isValidOperation, operationsOf, stepEffects, strengthLookupOf, submitsEnforcement, tenantStrengthsOf, validOperations, unavailableReason } from './operations.ts'
 import type { PolicyEffect } from './operations.ts'
 import type { GrantFloor } from '../coverage/types.ts'
@@ -1181,33 +1181,47 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // created — is still drawn, because that is work and not a question.
   const locStepId = PREREQ_STEP_ID.trustedLocation
   if (canUseConditionalAccess) {
-    const ipLocations = (snapshot.config.namedLocations?.rows ?? [])
-      .map((l) => l as { id?: string; displayName?: string; isTrusted?: boolean; '@odata.type'?: string })
-      .filter((l) => String(l['@odata.type'] ?? '').includes('ipNamedLocation') && l.isTrusted === true && mapping.trustedLocationIds.includes(l.id ?? ''))
-    // Every trusted IP named location the scan read, selected or not. A tenant
-    // whose answer is "everyone works remotely" still has whatever its
-    // directory holds, and the tile said only "No office network is selected" —
-    // so a tenant carrying a trusted "Head office" read Completed beside a
-    // sentence that sounded like a reading of the tenant and was a reading of
-    // the answer. The answer still decides (decisions capture intent); the
-    // evidence stands beside it.
-    const trustedInTenant = (snapshot.config.namedLocations?.rows ?? [])
-      .map((l) => l as { id?: string; displayName?: string; isTrusted?: boolean; '@odata.type'?: string })
-      .filter((l) => String(l['@odata.type'] ?? '').includes('ipNamedLocation') && l.isTrusted === true)
-      .map((l) => (l.displayName ?? l.id ?? '').split(/\s+/).join(' ').trim())
-      .filter((n) => n.length > 0)
+    const networkRead = snapshot.config.namedLocations?.status === 'ok'
+    const trustedNow = trustedIpLocations(snapshot) ?? []
+    const picked = mapping.trustedLocationIds
     const proposed = proposedObjectNames(naming).trustedLocation
     const networkDraft = networkDraftOf(mapping)
     const networkConfirmed = mapping.wizardAnswered.trustedLocations === true && mapping.assumed?.trustedLocations !== 'detected'
-    const networkRead = snapshot.config.namedLocations?.status === 'ok'
-    // In place names the locations that make it so: the evidence a done step carries.
+    // The office the step is done with: the locations picked in Decide How and
+    // Where People Sign In, each one trusted; or, after "Not in Entra yet", the
+    // trusted location the scan found since (walk list item 6), which reopens
+    // that answer pre-filled with it (direction.ts officeNetworkQuestion).
+    const pickedTrusted = trustedNow.filter((l) => picked.includes(l.id))
+    const created = officeLocationsCreated(snapshot, mapping)
+    const office = networkRead && networkConfirmed && picked.length > 0 && pickedTrusted.length === picked.length ? pickedTrusted : created
+    const satisfied = networkRead && ((networkConfirmed && picked.length === 0) || office.length > 0)
+    // A picked location the scan reads without the trusted mark is marked
+    // trusted, not made again (walk list item 61).
+    const officeToTrust = !satisfied && networkRead && networkConfirmed
+      ? (snapshot.config.namedLocations?.rows ?? [])
+        .map((l) => l as { id?: string; displayName?: string; isTrusted?: boolean; '@odata.type'?: string })
+        .filter((l) => typeof l.id === 'string' && picked.includes(l.id) && l.isTrusted !== true && String(l['@odata.type'] ?? '').includes('ipNamedLocation'))
+        .map((l) => ({ id: l.id as string, name: (l.displayName ?? l.id ?? '').split(/\s+/).join(' ').trim() }))
+      : []
+    // Each office location, as the Satisfied card states it (walk list 14, 63):
+    // its ranges and the sign-ins from it. The scan checked every sign-in it
+    // collected, so none is a fact; where it collected none, no line is drawn.
+    const words = (contentStepById[locStepId] as unknown as { satisfied: { signIns: string; noSignIns: string } }).satisfied
+    const matches = snapshot.scenarioEvidence?.trustedLocationMatches?.byLocation ?? null
+    const facts = office.map((l) => ({
+      heading: l.name,
+      title: l.ranges.join(', '),
+      detail: matches === null ? null : (matches[l.name] ?? 0) > 0 ? fillText(words.signIns, { n: matches[l.name] }) : fillText(words.noSignIns, { name: l.name }),
+    }))
     steps.push({
       ...prereq(locStepId),
       naming: { proposed: networkDraft?.name ?? proposed.name, fromBaseline: null },
-      configurationFindings: networkRead && !networkConfirmed && !networkDraft ? [] : [{ key: 'trusted-network-choice', label: 'Trusted Network', value: !networkRead ? 'Locations not read' : !networkConfirmed ? 'Create the saved network' : mapping.trustedLocationIds.length === 0 ? 'Everyone is remote' : ipLocations.length === mapping.trustedLocationIds.length ? 'Confirmed locations found' : 'Selected location needs correction', detail: networkDraft && !networkConfirmed ? `${networkDraft.name}: ${networkDraft.ranges.join(', ')}. Create this IP named location in Entra, mark it trusted, then scan again and select it.` : !networkRead ? 'The named-location scan must succeed before IAMAI can verify the selected networks.' : mapping.trustedLocationIds.length === 0 ? `No office network is selected; location-based exceptions are not applied.${trustedInTenant.length > 0 ? ` The scan read ${trustedInTenant.length === 1 ? 'a trusted named location' : `${trustedInTenant.length} trusted named locations`} this answer leaves out: ${trustedInTenant.join(', ')}.` : ''}` : 'Each selected location must exist as a trusted IP named location in the scan.', outcome: !networkRead ? 'unknown' : networkConfirmed && (mapping.trustedLocationIds.length === 0 || ipLocations.length === mapping.trustedLocationIds.length) ? 'pass' : 'fail' }],
       // A tenant that already has an IP named location is preserving one, not making one.
-      ...stateFields(snapshot.config.namedLocations?.status === 'ok' && mapping.wizardAnswered.trustedLocations === true && mapping.assumed?.trustedLocations !== 'detected' && (mapping.trustedLocationIds.length === 0 || ipLocations.length === mapping.trustedLocationIds.length) ? { satisfied: true, inPlace: true } : {}),
-      deliveredBy: ipLocations.map((l) => l.displayName ?? l.id ?? '').filter((n) => n.length > 0),
+      ...stateFields(satisfied ? { satisfied: true, inPlace: true } : {}),
+      ...(satisfied && facts.length > 0 ? { satisfiedFacts: facts } : {}),
+      ...(officeToTrust.length > 0 ? { officeToTrust } : {}),
+      // In place names the locations that make it so: the evidence a done step carries.
+      deliveredBy: office.map((l) => l.name),
     })
     // Everyone works remotely: there is no network to define, so the step does
     // not apply (V1 decision 6), with the answer as its reason. It was Completed,
@@ -1241,12 +1255,18 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const s = name ? { ...prereq(strengthStepId), naming: { proposed: name, fromBaseline: name } } : prereq(strengthStepId)
     s.authenticationStrengthTarget = { allowedCombinations: requiredStrengths[0].allowedCombinations }
     const strengthRead = snapshot.config.authStrengths?.status === 'ok'
-    // Where the scan read no authentication strengths the step says nothing of it
-    // (walk list item 24): only a synthetic fixture reaches that read.
-    if (strengthRead) s.configurationFindings = [{ key: 'authentication-strength', label: 'Authentication Strength', value: strengthsUnanswered.length ? 'Matching strength missing' : 'Exact match found', detail: strengthsUnanswered.length ? `No scanned strength matches all required method combinations and restrictions. Create ${name || 'the required strength'} using the instructions below, then scan again.` : 'A scanned strength matches the baseline’s allowed method combinations and restrictions. IAMAI uses that existing object automatically.', outcome: strengthsUnanswered.length ? 'fail' : 'pass' }]
+    // The step's own card says what is left and, once done, names the strength
+    // that matched (walk list 14, 15): no second card repeats it in other words.
     if (strengthsUnanswered.length === 0 && strengthRead) {
       setState(s, { satisfied: true, inPlace: true })
-      s.deliveredBy = ['Scanned authentication strengths match the resolved baseline method combinations and restrictions.']
+      const rows = (snapshot.config.authStrengths?.rows ?? []) as { id?: unknown; displayName?: unknown }[]
+      const matched = matchedStrengthIds(planPolicies, tenantObjects)
+        .map((id) => rows.find((r) => typeof r.id === 'string' && r.id.toLowerCase() === id.toLowerCase()))
+        .map((r) => (typeof r?.displayName === 'string' && r.displayName.trim() !== '' ? r.displayName.trim() : null))
+        .filter((n): n is string => n !== null)
+      const subject = (contentStepById[strengthStepId] as unknown as { card?: { subject?: string } } | undefined)?.card?.subject ?? null
+      s.deliveredBy = matched
+      if (matched.length > 0 && subject) s.satisfiedFacts = matched.map((title) => ({ heading: subject, title, detail: null }))
     }
     steps.push(s)
   }

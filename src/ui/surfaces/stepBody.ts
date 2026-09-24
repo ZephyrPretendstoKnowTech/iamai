@@ -7,7 +7,6 @@ import { emergencyPasskeyTasksOf } from './emergencyPasskeyTasks.ts'
 import { drawsTaskAnatomy, ownCardWordsOf, policyTasksOf } from './policyTasks.ts'
 import { DORMANT_STEP_ID, DORMANT_WORDS, sectionThreeTasksOf, sectionThreeTasksText } from './sectionThreeTasks.ts'
 import { oneLine } from '../../content/implementation/project.ts'
-import { networkDraftOf } from '../../mapping/networkDraft.ts'
 import { prepareReadingOf } from './prepareSteps.ts'
 // The opened step's body, worked out once (A3): everything ContentStep.tsx draws
 // that is not a React concern — the contract under the lane engine's reading,
@@ -49,7 +48,7 @@ import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
 import type { WhoBlock } from './whoBlocks.ts'
 import { BASELINE_COMMIT, artifactText, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageRuntime, packageSourceLine, packageStateOf, planningPreview, reviewedPackageFor, setupAfterEnforcementOf, sourceCheckedLine, entraWithSettings, jsonWithPlanTag, workProcedureOf } from './stepPackage.ts'
 import { lifecycleResources, policyInspectionLines, resourceChannelAllowed, inspectionResource, emailResource, mfaPreparationEmail, deviceSetupResource, namedPortalResource, switchedOffRequest, switchedOffResources, withWorkflowVerification } from './stepResources.ts'
-import { projectSafely, projectExplanation, readinessSafely, troubleshootingSafely } from '../../content/implementation/project.ts'
+import { bindText, projectSafely, projectExplanation, readinessSafely, troubleshootingSafely } from '../../content/implementation/project.ts'
 import type { ChannelArtifact, OutputChannel, OwnerConfirmation, TroubleshootingScenario } from '../../content/implementation/project.ts'
 
 type Ex = Record<string, unknown>
@@ -532,14 +531,19 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
     produced.push({ id: 'portal', form: 'list', lines, text: () => lines.map((line: string, index: number) => `${index + 1}. ${line}`).join('\n'), note: null })
     supported.add('portal')
   }
-  if (step.id === 's-prereq-trusted-location') {
-    const draft = networkDraftOf(ctx.mapping)
-    const portal = produced.find(a => a.id === 'portal')
-    if (draft && portal && !step.state.satisfied) {
-      const intro = `Saved office network: ${draft.name}. Public IP ranges: ${draft.ranges.join(', ')}.`
-      const original = portal.text
-      portal.text = () => `${intro}\n\n${original()}`
-      if (portal.form === 'list') portal.lines = [intro, ...portal.lines]
+  // The office location picked in Decide How and Where People Sign In is in
+  // Entra without the trusted mark: the procedure marks it trusted, and nothing
+  // is created (walk list 61). It is the package's own correction for the
+  // trusted mark (entra.correct.trusted), naming the location; an object step's
+  // package projects only its create, so the step reads the block itself.
+  const trustBlock = step.id === 's-prereq-trusted-location' && (step.officeToTrust?.length ?? 0) > 0 && !step.state.satisfied ? pkg?.blocks['entra.correct.trusted'] ?? null : null
+  if (trustBlock && typeof ex.officeToTrust === 'string') {
+    const bound = bindText(trustBlock.text, { ...(pkgBindings ?? {}), 'location.correct.displayName': ex.officeToTrust }, new Set(['location.correct.displayName']))
+    if ('text' in bound && bound.text.trim() !== '') {
+      const text = bound.text
+      for (let i = produced.length - 1; i >= 0; i--) if (produced[i].id === 'portal') produced.splice(i, 1)
+      produced.push({ id: 'portal', form: 'markdown', lines: [], text: () => text, note: null })
+      supported.add('portal')
     }
   }
   for (const channel of [...supported]) if (!resourceChannelAllowed(step, channel)) supported.delete(channel)
@@ -629,6 +633,11 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // Access steps keep their own producers above and are never this.
   const outstandingForEnforce = [...new Set([...blockers.map((b) => b.title ?? b.label).filter((x): x is string => typeof x === 'string' && x.length > 0), ...(o.enforceWaits ?? [])])]
   const taskProjection: EmergencyTaskProjection | null = emergencyAccountTasks ?? sectionThree ?? (drawsTaskAnatomy(step.id) ? policyTasksOf(step, title, artifacts, ctx.mapping, outstandingForEnforce) : null)
+  // The task that marks a picked office location trusted is called what it does
+  // (whatToDoWhen.officeToTrust.task), and the rail's headline reads it.
+  if (taskProjection && step.id === 's-prereq-trusted-location' && (step.officeToTrust?.length ?? 0) > 0 && typeof w.task === 'string' && whole(w.task, ex)) {
+    for (const task of taskProjection.tasks) if (task.id === 'policy-procedure') task.title = fillText(w.task, ex)
+  }
   // The action column's Next milestone and its instruction line (stepContract.ts
   // railOf): the step's own words above, the one action its Readiness bar draws
   // — which it draws on screen only where the step has no task list, no

@@ -445,6 +445,9 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
     // Authentication-method configuration already exists in Entra, even when
     // disabled. This action changes its settings rather than creating an object.
     if (reading?.lane === 'Ready' && step.id === PASSKEY_SETTINGS_STEP_ID && reading.substatus === 'Create') reading.substatus = 'Correct'
+    // The office location picked in Decide How and Where People Sign In is in
+    // Entra without the trusted mark: the step marks it, it makes nothing (walk list 61).
+    if (reading?.lane === 'Ready' && (step.officeToTrust?.length ?? 0) > 0 && reading.substatus === 'Create') reading.substatus = 'Correct'
     // A saved exclusions-group choice is an existing object to inspect or
     // correct. Keep the create label only while no group has been saved.
     const savedExclusionsGroup = step.id === EXCLUSION_GROUP_STEP_ID
