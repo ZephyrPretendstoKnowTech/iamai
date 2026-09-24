@@ -223,12 +223,12 @@ function deviceQuestions(ctx: Context): DirectionQuestion[] {
   const registered = evidence?.registeredComputers?.people.length
   // Who signed in from a phone: the one reading MFA Readiness draws its phones from (derive/sets.ts).
   const phones = phoneSignInIds(ctx.snapshot)?.length
-  // A sign-in line is said only over sign-in records read whole, 30 days of
-  // them; over a read that stopped short the card says nothing about sign-ins
-  // (walk list 64).
-  const readWhole = ctx.snapshot.sources?.signInEvidence?.status === 'ok'
+  // A sign-in line is said only over sign-in records read whole (signInsReadWhole).
+  const readWhole = signInsReadWhole(ctx.snapshot)
   const seen = (n: number | undefined, some: string, none: string | null): string | null => !readWhole || n === undefined ? null : n > 0 ? fillText(some, { n }) : none
   const lines = (...all: (string | null)[]): string => all.filter((line): line is string => line !== null).join(' ')
+  // The device policies are on the plan only with Intune licences (their goals' applicability).
+  const intune = ctx.snapshot.capabilities?.intune?.enabled === true
   return [
     question('computers', ctx, {
       label: Q.computers.label, control: 'choice', options: optionsOf(Q.computers.options),
@@ -242,7 +242,10 @@ function deviceQuestions(ctx: Context): DirectionQuestion[] {
         seen(unjoined, Q.computers.today, Q.computers.todayNone),
         unjoined === undefined ? null : seen(registered, Q.computers.todayRegistered, null),
       ),
-      note: Q.computers.note,
+      // Only where Unmanaged does take the two steps off: the plan holds them
+      // only with Intune licences, and phones answered Compliant keep them on,
+      // scoped to phones (deviations.ts deviceStepDoesntApply).
+      note: intune && (savedAnswerOf('phones', ctx.mapping)?.value ?? 'apps') !== 'enrolled' ? Q.computers.note : null,
     }),
     question('phones', ctx, {
       label: Q.phones.label, control: 'choice', options: optionsOf(Q.phones.options),
@@ -251,7 +254,7 @@ function deviceQuestions(ctx: Context): DirectionQuestion[] {
       // Blocked from company data adds a policy step of its own (generate.ts
       // s-ladder-phone-access-restriction); Compliant adds phones to the
       // managed-device policy, which only a tenant with Intune licences can use.
-      note: lines(Q.phones.note, ctx.snapshot.capabilities?.intune?.enabled === true ? Q.phones.noteIntune : null),
+      note: lines(Q.phones.note, intune ? Q.phones.noteIntune : null),
     }),
     officeNetworkQuestion(ctx),
   ]
