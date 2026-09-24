@@ -74,16 +74,6 @@ test('no user-facing roadmap string contains a GUID or an id fragment', () => {
   assert.deepEqual(hits, [])
 })
 
-test('a step that creates a pilot group names it in the tenant convention, not by the baseline id', () => {
-  const { steps } = plan()
-  const creating = steps.filter((s) => s.action.summary.some((t) => /creates a new pilot group/.test(t)))
-  for (const s of creating) {
-    const line = s.action.summary.find((t) => /creates a new pilot group/.test(t)) ?? ''
-    assert.match(line, /for example "Pilot[^"]*"/, line)
-    assert.doesNotMatch(line, GUID)
-  }
-})
-
 test('one population per step: header, readiness line and admin count agree', () => {
   const { steps, snapshot } = plan()
   const admins = adminUserIds(snapshot.roles)

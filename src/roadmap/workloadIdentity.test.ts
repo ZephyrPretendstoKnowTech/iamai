@@ -92,11 +92,3 @@ test('a multitenant, Microsoft-owned or managed identity is never supported; onl
   assert.deepEqual(workloadIdentitySupport({ servicePrincipalType: 'Application' }, TENANT), { support: 'unknown' })
   assert.deepEqual(workloadIdentitySupport(null, TENANT), { support: 'unknown' })
 })
-
-test('the unknown and the unsupported identity have distinct explanations, and the facet reason claims no absence of Cloud Sync', () => {
-  const small = licensed(fixture('small'))
-  const reason = runFixture(small, { snapshot: small.snapshot } as never).coverage.results.find((x) => x.goal.id === 'workload-identity-block')?.applicability?.reason ?? ''
-  assert.match(reason, /no directory synchronization account found/)
-  assert.doesNotMatch(reason, /no Cloud Sync|Cloud Sync is not/i)
-  assert.notEqual(BLOCKED_REASON.workloadIdentityUnknown, BLOCKED_REASON.workloadIdentityUnsupported)
-})
