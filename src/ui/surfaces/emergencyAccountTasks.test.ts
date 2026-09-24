@@ -223,8 +223,7 @@ function dedicatedCase(edit: (value: Fixture, id: string) => void) {
   const run = runFixture(value)
   const step = run.steps.find(item => item.id === STEP)!
   const ctx: StepVarContext = { snapshot: value.snapshot, mapping: value.mapping, nameOf: x => run.input.names!.label(x), signature: 'IT', operatorId: value.operatorId, now: value.snapshot.asOf, groups: value.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
-  const recovery = (run.schedule.cleanup?.recoveryFindings ?? []).flatMap(finding => finding.items ?? []).filter(item => item.issueKeys?.some(key => key.startsWith('validation:bg.notPersonal:')))
-  return { id, step, accounts: emergencyAccountTasksOf(step, ctx).accounts, recovery }
+  return { id, step, accounts: emergencyAccountTasksOf(step, ctx).accounts }
 }
 
 test('Step 1 notes the dedicated-account signal where the selection is made, as a note that gates nothing', () => {
@@ -232,10 +231,8 @@ test('Step 1 notes the dedicated-account signal where the selection is made, as 
   const personal = dedicatedCase((value, id) => { value.snapshot.users.find(user => user.id === id)!.department = 'Finance' })
   const account = personal.accounts.find(row => row.accountId === personal.id)!
   assert.equal(account.notes?.length, 1)
-  // Today's wording, the same item Verify Emergency Access shows.
   assert.match(account.notes![0].label, /These signals do not prove daily use\./)
   assert.match(account.notes![0].value, /department Finance\. Profile fields alone do not establish daily use/)
-  assert.deepEqual(personal.recovery.map(item => [item.factLabel, item.value]), [[account.notes![0].label, account.notes![0].value]], 'Step 4 still shows it')
   // Not a check: the tile, its counts and the step read as they do without it.
   const strip = (rows: typeof plain.accounts) => rows.map(({ notes: _notes, ...row }) => row)
   assert.deepEqual(strip(personal.accounts), strip(plain.accounts))

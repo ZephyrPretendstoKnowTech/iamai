@@ -9,8 +9,10 @@ import { laneReadings } from './planLanes.ts'
 import { laneViewOf } from './planBoard.ts'
 import { stepBodyOf } from './stepBody.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { consolidateEmergencyReadiness, emergencySubjectsOf } from './emergencyReadiness.ts'
+import { consolidateEmergencyReadiness, emergencySubjectsOf, recoverySubjectsOf } from './emergencyReadiness.ts'
 import { passkeyReadiness } from './passkeyPresentation.ts'
+import { emergencyVerificationArtifacts, emergencyVerificationTasksOf } from './emergencyVerificationTasks.ts'
+import { cleanupEntry, cleanupSourceLine } from './cleanupExport.ts'
 import { readGroup } from '../../graph/collect/onDemand.ts'
 
 const GROUP = 's-prereq-exclusion-group'
@@ -30,6 +32,10 @@ function opened(value: Fixture, id: string) {
   return { run, step, body, tasks, cards, task, text: tasks.tasks.flatMap((t) => [...t.steps, ...(t.variants ?? []).flatMap((v) => v.steps)]).join('\n') }
 }
 const copy = (name: Parameters<typeof fixture>[0]): Fixture => structuredClone(fixture(name))
+const drillOf = (value: Fixture) => {
+  const phase = runFixture(value).schedule.cleanup!
+  return { phase, row: phase.rows.find((r) => r.kind === 'drill')! }
+}
 const upns = (value: Fixture): string => value.mapping.breakGlassUserIds.map((id) => `**${value.snapshot.users.find((u) => u.id === id)!.userPrincipalName}**`).join(', ')
 
 // ---- 1.2 Configure Emergency Exclusions ----
@@ -111,4 +117,29 @@ test('1.3 #12 the Methodology block is gone', async () => {
 
 test('1.3 #13 Configure Passkey Authentication hands over Entra and AI Info only', () => {
   assert.deepEqual(opened(copy('demo-week2'), PASSKEY).body.artifacts.map((a) => a.id), ['portal', 'ai'])
+})
+
+// ---- 1.4 Verify Emergency Access ----
+
+test('1.4 #17 the drill says when its source was checked, as every step does', () => {
+  assert.equal(cleanupSourceLine(cleanupEntry('drill')!), 'Source checked Sep 25, 2026')
+})
+
+test('1.4 #18 Tasks Remaining carries no Configuration card: the drill already waits on the steps it repeated', () => {
+  const { phase } = drillOf(copy('demo'))
+  assert.deepEqual((phase.recoveryFindings ?? []).map((f) => f.key), ['recovery-sign-ins'])
+  const cards = recoverySubjectsOf(phase.recoveryFindings ?? [], emergencyVerificationTasksOf(phase), new Map())
+  assert.deepEqual(cards.map((c) => c.heading), ['Sign-in evidence'])
+})
+
+test('1.4 #19 Verify emergency sign-in keeps no session reminder and no optional check', () => {
+  const { phase } = drillOf(copy('demo'))
+  const text = emergencyVerificationTasksOf(phase).tasks.flatMap((t) => t.steps).join('\n')
+  assert.doesNotMatch(text, /Keep your working administrator session open|Optional:|confirm the account can manage policies/)
+  assert.match(text, /^Confirm the account and tenant\.$/m)
+})
+
+test('1.4 #20 Verify Emergency Access hands over Entra and AI Info only', () => {
+  const { phase } = drillOf(copy('demo'))
+  assert.deepEqual(emergencyVerificationArtifacts(phase).map((a) => a.id), ['portal', 'ai'])
 })
