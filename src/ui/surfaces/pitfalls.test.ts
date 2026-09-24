@@ -12,7 +12,7 @@ import { CAMPAIGN_STEP_ID } from '../../roadmap/followUp.ts'
 import { smsRetirementOf } from '../../derive/smsRetirement.ts'
 import { readinessContextOf } from '../../derive/readinessContext.ts'
 import { readinessOf, stepContract } from './stepContract.ts'
-import { prepareReadingOf } from './prepareSteps.ts'
+import { prepareReadingOf, turnOnWithoutChoices } from './prepareSteps.ts'
 import { personLines, readinessNextOf } from './personNext.ts'
 import { unprovenIdsOf } from '../../derive/contentLists.ts'
 import { pitfallTilesOf } from './pitfalls.ts'
@@ -133,4 +133,14 @@ test('4.4 names the accounts MFA Readiness sets aside as scripts, with the fix f
   assert.ok(tile.names![0].includes(ctx.nameOf(id)))
   assert.match(tile.value, /^1 account signs in only from PowerShell or Graph tools$/)
   assert.match(tile.note ?? '', /Set a person up with their method; move a script that signs in with a password to an app registration before you turn this on\./)
+})
+
+test('Turn On Without Them for Now offers everyone not ready except the operator', () => {
+  const { step } = campaign(curatedFixture('demo'))
+  const missing = step.preparation!.missingIds
+  const operator = missing[0]
+  const offered = turnOnWithoutChoices(step, operator.toUpperCase())
+  assert.equal(offered.length, missing.length - 1, 'the operator is left out, whatever the case of the id')
+  assert.ok(!offered.includes(operator))
+  assert.deepEqual(turnOnWithoutChoices(step, null), missing, 'with no operator known, everyone not ready')
 })
