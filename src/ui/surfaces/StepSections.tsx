@@ -376,17 +376,19 @@ export function ReadinessSection({ readiness, lead, onWhy = null, onConfirm = nu
           {strip(readiness.satisfied, 'satisfied')}
         </details>
       )}
-      <div className="readiness-bar">
-        <div className="readiness-bar-main">
-          <span className="readiness-bar-head">{readiness.bar.main}</span>
-          {lead}
+      {/* The bar's status line only repeated the badge and the cards (owner,
+          2026-09-23: "Account preparation is verified." is useless); it carries
+          the action lead where one is handed in, and the Why link when shown. */}
+      {(lead || (onWhy && WHY_LINK_SHOWN)) && (
+        <div className="readiness-bar">
+          <div className="readiness-bar-main">{lead}</div>
+          {onWhy && WHY_LINK_SHOWN && (
+            <button type="button" className="inline-link" onClick={onWhy}>
+              {W.why}
+            </button>
+          )}
         </div>
-        {onWhy && WHY_LINK_SHOWN && (
-          <button type="button" className="inline-link" onClick={onWhy}>
-            {W.why}
-          </button>
-        )}
-      </div>
+      )}
       {children}
     </section>
   )

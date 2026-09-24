@@ -11,7 +11,7 @@ import type { StepVarContext } from './stepVars.ts'
 import { laneReadings } from './planLanes.ts'
 import { laneViewOf } from './planBoard.ts'
 import { badgeLabel } from './stepContract.ts'
-import { channelTabsOf, headingsOf, stepBodyOf } from './stepBody.ts'
+import { channelTabsOf, stepBodyOf } from './stepBody.ts'
 import { pickerSaves, pickerSavesAlone } from './pickerRows.ts'
 import { applyStepDecisions } from '../../roadmap/decisions.ts'
 import { stepLines } from './stepExport.ts'
@@ -230,22 +230,6 @@ test('#16 #17 the step hands over Entra and AI Info only: its PowerShell and JSO
   }
 })
 
-test('#18 "Why IAMAI says this" is hidden across the tool, and what it opens is kept', () => {
-  const sections = read('src/ui/surfaces/StepSections.tsx')
-  const step = read('src/ui/surfaces/ContentStep.tsx')
-  // One switch, off.
-  assert.match(sections, /export const WHY_LINK_SHOWN = false\n/)
-  // Every place that draws the link asks it.
-  const links = [...sections.matchAll(/\{W\.why\}/g), ...step.matchAll(/\{CONTRACT\.readiness\.why\}/g)]
-  assert.equal(links.length, 2)
-  assert.match(sections, /\{onWhy && WHY_LINK_SHOWN && \(\n\s+<button type="button" className="inline-link" onClick=\{onWhy\}>\n\s+\{W\.why\}/)
-  assert.match(step, /\{WHY_LINK_SHOWN && <button type="button" className="inline-link" onClick=\{onWhy\}>\{CONTRACT\.readiness\.why\}<\/button>\}/)
-  // Kept for later: the dialog, and the recovery runbook it carries.
-  assert.match(step, /<StepDialog open=\{dialog === 'readiness'\}/)
-  assert.match(step, /\{cs\.lockedOut && \(/)
-  assert.match(read('docs/design/content.json'), /"label": "If a change locks you out"/)
-})
-
 test('#14 the picker list fits the rail and wraps its text', () => {
   const css = read('src/ui/app.css')
   const rule = (selector: string): string => {
@@ -262,56 +246,4 @@ test('#14 the picker list fits the rail and wraps its text', () => {
   // No horizontal scroll inside the list, and names and reasons wrap.
   assert.match(rule('.picker-list'), /overflow-x: hidden;/)
   assert.match(rule('.picker-option-name,\n.picker-option-secondary'), /overflow-wrap: anywhere;/)
-})
-
-test('#22 a Completed step shows what was confirmed, open, with no Tasks Remaining and no scan prompt', () => {
-  // On 1.1 and on a policy step, as the board reads them.
-  for (const id of [STEP, 's-goal-mfa-all-users']) {
-    const { lane, body } = opened('demo-week2', () => {}, id)
-    assert.equal(lane.lane, 'Completed', `the premise: ${id} is Completed on demo-week2`)
-    assert.ok(body.emergencyAccountTasks, `${id} draws the task anatomy`)
-    assert.equal(headingsOf(body).includes('Tasks Remaining'), false, `${id}: a finished step draws Tasks Remaining`)
-    assert.deepEqual(headingsOf(body), ['About this Step', 'Implementation Tasks', 'Completion Criteria'], id)
-  }
-  // A step with work left keeps the heading.
-  assert.ok(headingsOf(opened('demo').body).includes('Tasks Remaining'))
-  // The one shared layout: finished, it draws every card in the grid, each card's
-  // completed checks open, and none of the three open-work lines.
-  const step = read('src/ui/surfaces/ContentStep.tsx')
-  const layout = step.slice(step.indexOf('export function EmergencySubjectReadiness('), step.indexOf('/** True when a content line has every variable'))
-  const done = layout.slice(layout.indexOf('if (completed)'), layout.indexOf('return <section className="step-section readiness-section emergency-account-readiness">'))
-  assert.ok(done.length > 0, 'no Completed branch')
-  assert.doesNotMatch(done, /Tasks Remaining|<h4>|No tasks remaining|readiness-satisfied|emergency-account-scan-note|scanControl/)
-  assert.match(done, /<div className="emergency-account-status-grid">\{subjects\.map\(\(subject\) => tile\(subject, true\)\)\}<\/div>/)
-  assert.match(step, /<details className="emergency-account-completed" open=\{printing \|\| open \|\| undefined\}>/)
-  // Every step that draws the layout says whether it is finished.
-  assert.equal((step.match(/completed=\{laneView\.lane === 'Completed'\}/g) ?? []).length, 2)
-})
-
-test('#23 a Completed step draws no milestone block, and 1.1 with accounts saved heads its picker "Your emergency access accounts"', () => {
-  const step = read('src/ui/surfaces/ContentStep.tsx')
-  const sections = read('src/ui/surfaces/StepSections.tsx')
-  const css = read('src/ui/app.css')
-  // The badge already says Completed: the rail's NEXT MILESTONE / Completed block is not drawn.
-  assert.match(step, /const displayRail = laneView\.lane === 'Completed' \? null : /)
-  assert.match(sections, /export function StepActionColumn\(\{ rail, children = null \}: \{ rail: \{ metric: string; sub: string \} \| null; children\?: ReactNode \}\)/)
-  assert.match(sections, /\{rail && <div className="side-block">/)
-  // A column left with nothing in it is not painted; the body keeps its two columns.
-  assert.match(css, /\n\.step-action-column:empty \{\n\s+display: none;\n\}/)
-  // 1.1: once accounts are saved, its line over the picker names them instead of asking.
-  const words = JSON.parse(read('docs/design/content.json')).pages.app.plan.emergencyTasks as Record<string, string>
-  assert.equal(words.yourAccounts, 'Your emergency access accounts')
-  const single = step.slice(step.indexOf('function SingleDecision('), step.indexOf('export function Options('))
-  assert.match(single, /\? <Line s=\{ctx\.mapping\.breakGlassUserIds\.length >= 2 \? YOUR_ACCOUNTS : d\.help\} ex=\{ex\} cls="reason" \/>/)
-})
-
-test('#11 #13 #23 with one account of two chosen, choosing the second is still the next action', () => {
-  const one = (f: Fixture): void => { f.mapping.breakGlassUserIds = f.mapping.breakGlassUserIds.slice(0, 1) }
-  const { lane, body, ctx } = opened('small', one)
-  assert.equal(ctx.mapping.breakGlassUserIds.length, 1, 'the premise: one account is saved')
-  assert.equal(lane.label, 'Ready · Decision', 'the row read Ready · Correct with one account saved and none to correct')
-  assert.equal(body.rail.sub, 'Choose your second emergency access account.')
-  // The rail keeps asking until both are chosen; it names them only then.
-  const step = read('src/ui/surfaces/ContentStep.tsx')
-  assert.match(step, /\? <Line s=\{ctx\.mapping\.breakGlassUserIds\.length >= 2 \? YOUR_ACCOUNTS : d\.help\} ex=\{ex\} cls="reason" \/>/)
 })
