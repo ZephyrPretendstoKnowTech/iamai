@@ -291,6 +291,8 @@ export function registeredComputers(rows: Iterable<StoredSignIn>): Derived {
 }
 
 const MAIL_OR_TEAMS = /exchange|outlook|teams/i
+/** Admin tools that reach Exchange: admin work, not everyday mail (walk list 3.x item 1). */
+const ADMIN_TOOL = /powershell|admin center|admin portal/i
 const AZURE_APP_IDS = new Set(['c44b4083-3bb0-49c1-b47d-974e53cbdf3c', '797f4846-ba00-4fd7-ba43-dac1f8f63013'])
 const AZURE_APP = /azure portal|azure service management/i
 
@@ -300,6 +302,7 @@ export function officeSignInsFold(): RowFold<PerPerson> {
     if (!row.userId) return
     const label = `${row.appDisplayName ?? ''} ${row.resourceDisplayName ?? ''} ${row.clientAppUsed ?? ''}`
     if (!MAIL_OR_TEAMS.test(label) && !LEGACY_ANY.test(row.clientAppUsed ?? '')) return
+    if (ADMIN_TOOL.test(`${row.appDisplayName ?? ''} ${row.clientAppUsed ?? ''}`)) return
     acc.hit(row, appName(row))
   }, (acc) => acc.outPerPerson())
 }
