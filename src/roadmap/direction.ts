@@ -215,47 +215,35 @@ function deviceQuestions(ctx: Context): DirectionQuestion[] {
   const registered = evidence?.registeredComputers?.people.length
   // Who signed in from a phone: the one reading MFA Readiness draws its phones from (derive/sets.ts).
   const phones = phoneSignInIds(ctx.snapshot)?.length
-  // "None was seen" is said only over sign-in records read whole. An
-  // interrupted or capped read never reached the sign-ins before where it
-  // stopped, and "Today: no phone sign-ins were seen." over a read that missed
-  // the iPhone sign-ins 3 and 10 days back is a claim about records nobody read
-  // (NEW-Nadia-D4). What was seen is still said; the flat negative is not.
+  // A sign-in line is said only over sign-in records read whole, 30 days of
+  // them; over a read that stopped short the card says nothing about sign-ins
+  // (walk list 64).
   const readWhole = ctx.snapshot.sources?.signInEvidence?.status === 'ok'
-  // And what was seen is said as what was seen. Over a read that stopped short,
-  // "Today: 3 people signed in from phones." stated the hours it reached as the
-  // tenant's number, beside a choice where an undercount argues for Blocked from
-  // company data or makes requiring managed computers look cheap. Each count
-  // says it is from the part that was read (NEW-Nadia-D4 review).
-  const count = (whole: string, part: string, n: number): string => fillText(readWhole ? whole : part, { n })
+  const seen = (n: number | undefined, some: string, none: string | null): string | null => !readWhole || n === undefined ? null : n > 0 ? fillText(some, { n }) : none
+  const lines = (...all: (string | null)[]): string => all.filter((line): line is string => line !== null).join(' ')
   return [
     question('computers', ctx, {
       label: Q.computers.label, control: 'choice', options: optionsOf(Q.computers.options),
-      // The recommendation, and what it would cost here. Managed means joined
-      // AND enrolled, so every computer under this answer needs an Intune
-      // licence — and the question offered the baseline's advice with nothing
-      // about the tenant beside it, on a tenant holding 300 seats with 41 in
-      // use. Picking the suggestion was committing to enrolment without being
-      // shown whether the licences for it existed.
+      // What Managed would cost here: the Intune licences the tenant holds.
       suggested: answer('managed'),
-      evidence: [W.baselineEvidence, intuneSeatLine(ctx)].filter((line): line is string => line !== null).join(' '),
       // Two populations, each saying what it counted. `unjoinedComputers` is
       // devices with NO trust type; a REGISTERED computer is not joined either,
-      // and this question decides whether every company computer gets joined
-      // and enrolled — so leaving the registered ones out of a line headed
-      // "computers that aren't joined" understated a 2,339-person fleet as 3.
-      today: unjoined === undefined ? null : [
-        unjoined > 0 ? count(Q.computers.today, Q.computers.todayPartial, unjoined) : readWhole ? Q.computers.todayNone : null,
-        registered === undefined ? null : registered > 0 ? count(Q.computers.todayRegistered, Q.computers.todayRegisteredPartial, registered) : null,
-      ].filter((line): line is string => line !== null).join(' ') || null,
+      // so leaving the registered ones out understated a 2,339-person fleet as 3.
+      evidence: lines(
+        intuneSeatLine(ctx),
+        seen(unjoined, Q.computers.today, Q.computers.todayNone),
+        unjoined === undefined ? null : seen(registered, Q.computers.todayRegistered, null),
+      ),
+      note: Q.computers.note,
     }),
     question('phones', ctx, {
       label: Q.phones.label, control: 'choice', options: optionsOf(Q.phones.options),
-      suggested: answer('apps'), evidence: W.baselineEvidence,
-      today: phones === undefined ? null : phones > 0 ? count(Q.phones.today, Q.phones.todayPartial, phones) : readWhole ? Q.phones.todayNone : null,
-      // Blocked from company data is not a setting on this step: it adds a
-      // policy step of its own (generate.ts s-ladder-phone-access-restriction),
-      // which the question never said (owner, 2026-09-20).
-      note: Q.phones.note,
+      suggested: answer('apps'),
+      evidence: lines(seen(phones, Q.phones.today, Q.phones.todayNone)),
+      // Blocked from company data adds a policy step of its own (generate.ts
+      // s-ladder-phone-access-restriction); Compliant adds phones to the
+      // managed-device policy, which only a tenant with Intune licences can use.
+      note: lines(Q.phones.note, ctx.snapshot.capabilities?.intune?.enabled === true ? Q.phones.noteIntune : null),
     }),
     officeNetworkQuestion(ctx),
   ]
@@ -270,7 +258,9 @@ function deviceQuestions(ctx: Context): DirectionQuestion[] {
 function officeNetworkQuestion(ctx: Context): DirectionQuestion {
   const { snapshot } = ctx
   const read = snapshot.config.namedLocations?.status === 'ok'
-  const trusted = read ? (snapshot.config.namedLocations.rows ?? []).map((raw) => raw as { id?: string; isTrusted?: boolean; '@odata.type'?: string }).filter((l) => typeof l.id === 'string' && l.isTrusted === true && String(l['@odata.type'] ?? '').includes('ipNamedLocation')).map((l) => l.id as string) : []
+  const locations = read ? (snapshot.config.namedLocations.rows ?? []).map((raw) => raw as { id?: string; displayName?: string; isTrusted?: boolean; '@odata.type'?: string }).filter((l) => typeof l.id === 'string' && l.isTrusted === true && String(l['@odata.type'] ?? '').includes('ipNamedLocation')) : []
+  const trusted = locations.map((l) => l.id as string)
+  const names = locations.map((l) => l.displayName ?? (l.id as string)).join(', ')
   return (
     question('officeNetwork', ctx, {
       label: Q.officeNetwork.label, control: 'locations', options: optionsOf(Q.officeNetwork.options), pickedWith: 'office',
@@ -287,10 +277,11 @@ function officeNetworkQuestion(ctx: Context): DirectionQuestion {
       // opposite answer. A reader who reads carefully, which is who this
       // question is for, met a contradiction on one line and no way to tell
       // which half to believe.
+      // Named locations not read: no evidence line (walk list 60).
       evidence: [
-        !read ? W.defaultEvidence : trusted.length > 0 ? fillText(Q.officeNetwork.seen, { n: trusted.length }) : Q.officeNetwork.notSeen,
+        !read ? null : trusted.length > 0 ? fillText(Q.officeNetwork.seen, { n: trusted.length, names }) : Q.officeNetwork.notSeen,
         read && trusted.length > 0 && savedAnswerOf('officeNetwork', ctx.mapping)?.value === 'remote'
-          ? fillText(Q.officeNetwork.savedRemoteUnused, { n: trusted.length })
+          ? fillText(Q.officeNetwork.savedRemoteUnused, { names })
           : null,
       ].filter((line): line is string => line !== null).join(' '),
       note: Q.officeNetwork.note,
