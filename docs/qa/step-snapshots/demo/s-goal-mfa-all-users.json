@@ -14,10 +14,6 @@
   ],
   "tiles": [
     {
-      "label": "Threshold",
-      "state": "At least 70% MFA-ready"
-    },
-    {
       "label": "Dormant Accounts",
       "state": "1 account hasn't signed in for 90 days and has no method"
     },

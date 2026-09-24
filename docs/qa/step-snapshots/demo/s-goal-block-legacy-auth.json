@@ -5,7 +5,7 @@
   "fact": "Enforced",
   "badge": "On Hold",
   "bar": "Waiting on your answers",
-  "rail": "Correct the policy",
+  "rail": "Waiting on your answers",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -13,10 +13,6 @@
     "Completion Criteria"
   ],
   "tiles": [
-    {
-      "label": "Legacy sign-ins",
-      "state": "3 accounts signed in with legacy authentication in the last 30 days"
-    },
     {
       "label": "Configure Emergency Exclusions",
       "state": "Prerequisite · To do"

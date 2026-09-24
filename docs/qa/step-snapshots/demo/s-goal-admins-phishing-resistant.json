@@ -5,7 +5,7 @@
   "fact": "Report-only",
   "badge": "On Hold",
   "bar": "When every admin has a method it accepts (2 of 3)",
-  "rail": "Require Phishing-Resistant MFA for Admins",
+  "rail": "Turn the policy on",
   "headings": [
     "About this Step",
     "Tasks Remaining",

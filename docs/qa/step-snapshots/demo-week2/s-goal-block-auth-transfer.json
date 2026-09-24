@@ -14,10 +14,6 @@
   ],
   "tiles": [
     {
-      "label": "Observation",
-      "state": "Report-only"
-    },
-    {
       "label": "Confirm What You Use",
       "state": "Waiting on your answers"
     }

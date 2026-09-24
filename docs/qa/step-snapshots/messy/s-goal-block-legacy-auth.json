@@ -16,10 +16,6 @@
     {
       "label": "Confirm What You Use",
       "state": "Waiting on your answers"
-    },
-    {
-      "label": "Verify Emergency Access",
-      "state": "Prerequisite · Waiting"
     }
   ],
   "channels": [
