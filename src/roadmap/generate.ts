@@ -2806,7 +2806,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       : (methodsPolicyRow.authenticationMethodConfigurations ?? []).some(
           (c) => c.id?.toLowerCase() === 'temporaryaccesspass' && c.state === 'enabled',
         )
-  const trustedLocationCount = mapping.trustedLocationIds.length
+  // The trusted named locations Entra holds, whatever the office network answer
+  // says: registration's hold waits on one existing, not on the answer naming it.
+  const trustedLocationCount = (snapshot.config.namedLocations?.rows ?? []).filter((l) => (l as { isTrusted?: boolean }).isTrusted === true).length
 
   // ---- Sequence safety (audit-program Layer C, guidance-audit-01) ----
   // Ordering rules that hold for any tenant, each one a way somebody gets
