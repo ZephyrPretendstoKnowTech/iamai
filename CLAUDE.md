@@ -24,28 +24,29 @@ come from `docs/design/content.json`; the plan comes from the tenant snapshot + 
 - While working: `npm run verify -- <relevant .test.ts files>` runs type checking and focused tests.
   Before a routine push, `npm run verify -- --prepush <relevant .test.ts files>` adds the site build
   and overlaps those focused tests with browser smoke. Name every test file that covers the change.
-  Check a decision, policy and completed step at desktop/mobile widths when shared UI changes.
+  Check a decision, policy and completed step at desktop width when shared UI changes (web only:
+  nobody uses IAMAI Planner from a phone).
   Test saving, completion and reopening when those transitions change; compare screen/export where applicable.
-  CI runs the full suite once per PR update. Do not repeat a full local suite on unchanged code.
+  CI runs only on demand, for major changes (`gh workflow run ci --ref main`); a small fix never
+  waits for it. Do not repeat a full local suite on unchanged code.
   Use `npm run verify -- --release` only when a local full preflight is necessary.
   Review the final diff against the requested scope and state any unverified outcome explicitly.
   Never run the walk (`npm run walk`) casually or add a walk invariant: a unit test per item
   is the acceptance, and the walk is a discovery tool, not a gate. It runs NOWHERE automatically
   — `ci.yml` has three jobs (checks, browser, ci) and no walk — so nothing but a deliberate
-  local run exercises it. CI runs the full suite, the build and smoke.
+  local run exercises it. CI, when run, covers the full suite, the build and smoke.
 - Commit per change, plain message. No reports.
-- Done means: the acceptance is visible on screen, a unit test asserts it, pushed, CI green.
-  deploy-pages waits for ci and publishes only the commit it passed on, so red CI means the
-  live site is unchanged. Never push to main with the required check bypassed: that is the
-  one thing that puts unvalidated code in front of people.
+- Done means: the acceptance is visible on screen, a unit test asserts it, pushed and deployed.
+  deploy-pages publishes main on every push (its build is the gate). Batch fixes into one push;
+  run CI on demand for a major change (owner, 2026-09-23).
 - `.githooks/pre-push` runs the tenant-data guard and the typecheck on every push (~2.5s);
   `git config core.hooksPath .githooks` turns it on in a fresh clone. The guard is there because
-  this repo is public and a push is a disclosure — CI runs the same check, but after the push.
+  this repo is public and a push is a disclosure.
   It reads tracked files as they are, so a value added and removed inside one push is not caught.
 - Before pushing, run `npm run verify -- --prepush <the test files the change touches>`
   (typecheck, tenant guard, those tests, the build and browser smoke). Focused runs alone
-  cannot catch a break in a file you did not think to name — that is what CI is for, and it
-  is why the deploy waits for it. `--release` runs the full suite locally where you need it.
+  cannot catch a break in a file you did not think to name — for a major change, run CI on
+  demand. `--release` runs the full suite locally where you need it.
 - The tool helps with strictness and never requires it. A decision may narrow scope or defer;
   it never weakens a grant. The baseline's version is always shown beside the person's choice.
 - Do not read `archive/`. Do not read `content.json` whole; grep the key you need.

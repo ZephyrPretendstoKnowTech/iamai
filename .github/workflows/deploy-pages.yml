@@ -1,18 +1,11 @@
-# Publish the exact commit ci validated. The build is still a gate — a commit
-# that cannot compile deploys nothing — but it is no longer the ONLY one: this
-# waits for ci to pass on that same commit and deploys nothing otherwise.
-#
-# It used to run on push, beside ci and never waiting for it, and the workflow
-# said so in as many words. That made branch protection the only thing standing
-# between a red suite and production, so an admin push with the required check
-# bypassed put 61 unvalidated commits on the live site; ci then failed on eight
-# unit tests and a smoke check, on code already serving. The push stays instant;
-# what waits is the deploy.
+# Publish main on every push. The build is the gate: a commit that cannot
+# compile deploys nothing. The full ci suite no longer gates the deploy; it runs
+# on demand for major changes (owner, 2026-09-23), so a small fix reaches the
+# live site in minutes instead of waiting on a twenty-minute suite. Local
+# `npm run verify -- --prepush` and the pre-push hook run before each push.
 name: deploy-pages
 on:
-  workflow_run:
-    workflows: [ci]
-    types: [completed]
+  push:
     branches: [main]
   workflow_dispatch:
 permissions:
@@ -24,8 +17,6 @@ concurrency:
   cancel-in-progress: true
 jobs:
   deploy:
-    # A manual run deploys what it is pointed at; a ci run deploys only a green one.
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment:
@@ -34,9 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # The commit ci validated, not the tip of main: a second push while ci
-          # runs must not ride out on the first one's green.
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
