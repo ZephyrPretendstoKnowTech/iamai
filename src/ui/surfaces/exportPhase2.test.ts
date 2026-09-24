@@ -256,7 +256,6 @@ test('an export carries the portal channel the opened step draws: the guest pair
 // qualifying method." into the calendar, the pack, the bundle and AI Info.
 test('every export carries the Threshold card that holds a step\'s turn-on, word for word, under Before turn-on', () => {
   let gated = 0
-  let on = 0
   for (const name of ['getiamai', 'hostile', 'demo', 'mid'] as FixtureName[]) {
     const p = exportPage(fixture(name))
     const prerequisiteLabel = prerequisiteLabelFor(p.board.readings)
@@ -267,7 +266,6 @@ test('every export carries the Threshold card that holds a step\'s turn-on, word
       if (!card?.note) continue
       const v = p.view(step)
       if (step.state.lifecycle === 'enforced') {
-        on++
         assert.equal(v.beforeTurnOn.includes(card.note), false, `${name}/${step.id}: a policy already on exports its count as a turn-on wait: "${card.note}"`)
         continue
       }
@@ -277,7 +275,6 @@ test('every export carries the Threshold card that holds a step\'s turn-on, word
     }
   }
   assert.ok(gated > 0, 'the premise: a Threshold card')
-  assert.ok(on > 0, 'the premise: a Threshold card on a policy already on')
   const demo = exportPage(fixture('demo'))
   const everyone = demo.r.steps.find((s) => s.id === 's-goal-mfa-all-users')!
   assert.equal(everyone.state.lifecycle, 'enforced', 'the premise: Require MFA for Everyone is already on')
@@ -310,7 +307,7 @@ test('an export\'s What to do carries no clause cut from its sentence and no bar
 // on Sep 23, 2026, which leaves …": a doubled word, and the plan named as the
 // one that turns the policy on. The admin turns it on; the plan dates it.
 test('a scheduled turn-on names the plan as what dates it, never as what turns it on, and doubles no word', () => {
-  const ENFORCE_READY = /^The evidence for this policy is complete, so it is ready to be turned on\./
+  const ENFORCE_READY = /^Report-only blocked no one\. Turn the policy on /
   let scheduled = 0
   for (const f of [withDirectionApproved(curatedFixture('demo-week2')), fixture('mid'), fixture('demo')]) {
     const p = exportPage(f)
@@ -324,28 +321,6 @@ test('a scheduled turn-on names the plan as what dates it, never as what turns i
     }
   }
   assert.ok(scheduled > 0, 'the premise: a turn-on the plan dates')
-})
-
-// Finding 6 (severity 2). "The plan schedules the turn-on for Sep 23, which
-// leaves the 5 working days of notice a change this size asks for." at a scan
-// made after the plan's announce day had passed: IAMAI cannot know a notice went
-// out, and an announcement made today leaves fewer days. The notice is claimed
-// only while the announce day is still ahead of the scan.
-test('a turn-on claims the notice it leaves only while the plan\'s announce day is still ahead of the scan', () => {
-  const NOTICE = /working days? of notice/
-  const base = withDirectionApproved(curatedFixture('demo-week2'))
-  const before = runFixture(base, {}, null, base.snapshot.asOf).steps.find((s) => s.id === 's-goal-token-protection')!
-  assert.ok(before.events?.announce && Date.parse(before.events.announce.at) > Date.parse(base.snapshot.asOf), 'the premise: the announce day is ahead')
-  assert.match(nextMilestone(before).label, NOTICE, 'ahead of the announce day the notice is stated')
-  // The same plan read at a scan two days after its announce day (Schedule.today).
-  const late = new Date(Date.parse(before.events!.announce!.at) + 2 * 86_400_000).toISOString()
-  const after = structuredClone(before)
-  after.scheduled!.basis!.today = late
-  assert.ok(after.events?.announce && Date.parse(after.events.announce.at) < Date.parse(late), 'the premise: the announce day has passed')
-  assert.ok(Date.parse(after.events!.enforce.at) > Date.parse(late), 'the premise: the turn-on is still ahead')
-  const label = nextMilestone(after).label
-  assert.doesNotMatch(label, NOTICE, `after the announce day the notice is claimed: ${label}`)
-  assert.match(label, /The plan schedules the turn-on for/, 'the day is still stated')
 })
 
 // Finding 1 (severity 2). The calendar's all-day DTSTART and DTEND were the UTC

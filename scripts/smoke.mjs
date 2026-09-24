@@ -1157,7 +1157,7 @@ try {
   if (await openRow('/Identify Service and Shared Accounts/')) {
     decideNote = await evaluate(`[...document.querySelectorAll('main.page .step-body button')].map((b) => b.textContent.trim() + (b.disabled ? ' (disabled)' : '')).join('|')`)
     const hasPicker = await evaluate(`!!document.querySelector('main.page .step-body .direction-question[data-question="serviceAccounts"] .direction-question-picker')`)
-    decided = hasPicker && (await clickText(`/^${CONTENT_PAGES.app.plan.direction.approve}$/`, 'main.page .step-body .direction-section'))
+    decided = hasPicker && (await clickText(`/^${CONTENT_PAGES.app.plan.direction.approve}$/`, 'main.page .direction-approve'))
     await sleep(400)
   }
   check('Demo: a picker decision is saved', decided, decideNote || openNote)
@@ -1423,7 +1423,7 @@ try {
   // this is the check that exercises it.
   await evaluate(`location.hash = '#/plan/s-direction-devices'`)
   const devicesOpen = await waitFor(`!!document.querySelector('main.page .plan-row[data-step="s-direction-devices"][aria-expanded="true"]') && !!document.querySelector('main.page .step-body .direction-section')`, 6000)
-  const devicesApproved = devicesOpen && (await clickText(`/^${CONTENT_PAGES.app.plan.direction.approve}$/`, 'main.page .step-body .direction-section'))
+  const devicesApproved = devicesOpen && (await clickText(`/^${CONTENT_PAGES.app.plan.direction.approve}$/`, 'main.page .direction-approve'))
   const createLineOf = `((document.querySelector('main.page .plan-create-now') || {}).textContent || '').trim()`
   const createDrawn = devicesApproved && (await waitFor(`/^[0-9]+ polic(y is|ies are) ready to create in report-only now[.] Show them$/.test(${createLineOf})`, 8000))
   const createText = await evaluate(createLineOf)

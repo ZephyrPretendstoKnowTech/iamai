@@ -15,14 +15,17 @@ import { planStateOf } from './planState.ts'
 
 const RUNS: (() => Fixture)[] = [() => fixture('demo'), () => fixture('demo-week2'), () => fixture('small'), () => fixture('mid'), () => fixture('messy'), () => fixture('midflight'), () => curatedFixture('getiamai'), ...allCuratedFixtures().map((f) => () => f)]
 
-test('available account checks say Review while policy creation keeps Create', () => {
+// Ready's word is the work that is ready (walk list item 18, owner 2026-09-23):
+// a check says its own work, and one with nothing to review or create reads Ready.
+test('available account checks say their own work while policy creation keeps Create', () => {
   const { steps } = runFixture(curatedFixture('demo'))
   const readings = laneReadings(steps)
+  const OWN: Record<string, string | null> = { 's-check-dormant-accounts': 'Review', 's-check-separate-admin-accounts': 'Create' }
   let checks = 0
   for (const step of steps) {
     const reading = readings.get(step.id)
     if (reading?.lane === 'Ready' && step.kind === 'check' && step.state.condition !== 'needs-decision') {
-      assert.equal(reading.substatus, 'Review', step.id)
+      assert.equal(reading.substatus, OWN[step.id] ?? null, step.id)
       checks += 1
     }
   }
@@ -71,7 +74,6 @@ test('every row lands in exactly one lane, delivered work is Completed and skipp
       if (s.status === 'done') assert.deepEqual([v.lane, v.substatus], (s.unsavedInputs ?? []).length > 0 ? ['On Hold', null] : ['Completed', null], `${f.name}/${s.id}: delivered work is ${v.lane}`)
       if (s.status === 'skipped') assert.equal(v.lane, 'Deferred', `${f.name}/${s.id}: skipped work is ${v.lane}`)
       if (v.lane === 'Completed') assert.equal(s.status, 'done', `${f.name}/${s.id}: Completed holds a step the plan has not finished`)
-      if (v.lane === 'Ready') assert.notEqual(v.substatus, null, `${f.name}/${s.id}: Ready without a substatus`)
       if (v.lane === 'Up Next' && v.fromEngine) assert.ok(v.reason && !v.reason.abnormal, `${f.name}/${s.id}: Up Next behind an abnormal blocker`)
       // On Hold needs no abnormal blocker (owner's status contract): a deeper prerequisite or an evidence wait qualifies, but it always names one.
       if (v.lane === 'On Hold' && v.fromEngine) assert.ok(v.reason !== null, `${f.name}/${s.id}: On Hold with no reason`)

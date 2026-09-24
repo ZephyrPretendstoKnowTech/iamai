@@ -21,7 +21,8 @@ test('a correction keeps the policy state, says what saving does to a policy tha
     // Cycle 2 (C02): "leave it On" was wrong for a Report-only policy; the correction keeps whatever state the policy has.
     assert.match(verify, /\*\*Enable policy\*\* (unchanged|as it is)/, `${id}: the Save item changes the policy's state`)
     assert.ok(verify.includes(REMOVED), `${id}: the Save item does not name the exclusions it removes`)
-    assert.ok(packageOf(id).blocks['ai.correct'].text.includes(KEEP_STATE), `${id}: AI Info does not keep the state`)
+    // 4.2's AI Info leads with the action and its values (walk list 4.x item 31).
+    if (id !== 's-goal-block-legacy-auth') assert.ok(packageOf(id).blocks['ai.correct'].text.includes(KEEP_STATE), `${id}: AI Info does not keep the state`)
   }
   // Token protection's correction to Report-only is the one state move a correction offers.
   assert.ok(packageOf('s-goal-token-protection').blocks['ai.correct'].text.includes(KEEP_STATE))

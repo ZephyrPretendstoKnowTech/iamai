@@ -78,7 +78,8 @@ test('new-group procedure discovers the group before selecting it, which saves i
   const discover = text.indexOf('Scan to update the plan')
   const select = text.indexOf('Select the new group')
   assert.ok(discover >= 0 && select > discover)
-  assert.match(text.slice(select), /^Select the new group under \*\*Exclusions group\*\*\. Scan again/)
+  // The task ends on selecting the new group (27e265ef).
+  assert.match(text.slice(select), /^Select the new group under \*\*Exclusions group\*\*\.$/)
   assert.doesNotMatch(text, /\*\*Save\*\*/)
 })
 

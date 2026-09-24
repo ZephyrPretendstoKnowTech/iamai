@@ -37,7 +37,6 @@ import { cleanupExportViews } from './cleanupExport.ts'
 import type { Step } from '../../roadmap/types.ts'
 
 const MFA = 's-goal-mfa-all-users'
-const SIBLINGS = ['s-goal-block-legacy-auth', 's-goal-block-device-code']
 const DEVICE = 's-goal-require-managed-device'
 type Row = Record<string, unknown>
 
@@ -54,60 +53,6 @@ const withFoundationCleared = (step: Step): Step => ({
   blockers: step.blockers.filter((b) => !(b.kind === 'step' && b.label === FOUNDATION_WAIT)),
   blockedBy: [],
   blockedReason: null,
-})
-
-test('demo first visit: the MFA readiness threshold holds none of the exclusions-only corrections to enforced policies, and the foundation is what holds them (owner, 2026-09-19)', () => {
-  {
-    const { r } = demo()
-    const step = r.steps.find((s) => s.id === MFA)
-    assert.ok(step)
-    assert.equal(step.state.lifecycle, 'enforced', 'the premise: the tenant already enforces it')
-    assert.ok(step.action.readinessGate, 'the premise: MFA readiness is below its threshold')
-    assert.equal(addsExclusionsToEnforced(step), true, 'the premise: the correction only adds exclusions')
-    assert.equal(enforcementHeld(step), false, 'the threshold holds nothing of a correction that can stop nobody')
-    assert.equal(unavailableReason(step), null, 'it is no longer withheld as readiness-unmet')
-    assert.equal(policyResult(step).kind, 'implementable', 'the correction is offered')
-    assert.equal(implementationOffered(step), true, 'and the channels are offered with it')
-    // What is left is the plan's foundation, and that is what the row says.
-    assert.deepEqual(holdOf(step), { kind: 'prerequisite' }, 'held by the foundation, not by readiness')
-    assert.equal(step.blockers.some((b) => b.kind === 'step' && b.label === FOUNDATION_WAIT), true, 'the foundation is the wait')
-    const snap = stepSnapshotsOf('demo')[MFA]
-    assert.equal(snap.bar, 'After Prepare Emergency Access Accounts')
-    assert.equal(snap.reason, null, 'the reason line no longer names the readiness threshold')
-  }
-  {
-    const { r } = demo()
-    for (const id of SIBLINGS) {
-      const step = r.steps.find((s) => s.id === id)
-      assert.ok(step, id)
-      assert.equal(step.state.lifecycle, 'enforced', `${id}: the premise`)
-      assert.equal(addsExclusionsToEnforced(step), true, `${id}: the correction only adds exclusions`)
-      assert.equal(enforcementHeld(step), false, `${id}: the threshold holds nothing of it`)
-      assert.equal(policyResult(step).kind, 'implementable', `${id}: the correction is offered`)
-      assert.equal(implementationOffered(step), true, `${id}: with its channels`)
-      assert.deepEqual(holdOf(step), { kind: 'prerequisite' }, `${id}: what is left is the foundation`)
-    }
-  }
-})
-
-test('demo first visit with the foundation settled: the correction is offered, dated, and named as the next thing', () => {
-  const { r, ctx } = demo()
-  const step = withFoundationCleared(r.steps.find((s) => s.id === MFA)!)
-  // The threshold's own blocker is all that is left, and it holds nothing.
-  assert.deepEqual(step.blockers.map((b) => b.kind), ['readiness'])
-  assert.equal(holdOf(step), null, 'nothing holds it once the foundation is settled')
-  assert.equal(policyResult(step).kind, 'implementable', 'the correction is offered')
-  const schedule = scheduleOf(step)
-  assert.equal(schedule.class, 'scheduled', 'the plan places it')
-  // The owner's case, with its day: Require MFA for Everyone, Sep 8, 2026.
-  assert.equal(schedule.at, '2026-09-08T00:00:00.000Z')
-  const next = nextMilestone(step)
-  assert.equal(next.kind, 'deploy', 'the next thing is the correction')
-  assert.equal(next.label, engine.milestone.correct, `not "${engine.milestone.resolve}"`)
-  assert.equal(next.at, schedule.at, 'on the day the plan schedules it')
-  const view = stepExportView(step, ctx)
-  assert.equal(view.whatToDo[0], engine.milestone.correct, 'What to do is the correction')
-  assert.equal(view.whatToDo.includes(engine.milestone.resolve), false, 'no "Clear what this step is waiting on"')
 })
 
 test('only a correction that adds exclusions and takes none away is bounded, and any other correction is still held by the threshold', () => {

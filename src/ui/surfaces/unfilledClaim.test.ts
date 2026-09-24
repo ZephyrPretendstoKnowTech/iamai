@@ -259,7 +259,7 @@ test('the token-protection step reads the devices it makes a claim about', () =>
  */
 test('the authentication-strength step does not say none matches when it never read the strengths', () => {
   const who = (stepById['s-prereq-auth-strength'] as { who: Who }).who
-  const ex = { tenant: 'Contoso Pty Ltd', strengthName: 'Modern MFA + TAP', strengths: ['Passwordless MFA'] }
+  const ex = { tenant: 'Contoso Pty Ltd', strengthName: 'Modern MFA + TAP', strengths: ['Passwordless MFA'], strengthMethods: 'Passkeys (FIDO2) and Temporary Access Pass (one-time use)' }
   const read = whoEvidenceLines(who, ex)
   assert.ok(read.some((l) => /None matches the baseline/.test(l)), `read and nothing matched: the negation stands — ${JSON.stringify(read)}`)
   const unread = whoEvidenceLines(who, { ...ex, evidenceNotRead: true })

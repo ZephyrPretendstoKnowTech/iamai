@@ -143,7 +143,7 @@ test('U20/U21 on the demo: a drifted enforced policy waits on the foundation and
   }
 })
 
-test('U28/B7: a conditional input nobody saved keeps a step short of Completed and of Ready to enforce; a Save clears it, and device code Yes holds enforcement on the decision', () => {
+test('U28/B7: a conditional input nobody saved keeps a step short of Completed and of Ready to enforce; a Save clears it', () => {
   {
     const run = runFixture(week2, {}, null, week2.snapshot.asOf)
     const legacy = stepOf(run, QUESTION_STEP.mailDevices)
@@ -157,31 +157,6 @@ test('U28/B7: a conditional input nobody saved keeps a step short of Completed a
     // The answer that changes nothing, saved, is still an answer.
     assert.deepEqual(unsavedInputsOf(legacy.id, { questionAnswers: { [answerKey(legacy.id, label)]: 'None' } }), [])
     assert.equal(stepOf(runFixture(answered, {}, null, answered.snapshot.asOf), legacy.id).unsavedInputs, undefined)
-  }
-  {
-    const DC = QUESTION_STEP.deviceCode
-    const label = questionLabels(DC).decision
-    assert.equal(label, 'Device code sign-in')
-    assert.deepEqual(unsavedInputsOf(DC, { questionAnswers: {} }), [label])
-    assert.deepEqual(stepOf(demoRun, DC).unsavedInputs, [label], 'the demo Initial scan has not saved it')
-    const answers = (option: string | null) => ({ questionAnswers: option === null ? {} : { [answerKey(DC, label)]: option } })
-    assert.deepEqual([null, 'None', 'Yes'].map((o) => deviceCodeWorkflowsOf(answers(o))), [null, false, true], 'decisions.deviceCodeWorkflows')
-    // The graph condition reads the saved answer, not whether its owning policy is on the plan.
-    const conditionFor = (option: string | null) => tenantStateOf(demoRun.steps, [], answers(option))[0].conditions?.['device-code-workflows-exist']
-    assert.deepEqual([null, 'None', 'Yes'].map(conditionFor), ['unresolved', 'not-applicable', 'applicable'])
-    assert.equal(tenantStateOf(demoRun.steps, [], answers('Yes'))[0].prerequisites?.['decision:device-code-workflows'], 'actionable')
-    // The engine: a report-only block with its evidence in reads Ready to enforce only once nobody uses device code sign-in.
-    const edge = data.edges.find((e) => e.step === DC && e.condition === 'device-code-workflows-exist')
-    assert.deepEqual([edge?.action, edge?.prerequisite, edge?.edgeKind], ['enforce', 'decision:device-code-workflows', 'conditional'])
-    const observing: StepObservation = { exists: true, evidenceSatisfied: true }
-    const lane = (condition: ConditionState, prerequisite: PrerequisiteState, obs: StepObservation = observing): string => {
-      const t = tenant({ [DC]: obs })
-      const r = deriveLane(DC, graph, { ...t, conditions: { ...t.conditions, 'device-code-workflows-exist': condition }, prerequisites: { ...t.prerequisites, 'decision:device-code-workflows': prerequisite } })
-      return [r.lane, r.substatus].filter(Boolean).join(' · ')
-    }
-    assert.equal(lane('not-applicable', 'resolved'), 'Ready · Ready to enforce')
-    assert.notEqual(lane('applicable', 'actionable'), 'Ready · Ready to enforce')
-    assert.notEqual(lane('not-applicable', 'resolved', { exists: false }), 'Completed', 'None on a policy not yet created is not the policy done')
   }
 })
 

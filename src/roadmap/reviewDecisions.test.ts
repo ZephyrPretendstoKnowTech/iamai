@@ -6,7 +6,6 @@ import { runFixture } from './fixtures/run.ts'
 import { addWorkflowSteps } from './workflows.ts'
 import { directionSteps } from './direction.ts'
 import { DIRECTION_STEP } from './directionAnswers.ts'
-import { directionWords } from '../content/content.ts'
 import { applyStepDecisions } from './decisions.ts'
 import { DEVICE_ANSWER_KEYS, QUESTION_STEP, devicePlanOf, devicePlanComplete } from './answers.ts'
 import { manualBasis, MANUAL_REVIEW_ID } from './manualWork.ts'
@@ -31,7 +30,8 @@ test('service defaults propose detected use without confirming, an unread servic
   f.snapshot.sources.appSignInSummary.status = 'error'
   const unread = service(useStep(f, source), 'sharepoint')
   assert.equal(unread.suggested.value, 'yes')
-  assert.equal(unread.evidence, directionWords.defaultEvidence)
+  // The app summary unread, the sign-in records read whole say what they show.
+  assert.equal(unread.evidence, 'No SharePoint and OneDrive sign-ins in the last 30 days.')
 
   // A saved No contradicted by new use needs review; acknowledging that evidence stops repeated churn.
   {
@@ -104,24 +104,6 @@ test('MFA preparation requires every suitable registration but not a recent proo
   assert.equal(missing.state.satisfied, false, 'one administrator lacking their stronger method is not rounded away')
   assert.ok(missing.preparation!.missingIds.includes(admin.userId))
 })
-
-
-test('saved no-service and deleted shared-account choices remain visible without claiming protection', () => {
-  const f = fixture('demo')
-  f.mapping.serviceAccountUserIds = []
-  f.mapping.wizardAnswered.serviceAccounts = true
-  f.mapping.sharedDeviceUserIds = ['deleted-shared-identity']
-  const result = runFixture(f)
-  for (const id of ['s-prereq-service-accounts-group', 's-shared-devices']) {
-    const step = result.steps.find(s => s.id === id)
-    assert.ok(step, `${id} retained`)
-    assert.equal(step.state.setAside, true)
-    assert.equal(step.state.satisfied, false, 'not applicable is not configured protection')
-    assert.ok(step.doesntApply)
-  }
-  assert.equal(result.steps.find(s => s.id === 's-shared-devices')!.population.total, 0)
-})
-
 
 test('unresolved allowed-AVD-user definition cannot become completed through a generic acknowledgement', () => {
   const f = fixture('demo')

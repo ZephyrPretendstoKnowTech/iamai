@@ -287,8 +287,11 @@ test('security defaults: seen on then off reads Completed; never seen on reads D
 // a step that does not apply.
 test('a remote tenant: Define the Trusted Network reads Doesn\'t apply, and 5.1 keeps its no-trusted-location hold', () => {
   const NETWORK = 's-prereq-trusted-location'
-  const f = fixture('small')
+  const f = structuredClone(fixture('small'))
   assert.equal(f.mapping.trustedLocationIds.length, 0, 'the premise: small answered that everyone works remotely')
+  // and nothing in Entra is marked trusted: a trusted location there is the way out (walk list 2.x item 61).
+  const locations = f.snapshot.config.namedLocations
+  if (locations) locations.rows = locations.rows.map((l) => ({ ...(l as Record<string, unknown>), isTrusted: false }))
   assert.equal(f.mapping.wizardAnswered.trustedLocations, true, 'the premise: the answer is saved')
   const r = runFixture(f)
   const network = r.steps.find((s) => s.id === NETWORK)!

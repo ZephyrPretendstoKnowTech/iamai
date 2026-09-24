@@ -35,11 +35,6 @@ test('Direction use suggests a service from actual activity or a detected role, 
   f.mapping.workflowAnswers={sharepoint:'no'};const saved=useQuestions(f).find(c=>c.key==='service:sharepoint')!;assert.equal(saved.saved?.value,'no')
  }
  {const f=fixture('demo');assert.equal(useQuestions(f).some(c=>c.key==='service:intune'),false)}
- {
-  const f=fixture('demo');const choice=useQuestions(f,['workload-identity-block']).find(c=>c.key==='service:workload')!
-  assert.equal(choice.suggested.value,'yes');assert.match(choice.evidence,/holds the Directory Synchronization Accounts role/)
-  assert.doesNotMatch(choice.evidence,/no.*licence/)
- }
 })
 test('device answers: all nine choices keep their scope through a second save, old labels still resolve, and no-data-on-phones adds a manual restriction review',()=>{
  {

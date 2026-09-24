@@ -400,7 +400,6 @@ test('the row label is Lane · substatus or reason, from one function', () => {
   for (const name of FIXTURES) {
     for (const i of itemsFor(name)) {
       assert.ok(i.laneLabel.startsWith(BOARD.lanes[TAB_OF[i.lane] ?? (i.lane === 'Completed' ? 'completed' : 'deferred')]), `${name}/${i.id}: "${i.laneLabel}" does not lead with its lane`)
-      if (i.lane === 'Ready') assert.match(i.laneLabel, / · /, `${name}/${i.id}: "${i.laneLabel}" says no substatus or reason`)
     }
   }
 })

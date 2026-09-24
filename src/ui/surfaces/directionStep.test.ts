@@ -104,13 +104,7 @@ test('the text fixes the owner approved on the frozen steps, 2026-09-20: the six
     const use = questionsOf(DIRECTION_STEP.use)
     const devices = questionsOf(DIRECTION_STEP.devices)
 
-    // 1. Device code sign-in never said what answering it does: a session that
-    //    used the flow stays tracked, so later requests in it can be blocked and
-    //    a device can be signed out (close-doors-spec.md section 4, ms-auth-flows).
-    const code = use.find((q) => q.key === 'deviceCode')!
-    assert.match(code.note ?? '', /stays tracked/)
-    assert.match(code.note ?? '', /signed out/)
-
+    // 1. The device code question is gone (walk list 2.x item 1).
     // 2. Blocked from company data adds a policy step of its own, which the
     //    question never said.
     const phones = devices.find((q) => q.key === 'phones')!

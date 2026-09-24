@@ -38,19 +38,7 @@ function exportsOf(f: Fixture, ids: readonly string[]) {
   })
 }
 
-test('an enforced correction held on emergency access exports its readiness action first and keeps its correction; a change that is due keeps its portal lines', () => {
-  {
-    for (const { step, contract, view } of exportsOf(curatedFixture('demo'), ['s-goal-block-legacy-auth', 's-goal-block-device-code'])) {
-      const where = step.id
-      // The shape this pins: offered, enforced, and not the step's current action.
-      assert.equal(step.state.lifecycle, 'enforced', where)
-      assert.equal(implementationOffered(step), true, where)
-      assert.equal(implementationIsCurrent(step), false, where)
-      assert.equal(contract.whatToDo.text, engine.milestone.resolve, where)
-      assert.equal(view.whatToDo[0], engine.milestone.resolve, where)
-      assert.ok(view.whatToDo.some(line => PORTAL.test(line)), `${where}: correction guidance is missing`)
-    }
-  }
+test('a change that is due keeps its portal lines', () => {
   {
     // Due: the plan's foundation is settled, so nothing is waiting on it — Establish
     // Emergency Access complete and every Direction answer approved (roadmap/foundations.ts).

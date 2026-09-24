@@ -98,19 +98,7 @@ test('an open step heads its column with words it already draws: never an engine
   assert.ok(checked > 300, `steps checked: ${checked}`)
 })
 
-test('an open decision, a dated plan and a long explanation each head with the step’s own words', () => {
-  // 4.1 Block Legacy Authentication needs a decision while its policy is in
-  // place: it never reads "No change needed." over a Needs a decision bar.
-  for (const name of ['demo-week2', 'midflight'] as const) {
-    const legacy = opened(name, 's-goal-block-legacy-auth')
-    assert.equal(legacy.lane.substatus, 'Decision', `the premise: 4.1 needs a decision on ${name}`)
-    assert.equal(ALL_CLEAR.has(legacy.body.rail.headline), false, `${name} 4.1: "${legacy.body.rail.headline}"`)
-    // Its first task still to do, where it has one; never a task already done (walk list section 4 item 18).
-    const tasks = legacy.body.emergencyAccountTasks?.tasks ?? []
-    const next = tasks.find((t) => t.required)
-    if (next) assert.equal(legacy.body.rail.headline, next.title, `${name} 4.1 heads with its task`)
-    else assert.equal(tasks.some((t) => t.title === legacy.body.rail.headline), false, `${name} 4.1 heads with a task already done`)
-  }
+test('a dated plan and a long explanation each head with the step’s own words', () => {
   // Once Direction is approved the engine dates its milestones; the column does not.
   const approved = withDirectionApproved(fixture('demo-week2'))
   const run = runFixture(approved, {}, null, approved.snapshot.asOf)

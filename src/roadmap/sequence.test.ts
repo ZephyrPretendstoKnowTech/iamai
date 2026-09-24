@@ -191,6 +191,9 @@ test('no country block or registration policy is offered without its way out, an
   assert.ok(spec)
   const remote = structuredClone(buildFixture(spec))
   remote.mapping.trustedLocationIds = []
+  // A trusted location already in Entra is the way out, whatever the answer (walk list 2.x item 61).
+  const locations = remote.snapshot.config.namedLocations
+  if (locations) locations.rows = locations.rows.map((l) => ({ ...(l as Record<string, unknown>), isTrusted: false }))
   const reg = runFixture(remote).steps.find((s) => s.goalId === 'register-info-protected')
   if (!reg) return
   assert.equal(reg.status, 'blocked')
