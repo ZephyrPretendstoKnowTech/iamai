@@ -20,7 +20,7 @@ function examples(node: unknown, path: string, out: [string, unknown][]): void {
   else if (node && typeof node === 'object') for (const [k, v] of Object.entries(node)) (k === 'example' ? out.push([`${path}.${k}`, v]) : examples(v, `${path}.${k}`, out))
 }
 
-test('content.json example values name a synthetic tenant, operator and accounts', () => {
+test('content.json example values, the fixture generators and the fixture snapshots carry no owner or product-tenant identity', () => {
   const found: [string, unknown][] = []
   examples(content, 'content', found)
   assert.ok(found.length > 20, 'the content file carries example values to check')
@@ -33,9 +33,7 @@ test('content.json example values name a synthetic tenant, operator and accounts
   const home = JSON.stringify(content.pages.home)
   assert.equal(whole.split('Lachlan').length - 1, home.split('Lachlan').length - 1, "the owner's name appears only in the Home attribution")
   assert.doesNotMatch(whole, /getiamai\.onmicrosoft\.com/, 'no sign-in address on the product tenant')
-})
-
-test('the fixture generators and the design renderer carry no tenant-derived identities', () => {
+  // The fixture generators and the design renderer carry no tenant-derived identities.
   const dirs = ['src/roadmap/fixtures', 'src/testing']
   const files = [...dirs.flatMap((d) => readdirSync(d).filter((f) => f.endsWith('.ts')).map((f) => join(d, f))), 'src/ui/demo.ts', 'src/ui/demoFacts.ts', 'src/content/render.ts']
   for (const file of files) {
@@ -43,9 +41,7 @@ test('the fixture generators and the design renderer carry no tenant-derived ide
     assert.doesNotMatch(text, /getiamai\.onmicrosoft\.com/, `${file} names the product tenant's domain`)
     assert.doesNotMatch(text, OWNER, `${file} names the owner`)
   }
-})
-
-test('no fixture snapshot names the owner or the product tenant', () => {
+  // No fixture snapshot names the owner or the product tenant.
   for (const f of allFixtures()) {
     const raw = JSON.stringify(f.snapshot)
     assert.doesNotMatch(raw, OWNER, `${f.name} names the owner`)
