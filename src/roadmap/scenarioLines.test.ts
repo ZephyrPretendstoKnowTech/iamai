@@ -36,10 +36,20 @@ function demoScenarioKinds(name: 'demo' | 'demo-week2'): Set<string> {
   return kinds
 }
 
-test('prompt 50 item 10: at least twelve scenarios fire on the demo, and these are the ones', () => {
+test('prompt 50 item 10: at least twelve scenarios fire on the demo, and these are the ones; every evidence-derived scenario fires on at least one fixture', () => {
   const kinds = demoScenarioKinds('demo')
   assert.ok(kinds.size >= 12, `only ${kinds.size} scenario kinds fire on the demo: ${[...kinds].sort().join(', ')}`)
   for (const k of DEMO_SCENARIOS) assert.ok(kinds.has(k), `${k} no longer fires on the demo`)
+
+  // Every evidence-derived scenario line fires on at least one fixture.
+  // noMethodRemote is hosted by register-info-protected, which the pinned baseline
+  // does not hold; the floor (target-state §13) renders that step from Microsoft's
+  // template, so the scenario fires on the fixtures again.
+  {
+    const seen = new Set<string>()
+    for (const f of allFixtures()) for (const s of runFixture(f).steps) for (const l of s.scenarioLines ?? []) seen.add(l.kind)
+    for (const kind of EVIDENCE_KINDS) assert.ok(seen.has(kind), `${kind} fires on no fixture`)
+  }
 })
 
 test('prompt 50 item 15 / 50.1 item 5: the week-two snapshot advances the tracking story, and the in-place count rises', () => {
@@ -103,16 +113,7 @@ const EVIDENCE_KINDS = [
   'noMethodRemote',
 ]
 
-// noMethodRemote is hosted by register-info-protected, which the pinned baseline
-// does not hold; the floor (target-state §13) renders that step from Microsoft's
-// template, so the scenario fires on the fixtures again.
-test('every evidence-derived scenario line fires on at least one fixture', () => {
-  const seen = new Set<string>()
-  for (const f of allFixtures()) for (const s of runFixture(f).steps) for (const l of s.scenarioLines ?? []) seen.add(l.kind)
-  for (const kind of EVIDENCE_KINDS) assert.ok(seen.has(kind), `${kind} fires on no fixture`)
-})
-
-test('a line names real people (or a real count) — no empty scenario line', () => {
+test('a line names real people (or a real count), never nobody, and a fixture with no StoredSignIn evidence carries no evidence line outside the campaign (micro)', () => {
   for (const f of allFixtures()) {
     for (const s of runFixture(f).steps) {
       for (const l of s.scenarioLines ?? []) {
@@ -120,6 +121,13 @@ test('a line names real people (or a real count) — no empty scenario line', ()
         assert.ok(l.count > 0 || l.people.length > 0, `${f.name} ${s.id} ${l.kind}: names nobody and counts nothing`)
       }
     }
+  }
+
+  // A fixture with no StoredSignIn evidence carries no evidence line outside the campaign (micro).
+  {
+    // The campaign draws its unproven/no-method lines from viability (item 6); every
+    // other line needs StoredSignIn evidence, which micro has none of.
+    for (const s of runFixture(fixture('micro')).steps) if (s.kind !== 'verify') assert.deepEqual(s.scenarioLines ?? [], [], `micro ${s.id}`)
   }
 })
 
@@ -134,12 +142,6 @@ test('the shared-device step appears only where shared devices are detected, and
       for (const id of s.population.ids) assert.ok(!sharedIds.has(id), `${f.name} ${s.id}: a shared device is in a user policy`)
     }
   }
-})
-
-test('a fixture with no StoredSignIn evidence carries no evidence line outside the campaign (micro)', () => {
-  // The campaign draws its unproven/no-method lines from viability (item 6); every
-  // other line needs StoredSignIn evidence, which micro has none of.
-  for (const s of runFixture(fixture('micro')).steps) if (s.kind !== 'verify') assert.deepEqual(s.scenarioLines ?? [], [], `micro ${s.id}`)
 })
 
 test('getiamai: the campaign names real active people, never the break-glass admins', () => {

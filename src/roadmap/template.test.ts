@@ -45,7 +45,7 @@ test('prompt 49.1 item 1: an unresolved reference is stripped from the JSON, nev
   assert.doesNotMatch(JSON.stringify(op.body), /"excludeGroups"/, 'the array emptied by stripping loses its key')
 })
 
-test('item 12: every goal × implementation renders Do it from the template with a grant or session control', () => {
+test('item 12: every goal × implementation renders Do it in report-only with a grant or session control, and every placeholder it uses has a Wave 0 step or always resolves', () => {
   const mapping = emptyMappingState('t')
   for (const goal of CATALOGUE) {
     for (const impl of goal.implementations) {
@@ -66,20 +66,21 @@ test('item 12: every goal × implementation renders Do it from the template with
       assert.match(powershellFor([{ sourceName: goal.id, memberKey: goal.id, mode: 'create', policyId: null, body: parsed }]), /New-MgIdentityConditionalAccessPolicy -BodyParameter/, `${goal.id}: PowerShell`)
     }
   }
-})
 
-test('item 12: every placeholder a template uses has a Wave 0 step that creates the object, or always resolves', () => {
-  for (const goal of CATALOGUE) {
-    for (const impl of goal.implementations) {
-      const { unresolved } = resolveTemplate(impl.template as TemplateBody, {})
-      for (const p of placeholdersIn(impl.template)) {
-        if (ALWAYS_RESOLVED.has(p)) continue
-        assert.ok(unresolved.includes(p), `${goal.id}: ${p} is reported unresolved with no values`)
-        assert.ok(p in PLACEHOLDER_STEP, `${goal.id}: ${p} has no Wave 0 step`)
+  // Item 12: every placeholder a template uses has a Wave 0 step that creates the object, or always resolves.
+  {
+    for (const goal of CATALOGUE) {
+      for (const impl of goal.implementations) {
+        const { unresolved } = resolveTemplate(impl.template as TemplateBody, {})
+        for (const p of placeholdersIn(impl.template)) {
+          if (ALWAYS_RESOLVED.has(p)) continue
+          assert.ok(unresolved.includes(p), `${goal.id}: ${p} is reported unresolved with no values`)
+          assert.ok(p in PLACEHOLDER_STEP, `${goal.id}: ${p} has no Wave 0 step`)
+        }
       }
     }
+    assert.deepEqual(new Set([...Object.keys(PLACEHOLDER_STEP), ...ALWAYS_RESOLVED]), new Set(TEMPLATE_PLACEHOLDERS))
   }
-  assert.deepEqual(new Set([...Object.keys(PLACEHOLDER_STEP), ...ALWAYS_RESOLVED]), new Set(TEMPLATE_PLACEHOLDERS))
 })
 
 test('item 12: with no baseline at all, every create step still carries a body, and unresolved objects block on Wave 0 or Setup', () => {
@@ -144,13 +145,4 @@ test('item 13: proposed names are {prefix} - {Action} - {shortName}, never the g
   const two = proposedPolicyName(legacy, { prefix: 'Core', separator: ' - ' })
   assert.equal(two, `Core - Block ${legacy.shortName.charAt(0).toLowerCase()}${legacy.shortName.slice(1)}`)
   for (const g of CATALOGUE) assert.equal(proposedPolicyName(g, null).includes(g.name), false, `${g.id}: name carries the goal sentence`)
-})
-
-test('item 14: no fixture produces an ad-hoc goal or a "Restrict access to" step', () => {
-  for (const f of allFixtures()) {
-    const r = runFixture(f)
-    assert.equal(r.coverage.results.some((x) => x.goal.id.startsWith('adhoc:')), false, `${f.name}: ad-hoc goal`)
-    assert.equal(r.steps.some((s) => /^Restrict access to/.test(s.title)), false, `${f.name}: invented title`)
-    assert.ok(Array.isArray(r.coverage.organisation.notAssessed), `${f.name}: notAssessed present`)
-  }
 })

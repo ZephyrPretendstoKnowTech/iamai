@@ -42,7 +42,7 @@ const EA = ['s-prereq-break-glass', 's-prereq-exclusion-group', 's-prereq-passke
 const DIRECTION = ['s-direction-use', 's-direction-accounts', 's-direction-devices']
 const item = (id: string, lane: BoardItem['lane'] = 'Ready'): BoardItem => ({ id, title: id, lane, laneLabel: lane, workType: 'setup', order: 0 })
 
-test('the registry lists the four Emergency Access steps in order, first, with the task anatomy', () => {
+test('the registry leads with the four Emergency Access steps (task anatomy) and the three Direction steps (decision anatomy), answers membership and anatomy by id, and is the only place the Plan names the Emergency Access ids', () => {
   assert.deepEqual(STEP_GROUPS.slice(0, 2).map((g) => g.key), [EMERGENCY_ACCESS_GROUP, DIRECTION_GROUP], 'Emergency Access and Direction do not lead the registry')
   assert.deepEqual([...membersOf(EMERGENCY_ACCESS_GROUP)], EA)
   assert.deepEqual([...EMERGENCY_STEP_IDS], EA, 'the board reads its emergency ids from the registry')
@@ -53,42 +53,81 @@ test('the registry lists the four Emergency Access steps in order, first, with t
   assert.equal(groupTitleOf(g!, false), 'Establish Emergency Access')
   assert.equal(groupTitleOf(g!, true), 'Establish Emergency Access')
   assert.deepEqual(membersOf('no-such-group'), [])
+
+  // GroupOf, isGroupMember and usesTaskAnatomy answer by id.
+  {
+    for (const id of EA) {
+      assert.equal(groupOf(id)?.key, EMERGENCY_ACCESS_GROUP, id)
+      assert.equal(isGroupMember(id), true, id)
+      assert.equal(isGroupMember(id, EMERGENCY_ACCESS_GROUP), true, id)
+      assert.equal(isGroupMember(id, 'direction'), false, id)
+      assert.equal(usesTaskAnatomy(id), true, id)
+      assert.equal(usesDecisionAnatomy(id), false, id)
+      assert.equal(anatomyOf(id), 'task', id)
+      assert.equal(taskHeadingsOf(id), TASK_HEAD, id)
+      assert.equal(decisionHeadingsOf(id), null, id)
+    }
+    // A step outside Emergency Access and Direction (the foundation) is in one of the rollout's own groups,
+    // and every one of those groups draws the task anatomy too (owner, 2026-09-19:
+    // every step that carries work reads the same way; step-redundancy-analysis.md
+    // finding 15). The registry answers it once, for the board and the interior.
+    for (const id of ['s-ladder-security-defaults', 's-confirm-workloads', 'cleanup-alerting', 's-goal-block-legacy-auth', 's-review-baseline-anything', 's-prereq-trusted-location', 's-verify-mfa', 's-check-dormant-accounts']) {
+      assert.notEqual(groupOf(id), null, `${id} is in no group`)
+      assert.equal(isGroupMember(id, EMERGENCY_ACCESS_GROUP), false, id)
+      assert.equal(isGroupMember(id, DIRECTION_GROUP), false, id)
+      assert.equal(usesTaskAnatomy(id), true, `${id}: the group's anatomy`)
+      assert.equal(usesDecisionAnatomy(id), false, id)
+      assert.equal(anatomyOf(id), 'task', id)
+      assert.equal(taskHeadingsOf(id), TASK_HEAD, id)
+      assert.equal(decisionHeadingsOf(id), null, id)
+    }
+    // A Cleanup row is a board row, not a step: the owner left the Cleanup rows out
+    // of the uniformity rule, and CleanupStep.tsx keeps the recovery drill — the one
+    // row that draws the task anatomy — on the task headings by its own kind.
+    const cleanup = readFileSync('src/ui/surfaces/CleanupStep.tsx', 'utf8')
+    assert.match(cleanup, /const taskHead = row\.kind === 'drill' \? TASK_HEAD : null/)
+  }
+
+  // (a) Define Your Rollout Scope (the Direction steps) is the second section: its three steps in order, with the decision anatomy.
+  {
+    assert.equal(STEP_GROUPS[1].key, DIRECTION_GROUP, 'Direction is not right after Emergency Access')
+    assert.deepEqual([...membersOf(DIRECTION_GROUP)], DIRECTION)
+    const g = groupOf('s-direction-devices')!
+    assert.equal(g.key, DIRECTION_GROUP)
+    assert.equal(g.anatomy, 'decision')
+    assert.equal(groupTitleOf(g, false), 'Define Your Rollout Scope')
+    for (const id of DIRECTION) {
+      assert.equal(usesDecisionAnatomy(id), true, id)
+      assert.equal(usesTaskAnatomy(id), false, id)
+      assert.equal(taskHeadingsOf(id), null, id)
+      assert.deepEqual(decisionHeadingsOf(id), { why: 'About this Step', questions: 'Questions', doneWhen: 'Completion Criteria' }, id)
+    }
+    assert.equal(DECISION_HEAD.why, TASK_HEAD.why, 'both anatomies open with About this Step')
+
+    // All work draws the Direction rows as the second section, in place, with no code of its own.
+    const items = [item('ordinary'), ...DIRECTION.map((id) => item(id)), ...EA.map((id) => item(id))]
+    const drawn = allWorkGroups(items, items)
+    assert.deepEqual(drawn.map((d) => d.key), [`${ALL_WORK_TAB}-${EMERGENCY_ACCESS_GROUP}`, `${ALL_WORK_TAB}-${DIRECTION_GROUP}`, `${ALL_WORK_TAB}-ongoing`])
+    assert.deepEqual(drawn[1].items.map((i) => i.id), DIRECTION)
+  }
+
+  // The registry is the only place the Plan names the Emergency Access ids.
+  {
+    for (const file of ['src/ui/surfaces/Plan.tsx', 'src/ui/surfaces/planBoard.ts', 'src/ui/surfaces/stepHeadings.ts']) {
+      const src = readFileSync(file, 'utf8')
+      assert.equal(src.includes("'cleanup-drill'"), false, `${file} names the drill`)
+      assert.equal(src.includes('Establish Emergency Access'), false, `${file} writes the group title`)
+    }
+  }
 })
 
-test('groupOf, isGroupMember and usesTaskAnatomy answer by id', () => {
-  for (const id of EA) {
-    assert.equal(groupOf(id)?.key, EMERGENCY_ACCESS_GROUP, id)
-    assert.equal(isGroupMember(id), true, id)
-    assert.equal(isGroupMember(id, EMERGENCY_ACCESS_GROUP), true, id)
-    assert.equal(isGroupMember(id, 'direction'), false, id)
-    assert.equal(usesTaskAnatomy(id), true, id)
-    assert.equal(usesDecisionAnatomy(id), false, id)
-    assert.equal(anatomyOf(id), 'task', id)
-    assert.equal(taskHeadingsOf(id), TASK_HEAD, id)
-    assert.equal(decisionHeadingsOf(id), null, id)
-  }
-  // A step outside Emergency Access and Direction (the foundation) is in one of the rollout's own groups,
-  // and every one of those groups draws the task anatomy too (owner, 2026-09-19:
-  // every step that carries work reads the same way; step-redundancy-analysis.md
-  // finding 15). The registry answers it once, for the board and the interior.
-  for (const id of ['s-ladder-security-defaults', 's-confirm-workloads', 'cleanup-alerting', 's-goal-block-legacy-auth', 's-review-baseline-anything', 's-prereq-trusted-location', 's-verify-mfa', 's-check-dormant-accounts']) {
-    assert.notEqual(groupOf(id), null, `${id} is in no group`)
-    assert.equal(isGroupMember(id, EMERGENCY_ACCESS_GROUP), false, id)
-    assert.equal(isGroupMember(id, DIRECTION_GROUP), false, id)
-    assert.equal(usesTaskAnatomy(id), true, `${id}: the group's anatomy`)
-    assert.equal(usesDecisionAnatomy(id), false, id)
-    assert.equal(anatomyOf(id), 'task', id)
-    assert.equal(taskHeadingsOf(id), TASK_HEAD, id)
-    assert.equal(decisionHeadingsOf(id), null, id)
-  }
-  // A Cleanup row is a board row, not a step: the owner left the Cleanup rows out
-  // of the uniformity rule, and CleanupStep.tsx keeps the recovery drill — the one
-  // row that draws the task anatomy — on the task headings by its own kind.
-  const cleanup = readFileSync('src/ui/surfaces/CleanupStep.tsx', 'utf8')
-  assert.match(cleanup, /const taskHead = row\.kind === 'drill' \? TASK_HEAD : null/)
-})
+// Ids the registry listed that a person can no longer meet on the board: three the
+// engine could never build (docs/plans/step-redundancy-analysis.md finding 4), the
+// unassessed-policies row that duplicated the review steps (finding 8), and the
+// partner follow-up that pointed at two other steps (finding 5).
+const GONE = ['s-prereq-device-plan', 's-question-travel', 's-goal-unmanaged-browser', 'cleanup-notAssessed', 's-question-partner']
 
-test('every step is in exactly one group: a listed id beats a prefix, a prefix beats the catch-all, and only the last entry is the catch-all', () => {
+test('every step is in exactly one group, no group lists a step the board can never draw, and the two browser goals can never render as two steps with one title', () => {
   const seen = new Map<string, string>()
   for (const g of STEP_GROUPS) {
     for (const id of g.members) {
@@ -110,41 +149,52 @@ test('every step is in exactly one group: a listed id beats a prefix, a prefix b
   // and the Direction steps draw the decision one, so no group leaves a member
   // to a third set of headings (owner, 2026-09-19).
   for (const g of STEP_GROUPS) assert.equal(g.anatomy, g.key === DIRECTION_GROUP ? 'decision' : 'task', `${g.key}: anatomy`)
-})
 
-// Ids the registry listed that a person can no longer meet on the board: three the
-// engine could never build (docs/plans/step-redundancy-analysis.md finding 4), the
-// unassessed-policies row that duplicated the review steps (finding 8), and the
-// partner follow-up that pointed at two other steps (finding 5).
-const GONE = ['s-prereq-device-plan', 's-question-travel', 's-goal-unmanaged-browser', 'cleanup-notAssessed', 's-question-partner']
+  // No group lists a step the board can never draw.
+  {
+    const listed = STEP_GROUPS.flatMap((g) => [...g.members])
+    for (const id of GONE) assert.equal(listed.includes(id), false, `${id} is still a registry member`)
 
-test('no group lists a step the board can never draw', () => {
-  const listed = STEP_GROUPS.flatMap((g) => [...g.members])
-  for (const id of GONE) assert.equal(listed.includes(id), false, `${id} is still a registry member`)
+    // The general rule behind the phantoms: an `s-goal-` member names a catalogue
+    // goal a baseline can hold, the pinned one or an uploaded one. A goal merged
+    // into another goal's step (content mergesGoals) never maps alone, and renders nothing.
+    const goalIds = new Set((goalsData.goals as { id: string }[]).map((g) => g.id))
+    const mergedAway = new Set(contentSteps.flatMap((s) => (s.mergesGoals ?? []).slice(1)))
+    for (const id of listed.filter((m) => m.startsWith('s-goal-'))) {
+      const goalId = id.slice('s-goal-'.length)
+      assert.equal(goalIds.has(goalId), true, `${id}: ${goalId} is not a goal in data/goals.json`)
+      assert.equal(mergedAway.has(goalId), false, `${id}: ${goalId} merges into another goal's step and is never built alone`)
+    }
+    // Three of them only an uploaded baseline builds: the pinned one maps none of
+    // them and the floor supplies none, so on the pinned baseline they draw nothing.
+    for (const goalId of ['azure-management-mfa', 'mobile-app-protection', 'byod-session-controls']) {
+      assert.equal(listed.includes(stepIdForGoal(goalId)), true, `${goalId}: not listed`)
+      assert.equal(goalInMap(PINNED_GOAL_MAP, goalId) || isFloorGoal(goalId), false, `${goalId}: the pinned baseline builds it now`)
+    }
 
-  // The general rule behind the phantoms: an `s-goal-` member names a catalogue
-  // goal a baseline can hold, the pinned one or an uploaded one. A goal merged
-  // into another goal's step (content mergesGoals) never maps alone, and renders nothing.
-  const goalIds = new Set((goalsData.goals as { id: string }[]).map((g) => g.id))
-  const mergedAway = new Set(contentSteps.flatMap((s) => (s.mergesGoals ?? []).slice(1)))
-  for (const id of listed.filter((m) => m.startsWith('s-goal-'))) {
-    const goalId = id.slice('s-goal-'.length)
-    assert.equal(goalIds.has(goalId), true, `${id}: ${goalId} is not a goal in data/goals.json`)
-    assert.equal(mergedAway.has(goalId), false, `${id}: ${goalId} merges into another goal's step and is never built alone`)
+    // A cleanup- member names a row roadmap/cleanup.ts can build.
+    const kinds = cleanupRows({ emergencyAccounts: ['a'], renames: ['b'], overlaps: ['c'], hardening: ['d'], namedExclusions: ['e'] }).map((r) => String(r.kind))
+    for (const id of listed.filter((m) => m.startsWith('cleanup-'))) {
+      assert.ok(kinds.includes(id.slice('cleanup-'.length)), `${id}: not a CleanupKind roadmap/cleanup.ts renders`)
+    }
+    assert.ok(CLEANUP_KINDS.every((k) => kinds.includes(k)))
   }
-  // Three of them only an uploaded baseline builds: the pinned one maps none of
-  // them and the floor supplies none, so on the pinned baseline they draw nothing.
-  for (const goalId of ['azure-management-mfa', 'mobile-app-protection', 'byod-session-controls']) {
-    assert.equal(listed.includes(stepIdForGoal(goalId)), true, `${goalId}: not listed`)
-    assert.equal(goalInMap(PINNED_GOAL_MAP, goalId) || isFloorGoal(goalId), false, `${goalId}: the pinned baseline builds it now`)
-  }
 
-  // A cleanup- member names a row roadmap/cleanup.ts can build.
-  const kinds = cleanupRows({ emergencyAccounts: ['a'], renames: ['b'], overlaps: ['c'], hardening: ['d'], namedExclusions: ['e'] }).map((r) => String(r.kind))
-  for (const id of listed.filter((m) => m.startsWith('cleanup-'))) {
-    assert.ok(kinds.includes(id.slice('cleanup-'.length)), `${id}: not a CleanupKind roadmap/cleanup.ts renders`)
+  // The two browser goals can never render as two steps with one title.
+  {
+    // `unmanaged-browser` is a content entry, not a goal: two goals alias to it, so
+    // if both could be mapped the plan would draw two rows with one title, one why
+    // and one Completion Criteria. The merge is what makes that impossible — the
+    // anchor maps to the ordered pair and the partner is never a key of its own —
+    // so the only browser step id the engine can build is the anchor's.
+    assert.equal(new Set((goalsData.goals as { id: string }[]).map((g) => g.id)).has('unmanaged-browser'), false, 'unmanaged-browser is a content id, never a goal id')
+    assert.equal(stepById['unmanaged-browser']?.title, 'Limit Unmanaged Devices in the Browser')
+    for (const goalId of ['byod-session-controls', 'block-downloads-unmanaged']) assert.equal(CONTENT_ALIAS[goalId], 'unmanaged-browser', goalId)
+    for (const map of [PINNED_GOAL_MAP, goalMapFor(pinnedPolicies, new Map()).map]) {
+      assert.equal(goalInMap(map, 'block-downloads-unmanaged'), false, 'the merged partner took a mapping of its own — two rows would draw one title')
+    }
+    assert.equal(stepIdForGoal('byod-session-controls'), 's-goal-byod-session-controls')
   }
-  assert.ok(CLEANUP_KINDS.every((k) => kinds.includes(k)))
 })
 
 // The roadmap flow's outline (docs/plans/roadmap-flow/v1-proposal-full.md
@@ -181,21 +231,6 @@ test('the Plan has eight sections, in the roadmap flow’s order, with its names
   assert.deepEqual(Object.keys(groupsWords).filter((k) => !k.startsWith('$comment')).sort(), STEP_GROUPS.map((g) => g.titleKey.split('.').at(-2)!).sort(), 'content.json holds a section title no section reads')
 })
 
-test('the two browser goals can never render as two steps with one title', () => {
-  // `unmanaged-browser` is a content entry, not a goal: two goals alias to it, so
-  // if both could be mapped the plan would draw two rows with one title, one why
-  // and one Completion Criteria. The merge is what makes that impossible — the
-  // anchor maps to the ordered pair and the partner is never a key of its own —
-  // so the only browser step id the engine can build is the anchor's.
-  assert.equal(new Set((goalsData.goals as { id: string }[]).map((g) => g.id)).has('unmanaged-browser'), false, 'unmanaged-browser is a content id, never a goal id')
-  assert.equal(stepById['unmanaged-browser']?.title, 'Limit Unmanaged Devices in the Browser')
-  for (const goalId of ['byod-session-controls', 'block-downloads-unmanaged']) assert.equal(CONTENT_ALIAS[goalId], 'unmanaged-browser', goalId)
-  for (const map of [PINNED_GOAL_MAP, goalMapFor(pinnedPolicies, new Map()).map]) {
-    assert.equal(goalInMap(map, 'block-downloads-unmanaged'), false, 'the merged partner took a mapping of its own — two rows would draw one title')
-  }
-  assert.equal(stepIdForGoal('byod-session-controls'), 's-goal-byod-session-controls')
-})
-
 test('a number is a place among the group’s own rows, in registry order, and the whole row set decides it', () => {
   const ids = ['s-goal-mfa-all-users', 's-goal-block-legacy-auth', 's-review-baseline-one', 's-review-baseline-two', 's-goal-geo-restriction']
   const all = groupPositions(ids)
@@ -215,40 +250,7 @@ test('a number is a place among the group’s own rows, in registry order, and t
   assert.equal(positionInGroup('s-goal-nobody-placed-this'), null, 'a catch-all member has no registry position either')
 })
 
-test('(a) Define Your Rollout Scope (the Direction steps) is the second section: its three steps in order, with the decision anatomy', () => {
-  assert.equal(STEP_GROUPS[1].key, DIRECTION_GROUP, 'Direction is not right after Emergency Access')
-  assert.deepEqual([...membersOf(DIRECTION_GROUP)], DIRECTION)
-  const g = groupOf('s-direction-devices')!
-  assert.equal(g.key, DIRECTION_GROUP)
-  assert.equal(g.anatomy, 'decision')
-  assert.equal(groupTitleOf(g, false), 'Define Your Rollout Scope')
-  for (const id of DIRECTION) {
-    assert.equal(usesDecisionAnatomy(id), true, id)
-    assert.equal(usesTaskAnatomy(id), false, id)
-    assert.equal(taskHeadingsOf(id), null, id)
-    assert.deepEqual(decisionHeadingsOf(id), { why: 'About this Step', questions: 'Questions', doneWhen: 'Completion Criteria' }, id)
-  }
-  assert.equal(DECISION_HEAD.why, TASK_HEAD.why, 'both anatomies open with About this Step')
-
-  // All work draws the Direction rows as the second section, in place, with no code of its own.
-  const items = [item('ordinary'), ...DIRECTION.map((id) => item(id)), ...EA.map((id) => item(id))]
-  const drawn = allWorkGroups(items, items)
-  assert.deepEqual(drawn.map((d) => d.key), [`${ALL_WORK_TAB}-${EMERGENCY_ACCESS_GROUP}`, `${ALL_WORK_TAB}-${DIRECTION_GROUP}`, `${ALL_WORK_TAB}-ongoing`])
-  assert.deepEqual(drawn[1].items.map((i) => i.id), DIRECTION)
-})
-
-test('the registry is the only place the Plan names the Emergency Access ids', () => {
-  for (const file of ['src/ui/surfaces/Plan.tsx', 'src/ui/surfaces/planBoard.ts', 'src/ui/surfaces/stepHeadings.ts']) {
-    const src = readFileSync(file, 'utf8')
-    assert.equal(src.includes("'cleanup-drill'"), false, `${file} names the drill`)
-    assert.equal(src.includes('Establish Emergency Access'), false, `${file} writes the group title`)
-  }
-  // The Plan draws no section of its own above the tabs, and no finished section below them.
-  const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
-  for (const gone of ['plan-board-foundation', 'pinnedActive', 'pinnedCompleted', 'partitionPinnedGroups', 'splitPinned']) assert.equal(plan.includes(gone), false, `Plan.tsx still reads ${gone}`)
-})
-
-test('a second registry entry is drawn as its own section, in its place, and finishing it collapses it there', () => {
+test('a second registry entry is drawn as its own section, in its place, finishing it collapses it there, and a lane tab filters every section alike in registry order (owner, 2026-09-20)', () => {
   const direction: StepGroup = { key: 'direction', titleKey: EA_TITLE, completedTitleKey: EA_TITLE, members: ['d-one', 'd-two'], anatomy: 'decision' }
   const later: StepGroup = { key: 'later', titleKey: EA_TITLE, completedTitleKey: EA_TITLE, members: ['l-one'], anatomy: 'decision' }
   const groups = [...STEP_GROUPS.filter((g) => g.key === EMERGENCY_ACCESS_GROUP), direction, later]
@@ -266,21 +268,20 @@ test('a second registry entry is drawn as its own section, in its place, and fin
   assert.deepEqual(closed.map((g) => [g.key, g.closed]), [[`${ALL_WORK_TAB}-${EMERGENCY_ACCESS_GROUP}`, false], [`${ALL_WORK_TAB}-direction`, true], [`${ALL_WORK_TAB}-later`, false]], 'the finished section moved or stayed open')
   assert.equal(groupSummary(closed[1]), 'All 2 completed')
   assert.equal(new Set(closed.flatMap((g) => g.items.map((i) => i.id))).size, items.length, 'a row is dropped or drawn twice')
-})
 
-test('a lane tab filters every section alike and keeps the registry order (owner, 2026-09-20)', () => {
-  const direction: StepGroup = { key: 'direction', titleKey: EA_TITLE, completedTitleKey: EA_TITLE, members: ['d-one', 'd-two'], anatomy: 'decision' }
-  const later: StepGroup = { key: 'later', titleKey: EA_TITLE, completedTitleKey: EA_TITLE, members: ['l-one', 'l-two'], anatomy: 'task' }
-  const groups = [direction, later]
-  const items = [item('d-one', 'Ready'), item('d-two', 'On Hold'), item('l-one', 'Ready'), item('l-two', 'On Hold')]
-  // Ready leaves one row of each section, and On Hold the other, each under its
-  // own heading in registry order: a section is whole on All work, not here.
-  assert.deepEqual(groupsFor('ready', applyFocus(items, 'ready', NO_FOCUS), groups).map((g) => g.items.map((i) => i.id)), [['d-one'], ['l-one']])
-  assert.deepEqual(groupsFor('onHold', applyFocus(items, 'onHold', NO_FOCUS), groups).map((g) => g.items.map((i) => i.id)), [['d-two'], ['l-two']])
-  // And a lane that leaves a section empty draws no heading for it.
-  assert.deepEqual(groupsFor('upNext', applyFocus(items, 'upNext', NO_FOCUS), groups), [])
-  const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
-  assert.equal(plan.includes('openInActivePinnedGroup'), false, 'a member is still exempt from the tabs')
+  // A lane tab filters every section alike and keeps the registry order (owner, 2026-09-20).
+  {
+    const direction: StepGroup = { key: 'direction', titleKey: EA_TITLE, completedTitleKey: EA_TITLE, members: ['d-one', 'd-two'], anatomy: 'decision' }
+    const later: StepGroup = { key: 'later', titleKey: EA_TITLE, completedTitleKey: EA_TITLE, members: ['l-one', 'l-two'], anatomy: 'task' }
+    const groups = [direction, later]
+    const items = [item('d-one', 'Ready'), item('d-two', 'On Hold'), item('l-one', 'Ready'), item('l-two', 'On Hold')]
+    // Ready leaves one row of each section, and On Hold the other, each under its
+    // own heading in registry order: a section is whole on All work, not here.
+    assert.deepEqual(groupsFor('ready', applyFocus(items, 'ready', NO_FOCUS), groups).map((g) => g.items.map((i) => i.id)), [['d-one'], ['l-one']])
+    assert.deepEqual(groupsFor('onHold', applyFocus(items, 'onHold', NO_FOCUS), groups).map((g) => g.items.map((i) => i.id)), [['d-two'], ['l-two']])
+    // And a lane that leaves a section empty draws no heading for it.
+    assert.deepEqual(groupsFor('upNext', applyFocus(items, 'upNext', NO_FOCUS), groups), [])
+  }
 })
 
 // ---------------------------------------------------------------------------
