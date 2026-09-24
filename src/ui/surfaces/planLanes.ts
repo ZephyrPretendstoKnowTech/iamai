@@ -154,7 +154,12 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
   // Accounts that exist and fail a minimum check are started work drifted from
   // the target: the next action corrects them, it does not create them.
   const drift = !done && (switchedOff || enforcedShort || step.state.condition === 'review-required' || (step.kind === 'adjust' && exists && corrects) || (emergency !== null && exists && emergency.minimum > 0))
-  const kind = step.state.condition === 'needs-decision' ? 'decision' : policy ? 'policy' : (GRAPH.kinds.get(step.id) ?? 'object')
+  // Emergency access with no account saved asks the person to choose them: the
+  // accounts may already be on the tenant, so the next action is the choice,
+  // not a create (owner, 2026-09-23: the row read "Ready · Create" over cards
+  // saying "No account selected").
+  const decides = step.state.condition === 'needs-decision' || (emergency !== null && emergency.accounts.length === 0 && !done)
+  const kind = decides ? 'decision' : policy ? 'policy' : (GRAPH.kinds.get(step.id) ?? 'object')
   const action = nextActionOf(kind, { exists, drift })
   // The plan's own waits (the legacy `prerequisite` hold), each in the engine's terms: a
   // maker step or a decision gates the action that needs it; the emergency gate holds a
@@ -240,7 +245,7 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
     if (step.emergency.hardening === 0) milestones.push('hardening-complete')
   }
   return {
-    kind: step.state.condition === 'needs-decision' ? 'decision' : policy ? 'policy' : undefined,
+    kind: decides ? 'decision' : policy ? 'policy' : undefined,
     exists,
     drift,
     evidenceSatisfied: lifecycle === 'ready-to-enforce' || lifecycle === 'enforced',
