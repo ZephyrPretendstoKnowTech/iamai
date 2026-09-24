@@ -59,7 +59,7 @@ import { HARDENING_DEFERRAL_ID } from '../../validation/emergencyTiers.ts'
 import { AuthoredText, DoneWhen, EmergencySlotBody, PolicyMembers, ReadinessSection, StepActionColumn, StepDialog, StepFooter, StepHead, StepSection, StepState, WHY_LINK_SHOWN, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
 import { MfaHandoff } from './MfaHandoff.tsx'
 import { HEAD, decisionHeadingsOf, taskHeadingsOf } from './stepHeadings.ts'
-import { AnsweredInDirection, DirectionQuestions, directionDraftKey } from './DirectionQuestions.tsx'
+import { AnsweredInDirection, ApproveAnswers, DirectionQuestions, useDirectionDraft } from './DirectionQuestions.tsx'
 import { ANSWERED_IN } from '../../roadmap/direction.ts'
 import { channelTabsOf, stepBodyOf, truthy } from './stepBody.ts'
 import type { Artifact, Channel } from './stepBody.ts'
@@ -275,6 +275,9 @@ export function ContentStep({
   const [confirmKey, setConfirmKey] = useState<string | null>(null)
   const closeDialog = (): void => setDialog(null)
   const [copied, setCopied] = useState<string | null>(null)
+  // A Direction step's draft (DirectionQuestions.tsx): its cards in the main
+  // column change it, and Approve answers in the action column saves it.
+  const directionDraft = useDirectionDraft(step)
   // The opened step's body, decided once (stepBody.ts stepBodyOf): the content
   // step, the contract under the lane engine's reading, the instructions, the
   // channels, the package's projection and readiness, the Readiness tiles, which
@@ -441,7 +444,7 @@ export function ContentStep({
               bar that says where the step stands with its one action under it,
               and — where this step's enforcement waits on the people it reaches —
               who they are, handed to MFA Readiness (derive/stepMfaReadiness.ts). */}
-          {decisionHead ? <DirectionQuestions key={directionDraftKey(step)} step={step} ctx={ctx} heading={decisionHead.questions} onDecide={onDecide} printing={printing} saving={saveStatus === 'saving'} />
+          {decisionHead ? <DirectionQuestions draft={directionDraft} ctx={ctx} heading={decisionHead.questions} printing={printing} />
           : isEmergencyAccounts && emergencyAccountTasks ? <EmergencySubjectReadiness subjects={emergencyAccountTasks.accounts ?? []} printing={printing} barMain={(emergencyAccountTasks.accounts ?? []).some(account => !account.satisfied) ? '' : 'Account preparation is verified.'} onWhy={hasEvidence && !printing ? () => setDialog('readiness') : null} />
           : isTaskStep && emergencyAccountTasks && !printing ? <EmergencySubjectReadiness
             subjects={taskSubjects}
@@ -505,6 +508,7 @@ export function ContentStep({
             the action: IAMAI cannot choose, so nothing is offered to submit until
             a person has (Foundation C). */}
         <StepActionColumn rail={rail}>
+          {decisionHead && !printing && <ApproveAnswers draft={directionDraft} onDecide={onDecide} saving={saveStatus === 'saving'} />}
           {/* A question that moved to Define Your Rollout Scope is answered there; this step says where, and what (roadmap/direction.ts ANSWERED_IN). */}
           {/* The picker is the step's own, or — on a step that makes an object itself and asks nothing of its own — the object's, saved under the object's id (stepBody.ts taskDecision; Stage 3: the countries location's Work Countries, on the countries step). */}
           {ANSWERED_IN[step.id] ? <AnsweredInDirection stepId={step.id} ctx={ctx} /> : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && <Decision key={step.id} d={taskDecision?.d ?? d} ex={taskDecision?.ex ?? ex} saved={taskDecision ? objectTask?.saved ?? null : decision} onDecide={taskDecision ? objectTask?.onDecide : onDecide} stepId={taskDecision?.stepId ?? step.id} ctx={ctx} printing={printing} railInstruction={!taskDecision && rail.instruction !== null} />}
