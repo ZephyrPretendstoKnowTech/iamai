@@ -45,8 +45,11 @@ export function lifecycleResources(pkg: CompiledPackage, state: PackageState, bi
 
 // Prepare Emergency Access Accounts is here too (owner, 2026-09-23): its script
 // only verified identity and role from a typed id, and its JSON repeated the
-// read-only Graph requests the scan already made. The scan does both.
-const NON_MACHINE = new Set(['s-ladder-operator-passkey', 's-prereq-device-plan', 's-confirm-workloads', 's-prereq-break-glass'])
+// read-only Graph requests the scan already made. The scan does both. So is
+// Configure Emergency Exclusions, whose script needed ids typed in by hand and
+// whose JSON was the scan's own GETs, and Configure Passkey Authentication,
+// whose script and JSON only read back the settings the scan reads.
+const NON_MACHINE = new Set(['s-ladder-operator-passkey', 's-prereq-device-plan', 's-confirm-workloads', 's-prereq-break-glass', 's-prereq-exclusion-group', 's-prereq-passkey-settings'])
 const NO_EMAIL = new Set(['s-prereq-break-glass', 's-prereq-passkey-settings', 's-ladder-operator-passkey', 's-confirm-workloads', 's-goal-admin-session', 's-prereq-auth-strength', 's-prereq-exclusion-group'])
 
 export function resourceChannelAllowed(step: Step, channel: Channel): boolean {

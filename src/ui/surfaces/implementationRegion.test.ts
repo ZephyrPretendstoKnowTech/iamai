@@ -74,7 +74,6 @@ test('machine resources follow supported step capability, including useful prere
   const demo = named('demo')
   // Prepare Emergency Access Accounts has no machine channel: the scan already reads what its script and JSON read (owner, 2026-09-23).
   assert.deepEqual(tabs(demo.get('s-prereq-break-glass')), ['Entra', 'AI Info'])
-  assert.deepEqual(tabs(demo.get('s-prereq-exclusion-group')), ['Entra', 'PowerShell', 'JSON', 'AI Info'])
   assert.ok(demo.get('s-direction-devices')!.artifacts.every(a => a.id !== 'json' && a.id !== 'ps'))
 })
 

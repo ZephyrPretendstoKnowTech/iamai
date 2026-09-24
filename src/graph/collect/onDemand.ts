@@ -1,7 +1,6 @@
 // On-demand collectors (docs/design/collection.md §2): run only after
 // baseline selection, driven by the references the chosen baseline uses.
 // Main-thread friendly — small, single-purpose calls.
-import { getGraphToken } from '../msal.ts'
 import { BETA, GraphResponseShapeError, graphPaged, graphRequest, V1 } from './http.ts'
 import type { TokenSource } from './http.ts'
 import { loadGroupMembersCache, saveGroupMembersCache } from './cache.ts'
@@ -12,6 +11,8 @@ import { assignedLicenseSkuIdsOf, directMemberObjectsOf, directoryMemberEvidence
 
 // Above this, membership is stored as count-and-sample, not the full id list.
 export const GROUP_MEMBER_FULL_LIST_CEILING = 20_000
+// One page of Graph's member list: a group this size has its direct members read with it.
+const DIRECT_MEMBERS_PAGE = 999
 
 /** Complete transitive group ids for one selected safety-sensitive account. */
 export async function readUserTransitiveGroupIds(userId: string): Promise<string[] | null> {
@@ -25,6 +26,8 @@ export async function readUserTransitiveGroupIds(userId: string): Promise<string
 }
 
 async function msalTokens(): Promise<TokenSource> {
+  // Loaded when a token is first needed, so a reader handed its own token source never loads MSAL.
+  const { getGraphToken } = await import('../msal.ts')
   let token = await getGraphToken()
   return {
     get: () => token,
@@ -131,7 +134,7 @@ export async function searchGroups(query: string): Promise<{ id: string; display
 export async function readGroup(
   tenantId: string,
   groupId: string,
-  opts: { forceRefresh?: boolean; since?: string | null; directEvidence?: boolean } = {},
+  opts: { forceRefresh?: boolean; since?: string | null; directEvidence?: boolean; tokens?: TokenSource } = {},
 ): Promise<GroupRead> {
   const asOf = new Date().toISOString()
   const unread = (e: unknown): GroupRead => ({
@@ -168,7 +171,7 @@ export async function readGroup(
 
   let tokens: TokenSource
   try {
-    tokens = await msalTokens()
+    tokens = opts.tokens ?? await msalTokens()
   } catch (e) {
     return unread(e)
   }
@@ -193,14 +196,16 @@ export async function readGroup(
     assignedLicenseSkuIds: licenses,
   }
   let direct: Pick<GroupRead, 'directMembers' | 'directMemberIds' | 'directMemberObjects' | 'owners' | 'ownerObjects'> = {}
-  if (opts.directEvidence) {
+  // Who is directly in the group. v1.0 /members can omit service principals; the
+  // beta relationship is used only for this bounded, read-only completeness proof.
+  const readDirectMembers = async (): Promise<void> => {
     try {
-      // v1.0 /members can omit service principals; the beta relationship is
-      // used only for this bounded, read-only completeness proof.
-      const rows = await graphPaged(tokens, `${BETA}/groups/${groupId}/members?$select=id,displayName,userPrincipalName&$top=999`)
-      const objects = directMemberObjectsOf(rows)
+      const objects = directMemberObjectsOf(await graphPaged(tokens, `${BETA}/groups/${groupId}/members?$select=id,displayName,userPrincipalName&$top=999`))
       direct = { ...direct, directMembers: 'complete', directMemberIds: objects.map(row => row.id), directMemberObjects: objects }
     } catch { direct = { ...direct, directMembers: 'unknown', directMemberIds: [], directMemberObjects: [] } }
+  }
+  if (opts.directEvidence) {
+    await readDirectMembers()
     try {
       const rows = await graphPaged(tokens, `${V1}/groups/${groupId}/owners?$select=id,displayName,userPrincipalName&$top=999`)
       // v1.0 owner enumeration can omit service principals. Owners are an
@@ -234,6 +239,12 @@ export async function readGroup(
       const rows = await graphPaged(tokens, `${V1}/groups/${groupId}/transitiveMembers?$select=id&$top=999`)
       memberIds = rows.map((m) => String((m as Record<string, unknown>).id ?? '')).filter(Boolean)
     }
+    // The reading every group gets carries its direct members too, where they
+    // fit one page, as an exclusions group's always do. The exclusions picker
+    // lists these readings ("2 members"), and its membership card reads the direct
+    // members: read only for the group already saved when the groups were read,
+    // a group just chosen read "Direct member count · Could not verify" (owner, 2026-09-23).
+    if (!opts.directEvidence && memberCount <= DIRECT_MEMBERS_PAGE) await readDirectMembers()
     const entry: GroupMembersCacheEntry = {
       schema: 2,
       tenantId,

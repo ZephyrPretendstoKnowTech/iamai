@@ -29,8 +29,7 @@ import { ALL_WORK_TAB, BOARD, DEFAULT_TAB, NO_FOCUS, TABS, TYPE_ORDER, WHEN, all
 import type { BoardGroup, BoardItem, BoardTab, Focus, LaneTab, WorkType } from './planBoard.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
-import { rowWho } from './rowWho.ts'
-import { IMPACT, whoLine as whoLineOf } from '../../derive/whoLine.ts'
+import { cleanupRowWho, rowWho } from './rowWho.ts'
 import { ContentStep } from './ContentStep.tsx'
 import { cleanupTitleOf, factOf } from './stepContract.ts'
 import type { LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
@@ -661,8 +660,7 @@ function CleanupRow({ phase, row, number, answers, open, onToggle, onScan, onDon
   // place (roadmap/cleanupDone.ts `cleanupComplete`), which the lane adapter
   // reads for the row's lane; the row and its opened head say that lane (A1b).
   const status = { word: lane.label, tone: lane.tone }
-  const accounts = row.kind === 'alerting' || row.kind === 'drill' ? phase.accountIds : []
-  const who = whoLineOf({ total: accounts.length, active: accounts.length, admins: 0, guests: 0, ids: accounts, activeIds: accounts, inScope: accounts.length }, null, (structuralWords.cleanupImpacts as Record<string, string>)[row.kind] ?? structuralWords.impactDefault)
+  const who = cleanupRowWho(phase, row)
   return (
     <>
       {/* The one row shape the Plan draws (StepSections.tsx PlanRow), not one per kind of row. */}

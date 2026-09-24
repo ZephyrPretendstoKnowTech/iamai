@@ -12,9 +12,14 @@ import { effectsOf } from '../../roadmap/strand.ts'
 import { REPORT_ONLY_GAP } from '../../coverage/verdict.ts'
 import { implementationPackageFor } from './stepPackage.ts'
 import { BREAK_GLASS_STEP_ID } from '../../roadmap/stepIds.ts'
+import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 
 /** How many emergency access accounts the step needs: the count rule's own minimum (validation/rules.ts bgCount). */
 const EMERGENCY_ACCOUNTS_NEEDED = 2
+/** The emergency access accounts: the ones chosen, and never fewer than the two the steps need. */
+const emergencyAccounts = (chosen: number): string => count(Math.max(EMERGENCY_ACCOUNTS_NEEDED, chosen), 'account')
+const EXCLUSIONS_GROUP_STEP_ID = 's-prereq-exclusion-group'
+const PASSKEY_SETTINGS_STEP_ID = 's-prereq-passkey-settings'
 
 const IMPACT_TOPICS: Record<string, string> = {
   'guests-mfa': 'Guest Accounts', 'mfa-all-users': 'User Authentication', 'admins-phishing-resistant': 'Administrator Accounts',
@@ -40,7 +45,12 @@ export function rowWho(step: Step): string {
   // Prepare Emergency Access Accounts is its accounts: the ones chosen, and never
   // fewer than the two the step needs, so a step with one or none chosen still
   // counts what it is for rather than reading a label.
-  if (step.id === BREAK_GLASS_STEP_ID) return count(Math.max(EMERGENCY_ACCOUNTS_NEEDED, step.emergency?.accounts.length ?? 0), 'account')
+  if (step.id === BREAK_GLASS_STEP_ID) return emergencyAccounts(step.emergency?.accounts.length ?? 0)
+  // Configure Emergency Exclusions and Configure Passkey Authentication count
+  // what they change, as 1.1 and 1.4 count their accounts (owner, 2026-09-23):
+  // the policies the group must be excluded from, and the people who can register.
+  if (step.impactCount !== undefined && step.id === EXCLUSIONS_GROUP_STEP_ID) return count(step.impactCount, 'policy', 'policies')
+  if (step.impactCount !== undefined && step.id === PASSKEY_SETTINGS_STEP_ID) return count(step.impactCount, 'person', 'people')
   const namedImpact = step.impactLabel ?? (structuralWords.impactLabels as Record<string, string>)[step.id]
   if (namedImpact) return namedImpact
   // Who the row names is who the step's own policies name (derive/population.ts
@@ -62,4 +72,15 @@ export function rowWho(step: Step): string {
   const none = effectsOf(step) === null ? (implementationPackageFor(step)?.meta.impact?.fallbackLabel ?? structuralWords.impactDefault) : IMPACT.noUserImpact
   const head = whoLine(pop, null, none)
   return step.lockout ? `${head} · ${fillText(app.plan.lockoutSuffix, { n: step.lockout })}` : head
+}
+
+/**
+ * A Cleanup row's Impact: who it touches. Verify Emergency Access counts the
+ * emergency access accounts as Prepare Emergency Access Accounts does, "2
+ * accounts", never "2 people" (owner, 2026-09-23).
+ */
+export function cleanupRowWho(phase: CleanupPhase, row: CleanupPhase['rows'][number]): string {
+  if (row.kind === 'drill') return emergencyAccounts(phase.accountIds.length)
+  const accounts = row.kind === 'alerting' ? phase.accountIds : []
+  return whoLine({ total: accounts.length, active: accounts.length, admins: 0, guests: 0, ids: accounts, activeIds: accounts, inScope: accounts.length }, null, (structuralWords.cleanupImpacts as Record<string, string>)[row.kind] ?? structuralWords.impactDefault)
 }

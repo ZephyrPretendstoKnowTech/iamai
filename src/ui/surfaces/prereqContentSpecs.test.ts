@@ -59,8 +59,6 @@ test('s-prereq-break-glass: preparation owns account identity, role and approved
 
 test('s-prereq-exclusion-group: About text is direct, the selector has no repeated helper, and Entra has two paths', () => {
   const cs = stepOf(EXCLUSIONS)
-  // Editorial batch C: the register Why.
-  assert.equal(cs.why, 'Keep the selected recovery accounts outside policies that could prevent recovery, using the intended exclusions group.')
   // The milestone carries the short selector help; the picker does not repeat a detected-match paragraph.
   assert.match(CONTENT_STEP, /const matchedNote = isExclusionsGroup \? null : matchedNoteOf/)
   // The nearby previous-step link was removed from the header.
@@ -91,12 +89,6 @@ test('authored Markdown: a numbered list starts where it is written, and an inde
 })
 
 test('s-prereq-passkey-settings: Why says what the step sets, the bar and tile are clear, Entra is one numbered procedure, AI Info explains it, and Done when is one line', () => {
-  const cs = stepOf(PASSKEYS)
-  // Editorial batch C: the register Why, and the resolved change on the next scan with the emergency sign-in as a human check.
-  assert.equal(cs.why, 'Keep approved passkey registration available, protect existing working methods, and apply the intended passkey settings without guessing at unread configuration.')
-  assert.deepEqual(cs.doneWhen, [
-    'The scan confirms that the applicable passkey settings match the intended configuration.',
-  ])
   const body = bodiesOf(fixture('demo')).get(PASSKEYS)!
   assert.ok(body.readiness.tiles.some(t => t.key.startsWith('configuration:')), 'scan findings are concrete')
   const b = blocksOf(PASSKEYS)

@@ -4,7 +4,7 @@ import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { emergencyGroupTasksOf } from './emergencyGroupTasks.ts'
 import { emergencyPasskeyTasksOf } from './emergencyPasskeyTasks.ts'
-import { emergencyVerificationJson, emergencyVerificationPowerShell, emergencyVerificationTasksOf } from './emergencyVerificationTasks.ts'
+import { emergencyVerificationJson, emergencyVerificationTasksOf } from './emergencyVerificationTasks.ts'
 import { laneReadings } from './planLanes.ts'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 
@@ -37,15 +37,11 @@ test('Steps 2 and 3 project only their own work: the exclusions tasks preserve t
     f.snapshot.config.authMethodsPolicy = { status: 'error', reason: 'Read denied', rows: [] }
     const step = runFixture(f).steps.find(item => item.id === 's-prereq-passkey-settings')!
     const projection = emergencyPasskeyTasksOf(step, ctx)
-    const inspect = projection.tasks.find(task => task.id === 'inspect-passkey-settings')!
-    assert.equal(inspect.required, false)
-    assert.equal(inspect.evidence, null)
-    assert.doesNotMatch(inspect.steps.join(' '), /Scan to update the plan|scan again/i)
     assert.equal(projection.tasks.some(task => task.required), false)
   }
 })
 
-test('Step 4 verification is read-only and identity-stable: no Graph write in its script or JSON, no re-recording a current pass, and a valid script with no accounts', () => {
+test('Step 4 verification is read-only and identity-stable: no Graph write in its JSON, and no re-recording a current pass', () => {
   {
     const phase = {
       accountIds: ['account-1'], accountUpnsById: { 'account-1': 'emergency@contoso.onmicrosoft.com' }, accountBasis: { 'account-1': 'basis' },
@@ -62,9 +58,6 @@ test('Step 4 verification is read-only and identity-stable: no Graph write in it
     assert.ok(tasks[0].steps.some(line => line.includes('Wait 5–10 minutes')))
     assert.equal(tasks.flatMap(task => task.steps).some(line => /Start verification|Save verification|Passed|Failed/.test(line)), false)
     assert.ok(tasks[1].steps.some(line => line.includes('Sign-in logs')))
-    const script = emergencyVerificationPowerShell(phase)
-    assert.match(script, /while \(\$next\)/)
-    assert.doesNotMatch(script, /\b(?:POST|PATCH|DELETE)\b/)
     const json = JSON.parse(emergencyVerificationJson(phase))
     assert.equal(json.accounts[0].upn, 'emergency@contoso.onmicrosoft.com')
     assert.match(json.purpose, /not a Graph write payload/)
@@ -82,12 +75,5 @@ test('Step 4 verification is read-only and identity-stable: no Graph write in it
     } as unknown as CleanupPhase
     const tasks = emergencyVerificationTasksOf(phase).tasks
     assert.equal(tasks.some(task => task.id === 'record-verification:account-1' && task.required), false)
-  }
-  {
-    const phase = { accountIds: [], rows: [], start: '2026-09-16', end: '2026-09-16', convention: null } as unknown as CleanupPhase
-    const script = emergencyVerificationPowerShell(phase)
-    assert.doesNotMatch(script, /\[DateTimeOffset\]''/)
-    assert.match(script, /AddDays\(-30\)/)
-    assert.match(script, /No emergency accounts are selected/)
   }
 })

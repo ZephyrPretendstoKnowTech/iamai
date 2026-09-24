@@ -22,10 +22,10 @@ import { AuthoredText, DoneWhen, ReadinessSection, StepActionColumn, StepHead, S
 import type { ReadinessTile } from './stepContract.ts'
 import { HEAD, TASK_HEAD } from './stepHeadings.ts'
 import { CONTRACT } from './stepContract.ts'
-import { cleanupEntry, cleanupVars, cleanupWhen, EMERGENCY_RECOVERY_PROCEDURE } from './cleanupExport.ts'
+import { cleanupEntry, cleanupSourceLine, cleanupVars, cleanupWhen, drillMilestone, EMERGENCY_RECOVERY_PROCEDURE } from './cleanupExport.ts'
 import { EmergencySubjectReadiness, Implementation, copyImplementationArtifact } from './ContentStep.tsx'
 import type { Artifact, Channel } from './stepBody.ts'
-import { emergencyVerificationAiInfo, emergencyVerificationJson, emergencyVerificationPowerShell, emergencyVerificationTasksOf } from './emergencyVerificationTasks.ts'
+import { emergencyVerificationArtifacts, emergencyVerificationTasksOf } from './emergencyVerificationTasks.ts'
 import { consolidateEmergencyReadiness, recoverySubjectsOf } from './emergencyReadiness.ts'
 
 export { cleanupEntry, cleanupVars, cleanupWhen } from './cleanupExport.ts'
@@ -90,15 +90,10 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone }: {
     if (finding.outcome === 'pass' || passed.length > 0) tiles.push({ key: `${finding.key}:satisfied`, label: finding.label, value: finding.outcome === 'pass' ? finding.value : `${passed.length} completed`, note: null, items: passed.length ? passed : finding.items, tone: 'good', structuredItems: true })
     return tiles
   })
-  const recoveryReadiness = consolidateEmergencyReadiness({ tiles: recoveryTiles.filter(t => t.tone !== 'good'), satisfied: recoveryTiles.filter(t => t.tone === 'good'), bar: { key: 'recovery', main: row.done ? 'Current recovery verification recorded' : 'Complete the configuration findings, then verify recovery for each account.' } }, verificationTasks, new Map(Object.entries(phase.accountUpnsById ?? {})), !onDone)
+  const recoveryReadiness = consolidateEmergencyReadiness({ tiles: recoveryTiles.filter(t => t.tone !== 'good'), satisfied: recoveryTiles.filter(t => t.tone === 'good'), bar: { key: 'recovery', main: row.done ? 'Current recovery verification recorded' : '' } }, verificationTasks, new Map(Object.entries(phase.accountUpnsById ?? {})), !onDone)
   // Interactive Tasks Remaining (the Step 1 tile standard); print keeps the source findings split as above.
   const recoverySubjects = useMemo(() => recoverySubjectsOf(phase.recoveryFindings ?? [], verificationTasks, new Map(Object.entries(phase.accountUpnsById ?? {}))), [phase, verificationTasks])
-  const verificationArtifacts = useMemo<Artifact[]>(() => [
-    { id: 'portal', form: 'markdown', lines: [], text: () => '', note: null },
-    { id: 'ps', form: 'code', lines: [], text: () => emergencyVerificationPowerShell(phase), note: 'Read-only Microsoft Graph sign-in inspection.' },
-    { id: 'json', form: 'code', lines: [], text: () => emergencyVerificationJson(phase), note: 'Evidence and context only; not a Graph write payload.' },
-    { id: 'ai', form: 'markdown', lines: [], text: () => emergencyVerificationAiInfo(phase), note: null },
-  ], [phase])
+  const verificationArtifacts = useMemo<Artifact[]>(() => emergencyVerificationArtifacts(phase), [phase])
   // Every hook above runs on every render (Rules of Hooks); a row with no content entry renders nothing.
   if (!entry) return null
   // The recovery drill draws the task-step headings, because it draws the task
@@ -138,7 +133,7 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone }: {
       {row.kind === 'drill' && recoveryTiles.length > 0 && !onDone && <ReadinessSection heading={taskHead?.remaining} readiness={recoveryReadiness} lead={null} showClosedCount={false} printing={!onDone} />}
       {/* The row's own instructions are its Implementation (U1; S-RN-2, S-RB-3):
           no step draws What to do. */}
-      {row.kind === 'drill' ? <Implementation heading={taskHead?.implementation} artifacts={verificationArtifacts} drawnBy="translator" preview={null} notes={[]} title={entry.title} empty={{ key: 'none', tone: 'neutral', title: '', text: '' }} source={null} learn={entry.learn?.url ?? null} onTroubleshooting={null} open={implementationOpen} onOpen={() => setImplementationOpen(true)} onClose={() => setImplementationOpen(false)} copy={copyArtifact} copied={copied} printing={!onDone} tasks={verificationTasks} chosenChannel={implementationChannel} onChooseChannel={setImplementationChannel} chosenTaskId={taskId} onChooseTask={setTaskId} emptyTaskText={row.done ? 'Verification is current. No Entra action is required.' : 'Complete the highlighted configuration tasks before starting verification.'} /> : <StepSection heading={CONTRACT.implementation.heading}>
+      {row.kind === 'drill' ? <Implementation heading={taskHead?.implementation} artifacts={verificationArtifacts} drawnBy="translator" preview={null} notes={[]} title={entry.title} empty={{ key: 'none', tone: 'neutral', title: '', text: '' }} source={cleanupSourceLine(entry)} learn={entry.learn?.url ?? null} onTroubleshooting={null} open={implementationOpen} onOpen={() => setImplementationOpen(true)} onClose={() => setImplementationOpen(false)} copy={copyArtifact} copied={copied} printing={!onDone} tasks={verificationTasks} chosenChannel={implementationChannel} onChooseChannel={setImplementationChannel} chosenTaskId={taskId} onChooseTask={setTaskId} emptyTaskText={row.done ? 'Verification is current. No Entra action is required.' : 'Complete the highlighted configuration tasks before starting verification.'} /> : <StepSection heading={CONTRACT.implementation.heading}>
         <ol className="sections">{entry.whatToDo.filter(whole).map((l, i) => <li key={i}>{fillText(l, ex)}</li>)}</ol>
       </StepSection>}
       <DoneWhen heading={taskHead?.doneWhen ?? HEAD.doneWhen} lines={doneWhen.map((l) => fillText(l, ex))} />
@@ -178,7 +173,7 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone }: {
         </p>
       )}
         </div>
-        {row.kind === 'drill' && <StepActionColumn rail={{ metric: status.word, sub: row.done ? 'Every selected account is verified.' : 'Verify every selected account after the final configuration is observed.' }} />}
+        {row.kind === 'drill' && <StepActionColumn rail={{ metric: status.word, sub: drillMilestone(row) }} />}
       </div>
     </article>
   )

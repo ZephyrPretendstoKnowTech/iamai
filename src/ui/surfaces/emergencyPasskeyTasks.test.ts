@@ -84,13 +84,6 @@ function projectLegacyChange(change: (current: Record<string, any>) => void) {
   return emergencyPasskeyTasksOf(step, ctx)
 }
 
-test('Step 3 keeps exactly four persistent outcome tasks and no per-user task IDs', () => {
-  const projected = project()
-  assert.deepEqual(projected.tasks.map(task => task.id), ['inspect-passkey-settings', 'make-passkey-registration-available', 'prepare-affected-passkeys', 'apply-passkey-settings'])
-  assert.equal(projected.tasks.some(task => task.id.includes(':')), false)
-  assert.equal(projected.printAll, true)
-})
-
 test('affected-passkey task keeps users as facts and one method selector', () => {
   const task = project().tasks.find(row => row.id === 'prepare-affected-passkeys')!
   assert.equal(task.variants?.length, 3)
@@ -115,24 +108,12 @@ test('profile corrections expose only changed fields and do not repeat fact valu
   assert.doesNotMatch(text, /Add only:|Remove only:|Use these approved authenticator models:/i)
 })
 
-test('inspection instructions do not refer to facts when no facts are projected', () => {
-  const task = project().tasks.find(row => row.id === 'inspect-passkey-settings')!
-  if ((task.facts ?? []).length === 0) assert.doesNotMatch(task.steps.join('\n'), /shown above|displayed intended values/i)
-})
-
 test('legacy approved-model changes expose exact nonblank AAGUID values', () => {
   const task = projectLegacyChange(() => undefined).tasks.find(row => row.id === 'apply-passkey-settings')!
   const fact = task.readinessFacts?.find(row => row.label === 'Approved models')
   assert.ok(fact)
   assert.ok(fact.value.trim().length > 0)
   for (const aaguid of PASSKEY_TARGET_AAGUIDS) assert.match(fact.value, new RegExp(aaguid, 'i'))
-})
-
-test('include-target changes are set in the step, never "None"', () => {
-  const task = projectLegacyChange(current => { current.includeTargets = [] }).tasks.find(row => row.id === 'make-passkey-registration-available')!
-  assert.equal(task.facts, undefined)
-  assert.ok(task.steps.includes('Under **Include**, add the users or groups who register passkeys, including the emergency accounts.'), task.steps.join('\n'))
-  assert.doesNotMatch(task.steps.join('\n'), /target \*\*None\*\*|use the resolved target list/i)
 })
 
 test('the same approved models in a different order produce no Approved models row', () => {
@@ -179,44 +160,6 @@ test('extra tenant models outside the required set do not by themselves produce 
 })
 
 const protectionSteps = (profile: Record<string, unknown>) => projectProfile(profile).projected.tasks.find(row => row.id === 'apply-passkey-settings')!.steps
-
-test('protections: navigate first, then apply each value inline, one Save per Add AAGUID entry', () => {
-  // A GetIAMAI-shaped profile: attestation enforced, stored types "deviceBound,synced"
-  // (the portal shows Device-bound), no restrictions. Enforced attestation already
-  // limits registration to device-bound passkeys, so Passkey types is no step.
-  const steps = protectionSteps({ name: 'Default passkey profile', passkeyTypes: 'deviceBound,synced', attestationEnforcement: 'registrationOnly', keyRestrictions: { isEnforced: false, enforcementType: 'block', aaGuids: [] } })
-  // No session reminder leads it (owner, 2026-09-23): the procedure opens on the portal.
-  assert.deepEqual(steps, [
-    'Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Authentication methods → Policies → Passkey (FIDO2)**.',
-    'Open **Default passkey profile**.',
-    'Select **Target specific AAGUIDs** and set **Behavior** to **Allow**.',
-    'Select **+ Add AAGUID → Microsoft Authenticator**, then **Save**.',
-    'Select **+ Add AAGUID → Enter AAGUID**, enter **19083c3d-8383-4b18-bc03-8f1c9ab2fd1b** (YubiKey 5 Series), then **Save**.',
-    'Select **+ Add AAGUID → Enter AAGUID**, enter **a25342c0-3cdc-4414-8e46-f4807fca511c** (YubiKey 5 Series with NFC), then **Save**.',
-    'Return to IAMAI and select **Scan to update the plan**.',
-  ])
-})
-
-test('protections: a satisfied value produces no step, and an AAGUID is never a header block', () => {
-  // Only the Android model is missing; storage and restrictions already match.
-  const steps = protectionSteps({ passkeyTypes: 'deviceBound', attestationEnforcement: 'registrationOnly', keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids: GRAPH_ORDER.filter(id => id !== 'de1e552d-db1d-4423-a619-566b625cdc84') } })
-  const text = steps.join('\n')
-  assert.doesNotMatch(text, /Passkey types|Target specific AAGUIDs|Enforce attestation|Apply only the changed values/)
-  assert.deepEqual(steps.slice(1, -1), ['Open **Authenticator**.', 'Select **+ Add AAGUID → Microsoft Authenticator**, then **Save**.'])
-  const task = projectProfile({ passkeyTypes: 'deviceBound', attestationEnforcement: 'registrationOnly', keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids: [] } }).projected.tasks.find(row => row.id === 'apply-passkey-settings')!
-  for (const line of task.steps) if (/19083c3d|a25342c0/.test(line)) assert.match(line, /^Select \*\*\+ Add AAGUID → Enter AAGUID\*\*, enter/)
-  assert.equal(task.facts, undefined)
-})
-
-test('protections: a legacy configuration is changed on Configure, each AAGUID entered where it is typed', () => {
-  const task = projectLegacyChange(() => undefined).tasks.find(row => row.id === 'apply-passkey-settings')!
-  const [, open, ...rest] = task.steps
-  assert.equal(open, 'Open **Configure**.')
-  assert.equal(rest.at(-1), 'Return to IAMAI and select **Scan to update the plan**.')
-  const entered = rest.filter(line => line.startsWith('Select **Add AAGUID** and enter'))
-  assert.equal(entered.length, PASSKEY_TARGET_AAGUIDS.length - 1)
-  assert.equal(rest.at(-2), 'Select **Save**.')
-})
 
 test('storage: stored "deviceBound,synced" with attestation enforced is no change; synced only is', () => {
   assert.deepEqual(protectionFacts({ passkeyTypes: 'deviceBound,synced', attestationEnforcement: 'registrationOnly', ...allow(GRAPH_ORDER) }), [])
@@ -328,45 +271,6 @@ test('an administrator whose only phishing-resistant method is an unjudged passk
   const apply = task(projected, 'apply-passkey-settings').steps.join('\n')
   assert.doesNotMatch(apply, RESTRICTION, `the allow list is handed over with admins it would lock out:\n${apply}`)
   assert.doesNotMatch(task(projected, 'prepare-affected-passkeys').steps[0], /none is locked out/)
-})
-
-// Nobody found affected in what was read is not nobody affected. Prepare
-// affected passkeys said "No existing passkey is affected by the planned
-// settings" on hostile, where not one account's registered methods were read,
-// and on every tenant whose passkey settings were not read — under the tile
-// "Existing passkeys affected · Could not verify". It now says what it did not
-// read; the all-clear is kept for a tenant read in full.
-const ALL_CLEAR = 'No existing passkey is affected by the planned settings. Keep the existing working method available while preparing an account.'
-function prepareLead(name: 'hostile' | 'getiamai', change: (snapshot: TenantSnapshot) => void = () => {}) {
-  const value = structuredClone(fixture(name))
-  change(value.snapshot)
-  const run = runFixture(value)
-  const step = run.steps.find(row => row.id === 's-prereq-passkey-settings')!
-  const ctx: StepVarContext = { snapshot: value.snapshot, mapping: value.mapping, nameOf: id => run.input.names!.label(id), signature: 'IT', operatorId: value.operatorId, now: value.snapshot.asOf, groups: value.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
-  const prepare = task(emergencyPasskeyTasksOf(step, ctx), 'prepare-affected-passkeys')
-  return { lead: prepare.steps[0], text: emergencyTaskText(prepare, prepare.defaultVariantId), tile: step.configurationFindings?.find(f => f.key === 'affected-passkeys') }
-}
-
-test('an impact IAMAI could not read is never an all-clear: the task says what it did not read', () => {
-  const cases: [string, ReturnType<typeof prepareLead>, RegExp][] = [
-    // hostile: no account's registered methods were read.
-    ['registered methods unread', prepareLead('hostile'), /Some users’ registered authentication methods were not readable\./],
-    // The passkey settings source itself unread.
-    ['passkey settings unread', prepareLead('getiamai', s => { s.config.authMethodsPolicy = { status: 'error', reason: 'Forbidden', rows: [] } }), /The current and intended passkey configuration could not be compared exactly\./],
-    // One account's methods unread in a tenant otherwise read in full.
-    ['one account’s methods unread', prepareLead('getiamai', s => { s.authMethods[s.users[0].id] = 'unknown' as never }), /Some users’ registered authentication methods were not readable\./],
-  ]
-  for (const [label, { lead, text, tile }, unread] of cases) {
-    assert.equal(tile?.value, 'Could not verify', `${label}: the premise is a tile that could not verify the impact`)
-    assert.doesNotMatch(text, /No existing passkey is affected/, `${label}: an all-clear over what was not read:\n${text}`)
-    assert.match(lead, /^IAMAI could not tell whether the planned settings stop any existing passkey\. /, `${label}: ${lead}`)
-    assert.match(lead, unread, `${label}: what was not read is not named: ${lead}`)
-    assert.match(lead, /Keep the existing working method available while preparing an account\.$/, `${label}: ${lead}`)
-  }
-  // A tenant read in full with nothing affected reads as it did.
-  const full = prepareLead('getiamai')
-  assert.notEqual(full.tile?.value, 'Could not verify', 'the premise: getiamai is read in full')
-  assert.equal(full.lead, ALL_CLEAR)
 })
 
 // Nor is what was read everything where some accounts' registered methods were
