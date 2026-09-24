@@ -89,10 +89,16 @@ export type MethodGuide = {
   reachesTarget: boolean
 }
 
-const line = (s: string): string => (s.startsWith('@') ? (M.common[s.slice(1)] ?? '') : s)
+// The guides speak about the person being helped: the shared Authenticator
+// procedure's {passkeyPhone} and {passkeyAccount} are theirs, and {passkeySignIn}
+// is the one line that says how to pick the passkey at sign-in. Filled here, not
+// through render.ts's fillText, which imports this module.
+const GUIDE_VALUES: Record<string, string> = { passkeyPhone: M.common.phoneTheirs ?? '', passkeyAccount: M.common.accountTheirs ?? '', passkeySignIn: M.common.passkeySignIn ?? '' }
+const fillGuide = (s: string): string => s.replace(/\{(passkeyPhone|passkeyAccount|passkeySignIn)\}/g, (_m, k: string) => GUIDE_VALUES[k] ?? '')
+const line = (s: string): string => fillGuide(s.startsWith('@') ? (M.common[s.slice(1)] ?? '') : s)
 
 function resolve(g: GuideEntry): MethodGuide {
-  const close = CLOSES_WITH_USE.has(g.id) ? [M.common.useIt, M.common.scanAgain] : []
+  const close = CLOSES_WITH_USE.has(g.id) ? [M.common.useIt, M.common.scanAgain].map(fillGuide) : []
   return { id: g.id, title: g.title, lines: [...g.steps.map(line), ...close, ...(g.then ?? []).map(line)], learn: g.learn, reachesTarget: reachesTarget(g.id) }
 }
 

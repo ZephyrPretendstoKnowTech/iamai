@@ -231,11 +231,22 @@
       "target": "The target is phishing-resistant MFA the person has been seen signing in with: a passkey, Windows Hello for Business or a certificate.",
       "prereq": "Passkey (FIDO2) has to be on in the tenant first; Configure Passkey Authentication turns it on.",
       "pointer": "MFA Readiness lists each person’s next step, grouped by what to do; start with its next check.",
-      "userInstruction": "Install Microsoft Authenticator, go to https://aka.ms/mfasetup, choose Add sign-in method, then Passkey, and follow the prompts on your phone.",
+      "userInstruction": "Install Microsoft Authenticator, select your work account in it and Create a passkey, then sign in once with it.",
       "guest": "A guest cannot be issued a Temporary Access Pass; they register from their own tenant or with their own phone.",
       "common": {
-        "addPasskey": "On https://aka.ms/mfasetup choose Add sign-in method → Passkey, then Microsoft Authenticator.",
-        "useIt": "Have them sign out and sign in once with it.",
+        "$commentAuthenticator": "The one procedure for a passkey in Microsoft Authenticator (owner, 2026-09-24: Emergency Access's steps are the model; https://aka.ms/mfasetup sends people the wrong way). Microsoft Learn's recommended flow, 'Use Authenticator' (how-to-register-passkey-authenticator). Read by Emergency Access (emergencyAccountTasks.ts authenticatorSteps), Use Separate Accounts for Admin Work, Register Your Own Passkey, Prepare Your Team for MFA and these guides, as the shared references {passkeyOpen}, {passkeyCreate}, {passkeyPrompts} and {passkeyProvider}. {passkeyPhone} and {passkeyAccount} are the reader's own.",
+        "authenticatorOpen": "Open **Microsoft Authenticator** on {passkeyPhone}.",
+        "authenticatorCreate": "Select {passkeyAccount} and **Create a passkey**. If the account is absent, use **Add account → Work or school account → Sign in** instead, and complete the passkey setup flow.",
+        "authenticatorPrompts": "Complete the Microsoft authentication prompts for that account.",
+        "authenticatorProvider": "Follow the app’s Settings prompt to enable a screen lock and select **Authenticator** as a passkey provider. Return to the app and finish setup.",
+        "$commentReaders": "{passkeyPhone} and {passkeyAccount} for each reader: yours (Register Your Own Passkey), theirs (the person being helped: Prepare Your Team for MFA, the method guides), named (a named admin's new account: Use Separate Accounts for Admin Work).",
+        "phoneYours": "your phone",
+        "phoneTheirs": "their phone",
+        "phoneNamed": "{name}’s phone",
+        "accountTheirs": "their work account",
+        "$commentSignIn": "How a person picks the passkey at sign-in, in Microsoft Learn's words (how-to-sign-in-passkey-authenticator): the shared reference {passkeySignIn}, so every direction that asks for a passkey sign-in names the method and the way to choose it (owner, 2026-09-24).",
+        "passkeySignIn": "After the username, choose **Other ways to sign in**, then **Face, fingerprint, PIN or security key**.",
+        "useIt": "Have them sign in once with it. {passkeySignIn}",
         "scanAgain": "Scan again: the sign-in record has to name the method before IAMAI reads it as proven."
       },
       "guides": [
@@ -243,9 +254,11 @@
           "id": "authenticator-iphone",
           "title": "Passkey in Microsoft Authenticator — iPhone",
           "steps": [
-            "Install Microsoft Authenticator from the App Store and sign in to the work account.",
-            "@addPasskey",
-            "iOS asks where to keep the passkey: pick Authenticator, then confirm with Face ID, Touch ID or the passcode."
+            "Install Microsoft Authenticator from the App Store.",
+            "@authenticatorOpen",
+            "@authenticatorCreate",
+            "@authenticatorPrompts",
+            "@authenticatorProvider"
           ],
           "learn": {
             "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-register-passkey-authenticator"
@@ -255,10 +268,12 @@
           "id": "authenticator-android",
           "title": "Passkey in Microsoft Authenticator — Android",
           "steps": [
-            "Install Microsoft Authenticator from Google Play and sign in to the work account.",
-            "@addPasskey",
-            "Android asks which app keeps the passkey: pick Authenticator, then confirm with the screen lock.",
-            "If Authenticator is not offered, turn it on under Android Settings → Passwords and accounts → Passkeys."
+            "Install Microsoft Authenticator from Google Play.",
+            "@authenticatorOpen",
+            "@authenticatorCreate",
+            "@authenticatorPrompts",
+            "@authenticatorProvider",
+            "If Authenticator is not offered as a provider, turn it on under Android Settings → Passwords and accounts → Passkeys."
           ],
           "learn": {
             "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-register-passkey-authenticator"
@@ -268,7 +283,7 @@
           "id": "security-key",
           "title": "Hardware security key",
           "steps": [
-            "On https://aka.ms/mfasetup choose Add sign-in method → Passkey, then Security key.",
+            "Open [Security info](https://mysignins.microsoft.com/security-info), choose Add sign-in method → Passkey, then Security key.",
             "The person inserts or taps the key when the browser asks for it.",
             "They set the key's PIN if it has none, then touch the key to finish."
           ],
@@ -2760,29 +2775,49 @@
               "noneSelected": "None selected",
               "required": "Required",
               "notRequired": "Not required",
+              "$commentMfaPreparation": "Prepare Your Team for MFA's three messages (stepResources.ts mfaPreparationEmail; the first is also Tell your people, stepExport.ts commsFor). Filled as plain text: the passkey lines are the one Authenticator procedure (content/passkeySetup.ts) read as {passkeyOpen} … {passkeyProvider}, with {passkeyPhone} your phone and {passkeyAccount} from mfaAccounts, and {passkeySignIn} says how to pick the passkey at sign-in (owner, 2026-09-24: directions name the method; Windows Hello is not a passkey). {computerLead} and {computerLine} are mfaComputer's, by the Decide How and Where People Sign In computers answer and the joined Windows computers the scan read.",
               "mfaPreparation": [
                 {
                   "heading": null,
-                  "subject": "Set Up Your Sign-in Method",
+                  "subject": "Upgrade How You Sign In to Work",
                   "paragraphs": [
-                    "We're adding a second sign-in step for everyone. Please set up Microsoft Authenticator this week. Open https://aka.ms/mfasetup, choose Add sign-in method, pick Microsoft Authenticator and follow the prompts. Then sign out and sign in once with it. Contact IT if you get stuck."
+                    "We're upgrading how you sign in to work: a passkey on your phone{computerLead}. It's quicker than a code or a text, and a fake sign-in page can't steal it. Please set it up this week; it takes about five minutes.",
+                    "Install Microsoft Authenticator from the App Store or Google Play (your phone needs iOS 17 or Android 14 or later). {passkeyOpen} {passkeyCreate} {passkeyPrompts} {passkeyProvider}",
+                    "Then sign in once with it. {passkeySignIn} Don't choose a text message, a call or a code.",
+                    "{computerLine}",
+                    "Contact IT if you get stuck."
                   ]
                 },
                 {
                   "heading": "--- Administrator message ---",
                   "subject": "Set Up Your Admin Passkey",
                   "paragraphs": [
-                    "Admin sign-ins will need a passkey or security key. Please set one up on your admin account this week. Open https://aka.ms/mfasetup, choose Add sign-in method, pick Passkey in Microsoft Authenticator or your security key and follow the prompts. Then sign out and sign in once with it. Contact IT if you get stuck."
+                    "Admin sign-ins will need a passkey. Please set one up on your admin account this week.",
+                    "{passkeyOpen} {passkeyCreate} {passkeyPrompts} {passkeyProvider}",
+                    "Using a security key instead: open Security info (https://mysignins.microsoft.com/security-info) as your admin account, then Add sign-in method → Passkey → Security key.",
+                    "Then sign in once with it. {passkeySignIn} Contact IT if you get stuck."
                   ]
                 },
                 {
                   "heading": "--- Follow-up message ---",
-                  "subject": "Finish Setting Up Your Sign-in Method",
+                  "subject": "Finish Setting Up Your Passkey",
                   "paragraphs": [
-                    "Your account still needs a sign-in method. Open https://aka.ms/mfasetup, choose Add sign-in method, pick Microsoft Authenticator and follow the prompts. Then sign out and sign in once with it. Contact IT if you get stuck."
+                    "Your account still needs a passkey. It takes about five minutes.",
+                    "Install Microsoft Authenticator from the App Store or Google Play. {passkeyOpen} {passkeyCreate} {passkeyPrompts} {passkeyProvider}",
+                    "Then sign in once with it. {passkeySignIn} Don't choose a text message, a call or a code. Contact IT if you get stuck."
                   ]
                 }
-              ]
+              ],
+              "mfaAccounts": {
+                "work": "your work account",
+                "admin": "your admin account"
+              },
+              "mfaComputer": {
+                "$comment": "managedLead and managed where Decide How and Where People Sign In says company computers are managed and the scan read joined Windows computers; phone everywhere else: a phone passkey used from the computer (Microsoft Learn, how-to-sign-in-passkey-authenticator, cross-device).",
+                "managedLead": ", and Windows Hello on your work computer",
+                "managed": "On your work computer: when Windows asks you to set up Windows Hello, do it. Then your face, fingerprint or PIN signs you in to Windows and your work apps.",
+                "phone": "On a computer: sign in with the passkey on your phone. {passkeySignIn} Then choose iPhone, iPad or Android device and scan the code with your phone's camera."
+              }
             },
             "sourceChecked": "Source checked {date}",
             "learn": "Microsoft Learn",
@@ -4620,7 +4655,7 @@
       "title": "Register Your Own Passkey",
       "changeLine": null,
       "learn": {
-        "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-register-passkey-with-security-key"
+        "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-register-passkey-authenticator"
       },
       "who": {
         "lead": "{operator}: strongest method today {method}, {evidence}."
@@ -4629,9 +4664,12 @@
       "whatToDo": {
         "lead": "Register a passkey on your own administrator account, then sign in with it once so the record shows it working.",
         "steps": [
-          "Open [Security info](https://mysignins.microsoft.com/security-info), sign in as {operatorAccount} and answer the prompt there.",
-          "Suggested: Add sign-in method → Passkey in Microsoft Authenticator. Or a key from 1.3's approved list.",
-          "Sign out, then sign in with the passkey on each device you use: {operatorDevices}.",
+          "{passkeyOpen}",
+          "{passkeyCreate}",
+          "{passkeyPrompts}",
+          "{passkeyProvider}",
+          "Using a security key from 1.3's approved list instead: open [Security info](https://mysignins.microsoft.com/security-info) as {operatorAccount}, then **Add sign-in method → Passkey → Security key**.",
+          "Sign out, then sign in with the passkey on each device you use: {operatorDevices}. {passkeySignIn}",
           "Return to IAMAI and select **Scan to update the plan**."
         ]
       },
@@ -4786,11 +4824,15 @@
         "lead": "Help each person set up their method.",
         "steps": [
           "Send the Email tab's first message to everyone and its admin message to the admins.",
-          "Anyone MFA Readiness lists with no method: book ten minutes, open https://aka.ms/mfasetup with them signed in, and register together.",
+          "Anyone MFA Readiness lists with no method: book ten minutes and set up their passkey together.",
+          "{passkeyOpen}",
+          "{passkeyCreate}",
+          "{passkeyPrompts}",
+          "{passkeyProvider}",
           "If they can't sign in to register: open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Users →** the person **→ Authentication methods → Add authentication method → Temporary Access Pass**.",
-          "Anyone on text or call only: add Microsoft Authenticator beside it.",
+          "Anyone on text or call only: set up a passkey in Microsoft Authenticator the same way, beside it.",
           "Admins: register a passkey or a hardware security key with {list:campaignNeedsPasskey}.",
-          "Have each sign in once with the new method.",
+          "Have each sign in once with the passkey. {passkeySignIn}",
           "Today: the registration campaign is {campaignToday}.",
           "Set the registration campaign: open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Authentication methods → Registration campaign → Edit**. State: Enabled. Authentication method: Passkey. Include: All users. Exclude: {campaignExclude}. Days allowed to snooze: 1. Limited number of snoozes: Disabled. Save.",
           "Return to IAMAI and select **Scan to update the plan**."
@@ -4972,7 +5014,7 @@
           }
         ],
         "helpDesk": [
-          "Cannot answer the prompt: issue a Temporary Access Pass and register together at https://aka.ms/mfasetup.",
+          "Cannot answer the prompt: issue a Temporary Access Pass, then set up the passkey in Microsoft Authenticator together, signing in with the pass.",
           "Check whether an intentional emergency or approved service-account exclusion applies before changing group membership.",
           "A policy of this name you cannot rename or delete is Microsoft's own managed one; change its excluded identities rather than the policy."
         ],
@@ -7321,7 +7363,9 @@
         "otherEmails": "Under **Properties**, set **Other emails** to **{mail}**, so role approvals and service notices reach {name}. Select **Review + create**, then **Create**.",
         "tapPolicy": "Open **Entra ID → Authentication methods → Policies → Temporary Access Pass**, select **Enable**, include **All users**, and select **Save**.",
         "tap": "Open **Entra ID → Users → {upn} → Authentication methods → Add authentication method → Temporary Access Pass**, select **Add**, and copy the pass.",
-        "register": "In a private window, open [Security info](https://mysignins.microsoft.com/security-info), sign in as **{upn}** with the pass, and add a passkey: **Add sign-in method → Passkey in Microsoft Authenticator**, or a security key.",
+        "$commentRegister": "The passkey goes on the new admin account through the one Authenticator procedure (content/passkeySetup.ts, owner 2026-09-24), on {name}'s phone; registerPass takes the place of its sign-in prompts line, because this account's only way in is the pass. registerKey is the security-key alternative.",
+        "registerPass": "Sign in as **{upn}** with the pass when Authenticator asks.",
+        "registerKey": "Using a security key from 1.3's approved list instead: open [Security info](https://mysignins.microsoft.com/security-info) as **{upn}** with the pass, then **Add sign-in method → Passkey → Security key**.",
         "assign": "Open **Entra ID → Roles & admins → {role} → Add assignments**, select **{upn}**, and select **Add**.",
         "assignActive": "Open **Entra ID → Roles & admins → {role} → Add assignments**, select **{upn}**, choose **Assignment type: Active**, and select **Assign**.",
         "assignEligible": "Open **Entra ID → Roles & admins → {role} → Add assignments**, select **{upn}**, choose **Assignment type: Eligible**, and select **Assign**.",

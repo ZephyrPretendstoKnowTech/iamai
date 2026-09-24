@@ -380,6 +380,8 @@ test('no orphan content string: every non-structural key renders, or is a known 
   const miss: string[] = []
   for (const [path, s] of leaves) {
     if (isStructural(path) || isAppOnly(path)) continue
+    // A guide line written "@key" names a shared line (content/methodGuides.ts), which renders in its place.
+    if (/^@\w+$/.test(s)) continue
     const frags = s.split(/\{[^}]*\}/).map((f) => f.replace(/\s+/g, ' ').trim()).filter((f) => f.length >= 12)
     if (frags.length === 0) continue // a string that is entirely variables
     // A procedure line's bold renders as the product draws it (render.ts ol).

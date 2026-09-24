@@ -18,6 +18,7 @@ import type { StepVarContext } from './stepVars.ts'
 import type { EmergencyAccountTask, EmergencyTaskProjection } from './emergencyAccountTasks.ts'
 import { stepById } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
+import { authenticatorPasskeyLines, passkeyWords } from '../../content/passkeySetup.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { oneLine } from '../../content/implementation/project.ts'
 import { adminRolesOf } from '../../derive/contentLists.ts'
@@ -36,7 +37,7 @@ type DormantWords = {
 type AdminValues = { name: string; newUpn: string; displayName: string; upn: string; everyday: string; mail: string; role: string }
 type AdminWords = {
   taskTitle: string
-  procedure: Record<'create' | 'names' | 'displayName' | 'otherEmails' | 'tapPolicy' | 'tap' | 'register' | 'assign' | 'assignActive' | 'assignEligible' | 'test' | 'remove' | 'removeEligible' | 'keep' | 'scan', string> & { generic: AdminValues }
+  procedure: Record<'create' | 'names' | 'displayName' | 'otherEmails' | 'tapPolicy' | 'tap' | 'registerPass' | 'registerKey' | 'assign' | 'assignActive' | 'assignEligible' | 'test' | 'remove' | 'removeEligible' | 'keep' | 'scan', string> & { generic: AdminValues }
 }
 
 /** Disable or Confirm Dormant Accounts' own words (steps[s-check-dormant-accounts]). */
@@ -111,13 +112,20 @@ export function separateAdminTasksOf(step: Step, ctx: StepVarContext): Emergency
   const tapOff = methodsRow !== undefined && !(methodsRow.authenticationMethodConfigurations ?? []).some((c) => c.id?.toLowerCase() === 'temporaryaccesspass' && c.state === 'enabled')
   const procedure = (v: AdminValues, active: string[], eligible: string[]): string[] => {
     const assign = tenantHasPim ? P.assignActive : P.assign
+    // The one Authenticator procedure (content/passkeySetup.ts), with the pass in
+    // place of its sign-in prompts line: the new account has no other way in.
+    const [open, create, , provider] = authenticatorPasskeyLines(fillText(passkeyWords.phoneNamed, { name: v.name }), `**${v.upn}**`)
     return [
       P.create,
       fillText(P.names, v),
       fillText(P.otherEmails, v),
       ...(tapOff ? [P.tapPolicy] : []),
       fillText(P.tap, v),
-      fillText(P.register, v),
+      open,
+      create,
+      fillText(P.registerPass, v),
+      provider,
+      fillText(P.registerKey, v),
       ...active.map((role) => fillText(assign, { ...v, role })),
       ...eligible.map((role) => fillText(P.assignEligible, { ...v, role })),
       fillText(P.test, v),

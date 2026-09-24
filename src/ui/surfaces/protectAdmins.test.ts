@@ -235,7 +235,8 @@ test('E1: the PIM role setting comes after the policy is On, and the policy targ
 test('each step links a page its package cites, and shows the date its Microsoft sources were checked', () => {
   const demo = bodiesOf('demo')
   const passkey = demo.get(PASSKEY)!
-  assert.equal(passkey.learnUrl, 'https://learn.microsoft.com/entra/identity/authentication/how-to-register-passkey-with-security-key')
+  // The Authenticator page: the step's procedure is the one Authenticator passkey procedure (owner, 2026-09-24).
+  assert.equal(passkey.learnUrl, 'https://learn.microsoft.com/entra/identity/authentication/how-to-register-passkey-authenticator')
   const meta = (registry.packages as Record<string, { meta?: { verifiedSources?: { url: string }[] } }>)[PASSKEY]?.meta
   assert.ok((meta?.verifiedSources ?? []).some((s) => s.url === passkey.learnUrl), 'the package cites a different page from the step')
   for (const id of [PASSKEY, STRENGTH, ADMINS, SESSION]) {

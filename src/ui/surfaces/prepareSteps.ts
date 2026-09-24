@@ -16,6 +16,10 @@ import type { Step } from '../../roadmap/types.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { fillText } from '../../content/render.ts'
+import { passkeyWords } from '../../content/passkeySetup.ts'
+import { app } from '../../content/content.ts'
+import { devicePlanOf } from '../../roadmap/answers.ts'
+import { readinessContextOf } from '../../derive/readinessContext.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { list } from '../../copy/statements.ts'
 import { ladder } from '../../derive/ladder.ts'
@@ -94,7 +98,9 @@ function operatorVars(step: Step, ctx: StepVarContext): Record<string, unknown> 
   const op = operatorOf(ctx)
   if (op === null) return {}
   const W = words<OperatorWords>(step)
-  return { operatorAccount: op.account, operatorDevices: deviceWords(op.devices.length > 0 ? op.devices : ['computer'], W.card) }
+  // {passkeyPhone} and {passkeyAccount} fill the one Authenticator procedure the
+  // step's lines name as {passkeyOpen} … {passkeyProvider} (content/passkeySetup.ts).
+  return { operatorAccount: op.account, operatorDevices: deviceWords(op.devices.length > 0 ? op.devices : ['computer'], W.card), passkeyPhone: passkeyWords.phoneYours, passkeyAccount: `**${op.account}**` }
 }
 
 // ---- Prepare Your Team for MFA ----
@@ -172,6 +178,11 @@ function teamVars(step: Step, ctx: StepVarContext): Record<string, unknown> {
   const authenticator = team.missing.filter((id) => !team.passkey.has(id))
   const account = accountsOf(ctx)
   const out: Record<string, unknown> = {
+    // The one Authenticator procedure's reader: the person being helped (content/passkeySetup.ts).
+    passkeyPhone: passkeyWords.phoneTheirs,
+    passkeyAccount: passkeyWords.accountTheirs,
+    // The emails' own values, so Tell your people and the Email tab fill the first message alike.
+    mfaEmail: mfaEmailValues(ctx),
     campaignNeedsPasskey: passkey.map(account),
     campaignNeedsPasskeyIds: passkey,
     campaignNeedsAuthenticator: authenticator.map(account),
@@ -187,6 +198,28 @@ function teamVars(step: Step, ctx: StepVarContext): Record<string, unknown> {
     && (groupId === null || c.exclude.some((t) => t.id.toLowerCase() === groupId.toLowerCase()))
   if (!matches) out.campaignExclude = groupId !== null ? (choice.actionableName ?? ctx.nameOf(groupId)) : proposedNamesFor(ctx).exclusionsGroup
   return out
+}
+
+type MfaComputerWords = { managedLead: string; managed: string; phone: string }
+const MFA_COMPUTER = (app.plan as unknown as { stepContract: { implementation: { emails: { mfaComputer: MfaComputerWords } } } }).stepContract.implementation.emails.mfaComputer
+
+/**
+ * The values Prepare Your Team for MFA's messages are filled with: the reader's
+ * own phone, and the computer paragraph. Windows Hello is offered only where
+ * Decide How and Where People Sign In says company computers are managed and the
+ * scan read joined Windows computers (derive/readinessContext.ts, the reading MFA
+ * Readiness uses); everywhere else a computer uses the phone's passkey. Windows
+ * Hello is not a passkey, so it is never called one (owner, 2026-09-24).
+ */
+export function mfaEmailValues(ctx: StepVarContext): Record<string, string> {
+  const computers = devicePlanOf(ctx.mapping)?.computers
+  const managed = (computers === 'enrol' || computers === 'hybrid') && readinessContextOf(ctx.snapshot, ctx.mapping, ctx.now).windowsDirectory === 'joined'
+  return {
+    passkeyPhone: passkeyWords.phoneYours,
+    computerLead: managed ? MFA_COMPUTER.managedLead : '',
+    // Filled here: a value is not filled again where it lands, and the phone line names {passkeySignIn}.
+    computerLine: fillText(managed ? MFA_COMPUTER.managed : MFA_COMPUTER.phone, {}),
+  }
 }
 
 // ---- Both ----

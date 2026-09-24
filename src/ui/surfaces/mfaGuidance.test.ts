@@ -69,19 +69,21 @@ test('every guide resolves from the content file, and a line two guides share is
       assert.doesNotMatch(l, /\{[a-zA-Z0-9_:]+\}/, `${g.id}: no unfilled variable in guidance`)
     }
   }
-  // The one line the two Authenticator platforms share is the same string, not
-  // two copies of it: change it once and both guides change.
-  const shared_ = MG.common.addPasskey
-  assert.ok(shared_ && shared_.length > 20)
+  // The Authenticator procedure the two platforms share is the one Emergency
+  // Access uses (owner, 2026-09-24), referenced, not copied: change it once and
+  // every guide and step changes. It never sends anyone to aka.ms/mfasetup.
+  const create = MG.common.authenticatorCreate
+  assert.ok(create && create.length > 20)
   for (const id of ['authenticator-iphone', 'authenticator-android'] as MethodGuideId[]) {
-    assert.ok(methodGuide(id).lines.includes(shared_), `${id}: uses the shared "add sign-in method" line`)
+    assert.ok(methodGuide(id).lines.some((l) => l.includes('**Create a passkey**')), `${id}: uses the shared Create a passkey line`)
+    assert.ok(!methodGuide(id).lines.some((l) => /aka\.ms\/mfasetup/.test(l)), `${id}: never sends the person to aka.ms/mfasetup`)
     const raw = MG.guides.find((g) => g.id === id)!
-    assert.ok(raw.steps.includes('@addPasskey'), `${id}: the content file references the shared line rather than repeating it`)
+    assert.ok(raw.steps.includes('@authenticatorCreate'), `${id}: the content file references the shared line rather than repeating it`)
   }
   // And the closing pair, on every guide that ends by using the method.
   for (const id of ['authenticator-iphone', 'authenticator-android', 'security-key', 'temporary-access-pass', 'prove'] as MethodGuideId[]) {
     const lines = methodGuide(id).lines
-    assert.ok(lines.includes(MG.common.useIt), `${id}: ends by using the method`)
+    assert.ok(lines.includes(MG.common.useIt.replace('{passkeySignIn}', MG.common.passkeySignIn)), `${id}: ends by using the method`)
     assert.ok(lines.includes(MG.common.scanAgain), `${id}: and by scanning again`)
   }
 })
@@ -151,7 +153,10 @@ test('a Temporary Access Pass bootstraps and is never a readiness method', () =>
   const tap = methodGuide('temporary-access-pass')
   // It ends by returning the person to the real target: register, use it, scan.
   assert.ok(tap.lines.some((l) => /registers the passkey or security key/.test(l)), 'it leads to the target method')
-  assert.ok(tap.lines.includes(MG.common.useIt) && tap.lines.includes(MG.common.scanAgain), 'and then to using it and scanning')
+  // Using it names the method and how to pick it ({passkeySignIn}, owner 2026-09-24).
+  const useIt = MG.common.useIt.replace('{passkeySignIn}', MG.common.passkeySignIn)
+  assert.ok(tap.lines.includes(useIt) && tap.lines.includes(MG.common.scanAgain), 'and then to using it and scanning')
+  assert.match(useIt, /Face, fingerprint, PIN or security key/, 'the sign-in line says how to pick the passkey')
   assert.ok(tap.lines.some((l) => /never where they stay/.test(l)), 'and says it is not where the person stays')
   // The admin half describes the Microsoft action, and says IAMAI does none of it.
   assert.ok(tap.lines.some((l) => /Authentication Administrator role/.test(l)), 'the permission the operator needs')
@@ -201,16 +206,26 @@ test('a guest is told, in one shared sentence, why this tenant issues them no Te
 
 // ---- G. the Plan keeps its own job ---------------------------------------------
 
-test('no Plan step anywhere renders the shared setup guidance inline', () => {
-  const guideLines = new Set(METHOD_GUIDES.flatMap((g) => g.lines))
+// The Plan names the exact procedure where it asks for a passkey (owner,
+// 2026-09-24: directions name the method; Emergency Access's steps are the
+// model). Every Plan line that creates a passkey in Microsoft Authenticator is
+// the one shared line, and none sends anyone to aka.ms/mfasetup to do it.
+test('every Plan line that creates an Authenticator passkey is the one shared procedure', () => {
+  // Plan lines are read as text (stepLines drops the bold), so the shared line is too.
+  const tail = MG.common.authenticatorCreate.split('{passkeyAccount}')[1]!.replace(/\*\*/g, '').replace(/\s+/g, ' ').trim()
+  let seen = 0
   for (const name of ['demo', 'mid'] as FixtureName[]) {
     const ctx = ctxFor(name)
     for (const step of runFixture(fixture(name)).steps) {
       for (const line of stepLines(step, ctx)) {
-        assert.ok(!guideLines.has(line), `${name}/${step.id}: a shared guidance line is rendered on the Plan`)
+        assert.doesNotMatch(line, /aka\.ms\/mfasetup[^.]*Authenticator|Passkey in Microsoft Authenticator/, `${name}/${step.id}: a second Authenticator passkey procedure`)
+        if (!/Create a passkey/.test(line)) continue
+        seen++
+        assert.ok(line.includes(tail), `${name}/${step.id}: an Authenticator passkey line in other words than the shared one: ${line}`)
       }
     }
   }
+  assert.ok(seen > 0, 'the fixtures draw a step that creates an Authenticator passkey')
 })
 
 // ---- H. the message the campaign sends -----------------------------------------
