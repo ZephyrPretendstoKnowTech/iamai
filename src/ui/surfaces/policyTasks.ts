@@ -434,7 +434,9 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   // On line.
   const reason = unavailableReason(step)
   const waits = turnOnWaitsOf(step, input)
-  const holds = policyHold(step) === 'prerequisite-unmet' || (step.action.enforceWaitsOn?.length ?? 0) > 0 || SAFETY_HOLDS.has(reason ?? '') || enforcementHeld(step) || (step.mailAccountsToMove?.length ?? 0) > 0 || ((readyWhen(step)?.failures ?? 0) > 0 && step.state.lifecycle === 'report-only')
+  // Anything the turn-on waits for holds it, a Direction answer or a step the
+  // board shows as much as the plan's own enforce waits.
+  const holds = waits.length > 0 || policyHold(step) === 'prerequisite-unmet' || SAFETY_HOLDS.has(reason ?? '')
   const turnOnHeld = holds && members.some((m) => !m.on) && (waits.length > 0 || input.contract.milestone.label !== '')
   const heldLine = waits.length > 0 ? fillText(app.plan.enforceOutstanding, { items: list(waits.map((w) => w.wait)) }) : input.contract.milestone.label
   tasks.push(task('turn-on', 'turnOn', turnOnHeld ? [heldLine] : members.flatMap((m) => turnOnLines(m.name || String(m.create?.body.displayName ?? ''))), !step.state.satisfied && members.some((m) => !m.on)))
