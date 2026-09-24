@@ -212,7 +212,11 @@
         "freeze": "the change freeze ends on {to} and {step} starts after it",
         "phase": "{step} follows {other}, which starts first",
         "soft": "two changes prompt the same people, so {step} cannot run in the same window as {other}",
-        "prerequisites": "{n} prerequisites take the first days"
+        "prerequisites": "{n} prerequisites take the first days",
+        "$commentForecast": "The Estimated finish tip's reason where the plan's last work waits on other work (derive/finish.ts planLengthSentence, from roadmap/forecast.ts planForecast): the step that ends last and the step whose finish it waits for.",
+        "turnOnAfter": "{step} is turned on once {waitsFor} is done",
+        "waitsThenObserves": "{step} waits for {waitsFor}, then observes in report-only for {observation} days before it is turned on",
+        "waitsFor": "{step} waits for {waitsFor}"
       },
       "tracking": {
         "matchedByTag": "matched by its plan tag",
@@ -2807,8 +2811,7 @@
           "all": "Show the full plan",
           "$commentCreate": "The view the line above the board opens (pages.app.plan.board.createNow): the policies ready to create in report-only now, in section order. Read after \"Showing\".",
           "create": "policies ready to create in report-only",
-          "filter": "Showing {view}",
-          "finishUnknown": "Depends on open work"
+          "filter": "Showing {view}"
         },
         "cleanupImpacts": {
           "hardening": "Emergency account safeguards",
