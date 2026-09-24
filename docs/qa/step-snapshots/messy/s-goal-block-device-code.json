@@ -1,10 +1,10 @@
 {
-  "lane": "On Hold",
-  "substatus": null,
-  "reason": "until a scan rebuilds this step",
+  "lane": "Ready",
+  "substatus": "Review",
+  "reason": null,
   "fact": "Enforced",
-  "badge": "On Hold",
-  "bar": "Not supported",
+  "badge": "Ready · Review",
+  "bar": "Complete the review below",
   "rail": "Block Device Code Sign-in",
   "headings": [
     "About this Step",
@@ -14,16 +14,12 @@
   ],
   "tiles": [
     {
-      "label": "Device code sign-in",
-      "state": "Confirm no legitimate use"
+      "label": "Your review",
+      "state": "Waiting on you"
     },
     {
-      "label": "Prepare Emergency Access Accounts",
-      "state": "Prerequisite · To do"
-    },
-    {
-      "label": "Not supported",
-      "state": "Not supported"
+      "label": "Verify Emergency Access",
+      "state": "Prerequisite · Waiting"
     }
   ],
   "channels": [
@@ -32,5 +28,5 @@
     "JSON",
     "AI Info"
   ],
-  "when": "Est. Sep 7, 2026"
+  "when": "Review now"
 }

@@ -24,10 +24,6 @@
     {
       "label": "Before turning on",
       "state": "Temporary Access Pass"
-    },
-    {
-      "label": "Before turning on",
-      "state": "Trusted network"
     }
   ],
   "channels": [
