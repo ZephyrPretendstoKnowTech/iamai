@@ -54,6 +54,10 @@ import type { ChangeRow, Seen } from './planChanges.ts'
 
 type PlanPage = {
   h1: string
+  saveFailed: string
+  retrySave: string
+  loadFailed: string
+  retryLoad: string
   now: string
   settingsLink: string
   settings: { h3: string; planStarts: string; firstDeployment: string; firstDeploymentNote: string; workdays: string; workdaysWeek: string; workdaysWith: string; freeze: string; freezeFrom: string; freezeTo: string; freezeNote: string; freezeNeedsTo: string; freezeOrder: string; timezone: string; signature: string; scheduling: string; communications: string; saveFreeze: string; removeFreeze: string; cancelFreeze: string; freezeSaved: string; close: string }
@@ -63,6 +67,12 @@ type PlanPage = {
 }
 const PP = pages.plan as unknown as PlanPage
 const S = app.shell
+
+/** The alert while this browser could not save the plan: the changes are still in the tab. */
+function SaveAlert({ failed, retry }: { failed: boolean; retry: () => void }) {
+  if (!failed) return null
+  return <div role="alert"><p>{PP.saveFailed}</p><Button variant="secondary" onClick={retry}>{PP.retrySave}</Button></div>
+}
 
 /** The settings panel the Plan settings link opens in place. */
 const PLAN_SETTINGS_ID = 'plan-settings'
@@ -165,7 +175,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
     return (
       <section className="surface">
         <h1>{PP.h1}</h1>
-      {data.persistence === 'failed' && <div role="alert"><p>Changes are still in this tab, but could not be saved in this browser. Retry before closing it.</p><Button variant="secondary" onClick={data.retrySave}>Retry Saving</Button></div>}
+      <SaveAlert failed={data.persistence === 'failed'} retry={data.retrySave} />
         <p>
           {account ? app.plan.needsScan : S.scanNeedsConnect} <a href="#/connect">{account ? app.plan.scanLink : S.connectLink}</a>
         </p>
@@ -173,12 +183,12 @@ export function Plan({ scan: lastScan, baseline, account }: {
     )
   }
   const c = data.computed
-  if (data.loadError) return <section className="surface plan"><h1>Plan</h1><div role="alert"><p>The saved plan could not be read from this browser.</p><Button onClick={data.retryLoad}>Retry Loading</Button></div></section>
+  if (data.loadError) return <section className="surface plan"><h1>{PP.h1}</h1><div role="alert"><p>{PP.loadFailed}</p><Button onClick={data.retryLoad}>{PP.retryLoad}</Button></div></section>
   if (!c) {
     return (
       <section className="surface">
         <h1>{PP.h1}</h1>
-      {data.persistence === 'failed' && <div role="alert"><p>Changes are still in this tab, but could not be saved in this browser. Retry before closing it.</p><Button variant="secondary" onClick={data.retrySave}>Retry Saving</Button></div>}
+      <SaveAlert failed={data.persistence === 'failed'} retry={data.retrySave} />
         <p className="reason">{S.loading}</p>
       </section>
     )
@@ -379,7 +389,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // are not drawn empty around nothing: an empty board reads as a plan.
   if (licenceLine) return (
     <section className="surface plan">
-      {data.persistence === 'failed' && <div role="alert"><p>Changes are still in this tab, but could not be saved in this browser. Retry before closing it.</p><Button variant="secondary" onClick={data.retrySave}>Retry Saving</Button></div>}
+      <SaveAlert failed={data.persistence === 'failed'} retry={data.retrySave} />
       <h1>{P.h1}</h1>
       <Callout kind="info">{licenceLine}</Callout>
     </section>
@@ -387,7 +397,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
 
   return (
     <section className="surface plan">
-      {data.persistence === 'failed' && <div role="alert"><p>Changes are still in this tab, but could not be saved in this browser. Retry before closing it.</p><Button variant="secondary" onClick={data.retrySave}>Retry Saving</Button></div>}
+      <SaveAlert failed={data.persistence === 'failed'} retry={data.retrySave} />
       <h1>{P.h1}</h1>
       {/* Progress, as tiles (owner, 2026-09-11): the generated status sentence
           repeated what the rows below already say and named blockers the board

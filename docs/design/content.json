@@ -937,6 +937,11 @@
     },
     "plan": {
       "h1": "Plan",
+      "$commentSaveAlert": "The Plan's alerts when this browser could not save or read the plan (Plan.tsx SaveAlert, net-new 11). A step's own save line points at Retry Saving by name (steps contract saveFailed).",
+      "saveFailed": "Changes are still in this tab, but could not be saved in this browser. Retry before closing it.",
+      "retrySave": "Retry Saving",
+      "loadFailed": "The saved plan could not be read from this browser.",
+      "retryLoad": "Retry Loading",
       "conditionalAccessNeedsP1": "Conditional Access needs Entra ID P1, and this tenant does not have it. No Conditional Access policy can be created here, so IAMAI has no plan to offer: it would rather say nothing than give you half an answer. Entra ID P1 is included in Microsoft 365 Business Premium and in the E3 and E5 plans.",
       "line1": "{steps} steps · {inPlace} in place · finishes {finish} at pace · {weeks}",
       "line1Committed": "{steps} steps · {inPlace} in place · finishes {finish} at pace · committed {committed} · {weeks}",
