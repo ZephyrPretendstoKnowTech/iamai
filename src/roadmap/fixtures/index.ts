@@ -699,6 +699,7 @@ export function buildFixture(spec: Spec): Fixture {
     }
   }
 
+  const strengths: Record<string, unknown>[] = [{ id: '00000000-0000-0000-0000-000000000004', displayName: 'Phishing-resistant MFA', policyType: 'builtIn', allowedCombinations: ['windowsHelloForBusiness', 'fido2', 'x509CertificateMultiFactor'] }, ...baselineStrengths(seed)]
   const snapshot: TenantSnapshot = {
     schemaVersion: 1,
     tenantId,
@@ -718,9 +719,12 @@ export function buildFixture(spec: Spec): Fixture {
           : ok({ coveredWindow: { from: daysAgo(30), to: NOW } }),
     },
     config: {
-      caPolicies: section(policies),
+      // Midflight's policies come as Graph returns them (net-new 13): every field
+      // present, empty ones null or [], and each authentication strength a full
+      // object, so the snapshots exercise the live read path.
+      caPolicies: section(spec.name === 'midflight' ? policies.map((p) => graphShaped(p as Record<string, unknown>, strengths)) : policies),
       namedLocations: section([{ '@odata.type': '#microsoft.graph.ipNamedLocation', id: guid(seed, 4_000_001), displayName: 'Head office', isTrusted: true, ipRanges: [{ cidrAddress: '203.0.113.0/24' }] }]),
-      authStrengths: section([{ id: '00000000-0000-0000-0000-000000000004', displayName: 'Phishing-resistant MFA', policyType: 'builtIn', allowedCombinations: ['windowsHelloForBusiness', 'fido2', 'x509CertificateMultiFactor'] }, ...baselineStrengths(seed)]),
+      authStrengths: section(strengths),
       authMethodsPolicy: section([{ policyMigrationState: spec.perUserMfa ? 'preMigration' : 'migrationComplete', registrationEnforcement: { authenticationMethodsRegistrationCampaign: { state: 'enabled' } }, authenticationMethodConfigurations: [{ id: 'MicrosoftAuthenticator', state: 'enabled', includeTargets: [{ id: 'all_users', authenticationMode: 'any' }], excludeTargets: [] }, { id: 'Fido2', state: 'enabled', isSelfServiceRegistrationAllowed: true, isAttestationEnforced: false, keyRestrictions: { isEnforced: false, enforcementType: 'block', aaGuids: [] }, includeTargets: [{ targetType: 'group', id: 'all_users', isRegistrationRequired: false, allowedPasskeyProfiles: [] }], excludeTargets: [] }, { id: 'Sms', state: spec.breakGlassSmsOnly ? 'enabled' : 'disabled', includeTargets: [] }] }]),
       securityDefaults: section([{ isEnabled: spec.securityDefaults === true }]),
       crossTenantAccess: section([]),
@@ -1144,4 +1148,34 @@ export function fixture(name: FixtureName): Fixture {
   const spec = FIXTURE_SPECS.find((s) => s.name === name)
   if (!spec) throw new Error(`no fixture ${name}`)
   return buildFixture(spec)
+}
+
+/**
+ * A Conditional Access policy as Microsoft Graph v1.0 returns it (net-new 13):
+ * every condition and control present, the empty ones null or [], and an
+ * authentication strength the whole object the tenant holds, not its id alone.
+ * The fixtures otherwise write only the fields they set, which is not a shape
+ * any scan reads, so the live read path went untested (the L1 decoder bug hid
+ * there). Midflight's policies are built through this.
+ */
+export function graphShaped(policy: Record<string, unknown>, strengths: readonly Record<string, unknown>[]): Record<string, unknown> {
+  const c = (policy.conditions ?? {}) as Record<string, unknown>
+  const g = policy.grantControls as Record<string, unknown> | null | undefined
+  const session = policy.sessionControls as Record<string, unknown> | null | undefined
+  const strengthId = (g?.authenticationStrength as { id?: string } | null | undefined)?.id ?? null
+  const strength = strengthId === null ? null : strengths.find((x) => String(x.id).toLowerCase() === strengthId.toLowerCase()) ?? { id: strengthId }
+  return {
+    templateId: null,
+    partialEnablementStrategy: null,
+    ...policy,
+    conditions: {
+      userRiskLevels: [], signInRiskLevels: [], clientAppTypes: ['all'], servicePrincipalRiskLevels: [], insiderRiskLevels: null,
+      platforms: null, locations: null, times: null, deviceStates: null, devices: null, clientApplications: null, authenticationFlows: null,
+      ...c,
+      applications: { includeApplications: [], excludeApplications: [], includeUserActions: [], includeAuthenticationContextClassReferences: [], applicationFilter: null, ...((c.applications ?? {}) as Record<string, unknown>) },
+      users: { includeUsers: [], excludeUsers: [], includeGroups: [], excludeGroups: [], includeRoles: [], excludeRoles: [], includeGuestsOrExternalUsers: null, excludeGuestsOrExternalUsers: null, ...((c.users ?? {}) as Record<string, unknown>) },
+    },
+    grantControls: g ? { operator: 'OR', builtInControls: [], customAuthenticationFactors: [], termsOfUse: [], ...g, authenticationStrength: strength === null ? null : { requirementsSatisfied: 'mfa', description: null, createdDateTime: '2024-01-01T00:00:00Z', modifiedDateTime: '2024-01-01T00:00:00Z', combinationConfigurations: [], ...strength } } : null,
+    sessionControls: session ? { applicationEnforcedRestrictions: null, cloudAppSecurity: null, persistentBrowser: null, signInFrequency: null, disableResilienceDefaults: null, continuousAccessEvaluation: null, secureSignInSession: null, ...session } : null,
+  }
 }
