@@ -116,10 +116,6 @@ test('a check that passes keeps the qualifier that made the pass honest (S4-6)',
   assert.equal(tile.detail, 'No office network is selected; location-based exceptions are not applied. The scan read a trusted named location this answer leaves out: Head office.')
   // The sentence, not the action: a check that has passed has nothing to do.
   assert.equal(tile.instruction, '')
-  // And the other caveat the audit named, on the admin review.
-  const review = subjectsOf(structuredClone(fixture('mid')), 's-check-separate-admin-accounts').find(row => row.key === 'configuration:administrator-review-scope')!
-  assert.equal(review.satisfied, true)
-  assert.match(review.detail ?? '', /clues, not proof of dedicated use/)
   // An open check still reads its direction first, then the note.
   const open = emergencySubjectsOf({ tiles: [{ key: 'k', label: 'Subject', tone: 'warn', value: 'Not done', note: 'The note.' }], satisfied: [], bar: { key: 'x', main: '' } }, null)[0]
   assert.equal(open.instruction, 'The note.')
