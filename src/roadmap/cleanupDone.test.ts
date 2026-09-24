@@ -161,7 +161,6 @@ test('legacy drill dates and manually confirmed recovery remain history, and nev
     assert.equal(bgAfter.checks!.items.filter((it) => it.fix === 'recent-sign-in').length, 0, 'final verification does not leak into account preparation after it is recorded')
     const row = drilled.schedule.cleanup!.rows.find((r) => r.kind === 'drill')!
     assert.equal(row.done, null, 'legacy manual assurance does not complete automatic verification')
-    assert.equal(cleanupWhen(before.schedule.cleanup!.rows.find((r) => r.kind === 'drill')!), absoluteDate(before.schedule.cleanup!.rows.find((r) => r.kind === 'drill')!.day.slice(0, 10)), 'undone, the row reads its planned day')
   }
 })
 

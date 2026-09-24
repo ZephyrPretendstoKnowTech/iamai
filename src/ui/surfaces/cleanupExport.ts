@@ -41,15 +41,18 @@ export function cleanupVars(phase: CleanupPhase, row: CleanupPhase['rows'][numbe
 const doneDay = (done: string): string => absoluteDate(done.slice(0, 10))
 
 /**
- * The row's date column: the day it was marked done, else its planned day — and
- * while the plan cannot finish (`undated`, derive/finish.ts heldRequired), where
- * the plan expects it (`estimate`, roadmap/forecast.ts planForecast) as an
- * estimate: Cleanup follows the last enforcement, and its planned day comes
- * after work that is held, so that day is not one the plan can promise.
+ * The row's date column: the day it was marked done, else its planned day as an
+ * estimate, as every day the plan proposes for open work reads
+ * (roadmap/stepSchedule.ts estimatedDay) — and while the plan cannot finish
+ * (`undated`, derive/finish.ts heldRequired), where the plan expects it
+ * (`estimate`, roadmap/forecast.ts planForecast): Cleanup follows the last
+ * enforcement, and its planned day comes after work that is held, so that day
+ * is not one the plan can promise.
  */
 export function cleanupWhen(row: CleanupPhase['rows'][number], undated = false, completed = false, readyReview = false, estimate: string | null = null): string {
+  const est = (day: string): string => fillText(schedulingWords.estimate, { date: absoluteDate(day.slice(0, 10)) })
   // Never blank (owner, 2026-09-11), and a date on every open row (owner, 2026-09-23); the placeholder only where no board estimated it.
-  return row.done ? fillText(A.cleanupDoneRow, { date: doneDay(row.done) }) : completed ? schedulingWords.done : undated && readyReview ? schedulingWords.reviewNow : undated ? (estimate !== null ? fillText(schedulingWords.estimate, { date: absoluteDate(estimate) }) : (pages.plan as unknown as { when: { afterPrerequisites: string } }).when.afterPrerequisites) : absoluteDate(row.day.slice(0, 10))
+  return row.done ? fillText(A.cleanupDoneRow, { date: doneDay(row.done) }) : completed ? schedulingWords.done : undated && readyReview ? schedulingWords.reviewNow : undated ? (estimate !== null ? est(estimate) : (pages.plan as unknown as { when: { afterPrerequisites: string } }).when.afterPrerequisites) : est(row.day)
 }
 
 /** Recorded checks remain evidence, never a substitute for current completion. */

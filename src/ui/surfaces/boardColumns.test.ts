@@ -166,3 +166,35 @@ test('a date that is an estimate says Est., and a fixed one does not: a complete
   }
   assert.ok(fixed > 0, 'the premise: completed and review days checked')
 })
+
+// A day the plan proposes for open work is an estimate, whoever the work is
+// for: Protect Sign-in Method Registration read "Up Next · Est. Aug 31, 2026"
+// beside Require MFA for Everyone's "Up Next · Aug 31, 2026", and Separate Admin
+// Accounts "Ready · Review · Est. Aug 31" beside Review Dormant Accounts' "Ready ·
+// Review · Aug 31" — the old rule marked only a person's review and a Direction
+// step's questions.
+test('two open rows of the same kind never differ only by Est.: every day proposed for open work reads as an estimate', () => {
+  let rows = 0
+  for (const [name, make] of WHEN_CASES) {
+    const f = make()
+    const r = runFixture(f, {}, null, f.snapshot.asOf)
+    const board = boardOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
+    const undated = planFinish(r.steps, r.schedule.cleanup?.end ?? null).held
+    const seen = new Map<string, string>()
+    for (const row of board.rows) {
+      if (row.lane.lane === 'Completed' || row.lane.lane === 'Deferred') continue
+      const when = row.step ? boardWhenOf(row.step, waveStartOf(row.step), row.lane) : cleanupWhenOf(row.cleanup!.row, undated, row.lane)
+      const day = when.startsWith(EST) ? when.slice(EST.length) : when
+      if (!DAY.test(day)) continue
+      // A report-only policy's review day is fixed: the window it was created with closes on it.
+      const review = row.step !== null && row.step.scheduled != null && scheduleOf(row.step).transition === 'review'
+      const kind = `${row.lane.label}|${day}|${review}`
+      rows++
+      const other = seen.get(kind)
+      if (other !== undefined) assert.equal(when, other, `${name}/${row.item.id}: "${row.lane.label} · ${when}" beside "${row.lane.label} · ${other}"`)
+      else seen.set(kind, when)
+      if (!review) assert.ok(when.startsWith(EST), `${name}/${row.item.id}: a day proposed for open work reads "${when}"`)
+    }
+  }
+  assert.ok(rows > 20, `the premise: dated open rows checked (${rows})`)
+})
