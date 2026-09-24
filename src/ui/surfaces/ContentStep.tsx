@@ -56,7 +56,7 @@ import { REDACTED, exportClipboard, unredactedFrom } from '../exportGuard.ts'
 import { CONTRACT, implementationEmptyOf, partnerLinkOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
 import { HARDENING_DEFERRAL_ID } from '../../validation/emergencyTiers.ts'
-import { AuthoredText, DoneWhen, EmergencySlotBody, PolicyMembers, ReadinessSection, StepActionColumn, StepDialog, StepFooter, StepHead, StepSection, StepState, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
+import { AuthoredText, DoneWhen, EmergencySlotBody, PolicyMembers, ReadinessSection, StepActionColumn, StepDialog, StepFooter, StepHead, StepSection, StepState, WHY_LINK_SHOWN, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
 import { MfaHandoff } from './MfaHandoff.tsx'
 import { HEAD, decisionHeadingsOf, taskHeadingsOf } from './stepHeadings.ts'
 import { AnsweredInDirection, DirectionQuestions, directionDraftKey } from './DirectionQuestions.tsx'
@@ -178,7 +178,7 @@ export function EmergencySubjectReadiness({ subjects, printing, barMain, onWhy }
       <div className="emergency-account-status-grid satisfied">{satisfied.map(tile)}</div>
     </details>}
     <p className="emergency-account-scan-note">After making changes, select <strong>{SHARED.scanControl}</strong>.</p>
-    {onWhy && <div className="readiness-bar">{barMain !== '' && <div className="readiness-bar-main"><span className="readiness-bar-head">{barMain}</span></div>}<button type="button" className="inline-link" onClick={onWhy}>{CONTRACT.readiness.why}</button></div>}
+    {onWhy && (barMain !== '' || WHY_LINK_SHOWN) && <div className="readiness-bar">{barMain !== '' && <div className="readiness-bar-main"><span className="readiness-bar-head">{barMain}</span></div>}{WHY_LINK_SHOWN && <button type="button" className="inline-link" onClick={onWhy}>{CONTRACT.readiness.why}</button>}</div>}
   </section>
 }
 

@@ -197,3 +197,19 @@ test('#16 #17 the step hands over Entra and AI Info only: its PowerShell and JSO
     assert.deepEqual(channelTabsOf(body.artifacts).map((t) => t.label), ['Entra', 'AI Info'], name)
   }
 })
+
+test('#18 "Why IAMAI says this" is hidden across the tool, and what it opens is kept', () => {
+  const sections = read('src/ui/surfaces/StepSections.tsx')
+  const step = read('src/ui/surfaces/ContentStep.tsx')
+  // One switch, off.
+  assert.match(sections, /export const WHY_LINK_SHOWN = false\n/)
+  // Every place that draws the link asks it.
+  const links = [...sections.matchAll(/\{W\.why\}/g), ...step.matchAll(/\{CONTRACT\.readiness\.why\}/g)]
+  assert.equal(links.length, 2)
+  assert.match(sections, /\{onWhy && WHY_LINK_SHOWN && \(\n\s+<button type="button" className="inline-link" onClick=\{onWhy\}>\n\s+\{W\.why\}/)
+  assert.match(step, /\{WHY_LINK_SHOWN && <button type="button" className="inline-link" onClick=\{onWhy\}>\{CONTRACT\.readiness\.why\}<\/button>\}/)
+  // Kept for later: the dialog, and the recovery runbook it carries.
+  assert.match(step, /<StepDialog open=\{dialog === 'readiness'\}/)
+  assert.match(step, /\{cs\.lockedOut && \(/)
+  assert.match(read('docs/design/content.json'), /"label": "If a change locks you out"/)
+})

@@ -279,6 +279,14 @@ export function StepFooter({ controls = null, onScan, auxiliary = null }: { cont
   )
 }
 
+/**
+ * "Why IAMAI says this", and the Readiness evidence dialog it opens, are hidden
+ * across the tool (owner, 2026-09-23). The dialog, its words and the recovery
+ * runbook it carries ("If a change locks you out") are kept for the policy
+ * turn-on steps to use later: this is the one switch that shows the link again.
+ */
+export const WHY_LINK_SHOWN = false
+
 /** The strip's track count (A1 §16.1: up to four across, wrapping); fewer tiles take fewer tracks. */
 const TRACKS = 4
 
@@ -370,7 +378,7 @@ export function ReadinessSection({ readiness, lead, onWhy = null, onConfirm = nu
           <span className="readiness-bar-head">{readiness.bar.main}</span>
           {lead}
         </div>
-        {onWhy && (
+        {onWhy && WHY_LINK_SHOWN && (
           <button type="button" className="inline-link" onClick={onWhy}>
             {W.why}
           </button>
