@@ -1986,6 +1986,13 @@
             "admin": "admins",
             "device": "people in scope"
           },
+          "acceptedWho": {
+            "$comment": "Who a finished policy's readiness fact counts, by its family (readiness.tiles.accepted; walk list 4.x item 2).",
+            "mfa": "people",
+            "guest": "guests",
+            "admin": "admins",
+            "device": "people"
+          },
           "readinessRoute": {
             "$comment": "Where a readiness number is moved, by its family (copy/reasons.ts READINESS_MEASURE), for a measure the plan itself has no step for. A family with no entry states the number alone.",
             "device": "Device readiness moves in Intune, not here: enroll the devices on the chosen platforms and assign a compliance policy, then scan again. No step of this plan enrolls a device for you."
@@ -2057,11 +2064,6 @@
           "$commentLeadUnverified": "The lead of a finished step, other than the one with the emergency-access tiers, whose open findings are all unread (outcome unknown). It read its milestone, \"No change needed.\", over a tile saying Could not verify: on the Follow-up snapshot Configure Passkey Settings said so over \"Existing passkeys affected - Could not verify\", whose note said some registered authentication methods were not readable. An absolute all-clear over a check IAMAI could not make is a claim it cannot know; this scopes the all-clear to what was read and names the check that was not. A finished step with an open failing finding keeps its milestone words: an owner question, not settled here.",
           "leadUnverified": "Nothing IAMAI could read here needs a change. It could not verify {findings}, and says there what was not read.",
           "fixStep": "Finish {step} first.",
-          "$commentFixStepOvertaken": "Completed answers \"what is left to do\", so a completed step carried no prerequisites and the record of one going unmet was erased. A reader enforced ten policies in the portal with the emergency-access drill still undone — every \"Prerequisite · To do\" tile disappeared as the last one went on, the steps read \"moved to enforced, as the plan asked\", and nothing anywhere said the recovery path had never been verified. The prerequisite is not work on the completed step any more, but it is still unmet, and the order not followed is a fact about the tenant.",
-          "$commentFixStepOvertaken": "It ended \"so that order was not followed\": a verdict on the person, and false where the policy was on before the plan existed (the first scan found it enforced). The fact stays, in the present tense: this step is done and the step the plan puts first is not.",
-          "fixStepOvertaken": "This step is finished, and {step}, which the plan puts before it, is not finished yet.",
-          "$commentFixStepOvertakenOpen": "The overtaken note is the engine's: the step reached its outcome (a policy enforced as pinned) ahead of a hard prerequisite. The board can still draw that step outside Completed — a policy already on with a workflow record or an unmatched guest pair to review reads Ready · Review — and the note said \"This step is finished\" beside a badge saying there is work left on it (R4-NEW-jordanb-1). The fact stays: the change went in before the prerequisite. Only the claim that the step is finished goes, where the board does not say it is.",
-          "fixStepOvertakenOpen": "This step's change is already in place, and {step}, which the plan puts before it, is not finished yet.",
           "$commentFixStepAt": "A prerequisite is not always waited on until it is FINISHED (src/actionability/dependency-data.json carries the milestone on every edge). Turn Off Security Defaults waits for the replacement policies to be ready to enforce; those policies wait for it to be complete. Both tiles said \"Finish the other first\", so the pair read as a deadlock that the data does not contain — and the way out of an apparent deadlock is to turn security defaults off, which is the one thing the step's own words say not to do yet.",
           "fixStepAt": {
             "ready-to-enforce": "{step} needs to be ready to enforce first — not finished, just ready.",
@@ -2135,10 +2137,12 @@
               "decision": "Decision",
               "gate": "Threshold",
               "reading": "Readiness",
+              "$commentAccepted": "A finished policy's readiness, stated under Satisfied: a Completed step shows no open card (walk list 4.x item 2, owner 2026-09-24). {who} is acceptedWho by family.",
+              "accepted": "{ready} of {total} {who} have a method it accepts",
               "observation": "Observation",
               "observationUntil": "Until {date}",
-              "$commentUnwatched": "The short value of the Observation tile a finished policy this plan owns draws where it went live with no report-only period IAMAI watched (owner decision 3, 2026-09-22; R4-12). Its note is stepContract.foundEnforcedUnwatched.",
-              "unwatched": "No report-only period watched",
+              "$commentUnwatched": "The Satisfied fact a finished policy this plan owns states where IAMAI watched it go live with no report-only period (owner decision 3, 2026-09-22; R4-12; walk list 4.x item 2, owner 2026-09-24). {date} is the scan that first saw it On, or Microsoft's own date for it.",
+              "unwatched": "On since {date}, without a report-only week",
               "exclusions": "Exclusions",
               "exclusionsReached": "Reaches emergency access",
               "exclusionsUnproven": "Not proven",

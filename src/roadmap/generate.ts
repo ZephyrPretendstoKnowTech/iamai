@@ -233,6 +233,9 @@ import { ladderSteps } from './ladder.ts'
  * came for. The ladder itself is untouched and this is the only switch.
  */
 const FREE_TIER_LADDER = false
+
+/** The emergency-access check that every enforcing policy leaves the accounts out: Configure Emergency Exclusions' work. */
+const EXCLUDED_FROM_POLICIES = 'bg.excludedFromAllPolicies'
 import { EMERGENCY_ACCESS_STEP_IDS, attachConfigurationFindings, blockerStepId, canonicalBlockerStepId, blockerSteps, gateFor, gateReason } from './blockerSteps.ts'
 import { stepChecks } from '../validation/checkFixes.ts'
 import { buildContext, breakGlassReport, exclusionGroupPolicySafety, reportFor } from '../validation/report.ts'
@@ -1609,9 +1612,17 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // pass because it is In place.
   // Emergency access gates on its minimum safety checks; its hardening holds the
   // plan through the step not being done until it is fixed or deferred.
-  const gatingReports = bgStanding ? validationReports.map((r) => (r === bgReport ? { ...r, blocking: bgStanding!.minimum } : r)) : validationReports
+  // Whether every enforcing policy leaves the emergency accounts out is
+  // Configure Emergency Exclusions' work, so a policy it holds waits on that
+  // step. Filed under Prepare Emergency Access Accounts, a policy read "Prepare
+  // Emergency Access Accounts · Prerequisite · Completed" with the note to
+  // finish it first (walk list 4.x item 23).
+  const exclusionMinimum = bgStanding ? bgStanding.minimum.filter((r) => r.id === EXCLUDED_FROM_POLICIES) : []
+  const accountMinimum = bgStanding ? bgStanding.minimum.filter((r) => r.id !== EXCLUDED_FROM_POLICIES) : []
+  const gatingReports = bgStanding ? validationReports.map((r) => (r === bgReport ? { ...r, blocking: accountMinimum } : r)) : validationReports
   let gate = canUseConditionalAccess ? gateReason(gatingReports) : null
-  if (gate === null && bgStanding && bgAccountStanding && (bgStanding.minimum.length > 0 || (bgAccountStanding.hardening.length > 0 && !hardeningDeferred(bgAccountStanding.hardening, input.hardeningDeferral)))) gate = gateFor('breakGlass')
+  if (gate === null && canUseConditionalAccess && exclusionMinimum.length > 0) gate = gateFor('exclusionGroup')
+  if (gate === null && bgStanding && bgAccountStanding && (accountMinimum.length > 0 || (bgAccountStanding.hardening.length > 0 && !hardeningDeferred(bgAccountStanding.hardening, input.hardeningDeferral)))) gate = gateFor('breakGlass')
   // Accounts not yet prepared are an unverified escape hatch too: since the
   // connected journey (c1cacf21) Step 1 is done only with an approved recovery
   // passkey on each account, which no validation check carries, so the reports

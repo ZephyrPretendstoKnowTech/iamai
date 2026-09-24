@@ -74,25 +74,18 @@ const byId = (steps: readonly Step[], id: string): Step => {
 
 // ---- Completed: the warnings a finished step keeps ----
 
-test('a finished policy prints the warnings its opened step keeps: enforced below readiness, and ahead of a prerequisite', () => {
+test('a finished policy prints the warnings its opened step keeps, and nothing its opened step moved under Satisfied', () => {
   // Large: the admins policy is enforced while 12 of 60 admins hold a method it
-  // accepts, and ahead of Configure Passkey Authentication. The paper said only
-  // "Require Phishing-Resistant MFA for Admins · Completed".
+  // accepts. That reading is a fact under Satisfied (walk list 4.x item 2), and a
+  // prerequisite it went ahead of is that prerequisite's own row (L3): neither
+  // is a warning on paper.
   const large = plan('large')
   const admins = byId(large.steps, 's-goal-admins-phishing-resistant')
   const lines = completedLinesOf(completedRows(large.steps, large.board.laneOf), large.printBoard, large.ctx)
   const line = lines.find((l) => l.id === admins.id)
   assert.ok(line, 'the premise: the admins policy is listed as Completed')
   const said = line.warnings.map((t) => `${t.label}: ${t.value}`)
-  assert.ok(said.some((w) => w.includes('12 of 60 admins')), `the readiness warning is not printed: ${said.join(' | ')}`)
-  assert.ok(said.some((w) => w.startsWith('Configure Passkey Authentication:')), `the prerequisite it went ahead of is not printed: ${said.join(' | ')}`)
-  // Hostile: Require MFA for Everyone is enforced where readiness cannot be measured.
-  const hostile = plan('hostile')
-  const mfa = completedLinesOf(completedRows(hostile.steps, hostile.board.laneOf), hostile.printBoard, hostile.ctx).find((l) => l.id === 's-goal-mfa-all-users')
-  assert.ok(mfa, 'the premise: Require MFA for Everyone is listed as Completed')
-  const hostileSaid = mfa.warnings.map((t) => `${t.label}: ${t.value}`)
-  assert.ok(hostileSaid.some((w) => w.includes('Not measured')), `the unmeasured readiness is not printed: ${hostileSaid.join(' | ')}`)
-  assert.ok(hostileSaid.some((w) => w.startsWith('Verify Emergency Access:')), `the recovery test it went ahead of is not printed: ${hostileSaid.join(' | ')}`)
+  assert.ok(!said.some((w) => w.includes('12 of 60 admins') || w.startsWith('Configure Passkey Authentication:')), said.join(' | '))
   // A finished step with nothing to warn about prints its line alone.
   for (const l of lines) for (const t of l.warnings) assert.equal(t.tone, 'warn', `${l.id}: a tile that is not a warning printed under a finished step`)
   // The document draws these lines, and nothing of its own beside them: a

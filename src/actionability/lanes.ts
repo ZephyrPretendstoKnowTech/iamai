@@ -159,8 +159,6 @@ export type LaneResult = {
   gates: EvidenceGate[]
   /** §14 rule 1: distinct not-yet-completed steps before the next action is executable. */
   layers: number
-  /** Completed: hard prerequisites of the action it already took that the scan still finds unmet. */
-  unmetPrerequisites: Blocker[]
 }
 
 const BLOCKER_ORDER: readonly BlockerKind[] = [
@@ -360,31 +358,6 @@ function unresolvedOn(ctx: Ctx, id: string, action: Action): Blocker[] {
   return out
 }
 
-/**
- * The hard prerequisites of the action a completed step already took, that the
- * scan still finds unmet, and the conditional ones whose condition this plan has
- * resolved to applicable. An unresolved condition is left out: it may simply not
- * apply, and "that order was not followed" is a claim. A resolved one is not:
- * eight policies enforced while security defaults were on read Completed with a
- * tile naming the recovery test and nothing naming the cutover, because every
- * security-defaults edge is conditional (Sam D2). Evidence edges are gates on
- * enforcement, not facts (§7).
- */
-function completedWithout(ctx: Ctx, id: string): Blocker[] {
-  const kind = kindOf(ctx, id)
-  const action: Action = kind === 'policy' ? 'enforce' : kind === 'decision' ? 'decide' : 'complete'
-  const out: Blocker[] = []
-  for (const e of edgesOf(ctx, id)) {
-    if (e.action !== action || isEvidenceEdge(e)) continue
-    if (e.edgeKind !== 'hard' && !(e.edgeKind === 'conditional' && conditionState(ctx, e.condition) === 'applicable')) continue
-    if (e.prerequisite === id || edgeSatisfied(ctx, e)) continue
-    const kindOfBlocker = e.prerequisiteKind === 'step' ? 'step' : nonStepKind(e, prerequisiteState(ctx, e.prerequisite))
-    if (out.some((b) => b.kind === kindOfBlocker && b.id === e.prerequisite)) continue
-    out.push(blocker(kindOfBlocker, e.prerequisite, e, true))
-  }
-  return out.sort(byTaxonomy)
-}
-
 function byTaxonomy(a: Blocker, b: Blocker): number {
   return BLOCKER_ORDER.indexOf(a.kind) - BLOCKER_ORDER.indexOf(b.kind) || a.id.localeCompare(b.id)
 }
@@ -426,7 +399,7 @@ function layersOf(ctx: Ctx, id: string, action: Action): number {
 }
 
 function result(lane: Lane, partial: Partial<LaneResult> = {}): LaneResult {
-  return { lane, substatus: null, nextAction: null, started: false, reason: null, blockers: [], gates: [], layers: 0, unmetPrerequisites: [], ...partial }
+  return { lane, substatus: null, nextAction: null, started: false, reason: null, blockers: [], gates: [], layers: 0, ...partial }
 }
 
 function derive(ctx: Ctx, id: string): LaneResult {
@@ -446,16 +419,10 @@ function deriveUncached(ctx: Ctx, id: string): LaneResult {
   const obs = observation(ctx, id)
   const kind = kindOf(ctx, id)
 
-  // 1. Terminal intended outcome reached this scan.
-  //
-  // Completed answers "what is left to do", so it carried no blockers, and a
-  // step enforced AHEAD of a hard prerequisite lost the record of it: ten
-  // policies went on with the emergency-access drill still undone, every
-  // "Prerequisite · To do" tile vanished with the last of them, and nothing
-  // anywhere said the recovery path had never been verified. The prerequisite
-  // is not work on this step any more, but it is still unmet, and that is a
-  // fact about the tenant the reader is owed.
-  if (isComplete(ctx, id)) return result('Completed', { unmetPrerequisites: completedWithout(ctx, id) })
+  // 1. Terminal intended outcome reached this scan. A Completed step carries
+  // nothing open (walk list 4.x L3 and item 2, owner 2026-09-24): a prerequisite
+  // it went ahead of is that prerequisite's own row, and its work is there.
+  if (isComplete(ctx, id)) return result('Completed')
   // 2. Owner-deferred.
   if (ctx.owner.deferred?.includes(id)) return result('Deferred')
 

@@ -97,8 +97,6 @@ export type LaneReading = {
   unsaved?: readonly string[]
   /** True where those inputs are IAMAI's to have confirmed rather than its questions (Step.unsavedInputsPrefilled). */
   unsavedPrefilled?: boolean
-  /** Completed: hard prerequisites of the action it already took that the scan still finds unmet (lanes.ts `unmetPrerequisites`). */
-  overtaken?: readonly HoldBlocker[]
   /** Where the plan expects the row to happen (roadmap/forecast.ts planForecast), set by the board (planBoard.ts boardReadingsOf): the day a row with none of its own is dated by. */
   estimate?: string
 }
@@ -374,8 +372,7 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
       const blockers = r.result.blockers.map(hold).filter((b): b is HoldBlocker => b !== null)
       // An open evidence gate is the reason a report-only policy waits On Hold, and the board says so.
       const reason = r.result.reason === null ? null : lane === 'On Hold' ? (r.result.reason as HoldBlocker) : hold(r.result.reason)
-      const overtaken = r.result.unmetPrerequisites.map(hold).filter((b): b is HoldBlocker => b !== null)
-      out.set(r.id, { lane, substatus: r.result.substatus, reason, blockers, gates: r.result.gates, order: counts[lane]++, fromEngine: true, ...(overtaken.length > 0 ? { overtaken } : {}) })
+      out.set(r.id, { lane, substatus: r.result.substatus, reason, blockers, gates: r.result.gates, order: counts[lane]++, fromEngine: true })
     }
   }
   place('Ready', groups.ready)

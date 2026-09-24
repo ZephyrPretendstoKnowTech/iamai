@@ -557,17 +557,13 @@ const waitsOnDirection = (r: LaneReading): boolean => r.reason?.kind === 'decisi
  */
 export function readinessBlockersOf(r: LaneReading | null | undefined, titleOf: (id: string) => string | null): PrerequisiteBlocker[] {
   if (!r) return []
-  const read = (b: HoldBlocker, overtaken: boolean): PrerequisiteBlocker => {
+  return r.blockers.map((b): PrerequisiteBlocker => {
     const direction = b.kind === 'decision' && isDirectionStep(b.id)
     // Which of them the row names (holdLabelOf reads `r.reason`), so the opened
     // step can never leave out the one prerequisite its row is showing.
-    const primary = !overtaken && r.reason !== null && r.reason.kind === b.kind && r.reason.id === b.id
-    return { kind: b.kind, id: b.id, abnormal: b.abnormal, label: direction ? directionWords.waiting : BOARD.blockers[b.kind], title: b.kind === 'step' || b.kind === 'suspendedPrerequisite' || direction ? titleOf(b.id) : null, milestone: b.milestone ?? null, ...(overtaken ? { overtaken: true as const } : {}), ...(primary ? { primary: true as const } : {}) }
-  }
-  // A completed step's own prerequisites that the scan still finds unmet: not
-  // work on this step any more, but the reader is owed the fact that it went
-  // ahead of them (Marcus D2 — ten policies enforced, the drill never done).
-  return [...r.blockers.map((b) => read(b, false)), ...(r.overtaken ?? []).map((b) => read(b, true))]
+    const primary = r.reason !== null && r.reason.kind === b.kind && r.reason.id === b.id
+    return { kind: b.kind, id: b.id, abnormal: b.abnormal, label: direction ? directionWords.waiting : BOARD.blockers[b.kind], title: b.kind === 'step' || b.kind === 'suspendedPrerequisite' || direction ? titleOf(b.id) : null, milestone: b.milestone ?? null, ...(primary ? { primary: true as const } : {}) }
+  })
 }
 
 /**
