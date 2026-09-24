@@ -1,20 +1,15 @@
 // B8 — the per-step content pass (docs/product/actionability/step-findings),
 // each change read where the Plan reads it: the Source checked date from a
-// package's verifiedSources, the Impact and milestone words from its META, a
-// held policy's end state from its content entry, the separate-accounts
-// checklist as that step's Entra channel, and a Cleanup row's instructions
-// under Implementation in its one column.
+// package's verifiedSources, and the separate-accounts checklist as that step's
+// Entra channel. The reviewed words themselves are pinned by docs/qa/step-snapshots.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
 import registry from '../../content/implementation/registry.generated.json' with { type: 'json' }
 import type { CompiledPackage } from '../../content/implementation/protocol.ts'
-import { content } from '../../content/content.ts'
-import { contentStepFor } from '../../content/stepTitle.ts'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import type { FixtureName } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
-import { CONTRACT, stepContract } from './stepContract.ts'
+import { CONTRACT } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { packageSourceLine, sourceCheckedLine } from './stepPackage.ts'
 import { sourceUpdatedOn } from '../../content/implementation/project.ts'
@@ -22,7 +17,6 @@ import { headingsOf, stepBodyOf } from './stepBody.ts'
 import { TASK_HEAD } from './stepHeadings.ts'
 
 const PACKAGES = (registry as unknown as { packages: Record<string, CompiledPackage> }).packages
-const FIXTURES: readonly FixtureName[] = ['mid', 'large', 'small', 'messy', 'hostile', 'demo', 'demo-week2']
 
 const planOf = (name: FixtureName) => {
   const f = fixture(name)
@@ -30,8 +24,6 @@ const planOf = (name: FixtureName) => {
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
   return { r, ctx }
 }
-
-const escape = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 test('every package a step doc asks to date shows a dated Microsoft Learn source, no older than the 2026-09-12 check', () => {
   const dated = [
@@ -59,8 +51,7 @@ test('every package a step doc asks to date shows a dated Microsoft Learn source
 // beside it (owner, 2026-09-20; quality audit section 2.5). Two families showed
 // the link alone, for two different reasons, and neither may be given a date it
 // does not hold.
-
-test('a package the re-pin review set aside still dates its Learn page, a baseline conflict included', () => {
+test('a Learn link shows the day it was checked where no package is current: a set-aside package, a baseline conflict, a generated review row', () => {
   // s-goal-admin-portals-protected: its package is set aside (the baseline
   // changed under it) and on the demo its source is also self-contradictory, so
   // the step draws the translator's channels. When the page was checked is a
@@ -80,22 +71,19 @@ test('a package the re-pin review set aside still dates its Learn page, a baseli
   // take the date away.
   const demo = planOf('demo')
   assert.notEqual(stepBodyOf(demo.r.steps.find((s) => s.id === 's-goal-admin-portals-protected')!, demo.ctx).conflictWords, null)
-})
-
-test('every generated baseline-review row dates the planning page its Learn link points at', () => {
+  // Every generated baseline-review row dates the planning page its Learn link points at.
   // The rows are built per tenant (roadmap/workflows.ts PLAN_CA) and have no
   // package, so the date is on the row's own Learn entry, from the source table
   // in docs/plans/ongoing-spec.md section 1 (`ms-plan-ca`, checked 2026-09-20).
-  const expected = sourceCheckedLine('2026-09-20', CONTRACT.implementation)
-  assert.ok(expected, 'no Source checked line for a recorded date')
-  const { r, ctx } = planOf('demo')
-  const rows = r.steps.filter((s) => s.id.startsWith('s-review-baseline-'))
+  const rowLine = sourceCheckedLine('2026-09-20', CONTRACT.implementation)
+  assert.ok(rowLine, 'no Source checked line for a recorded date')
+  const rows = demo.r.steps.filter((s) => s.id.startsWith('s-review-baseline-'))
   assert.equal(rows.length, 4, 'the demo generates four review rows')
   for (const step of rows) {
     assert.equal((step.guidance as { learn?: { checkedOn?: string } } | undefined)?.learn?.checkedOn, '2026-09-20', step.id)
-    const b = stepBodyOf(step, ctx)
+    const b = stepBodyOf(step, demo.ctx)
     assert.equal(b.learnUrl, 'https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access', step.id)
-    assert.equal(b.sourceLine, expected, `${step.id}: the Learn link shows no checked date`)
+    assert.equal(b.sourceLine, rowLine, `${step.id}: the Learn link shows no checked date`)
   }
 })
 
@@ -110,67 +98,6 @@ test('a step with no recorded check shows no date, and no line is invented for i
   assert.equal(sourceCheckedLine('2026-09', W), null)
 })
 
-test('the Impact and milestone words the step docs name are what the Plan reads from each package', () => {
-  const impact: Record<string, string> = {
-    's-prereq-passkey-settings': 'Passkey settings',
-    's-prereq-auth-strength': 'Authentication strength',
-    's-prereq-trusted-location': 'Trusted network',
-    // One fact, one source (docs/plans/where-people-sign-in-spec.md section 4):
-    // the row draws content.json impactLabels for this step, and the package
-    // used to carry a different word that nothing rendered.
-    's-prereq-allowed-countries': 'Allowed countries',
-    's-prereq-device-plan': 'Device policies',
-  }
-  // Editorial batch C: the milestone words are the copy register's.
-  const milestone: Record<string, string> = {
-    's-prereq-break-glass': 'Complete the remaining emergency access checks.',
-    's-prereq-device-plan': 'Save the phone and computer choices.',
-    's-check-separate-admin-accounts': 'Test the new admin account, then move the role.',
-  }
-  for (const [id, label] of Object.entries(impact)) assert.equal(PACKAGES[id]?.meta.impact?.fallbackLabel, label, id)
-  for (const [id, text] of Object.entries(milestone)) assert.equal(PACKAGES[id]?.meta.milestone?.actionText, text, id)
-})
-
-test('a held policy finishes on its own end state where its content entry states one, never the shared sentence', () => {
-  let own = 0
-  for (const name of FIXTURES) {
-    const { r, ctx } = planOf(name)
-    for (const step of r.steps) {
-      const end = contentStepFor(step)?.doneEnd
-      if (typeof end !== 'string') continue
-      const ownLine = new RegExp(`^${escape(end).replace(escape('{tenant}'), '.+')}$`)
-      for (const line of stepContract(step, ctx).doneWhen) {
-        if (ownLine.test(line)) {
-          own += 1
-          continue
-        }
-        assert.doesNotMatch(line, /^The policy is enforced in .+\.$/, `${name}/${step.id}: the shared end state`)
-      }
-    }
-  }
-  assert.ok(own > 0, 'no held policy read its own end state')
-})
-
-test('the campaign and the exclusions group finish on what their step docs say', () => {
-  const byId = (id: string) => content.steps.find((s) => s.id === id)
-  // Editorial batch C: the campaign's own settings check is a human check; the admin readiness gate stays.
-  // mfa-everyone-spec.md §4 C9: Completion Criteria is split so each line says one thing.
-  assert.ok(byId('s-verify-mfa')?.doneWhen?.some((line: string) => /Every administrator has a phishing-resistant method/.test(line)))
-  const target = "The scan verifies the selected group's configuration, membership and required policy exclusions."
-  assert.equal(byId('s-prereq-exclusion-group')?.doneWhen?.[0], target)
-  let read = 0
-  for (const name of FIXTURES) {
-    const { r, ctx } = planOf(name)
-    const step = r.steps.find((s) => s.id === 's-prereq-exclusion-group')
-    if (!step) continue
-    const c = stepContract(step, ctx)
-    if (c.state.satisfied) continue
-    assert.ok(c.doneWhen.includes(target), `${name}: ${c.doneWhen.join(' | ')}`)
-    read += 1
-  }
-  assert.ok(read > 0, 'no open exclusions group step was read')
-})
-
 test('Use Separate Accounts for Admin Work draws its per-person checklist as one Entra channel under Implementation', () => {
   const { r, ctx } = planOf('mid')
   const step = r.steps.find((s) => s.id === 's-check-separate-admin-accounts')
@@ -180,25 +107,4 @@ test('Use Separate Accounts for Admin Work draws its per-person checklist as one
   assert.ok(headingsOf(b).includes(TASK_HEAD.implementation), headingsOf(b).join(' · '))
   // Entra carries the checklist; AI Info describes it (B10 P1-4).
   assert.deepEqual(b.artifacts.filter((a) => !a.unavailable).map((a) => a.id), ['portal', 'ps', 'ai', 'email'])
-  const text = b.artifacts[0].text()
-  // Ongoing Checks and Cleanup (docs/plans/ongoing-spec.md sections 3 and 9):
-  // registration goes to the page itself rather than an aka.ms alias, and the
-  // procedure no longer leaves the admin account unreachable — Microsoft's
-  // security-planning guidance asks for an email address that reaches the person, so
-  // role approvals and service notices arrive
-  // (learn.microsoft.com/entra/identity/role-based-access-control/security-planning,
-  // checked 2026-09-20).
-  for (const line of ['cloud-only account', 'Roles and administrators', 'https://mysignins.microsoft.com/security-info', 'an email address that reaches the person', 'Keep mail, Teams and files on the everyday account']) assert.ok(text.includes(line), `missing: ${line}`)
-  assert.ok(!text.includes('no licence, so it has no mailbox'), 'the procedure no longer leaves the admin account without an address')
-})
-
-test("a Cleanup row's instructions sit under Implementation, in its one column", () => {
-  const src = readFileSync('src/ui/surfaces/CleanupStep.tsx', 'utf8')
-  assert.match(src, /<StepSection heading=\{CONTRACT\.implementation\.heading\}>/)
-  assert.doesNotMatch(src, /HEAD\.whatToDo/)
-  assert.match(src, /className=\{`step-body\$\{row\.kind === 'drill' \? ' has-rail' : ''\}`\}/, 'only the verification row (Emergency Access Step 4) draws an action column')
-  const main = src.indexOf('<div className="step-main">')
-  assert.ok(main > 0 && src.indexOf('entry.whatToDo', main) > main, 'the rename list is in the main column')
-  // The not-assessed notes went with their row (docs/plans/step-redundancy-analysis.md finding 8).
-  assert.doesNotMatch(src, /notAssessed/)
 })

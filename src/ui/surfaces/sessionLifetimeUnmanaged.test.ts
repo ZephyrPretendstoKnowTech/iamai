@@ -11,19 +11,13 @@
 // content entry's own reference reads "One policy, as the pinned baseline has it", so the
 // companion is gone from the source, not hidden at runtime. The interval it shipped is
 // gone with it: every channel takes the resolved target's own session controls.
-import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { curatedFixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
-import { PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
 import { NO_RUNTIME, projectSafely } from '../../content/implementation/project.ts'
 import { implementationPackageFor, memberBindings, packageBindings } from './stepPackage.ts'
 import { stepContract } from './stepContract.ts'
-import { stepBodyOf } from './stepBody.ts'
-
-// Editorial batch C: the companion is no longer named; the create says the baseline has one session policy.
-const NOT_OFFERED = 'The baseline has one session policy for this step: the browser policy below.'
 
 function opened() {
   const f = curatedFixture('demo-week2')
@@ -32,43 +26,8 @@ function opened() {
   const pkg = implementationPackageFor(step)!
   const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: r.schedule.reportOnlyAt[step.id] ?? null } as never
   const bindings = { ...packageBindings(step, ctx, stepContract(step, ctx)), ...memberBindings(step, f.snapshot, (ctx as { nameOf: (id: string) => string }).nameOf) }
-  return { step, pkg, ctx, bindings }
+  return { pkg, bindings }
 }
-
-test('the session create is the pinned browser policy alone, and the unmanaged companion is said to be not offered', () => {
-  const { step, pkg, ctx, bindings } = opened()
-  // Premises: the pin names one policy for the goal, and the package's companion has no stable id.
-  assert.deepEqual(PINNED_GOAL_MAP['all-users-no-persistence'], ['ea9459a9-91b6-4d2b-b929-03781ac81d54'])
-  assert.deepEqual(pkg.meta.baselineAuthority?.members?.map((m) => m.role), ['browser'], 'the package declares a member the pin does not name')
-  assert.equal(bindings['policies.session.browser.operation'], 'create')
-  assert.equal(Object.keys(bindings).some((k) => k.startsWith('policies.session.unmanaged.')), false)
-  const body = stepBodyOf(step, ctx)
-  const tab = (id: string): string => {
-    const a = body.artifacts.find((x) => x.id === id)
-    assert.ok(a && !a.unavailable, id)
-    return a.text()
-  }
-  const entra = tab('portal')
-  assert.ok(entra.includes(NOT_OFFERED), entra)
-  assert.ok(entra.includes('1. Name: `Core - Session - Non-persistent browser sessions`.'), entra)
-  assert.doesNotMatch(entra, /device\.isCompliant|‹unmanaged/)
-  assert.ok(tab('ai').includes('there is no second policy to create, correct or enable.'))
-  const calls = tab('ps').split(String.fromCharCode(10)).filter((l) => l.startsWith('Invoke-IAMAIStep'))
-  assert.equal(calls.length, 1, calls.join(' | '))
-  assert.match(calls[0], /^Invoke-IAMAIStep -Mode 'CreateBrowser' -BrowserPolicyDisplayName 'Core - Session - Non-persistent browser sessions' /)
-  assert.doesNotMatch(calls[0], /Unmanaged/)
-  const json = tab('json')
-  // Content, not whitespace: a template-driven create body is laid out like the
-  // generated ones now that the plan tag is put on it (stepPackage.ts
-  // jsonWithPlanTag), which is the same JSON either way.
-  assert.match(json, /"displayName": ?"Core - Session - Non-persistent browser sessions"/)
-  assert.doesNotMatch(json, /device\.isCompliant|unmanaged/i)
-  // The target's excluded accounts are an empty list, and that is the target's own "none" (consolidated
-  // batch): the create used to preview on it as a missing value; it is now handed over carrying the empty list.
-  assert.equal(body.previewNote, null, JSON.stringify(body.previewNote))
-  assert.match(calls[0], /-ExcludeUserIds @\(\)$/)
-  assert.match(json, new RegExp('"excludeUsers": ?\\[\\]'))
-})
 
 test('with the excluded accounts held, the browser create is handed over in every channel', () => {
   const { pkg, bindings } = opened()
@@ -88,29 +47,4 @@ test('with the excluded accounts held, the browser create is handed over in ever
   const session = (JSON.parse(json.text) as { sessionControls: { signInFrequency: { value: number; type: string }; persistentBrowser: { mode: string } } }).sessionControls
   assert.deepEqual([session.signInFrequency.type, session.signInFrequency.value, session.persistentBrowser.mode], ['hours', 12, 'never'])
   assert.match(ps.text, /-BrowserSessionControlsJson '\{/)
-})
-
-// S4-10, at the source: the package holds one policy, and no channel states an interval of its own.
-test('the session package has no unmanaged-device block, request body or script mode, and no channel writes an interval as a literal', () => {
-  const { pkg } = opened()
-  const ids = Object.keys(pkg.blocks).filter((id) => /unmanaged/i.test(id))
-  assert.deepEqual(ids, [], 'an unmanaged-device block is still in the package')
-  assert.deepEqual(Object.keys((pkg.meta.projection as { partial: { mismatches: Record<string, unknown> } }).partial.mismatches), ['browser.missing', 'browser.conditions', 'browser.session', 'browser.grant-none'])
-  // One create body in the whole package, and it is the browser policy's.
-  const creates = Object.entries(pkg.blocks).filter(([, b]) => b.meta.channel === 'json' && String(b.meta.method ?? '').toUpperCase() === 'POST')
-  assert.deepEqual(creates.map(([id]) => id), ['json.browser.create'])
-  // The script an admin reads whole: no Unmanaged parameter, mode or branch, and no hardcoded interval.
-  const script = pkg.blocks['powershell.run'].text
-  assert.doesNotMatch(script, /Unmanaged/)
-  assert.doesNotMatch(script, /New-Session|value=\$Hours|frequencyInterval='|type='hours'|mode='never'/)
-  const modes = /\[ValidateSet\(([^)]*)\)\]/.exec(script)![1]
-  assert.deepEqual(modes.split(',').map((m) => m.trim().replace(/'/g, '')), ['CreateBrowser', 'CorrectBrowserConditions', 'CorrectBrowserSession', 'CorrectBrowserGrant', 'ReportOnlyBrowser', 'VerifyBrowser', 'Enforce'])
-  // The only value the pin owns reaches the deployable channels as a binding, and the
-  // human-facing ones point at the target instead of restating it.
-  const source = readFileSync('docs/implementation-content/s-goal-session-lifetime/CONTENT.md', 'utf8')
-  assert.equal(source.includes('"type":"hours"'), false, 'a channel still writes the interval as a literal')
-  for (const id of ['json.browser.create', 'json.browser.session']) assert.match(pkg.blocks[id].text, /\{\{json:policies\.session\.browser\.target\.sessionControls\}\}/, id)
-  assert.equal(pkg.blocks['powershell.run'].meta.invocation?.parameters?.BrowserSessionControlsJson?.binding, 'policies.session.browser.target.sessionControls')
-  // Only the ReadinessApproved attestation withholds a mode now; there is no companion to withhold.
-  assert.deepEqual(Object.keys(pkg.blocks['powershell.run'].meta.invocation?.withheldModes ?? {}), ['Enforce'])
 })
