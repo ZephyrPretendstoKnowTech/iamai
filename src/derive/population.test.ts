@@ -288,7 +288,7 @@ function deliveredWithGroup(policyName: string, stepId: string, sampled: boolean
 // (Foundation A): the card says the reach is not established and why, the way
 // an open policy's does, and nothing on the step counts people it did not
 // measure.
-test('a delivered step whose delivering policy\'s scope cannot be settled says its reach is not established, and counts nobody', () => {
+test('a delivered step whose delivering policy\'s scope cannot be settled counts nobody on its cards, and its row still counts (walk list 4.x item 25)', () => {
   const scan = (sampled: boolean) => deliveredWithGroup('Core - Grant - MFA for all users', 's-goal-mfa-all-users', sampled)
 
   const unread = scan(true)
@@ -296,7 +296,8 @@ test('a delivered step whose delivering policy\'s scope cannot be settled says i
   assert.equal(unread.step.state.satisfied, true, 'the premise: delivered')
   for (const t of unread.tiles) assert.doesNotMatch(`${t.value} ${t.note ?? ''}`, /\d+ active (?:people|person)|covers \d+ enabled/, `${t.label} counts people beside a reach that is not established`)
   assert.equal(unread.found.some((x) => x.key === 'shortfall'), false, 'no "Who it misses" count from a scope nobody settled')
-  assert.doesNotMatch(unread.row, /\d/, `the row's Impact counts people (${unread.row})`)
+  // Impact is a count, never a label (owner, 2026-09-24): the row counts the goal's people there.
+  assert.match(unread.row, /^[\d,]+ people$/, `the row's Impact reads ${unread.row}`)
   assert.equal(unread.exported, null, 'the export writes no count either')
 
   // The scan that reads the group reads the policy's own reach, and only then.

@@ -1857,7 +1857,6 @@
         "cleanupDoneOn": "Done on",
         "cleanupDone": "Done",
         "cleanupDoneRow": "done {date}",
-        "lockoutSuffix": "{n} would be stopped",
         "stepContract": {
           "$comment": "The Step Contract (Foundation D, src/ui/surfaces/stepContract.ts). Every Plan step answers the same questions in the same order: where it is now and what happens next, why, what IAMAI found, who it touches, what to do, what to fix first, how you will know it is done, and More. These are the words the contract itself supplies; each step's own sentences stay in its steps[] entry.",
           "lifecycle": {
@@ -2779,7 +2778,6 @@
           "s-ladder-guest-review": "Guest access",
           "s-ladder-authenticator-over-sms": "Sign-in methods",
           "s-ladder-global-admin-count": "Global Administrators",
-          "s-prereq-per-user-mfa": "Per-user MFA",
           "s-blocker-allowed-countries": "Allowed countries",
           "s-prereq-allowed-countries": "Allowed countries",
           "s-ladder-security-defaults": "Tenant sign-in protection",
@@ -2788,8 +2786,7 @@
           "s-prereq-exclusion-group": "Policy exclusions",
           "s-prereq-device-plan": "Phones and computers",
           "s-ladder-phone-access-restriction": "Phone access",
-          "s-shared-devices": "Shared-device accounts",
-          "s-goal-admin-portals-protected": "Administrator portals"
+          "s-shared-devices": "Shared-device accounts"
         },
         "impactDefault": "Tenant settings",
         "impactPolicy": "Policy scope",
