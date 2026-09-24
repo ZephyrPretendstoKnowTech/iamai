@@ -71,7 +71,7 @@ export function directionBlockerStep(b: { kind: string; label: string }): Direct
 /** The retired step whose decision the services have always saved under (workflowAnswers, facetOverrides). */
 export const WORKFLOW_DECISION_STEP = 's-confirm-workloads'
 /** The services D1 asks about, in the order the spec lists them. Intune is not one: it follows D3. */
-export const SERVICE_KEYS = ['avd', 'sharepoint', 'azureManagement', 'inforcer', 'workload'] as const
+export const SERVICE_KEYS = ['avd', 'sharepoint', 'azureManagement', 'inforcer'] as const
 
 /** One answer: the option's value, and the ids picked where the option takes a list. */
 export type DirectionAnswer = { value: string; picked: string[] }
@@ -84,7 +84,7 @@ export type DirectionAnswer = { value: string; picked: string[] }
  */
 export type DirectionQuestionKey =
   | `service:${string}`
-  | 'mailDevices' | 'deviceCode' | 'partner'
+  | 'mailDevices' | 'partner'
   | 'serviceAccounts' | 'sharedDevices'
   | 'computers' | 'phones' | 'officeNetwork'
 
@@ -95,9 +95,8 @@ export type DirectionQuestionKey =
  */
 export const DIRECTION_QUESTIONS: Readonly<Record<Exclude<DirectionQuestionKey, `service:${string}`> | 'service', { step: DirectionStepId; storedAs: string }>> = {
   service: { step: DIRECTION_STEP.use, storedAs: `stepDecisions['${WORKFLOW_DECISION_STEP}'] → workflowAnswers[<service>], facetOverrides[<service>]` },
-  mailDevices: { step: DIRECTION_STEP.use, storedAs: `questionAnswers['${QUESTION_STEP.mailDevices}:<decision label>']` },
-  deviceCode: { step: DIRECTION_STEP.use, storedAs: `questionAnswers['${QUESTION_STEP.deviceCode}:<decision label>']` },
-  partner: { step: DIRECTION_STEP.use, storedAs: `questionAnswers['${QUESTION_STEP.partner}:<question label>']` },
+  mailDevices: { step: DIRECTION_STEP.use, storedAs: `questionAnswers['${QUESTION_STEP.mailDevices}:<decision label>'], its basis questionAnswers['${DIRECTION_STEP.use}:mailDevices:basis']` },
+  partner: { step: DIRECTION_STEP.use, storedAs: `questionAnswers['${QUESTION_STEP.partner}:<question label>'], its basis questionAnswers['${DIRECTION_STEP.use}:partner:basis']` },
   serviceAccounts: { step: DIRECTION_STEP.accounts, storedAs: 'serviceAccountUserIds, wizardAnswered.serviceAccounts' },
   sharedDevices: { step: DIRECTION_STEP.accounts, storedAs: 'sharedDeviceUserIds' },
   computers: { step: DIRECTION_STEP.devices, storedAs: `questionAnswers['${QUESTION_STEP.devices}:${DEVICE_ANSWER_KEYS.computers}']` },
@@ -179,10 +178,6 @@ export function savedAnswerOf(key: DirectionQuestionKey, m: Mapping): DirectionA
       const a = answerOf(m, QUESTION_STEP.mailDevices, 'decision')
       return a === null ? null : a.index === 0 ? answer('none') : answer('some', a.picked)
     }
-    case 'deviceCode': {
-      const a = answerOf(m, QUESTION_STEP.deviceCode, 'decision')
-      return a === null ? null : answer(a.index === 0 ? 'unused' : 'used')
-    }
     case 'partner': {
       const a = answerOf(m, QUESTION_STEP.partner, 'question')
       return a === null ? null : answer(a.index === 0 ? 'no' : 'yes')
@@ -209,6 +204,17 @@ export function savedAnswerOf(key: DirectionQuestionKey, m: Mapping): DirectionA
   }
 }
 
+/** The questions besides the services whose approval keeps the evidence basis it was made against. */
+const BASIS_KEYS = ['mailDevices', 'partner'] as const
+
+/**
+ * The evidence basis (present, absent, unread) a saved mail or partner answer
+ * was approved against; null where none was kept (an answer saved before it was).
+ */
+export function savedBasisOf(key: (typeof BASIS_KEYS)[number], m: Pick<MappingState, 'questionAnswers'>): string | null {
+  return m.questionAnswers?.[answerKey(DIRECTION_STEP.use, `${key}:basis`)] ?? null
+}
+
 // ---- the Direction decision, as saved ----
 
 /**
@@ -221,7 +227,7 @@ export function directionAnswerComplete(q: Pick<DirectionQuestion, 'control' | '
   return q.pickedWith !== null && a.value === q.pickedWith ? a.picked.length > 0 : true
 }
 
-/** The answers a Direction step's Approve writes: every question at once, the picked ids beside each, a service's evidence basis beside it. */
+/** The answers a Direction step's Approve writes: every question at once, the picked ids beside each, a question's evidence basis beside it. */
 export function directionDecisionOf(answers: Readonly<Record<string, DirectionAnswer>>, basis: Readonly<Record<string, string>> = {}): StepDecisionInput {
   const out: Record<string, string> = {}
   for (const [key, a] of Object.entries(answers)) {
@@ -276,17 +282,20 @@ export function legacyDecisionsOf(_stepId: DirectionStepId | typeof DIRECTION_LO
     const text = mail.value === 'some' && mail.picked.length > 0 ? option(QUESTION_STEP.mailDevices, 'decision', 1, mail.picked) : option(QUESTION_STEP.mailDevices, 'decision', 0)
     if (text !== null) out.push([QUESTION_STEP.mailDevices, { option: text, at }])
   }
-  const code = answers.deviceCode
-  if (code) {
-    const text = option(QUESTION_STEP.deviceCode, 'decision', code.value === 'used' ? 1 : 0)
-    if (text !== null) out.push([QUESTION_STEP.deviceCode, { option: text, at }])
-  }
   const partner = answers.partner
   const partnerLabel = questionLabels(QUESTION_STEP.partner).question
   if (partner && partnerLabel) {
     const text = option(QUESTION_STEP.partner, 'question', partner.value === 'yes' ? 1 : 0)
     if (text !== null) out.push([QUESTION_STEP.partner, { ...previous[QUESTION_STEP.partner], answers: { ...(previous[QUESTION_STEP.partner]?.answers ?? {}), [partnerLabel]: text }, at }])
   }
+  // The evidence the mail and partner answers were approved against, under the
+  // key it is read from (savedBasisOf), as a service's basis is kept beside it.
+  const basis: Record<string, string> = {}
+  for (const key of BASIS_KEYS) {
+    const b = d.answers?.[`${key}:basis`]
+    if (answers[key] && typeof b === 'string') basis[`${key}:basis`] = b
+  }
+  if (Object.keys(basis).length > 0) out.push([DIRECTION_STEP.use, { answers: basis, at }])
   if (answers.serviceAccounts) out.push([PREREQ_STEP_ID.serviceAccountsGroup, { picked: answers.serviceAccounts.value === 'some' ? answers.serviceAccounts.picked : [], at }])
   if (answers.sharedDevices) out.push(['s-shared-devices', { picked: answers.sharedDevices.value === 'some' ? answers.sharedDevices.picked : [], at }])
   const computers = answers.computers

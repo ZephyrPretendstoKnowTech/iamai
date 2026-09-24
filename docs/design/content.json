@@ -2909,13 +2909,13 @@
           "approved": "Approved",
           "defaultEvidence": "A default, not something the scan saw.",
           "baselineEvidence": "The baseline's recommendation.",
-          "reopened": "You said No, but the scan now sees it in use. {evidence}",
+          "reopened": "You answered {answer}. {evidence}",
           "alreadySetAside": "The Emergency Access accounts are already set aside: {accounts}.",
           "none": "None",
           "steps": {
             "use": {
               "title": "Confirm What You Use",
-              "why": "Tell us which services and sign-in paths your organisation uses, so the plan only includes the policies you need, and closes the ones you don't.",
+              "why": "IAMAI filled these in from your tenant. Approve them or correct any that are wrong: a service you don't use takes its policies off your plan, and the accounts and partners you name are kept out of the policies that would stop them.",
               "milestoneAction": "Approving these answers decides which policies your plan contains."
             },
             "accounts": {
@@ -2935,41 +2935,25 @@
               "avd": "Azure Virtual Desktop",
               "sharepoint": "SharePoint and OneDrive from outside the office",
               "azureManagement": "Azure portal, CLI or PowerShell for managing Azure",
-              "inforcer": "Inforcer",
-              "workload": "Sync from on-premises Active Directory (Entra Connect)"
+              "inforcer": "Inforcer"
             },
             "serviceOptions": {
               "yes": "Yes",
               "no": "No"
             },
+            "serviceConsequence": "Answering No takes {steps} off your plan.",
             "serviceEvidence": {
-              "seen": "{service} sign-ins appear in the tenant's app sign-in summary or its service-principal activity.",
-              "$commentSeen": "These said \"in the last 30 days\" over two sources that declare no window at all: appSignInSummary and spActivity both carry coveredWindow null on every tenant seen so far. A reader who trusts the window reads a measured negative — IAMAI watched for a month and saw nothing — where what happened is that a summary with no stated period does not list the app. The named window is gone; what the sources are is said instead. Whether an undeclared window should still suggest removing a policy from the plan is a separate question, and a bigger one: it decides plan composition.",
-              "$commentNotSeen": "The sentence named the service as its subject, \"{service} does not appear …\", so a plural or joined name read \"Agent identities does not appear\" and \"SharePoint and OneDrive does not appear\" (the Inventory's Detected workloads tooltip and Direction's Confirm What You Use). The two sources are the subject now, and the service names the sign-ins.",
-              "notSeen": "The tenant's app sign-in summary and its service-principal activity show no {service} sign-ins.",
+              "seen": "{n} people signed in to {service} in the last 30 days.",
+              "notSeen": "No {service} sign-ins in the last 30 days.",
               "syncSeen": "An account holds the Directory Synchronization Accounts role, so a sync service is likely in use.",
               "syncNotSeen": "No account holds the Directory Synchronization Accounts role."
             },
             "mailDevices": {
               "label": "Devices or apps that send email by signing in (printers, scanners, line-of-business apps)",
-              "options": {
-                "none": "None",
-                "some": "Some"
-              },
-              "seen": "{n} accounts used old-protocol email sign-ins in the last 30 days.",
-              "notSeen": "No old-protocol email sign-ins in the last 30 days."
-            },
-            "deviceCode": {
-              "label": "Device code sign-in (CLI tools, meeting-room devices)",
-              "options": {
-                "unused": "Not used",
-                "used": "In use"
-              },
-              "seen": "{n} people used device code sign-in in the last 30 days.",
-              "notSeen": "No device code sign-ins in the last 30 days.",
-              "$commentSeenShort": "What the question says where IAMAI does not hold enough of the sign-in records to rely on (roadmap/direction.ts, the source neither ok nor partial) and the rows it did read show device code use. A read that stops short of 24 hours is insufficient and keeps those rows (graph/collect/signInStream.ts; since the read streams, \"insufficient\" comes only from a time budget), and the question said \"2 people used device code sign-in in the last 30 days\" over six hours of records, and \"No device code sign-ins in the last 30 days\" where six hours held none - a measured absence beside the suggestion that builds the block. Use the rows show is still use, so it keeps its suggestion; the window is not claimed, and an absence over a short read is the default it is (defaultEvidence).",
-              "seenShort": "{n} people used device code sign-in in the sign-in records IAMAI read. Those do not cover the last 30 days, so there may be others.",
-              "note": "Answering Not used builds the policy that blocks it. A session that once used device code stays tracked, so later requests in it can be blocked too, and a device can be signed out."
+              "seen": "{n} accounts signed in to send email in the last 30 days.",
+              "notSeen": "No email-sending sign-ins in the last 30 days.",
+              "consequence": "Answering Pick accounts makes them service accounts: they leave the people counts, and Block Legacy Authentication leaves them out until each moves to a supported mail route.",
+              "why": "Signed in to send email in the last 30 days."
             },
             "partner": {
               "label": "Partner or MSP technicians who sign in to your tenant",
@@ -2977,8 +2961,9 @@
                 "yes": "Yes",
                 "no": "No"
               },
-              "seen": "{n} service-provider accounts signed in to this tenant.",
-              "notSeen": "No service-provider sign-ins in the last 30 days."
+              "seen": "{n} partner or MSP accounts signed in to your tenant in the last 30 days.",
+              "notSeen": "No partner or MSP sign-ins in the last 30 days.",
+              "consequence": "Answering Yes keeps partner and MSP technicians out of Require MFA for Guests and Block Sign-ins From Countries Not Allowed."
             },
             "accountOptions": {
               "none": "None",
@@ -5353,20 +5338,6 @@
         ],
         "none": "No device-code sign-ins in the records since {from}; that does not prove nothing uses it."
       },
-      "decision": {
-        "label": "Device code sign-in",
-        "tileValue": "Confirm no legitimate use",
-        "help": "Does anyone use device code sign-in for CLI tools, IoT devices, or display-limited devices?",
-        "options": [
-          "None",
-          "Yes"
-        ],
-        "effect": "Enforcement waits while device code sign-in is in use; move each workflow off it, then save None.",
-        "save": "Save",
-        "tileNote": "The sign-in records cover observed use; they can miss infrequent CLI, shared-device and enrollment workflows.",
-        "$commentTileNoteUnread": "The device code tile note where IAMAI could not read the sign-in records (stepContract.ts unsavedTiles reads it where the step carries Evidence.unreadable; {reason} is the source's own reason). tileNote says the sign-in records cover observed use, and on a tenant whose sign-in source refused every read it said so over records IAMAI had never read: a coverage that did not exist, beside the very question the records were meant to help answer (R4-19, Priya D4). This states what IAMAI does not hold and where the answer has to come from instead. It said \"could not read\" and \"nothing here shows whether anything uses device code sign-in\": a production read that stops short of 24 hours is insufficient with some records read, and those can show use, so what they cannot show is that nothing uses it.",
-        "tileNoteUnread": "IAMAI does not hold enough of this tenant's sign-in records to rely on — {reason} — so they cannot show that nothing uses device code sign-in. Check CLI tools, shared devices and enrollment workflows with the people who run them."
-      },
       "dates": "{datesNew}",
       "doneEnd": "No sign-in to {tenant} completes through device code flow, the exclusions group is applied, and every tool, shared device and enrollment job that used the flow has a tested alternative.",
       "doneWhen": [
@@ -5434,11 +5405,6 @@
         "verification": [
           "Identify the legitimate tools or devices using device code. Move each required workflow to an alternative supported by that tool, then run the actual task with a representative account.",
           "For each workflow moved off device code, record the account, tool/task, replacement sign-in path, date and result. A quiet device-code report alone does not demonstrate that a required workflow was replaced."
-        ],
-        "$commentVerificationLead": "The line the workflow check opens on, by the saved answer to the device code decision (options: None, Yes), read the way a decision's per-option effect is read (answers.ts effectLine; stepResources.ts verificationResourceLines). With None saved the check still opened on \"Identify the legitimate tools or devices using device code. Move each required workflow...\" as if nothing had been answered (R4-29, Marcus D10). The checks stay under None: the decision's effect asks for None once each workflow is moved off, so None is also the answer saved when there are moved workflows to test, and a quiet device-code report can miss infrequent use. Yes adds nothing: the checks are that answer's work.",
-        "verificationLead": [
-          "You recorded that nothing uses device code sign-in. Confirm it with the checks below: infrequent CLI, shared-device and enrollment use is easy to miss.",
-          ""
         ]
       }
     },

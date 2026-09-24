@@ -24,8 +24,9 @@ import type { DirectoryEvidence } from '../../mapping/safetyChoice.ts'
 import type { StepDecision } from '../../roadmap/decisions.ts'
 import { contentLists } from '../../derive/contentLists.ts'
 import { fillText, missingVars } from '../../content/render.ts'
-import { app, engine, shared } from '../../content/content.ts'
-import { SPECIAL_CARE_STEP_ID } from '../../roadmap/answers.ts'
+import { app, directionWords, engine, shared } from '../../content/content.ts'
+import { QUESTION_STEP, SPECIAL_CARE_STEP_ID } from '../../roadmap/answers.ts'
+import { mailPickable, mailSenderIds } from '../../roadmap/direction.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 
 export type PickerContext = {
@@ -346,6 +347,13 @@ export function pickerKind(stepId: string, source: string | null): PickerKind {
 export function pickerUniverse(stepId: string, source: string | null, ctx: PickerContext): PickerObject[] {
   const { snapshot, mapping, nameOf } = ctx
   const kind = pickerKind(stepId, source)
+  // The mail-sending devices (Confirm What You Use): no emergency access account
+  // or guest is offered, and an account the records show sending mail says why.
+  if (kind === 'accounts' && stepId === QUESTION_STEP.mailDevices) {
+    const senders = new Set(mailSenderIds(snapshot) ?? [])
+    const offered = mailPickable(snapshot, mapping)
+    return snapshot.users.filter((u) => offered(u.id)).map((u) => ({ id: u.id, name: nameOf(u.id), secondary: u.userPrincipalName ?? undefined, ...(senders.has(u.id) ? { why: directionWords.questions.mailDevices.why } : {}) }))
+  }
   if (kind === 'accounts') return snapshot.users.map((u) => ({ id: u.id, name: nameOf(u.id), secondary: u.userPrincipalName ?? undefined }))
   if (kind === 'groups') {
     const known = new Map<string, string>()
