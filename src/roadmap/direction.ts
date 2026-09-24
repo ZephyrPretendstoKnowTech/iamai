@@ -55,7 +55,7 @@ import { QUESTION_STEP } from './answers.ts'
 import { PREREQ_STEP_ID } from './stepIds.ts'
 import { checkStep, serviceEvidence, serviceOf, serviceReading } from './workflows.ts'
 import type { ServiceSignal } from './workflows.ts'
-import { DIRECTION_BLOCKER, DIRECTION_STEP, SERVICE_KEYS, directionComplete, directionStepOf, isDirectionStep, savedAnswerOf, savedBasisOf } from './directionAnswers.ts'
+import { DIRECTION_BLOCKER, DIRECTION_STEP, SERVICE_KEYS, directionComplete, directionStepOf, isDirectionStep, officeLocationsCreated, savedAnswerOf, savedBasisOf, trustedIpLocations } from './directionAnswers.ts'
 export { DIRECTION_BLOCKER, directionBlockerStep, directionComplete } from './directionAnswers.ts'
 import type { DirectionQuestionKey, DirectionStepId } from './directionAnswers.ts'
 import type { DirectionQuestion, Step } from './types.ts'
@@ -257,10 +257,17 @@ function deviceQuestions(ctx: Context): DirectionQuestion[] {
  */
 function officeNetworkQuestion(ctx: Context): DirectionQuestion {
   const { snapshot } = ctx
-  const read = snapshot.config.namedLocations?.status === 'ok'
-  const locations = read ? (snapshot.config.namedLocations.rows ?? []).map((raw) => raw as { id?: string; displayName?: string; isTrusted?: boolean; '@odata.type'?: string }).filter((l) => typeof l.id === 'string' && l.isTrusted === true && String(l['@odata.type'] ?? '').includes('ipNamedLocation')) : []
-  const trusted = locations.map((l) => l.id as string)
-  const names = locations.map((l) => l.displayName ?? (l.id as string)).join(', ')
+  const locations = trustedIpLocations(snapshot)
+  const read = locations !== null
+  const trusted = (locations ?? []).map((l) => l.id)
+  const names = (locations ?? []).map((l) => l.name).join(', ')
+  // A saved "Not in Entra yet" reopens once the scan finds the office location
+  // it was waiting for, pre-filled with it (walk list item 6, as #29 and #36):
+  // Define the Trusted Network is done with it, and the policies that use the
+  // office take it from this answer.
+  const created = officeLocationsCreated(snapshot, ctx.mapping)
+  const reopened = created.length > 0
+  const seen = !read ? null : trusted.length > 0 ? fillText(Q.officeNetwork.seen, { n: trusted.length, names }) : Q.officeNetwork.notSeen
   return (
     question('officeNetwork', ctx, {
       label: Q.officeNetwork.label, control: 'locations', options: optionsOf(Q.officeNetwork.options), pickedWith: 'office',
@@ -269,7 +276,11 @@ function officeNetworkQuestion(ctx: Context): DirectionQuestion {
       // switched off the step that would have defined the office network in the
       // first place, on no evidence; the suggestion that keeps the work on the
       // plan is the conservative one (owner, 2026-09-20).
-      suggested: trusted.length > 0 ? answer('office', trusted) : answer('notInEntra'),
+      suggested: reopened ? answer('office', created.map((l) => l.id)) : trusted.length > 0 ? answer('office', trusted) : answer('notInEntra'),
+      needsReview: reopened,
+      // The trusted locations the answer is approved against, so a location
+      // trusted after "Not in Entra yet" is told from one already there.
+      basis: read ? [...trusted].sort().join(',') : null,
       // The evidence, and — where the saved answer contradicts it — what that
       // answer does with it. "Everyone works remotely" sat beside "1 named
       // location is marked trusted" with nothing joining them: the evidence is
@@ -279,7 +290,7 @@ function officeNetworkQuestion(ctx: Context): DirectionQuestion {
       // which half to believe.
       // Named locations not read: no evidence line (walk list 60).
       evidence: [
-        !read ? null : trusted.length > 0 ? fillText(Q.officeNetwork.seen, { n: trusted.length, names }) : Q.officeNetwork.notSeen,
+        reopened && seen !== null ? fillText(W.reopened, { answer: Q.officeNetwork.options.notInEntra, evidence: seen }) : seen,
         read && trusted.length > 0 && savedAnswerOf('officeNetwork', ctx.mapping)?.value === 'remote'
           ? fillText(Q.officeNetwork.savedRemoteUnused, { names })
           : null,
@@ -407,6 +418,10 @@ const GOAL_DEPENDS: Readonly<Record<string, readonly DirectionQuestionKey[]>> = 
   'geo-restriction': ['partner'],
   'service-accounts-trusted-network': ['serviceAccounts', 'officeNetwork'],
   'register-info-protected': ['officeNetwork'],
+  // Define the Trusted Network holds until the office question is answered, as
+  // the policies that use the office do (walk list item 60): before it, the step
+  // asked for a new office location beside one the tenant already trusts.
+  'prereq-trusted-location': ['officeNetwork'],
   ...Object.fromEntries([...DEVICE_GOALS].map((g) => [g, ['computers', 'phones'] as const])),
 }
 /** A goal whose applicability is a D1 service depends on that service's answer. */

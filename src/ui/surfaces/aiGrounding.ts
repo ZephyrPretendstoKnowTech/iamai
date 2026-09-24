@@ -80,6 +80,8 @@ type AiFactWords = typeof CONTRACT.implementation.aiFacts & {
   unavailable: string
   /** The device-platform scope the resolved target sets, beside the location scope (`policy.target.platformWords`). */
   platforms: string
+  /** The label of a list of named locations, where its line has no lead of its own. */
+  namedLocations: string
 }
 
 /** The most names one list in a briefing carries; the rest are counted. */
@@ -221,7 +223,9 @@ export function aiGroundingText(i: GroundingInput, own = ''): string {
     const shown = block.names.slice(0, NAMES_IN_BRIEFING)
     const items = shown.map((name, n) => (ids.length === block.names.length ? `${name} (id ${ids[n]})` : name))
     if (block.names.length > shown.length) items.push(fillText(W.more, { n: block.names.length - shown.length }))
-    scope.push(...labelled(lead || W.accounts, items))
+    // A list with no lead of its own is labelled by what it lists: named
+    // locations are not accounts (walk list 67).
+    scope.push(...labelled(lead || (typeof token === 'string' && /^locations/.test(token) ? W.namedLocations : W.accounts), items))
   }
   section(S.scope, scope)
 

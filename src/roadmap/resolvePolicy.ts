@@ -404,6 +404,22 @@ export function unmatchedStrengths(policies: readonly CaPolicy[], tenant: Tenant
   return out
 }
 
+/**
+ * The tenant strengths that answer the author's own custom strengths, by
+ * tenant id (tenantStrengthFor): what Create the Baseline's Authentication
+ * Strength names once it is done.
+ */
+export function matchedStrengthIds(policies: readonly CaPolicy[], tenant: TenantObjects): string[] {
+  const strengths = strengthsOf(policies)
+  const out = new Set<string>()
+  for (const r of referencesOf(policies)) {
+    if (r.kind !== 'authenticationStrength') continue
+    const hit = tenantStrengthFor(r.id, strengths, tenant)
+    if (hit) out.add(hit)
+  }
+  return [...out]
+}
+
 /** One tenant object, or none. */
 const single = (id: string | null): string[] => (id ? [id] : [])
 

@@ -2230,6 +2230,7 @@
               "grant": "Grant",
               "strength": "Authentication strength",
               "accounts": "Accounts IAMAI observed",
+              "namedLocations": "Named locations IAMAI observed",
               "more": "{n} more accounts are not included in this excerpt.",
               "none": "None.",
               "opening": [
@@ -3811,7 +3812,7 @@
       "kind": "object",
       "title": "Define the Trusted Network",
       "changeLine": null,
-      "why": "Some policies apply differently on a trusted network. Confirming the public addresses prevents an unrelated office, VPN or shared provider address from receiving that trust.",
+      "why": "Some policies on your plan treat sign-ins from your office differently. This step puts the office's public IP addresses in Entra as a trusted location.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network"
       },
@@ -3828,16 +3829,25 @@
         "save": "Save"
       },
       "whatToDo": {
-        "lead": "Confirm the office's public IP ranges with the network owner, then create the named location and mark it trusted.",
-        "correct": [
-          "Entra admin center → Entra ID → Conditional Access → Named locations → open {existingName}.",
-          "{list:fixes}"
-        ]
+        "lead": "Create the office's IP ranges location in Entra and mark it trusted."
+      },
+      "$commentWhatToDoWhen": "A location picked as the office in Decide How and Where People Sign In that Entra holds without the trusted mark (walk list 61): the step marks it trusted and makes nothing. {officeToTrust} is its name (ui/surfaces/stepVars.ts); the procedure is the package's entra.correct.trusted (ui/surfaces/stepBody.ts).",
+      "whatToDoWhen": {
+        "officeToTrust": {
+          "lead": "Mark {officeToTrust} as a trusted location in Entra.",
+          "task": "Mark the office location as trusted"
+        }
+      },
+      "$commentRangesUnsaved": "The ranges the Add line names where no public ranges were saved for the office ({officeRanges}, ui/surfaces/stepVars.ts; walk list 65).",
+      "rangesUnsaved": "the office's public IP ranges in CIDR notation",
+      "$commentSatisfied": "The Satisfied card of each office location the step is done with (walk list 14, 63): its name, its ranges, then the sign-ins from it in the scan's records (roadmap/generate.ts).",
+      "satisfied": {
+        "signIns": "{n} sign-ins from it in the last 30 days.",
+        "noSignIns": "No sign-ins from {name} in the last 30 days."
       },
       "dates": null,
       "doneWhen": [
-        "An IP named location in the tenant holds exactly the public ranges the network owner approved, and it is marked as trusted.",
-        "The sign-ins that should match it do, without widening a range to make them."
+        "The office location you picked in Decide How and Where People Sign In is an IP ranges location marked trusted."
       ],
       "ifWrong": null,
       "comms": null,
@@ -3872,6 +3882,7 @@
         "locationsWithMatches": [],
         "topRanges": "The most common sign-in addresses in the records are 67.166.x.x (28 sign-ins) and 174.52.x.x (9).",
         "proposedName": "Core - Trusted - Head office",
+        "officeRanges": "the office's public IP ranges in CIDR notation",
         "ranges": [
           "67.166.12.44/32",
           "2601:681:…::/64"
@@ -3888,7 +3899,7 @@
         "subject": "Trusted network",
         "check": "Not in place"
       },
-      "taskTitle": "Set up the trusted network"
+      "taskTitle": "Create the trusted network"
     },
     {
       "id": "s-prereq-service-accounts-group",
@@ -4289,29 +4300,31 @@
       "kind": "object",
       "title": "Create the Baseline's Authentication Strength",
       "changeLine": null,
-      "why": "An authentication strength defines the methods a policy accepts. Creating the right one keeps related policies consistent and makes any temporary sign-in options explicit.",
+      "why": "Create {strengthName}, the authentication strength the baseline's policies require, so those policies can be created in your tenant.",
       "learn": {
-        "url": "https://learn.microsoft.com/entra/identity/authentication/concept-authentication-strengths"
+        "url": "https://learn.microsoft.com/entra/identity/authentication/concept-authentication-strength-advanced-options"
       },
       "who": {
         "lead": "Custom strengths in {tenant} today: {list:strengths}",
         "match": "{matchedStrength} already allows exactly the baseline's combinations; it is used as is.",
-        "none": "None matches the baseline's {strengthName}: Windows Hello for Business, passkeys (FIDO2), certificate (multifactor), and a Temporary Access Pass in both its one-time and its multi-use form."
+        "none": "None matches the baseline's {strengthName}: {strengthMethods}."
       },
       "decision": null,
       "whatToDo": {
-        "lead": "Create an authentication strength holding exactly the baseline's method combinations, so every policy that requires it accepts the same methods.",
+        "lead": "Create {strengthName} with exactly the methods the task lists.",
         "steps": [
-          "Entra admin center → Entra ID → Authentication methods → Authentication strengths → New authentication strength. It takes the Security Administrator role, and it is not under Conditional Access.",
-          "Name: {strengthName}. Description: the baseline's strength: phishing-resistant methods plus Temporary Access Pass (one-time and multi-use) for first sign-ins.",
-          "Select exactly: Windows Hello for Business · Passkeys (FIDO2) · Certificate-based authentication (multifactor) · Temporary Access Pass (one-time) · Temporary Access Pass (multi-use). Nothing else.",
-          "Next → Create. The policies that reference it are created in later steps."
+          "Open [Microsoft Entra admin center](https://entra.microsoft.com/) → Entra ID → Authentication methods → Authentication strengths as a Security Administrator.",
+          "Select New authentication strength.",
+          "Name: {strengthName}.",
+          "Select exactly these methods: {strengthMethods}.",
+          "Select Next, then Create.",
+          "Return to IAMAI and select Scan to update the plan."
         ]
       },
       "dates": null,
+      "$commentDoneWhen": "{strengthMethods} is the baseline's own method list (ui/surfaces/stepVars.ts strengthMethodNames), the list the task selects, so the two cannot drift (walk list 58).",
       "doneWhen": [
-        "An authentication strength named \"{strengthName}\" or an equivalent strength matches the baseline’s required method combinations and restrictions. IAMAI detects the match automatically.",
-        "Every policy already using the strength still accepts the methods its users rely on."
+        "An authentication strength in your tenant allows exactly {strengthMethods}."
       ],
       "ifWrong": "Delete the strength; no policy references it yet. Once one does, Entra refuses the delete and asks you to confirm every edit.",
       "comms": null,
@@ -4333,14 +4346,15 @@
         "tenant": "Contoso Pty Ltd",
         "strengths": [],
         "strengthName": "Modern MFA + TAP",
+        "strengthMethods": "Windows Hello for Business, Passkeys (FIDO2), Certificate-based authentication (multifactor) and Temporary Access Pass (one-time use)",
         "from": "Aug 1"
       },
-      "aiFocus": "Explain each allowed combination and both TAP variants. Distinguish this custom strength from Microsoft's built-in Phishing-resistant MFA strength.",
+      "aiFocus": "Explain each allowed method. Distinguish this custom strength from Microsoft's built-in Phishing-resistant MFA strength.",
       "card": {
         "subject": "Authentication strength",
         "check": "Not in place"
       },
-      "taskTitle": "Set up the authentication strength"
+      "taskTitle": "Create the authentication strength"
     },
     {
       "id": "s-ladder-operator-passkey",
