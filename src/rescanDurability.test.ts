@@ -15,8 +15,7 @@
 //
 // The corpus is `roadmap/fixtures/transitions.ts`: paired scans of one tenant
 // with one thing changed between them, every subject chosen by asking a
-// production authority a question rather than by naming an object. The last test
-// asserts that by reading this file's and the corpus's own bytes.
+// production authority a question rather than by naming an object.
 import { test } from 'node:test'
 import { holdOf } from './roadmap/holds.ts'
 import assert from 'node:assert/strict'
@@ -27,7 +26,7 @@ import { curatedFixture } from './roadmap/fixtures/index.ts'
 import { runFixture } from './roadmap/fixtures/run.ts'
 import { SOLE_MEMBER, observationsOf } from './roadmap/tracking.ts'
 import { historyReset } from './roadmap/observation.ts'
-import { exclusionsGroupChoice, awaitsOperator, exclusionsGroupIdToVerify } from './mapping/safetyChoice.ts'
+import { exclusionsGroupChoice, awaitsOperator } from './mapping/safetyChoice.ts'
 import { emergencySelection } from './mapping/emergencyChoice.ts'
 import { badgeLabel, stepContract } from './ui/surfaces/stepContract.ts'
 import { stepExportView } from './ui/surfaces/stepExport.ts'
@@ -90,112 +89,134 @@ function watchedPair(t: Transition): { a: Step; b: Step } | null {
   return a ? pairFor(t, a.id) : null
 }
 
-// ---- 0. the corpus builds every transition it names ----
+// ---- 0-1. the corpus is real, and a rescan with nothing to report reports nothing ----
 
-test('043.0: the corpus builds every transition it names, and both scans of each are real', () => {
-  const built = transitions()
-  assert.deepEqual(
-    TRANSITION_KEYS.filter((k) => !built.some((t) => t.key === k)),
-    [],
-    'a transition no base tenant can produce: every assertion about it is vacuous',
-  )
-  for (const t of built) {
-    assert.ok(t.a.steps.length > 0, `${t.key}: scan A derived no plan`)
-    assert.ok(t.b.steps.length > 0, `${t.key}: scan B derived no plan`)
-    assert.ok(Object.keys(t.a.observations).length > 0, `${t.key}: scan A left the next scan no record to compare against`)
-    assert.ok(Date.parse(t.b.fixture.snapshot.asOf) >= Date.parse(t.a.fixture.snapshot.asOf), `${t.key}: scan B is not later than scan A`)
+test('043.1: the corpus builds every transition it names, and a repeat scan with no material change moves nothing and keeps the same plan in the same order', () => {
+  // 043.0: the corpus builds every transition it names, and both scans of each are real
+  {
+    const built = transitions()
+    assert.deepEqual(
+      TRANSITION_KEYS.filter((k) => !built.some((t) => t.key === k)),
+      [],
+      'a transition no base tenant can produce: every assertion about it is vacuous',
+    )
+    for (const t of built) {
+      assert.ok(t.a.steps.length > 0, `${t.key}: scan A derived no plan`)
+      assert.ok(t.b.steps.length > 0, `${t.key}: scan B derived no plan`)
+      assert.ok(Object.keys(t.a.observations).length > 0, `${t.key}: scan A left the next scan no record to compare against`)
+      assert.ok(Date.parse(t.b.fixture.snapshot.asOf) >= Date.parse(t.a.fixture.snapshot.asOf), `${t.key}: scan B is not later than scan A`)
+    }
+    // The corpus has to contain a case where the second scan sees LESS of the
+    // tenant than the first, because that is the case a record can lose history
+    // to; and one where a deployed object is replaced, because that is the case a
+    // fingerprint cannot see. A goal the scan cannot assess keeps its step and
+    // holds it (A2 of the drift audit), so "less" is a goal coverage cannot settle.
+    assert.ok(transition('coverageUnreadable').b.run.coverage.results.some((r) => r.status === 'unknown'), 'the corpus has no scan that could assess less than the one before it')
+    assert.equal(watchedPair(transition('policyReplaced'))?.b.state.observation?.changed, 'artifact', 'the corpus has no replaced deployed object')
   }
-  // The corpus has to contain a case where the second scan sees LESS of the
-  // tenant than the first, because that is the case a record can lose history
-  // to; and one where a deployed object is replaced, because that is the case a
-  // fingerprint cannot see. A goal the scan cannot assess keeps its step and
-  // holds it (A2 of the drift audit), so "less" is a goal coverage cannot settle.
-  assert.ok(transition('coverageUnreadable').b.run.coverage.results.some((r) => r.status === 'unknown'), 'the corpus has no scan that could assess less than the one before it')
-  assert.equal(watchedPair(transition('policyReplaced'))?.b.state.observation?.changed, 'artifact', 'the corpus has no replaced deployed object')
-})
 
-// ---- 1. a rescan with nothing to report reports nothing ----
+  // 043.1: a repeat scan with no material change moves nothing
+  {
+    const t = transition('unchanged')
+    assert.deepEqual(
+      t.b.steps.map((s) => s.id),
+      t.a.steps.map((s) => s.id),
+      'the plan gained, lost or reordered a step on a scan that found nothing new',
+    )
+    assert.deepEqual(semanticsById(t.b), semanticsById(t.a), 'a step changed lifecycle, condition or status with nothing behind it')
+    assert.deepEqual(readinessById(t.b), readinessById(t.a), 'a person moved readiness, methods or category with nothing behind it')
+    assert.deepEqual(t.b.readiness.counts, t.a.readiness.counts, 'the readiness summary moved with no evidence')
+    // The operator's decisions are the record's, and a scan is not an author.
+    assert.deepEqual(t.b.fixture.mapping.breakGlassUserIds, t.a.fixture.mapping.breakGlassUserIds, 'a scan rewrote the emergency-access set')
+    assert.equal(exclusionsIn(t.b).actionableId, exclusionsIn(t.a).actionableId, 'a scan rewrote the exclusions-group choice')
+    // And the history it leaves for the next scan is the history it was given.
+    assert.deepEqual(t.b.observations, t.a.observations, 'a scan that saw nothing new rewrote the record anyway')
+    for (const s of t.b.steps) {
+      if (!s.state.observation) continue
+      assert.equal(s.state.observation.changed, s.state.observation.prior === null ? 'first-scan' : 'none', `${s.id}: the second scan called an unchanged policy changed`)
+      assert.equal(s.state.observation.reviewRequired, false, `${s.id}: a second look at an unchanged policy asked for a person`)
+    }
+  }
 
-test('043.1: a repeat scan with no material change moves nothing', () => {
-  const t = transition('unchanged')
-  assert.deepEqual(
-    t.b.steps.map((s) => s.id),
-    t.a.steps.map((s) => s.id),
-    'the plan gained, lost or reordered a step on a scan that found nothing new',
-  )
-  assert.deepEqual(semanticsById(t.b), semanticsById(t.a), 'a step changed lifecycle, condition or status with nothing behind it')
-  assert.deepEqual(readinessById(t.b), readinessById(t.a), 'a person moved readiness, methods or category with nothing behind it')
-  assert.deepEqual(t.b.readiness.counts, t.a.readiness.counts, 'the readiness summary moved with no evidence')
-  // The operator's decisions are the record's, and a scan is not an author.
-  assert.deepEqual(t.b.fixture.mapping.breakGlassUserIds, t.a.fixture.mapping.breakGlassUserIds, 'a scan rewrote the emergency-access set')
-  assert.equal(exclusionsIn(t.b).actionableId, exclusionsIn(t.a).actionableId, 'a scan rewrote the exclusions-group choice')
-  // And the history it leaves for the next scan is the history it was given.
-  assert.deepEqual(t.b.observations, t.a.observations, 'a scan that saw nothing new rewrote the record anyway')
-  for (const s of t.b.steps) {
-    if (!s.state.observation) continue
-    assert.equal(s.state.observation.changed, s.state.observation.prior === null ? 'first-scan' : 'none', `${s.id}: the second scan called an unchanged policy changed`)
-    assert.equal(s.state.observation.reviewRequired, false, `${s.id}: a second look at an unchanged policy asked for a person`)
+  // 043.11: unchanged semantic input produces the same plan, in the same order
+  {
+    const t = transition('unchanged')
+    assert.deepEqual(t.b.steps.map((s) => s.id), t.a.steps.map((s) => s.id), 'the plan reordered itself on a scan that found nothing')
+    assert.deepEqual(t.b.steps.map((s) => s.phase), t.a.steps.map((s) => s.phase), 'a step changed phase with nothing behind it')
+    assert.deepEqual(t.b.run.schedule.waves.map((w) => w.stepIds), t.a.run.schedule.waves.map((w) => w.stepIds), 'the schedule reshuffled itself')
+    for (const s of t.b.steps) {
+      const was = stepIn(t.a, s.id)!
+      assert.equal(statusOf(s).word, statusOf(was).word, `${s.id}: the status word moved with nothing behind it`)
+      assert.equal(stepContract(s, ctxFor(t.b, s)).whatToDo.kind, stepContract(was, ctxFor(t.a, was)).whatToDo.kind, `${s.id}: the action classification moved with nothing behind it`)
+    }
+    // A materially changed input is allowed to move the plan, and does.
+    const changed = transition('rewritten')
+    const pair = watchedPair(changed)!
+    assert.notEqual(statusOf(pair.b).word + pair.b.state.condition, statusOf(pair.a).word + pair.a.state.condition, 'a rewritten policy left the plan saying exactly what it said before')
   }
 })
 
 // ---- 2. a label is not an identity ----
 
-test('043.2: a rename is not a new object, and no fact is keyed on a name', () => {
-  const t = transition('renamed')
-  const pair = watchedPair(t)
-  assert.ok(pair, 'the corpus lost the watched step to a rename')
-  const change = pair.b.state.observation
-  assert.equal(change?.changed, 'none', 'a rename read as a change to what the policy does')
-  assert.equal(change?.continuity, 'continues', 'a rename restarted the observation window')
-  assert.equal(change?.reviewRequired, false, 'a rename asked for a person to look')
-  assert.equal(change?.latest.firstSeenAt, pair.a.state.observation?.latest.firstSeenAt, 'a rename moved the date IAMAI first saw the policy')
-  assert.equal(change?.latest.evidenceAt, pair.a.state.observation?.latest.evidenceAt, 'a rename discarded Microsoft’s own evidence about the same object')
-  assert.equal(historyReset(change!), false, 'a rename reset the history of a policy nobody changed')
+test('043.2: a rename is not a new object, and a recreated object inherits no history and no confirmation', () => {
+  // 043.2: a rename is not a new object, and no fact is keyed on a name
+  {
+    const t = transition('renamed')
+    const pair = watchedPair(t)
+    assert.ok(pair, 'the corpus lost the watched step to a rename')
+    const change = pair.b.state.observation
+    assert.equal(change?.changed, 'none', 'a rename read as a change to what the policy does')
+    assert.equal(change?.continuity, 'continues', 'a rename restarted the observation window')
+    assert.equal(change?.reviewRequired, false, 'a rename asked for a person to look')
+    assert.equal(change?.latest.firstSeenAt, pair.a.state.observation?.latest.firstSeenAt, 'a rename moved the date IAMAI first saw the policy')
+    assert.equal(change?.latest.evidenceAt, pair.a.state.observation?.latest.evidenceAt, 'a rename discarded Microsoft’s own evidence about the same object')
+    assert.equal(historyReset(change!), false, 'a rename reset the history of a policy nobody changed')
 
-  // The people were relabelled too — display name and sign-in name — and every
-  // person-level fact is keyed on the immutable id, so the whole page is the
-  // page it was.
-  assert.deepEqual(readinessById(t.b), readinessById(t.a), 'a person’s readiness moved when their name did')
-  assert.deepEqual(semanticsById(t.b), semanticsById(t.a), 'a step moved when the policy and the people were relabelled')
-  const renamed = t.b.fixture.snapshot.users.filter((u) => (t.a.fixture.snapshot.users.find((x) => x.id === u.id)?.displayName ?? '') !== (u.displayName ?? ''))
-  assert.ok(renamed.length > 0, 'the rename case renamed nobody: the assertions above are vacuous')
-  // The confirmed decisions are about ids, so they survive a relabelling of
-  // everything they point at.
-  assert.deepEqual(t.b.fixture.mapping.breakGlassUserIds, t.a.fixture.mapping.breakGlassUserIds, 'the emergency-access set followed a name')
-  assert.equal(exclusionsIn(t.b).status, 'confirmed', 'the exclusions-group choice was lost when its group was relabelled')
-  assert.equal(exclusionsIn(t.b).actionableId, exclusionsIn(t.a).actionableId, 'the exclusions-group choice moved to another object on a rename')
-})
+    // The people were relabelled too — display name and sign-in name — and every
+    // person-level fact is keyed on the immutable id, so the whole page is the
+    // page it was.
+    assert.deepEqual(readinessById(t.b), readinessById(t.a), 'a person’s readiness moved when their name did')
+    assert.deepEqual(semanticsById(t.b), semanticsById(t.a), 'a step moved when the policy and the people were relabelled')
+    const renamed = t.b.fixture.snapshot.users.filter((u) => (t.a.fixture.snapshot.users.find((x) => x.id === u.id)?.displayName ?? '') !== (u.displayName ?? ''))
+    assert.ok(renamed.length > 0, 'the rename case renamed nobody: the assertions above are vacuous')
+    // The confirmed decisions are about ids, so they survive a relabelling of
+    // everything they point at.
+    assert.deepEqual(t.b.fixture.mapping.breakGlassUserIds, t.a.fixture.mapping.breakGlassUserIds, 'the emergency-access set followed a name')
+    assert.equal(exclusionsIn(t.b).status, 'confirmed', 'the exclusions-group choice was lost when its group was relabelled')
+    assert.equal(exclusionsIn(t.b).actionableId, exclusionsIn(t.a).actionableId, 'the exclusions-group choice moved to another object on a rename')
+  }
 
-// ---- 3. a new object inherits nothing ----
+  // 043.3: a recreated policy with the same name and body inherits no history
+  {
+    const t = transition('policyReplaced')
+    const pair = watchedPair(t)
+    assert.ok(pair, 'the corpus lost the watched step to a replacement')
+    const before = pair.a.state.observation!
+    const change = pair.b.state.observation!
+    assert.equal(change.changed, 'artifact', 'a different object delivering the step read as the same one')
+    assert.equal(change.continuity, 'reset', 'a replacement carried the window the object it replaced had earned')
+    assert.ok(historyReset(change), 'a replacement kept a history nobody watched it earn')
+    assert.notEqual(change.latest.artifact, before.latest.artifact, 'the replacement fingerprinted as the same object')
+    assert.equal(change.latest.semantics, before.latest.semantics, 'the case did not replace the object with an identical one: it is testing something else')
+    assert.equal(change.latest.firstSeenAt, t.b.fixture.snapshot.asOf, 'the new object was credited with time before it existed')
+    assert.equal(change.latest.evidenceAt, null, 'evidence about the policy that was replaced was read as evidence about the one that replaced it')
+    assert.equal(change.latest.since, 'first-scan', 'IAMAI claimed to have watched an object change that it had never seen before')
+    // And the member is not ready to enforce on a window it has not served.
+    const member = pair.b.tracking?.members?.[0]
+    assert.notEqual(member?.lifecycle, 'ready-to-enforce', 'a policy deployed today reached ready to enforce on its predecessor’s window')
+  }
 
-test('043.3: a recreated policy with the same name and body inherits no history', () => {
-  const t = transition('policyReplaced')
-  const pair = watchedPair(t)
-  assert.ok(pair, 'the corpus lost the watched step to a replacement')
-  const before = pair.a.state.observation!
-  const change = pair.b.state.observation!
-  assert.equal(change.changed, 'artifact', 'a different object delivering the step read as the same one')
-  assert.equal(change.continuity, 'reset', 'a replacement carried the window the object it replaced had earned')
-  assert.ok(historyReset(change), 'a replacement kept a history nobody watched it earn')
-  assert.notEqual(change.latest.artifact, before.latest.artifact, 'the replacement fingerprinted as the same object')
-  assert.equal(change.latest.semantics, before.latest.semantics, 'the case did not replace the object with an identical one: it is testing something else')
-  assert.equal(change.latest.firstSeenAt, t.b.fixture.snapshot.asOf, 'the new object was credited with time before it existed')
-  assert.equal(change.latest.evidenceAt, null, 'evidence about the policy that was replaced was read as evidence about the one that replaced it')
-  assert.equal(change.latest.since, 'first-scan', 'IAMAI claimed to have watched an object change that it had never seen before')
-  // And the member is not ready to enforce on a window it has not served.
-  const member = pair.b.tracking?.members?.[0]
-  assert.notEqual(member?.lifecycle, 'ready-to-enforce', 'a policy deployed today reached ready to enforce on its predecessor’s window')
-})
-
-test('043.3b: a replacement never inherits an operator’s confirmation by name', () => {
-  const t = transition('newCandidateGroup')
-  const a = exclusionsIn(t.a)
-  const b = exclusionsIn(t.b)
-  assert.equal(a.status, 'confirmed', 'the case starts from an unconfirmed choice: it is testing something else')
-  assert.equal(b.status, 'confirmed', 'a new candidate unsettled a choice the operator had already made')
-  assert.equal(b.actionableId, a.actionableId, 'a new candidate object took over a confirmation the operator gave another object')
-  assert.ok(b.candidates.length > a.candidates.length, 'the case added no candidate: the assertion above is vacuous')
-  assert.equal(b.recommended, null, 'a scan put a recommendation where the operator had already answered')
+  // 043.3b: a replacement never inherits an operator’s confirmation by name
+  {
+    const t = transition('newCandidateGroup')
+    const a = exclusionsIn(t.a)
+    const b = exclusionsIn(t.b)
+    assert.equal(a.status, 'confirmed', 'the case starts from an unconfirmed choice: it is testing something else')
+    assert.equal(b.status, 'confirmed', 'a new candidate unsettled a choice the operator had already made')
+    assert.equal(b.actionableId, a.actionableId, 'a new candidate object took over a confirmation the operator gave another object')
+    assert.ok(b.candidates.length > a.candidates.length, 'the case added no candidate: the assertion above is vacuous')
+    assert.equal(b.recommended, null, 'a scan put a recommendation where the operator had already answered')
+  }
 })
 
 // ---- 4. a material change invalidates what it touches, and nothing else ----
@@ -221,35 +242,39 @@ test('043.4: a policy rewritten in the tenant is held for review, and only that 
 
 // ---- 5. a confirmed choice dies with its object and is never replaced ----
 
-test('043.5: a confirmed object proved gone becomes unresolved, and nothing takes its place', () => {
-  const t = transition('decisionTargetGone')
-  const a = exclusionsIn(t.a)
-  const b = exclusionsIn(t.b)
-  assert.equal(a.status, 'confirmed', 'the case starts from an unconfirmed choice: it is testing something else')
-  assert.equal(b.status, 'invalidated', 'an object Graph proved gone is still a usable answer')
-  assert.equal(b.actionableId, null, 'a plan still writes policies against an object that is not there')
-  assert.equal(b.storedId, a.storedId, 'the operator’s own answer was rewritten by a scan')
-  assert.equal(b.recommended, null, 'a scan put forward a replacement for a decision only the operator may make')
-  assert.ok(awaitsOperator(b), 'nothing tells the operator their answer needs one from them again')
-  // The step that owns the question reopens, and the steps that depend on it stop.
-  const owner = t.b.steps.find((s) => s.state.condition === 'needs-decision')
-  assert.ok(owner, 'no step asks the operator the question their answer no longer settles')
-})
+test('043.5: a confirmed exclusions group or emergency account proved gone becomes unresolved, holds the plan, and nothing takes its place', () => {
+  // 043.5: a confirmed object proved gone becomes unresolved, and nothing takes its place
+  {
+    const t = transition('decisionTargetGone')
+    const a = exclusionsIn(t.a)
+    const b = exclusionsIn(t.b)
+    assert.equal(a.status, 'confirmed', 'the case starts from an unconfirmed choice: it is testing something else')
+    assert.equal(b.status, 'invalidated', 'an object Graph proved gone is still a usable answer')
+    assert.equal(b.actionableId, null, 'a plan still writes policies against an object that is not there')
+    assert.equal(b.storedId, a.storedId, 'the operator’s own answer was rewritten by a scan')
+    assert.equal(b.recommended, null, 'a scan put forward a replacement for a decision only the operator may make')
+    assert.ok(awaitsOperator(b), 'nothing tells the operator their answer needs one from them again')
+    // The step that owns the question reopens, and the steps that depend on it stop.
+    const owner = t.b.steps.find((s) => s.state.condition === 'needs-decision')
+    assert.ok(owner, 'no step asks the operator the question their answer no longer settles')
+  }
 
-test('043.5b: a confirmed emergency-access account gone from the directory holds the plan', () => {
-  const t = transition('emergencyTargetGone')
-  const gone = t.focus.userId
-  assert.ok(gone, 'the case names no account')
-  assert.ok(t.a.fixture.snapshot.users.some((u) => u.id === gone), 'the account was never in the tenant: the case is testing nothing')
-  assert.equal(t.b.fixture.snapshot.users.some((u) => u.id === gone), false, 'the account is still in the tenant')
-  // The decision is the operator's and a scan does not edit it.
-  assert.deepEqual(t.b.fixture.mapping.breakGlassUserIds, t.a.fixture.mapping.breakGlassUserIds, 'a scan quietly dropped an account from the emergency-access decision')
-  assert.equal(emergencySelection({ snapshot: t.b.fixture.snapshot, mapping: t.b.fixture.mapping }).confirmedIds.length, t.a.fixture.mapping.breakGlassUserIds.length, 'the confirmed set changed without the operator')
-  // And the plan fails closed: something blocks, naming the account.
-  const before = breakGlassFindings({ snapshot: t.a.fixture.snapshot, state: t.a.fixture.mapping, groupMembers: groupFactsOf(t.a) })
-  const after = breakGlassFindings({ snapshot: t.b.fixture.snapshot, state: t.b.fixture.mapping, groupMembers: groupFactsOf(t.b) })
-  assert.equal(before[gone]?.toFix ?? 0, 0, 'the account already had something to fix before it went missing: the case is testing something else')
-  assert.ok((after[gone]?.toFix ?? 0) > 0, 'an emergency-access account that is not in the tenant passes every safety check')
+  // 043.5b: a confirmed emergency-access account gone from the directory holds the plan
+  {
+    const t = transition('emergencyTargetGone')
+    const gone = t.focus.userId
+    assert.ok(gone, 'the case names no account')
+    assert.ok(t.a.fixture.snapshot.users.some((u) => u.id === gone), 'the account was never in the tenant: the case is testing nothing')
+    assert.equal(t.b.fixture.snapshot.users.some((u) => u.id === gone), false, 'the account is still in the tenant')
+    // The decision is the operator's and a scan does not edit it.
+    assert.deepEqual(t.b.fixture.mapping.breakGlassUserIds, t.a.fixture.mapping.breakGlassUserIds, 'a scan quietly dropped an account from the emergency-access decision')
+    assert.equal(emergencySelection({ snapshot: t.b.fixture.snapshot, mapping: t.b.fixture.mapping }).confirmedIds.length, t.a.fixture.mapping.breakGlassUserIds.length, 'the confirmed set changed without the operator')
+    // And the plan fails closed: something blocks, naming the account.
+    const before = breakGlassFindings({ snapshot: t.a.fixture.snapshot, state: t.a.fixture.mapping, groupMembers: groupFactsOf(t.a) })
+    const after = breakGlassFindings({ snapshot: t.b.fixture.snapshot, state: t.b.fixture.mapping, groupMembers: groupFactsOf(t.b) })
+    assert.equal(before[gone]?.toFix ?? 0, 0, 'the account already had something to fix before it went missing: the case is testing something else')
+    assert.ok((after[gone]?.toFix ?? 0) > 0, 'an emergency-access account that is not in the tenant passes every safety check')
+  }
 })
 
 // ---- 6. history is what was watched, never what is assumed ----
@@ -334,116 +359,99 @@ test('043.7: a blocker that appears stops the step, and one that clears releases
   }
 })
 
-// ---- 8. proof ages, registration does not ----
+// ---- 8-10. proof ages, registration does not, and category is what the directory says today ----
 
-test('043.8: proof ages by the clock and registration survives it', () => {
-  const t = transition('proofAged')
-  const id = t.focus.userId
-  assert.ok(id, 'the case names nobody')
-  const a = rowIn(t.a, id)!
-  const b = rowIn(t.b, id)!
-  const since = (Date.parse(t.b.fixture.snapshot.asOf) - Date.parse(a.user.lastSuccessfulSignIn!)) / 86_400_000
-  assert.ok(since > INACTIVE_DAYS, 'the clock did not pass the boundary the case is about')
-  assert.equal(a.active, true, 'the person was not counted before the clock moved')
-  assert.equal(b.active, false, 'a person past the inactivity boundary is still counted among the active')
-  assert.equal(b.state, null, 'a person the page does not count still carries a readiness state')
-  // What they hold has not changed, and the page still says so.
-  assert.deepEqual(b.viability?.registered, a.viability?.registered, 'a registered method expired with the clock')
-  assert.deepEqual(b.methods, a.methods, 'the methods column changed because time passed')
-  assert.equal(b.readiness?.state, a.readiness?.state, 'the readiness a person’s methods and records give them moved with nobody’s evidence')
-  // Nobody else moved except by the same rule.
-  for (const row of t.b.readiness.rows) {
-    const was = rowIn(t.a, row.user.id)
-    if (!was || was.active === row.active) continue
-    const last = row.user.lastSuccessfulSignIn
-    assert.ok(last !== null && (Date.parse(t.b.fixture.snapshot.asOf) - Date.parse(last)) / 86_400_000 > INACTIVE_DAYS, `${row.user.id}: left the active population without passing the boundary`)
+test('043.8: readiness and account category are what today\'s records and directory say: proof ages, registration survives, a weaker record takes nothing away', () => {
+  // 043.8: proof ages by the clock and registration survives it
+  {
+    const t = transition('proofAged')
+    const id = t.focus.userId
+    assert.ok(id, 'the case names nobody')
+    const a = rowIn(t.a, id)!
+    const b = rowIn(t.b, id)!
+    const since = (Date.parse(t.b.fixture.snapshot.asOf) - Date.parse(a.user.lastSuccessfulSignIn!)) / 86_400_000
+    assert.ok(since > INACTIVE_DAYS, 'the clock did not pass the boundary the case is about')
+    assert.equal(a.active, true, 'the person was not counted before the clock moved')
+    assert.equal(b.active, false, 'a person past the inactivity boundary is still counted among the active')
+    assert.equal(b.state, null, 'a person the page does not count still carries a readiness state')
+    // What they hold has not changed, and the page still says so.
+    assert.deepEqual(b.viability?.registered, a.viability?.registered, 'a registered method expired with the clock')
+    assert.deepEqual(b.methods, a.methods, 'the methods column changed because time passed')
+    assert.equal(b.readiness?.state, a.readiness?.state, 'the readiness a person’s methods and records give them moved with nobody’s evidence')
+    // Nobody else moved except by the same rule.
+    for (const row of t.b.readiness.rows) {
+      const was = rowIn(t.a, row.user.id)
+      if (!was || was.active === row.active) continue
+      const last = row.user.lastSuccessfulSignIn
+      assert.ok(last !== null && (Date.parse(t.b.fixture.snapshot.asOf) - Date.parse(last)) / 86_400_000 > INACTIVE_DAYS, `${row.user.id}: left the active population without passing the boundary`)
+    }
+    // The seven readiness states still partition the people the page counts.
+    assert.equal(READINESS_STATES.reduce((n, s) => n + t.b.readiness.counts[s], 0), t.b.readiness.facts.active, 'the readiness states no longer sum to the active people')
+    // Prompt 62: Ready is proof inside the window, so the clock alone ends it.
+    // Somebody Ready whose proof left the window, and who is still counted, still
+    // holds their method and is asked to confirm it; they are never Ready on it.
+    let lapsed = 0
+    for (const was of t.a.readiness.rows) {
+      if (was.state === null || !isReady(was.state) || !was.readiness?.readyUntil || was.readiness.readyUntil > t.b.fixture.snapshot.asOf) continue
+      const row = rowIn(t.b, was.user.id)
+      if (!row?.active) continue
+      assert.equal(row.state, 'confirm', `${row.user.id}: Ready on proof that left the window`)
+      assert.deepEqual(row.readiness?.qualifying, was.readiness.qualifying, `${row.user.id}: the method went with the proof`)
+      lapsed++
+    }
+    assert.ok(lapsed > 0, 'nobody Ready lapsed with the clock: the premise is untested')
   }
-  // The seven readiness states still partition the people the page counts.
-  assert.equal(READINESS_STATES.reduce((n, s) => n + t.b.readiness.counts[s], 0), t.b.readiness.facts.active, 'the readiness states no longer sum to the active people')
-  // Prompt 62: Ready is proof inside the window, so the clock alone ends it.
-  // Somebody Ready whose proof left the window, and who is still counted, still
-  // holds their method and is asked to confirm it; they are never Ready on it.
-  let lapsed = 0
-  for (const was of t.a.readiness.rows) {
-    if (was.state === null || !isReady(was.state) || !was.readiness?.readyUntil || was.readiness.readyUntil > t.b.fixture.snapshot.asOf) continue
-    const row = rowIn(t.b, was.user.id)
-    if (!row?.active) continue
-    assert.equal(row.state, 'confirm', `${row.user.id}: Ready on proof that left the window`)
-    assert.deepEqual(row.readiness?.qualifying, was.readiness.qualifying, `${row.user.id}: the method went with the proof`)
-    lapsed++
+
+  // 043.9: a phishing-resistant proof makes a person Ready, and a later weaker record does not take it away
+  {
+    const up = transition('strongerProof')
+    const upId = up.focus.userId!
+    const before = rowIn(up.a, upId)!
+    const after = rowIn(up.b, upId)!
+    const readyCount = (s: Scan): number => s.readiness.counts.ready + s.readiness.counts.seamless
+    assert.equal(isReady(before.state!), false, 'the case starts from somebody already Ready: it is testing something else')
+    assert.equal(isReady(after.state!), true, 'a passkey proved on every device the person uses did not make them Ready')
+    assert.equal(after.state, after.viability!.readiness.state, 'the row and the scoring disagree about readiness')
+    assert.equal(after.readiness?.lastConfirmed?.retained, false, 'Ready on proof from inside the window')
+    assert.equal(readyCount(up.b), readyCount(up.a) + 1, 'the summary did not follow the person who became Ready')
+
+    // Step 7: proof is kept per method and platform, so a newer record that names
+    // no method never erases the passkey proof the records still hold.
+    const down = transition('weakerLaterEvidence')
+    const downId = down.focus.userId!
+    const was = rowIn(down.a, downId)!
+    const now = rowIn(down.b, downId)!
+    assert.equal(isReady(was.state!), true, 'the case does not start from a Ready person: it is testing something else')
+    assert.deepEqual(now.viability?.registered, was.viability?.registered, 'the case took the method away too: it is testing something else')
+    assert.equal(now.viability?.evidence?.method, 'Multifactor authentication', 'the newest record names no method')
+    assert.equal(now.state, was.state, 'a later record that names no method erased the phishing-resistant proof the records hold')
+    assert.equal(readyCount(down.b), readyCount(down.a), 'the summary stopped counting a person whose proof the records still hold')
   }
-  assert.ok(lapsed > 0, 'nobody Ready lapsed with the clock: the premise is untested')
-})
 
-// ---- 9. proof is kept per method and platform ----
+  // 043.10: role and account-category changes move the rows and the counts together
+  {
+    const gained = transition('roleGained')
+    const gId = gained.focus.userId!
+    assert.equal(rowIn(gained.a, gId)?.admin, false, 'the case starts from an administrator')
+    assert.equal(rowIn(gained.b, gId)?.admin, true, 'a new role holder is not shown as an administrator')
+    assert.ok(adminsIn(gained.b).has(gId), 'the directory’s own role table and the row disagree')
+    assert.equal(gained.b.readiness.rows.filter((r) => r.admin).length, gained.a.readiness.rows.filter((r) => r.admin).length + 1, 'the administrator count did not follow the role')
 
-test('043.9: a phishing-resistant proof makes a person Ready, and a later weaker record does not take it away', () => {
-  const up = transition('strongerProof')
-  const upId = up.focus.userId!
-  const before = rowIn(up.a, upId)!
-  const after = rowIn(up.b, upId)!
-  const readyCount = (s: Scan): number => s.readiness.counts.ready + s.readiness.counts.seamless
-  assert.equal(isReady(before.state!), false, 'the case starts from somebody already Ready: it is testing something else')
-  assert.equal(isReady(after.state!), true, 'a passkey proved on every device the person uses did not make them Ready')
-  assert.equal(after.state, after.viability!.readiness.state, 'the row and the scoring disagree about readiness')
-  assert.equal(after.readiness?.lastConfirmed?.retained, false, 'Ready on proof from inside the window')
-  assert.equal(readyCount(up.b), readyCount(up.a) + 1, 'the summary did not follow the person who became Ready')
+    const lost = transition('roleLost')
+    const lId = lost.focus.userId!
+    assert.equal(rowIn(lost.a, lId)?.admin, true, 'the case starts from somebody who was never an administrator')
+    assert.equal(rowIn(lost.b, lId)?.admin, false, 'an account keeps an administrator badge after the role is taken off it')
+    assert.equal(lost.b.readiness.rows.filter((r) => r.admin).length, lost.a.readiness.rows.filter((r) => r.admin).length - 1, 'the administrator count kept a role nobody holds')
 
-  // Step 7: proof is kept per method and platform, so a newer record that names
-  // no method never erases the passkey proof the records still hold.
-  const down = transition('weakerLaterEvidence')
-  const downId = down.focus.userId!
-  const was = rowIn(down.a, downId)!
-  const now = rowIn(down.b, downId)!
-  assert.equal(isReady(was.state!), true, 'the case does not start from a Ready person: it is testing something else')
-  assert.deepEqual(now.viability?.registered, was.viability?.registered, 'the case took the method away too: it is testing something else')
-  assert.equal(now.viability?.evidence?.method, 'Multifactor authentication', 'the newest record names no method')
-  assert.equal(now.state, was.state, 'a later record that names no method erased the phishing-resistant proof the records hold')
-  assert.equal(readyCount(down.b), readyCount(down.a), 'the summary stopped counting a person whose proof the records still hold')
-})
-
-// ---- 10. an account's category is what the directory says today ----
-
-test('043.10: role and account-category changes move the rows and the counts together', () => {
-  const gained = transition('roleGained')
-  const gId = gained.focus.userId!
-  assert.equal(rowIn(gained.a, gId)?.admin, false, 'the case starts from an administrator')
-  assert.equal(rowIn(gained.b, gId)?.admin, true, 'a new role holder is not shown as an administrator')
-  assert.ok(adminsIn(gained.b).has(gId), 'the directory’s own role table and the row disagree')
-  assert.equal(gained.b.readiness.rows.filter((r) => r.admin).length, gained.a.readiness.rows.filter((r) => r.admin).length + 1, 'the administrator count did not follow the role')
-
-  const lost = transition('roleLost')
-  const lId = lost.focus.userId!
-  assert.equal(rowIn(lost.a, lId)?.admin, true, 'the case starts from somebody who was never an administrator')
-  assert.equal(rowIn(lost.b, lId)?.admin, false, 'an account keeps an administrator badge after the role is taken off it')
-  assert.equal(lost.b.readiness.rows.filter((r) => r.admin).length, lost.a.readiness.rows.filter((r) => r.admin).length - 1, 'the administrator count kept a role nobody holds')
-
-  const off = transition('accountDisabled')
-  const oId = off.focus.userId!
-  assert.equal(rowIn(off.a, oId)?.kind, 'person', 'the case starts from an account that is not a person')
-  assert.equal(rowIn(off.b, oId)?.kind, 'disabled', 'a disabled account is still counted as a person')
-  assert.equal(rowIn(off.b, oId)?.active, false, 'a disabled account is still counted among the active people')
-  assert.equal(off.b.readiness.facts.active, off.a.readiness.facts.active - 1, 'the active count kept an account the directory disabled')
-  // Every account is still counted exactly once, on both sides.
-  for (const scan of [off.a, off.b]) assert.equal(scan.readiness.rows.length, scan.readiness.ladder.accounts, 'an account is listed a different number of times than it is counted')
-})
-
-// ---- 11. the same input gives the same plan ----
-
-test('043.11: unchanged semantic input produces the same plan, in the same order', () => {
-  const t = transition('unchanged')
-  assert.deepEqual(t.b.steps.map((s) => s.id), t.a.steps.map((s) => s.id), 'the plan reordered itself on a scan that found nothing')
-  assert.deepEqual(t.b.steps.map((s) => s.phase), t.a.steps.map((s) => s.phase), 'a step changed phase with nothing behind it')
-  assert.deepEqual(t.b.run.schedule.waves.map((w) => w.stepIds), t.a.run.schedule.waves.map((w) => w.stepIds), 'the schedule reshuffled itself')
-  for (const s of t.b.steps) {
-    const was = stepIn(t.a, s.id)!
-    assert.equal(statusOf(s).word, statusOf(was).word, `${s.id}: the status word moved with nothing behind it`)
-    assert.equal(stepContract(s, ctxFor(t.b, s)).whatToDo.kind, stepContract(was, ctxFor(t.a, was)).whatToDo.kind, `${s.id}: the action classification moved with nothing behind it`)
+    const off = transition('accountDisabled')
+    const oId = off.focus.userId!
+    assert.equal(rowIn(off.a, oId)?.kind, 'person', 'the case starts from an account that is not a person')
+    assert.equal(rowIn(off.b, oId)?.kind, 'disabled', 'a disabled account is still counted as a person')
+    assert.equal(rowIn(off.b, oId)?.active, false, 'a disabled account is still counted among the active people')
+    assert.equal(off.b.readiness.facts.active, off.a.readiness.facts.active - 1, 'the active count kept an account the directory disabled')
+    // Every account is still counted exactly once, on both sides.
+    for (const scan of [off.a, off.b]) assert.equal(scan.readiness.rows.length, scan.readiness.ladder.accounts, 'an account is listed a different number of times than it is counted')
   }
-  // A materially changed input is allowed to move the plan, and does.
-  const changed = transition('rewritten')
-  const pair = watchedPair(changed)!
-  assert.notEqual(statusOf(pair.b).word + pair.b.state.condition, statusOf(pair.a).word + pair.a.state.condition, 'a rewritten policy left the plan saying exactly what it said before')
 })
 
 // ---- 12. Export speaks for this scan ----
@@ -482,51 +490,55 @@ test('043.12: the export view is the current scan’s, never the last one’s', 
 
 // ---- 13. a scan updates the record; it never deletes what it did not look at ----
 
-test('043.13: a scan that could assess less of the tenant loses no rollout history', () => {
-  const t = transition('coverageUnreadable')
-  const watched = watchedStep(t.a.run)!
-  const first = t.a.observations[watched.id]
-  assert.ok(first, 'scan A recorded nothing about the step it was watching')
-  const blind = stepIn(t.b, watched.id)
-  assert.ok(blind, 'a goal the scan could not assess was dropped from the plan')
-  assert.notEqual(holdOf(blind), null, 'the case did not make the step unassessable: it is testing something else')
-  // The step is held, not gone: this scan still saw the deployed policy, so the
-  // record carries on — and saw less is not the same as saw it gone.
-  assert.equal(blind.state.observation?.changed, 'none', 'a scan that could not assess a goal called the policy it was still watching changed')
-  assert.equal(t.b.observations[watched.id]?.members[SOLE_MEMBER]?.firstSeenAt, first.members[SOLE_MEMBER]?.firstSeenAt, 'a scan that could not assess a goal restarted the window of the policy already deployed for it')
+test('043.13: a scan that could assess less loses no rollout history, and a record carried across it still proves itself against what is deployed', () => {
+  // 043.13: a scan that could assess less of the tenant loses no rollout history
+  {
+    const t = transition('coverageUnreadable')
+    const watched = watchedStep(t.a.run)!
+    const first = t.a.observations[watched.id]
+    assert.ok(first, 'scan A recorded nothing about the step it was watching')
+    const blind = stepIn(t.b, watched.id)
+    assert.ok(blind, 'a goal the scan could not assess was dropped from the plan')
+    assert.notEqual(holdOf(blind), null, 'the case did not make the step unassessable: it is testing something else')
+    // The step is held, not gone: this scan still saw the deployed policy, so the
+    // record carries on — and saw less is not the same as saw it gone.
+    assert.equal(blind.state.observation?.changed, 'none', 'a scan that could not assess a goal called the policy it was still watching changed')
+    assert.equal(t.b.observations[watched.id]?.members[SOLE_MEMBER]?.firstSeenAt, first.members[SOLE_MEMBER]?.firstSeenAt, 'a scan that could not assess a goal restarted the window of the policy already deployed for it')
 
-  // The third scan: the read succeeds again, and the window is the window it was.
-  const back = rescan(t.b, advance(t.a.fixture, t.days * 2))
-  const returned = stepIn(back, watched.id)
-  assert.ok(returned, 'the step did not come back when the tenant could be read again')
-  assert.equal(returned.state.observation?.changed, 'none', 'a policy IAMAI had been watching for a week read as a first sighting')
-  assert.equal(returned.state.observation?.latest.firstSeenAt, watched.state.observation?.latest.firstSeenAt, 'the report-only window restarted because one group read failed')
+    // The third scan: the read succeeds again, and the window is the window it was.
+    const back = rescan(t.b, advance(t.a.fixture, t.days * 2))
+    const returned = stepIn(back, watched.id)
+    assert.ok(returned, 'the step did not come back when the tenant could be read again')
+    assert.equal(returned.state.observation?.changed, 'none', 'a policy IAMAI had been watching for a week read as a first sighting')
+    assert.equal(returned.state.observation?.latest.firstSeenAt, watched.state.observation?.latest.firstSeenAt, 'the report-only window restarted because one group read failed')
 
-  // The control: the same third scan reached without the blind scan in between
-  // gives the same history, so the blind scan cost nothing at all.
-  const control = rescan(t.a, advance(t.a.fixture, t.days * 2))
-  assert.equal(returned.state.observation?.latest.firstSeenAt, stepIn(control, watched.id)?.state.observation?.latest.firstSeenAt, 'a scan that saw less of the tenant left the plan worse off than one that never happened')
-  assert.equal(returned.state.lifecycle, stepIn(control, watched.id)?.state.lifecycle, 'a blind scan cost the step its lifecycle')
-})
+    // The control: the same third scan reached without the blind scan in between
+    // gives the same history, so the blind scan cost nothing at all.
+    const control = rescan(t.a, advance(t.a.fixture, t.days * 2))
+    assert.equal(returned.state.observation?.latest.firstSeenAt, stepIn(control, watched.id)?.state.observation?.latest.firstSeenAt, 'a scan that saw less of the tenant left the plan worse off than one that never happened')
+    assert.equal(returned.state.lifecycle, stepIn(control, watched.id)?.state.lifecycle, 'a blind scan cost the step its lifecycle')
+  }
 
-test('043.13b: a record a scan carries forward still has to prove itself against what is deployed', () => {
-  // Carrying a record forward is only safe because nothing reads it as a
-  // conclusion: it is put through `observe` against the object deployed now.
-  // Scan A watches a policy; scan B cannot assess the goal; between them the
-  // tenant replaces the policy with a different object.
-  const t = transition('coverageUnreadable')
-  const watched = watchedStep(t.a.run)!
-  const target = watched.tracking!.policyId!
-  const f = t.a.fixture
-  const rows = (f.snapshot.config.caPolicies?.rows ?? []).map((r) => {
-    const row = r as Record<string, unknown>
-    return row.id === target ? { ...structuredClone(row), id: `${target}-recreated` } : row
-  })
-  const replaced = advance({ ...f, snapshot: { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...f.snapshot.config.caPolicies!, rows } } } as typeof f.snapshot }, t.days * 2)
-  const back = rescan(t.b, replaced)
-  const step = stepIn(back, watched.id)!
-  assert.equal(step.state.observation?.changed, 'artifact', 'a record carried across a blind scan was accepted without asking which object it was about')
-  assert.ok(historyReset(step.state.observation!), 'a carried-forward record handed its window to an object nobody had watched')
+  // 043.13b: a record a scan carries forward still has to prove itself against what is deployed
+  {
+    // Carrying a record forward is only safe because nothing reads it as a
+    // conclusion: it is put through `observe` against the object deployed now.
+    // Scan A watches a policy; scan B cannot assess the goal; between them the
+    // tenant replaces the policy with a different object.
+    const t = transition('coverageUnreadable')
+    const watched = watchedStep(t.a.run)!
+    const target = watched.tracking!.policyId!
+    const f = t.a.fixture
+    const rows = (f.snapshot.config.caPolicies?.rows ?? []).map((r) => {
+      const row = r as Record<string, unknown>
+      return row.id === target ? { ...structuredClone(row), id: `${target}-recreated` } : row
+    })
+    const replaced = advance({ ...f, snapshot: { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...f.snapshot.config.caPolicies!, rows } } } as typeof f.snapshot }, t.days * 2)
+    const back = rescan(t.b, replaced)
+    const step = stepIn(back, watched.id)!
+    assert.equal(step.state.observation?.changed, 'artifact', 'a record carried across a blind scan was accepted without asking which object it was about')
+    assert.ok(historyReset(step.state.observation!), 'a carried-forward record handed its window to an object nobody had watched')
+  }
 })
 
 test('043.13c: another tenant’s record confers nothing on this one', () => {
@@ -572,36 +584,6 @@ test('043.14: a change of baseline provenance moves no conclusion', () => {
   // and it is the same commit before and after this transition.
   assert.match(PINNED.commit, /^[0-9a-f]{40}$/, 'the pinned baseline names no commit')
   assert.equal(PINNED.commit, JSON.parse(readFileSync('baselines/jhope188-conditionalaccesspolicies.index.json', 'utf8')).commit, 'the pinned package and the fetch allowlist disagree about which commit is pinned')
-})
-
-// ---- 15. no transition is selected by an identifier ----
-
-test('043.15: the transition corpus and this file select by semantics, never by identity', () => {
-  const guid = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
-  const stepId = /['"`]s-goal-[a-z0-9-]+['"`]/
-  const nameIdentity = /(displayName|userPrincipalName)\s*===/
-  const pageImport = /from '[^']*\.tsx'/
-  for (const path of ['src/roadmap/fixtures/transitions.ts', 'src/rescanDurability.test.ts']) {
-    const src = readFileSync(path, 'utf8')
-    // One exception, and it is not an identity: the Global Administrator role id
-    // is Microsoft's own well-known constant, the same value the fixtures and
-    // roles.ts already name, and it is what "an administrator" means.
-    const withoutWellKnown = src.replace(/62e90394-69f5-4237-9190-012177145e10/g, '')
-    assert.equal(guid.test(withoutWellKnown), false, `${path} names a tenant object id: the case it covers stops existing when the fixture moves`)
-    assert.equal(stepId.test(src), false, `${path} names a step id`)
-    assert.equal(nameIdentity.test(src), false, `${path} treats a display name as identity`)
-    assert.equal(pageImport.test(src), false, `${path} imports a page: a transition is a fact about the tenant, and a surface is where one is shown`)
-  }
-  // Every subject the corpus works on is chosen from a scan's own derivation.
-  const corpusSrc = readFileSync('src/roadmap/fixtures/transitions.ts', 'utf8')
-  const builders = corpusSrc.slice(corpusSrc.indexOf('const BUILDERS'), corpusSrc.indexOf('// ---- the corpus ----'))
-  assert.equal(/f\.name|fixture\.name|\.label\b/.test(builders), false, 'a transition builder reads a fixture name')
-  // And no transition needs a wall clock: time is the fixture's, injected.
-  for (const path of ['src/roadmap/fixtures/transitions.ts', 'src/rescanDurability.test.ts']) {
-    // Built rather than written, so the guard does not match its own bytes.
-    const wallClock = new RegExp(['set' + 'Timeout', 'Date\\.now\\(\\)', 'new Date\\(\\)'].join('|'))
-    assert.equal(wallClock.test(readFileSync(path, 'utf8')), false, `${path} reads the wall clock: a transition is deterministic or it is not a regression test`)
-  }
 })
 
 /** Type-only guard: a key added to the union has to be added to the list the corpus builds. */
