@@ -18,14 +18,12 @@ import { app, pages, planner } from '../../content/content.ts'
 import { exitDemoUrl, isDemo } from '../demoMode.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { absoluteDate, absoluteLocal, scanAgeDays, STALE_SCAN_DAYS } from '../../copy/dates.ts'
-import { lowerFirst } from '../../copy/statements.ts'
 import { Button } from '../components/index.ts'
 import { BrandMark } from '../components/Mark.tsx'
 import { forgetTenant, showDemoSnapshot, signOut, stopScan } from '../actions.ts'
 import { useAction } from '../useAction.ts'
 import { useSession } from '../session.ts'
-import { PausedNotice, laneOf } from '../scan/ScanProgress.tsx'
-import { elapsedLabel } from '../format.ts'
+import { PausedNotice, scanLineText } from '../scan/ScanProgress.tsx'
 import { PLAN_HREF, READINESS_HREF, resolveHash } from './routes.ts'
 import type { Route } from './routes.ts'
 
@@ -106,7 +104,7 @@ function useTheme(): [string, () => void] {
 
 const SHELL = app.shell
 const CONNECT = app.connect
-const SCAN_WORDS = (pages.connect as unknown as { scan: { scanning: { state: string; stop: string } } }).scan.scanning
+const SCAN_WORDS = (pages.connect as unknown as { scan: { scanning: { stop: string } } }).scan.scanning
 
 /**
  * One header destination. A tab whose data cannot exist yet stays in the list
@@ -189,11 +187,9 @@ function ScanLine({ route }: { route: Route }) {
       </p>
     )
   }
-  const { lane } = laneOf(scan)
-  const elapsed = elapsedLabel(scan.startedAt ?? scan.nowTick, scan.nowTick)
   return (
     <div className="scan-line" role="status">
-      <span>{fillText(SCAN_WORDS.state, { lane: lowerFirst(lane), elapsed })}</span>
+      <span>{scanLineText(scan)}</span>
       {scan.state === 'running' && (
         <Button variant="tertiary" onClick={stopScan}>
           {SCAN_WORDS.stop}

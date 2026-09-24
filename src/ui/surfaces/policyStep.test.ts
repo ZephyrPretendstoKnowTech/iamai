@@ -156,12 +156,10 @@ test('every policy state the fixtures actually produce renders from recorded sta
 test('the frame: a full-width header holding the track, a body split beside the action column, and the footer band under both', () => {
   {
     assert.match(CONTENT_STEP, /<StepFooter controls=\{exceptions\.length > 0 \? exceptions : null\} onScan=\{printing \? null : \(onScan \?\? null\)\}/, 'the footer is not handed the exception and the scan')
-    // A disabled button kept for symmetry is a control that teaches the operator
-    // to ignore the footer, and a footer with nothing to offer is not drawn.
+    // A footer with nothing to offer is not drawn.
     const footer = SECTIONS.slice(SECTIONS.indexOf('export function StepFooter'), SECTIONS.indexOf('/** A tile'))
     assert.match(footer, /\{onScan && \(/, 'the scan control is unconditional')
     assert.match(footer, /if \(!controls && !onScan && !auxiliary\) return null/, 'an empty footer is drawn')
-    assert.equal(/disabled|onClose/.test(footer), false, 'the footer keeps a disabled control, or closes the step the row closes')
   }
   {
     // The head is a sibling of the body, not a row inside it: the lifecycle track

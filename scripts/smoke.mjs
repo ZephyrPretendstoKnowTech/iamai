@@ -377,6 +377,12 @@ try {
   t = await text()
   check('Connect (scanning): the lane in plain words with the elapsed time, and Stop', /reading people · \d+s/.test(t) && /Stop/.test(t) && !/Scan tenant/.test(t), (t.match(/[^\n]*reading[^\n]*/) ?? [''])[0])
   check('Connect (scanning): the header tabs are disabled', (await evaluate(`[...document.querySelectorAll('header.app nav a[aria-disabled="true"]')].length`)) === 3)
+  // A scan pressed from inside a step (owner item 10): the step's footer says
+  // what the scan line under the header says, over its Scan button, which waits.
+  await send('Page.navigate', { url: `${BASE}&state=rescanning#/plan/s-prereq-break-glass` })
+  const footerScan = `(() => { const f = document.querySelector('main.page .step[data-step-id="s-prereq-break-glass"] > .step-footer'); const line = document.querySelector('.scan-line > span'); const b = f && f.querySelector('.step-footer-scan'); const s = f && f.querySelector('.step-footer-scan-status'); return { line: line ? line.textContent.trim() : null, footer: s ? s.textContent.trim() : null, disabled: !!b && b.disabled, above: !!(s && b) && !!(s.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) } })()`
+  const scanShown = await waitFor(`(() => { const r = ${footerScan}; return !!r.line && /^reading people · \\d+s$/.test(r.line) && r.footer === r.line && r.disabled && r.above })()`, 8000)
+  check('Plan (scanning): the step’s footer carries the scan line’s status over its Scan button, and the button is disabled', scanShown, JSON.stringify(await evaluate(footerScan)))
   // Connect, scanned: who is signed in, the baseline line, the one-line result, Open the plan (target-state §3).
   await go('connect')
   await sleep(600)

@@ -2605,6 +2605,8 @@ footer.app a {
   background: var(--secondary-surface);
 }
 .step-footer-end { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-left: auto; }
+/* The scan in flight over the Scan that started it, in the scan line's own type. */
+.step-footer-scan-status { margin: 0; color: var(--secondary-text); font-size: var(--t-2); }
 
 /* ---- Readiness: the approved `.readiness-strip` over `.readiness-bar` ----
    The one prerequisite surface (A1 §16.1): one tile per unresolved

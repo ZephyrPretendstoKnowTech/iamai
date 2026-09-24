@@ -19,6 +19,8 @@ import { CONTRACT, FOOTER, badgeLabel, nextCaption, readinessLeadOf, stageClass 
 import type { ContractEmergencySlot, ContractHardening } from './stepContract.ts'
 import { fillText } from '../../content/render.ts'
 import { autoOpenTiles } from './tileExpansion.ts'
+import { useSession } from '../session.ts'
+import { scanLineText } from '../scan/ScanProgress.tsx'
 
 /**
  * One row of the Plan: the lane, the tenant fact, the title, who it touches and when.
@@ -265,14 +267,21 @@ export function StepActionColumn({ rail, children = null }: { rail: { metric: st
  * to offer. The row above the step is what closes it.
  */
 export function StepFooter({ controls = null, onScan, auxiliary = null }: { controls?: ReactNode; onScan?: (() => void) | null; auxiliary?: ReactNode }) {
+  // A scan in flight (owner item 10): the person who pressed Scan here is down
+  // in the step, out of sight of the line under the header, so the same line
+  // (ScanProgress.tsx scanLineText) stands over the button, which waits. The
+  // header's line is the one that announces it.
+  const { scan } = useSession()
+  const scanning = scan.state === 'running' || scan.state === 'paused'
   if (!controls && !onScan && !auxiliary) return null
   return (
     <footer className="step-footer no-print">
       {controls}
       <div className="step-footer-end">
         {auxiliary}
+        {onScan && scanning && <p className="step-footer-scan-status">{scanLineText(scan)}</p>}
         {onScan && (
-          <Button variant="primary" className="step-footer-scan" onClick={onScan}>
+          <Button variant="primary" className="step-footer-scan" onClick={onScan} disabled={scanning}>
             {FOOTER.scan}
           </Button>
         )}
