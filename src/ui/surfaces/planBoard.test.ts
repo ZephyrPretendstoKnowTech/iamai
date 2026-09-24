@@ -387,7 +387,8 @@ test('the row label is Lane · substatus or reason, from one function', () => {
   assert.equal(waitingForOf(held, titleOf), BOARD.blockers.sourceMapping, 'the held row names the unmapped reference')
   const heldOnStep = { ...held, reason: { ...blocker, abnormal: true } }
   assert.equal(laneLabelOf(heldOnStep, titleOf), 'On Hold')
-  assert.equal(waitingForOf(heldOnStep, titleOf), BOARD.blockers.step + ': Emergency Access Accounts', 'a prerequisite on hold names the step by title')
+  // Held or not, a prerequisite step reads "After <step>" (walk list 4.x item 27).
+  assert.equal(waitingForOf(heldOnStep, titleOf), 'After Emergency Access Accounts', 'a prerequisite on hold names the step by title')
   // A deeper healthy prerequisite holds without anything abnormal, and reads as the wait it is.
   const heldBehind = { ...held, reason: blocker }
   assert.equal(laneLabelOf(heldBehind, titleOf), 'On Hold')

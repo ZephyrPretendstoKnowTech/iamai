@@ -490,8 +490,9 @@ export function holdLabelOf(r: LaneReading, titleOf: (id: string) => string | nu
   if (r.reason?.id === 'after-security-rollout') return 'After security rollout'
   if (r.reason === null) return BOARD.lanes.onHold
   if (waitsOnDirection(r)) return directionWords.waiting
-  // A healthy prerequisite that is still more than one action away: the wait reads as Up Next's does.
-  if (r.reason.kind === 'step' && !r.reason.abnormal) {
+  // A prerequisite step, healthy or itself held: the wait reads as Up Next's
+  // does, "After Block Legacy Authentication" (walk list 4.x item 27).
+  if (r.reason.kind === 'step') {
     const title = titleOf(r.reason.id)
     return title !== null ? fillText(WHEN.after, { step: title }) : WHEN.afterPrerequisites
   }
@@ -507,8 +508,10 @@ export function holdLabelOf(r: LaneReading, titleOf: (id: string) => string | nu
   // Its report-only week: "Report-only until Sep 4, 2026" (walk list 4.x item 11).
   const until = reportOnlyUntilOf(r)
   if (until !== null) return fillText(WHEN.reportOnly, { date: dayLabel(until) })
+  // A blocker that says what is wrong in its own words: "Doesn't exclude Core - Exclusions" (item 27).
+  if (r.reason.kind === 'baselineSafetyConflict' && r.reason.text) return r.reason.text
   const kind = BOARD.blockers[r.reason.kind]
-  if (r.reason.kind === 'step' || r.reason.kind === 'suspendedPrerequisite') {
+  if (r.reason.kind === 'suspendedPrerequisite') {
     const title = titleOf(r.reason.id)
     return title !== null ? `${kind}: ${title}` : kind
   }
