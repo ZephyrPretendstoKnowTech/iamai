@@ -223,7 +223,10 @@ export function PrintPlan({
   const verificationNote = verificationNoteOf(steps)
   // Its dates: none while the board holds the campaign step (printPlan.ts verificationDatesOf).
   const verificationDates = verificationDatesOf(steps, schedule.verification, laneOf)
-  const weeks = planWeeks(finish, schedule)
+  // The Estimated finish from the board's own forecast (derive/finish.ts statedEstimate), as the Plan's tile states
+  // it, and the weeks to it, as its tip counts them.
+  const estimate = statedEstimate(steps, finish, schedule, board.forecast)
+  const weeks = planWeeks({ ...finish, finish: estimate }, schedule)
   // What holds the plan: every readiness number that holds steps, and the steps
   // held on other work with the step each waits on (derive/finish.ts), joined
   // (printPlan.ts constraintOf) as the tail of the header's "cannot finish
@@ -235,8 +238,7 @@ export function PrintPlan({
   const cannotFinish = finish.held
   // The Plan's header as one line (derive/planHeader.ts), without the anchored
   // start: the same estimate / committed pair the Projected finish tile shows (A2).
-  // The at-pace estimate only where it measures work still on the plan (derive/finish.ts statedEstimate).
-  const headerLine = headerLine1({ steps: totalCount, inPlace: inPlaceCount, finish: finish.finish, estimate: statedEstimate(steps, finish, schedule), weeks: `${weeks} week${weeks === 1 ? '' : 's'}`, constraint, startedFrom: null })
+  const headerLine = headerLine1({ steps: totalCount, inPlace: inPlaceCount, finish: finish.finish, estimate, weeks: `${weeks} week${weeks === 1 ? '' : 's'}`, constraint, startedFrom: null })
 
   // A row as the document prints it, under the number its board row shows: a
   // finished step as its line (the warnings a finished step keeps printed under

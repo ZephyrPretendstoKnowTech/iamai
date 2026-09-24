@@ -15,7 +15,7 @@ import type { GroupMembers } from '../../coverage/population.ts'
 import type { DirectoryEvidence } from '../../mapping/safetyChoice.ts'
 import type { OwnerConfirmation, StepDecision, StepDecisionInput } from '../../roadmap/decisions.ts'
 import { MFA_FOLLOW_UP_KEY, SPECIAL_CARE_STEP_ID } from '../../roadmap/answers.ts'
-import { app, pages } from '../../content/content.ts'
+import { app, pages, schedulingWords } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { CleanupBody, cleanupEntry } from './CleanupStep.tsx'
 import { cleanupWhenOf } from './cleanupExport.ts'
@@ -174,18 +174,6 @@ export function Plan({ scan: lastScan, baseline, account }: {
   const cannotFinish = finish.held
   const P = pages.plan as Record<string, string>
   const start = startControl()
-  // The Projected finish tile's tip (A2): the critical-path sentences the schedule
-  // derives, or while held work is withdrawn the estimate's reason. One sentence,
-  // shared with the prompt pack's plan block (derive/finish.ts planLengthSentence).
-  // The estimate at pace, and the committed day when it is another day (derive/finish.ts projectedFinish; the printed cover reads the same pair).
-  // Only where it measures work still on the plan (derive/finish.ts statedEstimate).
-  const projected = projectedFinish(finish.finish, statedEstimate(c.steps, finish, c.schedule))
-  // A tile that states no date explains no length. A held plan with no estimate
-  // (roadmap/forecast.ts: the rollout placed none of the held work) has nothing
-  // to explain: no tip, never "Nothing is left to schedule." Nor has a plan
-  // whose remaining work is all deferred: its tile read "Depends on open work"
-  // over "The plan is 5 weeks because …", a chain naming a deferred step.
-  const lengthTip = finish.finish === null && projected.estimate === null ? undefined : (planLengthSentence(finish, c.schedule) ?? undefined)
 
   // The step a row waits on, by the title its reason line names it with (roadmap/stateReason.ts).
   // The lanes (planLanes.ts): the actionability engine read over the plan as
@@ -200,6 +188,14 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // reads the same construction, so its board cannot drift from this one.
   const board = boardOf(c.steps, cleanupPhase, answers)
   const { readings, titleOf, cleanupRows, prerequisiteLabel, enforceWaits } = board
+  // The Estimated finish (owner, 2026-09-23): the latest day the plan expects any
+  // of its work to end, held work included, from the board's own forecast
+  // (derive/finish.ts statedEstimate) — always a date, never "Depends on open
+  // work" — and the committed day when that is another day (projectedFinish; the
+  // printed cover reads the same pair). Its tip says what sets that date
+  // (derive/finish.ts planLengthSentence), never that no enforcement is left.
+  const projected = projectedFinish(finish.finish, statedEstimate(c.steps, finish, c.schedule, board.forecast))
+  const lengthTip = planLengthSentence(finish, c.schedule, { steps: c.steps, forecast: board.forecast, titleOf }) ?? undefined
   // The plan-wide dates the step variables read (the campaign's enrol-by, the
   // MFA enforcement day, the campaign's window); the operator's own account is resolved above, once.
   // A step the board holds lends none of them its turn-on day (planBoard.ts boardHolds; owner decision 2).
@@ -354,7 +350,8 @@ export function Plan({ scan: lastScan, baseline, account }: {
     { key: 'input', label: summary.input, value: inputIds.size, select: () => selectSummary('input') },
     { key: 'observing', label: summary.observing, value: observingIds.size, select: () => selectSummary('observing') },
     { key: 'completed', label: summary.completed, value: `${counts.complete} / ${items.filter((i) => i.lane !== 'Deferred').length}`, select: () => selectSummary('completed') },
-    { key: 'projectedFinish', label: summary.finish, value: projected.estimate !== null ? absoluteDate(projected.estimate) : summary.finishUnknown, tip: lengthTip },
+    // An estimate, and it says so (pages.plan.when.estimate): "Est. Oct 5, 2026".
+    { key: 'projectedFinish', label: summary.finish, value: fillText(schedulingWords.estimate, { date: absoluteDate(projected.estimate ?? finish.finish ?? c.schedule.start) }), tip: lengthTip },
   ]
 
   // Without Entra ID P1 no Conditional Access policy can exist (owner,

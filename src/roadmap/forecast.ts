@@ -373,7 +373,7 @@ const daysBetween = (a: string, b: string): number => Math.max(0, Math.round((ms
 // The day an estimate names, as a date-only string: the placement counts in UTC days, and an
 // instant at a UTC midnight reads as the day before anywhere west of it.
 const dayOf = (iso: string): string => toWeekday(iso).slice(0, 10)
-const isPolicy = (s: Step): boolean => (s.kind === 'create' || s.kind === 'adjust' || s.kind === 'enforce') && !awaitsOwnObject(s)
+const isPolicy = (s: Step): boolean => s.kind === 'create' || s.kind === 'adjust' || s.kind === 'enforce'
 
 /** Where the plan expects every open row to happen (the rows the board draws, ui/surfaces/planBoard.ts boardReadingsOf). Pure. */
 export function planForecast(rows: readonly ForecastRow[]): PlanForecast {
@@ -437,7 +437,9 @@ export function planForecast(rows: readonly ForecastRow[]): PlanForecast {
     const own = row.dated ? (scheduled?.at ?? null) : null
     const start = own !== null ? { day: own, by: null } : latest(plan.start, row.waits)
     const at = dayOf(start.day)
-    const placed = scheduled?.basis?.placed ?? null
+    // A policy whose next task is the object it makes itself was placed as that
+    // task (schedule.ts): its placement is the preparation window, not a turn-on.
+    const placed = awaitsOwnObject(s) ? null : (scheduled?.basis?.placed ?? null)
     if (!isPolicy(s)) {
       // Its own span, as the placement gave it: a preparation's window, the campaign's.
       const end = dayOf(own !== null ? later(scheduled?.range?.end ?? at, at) : addDays(at, placed ? daysBetween(placed.start, placed.end) : 0))

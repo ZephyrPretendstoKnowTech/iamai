@@ -272,12 +272,12 @@ test('Step 4: the row, the group, the step, the print and the calendar read one 
   // The printed plan draws the board's own rows (printPlan.ts printSectionsOf),
   // dates its timeline by the Plan's own phase rule and states the Plan's own length.
   const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
-  for (const read of ['printSectionsOf(board)', 'phaseRows(', 'planFinish(', 'planWeeks(finish, schedule)', 'finish.held']) assert.ok(print.includes(read), `the print no longer reads ${read}`)
+  for (const read of ['printSectionsOf(board)', 'phaseRows(', 'planFinish(', 'planWeeks({ ...finish, finish: estimate }, schedule)', 'finish.held']) assert.ok(print.includes(read), `the print no longer reads ${read}`)
   // The screen draws lanes (S3, planLanes.ts) and reads the same length and the same hold; its rows' dates read the same scheduling result (planBoard.ts boardWhenOf).
   const screen = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
   // The lanes through the one board construction (planBoard.ts boardReadingsOf, R4-22).
   // The rows and their lane views are built once (planBoard.ts boardOf, on boardReadingsOf).
-  for (const read of ['boardOf(', 'board.rows', 'boardWhenOf(step, waveStart, laneView)', 'planLengthSentence(finish, c.schedule)', 'finish.held']) assert.ok(screen.includes(read), `the Plan no longer reads ${read}`)
+  for (const read of ['boardOf(', 'board.rows', 'boardWhenOf(step, waveStart, laneView)', 'planLengthSentence(finish, c.schedule, { steps: c.steps, forecast: board.forecast, titleOf })', 'finish.held']) assert.ok(screen.includes(read), `the Plan no longer reads ${read}`)
 })
 
 // ---- the finish ----

@@ -10,8 +10,10 @@ import { holdOf, isHeld } from '../roadmap/holds.ts'
 import { holdWaitsOn } from '../roadmap/stateReason.ts'
 import type { Schedule } from '../roadmap/schedule.ts'
 import type { Step } from '../roadmap/types.ts'
-import { pages } from '../content/content.ts'
+import type { EstimatedSpan, PlanForecast } from '../roadmap/forecast.ts'
+import { engine, pages } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
+import { contentTitle } from '../content/stepTitle.ts'
 
 export type PlanFinish = {
   /** ISO date the plan finishes; null while anything it requires is held, or when nothing enforces. */
@@ -119,22 +121,28 @@ export function planWeeks(finish: PlanFinish, schedule: Pick<Schedule, 'start' |
 }
 
 /**
- * The at-pace estimate a surface may state (A2): the schedule's estimate, except
- * where the plan holds nothing and nothing still open is dated while some step
- * is not done. Then every step that set the estimate is done or deferred (the
- * generator draws the schedule before the operator's deferrals are applied,
- * ui/surfaces/planData.ts), so it dates work nobody will do: mid with every
- * deferrable step deferred printed "finishes Oct 4, 2026 at pace", from a
- * reason naming a deferred step, and with every remaining step deferred it
- * still did, over a Cleanup ending Oct 7. Only a plan whose every step is done
- * keeps the estimate as it was. The Plan's Projected finish tile and the
- * printed cover read this, so they state one date or none.
+ * The Estimated finish the Plan's tile and the printed cover state (owner,
+ * 2026-09-23): the latest day the plan expects any of its work to end, from the
+ * board's forecast (roadmap/forecast.ts planForecast) — every held wait clearing
+ * where the plan expects it, each policy's report-only window and its turn-on,
+ * Cleanup after — and never before the day the calendar has committed to.
+ * Always a date: with nothing open left to estimate, the plan finished on the
+ * last day a step was completed.
+ *
+ * It was the generator's drawn estimate, which left out every held step it never
+ * placed — on a first scan, every policy — so the tile read the end of the MFA
+ * campaign ("Sep 28" with 35 steps open), and a plan with nothing it could date
+ * read "Depends on open work".
  */
-export function statedEstimate(steps: readonly Step[], finish: PlanFinish, schedule: Pick<Schedule, 'estimate'>): string | null {
-  const estimate = schedule.estimate?.targetEnd ?? null
-  if (finish.held || finish.finish !== null) return estimate
-  return steps.some((s) => s.status !== 'done') ? null : estimate
+export function statedEstimate(steps: readonly Step[], finish: PlanFinish, schedule: Pick<Schedule, 'start'>, forecast: Pick<PlanForecast, 'finish'>): string {
+  let at: string | null = null
+  for (const day of [forecast.finish, finish.finish]) if (day && (at === null || ms(day) > ms(at))) at = day
+  if (at !== null) return at
+  for (const s of steps) if (s.status === 'done' && s.completedAt && (at === null || ms(s.completedAt) > ms(at))) at = s.completedAt
+  return at ?? schedule.start
 }
+
+const ms = (iso: string): number => Date.parse(iso)
 
 /**
  * The Plan's projected finish (A2): the rollout's estimate, and the day the
@@ -166,8 +174,14 @@ export function projectedFinish(finish: string | null, estimate: string | null):
  * said: "The plan is 1 week because … no enforcement is left to schedule" on a
  * demo plan the header read as held, about 3 weeks once nothing is held
  * (Phase 2 export finding 2).
+ *
+ * Given the board's forecast, it is the Estimated finish tip (owner,
+ * 2026-09-23): what sets that date (`forecastLengthSentence`). The tip said
+ * "... and no enforcement is left to schedule" on a first scan with every
+ * policy held, because the schedule's own chain had placed none of them.
  */
-export function planLengthSentence(finish: PlanFinish, schedule: Pick<Schedule, 'start' | 'weeks' | 'estimate' | 'derivation'>): string | null {
+export function planLengthSentence(finish: PlanFinish, schedule: Pick<Schedule, 'start' | 'weeks' | 'estimate' | 'derivation'>, forecast: ForecastReading | null = null): string | null {
+  if (forecast !== null) return forecastLengthSentence(finish, schedule, forecast)
   if (!finish.held) return [schedule.derivation.criticalPath, ...schedule.derivation.relaxed].join(' ')
   const reason = schedule.estimate?.reason ?? null
   // A held plan whose rollout placed none of the held work has no estimate
@@ -177,4 +191,48 @@ export function planLengthSentence(finish: PlanFinish, schedule: Pick<Schedule, 
   // A count like any other: fillText's pluralise reads "1 weeks" as one week.
   const weeks = planWeeks(finish, schedule)
   return fillText((pages.plan as Record<string, string>).lengthTipEstimate, { weeks: `${weeks} weeks`, constraint: reason })
+}
+
+/** The board's forecast as the Estimated finish tip reads it: the plan's steps, where the plan expects each row (planBoard.ts boardReadingsOf), and the title each row is named by. */
+export type ForecastReading = { steps: readonly Step[]; forecast: PlanForecast; titleOf: (id: string) => string | null }
+
+const CRITICAL = engine.critical
+
+/**
+ * What sets the Estimated finish, in the schedule's own sentence ("The plan is
+ * {weeks} weeks because {reason}; everything else fits inside it."). Where
+ * nothing is held and the calendar ends that day, the schedule's critical path
+ * is the reason, word for word. Otherwise the reason is the step whose work the
+ * plan expects to end last: what it waits for, its report-only window and its
+ * turn-on — never a claim that no enforcement is left while any is.
+ */
+function forecastLengthSentence(finish: PlanFinish, schedule: Pick<Schedule, 'start' | 'weeks' | 'estimate' | 'derivation'>, { steps, forecast, titleOf }: ForecastReading): string | null {
+  const at = statedEstimate(steps, finish, schedule, forecast)
+  if (!finish.held && finish.finish !== null && absoluteDate(finish.finish) === absoluteDate(at)) return [schedule.derivation.criticalPath, ...schedule.derivation.relaxed].join(' ')
+  const step = forecast.last !== null ? steps.find((s) => s.id === forecast.last) : undefined
+  const span = forecast.last !== null ? forecast.spans.get(forecast.last) : undefined
+  // Nothing open is left: the plan is finished, and says so.
+  if (!step || !span) return steps.some((s) => s.status !== 'done' && s.status !== 'skipped') ? null : CRITICAL.sentenceDone
+  return fillText(CRITICAL.sentence, { weeks: planWeeks({ ...finish, finish: at }, schedule), reason: forecastReason(step, span, titleOf, steps, schedule) })
+}
+
+/** Why the step the plan expects to end last ends when it does. */
+function forecastReason(step: Step, span: EstimatedSpan, titleOf: (id: string) => string | null, steps: readonly Step[], schedule: Pick<Schedule, 'derivation'>): string {
+  const name = contentTitle(step)
+  const waitsFor = span.waitedOn !== null ? titleOf(span.waitedOn) : null
+  const policy = span.turnOn !== null
+  if (waitsFor !== null) {
+    if (policy && span.turnOnWait) return fillText(CRITICAL.turnOnAfter, { step: name, waitsFor })
+    if (policy && span.observation !== null) return fillText(CRITICAL.waitsThenObserves, { step: name, waitsFor, observation: span.observation })
+    return fillText(CRITICAL.waitsFor, { step: name, waitsFor })
+  }
+  // Nothing it waits on moved it: where the schedule's own chain ends on it, its reason is the schedule's.
+  // (Not the campaign: a chain that ends on it is the one that found no enforcement to place.)
+  if (step.kind !== 'verify' && schedule.derivation.chain.at(-1) === step.id && schedule.derivation.reason) return schedule.derivation.reason
+  if (policy) {
+    const rings = Math.max(1, step.rings.length)
+    const soak = step.rings[0]?.soakDays ?? span.soak
+    return span.observation !== null ? fillText(CRITICAL.ringsObserved, { step: name, observation: span.observation, rings, soak }) : fillText(CRITICAL.rings, { step: name, rings, soak })
+  }
+  return fillText(CRITICAL.prerequisites, { n: steps.filter((s) => (s.kind === 'prerequisite' || s.kind === 'check') && s.status !== 'done' && s.status !== 'skipped').length })
 }

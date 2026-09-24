@@ -210,11 +210,12 @@ test('the Plan header offers four useful filters and an estimated finish, keepin
   assert.match(plan, /onClick=\{t\.select\}/)
   assert.match(plan, /aria-label=\{`\$\{t\.label\}: \$\{t\.value\}`\}/)
   assert.match(plan, /aria-expanded=\{showHow\} aria-controls=\{PLAN_HOW_ID\}/)
-  // The estimate a surface may state (derive/finish.ts statedEstimate), which the printed cover reads too.
-  assert.match(plan, /projectedFinish\(finish\.finish, statedEstimate\(c\.steps, finish, c\.schedule\)\)/)
+  // The estimate a surface may state (derive/finish.ts statedEstimate), from the board's forecast, which the printed cover reads too.
+  assert.match(plan, /projectedFinish\(finish\.finish, statedEstimate\(c\.steps, finish, c\.schedule, board\.forecast\)\)/)
   // The tip is the one plan-length sentence (derive/finish.ts), which states the
-  // schedule's critical path and what it relaxed once nothing is held.
-  assert.match(plan, /planLengthSentence\(finish, c\.schedule\)/)
+  // schedule's critical path and what it relaxed where the calendar ends the plan,
+  // and otherwise what the board's forecast says sets the finish.
+  assert.match(plan, /planLengthSentence\(finish, c\.schedule, \{ steps: c\.steps, forecast: board\.forecast, titleOf \}\)/)
   assert.match(readFileSync('src/derive/finish.ts', 'utf8'), /schedule\.derivation\.criticalPath, \.\.\.schedule\.derivation\.relaxed/)
   assert.match(plan, /data\.setFreeze\(freezeInput\.freeze\)/)
   assert.match(plan, /freezeInput\.reason === 'needsTo' \? PP\.settings\.freezeNeedsTo : PP\.settings\.freezeOrder/)
