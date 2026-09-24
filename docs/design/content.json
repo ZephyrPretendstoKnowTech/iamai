@@ -3213,6 +3213,8 @@
             "serviceEvidence": {
               "seen": "{n} people signed in to {service} in the last 30 days.",
               "notSeen": "No {service} sign-ins in the last 30 days.",
+              "$commentSeenActivity": "Where a saved No reopens on the app sign-in summary alone, with no sign-in records naming people (net-new 6, owner 2026-09-24): the line says what the scan saw. Only on a reopen.",
+              "seenActivity": "{service} shows sign-in activity in your tenant's app sign-in summary.",
               "syncSeen": "An account holds the Directory Synchronization Accounts role, so a sync service is likely in use.",
               "syncNotSeen": "No account holds the Directory Synchronization Accounts role."
             },
@@ -3220,6 +3222,8 @@
               "label": "Devices or apps that send email by signing in (printers, scanners, line-of-business apps)",
               "seen": "{n} accounts signed in to send email in the last 30 days.",
               "notSeen": "No email-sending sign-ins in the last 30 days.",
+              "$commentSeenPartial": "Where a saved None reopens over sign-in records read only in part (net-new 6): what the records read show. Only on a reopen; a card says nothing about a partial read otherwise (walk list 14, 64).",
+              "seenPartial": "The sign-in records this scan read show {n} accounts signing in to send email.",
               "consequence": "The accounts you pick become service accounts: they leave the people counts, and Block Legacy Authentication waits until each moves to a supported mail route.",
               "why": "Signed in to send email in the last 30 days."
             },
@@ -3231,6 +3235,8 @@
               },
               "seen": "{n} partner or MSP accounts signed in to your tenant in the last 30 days.",
               "notSeen": "No partner or MSP sign-ins in the last 30 days.",
+              "$commentSeenPartial": "Where a saved No reopens over sign-in records read only in part, or over sign-ins that name no account (net-new 6): what the records read show. Only on a reopen.",
+              "seenPartial": "The sign-in records this scan read show partner or MSP sign-ins.",
               "consequence": "Keeps partner and MSP technicians out of Require MFA for Guests and Block Sign-ins From Countries Not Allowed."
             },
             "accountOptions": {
