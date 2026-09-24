@@ -2946,7 +2946,7 @@
               "label": "Devices or apps that send email by signing in (printers, scanners, line-of-business apps)",
               "seen": "{n} accounts signed in to send email in the last 30 days.",
               "notSeen": "No email-sending sign-ins in the last 30 days.",
-              "consequence": "Answering Pick accounts makes them service accounts: they leave the people counts, and Block Legacy Authentication leaves them out until each moves to a supported mail route.",
+              "consequence": "Answering Pick accounts makes them service accounts: they leave the people counts, and Block Legacy Authentication gets a task to move each to a supported mail route.",
               "why": "Signed in to send email in the last 30 days."
             },
             "partner": {
