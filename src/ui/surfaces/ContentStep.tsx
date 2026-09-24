@@ -43,7 +43,7 @@ import { app, content, workflowWords } from '../../content/content.ts'
 import { fillText, whole, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
 import { Button, Callout, Icon, Picker, TabList, onePanelProps } from '../components/index.ts'
 import type { PickerOption } from '../components/index.ts'
-import { exclusionsPickerLabel, filterPickerObjects, initialPicked, matchedNoteOf, pickerSavesAlone, pickerUniverse, printedDefaultLine } from './pickerRows.ts'
+import { exclusionsPickerLabel, filterPickerObjects, initialPicked, matchedNoteOf, pickerSaves, pickerSavesAlone, pickerUniverse, printedDefaultLine } from './pickerRows.ts'
 import type { PickerObject } from './pickerRows.ts'
 import { answerParts, answerText, optionsOf, questionFor, valueSource } from './stepQuestion.ts'
 import type { QuestionOption } from './stepQuestion.ts'
@@ -1138,8 +1138,9 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false 
   const canSave = canSaveWith(chips)
   // The picker saves (owner, 2026-09-23): Done in its list, or a chip taken off,
   // saves the decision with the selection as it stands, through the same Save
-  // as ever. Where the picker is the decision's only input no Save button
-  // stands beside it (pickerRows.ts pickerSavesAlone).
+  // as ever (pickerRows.ts pickerSaves). Where the picker is the decision's
+  // only input no Save button stands beside it (pickerSavesAlone).
+  const saves = pickerSaves(d, stepId)
   const savesAlone = hasPicker && pickerSavesAlone(d, stepId)
   const save = (picked: PickerOption[] = chips): void => {
     if (!canSaveWith(picked)) return
@@ -1189,7 +1190,7 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false 
             the heading over nothing. */}
         {(hasPicker || isNetwork) && !remote && (printing && initial.defaulted && !isExclusionsGroup
           ? <p className="reason">{printedDefaultLine(chips.map((c) => c.name))}</p>
-          : <Picker labelledBy={`${base}-decision`} selected={chips} options={results} suggestions={isNetwork ? nominated.slice(0, 3) : nominated} onChange={setChips} onSearch={setQuery} single={single} readOnly={stepId === SPECIAL_CARE_STEP_ID} onCommit={stepId === SPECIAL_CARE_STEP_ID ? undefined : (picked) => save(picked)} />)}
+          : <Picker labelledBy={`${base}-decision`} selected={chips} options={results} suggestions={isNetwork ? nominated.slice(0, 3) : nominated} onChange={setChips} onSearch={setQuery} single={single} readOnly={stepId === SPECIAL_CARE_STEP_ID} onCommit={saves ? (picked) => save(picked) : undefined} />)}
         {isNetwork && !remote && chips.length === 0 && <div className="decision-fields">
           {universe.length === 0 && <p className="reason">{ctx.snapshot.config.namedLocations?.status === 'ok' ? 'No IP named locations were found in this scan.' : 'Named locations could not be fully read. Scan again to load existing office networks.'}</p>}
           <div className="decision-field"><label htmlFor={`${base}-network-name`}><strong>Office Network Name</strong></label><input type="text" id={`${base}-network-name`} value={networkName} onChange={e => setNetworkName(e.target.value)} /></div>
