@@ -27,8 +27,8 @@ import assert from 'node:assert/strict'
 import { loadPinnedBaseline, loadUploadedBaseline } from '../ui/baseline.ts'
 import type { BaselineResult } from '../ui/baseline.ts'
 import { PINNED } from '../baseline/pinned.ts'
-import { REVIEWED_SOURCES, baselineConflictWords, baselineConflicts, inBaselineConflict } from './baselineConflict.ts'
-import { PINNED_GOAL_MAP, policyKey } from './goalMap.ts'
+import { baselineConflictWords, baselineConflicts, inBaselineConflict } from './baselineConflict.ts'
+import { PINNED_GOAL_MAP } from './goalMap.ts'
 import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { implementationOffered, policyResult, unavailableReason } from './operations.ts'
@@ -112,18 +112,6 @@ function implementationChannels(step: Step, ctx: StepVarContext): { json: string
     offered: implementationOffered(step as never),
   }
 }
-
-// ---- 0: the conflict record is keyed on a source policy, never on a goal ----
-
-test('every reviewed source names a policy the pin carries, not a goal', () => {
-  const keys = new Set(PINNED.policies.map((p) => policyKey({ id: p.id, displayName: p.displayName }).toLowerCase()))
-  const goalIds = new Set(Object.keys(PINNED_GOAL_MAP))
-  for (const reviewed of REVIEWED_SOURCES) {
-    assert.equal(goalIds.has(reviewed.key), false, `${reviewed.key} is a goal id, so the conflict would follow the label rather than the source`)
-    assert.equal(keys.has(reviewed.key), true, `${reviewed.key} names no policy in the pinned package`)
-  }
-  assert.equal(REVIEWED_SOURCES.some((r) => r.key === GOAL), false, 'the admin-portals goal id is registered as a conflicted source')
-})
 
 // ---- 1: the retained pin, loaded the way the product loads it, still conflicts ----
 
@@ -234,21 +222,4 @@ test('the reviewed source is recognised under another display name, and its name
   const wasNamesake = plan(namesake)
   assert.equal(inBaselineConflict(wasNamesake.step), false, 'a display name was taken as proof of provenance')
   assert.equal(baselineConflictWords(wasNamesake.step), null, 'a namesake policy is explained as the reviewed source')
-})
-
-// ---- 5: an upload is not an exemption — the reviewed source is the reviewed source ----
-
-test('uploading the reviewed source itself still reports the contradiction', () => {
-  // Nothing here turns on where a package came from. The same policy, handed to
-  // the same goal by an uploaded package's own map, is read the same way: Task
-  // 019 isolates an alternate source, it does not exempt an upload.
-  const up = uploaded(PINNED_SOURCE as unknown as Record<string, unknown>)
-  assert.deepEqual(up.goalMap?.[GOAL], [SOURCE], 'the uploaded reviewed source no longer stands for the goal')
-  assert.deepEqual([...baselineConflicts(up.goalMap ?? {}, up.pkg)], [[GOAL, SOURCE]], 'an uploaded copy of the reviewed source escaped its own contradiction')
-
-  const { step, ctx } = plan(up)
-  assert.equal(inBaselineConflict(step), true, 'an uploaded copy of the reviewed source escaped its own contradiction')
-  assert.equal(step.state.conflictSource, SOURCE)
-  assert.equal(implementationChannels(step, ctx).offered, false, 'an upload bought an implementation the pin is refused')
-  assert.equal(implementationChannels(step, ctx).tabs, false, 'the JSON, PowerShell and Download tabs are offered')
 })

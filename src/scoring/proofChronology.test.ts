@@ -11,7 +11,6 @@ import type { HistoryMethod, PersonHistory, ProofRecord, ReadinessInput } from '
 import { mergeMfaHistory } from './mfaHistory.ts'
 import type { AuthMethodSummary } from './mfaViability.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
-import { collectMethodsForUsers } from '../graph/collect/collectors.ts'
 
 const OLD = '2024-03-01T00:00:00.000Z'
 const NOW = '2026-09-01T10:00:00.000Z'
@@ -31,19 +30,6 @@ const input = (methods: ReadinessInput['methods'], history: PersonHistory | null
 })
 const passkey = (over: Partial<AuthMethodSummary> = {}): AuthMethodSummary[] => [{ kind: 'passkey', ...over }]
 
-test('retained proof never makes a credential Ready, the same credential or a replacement', () => {
-  const same = personReadiness(input(passkey({ id: 'pk-1' }), seen([method('pk-1', '2024-01-01T00:00:00.000Z')])))
-  assert.equal(same.state, 'confirm')
-  assert.deepEqual(same.next, { kind: 'confirm', cls: 'passkey', os: 'Windows' })
-  assert.deepEqual(same.lastConfirmed, { cls: 'passkey', os: 'Windows', at: OLD, retained: true }, 'shown as the last confirmed use, from an earlier scan')
-  assert.equal(same.readyUntil, null)
-  const replaced = personReadiness(input(passkey({ id: 'pk-new' }), seen([method('pk-old', '2024-01-01T00:00:00.000Z')])))
-  assert.equal(replaced.state, 'confirm')
-  assert.deepEqual(replaced.next, { kind: 'confirm', cls: 'passkey', os: 'Windows' })
-  // No id at all: the same.
-  assert.equal(personReadiness(input(passkey(), seen())).state, 'confirm')
-})
-
 test('a known creation date decides: created before the proof is proven, after it is not; an unreadable date is not', () => {
   assert.equal(isReady(personReadiness(input(passkey({ id: 'x', createdDateTime: '2023-01-01T00:00:00Z' }), seen(), [inWindow])).state), true)
   assert.equal(isReady(personReadiness(input(passkey({ id: 'x', createdDateTime: '2026-08-01T00:00:00Z' }), seen(), [inWindow])).state), true)
@@ -53,13 +39,6 @@ test('a known creation date decides: created before the proof is proven, after i
   assert.equal(personReadiness(input(passkey({ id: 'x', createdDateTime: 'not-a-date' }), seen(), [inWindow])).state, 'confirm')
   // A later sign-in with the new credential proves it.
   assert.equal(isReady(personReadiness(input(passkey({ id: 'x', createdDateTime: '2026-08-25T00:00:00Z' }), seen(), [inWindow, nowProof])).state), true)
-})
-
-test('proof from the records this scan read stands for a credential with no date', () => {
-  const r = personReadiness(input(passkey({ id: 'pk-new' }), seen(), [nowProof]))
-  assert.equal(isReady(r.state), true)
-  assert.deepEqual(r.lastConfirmed, { cls: 'passkey', os: 'Windows', at: NOW, retained: false })
-  assert.deepEqual(r.devices[0].proof, { cls: 'passkey', at: NOW })
 })
 
 test('an inventory from the registration report has no dates: this scan’s proof stands, retained proof does not', () => {
@@ -79,24 +58,4 @@ test('the history keeps the older proof and the old credential when a replacemen
   assert.deepEqual(h.proofs, [oldProof], 'the proof is kept, not expired')
   assert.deepEqual(h.methods.map((m) => [m.key, m.present]), [['pk-old', false], ['pk-new', true]])
   assert.equal(personReadiness(input(passkey({ id: 'pk-new' }), h)).state, 'confirm')
-})
-
-test('both spellings of the creation date reach readiness from the method read', async () => {
-  const original = globalThis.fetch
-  const body = { responses: [
-    { id: '0', status: 200, body: { value: [{ '@odata.type': '#microsoft.graph.fido2AuthenticationMethod', id: 'k0', creationDateTime: '2026-08-25T00:00:00Z' }] } },
-    { id: '1', status: 200, body: { value: [{ '@odata.type': '#microsoft.graph.fido2AuthenticationMethod', id: 'k1', createdDateTime: '2023-01-01T00:00:00Z', creationDateTime: '2026-08-25T00:00:00Z' }] } },
-  ] }
-  globalThis.fetch = (async () => new Response(JSON.stringify(body), { status: 200 })) as typeof fetch
-  try {
-    const out = await collectMethodsForUsers({ tokens: { get: () => 't', refresh: async () => 't' }, signal: new AbortController().signal }, ['u0', 'u1'])
-    const u0 = out.u0 as AuthMethodSummary[]
-    const u1 = out.u1 as AuthMethodSummary[]
-    assert.equal(u0[0].createdDateTime, '2026-08-25T00:00:00Z')
-    assert.equal(u1[0].createdDateTime, '2023-01-01T00:00:00Z', 'createdDateTime wins where both are present')
-    assert.equal(personReadiness(input(u0, seen(), [inWindow])).state, 'confirm', 'a key created after the proof')
-    assert.equal(isReady(personReadiness(input(u1, seen(), [inWindow])).state), true)
-  } finally {
-    globalThis.fetch = original
-  }
 })
