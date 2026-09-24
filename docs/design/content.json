@@ -2777,7 +2777,6 @@
           "s-ladder-legacy-auth-inventory": "Legacy sign-ins",
           "s-ladder-app-passwords": "App passwords",
           "s-ladder-guest-review": "Guest access",
-          "s-check-dormant-accounts": "Inactive accounts",
           "s-ladder-authenticator-over-sms": "Sign-in methods",
           "s-ladder-global-admin-count": "Global Administrators",
           "s-prereq-per-user-mfa": "Per-user MFA",
@@ -2787,10 +2786,8 @@
           "s-ladder-per-user-mfa-cleanup": "Per-user MFA",
           "s-prereq-break-glass": "Emergency access accounts",
           "s-prereq-exclusion-group": "Policy exclusions",
-          "s-prereq-service-accounts-group": "Service accounts",
           "s-prereq-device-plan": "Phones and computers",
           "s-ladder-phone-access-restriction": "Phone access",
-          "s-check-separate-admin-accounts": "Administrator accounts",
           "s-shared-devices": "Shared-device accounts",
           "s-goal-admin-portals-protected": "Administrator portals"
         },
