@@ -8,7 +8,6 @@ import { allFixtures, fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { contentStepFor } from '../content/stepTitle.ts'
 
-import { notPeopleIds } from './sets.ts'
 import { isActivePerson, namedAccounts, peopleCounts, population, populationIndex, reached } from './population.ts'
 import { activeGap } from '../roadmap/generate.ts'
 import type { GoalResult } from '../coverage/types.ts'
@@ -27,7 +26,6 @@ import { inventoryTables } from '../ui/surfaces/inventoryTables.ts'
 const f = fixture('getiamai')
 const r = runFixture(f)
 const nameOf = (id: string): string => r.input.names!.label(id)
-const notPeople = notPeopleIds(f.mapping)
 const today = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
 const campaign = r.steps.find((s) => (contentStepFor(s) as { kind?: string } | undefined)?.kind === 'campaign')!
 const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming) }

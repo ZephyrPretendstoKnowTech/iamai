@@ -12,14 +12,12 @@ import { fixtureSnapshot } from '../testing/uiSnapshot.ts'
 import { bigFixtureSnapshot } from '../testing/bigFixture.ts'
 import { allFixtures, fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
-import { DEFAULT_SHOW, EXPLAINED, GROUP_ORDER, SHOW_KEYS, SUB_GROUP_AT, readinessView, showKeyOf, shows, subGroupsOf } from './mfaReadiness.ts'
+import { EXPLAINED, GROUP_ORDER, SUB_GROUP_AT, readinessView, shows, subGroupsOf } from './mfaReadiness.ts'
 import { stepMfaHold } from './stepMfaReadiness.ts'
 import { KINDS } from './ladder.ts'
 import { READINESS_STATES, isReady } from '../scoring/phishingResistant.ts'
-import { deviceChips, methodsCell, methodsLine, nextCell, rowCells, stateTitle, whyLine } from '../ui/surfaces/readinessCells.ts'
-import { pages } from '../content/content.ts'
+import { deviceChips, methodsCell, methodsLine, nextCell, rowCells } from '../ui/surfaces/readinessCells.ts'
 
-const T = pages.readiness as unknown as { show: Record<string, string>; counted: Record<string, string> }
 
 test('every account is one row; the active people are counted in the states; an uncounted account carries none; the facts sum', () => {
   for (const snapshot of [fixtureSnapshot(), bigFixtureSnapshot(), fixture('demo').snapshot]) {

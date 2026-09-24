@@ -11,7 +11,7 @@ import firstParty from '../../data/first-party-apps.json' with { type: 'json' }
 import { PINNED, pinnedPackage } from '../baseline/pinned.ts'
 import { runBaselineValidators } from '../baseline/validators.ts'
 import { PINNED_GOAL_MAP, goalMapFor, policiesForGoal, policyKey } from '../roadmap/goalMap.ts'
-import { baselineConflicts, inBaselineConflict } from '../roadmap/baselineConflict.ts'
+import { baselineConflicts } from '../roadmap/baselineConflict.ts'
 import { fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { policyResult } from '../roadmap/operations.ts'

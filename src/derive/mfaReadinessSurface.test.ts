@@ -26,15 +26,10 @@ import { stepMfaHold } from './stepMfaReadiness.ts'
 import { KINDS, ladder, methodClassesOf } from './ladder.ts'
 import { READINESS_STATES, isQualifying, isReady } from '../scoring/phishingResistant.ts'
 import { adminUserIds } from '../roles.ts'
-import { adminReady, goalFamily, mfaReady } from '../roadmap/readiness.ts'
+import { goalFamily, mfaReady } from '../roadmap/readiness.ts'
 import { enforcementHeld } from '../roadmap/operations.ts'
-import { affectedIds, cohortWords } from './whoLine.ts'
-import { reached } from './population.ts'
-import { nextCell, rowCells, stateTitle } from '../ui/surfaces/readinessCells.ts'
+import { nextCell } from '../ui/surfaces/readinessCells.ts'
 import { readinessHref, readinessStepHref, resolveHash, showFromReadinessHash, stepFromReadinessHash } from '../ui/shell/routes.ts'
-import { pages } from '../content/content.ts'
-import { fillText } from '../content/render.ts'
-import { RE, headerTabsLine } from '../content/contentChecks.ts'
 
 const TENANTS: FixtureName[] = ['demo', 'getiamai', 'mid', 'messy', 'hostile']
 
@@ -182,7 +177,6 @@ test("a step's handoff is that step's own gate over its own reach", () => {
     const f = fixture(name)
     const run = runFixture(f)
     const scored = scoredPeople(f.snapshot, f.mapping, f.snapshot.asOf)
-    const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
     for (const step of run.steps) {
       const hold = stepMfaHold(step, scored)
       const family = goalFamily(step.goalId)

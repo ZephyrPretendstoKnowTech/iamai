@@ -7,10 +7,7 @@ import assert from 'node:assert/strict'
 import { fixture } from './roadmap/fixtures/index.ts'
 import { runFixture } from './roadmap/fixtures/run.ts'
 import { groundingBundle } from './roadmap/prompts.ts'
-import { ringContextIndexes } from './roadmap/rings.ts'
-import { adminUserIds } from './roles.ts'
 import { redactIdentifiers } from './redact.ts'
-import { toCsv } from './ui/format.ts'
 import { buildIcs } from './roadmap/ics.ts'
 import { stepExportView } from './ui/surfaces/stepExport.ts'
 
@@ -24,7 +21,6 @@ const tenantId = snapshot.tenantId
 const ip = '203.0.113.0/24'
 const deviceNames = snapshot.devices.slice(0, 3).map((d) => d.displayName!)
 const nameOf = (id: string) => snapshot.users.find((u) => u.id === id)?.displayName ?? id
-const viabilityById = new Map(run.viability.map((v) => [v.userId, v]))
 
 // The one reading of a step for an artifact: the Export page's own view
 // (ui/surfaces/stepExport.ts), which is the frozen Step Contract's answers.
