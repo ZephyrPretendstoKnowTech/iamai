@@ -184,10 +184,14 @@ test('U28/B7: a conditional input nobody saved keeps a step short of Completed a
   }
 })
 
-test('U19: an enforced block policy missing the exclusions group is Partial even where Foundation A will not write the whole policy; a group taken out is not', () => {
+test('U19: an enforced block policy missing the exclusions group is a safe correction, which Configure Emergency Exclusions asks for; a group taken out is not', () => {
   const step = stepOf(demoRun, LEGACY)
   assert.equal(step.state.lifecycle, 'enforced')
-  assert.equal(policyResult(step).kind, 'implementable', 'the documented correction has resolved inputs')
+  // Walk list 4.x item 7: adding the exclusions group is Configure Emergency
+  // Exclusions' own edit, so this step holds it and waits on that step rather
+  // than asking for it a second time.
+  assert.equal(step.action.correctionAskedBy, 's-prereq-exclusion-group')
+  assert.equal(policyResult(step).kind, 'held', 'the step hands over the edit Configure Emergency Exclusions asks for')
   const op = plannedOperationsOf(step)[0]
   const rows = (demo.snapshot.config.caPolicies?.rows ?? []) as Record<string, unknown>[]
   const missing = rows.map((r) => {
@@ -198,7 +202,7 @@ test('U19: an enforced block policy missing the exclusions group is Partial even
   const snapshot = { ...demo.snapshot, config: { ...demo.snapshot.config, caPolicies: { ...demo.snapshot.config.caPolicies!, rows: missing } } } as TenantSnapshot
   assert.deepEqual(correctionFieldsOf(step, snapshot), ['conditions.users.excludeGroups'])
   assert.equal(safeCorrectionOf(step, snapshot), true)
-  assert.equal(packageStateOf(step, stepContract(step, ctxOf(demo, demoRun, snapshot)), snapshot), 'partial')
+  assert.equal(packageStateOf(step, stepContract(step, ctxOf(demo, demoRun, snapshot)), snapshot), 'blocked', 'the step projects the edit another step asks for')
   // A real removed tenant exclusion remains an unsafe automatic correction.
   const removed = structuredClone(snapshot)
   const row = removed.config.caPolicies!.rows.find((r: any) => r.id === op.policyId) as any

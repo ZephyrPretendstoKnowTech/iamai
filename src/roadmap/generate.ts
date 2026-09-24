@@ -325,7 +325,7 @@ const EXTRAS = STEP_EXTRAS
 // The step ids live in stepIds.ts (the answer readers name them without
 // importing the engine); re-exported here for the modules that import them from the engine.
 export { idFor, stepIdForGoal, EXCLUSION_GROUP_STEP_ID, BREAK_GLASS_STEP_ID, PREREQ_STEP_ID } from './stepIds.ts'
-import { idFor, BREAK_GLASS_STEP_ID, PREREQ_STEP_ID, SEPARATE_ADMIN_ACCOUNTS_STEP_ID } from './stepIds.ts'
+import { idFor, BREAK_GLASS_STEP_ID, EXCLUSION_GROUP_STEP_ID, PREREQ_STEP_ID, SEPARATE_ADMIN_ACCOUNTS_STEP_ID } from './stepIds.ts'
 import { OPERATOR_PASSKEY_STEP_ID, PASSKEY_SETTINGS_STEP_ID, PASSKEY_TARGET, operatorPasskeyOf, operatorSignInOf, passkeyReadingOf, passkeyReadinessFindingsOf } from './passkeySettings.ts'
 import { SYNC_WORKLOAD_GOAL_ID, WORKLOAD_IDENTITY_BLOCKER, syncIdentitySupportOf } from './workloadIdentity.ts'
 
@@ -2083,6 +2083,17 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // one up in the mapping again.
     if (action.resolution) action.resolution = { ...action.resolution, tenant: { exclusionsGroupId: tenantObjects.exclusionsGroupId, serviceAccountsGroupId: tenantObjects.serviceAccountsGroupId, emergencyIds: [...mapping.breakGlassUserIds] } }
 
+    // Configure Emergency Exclusions already asks for this edit (walk list 4.x
+    // item 7): a correction whose every operation only adds the plan's exclusions
+    // group to a policy the tenant has is that step's "Configure Conditional Access
+    // exclusions". This step does not ask for it a second time: it waits on that
+    // step, and its operations are held until the scan finds the group excluded
+    // (operations.ts policyResult).
+    if (steps.some((s) => s.id === EXCLUSION_GROUP_STEP_ID) && addsOnlyExclusionsGroup(action.resolution?.policies ?? [], tenantObjects.exclusionsGroupId, snapshot)) {
+      action = { ...action, correctionAskedBy: EXCLUSION_GROUP_STEP_ID }
+      blockByStep(EXCLUSION_GROUP_STEP_ID, 'exclusions-edit')
+    }
+
     // ---- The emergency-access boundary (Foundation A) ----
     // The last thing asked of a policy before anything is offered for it, and
     // the only one asked of the policy the tenant will actually be left with.
@@ -3370,4 +3381,29 @@ export function findTaggedPolicies(snapshot: TenantSnapshot, planId: string, ste
  */
 export function findTaggedPolicy(snapshot: TenantSnapshot, planId: string, stepId: string): string | null {
   return findTaggedPolicies(snapshot, planId, stepId)[0]?.policyId ?? null
+}
+
+/**
+ * True when every operation is an update that only adds the plan's exclusions
+ * group to a policy the tenant already has: no other group, account or role,
+ * and nothing else changed (PolicyOperation.addsExclusionsOnly). That is the
+ * edit Configure Emergency Exclusions' own task asks for, policy by policy
+ * (walk list 4.x item 7).
+ */
+function addsOnlyExclusionsGroup(ops: readonly PolicyOperation[], exclusionsGroupId: string | null, snapshot: TenantSnapshot): boolean {
+  if (ops.length === 0 || exclusionsGroupId === null) return false
+  const group = exclusionsGroupId.toLowerCase()
+  const rows = (snapshot.config.caPolicies?.rows ?? []) as RawPolicy[]
+  return ops.every((o) => {
+    if (o.mode !== 'update' || o.addsExclusionsOnly !== true) return false
+    const row = rows.find((r) => String(r.id ?? '').toLowerCase() === String(o.policyId ?? '').toLowerCase())
+    const before = (((row?.conditions ?? {}) as RawPolicy).users ?? {}) as RawPolicy
+    const after = (((o.body.conditions ?? {}) as RawPolicy).users ?? {}) as RawPolicy
+    const added = (key: string): string[] => {
+      const was = new Set((Array.isArray(before[key]) ? (before[key] as string[]) : []).map((id) => id.toLowerCase()))
+      return (Array.isArray(after[key]) ? (after[key] as string[]) : []).filter((id) => !was.has(id.toLowerCase()))
+    }
+    const groups = added('excludeGroups')
+    return groups.length > 0 && groups.every((id) => id.toLowerCase() === group) && added('excludeUsers').length === 0 && added('excludeRoles').length === 0
+  })
 }
