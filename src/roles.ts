@@ -78,6 +78,18 @@ export function adminUserIds(roles: { active: Record<string, string[]> }): Set<s
 }
 
 /**
+ * The admins with an active or a Privileged Identity Management eligible admin
+ * role: one reading of role scope for everything that counts admins (walk list
+ * 4.x L2). An eligible admin activates the role and is an admin while they do,
+ * so readiness, a policy's reach and MFA Readiness count them alike.
+ */
+export function adminUserIdsWithEligible(roles: { active: Record<string, string[]>; eligible?: Record<string, string[]> }): Set<string> {
+  const out = adminUserIds(roles)
+  for (const id of adminUserIds({ active: roles.eligible ?? {} })) out.add(id)
+  return out
+}
+
+/**
  * A role held only by service principals is application plumbing, not
  * administration (prompt 46 item 25): hidden by default in the inventory,
  * shown with "Show all roles". Holders whose kind is not known yet count as

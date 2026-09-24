@@ -74,7 +74,7 @@ import { countryName as countryLabel } from '../mapping/countries.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
-import { adminUserIds, learnRoleNames, roleLabel, roleListSummary } from '../roles.ts'
+import { learnRoleNames, roleLabel, roleListSummary, adminUserIdsWithEligible } from '../roles.ts'
 import { policyPairNames, proposedPolicyName } from '../coverage/naming.ts'
 import { rolloutBucket } from '../scoring/mfaViability.ts'
 import { isReady } from '../scoring/phishingResistant.ts'
@@ -871,7 +871,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // in a readiness denominator.
   {
     const allActive = viability.map((v) => v.userId)
-    const adminIds = [...adminUserIds(snapshot.roles)]
+    // PIM-eligible admins too (walk list 4.x L2): one reading of role scope.
+    const adminIds = [...adminUserIdsWithEligible(snapshot.roles)]
     const guestIds = snapshot.users.filter((u) => u.userType === 'guest').map((u) => u.id)
     readinessCache.set('mfa', readinessFor('mfa-all-users', allActive, viability, snapshot))
     readinessCache.set('device', readinessFor('require-managed-device', allActive, viability, snapshot, deviceScope))
