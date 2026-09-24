@@ -1897,6 +1897,8 @@
           },
           "trackLabel": "Rollout lifecycle",
           "railMilestone": "Next milestone",
+          "saving": "Saving plan…",
+          "saveFailed": "Plan could not be saved. Use Retry Saving above.",
           "railImplementation": "Implementation",
           "$commentRailExisting": "The In-place variant's own side block (task 036; docs/design/approved/plan-step-v1.html V4 draws `Existing implementation` over the policy's name). The name is Step.satisfiedBy — the coverage result that decided the goal was satisfied — so the rail names the tenant's own policy and never the baseline's. `railExistingKeep` is the sub under one sufficient policy; `railExistingTogether` is the sub where two cover the goal between them and neither covers it alone.",
           "railExisting": "Existing implementation",
