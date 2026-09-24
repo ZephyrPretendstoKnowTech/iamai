@@ -638,7 +638,7 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // — so the task frame draws exactly what this step drew. The four Emergency
   // Access steps keep their own producers above and are never this.
   const outstandingForEnforce = [...new Set([...blockers.map((b) => b.title ?? b.label).filter((x): x is string => typeof x === 'string' && x.length > 0), ...(o.enforceWaits ?? [])])]
-  const taskProjection: EmergencyTaskProjection | null = emergencyAccountTasks ?? sectionThree ?? (drawsTaskAnatomy(step.id) ? policyTasksOf(step, title, artifacts, ctx.mapping, outstandingForEnforce) : null)
+  const taskProjection: EmergencyTaskProjection | null = emergencyAccountTasks ?? sectionThree ?? (drawsTaskAnatomy(step.id) ? policyTasksOf(step, title, artifacts, ctx.mapping, outstandingForEnforce, ctx.nameOf) : null)
   // The task that marks a picked office location trusted is called what it does
   // (whatToDoWhen.officeToTrust.task), and the rail's headline reads it.
   if (taskProjection && step.id === 's-prereq-trusted-location' && (step.officeToTrust?.length ?? 0) > 0 && typeof w.task === 'string' && whole(w.task, ex)) {

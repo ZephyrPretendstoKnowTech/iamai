@@ -16,6 +16,7 @@ import { sharedDeviceIds } from './sharedDevices.ts'
 import { notActiveUsers, notPeopleIds, lastSuccessOf } from './sets.ts'
 import { ladder } from './ladder.ts'
 import { riskIds } from '../roadmap/evidence.ts'
+import { mailDevicesOf } from '../roadmap/answers.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import { pages, stepById } from '../content/content.ts'
 
@@ -147,6 +148,10 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
     unproven: bucketName(unproven),
     // Lockout-scenario people (scenarioEvidence, from the sign-in rows).
     legacyUsers: names(people(scen?.legacyClients)),
+    // The mail accounts named in Confirm What You Use's mail-sending answer:
+    // Block Legacy Authentication completes once none of them signs in with
+    // legacy authentication (walk list 4.x item 4, roadmap/blockSignIns.ts).
+    mailAccounts: names(mailDevicesOf(mapping)),
     serverUsers: names(people(scen?.serverSignIns)),
     ropcAccounts: names(people(scen?.ropcAutomation)),
     unmanagedUsers: names(people(scen?.browserWithoutClaims)),

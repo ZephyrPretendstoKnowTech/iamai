@@ -904,6 +904,14 @@ export type Step = {
   unsavedInputs?: string[]
   /** True where every open input is one IAMAI filled and is waiting to have confirmed, not one it is asking (roadmap/answers.ts openInputsOf). */
   unsavedInputsPrefilled?: true
+  /**
+   * Block Legacy Authentication: the accounts named in Confirm What You Use's
+   * mail-sending answer that the sign-in records still show using legacy
+   * authentication in the last 30 days (roadmap/blockSignIns.ts). The turn-on
+   * waits for them, and the step is not complete until none is left (walk list
+   * 4.x items 4 and 5). Absent where none.
+   */
+  mailAccountsToMove?: string[]
   /** Three sentences for a manager: the risk closed, the cost to people, what happens if not done (§3.3). */
   forManager: string
   /** Microsoft recommended, not in this baseline (target-state §13, floor.ts): rendered from Microsoft's template because the active baseline lacks the goal. */

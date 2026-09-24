@@ -332,7 +332,6 @@ Condition names used: `sd-enabled` (Security Defaults currently enabled in the t
 | `s-goal-block-device-code:create` | `s-prereq-exclusion-group` | step | `complete` | — | hard | pinned | ok |
 | `s-goal-block-device-code:enforce` | `decision:device-code-workflows` | decision | `resolved` | `device-code-workflows-exist` | conditional | audit | ok |
 | `s-goal-block-legacy-auth:create` | `s-prereq-exclusion-group` | step | `complete` | — | hard | pinned | ok |
-| `s-goal-block-legacy-auth:enforce` | `s-prereq-service-accounts-group` | step | `complete` | — | hard | package | ok |
 | `s-goal-block-legacy-auth:enforce` | `s-question-mail-devices` | step | `complete` | `mail-devices-incompatible-path` | conditional | v2 | ok |
 | `s-goal-block-unsupported-platforms:create` | `s-prereq-exclusion-group` | step | `complete` | — | hard | pinned | ok |
 
