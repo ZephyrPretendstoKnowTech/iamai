@@ -1134,10 +1134,16 @@ function fixOf(step: Step, cs: Record<string, unknown> | undefined, ex: Record<s
       out.push({ key: `step:${b.stepId}`, text: fillText(CONTRACT.fixStep, { step: title }) })
       continue
     }
-    // A Direction answer this policy is written from (roadmap/direction.ts): its
-    // Readiness card names the Direction step and opens it, so no line here says
-    // it a second time (net-new 9, owner 2026-09-24).
-    if (directionBlockerStep(b) !== null) continue
+    // A Direction answer this policy is written from (roadmap/direction.ts): the
+    // wait its Readiness card draws (fixTiles: the Direction step and Waiting on
+    // your answers). AI Info and the exports leave it out: the card names the
+    // step, and "Answer it in {step}." said it a second time (net-new 9, owner
+    // 2026-09-24; stepExport.ts). An enforced policy is not held by one.
+    const direction = directionBlockerStep(b)
+    if (direction !== null) {
+      if (step.state.lifecycle !== 'enforced') out.push({ key: `direction:${direction}`, text: directionWords.waiting })
+      continue
+    }
     // A decision waiting on this step's own person is its What to do, not a fix:
     // listing "until phones and computers are decided" under Fix before
     // continuing restated the question the step is asking (owner, 2026-09-11).

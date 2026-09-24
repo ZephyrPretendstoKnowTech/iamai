@@ -15,6 +15,7 @@ import { DIRECTION_STEP_IDS } from '../../roadmap/stepGroups.ts'
 import { emergencyTaskSteps, emergencyTaskText } from './emergencyAccountTasks.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import type { StepVarContext } from './stepVars.ts'
+import { stepExportView } from './stepExport.ts'
 
 const W = directionWords
 const CONTENT_STEP = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
@@ -213,4 +214,17 @@ test('3.6 held on the office answer while Entra already trusts a location says i
   assert.equal(body.rail.barLead, "Entra already trusts Head office. If that's your office, pick it under Office network in Decide How and Where People Sign In.")
   assert.equal(body.emergencyAccountTasks, null, 'no create task')
   assert.ok(!body.artifacts.some((a) => a.id === 'portal'), 'no Entra procedure')
+})
+
+test('a policy waiting on a Direction answer keeps its Readiness card and says nothing more in AI Info or an export (net-new 9)', () => {
+  const f = fixture('demo')
+  const r = runFixture(f)
+  const step = r.steps.find((s) => s.id === 's-goal-guests-mfa')!
+  assert.ok(step.blockers.some((b) => b.label === 'direction:s-direction-use'), 'the premise: it waits on Confirm What You Use')
+  const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups } as StepVarContext
+  const body = stepBodyOf(step, ctx)
+  assert.ok(body.readiness.tiles.some((t) => t.label === 'Confirm What You Use' && t.value === directionWords.waiting), 'the card stays')
+  const view = stepExportView(step, ctx)
+  assert.ok(!view.fix.some((l) => /Answer it in|Waiting on your answers/.test(l)), view.fix.join(' | '))
+  assert.doesNotMatch(body.artifacts.find((a) => a.id === 'ai')!.text(), /Answer it in/)
 })
