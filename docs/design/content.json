@@ -479,16 +479,7 @@
       "unread": "The device inventory was not read. Device management and compliance are unknown.",
       "phones": "{n} people used phones in the sign-in records that were read.",
       "computers": "{n} people used computers without a join state in the sign-in records that were read.",
-      "intune": "Intune capability: {state}. A licence does not prove enrollment, compliance policies or app protection are configured.",
-      "options": "Device choices and technical meaning",
-      "details": [
-        "Intune enrollment lets the organisation manage a device. Enrollment alone does not make it compliant: configure compliance policies, assign them and confirm the device reports compliant before requiring compliance.",
-        "App protection protects work data in supported iOS and Android apps, including on unenrolled phones. It requires the appropriate Intune app protection policies and supported apps. It does not manage the whole phone or cover every browser and application.",
-        "Keeping company data off phones requires an access restriction that blocks those platforms. Excluding phones from a compliant-device policy does not block them. Verify that restriction separately before treating this choice as implemented.",
-        "Microsoft Entra hybrid join connects an on-premises domain-joined Windows device to Entra. It is not the same as Intune enrollment or compliance. Read the proposed policy grant: requiring compliance still requires a compliant device even when it is hybrid joined.",
-        "No computer management requirement leaves those computers out of the planned device requirement. Other applicable Conditional Access policies still apply.",
-        "Saving a choice changes the plan. It does not enroll a device or configure Intune."
-      ]
+      "intune": "Intune capability: {state}. A licence does not prove enrollment, compliance policies or app protection are configured."
     },
     "registrationScope": {
       "unknown": "Guest coverage is not resolved yet. Review the target policy before relying on it.",
