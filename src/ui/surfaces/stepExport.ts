@@ -20,6 +20,7 @@ import { campaignProcedureLines, instructionsHeld, preparationLines, preparesWhi
 import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, objectTaskLeads, readinessHeldLine, stepContract } from './stepContract.ts'
 import type { LaneView, PrerequisiteLabel, StepContract } from './stepContract.ts'
 import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, previewNoteLines, selectedPolicyBodiesOf, entraWithSettings, workProcedureOf } from './stepPackage.ts'
+import { sectionThreeTasksOf } from './sectionThreeTasks.ts'
 import { projectSafely } from '../../content/implementation/project.ts'
 import { BOARD, SUBSTATUS_WORD, boardHolds, laneViewAlone, laneViewFor, laneViewOf, laneWordOf, prerequisiteLabelFor } from './planBoard.ts'
 import type { BoardReadings } from './planBoard.ts'
@@ -499,8 +500,21 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // Info read the content's second copy (`whatToDo.steps`), a differently
   // worded procedure from the tab's. Prepare Your Team for MFA's tab draws its
   // campaign lines, and so does its What to do (campaignProcedureLines).
+  // Disable or Confirm Dormant Accounts' and Use Separate Accounts for Admin
+  // Work's tabs draw their tasks, built from the scan's values
+  // (sectionThreeTasks.ts), and so does their What to do: their content folders
+  // write no Entra procedure of their own, so the package reading below left AI
+  // Info with the lead alone. Each admin's task is headed by its account where
+  // there are several.
+  const sectionThree = sectionThreeTasksOf(step, ctx)
   if (step.id === 's-verify-mfa') lines.splice(0, lines.length, ...campaignProcedureLines(step, cs, ex))
-  else if (pkg && cs.kind !== 'policy' && !step.directionQuestions) {
+  else if (sectionThree !== null) {
+    const tasks = sectionThree.tasks
+    lines.splice(0, lines.length, ...tasks.flatMap((task) => [
+      ...(tasks.length > 1 ? [`${task.title}${task.targetUpn ? ` · ${task.targetUpn}` : ''}`] : []),
+      ...task.steps.flatMap((line, index) => `${index + 1}. ${line}`.split(/\r?\n/)),
+    ]).map((line) => line.replace(/\*\*(.*?)\*\*/g, '$1').trim()).filter(Boolean))
+  } else if (pkg && cs.kind !== 'policy' && !step.directionQuestions) {
     const bindings = packageBindings(step, ctx, contract)
     const runtime = state === null ? null : packageRuntime(pkg, state, bindings, {}).runtime
     const projection = state === null || runtime === null ? null : projectSafely(pkg, state, bindings, runtime)
