@@ -7,6 +7,7 @@ import { emergencyPasskeyTasksOf } from './emergencyPasskeyTasks.ts'
 import { drawsTaskAnatomy, policyTasksOf } from './policyTasks.ts'
 import { oneLine } from '../../content/implementation/project.ts'
 import { networkDraftOf } from '../../mapping/networkDraft.ts'
+import { prepareReadingOf } from './prepareSteps.ts'
 // The opened step's body, worked out once (A3): everything ContentStep.tsx draws
 // that is not a React concern — the contract under the lane engine's reading,
 // the instructions, the implementation channels and artifacts, the package's
@@ -36,7 +37,7 @@ import { ifWrongLineFor, stepExportView } from './stepExport.ts'
 import { stepVars, withoutScheduleDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { portalNamesFor, unwrittenCorrectionLines } from './stepPortal.ts'
-import { preparationLines, preparesWhileCreateWaits, rescanLinesOf, stepInstructions, wholeLines } from './stepInstructions.ts'
+import { preparationLines, preparesWhileCreateWaits, stepInstructions, wholeLines } from './stepInstructions.ts'
 import { CONTRACT, SETTLED_FINDINGS, eyebrowOf, implementationEmptyOf, implementationIsCurrent, isReadinessWork, objectTaskLeads, railOf, readinessOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
 import { boardHolds, laneViewAlone } from './planBoard.ts'
@@ -382,8 +383,14 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // (emergencyGroupTasks.ts), read once its tasks are built below.
   const help = d && typeof d.help === 'string' && whole(d.help, ex) ? fillText(d.help, ex) : null
   const exclusions = step.id === 's-prereq-exclusion-group'
-  const ownRailWords = choosing ?? pkg?.meta.milestone?.actionText ?? directionMilestoneAction(step.id)
-  const railInstruction = step.id === 's-prereq-break-glass' ? help : exclusions ? EXCLUSIONS_MILESTONE : null
+  // Register Your Own Passkey and Prepare Your Team for MFA read their people
+  // (prepareSteps.ts): the milestone follows the operator's readiness, or counts
+  // the people still without a method, and the campaign's Turn On Without Them
+  // picker has its instruction here, in place of its own help (walk list
+  // section 3 items 17, 41 and 46).
+  const prepare = prepareReadingOf(step, ctx, contract.state.satisfied)
+  const ownRailWords = choosing ?? prepare?.milestone ?? pkg?.meta.milestone?.actionText ?? directionMilestoneAction(step.id)
+  const railInstruction = step.id === 's-prereq-break-glass' ? help : exclusions ? EXCLUSIONS_MILESTONE : prepare?.instruction ?? null
   // What kind of step this is, and "Resolution step" for one whose source
   // contradicts itself (stepContract.ts eyebrowOf).
   const eyebrow = eyebrowOf(contract, typeof cs.kind === 'string' ? cs.kind : null)
@@ -541,9 +548,7 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
     produced.push(step.id === 's-verify-mfa' ? mfaPreparationEmail(ctx) : emailResource(step, ctx, contract.why))
   }
   if (step.id === 's-verify-mfa') {
-    // Each list's promise that a scan shows progress follows it, while a scan can (stepInstructions.ts rescanLinesOf, R4-20).
-    const rescan = rescanLinesOf(step, cs)
-    const lines = wholeLines([...(Array.isArray(w.steps) ? w.steps : []), ...rescan.steps, ...(Array.isArray(w.generic) ? w.generic : []), ...rescan.generic], ex).filter(line => line.trim())
+    const lines = wholeLines(Array.isArray(w.steps) ? w.steps : [], ex).filter(line => line.trim())
     for (const channel of ['portal', 'ps', 'ai'] as const) {
       const existing = produced.findIndex(a => a.id === channel)
       if (existing >= 0) produced.splice(existing, 1)
@@ -551,7 +556,7 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
     }
     produced.push({ id: 'portal', form: 'list', lines, text: () => lines.map((line, i) => `${i + 1}. ${line}`).join('\n'), note: null })
     produced.push(inspectionResource(step, 'ps'))
-    produced.push({ id: 'ai', form: 'markdown', lines: [], text: () => aiBriefingText('Help prepare the people in this plan for their actual MFA requirements. Explain who needs a method, which registered methods satisfy their target, and who needs help. Distinguish registered-method readiness from a tested workflow. Explain useful Microsoft Authenticator registration-campaign options without claiming a campaign object is required or already configured.', grounding('')), note: null })
+    produced.push({ id: 'ai', form: 'markdown', lines: [], text: () => aiBriefingText('Help prepare the people in this plan for their actual MFA requirements. Explain who needs a method, which registered methods satisfy their target, and who needs help. Distinguish registered-method readiness from a tested workflow. Explain the registration campaign settings.', grounding('')), note: null })
   }
   if (step.id === 's-prereq-device-plan') {
     const existing = produced.findIndex(a => a.id === 'portal')
@@ -709,6 +714,8 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
     eyebrow,
     artifacts,
     emergencyAccountTasks: taskProjection,
+    /** The step's own Tasks Remaining card where it reads its people (prepareSteps.ts), in place of its content's fixed check. */
+    ownCard: prepare?.card ?? null,
     previewNote,
     notes,
     showImplementation,

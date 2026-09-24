@@ -1580,7 +1580,7 @@ async function walkFixture(fx) {
             const openedEmail = await clickText('[role=tab]', /^Email$/, 'main.page .step-body')
             const email = openedEmail ? await evaluate(`document.querySelector('main.page .step-body .impl-preview')?.innerText || ''`) : ''
             if (!/aka.ms\/mfasetup/.test(email) || !/register an approved method/i.test(email) || !/test sign-in/.test(email)) add('P0', `${slabel}: MFA preparation email omits the registration route, approved method or sign-in test`)
-            if (!/Administrator Sign-In Method/.test(email) || !/Help Completing Your Sign-In Setup/.test(email)) add('P0', `${slabel}: MFA preparation email omits the administrator or assistance audience`)
+            if (!/Set Up Your Admin Passkey/.test(email) || !/Finish Setting Up Your Sign-in Method/.test(email)) add('P0', `${slabel}: MFA preparation email omits the administrator or assistance audience`)
             await clickText('[role=tab]', /^Entra$/, 'main.page .step-body')
           }
         }

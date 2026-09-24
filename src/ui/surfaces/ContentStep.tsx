@@ -58,6 +58,7 @@ import type { ImplementationEmpty, LaneView, PrerequisiteBlocker, PrerequisiteLa
 import { HARDENING_DEFERRAL_ID } from '../../validation/emergencyTiers.ts'
 import { AuthoredText, DoneWhen, EmergencySlotBody, PolicyMembers, ReadinessSection, StepActionColumn, StepDialog, StepFooter, StepHead, StepSection, StepState, WHY_LINK_SHOWN, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
 import { MfaHandoff } from './MfaHandoff.tsx'
+import { TEAM_READINESS_HREF } from './prepareSteps.ts'
 import { HEAD, decisionHeadingsOf, taskHeadingsOf } from './stepHeadings.ts'
 import { ApproveAnswers, DirectionQuestions, useDirectionDraft } from './DirectionQuestions.tsx'
 import { ANSWERED_IN } from '../../roadmap/direction.ts'
@@ -284,7 +285,7 @@ export function ContentStep({
   // sections this step draws and the words under Implementation when it draws
   // none. Everything below renders it; nothing below asks again.
   const body = stepBodyOf(step, ctx, { lane, blockers, prerequisiteLabel, confirmations, baselineCommit, enforceWaits })
-  const { cs, ex, laneView, contract, title, d, taskDecision, reason, conflictWords, pkg, pkgBindings, pkgRuntime, pkgReadiness, scenarios, packaged, whoInline, whoHeld, lead, showWho, whoFull, hasEvidence, readiness, allTiles, decides, instructed, rail, eyebrow, artifacts, emergencyAccountTasks, previewNote, notes, showImplementation, empty, sourceLine, learnUrl, ifWrong } = body
+  const { cs, ex, laneView, contract, title, d, taskDecision, reason, conflictWords, pkg, pkgBindings, pkgRuntime, pkgReadiness, scenarios, packaged, whoInline, whoHeld, lead, showWho, whoFull, hasEvidence, readiness, allTiles, decides, instructed, rail, eyebrow, artifacts, emergencyAccountTasks, ownCard, previewNote, notes, showImplementation, empty, sourceLine, learnUrl, ifWrong } = body
   const isPasskeySettings = step.id === 's-prereq-passkey-settings'
   const isEmergencyAccounts = step.id === 's-prereq-break-glass'
   // Which steps draw the task anatomy (the Tasks Remaining cards and the
@@ -329,7 +330,7 @@ export function ContentStep({
   // tiles — each of them a thing it waits on — everywhere this module produces
   // the subjects, and the Readiness tiles alone on Emergency Access Steps 2–3.
   // The bar reads them, so they are decided once.
-  const taskSubjects = isOwnTaskStep ? policySubjectsOf(contract, displayedReadiness, emergencyAccountTasks, taskSubjectOf(step, eyebrow, title), cardWordsOf(step)?.check ?? null) : emergencySubjectsOf(displayedReadiness, emergencyAccountTasks)
+  const taskSubjects = isOwnTaskStep ? policySubjectsOf(contract, displayedReadiness, emergencyAccountTasks, taskSubjectOf(step, eyebrow, title), cardWordsOf(step)?.check ?? null, ownCard) : emergencySubjectsOf(displayedReadiness, emergencyAccountTasks)
   const emergencyTaskPreferenceKey = `iamai:emergency-task:${ctx.mapping.tenantId}:${step.id}`
   const [implementationChannel, setImplementationChannel] = useState<Channel | null>(null)
   const [emergencyTaskId, setEmergencyTaskId] = useState<string | null>(() => readEmergencyTaskPreference(emergencyTaskPreferenceKey).taskId ?? null)
@@ -481,7 +482,7 @@ export function ContentStep({
               )
             }}
           >
-            {step.id === 's-verify-mfa' ? <p><a href="#/readiness/step/s-verify-mfa">Open MFA Readiness</a></p> : <MfaHandoff step={step} snapshot={ctx.snapshot} mapping={ctx.mapping} />}
+            {step.id === SPECIAL_CARE_STEP_ID ? <p><a href={TEAM_READINESS_HREF}>{String(cs.card?.link ?? '')}</a></p> : <MfaHandoff step={step} snapshot={ctx.snapshot} mapping={ctx.mapping} />}
           </ReadinessSection>}
 
           {/* The baseline defines this policy two ways (roadmap/baselineConflict.ts):
@@ -1484,8 +1485,8 @@ function FollowUpDecision({ step, ctx, saved, onDecide, printing }: { step: Step
   const results = options.filter((o) => o.name.toLowerCase().includes(query.toLowerCase()))
   return <div className="decision">
     <h5 className="dlabel" id={labelId}>{F.pickerLabel}</h5>
-    <p className="reason">{F.pickerHelp}</p>
-    <Picker labelledBy={labelId} selected={picked} options={results} suggestions={options.slice(0, 3)} onSearch={setQuery} onChange={setPicked} onCommit={(next) => onDecide?.({ picked: next.map((o) => o.id) })} />
+    {/* Its instruction is the action column's (stepBody.ts rail.instruction), and nothing is suggested: no fact picks anyone (walk list section 3 items 17 and 22). */}
+    <Picker labelledBy={labelId} selected={picked} options={results} suggestions={[]} onSearch={setQuery} onChange={setPicked} onCommit={(next) => onDecide?.({ picked: next.map((o) => o.id) })} />
   </div>
 }
 

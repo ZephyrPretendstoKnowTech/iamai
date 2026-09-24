@@ -23816,14 +23816,15 @@
         ],
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-          "productContract": "Use IAMAI readiness evidence and an Authenticator-targeted registration campaign to reduce MFA enrollment risk before enforcement; admins still receive passkey/security-key remediation separately.",
-          "currentDocsDifference": "Microsoft registration campaigns now support either Microsoft Authenticator or passkeys, and Microsoft-managed campaign behavior is changing during a rollout expected to finish by end of September 2026. This package preserves IAMAI's existing Authenticator-targeted campaign contract rather than silently changing the target method.",
+          "productContract": "Use IAMAI readiness evidence and a passkey-targeted registration campaign (owner V7 answer; walk list section 3 item 4) to reduce MFA enrollment risk before enforcement; people register Microsoft Authenticator and admins a passkey or security key.",
+          "currentDocsDifference": "Microsoft registration campaigns support either Microsoft Authenticator or passkeys (Learn, how-to-mfa-registration-campaign, checked 2026-09-23). The campaign targets passkeys with the snooze settings Microsoft applies to its managed passkey campaign: one day, unlimited snoozes.",
           "targetCampaign": {
             "state": "enabled",
             "includeId": "all_users",
             "targetType": "group",
-            "targetedAuthenticationMethod": "microsoftAuthenticator",
-            "enforceRegistrationAfterAllowedSnoozes": true
+            "targetedAuthenticationMethod": "fido2",
+            "snoozeDurationInDays": 1,
+            "enforceRegistrationAfterAllowedSnoozes": false
           }
         }
       },
@@ -23862,7 +23863,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Open **Entra ID > Authentication methods > Registration campaign > Edit**.\n2. Set State to **Enabled** to choose the method yourself. Left at **Microsoft managed**, Microsoft runs the campaign: it targets passkeys where the included people are enabled for them, Microsoft Authenticator where they are not, and it reaches everyone who can do MFA rather than only the people on a text message or a voice call.\n3. Authentication method: **Microsoft Authenticator**, or **Passkey (FIDO2)** where this tenant's people can register one. Only one at a time.\n   For an Authenticator campaign, check **Entra ID > Authentication methods > Policies > Microsoft Authenticator** first: with **Authentication mode** set to **Passwordless**, nobody is eligible and the campaign nudges no one. It must be **Any** or **Push**.\n4. Target: **All users**, then apply only IAMAI-resolved exclusions if the tenant campaign should omit non-person populations.\n5. **Days allowed to snooze**: the value your organization approved, between 0 and 14; IAMAI does not hold one.\n6. Keep **Limited number of snoozes** enabled, so a person may skip the prompt three times and must then register, where the tenant's current rollout exposes that control.\n7. Save, reopen the campaign and verify the target before announcing the rollout. Then rescan IAMAI.\n"
+          "text": "1. Open **Entra ID > Authentication methods > Registration campaign > Edit**.\n2. Set State to **Enabled** to choose the method yourself. Left at **Microsoft managed**, Microsoft runs the campaign: it targets passkeys where the included people are enabled for them, Microsoft Authenticator where they are not, and it reaches everyone who can do MFA rather than only the people on a text message or a voice call.\n3. Authentication method: **Passkey**.\n4. Target: **All users**, then apply only IAMAI-resolved exclusions if the tenant campaign should omit non-person populations.\n5. **Days allowed to snooze**: **1**.\n6. **Limited number of snoozes**: **Disabled**.\n7. Save, reopen the campaign and verify the target before announcing the rollout. Then rescan IAMAI.\n"
         },
         "entra.run-workflow": {
           "meta": {
@@ -23910,7 +23911,7 @@
             "format": "json-template",
             "kind": "template"
           },
-          "text": "{\"registrationEnforcement\":{\"authenticationMethodsRegistrationCampaign\":{\"snoozeDurationInDays\":{{json:campaign.snoozeDurationInDays}},\"enforceRegistrationAfterAllowedSnoozes\":true,\"state\":\"enabled\",\"excludeTargets\":{{json:campaign.excludeTargets}},\"includeTargets\":[{\"id\":\"all_users\",\"targetType\":\"group\",\"targetedAuthenticationMethod\":\"microsoftAuthenticator\"}]}}}\n"
+          "text": "{\"registrationEnforcement\":{\"authenticationMethodsRegistrationCampaign\":{\"snoozeDurationInDays\":{{json:campaign.snoozeDurationInDays}},\"enforceRegistrationAfterAllowedSnoozes\":false,\"state\":\"enabled\",\"excludeTargets\":{{json:campaign.excludeTargets}},\"includeTargets\":[{\"id\":\"all_users\",\"targetType\":\"group\",\"targetedAuthenticationMethod\":\"fido2\"}]}}}\n"
         },
         "powershell.run": {
           "meta": {
@@ -23924,7 +23925,7 @@
             "format": "powershell",
             "kind": "template"
           },
-          "text": "param(\n [Parameter(Mandatory=$true)][ValidateSet('Configure','Verify')][string]$Mode,\n [ValidateRange(0,14)][int]$SnoozeDurationInDays=1,\n [string]$ExcludeTargetsJson='[]'\n)\n$ErrorActionPreference='Stop'\nConnect-MgGraph -Scopes 'Policy.ReadWrite.AuthenticationMethod','Policy.Read.AuthenticationMethod' -NoWelcome\n$G='https://graph.microsoft.com/v1.0'\nfunction IG($m,$u,$b=$null){if($null -eq $b){return Invoke-MgGraphRequest -Method $m -Uri $u -OutputType PSObject};Invoke-MgGraphRequest -Method $m -Uri $u -Body ($b|ConvertTo-Json -Depth 30) -ContentType 'application/json' -OutputType PSObject}\nif($Mode -eq 'Configure'){\n $exclude=@($ExcludeTargetsJson|ConvertFrom-Json)\n $campaign=@{snoozeDurationInDays=$SnoozeDurationInDays;enforceRegistrationAfterAllowedSnoozes=$true;state='enabled';excludeTargets=$exclude;includeTargets=@(@{id='all_users';targetType='group';targetedAuthenticationMethod='microsoftAuthenticator'})}\n IG PATCH \"$G/policies/authenticationMethodsPolicy\" @{registrationEnforcement=@{authenticationMethodsRegistrationCampaign=$campaign}} | Out-Null\n}\n$p=IG GET \"$G/policies/authenticationMethodsPolicy\"\n$p.registrationEnforcement.authenticationMethodsRegistrationCampaign\n"
+          "text": "param(\n [Parameter(Mandatory=$true)][ValidateSet('Configure','Verify')][string]$Mode,\n [ValidateRange(0,14)][int]$SnoozeDurationInDays=1,\n [string]$ExcludeTargetsJson='[]'\n)\n$ErrorActionPreference='Stop'\nConnect-MgGraph -Scopes 'Policy.ReadWrite.AuthenticationMethod','Policy.Read.AuthenticationMethod' -NoWelcome\n$G='https://graph.microsoft.com/v1.0'\nfunction IG($m,$u,$b=$null){if($null -eq $b){return Invoke-MgGraphRequest -Method $m -Uri $u -OutputType PSObject};Invoke-MgGraphRequest -Method $m -Uri $u -Body ($b|ConvertTo-Json -Depth 30) -ContentType 'application/json' -OutputType PSObject}\nif($Mode -eq 'Configure'){\n $exclude=@($ExcludeTargetsJson|ConvertFrom-Json)\n $campaign=@{snoozeDurationInDays=$SnoozeDurationInDays;enforceRegistrationAfterAllowedSnoozes=$false;state='enabled';excludeTargets=$exclude;includeTargets=@(@{id='all_users';targetType='group';targetedAuthenticationMethod='fido2'})}\n IG PATCH \"$G/policies/authenticationMethodsPolicy\" @{registrationEnforcement=@{authenticationMethodsRegistrationCampaign=$campaign}} | Out-Null\n}\n$p=IG GET \"$G/policies/authenticationMethodsPolicy\"\n$p.registrationEnforcement.authenticationMethodsRegistrationCampaign\n"
         },
         "ai.configure": {
           "meta": {
@@ -23936,7 +23937,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nThe registration campaign for {{tenant.displayName}} needs to be configured. Intended campaign: State Enabled (not Microsoft managed); method Microsoft Authenticator; target All users; exclusions {{campaign.excludeTargets}}; snooze duration {{campaign.snoozeDurationInDays}} day(s), with registration required after the allowed snoozes where the tenant exposes that control. Switching the method to passkeys would change the saved plan and needs an owner decision. Microsoft is changing campaign behavior in a rollout expected to finish by the end of September 2026, so the portal may show different controls. Prompts depend on each user's eligibility and the snooze settings.\n"
+          "text": "\nThe registration campaign for {{tenant.displayName}} needs to be configured. Intended campaign: State Enabled; method Passkey; target All users; exclusions {{campaign.excludeTargets}}; snooze duration {{campaign.snoozeDurationInDays}} day(s), with unlimited snoozes. Microsoft is changing campaign behavior in a rollout expected to finish by the end of September 2026, so the portal may show different controls. Prompts depend on each user's eligibility and the snooze settings.\n"
         },
         "ai.running": {
           "meta": {
