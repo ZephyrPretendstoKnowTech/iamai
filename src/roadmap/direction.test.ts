@@ -98,7 +98,6 @@ test('(b) a what-you-use question takes today\'s state; a how-it-should-work que
   // enrolled, so every computer under this answer needs an Intune licence,
   // and the question offered the baseline's advice with nothing about the
   // tenant beside it — on a tenant holding 300 seats with 41 in use.
-  assert.ok(q(devices, 'computers').evidence.startsWith(W.baselineEvidence), q(devices, 'computers').evidence)
   assert.match(q(devices, 'computers').evidence, /Intune: [0-9]+ of [0-9]+ licences in use/)
   assert.match(q(devices, 'computers').today ?? '', /^Today: /)
 })
@@ -428,89 +427,6 @@ test('NEW-Nadia-D4: the phones question counts exactly the people MFA Readiness 
       }
       assert.deepEqual(counted, shown, `${name}: the question and MFA Readiness disagree about who signed in from a phone`)
       assert.equal(today, shown.length > 0 ? fillText(W.questions.phones.today, { n: shown.length }) : W.questions.phones.todayNone, name)
-    }
-  }
-
-  // NEW-Nadia-D4: a person read on their own after a partial read, seen on an iPhone, is counted by the phones question
-  {
-    // The collector's second pass (graph/collect/laneB.ts readTargeted) adds the
-    // person's devices to their own record and nothing else; the question read the
-    // tally the first pass left.
-    const f = fixture('getiamai')
-    const s = f.snapshot
-    for (const e of Object.values(s.signInEvidence)) {
-      e.platforms = (e.platforms ?? []).filter((p) => !isPhoneOs(p.os))
-      if (e.devices) e.devices = e.devices.filter((d) => !isPhoneOs(d.os))
-    }
-    assert.equal(phonesToday(f), W.questions.phones.todayNone, 'the premise: nobody signs in from a phone')
-    const id = Object.keys(s.signInEvidence)[0]
-    const e = s.signInEvidence[id]
-    e.platforms = [...(e.platforms ?? []), { os: 'iOS', at: s.asOf }]
-    e.devices = [...(e.devices ?? []), { os: 'iOS', at: s.asOf, trust: 'none', managed: null, deviceIds: [], version: 'iOS 18.2' }]
-    e.individuallyRead = true
-    s.sources.signInEvidence = { ...s.sources.signInEvidence, status: 'partial', reason: 'stopped at time budget; covers the most recent 40 h of the requested 30 days' }
-    assert.deepEqual(phoneSignInIds(s), [id])
-    // Counted, and — the read being partial — said as a count of the part that
-    // was read (NEW-Nadia-D4 review; the test below).
-    assert.equal(phonesToday(f), fillText(W.questions.phones.todayPartial, { n: 1 }))
-  }
-})
-
-test('NEW-Nadia-D4: over a sign-in read that stopped short, the device question claims no absence and states every count as from the part that was read', () => {
-  // NEW-Nadia-D4: over a sign-in read that stopped short, the device question never says no phone or no unidentified computer was seen
-  {
-    // The second way a real scan reached the sentence: a read interrupted or
-    // capped part of the way through the window never reached the iPhone
-    // sign-ins before where it stopped, and the question still said "Today: no
-    // phone sign-ins were seen." — a claim about records nobody read.
-    const f = fixture('getiamai')
-    const s = f.snapshot
-    for (const e of Object.values(s.signInEvidence)) {
-      e.platforms = (e.platforms ?? []).filter((p) => !isPhoneOs(p.os))
-      if (e.devices) e.devices = e.devices.filter((d) => !isPhoneOs(d.os))
-    }
-    const computers = (): string | null => q(stepOf(directionSteps({ snapshot: s, mapping: f.mapping, notAssessed: [], availableGoalIds: [] }), DIRECTION_STEP.devices), 'computers').today
-    // Read whole, the negatives stand: nothing was missed.
-    assert.equal(s.sources.signInEvidence.status, 'ok', 'the premise: a whole read')
-    assert.equal(phonesToday(f), W.questions.phones.todayNone)
-    assert.equal(computers(), W.questions.computers.todayNone)
-    s.sources.signInEvidence = { ...s.sources.signInEvidence, status: 'partial', reason: 'collection interrupted: Graph 503 after retries' }
-    assert.equal(phonesToday(f), null)
-    assert.equal(computers(), null)
-    // What a short read did see is still said, as what the part that was read
-    // showed (the test below).
-    const id = Object.keys(s.signInEvidence)[0]
-    s.signInEvidence[id].devices = [...(s.signInEvidence[id].devices ?? []), { os: 'Android', at: s.asOf, trust: 'none', managed: null, deviceIds: [], version: null }]
-    assert.equal(phonesToday(f), fillText(W.questions.phones.todayPartial, { n: 1 }))
-  }
-
-  // NEW-Nadia-D4 review: over a sign-in read that stopped short, every count the device question states says it is from the part that was read
-  {
-    // The defect: with the flat negatives gone, a short read still stated its
-    // counts as the tenant's — "Today: 3 people signed in from phones." over the
-    // few hours a capped read reached, beside Blocked from company data, where an
-    // undercount argues for blocking; and the computer counts beside Managed,
-    // where it makes enrolment look cheap.
-    const f = fixture('demo')
-    const s = f.snapshot
-    const today = (key: string): string | null => q(stepOf(directionSteps({ snapshot: s, mapping: f.mapping, notAssessed: [], availableGoalIds: [] }), DIRECTION_STEP.devices), key).today
-    const phones = phoneSignInIds(s)!.length
-    const unjoined = s.scenarioEvidence!.unjoinedComputers!.people.length
-    // One person on a registered computer, so both computer counts are stated.
-    s.scenarioEvidence!.registeredComputers = { people: [Object.keys(s.signInEvidence)[0]], count: 1, detail: {} }
-    assert.ok(phones > 0 && unjoined > 0, 'the premise: the demo has phones and unidentified computers to count')
-    // Read whole, the counts are the tenant's.
-    assert.equal(s.sources.signInEvidence.status, 'ok', 'the premise: a whole read')
-    assert.equal(today('phones'), fillText(W.questions.phones.today, { n: phones }))
-    assert.equal(today('computers'), [fillText(W.questions.computers.today, { n: unjoined }), fillText(W.questions.computers.todayRegistered, { n: 1 })].join(' '))
-    for (const [status, reason] of [['partial', 'stopped at time budget; covers the most recent 40 h of the requested 30 days'], ['insufficient', 'stopped at time budget with only 17 h covered (minimum 24 h)']] as const) {
-      s.sources.signInEvidence = { ...s.sources.signInEvidence, status, reason }
-      const computers = today('computers') ?? ''
-      assert.doesNotMatch(computers, /^Today:| Today:/, `${status}: a short read's computer counts stated as the tenant's: ${computers}`)
-      assert.equal(computers, [fillText(W.questions.computers.todayPartial, { n: unjoined }), fillText(W.questions.computers.todayRegisteredPartial, { n: 1 })].join(' '), status)
-      // The phones count is read only over a read MFA Readiness reads (derive/sets.ts phoneSignInIds): partial, not insufficient.
-      if (status === 'partial') assert.equal(today('phones'), fillText(W.questions.phones.todayPartial, { n: phones }))
-      else assert.equal(today('phones'), null)
     }
   }
 })

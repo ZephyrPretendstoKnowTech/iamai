@@ -66,7 +66,7 @@ function QuestionTile({ q, answer, onAnswer, ctx, printing }: { q: DirectionQues
           {q.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       )}
-      <p>{q.evidence}</p>
+      {q.evidence && <p>{q.evidence}</p>}
       {q.today && <p>{q.today}</p>}
       {q.note && <p>{q.note}</p>}
       {!printing && picks && (
