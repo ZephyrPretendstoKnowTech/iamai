@@ -1,9 +1,9 @@
 // Define Your Rollout Scope, drawn (docs/plans/direction-spec.md): the
 // Questions section of a decision-anatomy step.
 //
-// One tile per question: the pre-filled or saved answer as its control, one line
-// of evidence (why it was suggested, or that it is a default the scan did not
-// see), today beside a how-it-should-work answer, and whether it is approved.
+// One tile per question: the pre-filled or saved answer as its control, the
+// evidence (what the scan saw, and nothing where it saw nothing: walk list 14),
+// what the answer does to the plan, and whether it is approved.
 // One Approve answers button, in the step's action column, saves every answer
 // in the step at once, through the step's own decision
 // (roadmap/directionAnswers.ts writes them where they have always been stored).
@@ -21,7 +21,6 @@ import { directionAnswerComplete, directionDecisionOf, directionDraftOf } from '
 import type { DirectionAnswer } from '../../roadmap/directionAnswers.ts'
 import { answerTextOf } from '../../roadmap/direction.ts'
 import { directionWords } from '../../content/content.ts'
-import { fillText } from '../../content/render.ts'
 import { Button, Picker } from '../components/index.ts'
 import type { PickerOption } from '../components/index.ts'
 import { accountBadges, filterPickerObjects, pickerUniverse } from './pickerRows.ts'
