@@ -16,6 +16,7 @@ import { laneReadings } from './planLanes.ts'
 import { laneViewOf } from './planBoard.ts'
 import { milestoneHeadlineOf, readinessLeadOf } from './stepContract.ts'
 import { stepBodyOf } from './stepBody.ts'
+import { EXCLUSIONS_RECORD_KEY } from '../../mapping/safetyChoice.ts'
 
 /** A day anywhere in the headline, bare or as an estimate ("Sep 23, 2026", "Est. Aug 31, 2026"). */
 const DAY = /\b[A-Z][a-z]{2} \d{1,2}, \d{4}\b/
@@ -151,10 +152,20 @@ test('1.1 and 1.2 read their milestone in words over their instruction line, and
   assert.doesNotMatch(accounts.body.rail.headline, DAY)
   assert.equal(accounts.body.rail.instruction, 'Select the accounts dedicated to emergency access, then select Done.')
   assert.equal(opened('demo-week2', 's-prereq-break-glass').body.rail.headline, 'Completed')
-  // Configure Emergency Exclusions: its group line is the milestone and the decision's help is the instruction, never the same line twice.
+  // Configure Emergency Exclusions (owner audit 1.2 #1, #2): the group line is the
+  // instruction under the bar in every state, as 1.1's picker line is; the
+  // milestone above it names what is left, moving on once a group is chosen.
+  const G = (app.plan as unknown as { emergencyTasks: Record<string, string> }).emergencyTasks
+  const unchosen = opened('demo', 's-prereq-exclusion-group', (f) => { f.mapping.records = Object.fromEntries(Object.entries(f.mapping.records ?? {}).filter(([k]) => k !== EXCLUSIONS_RECORD_KEY)) }).body.rail
+  assert.equal(unchosen.headline, G.chooseExclusionsGroup)
+  assert.equal(unchosen.instruction, T.exclusionsGroupRailSub)
+  // demo: Core - Exclusions is chosen and four policies do not exclude it yet.
   const group = opened('demo', 's-prereq-exclusion-group').body.rail
-  assert.equal(group.headline, T.exclusionsGroupRailSub)
-  assert.ok(group.instruction !== null && group.instruction !== '' && group.instruction !== group.headline, `1.2's instruction: ${group.instruction}`)
+  assert.equal(group.headline, 'Exclude Core - Exclusions from 4 policies.')
+  assert.equal(group.instruction, T.exclusionsGroupRailSub)
+  // messy: the chosen group holds members that are not the emergency accounts.
+  assert.equal(opened('messy', 's-prereq-exclusion-group').body.rail.headline, "Remove the members that aren't emergency access accounts from Core - Exclusions.")
+  assert.equal(opened('demo-week2', 's-prereq-exclusion-group').body.rail.headline, 'Completed')
   // Configure Passkey Settings takes no control of its own and still leads with words.
   const passkeys = opened('demo', 's-prereq-passkey-settings').body.rail
   assert.equal(passkeys.instruction, null)

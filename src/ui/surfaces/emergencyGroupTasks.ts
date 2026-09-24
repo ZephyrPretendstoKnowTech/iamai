@@ -3,6 +3,12 @@ import { exclusionsGroupPolicies, groupLookup } from '../../validation/exclusion
 import type { EmergencyAccountTask, EmergencyTaskProjection } from './emergencyAccountTasks.ts'
 import type { StepVarContext } from './stepVars.ts'
 import type { Step } from '../../roadmap/types.ts'
+import { app } from '../../content/content.ts'
+import { fillText } from '../../content/render.ts'
+import { list } from '../../copy/statements.ts'
+
+/** Configure Emergency Exclusions' Next milestone words (pages.app.plan.emergencyTasks). */
+const M = (app.plan as unknown as { emergencyTasks: Record<'chooseExclusionsGroup' | 'createExclusionsGroup' | 'addToExclusionsGroup' | 'removeFromExclusionsGroup' | 'excludeFromPolicy' | 'excludeFromPolicies', string> }).emergencyTasks
 
 const clean = (value: string): string => value.replace(/[\r\n]+/g, ' ').trim()
 const same = (a: string, b: string): boolean => a.toLowerCase() === b.toLowerCase()
@@ -124,5 +130,20 @@ export function emergencyGroupTasksOf(step: Step, ctx: StepVarContext): Emergenc
       ]), 'Return to IAMAI and select **Scan to update the plan**.'],
     },
   ]
-  return { tasks, printAll: true }
+  // The Next milestone names what is left, in the order the tasks run
+  // (owner audit 1.2 #2, 2026-09-23): after a group is chosen the rail moves on
+  // from choosing it to the accounts it still lacks and the policies that do
+  // not yet exclude it. Where none of these is open, the rail's own fallback
+  // (stepContract.ts railOf) reads the step's state.
+  const group = clean(saved?.name || choice.actionableName || (groupId ? ctx.nameOf(groupId) : ''))
+  const nameOf = (id: string): string => clean(ctx.nameOf(id) || upnOf(ctx, id))
+  const milestone = !groupId || unsuitableGroup || choice.status === 'invalidated'
+    ? (choice.status === 'none-found' && !saved ? M.createExclusionsGroup : M.chooseExclusionsGroup)
+    : !group ? null
+      : missing.length ? fillText(M.addToExclusionsGroup, { accounts: list(missing.map(nameOf)), group })
+        : extra.length ? fillText(M.removeFromExclusionsGroup, { group })
+          : missingPolicies.length === 1 ? fillText(M.excludeFromPolicy, { group, policy: missingPolicies[0].name })
+            : missingPolicies.length > 1 ? fillText(M.excludeFromPolicies, { group, count: String(missingPolicies.length) })
+              : null
+  return { tasks, printAll: true, milestone }
 }

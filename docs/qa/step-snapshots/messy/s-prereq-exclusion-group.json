@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "Ready · Correct",
   "bar": "Needs correction",
-  "rail": "Select the group containing your emergency accounts for policy exclusions.",
+  "rail": "Remove the members that aren't emergency access accounts from Core - Exclusions.",
   "headings": [
     "About this Step",
     "Tasks Remaining",

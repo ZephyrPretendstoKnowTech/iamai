@@ -377,13 +377,13 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   const chosen = ctx.mapping.breakGlassUserIds.length
   const choosing = step.id === 's-prereq-break-glass' && chosen < 2 ? (chosen === 0 ? CHOOSE_ACCOUNTS : CHOOSE_SECOND_ACCOUNT) : null
   // The instruction line under the milestone, on the two Emergency Access steps
-  // that take a choice: the decision's help, said once. Configure Emergency
-  // Exclusions' milestone is its group line; where its help has a hole, that line
-  // moves down to be the instruction rather than being said twice.
+  // that take a choice, said once: 1.1's decision help, and 1.2's group line
+  // (owner audit 1.2 #1). 1.2's milestone above it names what is left
+  // (emergencyGroupTasks.ts), read once its tasks are built below.
   const help = d && typeof d.help === 'string' && whole(d.help, ex) ? fillText(d.help, ex) : null
   const exclusions = step.id === 's-prereq-exclusion-group'
-  const railWords = choosing ?? (exclusions && help !== null ? EXCLUSIONS_MILESTONE : null) ?? pkg?.meta.milestone?.actionText ?? directionMilestoneAction(step.id)
-  const railInstruction = step.id === 's-prereq-break-glass' ? help : exclusions ? help ?? EXCLUSIONS_MILESTONE : null
+  const ownRailWords = choosing ?? pkg?.meta.milestone?.actionText ?? directionMilestoneAction(step.id)
+  const railInstruction = step.id === 's-prereq-break-glass' ? help : exclusions ? EXCLUSIONS_MILESTONE : null
   // What kind of step this is, and "Resolution step" for one whose source
   // contradicts itself (stepContract.ts eyebrowOf).
   const eyebrow = eyebrowOf(contract, typeof cs.kind === 'string' ? cs.kind : null)
@@ -614,6 +614,7 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   const railTasks = taskProjection?.tasks ?? []
   const nextTask = (railTasks.find((t) => t.id === taskProjection?.recommendedTaskId) ?? railTasks.find((t) => t.required))?.title ?? null
   const leadDrawn = !instructed && taskProjection === null && !usesDecisionAnatomy(step.id)
+  const railWords = (exclusions && emergencyAccountTasks && 'milestone' in emergencyAccountTasks ? emergencyAccountTasks.milestone : null) ?? ownRailWords
   const rail = railOf(contract, { words: railWords, task: nextTask, instruction: railInstruction, leadDrawn })
   const W = CONTRACT.implementation
   // Guidance stays copyable. Concrete unresolved findings remain in Readiness.
