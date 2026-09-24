@@ -2910,7 +2910,7 @@
           "defaultEvidence": "A default, not something the scan saw.",
           "baselineEvidence": "The baseline's recommendation.",
           "reopened": "You answered {answer}. {evidence}",
-          "alreadySetAside": "The Emergency Access accounts are already set aside: {accounts}.",
+          "alreadySetAside": "Your emergency access accounts are already out of the people counts: {names}.",
           "none": "None",
           "steps": {
             "use": {
@@ -2920,8 +2920,8 @@
             },
             "accounts": {
               "title": "Identify Service and Shared Accounts",
-              "why": "Some accounts aren't a person: a mailbox a scanner uses, a script's account, a meeting-room device. Mark them, so every count on the plan is about people, and these accounts get their own rules.",
-              "milestoneAction": "Approving these answers takes these accounts out of the people counts and gives them their own rules."
+              "why": "Some accounts aren't a person: a mailbox a scanner uses, a script's account, a meeting-room device. IAMAI has picked the ones it found below. Approve or correct them: they leave the people counts, and each kind gets a policy of its own.",
+              "milestoneAction": "Approving these answers sets which accounts count as people and which get a policy of their own."
             },
             "devices": {
               "$comment": "Stage 3 (roadmap-flow V1 decision 3): today's devices step plus the office network question from Decide Where People Sign In From, which is no longer drawn. Its title is the V1 outline's name for the merged step. why and milestoneAction are the two steps' words combined as they were; the only edit is the countries clause each carried (\"which countries are allowed and\", \"and the countries your policies allow\"), false once work countries moved to Block Sign-ins From Countries Not Allowed.",
@@ -2970,14 +2970,18 @@
               "some": "Pick accounts"
             },
             "serviceAccounts": {
-              "label": "Service accounts (includes script accounts)",
-              "seen": "{n} accounts look like service accounts (names, non-interactive use).",
-              "notSeen": "No account looks like a service account."
+              "label": "Service and script accounts",
+              "seen": "{n} accounts look like service accounts.",
+              "seenOne": "1 account looks like a service account.",
+              "notSeen": "No account looks like a service account.",
+              "note": "Answering None takes Restrict Service Accounts to the Trusted Network off your plan and counts these accounts as people."
             },
             "sharedDevices": {
-              "label": "Shared device accounts",
+              "label": "Shared-device accounts",
               "seen": "{n} accounts look like shared-device accounts.",
-              "notSeen": "No account looks like a shared-device account."
+              "seenOne": "1 account looks like a shared-device account.",
+              "notSeen": "No account looks like a shared-device account.",
+              "note": "Answering None takes Give Shared Devices Their Own Policy off your plan and counts these accounts as people."
             },
             "computers": {
               "label": "Company computers",
