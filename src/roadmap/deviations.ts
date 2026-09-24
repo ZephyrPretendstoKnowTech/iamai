@@ -15,6 +15,7 @@
 import type { MappingState } from '../mapping/types.ts'
 import { COMPUTER_PLATFORMS, PHONE_PLATFORMS, answerOf, devicePlanOf, deviceScopeOf, serviceProvidersExcluded } from './answers.ts'
 import { stepIdForGoal } from './stepIds.ts'
+import { answeredReasonOf, phonesOf } from './directionAnswers.ts'
 
 type RawPolicy = Record<string, unknown>
 
@@ -101,14 +102,16 @@ export function applyDeviations(body: RawPolicy, goalId: string, mapping: Pick<M
  * reason (E2): the compliant-device policy when no platform is left in it (and
  * the Intune-enrolment step with it), the app-protection policy unless phones
  * are protected by their apps. Null while the step applies, or while the
- * decision is open (the steps wait on it instead).
+ * decision is open (the steps wait on it instead). The reason is the answer as
+ * Decide How and Where People Sign In shows it (directionAnswers.ts
+ * answeredReasonOf): computers Unmanaged for the first two, since phones are
+ * out of that policy unless enrolled; the phones answer for app protection.
  */
 export function deviceStepDoesntApply(goalId: string, mapping: Pick<MappingState, 'questionAnswers'>): string | null {
   const plan = devicePlanOf(mapping)
   if (!plan) return null
   const scope = deviceScopeOf(plan)
-  const answer = [plan.phonesText, plan.computersText].filter((t): t is string => typeof t === 'string' && t.length > 0).join('; ')
-  if (goalId === COMPLIANT_DEVICE_GOAL || goalId === INTUNE_ENROLMENT_GOAL) return !scope.phones && !scope.computers ? answer : null
-  if (goalId === APP_PROTECTION_GOAL) return (plan.phoneAppProtection === 'required' || (!plan.phoneAppProtection && plan.phones === 'apps')) && !plan.noWorkPhones ? null : plan.phonesText
+  if (goalId === COMPLIANT_DEVICE_GOAL || goalId === INTUNE_ENROLMENT_GOAL) return !scope.phones && !scope.computers ? answeredReasonOf('computers', 'unmanaged') : null
+  if (goalId === APP_PROTECTION_GOAL) return (plan.phoneAppProtection === 'required' || (!plan.phoneAppProtection && plan.phones === 'apps')) && !plan.noWorkPhones ? null : answeredReasonOf('phones', phonesOf(mapping) ?? '')
   return null
 }

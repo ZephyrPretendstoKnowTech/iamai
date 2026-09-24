@@ -356,9 +356,9 @@ export function answerTextOf(q: Pick<DirectionQuestion, 'options' | 'pickedWith'
 }
 
 /**
- * The steps whose question moved to Direction, and which questions: each one
- * shows "Answered in <Direction step>" with the answer and a link, where it used
- * to ask (docs/plans/direction-spec.md, Retire or fold).
+ * The steps whose question moved to Direction, and which questions (docs/plans/
+ * direction-spec.md, Retire or fold). Such a step no longer asks it, and shows
+ * no Answered in block where it used to (walk list item 19).
  */
 export const ANSWERED_IN: Readonly<Record<string, readonly DirectionQuestionKey[]>> = {
   [PREREQ_STEP_ID.trustedLocation]: ['officeNetwork'],
@@ -396,27 +396,6 @@ export function directionWaitRelayed(step: Pick<Step, 'goalId' | 'baselineReview
   return mine.length > 0 ? mine.every((k) => carried.has(k)) : [...carried].some((k) => directionStepOf(k) === direction)
 }
 
-export type AnsweredIn = { step: DirectionStepId; title: string; lines: { key: string; label: string; value: string; saved: boolean }[] }
-
-/**
- * Where a step's moved question is answered now, and what the answer is: the
- * saved answer, or that it is not answered yet and what the suggestion is.
- * Null for a step whose questions never moved.
- */
-export function answeredInOf(stepId: string, ctx: { snapshot: TenantSnapshot; mapping: MappingState; nameOf: (id: string) => string }): AnsweredIn | null {
-  const keys = ANSWERED_IN[stepId]
-  if (!keys) return null
-  const questions = directionSteps({ snapshot: ctx.snapshot, mapping: ctx.mapping, notAssessed: [], availableGoalIds: [], nameOf: ctx.nameOf }).flatMap((s) => s.directionQuestions ?? [])
-  const locations = new Map((ctx.snapshot.config.namedLocations?.rows ?? []).map((raw) => raw as { id?: string; displayName?: string }).filter((l) => typeof l.id === 'string').map((l) => [l.id as string, l.displayName ?? (l.id as string)]))
-  const lines = keys.map((key) => questions.find((q) => q.key === key)).filter((q): q is DirectionQuestion => q !== undefined).map((q) => {
-    const nameOf = q.control === 'locations' ? (id: string) => locations.get(id) ?? id : ctx.nameOf
-    const value = answerTextOf(q, q.saved ?? q.suggested, nameOf)
-    return { key: q.key, label: q.label, value: q.saved ? value : fillText(W.notAnswered, { answer: value }), saved: q.saved !== null }
-  })
-  const step = directionStepOf(keys[0])
-  return { step, title: directionTitleOf(step), lines }
-}
-
 // ---- per-answer gating ----
 
 /** The Direction answers each goal's policy depends on (docs/plans/direction-spec.md, owner decision 3). */
@@ -440,6 +419,28 @@ export function directionDependenciesOf(step: Pick<Step, 'goalId' | 'baselineRev
   const service = SERVICE_GOAL.get(step.goalId) ?? (step.baselineReviewSource ? serviceOf(step.baselineReviewSource) : null)
   if (service !== null && (SERVICE_KEYS as readonly string[]).includes(service)) out.push(`service:${service}`)
   return out
+}
+
+/** A step only an answer puts on the plan: Keep Company Data Off Phones, while phones are Blocked from company data (generate.ts). */
+const ADDED_BY_ANSWER: Readonly<Record<string, readonly DirectionQuestionKey[]>> = {
+  's-ladder-phone-access-restriction': ['phones'],
+}
+
+/**
+ * Each Direction step's Impact (walk list item 25, ui/surfaces/rowWho.ts): how
+ * many plan steps its answers decide — a step an answer puts on the plan or
+ * takes off it, and a policy that waits on it (directionDependenciesOf, the
+ * moved questions of ANSWERED_IN). Only questions the step asks count.
+ */
+export function countDirectionImpact(steps: Step[]): void {
+  const asked = new Set(steps.filter((s) => isDirectionStep(s.id)).flatMap((s) => (s.directionQuestions ?? []).map((q) => q.key)))
+  const counts = new Map<string, number>()
+  for (const step of steps) {
+    if (isDirectionStep(step.id)) continue
+    const keys = [...directionDependenciesOf(step), ...(ANSWERED_IN[step.id] ?? []), ...(ADDED_BY_ANSWER[step.id] ?? [])].filter((k) => asked.has(k))
+    for (const id of new Set(keys.map(directionStepOf))) counts.set(id, (counts.get(id) ?? 0) + 1)
+  }
+  for (const step of steps) if (isDirectionStep(step.id)) step.impactCount = counts.get(step.id) ?? 0
 }
 
 /**

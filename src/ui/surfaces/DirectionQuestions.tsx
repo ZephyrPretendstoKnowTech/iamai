@@ -1,6 +1,5 @@
 // Define Your Rollout Scope, drawn (docs/plans/direction-spec.md): the
-// Questions section of a decision-anatomy step, and the "Answered in" block a
-// step shows where its question used to be asked.
+// Questions section of a decision-anatomy step.
 //
 // One tile per question: the pre-filled or saved answer as its control, one line
 // of evidence (why it was suggested, or that it is a default the scan did not
@@ -19,7 +18,7 @@ import type { DirectionQuestion } from '../../roadmap/types.ts'
 import type { StepDecisionInput } from '../../roadmap/decisions.ts'
 import { directionAnswerComplete, directionDecisionOf } from '../../roadmap/directionAnswers.ts'
 import type { DirectionAnswer } from '../../roadmap/directionAnswers.ts'
-import { answerTextOf, answeredInOf } from '../../roadmap/direction.ts'
+import { answerTextOf } from '../../roadmap/direction.ts'
 import { directionWords } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { Button, Picker } from '../components/index.ts'
@@ -28,8 +27,6 @@ import { filterPickerObjects, pickerUniverse } from './pickerRows.ts'
 import type { PickerObject } from './pickerRows.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { CONTRACT } from './stepContract.ts'
-import { returnToStep } from '../shell/routes.ts'
 
 const W = directionWords
 
@@ -108,23 +105,5 @@ export function DirectionQuestions({ step, ctx, heading, onDecide, printing = fa
       </div>
       {!printing && <Button variant="primary" disabled={!ready || saving || !onDecide} onClick={approve}>{W.approve}</Button>}
     </section>
-  )
-}
-
-/**
- * Where a step's question used to be asked (the object and policy steps whose
- * questions moved to Direction): "Answered in <step>", the answer, and a link.
- */
-export function AnsweredInDirection({ stepId, ctx }: { stepId: string; ctx: StepVarContext }) {
-  const answered = useMemo(() => answeredInOf(stepId, ctx), [stepId, ctx])
-  if (!answered) return null
-  return (
-    <div className="decision-form answered-in-direction">
-      <div className="decision">
-        <h5 className="dlabel action-heading">{fillText(W.answeredIn, { step: answered.title })}</h5>
-        {answered.lines.map((l) => <p key={l.key} className="reason"><strong>{l.label}</strong>: {l.value}</p>)}
-        <p><a className="inline-link" href={returnToStep(answered.step)}>{fillText((CONTRACT.readiness.tiles as { openStep: string }).openStep, { step: answered.title })}</a></p>
-      </div>
-    </div>
   )
 }
