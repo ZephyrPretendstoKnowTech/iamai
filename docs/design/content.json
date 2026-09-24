@@ -1835,8 +1835,6 @@
           "chooseAccounts": "Choose your two emergency access accounts.",
           "$commentChooseSecondAccount": "The same milestone once one emergency access account is saved: the second is the next thing to choose (stepBody.ts).",
           "chooseSecondAccount": "Choose your second emergency access account.",
-          "$commentSignInEachAccount": "Verify Emergency Access's line under its milestone while an account still has to sign in (cleanupExport.ts drillMilestone), in place of \"Verify every selected account after the final configuration is observed.\". Owner wording, 2026-09-23.",
-          "signInEachAccount": "Sign in with each emergency access account.",
           "$commentYourAccounts": "Prepare Emergency Access Accounts' line over its picker once accounts are saved (ContentStep.tsx SingleDecision), in place of the instruction to select them. Owner wording, 2026-09-23.",
           "yourAccounts": "Your emergency access accounts"
         },
@@ -1856,7 +1854,9 @@
           "$commentRecordPending": "A passkey sign-in since the change that meets every condition, while the account still waits: IAMAI records it from a scan (planData.ts reconcileAutomaticRecovery), so until then the card showed a last sign-in after the last change under the instruction to sign in, and the dates read as done (review, 2026-09-23). It asks for the scan, not another sign-in, and wins over notPasskey: a later sign-in with another method does not undo it.",
           "recordPending": "Scan again to record the passkey sign-in.",
           "$commentUnconfigured": "Before IAMAI has observed a verified configuration there is no change to date, so the line waits for the checks instead.",
-          "unconfigured": "Sign in with this account’s passkey once the configuration checks pass."
+          "unconfigured": "Sign in with this account’s passkey once the configuration checks pass.",
+          "$commentMilestone": "Verify Emergency Access's line under its milestone while an account still has to sign in (cleanupExport.ts drillMilestone), in place of \"Verify every selected account after the final configuration is observed.\". Owner wording, 2026-09-23.",
+          "milestone": "Sign in with each emergency access account."
         },
         "escapeHatchHeld": "Running this would turn the policy on straight away, and the way back in to {tenant} is not verified yet. Finish {steps} first; the instructions come back when its checks pass.",
         "$commentReadinessHeldCreate": "Owner, 2026-09-23: \"Hold the create for that policy until ready.\" A policy whose grant requires a compliant device is not created in report-only while the device readiness that gates its turn-on is unmet (roadmap/operations.ts createWaitsOnReadiness), because report-only prompts for a certificate (Microsoft Learn, concept-conditional-access-report-only). The fact, then what it waits on; no instruction.",
