@@ -554,7 +554,16 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   }
   lines.push(...verificationResourceLines(step, ctx.mapping))
   const action = contract.whatToDo.text
-  if (cs.kind !== 'policy' && contract.state.lane?.lane === 'Completed') lines.splice(0)
+  // A finished supporting step keeps its one procedure here too, as its Entra
+  // tab does (walk list item 19, step template rule 7): the lines were cleared
+  // for every Completed step, just after the block above put the procedure in,
+  // so AI Info read "What to do: No change needed." and no procedure. Where a
+  // procedure stands it is the What to do, with no no-op line in front of it; a
+  // finished step with none still clears, as before.
+  const finished = cs.kind !== 'policy' && contract.state.lane?.lane === 'Completed'
+  const procedureStands = finished && !step.directionQuestions && lines.length > 0
+    && (step.id === 's-verify-mfa' || sectionThree !== null || hasPackagePortal || (Array.isArray(w.steps) && w.steps.length > 0))
+  if (finished && !procedureStands) lines.splice(0)
   // What the action waits on, beside the action, where the action is the wait
   // (stepContract.ts `ContractAction.gatedBy`). The screen said "Waiting on your
   // direction" on the row and the badge and nothing here did, so a step this
@@ -563,7 +572,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // contract's own words: nothing is composed and nothing is decided again.
   const gate = gateLine(contract.whatToDo.gatedBy, laneView)
   if (gate !== null && !lines.includes(gate)) lines.unshift(gate)
-  if (action.trim().length > 0 && !lines.includes(action)) lines.unshift(action)
+  if (action.trim().length > 0 && !lines.includes(action) && !procedureStands) lines.unshift(action)
   // The three emergency preparation steps export the task text the screen shows
   // (stepBody.ts), not the content's older What to do lines (overnight review B5).
   const emergencyTasks = step.id === EMERGENCY_ACCOUNTS ? emergencyAccountTasksOf(step, ctx)
