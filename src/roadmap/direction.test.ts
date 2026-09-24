@@ -156,7 +156,6 @@ test('(c, d) an answer saved before Direction existed still reads as saved, and 
     const partner = questionLabels(QUESTION_STEP.partner).question!
     const m = applyStepDecisions(f.mapping, {
       's-confirm-workloads': { answers: { sharepoint: 'yes', 'evidence:sharepoint': 'present' }, at: AT },
-      [QUESTION_STEP.deviceCode]: { option: 'None', at: AT },
       [QUESTION_STEP.mailDevices]: { option: 'None', at: AT },
       [QUESTION_STEP.partner]: { picked: [], answers: { [partner]: 'Prompt them like any guest' }, at: AT },
       [QUESTION_STEP.devices]: { answers: { [DEVICE_ANSWER_KEYS.phoneManagement]: 'enrolled', [DEVICE_ANSWER_KEYS.phoneAppProtection]: 'required', [DEVICE_ANSWER_KEYS.computers]: 'enrolled' }, at: AT },
