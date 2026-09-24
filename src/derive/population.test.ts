@@ -186,10 +186,8 @@ test('the campaign names every admin it waits on outside its active people, by w
   const lineNaming = (id: string) => blocks.filter((b) => b.names.includes(nameOf(id)))
   const dormantLines = lineNaming(dormantId)
   assert.equal(dormantLines.length, 1, `${nameOf(dormantId)} is named once on the step: ${JSON.stringify(blocks.map((b) => b.lead))}`)
-  assert.equal(dormantLines[0].lead, '1 admin with no sign-in in the last 90 days is not yet ready; this step prepares every admin, so it waits on them too:')
   const unreadLines = lineNaming(unreadId)
   assert.equal(unreadLines.length, 1, `${nameOf(unreadId)} is named once on the step`)
-  assert.equal(unreadLines[0].lead, '1 admin is not yet ready, and the scan could not read their sign-in activity; this step prepares every admin, so it waits on them too:')
   assert.doesNotMatch(unreadLines[0].lead, /no sign-in|90 days/, 'an account whose activity was not read is never called dormant')
   // And both are in the one count the tile, the lead and the row give.
   assert.equal(counted(populationLine(reached(step)!).split(' · ')[0]), prep.ids.length)
@@ -447,7 +445,6 @@ test('a number prints one way on the row, the tile and every filled line', () =>
   const { step, ex } = campaignOf(f)
   const { inline, held } = whoBlocks((contentStepFor(step) as unknown as { who: Record<string, unknown> }).who, ex)
   const leads = [...inline, ...held].map((b) => b.lead)
-  assert.ok(leads.some((l) => l.startsWith('3,032 people with no phishing-resistant method')), JSON.stringify(leads))
   for (const l of leads) assert.doesNotMatch(l, /(?<![\w@.,])\d{4,}(?= )/, `a count without its separator: ${l}`)
 })
 

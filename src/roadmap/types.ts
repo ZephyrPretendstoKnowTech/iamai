@@ -648,7 +648,7 @@ export type Step = {
    * record, where activity was read (derive/sets.ts notActiveUsers, the dormant step's
    * list); `activityUnreadIds` the ones whose sign-in activity was not read at all.
    */
-  preparation?: { ids: string[]; readyIds: string[]; missingIds: string[]; unknownIds?: string[]; guestIds: string[]; dormantIds?: string[]; activityUnreadIds?: string[]; /** Not ready, and marked to turn on without for now (roadmap/followUp.ts). */ followUpIds?: string[] }
+  preparation?: { ids: string[]; readyIds: string[]; missingIds: string[]; unknownIds?: string[]; guestIds: string[]; dormantIds?: string[]; activityUnreadIds?: string[]; /** Those Require Phishing-Resistant MFA for Admins covers: each needs a passkey or security key (walk list section 3 item 53). */ passkeyIds?: string[]; /** Not ready, and marked to turn on without for now (roadmap/followUp.ts). */ followUpIds?: string[] }
   /**
    * The people marked on the campaign to turn the policies on without, for now,
    * that this step reaches (roadmap/followUp.ts settleFollowUp): on the campaign,

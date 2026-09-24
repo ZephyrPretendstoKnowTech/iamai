@@ -143,7 +143,7 @@ type ContractWords = {
   /** A finished policy this plan owns that went live with no report-only period IAMAI watched (doneWhen.ts enforcedUnwatched; owner decision 3). */
   foundEnforcedUnwatched: string
   /** The people marked on the campaign to turn on without, for now (roadmap/followUp.ts). */
-  followUp: { label: string; campaign: string; campaignOpen: string; method: string; risk: string; pickerLabel: string; pickerHelp: string; save: string; printed: string; printedNone: string }
+  followUp: { label: string; campaignLabel: string; campaign: string; campaignOpen: string; method: string; risk: string; pickerLabel: string; save: string; printed: string; printedNone: string }
   /** The threshold where the scan could prove only a floor under the value. */
   foundReadinessFloor: string
   /** That floor, wrapped before the family template. */
@@ -2029,10 +2029,16 @@ function belowGoalFloorTile(c: StepContract): ReadinessTile | null {
   return { key: BELOW_GOAL_FLOOR, label: CONTRACT.belowGoalFloor.label, tone: 'warn', value: fillText(CONTRACT.belowGoalFloor.value, { floor: c.belowGoalFloor.floor }), note: c.belowGoalFloor.text }
 }
 
-/** Their tile: a warning, never a hold — the person chose to go ahead without them. */
+/**
+ * Their tile: a warning, never a hold — the person chose to go ahead without
+ * them. On the campaign itself it is headed by the list's own name, Turn On
+ * Without Them, and once the campaign is complete it is a fact of the finished
+ * step, folded under Satisfied (walk list section 3 item 47).
+ */
 function followUpTile(c: StepContract): ReadinessTile | null {
   if (c.followUp == null) return null
-  return { key: 'follow-up', label: CONTRACT.followUp.label, tone: 'warn', value: `${c.followUp.count} ${plural(c.followUp.count, 'person', 'people')}`, note: c.followUp.text }
+  const campaign = c.id === CAMPAIGN_STEP_ID
+  return { key: 'follow-up', label: campaign ? CONTRACT.followUp.campaignLabel : CONTRACT.followUp.label, tone: campaign && c.state.satisfied ? 'good' : 'warn', value: `${c.followUp.count} ${plural(c.followUp.count, 'person', 'people')}`, note: c.followUp.text }
 }
 
 /** The key of the tile below: a fact about the tenant's own policy, never a task (FINISHED_FINDINGS). */

@@ -27,10 +27,10 @@ function conditionOf(name: string, ownedBy: string, byId: ReadonlyMap<string, St
   const owner = byId.get(ownedBy)
   if (owner?.doesntApply != null) return 'not-applicable'
   switch (name) {
-    case 'campaign-targets-passkey': {
-      const passkeys = campaignTargetsPasskeys()
-      return passkeys === null ? 'unresolved' : passkeys ? 'applicable' : 'not-applicable'
-    }
+    // Never not-applicable (walk list section 3 item 3; BLOCKED.md S2): that
+    // would complete Prepare Your Team for MFA through §8.2 on every tenant's
+    // first scan, whoever is still not ready. The step completes on its people.
+    case 'campaign-targets-passkey': return campaignTargetsPasskeys() === true ? 'applicable' : 'unresolved'
     case 'sd-enabled': return owner !== undefined && owner.status !== 'done' ? 'applicable' : 'not-applicable'
     case 'shared-devices-exist': return owner !== undefined ? 'applicable' : 'not-applicable'
     // Owned by the policy it gates, so the owner being on the plan says nothing: the saved answer does.
