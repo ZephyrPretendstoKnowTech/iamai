@@ -7,6 +7,7 @@
 // and the derivations that need them return nothing for those rows.
 import type { StoredSignIn } from '../graph/collect/types.ts'
 import firstParty from '../../data/first-party-apps.json' with { type: 'json' }
+import { FACET_APPS } from '../coverage/facetApps.ts'
 import { foldAll } from './rowFold.ts'
 import type { RowFold } from './rowFold.ts'
 
@@ -64,6 +65,8 @@ export type ScenarioEvidence = {
   officeSignIns?: PerPerson
   /** Azure management sign-ins (the Azure portal, the management API), by person and app: the people a block of the admin portals reaches beyond the admins (E9). Absent on snapshots from before it. */
   azureSignIns?: Derived
+  /** How many accounts signed in to each service's apps (coverage/facetApps.ts), by facet: Confirm What You Use's evidence. Absent on snapshots from before it. */
+  serviceSignIns?: Record<string, number>
 }
 
 type App = { appId: string; displayName: string; role?: string }
@@ -314,6 +317,29 @@ export function azureSignIns(rows: Iterable<StoredSignIn>): Derived {
   return foldAll(azureSignInsFold(), rows)
 }
 
+/**
+ * The accounts that signed in to each service, matched the way the usage
+ * detection matches its app summary (coverage/applicability.ts): the app's id,
+ * or its name. Counts only; the ids stay in the worker.
+ */
+export function serviceSignInsFold(): RowFold<Record<string, number>> {
+  const specs = Object.entries(FACET_APPS).map(([facet, spec]) => ({ facet, ids: new Set(spec.ids.map((id) => id.toLowerCase())), name: spec.namePattern }))
+  const people = new Map<string, Set<string>>()
+  return {
+    add(row) {
+      if (!row.userId) return
+      const id = (row.appId ?? '').toLowerCase()
+      for (const s of specs) {
+        if (!s.ids.has(id) && !(row.appDisplayName && s.name.test(row.appDisplayName))) continue
+        let set = people.get(s.facet)
+        if (!set) people.set(s.facet, (set = new Set()))
+        set.add(row.userId)
+      }
+    },
+    finish: () => Object.fromEntries(specs.map((s) => [s.facet, people.get(s.facet)?.size ?? 0])),
+  }
+}
+
 export function serviceProviderSignInsFold(): RowFold<Derived & { homeTenants: number }> {
   const tenants = new Set<string>()
   return accFold((row, acc) => {
@@ -402,6 +428,7 @@ export function scenarioFold(compliantOwners: ReadonlySet<string> | null = null)
     registeredComputers: registeredComputersFold(),
     officeSignIns: officeSignInsFold(),
     azureSignIns: azureSignInsFold(),
+    serviceSignIns: serviceSignInsFold(),
   }
   const all: RowFold<unknown>[] = Object.values(folds)
   return {
@@ -437,5 +464,6 @@ export function emptyScenarioEvidence(): ScenarioEvidence {
     registeredComputers: empty(),
     officeSignIns: { ...empty(), byPerson: {} },
     azureSignIns: empty(),
+    serviceSignIns: {},
   }
 }

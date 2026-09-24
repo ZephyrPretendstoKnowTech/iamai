@@ -40,6 +40,8 @@ import goals from '../../data/goals.json' with { type: 'json' }
 import { directionWords } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import { BLOCKED_REASON } from '../copy/reasons.ts'
+import { list } from '../copy/statements.ts'
+import { contentTitle } from '../content/stepTitle.ts'
 import type { NotAssessed } from '../coverage/types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
@@ -53,7 +55,7 @@ import { QUESTION_STEP } from './answers.ts'
 import { PREREQ_STEP_ID } from './stepIds.ts'
 import { checkStep, serviceEvidence, serviceOf, serviceReading } from './workflows.ts'
 import type { ServiceSignal } from './workflows.ts'
-import { DIRECTION_BLOCKER, DIRECTION_STEP, SERVICE_KEYS, directionComplete, directionStepOf, isDirectionStep, savedAnswerOf } from './directionAnswers.ts'
+import { DIRECTION_BLOCKER, DIRECTION_STEP, SERVICE_KEYS, directionComplete, directionStepOf, isDirectionStep, savedAnswerOf, savedBasisOf } from './directionAnswers.ts'
 export { DIRECTION_BLOCKER, directionBlockerStep, directionComplete } from './directionAnswers.ts'
 import type { DirectionQuestionKey, DirectionStepId } from './directionAnswers.ts'
 import type { DirectionQuestion, Step } from './types.ts'
@@ -81,56 +83,68 @@ function serviceQuestion(key: string, signal: ServiceSignal, ctx: Context): Dire
   const needsReview = saved?.value === 'no' && signal.used && ctx.mapping.workflowEvidenceBasis?.[key] !== 'present'
   const suggested = signal.used ? answer('yes') : signal.complete ? answer('no') : answer('yes')
   const label = (Q.services as Record<string, string>)[key] ?? key
-  // What the scan saw, in the one sentence the Inventory's Detected workloads shows too (workflows.ts serviceEvidence).
+  // What the sign-in records show, in the one sentence the Inventory's Detected
+  // workloads shows too (workflows.ts serviceEvidence); where they show
+  // nothing that can be said, the card says nothing.
   const seen = serviceEvidence(key, signal)
   return {
-    ...question(`service:${key}`, ctx, { label, control: 'choice', options: optionsOf(Q.serviceOptions), suggested, evidence: seen ?? W.defaultEvidence }),
+    // Its consequence line names the plan's steps, so it is written once the plan is whole (noteServiceConsequences).
+    ...question(`service:${key}`, ctx, { label, control: 'choice', options: optionsOf(Q.serviceOptions), suggested, evidence: seen ?? '' }),
     needsReview,
     basis: signal.used ? 'present' : signal.complete ? 'absent' : 'unread',
-    ...(needsReview && seen !== null ? { evidence: fillText(W.reopened, { evidence: seen }) } : {}),
+    ...(needsReview && seen !== null ? { evidence: fillText(W.reopened, { answer: Q.serviceOptions.no, evidence: seen }) } : {}),
   }
 }
 
 const signInsRead = (s: TenantSnapshot): boolean => s.sources.signInEvidence?.status === 'ok' || s.sources.signInEvidence?.status === 'partial'
 
+/**
+ * Devices or apps that send mail by signing in: the accounts the old-protocol
+ * sign-in records show sending by SMTP in the last 30 days; null where those
+ * records were not read.
+ */
+export function mailSenderIds(snapshot: TenantSnapshot): string[] | null {
+  const legacy = signInsRead(snapshot) ? snapshot.scenarioEvidence?.legacyClients ?? null : null
+  return legacy === null ? null : Object.entries(legacy.byPerson).filter(([, clients]) => clients.some((c) => /smtp/i.test(c))).map(([id]) => id).sort()
+}
+
+/** Whether the mail-sending picker offers an account: never an emergency access account or a guest. */
+export function mailPickable(snapshot: Pick<TenantSnapshot, 'users'>, mapping: Pick<MappingState, 'breakGlassUserIds'>): (id: string) => boolean {
+  const guests = new Set(snapshot.users.filter((u) => u.userType === 'guest').map((u) => u.id))
+  return (id) => !guests.has(id) && !mapping.breakGlassUserIds.includes(id)
+}
+
 function useQuestions(ctx: Context, services: { keys: string[]; signal: (key: string) => ServiceSignal }): DirectionQuestion[] {
   const { snapshot } = ctx
   const out = SERVICE_KEYS.filter((k) => services.keys.includes(k)).map((k) => serviceQuestion(k, services.signal(k), ctx))
-  // Devices or apps that send mail by signing in: the accounts the old-protocol records show sending by SMTP.
-  const legacy = signInsRead(snapshot) ? snapshot.scenarioEvidence?.legacyClients ?? null : null
-  const senders = legacy ? Object.entries(legacy.byPerson).filter(([, clients]) => clients.some((c) => /smtp/i.test(c))).map(([id]) => id).sort() : []
+  // The evidence counts every sender the records show; the suggestion picks only
+  // the ones the picker offers (mailPickable).
+  const senders = mailSenderIds(snapshot)
+  const pickable = (senders ?? []).filter(mailPickable(snapshot, ctx.mapping))
+  const mailSeen = senders === null ? '' : senders.length > 0 ? fillText(Q.mailDevices.seen, { n: senders.length }) : Q.mailDevices.notSeen
+  // A saved None the scan now contradicts reopens, as a service's No does,
+  // unless it was approved while that use was already seen (its basis).
+  const mailReview = savedAnswerOf('mailDevices', ctx.mapping)?.value === 'none' && pickable.length > 0 && savedBasisOf('mailDevices', ctx.mapping) !== 'present'
   out.push(question('mailDevices', ctx, {
-    label: Q.mailDevices.label, control: 'accounts', options: optionsOf(Q.mailDevices.options), pickedWith: 'some',
-    suggested: senders.length > 0 ? answer('some', senders) : answer('none'),
-    evidence: legacy === null ? W.defaultEvidence : senders.length > 0 ? fillText(Q.mailDevices.seen, { n: senders.length }) : Q.mailDevices.notSeen,
-  }))
-  // Use the records show is use, however few of them were read, and keeps its
-  // suggestion. What a read IAMAI cannot rely on (neither ok nor partial) cannot
-  // say is the window, or that nothing uses it: a read that stops short of 24
-  // hours is 'insufficient' and keeps the rows it read
-  // (graph/collect/signInStream.ts; since the read streams, only a time budget
-  // stops it there), and this said "No device code sign-ins in the last 30
-  // days" over six hours of records, beside the suggestion that builds the
-  // block — while the step's own tile said the records could not be relied
-  // on. The same gate the mail-sending and partner questions read.
-  const code = snapshot.evidenceUsage?.deviceCode ?? null
-  const read = signInsRead(snapshot)
-  const codeUsers = code === null ? 0 : code.userIds.length || code.count
-  out.push(question('deviceCode', ctx, {
-    label: Q.deviceCode.label, control: 'choice', options: optionsOf(Q.deviceCode.options),
-    suggested: answer(code !== null && code.count > 0 ? 'used' : 'unused'),
-    evidence: code === null ? W.defaultEvidence : code.count > 0 ? fillText(read ? Q.deviceCode.seen : Q.deviceCode.seenShort, { n: codeUsers }) : read ? Q.deviceCode.notSeen : W.defaultEvidence,
-    // What the answer does, which the question never said (owner, 2026-09-20).
-    // The policy step carries protocol tracking as a risk
-    // (docs/plans/close-doors-spec.md section 4, ms-auth-flows); the question
-    // that decides whether the policy is built showed only its suggestion.
-    note: Q.deviceCode.note,
+    label: Q.mailDevices.label, control: 'accounts', options: optionsOf(Q.accountOptions), pickedWith: 'some',
+    suggested: pickable.length > 0 ? answer('some', pickable) : answer('none'),
+    evidence: mailReview && mailSeen !== '' ? fillText(W.reopened, { answer: Q.accountOptions.none, evidence: mailSeen }) : mailSeen,
+    note: Q.mailDevices.consequence,
+    needsReview: mailReview,
+    basis: senders === null ? 'unread' : pickable.length > 0 ? 'present' : 'absent',
   }))
   const partners = snapshot.scenarioEvidence?.serviceProviderSignIns ?? null
+  const partnersUsed = partners !== null && partners.count > 0
+  // Accounts, never sign-ins: records that name no account say nothing either way.
+  const partnerSeen = partners === null || !signInsRead(snapshot) ? '' : partners.people.length > 0 ? fillText(Q.partner.seen, { n: partners.people.length }) : partners.count === 0 ? Q.partner.notSeen : ''
+  const partnerReview = savedAnswerOf('partner', ctx.mapping)?.value === 'no' && partnersUsed && savedBasisOf('partner', ctx.mapping) !== 'present'
   out.push(question('partner', ctx, {
     label: Q.partner.label, control: 'choice', options: optionsOf(Q.partner.options),
-    suggested: answer(partners !== null && partners.count > 0 ? 'yes' : 'no'),
-    evidence: partners === null || !signInsRead(snapshot) ? W.defaultEvidence : partners.count > 0 ? fillText(Q.partner.seen, { n: partners.people.length || partners.count }) : Q.partner.notSeen,
+    suggested: answer(partnersUsed ? 'yes' : 'no'),
+    evidence: partnerReview && partnerSeen !== '' ? fillText(W.reopened, { answer: Q.partner.options.no, evidence: partnerSeen }) : partnerSeen,
+    note: Q.partner.consequence,
+    needsReview: partnerReview,
+    basis: partnersUsed ? 'present' : partners !== null && signInsRead(snapshot) ? 'absent' : 'unread',
   }))
   return out
 }
@@ -365,7 +379,6 @@ export const ANSWERED_IN: Readonly<Record<string, readonly DirectionQuestionKey[
   [PREREQ_STEP_ID.serviceAccountsGroup]: ['serviceAccounts'],
   's-shared-devices': ['sharedDevices'],
   [QUESTION_STEP.mailDevices]: ['mailDevices'],
-  [QUESTION_STEP.deviceCode]: ['deviceCode'],
   [QUESTION_STEP.partner]: ['partner'],
 }
 
@@ -401,7 +414,6 @@ export function directionWaitRelayed(step: Pick<Step, 'goalId' | 'baselineReview
 /** The Direction answers each goal's policy depends on (docs/plans/direction-spec.md, owner decision 3). */
 const GOAL_DEPENDS: Readonly<Record<string, readonly DirectionQuestionKey[]>> = {
   'block-legacy-auth': ['mailDevices'],
-  'block-device-code': ['deviceCode'],
   'guests-mfa': ['partner'],
   // Work countries are asked on the countries step itself (6.3), which holds its
   // own decision until one is saved; travel was retired (Stage 3).
@@ -441,6 +453,22 @@ export function countDirectionImpact(steps: Step[]): void {
     for (const id of new Set(keys.map(directionStepOf))) counts.set(id, (counts.get(id) ?? 0) + 1)
   }
   for (const step of steps) if (isDirectionStep(step.id)) step.impactCount = counts.get(step.id) ?? 0
+}
+
+/**
+ * Each service card's consequence line: the plan steps its No takes off the
+ * plan, by the titles the plan shows — every step whose policy depends on that
+ * service's answer (directionDependenciesOf), already set aside or not. Written
+ * over the finished plan (progress.ts applyProgress), so it names only steps
+ * the plan holds.
+ */
+export function noteServiceConsequences(steps: Step[]): void {
+  const use = steps.find((s) => s.id === DIRECTION_STEP.use)
+  for (const q of use?.directionQuestions ?? []) {
+    if (!q.key.startsWith('service:')) continue
+    const titles = [...new Set(steps.filter((s) => !isDirectionStep(s.id) && directionDependenciesOf(s).includes(q.key as DirectionQuestionKey)).map((s) => contentTitle(s)))]
+    q.note = titles.length > 0 ? fillText(Q.serviceConsequence, { steps: list(titles) }) : null
+  }
 }
 
 /**
