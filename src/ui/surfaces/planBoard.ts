@@ -28,7 +28,7 @@ import { schedulingWords } from '../../content/content.ts'
 // `title.includes('MFA')` is a classifier nobody maintains and that silently
 // mis-files the first step somebody renames.
 import type { ExportOrder, Step } from '../../roadmap/types.ts'
-import type { HoldBlocker, Lane, Substatus } from '../../actionability/lanes.ts'
+import type { Lane, Substatus } from '../../actionability/lanes.ts'
 import type { StatusTone } from '../components/index.ts'
 import { content, directionWords, pages } from '../../content/content.ts'
 import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
