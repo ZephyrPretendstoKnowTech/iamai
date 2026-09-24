@@ -143,7 +143,7 @@ type ContractWords = {
   /** A tenant's own policy delivering the goal, where it differs from the baseline's (Action.ownPolicyDiffers). */
   ownPolicyDiffers: { label: string; note: string }
   /** Require MFA for Everyone's dormant accounts with no method (walk list 4.x item 10). */
-  dormantNoMethod: { label: string; value: string; valueOne: string; names: string; nameOne: string; listed: string }
+  dormantNoMethod: { label: string; value: string; valueOne: string; names: string; listed: string }
   /** The signed-in account a policy would leave with no way in (walk list 4.x item 43). */
   operatorCard: { label: string; value: string; admin: string; other: string; fix: string }
   /** A gate on people's methods: who is short and what moves them (walk list 4.x items 42, 48). */
@@ -2053,7 +2053,7 @@ function dormantOf(step: Step, ctx: StepVarContext): StepContract['dormant'] {
   const step31 = stepById[DORMANT_STEP_ID]?.title ?? DORMANT_STEP_ID
   const value = ids.length === 1 ? W.valueOne : fillText(W.value, { n: ids.length })
   const text = ids.length > GATE_NAMES_UP_TO ? fillText(W.listed, { step: step31 })
-    : fillText(ids.length === 1 ? W.nameOne : W.names, { names: list(ids.map((id) => labels.get(id) ?? ctx.nameOf(id))), step: step31 })
+    : fillText(W.names, { names: list(ids.map((id) => labels.get(id) ?? ctx.nameOf(id))), step: step31 })
   return { value, text }
 }
 

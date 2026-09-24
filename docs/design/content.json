@@ -1960,8 +1960,7 @@
             "label": "Dormant Accounts",
             "value": "{n} accounts haven't signed in for 90 days and have no method",
             "valueOne": "1 account hasn't signed in for 90 days and has no method",
-            "names": "{names}. Disable them in {step}.",
-            "nameOne": "{names}. Disable it in {step}.",
+            "names": "Disable {names} in {step}.",
             "listed": "Disable them in {step}, which lists them."
           },
           "operatorCard": {
