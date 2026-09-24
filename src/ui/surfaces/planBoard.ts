@@ -443,7 +443,7 @@ export function boardOf(steps: readonly Step[], cleanup: CleanupPhase | null | u
     rows,
     laneOf: (id) => { const r = readings.get(id); return r ? laneViewOf(r, titleOf) : doesntApplyView() },
     blockersOf: (id) => readinessBlockersOf(readings.get(id), titleOf),
-    prerequisiteLabel: prerequisiteLabelFor(readings),
+    prerequisiteLabel: prerequisiteLabelFor(readings, titleOf),
     enforceWaits: cleanupRows.filter((r) => r.row.kind === 'drill' && !r.complete).map((r) => cleanupEntry(r.row.kind)?.title).filter((x): x is string => typeof x === 'string' && x.length > 0),
   }
 }
@@ -594,12 +594,18 @@ export function readinessBlockersOf(r: LaneReading | null | undefined, titleOf: 
  * labels a prerequisite by its lane also points at the start of its chain: the
  * screen, the printed plan and the step snapshots all read one board.
  */
-export function prerequisiteLabelFor(readings: ReadonlyMap<string, LaneReading>): PrerequisiteLabel {
+export function prerequisiteLabelFor(readings: ReadonlyMap<string, LaneReading>, titleOf?: (id: string) => string | null): PrerequisiteLabel {
   const label = (id: string): string | null => {
     const r = readings.get(id)
     return r ? `${PREREQUISITE} · ${PREREQUISITE_STATE[r.lane]}` : null
   }
-  return Object.assign(label, { startOf: (id: string) => chainStartOf(readings, id) })
+  // What a waiting prerequisite is itself waiting on: the line under its own
+  // row (waitingForOf), so its card names the wait (net-new 23, owner 2026-09-24).
+  const waitOf = (id: string): string | null => {
+    const r = readings.get(id)
+    return r && titleOf && (r.lane === 'Up Next' || r.lane === 'On Hold') ? waitingForOf(r, titleOf) : null
+  }
+  return Object.assign(label, { startOf: (id: string) => chainStartOf(readings, id), waitOf })
 }
 
 /**

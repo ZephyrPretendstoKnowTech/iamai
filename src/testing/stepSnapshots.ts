@@ -94,7 +94,7 @@ function snapshotsOf(f: Fixture, r: ReturnType<typeof runFixture>): Record<strin
   // snapshot records what the Plan draws.
   const board = boardReadingsOf(steps, r.schedule.cleanup, answers)
   const { readings, titleOf } = board
-  const prerequisiteLabel = prerequisiteLabelFor(readings)
+  const prerequisiteLabel = prerequisiteLabelFor(readings, titleOf)
   const nameOf = (id: string): string => r.input.names!.label(id)
   // A step the board holds lends no plan-wide date its turn-on day (planBoard.ts boardHolds), as on the Plan.
   const dates = planDates(steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot, (s) => boardHolds(s, laneViewFor(s, board)))
