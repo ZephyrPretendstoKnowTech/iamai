@@ -3186,7 +3186,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // Block Legacy Authentication and Block Device Code Sign-in read the sign-in
   // records for who uses what they block, and the legacy block's mail half
   // completes from them (walk list 4.x items 4, 33 and 38).
-  settleBlockSignIns(steps, snapshot, mapping, nameOf)
+  settleBlockSignIns(steps, snapshot, mapping, nameOf, (goalId) => (input.coverage.results.find((r) => r.goal.id === goalId)?.enforcedIds.length ?? 0) > 0)
   for (const s of steps.filter(s => s.id === 's-check-dormant-accounts')) {
     // Every account still dormant, with the last sign-in the scan holds, and
     // whether the person keeps it: picked under Accounts you are keeping, whose

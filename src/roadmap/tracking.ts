@@ -1055,10 +1055,14 @@ export function trackExecution(
       // asked for — a narrowing condition left at Configure: No, which is the
       // trap the step's own procedure warns about — rendered identically to one
       // built exactly right. The instruction warned; nothing ever checked.
-      const differsIn = asked === null || policyRow === null
+      // A policy switched off reads as nothing deployed, so every dimension read
+      // as different on midflight (walk list 4.x item 24): its one task is
+      // Report-only, and the scan after that compares what it holds.
+      const differs = asked === null || policyRow === null
         ? []
         : Object.entries(asked.controls).filter(([dimension, value]) => deployedFields[dimension] !== value).map(([dimension]) => dimension)
-      const asPlanned = asked !== null && differsIn.length === 0
+      const differsIn = (policyRow as { state?: unknown } | null)?.state === 'disabled' ? [] : differs
+      const asPlanned = asked !== null && differs.length === 0
       // `memberGates.readyNow` is both gates already (`gates`), so this line adds
       // the reasons that have nothing to do with the window or the records and
       // takes nothing away from them: there is one place where a member becomes

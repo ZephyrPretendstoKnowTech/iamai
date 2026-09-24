@@ -460,7 +460,7 @@
         "appearedReportOnly": "not deployed at the last scan; created in report-only by {date}, and the observation window starts from here",
         "appearedEnforced": "not deployed at the last scan and enforced by {date}: it went live without a report-only period IAMAI could watch, so nothing here was observed before it started applying",
         "continuityUnknown": "this plan does not record which policy it watched before {date}, so the window starts again on the one deployed now",
-        "differs": "not what the plan asked for in {fields}, and IAMAI does not write that part: a person corrects it in the Entra admin center, then scans again",
+        "differs": "not what the plan asked for in {fields}",
         "$commentDifference": "What a step's correction changes, in words, for AI Info's lead (ui/surfaces/stepPackage.ts correctionWordsOf; walk list 4.x item 40): it read \"differs from the intended target: conditions.canonical\".",
         "missingGroup": "it doesn't exclude {group}",
         "differsIn": "it differs from the intended target in {fields}",
@@ -2085,7 +2085,7 @@
           "member": "Policy {label}",
           "memberLine": "{name}: {lifecycle}",
           "memberWatched": "{name}: {lifecycle}, watched since {date}",
-          "memberReview": "{name}: {lifecycle}, and it needs a look",
+          "memberReview": "{name}: {lifecycle}, and not what the plan asks",
           "stateWords": {
             "$comment": "The Plan state words the one projection adds (src/ui/surfaces/planState.ts): a policy the tenant already enforces that the plan must change and cannot yet, and emergency access whose minimum is in place while its hardening is deferred to Cleanup.",
             "needsCorrection": "Needs correction",
@@ -2100,9 +2100,6 @@
           "foundEnforcedShort": "This policy is enforced, and {line} Anyone it does not accept is refused where it applies until they register a method it does.",
           "$commentFoundEnforcedUnmeasured": "The readiness gate is computed only for an unfinished step, so a policy enforced in the portal while IAMAI was holding it back lost every trace of the hold. A reader enforced the admin policy with neither admin's method readable (the registration source was 403); the step read Completed, its Done-when satisfied, and nothing said the threshold had never been met - a gate that congratulates you for walking around it. The finished step now states the threshold and that nothing showed it met. It holds nothing: the work is done, and this is a fact about the tenant. It claims nothing about WHEN the policy went on, which IAMAI cannot know for a policy it found already enforced.",
           "foundEnforcedUnmeasured": "This policy is enforced. The plan holds enforcement until {measure} reaches {threshold}, and IAMAI cannot measure it, so nothing has shown that threshold met. Anyone it does not accept is refused where it applies until they register a method it does.",
-          "$commentFoundEnforcedBelowThreshold": "Said after foundEnforcedShort where the reading is below the plan's own threshold, which the finished step otherwise never named once the gate was gone. The value now, never when the policy went on.",
-          "foundEnforcedBelowThreshold": "The plan holds enforcement until {measure} reaches {threshold}; it is {value} now.",
-          "foundEnforcedBelowThresholdFloor": "The plan holds enforcement until {measure} reaches {threshold}; it is at least {value} now.",
           "dormantNoMethod": {
             "$comment": "Require MFA for Everyone's card for the accounts its policy reaches that have not signed in for 90 days, or ever, and hold no method it accepts, the ones kept in Disable or Confirm Dormant Accounts aside (stepContract.ts dormantOf). Owner, 2026-09-24 (walk list 4.x item 10 and L4): they no longer hold the step's 90% gate, which counts the people MFA Readiness counts; whoever signs in to one first registers its method, so the step names them and where to disable them. Up to twenty by name; past that, the step that disables them lists them.",
             "label": "Dormant Accounts",

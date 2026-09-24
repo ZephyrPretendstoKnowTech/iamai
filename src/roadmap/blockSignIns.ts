@@ -124,7 +124,7 @@ function withCard(step: Step, card: ConfigurationFinding | null): void {
  *   policy on; the step completes from the scan once none is left. Its turn-on
  *   waits for the same accounts (item 5, generate.ts sequence safety).
  */
-export function settleBlockSignIns(steps: Step[], snapshot: SignInRead, mapping: Pick<MappingState, 'questionAnswers' | 'breakGlassUserIds'>, nameOf: (id: string) => string): void {
+export function settleBlockSignIns(steps: Step[], snapshot: SignInRead, mapping: Pick<MappingState, 'questionAnswers' | 'breakGlassUserIds'>, nameOf: (id: string) => string, enforced: (goalId: string) => boolean = () => false): void {
   const emergency = new Set(mapping.breakGlassUserIds.map((id) => id.toLowerCase()))
   const reached = (ids: readonly string[]): string[] => ids.filter((id) => !emergency.has(id.toLowerCase()))
   const legacy = steps.find((s) => s.id === LEGACY_AUTH_STEP_ID)
@@ -136,18 +136,18 @@ export function settleBlockSignIns(steps: Step[], snapshot: SignInRead, mapping:
       if (delivered) setState(legacy, { satisfied: false, inPlace: false })
     } else delete legacy.mailAccountsToMove
     // The named accounts still to move: one card, by name (items 5 and 36).
-    const mailCard = toMove.length > 0 ? mailAccountsCard(toMove, nameOf, delivered || legacy.state.lifecycle === 'enforced') : null
+    const mailCard = toMove.length > 0 ? mailAccountsCard(toMove, nameOf, delivered || legacy.state.lifecycle === 'enforced' || enforced(legacy.goalId ?? '')) : null
     legacy.configurationFindings = [...(legacy.configurationFindings ?? []).filter((f) => f.key !== MAIL_ACCOUNTS_FINDING), ...(mailCard ? [mailCard] : [])]
     const ids = legacySignInIds(snapshot)
     // A named mail account still to move has its own card and task (item 36): not named twice.
     const moving = new Set(toMove.map((id) => id.toLowerCase()))
     const others = ids === null ? null : reached(ids).filter((id) => !moving.has(id.toLowerCase()))
-    if (others !== null && !(others.length === 0 && toMove.length > 0)) withCard(legacy, signInsCard(W.legacyLabel, W.legacySome, W.legacyNone, W.legacyMove, others, nameOf, delivered || legacy.state.lifecycle === 'enforced'))
+    if (others !== null && !(others.length === 0 && toMove.length > 0)) withCard(legacy, signInsCard(W.legacyLabel, W.legacySome, W.legacyNone, W.legacyMove, others, nameOf, delivered || legacy.state.lifecycle === 'enforced' || enforced(legacy.goalId ?? '')))
     else if (others !== null) withCard(legacy, null)
   }
   const device = steps.find((s) => s.id === DEVICE_CODE_STEP_ID)
   if (device && !device.state.setAside) {
     const ids = deviceCodeSignInIds(snapshot)
-    if (ids !== null) withCard(device, signInsCard(W.deviceCodeLabel, W.deviceCodeSome, W.deviceCodeNone, W.deviceCodeMove, reached(ids), nameOf, device.state.satisfied || device.state.lifecycle === 'enforced'))
+    if (ids !== null) withCard(device, signInsCard(W.deviceCodeLabel, W.deviceCodeSome, W.deviceCodeNone, W.deviceCodeMove, reached(ids), nameOf, device.state.satisfied || device.state.lifecycle === 'enforced' || enforced(device.goalId ?? '')))
   }
 }
