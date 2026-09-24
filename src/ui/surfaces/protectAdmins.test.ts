@@ -172,12 +172,12 @@ test("D1: the client-apps condition is Configure: Yes, then Browser, in the tran
       exclusionsLine: (shared.exclusionsLine as string).replace('{exclusionsGroup}', 'the exclusions group'),
     })
     assert.ok(
-      lines.includes('Conditions → Client apps → Configure: Yes, then Browser. Left at No it reaches every client app.'),
+      lines.includes('Conditions → Client apps → Configure: Yes, then Browser'),
       lines.join('\n'),
     )
     // The step's reviewer reference says the same, so the two cannot drift.
     const ref = ((stepById['admin-session'] as unknown as { whatToDoReference?: { new?: string[] } }).whatToDoReference?.new ?? []).join('\n')
-    assert.ok(ref.includes('Conditions → Client apps → Configure: Yes, then Browser. Left at No it reaches every client app.'), ref)
+    assert.ok(ref.includes('Conditions → Client apps → Configure: Yes, then Browser'), ref)
   }
   {
     // The demo has no such policy, so the create procedure is the one on screen

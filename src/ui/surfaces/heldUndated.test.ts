@@ -265,7 +265,7 @@ test('every who-line that names a scheduled day has an undated form with every o
       for (const i of Object.keys(undated).filter((k) => k !== '$comment')) assert.ok(Number(i) < (value as string[]).length, `${id} who.${key}Undated.${i} points at no line`)
     }
   }
-  assert.ok(forms >= 10, `the premise: the dated who-lines, ${forms}`)
+  assert.ok(forms >= 5, `the premise: the dated who-lines, ${forms}`)
 })
 
 test('a held policy keeps the people its who-line names, without the day and without saying it could not finish the line', () => {

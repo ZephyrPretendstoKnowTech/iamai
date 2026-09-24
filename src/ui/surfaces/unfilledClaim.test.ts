@@ -126,7 +126,7 @@ test('a who-line never renders its negation because a claim could not be filled'
 test('a who-line still renders its negation where the tenant was read and found clean', () => {
   const who = (stepById['block-legacy-auth'] as { who: Who }).who
   const out = whoEvidenceLines(who, { from: 'Jul 29, 2026', legacyUsers: [] })
-  assert.deepEqual(out, ['Nobody used a legacy protocol since {from}.'])
+  assert.deepEqual(out, ['Nobody signed in with legacy authentication in the last 30 days.'])
 })
 
 /** One gate, not two: every sentence whoEvidenceLines returns is whole, so no caller can drop one and leave a slot for the negation. */
@@ -164,11 +164,11 @@ test('the legacy-authentication step does not say nobody while it holds three ac
     assert.ok(Array.isArray(ex.legacyUsers) && (ex.legacyUsers as string[]).length > 0, `${name} has accounts on a legacy protocol`)
     assert.equal(ex.enforce, undefined, `${name}: and no date to fix them before, which is what used to drop the claim`)
     const { lines, names } = whoSentences(name, 'block-legacy-auth')
-    assert.ok(!lines.some((l) => /Nobody used a legacy protocol/.test(l)), `${name}: ${JSON.stringify(lines)}`)
+    assert.ok(!lines.some((l) => /Nobody signed in with legacy authentication/.test(l)), `${name}: ${JSON.stringify(lines)}`)
     // The claim itself, in its undated form (who.evidenceUndated): the accounts
     // the scan read, and no day to fix them before. It used to say only that
     // IAMAI could not finish the line, though it had read every account in it.
-    assert.ok(lines.some((l) => /signed in by a legacy protocol/.test(l) && !/before/.test(l)), `${name}: the slot names the accounts, without a day: ${JSON.stringify(lines)}`)
+    assert.ok(lines.some((l) => /signed in with legacy authentication in the last 30 days/.test(l) && !/before/.test(l)), `${name}: the slot names the accounts, without a day: ${JSON.stringify(lines)}`)
     for (const who of ex.legacyUsers as string[]) assert.ok(names.includes(who), `${name}: ${who} is not named`)
     assert.ok(!lines.includes(WHO_UNRESOLVED), `${name}: the slot says IAMAI could not finish a line it read`)
   }

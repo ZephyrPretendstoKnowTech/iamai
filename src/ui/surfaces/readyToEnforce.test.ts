@@ -1164,8 +1164,8 @@ test('a policy ready to enforce with a later date says the wait is the notice, n
 
     const milestone = nextMilestone(step)
     assert.equal(milestone.kind, 'enforce')
-    assert.match(milestone.label, /evidence for this policy is complete/)
-    assert.match(milestone.label, /working days of notice/, 'the milestone does not say what the date is for')
+    // The policy card's own words (walk list 4.x item 20), with the day it turns on.
+    assert.match(milestone.label, /^Report-only blocked no one\. Turn the policy on [A-Z][a-z]{2} [0-9]/, 'the milestone does not say what the date is for')
     assert.equal(milestone.at, at, 'the milestone moved the date rather than explaining it')
 
     // The date the sentence names is the date the row shows, and not a second reading of it.
