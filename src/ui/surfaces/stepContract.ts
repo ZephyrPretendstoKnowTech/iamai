@@ -1913,7 +1913,7 @@ export type ReadinessTile = {
  * `startOf` once, into `StepContract.routeStart`; absent it, nothing resolves a
  * chain and each step is named alone.
  */
-export type PrerequisiteLabel = ((id: string) => string | null) & { startOf?: (id: string) => string | null }
+export type PrerequisiteLabel = ((id: string) => string | null) & { startOf?: (id: string) => string | null; waitOf?: (id: string) => string | null }
 
 /**
  * One unresolved prerequisite of the step's next action as the actionability
@@ -2708,7 +2708,7 @@ export function cleanupTitleOf(id: string): string | null {
  * healthy queued prerequisite (Up Next) is a wait, a §15 hold needs attention.
  * The step's own decision is its What to do, not a prerequisite of itself.
  */
-function engineTiles(c: StepContract, blockers: readonly PrerequisiteBlocker[], present: ReadonlySet<string>, prerequisiteLabel: (id: string) => string | null): ReadinessTile[] {
+function engineTiles(c: StepContract, blockers: readonly PrerequisiteBlocker[], present: ReadonlySet<string>, prerequisiteLabel: PrerequisiteLabel): ReadinessTile[] {
   const out: ReadinessTile[] = []
   const seen = new Set<string>()
   for (const b of blockers) {
@@ -2727,7 +2727,7 @@ function engineTiles(c: StepContract, blockers: readonly PrerequisiteBlocker[], 
       // (Register Your Own Passkey waiting on Verify Emergency Access,
       // docs/plans/protect-admins-spec.md section 2).
       const title = stepById[b.id]?.title ?? b.title ?? cleanupTitleOf(b.id) ?? b.id
-      out.push({ key: `engine:${b.kind}:${b.id}`, label: title, tone, value: prerequisiteLabel(b.id) ?? b.label, note: fixStepNote(title, b.milestone), link: stepLink(b.id, title) })
+      out.push({ key: `engine:${b.kind}:${b.id}`, label: title, tone, value: prerequisiteLabel(b.id) ?? b.label, note: fixStepNote(title, b.milestone) ?? prerequisiteLabel.waitOf?.(b.id) ?? null, link: stepLink(b.id, title) })
       continue
     }
     if (b.kind === 'sourceMapping') {
