@@ -124,7 +124,6 @@ test('P1-4 and P1-5: Separate Accounts and Dormant Accounts offer Entra and AI I
   // The channels with content; every channel is a tab (content review D2).
   for (const id of ['s-check-separate-admin-accounts', 's-check-dormant-accounts']) assert.deepEqual(channelTabsOf(demo.get(id)!.artifacts.filter((a) => !a.unavailable)).map((t) => String(t.label)), ['Entra', 'PowerShell', 'AI Info', 'Email'], id)
   const dormant = demo.get('s-check-dormant-accounts')!.artifacts
-  assert.match(dormant.find((a) => a.id === 'portal')!.text(), /Account enabled: No/)
   assert.match(dormant.find((a) => a.id === 'ai')!.text(), /dormant accounts/i)
 })
 

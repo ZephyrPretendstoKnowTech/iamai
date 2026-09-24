@@ -20,7 +20,7 @@
     "aiInfo": true,
     "email": true,
     "readiness": true,
-    "troubleshooting": true
+    "troubleshooting": false
   },
   "implementationProfile": {
     "entra": "full",
@@ -61,9 +61,7 @@
   ],
   "projection": {
     "missing": {
-      "entra": [
-        "entra.dormant"
-      ],
+      "entra": [],
       "json": [],
       "powershell": [],
       "aiInfo": [
@@ -148,9 +146,6 @@
     "readiness": [
       "readiness.review",
       "readiness.model"
-    ],
-    "troubleshooting": [
-      "troubleshooting.model"
     ]
   },
   "emailArtifacts": [

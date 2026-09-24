@@ -235,8 +235,15 @@ export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<
     if (stepId === 's-check-dormant-accounts' && provenance === 'confirmed') {
       next.dormantAccountChoices = { ...next.dormantAccountChoices }
       for (const [key, value] of Object.entries(d.answers ?? {})) {
-        if (!key.startsWith('outcome:') || !['keep', 'disable', 'investigate'].includes(value)) continue
+        if (!key.startsWith('outcome:')) continue
         const id = key.slice('outcome:'.length)
+        // The keep picker's Done saves the whole set it holds (walk list item
+        // 28): an account taken off it is no longer kept.
+        if (value === '') {
+          delete next.dormantAccountChoices[id]
+          continue
+        }
+        if (!['keep', 'disable', 'investigate'].includes(value)) continue
         const reason = (d.answers?.[`reason:${id}`] ?? '').trim()
         next.dormantAccountChoices[id] = { outcome: value as 'keep' | 'disable' | 'investigate', reason }
       }

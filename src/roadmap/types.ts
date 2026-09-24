@@ -627,7 +627,14 @@ export type Step = {
   impactCount?: number
   guidance?: import('../content/content.ts').ContentStep
   baselineReviewSource?: { name: string; json: string | null; reason: string }
-  dormantChoices?: { id: string; name: string; outcome: 'keep' | 'disable' | 'investigate' | ''; reason: string; disabled: boolean }[]
+  /**
+   * Disable or Confirm Dormant Accounts: every enabled account with no
+   * successful sign-in in the last 90 days, with the last sign-in the scan
+   * holds (null: none on record) and whether the person keeps it
+   * (mapping.dormantAccountChoices). The rail's keep picker offers them; the
+   * accounts not kept are the step's open work (walk list items 22, 26, 30).
+   */
+  dormantChoices?: { id: string; name: string; lastSignIn: string | null; kept: boolean }[]
   /** A Define Your Rollout Scope step's questions (roadmap/direction.ts), one tile each. */
   directionQuestions?: DirectionQuestion[]
   authenticationStrengthTarget?: { allowedCombinations: string[] }
