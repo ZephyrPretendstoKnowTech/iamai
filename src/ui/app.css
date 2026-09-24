@@ -5301,8 +5301,6 @@ th .th-sort:focus-visible,
    2026-09-22, option A). Every word stays; the block opens closed and says
    what it is, because on a step reading Completed three blocks of imperative
    lines read as work that remained. */
-.impl-reference > summary { cursor: pointer; color: var(--secondary-text); padding: 6px 0; }
-.impl-reference[open] > summary { margin-bottom: 8px; }
 .approved-model-list { display: grid; gap: 7px; margin: 7px 0 10px; padding: 0; list-style: none; }
 .approved-model-list li { display: grid; gap: 2px; min-width: 0; }
 .approved-model-list span { color: var(--secondary-text); overflow-wrap: anywhere; }

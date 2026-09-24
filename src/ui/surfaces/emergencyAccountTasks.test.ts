@@ -1,5 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
@@ -35,19 +36,6 @@ function project(edit: (value: Fixture) => void = () => {}) {
   const ctx: StepVarContext = { snapshot: value.snapshot, mapping: value.mapping, nameOf: id => run.input.names!.label(id), signature: 'IT', operatorId: value.operatorId, now: value.snapshot.asOf, groups: value.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
   return { value, projected: emergencyAccountTasksOf(step, ctx) }
 }
-
-test('Step 1 exposes the three preparation procedures, configuring an existing account only once one is chosen', () => {
-  // With no account chosen there is nothing to configure, so that procedure is not offered (review of #19).
-  for (const [edit, titles] of [
-    [() => {}, ['Create an emergency account', 'Configure an existing account', 'Set up an approved passkey']],
-    [(value: Fixture) => { value.mapping.breakGlassUserIds = [] }, ['Create an emergency account', 'Set up an approved passkey']],
-  ] as const) {
-    const { projected } = project(edit)
-    assert.deepEqual(projected.tasks.map(task => task.title), titles)
-    assert.equal(projected.tasks.every(task => task.required === false), true)
-    assert.equal(projected.printAll, true)
-  }
-})
 
 test('empty and partial selections keep two plain account positions', () => {
   const empty = project(value => { value.mapping.breakGlassUserIds = [] }).projected.accounts
@@ -145,20 +133,6 @@ test('approved passkey setup keeps the three understandable methods in one task'
   assert.equal(setup.variants?.every(variant => !variant.facts?.length), true)
 })
 
-test('the create and passkey procedures remain complete when no account is selected', () => {
-  const { projected } = project(value => { value.mapping.breakGlassUserIds = [] })
-  const create = emergencyTaskText(projected.tasks.find(item => item.id === 'create-account')!)
-  const passkey = emergencyTaskText(projected.tasks.find(item => item.id === 'set-up-passkey')!)
-  assert.match(create, /emergency-access-primary/)
-  assert.match(create, /onmicrosoft\.com/)
-  // Configuring an existing account lists only the fixes a chosen account needs,
-  // so with none chosen it is not offered (owner, 2026-09-23; review of #19).
-  assert.equal(projected.tasks.some(item => item.id === 'configure-account'), false)
-  assert.match(passkey, /Troubleshooting → Temporary Access Pass/)
-  assert.match(passkey, /separate private browser window/)
-  assert.doesNotMatch([create, passkey].join('\n'), /enter.*the emergency account you are preparing/i)
-})
-
 test('Step 1 preparation does not depend on sign-in-log evidence', () => {
   const { value, projected } = project(value => {
     const id = value.mapping.breakGlassUserIds[0]
@@ -241,59 +215,6 @@ test('two accounts needing a passkey are named on the first line of the procedur
   }
 })
 
-test('with every selected account passing, the passkey procedure stays available and says no account needs it', () => {
-  const { projected, text } = passkeyTaskOf('demo-week2')
-  assert.ok(projected.accounts.every(account => account.satisfied))
-  assert.ok(projected.tasks.some(item => item.id === 'set-up-passkey'))
-  // Worded as the configuration procedure's all-clear, reference tail included
-  // (R4-51): it used to read "currently needs", two words from the unread
-  // case's double negative "is confirmed to need".
-  assert.match(text, /No selected account needs an approved passkey\. The steps below stay here as a reference\./)
-  for (const account of projected.accounts) assert.ok(!text.includes(account.upn!), `${account.upn} is not named`)
-})
-
-// R4-51 (Priya D15). With both accounts' methods unread the procedure opened
-// "No selected account is confirmed to need an approved passkey." and then gave
-// eight registration steps: a double negative two words from the all-clear,
-// read as "not needed", beside a tile saying Could not verify. The engine knows
-// which accounts were not read. The line names them, and the procedure is for
-// them; the all-clear is only said where every account was read and passes.
-test('an unread passkey check names the unread accounts, never a double negative', () => {
-  const passkeyOf = (edit: (value: Fixture) => void) => {
-    const value = structuredClone(fixture('hostile'))
-    edit(value)
-    const run = runFixture(value)
-    const step = run.steps.find(item => item.id === STEP)!
-    const ctx: StepVarContext = { snapshot: value.snapshot, mapping: value.mapping, nameOf: id => run.input.names!.label(id), signature: 'IT', operatorId: value.operatorId, now: value.snapshot.asOf, groups: value.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
-    const task = emergencyAccountTasksOf(step, ctx).tasks.find(item => item.id === 'set-up-passkey')!
-    const upn = (id: string) => value.snapshot.users.find(user => user.id === id)!.userPrincipalName!
-    return { value, text: [emergencyTaskText(task), ...(task.variants ?? []).map(variant => emergencyTaskText(task, variant.id))].join('\n'), upn }
-  }
-  // Both unread.
-  const both = passkeyOf(() => {})
-  const [a, b] = both.value.mapping.breakGlassUserIds
-  assert.deepEqual([both.value.snapshot.authMethods[a], both.value.snapshot.authMethods[b]], ['unknown', 'unknown'], 'the premise: neither account was read')
-  assert.doesNotMatch(both.text, /is confirmed to need|No selected account/)
-  assert.match(both.text, new RegExp(`IAMAI could not confirm that \\*\\*${both.upn(a)}\\*\\* and \\*\\*${both.upn(b)}\\*\\* have an approved passkey\\.`))
-
-  // The first prepared, the second unread: only the second is named, and the procedure signs in as it.
-  const one = passkeyOf(value => {
-    value.snapshot.authMethods[value.mapping.breakGlassUserIds[0]] = [{ kind: 'fido2', id: 'recovery-key', displayName: 'Recovery key', aaGuid: 'a25342c0-3cdc-4414-8e46-f4807fca511c', passkeyType: 'deviceBound', attestationLevel: 'attested' }]
-  })
-  assert.doesNotMatch(one.text, /is confirmed to need|No selected account/)
-  assert.ok(!one.text.includes(one.upn(a)), 'the prepared account is named')
-  assert.match(one.text, new RegExp(`IAMAI could not confirm that \\*\\*${one.upn(b)}\\*\\* has an approved passkey\\.`))
-  assert.match(one.text, new RegExp(`sign in as \\*\\*${one.upn(b)}\\*\\*`))
-
-  // The first known to need one, the second unread: both named. The unread
-  // accounts used to be looked for only where no account needed a passkey, so
-  // the procedure signed in as the first and never mentioned the second.
-  const mixed = passkeyOf(value => { value.snapshot.authMethods[value.mapping.breakGlassUserIds[0]] = [] })
-  assert.match(mixed.text, new RegExp(`\\*\\*${mixed.upn(a)}\\*\\* needs an approved passkey\\. Follow these steps for it\\.`))
-  assert.match(mixed.text, new RegExp(`IAMAI could not confirm that \\*\\*${mixed.upn(b)}\\*\\* has an approved passkey\\.`))
-  assert.doesNotMatch(mixed.text, new RegExp(`sign in as \\*\\*${mixed.upn(a)}\\*\\*`), 'the procedure is not for the first account alone')
-})
-
 /** Step 1's account tiles, Step 1's status and Step 4's findings for demo-week2, with an edit. */
 function dedicatedCase(edit: (value: Fixture, id: string) => void) {
   const value = structuredClone(fixture('demo-week2'))
@@ -332,58 +253,31 @@ test('Step 1 notes an emergency account that is signed in to IAMAI now', () => {
   assert.equal(account.notes, undefined)
 })
 
-// A finished step's procedures are reference, not instructions.
-//
-// They stay on purpose — emergencyAccountTasks.ts keeps them so that "with
-// none needing any, every change stays available as a reference" — and they
-// are typeset as commands. On a step reading Completed a reader met three
-// task blocks of eight, nine and ten imperative lines, two of them led by a
-// line saying nothing needed doing, and took the lot for work that remained.
-// Owner decision 2026-09-22, option A: keep every word, change the default
-// from "do this" to "look this up".
-test('the procedures on a finished step are reference, and on an open one they are not', () => {
+// Every procedure stands open, on a finished step as on an open one: no
+// "Reference" fold and no qualifier lines such as "No new emergency account is
+// needed … The steps below stay here as a reference." (owner, 2026-09-23,
+// reversing the 2026-09-22 fold).
+test('the procedures on a finished step stand open and in full, with no fold and no qualifier', () => {
   const done = bodyOf('demo-week2', 's-prereq-break-glass')
   assert.equal(done.laneView.lane, 'Completed', 'the premise: the board reads this step finished')
   assert.ok(done.emergencyAccountTasks, 'the premise: it still draws its procedures')
-  assert.equal(done.implementationReference, true, 'a finished step still presents its procedures as instructions')
-  // Every word is still there: this is what is open, not what exists.
+  assert.equal('implementationReference' in done, false, 'a finished step folds its procedures away as reference')
   const lines = (done.emergencyAccountTasks.tasks ?? []).flatMap((t) => t.steps)
-  assert.ok(lines.length > 15, `the procedures were dropped rather than folded: ${lines.length} lines`)
-
-  // The same step before it is finished asks for the work, and says so.
-  const open = bodyOf('demo', 's-prereq-break-glass')
-  assert.notEqual(open.laneView.lane, 'Completed', 'the premise: this one is not finished')
-  assert.equal(open.implementationReference, false, 'an open step folded away its own instructions')
+  assert.ok(lines.length > 15, `the procedures were dropped: ${lines.length} lines`)
+  assert.deepEqual(lines.filter((line) => /stay here as a reference|No new emergency account is needed|No selected account needs|could not confirm/.test(line)), [], 'a qualifier line leads a procedure')
+  const step = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
+  assert.doesNotMatch(step, /impl-reference|<summary>\{W\.reference\}/, 'the Reference fold is still drawn')
 })
 
-// R4-44 (Jordan D11). "No selected account needs a change to its sign-in
-// address, enabled state or role." was said with nobody selected: vacuously
-// true, under a tile asking for accounts to be selected, and printed and
-// exported as step 3 of the work. An account whose checks were not read is not
-// one that needs nothing either. The line stands only over selected accounts
-// whose three checks were read, and says it in the content's words.
-test('the configuration procedure says no account needs it only over selected accounts it could read', () => {
-  const noLine = (steps: string[]) => steps.filter(line => /^No selected account/.test(line))
-  // An absent procedure has no lines (review of #19: it is not offered with nothing to give).
+// Configure an existing account: the changes a chosen account needs, named;
+// and where none needs one (or none is chosen), the whole procedure, as every
+// procedure stands in full (owner, 2026-09-23). Never an all-clear line.
+test('the configuration procedure names the changes an account needs, and otherwise stands in full', () => {
   const configure = (edit: (value: Fixture) => void) => project(edit).projected.tasks.find(task => task.id === 'configure-account')?.steps ?? []
-
-  // Nobody selected: no negation, and no change listed for an account nobody chose (owner, 2026-09-23).
+  const full = (steps: string[]) => ['User principal name', 'Account enabled', 'Global Administrator'].every((word) => steps.some((line) => line.includes(word)))
   const empty = configure(value => { value.mapping.breakGlassUserIds = [] })
-  assert.deepEqual(noLine(empty), [])
-  assert.ok(!empty.some(line => /User principal name|Account enabled|Global Administrator/.test(line)))
-
-  // Selected, but one account's enabled state was not read: not "no change needed".
-  assert.deepEqual(noLine(configure(value => { delete (value.snapshot.users.find(user => user.id === value.mapping.breakGlassUserIds[0]) as { accountEnabled?: boolean }).accountEnabled })), [])
-
-  // Selected and read, nothing to change: the line stands, from content.json.
+  assert.ok(full(empty), `with nobody chosen the procedure is not whole: ${empty.join(' | ')}`)
   const read = configure(() => {})
-  assert.deepEqual(noLine(read), [(app.plan as unknown as { emergencyTasks: { configureNotNeeded: string } }).emergencyTasks.configureNotNeeded])
-
-  // And the export of a tenant with nobody selected carries no negation either.
-  const value = structuredClone(fixture('small'))
-  value.mapping.breakGlassUserIds = []
-  const run = runFixture(value)
-  const step = run.steps.find(item => item.id === STEP)!
-  const ctx: StepVarContext = { snapshot: value.snapshot, mapping: value.mapping, nameOf: id => run.input.names!.label(id), signature: 'IT', operatorId: value.operatorId, now: value.snapshot.asOf, groups: value.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
-  assert.deepEqual(stepExportView(step, ctx).whatToDo.filter(line => /No selected account/.test(line)), [])
+  assert.ok(full(read), `with nothing to change the procedure is not whole: ${read.join(' | ')}`)
+  for (const steps of [empty, read]) assert.deepEqual(steps.filter((line) => /^No selected account/.test(line)), [])
 })

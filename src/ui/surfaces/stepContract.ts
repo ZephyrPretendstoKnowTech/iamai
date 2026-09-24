@@ -94,17 +94,6 @@ export type LaneView = {
   estimate?: string
 }
 
-/**
- * Whether a step's procedures are reference rather than instructions: the board
- * reads it Completed or Deferred (owner, 2026-09-22, option A — every word kept,
- * the default changed from "do this" to "look this up"). One rule for the opened
- * step (stepBody.ts `implementationReference`) and the exports (stepExport.ts),
- * so a finished step cannot read as reference on screen and as work in the file.
- */
-export function proceduresAreReference(lane: Pick<LaneView, 'lane'>): boolean {
-  return lane.lane === 'Completed' || lane.lane === 'Deferred'
-}
-
 /** The contract's own words (pages.app.plan.stepContract). */
 type ContractWords = {
   lifecycle: Record<string, string>

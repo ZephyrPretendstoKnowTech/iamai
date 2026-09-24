@@ -170,7 +170,9 @@ export function EmergencySubjectReadiness({ subjects, printing, barMain, onWhy, 
   const remaining = subjects.filter(subject => !subject.satisfied)
   const satisfied = subjects.filter(subject => subject.satisfied)
   const tile = (subject: EmergencySubjectTile, open = false) => <EmergencyAccountStatusTile key={subject.key} account={subject} printing={printing} open={open} />
-  const bar = onWhy && (barMain !== '' || WHY_LINK_SHOWN) && <div className="readiness-bar">{barMain !== '' && <div className="readiness-bar-main"><span className="readiness-bar-head">{barMain}</span></div>}{WHY_LINK_SHOWN && <button type="button" className="inline-link" onClick={onWhy}>{CONTRACT.readiness.why}</button>}</div>
+  // The bar carried the Why IAMAI says this link; with the link hidden its line only
+  // repeated the badge and the cards (owner, 2026-09-23), so it is drawn only with the link.
+  const bar = onWhy && WHY_LINK_SHOWN && <div className="readiness-bar">{barMain !== '' && <div className="readiness-bar-main"><span className="readiness-bar-head">{barMain}</span></div>}{WHY_LINK_SHOWN && <button type="button" className="inline-link" onClick={onWhy}>{CONTRACT.readiness.why}</button>}</div>
   // A Completed step shows what was confirmed, open (owner, 2026-09-23): every
   // card in the grid with its completed checks showing, and no Tasks Remaining
   // heading, "No tasks remaining" or scan prompt over work that is done. The
@@ -291,7 +293,7 @@ export function ContentStep({
   // sections this step draws and the words under Implementation when it draws
   // none. Everything below renders it; nothing below asks again.
   const body = stepBodyOf(step, ctx, { lane, blockers, prerequisiteLabel, confirmations, baselineCommit, enforceWaits })
-  const { cs, ex, laneView, contract, title, d, taskDecision, reason, conflictWords, pkg, pkgBindings, pkgRuntime, pkgReadiness, scenarios, packaged, whoInline, whoHeld, lead, showWho, whoFull, hasEvidence, readiness, allTiles, decides, instructed, rail, eyebrow, artifacts, emergencyAccountTasks, implementationReference, previewNote, notes, showImplementation, empty, sourceLine, learnUrl, ifWrong } = body
+  const { cs, ex, laneView, contract, title, d, taskDecision, reason, conflictWords, pkg, pkgBindings, pkgRuntime, pkgReadiness, scenarios, packaged, whoInline, whoHeld, lead, showWho, whoFull, hasEvidence, readiness, allTiles, decides, instructed, rail, eyebrow, artifacts, emergencyAccountTasks, previewNote, notes, showImplementation, empty, sourceLine, learnUrl, ifWrong } = body
   const isPasskeySettings = step.id === 's-prereq-passkey-settings'
   const isEmergencyAccounts = step.id === 's-prereq-break-glass'
   // Which steps draw the task anatomy (the Tasks Remaining cards and the
@@ -558,7 +560,6 @@ export function ContentStep({
               onChooseTask={isTaskStep ? chooseEmergencyTask : null}
               taskPreferenceKey={isTaskStep ? emergencyTaskPreferenceKey : null}
               taskSettings={isOwnTaskStep}
-              reference={implementationReference}
               heading={taskHead?.implementation}
             />
           )}
@@ -758,7 +759,7 @@ export function copyImplementationArtifact(text: string): Promise<boolean> {
   return exportClipboard(text, unredactedFrom('implementation-artifact'))
 }
 
-export function Implementation({ artifacts, drawnBy, preview, notes, title, empty, source, learn, onTroubleshooting, open, onOpen, onClose, copy, copied, printing, tasks, chosenChannel, onChooseChannel, chosenTaskId, onChooseTask, taskPreferenceKey, taskSettings = false, reference = false, emptyTaskText, heading }: {
+export function Implementation({ artifacts, drawnBy, preview, notes, title, empty, source, learn, onTroubleshooting, open, onOpen, onClose, copy, copied, printing, tasks, chosenChannel, onChooseChannel, chosenTaskId, onChooseTask, taskPreferenceKey, taskSettings = false, emptyTaskText, heading }: {
   artifacts: Artifact[]
   /** Who draws the region: the step's implementation-content package, or the translator's own channels (stepPackage.ts packageDrawsImplementation). */
   drawnBy: 'package' | 'translator'
@@ -787,13 +788,6 @@ export function Implementation({ artifacts, drawnBy, preview, notes, title, empt
   taskPreferenceKey?: string | null
   /** The one policy the owner is judging the resolved settings on (policyTasks.ts): its task's facts stand under the procedure, folded. */
   taskSettings?: boolean
-  /**
-   * The step is finished, so its procedures are reference (stepBody.ts
-   * implementationReference; owner decision 2026-09-22, option A). Every word
-   * stays; the block opens closed and says what it is, because on a step
-   * reading Completed three blocks of imperative lines read as work remaining.
-   */
-  reference?: boolean
   emptyTaskText?: string
   heading?: string
 }) {
@@ -939,9 +933,9 @@ export function Implementation({ artifacts, drawnBy, preview, notes, title, empt
           <span>{empty.text}</span>
         </div>
       )}
-        {reference && !printing
-          ? <details className="impl-reference"><summary>{W.reference}</summary>{channels}</details>
-          : channels}
+        {/* Every procedure stands open, on a finished step as on an open one, with
+            no fold and no qualifier (owner, 2026-09-23). */}
+        {channels}
       {/* The support line (S6): Microsoft Learn · Troubleshooting on the left,
           the package's run note beside them, and the source-checked date on the
           right — or nothing at all where the step has none of them. */}

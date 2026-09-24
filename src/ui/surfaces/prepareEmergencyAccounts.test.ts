@@ -182,38 +182,6 @@ test('#13 the instruction is said once: the rail says it, the empty cards do not
   assert.equal(opened('demo').body.rail.sub, 'Complete the remaining emergency access checks.')
 })
 
-test('#19 the emergency tasks carry no filler, and configuring an existing account lists only the fixes it needs', () => {
-  const KEEP = 'Keep your working administrator session open.'
-  const GA = '62e90394-69f5-4237-9190-012177145e10'
-  const tasksOf = (name: Parameters<typeof fixture>[0], edit: (f: Fixture) => void = () => {}, id = STEP) => opened(name, edit, id).body.emergencyAccountTasks!.tasks
-  const linesOf = (tasks: ReturnType<typeof tasksOf>): string[] => tasks.flatMap((t) => [t.steps, ...(t.variants ?? []).map((v) => v.steps)]).flat()
-  for (const name of ['demo', 'demo-week2', 'small'] as const) {
-    const lines = linesOf(tasksOf(name))
-    assert.equal(lines.includes(KEEP), false, `${name}: the session reminder`)
-    for (const filler of [/Do not use this to convert a synchronized identity/, /Save the changes, reopen the account/, /Confirm it appears in .*Security info/]) assert.equal(lines.some((l) => filler.test(l)), false, `${name}: ${filler}`)
-    // The same reminder is gone from the exclusions group and passkey settings tasks.
-    for (const id of ['s-prereq-exclusion-group', 's-prereq-passkey-settings']) assert.equal(linesOf(tasksOf(name, () => {}, id)).includes(KEEP), false, `${name} ${id}`)
-  }
-  const configure = (edit: (f: Fixture) => void = () => {}) => tasksOf('demo-week2', edit).find((t) => t.id === 'configure-account')!.steps
-  const RETURN = 'Return to IAMAI and select **Scan to update the plan**.'
-  // Nothing needed: no fix is listed.
-  const clear = configure()
-  assert.deepEqual(clear, ['Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Users**.', 'No selected account needs a change to its sign-in address, enabled state or role.', RETURN])
-  const has = (steps: string[], re: RegExp): boolean => steps.some((l) => re.test(l))
-  const ADDRESS = /User principal name/, ENABLE = /Account enabled/, DIRECT = /Roles & admins → Global Administrator → Add assignments/, PIM = /Privileged Identity Management/
-  // A custom-domain sign-in address: that fix alone.
-  const address = configure((f) => { f.snapshot.users.find((u) => u.id === f.mapping.breakGlassUserIds[0])!.userPrincipalName = 'emergency@example.com' })
-  assert.deepEqual([ADDRESS, ENABLE, DIRECT, PIM].map((re) => has(address, re)), [true, false, false, false])
-  // Global Administrator eligible only: the PIM fix, naming the account.
-  const eligible = configure((f) => { const id = f.mapping.breakGlassUserIds[0]; f.snapshot.roles.active[id] = []; f.snapshot.roles.eligible[id] = [GA] })
-  assert.deepEqual([ADDRESS, ENABLE, DIRECT, PIM].map((re) => has(eligible, re)), [false, false, false, true])
-  // No Global Administrator assignment at all, in a tenant with no PIM licence
-  // and no eligible assignment (the premise): the direct assignment.
-  const none = configure((f) => { f.snapshot.roles.active[f.mapping.breakGlassUserIds[0]] = [] })
-  assert.deepEqual([ADDRESS, ENABLE, DIRECT, PIM].map((re) => has(none, re)), [false, false, true, false])
-  for (const steps of [address, eligible, none]) assert.equal(steps.at(-1), RETURN)
-})
-
 test('#19 Global Administrator is assigned Active and Permanently assigned: through PIM wherever the tenant has it, even to an account holding none', () => {
   const configure = (edit: (f: Fixture) => void) => opened('demo-week2', edit).body.emergencyAccountTasks!.tasks.find((t) => t.id === 'configure-account')!.steps
   const noGa = (f: Fixture): void => { f.snapshot.roles.active[f.mapping.breakGlassUserIds[0]] = [] }
@@ -237,19 +205,15 @@ test('#19 Global Administrator is assigned Active and Permanently assigned: thro
   assert.equal(plain.find((l) => DIRECT.test(l)), 'Open **Entra ID → Roles & admins → Global Administrator → Add assignments**, select **bg1@demo-fixture.onmicrosoft.com**, and complete the assignment. If it asks for an assignment type, choose **Active** and **Permanently assigned**.')
 })
 
-test('#19 Configure an existing account is offered only when it has a fix, or the all-clear, to give', () => {
+test('#19 Configure an existing account is always there, whole where no account needs a change (owner, 2026-09-23)', () => {
   const idsOf = (name: Parameters<typeof fixture>[0], edit: (f: Fixture) => void = () => {}) => opened(name, edit).body.emergencyAccountTasks!.tasks.map((t) => t.id)
-  // No account chosen: nothing to configure, so no procedure that opens Users and returns.
-  assert.deepEqual(idsOf('small', noAccounts), ['create-account', 'set-up-passkey'])
-  // Chosen, but a configure check was not read and none is known to fail: the same.
-  const unread = (f: Fixture): void => { for (const id of f.mapping.breakGlassUserIds) delete (f.snapshot.users.find((u) => u.id === id) as { accountEnabled?: boolean }).accountEnabled }
-  assert.deepEqual(idsOf('demo-week2', unread), ['create-account', 'set-up-passkey'])
-  // Chosen and read: offered, with its fix or its all-clear between the two ends.
-  assert.deepEqual(idsOf('demo-week2'), ['create-account', 'configure-account', 'set-up-passkey'])
-  assert.deepEqual(idsOf('demo-week2', (f) => { f.snapshot.users.find((u) => u.id === f.mapping.breakGlassUserIds[0])!.accountEnabled = false }), ['create-account', 'configure-account', 'set-up-passkey'])
+  const all = ['create-account', 'configure-account', 'set-up-passkey']
+  assert.deepEqual(idsOf('small', noAccounts), all)
+  assert.deepEqual(idsOf('demo-week2'), all)
+  assert.deepEqual(idsOf('demo-week2', (f) => { f.snapshot.users.find((u) => u.id === f.mapping.breakGlassUserIds[0])!.accountEnabled = false }), all)
   // The export and print carry what the screen offers.
   const { step, ctx } = opened('small', noAccounts)
-  assert.equal(stepLines(step, ctx).includes('Configure an existing account'), false)
+  assert.equal(stepLines(step, ctx).includes('Configure an existing account'), true)
 })
 
 test('#20 Completion Criteria is the one line the owner approved', () => {

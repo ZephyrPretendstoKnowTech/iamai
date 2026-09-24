@@ -87,7 +87,7 @@ export type EmergencyTaskProjection = {
 }
 
 /** What a procedure says about whether a selected account needs it (pages.app.plan.emergencyTasks). */
-const WORDS = (app.plan as unknown as { emergencyTasks: Record<'configureNotNeeded' | 'passkeyNotNeeded' | 'passkeyUnreadOne' | 'passkeyUnreadMany' | 'passkeyNeededOne' | 'passkeyNeededMany' | 'createNotNeeded' | 'variantsLead' | 'signedInAccount', string> }).emergencyTasks
+const WORDS = (app.plan as unknown as { emergencyTasks: Record<'passkeyNeededOne' | 'passkeyNeededMany' | 'variantsLead' | 'signedInAccount', string> }).emergencyTasks
 
 const safe = (value: string): string => oneLine(value).trim()
 const userOf = (ctx: StepVarContext, id: string) => ctx.snapshot.users.find(user => user.id.toLowerCase() === id.toLowerCase())
@@ -272,16 +272,15 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
   const toPrepare = [...needing, ...unread]
   const registrationTarget = toPrepare.length === 1 ? toPrepare[0] : 'the account you are preparing'
   const bold = (upns: string[]): string => list(upns.map(upn => `**${upn}**`))
-  const unreadLine = unread.length === 0 ? [] : [unread.length === 1 ? fillText(WORDS.passkeyUnreadOne, { account: bold(unread) }) : fillText(WORDS.passkeyUnreadMany, { accounts: bold(unread) })]
   // More than one account needing a passkey (a new tenant's usual case) names
   // them all on the procedure's first line.
+  // No qualifier lines (owner, 2026-09-23): the procedure is always there in
+  // full, and names only the accounts that need it.
   const repeatLead = needing.length > 1
-    ? [fillText(WORDS.passkeyNeededMany, { accounts: bold(needing) }), ...unreadLine]
-    : needing.length === 1
-      ? (unreadLine.length ? [fillText(WORDS.passkeyNeededOne, { account: bold(needing) }), ...unreadLine] : [])
-      : selected.length
-        ? (unreadLine.length ? unreadLine : [WORDS.passkeyNotNeeded])
-        : []
+    ? [fillText(WORDS.passkeyNeededMany, { accounts: bold(needing) })]
+    : needing.length === 1 && unread.length > 0
+      ? [fillText(WORDS.passkeyNeededOne, { account: bold(needing) })]
+      : []
   // The existing-account procedure names only the accounts whose check fails.
   type ConfigureCheck = 'initialDomain' | 'enabled' | 'permanentGlobalAdministrator'
   const needsIds = (check: ConfigureCheck): string[] => selected.filter(id => preparations.get(id)?.checks.cloudOnly !== false && preparations.get(id)?.checks[check] === false)
@@ -305,7 +304,6 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
   // tile above it said "Select the intended accounts", and the print and the
   // export carried it as step 3 of the work (R4-44). An unread check is not a
   // pass either. Without the line, the changes listed are the ones needed.
-  const configureClear = selected.length > 0 && !configureNeeded
     && selected.every(id => preparations.get(id)?.checks.cloudOnly === false || CONFIGURE_CHECKS.every(check => preparations.get(id)?.checks[check] != null))
   const approvedModels = approvedPasskeyModels(ctx.snapshot, ctx.mapping)
   const variants = emergencyRegistrationVariants(registrationTarget).map(variant => ({
@@ -323,30 +321,16 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
       'Return to IAMAI and select **Scan to update the plan**.',
     ],
   })
-  // A new account is needed while fewer than two are selected, or one selected
-  // is synchronized (the account card sends it here). Where the selection holds
-  // two or more, every one read as cloud-only, nothing here is needed, and the
-  // procedure says so as the configuration procedure does. It never did, so
-  // with two verified accounts the printed plan and the task list offered
-  // "Create an emergency account" as work beside the one task that remained
-  // (NEW-Nadia-D12). An unread source is not cloud-only: no line then. Nor
-  // where a selected account carries the dedicated-account signal (signed in to
-  // IAMAI now, or a job title, department or office): its card says it may be
-  // someone's daily account and bg.notPersonal's fix is a new one, so saying no
-  // new account is needed would steer the reader to keep it.
   const notes = dedicatedAccountNotes(step)
   const signedIn = signedInAccount(ctx)
-  const createClear = selected.length >= 2 && selected.every(id => preparations.get(id)?.checks.cloudOnly === true && !notes.has(id.toLowerCase()) && !signedIn(id))
   const create = domain ? createSteps(domain, false) : [...tenantLead(ctx), 'Open **Entra ID → Custom domain names** and note the tenant’s initial **onmicrosoft.com** domain.', 'Open **Entra ID → Users → New user → Create new user** and create a cloud-only emergency account on that domain.', 'Return to IAMAI and select **Scan to update the plan**.']
-  if (createClear) create.unshift(fillText(WORDS.createNotNeeded, { n: selected.length }))
   // The configure procedure is offered only where it has a change to give, or
   // its all-clear. With no account chosen, or none whose checks were read and
   // failed, it was "open Users" then "return and scan" with nothing between
   // (review of #19); the cards and the rail already say to choose the accounts.
-  const configureOffered = configureNeeded || configureClear
   const tasks: EmergencyAccountTask[] = [
     task({ id: 'create-account', accountId: null, title: 'Create an emergency account', targetUpn: null, required: false, readinessKey: 'account-setup', evidence: null, actionLabel: 'Open creation instructions', steps: create }),
-    ...(!configureOffered ? [] : [task({ id: 'configure-account', accountId: null, title: 'Configure an existing account', targetUpn: null, required: false, readinessKey: 'account-setup', evidence: null, actionLabel: 'Open configuration instructions', steps: [
+    task({ id: 'configure-account', accountId: null, title: 'Configure an existing account', targetUpn: null, required: false, readinessKey: 'account-setup', evidence: null, actionLabel: 'Open configuration instructions', steps: [
       'Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Users**.',
       // Each change is listed only for the chosen accounts IAMAI's checks say
       // need it, and names them; a change no chosen account needs is not listed
@@ -356,13 +340,21 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
       // saying a passkey is missing, and a reader takes it for the step's
       // all-clear and closes the step. These three changes are the sign-in
       // address, the enabled state and the role; the passkey is its own task.
-      ...(configureClear ? [WORDS.configureNotNeeded] : []),
+      // Where no chosen account needs a change, the whole procedure stands, as
+      // every procedure does on a finished step (owner, 2026-09-23).
+      ...(!configureNeeded ? [
+        `Open the account, select **Properties → Edit properties**, change **User principal name** to the tenant’s initial domain${domain ? ` **${safe(domain)}**` : ''}, and save.`,
+        'Open the account, select **Properties → Edit properties → Settings**, set **Account enabled** to **Yes**, and save.',
+        tenantHasPim
+          ? 'Open **ID Governance → Privileged Identity Management → Microsoft Entra roles → Roles → Global Administrator → Add assignments**, select the account. Choose **Assignment type: Active** and **Permanently assigned**.'
+          : 'Open **Entra ID → Roles & admins → Global Administrator → Add assignments**, select the account, and complete the assignment. If it asks for an assignment type, choose **Active** and **Permanently assigned**.',
+      ] : []),
       ...(needs('initialDomain').length ? [`Open ${named(needs('initialDomain'))}, select **Properties → Edit properties**, change **User principal name** to the tenant’s initial domain${domain ? ` **${safe(domain)}**` : ''}, and save.`] : []),
       ...(needs('enabled').length ? [`Open ${named(needs('enabled'))}, select **Properties → Edit properties → Settings**, set **Account enabled** to **Yes**, and save.`] : []),
       ...(direct.length ? [`Open **Entra ID → Roles & admins → Global Administrator → Add assignments**, select ${named(direct.map(id => targetOf(ctx, id)))}, and complete the assignment. If it asks for an assignment type, choose **Active** and **Permanently assigned**.`] : []),
       ...(viaPim.length ? [`Open **ID Governance → Privileged Identity Management → Microsoft Entra roles → Roles → Global Administrator → Add assignments**, select ${named(viaPim.map(id => targetOf(ctx, id)))}. Choose **Assignment type: Active** and **Permanently assigned**.`] : []),
       'Return to IAMAI and select **Scan to update the plan**.',
-    ] })]),
+    ] }),
     task({ id: 'set-up-passkey', accountId: null, title: 'Set up an approved passkey', targetUpn: null, required: false, readinessKey: 'recovery-methods', evidence: null, actionLabel: 'Open passkey instructions', steps: variants[0].steps, variants, defaultVariantId: variants[0].id }),
   ]
   const accounts = accountStatuses(ctx, preparations, notes, signedIn)
