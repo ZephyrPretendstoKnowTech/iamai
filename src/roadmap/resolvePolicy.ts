@@ -813,13 +813,19 @@ export function implementable(
     unsettled?: ReadonlySet<string>
     decisions?: ReadonlyMap<string, { answer: SourceReferenceAnswer }>
     omitted?: ReadonlySet<string>
+    /**
+     * References to leave where they stand, lower-cased: the ones a create is
+     * waiting on, for the policy its procedure describes (PolicyOperation.pending).
+     */
+    keep?: ReadonlySet<string>
   } = {},
 ): { policy: RawPolicy; missing: MissingReference[]; authorOnly: string[]; omitted: string[] } {
   const unresolved = refs.unresolved ?? new Map<string, string | null>()
   const authorOnly = refs.authorOnly ?? new Set<string>()
   const unsettled = refs.unsettled ?? new Set<string>()
   const omitted = refs.omitted ?? new Set<string>()
-  const isUnresolved = (s: string): boolean => unresolved.has(s.toLowerCase()) || /^\{[A-Za-z]+\}$/.test(s) || /^__IAMAI_/.test(s)
+  const keep = refs.keep ?? new Set<string>()
+  const isUnresolved = (s: string): boolean => !keep.has(s.toLowerCase()) && (unresolved.has(s.toLowerCase()) || /^\{[A-Za-z]+\}$/.test(s) || /^__IAMAI_/.test(s))
   const missing: MissingReference[] = []
   const authorsOwn: string[] = []
   const leftOut: string[] = []

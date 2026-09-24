@@ -50,7 +50,7 @@ import { PASSKEY_SETTINGS_STEP_ID, passkeyBindings } from '../../roadmap/passkey
 import { SYNC_WORKLOAD_GOAL_ID, syncIdentitySupportOf } from '../../roadmap/workloadIdentity.ts'
 import { officeRangesOf, stepVars, strengthMethodNames, tenantNameOf } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { portalNamesFor, stepPortalLines, plannedPortalLines } from './stepPortal.ts'
+import { portalNamesFor, stepPortalLines } from './stepPortal.ts'
 import { lifecycleResources } from './stepResources.ts'
 
 const PACKAGES = (registry as unknown as { packages: Record<string, CompiledPackage> }).packages
@@ -642,46 +642,6 @@ export function jsonWithPlanTag(text: string, step: Step): string {
   // any heuristic over the whole text, and was reflowed.
   const indent = pristine === text.trim() ? 0 : 2
   return JSON.stringify(parsed, null, indent)
-}
-
-/** References to a resolved target need the actual settings beside the directions.
- * Read the same selected request bodies as JSON; never substitute a different policy. */
-export function entraWithSettings(text: string, step: Step, ctx: StepVarContext, c: StepContract, projection: Projection): string {
-  if (!/resolved|match the target|target settings/i.test(text)) return text
-  const json = projection.channels.find(a => a.channel === 'json')
-  const selected = json ? policyBodiesOfChannel(json, projection.preview === true) : null
-  if (!selected || !selected.some(s => 'conditions' in s.body || 'grantControls' in s.body || 'sessionControls' in s.body)) return text
-  // The procedure already covers navigation, saving and removed exclusions.
-  // This supplement carries only the selected policy's settings and pair labels.
-  // A field still waiting on a reference is not shown as a setting to copy.
-  //
-  // The binding layer already refuses to bind one (`incompleteFieldsOf`): "what
-  // is left of its conditions, grant and users is not the target — an exclusion
-  // set short of the groups still to answer read as complete". This block read
-  // the request bodies directly and rendered every line, so before the
-  // exclusions group was chosen a step showed "Users → Include: All users." as
-  // a settings line, under a procedure that carefully said "the resolved admin
-  // roles, with the resolved exclusions". Saving the selection changed that one
-  // line to directory roles plus the exclusions group — so the earlier version
-  // was not a narrower statement of the same thing, it was a different and much
-  // wider policy, fully copyable.
-  const openFields = incompleteFieldsOf(step, plannedOperationsOf(step)[0] ?? null)
-  const FIELD_OF: [RegExp, string][] = [
-    [/^Users →/, 'conditions.users'],
-    [/^(?:Target resources|Cloud apps)/, 'conditions.applications'],
-    [/^Grant →/, 'grantControls'],
-    [/^Session →/, 'sessionControls'],
-  ]
-  const settled = (line: string): boolean => {
-    const field = FIELD_OF.find(([re]) => re.test(line))?.[1]
-    return field === undefined || !touches(openFields, field)
-  }
-  const lines = plannedPortalLines(step, portalNamesFor(ctx, stepVars(step, ctx), c.title), selected)
-    ?.filter(line => /^(?:Policy [AB] —|Name:|Description:|Users →|Target resources|Cloud apps|Conditions →|Grant →|Session →)/.test(line))
-    .filter(settled)
-    .map(line => line.replace(/: Entra admin center.*$/, ''))
-  if (!lines?.length) return text
-  return `${text.trim()}\n\n### ${shared.policySettingsForAction}\n\n${lines.map(line => `- ${line}`).join('\n')}`
 }
 
 /**

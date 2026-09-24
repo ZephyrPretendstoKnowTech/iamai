@@ -46,8 +46,12 @@ const TURN_ON = /Enable policy\**\s*(?::|to|from\s+\**Report-only\**\s+to)\s*\**
  * create (on its own or inside a batch), and the scripts that create one.
  */
 const CREATE = /New policy|New-MgIdentityConditionalAccessPolicy|CreateMissing|"method":\s*"POST",\s*"url":\s*"\/identity\/conditionalAccess\/policies"/
-/** The instruction every channel gives instead, in the portal's own words. */
-const REPORT_ONLY = /set Enable policy to Report-only/i
+/**
+ * The instruction every channel gives instead, in the portal's own words: the
+ * switch of a policy that is there to Report-only, never the create's own
+ * "Set Enable policy to Report-only and select Create".
+ */
+const REPORT_ONLY = /set \**Enable policy\** to \**Report-only(?!\** and select \**Create)/i
 const GRAPH_POLICY = 'https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/'
 
 /** The policies the step tracks that the tenant has Off, read from the scan's own tracking: one per member. */
@@ -113,16 +117,21 @@ function assertReportOnlyEverywhere(scan: Scan, id: string, label: string, reaso
   // implementation unavailable over a procedure the step hands over.
   const tile = body.readiness.tiles.find((t) => t.key === 'implementation')
   if (tile) assert.match(String(tile.value), /Report-only/, `${label}: the implementation tile reads "${tile.value}"`)
-  // The portal lines: each policy that is Off, by name and id.
+  // The portal lines: each policy that is Off, by name.
   const portal = artifact('portal')
   assert.ok(portal, `${label}: no portal channel`)
   assert.match(portal.text(), REPORT_ONLY, `${label}: portal: ${portal.text()}`)
-  for (const p of off) assert.ok(portal.text().includes(p.name) && portal.text().includes(p.id), `${label}: the portal does not name ${p.name}`)
-  // The Implementation Task drawn from them.
-  const task = body.emergencyAccountTasks?.tasks[0]
+  for (const p of off) assert.ok(portal.text().includes(p.name), `${label}: the portal does not name ${p.name}`)
+  // The Implementation Task that does it is the first still to do: the step's
+  // create and turn-on stand in every state (walk list section 4 item 18), but
+  // the create is done and the turn-on comes after it.
+  const tasks = body.emergencyAccountTasks?.tasks ?? []
+  const task = tasks.find((t) => t.required)
   assert.ok(task, `${label}: no Implementation Task`)
   assert.match(task.title, /Report-only/, `${label}: the task is called "${task.title}"`)
   assert.ok(task.steps.some((s) => REPORT_ONLY.test(s)), `${label}: task steps: ${task.steps.join(' | ')}`)
+  assert.equal(tasks.find((t) => /^Create the polic/.test(t.title))?.required ?? false, false, `${label}: the create is still to do beside the policy that is there`)
+  assert.ok(tasks.findIndex((t) => /^Turn the polic/.test(t.title)) > tasks.indexOf(task), `${label}: the turn-on comes before Report-only`)
   // JSON and PowerShell: the one-field patch to each policy that is there, and
   // to nothing else. One policy is one PATCH; more are one Graph batch of them.
   const json = artifact('json')
@@ -153,7 +162,7 @@ function assertReportOnlyEverywhere(scan: Scan, id: string, label: string, reaso
   assert.ok(view.whatToDo.some((l) => REPORT_ONLY.test(l)), `${label}: export: ${view.whatToDo.join(' | ')}`)
   const lines = stepLines(step, ctx)
   // And nothing anywhere says On, or builds a second policy.
-  const spoken: [string, string][] = [...body.artifacts.map((a): [string, string] => [a.id, a.text()]), ['task', task.steps.join('\n')], ['export', view.whatToDo.join('\n')], ['lines', lines.join('\n')]]
+  const spoken: [string, string][] = [...body.artifacts.filter((a) => a.id !== 'portal').map((a): [string, string] => [a.id, a.text()]), ['task', task.steps.join('\n')], ['export', view.whatToDo.join('\n')], ['lines', lines.join('\n')]]
   for (const [where, text] of spoken) {
     assert.doesNotMatch(text, TURN_ON, `${label}: ${where} turns the policy on: ${text.match(TURN_ON)?.[0]}`)
     assert.doesNotMatch(text, CREATE, `${label}: ${where} builds a second policy: ${text.match(CREATE)?.[0]}`)
@@ -161,11 +170,15 @@ function assertReportOnlyEverywhere(scan: Scan, id: string, label: string, reaso
 }
 
 test('a switched-off tagged policy reads Correct on the board, and no channel builds a second one', () => {
-  const { step, reading, body, text } = drawn(scanOf(settled()), STEP)
+  const { step, reading, body } = drawn(scanOf(settled()), STEP)
   assert.equal(offOf(step).length, 1, 'the premise: the tenant holds the tagged policy, switched off')
   assert.equal(unavailableReason(step), 'switched-off')
   assert.equal(reading.substatus, 'Correct', `the board reads "${reading.lane} · ${reading.substatus}" over a policy that exists`)
+  // The Entra tab keeps the step's create in every state (walk list section 4
+  // item 18), done and not the task it opens on; no other channel builds one.
+  const text = body.artifacts.filter((a) => a.id !== 'portal').map((a) => a.text()).join('\n')
   assert.doesNotMatch(text, /did not find|create it in Report-only|Policies → New policy/, 'a channel builds the policy the tenant already has')
+  assert.equal(body.emergencyAccountTasks?.tasks.find((t) => t.required)?.title, 'Set the policy to Report-only')
   assert.equal(body.contract.found.some((f) => /follow the instructions below/.test(f.text)), false, 'a finding points at instructions the step does not give')
 })
 
@@ -330,10 +343,14 @@ test('no step with a tracked policy Off builds a second one or turns one on, in 
         if (step.status === 'done' || offOf(step).length === 0) continue
         seen++
         const { body } = drawn(scan, step.id)
-        for (const a of body.artifacts) {
+        // The Entra tab carries the step's create and turn-on in every state (walk
+        // list section 4 item 18); what it asks for first is the switch to Report-only.
+        for (const a of body.artifacts.filter((x) => x.id !== 'portal')) {
           assert.doesNotMatch(a.text(), CREATE, `${name} ${step.id} (${unavailableReason(step)}): ${a.id} builds a second policy: ${a.text().match(CREATE)?.[0]}`)
           assert.doesNotMatch(a.text(), TURN_ON, `${name} ${step.id} (${unavailableReason(step)}): ${a.id} turns the policy on: ${a.text().match(TURN_ON)?.[0]}`)
         }
+        const tasks = body.emergencyAccountTasks?.tasks ?? []
+        if (tasks.some((t) => /Report-only$/.test(t.title) && !/^Create/.test(t.title))) assert.match(tasks.find((t) => t.required)?.title ?? '', /^Set the polic/, `${name} ${step.id}: the first task is not the switch to Report-only`)
       }
       assert.ok(seen > 0, `${name}: the premise: a step tracks a policy that is now Off`)
     }
