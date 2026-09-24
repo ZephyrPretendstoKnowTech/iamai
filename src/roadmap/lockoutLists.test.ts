@@ -40,18 +40,18 @@ function adminsInReportOnly(f: ReturnType<typeof fixture>): typeof f.snapshot {
   return { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows } } }
 }
 
-test('step 15 names the admins not yet Ready for phishing-resistant MFA on the demo (three or fewer), and counts them past that', () => {
+test('step 15 names the admins its own gate counts short on the demo (three or fewer), and counts them past that', () => {
   const f = fixture('demo-week2')
   const snapshot = adminsInReportOnly(f)
   f.checkpoints = (f.checkpoints ?? []).map(record => ({ ...(record as Record<string, unknown>), accountBasis: recoveryAccountBasis(snapshot, f.mapping.breakGlassUserIds, f.mapping, f.groups) }))
   const r = runFixture({ ...f, snapshot }, { snapshot } as never)
   const s = r.steps.find((x) => x.goalId === 'admins-phishing-resistant')!
   const ex = stepVars(s, ctxFor(f, r)) as { adminsWithout: string[]; adminsWithoutCount?: number }
-  const admins = [...adminUserIds(f.snapshot.roles)].filter((id) => !f.mapping.breakGlassUserIds.includes(id))
-  // Readiness, not the registration alone: a passkey never used is not what the policy needs (Step 7).
-  // Ready and Seamless are both Ready (79b66fd8).
-  const without = r.viability.filter((v) => admins.includes(v.userId) && v.activity === 'active' && !isReady(v.readiness.state))
-  assert.ok(without.length > 0 && without.length <= NAMES_UP_TO, `the demo has ${without.length} admins not yet Ready`)
+  // The gate's own count (walk list 4.x item 46): the admins judged without a
+  // method the policy accepts. It read MFA Readiness's state beside a gate at 100%.
+  const p = s.methodPreparation!
+  const without = p.ids.filter((id) => !p.readyIds.includes(id) && !p.unknownIds.includes(id))
+  assert.ok(without.length > 0 && without.length <= NAMES_UP_TO, `the demo has ${without.length} admins short`)
   assert.equal(ex.adminsWithout.length, without.length, 'named, not counted')
   assert.equal(ex.adminsWithoutCount, undefined)
   // The line names a day to register before, and there is no such day while the
@@ -65,7 +65,7 @@ test('step 15 names the admins not yet Ready for phishing-resistant MFA on the d
   // Two of three is 66.7%, read down to 66% (R4-14: a reading is never rounded up to a number it has not reached).
   assert.equal(s.action.readinessGate?.value, '66%', 'the step waits on admin readiness')
   assert.ok(!s.events, 'so nothing about it is dated')
-  const named = lines.filter((l) => /not yet Ready for phishing-resistant MFA/.test(l))
+  const named = lines.filter((l) => /needs? a passkey, security key or Windows Hello/.test(l))
   assert.equal(named.length, 1, 'the admins are named once')
   assert.doesNotMatch(named[0]!, /before|\d{4}/, 'and a line that names a deadline does not invent one')
   for (const admin of ex.adminsWithout) assert.ok(named[0]!.includes(admin), `${admin} is not named`)
