@@ -71,7 +71,8 @@
     "signature",
     "policy.target.json",
     "policy.fact",
-    "authStrength.target.displayName"
+    "authStrength.target.displayName",
+    "dependencies.waits"
   ],
   "projection": {
     "missing": {

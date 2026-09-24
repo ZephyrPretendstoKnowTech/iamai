@@ -1396,7 +1396,8 @@
           "signature",
           "policy.target.json",
           "policy.fact",
-          "authStrength.target.displayName"
+          "authStrength.target.displayName",
+          "dependencies.waits"
         ],
         "projection": {
           "missing": {
@@ -1952,7 +1953,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nThe administrator authentication-strength policy cannot proceed yet. Blockers: {{dependencies.blockers}}. Resolving them should not add role exclusions or weaken the grant.\n"
+          "text": "\n**Require Phishing-Resistant MFA for Admins** waits for {{dependencies.waits}}. [omit this line when unavailable]\n"
         },
         "ai.not-licensed": {
           "meta": {
@@ -3263,7 +3264,8 @@
           "evidence.originalTransferMethod",
           "dependencies.deviceCodeWorkflows",
           "policy.fact",
-          "policy.current.difference"
+          "policy.current.difference",
+          "dependencies.waits"
         ],
         "projection": {
           "missing": {
@@ -3773,7 +3775,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\n**Block Device Code Sign-in** cannot proceed yet. Known blockers and decisions: {{dependencies.blockers}}. Resolve these before creating or changing the policy.\n"
+          "text": "\n**Block Device Code Sign-in** waits for {{dependencies.waits}}. [omit this line when unavailable]\n"
         },
         "ai.not-licensed": {
           "meta": {
@@ -3877,7 +3879,8 @@
           "dependencies.serviceAccountDecision",
           "dependencies.mailDevices",
           "policy.fact",
-          "policy.current.displayName"
+          "policy.current.displayName",
+          "dependencies.waits"
         ],
         "projection": {
           "missing": {
@@ -4396,7 +4399,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\n**Block Legacy Authentication** cannot proceed yet. Known blockers and decisions: {{dependencies.blockers}}. Resolve these before creating or changing the policy.\n"
+          "text": "\n**Block Legacy Authentication** waits for {{dependencies.waits}}. [omit this line when unavailable]\n"
         },
         "ai.not-licensed": {
           "meta": {
@@ -8690,7 +8693,8 @@
           "dependencies.blockers",
           "signature",
           "policy.target.json",
-          "policy.fact"
+          "policy.fact",
+          "dependencies.waits"
         ],
         "projection": {
           "missing": {
@@ -9240,7 +9244,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nState: the MFA-for-everyone step cannot proceed yet. Known blockers or decisions: {{dependencies.blockers}}. These must be resolved before the policy is created or changed; an added exclusion does not resolve them.\n"
+          "text": "\n**Require MFA for Everyone** waits for {{dependencies.waits}}. [omit this line when unavailable]\n"
         },
         "ai.not-licensed": {
           "meta": {

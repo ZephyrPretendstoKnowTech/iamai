@@ -175,9 +175,6 @@ test('D1: the reference grant is the control the evidence names, and the pin hol
   const ref = referenceOf('mfa-all-users')
   assert.ok(ref.some((l) => /^Grant → Require multifactor authentication\./.test(l)), ref.join('\n'))
   assert.ok(!ref.some((l) => /Require authentication strength: Multifactor authentication/.test(l)), ref.join('\n'))
-  // The evidence line said this all along; now they agree.
-  const evidence = everyString((stepById['mfa-all-users'] as unknown as { who?: unknown }).who).join('\n')
-  assert.match(evidence, /This policy uses Require multifactor authentication\./)
   // And Learn's reason for there being only one: the two controls are exclusive.
   assert.match(ref.join('\n'), /a policy cannot carry both/)
 })

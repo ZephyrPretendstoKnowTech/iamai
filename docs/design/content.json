@@ -179,6 +179,9 @@
         "$commentExclusionsEdit": "The card of a policy whose only change left is the exclusions group, which Configure Emergency Exclusions adds itself (walk list 4.x item 7): it read Correct the policy, beside that step's own task for the same edit.",
         "exclusionsEdit": "{step} adds {group} to it."
       },
+      "$commentFocus": "AI Info's Focus on a Turn On MFA for Everyone policy that is already in the tenant (ui/surfaces/aiGrounding.ts; walk list 4.x item 31): the create sentence (steps[].aiFocus) stands only while the policy is still to create.",
+      "focusTurnOn": "Walk me through turning this policy on after its report-only period.",
+      "focusCorrect": "Walk me through correcting this policy.",
       "$commentWaits": "What a held turn-on waits for beyond the plan's own steps, each said two ways: after \"Wait for\" in the turn-on's held line (app.plan.enforceOutstanding) and after \"After\" on the policy card (card.after). The mail accounts named in Confirm What You Use (walk list 4.x item 5), a report-only week that would have blocked someone (item 35) and a readiness threshold (item 44) held nothing on the procedure, so the turn-on still read Set Enable policy to On.",
       "waits": {
         "mail": "{names} to move to a supported mail route",
@@ -1934,7 +1937,10 @@
         "jsonWaits": "{steps} first: this policy names an object {tenant} does not have yet.",
         "jsonWaitsDecision": "Baseline mappings first (Plan settings): the baseline names a group of its author's, and IAMAI does not yet know whether it stands for something in {tenant} or is left out.",
         "jsonWaitsUnreadable": "The source policy leaves out a group IAMAI cannot identify, so a copy made in {tenant} would reach people the author's own tenant left alone.",
-        "inPlaceKeep": "This is in place already: nothing to create. Keep the policy as it is.",
+        "$commentInPlaceKeep": "A goal already delivered, as its action (stepContract.ts actionOf): the policy by name and that it is On (walk list 4.x items 22 and 31). It read \"This is in place already: nothing to create. Keep the policy as it is.\" on every Satisfied policy card and in AI Info. inPlaceKeep stands where the scan names no policy.",
+        "inPlaceKeep": "Nothing left to do.",
+        "inPlaceOn": "Nothing left to do: {policy} is On.",
+        "inPlaceOnMany": "Nothing left to do: {policy} are On.",
         "pairReviewExpected": "Expected policy name: {name}. Confirm its scope and authentication requirement before assigning this name to an existing policy. Rescan after making an approved correction.",
         "pairUnmatched": "IAMAI found existing guest coverage in {tenant}, but cannot match it to the two baseline policies. Compare the existing policies with the expected pair before creating or renaming anything. See Entra for the names to check.",
         "targetAmbiguous": "{tenant} has more than one policy this goal could correct, and nothing about them says which is its own. IAMAI does not guess: correcting the wrong one would change who another policy applies to. Decide which policy stands for this goal (for example, widen it to everyone, or retire the extra one), then scan again.",
@@ -2129,7 +2135,6 @@
             "note": "{policy} delivers this goal and differs from the baseline's policy in {dimensions}. That may be deliberate: IAMAI reads the goal as delivered and does not ask you to change it."
           },
           "$commentFoundEnforcedUnwatched": "Owner decision 3 (2026-09-22; R4-12, Jordan D7): a finished policy this plan owns (its tag on the satisfying policy, enforced) that went live with no report-only period IAMAI watched stays Completed, and its Readiness says so on a warning tile (ui/surfaces/doneWhen.ts enforcedUnwatched: IAMAI watched every policy member go On from not deployed at the scan before, or from Off on the same object after a scan that recorded it not deployed, with no report-only state between, and the scan's sign-in records show no report-only result for it, observation.ts skippedWindow). A record must have seen the step's policy not deployed. Never on a policy a first scan found On or Off, which is also how a policy this plan built and watched through report-only reads from a second browser or after Forget: IAMAI cannot know that one skipped anything. Never on a different object replacing the one recorded, which the record only sighted and the scan before may have seen in report-only. Built straight to On, policies on the pinned baseline filed under Completed with the scan's sentence alone, and the one note saying nobody watched them sat under New evidence. This tile is that fact's one home on the step: the New evidence note that says the same (observations.appearedEnforced) is left out where it draws. It states what IAMAI could watch, never when the policy went on, which IAMAI cannot know. Never on a policy the tenant already had (In place): nothing went live under this plan there. The check after the change stays in the Done-when (shared.policyVerifyAfter), and this sentence does not repeat it.",
-          "foundEnforcedUnwatched": "This policy went live without a report-only period IAMAI could watch, so IAMAI observed nothing of it before it started applying to sign-ins.",
           "followUp": {
             "$comment": "Owner decision 9 (2026-09-22): one person on leave need not hold every policy that waits on Prepare Your Team for MFA. The people a person marks there to turn on without, for now, are named on the campaign and on each policy that reaches them, with what happens at their next sign-in.",
             "label": "Follow-Up List",
@@ -2225,11 +2230,8 @@
           "$commentInventoryNames": "The Guest Directory tile joined its note and its names with newlines and nothing between them, so on a tenant with one guest the tile read as two sentences and then a person's name on a line of its own, with nothing saying what the name was. A list says it is a list.",
           "inventoryNames": "The accounts, as the directory names them:",
           "foundTaggedDisabled": "{policy} already carries this step's tag in {tenant} and is switched off, so it is doing nothing today. IAMAI does not turn a policy on: review its settings in the Entra admin center and, if it is the one you want, set Enable policy to Report-only there, not On.",
-          "foundDiffers": "{policy} is deployed, but not as this step asked: {fields} differ from the target above. Compare them in the Entra admin center, or re-run this step's instructions to write the intended settings.",
+          "foundDiffers": "{policy} differs from the plan in {fields}.",
           "$commentFoundWatched": "A step IAMAI WATCHED move is not a report of coverage that was already there (stepContract.ts foundOf, observation.ts since === 'observed-change'). Saying \"already delivered ... so there is nothing to create\" on the step somebody has just created, watched for a week and enforced erases their work and describes it as a policy they never needed to build.",
-          "$commentFoundInherited": "A tenant IAMAI has planned before arrives carrying policies with IAMAI's own tag, and the step said \"Already delivered by X, so there is nothing to create\" — the wording for coverage somebody else put there. Neither half of the existing pair fits. The first version of this said the policy was written \"before IAMAI's first scan\", which IAMAI cannot know and which its own record disproved: a reader found it on a policy recorded ABSENT on three consecutive scans and watched appearing on the fourth, eight days after the first scan, with `neverObserved` set. What the tag proves is authorship, not a date, so that is all it now says. `neverObserved` cannot rescue the date either: it is set both for a policy the first scan found enforced and for one deployed straight to enforced under the watch. Where IAMAI watched a rollout go On with no report-only period (observation.ts skippedWindow), the Readiness tile (stepContract.foundEnforcedUnwatched) says so in its own words beside this line.",
-          "foundInherited": "{policies} carries this step's tag, so it was written from this plan rather than by hand. This scan did not watch it change; it reads it as it stands in {tenant} now.",
-          "foundInheritedTogether": "{policies} carry this step's tag, so they were written from this plan rather than by hand, and no one of them covers the whole goal on its own. This scan did not watch them change; it reads them as they stand in {tenant} now.",
           "foundInPlaceWatched": "{policies} is in place. IAMAI watched it get there.",
           "foundInPlaceWatchedTogether": "{policies} are in place together, and no one of them covers the whole goal on its own. IAMAI watched them get there.",
           "foundInPlaceTogether": "Already delivered by {policies} together — none of them covers the whole goal on its own — so there is nothing to create.",
@@ -2282,7 +2284,7 @@
           "setAsideAction": "Put this step back if you want it on the plan again.",
           "$commentLeadUnverified": "The lead of a finished step, other than the one with the emergency-access tiers, whose open findings are all unread (outcome unknown). It read its milestone, \"No change needed.\", over a tile saying Could not verify: on the Follow-up snapshot Configure Passkey Settings said so over \"Existing passkeys affected - Could not verify\", whose note said some registered authentication methods were not readable. An absolute all-clear over a check IAMAI could not make is a claim it cannot know; this scopes the all-clear to what was read and names the check that was not. A finished step with an open failing finding keeps its milestone words: an owner question, not settled here.",
           "leadUnverified": "Nothing IAMAI could read here needs a change. It could not verify {findings}, and says there what was not read.",
-          "fixStep": "Finish {step} first.",
+          "fixStep": "After {step}.",
           "$commentFixStepAt": "A prerequisite is not always waited on until it is FINISHED (src/actionability/dependency-data.json carries the milestone on every edge). Turn Off Security Defaults waits for the replacement policies to be ready to enforce; those policies wait for it to be complete. Both tiles said \"Finish the other first\", so the pair read as a deadlock that the data does not contain — and the way out of an apparent deadlock is to turn security defaults off, which is the one thing the step's own words say not to do yet. A null milestone draws no note under the card: Turn Off Security Defaults' own card already says to turn them off the day the four policies below it are ready (walk list 4.x item 50).",
           "fixStepAt": {
             "ready-to-enforce": null,
@@ -2361,6 +2363,7 @@
               "observation": "Observation",
               "$commentUnwatched": "The Satisfied fact a finished policy this plan owns states where IAMAI watched it go live with no report-only period (owner decision 3, 2026-09-22; R4-12; walk list 4.x item 2, owner 2026-09-24). {date} is the scan that first saw it On, or Microsoft's own date for it.",
               "unwatched": "On since {date}, without a report-only week",
+              "turnedOn": "Turned on",
               "exclusions": "Exclusions",
               "exclusionsReached": "Reaches emergency access",
               "exclusionsUnproven": "Not proven",
@@ -2439,7 +2442,6 @@
               "existing": "Tenant policies already delivering this goal",
               "current": "Current tenant policy",
               "currentState": "Current state",
-              "changedFields": "Fields that differ from the target",
               "removedExclusions": "Exclusions the correction removes",
               "target": "Names and IDs in the intended target",
               "targetName": "Policy name",
@@ -2470,7 +2472,6 @@
               },
               "tenant": "Tenant",
               "scanned": "Latest scan",
-              "proposed": "IAMAI proposes these settings. The step cannot hand them over yet; What remains says why.",
               "previewValues": "Values shown as ‹…› are not resolved yet. Do not run this output.",
               "unresolvedFields": "Not available in this scan: {fields}",
               "request": "Request",
@@ -4920,12 +4921,10 @@
         "lead": "{active} active people · {admins} admins · {guests} guests",
         "evidenceUndated": {
           "$comment": "The evidence lines that name the turn-on day ({enforce}), without it, keyed by the dated line's place in evidence: for a step that carries no such day - held on the board (owner decision 2, 2026-09-22), held by the roadmap, or finished - whose people the scan still read. Each keeps the rest of its dated line and says no more than it did (stepExport.ts whoEvidenceLines).",
-          "1": "{n} people have no method and will be stopped until they register one: {list:noMethod}"
+          "0": "{n} people have no method and will be stopped until they register one: {list:noMethod}"
         },
         "evidence": [
-          "This policy uses Require multifactor authentication. Stronger method requirements belong to the separate policies that select an authentication strength.",
           "{n} people have no method and will be stopped; register before {enforce}: {list:noMethod}",
-          "{n} people have a registered method and no MFA sign-in in the records: enforcement is its first test: {list:unproven}",
           "Your account is in scope: {operatorSignIns} sign-ins since {from}.",
           "{operatorNoRecords}, your own account, is in scope: it signed in for this scan and has no sign-in records in the window.",
           "{existingCoverage}"
@@ -5018,14 +5017,12 @@
         "lead": "{admins} people hold an admin role",
         "evidenceUndated": {
           "$comment": "The evidence lines that name the turn-on day ({enforce}), without it, keyed by the dated line's place in evidence: for a step that carries no such day - held on the board (owner decision 2, 2026-09-22), held by the roadmap, or finished - whose people the scan still read. Each keeps the rest of its dated line and says no more than it did (stepExport.ts whoEvidenceLines).",
-          "1": "{n} admins need a passkey, security key or Windows Hello: {list:adminsWithout}",
-          "2": "{adminsWithoutCount} admins need a passkey, security key or Windows Hello."
+          "0": "{n} admins need a passkey, security key or Windows Hello: {list:adminsWithout}",
+          "1": "{adminsWithoutCount} admins need a passkey, security key or Windows Hello."
         },
         "evidence": [
-          "No session control here on purpose: the baseline keeps sign-in frequency and persistence in their own policies (Shorten Admin Sessions, Limit How Long Sessions Last).",
           "{n} admins need a passkey, security key or Windows Hello before {enforce}: {list:adminsWithout}",
           "{adminsWithoutCount} admins need a passkey, security key or Windows Hello before {enforce}.",
-          "Roles held through Privileged Identity Management are in scope only while activated.",
           "Your account is in scope: {operatorSignIns} sign-ins since {from}.",
           "{operatorNoRecords}, your own account, is in scope: it signed in for this scan and has no sign-in records in the window.",
           "{existingCoverage}"
@@ -5465,13 +5462,13 @@
         "lead": "{active} active people",
         "evidenceUndated": {
           "$comment": "The evidence lines that name the turn-on day ({enforce}), without it, keyed by the dated line's place in evidence: for a step that carries no such day - held on the board (owner decision 2, 2026-09-22), held by the roadmap, or finished - whose people the scan still read. Each keeps the rest of its dated line and says no more than it did (stepExport.ts whoEvidenceLines).",
-          "0": "{n} accounts signed in by a legacy protocol since {from}; fix each: {list:legacyUsers}"
+          "0": "{n} accounts signed in with legacy authentication in the last 30 days: {list:legacyUsers}"
         },
         "evidence": [
-          "{n} accounts signed in by a legacy protocol since {from}: fix before {enforce}: {list:legacyUsers}",
+          "{n} accounts signed in with legacy authentication in the last 30 days: {list:legacyUsers}",
           "{existingCoverage}"
         ],
-        "none": "Nobody used a legacy protocol since {from}."
+        "none": "Nobody signed in with legacy authentication in the last 30 days."
       },
       "decision": {
         "label": "Mail-sending devices",
@@ -5563,10 +5560,10 @@
         "lead": "{active} active people",
         "evidenceUndated": {
           "$comment": "The evidence lines that name the turn-on day ({enforce}), without it, keyed by the dated line's place in evidence: for a step that carries no such day - held on the board (owner decision 2, 2026-09-22), held by the roadmap, or finished - whose people the scan still read. Each keeps the rest of its dated line and says no more than it did (stepExport.ts whoEvidenceLines).",
-          "0": "{deviceCodeCount} device-code sign-ins since {from} by {list:deviceCodeUsers}; usually a script or a TV app; move each."
+          "0": "{deviceCodeCount} device-code sign-ins in the last 30 days, by {list:deviceCodeUsers}"
         },
         "evidence": [
-          "{deviceCodeCount} device-code sign-ins since {from} by {list:deviceCodeUsers}; usually a script or a TV app; move each before {enforce}.",
+          "{deviceCodeCount} device-code sign-ins in the last 30 days, by {list:deviceCodeUsers}",
           "{existingCoverage}"
         ],
         "none": "No device-code sign-ins in the last 30 days."

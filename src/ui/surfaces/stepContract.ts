@@ -154,7 +154,6 @@ type ContractWords = {
   /** A gate on people's methods: who is short and what moves them (walk list 4.x items 42, 48). */
   methodGate: { adminValue: string; needs: string; needMany: string; needListed: string; signIn: string; signInMany: string; signInListed: string; route: string }
   /** A finished policy this plan owns that went live with no report-only period IAMAI watched (doneWhen.ts enforcedUnwatched; owner decision 3). */
-  foundEnforcedUnwatched: string
   /** The people marked on the campaign to turn on without, for now (roadmap/followUp.ts). */
   followUp: { label: string; campaignLabel: string; campaign: string; campaignOpen: string; method: string; risk: string; pickerLabel: string; save: string; printed: string; printedNone: string }
   /** The threshold where the scan could prove only a floor under the value. */
@@ -188,8 +187,6 @@ type ContractWords = {
   /** The line that heads the directory tile's name list, so a name is never a paragraph of its own. */
   inventoryNames: string
   foundInPlaceWatched: string
-  foundInherited: string
-  foundInheritedTogether: string
   foundInPlaceWatchedTogether: string
   foundInPlaceTogether: string
   doneSatisfied: string
@@ -246,7 +243,7 @@ type ContractWords = {
     email: string
     aiWarning: string
     /** The grounding every AI Info carries after the package's own words (aiGrounding.ts). */
-    aiFacts: { heading: string; boundary: string; observed: string; members: string; existing: string; current: string; currentState: string; changedFields: string; removedExclusions: string; target: string; targetName: string; includeUsers: string; includeRoles: string; excludeGroups: string; excludeUsers: string; locations: string; grant: string; strength: string; accounts: string; more: string; none: string }
+    aiFacts: { heading: string; boundary: string; observed: string; members: string; existing: string; current: string; currentState: string; removedExclusions: string; target: string; targetName: string; includeUsers: string; includeRoles: string; excludeGroups: string; excludeUsers: string; locations: string; grant: string; strength: string; accounts: string; more: string; none: string }
     /** The session policy's excluded accounts where the resolved target excludes nobody (stepPackage.ts). */
     excludeUsersNone: string
     copy: string
@@ -849,14 +846,17 @@ function foundOf(step: Step, tenant: string, said: string | null, routeStart: St
     // watched the rollout itself go On with no report-only period
     // (observation.ts `skippedWindow`), the Readiness tile says so
     // (unwatchedTile), which is a different fact and renders beside this one.
-    const inherited = !watched && step.tracking?.matchedBy === 'tag'
+    // (The inherited-tag wording is gone, walk list 4.x item 31: "This scan did
+    // not watch it change; it reads it as it stands in {tenant} now." protected
+    // IAMAI and told the reader nothing. A policy that went live with no watched
+    // report-only week is said by its own line, unwatchedLine, once.)
     const text =
       by === null
         ? fillText(CONTRACT.foundInPlace, { tenant })
         : by.together
-          ? fillText(inherited ? CONTRACT.foundInheritedTogether : watched ? CONTRACT.foundInPlaceWatchedTogether : CONTRACT.foundInPlaceTogether, { policies: list(by.names), tenant })
-          : fillText(inherited ? CONTRACT.foundInherited : watched ? CONTRACT.foundInPlaceWatched : CONTRACT.foundInPlaceNamed, { policies: by.names[0], tenant })
-    out.push(found('in-place', text))
+          ? fillText(watched ? CONTRACT.foundInPlaceWatchedTogether : CONTRACT.foundInPlaceTogether, { policies: list(by.names), tenant })
+          : fillText(watched ? CONTRACT.foundInPlaceWatched : CONTRACT.foundInPlaceNamed, { policies: by.names[0], tenant })
+    if (!enforcedUnwatched(step)) out.push(found('in-place', text))
   }
   // Who the goal does not reach, where it is delivered anyway (roadmap/types.ts
   // coverageShortfall). "Already delivered ... so there is nothing to create" is
@@ -896,7 +896,11 @@ function foundOf(step: Step, tenant: string, said: string | null, routeStart: St
   // The scan that saw the policy arrive On also wrote it as this note, and the
   // step said it twice, once under New evidence and once in Readiness.
   const toldByTile = obs ? enforcedUnwatched(step) && appearedEnforced(obs) : false
-  if (obs && !toldByTile && (obs.reviewRequired || obs.continuity === 'reset' || (obs.changed !== 'none' && obs.changed !== 'first-scan')) && !(said ?? '').includes(obs.note)) out.push(found('observation', obs.note))
+  // An edit the plan asked for on a policy that stays On is no news (walk list
+  // 4.x item 7): "the policy itself changed … what was watched before this is no
+  // longer what is deployed" followed Configure Emergency Exclusions' own edit.
+  const askedEdit = obs !== null && obs !== undefined && obs.expected && !obs.reviewRequired && obs.latest.state === 'enforced' && obs.changed === 'semantics'
+  if (obs && !toldByTile && !askedEdit && (obs.reviewRequired || obs.continuity === 'reset' || (obs.changed !== 'none' && obs.changed !== 'first-scan')) && !(said ?? '').includes(obs.note)) out.push(found('observation', obs.note))
   return out
 }
 
@@ -1227,7 +1231,12 @@ function actionOf(step: Step, reason: UnavailableReason | null, milestone: Contr
   // (2026-09-23), and their cards now carry none.
   const unverified = !step.emergency && step.id !== 's-prereq-exclusion-group' && step.id !== 's-prereq-passkey-settings' && open.length > 0 && open.every((f) => f.outcome === 'unknown')
   if (unverified && (isPreserved(step) || step.state.satisfied)) return { kind: 'preserve', text: fillText(CONTRACT.leadUnverified, { findings: list(open.map((f) => f.label)) }) }
-  if (isPreserved(step)) return { kind: 'preserve', text: app.plan.inPlaceKeep }
+  // What is true of it, by name (walk list 4.x items 22 and 31): "This is in
+  // place already: nothing to create. Keep the policy as it is." said neither.
+  if (isPreserved(step)) {
+    const names = existingOf(step)?.names ?? (step.tracking?.members ?? []).map((m) => m.policyName).filter((n): n is string => typeof n === 'string' && n.trim() !== '')
+    return { kind: 'preserve', text: names.length === 0 ? app.plan.inPlaceKeep : fillText(names.length === 1 ? app.plan.inPlaceOn : app.plan.inPlaceOnMany, { policy: list(names) }) }
+  }
   if (step.state.satisfied) return { kind: 'preserve', text: milestone.label }
   if (step.state.condition === 'needs-decision') return { kind: 'decide', text: milestone.label }
   if (step.state.lifecycle === 'report-only' && step.blockers.some(b => b.kind === 'readiness' && b.label === 'session-loop')) return { kind: 'resolve', text: shared.sessionLoopHold as string }
@@ -1509,7 +1518,13 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
   const waitsOnGroup = (step.action.missing ?? []).some((x) => x.token === '{exclusionsGroup}')
   const choice = waitsOnGroup ? exclusionsGroupChoice({ snapshot: ctx.snapshot, mapping: ctx.mapping, groups: ctx.groups, directory: ctx.directory }) : null
   const exclusionsUnconfirmed = choice !== null && choice.actionableId === null && choice.candidates.length > 0
-  const action = actionOf(step, reason, bare, tenant, cs, ex, exclusionsUnconfirmed, ownTask)
+  const acted = actionOf(step, reason, bare, tenant, cs, ex, exclusionsUnconfirmed, ownTask)
+  // "Finish the steps this one waits on first." names none of them (walk list
+  // 4.x item 23): where the board handed its reading down, the action is the
+  // wait in the row's own words ("After Prepare Emergency Access Accounts."),
+  // on the rail, in AI Info and in every export.
+  const waitWords = acted.text === MILESTONE.resolve && lane != null && (lane.lane === 'Up Next' || lane.lane === 'On Hold') ? lane.waitingFor ?? null : null
+  const action = waitWords !== null ? { ...acted, text: /[.!?]$/.test(waitWords) ? waitWords : `${waitWords}.` } : acted
   // What the action waits on, where the action IS the wait (`ContractAction.gatedBy`):
   // Foundation B's gate, said in the board's own words for it where a board
   // handed its reading down — the lane's tail on the two waiting lanes is that
@@ -1526,7 +1541,7 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
   // (roadmap/baselineConflict.ts), and nothing in the tenant clears it anyway.
   const waitTail = lane !== undefined && lane !== null && (lane.lane === 'Up Next' || lane.lane === 'On Hold') ? lane.tail : null
   const saysWait = action.kind === 'resolve' && step.state.condition !== 'baseline-conflict'
-  const gatedBy = saysWait && typeof bare.gatedBy === 'string' && bare.gatedBy.trim().length > 0 ? waitTail ?? bare.gatedBy : null
+  const gatedBy = saysWait && waitWords === null && typeof bare.gatedBy === 'string' && bare.gatedBy.trim().length > 0 ? waitTail ?? bare.gatedBy : null
   const whatToDo: ContractAction = { ...action, gatedBy }
   const actionText = whatToDo.text
   whatToDo.text = namedPortalResource({ id: 'portal', form: 'list', lines: [actionText], text: () => actionText, note: null }, ctx).text()
@@ -2218,13 +2233,21 @@ export const FINISHED_FINDINGS: ReadonlySet<string> = new Set([FINISHED_READING,
  * tile draws); the Done-when keeps the check after the change (doneWhenOf).
  */
 function unwatchedTile(step: Step): ReadinessTile | null {
+  const value = unwatchedLine(step)
+  return value === null ? null : { key: UNWATCHED_ENFORCEMENT, label: R().tiles.turnedOn, tone: 'good', value, note: null }
+}
+
+/**
+ * "On since Aug 28, 2026, without a report-only week": a finished policy that
+ * went live with no report-only period IAMAI watched, dated by the scan that
+ * first saw it On, or Microsoft's own date for it where the tenant gives one.
+ * A fact of the finished step, under Satisfied (walk list 4.x item 2, owner
+ * 2026-09-24), and AI Info's one line for it (item 31). Null elsewhere.
+ */
+export function unwatchedLine(step: Step): string | null {
   if (!enforcedUnwatched(step)) return null
-  // The scan that first saw it On, or Microsoft's own date for it where the
-  // tenant gives one: a fact of the finished step, under Satisfied (walk list
-  // 4.x item 2, owner 2026-09-24).
   const on = step.state.members.map((m) => m.change.latest.evidenceAt ?? m.change.latest.firstSeenAt).sort()[0]
-  if (on === undefined) return null
-  return { key: UNWATCHED_ENFORCEMENT, label: R().tiles.observation, tone: 'good', value: fillText(R().tiles.unwatched, { date: absoluteDate(on) }), note: null }
+  return on === undefined ? null : fillText(R().tiles.unwatched, { date: absoluteDate(on) })
 }
 
 /**

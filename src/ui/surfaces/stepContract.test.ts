@@ -138,7 +138,8 @@ test('contract 4: an outstanding prerequisite is an instruction under Fix before
   assert.ok(blocked, 'the demo has a step waiting on another')
   const stepFixes = blocked.c.fix.filter((x) => x.key.startsWith('step:'))
   assert.ok(stepFixes.length > 0, `${blocked.step.id}: the prerequisite is not a Fix line`)
-  for (const f of stepFixes) assert.match(f.text, /^Finish .+ first\.$/, `a prerequisite Fix line reads "${f.text}"; it must be an instruction`)
+  // In the row's words (walk list 4.x item 23): "Finish {step} first." is gone everywhere.
+  for (const f of stepFixes) assert.match(f.text, /^After .+\.$/, `a prerequisite Fix line reads "${f.text}"; it must name the step it waits on`)
   // The threshold a step waits on is not a fix — nobody clears it by doing
   // something on this step — so it is the observed number and the wait, and never
   // an instruction. A readiness blocker that names a countable thing somebody has

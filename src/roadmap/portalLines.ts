@@ -249,7 +249,7 @@ function conditionLines(f: PolicyFacts, ctx: PortalContext): string[] {
     out.push(`Conditions → Locations → Configure: Yes, then Include: ${inc || 'Any location'}${exc ? `; Exclude: ${exc}` : ''}`)
   }
   const clientApps = [...f.clientApps].filter((c) => c !== 'all')
-  if (clientApps.length > 0) out.push(`Conditions → Client apps → Configure: Yes, then ${clientApps.map((c) => CLIENT_APP_LABEL[c] ?? c).join(', ')}. Left at No it reaches every client app.`)
+  if (clientApps.length > 0) out.push(`Conditions → Client apps → Configure: Yes, then ${clientApps.map((c) => CLIENT_APP_LABEL[c] ?? c).join(', ')}`)
   if (f.flows.size > 0) out.push(`Conditions → Authentication flows → Configure: Yes, then ${[...f.flows].map((t) => FLOW_LABEL[lc(t)] ?? t).join(', ')}`)
   if (f.platforms && (f.platforms.include.size > 0 || f.platforms.exclude.size > 0)) {
     // Graph's `all` is the portal's Any device, never a name.
@@ -368,10 +368,9 @@ export function portalLines(f: PolicyFacts, ctx: PortalContext, opts: { mode?: P
   const out: string[] = []
   out.push(mode === 'change' ? (ctx.portalOpen ?? ctx.portalRoot) : ctx.portalRoot)
   if (mode !== 'change') out.push(`Name: ${ctx.policyName}`)
-  // The description the operation writes, on the create that writes it: without
-  // it the policy a person types by hand is not the policy IAMAI planned, and
-  // the next scan cannot match it to this step.
-  if (mode !== 'change' && ctx.descriptionLine) out.push(ctx.descriptionLine)
+  // No Description line (walk list 4.x item 16): the Entra form has no such
+  // field, so the step's procedure names none, and neither does anything that
+  // describes the same create. The plan tag stays in the JSON and PowerShell.
   out.push(usersLine(f, ctx))
   const res = resourcesLine(f, ctx)
   if (res) out.push(res)

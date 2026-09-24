@@ -698,7 +698,7 @@ test('In place says so about the POLICY, and a threshold never shown met is said
 /** R4-12's step: demo's Block Unsupported Platforms, which demo does not have at its first scan. */
 const UNSUPPORTED = 's-goal-block-unsupported-platforms'
 /** The fact the unwatched tile states, in its words and in the observation note's. */
-const UNWATCHED = /went live without a report-only period IAMAI could watch/
+const UNWATCHED = /without a report-only week/
 
 type Scan = { label: string; h: Fixture; run: ReturnType<typeof runFixture> }
 
@@ -927,7 +927,7 @@ test("a block policy whose only report-only records are reportOnlyNotApplied is 
     assert.equal((() => { const r = readinessOf(step, stepContract(step, ctx)); return [...r.tiles, ...r.satisfied] })().some((t) => t.key === 'enforced-unwatched'), false, `${label}: said to have gone live unwatched`)
     const ai = stepBodyOf(step, ctx).artifacts.find((a) => a.id === 'ai')
     assert.ok(ai, `${label}: the opened step has no AI Info`)
-    assert.equal(ai.text().includes(CONTRACT.foundEnforcedUnwatched), false, `${label}: the AI Info briefing carries the unwatched tile's words`)
+    assert.equal(/without a report-only week/.test(ai.text()), false, `${label}: the AI Info briefing carries the unwatched tile's words`)
   }
   // Recorded absent, created in report-only, On at day 16, and the scans at day
   // 20 and day 23.
@@ -973,7 +973,7 @@ test('a policy carrying this plan\'s tag, first seen On, is never said to have g
 // the pair fits: this scan did not watch it arrive, and it is not a policy the
 // tenant happened to have. A reader who took over an inherited tenant read six
 // of these with nothing anywhere saying the plan had been run here before.
-test('a policy this plan wrote on an earlier run is named as inherited, not as fresh coverage', () => {
+test('a policy this plan wrote on an earlier run never reads as a rollout this scan watched', () => {
   const f = structuredClone(fixture('midflight'))
   const run = runFixture(f)
   const ctx = { snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, nameOf: (id: string) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: null } as unknown as StepVarContext
@@ -983,8 +983,9 @@ test('a policy this plan wrote on an earlier run is named as inherited, not as f
     if (step.tracking?.matchedBy !== 'tag') continue
     checked++
     const said = stepContract(step, ctx).found.filter((x) => x.key === 'in-place').map((x) => x.text).join(String.fromCharCode(10))
-    assert.match(said, /carries this step's tag/, `${step.id}: ${said}`)
-    assert.doesNotMatch(said, /Already delivered by/, `${step.id}: still reads as somebody else's coverage`)
+    // The inherited-tag sentence is gone (walk list 4.x item 31): it named what
+    // this scan did not do and told the reader nothing.
+    assert.doesNotMatch(said, /carries this step's tag|This scan did not watch/, `${step.id}: ${said}`)
     assert.doesNotMatch(said, /IAMAI watched it get there/, `${step.id}: claims a rollout this scan did not watch`)
   }
   assert.ok(checked > 0, 'no inherited policy is preserved on midflight')

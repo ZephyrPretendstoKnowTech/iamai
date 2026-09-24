@@ -35,7 +35,8 @@ import type { Bindings, ChannelArtifact, Hold, OwnerConfirmation, PackageReadine
 import { list } from '../../copy/statements.ts'
 import { NO_ACTION_STATES, bindText, planSafely, prerequisiteStatus, projectSafely, sourceUpdatedOn } from '../../content/implementation/project.ts'
 import { fillText } from '../../content/render.ts'
-import { engine, shared } from '../../content/content.ts'
+import { engine, shared, stepById } from '../../content/content.ts'
+import { directionTitleOf } from '../../roadmap/direction.ts'
 import { contentStepFor, contentStepForPackage } from '../../content/stepTitle.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { actionableExclusionsGroupId } from '../../mapping/safetyChoice.ts'
@@ -1141,6 +1142,16 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   // binding's, and the renderer drops a template's stop after a value that
   // already ends a sentence (project.ts bindText; Phase 2 export finding 18).
   put('dependencies.blockers', c.fix.length > 0 ? c.fix.map((f) => f.text.trim()).map((t) => (/[.!?]$/.test(t) ? t : `${t}.`)).join(' ') : undefined)
+  // The steps it waits on, by title, once each (walk list 4.x items 23 and 31):
+  // the Turn On MFA for Everyone leads read "cannot proceed yet. Known blockers
+  // and decisions: Finish Configure Emergency Exclusions first. … Resolve these
+  // before creating or changing the policy."
+  const waits = [...new Set(c.fix.flatMap((f) => {
+    const [kind, ...rest] = f.key.split(':')
+    const id = rest.join(':')
+    return kind === 'step' || kind === 'missing' ? [stepById[id]?.title ?? null] : kind === 'direction' ? [directionTitleOf(id as never)] : []
+  }).filter((t): t is string => typeof t === 'string' && t !== ''))]
+  put('dependencies.waits', waits.length > 0 ? list(waits) : undefined)
   return out
 }
 
