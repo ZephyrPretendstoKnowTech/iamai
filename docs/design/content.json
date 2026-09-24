@@ -1816,7 +1816,7 @@
         "emergencyUnproven": "IAMAI cannot prove this policy leaves {tenant}'s emergency access accounts out of scope, because it could not read who is in the group the policy excludes. Nothing is offered on a reading that did not finish: scan again.",
         "emergencyTasks": {
           "$comment": "What the Emergency Access procedures (src/ui/surfaces/emergencyAccountTasks.ts) say about whether a selected account needs them. Each procedure stays available as a reference when none does, and says so only where there is something to say it of: accounts selected, and the checks this procedure makes read for each. With nobody selected, \"No selected account needs a change\" was vacuously true, sat under a tile asking for accounts to be selected, and was printed and exported as step 3 of the work (R4-44).",
-          "configureNotNeeded": "No selected account needs a change to its sign-in address, enabled state or role. The steps below stay here as a reference.",
+          "configureNotNeeded": "No selected account needs a change to its sign-in address, enabled state or role.",
           "$commentPasskey": "The passkey procedure's line when no selected account is known to need a passkey (R4-51). An unread check and a passed one used to share one branch, which chose between \"currently needs\" and \"is confirmed to need\" - two words apart, and the unread one a double negative that read as \"not needed\" over a tile saying Could not verify. Every account read and passing: the all-clear, worded as the configuration procedure's. Any account unread: that account named, and the procedure is for it if it has none.",
           "passkeyNotNeeded": "No selected account needs an approved passkey. The steps below stay here as a reference.",
           "passkeyUnreadOne": "IAMAI could not confirm that {account} has an approved passkey. Follow these steps if it has none.",
@@ -1828,7 +1828,15 @@
           "$commentCreate": "The create procedure's line when the selection needs no new account (NEW-Nadia-D12): two or more selected, every one read as cloud-only, and none carrying the dedicated-account signal (bg.notPersonal: signed in to IAMAI now, or a job title, department or office) - that check's fix is a new account, so the line would steer the reader to keep a daily account. The configuration procedure said it was not needed and this one never did, so with two verified accounts selected a printed plan and the task list offered \"Create an emergency account\" as work at the same weight as the one task that remained.",
           "createNotNeeded": "No new emergency account is needed: {n} cloud-only accounts are selected. The steps below stay here as a reference.",
           "$commentVariants": "The line that introduces a task's alternatives where they are written out together - the export, AI Info and the Entra artifact, which cannot offer the screen's picker (emergencyAccountTasks.ts emergencyTaskAlternativesText). They used to carry the default alternative alone, unlabelled and numbered as mandatory, so a reader was told to register a YubiKey on every affected account and the Authenticator procedures were gone (R4-32).",
-          "variantsLead": "Use the steps for the authenticator being registered:"
+          "variantsLead": "Use the steps for the authenticator being registered:",
+          "$commentNoAccountsChosen": "Accounts and identity before any emergency access account is saved (src/roadmap/emergencyJourney.ts journeyAccountFindings). It read Needs correction in AI Info while the cards said No account selected: nothing is chosen yet, so there is nothing to correct.",
+          "noAccountsChosen": "No accounts chosen yet",
+          "$commentSignedInAccount": "The one line on an emergency access account card when that account is the one signed in to IAMAI (the scan's /me, by object id or sign-in name; emergencyAccountTasks.ts). A fact, not a check: it replaces the bg.notPersonal note on that card and gates nothing. Owner wording, 2026-09-23.",
+          "signedInAccount": "You're signed in to IAMAI with this account. Emergency accounts should be ones nobody uses day to day.",
+          "$commentChooseAccounts": "Prepare Emergency Access Accounts' milestone under Next milestone while no emergency access account is saved (stepBody.ts), in place of its package's \"Complete the remaining emergency access checks.\": the choice is the next thing to do. Owner wording, 2026-09-23.",
+          "chooseAccounts": "Choose your two emergency access accounts.",
+          "$commentYourAccounts": "Prepare Emergency Access Accounts' line over its picker once accounts are saved (ContentStep.tsx SingleDecision), in place of the instruction to select them. Owner wording, 2026-09-23.",
+          "yourAccounts": "Your emergency access accounts"
         },
         "$commentRecoverySignIn": "Verify Emergency Access: what an account's Sign-in evidence card, its print and its exports say while the account waits for a passkey sign-in (src/roadmap/emergencyJourney.ts recoveryWaitingLine).",
         "recoverySignIn": {
@@ -2112,7 +2120,7 @@
               "$comment": "One Readiness tile per emergency account slot (B10 P0-7, S-BG-1): labelled by the selected account's name, or Account 1 / Account 2 while nobody is selected for it.",
               "slot": "Account {n}",
               "notSelected": "Not selected",
-              "notSelectedNote": "Choose an emergency access account in the action column, then save.",
+              "notSelectedNote": "Choose an emergency access account in the action column.",
               "unchecked": "Not checked on this scan",
               "minimumOpen": "Minimum not met",
               "hardeningOpen": "Minimum met · hardening open",
@@ -3398,13 +3406,13 @@
       },
       "decision": {
         "label": "Emergency access accounts",
-        "help": "Select the accounts dedicated to emergency access, then save.",
+        "help": "Select the accounts dedicated to emergency access, then select Done.",
         "pickerRow": "{name} · {upn} · {signals}",
         "save": "Save",
         "multi": true
       },
       "whatToDo": {
-        "lead": "Select the accounts dedicated to emergency access, then save.",
+        "lead": "Select the accounts dedicated to emergency access, then select Done.",
         "create": [
           "Entra admin center → Entra ID → Users → New user → Create new user.",
           "Enter a unique username, such as emergency-access-primary or emergency-access-secondary, or choose another account name. Select the observed initial domain from the domain list.",
@@ -3439,8 +3447,7 @@
       },
       "dates": null,
       "doneWhen": [
-        "The selected dedicated accounts are enabled, cloud-only identities on the tenant's onmicrosoft.com domain with permanent active Global Administrator assignments.",
-        "Each selected account has an approved passkey compatible with the current and planned settings."
+        "Each account you chose is cloud-only, enabled, signs in with the onmicrosoft.com address, holds Global Administrator permanently, and has an approved passkey."
       ],
       "ifWrong": null,
       "lockedOut": {

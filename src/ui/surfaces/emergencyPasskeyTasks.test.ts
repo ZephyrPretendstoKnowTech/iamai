@@ -185,8 +185,8 @@ test('protections: navigate first, then apply each value inline, one Save per Ad
   // (the portal shows Device-bound), no restrictions. Enforced attestation already
   // limits registration to device-bound passkeys, so Passkey types is no step.
   const steps = protectionSteps({ name: 'Default passkey profile', passkeyTypes: 'deviceBound,synced', attestationEnforcement: 'registrationOnly', keyRestrictions: { isEnforced: false, enforcementType: 'block', aaGuids: [] } })
+  // No session reminder leads it (owner, 2026-09-23): the procedure opens on the portal.
   assert.deepEqual(steps, [
-    'Keep your working administrator session open.',
     'Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Authentication methods → Policies → Passkey (FIDO2)**.',
     'Open **Default passkey profile**.',
     'Select **Target specific AAGUIDs** and set **Behavior** to **Allow**.',
@@ -202,7 +202,7 @@ test('protections: a satisfied value produces no step, and an AAGUID is never a 
   const steps = protectionSteps({ passkeyTypes: 'deviceBound', attestationEnforcement: 'registrationOnly', keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids: GRAPH_ORDER.filter(id => id !== 'de1e552d-db1d-4423-a619-566b625cdc84') } })
   const text = steps.join('\n')
   assert.doesNotMatch(text, /Passkey types|Target specific AAGUIDs|Enforce attestation|Apply only the changed values/)
-  assert.deepEqual(steps.slice(2, -1), ['Open **Authenticator**.', 'Select **+ Add AAGUID → Microsoft Authenticator**, then **Save**.'])
+  assert.deepEqual(steps.slice(1, -1), ['Open **Authenticator**.', 'Select **+ Add AAGUID → Microsoft Authenticator**, then **Save**.'])
   const task = projectProfile({ passkeyTypes: 'deviceBound', attestationEnforcement: 'registrationOnly', keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids: [] } }).projected.tasks.find(row => row.id === 'apply-passkey-settings')!
   for (const line of task.steps) if (/19083c3d|a25342c0/.test(line)) assert.match(line, /^Select \*\*\+ Add AAGUID → Enter AAGUID\*\*, enter/)
   assert.equal(task.facts, undefined)
@@ -210,7 +210,7 @@ test('protections: a satisfied value produces no step, and an AAGUID is never a 
 
 test('protections: a legacy configuration is changed on Configure, each AAGUID entered where it is typed', () => {
   const task = projectLegacyChange(() => undefined).tasks.find(row => row.id === 'apply-passkey-settings')!
-  const [, , open, ...rest] = task.steps
+  const [, open, ...rest] = task.steps
   assert.equal(open, 'Open **Configure**.')
   assert.equal(rest.at(-1), 'Return to IAMAI and select **Scan to update the plan**.')
   const entered = rest.filter(line => line.startsWith('Select **Add AAGUID** and enter'))

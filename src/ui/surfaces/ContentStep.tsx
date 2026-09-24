@@ -43,7 +43,7 @@ import { app, content, workflowWords } from '../../content/content.ts'
 import { fillText, whole, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
 import { Button, Callout, Icon, Picker, TabList, onePanelProps } from '../components/index.ts'
 import type { PickerOption } from '../components/index.ts'
-import { exclusionsPickerLabel, filterPickerObjects, initialPicked, matchedNoteOf, pickerUniverse, printedDefaultLine } from './pickerRows.ts'
+import { exclusionsPickerLabel, filterPickerObjects, initialPicked, matchedNoteOf, pickerSaves, pickerSavesAlone, pickerUniverse, printedDefaultLine } from './pickerRows.ts'
 import type { PickerObject } from './pickerRows.ts'
 import { answerParts, answerText, optionsOf, questionFor, valueSource } from './stepQuestion.ts'
 import type { QuestionOption } from './stepQuestion.ts'
@@ -56,7 +56,7 @@ import { REDACTED, exportClipboard, unredactedFrom } from '../exportGuard.ts'
 import { CONTRACT, implementationEmptyOf, partnerLinkOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
 import { HARDENING_DEFERRAL_ID } from '../../validation/emergencyTiers.ts'
-import { AuthoredText, DoneWhen, EmergencySlotBody, PolicyMembers, ReadinessSection, StepActionColumn, StepDialog, StepFooter, StepHead, StepSection, StepState, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
+import { AuthoredText, DoneWhen, EmergencySlotBody, PolicyMembers, ReadinessSection, StepActionColumn, StepDialog, StepFooter, StepHead, StepSection, StepState, WHY_LINK_SHOWN, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
 import { MfaHandoff } from './MfaHandoff.tsx'
 import { HEAD, decisionHeadingsOf, taskHeadingsOf } from './stepHeadings.ts'
 import { AnsweredInDirection, DirectionQuestions, directionDraftKey } from './DirectionQuestions.tsx'
@@ -108,6 +108,8 @@ function offersDoesntApply(cs: Record<string, any>, step: Step): boolean {
   return true
 }
 const SHARED = content.shared as Record<string, string>
+/** Prepare Emergency Access Accounts' line over its picker once accounts are saved (pages.app.plan.emergencyTasks). */
+const YOUR_ACCOUNTS = (app.plan as unknown as { emergencyTasks: { yourAccounts: string } }).emergencyTasks.yourAccounts
 
 /** One who block: the sentence, and its names under it. */
 function WhoBlockView({ block }: { block: WhoBlock }) {
@@ -144,7 +146,7 @@ function EmergencyFacts({ facts }: { facts: EmergencyFact[] }) {
 }
 
 /** The Tasks Remaining tile standard, from Step 1's account tile: subject label, the subject(s) of the next check, the remaining count, the next check and what is wrong, one action, then Completed checks. */
-function EmergencyAccountStatusTile({ account, printing = false }: { account: EmergencySubjectTile; printing?: boolean }) {
+function EmergencyAccountStatusTile({ account, printing = false, open = false }: { account: EmergencySubjectTile; printing?: boolean; open?: boolean }) {
   return <article className={`emergency-account-status${account.satisfied ? ' is-satisfied' : ''}`} data-subject-key={account.key}>
     <p className="emergency-account-label">{account.heading}</p>
     {account.upn && <p className="emergency-account-upn">{account.upn.split('\n').map((line, index) => <span key={index}><Breakable text={line} /></span>)}</p>}
@@ -155,7 +157,8 @@ function EmergencyAccountStatusTile({ account, printing = false }: { account: Em
     {account.instruction && <p>{account.instruction}</p>}
     {account.link && <p><a href={account.link.href}>{account.link.label} →</a></p>}
     {!!account.notes?.length && <div className="emergency-account-note"><EmergencyFacts facts={account.notes} /></div>}
-    {account.completed.length > 0 && <details className="emergency-account-completed" open={printing || undefined}>
+    {account.headsUp && <p className="emergency-account-note">{account.headsUp}</p>}
+    {account.completed.length > 0 && <details className="emergency-account-completed" open={printing || open || undefined}>
       <summary>Completed checks · {account.completed.length}</summary>
       <ul>{account.completed.map(item => <li key={item}><Breakable text={item} /></li>)}</ul>
     </details>}
@@ -163,21 +166,32 @@ function EmergencyAccountStatusTile({ account, printing = false }: { account: Em
 }
 
 /** Tasks Remaining for the four Establish Emergency Access steps: one tile per subject, the satisfied ones under Satisfied · N (the Emergency Access steps are frozen: their words are what the owner approved). */
-export function EmergencySubjectReadiness({ subjects, printing, barMain, onWhy }: { subjects: EmergencySubjectTile[]; printing: boolean; barMain: string; onWhy: (() => void) | null }) {
+export function EmergencySubjectReadiness({ subjects, printing, barMain, onWhy, completed = false }: { subjects: EmergencySubjectTile[]; printing: boolean; barMain: string; onWhy: (() => void) | null; completed?: boolean }) {
   const remaining = subjects.filter(subject => !subject.satisfied)
   const satisfied = subjects.filter(subject => subject.satisfied)
-  const tile = (subject: EmergencySubjectTile) => <EmergencyAccountStatusTile key={subject.key} account={subject} printing={printing} />
+  const tile = (subject: EmergencySubjectTile, open = false) => <EmergencyAccountStatusTile key={subject.key} account={subject} printing={printing} open={open} />
+  const bar = onWhy && (barMain !== '' || WHY_LINK_SHOWN) && <div className="readiness-bar">{barMain !== '' && <div className="readiness-bar-main"><span className="readiness-bar-head">{barMain}</span></div>}{WHY_LINK_SHOWN && <button type="button" className="inline-link" onClick={onWhy}>{CONTRACT.readiness.why}</button>}</div>
+  // A Completed step shows what was confirmed, open (owner, 2026-09-23): every
+  // card in the grid with its completed checks showing, and no Tasks Remaining
+  // heading, "No tasks remaining" or scan prompt over work that is done. The
+  // cards' words are each step's own and do not change.
+  if (completed) {
+    return <section className="step-section readiness-section emergency-account-readiness is-completed">
+      <div className="emergency-account-status-grid">{subjects.map((subject) => tile(subject, true))}</div>
+      {bar}
+    </section>
+  }
   return <section className="step-section readiness-section emergency-account-readiness">
     <h4>Tasks Remaining</h4>
     {remaining.length > 0
-      ? <div className="emergency-account-status-grid">{remaining.map(tile)}</div>
+      ? <div className="emergency-account-status-grid">{remaining.map((subject) => tile(subject))}</div>
       : <p className="readiness-clear"><span className="readiness-status readiness-status-good" aria-hidden="true">✓</span><strong>No tasks remaining</strong></p>}
     {satisfied.length > 0 && <details className="readiness-satisfied" open={printing || undefined}>
       <summary>Satisfied · {satisfied.length}</summary>
-      <div className="emergency-account-status-grid satisfied">{satisfied.map(tile)}</div>
+      <div className="emergency-account-status-grid satisfied">{satisfied.map((subject) => tile(subject))}</div>
     </details>}
     <p className="emergency-account-scan-note">After making changes, select <strong>{SHARED.scanControl}</strong>.</p>
-    {onWhy && <div className="readiness-bar"><div className="readiness-bar-main"><span className="readiness-bar-head">{barMain}</span></div><button type="button" className="inline-link" onClick={onWhy}>{CONTRACT.readiness.why}</button></div>}
+    {bar}
   </section>
 }
 
@@ -323,7 +337,8 @@ export function ContentStep({
   // the subjects, and the Readiness tiles alone on Emergency Access Steps 2–3.
   // The bar reads them, so they are decided once.
   const taskSubjects = isOwnTaskStep ? policySubjectsOf(contract, displayedReadiness, emergencyAccountTasks, taskSubjectOf(step, eyebrow, title), cardWordsOf(step)?.check ?? null) : emergencySubjectsOf(displayedReadiness, emergencyAccountTasks)
-  const displayRail = step.id === 's-prereq-exclusion-group' ? { ...rail, sub: app.plan.exclusionsGroupRailSub } : rail
+  // A Completed step draws no milestone: NEXT MILESTONE / Completed repeated the badge (owner, 2026-09-23).
+  const displayRail = laneView.lane === 'Completed' ? null : step.id === 's-prereq-exclusion-group' ? { ...rail, sub: app.plan.exclusionsGroupRailSub } : rail
   const emergencyTaskPreferenceKey = `iamai:emergency-task:${ctx.mapping.tenantId}:${step.id}`
   const [implementationChannel, setImplementationChannel] = useState<Channel | null>(null)
   const [emergencyTaskId, setEmergencyTaskId] = useState<string | null>(() => readEmergencyTaskPreference(emergencyTaskPreferenceKey).taskId ?? null)
@@ -437,12 +452,13 @@ export function ContentStep({
               and — where this step's enforcement waits on the people it reaches —
               who they are, handed to MFA Readiness (derive/stepMfaReadiness.ts). */}
           {decisionHead ? <DirectionQuestions key={directionDraftKey(step)} step={step} ctx={ctx} heading={decisionHead.questions} onDecide={onDecide} printing={printing} saving={saveStatus === 'saving'} />
-          : isEmergencyAccounts && emergencyAccountTasks ? <EmergencySubjectReadiness subjects={emergencyAccountTasks.accounts ?? []} printing={printing} barMain={(emergencyAccountTasks.accounts ?? []).some(account => !account.satisfied) ? 'Complete the next task shown for each account.' : 'Account preparation is verified.'} onWhy={hasEvidence && !printing ? () => setDialog('readiness') : null} />
+          : isEmergencyAccounts && emergencyAccountTasks ? <EmergencySubjectReadiness subjects={emergencyAccountTasks.accounts ?? []} printing={printing} barMain={(emergencyAccountTasks.accounts ?? []).some(account => !account.satisfied) ? '' : 'Account preparation is verified.'} onWhy={hasEvidence && !printing ? () => setDialog('readiness') : null} completed={laneView.lane === 'Completed'} />
           : isTaskStep && emergencyAccountTasks && !printing ? <EmergencySubjectReadiness
             subjects={taskSubjects}
             printing={printing}
             barMain={isOwnTaskStep ? policyBarOf(taskSubjects) : displayedReadiness.bar.main}
             onWhy={hasEvidence ? () => setDialog('readiness') : null}
+            completed={laneView.lane === 'Completed'}
           /> : <ReadinessSection
             readiness={displayedReadiness}
             heading={taskHead?.remaining}
@@ -1118,12 +1134,19 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false 
     const parsed = answerParts(value, choices)
     return parsed !== null && (parsed.option.needs === null || parsed.picked.length > 0)
   }
-  const canSave = (accountPickerOnly || options.length === 0 || complete(option, options)) && (!question || stepId === 's-prereq-allowed-countries' || complete(answer, question.options)) && (isNetwork ? remote || chips.length > 0 || networkDraftValid : (!single && stepId !== 's-prereq-allowed-countries') || chips.length > 0)
-  const save = (): void => {
-    if (!canSave) return
+  const canSaveWith = (picked: PickerOption[]): boolean => (accountPickerOnly || options.length === 0 || complete(option, options)) && (!question || stepId === 's-prereq-allowed-countries' || complete(answer, question.options)) && (isNetwork ? remote || picked.length > 0 || networkDraftValid : (!single && stepId !== 's-prereq-allowed-countries') || picked.length > 0)
+  const canSave = canSaveWith(chips)
+  // The picker saves (owner, 2026-09-23): Done in its list, or a chip taken off,
+  // saves the decision with the selection as it stands, through the same Save
+  // as ever (pickerRows.ts pickerSaves). Where the picker is the decision's
+  // only input no Save button stands beside it (pickerSavesAlone).
+  const saves = pickerSaves(d, stepId)
+  const savesAlone = hasPicker && pickerSavesAlone(d, stepId)
+  const save = (picked: PickerOption[] = chips): void => {
+    if (!canSaveWith(picked)) return
     onDecide?.({
-      ...(hasPicker || isNetwork ? { picked: remote ? [] : chips.map((c) => c.id) } : {}),
-      ...(isNetwork ? { option: remote ? 'remote' : 'office-network', answers: { [NETWORK_NAME]: !remote && chips.length === 0 ? networkName.trim() : '', [NETWORK_RANGES]: !remote && chips.length === 0 ? networkRanges.trim() : '' }, ...(remote ? {assumed: 'none'} : {}) } : {}),
+      ...(hasPicker || isNetwork ? { picked: remote ? [] : picked.map((c) => c.id) } : {}),
+      ...(isNetwork ? { option: remote ? 'remote' : 'office-network', answers: { [NETWORK_NAME]: !remote && picked.length === 0 ? networkName.trim() : '', [NETWORK_RANGES]: !remote && picked.length === 0 ? networkRanges.trim() : '' }, ...(remote ? {assumed: 'none'} : {}) } : {}),
       ...(option !== null ? { option } : accountPickerOnly ? { option: 'None' } : {}),
       ...(question && (answer !== null || stepId === 's-prereq-allowed-countries') ? { answers: { [question.label]: answer ?? 'No Recurring Destinations' } } : {}),
       ...(strict && strictShown && strictOn ? { answers: { ...(question && answer !== null ? { [question.label]: answer } : {}), [strict.label]: strict.option } } : {}),
@@ -1139,8 +1162,10 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false 
   // (stepExport.ts decisionLine): one line, never both.
   return (
     <>
+      {/* Prepare Emergency Access Accounts: once accounts are saved, the line over
+          the picker names them rather than asking for them (owner, 2026-09-23). */}
       {stepId === 's-prereq-break-glass'
-        ? <Line s={d.help} ex={ex} cls="reason" />
+        ? <Line s={ctx.mapping.breakGlassUserIds.length > 0 ? YOUR_ACCOUNTS : d.help} ex={ex} cls="reason" />
         : !isExclusionsGroup && decisionAnswer === null && <Line s={decisionLine(d, null)} ex={ex} cls="reason" />}
       <div className="decision">
         {/* Each label is an element the controls under it can name (task 017):
@@ -1165,7 +1190,7 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false 
             the heading over nothing. */}
         {(hasPicker || isNetwork) && !remote && (printing && initial.defaulted && !isExclusionsGroup
           ? <p className="reason">{printedDefaultLine(chips.map((c) => c.name))}</p>
-          : <Picker labelledBy={`${base}-decision`} selected={chips} options={results} suggestions={isNetwork ? nominated.slice(0, 3) : nominated} onChange={setChips} onSearch={setQuery} single={single} readOnly={stepId === SPECIAL_CARE_STEP_ID} />)}
+          : <Picker labelledBy={`${base}-decision`} selected={chips} options={results} suggestions={isNetwork ? nominated.slice(0, 3) : nominated} onChange={setChips} onSearch={setQuery} single={single} readOnly={stepId === SPECIAL_CARE_STEP_ID} onCommit={saves ? (picked) => save(picked) : undefined} />)}
         {isNetwork && !remote && chips.length === 0 && <div className="decision-fields">
           {universe.length === 0 && <p className="reason">{ctx.snapshot.config.namedLocations?.status === 'ok' ? 'No IP named locations were found in this scan.' : 'Named locations could not be fully read. Scan again to load existing office networks.'}</p>}
           <div className="decision-field"><label htmlFor={`${base}-network-name`}><strong>Office Network Name</strong></label><input type="text" id={`${base}-network-name`} value={networkName} onChange={e => setNetworkName(e.target.value)} /></div>
@@ -1195,7 +1220,7 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false 
             </div>
           </>
         )}
-        <Button variant="secondary" disabled={!canSave} onClick={save}>{d.save || 'Save'}</Button>
+        {!savesAlone && <Button variant="secondary" disabled={!canSave} onClick={() => save()}>{d.save || 'Save'}</Button>}
       </div>
     </>
   )
@@ -1468,8 +1493,7 @@ function FollowUpDecision({ step, ctx, saved, onDecide, printing }: { step: Step
   return <div className="decision">
     <h5 className="dlabel" id={labelId}>{F.pickerLabel}</h5>
     <p className="reason">{F.pickerHelp}</p>
-    <Picker labelledBy={labelId} selected={picked} options={results} suggestions={options.slice(0, 3)} onSearch={setQuery} onChange={setPicked} />
-    <Button variant="secondary" onClick={() => onDecide?.({ picked: picked.map((o) => o.id) })}>{F.save}</Button>
+    <Picker labelledBy={labelId} selected={picked} options={results} suggestions={options.slice(0, 3)} onSearch={setQuery} onChange={setPicked} onCommit={(next) => onDecide?.({ picked: next.map((o) => o.id) })} />
   </div>
 }
 
@@ -1490,16 +1514,18 @@ function DormantDecision({ step, onDecide, printing }: { step: Step; onDecide?: 
   </div>
   // Every account the picker does not hold is expected to be disabled in Entra;
   // the next scan is what completes it, so nothing is saved for them here.
-  const save = (): void => onDecide?.({ answers: Object.fromEntries(rows.flatMap(row => {
-    const keep = picked.some(option => option.id === row.id)
+  const save = (keeping: PickerOption[] = picked): void => onDecide?.({ answers: Object.fromEntries(rows.flatMap(row => {
+    const keep = keeping.some(option => option.id === row.id)
     return [[`outcome:${row.id}`, keep ? 'keep' : ''], [`reason:${row.id}`, keep ? reason.trim() : '']]
   })) })
   return <div className="decision">
     <h5 className="dlabel" id={labelId}>Accounts you are keeping</h5>
-    <Picker labelledBy={labelId} selected={picked} options={results} suggestions={options.slice(0, 3)} onSearch={setQuery} onChange={setPicked} />
+    {/* The picker's Done saves as every picker's does, once there is a reason for
+        what it keeps; the Save below is the reason's. */}
+    <Picker labelledBy={labelId} selected={picked} options={results} suggestions={options.slice(0, 3)} onSearch={setQuery} onChange={setPicked} onCommit={(next) => { if (next.length === 0 || reason.trim()) save(next) }} />
     <label className="dlabel" htmlFor={`${labelId}-reason`}>Why they are kept</label>
     <input id={`${labelId}-reason`} value={reason} onChange={e => setReason(e.currentTarget.value)} />
     <p className="reason">Disable the rest in Entra, then scan again. {disabled > 0 ? `${disabled} of these are already disabled.` : 'None of these are disabled yet.'}</p>
-    <Button variant="primary" disabled={picked.length > 0 && !reason.trim()} onClick={save}>Save</Button>
+    <Button variant="primary" disabled={picked.length > 0 && !reason.trim()} onClick={() => save()}>Save</Button>
   </div>
 }

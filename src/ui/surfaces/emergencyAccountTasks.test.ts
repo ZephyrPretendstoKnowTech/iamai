@@ -145,15 +145,16 @@ test('approved passkey setup keeps the three understandable methods in one task'
   assert.equal(setup.variants?.every(variant => !variant.facts?.length), true)
 })
 
-test('the three preparation procedures remain complete when no account is selected', () => {
+test('the create and passkey procedures remain complete when no account is selected', () => {
   const { projected } = project(value => { value.mapping.breakGlassUserIds = [] })
   const create = emergencyTaskText(projected.tasks.find(item => item.id === 'create-account')!)
   const configure = emergencyTaskText(projected.tasks.find(item => item.id === 'configure-account')!)
   const passkey = emergencyTaskText(projected.tasks.find(item => item.id === 'set-up-passkey')!)
   assert.match(create, /emergency-access-primary/)
   assert.match(create, /onmicrosoft\.com/)
-  assert.match(configure, /Roles & admins → Global Administrator → Add assignments/)
-  assert.match(configure, /Privileged Identity Management/)
+  // Configuring an existing account lists only the fixes a chosen account needs,
+  // so with none chosen it lists none (owner, 2026-09-23).
+  assert.doesNotMatch(configure, /Roles & admins → Global Administrator → Add assignments|Privileged Identity Management/)
   assert.match(passkey, /Troubleshooting → Temporary Access Pass/)
   assert.match(passkey, /separate private browser window/)
   assert.doesNotMatch([create, configure, passkey].join('\n'), /enter.*the emergency account you are preparing/i)
@@ -222,11 +223,10 @@ test('the passkey procedure names only the selected accounts whose passkey check
 
 // Two accounts needing a passkey, a new tenant's usual case. The procedure
 // opened "Keep your working administrator session open. Accounts: **a**, **b**."
-// and "Repeat this procedure separately for each account listed above.": the
-// reminder merged into the account list, where every other emergency task
-// gives it its own first line, and a pointer "above" the tasks' opening rule
-// bans. The reminder stands alone and the next line names both accounts.
-test('two accounts needing a passkey are named on their own line after the session reminder', () => {
+// and "Repeat this procedure separately for each account listed above.". The
+// session reminder is gone from every emergency task (owner, 2026-09-23), and
+// the first line names both accounts.
+test('two accounts needing a passkey are named on the first line of the procedure', () => {
   const value = structuredClone(fixture('demo-week2'))
   const [a, b] = value.mapping.breakGlassUserIds
   for (const id of [a, b]) value.snapshot.authMethods[id] = []
@@ -237,8 +237,7 @@ test('two accounts needing a passkey are named on their own line after the sessi
   const upn = (id: string) => value.snapshot.users.find(user => user.id === id)!.userPrincipalName!
   for (const variant of task.variants ?? []) {
     const steps = emergencyTaskSteps(task, variant.id)
-    assert.equal(steps[0], 'Keep your working administrator session open.', variant.id)
-    assert.equal(steps[1], `**${upn(a)}** and **${upn(b)}** need an approved passkey. Follow these steps separately for each one.`, variant.id)
+    assert.equal(steps[0], `**${upn(a)}** and **${upn(b)}** need an approved passkey. Follow these steps separately for each one.`, variant.id)
     assert.doesNotMatch(steps.join('\n'), /listed above/, variant.id)
   }
 })
@@ -329,7 +328,9 @@ test('Step 1 notes an emergency account that is signed in to IAMAI now', () => {
   // The signed-in operator is the scan's /me.
   const signedIn = dedicatedCase((value, id) => { value.snapshot.config.me = { status: 'ok', reason: null, rows: [{ id }] } })
   const account = signedIn.accounts.find(row => row.accountId === signedIn.id)!
-  assert.match(account.notes?.[0]?.value ?? '', /signed in to IAMAI now/)
+  // One heads-up line in the owner's words, in place of the check's note (2026-09-23).
+  assert.match(account.headsUp ?? '', /^You're signed in to IAMAI with this account\./)
+  assert.equal(account.notes, undefined)
 })
 
 // A finished step's procedures are reference, not instructions.
@@ -366,10 +367,10 @@ test('the configuration procedure says no account needs it only over selected ac
   const noLine = (steps: string[]) => steps.filter(line => /^No selected account/.test(line))
   const configure = (edit: (value: Fixture) => void) => project(edit).projected.tasks.find(task => task.id === 'configure-account')!.steps
 
-  // Nobody selected: no negation, and the three changes stand as the procedure.
+  // Nobody selected: no negation, and no change listed for an account nobody chose (owner, 2026-09-23).
   const empty = configure(value => { value.mapping.breakGlassUserIds = [] })
   assert.deepEqual(noLine(empty), [])
-  assert.ok(empty.some(line => /User principal name/.test(line)) && empty.some(line => /Account enabled/.test(line)) && empty.some(line => /Global Administrator/.test(line)))
+  assert.ok(!empty.some(line => /User principal name|Account enabled|Global Administrator/.test(line)))
 
   // Selected, but one account's enabled state was not read: not "no change needed".
   assert.deepEqual(noLine(configure(value => { delete (value.snapshot.users.find(user => user.id === value.mapping.breakGlassUserIds[0]) as { accountEnabled?: boolean }).accountEnabled })), [])

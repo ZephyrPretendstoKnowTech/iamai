@@ -43,7 +43,10 @@ export function lifecycleResources(pkg: CompiledPackage, state: PackageState, bi
   return planSafely(pkg, state, bindings, runtime, () => UNBOUND).channels.filter((a) => !JSON.stringify(a).includes(UNBOUND))
 }
 
-const NON_MACHINE = new Set(['s-ladder-operator-passkey', 's-prereq-device-plan', 's-confirm-workloads'])
+// Prepare Emergency Access Accounts is here too (owner, 2026-09-23): its script
+// only verified identity and role from a typed id, and its JSON repeated the
+// read-only Graph requests the scan already made. The scan does both.
+const NON_MACHINE = new Set(['s-ladder-operator-passkey', 's-prereq-device-plan', 's-confirm-workloads', 's-prereq-break-glass'])
 const NO_EMAIL = new Set(['s-prereq-break-glass', 's-prereq-passkey-settings', 's-ladder-operator-passkey', 's-confirm-workloads', 's-goal-admin-session', 's-prereq-auth-strength', 's-prereq-exclusion-group'])
 
 export function resourceChannelAllowed(step: Step, channel: Channel): boolean {

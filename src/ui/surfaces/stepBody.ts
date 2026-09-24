@@ -1,5 +1,5 @@
 import { requiredModels } from '../../roadmap/passkeySettings.ts'
-import { emergencyAccountAiInfo, emergencyAccountPowerShell, emergencyImplementation } from './emergencyImplementation.ts'
+import { emergencyAccountAiInfo, emergencyImplementation } from './emergencyImplementation.ts'
 import { emergencyAccountTasksOf } from './emergencyAccountTasks.ts'
 import type { EmergencyTaskProjection } from './emergencyAccountTasks.ts'
 import { emergencyGroupTasksOf } from './emergencyGroupTasks.ts'
@@ -7,7 +7,6 @@ import { emergencyPasskeyTasksOf } from './emergencyPasskeyTasks.ts'
 import { drawsTaskAnatomy, policyTasksOf } from './policyTasks.ts'
 import { oneLine } from '../../content/implementation/project.ts'
 import { networkDraftOf } from '../../mapping/networkDraft.ts'
-import { initialDomain } from '../../validation/rules.ts'
 // The opened step's body, worked out once (A3): everything ContentStep.tsx draws
 // that is not a React concern — the contract under the lane engine's reading,
 // the instructions, the implementation channels and artifacts, the package's
@@ -23,7 +22,7 @@ import { initialDomain } from '../../validation/rules.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { fillText, whatToDoFor } from '../../content/render.ts'
-import { directionWords } from '../../content/content.ts'
+import { app, directionWords } from '../../content/content.ts'
 import { suggestCountries } from '../../mapping/countries.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { baselineConflictWords } from '../../roadmap/baselineConflict.ts'
@@ -52,6 +51,9 @@ import { projectSafely, projectExplanation, readinessSafely, troubleshootingSafe
 import type { ChannelArtifact, OutputChannel, OwnerConfirmation, TroubleshootingScenario } from '../../content/implementation/project.ts'
 
 type Ex = Record<string, unknown>
+
+/** Prepare Emergency Access Accounts' milestone while nothing is chosen (pages.app.plan.emergencyTasks). */
+const CHOOSE_ACCOUNTS = (app.plan as unknown as { emergencyTasks: { chooseAccounts: string } }).emergencyTasks.chooseAccounts
 
 const NO_CONFIRMATIONS: Readonly<Record<string, OwnerConfirmation>> = {}
 const NO_BLOCKERS: readonly PrerequisiteBlocker[] = []
@@ -368,7 +370,10 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // step, which has no package — the sentence its content writes for what
   // approving its answers does. Both are written; neither is composed here
   // (stepLayout.test.ts U3).
-  const rail = railOf(contract, pkg?.meta.milestone?.actionText ?? directionMilestoneAction(step.id))
+  // Prepare Emergency Access Accounts with no account chosen: the choice is the
+  // milestone (pages.app.plan.emergencyTasks.chooseAccounts), not the checks after it.
+  const choosing = step.id === 's-prereq-break-glass' && ctx.mapping.breakGlassUserIds.length === 0 ? CHOOSE_ACCOUNTS : null
+  const rail = railOf(contract, choosing ?? pkg?.meta.milestone?.actionText ?? directionMilestoneAction(step.id))
   // What kind of step this is, and "Resolution step" for one whose source
   // contradicts itself (stepContract.ts eyebrowOf).
   const eyebrow = eyebrowOf(contract, typeof cs.kind === 'string' ? cs.kind : null)
@@ -578,8 +583,6 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
     produced.push({ id: 'portal', form: 'markdown', lines: [], text: () => emergencyPortal, note: null })
   }
   if (step.id === 's-prereq-break-glass' && accountTasks) {
-    const powershell = produced.find(a => a.id === 'ps')
-    if (powershell) powershell.text = () => emergencyAccountPowerShell(initialDomain(ctx.snapshot))
     const ai = produced.find(a => a.id === 'ai')
     if (ai) ai.text = () => emergencyAccountAiInfo(step, ctx, accountTasks)
   }
@@ -740,9 +743,12 @@ export function headingsOf(b: StepBody): string[] {
   // A decision-anatomy step (Define Your Rollout Scope) draws its own three: nothing is built.
   if (usesDecisionAnatomy(b.contract.id)) return [DECISION_HEAD.why, DECISION_HEAD.questions, ...(b.contract.doneWhen.length > 0 ? [DECISION_HEAD.doneWhen] : [])]
   const task = taskHeadingsOf(b.contract.id)
+  // A Completed step drawn with the task anatomy shows its confirmed cards with
+  // no heading over them (ContentStep.tsx EmergencySubjectReadiness `completed`).
+  const confirmed = task !== null && b.emergencyAccountTasks !== null && b.laneView.lane === 'Completed'
   return [
     task?.why ?? HEAD.why,
-    task?.remaining ?? CONTRACT.readiness.heading,
+    ...(confirmed ? [] : [task?.remaining ?? CONTRACT.readiness.heading]),
     ...(b.conflictWords ? [CONTRACT.attentionConflict] : []),
     ...(b.showImplementation ? [task?.implementation ?? CONTRACT.implementation.heading] : []),
     ...(b.contract.doneWhen.length > 0 ? [task?.doneWhen ?? HEAD.doneWhen] : []),

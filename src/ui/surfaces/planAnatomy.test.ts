@@ -680,7 +680,8 @@ test('the action column is led by the Next milestone, from the same contract', (
   // milestone also holds the controls the step takes in IAMAI, under it.
   const railSrc = code(SECTIONS.slice(SECTIONS.indexOf('export function StepActionColumn('), SECTIONS.indexOf('export function StepFooter(')))
   // The contract's one projection, handed in, and the step's controls as children: nothing computed here.
-  assert.match(railSrc, /export function StepActionColumn\(\{ rail, children = null \}: \{ rail: \{ metric: string; sub: string \}; children\?: ReactNode \}\)/, 'the action column takes something other than the milestone and its controls')
+  // The milestone is null on a Completed step, whose badge already says it (owner, 2026-09-23).
+  assert.match(railSrc, /export function StepActionColumn\(\{ rail, children = null \}: \{ rail: \{ metric: string; sub: string \} \| null; children\?: ReactNode \}\)/, 'the action column takes something other than the milestone and its controls')
   assert.match(read('src/ui/surfaces/stepBody.ts'), /const rail = railOf\(contract, /, 'the action column does not read the contract’s one projection')
   for (const forbidden of ['step.', 'snapshot', 'mapping', 'implementation', 'side-list', 'reduce(', 'Math.', 'Date.']) {
     assert.equal(railSrc.includes(forbidden), false, `the action column ${forbidden}: it renders the milestone and its children and nothing else`)

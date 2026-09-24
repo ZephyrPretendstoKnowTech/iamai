@@ -37,8 +37,8 @@ test('held and completed tasks retain useful copyable resources without placehol
       }
     }
     const emergency = bodies.get('s-prereq-break-glass')!
-    assert.ok(emergency.artifacts.some(a => a.id === 'ps'))
-    assert.ok(emergency.artifacts.some(a => a.id === 'json'))
+    // No PowerShell or JSON: both repeated what the scan reads (owner, 2026-09-23).
+    assert.equal(emergency.artifacts.some(a => a.id === 'ps' || a.id === 'json'), false)
     assert.equal(emergency.artifacts.some(a => a.id === 'email'), false)
   }
 })
