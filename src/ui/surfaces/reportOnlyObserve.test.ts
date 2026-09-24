@@ -353,8 +353,8 @@ test('005.5/6/14: a gate is still open, so the step stays Report-only and What t
     assert.equal(m.kind, 'observe')
     assert.equal(c.milestone.kind, 'observe')
     assert.equal(c.whatToDo.kind, 'observe')
-    // Editorial batch C: the shared observation label, then its earliest review date.
-    assert.match(c.whatToDo.text, /^Continue observation and collect the missing evidence\. Review from /)
+    // The policy card's own words (walk list 4.x items 11 and 20): the report-only week and its last day.
+    assert.match(c.whatToDo.text, /^Report-only until /)
     assert.match(c.whatToDo.text, new RegExp(absoluteDate(readyWhen(step)!.date)))
     assert.doesNotMatch(c.whatToDo.text, DOING)
     // Nothing is presented as a blocker, because nothing is one.
@@ -381,7 +381,7 @@ test('005.5/6/14: a gate is still open, so the step stays Report-only and What t
     const v = view(step)
     assert.equal(v.whatToDo[0], c.whatToDo.text)
     assert.ok(!v.whatToDo.includes('Verify the workflow:'))
-    assert.match(c.whatToDo.text, /^Continue observation and collect the missing evidence\./)
+    assert.match(c.whatToDo.text, /^Report-only until /)
     assert.doesNotMatch(c.whatToDo.text, DOING)
   }
 })
@@ -455,7 +455,7 @@ test('005.8/9: the step has no enforcement wave, event or date, the calendar boo
     const v = view(step)
     assert.ok(v.dates, 'the step is dated')
     assert.match(v.dates!, /^Report-only since /)
-    assert.match(v.dates!, new RegExp(`Review ${absoluteDate(ready.date)}`))
+    assert.match(v.dates!, new RegExp(`until ${absoluteDate(ready.date)}`))
     assert.ok(!v.dates!.includes(forecastDay), `no enforcement date on the line: ${v.dates}`)
     assert.doesNotMatch(v.dates!, /^Announce /, 'and it is not the change-step line')
     // Nor anywhere else a person reads this step's dates: the row's date column,

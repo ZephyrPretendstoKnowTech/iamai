@@ -66,7 +66,8 @@ export function rowWho(step: Step): string {
   // Through count(), as the tile beside it: "3,671 accounts" on both, never "3671".
   if (ACCOUNT_REVIEW_STEPS.has(step.id) && step.population.total > 0) return count(step.population.total, 'account')
   if (step.id === PER_USER_MFA_STEP_ID) return count(step.population.total, 'account')
-  if (step.id === SECURITY_DEFAULTS_STEP_ID) return count(TAKE_OVER_POLICIES, 'policy', 'policies')
+  // The policies its task turns on (Step.turnsOn, walk list 4.x items 8 and 25): three where one is ruled out.
+  if (step.id === SECURITY_DEFAULTS_STEP_ID) return count(step.turnsOn?.length ?? TAKE_OVER_POLICIES, 'policy', 'policies')
   // Prepare Emergency Access Accounts is its accounts: the ones chosen, and never
   // fewer than the two the step needs, so a step with one or none chosen still
   // counts what it is for rather than reading a label.

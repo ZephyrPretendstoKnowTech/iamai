@@ -65,8 +65,8 @@
     "changeIfWrong": "Put the settings back to what they were (shown above); nothing else in the tenant changes. If you are locked out, see Prepare Emergency Access Accounts.",
     "datesNew": "Announce {announce} · Report-only from {reportOnly} · Enforce {enforce}",
     "datesChange": "Announce {announce} · Change {enforce}",
-    "datesDeploy": "Report-only from {reportOnly} · Enforcement is dated once the policy has been watched in report-only",
-    "datesObserve": "Report-only since {reportOnly} · Review {readyOn} · Enforcement is dated once the observation window closes and the sign-in records are clear and complete",
+    "datesDeploy": "Report-only from {reportOnly}",
+    "datesObserve": "Report-only since {reportOnly}, until {readyOn}",
     "datesReview": "Report-only since {reportOnly} · Held until the change somebody made to the policy has been looked at · No enforcement date while it is held",
     "commsForecastNote": "That date is our target, not a commitment: where the policy supports it, we run the change in report-only first, watch who it would have affected, and confirm the date with you before anything changes.",
     "portalRoot": "Entra admin center → Entra ID → Conditional Access → Policies → New policy",
@@ -415,24 +415,25 @@
         "correct": "Correct the identified settings, then rescan. Keep the policy's current state. If it is On, the changed rule can affect access after you save.",
         "review": "Keep the policy in Report-only, find out what changed on it and why, then rescan.",
         "correctManual": "Correct the policy in the Entra admin center ({fields}), then scan again.",
-        "observe": "Continue observation and collect the missing evidence.",
-        "observeUntil": "Continue observation and collect the missing evidence. Review from {date}.",
-        "observeRecords": "Continue observation and collect the missing evidence.",
+        "$commentObserve": "The report-only week in the policy card's own words (walk list 4.x items 11 and 20): it read \"Continue observation and collect the missing evidence. Review from Aug 31, 2026.\", homework for a wait that time delivers.",
+        "observe": "Leave the policy in Report-only.",
+        "observeUntil": "Report-only until {date}.",
+        "observeRecords": "Leave the policy in Report-only.",
         "$commentMoveBlocked": "Block Legacy Authentication's next thing while its report-only week shows people it would have blocked (walk list 4.x item 35): the evidence line (evidence.legacyBlocked) names them and says where to move them.",
         "moveBlocked": "Move the blocked accounts.",
         "$commentReadyBlocked": "moveBlocked on the two MFA policies (walk list 4.x item 35's shape): the people a report-only week would have blocked need a method the policy accepts, not a move.",
         "readyBlocked": "Get the blocked accounts ready.",
-        "enforce": "Enable the reviewed policy, then verify the result.",
+        "enforce": "Report-only blocked no one. Turn the policy on.",
         "$commentEnforceScheduled": "A policy whose evidence is complete says \"Enable the reviewed policy\" and \"ready now: 0 failures in 8 days\", and the date beside it was the plan's own placement - eighteen days out on one tenant. Both are right and they read as a contradiction: the wait is not the evidence any more, it is the notice the people affected are owed. The milestone says which wait it is.",
-        "enforceScheduled": "The evidence for this policy is complete, so it is ready to be turned on. The plan schedules the turn-on for {date}, which leaves the {days} working days of notice a change this size asks for.",
-        "enforceScheduledOther": "The evidence for this policy is complete, so it is ready to be turned on. The plan schedules the turn-on for {date}.",
+        "enforceScheduled": "Report-only blocked no one. Turn the policy on {date}.",
+        "enforceScheduledOther": "Report-only blocked no one. Turn the policy on {date}.",
         "$commentEnforceWaits": "A policy whose evidence is complete and whose turn-on waits on the plan's own prerequisites (roadmap/enforceWaits.ts: the emergency-access recovery test; security defaults still on). It read \"ready to be turned on. The plan turns it on on Sep 21\" with the turn-on handed over in every channel and one Stop line in one of them, and a reader enforced eight policies beside security defaults. The turn-on is withheld now, and this says what it waits on. The day stays on the milestone (sequencing, owner Step 4) and is not repeated in the sentence, because the board already reads \"After prerequisites\" for a row held this way. The turn-on task stands in every state (walk list section 4 item 18) and, while held, reads this sentence in place of its instruction (policyTasks.ts policyProcedureOf).",
-        "enforceWaitsOne": "The evidence for this policy is complete. It stays in Report-only until {items} is finished, and the instruction that turns it on comes back then.",
-        "enforceWaitsMany": "The evidence for this policy is complete. It stays in Report-only until {items} are finished, and the instruction that turns it on comes back then.",
+        "enforceWaitsOne": "Report-only blocked no one. It turns on after {items}.",
+        "enforceWaitsMany": "Report-only blocked no one. It turns on after {items}.",
         "$commentEnforceWaitsSecurityDefaults": "Said where security defaults are among the waits. Entra refuses to turn on a Conditional Access policy while security defaults are on and points at turning them off, and turning them off before the replacements can go on in the same change window removes the MFA they require.",
-        "enforceWaitsSecurityDefaults": "Entra does not let a Conditional Access policy go On while security defaults are on, and turning them off early removes the MFA they require: {step} turns them off and turns the replacements on together.",
+        "enforceWaitsSecurityDefaults": "{step} turns security defaults off and this policy on together.",
         "verify": "Verify the change and rescan.",
-        "preserve": "No change needed.",
+        "preserve": "Nothing left to do.",
         "none": "Nothing left to do."
       },
       "baselineConflict": {
@@ -2103,7 +2104,7 @@
           "foundEnforcedBelowThreshold": "The plan holds enforcement until {measure} reaches {threshold}; it is {value} now.",
           "foundEnforcedBelowThresholdFloor": "The plan holds enforcement until {measure} reaches {threshold}; it is at least {value} now.",
           "dormantNoMethod": {
-            "$comment": "Require MFA for Everyone's card for the accounts its policy reaches that have not signed in for 90 days, or ever, and hold no method it accepts, the ones kept in Disable or Confirm Dormant Accounts aside (stepContract.ts dormantOf). Owner, 2026-09-24 (walk list 4.x item 10 and L4): they no longer hold the step's 90% gate, which counts the people MFA Readiness counts; whoever signs in to one first registers its method, so the step names them and where to disable them. Up to five by name; past that, the step that disables them lists them.",
+            "$comment": "Require MFA for Everyone's card for the accounts its policy reaches that have not signed in for 90 days, or ever, and hold no method it accepts, the ones kept in Disable or Confirm Dormant Accounts aside (stepContract.ts dormantOf). Owner, 2026-09-24 (walk list 4.x item 10 and L4): they no longer hold the step's 90% gate, which counts the people MFA Readiness counts; whoever signs in to one first registers its method, so the step names them and where to disable them. Up to twenty by name; past that, the step that disables them lists them.",
             "label": "Dormant Accounts",
             "value": "{n} accounts haven't signed in for 90 days and have no method",
             "valueOne": "1 account hasn't signed in for 90 days and has no method",
@@ -2289,7 +2290,7 @@
           "fixStepAt": {
             "ready-to-enforce": null,
             "created": "{step} needs to exist first.",
-            "enforced": "{step} needs to be enforced first.",
+            "enforced": null,
             "resolved": "{step} needs to be resolved first.",
             "minimum-satisfied": "{step} needs its minimum safety checks passed first.",
             "hardening-complete": "{step} needs its hardening cleared or deferred first.",
@@ -3234,9 +3235,7 @@
         "noOperationDisabled": "A policy for this step already exists in {tenant} and is switched off, so there is nothing for IAMAI to create. Set Enable policy to Report-only in the Entra admin center, not On: IAMAI watches it there, and this step says when it can be turned on. Scan again once it is in Report-only.",
         "$commentEnforceOutstanding": "Owner, 2026-09-24 (walk list 4.x items 17 and 44): the turn-on task's one line while the plan's own prerequisites hold it (ui/surfaces/policyTasks.ts policyProcedureOf). It read \"Stop: {items} is not finished, and this policy is part of it\", and the policy is not part of that step; it stood inside a checklist the two-line turn-on no longer has.",
         "enforceOutstanding": "Wait for {items}; leave this policy in Report-only until then.",
-        "$commentSecurityDefaultsCoexist": "The plan states its own ordering invariant on this step - \"security defaults must be off before the policies replacing them can take over, and once these policies exist you cannot turn security defaults back on... That is why nothing in this plan enforces before this step.\" A reader enforced eight policies with security defaults still on, swept all thirty-three steps, and found no warning anywhere; the board read Completed and the tile said \"IAMAI watched it get there.\" The step that owns the invariant is the one place that must notice it has been broken.",
         "$commentSecurityDefaultsCoexistPointer": "It ended \"and this is the step that turns them off\", which reads as the way out. On the tenant where it fired the plan's own MFA policy was still held below its threshold, and turning security defaults off then removes the MFA they require from everybody (Sam D2). The step turns them off only once the replacements can go On in the same change window, and the line says that instead.",
-        "securityDefaultsCoexist": "{n} Conditional Access policies are enforced in this tenant while security defaults are still on, which Microsoft does not support. Do not turn security defaults off to settle it: this step does that only once the policies that replace them can go On in the same change window.",
         "$commentSecurityDefaultsNeverOn": "Turn Off Security Defaults read Completed on a tenant whose security defaults were already off when this plan first scanned it: a row claiming work nobody did (roadmap-flow V1 decision 6, Stage 3). The plan records the day a scan first read them on (PlanDecisions.securityDefaultsSeenOnAt); where there is none the step does not apply, and this is the reason the Doesn't apply here footer states for it. The scan says so, not a person, so it is drawn without the you-said prefix (pages.plan.footer.doesntApplyScanRow).",
         "securityDefaultsNeverOn": "Security defaults are already off."
       },
@@ -4297,21 +4296,21 @@
       "kind": "object",
       "title": "Turn Off Security Defaults",
       "changeLine": null,
-      "why": "Security defaults and Conditional Access can't run together. Turn security defaults off on the day the four policies below turn on, so the tenant is never without MFA.",
+      "why": "Security defaults and Conditional Access can't run together. Turn security defaults off on the day the policies that replace them turn on, so the tenant is never without MFA.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/fundamentals/security-defaults"
       },
       "who": {
         "$comment": "A lead per read state: the scan read security defaults on, or read them off. Where it read neither, the lead is unresolved rather than the sentence for a state nobody confirmed.",
         "leadWhen": {
-          "securityDefaultsOn": "Everyone in {tenant}: security defaults require MFA, block legacy authentication and block device code sign-in today, and four policies of this plan take over all of it.",
-          "securityDefaultsOff": "Everyone in {tenant}: security defaults are already off, so nothing requires MFA, blocks legacy authentication or blocks device code sign-in tenant-wide until the four policies of this plan that replace them are enforced."
+          "securityDefaultsOn": "Everyone in {tenant}: security defaults require MFA, block legacy authentication and block device code sign-in today, and the policies of this plan that replace them take over all of it.",
+          "securityDefaultsOff": "Everyone in {tenant}: security defaults are already off."
         }
       },
       "decision": null,
       "$commentWhatToDo": "One procedure in every state (walk list 4.x items 8, 18 and 51): turn security defaults off, then turn on in the same change the four policies that replace them, each by the name it has in the tenant (turnOn1 to turnOn4, in the Plan's order: roadmap/enforceWaits.ts noteTurnOns, ui/surfaces/stepVars.ts). A policy not on the plan has no name, and its line is not drawn. The step completes when a scan reads security defaults off; every other policy turns on from its own step after that.",
       "whatToDo": {
-        "lead": "Turn off the day the four policies below are ready to turn on.",
+        "lead": "Turn security defaults off in the same change that turns on the policies that replace them.",
         "steps": [
           "As at least a Conditional Access Administrator, open [Microsoft Entra admin center](https://entra.microsoft.com/) → Entra ID → Overview → Properties → Manage security defaults.",
           "Select Disabled (not recommended), then Save.",
@@ -4361,7 +4360,7 @@
         "turnOn4": "IAC - GLOBAL - GRANT - MFA - AllUsers"
       },
       "placement": "Placed on the day Require MFA for Everyone enforces, with Block Legacy Authentication and Require Phishing-Resistant MFA for Admins enforced the same day; its row carries that date. Shown only when security defaults are on.",
-      "aiFocus": "Walk me through turning off security defaults and turning on the four policies in the same change.",
+      "aiFocus": "Walk me through turning off security defaults and turning on the policies that replace them in the same change.",
       "card": {
         "subject": "Security defaults",
         "check": "On",
@@ -4383,13 +4382,13 @@
         "accounts": "{list:accounts}"
       },
       "decision": null,
-      "$commentWhatToDo": "One procedure in every state (walk list 4.x item 57). Where the scan reads five or fewer accounts on, the task selects each by name and sign-in address (perUserNamed, ui/surfaces/stepVars.ts); with more, or once none is on, it selects every account the page marks Enabled or Enforced. The scan reads each state back, so nothing asks anyone to.",
+      "$commentWhatToDo": "One procedure in every state (walk list 4.x item 57). Deleting app passwords takes the Authentication Administrator role (Microsoft Learn, howto-mfa-userdevicesettings: Manage user settings); changing the state takes the Authentication Policy Administrator role, so the first line names both. Where the scan reads twenty or fewer accounts on, the task selects each by name and sign-in address (perUserNamed, ui/surfaces/stepVars.ts); with more, or once none is on, it selects every account the page marks Enabled or Enforced. The scan reads each state back, so nothing asks anyone to.",
       "whatToDo": {
         "lead": "Turn off per-user MFA for each account once Require MFA for Everyone is On.",
         "steps": [
-          "As at least an Authentication Policy Administrator, open [Microsoft Entra admin center](https://entra.microsoft.com/) → Entra ID → Users → All users → Per-user MFA.",
+          "As at least an Authentication Policy Administrator and an Authentication Administrator, open [Microsoft Entra admin center](https://entra.microsoft.com/) → Entra ID → Users → All users → Per-user MFA.",
           "Select every account marked Enabled or Enforced, then Disable MFA.",
-          "Select them again, then User MFA settings: tick Delete all existing app passwords generated by the selected users and select Save.",
+          "Select them again, then Manage user settings: tick Delete all existing app passwords generated by the selected users and select Save.",
           "Return to IAMAI and select Scan to update the plan."
         ]
       },
@@ -4397,9 +4396,9 @@
         "perUserNamed": {
           "lead": "Turn off per-user MFA for each account once Require MFA for Everyone is On.",
           "steps": [
-            "As at least an Authentication Policy Administrator, open [Microsoft Entra admin center](https://entra.microsoft.com/) → Entra ID → Users → All users → Per-user MFA.",
+            "As at least an Authentication Policy Administrator and an Authentication Administrator, open [Microsoft Entra admin center](https://entra.microsoft.com/) → Entra ID → Users → All users → Per-user MFA.",
             "Select {perUserNamed}, then Disable MFA.",
-            "Select them again, then User MFA settings: tick Delete all existing app passwords generated by the selected users and select Save.",
+            "Select them again, then Manage user settings: tick Delete all existing app passwords generated by the selected users and select Save.",
             "Return to IAMAI and select Scan to update the plan."
           ]
         }
@@ -4408,7 +4407,7 @@
       "doneWhen": [
         "IAMAI reads per-user MFA as Disabled for every account."
       ],
-      "ifWrong": "Per-user MFA can be set back to Enabled or Enforced one account at a time, which restores the old requirement while you investigate.",
+      "ifWrong": "To undo it, select the accounts on the same page and select Enable MFA.",
       "comms": null,
       "doesntApply": false,
       "skip": false,
@@ -4447,10 +4446,10 @@
       },
       "placement": "On the plan once a scan reads an account with per-user MFA on; Completed once every account reads Disabled.",
       "aiFocus": "Walk me through turning off per-user MFA for these accounts.",
-      "$commentCard": "One card (walk list 4.x item 55; ui/surfaces/policyTasks.ts ownCardWordsOf): how many accounts the scan reads on, and, where there are five or fewer, who they are; once none is, the Satisfied card's fact.",
+      "$commentCard": "One card (walk list 4.x item 55; ui/surfaces/policyTasks.ts ownCardWordsOf): how many accounts the scan reads on, and, where there are twenty or fewer, who they are; once none is, the Satisfied card's fact.",
       "card": {
         "subject": "Per-user MFA",
-        "check": "{perUserOn} on per-user MFA",
+        "check": "{perUserOn} still on it",
         "detail": "{perUserNames}",
         "satisfied": "Disabled for every account"
       },
