@@ -938,6 +938,12 @@ export type Step = {
    */
   reportOnlyAt?: string | null
   /**
+   * Create the Policies in Report-only's list (roadmap/reportOnlyBatch.ts): the
+   * policy steps still to create in Report-only, and the ones already in
+   * Report-only or On, in plan order. Only on that step.
+   */
+  reportOnlyBatch?: { create: string[]; created: string[] }
+  /**
    * Where the finished plan schedules this step (roadmap/stepSchedule.ts): its
    * class, the transition and day of its next milestone, its span and its phase.
    * Written once on the finished plan (roadmap/forecast.ts settleForecast); the

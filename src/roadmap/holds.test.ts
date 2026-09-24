@@ -483,7 +483,8 @@ test('Step 4: a campaign with no enrol-by day still says who it reaches, and sta
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot) }
   const lines = stepLines(camp, ctx)
   assert.ok(camp.preparation!.ids.length > 0, 'the preparation cohort remains known without an enrolment deadline')
-  assert.ok(lines.some(l => l.includes('MFA Readiness')), 'the implementation gives the administrator a concrete place to work through that cohort')
+  // The card names each person with MFA Readiness's next step, and the procedure works through them (round 1, owner 2026-09-24).
+  assert.ok(lines.some(l => l.includes('Anyone named in Tasks Remaining')), 'the implementation gives the administrator a concrete place to work through that cohort')
   assert.doesNotMatch(lines.join(' '), /90%/, 'preparation does not finish by rounding away people who still need setup')
   assert.doesNotMatch(lines.join('\n'), /Enroll by /, 'nothing states an enrol-by day')
 })

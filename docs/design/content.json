@@ -174,9 +174,9 @@
         "$commentPimSettings": "Require MFA at Every Role Activation: the PIM role settings that make role activation ask for the policy's authentication context, after the policy is On (package entra.pim.configure). Without them the enforced policy requires nothing of anyone.",
         "pimSettings": "Require the context on role activation"
       },
-      "$commentCard": "The policy's Tasks Remaining card (ui/surfaces/policyTasks.ts policyCardsOf; walk list item 20) names the task, never Blocked or the step's title. reportOnlyUntil stands while the report-only week runs. Once it is over the card reads Turn the policy on, with blockedNoOne under it and, where the turn-on still waits on something, after.",
+      "$commentCard": "The policy's Tasks Remaining card (ui/surfaces/policyTasks.ts policyCardsOf; walk list item 20) names the task, never Blocked or the step's title. reportOnlyUntil stands while the report-only week runs, and says the scan after that day is what moves it on (round 1, owner 2026-09-24). Once it is over the card reads Turn the policy on, with blockedNoOne under it and, where the turn-on still waits on something, after.",
       "card": {
-        "reportOnlyUntil": "Report-only until {date}",
+        "reportOnlyUntil": "Report-only until {date}; scan after that day",
         "blockedNoOne": "Report-only blocked no one.",
         "after": "After {items}.",
         "$commentExclusionsEdit": "The card of a policy whose only change left is the exclusions group, which Configure Emergency Exclusions adds itself (walk list 4.x item 7): it read Correct the policy, beside that step's own task for the same edit.",
@@ -3070,8 +3070,6 @@
           "completed": "Completed",
           "finish": "Estimated finish",
           "all": "Show the full plan",
-          "$commentCreate": "The view the line above the board opens (pages.app.plan.board.createNow): the policies ready to create in report-only now, in section order. Read after \"Showing\".",
-          "create": "policies ready to create in report-only",
           "filter": "Showing {view}"
         },
         "cleanupImpacts": {
@@ -3090,11 +3088,7 @@
           "$commentGroupAllCompleted": "A finished section collapses in place to one line, its title and this (owner, roadmap flow V2 decision B). Selecting it opens it.",
           "groupAllCompleted": "All {total} completed",
           "$commentGroupFinished": "A section with nothing left to do where some rows were deferred: it collapses like a completed one, and says how much of it was deferred rather than claiming all of it completed.",
-          "groupFinished": "{done} of {total} completed, {deferred} deferred",
-          "$commentCreateNow": "The line above the board (owner, roadmap flow V2 decision H, tried as a visible line): how many policies can be created in report-only today, counted off the board's Ready · Create rows of Conditional Access work, so it never counts a policy the board holds and names none. Drawn only while there are such rows.",
-          "createNow": "{n} policies are ready to create in report-only now.",
-          "$commentCreateNowShow": "The line's control: it shows exactly the policies the line counted (pages.app.plan.summary.create).",
-          "createNowShow": "Show them"
+          "groupFinished": "{done} of {total} completed, {deferred} deferred"
         },
         "groups": {
           "$comment": "The Plan's eight sections, in the order the board draws them (roadmap/stepGroups.ts STEP_GROUPS; order and membership from the roadmap flow V1 proposal section 2, names from V2, owner 2026-09-23). Every title but the catch-all, Ongoing Checks and Cleanup, follows one convention: Title Case, an imperative verb, a technical object, three to six words.",
@@ -4949,13 +4943,13 @@
       },
       "milestone": "{n} people still need a method",
       "pitfalls": {
-        "$comment": "The two cards the campaign draws beside its own while it is open (ui/surfaces/pitfalls.ts, round 1, owner 2026-09-24): Temporary Access Pass off while people with no method need one to register, and the people whose only method is a text or a call, named, with Microsoft's retirement dates (concept-sms-voice-retirement).",
+        "$comment": "The two cards the campaign draws beside its own while it is open (ui/surfaces/pitfalls.ts, round 1, owner 2026-09-24): Temporary Access Pass off while people with no method need one to register, and the people whose only method is a text or a call, named, with Microsoft's retirement dates ({smsEveryone}, {smsAdmins}: derive/smsRetirement.ts SMS_RETIREMENT_DATES, from concept-sms-voice-retirement).",
         "tapOffLabel": "Temporary Access Pass",
         "tapOffValue": "Off, and {n} people have no method to register with",
         "tapOffNote": "Turn it on before you issue one. {tapEnable}",
         "textOnlyLabel": "Text or Call Only",
         "textOnlyValue": "{n} people sign in with only a text or a call",
-        "textOnlyNote": "Microsoft retires text and call sign-in on February 1, 2027 (July 1, 2027 for Global Administrators), and anyone with nothing else must register a passkey before they can sign in. Set each one up now with the method named beside them."
+        "textOnlyNote": "Microsoft retires text and call sign-in on {smsEveryone} ({smsAdmins} for Global Administrators), and anyone with nothing else must register a passkey before they can sign in. Set each one up now with the method named beside them."
       },
       "instruction": "Pick anyone not ready who can't register soon, such as someone on leave: the policies go ahead without them.",
       "campaign": {
@@ -7871,6 +7865,59 @@
         ]
       },
       "aiFocus": "Explain the exact app target and built-in MFA grant, separating user access from workload identities and installation permissions."
+    },
+    {
+      "id": "s-create-report-only",
+      "kind": "object",
+      "title": "Create the Policies in Report-only",
+      "$comment": "3.8, owner 2026-09-24 (docs/plans/roadmap-flow/v1-plan.md 1f): every policy the plan can create now, created in Report-only at once, so each starts its report-only week today. Its list is roadmap/reportOnlyBatch.ts; its cards and its tasks are ui/surfaces/reportOnlyStep.ts, each task the policy's own create procedure.",
+      "changeLine": null,
+      "why": "Report-only records what each policy would do to real sign-ins without stopping anyone. Creating them all now starts every policy's week of evidence today, so each is ready to turn on when its turn comes.",
+      "learn": {
+        "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-report-only",
+        "checkedOn": "2026-09-25"
+      },
+      "who": {
+        "lead": "The policies of this plan that can be created in Report-only now."
+      },
+      "decision": null,
+      "whatToDo": {
+        "lead": "Create each policy its task names, in Report-only."
+      },
+      "dates": null,
+      "doneWhen": [
+        "IAMAI sees each policy listed here in Report-only or On."
+      ],
+      "ifWrong": null,
+      "comms": null,
+      "doesntApply": false,
+      "skip": false,
+      "scanControl": true,
+      "more": {
+        "risks": [],
+        "helpDesk": null,
+        "manager": null
+      },
+      "example": {
+        "n": 6
+      },
+      "aiFocus": "Walk me through creating each listed policy in Report-only, one at a time, with the exact values each needs.",
+      "card": {
+        "$comment": "No card of its own while open: each policy is a card (reportOnlyStep.ts). Once every one is created, the Satisfied card states it.",
+        "subject": "Conditional Access policies",
+        "check": null,
+        "pointer": false,
+        "satisfied": "Every policy listed here is in Report-only or On."
+      },
+      "taskTitle": "Create the policies in Report-only",
+      "batch": {
+        "$comment": "A policy's card (ui/surfaces/reportOnlyStep.ts): still to create, headed by its step's title and naming the policy, its instruction pointing at that policy's task; or created, as a Satisfied fact. milestone is the rail's headline while any is left.",
+        "createValue": "Create in Report-only",
+        "createdOn": "On",
+        "createdUntil": "Report-only until {date}",
+        "createdReportOnly": "In Report-only",
+        "milestone": "{n} policies to create in Report-only"
+      }
     }
   ]
 }

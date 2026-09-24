@@ -70,7 +70,7 @@ test('the people whose only method is a text or a call are named, with the retir
   assert.ok(tile)
   assert.equal(tile.names?.length, only.length)
   for (const id of only) assert.ok(tile.names!.some((l) => l.includes(ctx.nameOf(id))), `${id} is named`)
-  assert.match(tile.note ?? '', /February 1, 2027/)
+  assert.match(tile.note ?? '', /Feb 1, 2027 \(Jul 1, 2027 for Global Administrators\)/, 'the retirement dates, as the tool writes every date')
   assert.match(tile.note ?? '', /Set each one up now with the method named beside them\./, "the fix is each person's own next step, never a second instruction")
 })
 

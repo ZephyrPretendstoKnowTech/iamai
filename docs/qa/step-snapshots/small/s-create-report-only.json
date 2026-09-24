@@ -1,0 +1,50 @@
+{
+  "lane": "Up Next",
+  "substatus": null,
+  "reason": "after: Configure Passkey Authentication",
+  "fact": null,
+  "badge": "Up Next",
+  "bar": "After Configure Passkey Authentication",
+  "rail": "6 policies to create in Report-only",
+  "headings": [
+    "About this Step",
+    "Tasks Remaining",
+    "Implementation Tasks",
+    "Completion Criteria"
+  ],
+  "tiles": [
+    {
+      "label": "Block Authentication Transfer",
+      "state": "Create in Report-only"
+    },
+    {
+      "label": "Shorten Admin Sessions",
+      "state": "Create in Report-only"
+    },
+    {
+      "label": "Require Phishing-Resistant MFA for Admins",
+      "state": "Create in Report-only"
+    },
+    {
+      "label": "Block Unsupported Device Platforms",
+      "state": "Create in Report-only"
+    },
+    {
+      "label": "Limit How Long Sessions Last",
+      "state": "Create in Report-only"
+    },
+    {
+      "label": "Require Token Protection on Windows",
+      "state": "Create in Report-only"
+    },
+    {
+      "label": "Configure Passkey Authentication",
+      "state": "Prerequisite · To do"
+    }
+  ],
+  "channels": [
+    "Entra",
+    "AI Info"
+  ],
+  "when": "Est. Sep 7, 2026"
+}

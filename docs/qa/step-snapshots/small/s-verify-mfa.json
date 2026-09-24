@@ -14,6 +14,14 @@
   ],
   "tiles": [
     {
+      "label": "Temporary Access Pass",
+      "state": "Off, and 2 people have no method to register with"
+    },
+    {
+      "label": "Text or Call Only",
+      "state": "3 people sign in with only a text or a call"
+    },
+    {
       "label": "Register Your Own Passkey",
       "state": "Prerequisite · Waiting"
     }

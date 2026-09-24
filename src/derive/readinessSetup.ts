@@ -9,10 +9,9 @@
 // of people waiting on their own action (a tie goes to setup, because those
 // people cannot act until it lands). Pure: no DOM, no network.
 import type { TenantSnapshot } from '../graph/collect/types.ts'
-import { AUTHENTICATOR_AAGUIDS, passkeyAllowed } from '../scoring/phishingResistant.ts'
+import { AUTHENTICATOR_AAGUIDS, READINESS_STATES, passkeyAllowed } from '../scoring/phishingResistant.ts'
 import type { ReadinessState } from '../scoring/phishingResistant.ts'
 import type { ReadinessRow, ReadinessView } from './mfaReadiness.ts'
-import { GROUP_ORDER } from './mfaReadiness.ts'
 
 export type SetupKey = 'passkeyOn' | 'phonePasskey' | 'registration' | 'windowsHello' | 'tap' | 'migration' | 'step3' | 'attestation'
 export type SetupOutcome = 'pass' | 'fail' | 'unknown' | 'note'
@@ -101,7 +100,10 @@ export function remainingChecks(checks: readonly SetupCheck[]): SetupCheck[] {
 }
 
 /** The actionable groups of people, in the worklist's order. */
-export const ACTION_STATES: readonly ReadinessState[] = GROUP_ORDER.filter((s) => s !== 'ready' && s !== 'seamless')
+// READINESS_STATES is the worklist's order (mfaReadiness.ts GROUP_ORDER reads it), read from the scoring
+// module so this module imports nothing of mfaReadiness.ts at load: that import closed a load cycle
+// through the Plan's cards (derive/facts.ts, planBoard.ts, stepContract.ts, pitfalls.ts).
+export const ACTION_STATES: readonly ReadinessState[] = READINESS_STATES.filter((s) => s !== 'ready' && s !== 'seamless')
 
 export type NextCheck = { kind: 'setup'; check: SetupCheck } | { kind: 'group'; state: ReadinessState } | { kind: 'none' }
 

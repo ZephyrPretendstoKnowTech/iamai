@@ -77,6 +77,7 @@ import { isGroupMember } from '../../roadmap/stepGroups.ts'
 import { rowWho } from './rowWho.ts'
 import { pitfallTilesOf } from './pitfalls.ts'
 import { personLines } from './personNext.ts'
+import { reportOnlyTilesOf } from './reportOnlyStep.ts'
 
 /**
  * The one state reading of a step (A1b, RUN-CONTEXT-A decision 1): the lane
@@ -503,6 +504,8 @@ export type StepContract = {
   pitfalls: ReadinessTile[]
   /** The admin gate's card lines: each admin it is short of, with MFA Readiness's next step (round 1); null on every other gate. */
   gateNames: string[] | null
+  /** Create the Policies in Report-only's cards, one per policy it lists (reportOnlyStep.ts); none on any other step. */
+  batch: ReadinessTile[]
   /** The signed-in account this policy would leave with no method it accepts, named, with the step that fixes it (walk list 4.x item 43); null elsewhere. */
   operator: { text: string; id: string } | null
   whatToDo: ContractAction
@@ -1619,6 +1622,7 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     dormant: dormantOf(step, ctx),
     pitfalls: pitfallTilesOf(step, ctx, step.state.satisfied, stepLink),
     gateNames: adminGateNamesOf(step, ctx),
+    batch: reportOnlyTilesOf(step, ctx),
     operator,
     whatToDo,
     fix,
@@ -2851,7 +2855,7 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
   // The two blocks' sign-in card (roadmap/blockSignIns.ts) sits beside the
   // step's own state tile, never in its place.
   const stateFindings = configuration.filter((f) => f.key !== SIGN_INS_FINDING).length
-  const facts = [enforcedReadingTile(step), unwatchedTile(step), ownPolicyTile(step), followUpTile(c), ...emergencyTiles(step, c), ...configuredTiles, ...((stateFindings && step.id !== 's-prereq-break-glass') || (c.satisfiedFacts?.length ?? 0) > 0 ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), dormantTile(c), ...c.pitfalls, exclusionsTile(step, c), exclusionsReachTile(c), implementationTile(step, c), inventory].filter((x): x is ReadinessTile => x !== null)
+  const facts = [enforcedReadingTile(step), unwatchedTile(step), ownPolicyTile(step), followUpTile(c), ...emergencyTiles(step, c), ...configuredTiles, ...((stateFindings && step.id !== 's-prereq-break-glass') || (c.satisfiedFacts?.length ?? 0) > 0 ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), dormantTile(c), ...(c.pitfalls ?? []), ...(c.batch ?? []), exclusionsTile(step, c), exclusionsReachTile(c), implementationTile(step, c), inventory].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
   // The emergency step's failing checks are its account slots' lines (P0-7): no check tile beside them.
   // The drift card is the review's one card, and the exclusions card the exposure's

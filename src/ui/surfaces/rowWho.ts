@@ -57,6 +57,8 @@ const COUNTED: Readonly<Record<string, readonly [string, string]>> = {
   's-prereq-service-accounts-group': ['account', 'accounts'],
   's-prereq-auth-strength': ['policy', 'policies'],
   's-prereq-trusted-location': ['policy', 'policies'],
+  // The policies Create the Policies in Report-only lists (roadmap/reportOnlyBatch.ts).
+  's-create-report-only': ['policy', 'policies'],
 }
 export function rowWho(step: Step): string {
   // A preparation cohort names its guests beside its people (owner, 2026-09-19): the lead reads the same words.

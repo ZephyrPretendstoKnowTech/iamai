@@ -48,6 +48,7 @@ import { DIRECTION_BLOCKER, directionComplete, isDirectionStep } from './directi
 import { FOUNDATION_WAIT } from './holds.ts'
 import { setState, workflowReviewIsCurrent } from './lifecycle.ts'
 import type { Step } from './types.ts'
+import { REPORT_ONLY_STEP_ID } from './stepIds.ts'
 
 /** The member ids of the foundation, Emergency Access and Direction, Emergency Access first, in the order each group draws them. */
 export const FOUNDATION_STEP_IDS: readonly string[] = [...membersOf(EMERGENCY_ACCESS_GROUP), ...membersOf(DIRECTION_GROUP)]
@@ -89,7 +90,8 @@ export function gateOnFoundations(steps: Step[]): void {
   if (gate === undefined) return
   const binding = BLOCKED_REASON.after(gate.title)
   for (const step of steps) {
-    if (!POLICY.includes(step.kind) || isFoundationStep(step.id)) continue
+    // Create the Policies in Report-only creates policies: it waits on the foundation as they do.
+    if ((!POLICY.includes(step.kind) && step.id !== REPORT_ONLY_STEP_ID) || isFoundationStep(step.id)) continue
     if (step.status === 'done' || step.status === 'skipped' || step.state.setAside || step.state.satisfied || step.doesntApply != null) continue
     // Nothing in the tenant clears a baseline that defines the policy two ways,
     // and the foundation is not what that step is waiting for.

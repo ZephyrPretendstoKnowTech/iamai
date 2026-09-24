@@ -93,6 +93,8 @@ export type StepVarContext = {
   proposed?: ProposedObjectNames
   /** The plan's policies that prompt a person (content titles, planDates): the shared-device accounts are excluded from each. */
   peoplePolicies?: string[]
+  /** The plan's steps (planDates): Create the Policies in Report-only reads its policies' own create procedures from them. */
+  planSteps?: readonly Step[]
 }
 
 /** The long form, in the display time zone, only when the instant is real. */
@@ -706,7 +708,7 @@ const EMPTY_SCAN = { config: {} } as unknown as TenantSnapshot
  * MFA for Everyone enforces, the campaign's window from the plan's start to
  * that enrol-by, and whether the unmanaged-browser step is on the plan.
  */
-export function planDates(steps: readonly Step[], scheduleStart: string, naming?: NamingConvention, snapshot?: TenantSnapshot, held: (s: Step) => boolean = () => false): Pick<StepVarContext, 'firstEnforce' | 'mfaEnforce' | 'enrolWindowDays' | 'unmanagedBrowserOnPlan' | 'mfaInPlace' | 'passkeyPolicy' | 'passkeyEnforce' | 'proposed' | 'peoplePolicies'> {
+export function planDates(steps: readonly Step[], scheduleStart: string, naming?: NamingConvention, snapshot?: TenantSnapshot, held: (s: Step) => boolean = () => false): Pick<StepVarContext, 'firstEnforce' | 'mfaEnforce' | 'enrolWindowDays' | 'unmanagedBrowserOnPlan' | 'mfaInPlace' | 'passkeyPolicy' | 'passkeyEnforce' | 'proposed' | 'peoplePolicies' | 'planSteps'> {
   // `held`: the board's hold (planBoard.ts boardHolds, read by the caller that
   // holds the board). A step the board holds carries no date anywhere (owner
   // decision 2, 2026-09-22), so its turn-on is no other step's date either: not
@@ -746,5 +748,5 @@ export function planDates(steps: readonly Step[], scheduleStart: string, naming?
     ),
   ]
   // The proposed names, from the plan's prerequisite steps: the prerequisite step and every portal line name the same group and location.
-  return { firstEnforce, mfaEnforce, enrolWindowDays, unmanagedBrowserOnPlan, mfaInPlace, passkeyPolicy: passkey ? contentTitle(passkey) : null, passkeyEnforce: passkey?.events?.enforce.at ?? null, proposed: planProposedNames(steps, naming), peoplePolicies }
+  return { firstEnforce, mfaEnforce, enrolWindowDays, unmanagedBrowserOnPlan, mfaInPlace, passkeyPolicy: passkey ? contentTitle(passkey) : null, passkeyEnforce: passkey?.events?.enforce.at ?? null, proposed: planProposedNames(steps, naming), peoplePolicies, planSteps: steps }
 }

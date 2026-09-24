@@ -10,6 +10,7 @@ import { emergencyAccountTasksText } from './emergencyAccountTasks.ts'
 import { estimatedDay } from '../../roadmap/stepSchedule.ts'
 import { proposedNamesFor } from './proposedNames.ts'
 import { DORMANT_STEP_ID, DORMANT_WORDS, sectionThreeTasksOf, sectionThreeTasksText } from './sectionThreeTasks.ts'
+import { reportOnlyMilestoneOf, reportOnlyTasksOf } from './reportOnlyStep.ts'
 import { oneLine } from '../../content/implementation/project.ts'
 import { prepareReadingOf } from './prepareSteps.ts'
 import { existingObjectProcedureOf } from './prepareProcedures.ts'
@@ -210,6 +211,19 @@ export type StepBodyOptions = {
  * About sentence and its completion lines are the contract's (stepContract.ts),
  * so the export and the print read them too.
  */
+/**
+ * A policy step's own create procedure, as its Implementation Task draws it: what
+ * Create the Policies in Report-only hands over for that policy. Built once per
+ * step object, since one body reads it for every policy it lists.
+ */
+const createTasks = new WeakMap<Step, string[] | null>()
+function createTaskOf(member: Step, ctx: StepVarContext): string[] | null {
+  if (createTasks.has(member)) return createTasks.get(member) ?? null
+  const steps = stepBodyOf(member, ctx).emergencyAccountTasks?.tasks.find((t) => t.id === 'create')?.steps ?? null
+  createTasks.set(member, steps)
+  return steps
+}
+
 export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   const own = ownBodyOf(step, ctx, o)
   const task = objectTaskBodyOf(step, ctx)
@@ -425,7 +439,7 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // holds exactly the picked accounts and nobody has saved it: saving it is the
   // milestone, in the step's own words for that state (whatToDoWhen).
   const serviceGroupFound = step.id === PREREQ_STEP_ID.serviceAccountsGroup && truthy(ex.serviceGroupFound) && typeof w.lead === 'string' && whole(w.lead, ex) ? fillText(w.lead, ex) : null
-  const ownRailWords = choosing ?? prepare?.milestone ?? serviceGroupFound ?? pkg?.meta.milestone?.actionText ?? directionMilestoneAction(step.id)
+  const ownRailWords = choosing ?? prepare?.milestone ?? reportOnlyMilestoneOf(step) ?? serviceGroupFound ?? pkg?.meta.milestone?.actionText ?? directionMilestoneAction(step.id)
   // Disable or Confirm Dormant Accounts takes a choice too, the accounts kept:
   // its instruction stands in the same slot while any account is open (walk
   // list item 17), and a finished step draws none (item 29).
@@ -654,7 +668,9 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // Disable or Confirm Dormant Accounts and Use Separate Accounts for Admin
   // Work: their tasks name every account with the scan's values
   // (sectionThreeTasks.ts), and the Entra tab carries the same procedure.
-  const sectionThree = sectionThreeTasksOf(step, ctx)
+  // Create the Policies in Report-only: one task per policy, each that policy's
+  // own create procedure, read from its own step's body (reportOnlyStep.ts).
+  const sectionThree = sectionThreeTasksOf(step, ctx) ?? reportOnlyTasksOf(step, ctx, (member) => createTaskOf(member, ctx))
   if (sectionThree !== null) {
     for (let i = produced.length - 1; i >= 0; i--) if (produced[i].id === 'portal') produced.splice(i, 1)
     supported.add('portal')

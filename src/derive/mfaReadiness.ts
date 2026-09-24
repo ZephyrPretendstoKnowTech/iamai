@@ -72,7 +72,7 @@ export type ReadinessRow = {
 }
 
 /** The states a group can be, in the worklist's order: the actionable ones, then the done. */
-export const GROUP_ORDER: readonly ReadinessState[] = ['blocked', 'method', 'confirm', 'device', 'unknown', 'ready', 'seamless']
+export const GROUP_ORDER: readonly ReadinessState[] = READINESS_STATES
 
 export type ReadinessView = {
   facts: Facts
