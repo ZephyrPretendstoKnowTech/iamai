@@ -3144,7 +3144,6 @@
           "done": "Every answer is approved.",
           "$commentWaiting": "The row label and Readiness tile of a policy held on a Direction answer nobody has approved (ui/surfaces/planBoard.ts). Owner, roadmap flow V2 decision A: it read 'Waiting on your direction' until section 2 became Define Your Rollout Scope; the wait is on the person's answers.",
           "waiting": "Waiting on your answers",
-          "waitingNote": "Answer it in {step}.",
           "answeredIn": "Answered in {step}",
           "$commentDoesntApplyAnswered": "The reason on every Doesn't apply here row a Direction answer put there (walk list item 17, roadmap/directionAnswers.ts answeredReasonOf): the option as its card shows it, the card's label, and the Direction step that asks it. It replaced the hard-coded reasons each producer wrote for itself.",
           "doesntApplyAnswered": "You answered {option} to “{question}” in {step}.",
