@@ -4424,7 +4424,11 @@
       "aiFocus": "Walk me through turning off security defaults and turning on the policies that replace them in the same change.",
       "card": {
         "subject": "Security defaults",
-        "check": "On",
+        "check": null,
+        "checkWhen": {
+          "$comment": "The open card's check by the state the scan read (policyTasks.ts cardCheckOf, net-new 24): On only where it read them on. Where it read neither there is no check, and the card states none.",
+          "securityDefaultsOn": "On"
+        },
         "satisfied": "Off"
       },
       "taskTitle": "Turn security defaults off"

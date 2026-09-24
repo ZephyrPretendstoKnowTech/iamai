@@ -18,7 +18,7 @@ import { laneReadings } from './planLanes.ts'
 import { readinessBlockersOf } from './planBoard.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { TASK_HEAD, taskHeadingsOf } from './stepHeadings.ts'
-import { cardWordsOf, drawsTaskAnatomy, isPolicyProcedureTask, policyBarOf, policyCardsOf, policySubjectsOf, portalProcedureOf, taskSubjectOf } from './policyTasks.ts'
+import { cardCheckOf, cardWordsOf, drawsTaskAnatomy, isPolicyProcedureTask, policyBarOf, policyCardsOf, policySubjectsOf, portalProcedureOf, taskSubjectOf } from './policyTasks.ts'
 import { unavailableReason } from '../../roadmap/operations.ts'
 import { DIRECTION_STEP_IDS, EMERGENCY_ACCESS_GROUP, isGroupMember, usesTaskAnatomy } from '../../roadmap/stepGroups.ts'
 import { CONTRACT, FINISHED_READING } from './stepContract.ts'
@@ -413,4 +413,22 @@ test('while the emergency drill is outstanding the turn-on stands, reads the wai
   const [card] = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)
   assert.equal(card.title, 'Turn the policy on')
   assert.equal(card.detail, `Report-only blocked no one. After ${title}.`)
+})
+
+test('Turn Off Security Defaults reads "On" only where the scan read them on, and no check where it read neither', () => {
+  const cardsOf = (snapshot: ReturnType<typeof fixture>['snapshot']) => {
+    const f = { ...fixture('messy'), snapshot }
+    const run = runFixture(f)
+    const step = run.steps.find((s) => s.id === 's-prereq-security-defaults')!
+    assert.notEqual(step.status, 'done', 'the premise: the step is open')
+    const ctx: StepVarContext = { snapshot, mapping: f.mapping, nameOf: (id) => run.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: snapshot.asOf, groups: f.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
+    const body = stepBodyOf(step, ctx)
+    const ex = body.ex as Record<string, unknown>
+    return policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks, taskSubjectOf(step, body.eyebrow, body.title), cardCheckOf(step, ex), body.ownCard)
+  }
+  const read = fixture('messy').snapshot
+  assert.ok(cardsOf(read).some((card) => card.heading === 'Security defaults' && card.title === 'On'), 'read on: the card says so')
+  const unread = structuredClone(read)
+  unread.config.securityDefaults = { status: 'error', rows: null, reason: 'request failed' } as unknown as typeof unread.config.securityDefaults
+  assert.ok(!cardsOf(unread).some((card) => card.title === 'On'), 'read neither way: no card claims they are on')
 })

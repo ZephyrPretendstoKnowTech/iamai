@@ -76,7 +76,7 @@ import { absoluteDate } from '../../copy/dates.ts'
 import { emergencyTaskFacts, emergencyTaskSteps, emergencyTaskText } from './emergencyAccountTasks.ts'
 import type { EmergencyAccountTask, EmergencyTaskProjection } from './emergencyAccountTasks.ts'
 import { consolidateEmergencyReadiness, emergencySubjectsOf } from './emergencyReadiness.ts'
-import { cardWordsOf, drawsTaskAnatomy, policyBarOf, policySubjectsOf, taskSubjectOf } from './policyTasks.ts'
+import { cardCheckOf, cardWordsOf, drawsTaskAnatomy, policyBarOf, policySubjectsOf, taskSubjectOf } from './policyTasks.ts'
 import { DORMANT_WORDS, lastSignInWords } from './sectionThreeTasks.ts'
 import type { EmergencyFact, EmergencySubjectTile } from './emergencyReadiness.ts'
 import type { ApprovedModel } from '../../roadmap/emergencyJourney.ts'
@@ -340,7 +340,7 @@ export function ContentStep({
   // tiles — each of them a thing it waits on — everywhere this module produces
   // the subjects, and the Readiness tiles alone on Emergency Access Steps 2–3.
   // The bar reads them, so they are decided once.
-  const taskSubjects = isOwnTaskStep ? policySubjectsOf(contract, displayedReadiness, emergencyAccountTasks, taskSubjectOf(step, eyebrow, title), cardWordsOf(step)?.check ?? null, ownCard, prepareCard) : emergencySubjectsOf(displayedReadiness, emergencyAccountTasks)
+  const taskSubjects = isOwnTaskStep ? policySubjectsOf(contract, displayedReadiness, emergencyAccountTasks, taskSubjectOf(step, eyebrow, title), cardWordsOf(step) ? cardCheckOf(step, ex as Record<string, unknown>) : null, ownCard, prepareCard) : emergencySubjectsOf(displayedReadiness, emergencyAccountTasks)
   const emergencyTaskPreferenceKey = `iamai:emergency-task:${ctx.mapping.tenantId}:${step.id}`
   const [implementationChannel, setImplementationChannel] = useState<Channel | null>(null)
   const [emergencyTaskId, setEmergencyTaskId] = useState<string | null>(() => readEmergencyTaskPreference(emergencyTaskPreferenceKey).taskId ?? null)

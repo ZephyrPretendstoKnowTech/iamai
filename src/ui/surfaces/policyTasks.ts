@@ -497,6 +497,23 @@ const entryOf = (step: CardStep): { card?: { subject: string; check: string; sat
  * without these words the card was headed by the step's kind and checked by the
  * step's own title.
  */
+/**
+ * The open card's check for the state the scan read. A card whose check is a
+ * fact the scan may not hold names it by that fact (`checkWhen`): Turn Off
+ * Security Defaults reads "On" only where the scan read them on, and states no
+ * check where it read neither (net-new 24, owner 2026-09-24). Else `check`.
+ */
+export function cardCheckOf(step: CardStep, ex: Record<string, unknown>): string | null {
+  const card = entryOf(step)?.card as { check?: unknown; checkWhen?: unknown } | null | undefined
+  if (card?.checkWhen && typeof card.checkWhen === 'object') {
+    for (const [key, value] of Object.entries(card.checkWhen as Record<string, unknown>)) {
+      if (!key.startsWith('$') && typeof value === 'string' && ex[key] !== undefined && ex[key] !== null && ex[key] !== false) return value
+    }
+    return null
+  }
+  return typeof card?.check === 'string' ? card.check : null
+}
+
 export function cardWordsOf(step: CardStep): { subject: string; check: string | null } | null {
   const card = entryOf(step)?.card as { subject?: unknown; check?: unknown } | null | undefined
   return card && typeof card.subject === 'string' && (typeof card.check === 'string' || card.check === null) ? { subject: card.subject, check: card.check } : null
@@ -531,7 +548,7 @@ export function ownCardWordsOf(step: CardStep, ex: Record<string, unknown>): Own
   if (!card || (!('detail' in card || 'pointer' in card || 'satisfied' in card) && stateCheck === undefined)) return null
   const filled = (s: unknown): string | null => (typeof s === 'string' && whole(s, ex) ? fillText(s, ex) : null)
   const detail = filled(card.detail)
-  return { check: filled(stateCheck !== undefined ? stateCheck : card.check), noDetail: card.detail === null || (typeof card.detail === 'string' && detail === null), detail, pointer: card.pointer === true, satisfied: filled(card.satisfied) }
+  return { check: filled(stateCheck !== undefined ? stateCheck : cardCheckOf(step, ex)), noDetail: card.detail === null || (typeof card.detail === 'string' && detail === null), detail, pointer: card.pointer === true, satisfied: filled(card.satisfied) }
 }
 
 /**
