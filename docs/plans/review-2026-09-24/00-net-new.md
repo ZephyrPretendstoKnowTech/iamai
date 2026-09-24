@@ -1,5 +1,7 @@
 # Net-new issues found while building 1.x–4.x
 
+Checked against the live build (main 3d4a4795) on 2026-09-24. None of these was fixed; each needs the owner's call.
+
 These fall outside the approved items, so none was fixed overnight. Each needs the owner's call: fix, drop, or park for v1.1.
 
 ## Section 1
@@ -48,3 +50,9 @@ These fall outside the approved items, so none was fixed overnight. Each needs t
 26. **4.1 waits on the mail answer even when nobody used legacy authentication in 30 days.** It could proceed.
 27. **4.2's old procedure text is still in its package CONTENT.md.** Nothing draws it.
 28. **The correction lines for session and name (4.x item 45) can't be reached.** A 4-hour sign-in frequency raises no correction, and a renamed tagged policy is adopted under its new name.
+
+## Found in the Chrome walks and clean-up (2026-09-24)
+29. **5.3 Require MFA for Guests shows "Review now" in its When column,** not a date. It's a step-row rule, separate from the 1.4 fix. Section 5 is frozen.
+30. **Four unshipped branches from round 6 (2026-09-23 afternoon):** fix/r6-board, fix/r6-engine, fix/r6-plan and fix/r6-registration. They hold 14 commits: passkey proof per device (3.3), security defaults reopening the recovery test (4.5), remote-tenant service accounts, and 5.1's Temporary Access Pass wait. Decide at the 5.x audit whether any are still wanted.
+31. **C:\Dev\IAMAI-notes holds uncommitted review files and zips** (Foundation-A review, orchestrator proof). Keep or delete?
+32. **Saved snapshots don't exercise the new 3.1 and 3.2 rules.** The test tenants give no admin a mailbox licence and no account a created date.
