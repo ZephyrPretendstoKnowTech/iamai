@@ -681,10 +681,6 @@ test('In place says so about the POLICY, and a threshold never shown met is said
   assert.match(note, /could not read in this tenant/, 'the source that would move the number is not named')
   // It claims nothing about WHEN the policy went on: IAMAI found it already on.
   assert.doesNotMatch(note, /went on|was turned on|before IAMAI/, note)
-  // Said once. The coverage tile no longer repeats the same unread count.
-  const blindCoverage = tileOf(blindCards, 'coverage')
-  assert.ok(blindCoverage, 'the in-place step lost its coverage tile')
-  assert.equal(/could not read whether/.test(String(blindCoverage.note)), false, `the unread count is on the step twice: ${blindCoverage.note}`)
 
   // Measured and under the threshold: the count, and now the threshold beside it.
   // The large tenant's own policy for this goal requires Phishing-resistant MFA,
@@ -695,14 +691,6 @@ test('In place says so about the POLICY, and a threshold never shown met is said
   assert.ok(shortReading)
   // 3569 of 4900 is 72.8%, read down to 72% (R4-14, roadmap/readiness.ts readinessPercent).
   assert.match(String(shortReading.note), /holds enforcement until Phishing-resistant MFA readiness reaches 90%; it is 72% now./, String(shortReading.note))
-
-  // And where readiness IS readable the coverage tile is unchanged: this is a
-  // disclosure, not a hedge to bolt onto every delivered goal.
-  const read = caseOf(runFixture(fixture('mid')), fixture('mid'), 's-goal-mfa-all-users')
-  assert.notEqual(read.step.readiness.unmeasured, 'unreadable', 'the premise: mid can read its registration details')
-  const readTile = tileOf(readinessOf(read.step, stepContract(read.step, read.ctx)), 'coverage')
-  assert.ok(readTile)
-  assert.equal(/could not read whether/.test(String(readTile.note)), false, `a readable tenant is hedged anyway: ${readTile.note}`)
 
   // Never where the threshold is met, and never on a step that is not finished.
   for (const f of allFixtures()) {

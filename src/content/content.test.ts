@@ -146,9 +146,6 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.pages.plan.blocked.workCountries',
   // The authentication methods policy the scan could not read (A5, copy/reasons.ts BLOCKED_REASON).
   '.pages.plan.blocked.methodsPolicyUnread',
-  // The dormant-accounts step held where no account's sign-in activity was read (R4-49,
-  // copy/reasons.ts BLOCKED_REASON): the review page's example scan read that activity.
-  '.pages.plan.blocked.activityUnread',
   // The Plan usability pass (2026-09-11): words the Plan, its settings and its
   // decision layout read that the review body does not draw.
   '.pages.plan.blocked.devicePlan',
