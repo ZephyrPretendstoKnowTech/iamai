@@ -59,15 +59,9 @@ test('retained foundational rows re-evaluate and dormant Keep completes the step
   assert.ok(!after.steps.some(s => /s-review-baseline-iac-agent-block/.test(s.id)))
 })
 
-test('manual review bases: the folded mail follow-up ignores unrelated policy edits, and per-user MFA review is shared across aliases while migrationComplete proves nothing', () => {
-  const f = fixture('demo-week2')
-  const step = { id: 's-goal-block-legacy-auth', population: { ids: [...f.mapping.serviceAccountUserIds] } } as Step
-  const before = manualBasis(step, f.snapshot, f.mapping)
-  f.snapshot.config.caPolicies.rows.push({ id: 'unrelated', state: 'enabled', conditions: { clientAppTypes: ['browser'] }, grantControls: { builtInControls: ['mfa'] } })
-  assert.equal(manualBasis(step, f.snapshot, f.mapping), before)
-  f.snapshot.config.caPolicies.rows.push({ id: 'legacy', state: 'enabled', conditions: { users: { includeUsers: ['All'] }, clientAppTypes: ['other'] }, grantControls: { builtInControls: ['block'] } })
-  assert.notEqual(manualBasis(step, f.snapshot, f.mapping), before)
-
+// Block Legacy Authentication's mail follow-up has no manual basis: the sign-in
+// records complete it (walk list 4.x item 4, roadmap/blockSignIns.ts).
+test('manual review bases: per-user MFA review is shared across aliases while migrationComplete proves nothing', () => {
   // MigrationComplete does not prove legacy per-user MFA is disabled; manual review is shared across aliases.
   {
     const f = fixture('demo-week2')

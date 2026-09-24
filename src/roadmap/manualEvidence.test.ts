@@ -169,13 +169,19 @@ test('consolidation retains completion through intended retirement and rename, b
 
 test('policy tracking preserves observed enforcement without completing an untested workflow', () => {
   const result = runFixture(curatedFixture('demo-week2'))
-  for (const id of ['s-goal-guests-mfa', 's-goal-block-device-code']) {
+  for (const id of ['s-goal-guests-mfa']) {
     const step = result.steps.find(s => s.id === id)!
     assert.equal(step.state.lifecycle, 'enforced', `${id}: deployment remains observable`)
     assert.equal(step.manualReview?.confirmedAt, null)
     assert.equal(step.state.satisfied, false, `${id}: tracking cannot replace a workflow test`)
     assert.notEqual(step.status, 'done')
   }
+  // Block Device Code Sign-in has no workflow test (walk list 4.x item 3): the
+  // matching enforced policy completes it from the scan.
+  const deviceCode = result.steps.find(s => s.id === 's-goal-block-device-code')!
+  assert.equal(deviceCode.manualReview, undefined, 'Block Device Code Sign-in still asks for a workflow record')
+  assert.equal(deviceCode.state.lifecycle, 'enforced')
+  assert.equal(deviceCode.status, 'done', 'the enforced matching policy does not complete Block Device Code Sign-in')
 })
 
 
@@ -195,13 +201,13 @@ test('a workflow step asks for the outcome and what IAMAI can check, and for no 
   // The generic free text nothing reads is gone everywhere: `reference` was a
   // change-record box the product only printed back.
   for (const id of ['s-goal-pim-activation-reauth', 's-goal-block-legacy-auth', 's-check-separate-admin-accounts', 's-goal-guests-mfa']) {
-    assert.equal(manualEvidenceFields(id, f.mapping).some(field => field.key === 'reference'), false, `${id} still asks for a change record`)
+    assert.equal(manualEvidenceFields(id).some(field => field.key === 'reference'), false, `${id} still asks for a change record`)
   }
-  // Two text fields stay, because the owner put them there: each is the evidence
-  // a deleted step used to ask for, folded onto the step that inherited its work
-  // (step-redundancy-analysis findings 5 and 6). They are asked for only where
-  // the tenant's own answers make them apply.
-  assert.equal(manualEvidenceFields('s-goal-guests-mfa', f.mapping).some(field => field.key === 'providerAccessPath'), true)
-  assert.equal(manualEvidenceFields('s-goal-block-legacy-auth', f.mapping).some(field => field.key === 'workflow'), false, 'a tenant that named no mail device is asked for a mail route')
+  // One text field stays, because the owner put it there: the evidence a deleted
+  // step used to ask for, folded onto the step that inherited its work
+  // (step-redundancy-analysis finding 5). Block Legacy Authentication's mail route
+  // is the sign-in records' now (walk list 4.x item 4), and asks for nothing.
+  assert.equal(manualEvidenceFields('s-goal-guests-mfa').some(field => field.key === 'providerAccessPath'), true)
+  assert.deepEqual(manualEvidenceFields('s-goal-block-legacy-auth'), [], 'Block Legacy Authentication still asks for a record')
 })
 

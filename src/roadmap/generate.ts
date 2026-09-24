@@ -6,6 +6,7 @@ import { countDirectionImpact, directionSteps } from './direction.ts'
 import dependencyData from '../actionability/dependency-data.json' with { type: 'json' }
 import { answeredReasonOf, officeLocationsCreated, trustedIpLocations } from './directionAnswers.ts'
 import { applyManualReviews, perUserMfaReading } from './manualWork.ts'
+import { LEGACY_AUTH_STEP_ID, MAIL_ACCOUNTS_WAIT, mailAccountsToMove, settleBlockSignIns } from './blockSignIns.ts'
 // Step generation (roadmap.md §1–§6; 2026-08-27 redesign: collapsed phase 0,
 // per-tenant impact, safe-today lane, handle-with-care gating, comms drafts,
 // operator self-safety, Learn links, auto-scheduling). Pure.
@@ -108,7 +109,7 @@ import { passkeyTargetsReach, recoveryPasskeyCandidateSet } from './passkeyCompa
 import { exclusionsReach } from '../validation/exclusionsGroupPolicies.ts'
 import { journeyPasskeyFindings, journeyAccountFindings, journeyGroupFindings, journeyRecoveryFindings } from './emergencyJourney.ts'
 import { isFloorGoal } from './floor.ts'
-import { devicePlanOf, devicePlanComplete, deviceScopeOf, openInputsOf, travelCountriesOf } from './answers.ts'
+import { devicePlanOf, devicePlanComplete, deviceScopeOf, mailDevicesOf, openInputsOf, travelCountriesOf } from './answers.ts'
 import { DEVICE_GOALS, applyDeviations, deviceStepDoesntApply } from './deviations.ts'
 
 /** The baseline's block of the service accounts outside the trusted network (E9): step 6 gains it as Restrict Service Accounts to the Trusted Network. */
@@ -1757,7 +1758,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // Every policy this plan tagged for the step, not the first: a pair's two
     // halves both belong to it (evidence.ts).
     const matchedPolicyIds = findTaggedPolicies(snapshot, planId, stepId).map((t) => t.policyId)
-    const evidence = evidenceFor(goal.id, snapshot, matchedPolicyIds)
+    const evidence = evidenceFor(goal.id, snapshot, matchedPolicyIds, mailDevicesOf(mapping))
 
     const doc = source ? docFor(input.baseline.docs, source.facts.name) : undefined
     const rawWhy = doc?.intent ?? goal.tldr ?? goal.description
@@ -3035,6 +3036,17 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     if (loops) blockLate(s, 'session-loop', BLOCKED_REASON.after(shared.sessionLoopHold as string))
   }
 
+  // 5. Block Legacy Authentication is not turned on while an account named in
+  // Confirm What You Use's mail-sending answer still signs in with legacy
+  // authentication (walk list 4.x item 5, option b): the pinned policy does not
+  // leave those accounts out, so turning it on would stop their mail. The
+  // report-only create goes ahead; only the turn-on waits. A policy the tenant
+  // already enforces has nothing left to turn on (roadmap/blockSignIns.ts keeps
+  // that step open until the accounts have moved).
+  const legacyStep = steps.find((s) => s.id === LEGACY_AUTH_STEP_ID)
+  const legacyEnforced = (input.coverage.results.find((r) => r.goal.id === legacyStep?.goalId)?.enforcedIds.length ?? 0) > 0
+  if (legacyStep && !legacyEnforced && mailAccountsToMove(snapshot, mapping).length > 0) blockLate(legacyStep, MAIL_ACCOUNTS_WAIT, BLOCKED_REASON.mailAccounts)
+
   // ---- Ordering: phase, then risk score ----
   const stepSeverity = (s: Step): number => {
     if (/^block/i.test(s.title)) return SEVERITY_BLOCK
@@ -3141,6 +3153,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     countDirectionImpact(steps, availableGoalIds)
   }
   applyManualReviews(steps, snapshot, input.manualConfirmations, mapping, popIndex)
+  // Block Legacy Authentication and Block Device Code Sign-in read the sign-in
+  // records for who uses what they block, and the legacy block's mail half
+  // completes from them (walk list 4.x items 4, 33 and 38).
+  settleBlockSignIns(steps, snapshot, mapping, nameOf)
   for (const s of steps.filter(s => s.id === 's-check-dormant-accounts')) {
     // Every account still dormant, with the last sign-in the scan holds, and
     // whether the person keeps it: picked under Accounts you are keeping, whose

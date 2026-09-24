@@ -131,16 +131,21 @@ test('the create procedures carry the settings that decide who the block reaches
 test('B4: the exception devices are one step\u2019s second task, and the step they were is gone', () => {
   assert.equal(stepById['s-question-mail-devices'], undefined, 'the carved-out step still has words')
   assert.equal(STEP_GROUPS.some((g) => g.members.includes('s-question-mail-devices')), false)
-  // No exception account named: the policy procedure alone, as every other
-  // policy step draws. One named: a second task, with the account as its fact.
+  // No mail account named: the policy procedure alone, as every other policy
+  // step draws. One named that still signs in with legacy authentication: a
+  // second task, naming it (walk list 4.x item 36). One named that no longer
+  // does has moved, and there is nothing to do.
   assert.deepEqual(bodiesOf('demo').get(LEGACY)!.emergencyAccountTasks?.tasks.map((t) => t.id), ['policy-procedure'])
   const f = fixture('demo')
-  const device = f.snapshot.users[0].id
   const key = answerKey(QUESTION_STEP.mailDevices, questionLabels(QUESTION_STEP.mailDevices).decision!)
-  const answered = { ...f.mapping, questionAnswers: { ...(f.mapping.questionAnswers ?? {}), [key]: answerTextFor(questionOptions(QUESTION_STEP.mailDevices, 'decision')[1], [device]) } }
-  const tasks = bodiesOf('demo', answered).get(LEGACY)!.emergencyAccountTasks!.tasks
+  const naming = (id: string) => ({ ...f.mapping, questionAnswers: { ...(f.mapping.questionAnswers ?? {}), [key]: answerTextFor(questionOptions(QUESTION_STEP.mailDevices, 'decision')[1], [id]) } })
+  const sender = f.snapshot.users.find((u) => u.userPrincipalName === 'svc-mailer-1@demo.example.com')!.id
+  const tasks = bodiesOf('demo', naming(sender)).get(LEGACY)!.emergencyAccountTasks!.tasks
   assert.deepEqual(tasks.map((t) => t.id), ['policy-procedure', 'mail-devices-route'])
-  assert.match(tasks[1].title, /Move each exception device to a supported mail route/)
-  assert.match(tasks[1].steps.join('\n'), /remove its old account exception/)
+  assert.equal(tasks[1].title, 'Move each mail account to a supported mail route')
+  assert.match(tasks[1].targetLabel ?? '', /svc-mailer-1/)
+  assert.match(tasks[1].steps.join('\n'), /SMTP AUTH with OAuth, an Exchange Online connector, or Direct Send \(internal recipients only\)/)
+  assert.doesNotMatch(tasks[1].steps.join('\n'), /exception|Record each device/)
+  assert.deepEqual(bodiesOf('demo', naming(f.snapshot.users[0].id)).get(LEGACY)!.emergencyAccountTasks?.tasks.map((t) => t.id), ['policy-procedure'])
   assert.equal(checkedOn(LEGACY), '2026-09-25')
 })

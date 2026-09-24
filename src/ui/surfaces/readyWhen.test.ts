@@ -332,7 +332,8 @@ test('a policy the tenant enforces never finishes on a report-only period it is 
     const ctxOf = (f: Fixture): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups })
     const hostile = withFoundationSettled(plainFixture('hostile'))
     const run = runFixture(hostile)
-    for (const id of ['s-goal-block-device-code', 's-goal-guests-mfa']) {
+    // Block Device Code Sign-in has no workflow record left to wait on (walk list 4.x item 3): the scan completes it.
+    for (const id of ['s-goal-guests-mfa']) {
       const step = run.steps.find((s) => s.id === id)
       assert.ok(step && step.state.lifecycle === 'enforced' && awaitsWorkflowRecord(step), `the premise: ${id} is enforced and waits on the person`)
       const lines = stepContract(step, ctxOf(hostile)).doneWhen
