@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "Up Next",
   "bar": "After Configure Passkey Authentication",
-  "rail": "Finish the steps this one waits on first.",
+  "rail": "Create the policy in Report-only",
   "headings": [
     "About this Step",
     "Tasks Remaining",

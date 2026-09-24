@@ -5,7 +5,7 @@
   "fact": "Enforced",
   "badge": "Ready · Decision",
   "bar": "Needs a decision",
-  "rail": "Confirm and save the required decision.",
+  "rail": "Block Device Code Sign-in",
   "headings": [
     "About this Step",
     "Tasks Remaining",

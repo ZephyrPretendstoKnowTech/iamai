@@ -53,7 +53,7 @@ import { commsFor, datesLineFor, managerText, decisionLine } from './stepExport.
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { REDACTED, exportClipboard, unredactedFrom } from '../exportGuard.ts'
-import { CONTRACT, implementationEmptyOf, partnerLinkOf, readinessLeadOf, stepContract } from './stepContract.ts'
+import { CONTRACT, implementationEmptyOf, partnerLinkOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
 import { HARDENING_DEFERRAL_ID } from '../../validation/emergencyTiers.ts'
 import { AuthoredText, DoneWhen, EmergencySlotBody, PolicyMembers, ReadinessSection, StepActionColumn, StepDialog, StepFooter, StepHead, StepSection, StepState, WHY_LINK_SHOWN, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
@@ -327,9 +327,6 @@ export function ContentStep({
   // the subjects, and the Readiness tiles alone on Emergency Access Steps 2–3.
   // The bar reads them, so they are decided once.
   const taskSubjects = isOwnTaskStep ? policySubjectsOf(contract, displayedReadiness, emergencyAccountTasks, taskSubjectOf(step, eyebrow, title), cardWordsOf(step)?.check ?? null) : emergencySubjectsOf(displayedReadiness, emergencyAccountTasks)
-  // The one next action said once (owner, 2026-09-23): where it is the action
-  // column's Next milestone, the Readiness bar does not say it again.
-  const leadInRail = rail.headline === readinessLeadOf(contract)
   const emergencyTaskPreferenceKey = `iamai:emergency-task:${ctx.mapping.tenantId}:${step.id}`
   const [implementationChannel, setImplementationChannel] = useState<Channel | null>(null)
   const [emergencyTaskId, setEmergencyTaskId] = useState<string | null>(() => readEmergencyTaskPreference(emergencyTaskPreferenceKey).taskId ?? null)
@@ -355,8 +352,10 @@ export function ContentStep({
   }
   // The one next action (stepContract.ts actionOf), under the Readiness bar where
   // the step has no instructions of its own. Where it led instructions it was
-  // What to do's first line, and it left with What to do (U1).
-  const actionLead = <WhatToDoLead contract={contract} />
+  // What to do's first line, and it left with What to do (U1). Said once (owner,
+  // 2026-09-23): the part the action column's Next milestone took, the bar does
+  // not say again (stepContract.ts railOf barLead).
+  const actionLead = <WhatToDoLead contract={contract} text={rail.barLead} />
   // The check a person is confirming, from the Readiness tile that states it.
   const confirmTile: ReadinessTile | null = confirmKey ? (allTiles.find((t) => t.key === confirmKey) ?? null) : null
   const closeConfirm = (): void => {
@@ -453,7 +452,7 @@ export function ContentStep({
             readiness={displayedReadiness}
             heading={taskHead?.remaining}
             showClosedCount={!isTaskStep}
-            lead={instructed || hasPasskeyFindings || leadInRail ? null : actionLead}
+            lead={instructed || hasPasskeyFindings ? null : actionLead}
             onWhy={hasEvidence && !printing ? () => setDialog('readiness') : null}
             onConfirm={!printing && onConfirm ? (key) => { setConfirmKey(key); setDialog('confirm') } : null}
             onOpenMappings={null}

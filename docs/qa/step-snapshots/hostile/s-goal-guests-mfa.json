@@ -5,7 +5,7 @@
   "fact": "Enforced",
   "badge": "On Hold",
   "bar": "Not supported",
-  "rail": "Finish the steps this one waits on first.",
+  "rail": "Require MFA for Guests",
   "headings": [
     "About this Step",
     "Tasks Remaining",

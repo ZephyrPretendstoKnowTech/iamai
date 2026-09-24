@@ -753,9 +753,12 @@ export function EmergencySlotBody({ slot, hardening, onDefer, onUndo }: { slot: 
   )
 }
 
-/** The one next operator action under the Readiness bar, or nothing where it is filler (content review R2). */
-export function WhatToDoLead({ contract }: { contract: StepContract }) {
-  const text = readinessLeadOf(contract)
+/**
+ * The one next operator action under the Readiness bar, or nothing where it is
+ * filler (content review R2). `text`: what of it the action column's Next
+ * milestone left the bar to say (stepContract.ts railOf `barLead`).
+ */
+export function WhatToDoLead({ contract, text = readinessLeadOf(contract) }: { contract: StepContract; text?: string | null }) {
   if (text === null) return null
   return <p className={`do-lead do-${contract.whatToDo.kind}`}>{text}</p>
 }

@@ -2749,14 +2749,27 @@ const SUBSTATUS_KEY: Readonly<Record<Substatus, string>> = { Review: 'manualRevi
  *
  * It is never a day and never a lane word: the day is the row's When column's
  * and the lane is the badge's, and the rail that repeated either read as a
- * second answer to a question the row had already answered. Nothing here
- * composes a sentence; it picks one the step already has.
+ * second answer to a question the row had already answered. So a sentence that
+ * carries a day — any day in the shape the Plan writes one, or one of `days`,
+ * the step's own days as this display writes them — is passed over, and so is
+ * the engine's all-clear ("No change needed.", "Nothing left to do."), which
+ * is true of a finished step only and read over an open one's Needs a decision
+ * bar. Nothing here composes a sentence; it picks one the step already has.
  */
-export function milestoneHeadlineOf(completed: string | null, words: readonly (string | null | undefined)[]): string {
+export function milestoneHeadlineOf(completed: string | null, words: readonly (string | null | undefined)[], days: readonly string[] = []): string {
   if (completed !== null) return completed
-  for (const w of words) if (typeof w === 'string' && w.trim() !== '') return w.trim()
+  for (const w of words) {
+    const t = typeof w === 'string' ? w.trim() : ''
+    if (t === '' || DAY.test(t) || days.some((d) => t.includes(d)) || ALL_CLEAR.has(t)) continue
+    return t
+  }
   return ''
 }
+
+/** A day as the Plan writes one, bare or as an estimate ("Aug 31, 2026", "Aug 31, 2026 (estimated)"). */
+const DAY = /\b[A-Z][a-z]{2} \d{1,2}, \d{4}\b/
+/** The engine's all-clear milestones (shared.engine.milestone.preserve, .none). */
+const ALL_CLEAR: ReadonlySet<string> = new Set([MILESTONE.preserve, MILESTONE.none])
 
 /**
  * A step's action column (U2), top to bottom: the Next milestone headline, the
@@ -2767,20 +2780,59 @@ export function milestoneHeadlineOf(completed: string | null, words: readonly (s
 export type StepRail = { headline: string; instruction: string | null }
 
 /**
- * The action column's milestone, from the contract (milestoneHeadlineOf): the
- * step's own words for its milestone — `words`: its package's
- * `milestone.actionText`, the choice Prepare Emergency Access Accounts still
- * needs, the exclusions group, a Direction step's approval sentence (U3) —
- * then the engine's one sentence for the step's next milestone
- * (roadmap/lifecycle.ts nextMilestone) where it names something, then the
- * contract's one action where that does (readinessLeadOf), then the step's next
- * task by its title, and the engine's sentence as it stands, which every step has.
+ * railOf's reading: the column's rail, and the lead the Readiness bar still
+ * draws once the headline has taken its part (`barLead`) — the contract's one
+ * action whole where the headline took none of it, the sentences after its first
+ * where the headline took that one, and nothing where the headline took it all.
+ * Each sentence stands once on the step.
  */
-export function railOf(c: StepContract, words: string | null = null, task: string | null = null, instruction: string | null = null): StepRail {
+export type RailReading = StepRail & { barLead: string | null }
+
+/** What the action column reads besides the contract: each is words the step already draws. */
+export type RailWords = {
+  /**
+   * The step's own words for its milestone: its package's
+   * `milestone.actionText`, the choice Prepare Emergency Access Accounts still
+   * needs, the exclusions group, a Direction step's approval sentence (U3).
+   */
+  words?: string | null
+  /** The step's next task, by the title its Implementation Tasks selector shows. */
+  task?: string | null
+  /** The instruction line under the divider, where the column carries one. */
+  instruction?: string | null
+  /** Whether the step's Readiness bar draws the contract's one action (readinessLeadOf) on screen. */
+  leadDrawn?: boolean
+}
+
+/**
+ * The action column's Next milestone, from words the step already draws
+ * (milestoneHeadlineOf; owner, 2026-09-23: add no new words, and the steps after
+ * 5.1 keep theirs): the step's own words for its milestone; else the one action
+ * its Readiness bar draws, where that is one sentence, which moves up rather
+ * than being said twice; else its next task by its title; else the first
+ * sentence of a longer lead its bar draws, the rest staying in the bar; and only
+ * then the engine's own one-sentence milestone, which no step of any fixture
+ * reaches. A lead of several sentences is an explanation, not a headline (Turn
+ * Off Security Defaults' ran to 588 characters), and the engine's sentence was
+ * on no step's screen where its bar did not draw it: "Finish the steps this one
+ * waits on first." headed frozen steps that never said it.
+ */
+export function railOf(c: StepContract, o: RailWords = {}): RailReading {
   const l = c.state.lane
+  const lead = readinessLeadOf(c)
+  const drawn = o.leadDrawn ? lead : null
+  const first = drawn === null ? null : (drawn.split(/(?<=[.!?])\s+/)[0] ?? drawn)
   const label = c.milestone.label
-  const named = FILLER.has(label.trim().replace(/[.:]$/, '')) ? null : label
-  return { headline: milestoneHeadlineOf(l?.lane === 'Completed' ? l.label : null, [words, named, readinessLeadOf(c), task, label]), instruction }
+  const engineWords = FILLER.has(label.trim().replace(/[.:]$/, '')) || sentenceCount(label) > 1 ? null : label
+  const days = [c.milestone.at, c.schedule?.at ?? null, c.scheduledOn].filter((d): d is string => d !== null).map(absoluteDate)
+  const headline = milestoneHeadlineOf(l?.lane === 'Completed' ? l.label : null, [o.words, drawn !== null && sentenceCount(drawn) <= 1 ? drawn : null, o.task, first, engineWords], days)
+  const barLead = lead === null || headline === lead ? null : first !== null && headline === first ? lead.slice(first.length).trim() || null : lead
+  return { headline, instruction: o.instruction ?? null, barLead }
+}
+
+/** How many sentences a line holds. */
+function sentenceCount(s: string): number {
+  return (s.match(/[.!?](?=\s|$)/g) ?? []).length
 }
 
 /**

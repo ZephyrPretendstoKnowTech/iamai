@@ -74,9 +74,13 @@ const SNAPSHOT_TIME_ZONE = 'UTC'
  * lane view with the engine's blockers and the prerequisite labels (A1b).
  */
 export function stepSnapshotsOf(name: FixtureName): Record<string, StepSnapshot> {
+  return fixtureStepSnapshotsOf(fixture(name))
+}
+
+/** The same readings for a fixture a test changed first (withDirectionApproved, a mapping edit). */
+export function fixtureStepSnapshotsOf(f: Fixture): Record<string, StepSnapshot> {
   setDisplayTimeZone(SNAPSHOT_TIME_ZONE)
   try {
-    const f = fixture(name)
     return snapshotsOf(f, runFixture(f, {}, null, f.snapshot.asOf))
   } finally {
     setDisplayTimeZone(null)

@@ -606,11 +606,15 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   const outstandingForEnforce = [...new Set([...blockers.map((b) => b.title ?? b.label).filter((x): x is string => typeof x === 'string' && x.length > 0), ...(o.enforceWaits ?? [])])]
   const taskProjection: EmergencyTaskProjection | null = emergencyAccountTasks ?? (drawsTaskAnatomy(step.id) ? policyTasksOf(step, title, artifacts, ctx.mapping, outstandingForEnforce) : null)
   // The action column's Next milestone and its instruction line (stepContract.ts
-  // railOf): the step's own words above, and after them its next task by the
-  // title its task selector shows — the one it recommends, or the first it needs.
+  // railOf): the step's own words above, the one action its Readiness bar draws
+  // — which it draws on screen only where the step has no task list, no
+  // instructions and no Direction questions in its place (ContentStep.tsx) — and
+  // its next task by the title its task selector shows: the one it recommends,
+  // or the first it needs.
   const railTasks = taskProjection?.tasks ?? []
   const nextTask = (railTasks.find((t) => t.id === taskProjection?.recommendedTaskId) ?? railTasks.find((t) => t.required))?.title ?? null
-  const rail = railOf(contract, railWords, nextTask, railInstruction)
+  const leadDrawn = !instructed && taskProjection === null && !usesDecisionAnatomy(step.id)
+  const rail = railOf(contract, { words: railWords, task: nextTask, instruction: railInstruction, leadDrawn })
   const W = CONTRACT.implementation
   // Guidance stays copyable. Concrete unresolved findings remain in Readiness.
   const previewNote = null as { lines: string[] } | null

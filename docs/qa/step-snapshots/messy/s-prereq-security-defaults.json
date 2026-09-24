@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "On Hold",
   "bar": "Prerequisite on hold: Block Device Code Sign-in",
-  "rail": "Security defaults and Conditional Access are not meant to run together, and the rule runs both ways: security defaults must be off before the policies replacing them can take over, and once these policies exist you cannot turn security defaults back on. That is why nothing in this plan enforces before this step. One order works, and it is the one this plan follows: create all four replacements in Report-only while security defaults are still on, watch them there, then turn security defaults off and enable all four in the same change window. Turn them off on that day and not before.",
+  "rail": "Turn security defaults off",
   "headings": [
     "About this Step",
     "Tasks Remaining",
