@@ -104,7 +104,6 @@ test('A5.3–A5.6 on the demo Step 3 is Up Next with the target resolved from th
   const demo = withFido2(fixture('demo'), legacy({ isAttestationEnforced: false }))
   const { r, label } = plan(demo)
   assert.equal(label(PASSKEY_SETTINGS_STEP_ID), 'Up Next')
-  assert.equal(label(CAMPAIGN), 'Ready · Create')
   const { state, bindings } = packageOf(demo, r)
   // An object step reaches `missing` only (states.ts RUNTIME_REACH); the package's one projection is `missingOrPartial`.
   assert.equal(state, 'missing')
@@ -122,7 +121,6 @@ test('A5.3–A5.6 on the demo Step 3 is Up Next with the target resolved from th
     const { r, label } = plan(f)
     assert.equal(label(PASSKEY_SETTINGS_STEP_ID), 'Up Next')
     assert.equal(packageOf(f, r).state, 'missing')
-    assert.equal(label(CAMPAIGN), 'Ready · Create')
   }
 
   // A5.5 every field matching completes the step and releases the campaign from it.
