@@ -530,8 +530,9 @@ export function AuthoredText({ text }: { text: string }) {
             {lines.map((l, j) => (
               <Fragment key={j}>
                 {/* The space keeps the item's lines apart in its text, not only on screen: without it "…you save.<br>This change…" reads as one sentence. */}
-                {j > 0 && <>{' '}<br /></>}
-                {inlineText(l)}
+                {j > 0 && !l.startsWith('+ ') && <>{' '}<br /></>}
+                {/* "+ Title: text" folds under the step: a long list stays one click away (policyProcedure.ts ROLES_INLINE). */}
+                {l.startsWith('+ ') && l.includes(': ') ? <details className="authored-fold"><summary>{inlineText(l.slice(2, l.indexOf(': ')))}</summary><p>{inlineText(l.slice(l.indexOf(': ') + 2))}</p></details> : inlineText(l)}
               </Fragment>
             ))}
           </li>

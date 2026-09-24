@@ -49,6 +49,7 @@ type FactWords = {
   guests: string
   fact: string
   except: string
+  exceptMore: string
   resources: string
   resourcesExcept: string
 }
@@ -189,7 +190,7 @@ export function policyFactOf(step: Step, ctx: Pick<StepVarContext, 'snapshot' | 
     ...(s.guests.exclude !== null ? [w.guests] : []),
   ]
   if (unresolved || who.length === 0) return null
-  const whom = excluded.length > 0 ? fillText(w.except, { who: list(who), excluded: list(excluded) }) : list(who)
+  const whom = excluded.length > 2 ? fillText(w.exceptMore, { who: list(who), first: excluded[0], n: String(excluded.length - 1) }) : excluded.length > 0 ? fillText(w.except, { who: list(who), excluded: list(excluded) }) : list(who)
   const [does, doing] = w.verbs[action.verb].map((verb) => fillText(w.fact, { verb, what: action.what, who: whom }))
   const apps = s.applications
   const all = apps.include.some((a) => a.toLowerCase() === 'all')
