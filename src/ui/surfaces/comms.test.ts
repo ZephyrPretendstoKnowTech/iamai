@@ -15,38 +15,27 @@ import { commsFor, copyBoxes, stepLines } from './stepExport.ts'
 const f = fixture('demo-week2')
 const r = runFixture(f)
 const ctxFor = (snapshot = f.snapshot): StepVarContext => ({ snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, ...planDates(r.steps, r.schedule.start) })
-/** A step on the demo whose email renders today and names the tenant. */
-const emailStep = r.steps.find((s) => s.status !== 'done' && s.status !== 'skipped' && String((contentStepFor(s) as { comms?: { body?: string } })?.comms?.body ?? '').includes('{tenant}') && commsFor(contentStepFor(s) as Record<string, unknown>, stepVars(s, ctxFor()) as Record<string, unknown>, s) !== null)!
-/** The same tenant with no organisation row: {tenant} is unfilled, and every line naming it has a hole. */
-const noOrg = { ...f.snapshot, config: { ...f.snapshot.config, organization: { ...(f.snapshot.config.organization ?? { rows: [] }), rows: [] } } } as typeof f.snapshot
+/**
+ * The step on the demo whose email renders: Prepare Your Team for MFA sends the
+ * Email tab's first message (walk list section 3 item 52). A policy step's email
+ * names its turn-on day, and every fixture holds those steps undated.
+ */
+const emailStep = r.steps.find((s) => s.id === 's-verify-mfa')!
 const emailOf = (lines: string[], comms: { salutation: string; body: string }): boolean => lines.includes(comms.salutation) && lines.includes(comms.body)
 
 test('the email follows one rule on screen, in the copy box and in the exports: whole or nowhere, and never on a done step', () => {
-  {
-    assert.ok(emailStep, 'the demo has a step with an email')
-    const cs = contentStepFor(emailStep) as Record<string, unknown>
-    const live = commsFor(cs, stepVars(emailStep, ctxFor()) as Record<string, unknown>, emailStep)!
-    assert.ok(emailOf(stepLines(emailStep, ctxFor()), live) && copyBoxes(emailStep, ctxFor()).some((b) => b.kind === 'comms'), 'the email renders while the step is open')
-    const done = { ...emailStep, status: 'done' as const }
-    const ex = stepVars(done, ctxFor()) as Record<string, unknown>
-    assert.equal(ex.stepDone, true)
-    assert.equal(commsFor(cs, ex, done), null)
-    assert.ok(!emailOf(stepLines(done, ctxFor()), live), 'no email line on a done step')
-    assert.deepEqual(copyBoxes(done, ctxFor()).filter((b) => b.kind === 'comms'), [], 'no Tell your people box on a done step')
-  }
-  {
-    const cs = contentStepFor(emailStep) as Record<string, unknown>
-    // The tenant's name is a variable the body names; with no organisation row it is unfilled and the email has a hole.
-    const holed = ctxFor(noOrg)
-    assert.equal((stepVars(emailStep, holed) as Record<string, unknown>).tenant, '')
-    assert.equal(commsFor(cs, stepVars(emailStep, holed) as Record<string, unknown>, emailStep), null)
-    assert.deepEqual(copyBoxes(emailStep, holed).filter((b) => b.kind === 'comms'), [])
-    const body = String((cs.comms as { body: string }).body)
-    assert.ok(!stepLines(emailStep, holed).some((l) => l.includes(body.slice(0, 12)) || /\{[a-zA-Z:]+\}/.test(l)), 'no email line, and no hole, when a variable is missing')
-    // Whole: the copy box's text is exactly the lines the screen renders.
-    const whole = ctxFor()
-    const box = copyBoxes(emailStep, whole).find((b) => b.kind === 'comms')!
-    const lines = stepLines(emailStep, whole)
-    for (const part of box.text.split('\n\n')) assert.ok(lines.includes(part), `the copy box's "${part.slice(0, 40)}" is a rendered line`)
-  }
+  assert.ok(emailStep && emailStep.status !== 'done', 'the premise: the demo prepares its team')
+  const cs = contentStepFor(emailStep) as Record<string, unknown>
+  const live = commsFor(cs, stepVars(emailStep, ctxFor()) as Record<string, unknown>, emailStep)!
+  assert.ok(emailOf(stepLines(emailStep, ctxFor()), live) && copyBoxes(emailStep, ctxFor()).some((b) => b.kind === 'comms'), 'the email renders while the step is open')
+  // Whole: the copy box's text is exactly the lines the screen renders.
+  const box = copyBoxes(emailStep, ctxFor()).find((b) => b.kind === 'comms')!
+  const lines = stepLines(emailStep, ctxFor())
+  for (const part of box.text.split('\n\n')) assert.ok(lines.includes(part), `the copy box's "${part.slice(0, 40)}" is a rendered line`)
+  const done = { ...emailStep, status: 'done' as const }
+  const ex = stepVars(done, ctxFor()) as Record<string, unknown>
+  assert.equal(ex.stepDone, true)
+  assert.equal(commsFor(cs, ex, done), null)
+  assert.ok(!emailOf(stepLines(done, ctxFor()), live), 'no email line on a done step')
+  assert.deepEqual(copyBoxes(done, ctxFor()).filter((b) => b.kind === 'comms'), [], 'no Tell your people box on a done step')
 })

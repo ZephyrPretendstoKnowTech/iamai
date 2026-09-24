@@ -507,7 +507,8 @@ test('the picker is one coherent combobox: the input keeps focus and names the o
   // Authority is untouched: what is selected, what is offered and when the
   // caller hears about it are all still the caller's.
   assert.match(picker, /onChange\(single \? \[o\] : \[\.\.\.selected, o\]\)/)
-  assert.match(picker, /const list = \(empty \? suggestions : options\)\.filter\(\(o\) => !selectedIds\.has\(o\.id\)\)\.slice\(0, 8\)/)
+  assert.match(picker, /const shown = \(empty \? \(listAll \? options : suggestions\) : options\)\.filter\(\(o\) => !selectedIds\.has\(o\.id\)\)/)
+  assert.match(picker, /const list = listAll \? shown : shown\.slice\(0, 8\)/)
 })
 
 test('a decision names the question its options answer', () => {

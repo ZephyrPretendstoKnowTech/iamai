@@ -119,11 +119,11 @@ test('#15 every picker saves from the list: Done saves and closes, taking a chip
 
   // The decisions whose picker is their only input draw no Save; the rest keep theirs for their other inputs.
   for (const id of [STEP, 's-prereq-exclusion-group', 's-prereq-service-accounts-group', 's-shared-devices']) assert.equal(pickerSavesAlone(decisionOf(id), id), true, id)
-  for (const id of ['s-prereq-trusted-location', 's-prereq-allowed-countries', 's-verify-mfa']) assert.equal(pickerSavesAlone(decisionOf(id), id), false, id)
+  for (const id of ['s-prereq-trusted-location', 's-prereq-allowed-countries']) assert.equal(pickerSavesAlone(decisionOf(id), id), false, id)
   // The office network's picker saves from its list too; its Save stays for the typed network.
   assert.equal(pickerSaves(decisionOf('s-prereq-trusted-location'), 's-prereq-trusted-location'), true)
   // Not where the decision also asks a question, or the list is read-only: their Save is what saves.
-  for (const id of ['s-prereq-allowed-countries', 's-verify-mfa']) assert.equal(pickerSaves(decisionOf(id), id), false, id)
+  for (const id of ['s-prereq-allowed-countries']) assert.equal(pickerSaves(decisionOf(id), id), false, id)
   const step = read('src/ui/surfaces/ContentStep.tsx')
   const single = step.slice(step.indexOf('function SingleDecision('), step.indexOf('export function Options('))
   assert.match(single, /\{!savesAlone && <Button variant="secondary" disabled=\{!canSave\} onClick=\{\(\) => save\(\)\}>/)

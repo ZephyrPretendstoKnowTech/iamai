@@ -183,7 +183,8 @@ test('the campaign names every admin it waits on outside its active people, by w
   const who = (contentStepFor(step) as unknown as { who: Record<string, unknown> }).who
   const { inline, held } = whoBlocks(who, ex)
   const blocks = [...inline, ...held]
-  const lineNaming = (id: string) => blocks.filter((b) => b.names.includes(nameOf(id)))
+  // A listed person reads "Name (sign-in name)".
+  const lineNaming = (id: string) => blocks.filter((b) => b.names.some((n) => n === nameOf(id) || n.startsWith(`${nameOf(id)} (`)))
   const dormantLines = lineNaming(dormantId)
   assert.equal(dormantLines.length, 1, `${nameOf(dormantId)} is named once on the step: ${JSON.stringify(blocks.map((b) => b.lead))}`)
   const unreadLines = lineNaming(unreadId)

@@ -7,11 +7,11 @@ import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { directionSteps } from './direction.ts'
 import type { DirectionInput } from './direction.ts'
-import { DIRECTION_LOCATIONS_STORAGE, DIRECTION_STEP, answersOfDecision, directionDecisionOf, legacyDecisionsOf, savedAnswerOf } from './directionAnswers.ts'
+import { DIRECTION_LOCATIONS_STORAGE, DIRECTION_STEP, answersOfDecision, directionDecisionOf, legacyDecisionsOf, savedAnswerOf, trustedIpLocations } from './directionAnswers.ts'
 import type { DirectionAnswer } from './directionAnswers.ts'
 import { applyStepDecisions } from './decisions.ts'
 import type { StepDecision } from './decisions.ts'
-import { DEVICE_ANSWER_KEYS, QUESTION_STEP, answerKey, devicePlanOf, deviceCodeWorkflowsOf, mailDevicesOf, questionLabels, serviceProvidersExcluded } from './answers.ts'
+import { DEVICE_ANSWER_KEYS, QUESTION_STEP, answerKey, devicePlanOf, mailDevicesOf, questionLabels, serviceProvidersExcluded } from './answers.ts'
 import { PREREQ_STEP_ID } from './stepIds.ts'
 import { directionWords } from '../content/content.ts'
 import type { DirectionQuestion, Step } from './types.ts'
@@ -50,31 +50,32 @@ function noSignal(): Fixture {
   return f
 }
 
-test('(b) with no signal every suggestion is the safe default, and says it is one', () => {
+test('(b) with no signal every suggestion is the safe default, and no evidence line claims what the scan did not see', () => {
   const steps = stepsOf(noSignal())
   const use = stepOf(steps, DIRECTION_STEP.use)
   for (const x of use.directionQuestions!.filter((x) => x.key.startsWith('service:'))) {
     assert.equal(x.suggested.value, 'yes', `${x.key}: a service keeps its policy`)
-    assert.equal(x.evidence, W.defaultEvidence, x.key)
+    assert.equal(x.evidence, '', x.key)
   }
-  assert.deepEqual([q(use, 'mailDevices').suggested.value, q(use, 'deviceCode').suggested.value, q(use, 'partner').suggested.value], ['none', 'unused', 'no'], 'no exception is granted')
-  for (const key of ['mailDevices', 'deviceCode', 'partner']) assert.equal(q(use, key).evidence, W.defaultEvidence, key)
+  assert.deepEqual([q(use, 'mailDevices').suggested.value, q(use, 'partner').suggested.value], ['none', 'no'], 'no exception is granted')
+  for (const key of ['mailDevices', 'partner']) assert.equal(q(use, key).evidence, '', key)
   // A tenant with no trusted named location is not thereby all-remote, and the
   // scan reads nothing either way (owner, 2026-09-20): the safe default is the
   // one that keeps Define the Trusted Network on the plan. Asked on D3 since
   // Stage 3.
   assert.equal(q(stepOf(steps, DIRECTION_STEP.devices), 'officeNetwork').suggested.value, 'notInEntra')
-  assert.equal(q(stepOf(steps, DIRECTION_STEP.devices), 'officeNetwork').evidence, W.defaultEvidence)
+  assert.equal(q(stepOf(steps, DIRECTION_STEP.devices), 'officeNetwork').evidence, '')
 })
 
 test('(b) a what-you-use question takes today\'s state; a how-it-should-work question takes the baseline\'s, today beside it', () => {
   const f = fixture('demo')
   const steps = stepsOf(f)
   const use = stepOf(steps, DIRECTION_STEP.use)
-  const sharepoint = q(use, 'service:sharepoint')
-  assert.equal(sharepoint.suggested.value, 'yes', 'seen in use')
-  assert.notEqual(sharepoint.evidence, W.defaultEvidence, 'the evidence it was seen by')
-  assert.equal(sharepoint.basis, 'present')
+  // The demo's sign-in records show one person in Azure management.
+  const azure = q(use, 'service:azureManagement')
+  assert.equal(azure.suggested.value, 'yes', 'seen in use')
+  assert.notEqual(azure.evidence, '', 'the evidence it was seen by')
+  assert.equal(azure.basis, 'present')
   // The scan read the sign-ins and saw none: today's state is No, and it says so.
   const quiet = fixture('demo')
   quiet.snapshot.appSignInSummary = []
@@ -84,12 +85,6 @@ test('(b) a what-you-use question takes today\'s state; a how-it-should-work que
     assert.equal(avd.suggested.value, 'no')
     assert.equal(avd.basis, 'absent')
   }
-  // Device code sign-ins seen: In use.
-  const seen = fixture('demo')
-  seen.snapshot.evidenceUsage = { ...seen.snapshot.evidenceUsage!, deviceCode: { count: 3, userIds: ['u1'], byDetail: {} } }
-  const code = q(stepOf(stepsOf(seen), DIRECTION_STEP.use), 'deviceCode')
-  assert.equal(code.suggested.value, 'used')
-  assert.match(code.evidence, /1 person used device code/)
   // D3: the baseline's recommendation, with today beside it.
   const devices = stepOf(steps, DIRECTION_STEP.devices)
   assert.equal(q(devices, 'computers').suggested.value, 'managed')
@@ -98,8 +93,7 @@ test('(b) a what-you-use question takes today\'s state; a how-it-should-work que
   // enrolled, so every computer under this answer needs an Intune licence,
   // and the question offered the baseline's advice with nothing about the
   // tenant beside it — on a tenant holding 300 seats with 41 in use.
-  assert.match(q(devices, 'computers').evidence, /Intune: [0-9]+ of [0-9]+ licences in use/)
-  assert.match(q(devices, 'computers').today ?? '', /^Today: /)
+  assert.match(q(devices, 'computers').evidence, /Intune: [0-9]+ of [0-9]+ licences assigned/)
 })
 
 test('(c) Approve saves every answer under the key it is read from, completes the step, and moves to the next open Direction step', () => {
@@ -114,7 +108,7 @@ test('(c) Approve saves every answer under the key it is read from, completes th
     const devices = stepOf(steps, DIRECTION_STEP.devices)
     const printer = f.snapshot.users[1].id
     const decisions: Record<string, StepDecision> = {
-      [DIRECTION_STEP.use]: approve(use, { 'service:sharepoint': { value: 'no', picked: [] }, mailDevices: { value: 'some', picked: [printer] }, deviceCode: { value: 'unused', picked: [] }, partner: { value: 'yes', picked: [] } }),
+      [DIRECTION_STEP.use]: approve(use, { 'service:sharepoint': { value: 'no', picked: [] }, mailDevices: { value: 'some', picked: [printer] }, partner: { value: 'yes', picked: [] } }),
       [DIRECTION_STEP.devices]: approve(devices, { computers: { value: 'hybrid', picked: [] }, phones: { value: 'blocked', picked: [] }, officeNetwork: { value: 'remote', picked: [] } }),
     }
     const m = applyStepDecisions(f.mapping, decisions)
@@ -123,7 +117,6 @@ test('(c) Approve saves every answer under the key it is read from, completes th
     assert.ok(m.workflowConfirmedAt)
     assert.deepEqual(mailDevicesOf(m), [printer])
     assert.ok(m.serviceAccountUserIds.includes(printer), 'the mail-sending device joins the service accounts, as before')
-    assert.equal(deviceCodeWorkflowsOf(m), false)
     assert.equal(serviceProvidersExcluded(m), true)
     assert.equal(m.questionAnswers?.[answerKey(QUESTION_STEP.devices, DEVICE_ANSWER_KEYS.computers)], 'hybrid')
     assert.equal(devicePlanOf(m)?.noWorkPhones, true)
@@ -147,22 +140,14 @@ test('(c) Approve saves every answer under the key it is read from, completes th
       f.mapping.questionAnswers = {}
       const devices = stepOf(stepsOf(f), 's-direction-devices')
       const answers = Object.fromEntries([...devices.directionQuestions!.map((x) => [x.key, x.saved ?? x.suggested] as const), ['officeNetwork', { value, picked: [] }] as const])
-      const m = applyStepDecisions(f.mapping, { 's-direction-devices': { ...directionDecisionOf(answers), at: AT } })
+      // With the trusted locations it was approved against, as Approve saves it.
+      const basis = Object.fromEntries(devices.directionQuestions!.filter((x) => x.basis !== null).map((x) => [x.key, x.basis!]))
+      const m = applyStepDecisions(f.mapping, { 's-direction-devices': { ...directionDecisionOf(answers, basis), at: AT } })
       assert.equal(m.questionAnswers?.['s-direction-locations:officeNetwork'], value, `${value}: written under the key it is read from`)
       assert.equal(savedAnswerOf('officeNetwork', m)?.value, value, `${value}: read back`)
       const after = stepOf(stepsOf({ ...f, mapping: m }), 's-direction-devices')
       assert.equal(q(after, 'officeNetwork').saved?.value, value, `${value}: the question shows it saved`)
       assert.equal(after.status, 'done', `${value}: 2.3 completes`)
-    }
-  }
-
-  {
-    const steps = stepsOf(fixture('demo'))
-    // A service question states no window: its two sources (appSignInSummary and
-    // spActivity) declare none, so "the last 30 days" would be a measured month
-    // read from a summary that states no period at all.
-    for (const x of stepOf(steps, DIRECTION_STEP.use).directionQuestions!.filter((y) => y.key.startsWith('service:'))) {
-      assert.doesNotMatch(x.evidence, /last 30 days/, x.key + ' claims a window its sources do not declare')
     }
   }
 })
@@ -309,7 +294,7 @@ test('(e) a policy with an unanswered Direction dependency is held Waiting on yo
   assert.ok(!code.blockers.some((b) => b.kind === 'decision' && b.label.startsWith('direction:')), 'an enforced policy waits on an answer it does not need')
   assert.equal(code.unsavedInputs, undefined, 'Block Device Code Sign-in asks a question of its own')
   // Saving the one answer it depends on releases it; the rest of D1 can stay open.
-  const saved = applyStepDecisions(f.mapping, { [DIRECTION_STEP.devices]: { ...directionDecisionOf({ computers: { value: 'managed', picked: [] }, phones: { value: 'apps', picked: [] }, officeNetwork: { value: 'notInEntra', picked: [] } }), at: AT } })
+  const saved = applyStepDecisions(f.mapping, { [DIRECTION_STEP.devices]: { ...directionDecisionOf({ computers: { value: 'managed', picked: [] }, phones: { value: 'apps', picked: [] }, officeNetwork: { value: 'notInEntra', picked: [] } }, { officeNetwork: (trustedIpLocations(f.snapshot) ?? []).map((l) => l.id).sort().join(',') }), at: AT } })
   const after = runFixture({ ...f, mapping: saved }).steps
   const released = after.find((s) => s.goalId === 'require-managed-device')!
   assert.ok(!released.blockers.some((b) => b.kind === 'decision' && b.label.startsWith('direction:')))
@@ -364,7 +349,7 @@ test('the office network has a third answer, and answering it keeps the trusted-
 // beside 7. One source now (derive/sets.ts phoneSignInIds).
 // ---------------------------------------------------------------------------
 
-const phonesToday = (f: Fixture): string | null => q(stepOf(directionSteps({ snapshot: f.snapshot, mapping: f.mapping, notAssessed: [], availableGoalIds: [] }), DIRECTION_STEP.devices), 'phones').today
+const phonesToday = (f: Fixture): string | null => q(stepOf(directionSteps({ snapshot: f.snapshot, mapping: f.mapping, notAssessed: [], availableGoalIds: [] }), DIRECTION_STEP.devices), 'phones').evidence || null
 
 test('NEW-Nadia-D4: the phones question counts exactly the people MFA Readiness shows a phone for, a person read on their own included', async () => {
   // NEW-Nadia-D4: on every shipped fixture the phones question counts exactly the people MFA Readiness shows a phone for

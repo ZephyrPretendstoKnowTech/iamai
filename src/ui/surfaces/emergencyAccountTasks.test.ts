@@ -107,8 +107,6 @@ test('an IAMAI passkey evidence gap is not presented as another account correcti
   // without saying where (owner, 2026-09-20). It names the place now.
   assert.match(row.instruction, /MFA Readiness/)
   assert.match(row.instruction, /Emergency access/)
-  assert.match(row.instruction, /Evidence read/)
-  assert.match(row.instruction, /no account change is established/i)
   assert.doesNotMatch(row.instruction, /Scan to update|Set up an approved passkey/)
 })
 

@@ -29,10 +29,10 @@ test('the three blocks are evidence-gated with no device-readiness gate; the adm
   // Nobody used device code or authentication transfer on the demo; one sign-in carried no platform.
   const dc = r.steps.find((x) => x.goalId === 'block-device-code')!
   const up = r.steps.find((x) => x.goalId === 'block-unsupported-platforms')!
-  assert.equal(nobodyAffected(dc), false, 'unverified workflows are not a confirmed zero')
+  // The scan read nobody using device code: Block Device Code Sign-in has no workflow check (walk list 4.x item 3).
+  assert.equal(nobodyAffected(dc), true)
   assert.equal(dc.evidence.affectedUserIds.length, 0)
-  assert.ok(dc.manualReview?.fields?.length)
-  assert.equal(dc.state.satisfied, false)
+  assert.equal(dc.state.satisfied, true, 'delivered on week two, it completes from the scan')
   assert.equal(up.evidence.affectedUserIds.length, 1, 'the empty-platform sign-in is the evidence')
   assert.equal(nobodyAffected(up), false)
   const session = r.steps.find((x) => x.goalId === 'admin-session')!

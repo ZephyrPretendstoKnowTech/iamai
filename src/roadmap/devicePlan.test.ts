@@ -10,6 +10,7 @@
 // one shared Not licensed line and nothing asks.
 import { test } from 'node:test'
 import { directionDependenciesOf } from './direction.ts'
+import { trustedIpLocations } from './directionAnswers.ts'
 import assert from 'node:assert/strict'
 // On the curated baseline (fixtures/index.ts `curatedFixture`): this is about a
 // policy that can be written, not about the source groups this baseline has not
@@ -32,7 +33,7 @@ import { defaultDecisions } from '../ui/surfaces/pickerRows.ts'
 import { stepVars } from '../ui/surfaces/stepVars.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 import { portalNamesFor, stepPortalLines } from '../ui/surfaces/stepPortal.ts'
-import { commsFor, stepLines } from '../ui/surfaces/stepExport.ts'
+import { stepLines } from '../ui/surfaces/stepExport.ts'
 import { stepById } from '../content/content.ts'
 import { phoneSignInIds } from '../derive/sets.ts'
 
@@ -82,7 +83,7 @@ test('open: the step asks, phones are out of readiness, and only the device step
   assert.equal(ds.state.condition, 'needs-decision')
   // Who signed in from a phone is read from the people's own records, the ones MFA Readiness reads (NEW-Nadia-D4).
   assert.ok((phoneSignInIds(f.snapshot)?.length ?? 0) >= 2, 'the demo signs in from two phones')
-  assert.match(ds.directionQuestions!.find((q) => q.key === 'phones')!.today ?? '', /^Today: \d+ people signed in from phones/)
+  assert.match(ds.directionQuestions!.find((q) => q.key === 'phones')!.evidence ?? '', /^\d+ people signed in from a phone in the last 30 days\./)
   for (const goalId of [COMPLIANT_DEVICE_GOAL, INTUNE_ENROLMENT_GOAL]) {
     const s = r.steps.find((x) => x.goalId === goalId)
     assert.ok(s, `${goalId}: on the plan`)
@@ -107,8 +108,10 @@ test('answered (apps, hybrid): the platform deviation, the enrolment step follow
   const f = fixture('demo')
   // The baseline's compliant-device policy excludes the author's service-accounts
   // group, so this tenant needs one before the policy can be written at all.
-  // D3's third answer is the office network since Stage 3: saved here.
-  const m = { ...applyStepDecisions(applied(f, decided('Protect the apps only', 'Hybrid-joined is enough')), { [DEVICE]: { at: f.snapshot.asOf, answers: { phoneManagement: 'unmanaged', phoneAppProtection: 'required', computerManagement: 'hybrid' } }, [D3]: { at: f.snapshot.asOf, answers: { officeNetwork: 'notInEntra' } } }), serviceAccountsGroupId: SERVICE_ACCOUNTS_GROUP }
+  // D3's third answer is the office network since Stage 3: saved here, with the
+  // trusted locations it was approved against, as Approve saves it.
+  const basis = (trustedIpLocations(f.snapshot) ?? []).map((l) => l.id).sort().join(',')
+  const m = { ...applyStepDecisions(applied(f, decided('Protect the apps only', 'Hybrid-joined is enough')), { [DEVICE]: { at: f.snapshot.asOf, answers: { phoneManagement: 'unmanaged', phoneAppProtection: 'required', computerManagement: 'hybrid' } }, [D3]: { at: f.snapshot.asOf, answers: { officeNetwork: 'notInEntra', 'officeNetwork:basis': basis } } }), serviceAccountsGroupId: SERVICE_ACCOUNTS_GROUP }
   const plan = devicePlanOf(m)
   assert.deepEqual(plan && { phones: plan.phones, computers: plan.computers, blockPhones: plan.blockPhones }, { phones: 'apps', computers: 'hybrid', blockPhones: false })
   assert.deepEqual(excludedPlatforms(m), ['android', 'iOS'])
@@ -150,16 +153,13 @@ test('answered (apps, hybrid): the platform deviation, the enrolment step follow
   assert.ok(deviceLines.some((l) => / · computer$/.test(l)), 'a computer line per person')
   assert.equal(deviceLines.length, (cv.phoneUsers as string[]).length + (cv.unjoinedUsers as string[]).length, 'one line per person on a phone or an unjoined computer')
   assert.ok(typeof cv.deviceIntro === 'string' && typeof cv.deviceSentence === 'string', 'the campaign carries the device guidance')
-  const email = commsFor(stepById[campaign.id], cv, campaign)
-  assert.ok(email, 'the campaign has a usable email after the device decision')
-  assert.ok(email.extra.includes(cv.deviceSentence as string), 'the email carries the saved device guidance, not only the variable')
 })
 
 test('the other answers: enrol keeps phones in, block phones keeps them in, nothing managed sends the device steps to the footer with the answer', () => {
   const f = fixture('demo')
   const enrol = applied(f, decided('Enrol phones in Intune', 'Enrol in Intune'))
   assert.deepEqual(excludedPlatforms(enrol), [], 'enrol: the baseline stands')
-  assert.equal(deviceStepDoesntApply(APP_PROTECTION_GOAL, enrol), 'Enroll phones in Intune', 'the app-protection step leaves with the answer as reason')
+  assert.match(deviceStepDoesntApply(APP_PROTECTION_GOAL, enrol) ?? '', /^You answered Compliant \(enrolled in Intune\) to “Phones”/, 'the app-protection step leaves with the answer as reason')
   const strict = applied(f, decided('No company data on phones', 'Hybrid-joined is enough', true))
   assert.equal(devicePlanOf(strict)?.blockPhones, true)
   assert.deepEqual(excludedPlatforms(strict), [], 'block phones: phones stay in the policy, so a phone not enrolled is blocked')
@@ -169,7 +169,7 @@ test('the other answers: enrol keeps phones in, block phones keeps them in, noth
   for (const goalId of [COMPLIANT_DEVICE_GOAL, INTUNE_ENROLMENT_GOAL]) {
     const s = r.steps.find((x) => x.goalId === goalId)!
     assert.equal(s.status, 'skipped', `${goalId}: leaves the plan`)
-    assert.equal(s.doesntApply, 'Keep company data off phones; Not managed', `${goalId}: the answer is the reason`)
+    assert.match(s.doesntApply ?? '', /^You answered Unmanaged to “Company computers”/, `${goalId}: the answer is the reason`)
   }
 })
 

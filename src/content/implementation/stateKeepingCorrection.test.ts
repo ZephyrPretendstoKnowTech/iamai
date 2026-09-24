@@ -117,13 +117,16 @@ test("every staged package calls Create and Observe, and Enforce only where the 
 // Review 3 queue 5: the guests pair's correction adds the exclusions group to both guest
 // policies and said only "Save." twice. Its script is not called yet, so the check reads
 // the two authored blocks the partial state projects rather than a bound projection.
+const AI_LEADS_WITH_ACTION = new Set(['s-goal-block-device-code', 's-goal-block-legacy-auth', 's-goal-mfa-all-users', 's-goal-admins-phishing-resistant'])
 const EFFECT = /\bif (it|the policy|a policy) is On, [^.]*(as soon as (you save|it is saved)|saving applies it at once|can affect access after you save)/i
 
 test('every correction says in Entra and in AI Info what saving does to a policy that is On, the guests pair included', () => {
   for (const stepId of [...STAGED, 's-goal-mfa-all-users', 's-goal-admins-phishing-resistant']) {
     for (const [changed, mode] of CORRECTIONS) {
       const p = projectImplementation(PACKAGES[stepId], 'partial', bindings({ [CHANGED_FIELDS_BINDING]: [changed], 'authStrength.target.id': ID(4) }))
-      for (const channel of ['entra', 'aiInfo']) {
+      // AI Info on the four 4.x policy steps leads with the action and its values
+      // (walk list 4.x item 31); their Entra lines say what saving does.
+      for (const channel of AI_LEADS_WITH_ACTION.has(stepId) ? ['entra'] : ['entra', 'aiInfo']) {
         const c = p.channels.find((x) => x.channel === channel)
         assert.ok(c, `${stepId} ${mode}: no ${channel} ${JSON.stringify(p.degraded ?? p.hold)}`)
         assert.match(c.text, EFFECT, `${stepId} ${mode} ${channel}: ${c.text}`)

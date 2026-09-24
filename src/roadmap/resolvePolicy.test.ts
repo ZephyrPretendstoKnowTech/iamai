@@ -376,7 +376,7 @@ test('3: a confirmed mapping for one author reference wins over the token and th
   const users = lines.find((l) => l.startsWith('Users → Include:'))
   assert.ok(users, JSON.stringify(lines))
   assert.match(users, /Users → Exclude → Groups: /, 'the exclusions group keeps its own sentence')
-  assert.match(users, /Also exclude the groups Confirmed exclusions\./, `the confirmed group is named: ${users}`)
+  assert.match(users, /Also exclude the group Confirmed exclusions\./, `the confirmed group is named: ${users}`)
 
   // A confirmed object on an include is the object every channel names.
   {

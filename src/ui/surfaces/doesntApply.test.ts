@@ -10,7 +10,8 @@ import { runFixture } from '../../roadmap/fixtures/run.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { buildPlanFile, parsePlanFile } from '../../roadmap/plan.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
-import { directionWords, pages } from '../../content/content.ts'
+import { pages } from '../../content/content.ts'
+import { answeredReasonOf } from '../../roadmap/directionAnswers.ts'
 import { fillText } from '../../content/render.ts'
 import { inWave } from '../../derive/phases.ts'
 import { stepContract } from './stepContract.ts'
@@ -100,10 +101,10 @@ test('the trusted-network completion follows the answer: everyone remote does no
       checked++
       const ctx = { snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, nameOf: (id: string) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: null } as unknown as StepVarContext
       const done = stepContract(step, ctx).doneWhen.join(String.fromCharCode(10))
-      assert.doesNotMatch(done, /marked as trusted/, `${name}: the other completion is still stated`)
+      assert.doesNotMatch(done, /marked trusted/, `${name}: the other completion is still stated`)
       // Stage 3 (V1 decision 6): the answer no longer completes a step that has
       // nothing to build. The step does not apply, and the answer is its reason.
-      assert.equal(step.doesntApply, directionWords.questions.officeNetwork.options.remote, `${name}: ${done}`)
+      assert.equal(step.doesntApply, answeredReasonOf('officeNetwork', 'remote'), `${name}: ${done}`)
     }
     assert.ok(checked > 0, 'no fixture answers this step everyone-is-remote')
   }
@@ -114,6 +115,6 @@ test('the trusted-network completion follows the answer: everyone remote does no
     const step = run.steps.find((s) => s.id === ID)!
     const mapping = { ...f.mapping, trustedLocationIds: ['a-location-id'] }
     const ctx = { snapshot: f.snapshot, mapping, groups: f.groups, nameOf: (id: string) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: null } as unknown as StepVarContext
-    assert.match(stepContract(step, ctx).doneWhen.join(String.fromCharCode(10)), /marked as trusted/)
+    assert.match(stepContract(step, ctx).doneWhen.join(String.fromCharCode(10)), /marked trusted/)
   }
 })
