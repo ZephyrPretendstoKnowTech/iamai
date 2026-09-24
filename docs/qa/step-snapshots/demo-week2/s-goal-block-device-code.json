@@ -1,10 +1,10 @@
 {
   "lane": "Ready",
-  "substatus": "Decision",
+  "substatus": "Review",
   "reason": null,
   "fact": "Enforced",
-  "badge": "Ready · Decision",
-  "bar": "Needs a decision",
+  "badge": "Ready · Review",
+  "bar": "Complete the review below",
   "rail": "Block Device Code Sign-in",
   "headings": [
     "About this Step",
@@ -16,10 +16,6 @@
     {
       "label": "Your review",
       "state": "Waiting on you"
-    },
-    {
-      "label": "Device code sign-in",
-      "state": "Confirm no legitimate use"
     }
   ],
   "channels": [
@@ -28,5 +24,5 @@
     "JSON",
     "AI Info"
   ],
-  "when": "Decide now"
+  "when": "Review now"
 }
