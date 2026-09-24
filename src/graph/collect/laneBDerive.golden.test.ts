@@ -300,34 +300,37 @@ const GOLDEN: Record<string, string> = {
   'deriveScenarioEvidence(owners) · seed 90210 · shuffled': '7bbb2b85a5394372d814c2d29b51402e5df2ec89c70ef1e28ce6eadab958b8bf',
 }
 
-test('the sign-in derivations give the outputs captured before the streaming read', () => {
-  const now = digests()
-  if (process.env.GOLDEN_PRINT === '1') {
-    console.log(`const GOLDEN: Record<string, string> = {\n${Object.entries(now).map(([k, v]) => `  '${k}': '${v}',`).join('\n')}\n}`)
-    return
+test('the synthetic rows reach every branch the digests pin, and the sign-in derivations give the outputs captured before the streaming read', () => {
+  // the synthetic rows reach every branch the digests are meant to pin
+  {
+    const rows = generate(SEEDS[0])
+    assert.equal(rows.length, ROWS)
+    const perUser = aggregate(rows)
+    assert.ok((perUser[person(0)].apps ?? []).length === 8, 'the busy person reaches the eight-app cap')
+    assert.ok((perUser[person(0)].devices ?? []).some((d) => d.deviceIds.length === 5), 'and the five-device cap')
+    const p7 = derivePolicyResults(rows).find((p) => p.policyId === policy(7))
+    assert.ok(p7 && typeof p7.firstReportOnlyAt === 'string' && p7.firstReportOnlyAt > whole(NOW - 10 * 86_400_000), 'policy 07 counts only the report-only records since it came off')
+    assert.ok(deriveReportOnlyPolicyIds(rows).includes(policy(11)))
+    assert.equal(derivePolicyResults(rows).some((p) => p.policyId === policy(11)), false)
+    const blocked = deriveBlockedToday(rows)
+    assert.ok(blocked.some((b) => b.policyId === 'unknown' && b.userIds.includes(person(2))))
+    assert.ok(blocked.some((b) => b.policyId === policy(3) && b.userIds.includes(person(1))))
+    const scenarios = deriveScenarioEvidence(rows)
+    for (const key of ['legacyClients', 'ropcAutomation', 'serverSignIns', 'technicianToolsOffCompliance', 'guestsSeen', 'serviceProviderSignIns', 'nonMicrosoftApps', 'emptyPlatform', 'azureSignIns'] as const) {
+      assert.ok(scenarios[key]!.count > 0, `${key} fires on the synthetic rows`)
+    }
+    assert.ok(Object.values(perUser).some((u) => (u.recoveryCandidates ?? []).length > 0), 'passkey records give recovery candidates')
+    const usage = deriveUsageSignals(rows)
+    assert.ok(usage.deviceCode.count > 0 && usage.authTransfer.count > 0 && usage.riskHigh.count > 0 && usage.legacyAuth.count > 0)
   }
-  assert.equal(Object.keys(now).length, 72)
-  for (const [key, value] of Object.entries(now)) assert.equal(value, GOLDEN[key], `${key}: the output moved`)
-})
-
-test('the synthetic rows reach every branch the digests are meant to pin', () => {
-  const rows = generate(SEEDS[0])
-  assert.equal(rows.length, ROWS)
-  const perUser = aggregate(rows)
-  assert.ok((perUser[person(0)].apps ?? []).length === 8, 'the busy person reaches the eight-app cap')
-  assert.ok((perUser[person(0)].devices ?? []).some((d) => d.deviceIds.length === 5), 'and the five-device cap')
-  const p7 = derivePolicyResults(rows).find((p) => p.policyId === policy(7))
-  assert.ok(p7 && typeof p7.firstReportOnlyAt === 'string' && p7.firstReportOnlyAt > whole(NOW - 10 * 86_400_000), 'policy 07 counts only the report-only records since it came off')
-  assert.ok(deriveReportOnlyPolicyIds(rows).includes(policy(11)))
-  assert.equal(derivePolicyResults(rows).some((p) => p.policyId === policy(11)), false)
-  const blocked = deriveBlockedToday(rows)
-  assert.ok(blocked.some((b) => b.policyId === 'unknown' && b.userIds.includes(person(2))))
-  assert.ok(blocked.some((b) => b.policyId === policy(3) && b.userIds.includes(person(1))))
-  const scenarios = deriveScenarioEvidence(rows)
-  for (const key of ['legacyClients', 'ropcAutomation', 'serverSignIns', 'technicianToolsOffCompliance', 'guestsSeen', 'serviceProviderSignIns', 'nonMicrosoftApps', 'emptyPlatform', 'azureSignIns'] as const) {
-    assert.ok(scenarios[key]!.count > 0, `${key} fires on the synthetic rows`)
+  // the sign-in derivations give the outputs captured before the streaming read
+  {
+    const now = digests()
+    if (process.env.GOLDEN_PRINT === '1') {
+      console.log(`const GOLDEN: Record<string, string> = {\n${Object.entries(now).map(([k, v]) => `  '${k}': '${v}',`).join('\n')}\n}`)
+      return
+    }
+    assert.equal(Object.keys(now).length, 72)
+    for (const [key, value] of Object.entries(now)) assert.equal(value, GOLDEN[key], `${key}: the output moved`)
   }
-  assert.ok(Object.values(perUser).some((u) => (u.recoveryCandidates ?? []).length > 0), 'passkey records give recovery candidates')
-  const usage = deriveUsageSignals(rows)
-  assert.ok(usage.deviceCode.count > 0 && usage.authTransfer.count > 0 && usage.riskHigh.count > 0 && usage.legacyAuth.count > 0)
 })

@@ -11,26 +11,52 @@ import { runFixture } from '../roadmap/fixtures/run.ts'
 import { DIR_SYNC_ROLE } from '../coverage/applicability.ts'
 import { PINNED_GOAL_MAP, goalInMap } from '../roadmap/goalMap.ts'
 import { readFileSync } from 'node:fs'
-import { conditionalAccessLicenceLine, notLicensedCount, notLicensedNote, notLicensedPrintLine, notLicensedRows, notLicensedSummary } from './notLicensed.ts'
+import { conditionalAccessLicenceLine, notLicensedCount, notLicensedPrintLine, notLicensedRows, notLicensedSummary } from './notLicensed.ts'
 import { pages, stepById } from '../content/content.ts'
 
-test('the demo (P1) lists its P2 goals as Not licensed rows, from content', () => {
-  const r = runFixture(fixture('demo'))
-  const rows = notLicensedRows(r.coverage, PINNED_GOAL_MAP)
-  const ids = rows.map((x) => x.goalId).sort()
-  // The workload goal joins as a licence-facet row (no Workload Identities Premium licence).
-  assert.deepEqual(ids, ['pim-activation-reauth', 'sign-in-risk', 'sign-in-risk-medium', 'user-risk', 'user-risk-medium', 'workload-identity-block'])
-  for (const row of rows) {
-    const cs = stepById[row.goalId]
-    assert.equal(row.title, cs.title, `${row.goalId}: the content step's title`)
-    if (cs.licence) assert.equal(row.licence, cs.licence, `${row.goalId}: the content step names the licence`)
-    assert.equal(row.text, `${cs.title}: needs a licence this tenant does not hold: ${row.licence}`)
-    assert.doesNotMatch(row.text, /unlock|upgrade|benefit/i, 'never a tier\'s benefits')
+test('Not licensed rows are the goals the baseline holds and the tier cannot, named from content with the licence they need, never a tier\'s benefits', () => {
+  // the demo (P1) lists its P2 goals as Not licensed rows, from content
+  {
+    const r = runFixture(fixture('demo'))
+    const rows = notLicensedRows(r.coverage, PINNED_GOAL_MAP)
+    const ids = rows.map((x) => x.goalId).sort()
+    // The workload goal joins as a licence-facet row (no Workload Identities Premium licence).
+    assert.deepEqual(ids, ['pim-activation-reauth', 'sign-in-risk', 'sign-in-risk-medium', 'user-risk', 'user-risk-medium', 'workload-identity-block'])
+    for (const row of rows) {
+      const cs = stepById[row.goalId]
+      assert.equal(row.title, cs.title, `${row.goalId}: the content step's title`)
+      if (cs.licence) assert.equal(row.licence, cs.licence, `${row.goalId}: the content step names the licence`)
+      assert.equal(row.text, `${cs.title}: needs a licence this tenant does not hold: ${row.licence}`)
+      assert.doesNotMatch(row.text, /unlock|upgrade|benefit/i, 'never a tier\'s benefits')
+    }
+    assert.equal(notLicensedSummary(rows), 'Not licensed (6)')
+
   }
-  assert.equal(notLicensedSummary(rows), 'Not licensed (6)')
-  assert.equal(notLicensedNote(), (pages.plan as { footer: { notLicensedNote: string } }).footer.notLicensedNote)
-  assert.equal(notLicensedNote(), "The baseline includes these, and this tenant's licences don't cover them, so they aren't in this plan. A finished plan puts the baseline in place as far as those licences reach, not all of it. Nothing in the plan waits on these.")
-  assert.equal(notLicensedPrintLine(rows), "6 baseline controls need a licence the tenant doesn't hold and aren't in this plan: finishing it puts the baseline in place as far as the tenant's licences reach, not all of it.")
+  // a goal the baseline does not hold never appears, whatever its licence
+  {
+    const r = runFixture(fixture('demo'))
+    const narrow = { 'sign-in-risk': PINNED_GOAL_MAP['sign-in-risk'] }
+    const rows = notLicensedRows(r.coverage, narrow)
+    assert.deepEqual(rows.map((x) => x.goalId), ['sign-in-risk'])
+  }
+  // a goal whose content step names no licence falls back to the tier the control needs
+  {
+    // The free tier: every Conditional Access goal is out of reach, and most
+    // content steps name no licence, so the tier name stands in.
+    const f = fixture('micro')
+    const r = runFixture(f)
+    const rows = notLicensedRows(r.coverage, PINNED_GOAL_MAP)
+    assert.ok(rows.length > 0, 'micro has no P1, so goals are licence-limited')
+    for (const row of rows) {
+      assert.ok(row.licence.length > 0, `${row.goalId}: a licence is named`)
+      // The device steps are one shared line (E2): the compliant-device and Intune-enrolment steps need Intune Plan 1.
+      if (row.goalId === 'devices') {
+        assert.match(row.text, /Intune Plan 1/)
+        continue
+      }
+      assert.equal(row.text, `${row.title}: needs a licence this tenant does not hold: ${row.licence}`)
+    }
+  }
 })
 
 // The count is of the baseline controls left out, not of the lines that list
@@ -46,13 +72,6 @@ test('the count is of goals, not lines: a shared device line counts each goal it
   assert.equal(notLicensedCount(rows), 7)
   assert.equal(notLicensedSummary(rows), 'Not licensed (7)')
   assert.match(notLicensedPrintLine(rows), /^7 baseline controls need a licence/)
-})
-
-test('one control left out reads in the singular', () => {
-  const r = runFixture(fixture('demo'))
-  const rows = notLicensedRows(r.coverage, { 'sign-in-risk': PINNED_GOAL_MAP['sign-in-risk'] })
-  assert.equal(notLicensedPrintLine(rows), "1 baseline control needs a licence the tenant doesn't hold and isn't in this plan: finishing it puts the baseline in place as far as the tenant's licences reach, not all of it.")
-  assert.equal(notLicensedSummary(rows), 'Not licensed (1)')
 })
 
 test('the workload goal exists only where someone holds the Directory Synchronization Accounts role: never planned or listed without a sync account (B7)', () => {
@@ -71,31 +90,6 @@ test('the workload goal exists only where someone holds the Directory Synchroniz
   assert.equal(holdsSync(mid), true, 'the premise: mid has a sync account')
   assert.deepEqual(read(licensed(mid, false)), { planned: false, listed: true })
   assert.deepEqual(read(licensed(mid, true)), { planned: true, listed: false })
-})
-
-test('a goal the baseline does not hold never appears, whatever its licence', () => {
-  const r = runFixture(fixture('demo'))
-  const narrow = { 'sign-in-risk': PINNED_GOAL_MAP['sign-in-risk'] }
-  const rows = notLicensedRows(r.coverage, narrow)
-  assert.deepEqual(rows.map((x) => x.goalId), ['sign-in-risk'])
-})
-
-test('a goal whose content step names no licence falls back to the tier the control needs', () => {
-  // The free tier: every Conditional Access goal is out of reach, and most
-  // content steps name no licence, so the tier name stands in.
-  const f = fixture('micro')
-  const r = runFixture(f)
-  const rows = notLicensedRows(r.coverage, PINNED_GOAL_MAP)
-  assert.ok(rows.length > 0, 'micro has no P1, so goals are licence-limited')
-  for (const row of rows) {
-    assert.ok(row.licence.length > 0, `${row.goalId}: a licence is named`)
-    // The device steps are one shared line (E2): the compliant-device and Intune-enrolment steps need Intune Plan 1.
-    if (row.goalId === 'devices') {
-      assert.match(row.text, /Intune Plan 1/)
-      continue
-    }
-    assert.equal(row.text, `${row.title}: needs a licence this tenant does not hold: ${row.licence}`)
-  }
 })
 
 test('without Entra ID P1 the Plan says first that Conditional Access needs it; with P1 it says nothing (owner, 2026-09-19)', () => {

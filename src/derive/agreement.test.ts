@@ -49,8 +49,8 @@ function surfaces(run: ReturnType<typeof runFixture>) {
   }
 }
 
-for (const f of allFixtures()) {
-  test(`${f.name}: Findings, the Plan tab, Do this next and Progress agree`, () => {
+test('on every fixture, Findings, the Plan tab, Do this next and Progress agree, and replanning the same scan gives the same numbers', () => {
+  for (const f of allFixtures()) {
     const run = runFixture(f)
     const s = surfaces(run)
     const { steps, coverage } = run
@@ -81,18 +81,14 @@ for (const f of allFixtures()) {
       if (!step.goalId) continue
       const goal = status.get(step.goalId)
       if (goal === undefined) continue
-      assert.notEqual(goal, 'absent', `${step.id} is done while a goal it covers is reported absent`)
+      assert.notEqual(goal, 'absent', `${f.name}: ${step.id} is done while a goal it covers is reported absent`)
     }
-  })
 
-  test(`${f.name}: re-rendering ten times cannot change a number`, () => {
-    const run = runFixture(f)
-    const first = JSON.stringify(surfaces(run))
-    for (let i = 0; i < 10; i++) {
-      assert.equal(JSON.stringify(surfaces(run)), first, `a count changed on re-render ${i + 1} with no new scan`)
-    }
-  })
-}
+    // Rebuilding the plan is what a dependency change in the page's memo does:
+    // the same scan must give the same counts. Anything reading the wall clock fails here.
+    assert.equal(JSON.stringify(surfaces(runFixture(f))), JSON.stringify(s), `${f.name}: replanning the same scan produced different numbers`)
+  }
+})
 
 test('skipping a step moves the badge and the chips together', () => {
   // Every fixture skips nothing, so the assertions above about the trackable
@@ -115,21 +111,6 @@ test('skipping a step moves the badge and the chips together', () => {
     assert.equal(after.remaining, after.trackable - after.done, `${f.name}: remaining is not the rest of the trackable set`)
   }
 })
-
-test('a plan derived twice from the same fixture gives the same numbers', () => {
-  // The stability test above re-derives from one plan object. This one rebuilds
-  // the plan itself, which is what a dependency change in the page's memo does:
-  // the same scan must produce the same counts however many times it is
-  // replanned. Anything reading the wall clock fails here rather than in front
-  // of a user.
-  for (const f of allFixtures()) {
-    const a = JSON.stringify(surfaces(runFixture(f)))
-    const b = JSON.stringify(surfaces(runFixture(f)))
-    assert.equal(b, a, `${f.name}: replanning the same scan produced different numbers`)
-  }
-})
-
-// ---- prompt 46 Part 2: one denominator, one verdict ----
 
 test('one denominator: active people agree across sets, viability and rollout, and never-signed-in accounts are in none (prompt 46 item 7)', async () => {
   const { notActiveUsers } = await import('./sets.ts')
@@ -213,10 +194,10 @@ const NAMED_ACCOUNTS: Record<string, (s: Step, snapshot: TenantSnapshot, mapping
   's-goal-service-accounts-trusted-network': (_s, _snapshot, mapping) => mapping.serviceAccountUserIds,
   's-ladder-authenticator-over-sms': (s) => s.preparation?.ids ?? [],
 }
-for (const f of allFixtures()) {
-  test(`${f.name}: Today's tiles and every step's who-line agree on the denominator`, async () => {
-    const { peopleCounts } = await import('./population.ts')
-    const { affectedIds } = await import('./whoLine.ts')
+test("on every fixture, Today's tiles, every step's who-line and every coverage gap agree on the denominator", async () => {
+  const { peopleCounts } = await import('./population.ts')
+  const { affectedIds } = await import('./whoLine.ts')
+  for (const f of allFixtures()) {
     const run = runFixture(f)
     const snapshot = run.input.snapshot
     const svc = notPeopleIds(f.mapping)
@@ -245,20 +226,9 @@ for (const f of allFixtures()) {
         assert.deepEqual([...affectedIds(p)].sort(), [...named(s, snapshot, f.mapping)].sort(), `${s.id}: the line counts the accounts the step names`)
         assert.doesNotMatch(populationLine(p), /active (?:person|people)/, `${s.id}: ${populationLine(p)}`)
       }
-    }
-  })
-}
-
-// Prompt 49 item 4: a gap suffix counts active people, never the enabled total.
-// "covers 1 of 4 active", never "of 13 people".
-for (const f of allFixtures()) {
-  test(`${f.name}: every coverage gap counts active people`, () => {
-    const run = runFixture(f)
-    for (const s of run.steps) {
+      // Prompt 49 item 4: a gap suffix counts active people, never the enabled total.
       const g = s.gap
-      if (!g || !/covers \d+ of \d+/.test(g)) continue
-      assert.match(g, /covers \d+ of \d+ active$/, `${s.id}: gap "${g}" does not count active people`)
-      assert.doesNotMatch(g, /of \d+ people/, `${s.id}: gap "${g}" still counts the enabled total`)
+      if (g && /covers \d+ of \d+/.test(g)) assert.match(g, /covers \d+ of \d+ active$/, `${f.name}/${s.id}: gap "${g}" does not count active people`)
     }
-  })
-}
+  }
+})

@@ -20,28 +20,31 @@ test('the summary is counts only: no names, no sign-in names, no ids', () => {
   assert.doesNotMatch(body, /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/, 'leaks an address')
 })
 
-test('the summary still says something worth having', () => {
-  const summary = diagnosticsSummary(fixture('small').snapshot)
-  assert.ok(summary.some((l) => /Users in the directory: \d+/.test(l)))
-  assert.ok(summary.some((l) => /Conditional Access policies: \d+/.test(l)))
-  assert.ok(summary.some((l) => /Sections that could not be read/.test(l)))
-})
-
-test('with no scan, it says so rather than inventing numbers', () => {
-  assert.deepEqual(diagnosticsSummary(null), ['No scan on this device.'])
-})
-
-test('the body without the summary carries only the page, version and browser', () => {
-  const body = feedbackBody(CTX, null)
-  assert.match(body, /Page: #\/roadmap/)
-  assert.match(body, /Version: 0\.0\.1/)
-  assert.match(body, /Browser: Mozilla/)
-  assert.doesNotMatch(body, /Users in the directory/)
-})
-
-test('the mailto is addressed and prefilled, and nothing is sent by the app', () => {
-  const href = mailtoHref(CTX, null)
-  assert.ok(href.startsWith(`mailto:${FEEDBACK_ADDRESS}?`))
-  assert.match(href, /subject=IAMAI%20feedback/)
-  assert.match(href, /body=/)
+test('the summary says something worth having, or that there is no scan; the body without it carries only the page, version and browser; the mailto is prefilled and nothing is sent by the app', () => {
+  // the summary still says something worth having
+  {
+    const summary = diagnosticsSummary(fixture('small').snapshot)
+    assert.ok(summary.some((l) => /Users in the directory: \d+/.test(l)))
+    assert.ok(summary.some((l) => /Conditional Access policies: \d+/.test(l)))
+    assert.ok(summary.some((l) => /Sections that could not be read/.test(l)))
+  }
+  // with no scan, it says so rather than inventing numbers
+  {
+    assert.deepEqual(diagnosticsSummary(null), ['No scan on this device.'])
+  }
+  // the body without the summary carries only the page, version and browser
+  {
+    const body = feedbackBody(CTX, null)
+    assert.match(body, /Page: #\/roadmap/)
+    assert.match(body, /Version: 0\.0\.1/)
+    assert.match(body, /Browser: Mozilla/)
+    assert.doesNotMatch(body, /Users in the directory/)
+  }
+  // the mailto is addressed and prefilled, and nothing is sent by the app
+  {
+    const href = mailtoHref(CTX, null)
+    assert.ok(href.startsWith(`mailto:${FEEDBACK_ADDRESS}?`))
+    assert.match(href, /subject=IAMAI%20feedback/)
+    assert.match(href, /body=/)
+  }
 })

@@ -15,9 +15,22 @@ import type { StoredSignIn } from './types.ts'
 const NOW = Date.parse('2026-08-26T00:00:00Z')
 const iso = (hoursAgo: number) => new Date(NOW - hoursAgo * 3_600_000).toISOString()
 
-test('recovery directory-audit projection keeps stable mutation identity and targets', () => {
-  assert.deepEqual(mapRecoveryAudit({ id: 'audit-1', activityDateTime: iso(1), activityDisplayName: 'Update group', category: 'GroupManagement', result: 'success', targetResources: [{ id: 'group-1', type: 'Group', displayName: 'Private name' }] }), { id: 'audit-1', at: iso(1), activity: 'Update group', category: 'GroupManagement', result: 'success', targets: [{ id: 'group-1', type: 'Group' }] })
-  assert.equal(mapRecoveryAudit({ activityDateTime: iso(1) }), null)
+test('the recovery directory-audit read keeps stable mutation identity and targets, and stays inside Entra\'s 30-day retention', () => {
+  // recovery directory-audit projection keeps stable mutation identity and targets
+  {
+    assert.deepEqual(mapRecoveryAudit({ id: 'audit-1', activityDateTime: iso(1), activityDisplayName: 'Update group', category: 'GroupManagement', result: 'success', targetResources: [{ id: 'group-1', type: 'Group', displayName: 'Private name' }] }), { id: 'audit-1', at: iso(1), activity: 'Update group', category: 'GroupManagement', result: 'success', targets: [{ id: 'group-1', type: 'Group' }] })
+    assert.equal(mapRecoveryAudit({ activityDateTime: iso(1) }), null)
+  }
+  // the recovery audit read stays inside Entra directory-audit retention (30 days)
+  {
+    const now = Date.parse('2026-09-18T18:00:00.000Z')
+    const { since, url } = recoveryAuditRequest('https://graph.microsoft.com/beta', now)
+    // Graph refused the old 90-day request: "Minimum allowed time for activityDateTime is 8/18/2026".
+    assert.ok(Date.parse(since) >= Date.parse('2026-08-18T00:00:00.000Z'))
+    assert.equal(since, '2026-08-19T18:00:00.000Z')
+    assert.ok(url.startsWith('https://graph.microsoft.com/beta/auditLogs/directoryAudits?$filter='))
+    assert.ok(decodeURIComponent(url).includes(`activityDateTime ge ${since}`))
+  }
 })
 
 let seq = 0
@@ -60,34 +73,62 @@ function deps(pages: Page[], over: Partial<LaneBDeps> = {}): LaneBDeps & { store
   return d as LaneBDeps & { store: typeof store }
 }
 
-test('window cutoff: stops when a page reaches past the window start; covered = full window', async () => {
-  const d = deps([
-    { value: [row({ hoursAgo: 1 }), row({ hoursAgo: 10 })], next: true },
-    { value: [row({ hoursAgo: 20 }), row({ hoursAgo: 31 * 24 })], next: true },
-  ])
-  const r = await runLaneB(d)
-  assert.equal(r.status, 'ok')
-  assert.equal(r.rows, 3)
-  assert.equal(r.covered?.from, iso(30 * 24))
-  assert.deepEqual(d.store.covered, { from: iso(30 * 24), to: iso(0) }, 'the saved span is the whole window')
-  assert.equal(d.store.rows.size, 3, 'the record older than the window is not saved')
-})
-
-test('history exhausted inside the window is ok with a retention note', async () => {
-  const r = await runLaneB(deps([{ value: [row({ hoursAgo: 5 })] }]))
-  assert.equal(r.status, 'ok')
-  assert.match(r.reason ?? '', /or less if the tenant keeps fewer/)
-})
-
-test('time budget: stop is labelled and coverage decides partial', async () => {
-  const pages = Array.from({ length: 10 }, (_, n) => ({
-    value: [row({ hoursAgo: 30 + n })],
-    next: true,
-  }))
-  const r = await runLaneB(deps(pages, { budgetMs: 100 }))
-  assert.equal(r.status, 'partial')
-  assert.match(r.reason ?? '', /time budget/)
-  assert.match(r.reason ?? '', /covers the most recent/)
+test('the read labels its coverage: the window cutoff, history ending inside the window, a time budget, under 24 h covered, and a resume from the saved boundary', async () => {
+  // window cutoff: stops when a page reaches past the window start; covered = full window
+  {
+    const d = deps([
+      { value: [row({ hoursAgo: 1 }), row({ hoursAgo: 10 })], next: true },
+      { value: [row({ hoursAgo: 20 }), row({ hoursAgo: 31 * 24 })], next: true },
+    ])
+    const r = await runLaneB(d)
+    assert.equal(r.status, 'ok')
+    assert.equal(r.rows, 3)
+    assert.equal(r.covered?.from, iso(30 * 24))
+    assert.deepEqual(d.store.covered, { from: iso(30 * 24), to: iso(0) }, 'the saved span is the whole window')
+    assert.equal(d.store.rows.size, 3, 'the record older than the window is not saved')
+  }
+  // history exhausted inside the window is ok with a retention note
+  {
+    const r = await runLaneB(deps([{ value: [row({ hoursAgo: 5 })] }]))
+    assert.equal(r.status, 'ok')
+    assert.match(r.reason ?? '', /or less if the tenant keeps fewer/)
+  }
+  // time budget: stop is labelled and coverage decides partial
+  {
+    const pages = Array.from({ length: 10 }, (_, n) => ({
+      value: [row({ hoursAgo: 30 + n })],
+      next: true,
+    }))
+    const r = await runLaneB(deps(pages, { budgetMs: 100 }))
+    assert.equal(r.status, 'partial')
+    assert.match(r.reason ?? '', /time budget/)
+    assert.match(r.reason ?? '', /covers the most recent/)
+  }
+  // insufficient: budget stop with under 24 h covered
+  {
+    const pages = Array.from({ length: 10 }, () => ({ value: [row({ hoursAgo: 2 })], next: true }))
+    const r = await runLaneB(deps(pages, { budgetMs: 100 }))
+    assert.equal(r.status, 'insufficient')
+    assert.match(r.reason ?? '', /minimum 24 h/)
+  }
+  // resume newest-gap-first: stops at the saved boundary and merges
+  {
+    const cachedRow = row({ id: 'cached-1', hoursAgo: 100, userId: 'user-2' })
+    const d = deps([
+      // Gap rows newer than the saved covered.to (48 h ago), then one older row
+      // that crosses the boundary and stops the fetch.
+      { value: [row({ id: 'new-1', hoursAgo: 2 }), row({ id: 'old-1', hoursAgo: 50 })], next: true },
+    ])
+    const store = memoryEvidenceStore({ meta: { from: iso(30 * 24), to: iso(48) }, rows: [cachedRow] })
+    const r = await runLaneB({ ...d, store })
+    assert.equal(r.status, 'ok')
+    assert.match(r.reason ?? '', /resumed from the saved records/)
+    assert.equal(r.covered?.from, iso(30 * 24))
+    // saved row + both fetched rows are folded
+    assert.equal(r.rows, 3)
+    assert.deepEqual(store.covered, { from: iso(30 * 24), to: iso(0) })
+    assert.deepEqual([...store.rows.keys()].sort(), ['cached-1', 'new-1', 'old-1'])
+  }
 })
 
 test('no time budget by default: a slow read runs to the end of the 30-day window (owner item 4, 2026-09-19)', async () => {
@@ -111,53 +152,67 @@ test('no time budget by default: a slow read runs to the end of the 30-day windo
   assert.equal(r.rows, 20)
 })
 
-test('insufficient: budget stop with under 24 h covered', async () => {
-  const pages = Array.from({ length: 10 }, () => ({ value: [row({ hoursAgo: 2 })], next: true }))
-  const r = await runLaneB(deps(pages, { budgetMs: 100 }))
-  assert.equal(r.status, 'insufficient')
-  assert.match(r.reason ?? '', /minimum 24 h/)
-})
-
-test('resume newest-gap-first: stops at the saved boundary and merges', async () => {
-  const cachedRow = row({ id: 'cached-1', hoursAgo: 100, userId: 'user-2' })
-  const d = deps([
-    // Gap rows newer than the saved covered.to (48 h ago), then one older row
-    // that crosses the boundary and stops the fetch.
-    { value: [row({ id: 'new-1', hoursAgo: 2 }), row({ id: 'old-1', hoursAgo: 50 })], next: true },
-  ])
-  const store = memoryEvidenceStore({ meta: { from: iso(30 * 24), to: iso(48) }, rows: [cachedRow] })
-  const r = await runLaneB({ ...d, store })
-  assert.equal(r.status, 'ok')
-  assert.match(r.reason ?? '', /resumed from the saved records/)
-  assert.equal(r.covered?.from, iso(30 * 24))
-  // saved row + both fetched rows are folded
-  assert.equal(r.rows, 3)
-  assert.deepEqual(store.covered, { from: iso(30 * 24), to: iso(0) })
-  assert.deepEqual([...store.rows.keys()].sort(), ['cached-1', 'new-1', 'old-1'])
-})
-
-test('derived: per-user aggregate keeps the latest MFA success', () => {
-  const perUser = aggregate([
-    row({ userId: 'u1', hoursAgo: 10, authenticationRequirement: 'multiFactorAuthentication', mfaDetail: { authMethod: 'Authenticator' } }),
-    row({ userId: 'u1', hoursAgo: 5 }),
-  ])
-  assert.equal(perUser.u1.signInCount, 2)
-  assert.equal(perUser.u1.lastMfaSuccess?.method, 'Authenticator')
-  assert.equal(perUser.u1.lastSignIn, iso(5))
-})
-
-test('derived: per-policy applied results count classes and users', () => {
-  const results = derivePolicyResults([
-    row({ userId: 'u1', hoursAgo: 1, appliedConditionalAccessPolicies: [{ id: 'p1', displayName: 'Require MFA', result: 'reportOnlyFailure' }] }),
-    row({ userId: 'u2', hoursAgo: 2, appliedConditionalAccessPolicies: [{ id: 'p1', result: 'reportOnlyFailure' }, { id: 'p2', result: 'success' }] }),
-    row({ userId: 'u1', hoursAgo: 3, appliedConditionalAccessPolicies: [{ id: 'p1', result: 'reportOnlyFailure' }] }),
-  ])
-  const p1 = results.find((r) => r.policyId === 'p1')
-  assert.equal(p1?.displayName, 'Require MFA')
-  assert.equal(p1?.counts.reportOnlyFailure, 3)
-  assert.deepEqual([...(p1?.affectedUserIds.reportOnlyFailure ?? [])].sort(), ['u1', 'u2'])
-  const p2 = results.find((r) => r.policyId === 'p2')
-  assert.equal(p2?.counts.enforcedSuccess, 1)
+test('the derivations: policy results count classes and users, blocked today reads the latest sign-in, the higher risk verdict decides, and the last enforced record is kept per policy in any order', () => {
+  // derived: per-policy applied results count classes and users
+  {
+    const results = derivePolicyResults([
+      row({ userId: 'u1', hoursAgo: 1, appliedConditionalAccessPolicies: [{ id: 'p1', displayName: 'Require MFA', result: 'reportOnlyFailure' }] }),
+      row({ userId: 'u2', hoursAgo: 2, appliedConditionalAccessPolicies: [{ id: 'p1', result: 'reportOnlyFailure' }, { id: 'p2', result: 'success' }] }),
+      row({ userId: 'u1', hoursAgo: 3, appliedConditionalAccessPolicies: [{ id: 'p1', result: 'reportOnlyFailure' }] }),
+    ])
+    const p1 = results.find((r) => r.policyId === 'p1')
+    assert.equal(p1?.displayName, 'Require MFA')
+    assert.equal(p1?.counts.reportOnlyFailure, 3)
+    assert.deepEqual([...(p1?.affectedUserIds.reportOnlyFailure ?? [])].sort(), ['u1', 'u2'])
+    const p2 = results.find((r) => r.policyId === 'p2')
+    assert.equal(p2?.counts.enforcedSuccess, 1)
+  }
+  // derived: blocked today uses only the most recent sign-in per user
+  {
+    const blocked = deriveBlockedToday([
+      // u1 failed earlier but succeeded most recently → not blocked
+      row({ userId: 'u1', hoursAgo: 10, conditionalAccessStatus: 'failure', appliedConditionalAccessPolicies: [{ id: 'p1', result: 'failure' }] }),
+      row({ userId: 'u1', hoursAgo: 1, conditionalAccessStatus: 'success' }),
+      // u2's latest is a failure on p1
+      row({ userId: 'u2', hoursAgo: 2, conditionalAccessStatus: 'failure', appliedConditionalAccessPolicies: [{ id: 'p1', displayName: 'Require MFA', result: 'failure' }] }),
+    ])
+    assert.equal(blocked.length, 1)
+    assert.equal(blocked[0].policyId, 'p1')
+    assert.deepEqual(blocked[0].userIds, ['u2'])
+  }
+  // risk: the higher verdict decides the level; hidden and unknown remain outside known-risk counts
+  {
+  // Prompt 47 item 6: the risk verdicts ride along with the sign-in, and the
+  // usage signals count the people a risk policy would touch.
+    const rows = [
+      { id: 'a', createdDateTime: '2026-08-01T00:00:00Z', userId: 'u1', riskLevelDuringSignIn: 'high', riskLevelAggregated: 'none' },
+      { id: 'b', createdDateTime: '2026-08-01T00:00:00Z', userId: 'u2', riskLevelDuringSignIn: 'none', riskLevelAggregated: 'medium' },
+      { id: 'c', createdDateTime: '2026-08-01T00:00:00Z', userId: 'u2', riskLevelDuringSignIn: 'medium', riskLevelAggregated: 'low' },
+      { id: 'd', createdDateTime: '2026-08-01T00:00:00Z', userId: 'u3', riskLevelDuringSignIn: 'hidden', riskLevelAggregated: 'hidden' },
+      { id: 'e', createdDateTime: '2026-08-01T00:00:00Z', userId: 'u4' },
+    ].map((r) => mapRow(r)!)
+    assert.equal(rows[0].riskLevelDuringSignIn, 'high')
+    assert.equal(rows[4].riskLevelDuringSignIn, undefined)
+    const usage = deriveUsageSignals(rows)
+    assert.equal(usage.riskHigh.count, 1)
+    assert.deepEqual(usage.riskHigh.userIds, ['u1'])
+    assert.deepEqual(usage.riskHigh.byDetail, { 'during sign-in': 1 })
+    assert.equal(usage.riskMedium.count, 2)
+    assert.deepEqual(usage.riskMedium.userIds, ['u2'])
+    assert.deepEqual(usage.riskMedium.byDetail, { aggregated: 1, 'during sign-in': 1 })
+    assert.equal(usage.legacyAuth.count, 0)
+  }
+  // noteEnforced keeps the latest enforced record per policy, in any order, and is lastEnforcedOf a record at a time
+  {
+    const applied = (hoursAgo: number, result: string) => row({ hoursAgo, appliedConditionalAccessPolicies: [{ id: 'p1', result }, { id: 'p2', result: 'reportOnlySuccess' }] })
+    const rows = [applied(30, 'success'), applied(5, 'failure'), applied(2, 'reportOnlyFailure'), applied(12, 'success')]
+    for (const order of [rows, [...rows].reverse()]) {
+      const held = new Map<string, string>()
+      for (const r of order) noteEnforced(held, r)
+      assert.deepEqual([...held], [['p1', iso(5)]], 'report-only results are not enforced')
+      assert.deepEqual(held, lastEnforcedOf(order))
+    }
+  }
 })
 
 test('derived: a policy whose records are only reportOnlyNotApplied is listed as seen in report-only, and counted nowhere', async () => {
@@ -184,56 +239,35 @@ test('derived: a policy whose records are only reportOnlyNotApplied is listed as
   assert.equal(r.policyResults.find((p) => p.policyId === 'p3')?.counts.enforcedSuccess, 1)
 })
 
-test('derived: blocked today uses only the most recent sign-in per user', () => {
-  const blocked = deriveBlockedToday([
-    // u1 failed earlier but succeeded most recently → not blocked
-    row({ userId: 'u1', hoursAgo: 10, conditionalAccessStatus: 'failure', appliedConditionalAccessPolicies: [{ id: 'p1', result: 'failure' }] }),
-    row({ userId: 'u1', hoursAgo: 1, conditionalAccessStatus: 'success' }),
-    // u2's latest is a failure on p1
-    row({ userId: 'u2', hoursAgo: 2, conditionalAccessStatus: 'failure', appliedConditionalAccessPolicies: [{ id: 'p1', displayName: 'Require MFA', result: 'failure' }] }),
-  ])
-  assert.equal(blocked.length, 1)
-  assert.equal(blocked[0].policyId, 'p1')
-  assert.deepEqual(blocked[0].userIds, ['u2'])
-})
-
-// Prompt 47 item 6: the risk verdicts ride along with the sign-in, and the
-// usage signals count the people a risk policy would touch.
-test('risk: the higher verdict decides the level; hidden and unknown remain outside known-risk counts', () => {
-  const rows = [
-    { id: 'a', createdDateTime: '2026-08-01T00:00:00Z', userId: 'u1', riskLevelDuringSignIn: 'high', riskLevelAggregated: 'none' },
-    { id: 'b', createdDateTime: '2026-08-01T00:00:00Z', userId: 'u2', riskLevelDuringSignIn: 'none', riskLevelAggregated: 'medium' },
-    { id: 'c', createdDateTime: '2026-08-01T00:00:00Z', userId: 'u2', riskLevelDuringSignIn: 'medium', riskLevelAggregated: 'low' },
-    { id: 'd', createdDateTime: '2026-08-01T00:00:00Z', userId: 'u3', riskLevelDuringSignIn: 'hidden', riskLevelAggregated: 'hidden' },
-    { id: 'e', createdDateTime: '2026-08-01T00:00:00Z', userId: 'u4' },
-  ].map((r) => mapRow(r)!)
-  assert.equal(rows[0].riskLevelDuringSignIn, 'high')
-  assert.equal(rows[4].riskLevelDuringSignIn, undefined)
-  const usage = deriveUsageSignals(rows)
-  assert.equal(usage.riskHigh.count, 1)
-  assert.deepEqual(usage.riskHigh.userIds, ['u1'])
-  assert.deepEqual(usage.riskHigh.byDetail, { 'during sign-in': 1 })
-  assert.equal(usage.riskMedium.count, 2)
-  assert.deepEqual(usage.riskMedium.userIds, ['u2'])
-  assert.deepEqual(usage.riskMedium.byDetail, { aggregated: 1, 'during sign-in': 1 })
-  assert.equal(usage.legacyAuth.count, 0)
-})
-
 // The results no derivation reads. Every sign-in carries one entry per policy
 // in the tenant, and these are most of them.
 const UNREAD_RESULTS = ['notApplied', 'notEnabled', 'unknownFutureValue', undefined]
 const READ_RESULTS = ['success', 'failure', 'reportOnlySuccess', 'reportOnlyFailure', 'reportOnlyInterrupted', 'reportOnlyNotApplied']
 
-test('mapRow keeps only the policy results a derivation reads', () => {
-  const raw = {
-    id: 'kept-results',
-    createdDateTime: iso(1),
-    userId: 'u1',
-    appliedConditionalAccessPolicies: [...READ_RESULTS, ...UNREAD_RESULTS].map((result, i) => ({ id: `p${i}`, displayName: `Policy ${i}`, ...(result === undefined ? {} : { result }) })),
+test('mapRow keeps only the policy results a derivation reads, leaves omitted or future device facts unreported and keeps an explicit false', () => {
+  // mapRow keeps only the policy results a derivation reads
+  {
+    const raw = {
+      id: 'kept-results',
+      createdDateTime: iso(1),
+      userId: 'u1',
+      appliedConditionalAccessPolicies: [...READ_RESULTS, ...UNREAD_RESULTS].map((result, i) => ({ id: `p${i}`, displayName: `Policy ${i}`, ...(result === undefined ? {} : { result }) })),
+    }
+    assert.deepEqual(mapRow(raw)!.appliedConditionalAccessPolicies!.map((p) => p.result), READ_RESULTS)
+    assert.equal(mapRow({ ...raw, appliedConditionalAccessPolicies: 'not a list' })!.appliedConditionalAccessPolicies, null)
+    assert.deepEqual(mapRow({ ...raw, appliedConditionalAccessPolicies: [{ id: 'p', result: 'notApplied' }] })!.appliedConditionalAccessPolicies, [])
   }
-  assert.deepEqual(mapRow(raw)!.appliedConditionalAccessPolicies!.map((p) => p.result), READ_RESULTS)
-  assert.equal(mapRow({ ...raw, appliedConditionalAccessPolicies: 'not a list' })!.appliedConditionalAccessPolicies, null)
-  assert.deepEqual(mapRow({ ...raw, appliedConditionalAccessPolicies: [{ id: 'p', result: 'notApplied' }] })!.appliedConditionalAccessPolicies, [])
+  // omitted and future device facts stay unreported while explicit false is retained
+  {
+    const missing = mapRow({ id: 'device-missing', createdDateTime: '2026-08-01T00:00:00Z', userId: 'u1', deviceDetail: {} })!
+    assert.equal(missing.isCompliant, undefined)
+    assert.equal(missing.isManaged, undefined)
+    assert.equal(missing.trustType, undefined)
+    const explicit = mapRow({ id: 'device-explicit', createdDateTime: '2026-08-01T00:00:00Z', userId: 'u1', deviceDetail: { isCompliant: false, isManaged: false, trustType: 'futureTrustValue' } })!
+    assert.equal(explicit.isCompliant, false)
+    assert.equal(explicit.isManaged, false)
+    assert.equal(explicit.trustType, undefined)
+  }
 })
 
 test('dropping the unread policy results changes no derivation', () => {
@@ -258,119 +292,92 @@ test('dropping the unread policy results changes no derivation', () => {
   assert.ok(deriveBlockedToday(rows).length > 0 && derivePolicyResults(rows).length > 0, 'the rows reach the policy derivations')
 })
 
-test('omitted and future device facts stay unreported while explicit false is retained', () => {
-  const missing = mapRow({ id: 'device-missing', createdDateTime: '2026-08-01T00:00:00Z', userId: 'u1', deviceDetail: {} })!
-  assert.equal(missing.isCompliant, undefined)
-  assert.equal(missing.isManaged, undefined)
-  assert.equal(missing.trustType, undefined)
-  const explicit = mapRow({ id: 'device-explicit', createdDateTime: '2026-08-01T00:00:00Z', userId: 'u1', deviceDetail: { isCompliant: false, isManaged: false, trustType: 'futureTrustValue' } })!
-  assert.equal(explicit.isCompliant, false)
-  assert.equal(explicit.isManaged, false)
-  assert.equal(explicit.trustType, undefined)
-})
-
-
-test('recovery projection preserves the real-shaped target, authentication time and resource tenant', () => {
-  const row = mapRow({ id: 'recovery-event', userId: 'account', createdDateTime: '2026-09-16T10:02:00Z', appId: '74658136-14ec-4630-ad9b-26e160ff0fc6', resourceId: '00000003-0000-0000-c000-000000000000', resourceTenantId: 'tenant', status: { errorCode: 0 }, isInteractive: true, authenticationRequirement: 'multiFactorAuthentication', authenticationDetails: [{ succeeded: true, authenticationMethod: 'FIDO2 security key', authenticationStepDateTime: '2026-09-16T10:01:00Z', authenticationStepResultDetail: 'Success' }] })!
-  const event = aggregate([row]).account.recoveryCandidates![0]
-  assert.equal(event.appId, '74658136-14ec-4630-ad9b-26e160ff0fc6')
-  assert.equal(event.resourceId, '00000003-0000-0000-c000-000000000000')
-  assert.equal(event.authenticationAt, '2026-09-16T10:01:00Z')
-  assert.equal(event.resourceTenantId, 'tenant')
-  assert.equal(event.freshMethod, true)
-})
-
-test('each person keeps only the newest passkey sign-ins as recovery candidates, whatever order the records come in', () => {
-  const n = RECOVERY_CANDIDATES_PER_PERSON
-  const passkey = (id: string, hoursAgo: number): StoredSignIn => row({ id, hoursAgo, userId: 'account', isInteractive: true, authenticationRequirement: 'multiFactorAuthentication', authenticationDetails: [{ succeeded: true, authenticationMethod: 'Passkey (device-bound)', authenticationStepDateTime: iso(hoursAgo), authenticationStepResultDetail: 'MFA successfully completed' }] })
-  // 67 is prime, so i * 7919 % 67 visits every index once.
-  const rows = Array.from({ length: 3 * n + 7 }, (_, i) => passkey(`pk-${i}`, i + 1))
-  const scrambled = rows.map((r, i) => ({ r, k: (i * 7919) % rows.length })).sort((a, b) => a.k - b.k).map((x) => x.r)
-  for (const order of [rows, [...rows].reverse(), scrambled]) {
-    const u = aggregate(order).account
-    assert.deepEqual(u.recoveryCandidates!.map((c) => c.eventId), rows.slice(0, n).map((r) => r.id))
-    assert.equal(u.signInCount, rows.length, 'every sign-in is still counted')
+test('each person keeps the newest passkey sign-ins as recovery candidates, in any order, with the real-shaped target, authentication time and resource tenant', () => {
+  // recovery projection preserves the real-shaped target, authentication time and resource tenant
+  {
+    const row = mapRow({ id: 'recovery-event', userId: 'account', createdDateTime: '2026-09-16T10:02:00Z', appId: '74658136-14ec-4630-ad9b-26e160ff0fc6', resourceId: '00000003-0000-0000-c000-000000000000', resourceTenantId: 'tenant', status: { errorCode: 0 }, isInteractive: true, authenticationRequirement: 'multiFactorAuthentication', authenticationDetails: [{ succeeded: true, authenticationMethod: 'FIDO2 security key', authenticationStepDateTime: '2026-09-16T10:01:00Z', authenticationStepResultDetail: 'Success' }] })!
+    const event = aggregate([row]).account.recoveryCandidates![0]
+    assert.equal(event.appId, '74658136-14ec-4630-ad9b-26e160ff0fc6')
+    assert.equal(event.resourceId, '00000003-0000-0000-c000-000000000000')
+    assert.equal(event.authenticationAt, '2026-09-16T10:01:00Z')
+    assert.equal(event.resourceTenantId, 'tenant')
+    assert.equal(event.freshMethod, true)
   }
-  assert.equal(aggregate(rows.slice(0, 3)).account.recoveryCandidates!.length, 3)
-  // Within one second, the first records seen are kept, as a sort of every candidate would keep them.
-  const tied = Array.from({ length: 2 * n + 3 }, (_, i) => passkey(`tie-${i}`, 5))
-  assert.deepEqual(aggregate(tied).account.recoveryCandidates!.map((c) => c.eventId), tied.slice(0, n).map((r) => r.id))
+  // each person keeps only the newest passkey sign-ins as recovery candidates, whatever order the records come in
+  {
+    const n = RECOVERY_CANDIDATES_PER_PERSON
+    const passkey = (id: string, hoursAgo: number): StoredSignIn => row({ id, hoursAgo, userId: 'account', isInteractive: true, authenticationRequirement: 'multiFactorAuthentication', authenticationDetails: [{ succeeded: true, authenticationMethod: 'Passkey (device-bound)', authenticationStepDateTime: iso(hoursAgo), authenticationStepResultDetail: 'MFA successfully completed' }] })
+    // 67 is prime, so i * 7919 % 67 visits every index once.
+    const rows = Array.from({ length: 3 * n + 7 }, (_, i) => passkey(`pk-${i}`, i + 1))
+    const scrambled = rows.map((r, i) => ({ r, k: (i * 7919) % rows.length })).sort((a, b) => a.k - b.k).map((x) => x.r)
+    for (const order of [rows, [...rows].reverse(), scrambled]) {
+      const u = aggregate(order).account
+      assert.deepEqual(u.recoveryCandidates!.map((c) => c.eventId), rows.slice(0, n).map((r) => r.id))
+      assert.equal(u.signInCount, rows.length, 'every sign-in is still counted')
+    }
+    assert.equal(aggregate(rows.slice(0, 3)).account.recoveryCandidates!.length, 3)
+    // Within one second, the first records seen are kept, as a sort of every candidate would keep them.
+    const tied = Array.from({ length: 2 * n + 3 }, (_, i) => passkey(`tie-${i}`, 5))
+    assert.deepEqual(aggregate(tied).account.recoveryCandidates!.map((c) => c.eventId), tied.slice(0, n).map((r) => r.id))
+  }
 })
 
 /** A passkey sign-in by `account` to a resource in `resourceTenantId`; `result` 'MFA successfully completed' is a fresh passkey step. */
 const tenantPasskey = (id: string, hoursAgo: number, resourceTenantId: string, result = 'MFA successfully completed'): StoredSignIn => row({ id, hoursAgo, userId: 'account', resourceTenantId, isInteractive: true, authenticationRequirement: 'multiFactorAuthentication', authenticationDetails: [{ succeeded: true, authenticationMethod: 'Passkey (device-bound)', authenticationStepDateTime: iso(hoursAgo), authenticationStepResultDetail: result }] })
 
-test('newer passkey sign-ins that cannot be a recovery test do not push out the newest one that can', () => {
-  const n = RECOVERY_CANDIDATES_PER_PERSON
-  const passkey = (id: string, hoursAgo: number, result: string): StoredSignIn => tenantPasskey(id, hoursAgo, 'home-tenant', result)
-  // The drill: a fresh passkey step. After it, sign-ins whose passkey was previously satisfied, no fresh step.
-  const drill = passkey('drill', 200, 'MFA successfully completed')
-  const stale = Array.from({ length: n + 5 }, (_, i) => passkey(`stale-${i}`, i + 1, 'MFA requirement previously satisfied'))
-  const rows = [...stale, drill]
-  const scrambled = rows.map((r, i) => ({ r, k: (i * 7919) % rows.length })).sort((a, b) => a.k - b.k).map((x) => x.r)
-  for (const order of [rows, [...rows].reverse(), scrambled]) {
-    const kept = aggregate(order).account.recoveryCandidates!
-    assert.deepEqual(kept.map((c) => c.eventId), [...stale.slice(0, n).map((r) => r.id), 'drill'], 'the newest, then the drill, still newest first')
-    assert.equal(kept.at(-1)?.freshMethod, true)
-  }
-  // A newer sign-in that can be a test is among the newest, so nothing is added.
-  const fresh = passkey('fresh', 0.5, 'MFA successfully completed')
-  assert.deepEqual(aggregate([fresh, ...rows]).account.recoveryCandidates!.map((c) => c.eventId), [fresh.id, ...stale.slice(0, n - 1).map((r) => r.id)])
-})
-
-// Round-3 review: the cap restated part of Step 4's reading (roadmap/cleanupDone.ts
-// recoveryCandidateReadings) and missed the resource tenant, so fresh passkey
-// sign-ins to another tenant's resources, each of which Step 4 refuses, pushed
-// the home-tenant drill out.
-test('fresh passkey sign-ins to another tenant’s resources do not push out the home-tenant drill', () => {
-  const n = RECOVERY_CANDIDATES_PER_PERSON
-  const drill = tenantPasskey('drill', 200, 'home-tenant')
-  const away = Array.from({ length: n + 5 }, (_, i) => tenantPasskey(`away-${i}`, i + 1, 'other-tenant'))
-  const rows = [...away, drill]
-  const scrambled = rows.map((r, i) => ({ r, k: (i * 7919) % rows.length })).sort((a, b) => a.k - b.k).map((x) => x.r)
-  const newest = away.slice(0, n).map((r) => r.id)
-  for (const order of [rows, [...rows].reverse(), scrambled]) {
-    // The tenant known, in any case; not known, the newest that could be a test in each resource tenant.
-    for (const tenant of ['home-tenant', 'HOME-TENANT', null]) {
-      assert.deepEqual(aggregate(order, tenant).account.recoveryCandidates!.map((c) => c.eventId), [...newest, 'drill'], String(tenant))
+test('sign-ins that cannot be a recovery test, stale or to another tenant\'s resources, never push out the drill, and the read judges them in the tenant it reads', async () => {
+  // newer passkey sign-ins that cannot be a recovery test do not push out the newest one that can
+  {
+    const n = RECOVERY_CANDIDATES_PER_PERSON
+    const passkey = (id: string, hoursAgo: number, result: string): StoredSignIn => tenantPasskey(id, hoursAgo, 'home-tenant', result)
+    // The drill: a fresh passkey step. After it, sign-ins whose passkey was previously satisfied, no fresh step.
+    const drill = passkey('drill', 200, 'MFA successfully completed')
+    const stale = Array.from({ length: n + 5 }, (_, i) => passkey(`stale-${i}`, i + 1, 'MFA requirement previously satisfied'))
+    const rows = [...stale, drill]
+    const scrambled = rows.map((r, i) => ({ r, k: (i * 7919) % rows.length })).sort((a, b) => a.k - b.k).map((x) => x.r)
+    for (const order of [rows, [...rows].reverse(), scrambled]) {
+      const kept = aggregate(order).account.recoveryCandidates!
+      assert.deepEqual(kept.map((c) => c.eventId), [...stale.slice(0, n).map((r) => r.id), 'drill'], 'the newest, then the drill, still newest first')
+      assert.equal(kept.at(-1)?.freshMethod, true)
     }
-    // Read as the other tenant, the drill is the sign-in that cannot be its test, and nothing is added.
-    assert.deepEqual(aggregate(order, 'other-tenant').account.recoveryCandidates!.map((c) => c.eventId), newest)
+    // A newer sign-in that can be a test is among the newest, so nothing is added.
+    const fresh = passkey('fresh', 0.5, 'MFA successfully completed')
+    assert.deepEqual(aggregate([fresh, ...rows]).account.recoveryCandidates!.map((c) => c.eventId), [fresh.id, ...stale.slice(0, n - 1).map((r) => r.id)])
   }
-  // The kept drill is one Step 4 accepts, on the same reading.
-  const kept = aggregate(rows, 'home-tenant').account.recoveryCandidates!
-  assert.equal(whyNotRecoveryTest(kept.at(-1)!, 'account', 'home-tenant'), null)
-  assert.equal(whyNotRecoveryTest(kept[0], 'account', 'home-tenant'), 'The event belongs to a different resource tenant.')
-})
-
-test('the sign-in read judges recovery candidates in the tenant it reads', async () => {
-  const n = RECOVERY_CANDIDATES_PER_PERSON
-  // Newer sign-ins with no fresh passkey step, a fresh one to another tenant's resource, then the drill.
-  const stale = Array.from({ length: n + 5 }, (_, i) => tenantPasskey(`stale-${i}`, i + 1, 'home-tenant', 'MFA requirement previously satisfied'))
-  const rows = [...stale, tenantPasskey('away', 100, 'other-tenant'), tenantPasskey('drill', 200, 'home-tenant')]
-  const kept = async (over: Partial<LaneBDeps>): Promise<string[]> => (await runLaneB(deps([{ value: rows }], over))).perUser.account.recoveryCandidates!.map((c) => c.eventId)
-  const newest = stale.slice(0, n).map((r) => r.id)
-  assert.deepEqual(await kept({ tenantId: 'home-tenant' }), [...newest, 'drill'])
-  assert.deepEqual(await kept({}), [...newest, 'away', 'drill'], 'no tenant given: the newest that could be a test per resource tenant')
-})
-
-test('noteEnforced keeps the latest enforced record per policy, in any order, and is lastEnforcedOf a record at a time', () => {
-  const applied = (hoursAgo: number, result: string) => row({ hoursAgo, appliedConditionalAccessPolicies: [{ id: 'p1', result }, { id: 'p2', result: 'reportOnlySuccess' }] })
-  const rows = [applied(30, 'success'), applied(5, 'failure'), applied(2, 'reportOnlyFailure'), applied(12, 'success')]
-  for (const order of [rows, [...rows].reverse()]) {
-    const held = new Map<string, string>()
-    for (const r of order) noteEnforced(held, r)
-    assert.deepEqual([...held], [['p1', iso(5)]], 'report-only results are not enforced')
-    assert.deepEqual(held, lastEnforcedOf(order))
+  // fresh passkey sign-ins to another tenant’s resources do not push out the home-tenant drill
+  {
+  // Round-3 review: the cap restated part of Step 4's reading (roadmap/cleanupDone.ts
+  // recoveryCandidateReadings) and missed the resource tenant, so fresh passkey
+  // sign-ins to another tenant's resources, each of which Step 4 refuses, pushed
+  // the home-tenant drill out.
+    const n = RECOVERY_CANDIDATES_PER_PERSON
+    const drill = tenantPasskey('drill', 200, 'home-tenant')
+    const away = Array.from({ length: n + 5 }, (_, i) => tenantPasskey(`away-${i}`, i + 1, 'other-tenant'))
+    const rows = [...away, drill]
+    const scrambled = rows.map((r, i) => ({ r, k: (i * 7919) % rows.length })).sort((a, b) => a.k - b.k).map((x) => x.r)
+    const newest = away.slice(0, n).map((r) => r.id)
+    for (const order of [rows, [...rows].reverse(), scrambled]) {
+      // The tenant known, in any case; not known, the newest that could be a test in each resource tenant.
+      for (const tenant of ['home-tenant', 'HOME-TENANT', null]) {
+        assert.deepEqual(aggregate(order, tenant).account.recoveryCandidates!.map((c) => c.eventId), [...newest, 'drill'], String(tenant))
+      }
+      // Read as the other tenant, the drill is the sign-in that cannot be its test, and nothing is added.
+      assert.deepEqual(aggregate(order, 'other-tenant').account.recoveryCandidates!.map((c) => c.eventId), newest)
+    }
+    // The kept drill is one Step 4 accepts, on the same reading.
+    const kept = aggregate(rows, 'home-tenant').account.recoveryCandidates!
+    assert.equal(whyNotRecoveryTest(kept.at(-1)!, 'account', 'home-tenant'), null)
+    assert.equal(whyNotRecoveryTest(kept[0], 'account', 'home-tenant'), 'The event belongs to a different resource tenant.')
   }
-})
-
-test('the recovery audit read stays inside Entra directory-audit retention (30 days)', () => {
-  const now = Date.parse('2026-09-18T18:00:00.000Z')
-  const { since, url } = recoveryAuditRequest('https://graph.microsoft.com/beta', now)
-  // Graph refused the old 90-day request: "Minimum allowed time for activityDateTime is 8/18/2026".
-  assert.ok(Date.parse(since) >= Date.parse('2026-08-18T00:00:00.000Z'))
-  assert.equal(since, '2026-08-19T18:00:00.000Z')
-  assert.ok(url.startsWith('https://graph.microsoft.com/beta/auditLogs/directoryAudits?$filter='))
-  assert.ok(decodeURIComponent(url).includes(`activityDateTime ge ${since}`))
+  // the sign-in read judges recovery candidates in the tenant it reads
+  {
+    const n = RECOVERY_CANDIDATES_PER_PERSON
+    // Newer sign-ins with no fresh passkey step, a fresh one to another tenant's resource, then the drill.
+    const stale = Array.from({ length: n + 5 }, (_, i) => tenantPasskey(`stale-${i}`, i + 1, 'home-tenant', 'MFA requirement previously satisfied'))
+    const rows = [...stale, tenantPasskey('away', 100, 'other-tenant'), tenantPasskey('drill', 200, 'home-tenant')]
+    const kept = async (over: Partial<LaneBDeps>): Promise<string[]> => (await runLaneB(deps([{ value: rows }], over))).perUser.account.recoveryCandidates!.map((c) => c.eventId)
+    const newest = stale.slice(0, n).map((r) => r.id)
+    assert.deepEqual(await kept({ tenantId: 'home-tenant' }), [...newest, 'drill'])
+    assert.deepEqual(await kept({}), [...newest, 'away', 'drill'], 'no tenant given: the newest that could be a test per resource tenant')
+  }
 })

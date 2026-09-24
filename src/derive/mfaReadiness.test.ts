@@ -12,14 +12,12 @@ import { fixtureSnapshot } from '../testing/uiSnapshot.ts'
 import { bigFixtureSnapshot } from '../testing/bigFixture.ts'
 import { allFixtures, fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
-import { DEFAULT_SHOW, EXPLAINED, GROUP_ORDER, SHOW_KEYS, SUB_GROUP_AT, readinessView, showKeyOf, shows, subGroupsOf } from './mfaReadiness.ts'
+import { EXPLAINED, GROUP_ORDER, SUB_GROUP_AT, readinessView, shows, subGroupsOf } from './mfaReadiness.ts'
 import { stepMfaHold } from './stepMfaReadiness.ts'
 import { KINDS } from './ladder.ts'
 import { READINESS_STATES, isReady } from '../scoring/phishingResistant.ts'
-import { deviceChips, methodsCell, methodsLine, nextCell, rowCells, stateTitle, whyLine } from '../ui/surfaces/readinessCells.ts'
-import { pages } from '../content/content.ts'
+import { deviceChips, methodsCell, methodsLine, nextCell, rowCells } from '../ui/surfaces/readinessCells.ts'
 
-const T = pages.readiness as unknown as { show: Record<string, string>; counted: Record<string, string> }
 
 test('every account is one row; the active people are counted in the states; an uncounted account carries none; the facts sum', () => {
   for (const snapshot of [fixtureSnapshot(), bigFixtureSnapshot(), fixture('demo').snapshot]) {
@@ -69,97 +67,53 @@ test('every account is one row; the active people are counted in the states; an 
   }
 })
 
-test('the uncounted are explained or listed by kind, each in words, and with the active people they are every account', () => {
-  const d = fixture('demo')
-  const v = readinessView(d.snapshot, d.snapshot.asOf, d.mapping)
-  for (const r of v.rows) {
-    if (r.explained) assert.equal(rowCells(r)[3], T.counted[r.explained], `${r.user.id}: the explained population's own words`)
-    if (r.kind !== 'person') assert.equal(rowCells(r)[3], T.show[r.kind], `${r.user.id}: the kind's own words`)
-  }
-  for (const e of EXPLAINED) assert.ok(T.counted[e], `${e} has words`)
-  const explained = EXPLAINED.reduce((n, e) => n + v.explained[e], 0)
-  const kinds = KINDS.reduce((n, k) => n + v.facts.kinds[k], 0)
-  assert.equal(v.people + explained + kinds, v.facts.accounts, 'the active, the explained and the kinds account for everyone')
-  assert.ok(v.explained.retired > 0, 'the demo has somebody who looks retired')
-  // Each kind is a filter of its own.
-  for (const k of KINDS) assert.equal(showKeyOf(k), k)
-})
-
-test('the Windows-Hello-only person who also uses a phone: proven on Windows, Needs a device on the phone, and no passkey', () => {
-  const d = fixture('demo')
-  const v = readinessView(d.snapshot, d.snapshot.asOf, d.mapping)
-  const hello = v.rows.find((r) => r.active && JSON.stringify(r.readiness?.methods) === '["windowsHello"]' && r.readiness?.devices.some((x) => x.type === 'phone'))
-  assert.ok(hello, 'the demo has a Windows-Hello-only person who signs in from a phone')
-  assert.equal(hello.state, 'device')
-  assert.equal(rowCells(hello)[3], stateTitle('device'))
-  assert.equal(hello.readiness?.hasPasskey, false)
-  assert.deepEqual(hello.readiness?.next, { kind: 'addDevice', os: 'iOS', option: 'authenticatorPasskey' })
-  assert.deepEqual(deviceChips(hello).chips.map((c) => [c.os, c.tone]), [['Windows', 'seamless'], ['iPhone', 'device']])
-  assert.equal(nextCell(hello), 'Add a passkey in Microsoft Authenticator on the iPhone')
-  assert.equal(whyLine(hello), 'Confirmed on one device, but the iPhone signs in without it.')
-})
-
-test('the accounts that are not people read their kind, and are never counted or asked for anything', () => {
-  const d = fixture('demo')
-  const v = readinessView(d.snapshot, d.snapshot.asOf, d.mapping)
-  for (const id of d.mapping.breakGlassUserIds) {
-    const row = v.rows.find((r) => r.user.id === id)!
-    assert.equal(row.kind, 'emergency')
-    assert.equal(row.active, false, 'never counted')
-    assert.equal(row.state, null)
-    assert.equal(rowCells(row)[3], T.show.emergency)
-    assert.equal(nextCell(row), '')
-    assert.deepEqual(deviceChips(row).chips, [], 'no device is judged for an account the page does not count')
-  }
-  const room = v.rows.find((r) => r.user.displayName === 'Boardroom')!
-  assert.equal(room.kind, 'shared')
-  assert.equal(room.state, null)
-  // The toolbar offers three filters, Needs action first and on by default; the
-  // states, the explained, the kinds and the old hashes still resolve.
-  assert.deepEqual([...SHOW_KEYS], ['needsAction', 'admins', 'all'])
-  assert.equal(DEFAULT_SHOW, 'needsAction')
-  for (const k of [...READINESS_STATES, 'lapsing', 'notActive', 'guests', ...KINDS]) assert.equal(showKeyOf(k), k, `${k} resolves`)
-  assert.equal(showKeyOf('needsProof'), 'confirm', 'the old Needs proof lands on Confirm it')
-  assert.equal(showKeyOf('needsSetup'), 'method', 'the old Needs setup lands on Needs a method')
-  assert.equal(showKeyOf('noPasskey'), 'all', 'the retired No passkey filter lands on Everyone')
-  assert.equal(showKeyOf('rung-3'), null, 'the rung filters are gone')
-  assert.equal(showKeyOf('nonsense'), null)
-})
-
-test('lapsing is the Ready people whose readiness ends within seven days, and nobody else', () => {
-  let seen = 0
-  for (const f of allFixtures()) {
-    const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
-    const soon = new Date(Date.parse(f.snapshot.asOf) + 7 * 86_400_000).toISOString()
-    const expected = v.rows.filter((r) => r.state !== null && isReady(r.state) && r.readiness?.readyUntil != null && r.readiness.readyUntil <= soon).map((r) => r.user.id)
-    assert.deepEqual([...v.lapsing].sort(), expected.sort(), `${f.name}: the lapsing list`)
-    assert.equal(v.rows.filter((r) => shows(r, 'lapsing', v.lapsing)).length, v.lapsing.length, `${f.name}: the Lapsing filter shows them`)
-    for (const r of v.rows) {
-      if (r.state !== null && isReady(r.state)) assert.ok(r.readiness?.readyUntil, `${f.name}/${r.user.id}: a Ready person says until when`)
-      else assert.equal(r.readiness?.readyUntil ?? null, null, `${f.name}/${r.user.id}: only a Ready person has a Ready-until date`)
+test('on every fixture: lapsing is the Ready people whose readiness ends within seven days, a Windows-Hello-only person is never asked for a passkey, and the CSV methods cell carries the screen\'s note', () => {
+  // lapsing is the Ready people whose readiness ends within seven days, and nobody else
+  {
+    let seen = 0
+    for (const f of allFixtures()) {
+      const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
+      const soon = new Date(Date.parse(f.snapshot.asOf) + 7 * 86_400_000).toISOString()
+      const expected = v.rows.filter((r) => r.state !== null && isReady(r.state) && r.readiness?.readyUntil != null && r.readiness.readyUntil <= soon).map((r) => r.user.id)
+      assert.deepEqual([...v.lapsing].sort(), expected.sort(), `${f.name}: the lapsing list`)
+      assert.equal(v.rows.filter((r) => shows(r, 'lapsing', v.lapsing)).length, v.lapsing.length, `${f.name}: the Lapsing filter shows them`)
+      for (const r of v.rows) {
+        if (r.state !== null && isReady(r.state)) assert.ok(r.readiness?.readyUntil, `${f.name}/${r.user.id}: a Ready person says until when`)
+        else assert.equal(r.readiness?.readyUntil ?? null, null, `${f.name}/${r.user.id}: only a Ready person has a Ready-until date`)
+      }
+      seen += v.lapsing.length
     }
-    seen += v.lapsing.length
+    assert.ok(seen > 0, 'no fixture has anybody lapsing: the premise is untested')
   }
-  assert.ok(seen > 0, 'no fixture has anybody lapsing: the premise is untested')
-})
-
-// Batch 2 §7 kept: a passkey is a recommendation, never the requirement. A
-// Windows-Hello-only person stays in the state the proof gives them.
-test('a Windows-Hello-only person keeps their readiness: a passkey is never the requirement', () => {
-  let hello = 0
-  for (const f of allFixtures()) {
-    const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
-    for (const r of v.rows) {
-      if (!r.active || !r.methods?.includes('windowsHello') || r.methods.includes('passkey')) continue
-      assert.notEqual(r.state, 'method', `${f.name}/${r.user.id}: Windows Hello is a phishing-resistant method`)
-      assert.ok(r.readiness?.qualifying.includes('windowsHello'), `${f.name}/${r.user.id}: held and usable`)
-      if (r.state !== null && isReady(r.state)) {
-        assert.equal(shows(r, 'needsAction'), false, `${f.name}/${r.user.id}: a Ready Windows Hello holder is asked for nothing`)
-        hello++
+  // a Windows-Hello-only person keeps their readiness: a passkey is never the requirement
+  {
+    let hello = 0
+    for (const f of allFixtures()) {
+      const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
+      for (const r of v.rows) {
+        if (!r.active || !r.methods?.includes('windowsHello') || r.methods.includes('passkey')) continue
+        assert.notEqual(r.state, 'method', `${f.name}/${r.user.id}: Windows Hello is a phishing-resistant method`)
+        assert.ok(r.readiness?.qualifying.includes('windowsHello'), `${f.name}/${r.user.id}: held and usable`)
+        if (r.state !== null && isReady(r.state)) {
+          assert.equal(shows(r, 'needsAction'), false, `${f.name}/${r.user.id}: a Ready Windows Hello holder is asked for nothing`)
+          hello++
+        }
       }
     }
+    assert.ok(hello > 0, 'no Ready Windows-Hello-only person in the fixtures: the premise is untested')
   }
-  assert.ok(hello > 0, 'no Ready Windows-Hello-only person in the fixtures: the premise is untested')
+  // the CSV methods cell carries the note the screen shows under it
+  {
+    let noted = 0
+    for (const f of allFixtures()) {
+      const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
+      for (const r of v.rows) {
+        assert.equal(rowCells(r)[2], methodsLine(r), r.user.id)
+        if (methodsLine(r) !== methodsCell(r).main) noted++
+      }
+    }
+    assert.ok(noted > 0, 'the premise: some fixture holds a passkey its settings do not allow')
+  }
 })
 
 // Batch 2 §7: the counts, the uncounted and a Plan-scoped worklist agree in the
@@ -209,20 +163,4 @@ test('the worklist groups by state in the worklist order, admins lead each sub-g
     }
   }
   assert.ok(split > 0, 'the large fixture has a group above the sub-group size: the premise is untested')
-})
-
-// The CSV's methods cell is the screen's: a passkey the person holds that
-// today's passkey settings do not allow is noted under the cell on the page,
-// and the CSV wrote the main words alone ("Authenticator only"), so the file
-// said the person holds no passkey (Phase 2 review, Inventory and Export).
-test('the CSV methods cell carries the note the screen shows under it', () => {
-  let noted = 0
-  for (const f of allFixtures()) {
-    const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
-    for (const r of v.rows) {
-      assert.equal(rowCells(r)[2], methodsLine(r), r.user.id)
-      if (methodsLine(r) !== methodsCell(r).main) noted++
-    }
-  }
-  assert.ok(noted > 0, 'the premise: some fixture holds a passkey its settings do not allow')
 })

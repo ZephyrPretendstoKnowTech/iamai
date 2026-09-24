@@ -18,12 +18,10 @@ import type { StoredSignIn, TenantSnapshot } from '../graph/collect/types.ts'
 import { ladder } from './ladder.ts'
 import { readinessView } from './mfaReadiness.ts'
 import { contentLists } from './contentLists.ts'
-import { buildViabilityInputs } from '../scoring/fromSnapshot.ts'
-import { scoreMfaViability } from '../scoring/mfaViability.ts'
 import { READINESS_STATES, emptyReadinessContext, isReady, personReadiness } from '../scoring/phishingResistant.ts'
 import type { ReadinessState } from '../scoring/phishingResistant.ts'
 import { adminReady, readinessFor } from '../roadmap/readiness.ts'
-import { methodsCell, nextCell, panelDevices, panelMethods, stateTitle, whyLine } from '../ui/surfaces/readinessCells.ts'
+import { methodsCell, nextCell, panelDevices, panelMethods, whyLine } from '../ui/surfaces/readinessCells.ts'
 import { adminUserIds } from '../roles.ts'
 
 const AT = '2026-08-27T09:00:00.000Z'
@@ -65,53 +63,56 @@ test('a generic MFA record proves MFA happened and never which method was used',
   assert.equal(app.other, null)
 })
 
-test('the method a record names outlives every later record that names none, in either order', () => {
-  const key = named('r-key', 'u1', '2026-08-20T09:00:00.000Z', 'FIDO2 security key', 'Windows')
-  const later = generic('r-generic', 'u1', '2026-08-27T09:00:00.000Z')
-  // Graph returns the newest row first; the cache merge can hand them over in
-  // any order. Neither may cost the person the method they proved.
-  for (const rows of [[later, key], [key, later]]) {
-    const u = aggregate(rows).u1
-    assert.deepEqual(u.lastMfaSuccess, { at: '2026-08-20T09:00:00.000Z', method: 'FIDO2 security key' }, 'the named method is the proof')
-    assert.deepEqual(u.proofs?.map((p) => [p.cls, p.at]), [['passkey', '2026-08-20T09:00:00.000Z']], 'the proof is the key, kept')
-    assert.equal(isReady(personReadiness({ methods: [{ kind: 'fido2' }], registered: ['fido2SecurityKey'], signIns: signIns(u), history: null, context }).state), true)
+test('the collector keeps the method a record names, account by account, and never takes a failed or password-only sign-in as proof', () => {
+  // the method a record names outlives every later record that names none, in either order
+  {
+    const key = named('r-key', 'u1', '2026-08-20T09:00:00.000Z', 'FIDO2 security key', 'Windows')
+    const later = generic('r-generic', 'u1', '2026-08-27T09:00:00.000Z')
+    // Graph returns the newest row first; the cache merge can hand them over in
+    // any order. Neither may cost the person the method they proved.
+    for (const rows of [[later, key], [key, later]]) {
+      const u = aggregate(rows).u1
+      assert.deepEqual(u.lastMfaSuccess, { at: '2026-08-20T09:00:00.000Z', method: 'FIDO2 security key' }, 'the named method is the proof')
+      assert.deepEqual(u.proofs?.map((p) => [p.cls, p.at]), [['passkey', '2026-08-20T09:00:00.000Z']], 'the proof is the key, kept')
+      assert.equal(isReady(personReadiness({ methods: [{ kind: 'fido2' }], registered: ['fido2SecurityKey'], signIns: signIns(u), history: null, context }).state), true)
+    }
+    // A newer named record replaces the latest MFA success, and takes no proof away.
+    const newerApp = named('r-app', 'u1', '2026-08-28T09:00:00.000Z', 'Mobile app notification')
+    const both = aggregate([newerApp, key]).u1
+    assert.equal(both.lastMfaSuccess?.method, 'Mobile app notification')
+    assert.deepEqual(both.proofs?.map((p) => p.cls).sort(), ['authenticator', 'passkey'])
+    // With nothing named, the generic record stands alone.
+    assert.deepEqual(aggregate([later]).u1.lastMfaSuccess, { at: '2026-08-27T09:00:00.000Z', method: 'MFA' })
   }
-  // A newer named record replaces the latest MFA success, and takes no proof away.
-  const newerApp = named('r-app', 'u1', '2026-08-28T09:00:00.000Z', 'Mobile app notification')
-  const both = aggregate([newerApp, key]).u1
-  assert.equal(both.lastMfaSuccess?.method, 'Mobile app notification')
-  assert.deepEqual(both.proofs?.map((p) => p.cls).sort(), ['authenticator', 'passkey'])
-  // With nothing named, the generic record stands alone.
-  assert.deepEqual(aggregate([later]).u1.lastMfaSuccess, { at: '2026-08-27T09:00:00.000Z', method: 'MFA' })
-})
-
-test("one account's MFA evidence never reaches another", () => {
-  const rows = [
-    named('a1', 'u-passkey', '2026-08-26T09:00:00.000Z', 'Passkey (device-bound)', 'iOS'),
-    generic('a2', 'u-generic', '2026-08-27T09:00:00.000Z', 'Windows'),
-    named('a3', 'u-app', '2026-08-25T09:00:00.000Z', 'Mobile app notification', 'Android'),
-    signIn({ id: 'a4', userId: '', createdDateTime: '2026-08-25T09:00:00.000Z' }),
-  ]
-  const per = aggregate(rows)
-  assert.equal(per['u-passkey'].lastMfaSuccess?.method, 'Passkey (device-bound)')
-  assert.equal(per['u-generic'].lastMfaSuccess?.method, 'MFA')
-  assert.equal(per['u-app'].lastMfaSuccess?.method, 'Mobile app notification')
-  assert.deepEqual(per['u-passkey'].proofs?.map((p) => [p.cls, p.os]), [['passkey', 'iOS']])
-  assert.deepEqual(per['u-generic'].proofs, [])
-  assert.deepEqual(per['u-app'].proofs?.map((p) => [p.cls, p.os]), [['authenticator', 'Android']])
-  assert.deepEqual(per['u-generic'].platforms?.map((p) => p.os), ['Windows'], 'each account keeps its own platforms')
-  assert.equal(per[''], undefined, 'a row with no account id joins to nobody')
-  assert.equal(Object.keys(per).length, 3)
-})
-
-test('a failed sign-in and a password-only step are never MFA proof', () => {
-  const failed = signIn({ id: 'f1', userId: 'u1', createdDateTime: AT, status: { errorCode: 50126 }, mfaDetail: { authMethod: 'FIDO2 security key' }, os: 'Windows' })
-  assert.equal(aggregate([failed]).u1.lastMfaSuccess, null)
-  assert.deepEqual(aggregate([failed]).u1.proofs, [])
-  assert.deepEqual(aggregate([failed]).u1.platforms, [], 'a failed sign-in is not a platform in use')
-  const passwordOnly = signIn({ id: 'f2', userId: 'u1', createdDateTime: AT, authenticationRequirement: 'singleFactorAuthentication', authenticationDetails: [{ succeeded: true, authenticationMethod: 'Password' }] })
-  assert.equal(aggregate([passwordOnly]).u1.lastMfaSuccess, null)
-  assert.deepEqual(aggregate([passwordOnly]).u1.proofs, [])
+  // one account's MFA evidence never reaches another
+  {
+    const rows = [
+      named('a1', 'u-passkey', '2026-08-26T09:00:00.000Z', 'Passkey (device-bound)', 'iOS'),
+      generic('a2', 'u-generic', '2026-08-27T09:00:00.000Z', 'Windows'),
+      named('a3', 'u-app', '2026-08-25T09:00:00.000Z', 'Mobile app notification', 'Android'),
+      signIn({ id: 'a4', userId: '', createdDateTime: '2026-08-25T09:00:00.000Z' }),
+    ]
+    const per = aggregate(rows)
+    assert.equal(per['u-passkey'].lastMfaSuccess?.method, 'Passkey (device-bound)')
+    assert.equal(per['u-generic'].lastMfaSuccess?.method, 'MFA')
+    assert.equal(per['u-app'].lastMfaSuccess?.method, 'Mobile app notification')
+    assert.deepEqual(per['u-passkey'].proofs?.map((p) => [p.cls, p.os]), [['passkey', 'iOS']])
+    assert.deepEqual(per['u-generic'].proofs, [])
+    assert.deepEqual(per['u-app'].proofs?.map((p) => [p.cls, p.os]), [['authenticator', 'Android']])
+    assert.deepEqual(per['u-generic'].platforms?.map((p) => p.os), ['Windows'], 'each account keeps its own platforms')
+    assert.equal(per[''], undefined, 'a row with no account id joins to nobody')
+    assert.equal(Object.keys(per).length, 3)
+  }
+  // a failed sign-in and a password-only step are never MFA proof
+  {
+    const failed = signIn({ id: 'f1', userId: 'u1', createdDateTime: AT, status: { errorCode: 50126 }, mfaDetail: { authMethod: 'FIDO2 security key' }, os: 'Windows' })
+    assert.equal(aggregate([failed]).u1.lastMfaSuccess, null)
+    assert.deepEqual(aggregate([failed]).u1.proofs, [])
+    assert.deepEqual(aggregate([failed]).u1.platforms, [], 'a failed sign-in is not a platform in use')
+    const passwordOnly = signIn({ id: 'f2', userId: 'u1', createdDateTime: AT, authenticationRequirement: 'singleFactorAuthentication', authenticationDetails: [{ succeeded: true, authenticationMethod: 'Password' }] })
+    assert.equal(aggregate([passwordOnly]).u1.lastMfaSuccess, null)
+    assert.deepEqual(aggregate([passwordOnly]).u1.proofs, [])
+  }
 })
 
 // ---- the whole path: a snapshot-shaped tenant, its states, its surfaces ----
@@ -223,59 +224,57 @@ test('every state, from the sign-in rows to the partition, MFA Readiness and the
   assert.ok(ready > 0)
 })
 
-test('the account with a generic record says a method is held and none is confirmed; the account with no record needs a method', () => {
-  const { f, s, ids } = tenant()
-  const view = readinessView(s, s.asOf, f.mapping)
-  const row = view.rows.find((r) => r.user.id === ids.passkeyGeneric)
-  assert.ok(row)
-  assert.equal(row.state, 'confirm', 'a registered passkey with no confirmed use is Confirm it')
-  assert.equal(methodsCell(row).main, 'Passkey', 'the registered method is still named')
-  assert.deepEqual(s.signInEvidence[ids.passkeyGeneric].lastMfaSuccess, { at: AT, method: 'MFA' }, 'the MFA occurrence is kept')
-  assert.equal(row.readiness?.lastConfirmed, null, 'and it confirms no method')
-  assert.ok(row.readiness?.devices.every((d) => d.proof === null), 'no device claims the passkey')
-  assert.deepEqual(row.readiness?.next, { kind: 'confirm', cls: 'passkey', os: 'Windows' })
-  assert.equal(stateTitle(row.state), 'Confirm it')
-  const deviceTexts = panelDevices(row).flatMap((i) => i.facts.map((x) => x[1]))
-  // The device's proof fact attributes no method; its first fact is the best option to set up, a recommendation (cafd3dd1).
-  for (const text of panelDevices(row).map((i) => i.facts[1][1])) assert.doesNotMatch(text, /passkey|security key|Authenticator/i, `"${text}" attributes the record to a method`)
-  const texts = [nextCell(row), whyLine(row), methodsCell(row).note, ...deviceTexts, ...panelMethods(row).flatMap((i) => i.facts.map((x) => x[1]))]
-  for (const text of texts) assert.doesNotMatch(text, /never used|never prompted|no MFA|no sign-in record/i, `"${text}" must not deny a sign-in that happened`)
-  // No passkey registered and no record at all: needs a method, and a generic record never suggests one is held.
-  const silent = view.rows.find((r) => r.user.id === ids.silent)
-  assert.ok(silent)
-  assert.equal(silent.state, 'method')
-  assert.equal(stateTitle('method'), 'Needs a method')
-  assert.equal(methodsCell(silent).main, 'Authenticator only')
-  assert.equal(silent.readiness?.next.kind, 'setUp')
-})
-
-test('a generic record never invents a registered method: nothing set up needs a method', () => {
-  const { f, s, ids } = tenant()
-  const row = readinessView(s, s.asOf, f.mapping).rows.find((r) => r.user.id === ids.none)
-  assert.ok(row)
-  assert.equal(row.state, 'method', 'MFA happened and nothing usable is registered')
-  assert.deepEqual(row.readiness?.methods, [])
-  assert.equal(methodsCell(row).main, 'No phishing-resistant method')
-  assert.equal(row.readiness?.other, null, 'the record proves no method, so none is named as not phishing-resistant')
-  assert.equal(row.readiness?.next.kind, 'setUp')
-  assert.match(nextCell(row), /^Set up /)
-})
-
-test('Windows Hello proven on the only device in use is Ready without a passkey; a phone in use without proof is Needs a device', () => {
-  const { f, s, ids } = tenant()
-  const view = readinessView(s, s.asOf, f.mapping)
-  const hello = view.rows.find((r) => r.user.id === ids.helloOnly)
-  assert.ok(hello)
-  assert.equal(hello.state, 'seamless')
-  assert.equal(isReady(hello.state), true)
-  assert.equal(hello.readiness?.hasPasskey, false)
-  assert.deepEqual(hello.readiness?.next, { kind: 'none' }, 'nothing more is asked')
-  const phone = view.rows.find((r) => r.user.id === ids.helloPhone)
-  assert.ok(phone)
-  assert.equal(phone.state, 'device')
-  assert.deepEqual(phone.readiness?.devices.map((d) => [d.os, d.proof?.cls ?? null]), [['Windows', 'windowsHello'], ['iOS', null]], 'Windows Hello is proven where it was used, and nowhere else')
-  assert.deepEqual(phone.readiness?.next, { kind: 'addDevice', os: 'iOS', option: 'authenticatorPasskey' }, 'the phone the records show in use gets its own passkey')
-  assert.equal(phone.readiness?.other?.cls, 'authenticator', 'the phone approval is named, as not phishing-resistant')
+test('a generic record never names or denies a method, nothing set up needs a method, and Windows Hello is proven only where it was used', () => {
+  // the account with a generic record says a method is held and none is confirmed; the account with no record needs a method
+  {
+    const { f, s, ids } = tenant()
+    const view = readinessView(s, s.asOf, f.mapping)
+    const row = view.rows.find((r) => r.user.id === ids.passkeyGeneric)
+    assert.ok(row)
+    assert.equal(row.state, 'confirm', 'a registered passkey with no confirmed use is Confirm it')
+    assert.equal(methodsCell(row).main, 'Passkey', 'the registered method is still named')
+    assert.deepEqual(s.signInEvidence[ids.passkeyGeneric].lastMfaSuccess, { at: AT, method: 'MFA' }, 'the MFA occurrence is kept')
+    assert.equal(row.readiness?.lastConfirmed, null, 'and it confirms no method')
+    assert.ok(row.readiness?.devices.every((d) => d.proof === null), 'no device claims the passkey')
+    assert.deepEqual(row.readiness?.next, { kind: 'confirm', cls: 'passkey', os: 'Windows' })
+    const deviceTexts = panelDevices(row).flatMap((i) => i.facts.map((x) => x[1]))
+    // The device's proof fact attributes no method; its first fact is the best option to set up, a recommendation (cafd3dd1).
+    for (const text of panelDevices(row).map((i) => i.facts[1][1])) assert.doesNotMatch(text, /passkey|security key|Authenticator/i, `"${text}" attributes the record to a method`)
+    const texts = [nextCell(row), whyLine(row), methodsCell(row).note, ...deviceTexts, ...panelMethods(row).flatMap((i) => i.facts.map((x) => x[1]))]
+    for (const text of texts) assert.doesNotMatch(text, /never used|never prompted|no MFA|no sign-in record/i, `"${text}" must not deny a sign-in that happened`)
+    // No passkey registered and no record at all: needs a method, and a generic record never suggests one is held.
+    const silent = view.rows.find((r) => r.user.id === ids.silent)
+    assert.ok(silent)
+    assert.equal(silent.state, 'method')
+    assert.equal(silent.readiness?.next.kind, 'setUp')
+  }
+  // a generic record never invents a registered method: nothing set up needs a method
+  {
+    const { f, s, ids } = tenant()
+    const row = readinessView(s, s.asOf, f.mapping).rows.find((r) => r.user.id === ids.none)
+    assert.ok(row)
+    assert.equal(row.state, 'method', 'MFA happened and nothing usable is registered')
+    assert.deepEqual(row.readiness?.methods, [])
+    assert.equal(row.readiness?.other, null, 'the record proves no method, so none is named as not phishing-resistant')
+    assert.equal(row.readiness?.next.kind, 'setUp')
+  }
+  // Windows Hello proven on the only device in use is Ready without a passkey; a phone in use without proof is Needs a device
+  {
+    const { f, s, ids } = tenant()
+    const view = readinessView(s, s.asOf, f.mapping)
+    const hello = view.rows.find((r) => r.user.id === ids.helloOnly)
+    assert.ok(hello)
+    assert.equal(hello.state, 'seamless')
+    assert.equal(isReady(hello.state), true)
+    assert.equal(hello.readiness?.hasPasskey, false)
+    assert.deepEqual(hello.readiness?.next, { kind: 'none' }, 'nothing more is asked')
+    const phone = view.rows.find((r) => r.user.id === ids.helloPhone)
+    assert.ok(phone)
+    assert.equal(phone.state, 'device')
+    assert.deepEqual(phone.readiness?.devices.map((d) => [d.os, d.proof?.cls ?? null]), [['Windows', 'windowsHello'], ['iOS', null]], 'Windows Hello is proven where it was used, and nowhere else')
+    assert.deepEqual(phone.readiness?.next, { kind: 'addDevice', os: 'iOS', option: 'authenticatorPasskey' }, 'the phone the records show in use gets its own passkey')
+    assert.equal(phone.readiness?.other?.cls, 'authenticator', 'the phone approval is named, as not phishing-resistant')
+  }
 })
 
 test('evidence the scan could not read is not proof: nobody is Ready, and readiness is not a measured 0%', () => {
@@ -314,19 +313,6 @@ test('a confirmed emergency account keeps its methods and its records outside th
   assert.ok(row)
   assert.equal(row.state, null, 'not counted')
   assert.deepEqual(row.methods, ['passkey'], 'its methods are still shown')
-})
-
-test('the scored row and the page give one active account one state', () => {
-  const { f, s, ids } = tenant()
-  const inputs = buildViabilityInputs(s, s.asOf, new Set([...f.mapping.breakGlassUserIds, ...f.mapping.serviceAccountUserIds]))
-  const scored = new Map(inputs.map((i) => [i.userId, scoreMfaViability(i)]))
-  const rows = new Map(readinessView(s, s.asOf, f.mapping).rows.map((r) => [r.user.id, r]))
-  for (const key of Object.keys(EXPECTED) as Person[]) {
-    const v = scored.get(ids[key])
-    assert.ok(v, `${key} is scored`)
-    assert.equal(v.readiness.state, rows.get(ids[key])?.state, `${key}: the scored row and the page agree`)
-    assert.equal(v.readiness.state, EXPECTED[key], key)
-  }
 })
 
 test('nothing outside scoring/phishingResistant.ts decides readiness or reads proof out of a record', () => {

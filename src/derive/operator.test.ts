@@ -28,13 +28,34 @@ function signedInAs(s: TenantSnapshot, id: string | null): TenantSnapshot {
   return c
 }
 
-test("the operator is the scan's /me row, read in one place; the plan and the validation report agree on it", () => {
-  const s = fixtureSnapshot()
-  assert.equal(operatorUserId(s), 'u-1')
-  assert.equal(reportOperatorIdOf(s), 'u-1')
-  const noMe = signedInAs(s, null)
-  assert.equal(operatorUserId(noMe), null)
-  assert.equal(reportOperatorIdOf(noMe), null)
+test('the operator is the scan\'s /me row, read in one place, and a person like any other: a stale directory sign-in reads Not active, and a mailbox shape is a mailbox', () => {
+  // the operator is the scan's /me row, read in one place; the plan and the validation report agree on it
+  {
+    const s = fixtureSnapshot()
+    assert.equal(operatorUserId(s), 'u-1')
+    assert.equal(reportOperatorIdOf(s), 'u-1')
+    const noMe = signedInAs(s, null)
+    assert.equal(operatorUserId(noMe), null)
+    assert.equal(reportOperatorIdOf(noMe), null)
+  }
+  // the operator is a person like any other: a stale directory sign-in reads Not active, and a mailbox shape is a mailbox
+  {
+    const s = fixtureSnapshot()
+    const me = s.users.find((u) => u.id === 'u-1')!
+    me.lastSuccessfulSignIn = new Date(Date.parse(s.asOf) - 200 * 86_400_000).toISOString()
+    delete s.signInEvidence['u-1']
+    assert.ok(!activePeopleIds(s, s.asOf).includes('u-1'), 'not active by the directory')
+    assert.ok(notActiveUsers(s, s.asOf).some((u) => u.id === 'u-1'))
+    const row = readinessView(s, s.asOf, MAPPING).rows.find((r) => r.user.id === 'u-1')!
+    assert.equal(row.active, false)
+    assert.equal(row.state, null, 'not active is not counted in a readiness state')
+    assert.ok(row.readiness?.methods?.includes('passkey') && row.readiness.methods.includes('authenticator'), 'the passkey and the app set up: the methods are still read')
+    // The same shape on the operator as on anyone else: a mailbox is not a person.
+    me.lastSuccessfulSignIn = null
+    me.assignedPlans = []
+    me.mail = 'alex@example.com'
+    assert.ok(!personAccounts(s).some((u) => u.id === 'u-1'), 'a mailbox shape is a mailbox, signed in or not')
+  }
 })
 
 test('a second signed-in account produces identical facts: MFA Readiness, the partition and the campaign read the same numbers whoever ran the scan', () => {
@@ -52,22 +73,4 @@ test('a second signed-in account produces identical facts: MFA Readiness, the pa
     const populations = runs.map((s) => runFixture({ ...f, snapshot: s }).steps.filter((st) => st.id !== OPERATOR_PASSKEY_STEP_ID).map((st) => [st.id, [...st.population.ids].sort().join(',')]))
     for (const other of populations.slice(1)) assert.deepEqual(other, populations[0], `${name}: a step's population changes with the signed-in account`)
   }
-})
-
-test('the operator is a person like any other: a stale directory sign-in reads Not active, and a mailbox shape is a mailbox', () => {
-  const s = fixtureSnapshot()
-  const me = s.users.find((u) => u.id === 'u-1')!
-  me.lastSuccessfulSignIn = new Date(Date.parse(s.asOf) - 200 * 86_400_000).toISOString()
-  delete s.signInEvidence['u-1']
-  assert.ok(!activePeopleIds(s, s.asOf).includes('u-1'), 'not active by the directory')
-  assert.ok(notActiveUsers(s, s.asOf).some((u) => u.id === 'u-1'))
-  const row = readinessView(s, s.asOf, MAPPING).rows.find((r) => r.user.id === 'u-1')!
-  assert.equal(row.active, false)
-  assert.equal(row.state, null, 'not active is not counted in a readiness state')
-  assert.ok(row.readiness?.methods?.includes('passkey') && row.readiness.methods.includes('authenticator'), 'the passkey and the app set up: the methods are still read')
-  // The same shape on the operator as on anyone else: a mailbox is not a person.
-  me.lastSuccessfulSignIn = null
-  me.assignedPlans = []
-  me.mail = 'alex@example.com'
-  assert.ok(!personAccounts(s).some((u) => u.id === 'u-1'), 'a mailbox shape is a mailbox, signed in or not')
 })

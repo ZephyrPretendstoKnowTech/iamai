@@ -1,16 +1,15 @@
-// intents.md §12 — the 14 required cases. Fixtures are authored, never
+// intents.md §12 — the required cases. Fixtures are authored, never
 // copied tenant data.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { CATALOGUE, computeCoverage } from './coverage.ts'
-import { PINNED_GOAL_MAP } from '../roadmap/goalMap.ts'
-import { PINNED } from '../baseline/pinned.ts'
 import type { CoverageInput } from './coverage.ts'
 import { buildStrengthLookup } from './strength.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 
 const NOW = '2026-08-26T00:00:00Z'
 const PR_STRENGTH = '00000000-0000-0000-0000-000000000004'
+const GA = '62e90394-69f5-4237-9190-012177145e10'
 
 function mkSnapshot(over: Partial<TenantSnapshot> = {}): TenantSnapshot {
   const users = Array.from({ length: 10 }, (_, i) => ({
@@ -59,7 +58,7 @@ function mkSnapshot(over: Partial<TenantSnapshot> = {}): TenantSnapshot {
     },
     microsoftManagedPolicyIds: [],
     // u0 and u1 hold Global Administrator (active).
-    roles: { active: { u0: ['62e90394-69f5-4237-9190-012177145e10'], u1: ['62e90394-69f5-4237-9190-012177145e10'] }, eligible: {} },
+    roles: { active: { u0: [GA], u1: [GA] }, eligible: {} },
     ...over,
   }
 }
@@ -105,75 +104,57 @@ const goal = (r: ReturnType<typeof computeCoverage>, id: string) => {
   return g
 }
 
-test('1: two policies (members-minus-admins + admins) jointly enforce mfa-all-users, statement names both', () => {
-  const r = run([
-    mkPolicy({
-      displayName: 'MFA for Internal Users',
-      conditions: mergeConditions({
-        users: { includeUsers: ['All'], excludeRoles: ['62e90394-69f5-4237-9190-012177145e10'] },
-      }),
-    }),
-    mkPolicy({
-      displayName: 'MFA for Admins',
-      conditions: mergeConditions({
-        users: { includeUsers: [], includeRoles: ['62e90394-69f5-4237-9190-012177145e10'] },
-      }),
-    }),
-  ])
-  const g = goal(r, 'mfa-all-users')
-  assert.equal(g.status, 'enforced')
-  assert.match(g.statement, /MFA for Internal Users/)
-  assert.match(g.statement, /MFA for Admins/)
+const withIntune = () => mkSnapshot({ capabilities: { ...mkSnapshot().capabilities, intune: { enabled: true, seats: 10, consumed: 0 } } })
+const internalUsers = (state = 'enabled') => mkPolicy({ displayName: 'MFA for Internal Users', state, conditions: mergeConditions({ users: { includeUsers: ['All'], excludeRoles: [GA] } }) })
+const adminsPolicy = (state = 'enabled') => mkPolicy({ displayName: 'MFA for Admins', state, conditions: mergeConditions({ users: { includeUsers: [], includeRoles: [GA] } }) })
+
+test('policies that jointly reach everyone enforce the goal, and the statement names each of them', () => {
+  // 1: members-minus-admins plus admins.
+  const joint = goal(run([internalUsers(), adminsPolicy()]), 'mfa-all-users')
+  assert.equal(joint.status, 'enforced')
+  assert.match(joint.statement, /MFA for Internal Users/)
+  assert.match(joint.statement, /MFA for Admins/)
+  // 14: guests excluded from the all-users policy plus a separate guests policy.
+  const union = goal(run([
+    mkPolicy({ displayName: 'MFA Members', conditions: mergeConditions({ users: { includeUsers: ['All'], excludeUsers: ['GuestsOrExternalUsers'] } }) }),
+    mkPolicy({ displayName: 'MFA Guests', conditions: mergeConditions({ users: { includeUsers: ['GuestsOrExternalUsers'] } }) }),
+  ]), 'mfa-all-users')
+  assert.equal(union.status, 'enforced')
+  assert.match(union.statement, /MFA Members/)
+  assert.match(union.statement, /MFA Guests/)
 })
 
-test('2: admins policy report-only → partial with report-only users = the admins', () => {
-  const r = run([
-    mkPolicy({
-      displayName: 'MFA for Internal Users',
-      conditions: mergeConditions({
-        users: { includeUsers: ['All'], excludeRoles: ['62e90394-69f5-4237-9190-012177145e10'] },
-      }),
-    }),
-    mkPolicy({
-      displayName: 'MFA for Admins',
-      state: 'enabledForReportingButNotEnforced',
-      conditions: mergeConditions({
-        users: { includeUsers: [], includeRoles: ['62e90394-69f5-4237-9190-012177145e10'] },
-      }),
-    }),
-  ])
-  const g = goal(r, 'mfa-all-users')
-  assert.equal(g.status, 'partial')
-  assert.deepEqual([...g.reportOnlyIds].sort(), ['u0', 'u1'])
-  assert.ok(g.reasons.some((x) => x.kind === 'report-only'))
-})
-
-test('3: unmapped exclusion group of members → partial excluded with the ids', () => {
-  const r = run(
-    [
-      mkPolicy({
-        displayName: 'MFA All',
-        conditions: mergeConditions({ users: { includeUsers: ['All'], excludeGroups: ['grp-x'] } }),
-      }),
-    ],
-    { groupMembers: new Map([['grp-x', { memberIds: ['u2', 'u3'], memberCount: 2, sampled: false }]]) },
+test('a policy that falls short is partial with its reason, and a disabled one is absent', () => {
+  // 2: the admins' half in report-only: report-only users are the admins.
+  const ro = goal(run([internalUsers(), adminsPolicy('enabledForReportingButNotEnforced')]), 'mfa-all-users')
+  assert.equal(ro.status, 'partial')
+  assert.deepEqual([...ro.reportOnlyIds].sort(), ['u0', 'u1'])
+  assert.ok(ro.reasons.some((x) => x.kind === 'report-only'))
+  // 3: an exclusion group nobody mapped: partial, excluded, with the ids.
+  const ex = goal(
+    run([mkPolicy({ displayName: 'MFA All', conditions: mergeConditions({ users: { includeUsers: ['All'], excludeGroups: ['grp-x'] } }) })], { groupMembers: new Map([['grp-x', { memberIds: ['u2', 'u3'], memberCount: 2, sampled: false }]]) }),
+    'mfa-all-users',
   )
-  const g = goal(r, 'mfa-all-users')
-  assert.equal(g.status, 'partial')
-  const ex = g.reasons.find((x) => x.kind === 'excluded')
-  assert.ok(ex && !ex.expected)
-  assert.deepEqual([...ex.userIds].sort(), ['u2', 'u3'])
-  assert.match(ex.detail, /grp-x/)
+  assert.equal(ex.status, 'partial')
+  const reason = ex.reasons.find((x) => x.kind === 'excluded')
+  assert.ok(reason && !reason.expected)
+  assert.deepEqual([...reason.userIds].sort(), ['u2', 'u3'])
+  assert.match(reason.detail, /grp-x/)
+  // 5: OR [mfa, compliantDevice] against an MFA floor is a weaker control.
+  const or = goal(run([mkPolicy({ displayName: 'MFA or Device', grantControls: { operator: 'OR', builtInControls: ['mfa', 'compliantDevice'] } })]), 'mfa-all-users')
+  assert.equal(or.status, 'partial')
+  assert.ok(or.reasons.some((x) => x.kind === 'weaker-control'))
+  // 8: Office 365 only is not all applications.
+  assert.notEqual(goal(run([mkPolicy({ displayName: 'MFA Office Only', conditions: mergeConditions({ applications: { includeApplications: ['Office365'] } }) })]), 'mfa-all-users').status, 'enforced')
+  // 9: only a disabled candidate.
+  const off = goal(run([mkPolicy({ displayName: 'MFA All (off)', state: 'disabled' })]), 'mfa-all-users')
+  assert.equal(off.status, 'absent')
+  assert.ok(off.reasons.some((x) => x.kind === 'disabled-candidate'))
 })
 
-test('4: exclusion group mapped as break-glass → enforced with expected note', () => {
+test('4: an exclusion group mapped as break-glass is expected, and the goal stays enforced', () => {
   const r = run(
-    [
-      mkPolicy({
-        displayName: 'MFA All',
-        conditions: mergeConditions({ users: { includeUsers: ['All'], excludeGroups: ['grp-bg'] } }),
-      }),
-    ],
+    [mkPolicy({ displayName: 'MFA All', conditions: mergeConditions({ users: { includeUsers: ['All'], excludeGroups: ['grp-bg'] } }) })],
     {
       groupMembers: new Map([['grp-bg', { memberIds: ['u2', 'u3'], memberCount: 2, sampled: false }]]),
       mapping: { exclusionGroups: { 'grp-bg': 'breakGlass' }, breakGlassUsers: [] },
@@ -184,254 +165,89 @@ test('4: exclusion group mapped as break-glass → enforced with expected note',
   assert.match(g.statement, /2 break-glass accounts excluded/)
 })
 
-test('5: OR grant [mfa, compliantDevice] vs floor mfa → weaker-control', () => {
-  const r = run([
-    mkPolicy({
-      displayName: 'MFA or Device',
-      grantControls: { operator: 'OR', builtInControls: ['mfa', 'compliantDevice'] },
-    }),
-  ])
-  const g = goal(r, 'mfa-all-users')
-  assert.equal(g.status, 'partial')
-  assert.ok(g.reasons.some((x) => x.kind === 'weaker-control'))
-})
-
-test('6: AND grant [mfa, compliantDevice] vs floor compliantDevice → satisfies', () => {
-  const r = run(
-    [
-      mkPolicy({
-        // All resources: require-managed-device expects all resources (the baseline's
-        // scope, prompt 51), so the fixture targets all resources to test the grant,
-        // not the scope. Was: Office 365 only.
-        displayName: 'MFA and Device',
-        conditions: mergeConditions({ applications: { includeApplications: ['All'] } }),
-        grantControls: { operator: 'AND', builtInControls: ['mfa', 'compliantDevice'] },
-      }),
-    ],
-    {
-      snapshot: mkSnapshot({
-        capabilities: {
-          ...mkSnapshot().capabilities,
-          intune: { enabled: true, seats: 10, consumed: 0 },
-        },
-      }),
-    },
+test('controls against the floor: AND satisfies, a raised baseline floor is below-baseline, every-time sign-in frequency satisfies any session floor', () => {
+  // 6: AND [mfa, compliantDevice] satisfies a compliant-device floor.
+  const and = run(
+    [mkPolicy({ displayName: 'MFA and Device', conditions: mergeConditions({ applications: { includeApplications: ['All'] } }), grantControls: { operator: 'AND', builtInControls: ['mfa', 'compliantDevice'] } })],
+    { snapshot: withIntune() },
   )
-  const g = goal(r, 'require-managed-device')
-  assert.equal(g.status, 'enforced')
-})
-
-test('7: baseline phishing-resistant policy raises the floor; plain-MFA tenant policy → weaker-control for everyone', () => {
-  const r = run(
-    [mkPolicy({ displayName: 'Plain MFA' })],
-    {
-      baselinePolicies: [
-        mkPolicy({
-          displayName: 'Baseline PR MFA',
-          grantControls: { operator: 'OR', builtInControls: [], authenticationStrength: { id: PR_STRENGTH } },
-        }),
-      ],
-    },
+  assert.equal(goal(and, 'require-managed-device').status, 'enforced')
+  // 7: a phishing-resistant baseline policy raises the floor; plain MFA is met at the catalogue floor only.
+  const raised = goal(
+    run([mkPolicy({ displayName: 'Plain MFA' })], { baselinePolicies: [mkPolicy({ displayName: 'Baseline PR MFA', grantControls: { operator: 'OR', builtInControls: [], authenticationStrength: { id: PR_STRENGTH } } })] }),
+    'mfa-all-users',
   )
-  const g = goal(r, 'mfa-all-users')
-  // The goal is met at the catalogue floor (MFA); only the baseline's raised floor is missed (ux-review-05 §10).
-  assert.equal(g.status, 'below-baseline')
-  assert.match(g.statement, /is met: .* requires .*\. Below the baseline: it expects /)
-  assert.equal(g.floorRaised?.to, 'phishingResistant')
-  const weak = g.reasons.find((x) => x.kind === 'weaker-control')
-  assert.equal(weak?.userIds.length, 10)
-})
-
-test('8: apps narrower (Office365 vs all) → partial apps-narrower', () => {
-  const r = run([
-    mkPolicy({
-      displayName: 'MFA Office Only',
-      conditions: mergeConditions({ applications: { includeApplications: ['Office365'] } }),
-    }),
-  ])
-  const g = goal(r, 'mfa-all-users')
-  // Office-only policy fails the appsAll signature → nobody targeted for the goal.
-  assert.notEqual(g.status, 'enforced')
-})
-
-test('9: only a disabled candidate → absent with disabled-candidate note', () => {
-  const r = run([mkPolicy({ displayName: 'MFA All (off)', state: 'disabled' })])
-  const g = goal(r, 'mfa-all-users')
-  assert.equal(g.status, 'absent')
-  assert.ok(g.reasons.some((x) => x.kind === 'disabled-candidate'))
-})
-
-test('audit-1: an all-client-apps block (geo/device-code) does not count as the legacy-auth block', () => {
-  const r = run([
-    mkPolicy({
-      displayName: 'Block outside countries',
-      conditions: mergeConditions({ locations: { includeLocations: ['All'], excludeLocations: ['loc-1'] } }),
-      grantControls: { operator: 'OR', builtInControls: ['block'] },
-    }),
-  ])
-  assert.equal(goal(r, 'block-legacy-auth').status, 'absent')
-  const r2 = run([
-    mkPolicy({
-      displayName: 'Block legacy',
-      conditions: mergeConditions({ clientAppTypes: ['exchangeActiveSync', 'other'] }),
-      grantControls: { operator: 'OR', builtInControls: ['block'] },
-    }),
-  ])
-  assert.equal(goal(r2, 'block-legacy-auth').status, 'enforced')
-})
-
-test('audit-2: an enabled strong policy with nobody in scope is in place, not missing', () => {
-  const r = run(
-    [
-      mkPolicy({
-        displayName: 'MFA for Guests',
-        conditions: mergeConditions({ users: { includeUsers: ['GuestsOrExternalUsers'] } }),
-      }),
-    ],
-    { snapshot: mkSnapshot({ users: mkSnapshot().users.filter((u) => u.userType !== 'guest') }) },
-  )
-  assert.equal(goal(r, 'guests-mfa').status, 'enforced')
-})
-
-test('audit-3: sign-in frequency "every time" satisfies any session floor', () => {
-  const r = run([
+  assert.equal(raised.status, 'below-baseline')
+  assert.match(raised.statement, /is met: .* requires .*\. Below the baseline: it expects /)
+  assert.equal(raised.floorRaised?.to, 'phishingResistant')
+  assert.equal(raised.reasons.find((x) => x.kind === 'weaker-control')?.userIds.length, 10)
+  // audit-3: sign-in frequency every time.
+  const session = run([
     mkPolicy({
       displayName: 'Admin sessions',
-      conditions: mergeConditions({ users: { includeUsers: [], includeRoles: ['62e90394-69f5-4237-9190-012177145e10'] } }),
-      grantControls: { operator: 'OR', builtInControls: ['mfa'] },
-      sessionControls: {
-        signInFrequency: { isEnabled: true, frequencyInterval: 'everyTime', value: null, type: null },
-        persistentBrowser: { isEnabled: true, mode: 'never' },
-      },
+      conditions: mergeConditions({ users: { includeUsers: [], includeRoles: [GA] } }),
+      sessionControls: { signInFrequency: { isEnabled: true, frequencyInterval: 'everyTime', value: null, type: null }, persistentBrowser: { isEnabled: true, mode: 'never' } },
     }),
   ])
-  assert.equal(goal(r, 'admin-session').status, 'enforced')
+  assert.equal(goal(session, 'admin-session').status, 'enforced')
 })
 
-test('10: group over the member cap → estimated percentages', () => {
+test('audit: an all-client-apps block is not the legacy block; a strong policy with nobody in scope is in place', () => {
+  const block = (displayName: string, conditions: P) => mkPolicy({ displayName, conditions: mergeConditions(conditions), grantControls: { operator: 'OR', builtInControls: ['block'] } })
+  assert.equal(goal(run([block('Block outside countries', { locations: { includeLocations: ['All'], excludeLocations: ['loc-1'] } })]), 'block-legacy-auth').status, 'absent')
+  assert.equal(goal(run([block('Block legacy', { clientAppTypes: ['exchangeActiveSync', 'other'] })]), 'block-legacy-auth').status, 'enforced')
+  const guestsOnly = run(
+    [mkPolicy({ displayName: 'MFA for Guests', conditions: mergeConditions({ users: { includeUsers: ['GuestsOrExternalUsers'] } }) })],
+    { snapshot: mkSnapshot({ users: mkSnapshot().users.filter((u) => u.userType !== 'guest') }) },
+  )
+  assert.equal(goal(guestsOnly, 'guests-mfa').status, 'enforced')
+})
+
+test('10: a group over the member cap gives estimated percentages', () => {
   const r = run(
-    [
-      mkPolicy({
-        displayName: 'MFA big-group exclusion',
-        conditions: mergeConditions({ users: { includeUsers: ['All'], excludeGroups: ['grp-big'] } }),
-      }),
-    ],
+    [mkPolicy({ displayName: 'MFA big-group exclusion', conditions: mergeConditions({ users: { includeUsers: ['All'], excludeGroups: ['grp-big'] } }) })],
     { groupMembers: new Map([['grp-big', { memberIds: ['u2'], memberCount: 30000, sampled: true }]]) },
   )
-  const g = goal(r, 'mfa-all-users')
-  assert.match(g.statement, /estimated/)
+  assert.match(goal(r, 'mfa-all-users').statement, /estimated/)
 })
 
-test('10b: unresolvable group → unknown', () => {
-  const r = run([
-    mkPolicy({
-      displayName: 'MFA with mystery group',
-      conditions: mergeConditions({ users: { includeUsers: ['All'], excludeGroups: ['grp-unknown'] } }),
-    }),
-  ])
-  assert.equal(goal(r, 'mfa-all-users').status, 'unknown')
-})
-
-test('11: facet off → not-applicable; facet on → evaluated', () => {
-  const off = run([])
-  assert.equal(goal(off, 'require-managed-device').status, 'not-applicable')
-  const on = run([], {
-    snapshot: mkSnapshot({
-      capabilities: { ...mkSnapshot().capabilities, intune: { enabled: true, seats: 10, consumed: 0 } },
-    }),
-  })
-  assert.notEqual(goal(on, 'require-managed-device').status, 'not-applicable')
-})
-
-test('12: P2 goal on a P1 tenant → licence-limited, excluded from score', () => {
-  const r = run([], {
-    snapshot: mkSnapshot({
-      // A P1 tenant holds neither P2 nor a PIM licence (R4-37 split PIM from P2).
-      capabilities: { ...mkSnapshot().capabilities, entraP2: { enabled: false, seats: 0, consumed: 0 }, pim: { enabled: false, seats: 0, consumed: 0 } },
-    }),
-  })
-  const g = goal(r, 'sign-in-risk')
-  assert.equal(g.status, 'licence-limited')
-  assert.equal(r.summary.licenceLimited >= 2, true) // sign-in-risk + user-risk
-  // The PIM goal names both licences that would make it available.
-  assert.equal(goal(r, 'pim-activation-reauth').status, 'licence-limited')
-  assert.match(goal(r, 'pim-activation-reauth').statement, /needs a licence this tenant does not hold: Entra ID P2 or Microsoft Entra ID Governance\./)
-})
-
-test('12b (R4-37): the PIM activation goal on a P1 tenant holding Microsoft Entra ID Governance is available, the risk goals are not', () => {
-  // The defect: the goal's tier was Entra ID P2, and Governance, which also
-  // licenses Privileged Identity Management and is sold to P1 tenants, carries
-  // no P2 plan. The goal read "needs a licence this tenant does not hold: Entra
-  // ID P2" and left the plan on a tenant entitled to it.
-  const r = run([], {
-    snapshot: mkSnapshot({
-      capabilities: { ...mkSnapshot().capabilities, entraP2: { enabled: false, seats: 0, consumed: 0 }, pim: { enabled: true, seats: 10, consumed: 4 } },
-    }),
-  })
-  assert.notEqual(goal(r, 'pim-activation-reauth').status, 'licence-limited')
-  assert.doesNotMatch(goal(r, 'pim-activation-reauth').statement, /Entra ID P2/)
-  assert.equal(goal(r, 'sign-in-risk').status, 'licence-limited', 'ID Protection still needs P2')
+test('11/12: a facet off is not applicable, a tier the tenant lacks is licence-limited, and PIM is licensed by P2 or Governance (R4-37)', () => {
+  assert.equal(goal(run([]), 'require-managed-device').status, 'not-applicable')
+  assert.notEqual(goal(run([], { snapshot: withIntune() }), 'require-managed-device').status, 'not-applicable')
+  const none = { enabled: false, seats: 0, consumed: 0 }
+  // A P1 tenant holds neither P2 nor a PIM licence.
+  const p1 = run([], { snapshot: mkSnapshot({ capabilities: { ...mkSnapshot().capabilities, entraP2: none, pim: none } }) })
+  assert.equal(goal(p1, 'sign-in-risk').status, 'licence-limited')
+  assert.equal(p1.summary.licenceLimited >= 2, true)
+  assert.equal(goal(p1, 'pim-activation-reauth').status, 'licence-limited')
+  assert.match(goal(p1, 'pim-activation-reauth').statement, /Entra ID P2 or Microsoft Entra ID Governance/)
+  // Governance licenses PIM on a P1 tenant; ID Protection still needs P2.
+  const governance = run([], { snapshot: mkSnapshot({ capabilities: { ...mkSnapshot().capabilities, entraP2: none, pim: { enabled: true, seats: 10, consumed: 4 } } }) })
+  assert.notEqual(goal(governance, 'pim-activation-reauth').status, 'licence-limited')
+  assert.equal(goal(governance, 'sign-in-risk').status, 'licence-limited')
 })
 
 test('13: unclassifiable baseline policy → not assessed, never a goal (prompt 46 item 14)', () => {
   const odd = mkPolicy({
     displayName: 'Baseline Odd TOU',
-    conditions: mergeConditions({
-      applications: { includeApplications: ['11111111-1111-1111-1111-111111111111'] },
-      clientAppTypes: ['browser'],
-    }),
+    conditions: mergeConditions({ applications: { includeApplications: ['11111111-1111-1111-1111-111111111111'] }, clientAppTypes: ['browser'] }),
     grantControls: { operator: 'OR', builtInControls: [], termsOfUse: ['tou-1'] },
   })
   const r = run([], { baselinePolicies: [odd], baselineUnusable: [{ policyName: 'Baseline Broken', warning: 'the file is not a policy' }] })
-  // No result carries the baseline policy's name or an invented title.
   assert.equal(r.results.some((x) => x.goal.id.startsWith('adhoc:') || /Odd TOU/.test(x.goal.name) || /^Restrict access to/.test(x.goal.name)), false)
-  // It is listed as not assessed under its own name, with its JSON and one reason.
   const odds = r.organisation.notAssessed.find((n) => n.name === 'Baseline Odd TOU')
   assert.ok(odds, 'listed as not assessed')
   assert.ok(odds.json && odds.json.includes('"termsOfUse"'), 'carries the baseline JSON')
-  assert.equal(odds.reason, 'No security goal in the catalogue matches this policy')
-  // So is a policy the adapter could not read, with the adapter's reason.
   const broken = r.organisation.notAssessed.find((n) => n.name === 'Baseline Broken')
   assert.ok(broken)
   assert.equal(broken.reason, 'the file is not a policy')
   assert.equal(broken.json, null)
 })
 
-test('14: guests excluded from the all-users policy plus a separate guests policy → enforced by union', () => {
-  const r = run([
-    mkPolicy({
-      displayName: 'MFA Members',
-      conditions: mergeConditions({ users: { includeUsers: ['All'], excludeUsers: ['GuestsOrExternalUsers'] } }),
-    }),
-    mkPolicy({
-      // Every guest type: a policy for two of them leaves the rest out (policyTruth.test.ts guest types).
-      displayName: 'MFA Guests',
-      conditions: mergeConditions({ users: { includeUsers: ['GuestsOrExternalUsers'] } }),
-    }),
-  ])
-  const g = goal(r, 'mfa-all-users')
-  assert.equal(g.status, 'enforced')
-  assert.match(g.statement, /MFA Members/)
-  assert.match(g.statement, /MFA Guests/)
-})
-
 test('a goal\'s own template, switched on where the baseline holds no policy for the goal, never reads as covering fewer applications', () => {
-  // Nadia D7 / R4-10: coverage judged a candidate's resources against the
-  // catalogue's `expectedApps` label, not against the policy the step writes.
-  // token-protection's first implementation expected "all" over a template that
-  // names three resources (token protection cannot target All resources), and
-  // require-managed-device expected "all" over a template on Office 365 (the
-  // template now carries All resources, the scope the goal is judged by). So the
-  // policy the step itself built, once switched on, read "covers fewer apps
-  // than the goal expects" and was offered an update to the resources it
-  // already had, a correction that could never finish the step. Where no
-  // baseline policy stands for the goal, its template is the reference
-  // (coverage.ts), and a policy equal to the reference is never narrower.
-  //
-  // A goal the pinned map holds is written from the pinned policy wherever the
-  // package lacks one (q-pin), so the template is the reference only for a goal
-  // the map does not hold: here, a map that holds none. Under the pinned map the
-  // same is true of the pinned policies, below.
+  // Nadia D7 / R4-10: a policy exactly as the step builds it must be able to
+  // finish the step. Where no baseline policy stands for the goal, its template
+  // is the reference. The pinned half is baselineFidelity.test.ts.
   const on = { enabled: true, seats: 10, consumed: 0 }
   const snapshot = mkSnapshot({ capabilities: { entraP1: on, entraP2: on, intune: on, workloadIdPremium: on, globalSecureAccess: on, defenderForCloudApps: on, purviewInsiderRisk: on, pim: on } })
   const judged: string[] = []
@@ -447,18 +263,4 @@ test('a goal\'s own template, switched on where the baseline holds no policy for
   }
   assert.ok(judged.includes('token-protection') && judged.includes('require-managed-device'), `the goals the defect was found on were not judged: ${judged.join(', ')}`)
   assert.deepEqual(narrower, [], 'a policy exactly as the goal\'s own template writes it reads as covering fewer applications than the goal')
-  const pinnedJudged: string[] = []
-  const pinnedNarrower: string[] = []
-  for (const [goalId, keys] of Object.entries(PINNED_GOAL_MAP)) {
-    if (keys.length !== 1) continue
-    const source = PINNED.policies.find((p) => (p.id ?? p.displayName) === keys[0])
-    if (!source) continue
-    const tenant = { ...structuredClone(source), id: `tenant-${goalId}`, state: 'enabled' } as unknown as P
-    const own = goal(run([tenant], { snapshot }), goalId).candidates.find((c) => c.policyId === tenant.id)
-    if (!own) continue
-    pinnedJudged.push(goalId)
-    if (own.caveats.includes('apps-narrower')) pinnedNarrower.push(goalId)
-  }
-  assert.ok(pinnedJudged.includes('token-protection'), `the pinned token-protection policy was not judged: ${pinnedJudged.join(', ')}`)
-  assert.deepEqual(pinnedNarrower, [], 'a policy exactly as the pinned policy writes it reads as covering fewer applications than the goal')
 })

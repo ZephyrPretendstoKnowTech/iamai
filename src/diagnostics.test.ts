@@ -7,41 +7,44 @@ import { fixtureSnapshot } from './testing/uiSnapshot.ts'
 
 const meta = { tenantIdHash: 'abc', userAgent: 'test', generatedAt: '2026-08-30T00:00:00.000Z' }
 
-test('a successful read records status, body length and the row shape, never the values', () => {
-  const s = fixtureSnapshot()
-  s.config.authMethodsPolicy = { status: 'ok', reason: null, rows: [{ policyMigrationState: 'migrationComplete', authenticationMethodConfigurations: [{ id: 'Fido2', state: 'enabled' }] }], httpStatus: 200, bodyBytes: 4321 }
-  const b = diagnosticsBundle(s, [], meta)
-  assert.equal(b.authMethodsPolicy.read, true)
-  assert.equal(b.authMethodsPolicy.httpStatus, 200)
-  assert.equal(b.authMethodsPolicy.bodyBytes, 4321)
-  assert.deepEqual(b.authMethodsPolicy.keys, ['authenticationMethodConfigurations', 'policyMigrationState'])
-  assert.equal(b.authMethodsPolicy.policyMigrationState, 'migrationComplete')
-  assert.equal(JSON.stringify(b).includes('Fido2'), false, 'no row values in the bundle')
-  assert.equal(b.config.authMethodsPolicy?.rows, 1)
-})
-
-test('a read that succeeded without the migration state is reported as read, with the field absent', () => {
-  const s = fixtureSnapshot()
-  s.config.authMethodsPolicy = { status: 'ok', reason: null, rows: [{ authenticationMethodConfigurations: [] }], httpStatus: 200, bodyBytes: 120 }
-  const b = diagnosticsBundle(s, [], meta)
-  assert.equal(b.authMethodsPolicy.read, true)
-  assert.equal(b.authMethodsPolicy.policyMigrationState, null)
-  assert.deepEqual(b.authMethodsPolicy.keys, ['authenticationMethodConfigurations'])
-})
-
-test('a refused read records the status and the reason', () => {
-  const s = fixtureSnapshot()
-  s.config.authMethodsPolicy = { status: 'disabled', reason: 'access denied (403)', rows: [], httpStatus: 403, bodyBytes: 210 }
-  const b = diagnosticsBundle(s, [], meta)
-  assert.equal(b.authMethodsPolicy.read, false)
-  assert.equal(b.authMethodsPolicy.httpStatus, 403)
-  assert.equal(b.authMethodsPolicy.reason, 'access denied (403)')
-  assert.deepEqual(b.authMethodsPolicy.keys, [])
-})
-
-test('no scan yet: an empty bundle, not a crash', () => {
-  const b = diagnosticsBundle(null, [], meta)
-  assert.equal(b.sources, null)
-  assert.equal(b.authMethodsPolicy.status, null)
-  assert.deepEqual(b.config, {})
+test('the bundle tells a successful read from one without the field and from a refused one, never carries a value, and is empty with no scan', () => {
+  // a successful read records status, body length and the row shape, never the values
+  {
+    const s = fixtureSnapshot()
+    s.config.authMethodsPolicy = { status: 'ok', reason: null, rows: [{ policyMigrationState: 'migrationComplete', authenticationMethodConfigurations: [{ id: 'Fido2', state: 'enabled' }] }], httpStatus: 200, bodyBytes: 4321 }
+    const b = diagnosticsBundle(s, [], meta)
+    assert.equal(b.authMethodsPolicy.read, true)
+    assert.equal(b.authMethodsPolicy.httpStatus, 200)
+    assert.equal(b.authMethodsPolicy.bodyBytes, 4321)
+    assert.deepEqual(b.authMethodsPolicy.keys, ['authenticationMethodConfigurations', 'policyMigrationState'])
+    assert.equal(b.authMethodsPolicy.policyMigrationState, 'migrationComplete')
+    assert.equal(JSON.stringify(b).includes('Fido2'), false, 'no row values in the bundle')
+    assert.equal(b.config.authMethodsPolicy?.rows, 1)
+  }
+  // a read that succeeded without the migration state is reported as read, with the field absent
+  {
+    const s = fixtureSnapshot()
+    s.config.authMethodsPolicy = { status: 'ok', reason: null, rows: [{ authenticationMethodConfigurations: [] }], httpStatus: 200, bodyBytes: 120 }
+    const b = diagnosticsBundle(s, [], meta)
+    assert.equal(b.authMethodsPolicy.read, true)
+    assert.equal(b.authMethodsPolicy.policyMigrationState, null)
+    assert.deepEqual(b.authMethodsPolicy.keys, ['authenticationMethodConfigurations'])
+  }
+  // a refused read records the status and the reason
+  {
+    const s = fixtureSnapshot()
+    s.config.authMethodsPolicy = { status: 'disabled', reason: 'access denied (403)', rows: [], httpStatus: 403, bodyBytes: 210 }
+    const b = diagnosticsBundle(s, [], meta)
+    assert.equal(b.authMethodsPolicy.read, false)
+    assert.equal(b.authMethodsPolicy.httpStatus, 403)
+    assert.equal(b.authMethodsPolicy.reason, 'access denied (403)')
+    assert.deepEqual(b.authMethodsPolicy.keys, [])
+  }
+  // no scan yet: an empty bundle, not a crash
+  {
+    const b = diagnosticsBundle(null, [], meta)
+    assert.equal(b.sources, null)
+    assert.equal(b.authMethodsPolicy.status, null)
+    assert.deepEqual(b.config, {})
+  }
 })

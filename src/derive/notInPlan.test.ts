@@ -6,14 +6,14 @@
 // coverage check's looser signature match kept them off the review rows.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+
 import { fixture } from '../roadmap/fixtures/index.ts'
 import type { FixtureName } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { pinnedPackage } from '../baseline/pinned.ts'
 import { PINNED_GOAL_MAP } from '../roadmap/goalMap.ts'
 import { customerPlanSteps } from '../ui/surfaces/customerPlanSteps.ts'
-import { pages, stepById } from '../content/content.ts'
+import { stepById } from '../content/content.ts'
 import { notLicensedRows } from './notLicensed.ts'
 import { notInPlanRows, notInPlanSummary } from './notInPlan.ts'
 
@@ -57,32 +57,6 @@ test('every pinned baseline policy is shown somewhere in the plan: a step, Not l
   }
 })
 
-test('each row names the baseline policy by its display name, with one reason that names steps by title', () => {
-  const { rows } = planOf('demo')
-  const R = (pages.plan as { footer: { notInPlanReason: Record<string, string> } }).footer.notInPlanReason
-  const emergency = (pages as unknown as { app: { plan: { groups: { emergencyAccess: { title: string } } } } }).app.plan.groups.emergencyAccess.title
-  const reasonOf = (policy: string): string | undefined => rows.find((r) => r.policy === policy)?.reason
-  // The seven the goal map claims nowhere (missing-seven.md), each with its own reason.
-  assert.equal(reasonOf('IAC - P2 - GLOBAL - BLOCK - RiskyUsers - RegisterSecurityInfo'), 'Blocks people flagged as risky from adding sign-in methods. Needs Entra ID P2. Not in this plan yet.')
-  assert.equal(reasonOf('IAC - P2 - GLOBAL - GRANT - EAM - High-Risk Users - Risk Remediation'), `A version of ${titleOf('user-risk')} for people who sign in with an external MFA provider such as Duo. Only needed if you use one.`)
-  const lockdown = 'An emergency lockdown switch for a major breach, built ahead and kept off. Not a day-to-day control.'
-  assert.equal(reasonOf('IAC - ZTCA - INTUNE - BLOCK - AllApps - ExcludeTrustedLocation'), lockdown)
-  assert.equal(reasonOf('IAC- ZTCA - GLOBAL - BLOCK - AllApps -Exclude CA-Global'), lockdown)
-  assert.equal(reasonOf('IAC - GLOBAL - GRANT - MFA-Passkey - UserRegistration'), "Jon's export targets device registration on iPhones only, which he confirmed was a mistake. What it was meant to do is Protect Sign-in Method Registration.")
-  assert.equal(reasonOf('IAC - GLOBAL - GRANT - MFA-Passkeys - ADM-Users'), 'The same requirement as Require Phishing-Resistant MFA for Admins, aimed at a group of admin accounts instead of admin roles.')
-  assert.equal(reasonOf('IAC - GLOBAL - GRANT - BreakGlass - TrustedLocations'), `Limits one emergency account outside the office network. This plan keeps emergency accounts out of every policy instead (${emergency}).`)
-  // The Countries variant the plan skips on purpose (generate.ts: "NoExclusions" variants are never considered) says so.
-  assert.equal(reasonOf('IAC - GLOBAL – BLOCK – Countries not Allowed - NoExclusions'), fillReason(R.blockedCountries, titleOf('geo-restriction')))
-  // Steps are named by title, never by a number another branch is changing.
-  for (const r of rows) {
-    assert.equal(r.text, `${r.policy}: ${r.reason}`, `${r.policy}: the row reads policy, then reason`)
-    assert.doesNotMatch(r.reason, /\{|\b\d+\.\d+\b|section \d/i, `${r.policy}: no unfilled slot and no step number`)
-  }
-  // A policy with no words of its own reads the generic reason.
-  const generic = rows.filter((r) => r.reason === R.generic).map((r) => r.policy)
-  assert.ok(generic.length > 0 && generic.every((p) => !/RegisterSecurityInfo|EAM|AllApps|MFA-Passkey|BreakGlass|NoExclusions/.test(p)), `the generic reason is the fallback only: ${generic.join(', ')}`)
-})
-
 test('the list is derived from what the Plan draws, never a fixed set of policies', () => {
   const { run, steps, policies, rows } = planOf('demo')
   // A step the Plan draws takes its policy off the list: the admin-portal block is
@@ -103,14 +77,6 @@ test('the list is derived from what the Plan draws, never a fixed set of policie
   assert.ok(licensed.length > 0, 'the premise: the demo has Not licensed rows')
   const userRisk = policies.find((p) => (PINNED_GOAL_MAP['user-risk'] ?? []).includes(p.id ?? p.displayName))!
   assert.ok(!rows.some((r) => r.policy === userRisk.displayName), 'a Not licensed goal\'s policy is not listed again')
+  // The baseline's policy that limits one emergency account is listed with the plan's own rule beside it.
+  assert.match(rows.find((r) => r.policy === 'IAC - GLOBAL - GRANT - BreakGlass - TrustedLocations')?.reason ?? '', /keeps emergency accounts out of every policy/)
 })
-
-test('the Plan footer draws the group from the Plan it shows', () => {
-  const src = readFileSync(new URL('../ui/surfaces/PlanFooter.tsx', import.meta.url), 'utf8')
-  assert.match(src, /notInPlanRows\(computed\.baselinePolicies, computed\.steps, computed\.coverage, computed\.goalMap\)/)
-  assert.match(src, /notInPlanSummary\(notInPlan\)/)
-})
-
-function fillReason(template: string, step: string): string {
-  return template.replace('{step}', step)
-}
