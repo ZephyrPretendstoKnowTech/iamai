@@ -112,7 +112,8 @@ test('013.A: every artifact reads one step, and that step is the frozen Step Con
         // detail used to end "Needs correction. " — a stop and a space with
         // nothing after them — and stepExport.ts no longer composes it that way.
         const configuration = readinessOf(s, k).tiles.filter(t => t.key.startsWith('configuration:')).map(t => [`${t.label}: ${t.value}.`, (t.note ?? '').trim()].filter(part => part !== '').join(' '))
-        assert.deepEqual(v.fix, [...new Set([...k.fix.map((x) => x.text), ...configuration])], `${where}: fix and visible configuration findings`)
+        // A Direction wait is its Readiness card's to say, never a fix line (net-new 9).
+        assert.deepEqual(v.fix, [...new Set([...k.fix.filter((x) => !x.key.startsWith('direction:')).map((x) => x.text), ...configuration])], `${where}: fix and visible configuration findings`)
         assert.deepEqual(v.doneWhen, k.doneWhen, `${where}: done when`)
         assert.equal(v.implementation, k.implementation.offered, `${where}: implementation offered`)
         assert.equal(v.implementation, implementationOffered(s), `${where}: the channels and the view disagree`)
