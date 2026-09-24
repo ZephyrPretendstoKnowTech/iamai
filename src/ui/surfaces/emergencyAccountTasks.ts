@@ -84,6 +84,8 @@ export type EmergencyTaskProjection = {
   tapAvailable?: boolean | null
   accounts?: EmergencyAccountStatus[]
   printAll?: boolean
+  /** The step's Next milestone where its task state names one (Configure Emergency Exclusions). */
+  milestone?: string | null
 }
 
 /** What a procedure says about whether a selected account needs it (pages.app.plan.emergencyTasks). */
