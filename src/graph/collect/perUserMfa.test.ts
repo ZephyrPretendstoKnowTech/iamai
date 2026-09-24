@@ -9,18 +9,30 @@ async function withFetch<T>(fetcher: typeof fetch, work: () => Promise<T>): Prom
   try { return await work() } finally { globalThis.fetch = original }
 }
 
-test('all account requirements are read in batches of at most 20, including subsequent user pages', async () => {
-  const sizes: number[] = []
-  const result = await withFetch(async (url, init) => {
-    assert.equal(String(url), 'https://graph.microsoft.com/beta/$batch')
-    const { requests } = JSON.parse(String(init?.body))
-    sizes.push(requests.length)
-    assert.ok(requests.every((r: { method: string; url: string }) => r.method === 'GET' && r.url.endsWith('/authentication/requirements')))
-    return new Response(JSON.stringify({ responses: requests.map((r: { id: string }) => ({ id: r.id, status: 200, body: { perUserMfaState: 'disabled' } })) }))
-  }, () => collectPerUserMfaForUsers(ctx, Array.from({ length: 25 }, (_, i) => `u${i}`)))
-  assert.deepEqual(sizes, [20, 5])
-  assert.equal(Object.keys(result).length, 25)
-  assert.ok(Object.values(result).every(r => r.state === 'disabled' && r.reason === null))
+test('account requirements are read in batches of at most 20, and a failed batch does not stop the next one', async () => {
+  // all account requirements are read in batches of at most 20, including subsequent user pages
+  {
+    const sizes: number[] = []
+    const result = await withFetch(async (url, init) => {
+      assert.equal(String(url), 'https://graph.microsoft.com/beta/$batch')
+      const { requests } = JSON.parse(String(init?.body))
+      sizes.push(requests.length)
+      assert.ok(requests.every((r: { method: string; url: string }) => r.method === 'GET' && r.url.endsWith('/authentication/requirements')))
+      return new Response(JSON.stringify({ responses: requests.map((r: { id: string }) => ({ id: r.id, status: 200, body: { perUserMfaState: 'disabled' } })) }))
+    }, () => collectPerUserMfaForUsers(ctx, Array.from({ length: 25 }, (_, i) => `u${i}`)))
+    assert.deepEqual(sizes, [20, 5])
+    assert.equal(Object.keys(result).length, 25)
+    assert.ok(Object.values(result).every(r => r.state === 'disabled' && r.reason === null))
+  }
+
+  // a failed batch does not prevent subsequent accounts from being read
+  {
+    let calls = 0
+    const result = await withFetch(async () => ++calls === 1 ? new Response('{}', { status: 403 }) : new Response(JSON.stringify({ responses: [{ id: '0', status: 200, body: { perUserMfaState: 'disabled' } }] })), () => collectPerUserMfaForUsers(ctx, Array.from({ length: 21 }, (_, i) => `u${i}`)))
+    assert.equal(calls, 2)
+    assert.equal(result.u0.state, 'unknown')
+    assert.equal(result.u20.state, 'disabled')
+  }
 })
 
 test('enabled and enforced are findings; missing, denied, throttled and future states stay unknown', async () => {
@@ -38,12 +50,4 @@ test('enabled and enforced are findings; missing, denied, throttled and future s
   assert.match(result.d.reason!, /403/)
   assert.match(result.e.reason!, /429/)
   assert.ok(!JSON.stringify(result).includes('sensitive@example.com'))
-})
-
-test('a failed batch does not prevent subsequent accounts from being read', async () => {
-  let calls = 0
-  const result = await withFetch(async () => ++calls === 1 ? new Response('{}', { status: 403 }) : new Response(JSON.stringify({ responses: [{ id: '0', status: 200, body: { perUserMfaState: 'disabled' } }] })), () => collectPerUserMfaForUsers(ctx, Array.from({ length: 21 }, (_, i) => `u${i}`)))
-  assert.equal(calls, 2)
-  assert.equal(result.u0.state, 'unknown')
-  assert.equal(result.u20.state, 'disabled')
 })

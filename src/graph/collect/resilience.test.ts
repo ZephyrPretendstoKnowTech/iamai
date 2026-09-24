@@ -49,120 +49,132 @@ const waits = (): { ms: number[]; wait: (ms: number) => Promise<void> } => {
   return { ms, wait: async (n) => void ms.push(n) }
 }
 
-test('429 with Retry-After: waits the header value, then converges', async () => {
-  const f = scriptFetch([{ status: 429, headers: { 'Retry-After': '7' } }, { status: 200, body: { value: [1, 2] } }])
-  try {
-    const w = waits()
-    const body = await graphRequest(tokens(), 'https://graph.microsoft.com/v1.0/x', { wait: w.wait })
-    assert.deepEqual(body.value, [1, 2])
-    assert.equal(f.calls.length, 2)
-    assert.equal(w.ms.length, 1)
-    assert.ok(w.ms[0] >= 7000 && w.ms[0] <= 7000 * 1.2, `Retry-After honoured with jitter: ${w.ms[0]}`)
-  } finally {
-    f.restore()
+test('retry policy: Retry-After, backoff, a bounded 5xx ceiling, 403 never retried, 401 refreshes once, paging survives a 429', async () => {
+  // 429 with Retry-After: waits the header value, then converges
+  {
+    const f = scriptFetch([{ status: 429, headers: { 'Retry-After': '7' } }, { status: 200, body: { value: [1, 2] } }])
+    try {
+      const w = waits()
+      const body = await graphRequest(tokens(), 'https://graph.microsoft.com/v1.0/x', { wait: w.wait })
+      assert.deepEqual(body.value, [1, 2])
+      assert.equal(f.calls.length, 2)
+      assert.equal(w.ms.length, 1)
+      assert.ok(w.ms[0] >= 7000 && w.ms[0] <= 7000 * 1.2, `Retry-After honoured with jitter: ${w.ms[0]}`)
+    } finally {
+      f.restore()
+    }
+  }
+
+  // 504 twice then 200: exponential backoff, then converges
+  {
+    const f = scriptFetch([{ status: 504 }, { status: 504 }, { status: 200, body: { value: ['ok'] } }])
+    try {
+      const w = waits()
+      const body = await graphRequest(tokens(), 'https://graph.microsoft.com/v1.0/x', { wait: w.wait })
+      assert.deepEqual(body.value, ['ok'])
+      assert.equal(f.calls.length, 3)
+      assert.equal(w.ms.length, 2)
+      assert.ok(w.ms[1] > w.ms[0], 'second wait is longer than the first')
+    } finally {
+      f.restore()
+    }
+  }
+
+  // 5xx past the retry ceiling: a labelled error, never a spin
+  {
+    const f = scriptFetch([{ status: 503, body: { error: { code: 'ServiceUnavailable', message: 'busy' } } }])
+    try {
+      const w = waits()
+      await assert.rejects(graphRequest(tokens(), 'https://graph.microsoft.com/v1.0/x', { wait: w.wait }), /503 ServiceUnavailable: busy/)
+      assert.equal(f.calls.length, RETRY_MAX_5XX)
+    } finally {
+      f.restore()
+    }
+  }
+
+  // 403 disables the section and is never retried
+  {
+    const f = scriptFetch([{ status: 403, body: { error: { message: 'Insufficient privileges' } } }])
+    try {
+      await assert.rejects(graphRequest(tokens(), 'https://graph.microsoft.com/v1.0/x'), (e: unknown) => e instanceof SectionDisabledError && /Insufficient/.test(e.message))
+      assert.equal(f.calls.length, 1)
+    } finally {
+      f.restore()
+    }
+  }
+
+  // 401: refreshes the token once and retries with the new one
+  {
+    const f = scriptFetch([{ status: 401 }, { status: 200, body: { value: [] } }])
+    try {
+      const t = tokens()
+      await graphRequest(t, 'https://graph.microsoft.com/v1.0/x')
+      assert.equal(t.refreshes, 1)
+      assert.deepEqual(
+        f.calls.map((c) => c.auth),
+        ['Bearer stale', 'Bearer fresh'],
+      )
+    } finally {
+      f.restore()
+    }
+  }
+
+  // paged reads follow nextLink through a 429 in the middle
+  {
+    const f = scriptFetch([
+      { status: 200, body: { value: [1], '@odata.nextLink': 'https://graph.microsoft.com/v1.0/x?$skiptoken=2' } },
+      { status: 429, headers: { 'Retry-After': '1' } },
+      { status: 200, body: { value: [2] } },
+    ])
+    try {
+      const w = waits()
+      const rows = await graphPaged(tokens(), 'https://graph.microsoft.com/v1.0/x', { wait: w.wait })
+      assert.deepEqual(rows, [1, 2])
+      assert.equal(f.calls.length, 3)
+    } finally {
+      f.restore()
+    }
   }
 })
 
-test('504 twice then 200: exponential backoff, then converges', async () => {
-  const f = scriptFetch([{ status: 504 }, { status: 504 }, { status: 200, body: { value: ['ok'] } }])
-  try {
-    const w = waits()
-    const body = await graphRequest(tokens(), 'https://graph.microsoft.com/v1.0/x', { wait: w.wait })
-    assert.deepEqual(body.value, ['ok'])
-    assert.equal(f.calls.length, 3)
-    assert.equal(w.ms.length, 2)
-    assert.ok(w.ms[1] > w.ms[0], 'second wait is longer than the first')
-  } finally {
-    f.restore()
+test('an expired session pauses the request and resumes it with the new token; a cancelled pause rejects', async () => {
+  // forced 401 with an expired session: the request pauses, then resumes with the new token
+  {
+    const f = scriptFetch([{ status: 401 }, { status: 200, body: { value: ['after sign-in'] } }])
+    try {
+      let expired = 0
+      const gate = createTokenGate(async () => { throw new SessionExpiredError() }, () => expired++)
+      let current = 'stale'
+      const t: TokenSource = { get: () => current, refresh: () => gate.refresh().then((x) => (current = x)) }
+      let settled = false
+      const pending = graphRequest(t, 'https://graph.microsoft.com/v1.0/x').then((b) => {
+        settled = true
+        return b
+      })
+      await new Promise((r) => setTimeout(r, 20))
+      assert.equal(expired, 1, 'the UI is told once')
+      assert.equal(gate.paused(), true)
+      assert.equal(settled, false, 'paused, not failed, not spinning')
+      assert.equal(f.calls.length, 1)
+      gate.resume('signed-in-again')
+      const body = await pending
+      assert.deepEqual(body.value, ['after sign-in'])
+      assert.equal(f.calls[1].auth, 'Bearer signed-in-again')
+      assert.equal(gate.paused(), false)
+    } finally {
+      f.restore()
+    }
   }
-})
 
-test('5xx past the retry ceiling: a labelled error, never a spin', async () => {
-  const f = scriptFetch([{ status: 503, body: { error: { code: 'ServiceUnavailable', message: 'busy' } } }])
-  try {
-    const w = waits()
-    await assert.rejects(graphRequest(tokens(), 'https://graph.microsoft.com/v1.0/x', { wait: w.wait }), /503 ServiceUnavailable: busy/)
-    assert.equal(f.calls.length, RETRY_MAX_5XX)
-  } finally {
-    f.restore()
-  }
-})
-
-test('403 disables the section and is never retried', async () => {
-  const f = scriptFetch([{ status: 403, body: { error: { message: 'Insufficient privileges' } } }])
-  try {
-    await assert.rejects(graphRequest(tokens(), 'https://graph.microsoft.com/v1.0/x'), (e: unknown) => e instanceof SectionDisabledError && /Insufficient/.test(e.message))
-    assert.equal(f.calls.length, 1)
-  } finally {
-    f.restore()
-  }
-})
-
-test('401: refreshes the token once and retries with the new one', async () => {
-  const f = scriptFetch([{ status: 401 }, { status: 200, body: { value: [] } }])
-  try {
-    const t = tokens()
-    await graphRequest(t, 'https://graph.microsoft.com/v1.0/x')
-    assert.equal(t.refreshes, 1)
-    assert.deepEqual(
-      f.calls.map((c) => c.auth),
-      ['Bearer stale', 'Bearer fresh'],
-    )
-  } finally {
-    f.restore()
-  }
-})
-
-test('forced 401 with an expired session: the request pauses, then resumes with the new token', async () => {
-  const f = scriptFetch([{ status: 401 }, { status: 200, body: { value: ['after sign-in'] } }])
-  try {
-    let expired = 0
-    const gate = createTokenGate(async () => { throw new SessionExpiredError() }, () => expired++)
-    let current = 'stale'
-    const t: TokenSource = { get: () => current, refresh: () => gate.refresh().then((x) => (current = x)) }
-    let settled = false
-    const pending = graphRequest(t, 'https://graph.microsoft.com/v1.0/x').then((b) => {
-      settled = true
-      return b
-    })
-    await new Promise((r) => setTimeout(r, 20))
-    assert.equal(expired, 1, 'the UI is told once')
-    assert.equal(gate.paused(), true)
-    assert.equal(settled, false, 'paused, not failed, not spinning')
-    assert.equal(f.calls.length, 1)
-    gate.resume('signed-in-again')
-    const body = await pending
-    assert.deepEqual(body.value, ['after sign-in'])
-    assert.equal(f.calls[1].auth, 'Bearer signed-in-again')
-    assert.equal(gate.paused(), false)
-  } finally {
-    f.restore()
-  }
-})
-
-test('token gate: a cancelled pause rejects; other refresh errors propagate untouched', async () => {
-  const gate = createTokenGate(async () => { throw new SessionExpiredError() }, () => {})
-  const p = gate.refresh()
-  await new Promise((r) => setTimeout(r, 0)) // the pause registers after the silent attempt settles
-  gate.fail(new Error('scan cancelled'))
-  await assert.rejects(p, /scan cancelled/)
-  const other = createTokenGate(async () => { throw new Error('network down') }, () => assert.fail('not an expiry'))
-  await assert.rejects(other.refresh(), /network down/)
-})
-
-test('paged reads follow nextLink through a 429 in the middle', async () => {
-  const f = scriptFetch([
-    { status: 200, body: { value: [1], '@odata.nextLink': 'https://graph.microsoft.com/v1.0/x?$skiptoken=2' } },
-    { status: 429, headers: { 'Retry-After': '1' } },
-    { status: 200, body: { value: [2] } },
-  ])
-  try {
-    const w = waits()
-    const rows = await graphPaged(tokens(), 'https://graph.microsoft.com/v1.0/x', { wait: w.wait })
-    assert.deepEqual(rows, [1, 2])
-    assert.equal(f.calls.length, 3)
-  } finally {
-    f.restore()
+  // token gate: a cancelled pause rejects; other refresh errors propagate untouched
+  {
+    const gate = createTokenGate(async () => { throw new SessionExpiredError() }, () => {})
+    const p = gate.refresh()
+    await new Promise((r) => setTimeout(r, 0)) // the pause registers after the silent attempt settles
+    gate.fail(new Error('scan cancelled'))
+    await assert.rejects(p, /scan cancelled/)
+    const other = createTokenGate(async () => { throw new Error('network down') }, () => assert.fail('not an expiry'))
+    await assert.rejects(other.refresh(), /network down/)
   }
 })
 
