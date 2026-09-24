@@ -265,7 +265,8 @@ test('the app\'s demo: final emergency verification holds the turn-on everywhere
   const transfer = run.steps.find((s) => s.id === TRANSFER)!
   assert.equal(statusOf(transfer).word.split(' · ')[0], 'Report-only')
   assert.equal(isHeld(transfer), false)
-  assert.equal(laneReadings(run.steps).get(TRANSFER)?.lane, 'On Hold', 'its evidence gate remains open independently of the safe token-policy path')
+  // Its report-only week is still running, independently of the safe token-policy path: Up Next (walk list 4.x item 11).
+  assert.equal(laneReadings(run.steps).get(TRANSFER)?.lane, 'Up Next', 'its evidence gate remains open independently of the safe token-policy path')
   // And the tenant's own admins policy, which no tag of this plan's touches,
   // reads as what it is: a control already in place, not one the plan enforced.
   assert.equal(statusOf(run.steps.find((s) => s.id === ADMINS)!).word, 'In place')

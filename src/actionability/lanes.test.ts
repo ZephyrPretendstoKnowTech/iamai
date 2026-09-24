@@ -80,20 +80,20 @@ test('worked examples 1, 4, 12: a dependent waits Up Next behind a Ready prerequ
   }
 })
 
-test('worked examples 2, 9: a policy collecting evidence waits On Hold, holds what is behind it, and is Observing once reviewable, never Ready to enforce on time alone', () => {
-  // 2. prerequisite still collecting evidence → it waits On Hold, and so does the dependent behind it
+test('worked examples 2, 9: a policy in its report-only week waits Up Next (walk list 4.x item 11), holds what is behind it, and is Observing once reviewable, never Ready to enforce on time alone', () => {
+  // 2. prerequisite still in its report-only week → it waits Up Next, and the dependent behind it On Hold
   {
     const s = state({ 's-goal-mfa-all-users': REPORT_ONLY, 's-prereq-per-user-mfa': ABSENT })
-    assert.equal(read(lane('s-goal-mfa-all-users', s)), 'On Hold · evidence:evidence:observation')
+    assert.equal(read(lane('s-goal-mfa-all-users', s)), 'Up Next · evidence:evidence:observation')
     const r = lane('s-prereq-per-user-mfa', s)
     assert.equal(read(r), 'On Hold · step:s-goal-mfa-all-users')
     assert.equal(r.reason?.milestone, 'enforced')
   }
-  // 9. policy already Report-only and healthy: On Hold while it collects evidence, Ready · Observing (the review) once that can be reviewed, never Ready to enforce on time alone
+  // 9. policy already Report-only and healthy: Up Next while its report-only week runs, Ready · Observing (the review) once that can be reviewed, never Ready to enforce on time alone
   {
     const id = 's-goal-block-device-code'
     const r = lane(id, state({ [id]: REPORT_ONLY }))
-    assert.equal(read(r), 'On Hold · evidence:evidence:observation')
+    assert.equal(read(r), 'Up Next · evidence:evidence:observation')
     assert.equal(r.nextAction, 'observe')
     assert.equal(r.reason?.abnormal, false, 'ordinary waiting, not an abnormal blocker')
     assert.deepEqual(r.blockers, [])
@@ -200,7 +200,7 @@ test('worked examples 11, 13: correctable drift is Ready · Correct; an enforce-
     const id = 's-goal-require-managed-device'
     const conflict = { kind: 'baselineSafetyConflict' as const, id: 'baselineSafetyConflict:emergency-exclusion', action: 'enforce' as const }
     assert.equal(read(lane(id, state({ [id]: { exists: false, blockers: [conflict] } }))), 'Ready · Create')
-    assert.equal(read(lane(id, state({ [id]: { exists: true, blockers: [conflict] } }))), 'On Hold · evidence:evidence:observation', 'still collecting evidence, not held by the enforce-side conflict')
+    assert.equal(read(lane(id, state({ [id]: { exists: true, blockers: [conflict] } }))), 'Up Next · evidence:evidence:observation', 'still collecting evidence, not held by the enforce-side conflict')
     const held = lane(id, state({ [id]: { ...PREDICATE_MET, blockers: [conflict] } }))
     assert.equal(read(held), 'On Hold · baselineSafetyConflict:baselineSafetyConflict:emergency-exclusion')
     assert.equal(held.nextAction, 'enforce')

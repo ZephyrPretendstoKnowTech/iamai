@@ -20,8 +20,8 @@
 // and so does a started one whose correction is what puts it into report-only (the
 // same grant, found switched off).
 // The owner's status contract supersedes "evidence is never a hold":
-// a started policy behind an open gate waits On Hold with the gate as its reason, and
-// reads Ready · Observing (the review) only where the gate says what was collected can
+// a started policy behind an open gate waits On Hold with the gate as its reason (Up
+// Next where the gate is its report-only week alone), and reads Ready · Observing (the review) only where the gate says what was collected can
 // be reviewed. Ready means the next action can be performed now; Up Next means every
 // unfinished prerequisite is Ready and finishing it leaves nothing more to wait for.
 // Every kind of hold the legacy roadmap/holds.ts knew has a counterpart here (A1a).
@@ -70,6 +70,8 @@ export type EvidenceGate = {
    *  On a started policy it holds the correction, which for that grant found switched off is the
    *  Report-only patch that prompts as the create would. */
   holdsCreate?: boolean
+  /** The report-only window's last day, where the gate is that window (`evidence:observation`). */
+  until?: string
 }
 
 export type StepObservation = {
@@ -150,7 +152,7 @@ export type LaneResult = {
   substatus: Substatus | null
   nextAction: Action | null
   started: boolean
-  /** On Hold: the primary blocker. Up Next: the nearest unresolved prerequisite.
+  /** On Hold: the primary blocker. Up Next: the nearest unresolved prerequisite, or the report-only week.
    *  Ready · Observing: the open evidence gate, else the nearest unresolved prerequisite. Otherwise null. */
   reason: Blocker | null
   /** On Hold: §15 order, primary first. Ready / Up Next: the unresolved prerequisites of the next action. */
@@ -486,13 +488,16 @@ function deriveUncached(ctx: Ctx, id: string): LaneResult {
       return result('Ready', { substatus: 'Decision', nextAction, started, reason: open[0] ? evidenceBlocker(open[0]) : null, blockers: healthy, gates, layers })
     }
     // A report-only policy (owner's status contract): while its evidence is still being
-    // collected it waits On Hold; once what was collected can be reviewed, the review is
-    // Ready (`Observing`); elapsed time alone never makes it Ready to enforce.
+    // collected it waits; once what was collected can be reviewed, the review is
+    // Ready (`Observing`); elapsed time alone never makes it Ready to enforce. Its
+    // report-only week alone is a wait that time closes, not a stop: Up Next (walk
+    // list 4.x item 11, owner 2026-09-24). Any other open gate holds it On Hold.
     if (kind === 'policy') {
       const waiting = open.length > 0 ? open : obs.evidenceSatisfied ? [] : [OBSERVATION]
       const review = waiting.find((g) => g.reviewable === true)
       if (review) return result('Ready', { substatus: 'Observing', nextAction, started, reason: evidenceBlocker(review), blockers: healthy, gates, layers })
-      if (waiting.length > 0) return result('On Hold', { nextAction, started, reason: evidenceBlocker(waiting[0]!), blockers: healthy, gates, layers })
+      const week = waiting.length > 0 && waiting.every((g) => g.id === OBSERVATION.id)
+      if (waiting.length > 0) return result(week ? 'Up Next' : 'On Hold', { nextAction, started, reason: evidenceBlocker(waiting[0]!), blockers: healthy, gates, layers })
     }
     if (healthy.length > 0) return queued()
     if (nextAction === 'enforce') return result('Ready', { substatus: 'Ready to enforce', nextAction, started, gates, layers })

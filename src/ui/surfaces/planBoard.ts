@@ -55,7 +55,7 @@ import { cleanupTitleOf } from './stepContract.ts'
 import { sectionPositions } from '../../roadmap/stepGroups.ts'
 
 /** The When column's placeholder where a row has no date (A1b: a date, or this), and the Up Next label's tail words. */
-export const WHEN = (pages.plan as unknown as { when: { none: string; after: string; afterPrerequisites: string } }).when
+export const WHEN = (pages.plan as unknown as { when: { none: string; after: string; afterPrerequisites: string; reportOnly: string } }).when
 /** The lane and substatus words (pages.plan.lanes, pages.plan.substatus): the one vocabulary every surface says a state in (A1b decision 11). */
 const LANE_WORDS = (pages.plan as unknown as { lanes: Record<'ready' | 'upNext' | 'onHold' | 'completed' | 'deferred' | 'doesntApply', string>; unsavedAnswer: string; unsavedConfirm: string; nothingReady: string; substatus: Record<'create' | 'correct' | 'needsDecision' | 'observing' | 'review' | 'readyToEnforce', string> })
 /** The words the All work tab brought with it (pages.app.plan.board): its label, and the line a section drawn whole reads. */
@@ -242,6 +242,7 @@ export function laneTailOf(r: LaneReading, titleOf: (id: string) => string | nul
     case 'Ready':
       return r.substatus ? SUBSTATUS_WORD[r.substatus] : null
     case 'Up Next': {
+      if (reportOnlyUntilOf(r) !== null) return holdLabelOf(r, titleOf)
       const after = r.reason?.kind === 'step' ? titleOf(r.reason.id) : null
       return after !== null ? fillText(WHEN.after, { step: after }) : r.reason ? BOARD.blockers[r.reason.kind] : WHEN.afterPrerequisites
     }
@@ -276,7 +277,21 @@ export function laneLabelOf(r: LaneReading, titleOf: (id: string) => string | nu
  * apply here has no engine reading and reads `Doesn't apply` (decision 3).
  */
 export function laneViewOf(r: LaneReading, titleOf: (id: string) => string | null): LaneView {
-  return { lane: r.lane, substatus: r.substatus, label: laneLabelOf(r, titleOf), tail: laneTailOf(r, titleOf), waitingFor: waitingForOf(r, titleOf), tone: LANE_TONE[r.lane], ...(r.estimate ? { estimate: r.estimate } : {}) }
+  const until = reportOnlyUntilOf(r)
+  return { lane: r.lane, substatus: r.substatus, label: laneLabelOf(r, titleOf), tail: laneTailOf(r, titleOf), waitingFor: waitingForOf(r, titleOf), tone: LANE_TONE[r.lane], ...(r.estimate ? { estimate: r.estimate } : {}), ...(until !== null ? { reportOnlyUntil: until } : {}) }
+}
+
+/** The engine's id for a policy's report-only window (planLanes.ts observe). */
+const REPORT_ONLY_WEEK = 'evidence:observation'
+
+/**
+ * The last day of the report-only week a row waits on, where that week is its
+ * reason (the lane engine reads it Up Next: a wait, not a stop; walk list 4.x
+ * item 11, owner 2026-09-24). Null on every other row.
+ */
+export function reportOnlyUntilOf(r: LaneReading): string | null {
+  if (r.reason?.kind !== 'evidence' || r.reason.id !== REPORT_ONLY_WEEK) return null
+  return r.gates.find((g) => g.id === REPORT_ONLY_WEEK)?.until ?? null
 }
 
 /**
@@ -489,6 +504,9 @@ export function holdLabelOf(r: LaneReading, titleOf: (id: string) => string | nu
   // Nobody watching a report-only policy moves a readiness number. Without
   // words the row says no more than its lane: never a claim it is observing.
   if (r.reason.kind === 'evidence' && r.reason.id.startsWith(READINESS_GATE)) return r.reason.text ?? BOARD.lanes.onHold
+  // Its report-only week: "Report-only until Sep 4, 2026" (walk list 4.x item 11).
+  const until = reportOnlyUntilOf(r)
+  if (until !== null) return fillText(WHEN.reportOnly, { date: dayLabel(until) })
   const kind = BOARD.blockers[r.reason.kind]
   if (r.reason.kind === 'step' || r.reason.kind === 'suspendedPrerequisite') {
     const title = titleOf(r.reason.id)
@@ -756,7 +774,8 @@ function boardTimingOf(step: Step, waveStart: string | null, read: LaneView | nu
   // "Turn the policy on" for the day (R4-55). A day for a create, a preparation
   // or a check still stands on Up Next: that work waits on nothing held.
   if (read !== null && read.lane === 'On Hold' && read.substatus === null && read.tail !== BOARD.blockers.evidence) return { kind: 'held' }
-  if (read !== null && (read.lane === 'Up Next' || read.lane === 'On Hold') && turnsOn(step, scheduled)) return { kind: 'held' }
+  // Its own report-only week is not such a wait: the week's last day is the row's own (walk list 4.x item 11).
+  if (read !== null && (read.lane === 'Up Next' || read.lane === 'On Hold') && read.reportOnlyUntil === undefined && turnsOn(step, scheduled)) return { kind: 'held' }
   return { kind: 'day', text: estimatedDay(step) ? fillText(schedulingWords.estimate, { date: result }) : result }
 }
 
