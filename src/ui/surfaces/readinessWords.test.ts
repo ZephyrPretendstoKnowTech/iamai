@@ -109,7 +109,13 @@ test('P1-3: a prerequisite another prerequisite tile already waits on is not dra
   assert.equal(new Set(steps).size, steps.length, 'a step is drawn twice')
   assert.doesNotMatch(CONTRACT_SRC, /function directFixes/, 'the emergency special case is still there')
   // Two prerequisites that wait on each other (the security-defaults cutover pair) are neither's ancestor: both stay.
-  const cutover = bodiesOf(fixture('messy')).get('s-prereq-security-defaults')
+  // Messy with one legacy sign-in in its records, so Block Legacy Authentication
+  // still waits on the mail answer and stays one of the pair (net-new 26: with
+  // nobody using legacy authentication it waits on nothing).
+  const messy = fixture('messy')
+  const someone = messy.snapshot.users.find((u) => !messy.mapping.breakGlassUserIds.includes(u.id))!.id
+  messy.snapshot.scenarioEvidence = { ...messy.snapshot.scenarioEvidence!, legacyClients: { count: 1, people: [someone], byPerson: { [someone]: ['Authenticated SMTP'] }, detail: { 'Authenticated SMTP': 1 } } }
+  const cutover = bodiesOf(messy).get('s-prereq-security-defaults')
   assert.ok(cutover, 'the premise: messy carries the security-defaults step')
   assert.ok(cutover.readiness.tiles.length >= 2, `a reciprocal pair suppressed each other: ${cutover.readiness.tiles.map((t) => t.key).join(', ')}`)
 })
