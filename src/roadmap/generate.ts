@@ -2146,14 +2146,32 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // another (roadmap/readiness.ts strengthMeasuredOf): the gate below is stated
     // against it.
     let measuredStrength: string | null = null
+    // The dormant accounts this step's policy reaches that hold no method it
+    // accepts, for Require MFA for Everyone (walk list 4.x item 10).
+    let dormantWithoutMethod: string[] = []
     if (['mfa', 'admin', 'guest'].includes(readinessKey)) {
       const effects = deliveringEffects ?? validOperations(action).map(operation => effectOf(operation.mode === 'update' ? operation.target as Record<string, unknown> : operation.body))
       methodTargets.set(goal.id, effects)
       measuredStrength = strengthMeasuredOf(effects, readinessKey, snapshot, mapping)
-      policyPreparation = methodPreparation(effects, viability.map(v => v.userId), snapshot, strandContext, methodPreparationCache)
+      // The people MFA Readiness and Prepare Your Team for MFA count: the plan's
+      // active people (walk list 4.x L4, item 10). The gate counted every enabled
+      // account the policy reaches, so accounts nobody has signed in to for 90
+      // days, or ever, held Require MFA for Everyone below 90% for good: nine of
+      // getiamai's eleven, which no step but disabling them could move.
+      policyPreparation = methodPreparation(effects, [...popIndex.active], snapshot, strandContext, methodPreparationCache)
       const reading = methodReadiness(readinessKey, policyPreparation)
       Object.assign(readiness, reading)
       if (!reading.unmeasured) delete readiness.unmeasured
+      // Those accounts are named instead, with where to disable them: whoever
+      // signs in to one first registers its method. Not the ones kept in
+      // Disable or Confirm Dormant Accounts.
+      if (goal.id === 'mfa-all-users') {
+        const kept = mapping.dormantAccountChoices ?? {}
+        const open = dormant.map((u) => u.id).filter((id) => kept[id]?.outcome !== 'keep')
+        const idle = methodPreparation(effects, open, snapshot, strandContext, methodPreparationCache)
+        const judged = new Set([...idle.readyIds, ...idle.unknownIds])
+        dormantWithoutMethod = idle.ids.filter((id) => !judged.has(id))
+      }
     }
     // What the scan could not read, where a refused source is why the number is
     // missing: the reading's own fact, worked out once (types.ts
@@ -2581,6 +2599,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       ...(coverageShortfall !== null ? { coverageShortfall } : {}),
       readiness,
       ...(policyPreparation ? { methodPreparation: policyPreparation } : {}),
+      ...(dormantWithoutMethod.length > 0 ? { dormantWithoutMethod } : {}),
       evidence,
       action,
       history: [],

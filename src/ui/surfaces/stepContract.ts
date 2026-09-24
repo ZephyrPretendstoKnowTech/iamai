@@ -44,6 +44,9 @@ import { NAMES_INLINE } from './whoBlocks.ts'
 import { doneWhenFor, fillText, whatToDoFor, whole } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { list, plural } from '../../copy/statements.ts'
+import { personLabels } from '../../names.ts'
+import { DORMANT_STEP_ID } from './sectionThreeTasks.ts'
+import type { MethodPreparation } from '../../roadmap/methodReadiness.ts'
 import { BLOCKED_REASON, BLOCKED_SUBJECT, readinessFamilyOf } from '../../copy/reasons.ts'
 import type { StatusTone } from '../components/index.ts'
 import { isHeld } from '../../roadmap/holds.ts'
@@ -138,6 +141,10 @@ type ContractWords = {
   foundEnforcedBelowThresholdFloor: string
   /** A tenant's own policy delivering the goal, where it differs from the baseline's (Action.ownPolicyDiffers). */
   ownPolicyDiffers: { label: string; note: string }
+  /** Require MFA for Everyone's dormant accounts with no method (walk list 4.x item 10). */
+  dormantNoMethod: { label: string; value: string; valueOne: string; names: string; nameOne: string; listed: string }
+  /** A gate on people's methods: who is short and what moves them (walk list 4.x items 42, 48). */
+  methodGate: { adminValue: string; needs: string; needMany: string; needListed: string; signIn: string; signInMany: string; signInListed: string; route: string }
   /** A finished policy this plan owns that went live with no report-only period IAMAI watched (doneWhen.ts enforcedUnwatched; owner decision 3). */
   foundEnforcedUnwatched: string
   /** The people marked on the campaign to turn on without, for now (roadmap/followUp.ts). */
@@ -483,6 +490,8 @@ export type StepContract = {
   inventory?: ContractInventory | null
   /** The people marked on the campaign to turn this policy on without, for now, and what happens to them; null where there are none. */
   followUp: { count: number; text: string } | null
+  /** Require MFA for Everyone: the dormant accounts its policy reaches with no method, and where to disable them (Step.dormantWithoutMethod); null elsewhere. */
+  dormant: { value: string; text: string } | null
   whatToDo: ContractAction
   fix: ContractFix[]
   /**
@@ -718,7 +727,7 @@ const found = (key: string, text: string): ContractFound => ({ key, label: CONTR
 /** The step that owns the security-defaults ordering invariant, and so the one that reports it broken. */
 const SECURITY_DEFAULTS_STEP_ID = 's-prereq-security-defaults'
 
-function foundOf(step: Step, tenant: string, said: string | null, routeStart: StepContract['routeStart'] = null): ContractFound[] {
+function foundOf(step: Step, tenant: string, said: string | null, routeStart: StepContract['routeStart'] = null, labels: ReadonlyMap<string, string> | null = null): ContractFound[] {
   const out: ContractFound[] = []
   // The one step that states the ordering invariant is the one that has to
   // notice it has been broken. A reader enforced eight policies with security
@@ -738,7 +747,7 @@ function foundOf(step: Step, tenant: string, said: string | null, routeStart: St
   // the card is ('gate'), under the readiness label: the security-defaults line
   // and the short-reading note share that label and are not the threshold, and
   // the export reads the threshold from this one finding (stepExport.ts).
-  if (gate && step.status !== 'done' && step.status !== 'skipped') out.push(found('gate', readinessSentence(step, gate, routeStart)))
+  if (gate && step.status !== 'done' && step.status !== 'skipped') out.push(found('gate', readinessSentence(step, gate, routeStart, labels)))
   // And on a step that has finished short of it, where the gate is already gone.
   else { const short = shortReadingOf(step); if (short !== null) out.push(found('readiness', short.note)) }
   // A policy this plan tagged, switched off, on a step that is proposing to
@@ -1485,7 +1494,7 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
   // campaign, and the printed plan said the threshold twice in two versions.
   const gateNow = step.action.readinessGate
   const routeStart = gateNow ? routeStartOf(step, gateNow, startOf) : null
-  const found = foundOf(step, tenant, milestone.line, routeStart)
+  const found = foundOf(step, tenant, milestone.line, routeStart, personLabels(ctx.snapshot.users, { address: true }))
   const inventory = inventoryOf(step, ctx)
   if (inventory) found.push({ key: 'directory-inventory', label: inventory.label, text: `${inventory.complete ? '' : 'At least '}${inventory.count} guest ${plural(inventory.count, 'account')}. ${inventory.names.join('; ')}` })
   // The object a step makes itself comes first, as its task does (Stage 3;
@@ -1521,6 +1530,7 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     who: whoOf(step, ctx),
     inventory,
     followUp: followUpOf(step, ctx),
+    dormant: dormantOf(step, ctx),
     whatToDo,
     fix,
     enforcementWaits: enforcementWaitsOf(step),
@@ -1849,7 +1859,14 @@ const R = (): ContractWords['readiness'] => CONTRACT.readiness
  * on, and the fact alone once it is enforced — enforcement is no longer waiting
  * for the number. A value never measured keeps the gate's own words.
  */
-export function readinessSentence(step: Step, gate: NonNullable<Step['action']['readinessGate']>, start: StepContract['routeStart'] = null): string {
+export function readinessSentence(step: Step, gate: NonNullable<Step['action']['readinessGate']>, start: StepContract['routeStart'] = null, labels: ReadonlyMap<string, string> | null = null): string {
+  // A gate on people's methods says who is short and what moves them, and
+  // nothing about the threshold the row and the value already state (walk list
+  // 4.x items 42, 48): "23 of 27 people have a method it accepts. 2 registered
+  // only a phone for texts or calls, which your Authentication methods policy
+  // turns off. Prepare Your Team for MFA gets them ready."
+  const people = methodGateSentence(step, gate, labels)
+  if (people !== null) return people
   // A threshold stated against a non-number is a dead end. "It is not measured
   // today" is true and unactionable: it names nothing the reader could go and
   // change, and the step said it three times while the one sentence that DOES
@@ -2006,6 +2023,32 @@ function followUpOf(step: Step, ctx: StepVarContext): StepContract['followUp'] {
 }
 
 /**
+ * The dormant accounts Require MFA for Everyone reaches that hold no method
+ * (walk list 4.x item 10): the gate no longer counts them (generate.ts, L4), and
+ * whoever signs in to one first registers its method, so the step names them
+ * and where to disable them. Up to five by name; past that, the step that
+ * disables them lists them. Not once the step is finished.
+ */
+function dormantOf(step: Step, ctx: StepVarContext): StepContract['dormant'] {
+  const ids = step.dormantWithoutMethod ?? []
+  if (ids.length === 0 || step.status === 'done' || step.status === 'skipped') return null
+  const W = CONTRACT.dormantNoMethod
+  const labels = personLabels(ctx.snapshot.users, { address: true })
+  const step31 = stepById[DORMANT_STEP_ID]?.title ?? DORMANT_STEP_ID
+  const value = ids.length === 1 ? W.valueOne : fillText(W.value, { n: ids.length })
+  const text = ids.length > GATE_NAMES_UP_TO ? fillText(W.listed, { step: step31 })
+    : fillText(ids.length === 1 ? W.nameOne : W.names, { names: list(ids.map((id) => labels.get(id) ?? ctx.nameOf(id))), step: step31 })
+  return { value, text }
+}
+
+/** Its tile: work the step names, never a hold: the gate does not count these accounts. It opens the step that disables them. */
+function dormantTile(c: StepContract): ReadinessTile | null {
+  if (c.dormant == null || c.state.satisfied) return null
+  const title = stepById[DORMANT_STEP_ID]?.title ?? DORMANT_STEP_ID
+  return { key: 'dormant-no-method', label: CONTRACT.dormantNoMethod.label, tone: 'warn', value: c.dormant.value, note: c.dormant.text, link: stepLink(DORMANT_STEP_ID, title) }
+}
+
+/**
  * Their tile: a warning, never a hold — the person chose to go ahead without
  * them. On the campaign itself it is headed by the list's own name, Turn On
  * Without Them, and once the campaign is complete it is a fact of the finished
@@ -2119,6 +2162,66 @@ export function readinessValueOf(gate: NonNullable<Step['action']['readinessGate
   return template !== undefined && gate.value.endsWith('%') ? fillText(template, { value, strength: gate.strength ?? '' }) : value
 }
 
+/** The families whose gate counts people with a method the step's policy accepts (roadmap/methodReadiness.ts). */
+const METHOD_FAMILIES: ReadonlySet<string> = new Set(['mfa', 'admin', 'guest'])
+/** The most people a gate names before it points at MFA Readiness instead (walk list 4.x item 42). */
+const GATE_NAMES_UP_TO = 5
+
+/**
+ * The count a method gate is waiting on, where it waits on people's methods and
+ * the scan counted them: the step's own preparation (generate.ts
+ * `methodPreparation`), null elsewhere.
+ */
+function methodGateOf(step: Step, gate: NonNullable<Step['action']['readinessGate']>): MethodPreparation | null {
+  const p = step.methodPreparation
+  const family = familyOf(gate)
+  if (p === undefined || family === undefined || !METHOD_FAMILIES.has(family)) return null
+  if (gate.blind !== undefined || gate.routeShortfall !== undefined) return null
+  if (!p.completeScope || p.ids.length === 0 || (p.readyIds.length === 0 && p.unknownIds.length === p.ids.length)) return null
+  return p
+}
+
+/**
+ * The admin gate's value: how many admins have a method the policy accepts
+ * (walk list 4.x item 42), where the threshold is every one of them. Null for
+ * any other gate, which keeps its percentage.
+ */
+function methodGateValueOf(step: Step, gate: NonNullable<Step['action']['readinessGate']>): string | null {
+  const p = methodGateOf(step, gate)
+  if (p === null || familyOf(gate) !== 'admin') return null
+  return fillText(CONTRACT.methodGate.adminValue, { ready: p.readyIds.length, total: p.ids.length })
+}
+
+/**
+ * A method gate's sentence (walk list 4.x items 42, 48): the admins by name and
+ * what each needs, or everyone else's count, then the step that gets them ready.
+ * Null where the gate is not one on people's methods, and the threshold sentence
+ * stands.
+ */
+function methodGateSentence(step: Step, gate: NonNullable<Step['action']['readinessGate']>, labels: ReadonlyMap<string, string> | null): string | null {
+  const p = methodGateOf(step, gate)
+  if (p === null) return null
+  const W = CONTRACT.methodGate
+  // A policy already On waits for nobody: the count stands alone.
+  const route = gate.route !== undefined && step.state.lifecycle !== 'enforced' ? fillText(W.route, { step: gate.route }) : null
+  if (familyOf(gate) !== 'admin') {
+    const line = step.readiness.lines[0]
+    return typeof line === 'string' && /\d+ of \d+/.test(line) ? [line, route].filter((x): x is string => x !== null).join(' ') : null
+  }
+  const ready = new Set(p.readyIds)
+  const unknown = new Set(p.unknownIds)
+  const nameOf = (id: string): string => labels?.get(id) ?? id
+  const named = (ids: readonly string[], one: string, many: string, listed: string | null): string | null =>
+    ids.length === 0 ? null
+      : ids.length > GATE_NAMES_UP_TO && listed !== null ? fillText(listed, { n: ids.length })
+      : fillText(ids.length === 1 ? one : many, { names: list(ids.map(nameOf)) })
+  return [
+    named(p.ids.filter((id) => !ready.has(id) && !unknown.has(id)), W.needs, W.needMany, W.needListed),
+    named(p.staleIds ?? [], W.signIn, W.signInMany, W.signInListed),
+    route,
+  ].filter((x): x is string => x !== null).join(' ') || null
+}
+
 /** The tile that says what the step's own state turns on, where the state turns on something. */
 function stateTile(step: Step, c: StepContract, setupAfterEnforcement = false): ReadinessTile | null {
   const s = c.state
@@ -2176,8 +2279,11 @@ function stateTile(step: Step, c: StepContract, setupAfterEnforcement = false): 
     // search the board for it. Where that step cannot be done today, the card
     // opens where its chain starts, which is what the sentence says to do (R4-33).
     // Both read the contract's one answer (`routeStart`), as its finding does.
-    const route = c.routeStart ?? gateRouteOf(step, gate)
-    return { key: 'gate', label: t.gate, tone: 'warn', value: readinessValueOf(gate), note: readinessSentence(step, gate, c.routeStart), ...(route !== null ? { link: stepLink(route.id, route.title) } : {}) }
+    // A method gate names the step that gets its people ready and opens it (walk list 4.x item 42).
+    const people = methodGateOf(step, gate) !== null
+    const route = people ? gateRouteOf(step, gate) : c.routeStart ?? gateRouteOf(step, gate)
+    const note = c.found.find((f) => f.key === 'gate')?.text ?? readinessSentence(step, gate, c.routeStart)
+    return { key: 'gate', label: t.gate, tone: 'warn', value: methodGateValueOf(step, gate) ?? readinessValueOf(gate), note, ...(route !== null ? { link: stepLink(route.id, route.title) } : {}) }
   }
   // An observation with no date says WHY it has no date, where the step knows:
   // the people the policy stopped in report-only, or the records that could not
@@ -2457,7 +2563,7 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
   // the row's Impact in other numbers ("3 active people · 3 admins · covers 4
   // enabled" beside "4 accounts") and, on a check step, asked the reader to
   // "Check the listed evidence" over none. Every card left is work.
-  const facts = [enforcedReadingTile(step), unwatchedTile(step), ownPolicyTile(step), followUpTile(c), ...emergencyTiles(step, c), ...configuredTiles, ...((configuration.length && step.id !== 's-prereq-break-glass') || (c.satisfiedFacts?.length ?? 0) > 0 ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), exclusionsTile(step, c), exclusionsReachTile(c), implementationTile(step, c), inventory].filter((x): x is ReadinessTile => x !== null)
+  const facts = [enforcedReadingTile(step), unwatchedTile(step), ownPolicyTile(step), followUpTile(c), ...emergencyTiles(step, c), ...configuredTiles, ...((configuration.length && step.id !== 's-prereq-break-glass') || (c.satisfiedFacts?.length ?? 0) > 0 ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), dormantTile(c), exclusionsTile(step, c), exclusionsReachTile(c), implementationTile(step, c), inventory].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
   // The emergency step's failing checks are its account slots' lines (P0-7): no check tile beside them.
   const fixes = fixTiles(c.fix, prerequisiteLabel).filter((t) => !(step.emergency && t.key.startsWith('check:')) && !(configuration.length && /passkey.*(?:review|settings)|profile.*review/i.test(`${t.label} ${t.value}`)))

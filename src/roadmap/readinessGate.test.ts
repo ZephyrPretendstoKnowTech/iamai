@@ -229,9 +229,9 @@ test('4: a readiness the scan could not measure holds the enforcement; nobody to
   const rg = runFixture(g)
   const guests = rg.steps.find((s) => s.goalId === 'guests-mfa' && s.kind !== 'verify') as Step
   assert.ok(guests.methodPreparation!.ids.length > 0, 'this policy targets all users despite its guest goal label')
-  assert.equal(guests.readiness.percent, 18, 'actual target registrations are measured')
-  assert.ok(guests.action.readinessGate, 'lack of active guests does not waive an all-user target requirement')
-  assert.deepEqual(guests.rings, [], 'the unmet actual target requirement holds its rollout')
+  // The people MFA Readiness counts, both ready (walk list 4.x L4): the nine
+  // accounts nobody signs in to are not a reason to hold it.
+  assert.equal(guests.readiness.percent, 100, 'actual target registrations are measured')
 })
 
 // ---- 5 + 6: a policy the tenant already enforces ----
@@ -308,44 +308,26 @@ test('5 + 6: a material change to an already-enabled policy is held while its re
   }
 })
 
-test('a gate names the campaign only where finishing it could reach the threshold', () => {
-  // `route` was set from the measure's FAMILY: mfa, guest and admin were "moved
-  // by the campaign by construction". The construction does not hold. The
-  // campaign prepares the people the scan has seen sign in; the gate counts
-  // everyone the target policy covers. On a tenant where nine of eleven people
-  // have never signed in, the campaign's cohort is two and the threshold is
-  // 90% — so the reader finished "Prepare Your Team for MFA", was told
-  // "Nothing left to do", and the number had not moved a point, with no other
-  // action offered anywhere on the board.
+test('a gate counts the people MFA Readiness counts, names the campaign that moves it, and 4.4 names its dormant accounts instead (walk list 4.x L4, item 10)', () => {
+  // The gate counted every enabled account its policy reaches. On getiamai nine
+  // of eleven had never signed in, the campaign (which prepares the people the
+  // scan has seen sign in) could not move them, and Require MFA for Everyone sat
+  // at 18% of a 90% gate for good. It counts the active people now, as MFA
+  // Readiness and Prepare Your Team for MFA do, and the step names the dormant
+  // accounts with no method, to disable in Disable or Confirm Dormant Accounts.
   // The shipped fixture, not the curated one this file otherwise uses: this is
   // about the plan a person is handed, which is what the gate's claim is made to.
   const gatesOf = (name: FixtureName) => {
     const run = runFixture(shippedFixture(name))
     const campaign = run.steps.find((s) => s.id === 's-verify-mfa')
-    return { campaign, gates: run.steps.filter((s) => s.action.readinessGate !== undefined) }
+    return { run, campaign, gates: run.steps.filter((s) => s.action.readinessGate !== undefined) }
   }
-
-  // getiamai: eleven people measured, a cohort of two, none of the nine short
-  // people inside it. The campaign cannot move this number and no longer says it can.
   const small = gatesOf('getiamai')
   assert.equal(small.campaign?.preparation?.ids.length, 2, 'the premise: the campaign covers two people')
-  const flagship = small.gates.find((s) => s.id === 's-goal-mfa-all-users')
-  assert.ok(flagship, 'the premise: getiamai gates Require MFA for Everyone on readiness')
-  const held = flagship.action.readinessGate!
-  assert.equal(held.route, undefined, 'the gate still names a campaign that cannot reach its threshold')
-  assert.ok(held.routeShortfall?.includes('will not move this number'), `said instead: ${held.routeShortfall}`)
-  // It names the shortfall, why those people are outside the campaign, and the
-  // decision that is the reader's other way out — the step is otherwise a dead end.
-  assert.ok(held.routeShortfall?.includes('9 people'), 'the sentence does not say how many it is short')
-  assert.ok(held.routeShortfall?.includes('not seen them sign in'), 'the sentence does not say why they are outside the campaign')
-  assert.ok(held.routeShortfall?.includes('not in use'), 'the sentence offers no decision where the work cannot be done')
-
-  // The admin gate on the same tenant CAN be cleared — its one admin is in the
-  // cohort — so it still names the campaign. The rule is per gate, not per tenant.
-  const admins = small.gates.find((s) => s.id === 's-goal-admins-phishing-resistant')
-  assert.equal(admins?.action.readinessGate?.route, 'Prepare Your Team for MFA', 'a gate the campaign can clear stopped naming it')
-  assert.equal(admins?.action.readinessGate?.routeShortfall, undefined)
-
+  const everyone = small.run.steps.find((s) => s.id === 's-goal-mfa-all-users')!
+  assert.deepEqual([everyone.methodPreparation?.readyIds.length, everyone.methodPreparation?.ids.length], [2, 2], 'the gate counts the two people who sign in')
+  assert.equal(everyone.action.readinessGate, undefined, 'nine dormant accounts hold the gate')
+  assert.equal(everyone.dormantWithoutMethod?.length, 9, 'the dormant accounts it reaches with no method are named instead')
   // Where the campaign can close the gap, nothing changes: every gate on these
   // three fixtures still names it, which is the reading that was always right.
   for (const name of ['mid', 'large', 'midflight'] as const) {
@@ -427,7 +409,7 @@ test('R4-14: a readiness reading below the threshold never reads as the threshol
   // registration, with exactly 238 of its 265 people holding Authenticator.
   const base = withFoundationSettled(fixture('mid'))
   const target = runFixture(base).steps.find((s) => s.id === 's-goal-register-info-protected')!.methodPreparation!.ids
-  assert.equal(target.length, 265, 'the premise: the policy includes 265 people')
+  const need = readyNeeded(target.length, 90)
   const withReady = (n: number) => {
     const ready = new Set(target.slice(0, n))
     const snapshot = structuredClone(base.snapshot)
@@ -436,12 +418,12 @@ test('R4-14: a readiness reading below the threshold never reads as the threshol
       : r)
     return runFixture({ ...base, snapshot }, { snapshot } as never).steps.find((s) => s.id === 's-goal-register-info-protected') as Step
   }
-  const short = withReady(238)
-  assert.equal(short.methodPreparation?.readyIds.length, 238, 'the premise: 238 ready')
+  const short = withReady(need - 1)
+  assert.equal(short.methodPreparation?.readyIds.length, need - 1, 'the premise: one short')
   assert.equal(short.readiness.percent, 89)
   assert.equal(short.action.readinessGate?.value, '89%', 'the gate reads its threshold while short of it')
   assert.ok(short.blockers.some((b) => b.kind === 'readiness' && b.label === 'readiness'), 'a gate 89.8% of the way is met')
-  const met = withReady(239)
+  const met = withReady(need)
   assert.equal(met.readiness.percent, 90)
   assert.equal(met.action.readinessGate, undefined, 'the gate is not met at 90.2%')
   assert.equal(met.blockers.some((b) => b.kind === 'readiness' && b.label === 'readiness'), false)

@@ -665,6 +665,13 @@ export type Step = {
    * here had no slot for offIds, so what the engine knew had no type on the step.
    */
   methodPreparation?: import('./methodReadiness.ts').MethodPreparation
+  /**
+   * Require MFA for Everyone only: the accounts its policy reaches that have not
+   * signed in for 90 days (or ever) and hold no method it accepts, the ones kept
+   * in Disable or Confirm Dormant Accounts aside (walk list 4.x item 10). The
+   * gate no longer counts them; the step names them to disable.
+   */
+  dormantWithoutMethod?: string[]
 
   manualReview?: { basis: string; confirmedAt: string | null; readyToConfirm: boolean; fields?: import('./decisions.ts').ManualEvidenceField[]; record?: import('./decisions.ts').OwnerConfirmation; verification?: 'current' | 'unread' | 'changed' | 'incomplete' | 'historical'; staleReason?: string; pendingAccountIds?: string[] }
   id: string
