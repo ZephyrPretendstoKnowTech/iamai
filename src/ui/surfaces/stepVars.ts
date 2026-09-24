@@ -38,7 +38,7 @@ import { exclusionsGroupPolicies, exclusionsReach, groupLookup } from '../../val
 import { observationDaysFor } from '../../roadmap/schedule.ts'
 import { readyBasis, readyWhen } from '../../derive/readyWhen.ts'
 import { isHeld } from '../../roadmap/holds.ts'
-import { engine, shared } from '../../content/content.ts'
+import { engine, shared, stepById } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { QUESTION_STEP, answerOf, devicePlanOf } from '../../roadmap/answers.ts'
 import { nobodyAffected } from '../../roadmap/timing.ts'
@@ -407,6 +407,10 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     v.openAccounts = count(step.dormantChoices.filter((row) => !row.kept).length, 'account')
     v.kept = step.dormantChoices.filter((row) => row.kept).length
     v.disabled = disabledInactiveUsers(ctx.snapshot, ctx.snapshot.asOf, notPeopleIds(ctx.mapping)).length
+    // The Satisfied card's fact names only what happened: "1 disabled", never "0 kept".
+    const K = (stepById['s-check-dormant-accounts'] as unknown as { card: { keptPart: string; disabledPart: string; noneDormant: string } }).card
+    const kept = v.kept as number, disabled = v.disabled as number
+    v.dormantDone = [kept > 0 ? fillText(K.keptPart, { n: kept }) : null, disabled > 0 ? fillText(K.disabledPart, { n: disabled }) : null].filter((x): x is string => x !== null).join(' · ') || K.noneDormant
   }
   // Register Your Own Passkey's and Prepare Your Team for MFA's own values: the
   // operator's account and devices, the campaign's people by what each needs,

@@ -3667,7 +3667,10 @@
         "check": "{openAccounts} to disable or keep",
         "detail": null,
         "pointer": true,
-        "satisfied": "{kept} kept · {disabled} disabled"
+        "satisfied": "{dormantDone}",
+        "keptPart": "{n} kept",
+        "disabledPart": "{n} disabled",
+        "noneDormant": "No enabled account without a sign-in in the last 90 days"
       },
       "taskTitle": "Disable or keep each account",
       "$commentKeep": "The rail's keep picker (ui/surfaces/ContentStep.tsx DormantDecision; walk list items 17, 22, 23, 28): its label, the instruction line in the rail's slot, and each option's last sign-in.",
@@ -3848,7 +3851,7 @@
       },
       "dates": null,
       "doneWhen": [
-        "The office location you picked in Decide How and Where People Sign In is an IP ranges location marked trusted."
+        "Your office's public IP ranges are an IP ranges location in Entra, marked trusted."
       ],
       "ifWrong": null,
       "comms": null,
@@ -4555,7 +4558,7 @@
           "Admins: register a passkey or a hardware security key with {list:campaignNeedsPasskey}.",
           "Have each sign in once with the new method.",
           "Today: the registration campaign is {campaignToday}.",
-          "Turn on the registration campaign: open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Authentication methods → Registration campaign → Edit**. State: Enabled. Authentication method: Passkey. Include: All users. Exclude: {campaignExclude}. Days allowed to snooze: 1. Limited number of snoozes: Disabled. Save.",
+          "Set the registration campaign: open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Authentication methods → Registration campaign → Edit**. State: Enabled. Authentication method: Passkey. Include: All users. Exclude: {campaignExclude}. Days allowed to snooze: 1. Limited number of snoozes: Disabled. Save.",
           "Return to IAMAI and select **Scan to update the plan**."
         ]
       },

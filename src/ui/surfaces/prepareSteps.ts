@@ -152,7 +152,8 @@ function campaignToday(c: CampaignRead, W: TeamWords['campaign'], ctx: StepVarCo
   if (c.state === 'default') return W.managed
   if (c.state !== 'enabled') return W.off
   if (c.include.length === 0) return W.on
-  const methods = [...new Set(c.include.map((t) => t.targetedAuthenticationMethod ?? ''))].filter((m) => m !== '').map((m) => (W as Record<string, string>)[m] ?? m)
+  const byKey = new Map(Object.entries(W as Record<string, string>).map(([k, v]) => [k.toLowerCase(), v]))
+  const methods = [...new Set(c.include.map((t) => (t.targetedAuthenticationMethod ?? '').toLowerCase()))].filter((m) => m !== '').map((m) => byKey.get(m) ?? m)
   const scope = c.include.map((t) => (t.id.toLowerCase() === ALL_USERS ? W.allUsers : ctx.nameOf(t.id)))
   return methods.length === 0 ? W.on : fillText(W.nudging, { method: list(methods), scope: list(scope) })
 }
@@ -181,7 +182,7 @@ function teamVars(step: Step, ctx: StepVarContext): Record<string, unknown> {
   const c = campaignOf(ctx)
   if (c !== null) out.campaignToday = campaignToday(c, W.campaign, ctx)
   const matches = c !== null && c.state === 'enabled'
-    && c.include.length === 1 && c.include[0].id.toLowerCase() === ALL_USERS && c.include[0].targetedAuthenticationMethod === 'fido2'
+    && c.include.length === 1 && c.include[0].id.toLowerCase() === ALL_USERS && (c.include[0].targetedAuthenticationMethod ?? '').toLowerCase() === 'fido2'
     && c.snooze === 1 && c.enforce === false
     && (groupId === null || c.exclude.some((t) => t.id.toLowerCase() === groupId.toLowerCase()))
   if (!matches) out.campaignExclude = groupId !== null ? (choice.actionableName ?? ctx.nameOf(groupId)) : proposedNamesFor(ctx).exclusionsGroup
