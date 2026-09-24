@@ -78,10 +78,10 @@ test('a first plan starts today, and its first deployment is the next eligible w
   assert.equal(effectiveFirstDeployment('2026-09-14T12:00:00.000Z', { firstDeployment: '2026-09-01T12:00:00.000Z' }), '2026-09-15T12:00:00.000Z')
   // A plan started before the setting existed keeps deploying from its start.
   assert.equal(effectiveFirstDeployment('2026-09-14T12:00:00.000Z', { startedAt: '2026-09-14T08:00:00.000Z' }), '2026-09-14T12:00:00.000Z')
-  // The hook never writes over a saved start, and Start anchors the first deployment with it.
+  // The hook never writes over a saved start, and the lock anchors the first deployment with it (derive/planStart.ts lockedStart).
   const hook = readFileSync('src/ui/surfaces/planData.ts', 'utf8')
   assert.match(hook, /const startDate = saved\?\.startDate \?\? \(snapshot \? proposedStart\(/)
-  assert.match(hook, /startDate: effectiveStart, firstDeployment: effectiveFirstDeployment\(effectiveStart, p\)/)
+  assert.match(hook, /setSaved\(lockedStart\(/)
 })
 
 test('moving the first deployment or the start moves report-only creation, the phases and every date downstream', () => {

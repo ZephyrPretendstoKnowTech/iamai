@@ -21,7 +21,6 @@ import { CleanupBody, cleanupEntry } from './CleanupStep.tsx'
 import { cleanupWhenOf } from './cleanupExport.ts'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import { planFinish, planLengthSentence, projectedFinish, statedEstimate } from '../../derive/finish.ts'
-import { startControl } from '../../derive/planHeader.ts'
 import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
 import { absoluteDate } from '../../copy/dates.ts'
@@ -52,7 +51,7 @@ type PlanPage = {
   h1: string
   now: string
   settingsLink: string
-  settings: { h3: string; start: string; planStarts: string; firstDeployment: string; firstDeploymentNote: string; workdays: string; workdaysWeek: string; workdaysWith: string; freeze: string; freezeFrom: string; freezeTo: string; freezeNote: string; freezeNeedsTo: string; freezeOrder: string; timezone: string; signature: string; scheduling: string; communications: string; saveFreeze: string; removeFreeze: string; cancelFreeze: string; freezeSaved: string; close: string }
+  settings: { h3: string; planStarts: string; firstDeployment: string; firstDeploymentNote: string; workdays: string; workdaysWeek: string; workdaysWith: string; freeze: string; freezeFrom: string; freezeTo: string; freezeNote: string; freezeNeedsTo: string; freezeOrder: string; timezone: string; signature: string; scheduling: string; communications: string; saveFreeze: string; removeFreeze: string; cancelFreeze: string; freezeSaved: string; close: string }
   blocked: { after: string }
   progress: { label: string; steps: string; completed: string; projectedFinish: string; atPace: string; committed: string; started: string; none: string }
   howTo: { link: string; intro: string; legend?: { label: string; description: string }[] }
@@ -173,7 +172,6 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // Held work dates no end (derive/finish.ts): Cleanup, which follows it, is undated with it.
   const cannotFinish = finish.held
   const P = pages.plan as Record<string, string>
-  const start = startControl()
   // The Projected finish tile's tip (A2): the critical-path sentences the schedule
   // derives, or while held work is withdrawn the estimate's reason. One sentence,
   // shared with the prompt pack's plan block (derive/finish.ts planLengthSentence).
@@ -397,27 +395,9 @@ export function Plan({ scan: lastScan, baseline, account }: {
           and it answered a question no step on this page asks; it stays on Today,
           where the person-level evidence it summarises lives (task 011). A step
           whose own action turns on someone's registered methods says so itself. */}
-      {/* The start (§5), in this order: the Start date field (default: today in the
-          display zone, proposed again on every visit; the same control as Plan
-          settings' inputs), Start the plan under it, which locks the date shown,
-          then Plan settings. */}
-      {data.startedFrom === null ? (
-        <>
-          <div className="plan-start no-print">
-            <label className="rows">
-              <span>{PP.settings.start}</span>
-              <input type="date" value={c.schedule.start.slice(0, 10)} onChange={(e) => data.setStart(e.currentTarget.value ? `${e.currentTarget.value}T12:00:00.000Z` : null)} />
-            </label>
-          </div>
-          <p className="actions no-print">
-            <Button variant="primary" onClick={() => data.startPlan(c.schedule.start)}>
-              {start.label}
-            </Button>
-          </p>
-        </>
-      ) : null}
-      {/* A started plan: the date is locked, so the field and its note go; the header line carries the start, once. */}
-
+      {/* No start control sits here (owner, 2026-09-23): the start locks itself
+          when the plan is first computed (derive/planStart.ts lockedStart), and
+          Plan settings' Plan starts moves it. */}
       {/* A link that opens a panel in place, so it says so: expanded state and
           the panel it controls, or a screen reader hears a navigation that goes
           nowhere (task 017). */}
@@ -779,8 +759,8 @@ function Settings({ data, steps, snapshot, nameOf, onClose, mappingRequest }: { 
   // pages.plan.settings in full, and nothing else: the change freeze (from and
   // to on one line, its note under it), the display time zone the plan stores,
   // the signature every Tell your people box signs with, the Baseline mappings
-  // (S4: the baseline's own references a person maps or leaves out), Close. The
-  // start date is in the header, above Start the plan.
+  // (S4: the baseline's own references a person maps or leaves out), Close. Plan
+  // starts moves the start the plan locked when it was first computed.
   const zones = useMemo<string[]>(() => {
     try {
       return (Intl as unknown as { supportedValuesOf?: (key: string) => string[] }).supportedValuesOf?.('timeZone') ?? []
@@ -807,7 +787,7 @@ function Settings({ data, steps, snapshot, nameOf, onClose, mappingRequest }: { 
       {(freezeDirty || data.persistence === 'saving' || data.persistence === 'failed') && <p className="reason" role="status">{freezeDirty ? 'Unsaved Schedule Changes' : data.persistence === 'saving' ? 'Saving…' : 'Changes Could Not Be Saved'}</p>}
       <label className="rows">
         <span>{PP.settings.planStarts}</span>
-        <span>{absoluteDate(start)}</span>
+        <input type="date" value={start} onChange={(e) => { if (e.currentTarget.value) data.setStart(`${e.currentTarget.value}T12:00:00.000Z`) }} />
       </label>
       <details className="scheduling-options">
       <summary>{PP.settings.scheduling}</summary>

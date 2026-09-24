@@ -876,7 +876,6 @@
       "settingsLink": "Plan settings",
       "settings": {
         "h3": "Plan settings",
-        "start": "Start date",
         "planStarts": "Plan starts",
         "firstDeployment": "Earliest policy deployment",
         "firstDeploymentNote": "Optional. Use this if policy changes must start later than preparation.",
@@ -1009,7 +1008,6 @@
           "generic": "No step in this plan covers it for this tenant."
         }
       },
-      "startControl": "Start the plan",
       "line1Started": "{steps} steps · {done} done · started {start} · finishes {finish}",
       "blockedSubject": {
         "operator": "Your safe way in",
