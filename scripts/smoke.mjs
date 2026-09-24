@@ -539,15 +539,11 @@ try {
   // ladder is a tenant-wide diagnostic and stays where the evidence it summarises
   // lives - Today, and Connect's Plan tile.
   check('Plan: no MFA readiness ladder above the board', (await evaluate(`document.querySelectorAll('main.page .rung-tiles, main.page .rung-tile, main.page .strip-head').length`)) === 0)
-  // The Start date proposes today in the display zone (a weekend: the Monday after), in the same control as Plan settings' inputs, its label spaced.
-  const startField = await evaluate(`(() => { const l = document.querySelector('main.page .plan-start label.rows'); const i = l && l.querySelector('input[type=date]'); if (!i) return null; const cs = getComputedStyle(l); const ci = getComputedStyle(i); return { value: i.value, display: cs.display, gap: cs.columnGap, padTop: ci.paddingTop, borderBottom: ci.borderBottomWidth } })()`)
-  const startZone = await evaluate(`(async () => { try { const req = indexedDB.open('iamai'); const db = await new Promise((r) => { req.onsuccess = () => r(req.result) }); if (!db.objectStoreNames.contains('mapping')) { db.close(); return null } const rows = await new Promise((r) => { const q = db.transaction('mapping').objectStore('mapping').getAll(); q.onsuccess = () => r(q.result) }); db.close(); const m = rows.find((x) => x && x.displayTimeZone); return m ? m.displayTimeZone : null } catch { return null } })()`)
-  const startToday = await evaluate(`new Intl.DateTimeFormat('en-CA', { timeZone: ${JSON.stringify(startZone)} || undefined, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())`)
-  const startShift = (ymd, n) => new Date(Date.parse(`${ymd}T12:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10)
-  const startDow = new Date(`${startToday}T12:00:00Z`).getUTCDay()
-  const startExpected = startDow === 6 ? startShift(startToday, 2) : startDow === 0 ? startShift(startToday, 1) : startToday
-  check('Plan: the Start date proposes today in the display zone', !!startField && startField.value === startExpected, `${startField && startField.value} vs ${startExpected} (${startZone ?? 'browser zone'})`)
-  check("Plan: the Start date field is a spaced row in Plan settings' control style", !!startField && startField.display === 'flex' && parseFloat(startField.gap) >= 8 && startField.padTop === '0px' && startField.borderBottom === '1px', JSON.stringify(startField))
+  // The start locks itself when the plan is first computed (derive/planStart.ts
+  // lockedStart): no Start date field and no Start the plan button above the
+  // board, and the plan record carries the locked start without a press.
+  check('Plan: no Start date field or Start the plan button above the board', (await evaluate(`document.querySelector('main.page .plan-start') === null && ![...document.querySelectorAll('main.page button')].some((b) => (b.textContent || '').trim() === 'Start the plan')`)) === true)
+  check('Plan: the start is locked in the plan record without a press', await waitFor(`(async () => { try { const req = indexedDB.open('iamai'); const db = await new Promise((r) => { req.onsuccess = () => r(req.result) }); if (!db.objectStoreNames.contains('plan')) { db.close(); return false } const rows = await new Promise((r) => { const q = db.transaction('plan').objectStore('plan').getAll(); q.onsuccess = () => r(q.result) }); db.close(); return rows.some((x) => x && typeof x.startedAt === 'string' && typeof x.startDate === 'string') } catch { return false } })()`, 8000))
   // The board's groups (`.plan-group`), each with its column head over its rows.
   // The class moved with the group: a phase used to be a raised panel called
   // `.phase` and is now one group among the board's, drawn by the same component

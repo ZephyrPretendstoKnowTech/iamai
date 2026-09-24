@@ -33,7 +33,8 @@ import { settleForecast } from '../../roadmap/forecast.ts'
 import { observationsOf } from '../../roadmap/tracking.ts'
 import type { PlanDecisions, StepDecision } from '../../roadmap/progress.ts'
 import { appliedMapping } from './pickerRows.ts'
-import { effectiveFirstDeployment, proposedStart } from '../../derive/planStart.ts'
+import { heldPlan } from './planChanges.ts'
+import { effectiveFirstDeployment, lockedStart, proposedFirstDeployment, proposedStart } from '../../derive/planStart.ts'
 import { HARDENING_DEFERRAL_ID } from '../../validation/emergencyTiers.ts'
 import { BREAK_GLASS_STEP_ID } from '../../roadmap/stepIds.ts'
 import { operatorUserId } from '../../derive/operator.ts'
@@ -89,14 +90,12 @@ export type PlanData = {
   freeze: ChangeFreeze | null
   /** Save a new mapping (an assumptions edit) and regenerate. */
   saveMapping: (next: MappingState) => void
-  /** Set the plan start; null clears the override and restores the default (prompt 49.1 item 11). */
-  setStart: (iso: string | null) => void
-  /** The anchored start (ISO) once the plan is started or a date is set; null while every visit proposes dates from today. */
-  startedFrom: string | null
-  /** When Start the plan was pressed, if it was. */
+  /** Counts the person's own changes (every setter below bumps it): the Plan's change line tells a Save from the plan settling after it (planChanges.ts observePlan). */
+  revision: number
+  /** Move the locked start (Plan settings' Plan starts): a deliberate re-plan, with the first deployment anchored beside it. */
+  setStart: (iso: string) => void
+  /** When the plan's start was locked (derive/planStart.ts lockedStart): the first time it was computed for the tenant. */
   startedAt: string | null
-  /** Start the plan (target-state §5): lock the proposed dates by anchoring the start; a scan never moves it. */
-  startPlan: (effectiveStart: string) => void
   setBand: (b: SizeBand | null) => void
   setFreeze: (f: ChangeFreeze | null) => void
   /** Skip a step, persisted so a re-scan and reload keep it (prompt 49.1 item 10). */
@@ -206,8 +205,11 @@ export function usePlanData(
       setMapping(m)
       // Read the record once for its decisions, in whatever shape it was written;
       // a pre-50.1 blob is reduced to its skips here and rewritten on the next save.
+      // A plan never started is locked here, as it is first computed: its start
+      // and first deployment hold from now on, and the save below records them
+      // (derive/planStart.ts lockedStart). A locked plan is read as it is.
       const loadedRecord = decisionsOf(p as never, planId)
-      setSaved({ ...loadedRecord, planCreatedAt: loadedRecord.planCreatedAt ?? new Date().toISOString() })
+      setSaved(lockedStart({ ...loadedRecord, planCreatedAt: loadedRecord.planCreatedAt ?? new Date().toISOString() }, m?.displayTimeZone ?? null))
       setMappingFor(snapshot)
       setLoaded(true)
     }).catch(() => { if (!cancelled) setLoadError(true) })
@@ -307,9 +309,8 @@ export function usePlanData(
     const nameOf = (id: string): string => groups.get(id)?.displayName ?? id
     return appliedMapping({ snapshot, mapping, nameOf, groups, now: snapshot.asOf }, saved?.stepDecisions)
   }, [mapping, saved, snapshot, groups])
-  // The default start is today in the display zone (derive/planStart.ts),
-  // proposed again on every visit until Start the plan anchors a date; the
-  // schedule clamps a weekend to the working day after it.
+  // The start the record locked as it loaded (derive/planStart.ts lockedStart);
+  // today in the display zone only before the record has loaded.
   const startDate = saved?.startDate ?? (snapshot ? proposedStart(mapping?.displayTimeZone ?? null) : null)
   // The first deployment (owner, 2026-09-11): preparation begins on the start,
   // deployment-capable work on the eligible workday after it unless a day was
@@ -397,6 +398,17 @@ export function usePlanData(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [snapshot, baseline, applied, groupsLoaded, loaded, groups, directory, saved, planId, version, startDate, firstDeployment, band, freeze, mappingFor, groupsFor])
 
+  // The plan on screen (planChanges.ts heldPlan): while the plan recomputes for
+  // the snapshot on screen — a Save reads the groups again — the page keeps the
+  // plan it last computed for that snapshot, and updates in place when the new
+  // one lands. A new snapshot loads.
+  const held = useRef<{ snapshot: TenantSnapshot; plan: PlanComputed } | null>(null)
+  useEffect(() => {
+    if (!snapshot) held.current = null
+    else if (computed) held.current = { snapshot, plan: computed }
+  }, [snapshot, computed])
+  const shown = heldPlan(computed, held.current, snapshot)
+
   // Step 4 records its baseline and qualifying sign-ins from the completed scan.
   // It has no parallel manual result path: the same checkpoints drive the tile,
   // milestone, cleanup completion and export.
@@ -470,7 +482,7 @@ export function usePlanData(
     retrySave: () => { if (pendingMapping.current) persistMapping(pendingMapping.current); setSaveAttempt(value => value + 1) },
     recordForExport: saved ? { ...saved, observations: observationsOf(computed?.steps ?? [], saved.observations ?? null) } : null,
     ready: loaded && groupsLoaded,
-    computed,
+    computed: shown,
     // The mapping the plan derives from: the stored record with every step
     // decision applied, so a step's variables agree with the plan around it.
     mapping: applied,
@@ -479,6 +491,7 @@ export function usePlanData(
     freeze,
     groups,
     directory,
+    revision: version,
     saveMapping: (next) => {
       setMapping(next)
       persistMapping(next)
@@ -486,32 +499,30 @@ export function usePlanData(
     },
     firstDeployment,
     setStart: (iso) => {
-      // A date set here anchors the start (a deliberate re-plan, §5); clearing
-      // it returns the plan to proposals from today, and it is no longer started.
-      // A saved first deployment the new start would put before it goes back to
-      // the default: deployment never lands before the plan starts.
+      // A date set here moves the locked start (a deliberate re-plan, §5). The
+      // first deployment is anchored with it as the lock anchors it: a saved day
+      // stands while it is not before the new start, else the eligible workday
+      // after it. Deployment never lands before the plan starts.
       setSaved((p) => ({
         ...(p ?? { planId, skips: {}, checkpoints: [] }),
-        startDate: iso ?? undefined,
-        firstDeployment: iso !== null && p?.firstDeployment && p.firstDeployment >= iso ? p.firstDeployment : undefined,
-        ...(iso === null ? { startedAt: undefined } : {}),
+        startDate: iso,
+        firstDeployment: effectiveFirstDeployment(iso, { firstDeployment: p?.firstDeployment }),
+        startedAt: p?.startedAt ?? new Date().toISOString(),
       }))
       bump()
     },
     setFirstDeployment: (iso) => {
-      setSaved((p) => ({ ...(p ?? { planId, skips: {}, checkpoints: [] }), firstDeployment: iso ?? undefined }))
+      // Cleared, it goes back to the eligible workday after the start, anchored:
+      // a locked plan with no day saved would deploy from its start, as a plan
+      // started before the setting existed does (derive/planStart.ts).
+      setSaved((p) => {
+        const base = p ?? { planId, skips: {}, checkpoints: [] }
+        const start = base.startDate ?? startDate
+        return { ...base, firstDeployment: iso ?? (start ? proposedFirstDeployment(start) : undefined) }
+      })
       bump()
     },
-    // Started means Start the plan was pressed: a start date alone is an anchor
-    // (Plan settings, or any saved plan file carries one) and is not a start.
-    startedFrom: saved?.startedAt ? (saved.startDate ?? null) : null,
     startedAt: saved?.startedAt ?? null,
-    startPlan: (effectiveStart) => {
-      // Starting anchors the first deployment with the start, so a later visit
-      // (or a change to the default) never moves the dates of a started plan.
-      setSaved((p) => ({ ...(p ?? { planId, skips: {}, checkpoints: [] }), startDate: effectiveStart, firstDeployment: effectiveFirstDeployment(effectiveStart, p), startedAt: new Date().toISOString() }))
-      bump()
-    },
     setBand: (b) => {
       setSaved((p) => ({ ...(p ?? { planId, skips: {}, checkpoints: [] }), band: b ?? undefined }))
       bump()
