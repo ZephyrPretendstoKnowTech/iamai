@@ -100,7 +100,8 @@ test('every step projects its own Entra procedure as its Implementation Task, an
   {
     for (const [id, title, first] of [
       ['s-prereq-allowed-countries', 'Set up the allowed countries location', /Named locations/],
-      ['s-verify-mfa', 'Help each person set up their method', /Send the Email tab's first message/],
+      // The push-back line comes first: those people are set up before the email reaches them (owner, 2026-09-24).
+      ['s-verify-mfa', 'Help each person set up their method', /Anyone likely to push back/],
     ] as const) {
       const { step, body } = bodyOf(id)
       const tasks = body.emergencyAccountTasks

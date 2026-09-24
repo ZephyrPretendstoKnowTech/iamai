@@ -811,7 +811,7 @@ export function policyCardsOf(contract: StepContract, projected: EmergencyTaskPr
     // A step that reads its people states them itself, open or satisfied
     // (prepareSteps.ts): who it is about, and the fact, never "In place · No
     // change needed." (walk list section 3 items 14, 41 and 46).
-    if (own !== null) return { key: subject.key, accountId: null, heading: subject.heading, upn: own.upn ?? subject.name, title: own.title, detail: own.detail, instruction: '', completed: [], remainingCount: null, satisfied, ...(own.link ? { link: own.link } : {}) }
+    if (own !== null) return { key: subject.key, accountId: null, heading: subject.heading, upn: own.upn ?? subject.name, title: own.title, detail: own.detail, instruction: '', completed: [], remainingCount: null, satisfied, ...(own.link ? { link: own.link } : {}), ...(own.more?.length ? { more: own.more } : {}) }
     // A finished policy in Turn On MFA for Everyone states what it does (walk
     // list 4.x item 22, owner 2026-09-24): "On · Requires MFA for All users
     // except Core - Exclusions", never "In place · This is in place already:

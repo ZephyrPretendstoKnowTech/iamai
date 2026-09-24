@@ -30,17 +30,18 @@ import { CAMPAIGN_STEP_ID } from '../../roadmap/followUp.ts'
 import type { DeviceType } from '../../scoring/phishingResistant.ts'
 import { proposedNamesFor } from './proposedNames.ts'
 import { NAMES_INLINE } from './whoBlocks.ts'
+import { personLines } from './personNext.ts'
 import { personLabels } from '../../names.ts'
 
 /** The step's own Tasks Remaining card, in place of its content's fixed check (policyTasks.ts policyCardsOf). */
-export type OwnCard = { title: string; detail: string; upn: string | null; link: { label: string; href: string } | null }
+export type OwnCard = { title: string; detail: string; upn: string | null; link: { label: string; href: string } | null; more?: string[] }
 
 /** What the step's card, Next milestone and instruction line say, where the step reads its people. */
 export type PrepareReading = { card: OwnCard | null; milestone: string | null; instruction: string | null }
 
 type OperatorWords = { card: { check: string; registered: string; signedIn: string; signedInOn: string; computer: string; phone: string }; milestone: { register: string; signIn: string } }
 type TeamWords = {
-  card: { notReady: string; ready: string; needsPasskey: string; needsAuthenticator: string; many: string; link: string }
+  card: { notReady: string; ready: string; person: string; link: string }
   milestone: string
   instruction: string
   campaign: { managed: string; off: string; on: string; nudging: string; fido2: string; microsoftAuthenticator: string; allUsers: string }
@@ -120,13 +121,13 @@ function teamReading(step: Step, ctx: StepVarContext, satisfied: boolean): Prepa
   const instruction = team.missing.length > 0 || team.marked.length > 0 ? W.instruction : null
   if (satisfied) return { card: { title: fillText(W.card.ready, { ready: team.total - team.missing.length, total: team.total }), detail: '', upn: null, link: null }, milestone: null, instruction }
   if (team.missing.length === 0) return { card: null, milestone: null, instruction }
-  const few = team.missing.length <= NAMES_INLINE
-  const account = accountsOf(ctx)
-  const detail = few
-    ? team.missing.map((id) => fillText(team.passkey.has(id) ? W.card.needsPasskey : W.card.needsAuthenticator, { name: account(id) })).join('\n')
-    : W.card.many
+  // Everyone not ready, by name, each with MFA Readiness's own next step (owner,
+  // 2026-09-24: the card names its people, and the two pages speak one language):
+  // five on the card, the rest under its fold. Somebody the page does not count
+  // (an admin with no sign-in in 90 days) keeps the step's own line.
+  const lines = personLines(ctx, team.missing, W.card.person)
   return {
-    card: { title: fillText(W.card.notReady, { missing: team.missing.length, total: team.total }), detail, upn: null, link: few ? null : { label: W.card.link, href: TEAM_READINESS_HREF } },
+    card: { title: fillText(W.card.notReady, { missing: team.missing.length, total: team.total }), detail: lines.slice(0, NAMES_INLINE).join('\n'), upn: null, link: { label: W.card.link, href: TEAM_READINESS_HREF }, ...(lines.length > NAMES_INLINE ? { more: lines.slice(NAMES_INLINE) } : {}) },
     milestone: fillText(W.milestone, { n: team.missing.length }),
     instruction,
   }

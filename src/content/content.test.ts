@@ -60,6 +60,8 @@ test('no step string carries a phrase the step surfaces forbid', () => {
 const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.shared.doesntApplyPrompt',
   '.shared.licenceRule',
+  // Turning Temporary Access Pass on ({tapEnable}): read by 3.2's procedure and 3.4's card, neither of which the review page draws.
+  '.shared.methodGuides.common.tapEnable',
   // Shared references the portal translator can emit but this example's mapped
   // policies do not trigger: portalOpen is the change-to-an-existing-policy
   // opener (every mapped policy here is created new), syncRoleNote is the

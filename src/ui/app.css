@@ -5269,6 +5269,10 @@ th .th-sort:focus-visible,
 .emergency-account-completed > summary { cursor: pointer; color: var(--secondary-text); font-size: var(--t-0); font-weight: var(--weight-strong); }
 .emergency-account-completed ul { margin: 8px 0 0; padding-left: 18px; font-size: var(--t-0); }
 .emergency-account-completed li + li { margin-top: 4px; }
+/* The people a card names past the first five: the same fold, with no rule above it (it continues the names). */
+.emergency-account-more { margin-top: 6px; }
+.emergency-account-more > summary { cursor: pointer; color: var(--secondary-text); font-size: var(--t-0); font-weight: var(--weight-strong); }
+.emergency-account-more > .emergency-account-lines { margin-top: 6px; }
 .emergency-account-readiness .readiness-satisfied .emergency-account-status-grid { margin-top: 8px; }
 /* A Direction question is one of those cards (DirectionQuestions.tsx, owner
    2026-09-20: the Direction steps read as members of the Emergency Access
