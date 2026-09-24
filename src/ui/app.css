@@ -185,9 +185,14 @@ hr {
   text-decoration: none;
   white-space: nowrap;
 }
+/* A disabled button reads as disabled in every variant and both themes: the
+   whole face at reduced contrast, and the not-allowed cursor. Opacity rather
+   than a colour, because the variant and theme rules below paint the face (the
+   dark primary's brand tint outranks any :disabled colour), and none of them
+   sets opacity, so nothing paints over it and the enabled look is untouched. */
 .btn:disabled {
-  color: var(--quiet-text);
-  cursor: default;
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 .btn-primary {
   background: var(--brand-primary);
@@ -199,11 +204,6 @@ hr {
 .btn-primary:focus-visible {
   background: var(--brand-primary);
   color: var(--on-brand);
-}
-.btn-primary:disabled {
-  background: var(--strong-line);
-  border-color: var(--strong-line);
-  color: var(--secondary-text);
 }
 /* The three weights (docs/design/connect-mockup.html): primary filled accent, secondary outlined accent, tertiary muted. */
 .btn-secondary {
@@ -656,9 +656,8 @@ header.app nav a.active {
   color: var(--primary-text);
   border-bottom-color: var(--brand-primary);
 }
-/* A tab waiting on the first scan looks like the disabled controls elsewhere
-   (.btn:disabled): ink-3 and no pointer, so "not yet" is visible and not only
-   in `aria-disabled` (task 017). */
+/* A tab waiting on the first scan reads as not yet: ink-3 and no pointer, so
+   "not yet" is visible and not only in `aria-disabled` (task 017). */
 header.app nav a[aria-disabled='true'] {
   color: var(--quiet-text);
   cursor: default;
