@@ -23,7 +23,7 @@ import { initialDomain } from '../../validation/rules.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { fillText, whatToDoFor } from '../../content/render.ts'
-import { directionWords } from '../../content/content.ts'
+import { app, directionWords } from '../../content/content.ts'
 import { suggestCountries } from '../../mapping/countries.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { baselineConflictWords } from '../../roadmap/baselineConflict.ts'
@@ -52,6 +52,9 @@ import { projectSafely, projectExplanation, readinessSafely, troubleshootingSafe
 import type { ChannelArtifact, OutputChannel, OwnerConfirmation, TroubleshootingScenario } from '../../content/implementation/project.ts'
 
 type Ex = Record<string, unknown>
+
+/** Prepare Emergency Access Accounts' milestone while nothing is chosen (pages.app.plan.emergencyTasks). */
+const CHOOSE_ACCOUNTS = (app.plan as unknown as { emergencyTasks: { chooseAccounts: string } }).emergencyTasks.chooseAccounts
 
 const NO_CONFIRMATIONS: Readonly<Record<string, OwnerConfirmation>> = {}
 const NO_BLOCKERS: readonly PrerequisiteBlocker[] = []
@@ -368,7 +371,10 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // step, which has no package — the sentence its content writes for what
   // approving its answers does. Both are written; neither is composed here
   // (stepLayout.test.ts U3).
-  const rail = railOf(contract, pkg?.meta.milestone?.actionText ?? directionMilestoneAction(step.id))
+  // Prepare Emergency Access Accounts with no account chosen: the choice is the
+  // milestone (pages.app.plan.emergencyTasks.chooseAccounts), not the checks after it.
+  const choosing = step.id === 's-prereq-break-glass' && ctx.mapping.breakGlassUserIds.length === 0 ? CHOOSE_ACCOUNTS : null
+  const rail = railOf(contract, choosing ?? pkg?.meta.milestone?.actionText ?? directionMilestoneAction(step.id))
   // What kind of step this is, and "Resolution step" for one whose source
   // contradicts itself (stepContract.ts eyebrowOf).
   const eyebrow = eyebrowOf(contract, typeof cs.kind === 'string' ? cs.kind : null)

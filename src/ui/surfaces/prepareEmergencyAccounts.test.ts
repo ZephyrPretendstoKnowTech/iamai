@@ -131,3 +131,24 @@ test('#15 the emergency accounts the picker saves are the operator-saved decisio
   const saved = applyStepDecisions({ ...value.mapping, breakGlassUserIds: [] }, { [STEP]: { picked: ids, at: value.snapshot.asOf } })
   assert.deepEqual(saved.breakGlassUserIds, ids)
 })
+
+test('#13 the instruction is said once: the rail says it, the empty cards do not repeat it, and the milestone names the choice', () => {
+  const { body, ctx } = opened('small', noAccounts)
+  // The rail's line, reworded for the picker that saves on Done.
+  assert.equal(decisionOf(STEP).help, 'Select the accounts dedicated to emergency access, then select Done.')
+  // Each empty card says only that nothing is chosen, and the first one where to create an account.
+  const cards = body.emergencyAccountTasks!.accounts!
+  assert.deepEqual(cards.map((c) => [c.title, c.instruction]), [
+    ['No account selected', 'To create one, follow Create an emergency account in Implementation Tasks.'],
+    ['No account selected', ''],
+  ])
+  const one = opened('small', (f) => { f.mapping.breakGlassUserIds = f.mapping.breakGlassUserIds.slice(0, 1) }).body.emergencyAccountTasks!.accounts!
+  assert.equal(one[1].instruction, 'To create one, follow Create an emergency account in Implementation Tasks.', 'the first empty card carries the pointer')
+  // The bar says nothing on Step 1 while work remains: the cards and the rail already say it.
+  const step = read('src/ui/surfaces/ContentStep.tsx')
+  assert.doesNotMatch(step, /Complete the next task shown for each account\./)
+  // The milestone names the choice while none is made, and the checks after.
+  assert.equal(body.rail.sub, 'Choose your two emergency access accounts.')
+  assert.equal(ctx.mapping.breakGlassUserIds.length, 0)
+  assert.equal(opened('demo').body.rail.sub, 'Complete the remaining emergency access checks.')
+})
