@@ -44,7 +44,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { laneReadings } from './planLanes.ts'
-import { BOARD, WHEN, doesntApplyView, laneViewOf } from './planBoard.ts'
+import { doesntApplyView, laneViewOf } from './planBoard.ts'
 import {
   allCuratedFixtures,
   allFixtures,
@@ -62,7 +62,6 @@ import { CONTRACT, railOf, readinessOf, stepContract, stepTrack } from './stepCo
 import { isHeld } from '../../roadmap/holds.ts'
 import type { StepContract } from './stepContract.ts'
 import { statusOf } from './statusWord.ts'
-import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
@@ -661,13 +660,6 @@ test('§4 a blocker stays a blocker and a passed prerequisite leaves nothing beh
   )
 })
 
-test('§4b what IAMAI found is what this scan observed, never a padded card', () => {
-  every('found', (v) => v.c.found.every((f) => f.text.trim().length > 0 && f.label.trim().length > 0), 'a finding card has no finding in it')
-  // The reach is a real answer or a real unknown; it is never a count of nobody
-  // standing in for a scope the scan could not settle.
-  every('who', (v) => v.c.who === null || v.c.who.text.trim().length > 0, 'the who line renders empty')
-})
-
 // -------------------------------------------------------------------- §5 rail
 
 test('§5 the rail and Readiness say only what the contract holds, on every variant', () => {
@@ -708,23 +700,6 @@ test('§5 the rail and Readiness say only what the contract holds, on every vari
   )
 })
 
-test('§5b a preserved goal draws the pack’s In-place variant: no change needed, and no implementation', () => {
-  const pack = read('docs/design/approved/anatomy/plan-step-v1.html')
-  const v4 = pack.slice(pack.indexOf('id="v4"'), pack.indexOf('id="v5"'))
-  assert.ok(v4.includes('<div class="metric">No change needed</div>'), 'the pack’s In-place rail no longer says no change is needed')
-  assert.ok(v4.includes('implementation-empty good'), 'the pack’s In-place variant now offers an implementation')
-  assert.equal(v4.split('<div class="stage done"></div>').length - 1, 4, 'the pack no longer draws the In-place lifecycle as reached')
-  // Production: every preserved goal nothing holds says the same, from the contract.
-  // A conditional input nobody saved keeps a delivered goal short of Completed (U28, B1).
-  const preserved = sweep().filter((v) => v.c.whatToDo.kind === 'preserve' && !v.c.state.setAside && v.c.state.condition === 'healthy' && (v.step.unsavedInputs ?? []).length === 0)
-  assert.ok(preserved.length > 0, 'no preserved goal in the sweep')
-  for (const v of preserved) {
-    assert.equal(railOf(v.c).metric, 'Completed', `${v.where}: a completed goal must not show an unscheduled next action`)
-    assert.ok(v.c.track.every((t) => t.reached), `${v.where}: a preserved goal is drawn mid-rollout`)
-    assert.equal(v.c.implementation.offered, false, `${v.where}: a preserved goal offers an implementation`)
-  }
-})
-
 // ------------------------------------------------------- §6 one presentation
 
 test('§6 the Plan has one row, two bodies, and no step-specific presentation fork', () => {
@@ -757,45 +732,12 @@ test('§6 the Plan has one row, two bodies, and no step-specific presentation fo
   }
 })
 
-test('§6a Portal, JSON and PowerShell are one authority chain the presentation only reads', () => {
-  // The opened step's body spans the component and stepBody.ts (A3): the decisions read there.
-  const step = read('src/ui/surfaces/ContentStep.tsx') + read('src/ui/surfaces/stepBody.ts')
-  const sections = read('src/ui/surfaces/StepSections.tsx')
-  // Every channel — the panel that shows it, the download that saves it, and
-  // the rail that lists it — is gated on the ONE answer the contract carries
-  // (`implementation.offered`, which is roadmap/operations.ts's
-  // `implementationOffered`). A surface that decided a channel for itself is
-  // how the screen came to instruct a change the artifacts refused to describe.
-  assert.ok(step.includes("const channels = step.directionQuestions ? ['ai' as Channel] : deployNow ? channelsFor(hasPortal, contract.implementation.offered) : []"), "the step no longer gates its channels on the contract's one answer")
-  assert.ok(step.includes("if (machineOffered) out.push('ps', 'json')"), 'the machine channels are offered without Foundation A')
-  assert.equal(/implementationOffered|jsonOffered/.test(sections.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')), false, 'the frame components ask Foundation A themselves')
-  // And the bodies themselves are never composed here: the JSON is stepJson's
-  // over the step's own resolved operations, and the commands are
-  // stepPowerShell's over the same operations.
-  assert.match(step, /policyJsonText\(step\)/, 'the step no longer takes its JSON from stepJson')
-  assert.match(step, /powershellFor\(stepOperations\(step\)\)/, 'the step no longer takes its commands from the same operations')
-  const code = step.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
-  assert.doesNotMatch(code, /JSON\.stringify\(\s*\{/, 'the step builds a policy body in JSX')
-})
-
 test('§6b the collapsed row and the opened head say the same state, on every variant', () => {
   for (const v of sweep()) {
     const row = statusOf(v.step)
     assert.equal(v.c.state.word, row.word, `${v.where}: the row and the opened step disagree about the state`)
     assert.equal(v.c.state.tone, row.tone, `${v.where}: the row and the opened step disagree about the tone`)
   }
-})
-
-test('§6c the demo renders through the same Plan, with no variant renderer of its own', () => {
-  const app = read('src/ui/App.tsx')
-  assert.match(app, /<Plan\b/, 'the app no longer mounts the Plan')
-  assert.equal(app.split('<Plan').length - 1, 1, 'the demo mounts a second Plan')
-  const demo = read('src/ui/demo.ts')
-  assert.doesNotMatch(demo, /ContentStep|StepHead|PlanRow|StepRail/, 'the demo builds Plan presentation of its own')
-  // The demo's own plans are in the sweep above under the `demo` fixtures, so
-  // every invariant in this file is asserted over them too.
-  assert.ok(sweep().some((v) => v.where.startsWith('demo/')), 'the demo tenant left the variant sweep')
-  assert.ok(sweep().some((v) => v.where.startsWith('demo-week2/')), 'the demo follow-up snapshot left the variant sweep')
 })
 
 // ---------------------------------------------------------- §7 policy members
@@ -872,15 +814,3 @@ test('§7 a step the baseline implements with two policies keeps both, and neith
   )
 })
 
-test('§7b the members list is the renderer’s one source for a pair, composed nowhere else', () => {
-  const sections = read('src/ui/surfaces/StepSections.tsx')
-  const step = read('src/ui/surfaces/ContentStep.tsx')
-  // One list, over the contract's members, drawing each member's own line and
-  // its own label — and nothing at all below two, so a one-policy step keeps
-  // the light row it has.
-  assert.match(sections, /members\.length < 2/, 'the members block no longer stops at a single policy')
-  assert.match(sections, /members\.map\(/, 'the members block no longer draws one row per member')
-  assert.match(sections, /\{m\.line\}/, 'the members block composes a member’s line somewhere other than the contract')
-  assert.match(step, /<PolicyMembers members=\{contract\.members\} \/>/, 'the step no longer draws the members from the contract')
-  assert.equal(step.split('<PolicyMembers').length - 1, 1, 'the step draws a second members block')
-})

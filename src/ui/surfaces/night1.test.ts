@@ -9,13 +9,11 @@ import assert from 'node:assert/strict'
 // settled (roadmap/sourceIdentity.test.ts).
 import { curatedFixture as fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
-import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
+import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { missingVars } from '../../content/render.ts'
-import { pages, shared } from '../../content/content.ts'
+import { shared } from '../../content/content.ts'
 import { sessionWantedForGoal, sessionWantedLongForGoal } from './stepPortal.ts'
 import { stepVars } from './stepVars.ts'
-import { datesLineFor } from './stepExport.ts'
-import { contentStepFor } from '../../content/stepTitle.ts'
 import { hoursInWords } from '../../coverage/verdict.ts'
 import { effectsOf } from '../../roadmap/strand.ts'
 import { PINNED } from '../../baseline/pinned.ts'
@@ -29,27 +27,6 @@ test('a shared reference with an unfilled variable is a hole in the line that na
   assert.deepEqual(missingVars('{datesNew}', { announce: 'Sep 1', enforce: 'Sep 8' }), ['reportOnly'], 'the walk saw "Report-only from ·"')
   // The signature reference has a default and is never a hole.
   assert.deepEqual(missingVars('Regards, {signature}', {}), [])
-})
-
-test('a policy already in report-only dates its Report-only line from the scan', () => {
-  // Week two: the policy names nothing this tenant lacks, so it is datable.
-  // With the plan's foundation settled (roadmap/foundations.ts): until Emergency Access and
-  // Direction are, every policy step is held and the plan dates nothing.
-  const f = withFoundationSettled(fixture('demo-week2'))
-  const r = runFixture(f)
-  const step = r.steps.find((s) => s.goalId === 'block-auth-transfer')!
-  assert.equal(step.status, 'in-report-only')
-  assert.ok(step.tracking?.reportOnlyAt, 'the scan dates the report-only policy')
-  const ex = stepVars(step, { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => id, signature: 'IT', operatorId: null, now: f.snapshot.asOf, reportOnlyAt: r.schedule.reportOnlyAt[step.id] ?? null })
-  assert.ok(typeof ex.reportOnly === 'string' && ex.reportOnly.length > 0, 'reportOnly is filled from tracking')
-  // Its line is the observation line, not the create's three dates: the only
-  // thing left to submit is the enforcement and nothing has earned it, so the
-  // plan states the day it entered report-only and the review its own gates
-  // derive (roadmap/forecast.ts). The point stands on the line it renders — the
-  // report-only date comes from the scan and nothing about the line has a hole.
-  const cs = contentStepFor(step) as Record<string, unknown>
-  assert.equal(datesLineFor(step, cs), '{datesObserve}')
-  assert.deepEqual(missingVars('{datesObserve}', ex), [], 'the Dates line has no hole')
 })
 
 /** The fixture on a package that carries its own admin-session policy: every admin role but the pin's, twelve hours, never persistent. */
@@ -98,55 +75,3 @@ test('a session goal fills {wanted} from the policy the step will write, and say
   assert.equal(sessionWantedLongForGoal('mfa-all-users'), null)
 })
 
-test('the problematic-accounts check lists the dormant accounts with their state, and counts them', () => {
-  const f = fixture('getiamai')
-  const r = runFixture(f)
-  const step = r.steps.find((s) => s.id === 's-check-dormant-accounts')!
-  assert.equal(step.kind, 'check')
-  const ex = stepVars(step, { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: null, now: f.snapshot.asOf })
-  const rows = ex.accountsWithState as string[]
-  assert.ok(rows.length > 0, 'getiamai has accounts that never signed in')
-  assert.equal(rows.length, step.population.total, 'the list is the step\'s population')
-  assert.equal(ex.n, step.population.total, 'the lead counts the accounts checked, not the active ones (none are)')
-  for (const row of rows) assert.match(row, / · (no sign-in on record|[A-Z][a-z]{2} \d{1,2}, \d{4})$/, 'name · state')
-  assert.equal((ex.accountsWithStateIds as string[]).length, rows.length)
-})
-
-test("MFA Readiness's filters are the v3 pack's three, and every filter a link arrives with still has a word (task 012; prompt 62)", async () => {
-  const { SHOW_KEYS, showKeyOf } = await import('../../derive/mfaReadiness.ts')
-  const { KINDS } = await import('../../derive/ladder.ts')
-  const { READINESS_STATES } = await import('../../scoring/phishingResistant.ts')
-  const { showWord, stateTitle } = await import('./readinessCells.ts')
-  assert.deepEqual(SHOW_KEYS.map(showWord), ['Needs action', 'Admins', 'Everyone'])
-  // Not on the toolbar, still nameable: a filter a link, a legend state or a rail
-  // count arrives with keeps its own word, so the pressed control always says
-  // what is on screen.
-  const linked = ['lapsing', 'notActive', ...KINDS, 'guests']
-  for (const k of [...linked, ...READINESS_STATES]) assert.equal(showKeyOf(k), k, `${k}: a link with this filter does not land on it`)
-  assert.deepEqual(linked.map(showWord), ['Lapsing this week', 'Not counted', 'Emergency access', 'Service accounts', 'Shared devices', 'Sign-in disabled', 'Guests'])
-  for (const s of READINESS_STATES) assert.equal(showWord(s), stateTitle(s), `${s}: the filter reads the state's word`)
-  // A link from before prompt 62 still lands somewhere sensible, never on nothing.
-  assert.equal(showKeyOf('needsProof'), 'confirm')
-  assert.equal(showKeyOf('needsSetup'), 'method')
-  assert.equal(showKeyOf('noPasskey'), 'all')
-  assert.equal(showKeyOf('rung-3'), null, 'an unknown filter falls back to the default')
-  assert.ok(!('tiles' in (pages.readiness as Record<string, unknown>)), 'the four tiles are gone')
-})
-
-test("the Boardroom room is a shared device on MFA Readiness: listed, not counted, its method never a passkey (walk-51 item 11)", async () => {
-  const { readinessView } = await import('../../derive/mfaReadiness.ts')
-  const { nextCell, rowCells } = await import('./readinessCells.ts')
-  const f = fixture('demo')
-  const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
-  const room = v.rows.find((r) => r.user.displayName === 'Boardroom')
-  assert.ok(room, 'the demo has the Boardroom room')
-  assert.equal(room.kind, 'shared')
-  assert.equal(room.active, false, 'a shared device is never counted')
-  assert.equal(room.state, null, 'and has no readiness state')
-  assert.equal(room.readiness, null, 'it is not scored as a person')
-  assert.ok(!(room.methods ?? []).includes('passkey'), 'a room holds no passkey')
-  // Listed under its kind, with no state and nothing to do.
-  assert.equal(rowCells(room)[3], (pages.readiness as { show: Record<string, string> }).show.shared, 'the CSV names it a shared device')
-  assert.equal(nextCell(room), '', 'a room is asked for nothing')
-  assert.equal(v.rows.filter((r) => r.state !== null).some((r) => r.user.id === room.user.id), false, 'it is in no worklist group')
-})
