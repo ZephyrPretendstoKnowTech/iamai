@@ -601,7 +601,12 @@ function heldLine(step: Step): string | null {
  */
 export function readinessHeldLine(step: Step, tenant: string): string {
   const vars = { tenant, ...(step.action.readinessGate ?? {}) }
-  if (!createWaitsOnReadiness(step)) return fillText(app.plan.readinessHeld, vars)
+  if (!createWaitsOnReadiness(step)) {
+    // The admin gate is every admin, said in the admins' own count (walk list 4.x item 44).
+    const gate = step.action.readinessGate
+    const p = gate === undefined ? null : methodGateOf(step, gate)
+    return p !== null && familyOf(gate!) === 'admin' ? fillText(app.plan.readinessHeldAdmin, { ready: p.readyIds.length, total: p.ids.length }) : fillText(app.plan.readinessHeld, vars)
+  }
   // A policy the scan found switched off is not one to create: say it was found.
   const off = switchedOffPolicies(step).map((p) => p.name)
   return off.length > 0 ? fillText(app.plan.readinessHeldSwitchedOff, { ...vars, policy: list([...new Set(off)]) }) : fillText(app.plan.readinessHeldCreate, vars)

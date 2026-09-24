@@ -402,7 +402,8 @@ test('the enforce checklist carries the step\'s own unresolved prerequisites, no
   // ABOVE the heading. Spliced below it, the sentence became an item in a list
   // of conditions that must be TRUE while saying something was NOT finished;
   // two readers hit the inversion and one enforced ten policies through it.
-  assert.equal(one[at - 1], 'Stop: Turn Off Security Defaults is not finished, and this policy is part of it. Leave this policy in Report-only until it is.')
+  // Owner, 2026-09-24 (walk list 4.x item 44): the policy is not part of that step.
+  assert.equal(one[at - 1], 'Wait for Turn Off Security Defaults; leave this policy in Report-only until then.')
   // A condition, never a replacement: the three that were always there stay.
   assert.ok(one.some((l) => /report-only period is complete/i.test(l)), 'the report-only condition was displaced')
   assert.ok(one.some((l) => /Emergency access is prepared and tested/i.test(l)), 'the emergency-access condition was displaced')
@@ -412,7 +413,7 @@ test('the enforce checklist carries the step\'s own unresolved prerequisites, no
   const many = linesOf(['Turn Off Security Defaults', 'Prepare Your Team for MFA'])
   assert.match(many[at - 1], /Turn Off Security Defaults/)
   assert.match(many[at - 1], /Prepare Your Team for MFA/)
-  assert.equal(many.filter((l) => /^Stop: /.test(l)).length, 1, 'one line per prerequisite instead of one line for all of them')
+  assert.equal(many.filter((l) => /^Wait for /.test(l)).length, 1, 'one line per prerequisite instead of one line for all of them')
 })
 
 test('a field still waiting on a reference is not printed as a setting to copy', () => {
