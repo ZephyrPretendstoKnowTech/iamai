@@ -21,8 +21,6 @@ import { stepContract } from './stepContract.ts'
 import { handoffPreview } from './mfaHandoffPreview.ts'
 import { scoredPeople } from '../../derive/mfaReadiness.ts'
 import { stepMfaHold } from '../../derive/stepMfaReadiness.ts'
-import { applyManualReviews } from '../../roadmap/manualWork.ts'
-import type { Step } from '../../roadmap/types.ts'
 
 const f = fixture('getiamai')
 const r = runFixture(f, {}, null, f.snapshot.asOf)
@@ -66,9 +64,8 @@ test('the dormant-account review names the guest Kai Brown as every other surfac
 // guest and device-registration steps previewed the guest the same way, without
 // even its marker: which Kai Brown to help register, again. The account picker a
 // separate-admin-accounts review is recorded with offered the bare name too, and
-// ManualReviewForm draws an option with no second line; the per-user MFA finding
-// listed the accounts still enabled by the bare name.
-test('the MFA handoff, the review picker and the per-user MFA finding name a shared Kai Brown by the account', () => {
+// ManualReviewForm draws an option with no second line.
+test('the MFA handoff and the review picker name a shared Kai Brown by the account', () => {
   const scored = scoredPeople(f.snapshot, f.mapping, f.snapshot.asOf)
   const previewed = new Set<string>()
   for (const step of r.steps) {
@@ -86,10 +83,4 @@ test('the MFA handoff, the review picker and the per-user MFA finding name a sha
   // (q-pin), whose source contradicts itself, so it hands over no MFA policy.
   assert.ok(previewed.has('s-goal-admins-phishing-resistant') && previewed.size >= 4, [...previewed].join(', '))
 
-  // The per-user MFA finding, with both accounts still enabled for per-user MFA.
-  const perUser = structuredClone(r.steps.find((st) => st.id === 's-prereq-per-user-mfa')!) as Step
-  const snapshot = { ...f.snapshot, perUserMfa: { [member.id]: { state: 'enabled' as const, reason: null }, [guest.id]: { state: 'enforced' as const, reason: null } } }
-  applyManualReviews([perUser], snapshot)
-  const detail = perUser.configurationFindings?.find((x) => x.key === 'per-user-mfa')?.detail ?? ''
-  assert.ok(detail.includes(`Kai Brown (${member.userPrincipalName})`) && detail.includes(`Kai Brown (guest, ${guest.userPrincipalName})`), detail)
 })

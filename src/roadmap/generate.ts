@@ -311,6 +311,14 @@ export type RoadmapInput = {
    * them on, and Doesn't apply where it never did (V1 decision 6).
    */
   securityDefaultsSeenOnAt?: string | null
+  /**
+   * When a scan of this plan first read an account with legacy per-user MFA on
+   * (PlanDecisions.perUserMfaSeenOnAt, progress.ts perUserMfaSeenOnAtOf); null or
+   * absent where no scan has. Finish Moving Off Per-User MFA stays on the plan
+   * from then on, and reads Completed once every account reads Disabled (walk
+   * list 4.x item 9).
+   */
+  perUserMfaSeenOnAt?: string | null
 }
 
 export type RoadmapResult = {
@@ -1472,18 +1480,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     }
     steps.push(s)
   }
-  // Per-user MFA still on (migration not complete): a conflict named up front (roadmap-v2.md §7, messy).
-  // Built only when needed (v2-research/peruser.md): a clean read — every
-  // account's per-user state read, none Enabled or Enforced — has nothing for
-  // the step to do, the way the service-accounts group step is built only when
-  // its condition holds. An absent reading, an unknown account or a partial
-  // Users read keeps it: unknown is never hidden (manualWork.ts perUserMfaReading).
-  const methodsPolicy = (snapshot.config.authMethodsPolicy?.rows?.[0] ?? null) as { policyMigrationState?: string } | null
-  if (canUseConditionalAccess && !perUserMfaReading(snapshot).clean) {
-    const s = prereq('s-prereq-per-user-mfa')
-    s.readiness.lines = [`Authentication methods migration: ${methodsPolicy?.policyMigrationState ?? 'not read'}. Legacy per-user MFA states require a separate check in Entra.`]
-    steps.push(s)
-  }
+  // Per-user MFA still on: a conflict named up front (roadmap-v2.md §7, messy).
+  // On the plan once a scan of it has read an account with per-user MFA on, as
+  // Turn Off Security Defaults is once one read them on: open while any account
+  // reads Enabled or Enforced, and Completed, not gone, once none does
+  // (manualWork.ts; walk list 4.x item 9). A plan that never saw one has nothing
+  // for the step to do.
+  if (canUseConditionalAccess && (perUserMfaReading(snapshot).enabled.length > 0 || input.perUserMfaSeenOnAt)) steps.push(prereq('s-prereq-per-user-mfa'))
 
   // ---- The free-tier ladder (SPEC §12): the plan spine when no policy can exist ----
   // Every catalogue goal is licence-limited without Entra ID P1, so the ladder

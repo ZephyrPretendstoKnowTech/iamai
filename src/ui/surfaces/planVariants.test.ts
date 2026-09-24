@@ -386,7 +386,7 @@ const INVENTORY: string[] = [
   'decision · check · no-lifecycle · needs-decision · open · do:decide · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small/s-direction-use
   'blocker · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small/s-prereq-break-glass
   'blocker · prerequisite · no-lifecycle · healthy · in-place · do:preserve · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small/s-prereq-exclusion-group
-  'object · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small/s-prereq-per-user-mfa
+  'object · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small/s-prereq-passkey-settings
   'object · prerequisite · no-lifecycle · healthy · in-place · do:preserve · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small/s-prereq-security-defaults
   'check · check · no-lifecycle · healthy · open · do:verify · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // small/s-check-dormant-accounts
   'object · prerequisite · no-lifecycle · healthy · set-aside · do:restore · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small/s-prereq-service-accounts-group
