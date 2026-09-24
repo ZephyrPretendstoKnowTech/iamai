@@ -45,7 +45,7 @@ test('workloads: unknown stays open; no is reversible; each unassessed policy ha
   assert.equal(original.schedule.cleanup?.rows.some((r) => (r.kind as string) === 'notAssessed'), false)
 })
 
-test('manual policy review survives unrelated scan changes and reopens if its baseline source changes', () => {
+test('manual review survives unrelated scan changes and reopens on a material one (a policy’s baseline source, a changed guest population), and never overrides an unsatisfied scan requirement', () => {
   const f = fixture('demo')
   const policies = runFixture(f).coverage.organisation.notAssessed
   f.mapping.workflowAnswers = { sharepoint: 'yes', avd: 'yes', inforcer: 'yes', agents: 'yes', azureManagement: 'yes' }
@@ -63,39 +63,48 @@ test('manual policy review survives unrelated scan changes and reopens if its ba
   const last: Step[] = []
   addWorkflowSteps(last, changed, f.mapping, confirmations)
   assert.notEqual(last.find((s) => s.id === target.id)!.status, 'done')
+
+  // Guest review can finish while keeping guests; a changed guest population reopens it.
+  {
+    const f = fixture('micro')
+    // From the ladder builder, not from a plan: a tenant with no Conditional Access
+    // licence has built no plan since 2026-09-20, and the rung is what is under test.
+    const step = ladderSteps(f.snapshot, f.mapping, []).steps.find((s) => s.id === 's-ladder-guest-review')!
+    assert.ok(step)
+    assert.ok(f.snapshot.users.some((u) => u.userType === 'guest'))
+    const record = { at, testedAt: at.slice(0, 10), outcome: 'retained' as const, accountIds: f.snapshot.users.filter(u => u.userType === 'guest').map(u => u.id), basis: '' }
+    record.basis = scopeManualBasis(manualBasis(step, f.snapshot), record)
+    const confirmation = { [step.id]: { [MANUAL_REVIEW_ID]: record } }
+    applyManualReviews([step], f.snapshot, confirmation)
+    assert.equal(step.status, 'done')
+    f.snapshot.asOf = '2026-09-15T12:00:00Z'
+    applyManualReviews([step], f.snapshot, confirmation)
+    assert.equal(step.status, 'done', 'scan time alone is not a material change')
+    f.snapshot.users.push({ ...f.snapshot.users.find((u) => u.userType === 'guest')!, id: 'new-guest' })
+    applyManualReviews([step], f.snapshot, confirmation)
+    assert.notEqual(step.status, 'done')
+  }
+
+  // Manual confirmation cannot override an unsatisfied scan requirement.
+  {
+    const f = fixture('micro')
+    const step = ladderSteps(f.snapshot, f.mapping, []).steps.find((s) => s.id === 's-ladder-authenticator-over-sms')!
+    assert.ok(step)
+    setState(step, { satisfied: false, inPlace: false })
+    applyManualReviews([step], f.snapshot, { [step.id]: { [MANUAL_REVIEW_ID]: { at, basis: manualBasis(step, f.snapshot) } } })
+    assert.equal(step.manualReview?.readyToConfirm, false)
+    assert.notEqual(step.status, 'done')
+  }
 })
 
-test('guest review can finish while keeping guests; a changed guest population reopens it', () => {
-  const f = fixture('micro')
-  // From the ladder builder, not from a plan: a tenant with no Conditional Access
-  // licence has built no plan since 2026-09-20, and the rung is what is under test.
-  const step = ladderSteps(f.snapshot, f.mapping, []).steps.find((s) => s.id === 's-ladder-guest-review')!
-  assert.ok(step)
-  assert.ok(f.snapshot.users.some((u) => u.userType === 'guest'))
-  const record = { at, testedAt: at.slice(0, 10), outcome: 'retained' as const, accountIds: f.snapshot.users.filter(u => u.userType === 'guest').map(u => u.id), basis: '' }
-  record.basis = scopeManualBasis(manualBasis(step, f.snapshot), record)
-  const confirmation = { [step.id]: { [MANUAL_REVIEW_ID]: record } }
-  applyManualReviews([step], f.snapshot, confirmation)
-  assert.equal(step.status, 'done')
-  f.snapshot.asOf = '2026-09-15T12:00:00Z'
-  applyManualReviews([step], f.snapshot, confirmation)
-  assert.equal(step.status, 'done', 'scan time alone is not a material change')
-  f.snapshot.users.push({ ...f.snapshot.users.find((u) => u.userType === 'guest')!, id: 'new-guest' })
-  applyManualReviews([step], f.snapshot, confirmation)
-  assert.notEqual(step.status, 'done')
-})
+/** A hand-recorded result in the retired schema-1 format: history, never proof on its own. */
+const legacyRecoveryEvidence = (accountIds: string[], tenantId: string, eventAt: string): Record<string, VerifiedRecoveryEvidence> => Object.fromEntries(accountIds.map(accountId => [accountId, {
+  schema: 1, tenantId, accountId, eventId: `event-${accountId}`, eventAt, appId: null,
+  resourceId: '797f4846-ba00-4fd7-ba43-dac1f8f63013', method: 'Passkey (FIDO2)', provenance: 'observed-sign-in',
+  recoveryConfirmed: true, credentialConfirmed: true, configurationObservedAt: new Date(Date.parse(eventAt) - 3_600_000).toISOString(),
+}]))
 
-test('manual confirmation cannot override an unsatisfied scan requirement', () => {
-  const f = fixture('micro')
-  const step = ladderSteps(f.snapshot, f.mapping, []).steps.find((s) => s.id === 's-ladder-authenticator-over-sms')!
-  assert.ok(step)
-  setState(step, { satisfied: false, inPlace: false })
-  applyManualReviews([step], f.snapshot, { [step.id]: { [MANUAL_REVIEW_ID]: { at, basis: manualBasis(step, f.snapshot) } } })
-  assert.equal(step.manualReview?.readyToConfirm, false)
-  assert.notEqual(step.status, 'done')
-})
-
-test('recovery records match only the explicitly linked account and event', () => {
+test('recovery records match only the explicitly linked account and event; tests are recorded per account, expire, never cover a newly chosen account, and stay incomplete until a post-event scan observes them', () => {
   const candidate = recoveryCandidate('account-a', '2026-09-14T03:00:00Z', 'tenant', 'event-account-a')
   const records = cleanupRecord(observedRecoveryRecords({ tenantId: 'tenant', events: { 'account-a': candidate }, configurationObservedAt: '2026-09-14T02:00:00.000Z', at, candidateSetBasis: { 'account-a': '["key-a"]' }, timeZone: 'America/Denver' })).records!
   const context = observedContext(candidate, 'tenant', at, '["key-a"]')
@@ -106,27 +115,41 @@ test('recovery records match only the explicitly linked account and event', () =
   assert.equal(validCompletionDate('2026-02-30', at), false)
   assert.equal(validCompletionDate('2026-09-15', at), false)
   assert.equal(validCompletionDate('2026-09-15', '2026-09-14T12:30:00Z', 'Pacific/Kiritimati'), true)
-})
 
-test('recovery tests can be recorded separately, expire, and never cover a newly chosen account', () => {
-  const f = fixture('demo')
-  const organisation = runFixture(f).coverage.organisation
-  const ids = ['a','b']
-  const eventAt = '2026-09-14T03:00:00Z'
-  const configurationObservedAt = '2026-09-14T02:00:00.000Z'
-  const accountBasis = { a: 'basis-a', b: 'basis-b' }
-  const candidateSetBasis = { a: '["key-a"]', b: '["key-b"]' }
-  const events = Object.fromEntries(ids.map(id => [id, recoveryCandidate(id, eventAt, 'tenant')]))
-  const recoveryCandidates = Object.fromEntries(ids.map(id => [id, [{ candidate: events[id], qualifies: true, reason: null }]]))
-  const input = { after: at, rhythm: null, emergencyAccountIds: ids, emergencyAccounts: ['A','B'], emergencyAccountUpns: ['a@example.test','b@example.test'], organisation, now: at, accountBasis, recoveryCandidates, recoveryCandidateSetBasis: candidateSetBasis, signInEvidenceSource: { status: 'ok' as const, coveredWindow: null, reason: null, asOf: at }, tenantId: 'tenant', configurationObservedAtByAccount: { a: configurationObservedAt, b: configurationObservedAt }, snapshotObservedAt: at }
-  // The scan observes a's sign-in first and b's on a later scan: one account's proof never completes the row.
-  const [preparation, observedA, observedB] = observedRecoveryRecords({ tenantId: 'tenant', events, configurationObservedAt, at, accountBasis, candidateSetBasis })
-  let checkpoints: unknown[] = [preparation, observedA]
-  assert.equal(cleanupPhaseFor({ ...input, records: cleanupRecord(checkpoints).records })!.rows.find((r) => r.kind === 'drill')!.done, null)
-  checkpoints = [...checkpoints, observedB]
-  assert.ok(cleanupPhaseFor({ ...input, records: cleanupRecord(checkpoints).records })!.rows.find((r) => r.kind === 'drill')!.done)
-  assert.equal(cleanupPhaseFor({ ...input, now: '2027-03-14T12:00:00Z', records: cleanupRecord(checkpoints).records })!.rows.find((r) => r.kind === 'drill')!.done, null)
-  assert.equal(cleanupPhaseFor({ ...input, emergencyAccountIds: ['a','c'], records: cleanupRecord(checkpoints).records })!.rows.find((r) => r.kind === 'drill')!.done, null)
+  // Recovery tests can be recorded separately, expire, and never cover a newly chosen account.
+  {
+    const f = fixture('demo')
+    const organisation = runFixture(f).coverage.organisation
+    const ids = ['a','b']
+    const eventAt = '2026-09-14T03:00:00Z'
+    const configurationObservedAt = '2026-09-14T02:00:00.000Z'
+    const accountBasis = { a: 'basis-a', b: 'basis-b' }
+    const candidateSetBasis = { a: '["key-a"]', b: '["key-b"]' }
+    const events = Object.fromEntries(ids.map(id => [id, recoveryCandidate(id, eventAt, 'tenant')]))
+    const recoveryCandidates = Object.fromEntries(ids.map(id => [id, [{ candidate: events[id], qualifies: true, reason: null }]]))
+    const input = { after: at, rhythm: null, emergencyAccountIds: ids, emergencyAccounts: ['A','B'], emergencyAccountUpns: ['a@example.test','b@example.test'], organisation, now: at, accountBasis, recoveryCandidates, recoveryCandidateSetBasis: candidateSetBasis, signInEvidenceSource: { status: 'ok' as const, coveredWindow: null, reason: null, asOf: at }, tenantId: 'tenant', configurationObservedAtByAccount: { a: configurationObservedAt, b: configurationObservedAt }, snapshotObservedAt: at }
+    // The scan observes a's sign-in first and b's on a later scan: one account's proof never completes the row.
+    const [preparation, observedA, observedB] = observedRecoveryRecords({ tenantId: 'tenant', events, configurationObservedAt, at, accountBasis, candidateSetBasis })
+    let checkpoints: unknown[] = [preparation, observedA]
+    assert.equal(cleanupPhaseFor({ ...input, records: cleanupRecord(checkpoints).records })!.rows.find((r) => r.kind === 'drill')!.done, null)
+    checkpoints = [...checkpoints, observedB]
+    assert.ok(cleanupPhaseFor({ ...input, records: cleanupRecord(checkpoints).records })!.rows.find((r) => r.kind === 'drill')!.done)
+    assert.equal(cleanupPhaseFor({ ...input, now: '2027-03-14T12:00:00Z', records: cleanupRecord(checkpoints).records })!.rows.find((r) => r.kind === 'drill')!.done, null)
+    assert.equal(cleanupPhaseFor({ ...input, emergencyAccountIds: ['a','c'], records: cleanupRecord(checkpoints).records })!.rows.find((r) => r.kind === 'drill')!.done, null)
+  }
+
+  // A recovery result recorded after the last scan remains incomplete until a post-event scan observes it.
+  {
+    const f = fixture('demo-week2')
+    const before = runFixture(f)
+    const phase = before.schedule.cleanup!
+    const row = phase.rows.find(r => r.kind === 'drill')!
+    const recordedAt = new Date(Date.parse(f.snapshot.asOf) + 86400000).toISOString()
+    const date = recordedAt.slice(0, 10)
+    const checkpoints = withCleanupDone([], 'drill', date, recordedAt, { accountIds: phase.accountIds, outcome: 'passed', accountBasis: recoveryAccountBasis(f.snapshot, phase.accountIds), recoveryEvidence: legacyRecoveryEvidence(phase.accountIds, f.snapshot.tenantId, f.snapshot.asOf), basis: cleanupBasis('drill', row.lists, phase.accountIds), timeZone: 'UTC' })
+    const after = runFixture(f, { cleanupRecord: cleanupRecord(checkpoints), reviewNow: recordedAt })
+    assert.equal(after.schedule.cleanup!.rows.find(r => r.kind === 'drill')!.done, null)
+  }
 })
 
 test('cleanup completion reopens when the work changes; scan checkpoint trimming retains all decisions', () => {
@@ -169,7 +192,7 @@ test('calendar days do not move when the display time zone changes', () => {
   } finally { setDisplayTimeZone(null) }
 })
 
-test('plan file preserves decisions and rejects malformed or cross-tenant mappings', () => {
+test('plan file preserves decisions and rejects malformed or cross-tenant mappings, and a baseline source is identified by its content, never its display name', async () => {
   const f = fixture('demo')
   const decisions = { planId: f.planId, skips: {}, checkpoints: [], planCreatedAt: at, firstDeployment: '2026-09-16', observations: {}, confirmations: {} }
   const file = buildPlanFile({ planId: f.planId, snapshot: f.snapshot, operator: { userId: f.operatorId, userPrincipalName: '' }, baselineSource: { kind: 'github', owner: 'Owner', repo: 'Repo', commit: 'ABC' }, mapping: f.mapping, steps: runFixture(f).steps, checkpoints: [], decisions })
@@ -181,6 +204,18 @@ test('plan file preserves decisions and rejects malformed or cross-tenant mappin
   assert.equal(sameBaselineSource(file.baseline.source, { repo: 'repo', owner: 'owner', commit: 'def', kind: 'github' }), false)
   assert.ok(parsePlanFile(JSON.stringify({ ...file, mappings: { ...file.mappings, tenantId: 'another' } })).error)
   assert.ok(parsePlanFile(JSON.stringify({ ...file, mappings: { ...file.mappings, breakGlassUserIds: 'not an array' } })).error)
+
+  // Uploaded baselines are identified by content, never the display name.
+  {
+    const { baselineContentHash } = await import('../baseline/contentHash.ts')
+    const files = [{ path: 'one.json', text: '{"a":1}' }, { path: 'two.json', text: '{"b":2}' }]
+    const contentHash = await baselineContentHash(files)
+    assert.equal(contentHash, await baselineContentHash([...files].reverse()))
+    const source = { kind: 'upload' as const, fileName: 'Uploaded baseline', contentHash }
+    assert.equal(sameBaselineSource(source, { ...source, fileName: 'A different filename' }), true)
+    assert.equal(sameBaselineSource(source, { ...source, contentHash: await baselineContentHash([{ ...files[0], text: '{"a":2}' }, files[1]]) }), false)
+    assert.equal(sameBaselineSource(source, { kind: 'upload', fileName: source.fileName }), false)
+  }
 })
 
 test('failed durable saves remain available for backup and raise a tenant-specific warning', async () => {
@@ -206,35 +241,4 @@ test('sample JSON, calendar, and CSV keep valid file structure and a demo label'
   assert.equal(csv.match(/second line/g)!.length, 1)
   assert.match(csv, /First line\nsecond line/)
   assert.equal(csv.split('Demo').length > 1 || csv.split('DEMO').length > 1 || csv.toLowerCase().includes('sample'), true)
-})
-
-
-test('uploaded baselines are identified by content, never the display name', async () => {
-  const { baselineContentHash } = await import('../baseline/contentHash.ts')
-  const files = [{ path: 'one.json', text: '{"a":1}' }, { path: 'two.json', text: '{"b":2}' }]
-  const contentHash = await baselineContentHash(files)
-  assert.equal(contentHash, await baselineContentHash([...files].reverse()))
-  const source = { kind: 'upload' as const, fileName: 'Uploaded baseline', contentHash }
-  assert.equal(sameBaselineSource(source, { ...source, fileName: 'A different filename' }), true)
-  assert.equal(sameBaselineSource(source, { ...source, contentHash: await baselineContentHash([{ ...files[0], text: '{"a":2}' }, files[1]]) }), false)
-  assert.equal(sameBaselineSource(source, { kind: 'upload', fileName: source.fileName }), false)
-})
-
-/** A hand-recorded result in the retired schema-1 format: history, never proof on its own. */
-const legacyRecoveryEvidence = (accountIds: string[], tenantId: string, eventAt: string): Record<string, VerifiedRecoveryEvidence> => Object.fromEntries(accountIds.map(accountId => [accountId, {
-  schema: 1, tenantId, accountId, eventId: `event-${accountId}`, eventAt, appId: null,
-  resourceId: '797f4846-ba00-4fd7-ba43-dac1f8f63013', method: 'Passkey (FIDO2)', provenance: 'observed-sign-in',
-  recoveryConfirmed: true, credentialConfirmed: true, configurationObservedAt: new Date(Date.parse(eventAt) - 3_600_000).toISOString(),
-}]))
-
-test('a recovery result recorded after the last scan remains incomplete until a post-event scan observes it', () => {
-  const f = fixture('demo-week2')
-  const before = runFixture(f)
-  const phase = before.schedule.cleanup!
-  const row = phase.rows.find(r => r.kind === 'drill')!
-  const recordedAt = new Date(Date.parse(f.snapshot.asOf) + 86400000).toISOString()
-  const date = recordedAt.slice(0, 10)
-  const checkpoints = withCleanupDone([], 'drill', date, recordedAt, { accountIds: phase.accountIds, outcome: 'passed', accountBasis: recoveryAccountBasis(f.snapshot, phase.accountIds), recoveryEvidence: legacyRecoveryEvidence(phase.accountIds, f.snapshot.tenantId, f.snapshot.asOf), basis: cleanupBasis('drill', row.lists, phase.accountIds), timeZone: 'UTC' })
-  const after = runFixture(f, { cleanupRecord: cleanupRecord(checkpoints), reviewNow: recordedAt })
-  assert.equal(after.schedule.cleanup!.rows.find(r => r.kind === 'drill')!.done, null)
 })

@@ -30,7 +30,7 @@ function planWith(state: string, grantControls: Record<string, unknown>) {
   return { cov, step, ops }
 }
 
-test('gap 4: a report-only admins policy asking plain MFA is corrected in place — grant only, still report-only, no create beside it', () => {
+test('gap 4: a report-only admins policy asking plain MFA is corrected in place (grant only, still report-only, no create beside it), as the enforced one is corrected by grant without a state change', () => {
   const { cov, step, ops } = planWith('enabledForReportingButNotEnforced', { operator: 'OR', builtInControls: ['mfa'] })
   assert.equal(cov.status, 'partial')
   assert.deepEqual(cov.reasons.map((x) => x.kind), ['weaker-control'])
@@ -44,6 +44,16 @@ test('gap 4: a report-only admins policy asking plain MFA is corrected in place 
   assert.ok((ops[0].body.grantControls as { authenticationStrength?: { id?: string } }).authenticationStrength?.id, 'the corrected grant names an authentication strength')
   assert.deepEqual((step.action.changes ?? []).map((c) => c.field), ['Grant controls'])
   assert.ok(!ops.some((o) => o.mode === 'create'))
+
+  // Gap 4 control: an enforced admins policy asking plain MFA is still the weak policy corrected by grant, as before.
+  {
+    const { cov, step, ops } = planWith('enabled', { operator: 'OR', builtInControls: ['mfa'] })
+    assert.ok(cov.reasons.some((x) => x.kind === 'weaker-control'))
+    assert.equal(step.kind, 'adjust')
+    assert.deepEqual(ops.map((o) => [o.mode, o.policyId]), [['update', W]])
+    assert.ok('grantControls' in ops[0].body)
+    assert.ok(!('state' in ops[0].body), 'an enforced policy is not moved to report-only by its correction')
+  }
 })
 
 test('gap 4 control: a report-only admins policy that meets the floor gets no grant correction and no create', () => {
@@ -51,13 +61,4 @@ test('gap 4 control: a report-only admins policy that meets the floor gets no gr
   assert.ok(!cov.reasons.some((x) => x.kind === 'weaker-control'), JSON.stringify(cov.reasons))
   assert.ok(!ops.some((o) => o.mode === 'create'), JSON.stringify(ops.map((o) => o.mode)))
   assert.ok(!ops.some((o) => 'grantControls' in o.body), 'a policy at the floor has no grant to correct')
-})
-
-test('gap 4 control: an enforced admins policy asking plain MFA is still the weak policy corrected by grant, as before', () => {
-  const { cov, step, ops } = planWith('enabled', { operator: 'OR', builtInControls: ['mfa'] })
-  assert.ok(cov.reasons.some((x) => x.kind === 'weaker-control'))
-  assert.equal(step.kind, 'adjust')
-  assert.deepEqual(ops.map((o) => [o.mode, o.policyId]), [['update', W]])
-  assert.ok('grantControls' in ops[0].body)
-  assert.ok(!('state' in ops[0].body), 'an enforced policy is not moved to report-only by its correction')
 })

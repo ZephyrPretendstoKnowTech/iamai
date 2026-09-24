@@ -46,21 +46,23 @@ test('one account Enforced: the step is built and names it', () => {
   assert.ok(step.configurationFindings?.some((x) => x.key === 'per-user-mfa' && x.detail.includes(name)), `the finding names ${name}`)
 })
 
-test('one account whose state was not read keeps the step', () => {
+test('unknown is never hidden: one unread account, no reading at all, or a partial Users read keeps the step', () => {
   const f = withReading((s) => { s.perUserMfa![s.users[0].id] = { state: 'unknown', reason: 'HTTP 429' } })
   assert.deepEqual(perUserMfaReading(f.snapshot).unknown.map((u) => u.id), [f.snapshot.users[0].id])
   assert.ok(stepOf(f), 'unknown is never hidden')
-})
 
-test('no per-user reading at all keeps the step', () => {
-  const f = withReading((s) => { delete s.perUserMfa })
-  assert.equal(perUserMfaReading(f.snapshot).clean, false)
-  assert.ok(stepOf(f))
-  assert.ok(stepOf(fixture('small')), 'the fixtures carry no reading, so their plans keep the step')
-})
+  // No per-user reading at all keeps the step.
+  {
+    const f = withReading((s) => { delete s.perUserMfa })
+    assert.equal(perUserMfaReading(f.snapshot).clean, false)
+    assert.ok(stepOf(f))
+    assert.ok(stepOf(fixture('small')), 'the fixtures carry no reading, so their plans keep the step')
+  }
 
-test('a partial Users read keeps the step, every state read Disabled or not', () => {
-  const f = withReading((s) => { s.sources.users = { ...s.sources.users!, status: 'partial', reason: 'signInActivity unavailable' } })
-  assert.equal(perUserMfaReading(f.snapshot).clean, false)
-  assert.ok(stepOf(f))
+  // A partial Users read keeps the step, every state read Disabled or not.
+  {
+    const f = withReading((s) => { s.sources.users = { ...s.sources.users!, status: 'partial', reason: 'signInActivity unavailable' } })
+    assert.equal(perUserMfaReading(f.snapshot).clean, false)
+    assert.ok(stepOf(f))
+  }
 })

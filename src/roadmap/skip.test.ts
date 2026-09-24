@@ -20,7 +20,7 @@ const step = (over: Record<string, unknown> & { id: string }): Step => {
   return setState(built, stateForStatus(built.status))
 }
 
-test('every emergency-access step is refused, by id', () => {
+test('every emergency-access step is refused, by id, and the refusal covers every emergency-access step the generator actually builds', () => {
   for (const id of EMERGENCY_ACCESS_STEP_IDS) {
     const s = step({ id })
     const r = skipStep(s, 'Not this quarter')
@@ -28,22 +28,23 @@ test('every emergency-access step is refused, by id', () => {
     assert.match(r.error ?? '', /emergency access/i)
     assert.equal(s.status, 'ready', `${id} is left alone`)
   }
-})
 
-test('the refusal covers every emergency-access step the generator actually builds', () => {
-  // The ids are a hardcoded set, so this checks the set against real plans
-  // rather than against itself. A renamed step id would slip past a set that is
-  // only ever compared with its own contents.
-  for (const f of allFixtures()) {
-    for (const s of runFixture(f).steps) {
-      const looksEmergency = /break-glass|exclusion-group/.test(s.id)
-      if (!looksEmergency) continue
-      assert.equal(isEmergencyAccess(s), true, `${s.id} (${f.name}) is recognised as emergency access`)
+  // The refusal covers every emergency-access step the generator actually builds.
+  {
+    // The ids are a hardcoded set, so this checks the set against real plans
+    // rather than against itself. A renamed step id would slip past a set that is
+    // only ever compared with its own contents.
+    for (const f of allFixtures()) {
+      for (const s of runFixture(f).steps) {
+        const looksEmergency = /break-glass|exclusion-group/.test(s.id)
+        if (!looksEmergency) continue
+        assert.equal(isEmergencyAccess(s), true, `${s.id} (${f.name}) is recognised as emergency access`)
+      }
     }
   }
 })
 
-test('an ordinary step skips, and records the reason and the transition', () => {
+test('an ordinary step skips and records the reason and the transition; a reason is required, and is never accepted risk', () => {
   const s = step({ id: 's-goal-token-protection', status: 'blocked' })
   assert.equal(skipStep(s, 'No licence for it').ok, true)
   assert.equal(s.status, 'skipped')
@@ -51,17 +52,18 @@ test('an ordinary step skips, and records the reason and the transition', () => 
   assert.equal(s.history.at(-1)?.from, 'blocked')
   assert.equal(s.history.at(-1)?.to, 'skipped')
   assert.equal(s.history.at(-1)?.note, 'No licence for it')
+
+  // A reason is required, and is never accepted risk.
+  {
+    const s = step({ id: 's-goal-x' })
+    assert.equal(skipStep(s, '   ').ok, false)
+    assert.equal(skipStep(s, 'risk accepted').ok, false)
+    assert.equal(skipStep(s, 'Risk  Accepted by the board').ok, false)
+    assert.equal(s.status, 'ready', 'a refused skip changes nothing')
+  }
 })
 
-test('a reason is required, and is never accepted risk', () => {
-  const s = step({ id: 's-goal-x' })
-  assert.equal(skipStep(s, '   ').ok, false)
-  assert.equal(skipStep(s, 'risk accepted').ok, false)
-  assert.equal(skipStep(s, 'Risk  Accepted by the board').ok, false)
-  assert.equal(s.status, 'ready', 'a refused skip changes nothing')
-})
-
-test('un-skipping clears the status rather than restoring the old one', () => {
+test('un-skipping clears the status rather than restoring the old one, and does nothing to a step that is not skipped', () => {
   const s = step({ id: 's-goal-y', status: 'ready' })
   skipStep(s, 'Deferred to a later phase')
   assert.equal(s.status, 'skipped')
@@ -72,12 +74,13 @@ test('un-skipping clears the status rather than restoring the old one', () => {
   assert.equal(s.status, 'blocked')
   assert.equal(s.skipReason, null)
   assert.equal(s.history.at(-1)?.from, 'skipped')
-})
 
-test('un-skipping something that is not skipped does nothing', () => {
-  const s = step({ id: 's-goal-z', status: 'ready' })
-  assert.equal(unskipStep(s).ok, false)
-  assert.equal(s.status, 'ready')
-  assert.equal(s.history.length, 0)
+  // Un-skipping something that is not skipped does nothing.
+  {
+    const s = step({ id: 's-goal-z', status: 'ready' })
+    assert.equal(unskipStep(s).ok, false)
+    assert.equal(s.status, 'ready')
+    assert.equal(s.history.length, 0)
+  }
 })
 

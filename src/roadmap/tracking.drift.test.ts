@@ -99,9 +99,19 @@ test('ownership: a policy the member owns is kept across a drift that its finger
   // The same scan with no record: whatever the chain finds, it is not the record that found it.
   const bare = rescan(DEMO, edit, null)
   assert.notEqual(bare.tracking?.members[0].matchedBy, 'owned')
+
+  // On an unchanged tenant the record resolves the member before the tenant is
+  // searched, and reports the strongest proof this scan still holds.
+  const run = runFixture(DEMO)
+  const step = run.steps.find((s) => s.id === ADMINS)!
+  const [withRecord] = matchMembers(step, DEMO.snapshot, run.coverage, DEMO.planId, prior[ADMINS])
+  const [without] = matchMembers(step, DEMO.snapshot, run.coverage, DEMO.planId)
+  assert.equal(withRecord.policy?.id, without.policy?.id, 'the same object either way on an unchanged tenant')
+  assert.equal(withRecord.matchedBy, without.matchedBy, 'and the tie is reported by the proof the tenant holds, not by the record')
+  assert.notEqual(withRecord.matchedBy, 'owned')
 })
 
-test('ownership: a regeneration that prefers another candidate does not move the member; the correction is Review required, and no candidate is substituted', () => {
+test('ownership: a correction against another candidate or a policy another goal stands on is Review required with its reason, and no candidate is substituted', () => {
   const prior = priorOf(DEMO, 'report-only')
   const owned = ownedId(DEMO)
   const other = rowsOf(DEMO.snapshot).find((p) => p.id !== owned)!
@@ -126,38 +136,24 @@ test('ownership: a regeneration that prefers another candidate does not move the
   // Without the record, the operation’s target would have taken the member: the record is what prevents the transfer.
   const moved = rescan(DEMO, () => {}, null, retarget)
   assert.equal(moved.tracking?.policyId, String(other.id))
-})
 
-test('ownership: a correction of a policy another goal counts as its satisfier is Review required with the reason', () => {
-  const prior = priorOf(DEMO, 'report-only')
-  const owned = ownedId(DEMO)
+  // A correction of a policy another goal counts as its satisfier.
   const share = (step: Step, run: ReturnType<typeof runFixture>): void => {
     // The runner memoises coverage per fixture: this scan's reading is its own copy.
     run.coverage = structuredClone(run.coverage)
     const other = run.coverage.results.find((r) => r.goal.id !== step.goalId)!
     other.satisfaction = { policyIds: [owned], policyNames: ['Shared'], sufficientId: owned, sufficientName: 'Shared' }
   }
-  const step = rescan(DEMO, () => {}, prior, share)
-  assertOwned(step, DEMO, 'review-required')
-  const m = step.tracking!.members[0]
-  assert.equal(m.correction?.safe, false, JSON.stringify(m.correction))
-  assert.equal(m.correction && !m.correction.safe ? m.correction.reason : null, 'shared-satisfier', JSON.stringify(m.correction))
-  assert.match(m.correction && !m.correction.safe ? m.correction.note : '', /also satisfies .*; a person decides/)
-  assert.equal(m.ready, false)
+  const shared = rescan(DEMO, () => {}, prior, share)
+  assertOwned(shared, DEMO, 'review-required')
+  const sm = shared.tracking!.members[0]
+  assert.equal(sm.correction?.safe, false, JSON.stringify(sm.correction))
+  assert.equal(sm.correction && !sm.correction.safe ? sm.correction.reason : null, 'shared-satisfier', JSON.stringify(sm.correction))
+  assert.match(sm.correction && !sm.correction.safe ? sm.correction.note : '', /also satisfies .*; a person decides/)
+  assert.equal(sm.ready, false)
   // The same policy, claimed by nobody else: the correction is the member's own to make.
   const alone = rescan(DEMO, () => {}, prior)
   assert.deepEqual(alone.tracking?.members[0].correction, { safe: true })
-})
-
-test('ownership: the record resolves a member before the tenant is searched, and reports the strongest proof this scan still holds', () => {
-  const run = runFixture(DEMO)
-  const step = run.steps.find((s) => s.id === ADMINS)!
-  const prior = priorOf(DEMO, 'report-only')
-  const [withRecord] = matchMembers(step, DEMO.snapshot, run.coverage, DEMO.planId, prior[ADMINS])
-  const [without] = matchMembers(step, DEMO.snapshot, run.coverage, DEMO.planId)
-  assert.equal(withRecord.policy?.id, without.policy?.id, 'the same object either way on an unchanged tenant')
-  assert.equal(withRecord.matchedBy, without.matchedBy, 'and the tie is reported by the proof the tenant holds, not by the record')
-  assert.notEqual(withRecord.matchedBy, 'owned')
 })
 
 test('outcomes: every deployed, undone step of every fixture reads exactly one of the three, and nothing else reads one', () => {
@@ -174,54 +170,27 @@ test('outcomes: every deployed, undone step of every fixture reads exactly one o
 
 // ---- one per drift kind: the member keeps its policy, and the outcome is one of three ----
 
-test('drift:grant — the grant moves somewhere the plan did not ask', () => {
-  const step = rescan(DEMO, (row) => {
-    row.grantControls = { operator: 'OR', builtInControls: ['block'] }
-  }, priorOf(DEMO, 'report-only'))
-  assertOwned(step, DEMO, 'review-required')
-  assert.equal(step.state.observation?.reviewRequired, true)
-})
-
-test('drift:client-app — the client app types narrow', () => {
-  const step = rescan(DEMO, (row) => {
-    row.conditions = { ...(row.conditions as Row), clientAppTypes: ['browser'] }
-  }, priorOf(DEMO, 'report-only'))
-  assertOwned(step, DEMO, 'review-required')
-  assert.equal(step.state.observation?.reviewRequired, true)
-})
-
-test('drift:include — who the policy names changes', () => {
-  const step = rescan(DEMO, (row) => {
+const DRIFTS: [string, (row: Row) => void][] = [
+  ['grant: the grant moves somewhere the plan did not ask', (row) => { row.grantControls = { operator: 'OR', builtInControls: ['block'] } }],
+  ['client-app: the client app types narrow', (row) => { row.conditions = { ...(row.conditions as Row), clientAppTypes: ['browser'] } }],
+  ['include: who the policy names changes', (row) => {
     const users = (row.conditions as { users: Row }).users
     row.conditions = { ...(row.conditions as Row), users: { ...users, includeRoles: [], includeUsers: ['All'] } }
-  }, priorOf(DEMO, 'report-only'))
-  assertOwned(step, DEMO, 'review-required')
-  assert.equal(step.state.observation?.reviewRequired, true)
-})
-
-test('drift:exclusion — the carve-out is dropped', () => {
-  const step = rescan(DEMO, (row) => {
+  }],
+  ['exclusion: the carve-out is dropped', (row) => {
     const users = (row.conditions as { users: Row }).users
     row.conditions = { ...(row.conditions as Row), users: { ...users, excludeGroups: [], excludeUsers: [] } }
-  }, priorOf(DEMO, 'report-only'))
-  assertOwned(step, DEMO, 'review-required')
-  assert.equal(step.state.observation?.reviewRequired, true)
-})
+  }],
+  ['location: a location condition appears', (row) => { row.conditions = { ...(row.conditions as Row), locations: { includeLocations: ['All'], excludeLocations: ['AllTrusted'] } } }],
+  ['platform: a platform condition appears', (row) => { row.conditions = { ...(row.conditions as Row), platforms: { includePlatforms: ['windows'], excludePlatforms: [] } } }],
+]
 
-test('drift:location — a location condition appears', () => {
-  const step = rescan(DEMO, (row) => {
-    row.conditions = { ...(row.conditions as Row), locations: { includeLocations: ['All'], excludeLocations: ['AllTrusted'] } }
-  }, priorOf(DEMO, 'report-only'))
-  assertOwned(step, DEMO, 'review-required')
-  assert.equal(step.state.observation?.reviewRequired, true)
-})
-
-test('drift:platform — a platform condition appears', () => {
-  const step = rescan(DEMO, (row) => {
-    row.conditions = { ...(row.conditions as Row), platforms: { includePlatforms: ['windows'], excludePlatforms: [] } }
-  }, priorOf(DEMO, 'report-only'))
-  assertOwned(step, DEMO, 'review-required')
-  assert.equal(step.state.observation?.reviewRequired, true)
+test('drift of every kind: the member keeps its policy and a person reviews it', () => {
+  for (const [label, edit] of DRIFTS) {
+    const step = rescan(DEMO, edit, priorOf(DEMO, 'report-only'))
+    assertOwned(step, DEMO, 'review-required')
+    assert.equal(step.state.observation?.reviewRequired, true, label)
+  }
 })
 
 test('drift:report-only-before-enforcement — an enforced policy moved back to report-only stays the member’s, and is not a person’s question', () => {
@@ -269,7 +238,7 @@ const driftToDevice = (row: Row): void => {
 }
 const mfaAllId = String(rowsOf(ANSWERED.snapshot).find((p) => p.displayName === MFA_ALL)?.id)
 
-test('A1: when the MFA-for-all policy drifts, the correction never edits another goal’s policy', () => {
+test('A1: when the MFA-for-all policy drifts, the correction never edits another goal’s policy, and a policy the plan identifies is never duplicated', () => {
   const run = mutated(driftToDevice, MFA_ALL)
   const step = stepOf(run, 'mfa-all-users')
   assert.equal(goalOf(run, 'admins-phishing-resistant').verdict, 'inPlace', 'the premise: the admins goal is still delivered by its own policy')
@@ -290,10 +259,10 @@ test('A1: when the MFA-for-all policy drifts, the correction never edits another
   assert.deepEqual(ops.map((o) => o.mode), ['create'], 'the goal’s own policy is created; nothing is updated')
   assert.equal(ops[0].body.state, 'enabledForReportingButNotEnforced')
   assert.notEqual(step.tracking?.policyId ?? null, mfaAllId, 'the untracked policy is not taken for the goal’s own')
-})
 
-test('A1: a drifted MFA-for-all policy the plan identifies, by its tag or the plan’s own name, is the step’s own and never duplicated', () => {
-  const planName = String(stepOf(mutated(driftToDevice, MFA_ALL), 'mfa-all-users').action.resolution?.policies.find((o) => o.mode === 'create')?.body.displayName)
+  // A drifted MFA-for-all policy the plan identifies, by its tag or the plan’s
+  // own name, is the step’s own and never duplicated.
+  const planName = String(ops.find((o) => o.mode === 'create')?.body.displayName)
   assert.notEqual(planName, MFA_ALL, 'the premise: the demo’s own name is not the plan’s')
   const identify: [string, (row: Row) => void][] = [
     ['tagged', (row) => { row.description = `[IAMAI:${ANSWERED.planId}:${stepIdForGoal('mfa-all-users')}]` }],
@@ -326,40 +295,40 @@ test('A2: a policy excluding a group the scan cannot resolve keeps its goal on t
   assert.ok(!(step.action.resolution?.policies ?? []).some((o) => o.mode === 'create'), 'no duplicate policy is proposed')
 })
 
-for (const [what, edit] of [
-  ['client apps', (row: Row): void => { conditions(row).clientAppTypes = ['exchangeActiveSync'] }],
-  ['grant', (row: Row): void => { row.grantControls = { operator: 'OR', builtInControls: ['mfa'] } }],
-] as const) {
-  test(`A3: ${what} drift on the name-matched legacy-auth policy reads as drift to review or correct, never as a missing policy`, () => {
+test('A3: client-app or grant drift on the name-matched legacy-auth policy reads as drift to review or correct, never as a missing policy', () => {
+  for (const [what, edit] of [
+    ['client apps', (row: Row): void => { conditions(row).clientAppTypes = ['exchangeActiveSync'] }],
+    ['grant', (row: Row): void => { row.grantControls = { operator: 'OR', builtInControls: ['mfa'] } }],
+  ] as const) {
     const run = mutated(edit, LEGACY)
     const step = stepOf(run, 'block-legacy-auth')
     const policy = rowsOf(ANSWERED.snapshot).find((p) => p.displayName === LEGACY)!
-    assert.ok(!(step.action.resolution?.policies ?? []).some((o) => o.mode === 'create'), 'no "(2)" duplicate is offered')
-    assert.equal(step.tracking?.policyId, policy.id, 'the step tracks the policy that carries its name')
+    assert.ok(!(step.action.resolution?.policies ?? []).some((o) => o.mode === 'create'), `${what}: no "(2)" duplicate is offered`)
+    assert.equal(step.tracking?.policyId, policy.id, `${what}: the step tracks the policy that carries its name`)
     assert.notEqual(step.status, 'done')
     const outcome = driftOutcomeOf(step)
-    assert.ok(outcome === 'review-required' || outcome === 'correctable', String(outcome))
-  })
-}
+    assert.ok(outcome === 'review-required' || outcome === 'correctable', `${what}: ${String(outcome)}`)
+  }
+})
 
-for (const [what, edit] of [
-  ['location', (row: Row): void => { conditions(row).locations = { includeLocations: ['All'], excludeLocations: ['AllTrusted'] } }],
-  ['platform', (row: Row): void => { conditions(row).platforms = { includePlatforms: ['windows'], excludePlatforms: [] } }],
-] as const) {
-  test(`A4: ${what} drift on an enforced block policy is a stated manual correction, not an empty update held for a rebuild`, () => {
+test('A4: location or platform drift on an enforced block policy is a stated manual correction, not an empty update held for a rebuild', () => {
+  for (const [what, edit] of [
+    ['location', (row: Row): void => { conditions(row).locations = { includeLocations: ['All'], excludeLocations: ['AllTrusted'] } }],
+    ['platform', (row: Row): void => { conditions(row).platforms = { includePlatforms: ['windows'], excludePlatforms: [] } }],
+  ] as const) {
     const run = mutated(edit, LEGACY)
     const step = stepOf(run, 'block-legacy-auth')
-    assert.notEqual(unavailableReason(step), 'no-operation', 'the row no longer waits for a scan to rebuild the step')
+    assert.notEqual(unavailableReason(step), 'no-operation', `${what}: the row no longer waits for a scan to rebuild the step`)
     const update = (step.action.resolution?.policies ?? []).find((o) => o.mode === 'update')
     const submits = update !== undefined && Object.keys(update.body).length > 0
     if (!submits) {
-      assert.equal(step.state.observation?.reviewRequired, true, 'the unsubmitted change requires review')
+      assert.equal(step.state.observation?.reviewRequired, true, `${what}: the unsubmitted change requires review`)
       assert.ok(step.state.condition === 'review-required' || step.state.condition === 'blocked' && step.blockers.some(b => b.kind === 'step' && b.stepId === 's-prereq-break-glass'), 'changed policy conditions can also reopen the recovery check')
       assert.match(step.state.observation?.note ?? '', new RegExp(what === 'location' ? 'locations' : 'platforms', 'i'))
       assert.equal(step.tracking?.members[0].correction?.safe, false)
     }
-  })
-}
+  }
+})
 
 test('A5: a report-only policy whose conditions drifted is not offered for enforcement', () => {
   const clean = stepOf(runFixture(ANSWERED), 'token-protection')
@@ -380,7 +349,7 @@ test('A5: a report-only policy whose conditions drifted is not offered for enfor
 const handsOverWrite = (id: string, text: string): boolean =>
   (id === 'json' && /"(conditions|grantControls|sessionControls)"\s*:/.test(text)) || (id === 'ps' && /-Mode '(Correct|Create|Enforce)'/.test(text))
 
-test('R4-10: a token-protection policy without the Cloud PC device filter is told, on the portal and in the export, to put the filter back, and handed no write for it', () => {
+test('R4-10: a token-protection policy without the Cloud PC device filter is told, on the portal and in the export, to put the filter back, handed no write for it, and never read as Completed', () => {
   // R4-10 (B), on the pinned baseline: the week-two demo's token-protection
   // policy in report-only, without the baseline's Cloud PC device filter. The
   // update the step resolves is the turn-on alone, so the filter is a difference
@@ -413,9 +382,50 @@ test('R4-10: a token-protection policy without the Cloud PC device filter is tol
   assert.equal(portal.includes(String(shared.changeUntouched)), false, 'the portal tells the operator to leave the missing filter as it is')
   for (const a of artifacts) assert.equal(handsOverWrite(a.id, a.text()), false, `the ${a.id} channel hands over a write for a part the note says IAMAI does not write:\n${a.text().slice(0, 400)}`)
   assert.ok(stepExportView(step, ctx).whatToDo.some((l) => l.includes(rule)), 'the export says a person corrects the filter and never says to what')
+
+  // The token-protection policy the plan tagged, On without the Cloud PC filter, is never Completed: on the first scan, and after it was watched with the filter.
+  {
+    // Review of a27fb72d. Before it, the D7 no-op apps update was the only thing
+    // that read the enforced policy against the plan's, and it read "not what the
+    // plan asked for in the device filter". With the no-op gone the goal is in
+    // place, the step had no operation, the difference was never computed, and
+    // the step read "Completed" with "Keep the policy as it is". On a later scan
+    // of a policy watched in report-only with the filter and then enforced
+    // without it, the note said what was watched is no longer what is deployed
+    // while the export said "IAMAI watched it get there". The product's own words
+    // say that without the filter Entra-joined Cloud PCs are blocked. The step now
+    // reads the policy against the whole policy the plan writes (Action.intended):
+    // a person corrects the filter, and the portal says to what.
+    const id = stepIdForGoal('token-protection')
+    const rule = 'device.systemLabels -contains "CloudPC" -and device.trustType -eq "AzureAD"'
+    const keep = String((content.pages.app as Record<string, Record<string, string>>).plan.inPlaceKeep)
+    const watched = /IAMAI watched it get there/
+    const row0 = rowsOf(ANSWERED.snapshot).find((p) => p.displayName === TOKEN)!
+    assert.ok(conditions(row0).devices, 'the premise: the demo policy carries the filter')
+    const seenAt = new Date(Date.parse(ANSWERED.snapshot.asOf) - TEN_DAYS).toISOString()
+    const watchedRecord = { [id]: { members: { [SOLE_MEMBER]: { artifact: artifactIdOf(String(row0.id)), state: 'report-only', semantics: semanticsOf(row0), fields: semanticFieldsOf(row0), firstSeenAt: seenAt, since: 'first-scan', lastSeenAt: seenAt, evidenceAt: null } }, unattributed: null } } as Record<string, StepObservationRecord>
+    for (const [label, prior] of [['first scan', null], ['watched in report-only with the filter', watchedRecord]] as const) {
+      const snapshot = structuredClone(ANSWERED.snapshot)
+      const row = rowsOf(snapshot).find((p) => p.displayName === TOKEN)!
+      delete conditions(row).devices
+      row.state = 'enabled'
+      const run = runFixture({ ...ANSWERED, snapshot })
+      if (prior) applyProgress(run.steps, snapshot, run.coverage, ANSWERED.planId, undefined, null, prior)
+      const step = run.steps.find((s) => s.id === id)!
+      assert.notEqual(step.status, 'done', `${label}: the step reads as finished`)
+      assert.notEqual(laneReadings(run.steps).get(id)?.lane, 'Completed', `${label}: the board files the step under Completed`)
+      assert.deepEqual(step.state.observation?.unwritten, ['conditions.devices'], `${label}: the filter is not read as a difference`)
+      const ctx: StepVarContext = { snapshot, mapping: ANSWERED.mapping, nameOf: (x) => run.input.names!.label(x), signature: 'IT', operatorId: ANSWERED.operatorId, now: snapshot.asOf, groups: ANSWERED.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
+      const portal = stepBodyOf(step, ctx).artifacts.find((a) => a.id === 'portal')?.text() ?? ''
+      assert.ok(portal.includes(rule), `${label}: no channel names the filter to set:\n${portal}`)
+      const exported = stepExportView(step, ctx).whatToDo
+      assert.equal(exported.includes(keep), false, `${label}: the export says to keep the policy as it is`)
+      assert.equal(exported.some((l) => watched.test(l)), false, `${label}: the export says IAMAI watched the policy get there`)
+    }
+  }
 })
 
-test('a report-only legacy-authentication block with a trusted-location exclusion is told where to look, and handed no checklist that never mentions it', () => {
+test('a report-only legacy-authentication block with a trusted-location exclusion is told where to look, handed no checklist that never mentions it, and never has the exclusion stated as the plan setting', () => {
   // Review of 978e15a7: the location exclusion, a difference the update does not
   // write, selected the package's generic whole-conditions correction module.
   // The observe procedure was replaced by "make sure" client apps, users,
@@ -438,45 +448,36 @@ test('a report-only legacy-authentication block with a trusted-location exclusio
   assert.doesNotMatch(portal, /click Save|make sure/i, `the portal hands over a correction that does not mention locations:\n${portal}`)
   for (const a of artifacts) assert.equal(handsOverWrite(a.id, a.text()), false, `the ${a.id} channel hands over a write for a part the note says IAMAI does not write`)
   assert.doesNotMatch(artifacts.find((a) => a.id === 'ai')?.text() ?? '', /conditions\.canonical/, 'AI Info names a package module id')
-})
 
-test('the token-protection policy the plan tagged, On without the Cloud PC filter, is never Completed: on the first scan, and after it was watched with the filter', () => {
-  // Review of a27fb72d. Before it, the D7 no-op apps update was the only thing
-  // that read the enforced policy against the plan's, and it read "not what the
-  // plan asked for in the device filter". With the no-op gone the goal is in
-  // place, the step had no operation, the difference was never computed, and
-  // the step read "Completed" with "Keep the policy as it is". On a later scan
-  // of a policy watched in report-only with the filter and then enforced
-  // without it, the note said what was watched is no longer what is deployed
-  // while the export said "IAMAI watched it get there". The product's own words
-  // say that without the filter Entra-joined Cloud PCs are blocked. The step now
-  // reads the policy against the whole policy the plan writes (Action.intended):
-  // a person corrects the filter, and the portal says to what.
-  const id = stepIdForGoal('token-protection')
-  const rule = 'device.systemLabels -contains "CloudPC" -and device.trustType -eq "AzureAD"'
-  const keep = String((content.pages.app as Record<string, Record<string, string>>).plan.inPlaceKeep)
-  const watched = /IAMAI watched it get there/
-  const row0 = rowsOf(ANSWERED.snapshot).find((p) => p.displayName === TOKEN)!
-  assert.ok(conditions(row0).devices, 'the premise: the demo policy carries the filter')
-  const seenAt = new Date(Date.parse(ANSWERED.snapshot.asOf) - TEN_DAYS).toISOString()
-  const watchedRecord = { [id]: { members: { [SOLE_MEMBER]: { artifact: artifactIdOf(String(row0.id)), state: 'report-only', semantics: semanticsOf(row0), fields: semanticFieldsOf(row0), firstSeenAt: seenAt, since: 'first-scan', lastSeenAt: seenAt, evidenceAt: null } }, unattributed: null } } as Record<string, StepObservationRecord>
-  for (const [label, prior] of [['first scan', null], ['watched in report-only with the filter', watchedRecord]] as const) {
-    const snapshot = structuredClone(ANSWERED.snapshot)
-    const row = rowsOf(snapshot).find((p) => p.displayName === TOKEN)!
-    delete conditions(row).devices
-    row.state = 'enabled'
-    const run = runFixture({ ...ANSWERED, snapshot })
-    if (prior) applyProgress(run.steps, snapshot, run.coverage, ANSWERED.planId, undefined, null, prior)
-    const step = run.steps.find((s) => s.id === id)!
-    assert.notEqual(step.status, 'done', `${label}: the step reads as finished`)
-    assert.notEqual(laneReadings(run.steps).get(id)?.lane, 'Completed', `${label}: the board files the step under Completed`)
-    assert.deepEqual(step.state.observation?.unwritten, ['conditions.devices'], `${label}: the filter is not read as a difference`)
-    const ctx: StepVarContext = { snapshot, mapping: ANSWERED.mapping, nameOf: (x) => run.input.names!.label(x), signature: 'IT', operatorId: ANSWERED.operatorId, now: snapshot.asOf, groups: ANSWERED.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
-    const portal = stepBodyOf(step, ctx).artifacts.find((a) => a.id === 'portal')?.text() ?? ''
-    assert.ok(portal.includes(rule), `${label}: no channel names the filter to set:\n${portal}`)
-    const exported = stepExportView(step, ctx).whatToDo
-    assert.equal(exported.includes(keep), false, `${label}: the export says to keep the policy as it is`)
-    assert.equal(exported.some((l) => watched.test(l)), false, `${label}: the export says IAMAI watched the policy get there`)
+  // A difference the update does not write is never stated as the setting to keep, on any channel.
+  {
+    // The legacy-authentication block with a trusted-location exclusion added in
+    // the tenant. The plan's policy has no location condition, and the update does
+    // not write one (observation.unwritten). The update's target is the tenant's
+    // policy with the patch applied, so it still carries the exclusion. The step's
+    // package bound its settings from that target, and "Settings for This Action"
+    // listed "Conditions → Locations → ... Exclude: All trusted locations" as the
+    // setting: the drift, stated as the plan. That happened wherever the update
+    // wrote something else (here, the exclusions group put back). When the
+    // package's corrections began to select the unwritten fields (R4-10), it also
+    // happened with the policy in report-only. Legacy authentication from a
+    // trusted network stays unblocked, and the step says that is the plan.
+    const cases: [string, (row: Row) => void][] = [
+      ['report-only', (row) => { row.state = 'enabledForReportingButNotEnforced' }],
+      ['enforced, exclusions group gone', (row) => { users(row).excludeGroups = [] }],
+    ]
+    for (const [label, edit] of cases) {
+      const snapshot = structuredClone(ANSWERED.snapshot)
+      const row = rowsOf(snapshot).find((p) => p.displayName === LEGACY)!
+      conditions(row).locations = { includeLocations: ['All'], excludeLocations: ['AllTrusted'] }
+      edit(row)
+      const run = runFixture({ ...ANSWERED, snapshot })
+      const step = stepOf(run, 'block-legacy-auth')
+      assert.deepEqual(step.state.observation?.unwritten, ['conditions.locations'], `${label}: the premise: the location exclusion is a difference the update does not write`)
+      const ctx: StepVarContext = { snapshot, mapping: ANSWERED.mapping, nameOf: (id) => run.input.names!.label(id), signature: 'IT', operatorId: ANSWERED.operatorId, now: snapshot.asOf, groups: ANSWERED.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
+      for (const a of stepBodyOf(step, ctx).artifacts) assert.doesNotMatch(a.text(), /trusted locations|AllTrusted/i, `${label}: the ${a.id} channel states the tenant's location exclusion as the plan's setting`)
+      for (const l of stepExportView(step, ctx).whatToDo) assert.doesNotMatch(l, /trusted locations|AllTrusted/i, `${label}: the export states the tenant's location exclusion as the plan's setting`)
+    }
   }
 })
 
@@ -496,36 +497,6 @@ test('a policy the tenant wrote under its own name is not told to take the plan\
   assert.equal(step.action.intended, undefined, 'the tenant\'s own policy is read against the plan\'s')
   assert.deepEqual(step.state.observation?.unwritten ?? [], [])
   assert.equal(step.status, 'done')
-})
-
-test('a difference the update does not write is never stated as the setting to keep, on any channel', () => {
-  // The legacy-authentication block with a trusted-location exclusion added in
-  // the tenant. The plan's policy has no location condition, and the update does
-  // not write one (observation.unwritten). The update's target is the tenant's
-  // policy with the patch applied, so it still carries the exclusion. The step's
-  // package bound its settings from that target, and "Settings for This Action"
-  // listed "Conditions → Locations → ... Exclude: All trusted locations" as the
-  // setting: the drift, stated as the plan. That happened wherever the update
-  // wrote something else (here, the exclusions group put back). When the
-  // package's corrections began to select the unwritten fields (R4-10), it also
-  // happened with the policy in report-only. Legacy authentication from a
-  // trusted network stays unblocked, and the step says that is the plan.
-  const cases: [string, (row: Row) => void][] = [
-    ['report-only', (row) => { row.state = 'enabledForReportingButNotEnforced' }],
-    ['enforced, exclusions group gone', (row) => { users(row).excludeGroups = [] }],
-  ]
-  for (const [label, edit] of cases) {
-    const snapshot = structuredClone(ANSWERED.snapshot)
-    const row = rowsOf(snapshot).find((p) => p.displayName === LEGACY)!
-    conditions(row).locations = { includeLocations: ['All'], excludeLocations: ['AllTrusted'] }
-    edit(row)
-    const run = runFixture({ ...ANSWERED, snapshot })
-    const step = stepOf(run, 'block-legacy-auth')
-    assert.deepEqual(step.state.observation?.unwritten, ['conditions.locations'], `${label}: the premise: the location exclusion is a difference the update does not write`)
-    const ctx: StepVarContext = { snapshot, mapping: ANSWERED.mapping, nameOf: (id) => run.input.names!.label(id), signature: 'IT', operatorId: ANSWERED.operatorId, now: snapshot.asOf, groups: ANSWERED.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
-    for (const a of stepBodyOf(step, ctx).artifacts) assert.doesNotMatch(a.text(), /trusted locations|AllTrusted/i, `${label}: the ${a.id} channel states the tenant's location exclusion as the plan's setting`)
-    for (const l of stepExportView(step, ctx).whatToDo) assert.doesNotMatch(l, /trusted locations|AllTrusted/i, `${label}: the export states the tenant's location exclusion as the plan's setting`)
-  }
 })
 
 test('a step whose policy differs where the update does not write never says to leave every other setting as it is', () => {

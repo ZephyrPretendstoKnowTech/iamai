@@ -60,7 +60,7 @@ function admins(others: Record<string, unknown>[], wUsers?: Record<string, unkno
   return { t, run, cov, step, ops: step.action.resolution?.policies ?? [], users }
 }
 
-test('R4-11: the goal\'s own report-only policy is still turned on after another policy is enforced over the same admins', () => {
+test('R4-11: the goal’s own report-only policy is still turned on after another policy is enforced over the same people, and another enforced policy’s caveats are not a correction to it', () => {
   // The control: nothing else in the tenant, and the update is the switch alone.
   const alone = admins([])
   assert.deepEqual(alone.ops.map((o) => [o.mode, o.policyId, o.body]), [['update', W, { state: 'enabled' }]])
@@ -81,6 +81,51 @@ test('R4-11: the goal\'s own report-only policy is still turned on after another
     const words = said(t, run, step)
     assert.doesNotMatch(words.because, /again to rebuild it/, `${label}: the step asks for a scan that cannot change it: ${words.because}`)
     assert.doesNotMatch(words.doneWhen, /A scan rebuilds this step/, `${label}: a completion no scan can reach: ${words.doneWhen}`)
+  }
+
+  // R4-11: another enforced policy's caveats are not a correction to the goal's own report-only policy, which is still turned on.
+  {
+    // The same mechanism through the goal's OTHER reasons. An enforced policy
+    // leads the goal and has a caveat of its own — it excludes one application,
+    // or it lacks the exclusions group — and that caveat is a goal-level reason
+    // ('apps-excluded', 'exclusion-missing'). The reason became a section, and the
+    // section landed on the update to the goal's own report-only policy, which
+    // already held it word for word: a "correction" that changed nothing, with
+    // the switch withheld for it, rebuilt identically by every scan. The step
+    // handed over a patch that did nothing and the policy never went on.
+    const EXO = '00000002-0000-0ff1-ce00-000000000000'
+    const single = admins([{ id: X, displayName: 'Policy X apps', state: 'enabled', conditions: { applications: { includeApplications: ['All'], excludeApplications: [EXO] } }, grantControls: { operator: 'OR', builtInControls: [], authenticationStrength: { id: PHISHING_RESISTANT } } }])
+    assert.ok(single.cov.reasons.some((r) => r.kind === 'apps-excluded'), `premise: ${JSON.stringify(single.cov.reasons.map((r) => r.kind))}`)
+    assert.deepEqual(single.ops.map((o) => [o.mode, o.policyId, o.body]), [['update', W, { state: 'enabled' }]], 'the other policy\'s excluded app became a no-change correction on W')
+    assert.deepEqual((single.step.action.changes ?? []).map((c) => c.field), ['State'], 'a change listed that changes nothing')
+
+    // The same caveat while the goal's report-only reason survives beside it (the
+    // enforced policy leaves two admins to W alone). Before the switch was read
+    // from the policy this was {caveat, state} and W went on; the correction-first
+    // rule made it {caveat} alone, and W stayed off for good.
+    const onlyW = admins([]).cov.reasons.find((r) => r.kind === 'report-only')!.userIds
+    assert.ok(onlyW.length >= 2, 'premise: W alone reaches several admins')
+    const beside = admins([{ id: X, displayName: 'Policy X apps', state: 'enabled', conditions: { users: { ...single.users, excludeUsers: onlyW.slice(1) }, applications: { includeApplications: ['All'], excludeApplications: [EXO] } }, grantControls: { operator: 'OR', builtInControls: [], authenticationStrength: { id: PHISHING_RESISTANT } } }])
+    assert.ok(beside.cov.reasons.some((r) => r.kind === 'report-only') && beside.cov.reasons.some((r) => r.kind === 'apps-excluded'), `premise: ${JSON.stringify(beside.cov.reasons.map((r) => r.kind))}`)
+    assert.deepEqual(beside.ops.map((o) => [o.mode, o.policyId, o.body]), [['update', W, { state: 'enabled' }]], 'the switch withheld for a correction that changes nothing')
+
+    // The pair on the pin, with the tenant's own enforced all-users MFA policy
+    // (one app excluded, no exclusions group) leading the guests goal.
+    const base = structuredClone(fixture('getiamai'))
+    base.baseline = pinnedPackage()
+    const guests = (runFixture(base).steps.find((s) => s.id === 's-goal-guests-mfa')?.action.resolution?.policies ?? []).map((o) => o.body as Record<string, unknown>)
+    assert.equal(guests.length, 2, 'the premise: the guests goal is a pair on the pin')
+    const f = structuredClone(base)
+    const at = f.snapshot.asOf
+    const rows = f.snapshot.config.caPolicies!.rows as Record<string, unknown>[]
+    guests.forEach((b, i) => rows.push({ ...structuredClone(b), id: `c0200000-0000-4000-8000-00000000000${i}`, state: REPORT_ONLY, createdDateTime: at, modifiedDateTime: at }))
+    rows.push({ id: 'c0200000-0000-4000-8000-00000000000c', displayName: 'Tenant MFA all users', state: 'enabled', createdDateTime: at, modifiedDateTime: at, conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'], excludeApplications: [EXO] }, clientAppTypes: ['all'] }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } })
+    const run = runFixture(f)
+    const cov = run.coverage.results.find((r) => r.goal.id === 'guests-mfa')!
+    assert.ok(cov.reasons.some((r) => r.kind === 'apps-excluded') && cov.reasons.some((r) => r.kind === 'exclusion-missing'), `premise: ${JSON.stringify(cov.reasons.map((r) => r.kind))}`)
+    const step = run.steps.find((s) => s.id === 's-goal-guests-mfa')!
+    assert.deepEqual((step.action.resolution?.policies ?? []).map((o) => [o.mode, o.body]), [['update', { state: 'enabled' }], ['update', { state: 'enabled' }]], 'the pair took the other policy\'s caveats as its correction and lost its switch')
+    assert.deepEqual((step.action.changes ?? []).map((c) => c.field), ['State'])
   }
 })
 
@@ -121,83 +166,6 @@ test('R4-11: a report-only policy that still owes a correction takes the correct
   // The person makes the correction; the next scan offers the switch alone.
   const corrected = mfaAllUsers(conditions)
   assert.deepEqual(corrected.ops.map((o) => [o.mode, o.policyId, o.body]), [['update', W, { state: 'enabled' }]])
-})
-
-test('R4-11: the guests pair on the pin keeps its switch when the plan\'s own platform block is enforced', () => {
-  // getiamai, re-based on the pin: the guests' MFA pair deployed as the plan
-  // wrote it, in report-only, and the plan's own unsupported-platforms block
-  // deployed beside it. Enforcing the block is what took the switch away.
-  const base = structuredClone(fixture('getiamai'))
-  base.baseline = pinnedPackage()
-  const first = runFixture(base)
-  const bodies = (id: string): Record<string, unknown>[] => (first.steps.find((s) => s.id === id)?.action.resolution?.policies ?? []).map((o) => o.body as Record<string, unknown>)
-  const guests = bodies('s-goal-guests-mfa')
-  const block = bodies('s-goal-block-unsupported-platforms')
-  assert.equal(guests.length, 2, 'the premise: the guests goal is a pair on the pin')
-  assert.equal(block.length, 1, 'the premise: the plan writes one unsupported-platforms block')
-  const at = base.snapshot.asOf
-  const withBlock = (state: string): Fixture => {
-    const f = structuredClone(base)
-    const rows = f.snapshot.config.caPolicies!.rows as Record<string, unknown>[]
-    guests.forEach((b, i) => rows.push({ ...structuredClone(b), id: `c0200000-0000-4000-8000-00000000000${i}`, state: REPORT_ONLY, createdDateTime: at, modifiedDateTime: at }))
-    rows.push({ ...structuredClone(block[0]), id: 'c0200000-0000-4000-8000-00000000000b', state, createdDateTime: at, modifiedDateTime: at })
-    return f
-  }
-  for (const state of [REPORT_ONLY, 'enabled']) {
-    const f = withBlock(state)
-    const run = runFixture(f)
-    const step = run.steps.find((s) => s.id === 's-goal-guests-mfa')!
-    const ops = step.action.resolution?.policies ?? []
-    assert.deepEqual(ops.map((o) => [o.mode, o.body]), [['update', { state: 'enabled' }], ['update', { state: 'enabled' }]], `block ${state}: both halves of the pair are turned on`)
-    assert.notEqual(unavailableReason(step), 'no-operation', `block ${state}`)
-    const words = said(f, run, step)
-    assert.doesNotMatch(words.because, /again to rebuild it/, `block ${state}: ${words.because}`)
-    assert.doesNotMatch(words.doneWhen, /A scan rebuilds this step/, `block ${state}: ${words.doneWhen}`)
-  }
-})
-
-test('R4-11: another enforced policy\'s caveats are not a correction to the goal\'s own report-only policy, which is still turned on', () => {
-  // The same mechanism through the goal's OTHER reasons. An enforced policy
-  // leads the goal and has a caveat of its own — it excludes one application,
-  // or it lacks the exclusions group — and that caveat is a goal-level reason
-  // ('apps-excluded', 'exclusion-missing'). The reason became a section, and the
-  // section landed on the update to the goal's own report-only policy, which
-  // already held it word for word: a "correction" that changed nothing, with
-  // the switch withheld for it, rebuilt identically by every scan. The step
-  // handed over a patch that did nothing and the policy never went on.
-  const EXO = '00000002-0000-0ff1-ce00-000000000000'
-  const single = admins([{ id: X, displayName: 'Policy X apps', state: 'enabled', conditions: { applications: { includeApplications: ['All'], excludeApplications: [EXO] } }, grantControls: { operator: 'OR', builtInControls: [], authenticationStrength: { id: PHISHING_RESISTANT } } }])
-  assert.ok(single.cov.reasons.some((r) => r.kind === 'apps-excluded'), `premise: ${JSON.stringify(single.cov.reasons.map((r) => r.kind))}`)
-  assert.deepEqual(single.ops.map((o) => [o.mode, o.policyId, o.body]), [['update', W, { state: 'enabled' }]], 'the other policy\'s excluded app became a no-change correction on W')
-  assert.deepEqual((single.step.action.changes ?? []).map((c) => c.field), ['State'], 'a change listed that changes nothing')
-
-  // The same caveat while the goal's report-only reason survives beside it (the
-  // enforced policy leaves two admins to W alone). Before the switch was read
-  // from the policy this was {caveat, state} and W went on; the correction-first
-  // rule made it {caveat} alone, and W stayed off for good.
-  const onlyW = admins([]).cov.reasons.find((r) => r.kind === 'report-only')!.userIds
-  assert.ok(onlyW.length >= 2, 'premise: W alone reaches several admins')
-  const beside = admins([{ id: X, displayName: 'Policy X apps', state: 'enabled', conditions: { users: { ...single.users, excludeUsers: onlyW.slice(1) }, applications: { includeApplications: ['All'], excludeApplications: [EXO] } }, grantControls: { operator: 'OR', builtInControls: [], authenticationStrength: { id: PHISHING_RESISTANT } } }])
-  assert.ok(beside.cov.reasons.some((r) => r.kind === 'report-only') && beside.cov.reasons.some((r) => r.kind === 'apps-excluded'), `premise: ${JSON.stringify(beside.cov.reasons.map((r) => r.kind))}`)
-  assert.deepEqual(beside.ops.map((o) => [o.mode, o.policyId, o.body]), [['update', W, { state: 'enabled' }]], 'the switch withheld for a correction that changes nothing')
-
-  // The pair on the pin, with the tenant's own enforced all-users MFA policy
-  // (one app excluded, no exclusions group) leading the guests goal.
-  const base = structuredClone(fixture('getiamai'))
-  base.baseline = pinnedPackage()
-  const guests = (runFixture(base).steps.find((s) => s.id === 's-goal-guests-mfa')?.action.resolution?.policies ?? []).map((o) => o.body as Record<string, unknown>)
-  assert.equal(guests.length, 2, 'the premise: the guests goal is a pair on the pin')
-  const f = structuredClone(base)
-  const at = f.snapshot.asOf
-  const rows = f.snapshot.config.caPolicies!.rows as Record<string, unknown>[]
-  guests.forEach((b, i) => rows.push({ ...structuredClone(b), id: `c0200000-0000-4000-8000-00000000000${i}`, state: REPORT_ONLY, createdDateTime: at, modifiedDateTime: at }))
-  rows.push({ id: 'c0200000-0000-4000-8000-00000000000c', displayName: 'Tenant MFA all users', state: 'enabled', createdDateTime: at, modifiedDateTime: at, conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'], excludeApplications: [EXO] }, clientAppTypes: ['all'] }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } })
-  const run = runFixture(f)
-  const cov = run.coverage.results.find((r) => r.goal.id === 'guests-mfa')!
-  assert.ok(cov.reasons.some((r) => r.kind === 'apps-excluded') && cov.reasons.some((r) => r.kind === 'exclusion-missing'), `premise: ${JSON.stringify(cov.reasons.map((r) => r.kind))}`)
-  const step = run.steps.find((s) => s.id === 's-goal-guests-mfa')!
-  assert.deepEqual((step.action.resolution?.policies ?? []).map((o) => [o.mode, o.body]), [['update', { state: 'enabled' }], ['update', { state: 'enabled' }]], 'the pair took the other policy\'s caveats as its correction and lost its switch')
-  assert.deepEqual((step.action.changes ?? []).map((c) => c.field), ['State'])
 })
 
 test('R4-11: a report-only policy the goal reads below its floor is switched on once it holds the grant the plan writes', () => {
