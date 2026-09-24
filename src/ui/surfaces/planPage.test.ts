@@ -106,7 +106,7 @@ test('completing a step produces one line naming it', () => {
     'Updated: Prepare Emergency Access Accounts completed · 1 step added: Remove Emergency Accounts Excluded by Name.')
   assert.equal(planChangeLine(['a', 'b', 'c', 'd', 'e'].map((id) => row(id, 'Ready')), ['a', 'b', 'c', 'd', 'e'].map((id) => row(id, 'Completed'))), 'Updated: Step a, Step b, Step c and 2 more completed.')
   assert.equal(planChangeLine([row('a', 'Ready'), row('b', 'Ready')], [row('b', 'On Hold')]), 'Updated: 1 step removed: Step a.')
-  assert.equal(planChangeLine([row('a', 'Ready')], [row('a', 'On Hold')]), null, 'a lane that is not Completed is not one of the three')
+  assert.equal(planChangeLine([row('a', 'Ready')], [row('a', 'On Hold')]), null, 'a move between open lanes is not named')
   // Around a Save: the first plan says nothing; the Save's plan says what it
   // changed, and the plan settling under the same Save still reads from before
   // it; the next change starts again, and another tenant starts afresh.
@@ -114,13 +114,15 @@ test('completing a step produces one line naming it', () => {
   let seen = observePlan(null, 't1', 'scan|visit|0', before)
   assert.equal(seen.line, null, 'the first plan has nothing before it')
   seen = observePlan(seen.seen, 't1', 'scan|visit|1', before)
-  assert.equal(seen.line, null, 'the Save, before its plan lands, clears the line')
+  assert.equal(seen.line, undefined, 'the Save, before its plan lands, leaves the line as it was')
   seen = observePlan(seen.seen, 't1', 'scan|visit|1', [row('a', 'Completed'), row('b', 'Up Next')])
   assert.equal(seen.line, 'Updated: Step a completed.')
   seen = observePlan(seen.seen, 't1', 'scan|visit|1', [row('a', 'Completed'), row('b', 'Completed')])
   assert.equal(seen.line, 'Updated: Step a and Step b completed.', 'settling under the same Save is still that one change')
   seen = observePlan(seen.seen, 't1', 'scan|visit|2', [row('a', 'Completed'), row('b', 'Completed')])
-  assert.equal(seen.line, null, 'the next change replaces the line')
+  assert.equal(seen.line, undefined, 'a Save that changes nothing keeps the line about the change before it (Done after a chip already saved)')
+  seen = observePlan(seen.seen, 't1', 'scan|visit|3', [row('a', 'Ready'), row('b', 'Completed')])
+  assert.equal(seen.line, 'Updated: Step a reopened.', 'a step that leaves Completed is a change the line names')
   assert.equal(observePlan(seen.seen, 't2', 'scan|visit|2', before).line, null, 'another tenant is not compared')
   // The page draws it above the board, and a navigation clears it.
   const page = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')

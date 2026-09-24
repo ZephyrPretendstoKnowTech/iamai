@@ -591,7 +591,7 @@ function PlanChanges({ tenantId, cause, rows, onLine }: { tenantId: string; caus
     const prior = lastSeen !== null && stillThisTurn(lastSeen.turn) ? lastSeen.seen : null
     const next = observePlan(prior, tenantId, cause, rows.map(({ id, title, lane }) => ({ id, title, lane })))
     lastSeen = { turn: tenantTurn(), seen: next.seen }
-    onLine(next.line)
+    if (next.line !== undefined) onLine(next.line)
     // Only when the board or its cause changes.
   }, [tenantId, cause, key])
   return null
