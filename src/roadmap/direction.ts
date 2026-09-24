@@ -54,7 +54,7 @@ import { DEVICE_GOALS } from './deviations.ts'
 import { QUESTION_STEP } from './answers.ts'
 import { mailAnswerMoot } from './blockSignIns.ts'
 import { PREREQ_STEP_ID, stepIdForGoal } from './stepIds.ts'
-import { checkStep, serviceEvidence, serviceOf, serviceReading } from './workflows.ts'
+import { checkStep, serviceEvidence, serviceNameOf, serviceOf, serviceReading } from './workflows.ts'
 import type { ServiceSignal } from './workflows.ts'
 import { DIRECTION_BLOCKER, DIRECTION_STEP, SERVICE_KEYS, directionComplete, directionStepOf, isDirectionStep, savedAnswerOf, savedBasisOf, trustedIpLocations } from './directionAnswers.ts'
 export { DIRECTION_BLOCKER, directionBlockerStep, directionComplete } from './directionAnswers.ts'
@@ -93,7 +93,8 @@ function serviceQuestion(key: string, signal: ServiceSignal, ctx: Context): Dire
     ...question(`service:${key}`, ctx, { label, control: 'choice', options: optionsOf(Q.serviceOptions), suggested, evidence: seen ?? '' }),
     needsReview,
     basis: signal.used ? 'present' : signal.complete ? 'absent' : 'unread',
-    ...(needsReview && seen !== null ? { evidence: fillText(W.reopened, { answer: Q.serviceOptions.no, evidence: seen }) } : {}),
+    // A reopen always says what the scan saw (net-new 6): the app sign-in summary where no record names people.
+    ...(needsReview ? { evidence: fillText(W.reopened, { answer: Q.serviceOptions.no, evidence: seen ?? fillText(Q.serviceEvidence.seenActivity, { service: serviceNameOf(key) }) }) } : {}),
   }
 }
 
@@ -135,7 +136,7 @@ function useQuestions(ctx: Context, services: { keys: string[]; signal: (key: st
   out.push(question('mailDevices', ctx, {
     label: Q.mailDevices.label, control: 'accounts', options: optionsOf(Q.accountOptions), pickedWith: 'some',
     suggested: pickable.length > 0 ? answer('some', pickable) : answer('none'),
-    evidence: mailReview && mailSeen !== '' ? fillText(W.reopened, { answer: Q.accountOptions.none, evidence: mailSeen }) : mailSeen,
+    evidence: mailReview ? fillText(W.reopened, { answer: Q.accountOptions.none, evidence: mailSeen !== '' ? mailSeen : fillText(Q.mailDevices.seenPartial, { n: senders?.length ?? pickable.length }) }) : mailSeen,
     chosen: { some: Q.mailDevices.consequence },
     needsReview: mailReview,
     basis: senders === null ? 'unread' : pickable.length > 0 ? 'present' : 'absent',
@@ -148,7 +149,7 @@ function useQuestions(ctx: Context, services: { keys: string[]; signal: (key: st
   out.push(question('partner', ctx, {
     label: Q.partner.label, control: 'choice', options: optionsOf(Q.partner.options),
     suggested: answer(partnersUsed ? 'yes' : 'no'),
-    evidence: partnerReview && partnerSeen !== '' ? fillText(W.reopened, { answer: Q.partner.options.no, evidence: partnerSeen }) : partnerSeen,
+    evidence: partnerReview ? fillText(W.reopened, { answer: Q.partner.options.no, evidence: partnerSeen !== '' ? partnerSeen : Q.partner.seenPartial }) : partnerSeen,
     chosen: { yes: Q.partner.consequence },
     needsReview: partnerReview,
     basis: partnersUsed ? 'present' : partners !== null && signInsRead(snapshot) ? 'absent' : 'unread',

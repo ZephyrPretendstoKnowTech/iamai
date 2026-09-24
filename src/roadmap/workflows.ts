@@ -54,10 +54,15 @@ export type ServiceSignal = { used: boolean; complete: boolean; sources: (Config
  * says neither, so nothing the scan saw can be said. Direction's evidence line and
  * the Inventory's Detected workloads tooltip both read it.
  */
+/** A service by the name Direction's evidence lines use. */
+export function serviceNameOf(key: string): string {
+  return (W.names as Record<string, string>)[key] ?? (directionWords.questions.services as Record<string, string>)[key] ?? key
+}
+
 export function serviceEvidence(key: string, signal: ServiceSignal): string | null {
   const E = directionWords.questions.serviceEvidence
   if (key === 'workload') return signal.used ? E.syncSeen : signal.complete ? E.syncNotSeen : null
-  const service = (W.names as Record<string, string>)[key] ?? (directionWords.questions.services as Record<string, string>)[key] ?? key
+  const service = serviceNameOf(key)
   if (signal.people !== null && signal.people > 0) return fillText(E.seen, { n: signal.people, service })
   // Nobody: the sign-in records, read whole, show no one, or the app sign-in
   // summary and the service-principal activity, both read in full, show no

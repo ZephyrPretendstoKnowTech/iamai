@@ -5,7 +5,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
-import { directionSteps } from './direction.ts'
+import { directionSteps, mailSenderIds } from './direction.ts'
 import type { DirectionInput } from './direction.ts'
 import { DIRECTION_LOCATIONS_STORAGE, DIRECTION_STEP, answersOfDecision, directionDecisionOf, directionDecisionWith, legacyDecisionsOf, savedAnswerOf, trustedIpLocations } from './directionAnswers.ts'
 import type { DirectionAnswer } from './directionAnswers.ts'
@@ -206,6 +206,8 @@ test('(f) a saved No reopens Confirm What You Use when new usage appears; missin
   const reopened = stepOf(stepsOf({ ...f, mapping: saved }), DIRECTION_STEP.use)
   assert.equal(q(reopened, 'service:sharepoint').needsReview, true)
   assert.equal(q(reopened, 'service:sharepoint').saved?.value, 'no', 'the saved answer stays visible')
+  // And says what the scan saw, on the app sign-in summary alone (net-new 6): never a reopen with no line.
+  assert.match(q(reopened, 'service:sharepoint').evidence, /^You answered No\. .+ shows sign-in activity in your tenant's app sign-in summary\.$/)
   assert.notEqual(reopened.status, 'done')
   // Evidence going missing never reopens: a saved Yes with the usage unread stays done.
   const yes = applyStepDecisions(f.mapping, { [DIRECTION_STEP.use]: approve(first) })
@@ -358,3 +360,16 @@ test('the office network asks one thing, an office or everyone remote; an old No
   assert.match(q.chosen?.remote ?? '', /Define the Trusted Network leaves your plan\.$/)
 })
 
+
+test('a saved None on the mail-sending devices reopened over a partial sign-in read says what the records read show (net-new 6)', () => {
+  const unread = fixture('demo')
+  unread.snapshot.sources.signInEvidence = { ...unread.snapshot.sources.signInEvidence!, status: 'error' }
+  const unreadStep = stepOf(stepsOf(unread), DIRECTION_STEP.use)
+  const saved = applyStepDecisions(unread.mapping, { [DIRECTION_STEP.use]: approve(unreadStep, { mailDevices: { value: 'none', picked: [] } }) })
+  const partial = fixture('demo')
+  partial.snapshot.sources.signInEvidence = { ...partial.snapshot.sources.signInEvidence!, status: 'partial' }
+  assert.ok((mailSenderIds(partial.snapshot) ?? []).length > 0, 'the premise: the records read show senders')
+  const mail = q(stepOf(stepsOf({ ...partial, mapping: saved }), DIRECTION_STEP.use), 'mailDevices')
+  assert.equal(mail.needsReview, true)
+  assert.match(mail.evidence, /^You answered None\. The sign-in records this scan read show \d+ accounts? signing in to send email\.$/)
+})
