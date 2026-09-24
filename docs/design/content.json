@@ -331,6 +331,9 @@
         "appearedEnforced": "not deployed at the last scan and enforced by {date}: it went live without a report-only period IAMAI could watch, so nothing here was observed before it started applying",
         "continuityUnknown": "this plan does not record which policy it watched before {date}, so the window starts again on the one deployed now",
         "differs": "not what the plan asked for in {fields}, and IAMAI does not write that part: a person corrects it in the Entra admin center, then scans again",
+        "$commentDifference": "What a step's correction changes, in words, for AI Info's lead (ui/surfaces/stepPackage.ts correctionWordsOf; walk list 4.x item 40): it read \"differs from the intended target: conditions.canonical\".",
+        "missingGroup": "it doesn't exclude {group}",
+        "differsIn": "it differs from the intended target in {fields}",
         "dimensions": {
           "$comment": "A policy's material dimensions by their Graph field names (roadmap/observation.ts semanticFieldsOf), for the sentence that names where a deployed policy is not what the plan asked for.",
           "users": "who it applies to",
@@ -5230,7 +5233,7 @@
       "kind": "policy",
       "title": "Block Legacy Authentication",
       "changeLine": null,
-      "why": "Legacy authentication protocols cannot complete multifactor authentication, so a password on its own gets through them. Exchange Online already refuses a password for POP, IMAP and ActiveSync, and SMTP AUTH is the last route that accepts one; Microsoft is retiring that route too. Review the clients and jobs still using one before that path closes.",
+      "why": "Legacy authentication can't ask for MFA, so a password alone gets through it. This policy blocks it for everyone except the emergency access accounts.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-legacy-authentication"
       },
@@ -5334,7 +5337,7 @@
       "kind": "policy",
       "title": "Block Device Code Sign-in",
       "changeLine": null,
-      "why": "Device-code phishing can persuade a person to approve a sign-in for someone else. Blocking this flow reduces that route of attack, but legitimate devices and tools need a checked alternative.",
+      "why": "Device-code phishing tricks a person into entering a code that signs an attacker in as them. Blocking device code sign-in closes that route.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-authentication-flows"
       },

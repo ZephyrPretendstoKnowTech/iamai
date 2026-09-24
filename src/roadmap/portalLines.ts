@@ -159,9 +159,9 @@ function usersLine(f: PolicyFacts, ctx: PortalContext): string {
   // confirmed is not swallowed by the sentence about the exclusions group.
   if (knowsIds) {
     const otherGroups = [...f.whoNot.groups].filter((g) => !is(g, ctx.exclusionsGroupId) && !is(g, ctx.serviceAccountsGroupId) && !included(g))
-    if (otherGroups.length > 0) parts.push(`Also exclude the groups ${names(otherGroups, ctx)}.`)
+    if (otherGroups.length > 0) parts.push(`Also exclude the ${otherGroups.length === 1 ? 'group' : 'groups'} ${names(otherGroups, ctx)}.`)
     const excludedRoles = [...f.whoNot.roles].filter((r) => ![...f.who.roles].some((x) => lc(x) === lc(r)))
-    if (excludedRoles.length > 0) parts.push(`Also exclude the directory roles ${names(excludedRoles, ctx)}.`)
+    if (excludedRoles.length > 0) parts.push(`Also exclude the ${excludedRoles.length === 1 ? 'directory role' : 'directory roles'} ${names(excludedRoles, ctx)}.`)
     // The emergency accounts are members of the exclusions group and are never
     // named on a line; the shared-device accounts have their own line above.
     const covered = new Set([...(ctx.sharedDeviceIds ?? []), ...(ctx.emergencyIds ?? [])].map(lc))

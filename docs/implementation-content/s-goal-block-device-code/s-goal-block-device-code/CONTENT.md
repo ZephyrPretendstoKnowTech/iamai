@@ -37,7 +37,7 @@ Rename the same policy to **{{policy.target.displayName}}**. IAMAI matches the p
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
-Keep the policy in Report-only while you review the evidence listed for this step. Review device-code use, including command-line tools, shared and meeting-room devices, and enrollment workflows. On each sign-in, check both **Authentication protocol** and **Original transfer method**: a session that began with device code can still be tracked after the original event. Microsoft documents that an authentication-flows policy targeting All resources also applies to Device Registration Service, and some Teams devices depend on device code flow. No events in the available records does not prove device code is unused.
+Keep the policy in Report-only while you review the evidence listed for this step. Review device-code use, including command-line tools, shared and meeting-room devices, and enrollment workflows. On each sign-in, check both **Authentication protocol** and **Original transfer method**: a session that began with device code can still be tracked after the original event. Microsoft documents that an authentication-flows policy targeting All resources also applies to Device Registration Service, and some Teams devices depend on device code flow.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
@@ -146,19 +146,22 @@ $actual=IG GET $uri
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 
-IAMAI did not find **Block Device Code Sign-in** in {{tenant.displayName}}. The next action is to create it in Report-only. It blocks Conditions → Authentication flows → Configure: Yes, then Device code flow for all users except the resolved exclusions, across all resources, with Client apps left at All and no session controls. Because it targets All resources, it also applies to Device Registration Service, and some Teams devices, command-line tools and enrollment workflows use device code legitimately.
+IAMAI did not find **Block Device Code Sign-in** in {{tenant.displayName}}.
+Create it in Report-only: it blocks device code sign-in for All users except {{exclusions.group.displayName}}, across all resources.
+Because it targets All resources, it also applies to Device Registration Service, and some Teams devices, command-line tools and enrollment workflows use device code legitimately.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
 
-IAMAI found policy {{policy.current.id}} for **Block Device Code Sign-in**, but it differs from the intended target: {{policy.current.semanticMismatches}}. The next action is to correct those settings on the same policy ID. The intended target blocks Conditions → Authentication flows → Configure: Yes, then Device code flow for all users except the resolved exclusions, across all resources, with Client apps left at All and no session controls. Keep the policy's current state. If it is On, the changed rule can affect access after you save.
+IAMAI found {{policy.current.displayName}} for **Block Device Code Sign-in**, and {{policy.current.difference}}.
+Correct it on the same policy: it blocks device code sign-in for All users except {{exclusions.group.displayName}}, across all resources. Keep the policy's current state. If it is On, the changed rule can affect access after you save.
 
 This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 
-**Block Device Code Sign-in** is in Report-only in {{tenant.displayName}}. Report-only evidence: {{evidence.reportOnly}}. Review both direct device-code sign-ins and sessions tracked by Original transfer method, including tools, shared devices, Teams devices and enrollment workflows. No events in the available records does not prove device code is unused.
+**Block Device Code Sign-in** is in Report-only in {{tenant.displayName}}. Report-only evidence: {{evidence.reportOnly}}. Review both direct device-code sign-ins and sessions tracked by Original transfer method, including tools, shared devices, Teams devices and enrollment workflows.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
