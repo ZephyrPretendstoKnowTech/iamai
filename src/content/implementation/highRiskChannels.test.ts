@@ -37,8 +37,8 @@ const PAIRS = [
   { high: 's-goal-user-risk', medium: 's-goal-user-risk-medium', risk: 'userRiskLevels' },
 ] as const
 
-for (const { high, medium, risk } of PAIRS) {
-  test(`${high} projects Entra, JSON, PowerShell and AI info wherever ${medium} does, at the High threshold`, () => {
+test('each High-Risk package projects Entra, JSON, PowerShell and AI info wherever its Medium-Risk counterpart does, at the High threshold', () => {
+  for (const { high, medium, risk } of PAIRS) {
     const cases: [PackageState, Record<string, unknown>][] = [
       ['missing', {}],
       ['partial', { [CHANGED_FIELDS_BINDING]: [`conditions.${risk}`] }],
@@ -65,8 +65,8 @@ for (const { high, medium, risk } of PAIRS) {
     const body = JSON.parse(create.text) as { conditions: Record<string, unknown> }
     assert.deepEqual(body.conditions[risk], ['high'])
     assert.doesNotMatch(JSON.stringify(projectImplementation(PACKAGES[high], 'partial', { ...BINDINGS, [CHANGED_FIELDS_BINDING]: [`conditions.${risk}`] }).channels), /"medium"/)
-  })
-}
+  }
+})
 
 test('the High-Risk sign-in create keeps the baseline member: the resolved authentication strength, Every-time sign-in frequency, no plain-MFA variant', () => {
   const pkg = PACKAGES['s-goal-sign-in-risk']
@@ -80,33 +80,36 @@ test('the High-Risk sign-in create keeps the baseline member: the resolved authe
   assert.equal(Object.keys(pkg.blocks).some((id) => /plain-mfa|baseline-strength|decision/.test(id)), false)
 })
 
-test('the saved MFA first-enforcement choice is the same grant in create, correction, Entra, AI and the invoked script', () => {
-  const grant = { operator: 'OR', builtInControls: ['mfa'], customAuthenticationFactors: [], termsOfUse: [] }
-  const b = { ...BINDINGS, 'authStrength.target.id': undefined, 'authStrength.target.displayName': undefined,
-    'policy.target.grantControls': grant, 'policy.target.grantJson': JSON.stringify(grant), 'policy.target.grantWords': 'Require multifactor authentication' }
-  for (const state of ['missing', 'partial'] as const) {
-    const p = projectImplementation(PACKAGES['s-goal-sign-in-risk'], state, { ...b, [CHANGED_FIELDS_BINDING]: ['grantControls'] })
-    const json = p.channels.find(c => c.channel === 'json')!
-    assert.ok(json, JSON.stringify(p.hold))
-    assert.deepEqual(JSON.parse(json.text).grantControls, grant)
-    if (state === 'partial') assert.deepEqual(Object.keys(JSON.parse(json.text)), ['grantControls'], 'correction preserves state')
-    assert.match(p.channels.find(c => c.channel === 'entra')!.text, /Require multifactor authentication/)
-    const ps = p.channels.find(c => c.channel === 'powershell')!.text
-    assert.ok(ps.includes(`-GrantControlsJson '${JSON.stringify(grant)}'`))
-    assert.doesNotMatch(ps, /-AuthenticationStrengthId /)
-    assert.doesNotMatch(p.channels.find(c => c.channel === 'aiInfo')!.text, /outputs? appl(?:y|ies) the strength/)
+test('the saved MFA first-enforcement choice is the same grant in create, correction, Entra, AI and the invoked script, and stays explicit through observation, correction and enforcement guidance', () => {
+  // the saved MFA first-enforcement choice is the same grant in create, correction, Entra, AI and the invoked script
+  {
+    const grant = { operator: 'OR', builtInControls: ['mfa'], customAuthenticationFactors: [], termsOfUse: [] }
+    const b = { ...BINDINGS, 'authStrength.target.id': undefined, 'authStrength.target.displayName': undefined,
+      'policy.target.grantControls': grant, 'policy.target.grantJson': JSON.stringify(grant), 'policy.target.grantWords': 'Require multifactor authentication' }
+    for (const state of ['missing', 'partial'] as const) {
+      const p = projectImplementation(PACKAGES['s-goal-sign-in-risk'], state, { ...b, [CHANGED_FIELDS_BINDING]: ['grantControls'] })
+      const json = p.channels.find(c => c.channel === 'json')!
+      assert.ok(json, JSON.stringify(p.hold))
+      assert.deepEqual(JSON.parse(json.text).grantControls, grant)
+      if (state === 'partial') assert.deepEqual(Object.keys(JSON.parse(json.text)), ['grantControls'], 'correction preserves state')
+      assert.match(p.channels.find(c => c.channel === 'entra')!.text, /Require multifactor authentication/)
+      const ps = p.channels.find(c => c.channel === 'powershell')!.text
+      assert.ok(ps.includes(`-GrantControlsJson '${JSON.stringify(grant)}'`))
+      assert.doesNotMatch(ps, /-AuthenticationStrengthId /)
+      assert.doesNotMatch(p.channels.find(c => c.channel === 'aiInfo')!.text, /outputs? appl(?:y|ies) the strength/)
+    }
   }
-})
-
-test('saved MFA choice stays explicit through observation, correction and enforcement guidance', () => {
-  const b = { ...BINDINGS, 'policy.target.grantWords': 'Require multifactor authentication',
-    'policy.target.grantControls': { operator: 'OR', builtInControls: ['mfa'] } }
-  for (const state of ['partial', 'reportOnly', 'readyToEnforce'] as const) {
-    const p = projectImplementation(PACKAGES['s-goal-sign-in-risk'], state, { ...b, [CHANGED_FIELDS_BINDING]: ['grantControls'] })
-    const entra = p.channels.find(c => c.channel === 'entra')!.text
-    const ai = p.channels.find(c => c.channel === 'aiInfo')!.text
-    assert.match(entra, /Require multifactor authentication/)
-    assert.doesNotMatch(entra + ai, /requires the resolved authentication strength|correction output applies the strength/)
-    if (state !== 'reportOnly') assert.match(ai, /Require multifactor authentication/)
+  // saved MFA choice stays explicit through observation, correction and enforcement guidance
+  {
+    const b = { ...BINDINGS, 'policy.target.grantWords': 'Require multifactor authentication',
+      'policy.target.grantControls': { operator: 'OR', builtInControls: ['mfa'] } }
+    for (const state of ['partial', 'reportOnly', 'readyToEnforce'] as const) {
+      const p = projectImplementation(PACKAGES['s-goal-sign-in-risk'], state, { ...b, [CHANGED_FIELDS_BINDING]: ['grantControls'] })
+      const entra = p.channels.find(c => c.channel === 'entra')!.text
+      const ai = p.channels.find(c => c.channel === 'aiInfo')!.text
+      assert.match(entra, /Require multifactor authentication/)
+      assert.doesNotMatch(entra + ai, /requires the resolved authentication strength|correction output applies the strength/)
+      if (state !== 'reportOnly') assert.match(ai, /Require multifactor authentication/)
+    }
   }
 })

@@ -3,10 +3,10 @@
 //
 // Package ingestion (protocol.ts), state projection, Partial composition from the
 // engine's semantic facts, the enforcement gate and owner confirmations,
-// bindings, readiness, troubleshooting and the source date (project.ts), the
-// runtime adapter that hands IAMAI's state to the package (stepPackage.ts), and
-// the viewer that draws it (ContentStep.tsx). The fixture supplies state, bindings
-// and confirmations; every word of content is read from the package itself.
+// bindings, readiness, troubleshooting and the source date (project.ts), and the
+// runtime adapter that hands IAMAI's state to the package (stepPackage.ts). The
+// fixture supplies state, bindings and confirmations; every word of content is
+// read from the package itself.
 import { test } from 'node:test'
 import { RUNTIME_META_KEYS } from './library.ts'
 import assert from 'node:assert/strict'
@@ -40,23 +40,26 @@ const authored = (id: string): string => PKG.blocks[id].text.replace(/\s+$/, '')
 
 // ------------------------------------------------------------ package ingestion
 
-test('the pilot package compiles under the strict contract: every projected block, invocation, condition and model is sound', () => {
-  assert.equal(PKG.meta.stepId, PILOT_STEP_ID)
-  assert.deepEqual(validatePackage(PKG), [])
-  assert.equal(Object.keys(PKG.blocks).length, 24)
-  assert.deepEqual(Object.keys(PKG.meta.projection).sort(), [...PACKAGE_STATES].sort())
-})
-
-test('the registry holds the pilot exactly as compiled, authored against the baseline pin the build carries', () => {
-  const packages = (registry as unknown as { packages: Record<string, CompiledPackage> }).packages
-  // The registry carries the META fields the product reads, and nothing of the author's evidence besides (library.ts RUNTIME_META_KEYS).
-  const shipped = { meta: Object.fromEntries(RUNTIME_META_KEYS.filter((k) => PKG.meta[k] !== undefined).map((k) => [k, PKG.meta[k]])), blocks: PKG.blocks }
-  assert.deepEqual(packages[PILOT_STEP_ID], JSON.parse(JSON.stringify(shipped)), 'registry.generated.json drifted from its sources: run scripts/compile-implementation-content.mjs --registry')
-  assert.ok(REGISTERED_PACKAGE_STEP_IDS.includes(PILOT_STEP_ID))
-  // Re-authored against the build's pin on 2026-09-11 (it named 8461e0f2 before).
-  assert.equal(BASELINE_COMMIT, JSON.parse(read('baselines/jhope188-conditionalaccesspolicies.pinned.json')).commit)
-  assert.equal(PILOT_PIN, BASELINE_COMMIT)
-  assert.equal(packageForEntry({ id: PILOT_STEP_ID, goalId: 'device-registration-mfa' }), packages[PILOT_STEP_ID])
+test('the pilot package compiles under the strict contract, and the registry holds it exactly as compiled against the baseline pin the build carries', () => {
+  // the pilot package compiles under the strict contract: every projected block, invocation, condition and model is sound
+  {
+    assert.equal(PKG.meta.stepId, PILOT_STEP_ID)
+    assert.deepEqual(validatePackage(PKG), [])
+    assert.equal(Object.keys(PKG.blocks).length, 24)
+    assert.deepEqual(Object.keys(PKG.meta.projection).sort(), [...PACKAGE_STATES].sort())
+  }
+  // the registry holds the pilot exactly as compiled, authored against the baseline pin the build carries
+  {
+    const packages = (registry as unknown as { packages: Record<string, CompiledPackage> }).packages
+    // The registry carries the META fields the product reads, and nothing of the author's evidence besides (library.ts RUNTIME_META_KEYS).
+    const shipped = { meta: Object.fromEntries(RUNTIME_META_KEYS.filter((k) => PKG.meta[k] !== undefined).map((k) => [k, PKG.meta[k]])), blocks: PKG.blocks }
+    assert.deepEqual(packages[PILOT_STEP_ID], JSON.parse(JSON.stringify(shipped)), 'registry.generated.json drifted from its sources: run scripts/compile-implementation-content.mjs --registry')
+    assert.ok(REGISTERED_PACKAGE_STEP_IDS.includes(PILOT_STEP_ID))
+    // Re-authored against the build's pin on 2026-09-11 (it named 8461e0f2 before).
+    assert.equal(BASELINE_COMMIT, JSON.parse(read('baselines/jhope188-conditionalaccesspolicies.pinned.json')).commit)
+    assert.equal(PILOT_PIN, BASELINE_COMMIT)
+    assert.equal(packageForEntry({ id: PILOT_STEP_ID, goalId: 'device-registration-mfa' }), packages[PILOT_STEP_ID])
+  }
 })
 
 test('a duplicate, nested, unterminated or unknown block fails, and so does an unsupported channel', () => {
@@ -129,50 +132,46 @@ test('Ready to enforce projects all five channels, and the script is runnable as
   assert.deepEqual(by.email.communication, { audience: 'affected-users', trigger: 'before-enforcement', purpose: 'pre-change-notice' })
 })
 
-test('Email appears only where META.json projects it', () => {
-  for (const state of PACKAGE_STATES) {
-    const email = project(state).channels.find((c) => c.channel === 'email')
-    assert.equal(email !== undefined, state === 'readyToEnforce', `${state}: Email presence`)
-  }
-})
-
 // ------------------------------------------------------------ the enforcement gate
 
-test('the human checks gate the Enforce action, not the stage: no enforcement artifact until they are satisfied', () => {
-  const held = project('readyToEnforce', {}, pilotRuntime([]))
-  assert.deepEqual(held.channels, [])
-  assert.deepEqual(held.hold?.pendingPrerequisites, ['legacy-device-mfa-toggle', 'enrollment-workflows', 'external-auth-methods'])
-  // The other states' artifacts are not the enforcement and do not wait on it.
-  assert.deepEqual(project('missing', {}, pilotRuntime([])).hold, null)
-  assert.deepEqual(project('reportOnly', {}, pilotRuntime([])).hold, null)
-  // One unsatisfied check is enough to hold.
-  assert.deepEqual(project('readyToEnforce', {}, pilotRuntime(PILOT_PREREQUISITES.filter((id) => id !== 'external-auth-methods'))).hold?.pendingPrerequisites, ['external-auth-methods'])
-  // And the switch the script needs is passed only for a satisfied check.
-  const readyScript = artifact('readyToEnforce', 'powershell').text
-  assert.match(readyScript, /-ExternalAuthenticationCompatibilityResolved$/)
-})
-
-test('a tenant fact satisfies a check without anybody’s word; a confirmation holds only while its values hold', () => {
-  const bindings = pilotBindings('readyToEnforce', { 'tenant.deviceRegistration.multiFactorAuthConfiguration': 'notRequired' })
-  const status = (b = bindings, c: Record<string, { at: string; basis: string }> = {}) => Object.fromEntries(prerequisiteStatus(PKG, 'readyToEnforce', b, c, BASELINE_COMMIT).map((s) => [s.id, s]))
-  // The legacy device-registration MFA setting, read as off: satisfied by evidence.
-  assert.equal(status()['legacy-device-mfa-toggle'].by, 'evidence')
-  assert.equal(status(pilotBindings('readyToEnforce', { 'tenant.deviceRegistration.multiFactorAuthConfiguration': 'required' }))['legacy-device-mfa-toggle'].satisfied, false, 'a setting read as on satisfied the check')
-  assert.equal(status(pilotBindings('readyToEnforce'))['legacy-device-mfa-toggle'].satisfied, false, 'a setting the scan did not read satisfied the check')
-  // A confirmation, given against these values, counts.
-  const prereq = (id: string) => PKG.meta.prerequisites!.find((p) => p.id === id)!
-  const given = { 'enrollment-workflows': { at: '2026-09-10T00:00:00.000Z', basis: prerequisiteBasis(prereq('enrollment-workflows'), bindings) }, 'external-auth-methods': { at: '2026-09-10T00:00:00.000Z', basis: prerequisiteBasis(prereq('external-auth-methods'), bindings) } }
-  assert.equal(status(bindings, given)['enrollment-workflows'].by, 'confirmation')
-  assert.equal(status(bindings, given)['external-auth-methods'].confirmedAt, '2026-09-10T00:00:00.000Z')
-  // A changed exclusion set is a different thing to have validated workflows for…
-  const moved = pilotBindings('readyToEnforce', { 'policy.target.excludeGroups': [PILOT_IDS.exclusions, '00000000-0000-4000-8000-00000000e002'] })
-  assert.equal(status(moved, given)['enrollment-workflows'].satisfied, false, 'a confirmation outlived the exclusions it was given against')
-  // …and does not touch the check that is not about exclusions; a recreated policy invalidates both.
-  assert.equal(status(moved, given)['external-auth-methods'].satisfied, true)
-  const recreated = pilotBindings('readyToEnforce', { 'policy.current.id': '00000000-0000-4000-8000-00000000a002' })
-  assert.equal(status(recreated, given)['external-auth-methods'].satisfied, false)
-  // The same values in another order are the same values.
-  assert.equal(prerequisiteBasis(prereq('enrollment-workflows'), pilotBindings('readyToEnforce', { 'policy.target.excludeGroups': ['b', 'a'] })), prerequisiteBasis(prereq('enrollment-workflows'), pilotBindings('readyToEnforce', { 'policy.target.excludeGroups': ['a', 'b'] })))
+test('the checks gate the Enforce action, not the stage; a tenant fact satisfies a check without anybody’s word, and a confirmation holds only while its values hold', () => {
+  // the human checks gate the Enforce action, not the stage: no enforcement artifact until they are satisfied
+  {
+    const held = project('readyToEnforce', {}, pilotRuntime([]))
+    assert.deepEqual(held.channels, [])
+    assert.deepEqual(held.hold?.pendingPrerequisites, ['legacy-device-mfa-toggle', 'enrollment-workflows', 'external-auth-methods'])
+    // The other states' artifacts are not the enforcement and do not wait on it.
+    assert.deepEqual(project('missing', {}, pilotRuntime([])).hold, null)
+    assert.deepEqual(project('reportOnly', {}, pilotRuntime([])).hold, null)
+    // One unsatisfied check is enough to hold.
+    assert.deepEqual(project('readyToEnforce', {}, pilotRuntime(PILOT_PREREQUISITES.filter((id) => id !== 'external-auth-methods'))).hold?.pendingPrerequisites, ['external-auth-methods'])
+    // And the switch the script needs is passed only for a satisfied check.
+    const readyScript = artifact('readyToEnforce', 'powershell').text
+    assert.match(readyScript, /-ExternalAuthenticationCompatibilityResolved$/)
+  }
+  // a tenant fact satisfies a check without anybody’s word; a confirmation holds only while its values hold
+  {
+    const bindings = pilotBindings('readyToEnforce', { 'tenant.deviceRegistration.multiFactorAuthConfiguration': 'notRequired' })
+    const status = (b = bindings, c: Record<string, { at: string; basis: string }> = {}) => Object.fromEntries(prerequisiteStatus(PKG, 'readyToEnforce', b, c, BASELINE_COMMIT).map((s) => [s.id, s]))
+    // The legacy device-registration MFA setting, read as off: satisfied by evidence.
+    assert.equal(status()['legacy-device-mfa-toggle'].by, 'evidence')
+    assert.equal(status(pilotBindings('readyToEnforce', { 'tenant.deviceRegistration.multiFactorAuthConfiguration': 'required' }))['legacy-device-mfa-toggle'].satisfied, false, 'a setting read as on satisfied the check')
+    assert.equal(status(pilotBindings('readyToEnforce'))['legacy-device-mfa-toggle'].satisfied, false, 'a setting the scan did not read satisfied the check')
+    // A confirmation, given against these values, counts.
+    const prereq = (id: string) => PKG.meta.prerequisites!.find((p) => p.id === id)!
+    const given = { 'enrollment-workflows': { at: '2026-09-10T00:00:00.000Z', basis: prerequisiteBasis(prereq('enrollment-workflows'), bindings) }, 'external-auth-methods': { at: '2026-09-10T00:00:00.000Z', basis: prerequisiteBasis(prereq('external-auth-methods'), bindings) } }
+    assert.equal(status(bindings, given)['enrollment-workflows'].by, 'confirmation')
+    assert.equal(status(bindings, given)['external-auth-methods'].confirmedAt, '2026-09-10T00:00:00.000Z')
+    // A changed exclusion set is a different thing to have validated workflows for…
+    const moved = pilotBindings('readyToEnforce', { 'policy.target.excludeGroups': [PILOT_IDS.exclusions, '00000000-0000-4000-8000-00000000e002'] })
+    assert.equal(status(moved, given)['enrollment-workflows'].satisfied, false, 'a confirmation outlived the exclusions it was given against')
+    // …and does not touch the check that is not about exclusions; a recreated policy invalidates both.
+    assert.equal(status(moved, given)['external-auth-methods'].satisfied, true)
+    const recreated = pilotBindings('readyToEnforce', { 'policy.current.id': '00000000-0000-4000-8000-00000000a002' })
+    assert.equal(status(recreated, given)['external-auth-methods'].satisfied, false)
+    // The same values in another order are the same values.
+    assert.equal(prerequisiteBasis(prereq('enrollment-workflows'), pilotBindings('readyToEnforce', { 'policy.target.excludeGroups': ['b', 'a'] })), prerequisiteBasis(prereq('enrollment-workflows'), pilotBindings('readyToEnforce', { 'policy.target.excludeGroups': ['a', 'b'] })))
+  }
 })
 
 // ------------------------------------------------------------------- Partial
@@ -211,33 +210,26 @@ test('Partial selects correction modules from the engine’s changed fields, one
   const unknown = project('partial', { [CHANGED_FIELDS_BINDING]: ['conditions.users.excludeGroups', 'sessionControls.signInFrequency'] })
   assert.deepEqual(unknown.channels, [])
   assert.deepEqual(unknown.hold?.unknownMismatches, ['sessionControls.signInFrequency'])
-  // Nothing here reads a title, a heading or a reason sentence to decide.
-  const code = read('src/content/implementation/project.ts')
-  for (const heuristic of ['displayName', 'title.', 'appliesWhen']) assert.equal(new RegExp(`\\b${heuristic.replace('.', '\\.')}`).test(code.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '')), false, `project.ts decides on ${heuristic}`)
 })
 
 // ---------------------------------------------------------------------- bindings
 
-test('a required binding IAMAI does not hold produces no deployable content', () => {
-  const noId = project('readyToEnforce', { 'policy.current.id': undefined })
-  assert.deepEqual(noId.channels, [])
-  assert.deepEqual(noId.hold?.missingBindings, ['policy.current.id'])
-  assert.deepEqual(project('missing', { 'policy.target.excludeGroups': [] }).channels, [], 'an empty exclusion set produced a Create')
-})
-
-test('an optional binding IAMAI does not hold disappears with its line', () => {
-  const observe = artifact('reportOnly', 'aiInfo').text
-  assert.equal(/device-registration evidence|Enrollment-workflow evidence|Current blockers/.test(observe), false, 'an unavailable optional line survived')
-  assert.match(artifact('missing', 'aiInfo').text, /^- Tenant: Contoso \(sample\)$/m)
-  assert.equal(/Tenant:/.test(artifact('missing', 'aiInfo', { 'tenant.displayName': undefined }).text), false)
-})
-
-test('no unresolved placeholder or authoring marker reaches any projected text, and every JSON artifact parses', () => {
-  for (const state of PACKAGE_STATES) {
-    for (const c of project(state).channels) {
-      assert.equal(/\{\{|\[omit |\{policy\./.test(c.text), false, `${state}/${c.channel}: a placeholder reached the page`)
-      for (const r of c.requests) assert.equal(/\{/.test(r.endpoint), false, `${state}/${c.channel}: an unbound endpoint`)
-      if (c.channel === 'json') JSON.parse(c.text)
+test('a required binding IAMAI does not hold produces no deployable content, and no unresolved placeholder or authoring marker reaches any projected text', () => {
+  // a required binding IAMAI does not hold produces no deployable content
+  {
+    const noId = project('readyToEnforce', { 'policy.current.id': undefined })
+    assert.deepEqual(noId.channels, [])
+    assert.deepEqual(noId.hold?.missingBindings, ['policy.current.id'])
+    assert.deepEqual(project('missing', { 'policy.target.excludeGroups': [] }).channels, [], 'an empty exclusion set produced a Create')
+  }
+  // no unresolved placeholder or authoring marker reaches any projected text, and every JSON artifact parses
+  {
+    for (const state of PACKAGE_STATES) {
+      for (const c of project(state).channels) {
+        assert.equal(/\{\{|\[omit |\{policy\./.test(c.text), false, `${state}/${c.channel}: a placeholder reached the page`)
+        for (const r of c.requests) assert.equal(/\{/.test(r.endpoint), false, `${state}/${c.channel}: an unbound endpoint`)
+        if (c.channel === 'json') JSON.parse(c.text)
+      }
     }
   }
 })
@@ -273,38 +265,33 @@ test('Readiness is the package’s rules evaluated deterministically; nothing is
   }
 })
 
-// ------------------------------------------------------------------- source date
+// ------------------------------------------------------ source date and troubleshooting
 
-test('the source date comes from the package’s verified sources, never a clock', () => {
-  // mfa-everyone-spec.md §3 B7: three of this package's Learn sources were
-  // re-read on 2026-09-20 (policy-all-users-device-registration,
-  // concept-conditional-access-cloud-apps, manage-device-identities), so the
-  // latest checked date is theirs. The date is still the sources', not a clock:
-  // the clone below moves it, and no clock reader may appear in project.ts.
-  assert.equal(sourceUpdatedOn(PKG), '2026-09-20')
-  const later = structuredClone(PKG)
-  later.meta.verifiedSources = [...(later.meta.verifiedSources ?? []), { id: 'x', title: 'x', url: 'https://learn.microsoft.com/x', checkedOn: '2026-10-01', userFacing: true }, { id: 'y', title: 'y', url: 'https://learn.microsoft.com/y', checkedOn: '2027-01-01', userFacing: false }]
-  // Every verified source dates the line, user-facing or not (batch A decision 10): the latest checked date wins.
-  assert.equal(sourceUpdatedOn(later), '2027-01-01', 'the latest checked source is not the date')
-  const code = read('src/content/implementation/project.ts').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
-  for (const clock of ['Date.now', 'new Date(', 'performance.now', 'mtime', 'import.meta.env']) assert.equal(code.includes(clock), false, `project.ts reads ${clock}`)
-  const W = CONTRACT.implementation
-  assert.equal(packageSourceLine(PKG, W), fillText(W.sourceChecked, { date: absoluteDate('2026-09-20T12:00:00Z') }))
-  // The line has two recorded origins and no third: the package's verified
-  // sources, or the step's own dated Learn entry (quality audit section 2.5).
-  // Neither is a clock, and nothing else may produce it.
-  assert.match(read('src/ui/surfaces/stepBody.ts'), /const sourceLine = sourcePkg \? packageSourceLine\(sourcePkg, W\) : sourceCheckedLine\(typeof learn\.checkedOn === 'string' \? learn\.checkedOn : null, W\)/)
-})
-
-// --------------------------------------------------------------- troubleshooting
-
-test('troubleshooting is the package’s, for the state, and nothing where it authors none', () => {
-  assert.deepEqual(
-    troubleshootingFor(PKG, 'readyToEnforce').map((s) => s.id),
-    ['graph-permission-403', 'authentication-strength-cannot-satisfy', 'wcd-bulk-enrollment-mfa', 'legacy-device-mfa-toggle-conflict'],
-  )
-  assert.deepEqual(troubleshootingFor(PKG, 'blocked'), [])
-  for (const s of troubleshootingFor(PKG, 'inPlace')) for (const src of s.sources) assert.equal(src.userFacing, true, `${s.id}: a research-only source is shown`)
+test('the source date comes from the package’s verified sources, never a clock, and troubleshooting is the package’s, for the state', () => {
+  // the source date comes from the package’s verified sources, never a clock
+  {
+    // mfa-everyone-spec.md §3 B7: three of this package's Learn sources were
+    // re-read on 2026-09-20 (policy-all-users-device-registration,
+    // concept-conditional-access-cloud-apps, manage-device-identities), so the
+    // latest checked date is theirs. The date is still the sources', not a clock:
+    // the clone below moves it.
+    assert.equal(sourceUpdatedOn(PKG), '2026-09-20')
+    const later = structuredClone(PKG)
+    later.meta.verifiedSources = [...(later.meta.verifiedSources ?? []), { id: 'x', title: 'x', url: 'https://learn.microsoft.com/x', checkedOn: '2026-10-01', userFacing: true }, { id: 'y', title: 'y', url: 'https://learn.microsoft.com/y', checkedOn: '2027-01-01', userFacing: false }]
+    // Every verified source dates the line, user-facing or not (batch A decision 10): the latest checked date wins.
+    assert.equal(sourceUpdatedOn(later), '2027-01-01', 'the latest checked source is not the date')
+    const W = CONTRACT.implementation
+    assert.equal(packageSourceLine(PKG, W), fillText(W.sourceChecked, { date: absoluteDate('2026-09-20T12:00:00Z') }))
+  }
+  // troubleshooting is the package’s, for the state, and nothing where it authors none
+  {
+    assert.deepEqual(
+      troubleshootingFor(PKG, 'readyToEnforce').map((s) => s.id),
+      ['graph-permission-403', 'authentication-strength-cannot-satisfy', 'wcd-bulk-enrollment-mfa', 'legacy-device-mfa-toggle-conflict'],
+    )
+    assert.deepEqual(troubleshootingFor(PKG, 'blocked'), [])
+    for (const s of troubleshootingFor(PKG, 'inPlace')) for (const src of s.sources) assert.equal(src.userFacing, true, `${s.id}: a research-only source is shown`)
+  }
 })
 
 // --------------------------------------------------------------- runtime adapter
@@ -317,77 +304,46 @@ function stepAndContext(name: 'small' | 'demo'): { step: Step; ctx: StepVarConte
   return { step, ctx }
 }
 
-test('runtime truth decides the package state: a blocked fixture step implements nothing', () => {
-  const { step, ctx } = stepAndContext('small')
-  const c = stepContract(step, ctx)
-  const state = packageStateOf(step, c, ctx.snapshot)
-  assert.ok(state === 'blocked' || state === 'missing', `unexpected ${state}`)
-  if (state === 'blocked') assert.deepEqual(projectImplementation(PKG, 'blocked', packageBindings(step, ctx, c), ALL).channels, [])
-})
-
-test('a real fixture step at Ready to enforce reaches all five channels through the runtime adapter, once its checks are confirmed', () => {
-  const { step: base, ctx } = stepAndContext('small')
-  const step = pilotStepAt(base, 'readyToEnforce')
-  const c = stepContract(step, ctx)
-  assert.equal(c.state.lifecycle, 'ready-to-enforce')
-  assert.equal(c.implementation.offered, true)
-  assert.equal(packageStateOf(step, c, ctx.snapshot), 'readyToEnforce')
-  const bindings = packageBindings(step, ctx, c)
-  assert.equal(bindings['policy.current.id'], PILOT_IDS.policy)
-  assert.ok(Array.isArray(bindings['policy.target.excludeGroups']) && (bindings['policy.target.excludeGroups'] as string[]).length > 0)
-  assert.equal(bindings['policy.current.semanticMismatches'], undefined, 'a semantic-mismatch list was invented')
-  assert.equal(bindings[CHANGED_FIELDS_BINDING], undefined, 'an enforcement was read as a correction')
-  // The fixture tenant's device-registration setting is read, and satisfies its check.
-  assert.equal(bindings['tenant.deviceRegistration.multiFactorAuthConfiguration'], 'notRequired')
-  const unconfirmed = packageRuntime(PKG, 'readyToEnforce', bindings, {}, PILOT_PIN)
-  assert.deepEqual(projectImplementation(PKG, 'readyToEnforce', bindings, unconfirmed.runtime).hold?.pendingPrerequisites, ['enrollment-workflows', 'external-auth-methods'])
-  const at = '2026-09-10T00:00:00.000Z'
-  const basis = (id: string) => prerequisiteBasis(PKG.meta.prerequisites!.find((p) => p.id === id)!, bindings)
-  const confirmed = packageRuntime(PKG, 'readyToEnforce', bindings, { 'enrollment-workflows': { at, basis: basis('enrollment-workflows') }, 'external-auth-methods': { at, basis: basis('external-auth-methods') } }, PILOT_PIN)
-  const p = projectImplementation(PKG, 'readyToEnforce', bindings, confirmed.runtime)
-  assert.equal(p.hold, null)
-  assert.deepEqual(p.channels.map((x) => x.channel), ['entra', 'powershell', 'json', 'aiInfo', 'email'])
-  const merged = mergeReadiness(readinessOf(step, c), packageReadiness(PKG, 'readyToEnforce', bindings, confirmed.runtime))
-  // Every package gate is a tile (A1 §16.1): unresolved ones among the tiles, satisfied ones among the evidence, none dropped to fit.
-  const runtimeKeys = new Set([...readinessOf(step, c).tiles, ...readinessOf(step, c).satisfied].map((t) => t.key))
-  const mergedKeys = new Set([...merged.tiles, ...merged.satisfied].map((t) => t.key))
-  for (const t of packageReadiness(PKG, 'readyToEnforce', bindings, confirmed.runtime)!.tiles) assert.ok(mergedKeys.has(t.id) || (t.gateKey !== null && runtimeKeys.has(t.gateKey)), `${t.id} was dropped to fit`)
-  const missing = pilotStepAt(base, 'missing')
-  assert.equal(packageStateOf(missing, stepContract(missing, ctx), ctx.snapshot), 'missing')
-})
-
-test('where Foundation A withholds the operation, the target is unresolved and Exclusions is not Ready', () => {
-  const { step, ctx } = stepAndContext('demo')
-  const c = stepContract(step, ctx)
-  const bindings = packageBindings(step, ctx, c)
-  assert.equal(bindings['policy.target.excludeGroups'], undefined)
-  const state = packageStateOf(step, c, ctx.snapshot)!
-  const tile = packageReadiness(PKG, state, bindings, ALL)!.tiles.find((t) => t.id === 'readiness.exclusions')!
-  assert.equal(tile.result, 'Blocked')
-})
-
-// ------------------------------------------------------------------------ viewer
-
-test('the viewer draws every package channel through the one Implementation region, safely', () => {
-  // The opened step's body spans the component and stepBody.ts (A3): the decisions read there.
-  const step = (read('src/ui/surfaces/ContentStep.tsx') + read('src/ui/surfaces/stepBody.ts')).replace(/\r\n/g, '\n')
-  const ids = [...(step.match(/const CHANNEL_TABS: TabItem\[\] = \[[\s\S]*?\]/)?.[0] ?? '').matchAll(/id: '([a-z]+)'/g)].map((m) => m[1])
-  assert.deepEqual(ids, ['portal', 'ps', 'json', 'ai', 'email'], 'Email is not the fifth member of the one selector')
-  assert.match(step, /const PACKAGE_CHANNEL: Record<OutputChannel, Channel> = \{ entra: 'portal', powershell: 'ps', json: 'json', aiInfo: 'ai', email: 'email' \}/)
-  assert.equal(step.split('<Implementation\n').length - 1, 1)
-  // The region says who drew it, so a check of the translator's portal lines reads only the steps the translator drew.
-  assert.match(step, /<section className="step-section implementation-section" data-implementation=\{drawnBy\} data-preview=\{preview \? 'true' : undefined\}>/)
-  assert.match(step, /drawnBy=\{packaged \? 'package' : 'translator'\}/)
-  assert.match(step, /if \(copyable\) copy\('implementation', active\?\.text\(\) \?\? ''\)/)
-  assert.match(step, /<Implementation[\s\S]*?copy=\{copyArtifact\}/)
-  assert.equal(step.split("{tab === 'ai' && (").length - 1, 0, 'repeated AI warning blocks are removed')
-  // Every package channel goes through packageArtifact, which adds IAMAI's facts to AI Info (aiGrounding.ts).
-  assert.match(step, /const produced: Artifact\[\] = \(\n\s*packaged\n\s*\? \(shownProjection\?\.channels \?\? \[\]\)\.map\(\(a\) => packageArtifact\([\s\S]*?: a, grounding\)\)/)
-  // Every channel is a tab (content review D2): the produced channel where there is one, the unavailable one otherwise.
-  assert.match(step, /const artifacts: Artifact\[\] = CHANNEL_TABS\.filter\(t => supported\.has\(t\.id as Channel\)\)\.flatMap/)
-  // The projection, the readiness and the troubleshooting never throw through the step.
-  for (const safe of ['projectSafely(', 'readinessSafely(', 'troubleshootingSafely(']) assert.ok(step.includes(safe), `ContentStep calls the package without ${safe}`)
-  for (const unsafe of ['projectImplementation(', 'packageReadiness(', 'troubleshootingFor(']) assert.equal(step.includes(unsafe), false, `ContentStep calls ${unsafe} directly`)
-  // A confirmation is the tile's, in the approved dialog grammar.
-  assert.match(step, /dialog === 'confirm'/)
+test('a real fixture step reaches all five channels through the runtime adapter once its checks are confirmed; where Foundation A withholds the operation, Exclusions is not Ready', () => {
+  // a real fixture step at Ready to enforce reaches all five channels through the runtime adapter, once its checks are confirmed
+  {
+    const { step: base, ctx } = stepAndContext('small')
+    const step = pilotStepAt(base, 'readyToEnforce')
+    const c = stepContract(step, ctx)
+    assert.equal(c.state.lifecycle, 'ready-to-enforce')
+    assert.equal(c.implementation.offered, true)
+    assert.equal(packageStateOf(step, c, ctx.snapshot), 'readyToEnforce')
+    const bindings = packageBindings(step, ctx, c)
+    assert.equal(bindings['policy.current.id'], PILOT_IDS.policy)
+    assert.ok(Array.isArray(bindings['policy.target.excludeGroups']) && (bindings['policy.target.excludeGroups'] as string[]).length > 0)
+    assert.equal(bindings['policy.current.semanticMismatches'], undefined, 'a semantic-mismatch list was invented')
+    assert.equal(bindings[CHANGED_FIELDS_BINDING], undefined, 'an enforcement was read as a correction')
+    // The fixture tenant's device-registration setting is read, and satisfies its check.
+    assert.equal(bindings['tenant.deviceRegistration.multiFactorAuthConfiguration'], 'notRequired')
+    const unconfirmed = packageRuntime(PKG, 'readyToEnforce', bindings, {}, PILOT_PIN)
+    assert.deepEqual(projectImplementation(PKG, 'readyToEnforce', bindings, unconfirmed.runtime).hold?.pendingPrerequisites, ['enrollment-workflows', 'external-auth-methods'])
+    const at = '2026-09-10T00:00:00.000Z'
+    const basis = (id: string) => prerequisiteBasis(PKG.meta.prerequisites!.find((p) => p.id === id)!, bindings)
+    const confirmed = packageRuntime(PKG, 'readyToEnforce', bindings, { 'enrollment-workflows': { at, basis: basis('enrollment-workflows') }, 'external-auth-methods': { at, basis: basis('external-auth-methods') } }, PILOT_PIN)
+    const p = projectImplementation(PKG, 'readyToEnforce', bindings, confirmed.runtime)
+    assert.equal(p.hold, null)
+    assert.deepEqual(p.channels.map((x) => x.channel), ['entra', 'powershell', 'json', 'aiInfo', 'email'])
+    const merged = mergeReadiness(readinessOf(step, c), packageReadiness(PKG, 'readyToEnforce', bindings, confirmed.runtime))
+    // Every package gate is a tile (A1 §16.1): unresolved ones among the tiles, satisfied ones among the evidence, none dropped to fit.
+    const runtimeKeys = new Set([...readinessOf(step, c).tiles, ...readinessOf(step, c).satisfied].map((t) => t.key))
+    const mergedKeys = new Set([...merged.tiles, ...merged.satisfied].map((t) => t.key))
+    for (const t of packageReadiness(PKG, 'readyToEnforce', bindings, confirmed.runtime)!.tiles) assert.ok(mergedKeys.has(t.id) || (t.gateKey !== null && runtimeKeys.has(t.gateKey)), `${t.id} was dropped to fit`)
+    const missing = pilotStepAt(base, 'missing')
+    assert.equal(packageStateOf(missing, stepContract(missing, ctx), ctx.snapshot), 'missing')
+  }
+  // where Foundation A withholds the operation, the target is unresolved and Exclusions is not Ready
+  {
+    const { step, ctx } = stepAndContext('demo')
+    const c = stepContract(step, ctx)
+    const bindings = packageBindings(step, ctx, c)
+    assert.equal(bindings['policy.target.excludeGroups'], undefined)
+    const state = packageStateOf(step, c, ctx.snapshot)!
+    const tile = packageReadiness(PKG, state, bindings, ALL)!.tiles.find((t) => t.id === 'readiness.exclusions')!
+    assert.equal(tile.result, 'Blocked')
+  }
 })

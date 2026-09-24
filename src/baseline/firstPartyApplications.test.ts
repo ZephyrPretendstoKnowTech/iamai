@@ -27,64 +27,67 @@ const policy = (
   },
 })
 
-test('Microsoft first-party application IDs are stable Conditional Access references', () => {
-  assert.equal(isFirstPartyApplicationId(INTUNE_ENROLLMENT), true)
+test('a Microsoft first-party application id is a stable reference and app-01 agrees, while an unknown application id stays tenant-specific and unresolved', () => {
+  // Microsoft first-party application IDs are stable Conditional Access references
+  {
+    assert.equal(isFirstPartyApplicationId(INTUNE_ENROLLMENT), true)
 
-  const refs = inventoryReferences([
-    policy(INTUNE_ENROLLMENT),
-  ])
+    const refs = inventoryReferences([
+      policy(INTUNE_ENROLLMENT),
+    ])
 
-  const app = refs.find(
-    (ref) =>
-      ref.kind === 'application' &&
-      ref.id === INTUNE_ENROLLMENT,
-  )!
+    const app = refs.find(
+      (ref) =>
+        ref.kind === 'application' &&
+        ref.id === INTUNE_ENROLLMENT,
+    )!
 
-  assert.equal(app.portability, 'stable')
+    assert.equal(app.portability, 'stable')
 
-  assert.equal(
-    unresolvedReferences(refs).some(
-      (ref) => ref.id === INTUNE_ENROLLMENT,
-    ),
-    false,
-  )
-})
+    assert.equal(
+      unresolvedReferences(refs).some(
+        (ref) => ref.id === INTUNE_ENROLLMENT,
+      ),
+      false,
+    )
+  }
+  // unknown application GUIDs remain tenant-specific and unresolved
+  {
+    assert.equal(isFirstPartyApplicationId(UNKNOWN_APP), false)
 
-test('unknown application GUIDs remain tenant-specific and unresolved', () => {
-  assert.equal(isFirstPartyApplicationId(UNKNOWN_APP), false)
+    const refs = inventoryReferences([
+      policy(UNKNOWN_APP),
+    ])
 
-  const refs = inventoryReferences([
-    policy(UNKNOWN_APP),
-  ])
+    const app = refs.find(
+      (ref) =>
+        ref.kind === 'application' &&
+        ref.id === UNKNOWN_APP,
+    )!
 
-  const app = refs.find(
-    (ref) =>
-      ref.kind === 'application' &&
-      ref.id === UNKNOWN_APP,
-  )!
+    assert.equal(app.portability, 'tenantSpecific')
 
-  assert.equal(app.portability, 'tenantSpecific')
+    assert.equal(
+      unresolvedReferences(refs).some(
+        (ref) => ref.id === UNKNOWN_APP,
+      ),
+      true,
+    )
+  }
+  // app-01 uses the same first-party authority as reference portability
+  {
+    assert.equal(
+      runBaselineValidators([
+        policy(INTUNE_ENROLLMENT, 'exclude'),
+      ]).some((finding) => finding.id === 'app-01'),
+      false,
+    )
 
-  assert.equal(
-    unresolvedReferences(refs).some(
-      (ref) => ref.id === UNKNOWN_APP,
-    ),
-    true,
-  )
-})
-
-test('app-01 uses the same first-party authority as reference portability', () => {
-  assert.equal(
-    runBaselineValidators([
-      policy(INTUNE_ENROLLMENT, 'exclude'),
-    ]).some((finding) => finding.id === 'app-01'),
-    false,
-  )
-
-  assert.equal(
-    runBaselineValidators([
-      policy(UNKNOWN_APP, 'exclude'),
-    ]).some((finding) => finding.id === 'app-01'),
-    true,
-  )
+    assert.equal(
+      runBaselineValidators([
+        policy(UNKNOWN_APP, 'exclude'),
+      ]).some((finding) => finding.id === 'app-01'),
+      true,
+    )
+  }
 })

@@ -45,18 +45,21 @@ test('every Learn link answers 2xx (external health; skipped unless EXTERNAL_HEA
   assert.deepEqual(bad, [], `Learn link(s) that do not open a page:\n${bad.join('\n')}`)
 })
 
-test('every step and every Cleanup row has a Learn link', () => {
-  const missing = [...content.steps.filter((s) => !s.learn?.url).map((s) => s.id), ...Object.entries(content.cleanup).filter(([, c]) => !c.learn?.url).map(([k]) => `cleanup.${k}`)]
-  assert.deepEqual(missing, [])
-})
-
-test('every method guide ends on an official Microsoft page (task 014)', () => {
-  assert.ok(METHOD_GUIDES.length > 0, 'the content file carries the method guides')
-  const bad = METHOD_GUIDES.filter((g) => !/^https:\/\/(learn|support)\.microsoft\.com\//.test(g.learn.url)).map((g) => `${g.id} → ${g.learn.url}`)
-  assert.deepEqual(bad, [], 'a method guide points somewhere other than Microsoft Learn or Microsoft Support')
-})
-
-test('no step carries a CIS value on its Learn link (step-audit.md C1: frameworks are not a chip)', () => {
-  const withCis = content.steps.filter((s) => s.learn && 'cis' in (s.learn as Record<string, unknown>)).map((s) => s.id)
-  assert.deepEqual(withCis, [])
+test('every step and Cleanup row carries a Learn link with no CIS value, and every method guide ends on an official Microsoft page', () => {
+  // every step and every Cleanup row has a Learn link
+  {
+    const missing = [...content.steps.filter((s) => !s.learn?.url).map((s) => s.id), ...Object.entries(content.cleanup).filter(([, c]) => !c.learn?.url).map(([k]) => `cleanup.${k}`)]
+    assert.deepEqual(missing, [])
+  }
+  // every method guide ends on an official Microsoft page (task 014)
+  {
+    assert.ok(METHOD_GUIDES.length > 0, 'the content file carries the method guides')
+    const bad = METHOD_GUIDES.filter((g) => !/^https:\/\/(learn|support)\.microsoft\.com\//.test(g.learn.url)).map((g) => `${g.id} → ${g.learn.url}`)
+    assert.deepEqual(bad, [], 'a method guide points somewhere other than Microsoft Learn or Microsoft Support')
+  }
+  // no step carries a CIS value on its Learn link (step-audit.md C1: frameworks are not a chip)
+  {
+    const withCis = content.steps.filter((s) => s.learn && 'cis' in (s.learn as Record<string, unknown>)).map((s) => s.id)
+    assert.deepEqual(withCis, [])
+  }
 })

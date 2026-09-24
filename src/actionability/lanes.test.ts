@@ -48,93 +48,119 @@ const ABSENT: StepObservation = { exists: false }
 const REPORT_ONLY: StepObservation = { exists: true }
 const PREDICATE_MET: StepObservation = { exists: true, evidenceSatisfied: true }
 
-// The playbook's example 1 was the allowed-countries location and the countries
-// block; the location folded into that block in roadmap-flow Stage 3, so the
-// example is the same chain on the service accounts group.
-test('1. prerequisite Ready, dependent not started → Up Next after Service Accounts Group', () => {
-  const s = state({ 's-prereq-service-accounts-group': ABSENT, 's-goal-service-accounts-trusted-network': ABSENT })
-  assert.equal(read(lane('s-prereq-service-accounts-group', s)), 'Ready · Create')
-  const sa = lane('s-goal-service-accounts-trusted-network', s)
-  assert.equal(read(sa), 'Up Next · step:s-prereq-service-accounts-group')
-  assert.equal(sa.layers, 1)
-  assert.equal(sa.nextAction, 'create')
+test('worked examples 1, 4, 12: a dependent waits Up Next behind a Ready prerequisite, On Hold behind a held one, and is Ready once it is complete', () => {
+  // 1. prerequisite Ready, dependent not started → Up Next after Service Accounts Group
+  // The playbook's example 1 was the allowed-countries location and the countries
+  // block; the location folded into that block in roadmap-flow Stage 3, so the
+  // example is the same chain on the service accounts group.
+  {
+    const s = state({ 's-prereq-service-accounts-group': ABSENT, 's-goal-service-accounts-trusted-network': ABSENT })
+    assert.equal(read(lane('s-prereq-service-accounts-group', s)), 'Ready · Create')
+    const sa = lane('s-goal-service-accounts-trusted-network', s)
+    assert.equal(read(sa), 'Up Next · step:s-prereq-service-accounts-group')
+    assert.equal(sa.layers, 1)
+    assert.equal(sa.nextAction, 'create')
+  }
+  // 4. prerequisite On Hold → dependent On Hold naming the prerequisite
+  {
+    // The example's dependent (Azure Management MFA) is not in the pinned baseline (decision 7); the
+    // service-accounts policy carries the same create edge.
+    const s = state({
+      's-prereq-service-accounts-group': { exists: false, blockers: [{ kind: 'fact', id: 'fact:service-account-inventory' }] },
+      's-goal-service-accounts-trusted-network': ABSENT,
+    })
+    assert.equal(read(lane('s-prereq-service-accounts-group', s)), 'On Hold · fact:fact:service-account-inventory')
+    assert.equal(read(lane('s-goal-service-accounts-trusted-network', s)), 'On Hold · step:s-prereq-service-accounts-group')
+  }
+  // 12. completed prerequisite → dependent Ready · Create
+  {
+    const s = state({ 's-goal-intune-enrollment-reauth': ABSENT })
+    assert.equal(lane('s-prereq-exclusion-group', s).lane, 'Completed')
+    assert.equal(read(lane('s-goal-intune-enrollment-reauth', s)), 'Ready · Create')
+  }
 })
 
-test('2. prerequisite still collecting evidence → it waits On Hold, and so does the dependent behind it', () => {
-  const s = state({ 's-goal-mfa-all-users': REPORT_ONLY, 's-prereq-per-user-mfa': ABSENT })
-  assert.equal(read(lane('s-goal-mfa-all-users', s)), 'On Hold · evidence:evidence:observation')
-  const r = lane('s-prereq-per-user-mfa', s)
-  assert.equal(read(r), 'On Hold · step:s-goal-mfa-all-users')
-  assert.equal(r.reason?.milestone, 'enforced')
+test('worked examples 2, 9: a policy collecting evidence waits On Hold, holds what is behind it, and is Observing once reviewable, never Ready to enforce on time alone', () => {
+  // 2. prerequisite still collecting evidence → it waits On Hold, and so does the dependent behind it
+  {
+    const s = state({ 's-goal-mfa-all-users': REPORT_ONLY, 's-prereq-per-user-mfa': ABSENT })
+    assert.equal(read(lane('s-goal-mfa-all-users', s)), 'On Hold · evidence:evidence:observation')
+    const r = lane('s-prereq-per-user-mfa', s)
+    assert.equal(read(r), 'On Hold · step:s-goal-mfa-all-users')
+    assert.equal(r.reason?.milestone, 'enforced')
+  }
+  // 9. policy already Report-only and healthy: On Hold while it collects evidence, Ready · Observing (the review) once that can be reviewed, never Ready to enforce on time alone
+  {
+    const id = 's-goal-block-device-code'
+    const r = lane(id, state({ [id]: REPORT_ONLY }))
+    assert.equal(read(r), 'On Hold · evidence:evidence:observation')
+    assert.equal(r.nextAction, 'observe')
+    assert.equal(r.reason?.abnormal, false, 'ordinary waiting, not an abnormal blocker')
+    assert.deepEqual(r.blockers, [])
+    // The window closed over records that were read, but they have not cleared the gate: the review is due.
+    const due = { id: 'evidence:observation', satisfied: false, minDays: 7, reason: '2 failing or interrupted, 40 of 50 active people seen in 9 days', reviewable: true }
+    const review = lane(id, state({ [id]: { exists: true, gates: [due] } }))
+    assert.equal(read(review), 'Ready · Observing · evidence:evidence:observation')
+    assert.equal(review.reason?.text, due.reason)
+    assert.equal(review.nextAction, 'observe', 'the review is the action; enforcement is not offered')
+  }
 })
 
-test('3. exclusions preparation can start from saved choices while protected enforcement keeps its direct gates', () => {
-  const s = state({ 's-prereq-break-glass': ABSENT, 's-prereq-exclusion-group': ABSENT, 's-goal-token-protection': ABSENT })
-  assert.equal(read(lane('s-prereq-break-glass', s)), 'Ready · Create')
-  const group = lane('s-prereq-exclusion-group', s)
-  assert.equal(read(group), 'Ready · Create')
-  assert.equal(group.layers, 0)
-  const token = lane('s-goal-token-protection', s)
-  assert.equal(read(token), 'Up Next · step:s-prereq-exclusion-group')
-  assert.equal(token.reason?.abnormal, false, 'a deeper healthy prerequisite, not an abnormal blocker')
-  assert.equal(token.layers, 1)
+test('worked examples 3, 7, 8: saved choices start exclusions preparation, an actionable decision is Ready, a blocked one holds', () => {
+  // 3. exclusions preparation can start from saved choices while protected enforcement keeps its direct gates
+  {
+    const s = state({ 's-prereq-break-glass': ABSENT, 's-prereq-exclusion-group': ABSENT, 's-goal-token-protection': ABSENT })
+    assert.equal(read(lane('s-prereq-break-glass', s)), 'Ready · Create')
+    const group = lane('s-prereq-exclusion-group', s)
+    assert.equal(read(group), 'Ready · Create')
+    assert.equal(group.layers, 0)
+    const token = lane('s-goal-token-protection', s)
+    assert.equal(read(token), 'Up Next · step:s-prereq-exclusion-group')
+    assert.equal(token.reason?.abnormal, false, 'a deeper healthy prerequisite, not an abnormal blocker')
+    assert.equal(token.layers, 1)
+  }
+  // 7. actionable owner decision → Decision; dependent Up Next after it
+  {
+    const s = state({ 's-prereq-device-plan': {}, 's-goal-require-managed-device': ABSENT })
+    assert.equal(read(lane('s-prereq-device-plan', s)), 'Ready · Decision')
+    assert.equal(read(lane('s-goal-require-managed-device', s)), 'Up Next · step:s-prereq-device-plan')
+  }
+  // 8. blocked owner decision (identity type not in evidence) → On Hold · decision
+  {
+    const s = state({ 's-goal-workload-identity-block': ABSENT }, { prerequisites: { 'decision:workload-identity-type': 'blocked' } })
+    assert.equal(read(lane('s-goal-workload-identity-block', s)), 'On Hold · decision:decision:workload-identity-type')
+    const [tenant, owner] = state({ 's-goal-workload-identity-block': ABSENT }, { prerequisites: { 'decision:workload-identity-type': 'actionable' } })
+    assert.equal(read(deriveLane('s-goal-workload-identity-block', graph, tenant, owner)), 'Up Next · decision:decision:workload-identity-type')
+  }
 })
 
-test('4. prerequisite On Hold → dependent On Hold naming the prerequisite', () => {
-  // The example's dependent (Azure Management MFA) is not in the pinned baseline (decision 7); the
-  // service-accounts policy carries the same create edge.
-  const s = state({
-    's-prereq-service-accounts-group': { exists: false, blockers: [{ kind: 'fact', id: 'fact:service-account-inventory' }] },
-    's-goal-service-accounts-trusted-network': ABSENT,
-  })
-  assert.equal(read(lane('s-prereq-service-accounts-group', s)), 'On Hold · fact:fact:service-account-inventory')
-  assert.equal(read(lane('s-goal-service-accounts-trusted-network', s)), 'On Hold · step:s-prereq-service-accounts-group')
-})
-
-test('5. prerequisite Deferred, applicable hard edge → started work goes On Hold, not Up Next', () => {
-  const s = state({ 's-goal-geo-restriction': REPORT_ONLY, 's-question-travel': ABSENT },
-    { conditions: { 'travel-exceptions-allowed': 'applicable' }, deferred: ['s-question-travel'] })
-  assert.equal(lane('s-question-travel', s).lane, 'Deferred')
-  const geo = lane('s-goal-geo-restriction', s)
-  assert.equal(read(geo), 'On Hold · suspendedPrerequisite:s-question-travel')
-  assert.equal(geo.started, true)
-})
-
-test('6. condition not applicable → owning step Completed, its edge satisfied and gone', () => {
-  const s = state({ 's-question-mail-devices': ABSENT, 's-goal-block-legacy-auth': PREDICATE_MET },
-    { conditions: { 'mail-devices-incompatible-path': 'not-applicable' } })
-  assert.equal(lane('s-question-mail-devices', s).lane, 'Completed')
-  const legacy = lane('s-goal-block-legacy-auth', s)
-  assert.equal(read(legacy), 'Ready · Ready to enforce')
-  assert.ok(!legacy.blockers.some((b) => b.id === 's-question-mail-devices'))
-})
-
-test('7. actionable owner decision → Decision; dependent Up Next after it', () => {
-  const s = state({ 's-prereq-device-plan': {}, 's-goal-require-managed-device': ABSENT })
-  assert.equal(read(lane('s-prereq-device-plan', s)), 'Ready · Decision')
-  assert.equal(read(lane('s-goal-require-managed-device', s)), 'Up Next · step:s-prereq-device-plan')
-})
-
-test('8. blocked owner decision (identity type not in evidence) → On Hold · decision', () => {
-  const s = state({ 's-goal-workload-identity-block': ABSENT }, { prerequisites: { 'decision:workload-identity-type': 'blocked' } })
-  assert.equal(read(lane('s-goal-workload-identity-block', s)), 'On Hold · decision:decision:workload-identity-type')
-  const [tenant, owner] = state({ 's-goal-workload-identity-block': ABSENT }, { prerequisites: { 'decision:workload-identity-type': 'actionable' } })
-  assert.equal(read(deriveLane('s-goal-workload-identity-block', graph, tenant, owner)), 'Up Next · decision:decision:workload-identity-type')
-})
-
-test('9. policy already Report-only and healthy: On Hold while it collects evidence, Ready · Observing (the review) once that can be reviewed, never Ready to enforce on time alone', () => {
-  const id = 's-goal-block-device-code'
-  const r = lane(id, state({ [id]: REPORT_ONLY }))
-  assert.equal(read(r), 'On Hold · evidence:evidence:observation')
-  assert.equal(r.nextAction, 'observe')
-  assert.equal(r.reason?.abnormal, false, 'ordinary waiting, not an abnormal blocker')
-  assert.deepEqual(r.blockers, [])
-  // The window closed over records that were read, but they have not cleared the gate: the review is due.
-  const due = { id: 'evidence:observation', satisfied: false, minDays: 7, reason: '2 failing or interrupted, 40 of 50 active people seen in 9 days', reviewable: true }
-  const review = lane(id, state({ [id]: { exists: true, gates: [due] } }))
-  assert.equal(read(review), 'Ready · Observing · evidence:evidence:observation')
-  assert.equal(review.reason?.text, due.reason)
-  assert.equal(review.nextAction, 'observe', 'the review is the action; enforcement is not offered')
+test('worked examples 5, 6, 10: a Deferred prerequisite on an applicable edge holds started work; a condition not applicable completes its owner', () => {
+  // 5. prerequisite Deferred, applicable hard edge → started work goes On Hold, not Up Next
+  {
+    const s = state({ 's-goal-geo-restriction': REPORT_ONLY, 's-question-travel': ABSENT },
+      { conditions: { 'travel-exceptions-allowed': 'applicable' }, deferred: ['s-question-travel'] })
+    assert.equal(lane('s-question-travel', s).lane, 'Deferred')
+    const geo = lane('s-goal-geo-restriction', s)
+    assert.equal(read(geo), 'On Hold · suspendedPrerequisite:s-question-travel')
+    assert.equal(geo.started, true)
+  }
+  // 6. condition not applicable → owning step Completed, its edge satisfied and gone
+  {
+    const s = state({ 's-question-mail-devices': ABSENT, 's-goal-block-legacy-auth': PREDICATE_MET },
+      { conditions: { 'mail-devices-incompatible-path': 'not-applicable' } })
+    assert.equal(lane('s-question-mail-devices', s).lane, 'Completed')
+    const legacy = lane('s-goal-block-legacy-auth', s)
+    assert.equal(read(legacy), 'Ready · Ready to enforce')
+    assert.ok(!legacy.blockers.some((b) => b.id === 's-question-mail-devices'))
+  }
+  // 10. Report-only policy with a new abnormal blocker → On Hold, never back to Up Next
+  {
+    const s = state({ 's-goal-block-legacy-auth': REPORT_ONLY, 's-question-mail-devices': ABSENT },
+      { conditions: { 'mail-devices-incompatible-path': 'applicable' }, deferred: ['s-question-mail-devices'] })
+    const r = lane('s-goal-block-legacy-auth', s)
+    assert.equal(read(r), 'On Hold · suspendedPrerequisite:s-question-mail-devices')
+    assert.equal(r.started, true)
+  }
 })
 
 test("owner's status contract: Ready, Up Next, On Hold, Completed and Deferred from the next action's facts", () => {
@@ -158,69 +184,61 @@ test("owner's status contract: Ready, Up Next, On Hold, Completed and Deferred f
   assert.equal(read(lane(perUser, deferred)), `On Hold · suspendedPrerequisite:${mfa}`)
 })
 
-test('10. Report-only policy with a new abnormal blocker → On Hold, never back to Up Next', () => {
-  const s = state({ 's-goal-block-legacy-auth': REPORT_ONLY, 's-question-mail-devices': ABSENT },
-    { conditions: { 'mail-devices-incompatible-path': 'applicable' }, deferred: ['s-question-mail-devices'] })
-  const r = lane('s-goal-block-legacy-auth', s)
-  assert.equal(read(r), 'On Hold · suspendedPrerequisite:s-question-mail-devices')
-  assert.equal(r.started, true)
+test('worked examples 11, 13: correctable drift is Ready · Correct; an enforce-scoped safety conflict holds only once enforce is next', () => {
+  // 11. existing object with correctable drift → Ready · Correct
+  {
+    const s = state({ 's-prereq-trusted-location': { exists: true, drift: true } })
+    const r = lane('s-prereq-trusted-location', s)
+    assert.equal(read(r), 'Ready · Correct')
+    assert.equal(r.nextAction, 'correct')
+  }
+  // 13. baseline safety conflict on enforce holds only once enforce is the next action
+  {
+    // The example's step (Unmanaged Browser) is not in the pinned baseline (decision 7), and with it went
+    // the graph's one baselineSafetyConflict edge; the scan observes the conflict on the step itself,
+    // scoped to the action it makes unsafe (planLanes.ts: a policy reaching an emergency account).
+    const id = 's-goal-require-managed-device'
+    const conflict = { kind: 'baselineSafetyConflict' as const, id: 'baselineSafetyConflict:emergency-exclusion', action: 'enforce' as const }
+    assert.equal(read(lane(id, state({ [id]: { exists: false, blockers: [conflict] } }))), 'Ready · Create')
+    assert.equal(read(lane(id, state({ [id]: { exists: true, blockers: [conflict] } }))), 'On Hold · evidence:evidence:observation', 'still collecting evidence, not held by the enforce-side conflict')
+    const held = lane(id, state({ [id]: { ...PREDICATE_MET, blockers: [conflict] } }))
+    assert.equal(read(held), 'On Hold · baselineSafetyConflict:baselineSafetyConflict:emergency-exclusion')
+    assert.equal(held.nextAction, 'enforce')
+    // Unscoped, an observed blocker holds whichever action is next.
+    assert.equal(read(lane(id, state({ [id]: { exists: false, blockers: [{ ...conflict, action: undefined }] } }))).split(' · ')[0], 'On Hold')
+  }
 })
 
-test('11. existing object with correctable drift → Ready · Correct', () => {
-  const s = state({ 's-prereq-trusted-location': { exists: true, drift: true } })
-  const r = lane('s-prereq-trusted-location', s)
-  assert.equal(read(r), 'Ready · Correct')
-  assert.equal(r.nextAction, 'correct')
-})
-
-test('12. completed prerequisite → dependent Ready · Create', () => {
-  const s = state({ 's-goal-intune-enrollment-reauth': ABSENT })
-  assert.equal(lane('s-prereq-exclusion-group', s).lane, 'Completed')
-  assert.equal(read(lane('s-goal-intune-enrollment-reauth', s)), 'Ready · Create')
-})
-
-test('13. baseline safety conflict on enforce holds only once enforce is the next action', () => {
-  // The example's step (Unmanaged Browser) is not in the pinned baseline (decision 7), and with it went
-  // the graph's one baselineSafetyConflict edge; the scan observes the conflict on the step itself,
-  // scoped to the action it makes unsafe (planLanes.ts: a policy reaching an emergency account).
-  const id = 's-goal-require-managed-device'
-  const conflict = { kind: 'baselineSafetyConflict' as const, id: 'baselineSafetyConflict:emergency-exclusion', action: 'enforce' as const }
-  assert.equal(read(lane(id, state({ [id]: { exists: false, blockers: [conflict] } }))), 'Ready · Create')
-  assert.equal(read(lane(id, state({ [id]: { exists: true, blockers: [conflict] } }))), 'On Hold · evidence:evidence:observation', 'still collecting evidence, not held by the enforce-side conflict')
-  const held = lane(id, state({ [id]: { ...PREDICATE_MET, blockers: [conflict] } }))
-  assert.equal(read(held), 'On Hold · baselineSafetyConflict:baselineSafetyConflict:emergency-exclusion')
-  assert.equal(held.nextAction, 'enforce')
-  // Unscoped, an observed blocker holds whichever action is next.
-  assert.equal(read(lane(id, state({ [id]: { exists: false, blockers: [{ ...conflict, action: undefined }] } }))).split(' · ')[0], 'On Hold')
-})
-
-test('14. unresolved source-group mapping blocks create → On Hold · sourceMapping', () => {
-  const s = state({ 's-goal-mfa-all-users': ABSENT }, { prerequisites: { 'sourceMapping:62d67e66': 'blocked' } })
-  const r = lane('s-goal-mfa-all-users', s)
-  assert.equal(read(r), 'On Hold · sourceMapping:sourceMapping:62d67e66')
-  assert.equal(r.reason?.milestone, 'resolved')
-  // Owner resolves it in Baseline mappings → the create proceeds.
-  const [tenant] = s
-  assert.equal(read(deriveLane('s-goal-mfa-all-users', graph, tenant, { resolved: ['sourceMapping:62d67e66'] })), 'Ready · Create')
-})
-
-test('15. mixed prerequisite states: enforce-side gates do not affect a create; missing license holds', () => {
-  // §10.5 gates s-goal-sign-in-risk:create on the exclusions group, so it is complete here.
-  const s = state({ 's-goal-sign-in-risk': ABSENT, 's-verify-mfa': REPORT_ONLY })
-  const r = lane('s-goal-sign-in-risk', s)
-  assert.equal(read(r), 'Ready · Create')
-  assert.deepEqual(r.blockers, [])
-  const held = lane('s-goal-sign-in-risk', state(
-    { 's-goal-sign-in-risk': { exists: false, blockers: [{ kind: 'license/platform', id: 'license/platform:entra-id-p2' }] }, 's-verify-mfa': REPORT_ONLY }))
-  assert.equal(read(held), 'On Hold · license/platform:license/platform:entra-id-p2')
-  // Authored as a `license/platform` edge, the licence is the same §15 blocker — its own kind, never a fact.
-  const edge: DependencyData['edges'][number] = { step: 's-goal-sign-in-risk', action: 'create', prerequisite: 'license/platform:entra-id-p2', prerequisiteKind: 'license/platform', milestone: 'resolved', condition: null, edgeKind: 'hard', source: 'test', status: 'ok', table: 'test' }
-  const licensed = buildGraph({ ...(data as DependencyData), edges: [...(data as DependencyData).edges, edge] })
-  const [tenant, owner] = state({ 's-goal-sign-in-risk': ABSENT, 's-verify-mfa': REPORT_ONLY })
-  const byEdge = deriveLane('s-goal-sign-in-risk', licensed, tenant, owner)
-  assert.equal(read(byEdge), 'On Hold · license/platform:license/platform:entra-id-p2')
-  assert.equal(byEdge.reason?.abnormal, true)
-  assert.equal(read(deriveLane('s-goal-sign-in-risk', licensed, tenant, { resolved: ['license/platform:entra-id-p2'] })), 'Ready · Create')
+test('worked examples 14, 15: an unresolved source mapping and a missing licence hold; enforce-side gates never hold a create', () => {
+  // 14. unresolved source-group mapping blocks create → On Hold · sourceMapping
+  {
+    const s = state({ 's-goal-mfa-all-users': ABSENT }, { prerequisites: { 'sourceMapping:62d67e66': 'blocked' } })
+    const r = lane('s-goal-mfa-all-users', s)
+    assert.equal(read(r), 'On Hold · sourceMapping:sourceMapping:62d67e66')
+    assert.equal(r.reason?.milestone, 'resolved')
+    // Owner resolves it in Baseline mappings → the create proceeds.
+    const [tenant] = s
+    assert.equal(read(deriveLane('s-goal-mfa-all-users', graph, tenant, { resolved: ['sourceMapping:62d67e66'] })), 'Ready · Create')
+  }
+  // 15. mixed prerequisite states: enforce-side gates do not affect a create; missing license holds
+  {
+    // §10.5 gates s-goal-sign-in-risk:create on the exclusions group, so it is complete here.
+    const s = state({ 's-goal-sign-in-risk': ABSENT, 's-verify-mfa': REPORT_ONLY })
+    const r = lane('s-goal-sign-in-risk', s)
+    assert.equal(read(r), 'Ready · Create')
+    assert.deepEqual(r.blockers, [])
+    const held = lane('s-goal-sign-in-risk', state(
+      { 's-goal-sign-in-risk': { exists: false, blockers: [{ kind: 'license/platform', id: 'license/platform:entra-id-p2' }] }, 's-verify-mfa': REPORT_ONLY }))
+    assert.equal(read(held), 'On Hold · license/platform:license/platform:entra-id-p2')
+    // Authored as a `license/platform` edge, the licence is the same §15 blocker — its own kind, never a fact.
+    const edge: DependencyData['edges'][number] = { step: 's-goal-sign-in-risk', action: 'create', prerequisite: 'license/platform:entra-id-p2', prerequisiteKind: 'license/platform', milestone: 'resolved', condition: null, edgeKind: 'hard', source: 'test', status: 'ok', table: 'test' }
+    const licensed = buildGraph({ ...(data as DependencyData), edges: [...(data as DependencyData).edges, edge] })
+    const [tenant, owner] = state({ 's-goal-sign-in-risk': ABSENT, 's-verify-mfa': REPORT_ONLY })
+    const byEdge = deriveLane('s-goal-sign-in-risk', licensed, tenant, owner)
+    assert.equal(read(byEdge), 'On Hold · license/platform:license/platform:entra-id-p2')
+    assert.equal(byEdge.reason?.abnormal, true)
+    assert.equal(read(deriveLane('s-goal-sign-in-risk', licensed, tenant, { resolved: ['license/platform:entra-id-p2'] })), 'Ready · Create')
+  }
 })
 
 test('§7 evidence gates: a started policy behind an open gate waits On Hold with the gate as its reason; its create is never gated; closed gates give Ready to enforce', () => {
@@ -240,35 +258,38 @@ test('§7 evidence gates: a started policy behind an open gate waits On Hold wit
   assert.equal(read(lane(id, state({ [id]: { exists: true, drift: true, gates: [threshold] } }))), 'Ready · Correct')
 })
 
-// The one exception to "its create is never gated" (owner, 2026-09-23: "Hold the
-// create for that policy until ready"): a report-only policy that requires a
-// compliant device prompts Mac, iOS and Android devices for a certificate, so the
-// readiness gate on its enforcement holds its creation too (`holdsCreate`).
-test('§7 a gate that holds the create: the unstarted policy waits On Hold on it, with the gate as its reason, and is Ready · Create once it closes', () => {
-  const id = 's-goal-require-managed-device'
-  const threshold = { id: 'evidence:readiness:readiness', satisfied: false, minDays: null, reason: 'when device readiness reaches 80% (now 30%)', holdsCreate: true }
-  const held = lane(id, state({ [id]: { exists: false, gates: [threshold] } }))
-  assert.equal(read(held), 'On Hold · evidence:evidence:readiness:readiness')
-  assert.equal(held.reason?.text, threshold.reason)
-  assert.equal(held.nextAction, 'create')
-  assert.equal(read(lane(id, state({ [id]: { exists: false, gates: [{ ...threshold, satisfied: true }] } }))), 'Ready · Create')
-  assert.equal(read(lane(id, state({ [id]: { exists: false, gates: [{ ...threshold, holdsCreate: undefined }] } }))), 'Ready · Create', 'a gate that does not say so gates enforce only')
-  // A blocker the scan found on the step itself binds harder than the gate.
-  assert.equal(read(lane(id, state({ [id]: { exists: false, gates: [threshold], blockers: [{ kind: 'unsupported', id: 'no-operation' }] } }))), 'On Hold · unsupported:no-operation')
-})
-
-// And a policy of that grant found Off: it exists, so its next action is the
-// correction that sets it to Report-only, which prompts exactly as the create
-// would (roadmap/operations.ts createWaitsOnReadiness), so the gate holds it too.
-test("§7 a gate that holds the create holds a started policy's correction to Report-only: On Hold on it, and Ready · Correct once it closes", () => {
-  const id = 's-goal-require-managed-device'
-  const threshold = { id: 'evidence:readiness:readiness', satisfied: false, minDays: null, reason: 'when device readiness reaches 80% (now 30%)', holdsCreate: true }
-  const held = lane(id, state({ [id]: { exists: true, drift: true, gates: [threshold] } }))
-  assert.equal(read(held), 'On Hold · evidence:evidence:readiness:readiness')
-  assert.equal(held.reason?.text, threshold.reason)
-  assert.equal(held.nextAction, 'correct')
-  assert.equal(read(lane(id, state({ [id]: { exists: true, drift: true, gates: [{ ...threshold, satisfied: true }] } }))), 'Ready · Correct')
-  assert.equal(read(lane(id, state({ [id]: { exists: true, drift: true, gates: [{ ...threshold, holdsCreate: undefined }] } }))), 'Ready · Correct', 'a gate that does not say so leaves the correction Ready')
+test('§7 a gate that holds the create (owner, 2026-09-23) holds the unstarted create and a started policy\'s correction to Report-only, and releases each once it closes', () => {
+  // §7 a gate that holds the create: the unstarted policy waits On Hold on it, with the gate as its reason, and is Ready · Create once it closes
+  // The one exception to "its create is never gated" (owner, 2026-09-23: "Hold the
+  // create for that policy until ready"): a report-only policy that requires a
+  // compliant device prompts Mac, iOS and Android devices for a certificate, so the
+  // readiness gate on its enforcement holds its creation too (`holdsCreate`).
+  {
+    const id = 's-goal-require-managed-device'
+    const threshold = { id: 'evidence:readiness:readiness', satisfied: false, minDays: null, reason: 'when device readiness reaches 80% (now 30%)', holdsCreate: true }
+    const held = lane(id, state({ [id]: { exists: false, gates: [threshold] } }))
+    assert.equal(read(held), 'On Hold · evidence:evidence:readiness:readiness')
+    assert.equal(held.reason?.text, threshold.reason)
+    assert.equal(held.nextAction, 'create')
+    assert.equal(read(lane(id, state({ [id]: { exists: false, gates: [{ ...threshold, satisfied: true }] } }))), 'Ready · Create')
+    assert.equal(read(lane(id, state({ [id]: { exists: false, gates: [{ ...threshold, holdsCreate: undefined }] } }))), 'Ready · Create', 'a gate that does not say so gates enforce only')
+    // A blocker the scan found on the step itself binds harder than the gate.
+    assert.equal(read(lane(id, state({ [id]: { exists: false, gates: [threshold], blockers: [{ kind: 'unsupported', id: 'no-operation' }] } }))), 'On Hold · unsupported:no-operation')
+  }
+  // §7 a gate that holds the create holds a started policy's correction to Report-only: On Hold on it, and Ready · Correct once it closes
+  // And a policy of that grant found Off: it exists, so its next action is the
+  // correction that sets it to Report-only, which prompts exactly as the create
+  // would (roadmap/operations.ts createWaitsOnReadiness), so the gate holds it too.
+  {
+    const id = 's-goal-require-managed-device'
+    const threshold = { id: 'evidence:readiness:readiness', satisfied: false, minDays: null, reason: 'when device readiness reaches 80% (now 30%)', holdsCreate: true }
+    const held = lane(id, state({ [id]: { exists: true, drift: true, gates: [threshold] } }))
+    assert.equal(read(held), 'On Hold · evidence:evidence:readiness:readiness')
+    assert.equal(held.reason?.text, threshold.reason)
+    assert.equal(held.nextAction, 'correct')
+    assert.equal(read(lane(id, state({ [id]: { exists: true, drift: true, gates: [{ ...threshold, satisfied: true }] } }))), 'Ready · Correct')
+    assert.equal(read(lane(id, state({ [id]: { exists: true, drift: true, gates: [{ ...threshold, holdsCreate: undefined }] } }))), 'Ready · Correct', 'a gate that does not say so leaves the correction Ready')
+  }
 })
 
 test('§7 an `evidence` or `time/evidence-window` edge is an evidence gate on enforce, never a fact: the started policy waits on it On Hold', () => {

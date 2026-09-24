@@ -6,27 +6,44 @@ const ISO = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/
 const sample = '2026-09-10T12:00:00.000Z'
 const now = Date.parse('2026-09-01T12:00:00.000Z')
 
-test('no date helper ever renders an ISO 8601 string', () => {
-  for (const out of [absolute(sample), absoluteDate(sample), when(sample, now), whenAt(sample, now), dateRange(sample, sample)]) {
-    assert.doesNotMatch(out, ISO)
-    assert.doesNotMatch(out, /\d{4}-\d{2}-\d{2}/)
+test('no date helper ever renders an ISO 8601 string, and plan dates read relative and absolute together', () => {
+  // no date helper ever renders an ISO 8601 string
+  {
+    for (const out of [absolute(sample), absoluteDate(sample), when(sample, now), whenAt(sample, now), dateRange(sample, sample)]) {
+      assert.doesNotMatch(out, ISO)
+      assert.doesNotMatch(out, /\d{4}-\d{2}-\d{2}/)
+    }
+  }
+  // plan dates read relative and absolute together
+  {
+    assert.match(when(sample, now), /^in 9 days · /)
+    assert.equal(relativeDays(sample, Date.parse(sample)), 'today')
   }
 })
 
-test('plan dates read relative and absolute together', () => {
-  assert.match(when(sample, now), /^in 9 days · /)
-  assert.equal(relativeDays(sample, Date.parse(sample)), 'today')
-})
-
-test('the plan time zone drives scheduled dates', () => {
-  setDisplayTimeZone('Pacific/Auckland')
-  const nz = absolute('2026-09-10T11:30:00.000Z')
-  setDisplayTimeZone('America/Los_Angeles')
-  const la = absolute('2026-09-10T11:30:00.000Z')
-  setDisplayTimeZone(null)
-  assert.notEqual(nz, la)
-  assert.match(nz, /Sep 10, 2026|10 Sept 2026|10 Sep 2026/)
-  assert.match(la, /Sep 10, 2026|10 Sept 2026|10 Sep 2026/)
+test('the plan time zone drives scheduled dates, and scan context keeps the browser time when a loaded plan changes it', () => {
+  // the plan time zone drives scheduled dates
+  {
+    setDisplayTimeZone('Pacific/Auckland')
+    const nz = absolute('2026-09-10T11:30:00.000Z')
+    setDisplayTimeZone('America/Los_Angeles')
+    const la = absolute('2026-09-10T11:30:00.000Z')
+    setDisplayTimeZone(null)
+    assert.notEqual(nz, la)
+    assert.match(nz, /Sep 10, 2026|10 Sept 2026|10 Sep 2026/)
+    assert.match(la, /Sep 10, 2026|10 Sept 2026|10 Sep 2026/)
+  }
+  // scan context keeps the browser time when a loaded plan changes its scheduling zone
+  {
+    const before = absoluteLocal(sample)
+    try {
+      setDisplayTimeZone('Australia/Sydney')
+      assert.equal(absoluteLocal(sample), before)
+      setDisplayTimeZone('America/Los_Angeles')
+      assert.equal(absoluteLocal(sample), before)
+      assert.equal(before, new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(sample)))
+    } finally { setDisplayTimeZone(null) }
+  }
 })
 
 test('scan age: whole days, never negative, stale after 7', async () => {
@@ -75,15 +92,4 @@ test('a date shape is built once per display zone, and never outlives the zone t
     ;(Intl as { DateTimeFormat: unknown }).DateTimeFormat = real
     setDisplayTimeZone(null)
   }
-})
-
-test('scan context keeps the browser time when a loaded plan changes its scheduling zone', () => {
-  const before = absoluteLocal(sample)
-  try {
-    setDisplayTimeZone('Australia/Sydney')
-    assert.equal(absoluteLocal(sample), before)
-    setDisplayTimeZone('America/Los_Angeles')
-    assert.equal(absoluteLocal(sample), before)
-    assert.equal(before, new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(sample)))
-  } finally { setDisplayTimeZone(null) }
 })

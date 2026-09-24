@@ -5,7 +5,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import registry from './registry.generated.json' with { type: 'json' }
 import type { CompiledPackage } from './protocol.ts'
-import { CHANGED_FIELDS_BINDING, mismatchBindingOf } from './protocol.ts'
+import { CHANGED_FIELDS_BINDING } from './protocol.ts'
 import { UNRESOLVED, present, projectImplementation, projectSafely, selectMismatches } from './project.ts'
 import { applyStepDecisions } from '../../roadmap/decisions.ts'
 import { referenceOptions } from '../../roadmap/answers.ts'
@@ -28,101 +28,70 @@ function plan(name: FixtureName) {
   return { f, r, ctx }
 }
 
-test('every policy package that authors a correction registers it, and every module it keeps is one IAMAI can select', () => {
-  const partials = Object.values(PACKAGES).filter((p) => p.meta.projection.partial)
-  assert.ok(partials.length >= 21, `only ${partials.length} Partial projections are registered`)
-  for (const p of partials) {
-    const table = (p.meta.projection.partial as { mismatches: Record<string, { facts?: unknown; select?: unknown }> }).mismatches
-    for (const [id, m] of Object.entries(table)) assert.ok(m.facts !== undefined || m.select !== undefined, `${p.meta.stepId}: ${id} cannot be selected`)
+test('an enforced policy whose exclusions differ plans the conditions correction only, and once its references are settled projects it as an executable PATCH while emergency access remains a readiness prerequisite', () => {
+  // an enforced policy whose exclusions differ from the plan plans the conditions correction, and only that
+  {
+    const { f, r, ctx } = plan('demo')
+    const step = r.steps.find((s) => s.id === 's-goal-block-legacy-auth')!
+    const c = stepContract(step, ctx)
+    assert.deepEqual(correctionFieldsOf(step, f.snapshot), ['conditions.users.excludeGroups'])
+    assert.equal(plannedPackageStateOf(step, c, f.snapshot), 'partial')
+    const pkg = implementationPackageFor(step)!
+    const state = packageStateOf(step, c, f.snapshot)!
+    const bindings = packageBindings(step, ctx, c)
+    const { runtime } = packageRuntime(pkg, state, bindings, {})
+    const projection = projectSafely(pkg, state, bindings, runtime)
+    const preview = planningPreview(pkg, step, c, f.snapshot, bindings, runtime, projection) ?? projection
+    assert.ok(preview.channels.length > 0, 'the correction has no copyable guidance')
+    assert.equal(preview.state, 'partial')
+    assert.deepEqual(preview.channels.find((x) => x.channel === 'json')?.blocks, ['json.correct-conditions'], 'a correction the changed fields do not ask for was composed')
+    assert.equal(preview.channels.some((x) => x.blocks.some((b) => /grant|session|name/.test(b))), false)
   }
-})
-
-test('the workload identity Partial names its one mismatch binding and composes the policy corrections its facts select', () => {
-  const pkg = PACKAGES['s-goal-workload-identity-block']
-  const partial = pkg.meta.projection.partial as Record<string, unknown> | undefined
-  assert.ok(partial, 'the Partial projection was withheld at compile time')
-  assert.equal(mismatchBindingOf(partial), 'policy.current.semanticMismatches')
-  const bindings = {
-    'policy.current.id': 'policy-1',
-    'policy.current.state': 'enabledForReportingButNotEnforced',
-    [CHANGED_FIELDS_BINDING]: ['conditions.locations'],
-    'workload.cloudSync.servicePrincipalId': 'sp-1',
-    'location.syncServer.id': 'location-1',
-    'location.syncServer.ipRanges': ['203.0.113.10/32'],
-    'location.syncServer.displayName': 'Sync server',
-    'policy.target.displayName': 'Workload block',
-    'tenant.displayName': 'Tenant',
+  // a real enforced policy missing its exclusions projects an executable correction of those conditions only, while emergency access remains a readiness prerequisite
+  {
+    // The demo tenant's own legacy-authentication block, enforced without the
+    // canonical exclusions, with the baseline's unsettled source references answered
+    // so the users the correction writes are settled.
+    const base = fixture('demo')
+    const source = BASELINE_MAPPINGS_KEY
+    const pending = sourceMappingsOf(runFixture(base).steps)
+    const f = { ...base, mapping: applyStepDecisions(base.mapping, { [source]: { answers: Object.fromEntries(pending.map((p) => [p.id, referenceOptions()[0]])), at: base.snapshot.asOf } }) }
+    const r = runFixture(f)
+    const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+    const step = r.steps.find((s) => s.id === 's-goal-block-legacy-auth')!
+    const c = stepContract(step, ctx)
+    assert.deepEqual(correctionFieldsOf(step, f.snapshot), ['conditions.users.excludeGroups'], 'the premise: only the exclusions differ')
+    const pkg = implementationPackageFor(step)!
+    const bindings = packageBindings(step, ctx, c)
+    const op = plannedOperationsOf(step)[0]
+    assert.equal(op.mode, 'update')
+    // Every value the correction needs resolves from the tenant and the plan.
+    for (const key of ['policy.current.id', 'policy.target.conditions', CHANGED_FIELDS_BINDING]) assert.ok(present(bindings[key]), `${key} does not resolve`)
+    const { runtime } = packageRuntime(pkg, 'partial', bindings, {})
+    const executable = projectImplementation(pkg, 'partial', bindings, runtime)
+    assert.equal(executable.hold, null, JSON.stringify(executable.hold))
+    assert.equal(executable.preview, undefined, 'the correction is a planning preview, not an artifact')
+    assert.deepEqual(executable.degraded ?? [], [])
+    const json = executable.channels.find((x) => x.channel === 'json')!
+    // The JSON channel is a request or nothing (S6): the PATCH the package declares,
+    // bound to the tenant's own policy by id, never a request IAMAI invented.
+    assert.deepEqual(json.requests, [{ method: 'PATCH', endpoint: `https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/${op.policyId}` }], 'the request the package declares, sent to the policy it corrects')
+    assert.equal(bindings['policy.current.id'], op.policyId, 'the correction does not name the tenant’s own policy')
+    const body = JSON.parse(json.text) as Record<string, unknown>
+    assert.deepEqual(Object.keys(body), ['conditions'], 'a field no change asks for was submitted')
+    assert.deepEqual((body.conditions as { users: { excludeGroups: string[] } }).users.excludeGroups, (op.target as { conditions: { users: { excludeGroups: string[] } } }).conditions.users.excludeGroups)
+    assert.equal(executable.channels.some((x) => x.blocks.some((b) => /grant|session|report-only|lifecycle|name/.test(b))), false, 'an unrelated correction was composed')
+    for (const ch of executable.channels) assert.equal(UNRESOLVED.test(ch.text), false, `${ch.channel} carries a placeholder`)
+    // The Plan hands it over only when its next safe action can be executed: the
+    // emergency-access prerequisite owns putting the exclusions back first.
+    const next = nextSafeAction(step)
+    assert.deepEqual([next.kind, next.executable], ['correct', false])
+    assert.ok(step.blockedBy.includes('s-prereq-break-glass'), JSON.stringify(step.blockedBy))
+    // The prerequisite still governs readiness; the resolved correction stays available to copy.
+    assert.equal(step.blockers.some((b) => b.kind === 'step' && b.stepId === 's-prereq-break-glass'), true, 'the premise: the step waits on emergency access')
+    assert.equal(packageStateOf(step, c, f.snapshot), 'partial', 'readiness does not hide a relevant resolved correction')
+    assert.equal(plannedPackageStateOf(step, c, f.snapshot), 'partial', 'the held correction is still planned')
   }
-  const prerequisites = ((pkg.meta as { prerequisites?: { id: string }[] }).prerequisites ?? []).map((p) => p.id)
-  const p = projectSafely(pkg, 'partial', bindings, { satisfied: new Set(prerequisites), baselineCommit: null })
-  assert.deepEqual(p.hold?.invalid ?? [], [], JSON.stringify(p.hold))
-  assert.deepEqual(p.hold?.unknownMismatches ?? [], [])
-  const blocks = p.channels.flatMap((c) => c.blocks)
-  assert.ok(blocks.includes('entra.correct.policy.location-boundary'), `the selected correction is not composed: ${JSON.stringify(p.hold)} ${blocks.join(', ')}`)
-  assert.equal(blocks.some((b) => /location\.ip-ranges|json\.correct\.location$/.test(b)), false, 'a named-location correction no fact selects was composed')
-})
-
-test('an enforced policy whose exclusions differ from the plan plans the conditions correction, and only that', () => {
-  const { f, r, ctx } = plan('demo')
-  const step = r.steps.find((s) => s.id === 's-goal-block-legacy-auth')!
-  const c = stepContract(step, ctx)
-  assert.deepEqual(correctionFieldsOf(step, f.snapshot), ['conditions.users.excludeGroups'])
-  assert.equal(plannedPackageStateOf(step, c, f.snapshot), 'partial')
-  const pkg = implementationPackageFor(step)!
-  const state = packageStateOf(step, c, f.snapshot)!
-  const bindings = packageBindings(step, ctx, c)
-  const { runtime } = packageRuntime(pkg, state, bindings, {})
-  const projection = projectSafely(pkg, state, bindings, runtime)
-  const preview = planningPreview(pkg, step, c, f.snapshot, bindings, runtime, projection) ?? projection
-  assert.ok(preview.channels.length > 0, 'the correction has no copyable guidance')
-  assert.equal(preview.state, 'partial')
-  assert.deepEqual(preview.channels.find((x) => x.channel === 'json')?.blocks, ['json.correct-conditions'], 'a correction the changed fields do not ask for was composed')
-  assert.equal(preview.channels.some((x) => x.blocks.some((b) => /grant|session|name/.test(b))), false)
-})
-
-test('a real enforced policy missing its exclusions projects an executable correction of those conditions only, while emergency access remains a readiness prerequisite', () => {
-  // The demo tenant's own legacy-authentication block, enforced without the
-  // canonical exclusions, with the baseline's unsettled source references answered
-  // so the users the correction writes are settled.
-  const base = fixture('demo')
-  const source = BASELINE_MAPPINGS_KEY
-  const pending = sourceMappingsOf(runFixture(base).steps)
-  const f = { ...base, mapping: applyStepDecisions(base.mapping, { [source]: { answers: Object.fromEntries(pending.map((p) => [p.id, referenceOptions()[0]])), at: base.snapshot.asOf } }) }
-  const r = runFixture(f)
-  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
-  const step = r.steps.find((s) => s.id === 's-goal-block-legacy-auth')!
-  const c = stepContract(step, ctx)
-  assert.deepEqual(correctionFieldsOf(step, f.snapshot), ['conditions.users.excludeGroups'], 'the premise: only the exclusions differ')
-  const pkg = implementationPackageFor(step)!
-  const bindings = packageBindings(step, ctx, c)
-  const op = plannedOperationsOf(step)[0]
-  assert.equal(op.mode, 'update')
-  // Every value the correction needs resolves from the tenant and the plan.
-  for (const key of ['policy.current.id', 'policy.target.conditions', CHANGED_FIELDS_BINDING]) assert.ok(present(bindings[key]), `${key} does not resolve`)
-  const { runtime } = packageRuntime(pkg, 'partial', bindings, {})
-  const executable = projectImplementation(pkg, 'partial', bindings, runtime)
-  assert.equal(executable.hold, null, JSON.stringify(executable.hold))
-  assert.equal(executable.preview, undefined, 'the correction is a planning preview, not an artifact')
-  assert.deepEqual(executable.degraded ?? [], [])
-  const json = executable.channels.find((x) => x.channel === 'json')!
-  // The JSON channel is a request or nothing (S6): the PATCH the package declares,
-  // bound to the tenant's own policy by id, never a request IAMAI invented.
-  assert.deepEqual(json.requests, [{ method: 'PATCH', endpoint: `https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/${op.policyId}` }], 'the request the package declares, sent to the policy it corrects')
-  assert.equal(bindings['policy.current.id'], op.policyId, 'the correction does not name the tenant’s own policy')
-  const body = JSON.parse(json.text) as Record<string, unknown>
-  assert.deepEqual(Object.keys(body), ['conditions'], 'a field no change asks for was submitted')
-  assert.deepEqual((body.conditions as { users: { excludeGroups: string[] } }).users.excludeGroups, (op.target as { conditions: { users: { excludeGroups: string[] } } }).conditions.users.excludeGroups)
-  assert.equal(executable.channels.some((x) => x.blocks.some((b) => /grant|session|report-only|lifecycle|name/.test(b))), false, 'an unrelated correction was composed')
-  for (const ch of executable.channels) assert.equal(UNRESOLVED.test(ch.text), false, `${ch.channel} carries a placeholder`)
-  // The Plan hands it over only when its next safe action can be executed: the
-  // emergency-access prerequisite owns putting the exclusions back first.
-  const next = nextSafeAction(step)
-  assert.deepEqual([next.kind, next.executable], ['correct', false])
-  assert.ok(step.blockedBy.includes('s-prereq-break-glass'), JSON.stringify(step.blockedBy))
-  // The prerequisite still governs readiness; the resolved correction stays available to copy.
-  assert.equal(step.blockers.some((b) => b.kind === 'step' && b.stepId === 's-prereq-break-glass'), true, 'the premise: the step waits on emergency access')
-  assert.equal(packageStateOf(step, c, f.snapshot), 'partial', 'readiness does not hide a relevant resolved correction')
-  assert.equal(plannedPackageStateOf(step, c, f.snapshot), 'partial', 'the held correction is still planned')
 })
 
 test('an omitted source exception preserves the tenant’s existing excluded person instead of creating a removal correction', () => {

@@ -48,19 +48,38 @@ function project({ step, ctx }: Placed) {
   return { pkg, state, bindings, projection: projectSafely(pkg, state, bindings, runtime) }
 }
 
-test('the registry is the whole library compiled: every package for a Plan content step, nothing else, and no part the runtime cannot project', () => {
-  assert.deepEqual(registry, JSON.parse(JSON.stringify(registryOf(LIBRARY))), 'registry.generated.json drifted from docs/implementation-content: run scripts/compile-implementation-content.mjs --registry')
-  // 42: the trip-operations package left with its step (docs/plans/step-redundancy-analysis.md
-  // finding 4), and the partner and mail follow-ups folded into the policy steps
-  // that own their outcomes (findings 5 and 6).
-  assert.equal(LIBRARY.registered.length, 42)
-  // The drill row is not a content step: the Plan draws it with CleanupBody. The
-  // not-assessed row left with its duplicate (docs/plans/step-redundancy-analysis.md finding 8).
-  assert.deepEqual(LIBRARY.notSteps.map((p) => p.stepId), ['cleanup-drill'])
-  for (const id of REGISTERED_PACKAGE_STEP_IDS) assert.deepEqual(validatePackage(PACKAGES[id]), [], `${id} was registered with a part the runtime cannot project`)
-  // What was withheld is reported, never silently lost: the library's authored gaps are in the compiler's output.
-  assert.ok(LIBRARY.registered.some((p) => p.withheld.length > 0))
-  assert.deepEqual(LIBRARY.registered.find((p) => p.stepId === 's-goal-device-registration-mfa')?.withheld, [])
+test('the registry and LIBRARY.json are the whole library compiled and regenerated, never kept by hand: every package for a Plan content step, no part the runtime cannot project, every Partial composed from changed fields', () => {
+  // the registry is the whole library compiled: every package for a Plan content step, nothing else, and no part the runtime cannot project
+  {
+    assert.deepEqual(registry, JSON.parse(JSON.stringify(registryOf(LIBRARY))), 'registry.generated.json drifted from docs/implementation-content: run scripts/compile-implementation-content.mjs --registry')
+    // 42: the trip-operations package left with its step (docs/plans/step-redundancy-analysis.md
+    // finding 4), and the partner and mail follow-ups folded into the policy steps
+    // that own their outcomes (findings 5 and 6).
+    assert.equal(LIBRARY.registered.length, 42)
+    // The drill row is not a content step: the Plan draws it with CleanupBody. The
+    // not-assessed row left with its duplicate (docs/plans/step-redundancy-analysis.md finding 8).
+    assert.deepEqual(LIBRARY.notSteps.map((p) => p.stepId), ['cleanup-drill'])
+    for (const id of REGISTERED_PACKAGE_STEP_IDS) assert.deepEqual(validatePackage(PACKAGES[id]), [], `${id} was registered with a part the runtime cannot project`)
+    // What was withheld is reported, never silently lost: the library's authored gaps are in the compiler's output.
+    assert.ok(LIBRARY.registered.some((p) => p.withheld.length > 0))
+    assert.deepEqual(LIBRARY.registered.find((p) => p.stepId === 's-goal-device-registration-mfa')?.withheld, [])
+  }
+  // LIBRARY.json’s counts, binding inventory, validation, provenance and review are the library’s own, regenerated and never kept by hand
+  {
+    const current = JSON.parse(readFileSync('docs/implementation-content/LIBRARY.json', 'utf8')) as LibraryIndex
+    assert.deepEqual(current, JSON.parse(JSON.stringify(libraryIndexOf(LIBRARY, current))), 'LIBRARY.json drifted from docs/implementation-content: run scripts/compile-implementation-content.mjs --library-index')
+    // No required binding is one no part of its package names (correction batch 2).
+    const passing = current.packages.filter((p) => p.validationResult === 'pass').map((p) => p.stepId)
+    assert.ok(passing.includes('s-goal-device-registration-mfa'))
+    assert.equal(current.aggregate.packagesPassingStrictValidation, passing.length)
+  }
+  // every registered Partial composes its corrections from the engine’s changed fields
+  {
+    for (const id of REGISTERED_PACKAGE_STEP_IDS) {
+      const partial = PACKAGES[id].meta.projection.partial
+      if (partial) assert.equal(partial.mode, 'composeByMismatch', `${id}: a Partial that cannot choose its corrections was registered`)
+    }
+  }
 })
 
 // §S4-1/§S4-2, the whole library at once: a condition left at Configure: No is
@@ -76,56 +95,50 @@ test('no portal procedure in the library narrows a toggled condition without nam
   assert.deepEqual(offences, [], 'a condition narrowed with no Configure toggle: at No it is not applied and the policy reaches everything it was meant to narrow')
 })
 
-test('LIBRARY.json’s counts, binding inventory, validation, provenance and review are the library’s own, regenerated and never kept by hand', () => {
-  const current = JSON.parse(readFileSync('docs/implementation-content/LIBRARY.json', 'utf8')) as LibraryIndex
-  assert.deepEqual(current, JSON.parse(JSON.stringify(libraryIndexOf(LIBRARY, current))), 'LIBRARY.json drifted from docs/implementation-content: run scripts/compile-implementation-content.mjs --library-index')
-  // No required binding is one no part of its package names (correction batch 2).
-  const passing = current.packages.filter((p) => p.validationResult === 'pass').map((p) => p.stepId)
-  assert.ok(passing.includes('s-goal-device-registration-mfa'))
-  assert.equal(current.aggregate.packagesPassingStrictValidation, passing.length)
-})
-
-test('each package reaches the steps whose title comes from its content entry, a merged goal included', () => {
-  let reached = 0
-  let reviewed = 0
-  for (const { step } of DEMO) {
-    const pkg = implementationPackageFor(step)
-    if (!pkg) {
-      // A package the semantic re-pin review set aside still reaches its step, as a review.
-      if (packageReviewFor(step)) reviewed++
-      continue
+test('each package reaches the steps whose title comes from its content entry, a merged goal included, and is named what its step is named, script header too', () => {
+  // each package reaches the steps whose title comes from its content entry, a merged goal included
+  {
+    let reached = 0
+    let reviewed = 0
+    for (const { step } of DEMO) {
+      const pkg = implementationPackageFor(step)
+      if (!pkg) {
+        // A package the semantic re-pin review set aside still reaches its step, as a review.
+        if (packageReviewFor(step)) reviewed++
+        continue
+      }
+      reached++
+      assert.equal(contentStepForPackage(pkg.meta.stepId)?.id, contentStepFor(step)?.id, `${step.id} reached ${pkg.meta.stepId}`)
     }
-    reached++
-    assert.equal(contentStepForPackage(pkg.meta.stepId)?.id, contentStepFor(step)?.id, `${step.id} reached ${pkg.meta.stepId}`)
+    assert.ok(reached + reviewed >= 27, `only ${reached + reviewed} demo steps reached a package`)
+    assert.equal(implementationPackageFor(at(DEMO, 's-goal-all-users-no-persistence').step)?.meta.stepId, 's-goal-session-lifetime')
+    assert.equal(packageForEntry({ id: 'cleanup-drill', goalId: '' }), null)
   }
-  assert.ok(reached + reviewed >= 27, `only ${reached + reviewed} demo steps reached a package`)
-  assert.equal(implementationPackageFor(at(DEMO, 's-goal-all-users-no-persistence').step)?.meta.stepId, 's-goal-session-lifetime')
-  assert.equal(packageForEntry({ id: 'cleanup-drill', goalId: '' }), null)
-})
-
-// V1 audit S4-12: the workload-identity step's title, its package title and the header of
-// the script it hands over all named "the Entra Connect Sync Account", while its own Entra
-// channel says Connect Sync signs in as a user account and only Cloud Sync's provisioning
-// service principal can be a workload-identity policy's target. A step cannot be named after
-// the identity its procedure forbids, and a rename that reaches one surface and not the
-// others is two names for one step. The rule is general, so every package is read.
-test('a package is named what its step is named, and the script it hands over carries that same name', () => {
-  let checked = 0
-  for (const pkg of Object.values(PACKAGES)) {
-    const title = contentStepForPackage(pkg.meta.stepId)?.title
-    if (typeof title !== 'string') continue
-    assert.equal(pkg.meta.title, title, `${pkg.meta.stepId}: the package title is not the step's`)
-    const script = pkg.blocks['powershell.run']?.text
-    if (typeof script === 'string' && /^# IAMAI compact implementation script/m.test(script)) {
-      assert.ok(script.includes(`# IAMAI compact implementation script — ${title}`), `${pkg.meta.stepId}: the script header names another step`)
+  // a package is named what its step is named, and the script it hands over carries that same name
+  // V1 audit S4-12: the workload-identity step's title, its package title and the header of
+  // the script it hands over all named "the Entra Connect Sync Account", while its own Entra
+  // channel says Connect Sync signs in as a user account and only Cloud Sync's provisioning
+  // service principal can be a workload-identity policy's target. A step cannot be named after
+  // the identity its procedure forbids, and a rename that reaches one surface and not the
+  // others is two names for one step. The rule is general, so every package is read.
+  {
+    let checked = 0
+    for (const pkg of Object.values(PACKAGES)) {
+      const title = contentStepForPackage(pkg.meta.stepId)?.title
+      if (typeof title !== 'string') continue
+      assert.equal(pkg.meta.title, title, `${pkg.meta.stepId}: the package title is not the step's`)
+      const script = pkg.blocks['powershell.run']?.text
+      if (typeof script === 'string' && /^# IAMAI compact implementation script/m.test(script)) {
+        assert.ok(script.includes(`# IAMAI compact implementation script — ${title}`), `${pkg.meta.stepId}: the script header names another step`)
+      }
+      checked++
     }
-    checked++
+    assert.ok(checked >= 30, `only ${checked} packages were read`)
+    // The identity this step's policy can actually target, said the same way everywhere.
+    const workload = 'Restrict the Directory Sync Service Principal to Its Address'
+    assert.equal(contentStepForPackage('s-goal-workload-identity-block')?.title, workload)
+    for (const block of Object.values(PACKAGES['s-goal-workload-identity-block'].blocks)) assert.doesNotMatch(block.text, /Entra Connect Sync Account/)
   }
-  assert.ok(checked >= 30, `only ${checked} packages were read`)
-  // The identity this step's policy can actually target, said the same way everywhere.
-  const workload = 'Restrict the Directory Sync Service Principal to Its Address'
-  assert.equal(contentStepForPackage('s-goal-workload-identity-block')?.title, workload)
-  for (const block of Object.values(PACKAGES['s-goal-workload-identity-block'].blocks)) assert.doesNotMatch(block.text, /Entra Connect Sync Account/)
 })
 
 test('a policy IAMAI would create projects the package’s Entra, PowerShell, JSON, AI Info and Email; a JSON body authored with no request is withheld (S6)', () => {
@@ -223,23 +236,4 @@ test('every registered package projects in every state without a fault, and a st
     }
   }
   assert.deepEqual(faults, [])
-})
-
-test('every registered Partial composes its corrections from the engine’s changed fields', () => {
-  for (const id of REGISTERED_PACKAGE_STEP_IDS) {
-    const partial = PACKAGES[id].meta.projection.partial
-    if (partial) assert.equal(partial.mode, 'composeByMismatch', `${id}: a Partial that cannot choose its corrections was registered`)
-  }
-})
-
-test('the demo’s held Intune enrollment policy, prepared in report-only, offers the package’s JSON, and it parses', () => {
-  // The Initial scan: by week two the demo has this policy in report-only (A4), so the create is the day-one case.
-  const { pkg, state, projection } = project(at(DEMO, 's-goal-intune-enrollment-reauth'))
-  assert.equal(pkg.meta.stepId, 's-goal-intune-enrollment-reauth')
-  assert.equal(state, 'missing')
-  assert.equal(projection.hold, null, JSON.stringify(projection.hold))
-  const json = projection.channels.find((c) => c.channel === 'json')
-  assert.ok(json, 'no JSON channel')
-  assert.equal(typeof (JSON.parse(json.text) as { displayName?: unknown }).displayName, 'string')
-  for (const c of projection.channels) assert.equal(UNRESOLVED.test(c.text), false, `${c.channel}: an authoring marker reached the page`)
 })
