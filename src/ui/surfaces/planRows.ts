@@ -108,7 +108,7 @@ export function doesntApplyRows(steps: readonly Step[]): Step[] {
  * accounts. Its Put back did nothing and the row stayed, so it is not drawn.
  */
 export function canPutBack(step: Step, mapping: Pick<MappingState, 'notApplicable'> | null): boolean {
-  if (step.doesntApplyByScan) return false
+  if (step.doesntApplyByScan || step.doesntApplyByAnswer) return false
   const said = mapping?.notApplicable?.[step.id]
   return typeof said === 'string' && said.trim().length > 0
 }

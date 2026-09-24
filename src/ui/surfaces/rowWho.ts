@@ -12,6 +12,7 @@ import { effectsOf } from '../../roadmap/strand.ts'
 import { REPORT_ONLY_GAP } from '../../coverage/verdict.ts'
 import { implementationPackageFor } from './stepPackage.ts'
 import { BREAK_GLASS_STEP_ID } from '../../roadmap/stepIds.ts'
+import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 
 /** How many emergency access accounts the step needs: the count rule's own minimum (validation/rules.ts bgCount). */
@@ -51,6 +52,8 @@ export function rowWho(step: Step): string {
   // the policies the group must be excluded from, and the people who can register.
   if (step.impactCount !== undefined && step.id === EXCLUSIONS_GROUP_STEP_ID) return count(step.impactCount, 'policy', 'policies')
   if (step.impactCount !== undefined && step.id === PASSKEY_SETTINGS_STEP_ID) return count(step.impactCount, 'person', 'people')
+  // A Direction step counts the plan steps its answers decide (walk list item 25; roadmap/direction.ts countDirectionImpact).
+  if (step.impactCount !== undefined && isDirectionStep(step.id)) return count(step.impactCount, 'step')
   const namedImpact = step.impactLabel ?? (structuralWords.impactLabels as Record<string, string>)[step.id]
   if (namedImpact) return namedImpact
   // Who the row names is who the step's own policies name (derive/population.ts

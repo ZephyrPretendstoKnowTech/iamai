@@ -12,6 +12,7 @@ import { STEP_EXTRAS } from './stepDefaults.ts'
 import { setState, stateFields } from './lifecycle.ts'
 import type { Step } from './types.ts'
 import { MANUAL_REVIEW_ID } from './manualWork.ts'
+import { answeredReasonOf } from './directionAnswers.ts'
 
 /** Incomplete pinned definitions retained in source, hidden for the V1 journey. */
 export const HIDDEN_AGENT_POLICY = /IAC\s*-\s*AGENT\s*-\s*BLOCK\s*-\s*(HighRiskAgent|NonTrustedAgents)/i
@@ -114,7 +115,7 @@ export function addWorkflowSteps(steps: Step[], policies: NotAssessed[], mapping
     // its check is the state of that review, not the row's own title read back
     // three times (quality audit 2.1).
     step.guidance = { id: step.id, kind: 'check', title: words?.title ?? title, why: words?.why ?? step.why, card: { ...W.reviewCard }, taskTitle: W.reviewTaskTitle, whatToDo: { steps: [fillText(W.source, { policy: policy.name }), ...(words?.instructions ?? [W.generic]), ...W.reviewInstructions] }, doneWhen: [W.reviewDone], learn: PLAN_CA }
-    if (applicable === 'no') { step.doesntApply = fillText(W.notUsed, { service: name }); setState(step, { setAside: true }) }
+    if (applicable === 'no' && key) { step.doesntApply = answeredReasonOf(`service:${key}`, 'no'); step.doesntApplyByAnswer = true; setState(step, { setAside: true }) }
     else if (step.manualReview.confirmedAt) setState(step, { satisfied: true, inPlace: true })
     // The pinned AVD block relies on four source exclusions whose allowed-user
     // purpose has not been established. An acknowledgement cannot turn that

@@ -177,7 +177,7 @@ export function finishedRowsOf(section: Pick<PrintSection, 'rows'>, board: Print
  */
 export function doesntApplyLinesOf(steps: readonly Step[]): string[] {
   const { doesntApplyRow, doesntApplyScanRow } = (pages.plan as { footer: { doesntApplyRow: string; doesntApplyScanRow: string } }).footer
-  return doesntApplyRows(steps).map((s) => fillText(s.doesntApplyByScan ? doesntApplyScanRow : doesntApplyRow, { stepTitle: contentTitle(s), reason: s.doesntApply ?? '' }))
+  return doesntApplyRows(steps).map((s) => fillText(s.doesntApplyByScan || s.doesntApplyByAnswer ? doesntApplyScanRow : doesntApplyRow, { stepTitle: contentTitle(s), reason: s.doesntApply ?? '' }))
 }
 
 /**
