@@ -843,11 +843,9 @@ export function buildFixture(spec: Spec): Fixture {
     const guests = questionLabels(stepIdForGoal('guests-mfa'))
     if (guests.question) decisions[stepIdForGoal('guests-mfa')] = { picked: [], answers: { [guests.question]: "Exclude service providers (they use their own tenant's MFA)" }, at: NOW }
     if (printerId !== null) decisions[stepIdForGoal('block-legacy-auth')] = { option: `Yes: add: ${printerId}; the service-accounts group carries them`, at: NOW }
-    // Nobody uses device code sign-in (B7): the enforced block's conditional input is saved.
-    decisions[stepIdForGoal('block-device-code')] = { option: 'None', at: NOW }
     // Define Your Rollout Scope, approved in week one with the answers this
     // demo already assumes (roadmap/direction.ts): the services as the scan saw
-    // them, the printer, no device code, partners excluded; the service accounts
+    // them, the printer, partners excluded; the service accounts
     // as confirmed and the shared-device accounts as detected; everyone remote.
     // The device answers (D3) stay open, as the device decision always has here,
     // so the office network answer is saved under its own storage id, which a
@@ -859,7 +857,6 @@ export function buildFixture(spec: Spec): Fixture {
     decisions[DIRECTION_STEP.use] = { ...directionDecisionOf({
       ...Object.fromEntries(SERVICE_KEYS.map((key) => { const s = services.signal(key); return [`service:${key}`, answer(s.used || !s.complete ? 'yes' : 'no')] })),
       mailDevices: printerId !== null ? answer('some', [printerId]) : answer('none'),
-      deviceCode: answer('unused'),
       partner: answer('yes'),
     }, Object.fromEntries(SERVICE_KEYS.map((key) => { const s = services.signal(key); return [`service:${key}`, s.used ? 'present' : s.complete ? 'absent' : 'unread'] }))), at: NOW }
     const shared = sharedDeviceUsers(snapshot).map((u) => u.id).filter((id) => !bgIds.includes(id))

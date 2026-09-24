@@ -5,7 +5,7 @@
 import data from '../actionability/dependency-data.json' with { type: 'json' }
 import type { ConditionState } from '../actionability/lanes.ts'
 import type { MappingState } from '../mapping/types.ts'
-import { QUESTION_STEP, answerOf, deviceCodeWorkflowsOf } from './answers.ts'
+import { QUESTION_STEP, answerOf } from './answers.ts'
 import { campaignTargetsPasskeys } from './campaign.ts'
 import type { Step } from './types.ts'
 
@@ -33,11 +33,6 @@ function conditionOf(name: string, ownedBy: string, byId: ReadonlyMap<string, St
     case 'campaign-targets-passkey': return campaignTargetsPasskeys() === true ? 'applicable' : 'unresolved'
     case 'sd-enabled': return owner !== undefined && owner.status !== 'done' ? 'applicable' : 'not-applicable'
     case 'shared-devices-exist': return owner !== undefined ? 'applicable' : 'not-applicable'
-    // Owned by the policy it gates, so the owner being on the plan says nothing: the saved answer does.
-    case 'device-code-workflows-exist': {
-      const inUse = answers ? deviceCodeWorkflowsOf(answers) : null
-      return inUse === null ? 'unresolved' : inUse ? 'applicable' : 'not-applicable'
-    }
     default: break
   }
   if (owner !== undefined) return 'applicable'

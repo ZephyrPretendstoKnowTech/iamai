@@ -155,12 +155,11 @@ export function effectLine(effect: unknown, answer: { index: number } | null): s
 
 // ---- The questions whose answers change the plan ----
 
-/** The step each question sits on: the travellers question (the countries step), the partner question (the guests policy), the mail-sending devices (the legacy block), device code sign-in (the device code block), the device decision (its own step). */
+/** The step each question sits on: the travellers question (the countries step), the partner question (the guests policy), the mail-sending devices (the legacy block), the device decision (its own step). */
 export const QUESTION_STEP = {
   travel: PREREQ_STEP_ID.allowedCountries,
   partner: stepIdForGoal('guests-mfa'),
   mailDevices: stepIdForGoal('block-legacy-auth'),
-  deviceCode: stepIdForGoal('block-device-code'),
   devices: PREREQ_STEP_ID.devicePlan,
 } as const
 
@@ -179,12 +178,6 @@ export function serviceProvidersExcluded(mapping: Pick<MappingState, 'questionAn
 /** The accounts the mail-sending devices answer names: they join the service-accounts group. */
 export function mailDevicesOf(mapping: Pick<MappingState, 'questionAnswers'>): string[] {
   return answerOf(mapping, QUESTION_STEP.mailDevices, 'decision')?.picked ?? []
-}
-
-/** The plan's device code decision (decisions.deviceCodeWorkflows): true where someone uses device code sign-in, false on None, null until a Save. */
-export function deviceCodeWorkflowsOf(mapping: Pick<MappingState, 'questionAnswers'>): boolean | null {
-  const a = answerOf(mapping, QUESTION_STEP.deviceCode, 'decision')
-  return a === null ? null : a.index > 0
 }
 
 /*
