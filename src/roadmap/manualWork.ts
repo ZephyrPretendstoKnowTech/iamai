@@ -2,7 +2,6 @@ import { adminUserIds } from '../roles.ts'
 import { personLabels } from '../names.ts'
 import { isLicenceGate } from '../graph/collect/roles.ts'
 import { GLOBAL_ADMIN_ROLE_ID } from './ladder.ts'
-import { SEPARATE_ADMIN_ACCOUNTS_STEP_ID } from './stepIds.ts'
 import type { TenantSnapshot, UserRow } from '../graph/collect/types.ts'
 import type { OwnerConfirmation, ManualEvidenceField } from './decisions.ts'
 import { setState } from './lifecycle.ts'
@@ -67,14 +66,9 @@ const POLICY_WORKFLOWS: Record<string, string> = {
   's-goal-service-accounts-trusted-network': 'Service Job Tested',
   's-goal-block-device-code': 'Device-Code Client and Workflow Tested',
 }
-/**
- * Use Separate Accounts for Admin Work. It was a set of two because the free-tier
- * ladder carried a second id for the same step, with the same Completion
- * Criteria word for word; the ladder defers to this one now
- * (ladder.ts COVERED_BY_STEP, docs/plans/step-redundancy-analysis.md finding 9).
- */
-const ADMIN_SEPARATION = new Set([SEPARATE_ADMIN_ACCOUNTS_STEP_ID])
-const SCOPED_MANUAL = new Set([SEPARATE_ADMIN_ACCOUNTS_STEP_ID, 's-ladder-global-admin-count', 's-ladder-authenticator-over-sms', 's-ladder-legacy-auth-inventory', 's-shared-devices', 's-ladder-guest-review', 's-ladder-app-passwords', ...Object.keys(POLICY_WORKFLOWS)])
+// Use Separate Accounts for Admin Work is not among them: the scan decides it,
+// and it records nothing (walk list item 1; generate.ts).
+const SCOPED_MANUAL = new Set(['s-ladder-global-admin-count', 's-ladder-authenticator-over-sms', 's-ladder-legacy-auth-inventory', 's-shared-devices', 's-ladder-guest-review', 's-ladder-app-passwords', ...Object.keys(POLICY_WORKFLOWS)])
 const outcomeField = (review = false): ManualEvidenceField => ({ key: 'outcome', label: 'Outcome', type: 'select', required: true, options: review ? [{ value: 'retained', label: 'Retain access' }, { value: 'revoked', label: 'Access revoked' }, { value: 'investigate', label: 'Investigate' }] : [{ value: 'passed', label: 'Successful' }, { value: 'failed', label: 'Unsuccessful' }, { value: 'investigate', label: 'Investigate' }] })
 
 /** Only the existing manual steps receive scoped evidence inputs. */
@@ -97,9 +91,7 @@ export function manualEvidenceFields(stepId: string, mapping?: Pick<MappingState
   // a record (`pendingAccountIds` below). Steps keyed by workflow do not count
   // people, so the picker would gather an answer nothing reads.
   const perAccount = !POLICY_WORKFLOWS[stepId] && !mailDevicesFollowUp(stepId, mapping) && stepId !== 's-ladder-authenticator-over-sms'
-  if (perAccount) fields.push({ key: 'accountIds', label: ADMIN_SEPARATION.has(stepId) ? 'Reviewed Accounts' : stepId === 's-ladder-guest-review' ? 'Reviewed Guests' : stepId === 's-ladder-global-admin-count' ? 'Reviewed Global Administrators' : stepId === 's-ladder-legacy-auth-inventory' ? 'Reviewed Legacy Accounts' : 'Tested Accounts', type: 'accounts', required: stepId !== 's-ladder-legacy-auth-inventory' })
-  // The replacement account clears its own person from the pending list.
-  if (ADMIN_SEPARATION.has(stepId)) fields.push({ key: 'replacementAccountId', label: 'Dedicated Administrator Account', type: 'accounts', required: true, whenOutcome: ['passed'] }, { key: 'roleIds', label: 'Required Roles', type: 'accounts', required: true, whenOutcome: ['passed'] })
+  if (perAccount) fields.push({ key: 'accountIds', label: stepId === 's-ladder-guest-review' ? 'Reviewed Guests' : stepId === 's-ladder-global-admin-count' ? 'Reviewed Global Administrators' : stepId === 's-ladder-legacy-auth-inventory' ? 'Reviewed Legacy Accounts' : 'Tested Accounts', type: 'accounts', required: stepId !== 's-ladder-legacy-auth-inventory' })
   // Checked against the tenant: an authentication context the policies do not
   // reference, or a named network that is not the one tested, is a defect IAMAI
   // raises rather than a string it stores (`observedDefect` below).
@@ -118,7 +110,7 @@ export function manualEvidenceFields(stepId: string, mapping?: Pick<MappingState
   // no partner has no path to name.
   if (stepId === 's-goal-guests-mfa') fields.push({ key: 'providerAccessPath', label: 'Partner or Provider Access Path', type: 'text', required: false })
   if (stepId === LEGACY_AUTH_STEP_ID) fields.push({ key: 'exceptionRemoved', label: 'Temporary Exception Removed', type: 'checkbox', required: true })
-  fields.push(ADMIN_SEPARATION.has(stepId) ? { key: 'outcome', label: 'Outcome', type: 'select', required: true, options: [{ value: 'retained', label: 'Already dedicated to admin work' }, { value: 'passed', label: 'Handover tested' }, { value: 'failed', label: 'Unsuccessful' }, { value: 'investigate', label: 'Investigate' }] } : outcomeField(stepId === 's-ladder-guest-review'), { key: 'testedAt', label: ['s-ladder-guest-review', 's-ladder-global-admin-count', 's-ladder-legacy-auth-inventory'].includes(stepId) ? 'Reviewed On' : 'Tested On', type: 'date', required: true })
+  fields.push(outcomeField(stepId === 's-ladder-guest-review'), { key: 'testedAt', label: ['s-ladder-guest-review', 's-ladder-global-admin-count', 's-ladder-legacy-auth-inventory'].includes(stepId) ? 'Reviewed On' : 'Tested On', type: 'date', required: true })
   return fields
 }
 
@@ -156,7 +148,7 @@ function scopedBasis(step: Step, snapshot: TenantSnapshot, mapping?: MappingStat
     : step.id === 's-ladder-legacy-auth-inventory' ? [Object.keys(snapshot.evidenceUsage?.legacyAuth.byDetail ?? {}).sort()]
     : step.id === 's-ladder-app-passwords' ? [ids.map(id => [id, snapshot.perUserMfa?.[id]?.state ?? 'unknown'])]
     : []
-  const accountEvidence = [SEPARATE_ADMIN_ACCOUNTS_STEP_ID, 's-ladder-global-admin-count', 's-ladder-authenticator-over-sms'].includes(step.id)
+  const accountEvidence = ['s-ladder-global-admin-count', 's-ladder-authenticator-over-sms'].includes(step.id)
   const accountKey = `${accountEvidence}:${step.id === 's-ladder-guest-review'}`
   let accounts = accountCache?.get(accountKey)
   if (!accounts) {
@@ -187,10 +179,6 @@ export function scopeManualBasis(basis: string, record: Pick<OwnerConfirmation, 
     const ids = [...new Set([...(record.accountIds ?? []), ...(record.replacementAccountId ? [record.replacementAccountId] : [])])]
     value.accounts = Object.fromEntries(ids.map(id => {
       const facts = value.accounts[id] ?? null
-      // Removing the ordinary account's roles is the intended handover action,
-      // not invalidation of the already tested replacement. Its current roles
-      // are still checked by the scan requirement before completion.
-      if (ADMIN_SEPARATION.has(value.stepId) && record.outcome === 'passed' && id !== record.replacementAccountId && facts && !Array.isArray(facts)) { facts.roles = []; facts.eligibleRoles = [] }
       return [id, facts]
     }))
     return JSON.stringify(stable(value))
@@ -213,31 +201,6 @@ export function scopeManualBasis(basis: string, record: Pick<OwnerConfirmation, 
 const sectionRead = (s: { status: string; reason: string | null } | undefined): boolean =>
   s?.status === 'ok' || (s?.status === 'partial' && isLicenceGate(s.reason))
 
-/**
- * Which source this step could not read, and the reason it recorded, or null.
- *
- * "Account or role data not fully read. Active roles, eligible roles and
- * registered methods must be readable to compare the saved review with the
- * current configuration." Every source named generically, and the one that was
- * actually unread named nowhere — on a tenant where `pimEligibility` is
- * `disabled` for want of a licence (graph/collect/registry.ts licenceGateReason), which is a fact the reader
- * can act on and the words licence, premium and P2 appeared nowhere on the
- * step. A sole administrator spent time looking for a permission to grant.
- */
-function unreadSourceOf(snapshot: TenantSnapshot): string | null {
-  const named: [string, { status?: string; reason?: string | null } | undefined][] = [
-    ['role assignments', snapshot.config.roleAssignments],
-    ['eligible role assignments', snapshot.config.pimEligibility],
-    ['the user list', snapshot.sources.users],
-  ]
-  for (const [label, source] of named) {
-    if (!source || source.status === 'ok' || source.status === 'partial') continue
-    const reason = typeof source.reason === 'string' && source.reason.trim() ? source.reason.trim() : source.status
-    return `${label} could not be read: ${reason}.`
-  }
-  return null
-}
-
 function evidenceRead(step: Step, snapshot: TenantSnapshot): boolean {
   if (!sectionRead(snapshot.sources.users)) return false
   if (step.id === 's-ladder-legacy-auth-inventory' && snapshot.sources.signInEvidence?.status !== 'ok') return false
@@ -248,7 +211,6 @@ function evidenceRead(step: Step, snapshot: TenantSnapshot): boolean {
   if (step.id === 's-goal-guests-mfa' && snapshot.config.crossTenantAccess?.status !== 'ok') return false
   if (step.id === 's-goal-service-accounts-trusted-network' && snapshot.config.namedLocations?.status !== 'ok') return false
   if (step.id === 's-goal-device-registration-mfa' && snapshot.config.deviceRegistrationPolicy?.status !== 'ok') return false
-  if (ADMIN_SEPARATION.has(step.id) && (snapshot.config.roleAssignments?.status !== 'ok' || snapshot.config.pimEligibility?.status !== 'ok' || step.population.ids.some(id => snapshot.authMethods[id] === 'unknown' || !snapshot.authMethods[id]))) return false
   return true
 }
 export function completeManualEvidence(stepId: string, record: OwnerConfirmation | undefined, now = new Date().toISOString(), mapping?: Pick<MappingState, 'questionAnswers'>): boolean {
@@ -261,7 +223,7 @@ export function completeManualEvidence(stepId: string, record: OwnerConfirmation
     const day = record.testedAt.slice(0, 10)
     if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !Number.isFinite(Date.parse(day)) || new Date(`${day}T00:00:00Z`).toISOString().slice(0, 10) !== day || day > now.slice(0, 10)) return false
   }
-  return ADMIN_SEPARATION.has(stepId) ? record.outcome === 'retained' || record.outcome === 'passed' : stepId === 's-ladder-guest-review' ? record.outcome === 'retained' || record.outcome === 'revoked' : record.outcome === 'passed'
+  return stepId === 's-ladder-guest-review' ? record.outcome === 'retained' || record.outcome === 'revoked' : record.outcome === 'passed'
 }
 
 /** Review only facts material to this task, not every scan timestamp. */
@@ -286,8 +248,8 @@ export function manualBasis(step: Step, snapshot: TenantSnapshot, mapping?: Mapp
     return JSON.stringify([step.id, [...step.population.ids].sort(), policies, locations])
   }
   const item = step.id.replace('s-ladder-', '')
-  const people = snapshot.users.filter((u) => item === 'guest-review' ? u.userType === 'guest' : ADMIN_SEPARATION.has(step.id) || item === 'global-admin-count' ? (snapshot.roles.active[u.id]?.length ?? 0) > 0 : item === 'legacy-auth-inventory' ? snapshot.evidenceUsage?.legacyAuth.userIds.includes(u.id) : true)
-  const users = people.map((u) => [u.id, u.accountEnabled, u.userType, null, ADMIN_SEPARATION.has(step.id) ? u.assignedPlans.map((p) => [p.servicePlanId, p.capabilityStatus]).sort() : null, null]).sort((a, b) => String(a[0]).localeCompare(String(b[0])))
+  const people = snapshot.users.filter((u) => item === 'guest-review' ? u.userType === 'guest' : item === 'global-admin-count' ? (snapshot.roles.active[u.id]?.length ?? 0) > 0 : item === 'legacy-auth-inventory' ? snapshot.evidenceUsage?.legacyAuth.userIds.includes(u.id) : true)
+  const users = people.map((u) => [u.id, u.accountEnabled, u.userType, null, null, null]).sort((a, b) => String(a[0]).localeCompare(String(b[0])))
   const roles = Object.fromEntries(Object.entries(snapshot.roles.active).filter(([id]) => people.some((u) => u.id === id)).map(([id, rs]) => [id, [...rs].sort()]).sort(([a], [b]) => String(a).localeCompare(String(b))))
   const basis: unknown[] = [step.id, users, SCAN_REQUIRED.has(item) ? [item === 'authenticator-over-sms' ? snapshot.config.authMethodsPolicy?.rows : null, roles] : null]
   if (item === 'guest-review') basis.push(people.map(u => [u.id, u.externalUserState]).sort())
@@ -408,19 +370,6 @@ export function applyManualReviews(steps: Step[], snapshot: TenantSnapshot, conf
       setState(step, { satisfied: true, inPlace: true })
       continue
     }
-    if (ADMIN_SEPARATION.has(step.id)) {
-      const ids = snapshot.users.filter(u => !mapping?.breakGlassUserIds.includes(u.id) && ((snapshot.roles.active[u.id]?.length ?? 0) > 0 || (snapshot.roles.eligible?.[u.id]?.length ?? 0) > 0)).map(u => u.id)
-      // Admins over the ACTIVE ids, as every other step counts them
-      // (derive/population.ts population: "admins and guests are the active
-      // ones too, so the line and the count cannot disagree"). Counted over all
-      // of them it read "51 active people - 60 admins" here and "51 active
-      // people - 51 admins" on the admin-session step, same tenant, same sixty
-      // accounts, and the review scope is already stated as its own figure
-      // ("60 accounts to review") in the finding below.
-      step.population = population(ids, indexFor(step, snapshot, index))
-      step.configurationFindings = [{ key: 'administrator-review-scope', label: 'Administrator Account Evidence', value: evidenceRead(step, snapshot) ? `${count(ids.length, 'account')} to review` : 'Account or role data not fully read', detail: evidenceRead(step, snapshot) ? 'Active and eligible roles identify the review scope. Mailbox licensing and business sign-ins are clues, not proof of dedicated use.' : [unreadSourceOf(snapshot), 'Active roles, eligible roles and registered methods must be readable to compare the saved review with the current configuration.'].filter((x): x is string => x !== null).join(' '), outcome: evidenceRead(step, snapshot) ? 'pass' : 'unknown' }]
-      if (!ids.length && evidenceRead(step, snapshot)) { delete step.manualReview; step.deliveredBy = ['No non-emergency account currently holds an active or eligible directory role.']; setState(step, { satisfied: true, inPlace: true }); continue }
-    }
     if (item === 'global-admin-count' || item === 'legacy-auth-inventory') {
       const ids = scopedPeople(step, snapshot)
       // Active is the people set's reading, not "the account is enabled" — the
@@ -438,14 +387,13 @@ export function applyManualReviews(steps: Step[], snapshot: TenantSnapshot, conf
     // this step still counts (finding 9): the two were one step's evidence.
     const alias = step.id === 's-prereq-per-user-mfa' ? 's-ladder-per-user-mfa-cleanup'
       : step.id === 's-ladder-per-user-mfa-cleanup' ? 's-prereq-per-user-mfa'
-      : step.id === SEPARATE_ADMIN_ACCOUNTS_STEP_ID ? 's-ladder-admin-accounts-separate'
       : step.id === 's-check-dormant-accounts' ? 's-ladder-stale-accounts'
       : null
     const confirmation = confirmations[step.id]?.[MANUAL_REVIEW_ID] ?? (alias ? confirmations[alias]?.[MANUAL_REVIEW_ID] : undefined)
     // The folded mail follow-up is confirmed once the policy itself is in place,
     // as every other policy-workflow step is (finding 6): an exception cannot be
     // removed from a policy that is not there.
-    const readyToConfirm = ADMIN_SEPARATION.has(step.id) ? evidenceRead(step, snapshot) : item === 'global-admin-count' ? evidenceRead(step, snapshot) : POLICY_WORKFLOWS[step.id] || mailDevicesFollowUp(step.id, mapping) ? step.state.satisfied : !SCAN_REQUIRED.has(item) || step.state.satisfied
+    const readyToConfirm = item === 'global-admin-count' ? evidenceRead(step, snapshot) : POLICY_WORKFLOWS[step.id] || mailDevicesFollowUp(step.id, mapping) ? step.state.satisfied : !SCAN_REQUIRED.has(item) || step.state.satisfied
     const confirmedAt = readyToConfirm && confirmation?.basis === basis && Date.parse(confirmation.at) <= Date.now() ? confirmation.at : null
     if (SCOPED_MANUAL.has(step.id) || mailDevicesFollowUp(step.id, mapping)) {
       const populationIds = new Set(step.population.ids)
@@ -453,7 +401,7 @@ export function applyManualReviews(steps: Step[], snapshot: TenantSnapshot, conf
       const read = evidenceRead(step, snapshot)
       const complete = completeManualEvidence(step.id, confirmation, undefined, mapping)
       const people = scopedPeople(step, snapshot)
-      const pendingAccountIds = POLICY_WORKFLOWS[step.id] || mailDevicesFollowUp(step.id, mapping) || step.id === 's-ladder-authenticator-over-sms' ? [] : people.filter(id => !confirmation?.accountIds?.includes(id) && !(ADMIN_SEPARATION.has(step.id) && (confirmation?.outcome === 'passed' && id === confirmation.replacementAccountId || mapping?.breakGlassUserIds.includes(id))))
+      const pendingAccountIds = POLICY_WORKFLOWS[step.id] || mailDevicesFollowUp(step.id, mapping) || step.id === 's-ladder-authenticator-over-sms' ? [] : people.filter(id => !confirmation?.accountIds?.includes(id))
       const matching = confirmation?.basis === (confirmation ? scopeManualBasis(basis, confirmation) : basis)
       let observedDefect = !readyToConfirm
       if (step.id === 's-goal-service-accounts-trusted-network' && confirmation?.networkId) {
@@ -462,11 +410,6 @@ export function applyManualReviews(steps: Step[], snapshot: TenantSnapshot, conf
         observedDefect ||= !network || !Array.isArray(network.ipRanges) || !(locations.includes(confirmation.networkId) || locations.includes('AllTrusted') && network.isTrusted === true)
       }
       if (step.id === 's-goal-pim-activation-reauth' && confirmation?.contextId) observedDefect ||= !relevantPolicies(step, snapshot).some(raw => (((raw as unknown[])[2] as Record<string, any>)?.applications?.includeAuthenticationContextClassReferences ?? []).includes(confirmation.contextId))
-      if (ADMIN_SEPARATION.has(step.id) && confirmation?.outcome === 'passed' && confirmation.replacementAccountId) {
-        observedDefect ||= (confirmation.accountIds ?? []).some(id => (snapshot.roles.active[id]?.length ?? 0) > 0 || (snapshot.roles.eligible?.[id]?.length ?? 0) > 0)
-        const replacement = snapshot.users.find(u => u.id === confirmation.replacementAccountId)
-        observedDefect ||= !replacement?.accountEnabled || !!confirmation.accountIds?.includes(confirmation.replacementAccountId) || !(confirmation.roleIds ?? []).every(role => [...(snapshot.roles.active[confirmation.replacementAccountId!] ?? []), ...(snapshot.roles.eligible?.[confirmation.replacementAccountId!] ?? [])].includes(role))
-      }
       if (step.id === 's-ladder-guest-review' && confirmation?.outcome === 'revoked') observedDefect ||= snapshot.users.some(u => confirmation.accountIds?.includes(u.id) && u.accountEnabled)
       const verification = !read ? 'unread' : confirmation && !confirmation.outcome ? 'historical' : !complete ? 'incomplete' : !matching || observedDefect ? 'changed' : 'current'
       const accepted = verification === 'current' && pendingAccountIds.length === 0

@@ -205,18 +205,3 @@ test('a workflow step asks for the outcome and what IAMAI can check, and for no 
   assert.equal(manualEvidenceFields('s-goal-block-legacy-auth', f.mapping).some(field => field.key === 'workflow'), false, 'a tenant that named no mail device is asked for a mail route')
 })
 
-
-test('administrator separation requires an explicit dedicated-use review, including the canonical paid-tier step', () => {
-  const { f, step } = setup('s-check-separate-admin-accounts')
-  f.snapshot.config.pimEligibility = { status: 'ok', reason: null, rows: [] }
-  for (const id of Object.keys(f.snapshot.roles.active)) if (!Array.isArray(f.snapshot.authMethods[id])) f.snapshot.authMethods[id] = []
-  applyManualReviews([step], f.snapshot, {}, f.mapping)
-  assert.equal(step.state.satisfied, false, 'absence of a mailbox or recent workload activity is not proof')
-  assert.ok(step.population.ids.length > 0)
-  const record = recordFor(step, f, { outcome: 'retained', workflow: 'Every listed privileged account is used only for administrative tasks' })
-  apply(step, f, record)
-  assert.equal(step.state.satisfied, true)
-  f.snapshot.roles.eligible[step.population.ids[0]] = ['new-role']
-  apply(step, f, record)
-  assert.equal(step.state.satisfied, false, 'new relevant privileged scope needs review')
-})
