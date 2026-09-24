@@ -16,11 +16,11 @@
 //
 // Every question has a suggestion and nothing is hidden on evidence alone:
 //   * a "what you use" question is pre-filled with today's state, from the scan;
-//   * a "how it should work" question with the baseline's recommendation, today
-//     shown beside it;
+//   * a "how it should work" question with the baseline's recommendation, what
+//     the scan saw shown beside it;
 //   * with no signal, the safe answer: a service is Yes (it keeps its policy),
-//     an exception is None or Not used (no exception is granted), and the tile
-//     says the suggestion is a default and not something the scan saw.
+//     an exception is None or Not used (no exception is granted), and the card
+//     shows no evidence line (walk list 14).
 // Only data the snapshot already holds is read: no Graph permission, no new
 // collection.
 //
@@ -83,9 +83,9 @@ function serviceQuestion(key: string, signal: ServiceSignal, ctx: Context): Dire
   const needsReview = saved?.value === 'no' && signal.used && ctx.mapping.workflowEvidenceBasis?.[key] !== 'present'
   const suggested = signal.used ? answer('yes') : signal.complete ? answer('no') : answer('yes')
   const label = (Q.services as Record<string, string>)[key] ?? key
-  // What the sign-in records show, in the one sentence the Inventory's Detected
-  // workloads shows too (workflows.ts serviceEvidence); where they show
-  // nothing that can be said, the card says nothing.
+  // What the scan saw, in the one sentence the Inventory's Detected workloads
+  // shows too (workflows.ts serviceEvidence); where it saw nothing that can be
+  // said, the card says nothing.
   const seen = serviceEvidence(key, signal)
   return {
     // Its consequence line names the plan's steps, so it is written once the plan is whole (noteServiceConsequences).
@@ -97,6 +97,12 @@ function serviceQuestion(key: string, signal: ServiceSignal, ctx: Context): Dire
 }
 
 const signInsRead = (s: TenantSnapshot): boolean => s.sources.signInEvidence?.status === 'ok' || s.sources.signInEvidence?.status === 'partial'
+/**
+ * Whether the sign-in records were read whole, 30 days of them: a sign-in line
+ * is said only then, on all three Direction steps. Over a read that stopped
+ * short a card says nothing about sign-ins (walk list 14, 64).
+ */
+const signInsReadWhole = (s: TenantSnapshot): boolean => s.sources?.signInEvidence?.status === 'ok'
 
 /**
  * Devices or apps that send mail by signing in: the accounts the old-protocol
@@ -121,7 +127,7 @@ function useQuestions(ctx: Context, services: { keys: string[]; signal: (key: st
   // the ones the picker offers (mailPickable).
   const senders = mailSenderIds(snapshot)
   const pickable = (senders ?? []).filter(mailPickable(snapshot, ctx.mapping))
-  const mailSeen = senders === null ? '' : senders.length > 0 ? fillText(Q.mailDevices.seen, { n: senders.length }) : Q.mailDevices.notSeen
+  const mailSeen = senders === null || !signInsReadWhole(snapshot) ? '' : senders.length > 0 ? fillText(Q.mailDevices.seen, { n: senders.length }) : Q.mailDevices.notSeen
   // A saved None the scan now contradicts reopens, as a service's No does,
   // unless it was approved while that use was already seen (its basis).
   const mailReview = savedAnswerOf('mailDevices', ctx.mapping)?.value === 'none' && pickable.length > 0 && savedBasisOf('mailDevices', ctx.mapping) !== 'present'
@@ -136,7 +142,7 @@ function useQuestions(ctx: Context, services: { keys: string[]; signal: (key: st
   const partners = snapshot.scenarioEvidence?.serviceProviderSignIns ?? null
   const partnersUsed = partners !== null && partners.count > 0
   // Accounts, never sign-ins: records that name no account say nothing either way.
-  const partnerSeen = partners === null || !signInsRead(snapshot) ? '' : partners.people.length > 0 ? fillText(Q.partner.seen, { n: partners.people.length }) : partners.count === 0 ? Q.partner.notSeen : ''
+  const partnerSeen = partners === null || !signInsReadWhole(snapshot) ? '' : partners.people.length > 0 ? fillText(Q.partner.seen, { n: partners.people.length }) : partners.count === 0 ? Q.partner.notSeen : ''
   const partnerReview = savedAnswerOf('partner', ctx.mapping)?.value === 'no' && partnersUsed && savedBasisOf('partner', ctx.mapping) !== 'present'
   out.push(question('partner', ctx, {
     label: Q.partner.label, control: 'choice', options: optionsOf(Q.partner.options),
