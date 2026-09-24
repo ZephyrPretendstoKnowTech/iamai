@@ -1221,6 +1221,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       ...stateFields(satisfied ? { satisfied: true, inPlace: true } : {}),
       ...(satisfied && facts.length > 0 ? { satisfiedFacts: facts } : {}),
       ...(officeToTrust.length > 0 ? { officeToTrust } : {}),
+      // Done with locations picked from those already in Entra: the procedure
+      // that stands is the one that marks them trusted, not the create.
+      ...(satisfied && office === pickedTrusted && pickedTrusted.length > 0 ? { officeExisting: pickedTrusted.map((l) => ({ id: l.id, name: l.name })) } : {}),
       // In place names the locations that make it so: the evidence a done step carries.
       deliveredBy: office.map((l) => l.name),
     })
@@ -1268,6 +1271,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       const subject = (contentStepById[strengthStepId] as unknown as { card?: { subject?: string } } | undefined)?.card?.subject ?? null
       s.deliveredBy = matched
       if (matched.length > 0 && subject) s.satisfiedFacts = matched.map((title) => ({ heading: subject, title, detail: null }))
+    } else if (strengthRead && name) {
+      // A custom strength already carries the baseline's name but allows other
+      // methods (the older five-method list with the multi-use pass, walk list
+      // 55): the step corrects that one rather than asking for a second strength
+      // of the same name.
+      const same = ((snapshot.config.authStrengths?.rows ?? []) as { id?: unknown; displayName?: unknown; policyType?: unknown }[])
+        .find((r) => typeof r.id === 'string' && r.policyType !== 'builtIn' && typeof r.displayName === 'string' && r.displayName.trim().toLowerCase() === name.trim().toLowerCase())
+      if (same) s.strengthToCorrect = { id: same.id as string, name: (same.displayName as string).trim() }
     }
     steps.push(s)
   }
@@ -1305,7 +1316,27 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // Service and Shared Accounts.
     const members = mapping.serviceAccountsGroupId ? input.groupMembers?.get(mapping.serviceAccountsGroupId) : null
     const matched = groupHoldsExactly(members, mapping.serviceAccountUserIds)
-    const step = { ...prereq(saStepId), ...stateFields(matched ? { satisfied: true, inPlace: true } : {}), naming: { proposed: proposed.name, fromBaseline: null }, deliveredBy: matched ? ['The scanned group includes exactly the selected service accounts.'] : [] }
+    const step: Step = { ...prereq(saStepId), ...stateFields(matched ? { satisfied: true, inPlace: true } : {}), naming: { proposed: proposed.name, fromBaseline: null }, deliveredBy: matched ? ['The scanned group includes exactly the selected service accounts.'] : [] }
+    // Where the step stands short of done (walk list item 7): a saved group read
+    // in full whose members differ is corrected, naming the accounts to add and
+    // the members to remove; with nothing saved, the one scanned group that holds
+    // exactly the picked accounts is found and saving it is what is left.
+    const lc = (id: string): string => id.toLowerCase()
+    const groupName = (id: string, g: { displayName?: string | null } | null | undefined): string => g?.displayName?.trim() || nameOf(id)
+    if (!matched && mapping.serviceAccountsGroupId && members && !members.sampled) {
+      const want = new Set(mapping.serviceAccountUserIds.map(lc))
+      const have = new Set(members.memberIds.map(lc))
+      step.serviceGroup = {
+        kind: 'correct',
+        id: mapping.serviceAccountsGroupId,
+        name: groupName(mapping.serviceAccountsGroupId, members),
+        missing: mapping.serviceAccountUserIds.filter((id) => !have.has(lc(id))),
+        extra: members.memberIds.filter((id) => !want.has(lc(id))),
+      }
+    } else if (!matched && !mapping.serviceAccountsGroupId) {
+      const exact = [...(input.groupMembers ?? new Map()).entries()].filter(([, g]) => groupHoldsExactly(g, mapping.serviceAccountUserIds))
+      if (exact.length === 1) step.serviceGroup = { kind: 'found', id: exact[0][0], name: groupName(exact[0][0], exact[0][1]) }
+    }
     if (mapping.serviceAccountUserIds.length === 0) {
       step.doesntApply = answeredReasonOf('serviceAccounts', 'none')
       step.doesntApplyByAnswer = true

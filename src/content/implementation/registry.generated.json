@@ -20174,7 +20174,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Review **Usage** for the resolved strength so you know which Conditional Access policies will be affected, including any that are already On.\n2. Edit allowed methods to exactly {{strength.target.methodNames}}.\n3. Do not add any other method.\n4. Save and re-read the same strength.\n"
+          "text": "1. Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Authentication methods → Authentication strengths** as a Security Administrator.\n2. Select **{{strength.current.displayName}}**, then **Edit**.\n3. Select exactly these methods: {{strength.target.methodNames}}.\n4. Select **Next**, then **Save**.\n5. Return to IAMAI and select **Scan to update the plan**.\n"
         },
         "entra.verify": {
           "meta": {
@@ -20251,7 +20251,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nAn authentication strength is a named set of sign-in methods that a Conditional Access policy can require. The grant \"Require multifactor authentication\" accepts any second factor the tenant allows, including phone call and text message. This custom strength accepts exactly: {{strength.target.methodNames}}.\n\nWindows Hello for Business, FIDO2 and multifactor certificate authentication are phishing-resistant. A Temporary Access Pass is a time-limited passcode an administrator issues, for example so a person with no usable method can sign in and register one. Because it accepts a Temporary Access Pass, it is not Microsoft's built-in Phishing-resistant MFA strength.\n\nPhone call, text message and Authenticator push notifications are not accepted.\n\nSeveral baseline policies use this strength. Create it once in this tenant; those policies reference it by its object ID.\n"
+          "text": "\nAn authentication strength is a named set of sign-in methods that a Conditional Access policy can require. The grant \"Require multifactor authentication\" accepts any second factor the tenant allows, including phone call and text message. This custom strength accepts exactly: {{strength.target.methodNames}}.\n\nWindows Hello for Business, FIDO2 and multifactor certificate authentication are phishing-resistant. A Temporary Access Pass is a time-limited passcode an administrator issues, for example so a person with no usable method can sign in and register one. Because it accepts a Temporary Access Pass, it is not Microsoft's built-in Phishing-resistant MFA strength.\n\nPhone call, text message and Authenticator push notifications are not accepted.\n\nSeveral baseline policies use this strength and reference it by its object ID.\n"
         },
         "ai.correct": {
           "meta": {
@@ -22161,7 +22161,10 @@
           "dependencies.blockers",
           "serviceAccounts.accountsSummary",
           "serviceAccounts.memberUpns",
-          "service.ropcAccount"
+          "service.ropcAccount",
+          "group.current.displayName",
+          "serviceAccounts.missingUpns",
+          "serviceAccounts.extraUpns"
         ],
         "projection": {
           "needsDecision": {
@@ -22317,7 +22320,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Groups → All groups → New group**.\n2. Group type: **Security**.\n3. Membership type: **Assigned**.\n4. Name: **{{group.target.displayName}}**.\n5. Under **Members**, add {{serviceAccounts.memberUpns}}.\n6. Select **Create**.\n7. Return to IAMAI and select **Scan to update the plan**.\n"
+          "text": "1. Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Groups → All groups → New group**.\n2. Group type: **Security**.\n3. Membership type: **Assigned**.\n4. Name: **{{group.target.displayName}}**.\n5. Under **Members**, add {{serviceAccounts.memberUpns}}.\n6. Select **Create**.\n7. Return to IAMAI and select **Scan to update the plan**.\n8. Under **Service accounts group**, select **{{group.target.displayName}}**, then **Save**.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -22329,7 +22332,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open the service-accounts group IAMAI resolved, ID **{{group.current.id}}**. Correct only the difference IAMAI reports.\n"
+          "text": "Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Groups → All groups → {{group.current.displayName}} → Members**.\n"
         },
         "entra.correct.add": {
           "meta": {
@@ -22341,7 +22344,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Add only the confirmed service-account user IAMAI identifies as missing. Check the user's object ID before saving.\n"
+          "text": "Select **Add members**, add {{serviceAccounts.missingUpns}}, and select **Select**.\n"
         },
         "entra.correct.remove": {
           "meta": {
@@ -22353,7 +22356,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Remove only the direct member IAMAI identifies as outside the confirmed service-account set. Do not delete or disable the user. Once removed, the account is no longer excluded by the policies that exclude this group.\n"
+          "text": "Select {{serviceAccounts.extraUpns}}, then **Remove**.\n"
         },
         "entra.correct.type": {
           "meta": {
@@ -22378,7 +22381,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Verify that the same group (same ID) is an assigned, non-mail-enabled security group and its direct members are exactly the confirmed service-account users, with no service principals or managed identities. Then rescan IAMAI.\n"
+          "text": "Return to IAMAI and select **Scan to update the plan**.\n"
         },
         "json.create": {
           "meta": {
@@ -22468,7 +22471,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nThe service-accounts group does not exist yet. The planned change creates one assigned security group named {{group.target.displayName}} containing only the confirmed user-based service accounts. A rescan after creation lets the policies that exclude it reference its object ID.\n\n{{service.ropcAccount}} signs in with a password from a script: move it to a managed identity or service principal when you can. [omit this line when unavailable]\n{{service.ropcAccounts}} sign in with a password from a script: move each to a managed identity or service principal when you can. [omit this line when unavailable]\n"
+          "text": "\nThe service accounts group is one assigned security group holding exactly the service accounts picked in Identify Service and Shared Accounts. The policies that wait on it reference it once it is saved on this step.\n\n{{service.ropcAccount}} signs in with a password from a script: move it to a managed identity or service principal when you can. [omit this line when unavailable]\n{{service.ropcAccounts}} sign in with a password from a script: move each to a managed identity or service principal when you can. [omit this line when unavailable]\n"
         },
         "ai.correct": {
           "meta": {
@@ -22848,7 +22851,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "A trusted location tells Microsoft Entra that sign-ins from these public IP addresses come from a network the organization controls. Some baseline policies apply differently inside a trusted network.\n\nAdd only public IPv4 and IPv6 ranges the network owner approves, including VPN exits only where that trust is approved. An address seen in sign-ins is not automatically trusted: an unrelated office, a VPN or a shared provider address can appear there too.\n\nDon't add home IP addresses. They change, and the organization does not control them.\n"
+          "text": "A trusted location tells Microsoft Entra that sign-ins from these public IP addresses come from a network the organization controls. Some baseline policies apply differently inside a trusted network.\n"
         },
         "ai.correct": {
           "meta": {

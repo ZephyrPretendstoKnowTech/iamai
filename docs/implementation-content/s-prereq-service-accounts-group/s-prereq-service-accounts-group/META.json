@@ -59,7 +59,10 @@
     "dependencies.blockers",
     "serviceAccounts.accountsSummary",
     "serviceAccounts.memberUpns",
-    "service.ropcAccount"
+    "service.ropcAccount",
+    "group.current.displayName",
+    "serviceAccounts.missingUpns",
+    "serviceAccounts.extraUpns"
   ],
   "projection": {
     "needsDecision": {

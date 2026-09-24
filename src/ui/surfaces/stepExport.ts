@@ -21,6 +21,7 @@ import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, objectTaskLeads,
 import type { LaneView, PrerequisiteLabel, StepContract } from './stepContract.ts'
 import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, previewNoteLines, selectedPolicyBodiesOf, entraWithSettings, workProcedureOf } from './stepPackage.ts'
 import { sectionThreeTasksOf } from './sectionThreeTasks.ts'
+import { existingObjectProcedureOf } from './prepareProcedures.ts'
 import { projectSafely } from '../../content/implementation/project.ts'
 import { BOARD, SUBSTATUS_WORD, boardHolds, laneViewAlone, laneViewFor, laneViewOf, laneWordOf, prerequisiteLabelFor } from './planBoard.ts'
 import type { BoardReadings } from './planBoard.ts'
@@ -457,7 +458,9 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   else if (inPlace) lines.push(...contract.found.filter((x) => x.key === 'in-place').map((x) => x.text))
   // The steps' promise that a scan shows progress follows them while a scan can
   // (stepInstructions.ts rescanLinesOf, R4-20), in the artifacts as on the screen.
-  else if (!unearned && Array.isArray(w.steps)) lines.push(...wholeLines([...w.steps, ...rescanLinesOf(step, cs).steps], ex))
+  // Plain text, as the package procedures below are: a step's own lines carry
+  // the product's bold (walk list item 20), which the export and AI Info drop.
+  else if (!unearned && Array.isArray(w.steps)) lines.push(...wholeLines([...w.steps, ...rescanLinesOf(step, cs).steps], ex).map(plain))
   // The next action the screen states, in the artifact. Where the step's content
   // carries a lead it is already the first line above and the contract's action
   // is that same sentence; where it carries none the contract falls back to
@@ -507,7 +510,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // Info with the lead alone. Each admin's task is headed by its account where
   // there are several.
   const sectionThree = sectionThreeTasksOf(step, ctx)
-  if (step.id === 's-verify-mfa') lines.splice(0, lines.length, ...campaignProcedureLines(step, cs, ex))
+  if (step.id === 's-verify-mfa') lines.splice(0, lines.length, ...campaignProcedureLines(step, cs, ex).map(plain))
   else if (sectionThree !== null) {
     const tasks = sectionThree.tasks
     lines.splice(0, lines.length, ...tasks.flatMap((task) => [
@@ -519,7 +522,11 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
     const runtime = state === null ? null : packageRuntime(pkg, state, bindings, {}).runtime
     const projection = state === null || runtime === null ? null : projectSafely(pkg, state, bindings, runtime)
     const preview = state === null || runtime === null ? null : planningPreview(pkg, step, contract, ctx.snapshot, bindings, runtime, projection)
-    const entra = (preview ?? projection)?.channels.find((channel) => channel.channel === 'entra')
+    // Where the object is already in the tenant, the correction the Entra tab
+    // draws (prepareProcedures.ts), never the create the package projects.
+    const existing = existingObjectProcedureOf(step, pkg, bindings, ex, { upnOf: (id) => ctx.snapshot.users.find((u) => u.id.toLowerCase() === id.toLowerCase())?.userPrincipalName ?? ctx.nameOf(id) })
+    const entra = (existing !== null ? { text: existing.text } : null)
+      ?? (preview ?? projection)?.channels.find((channel) => channel.channel === 'entra')
       ?? (state === null || runtime === null ? undefined : lifecycleResources(pkg, state, bindings, runtime).find((channel) => channel.channel === 'entra'))
       ?? workProcedureOf(pkg, step, bindings)
     if (entra) {
@@ -629,6 +636,9 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
     dates: !undated && reason === null && whole(datesLineFor(step, cs), ex) && datesLineFor(step, cs) ? fillText(datesLineFor(step, cs), ex) : null,
   }
 }
+
+/** A procedure line without its markdown bold. */
+const plain = (line: string): string => line.replace(/\*\*(.*?)\*\*/g, '$1')
 
 const truthy = (v: unknown): boolean => (Array.isArray(v) ? v.length > 0 : typeof v === 'string' ? v.length > 0 : typeof v === 'number' ? v !== 0 : Boolean(v))
 const listKeys = (line: string): string[] => [...line.matchAll(/\{list:([^}]+)\}/g)].map((m) => m[1])

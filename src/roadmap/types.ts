@@ -651,6 +651,25 @@ export type Step = {
    * mark. The step marks them trusted (Ready · Correct) instead of making one.
    */
   officeToTrust?: { id: string; name: string }[]
+  /**
+   * Define the Trusted Network, done with office locations the person picked
+   * that were already in Entra: its procedure is the one that marks them
+   * trusted, not the create (walk list item 19, one procedure in every state).
+   */
+  officeExisting?: { id: string; name: string }[]
+  /**
+   * Create the Baseline's Authentication Strength: a custom strength already
+   * named as the baseline's that allows other methods. The step corrects it
+   * (Ready · Correct) instead of creating a second of the same name.
+   */
+  strengthToCorrect?: { id: string; name: string }
+  /**
+   * Create or Correct Service Accounts Group: the group the scan found holding
+   * exactly the picked accounts, which nobody has saved yet (`found`), or the
+   * saved group whose members differ from them (`correct`), with the accounts to
+   * add and the members to remove.
+   */
+  serviceGroup?: { kind: 'found'; id: string; name: string } | { kind: 'correct'; id: string; name: string; missing: string[]; extra: string[] }
   configurationFindings?: ConfigurationFinding[]
   /**
    * A preparation cohort. `guestIds` are the guests among `ids`: guests stay in the MFA

@@ -351,7 +351,9 @@ export function fill(text: unknown, ex: Ex, depth = 0): string {
 }
 
 const p = (text: unknown, ex: Ex, cls = ''): string => (text === null || text === undefined ? '' : `<p class="${cls}">${fill(text, ex)}</p>`)
-const ol = (items: unknown[] | null | undefined, ex: Ex): string => (!items || items.length === 0 ? '' : '<ol>' + items.map((i) => `<li>${fill(i, ex)}</li>`).join('') + '</ol>')
+// A procedure's steps draw their bold as the product's task steps do
+// (AuthoredText): "select **Scan to update the plan**" (walk list item 20).
+const ol = (items: unknown[] | null | undefined, ex: Ex): string => (!items || items.length === 0 ? '' : '<ol>' + items.map((i) => `<li>${fill(i, ex).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')}</li>`).join('') + '</ol>')
 const ul = (items: unknown[] | null | undefined, ex: Ex): string => (!items || items.length === 0 ? '' : '<ul>' + items.map((i) => `<li>${fill(i, ex)}</li>`).join('') + '</ul>')
 const h = (label: string): string => `<h4>${esc(label)}</h4>`
 const chip = (t: string): string => `<span class="chip">${esc(t)}</span>`

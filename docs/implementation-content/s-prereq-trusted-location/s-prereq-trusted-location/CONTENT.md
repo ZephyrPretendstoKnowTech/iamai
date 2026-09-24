@@ -92,10 +92,6 @@ The owner recorded that no office or VPN network should be treated as trusted. N
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 A trusted location tells Microsoft Entra that sign-ins from these public IP addresses come from a network the organization controls. Some baseline policies apply differently inside a trusted network.
-
-Add only public IPv4 and IPv6 ranges the network owner approves, including VPN exits only where that trust is approved. An address seen in sign-ins is not automatically trusted: an unrelated office, a VPN or a shared provider address can appear there too.
-
-Don't add home IP addresses. They change, and the organization does not control them.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
