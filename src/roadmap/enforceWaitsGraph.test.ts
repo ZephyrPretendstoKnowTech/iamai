@@ -35,23 +35,35 @@ test('a risk policy waits on the MFA campaign, which no readiness threshold cove
   }
 })
 
-test('on every fixture, each open policy waits on exactly the open step prerequisites the board puts on its turn-on', () => {
-  for (const name of FIXTURES) {
-    const f = curatedFixture(name)
-    const run = runFixture(f)
-    const byId = new Map(run.steps.map((s) => [s.id, s]))
-    const conditions = graphConditions(byId, f.mapping)
-    for (const s of run.steps.filter(open)) {
-      const want = new Set<string>()
-      for (const e of EDGES) {
-        if (e.step !== s.id || e.action !== 'enforce' || e.prerequisiteKind !== 'step' || e.milestone !== 'complete') continue
-        if (e.condition !== null && conditions[e.condition] === 'not-applicable') continue
-        if (e.prerequisite === DRILL_PREREQUISITE) continue
-        const p = byId.get(e.prerequisite)
-        if (p && p.status !== 'done' && p.doesntApply == null) want.add(p.id)
+test('on every fixture, each open policy waits on exactly the open step prerequisites the board puts on its turn-on, and on nothing the plan does not carry', () => {
+  // on every fixture, each open policy waits on exactly the open step prerequisites the board puts on its turn-on
+  {
+    for (const name of FIXTURES) {
+      const f = curatedFixture(name)
+      const run = runFixture(f)
+      const byId = new Map(run.steps.map((s) => [s.id, s]))
+      const conditions = graphConditions(byId, f.mapping)
+      for (const s of run.steps.filter(open)) {
+        const want = new Set<string>()
+        for (const e of EDGES) {
+          if (e.step !== s.id || e.action !== 'enforce' || e.prerequisiteKind !== 'step' || e.milestone !== 'complete') continue
+          if (e.condition !== null && conditions[e.condition] === 'not-applicable') continue
+          if (e.prerequisite === DRILL_PREREQUISITE) continue
+          const p = byId.get(e.prerequisite)
+          if (p && p.status !== 'done' && p.doesntApply == null) want.add(p.id)
+        }
+        const got = new Set((s.action.enforceWaitsOn ?? []).map((w) => w.id).filter((id) => id !== DRILL_PREREQUISITE))
+        assert.deepEqual([...got].sort(), [...want].sort(), `${name} ${s.id}`)
       }
-      const got = new Set((s.action.enforceWaitsOn ?? []).map((w) => w.id).filter((id) => id !== DRILL_PREREQUISITE))
-      assert.deepEqual([...got].sort(), [...want].sort(), `${name} ${s.id}`)
+    }
+  }
+
+  // a prerequisite the plan does not carry is nothing to wait on
+  {
+    for (const name of FIXTURES) {
+      const run = runFixture(curatedFixture(name))
+      const ids = new Set(run.steps.map((s) => s.id))
+      for (const s of run.steps) for (const w of s.action.enforceWaitsOn ?? []) assert.ok(w.id === DRILL_PREREQUISITE || ids.has(w.id), `${name} ${s.id} waits on ${w.id}, which is not on the plan`)
     }
   }
 })
@@ -67,12 +79,4 @@ test('a prerequisite said not to apply here holds nothing, and neither does its 
   const steps = run.steps.map((s) => (s.id === prerequisite ? { ...s, doesntApply: 'not here' } : s))
   const after = enforceWaitsOf(steps, schedule, f.mapping)
   assert.ok(!(after.get(held[0]) ?? []).some((w) => w.id === prerequisite), `${held[0]} still waits on ${prerequisite}`)
-})
-
-test('a prerequisite the plan does not carry is nothing to wait on', () => {
-  for (const name of FIXTURES) {
-    const run = runFixture(curatedFixture(name))
-    const ids = new Set(run.steps.map((s) => s.id))
-    for (const s of run.steps) for (const w of s.action.enforceWaitsOn ?? []) assert.ok(w.id === DRILL_PREREQUISITE || ids.has(w.id), `${name} ${s.id} waits on ${w.id}, which is not on the plan`)
-  }
 })

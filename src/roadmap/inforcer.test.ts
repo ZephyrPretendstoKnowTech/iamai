@@ -11,31 +11,36 @@ const fixtureWithUse = () => {
  f.mapping.workflowConfirmedAt = f.snapshot.asOf
  return f
 }
-test('Inforcer uses the ordinary scoped goal and exact application identity, never generic acknowledgement', () => {
- const f = fixtureWithUse()
- const before = runFixture(f).steps
- const unresolved = before.find(s => s.id === 's-goal-inforcer-mfa')!
- assert.ok(unresolved)
- assert.equal(unresolved.state.satisfied, false)
- assert.equal(unresolved.manualReview, undefined)
- assert.ok(unresolved.configurationFindings?.some(f => f.key === 'inforcerApplication' && f.outcome === 'unknown'))
- assert.equal(before.some(s => s.id.startsWith('s-review-baseline-iac-app-inforcer')), false)
- f.snapshot.appSignInSummary.push({ appId: 'wrong-id', appDisplayName: 'Inforcer', signInCount: 1 })
- assert.equal(runFixture(f).steps.find(s => s.id === unresolved.id)?.configurationFindings?.[0].outcome, 'unknown')
- f.snapshot.appSignInSummary.push({ appId: APP, signInCount: 1 })
- const exact = runFixture(f).steps.find(s => s.id === unresolved.id)!
- assert.equal(exact.configurationFindings?.[0].outcome, 'pass')
- assert.ok(exact.action.resolution?.policies.length)
- assert.ok(JSON.stringify(exact.action).includes(APP))
-})
-test('Inforcer No remains a meaningful not-applicable row', () => {
- const f = fixtureWithUse()
- f.mapping.workflowAnswers!.inforcer = 'no'
- f.mapping.facetOverrides.inforcer = { on: false, reason: 'confirmed not in use' }
- const step = runFixture(f).steps.find(s => s.id === 's-goal-inforcer-mfa')!
- assert.ok(step)
- assert.equal(step.state.setAside, true)
- assert.equal(step.state.satisfied, false)
+test('Inforcer uses the ordinary scoped goal and exact application identity, never generic acknowledgement, and No is a meaningful not-applicable row', () => {
+  // Inforcer uses the ordinary scoped goal and exact application identity, never generic acknowledgement
+  {
+   const f = fixtureWithUse()
+   const before = runFixture(f).steps
+   const unresolved = before.find(s => s.id === 's-goal-inforcer-mfa')!
+   assert.ok(unresolved)
+   assert.equal(unresolved.state.satisfied, false)
+   assert.equal(unresolved.manualReview, undefined)
+   assert.ok(unresolved.configurationFindings?.some(f => f.key === 'inforcerApplication' && f.outcome === 'unknown'))
+   assert.equal(before.some(s => s.id.startsWith('s-review-baseline-iac-app-inforcer')), false)
+   f.snapshot.appSignInSummary.push({ appId: 'wrong-id', appDisplayName: 'Inforcer', signInCount: 1 })
+   assert.equal(runFixture(f).steps.find(s => s.id === unresolved.id)?.configurationFindings?.[0].outcome, 'unknown')
+   f.snapshot.appSignInSummary.push({ appId: APP, signInCount: 1 })
+   const exact = runFixture(f).steps.find(s => s.id === unresolved.id)!
+   assert.equal(exact.configurationFindings?.[0].outcome, 'pass')
+   assert.ok(exact.action.resolution?.policies.length)
+   assert.ok(JSON.stringify(exact.action).includes(APP))
+  }
+
+  // Inforcer No remains a meaningful not-applicable row
+  {
+   const f = fixtureWithUse()
+   f.mapping.workflowAnswers!.inforcer = 'no'
+   f.mapping.facetOverrides.inforcer = { on: false, reason: 'confirmed not in use' }
+   const step = runFixture(f).steps.find(s => s.id === 's-goal-inforcer-mfa')!
+   assert.ok(step)
+   assert.equal(step.state.setAside, true)
+   assert.equal(step.state.satisfied, false)
+  }
 })
 
 test('Inforcer recognizes an exact enforced policy and deletion reopens work without repurposing broad MFA', () => {

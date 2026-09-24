@@ -543,8 +543,6 @@ test('the goal a step is filed under decides none of its consequences either', (
   assert.deepEqual(failures, [])
 })
 
-// ---- 3: unknown stays conservative ----
-
 // ---- the values, one at a time ----
 
 /** A scan holding exactly the evidence each case is about. */
