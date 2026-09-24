@@ -37,7 +37,7 @@ Audit numbers from the 1.2–1.4 walk (2026-09-23). All approved.
 | # | Item | Status |
 |---|---|---|
 | 1 | Every rail reads milestone → bar → instruction → controls | fixed |
-| 2 | 1.2's rail names what's left once a group is chosen | approved |
+| 2 | 1.2's rail names what's left once a group is chosen | fixed |
 | 3 | Milestone headline is words, never a date or lane word | fixed |
 | 4 | Impact: 1.2 "N policies", 1.3 "N people", 1.4 "2 accounts" | fixed |
 | 6 | 1.2 membership card reads the group IAMAI holds (no "Could not verify") | fixed |
