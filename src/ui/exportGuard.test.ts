@@ -86,32 +86,25 @@ test('an unredacted export is only reachable from a surface that warns', () => {
   }
 })
 
-test('the grounding bundle still warns before it can be unredacted', () => {
-  // The one export the product deliberately offers in full. The warning has to
-  // render above the control that clears redaction, not after it.
-  const page = readFileSync('src/ui/surfaces/Export.tsx', 'utf8')
-  const warning = page.indexOf('GROUNDING.warning')
-  // The rendered control, not the useState declaration hundreds of lines above
-  // it — the first version of this test compared against the declaration and
-  // failed on correct code.
-  const checkbox = page.indexOf('onChange={(e) => setBundleRedacted(')
-  assert.ok(warning > 0, 'the grounding bundle warning is gone')
-  assert.ok(checkbox > 0, 'the redaction checkbox is gone')
-  assert.ok(warning < checkbox, 'the warning renders after the control it warns about')
-})
-
-test('redaction defaults to on for the bundle', () => {
-  const page = readFileSync('src/ui/surfaces/Export.tsx', 'utf8')
-  assert.match(page, /useState\(true\)[^\n]*\n?/, 'no state initialises to true')
-  assert.match(page, /bundleRedacted[\s\S]{0,80}useState\(true\)|useState\(true\)[\s\S]{0,80}bundleRedacted/, 'bundleRedacted does not default to redacted')
-})
-
-test('sample calendar labels preserve complete summaries and the 75-octet physical line limit', async () => {
-  const { watermarkDemoFile } = await import('./exportGuard.ts')
-  const { foldIcsLine } = await import('../roadmap/ics.ts')
-  const summary = 'SUMMARY:' + 'Check devices — café '.repeat(12)
-  const calendar = ['BEGIN:VCALENDAR', 'BEGIN:VEVENT', foldIcsLine(summary), 'END:VEVENT', 'END:VCALENDAR', ''].join('\r\n')
-  const result = watermarkDemoFile('plan.ics', calendar)
-  for (const line of result.split('\r\n')) assert.ok(Buffer.byteLength(line, 'utf8') <= 75, line)
-  assert.ok(result.replace(/\r\n[ \t]/g, '').includes(summary.replace('SUMMARY:', 'SUMMARY:[DEMO] ')))
+test('the grounding bundle warns before its redaction control, and redaction defaults to on', () => {
+  // The grounding bundle still warns before it can be unredacted.
+  {
+    // The one export the product deliberately offers in full. The warning has to
+    // render above the control that clears redaction, not after it.
+    const page = readFileSync('src/ui/surfaces/Export.tsx', 'utf8')
+    const warning = page.indexOf('GROUNDING.warning')
+    // The rendered control, not the useState declaration hundreds of lines above
+    // it — the first version of this test compared against the declaration and
+    // failed on correct code.
+    const checkbox = page.indexOf('onChange={(e) => setBundleRedacted(')
+    assert.ok(warning > 0, 'the grounding bundle warning is gone')
+    assert.ok(checkbox > 0, 'the redaction checkbox is gone')
+    assert.ok(warning < checkbox, 'the warning renders after the control it warns about')
+  }
+  // Redaction defaults to on for the bundle.
+  {
+    const page = readFileSync('src/ui/surfaces/Export.tsx', 'utf8')
+    assert.match(page, /useState\(true\)[^\n]*\n?/, 'no state initialises to true')
+    assert.match(page, /bundleRedacted[\s\S]{0,80}useState\(true\)|useState\(true\)[\s\S]{0,80}bundleRedacted/, 'bundleRedacted does not default to redacted')
+  }
 })

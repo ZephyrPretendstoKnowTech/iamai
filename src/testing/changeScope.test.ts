@@ -12,7 +12,7 @@ const snap = (fixture: string, stepId: string): string => `${SNAPSHOT_PREFIX}${f
 const pkg = (stepId: string, file = 'package.json'): string => `${PACKAGE_PREFIX}${stepId}/${file}`
 const commit = (message: string, files: string[]): ScopedCommit => ({ sha: 'abcdef0123456789', message, files })
 
-test('a package commit may change only its own step’s snapshots', () => {
+test('a package commit may change only its own step\'s snapshots, a src/ commit only under [snapshots], and any other commit freely', () => {
   assert.deepEqual(violationsOf(commit('token protection: reword the Entra block', [pkg('s-goal-token-protection', 'blocks/entra.md'), snap('demo', 's-goal-token-protection'), snap('demo-week2', 's-goal-token-protection')])), [])
   const bad = violationsOf(commit('token protection: reword the Entra block', [pkg('s-goal-token-protection', 'blocks/entra.md'), snap('demo', 's-goal-token-protection'), snap('demo', 's-goal-mfa-all-users')]))
   assert.equal(bad.length, 1)
@@ -24,13 +24,11 @@ test('a package commit may change only its own step’s snapshots', () => {
   assert.deepEqual(violationsOf(commit('recompile', [pkg('a'), REGISTRY, snap('small', 'a')])), [])
   // The library index at the root of the folder names no package.
   assert.equal(violationsOf(commit('index', [`${PACKAGE_PREFIX}LIBRARY.json`, snap('small', 'a')])).length, 0)
-})
-
-test('a src/ commit may change snapshots only when its message says [snapshots]', () => {
+  // A src/ commit may change snapshots only when its message says [snapshots].
   const files = ['src/ui/surfaces/planBoard.ts', snap('demo', 's-goal-mfa-all-users'), snap('hostile', 's-prereq-break-glass')]
-  const bad = violationsOf(commit('A9: the board reads the lane differently', files))
-  assert.equal(bad.length, 2, 'every snapshot the commit changes is named')
-  for (const line of bad) assert.match(line, /src\/ changed \(src\/ui\/surfaces\/planBoard\.ts\) and the message does not say \[snapshots\]/)
+  const untagged = violationsOf(commit('A9: the board reads the lane differently', files))
+  assert.equal(untagged.length, 2, 'every snapshot the commit changes is named')
+  for (const line of untagged) assert.match(line, /src\/ changed \(src\/ui\/surfaces\/planBoard\.ts\) and the message does not say \[snapshots\]/)
   assert.deepEqual(violationsOf(commit(`A9: the board reads the lane differently ${TAG}`, files)), [])
   assert.equal(TAG, '[snapshots]')
   // src/ and a package in one commit: the tag governs, since the src/ change may move any step.
@@ -38,9 +36,7 @@ test('a src/ commit may change snapshots only when its message says [snapshots]'
   assert.deepEqual(violationsOf(commit(`both ${TAG}`, [...files, pkg('a')])), [])
   // A src/ commit that changes no snapshot needs no tag.
   assert.deepEqual(violationsOf(commit('no snapshots', ['src/ui/surfaces/planBoard.ts', 'src/ui/surfaces/planBoard.test.ts'])), [])
-})
-
-test('any other commit may change snapshots freely: a regeneration, a content change', () => {
+  // Any other commit may change snapshots freely: a regeneration, a content change.
   assert.deepEqual(violationsOf(commit('regenerate', [snap('demo', 'a'), snap('mid', 'b')])), [])
   assert.deepEqual(violationsOf(commit('words', ['docs/design/content.json', snap('demo', 'a')])), [])
   assert.deepEqual(violationsOf(commit('nothing to do with snapshots', ['README.md'])), [])

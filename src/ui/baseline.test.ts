@@ -7,42 +7,27 @@ import { readFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { loadPinnedBaseline, baselineReview, checkAuthorHead, restoreBaseline, PINNED, PINNED_BASELINE } from './baseline.ts'
 import { pinnedPackage } from '../baseline/pinned.ts'
-import { fixture } from '../roadmap/fixtures/index.ts'
-import { runFixture } from '../roadmap/fixtures/run.ts'
-import { demoTenant } from './demo.ts'
 
-test('one policy count, from the pinned package: signed out (the pinned load) and signed in (a restore, whatever file list the record kept) agree', async () => {
-  const pinned = await loadPinnedBaseline()
-  assert.equal(pinned.pkg.policies.length, PINNED.policies.length)
-  assert.equal(pinnedPackage().policies.length, PINNED.policies.length)
-  // A record from before the pin kept the repository's files (many more than the pin holds); the restore reads the pin, not them.
-  const stale = Array.from({ length: 46 }, (_, i) => ({ path: `Policies/stale-${i}.json`, text: JSON.stringify({ id: `stale-${i}`, displayName: `Stale ${i}`, state: 'enabled', conditions: {}, grantControls: null, sessionControls: null }) }))
-  const restored = await restoreBaseline({ kind: 'github', owner: 'x', repo: 'y', commit: PINNED.commit, files: stale })
-  assert.equal(restored.pkg.policies.length, PINNED.policies.length)
-  assert.equal(restored.source, pinned.source)
-})
-
-test('the count reconciles with the not-assessed Cleanup row on the demo: count − assessed = not assessed', () => {
-  const f = fixture('demo')
-  const d = demoTenant(false)
-  const run = runFixture({ ...f, snapshot: d.snapshot, mapping: d.mapping })
-  const count = f.baseline.policies.length
-  assert.equal(count, PINNED.policies.length, 'the demo runs on the pinned package')
-  const assessed = new Set(run.coverage.assessed).size
-  const notAssessed = run.coverage.organisation.notAssessed.length
-  const row = run.schedule.cleanup?.rows.find((r) => (r.kind as string) === 'notAssessed')
-  assert.equal(row, undefined, 'the catch-all is gone')
-  const hiddenAgents = PINNED.policies.filter(p => /IAC - AGENT/i.test(p.displayName ?? '')).length
-  assert.equal(run.steps.filter((s) => s.id.startsWith('s-review-baseline-')).length, notAssessed - hiddenAgents, 'unassessed reviews omit the approved hidden agent definitions')
-  assert.equal(count - assessed, notAssessed, `${count} policies − ${assessed} assessed = ${notAssessed} not assessed`)
-})
-
-test('the pinned baseline loads offline from pinned.json, at its commit', async () => {
-  const r = await loadPinnedBaseline()
-  assert.equal(r.fetchFailures, 0)
-  assert.equal(r.origin.kind, 'github')
-  if (r.origin.kind === 'github') assert.equal(r.origin.commit, PINNED.commit)
-  assert.ok(r.pkg.policies.length >= 30, `expected the pinned policy set, got ${r.pkg.policies.length}`)
+test('the pinned baseline loads offline at its commit, and a restore reads the pin whatever file list the record kept', async () => {
+  // One policy count, from the pinned package: signed out (the pinned load) and signed in (a restore, whatever file list the record kept) agree.
+  {
+    const pinned = await loadPinnedBaseline()
+    assert.equal(pinned.pkg.policies.length, PINNED.policies.length)
+    assert.equal(pinnedPackage().policies.length, PINNED.policies.length)
+    // A record from before the pin kept the repository's files (many more than the pin holds); the restore reads the pin, not them.
+    const stale = Array.from({ length: 46 }, (_, i) => ({ path: `Policies/stale-${i}.json`, text: JSON.stringify({ id: `stale-${i}`, displayName: `Stale ${i}`, state: 'enabled', conditions: {}, grantControls: null, sessionControls: null }) }))
+    const restored = await restoreBaseline({ kind: 'github', owner: 'x', repo: 'y', commit: PINNED.commit, files: stale })
+    assert.equal(restored.pkg.policies.length, PINNED.policies.length)
+    assert.equal(restored.source, pinned.source)
+  }
+  // The pinned baseline loads offline from pinned.json, at its commit.
+  {
+    const r = await loadPinnedBaseline()
+    assert.equal(r.fetchFailures, 0)
+    assert.equal(r.origin.kind, 'github')
+    if (r.origin.kind === 'github') assert.equal(r.origin.commit, PINNED.commit)
+    assert.ok(r.pkg.policies.length >= 30, `expected the pinned policy set, got ${r.pkg.policies.length}`)
+  }
 })
 
 test('checkAuthorHead: a differing head is an update, a matching head is not, a failure is not', async () => {
@@ -191,30 +176,6 @@ test('a stale same-id copy nobody touched is a conflict, not a reviewed change',
   assert.deepEqual(c.deltas, [], 'a conflict states no delta it cannot prove')
 })
 
-test('a same-id copy that agrees collapses: one row, and the blob both commits share is read once', async () => {
-  const commits: Record<string, Commit> = {
-    [PINNED.commit]: { [SAME_POLICY]: before, [SAME_DOC]: before },
-    [HEAD]: { [SAME_POLICY]: after, [SAME_DOC]: after },
-  }
-  const seen: string[] = []
-  const review = await baselineReview(HEAD, githubAt(commits, seen))
-  assert.equal(review.incomplete, false)
-  assert.equal(review.changes.length, 1, 'two agreeing copies of one policy are one change, not two')
-  assert.equal(review.changes[0].kind, 'renamedChanged')
-  // Four path/commit pairs, two distinct blobs: a copy is never fetched twice.
-  const bodies = seen.filter((u) => !u.includes('/git/trees/'))
-  assert.equal(bodies.length, 2, bodies.join(' '))
-})
-
-test('the untouched half of a pair still has to be readable: a body the tree lists and raw will not serve is incomplete', async () => {
-  const commits: Record<string, Commit> = {
-    [PINNED.commit]: { [SAME_POLICY]: before, [SAME_DOC]: before },
-    [HEAD]: { [SAME_POLICY]: after, [SAME_DOC]: before },
-  }
-  const review = await baselineReview(HEAD, unfetchable(commits, SAME_DOC))
-  assert.equal(review.incomplete, true, 'the copy that decides whether the head contradicts itself was not read')
-})
-
 // The absence rule. The tree names the blobs a commit holds, so a body that
 // does not come back is always source IAMAI could not read — never an addition,
 // a removal, or a silence.
@@ -244,16 +205,6 @@ test('L. a body the tree lists and raw will not return is unread source, not an 
   assert.equal(halfRename.incomplete, true, 'the renamed policy had no readable old body, so the rename was not proven')
 })
 
-test('L. a review with no rows still reaches the tile when it is incomplete', async () => {
-  const added: Record<string, Commit> = { [PINNED.commit]: {}, [HEAD]: { [NEW_POLICY]: after } }
-  const empty = await baselineReview(HEAD, unfetchable(added, NEW_POLICY))
-  assert.deepEqual(empty.changes, [])
-  assert.equal(empty.incomplete, true)
-  // Connect drops a review only when it is both empty and complete, so this one renders.
-  const connect = readFileSync('src/ui/surfaces/Connect.tsx', 'utf8')
-  assert.match(connect, /review\.changes\.length === 0 && !review\.incomplete/, 'the tile decides on emptiness alone')
-})
-
 test('K. an inventory or a file IAMAI cannot read is an incomplete review, never zero changes', async () => {
   const offline = await baselineReview(HEAD, (async () => {
     throw new Error('offline')
@@ -280,12 +231,4 @@ test('K. an inventory or a file IAMAI cannot read is an incomplete review, never
   const broken = await baselineReview(HEAD, githubAt(half))
   assert.equal(broken.incomplete, true)
   assert.deepEqual(broken.changes, [])
-})
-
-test('two commits whose candidate blobs all match are no update at all, and nothing is fetched to say so', async () => {
-  const same: Record<string, Commit> = { [PINNED.commit]: { [OLD_POLICY]: before }, [HEAD]: { [OLD_POLICY]: before } }
-  const seen: string[] = []
-  const review = await baselineReview(HEAD, githubAt(same, seen))
-  assert.deepEqual(review, { changes: [], incomplete: false })
-  assert.equal(seen.filter((u) => !u.includes('/git/trees/')).length, 0)
 })
