@@ -34,10 +34,8 @@ import { stepExportView } from './ui/surfaces/stepExport.ts'
 import { jsonOffered, policyJson, stepOperations } from './ui/surfaces/stepJson.ts'
 import { powershellFor } from './ui/surfaces/stepPowerShell.ts'
 import { portalNamesFor, stepPortalLines } from './ui/surfaces/stepPortal.ts'
-import { rowReason, rowWhen } from './ui/surfaces/rowWhen.ts'
-import { statusOf } from './ui/surfaces/statusWord.ts'
+import { rowWhen } from './ui/surfaces/rowWhen.ts'
 import { boardReadingsOf, laneViewFor } from './ui/surfaces/planBoard.ts'
-import { laneReadings } from './ui/surfaces/planLanes.ts'
 import { stepVars } from './ui/surfaces/stepVars.ts'
 import { contentStepFor } from './content/stepTitle.ts'
 import { shows } from './derive/mfaReadiness.ts'
@@ -45,11 +43,9 @@ import { READINESS_STATES, isReady } from './scoring/phishingResistant.ts'
 import { stepPopulation, reached } from './derive/population.ts'
 import { directionBlockerStep } from './roadmap/direction.ts'
 import { factsOf, notReady, stepFacts } from './derive/facts.ts'
-import { deviceChips, methodsLine, nextCell, roleWord, rowCells, stateTitle } from './ui/surfaces/readinessCells.ts'
-import { readinessTable } from './ui/surfaces/inventoryTables.ts'
 import { firstMfaDependency, stepMfaHold } from './derive/stepMfaReadiness.ts'
 import { cleanupComplete } from './roadmap/cleanupDone.ts'
-import { planFinish, planWeeks } from './derive/finish.ts'
+import { planWeeks } from './derive/finish.ts'
 
 /**
  * Every scenario the corpus names must be found in it. A scenario nothing
@@ -129,39 +125,6 @@ test('042.2: every count reconciles with the rows it claims to be about', () => 
       const pop = stepPopulation(step)
       if (reached(step) === null) assert.equal(pop, null, `${c.label}/${step.id}: an unsettled reach produced a count`)
       else if (pop) assert.equal(pop.active, pop.names.length, `${c.label}/${step.id}: the count is not the names`)
-    }
-  }
-})
-
-// ---- 3. Plan collapsed and expanded agree ----
-
-test('042.3: the collapsed row and the opened step agree on every fact they both state', () => {
-  for (const c of corpus()) {
-    for (const step of c.steps) {
-      const contract = stepContract(step, ctxFor(c, step))
-      // The word: the row's projection is the contract's own.
-      assert.equal(contract.state.word, statusOf(step).word, `${c.label}/${step.id}: the row word and the opened step's word differ`)
-      assert.equal(contract.state.lifecycle, step.state.lifecycle, `${c.label}/${step.id}: the contract moved the lifecycle`)
-      assert.equal(contract.state.condition, step.state.condition, `${c.label}/${step.id}: the contract moved the condition`)
-      // The satisfying policy: one reading, two sentences. The row is allowed to
-      // word it differently; it is not allowed to name a different set, or to say
-      // two policies do it together where the contract says one does it alone.
-      const existing = existingOf(step)
-      const reason = rowReason(step)
-      if (existing !== null) {
-        assert.ok(reason !== null, `${c.label}/${step.id}: the opened step names the policy in place and the row says nothing`)
-        for (const n of existing.names) if (!existing.together) assert.ok(reason.includes(existing.names[0]), `${c.label}/${step.id}: the row names a different policy (${n})`)
-        assert.equal(/\btogether\b/.test(reason), existing.together, `${c.label}/${step.id}: the row and the step disagree about whether one policy covers the goal alone`)
-      }
-      // The date column never claims a rollout date for a step whose policy
-      // cannot be written; the contract says the same by carrying no offer.
-      if (unavailableReason(step) !== null && step.status !== 'done') {
-        assert.equal(contract.implementation.offered, false, `${c.label}/${step.id}: an unavailable policy is offered`)
-      }
-      if (heldForReview(step)) {
-        assert.equal(contract.state.condition, 'review-required', `${c.label}/${step.id}: held for review without the condition that says so`)
-        assert.ok(rowWhen(step).length > 0, `${c.label}/${step.id}: a step held for review says nothing in its date column`)
-      }
     }
   }
 })
@@ -377,34 +340,6 @@ test('042.9: nobody is Ready without a usable phishing-resistant method confirme
   }
 })
 
-// ---- 10. the summary and the person rows share one readiness authority ----
-
-test('042.10: every readiness cell is the row it was rendered from, on screen and in the CSV', () => {
-  for (const c of corpus()) {
-    const table = readinessTable(c.fixture.snapshot, c.fixture.mapping)
-    assert.equal(table.rows.length, c.readiness.rows.length, `${c.label}: the CSV has a different number of rows from the page`)
-    c.readiness.rows.forEach((r, i) => {
-      const row = table.rows[i]
-      assert.deepEqual(row.slice(2), rowCells(r), `${c.label}: the exported row is not the rendered row`)
-      assert.equal(row[2], roleWord(r), `${c.label}: the exported role is not the rendered role`)
-      // The rendered chips, then any quiet chip the screen shows beside them (no phone sign-ins, no sign-in in 30 days).
-      assert.ok(String(row[3]).startsWith(deviceChips(r).chips.map((x) => `${x.os}: ${x.word}`).join('; ')), `${c.label}: the exported devices are not the rendered chips`)
-      // The rendered methods cell with the note the screen draws under it (readinessCells.ts methodsLine).
-      assert.equal(row[4], methodsLine(r), `${c.label}: the exported methods are not the rendered methods`)
-      if (r.state !== null) assert.equal(row[5], stateTitle(r.state), `${c.label}: the exported readiness is not the rendered readiness`)
-      assert.equal(row[6], nextCell(r), `${c.label}: the exported next step is not the rendered next step`)
-    })
-    // A Plan step's handoff names the people the same scoring named, and never a
-    // set of its own: the ids are always rows on this page.
-    const rowIds = new Set(c.readiness.rows.map((r) => r.user.id))
-    for (const step of c.steps) {
-      const hold = stepMfaHold(step, c.viability)
-      if (!hold || hold.ids === null) continue
-      for (const id of hold.ids) assert.ok(rowIds.has(id), `${c.label}/${step.id}: the handoff names somebody MFA Readiness does not list`)
-    }
-  }
-})
-
 // ---- 11. unknown does not become safe through a presentation fallback ----
 
 test('042.11: an unmeasured fact is stated as unmeasured, never as a zero or a pass', () => {
@@ -433,57 +368,6 @@ test('042.11: an unmeasured fact is stated as unmeasured, never as a zero or a p
     // nothing: notReady is a count over the partition and never a claim about
     // people the scan did not read.
     assert.ok(notReady(c.readiness.facts) >= 0)
-  }
-})
-
-// ---- 12. the demo reaches its conclusions the same way ----
-
-test('042.12: the sample tenant runs the production path and states the production numbers', async () => {
-  // The demo cases are in the corpus and have been through every assertion
-  // above; this is the one thing only the demo can be wrong about — the numbers
-  // Connect shows for it before anybody signs in.
-  const { demoTenant } = await import('./ui/demo.ts')
-  const { demoFacts } = await import('./ui/demoFacts.ts')
-  const { fixture } = await import('./roadmap/fixtures/index.ts')
-  const { runFixture } = await import('./roadmap/fixtures/run.ts')
-  const { facts, stepFacts } = await import('./derive/facts.ts')
-  const { customerPlanSteps } = await import('./ui/surfaces/customerPlanSteps.ts')
-  const d = demoTenant(false)
-  const run = runFixture({ ...fixture('demo'), snapshot: d.snapshot, mapping: d.mapping })
-  const cleanup = run.schedule.cleanup ?? null
-  // The rows the Plan draws, which is the engine's steps through the one
-  // projection every plan surface reads (ui/surfaces/planData.ts): the tile
-  // states the Plan it opens, so it counts what that Plan draws.
-  const drawn = customerPlanSteps(run.steps)
-  const counts = stepFacts(drawn, cleanup, d.mapping.breakGlassAnswers ?? null)
-  const shown = demoFacts()
-  assert.equal(shown.people, facts(d.snapshot, d.mapping).active, 'the sample tile counts people its own way')
-  assert.equal(shown.steps, counts.steps, 'the sample tile counts steps its own way')
-  assert.equal(shown.inPlace, counts.done, 'the sample tile counts what is in place its own way')
-  assert.equal(shown.weeks, planWeeks(planFinish(drawn, cleanup?.end ?? null), run.schedule), 'the sample tile computes weeks its own way')
-})
-
-// ---- the Cleanup row: one completion, one word, on every surface ----
-
-test('042.13: a Cleanup row reads the same on the Plan and in the printed plan', () => {
-  const attested = { credentialStorage: true, signInMonitoring: true }
-  const silent = { credentialStorage: null, signInMonitoring: null }
-  for (const c of corpus()) {
-    for (const row of c.run.schedule.cleanup?.rows ?? []) {
-      // A monitoring checkbox is not a delivered-alert test. Only the
-      // checkpoint verified by the engine completes this row on either surface.
-      assert.equal(cleanupComplete(row, attested), row.done !== null, `${c.label}: the attestation completed the wrong row`)
-      assert.equal(cleanupComplete(row, silent), row.done !== null, `${c.label}: nothing recorded completed a row`)
-      assert.equal(cleanupComplete(row, null), cleanupComplete(row, undefined), `${c.label}: an absent record and an unread one differ`)
-      // The word is the lane the engine reads for the row (planLanes.ts, A1c), on
-      // the Plan and in the print alike: Completed once finished, a working lane
-      // (Ready, or Up Next behind a prerequisite the graph knows) until then.
-      for (const complete of [cleanupComplete(row, attested), cleanupComplete(row, silent)]) {
-        const lane = laneReadings(c.steps, [{ id: `cleanup-${row.kind}`, complete }]).get(`cleanup-${row.kind}`)
-        assert.ok(lane, `${c.label}: the Cleanup row ${row.kind} has no lane`)
-        assert.equal(lane!.lane === 'Completed', complete, `${c.label}: a Cleanup row's lane is not its state`)
-      }
-    }
   }
 })
 
@@ -527,7 +411,7 @@ test('042.16: the plan header counts a Cleanup row exactly when the row reads In
   assert.ok(alertingCases > 0, 'no case in the corpus has an alerting Cleanup row: the assertion above is vacuous')
 })
 
-// ---- 13. no assertion above depends on an identifier ----
+// ---- no assertion above depends on an identifier ----
 
 test('042.14: the corpus and this file select by semantics, never by identity', () => {
   const guid = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i

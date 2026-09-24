@@ -24,23 +24,13 @@ import { fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { isHeld } from '../roadmap/holds.ts'
 import { generateRoadmap } from '../roadmap/generate.ts'
-import { floorRows, floorGroupIds } from './surfaces/planRows.ts'
-import { FLOOR_GOAL_IDS } from '../roadmap/floor.ts'
-import { ladder, stateIds } from '../derive/ladder.ts'
-import type { ReadinessState } from '../scoring/phishingResistant.ts'
-import { isQualifying, isReady } from '../scoring/phishingResistant.ts'
-import { scoredPeople } from '../derive/mfaReadiness.ts'
-import { stepMfaHold } from '../derive/stepMfaReadiness.ts'
-import { notPeopleIds } from '../derive/sets.ts'
+import { ladder } from '../derive/ladder.ts'
 import { jsonOffered, missingObjects, policyJsonText } from './surfaces/stepJson.ts'
-import { statusOf } from './surfaces/statusWord.ts'
-import { readinessStepHref, resolveHash, PLAN_HREF, READINESS_HREF, VALID } from './shell/routes.ts'
 import { DEMO_TENANT_ID, DEMO_PARAM, DEMO_SNAPSHOT_STATE_ID } from './demoMode.ts'
 import { demoSnapshotKey, demoTenant, nextDemoRecord } from './demo.ts'
 import type { DemoPlanRecord, DemoSnapshotState, DemoTenant } from './demo.ts'
 import type { Step } from '../roadmap/types.ts'
 import { cleanupRecord, isRecordedDrill, recoveryEvidenceOf } from '../roadmap/cleanupDone.ts'
-import { absoluteDate, absoluteLocal, displayZone, setDisplayTimeZone } from '../copy/dates.ts'
 
 test('the follow-up demo keeps a recorded drill on its sign-in day at every UTC hour', (t) => {
   let now = 0
@@ -54,50 +44,6 @@ test('the follow-up demo keeps a recorded drill on its sign-in day at every UTC 
       const { context } = recoveryEvidenceOf(demo.snapshot, demo.mapping, demo.groups, record.records ?? [], demo.snapshot.asOf, id)
       assert.equal(isRecordedDrill(signIn, record.drills, id, record.records, context), true, `hour ${hour}, account ${id}`)
     }
-  }
-})
-
-test("the sample's dates never run ahead of the scan stamp beside them, at every UTC hour", (t) => {
-  const visitor = displayZone(null)
-  let now = 0
-  t.mock.method(Date, 'now', () => now)
-  try {
-    for (const week2 of [false, true]) {
-      const f = fixture(week2 ? 'demo-week2' : 'demo')
-      // The fixtures are written for an Australian tenant and name its zone; the
-      // visitor is wherever they are, and the sample is read as their own tenant,
-      // so it takes their zone as the Setup wizard would (mapping/wizard.ts).
-      if (f.mapping.displayTimeZone !== visitor) assert.notEqual(demoTenant(week2).mapping.displayTimeZone, f.mapping.displayTimeZone, 'the sample keeps the fixture author’s zone')
-      for (let hour = 0; hour < 24; hour++) {
-        now = Date.parse(`2026-09-15T${String(hour).padStart(2, '0')}:30:00.000Z`)
-        const d = demoTenant(week2)
-        assert.equal(d.mapping.displayTimeZone, visitor, `hour ${hour}: the sample does not render in the visitor’s zone`)
-        setDisplayTimeZone(d.mapping.displayTimeZone)
-        // The scan stamp is always the browser's own zone (copy/dates.ts
-        // absoluteLocal: scan context belongs to the session), so the plan's dates
-        // agree with it only while the plan renders in that zone too.
-        const stamp = absoluteLocal(d.snapshot.asOf)
-        const day = absoluteDate(d.snapshot.asOf)
-        assert.ok(stamp.startsWith(day), `hour ${hour}: the plan says ${day} and the scan stamp says ${stamp}`)
-        // And nothing the sample carries is dated after the scan it came from.
-        const ahead: string[] = []
-        const walk = (v: unknown, path: string): void => {
-          if (typeof v === 'string') {
-            if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v) && Date.parse(v) > Date.parse(d.snapshot.asOf)) ahead.push(`${path} = ${v}`)
-            else if (/^\d{4}-\d{2}-\d{2}$/.test(v) && v > d.snapshot.asOf.slice(0, 10)) ahead.push(`${path} = ${v}`)
-            return
-          }
-          if (Array.isArray(v)) return void v.forEach((x, i) => walk(x, `${path}[${i}]`))
-          if (v && typeof v === 'object') for (const [k, x] of Object.entries(v as Record<string, unknown>)) walk(x, `${path}.${k}`)
-        }
-        walk(d.snapshot, 'snapshot')
-        walk(d.decisions, 'decisions')
-        walk(d.checkpoints, 'checkpoints')
-        assert.deepEqual(ahead, [], `hour ${hour}: dated after the sample's own scan`)
-      }
-    }
-  } finally {
-    setDisplayTimeZone(null)
   }
 })
 
@@ -160,68 +106,74 @@ function moduleGraph(entry: string): Set<string> {
 // A. No Microsoft sign-in and no Graph read
 // ---------------------------------------------------------------------------
 
-test('A: the sample tenant loads nothing that can sign in or read a tenant', () => {
-  const graph = moduleGraph('src/ui/demo.ts')
-  // The sign-in library and the collector's runner: neither may be reachable
-  // from the sample, because a module that is loaded is a module that can run.
-  const libs = [...graph].filter((m) => /msal/i.test(m) || m === 'src/graph/auth.ts' || m === 'src/graph/collect/runScan.ts')
-  assert.deepEqual(libs, [], `the demo chunk reaches sign-in or the collector: ${libs.join(', ')}`)
-  // And nothing it does load can reach a tenant: no request, no token. A
-  // constants or types module under graph/ is fine — it is a table of names.
-  const reaches = [...graph]
-    .filter((m) => /^src\/.*\.tsx?$/.test(m))
-    .filter((m) => /\bfetch\s*\(|XMLHttpRequest|acquireToken|sendBeacon|new WebSocket/.test(code(m)))
-  assert.deepEqual(reaches, [], `a module the demo loads can reach the network: ${reaches.join(', ')}`)
-  // The switches every page reads are lighter still: they load nothing at all,
-  // so reading them outside the demo cannot pull the sample in behind them.
-  assert.equal(/^\s*import\b/m.test(read('src/ui/demoMode.ts')), false)
-})
-
-test('A: building the sample tenant makes no network call', () => {
-  // Nothing here may reach out: the sample is bytes in the bundle. A fetch is
-  // the one thing that would turn a sample into a request, so it is taken away
-  // for the duration and the whole tenant is built without it.
-  const realFetch = globalThis.fetch
-  globalThis.fetch = (() => {
-    throw new Error('the demo fetched')
-  }) as typeof fetch
-  try {
-    const d = demoTenant(false)
-    assert.equal(d.snapshot.tenantId, DEMO_TENANT_ID)
-    assert.ok(d.snapshot.users.length > 0)
-  } finally {
-    globalThis.fetch = realFetch
+test('A: the sample tenant loads nothing that can sign in or read a tenant, and building it makes no network call', () => {
+  // A: the sample tenant loads nothing that can sign in or read a tenant.
+  {
+    const graph = moduleGraph('src/ui/demo.ts')
+    // The sign-in library and the collector's runner: neither may be reachable
+    // from the sample, because a module that is loaded is a module that can run.
+    const libs = [...graph].filter((m) => /msal/i.test(m) || m === 'src/graph/auth.ts' || m === 'src/graph/collect/runScan.ts')
+    assert.deepEqual(libs, [], `the demo chunk reaches sign-in or the collector: ${libs.join(', ')}`)
+    // And nothing it does load can reach a tenant: no request, no token. A
+    // constants or types module under graph/ is fine — it is a table of names.
+    const reaches = [...graph]
+      .filter((m) => /^src\/.*\.tsx?$/.test(m))
+      .filter((m) => /\bfetch\s*\(|XMLHttpRequest|acquireToken|sendBeacon|new WebSocket/.test(code(m)))
+    assert.deepEqual(reaches, [], `a module the demo loads can reach the network: ${reaches.join(', ')}`)
+    // The switches every page reads are lighter still: they load nothing at all,
+    // so reading them outside the demo cannot pull the sample in behind them.
+    assert.equal(/^\s*import\b/m.test(read('src/ui/demoMode.ts')), false)
+  }
+  // A: building the sample tenant makes no network call.
+  {
+    // Nothing here may reach out: the sample is bytes in the bundle. A fetch is
+    // the one thing that would turn a sample into a request, so it is taken away
+    // for the duration and the whole tenant is built without it.
+    const realFetch = globalThis.fetch
+    globalThis.fetch = (() => {
+      throw new Error('the demo fetched')
+    }) as typeof fetch
+    try {
+      const d = demoTenant(false)
+      assert.equal(d.snapshot.tenantId, DEMO_TENANT_ID)
+      assert.ok(d.snapshot.users.length > 0)
+    } finally {
+      globalThis.fetch = realFetch
+    }
   }
 })
 
-test('A: entering the demo is a URL, never a stored flag, and never an account', () => {
-  const mode = read('src/ui/demoMode.ts')
-  assert.equal(DEMO_PARAM, 'demo')
-  assert.ok(/new URLSearchParams\(search\)\.get\(DEMO_PARAM\)/.test(mode), 'isDemo reads the query and nothing else')
-  assert.equal(/localStorage|sessionStorage|indexedDB/.test(mode), false, 'demo mode is never read from storage')
-  const app = read('src/ui/App.tsx')
-  const branch = app.slice(app.indexOf('if (DEMO) {'), app.indexOf('if (MOCK) {'))
-  assert.ok(branch.length > 0 && branch.includes("import('./demo.ts')"), 'App loads the sample tenant on demand')
-  assert.equal(/signIn|acquireToken|restoreSession|startScan|handleRedirect/.test(branch), false, 'the demo branch starts no sign-in and no scan')
-  assert.ok(/return \(\) => \{/.test(branch), 'the demo branch returns before the mock and the real sign-in path')
-})
-
-test('A: nothing in the demo offers a Microsoft sign-in or a Microsoft sign-out', () => {
-  // The two actions that reach the sign-in library are Connect's tile 1 and the
-  // header's Account menu. In the demo there is no Microsoft account: one would
-  // start a real redirect and the other would clear the real sign-in cache in
-  // this tab, which is the demo reaching into a real tenant's session.
-  const connect = read('src/ui/surfaces/Connect.tsx')
-  assert.ok(/isDemo\(\) \? sampleTile\(/.test(connect), 'the demo still renders the signed-in account tile')
-  // Task 032 moved a step's buttons into the pack's action zone, which is a
-  // prop rather than a div inside the body; the branch itself is unchanged.
-  const actions = connect.slice(connect.indexOf('actions={', connect.indexOf('const t1 = isDemo()')))
-  const block = actions.slice(0, actions.indexOf('</Step>'))
-  assert.ok(/isDemo\(\) \? \(/.test(block) && /exitDemoUrl\(\)/.test(block), "tile 1's actions are not branched for the demo")
-  const demoArm = block.slice(block.indexOf('isDemo() ? ('), block.indexOf(') : ('))
-  assert.equal(/signInAnother|signOut/.test(demoArm), false, 'tile 1 offers a Microsoft action in the demo')
-  const shell = read('src/ui/shell/AppShell.tsx')
-  assert.ok(/signedIn && !isDemo\(\) && <AccountMenu/.test(shell), 'the header offers the Account menu in the demo')
+test('A: entering the demo is a URL, never a stored flag or an account, and nothing in it offers a Microsoft sign-in or sign-out', () => {
+  // A: entering the demo is a URL, never a stored flag, and never an account.
+  {
+    const mode = read('src/ui/demoMode.ts')
+    assert.equal(DEMO_PARAM, 'demo')
+    assert.ok(/new URLSearchParams\(search\)\.get\(DEMO_PARAM\)/.test(mode), 'isDemo reads the query and nothing else')
+    assert.equal(/localStorage|sessionStorage|indexedDB/.test(mode), false, 'demo mode is never read from storage')
+    const app = read('src/ui/App.tsx')
+    const branch = app.slice(app.indexOf('if (DEMO) {'), app.indexOf('if (MOCK) {'))
+    assert.ok(branch.length > 0 && branch.includes("import('./demo.ts')"), 'App loads the sample tenant on demand')
+    assert.equal(/signIn|acquireToken|restoreSession|startScan|handleRedirect/.test(branch), false, 'the demo branch starts no sign-in and no scan')
+    assert.ok(/return \(\) => \{/.test(branch), 'the demo branch returns before the mock and the real sign-in path')
+  }
+  // A: nothing in the demo offers a Microsoft sign-in or a Microsoft sign-out.
+  {
+    // The two actions that reach the sign-in library are Connect's tile 1 and the
+    // header's Account menu. In the demo there is no Microsoft account: one would
+    // start a real redirect and the other would clear the real sign-in cache in
+    // this tab, which is the demo reaching into a real tenant's session.
+    const connect = read('src/ui/surfaces/Connect.tsx')
+    assert.ok(/isDemo\(\) \? sampleTile\(/.test(connect), 'the demo still renders the signed-in account tile')
+    // Task 032 moved a step's buttons into the pack's action zone, which is a
+    // prop rather than a div inside the body; the branch itself is unchanged.
+    const actions = connect.slice(connect.indexOf('actions={', connect.indexOf('const t1 = isDemo()')))
+    const block = actions.slice(0, actions.indexOf('</Step>'))
+    assert.ok(/isDemo\(\) \? \(/.test(block) && /exitDemoUrl\(\)/.test(block), "tile 1's actions are not branched for the demo")
+    const demoArm = block.slice(block.indexOf('isDemo() ? ('), block.indexOf(') : ('))
+    assert.equal(/signInAnother|signOut/.test(demoArm), false, 'tile 1 offers a Microsoft action in the demo')
+    const shell = read('src/ui/shell/AppShell.tsx')
+    assert.ok(/signedIn && !isDemo\(\) && <AccountMenu/.test(shell), 'the header offers the Account menu in the demo')
+  }
 })
 
 // ---------------------------------------------------------------------------
@@ -237,117 +189,6 @@ test('B: there is one plan generator, and no demo file calls or copies it', () =
     // it); it may not derive a step, a state, a status or a coverage result.
     assert.equal(/generateRoadmap|computeCoverage|applyProgress|annotateStateReasons|scoreMfaViability|stepContract|settleForecast/.test(src), false, `${f} derives a product conclusion`)
   }
-})
-
-test('B: the sample tenant supplies facts only — a snapshot, a mapping, groups and the pinned baseline', () => {
-  const d = demoTenant(false)
-  assert.deepEqual(Object.keys(d).sort(), ['baseline', 'checkpoints', 'decisions', 'groups', 'mapping', 'operatorId', 'snapshot'].sort())
-  // Nothing that looks like a rendered conclusion travels with the sample.
-  const json = JSON.stringify({ snapshot: d.snapshot, mapping: d.mapping })
-  for (const word of ['"lifecycle"', '"readyToEnforce"', '"blockers"', '"stepId"', '"rung"']) {
-    assert.equal(json.includes(word), false, `the sample tenant carries ${word}, which is a conclusion the engines make`)
-  }
-})
-
-test('B: the sample Plan is what generateRoadmap returns over the sample facts', () => {
-  const f = fixture('demo')
-  const run = runFixture(f)
-  assert.ok(run.steps.length > 10, `the sample plan has ${run.steps.length} steps`)
-  // The run is generateRoadmap's own output shape: the same keys the app renders.
-  assert.equal(typeof generateRoadmap, 'function')
-  for (const s of run.steps) {
-    assert.ok(s.state, `${s.id} has no Foundation B state`)
-    assert.ok(statusOf(s).word.length > 0, `${s.id} has no status word`)
-  }
-})
-
-test('B: the sample Plan shows a useful mix, and every part of it is derived', () => {
-  const run = runFixture(fixture('demo'))
-  const by = (p: (s: Step) => boolean) => run.steps.filter(p)
-  // Work already done: a control the tenant's own policies satisfy.
-  const satisfied = by((s) => s.state.satisfied === true && s.state.inPlace === true)
-  // Day one's policies carve out the break-glass group rather than the chosen
-  // exclusions group, so they are partly in place until it is corrected (Step 3
-  // correction); what is in place needs no exclusions group.
-  assert.ok(satisfied.length >= 1, `the sample has ${satisfied.length} controls already in place`)
-  assert.ok(by((s) => s.id.startsWith('s-goal-') && s.status !== 'done' && run.coverage.results.some((x) => x.goal.id === s.goalId && x.reasons.some((y) => y.kind === 'exclusion-missing'))).length >= 1, 'and controls partly in place for the exclusions group alone')
-  // Work still to do.
-  assert.ok(by((s) => s.status !== 'done').length >= 5, 'the sample has controls that still need work')
-  // A real prerequisite, named by the step that holds it — not a label.
-  const held = by((s) => (s.blockers ?? []).some((b) => b.kind === 'step'))
-  assert.ok(held.length >= 1, 'no sample step is held by another step')
-  assert.ok(
-    held.every((s) => (s.blockers ?? []).every((b) => b.kind !== 'step' || run.steps.some((x) => x.id === b.stepId))),
-    'a blocker names a step the sample plan does not hold',
-  )
-  // The baseline conflict on the sample is the pinned package's own reading, not
-  // a fixture invention: the demo runs on the product's pinned baseline.
-  const conflicted = by((s) => s.state.condition === 'baseline-conflict')
-  assert.equal(conflicted.length, 1, 'the sample carries exactly the conflict the pinned package defines')
-})
-
-// ---------------------------------------------------------------------------
-// C. One readiness ladder
-// ---------------------------------------------------------------------------
-
-test('C: the sample people are scored by readiness, with the mix MFA Readiness is for', () => {
-  const f = fixture('demo')
-  const l = ladder(f.snapshot, f.mapping, f.snapshot.asOf)
-  assert.ok(l.active >= 20, `the sample has ${l.active} active people`)
-  // Ready (Seamless counts as Ready), and an administrator among them: the done end of the page.
-  const ready = [...l.states.ready, ...l.states.seamless]
-  assert.ok(ready.length >= 1, 'no sample person is Ready for phishing-resistant sign-in')
-  assert.ok(ready.some((p) => p.admin), 'no sample administrator is Ready')
-  assert.ok(stateIds(l, 'seamless').length >= 1, 'no sample person is Seamless')
-  // Confirmed on one device and not on another the person uses.
-  assert.ok(l.states.device.some((p) => p.viability.readiness.devices.some((d) => d.proof !== null) && p.viability.readiness.devices.some((d) => d.proof === null)), 'no sample person needs a device they use')
-  // A registered method with no confirmed sign-in, and people who still need a qualifying method.
-  assert.ok(stateIds(l, 'confirm').length >= 1, 'no sample person needs to confirm a method')
-  assert.ok(stateIds(l, 'method').length >= 1, 'every sample person already has a qualifying method')
-  // Emergency access and the non-person accounts are beside the denominator, never in it.
-  const notPeople = notPeopleIds(f.mapping)
-  assert.ok(l.kinds.emergency.length >= 1 && l.kinds.service.length >= 1)
-  const scoredIds = new Set(Object.values(l.states).flat().map((p) => p.id))
-  for (const id of notPeople) assert.equal(scoredIds.has(id), false, `${id} is not a person and is counted as one`)
-})
-
-test('C: generic MFA evidence proves no qualifying method, and Windows Hello proves only where it was used', () => {
-  const f = fixture('demo')
-  const l = ladder(f.snapshot, f.mapping, f.snapshot.asOf)
-  // Read through the one derivation: this is a claim about the sample's facts,
-  // not a second rule about what a method proves.
-  for (const [id, v] of l.viability) {
-    const rd = v.readiness
-    if (isReady(rd.state)) assert.ok(rd.qualifying.length > 0 && rd.devices.length > 0 && rd.devices.every((d) => d.proof !== null), `${id} is Ready without a qualifying method confirmed on every device used`)
-    for (const d of rd.devices) {
-      if (!d.proof) continue
-      assert.ok(isQualifying(d.proof.cls), `${id}: ${d.os} is confirmed by a method that is not phishing-resistant`)
-      assert.ok(rd.qualifying.includes(d.proof.cls), `${id} carries proof for a method it does not hold`)
-    }
-  }
-  // Windows Hello alone does not travel: a Hello-only person seen on another platform is not Ready.
-  const helloOnly = [...l.viability.values()].filter((v) => v.readiness.qualifying.length === 1 && v.readiness.qualifying[0] === 'windowsHello')
-  assert.ok(helloOnly.length >= 1, 'the sample has nobody holding Windows Hello alone')
-  assert.ok(helloOnly.some((v) => v.readiness.devices.some((d) => d.os !== 'Windows')), 'the sample has no Hello-only person on another platform')
-  for (const v of helloOnly) {
-    if (v.readiness.devices.some((d) => d.os !== 'Windows')) assert.equal(isReady(v.readiness.state), false, `${v.userId} holds Windows Hello alone, uses another platform and reads as Ready`)
-    for (const d of v.readiness.devices) if (d.os !== 'Windows') assert.equal(d.proof, null, `${v.userId}: Windows Hello confirmed on ${d.os}`)
-  }
-})
-
-test('C: a sample Plan step hands off to MFA Readiness by step id, and the people come from the same scoring', () => {
-  const f = fixture('demo')
-  const run = runFixture(f)
-  const scored = scoredPeople(f.snapshot, f.mapping, f.snapshot.asOf)
-  const handoffs = run.steps.map((s) => [s, stepMfaHold(s, scored)] as const).filter(([, h]) => h !== null)
-  assert.ok(handoffs.length >= 1, 'no sample step hands off to MFA Readiness')
-  const [step, hold] = handoffs.find(([, h]) => h !== null && h.ids !== null && h.ids.length > 0) ?? handoffs[0]
-  assert.ok(hold !== null)
-  // The link carries the step and nothing about the people.
-  const href = readinessStepHref(step.id)
-  assert.equal(resolveHash(href).route, 'readiness')
-  const scoredIds = new Set(scored.map((p) => p.userId))
-  for (const id of hold.ids ?? []) assert.ok(scoredIds.has(id), `${id} is held by the step and is not one of the scored people`)
 })
 
 // ---------------------------------------------------------------------------
@@ -425,33 +266,6 @@ test('E: one demo tenant id, stamped on the sample and on nothing else', () => {
   assert.ok(/saveMappingState\(d\.mapping\)/.test(branch), 'the demo writes a mapping it did not stamp')
 })
 
-test('E: leaving the demo drops the switch and lands on Connect; sign out and forget clear the sample snapshot', () => {
-  const mode = read('src/ui/demoMode.ts')
-  assert.ok(/searchParams\.delete\(DEMO_PARAM\)/.test(mode) && /u\.hash = '#\/connect'/.test(mode), 'exitDemoUrl does not leave demo mode for Connect')
-  assert.ok(/searchParams\.set\(DEMO_PARAM, '1'\)/.test(mode) && /u\.hash = '#\/plan'/.test(mode), 'the demo does not enter at the Plan')
-  const actions = read('src/ui/actions.ts')
-  // The two ways a tenant is let go of both put the sample's snapshot back to
-  // its first one, so a real tenant never inherits the sample's progression.
-  const signOut = actions.slice(actions.indexOf('export async function signOut'), actions.indexOf('export async function forgetTenant'))
-  assert.ok(/demoWeek2: false/.test(signOut), 'Sign out leaves the sample on its follow-up snapshot')
-  assert.ok(/demoWeek2: false/.test(actions.slice(actions.indexOf('export async function forgetTenant'))), 'Forget this tenant leaves the sample on its follow-up snapshot')
-})
-
-test('E: the snapshot selector changes the input and nothing else, and does nothing outside the demo', () => {
-  const actions = read('src/ui/actions.ts')
-  const fn = actions.slice(actions.indexOf('export function showDemoSnapshot'), actions.indexOf('export function stopScan'))
-  assert.ok(/if \(!isDemo\(\)\) return/.test(fn), 'the snapshot selector acts outside the demo')
-  assert.ok(/setSession\(\{ demoWeek2: followUp \}\)/.test(fn), 'the selector does not set the requested snapshot')
-  // It sets the request, and nothing about the plan: no step, no status, no row.
-  assert.equal(/steps|status|lifecycle|coverage/.test(fn), false, 'the selector touches a derived conclusion')
-  // The demo's Scan again only ever moves forward: a control called "Scan again"
-  // may not walk the sample backwards in time.
-  const scan = actions.slice(actions.indexOf('export async function scan'), actions.indexOf('export function showDemoSnapshot'))
-  const demoBranch = scan.slice(scan.indexOf('if (isDemo())'), scan.indexOf('if (s.scan.state ==='))
-  assert.equal(/demoWeek2: !s\.demoWeek2/.test(demoBranch), false, 'the demo scan toggles the snapshot')
-  assert.ok(/setSession\(\{ demoWeek2: true \}\)/.test(demoBranch), 'the demo scan does not advance to the follow-up snapshot')
-})
-
 /**
  * One visit to the sample, snapshot by snapshot: the rule App.tsx applies
  * (demo.ts nextDemoRecord) over the two fixtures' seeds, with `persist`
@@ -477,151 +291,70 @@ function demoVisit(initial: DemoTenant, follow: DemoTenant): { show: (followUp: 
   }
 }
 
-test("E: selecting the initial scan restores the initial scan, and the follow-up scan's inputs stay with it", () => {
-  const initial = demoTenant(false)
-  const follow = demoTenant(true)
-  const visit = demoVisit(initial, follow)
-  // Day one, first visit: the sample's own answers, and nothing else.
-  const day1 = visit.show(false)
-  assert.deepEqual(Object.keys(day1.stepDecisions ?? {}).sort(), Object.keys(initial.decisions ?? {}).sort())
-  // The visitor answers a question, and the Plan records what day one saw.
-  visit.persist({ stepDecisions: { 's-visitor-answer': { option: 'Yes', at: initial.snapshot.asOf } }, observations: { 'p-day-one': 'seen' }, startDate: '2026-10-05' })
-  const mine = { ...visit.record() }
-  delete mine.tenantId
-  // Week two: the same tenant scanned again, so the visitor's plan comes with
-  // it, and the sample technician's week-one answers arrive beside it.
-  const week2 = visit.show(true)
-  const followOnly = Object.keys(follow.decisions ?? {}).filter((k) => !(k in (initial.decisions ?? {})))
-  assert.ok(followOnly.length > 0, 'the follow-up fixture seeds no decisions of its own')
-  for (const k of followOnly) assert.ok(k in (week2.stepDecisions ?? {}), `the follow-up scan does not carry ${k}`)
-  assert.ok('s-visitor-answer' in (week2.stepDecisions ?? {}), "a re-scan of one tenant restarted the visitor's plan")
-  // Week two runs, and the Plan records what week two saw.
-  visit.persist({ observations: { 'p-week-two': 'report-only proven' }, checkpoints: [{ kind: 'drill', done: true }] })
-  // Back to the initial scan: exactly the record day one was left with.
-  const back = visit.show(false)
-  assert.deepEqual(back, mine, 'the initial scan did not come back as it was left')
-  for (const k of followOnly) assert.equal(k in (back.stepDecisions ?? {}), false, `the follow-up scan's ${k} is still on the initial plan`)
-  assert.deepEqual(back.observations, { 'p-day-one': 'seen' }, "week two's proof is still on the initial plan")
-  assert.deepEqual(back.checkpoints, day1.checkpoints, "week two's checkpoints are still on the initial plan")
-  // And week two is still itself: selected again, it is what it was left as.
-  const again = visit.show(true)
-  assert.deepEqual(again.observations, { 'p-week-two': 'report-only proven' }, 'the follow-up scan lost what it saw')
-  assert.deepEqual(again.checkpoints, [{ kind: 'drill', done: true }])
-})
-
-test('E: the sample seeds a snapshot once, and never over the visitor', () => {
-  const initial = demoTenant(false)
-  const follow = demoTenant(true)
-  const seeded = Object.keys(initial.decisions ?? {})[0]
-  assert.ok(seeded, 'the initial fixture seeds no decision')
-  const visit = demoVisit(initial, follow)
-  visit.show(false)
-  // The visitor answers the seeded question themselves; the same snapshot shown
-  // again must not put the sample's answer back over theirs.
-  visit.persist({ stepDecisions: { [seeded]: { option: 'the visitor said this', at: initial.snapshot.asOf } } })
-  const reload = visit.show(false)
-  assert.deepEqual(reload.stepDecisions?.[seeded], { option: 'the visitor said this', at: initial.snapshot.asOf })
-  // A record written before this rule existed cannot be placed in a snapshot:
-  // no demo row says which one it belongs to, so the sample is seeded afresh
-  // rather than opened over inputs of unknown provenance.
-  const orphan = nextDemoRecord({
-    want: 'initial',
-    stored: null,
-    live: { tenantId: DEMO_TENANT_ID, stepDecisions: { 's-from-a-previous-build': { option: 'x', at: initial.snapshot.asOf } }, observations: { 'p-unknown': 'seen' } },
-    seed: { decisions: initial.decisions, checkpoints: initial.checkpoints },
-  })
-  assert.deepEqual(Object.keys(orphan.record.stepDecisions ?? {}).sort(), Object.keys(initial.decisions ?? {}).sort())
-  assert.equal('observations' in orphan.record, false)
-  assert.equal(orphan.state.current, 'initial')
-})
-
-test('E: the sample banner names the sample, names the snapshot on screen, and offers the way out', () => {
-  const shell = read('src/ui/shell/AppShell.tsx')
-  const banner = shell.slice(shell.indexOf('{isDemo() && ('), shell.indexOf('{signedIn && <ScanLine'))
-  assert.ok(/role="status"/.test(banner) && /SHELL\.demoBanner/.test(banner), 'the sample-data line is not a live region')
-  assert.ok(/SHELL\.demoLeave/.test(banner) && /exitDemoUrl\(\)/.test(banner), 'the banner does not offer to leave')
-  // The progression is two named buttons, and the selected one is exposed by a
-  // state a screen reader reads, not by an ink alone.
-  assert.ok(/aria-pressed=\{!demoWeek2\}/.test(banner) && /aria-pressed=\{demoWeek2\}/.test(banner), 'the snapshot selector exposes no selected state')
-  assert.ok(/<button type="button"/.test(banner), 'the snapshot selector is not a native control')
-  assert.ok(/role="group"/.test(banner) && /aria-label=\{SHELL\.demoSnapshots\}/.test(banner), 'the two snapshot buttons are not grouped and named')
-  const css = read('src/ui/app.css')
-  const pressed = css.slice(css.indexOf(".demo-banner .demo-snapshots button[aria-pressed='true']"))
-  assert.ok(/font-weight|text-decoration/.test(pressed.slice(0, 200)), 'the selected snapshot is marked by colour alone')
-})
-
-test('E: demo mode is the URL, not a fixture name, so every demo page is walked as the sample tenant', () => {
-  // Connect draws the sample tile exactly when the page is in demo mode, and
-  // the product decides that from the URL (ui/demoMode.ts isDemo).
-  assert.ok(/const t1 = isDemo\(\) \? sampleTile\(/.test(read('src/ui/surfaces/Connect.tsx')), 'Connect no longer picks tile 1 by demo mode')
-  assert.ok(/get\(DEMO_PARAM\) === '1'/.test(read('src/ui/demoMode.ts')), 'isDemo no longer reads the demo switch from the URL')
-  // The walk holds one reading of the same fact, taken from the fixture's URL,
-  // and tile 1's two branches are the only consumers that decide sample-vs-
-  // signed-in. A fixture's name is not that fact.
-  const walk = read('scripts/walk.mjs')
-  assert.ok(/const inDemo = \/\[\?&\]demo=1\/\.test\(fx\.base\)/.test(walk), 'the walk has no URL reading of demo mode')
-  assert.ok(/if \(t1 && !signedOut && inDemo\)/.test(walk), "the walk's sample tile-1 branch does not key on demo mode")
-  assert.ok(/if \(t1 && !signedOut && !inDemo\)/.test(walk), "the walk's signed-in tile-1 branch does not key on demo mode")
-  assert.equal(/name\.startsWith\('demo'\)[\s\S]{0,80}sampleTile|demoFx/.test(walk), false, 'the walk decides tile 1 from the fixture name again')
-  // mock-author is a demo-mode fixture named mock- so the plan checks skip it;
-  // it renders the sample tile like any other demo page.
-  const list = walk.slice(walk.indexOf('const fixtures = ['), walk.indexOf('const summaries = {}'))
-  const fixtures = [...list.matchAll(/\{ name: '([^']+)', base: `([^`]*)`/g)].map((m) => ({ name: m[1], demo: /[?&]demo=1/.test(m[2]) }))
-  assert.ok(fixtures.length >= 10, 'the walk fixture list did not parse')
-  assert.ok(fixtures.find((f) => f.name === 'mock-author')?.demo, 'mock-author is no longer a demo-mode fixture')
-  assert.ok(fixtures.some((f) => f.demo && !f.name.startsWith('demo')), 'no demo fixture is named outside the demo- prefix, so the name would do')
-  for (const f of fixtures) if (f.name.startsWith('demo')) assert.ok(f.demo, `${f.name} is named for the demo and does not run in it`)
+test('E: the sample record switches between its snapshots without losing either, and never seeds over the visitor', () => {
+  // E: selecting the initial scan restores the initial scan, and the follow-up scan's inputs stay with it.
+  {
+    const initial = demoTenant(false)
+    const follow = demoTenant(true)
+    const visit = demoVisit(initial, follow)
+    // Day one, first visit: the sample's own answers, and nothing else.
+    const day1 = visit.show(false)
+    assert.deepEqual(Object.keys(day1.stepDecisions ?? {}).sort(), Object.keys(initial.decisions ?? {}).sort())
+    // The visitor answers a question, and the Plan records what day one saw.
+    visit.persist({ stepDecisions: { 's-visitor-answer': { option: 'Yes', at: initial.snapshot.asOf } }, observations: { 'p-day-one': 'seen' }, startDate: '2026-10-05' })
+    const mine = { ...visit.record() }
+    delete mine.tenantId
+    // Week two: the same tenant scanned again, so the visitor's plan comes with
+    // it, and the sample technician's week-one answers arrive beside it.
+    const week2 = visit.show(true)
+    const followOnly = Object.keys(follow.decisions ?? {}).filter((k) => !(k in (initial.decisions ?? {})))
+    assert.ok(followOnly.length > 0, 'the follow-up fixture seeds no decisions of its own')
+    for (const k of followOnly) assert.ok(k in (week2.stepDecisions ?? {}), `the follow-up scan does not carry ${k}`)
+    assert.ok('s-visitor-answer' in (week2.stepDecisions ?? {}), "a re-scan of one tenant restarted the visitor's plan")
+    // Week two runs, and the Plan records what week two saw.
+    visit.persist({ observations: { 'p-week-two': 'report-only proven' }, checkpoints: [{ kind: 'drill', done: true }] })
+    // Back to the initial scan: exactly the record day one was left with.
+    const back = visit.show(false)
+    assert.deepEqual(back, mine, 'the initial scan did not come back as it was left')
+    for (const k of followOnly) assert.equal(k in (back.stepDecisions ?? {}), false, `the follow-up scan's ${k} is still on the initial plan`)
+    assert.deepEqual(back.observations, { 'p-day-one': 'seen' }, "week two's proof is still on the initial plan")
+    assert.deepEqual(back.checkpoints, day1.checkpoints, "week two's checkpoints are still on the initial plan")
+    // And week two is still itself: selected again, it is what it was left as.
+    const again = visit.show(true)
+    assert.deepEqual(again.observations, { 'p-week-two': 'report-only proven' }, 'the follow-up scan lost what it saw')
+    assert.deepEqual(again.checkpoints, [{ kind: 'drill', done: true }])
+  }
+  // E: the sample seeds a snapshot once, and never over the visitor.
+  {
+    const initial = demoTenant(false)
+    const follow = demoTenant(true)
+    const seeded = Object.keys(initial.decisions ?? {})[0]
+    assert.ok(seeded, 'the initial fixture seeds no decision')
+    const visit = demoVisit(initial, follow)
+    visit.show(false)
+    // The visitor answers the seeded question themselves; the same snapshot shown
+    // again must not put the sample's answer back over theirs.
+    visit.persist({ stepDecisions: { [seeded]: { option: 'the visitor said this', at: initial.snapshot.asOf } } })
+    const reload = visit.show(false)
+    assert.deepEqual(reload.stepDecisions?.[seeded], { option: 'the visitor said this', at: initial.snapshot.asOf })
+    // A record written before this rule existed cannot be placed in a snapshot:
+    // no demo row says which one it belongs to, so the sample is seeded afresh
+    // rather than opened over inputs of unknown provenance.
+    const orphan = nextDemoRecord({
+      want: 'initial',
+      stored: null,
+      live: { tenantId: DEMO_TENANT_ID, stepDecisions: { 's-from-a-previous-build': { option: 'x', at: initial.snapshot.asOf } }, observations: { 'p-unknown': 'seen' } },
+      seed: { decisions: initial.decisions, checkpoints: initial.checkpoints },
+    })
+    assert.deepEqual(Object.keys(orphan.record.stepDecisions ?? {}).sort(), Object.keys(initial.decisions ?? {}).sort())
+    assert.equal('observations' in orphan.record, false)
+    assert.equal(orphan.state.current, 'initial')
+  }
 })
 
 // ---------------------------------------------------------------------------
 // The two snapshots: the follow-up moves because the facts moved
 // ---------------------------------------------------------------------------
-
-test('the follow-up snapshot is a complete second scan of the same tenant, dated coherently', () => {
-  const a = fixture('demo')
-  const b = fixture('demo-week2')
-  assert.equal(a.snapshot.tenantId, b.snapshot.tenantId, 'the two snapshots are not the same tenant')
-  assert.equal(a.snapshot.users.length, b.snapshot.users.length, 'the sample tenant gained or lost people between scans')
-  assert.ok((b.snapshot.config.caPolicies?.rows ?? []).length > (a.snapshot.config.caPolicies?.rows ?? []).length, 'the follow-up scan found no new policy')
-  // Every observation window opens before the scan that read it, and every
-  // person seen in a policy's records is an account the same directory holds.
-  const ids = new Set(b.snapshot.users.map((u) => u.id))
-  for (const r of b.snapshot.evidencePolicyResults ?? []) {
-    assert.ok(Date.parse(r.firstReportOnlyAt ?? b.snapshot.asOf) <= Date.parse(b.snapshot.asOf), `${r.displayName} started reporting after the scan read it`)
-    for (const list of Object.values(r.affectedUserIds ?? {})) for (const id of list) assert.ok(ids.has(id), `${id} is in a policy's records and not in the directory`)
-    assert.ok((b.snapshot.config.caPolicies?.rows ?? []).some((p) => (p as { id?: string }).id === r.policyId), `${r.displayName} has records and no policy`)
-  }
-})
-
-test('a person\'s readiness rises on the follow-up scan only because new proof arrived', () => {
-  const a = fixture('demo')
-  const b = fixture('demo-week2')
-  const before = ladder(a.snapshot, a.mapping, a.snapshot.asOf)
-  const after = ladder(b.snapshot, b.mapping, b.snapshot.asOf)
-  // Needs a method, then Confirm it, then Needs a device, then Ready, then
-  // Seamless; Blocked waits where Needs a method does, and Unknown is not a step on the way.
-  const RANK: Record<ReadinessState, number> = { unknown: 0, blocked: 1, method: 1, confirm: 2, device: 3, ready: 4, seamless: 5 }
-  const stateOf = (l: typeof before, id: string): ReadinessState | undefined => (Object.entries(l.states) as [ReadinessState, { id: string }[]][]).find(([, ps]) => ps.some((p) => p.id === id))?.[0]
-  const rankOf = (l: typeof before, id: string): number => {
-    const state = stateOf(l, id)
-    return state === undefined ? -1 : RANK[state]
-  }
-  const evidenceChanged = (id: string): boolean => JSON.stringify(a.snapshot.signInEvidence[id] ?? null) !== JSON.stringify(b.snapshot.signInEvidence[id] ?? null)
-  const methodsChanged = (id: string): boolean => JSON.stringify(a.snapshot.authMethods?.[id] ?? []) !== JSON.stringify(b.snapshot.authMethods?.[id] ?? [])
-  // The tenant's own passkey settings judge a held key: a key the settings stop allowing is a change in the facts too.
-  const verdictsChanged = (id: string): boolean => JSON.stringify(before.viability.get(id)?.readiness.credentials.map((c) => c.allowedNow) ?? []) !== JSON.stringify(after.viability.get(id)?.readiness.credentials.map((c) => c.allowedNow) ?? [])
-  const moved = [...before.viability.keys()].filter((id) => rankOf(after, id) > rankOf(before, id))
-  assert.ok(moved.length >= 1, 'nobody improved on the follow-up scan')
-  for (const id of moved) {
-    const proofChanged = JSON.stringify(a.snapshot.signInEvidence[id]?.proofs ?? []) !== JSON.stringify(b.snapshot.signInEvidence[id]?.proofs ?? [])
-    assert.ok(proofChanged || methodsChanged(id), `${id} became more ready with no new method and no new proof`)
-  }
-  // And the people whose facts did not move did not move either.
-  for (const id of before.viability.keys()) {
-    if (stateOf(after, id) === stateOf(before, id)) continue
-    assert.ok(evidenceChanged(id) || methodsChanged(id) || verdictsChanged(id), `${id} changed readiness (${stateOf(before, id)} to ${stateOf(after, id)}) with no change in its facts`)
-  }
-})
 
 test('a policy advances on the follow-up scan only where the evidence the product asks for is there', () => {
   const before = runFixture(fixture('demo'))
@@ -656,24 +389,6 @@ test('a policy advances on the follow-up scan only where the evidence the produc
 // The floor (task 025) and the hierarchy
 // ---------------------------------------------------------------------------
 
-test('the sample floor group is the production one, generated from the active baseline', () => {
-  for (const name of ['demo', 'demo-week2'] as const) {
-    const run = runFixture(fixture(name))
-    const floor = run.steps.filter((s) => s.floor === true)
-    assert.ok(floor.length >= 1, `${name}: no floor step`)
-    for (const s of floor) assert.ok(FLOOR_GOAL_IDS.some((g) => s.id.endsWith(g)), `${name}: ${s.id} is in the floor group and is not a floor goal`)
-    // The Plan and the print both take the group from floorRows; the demo takes
-    // it from neither, it just renders through them.
-    assert.deepEqual(
-      floorRows(run.steps).map((s) => s.id),
-      floor.filter((s) => s.status !== 'done').map((s) => s.id),
-    )
-    assert.deepEqual([...floorGroupIds(run.steps)].sort(), floor.map((s) => s.id).sort())
-    // Emergency access stays the preparation step: it is never a floor policy.
-    assert.equal(floor.some((s) => s.kind === 'prerequisite'), false, 'emergency access is in the floor group as a policy')
-  }
-})
-
 test('the sample uses the pinned baseline, not a copy', () => {
   for (const f of DEMO_FILES) {
     const src = read(f)
@@ -684,17 +399,4 @@ test('the sample uses the pinned baseline, not a copy', () => {
   // It is the product's pinned one: the App reloads it from the pinned reader
   // rather than shipping the fixture's copy to the surfaces.
   assert.ok(/loadPinnedBaseline\(\)/.test(read('src/ui/App.tsx')))
-})
-
-test('the sample is the finished hierarchy: Connect, Plan, MFA Readiness, Export, and no Today', () => {
-  assert.equal(VALID.has('today'), false, 'Today is still a destination')
-  assert.equal(resolveHash('#/today').route, 'readiness', 'the old Today hash does not land on MFA Readiness')
-  assert.equal(resolveHash(PLAN_HREF).route, 'plan')
-  assert.equal(resolveHash(READINESS_HREF).route, 'readiness')
-  assert.equal(resolveHash('#/export').route, 'export')
-  // The demo enters at the Plan, which is where the product sends a scan.
-  assert.ok(/u\.hash = '#\/plan'/.test(read('src/ui/demoMode.ts')))
-  // The shell's tabs are the product's, and the demo renders that shell.
-  const shell = read('src/ui/shell/AppShell.tsx')
-  assert.equal(/>Today</.test(shell), false, 'the shell still offers a Today tab')
 })

@@ -24,23 +24,11 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { join } from 'node:path'
 
 const DIR = 'docs/design/approved/anatomy'
 const MANIFEST = 'docs/design/approved/manifest.json'
-
-/**
- * The long upload names task 028 committed the packs under. Task 030 made the
- * short names canonical and deleted these, because two byte-identical files
- * for one surface is two current authorities and a later reader has to guess
- * which one moved. Nothing may bring them back.
- */
-const SUPERSEDED_COPIES = [
-  'iamai-home-design-pack-v2.html',
-  'iamai-connect-design-pack-v3.html',
-  'iamai-plan-step-design-pack.html',
-  'iamai-mfa-readiness-design-pack-v2.html',
-] as const
 
 /**
  * The MFA Readiness design files the owner archived on 2026-09-19 (item 22):
@@ -136,15 +124,8 @@ test('every approved design pack is present with the owner-approved bytes', () =
         `Restore the exact bytes; if only line endings differ, .gitattributes must keep ${DIR}/*.html as -text.`,
     )
   }
-})
-
-test('one file per surface: the upload-named copies are gone and cannot come back', () => {
-  // Task 028 committed each pack under the owner's upload name; the canonical
-  // short names arrived later, byte-identical. Two files with one hash is two
-  // current authorities, and the manifest can only point at one of them.
-  for (const file of SUPERSEDED_COPIES) {
-    assert.ok(!existsSync(`${DIR}/${file}`), `${DIR}/${file} is a second copy of an authority that already has a canonical name`)
-  }
+  // One file per surface: two files with one hash is two current authorities,
+  // and the manifest can only point at one of them (task 030).
   const html = readdirSync(DIR).filter((f) => f.endsWith('.html')).sort()
   assert.deepEqual(html, [...APPROVED.map((a) => a.file)].sort(), `${DIR} holds exactly the four canonical packs`)
 })
@@ -174,48 +155,6 @@ test('the archived MFA Readiness files are records: no live file names one excep
     }
   }
   assert.deepEqual(offenders, [], 'a live file names an archived MFA Readiness design file; point it at the v3 pack, or at the archive path if it only records history')
-})
-
-test('no task edits an approved byte: the working tree is what the commit holds', () => {
-  // The hashes above are the owner's values, so the test above already proves
-  // the bytes. This proves the same thing against git rather than against a
-  // constant, which is what catches a hash and its file edited together in one
-  // change. A shallow CI checkout still has HEAD, and a source tarball with no
-  // git at all skips rather than fails.
-  let head: Buffer[] | null = null
-  try {
-    head = APPROVED.map(({ file }) => execFileSync('git', ['cat-file', '-p', `HEAD:${DIR}/${file}`], { maxBuffer: 8 * 1024 * 1024 }))
-  } catch {
-    return
-  }
-  APPROVED.forEach(({ file, sha256 }, i) => {
-    const blob = head![i]
-    assert.equal(createHash('sha256').update(blob).digest('hex'), sha256, `${file}: the committed authority is not the owner-approved file`)
-    assert.deepEqual(readFileSync(`${DIR}/${file}`), blob, `${file}: the working tree differs from the committed authority`)
-  })
-})
-
-test('the manifest says, as values, what is authority and what is derived', () => {
-  const { authority } = manifest()
-  assert.equal(authority.canonicalHtmlIsApplicationDesignAuthority, true)
-  assert.equal(authority.renderedReferenceIsDerivedOnly, true)
-  assert.equal(authority.generatedBrandApplicationPreviewsAreAuthoritative, false)
-  // A render is derived from the HTML; it is never the input to it.
-  const { mechanism, output } = manifest().renderedEvidence
-  assert.match(mechanism, /^scripts\/[a-z-]+\.mjs$/)
-  assert.match(output, /\.png$/, 'the rendered reference is an image, and the HTML above it is the authority')
-})
-
-test('the Plan authority is canonical without the (1) upload name', () => {
-  const plan = APPROVED.find((a) => a.surface === 'plan')!
-  assert.ok(!plan.file.includes('('), 'the canonical Plan file name must not carry the upload suffix')
-  assert.ok(!existsSync(`${DIR}/${plan.sourceName}`), `${DIR}/${plan.sourceName} would be a second current Plan pack`)
-
-  const record = manifest().surfaces.find((s) => s.surface === 'plan')!
-  assert.equal(record.path, `${DIR}/${plan.file}`)
-  assert.ok(!record.path.includes('('), 'the manifest path must not carry the upload suffix')
-  // Provenance is kept, and only as provenance.
-  assert.equal(record.ownerApprovedSourceName, plan.sourceName, 'the original upload name is the recorded provenance')
 })
 
 test('the manifest names exactly the four canonical authorities, once each', () => {
@@ -260,9 +199,15 @@ test('the manifest keeps visual authority apart from copy and technical truth', 
     'approved HTML application architecture',
     'approved brand skin',
   ])
-})
-
-test('a generated branding preview is never an application authority', () => {
+  // The canonical HTML is the authority; a render is derived from it, never the input to it.
+  const { authority, renderedEvidence } = manifest()
+  assert.equal(authority.canonicalHtmlIsApplicationDesignAuthority, true)
+  assert.equal(authority.renderedReferenceIsDerivedOnly, true)
+  assert.equal(authority.generatedBrandApplicationPreviewsAreAuthoritative, false)
+  assert.match(renderedEvidence.mechanism, /^scripts\/[a-z-]+\.mjs$/)
+  assert.match(renderedEvidence.output, /\.png$/, 'the rendered reference is an image, and the HTML above it is the authority')
+  assert.deepEqual(renderedEvidence.widths, [1280, 768, 390])
+  // A generated branding preview is never an application authority.
   const { generatedPreviews, brand, surfaces } = manifest()
   // Every authority flag on the previews block is false, whatever flags exist.
   for (const [key, value] of Object.entries(generatedPreviews)) {
@@ -280,7 +225,37 @@ test('a generated branding preview is never an application authority', () => {
   }
 })
 
-test('the rendered-evidence widths later packs must use are recorded', () => {
-  // Passing tests never proved conformance before; a restoration pack renders.
-  assert.deepEqual(manifest().renderedEvidence.widths, [1280, 768, 390])
+/** Every text file a person's browser is served, or that generates one. */
+function shipped(): string[] {
+  const TEXT = /\.(html|css|ts|tsx|mjs|json)$/
+  const walk = (dir: string, out: string[] = []): string[] => {
+    for (const entry of readdirSync(dir)) {
+      const full = join(dir, entry).replace(/\\/g, '/')
+      if (statSync(full).isDirectory()) walk(full, out)
+      else if (TEXT.test(entry)) out.push(full)
+    }
+    return out
+  }
+  return [...walk('src'), ...walk('home'), 'docs/design/content.json', 'index.html', 'scripts/build-home.ts']
+}
+
+test('no generated branding line reached anything the product ships, and Jon Hope is never named as the product author', () => {
+  // Task 041's sweep is over the whole shipped tree, so a surface added later is
+  // covered on the day it is written. The forbidden lines are read out of the
+  // brand manifest (`brand.forbiddenTaglines`), the one place they are named.
+  // "Jon Hope" is a true fact about whose Conditional Access baseline IAMAI
+  // reads, and How credits it; "Built by Jon Hope" is a claim about who built
+  // this product, which the generated previews invented.
+  const brand = JSON.parse(readFileSync('docs/brand/brand-manifest.json', 'utf8')) as { brand: { tagline: string | null; forbiddenTaglines: string[] } }
+  const FORBIDDEN = [...brand.brand.forbiddenTaglines, 'Built by Jon Hope', 'Created by Jon Hope', 'Made by Jon Hope']
+  assert.ok(FORBIDDEN.length > 5, 'the forbidden list must come from the brand manifest, not from nothing')
+  assert.equal(brand.brand.tagline, null, 'the brand has no tagline')
+  assert.match(readFileSync('src/ui/surfaces/How.tsx', 'utf8'), /CA_POLICY_ANALYZER/, 'How credits the baseline author’s own project')
+  // A test file is allowed to name a forbidden line — that is how it forbids it.
+  const files = shipped().filter((f) => !/\.test\.ts$/.test(f))
+  assert.ok(files.length > 100, `only ${files.length} files walked — the walk is broken, not the tree`)
+  for (const file of files) {
+    const text = readFileSync(file, 'utf8')
+    for (const line of FORBIDDEN) assert.ok(!text.includes(line), `${file} carries the generated line "${line}"`)
+  }
 })

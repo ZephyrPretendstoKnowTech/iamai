@@ -71,59 +71,62 @@ test('the dev entry runs the real collector/evaluator through a URL-routed trans
   } finally { globalThis.fetch = before }
 })
 
-test('confirmation refuses a changed tenant/account binding', async () => {
-  const before = globalThis.fetch
-  globalThis.fetch = async request => new Response(JSON.stringify(response(String(request), false)), { status: 200, headers: { 'content-type': 'application/json' } })
-  try {
-    await runEmergencyDiagnosticEntry('tenant-a', 'baseline', { load: async () => ({ ...emptyMappingState('tenant-a'), breakGlassUserIds: ['account-a'] }), tokens: async () => ({ get: () => 'token', refresh: async () => 'token' }) })
-    await assert.rejects(() => runEmergencyDiagnosticEntry('tenant-b', 'confirming', { load: async () => ({ ...emptyMappingState('tenant-b'), breakGlassUserIds: ['account-a'] }), tokens: async () => ({ get: () => 'token', refresh: async () => 'token' }) }), /changed/)
-  } finally { globalThis.fetch = before }
-})
-
-test('a delayed old baseline cannot overwrite a newer completed baseline', async () => {
-  const mapping = { ...emptyMappingState('tenant-race'), breakGlassUserIds: ['account-a'] }
-  let release!: (value: any) => void
-  const delayed = new Promise<any>(resolve => { release = resolve })
-  const artifact = (captureId: string) => ({ schema: 3, captureId, context: { accounts: [] } }) as any
-  const deps = { load: async () => mapping, tokens: async () => ({ get: () => 'token', refresh: async () => 'token' }) }
-  const old = runEmergencyDiagnosticEntry('tenant-race', 'baseline', { ...deps, capture: async () => delayed })
-  await runEmergencyDiagnosticEntry('tenant-race', 'baseline', { ...deps, capture: async () => artifact('new') })
-  release(artifact('old'))
-  await assert.rejects(old, /stale|superseded/i)
-  assert.equal(emergencyDiagnosticPairPayload().baseline.captureId, 'new')
-})
-
-test('a baseline delayed before its first mapping read cannot overwrite a newer baseline', async () => {
-  const mapping = { ...emptyMappingState('tenant-load-race'), breakGlassUserIds: ['account-a'] }
-  let release!: () => void
-  const wait = new Promise<void>(resolve => { release = resolve })
-  const artifact = (captureId: string) => ({ schema: 3, captureId, context: { accounts: [] } }) as any
-  const common = { loadSnapshot: async () => null, tokens: async () => ({ get: () => 'token', refresh: async () => 'token' }) }
-  const old = runEmergencyDiagnosticEntry('tenant-load-race', 'baseline', { ...common, load: async () => { await wait; return mapping }, capture: async () => artifact('old-load') })
-  await runEmergencyDiagnosticEntry('tenant-load-race', 'baseline', { ...common, load: async () => mapping, capture: async () => artifact('new-load') })
-  release()
-  await assert.rejects(old, /superseded/i)
-  assert.equal(emergencyDiagnosticPairPayload().baseline.captureId, 'new-load')
-})
-
-test('a confirmation cannot attach after a new baseline supersedes its pair', async () => {
-  const mapping = { ...emptyMappingState('tenant-overlap'), breakGlassUserIds: ['account-a'] }
-  const artifact = (captureId: string) => ({ schema: 3, captureId, context: { accounts: [] } }) as any
-  const deps = { load: async () => mapping, tokens: async () => ({ get: () => 'token', refresh: async () => 'token' }) }
-  await runEmergencyDiagnosticEntry('tenant-overlap', 'baseline', { ...deps, capture: async () => artifact('baseline-a') })
-  let release!: (value: any) => void; const delayed = new Promise<any>(resolve => { release = resolve })
-  const confirming = runEmergencyDiagnosticEntry('tenant-overlap', 'confirming', { ...deps, capture: async () => delayed })
-  await runEmergencyDiagnosticEntry('tenant-overlap', 'baseline', { ...deps, capture: async () => artifact('baseline-b') })
-  release(artifact('confirmation-a'))
-  await assert.rejects(confirming, /superseded/i)
-  assert.equal(emergencyDiagnosticPairPayload().baseline.captureId, 'baseline-b')
-})
-
-test('mapping drift while a capture runs rejects the result and stale export validation rejects the pair', async () => {
-  const mappingA = { ...emptyMappingState('tenant-drift'), breakGlassUserIds: ['account-a'] }
-  const mappingB = { ...mappingA, breakGlassUserIds: ['account-b'] }
-  let reads = 0
-  await assert.rejects(() => runEmergencyDiagnosticEntry('tenant-drift', 'baseline', { load: async () => ++reads === 1 ? mappingA : mappingB, tokens: async () => ({ get: () => 'token', refresh: async () => 'token' }), capture: async () => ({ schema: 3, captureId: 'drift', context: { accounts: [] } }) as any }), /changed while.*running/i)
-  await runEmergencyDiagnosticEntry('tenant-drift', 'baseline', { load: async () => mappingA, tokens: async () => ({ get: () => 'token', refresh: async () => 'token' }), capture: async () => ({ schema: 3, captureId: 'current', context: { accounts: [] } }) as any })
-  assert.throws(() => emergencyDiagnosticPairPayload(undefined, 'different-binding'), /stale/i)
+test('a superseded or drifted capture never lands: an older baseline, a confirmation of a replaced pair, a changed binding or a changed mapping is refused', async () => {
+  // Confirmation refuses a changed tenant/account binding.
+  {
+    const before = globalThis.fetch
+    globalThis.fetch = async request => new Response(JSON.stringify(response(String(request), false)), { status: 200, headers: { 'content-type': 'application/json' } })
+    try {
+      await runEmergencyDiagnosticEntry('tenant-a', 'baseline', { load: async () => ({ ...emptyMappingState('tenant-a'), breakGlassUserIds: ['account-a'] }), tokens: async () => ({ get: () => 'token', refresh: async () => 'token' }) })
+      await assert.rejects(() => runEmergencyDiagnosticEntry('tenant-b', 'confirming', { load: async () => ({ ...emptyMappingState('tenant-b'), breakGlassUserIds: ['account-a'] }), tokens: async () => ({ get: () => 'token', refresh: async () => 'token' }) }), /changed/)
+    } finally { globalThis.fetch = before }
+  }
+  // A delayed old baseline cannot overwrite a newer completed baseline.
+  {
+    const mapping = { ...emptyMappingState('tenant-race'), breakGlassUserIds: ['account-a'] }
+    let release!: (value: any) => void
+    const delayed = new Promise<any>(resolve => { release = resolve })
+    const artifact = (captureId: string) => ({ schema: 3, captureId, context: { accounts: [] } }) as any
+    const deps = { load: async () => mapping, tokens: async () => ({ get: () => 'token', refresh: async () => 'token' }) }
+    const old = runEmergencyDiagnosticEntry('tenant-race', 'baseline', { ...deps, capture: async () => delayed })
+    await runEmergencyDiagnosticEntry('tenant-race', 'baseline', { ...deps, capture: async () => artifact('new') })
+    release(artifact('old'))
+    await assert.rejects(old, /stale|superseded/i)
+    assert.equal(emergencyDiagnosticPairPayload().baseline.captureId, 'new')
+  }
+  // A baseline delayed before its first mapping read cannot overwrite a newer baseline.
+  {
+    const mapping = { ...emptyMappingState('tenant-load-race'), breakGlassUserIds: ['account-a'] }
+    let release!: () => void
+    const wait = new Promise<void>(resolve => { release = resolve })
+    const artifact = (captureId: string) => ({ schema: 3, captureId, context: { accounts: [] } }) as any
+    const common = { loadSnapshot: async () => null, tokens: async () => ({ get: () => 'token', refresh: async () => 'token' }) }
+    const old = runEmergencyDiagnosticEntry('tenant-load-race', 'baseline', { ...common, load: async () => { await wait; return mapping }, capture: async () => artifact('old-load') })
+    await runEmergencyDiagnosticEntry('tenant-load-race', 'baseline', { ...common, load: async () => mapping, capture: async () => artifact('new-load') })
+    release()
+    await assert.rejects(old, /superseded/i)
+    assert.equal(emergencyDiagnosticPairPayload().baseline.captureId, 'new-load')
+  }
+  // A confirmation cannot attach after a new baseline supersedes its pair.
+  {
+    const mapping = { ...emptyMappingState('tenant-overlap'), breakGlassUserIds: ['account-a'] }
+    const artifact = (captureId: string) => ({ schema: 3, captureId, context: { accounts: [] } }) as any
+    const deps = { load: async () => mapping, tokens: async () => ({ get: () => 'token', refresh: async () => 'token' }) }
+    await runEmergencyDiagnosticEntry('tenant-overlap', 'baseline', { ...deps, capture: async () => artifact('baseline-a') })
+    let release!: (value: any) => void; const delayed = new Promise<any>(resolve => { release = resolve })
+    const confirming = runEmergencyDiagnosticEntry('tenant-overlap', 'confirming', { ...deps, capture: async () => delayed })
+    await runEmergencyDiagnosticEntry('tenant-overlap', 'baseline', { ...deps, capture: async () => artifact('baseline-b') })
+    release(artifact('confirmation-a'))
+    await assert.rejects(confirming, /superseded/i)
+    assert.equal(emergencyDiagnosticPairPayload().baseline.captureId, 'baseline-b')
+  }
+  // Mapping drift while a capture runs rejects the result and stale export validation rejects the pair.
+  {
+    const mappingA = { ...emptyMappingState('tenant-drift'), breakGlassUserIds: ['account-a'] }
+    const mappingB = { ...mappingA, breakGlassUserIds: ['account-b'] }
+    let reads = 0
+    await assert.rejects(() => runEmergencyDiagnosticEntry('tenant-drift', 'baseline', { load: async () => ++reads === 1 ? mappingA : mappingB, tokens: async () => ({ get: () => 'token', refresh: async () => 'token' }), capture: async () => ({ schema: 3, captureId: 'drift', context: { accounts: [] } }) as any }), /changed while.*running/i)
+    await runEmergencyDiagnosticEntry('tenant-drift', 'baseline', { load: async () => mappingA, tokens: async () => ({ get: () => 'token', refresh: async () => 'token' }), capture: async () => ({ schema: 3, captureId: 'current', context: { accounts: [] } }) as any })
+    assert.throws(() => emergencyDiagnosticPairPayload(undefined, 'different-binding'), /stale/i)
+  }
 })

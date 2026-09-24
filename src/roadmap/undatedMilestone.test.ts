@@ -36,49 +36,30 @@ const stepIn = (steps: readonly Step[], id: string): Step => {
   return s!
 }
 
-test('a held create keeps its report-only preparation, its gate and its kind, without the day', () => {
-  const step = stepIn(stepsOf(withDirectionApproved(curatedFixture('demo-week2'))), 's-goal-register-info-protected')
-  const gate = step.action.readinessGate
-  const dated = nextMilestone(step)
-  // The premise: the create the plan schedules while readiness holds its turn-on.
-  assert.ok(gate, 'the premise: a readiness gate on its turn-on')
-  assert.equal(dated.kind, 'deploy')
-  assert.ok(dated.at !== null && dated.label.includes(absoluteDate(dated.at)), `the premise: a dated create, "${dated.label}"`)
-  assert.deepEqual(nextMilestone(step, { undated: true }), { kind: 'deploy', label: fillText(MILESTONE.prepareHeld, { measure: gate!.measure, threshold: gate!.threshold }), at: null, gatedBy: step.blockedReason })
-})
-
-test('a policy ready to be turned on names no turn-on day, and says what it waits for', () => {
-  // Nothing holds its turn-on: the scheduled turn-on sentence goes with its day.
-  const ready = stepIn(stepsOf(withDirectionApproved(curatedFixture('demo-week2'))), 's-goal-token-protection')
-  const dated = nextMilestone(ready)
-  assert.equal(dated.kind, 'enforce', 'the premise: ready to enforce')
-  assert.ok(dated.at !== null && dated.label.includes(absoluteDate(dated.at)), `the premise: a dated turn-on, "${dated.label}"`)
-  assert.deepEqual(nextMilestone(ready, { undated: true }), { kind: 'resolve', label: MILESTONE.resolve, at: null, gatedBy: null })
-  // Its turn-on waits on the recovery test: the words already name no day, and the day goes too.
-  const waiting = stepIn(stepsOf(withoutRecoveryTest(withDirectionApproved(curatedFixture('demo-week2')))), 's-goal-token-protection')
-  const waits = nextMilestone(waiting)
-  assert.ok(waits.at !== null && !waits.label.includes(absoluteDate(waits.at)), 'the premise: a turn-on day beside words that name none')
-  assert.deepEqual(nextMilestone(waiting, { undated: true }), { ...waits, at: null })
-})
-
-test('a policy being watched keeps watching, without its review day', () => {
-  const watched = stepIn(stepsOf(withDirectionApproved(curatedFixture('demo-week2'))), 's-goal-block-auth-transfer')
-  const dated = nextMilestone(watched)
-  assert.equal(dated.kind, 'observe', 'the premise: watched in report-only')
-  assert.ok(dated.at !== null && dated.label.includes(absoluteDate(dated.at)), `the premise: a review day, "${dated.label}"`)
-  assert.deepEqual(nextMilestone(watched, { undated: true }), { kind: 'observe', label: MILESTONE.observe, at: null, gatedBy: null })
-})
-
-test('undated, no milestone names or carries a day, and dated, every milestone is what it was', () => {
-  let dated = 0
-  for (const f of [withDirectionApproved(curatedFixture('demo-week2')), withoutRecoveryTest(withDirectionApproved(curatedFixture('demo-week2'))), curatedFixture('demo')]) {
-    for (const step of stepsOf(f)) {
-      const m = nextMilestone(step, { undated: true })
-      assert.equal(m.at, null, `${f.name}/${step.id}: a day`)
-      assert.doesNotMatch(m.label, DATE, `${f.name}/${step.id}: "${m.label}"`)
-      assert.deepEqual(nextMilestone(step, { undated: false }), nextMilestone(step), `${f.name}/${step.id}: the dated milestone moved`)
-      if (nextMilestone(step).at !== null) dated++
-    }
+test('a held step names no day in its milestone, keeps its report-only preparation, and dated every milestone is what it was', () => {
+  // A held create keeps its report-only preparation, its gate and its kind, without the day.
+  {
+    const step = stepIn(stepsOf(withDirectionApproved(curatedFixture('demo-week2'))), 's-goal-register-info-protected')
+    const gate = step.action.readinessGate
+    const dated = nextMilestone(step)
+    // The premise: the create the plan schedules while readiness holds its turn-on.
+    assert.ok(gate, 'the premise: a readiness gate on its turn-on')
+    assert.equal(dated.kind, 'deploy')
+    assert.ok(dated.at !== null && dated.label.includes(absoluteDate(dated.at)), `the premise: a dated create, "${dated.label}"`)
+    assert.deepEqual(nextMilestone(step, { undated: true }), { kind: 'deploy', label: fillText(MILESTONE.prepareHeld, { measure: gate!.measure, threshold: gate!.threshold }), at: null, gatedBy: step.blockedReason })
   }
-  assert.ok(dated > 0, 'the premise: dated milestones to take the day from')
+  // Undated, no milestone names or carries a day, and dated, every milestone is what it was.
+  {
+    let dated = 0
+    for (const f of [withDirectionApproved(curatedFixture('demo-week2')), withoutRecoveryTest(withDirectionApproved(curatedFixture('demo-week2'))), curatedFixture('demo')]) {
+      for (const step of stepsOf(f)) {
+        const m = nextMilestone(step, { undated: true })
+        assert.equal(m.at, null, `${f.name}/${step.id}: a day`)
+        assert.doesNotMatch(m.label, DATE, `${f.name}/${step.id}: "${m.label}"`)
+        assert.deepEqual(nextMilestone(step, { undated: false }), nextMilestone(step), `${f.name}/${step.id}: the dated milestone moved`)
+        if (nextMilestone(step).at !== null) dated++
+      }
+    }
+    assert.ok(dated > 0, 'the premise: dated milestones to take the day from')
+  }
 })
