@@ -359,7 +359,8 @@ test('§12.1 unlock counts: direct and transitive, Security Defaults cutover edg
   expect('s-verify-mfa', 7, 8)
   expect('s-prereq-trusted-location', 4, 5)
   expect('s-prereq-device-plan', 1, 3)
-  expect('s-prereq-service-accounts-group', 2, 2)
+  // Block Legacy Authentication's turn-on no longer waits on the group (walk list 4.x item 5): Restrict Service Accounts alone.
+  expect('s-prereq-service-accounts-group', 1, 1)
   // s-prereq-allowed-countries folded into the countries block in Stage 3: not a graph step.
   assert.equal(counts.has('s-prereq-allowed-countries'), false)
   expect('s-question-partner', 2, 2)
