@@ -45,7 +45,7 @@ function plan(rowOf: (g: Groups) => ReturnType<typeof pol>) {
   return { op: ops[0], lines: stepExportView(step, ctx).whatToDo, nameOf }
 }
 
-test('a correction that drops the tenant\'s guest or external user exclusion says so beside the change', () => {
+test('a correction that drops the tenant’s guest or external user exclusion, or replaces its excluded application, names what it removes beside the change', () => {
   const { op, lines } = plan(({ staffGroup, excl }) => pol({ includeGroups: [staffGroup], excludeGroups: [excl], excludeGuestsOrExternalUsers: GUESTS }))
   const users = (op.body.conditions as { users: Record<string, unknown> }).users
   assert.equal(users.excludeGuestsOrExternalUsers, undefined, 'the request is the baseline\'s users section, unchanged')
@@ -54,17 +54,18 @@ test('a correction that drops the tenant\'s guest or external user exclusion say
   assert.ok(at >= 0, lines.join('\n'))
   assert.equal(REMOVES.exec(lines[at])![1], 'guest or external users')
   assert.ok(at < lines.findIndex((line) => /Go to|Open.*policy/i.test(line)), 'named above "Change only the settings listed above"')
-})
 
-test('a correction that replaces the tenant\'s excluded application names the application it removes', () => {
-  const { op, lines, nameOf } = plan(({ staffGroup, excl }) => pol({ includeGroups: [staffGroup], excludeGroups: [excl] }, { includeApplications: ['All'], excludeApplications: [EXO] }))
-  const apps = (op.body.conditions as { applications: { excludeApplications: string[] } }).applications
-  assert.deepEqual(apps.excludeApplications, [INTUNE_ENROLLMENT], 'the request carries the baseline\'s exclusion')
-  assert.deepEqual(op.removes, { guestsOrExternalUsers: false, ids: [EXO] })
-  const line = lines.find((l) => REMOVES.test(l))
-  assert.ok(line, lines.join('\n'))
-  assert.equal(REMOVES.exec(line)![1], nameOf(EXO))
-  assert.ok(!line.includes(EXO), 'named, not an id')
+  // A correction that replaces the tenant's excluded application names the application it removes.
+  {
+    const { op, lines, nameOf } = plan(({ staffGroup, excl }) => pol({ includeGroups: [staffGroup], excludeGroups: [excl] }, { includeApplications: ['All'], excludeApplications: [EXO] }))
+    const apps = (op.body.conditions as { applications: { excludeApplications: string[] } }).applications
+    assert.deepEqual(apps.excludeApplications, [INTUNE_ENROLLMENT], 'the request carries the baseline\'s exclusion')
+    assert.deepEqual(op.removes, { guestsOrExternalUsers: false, ids: [EXO] })
+    const line = lines.find((l) => REMOVES.test(l))
+    assert.ok(line, lines.join('\n'))
+    assert.equal(REMOVES.exec(line)![1], nameOf(EXO))
+    assert.ok(!line.includes(EXO), 'named, not an id')
+  }
 })
 
 test('control: a correction that keeps every exclusion the tenant has removes nothing and says nothing', () => {

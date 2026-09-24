@@ -27,44 +27,48 @@ const ROADMAP = {
 
 const PAGE = readFileSync('src/ui/surfaces/Export.tsx', 'utf8')
 
-test('the tenant check runs before anything is persisted', () => {
+test('the tenant check and the no-tenant refusal both run before anything is persisted, and both return without writing', () => {
   const check = PAGE.indexOf('planTenantId !== snapshot.tenantId')
   const write = PAGE.indexOf('await importPlanRecords(snapshot.tenantId, record')
   assert.ok(check > 0, 'the plan import no longer checks the tenant')
   assert.ok(write > 0, 'the plan import no longer writes a record')
   assert.ok(check < write, 'the tenant check runs after the write, which is the defect it was meant to fix')
+
+  // A plan with no tenant is refused rather than assumed.
+  {
+    const guard = PAGE.indexOf('if (!planTenantId)')
+    const write = PAGE.indexOf('await importPlanRecords(snapshot.tenantId, record')
+    assert.ok(guard > 0 && guard < write, 'a plan file with no tenant id is not refused before the write')
+  }
+
+  // Both refusals return without writing.
+  {
+    // Each guard must `return`, not fall through with a warning. Scoped to
+    // loadPlanInner, ending at `const record` (the decisions-only record the guards
+    // protect), so the two returns counted are the two guards, not anything later.
+    const fn = PAGE.slice(PAGE.indexOf('const loadPlanInner'))
+    const region = fn.slice(fn.indexOf('const planTenantId'), fn.indexOf('const record'))
+    assert.equal((region.match(/return/g) ?? []).length, 2, `expected two early returns, found: ${region}`)
+  }
 })
 
-test('a plan with no tenant is refused rather than assumed', () => {
-  const guard = PAGE.indexOf('if (!planTenantId)')
-  const write = PAGE.indexOf('await importPlanRecords(snapshot.tenantId, record')
-  assert.ok(guard > 0 && guard < write, 'a plan file with no tenant id is not refused before the write')
-})
-
-test('both refusals return without writing', () => {
-  // Each guard must `return`, not fall through with a warning. Scoped to
-  // loadPlanInner, ending at `const record` (the decisions-only record the guards
-  // protect), so the two returns counted are the two guards, not anything later.
-  const fn = PAGE.slice(PAGE.indexOf('const loadPlanInner'))
-  const region = fn.slice(fn.indexOf('const planTenantId'), fn.indexOf('const record'))
-  assert.equal((region.match(/return/g) ?? []).length, 2, `expected two early returns, found: ${region}`)
-})
-
-test('the message names both tenants and neither id', () => {
+test('the refusal names both tenants and neither id, still reads with no tenant name, and says nothing was loaded', () => {
   const msg = ROADMAP.planFromAnotherTenant('Contoso Holdings', 'Fabrikam Ltd')
   assert.match(msg, /Contoso Holdings/)
   assert.match(msg, /Fabrikam Ltd/)
   assert.match(msg, /Nothing was loaded/)
   assert.doesNotMatch(msg, /[0-9a-f]{8}-[0-9a-f]{4}/, 'the message shows a tenant id')
-})
 
-test('the message still reads when the plan carries no tenant name', () => {
-  const msg = ROADMAP.planFromAnotherTenant('', 'Fabrikam Ltd')
-  assert.ok(!msg.includes('  '), `double space from an empty name: ${msg}`)
-  assert.match(msg, /another tenant/)
-  assert.match(msg, /Fabrikam Ltd/)
-})
+  // The message still reads when the plan carries no tenant name.
+  {
+    const msg = ROADMAP.planFromAnotherTenant('', 'Fabrikam Ltd')
+    assert.ok(!msg.includes('  '), `double space from an empty name: ${msg}`)
+    assert.match(msg, /another tenant/)
+    assert.match(msg, /Fabrikam Ltd/)
+  }
 
-test('the unknown-tenant message says nothing was loaded', () => {
-  assert.match(ROADMAP.planTenantUnknown('Fabrikam Ltd'), /Nothing was loaded/)
+  // The unknown-tenant message says nothing was loaded.
+  {
+    assert.match(ROADMAP.planTenantUnknown('Fabrikam Ltd'), /Nothing was loaded/)
+  }
 })

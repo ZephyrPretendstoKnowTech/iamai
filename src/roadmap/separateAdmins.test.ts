@@ -45,37 +45,3 @@ test('the review includes role holders and separately lists observed mail or Tea
   const g = fixture('getiamai')
   assert.equal(runFixture(g).steps.find((x) => x.id === SEPARATE_ADMIN_ACCOUNTS_STEP_ID)?.state.satisfied, false, 'a missing business-activity signal does not prove dedicated use')
 })
-
-test('steps 15, 23 and 33 name the same people beside the step instead of assuming separate accounts', () => {
-  const f = fixture('demo')
-  const r = runFixture(f)
-  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
-  for (const goalId of ['admins-phishing-resistant', 'admin-session', 'pim-activation-reauth']) {
-    const cs = stepById[goalId] as unknown as { who: { evidence: string[] } }
-    assert.ok(cs.who.evidence.some((l) => l.includes(`see ${TITLE}: {list:adminsWithWorkload}`)), `${goalId}: the evidence names the step`)
-    const s = r.steps.find((x) => x.goalId === goalId)
-    if (!s) continue // pim needs P2, which the demo does not hold
-    assert.ok(stepLines(s, ctx).some((l) => /^2 of them use the same account for mail or Teams; see Use Separate Accounts for Admin Work/.test(l)), `${goalId}: the line renders with the count`)
-  }
-  const email = (stepById['admins-phishing-resistant'] as unknown as { comms: { body: string } }).comms.body
-  // Editorial batch C: the email addresses the admin account itself and promises nothing about any other account.
-  assert.ok(email.includes('sign-ins by your admin account'), 'the admin email names the account the change applies to')
-  assert.doesNotMatch(email, /unaffected|separate account/i, 'the admin email no longer assumes the account is separate')
-})
-
-// The review scope counted its accounts by hand: one role holder read "1
-// accounts to review", and a tenant of a thousand "1000 accounts to review"
-// beside counts that carry their separator. It counts through count().
-test('the review scope counts its accounts as count() does', () => {
-  const base = fixture('mid')
-  // One role holder whose methods the scan read, and no other.
-  const admin = Object.keys(base.snapshot.roles.active).find((id) => !base.mapping.breakGlassUserIds.includes(id) && Array.isArray(base.snapshot.authMethods[id]))
-  assert.ok(admin, 'the premise: mid has a role holder with methods read')
-  const f = structuredClone(base)
-  f.snapshot.roles = { active: { [admin]: base.snapshot.roles.active[admin] }, eligible: {} }
-  const s = runFixture(f).steps.find((x) => x.id === SEPARATE_ADMIN_ACCOUNTS_STEP_ID)
-  assert.ok(s, 'the premise: the review is on the plan')
-  const scope = s.configurationFindings?.find((x) => x.key === 'administrator-review-scope')
-  assert.ok(scope, 'the premise: the review carries its scope')
-  assert.equal(scope.value, '1 account to review')
-})

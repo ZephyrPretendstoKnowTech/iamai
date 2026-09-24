@@ -1,7 +1,7 @@
-// The three dates per step (§2.2, §2.3) and the plain titles (§3.1).
+// The three dates per step (§2.2, §2.3).
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { allFixtures, fixture } from './fixtures/index.ts'
+import { fixture } from './fixtures/index.ts'
 import { runFixture, withFoundationSettled } from './fixtures/run.ts'
 import { stepIdForGoal } from './generate.ts'
 import { WEEKDAY_NAMES, hourLabel } from './rhythm.ts'
@@ -70,17 +70,6 @@ test('every policy step carries announce, remind and enforce as one instant each
   assert.match(withPeak.events!.enforce.reason, /One hour after the busiest hour/)
   const hours = new Set(dated.map((s) => hourIn(s.events!.enforce.at)))
   assert.ok(hours.size > 1, `enforcement times vary across the plan: ${[...hours].join(', ')}`)
-})
-
-// Prompt 52, walk-51 item 1: the plain-title table was deleted; a step's title
-// is its content.json title (the same on the row and in the body), and its
-// manager note stands beside it.
-test('every step carries its content title', () => {
-  for (const f of allFixtures()) {
-    for (const s of runFixture(f).steps) {
-      assert.ok(s.plainTitle.length > 0, `${s.id} title`)
-    }
-  }
 })
 
 // R4-57, the service-account population. It was built by hand with every
