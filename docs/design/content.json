@@ -1826,7 +1826,9 @@
           "$commentNoAccountsChosen": "Accounts and identity before any emergency access account is saved (src/roadmap/emergencyJourney.ts journeyAccountFindings). It read Needs correction in AI Info while the cards said No account selected: nothing is chosen yet, so there is nothing to correct.",
           "noAccountsChosen": "No accounts chosen yet",
           "$commentSignedInAccount": "The one line on an emergency access account card when that account is the one signed in to IAMAI (the scan's /me, by object id or sign-in name; emergencyAccountTasks.ts). A fact, not a check: it replaces the bg.notPersonal note on that card and gates nothing. Owner wording, 2026-09-23.",
-          "signedInAccount": "You're signed in to IAMAI with this account. Emergency accounts should be ones nobody uses day to day."
+          "signedInAccount": "You're signed in to IAMAI with this account. Emergency accounts should be ones nobody uses day to day.",
+          "$commentChooseAccounts": "Prepare Emergency Access Accounts' milestone under Next milestone while no emergency access account is saved (stepBody.ts), in place of its package's \"Complete the remaining emergency access checks.\": the choice is the next thing to do. Owner wording, 2026-09-23.",
+          "chooseAccounts": "Choose your two emergency access accounts."
         },
         "$commentRecoverySignIn": "Verify Emergency Access: what an account's Sign-in evidence card, its print and its exports say while the account waits for a passkey sign-in (src/roadmap/emergencyJourney.ts recoveryWaitingLine).",
         "recoverySignIn": {
@@ -3396,13 +3398,13 @@
       },
       "decision": {
         "label": "Emergency access accounts",
-        "help": "Select the accounts dedicated to emergency access, then save.",
+        "help": "Select the accounts dedicated to emergency access, then select Done.",
         "pickerRow": "{name} · {upn} · {signals}",
         "save": "Save",
         "multi": true
       },
       "whatToDo": {
-        "lead": "Select the accounts dedicated to emergency access, then save.",
+        "lead": "Select the accounts dedicated to emergency access, then select Done.",
         "create": [
           "Entra admin center → Entra ID → Users → New user → Create new user.",
           "Enter a unique username, such as emergency-access-primary or emergency-access-secondary, or choose another account name. Select the observed initial domain from the domain list.",

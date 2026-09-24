@@ -240,9 +240,12 @@ function accountStatuses(ctx: StepVarContext, preparations: Preparations, notes:
     const note = signedIn(id) ? undefined : notes.get(id.toLowerCase())
     return { key: id, accountId: id, heading, upn, title, instruction, completed, remainingCount, satisfied: checks.every(value => value === true), ...(note ? { notes: note } : {}), ...(signedIn(id) ? { headsUp: WORDS.signedInAccount } : {}) }
   })
+  // An empty card says only that nothing is chosen: the rail says how to choose.
+  // The first one says where to create an account, once.
   while (rows.length < 2) {
     const slot = rows.length + 1
-    rows.push({ key: `empty-${slot}`, accountId: null, heading: `Emergency access account ${slot}`, upn: null, title: 'No account selected', instruction: 'Select an account under Emergency access accounts, then Save. To create one, follow Create an emergency account in Implementation Tasks.', completed: [], remainingCount: null, satisfied: false })
+    const first = rows.every(row => row.accountId !== null)
+    rows.push({ key: `empty-${slot}`, accountId: null, heading: `Emergency access account ${slot}`, upn: null, title: 'No account selected', instruction: first ? 'To create one, follow Create an emergency account in Implementation Tasks.' : '', completed: [], remainingCount: null, satisfied: false })
   }
   return rows
 }

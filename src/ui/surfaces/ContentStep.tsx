@@ -178,7 +178,7 @@ export function EmergencySubjectReadiness({ subjects, printing, barMain, onWhy }
       <div className="emergency-account-status-grid satisfied">{satisfied.map(tile)}</div>
     </details>}
     <p className="emergency-account-scan-note">After making changes, select <strong>{SHARED.scanControl}</strong>.</p>
-    {onWhy && <div className="readiness-bar"><div className="readiness-bar-main"><span className="readiness-bar-head">{barMain}</span></div><button type="button" className="inline-link" onClick={onWhy}>{CONTRACT.readiness.why}</button></div>}
+    {onWhy && <div className="readiness-bar">{barMain !== '' && <div className="readiness-bar-main"><span className="readiness-bar-head">{barMain}</span></div>}<button type="button" className="inline-link" onClick={onWhy}>{CONTRACT.readiness.why}</button></div>}
   </section>
 }
 
@@ -438,7 +438,7 @@ export function ContentStep({
               and — where this step's enforcement waits on the people it reaches —
               who they are, handed to MFA Readiness (derive/stepMfaReadiness.ts). */}
           {decisionHead ? <DirectionQuestions key={directionDraftKey(step)} step={step} ctx={ctx} heading={decisionHead.questions} onDecide={onDecide} printing={printing} saving={saveStatus === 'saving'} />
-          : isEmergencyAccounts && emergencyAccountTasks ? <EmergencySubjectReadiness subjects={emergencyAccountTasks.accounts ?? []} printing={printing} barMain={(emergencyAccountTasks.accounts ?? []).some(account => !account.satisfied) ? 'Complete the next task shown for each account.' : 'Account preparation is verified.'} onWhy={hasEvidence && !printing ? () => setDialog('readiness') : null} />
+          : isEmergencyAccounts && emergencyAccountTasks ? <EmergencySubjectReadiness subjects={emergencyAccountTasks.accounts ?? []} printing={printing} barMain={(emergencyAccountTasks.accounts ?? []).some(account => !account.satisfied) ? '' : 'Account preparation is verified.'} onWhy={hasEvidence && !printing ? () => setDialog('readiness') : null} />
           : isTaskStep && emergencyAccountTasks && !printing ? <EmergencySubjectReadiness
             subjects={taskSubjects}
             printing={printing}
