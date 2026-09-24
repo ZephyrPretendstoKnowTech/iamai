@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "Ready · Review",
   "bar": "Complete the review below",
-  "rail": "Finish the steps this one waits on first.",
+  "rail": "Require MFA for Guests",
   "headings": [
     "About this Step",
     "Tasks Remaining",

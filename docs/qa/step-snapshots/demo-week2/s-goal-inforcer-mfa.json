@@ -5,7 +5,7 @@
   "fact": "Enforced",
   "badge": "On Hold",
   "bar": "On Hold",
-  "rail": "Finish the steps this one waits on first.",
+  "rail": "Require MFA for Inforcer Access",
   "headings": [
     "About this Step",
     "Tasks Remaining",
