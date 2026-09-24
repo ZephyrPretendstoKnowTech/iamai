@@ -524,7 +524,12 @@ export function AuthoredText({ text }: { text: string }) {
             </p>
           )
         }
-        if (part.kind === 'line') return <p key={k}>{inlineText(part.text)}</p>
+        if (part.kind === 'line') {
+          // "+ Title: text" folds under the step: a long list stays one click away (policyProcedure.ts ROLES_INLINE).
+          const t = part.text.trim()
+          if (t.startsWith('+ ') && t.includes(': ')) return <details key={k} className="authored-fold"><summary>{inlineText(t.slice(2, t.indexOf(': ')))}</summary><p>{inlineText(t.slice(t.indexOf(': ') + 2))}</p></details>
+          return <p key={k}>{inlineText(part.text)}</p>
+        }
         const items = part.items.map((lines, i) => (
           <li key={i}>
             {lines.map((l, j) => (
