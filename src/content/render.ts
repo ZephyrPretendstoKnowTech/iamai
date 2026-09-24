@@ -241,7 +241,9 @@ const SUBJECT_RE = new RegExp(`(?<![\\d,.])\\b1 (?:of them|(?:[A-Za-z-]+ )?(?:${
 // A verb a modal, an auxiliary, "not" or "to" governs keeps its base form: "1
 // section could not be read", "1 person needs to register". The count's verb is
 // the modal, which does not bend (Phase 2 audit: "could not be reads").
-const GOVERNED_RE = /\b(?:be|been|being|can|cannot|could|will|would|may|might|must|shall|should|not|to)\s+$/i
+// A verb joined by "or" or "and" to one "to" governs keeps it too: "1 account to
+// disable or keep" read "to disable or keeps" (walk list section 3 item 26).
+const GOVERNED_RE = /\b(?:be|been|being|can|cannot|could|will|would|may|might|must|shall|should|not|to)\s+$|\bto\s+[A-Za-z-]+\s+(?:or|and)\s+$/i
 // A word after a preposition is its object, a noun ("in use", "on hold", "at
 // work"), never the count's verb, and never bends: "1 of 300 licences in use"
 // read "in uses". Be, have and do are never an object: after a stranded
