@@ -28,7 +28,7 @@ import { phoneSignInIds } from '../../derive/sets.ts'
 import { securityDefaultsState, signInsNeedP1 } from '../../derive/readinessContext.ts'
 import { cohortWords, guestsAmong } from '../../derive/whoLine.ts'
 import { pickerVars } from './pickerRows.ts'
-import { DECISION_STEPS } from '../../roadmap/decisions.ts'
+import { DECISION_STEPS, decisionKeyOf } from '../../roadmap/decisions.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import type { NamingConvention } from '../../coverage/naming.ts'
@@ -386,8 +386,28 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // The step's own picker rows (prune B): the emergency, exclusions-group,
   // countries, trusted-network, service-accounts and shared-devices pickers,
   // from the detections the plan runs, in the content file's row shape.
-  const pickerRow = (contentStepFor(step) as { decision?: { pickerRow?: string } } | undefined)?.decision?.pickerRow
-  if (typeof pickerRow === 'string') Object.assign(v, pickerVars(step.id, pickerRow, { snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, groups: ctx.groups, directory: ctx.directory }) ?? {})
+  const decision = (contentStepFor(step) as { decision?: { pickerRow?: string; accountRow?: string } } | undefined)?.decision
+  const pickerCtx = { snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, groups: ctx.groups, directory: ctx.directory }
+  // Create or Correct Service Accounts Group picks a group (decisions.ts
+  // decisionKeyOf); the accounts it holds keep their rows with the signals
+  // that nominated them, which the step's evidence lines name.
+  if (typeof decision?.accountRow === 'string') Object.assign(v, pickerVars(step.id, decision.accountRow, pickerCtx) ?? {})
+  if (typeof decision?.pickerRow === 'string') Object.assign(v, pickerVars(decisionKeyOf(step.id), decision.pickerRow, pickerCtx) ?? {})
+
+  // The service accounts group: the one the picker saved (else the name the
+  // plan proposes), how many it holds once it holds exactly the picked
+  // accounts, and the picked accounts by name. `serviceGroupFound` names the
+  // scanned group the picker pre-fills while nothing is saved.
+  if (step.id === PREREQ_STEP_ID.serviceAccountsGroup) {
+    const groupId = ctx.mapping.serviceAccountsGroupId
+    const group = groupId ? ctx.groups?.get(groupId) : undefined
+    const name = groupId ? (group?.displayName ?? ctx.nameOf(groupId)) : step.naming?.proposed
+    if (name) v.serviceAccountsGroupName = name
+    if (group && step.state.satisfied) v.serviceAccountsGroupMembers = group.memberCount
+    v.serviceAccountNames = list(ctx.mapping.serviceAccountUserIds.map(ctx.nameOf))
+    const matched = v.groupsMatched
+    if (!groupId && Array.isArray(matched) && matched.length === 1) v.serviceGroupFound = ctx.groups?.get(String(matched[0]))?.displayName ?? ctx.nameOf(String(matched[0]))
+  }
 
   // The emergency-access and exclusions-group steps (walk-51 item 14): the
   // failing checks routed through the content checkFixes, the counts for the

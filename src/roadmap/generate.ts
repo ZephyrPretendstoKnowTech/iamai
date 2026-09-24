@@ -238,6 +238,7 @@ import type { SubjectReport } from '../validation/report.ts'
 import { STEP_EXTRAS } from './stepDefaults.ts'
 import { awaitsOperator, exclusionsGroupChoice, operatorExclusionsDecision } from '../mapping/safetyChoice.ts'
 import type { DirectoryEvidence } from '../mapping/safetyChoice.ts'
+import { groupHoldsExactly } from '../mapping/serviceAccounts.ts'
 import { conditionFor, initialState, projectStatus, raiseCondition, setState, stateFields } from './lifecycle.ts'
 import type { StepState } from './lifecycle.ts'
 
@@ -1275,8 +1276,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const saStepId = PREREQ_STEP_ID.serviceAccountsGroup
   if (canUseConditionalAccess && mapping.serviceAccountUserIds.length > 0) {
     const proposed = proposedObjectNames(naming).serviceAccountsGroup
+    // Done when the group chosen on this step's picker (decisions.ts
+    // SERVICE_ACCOUNTS_GROUP_KEY) holds exactly the accounts picked in Identify
+    // Service and Shared Accounts.
     const members = mapping.serviceAccountsGroupId ? input.groupMembers?.get(mapping.serviceAccountsGroupId) : null
-    const matched = !!members && !members.sampled && new Set(members.memberIds).size === new Set(mapping.serviceAccountUserIds).size && mapping.serviceAccountUserIds.every((id) => members.memberIds.includes(id))
+    const matched = groupHoldsExactly(members, mapping.serviceAccountUserIds)
     const step = { ...prereq(saStepId), ...stateFields(matched ? { satisfied: true, inPlace: true } : {}), naming: { proposed: proposed.name, fromBaseline: null }, deliveredBy: matched ? ['The scanned group includes exactly the selected service accounts.'] : [] }
     if (mapping.serviceAccountUserIds.length === 0) {
       step.doesntApply = answeredReasonOf('serviceAccounts', 'none')

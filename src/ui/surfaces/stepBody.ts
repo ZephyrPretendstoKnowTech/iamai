@@ -382,8 +382,14 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // (emergencyGroupTasks.ts), read once its tasks are built below.
   const help = d && typeof d.help === 'string' && whole(d.help, ex) ? fillText(d.help, ex) : null
   const exclusions = step.id === 's-prereq-exclusion-group'
-  const ownRailWords = choosing ?? pkg?.meta.milestone?.actionText ?? directionMilestoneAction(step.id)
-  const railInstruction = step.id === 's-prereq-break-glass' ? help : exclusions ? EXCLUSIONS_MILESTONE : null
+  // Create or Correct Service Accounts Group once the scan finds a group that
+  // holds exactly the picked accounts and nobody has saved it: saving it is the
+  // milestone, in the step's own words for that state (whatToDoWhen).
+  const serviceGroupFound = step.id === PREREQ_STEP_ID.serviceAccountsGroup && truthy(ex.serviceGroupFound) && typeof w.lead === 'string' && whole(w.lead, ex) ? fillText(w.lead, ex) : null
+  const ownRailWords = choosing ?? serviceGroupFound ?? pkg?.meta.milestone?.actionText ?? directionMilestoneAction(step.id)
+  // 1.1's decision help, 1.2's group line, and 3.7's group picker line: the
+  // instruction under the milestone of a step whose rail takes a choice.
+  const railInstruction = step.id === 's-prereq-break-glass' || step.id === PREREQ_STEP_ID.serviceAccountsGroup ? help : exclusions ? EXCLUSIONS_MILESTONE : null
   // What kind of step this is, and "Resolution step" for one whose source
   // contradicts itself (stepContract.ts eyebrowOf).
   const eyebrow = eyebrowOf(contract, typeof cs.kind === 'string' ? cs.kind : null)

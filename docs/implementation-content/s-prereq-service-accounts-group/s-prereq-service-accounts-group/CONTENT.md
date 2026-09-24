@@ -1,11 +1,11 @@
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["groupMissing"],"format":"markdown","kind":"template"}
-1. Go to **Entra admin center → Entra ID → Groups → All groups → New group**.
+1. Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Groups → All groups → New group**.
 2. Group type: **Security**.
 3. Membership type: **Assigned**.
 4. Name: **{{group.target.displayName}}**.
-5. Add only the service-account users whose application owners confirmed them: {{serviceAccounts.accountsSummary}}. [omit this line when unavailable] Any account named as a mail-sending device in Confirm What You Use is already on that list.
-6. Do not add service principals or managed identities. A policy scoped to users does not block a call made by a service principal, and a policy assigned to a group is not enforced for a service principal inside it, so one added here would be protected by nothing.
-7. Create the group and rescan IAMAI before changing the policies that use it.
+5. Under **Members**, add {{serviceAccounts.memberUpns}}.
+6. Select **Create**.
+7. Return to IAMAI and select **Scan to update the plan**.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -102,6 +102,9 @@ The owner recorded that no user-based service accounts need this group. No empty
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["groupMissing"],"format":"markdown","kind":"template"}
 
 The service-accounts group does not exist yet. The planned change creates one assigned security group named {{group.target.displayName}} containing only the confirmed user-based service accounts. A rescan after creation lets the policies that exclude it reference its object ID.
+
+{{service.ropcAccount}} signs in with a password from a script: move it to a managed identity or service principal when you can. [omit this line when unavailable]
+{{service.ropcAccounts}} sign in with a password from a script: move each to a managed identity or service principal when you can. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
@@ -135,5 +138,5 @@ Please confirm which listed accounts run unattended jobs, the workload each supp
 
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["needsDecision","groupMissing","partial","verificationRequired","inPlace"],"format":"json","kind":"referenceOnly"}
-{"scenarios":[{"id":"candidate-not-authority","classification":"derived","symptom":"An account is proposed for the group only because its name starts with svc or it lacks interactive sign-ins.","check":"Find workload owner and confirm no person signs in as that identity.","fix":"Keep it out until owner-confirmed.","then":"Save the decision and rescan.","sources":["ms-service"]},{"id":"new-group-replication","classification":"documented","symptom":"Adding a member to a newly created group returns 400 that the referenced object does not exist.","check":"Confirm the group/user IDs are correct and the group was just created.","fix":"Retry after directory replication; do not create a duplicate group.","then":"Read membership back.","sources":["ms-group-add"]},{"id":"dangerous-delete-shape","classification":"documented","symptom":"A membership removal URI omits `/$ref`.","check":"Inspect the exact request path.","fix":"Use DELETE `/groups/{group-id}/members/{member-id}/$ref`.","then":"Verify the user still exists and only membership changed.","sources":["ms-group-remove"]},{"id":"group-type-wrong","classification":"documented","symptom":"The selected group is dynamic or mail-enabled.","check":"Inspect groupTypes, mailEnabled, securityEnabled.","fix":"Resolve the approved assigned security-group identity; do not silently convert a materially different object.","then":"Rescan before downstream use.","sources":["ms-group-overview"]},{"id":"graph-403","classification":"documented","symptom":"Graph returns 403 for group membership.","check":"Verify GroupMember.ReadWrite.All and a supported group-management role; creation in delegated context uses Group.ReadWrite.All.","fix":"Reconnect with the permissions required for the intended operation.","then":"Retry only the bounded group action.","sources":["ms-group-create","ms-group-add"]}]}
+{"scenarios":[{"id":"candidate-not-authority","classification":"derived","symptom":"An account is proposed for the group only because its name starts with svc or it lacks interactive sign-ins.","check":"Find workload owner and confirm no person signs in as that identity.","fix":"Keep it out until owner-confirmed.","then":"Save the decision and rescan.","sources":["ms-service"]},{"id":"group-type-wrong","classification":"documented","symptom":"The selected group is dynamic or mail-enabled.","check":"Inspect groupTypes, mailEnabled, securityEnabled.","fix":"Resolve the approved assigned security-group identity; do not silently convert a materially different object.","then":"Rescan before downstream use.","sources":["ms-group-overview"]}]}
 @@IAMAI-END
