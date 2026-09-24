@@ -1435,6 +1435,24 @@ try {
   )
   if (createDrawn) await clickText('/^Show the full plan$/')
   await sleep(200)
+  // The action column (owner, 2026-09-23): the Next milestone block leads it on
+  // every step, and on a Completed step it reads Completed. On Prepare Emergency
+  // Access Accounts the instruction line follows, once, then the picker's label.
+  const EA_HELP = JSON.parse(readFileSync('docs/design/content.json', 'utf8')).steps.find((s) => s.id === 's-prereq-break-glass').decision.help
+  const railRead = async (id) => {
+    await evaluate(`location.hash = '#/plan/${id}'`)
+    const rail = `document.querySelector('main.page .step[data-step-id="${id}"] .step-body > .step-action-column')`
+    if (!(await waitFor(`!!${rail}`, 6000))) return null
+    return await evaluate(`(() => { const rail = ${rail}; const block = rail.firstElementChild; const text = rail.textContent || ''; const line = text.indexOf(${JSON.stringify(EA_HELP)}); const label = ((rail.querySelector('.decision .action-heading') || {}).textContent || '').trim(); return { lane: ((document.querySelector('main.page .plan-row[data-step="${id}"] .lane') || {}).textContent || '').trim(), milestone: block && block.classList.contains('side-block') ? [(block.querySelector('.key-label') || {}).textContent, (block.querySelector('.metric') || {}).textContent] : null, help: text.split(${JSON.stringify(EA_HELP)}).length - 1, yours: /Your emergency access accounts/.test(text), label, lineFirst: line >= 0 && label !== '' && line < text.indexOf(label, line) } })()`)
+  }
+  const completedRail = (r) => !!r && r.lane === 'Completed' && JSON.stringify(r.milestone) === JSON.stringify(['Next milestone', 'Completed'])
+  const policyRail = await railRead('s-goal-mfa-all-users')
+  const accountsRail = await railRead('s-prereq-break-glass')
+  check(
+    'Demo: a Completed step’s action column leads with Next milestone · Completed, and 1.1 says its instruction once, over the picker’s label',
+    completedRail(policyRail) && completedRail(accountsRail) && accountsRail.help === 1 && !accountsRail.yours && accountsRail.label === 'Emergency access accounts' && accountsRail.lineFirst,
+    JSON.stringify({ policyRail, accountsRail }),
+  )
   // Scan again only ever moves forward; the way back to the initial scan is the
   // banner's selector, which names the snapshot it selects.
   await demoScanAgain()
