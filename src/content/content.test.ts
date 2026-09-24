@@ -217,15 +217,10 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // renders. The review page draws the one the example's facts earn, as the
   // product does.
   '.steps[7].who.leadWhen.securityDefaultsOff',
-  // Its Done-when for the same read state (doneWhenWhen, R4-38): the step is
-  // complete there and claims only that. The example's security defaults are
-  // on, so the review page draws the cutover's own lines, as the product does.
-  '.steps[7].doneWhenWhen.securityDefaultsOff[0]',
-  // Its procedure for the same read state (whatToDoWhen): nothing to turn off,
-  // each replacement from its own step. The example's are on, so the review
-  // page draws the cutover's procedure, as the product does.
-  '.steps[7].whatToDoWhen.securityDefaultsOff.steps[0]',
-  '.steps[7].whatToDoWhen.securityDefaultsOff.steps[1]',
+  // Finish Moving Off Per-User MFA's select line for more than five accounts, or
+  // none (walk list 4.x item 57): the example names two, so the review page
+  // draws the line that selects them by name, as the product does.
+  '.steps[8].whatToDo.steps[1]',
   '.steps[10].who.match',
   '.steps[14].who.evidence[1]',
   // Directory-role holders who use the same account for mail or Teams (E6), on the

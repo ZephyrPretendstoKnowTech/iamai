@@ -782,6 +782,12 @@ export type Step = {
    */
   doesntApplyByScan?: true
   /**
+   * Turn Off Security Defaults only: the policies it turns on in the same change,
+   * each by the name it has in the tenant, or the name the plan creates it under,
+   * in the Plan's order (roadmap/enforceWaits.ts noteTurnOns; walk list 4.x item 8).
+   */
+  turnsOn?: { stepId: string; policy: string }[]
+  /**
    * True where a Direction answer, not a reason typed on this step, says the step
    * does not apply (directionAnswers.ts answeredReasonOf): the footer states the
    * answer as the reason instead of "you said", and offers no Put back, because

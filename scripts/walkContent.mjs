@@ -78,15 +78,7 @@ export const ACCEPTANCE = [
   // so the replacement list is four policies, not three; and no Learn page says
   // a report-only policy may coexist with security defaults — what Learn says is
   // that creating Conditional Access policies prevents enabling them.
-  { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'once these policies exist you cannot turn security defaults back on.', mustNot: '{firstPolicy}' },
-  // The lead is a Tasks Remaining card's one sentence, so the dating is a whole sentence and not a colon leading a list.
-  { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'Turn them off on that day and not before.' },
-  // The order is sourced now (playbook V3 corroborated 2026-09-21), so the step
-  // states it. What it still may not do is claim Microsoft guarantees coexistence.
-  { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'create all four replacements in Report-only while security defaults are still on' },
-  { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'enable Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins in the same change window' },
   { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'Disabled (not recommended)' },
-  { item: 'C7', step: 's-prereq-security-defaults', path: 'doneWhen', must: 'Security defaults are off; Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins are enforced.' },
   { item: 'C7', step: 's-prereq-security-defaults', path: 'more.helpDesk', must: 'Prompts on the switch day are the new MFA policy; anyone without a method gets a Temporary Access Pass.' },
   { item: 'C7', step: 's-prereq-security-defaults', path: 'more.risks', must: 'Security defaults also block device code sign-in' },
   // Per step, 1–10.
@@ -114,16 +106,11 @@ export const ACCEPTANCE = [
   { item: '6', step: 's-prereq-service-accounts-group', path: 'more.risks', must: 'see Restrict Service Accounts to the Trusted Network' },
   { item: '7', step: 's-shared-devices', path: 'whatToDo.steps', must: 'Exclude: {trustedLocation}', mustNot: 'Require device to be marked as compliant' },
   { item: '7', step: 's-shared-devices', path: 'doneWhen', must: 'Each shared device completes its required work tasks from the approved network', mustNot: 'requires a compliant device' },
-  // The lead is a Tasks Remaining card's one sentence and nothing leads a list
-  // under it (U1: no step draws What to do), so it is a whole sentence, not a colon.
-  { item: '9', step: 's-prereq-per-user-mfa', path: 'whatToDo.lead', must: 'On the day Require MFA for Everyone enforces, and not before,', mustNot: 'and not before:' },
   { item: '9', step: 's-prereq-per-user-mfa', path: 'more.risks', must: 'Disabling per-user MFA before the policy enforces removes MFA for that person.' },
   // MFA for Everyone G1-G7 (docs/plans/mfa-everyone-spec.md section 8, Microsoft
   // Learn checked 2026-09-20): the step's outcome is the per-user state, not the
   // methods-policy migration, which its own Completion Criteria already said.
   { item: '9', step: 's-prereq-per-user-mfa', path: 'whatToDo.steps', must: 'Users → All users → Per-user MFA.', mustNot: 'Manage migration → Migration complete.' },
-  { item: '9', step: 's-prereq-per-user-mfa', path: 'whatToDo.steps', must: 'it never requires MFA, so finishing its migration is not what finishes this step' },
-  { item: '9', step: 's-prereq-per-user-mfa', path: 'why', must: 'asked for MFA at every sign-in whatever the policy decides' },
   { item: '9', step: 's-prereq-per-user-mfa', path: 'more.risks', must: 'skip for federated requests from your intranet' },
   { item: '9', step: 's-prereq-per-user-mfa', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/monitoring-health/recommendation-turn-off-per-user-mfa', mustNot: 'how-to-authentication-methods-manage' },
   { item: '10', step: 's-prereq-passkey-settings', path: 'whatToDo.steps', must: 'Enforce attestation: Yes; it applies to new registrations only.' },

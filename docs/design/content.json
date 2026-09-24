@@ -535,17 +535,6 @@
         "deviceCodeNone": "No device-code sign-ins in the last 30 days.",
         "more": "and {n} more"
       },
-      "perUserMfa": {
-        "$comment": "The Legacy Per-User MFA tile on Finish Moving Off Per-User MFA (roadmap/manualWork.ts). {accounts} is copy/statements.ts count(), so it reads \"4,902 accounts\" and \"1 account\". Per-user MFA is a state every account in the directory has, emergency accounts included, so the unread count is the whole directory where the scan read no state at all; detailUnreadAll says so, because every other count on the plan leaves the emergency accounts out and the two numbers otherwise read as a mistake (R4-54). These were inline template strings with no separator and \"1 accounts\".",
-        "label": "Legacy Per-User MFA",
-        "valueOn": "{accounts} Enabled or Enforced",
-        "valueUnread": "Not fully read",
-        "valueOff": "Disabled",
-        "detailUsersUnread": "The account list was not fully read; the tenant-wide per-user MFA state is not established.",
-        "detailUnreadAll": "The scan read no per-user MFA state, so every account in the directory needs a check: all {accounts}, the emergency accounts included.",
-        "detailUnreadSome": "{accounts} need a per-user MFA state check: the scan could not read their state.",
-        "detailOff": "No current account has legacy per-user MFA enabled or enforced."
-      },
       "coverage": {
         "$comment": "Why an existing policy that is this goal's policy does not put the goal in place (src/coverage/coverage.ts): the reason under the goal, the gap a plan row shows, and the sentence the goal's statement adds. A gap never contains the word \"and\": the row keeps only what comes before it (coverage/verdict.ts gapClauseOf).",
         "reason": {
@@ -2257,9 +2246,9 @@
           "$commentLeadUnverified": "The lead of a finished step, other than the one with the emergency-access tiers, whose open findings are all unread (outcome unknown). It read its milestone, \"No change needed.\", over a tile saying Could not verify: on the Follow-up snapshot Configure Passkey Settings said so over \"Existing passkeys affected - Could not verify\", whose note said some registered authentication methods were not readable. An absolute all-clear over a check IAMAI could not make is a claim it cannot know; this scopes the all-clear to what was read and names the check that was not. A finished step with an open failing finding keeps its milestone words: an owner question, not settled here.",
           "leadUnverified": "Nothing IAMAI could read here needs a change. It could not verify {findings}, and says there what was not read.",
           "fixStep": "Finish {step} first.",
-          "$commentFixStepAt": "A prerequisite is not always waited on until it is FINISHED (src/actionability/dependency-data.json carries the milestone on every edge). Turn Off Security Defaults waits for the replacement policies to be ready to enforce; those policies wait for it to be complete. Both tiles said \"Finish the other first\", so the pair read as a deadlock that the data does not contain — and the way out of an apparent deadlock is to turn security defaults off, which is the one thing the step's own words say not to do yet.",
+          "$commentFixStepAt": "A prerequisite is not always waited on until it is FINISHED (src/actionability/dependency-data.json carries the milestone on every edge). Turn Off Security Defaults waits for the replacement policies to be ready to enforce; those policies wait for it to be complete. Both tiles said \"Finish the other first\", so the pair read as a deadlock that the data does not contain — and the way out of an apparent deadlock is to turn security defaults off, which is the one thing the step's own words say not to do yet. A null milestone draws no note under the card: Turn Off Security Defaults' own card already says to turn them off the day the four policies below it are ready (walk list 4.x item 50).",
           "fixStepAt": {
-            "ready-to-enforce": "{step} needs to be ready to enforce first — not finished, just ready.",
+            "ready-to-enforce": null,
             "created": "{step} needs to exist first.",
             "enforced": "{step} needs to be enforced first.",
             "resolved": "{step} needs to be resolved first.",
@@ -3212,7 +3201,7 @@
         "$commentSecurityDefaultsCoexistPointer": "It ended \"and this is the step that turns them off\", which reads as the way out. On the tenant where it fired the plan's own MFA policy was still held below its threshold, and turning security defaults off then removes the MFA they require from everybody (Sam D2). The step turns them off only once the replacements can go On in the same change window, and the line says that instead.",
         "securityDefaultsCoexist": "{n} Conditional Access policies are enforced in this tenant while security defaults are still on, which Microsoft does not support. Do not turn security defaults off to settle it: this step does that only once the policies that replace them can go On in the same change window.",
         "$commentSecurityDefaultsNeverOn": "Turn Off Security Defaults read Completed on a tenant whose security defaults were already off when this plan first scanned it: a row claiming work nobody did (roadmap-flow V1 decision 6, Stage 3). The plan records the day a scan first read them on (PlanDecisions.securityDefaultsSeenOnAt); where there is none the step does not apply, and this is the reason the Doesn't apply here footer states for it. The scan says so, not a person, so it is drawn without the you-said prefix (pages.plan.footer.doesntApplyScanRow).",
-        "securityDefaultsNeverOn": "No scan of this plan has read security defaults on, so there is nothing to turn off."
+        "securityDefaultsNeverOn": "Security defaults are already off."
       },
       "readiness": {
         "$commentLineNoRecordsReason": "It read \"no sign-in records ({reason})\" beside a count of 0, and the reason often said the same thing or carried its own parentheses. One sentence now, and a reason that only restates it is left out.",
@@ -4271,7 +4260,7 @@
       "kind": "object",
       "title": "Turn Off Security Defaults",
       "changeLine": null,
-      "why": "Replacing Security Defaults gives you more control over access rules. The changeover needs care so the tenant does not lose protection between the two configurations.",
+      "why": "Security defaults and Conditional Access can't run together. Turn security defaults off on the day the four policies below turn on, so the tenant is never without MFA.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/fundamentals/security-defaults"
       },
@@ -4283,39 +4272,25 @@
         }
       },
       "decision": null,
+      "$commentWhatToDo": "One procedure in every state (walk list 4.x items 8, 18 and 51): turn security defaults off, then turn on in the same change the four policies that replace them, each by the name it has in the tenant (turnOn1 to turnOn4, in the Plan's order: roadmap/enforceWaits.ts noteTurnOns, ui/surfaces/stepVars.ts). A policy not on the plan has no name, and its line is not drawn. The step completes when a scan reads security defaults off; every other policy turns on from its own step after that.",
       "whatToDo": {
-        "lead": "Security defaults and Conditional Access are not meant to run together, and the rule runs both ways: security defaults must be off before the policies replacing them can take over, and once these policies exist you cannot turn security defaults back on. That is why nothing in this plan enforces before this step. One order works, and it is the one this plan follows: create all four replacements in Report-only while security defaults are still on, watch them there, then turn security defaults off and enable all four in the same change window. Turn them off on that day and not before.",
+        "lead": "Turn off the day the four policies below are ready to turn on.",
         "steps": [
-          "Check each policy that takes over: Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins. Any one of them not enforced already must have run in report-only with no failures before you turn it on today.",
-          "Entra admin center → Entra ID → Overview → Properties → Manage security defaults → Disabled (not recommended) → Save. You need at least the Conditional Access Administrator role.",
-          "Right after saving, enable Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins in the same change window, then test sign-in."
+          "As at least a Conditional Access Administrator, open [Microsoft Entra admin center](https://entra.microsoft.com/) → Entra ID → Overview → Properties → Manage security defaults.",
+          "Select Disabled (not recommended), then Save.",
+          "Go to Entra ID → Conditional Access → Policies.",
+          "Open {turnOn1}, set Enable policy to On and select Save.",
+          "Open {turnOn2}, set Enable policy to On and select Save.",
+          "Open {turnOn3}, set Enable policy to On and select Save.",
+          "Open {turnOn4}, set Enable policy to On and select Save.",
+          "Return to IAMAI and select Scan to update the plan."
         ]
-      },
-      "$commentWhatToDoWhen": "The procedure for the state the scan read, beside doneWhenWhen: where the fact holds this object replaces whatToDo whole (content/render.ts whatToDoFor), on the screen, every export and the review page. whatToDo above is the cutover this step performs where security defaults were read on or could not be read. Where the scan read them already off, the step is Completed on that fact alone, and its Implementation Tasks — drawn as reference, still readable — told the reader to disable security defaults and, right after saving, to enable Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins in the same change window: on hostile the admin policy was Not deployed and held by its own readiness gate, and only a report-only guard two lines up stood between the reader and turning it on (R4-38 follow-up). There is nothing to turn off in that state, and each replacement turns on from its own step, under its own gates. No lead: a Completed step's action is the contract's milestone.",
-      "whatToDoWhen": {
-        "securityDefaultsOff": {
-          "steps": [
-            "Entra admin center → Entra ID → Overview → Properties → Manage security defaults: check it reads Disabled (not recommended). There is nothing to change on this step.",
-            "Turn on Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins each from its own step, when that step says it is ready. None of them is turned on from here."
-          ]
-        }
       },
       "dates": null,
       "doneWhen": [
-        "Security defaults are off; Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins are enforced.",
-        "Test sign-in for representative users and admins right after the changeover."
+        "IAMAI reads security defaults as Disabled."
       ],
-      "$commentDoneWhenWhen": "The Done-when for the state the scan read, beside who.leadWhen. The lines above are the cutover this step performs where the scan read security defaults on (or could not read them): turn them off and enforce the four replacements in the same window. The step completes on security defaults being off and on nothing else (roadmap/generate.ts); it cannot also wait for the four policies, because each of them waits on this step. Where the scan read them already off, the step is Completed and the cutover lines claimed four policies enforced that nothing checked — on a tenant with no admin phishing-resistant policy at all, whose own row read Not deployed on the same board (R4-38). There is no changeover to test either. So that read state's Done-when is what completes the step, and only that; what the four replacements still need is their own steps', and the who lead already says nothing replaces security defaults until they are enforced.",
-      "doneWhenWhen": {
-        "securityDefaultsOff": [
-          "Security defaults are off."
-        ]
-      },
-      "ifWrong": "If the changeover fails, use your tested emergency access and the agreed rollback procedure. Re-enabling Security Defaults may require changing active Conditional Access policies first; coordinate the rollback to avoid a protection gap.",
-      "$commentIfWrongWhen": "The way back for the state the scan read (content/render.ts ifWrongFor); null says that state has none. ifWrong above undoes the cutover this step performs. Where the scan read security defaults already off, IAMAI cannot know that any changeover was made, by this plan or anyone: \"If the changeover fails … Re-enabling Security Defaults\" described undoing a change IAMAI cannot know was made. Each replacement policy's own step carries its own way back.",
-      "ifWrongWhen": {
-        "securityDefaultsOff": null
-      },
+      "ifWrong": "Set the policy that blocks sign-in back to Report-only. If you are locked out, sign in with an emergency access account.",
       "comms": null,
       "doesntApply": false,
       "skip": false,
@@ -4342,14 +4317,18 @@
       "example": {
         "tenant": "Contoso Pty Ltd",
         "from": "Aug 1",
-        "securityDefaultsOn": true
+        "securityDefaultsOn": true,
+        "turnOn1": "IAC - GLOBAL – BLOCK - Legacy Authentication",
+        "turnOn2": "IAC - GLOBAL - BLOCK - Device Code Auth Flow",
+        "turnOn3": "IAC - GLOBAL - GRANT - MFA - AllAdmins",
+        "turnOn4": "IAC - GLOBAL - GRANT - MFA - AllUsers"
       },
       "placement": "Placed on the day Require MFA for Everyone enforces, with Block Legacy Authentication and Require Phishing-Resistant MFA for Admins enforced the same day; its row carries that date. Shown only when security defaults are on.",
-      "aiFocus": "Describe the ordered cutover and replacement policy identities. Report-only preparation is not replacement protection until enforcement is verified.",
+      "aiFocus": "Walk me through turning off security defaults and turning on the four policies in the same change.",
       "card": {
-        "satisfied": "Off",
         "subject": "Security defaults",
-        "check": "Still on"
+        "check": "On",
+        "satisfied": "Off"
       },
       "taskTitle": "Turn security defaults off"
     },
@@ -4358,7 +4337,7 @@
       "kind": "object",
       "title": "Finish Moving Off Per-User MFA",
       "changeLine": null,
-      "why": "An account left on Enforced is asked for MFA at every sign-in whatever the policy decides, and Microsoft says not to keep per-user MFA where Conditional Access is in use. Keep the existing protection until the replacement is actually enabled for the affected accounts.",
+      "why": "An account left on per-user MFA is asked for MFA at every sign-in, whatever Conditional Access decides. Turn it off for each account once Require MFA for Everyone is On.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/monitoring-health/recommendation-turn-off-per-user-mfa"
       },
@@ -4367,18 +4346,30 @@
         "accounts": "{list:accounts}"
       },
       "decision": null,
+      "$commentWhatToDo": "One procedure in every state (walk list 4.x item 57). Where the scan reads five or fewer accounts on, the task selects each by name and sign-in address (perUserNamed, ui/surfaces/stepVars.ts); with more, or once none is on, it selects every account the page marks Enabled or Enforced. The scan reads each state back, so nothing asks anyone to.",
       "whatToDo": {
-        "lead": "On the day Require MFA for Everyone enforces, and not before, disable every legacy per-user MFA state.",
+        "lead": "Turn off per-user MFA for each account once Require MFA for Everyone is On.",
         "steps": [
-          "Check first that every method these people use is enabled under Entra admin center → Entra ID → Authentication methods → Policies. That policy decides what they may register; it never requires MFA, so finishing its migration is not what finishes this step.",
-          "Once Require MFA for Everyone is On: Entra admin center → Entra ID → Users → All users → Per-user MFA. Use that page’s own Enabled and Enforced views, select every account they list, and choose Disable MFA. You need at least the Authentication Policy Administrator role.",
-          "Read each state back as Disabled, then delete any app password those accounts still hold, because an app password bypasses MFA on its own."
+          "As at least an Authentication Policy Administrator, open [Microsoft Entra admin center](https://entra.microsoft.com/) → Entra ID → Users → All users → Per-user MFA.",
+          "Select every account marked Enabled or Enforced, then Disable MFA.",
+          "Select them again, then User MFA settings: tick Delete all existing app passwords generated by the selected users and select Save.",
+          "Return to IAMAI and select Scan to update the plan."
         ]
+      },
+      "whatToDoWhen": {
+        "perUserNamed": {
+          "lead": "Turn off per-user MFA for each account once Require MFA for Everyone is On.",
+          "steps": [
+            "As at least an Authentication Policy Administrator, open [Microsoft Entra admin center](https://entra.microsoft.com/) → Entra ID → Users → All users → Per-user MFA.",
+            "Select {perUserNamed}, then Disable MFA.",
+            "Select them again, then User MFA settings: tick Delete all existing app passwords generated by the selected users and select Save.",
+            "Return to IAMAI and select Scan to update the plan."
+          ]
+        }
       },
       "dates": null,
       "doneWhen": [
-        "The legacy per-user MFA states have been reviewed and disabled for the intended accounts after replacement protection is verified.",
-        "Authentication-method policy migration is tracked separately; its completion does not prove that legacy per-user MFA is disabled."
+        "IAMAI reads per-user MFA as Disabled for every account."
       ],
       "ifWrong": "Per-user MFA can be set back to Enabled or Enforced one account at a time, which restores the old requirement while you investigate.",
       "comms": null,
@@ -4412,15 +4403,21 @@
           "Kaladin Stormblessed · Enforced",
           "Breakglass · Enabled"
         ],
-        "from": "Aug 1"
+        "from": "Aug 1",
+        "perUserOn": "2 accounts",
+        "perUserNames": "Kaladin Stormblessed (kaladin@contoso.com), Breakglass (breakglass@contoso.com)",
+        "perUserNamed": "Kaladin Stormblessed (kaladin@contoso.com) and Breakglass (breakglass@contoso.com)"
       },
-      "placement": "Shown only when at least one account has per-user MFA set.",
-      "aiFocus": "Explain the difference between method availability, methods-policy migration and the policy that requires MFA. Never call migration itself a replacement MFA control.",
+      "placement": "On the plan once a scan reads an account with per-user MFA on; Completed once every account reads Disabled.",
+      "aiFocus": "Walk me through turning off per-user MFA for these accounts.",
+      "$commentCard": "One card (walk list 4.x item 55; ui/surfaces/policyTasks.ts ownCardWordsOf): how many accounts the scan reads on, and, where there are five or fewer, who they are; once none is, the Satisfied card's fact.",
       "card": {
-        "subject": "Per-user MFA states",
-        "check": "Not in place"
+        "subject": "Per-user MFA",
+        "check": "{perUserOn} on per-user MFA",
+        "detail": "{perUserNames}",
+        "satisfied": "Disabled for every account"
       },
-      "taskTitle": "Disable the per-user MFA states"
+      "taskTitle": "Turn off per-user MFA"
     },
     {
       "id": "s-prereq-passkey-settings",

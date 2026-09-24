@@ -19,7 +19,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
-import { WHO_UNRESOLVED, stepExportView, whoEvidenceLines, whoLeadTemplate } from './stepExport.ts'
+import { WHO_UNRESOLVED, whoEvidenceLines, whoLeadTemplate } from './stepExport.ts'
 import { boardReadingsOf, laneViewOf, prerequisiteLabelFor, readinessBlockersOf } from './planBoard.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { whoBlocks } from './whoBlocks.ts'
@@ -29,7 +29,6 @@ import { stepById } from '../../content/content.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { listCountVars, missingVars, whole } from '../../content/render.ts'
 import type { Step } from '../../roadmap/types.ts'
-import { stepContract } from './stepContract.ts'
 
 type Who = Record<string, unknown>
 type Ex = Record<string, unknown>
@@ -194,94 +193,36 @@ test('a guest step on a tenant with no guests names nobody', () => {
   assert.deepEqual([...inline, ...held].flatMap((b) => b.names), [], 'the Who section names nobody')
 })
 
-// R4-38: Turn Off Security Defaults completes on security defaults being off
-// and on nothing else — it cannot also wait for the four replacement policies,
-// which each wait on it. Its Done-when also said those four "are enforced". On
-// a tenant whose scan read security defaults already off the step read
-// Completed beside that claim, on a board whose own row for the admin
-// phishing-resistant policy read Not deployed. Where the scan read them off,
-// the Done-when is what completes the step; where it read them on, the
-// cutover this step performs still names all four.
-test('the security-defaults step claims only what completes it, in the state the scan read', () => {
-  const sd = stepById['s-prereq-security-defaults'] as unknown as { doneWhen: string[]; doneWhenWhen: { securityDefaultsOff: string[] } }
-  // A plan that saw security defaults on (V1 decision 6): one that never did reads Doesn't apply, in the footer.
-  const contractOf = (f: ReturnType<typeof fixture>) => {
-    const r = runFixture(f, { securityDefaultsSeenOnAt: '2026-08-01T00:00:00.000Z' })
-    const step = r.steps.find((s) => s.id === 's-prereq-security-defaults')!
-    return { step, c: stepContract(step, ctxFor(f, r)), r }
-  }
-  for (const name of ['small', 'hostile'] as const) {
-    const { step, c, r } = contractOf(fixture(name))
-    assert.equal(step.status, 'done', `${name}: the premise: the step is complete on security defaults read off`)
-    assert.deepEqual(c.doneWhen, sd.doneWhenWhen.securityDefaultsOff, `${name}: the Done-when is not the read state's`)
-    for (const line of c.doneWhen) assert.doesNotMatch(line, /enforced|changeover/, `${name}: "${line}" claims what nothing checks`)
-    // The claim was false on the same board: hostile has no admin phishing-resistant policy.
-    if (name === 'hostile') {
-      const admins = r.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')
-      assert.ok(admins && admins.status !== 'done', 'the premise: the admin policy the old line called enforced is not')
-    }
-  }
-  // Read on: the cutover this step performs, all four replacements named.
-  const on = contractOf(fixture('messy')).c
-  assert.deepEqual(on.doneWhen, sd.doneWhen, 'the cutover lost its Done-when')
-  assert.match(on.doneWhen[0], /Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins/)
-  // Read neither way: nothing confirmed them off, so the cutover's lines stand
-  // (the conservative reading — the step is not complete there either).
-  const unread = structuredClone(fixture('messy'))
-  unread.snapshot.config.securityDefaults = { ...unread.snapshot.config.securityDefaults!, status: 'error', rows: [] } as typeof unread.snapshot.config.securityDefaults
-  assert.deepEqual(contractOf(unread).c.doneWhen, sd.doneWhen, 'an unread state took the Done-when for security defaults off')
-})
-
-// R4-38, the procedure. The Done-when above was only half of it: the step's
-// What to do and its If-it-goes-wrong line were the cutover's too, whatever
-// the scan read. On small and hostile, where security defaults were read
-// already off and the step is Completed, its Implementation Tasks — drawn as
-// reference, still readable — said "Right after saving, enable Require MFA for
-// Everyone, … and Require Phishing-Resistant MFA for Admins in the same change
-// window", on a tenant (hostile) whose admin policy was Not deployed and held
-// by its own readiness gate; and "If the changeover fails … Re-enabling
-// Security Defaults" offered to undo a change IAMAI cannot know was made. The
-// warning that they must have run in report-only first stood two lines above
-// the instruction; the instruction is what goes. The why is the step's purpose
-// in general and stays.
-test('a security-defaults step read already off tells nobody to turn a replacement on, and offers no way back from a changeover', () => {
-  const sd = stepById['s-prereq-security-defaults'] as unknown as { whatToDoWhen: { securityDefaultsOff: { steps: string[] } } }
-  const CUTOVER = /Right after saving|same change window|changeover/
-  // The step as the Plan draws it: the board's lane and blockers, the opened
-  // body, and the export every artifact reads.
-  // small and hostile read security defaults off: the step is a Completed row
-  // only on a plan that saw them on first (V1 decision 6), which is the case
-  // this is about; one that never did reads Doesn't apply, in the footer.
+// R4-38, as the owner settled it (walk list 4.x items 18, 51, 52 and 53): Turn
+// Off Security Defaults completes on security defaults read off and on nothing
+// else, and its Completion Criteria says only that. Its procedure — turn them
+// off, then turn the four policies on in the same change — and its way back are
+// the same in every state: Completed where the scan read them off after a plan
+// saw them on, and open where it reads them on.
+test('the security-defaults step claims only what completes it, and reads the same in every state', () => {
+  const sd = stepById['s-prereq-security-defaults'] as unknown as { doneWhen: string[] }
+  assert.deepEqual(sd.doneWhen, ['IAMAI reads security defaults as Disabled.'])
   const drawn = (name: 'small' | 'hostile' | 'messy') => {
     const f = fixture(name)
     const r = runFixture(f, { securityDefaultsSeenOnAt: '2026-08-01T00:00:00.000Z' })
     const step = r.steps.find((s) => s.id === 's-prereq-security-defaults')!
     const { readings, titleOf } = boardReadingsOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
-    const reading = readings.get(step.id)!
-    const lane = laneViewOf(reading, titleOf)
+    const lane = laneViewOf(readings.get(step.id)!, titleOf)
     const ctx = ctxFor(f, r)
-    const b = stepBodyOf(step, ctx, { lane, blockers: readinessBlockersOf(reading, titleOf), prerequisiteLabel: prerequisiteLabelFor(readings) })
-    const view = stepExportView(step, ctx, lane)
-    const portal = b.artifacts.find((a) => a.id === 'portal')
-    const procedure = [...(portal?.lines ?? []), ...(b.emergencyAccountTasks?.tasks ?? []).flatMap((t) => t.steps ?? []), ...view.whatToDo]
-    return { lane, b, view, portal, procedure: procedure.filter((l): l is string => typeof l === 'string') }
+    const b = stepBodyOf(step, ctx, { lane, blockers: readinessBlockersOf(readings.get(step.id)!, titleOf), prerequisiteLabel: prerequisiteLabelFor(readings) })
+    const lines = (b.artifacts.find((a) => a.id === 'portal')?.lines ?? []).filter((l): l is string => typeof l === 'string')
+    return { lane, b, lines }
   }
-  for (const name of ['small', 'hostile'] as const) {
-    const { lane, b, view, portal, procedure } = drawn(name)
-    assert.equal(lane.lane, 'Completed', `${name}: the premise: the step is complete on security defaults read off`)
-    assert.deepEqual(portal?.lines, sd.whatToDoWhen.securityDefaultsOff.steps, `${name}: the procedure is not the read state's`)
-    for (const line of [...procedure, b.contract.whatToDo.text, ...b.contract.doneWhen]) assert.doesNotMatch(line, CUTOVER, `${name}: "${line}" is the cutover, on a tenant where nothing is cut over`)
-    // Nothing in any channel tells the reader to turn a replacement on today.
-    for (const a of b.artifacts) assert.doesNotMatch(a.text(), /Right after saving|same change window/, `${name}: the ${a.id} channel carries the cutover`)
-    assert.equal(b.ifWrong, null, `${name}: the opened step offers a way back from a changeover`)
-    assert.equal(view.ifWrong, null, `${name}: the export offers a way back from a changeover`)
-  }
-  // Read on: the cutover this step performs, all three parts of it.
   const on = drawn('messy')
-  assert.ok(on.procedure.some((l) => /Right after saving/.test(l)), 'the cutover lost its procedure')
-  assert.ok(on.procedure.some((l) => /same change window/.test(l)), 'the cutover lost its change window')
-  assert.match(on.b.ifWrong ?? '', /changeover/, 'the cutover lost its way back')
-  assert.match(on.view.ifWrong ?? '', /changeover/, 'the export lost the cutover\'s way back')
+  assert.notEqual(on.lane.lane, 'Completed', 'the premise: messy reads security defaults on')
+  for (const name of ['small', 'hostile'] as const) {
+    const off = drawn(name)
+    assert.equal(off.lane.lane, 'Completed', `${name}: the premise: the step is complete on security defaults read off`)
+    assert.deepEqual(off.b.contract.doneWhen, sd.doneWhen, `${name}: the Completion Criteria is not the step's one line`)
+    assert.deepEqual(off.lines.slice(0, 3), on.lines.slice(0, 3), `${name}: the procedure changed with the state`)
+    assert.equal(off.b.ifWrong, on.b.ifWrong, `${name}: the way back changed with the state`)
+  }
+  assert.deepEqual(on.b.contract.doneWhen, sd.doneWhen)
 })
 
 /**

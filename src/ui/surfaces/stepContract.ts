@@ -217,7 +217,8 @@ type ContractWords = {
   /** A finished step's lead where every open finding is unread (actionOf). */
   leadUnverified: string
   fixStep: string
-  fixStepAt: Record<string, string>
+  /** By milestone; a null note draws none (walk list 4.x item 50). */
+  fixStepAt: Record<string, string | null>
   fixConfirmExclusions: string
   /** A policy naming a reference of the baseline's nobody has mapped yet: the fix is the mapping, in Plan settings (S4). */
   fixMapping: string
@@ -2513,8 +2514,11 @@ function emergencyTiles(step: Step, c: StepContract): ReadinessTile[] {
  * first." under it said the heading again (walk list 4.x item 23).
  */
 function fixStepNote(title: string, milestone: string | null | undefined): string | null {
-  const at = milestone && milestone !== 'complete' ? (CONTRACT.fixStepAt as Record<string, string>)[milestone] : undefined
-  return at === undefined ? null : fillText(at, { step: title })
+  const at = milestone && milestone !== 'complete' ? CONTRACT.fixStepAt[milestone] : undefined
+  // A milestone whose note is null draws none: Turn Off Security Defaults' own
+  // card says the four policies it waits on need to be ready, and each of their
+  // cards said it again (walk list 4.x item 50).
+  return at === undefined || at === null ? null : fillText(at, { step: title })
 }
 
 /** A step prerequisite's link: the step it names, opened on the Plan. */

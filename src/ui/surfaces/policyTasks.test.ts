@@ -342,7 +342,8 @@ test('a policy card states no stage it is not at, and no check the plan never re
   }
   {
     const rows = corpus()
-    assert.ok(rows.length > 200, `the corpus still holds these cards (${rows.length})`)
+    // Finish Moving Off Per-User MFA left every fixture's plan: no fixture reads an account on per-user MFA (walk list 4.x item 54).
+    assert.ok(rows.length > 190, `the corpus still holds these cards (${rows.length})`)
     for (const row of rows) {
       assert.deepEqual(row.card.completed, [], `${row.where}: the card lists checks somebody completed`)
       assert.equal(row.card.remainingCount, null, `${row.where}: the card counts stages as checks remaining`)
