@@ -2988,9 +2988,8 @@
             "computers": {
               "label": "Company computers",
               "options": {
-                "managed": "Managed (joined to Entra and enrolled)",
-                "hybrid": "Hybrid joined",
-                "unmanaged": "Left unmanaged"
+                "managed": "Managed (compliant in Intune, or hybrid joined)",
+                "unmanaged": "Unmanaged"
               },
               "$commentToday": "This line said \"{n} people signed in from computers that aren't joined\" and filled {n} from unjoinedComputers, which counts devices with NO trust type at all. A registered device is not joined — Entra has three trust types and only two are a join — so the sentence claimed a population far wider than the one it measured. On a 4,900-person tenant it read 3 where 2,339 people were on registered computers, and this question decides whether every company computer gets joined and enrolled: at 3 that is a Tuesday afternoon, at 2,339 it is a change board and a pilot. Both numbers are stated now, each saying what it counted.",
               "today": "Today: {n} people signed in from computers IAMAI could not identify — not joined, not registered, not compliant, not managed.",
@@ -3007,9 +3006,8 @@
             "phones": {
               "label": "Phones",
               "options": {
-                "enrolled": "Enrolled in Intune",
-                "apps": "App protection only",
-                "unmanaged": "Unmanaged",
+                "enrolled": "Compliant (enrolled in Intune)",
+                "apps": "No device requirement",
                 "blocked": "Blocked from company data"
               },
               "today": "Today: {n} people signed in from phones.",
@@ -3019,10 +3017,10 @@
               "note": "Blocked from company data adds a policy of its own, Keep Company Data Off Phones, with its own report-only week and two tests from a phone before it is enforced."
             },
             "officeNetwork": {
-              "label": "The office network",
+              "label": "Office network",
               "options": {
-                "office": "Trusted locations",
-                "notInEntra": "We have an office network, but it is not in Entra yet",
+                "office": "Pick locations",
+                "notInEntra": "Not in Entra yet",
                 "remote": "Everyone works remotely"
               },
               "seen": "{n} named locations are marked trusted.",
