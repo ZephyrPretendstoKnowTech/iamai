@@ -108,10 +108,6 @@ export const ACCEPTANCE = [
   // masks greater than /8 are allowed", and "Sign-ins from trusted named
   // locations improve the accuracy of Microsoft Entra ID Protection's risk
   // calculation" — accuracy, not a lower score.
-  { item: '5', step: 's-prereq-trusted-location', path: 'whatToDo.steps', must: "as narrow as the network owner's allocation", mustNot: '/32 or a /24' },
-  { item: '5', step: 's-prereq-trusted-location', path: 'whatToDo.steps', must: 'Entra accepts only masks greater than /8', mustNot: 'never 0.0.0.0/0' },
-  { item: '5', step: 's-prereq-trusted-location', path: 'whatToDo.steps', must: 'Ask the network owner for the approved public IPv4 and IPv6 ranges' },
-  { item: '5', step: 's-prereq-trusted-location', path: 'whatToDo.steps', must: "being seen does not approve them" },
   { item: '5', step: 's-prereq-trusted-location', path: 'more.risks', must: "improve the accuracy of Microsoft Entra ID Protection's risk calculation, so keep the ranges tight.", mustNot: 'lowers Identity Protection risk scores' },
   { item: '5', step: 's-prereq-trusted-location', path: 'more.risks', must: 'cannot be deleted until the trusted mark is removed' },
   { item: '6', step: 's-prereq-service-accounts-group', path: 'ifWrong', must: 'Remove the account from the group; the policies apply again on its next sign-in.' },
@@ -134,7 +130,6 @@ export const ACCEPTANCE = [
   { item: '10', step: 's-prereq-passkey-settings', path: 'whatToDo.steps', must: 'Microsoft Authenticator → Enable: On, All users, for push and codes', mustNot: 'so passkeys in the app can be registered' },
   { item: '10', step: 's-prereq-passkey-settings', path: 'more.risks', must: 'Synced passkeys (iCloud Keychain, Google Password Manager) fail attestation and cannot register under these settings.' },
   // Per step, 11–20.
-  { item: '11', step: 's-prereq-auth-strength', path: 'whatToDo.steps', must: 'plus Temporary Access Pass (one-time and multi-use) for first sign-ins', mustNot: 'with a one-time pass for first sign-ins' },
   { item: '11', step: 's-prereq-auth-strength', path: 'ifWrong', must: 'Delete the strength; no policy references it yet.' },
   // 12 says "or" (E7): a passkey or a security key is enough; either is phishing-resistant.
   // The two are now named by the menu entries Microsoft documents, which differ

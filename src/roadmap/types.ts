@@ -631,6 +631,19 @@ export type Step = {
   /** A Define Your Rollout Scope step's questions (roadmap/direction.ts), one tile each. */
   directionQuestions?: DirectionQuestion[]
   authenticationStrengthTarget?: { allowedCombinations: string[] }
+  /**
+   * What a finished preparation step's Satisfied cards state, one card each, in
+   * place of its "In place" card (step template rule 6): the strength that
+   * matched, the office location and the sign-ins from it. Set by the step's
+   * producer (generate.ts) only while the step is satisfied.
+   */
+  satisfiedFacts?: { heading: string; title: string; detail: string | null }[]
+  /**
+   * Define the Trusted Network: the office locations the person picked in
+   * Decide How and Where People Sign In that the scan reads without the trusted
+   * mark. The step marks them trusted (Ready · Correct) instead of making one.
+   */
+  officeToTrust?: { id: string; name: string }[]
   configurationFindings?: ConfigurationFinding[]
   /**
    * A preparation cohort. `guestIds` are the guests among `ids`: guests stay in the MFA

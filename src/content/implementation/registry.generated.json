@@ -20136,9 +20136,6 @@
         "supportBlocks": {
           "readiness": [
             "readiness.model"
-          ],
-          "troubleshooting": [
-            "troubleshooting.model"
           ]
         },
         "verifiedSources": [
@@ -20170,8 +20167,7 @@
             "windowsHelloForBusiness",
             "fido2",
             "x509CertificateMultiFactor",
-            "temporaryAccessPassOneTime",
-            "temporaryAccessPassMultiUse"
+            "temporaryAccessPassOneTime"
           ],
           "targetRequirementsSatisfied": "mfa"
         }
@@ -20187,7 +20183,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Go to Entra admin center → Entra ID → Authentication methods → Authentication strengths. It takes the Security Administrator role, and it is not under Conditional Access.\n2. Click + New authentication strength.\n3. Name: {{strength.target.displayName}}.\n4. Select exactly these methods: {{strength.target.methodNames}}.\n5. Do not select any other methods.\n6. Review and Create.\n7. Rescan in IAMAI.\n"
+          "text": "1. Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Authentication methods → Authentication strengths** as a Security Administrator.\n2. Select **New authentication strength**.\n3. Name: {{strength.target.displayName}}.\n4. Select exactly these methods: {{strength.target.methodNames}}.\n5. Select **Next**, then **Create**.\n6. Return to IAMAI and select **Scan to update the plan**.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -20250,7 +20246,7 @@
             "method": "POST",
             "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/authenticationStrength/policies"
           },
-          "text": "{\n  \"displayName\": {{json:strength.target.displayName}},\n  \"description\": \"IAMAI pinned-baseline authentication strength\",\n  \"allowedCombinations\": {{json:strength.target.allowedCombinations}}\n}\n"
+          "text": "{\n  \"displayName\": {{json:strength.target.displayName}},\n  \"allowedCombinations\": {{json:strength.target.allowedCombinations}}\n}\n"
         },
         "json.correct.metadata": {
           "meta": {
@@ -20262,7 +20258,7 @@
             "format": "json-template",
             "kind": "template"
           },
-          "text": "{\"displayName\":{{json:strength.target.displayName}},\"description\":\"IAMAI pinned-baseline authentication strength\"}\n"
+          "text": "{\"displayName\":{{json:strength.target.displayName}}}\n"
         },
         "json.correct.combinations": {
           "meta": {
@@ -20288,7 +20284,7 @@
             "format": "powershell",
             "kind": "template"
           },
-          "text": "param(\n [ValidateSet('Create','CorrectMetadata','CorrectCombinations','Verify')][string]$Mode,\n [string]$StrengthId,\n [string]$DisplayName\n)\n$ErrorActionPreference='Stop'\nConnect-MgGraph -Scopes 'Policy.ReadWrite.ConditionalAccess','Policy.Read.All' -NoWelcome\n$G='https://graph.microsoft.com/v1.0'\n$Desired=@(ConvertFrom-Json -InputObject '{{json:strength.target.allowedCombinations}}')\nfunction IG([string]$Method,[string]$Uri,$Body=$null){\n $p=@{Method=$Method;Uri=$Uri}; if($null-ne $Body){$p.Body=($Body|ConvertTo-Json -Depth 20);$p.ContentType='application/json'}\n Invoke-MgGraphRequest @p\n}\nfunction ReadStrength([string]$Id){IG 'GET' \"$G/policies/authenticationStrengthPolicies/$Id\"}\nswitch($Mode){\n 'Create'{if([string]::IsNullOrWhiteSpace($DisplayName)){throw 'DisplayName required'};IG 'POST' \"$G/policies/authenticationStrengthPolicies\" @{displayName=$DisplayName;description='IAMAI pinned-baseline authentication strength';allowedCombinations=$Desired}}\n 'CorrectMetadata'{if(-not $StrengthId){throw 'StrengthId required'};IG 'PATCH' \"$G/policies/authenticationStrengthPolicies/$StrengthId\" @{displayName=$DisplayName;description='IAMAI pinned-baseline authentication strength'}|Out-Null;ReadStrength $StrengthId}\n 'CorrectCombinations'{if(-not $StrengthId){throw 'StrengthId required'};$s=ReadStrength $StrengthId;if($s.policyType -ne 'custom'){throw 'Built-in strengths cannot be modified'};IG 'GET' \"$G/policies/authenticationStrengthPolicies/$StrengthId/usage\"|Out-Host;IG 'POST' \"$G/policies/authenticationStrengthPolicies/$StrengthId/updateAllowedCombinations\" @{allowedCombinations=$Desired}|Out-Host;ReadStrength $StrengthId}\n 'Verify'{if(-not $StrengthId){throw 'StrengthId required'};$s=ReadStrength $StrengthId;$a=@($s.allowedCombinations|Sort-Object);$d=@($Desired|Sort-Object);if(($a -join '|') -ne ($d -join '|')){throw 'Allowed combinations do not match the pinned target'};$s}\n}\n"
+          "text": "param(\n [ValidateSet('Create','CorrectMetadata','CorrectCombinations','Verify')][string]$Mode,\n [string]$StrengthId,\n [string]$DisplayName\n)\n$ErrorActionPreference='Stop'\nConnect-MgGraph -Scopes 'Policy.ReadWrite.ConditionalAccess','Policy.Read.All' -NoWelcome\n$G='https://graph.microsoft.com/v1.0'\n$Desired=@(ConvertFrom-Json -InputObject '{{json:strength.target.allowedCombinations}}')\nfunction IG([string]$Method,[string]$Uri,$Body=$null){\n $p=@{Method=$Method;Uri=$Uri}; if($null-ne $Body){$p.Body=($Body|ConvertTo-Json -Depth 20);$p.ContentType='application/json'}\n Invoke-MgGraphRequest @p\n}\nfunction ReadStrength([string]$Id){IG 'GET' \"$G/policies/authenticationStrengthPolicies/$Id\"}\nswitch($Mode){\n 'Create'{if([string]::IsNullOrWhiteSpace($DisplayName)){throw 'DisplayName required'};IG 'POST' \"$G/policies/authenticationStrengthPolicies\" @{displayName=$DisplayName;allowedCombinations=$Desired}}\n 'CorrectMetadata'{if(-not $StrengthId){throw 'StrengthId required'};IG 'PATCH' \"$G/policies/authenticationStrengthPolicies/$StrengthId\" @{displayName=$DisplayName}|Out-Null;ReadStrength $StrengthId}\n 'CorrectCombinations'{if(-not $StrengthId){throw 'StrengthId required'};$s=ReadStrength $StrengthId;if($s.policyType -ne 'custom'){throw 'Built-in strengths cannot be modified'};IG 'GET' \"$G/policies/authenticationStrengthPolicies/$StrengthId/usage\"|Out-Host;IG 'POST' \"$G/policies/authenticationStrengthPolicies/$StrengthId/updateAllowedCombinations\" @{allowedCombinations=$Desired}|Out-Host;ReadStrength $StrengthId}\n 'Verify'{if(-not $StrengthId){throw 'StrengthId required'};$s=ReadStrength $StrengthId;$a=@($s.allowedCombinations|Sort-Object);$d=@($Desired|Sort-Object);if(($a -join '|') -ne ($d -join '|')){throw 'Allowed combinations do not match the pinned target'};$s}\n}\n"
         },
         "ai.create": {
           "meta": {
@@ -20300,7 +20296,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nAn authentication strength is a named set of sign-in methods that a Conditional Access policy can require. The grant \"Require multifactor authentication\" accepts any second factor the tenant allows, including phone call and text message. This custom strength accepts exactly: {{strength.target.methodNames}}.\n\nWindows Hello for Business, FIDO2 and multifactor certificate authentication are phishing-resistant. A Temporary Access Pass is a time-limited passcode an administrator issues, for example so a person with no usable method can sign in and register one. When a Temporary Access Pass option is accepted, this strength is not the same as Microsoft's built-in Phishing-resistant MFA strength.\n\nPhone call, text message and Authenticator push notifications are not accepted.\n\nSeveral baseline policies use this strength. Create it once in this tenant; those policies reference it by its object ID.\n"
+          "text": "\nAn authentication strength is a named set of sign-in methods that a Conditional Access policy can require. The grant \"Require multifactor authentication\" accepts any second factor the tenant allows, including phone call and text message. This custom strength accepts exactly: {{strength.target.methodNames}}.\n\nWindows Hello for Business, FIDO2 and multifactor certificate authentication are phishing-resistant. A Temporary Access Pass is a time-limited passcode an administrator issues, for example so a person with no usable method can sign in and register one. Because it accepts a Temporary Access Pass, it is not Microsoft's built-in Phishing-resistant MFA strength.\n\nPhone call, text message and Authenticator push notifications are not accepted.\n\nSeveral baseline policies use this strength. Create it once in this tenant; those policies reference it by its object ID.\n"
         },
         "ai.correct": {
           "meta": {
@@ -20361,7 +20357,7 @@
             "kind": "template",
             "communicationTrigger": "before-correction"
           },
-          "text": "Subject: Action needed: Create the Baseline's Authentication Strength\n\nPlease review the policies using this authentication strength before we change its accepted methods. The target includes Temporary Access Pass as well as phishing-resistant methods.\n"
+          "text": "Subject: Action needed: Create the Baseline's Authentication Strength\n\nPlease review the policies using this authentication strength before we change its accepted methods. The target allows exactly {{strength.target.methodNames}}.\n"
         },
         "readiness.model": {
           "meta": {
@@ -20376,20 +20372,6 @@
             "kind": "referenceOnly"
           },
           "text": "{\n  \"tiles\": [],\n  \"whyIamaiSaysThis\": \"The policies that require this strength need one custom strength in this tenant with the baseline's combinations; the source tenant's object ID cannot be reused.\",\n  \"whyIamAISaysThis\": {\n    \"sections\": {\n      \"whyItMatters\": \"The policies that require this strength need one custom strength in this tenant with the baseline's combinations; the source tenant's object ID cannot be reused.\"\n    }\n  }\n}\n"
-        },
-        "troubleshooting.model": {
-          "meta": {
-            "id": "troubleshooting.model",
-            "channel": "troubleshooting",
-            "states": [
-              "missing",
-              "partial",
-              "verificationRequired"
-            ],
-            "format": "json",
-            "kind": "referenceOnly"
-          },
-          "text": "{\n  \"scenarios\": [\n    {\n      \"id\": \"built-in-selected\",\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Read policyType on the resolved strength.\"\n      ],\n      \"fix\": [\n        \"Do not modify it; resolve or create a tenant-local custom strength instead.\"\n      ],\n      \"then\": [\n        \"Rescan IAMAI.\"\n      ],\n      \"sources\": [\n        \"ms-strength-update\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"partial\"\n      ],\n      \"title\": \"The resolved object is a built-in authentication strength\"\n    },\n    {\n      \"id\": \"dependent-policies\",\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Review the usage result and every returned policy reference.\"\n      ],\n      \"fix\": [\n        \"Change only the baseline combinations in a controlled window; use previousCombinations for rollback if required.\"\n      ],\n      \"then\": [\n        \"Re-read the strength and dependent policies.\"\n      ],\n      \"sources\": [\n        \"ms-strength-combos\",\n        \"ms-strength-usage\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"partial\"\n      ],\n      \"title\": \"Changing combinations reports Conditional Access references\"\n    },\n    {\n      \"id\": \"duplicate-strength\",\n      \"classification\": \"derived\",\n      \"check\": [\n        \"Compare object IDs and exact allowed combinations.\"\n      ],\n      \"fix\": [\n        \"Do not create or change a strength until the intended object is resolved.\"\n      ],\n      \"then\": [\n        \"Rescan after resolution.\"\n      ],\n      \"sources\": [\n        \"ms-strength-create\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"partial\"\n      ],\n      \"title\": \"More than one custom strength appears equivalent\"\n    }\n  ]\n}\n"
         }
       }
     },
@@ -22643,6 +22625,8 @@
           "location.current.displayName",
           "location.current.ipRanges",
           "location.current.isTrusted",
+          "location.target.ipRangesText",
+          "location.correct.displayName",
           "evidence.signInIpSummary",
           "network.ownerNotes",
           "dependencies.blockers"
@@ -22771,7 +22755,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Go to **Entra admin center → Entra ID → Conditional Access → Named locations → + IP ranges location**.\n2. Name: {{location.target.displayName}}.\n3. Confirm the public IP ranges with the network owner before adding them. An address seen in sign-ins, or from a \"what is my IP\" check, is not approval. Do not use private LAN ranges: behind a private network Entra sees the address the network uses to reach the internet, not the device's own.\n4. Add only the approved public ranges in CIDR notation, including VPN exits only where the network owner has approved that trust. Entra accepts only masks greater than /8, and no more than two thousand ranges in one location.\n5. Check \"Mark as trusted location.\"\n6. Create.\n7. Rescan in IAMAI and check that an expected sign-in from the approved network matches this location. If it does not, investigate instead of adding more addresses.\n"
+          "text": "1. Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Conditional Access → Named locations → IP ranges location**.\n2. Name: {{location.target.displayName}}.\n3. Add {{location.target.ipRangesText}}.\n4. Select **Mark as trusted location**.\n5. Select **Create**.\n6. Return to IAMAI and select **Scan to update the plan**.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -22807,7 +22791,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Set **Mark as trusted location** on for this exact object. Do not mark any other named location trusted. A location that carries the trusted mark cannot be deleted until the mark is taken off, so remove the mark first if you ever retire this one.\n"
+          "text": "1. Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Conditional Access**.\n2. Open **{{location.correct.displayName}}** in Named locations.\n3. Select **Mark as trusted location**, then **Save**.\n4. Return to IAMAI and select **Scan to update the plan**.\n"
         },
         "entra.correct.name": {
           "meta": {
@@ -22907,7 +22891,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "A trusted location tells Microsoft Entra that sign-ins from these public IP addresses come from a network the organization controls. Some baseline policies apply differently inside a trusted network.\n\nAdd only public IPv4 and IPv6 ranges the network owner approves, including VPN exits only where that trust is approved. An address seen in sign-ins is not automatically trusted: an unrelated office, a VPN or a shared provider address can appear there too.\n\nDon't add home IP addresses. They change, and the organization does not control them.\n\nIf nobody works from an office (fully remote, no VPN), you can mark this step as \"Doesn't apply here.\"\n"
+          "text": "A trusted location tells Microsoft Entra that sign-ins from these public IP addresses come from a network the organization controls. Some baseline policies apply differently inside a trusted network.\n\nAdd only public IPv4 and IPv6 ranges the network owner approves, including VPN exits only where that trust is approved. An address seen in sign-ins is not automatically trusted: an unrelated office, a VPN or a shared provider address can appear there too.\n\nDon't add home IP addresses. They change, and the organization does not control them.\n"
         },
         "ai.correct": {
           "meta": {
@@ -22998,7 +22982,7 @@
             "format": "json",
             "kind": "referenceOnly"
           },
-          "text": "{\n  \"scenarios\": [\n    {\n      \"id\": \"private-ip\",\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Compare with the public address Microsoft Entra sees at sign-in.\"\n      ],\n      \"fix\": [\n        \"Use only the confirmed public egress CIDR.\"\n      ],\n      \"then\": [\n        \"Rescan evidence after correction.\"\n      ],\n      \"sources\": [\n        \"ms-network\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"partial\",\n        \"inPlace\"\n      ],\n      \"title\": \"A proposed range is a private intranet address rather than public egress\"\n    },\n    {\n      \"id\": \"range-replaced\",\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Compare the submitted ipRanges collection with the pre-change and target sets.\"\n      ],\n      \"fix\": [\n        \"PATCH the same object with the complete intended collection.\"\n      ],\n      \"then\": [\n        \"Read back exact ranges.\"\n      ],\n      \"sources\": [\n        \"ms-ip-update\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"partial\",\n        \"inPlace\"\n      ],\n      \"title\": \"An update accidentally drops an existing valid range\"\n    },\n    {\n      \"id\": \"dynamic-egress\",\n      \"classification\": \"derived\",\n      \"check\": [\n        \"Confirm whether the ISP/VPN public egress changed.\"\n      ],\n      \"fix\": [\n        \"Update to the newly confirmed CIDR; do not broaden to cover guessed future addresses.\"\n      ],\n      \"then\": [\n        \"Verify sign-in evidence and rescan.\"\n      ],\n      \"sources\": [\n        \"ms-network\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"partial\",\n        \"inPlace\"\n      ],\n      \"title\": \"The trusted location stops matching office sign-ins\"\n    },\n    {\n      \"id\": \"graph-403\",\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Verify Policy.Read.All + Policy.ReadWrite.ConditionalAccess and Security Administrator or Conditional Access Administrator.\"\n      ],\n      \"fix\": [\n        \"Reconnect with supported authorization.\"\n      ],\n      \"then\": [\n        \"Retry against the same named location.\"\n      ],\n      \"sources\": [\n        \"ms-ip-update\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"partial\",\n        \"inPlace\"\n      ],\n      \"title\": \"Graph returns 403\"\n    }\n  ]\n}\n"
+          "text": "{\n  \"scenarios\": [\n    {\n      \"id\": \"private-ip\",\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Compare with the public address Microsoft Entra sees at sign-in.\"\n      ],\n      \"fix\": [\n        \"Use only the confirmed public egress CIDR.\"\n      ],\n      \"then\": [\n        \"Rescan evidence after correction.\"\n      ],\n      \"sources\": [\n        \"ms-network\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"partial\",\n        \"inPlace\"\n      ],\n      \"title\": \"A proposed range is a private intranet address rather than public egress\"\n    },\n    {\n      \"id\": \"range-replaced\",\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Compare the submitted ipRanges collection with the pre-change and target sets.\"\n      ],\n      \"fix\": [\n        \"PATCH the same object with the complete intended collection.\"\n      ],\n      \"then\": [\n        \"Read back exact ranges.\"\n      ],\n      \"sources\": [\n        \"ms-ip-update\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"partial\",\n        \"inPlace\"\n      ],\n      \"title\": \"An update accidentally drops an existing valid range\"\n    },\n    {\n      \"id\": \"dynamic-egress\",\n      \"classification\": \"derived\",\n      \"check\": [\n        \"Confirm whether the ISP/VPN public egress changed.\"\n      ],\n      \"fix\": [\n        \"Update to the newly confirmed CIDR; do not broaden to cover guessed future addresses.\"\n      ],\n      \"then\": [\n        \"Verify sign-in evidence and rescan.\"\n      ],\n      \"sources\": [\n        \"ms-network\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"partial\",\n        \"inPlace\"\n      ],\n      \"title\": \"The trusted location stops matching office sign-ins\"\n    }\n  ]\n}\n"
         }
       }
     },
