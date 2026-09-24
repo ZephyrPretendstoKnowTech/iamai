@@ -46,6 +46,9 @@ import { BASELINE_MAPPINGS_KEY } from '../../roadmap/sourceMappings.ts'
 import { freezeInputOf } from '../../roadmap/schedule.ts'
 import { returnToStep, stepFromPlanHash } from '../shell/routes.ts'
 import { scan as runScan } from '../actions.ts'
+import { stillThisTurn, subscribe, tenantTurn } from '../session.ts'
+import { observePlan } from './planChanges.ts'
+import type { ChangeRow, Seen } from './planChanges.ts'
 
 type PlanPage = {
   h1: string
@@ -63,6 +66,16 @@ const S = app.shell
 const PLAN_SETTINGS_ID = 'plan-settings'
 /** The short how-to the "How to use this plan" link opens in place. */
 const PLAN_HOW_ID = 'plan-how'
+
+/** The Plan's visits, counted: each is its own cause for the change line (planChanges.ts observePlan). */
+let planVisits = 0
+/**
+ * The board as the Plan last drew it, for the change line: in memory only, and
+ * only for the tenant's turn (ui/session.ts), so a scan run from Connect is still
+ * compared with the plan it changed. Sign out and Forget this tenant end it.
+ */
+let lastSeen: { turn: number; seen: Seen } | null = null
+subscribe(() => { if (lastSeen !== null && !stillThisTurn(lastSeen.turn)) lastSeen = null })
 
 // The plan only renders once a mapping is loaded (usePlanData returns computed
 // only then), so this fallback is never the live value; it keeps ContentStep's
@@ -90,6 +103,9 @@ export function Plan({ scan: lastScan, baseline, account }: {
     requestAnimationFrame(() => document.getElementById(PLAN_SETTINGS_ID)?.scrollIntoView({ block: 'start' }))
   }
   const [showHow, setShowHow] = useState(false)
+  // What the last Save or scan changed (planChanges.ts): one line above the board.
+  const [visit] = useState(() => ++planVisits)
+  const [changeLine, setChangeLine] = useState<string | null>(null)
   // The board's four tabs (planBoard.ts). All work is the default and sits
   // leftmost (owner, 2026-09-23): the whole plan, section by section, from the
   // top. Ready, Up Next and On Hold are filters over the same list.
@@ -109,7 +125,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // already open changes nothing, so the effect that clears it does not run.
   const linked = useRef<boolean>(stepFromPlanHash(window.location.hash) !== null)
   useEffect(() => {
-    const onHash = () => { linked.current = true; setSummaryFilter(null); setOpen(stepFromPlanHash(window.location.hash)) }
+    const onHash = () => { setChangeLine(null); linked.current = true; setSummaryFilter(null); setOpen(stepFromPlanHash(window.location.hash)) }
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
@@ -419,6 +435,10 @@ export function Plan({ scan: lastScan, baseline, account }: {
       )}
       {showSettings && <Settings mappingRequest={mappingRequest} data={data} steps={c.steps} snapshot={scan.snapshot} nameOf={nameOf} onClose={() => { setShowSettings(false); settingsLink.current?.focus() }} />}
 
+      {/* What the last Save or scan changed, in one line above the board (planChanges.ts). */}
+      <PlanChanges tenantId={scan.snapshot.tenantId} cause={`${scan.snapshot.asOf}|${visit}|${data.revision}`} rows={items} onLine={setChangeLine} />
+      {changeLine !== null && <p className="reason no-print" role="status">{changeLine}</p>}
+
       {/* ---- the board's one row set, and the three lanes over it ----
           Every row is built once, here, with the lane the engine read for it;
           `planBoard.ts` groups them and decides nothing else. `renderById` is why
@@ -560,6 +580,23 @@ function TabFollowsOpenStep({ open, lane, follow, linked, onFollow, onShow, onMo
     linked.current = false
     // Only when the opened step or its lane changes: choosing another tab afterwards is the person's.
   }, [open, lane])
+  return null
+}
+
+/**
+ * Compares the board with the one drawn before it (planChanges.ts observePlan)
+ * and hands the Plan its change line: a child with the one effect, because the
+ * board is built after the Plan's early returns and a hook cannot sit there.
+ */
+function PlanChanges({ tenantId, cause, rows, onLine }: { tenantId: string; cause: string; rows: readonly ChangeRow[]; onLine: (line: string | null) => void }) {
+  const key = JSON.stringify(rows.map(({ id, title, lane }) => [id, title, lane]))
+  useEffect(() => {
+    const prior = lastSeen !== null && stillThisTurn(lastSeen.turn) ? lastSeen.seen : null
+    const next = observePlan(prior, tenantId, cause, rows.map(({ id, title, lane }) => ({ id, title, lane })))
+    lastSeen = { turn: tenantTurn(), seen: next.seen }
+    onLine(next.line)
+    // Only when the board or its cause changes.
+  }, [tenantId, cause, key])
   return null
 }
 

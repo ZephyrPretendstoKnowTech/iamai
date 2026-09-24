@@ -4,7 +4,11 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { pages } from '../../content/content.ts'
-import { heldPlan } from './planChanges.ts'
+import { heldPlan, observePlan, planChangeLine } from './planChanges.ts'
+import type { ChangeRow } from './planChanges.ts'
+import { boardOf } from './planBoard.ts'
+import { fixture } from '../../roadmap/fixtures/index.ts'
+import { runFixture, withEmergencyAccessSettled } from '../../roadmap/fixtures/run.ts'
 import { lockedStart } from '../../derive/planStart.ts'
 
 // Item 9: "How to use this plan" loses one sentence and keeps the rest word for word.
@@ -82,4 +86,44 @@ test('a fresh plan has a locked start without any press, and its dates do not mo
   assert.doesNotMatch(page, /startPlan|startControl|plan-start/)
   assert.match(page, /\{PP\.settings\.planStarts\}<\/span>\s*<input type="date"[^>]*onChange=\{\(e\) => \{ if \(e\.currentTarget\.value\) data\.setStart\(/)
   assert.ok(!('startControl' in (pages.plan as Record<string, unknown>)), 'the button\'s words went with it')
+})
+
+// Item 8: when a Save or a scan changes the plan, one short line above the board
+// says what changed (steps completed, added, removed, by title), then nothing
+// more. It compares the plan before the change with the plan after it, for the
+// same tenant, and the next change or navigation replaces it.
+test('completing a step produces one line naming it', () => {
+  const rowsOf = (f: ReturnType<typeof fixture>): ChangeRow[] => {
+    const r = runFixture(f)
+    return boardOf(r.steps, r.schedule.cleanup ?? null, f.mapping.breakGlassAnswers ?? null).rows.map(({ item }) => ({ id: item.id, title: item.title, lane: item.lane }))
+  }
+  // The demo, before and after its emergency access is settled.
+  const line = planChangeLine(rowsOf(fixture('demo')), rowsOf(withEmergencyAccessSettled(fixture('demo'))))
+  assert.match(line ?? '', /^Updated: Prepare Emergency Access Accounts, .* completed( · .*)?\.$/, line ?? 'no line')
+  // The owner's own example, word for word; at most three names, then how many more.
+  const row = (id: string, lane: string): ChangeRow => ({ id, title: `Step ${id}`, lane })
+  assert.equal(planChangeLine([{ id: 'ea', title: 'Prepare Emergency Access Accounts', lane: 'Ready' }], [{ id: 'ea', title: 'Prepare Emergency Access Accounts', lane: 'Completed' }, { id: 'named', title: 'Remove Emergency Accounts Excluded by Name', lane: 'Ready' }]),
+    'Updated: Prepare Emergency Access Accounts completed · 1 step added: Remove Emergency Accounts Excluded by Name.')
+  assert.equal(planChangeLine(['a', 'b', 'c', 'd', 'e'].map((id) => row(id, 'Ready')), ['a', 'b', 'c', 'd', 'e'].map((id) => row(id, 'Completed'))), 'Updated: Step a, Step b, Step c and 2 more completed.')
+  assert.equal(planChangeLine([row('a', 'Ready'), row('b', 'Ready')], [row('b', 'On Hold')]), 'Updated: 1 step removed: Step a.')
+  assert.equal(planChangeLine([row('a', 'Ready')], [row('a', 'On Hold')]), null, 'a lane that is not Completed is not one of the three')
+  // Around a Save: the first plan says nothing; the Save's plan says what it
+  // changed, and the plan settling under the same Save still reads from before
+  // it; the next change starts again, and another tenant starts afresh.
+  const before = [row('a', 'Ready'), row('b', 'Up Next')]
+  let seen = observePlan(null, 't1', 'scan|visit|0', before)
+  assert.equal(seen.line, null, 'the first plan has nothing before it')
+  seen = observePlan(seen.seen, 't1', 'scan|visit|1', before)
+  assert.equal(seen.line, null, 'the Save, before its plan lands, clears the line')
+  seen = observePlan(seen.seen, 't1', 'scan|visit|1', [row('a', 'Completed'), row('b', 'Up Next')])
+  assert.equal(seen.line, 'Updated: Step a completed.')
+  seen = observePlan(seen.seen, 't1', 'scan|visit|1', [row('a', 'Completed'), row('b', 'Completed')])
+  assert.equal(seen.line, 'Updated: Step a and Step b completed.', 'settling under the same Save is still that one change')
+  seen = observePlan(seen.seen, 't1', 'scan|visit|2', [row('a', 'Completed'), row('b', 'Completed')])
+  assert.equal(seen.line, null, 'the next change replaces the line')
+  assert.equal(observePlan(seen.seen, 't2', 'scan|visit|2', before).line, null, 'another tenant is not compared')
+  // The page draws it above the board, and a navigation clears it.
+  const page = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
+  assert.match(page, /\{changeLine !== null && <p className="reason no-print" role="status">\{changeLine\}<\/p>\}/)
+  assert.match(page, /const onHash = \(\) => \{ setChangeLine\(null\);/)
 })
