@@ -138,7 +138,10 @@ export function Plan({ scan: lastScan, baseline, account }: {
   const approved = useRef<string | null>(null)
   useEffect(() => {
     const id = moveTo.current
-    if (id === null) return
+    // Only once the step is the open one: OpensNextStep asks in the render
+    // before it opens, while the approved step above it is still open and its
+    // section still unfolded, and moving then would land short once they close.
+    if (id === null || id !== open) return
     const row = document.querySelector(`.plan-row[data-step="${id}"]`)
     // A row inside a folded section is in the document and not on screen, and
     // scrolling it moves nothing: wait for the render that unfolds it (planBoard.ts releaseFor).
