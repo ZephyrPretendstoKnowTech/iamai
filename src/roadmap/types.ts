@@ -322,7 +322,7 @@ export type Action = {
    * all — the step then has no operation, no cohort, no rings and no dates,
    * exactly as a missing object leaves it.
    */
-  emergencyExposure?: { reached: string[]; unproven: string[] }
+  emergencyExposure?: { reached: string[]; unproven: string[]; /** The exclusions group the policy has to leave out, by its name, where one is chosen. */ group?: string }
   /**
    * The readiness prerequisite this step's *enforcement* is held behind: the
    * measure, what it has to reach, and where it is now (roadmap/constants.ts

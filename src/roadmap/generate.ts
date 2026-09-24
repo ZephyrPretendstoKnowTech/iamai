@@ -2118,7 +2118,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       const probe = { goalId: goal.id, kind, status: statusNow(), action } as unknown as Step
       const finalEffects = isOpenPolicy(probe) ? stepEffects(probe) : []
       const exposure = emergencyExposureOf(finalEffects, mapping.breakGlassUserIds, snapshot, strandContext)
-      if (exposure !== null) action = { ...action, emergencyExposure: exposure }
+      if (exposure !== null) action = { ...action, emergencyExposure: { ...exposure, ...(exclusions.actionableName ? { group: exclusions.actionableName } : {}) } }
     }
 
 

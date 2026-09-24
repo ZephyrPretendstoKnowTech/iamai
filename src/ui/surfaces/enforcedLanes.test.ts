@@ -55,7 +55,8 @@ test('engine: an enforced policy as pinned is Completed, a drifted one is Ready 
     assert.equal(read({ [LEGACY]: { ...ENFORCED, drift: true, blockers: [{ kind: 'sourceMapping', id: 'sourceMapping:62d67e66' }] } }), 'On Hold', 'an unmapped reference leaves the correction unbuildable: the policy being On does not make it Ready')
     assert.equal(read({ [LEGACY]: { ...ENFORCED, drift: true, blockers: [{ kind: 'sourceConflict', id: 'sourceConflict:test' }] } }), 'On Hold', 'a contradictory baseline still holds it')
     assert.equal(read({ [LEGACY]: { ...ENFORCED, drift: true, blockers: [{ kind: 'fact', id: 'fact:group' }] } }), 'On Hold', 'a tenant fact the scan could not read still holds it')
-    assert.equal(read({ [LEGACY]: { exists: true } }), 'On Hold', 'report-only and still collecting evidence')
+    // Its report-only week is a wait, not a stop (walk list 4.x item 11).
+  assert.equal(read({ [LEGACY]: { exists: true } }), 'Up Next', 'report-only and still collecting evidence')
   }
   {
     const unsaved = ['Mail-sending devices']

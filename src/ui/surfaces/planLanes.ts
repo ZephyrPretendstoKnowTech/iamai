@@ -50,6 +50,23 @@ import { planStateOf } from './planState.ts'
 import { directionBlockerStep, directionWaitRelayed } from '../../roadmap/direction.ts'
 import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
 import type { PlanState } from './planState.ts'
+import { pages } from '../../content/content.ts'
+import { fillText } from '../../content/render.ts'
+
+/** The row sub-lines a gate or a blocker writes for itself (pages.plan.when; walk list 4.x item 27). */
+const ROW = (pages.plan as unknown as { when: { readinessAdmins: string; notExcluded: string } }).when
+
+/**
+ * A readiness wait as its row says it (walk list 4.x item 27, owner
+ * 2026-09-24): the admin threshold as the people it counts, "When every admin
+ * has a method it accepts (2 of 3)", and any other threshold as its own
+ * binding, starting with a capital: "When MFA readiness reaches 90% (now 85%)".
+ */
+function readinessRowWords(step: Step, label: string, binding: string): string {
+  const count = label === 'readiness' && step.readiness?.family === 'admin' ? /(\d[\d,]*) of (\d[\d,]*)/.exec(step.readiness.lines?.[0] ?? '') : null
+  if (count !== null) return fillText(ROW.readinessAdmins, { ready: count[1], total: count[2] })
+  return binding.charAt(0).toUpperCase() + binding.slice(1)
+}
 
 const GRAPH = buildGraph(data as DependencyData)
 /** §12.1 counts leave the Security Defaults cutover edges out (BLOCKED.md · S2). */
@@ -197,7 +214,7 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
     else if (b.kind === 'readiness' && b.label === 'session-loop' && exists) blockers.push({ kind: 'fact', id: 'fact:session-loop' })
     // The readiness threshold holds a compliant-device policy's create as well as its
     // enforcement (roadmap/operations.ts createWaitsOnReadiness; owner, 2026-09-23).
-    else if (b.kind === 'readiness' && b.binding) gates.push({ id: `evidence:readiness:${b.label}`, satisfied: false, minDays: null, reason: b.binding, ...(b.label === 'readiness' && holdsCreate ? { holdsCreate } : {}) })
+    else if (b.kind === 'readiness' && b.binding) gates.push({ id: `evidence:readiness:${b.label}`, satisfied: false, minDays: null, reason: readinessRowWords(step, b.label, b.binding), ...(b.label === 'readiness' && holdsCreate ? { holdsCreate } : {}) })
     // A tenant fact this scan could not read — a group a policy names whose
     // members nobody could list — holds the step; it is not a gate the policy
     // earns by being watched (§8.4: a fact still to be established holds).
@@ -230,7 +247,8 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
   // threshold is the gate above, and the unverified escape hatch is the gate's step edge.
   const unavailable = policy && open ? unavailableReason(step) : null
   if (unavailable === 'unmatched-pair' || unavailable === 'no-operation') blockers.push({ kind: 'unsupported', id: unavailable })
-  else if (unavailable === 'unsafe-emergency-access') blockers.push({ kind: 'baselineSafetyConflict', id: `baselineSafetyConflict:${unavailable}` })
+  // Its row says what is wrong: "Doesn't exclude Core - Exclusions" (walk list 4.x item 27).
+  else if (unavailable === 'unsafe-emergency-access') blockers.push({ kind: 'baselineSafetyConflict', id: `baselineSafetyConflict:${unavailable}`, ...(step.action.emergencyExposure?.group ? { text: fillText(ROW.notExcluded, { group: step.action.emergencyExposure.group }) } : {}) })
   else if (unavailable === 'unverified-emergency-exclusion') blockers.push({ kind: 'fact', id: `fact:${unavailable}` })
   for (const m of step.action.missing ?? []) {
     // A source reference only a person can answer (resolvePolicy.ts unsettled / decisions) holds the policy

@@ -47,6 +47,8 @@ export type ObservedBlocker = {
   role?: SourceRole
   /** The one action it holds; unstated, it holds whichever action is next. */
   action?: Action
+  /** Its own words for the row, where the kind's label would not say what is wrong. */
+  text?: string
 }
 
 /** A step edge the graph does not carry: the plan's own wait on a maker step, or the
@@ -143,7 +145,7 @@ export type Blocker = {
   ordinal: number
   /** `sourceMapping` only: include | exclude | both, as the observed blocker stated it. */
   role?: SourceRole
-  /** `evidence` only: the gate's own words (a threshold, the records' state). */
+  /** `evidence`: the gate's own words (a threshold, the records' state); an observed blocker's own words. */
   text?: string
 }
 
@@ -445,7 +447,7 @@ function deriveUncached(ctx: Ctx, id: string): LaneResult {
   const abnormal = [
     ...(obs.blockers ?? [])
       .filter((b) => b.action === undefined || b.action === nextAction)
-      .map((b) => ({ ...blocker(b.kind, b.id, null, true), ...(b.role ? { role: b.role } : {}) })),
+      .map((b) => ({ ...blocker(b.kind, b.id, null, true), ...(b.role ? { role: b.role } : {}), ...(b.text ? { text: b.text } : {}) })),
     ...unresolved.filter((b) => b.abnormal),
   ].sort(byTaxonomy)
   // Every abnormal blocker holds the next action, an enforced policy's correction included
