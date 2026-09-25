@@ -17,7 +17,7 @@ import { stepVars, withoutScheduleDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor, unwrittenCorrectionLines } from './stepPortal.ts'
 import { campaignProcedureLines, instructionsHeld, preparationLines, preparesWhileCreateWaits, rescanLinesOf, wholeLines } from './stepInstructions.ts'
-import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, objectTaskLeads, readinessHeldLine, stepContract } from './stepContract.ts'
+import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, isAllClear, objectTaskLeads, readinessHeldLine, stepContract } from './stepContract.ts'
 import type { LaneView, PrerequisiteLabel, StepContract } from './stepContract.ts'
 import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, policyProcedureExtras, previewNoteLines, selectedPolicyBodiesOf, workProcedureOf } from './stepPackage.ts'
 import { sectionThreeTasksOf } from './sectionThreeTasks.ts'
@@ -384,7 +384,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
     // so this is a step nothing has words for: the export carries what the
     // contract knows about it — where it is, what to do next and what would
     // finish it — and none of the engine's prose, exactly as the screen does.
-    return { title: viewTitleOf(step), why: contract.why, ...shell, whatToDo: [contract.whatToDo.text, gateLine(contract.whatToDo.gatedBy, laneView)].filter((l): l is string => l !== null), doneWhen: contract.doneWhen, ifWrong: null, dates: null }
+    return { title: viewTitleOf(step), why: contract.why, ...shell, whatToDo: [isAllClear(contract.whatToDo.text) ? null : contract.whatToDo.text, gateLine(contract.whatToDo.gatedBy, laneView)].filter((l): l is string => l !== null), doneWhen: contract.doneWhen, ifWrong: null, dates: null }
   }
   const ex = undated ? withoutScheduleDates(stepVars(step, ctx), step, ctx) : stepVars(step, ctx)
   const names = portalNamesFor(ctx, ex, contentTitle(step))
@@ -602,7 +602,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // contract's own words: nothing is composed and nothing is decided again.
   const gate = gateLine(contract.whatToDo.gatedBy, laneView)
   if (gate !== null && !lines.includes(gate)) lines.unshift(gate)
-  if (action.trim().length > 0 && !lines.includes(action) && !procedureStands) lines.unshift(action)
+  if (action.trim().length > 0 && !isAllClear(action) && !lines.includes(action) && !procedureStands) lines.unshift(action)
   // The three emergency preparation steps export the task text the screen shows
   // (stepBody.ts), not the content's older What to do lines (overnight review B5).
   const emergencyTasks = step.id === EMERGENCY_ACCOUNTS ? emergencyAccountTasksOf(step, ctx)

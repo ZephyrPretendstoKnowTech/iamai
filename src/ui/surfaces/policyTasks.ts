@@ -30,7 +30,7 @@ import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
 import { contentStepFor, contentStepForPackage } from '../../content/stepTitle.ts'
 import { EMERGENCY_ACCESS_GROUP, isGroupMember, usesTaskAnatomy } from '../../roadmap/stepGroups.ts'
 import { enforcesByStateOnly, stepOperations } from './stepJson.ts'
-import { CONTRACT, FINISHED_FINDINGS } from './stepContract.ts'
+import { CONTRACT, FINISHED_FINDINGS, isAllClear } from './stepContract.ts'
 import { createWaitsOnReadiness, enforcementHeld, implementationOffered, operationsOf, policyHold, switchedOffPolicies, toReportOnly, unavailableReason } from '../../roadmap/operations.ts'
 import type { UnavailableReason } from '../../roadmap/operations.ts'
 import { PROCEDURE, besideBaseline, correctionLines, correctionSettings, createLines, reportOnlyLines, turnOnLines } from '../../roadmap/policyProcedure.ts'
@@ -871,7 +871,7 @@ export function policyCardsOf(contract: StepContract, projected: EmergencyTaskPr
       // action (Foundation B's milestone where nothing overrules it, and the more
       // specific sentence where something does — "this policy names an object
       // Contoso does not have yet", "in place already: nothing to create").
-      detail: words !== null && (words.noDetail || (satisfied && words.satisfied !== null)) ? '' : words?.detail ?? contract.whatToDo.text,
+      detail: words !== null && (words.noDetail || (satisfied && words.satisfied !== null)) ? '' : words?.detail ?? (isAllClear(contract.whatToDo.text) ? '' : contract.whatToDo.text),
       instruction: satisfied ? '' : words?.pointer && task !== null ? followTask(task.title) : directed === null || !pointer ? '' : followTask(directed.title),
       // The rollout lifecycle is not a list of checks anybody completed, and
       // stages left are not checks remaining (S4-5): the card claims neither.

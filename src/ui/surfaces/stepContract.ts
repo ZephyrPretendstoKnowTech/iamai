@@ -3111,7 +3111,7 @@ export function milestoneHeadlineOf(completed: string | null, words: readonly (s
   if (completed !== null) return completed
   for (const w of words) {
     const t = typeof w === 'string' ? w.trim() : ''
-    if (t === '' || DAY.test(t) || days.some((d) => t.includes(d)) || ALL_CLEAR.has(t)) continue
+    if (t === '' || DAY.test(t) || days.some((d) => t.includes(d)) || isAllClear(t)) continue
     return t
   }
   return ''
@@ -3195,7 +3195,18 @@ function sentenceCount(s: string): number {
  */
 export function readinessLeadOf(c: Pick<StepContract, 'whatToDo'>): string | null {
   const text = c.whatToDo.text.trim()
-  return FILLER.has(text.replace(/[.:]$/, '')) ? null : text
+  return FILLER.has(text.replace(/[.:]$/, '')) || isAllClear(text) ? null : text
+}
+
+/**
+ * The engine's all-clear ("Nothing left to do.", with or without the policy it
+ * names): never a line anywhere (owner, 2026-09-25). A finished step's cards
+ * already state what is in place.
+ */
+export function isAllClear(text: string): boolean {
+  const t = text.trim()
+  const namedPrefix = app.plan.inPlaceOn.split('{policy}')[0]
+  return ALL_CLEAR.has(t) || t === app.plan.inPlaceKeep || (namedPrefix !== '' && t.startsWith(namedPrefix))
 }
 const FILLER: ReadonlySet<string> = new Set(['Make the object this step names', 'Make the decision', 'Resolve prerequisites', 'For each person'])
 
