@@ -120,13 +120,10 @@ test('U20/U21 on the demo: a drifted enforced policy waits on the foundation and
     const run = runFixture(answered, {}, null, answered.snapshot.asOf)
     const readings = laneReadings(run.steps)
     const enforced = run.steps.filter((s) => s.state.lifecycle === 'enforced')
-    assert.ok(enforced.length >= 5, 'the premise: week two enforces the first policies')
+    // Four since Require MFA for Guests asks its B2B members for Jon's strength,
+    // which the follow-up demo's MFA-only guest policy does not (owner, 2026-09-25).
+    assert.ok(enforced.length >= 4, `the premise: week two enforces the first policies (${enforced.length})`)
     for (const s of enforced) {
-      if (s.blockers.some(b => b.label === 'inforcer-application')) {
-        assert.equal(s.state.satisfied, false, 'broad coverage cannot settle application identity')
-        assert.ok(['Up Next', 'On Hold'].includes(readings.get(s.id)?.lane ?? ''), 'unresolved identity remains pending; a Ready prerequisite may make it Up Next')
-        continue
-      }
       assert.equal(driftOutcomeOf(s), null, `${s.id}: the premise, no drift`)
       assert.equal(readings.get(s.id)?.lane, s.manualReview && !s.manualReview.confirmedAt ? 'Ready' : 'Completed', s.id)
       if (s.manualReview && !s.manualReview.confirmedAt) assert.equal(readings.get(s.id)?.substatus, 'Review', s.id)

@@ -295,24 +295,10 @@ function corpus(): { where: string; contract: StepContract; card: ReturnType<typ
 
 test('a policy card states no stage it is not at, and no check the plan never recorded (S4-3, S4-4, S4-5)', () => {
   {
-    // The shipped demo: the step's own policy is gone from the plan, and the card
-    // read `Enforced` over three completed checks and "This step has no policy for
-    // IAMAI to write in this plan". An admin ticked "device code is blocked" off
-    // their list and had blocked nothing.
-    const { step, body } = bodyOf('s-goal-inforcer-mfa', 'demo-week2')
-    assert.equal(body.contract.members.length, 0, 'the premise: no policy member is resolved')
-    assert.equal(body.contract.existing, null, 'the premise: no tenant policy delivers it either')
-    assert.equal(body.contract.state.lifecycle, 'enforced', 'the premise: the lifecycle still reads enforced')
-    const [card] = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks, taskSubjectOf(step, body.eyebrow, body.title), cardWordsOf(step)?.check ?? null)
-    // The card must not read as delivered: what it has to say is that nothing is
-    // coming. The sentence was a paragraph and is now two clauses (owner,
-    // 2026-09-22), so this reads for the claim and not the old wording.
-    assert.match(card.detail ?? '', /IAMAI writes no policy here/)
-    assert.doesNotMatch(card.detail ?? '', /again to rebuild it/, 'the false remedy is back')
-    assert.equal(card.title, 'Blocked', 'the check is what holds the step, never the stage it is not at')
-    assert.deepEqual(card.completed, [])
-    assert.equal(card.remainingCount, null)
-    // No card with no policy of its own draws a stage anywhere in the corpus.
+    // The shipped demo's Require MFA for Inforcer Access read `Enforced` over three
+    // completed checks with no policy of its own; it now completes from the policy
+    // that delivers it (owner decision 17, 2026-09-25). No card with no policy of
+    // its own draws a stage anywhere in the corpus.
     const none = corpus().filter((row) => row.contract.members.length === 0 && row.contract.existing === null && !row.card.satisfied)
     assert.ok(none.length >= 20, `the corpus still holds these cards (${none.length})`)
     for (const row of none) assert.equal(STAGE_WORDS.includes(row.card.title), false, `${row.where}: ${row.card.title}`)

@@ -19,7 +19,7 @@ import type { StepVarContext } from './stepVars.ts'
 import { laneReadings } from './planLanes.ts'
 import { BOARD, laneViewOf, readinessBlockersOf } from './planBoard.ts'
 import { mergeReadiness } from './stepPackage.ts'
-import { BLOCKED_REASON, BLOCKED_SUBJECT } from '../../copy/reasons.ts'
+import { BLOCKED_SUBJECT } from '../../copy/reasons.ts'
 import { returnToStep } from '../shell/routes.ts'
 import { CHECK_STATE, RULE_TEXT } from '../../copy/validation.ts'
 import { rulesFor } from '../../validation/rules.ts'
@@ -147,12 +147,8 @@ test('a card is headed by what it waits on, with its state or its binding beneat
     // headings they read lowercase and mid-clause: "when 1 Temporary Access Pass
     // policy exists (now 0)", "after: Identify the Inforcer application" (quality
     // audit 2.3). The subject is the heading; the binding is the note.
-    const { step, c, blockers } = opened('demo', 's-goal-inforcer-mfa')
-    const r = readinessOf(step, c, blockers)
-    const blocker = r.tiles.find((t) => t.key === 'evidence:inforcer-application')
-    assert.ok(blocker, 'the premise: this step waits on the Inforcer application')
-    assert.equal(blocker.value, BLOCKED_SUBJECT['inforcer-application'])
-    assert.equal(blocker.note, BLOCKED_REASON.after('Identify the Inforcer application'))
+    // Its fixture case, the Inforcer application, went with the application card
+    // (owner decision 17, 2026-09-25); the rule stands for every subject.
     // Every subject is a heading, not a clause: no leading lowercase, no "after:".
     for (const [key, subject] of Object.entries(BLOCKED_SUBJECT)) {
       assert.match(subject, /^[A-Z]/, `${key}: a card heading starts mid-sentence`)
