@@ -1,7 +1,7 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "when Modern MFA + TAP readiness reaches 90% (now 33%)",
+  "reason": "when Modern MFA + TAP readiness reaches 90% (now 34%)",
   "fact": null,
   "badge": "On Hold",
   "bar": "Waiting on your answers",
@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "At least 33% ready for Modern MFA + TAP"
+      "state": "At least 34% ready for Modern MFA + TAP"
     },
     {
       "label": "Prerequisites",
@@ -28,6 +28,8 @@
   ],
   "channels": [
     "Entra",
+    "PowerShell",
+    "JSON",
     "AI Info"
   ],
   "when": "Est. Sep 7, 2026"

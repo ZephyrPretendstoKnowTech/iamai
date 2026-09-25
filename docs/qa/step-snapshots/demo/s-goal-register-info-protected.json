@@ -1,10 +1,10 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "when Modern MFA + TAP readiness reaches 90% (now 26%)",
+  "reason": "when Modern MFA + TAP readiness reaches 90% (now 27%)",
   "fact": null,
   "badge": "On Hold",
-  "bar": "After Define the Trusted Network",
+  "bar": "When Modern MFA + TAP readiness reaches 90% (now 27%)",
   "rail": "Create the policy, turned on",
   "headings": [
     "About this Step",
@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "At least 26% ready for Modern MFA + TAP"
+      "state": "At least 27% ready for Modern MFA + TAP"
     },
     {
       "label": "Configure Emergency Exclusions",
@@ -28,15 +28,13 @@
     {
       "label": "Prepare Emergency Access Accounts",
       "state": "Prerequisite · To do"
-    },
-    {
-      "label": "Define the Trusted Network",
-      "state": "Prerequisite · Waiting"
     }
   ],
   "channels": [
     "Entra",
+    "PowerShell",
+    "JSON",
     "AI Info"
   ],
-  "when": "Est. Sep 14, 2026"
+  "when": "Est. Sep 7, 2026"
 }
