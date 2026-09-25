@@ -59,6 +59,18 @@ test('no registration test: no manual record, no verification list, no workflow 
     assert.equal(content.whatToDo?.verification, undefined, `${id} has no Verify the workflow task`)
     assert.equal((content.doneWhen ?? []).some((l) => /workflow|registration and recovery paths/i.test(l)), false, `${id}: ${content.doneWhen?.join(' | ')}`)
   }
+  // Nor in the Completion Criteria the step draws, found in Report-only or not
+  // (shared.policyDoneWhenConfiguration, a User Action policy's completion).
+  const f = mid()
+  const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups } as StepVarContext
+  for (const id of USER_ACTION) {
+    const step = r.steps.find((x) => x.id === id)!
+    const inReportOnly = { ...step, state: { ...step.state, lifecycle: 'report-only' as const } }
+    for (const s of [step, inReportOnly]) {
+      const lines = stepContract(s, ctx).doneWhen
+      assert.equal(lines.some((l) => /[Tt]est the actual workflow|representative users/.test(l)), false, `${id}: ${lines.join(' | ')}`)
+    }
+  }
 })
 
 test('Require MFA to Register a Device waits for everyone it covers, and its card names who is not ready, with their next step', () => {

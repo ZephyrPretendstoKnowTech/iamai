@@ -630,9 +630,9 @@
         "unnamedHolder": "an unnamed role holder"
       }
     },
+    "$commentPolicyDoneWhenConfiguration": "A User Action policy's completion (ui/surfaces/doneWhen.ts). No registration test (owner decision 3, Phase 2e): the scan confirms the policy.",
     "policyDoneWhenConfiguration": [
-      "A later scan confirms the intended policy settings and enabled state.",
-      "Test the actual workflow with representative users, including registration or recovery where applicable. Report-only results do not prove that these user actions work."
+      "A later scan confirms the intended policy settings and enabled state."
     ],
     "mailDevices": {
       "$comment": "Block Legacy Authentication's second task (ui/surfaces/policyTasks.ts): the mail accounts named in Confirm What You Use that still sign in with legacy authentication, each by name (walk list 4.x item 36). There is no exception to remove: the policy does not leave them out, and its turn-on waits until they have moved (item 5).",
