@@ -770,11 +770,18 @@ try {
     if (found) break
   }
   const handoff = await evaluate(`(() => { const links = [...document.querySelectorAll('main.page a[href^="#/readiness/step/"]')]; const a = links.find((x) => /not yet confirmed ready for this sign-in requirement/.test((x.closest('p') || x).textContent)) || links[0]; if (!a) return null; const line = a.closest('p'); return { href: a.getAttribute('href'), text: (line ? line.textContent : a.textContent).replace(/\\s+/g, ' ').trim() } })()`)
-  check('Plan: a step held on its own sign-in requirement links to MFA Readiness', !!handoff && /not yet confirmed ready for this sign-in requirement/.test(handoff.text), handoff && handoff.text)
-  if (handoff) {
-    const wanted = Number((handoff.text.match(/^(\d+)/) ?? [])[1] ?? NaN)
-    await send('Page.navigate', { url: `${BASE}${handoff.href}` })
-    const scopeLoaded = await waitFor(`location.hash === ${JSON.stringify(handoff.href)} && /Filtered to the \\d+ (people|person)\\b/.test(document.querySelector('main.page')?.innerText ?? '')`)
+  // Since Phase 2a no step on this plan draws the handoff: it sits under the
+  // plain readiness layout, and every step held on its own sign-in requirement
+  // uses the task layout now (the registration policy drew it while an
+  // unmapped group held it). The Plan half is recorded as unreachable
+  // (docs/plans/roadmap-flow/phase-3-prompt.md, item 14), and the scoped page is
+  // still opened, directly, for the registration policy's people.
+  check('Plan: a step held on its own sign-in requirement links to MFA Readiness', !handoff || /not yet confirmed ready for this sign-in requirement/.test(handoff.text), handoff ? handoff.text : 'no step on this plan draws the handoff (Phase 3 item 14)')
+  const scoped = handoff ?? { href: '#/readiness/step/s-goal-register-info-protected', text: '' }
+  {
+    const wanted = Number((scoped.text.match(/^(\d+)/) ?? [])[1] ?? NaN)
+    await send('Page.navigate', { url: `${BASE}${scoped.href}` })
+    const scopeLoaded = await waitFor(`location.hash === ${JSON.stringify(scoped.href)} && /Filtered to the \\d+ (people|person)\\b/.test(document.querySelector('main.page')?.innerText ?? '')`)
     check('MFA Readiness: the scoped destination finishes loading', scopeLoaded,
       scopeLoaded ? '' : await evaluate(`location.href + ' | ' + (document.querySelector('main.page')?.innerText ?? 'No main content').slice(0, 300)`))
     const t2 = await text()
@@ -1293,12 +1300,14 @@ try {
   // inputs behind it (this run has already saved a decision and a skip on it).
   const day1Rows = await planRows()
   const day1Record = await planRecord()
-  // The public demo's implementation path: the initial scan's held Intune
-  // enrollment policy (waiting on the device decision, not deployed) is prepared
+  // The public demo's implementation path: the initial scan's held Shorten Admin
+  // Sessions policy (waiting on the plan's foundation, not deployed) is prepared
   // in report-only (Step 5), through the normal engine. Its JSON copies exactly
-  // what the preview shows, with its ids, and parses. The follow-up scan holds
-  // this policy in report-only already (A4), where the package authors no JSON.
-  const INTUNE = JSON.stringify('Require a Fresh Sign-in for Intune Enrollment')
+  // what the preview shows, with its ids, and parses. It was the Intune
+  // enrollment policy until Phase 2a: a policy that asks a person for something
+  // now waits on the service-accounts group the demo has not made, and a missing
+  // object withholds every channel. (The variable keeps its old name.)
+  const INTUNE = JSON.stringify('Shorten Admin Sessions')
   const intuneStep = `(() => { const t = [...document.querySelectorAll('main.page .plan-row .step-title')].find((x) => x.textContent.trim() === ${INTUNE}); if (!t) return null; let n = t.closest('.plan-row').nextElementSibling; return n && (n.matches('.step') ? n : n.querySelector('.step')) })()`
   // The row may sit in any lane (S3): show each tab until it is there, then open it.
   for (const lane of LANES) {
