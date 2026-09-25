@@ -7,6 +7,8 @@ import { allFixtures } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { REPORT_ONLY_STEP_ID } from './reportOnlyBatch.ts'
 import { sameDimension } from './observation.ts'
+import { usersWider } from './tracking.ts'
+import { asPlanned } from './fixtures/asPlanned.ts'
 import { stepBodyOf } from '../ui/surfaces/stepBody.ts'
 import { planDates } from '../ui/surfaces/stepVars.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
@@ -109,4 +111,29 @@ test('a policy doing another step’s job is never corrected into this one: Shor
   assert.notEqual(session.tracking?.policyId, 'p-mfa-for-admins', 'the admins’ MFA policy is not tied to the session step')
   assert.ok((session.action.resolution?.policies ?? []).every((o) => o.policyId !== 'p-mfa-for-admins'), 'nothing edits it for the session step')
   assert.ok(!session.state.members.some((m) => m.change.unwritten.includes('grantControls')), 'no grant correction is asked of it')
+})
+
+test('stricter than the baseline is accepted and said: an admins policy covering more roles than the plan’s completes, noting it', () => {
+  // Owner, 2026-09-25 (deviations, option A): GetIAMAI's admins policy covers 133
+  // roles, the baseline's 46. Wider users with no extra exclusion is stricter.
+  const plan = { conditions: { users: { includeRoles: ['r1', 'r2'], excludeGroups: ['x'] } } }
+  assert.equal(usersWider(plan, { conditions: { users: { includeRoles: ['r1', 'r2', 'r3'], excludeGroups: ['x'] } } }), true, 'more roles')
+  assert.equal(usersWider(plan, { conditions: { users: { includeUsers: ['All'], excludeGroups: ['x'] } } }), true, 'everyone')
+  assert.equal(usersWider(plan, { conditions: { users: { includeRoles: ['r1'], excludeGroups: ['x'] } } }), false, 'a role missing')
+  assert.equal(usersWider(plan, { conditions: { users: { includeRoles: ['r1', 'r2', 'r3'], excludeGroups: ['x', 'y'] } } }), false, 'an extra exclusion')
+
+  const ADMINS = 's-goal-admins-phishing-resistant'
+  const f = asPlanned(DEMO, ADMINS)
+  const id = runFixture(f).steps.find((s) => s.id === ADMINS)!.tracking!.policyId
+  const snapshot = structuredClone(f.snapshot)
+  const row = rowsOf(snapshot).find((p) => p.id === id)!
+  const users = (row.conditions as Row).users as Row
+  users.includeRoles = [...((users.includeRoles as string[]) ?? []), '9b895d92-2cd3-44c7-9d02-a6ac2d5ea5c3']
+  const run = runFixture({ ...f, snapshot })
+  const step = run.steps.find((s) => s.id === ADMINS)!
+  assert.deepEqual(step.state.members.flatMap((m) => [...m.change.unwritten]), [], 'no correction')
+  assert.deepEqual(step.tracking?.members?.[0]?.stricter, ['conditions.users'])
+  const ctx: StepVarContext = { snapshot, mapping: f.mapping, nameOf: (x) => run.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: snapshot.asOf, groups: f.groups, naming: run.coverage.organisation.naming, ...planDates(run.steps, run.schedule.start, run.coverage.organisation.naming, snapshot) }
+  const tile = stepBodyOf(step, ctx).readiness.satisfied.find((t) => t.key.startsWith('stricter:'))
+  assert.match(String(tile?.note), /is stricter than the baseline's policy in who it applies to\. IAMAI accepts it as it is\./)
 })

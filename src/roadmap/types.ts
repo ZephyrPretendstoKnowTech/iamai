@@ -1177,6 +1177,8 @@ export type MemberTracking = {
   policyName: string | null
   /** The name the step's create gives this policy, where the tenant's differs (only the name may: owner, 2026-09-25). */
   plannedName?: string
+  /** The dimensions where the tenant's policy is stricter than the plan's (wider users, a stronger grant or session): accepted, never a correction, and said on the step (owner, 2026-09-25). */
+  stricter?: string[]
   /**
    * The dimensions the deployed policy differs from this step's own intended
    * operation in — what IAMAI asked for and did not get. Empty where it matches,
