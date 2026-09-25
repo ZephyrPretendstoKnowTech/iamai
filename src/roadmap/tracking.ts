@@ -306,6 +306,11 @@ export function matchMembers(step: Step, snapshot: TenantSnapshot, coverage: Cov
           : sole && tagged.some((t) => t.policyId === policy.id && t.memberKey === null)
             ? 'step-tag'
             : 'owned'
+    // Where the record is the only proof, it proves nothing for a policy the goal
+    // could never take: a risk policy for a goal that takes none (Require a Fresh
+    // Sign-in for Intune Enrollment read "Core - Require - Sign-in risk", owner
+    // 2026-09-25). No tag and no target make it this step's.
+    if (by === 'owned' && riskOnlyFor(step, coverage, policy)) continue
     claim(m, policy, by)
   }
 
@@ -1363,4 +1368,13 @@ function excludedResourcesDiffer(asked: unknown, deployed: unknown): { covered: 
   const covered = [...plan].filter((id) => !tenant.has(id))
   const excluded = [...tenant].filter((id) => !plan.has(id))
   return covered.length + excluded.length > 0 ? { covered, excluded } : null
+}
+
+/** A policy with a risk condition, on a step whose goal takes no risk policy (the goal's signature `noRisk`). */
+function riskOnlyFor(step: Step, coverage: CoverageReport, policy: PolicyRow): boolean {
+  const goal = coverage.results.find((r) => r.goal.id === step.goalId)?.goal
+  const signature = goal?.implementations[0]?.signature as { noRisk?: boolean } | undefined
+  if (signature?.noRisk !== true) return false
+  const c = (policy as { conditions?: Record<string, unknown> }).conditions ?? {}
+  return ['signInRiskLevels', 'userRiskLevels', 'servicePrincipalRiskLevels'].some((k) => Array.isArray(c[k]) && (c[k] as unknown[]).length > 0)
 }
