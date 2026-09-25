@@ -19,12 +19,11 @@
 // condition stays scoped to its own pin. The step's one source line is the date
 // the package's Microsoft sources were last checked (`packageSourceLine`).
 import { emergencyPasskeyCompatibility } from '../../roadmap/passkeyCompatibility.ts'
-import { stepCreatedOn } from '../../roadmap/evidenceStrategy.ts'
 import registry from '../../content/implementation/registry.generated.json' with { type: 'json' }
 import builtinStrengths from '../../../data/builtin-strengths.json' with { type: 'json' }
 import type { PolicyOperation, Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
-import { awaitsPimSettings, awaitsWorkflowRecord, createWaitsOnReadiness, implementationOffered, operationsOf, policyHold, policyResult, toReportOnly, unavailableReason } from '../../roadmap/operations.ts'
+import { awaitsPimSettings, awaitsWorkflowRecord, createWaitsOnReadiness, operationsOf, policyHold, policyResult, toReportOnly, unavailableReason } from '../../roadmap/operations.ts'
 import { PIM_STEP_ID, eligibleRoleIds, pimPolicyIdsOf } from '../../roadmap/pimSettings.ts'
 import { roleName } from '../../roles.ts'
 import { changedFieldsOf } from '../../roadmap/changedFields.ts'
@@ -475,10 +474,10 @@ export function plannedPackageStateOf(step: Step, c: StepContract, snapshot: Ten
   // create for that policy until ready."). Previewed, the step drew the New
   // policy procedure, a Create-mode script and the POST under the line saying
   // its creation waits, and the export, the print and AI Info carried them on.
-  // Nor is the create of a policy created On while anything holds it (Phase 2e,
-  // roadmap/evidenceStrategy.ts stepCreatedOn): it enforces the moment it runs, so
-  // a previewed POST and Create-mode script are the turn-on handed over early.
-  if (createWaitsOnReadiness(step) || (stepCreatedOn(step) && !implementationOffered(step))) return null
+  // A policy created On while something holds it previews its create like any
+  // other held step (owner, 2026-09-25: never hide implementation instructions;
+  // its Entra procedure already stands whole). The card says what it waits on.
+  if (createWaitsOnReadiness(step)) return null
   if (step.kind === 'create' || step.kind === 'adjust') {
     if (correctionFieldsOf(step, snapshot).length > 0 || partlyDeployed(plannedOperationsOf(step))) return 'partial'
     // An enforced policy whose remaining work is a person's own setup, which the

@@ -1752,18 +1752,6 @@
     {
       "step": "s-goal-register-info-protected",
       "action": "create",
-      "prerequisite": "s-prereq-trusted-location",
-      "prerequisiteKind": "step",
-      "milestone": "complete",
-      "condition": null,
-      "edgeKind": "hard",
-      "source": "package",
-      "status": "ok",
-      "table": "10.3"
-    },
-    {
-      "step": "s-goal-register-info-protected",
-      "action": "create",
       "prerequisite": "s-prereq-auth-strength",
       "prerequisiteKind": "step",
       "milestone": "complete",

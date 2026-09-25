@@ -99,15 +99,16 @@ test('Require MFA to Register a Device waits for everyone it covers, and its car
   assert.ok((tile.names ?? []).every((line) => /: /.test(line)), `each with their next step: ${tile.names?.join(' | ')}`)
   // No enrollment-workflow test on the card either (the package's tile is gone).
   assert.equal([...readinessOf(step, c).tiles, ...readinessOf(step, c).satisfied].some((t) => /Enrollment workflows/.test(t.label)), false)
-  // Held, nothing hands over the create: it enforces the moment it runs. No planned
-  // preview of the POST or the Create-mode script (stepPackage.ts plannedPackageStateOf).
-  assert.equal(plannedPackageStateOf(step, c, f.snapshot), null)
+  // Held, the create's JSON and PowerShell are drawn as its Entra procedure is
+  // (owner, 2026-09-25: never hide implementation instructions); the card says
+  // what it waits on (stepPackage.ts plannedPackageStateOf).
+  assert.equal(plannedPackageStateOf(step, c, f.snapshot), 'missing')
   const body = stepBodyOf(step, ctx)
   for (const id of ['json', 'ps']) {
     const a = body.artifacts.find((x) => x.id === id)
-    assert.ok(!a || a.unavailable, `${id}: a runnable create handed over while it waits`)
+    assert.ok(a && !a.unavailable, `${id}: the create is withheld while it waits`)
   }
-  assert.doesNotMatch(body.artifacts.map((a) => (a.unavailable ? '' : a.text())).join('\n'), /"state": "enabled"|POST \/identity\/conditionalAccess\/policies/)
+  assert.match(body.artifacts.find((a) => a.id === 'json')!.text(), /"state": "enabled"/, 'the JSON creates it On')
 })
 
 // Phase 3, 5.x (owner, 2026-09-25): the procedure stands whole in every state,
