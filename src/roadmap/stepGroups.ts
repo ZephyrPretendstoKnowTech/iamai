@@ -162,7 +162,7 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     key: 'devices-sessions',
     titleKey: 'pages.app.plan.groups.devicesSessions.title',
     completedTitleKey: 'pages.app.plan.groups.devicesSessions.completedTitle',
-    members: ['s-goal-admin-session', 's-goal-all-users-no-persistence', 's-goal-intune-enrollment-reauth', 's-goal-require-managed-device', 's-ladder-phone-access-restriction', 's-goal-token-protection', 's-goal-mobile-app-protection', 's-goal-byod-session-controls'],
+    members: ['s-goal-admin-session', 's-goal-all-users-no-persistence', 's-goal-intune-enrollment-reauth', 's-goal-require-managed-device', 's-goal-token-protection', 's-goal-mobile-app-protection', 's-goal-byod-session-controls'],
     anatomy: 'task',
   },
   // Care after the rollout: nothing above waits on it.

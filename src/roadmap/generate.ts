@@ -3239,7 +3239,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     s.skipReason = reason
     setState(s, { setAside: true })
   }
-  if (canUseConditionalAccess && devicePlan?.phones === 'none') steps.push(prereq('s-ladder-phone-access-restriction'))
   // Define Your Rollout Scope (roadmap/direction.ts): the four decision
   // steps, and the review rows whose services D1 asks about.
   if (canUseConditionalAccess) {

@@ -106,11 +106,10 @@ test('the text fixes the owner approved on the frozen steps, 2026-09-20: the six
     const devices = questionsOf(DIRECTION_STEP.devices)
 
     // 1. The device code question is gone (walk list 2.x item 1).
-    // 2. Blocked from company data adds a policy step of its own, which the
-    //    question never said.
+    // 2. Blocked from company data says what it does: Jon's Block Unsupported
+    //    Device Platforms takes iPhone and Android too (Phase 2a: no phone policy of IAMAI's own).
     const phones = devices.find((q) => q.key === 'phones')!
-    assert.match(phones.chosen?.blocked ?? '', /Keep Company Data Off Phones/)
-    assert.match(phones.chosen?.blocked ?? '', /report-only/)
+    assert.match(phones.chosen?.blocked ?? '', /Block Unsupported Device Platforms also blocks iPhone and Android/)
 
     // 3. The same dropdown position means the same thing: the service questions
     //    read Yes/No, and these two read No/Yes beside them on one screen.
