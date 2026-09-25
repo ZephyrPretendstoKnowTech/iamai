@@ -33,7 +33,10 @@ import { MAPPING_WORDS, mappingRowsOf, shortId } from '../ui/surfaces/baselineMa
 import type { Step } from './types.ts'
 
 const BROAD = '62d67e66-2bc9-43cd-b00c-6326dae53d18'
-const REQUIRED = '5628ad67-f9d1-4495-abe3-99dc8f9074f1'
+// The owner takes it as a second break-glass group (2026-09-19): left out by default, like the other exclude-only groups.
+const SECOND_BREAK_GLASS = '5628ad67-f9d1-4495-abe3-99dc8f9074f1'
+// The author's EAM population: included by one policy, carved out of High-Risk Users, so a person maps it.
+const EAM = '8d0564e5-ab28-4283-9a94-9883c581adde'
 const COUNTRIES_ONLY = 'cc7f9bb7-425b-42fc-b025-311a1a3eb0f4'
 const EXCLUSIONS = 'b63c3682-06c6-45f0-9692-ee76b604b4f9'
 const DEVICE_REGISTRATION = 'aeb49474-5250-4b65-8b0a-56c47127ee0f'
@@ -85,20 +88,22 @@ test('the known exclusions reference resolves to the tenant’s group; an unread
   const whole = implementable(resolved.body, resolved)
   const waiting = whole.missing.find((m) => m.token.toLowerCase() === BROAD)
   assert.equal(waiting, undefined)
-  assert.ok(whole.missing.some(m => m.token.toLowerCase() === REQUIRED), 'the documented emergency reference is not guessed away')
+  assert.equal(resolved.decisions.get(SECOND_BREAK_GLASS)?.answer, 'omitted', 'the second break-glass group is left out, as the owner decided')
+  assert.equal(whole.missing.some(m => m.token.toLowerCase() === SECOND_BREAK_GLASS), false)
   assert.equal(whole.missing.some((m) => m.unreadable), false, 'nothing is left waiting on a reading nobody can give')
   assert.equal(JSON.stringify(whole.policy).toLowerCase().includes(BROAD), false, 'and the author’s id is in no body')
 })
 
 test('S4: each policy naming an unmapped reference is On Hold with the reason, and its blocker states the role', () => {
-  for (const name of ['demo', 'demo-week2'] as const) {
+  // mid: its High-Risk Users policy carves out the author's EAM population, which nothing maps yet.
+  for (const name of ['mid'] as const) {
     const r = runFixture(fixture(name))
     const readings = laneReadings(r.steps)
     const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.plainTitle ?? null
     const pending = unresolvedSourceMappings(r.steps)
-    const broad = pending.find((x) => x.id.toLowerCase() === REQUIRED)
-    assert.ok(broad && (broad.stepIds ?? []).length > 0, `${name}: the broad group is pending, with the steps that name it`)
-    assert.equal(broad.role, 'exclude', `${name}: the broad group is an exception everywhere (§18.1)`)
+    const broad = pending.find((x) => x.id.toLowerCase() === EAM)
+    assert.ok(broad && (broad.stepIds ?? []).length > 0, `${name}: the EAM group is pending, with the steps that name it`)
+    assert.equal(broad.role, 'exclude', `${name}: on the plan it is an exception (§18.1)`)
     for (const s of r.steps) {
       for (const m of s.action.missing ?? []) assert.notEqual(m.unreadable, true, `${name}/${s.id} waits on ${m.token}, which nobody can answer`)
     }
@@ -187,7 +192,7 @@ test('a reference answered as none needed is left out, reported and holds nothin
       'other optional exclusions use the approved default independently',
     )
     assert.ok(!unresolvedSourceMappings(r.steps).some((x) => x.id.toLowerCase() === COUNTRIES_ONLY), 'optional reference is not an impossible user question')
-    assert.ok(unresolvedSourceMappings(r.steps).some((x) => x.id.toLowerCase() === REQUIRED), 'the unrelated required reference remains unresolved')
+    assert.ok(!unresolvedSourceMappings(r.steps).some((x) => x.id.toLowerCase() === SECOND_BREAK_GLASS), 'nor is the second break-glass group')
   }
 })
 

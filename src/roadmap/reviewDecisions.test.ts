@@ -59,13 +59,14 @@ test('retained foundational rows re-evaluate and dormant Keep completes the step
   assert.ok(!after.steps.some(s => /s-review-baseline-iac-agent-block/.test(s.id)))
 })
 
-test('source assumptions omit optional exclusions, never AVD allowed users, include targets or a documented emergency group, and an update over one preserves the tenant’s actual exclusions', () => {
+test('source assumptions omit optional exclusions, the second break-glass group among them, never AVD allowed users or include targets, and an update over one preserves the tenant’s actual exclusions', () => {
   const group = '62d67e66-2bc9-43cd-b00c-6326dae53d18'
+  // The owner takes 5628ad67 as a second break-glass group (2026-09-19): the exclusions group every plan policy excludes stands where it stood.
   const emergency = '5628ad67-f9d1-4495-abe3-99dc8f9074f1'
   const policy = { displayName: 'Example', conditions: { users: { includeUsers: ['All'], excludeGroups: [group, emergency] } } }
-  assert.deepEqual(assumedAbsentSourceGroups(policy, [policy]), [group])
+  assert.deepEqual(assumedAbsentSourceGroups(policy, [policy]), [group, emergency])
   assert.deepEqual(assumedAbsentSourceGroups({ ...policy, displayName: 'IAC - APP - BLOCK - AVD - Exclude - AllowedAVDUsers' }, [policy]), [])
-  assert.deepEqual(assumedAbsentSourceGroups(policy, [policy, { conditions: { users: { includeGroups: [group] } } }]), [])
+  assert.deepEqual(assumedAbsentSourceGroups(policy, [policy, { conditions: { users: { includeGroups: [group] } } }]), [emergency])
 
   // Updating a source with an assumed absent group preserves actual tenant exclusions.
   {
