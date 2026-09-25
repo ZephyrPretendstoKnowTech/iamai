@@ -63,7 +63,7 @@ function enforcePath(text: string): string {
 const CREATES = ALL.filter((p) => policyCreateBody(p.source) !== null)
 
 test('every package that creates a Conditional Access policy ships one, and only report-only creates', () => {
-  assert.ok(CREATES.length >= 25, `policy-create packages found: ${CREATES.length}`)
+  assert.ok(CREATES.length >= 24, `policy-create packages found: ${CREATES.length}`)
   for (const p of CREATES) {
     // The JSON channel: every create body, not only the first.
     for (const b of blocksOf(p.source, 'json')) {

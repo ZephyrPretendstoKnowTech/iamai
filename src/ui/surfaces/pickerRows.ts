@@ -10,6 +10,7 @@
 //
 // Pure: no DOM, no network. Runs in Node tests and in the browser.
 import type { TenantSnapshot, UserRow } from '../../graph/collect/types.ts'
+import { serviceAccountIdsOf } from '../../derive/sets.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import { emergencySignals } from '../../mapping/emergencyAccess.ts'
@@ -266,7 +267,8 @@ export function pickerVars(stepId: string, template: string, ctx: PickerContext)
     const known = new Map<string, string>()
     for (const [id] of ctx.groups ?? []) known.set(lc(id), id)
     for (const p of policies) for (const id of [...policyGroups(p).include, ...policyGroups(p).exclude]) if (!known.has(lc(id))) known.set(lc(id), id)
-    const picked = mapping.serviceAccountUserIds
+    // The group's accounts: the service accounts and the shared-device accounts (derive/sets.ts serviceAccountIdsOf).
+    const picked = serviceAccountIdsOf(mapping)
     const saved = mapping.serviceAccountsGroupId
     const isSaved = (id: string): number => (saved !== null && lc(id) === lc(saved) ? 1 : 0)
     const exact = (id: string): number => (groupHoldsExactly(ctx.groups?.get(id), picked) ? 1 : 0)

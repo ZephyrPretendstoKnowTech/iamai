@@ -545,6 +545,8 @@ test('a readiness number is labelled by the strength its policies require, so tw
   const admins = gateTile(bodiesOf(pinned).get('s-goal-admins-phishing-resistant'))!
   assert.doesNotMatch(admins.value, /phishing-resistant/, `a Modern MFA + TAP number labelled phishing-resistant: ${admins.value}`)
   assert.match(admins.value, /^\d+ of \d+ admins? ha(?:s|ve) a method it accepts$/)
-  // The plan header counts that step under the same words, not the family's.
-  assert.deepEqual(planFinish(runFixture(pinned).steps).waiting.map((w) => w.measure), ['admin Modern MFA + TAP readiness'])
+  // The plan header counts that step under the same words, not the family's; Device
+  // Registration waits on its own Modern MFA + TAP number beside it now that no
+  // unmapped group holds it (Phase 2a).
+  assert.deepEqual(planFinish(runFixture(pinned).steps).waiting.map((w) => w.measure), ['admin Modern MFA + TAP readiness', 'Modern MFA + TAP readiness'])
 })

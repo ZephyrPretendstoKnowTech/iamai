@@ -41,7 +41,7 @@ import { contentStepFor, contentStepForPackage } from '../../content/stepTitle.t
 import { absoluteDate } from '../../copy/dates.ts'
 import { actionableExclusionsGroupId } from '../../mapping/safetyChoice.ts'
 import { dimensionWords, memberKeyOf } from '../../roadmap/observation.ts'
-import { phoneSignInIds } from '../../derive/sets.ts'
+import { phoneSignInIds, serviceAccountIdsOf } from '../../derive/sets.ts'
 import { personLabels } from '../../names.ts'
 import type { ContractReadiness, ReadinessTile, ReadinessTone, StepContract } from './stepContract.ts'
 import { CONTRACT } from './stepContract.ts'
@@ -1042,16 +1042,16 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   // accounts are named below: the step's instruction says "add only the
   // service-account users whose application owners confirmed them, as IAMAI
   // lists", and the only channel that listed them was the AI briefing.
-  const serviceLabels = (ctx.mapping.serviceAccountUserIds ?? []).map(accountLabel)
+  const serviceLabels = serviceAccountIdsOf(ctx.mapping).map(accountLabel)
   if (serviceLabels.length > 0 && serviceLabels.every((l): l is string => l !== null)) put('serviceAccounts.accountsSummary', serviceLabels.join(', '))
   // The same accounts by sign-in address, each in bold, for the create's Members
   // line in 1.2's words ("Under **Members**, add **a@…**, **b@…**.").
-  const serviceUpns = (ctx.mapping.serviceAccountUserIds ?? []).map((id) => ctx.snapshot.users.find((u) => u.id === id)?.userPrincipalName ?? null)
+  const serviceUpns = serviceAccountIdsOf(ctx.mapping).map((id) => ctx.snapshot.users.find((u) => u.id === id)?.userPrincipalName ?? null)
   if (serviceUpns.length > 0 && serviceUpns.every((u): u is string => typeof u === 'string' && u.length > 0)) put('serviceAccounts.memberUpns', serviceUpns.map((u) => `**${u}**`))
   // The picked service accounts the sign-in records show using a password from
   // a script (ROPC), by name: one, or several, for AI Info's modernisation line.
   const ropc = new Set(ctx.snapshot.scenarioEvidence?.ropcAutomation?.people ?? [])
-  const ropcNames = (ctx.mapping.serviceAccountUserIds ?? []).filter((id) => ropc.has(id)).map(ctx.nameOf)
+  const ropcNames = serviceAccountIdsOf(ctx.mapping).filter((id) => ropc.has(id)).map(ctx.nameOf)
   put('service.ropcAccount', ropcNames.length === 1 ? ropcNames[0] : undefined)
   putSome('service.ropcAccounts', ropcNames.length > 1 ? ropcNames : [])
   put('emergency.target.exclusionsGroupId', exclusionsGroupId)

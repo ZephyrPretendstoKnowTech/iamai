@@ -428,8 +428,9 @@ test('Step 4 correction 3: every held row carries a concrete reason from the hol
   assert.ok(checked > 50, `held rows checked: ${checked}`)
   // A source group nobody has mapped names the mapping it waits on, not the step
   // the row is sequenced after (correction batch 1: it used to name a wait no
-  // step could end; S4: the answer is a Plan setting, not a step).
-  const token = stepOf(demos[1], 's-goal-device-registration-mfa')
+  // step could end; S4: the answer is a Plan setting, not a step). mid's High-Risk
+  // Users carves out the author's EAM population, which nobody has mapped.
+  const token = stepOf(planOf(fixture('mid')), 's-goal-user-risk')
   assert.equal(token.blockedReason, BLOCKED_REASON.sourceMapping)
   assert.equal(rowReason(token), BLOCKED_REASON.sourceMapping)
 })

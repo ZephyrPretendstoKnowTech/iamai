@@ -342,7 +342,10 @@ test('a named placeholder becomes the object the author named, and never reaches
   // string would be submitted to Graph as a group id. It is either the tenant's
   // object or it is reported missing, and it is never itself.
   // The Initial scan: by week two the demo has this policy in report-only (A4), so the create body is day one's.
-  const step = runFixture(fixture('demo')).steps.find((s) => s.goalId === 'intune-enrollment-reauth')
+  // Without service accounts: with them, 2.2 leaves their group out of this session policy too, and the demo has no group yet (deviations.ts).
+  const demo = structuredClone(fixture('demo'))
+  demo.mapping.serviceAccountUserIds = []
+  const step = runFixture(demo).steps.find((s) => s.goalId === 'intune-enrollment-reauth')
   assert.ok(step, 'the intune-enrolment step is in the plan')
   const s = step as Step
   const json = s.action.json

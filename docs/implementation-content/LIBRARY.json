@@ -4,7 +4,7 @@
   "libraryRevision": "2026-09-10-full-workbook",
   "coverage": {
     "expectedPackageCount": 47,
-    "packageCount": 43,
+    "packageCount": 42,
     "complete": true
   },
   "packages": [
@@ -1670,47 +1670,6 @@
       "review": "current"
     },
     {
-      "stepId": "s-shared-devices",
-      "title": "Give Shared Devices Their Own Policy",
-      "packagePath": "docs/implementation-content/s-shared-devices/",
-      "relationship": "prerequisite",
-      "status": "SELF-VERIFIED",
-      "validationResult": "parts-withheld",
-      "sourceFiles": 3,
-      "contentBlocks": 29,
-      "outputs": {
-        "entra": true,
-        "json": true,
-        "powershell": true,
-        "aiInfo": true,
-        "email": true,
-        "readiness": true,
-        "troubleshooting": true
-      },
-      "statesSupported": [
-        "needsDecision",
-        "missing",
-        "partial",
-        "reportOnly",
-        "readyToEnforce",
-        "inPlace",
-        "blocked"
-      ],
-      "correctionModules": 5,
-      "requiredBindings": 6,
-      "optionalBindings": 8,
-      "verifiedSourceCount": 4,
-      "packageSpecificMicrosoftSources": 4,
-      "sharedPrimitivesReused": 0,
-      "betaDependencies": 0,
-      "unresolvedIssues": 0,
-      "family": "supporting-policy",
-      "strictValidationErrors": 5,
-      "registered": true,
-      "provenance": "tenant-prerequisite",
-      "review": "current"
-    },
-    {
       "stepId": "s-verify-mfa",
       "title": "Create and Enforce the MFA Registration Campaign",
       "packagePath": "docs/implementation-content/s-verify-mfa/",
@@ -2334,7 +2293,6 @@
         "s-prereq-security-defaults",
         "s-prereq-service-accounts-group",
         "s-prereq-trusted-location",
-        "s-shared-devices",
         "s-verify-mfa"
       ],
       "packages": [
@@ -2377,7 +2335,6 @@
         "s-prereq-security-defaults",
         "s-prereq-service-accounts-group",
         "s-prereq-trusted-location",
-        "s-shared-devices",
         "s-verify-mfa"
       ],
       "type": "string[]",
@@ -4081,18 +4038,6 @@
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
-      "binding": "peoplePolicies.resolvedPatches",
-      "requiredBy": [
-        "s-shared-devices"
-      ],
-      "optionalBy": [],
-      "packages": [
-        "s-shared-devices"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
       "binding": "pim.roleManagementPolicyIds",
       "requiredBy": [
         "s-goal-pim-activation-reauth"
@@ -4589,8 +4534,7 @@
         "s-goal-mfa-all-users",
         "s-goal-token-protection",
         "s-goal-workload-identity-block",
-        "s-prereq-exclusion-group",
-        "s-shared-devices"
+        "s-prereq-exclusion-group"
       ],
       "packages": [
         "s-goal-admin-session",
@@ -4603,8 +4547,7 @@
         "s-goal-mfa-all-users",
         "s-goal-token-protection",
         "s-goal-workload-identity-block",
-        "s-prereq-exclusion-group",
-        "s-shared-devices"
+        "s-prereq-exclusion-group"
       ],
       "type": "string",
       "meaning": "Existing policy display name when present",
@@ -4640,9 +4583,7 @@
         "s-goal-workload-identity-block",
         "s-prereq-exclusion-group"
       ],
-      "optionalBy": [
-        "s-shared-devices"
-      ],
+      "optionalBy": [],
       "packages": [
         "s-goal-admin-session",
         "s-goal-admins-phishing-resistant",
@@ -4667,8 +4608,7 @@
         "s-goal-user-risk",
         "s-goal-user-risk-medium",
         "s-goal-workload-identity-block",
-        "s-prereq-exclusion-group",
-        "s-shared-devices"
+        "s-prereq-exclusion-group"
       ],
       "type": "string",
       "meaning": "Stable ID of the IAMAI-resolved existing policy",
@@ -4702,8 +4642,7 @@
         "s-goal-token-protection",
         "s-goal-user-risk",
         "s-goal-user-risk-medium",
-        "s-goal-workload-identity-block",
-        "s-shared-devices"
+        "s-goal-workload-identity-block"
       ],
       "packages": [
         "s-goal-admin-session",
@@ -4728,8 +4667,7 @@
         "s-goal-token-protection",
         "s-goal-user-risk",
         "s-goal-user-risk-medium",
-        "s-goal-workload-identity-block",
-        "s-shared-devices"
+        "s-goal-workload-identity-block"
       ],
       "knownIAMAIInput": null,
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
@@ -4761,9 +4699,7 @@
         "s-goal-user-risk-medium",
         "s-goal-workload-identity-block"
       ],
-      "optionalBy": [
-        "s-shared-devices"
-      ],
+      "optionalBy": [],
       "packages": [
         "s-goal-admin-session",
         "s-goal-admins-phishing-resistant",
@@ -4787,8 +4723,7 @@
         "s-goal-token-protection",
         "s-goal-user-risk",
         "s-goal-user-risk-medium",
-        "s-goal-workload-identity-block",
-        "s-shared-devices"
+        "s-goal-workload-identity-block"
       ],
       "type": "string[]",
       "meaning": "Existing IAMAI semantic mismatch IDs for the resolved policy",
@@ -4822,8 +4757,7 @@
         "s-goal-token-protection",
         "s-goal-user-risk",
         "s-goal-user-risk-medium",
-        "s-goal-workload-identity-block",
-        "s-shared-devices"
+        "s-goal-workload-identity-block"
       ],
       "packages": [
         "s-goal-admin-session",
@@ -4848,8 +4782,7 @@
         "s-goal-token-protection",
         "s-goal-user-risk",
         "s-goal-user-risk-medium",
-        "s-goal-workload-identity-block",
-        "s-shared-devices"
+        "s-goal-workload-identity-block"
       ],
       "type": "string",
       "meaning": "Existing policy lifecycle state",
@@ -4960,8 +4893,7 @@
         "s-goal-token-protection",
         "s-goal-user-risk",
         "s-goal-user-risk-medium",
-        "s-goal-workload-identity-block",
-        "s-shared-devices"
+        "s-goal-workload-identity-block"
       ],
       "optionalBy": [],
       "packages": [
@@ -4987,8 +4919,7 @@
         "s-goal-token-protection",
         "s-goal-user-risk",
         "s-goal-user-risk-medium",
-        "s-goal-workload-identity-block",
-        "s-shared-devices"
+        "s-goal-workload-identity-block"
       ],
       "type": "string",
       "meaning": "Canonical display name IAMAI will use when creating the policy",
@@ -5008,8 +4939,7 @@
         "s-goal-sign-in-risk-medium",
         "s-goal-token-protection",
         "s-goal-user-risk",
-        "s-goal-user-risk-medium",
-        "s-shared-devices"
+        "s-goal-user-risk-medium"
       ],
       "optionalBy": [],
       "packages": [
@@ -5022,8 +4952,7 @@
         "s-goal-sign-in-risk-medium",
         "s-goal-token-protection",
         "s-goal-user-risk",
-        "s-goal-user-risk-medium",
-        "s-shared-devices"
+        "s-goal-user-risk-medium"
       ],
       "type": "string[]",
       "meaning": "Complete canonical exclusion-group ID set resolved by IAMAI for this policy",
@@ -5131,18 +5060,6 @@
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
-      "binding": "policy.target.includeUsers",
-      "requiredBy": [
-        "s-shared-devices"
-      ],
-      "optionalBy": [],
-      "packages": [
-        "s-shared-devices"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
       "binding": "policy.target.json",
       "requiredBy": [],
       "optionalBy": [
@@ -5224,18 +5141,6 @@
         "s-goal-inforcer-mfa",
         "s-goal-mobile-app-protection",
         "s-goal-require-managed-device"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
-      "binding": "policy.target.trustedLocationId",
-      "requiredBy": [
-        "s-shared-devices"
-      ],
-      "optionalBy": [],
-      "packages": [
-        "s-shared-devices"
       ],
       "knownIAMAIInput": null,
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
@@ -5469,30 +5374,6 @@
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
-      "binding": "shared.confirmedAccounts",
-      "requiredBy": [],
-      "optionalBy": [
-        "s-shared-devices"
-      ],
-      "packages": [
-        "s-shared-devices"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
-      "binding": "shared.deviceEvidence",
-      "requiredBy": [],
-      "optionalBy": [
-        "s-shared-devices"
-      ],
-      "packages": [
-        "s-shared-devices"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
       "binding": "sharepoint.adminUrl",
       "requiredBy": [],
       "optionalBy": [
@@ -5713,7 +5594,6 @@
         "s-prereq-security-defaults",
         "s-prereq-service-accounts-group",
         "s-prereq-trusted-location",
-        "s-shared-devices",
         "s-verify-mfa"
       ],
       "optionalBy": [
@@ -5791,7 +5671,6 @@
         "s-prereq-security-defaults",
         "s-prereq-service-accounts-group",
         "s-prereq-trusted-location",
-        "s-shared-devices",
         "s-verify-mfa"
       ],
       "type": "string",
@@ -6154,18 +6033,18 @@
     }
   ],
   "aggregate": {
-    "packageCount": 43,
+    "packageCount": 42,
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
-    "contentBlocks": 922,
-    "uniqueBindings": 271,
-    "bindingsRequiredByAtLeastOneProjection": 85,
-    "bindingsOptionalInAtLeastOnePackage": 190,
+    "contentBlocks": 893,
+    "uniqueBindings": 266,
+    "bindingsRequiredByAtLeastOneProjection": 82,
+    "bindingsOptionalInAtLeastOnePackage": 186,
     "bindingDefinitionsCarriedForward": 42,
-    "bindingDefinitionsPendingHolisticReview": 229,
+    "bindingDefinitionsPendingHolisticReview": 224,
     "knownIAMAIInputTrue": 40,
     "knownIAMAIInputFalse": 2,
-    "knownIAMAIInputUnreviewed": 229,
+    "knownIAMAIInputUnreviewed": 224,
     "verifiedSourceRecords": 267,
     "microsoftSourceRecords": 265,
     "surfaces": [
@@ -6219,16 +6098,16 @@
     ],
     "legacyDependencies": 0,
     "packagesPassingStrictValidation": 2,
-    "packagesWithWithheldParts": 41,
+    "packagesWithWithheldParts": 40,
     "provenance": {
       "baseline-member": 23,
       "microsoft-template-floor": 4,
       "rollout-proof": 1,
-      "tenant-prerequisite": 10,
+      "tenant-prerequisite": 9,
       "workflow-check": 5
     },
     "review": {
-      "current": 42,
+      "current": 41,
       "reviewNeeded": 1
     }
   },

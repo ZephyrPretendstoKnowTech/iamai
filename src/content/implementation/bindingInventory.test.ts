@@ -40,13 +40,21 @@ test('the target’s excluded accounts bind as the resolved target holds them: a
   const base = fixture('demo')
   const baseRun = runFixture(base)
   const ctxOf = (f: typeof base, r: typeof baseRun): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups })
-  // Unavailable: its users still name a reference nobody has answered.
-  const waiting = baseRun.steps.find((s) => s.id === 's-goal-device-registration-mfa')!
-  assert.ok(touches(incompleteFieldsOf(waiting, operationsOf(waiting)[0] ?? null), 'conditions.users') || (waiting.action.missing ?? []).length > 0, 'the premise: its users wait on an answer')
-  assert.equal(Object.hasOwn(bindingsOf(waiting, ctxOf(base, baseRun)), 'policy.target.excludeUsers'), false, 'bound while the users wait')
+  // Unavailable: its users still name a reference nobody has answered (mid: High-Risk Users carves out the author's EAM population).
+  {
+    const mid = fixture('mid')
+    const midRun = runFixture(mid)
+    const waiting = midRun.steps.find((s) => s.id === 's-goal-user-risk')!
+    assert.ok(touches(incompleteFieldsOf(waiting, operationsOf(waiting)[0] ?? null), 'conditions.users') || (waiting.action.missing ?? []).length > 0, 'the premise: its users wait on an answer')
+    assert.equal(Object.hasOwn(bindingsOf(waiting, ctxOf(mid, midRun)), 'policy.target.excludeUsers'), false, 'bound while the users wait')
+  }
   // Answered: the pinned target excludes nobody by account, and that is a value.
-  const pending = sourceMappingsOf(baseRun.steps)
-  const f = { ...base, mapping: applyStepDecisions(base.mapping, { [source]: { answers: Object.fromEntries(pending.map((p) => [p.id, referenceOptions()[0]])), at: base.snapshot.asOf } }) }
+  // Without service accounts: with them, 2.2 leaves their group out of this
+  // session policy and the demo has no group yet (roadmap/deviations.ts).
+  const answeredBase = structuredClone(base)
+  answeredBase.mapping.serviceAccountUserIds = []
+  const pending = sourceMappingsOf(runFixture(answeredBase).steps)
+  const f = { ...answeredBase, mapping: applyStepDecisions(answeredBase.mapping, { [source]: { answers: Object.fromEntries(pending.map((p) => [p.id, referenceOptions()[0]])), at: base.snapshot.asOf } }) }
   const r = runFixture(f)
   const step = r.steps.find((s) => s.id === SESSION)!
   const bindings = bindingsOf(step, ctxOf(f, r))
@@ -105,10 +113,13 @@ test('no binding carries a source reference still waiting on an answer, and a st
     assert.ok(checked > 0, 'no fixture step waits on a reference: the premise is untested')
   }
   // a step waiting on references binds none of the fields they would complete, and still binds its name and its grant
+  // (mid: High-Risk Users waits on the author's EAM population).
   {
-    const { r, ctx } = plans()[0]
-    const step = r.steps.find((s) => s.id === 's-goal-device-registration-mfa')!
-    assert.ok((step.action.missing ?? []).length > 0, 'the premise: the demo device-registration policy waits on the baseline groups')
+    const mid = fixture('mid')
+    const r = runFixture(mid)
+    const ctx: StepVarContext = { snapshot: mid.snapshot, mapping: mid.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: mid.operatorId, now: mid.snapshot.asOf, groups: mid.groups }
+    const step = r.steps.find((s) => s.id === 's-goal-user-risk')!
+    assert.ok((step.action.missing ?? []).length > 0, 'the premise: the mid high-risk users policy waits on the baseline group')
     const op = step.action.resolution!.policies[0]
     assert.deepEqual([...incompleteFieldsOf(step, op)], ['conditions.users'], 'the waiting groups were not found in the pinned policy’s users')
     const b = bindingsOf(step, ctx)

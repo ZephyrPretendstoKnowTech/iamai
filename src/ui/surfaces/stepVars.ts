@@ -19,14 +19,14 @@ import { count, list } from '../../copy/statements.ts'
 import { personLabels } from '../../names.ts'
 import { NAMES_INLINE } from './whoBlocks.ts'
 import { countryName } from '../../mapping/countries.ts'
-import { hoursAsDuration, needsPasskey, sessionWantedForGoal, sessionWantedLongForGoal, strengthForGoal, strengthNameOf, promptsPersonForGoal, pairBaselineNames } from './stepPortal.ts'
+import { hoursAsDuration, needsPasskey, sessionWantedForGoal, sessionWantedLongForGoal, strengthForGoal, strengthNameOf, pairBaselineNames } from './stepPortal.ts'
 import { hoursInWords } from '../../coverage/verdict.ts'
-import { analysisUnknown, effectsOf, promptsPeople } from '../../roadmap/strand.ts'
+import { analysisUnknown, effectsOf } from '../../roadmap/strand.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { contentLists, NAMES_UP_TO } from '../../derive/contentLists.ts'
 import { watchedArrive } from '../../roadmap/observation.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
-import { disabledInactiveUsers, notPeopleIds, phoneSignInIds } from '../../derive/sets.ts'
+import { disabledInactiveUsers, notPeopleIds, phoneSignInIds, serviceAccountIdsOf } from '../../derive/sets.ts'
 import { securityDefaultsState } from '../../derive/readinessContext.ts'
 import { cohortWords, guestsAmong } from '../../derive/whoLine.ts'
 import { pickerVars } from './pickerRows.ts'
@@ -91,8 +91,6 @@ export type StepVarContext = {
   naming?: NamingConvention
   /** The names the plan proposes for the objects the tenant lacks, from its prerequisite steps (planDates): the one source the prerequisite step and every portal line name. */
   proposed?: ProposedObjectNames
-  /** The plan's policies that prompt a person (content titles, planDates): the shared-device accounts are excluded from each. */
-  peoplePolicies?: string[]
   /** The plan's steps (planDates): Create the Policies in Report-only reads its policies' own create procedures from them. */
   planSteps?: readonly Step[]
 }
@@ -413,7 +411,6 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // The trusted network by name (the team's own locations, else the plan's proposal: the portal's rule, stepPortal tokenNames), and the policies that prompt a person, for the shared-devices step's own instructions.
   const trustedIds = ctx.mapping.trustedLocationIds ?? []
   v.trustedLocation = trustedIds.length > 0 ? trustedIds.map(ctx.nameOf).join(', ') : proposedNamesFor(ctx).trustedLocation
-  if (ctx.peoplePolicies && ctx.peoplePolicies.length > 0) v.peoplePolicies = ctx.peoplePolicies
 
   // Existing coverage: whether a policy already delivers the goal (drives the
   // {existingCoverage} line's presence). A done step's policies are what makes
@@ -489,7 +486,7 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     const name = groupId ? (group?.displayName ?? ctx.nameOf(groupId)) : step.naming?.proposed
     if (name) v.serviceAccountsGroupName = name
     if (group && step.state.satisfied) v.serviceAccountsGroupMembers = group.memberCount
-    v.serviceAccountNames = list(ctx.mapping.serviceAccountUserIds.map(ctx.nameOf))
+    v.serviceAccountNames = list(serviceAccountIdsOf(ctx.mapping).map(ctx.nameOf))
     // The group the scan found holding exactly them, nobody has saved it yet;
     // or the saved group whose members differ (roadmap/generate.ts serviceGroup).
     if (step.serviceGroup?.kind === 'found') v.serviceGroupFound = step.serviceGroup.name
@@ -711,7 +708,7 @@ const EMPTY_SCAN = { config: {} } as unknown as TenantSnapshot
  * MFA for Everyone enforces, the campaign's window from the plan's start to
  * that enrol-by, and whether the unmanaged-browser step is on the plan.
  */
-export function planDates(steps: readonly Step[], scheduleStart: string, naming?: NamingConvention, snapshot?: TenantSnapshot, held: (s: Step) => boolean = () => false): Pick<StepVarContext, 'firstEnforce' | 'mfaEnforce' | 'enrolWindowDays' | 'unmanagedBrowserOnPlan' | 'mfaInPlace' | 'passkeyPolicy' | 'passkeyEnforce' | 'proposed' | 'peoplePolicies' | 'planSteps'> {
+export function planDates(steps: readonly Step[], scheduleStart: string, naming?: NamingConvention, snapshot?: TenantSnapshot, held: (s: Step) => boolean = () => false): Pick<StepVarContext, 'firstEnforce' | 'mfaEnforce' | 'enrolWindowDays' | 'unmanagedBrowserOnPlan' | 'mfaInPlace' | 'passkeyPolicy' | 'passkeyEnforce' | 'proposed' | 'planSteps'> {
   // `held`: the board's hold (planBoard.ts boardHolds, read by the caller that
   // holds the board). A step the board holds carries no date anywhere (owner
   // decision 2, 2026-09-22), so its turn-on is no other step's date either: not
@@ -738,18 +735,6 @@ export function planDates(steps: readonly Step[], scheduleStart: string, naming?
     // describe claims nothing (stepPortal.ts needsPasskey).
     .filter((s) => s.status !== 'done' && s.status !== 'skipped' && typeof s.events?.enforce?.at === 'string' && needsPasskey(s, { snapshot: snapshot ?? EMPTY_SCAN }))
     .sort((a, b) => a.events!.enforce.at.localeCompare(b.events!.enforce.at))[0]
-  // The plan's policies that prompt a person (the shared-devices step excludes its accounts from each), by content title, in plan order.
-  // Which policies prompt a person is the policies' own answer
-  // (roadmap/strand.ts promptsPeople); the baseline speaks only for a step with
-  // no policy of its own.
-  const peoplePolicies = [
-    ...new Set(
-      steps
-        .filter((s) => s.status !== 'skipped' && s.id !== 's-shared-devices' && (contentStepFor(s) as { kind?: string } | undefined)?.kind === 'policy')
-        .filter((s) => (effectsOf(s) === null ? promptsPersonForGoal(s.goalId) : promptsPeople(s)))
-        .map((s) => contentTitle(s)),
-    ),
-  ]
   // The proposed names, from the plan's prerequisite steps: the prerequisite step and every portal line name the same group and location.
-  return { firstEnforce, mfaEnforce, enrolWindowDays, unmanagedBrowserOnPlan, mfaInPlace, passkeyPolicy: passkey ? contentTitle(passkey) : null, passkeyEnforce: passkey?.events?.enforce.at ?? null, proposed: planProposedNames(steps, naming), peoplePolicies, planSteps: steps }
+  return { firstEnforce, mfaEnforce, enrolWindowDays, unmanagedBrowserOnPlan, mfaInPlace, passkeyPolicy: passkey ? contentTitle(passkey) : null, passkeyEnforce: passkey?.events?.enforce.at ?? null, proposed: planProposedNames(steps, naming), planSteps: steps }
 }

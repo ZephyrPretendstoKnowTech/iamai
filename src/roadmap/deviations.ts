@@ -15,7 +15,9 @@
 import type { MappingState } from '../mapping/types.ts'
 import { COMPUTER_PLATFORMS, PHONE_PLATFORMS, answerOf, devicePlanOf, deviceScopeOf, serviceProvidersExcluded } from './answers.ts'
 import { stepIdForGoal } from './stepIds.ts'
-import { answeredReasonOf, phonesOf } from './directionAnswers.ts'
+import { answeredReasonOf, phonesOf, savedAnswerOf } from './directionAnswers.ts'
+import { serviceAccountIdsOf } from '../derive/sets.ts'
+import { effectOf } from './operations.ts'
 
 type RawPolicy = Record<string, unknown>
 
@@ -81,12 +83,66 @@ function excludePlatforms(body: RawPolicy, platforms: string[]): RawPolicy {
   return { ...body, conditions }
 }
 
+/** The answers the service-accounts exclusion reads (serviceAccountsExclusionDue). */
+type AccountAnswers = Pick<MappingState, 'questionAnswers' | 'workflowAnswers' | 'facetOverrides' | 'serviceAccountUserIds' | 'sharedDeviceUserIds' | 'wizardAnswered' | 'assumed' | 'trustedLocationIds'>
+
+/**
+ * Whether Identify Service and Shared Accounts' answers take the
+ * service-accounts group out of Jon's policies that ask a person for something
+ * (owner, 2026-09-24, Phase 2a). The group holds the confirmed service accounts
+ * and the shared-device accounts (derive/sets.ts serviceAccountIdsOf); Jon's
+ * naming guide describes his CA-ServiceAccounts as "excluded from user-based
+ * MFA or device-based CA policies", and his Block Service Accounts keeps them to
+ * the trusted network. So only while there is a trusted network to keep them
+ * to: with everyone working remotely, leaving them out would leave them
+ * nothing at all.
+ */
+export function serviceAccountsExclusionDue(mapping: AccountAnswers): boolean {
+  return serviceAccountIdsOf(mapping).length > 0 && savedAnswerOf('officeNetwork', mapping)?.value !== 'remote'
+}
+
+/**
+ * A policy that asks a person for something at sign-in: a sign-in method, or a
+ * fresh sign-in on a schedule, for all users, on the apps they sign in to. A
+ * block is left as it is, and so is a policy that reaches only admins or
+ * guests, or that acts on a user action or an authentication context
+ * (registering security info or a device, activating a role), which a service
+ * or room account never does.
+ */
+export function asksAPerson(body: RawPolicy | null | undefined): boolean {
+  if (!body || typeof body !== 'object') return false
+  const conditions = (body.conditions ?? {}) as { users?: { includeUsers?: unknown }; applications?: { includeUserActions?: unknown; includeAuthenticationContextClassReferences?: unknown } }
+  const users = conditions.users
+  const all = Array.isArray(users?.includeUsers) && users.includeUsers.some((u) => String(u).toLowerCase() === 'all')
+  if (!all) return false
+  const apps = conditions.applications
+  const listed = (v: unknown): boolean => Array.isArray(v) && v.length > 0
+  if (listed(apps?.includeUserActions) || listed(apps?.includeAuthenticationContextClassReferences)) return false
+  const e = effectOf(body)
+  return !e.blocks && (e.asksForMethod || e.sessionControls?.signInFrequency === true)
+}
+
+/** The policy with one more group left out. */
+function excludeGroup(body: RawPolicy, groupId: string): RawPolicy {
+  const conditions = { ...((body.conditions ?? {}) as RawPolicy) }
+  const users = { ...((conditions.users ?? {}) as RawPolicy) }
+  const excluded = Array.isArray(users.excludeGroups) ? (users.excludeGroups as string[]) : []
+  if (excluded.some((g) => g.toLowerCase() === groupId.toLowerCase())) return body
+  users.excludeGroups = [...excluded, groupId]
+  conditions.users = users
+  return { ...body, conditions }
+}
+
 /**
  * The goal's policy with every recorded deviation the mapping's answers call
  * for; the body untouched when none applies. The caller shows each changed
- * line beside the baseline's version.
+ * line beside the baseline's version. `serviceAccountsGroupId` is the tenant's
+ * service-accounts group, where the plan has one: a policy that asks a person
+ * for something leaves it out while the 2.2 answers call for it
+ * (serviceAccountsExclusionDue); with no group yet, the caller holds the policy
+ * on the step that makes it.
  */
-export function applyDeviations(body: RawPolicy, goalId: string, mapping: Pick<MappingState, 'questionAnswers'>): RawPolicy {
+export function applyDeviations(body: RawPolicy, goalId: string, mapping: Pick<MappingState, 'questionAnswers'> & Partial<AccountAnswers>, serviceAccountsGroupId: string | null = null): RawPolicy {
   let out = body
   if (SERVICE_PROVIDER_GOALS.has(goalId) && serviceProvidersExcluded(mapping)) out = excludeServiceProviders(out)
   if (goalId === COMPLIANT_DEVICE_GOAL) {
@@ -94,6 +150,7 @@ export function applyDeviations(body: RawPolicy, goalId: string, mapping: Pick<M
     if (platforms.length > 0) out = excludePlatforms(out, platforms)
   }
   if (goalId === SIGN_IN_RISK_GOAL && plainMfaFirst(mapping)) out = plainMfaGrant(out)
+  if (serviceAccountsGroupId && mapping.serviceAccountUserIds && serviceAccountsExclusionDue(mapping as AccountAnswers) && asksAPerson(out)) out = excludeGroup(out, serviceAccountsGroupId)
   return out
 }
 

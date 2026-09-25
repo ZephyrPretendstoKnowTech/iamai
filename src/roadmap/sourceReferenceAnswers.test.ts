@@ -15,7 +15,6 @@ import { answerTextFor, referenceOptions } from './answers.ts'
 import { BASELINE_MAPPINGS_KEY, sourceMappingsOf, unresolvedSourceMappings } from './sourceMappings.ts'
 import { implementationOffered, operationsOf } from './operations.ts'
 import { referenceUsage } from '../baseline/interpretation.ts'
-import { pinnedPackage } from '../baseline/pinned.ts'
 import type { Step } from './types.ts'
 import { waitingLine, waitKindOf } from '../ui/surfaces/stepJson.ts'
 import { tenantNameOf } from '../ui/surfaces/stepVars.ts'
@@ -39,7 +38,8 @@ function withDecisions(f: Fixture, decisions: Record<string, StepDecision>): Fix
   return { ...f, mapping: applyStepDecisions(f.mapping, decisions) }
 }
 
-const base = fixture('demo')
+// mid: the one sample with references still waiting on an answer (demo's exclude-only groups use the approved V1 assumption).
+const base = fixture('mid')
 const pending = sourceMappingsOf(runFixture(base).steps).sort((a, b) => Number(b.answer === 'pending') - Number(a.answer === 'pending'))
 const at = base.snapshot.asOf
 const group = [...base.groups.keys()].find((id) => !pending.some((r) => r.id.toLowerCase() === id.toLowerCase()))!
@@ -101,7 +101,27 @@ test('each reference is answered on its own: changing an answer replaces it in e
   }
 })
 
+/**
+ * demo with Jon's legacy block reaching the broad group (62d67e66) instead of
+ * everyone: a pinned reference that is a target in one policy and an exception
+ * in the rest, so it waits on an answer (demo's exclude-only groups otherwise
+ * use the approved V1 assumption and wait on nothing).
+ */
+function demoWithTarget(): Fixture {
+  const demo = fixture('demo')
+  const LEGACY = '9eab445f-7f21-479a-85c9-29769512067e'
+  const BROAD = '62d67e66-2bc9-43cd-b00c-6326dae53d18'
+  const legacy = structuredClone(demo.baseline.policies.find((p) => p.id === LEGACY)!) as unknown as { conditions: { users: Record<string, unknown> } }
+  legacy.conditions.users.includeUsers = []
+  legacy.conditions.users.includeGroups = [BROAD]
+  legacy.conditions.users.excludeGroups = (legacy.conditions.users.excludeGroups as string[]).filter((g) => g.toLowerCase() !== BROAD)
+  return { ...demo, baseline: { ...demo.baseline, policies: demo.baseline.policies.map((p) => (p.id === LEGACY ? (legacy as never) : p)) } }
+}
+
 test('each reference says the part it plays, and a policy waiting on an unanswered reference says the meaning is unresolved where one waiting on an object says it is missing', () => {
+  const base = demoWithTarget()
+  const pending = sourceMappingsOf(runFixture(base).steps).sort((a, b) => Number(b.answer === 'pending') - Number(a.answer === 'pending'))
+  const at = base.snapshot.asOf
   const tenant = tenantNameOf(base.snapshot)
   const missingWords = app.plan.jsonWaits.split('{tenant}')[1].trim()
   const decisionWords = app.plan.jsonWaitsDecision.split('{tenant}')[0].trim()
@@ -130,7 +150,7 @@ test('each reference says the part it plays, and a policy waiting on an unanswer
   {
     const r = runFixture(base)
     const ctx: Pick<StepVarContext, 'snapshot' | 'mapping' | 'nameOf'> = { snapshot: base.snapshot, mapping: base.mapping, nameOf: (x) => r.input.names!.label(x) }
-    const usage = new Map(referenceUsage(pinnedPackage().policies).map((u) => [u.id, u]))
+    const usage = new Map(referenceUsage(base.baseline.policies).map((u) => [u.id, u]))
     const rows = mappingRowsOf(r.steps, ctx)
     assert.equal(rows.length, pending.length)
     for (const row of rows) {
@@ -149,10 +169,13 @@ test('each reference says the part it plays, and a policy waiting on an unanswer
     const exclude = mappingRowOf({ ...first, role: 'exclude' }, ctx)
     assert.notEqual(include.omitLine, exclude.omitLine)
     assert.notEqual(include.roleLine, exclude.roleLine)
-    // Answered, the row says the answer; taken back, it says it has none.
-    const answered = runFixture(withDecisions(base, { [SOURCE]: { answers: { [first.id]: OMIT() }, at } }))
-    const row = mappingRowsOf(answered.steps, ctx).find((x) => x.id === first.id)!
-    assert.ok(row.answerLine.includes(OMIT()))
+    // Answered, the row says the answer; taken back, it says it has none. Mapped:
+    // this reference is a policy's whole target, where "none needed" does not stand.
+    const group = [...base.groups.keys()].find((id) => !pending.some((r) => r.id.toLowerCase() === id.toLowerCase()))!
+    const answeredFixture = withDecisions(base, { [SOURCE]: { answers: { [first.id]: MAP(group) }, at } })
+    const answered = runFixture(answeredFixture)
+    const row = mappingRowsOf(answered.steps, { ...ctx, mapping: answeredFixture.mapping }).find((x) => x.id === first.id)!
+    assert.notEqual(sourceMappingsOf(answered.steps).find((x) => x.id === first.id)?.answer, 'pending', 'the mapping stands')
     assert.notEqual(row.answerLine, rows.find((x) => x.id === first.id)!.answerLine)
   }
 })

@@ -29,7 +29,7 @@ function apply(step: Step, f: ReturnType<typeof fixture>, record: OwnerConfirmat
 }
 
 test('scoped records survive decoding and generic history never becomes successful test evidence', () => {
-  const { f, step } = setup('s-shared-devices')
+  const { f, step } = setup('s-goal-guests-mfa')
   const record = recordFor(step, f)
   assert.deepEqual(ownerConfirmationOf(record), record)
   apply(step, f, { at, basis: record.basis })
@@ -37,23 +37,8 @@ test('scoped records survive decoding and generic history never becomes successf
   assert.equal(step.state.satisfied, false)
 })
 
-test('a review follows the configuration and people it covers: All users policy changes reopen it, unrelated exclusions do not, and new guests are a pending delta', () => {
-  // shared account review follows All users policy changes but ignores explicitly excluded unrelated users
-  {
-    const { f, step } = setup('s-shared-devices')
-    f.snapshot.config.caPolicies.rows = [{ id: 'all', state: 'enabled', conditions: { users: { includeUsers: ['All'], excludeUsers: [] } } }, { id: 'other', state: 'enabled', conditions: { users: { includeUsers: ['All'], excludeUsers: step.population.ids } } }]
-    const record = recordFor(step, f)
-    apply(step, f, record)
-    assert.equal(step.state.satisfied, true)
-    ;(f.snapshot.config.caPolicies.rows[1] as any).grantControls = { builtInControls: ['block'] }
-    apply(step, f, record)
-    assert.equal(step.state.satisfied, true)
-    ;(f.snapshot.config.caPolicies.rows[0] as any).grantControls = { builtInControls: ['block'] }
-    apply(step, f, record)
-    assert.equal(step.manualReview?.verification, 'changed')
-    assert.equal(step.state.satisfied, false)
-  }
-
+test('new guests are a pending delta on a guest review', () => {
+  // (The shared-device review that followed All users policy changes left with its step in Phase 2a.)
   // new guests become a pending delta while the reviewed guest evidence stays current
   {
     const { f, step } = setup('s-ladder-guest-review')
@@ -75,7 +60,7 @@ test('a review follows the configuration and people it covers: All users policy 
 test('failed collection or a historical snapshot without optional sections keeps the dated record and completes nothing', () => {
   // failed collection preserves the dated record without manufacturing a new configuration change
   {
-    const { f, step } = setup('s-shared-devices')
+    const { f, step } = setup('s-goal-guests-mfa')
     const record = recordFor(step, f)
     f.snapshot.config.caPolicies = { status: 'error', rows: [], reason: 'Unavailable' }
     apply(step, f, record)

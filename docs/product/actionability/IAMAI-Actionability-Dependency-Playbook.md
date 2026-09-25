@@ -173,7 +173,6 @@ Every real conditional dependency is an edge with a condition predicate. None is
 | `mail-devices-incompatible-path` | `s-question-mail-devices` | mail-sending devices/apps use an authentication or submission path the intended legacy-auth protection would block |
 | `partner-accounts-exist` | `s-question-partner` | partner/MSP identities need a carve-out in the affected scope |
 | `travel-exceptions-allowed` | `s-question-travel` | the organisation permits temporary travel exceptions |
-| `shared-devices-exist` | `s-shared-devices` | confirmed shared identities/devices |
 | `sd-enabled` | `s-prereq-security-defaults` | Security Defaults currently enabled |
 | `campaign-targets-passkey` | `s-verify-mfa` | the registration campaign targets passkeys rather than Authenticator only |
 
@@ -229,7 +228,7 @@ This table is the authority. §11's per-step entries, the spine in §12.0, and t
 
 Only direct causal edges appear. `status` = `ok` (carried from v1 package bindings or first-party documentation, no open question) or `V#` (open item in Appendix A).
 
-Condition names used: `sd-enabled` (Security Defaults currently enabled in the tenant), `mail-devices-incompatible-path` (mail-sending devices/apps use an authentication or submission path the intended legacy-auth protection would block), `partner-accounts-exist` (partner/MSP identities need a carve-out), `travel-exceptions-allowed` (the organization permits temporary travel exceptions), `shared-devices-exist` (confirmed shared identities/devices).
+Condition names used: `sd-enabled` (Security Defaults currently enabled in the tenant), `mail-devices-incompatible-path` (mail-sending devices/apps use an authentication or submission path the intended legacy-auth protection would block), `partner-accounts-exist` (partner/MSP identities need a carve-out), `travel-exceptions-allowed` (the organization permits temporary travel exceptions).
 
 ### 10.0 Step index (static fields)
 
@@ -254,7 +253,6 @@ Condition names used: `sd-enabled` (Security Defaults currently enabled in the t
 | `s-question-mail-devices` | Set Up an SMTP Relay for Mail-Sending Devices | conditional remediation | devices | external-platform | | yes |
 | `s-question-partner` | Exclude the Partner or MSP Accounts | owner decision / exception design | guests | decision | | yes |
 | `s-question-travel` | Add a Travel Notice and Exclusion | operational exception workflow | all-users | operational | | yes |
-| `s-shared-devices` | Give Shared Devices Their Own Policy | supporting policy / exception design | devices | portal | | yes |
 | `s-goal-mfa-all-users` | Require MFA for Everyone | CA policy | all-users | portal | | yes |
 | `s-goal-admins-phishing-resistant` | Require Phishing-Resistant MFA for Admins | CA policy | admins | portal | | yes |
 | `s-goal-azure-management-mfa` | Require MFA for Azure Management | CA policy | admins | portal | | no — not in pinned baseline |
@@ -299,9 +297,6 @@ Condition names used: `sd-enabled` (Security Defaults currently enabled in the t
 | `s-ladder-operator-passkey:start` | `cleanup-drill` | step | `complete` | — | hard | owner | ok |
 | `s-verify-mfa:start` | `s-ladder-operator-passkey` | step | `complete` | — | hard | owner | ok |
 | `s-question-travel:start` | `s-prereq-allowed-countries` | step | `complete` | — | hard | package | ok |
-| `s-shared-devices:start` | `s-prereq-trusted-location` | step | `complete` | — | hard | package | ok |
-| `s-shared-devices:complete` | `s-goal-require-managed-device` | step | `created` | `shared-devices-exist` | conditional | v2 | ok |
-| `s-shared-devices:complete` | `s-goal-all-users-no-persistence` | step | `created` | `shared-devices-exist` | conditional | v2 | ok |
 | `s-prereq-per-user-mfa:start` | `s-goal-mfa-all-users` | step | `enforced` | — | hard | ms-doc | ok |
 | `s-prereq-security-defaults:start` | `s-goal-mfa-all-users` | step | `ready-to-enforce` | `sd-enabled` | conditional | ms-doc | ok |
 | `s-prereq-security-defaults:start` | `s-goal-admins-phishing-resistant` | step | `ready-to-enforce` | `sd-enabled` | conditional | ms-doc | ok |
@@ -347,10 +342,8 @@ Condition names used: `sd-enabled` (Security Defaults currently enabled in the t
 | `s-goal-require-managed-device:create` | `s-prereq-device-plan` | step | `complete` | — | hard | package | ok |
 | `s-goal-require-managed-device:create` | `s-prereq-trusted-location` | step | `complete` | — | hard | package | ok |
 | `s-goal-require-managed-device:create` | `s-prereq-exclusion-group` | step | `complete` | — | hard | pinned | ok |
-| `s-goal-require-managed-device:enforce` | `s-shared-devices` | step | `complete` | `shared-devices-exist` | conditional | package | ok |
 | `s-goal-mobile-app-protection:create` | `s-prereq-device-plan` | step | `complete` | — | hard | package | ok |
 | `s-goal-all-users-no-persistence:create` | `s-prereq-exclusion-group` | step | `complete` | — | hard | package | ok |
-| `s-goal-all-users-no-persistence:enforce` | `s-shared-devices` | step | `complete` | `shared-devices-exist` | conditional | v2 | ok |
 | `s-goal-unmanaged-browser:enforce` | `baselineSafetyConflict:unmanaged-browser-emergency-exclusion` | baselineSafetyConflict | `resolved` | — | hard | pinned | ok |
 | `s-goal-token-protection:create` | `s-prereq-exclusion-group` | step | `complete` | — | hard | package | ok |
 
@@ -518,12 +511,6 @@ Observation predicates are written as the kind of evidence required, never as a 
 - Condition it owns: `travel-exceptions-allowed`.
 - Non-step blockers: `decision:` whether temporary travel exceptions are permitted; per exception, `fact:` traveller, destinations, dates.
 - Rationale: never blocks geo-policy creation. Conditionally gates geo enforcement.
-
-#### `s-shared-devices` — Give Shared Devices Their Own Policy
-- Work type: supporting policy / exception design · scope_class: devices · effort_kind: portal · actions: start → complete
-- Condition it owns: `shared-devices-exist`.
-- Non-step blockers: `evidence:` shared identities/devices confirmed.
-- Rationale: the dedicated policy can be designed once the trusted location exists; its **completion** depends on the people-policy objects it patches existing (edges to `require-managed-device@created` and `session-lifetime@created`, V8). This is an object-existence dependency, not an enforcement-phase dependency, and it is why start and complete are separate nodes.
 
 ### E. Broad and privileged Conditional Access controls
 
@@ -744,7 +731,6 @@ Computed over action nodes, counting distinct downstream steps. **Excludes** the
 | `s-prereq-device-plan` | 1 | 3 | require-managed-device |
 | `s-prereq-service-accounts-group` | 2 | 2 | block-legacy-auth, service-accounts-trusted-network |
 | `s-question-partner` | 2 | 2 | geo-restriction (conditional), guests-mfa (conditional) |
-| `s-shared-devices` | 2 | 2 | require-managed-device (conditional), all-users-no-persistence (conditional) |
 | `s-goal-require-managed-device` | 1 | 2 | shared-devices (conditional, @created) |
 | `s-goal-all-users-no-persistence` | 1 | 2 | shared-devices (conditional, @created) |
 | `s-question-mail-devices` | 1 | 1 | block-legacy-auth (conditional) |
@@ -945,7 +931,6 @@ Verify against the current pinned target (`pinned.json`) and current first-party
 | **V5** | Which admin-scoped policies need partner/MSP carve-outs. | Add conditional `enforce ← s-question-partner [partner-accounts-exist]` where the pinned scope reaches partner identities; otherwise none. |
 | **V6** | Does the pinned baseline carry a meaningful stable ordering? | Populate `baseline_order` either way; if alphabetical/export artefact, note in §13 that it is a tie-break only. |
 | **V7** | Is the baseline's registration campaign passkey-targeted? | Yes → `s-verify-mfa:start ← passkey-settings` becomes hard. Authenticator-only → conditional as written. |
-| **V8** | Which people policies `s-shared-devices` patches on completion. | Confirm `require-managed-device` and `session-lifetime`; add/remove `@created` rows. |
 | **V9** | Report-only evaluation for user-action scope (`device-registration-mfa`, `register-info-protected`). Microsoft's Report-only overview says user-action items are not evaluated; v1 claimed support for register-or-join. | Supported → normal predicate. Not supported → predicate is pilot scope plus human validation; no Observing evidence path. |
 | **V10** | `workload-identity-block` semantics after identity-type resolution. | Service principal → workload-identity CA, Workload ID Premium stays. User account → user-scoped location policy, drop Workload ID Premium, keep named-location fact. |
 | **V11** | Affected-policy map for each unresolved source reference (`62d67e66`, `1267ac22`) and the role each plays (include / exclude / both). | Populate §18.1 and add `sourceMapping` rows to §10 for each affected `create` (or `correct`). |

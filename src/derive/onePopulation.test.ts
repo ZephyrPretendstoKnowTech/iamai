@@ -153,12 +153,8 @@ test('no step calls an account outside the plan\'s active people an active perso
       assert.deepEqual(outside, [], `${fx.name}/${s.id} reads "${line}" over ${outside.length} accounts that are not active people`)
     }
   }
-  const shared = runFixture(fixture('demo')).steps.find((s) => s.id === 's-shared-devices')
-  assert.ok(shared, 'the premise: demo plans the shared-devices step')
-  const pop = reached(shared)
-  assert.ok(pop !== null)
-  assert.equal(populationLine(pop), '1 account', 'the Boardroom account is an account, not an active person')
-  assert.equal(rowWho(shared), '1 account', 'and the row beside the tile says the same')
+  // The shared-devices step that read it left the plan in Phase 2a (the accounts
+  // join the service-accounts group); the sweep above keeps the rule for every step.
 })
 
 // The same residual in the gap clause. A goal's "covers N of M people" is

@@ -5,6 +5,7 @@
 // No check lives here. Everything this module does is build the context the
 // rules declare they need, call `evaluateSubject`, and group what comes back.
 import type { TenantSnapshot } from '../graph/collect/types.ts'
+import { serviceAccountIdsOf } from '../derive/sets.ts'
 import { operatorUserId } from '../derive/operator.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 import type { MappingState, ValidationResult } from '../mapping/types.ts'
@@ -48,8 +49,8 @@ export function buildContext(i: ValidationInputs): ValidationContext {
     breakGlassIds: i.state.breakGlassUserIds,
     operatorUserId: operatorIdOf(i.snapshot),
     allowedCountries: i.state.allowedCountries,
-    serviceAccountIds: i.state.serviceAccountUserIds,
-    approvedExclusionIds: [...i.state.breakGlassUserIds, ...i.state.serviceAccountUserIds],
+    serviceAccountIds: serviceAccountIdsOf(i.state),
+    approvedExclusionIds: [...i.state.breakGlassUserIds, ...serviceAccountIdsOf(i.state)],
     unconfirmedEmergencyIds: [...new Set([...sel.recommendedIds, ...sel.priorIds])].filter((id) => !confirmed.has(id.toLowerCase())),
     viability: i.viability ?? [],
     answers,

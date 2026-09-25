@@ -24,7 +24,6 @@ test('every package is classified by what it stands on, and only a package the p
   assert.equal(of('s-goal-device-registration-mfa'), 'baseline-member')
   assert.equal(of('s-goal-session-lifetime'), 'baseline-member', 'a merged goal is backed by the member one of its goals maps to')
   assert.equal(of('s-prereq-exclusion-group'), 'tenant-prerequisite')
-  assert.equal(of('s-shared-devices'), 'tenant-prerequisite', 'a policy IAMAI proposes beside the baseline is not a baseline goal')
   assert.equal(of('s-verify-mfa'), 'workflow-check')
   assert.equal(of('cleanup-drill'), 'rollout-proof')
 })

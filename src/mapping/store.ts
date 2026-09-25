@@ -1,6 +1,7 @@
 // Mapping persistence (IndexedDB, per tenant) and the bridge into the
 // coverage engine's mapping input.
 import { loadMappingRecord, saveMappingRecord } from '../graph/collect/cache.ts'
+import { serviceAccountIdsOf } from '../derive/sets.ts'
 import type { CoverageInput } from '../coverage/coverage.ts'
 import type { MappingState } from './types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
@@ -43,7 +44,8 @@ export function toCoverageMapping(state: MappingState, exclusionsGroupId: string
     breakGlassUsers,
     exclusionGroups,
     exclusionsGroupId,
-    serviceAccountUsers: [...state.serviceAccountUserIds],
+    // The service-accounts group's accounts, shared-device ones included (derive/sets.ts serviceAccountIdsOf).
+    serviceAccountUsers: serviceAccountIdsOf(state),
     // The recorded answers the step's policy is built from, so coverage judges a
     // policy against the baseline as they narrowed it (coverage.ts recordedReference).
     ...(state.questionAnswers !== undefined ? { questionAnswers: { ...state.questionAnswers } } : {}),

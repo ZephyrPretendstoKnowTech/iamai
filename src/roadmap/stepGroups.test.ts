@@ -209,7 +209,7 @@ const OUTLINE: readonly [key: string, title: string, members: readonly string[]]
   ['core', 'Turn On MFA for Everyone', ['s-goal-block-legacy-auth', 's-goal-block-device-code', 's-goal-admins-phishing-resistant', 's-goal-mfa-all-users', 's-prereq-security-defaults', 's-prereq-per-user-mfa']],
   ['extend-mfa', 'Extend MFA Coverage', ['s-goal-register-info-protected', 's-goal-device-registration-mfa', 's-goal-guests-mfa', 's-goal-pim-activation-reauth', 's-goal-inforcer-mfa', 's-goal-sign-in-risk', 's-goal-sign-in-risk-medium', 's-goal-user-risk', 's-goal-user-risk-medium', 's-goal-azure-management-mfa']],
   ['remaining-doors', 'Close the Doors Nobody Should Use', ['s-goal-block-auth-transfer', 's-goal-block-unsupported-platforms', 's-goal-geo-restriction', 's-goal-service-accounts-trusted-network', 's-goal-workload-identity-block', 's-goal-admin-portals-protected']],
-  ['devices-sessions', 'Limit Sessions and Require Healthy Devices', ['s-goal-admin-session', 's-goal-all-users-no-persistence', 's-goal-intune-enrollment-reauth', 's-goal-require-managed-device', 's-shared-devices', 's-ladder-phone-access-restriction', 's-goal-token-protection', 's-goal-mobile-app-protection', 's-goal-byod-session-controls']],
+  ['devices-sessions', 'Limit Sessions and Require Healthy Devices', ['s-goal-admin-session', 's-goal-all-users-no-persistence', 's-goal-intune-enrollment-reauth', 's-goal-require-managed-device', 's-ladder-phone-access-restriction', 's-goal-token-protection', 's-goal-mobile-app-protection', 's-goal-byod-session-controls']],
   ['ongoing', 'Ongoing Checks and Cleanup', ['cleanup-alerting', 'cleanup-hardening', 'cleanup-namedExclusions', 'cleanup-consolidation', 'cleanup-naming']],
 ]
 
@@ -312,21 +312,19 @@ const ASKED_AT: Readonly<Record<string, string>> = {
 }
 
 /**
- * The two designed hand-offs, the only waits allowed to point down, keyed by
- * the step that does both halves. Turn Off Security Defaults starts once the
- * four core policies are ready to turn on, and those four turn on as it
- * finishes. Give Shared Devices Their Own Policy starts once the two policies it
- * carves the shared accounts out of are created, and those two turn on after it.
+ * The designed hand-off, the only wait allowed to point down, keyed by the
+ * step that does both halves. Turn Off Security Defaults starts once the four
+ * core policies are ready to turn on, and those four turn on as it finishes.
+ * (Give Shared Devices Their Own Policy was the second; it left in Phase 2a.)
  * What points down is only the turn-on: in the graph, a hand-off is an
  * `enforce` edge, and any other wait between the same two rows still points up.
  */
 const HAND_OFFS: ReadonlyMap<string, readonly string[]> = new Map([
   ['s-prereq-security-defaults', ['s-goal-block-legacy-auth', 's-goal-block-device-code', 's-goal-admins-phishing-resistant', 's-goal-mfa-all-users']],
-  ['s-shared-devices', ['s-goal-all-users-no-persistence', 's-goal-require-managed-device']],
 ])
 const isHandOff = (from: string, to: string): boolean => (HAND_OFFS.get(to) ?? []).includes(from)
 
-test('every wait in the dependency graph points up the page, except the two hand-offs', () => {
+test('every wait in the dependency graph points up the page, except the hand-off', () => {
   const placeOf = (id: string): number => LISTED.indexOf(ASKED_AT[id] ?? id)
   const stepEdges = EDGES.filter((e) => e.prerequisiteKind === 'step')
   // Every node has a numbered place: listed by a section, or asked on a row that is.

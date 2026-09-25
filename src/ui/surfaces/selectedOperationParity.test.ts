@@ -73,11 +73,11 @@ test("Medium user risk on mid: the export states the guest exclusion and no sess
   assert.deepEqual(resolved.grantControls?.builtInControls, ['passwordChange'])
   assert.ok(resolved.grantControls?.authenticationStrength, 'the premise: the resolved operation carries the resolved strength')
 
+  // Offered now (no unmapped group holds it, Phase 2a), the export is the create procedure itself.
   const lines = stepExportView(o.step, o.ctx, o.lane).whatToDo
   const text = lines.join('\n')
-  assert.match(text, /Users: Include All users/)
-  assert.match(text, /Also exclude Guest or external users.*all types/)
-  assert.match(text, /Session: not configured/)
+  assert.match(text, /Under Users, include All users and exclude Guest or external users/)
+  assert.doesNotMatch(text, /Session|sign-in frequency|persistent browser/i, 'no session control')
   // Respond to Risk and Limit Sessions (docs/plans/risk-and-sessions-spec.md §6): the pin
   // pairs Require password change with the baseline's authentication strength, while
   // conditionalAccessGrantControls v1.0 (ms.date 2026-04-06, checked 2026-09-20) says
@@ -85,7 +85,7 @@ test("Medium user risk on mid: the export states the guest exclusion and no sess
   // and PowerShell used to write, under a caveat saying so. The pinned baseline wins
   // (CLAUDE.md, owner 2026-09-20): every channel builds the pin's pair, the procedure and
   // the settings block name that one pair, and the caveat is gone.
-  assert.match(text, /Grant: Grant access → Require authentication strength: .+ and Require password change → Require all selected controls\./)
+  assert.match(text, /Under Grant, select Require authentication strength → .+ and Require password change, then Require all the selected controls\./)
   assert.doesNotMatch(text, /Require multifactor authentication|built-in `mfa`|JSON and PowerShell outputs/)
 })
 
@@ -101,7 +101,9 @@ test('a held step whose reference is unresolved: AI Info names what the scan cou
   setDisplayTimeZone('UTC')
   const f = { ...fixture('mid'), baseline: pinnedPackage() }
   const r = runFixture(f, {}, null, f.snapshot.asOf)
-  const step = r.steps.find((s) => s.id === 's-goal-user-risk-medium')
+  // High-Risk Users carves out the author's EAM population, which nobody has mapped
+  // (Medium-Risk Users waited on a group now left out as a second break-glass group).
+  const step = r.steps.find((s) => s.id === 's-goal-user-risk')
   assert.ok(step)
   const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.title ?? null
   const lane = laneViewFor(step, { readings: laneReadings(r.steps), titleOf })
@@ -112,7 +114,6 @@ test('a held step whose reference is unresolved: AI Info names what the scan cou
   assert.match(facts, /^Not available in this scan: conditions\.users$/m)
   // "Values shown as ‹…› are not resolved yet" only beside a ‹…› value (walk list 4.x item 31).
   assert.equal(facts.includes(BRIEFING.previewValues), /‹[^›]+›/.test(facts.replace(BRIEFING.previewValues, '')), 'the unresolved-values line shows exactly where a ‹…› value does')
-  assert.match(facts, /Also exclude Guest or external users \(all types\)\./)
 })
 
 // The briefing's Intended result stated "Enable policy: On → Save — only when all

@@ -13,7 +13,6 @@ import type { Block, PackageMeta } from './protocol.ts'
 const NEEDS_AUTHORING: Readonly<Record<string, readonly string[]>> = {
   's-goal-mfa-all-users': ['email.rollout'],
   's-prereq-auth-strength': ['email.admin-change'],
-  's-shared-devices': ['email.confirm'],
 }
 
 function library(): { meta: PackageMeta; source: Record<string, Block>; normal: ReturnType<typeof normalizePackage> }[] {

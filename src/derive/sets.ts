@@ -43,6 +43,18 @@ export function notPeopleIds(mapping: AccountDecisions): Set<string> & NotPeople
   return mapping.sharedDeviceUserIds === undefined ? out : Object.assign(out, { sharedDeviceUserIds: mapping.sharedDeviceUserIds })
 }
 
+/**
+ * The accounts the service-accounts group holds and Jon's Block Service
+ * Accounts keeps to the trusted network: the confirmed service accounts and the
+ * saved shared-device answer. Shared-device accounts are treated as service
+ * accounts under Jon's baseline (owner, 2026-09-24, Phase 2a), which has no
+ * policy of its own for them. Never the detection: only a saved answer joins
+ * the group.
+ */
+export function serviceAccountIdsOf(mapping: Pick<AccountDecisions, 'serviceAccountUserIds' | 'sharedDeviceUserIds'>): string[] {
+  return [...new Set([...mapping.serviceAccountUserIds, ...(mapping.sharedDeviceUserIds ?? [])])]
+}
+
 /** The not-people set (`notPeopleIds`), with the saved shared-device answer where there is one. */
 export type NotPeople = ReadonlySet<string> & { readonly sharedDeviceUserIds?: readonly string[] }
 

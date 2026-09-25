@@ -59,7 +59,7 @@ import { pilotExclusionsOf, proposeRings, ringContextIndexes } from './rings.ts'
 import { createMethodPreparationCache, methodPreparation, methodReadiness } from './methodReadiness.ts'
 import type { PolicyEffect as MethodTarget } from './operations.ts'
 import { campaignIds, isActivePerson, namedAccounts, population, populationIndex } from '../derive/population.ts'
-import { lastSuccessOf, notActiveUsers, notPeopleIds, personAccounts } from '../derive/sets.ts'
+import { lastSuccessOf, notActiveUsers, notPeopleIds, personAccounts, serviceAccountIdsOf } from '../derive/sets.ts'
 import { adminRolesOf, adminsWithWorkloadOf, officeAppsOf } from '../derive/contentLists.ts'
 import { list } from '../copy/statements.ts'
 import { affectedIds } from '../derive/whoLine.ts'
@@ -102,7 +102,6 @@ import { evidenceFor } from './evidence.ts'
 import { blindOf, goalFamily, mfaReady, readinessFor, routeShortfallOf, strengthMeasuredOf, blindSourceOf } from './readiness.ts'
 import { cantSeeFor, scenarioContext, scenarioLinesFor } from './scenarioLines.ts'
 import { SCENARIO } from '../copy/scenarios.ts'
-import { sharedDeviceUsers } from '../derive/sharedDevices.ts'
 import { staticViolations } from './staticRules.ts'
 import { cleanupPhaseFor } from './cleanupPhase.ts'
 import { namedEmergencyExclusions } from './cleanup.ts'
@@ -114,7 +113,7 @@ import { exclusionsReach } from '../validation/exclusionsGroupPolicies.ts'
 import { journeyPasskeyFindings, journeyAccountFindings, journeyGroupFindings, journeyRecoveryFindings } from './emergencyJourney.ts'
 import { isFloorGoal } from './floor.ts'
 import { devicePlanOf, devicePlanComplete, deviceScopeOf, mailDevicesOf, openInputsOf, travelCountriesOf } from './answers.ts'
-import { DEVICE_GOALS, applyDeviations, deviceStepDoesntApply } from './deviations.ts'
+import { DEVICE_GOALS, applyDeviations, asksAPerson, deviceStepDoesntApply, serviceAccountsExclusionDue } from './deviations.ts'
 
 /** The baseline's block of the service accounts outside the trusted network (E9): step 6 gains it as Restrict Service Accounts to the Trusted Network. */
 export const SERVICE_ACCOUNTS_TRUSTED_GOAL = 'service-accounts-trusted-network'
@@ -226,7 +225,7 @@ import { INVENTORY } from '../copy/inventory.ts'
 import { annotateStateReasons } from './stateReason.ts'
 import { NO_ANNOUNCEMENT, announcementFor } from '../copy/announcements.ts'
 import type { PolicySemantics } from '../copy/announcements.ts'
-import { proposedName, proposedObjectNames } from '../coverage/naming.ts'
+import { proposedObjectNames } from '../coverage/naming.ts'
 import { NAMED_BELOW } from './constants.ts'
 import { registrationWindow } from './campaign.ts'
 import { ladderSteps } from './ladder.ts'
@@ -610,7 +609,7 @@ export function buildCreateAction(
     // once, here. Where an answer changed the policy, the baseline's own version
     // travels with it so the step can show the choice beside it.
     const clone = structuredClone(p.resolved.body)
-    const answered = applyDeviations(clone, goalId, mapping)
+    const answered = applyDeviations(clone, goalId, mapping, mapping.serviceAccountsGroupId)
     const deviated = answered !== clone
     // Nothing is dropped silently: an object the tenant does not have comes back
     // in `missing`, and while any does there is no operation to run.
@@ -629,6 +628,12 @@ export function buildCreateAction(
       }
     }
     for (const m of whole.missing) if (!missing.some((x) => x.token === m.token)) missing.push(m)
+    // A policy that asks a person for something leaves the service-accounts
+    // group out once 2.2 calls for it (deviations.ts); with no group yet it
+    // waits on the step that makes it, as Restrict Service Accounts does.
+    if (!mapping.serviceAccountsGroupId && serviceAccountsExclusionDue(mapping) && asksAPerson(clone) && !missing.some((x) => x.token === '{serviceAccountsGroup}')) {
+      missing.push({ token: '{serviceAccountsGroup}', stepId: PLACEHOLDER_STEP['{serviceAccountsGroup}'] })
+    }
     for (const a of whole.authorOnly) if (!authorOnly.includes(a)) authorOnly.push(a)
     for (const o of whole.omitted) if (!omitted.includes(o)) omitted.push(o)
     // A reference one member still waits on is pending for the step, whatever another member made of the answer.
@@ -838,8 +843,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // out, compliant computers only, and the device steps wait on the decision.
   const devicePlan = devicePlanOf(mapping)
   const deviceScope = deviceScopeOf(devicePlan)
+  // The service-accounts group's accounts: the confirmed service accounts and the
+  // saved shared-device accounts, which Jon's baseline treats alike (derive/sets.ts
+  // serviceAccountIdsOf; owner, 2026-09-24).
+  const serviceAccountIds = serviceAccountIdsOf(mapping)
   // The accounts a pilot never starts with (rings.ts pilotExclusionsOf).
-  const notInPilotIds = pilotExclusionsOf({ snapshot, breakGlassUserIds: mapping.breakGlassUserIds, serviceAccountUserIds: mapping.serviceAccountUserIds, viability })
+  const notInPilotIds = pilotExclusionsOf({ snapshot, breakGlassUserIds: mapping.breakGlassUserIds, serviceAccountUserIds: serviceAccountIds, viability })
   const operatorId = input.operatorUserId ?? null
   const viabilityById = new Map(viability.map((v) => [v.userId, v]))
   // One lookup, built once. This was a linear search of the directory per call,
@@ -894,14 +903,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // and never will (T12), and a nominated emergency account is a person until
   // the operator chooses it.
   const people = new Set(personAccounts(snapshot, notPeopleIds(mapping)).map((u) => u.id))
-  const excluded = new Set<string>([...mapping.breakGlassUserIds, ...mapping.serviceAccountUserIds])
+  const excluded = new Set<string>([...mapping.breakGlassUserIds, ...serviceAccountIds])
   for (const u of snapshot.users) if (!people.has(u.id)) excluded.add(u.id)
   // The people a zero has to be proved over: every active account in the tenant
   // that a proposed policy does not already exclude (roadmap/strand.ts
   // measuredReach). The tenant's own people, never a step's list of them.
   const activePeople = viability.filter((v) => v.activity === 'active' && !excluded.has(v.userId)).map((v) => v.userId)
   // The directory-sync account is out of the MFA and strength templates via excludeRoles in goals.json.
-  const sharedDevices = mapping.sharedDeviceUserIds === undefined ? sharedDeviceUsers(snapshot) : snapshot.users.filter((u) => mapping.sharedDeviceUserIds!.includes(u.id) && u.accountEnabled !== false)
   const exclusionGroupIds = [exclusions.actionableId, mapping.serviceAccountsGroupId].filter((x): x is string => typeof x === 'string')
   for (const gid of exclusionGroupIds) for (const id of input.groupMembers?.get(gid)?.memberIds ?? []) excluded.add(id)
 
@@ -1339,13 +1347,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // Confirmed service accounts with no group holding them (prompt 16 §3).
   // Only while service accounts are picked: None adds no step.
   const saStepId = PREREQ_STEP_ID.serviceAccountsGroup
-  if (canUseConditionalAccess && mapping.serviceAccountUserIds.length > 0) {
+  if (canUseConditionalAccess && serviceAccountIds.length > 0) {
     const proposed = proposedObjectNames(naming).serviceAccountsGroup
     // Done when the group chosen on this step's picker (decisions.ts
     // SERVICE_ACCOUNTS_GROUP_KEY) holds exactly the accounts picked in Identify
     // Service and Shared Accounts.
     const members = mapping.serviceAccountsGroupId ? input.groupMembers?.get(mapping.serviceAccountsGroupId) : null
-    const matched = groupHoldsExactly(members, mapping.serviceAccountUserIds)
+    const matched = groupHoldsExactly(members, serviceAccountIds)
     const step: Step = { ...prereq(saStepId), ...stateFields(matched ? { satisfied: true, inPlace: true } : {}), naming: { proposed: proposed.name, fromBaseline: null }, deliveredBy: matched ? ['The scanned group includes exactly the selected service accounts.'] : [] }
     // Where the step stands short of done (walk list item 7): a saved group read
     // in full whose members differ is corrected, naming the accounts to add and
@@ -1354,17 +1362,17 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const lc = (id: string): string => id.toLowerCase()
     const groupName = (id: string, g: { displayName?: string | null } | null | undefined): string => g?.displayName?.trim() || nameOf(id)
     if (!matched && mapping.serviceAccountsGroupId && members && !members.sampled) {
-      const want = new Set(mapping.serviceAccountUserIds.map(lc))
+      const want = new Set(serviceAccountIds.map(lc))
       const have = new Set(members.memberIds.map(lc))
       step.serviceGroup = {
         kind: 'correct',
         id: mapping.serviceAccountsGroupId,
         name: groupName(mapping.serviceAccountsGroupId, members),
-        missing: mapping.serviceAccountUserIds.filter((id) => !have.has(lc(id))),
+        missing: serviceAccountIds.filter((id) => !have.has(lc(id))),
         extra: members.memberIds.filter((id) => !want.has(lc(id))),
       }
     } else if (!matched && !mapping.serviceAccountsGroupId) {
-      const exact = [...(input.groupMembers ?? new Map()).entries()].filter(([, g]) => groupHoldsExactly(g, mapping.serviceAccountUserIds))
+      const exact = [...(input.groupMembers ?? new Map()).entries()].filter(([, g]) => groupHoldsExactly(g, serviceAccountIds))
       if (exact.length === 1) step.serviceGroup = { kind: 'found', id: exact[0][0], name: groupName(exact[0][0], exact[0][1]) }
     }
     steps.push(step)
@@ -1436,19 +1444,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       return { key: `admin:${id}`, label: snapshot.users.find((u) => u.id === id)?.displayName || nameOf(id), value: fillText(card.admin, { roles: list([...roles.active, ...roles.eligible].map(roleLabel)), uses }), detail: '', outcome: 'fail' as const }
     })
     steps.push(s)
-  }
-
-  // Shared devices, their own policy (prompt 48 item 4). Only while
-  // shared-device accounts are picked (the saved answer, else the detection
-  // while it is unanswered): None adds no step, and neither do picks the
-  // directory read no longer holds enabled, which left a Doesn't apply row in
-  // hard-coded words (walk list 17, 45).
-  if (canUseConditionalAccess && (mapping.sharedDeviceUserIds ?? sharedDevices).length > 0 && !(sharedDevices.length === 0 && snapshot.sources.users?.status === 'ok')) {
-    const step = prereq('s-shared-devices')
-    // Its own policy, named in the tenant's convention (the baseline holds none; the step's instructions create it).
-    step.naming = { proposed: proposedName({ prefix: 'CA', rest: ['Block', 'Shared devices outside trusted networks'], collapsed: 'Block shared devices outside trusted networks' }, naming).name, fromBaseline: null }
-    step.population = namedAccounts(sharedDevices.map((u) => u.id), popIndex)
-    steps.push(step)
   }
 
   // The device decision (E2) is Define Your Rollout Scope's D3
@@ -1582,7 +1577,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   if (geoPlanned && mapping.wizardAnswered.countries === true) {
     validationReports.push(reportFor('allowedCountries', [countryLocation], validationCtx))
   }
-  if (mapping.serviceAccountUserIds.length > 0) validationReports.push(reportFor('serviceAccount', [''], validationCtx))
+  if (serviceAccountIds.length > 0) validationReports.push(reportFor('serviceAccount', [''], validationCtx))
   // The exclusions group's checks sit on its own step. In place when the
   // recognised group is there and *every* blocking check on it has passed; while
   // no group is recognised the step that creates it holds everything that can
@@ -1729,7 +1724,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const templateValues: TemplateValues = {
     '{namePrefix}': naming.prefix ?? 'CA',
     '{exclusionsGroup}': policyUsableExclusionsGroupId,
-    '{serviceAccountsGroup}': mapping.serviceAccountsGroupId ?? (mapping.serviceAccountUserIds.length === 0 ? [] : null),
+    '{serviceAccountsGroup}': mapping.serviceAccountsGroupId ?? (serviceAccountIds.length === 0 ? [] : null),
     '{trustedLocations}': mapping.trustedLocationIds.length > 0 ? mapping.trustedLocationIds : mapping.wizardAnswered.trustedLocations === true ? [] : null,
     '{allowedCountriesLocation}': countryLocation?.id ?? null,
     '{coreAdminRoles}': [...CORE_ADMIN_ROLE_IDS],
@@ -1811,7 +1806,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const whoKey = impl.expectedWho.kind
     // The service accounts are the mapping's, and the one population every other
     // step excludes (E9): the step that restricts them names them all.
-    if (!expectedCache.has(whoKey)) expectedCache.set(whoKey, whoKey === 'workload' ? [] : whoKey === 'serviceAccounts' ? [...mapping.serviceAccountUserIds] : [...resolvePopulation(impl.expectedWho, snapshot).ids].filter((id) => !excluded.has(id)))
+    if (!expectedCache.has(whoKey)) expectedCache.set(whoKey, whoKey === 'workload' ? [] : whoKey === 'serviceAccounts' ? [...serviceAccountIds] : [...resolvePopulation(impl.expectedWho, snapshot).ids].filter((id) => !excluded.has(id)))
     // THIS goal's own accounts that can sign in, before the plan's exclusions
     // take anybody out. The line above subtracts them from the goal's
     // population, so a policy that excludes a group holding 116 of 122 accounts
@@ -3293,7 +3288,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // not set aside.
   for (const s of steps) {
     if (s.id === SEPARATE_ADMIN_ACCOUNTS_STEP_ID) s.impactCount = adminsWithWorkload.length
-    else if (s.id === saStepId) s.impactCount = mapping.serviceAccountUserIds.length
+    else if (s.id === saStepId) s.impactCount = serviceAccountIds.length
     else if (s.id === strengthStepId || s.id === PREREQ_STEP_ID.trustedLocation) {
       const waiting = new Set((dependencyData as { edges: { step: string; prerequisite: string }[] }).edges.filter((e) => e.prerequisite === s.id).map((e) => e.step))
       s.impactCount = steps.filter((w) => waiting.has(w.id) && !w.doesntApply && !w.state.setAside).length

@@ -1035,8 +1035,7 @@ export function renderPages(): string {
 export function reviewBody(): string {
   const stepsAll = C.steps as Record<string, any>[]
   const prep = stepsAll.filter((x) => ['blocker', 'object', 'check', 'campaign'].includes(x.kind))
-  const pol = stepsAll.filter((x) => x.kind === 'policy' && x.id !== 's-shared-devices')
-  const sharedDev = stepsAll.filter((x) => x.id === 's-shared-devices')
+  const pol = stepsAll.filter((x) => x.kind === 'policy')
   // The free-tier ladder: the whole plan for a tenant that cannot hold a
   // Conditional Access policy, so its rungs are steps and belong on this page.
   const rungs = stepsAll.filter((x) => x.kind === 'ladder')
@@ -1045,12 +1044,12 @@ export function reviewBody(): string {
   body.push('<div class="legend"><var class="v">Underlined green</var> is filled by the engine from the tenant; everything else is fixed text from the content file. Chips, buttons and pickers are drawn as they would appear. <var class="v miss">{orange}</var> marks a variable the example did not fill.</div>')
   body.push(
     '<h3>Titles</h3><ol class="index">' +
-      [...prep, ...sharedDev, ...rungs, ...pol].map((x) => `<li>${esc(x.title ?? engineTitle(x.id) ?? x.id)}` + (x.licence ? ` <span class="sub">— ${esc(x.licence)}</span>` : '') + '</li>').join('') +
+      [...prep, ...rungs, ...pol].map((x) => `<li>${esc(x.title ?? engineTitle(x.id) ?? x.id)}` + (x.licence ? ` <span class="sub">— ${esc(x.licence)}</span>` : '') + '</li>').join('') +
       Object.values(C.cleanup).map((c: any) => `<li>${esc(c.title)} <span class="sub">— Cleanup</span></li>`).join('') +
       '</ol>',
   )
   body.push('<div class="phase"><h3>Preparation · Sep 1 → Sep 7</h3></div>')
-  for (const x of [...prep, ...sharedDev]) body.push(renderStep(x, engineTitle(x.id)))
+  for (const x of prep) body.push(renderStep(x, engineTitle(x.id)))
   body.push('<div class="phase"><h3>The free-tier ladder — dormant</h3><p class="sub">A tenant with no Entra ID P1 is given no plan at all (owner, 2026-09-20); it reads the sentence below and nothing else. These rungs stay in the tree, behind <code>FREE_TIER_LADDER</code>, for a later comparison. Their titles and Why come from the engine.</p>' + p(C.pages.plan.conditionalAccessNeedsP1, {}) + '</div>')
   for (const x of rungs) body.push(renderStep(x, engineTitle(x.id)))
   body.push('<div class="phase"><h3>Phase 1 · Sep 8 → Sep 13 &nbsp;/&nbsp; Phase 2 · Sep 15 → Sep 20 &nbsp;/&nbsp; Phase 3 · Sep 22 → Sep 27</h3><p class="sub">Policy steps, one box each; which phase a step lands in is the engine&#8217;s call.</p></div>')
