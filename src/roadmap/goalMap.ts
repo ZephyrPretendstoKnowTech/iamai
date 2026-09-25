@@ -12,12 +12,18 @@ import { policyFacts } from '../coverage/facts.ts'
 import type { StrengthLookup } from '../coverage/strength.ts'
 import type { CaPolicy } from '../baseline/types.ts'
 import { pinnedPackage } from '../baseline/pinned.ts'
+import { withCorrectedGoals } from '../baseline/authorCorrections.ts'
 
 export { mapGoalsToPolicies }
 export type { GoalMap, GoalMapResult }
 
-/** The pinned baseline's stored map: goalId → the policy key(s) that implement it. */
-export const PINNED_GOAL_MAP = ((pinnedBaseline as { goalMap?: GoalMap }).goalMap ?? {}) as GoalMap
+/**
+ * The pinned baseline's stored map: goalId → the policy key(s) that implement it,
+ * with each policy its author confirmed was meant for a goal the map left empty
+ * on that goal (authorCorrections.ts: Jon's UserRegistration policy is Protect
+ * Sign-in Method Registration, owner 2026-09-25).
+ */
+export const PINNED_GOAL_MAP = withCorrectedGoals(((pinnedBaseline as { goalMap?: GoalMap }).goalMap ?? {}) as GoalMap, (pinnedBaseline as { policies: { id: string | null; displayName: string; conditions: unknown }[] }).policies, (p) => policyKey(p)) as GoalMap
 
 /** The stable key of a policy: its id, or its (unique) display name when the export carries no id. */
 export function policyKey(p: { id?: string | null; displayName: string }): string {

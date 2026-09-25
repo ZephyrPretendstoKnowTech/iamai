@@ -702,7 +702,13 @@ test('G1-G3. a blocking exclusion-group check that has not passed holds the step
     const step = r.steps.find((s) => s.id === EXCLUSIONS_STEP)!
     assert.notEqual(step.status, 'done', `${why}: the step is not In place`)
     assert.ok((step.checks?.failing ?? 0) > 0, `${why}: and it says which check`)
-    const deny = r.steps.filter((s) => isOpenPolicy(s) && s.blockedBy.includes(EXCLUSIONS_STEP))
+    // The gate is the first safety step whose minimum fails. A paused rule also
+    // puts the emergency accounts in a dynamic group, Emergency Access's own
+    // minimum (bg.notInDynamicScope), so the policies are held there first. Only
+    // the Microsoft-template floor step carried the group's placeholder as well,
+    // and Jon's registration policy replaced it (2026-09-25).
+    const gates: string[] = why === 'a paused dynamic membership rule' ? [EXCLUSIONS_STEP, PREREQ_STEP_ID.breakGlass] : [EXCLUSIONS_STEP]
+    const deny = r.steps.filter((s) => isOpenPolicy(s) && s.blockedBy.some((b) => gates.includes(b)))
     assert.ok(deny.length > 0, `${why}: the gate still holds every step that can deny access`)
     const id = (f.mapping.records[EXCLUSIONS_RECORD_KEY].resolvedId as string).toLowerCase()
     const bodies = JSON.stringify(r.steps.flatMap((s) => (s.action.resolution?.policies ?? []).map((o) => [o.body, o.target]))).toLowerCase()

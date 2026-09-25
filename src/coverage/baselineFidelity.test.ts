@@ -21,6 +21,7 @@ import type { CoverageInput } from './coverage.ts'
 import { buildStrengthLookup } from './strength.ts'
 import type { GroupMembers } from './population.ts'
 import type { CaPolicy } from '../baseline/types.ts'
+import { corrected } from '../baseline/authorCorrections.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { Step } from '../roadmap/types.ts'
 
@@ -90,7 +91,8 @@ test('renaming and reordering the pinned policies does not remap a goal', () => 
   // the name is the only stable key they have.
   const disguised = [...PINNED_POLICIES].reverse().map((p, i) => (p.id ? { ...p, displayName: `Renamed policy ${i}` } : p))
   const built = goalMapFor(disguised as CaPolicy[], new Map())
-  assert.deepEqual(built.map, PINNED_GOAL_MAP, 'goal identity followed the display names, not the stable source identity')
+  // The stored map: the runtime map adds Jon's corrected registration policy on top of it (baseline/authorCorrections.ts).
+  assert.deepEqual(built.map, (pinnedJson as { goalMap: Record<string, string[]> }).goalMap, 'goal identity followed the display names, not the stable source identity')
   // The runtime reads the stored map rather than matching at render time.
   for (const [goalId, keys] of Object.entries(PINNED_GOAL_MAP)) {
     for (const k of keys) assert.ok(PINNED_POLICIES.some((p) => policyKey(p) === k), `${goalId} maps to ${k}, which is not a pinned policy`)
@@ -479,11 +481,11 @@ test('every pinned member, switched on in the tenant as it stands, is never read
   const judged: string[] = []
   const narrower: string[] = []
   for (const [goalId, keys] of Object.entries(PINNED_GOAL_MAP)) {
-    const tenantPolicies = PINNED_POLICIES.filter((p) => keys.includes(policyKey(p))).map((p) => ({ ...structuredClone(p), id: `tenant-${policyKey(p)}`, state: 'enabled' }) as unknown as Raw)
+    const tenantPolicies = PINNED_POLICIES.map(corrected).filter((p) => keys.includes(policyKey(p))).map((p) => ({ ...structuredClone(p), id: `tenant-${policyKey(p)}`, state: 'enabled' }) as unknown as Raw)
     const r = computeCoverage({
       snapshot,
       tenantPolicies,
-      baselinePolicies: PINNED_POLICIES,
+      baselinePolicies: PINNED_POLICIES.map(corrected),
       baselineUnusable: [],
       strengths: buildStrengthLookup([]),
       groupMembers: new Map() as GroupMembers,

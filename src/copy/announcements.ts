@@ -116,8 +116,14 @@ export type AnnouncementChange = {
 export function announcementFor(c: AnnouncementChange, tenant: string, date: string): string | null {
   const hi = salutation(c.audience ?? (c.admins ? { kind: 'admins' } : null))
   const p = c.policy ?? null
-  if (p ? p.registration && p.locations : c.goalId === 'register-info-protected') {
+  if (p ? p.registration && p.locations : false) {
     return `${hi}\n\nFrom ${date}, setting up or changing your sign-in methods at ${tenant} works from the office network or after a Microsoft Authenticator check. If you need to set up a new phone, do it in the office or ask IT for a one-time pass.\n\n${SIGN_OFF}`
+  }
+  // Jon's registration policy (owner, 2026-09-25): his strength, with no location
+  // condition, so registering asks for a passkey or Windows Hello everywhere, and a
+  // person with neither starts from a Temporary Access Pass.
+  if (p ? p.registration : c.goalId === 'register-info-protected') {
+    return `${hi}\n\nFrom ${date}, adding or changing a sign-in method at ${tenant} asks for your passkey or Windows Hello. If you have neither yet, ask IT for a Temporary Access Pass first.\n\n${SIGN_OFF}`
   }
   if (p ? p.blocks && p.locations : c.goalId === 'geo-restriction') {
     return `${hi}\n\nFrom ${date}, ${tenant} sign-ins from outside our allowed countries will be blocked. Travelling for work? Tell IT before you go so your trip is covered.\n\n${SIGN_OFF}`

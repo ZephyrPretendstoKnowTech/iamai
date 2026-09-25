@@ -338,9 +338,11 @@ test('a gate counts the people MFA Readiness counts, names the campaign that mov
   assert.deepEqual([everyone.methodPreparation?.readyIds.length, everyone.methodPreparation?.ids.length], [2, 2], 'the gate counts the two people who sign in')
   assert.equal(everyone.action.readinessGate, undefined, 'nine dormant accounts hold the gate')
   assert.equal(everyone.dormantWithoutMethod?.length, 9, 'the dormant accounts it reaches with no method are named instead')
-  // Where the campaign can close the gap, nothing changes: every gate on these
-  // three fixtures still names it, which is the reading that was always right.
-  for (const name of ['mid', 'large', 'midflight'] as const) {
+  // Where the campaign can close the gap, nothing changes: a gate it closes
+  // names it, which is the reading that was always right. Mid's and large's gates
+  // are the Modern MFA + TAP gates of Protect Sign-in Method Registration and
+  // Require MFA to Register a Device, which name no campaign; midflight's admin gate does.
+  for (const name of ['midflight'] as const) {
     const { gates } = gatesOf(name)
     const routed = gates.filter((s) => s.action.readinessGate?.route !== undefined)
     assert.ok(routed.length > 0, `${name}: no gate names the campaign any more`)
@@ -416,28 +418,11 @@ test('R4-14: a readiness reading below the threshold never reads as the threshol
   assert.equal(readyNeeded(265, 90), 239)
   assert.equal(readyNeeded(200, 100), 200)
 
-  // On a generated plan: the mid tenant's Require MFA for security info
-  // registration, with exactly 238 of its 265 people holding Authenticator.
-  const base = withFoundationSettled(fixture('mid'))
-  const target = runFixture(base).steps.find((s) => s.id === 's-goal-register-info-protected')!.methodPreparation!.ids
-  const need = readyNeeded(target.length, 90)
-  const withReady = (n: number) => {
-    const ready = new Set(target.slice(0, n))
-    const snapshot = structuredClone(base.snapshot)
-    snapshot.registrationDetails = snapshot.registrationDetails.map((r) => target.includes(r.id)
-      ? { ...r, isMfaCapable: ready.has(r.id), isMfaRegistered: ready.has(r.id), methodsRegistered: ready.has(r.id) ? ['microsoftAuthenticatorPush'] : [] }
-      : r)
-    return runFixture({ ...base, snapshot }, { snapshot } as never).steps.find((s) => s.id === 's-goal-register-info-protected') as Step
-  }
-  const short = withReady(need - 1)
-  assert.equal(short.methodPreparation?.readyIds.length, need - 1, 'the premise: one short')
-  assert.equal(short.readiness.percent, 89)
-  assert.equal(short.action.readinessGate?.value, '89%', 'the gate reads its threshold while short of it')
-  assert.ok(short.blockers.some((b) => b.kind === 'readiness' && b.label === 'readiness'), 'a gate 89.8% of the way is met')
-  const met = withReady(need)
-  assert.equal(met.readiness.percent, 90)
-  assert.equal(met.action.readinessGate, undefined, 'the gate is not met at 90.2%')
-  assert.equal(met.blockers.some((b) => b.kind === 'readiness' && b.label === 'readiness'), false)
+  // The generated-plan half of this check read Protect Sign-in Method
+  // Registration as a plain-MFA gate, readied by registering Authenticator. It
+  // is Jon's policy now, on his strength (baseline/authorCorrections.ts; owner,
+  // 2026-09-25), and no fixture carries a plain-MFA 90% gate; the rounding and
+  // the count the gate opens at are the two rules above and below.
 
   // R4-14: the shortfall check asks for the people the gate opens at, not a second count of them.
   // The R4-14 review. The shortfall check beside the gate counted the people it
