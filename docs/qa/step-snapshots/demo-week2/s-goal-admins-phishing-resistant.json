@@ -1,21 +1,26 @@
 {
-  "lane": "Completed",
-  "substatus": null,
-  "reason": "Satisfied by Core - Grant - Admins phishing-resistant — no change needed",
+  "lane": "Ready",
+  "substatus": "Correct",
+  "reason": "until the policy is corrected by hand",
   "fact": "Enforced",
-  "badge": "Completed",
-  "bar": "Enforced",
-  "rail": "Completed",
+  "badge": "Ready · Correct",
+  "bar": "Needs correction",
+  "rail": "Correct the policy",
   "headings": [
     "About this Step",
     "Tasks Remaining",
     "Implementation Tasks",
     "Completion Criteria"
   ],
-  "tiles": [],
+  "tiles": [
+    {
+      "label": "Users differ from the plan",
+      "state": "Set Users as Implementation Tasks shows."
+    }
+  ],
   "channels": [
     "Entra",
     "AI Info"
   ],
-  "when": "Aug 28, 2026"
+  "when": "Est. Aug 31, 2026"
 }
