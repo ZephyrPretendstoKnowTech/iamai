@@ -312,6 +312,14 @@ export function applyManualReviews(steps: Step[], snapshot: TenantSnapshot, conf
         step.configurationFindings = [{ key: 'global-admin-scope', label: 'Global Administrator Assignments', value: `${active} active · ${ids.length - active} eligible only`, detail: 'Review the purpose of each assignment and preserve dedicated emergency access. The recommended account count is guidance, not proof that these assignments are appropriate.', outcome: evidenceRead(step, snapshot) ? 'pass' : 'unknown' }]
       }
     }
+    // Require MFA for Guests delivered, in a directory read in full with no guest
+    // account: there is no guest path to test, so it completes on the policy, as
+    // the guest review above does (owner, 2026-09-24: 5.3 read "Waiting on you"
+    // over an enforced policy and no guests).
+    if (step.id === 's-goal-guests-mfa' && step.state.satisfied && snapshot.sources.users?.status === 'ok' && !snapshot.users.some(u => u.userType === 'guest')) {
+      delete step.manualReview
+      continue
+    }
     const basis = manualBasis(step, snapshot, mapping, accountCache)
     // A record saved under the ladder's own id before its rung was merged into
     // this step still counts (finding 9): the two were one step's evidence.

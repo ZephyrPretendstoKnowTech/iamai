@@ -2256,7 +2256,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // account the policy reaches, so accounts nobody has signed in to for 90
       // days, or ever, held Require MFA for Everyone below 90% for good: nine of
       // getiamai's eleven, which no step but disabling them could move.
-      policyPreparation = methodPreparation(effects, [...popIndex.active], snapshot, strandContext, methodPreparationCache)
+      // Require MFA for Guests counts its guests: the tenant policy that delivers
+      // it can be an all-users one, and "17 of 22 guests" counted every person on a
+      // tenant with no guest at all (owner audit, 2026-09-24).
+      const measured = readinessKey === 'guest' ? [...popIndex.active].filter((id) => popIndex.guests.has(id)) : [...popIndex.active]
+      policyPreparation = methodPreparation(effects, measured, snapshot, strandContext, methodPreparationCache)
       const reading = methodReadiness(readinessKey, policyPreparation)
       Object.assign(readiness, reading)
       if (!reading.unmeasured) delete readiness.unmeasured
