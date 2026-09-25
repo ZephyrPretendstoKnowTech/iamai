@@ -2200,6 +2200,11 @@
             "route": "{step} gets them ready.",
             "$commentPeople": "The admin gate's card names each admin short with MFA Readiness's next step (round 1, owner 2026-09-24); this is its sentence, and the route follows it.",
             "people": "Get each one signed in once with the method named beside them. For a passkey: {passkeySignIn}",
+            "$commentMethodShort": "A risk step whose policy asks for a strength (owner decision 11, 2026-09-25): the people it reaches who hold nothing it accepts, each with MFA Readiness's next step. It informs and holds nothing, and replaces the line that asked the reader to check the same thing.",
+            "methodShortLabel": "No method it accepts",
+            "methodShortValue": "{n} people",
+            "methodShortNote": "On a risky sign-in this policy asks for a method none of them holds, so a risky sign-in stops them until IT issues a Temporary Access Pass.",
+            "readinessLink": "Open MFA Readiness →",
             "$commentNewDevice": "Require MFA to Register a Device (owner decision 2, 2026-09-25): Microsoft does not support Windows Hello for Business or a device-bound passkey for Register or join devices, because they need the device registered already, so the card says what answers instead (roadmap/methodReadiness.ts).",
             "newDevice": "A passkey on the device being registered can't answer this policy: register a new computer with the phone passkey, and a new phone with a Temporary Access Pass."
           },
@@ -7025,7 +7030,6 @@
           "Identity Protection's risky users report is a separate surface this plan does not read, so the people it holds may not be the people named here.",
           "The baseline asks for risk remediation with {strengthName}, which lets Microsoft pick the remediation each person's registered methods allow.",
           "A person has to be registered for multifactor authentication before this policy reaches them; without it they are blocked and somebody has to reset the account by hand.",
-          "A synchronized account needs the on-premises password route enabled before its owner can remediate.",
           "Check how the policy treats guests rated high risk: they cannot remediate in this tenant, because their risk is held in their home directory.",
           "{existingCoverage}"
         ]
@@ -7033,11 +7037,7 @@
       "decision": null,
       "whatToDo": {
         "lead": null,
-        "before": [
-          "Synchronized users who remediate with a password change need password writeback in Entra Connect.",
-          "A synchronized user who changes the password on-premises instead needs password hash synchronization and the on-premises password-change setting that clears user risk.",
-          "Check that people in scope have a registered multifactor authentication method; remediation asks for it first, and this is not the self-service password reset flow."
-        ]
+        "before": []
       },
       "dates": "{datesNew}",
       "doneEnd": "An account {tenant} rates high risk cannot be used again until its owner has completed the remediation the baseline's authentication strength accepts, and the exclusions group is applied.",
@@ -7183,7 +7183,7 @@
           "This policy covers Medium user risk only. Keep the separate High-risk control unless a reviewed replacement preserves that coverage.",
           "{n} people had a sign-in rated medium risk or higher since {from}: {list:mediumRiskUsers}",
           "The baseline asks for {strengthName} and a password change together here, and adds no session control.",
-          "People in scope need a registered MFA method to complete the secure password change; synchronized users also need password writeback.",
+          "People in scope need a registered MFA method to complete the secure password change.",
           "Guests and external accounts are excluded from this policy, because the password they would have to change is held in their home directory.",
           "{existingCoverage}"
         ]
@@ -7191,10 +7191,7 @@
       "decision": null,
       "whatToDo": {
         "lead": null,
-        "before": [
-          "Synchronized users who change their password here need password writeback in Entra Connect.",
-          "Check that people in scope have a registered MFA method; the secure password change asks for it first."
-        ]
+        "before": []
       },
       "dates": "{datesNew}",
       "doneEnd": "An account {tenant} rates medium risk cannot be used again until its owner has answered the baseline's authentication strength and changed the password, and the exclusions group is applied.",

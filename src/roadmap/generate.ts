@@ -2344,6 +2344,20 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         dormantWithoutMethod = idle.ids.filter((id) => !judged.has(id))
       }
     }
+    // A risk policy that asks for a strength (owner decision 11, 2026-09-25): a
+    // person holding nothing it accepts, only Authenticator push or a text code,
+    // is blocked on a risky sign-in until IT issues them a Temporary Access Pass.
+    // The step names each of them; the card informs and holds nothing.
+    let methodShort: string[] | undefined
+    if (readinessKey === 'risk') {
+      const effects = deliveringEffects ?? validOperations(action).map(operation => effectOf(operation.mode === 'update' ? operation.target as Record<string, unknown> : operation.body))
+      if (effects.some((e) => !e.blocks && e.strength !== null)) {
+        const p = methodPreparation(effects, [...popIndex.active], snapshot, strandContext, methodPreparationCache)
+        const judged = new Set([...p.readyIds, ...p.unknownIds])
+        const short = p.ids.filter((id) => !judged.has(id))
+        if (short.length > 0) methodShort = short
+      }
+    }
     // What the scan could not read, where a refused source is why the number is
     // missing: the reading's own fact, worked out once (types.ts
     // `Readiness.blind`). The gate below reads it rather than asking again.
@@ -2772,6 +2786,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       ...(coverageShortfall !== null ? { coverageShortfall } : {}),
       readiness,
       ...(policyPreparation ? { methodPreparation: policyPreparation } : {}),
+      ...(methodShort ? { methodShort } : {}),
       ...(dormantWithoutMethod.length > 0 ? { dormantWithoutMethod } : {}),
       evidence,
       action,

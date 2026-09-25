@@ -733,6 +733,13 @@ export type Step = {
    */
   methodPreparation?: import('./methodReadiness.ts').MethodPreparation
   /**
+   * A risk step whose policy asks for a strength (sign-in risk, user risk): the
+   * active people it reaches who hold no method it accepts, and so are blocked on
+   * a risky sign-in until IT issues them a Temporary Access Pass (owner decision
+   * 11, 2026-09-25). Named on a card that holds nothing; absent where there is nobody.
+   */
+  methodShort?: string[]
+  /**
    * Require MFA for Everyone only: the accounts its policy reaches that have not
    * signed in for 90 days (or ever) and hold no method it accepts, the ones kept
    * in Disable or Confirm Dormant Accounts aside (walk list 4.x item 10). The

@@ -252,7 +252,6 @@ export const ACCEPTANCE = [
   { item: '35', step: 'sign-in-risk', path: 'who.evidence', must: "Identity Protection's own risk reports are a separate surface this plan does not read" },
   { item: '35', step: 'sign-in-risk', path: 'more.risks', must: 'blocked, not prompted' },
   { item: '35', step: 'sign-in-risk', path: 'more.helpDesk', must: 'AADSTS53004', mustNot: 'then dismiss the risk in Identity Protection.' },
-  { item: '36', step: 'user-risk', path: 'whatToDo.before', must: 'Synchronized users who remediate with a password change need password writeback in Entra Connect.' },
   { item: '36', step: 'user-risk', path: 'whatToDoReference.steps', mustNot: 'password writeback' },
   { item: '36', step: 'user-risk', path: 'doneWhen', mustNot: 'were reviewed' },
   // Risk and Sessions B1-B5 (docs/plans/risk-and-sessions-spec.md section 4,
@@ -263,7 +262,6 @@ export const ACCEPTANCE = [
   { item: '36', step: 'user-risk', path: 'why', must: 'A high-risk account is probably compromised.', mustNot: 'outside a single suspicious sign-in' },
   { item: '36', step: 'user-risk', path: 'whatToDoReference.steps', must: 'Grant → Require risk remediation with Require authentication strength: {strengthName}' },
   { item: '36', step: 'user-risk', path: 'who.evidence', must: 'registered for multifactor authentication before this policy reaches them' },
-  { item: '36', step: 'user-risk', path: 'whatToDo.before', must: 'password hash synchronization and the on-premises password-change setting that clears user risk' },
   { item: '36', step: 'user-risk', path: 'more.risks', must: 'blocked rather than remediated' },
   { item: '37', step: 'sign-in-risk-medium', path: 'who.evidence', must: 'A separate response from Challenge High-Risk Sign-ins: Medium-risk sign-ins get built-in MFA' },
   // Risk and Sessions C1-C2 (docs/plans/risk-and-sessions-spec.md section 5,
@@ -274,7 +272,6 @@ export const ACCEPTANCE = [
   { item: '37', step: 'sign-in-risk-medium', path: 'more.helpDesk', must: 'AADSTS53004', mustNot: 'dismiss the risk in Identity Protection' },
   { item: '38', step: 'user-risk-medium', path: 'who.evidence', must: 'This policy covers Medium user risk only. Keep the separate High-risk control unless a reviewed replacement preserves that coverage.' },
   { item: '38', step: 'user-risk-medium', path: 'who.evidence', must: 'People in scope need a registered MFA method to complete the secure password change' },
-  { item: '38', step: 'user-risk-medium', path: 'whatToDo.before', must: 'need password writeback in Entra Connect' },
   { item: '38', step: 'user-risk-medium', path: 'whatToDoReference.steps', mustNot: 'password writeback' },
   // Risk and Sessions D1-D4 (docs/plans/risk-and-sessions-spec.md section 6,
   // Microsoft Learn checked 2026-09-20): the grant pair the pin holds, no

@@ -130,7 +130,7 @@ export function MfaReadiness({ scan: lastScan, baseline }: { scan: { snapshot: T
   const scored = data.computed?.viability ?? []
   const step = stepId === null ? null : (steps.find((s) => s.id === stepId) ?? null)
   const hold = step && data.computed ? stepMfaHold(step, scored) : null
-  const cohort = step?.preparation?.ids ?? step?.methodPreparation?.ids ?? null
+  const cohort = step?.preparation?.ids ?? step?.methodPreparation?.ids ?? step?.methodShort ?? null
   const context: PlanContext | null = step && (hold || cohort || step.id === SETUP_STEP) ? { title: contentTitle(step), stepId: step.id, ids: hold ? hold.ids : (cohort ?? reached(step)?.ids ?? null), held: hold !== null } : null
   const stepIds = new Set(steps.map((s) => s.id))
   const guestStep = steps.find((s) => s.id === GUEST_STEP_ID) ?? null
