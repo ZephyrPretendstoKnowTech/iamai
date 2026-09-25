@@ -1,10 +1,10 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "when Modern MFA + TAP readiness reaches 100% (now 22%)",
+  "reason": "when Modern MFA + TAP readiness reaches 100% (now 18%)",
   "fact": null,
   "badge": "On Hold",
-  "bar": "When everyone it covers has a method it accepts (11 of 50)",
+  "bar": "When everyone it covers has a method it accepts (8 of 43)",
   "rail": "Create the policy, turned on",
   "headings": [
     "About this Step",
@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "11 of 50 people have a method it accepts"
+      "state": "8 of 43 people have a method it accepts"
     },
     {
       "label": "Configure Passkey Authentication",
