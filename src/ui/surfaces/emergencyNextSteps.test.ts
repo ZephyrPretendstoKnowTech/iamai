@@ -4,7 +4,7 @@ import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { emergencyGroupTasksOf } from './emergencyGroupTasks.ts'
 import { emergencyPasskeyTasksOf } from './emergencyPasskeyTasks.ts'
-import { emergencyVerificationJson, emergencyVerificationTasksOf } from './emergencyVerificationTasks.ts'
+import { emergencyVerificationAiInfo, emergencyVerificationTasksOf } from './emergencyVerificationTasks.ts'
 import { laneReadings } from './planLanes.ts'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 
@@ -58,9 +58,11 @@ test('Step 4 verification is read-only and identity-stable: no Graph write in it
     assert.ok(tasks[0].steps.some(line => line.includes('Wait 5–10 minutes')))
     assert.equal(tasks.flatMap(task => task.steps).some(line => /Start verification|Save verification|Passed|Failed/.test(line)), false)
     assert.ok(tasks[1].steps.some(line => line.includes('Sign-in logs')))
-    const json = JSON.parse(emergencyVerificationJson(phase))
-    assert.equal(json.accounts[0].upn, 'emergency@contoso.onmicrosoft.com')
-    assert.match(json.purpose, /not a Graph write payload/)
+    // AI Info is a briefing that names each account, with no tenant id, event id or JSON (owner audit, 2026-09-24).
+    const ai = emergencyVerificationAiInfo(phase)
+    assert.match(ai, /^- emergency@contoso\.onmicrosoft\.com — /m)
+    assert.doesNotMatch(ai, /tenant-1|event-|[{}]/)
+    assert.ok(tasks[0].steps[0] === 'Retrieve the prepared passkey for each emergency account.', 'a Completed step names nobody in Tasks Remaining')
   }
   {
     const phase = {

@@ -16,7 +16,7 @@ export function emergencyVerificationTasksOf(phase: CleanupPhase): EmergencyTask
       issueKeys: pending.map(id => `recovery-sign-in:${id.toLowerCase()}`),
       // The per-account list is the Sign-in Evidence tile's; the procedure names no list of its own.
       readinessFacts: phase.accountIds.map(id => ({ label: upnOf(phase, id), value: verified.has(id) ? 'Verified' : 'Sign-in required' })),
-      steps: ['Retrieve the prepared passkey for the emergency account named in Tasks Remaining.', 'Open a new private browser window and go to [Microsoft Entra admin center](https://entra.microsoft.com/). Any Microsoft sign-in counts.', 'Sign in as that emergency account using its prepared passkey.', 'Confirm the account and tenant.', 'Sign out and close the private window. Repeat for each remaining account.', 'Wait 5–10 minutes, then select **Scan to update the plan**. If the event has not appeared, wait and scan again.'],
+      steps: ['Retrieve the prepared passkey for each emergency account.', 'Open a new private browser window and go to [Microsoft Entra admin center](https://entra.microsoft.com/). Any Microsoft sign-in counts.', 'Sign in as that emergency account using its prepared passkey.', 'Confirm the account and tenant.', 'Sign out and close the private window. Repeat for each remaining account.', 'Wait 5–10 minutes, then select **Scan to update the plan**. If the event has not appeared, wait and scan again.'],
     },
     {
       id: 'troubleshoot-emergency-sign-in', accountId: null, title: 'Troubleshoot emergency sign-in', targetUpn: null,
@@ -39,24 +39,27 @@ export function emergencyVerificationArtifacts(phase: CleanupPhase): Artifact[] 
   ]
 }
 
-export function emergencyVerificationJson(phase: CleanupPhase): string {
-  const result = phase.recoveryFindings?.find(finding => finding.key === 'recovery-sign-ins')
-  return JSON.stringify({
-    purpose: 'Read-only emergency-access verification evidence and context; not a Graph write payload.',
-    tenantId: phase.tenantId ?? null,
-    scanTimestamp: phase.snapshotObservedAt ?? null,
-    accounts: phase.accountIds.map(id => ({
-      id,
-      upn: upnOf(phase, id),
-      configurationBasisAvailable: Boolean(phase.accountBasis?.[id]),
-      baselineObservedAt: phase.configurationObservedAtByAccount?.[id] ?? null,
-      candidates: (phase.recoveryCandidates?.[id] ?? []).map(reading => ({ eventId: reading.candidate.eventId, at: reading.candidate.at, method: reading.candidate.method, resource: reading.candidate.resource ?? reading.candidate.resourceId ?? null, qualifies: reading.qualifies, reason: reading.reason })),
-      result: result?.items?.find(item => item.accountId === id || item.subjectId === id)?.value ?? null,
-    })),
-    unresolvedFindings: (phase.recoveryFindings ?? []).filter(finding => finding.outcome !== 'pass').map(finding => ({ key: finding.key, label: finding.label, value: finding.value, detail: finding.detail, items: finding.items ?? [] })),
-  }, null, 2)
-}
-
+/**
+ * AI Info: a briefing like every other step's (owner audit, 2026-09-24), each
+ * account with the sign-in evidence the latest scan read. It had been a JSON
+ * dump carrying the tenant id and sign-in event ids, which an assistant needs
+ * none of.
+ */
 export function emergencyVerificationAiInfo(phase: CleanupPhase): string {
-  return ['Help carry out the current Verify Emergency Access task using only the observed context below. Keep configuration and sign-in evidence distinct. Do not claim an unknown fact is verified.', emergencyVerificationJson(phase)].join('\n\n')
+  const signIns = phase.recoveryFindings?.find(finding => finding.key === 'recovery-sign-ins')
+  const accounts = phase.accountIds.map(id => {
+    const item = signIns?.items?.find(row => row.accountId === id || row.subjectId === id)
+    const reading = item ? [item.label, item.value].filter(Boolean).join(': ').replace(/\s*\n\s*/g, '; ') : 'no qualifying sign-in in the latest scan'
+    return `- ${upnOf(phase, id)} — ${reading}`
+  })
+  const verified = (signIns?.items ?? []).filter(item => item.outcome === 'pass').length
+  const open = (phase.recoveryFindings ?? []).filter(finding => finding.outcome !== 'pass').map(finding => `- ${finding.label}: ${finding.value}${finding.detail?.trim() ? `. ${finding.detail.trim()}` : ''}`)
+  return [
+    'Help me understand and carry out Verify Emergency Access. Use only the observed sign-in evidence below. Distinguish observations from proposed changes, do not treat an account as verified unless its evidence says so, and explain the next account-specific action first.',
+    'Sign-in evidence from the latest scan:',
+    accounts.length ? accounts.join('\n') : '- No emergency account is saved.',
+    ...(open.length ? [`Still open:\n${open.join('\n')}`] : []),
+    `Current step state: ${phase.accountIds.length > 0 && verified >= phase.accountIds.length ? 'every emergency account has a qualifying sign-in in the latest scan' : 'one or more emergency accounts still need a qualifying sign-in'}.`,
+    'Use the Entra channel for the complete procedure and return to IAMAI to scan after each sign-in.',
+  ].join('\n\n')
 }

@@ -14,8 +14,6 @@ import { useMemo, useState } from 'react'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import { app } from '../../content/content.ts'
 import { fillText, missingVars } from '../../content/render.ts'
-// The scan time in the plan's format and display zone, as every other printed date (copy/dates.ts).
-import { absolute } from '../../copy/dates.ts'
 import { Button, Picker } from '../components/index.ts'
 import type { StatusTone } from '../components/index.ts'
 import { AuthoredText, DoneWhen, ReadinessSection, StepActionColumn, StepFooter, StepHead, StepSection } from './StepSections.tsx'
@@ -148,7 +146,7 @@ export function CleanupBody({ phase, row, status, onScan, onDone }: {
             {/* The row's own instructions are its Implementation (U1; S-RN-2, S-RB-3): no step draws What to do. */}
             <Implementation heading={TASK_HEAD.implementation} artifacts={verificationArtifacts} drawnBy="translator" preview={null} notes={[]} title={entry.title} empty={{ key: 'none', tone: 'neutral', title: '', text: '' }} source={cleanupSourceLine(entry)} learn={entry.learn?.url ?? null} onTroubleshooting={null} open={implementationOpen} onOpen={() => setImplementationOpen(true)} onClose={() => setImplementationOpen(false)} copy={copyArtifact} copied={copied} printing={!onDone} tasks={verificationTasks} chosenChannel={implementationChannel} onChooseChannel={setImplementationChannel} chosenTaskId={taskId} onChooseTask={setTaskId} emptyTaskText={row.done ? 'Verification is current. No Entra action is required.' : 'Complete the highlighted configuration tasks before starting verification.'} />
             {done}
-            <details className="step-section emergency-recovery-procedure" open={!onDone || undefined}><summary><strong>Emergency recovery procedure</strong></summary><p className="reason">Keep the exported plan available independently of this tenant. Scan-specific facts reflect the scan at {phase.snapshotObservedAt ? absolute(phase.snapshotObservedAt) : 'an unavailable time'} and may differ during an incident.</p><ol>{EMERGENCY_RECOVERY_PROCEDURE.map(line => <li key={line}><AuthoredText text={line} /></li>)}</ol><p className="reason">Conditional Access exclusions do not disable Security Defaults or authentication-method policy. Temporary Access Pass does not bypass Conditional Access, and no recovery route or timeframe is guaranteed.</p></details>
+            <details className="step-section emergency-recovery-procedure" open={!onDone || undefined}><summary><strong>Emergency recovery procedure</strong></summary><p className="reason">Keep the exported plan available independently of this tenant.</p><ol>{EMERGENCY_RECOVERY_PROCEDURE.map(line => <li key={line}><AuthoredText text={line} /></li>)}</ol><p className="reason">Conditional Access exclusions do not disable Security Defaults or authentication-method policy. Temporary Access Pass does not bypass Conditional Access.</p></details>
             {recorded}
           </div>
         </div>
