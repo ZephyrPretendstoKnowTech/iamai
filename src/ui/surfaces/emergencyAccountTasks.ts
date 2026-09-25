@@ -7,6 +7,7 @@ import { approvedPasskeyModels, emergencyValidationIssueKey } from '../../roadma
 import type { ApprovedModel } from '../../roadmap/emergencyJourney.ts'
 import { emergencyAccountPreparationOf } from '../../roadmap/emergencyAccountPreparation.ts'
 import { GLOBAL_ADMIN_ROLE, initialDomain } from '../../validation/rules.ts'
+import { RULE_ACTION } from '../../copy/validation.ts'
 import { oneLine } from '../../content/implementation/project.ts'
 import { app } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
@@ -155,17 +156,27 @@ export function emergencyRegistrationVariants(upn: string): EmergencyAccountTask
 type Preparations = ReadonlyMap<string, ReturnType<typeof emergencyAccountPreparationOf>[number]>
 
 /**
- * The dedicated-account signal (validation rule bg.notPersonal: populated
- * personal profile fields, or the account signed in to IAMAI), read from the
- * step's own findings — the same item Verify Emergency Access shows — so the
- * selection step states it where the selection is made. A note, never a check.
+ * The notes an account's card states, read from the step's own findings — the
+ * same items Verify Emergency Access shows — so the selection step states them
+ * where the selection is made. Notes, never checks: none holds the step.
+ * - The dedicated-account signal (bg.notPersonal: populated personal profile
+ *   fields, or the account signed in to IAMAI).
+ * - An Authenticator device the account shares with another account
+ *   (bg.separateDevices, a hardening item), with the move that fixes it (owner
+ *   audit, 2026-09-24: it was said only in AI Info).
  */
+const NOTE_RULES = ['bg.notPersonal', 'bg.separateDevices'] as const
 function dedicatedAccountNotes(step: Step): ReadonlyMap<string, { label: string; value: string }[]> {
   const notes = new Map<string, { label: string; value: string }[]>()
   for (const item of (step.configurationFindings ?? []).flatMap(finding => finding.items ?? [])) {
-    if (item.outcome !== 'fail' || !item.accountId || !item.issueKeys?.includes(emergencyValidationIssueKey('bg.notPersonal', item.accountId))) continue
+    if (item.outcome !== 'fail' || !item.accountId) continue
+    const rule = NOTE_RULES.find((r) => item.issueKeys?.includes(emergencyValidationIssueKey(r, item.accountId!)))
+    if (!rule) continue
     const id = item.accountId.toLowerCase()
-    notes.set(id, [...(notes.get(id) ?? []), { label: item.factLabel ?? item.label, value: item.value }])
+    const sentence = `${item.value.charAt(0).toUpperCase()}${item.value.slice(1)}`
+    const value = rule === 'bg.separateDevices' ? `${sentence} ${RULE_ACTION['bg.separateDevices'](item.value)}` : item.value
+    if ((notes.get(id) ?? []).some((n) => n.value === value)) continue
+    notes.set(id, [...(notes.get(id) ?? []), { label: item.factLabel ?? item.label, value }])
   }
   return notes
 }
