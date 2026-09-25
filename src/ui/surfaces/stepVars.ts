@@ -27,7 +27,7 @@ import { contentLists, NAMES_UP_TO } from '../../derive/contentLists.ts'
 import { watchedArrive } from '../../roadmap/observation.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
 import { disabledInactiveUsers, notPeopleIds, phoneSignInIds, serviceAccountIdsOf } from '../../derive/sets.ts'
-import { securityDefaultsState } from '../../derive/readinessContext.ts'
+import { legacyDeviceMfaSetting, securityDefaultsState } from '../../derive/readinessContext.ts'
 import { cohortWords, guestsAmong } from '../../derive/whoLine.ts'
 import { pickerVars } from './pickerRows.ts'
 import { DECISION_STEPS, decisionKeyOf } from '../../roadmap/decisions.ts'
@@ -181,6 +181,12 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     // present tense on a tenant that had already turned them off (R4).
     securityDefaultsOn: securityDefaultsState(ctx.snapshot) === true || undefined,
     securityDefaultsOff: securityDefaultsState(ctx.snapshot) === false || undefined,
+    // The tenant-wide device-registration MFA setting, only where the scan reads
+    // it Yes: then a Register or join devices policy is not properly enforced, and
+    // Require MFA to Register a Device's create says to set it to No first. Read
+    // No, or not read, the line is not drawn (owner, 2026-09-25: no task to
+    // confirm what the scan reads).
+    legacyDeviceMfa: legacyDeviceMfaSetting(ctx.snapshot) === 'required' ? 'Yes' : undefined,
     active: view?.active,
     admins: view?.admins,
     guests: view?.guests,

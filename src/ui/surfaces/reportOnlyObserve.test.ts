@@ -664,11 +664,13 @@ test('005.15: device-registration guidance sets the legacy setting to No with th
   // mfa-everyone-spec.md §3 B3/B4: the line says what leaving the tenant-wide
   // setting at Yes costs, and names it as ms-device-settings does. Since Phase 2e
   // (owner decision 3) the policy is created On, so the setting goes to No in that
-  // same change, and nothing is tested after it.
-  assert.match(before, /Require multifactor authentication to register or join devices with Microsoft Entra ID is Yes, this policy is not properly enforced/)
-  assert.match(before, /Set that setting to No when you create the policy\.$/)
+  // same change, and nothing is tested after it. The line is drawn only where the
+  // scan reads the setting Yes (owner, 2026-09-25; deviceRegistration.test.ts).
+  assert.match(before, /set Require multifactor authentication to register or join devices with Microsoft Entra to No\./)
+  assert.match(before, /It reads \{legacyDeviceMfa\}, and while it does this policy is not properly enforced\.$/)
   const text = stepBodyOf(due.step, due.ctx).artifacts.find(a => a.id === 'portal')!.text()
-  assert.match(text, /legacy device-registration MFA|legacy.*setting|Require multifactor authentication to register or join devices/i)
+  // The fixture's scan reads the setting No, so the procedure names nothing to change.
+  assert.doesNotMatch(text, /Require multifactor authentication to register or join devices/i)
   // A copy found in Report-only is watched on its configuration, and no registration test is recorded.
   assert.equal(observing.step.tracking!.evidenceStrategy, 'configuration')
   assert.equal(observing.step.tracking!.failures, null, 'report-only does not prove this unsupported User Action workflow')

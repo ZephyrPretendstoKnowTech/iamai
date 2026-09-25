@@ -56,6 +56,7 @@ import { officeRangesOf, stepVars, strengthMethodNames, tenantNameOf } from './s
 import type { StepVarContext } from './stepVars.ts'
 import { portalNamesFor, stepPortalLines } from './stepPortal.ts'
 import { lifecycleResources } from './stepResources.ts'
+import { legacyDeviceMfaSetting } from '../../derive/readinessContext.ts'
 
 const PACKAGES = (registry as unknown as { packages: Record<string, CompiledPackage> }).packages
 
@@ -1107,9 +1108,7 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
     const words = (CONTRACT.implementation as unknown as { workloadIdentity: { unknown: string; unsupported: string } }).workloadIdentity
     put('workload.identity.detail', identity.support === 'unsupported' ? words.unsupported : identity.support === 'unknown' ? words.unknown : undefined)
   }
-  const registration = ctx.snapshot?.config?.deviceRegistrationPolicy
-  const mfa = registration?.status === 'ok' ? (registration.rows?.[0] as { multiFactorAuthConfiguration?: unknown } | undefined)?.multiFactorAuthConfiguration : undefined
-  put('tenant.deviceRegistration.multiFactorAuthConfiguration', typeof mfa === 'string' ? mfa : undefined)
+  put('tenant.deviceRegistration.multiFactorAuthConfiguration', ctx.snapshot ? (legacyDeviceMfaSetting(ctx.snapshot) ?? undefined) : undefined)
   if (step.id === 's-prereq-device-plan') {
     const W = shared.deviceBriefing as Record<string, string>
     const devices = ctx.snapshot.devices

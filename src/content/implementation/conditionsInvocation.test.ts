@@ -71,7 +71,7 @@ test('the script’s own param() block is read, and an invocation that names a p
     const params = scriptParameters(SCRIPT)
     assert.deepEqual(params.find((p) => p.name === 'Mode'), { name: 'Mode', mandatory: true })
     assert.deepEqual(params.find((p) => p.name === 'PolicyId'), { name: 'PolicyId', mandatory: false })
-    assert.ok(params.some((p) => p.name === 'ExternalAuthenticationCompatibilityResolved'))
+    assert.ok(params.some((p) => p.name === 'LegacyDeviceMfaToggleConfirmedNo'))
     // Variables the script uses outside param() are not parameters.
     assert.equal(params.some((p) => p.name === 'StrengthId'), false)
   }

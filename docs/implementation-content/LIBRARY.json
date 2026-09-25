@@ -495,7 +495,7 @@
       ],
       "correctionModules": 5,
       "requiredBindings": 6,
-      "optionalBindings": 8,
+      "optionalBindings": 9,
       "verifiedSourceCount": 15,
       "packageSpecificMicrosoftSources": 15,
       "sharedPrimitivesReused": 3,
@@ -3254,6 +3254,18 @@
       ],
       "packages": [
         "s-goal-service-accounts-trusted-network"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "exclusions.group.displayName",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-device-registration-mfa"
+      ],
+      "packages": [
+        "s-goal-device-registration-mfa"
       ],
       "knownIAMAIInput": null,
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
@@ -6047,14 +6059,14 @@
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
     "contentBlocks": 893,
-    "uniqueBindings": 267,
+    "uniqueBindings": 268,
     "bindingsRequiredByAtLeastOneProjection": 82,
-    "bindingsOptionalInAtLeastOnePackage": 187,
+    "bindingsOptionalInAtLeastOnePackage": 188,
     "bindingDefinitionsCarriedForward": 42,
-    "bindingDefinitionsPendingHolisticReview": 225,
+    "bindingDefinitionsPendingHolisticReview": 226,
     "knownIAMAIInputTrue": 40,
     "knownIAMAIInputFalse": 2,
-    "knownIAMAIInputUnreviewed": 225,
+    "knownIAMAIInputUnreviewed": 226,
     "verifiedSourceRecords": 267,
     "microsoftSourceRecords": 265,
     "surfaces": [

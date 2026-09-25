@@ -858,12 +858,17 @@ export function packageReadiness(pkg: CompiledPackage, state: PackageState, bind
   for (const t of (model.tiles ?? []) as Record<string, unknown>[]) {
     const rule = ((t.rules ?? []) as { if?: unknown; result: string; line: string }[]).find((r) => r.if !== undefined && holds(r.if as never, ctx))
     if (!rule) continue
+    // A line may name what IAMAI holds ({{…}}), so a card states the fact — the
+    // group, the strength — rather than that IAMAI resolved it (owner,
+    // 2026-09-25). A line whose names are not held is not drawn.
+    const bound = bindText(rule.line, bindings, new Set())
+    if (!('text' in bound) || bound.text === '') continue
     const confirmable = asStrings(t.confirms).filter((id) => gating.has(id))
     tiles.push({
       id: String(t.id),
       gate: String(t.label ?? t.gate),
       result: rule.result,
-      line: rule.line,
+      line: bound.text,
       gateKey: typeof t.gateKey === 'string' ? t.gateKey : null,
       confirm: confirmable.length > 0 ? { prerequisites: confirmable, satisfied: confirmable.every((id) => runtime.satisfied.has(id)) } : null,
     })

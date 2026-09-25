@@ -117,9 +117,10 @@ export function readinessAllWord(): string {
 
 // The policy steps whose content carries a "before" line (a setting to change
 // before the policy exists) that the step keeps above the translator's portal
-// lines: the device-settings toggle, the Intune compliance settings, password
-// writeback, the SharePoint access control.
-export const BEFORE_STEP_IDS = ['device-registration-mfa', 'require-managed-device', 'user-risk', 'user-risk-medium', 'unmanaged-browser']
+// lines: the Intune compliance settings, password writeback, the SharePoint
+// access control. Not the device-settings toggle: Require MFA to Register a
+// Device draws it only where the scan reads it Yes (owner, 2026-09-25).
+export const BEFORE_STEP_IDS = ['require-managed-device', 'user-risk', 'user-risk-medium', 'unmanaged-browser']
 
 /** Each before-step with the lines its content carries; the walk places them on the page. */
 export function beforeLines(): { id: string; title: string; lines: string[] }[] {

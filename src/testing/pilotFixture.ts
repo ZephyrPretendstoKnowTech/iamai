@@ -40,6 +40,7 @@ export function pilotBindings(state: PackageState, over: Record<string, unknown>
     'tenant.displayName': 'Contoso (sample)',
     'policy.target.displayName': 'Core - Require - MFA for device registration',
     'policy.target.excludeGroups': [PILOT_IDS.exclusions],
+    'exclusions.group.displayName': 'Core - Exclusions',
     // The tenant's own strength for the pinned requirement, as IAMAI would resolve it.
     'authStrength.target.id': PILOT_IDS.strength,
     'authStrength.target.displayName': 'Phishing-resistant MFA and one-time TAP (sample)',
