@@ -149,6 +149,8 @@ type ContractWords = {
   foundEnforcedUnmeasured: string
   /** A tenant's own policy delivering the goal, where it differs from the baseline's (Action.ownPolicyDiffers). */
   ownPolicyDiffers: { label: string; note: string }
+  /** The groups a tenant's own delivering policy also leaves out, and who is in them (Action.alsoExcluded). */
+  alsoExcluded: { label: string; note: string; nobody: string; nobodyMany: string; members: string; membersMany: string }
   /** Require MFA for Everyone's dormant accounts with no method (walk list 4.x item 10). */
   dormantNoMethod: { label: string; value: string; valueOne: string; names: string; listed: string }
   /** The signed-in account a policy would leave with no way in (walk list 4.x item 43). */
@@ -504,6 +506,8 @@ export type StepContract = {
   dormant: { value: string; text: string } | null
   /** What the scan knows will bite if the step is done as written, as Tasks Remaining cards (pitfalls.ts). */
   pitfalls: ReadinessTile[]
+  /** The groups the tenant's delivering policy also leaves out, and who is in them (Action.alsoExcluded): a fact of the finished step; null elsewhere. */
+  alsoExcluded?: ReadinessTile | null
   /** The admin gate's card lines: each admin it is short of, with MFA Readiness's next step (round 1); null on every other gate. */
   gateNames: string[] | null
   /** Create the Policies in Report-only's cards, one per policy it lists (reportOnlyStep.ts); none on any other step. */
@@ -1637,6 +1641,7 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     followUp: followUpOf(step, ctx),
     dormant: dormantOf(step, ctx),
     pitfalls: pitfallTilesOf(step, ctx, step.state.satisfied, stepLink),
+    alsoExcluded: alsoExcludedTile(step, ctx),
     gateNames: adminGateNamesOf(step, ctx),
     batch: reportOnlyTilesOf(step, ctx),
     operator,
@@ -2221,6 +2226,30 @@ function ownPolicyTile(step: Step): ReadinessTile | null {
   return { key: OWN_POLICY_DIFFERS, label: CONTRACT.ownPolicyDiffers.label, tone: 'good', value: dimensions, note: fillText(CONTRACT.ownPolicyDiffers.note, { policy: d.policyName, dimensions }) }
 }
 
+/** The key of the tile below: a fact about the tenant's own policy, never a task (FINISHED_FINDINGS). */
+export const ALSO_EXCLUDED = 'also-excluded'
+
+/**
+ * Where the tenant's policy delivers the goal and also leaves out a group the
+ * plan's policy does not (Action.alsoExcluded): the group, who is in it today,
+ * and that anyone added there skips the policy. A fact of the finished step,
+ * under Satisfied, never an instruction (owner audit, 2026-09-24). Who is in a
+ * group the scan did not load is left unsaid.
+ */
+function alsoExcludedTile(step: Step, ctx: StepVarContext): ReadinessTile | null {
+  const d = step.action.alsoExcluded
+  if (!d || !step.state.satisfied) return null
+  const W = CONTRACT.alsoExcluded
+  const loaded = d.groupIds.map((id) => ctx.groups?.get(id) ?? ctx.groups?.get(id.toLowerCase()))
+  const groups = list(d.groupIds.map((id, i) => loaded[i]?.displayName ?? ctx.nameOf(id)))
+  const ids = [...new Set(loaded.flatMap((g) => g?.memberIds ?? []))]
+  const shown = ids.slice(0, NAMES_INLINE).map((id) => ctx.nameOf(id))
+  const names = list(ids.length > NAMES_INLINE ? [...shown, `${ids.length - NAMES_INLINE} more`] : shown)
+  const one = d.groupIds.length === 1
+  const who = loaded.some((g) => g === undefined) ? '' : ids.length === 0 ? (one ? W.nobody : W.nobodyMany) : fillText(one ? W.members : W.membersMany, { names })
+  return { key: ALSO_EXCLUDED, label: W.label, tone: 'good', value: groups, note: fillText(W.note, { policy: d.policyName, groups, who }).trim() }
+}
+
 /** The key of that reading's tile: a finding on a finished step, which is not a task anybody can do here. */
 export const FINISHED_READING = 'enforced-readiness'
 
@@ -2250,7 +2279,7 @@ export const UNWATCHED_ENFORCEMENT = 'enforced-unwatched'
  * Readiness" and "Complete the next task shown for each item." on a Completed
  * step whose tile says IAMAI does not ask for a change.
  */
-export const SETTLED_FINDINGS: ReadonlySet<string> = new Set([UNWATCHED_ENFORCEMENT, OWN_POLICY_DIFFERS])
+export const SETTLED_FINDINGS: ReadonlySet<string> = new Set([UNWATCHED_ENFORCEMENT, OWN_POLICY_DIFFERS, ALSO_EXCLUDED])
 
 /**
  * The findings a finished step can leave behind: facts about the tenant, never
@@ -2871,7 +2900,7 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
   // The two blocks' sign-in card (roadmap/blockSignIns.ts) sits beside the
   // step's own state tile, never in its place.
   const stateFindings = configuration.filter((f) => f.key !== SIGN_INS_FINDING).length
-  const facts = [enforcedReadingTile(step), unwatchedTile(step), ownPolicyTile(step), followUpTile(c), ...emergencyTiles(step, c), ...configuredTiles, ...((stateFindings && step.id !== 's-prereq-break-glass') || (c.satisfiedFacts?.length ?? 0) > 0 ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), dormantTile(c), ...(c.pitfalls ?? []), ...(c.batch ?? []), exclusionsTile(step, c), exclusionsReachTile(c), implementationTile(step, c), inventory].filter((x): x is ReadinessTile => x !== null)
+  const facts = [enforcedReadingTile(step), unwatchedTile(step), ownPolicyTile(step), c.alsoExcluded ?? null, followUpTile(c), ...emergencyTiles(step, c), ...configuredTiles, ...((stateFindings && step.id !== 's-prereq-break-glass') || (c.satisfiedFacts?.length ?? 0) > 0 ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), dormantTile(c), ...(c.pitfalls ?? []), ...(c.batch ?? []), exclusionsTile(step, c), exclusionsReachTile(c), implementationTile(step, c), inventory].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
   // The emergency step's failing checks are its account slots' lines (P0-7): no check tile beside them.
   // The drift card is the review's one card, and the exclusions card the exposure's

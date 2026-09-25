@@ -309,6 +309,13 @@ export type Action = {
    */
   ownPolicyDiffers?: { policyName: string; dimensions: string[] }
   /**
+   * The groups the tenant's delivering policy leaves out that the plan's policy
+   * does not (the exclusions group and the plan's own carve-outs aside), by id:
+   * a fact of the finished step, never an instruction (owner audit, 2026-09-24:
+   * 4.3's admin policy also excluded a group nobody named).
+   */
+  alsoExcluded?: { policyName: string; groupIds: string[] }
+  /**
    * Why the step offers no implementation although nothing it names is missing:
    * the plan cannot tell which of the tenant's policies is which half of a pair,
    * so it will not guess. The step says so and waits for a person to sort it out.
