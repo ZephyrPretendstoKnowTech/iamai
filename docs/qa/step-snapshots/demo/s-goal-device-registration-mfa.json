@@ -1,10 +1,10 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "when Modern MFA + TAP readiness reaches 100% (now 26%)",
+  "reason": "when Modern MFA + TAP readiness reaches 100% (now 20%)",
   "fact": null,
   "badge": "On Hold",
-  "bar": "When everyone it covers has a method it accepts (8 of 30)",
+  "bar": "When everyone it covers has a method it accepts (6 of 29)",
   "rail": "Create the policy, turned on",
   "headings": [
     "About this Step",
@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "8 of 30 people have a method it accepts"
+      "state": "6 of 29 people have a method it accepts"
     },
     {
       "label": "Configure Emergency Exclusions",

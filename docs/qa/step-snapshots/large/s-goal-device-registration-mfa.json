@@ -4,7 +4,7 @@
   "reason": "when Modern MFA + TAP readiness reaches 100% (now 14%)",
   "fact": null,
   "badge": "On Hold",
-  "bar": "When everyone it covers has a method it accepts (600 of 4,169)",
+  "bar": "When everyone it covers has a method it accepts (568 of 3,972)",
   "rail": "Create the policy, turned on",
   "headings": [
     "About this Step",
@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "600 of 4,169 people have a method it accepts"
+      "state": "568 of 3,972 people have a method it accepts"
     },
     {
       "label": "Configure Passkey Authentication",

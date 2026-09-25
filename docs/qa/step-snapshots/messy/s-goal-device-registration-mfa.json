@@ -4,7 +4,7 @@
   "reason": "after: Configure Emergency Exclusions",
   "fact": null,
   "badge": "On Hold",
-  "bar": "When everyone it covers has a method it accepts (13 of 106)",
+  "bar": "When everyone it covers has a method it accepts (12 of 101)",
   "rail": "Create the policy, turned on",
   "headings": [
     "About this Step",
@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "13 of 106 people have a method it accepts"
+      "state": "12 of 101 people have a method it accepts"
     },
     {
       "label": "Configure Emergency Exclusions",
