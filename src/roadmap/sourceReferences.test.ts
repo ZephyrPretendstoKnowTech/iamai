@@ -14,7 +14,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import interpretation from '../../baselines/jhope188-conditionalaccesspolicies.interpretation.json' with { type: 'json' }
-import { fixture } from './fixtures/index.ts'
+import { fixture, withExternalMfa } from './fixtures/index.ts'
 import type { Fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { implementationOffered, operationsOf, unavailableReason } from './operations.ts'
@@ -95,15 +95,15 @@ test('the known exclusions reference resolves to the tenant’s group; an unread
 })
 
 test('S4: each policy naming an unmapped reference is On Hold with the reason, and its blocker states the role', () => {
-  // mid: its High-Risk Users policy carves out the author's EAM population, which nothing maps yet.
+  // mid with an external MFA provider: High-Risk Users carves out the author's EAM population, which nothing maps yet.
   for (const name of ['mid'] as const) {
-    const r = runFixture(fixture(name))
+    const r = runFixture(withExternalMfa(fixture(name)))
     const readings = laneReadings(r.steps)
     const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.plainTitle ?? null
     const pending = unresolvedSourceMappings(r.steps)
     const broad = pending.find((x) => x.id.toLowerCase() === EAM)
     assert.ok(broad && (broad.stepIds ?? []).length > 0, `${name}: the EAM group is pending, with the steps that name it`)
-    assert.equal(broad.role, 'exclude', `${name}: on the plan it is an exception (§18.1)`)
+    assert.equal(broad.role, 'both', `${name}: the companion targets it and High-Risk Users excludes it (§18.1)`)
     for (const s of r.steps) {
       for (const m of s.action.missing ?? []) assert.notEqual(m.unreadable, true, `${name}/${s.id} waits on ${m.token}, which nobody can answer`)
     }

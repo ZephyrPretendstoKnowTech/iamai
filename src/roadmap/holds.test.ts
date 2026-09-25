@@ -15,7 +15,7 @@ import { schedulingWords, structuralWords } from '../content/content.ts'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { allCuratedFixtures, allFixtures, curatedFixture, fixture, noExclusionsAnswer } from './fixtures/index.ts'
+import { allCuratedFixtures, allFixtures, curatedFixture, fixture, noExclusionsAnswer, withExternalMfa } from './fixtures/index.ts'
 import type { Fixture } from './fixtures/index.ts'
 import { runFixture, withDirectionApproved } from './fixtures/run.ts'
 import { DIRECTION_STEP, directionBlockerStep } from './directionAnswers.ts'
@@ -430,7 +430,8 @@ test('Step 4 correction 3: every held row carries a concrete reason from the hol
   // the row is sequenced after (correction batch 1: it used to name a wait no
   // step could end; S4: the answer is a Plan setting, not a step). mid's High-Risk
   // Users carves out the author's EAM population, which nobody has mapped.
-  const token = stepOf(planOf(fixture('mid')), 's-goal-user-risk')
+  // mid with an external MFA provider: Jon's EAM companion is on the plan and its population waits on a person's mapping (coverage/companions.ts).
+  const token = stepOf(planOf(withExternalMfa(fixture('mid'))), 's-goal-user-risk')
   assert.equal(token.blockedReason, BLOCKED_REASON.sourceMapping)
   assert.equal(rowReason(token), BLOCKED_REASON.sourceMapping)
 })

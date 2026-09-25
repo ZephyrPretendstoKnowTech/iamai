@@ -1,5 +1,6 @@
 // The coverage algorithm (intents.md §7) and statements (§8). Pure.
 import goalsData from '../../data/goals.json' with { type: 'json' }
+import { goalMapInUse } from './companions.ts'
 import { scopedToGoalApps } from './goalIdentity.ts'
 import { groupSignatures } from '../baseline/index.ts'
 import type { CaPolicy } from '../baseline/types.ts'
@@ -173,7 +174,8 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
   // baseline policies a goal assesses (so nothing it covers is "not assessed");
   // the goal map says which one policy a held goal is evaluated against.
   const matchedBaseline = new Set<string>()
-  const goalMap = input.goalMap ?? PINNED_GOAL_MAP
+  // A companion this tenant does not use is not part of its goal (companions.ts).
+  const goalMap = goalMapInUse(input.goalMap ?? PINNED_GOAL_MAP, snapshot)
   const factsByKey = new Map<string, PolicyFacts>()
   input.baselinePolicies.forEach((p, i) => factsByKey.set(policyKey(p as { id?: string | null; displayName: string }), baselineFacts[i]))
   const rawByFacts = new Map<PolicyFacts, unknown>(baselineFacts.map((f, i) => [f, input.baselinePolicies[i]]))

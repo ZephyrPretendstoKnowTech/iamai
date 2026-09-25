@@ -279,6 +279,7 @@ Condition names used: `sd-enabled` (Security Defaults currently enabled in the t
 | `s-goal-sign-in-risk` | Challenge High-Risk Sign-ins | Identity Protection CA | all-users | portal | | yes |
 | `s-goal-sign-in-risk-medium` | Challenge Medium-Risk Sign-ins | Identity Protection CA | all-users | portal | | yes |
 | `s-goal-user-risk` | Remediate High-Risk Users | Identity Protection CA | all-users | portal | | yes |
+| `s-goal-risky-users-register-block` | Block Risky Users From Registering Sign-in Methods | Identity Protection CA user-action policy | all-users | portal | | yes |
 | `s-goal-user-risk-medium` | Reset Passwords for Medium-Risk Users | Identity Protection CA | all-users | portal | | yes |
 | `s-goal-pim-activation-reauth` | Require MFA at Every Role Activation | CA + PIM composite | admins | portal | | yes |
 | `s-prereq-security-defaults` | Turn Off Security Defaults | cutover | all-users | portal | | yes |
@@ -373,6 +374,7 @@ Condition names used: `sd-enabled` (Security Defaults currently enabled in the t
 
 | gated_action | prerequisite | prerequisite_kind | milestone | condition | edge_kind | source | status |
 |---|---|---|---|---|---|---|---|
+| `s-goal-risky-users-register-block:create` | `s-prereq-exclusion-group` | step | `complete` | — | hard | pinned | ok |
 | `s-goal-sign-in-risk:create` | `s-prereq-auth-strength` | step | `complete` | — | hard | package | ok |
 | `s-goal-sign-in-risk:create` | `s-prereq-exclusion-group` | step | `complete` | — | hard | pinned | ok |
 | `s-goal-sign-in-risk:enforce` | `s-verify-mfa` | step | `complete` | — | hard | package | ok |
@@ -674,6 +676,12 @@ Observation predicates are written as the kind of evidence required, never as a 
 - Work type: CA + PIM composite · scope_class: admins · effort_kind: portal · actions: create → enforce (see note)
 - Non-step blockers: `license/platform:` PIM licensed; `fact:` role-management policy IDs resolve; `fact:` authentication context exists.
 - Observation predicate: **Report-only is not meaningful here.** The authentication-context policy must be enabled before the context is assigned in PIM role settings; a Report-only policy does not emit the claim. Internal chain: auth strength → authentication context → enabled CA policy → PIM role settings. This is a real technical sequence, not a scheduling preference; the observe action is replaced by pilot-role validation.
+
+#### `s-goal-risky-users-register-block` — Block Risky Users From Registering Sign-in Methods
+- Work type: Identity Protection CA user-action policy · scope_class: all-users · effort_kind: portal · actions: create → enforce
+- Non-step blockers: `fact:` Entra ID P2 (Identity Protection user risk).
+- Observation predicate: none needed: a block on registration for risky users stops no ordinary sign-in.
+- Rationale: Jon's RiskyUsers-RegisterSecurityInfo, a policy step since Phase 2c (owner, 2026-09-24).
 
 ### I. Cutover and legacy-state cleanup
 

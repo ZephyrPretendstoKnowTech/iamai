@@ -1068,6 +1068,22 @@ export function withReviewRow(f: Fixture): Fixture {
   return { ...f, baseline: { ...f.baseline, policies: [...f.baseline.policies, policy as never] } }
 }
 
+/**
+ * The fixture with an external MFA provider enabled in its authentication
+ * methods policy: Jon's EAM High-Risk Users joins Remediate High-Risk Users as
+ * its companion, and the population it targets waits on a person's mapping
+ * (coverage/companions.ts). Without one, that population is left out.
+ */
+export function withExternalMfa(f: Fixture): Fixture {
+  const g = structuredClone(f)
+  const methods = g.snapshot.config.authMethodsPolicy
+  const external = { '@odata.type': '#microsoft.graph.externalAuthenticationMethodConfiguration', id: 'external-mfa', state: 'enabled' }
+  const rows = (methods?.status === 'ok' ? methods.rows : []) as { authenticationMethodConfigurations?: unknown[] }[]
+  if (rows.length > 0) rows[0].authenticationMethodConfigurations = [...(rows[0].authenticationMethodConfigurations ?? []), external]
+  else g.snapshot.config.authMethodsPolicy = { status: 'ok', reason: null, rows: [{ authenticationMethodConfigurations: [external] }] } as never
+  return g
+}
+
 /** Every fixture on its curated baseline, for a sweep that needs a policy to be writable at all. */
 export function allCuratedFixtures(): Fixture[] {
   return allFixtures().map((f) => ({ ...f, baseline: asCuratedBaseline(f.baseline) }))

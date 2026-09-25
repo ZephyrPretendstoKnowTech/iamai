@@ -17,6 +17,7 @@
 //
 // Pure: no DOM, no network. Runs in the pin script and in Node tests.
 import goalsData from '../../data/goals.json' with { type: 'json' }
+import { COMPANION_GOALS } from './companions.ts'
 import type { Goal, Implementation, PolicyFacts } from './types.ts'
 
 const CATALOGUE = goalsData.goals as unknown as Goal[]
@@ -69,6 +70,23 @@ export type GoalMapResult = {
 // and Policy A/B leads; kept here because goalIdentity has no content import.
 const MERGE_ANCHOR: Record<string, string> = { 'byod-session-controls': 'block-downloads-unmanaged' }
 const DECLARED_PAIR = new Set(['guests-mfa'])
+
+/**
+ * The companion of a goal's policy (companions.ts COMPANION_GOALS): the author's
+ * copy of the same risk policy for people it carves out of the first, paired by
+ * structure alone: the same user-risk levels, a risk-remediation grant, and a
+ * target made only of groups the first policy excludes. Exactly one, or none.
+ */
+function companionOf(first: PolicyForMap, policies: PolicyForMap[]): PolicyForMap | null {
+  const sameRisk = (a: ReadonlySet<string>, b: ReadonlySet<string>): boolean => a.size > 0 && a.size === b.size && [...a].every((x) => b.has(x))
+  const excluded = new Set([...first.facts.whoNot.groups].map((g) => g.toLowerCase()))
+  const found = policies.filter((p) => p.id !== first.id
+    && sameRisk(p.facts.userRisk, first.facts.userRisk)
+    && [...(p.facts.grant?.controls ?? [])].some((c) => c.toLowerCase() === 'riskremediation')
+    && !p.facts.who.all && p.facts.who.roles.size === 0 && p.facts.who.groups.size > 0
+    && [...p.facts.who.groups].every((g) => excluded.has(g.toLowerCase())))
+  return found.length === 1 ? found[0] : null
+}
 
 type UserClass = 'all' | 'coreAdmins' | 'guests' | 'workload' | 'members' | 'serviceAccounts'
 type CondTag = string // 'locations' | 'platforms' | 'clientAppsRestricted' | 'flows' | 'deviceFilter' | 'userActions' | 'authContext' | 'signInRisk:high' | 'userRisk:medium' | …
@@ -309,7 +327,13 @@ export function mapGoalsToPolicies(policies: PolicyForMap[]): GoalMapResult {
     const one = pick(goal.id)
     if (one === null) unmappedGoals.push(goal.id)
     else if ('tie' in one) ties.push({ goalId: goal.id, candidates: one.tie })
-    else { map[goal.id] = [one.id]; claimed.add(one.id) }
+    else {
+      map[goal.id] = [one.id]
+      claimed.add(one.id)
+      // A companion for the people the first policy leaves out (Phase 2c: Jon's EAM High-Risk Users).
+      const companion = COMPANION_GOALS.has(goal.id) ? companionOf(one, policies) : null
+      if (companion) { map[goal.id].push(companion.id); claimed.add(companion.id) }
+    }
   }
 
   // A merge partner whose anchor pair never formed carries no policy of its own —

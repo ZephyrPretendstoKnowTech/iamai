@@ -9,7 +9,7 @@
 // all-guest-types exclusion from an All users policy (portalLines.ts usersLine).
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from '../../roadmap/fixtures/index.ts'
+import { fixture, withExternalMfa } from '../../roadmap/fixtures/index.ts'
 import type { FixtureName } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withFoundationSettled, withRecoveryTested } from '../../roadmap/fixtures/run.ts'
 import type { Step } from '../../roadmap/types.ts'
@@ -99,7 +99,8 @@ const aiOf = (o: Opened): string => {
 
 test('a held step whose reference is unresolved: AI Info names what the scan could not settle', () => {
   setDisplayTimeZone('UTC')
-  const f = { ...fixture('mid'), baseline: pinnedPackage() }
+  // mid, with an external MFA provider: Jon's EAM companion is on the plan and its population waits on a person's mapping (coverage/companions.ts).
+  const f = withExternalMfa({ ...fixture('mid'), baseline: pinnedPackage() })
   const r = runFixture(f, {}, null, f.snapshot.asOf)
   // High-Risk Users carves out the author's EAM population, which nobody has mapped
   // (Medium-Risk Users waited on a group now left out as a second break-glass group).

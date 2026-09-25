@@ -7932,6 +7932,56 @@
         "from": "Aug 1"
       },
       "aiFocus": "Explain what the block stops outside the office, including OneDrive sync and guests. Do not widen the trusted network to let a blocked sign-in through."
+    },
+    {
+      "id": "risky-users-register-block",
+      "kind": "policy",
+      "$comment": "Phase 2c (owner, 2026-09-24): Jon's RiskyUsers-RegisterSecurityInfo, a P2 control the plan had no step for, after Remediate High-Risk Users.",
+      "title": "Block Risky Users From Registering Sign-in Methods",
+      "changeLine": null,
+      "why": "An attacker who takes over an account tries to register a sign-in method of their own. Blocking registration while Identity Protection flags the account as risky stops that.",
+      "learn": {
+        "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-security-info-registration",
+        "checkedOn": "2026-09-25"
+      },
+      "who": {
+        "lead": "{active} active people",
+        "evidence": [
+          "{existingCoverage}"
+        ]
+      },
+      "decision": null,
+      "dates": "{datesNew}",
+      "doneWhen": [
+        "{policyDoneWhen}"
+      ],
+      "ifWrong": "{policyIfWrong}",
+      "comms": null,
+      "doesntApply": true,
+      "skip": true,
+      "scanControl": true,
+      "more": {
+        "risks": [
+          {
+            "text": "A person flagged as risky cannot set up a new sign-in method until their risk is cleared, so clear it before helping them register.",
+            "applies": "always"
+          }
+        ],
+        "helpDesk": [
+          "A person who cannot add a sign-in method: check whether Identity Protection flags them as risky, and clear the risk first."
+        ],
+        "manager": "An account flagged as risky cannot register a new sign-in method.",
+        "waits": null
+      },
+      "example": {
+        "tenant": "Contoso",
+        "active": 12,
+        "policyName": "Core - Block - Risky users registering sign-in methods",
+        "signature": "IT",
+        "existingPolicies": [],
+        "from": "Aug 1"
+      },
+      "aiFocus": "Explain the user action and the risk levels the block applies to, and how a flagged person clears their risk before they register."
     }
   ]
 }

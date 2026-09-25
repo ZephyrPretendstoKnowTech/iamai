@@ -37,7 +37,7 @@
 // identifier the source names may appear anywhere in what it hands over.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { curatedFixture, fixture, strengthMissing } from './fixtures/index.ts'
+import { curatedFixture, fixture, strengthMissing, withExternalMfa } from './fixtures/index.ts'
 import interpretation from '../../baselines/jhope188-conditionalaccesspolicies.interpretation.json' with { type: 'json' }
 import type { Fixture, FixtureName } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
@@ -221,7 +221,8 @@ test('a group of the author’s that nothing settles waits on a person’s answe
     const demo = runFixture(fixture('demo-week2')).steps.find((s) => s.id === 's-goal-device-registration-mfa')!
     assert.deepEqual((demo.action.missing ?? []).filter((m) => unsettledGroups().includes(m.token.toLowerCase())), [], 'Device Registration waits on no unexplained group')
   }
-  const r = runFixture(fixture('mid'))
+  // mid with an external MFA provider: Jon's EAM companion is on the plan and its population waits on a person's mapping (coverage/companions.ts).
+  const r = runFixture(withExternalMfa(fixture('mid')))
   const step = r.steps.find((s) => s.id === 's-goal-user-risk')
   assert.ok(step, 'the high-risk users step is on the mid plan')
   const unsettled = unsettledGroups()

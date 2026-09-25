@@ -2277,6 +2277,80 @@
       "learnUrl": "https://learn.microsoft.com/sharepoint/control-access-based-on-network-location",
       "tldr": "Company files open only from the office network, so a stolen password cannot reach them from anywhere else.",
       "cis": []
+    },
+    {
+      "id": "risky-users-register-block",
+      "name": "Risky users blocked from registering sign-in methods",
+      "shortName": "Risky users registering sign-in methods",
+      "description": "A user flagged at medium or high risk cannot register or change a sign-in method.",
+      "phase": 7,
+      "domain": "Risk",
+      "securityValue": 4,
+      "baseEffort": 1,
+      "applicability": null,
+      "implementations": [
+        {
+          "tier": "p2",
+          "kind": "ca",
+          "signature": {
+            "userActionsInclude": [
+              "urn:user:registersecurityinfo"
+            ],
+            "userRiskInclude": [
+              "high"
+            ],
+            "grantBlock": true,
+            "clientAppsAll": true
+          },
+          "expectedWho": {
+            "kind": "all"
+          },
+          "expectedApps": "userAction",
+          "floor": {
+            "grant": "block"
+          },
+          "allowedExclusions": [
+            "breakGlass",
+            "globalExclusion"
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Block - Risky users registering sign-in methods",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "All"
+                ],
+                "excludeGroups": [
+                  "{exclusionsGroup}"
+                ]
+              },
+              "applications": {
+                "includeUserActions": [
+                  "urn:user:registersecurityinfo"
+                ]
+              },
+              "clientAppTypes": [
+                "all"
+              ],
+              "userRiskLevels": [
+                "high",
+                "medium"
+              ]
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [
+                "block"
+              ]
+            },
+            "sessionControls": null
+          }
+        }
+      ],
+      "free": [],
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-security-info-registration",
+      "tldr": "An account Identity Protection flags as risky cannot add a sign-in method an attacker would then control.",
+      "cis": []
     }
   ]
 }

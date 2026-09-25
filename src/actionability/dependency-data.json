@@ -314,6 +314,14 @@
       "iamaiOrder": null
     },
     {
+      "id": "s-goal-risky-users-register-block",
+      "title": "Block Risky Users From Registering Sign-in Methods",
+      "workType": "Identity Protection CA user-action policy",
+      "scopeClass": "all-users",
+      "effortKind": "portal",
+      "iamaiOrder": null
+    },
+    {
       "id": "s-goal-user-risk-medium",
       "title": "Reset Passwords for Medium-Risk Users",
       "workType": "Identity Protection CA",
@@ -849,6 +857,19 @@
       "table": "10.1"
     },
     {
+      "step": "s-goal-risky-users-register-block",
+      "action": "enforce",
+      "expandedFrom": "<every CA policy step in §11 E–H>",
+      "prerequisite": "s-prereq-security-defaults",
+      "prerequisiteKind": "step",
+      "milestone": "complete",
+      "condition": "sd-enabled",
+      "edgeKind": "conditional",
+      "source": "ms-doc",
+      "status": "ok",
+      "table": "10.1"
+    },
+    {
       "step": "s-goal-mfa-all-users",
       "action": "enforce",
       "expandedFrom": "<every CA policy step in §11 E–H>",
@@ -1174,6 +1195,19 @@
       "table": "10.1"
     },
     {
+      "step": "s-goal-risky-users-register-block",
+      "action": "enforce",
+      "expandedFrom": "<every CA policy step in §11 E–H>",
+      "prerequisite": "s-prereq-break-glass",
+      "prerequisiteKind": "step",
+      "milestone": "minimum-satisfied",
+      "condition": null,
+      "edgeKind": "hard",
+      "source": "owner",
+      "status": "ok",
+      "table": "10.1"
+    },
+    {
       "step": "s-goal-mfa-all-users",
       "action": "enforce",
       "expandedFrom": "<every CA policy step in §11 E–H>",
@@ -1487,6 +1521,19 @@
     },
     {
       "step": "s-goal-pim-activation-reauth",
+      "action": "enforce",
+      "expandedFrom": "<every CA policy step in §11 E–H>",
+      "prerequisite": "cleanup-drill",
+      "prerequisiteKind": "step",
+      "milestone": "complete",
+      "condition": null,
+      "edgeKind": "hard",
+      "source": "owner",
+      "status": "ok",
+      "table": "10.1"
+    },
+    {
+      "step": "s-goal-risky-users-register-block",
       "action": "enforce",
       "expandedFrom": "<every CA policy step in §11 E–H>",
       "prerequisite": "cleanup-drill",
@@ -1953,6 +2000,18 @@
       "source": "audit",
       "status": "ok",
       "table": "10.4"
+    },
+    {
+      "step": "s-goal-risky-users-register-block",
+      "action": "create",
+      "prerequisite": "s-prereq-exclusion-group",
+      "prerequisiteKind": "step",
+      "milestone": "complete",
+      "condition": null,
+      "edgeKind": "hard",
+      "source": "pinned",
+      "status": "ok",
+      "table": "10.5"
     },
     {
       "step": "s-goal-sign-in-risk",

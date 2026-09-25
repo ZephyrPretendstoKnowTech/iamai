@@ -352,9 +352,9 @@ test('§12.1 unlock counts: direct and transitive, Security Defaults cutover edg
   const counts = unlockCounts(graph, { excludeConditions: ['sd-enabled'] })
   const expect = (id: string, direct: number, transitive: number): void => assert.deepEqual(counts.get(id), { direct, transitive }, id)
   // d4821b75 (owner edges): passkey settings waits on both emergency steps, and the campaign waits on the operator passkey instead.
-  expect('s-prereq-break-glass', 28, 31)
-  expect('s-prereq-exclusion-group', 23, 30)
-  expect('s-prereq-passkey-settings', 4, 29)
+  expect('s-prereq-break-glass', 29, 32)
+  expect('s-prereq-exclusion-group', 24, 31)
+  expect('s-prereq-passkey-settings', 4, 30)
   expect('s-prereq-auth-strength', 8, 8)
   expect('s-verify-mfa', 7, 8)
   expect('s-prereq-trusted-location', 5, 5)

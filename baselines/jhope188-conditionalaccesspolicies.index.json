@@ -12,7 +12,7 @@
   "repo": "ConditionalAccessPolicies",
   "commit": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
   "label": "Jon Hope — Defense in Depth",
-  "generatedAt": "2026-09-25T03:24:55.811Z",
+  "generatedAt": "2026-09-25T03:59:18.156Z",
   "files": [
     ".vscode/tasks.json",
     "Documents/readme.md",

@@ -8,7 +8,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import registry from './registry.generated.json' with { type: 'json' }
 import type { CompiledPackage } from './protocol.ts'
-import { fixture } from '../../roadmap/fixtures/index.ts'
+import { fixture, withExternalMfa } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { operationsOf } from '../../roadmap/operations.ts'
 import type { Step } from '../../roadmap/types.ts'
@@ -42,7 +42,8 @@ test('the target’s excluded accounts bind as the resolved target holds them: a
   const ctxOf = (f: typeof base, r: typeof baseRun): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups })
   // Unavailable: its users still name a reference nobody has answered (mid: High-Risk Users carves out the author's EAM population).
   {
-    const mid = fixture('mid')
+    // mid with an external MFA provider: Jon's EAM companion is on the plan and its population waits on a person's mapping (coverage/companions.ts).
+    const mid = withExternalMfa(fixture('mid'))
     const midRun = runFixture(mid)
     const waiting = midRun.steps.find((s) => s.id === 's-goal-user-risk')!
     assert.ok(touches(incompleteFieldsOf(waiting, operationsOf(waiting)[0] ?? null), 'conditions.users') || (waiting.action.missing ?? []).length > 0, 'the premise: its users wait on an answer')
@@ -115,7 +116,8 @@ test('no binding carries a source reference still waiting on an answer, and a st
   // a step waiting on references binds none of the fields they would complete, and still binds its name and its grant
   // (mid: High-Risk Users waits on the author's EAM population).
   {
-    const mid = fixture('mid')
+    // mid with an external MFA provider: Jon's EAM companion is on the plan and its population waits on a person's mapping (coverage/companions.ts).
+    const mid = withExternalMfa(fixture('mid'))
     const r = runFixture(mid)
     const ctx: StepVarContext = { snapshot: mid.snapshot, mapping: mid.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: mid.operatorId, now: mid.snapshot.asOf, groups: mid.groups }
     const step = r.steps.find((s) => s.id === 's-goal-user-risk')!
