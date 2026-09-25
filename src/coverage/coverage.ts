@@ -580,10 +580,15 @@ function evaluateGoal(
     // it to All users puts that requirement on everyone and takes it from the
     // people it was written for, as an admins group's phishing-resistant policy
     // (C01). What it asks, not its name or its place in the scan, decides.
+    // A policy that targets a user action is that action's goal's own, whoever
+    // it is assigned to: an all-users policy on Register security information
+    // belongs to Protect Sign-in Method Registration, never to Require MFA for
+    // Everyone, which takes no user-action policy (classify.ts). 5.1 read the
+    // owner's own such policy, in Report-only, as Not deployed.
     const ownScope =
-      (impl.expectedWho.kind === 'all'
+      (c.apps.userActions.size > 0 || (impl.expectedWho.kind === 'all'
         ? c.who.all || (c.who.roles.size === 0 && c.who.guests === null && !(floor.grant !== undefined && grantExceedsFloor(c.grant, floor.grant)))
-        : !c.who.all) && carriesFloorControl(c, floor)
+        : !c.who.all)) && carriesFloorControl(c, floor)
       && (goal.id !== 'inforcer-mfa' || (!c.apps.all && c.apps.ids.size === 1 && c.apps.ids.has('708861da-226e-4d65-a57a-24128df64524')))
     contributions.push({ policyId: c.id, policyName: c.name, state: c.state, contribution, caveats, ownScope, meetsFloor, reachesWhole: reachesWhole.has(c.id), assignedToAll: c.who.all })
     // Stated for an enforced policy that meets the floor. A report-only or weaker
