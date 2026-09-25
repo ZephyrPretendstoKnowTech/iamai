@@ -1,10 +1,10 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "when MFA readiness reaches 90% (now not measured)",
+  "reason": "when Modern MFA + TAP readiness reaches 90% (now not measured)",
   "fact": null,
   "badge": "On Hold",
-  "bar": "When MFA readiness reaches 90% (now not measured)",
+  "bar": "When Modern MFA + TAP readiness reaches 90% (now not measured)",
   "rail": "Create the policy, turned on",
   "headings": [
     "About this Step",
