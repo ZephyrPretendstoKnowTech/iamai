@@ -14,6 +14,10 @@
   ],
   "tiles": [
     {
+      "label": "No method it accepts",
+      "state": "217 people"
+    },
+    {
       "label": "Configure Passkey Authentication",
       "state": "Prerequisite · To do"
     }
