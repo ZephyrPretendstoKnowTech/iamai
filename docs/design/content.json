@@ -2243,7 +2243,7 @@
             }
           },
           "acceptedWho": {
-            "$comment": "Who a finished policy's readiness fact counts, by its family (readiness.tiles.accepted; walk list 4.x item 2). The guest policy can reach all users (the baseline's does), so its count reads people: \"17 of 22 guests\" read on a tenant with no guest (owner audit, 2026-09-24).",
+            "$comment": "Who a finished policy's readiness fact counts, by its family (readiness.tiles.accepted; walk list 4.x item 2). The guest policy can reach everyone (the baseline's does), so its count reads people: \"17 of 22 guests\" read on a tenant with no guest (owner audit, 2026-09-24).",
             "mfa": "people",
             "guest": "people",
             "admin": "admins",
