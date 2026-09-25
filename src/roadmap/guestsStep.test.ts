@@ -19,6 +19,8 @@ import { boardOf, boardWhenOf, laneViewFor, waveStartOf } from '../ui/surfaces/p
 import { IMPACT } from '../derive/whoLine.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 import type { Step } from './types.ts'
+import { observationsOf } from './tracking.ts'
+import { artifactIdOf } from './observation.ts'
 
 const GUESTS = 's-goal-guests-mfa'
 
@@ -81,7 +83,7 @@ test("each guest type is held to its baseline member's grant; the tenant's polic
   const done = opened(f)
   assert.equal(done.step.status, 'done')
   assert.equal(done.step.satisfiedBy?.sufficient, null, 'no one policy covers every type')
-  assert.deepEqual(stepContract(done.step, done.ctx).doneWhen, [`IAMAI sees ${done.step.satisfiedBy!.policies.join(', ').replace(/, ([^,]*)$/, ' and $1')} On, and together they cover every guest and external user type.`])
+  assert.deepEqual(stepContract(done.step, done.ctx).doneWhen, [`IAMAI sees ${done.step.satisfiedBy!.policies.join(', ').replace(/, ([^,]*)$/, ' and $1')} On, and together they cover every guest type.`])
 })
 
 test('a Ready row with no day of its own reads its phase’s first day, never Review now or Decide now', () => {
@@ -97,4 +99,23 @@ test('a Ready row with no day of its own reads its phase’s first day, never Re
   const when = boardWhenOf(undated, waveStart, lane)
   assert.doesNotMatch(when, /now/i)
   assert.match(when, /\d{4}/, when)
+})
+
+test('a record from before the credit never makes a credited policy the member the step writes', () => {
+  // A plan record kept from a scan that tied the member to the tenant's guest
+  // policy (the fingerprint did, before the credit): the credited policies are
+  // the other half's, whatever the record says.
+  const f = curatedFixture('demo-week2')
+  const first = runFixture(f)
+  const step = first.steps.find((s) => s.id === GUESTS)!
+  const credited = step.action.creditedMembers?.[0]?.policyIds ?? []
+  assert.ok(credited.length > 0, 'the premise: a credited policy')
+  const records = observationsOf(first.steps)
+  const record = records[GUESTS]
+  assert.ok(record, 'the premise: the step has a record')
+  const key = Object.keys(record.members)[0] ?? 'sole'
+  const stale = { ...records, [GUESTS]: { ...record, members: { ...record.members, [key]: { ...(record.members[key] ?? record.unattributed!), artifact: artifactIdOf(credited[0]) } } } }
+  const again = runFixture(f, {}, stale).steps.find((s) => s.id === GUESTS)!
+  assert.equal(again.tracking?.members.some((m) => credited.includes(m.policyId ?? '')) ?? false, false, 'a credited policy tracked as the member')
+  assert.notEqual(again.state.lifecycle, 'enforced', 'the policy it creates read as enforced')
 })

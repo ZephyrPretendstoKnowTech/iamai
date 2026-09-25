@@ -25,7 +25,7 @@ test('a risk policy that asks for a strength names the people it reaches who hol
   assert.equal(card.value, `${short.length} people`)
   assert.equal((card.names ?? []).length, short.length)
   assert.ok((card.names ?? []).every((l) => /^.+ \(.+\): .+$/.test(l)), 'each person with their next step')
-  assert.deepEqual(card.link, { label: 'Open MFA Readiness →', href: '#/readiness/step/s-goal-sign-in-risk' })
+  assert.deepEqual(card.link, { label: 'Open MFA Readiness', href: '#/readiness/step/s-goal-sign-in-risk' })
   // A risk policy asking plain MFA draws no such card: the MFA campaign is where those people get a method.
   const medium = run.steps.find((s) => s.id === 's-goal-sign-in-risk-medium')!
   assert.equal(medium.methodShort, undefined)

@@ -25,6 +25,6 @@ test('Protect Sign-in Method Registration has one readiness card, naming each pe
     assert.ok(short.length > 0, `${id}: the premise, somebody is short`)
     assert.equal((gate.names ?? []).length, short.length, `${id}: each person short is named`)
     assert.ok((gate.names ?? []).every((l) => /^.+ \(.+\): .+$/.test(l)), `${id}: with their next step`)
-    assert.deepEqual(gate.link, { label: 'Open MFA Readiness →', href: `#/readiness/step/${id}` })
+    assert.deepEqual(gate.link, { label: 'Open MFA Readiness', href: `#/readiness/step/${id}` })
   }
 })
