@@ -9,11 +9,12 @@ import { absentStepIds } from './baselineScope.ts'
 test('the steps absent from this baseline are the unmapped goals\' steps, and a step with a mapped goal is never absent', () => {
   // the steps present in content but absent from this baseline are the five unmapped goals’ steps
   {
-    // register-info-protected (trusted-location block removed at head), azure-management-mfa
-    // (targets the Windows Azure AD app, not the Service Management API), mobile-app-protection
-    // (no app-protection policy), and unmanaged-browser (merges byod-session-controls and
-    // block-downloads-unmanaged, neither of which the baseline carries).
-    assert.deepEqual(absentStepIds(), ['azure-management-mfa', 'mobile-app-protection', 'register-info-protected', 'unmanaged-browser'])
+    // azure-management-mfa (targets the Windows Azure AD app, not the Service
+    // Management API), mobile-app-protection (no app-protection policy), and
+    // unmanaged-browser (merges byod-session-controls and block-downloads-unmanaged,
+    // neither of which the baseline carries). register-info-protected is Jon's
+    // UserRegistration policy as he confirmed it (baseline/authorCorrections.ts).
+    assert.deepEqual(absentStepIds(), ['azure-management-mfa', 'mobile-app-protection', 'unmanaged-browser'])
   }
 
   // a step whose goal is mapped is not absent (mergesGoals needs every goal absent)

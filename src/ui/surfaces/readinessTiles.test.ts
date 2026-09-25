@@ -423,7 +423,8 @@ test('the Threshold card, its finding and the AI Info briefing say the same sent
       assert.ok(ai.includes(where), `${name}/${step.id}: the AI Info briefing does not name the campaign`)
     }
   }
-  assert.ok(held >= 4, `the premise: gates the campaign moves — ${held}`)
+  // One fewer since Protect Sign-in Method Registration requires Jon's strength (2026-09-25).
+  assert.ok(held >= 3, `the premise: gates the campaign moves — ${held}`)
 })
 
 // R4-31 (Marcus D12). While the next action is the report-only create, every

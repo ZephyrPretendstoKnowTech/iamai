@@ -335,7 +335,8 @@ test('a readiness gate with no number states its threshold and claims no number'
       if (step.state.lifecycle !== 'enforced' && !everyoneGate(gate) && typeof line === 'string' && line.length > 0) assert.ok(text.includes(line), `${name}/${step.id}: the gate does not say what could not be measured — ${text}`)
     }
   }
-  assert.ok(floored > 3, `gates reading a floor: ${floored}`)
+  // One fewer since Protect Sign-in Method Registration requires Jon's strength (2026-09-25).
+  assert.ok(floored >= 3, `gates reading a floor: ${floored}`)
   assert.ok(bare > 0, 'no fixture reaches a gate whose scope could not be read')
   // A measured gate is unchanged: it has a number, and the number is the point.
   const r = runFixture(structuredClone(fixture('mid')))

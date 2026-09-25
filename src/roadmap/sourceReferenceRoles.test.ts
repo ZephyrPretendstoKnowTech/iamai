@@ -19,7 +19,8 @@ import { BASELINE_MAPPINGS_KEY, sourceMappingsOf, unresolvedSourceMappings } fro
 import { implementationOffered, operationsOf } from './operations.ts'
 import { implementable, resolveTenantPolicy, tenantObjectsOf } from './resolvePolicy.ts'
 import type { RawPolicy } from './resolvePolicy.ts'
-import { pinnedPackage } from '../baseline/pinned.ts'
+import { pinnedFiles } from '../baseline/pinned.ts'
+import { loadBaseline } from '../baseline/index.ts'
 import { emptyMappingState } from '../mapping/types.ts'
 import type { Step } from './types.ts'
 import { stepContract } from '../ui/surfaces/stepContract.ts'
@@ -48,7 +49,10 @@ const EAM_RISK = 'bb6a814e-808a-467c-9475-06f89140ce99'
 const RISK = '544cd9ef-5e37-4568-9ad8-b8e151be1814'
 const LEGACY = '9eab445f-7f21-479a-85c9-29769512067e'
 
-const pkg = pinnedPackage()
+// The source as its author published it: its registration policy's whole target
+// is his passkey pilot group, the shape these reference rules are read on (IAMAI
+// reads that policy as he confirmed it, baseline/authorCorrections.ts).
+const pkg = loadBaseline(pinnedFiles('published'))
 const policyOf = (id: string): RawPolicy => {
   const p = pkg.policies.find((x) => x.id === id)
   assert.ok(p, `${id} is pinned`)

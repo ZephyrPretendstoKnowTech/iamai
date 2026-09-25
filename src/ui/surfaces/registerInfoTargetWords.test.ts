@@ -1,9 +1,11 @@
 // Review queue (register-info-protected step 4): the package's Entra create told the
-// operator to "Use {{policy.target.mode}}", a mode IAMAI never binds because the
-// resolved target (MFA outside All trusted locations) is neither of the package's two
-// modes. So every executable render withheld the Entra tab while PowerShell and JSON
-// applied the target. Step 3 and step 4 now read the target's own location scope and
-// grant, in the words the step's portal lines (and so the export) already say them.
+// operator to "Use {{policy.target.mode}}", a mode IAMAI never binds. Step 3 and step
+// 4 read the target's own scope and grant, in the words the step's portal lines (and
+// so the export) already say them.
+//
+// The target is Jon's UserRegistration policy as he confirmed it (owner,
+// 2026-09-25: the baseline wins over Microsoft's template; baseline/authorCorrections.ts):
+// security-info registration for All users, his strength, no location condition.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
@@ -29,26 +31,27 @@ function opened(f: ReturnType<typeof fixture>) {
 }
 
 // On one representative tenant: the demo-week2 and mid tenants resolve the same target.
-test("register-info-protected: the Entra create names the target's location scope and grant", () => {
+test("register-info-protected: the Entra create names the target's scope and grant, Jon's, with no location condition", () => {
   const { step, ctx } = opened(fixture('small'))
   const op = step.action.resolution?.policies?.[0]
-  const target = (op?.target ?? op?.body) as { conditions: { locations: unknown }; grantControls: unknown }
-  // Premise: the resolved target is MFA outside All trusted locations, neither of the package's two modes.
-  assert.deepEqual(target.conditions.locations, { includeLocations: ['All'], excludeLocations: ['AllTrusted'] })
-  assert.deepEqual(target.grantControls, { operator: 'OR', builtInControls: ['mfa'] })
+  const target = (op?.target ?? op?.body) as { conditions: { locations?: unknown; users: { includeUsers?: string[] } }; grantControls: { authenticationStrength?: unknown; builtInControls?: string[] } }
+  // Premise: the resolved target is Jon's: All users, his strength, no location condition.
+  assert.ok(!target.conditions.locations, 'no location condition')
+  assert.deepEqual(target.conditions.users.includeUsers, ['All'])
+  assert.ok(target.grantControls.authenticationStrength, 'his authentication strength')
+  assert.deepEqual(target.grantControls.builtInControls, [])
   const body = stepBodyOf(step, ctx)
   assert.equal(body.previewNote, null)
   const entra = body.artifacts.find((a) => a.id === 'portal')
   assert.ok(entra && !entra.unavailable, 'the Entra tab is withheld')
-  // The step's create (roadmap/policyProcedure.ts). mfa-everyone-spec.md §2 A1
-  // (ms-security-info step 7, ms-network): the Include and Exclude are named
-  // only after Configure is set to Yes, because "Conditional Access policies
-  // apply to all locations by default".
+  // The step's create (roadmap/policyProcedure.ts): the user action, the strength, On.
   const create = body.emergencyAccountTasks?.tasks.find((t) => t.id === 'create')
   assert.ok(create, 'the step draws no create')
   const text = create.steps.join('\n')
-  assert.ok(text.includes('Under **Conditions → Locations**, set **Configure** to **Yes**, include **Any location** and exclude **All trusted locations**.'), text)
-  assert.ok(text.includes('Under **Grant**, select **Require multifactor authentication**.'), text)
+  assert.ok(text.includes('Under **Target resources**, select **User actions** → **Register security information**.'), text)
+  assert.ok(text.includes('Under **Grant**, select **Require authentication strength** → **Modern MFA + TAP**.'), text)
+  assert.ok(text.includes('Set **Enable policy** to **On** and select **Create**.'), text)
+  assert.doesNotMatch(text, /Locations/)
   assert.ok(entra.text().includes(create.steps[0]), 'the Entra tab carries the same words')
   assert.doesNotMatch(text, /\{\{|mode|blockOutsideTrusted/)
   for (const id of ['ps', 'json', 'ai']) {
@@ -74,5 +77,5 @@ test('register-info-protected: without the grant words the Entra steps are withh
   const entra = projectSafely(pkg, 'missing', noLocation, NO_RUNTIME).channels.find((c) => c.channel === 'entra')
   assert.ok(entra, 'the Entra create was withheld for want of an optional location line')
   assert.doesNotMatch(entra.text, /Locations|\[omit/)
-  assert.match(entra.text, /\n4\. Grant: \*\*Require multifactor authentication\*\*/)
+  assert.match(entra.text, /\n4\. Grant: \*\*Require authentication strength: Modern MFA \+ TAP\*\*/)
 })

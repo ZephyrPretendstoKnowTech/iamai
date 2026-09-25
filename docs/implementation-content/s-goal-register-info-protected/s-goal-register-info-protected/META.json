@@ -26,22 +26,21 @@
   },
   "baselineAuthority": {
     "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-    "memberStableId": null,
-    "sourceDisplayName": "No dedicated mapped source member surfaced in retained projection",
-    "sourceState": "canonical IAMAI goal semantics",
+    "memberStableId": "30a1edce-e832-456b-b2c5-4b1098d3a9b3",
+    "sourceDisplayName": "IAC - GLOBAL - GRANT - MFA-Passkey - UserRegistration",
+    "sourceState": "pinned member, as its author confirmed it (src/baseline/authorCorrections.ts)",
     "canonicalSemantics": {
-      "sourceIdentity": "canonical IAMAI step + goal-catalogue semantics; no stable source GUID is invented",
-      "primaryMode": "when a trusted network exists, block Register security information outside All trusted locations",
-      "fallbackMode": "when trusted network is explicitly not applicable, require MFA for registration rather than blocking all locations",
-      "users": "All users with canonical emergency exclusions; guest handling remains constrained by current platform behavior",
+      "sourceIdentity": "the pinned member 30a1edce-e832-456b-b2c5-4b1098d3a9b3",
+      "primaryMode": "require the baseline's authentication strength to register security information",
+      "users": "All users (the author's pilot group has no tenant counterpart) with the canonical exclusions",
       "userAction": "urn:user:registersecurityinfo",
       "clientAppTypes": [
         "all"
       ],
       "sessionControls": null,
-      "lifecycle": "Report-only first"
+      "lifecycle": "created On: Microsoft does not evaluate User Actions in Report-only"
     },
-    "rule": "Use the explicit IAMAI canonical step/goal semantics. If the trusted-network prerequisite exists, block registration outside trusted locations; if IAMAI has explicitly resolved that no trusted network applies, use the documented MFA fallback. Never invent a source member GUID or silently choose a mode."
+    "rule": "The pinned member as its author confirmed it: the export targets device registration on iPhones only by mistake (owner, 2026-09-25: the baseline wins over Microsoft's template)."
   },
   "requiredBindings": [
     "policy.target.displayName",

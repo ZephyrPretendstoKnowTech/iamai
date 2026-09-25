@@ -44,3 +44,16 @@ test('the salutation follows the audience: every kind has its branch, named peop
     }
   }
 })
+
+// Protect Sign-in Method Registration is Jon's policy (owner, 2026-09-25): his
+// strength and no location condition, so its announcement says what registering
+// asks for everywhere, and never sends anyone to a setup link.
+test('a registration policy with no location condition announces what registering asks for, and one with locations keeps its office wording', async () => {
+  const { announcementFor } = await import('./announcements.ts')
+  const policy = { locations: false, registration: true, deviceRegistration: false, resource: null, guestsOnly: false, blocks: false }
+  const base = { grant: 'phishingResistant' as const, sessionOnly: false, affected: null, admins: false }
+  const said = announcementFor({ ...base, policy }, 'Contoso', 'Sep 29')!
+  assert.match(said, /adding or changing a sign-in method at Contoso asks for your passkey or Windows Hello\. If you have neither yet, ask IT for a Temporary Access Pass first\./)
+  assert.doesNotMatch(said, /aka\.ms|office network/)
+  assert.match(announcementFor({ ...base, policy: { ...policy, locations: true } }, 'Contoso', 'Sep 29')!, /works from the office network/)
+})

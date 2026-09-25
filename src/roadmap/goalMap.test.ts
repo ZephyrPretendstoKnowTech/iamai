@@ -13,8 +13,14 @@ import type { CaPolicy } from '../baseline/types.ts'
 const policies = pinned.policies as unknown as CaPolicy[]
 const built = goalMapFor(policies, new Map())
 
-test('the stored goalMap matches the strict identity rule on the pinned policies', () => {
-  assert.deepEqual(PINNED_GOAL_MAP, built.map, 'pinned.json goalMap drifted from goalIdentity — re-pin (node scripts/pin-baseline.ts <full sha>)')
+test('the stored goalMap matches the strict identity rule on the pinned policies, and the runtime map adds only the author-confirmed correction', () => {
+  assert.deepEqual((pinned as { goalMap: Record<string, string[]> }).goalMap, built.map, 'pinned.json goalMap drifted from goalIdentity — re-pin (node scripts/pin-baseline.ts <full sha>)')
+  // Jon's UserRegistration policy, which he confirmed was meant for security-info
+  // registration (baseline/authorCorrections.ts; owner, 2026-09-25), is the one
+  // key the runtime map adds; the stored map is otherwise the map.
+  const { 'register-info-protected': registration, ...rest } = PINNED_GOAL_MAP
+  assert.deepEqual(registration, ['30a1edce-e832-456b-b2c5-4b1098d3a9b3'])
+  assert.deepEqual(rest, built.map)
 })
 
 test('every mapped policy key resolves to a pinned policy, and the spot checks, the guests A/B pair and the reconciled goals (owner: the baseline decides scope and shape) hold', () => {
@@ -47,8 +53,9 @@ test('every mapped policy key resolves to a pinned policy, and the spot checks, 
     assert.equal(one('sign-in-risk'), 'IAC - P2 - GLOBAL - GRANT - High-Risk Sign-Ins')
     assert.equal(one('sign-in-risk-medium'), 'IAC - P2 - GLOBAL - GRANT - Medium-Risk Sign-Ins')
     assert.equal(one('user-risk-medium'), 'IAC - P2 - GLOBAL - GRANT - Medium-Risk Users')
-    // register-info-protected and azure-management-mfa are unmapped (not in this baseline).
-    assert.equal(policiesForGoal(PINNED_GOAL_MAP, policies, 'register-info-protected').length, 0)
+    // register-info-protected is Jon's UserRegistration policy, as he confirmed it;
+    // azure-management-mfa is unmapped (not in this baseline).
+    assert.equal(one('register-info-protected'), 'IAC - GLOBAL - GRANT - MFA-Passkey - UserRegistration')
     assert.equal(policiesForGoal(PINNED_GOAL_MAP, policies, 'azure-management-mfa').length, 0)
   }
 })
@@ -65,7 +72,8 @@ test('no ties remain; only the five goals whose control no policy carries at hea
   // Includes the approved Inforcer app-scoped MFA goal, since Phase 2b Jon's AVD and
   // SharePoint blocks outside the trusted network, and since Phase 2c his risky-users
   // registration block; source policies are unchanged.
-  assert.equal(Object.keys(PINNED_GOAL_MAP).length, 26, 'the mapped-goal count changed — reconcile the baseline report')
+  // And, since 2026-09-25, Protect Sign-in Method Registration from Jon's corrected UserRegistration policy.
+  assert.equal(Object.keys(PINNED_GOAL_MAP).length, 27, 'the mapped-goal count changed — reconcile the baseline report')
   // Remediate High-Risk Users carries its EAM companion, paired by structure (goalIdentity.ts companionOf).
   assert.deepEqual(PINNED_GOAL_MAP['user-risk'], ['544cd9ef-5e37-4568-9ad8-b8e151be1814', 'bb6a814e-808a-467c-9475-06f89140ce99'])
   assert.deepEqual(built.variants.map((v) => v.policy), ['IAC - GLOBAL – BLOCK – Countries not Allowed - NoExclusions'])

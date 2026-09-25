@@ -394,7 +394,8 @@ test('a readiness the scan could only put a floor under says the floor, and says
       assert.equal(step.readiness.unmeasured, 'unreadable', `${name}/${step.id}`)
     }
   }
-  assert.ok(floors > 3, `steps reading a floor: ${floors}`)
+  // One fewer since Protect Sign-in Method Registration requires Jon's strength (2026-09-25).
+  assert.ok(floors >= 3, `steps reading a floor: ${floors}`)
 })
 
 // A floor of zero is not a floor. `hostile` has its registration source switched
@@ -444,7 +445,8 @@ test('a readiness gate that names the step moving its number links to that step'
       assert.equal(tile.link.href, '#/plan/s-verify-mfa')
     }
   }
-  assert.ok(checked >= 4, `only ${checked} gates named a route`)
+  // One fewer since Protect Sign-in Method Registration requires Jon's strength (2026-09-25).
+  assert.ok(checked >= 3, `only ${checked} gates named a route`)
 })
 
 // R4-20 (Priya D5). Which source the scan could not read, why, and the
@@ -539,7 +541,8 @@ test('a readiness number is labelled by the strength its policies require, so tw
   assert.doesNotMatch(deviceTile.value, /MFA-ready/, 'a strength-bound number labelled as plain MFA')
   // It waits for everyone it covers (Phase 2e), so its card counts the people with a method it accepts.
   assert.match(deviceTile.value, /^\d+ of \d+ people have a method it accepts$/)
-  assert.match(registerTile.value, /MFA-ready$/, 'the plain-MFA policy keeps its words')
+  // Protect Sign-in Method Registration requires the same strength since it is Jon's policy (2026-09-25).
+  assert.doesNotMatch(registerTile.value, /MFA-ready/, 'a strength-bound number labelled as plain MFA')
   // The row's reason states the same measure.
   const binding = device.blockers.find((b) => b.kind === 'readiness' && b.label === 'readiness')?.binding
   assert.match(String(binding), /^when Modern MFA \+ TAP readiness reaches 100%/)
@@ -554,5 +557,6 @@ test('a readiness number is labelled by the strength its policies require, so tw
   // The plan header counts that step under the same words, not the family's; Device
   // Registration waits on its own Modern MFA + TAP number beside it now that no
   // unmapped group holds it (Phase 2a).
-  assert.deepEqual(planFinish(runFixture(pinned).steps).waiting.map((w) => w.measure), ['admin Modern MFA + TAP readiness', 'Modern MFA + TAP readiness'])
+  // Protect Sign-in Method Registration waits on the same number beside it since it is Jon's policy (2026-09-25).
+  assert.deepEqual(planFinish(runFixture(pinned).steps).waiting.map((w) => w.measure), ['Modern MFA + TAP readiness', 'admin Modern MFA + TAP readiness'])
 })

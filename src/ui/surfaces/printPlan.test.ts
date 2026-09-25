@@ -37,17 +37,26 @@ import { list } from '../../copy/statements.ts'
 import { app } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import type { PrintBoard } from './printPlan.ts'
+import { PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
+import type { GoalMap } from '../../roadmap/goalMap.ts'
+
+/**
+ * An active baseline without registration protection: the pinned one carries it
+ * now, as Jon confirmed his UserRegistration policy (baseline/authorCorrections.ts),
+ * so a floor step is read against a baseline that lacks it.
+ */
+const WITHOUT_REGISTRATION: GoalMap = Object.fromEntries(Object.entries(PINNED_GOAL_MAP).filter(([goal]) => goal !== 'register-info-protected'))
 
 type Stage = 'fresh' | 'foundation' | 'recovered'
 
 /** A plan as the app builds it (planData.ts), with the operator's deferrals applied before the forecast settles. */
-function plan(name: FixtureName, o: { stage?: Stage; skips?: string[]; curated?: boolean; over?: (f: Fixture) => Fixture } = {}) {
+function plan(name: FixtureName, o: { stage?: Stage; skips?: string[]; curated?: boolean; over?: (f: Fixture) => Fixture; goalMap?: GoalMap } = {}) {
   let f: Fixture = o.curated ? curatedFixture(name) : fixture(name)
   if (f.decisions) f = { ...f, mapping: applyStepDecisions(f.mapping, f.decisions) }
   if (o.stage === 'foundation') f = withFoundationSettled(f)
   if (o.stage === 'recovered') f = withRecoveryTested(withFoundationSettled(f))
   if (o.over) f = o.over(f)
-  const { input, coverage } = runFixture(f)
+  const { input, coverage } = runFixture(f, o.goalMap ? { goalMap: o.goalMap } : undefined)
   const result = generateRoadmap(input)
   const { schedule } = result
   const steps = customerPlanSteps(result.steps)
@@ -252,7 +261,7 @@ test('a floor step the person set aside prints once, under Doesn\'t apply, never
   // "Microsoft recommended, not in this baseline" and again in the cover's
   // Doesn't apply list.
   const ID = 's-goal-register-info-protected'
-  const p = plan('midflight', { stage: 'foundation', over: (f) => ({ ...f, mapping: { ...f.mapping, notApplicable: { ...f.mapping.notApplicable, [ID]: 'Not needed for this tenant' } } }) })
+  const p = plan('midflight', { stage: 'foundation', goalMap: WITHOUT_REGISTRATION, over: (f) => ({ ...f, mapping: { ...f.mapping, notApplicable: { ...f.mapping.notApplicable, [ID]: 'Not needed for this tenant' } } }) })
   const s = byId(p.steps, ID)
   assert.equal(s.floor, true, 'the premise: a floor step')
   assert.ok(s.doesntApply, 'the premise: the person said it does not apply')
@@ -268,7 +277,7 @@ test('a deferred floor step prints once, in the Deferred list, never in full und
   // Transfer deferred: the board reads both Deferred, but the floor step printed
   // in full, with a report-only date and live instructions, under "Microsoft
   // recommended, not in this baseline".
-  const p = plan('midflight', { stage: 'foundation', skips: ['s-goal-register-info-protected', 's-goal-block-auth-transfer'] })
+  const p = plan('midflight', { stage: 'foundation', goalMap: WITHOUT_REGISTRATION, skips: ['s-goal-register-info-protected', 's-goal-block-auth-transfer'] })
   const floorStep = byId(p.steps, 's-goal-register-info-protected')
   assert.equal(floorStep.floor, true, 'the premise: a floor step')
   assert.equal(p.board.laneOf(floorStep.id).lane, 'Deferred', 'the premise: the board reads it Deferred')
@@ -326,8 +335,9 @@ test('the cover names every kind of hold on the plan, the readiness waits and th
   const cover = coverDatesOf(p.schedule.start, finish, holds)
   const held = finish.unwritable
   assert.ok(held.named > 0 && held.named < held.count, 'the premise: some of the held steps wait on a named step and some do not')
-  // Device Registration waits for its Modern MFA + TAP number since no unmapped group holds it (Phase 2a).
-  assert.equal(cover, `${absoluteDate(p.schedule.start)} · 1 device step waits for device readiness · 1 MFA step waits for Modern MFA + TAP readiness · ${held.count} steps are held, ${held.named} of them waiting on ${list(held.waitsOn.map(titleOf))}`)
+  // Device Registration waits for its Modern MFA + TAP number since no unmapped group holds it (Phase 2a),
+  // and Protect Sign-in Method Registration for the same number since it is Jon's policy (2026-09-25).
+  assert.equal(cover, `${absoluteDate(p.schedule.start)} · 2 MFA steps wait for Modern MFA + TAP readiness · 1 device step waits for device readiness · ${held.count} steps are held, ${held.named} of them waiting on ${list(held.waitsOn.map(titleOf))}`)
   assert.equal(/are cleared|is cleared/.test(cover), false, `the cover states the held steps are cleared: ${cover}`)
   // Each shape stands alone: nothing named, every one waiting on a named step, one step.
   assert.equal(holdsOf({ ...finish, waiting: [], unwritable: { count: 3, waitsOn: [], named: 0 } }, titleOf), '3 steps are held')

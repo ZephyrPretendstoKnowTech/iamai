@@ -24,7 +24,7 @@ import { notLicensedRows } from './notLicensed.ts'
 
 export type NotInPlanRow = { policy: string; reason: string; text: string }
 
-type Reason = 'riskyRegistration' | 'externalMfaRisk' | 'lockdown' | 'passkeyRegistration' | 'adminGroupPasskeys' | 'emergencyAccount' | 'blockedCountries' | 'generic'
+type Reason = 'riskyRegistration' | 'externalMfaRisk' | 'lockdown' | 'adminGroupPasskeys' | 'emergencyAccount' | 'blockedCountries' | 'generic'
 type FooterCopy = { notInPlan: string; notInPlanRow: string; notInPlanReason: Record<Reason, string> }
 const footer = (): FooterCopy => (pages.plan as { footer: FooterCopy }).footer
 
@@ -37,7 +37,6 @@ const REASONS: { match: RegExp; reason: Reason; step?: string }[] = [
   { match: /RiskyUsers\s*-\s*RegisterSecurityInfo/i, reason: 'riskyRegistration' },
   { match: /\bEAM\b.*High-Risk/i, reason: 'externalMfaRisk', step: 'user-risk' },
   { match: /\bZTCA\b.*\bAllApps\b/i, reason: 'lockdown' },
-  { match: /MFA-Passkey\s*-\s*UserRegistration/i, reason: 'passkeyRegistration', step: 'register-info-protected' },
   { match: /MFA-Passkeys\s*-\s*ADM-Users/i, reason: 'adminGroupPasskeys', step: 'admins-phishing-resistant' },
   { match: /BreakGlass/i, reason: 'emergencyAccount', step: EMERGENCY_ACCESS_GROUP },
   // The "NoExclusions" variant the plan never considers (generate.ts baselineMatchesFor).

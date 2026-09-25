@@ -373,7 +373,6 @@ const GOAL_DEPENDS: Readonly<Record<string, readonly DirectionQuestionKey[]>> = 
   'sharepoint-trusted-network': ['officeNetwork'],
   // Phones Blocked from company data widens Jon's block to iOS and Android (deviations.ts BLOCK_PLATFORMS_GOAL).
   'block-unsupported-platforms': ['phones'],
-  'register-info-protected': ['officeNetwork'],
   // Define the Trusted Network holds until the office question is answered, as
   // the policies that use the office do (walk list item 60): before it, the step
   // asked for a new office location beside one the tenant already trusts.

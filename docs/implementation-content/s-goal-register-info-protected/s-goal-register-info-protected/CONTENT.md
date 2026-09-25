@@ -140,9 +140,9 @@ $actual=IG GET $uri
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 
-State: **Protect Sign-in Method Registration** does not exist in {{tenant.displayName}} yet. The next action creates it On for the Register security information user action, with the IAMAI-resolved users, exclusions, location rule and grant. Microsoft does not evaluate User Action policies in Report-only, so it is created On, once MFA is in place.
+State: **Protect Sign-in Method Registration** does not exist in {{tenant.displayName}} yet. The next action creates it On for the Register security information user action, with the IAMAI-resolved users, exclusions and grant. Microsoft does not evaluate User Action policies in Report-only, so it is created On.
 
-Where the tenant has a trusted network, the baseline blocks registration outside trusted locations. Where no trusted network applies, the fallback requires MFA for registration instead of blocking it.
+Once it is On, registering or changing any sign-in method asks for a method the authentication strength accepts: a passkey, Windows Hello, a certificate or a Temporary Access Pass. A person with none of these needs a Temporary Access Pass first.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
@@ -156,14 +156,12 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 
-State: **Protect Sign-in Method Registration** is in Report-only in {{tenant.displayName}}. Report-only evidence: {{evidence.reportOnly}}.
-
-Report-only results may not show registration attempts: treat a settings read-back as a check of the configuration and a controlled registration test as the check of the workflow, and say which of the two the available evidence supports.
+State: **Protect Sign-in Method Registration** is in Report-only in {{tenant.displayName}}. Microsoft does not evaluate User Action policies in Report-only, so it records nothing there; the next action turns it on.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 
-State: **Protect Sign-in Method Registration** is in Report-only in {{tenant.displayName}} and the next action is to enable it. Before setting it to On, the same policy ID should still be Report-only, its settings should match the intended target, and a controlled registration test should have used the intended route. From July 6, 2026, Microsoft also applies this user action during Windows Hello for Business and macOS Platform SSO credential registration; include those workflows where the tenant uses them.
+State: **Protect Sign-in Method Registration** is in Report-only in {{tenant.displayName}}, where Microsoft does not evaluate it, and the next action is to turn it on. From July 6, 2026, Microsoft also applies this user action when Windows Hello for Business and macOS Platform SSO credentials are set up.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}
@@ -181,7 +179,7 @@ Subject: Planned change: Protect Sign-in Method Registration
 
 Hi,
 
-We are preparing a change to how sign-in methods are registered. Contact IT before registering from an unfamiliar location or if you no longer have a working sign-in method.
+We are changing how sign-in methods are registered. Adding or changing a sign-in method will ask for your passkey or Windows Hello. If you have neither yet, ask IT for a Temporary Access Pass first.
 
 {{signature}}
 @@IAMAI-END
@@ -191,15 +189,15 @@ Subject: Planned change: Protect Sign-in Method Registration
 
 Hi,
 
-We are preparing a change to how sign-in methods are registered. Contact IT before registering from an unfamiliar location or if you no longer have a working sign-in method.
+We are changing how sign-in methods are registered. Adding or changing a sign-in method will ask for your passkey or Windows Hello. If you have neither yet, ask IT for a Temporary Access Pass first.
 
 {{signature}}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["missing","partial","reportOnly","readyToEnforce","inPlace","blocked","needsDecision"],"format":"markdown","kind":"template"}
-Check the resolved location rule and grant. This user action also covers Windows Hello for Business and macOS Platform SSO registration from July 6, 2026.
+Registering a method asks for a method the authentication strength accepts. This user action also covers Windows Hello for Business and macOS Platform SSO registration from July 6, 2026.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["missing","partial","reportOnly","readyToEnforce","inPlace"],"format":"markdown","kind":"template"}
-If registration fails, inspect Conditional Access results for the **Register security information** user action, the network/trusted-location match, and the bootstrap method used. For WHfB/macOS Platform SSO failures, remember that these credential-registration flows became subject to registration-targeting CA policies beginning July 6, 2026.
+If registration fails, inspect Conditional Access results for the **Register security information** user action and the method used. For WHfB/macOS Platform SSO failures, remember that these credential-registration flows became subject to registration-targeting CA policies beginning July 6, 2026.
 @@IAMAI-END

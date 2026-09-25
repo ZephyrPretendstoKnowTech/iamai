@@ -1187,8 +1187,6 @@
           "externalMfaRisk": "A version of {step} for people who sign in with an external MFA provider such as Duo. Only needed if you use one.",
           "$commentLockdown": "The two ZTCA AllApps blocks: incident-response kill switches, created ahead and never switched on (the lockdown kit, v1.1).",
           "lockdown": "An emergency lockdown switch for a major breach, built ahead and kept off. Not a day-to-day control.",
-          "$commentPasskeyRegistration": "The passkey registration policy as exported targets the register-device action on iOS; its author confirmed that was a mistake. {step} is the registration-protection step's title.",
-          "passkeyRegistration": "Jon's export targets device registration on iPhones only, which he confirmed was a mistake. What it was meant to do is {step}.",
           "$commentAdminGroupPasskeys": "The passkey policy for the admin group: the same strength as the admin phishing-resistant policy, scoped to a group instead of roles. {step} is that step's title.",
           "adminGroupPasskeys": "The same requirement as {step}, aimed at a group of admin accounts instead of admin roles.",
           "$commentEmergencyAccount": "The trusted-locations policy that names one emergency account: IAMAI keeps emergency accounts out of every policy through the exclusions group instead. {step} is the emergency access group's title.",
@@ -5391,15 +5389,13 @@
       "kind": "policy",
       "title": "Protect Sign-in Method Registration",
       "changeLine": null,
-      "why": "Protecting sign-in method registration helps prevent someone with a stolen password from adding a method they control. The approved registration route also needs to work for remote users and account recovery.",
+      "why": "Someone with a stolen password will try to add a sign-in method of their own. This policy asks for a passkey, Windows Hello or a Temporary Access Pass before anyone can register one.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-security-info-registration"
       },
       "who": {
         "lead": "{active} active people",
         "evidence": [
-          "{n} people registered a method from outside the trusted network since {from}; check how the resolved registration rule treats them: {list:remoteRegistrants}",
-          "Trusted network: {trustedLocation}, {matches} sign-ins matched in 30 days.",
           "{registrationGuestScope}",
           "{existingCoverage}"
         ]
@@ -5413,7 +5409,7 @@
       "comms": {
         "audience": "everyone",
         "salutation": "Hi everyone,",
-        "body": "We are preparing a change to how sign-in methods are registered at {tenant}, planned for {enforceLong}. Contact IT before registering from an unfamiliar location or if you no longer have a working sign-in method.",
+        "body": "From {enforceLong}, adding or changing a sign-in method at {tenant} asks for your passkey or Windows Hello. If you have neither yet, ask IT for a Temporary Access Pass first.",
         "signature": "{signature}"
       },
       "doesntApply": false,
@@ -5422,11 +5418,7 @@
       "more": {
         "risks": [
           {
-            "text": "Registration and recovery outside trusted networks can be affected, including a new phone or a new starter without an existing method.",
-            "applies": "always"
-          },
-          {
-            "text": "Office public IP changes can stop the named location matching the intended network.",
+            "text": "Once this is On, a person with no passkey, Windows Hello or certificate can add a sign-in method only with a Temporary Access Pass, including a new starter.",
             "applies": "always"
           },
           {
@@ -5435,12 +5427,10 @@
           }
         ],
         "helpDesk": [
-          "Check the affected registration sign-in and the policy's actual network and grant requirements. Screen-sharing does not change the registering device's network or satisfy a grant control.",
-          "Use the approved recovery or enrollment path that meets those requirements. Update an office location only after verifying its public egress address.",
           "A person with no method registers with a Temporary Access Pass: it is the one credential that satisfies a multifactor requirement before they have anything else.",
           "A phishing-resistant requirement does not accept a Temporary Access Pass, so it locks out the new starter it was meant to protect. Keep this policy's grant as IAMAI resolved it."
         ],
-        "manager": "Adding a sign-in method needs the resolved extra check, so a stolen password alone is less useful for adding a method. People already set up see no change until they register a new one.",
+        "manager": "Adding a sign-in method needs a passkey, Windows Hello or a one-time pass, so a stolen password alone cannot add one. People already set up see no change until they register a new one.",
         "waits": null
       },
       "example": {
@@ -5459,24 +5449,17 @@
         "from": "Aug 1"
       },
       "whatToDoReference": {
-        "lead": "The baseline blocks registration outside the trusted network:",
+        "lead": "The baseline requires its authentication strength to register security information:",
         "steps": [
           "{portalRoot}",
           "Name: {policyName}",
           "Users → Include: All users. {exclusionsLine}",
           "Target resources → User actions → Register security information",
-          "Conditions → Locations → Include: Any location; Exclude: All trusted locations",
-          "Grant → Block access",
+          "Grant → Require authentication strength: {strengthName}",
           "{reportOnlyLine}"
-        ],
-        "fallback": {
-          "when": "If Define the Trusted Network is marked Doesn't apply here (no office network), the block would stop registration everywhere, so the step uses Microsoft's form instead:",
-          "steps": [
-            "Grant → Require multifactor authentication, instead of Block access; everything else as above. A person with no method registers with a Temporary Access Pass."
-          ]
-        }
+        ]
       },
-      "aiFocus": "Explain the actual resolved location and grant, including the no-trusted-network fallback."
+      "aiFocus": "Explain that registering or changing any sign-in method asks for a method the authentication strength accepts, and that a person with none needs a Temporary Access Pass first."
     },
     {
       "id": "block-legacy-auth",

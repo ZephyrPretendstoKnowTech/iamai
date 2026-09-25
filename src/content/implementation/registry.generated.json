@@ -11197,22 +11197,21 @@
         ],
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-          "memberStableId": null,
-          "sourceDisplayName": "No dedicated mapped source member surfaced in retained projection",
-          "sourceState": "canonical IAMAI goal semantics",
+          "memberStableId": "30a1edce-e832-456b-b2c5-4b1098d3a9b3",
+          "sourceDisplayName": "IAC - GLOBAL - GRANT - MFA-Passkey - UserRegistration",
+          "sourceState": "pinned member, as its author confirmed it (src/baseline/authorCorrections.ts)",
           "canonicalSemantics": {
-            "sourceIdentity": "canonical IAMAI step + goal-catalogue semantics; no stable source GUID is invented",
-            "primaryMode": "when a trusted network exists, block Register security information outside All trusted locations",
-            "fallbackMode": "when trusted network is explicitly not applicable, require MFA for registration rather than blocking all locations",
-            "users": "All users with canonical emergency exclusions; guest handling remains constrained by current platform behavior",
+            "sourceIdentity": "the pinned member 30a1edce-e832-456b-b2c5-4b1098d3a9b3",
+            "primaryMode": "require the baseline's authentication strength to register security information",
+            "users": "All users (the author's pilot group has no tenant counterpart) with the canonical exclusions",
             "userAction": "urn:user:registersecurityinfo",
             "clientAppTypes": [
               "all"
             ],
             "sessionControls": null,
-            "lifecycle": "Report-only first"
+            "lifecycle": "created On: Microsoft does not evaluate User Actions in Report-only"
           },
-          "rule": "Use the explicit IAMAI canonical step/goal semantics. If the trusted-network prerequisite exists, block registration outside trusted locations; if IAMAI has explicitly resolved that no trusted network applies, use the documented MFA fallback. Never invent a source member GUID or silently choose a mode."
+          "rule": "The pinned member as its author confirmed it: the export targets device registration on iPhones only by mistake (owner, 2026-09-25: the baseline wins over Microsoft's template)."
         }
       },
       "blocks": {
@@ -11449,7 +11448,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nState: **Protect Sign-in Method Registration** does not exist in {{tenant.displayName}} yet. The next action creates it On for the Register security information user action, with the IAMAI-resolved users, exclusions, location rule and grant. Microsoft does not evaluate User Action policies in Report-only, so it is created On, once MFA is in place.\n\nWhere the tenant has a trusted network, the baseline blocks registration outside trusted locations. Where no trusted network applies, the fallback requires MFA for registration instead of blocking it.\n"
+          "text": "\nState: **Protect Sign-in Method Registration** does not exist in {{tenant.displayName}} yet. The next action creates it On for the Register security information user action, with the IAMAI-resolved users, exclusions and grant. Microsoft does not evaluate User Action policies in Report-only, so it is created On.\n\nOnce it is On, registering or changing any sign-in method asks for a method the authentication strength accepts: a passkey, Windows Hello, a certificate or a Temporary Access Pass. A person with none of these needs a Temporary Access Pass first.\n"
         },
         "ai.correct": {
           "meta": {
@@ -11473,7 +11472,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nState: **Protect Sign-in Method Registration** is in Report-only in {{tenant.displayName}}. Report-only evidence: {{evidence.reportOnly}}.\n\nReport-only results may not show registration attempts: treat a settings read-back as a check of the configuration and a controlled registration test as the check of the workflow, and say which of the two the available evidence supports.\n"
+          "text": "\nState: **Protect Sign-in Method Registration** is in Report-only in {{tenant.displayName}}. Microsoft does not evaluate User Action policies in Report-only, so it records nothing there; the next action turns it on.\n"
         },
         "ai.enforce": {
           "meta": {
@@ -11485,7 +11484,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nState: **Protect Sign-in Method Registration** is in Report-only in {{tenant.displayName}} and the next action is to enable it. Before setting it to On, the same policy ID should still be Report-only, its settings should match the intended target, and a controlled registration test should have used the intended route. From July 6, 2026, Microsoft also applies this user action during Windows Hello for Business and macOS Platform SSO credential registration; include those workflows where the tenant uses them.\n"
+          "text": "\nState: **Protect Sign-in Method Registration** is in Report-only in {{tenant.displayName}}, where Microsoft does not evaluate it, and the next action is to turn it on. From July 6, 2026, Microsoft also applies this user action when Windows Hello for Business and macOS Platform SSO credentials are set up.\n"
         },
         "ai.blocked": {
           "meta": {
@@ -11525,7 +11524,7 @@
             "audience": "affected-users",
             "communicationTrigger": "before-report-only"
           },
-          "text": "Subject: Planned change: Protect Sign-in Method Registration\n\nHi,\n\nWe are preparing a change to how sign-in methods are registered. Contact IT before registering from an unfamiliar location or if you no longer have a working sign-in method.\n\n{{signature}}\n"
+          "text": "Subject: Planned change: Protect Sign-in Method Registration\n\nHi,\n\nWe are changing how sign-in methods are registered. Adding or changing a sign-in method will ask for your passkey or Windows Hello. If you have neither yet, ask IT for a Temporary Access Pass first.\n\n{{signature}}\n"
         },
         "email.enforce": {
           "meta": {
@@ -11539,7 +11538,7 @@
             "audience": "affected-users",
             "communicationTrigger": "before-enforcement"
           },
-          "text": "Subject: Planned change: Protect Sign-in Method Registration\n\nHi,\n\nWe are preparing a change to how sign-in methods are registered. Contact IT before registering from an unfamiliar location or if you no longer have a working sign-in method.\n\n{{signature}}\n"
+          "text": "Subject: Planned change: Protect Sign-in Method Registration\n\nHi,\n\nWe are changing how sign-in methods are registered. Adding or changing a sign-in method will ask for your passkey or Windows Hello. If you have neither yet, ask IT for a Temporary Access Pass first.\n\n{{signature}}\n"
         },
         "readiness.model": {
           "meta": {
@@ -11557,7 +11556,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Check the resolved location rule and grant. This user action also covers Windows Hello for Business and macOS Platform SSO registration from July 6, 2026.\n"
+          "text": "Registering a method asks for a method the authentication strength accepts. This user action also covers Windows Hello for Business and macOS Platform SSO registration from July 6, 2026.\n"
         },
         "troubleshooting.model": {
           "meta": {
@@ -11573,7 +11572,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "If registration fails, inspect Conditional Access results for the **Register security information** user action, the network/trusted-location match, and the bootstrap method used. For WHfB/macOS Platform SSO failures, remember that these credential-registration flows became subject to registration-targeting CA policies beginning July 6, 2026.\n"
+          "text": "If registration fails, inspect Conditional Access results for the **Register security information** user action and the method used. For WHfB/macOS Platform SSO failures, remember that these credential-registration flows became subject to registration-targeting CA policies beginning July 6, 2026.\n"
         }
       }
     },

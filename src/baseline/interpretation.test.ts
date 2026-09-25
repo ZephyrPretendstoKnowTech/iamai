@@ -20,8 +20,13 @@ import { readFileSync } from 'node:fs'
 import { interpretReferences, noInterpretation, policyContext, readInterpretation, referenceUsage } from './interpretation.ts'
 import type { BaselineInterpretation, InterpretationRecord } from './interpretation.ts'
 import { placeholdersFor } from '../../scripts/pin-baseline.ts'
-import { pinnedPackage } from './pinned.ts'
+import { pinnedFiles } from './pinned.ts'
+import { loadBaseline } from './index.ts'
 import type { CaPolicy } from './types.ts'
+
+// interpretation.json reads the source as its author published it, before any
+// author-confirmed correction (authorCorrections.ts).
+const published = (): CaPolicy[] => loadBaseline(pinnedFiles('published')).policies
 
 const BASE = 'baselines/jhope188-conditionalaccesspolicies'
 const SVC = '11111111-1111-4111-8111-111111111111'
@@ -413,7 +418,7 @@ test('the shipped interpretation is about its baseline, and every token in the s
 test('every shipped record names the usage it rests on and records what each of its policies was', () => {
   // every shipped record that names a policy records what that policy was
   {
-    const usage = new Map(referenceUsage(pinnedPackage().policies).map((u) => [u.id, u]))
+    const usage = new Map(referenceUsage(published()).map((u) => [u.id, u]))
     for (const r of shipped.references) {
       const named = [...r.includedIn, ...r.excludedFrom]
       assert.deepEqual(Object.keys(r.context).sort(), named.sort(), `${r.id}: one context per policy it was settled against`)
@@ -423,7 +428,7 @@ test('every shipped record names the usage it rests on and records what each of 
     }
     // And the shipped file passes its own reuse rule against the pin beside it:
     // nothing in it is being carried forward into a package it no longer fits.
-    const read = interpretReferences(shipped, referenceUsage(pinnedPackage().policies))
+    const read = interpretReferences(shipped, referenceUsage(published()))
     assert.deepEqual(read.reviewRequired, [])
   }
   // every specialised reading the shipped pin uses names the usage it rests on

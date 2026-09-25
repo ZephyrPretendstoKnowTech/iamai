@@ -837,6 +837,9 @@ function changesFor(action: Action, sections: ReadonlySet<ChangedSection>, exist
 
 // ---- generation ----
 
+/** Whether a policy step's planned policy has a location condition. */
+const usesLocations = (action: Pick<Action, 'resolution'>): boolean => (action.resolution?.policies ?? []).some((op) => effectOf((op.mode === 'update' ? (op.target ?? op.body) : op.body) as RawPolicy).usesLocations)
+
 export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // Role names travel with the scan ($expand=roleDefinition); learn them before any label is built.
   learnRoleNames(input.snapshot.config.roleAssignments?.rows ?? [])
@@ -2235,7 +2238,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
 
     // Named dependencies (prompt 12 §B).
     if (!state.satisfied) {
-      if (goal.id === 'register-info-protected' && steps.some((s) => s.id === locStepId && s.status !== 'done' && s.doesntApply == null) && !doesntApply(locStepId)) blockByStep(locStepId, 'trusted-location')
+      // Only where its policy has a location condition: Jon's (the pin's corrected
+      // UserRegistration, owner 2026-09-25) has none; Microsoft's template, the floor
+      // for a baseline without the goal, excludes trusted locations.
+      if (goal.id === 'register-info-protected' && usesLocations(action) && steps.some((s) => s.id === locStepId && s.status !== 'done' && s.doesntApply == null) && !doesntApply(locStepId)) blockByStep(locStepId, 'trusted-location')
       // Every policy that requires the baseline's own custom strength waits on
       // the step that creates it — read off the step's own missing list, so the
       // dependency is the same fact the body already reports and never a second
@@ -3063,7 +3069,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // MFA to register from anywhere (its template excludes only trusted
     // locations), so nothing waits for a trusted location (owner, 2026-09-24).
     const locationStepToDo = steps.some((s) => s.id === locStepId && s.status !== 'done' && s.doesntApply == null)
-    if (trustedLocationCount === 0 && !officeNetworkRemote && !doesntApply(locStepId) && !locationStepToDo) blockLate(registrationStep, 'registration-no-trusted-location', BLOCKED_REASON.exist(1, 'trusted location', 0))
+    if (usesLocations(registrationStep.action) && trustedLocationCount === 0 && !officeNetworkRemote && !doesntApply(locStepId) && !locationStepToDo) blockLate(registrationStep, 'registration-no-trusted-location', BLOCKED_REASON.exist(1, 'trusted location', 0))
   }
 
   // The countries location, as the countries policy's own first task (Stage 3,

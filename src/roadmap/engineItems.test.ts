@@ -46,7 +46,8 @@ test('the baseline maps its service-accounts block to the new goal, and the pin 
   const forMap = PINNED.policies.map((p) => ({ id: p.id ?? p.displayName, name: p.displayName, facts: policyFacts(p as unknown as CaPolicy, new Map()), placeholders: p.placeholders }))
   const derived = mapGoalsToPolicies(forMap).map
   assert.deepEqual(derived[SERVICE_ACCOUNTS_TRUSTED_GOAL], key, 'the strict identity rule picks the same policy from the pin')
-  for (const [g, ids] of Object.entries(PINNED_GOAL_MAP)) assert.deepEqual(derived[g], ids, `${g} maps as the pin says`)
+  // The stored map; the runtime map adds only Jon's corrected registration policy (baseline/authorCorrections.ts).
+  for (const [g, ids] of Object.entries((PINNED as { goalMap?: Record<string, string[]> }).goalMap ?? {})) assert.deepEqual(derived[g], ids, `${g} maps as the pin says`)
   // Without the pin's tokens (an uploaded baseline) the goal is not mapped: the group cannot be told from any other.
   assert.equal(goalMapFor(pinnedPackage().policies.map((p) => ({ ...p, placeholders: undefined })) as unknown as CaPolicy[], new Map()).map[SERVICE_ACCOUNTS_TRUSTED_GOAL], undefined)
 })

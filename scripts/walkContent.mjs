@@ -145,8 +145,8 @@ export const ACCEPTANCE = [
   // (roadmap/adminPortalConflict.test.ts, roadmap/baselineConflictPlan.test.ts).
   { item: '16', path: 'shared.engine.baselineConflict.adminPortalNonAdminScope', must: 'Nothing is wrong in your tenant' },
   { item: '16', step: 'admin-portals-protected', path: 'whatToDoReference.steps', must: 'Microsoft Purview Platform, Inforcer (baseline name), My Staff' },
-  { item: '18', step: 'register-info-protected', path: 'more.helpDesk', must: 'Screen-sharing does not change the registering device', mustNot: 'while they are on the VPN' },
-  { item: '18', step: 'register-info-protected', path: 'more.risks', must: 'a new starter without an existing method' },
+  { item: '18', step: 'register-info-protected', path: 'more.helpDesk', must: 'registers with a Temporary Access Pass', mustNot: 'while they are on the VPN' },
+  { item: '18', step: 'register-info-protected', path: 'more.risks', must: 'only with a Temporary Access Pass, including a new starter' },
   // Close the Doors A1-A4 (docs/plans/close-doors-spec.md section 2, Microsoft
   // Learn checked 2026-09-19): legacy protocols cannot do MFA, a blocked
   // ActiveSync device gets one quarantine email, and a certificate is still

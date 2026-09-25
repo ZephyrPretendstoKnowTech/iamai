@@ -255,7 +255,6 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // Azure sign-ins by people with no directory role (step-audit item 16); the example lists none.
   '.steps[15].who.evidence[1]',
   '.steps[16].who.evidence[1]',
-  '.steps[17].who.evidence[0]',
   '.steps[18].who.evidence[0]',
   // The countries block's usage line and its partner line (E9): the example lists nobody outside and no partner.
   '.steps[21].who.evidence[0]',

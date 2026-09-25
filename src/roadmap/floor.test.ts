@@ -14,15 +14,21 @@ import { FLOOR_GOAL_IDS, isFloorGoal } from './floor.ts'
 import { floorRows, phaseRows, undatedRows } from '../ui/surfaces/planRows.ts'
 import { stepPortalLines } from '../ui/surfaces/stepPortal.ts'
 
-test('the pinned baseline lacks registration protection, so the floor renders it, flagged, from the template', () => {
+test('the pinned baseline carries registration protection as its author confirmed it, so it is his and never the floor', () => {
+  // Jon's UserRegistration policy (baseline/authorCorrections.ts; owner, 2026-09-25:
+  // the baseline wins over Microsoft's template): security-info registration, All
+  // users, his strength, no location condition.
   const r = runFixture(fixture('demo-week2'))
   const reg = r.steps.find((s) => s.goalId === 'register-info-protected')
-  assert.ok(reg, 'registration protection renders through the floor')
-  assert.equal(reg.floor, true, 'flagged as not the author\'s')
+  assert.ok(reg, 'registration protection renders')
+  assert.ok(!reg.floor, 'the author\'s, not the floor')
   assert.equal(reg.kind, 'create')
-  assert.ok(reg.action.json, 'the body is Microsoft\'s template, resolved for this tenant')
-  const body = JSON.parse(reg.action.json) as { conditions: { applications: { includeUserActions?: string[] } } }
+  assert.ok(reg.action.json, 'the body is the pinned policy, resolved for this tenant')
+  const body = JSON.parse(reg.action.json) as { conditions: { applications: { includeUserActions?: string[] }; users: { includeUsers?: string[]; includeGroups?: string[] }; locations?: unknown; platforms?: unknown }; grantControls: { authenticationStrength?: unknown; builtInControls?: string[] } }
   assert.deepEqual(body.conditions.applications.includeUserActions, ['urn:user:registersecurityinfo'])
+  assert.deepEqual(body.conditions.users.includeUsers, ['All'])
+  assert.ok(!body.conditions.locations && !body.conditions.platforms, 'no location or platform condition')
+  assert.ok(body.grantControls.authenticationStrength, 'his authentication strength')
   // The legacy block is held by the pinned baseline: it renders as the author's, not the floor.
   const legacy = r.steps.find((s) => s.goalId === 'block-legacy-auth')
   assert.ok(legacy)
@@ -134,7 +140,8 @@ test('the active baseline lacking a goal and the tenant already delivering it ar
   assert.equal(legacy.status, 'done', 'the tenant\'s own policy delivers it')
   assert.ok(legacy.satisfiedBy && legacy.satisfiedBy.policies.length > 0, 'and the plan says which policy does')
   assert.equal(legacy.action.json ?? null, null, 'nothing offers a duplicate to create')
-  assert.deepEqual(floorRows(r.steps).map((s) => s.goalId), ['register-info-protected'], 'a delivered recommendation is not a row in the floor group')
+  // Registration protection is the pinned baseline's own (Jon's corrected UserRegistration), so no floor row is left at all.
+  assert.deepEqual(floorRows(r.steps).map((s) => s.goalId), [], 'a delivered recommendation is not a row in the floor group')
 })
 
 // ---- Where a floor row is drawn: once, and never under a numbered phase ----
