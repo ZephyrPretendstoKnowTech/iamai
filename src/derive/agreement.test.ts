@@ -164,7 +164,9 @@ test('one verdict: task completion requires coverage and any explicit workflow e
       if (!r) continue
       const stepDone = s.status === 'done'
       const unresolvedIdentity = s.blockers.some(b => b.kind === 'evidence' && b.label === 'inforcer-application')
-      const verdictDone = r.verdict === 'inPlace' && !unresolvedIdentity && (!s.manualReview || s.manualReview.confirmedAt !== null)
+      // Every control is exact (owner, 2026-09-25): a goal in place through a policy with a setting that is not the plan's is not done.
+      const asPlanned = s.state.members.every((m) => m.change.unwritten.length === 0)
+      const verdictDone = r.verdict === 'inPlace' && asPlanned && !unresolvedIdentity && (!s.manualReview || s.manualReview.confirmedAt !== null)
       if (stepDone !== verdictDone) disagreements.push(`${f.name}: ${s.id} is ${s.status} while its goal's verdict is ${r.verdict}`)
       // A partly or below-baseline goal is a change step carrying its gap.
       if ((r.verdict === 'partly' || r.verdict === 'belowBaseline') && s.status !== 'done' && s.gap === null && r.gapSentence !== null) {

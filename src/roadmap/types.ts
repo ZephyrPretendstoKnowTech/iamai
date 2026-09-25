@@ -961,10 +961,13 @@ export type Step = {
   reportOnlyAt?: string | null
   /**
    * Create the Policies in Report-only's list (roadmap/reportOnlyBatch.ts): the
-   * policy steps still to create in Report-only, and the ones already in
-   * Report-only or On, in plan order. Only on that step.
+   * policy steps still to create in Report-only, the ones already in
+   * Report-only or On, and of those the ones whose policy has a setting that is
+   * not the plan's (`correct`, also in `created`), in plan order. Only on that step.
    */
-  reportOnlyBatch?: { create: string[]; created: string[] }
+  reportOnlyBatch?: { create: string[]; created: string[]; correct?: string[] }
+  /** A goal step's own name for its policy, the one its create gives it, whatever the step does now (generate.ts). */
+  createName?: string
   /**
    * Where the finished plan schedules this step (roadmap/stepSchedule.ts): its
    * class, the transition and day of its next milestone, its span and its phase.
@@ -1172,6 +1175,8 @@ export type MemberTracking = {
   /** The one tenant policy delivering this member; null where none is resolved. */
   policyId: string | null
   policyName: string | null
+  /** The name the step's create gives this policy, where the tenant's differs (only the name may: owner, 2026-09-25). */
+  plannedName?: string
   /**
    * The dimensions the deployed policy differs from this step's own intended
    * operation in — what IAMAI asked for and did not get. Empty where it matches,

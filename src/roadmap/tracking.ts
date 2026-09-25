@@ -34,7 +34,7 @@ import { engine } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import { advanceState, aggregateObservation, raiseCondition, setState } from './lifecycle.ts'
 import type { Lifecycle, MemberObservation, StepState } from './lifecycle.ts'
-import { COVERAGE_JUDGED, artifactIdOf, dimensionWords, historyReset, intentOf, materialFieldsOf, observe, observedStateOf, priorFor, semanticFieldsOf, semanticsOf, unwrittenDifferences } from './observation.ts'
+import { artifactIdOf, dimensionWords, historyReset, intentOf, materialFieldsOf, observe, observedStateOf, priorFor, semanticFieldsOf, semanticsOf, unwrittenDifferences } from './observation.ts'
 import type { ObservedState } from './observation.ts'
 import type { ObservationChange, StepObservation, StepObservationRecord } from './observation.ts'
 
@@ -956,14 +956,19 @@ export function trackExecution(
       // judged there (observation.ts COVERAGE_JUDGED); one it never counted — a
       // policy carrying the plan's tag or name that no longer matches the goal
       // at all — is compared on every dimension.
-      const judged = (result?.candidates ?? []).some((c) => c.policyId === policyRow?.id) ? COVERAGE_JUDGED : []
+      // Every control is exact (owner, 2026-09-25): a policy is the step's only
+      // where each condition, grant and session setting is the plan's, whatever
+      // coverage counted it for. Only the name may differ, and the step says so.
+      const judged: readonly string[] = []
       // A goal the tenant already delivers has no operation, and the policy that
       // delivers it is read against the whole policy the plan would write
-      // (Action.intended) with nothing patched: the step's one policy only.
-      const intended = m.op ? (m.op.mode === 'update' ? m.op.intent ?? null : null) : sole ? step.action.intended ?? null : null
+      // (Action.intended) with nothing patched: the step's one policy only. A
+      // create's member is read against the whole body the create writes: the
+      // policy built from it is exactly that, or it has a setting to correct.
+      const intended = m.op ? (m.op.mode === 'update' ? m.op.intent ?? null : m.op.body ?? null) : sole ? step.action.intended ?? null : null
       const unwritten =
         policyRow && intended && (step.action.missing ?? []).length === 0 && (observedState === 'report-only' || observedState === 'enforced')
-          ? unwrittenDifferences(intended, m.op?.body ?? null, policyRow as Record<string, unknown>, judged)
+          ? unwrittenDifferences(intended, m.op?.mode === 'update' ? m.op.body : null, policyRow as Record<string, unknown>, judged)
           : []
       const change = observe(priorFor(record, m.key, artifact, sole), {
         // Which object this scan saw. The step id says which row of the plan this
@@ -1097,6 +1102,12 @@ export function trackExecution(
         sourceName: m.sourceName,
         policyId: policyRow?.id ?? null,
         policyName: policyRow?.displayName ?? null,
+        // The name the step's create gives it, where that is not the tenant's: only the
+        // name may differ from the plan (owner, 2026-09-25), and the step says so.
+        ...(() => {
+          const planned = plannedNameOf(step, m, sole)
+          return policyRow && planned && planned.trim() !== String(policyRow.displayName ?? '').trim() ? { plannedName: planned } : {}
+        })(),
         matchedBy: m.matchedBy,
         ambiguous: m.ambiguous,
         correction,
@@ -1377,4 +1388,19 @@ function riskOnlyFor(step: Step, coverage: CoverageReport, policy: PolicyRow): b
   if (signature?.noRisk !== true) return false
   const c = (policy as { conditions?: Record<string, unknown> }).conditions ?? {}
   return ['signInRiskLevels', 'userRiskLevels', 'servicePrincipalRiskLevels'].some((k) => Array.isArray(c[k]) && (c[k] as unknown[]).length > 0)
+}
+
+/**
+ * The name the step's own create gives a member: the create it submits, else the
+ * create its procedure shows once the tenant's policy stands in (Action.planned,
+ * the same create whoever's policy delivers the goal), else the step's own name for
+ * its one policy (Step.createName). Null where none names it.
+ */
+function plannedNameOf(step: Step, m: MemberMatch, sole: boolean): string | null {
+  if (m.op?.mode === 'create' && m.displayName) return m.displayName
+  const ops = step.action.planned?.policies ?? []
+  const op = sole && ops.length === 1 ? ops[0] : ops.find((o) => o.memberKey === m.key)
+  const name = (op?.body as { displayName?: unknown } | undefined)?.displayName
+  if (typeof name === 'string' && name.trim() !== '') return name
+  return sole && step.createName ? step.createName : null
 }

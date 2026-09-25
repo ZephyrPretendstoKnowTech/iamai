@@ -29,6 +29,7 @@ import { allFixtures, curatedFixture } from './fixtures/index.ts'
 import { isHeld } from './holds.ts'
 import type { Fixture } from './fixtures/index.ts'
 import { runFixture, withDirectionApproved } from './fixtures/run.ts'
+import { asPlanned } from './fixtures/asPlanned.ts'
 import { applyStepDecisions } from './decisions.ts'
 import { readyEvidence } from './fixtures/readyEvidence.ts'
 import { cleanReportOnly } from './fixtures/records.ts'
@@ -487,9 +488,10 @@ test("a scan whose records show a policy in report-only never says it skipped re
 
 // ---- the contract, through the whole engine ----
 
-const DEMO = fixtures.find((f) => f.name === 'demo')!
-const DEMO_WEEK2 = fixtures.find((f) => f.name === 'demo-week2')!
 const ADMINS = stepIdForGoal('admins-phishing-resistant')
+// The admins policy built exactly as planned, so each case tests only its own edit (fixtures/asPlanned.ts).
+const DEMO = asPlanned(fixtures.find((f) => f.name === 'demo')!, ADMINS)
+const DEMO_WEEK2 = fixtures.find((f) => f.name === 'demo-week2')!
 const TEN_DAYS = 10 * 86_400_000
 
 function demoObservation(over: Partial<StepObservation> = {}): Record<string, StepObservationRecord> {

@@ -24,6 +24,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { allFixtures } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
+import { asPlanned } from './fixtures/asPlanned.ts'
 import { accountApplicability, awaitsOwnObject, effectOf, emergencyExposureOf, implementationOffered, isOpenPolicy, isSubmittablePatch, isValidOperation, operationsOf, stepEffects, strengthLookupOf, unavailableReason, validOperations } from './operations.ts'
 import { analysisUnknown, canDenyAccess, effectsOf, familyReading, operationReach, promptsPeople, scopeCohort, stepAccountVerdict, stepApplicability, wouldStrand } from './strand.ts'
 import { batchClassOf, buildSchedule, dependencyGraph, observationDaysFor } from './schedule.ts'
@@ -1215,7 +1216,8 @@ function usedInconsistently(name: 'midflight'): Fixture {
 }
 
 test('a group that is intrinsically safe but not excluded everywhere still holds every enforcement, and the gate lifts once every check passes', () => {
-  const f = usedInconsistently('midflight')
+  // The admin policy built exactly as planned (every control is exact, owner 2026-09-25), so only the gate holds it.
+  const f = asPlanned(usedInconsistently('midflight'), 's-goal-admins-phishing-resistant')
   const r = runFixture(f)
   const report = exclusionGroupReportOf(f, r)
   const intrinsic = exclusionGroupPolicySafety(report)
