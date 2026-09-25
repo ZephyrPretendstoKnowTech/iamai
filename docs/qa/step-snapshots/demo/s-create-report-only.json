@@ -27,7 +27,7 @@
     },
     {
       "label": "Require Phishing-Resistant MFA for Admins",
-      "state": "Correct who it applies to, grant controls"
+      "state": "Correct who it applies to"
     },
     {
       "label": "Shorten Admin Sessions",
