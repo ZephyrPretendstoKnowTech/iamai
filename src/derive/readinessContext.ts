@@ -160,6 +160,18 @@ export function securityDefaultsState(snapshot: Pick<TenantSnapshot, 'config'>):
   return section?.status === 'ok' && typeof row?.isEnabled === 'boolean' ? row.isEnabled : null
 }
 
+/**
+ * The tenant-wide "Require multifactor authentication to register or join devices
+ * with Microsoft Entra" setting as the scan read it (deviceRegistrationPolicy
+ * multiFactorAuthConfiguration: 'required' or 'notRequired'), or null where the
+ * section was not read.
+ */
+export function legacyDeviceMfaSetting(snapshot: Pick<TenantSnapshot, 'config'>): string | null {
+  const section = snapshot.config?.deviceRegistrationPolicy
+  const mfa = section?.status === 'ok' ? (section.rows?.[0] as { multiFactorAuthConfiguration?: unknown } | undefined)?.multiFactorAuthConfiguration : undefined
+  return typeof mfa === 'string' ? mfa : null
+}
+
 /** The tenant's readiness context from the snapshot and the mapping (Step 3's additional models). */
 export function readinessContextOf(snapshot: TenantSnapshot, mapping?: Partial<MappingState> | null, now: string = snapshot.asOf, groups: GroupMembers = new Map()): ReadinessContext {
   const windowStart = new Date(Date.parse(now) - READINESS_WINDOW_DAYS * DAY).toISOString()

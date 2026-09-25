@@ -121,7 +121,7 @@ test('Ready to enforce projects all five channels, and the script is runnable as
   }
   assert.doesNotMatch(by.powershell.text, /This change removes|\{\{/)
   assert.ok(
-    by.powershell.text.endsWith(`Invoke-IAMAIStep -Mode 'Enforce' -PolicyId '${PILOT_IDS.policy}' -ExcludeGroupIds @('${PILOT_IDS.exclusions}') -AuthenticationStrengthId '${PILOT_IDS.strength}' -LegacyDeviceMfaToggleConfirmedNo -ExternalAuthenticationCompatibilityResolved`),
+    by.powershell.text.endsWith(`Invoke-IAMAIStep -Mode 'Enforce' -PolicyId '${PILOT_IDS.policy}' -ExcludeGroupIds @('${PILOT_IDS.exclusions}') -AuthenticationStrengthId '${PILOT_IDS.strength}' -LegacyDeviceMfaToggleConfirmedNo`),
     by.powershell.text.slice(-300),
   )
   assert.deepEqual(by.json.blocks, ['json.enforce'])
@@ -140,15 +140,16 @@ test('the checks gate the Enforce action, not the stage; a tenant fact satisfies
   {
     const held = project('readyToEnforce', {}, pilotRuntime([]))
     assert.deepEqual(held.channels, [])
-    assert.deepEqual(held.hold?.pendingPrerequisites, ['legacy-device-mfa-toggle', 'external-auth-methods'])
+    // Its one check is the legacy setting, which the scan satisfies (below); nothing
+    // asks a person to confirm what the scan reads (owner, 2026-09-25).
+    assert.deepEqual(held.hold?.pendingPrerequisites, ['legacy-device-mfa-toggle'])
+    assert.deepEqual(PILOT_PREREQUISITES.filter((id) => id !== 'canonical-exclusions' && id !== 'stable-policy-id'), ['legacy-device-mfa-toggle'])
     // The other states' artifacts are not the enforcement and do not wait on it.
     assert.deepEqual(project('missing', {}, pilotRuntime([])).hold, null)
     assert.deepEqual(project('reportOnly', {}, pilotRuntime([])).hold, null)
-    // One unsatisfied check is enough to hold.
-    assert.deepEqual(project('readyToEnforce', {}, pilotRuntime(PILOT_PREREQUISITES.filter((id) => id !== 'external-auth-methods'))).hold?.pendingPrerequisites, ['external-auth-methods'])
     // And the switch the script needs is passed only for a satisfied check.
     const readyScript = artifact('readyToEnforce', 'powershell').text
-    assert.match(readyScript, /-ExternalAuthenticationCompatibilityResolved$/)
+    assert.match(readyScript, /-LegacyDeviceMfaToggleConfirmedNo$/)
   }
   // a tenant fact satisfies a check without anybody’s word; a confirmation holds only while its values hold
   {
@@ -159,22 +160,20 @@ test('the checks gate the Enforce action, not the stage; a tenant fact satisfies
     assert.equal(status(pilotBindings('readyToEnforce', { 'tenant.deviceRegistration.multiFactorAuthConfiguration': 'required' }))['legacy-device-mfa-toggle'].satisfied, false, 'a setting read as on satisfied the check')
     assert.equal(status(pilotBindings('readyToEnforce'))['legacy-device-mfa-toggle'].satisfied, false, 'a setting the scan did not read satisfied the check')
     // A confirmation, given against these values, counts.
-    const prereq = (id: string) => PKG.meta.prerequisites!.find((p) => p.id === id)!
     // A check about the exclusions, as the enrollment-workflow check this package
     // carried until Phase 2e was (owner decision 3: no registration test); test-only here.
     const EXCLUSIONS_CHECK: Prerequisite = { id: 'exclusions-check', class: 'human-validation', requiredBefore: 'readyToEnforce->inPlace', invalidatedBy: ['policy.current.id', 'policy.target.excludeGroups'] }
     const withCheck: CompiledPackage = { ...PKG, meta: { ...PKG.meta, prerequisites: [...PKG.meta.prerequisites!, EXCLUSIONS_CHECK] } }
     const checked = (b = bindings, c: Record<string, { at: string; basis: string }> = {}) => Object.fromEntries(prerequisiteStatus(withCheck, 'readyToEnforce', b, c, BASELINE_COMMIT).map((s) => [s.id, s]))
-    const given = { 'exclusions-check': { at: '2026-09-10T00:00:00.000Z', basis: prerequisiteBasis(EXCLUSIONS_CHECK, bindings) }, 'external-auth-methods': { at: '2026-09-10T00:00:00.000Z', basis: prerequisiteBasis(prereq('external-auth-methods'), bindings) } }
+    const given = { 'exclusions-check': { at: '2026-09-10T00:00:00.000Z', basis: prerequisiteBasis(EXCLUSIONS_CHECK, bindings) } }
     assert.equal(checked(bindings, given)['exclusions-check'].by, 'confirmation')
-    assert.equal(status(bindings, given)['external-auth-methods'].confirmedAt, '2026-09-10T00:00:00.000Z')
+    assert.equal(checked(bindings, given)['exclusions-check'].confirmedAt, '2026-09-10T00:00:00.000Z')
     // A changed exclusion set is a different thing to have checked…
     const moved = pilotBindings('readyToEnforce', { 'policy.target.excludeGroups': [PILOT_IDS.exclusions, '00000000-0000-4000-8000-00000000e002'] })
     assert.equal(checked(moved, given)['exclusions-check'].satisfied, false, 'a confirmation outlived the exclusions it was given against')
-    // …and does not touch the check that is not about exclusions; a recreated policy invalidates both.
-    assert.equal(status(moved, given)['external-auth-methods'].satisfied, true)
+    // …and so is a recreated policy.
     const recreated = pilotBindings('readyToEnforce', { 'policy.current.id': '00000000-0000-4000-8000-00000000a002' })
-    assert.equal(status(recreated, given)['external-auth-methods'].satisfied, false)
+    assert.equal(checked(recreated, given)['exclusions-check'].satisfied, false)
     // The same values in another order are the same values.
     assert.equal(prerequisiteBasis(EXCLUSIONS_CHECK, pilotBindings('readyToEnforce', { 'policy.target.excludeGroups': ['b', 'a'] })), prerequisiteBasis(EXCLUSIONS_CHECK, pilotBindings('readyToEnforce', { 'policy.target.excludeGroups': ['a', 'b'] })))
   }
@@ -247,19 +246,18 @@ test('Readiness is the package’s rules evaluated deterministically; nothing is
   // Exclusions: Ready only from the resolved canonical set, and the runtime's own exclusions tile answers where there is one.
   assert.equal(tiles('readyToEnforce')['readiness.exclusions'].result, 'Ready')
   assert.equal(tiles('readyToEnforce')['readiness.exclusions'].gateKey, 'exclusions')
-  assert.equal(tiles('readyToEnforce', { 'policy.target.excludeGroups': undefined })['readiness.exclusions'].result, 'Blocked')
+  // Blocked only while there is something to create or correct (owner, 2026-09-25: a card is true or it is not drawn).
+  assert.equal(tiles('missing', { 'policy.target.excludeGroups': undefined })['readiness.exclusions'].result, 'Blocked')
+  assert.equal(tiles('readyToEnforce', { 'policy.target.excludeGroups': undefined })['readiness.exclusions'], undefined)
   // The authentication strength: Ready from the strength IAMAI resolved, whichever baseline resolved it, and Blocked without one.
   assert.equal(tiles('missing', {}, { satisfied: new Set(), baselineCommit: BASELINE_COMMIT })['readiness.authentication-strength'].result, 'Ready')
   assert.equal(tiles('missing', { 'authStrength.target.id': undefined })['readiness.authentication-strength'].result, 'Blocked', 'a strength nobody resolved read as Ready')
-  // No enrollment-workflow test (owner decision 3, Phase 2e): the package draws no such tile.
+  // No enrollment-workflow test (owner decision 3, Phase 2e), and no card asking to
+  // confirm what the scan reads (owner, 2026-09-25): the package draws neither.
   assert.equal(tiles('readyToEnforce')['readiness.enrollment-workflows'], undefined)
-  assert.equal(tiles('missing')['readiness.enforcement-settings'].confirm, null, 'a check the current transition does not need asks for confirmation')
-  // Enforcement checks: Review required until both are satisfied, then Ready — never a permanent Review required.
-  assert.equal(tiles('readyToEnforce')['readiness.enforcement-settings'].result, 'Review required')
-  assert.deepEqual(tiles('readyToEnforce')['readiness.enforcement-settings'].confirm, { prerequisites: ['legacy-device-mfa-toggle', 'external-auth-methods'], satisfied: false })
-  assert.equal(tiles('readyToEnforce', {}, pilotRuntime(['legacy-device-mfa-toggle', 'external-auth-methods']))['readiness.enforcement-settings'].result, 'Ready')
+  assert.equal(tiles('readyToEnforce')['readiness.enforcement-settings'], undefined)
   // The conclusion is the package's, by state.
-  assert.equal(packageReadiness(PKG, 'readyToEnforce', pilotBindings('readyToEnforce'), ALL)!.conclusion, 'Enforce only after external-authentication compatibility is resolved and the legacy device-registration MFA toggle is confirmed No.')
+  assert.equal(packageReadiness(PKG, 'readyToEnforce', pilotBindings('readyToEnforce'), ALL)!.conclusion, 'Turn it on once the legacy device-registration MFA setting reads No.')
   // And no pilot knowledge is written into the runtime.
   const code = (p: string): string => read(p).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
   const runtime = code('src/content/implementation/project.ts') + code('src/ui/surfaces/stepPackage.ts')
@@ -323,11 +321,9 @@ test('a real fixture step reaches all five channels through the runtime adapter 
     assert.equal(bindings[CHANGED_FIELDS_BINDING], undefined, 'an enforcement was read as a correction')
     // The fixture tenant's device-registration setting is read, and satisfies its check.
     assert.equal(bindings['tenant.deviceRegistration.multiFactorAuthConfiguration'], 'notRequired')
-    const unconfirmed = packageRuntime(PKG, 'readyToEnforce', bindings, {}, PILOT_PIN)
-    assert.deepEqual(projectImplementation(PKG, 'readyToEnforce', bindings, unconfirmed.runtime).hold?.pendingPrerequisites, ['external-auth-methods'])
-    const at = '2026-09-10T00:00:00.000Z'
-    const basis = (id: string) => prerequisiteBasis(PKG.meta.prerequisites!.find((p) => p.id === id)!, bindings)
-    const confirmed = packageRuntime(PKG, 'readyToEnforce', bindings, { 'external-auth-methods': { at, basis: basis('external-auth-methods') } }, PILOT_PIN)
+    // Nothing asks a person to confirm what the scan reads (owner, 2026-09-25): the
+    // setting the scan read satisfies its check, and nothing holds the channels.
+    const confirmed = packageRuntime(PKG, 'readyToEnforce', bindings, {}, PILOT_PIN)
     const p = projectImplementation(PKG, 'readyToEnforce', bindings, confirmed.runtime)
     assert.equal(p.hold, null)
     assert.deepEqual(p.channels.map((x) => x.channel), ['entra', 'powershell', 'json', 'aiInfo', 'email'])

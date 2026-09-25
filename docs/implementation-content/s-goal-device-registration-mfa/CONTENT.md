@@ -220,7 +220,7 @@ Done when a later scan shows the same policy ID On and the legacy device-registr
 }
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","correctionsParameter":"Corrections","parameters":{"PolicyDisplayName":{"binding":"policy.target.displayName","modes":["Create"]},"PolicyId":{"binding":"policy.current.id","modes":["Correct","Verify","Enforce"]},"ExcludeGroupIds":{"binding":"policy.target.excludeGroups","modes":["Create","Correct","Verify","Enforce"]},"AuthenticationStrengthId":{"binding":"authStrength.target.id","modes":["Create","Correct","Verify","Enforce"]},"LegacyDeviceMfaToggleConfirmedNo":{"switch":true,"prerequisite":"legacy-device-mfa-toggle","modes":["Enforce"]},"ExternalAuthenticationCompatibilityResolved":{"switch":true,"prerequisite":"external-auth-methods","modes":["Enforce"]}}}}
+@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","correctionsParameter":"Corrections","parameters":{"PolicyDisplayName":{"binding":"policy.target.displayName","modes":["Create"]},"PolicyId":{"binding":"policy.current.id","modes":["Correct","Verify","Enforce"]},"ExcludeGroupIds":{"binding":"policy.target.excludeGroups","modes":["Create","Correct","Verify","Enforce"]},"AuthenticationStrengthId":{"binding":"authStrength.target.id","modes":["Create","Correct","Verify","Enforce"]},"LegacyDeviceMfaToggleConfirmedNo":{"switch":true,"prerequisite":"legacy-device-mfa-toggle","modes":["Enforce"]}}}}
 # This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
 # IAMAI compact implementation script — Require MFA to Register a Device
 # Required module: Microsoft.Graph.Authentication
@@ -244,8 +244,7 @@ param(
     [ValidateSet('Conditions','Grant','ReportOnly')]
     [string[]] $Corrections,
 
-    [switch] $LegacyDeviceMfaToggleConfirmedNo,
-    [switch] $ExternalAuthenticationCompatibilityResolved
+    [switch] $LegacyDeviceMfaToggleConfirmedNo
 )
 
 Set-StrictMode -Version Latest
@@ -380,7 +379,6 @@ switch ($Mode) {
 
     'Enforce' {
         if (-not $LegacyDeviceMfaToggleConfirmedNo) { throw 'Enforcement stopped: confirm the legacy device-registration MFA toggle is No.' }
-        if (-not $ExternalAuthenticationCompatibilityResolved) { throw 'Enforcement stopped: external-authentication-method compatibility is unresolved.' }
         Assert-ExcludeIds $ExcludeGroupIds
         Connect-IAMAIContext @('Policy.Read.All','Policy.ReadWrite.ConditionalAccess')
         $current = Get-PolicyById $PolicyId
@@ -569,13 +567,13 @@ IT
       "requiredInput": "policy.target.excludeGroups",
       "rules": [
         {
-          "if": { "present": "policy.target.excludeGroups" },
+          "if": { "all": [{ "present": "policy.target.excludeGroups" }, { "present": "exclusions.group.displayName" }] },
           "when": "canonical exclusion set is resolved and nonempty",
           "result": "Ready",
-          "line": "IAMAI has the resolved exclusions this policy must preserve."
+          "line": "{{exclusions.group.displayName}} is left out of it."
         },
         {
-          "if": { "absent": "policy.target.excludeGroups" },
+          "if": { "all": [{ "state": ["missing", "partial", "blocked", "needsDecision"] }, { "absent": "policy.target.excludeGroups" }] },
           "when": "canonical exclusion set is unresolved",
           "result": "Blocked",
           "line": "Resolve the policy exclusions before creating or correcting it."
@@ -588,36 +586,16 @@ IT
       "sourceType": "baseline-requirement",
       "rules": [
         {
-          "if": { "present": "authStrength.target.id" },
+          "if": { "all": [{ "present": "authStrength.target.id" }, { "present": "authStrength.target.displayName" }] },
           "when": "IAMAI resolved the strength this policy requires",
           "result": "Ready",
-          "line": "IAMAI resolved the authentication strength this policy requires for this tenant."
+          "line": "It requires {{authStrength.target.displayName}}."
         },
         {
-          "if": { "absent": "authStrength.target.id" },
+          "if": { "all": [{ "state": ["missing", "partial", "blocked", "needsDecision"] }, { "absent": "authStrength.target.id" }] },
           "when": "no strength is resolved yet",
           "result": "Blocked",
           "line": "This tenant has no authentication strength for this policy's requirement yet. Create it before this policy."
-        }
-      ]
-    },
-    {
-      "id": "readiness.enforcement-settings",
-      "gate": "Enforcement checks",
-      "sourceType": "microsoft-rule",
-      "confirms": ["legacy-device-mfa-toggle", "external-auth-methods"],
-      "rules": [
-        {
-          "if": { "all": [{ "state": ["missing", "partial", "reportOnly", "readyToEnforce"] }, { "not": { "all": [{ "confirmed": "legacy-device-mfa-toggle" }, { "confirmed": "external-auth-methods" }] } }] },
-          "when": "state is missing, partial, or reportOnly",
-          "result": "Review required",
-          "line": "Confirm the required method and the legacy device-registration MFA setting before the controlled change."
-        },
-        {
-          "if": { "all": [{ "confirmed": "legacy-device-mfa-toggle" }, { "confirmed": "external-auth-methods" }] },
-          "when": "human enforcement checks are recorded complete by the existing workflow",
-          "result": "Ready",
-          "line": "Mandatory pre-enforcement checks are complete."
         }
       ]
     }
@@ -625,7 +603,7 @@ IT
   "conclusions": {
     "safeToCreateOrCorrect": "Ready to create On once everyone it covers has a method its strength accepts, or to correct the existing policy, when the exclusions and policy ID are resolved.",
     "safeToObserve": "Report-only does not evaluate this User Action; its configuration is what IAMAI checks.",
-    "safeToEnforce": "Enforce only after external-authentication compatibility is resolved and the legacy device-registration MFA toggle is confirmed No."
+    "safeToEnforce": "Turn it on once the legacy device-registration MFA setting reads No."
   },
   "conclusionByState": {
     "missing": "safeToCreateOrCorrect",

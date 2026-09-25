@@ -22,7 +22,7 @@
 //
 // Pure: no DOM, no network.
 import type { Step } from '../../roadmap/types.ts'
-import { stepCreatedOn } from '../../roadmap/evidenceStrategy.ts'
+import { stepCreatedOn, stepRegistersDevice } from '../../roadmap/evidenceStrategy.ts'
 import { RULE_TO_FIX } from '../../validation/checkFixes.ts'
 import type { StepCheckItem } from '../../validation/checkFixes.ts'
 import { SET_LEVEL } from '../../validation/report.ts'
@@ -158,7 +158,7 @@ type ContractWords = {
   /** The signed-in account a policy would leave with no way in (walk list 4.x item 43). */
   operatorCard: { label: string; value: string; admin: string; other: string; fix: string }
   /** A gate on people's methods: who is short and what moves them (walk list 4.x items 42, 48). */
-  methodGate: { adminValue: string; everyoneValue: string; needs: string; needMany: string; needListed: string; signIn: string; signInMany: string; signInListed: string; route: string; people: string }
+  methodGate: { adminValue: string; everyoneValue: string; needs: string; needMany: string; needListed: string; signIn: string; signInMany: string; signInListed: string; route: string; people: string; newDevice: string }
   /** A finished policy this plan owns that went live with no report-only period IAMAI watched (doneWhen.ts enforcedUnwatched; owner decision 3). */
   /** The people marked on the campaign to turn on without, for now (roadmap/followUp.ts). */
   followUp: { label: string; campaignLabel: string; campaign: string; campaignOpen: string; method: string; risk: string; pickerLabel: string; save: string; printed: string; printedNone: string }
@@ -2474,7 +2474,8 @@ function methodGateSentence(step: Step, gate: NonNullable<Step['action']['readin
   }
   // Anybody short is named on the card with their next step (adminGateNamesOf):
   // the sentence says what to do with the names, then where they get ready.
-  if (adminShortIds(step, gate, operatorId).length > 0) return [fillText(W.people, {}).replace(/\*\*/g, ''), route].filter((x): x is string => x !== null).join(' ')
+  // Registering a device, the card says what answers instead of a method on that device (owner decision 2, 2026-09-25).
+  if (adminShortIds(step, gate, operatorId).length > 0) return [fillText(W.people, {}).replace(/\*\*/g, ''), stepRegistersDevice(step) ? W.newDevice : null, route].filter((x): x is string => x !== null).join(' ')
   const ready = new Set(p.readyIds)
   const unknown = new Set(p.unknownIds)
   const nameOf = (id: string): string => labels?.get(id) ?? id
@@ -2502,7 +2503,7 @@ function adminGateNamesOf(step: Step, ctx: StepVarContext): string[] | null {
   const gate = step.action.readinessGate
   if (!gate || step.state.satisfied || step.state.lifecycle === 'enforced') return null
   const ids = adminShortIds(step, gate, ctx.operatorId)
-  return ids.length > 0 ? personLines(ctx, ids) : null
+  return ids.length > 0 ? personLines(ctx, ids, { registersDevice: stepRegistersDevice(step) }) : null
 }
 
 /** The admins the admin gate is short of, the signed-in one aside; none on any other gate. The card's lines and its sentence read this one list. */

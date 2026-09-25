@@ -9,6 +9,7 @@ import type { Readiness } from './types.ts'
 import { applies, tenantStrengthsOf, BUILT_IN_STRENGTHS, BUILT_IN_MFA_STRENGTH } from './operations.ts'
 import type { PolicyEffect, Requirement, ScopeEvidence } from './operations.ts'
 import { strengthSatisfaction } from './strand.ts'
+import { REGISTER_DEVICE } from './evidenceStrategy.ts'
 import { readinessPercent } from './readiness.ts'
 import { list } from '../copy/statements.ts'
 
@@ -22,6 +23,19 @@ type Answer = 'yes' | 'no' | 'unknown'
 type Judged = { answer: Answer; stale: boolean; off: boolean }
 /** The single-method strength combination a sign-in's method class satisfies on its own. */
 const PROOF_COMBINATION: Record<string, string> = { passkey: 'fido2', windowsHello: 'windowshelloforbusiness', certificate: 'x509certificatemultifactor' }
+
+/**
+ * A policy on registering or joining a device: the methods that live on the
+ * device being registered cannot answer it. Microsoft: "Windows Hello for
+ * Business and device-bound passkeys aren't supported because those scenarios
+ * require the device to be already registered" (Conditional Access, target
+ * resources, Register or join devices). Windows Hello for Business, a passkey in
+ * Windows Hello and a Mac's Platform SSO credential are those; a passkey on a
+ * phone or a security key is not.
+ */
+const ON_THE_DEVICE_METHODS: ReadonlySet<string> = new Set(['windowsHelloForBusiness', 'passKeyDeviceBoundWindowsHello', 'platformCredential'])
+const ON_THE_DEVICE_CLASSES: ReadonlySet<string> = new Set(['windowsHello', 'platformCredential'])
+const registersDevice = (effect: PolicyEffect): boolean => effect.scope.applications.userActions.some((a) => a.toLowerCase() === REGISTER_DEVICE)
 export type MethodPreparation = {
   ids: string[]
   readyIds: string[]
@@ -115,7 +129,7 @@ export function methodPreparation(effects: readonly PolicyEffect[], candidates: 
   const targets = effects.filter(e => !e.blocks && e.asksForMethod)
   const scopedTargets = targets.map(effect => {
     const scopeKey = JSON.stringify(effect.scope)
-    const methodKey = JSON.stringify([effect.operator, effect.requirements, effect.unknown])
+    const methodKey = JSON.stringify([effect.operator, effect.requirements, effect.unknown, registersDevice(effect)])
     if (!cache.scopeAnswers.has(scopeKey)) cache.scopeAnswers.set(scopeKey, new Map())
     if (!cache.methodAnswers.has(methodKey)) cache.methodAnswers.set(methodKey, new Map())
     return { effect, scopes: cache.scopeAnswers.get(scopeKey)!, methods: cache.methodAnswers.get(methodKey)! }
@@ -172,8 +186,8 @@ export function methodPreparation(effects: readonly PolicyEffect[], candidates: 
     return methods.includes('no') ? 'no' : methods.includes('unknown') ? 'unknown' : 'yes'
   }
   /** What one person registered, read against the tenant's method settings once per scan. */
-  const methodsOf = (id: string, row: TenantSnapshot['registrationDetails'][number]) => {
-    let registrationMethods = cache.methods.get(id)
+  const methodsOf = (id: string, row: TenantSnapshot['registrationDetails'][number], key: string = id) => {
+    let registrationMethods = cache.methods.get(key)
     if (!registrationMethods) {
       const states = row.methodsRegistered.map(method => ({ method, usable: availability.usable(id, method) }))
       const usableMethods = states.filter(m => m.usable === 'yes').map(m => m.method)
@@ -181,12 +195,18 @@ export function methodPreparation(effects: readonly PolicyEffect[], candidates: 
       // Registered something, and the methods policy stops every one of them.
       const refused = states.length > 0 && states.every(m => m.usable === 'no' && availability.refused(id, m.method))
       registrationMethods = { usableMethods, possibleMethods, refused, signature: JSON.stringify([usableMethods, possibleMethods]) }
-      cache.methods.set(id, registrationMethods)
+      cache.methods.set(key, registrationMethods)
     }
     return registrationMethods
   }
   // The registrations Require MFA accepts: Microsoft's built-in Multifactor authentication strength.
   const mfaCombinations = BUILT_IN_STRENGTHS.get(BUILT_IN_MFA_STRENGTH)!
+  /** A registration row without the methods on the device being registered, and multifactor-capable only on what is left. */
+  const offTheDevice = (row: TenantSnapshot['registrationDetails'][number]): TenantSnapshot['registrationDetails'][number] => {
+    const methodsRegistered = row.methodsRegistered.filter((m) => !ON_THE_DEVICE_METHODS.has(m))
+    return { ...row, methodsRegistered, isMfaCapable: row.isMfaCapable && strengthSatisfaction(mfaCombinations, methodsRegistered) === 'yes' }
+  }
+  const offTheDeviceClasses = (classes: ReadonlySet<string>): Set<string> => new Set([...classes].filter((c) => !ON_THE_DEVICE_CLASSES.has(c)))
   /**
    * One policy's method requirements against what one person registered.
    * `methods` is what the tenant lets them use (usable) and might (possible).
@@ -248,15 +268,18 @@ export function methodPreparation(effects: readonly PolicyEffect[], candidates: 
   }
   const registered = (effect: PolicyEffect, id: string): Judged => {
     if (effect.unknown.length > 0) return { answer: 'unknown', stale: false, off: false }
-    const row = registrations.get(id)
-    if (!row || !['ok', 'partial'].includes(snapshot.sources?.registrationDetails?.status ?? '')) return { answer: 'unknown', stale: false, off: false }
-    const registrationMethods = methodsOf(id, row)
+    const registeredRow = registrations.get(id)
+    if (!registeredRow || !['ok', 'partial'].includes(snapshot.sources?.registrationDetails?.status ?? '')) return { answer: 'unknown', stale: false, off: false }
+    // Registering a device, what they hold on that device does not count.
+    const device = registersDevice(effect)
+    const row = device ? offTheDevice(registeredRow) : registeredRow
+    const registrationMethods = methodsOf(id, row, device ? `${id}|registerDevice` : id)
     const answers = judge(effect, id, row, registrationMethods, false)
     // The outcome settles what registration could not (prompt 62): a successful
     // sign-in in the last 30 days with a method this requirement accepts shows the
     // method works under the tenant's settings, so an unknown compatibility is not
     // left unknown for somebody seen using it.
-    const proven = provenClasses(id)
+    const proven = device ? offTheDeviceClasses(provenClasses(id)) : provenClasses(id)
     for (const [i, requirement] of effect.requirements.entries()) if (answers[i] === 'unknown' && settles(requirement, proven)) answers[i] = 'yes'
     const answer = combine(effect, answers)
     if (answer === 'no') {
@@ -275,7 +298,7 @@ export function methodPreparation(effects: readonly PolicyEffect[], candidates: 
     // got older than the window, and the readiness number fell without anything
     // in the tenant changing. If it would not, a fresh sign-in with that method
     // settles nothing either, and saying it would is a promise the next scan breaks.
-    const ever = everClasses(id)
+    const ever = device ? offTheDeviceClasses(everClasses(id)) : everClasses(id)
     const aged = answers.map((a, i): Answer => (a === 'unknown' && settles(effect.requirements[i], ever) ? 'yes' : a))
     return { answer, stale: combine(effect, aged) === 'yes', off: false }
   }

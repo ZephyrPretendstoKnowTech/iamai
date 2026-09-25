@@ -31,6 +31,17 @@ export function userActionsOf(policy: unknown): string[] {
   return Array.isArray(actions) ? actions.filter((a): a is string => typeof a === 'string' && a.length > 0) : []
 }
 
+/** The User Action of registering or joining a device (Conditional Access, target resources). */
+export const REGISTER_DEVICE = 'urn:user:registerdevice'
+
+/**
+ * A step whose policies are on registering or joining a device (5.2): what a
+ * person holds on the device being registered cannot answer it (roadmap/methodReadiness.ts).
+ */
+export function stepRegistersDevice(step: Pick<Step, 'action'>): boolean {
+  return (step.action.resolution?.policies ?? []).some((op) => userActionsOf(op.mode === 'update' ? (op.target ?? op.body) : op.body).some((a) => a.toLowerCase() === REGISTER_DEVICE))
+}
+
 /** How a policy's report-only readiness is established. */
 export function evidenceStrategyOf(policy: unknown): EvidenceStrategy {
   return userActionsOf(policy).length > 0 ? 'configuration' : 'sign-in-records'

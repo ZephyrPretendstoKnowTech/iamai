@@ -2195,7 +2195,9 @@
             "signInListed": "{n} admins need to sign in once with the method they registered.",
             "route": "{step} gets them ready.",
             "$commentPeople": "The admin gate's card names each admin short with MFA Readiness's next step (round 1, owner 2026-09-24); this is its sentence, and the route follows it.",
-            "people": "Get each one signed in once with the method named beside them. For a passkey: {passkeySignIn}"
+            "people": "Get each one signed in once with the method named beside them. For a passkey: {passkeySignIn}",
+            "$commentNewDevice": "Require MFA to Register a Device (owner decision 2, 2026-09-25): Microsoft does not support Windows Hello for Business or a device-bound passkey for Register or join devices, because they need the device registered already, so the card says what answers instead (roadmap/methodReadiness.ts).",
+            "newDevice": "A passkey on the device being registered can't answer this policy: register a new computer with the phone passkey, and a new phone with a Temporary Access Pass."
           },
           "ownPolicyDiffers": {
             "$comment": "Owner, 2026-09-22: a policy the tenant wrote delivers the goal and differs from the baseline's in a part coverage does not judge (token protection without the Cloud PC filter; a compliant-device policy on every platform). The step stays Completed and states the difference; it never asks the tenant to change a policy that works, which could weaken it.",
@@ -6387,7 +6389,7 @@
       "kind": "policy",
       "title": "Require MFA to Register a Device",
       "changeLine": null,
-      "why": "Requiring MFA when a device is registered or joined helps protect that setup step from password-only misuse.",
+      "why": "Someone with a stolen password could register a device of their own and have it treated as one of yours. This policy asks for a passkey or a Temporary Access Pass before any device is registered or joined.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-device-registration"
       },
@@ -6402,14 +6404,13 @@
       "whatToDo": {
         "lead": null,
         "before": [
-          "While Entra ID → Devices → Overview → Device Settings → Require multifactor authentication to register or join devices with Microsoft Entra ID is Yes, this policy is not properly enforced. Set that setting to No when you create the policy."
+          "In Entra ID → Devices → Overview → Device settings, set Require multifactor authentication to register or join devices with Microsoft Entra to No. It reads {legacyDeviceMfa}, and while it does this policy is not properly enforced."
         ]
       },
       "dates": "{datesNew}",
       "doneEnd": "The policy is enforced in {tenant}, requiring MFA to register a device, with the exclusions group applied.",
       "doneWhen": [
-        "{policyDoneWhen}",
-        "The legacy device-registration MFA setting is No."
+        "{policyDoneWhen}"
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -6447,7 +6448,8 @@
         ],
         "policyName": "Core - Require - MFA for device registration",
         "existingPolicies": [],
-        "from": "Aug 1"
+        "from": "Aug 1",
+        "legacyDeviceMfa": "Yes"
       },
       "whatToDoReference": {
         "lead": null,
@@ -6461,7 +6463,7 @@
           "{reportOnlyLine}"
         ]
       },
-      "aiFocus": "Separate registration, join, compliance and authorization. Explain the legacy toggle transition and why report-only configuration does not prove the actual registration experience."
+      "aiFocus": "Explain that registering or joining a device asks for a method the authentication strength accepts that is not on that device, and what answers instead: a phone passkey for a new computer, a Temporary Access Pass for a new phone."
     },
     {
       "id": "token-protection",

@@ -1,6 +1,6 @@
 import { networkDraftOf } from '../mapping/networkDraft.ts'
 import { emergencyAccountPreparationComplete, emergencyAccountPreparationOf } from './emergencyAccountPreparation.ts'
-import { createdOn } from './evidenceStrategy.ts'
+import { REGISTER_DEVICE, createdOn } from './evidenceStrategy.ts'
 import { goalMapInUse, unusedCompanionKeys } from '../coverage/companions.ts'
 import { followUpIdsOf, settleFollowUp } from './followUp.ts'
 import { addWorkflowSteps } from './workflows.ts'
@@ -154,7 +154,6 @@ function grantOf(effects: readonly PolicyEffect[], strengths: Map<string, string
 
 /** The registration user actions, as Graph writes them. */
 const REGISTER_SECURITY_INFO = 'urn:user:registersecurityinfo'
-const REGISTER_DEVICE = 'urn:user:registerdevice'
 /**
  * The two resources IAMAI names by their own identifier: Graph's own
  * `MicrosoftAdminPortals` target (coverage/facts.ts reads the same string) and
@@ -2294,7 +2293,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // Require MFA for Guests too: the policy that delivers it, the baseline's
       // included, can reach all users, and its readiness counts everyone it
       // reaches (the count reads people, stepContract acceptedWho).
-      policyPreparation = methodPreparation(effects, [...popIndex.active], snapshot, strandContext, methodPreparationCache)
+      // Require MFA to Register a Device counts no guest (owner decision 1,
+      // 2026-09-25): a device registers in the tenant of the account doing it,
+      // which for a guest is their own, so the policy never asks a guest for
+      // anything and a guest's missing passkey cannot hold it.
+      const counted = goal.id === 'device-registration-mfa' ? [...popIndex.active].filter((id) => !popIndex.guests.has(id)) : [...popIndex.active]
+      policyPreparation = methodPreparation(effects, counted, snapshot, strandContext, methodPreparationCache)
       const reading = methodReadiness(readinessKey, policyPreparation)
       Object.assign(readiness, reading)
       if (!reading.unmeasured) delete readiness.unmeasured
