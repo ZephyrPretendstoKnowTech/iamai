@@ -406,6 +406,14 @@ export function intentOf(body: Record<string, unknown> | null | undefined): Inte
  * and an object that empties out goes with them; a referenced authentication
  * strength is its id, because Graph expands the object and the plan names it.
  */
+/**
+ * Properties Graph answers at an unset default on a policy whose body never names
+ * them: Token Protection's `secureSignInSession` reads back with
+ * `secureAppSessionMode: 'notEnforced'`, which the Entra admin center does not set
+ * and the baseline's body does not carry, and it read as a session to correct.
+ */
+const UNSET_DEFAULTS: Readonly<Record<string, unknown>> = { secureAppSessionMode: 'notEnforced' }
+
 function material(value: unknown): unknown {
   if (Array.isArray(value)) {
     const items = value.map(material).filter((v) => v !== undefined)
@@ -416,6 +424,13 @@ function material(value: unknown): unknown {
     if (typeof src.id === 'string' && 'allowedCombinations' in src) return src.id
     const out: Record<string, unknown> = {}
     for (const key of Object.keys(src).sort()) {
+      // Graph's OData annotations (`authenticationStrength@odata.context`, an
+      // external tenants' `@odata.type`) describe the response, never a setting:
+      // every deployed grant carries one and no plan body does, so each read as a
+      // grant to correct once every control was compared (owner, 2026-09-25).
+      if (key.includes('@odata.')) continue
+      // A property Graph answers at its unset default where no body names it.
+      if (UNSET_DEFAULTS[key] !== undefined && src[key] === UNSET_DEFAULTS[key]) continue
       const v = material(src[key])
       if (v !== undefined) out[key] = v
     }

@@ -6,6 +6,7 @@ import assert from 'node:assert/strict'
 import { allFixtures } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { REPORT_ONLY_STEP_ID } from './reportOnlyBatch.ts'
+import { sameDimension } from './observation.ts'
 import { stepBodyOf } from '../ui/surfaces/stepBody.ts'
 import { planDates } from '../ui/surfaces/stepVars.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
@@ -54,6 +55,24 @@ test('built exactly from its create: nothing to correct, the batch counts it cre
   assert.equal(step.state.lifecycle, 'report-only')
   assert.ok(batch!.reportOnlyBatch!.created.includes(step.id) && !(batch!.reportOnlyBatch!.correct ?? []).includes(step.id))
   assert.equal(stepBodyOf(step, ctx).readiness.satisfied.some((t) => t.key.startsWith('policy-name')), false)
+})
+
+test('built exactly from its create, as Graph returns it: its OData annotations are no setting to correct', () => {
+  const { step, batch } = rescan((row) => {
+    // What Graph answers beside every deployed grant, and on a guest setting's external tenants.
+    const grant = (row.grantControls ?? {}) as Row
+    row.grantControls = { ...grant, customAuthenticationFactors: [], termsOfUse: [], 'authenticationStrength@odata.context': 'https://graph.microsoft.com/v1.0/$metadata#identity/conditionalAccess/policies(\'p\')/grantControls/authenticationStrength/$entity', authenticationStrength: grant.authenticationStrength ?? null }
+    const users = ((row.conditions as Row).users ?? {}) as Row
+    ;(row.conditions as Row).users = { ...users, excludeGuestsOrExternalUsers: users.excludeGuestsOrExternalUsers ?? null }
+  })
+  assert.deepEqual(step.state.members.flatMap((m) => [...m.change.unwritten]), [])
+  assert.ok(!(batch!.reportOnlyBatch!.correct ?? []).includes(step.id))
+})
+
+test('Token Protection as Graph returns it: secureAppSessionMode at its unset default is no session to correct, and a set value is', () => {
+  const same = sameDimension({ secureSignInSession: { isEnabled: true } }, { disableResilienceDefaults: null, signInFrequency: null, secureSignInSession: { secureAppSessionMode: 'notEnforced', isEnabled: true } })
+  assert.equal(same, true)
+  assert.equal(sameDimension({ secureSignInSession: { isEnabled: true } }, { secureSignInSession: { secureAppSessionMode: 'enforced', isEnabled: true } }), false)
 })
 
 test('only the name off the plan: the step completes as before and names the step’s own name', () => {
