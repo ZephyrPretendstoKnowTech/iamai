@@ -4,7 +4,7 @@
   "reason": "after: Configure Emergency Exclusions",
   "fact": null,
   "badge": "On Hold",
-  "bar": "When Modern MFA + TAP readiness reaches 90% (now 12%)",
+  "bar": "When Modern MFA + TAP readiness reaches 90% (now 11%)",
   "rail": "Create the policy, turned on",
   "headings": [
     "About this Step",
@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "12% ready for Modern MFA + TAP"
+      "state": "11% ready for Modern MFA + TAP"
     },
     {
       "label": "Configure Emergency Exclusions",
