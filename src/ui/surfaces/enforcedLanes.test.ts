@@ -3,6 +3,7 @@
 // 8, 9, 17; U11, U19, U20, U21, U22, U28). The engine over the real graph first,
 // then the demo's own plans as the Plan reads them.
 import { test } from 'node:test'
+import { asPlanned } from '../../roadmap/fixtures/asPlanned.ts'
 import assert from 'node:assert/strict'
 import data from '../../actionability/dependency-data.json' with { type: 'json' }
 import type { DependencyData } from '../../actionability/parseDependencyDoc.ts'
@@ -73,7 +74,7 @@ test('engine: an enforced policy as pinned is Completed, a drifted one is Ready 
 
 const demo = fixture('demo')
 const demoRun = runFixture(demo, {}, null, demo.snapshot.asOf)
-const week2 = fixture('demo-week2')
+const week2 = asPlanned(fixture('demo-week2'), 's-goal-admins-phishing-resistant')
 const answered: Fixture = { ...week2, mapping: applyStepDecisions(week2.mapping, week2.decisions) }
 
 const ctxOf = (f: Fixture, run: ReturnType<typeof runFixture>, snapshot: TenantSnapshot): StepVarContext =>

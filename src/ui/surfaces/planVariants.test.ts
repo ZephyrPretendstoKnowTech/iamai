@@ -424,6 +424,8 @@ const INVENTORY: string[] = [
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · implementation · found · fix · one-policy · who-known', // demo-week2+half-pair/s-goal-mfa-all-users
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · implementation · no-found · fix · members · who-known', // demo-week2+half-pair/s-goal-guests-mfa
   // Every control is exact (owner, 2026-09-25): a policy with a setting to correct, waiting on a foundation, reads Blocked, never Ready (foundations.ts).
+  // A policy the tenant wrote, On, with a setting that is not the plan's: a person corrects it (every control is exact, owner 2026-09-25).
+  'policy · create · enforced · review-required · open · do:resolve · track · no-implementation · found · no-fix · one-policy · who-known', // demo-week2/s-goal-admins-phishing-resistant
   'policy · create · enforced · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-known', // midflight/s-goal-guests-mfa
   'policy · adjust · not-deployed · review-required · open · do:observe · track · implementation · found · fix · members · who-known', // demo-week2+half-pair+rescan/s-goal-guests-mfa
   'policy · adjust · enforced · blocked · open · do:resolve · track · implementation · found · fix · one-policy · who-known', // demo+curated/s-goal-block-legacy-auth

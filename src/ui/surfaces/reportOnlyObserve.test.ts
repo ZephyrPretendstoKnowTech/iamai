@@ -772,5 +772,7 @@ test('005.18: settling is a read-back of the placement, so it is the same answer
   const again = readBackPlacement(untouched.steps, untouched.schedule.placement!, settled)
   assert.equal(JSON.stringify(again.waves), JSON.stringify(untouched.schedule.waves), 'the plan is the read-back of its own placement, minus the withdrawn steps')
   assert.notEqual(JSON.stringify(rebuilt.startAt), JSON.stringify(again.startAt), 'and withdrawing them is what makes the difference')
-  for (const id of settled) assert.ok(rebuilt.startAt[id] !== undefined, `${id} had a placement to withdraw`)
+  // A step tracking found it cannot write after the schedule was drawn (a policy On with a
+  // setting to correct by hand) sat in the foundation week alone, with no placement of its own.
+  for (const id of settled) if (untouched.schedule.forecastOnly?.[id]?.wave !== 0) assert.ok(rebuilt.startAt[id] !== undefined, `${id} had a placement to withdraw`)
 })

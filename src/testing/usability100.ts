@@ -1,4 +1,5 @@
 import { buildFixture } from '../roadmap/fixtures/index.ts'
+import { asPlanned } from '../roadmap/fixtures/asPlanned.ts'
 import type { Fixture } from '../roadmap/fixtures/index.ts'
 import { applyStepDecisions } from '../roadmap/decisions.ts'
 import { questionOptions, QUESTION_STEP } from '../roadmap/answers.ts'
@@ -67,6 +68,9 @@ export function usability100(stage: Usability100Stage): Fixture {
       f.mapping.records[ref.id]={placeholder:ref.id,kind:'namedLocation',group:'namedLocations',resolvedId:id,resolvedName:id===countryId?'Northstar - Allowed countries':'Head office',provenance:'confirmed',doesNotExist:false,validation:null}
     }
   }
+  // Configured means built as the plan asks (every control is exact, owner
+  // 2026-09-25): the admins policy is the plan's under the mapping just confirmed.
+  if (stage === 'configured' || stage === 'drift' || stage === 'specialist') f.snapshot = asPlanned(f, 's-goal-admins-phishing-resistant').snapshot
   if (stage === 'drift') {
     // Simulate an external edit to an enforced policy, not an operation by IAMAI.
     const policy = f.snapshot.config.caPolicies.rows.find(raw => /phishing-resistant.*admins|admins.*phishing-resistant/i.test(String((raw as {displayName?:string}).displayName))) as { grantControls?: unknown; conditions?: {users?: {excludeUsers?: string[]}} } | undefined

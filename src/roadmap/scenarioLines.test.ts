@@ -3,6 +3,7 @@
 // at least one fixture, and the GetIAMAI-shaped fixture's admin cohort never
 // stands in for the tenant's readiness.
 import { test } from 'node:test'
+import { asPlanned } from './fixtures/asPlanned.ts'
 import assert from 'node:assert/strict'
 import { allFixtures, fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
@@ -54,7 +55,7 @@ test('prompt 50 item 10: at least twelve scenarios fire on the demo, and these a
 
 test('prompt 50 item 15 / 50.1 item 5: the week-two snapshot advances the tracking story, and the in-place count rises', () => {
   const day1 = runFixture(fixture('demo'))
-  const week2 = runFixture(fixture('demo-week2'))
+  const week2 = runFixture(asPlanned(fixture('demo-week2'), 's-goal-admins-phishing-resistant'))
   // Ready is phishing-resistant readiness (Step 7, scoring/phishingResistant.ts), over the active people.
   // Ready counts Seamless too (isReady): a person is Ready or better.
   const ready = (r: ReturnType<typeof runFixture>): number => r.viability.filter((v) => rolloutBucket(v) !== null && (v.readiness.state === 'ready' || v.readiness.state === 'seamless')).length

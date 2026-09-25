@@ -15,6 +15,7 @@
 // And a policy ready to enforce behind the recovery test sat on Up Next with
 // its turn-on day on the board, the rail, the export and the calendar (R4-55).
 import { test } from 'node:test'
+import { asPlanned } from '../../roadmap/fixtures/asPlanned.ts'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
@@ -65,8 +66,8 @@ function withoutRecoveryTest(f: Fixture): Fixture {
  * line, the email and the bundle have a day to lose.
  */
 const TURN_ON_HELD: [string, () => Fixture][] = [
-  ['demo-week2, recovery test not run', () => withoutRecoveryTest(withDirectionApproved(curatedFixture('demo-week2')))],
-  ['demo-week2, recovery test not run, security defaults on', () => withSecurityDefaultsOn(withoutRecoveryTest(withDirectionApproved(curatedFixture('demo-week2'))))],
+  ['demo-week2, recovery test not run', () => withoutRecoveryTest(withDirectionApproved(asPlanned(curatedFixture('demo-week2'), 's-goal-admins-phishing-resistant')))],
+  ['demo-week2, recovery test not run, security defaults on', () => withSecurityDefaultsOn(withoutRecoveryTest(withDirectionApproved(asPlanned(curatedFixture('demo-week2'), 's-goal-admins-phishing-resistant'))))],
 ]
 
 const CASES: [string, () => Fixture][] = [
@@ -196,7 +197,7 @@ test('a policy whose turn-on waits behind the recovery test carries no turn-on d
 // day is its turn-on too. A change to a policy already on is a correction, which
 // no turn-on prerequisite holds, and it keeps its day on Up Next.
 test('a change that turns a policy on has no day of its own on a waiting lane, and a correction to a policy already on keeps its day', () => {
-  const f = withoutRecoveryTest(withDirectionApproved(curatedFixture('demo-week2')))
+  const f = withoutRecoveryTest(withDirectionApproved(asPlanned(curatedFixture('demo-week2'), 's-goal-admins-phishing-resistant')))
   const r = runFixture(f, {}, null, f.snapshot.asOf)
   const board = boardReadingsOf(r.steps, r.schedule.cleanup, null)
   const token = r.steps.find((s) => s.id === 's-goal-token-protection')!
@@ -301,7 +302,7 @@ test('a held policy keeps the people its who-line names, without the day and wit
 // email's day, or the announcement the pack hands a model. Both now take the
 // board's hold, the way the printed plan's rows do.
 test('a day a held step carries is never another step\'s date, nor the prompt pack\'s announcement', () => {
-  const f = withDirectionApproved(curatedFixture('demo-week2'))
+  const f = withDirectionApproved(asPlanned(curatedFixture('demo-week2'), 's-goal-admins-phishing-resistant'))
   const r = runFixture(f, {}, null, f.snapshot.asOf)
   const dated = r.steps.filter((s) => typeof s.events?.enforce.at === 'string').sort((a, b) => a.events!.enforce.at.localeCompare(b.events!.enforce.at))
   assert.ok(dated.length >= 2, 'the premise: two dated turn-ons')
@@ -366,7 +367,7 @@ test('a day the board reads as an estimate is never printed bare: a sentence say
   let estimates = 0
   let booked = 0
   let sentences = 0
-  for (const [name, make] of [...CASES, ['demo-week2, Direction approved', () => withDirectionApproved(curatedFixture('demo-week2'))]] as [string, () => Fixture][]) {
+  for (const [name, make] of [...CASES, ['demo-week2, Direction approved', () => withDirectionApproved(asPlanned(curatedFixture('demo-week2'), 's-goal-admins-phishing-resistant'))]] as [string, () => Fixture][]) {
     const f = make()
     const r = runFixture(f, {}, null, f.snapshot.asOf)
     const answers = f.mapping.breakGlassAnswers ?? null

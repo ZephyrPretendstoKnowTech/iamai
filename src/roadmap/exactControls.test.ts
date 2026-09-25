@@ -88,3 +88,25 @@ test('only the name off the plan: the step completes as before and names the ste
   assert.equal(tile?.value, 'Renamed by someone')
   assert.match(String(tile?.note), new RegExp(`This step names it ${member.plannedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`))
 })
+
+test('a policy doing another step’s job is never corrected into this one: Shorten Admin Sessions creates the baseline’s beside the admins’ MFA policy', () => {
+  // Owner, 2026-09-25 ("only policies doing another step's job"): GetIAMAI's own
+  // "Core - Allow - MFA for Admins" requires phishing-resistant MFA and also sets a
+  // 7-day sign-in frequency. Shorten Admin Sessions read it as its policy and asked
+  // to correct its users, client apps, grant and session, which would have taken
+  // the MFA off it. A grant policy is never a session-only step's.
+  const snapshot = structuredClone(DEMO.snapshot)
+  const GA = '62e90394-69f5-4237-9190-012177145e10'
+  rowsOf(snapshot).push({
+    id: 'p-mfa-for-admins', displayName: 'Contoso MFA for Admins', description: '', state: 'enabled', createdDateTime: snapshot.asOf,
+    conditions: { users: { includeRoles: [GA], excludeGroups: [] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'] },
+    grantControls: { operator: 'OR', builtInControls: [], authenticationStrength: { id: '00000000-0000-0000-0000-000000000004' } },
+    sessionControls: { signInFrequency: { isEnabled: true, type: 'days', value: 7, frequencyInterval: 'timeBased', authenticationType: 'primaryAndSecondaryAuthentication' }, persistentBrowser: { isEnabled: true, mode: 'always' } },
+  })
+  const run = runFixture({ ...DEMO, snapshot })
+  const session = run.steps.find((s) => s.goalId === 'admin-session')!
+  assert.ok(session, 'the premise: the demo plans Shorten Admin Sessions')
+  assert.notEqual(session.tracking?.policyId, 'p-mfa-for-admins', 'the admins’ MFA policy is not tied to the session step')
+  assert.ok((session.action.resolution?.policies ?? []).every((o) => o.policyId !== 'p-mfa-for-admins'), 'nothing edits it for the session step')
+  assert.ok(!session.state.members.some((m) => m.change.unwritten.includes('grantControls')), 'no grant correction is asked of it')
+})

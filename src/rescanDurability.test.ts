@@ -17,6 +17,7 @@
 // with one thing changed between them, every subject chosen by asking a
 // production authority a question rather than by naming an object.
 import { test } from 'node:test'
+import { heldForCorrection } from './roadmap/lifecycle.ts'
 import { stepCreatedOn } from './roadmap/evidenceStrategy.ts'
 import { holdOf } from './roadmap/holds.ts'
 import assert from 'node:assert/strict'
@@ -135,7 +136,10 @@ test('043.1: the corpus builds every transition it names, and a repeat scan with
     for (const s of t.b.steps) {
       if (!s.state.observation) continue
       assert.equal(s.state.observation.changed, s.state.observation.prior === null ? 'first-scan' : 'none', `${s.id}: the second scan called an unchanged policy changed`)
-      assert.equal(s.state.observation.reviewRequired, false, `${s.id}: a second look at an unchanged policy asked for a person`)
+      // A policy that is not the plan's asks for its correction on every scan until it is
+      // made (every control is exact, owner 2026-09-25): the second look asks nothing new.
+      const before = t.a.steps.find((x) => x.id === s.id)?.state.observation?.reviewRequired ?? false
+      assert.equal(s.state.observation.reviewRequired, before, `${s.id}: a second look at an unchanged policy asked for a person`)
     }
   }
 
@@ -358,7 +362,8 @@ test('043.7: a blocker that appears stops the step, and one that clears releases
   for (const t of transitions()) {
     for (const s of t.b.steps) {
       if (s.status !== 'ready') continue
-      assert.equal(s.state.condition, 'healthy', `${t.key}/${s.id}: a step reads Ready under a condition that is not healthy`)
+      // A correction by hand is the step's own work, read Ready · Correct (every control is exact, owner 2026-09-25).
+      if (!heldForCorrection(s) && unavailableReason(s) !== 'manual-correction') assert.equal(s.state.condition, 'healthy', `${t.key}/${s.id}: a step reads Ready under a condition that is not healthy`)
       assert.deepEqual(s.blockers, [], `${t.key}/${s.id}: a step reads Ready with a blocker on it`)
     }
   }

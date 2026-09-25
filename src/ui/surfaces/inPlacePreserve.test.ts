@@ -45,6 +45,7 @@
 // implementation channels, the export view every artifact speaks from, and the
 // calendar. Nothing here builds a Step.
 import { test } from 'node:test'
+import { asPlanned } from '../../roadmap/fixtures/asPlanned.ts'
 import { holdOf } from '../../roadmap/holds.ts'
 import assert from 'node:assert/strict'
 import { allFixtures, fixture } from '../../roadmap/fixtures/index.ts'
@@ -849,7 +850,8 @@ test('a policy this plan built straight to On stays Completed and says it went l
   // Watched in report-only, then turned on: it had its window, and no tile says it missed one. A policy in
   // Turn On MFA for Everyone finishes on its report-only period, with no check after the change: that check
   // is only for a policy turned on without a watched period (walk list 4.x item 26, owner 2026-09-24).
-  const d = withFoundationSettled(fixture('demo'))
+  // The admins policy built exactly as planned (every control is exact, owner 2026-09-25), so turning it on finishes it.
+  const d = withFoundationSettled(asPlanned(fixture('demo'), 's-goal-admins-phishing-resistant'))
   const d1 = runFixture(d)
   const before = d1.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!
   assert.equal(before.state.lifecycle, 'report-only', 'the premise: the policy is in report-only at the first scan')
