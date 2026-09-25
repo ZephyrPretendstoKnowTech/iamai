@@ -1,10 +1,10 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "when MFA readiness reaches 90% (now 68%)",
+  "reason": "when Modern MFA + TAP readiness reaches 90% (now 26%)",
   "fact": null,
   "badge": "On Hold",
-  "bar": "Waiting on your answers",
+  "bar": "After Define the Trusted Network",
   "rail": "Create the policy, turned on",
   "headings": [
     "About this Step",
@@ -15,11 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "68% MFA-ready"
-    },
-    {
-      "label": "Define the Trusted Network",
-      "state": "Prerequisite · Waiting"
+      "state": "At least 26% ready for Modern MFA + TAP"
     },
     {
       "label": "Configure Emergency Exclusions",
@@ -36,6 +32,10 @@
     {
       "label": "Prepare Emergency Access Accounts",
       "state": "Prerequisite · To do"
+    },
+    {
+      "label": "Define the Trusted Network",
+      "state": "Prerequisite · Waiting"
     }
   ],
   "channels": [

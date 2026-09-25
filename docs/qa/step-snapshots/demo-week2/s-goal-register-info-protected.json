@@ -1,7 +1,7 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "when MFA readiness reaches 90% (now 68%)",
+  "reason": "when Modern MFA + TAP readiness reaches 90% (now 33%)",
   "fact": null,
   "badge": "On Hold",
   "bar": "Waiting on your answers",
@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "68% MFA-ready"
+      "state": "At least 33% ready for Modern MFA + TAP"
     },
     {
       "label": "Prerequisites",

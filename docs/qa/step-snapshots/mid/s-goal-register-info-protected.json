@@ -1,10 +1,10 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "when MFA readiness reaches 90% (now 76%)",
+  "reason": "when Modern MFA + TAP readiness reaches 90% (now 11%)",
   "fact": null,
   "badge": "On Hold",
-  "bar": "When MFA readiness reaches 90% (now 76%)",
+  "bar": "When Modern MFA + TAP readiness reaches 90% (now 11%)",
   "rail": "Create the policy, turned on",
   "headings": [
     "About this Step",
@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "76% MFA-ready"
+      "state": "11% ready for Modern MFA + TAP"
     },
     {
       "label": "Prerequisites",
