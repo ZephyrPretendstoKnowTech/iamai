@@ -62,7 +62,8 @@
     "policy.current.state",
     "evidence.pimEligible",
     "evidence.activation",
-    "dependencies.blockers"
+    "dependencies.blockers",
+    "pim.roles"
   ],
   "projection": {
     "contextMissing": {

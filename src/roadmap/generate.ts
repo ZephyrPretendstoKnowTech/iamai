@@ -9,6 +9,7 @@ import dependencyData from '../actionability/dependency-data.json' with { type: 
 import { SERVICE_KEYS, answeredReasonOf, officeLocationsCreated, savedAnswerOf, trustedIpLocations } from './directionAnswers.ts'
 import { applyManualReviews, perUserMfaReading } from './manualWork.ts'
 import { LEGACY_AUTH_STEP_ID, MAIL_ACCOUNTS_WAIT, mailAccountsToMove, mailAnswerMoot, settleBlockSignIns } from './blockSignIns.ts'
+import { settlePimSettings } from './pimSettings.ts'
 // Step generation (roadmap.md §1–§6; 2026-08-27 redesign: collapsed phase 0,
 // per-tenant impact, safe-today lane, handle-with-care gating, comms drafts,
 // operator self-safety, Learn links, auto-scheduling). Pure.
@@ -3301,6 +3302,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // records for who uses what they block, and the legacy block's mail half
   // completes from them (walk list 4.x items 4, 33 and 38).
   settleBlockSignIns(steps, snapshot, mapping, nameOf, (goalId) => (input.coverage.results.find((r) => r.goal.id === goalId)?.enforcedIds.length ?? 0) > 0)
+  // Require MFA at Every Role Activation stays open until each eligible role's
+  // PIM activation requires its context (roadmap/pimSettings.ts; owner, 2026-09-25).
+  const pimCoverage = input.coverage.results.find((r) => r.goal.id === 'pim-activation-reauth')
+  settlePimSettings(steps, snapshot, [...(pimCoverage?.satisfaction?.policyIds ?? []), ...(pimCoverage?.candidates ?? []).filter((c) => c.contribution !== 'disabled').map((c) => c.policyId)])
   for (const s of steps.filter(s => s.id === 's-check-dormant-accounts')) {
     // Every account still dormant, with the last sign-in the scan holds, and
     // whether the person keeps it: picked under Accounts you are keeping, whose

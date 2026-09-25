@@ -53,6 +53,14 @@ export type ConfigSection = {
   fido2Read?: { status: 'ok' | 'error'; reason: string | null; httpStatus: number | null }
 }
 
+/**
+ * One eligible role's PIM activation rule for an authentication context
+ * (registry.ts, 'PIM role settings'): the role, the role management policy that
+ * holds the rule, and the context its activation requires, null where it
+ * requires none.
+ */
+export type PimRoleSetting = { roleDefinitionId: string; policyId: string | null; contextRequired: string | null }
+
 export type UserRow = {
   id: string
   displayName: string | null
@@ -336,6 +344,13 @@ export type TenantSnapshot = {
   scenarioEvidence?: import('../../derive/evidence.ts').ScenarioEvidence | null
   /** What earlier scans established about each person's qualifying methods and proof (scoring/mfaHistory.ts), merged with this scan. */
   mfaHistory?: MfaHistory | null
+  /**
+   * Each role someone is eligible for in PIM, and the authentication context its
+   * activation requires (Require MFA at Every Role Activation, owner 2026-09-25):
+   * the one PIM rule the plan reads. Absent on snapshots collected before this
+   * read existed. A role whose read failed is left out, and reads as still to set.
+   */
+  pimRoleSettings?: PimRoleSetting[]
   // Tenant licence capabilities derived from subscribedSkus (SPEC §12).
   capabilities: Record<Capability, { enabled: boolean; seats: number; consumed: number }>
   // CA policies that Microsoft manages (display-name prefix or templateId).

@@ -12,6 +12,7 @@ import type {
   DeviceRow,
   MethodsByUser,
   PerUserMfaByUser,
+  PimRoleSetting,
   RegistrationRow,
   UserRow,
 } from './types.ts'
@@ -67,6 +68,32 @@ export function deriveRoles(
     return out
   }
   return { active: collect(roleAssignments), eligible: collect(eligibilitySchedules) }
+}
+
+/** The rule a role's activation requires an authentication context with (Microsoft Graph's own id for it). */
+const AUTH_CONTEXT_RULE = 'AuthenticationContext_EndUser_Assignment'
+
+/**
+ * Each eligible role's authentication-context rule on activation (registry.ts,
+ * 'PIM role settings'), one request per role as Microsoft documents it. A role
+ * whose read fails is left out, so it reads as still to set.
+ */
+export async function collectPimRoleSettings(ctx: Ctx, roleIds: readonly string[]): Promise<PimRoleSetting[]> {
+  const out: PimRoleSetting[] = []
+  for (const roleId of roleIds) {
+    const filter = encodeURIComponent(`scopeId eq '/' and scopeType eq 'DirectoryRole' and roleDefinitionId eq '${roleId}'`)
+    try {
+      const rows = await graphPaged(ctx.tokens, `${V1}/policies/roleManagementPolicyAssignments?$filter=${filter}&$expand=policy($expand=rules)`, { signal: ctx.signal })
+      const assignment = rows[0] as { policyId?: unknown; policy?: { id?: unknown; rules?: unknown[] } } | undefined
+      if (!assignment) continue
+      const rule = (assignment.policy?.rules ?? []).find((r) => (r as { id?: unknown }).id === AUTH_CONTEXT_RULE) as { isEnabled?: unknown; claimValue?: unknown } | undefined
+      const policyId = typeof assignment.policy?.id === 'string' ? assignment.policy.id : typeof assignment.policyId === 'string' ? assignment.policyId : null
+      out.push({ roleDefinitionId: roleId, policyId, contextRequired: rule?.isEnabled === true && typeof rule.claimValue === 'string' && rule.claimValue !== '' ? rule.claimValue : null })
+    } catch (error) {
+      if (ctx.signal.aborted) throw error
+    }
+  }
+  return out
 }
 
 export async function collectConfigSection(ctx: Ctx, key: ConfigSectionKey): Promise<ConfigSection> {

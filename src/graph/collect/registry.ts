@@ -82,6 +82,11 @@ export type CollectorSpec = {
 }
 
 export const COLLECTOR_REGISTRY: CollectorSpec[] = [
+  // Require MFA at Every Role Activation's policy asks for nothing until each
+  // role's PIM activation requires its authentication context (owner,
+  // 2026-09-25). Read after PIM eligibility, for the roles someone is eligible
+  // for only; the form Microsoft documents is one role per request.
+  { name: 'PIM role settings', lane: 'on-demand', endpoint: "/policies/roleManagementPolicyAssignments?$filter=scopeId eq '/' and scopeType eq 'DirectoryRole' and roleDefinitionId eq '{roleId}'&$expand=policy($expand=rules)", version: 'v1.0', scopes: ['RoleManagement.Read.Directory'], requiredCapability: 'pim', gate: 'Read for each role someone is eligible for; a role whose read fails reads as still to set', purpose: "Whether each eligible role's activation requires the authentication context Require MFA at Every Role Activation's policy targets." },
   { name: 'Per-user MFA requirements', lane: 'on-demand', endpoint: '/users/{id}/authentication/requirements', version: 'beta', scopes: ['Policy.Read.All'], requiredCapability: null, gate: 'Read for every account as directory pages arrive, in batches of 20; failures stay unknown', purpose: 'Actual legacy per-user MFA state, independent of authentication-method migration status.' },
   // ---- Lane 0: config reads ----
   { name: 'CA policies', lane: '0', configKey: 'caPolicies', endpoint: '/identity/conditionalAccess/policies', version: 'v1.0', paged: true, scopes: ['Policy.Read.All'], requiredCapability: null, gate: 'none', purpose: 'The tenant policy set the diff and roadmap work from; Microsoft-managed policies are flagged.' },

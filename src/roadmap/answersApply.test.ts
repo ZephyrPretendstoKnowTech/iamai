@@ -97,7 +97,8 @@ test('saved answers apply to the steps they are asked on and add no step of thei
     assert.ok(guestsHelp.some((l) => /Delegated administration \(GDAP\) and ordinary guest \(B2B\) access are separate/.test(l)), 'the GDAP warning did not land on the guests policy')
     const geoHelp = (stepById['geo-restriction'] as unknown as { more?: { helpDesk?: string[] } }).more?.helpDesk ?? []
     assert.ok(geoHelp.some((l) => /exclude service providers/.test(l)), 'the countries policy does not say it carries the exclusion')
-    assert.ok(manualEvidenceFields('s-goal-guests-mfa').some((f) => f.key === 'providerAccessPath'), 'the provider access path did not move to the guests policy')
+    // The guests policy records no workflow test (owner, 2026-09-25), so it asks for no access path either.
+    assert.deepEqual(manualEvidenceFields('s-goal-guests-mfa'), [])
 
     // The service-accounts step names the printer.
     const sa = r.steps.find((s) => s.id === PREREQ_STEP_ID.serviceAccountsGroup)

@@ -21,6 +21,7 @@ import {
   collectDevices,
   collectMethodsForUsers,
   collectPerUserMfaForUsers,
+  collectPimRoleSettings,
   collectRegistrationDetails,
   collectRegistrationForUsers,
   collectSpActivity,
@@ -297,6 +298,15 @@ async function run(tenantId: string, licenceOverride?: LicenceProfile): Promise<
     snapshot.registrationDetails = [...snapshot.registrationDetails, ...rows]
   }
 
+  // Require MFA at Every Role Activation (owner, 2026-09-25): whether each role
+  // someone is eligible for asks for an authentication context on activation.
+  // Read after eligibility, for those roles only; nothing where eligibility was not read.
+  const readPimRoleSettings = async (): Promise<void> => {
+    if (config.pimEligibility?.status !== 'ok') return
+    const ids = [...new Set((config.pimEligibility.rows as { roleDefinitionId?: unknown }[]).map((r) => r.roleDefinitionId).filter((id): id is string => typeof id === 'string'))]
+    snapshot.pimRoleSettings = await collectPimRoleSettings(runCtx, ids).catch(() => [])
+  }
+
   const finishAggregates = (): void => {
     snapshot.microsoftManagedPolicyIds = (config.caPolicies?.rows ?? [])
       .filter(isMicrosoftManagedPolicy)
@@ -339,6 +349,7 @@ async function run(tenantId: string, licenceOverride?: LicenceProfile): Promise<
     })
     await pool(LANE_A_CONCURRENCY, [...lane0Tasks, ...laneATasks])
     await readRegistrationGaps()
+    await readPimRoleSettings()
     finishAggregates()
     snapshot.asOf = new Date().toISOString()
     post({ type: 'state', value: 'done' })
@@ -395,6 +406,7 @@ async function run(tenantId: string, licenceOverride?: LicenceProfile): Promise<
     }
   }
   await readRegistrationGaps()
+  await readPimRoleSettings()
   post({ type: 'state', value: 'done' })
   finishAggregates()
 

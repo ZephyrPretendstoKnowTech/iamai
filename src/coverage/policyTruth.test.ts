@@ -422,10 +422,10 @@ test('audit, guests: the guest policy is named on the coverage, the step and the
   assert.ok(own?.ownScope, 'the named policy is scoped to guests')
   const step = goalStep(run, 'guests-mfa')
   assert.equal(step.state.lifecycle, 'enforced')
-  assert.notEqual(step.status, 'done', 'configuration coverage does not replace a guest workflow check')
-  assert.equal(step.manualReview?.confirmedAt, null)
+  // The guest policy in place finishes it: no step asks for a workflow record (owner, 2026-09-25).
+  assert.equal(step.status, 'done', 'the guest policy in place does not finish the step')
+  assert.equal(step.manualReview, undefined)
   assert.equal(step.satisfiedBy?.sufficient, own.policyName)
-  assert.equal(existingOf(step), null, 'the completed-preservation rail must not claim the workflow is finished')
   assert.ok(step.deliveredBy.some(name => name.includes(own.policyName)))
   for (const other of r.candidates.filter((c) => c.policyId !== own.policyId)) {
     assert.equal(step.history.some((h) => (h.note ?? '').includes(other.policyName)), false, `history names ${other.policyName}`)

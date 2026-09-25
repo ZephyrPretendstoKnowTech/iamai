@@ -757,7 +757,7 @@
       ],
       "correctionModules": 6,
       "requiredBindings": 7,
-      "optionalBindings": 12,
+      "optionalBindings": 13,
       "verifiedSourceCount": 7,
       "packageSpecificMicrosoftSources": 7,
       "sharedPrimitivesReused": 6,
@@ -4051,6 +4051,18 @@
       "definitionStatus": "CARRIED-FORWARD"
     },
     {
+      "binding": "pim.roles",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-pim-activation-reauth"
+      ],
+      "packages": [
+        "s-goal-pim-activation-reauth"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
       "binding": "policies.guests.mixed.current.displayName",
       "requiredBy": [],
       "optionalBy": [
@@ -6035,14 +6047,14 @@
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
     "contentBlocks": 893,
-    "uniqueBindings": 266,
+    "uniqueBindings": 267,
     "bindingsRequiredByAtLeastOneProjection": 82,
-    "bindingsOptionalInAtLeastOnePackage": 186,
+    "bindingsOptionalInAtLeastOnePackage": 187,
     "bindingDefinitionsCarriedForward": 42,
-    "bindingDefinitionsPendingHolisticReview": 224,
+    "bindingDefinitionsPendingHolisticReview": 225,
     "knownIAMAIInputTrue": 40,
     "knownIAMAIInputFalse": 2,
-    "knownIAMAIInputUnreviewed": 224,
+    "knownIAMAIInputUnreviewed": 225,
     "verifiedSourceRecords": 267,
     "microsoftSourceRecords": 265,
     "surfaces": [

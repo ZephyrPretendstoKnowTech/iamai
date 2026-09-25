@@ -31,7 +31,7 @@ import type { Condition, Lifecycle, Milestone } from '../../roadmap/lifecycle.ts
 import { BLOCKED_MILESTONES, heldForReview, nextMilestone, reviewCauses } from '../../roadmap/lifecycle.ts'
 import type { PolicyHold, UnavailableReason } from '../../roadmap/operations.ts'
 import { portalName } from '../../roadmap/portalLines.ts'
-import { awaitsOwnObject, awaitsWorkflowRecord, createWaitsOnReadiness, enforcesOnRun, implementationOffered, isPreserved, operationsOf, policyHold, switchedOffPolicies, unavailableReason, strengthNameIn } from '../../roadmap/operations.ts'
+import { awaitsOwnObject, awaitsPimSettings, awaitsWorkflowRecord, createWaitsOnReadiness, enforcesOnRun, implementationOffered, isPreserved, operationsOf, policyHold, switchedOffPolicies, unavailableReason, strengthNameIn } from '../../roadmap/operations.ts'
 import { requiredMembers } from '../../roadmap/tracking.ts'
 import { unreadLine } from '../../roadmap/evidence.ts'
 import { MAIL_ACCOUNTS_WAIT, SIGN_INS_FINDING } from '../../roadmap/blockSignIns.ts'
@@ -48,7 +48,7 @@ import { doneWhenFor, fillText, whatToDoFor, whole } from '../../content/render.
 import { absoluteDate } from '../../copy/dates.ts'
 import { list, plural } from '../../copy/statements.ts'
 import { personLabels } from '../../names.ts'
-import { adminUserIds } from '../../roles.ts'
+import { adminUserIds, roleName } from '../../roles.ts'
 import { DORMANT_STEP_ID } from './sectionThreeTasks.ts'
 import type { MethodPreparation } from '../../roadmap/methodReadiness.ts'
 import { BLOCKED_REASON, BLOCKED_SUBJECT, everyoneGate, readinessFamilyOf } from '../../copy/reasons.ts'
@@ -2524,33 +2524,15 @@ function stateTile(step: Step, c: StepContract, setupAfterEnforcement = false): 
   if (s.condition === 'baseline-conflict') return { key: 'baseline', label: t.baseline, tone: 'warn', value: t.conflictValue, note: MILESTONE.conflict }
   if (s.setAside) return null
   if (step.manualReview?.confirmedAt) return { key: 'review', label: CONTRACT.foundLabel.observation, tone: 'good', value: s.lane?.label ?? s.stage, note: c.doneWhen.join(' ') }
-  // Enforced, and the only thing left is the person's own record.
-  //
-  // Such a step drew Ready / Enforced, milestone "Review now", and ZERO
-  // readiness tiles and ZERO findings — three readers reported the same empty
-  // step, two of them on the same step id. Its Done-when listed five lines,
-  // three that IAMAI checks for itself and two that are the reader's, with
-  // nothing saying which remained. The step knew all along: `awaitsWorkflowRecord`.
-  //
-  // It says what the scan confirmed — the policy on, its configuration in place —
-  // and not that IAMAI is finished with it. That read as checks done on a
-  // device-code block and a guest-MFA policy the first scan found enforced, in a
-  // tenant whose sign-in records could not be read at all: no report-only period
-  // watched, no sign-in seen, and the reason on the step reaching only the AI
-  // briefing (Priya D4). Where IAMAI does not hold enough of the records, the tile
-  // says so and why, in the engine's one sentence for it (evidence.ts unreadLine):
-  // a second sentence of its own said "could not read" and "has seen none" over
-  // a read that had stopped short of 24 hours with some records read.
-  // Nor where the policy still waits on setup a person does and IAMAI cannot
-  // read (stepPackage.ts setupAfterEnforcementOf): on Require MFA at Every Role
-  // Activation that is every role's PIM activation setting, without which
-  // activation never asks for the context and the enforced policy requires
-  // nothing (R4-18).
-  if (awaitsWorkflowRecord(step)) {
-    const t2 = t as unknown as { awaitingReview: string; awaitingReviewNote: string; awaitingPimSettingsNote: string }
-    const unread = step.evidence.unreadable === undefined ? null : unreadLine(step.evidence.unreadable)
-    const said = setupAfterEnforcement ? t2.awaitingPimSettingsNote : t2.awaitingReviewNote
-    return { key: 'review', label: CONTRACT.foundLabel.awaitingReview, tone: 'wait', value: t2.awaitingReview, note: unread === null ? said : `${said} ${unread}` }
+  // Require MFA at Every Role Activation's policy is on, and a role someone is
+  // eligible for does not yet require its authentication context on activation
+  // (roadmap/pimSettings.ts): the roles, by name. It replaced the workflow record
+  // this tile waited on ("Your review · Waiting on you"), which no step asks for
+  // now (owner, 2026-09-25).
+  if (awaitsPimSettings(step)) {
+    const roles = (step.pimRolesToSet ?? []).map((id) => roleName(id) ?? id)
+    const w = t as unknown as { pimRoles: string; pimRolesNote: string }
+    return { key: 'review', label: CONTRACT.foundLabel.pimRoles, tone: 'wait', value: fillText(w.pimRoles, { n: String(roles.length), roles: plural(roles.length, 'role') }), note: fillText(w.pimRolesNote, { roles: list(roles) }) }
   }
   if (s.satisfied && step.directionQuestions) return { key: 'decision', label: t.decision, tone: 'good', value: s.lane?.label ?? s.stage, note: c.doneWhen.join(' ') }
   // A policy that moved from the plan: one card, the change and its fix (walk list

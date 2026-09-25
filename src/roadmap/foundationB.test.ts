@@ -1229,16 +1229,17 @@ test('pair 6: A enforced and B ready is a pair to enforce, and not a finished on
   assert.notEqual(step.status, 'done')
 })
 
-test('pair 7: both members enforced establishes policy delivery but guest workflow evidence still completes the task', () => {
+// No step asks for a workflow record (owner, 2026-09-25): the pair finishes on the scan.
+test('pair 7: both members enforced, with the goal delivered, completes the task', () => {
   const [a, b] = pairOps()
   const rows = (x: PolicyOperation, y: PolicyOperation): PairRow[] => [deployed(x, A_ID, 'enabled'), deployed(y, B_PAIR_ID, 'enabled')]
   const done = pairScan(rows, {}, { inPlace: true })
   assert.equal(memberOf(done, a.memberKey)?.lifecycle, 'enforced')
   assert.equal(memberOf(done, b.memberKey)?.lifecycle, 'enforced')
   assert.equal(done.state.lifecycle, 'enforced')
-  assert.equal(done.state.satisfied, false, 'configuration alone does not prove the guest workflow')
-  assert.notEqual(done.status, 'done')
-  assert.equal(done.manualReview?.confirmedAt, null)
+  assert.equal(done.state.satisfied, true, 'both halves enforced and the goal delivered do not finish it')
+  assert.equal(done.status, 'done')
+  assert.equal(done.manualReview, undefined)
   // The same coverage with only one member enforced does not finish it.
   const half = pairScan((x, y) => [deployed(x, A_ID, 'enabled'), deployed(y, B_PAIR_ID, 'disabled')], {}, { inPlace: true })
   assert.notEqual(half.state.lifecycle, 'enforced', 'a disabled half is not an enforced pair')

@@ -28,16 +28,14 @@ function relevantPolicies(step: Step, snapshot: TenantSnapshot): unknown[] {
   }).map(raw => { const p = raw as Record<string, unknown>; return [p.id, p.state, p.conditions, p.grantControls, p.sessionControls] }).sort((a, b) => String(a[0]).localeCompare(String(b[0])))
 }
 
-const POLICY_WORKFLOWS: Record<string, string> = {
-  's-goal-guests-mfa': 'Guest Sign-In and Collaboration Workflow',
-  's-goal-intune-enrollment-reauth': 'Enrollment Workflow and Client',
-  's-goal-pim-activation-reauth': 'Role Activation Tested',
-  's-goal-user-risk-medium': 'Medium-Risk Password Recovery Workflow',
-  's-goal-service-accounts-trusted-network': 'Service Job Tested',
-}
-// Nor the two User Action policies (Protect Sign-in Method Registration, Require
-// MFA to Register a Device): they are created On with no registration test
-// (owner decision 3, Phase 2e). Use Separate Accounts for Admin Work is not among them: the scan decides it,
+// No policy step records a workflow test (owner, 2026-09-25: the step template
+// bans Workflow Check, Outcome, Tested On and Save Check). Require MFA for
+// Guests, Require MFA at Every Role Activation, Reset Passwords for Medium-Risk
+// Users, Require a Fresh Sign-in for Intune Enrollment and Restrict Service
+// Accounts to the Trusted Network each finish on what the scan reads, as the
+// two User Action policies have since Phase 2e.
+const POLICY_WORKFLOWS: Record<string, string> = {}
+// Use Separate Accounts for Admin Work is not among them: the scan decides it,
 // and it records nothing (walk list item 1; generate.ts). Nor is Block Device
 // Code Sign-in: an enforced policy that matches completes it from the scan
 // (walk list 4.x item 3). Block Legacy Authentication's mail half is the sign-in
@@ -66,17 +64,6 @@ export function manualEvidenceFields(stepId: string): ManualEvidenceField[] {
   // people, so the picker would gather an answer nothing reads.
   const perAccount = !POLICY_WORKFLOWS[stepId] && stepId !== 's-ladder-authenticator-over-sms'
   if (perAccount) fields.push({ key: 'accountIds', label: stepId === 's-ladder-guest-review' ? 'Reviewed Guests' : stepId === 's-ladder-global-admin-count' ? 'Reviewed Global Administrators' : stepId === 's-ladder-legacy-auth-inventory' ? 'Reviewed Legacy Accounts' : 'Tested Accounts', type: 'accounts', required: stepId !== 's-ladder-legacy-auth-inventory' })
-  // Checked against the tenant: an authentication context the policies do not
-  // reference, or a named network that is not the one tested, is a defect IAMAI
-  // raises rather than a string it stores (`observedDefect` below).
-  if (stepId === 's-goal-pim-activation-reauth') fields.push({ key: 'contextId', label: 'Authentication Context', type: 'text', required: true }, { key: 'configurationVerified', label: 'Role Settings Use This Authentication Context', type: 'checkbox', required: true })
-  if (stepId === 's-goal-service-accounts-trusted-network') fields.push({ key: 'networkId', label: 'Named Network Tested', type: 'select', required: true })
-  if (stepId === 's-goal-user-risk' || stepId === 's-goal-user-risk-medium') fields.push({ key: 'configurationVerified', label: 'Recovery Prerequisites Verified, Including Writeback for Hybrid Accounts', type: 'checkbox', required: true })
-  // Folded in from the deleted partner follow-up (step-redundancy-analysis
-  // finding 5): where a tenant excludes service providers, the path that access
-  // takes is the evidence that step asked for. Optional, because a tenant with
-  // no partner has no path to name.
-  if (stepId === 's-goal-guests-mfa') fields.push({ key: 'providerAccessPath', label: 'Partner or Provider Access Path', type: 'text', required: false })
   fields.push(outcomeField(stepId === 's-ladder-guest-review'), { key: 'testedAt', label: ['s-ladder-guest-review', 's-ladder-global-admin-count', 's-ladder-legacy-auth-inventory'].includes(stepId) ? 'Reviewed On' : 'Tested On', type: 'date', required: true })
   return fields
 }
@@ -175,9 +162,6 @@ function evidenceRead(step: Step, snapshot: TenantSnapshot): boolean {
   if (step.id === 's-ladder-global-admin-count' && snapshot.config.pimEligibility?.status !== 'ok') return false
   if (step.id === 's-ladder-authenticator-over-sms' && (snapshot.config.authMethodsPolicy?.status !== 'ok' || scopedPeople(step, snapshot).some(id => !Array.isArray(snapshot.authMethods[id])))) return false
   if (POLICY_WORKFLOWS[step.id] && snapshot.config.caPolicies?.status !== 'ok') return false
-  if (step.id === 's-goal-guests-mfa' && snapshot.config.crossTenantAccess?.status !== 'ok') return false
-  if (step.id === 's-goal-service-accounts-trusted-network' && snapshot.config.namedLocations?.status !== 'ok') return false
-  if (step.id === 's-goal-device-registration-mfa' && snapshot.config.deviceRegistrationPolicy?.status !== 'ok') return false
   return true
 }
 export function completeManualEvidence(stepId: string, record: OwnerConfirmation | undefined, now = new Date().toISOString()): boolean {
@@ -294,14 +278,6 @@ export function applyManualReviews(steps: Step[], snapshot: TenantSnapshot, conf
         step.configurationFindings = [{ key: 'global-admin-scope', label: 'Global Administrator Assignments', value: `${active} active · ${ids.length - active} eligible only`, detail: 'Review the purpose of each assignment and preserve dedicated emergency access. The recommended account count is guidance, not proof that these assignments are appropriate.', outcome: evidenceRead(step, snapshot) ? 'pass' : 'unknown' }]
       }
     }
-    // Require MFA for Guests delivered, in a directory read in full with no guest
-    // account: there is no guest path to test, so it completes on the policy, as
-    // the guest review above does (owner, 2026-09-24: 5.3 read "Waiting on you"
-    // over an enforced policy and no guests).
-    if (step.id === 's-goal-guests-mfa' && step.state.satisfied && snapshot.sources.users?.status === 'ok' && !snapshot.users.some(u => u.userType === 'guest')) {
-      delete step.manualReview
-      continue
-    }
     const basis = manualBasis(step, snapshot, mapping, accountCache)
     // A record saved under the ladder's own id before its rung was merged into
     // this step still counts (finding 9): the two were one step's evidence.
@@ -318,12 +294,6 @@ export function applyManualReviews(steps: Step[], snapshot: TenantSnapshot, conf
       const pendingAccountIds = POLICY_WORKFLOWS[step.id] || step.id === 's-ladder-authenticator-over-sms' ? [] : people.filter(id => !confirmation?.accountIds?.includes(id))
       const matching = confirmation?.basis === (confirmation ? scopeManualBasis(basis, confirmation) : basis)
       let observedDefect = !readyToConfirm
-      if (step.id === 's-goal-service-accounts-trusted-network' && confirmation?.networkId) {
-        const network = (snapshot.config.namedLocations?.rows ?? []).find(raw => (raw as Record<string, unknown>).id === confirmation.networkId) as Record<string, unknown> | undefined
-        const locations = relevantPolicies(step, snapshot).flatMap(raw => { const locations = ((raw as unknown[])[2] as Record<string, any>)?.locations; return [...(locations?.includeLocations ?? []), ...(locations?.excludeLocations ?? [])] })
-        observedDefect ||= !network || !Array.isArray(network.ipRanges) || !(locations.includes(confirmation.networkId) || locations.includes('AllTrusted') && network.isTrusted === true)
-      }
-      if (step.id === 's-goal-pim-activation-reauth' && confirmation?.contextId) observedDefect ||= !relevantPolicies(step, snapshot).some(raw => (((raw as unknown[])[2] as Record<string, any>)?.applications?.includeAuthenticationContextClassReferences ?? []).includes(confirmation.contextId))
       if (step.id === 's-ladder-guest-review' && confirmation?.outcome === 'revoked') observedDefect ||= snapshot.users.some(u => confirmation.accountIds?.includes(u.id) && u.accountEnabled)
       const verification = !read ? 'unread' : confirmation && !confirmation.outcome ? 'historical' : !complete ? 'incomplete' : !matching || observedDefect ? 'changed' : 'current'
       const accepted = verification === 'current' && pendingAccountIds.length === 0

@@ -28,8 +28,12 @@ function apply(step: Step, f: ReturnType<typeof fixture>, record: OwnerConfirmat
   applyManualReviews([step], f.snapshot, { [step.id]: { [MANUAL_REVIEW_ID]: record } }, f.mapping)
 }
 
+// The policy steps record no workflow test (owner, 2026-09-25); the scoped
+// record is the legacy-authentication review's.
+const REVIEW = 's-ladder-legacy-auth-inventory'
+
 test('scoped records survive decoding and generic history never becomes successful test evidence', () => {
-  const { f, step } = setup('s-goal-guests-mfa')
+  const { f, step } = setup(REVIEW)
   const record = recordFor(step, f)
   assert.deepEqual(ownerConfirmationOf(record), record)
   apply(step, f, { at, basis: record.basis })
@@ -59,29 +63,17 @@ test('new guests are a pending delta on a guest review', () => {
 
 test('failed collection or a historical snapshot without optional sections keeps the dated record and completes nothing', () => {
   // failed collection preserves the dated record without manufacturing a new configuration change
-  {
-    const { f, step } = setup('s-goal-guests-mfa')
-    const record = recordFor(step, f)
-    f.snapshot.config.caPolicies = { status: 'error', rows: [], reason: 'Unavailable' }
-    apply(step, f, record)
-    assert.equal(step.manualReview?.verification, 'unread')
-    assert.deepEqual(step.manualReview?.record, record)
-    assert.equal(step.state.satisfied, false)
-  }
-
-  // historical snapshots without optional configuration sections remain reviewable with unknown evidence
-  {
-    const { f, step } = setup('s-goal-guests-mfa')
-    delete (f.snapshot.config as Partial<typeof f.snapshot.config>).authStrengths
-    delete (f.snapshot.config as Partial<typeof f.snapshot.config>).crossTenantAccess
-    applyManualReviews([step], f.snapshot, {}, f.mapping)
-    assert.equal(step.manualReview?.verification, 'unread')
-    assert.equal(step.state.satisfied, false)
-  }
+  const { f, step } = setup(REVIEW)
+  const record = recordFor(step, f)
+  f.snapshot.sources.signInEvidence = { status: 'error', rows: [], reason: 'Unavailable' } as never
+  apply(step, f, record)
+  assert.equal(step.manualReview?.verification, 'unread')
+  assert.deepEqual(step.manualReview?.record, record)
+  assert.equal(step.state.satisfied, false)
 })
 
 test('failed workflow or observed administrator separation defect cannot be overridden by a manual record', () => {
-  const { f, step } = setup('s-goal-guests-mfa')
+  const { f, step } = setup(REVIEW)
   apply(step, f, recordFor(step, f, { outcome: 'failed' }))
   assert.equal(step.state.satisfied, false)
   step.id = 's-ladder-admin-accounts-separate'
@@ -128,18 +120,6 @@ test('recovery evidence reopens for replaced methods while harmless account name
   assert.notEqual(recoveryAccountBasis(f.snapshot, [id])[id], original)
 })
 
-test('PIM manual proof identifies the actual policy context, tested role and linked configuration', () => {
-  const { f, step } = setup('s-goal-pim-activation-reauth')
-  step.satisfiedBy = { policies: ['pim'], sufficient: 'pim' }
-  f.snapshot.config.caPolicies.rows = [{ id: 'pim', state: 'enabled', conditions: { applications: { includeAuthenticationContextClassReferences: ['c1'] } } }]
-  const record = recordFor(step, f, { roleIds: ['role'], contextId: 'c2', configurationVerified: true })
-  apply(step, f, record)
-  assert.equal(step.state.satisfied, false)
-  setState(step, { satisfied: true, inPlace: true })
-  apply(step, f, { ...record, contextId: 'c1' })
-  assert.equal(step.state.satisfied, true)
-})
-
 test('consolidation retains completion through intended retirement and rename, but not replacement drift or loss', async () => {
   const { consolidationVerified, replacementPolicyBasis } = await import('./cleanupDone.ts')
   const policy = { id: 'replacement', displayName: 'New policy', state: 'enabled', conditions: { users: { includeUsers: ['All'] } }, grantControls: { builtInControls: ['mfa'] } }
@@ -152,15 +132,14 @@ test('consolidation retains completion through intended retirement and rename, b
   assert.equal(consolidationVerified(record, null), false)
 })
 
-test('policy tracking preserves observed enforcement without completing an untested workflow', () => {
+test('an enforced policy finishes on what the scan reads, with no workflow record', () => {
+  // Require MFA for Guests read Ready · Review over its enforced policies, waiting
+  // on a test the person recorded; no step records one now (owner, 2026-09-25).
   const result = runFixture(curatedFixture('demo-week2'))
-  for (const id of ['s-goal-guests-mfa']) {
-    const step = result.steps.find(s => s.id === id)!
-    assert.equal(step.state.lifecycle, 'enforced', `${id}: deployment remains observable`)
-    assert.equal(step.manualReview?.confirmedAt, null)
-    assert.equal(step.state.satisfied, false, `${id}: tracking cannot replace a workflow test`)
-    assert.notEqual(step.status, 'done')
-  }
+  const guests = result.steps.find(s => s.id === 's-goal-guests-mfa')!
+  assert.equal(guests.state.lifecycle, 'enforced', 'the premise: deployment remains observable')
+  assert.equal(guests.manualReview, undefined, 'Require MFA for Guests still asks for a workflow record')
+  assert.equal(guests.status === 'done', guests.state.satisfied, 'done exactly when the scan finds its policies in place')
   // Block Device Code Sign-in has no workflow test (walk list 4.x item 3): the
   // matching enforced policy completes it from the scan.
   const deviceCode = result.steps.find(s => s.id === 's-goal-block-device-code')!
@@ -170,29 +149,18 @@ test('policy tracking preserves observed enforcement without completing an untes
 })
 
 
-test('a workflow step asks for the outcome and what IAMAI can check, and for no list of people', () => {
-  // PIM's completion is counted per workflow, not per person
-  // (`pendingAccountIds` is empty for every POLICY_WORKFLOWS step), so the
-  // account picker gathered an answer nothing read. It is gone (owner,
-  // 2026-09-20). What is left is checked against the tenant: an authentication
-  // context the policies do not reference is a defect IAMAI raises.
-  const { f, step } = setup('s-goal-pim-activation-reauth')
-  step.population.ids = f.snapshot.users.map(user => user.id)
-  applyManualReviews([step], f.snapshot, {}, f.mapping)
-  const keys = step.manualReview!.fields!.map(field => field.key)
-  assert.deepEqual(keys, ['contextId', 'configurationVerified', 'outcome', 'testedAt'])
-  assert.equal(keys.includes('accountIds'), false, 'a list of people nothing reads')
-  assert.deepEqual(step.manualReview!.pendingAccountIds, [])
+test('no policy step asks for a workflow record, and none asks for free text nothing reads', () => {
+  // The step template bans Workflow Check, Outcome, Tested On and Save Check
+  // (owner, 2026-09-25): the five policy steps that recorded a test ask for nothing.
+  for (const id of ['s-goal-guests-mfa', 's-goal-pim-activation-reauth', 's-goal-user-risk-medium', 's-goal-intune-enrollment-reauth', 's-goal-service-accounts-trusted-network']) {
+    assert.deepEqual(manualEvidenceFields(id), [], `${id} still asks for a workflow record`)
+  }
   // The generic free text nothing reads is gone everywhere: `reference` was a
   // change-record box the product only printed back.
   for (const id of ['s-goal-pim-activation-reauth', 's-goal-block-legacy-auth', 's-check-separate-admin-accounts', 's-goal-guests-mfa']) {
     assert.equal(manualEvidenceFields(id).some(field => field.key === 'reference'), false, `${id} still asks for a change record`)
   }
-  // One text field stays, because the owner put it there: the evidence a deleted
-  // step used to ask for, folded onto the step that inherited its work
-  // (step-redundancy-analysis finding 5). Block Legacy Authentication's mail route
-  // is the sign-in records' now (walk list 4.x item 4), and asks for nothing.
-  assert.equal(manualEvidenceFields('s-goal-guests-mfa').some(field => field.key === 'providerAccessPath'), true)
+  // Block Legacy Authentication's mail route is the sign-in records' (walk list 4.x item 4), and asks for nothing.
   assert.deepEqual(manualEvidenceFields('s-goal-block-legacy-auth'), [], 'Block Legacy Authentication still asks for a record')
 })
 
