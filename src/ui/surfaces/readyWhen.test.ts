@@ -296,17 +296,13 @@ test('a policy the tenant enforces never finishes on a report-only period it is 
           const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
           const lines = stepContract(step, ctx).doneWhen
           for (const line of lines) assert.doesNotMatch(line, GATE, `${name}/${step.id} (enforced) still finishes on a report-only window: ${line}`)
-          if (!awaitsWorkflowRecord(step)) continue
-          awaiting++
-          assert.ok(lines.length > 0, `${name}/${step.id} finishes on nothing`)
-          // What is left stays: the scan that confirms the policy, and the person's own workflow line.
-          if (step.id !== 's-goal-guests-mfa') continue
-          assert.ok(lines.includes(shared.policyDoneWhen[2]), `${name}/${step.id} lost the scan that confirms the policy`)
-          assert.ok(lines.some((l) => /Representative guests/.test(l)), `${name}/${step.id} lost its own workflow line: ${lines.join(' | ')}`)
+          // No step waits on a workflow record (owner, 2026-09-25: the template bans Workflow Check).
+          if (awaitsWorkflowRecord(step)) awaiting++
         }
       }
     }
-    assert.ok(enforced > 0 && awaiting > 0, `the premise: enforced steps (${enforced}) and steps waiting on a workflow record (${awaiting})`)
+    assert.ok(enforced > 0, `the premise: enforced steps (${enforced})`)
+    assert.equal(awaiting, 0, 'an enforced step still waits on a workflow record')
 
     // A policy still in report-only keeps both gates: this is about the enforced one only.
     //
@@ -333,16 +329,11 @@ test('a policy the tenant enforces never finishes on a report-only period it is 
     const ctxOf = (f: Fixture): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups })
     const hostile = withFoundationSettled(plainFixture('hostile'))
     const run = runFixture(hostile)
-    // Block Device Code Sign-in has no workflow record left to wait on (walk list 4.x item 3):
-    // the scan completes it, on what IAMAI sees (item 26). The guests policy keeps these lines.
-    for (const id of ['s-goal-guests-mfa']) {
-      const step = run.steps.find((s) => s.id === id)
-      assert.ok(step && step.state.lifecycle === 'enforced' && awaitsWorkflowRecord(step), `the premise: ${id} is enforced and waits on the person`)
-      const lines = stepContract(step, ctxOf(hostile)).doneWhen
-      assert.equal(lines[0], POLICY_UNOBSERVED, `${id}: ${lines.join(' | ')}`)
-      assert.ok(lines.includes(shared.policyDoneWhen[2]), `${id} lost the scan that confirms the policy`)
-      for (const line of lines) assert.doesNotMatch(line, /required report-only period|during those days/, `${id}: ${line}`)
-    }
+    // No step waits on a workflow record (owner, 2026-09-25): the guests policy the
+    // first scan found enforced finishes on the scan, and on no report-only window.
+    const step = run.steps.find((s) => s.id === 's-goal-guests-mfa')
+    assert.ok(step && step.state.lifecycle === 'enforced' && !awaitsWorkflowRecord(step), 'the premise: the guests policy is enforced and waits on nobody')
+    for (const line of stepContract(step, ctxOf(hostile)).doneWhen) assert.doesNotMatch(line, /required report-only period|during those days/, line)
 
     // Watched in report-only, then turned on: it had its window, and nothing says it missed one.
     const f = withFoundationSettled(plainFixture('demo'))

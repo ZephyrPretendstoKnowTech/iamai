@@ -404,27 +404,6 @@ test('a delivered step says whether the signed-in account is in scope from the d
 // member: in scope, with that account's sign-ins, and on small a stranding
 // verdict (operatorSafe false) that turned its tone from wait to stop. Nothing
 // the step creates reaches that account, and none of it was said before.
-test('a step reopened after the scan found it delivered does not answer for the signed-in account from the policies that delivered it', () => {
-  // small has no guest, so its guests step now completes with the policy On (owner, 2026-09-24): messy stands in.
-  for (const name of ['messy', 'mid'] as const) {
-    const f = fixture(name)
-    const r = runFixture(f)
-    const guests = r.steps.find((s) => s.id === 's-goal-guests-mfa')
-    assert.ok(guests, `${name}: the premise: the guests step is planned`)
-    assert.notEqual(guests.deliveredReach, undefined, `${name}: the premise: the scan found it delivered`)
-    assert.equal(guests.state.satisfied, false, `${name}: the premise: reopened`)
-    assert.equal(guests.population.ids.includes(f.operatorId!), false, `${name}: the premise: the signed-in account is not one of its guests`)
-    assert.equal(guests.includesOperator, false, `${name}: the delivering policies answered for a step they no longer deliver`)
-    assert.equal(guests.deliveredReachesOperator, undefined, `${name}: no second answer where the delivered reach was settled`)
-    const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
-    const vars = stepVars(guests, ctx)
-    assert.equal(vars.operatorSignIns, undefined, `${name}: "Your account is in scope" on the guests step`)
-    assert.equal(vars.operatorNoRecords, undefined, `${name}: the no-records line on the guests step`)
-    assert.equal(guests.operatorSafe, null, `${name}: a stranding verdict from policies the step does not create`)
-    if (name === 'messy') assert.equal(statusOf(guests).tone, 'wait', 'messy: the tone a stranding verdict gives')
-  }
-})
-
 // One number format (copy/statements.ts figure). The thousands separator was
 // added at two call sites instead of where numbers are printed: on huge the
 // dormant step's row read "3671 accounts" beside a tile of "3,671 accounts · 46

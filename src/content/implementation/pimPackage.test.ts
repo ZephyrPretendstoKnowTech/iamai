@@ -25,6 +25,7 @@ import { laneReadings } from '../../ui/surfaces/planLanes.ts'
 import { stepBodyOf } from '../../ui/surfaces/stepBody.ts'
 import type { StepBody } from '../../ui/surfaces/stepBody.ts'
 import { packageBindings, plannedOperationsOf } from '../../ui/surfaces/stepPackage.ts'
+import { awaitsPimSettings } from '../../roadmap/operations.ts'
 import { planDates } from '../../ui/surfaces/stepVars.ts'
 import type { StepVarContext } from '../../ui/surfaces/stepVars.ts'
 
@@ -113,21 +114,22 @@ test('the create names the authentication context the plan targets, and prepares
   // this tenant: a c1 that exists for something else (sensitivity labels, Defender
   // for Cloud Apps, a context left unpublished) was renamed and published, and once
   // enforced this All-users policy gates whatever requests it. The preparation only
-  // creates: a context under any other name or description stops the step, in the
-  // procedure and in the script, whose Create refuses a context it did not prepare.
+  // creates, in one plain line (owner, 2026-09-25): a context another of the
+  // tenant's policies already targets holds the step (roadmap/authContext.ts), and
+  // the script's Create still refuses a context it did not prepare.
   {
     const { body } = pimOn(pinnedMid())
     const portal = channelText(body, 'portal')
-    const prepare = portal.indexOf('Conditional Access → Authentication context. If no context has ID `c1`, create it with that ID, the name `Privileged role activation` and the description `Fresh strong authentication for privileged role activation.`, and publish it.')
+    const prepare = portal.indexOf('Conditional Access → Authentication context. Create the context with ID `c1`, the name `Privileged role activation` and the description `Fresh strong authentication for privileged role activation.`, and publish it.')
     const create = portal.indexOf('Conditional Access → Policies → New policy')
     assert.ok(prepare >= 0, portal)
     assert.ok(create > prepare, 'the context is prepared after the policy that must select it')
-    assert.match(portal, /If it exists under any other name or description, stop here: something in your tenant may already request that context, and this step does not rename, republish or reuse a context it did not create\./)
+    assert.doesNotMatch(portal, /stop here|If no context has ID/)
     assert.doesNotMatch(portal, /Create or update|IAMAI-resolved context/)
     // The Implementation Task reads the same procedure, context first.
     const task = body.emergencyAccountTasks?.tasks[0]
     assert.ok(task, 'the step draws no Implementation Task')
-    assert.match(task.steps[0], /Authentication context\. If no context has ID `c1`, create it/)
+    assert.match(task.steps[0], /Authentication context\. Create the context with ID `c1`/)
     // The script runs the same two modes in the same order, and reads before it writes.
     const ps = channelText(body, 'ps')
     const runs = [...ps.matchAll(/^Invoke-IAMAIStep -Mode '(\w+)'/gm)].map((m) => m[1])
@@ -252,43 +254,70 @@ const enforcedOn = (id: string = PIM_STEP, edit: (policy: Record<string, unknown
 }
 const pimEnforced = (): Fixture => enforcedOn()
 
-// R4-18, the last link. Once the policy read enforced, the step said "Your
-// review · Waiting on you · The policy is enforced and IAMAI is finished with
-// it", offered a read-only inspection, and no channel ever said to configure the
-// PIM role settings — only to "inspect each selected role's activation
-// settings". Without that setting role activation never asks for the context,
-// so the enforced policy requires nothing, and a reader would take it as
-// protection activation did not have. The package authors the work
-// (`pimSettingsPending`), which the runtime never entered. IAMAI does not read
-// PIM role settings, so it stays the step's work until the workflow record.
+const GLOBAL_ADMIN = '62e90394-69f5-4237-9190-012177145e10'
+/**
+ * The tenant with one enabled person eligible in PIM for Global Administrator,
+ * and — where `context` is given — the scan's reading of that role's activation
+ * rule (graph/collect/collectors.ts collectPimRoleSettings): the context it
+ * requires, or null for none. Left undefined, the setting was not read.
+ */
+const withEligible = (f: Fixture, context?: string | null): Fixture => {
+  const id = f.snapshot.users.find((u) => u.accountEnabled)!.id
+  f.snapshot.roles = { ...f.snapshot.roles, eligible: { ...f.snapshot.roles.eligible, [id]: [...(f.snapshot.roles.eligible[id] ?? []), GLOBAL_ADMIN] } }
+  if (context !== undefined) f.snapshot.pimRoleSettings = [{ roleDefinitionId: GLOBAL_ADMIN, policyId: 'Directory_ga-policy', contextRequired: context }]
+  return f
+}
+
+// R4-18, the last link. Once the policy read enforced, the step said "The policy
+// is enforced and IAMAI is finished with it", and no channel ever said to
+// configure the PIM role settings. Without that setting role activation never
+// asks for the context, so the enforced policy requires nothing. The step then
+// waited on a workflow record the person made; no step asks for one now (owner,
+// 2026-09-25). The scan reads each eligible role's activation rule instead, so
+// the step names the roles still to set and finishes once each requires the
+// context, on the scan alone.
 //
 // The enforced step has no operation to read the context from — plannedOperationsOf
-// is empty there — so the PIM line read the raw stand-in: the context the policy
-// targets is read off the tenant policy matched to the step.
-test('an enforced activation policy asks for the PIM role settings that make it apply, and does not say IAMAI is finished', () => {
-  const { step, body, ctx } = pimOn(pimEnforced())
-  assert.equal(step.state.lifecycle, 'enforced', 'the premise: the policy reads enforced')
-  assert.equal(step.manualReview?.readyToConfirm, true, 'the premise: only the workflow record is left')
-  assert.equal(plannedOperationsOf(step).length, 0, 'the premise: no operation names the context here')
-  const review = body.allTiles.find((t) => t.key === 'review')
-  assert.ok(review, body.allTiles.map((t) => t.label).join(', '))
-  assert.doesNotMatch(review.note ?? '', /IAMAI is finished/)
-  assert.match(review.note ?? '', /only once each role's PIM settings require it, and IAMAI does not read PIM role settings/)
-  assert.equal(packageBindings(step, ctx, body.contract)['authContext.target.id'], 'c1')
-  const portal = channelText(body, 'portal')
-  assert.match(portal, /Privileged Identity Management → Microsoft Entra roles → Roles\. For each selected role, open \*\*Role settings\*\* → \*\*Edit\*\* and enable \*\*On activation, require Microsoft Entra Conditional Access authentication context\*\*, selecting the authentication context with ID `c1` — the context this policy targets — then \*\*Update\*\*/)
-  // The plan built this policy on its own context, so the name its create
-  // proposed is said as that, in the same numbered line (a note is not a step).
-  assert.match(portal, /then \*\*Update\*\*\..* This plan proposed the name `Privileged role activation` for that context\.$/m)
-  // IAMAI selects no roles, so the procedure does not say it did.
-  assert.doesNotMatch(portal, /IAMAI-selected/)
-  // It is the policy step's own task after the turn-on, the one still to do, and the card names it.
-  const tasks = body.emergencyAccountTasks?.tasks ?? []
-  const task = tasks.find((t) => t.id === 'pim-settings')
-  assert.ok(task && /On activation, require Microsoft Entra Conditional Access authentication context/.test(task.steps[0]), JSON.stringify(tasks.map((t) => t.id)))
-  assert.equal(task.required, true)
-  assert.equal(tasks.find((t) => t.required)?.id, 'pim-settings', 'the create or the turn-on is still to do on an enforced policy')
-  assert.ok(tasks.findIndex((t) => t.id === 'pim-settings') > tasks.findIndex((t) => t.id === 'turn-on'), 'the PIM settings come before the policy is On')
+// is empty there — so the context is read off the tenant policy matched to the step.
+test('an enforced activation policy names each eligible role whose PIM activation does not yet require its context, and finishes once each does', () => {
+  {
+    const { step, body, ctx } = pimOn(withEligible(pimEnforced(), null))
+    assert.equal(step.state.lifecycle, 'enforced', 'the premise: the policy reads enforced')
+    assert.equal(plannedOperationsOf(step).length, 0, 'the premise: no operation names the context here')
+    assert.ok(step.pimRolesToSet?.includes(GLOBAL_ADMIN), 'Global Administrator does not require the context yet')
+    assert.equal(awaitsPimSettings(step), true)
+    assert.notEqual(step.status, 'done', 'the policy being on does not finish it')
+    assert.equal(step.manualReview, undefined, 'no workflow record is asked for')
+    const card = body.allTiles.find((t) => t.key === 'review')
+    assert.ok(card, body.allTiles.map((t) => t.label).join(', '))
+    assert.match(card.note ?? '', /^Activating .*Global Administrator.* doesn't ask for this policy's authentication context yet. Set it in each role's PIM settings.$/)
+    assert.doesNotMatch(card.note ?? '', /IAMAI is finished|does not read|test the workflows|Waiting on you/)
+    const bindings = packageBindings(step, ctx, body.contract)
+    assert.equal(bindings['authContext.target.id'], 'c1')
+    assert.deepEqual(bindings['pim.roleManagementPolicyIds'], ['Directory_ga-policy'])
+    const portal = channelText(body, 'portal')
+    assert.match(portal, /Privileged Identity Management → Microsoft Entra roles → Roles. For [^:]*Global Administrator[^:]*: open the role, select \*\*Role settings\*\* → \*\*Edit\*\*, enable \*\*On activation, require Microsoft Entra Conditional Access authentication context\*\*, select the authentication context with ID `c1`, then select \*\*Update\*\*/)
+    // The procedure alone: no qualifier, no lecture, no proposed-name note.
+    assert.doesNotMatch(portal, /This plan proposed the name|Change no unrelated|does not control how the role is used|IAMAI-selected|For each selected role/)
+    // It is the policy step's own task after the turn-on, the one still to do.
+    const tasks = body.emergencyAccountTasks?.tasks ?? []
+    const task = tasks.find((t) => t.id === 'pim-settings')
+    assert.ok(task && /On activation, require Microsoft Entra Conditional Access authentication context/.test(task.steps[0]), JSON.stringify(tasks.map((t) => t.id)))
+    assert.equal(task.required, true)
+    assert.equal(tasks.find((t) => t.required)?.id, 'pim-settings', 'the create or the turn-on is still to do on an enforced policy')
+    assert.ok(tasks.findIndex((t) => t.id === 'pim-settings') > tasks.findIndex((t) => t.id === 'turn-on'), 'the PIM settings come after the policy is On')
+  }
+  {
+    // Every eligible role requires the context: the scan finishes the step, and
+    // the procedure still names the roles (Implementation Tasks stand whole).
+    const { step, body } = pimOn(withEligible(pimEnforced(), 'c1'))
+    assert.equal(step.pimRolesToSet, undefined)
+    assert.equal(awaitsPimSettings(step), false)
+    assert.equal(step.status, 'done')
+    const task = (body.emergencyAccountTasks?.tasks ?? []).find((t) => t.id === 'pim-settings')
+    assert.ok(task && /Global Administrator/.test(task.steps[0]), 'the finished step lost its PIM procedure')
+    assert.equal(task.required, false)
+  }
 })
 
 /**
@@ -324,18 +353,18 @@ test('a tenant’s own activation policy, enforced or in report-only, names its 
   // the ID its policy targets, and the premise of this test's last assertion changes
   // with it: no stand-in, and the proposed-name line drops.
   {
-    const { step, body, ctx } = pimOn(enforcedOn(PIM_STEP, (p) => {
+    const { step, body, ctx } = pimOn(withEligible(enforcedOn(PIM_STEP, (p) => {
       delete p.description
       p.displayName = 'PIM step-up'
       ;(p.conditions as { applications: { includeAuthenticationContextClassReferences: string[] } }).applications.includeAuthenticationContextClassReferences = ['c7']
-    }))
+    }), null))
     assert.equal(step.state.lifecycle, 'enforced', 'the premise: the policy reads enforced')
     assert.equal(step.tracking?.matchedBy, 'fingerprint', 'the premise: the scan tied it by its settings, not by the plan’s tag')
     const bindings = packageBindings(step, ctx, body.contract)
     assert.equal(bindings['authContext.target.id'], 'c7')
     assert.equal(bindings['authContext.target.displayName'], undefined)
     const portal = channelText(body, 'portal')
-    assert.match(portal, /selecting the authentication context with ID `c7` — the context this policy targets — then \*\*Update\*\*/)
+    assert.match(portal, /select the authentication context with ID `c7`, then select \*\*Update\*\*/)
     assert.doesNotMatch(portal, /Privileged role activation|‹[^›]+›|This plan proposed the name/)
   }
   // a tenant’s own policy in report-only names its context by ID and never by the name IAMAI proposes for its own

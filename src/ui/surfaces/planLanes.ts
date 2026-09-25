@@ -44,7 +44,7 @@ import type { LaneRow } from '../../actionability/sorting.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { FOUNDATION_WAIT, isHeld } from '../../roadmap/holds.ts'
 import { driftOutcomeOf } from '../../roadmap/tracking.ts'
-import { awaitsMailMove, submitsEnforcementOnly, switchedOffPolicies, unavailableReason, implementationOffered, operationsOf, enforcesOnRun, createWaitsOnReadiness } from '../../roadmap/operations.ts'
+import { awaitsMailMove, awaitsPimSettings, submitsEnforcementOnly, switchedOffPolicies, unavailableReason, implementationOffered, operationsOf, enforcesOnRun, createWaitsOnReadiness } from '../../roadmap/operations.ts'
 import { GATING_SUBJECTS, blockerStepId } from '../../roadmap/blockerSteps.ts'
 import { observationWindowDays, readyBasis, readyWhen } from '../../derive/readyWhen.ts'
 import { planStateOf } from './planState.ts'
@@ -495,6 +495,9 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
     // Block Legacy Authentication's policy is on and a named mail account is still
     // to move (walk list 4.x item 4): moving it is the work, and it is ready now.
     if (reading && awaitsMailMove(step)) Object.assign(reading, { lane: 'Ready', substatus: null, reason: null, blockers: [], gates: [] })
+    // Require MFA at Every Role Activation's policy is on and a role's PIM setting is
+    // still to set (roadmap/pimSettings.ts): setting it is the work, and it is ready now.
+    if (reading && awaitsPimSettings(step)) Object.assign(reading, { lane: 'Ready', substatus: null, reason: null, blockers: [], gates: [] })
     const workflowCheckIsNext = step.manualReview && (!POLICY.includes(step.kind) || workflowReviewIsCurrent(step))
     if (reading?.lane === 'Ready' && workflowCheckIsNext) reading.substatus = 'Review'
     // Ready's word is the work that is ready (walk list item 18, owner

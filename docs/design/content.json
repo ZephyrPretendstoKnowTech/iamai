@@ -2131,7 +2131,7 @@
             "shortfall": "Who it misses",
             "guestDirectory": "Guest Directory",
             "directory-inventory": "Guest Directory",
-            "awaitingReview": "Your review",
+            "pimRoles": "PIM Role Settings",
             "tagged-disabled": "Left switched off"
           },
           "condition": {
@@ -2473,12 +2473,9 @@
               "exclusionsReachValue": "{n} of {total} policies exclude the group",
               "exclusionsReachNote": "The count shows policies this scan verified. Selecting the group does not change a policy; each policy step adds it where it is missing.",
               "notMeasured": "Not measured",
-              "$commentAwaitingReview": "A policy that is enforced and waiting on the person to record their workflow test rendered Ready / Enforced, milestone Review now, and ZERO readiness tiles and ZERO findings - three readers reported the same empty step, two of them on the same step id. Its Done-when listed five lines: three that IAMAI checks itself and two that are the person, with nothing saying which of them remained. The step knows: awaitsWorkflowRecord is true and manualReview.confirmedAt is not set.",
-              "awaitingReview": "Waiting on you",
-              "$commentAwaitingReviewNote": "The note said \"The policy is enforced and IAMAI is finished with it\" on a device-code block and a guest-MFA policy the first scan found enforced, in a tenant whose sign-in records could not be read at all: IAMAI had watched no report-only period for either and read none of their sign-ins, and the finished-with-it wording read as checks done. What the scan confirmed is the configuration, so the note says that and no more. Where IAMAI does not hold enough of the sign-in records, the tile adds the engine's one sentence for it (shared.engine.evidence.unreadable, with the reason on the step); it had a second sentence of its own, which said \"could not read\" and \"has seen none\" over reads that had read some.",
-              "awaitingReviewNote": "The scan found the policy enforced, with the assessed configuration in place. What is left is yours to record: test the workflows below and confirm the outcome on this step.",
-              "$commentAwaitingPimSettings": "R4-18: the same tile on Require MFA at Every Role Activation said \"IAMAI is finished with it\" while the setting that makes the policy do anything - each role's PIM activation setting requiring the authentication context - had never been asked for, and IAMAI does not read PIM role settings. A reader took the enforced policy as protection role activation did not have. The step now shows that setup under Implementation (stepPackage.ts setupAfterEnforcementOf), and this note replaces awaitingReviewNote there.",
-              "awaitingPimSettingsNote": "The policy is enforced, but role activation asks for its authentication context only once each role's PIM settings require it, and IAMAI does not read PIM role settings. What is left is yours: set them as Implementation shows, test the workflows below and confirm the outcome on this step."
+              "$commentPimRoles": "Require MFA at Every Role Activation's card while a role someone is eligible for in PIM does not yet require the policy's authentication context on activation (roadmap/pimSettings.ts, stepContract.ts stateTile). The scan reads each eligible role's setting (owner, 2026-09-25); the card replaced \"Your review · Waiting on you\" and the workflow record it asked for.",
+              "pimRoles": "{n} {roles} to set",
+              "pimRolesNote": "Activating {roles} doesn't ask for this policy's authentication context yet. Set it in each role's PIM settings."
             },
             "bar": {
               "$comment": "The readiness bar's headline by the Ready lane's substatus (A1b): the other lanes read their own label, the blocker label or the tenant fact (stepContract.ts readinessOf).",
@@ -3476,6 +3473,7 @@
           "section": "A refused read is named on Connect after the scan."
         },
         "readRows": {
+          "PIM role settings": {"why":"Whether activating each role someone is eligible for asks for the authentication context Require MFA at Every Role Activation's policy targets.","note":"Read for each of those roles, after the roles themselves. A role whose read fails stays one to set."},
           "Per-user MFA requirements": {"why":"Each account's legacy per-user MFA state, whatever the authentication-methods migration says.","note":"Read for every account as the directory arrives. An account whose read fails stays unknown."},
           "CA policies": {"why":"The tenant's Conditional Access policies, which the plan compares with the baseline; Microsoft-managed policies are marked."},
           "Named locations": {"why":"The named locations the trusted-location and country checks read."},
@@ -5299,8 +5297,7 @@
       "dates": "{datesNew}",
       "doneEnd": "The policy is enforced in {tenant} and matches the baseline's target configuration, with the exclusions group applied and partner accounts addressed.",
       "doneWhen": [
-        "{policyDoneWhen}",
-        "Representative guests on each external-user path can complete MFA, and approved partner trust behaves as expected."
+        "{policyDoneWhen}"
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
@@ -5386,13 +5383,7 @@
           "{reportOnlyLine}"
         ]
       },
-      "aiFocus": "Include both current IDs, states, targets and guest-type sets. Distinguish B2B trust from service-provider handling. Explain that a Graph batch can partly succeed.",
-      "whatToDo": {
-        "verification": [
-          "Use representative approved guests for each external-user and partner path this tenant uses. Inspect the applied guest policy, home organization, authentication method and any inbound trust relied on.",
-          "Record the tested account, collaboration path, date and result. A saved partner preference is not evidence that trust is configured."
-        ]
-      }
+      "aiFocus": "Include both current IDs, states, targets and guest-type sets. Distinguish B2B trust from service-provider handling. Explain that a Graph batch can partly succeed."
     },
     {
       "id": "register-info-protected",
@@ -6777,8 +6768,7 @@
       "dates": "{datesNew}",
       "doneEnd": "The policy is enforced in {tenant}, not in report-only, with its authentication context assigned, and the Privileged Identity Management role settings require that context on activation.",
       "doneWhen": [
-        "{policyDoneWhen}",
-        "A controlled activation of a selected role invokes the authentication context and succeeds with the expected method."
+        "{policyDoneWhen}"
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
@@ -6840,14 +6830,7 @@
           "After the policy is On, and not before: Entra admin center → ID Governance → Privileged Identity Management → Microsoft Entra roles → Roles → each role → Role settings → Edit → On activation, require: Microsoft Entra Conditional Access authentication context → {contextName}."
         ]
       },
-      "aiFocus": "Explain the setup order, 10-minute reauthentication window and activation-only boundary. Do not claim that a context controls all use of a role after activation.",
-      "whatToDo": {
-        "verification": [
-          "In PIM, inspect each selected role’s activation settings. Confirm the authentication context matches the context targeted by this Conditional Access policy.",
-          "Perform a controlled activation with a representative eligible account. Confirm the expected policy and authentication requirement apply and activation succeeds.",
-          "Record the roles, authentication-context ID, account, date and result. Record role-to-context linkage as an administrator-confirmed check."
-        ]
-      }
+      "aiFocus": "Explain the setup order, 10-minute reauthentication window and activation-only boundary. Do not claim that a context controls all use of a role after activation."
     },
     {
       "id": "intune-enrollment-reauth",
@@ -6869,8 +6852,7 @@
       "dates": "{datesNew}",
       "doneEnd": "The policy is enforced, requiring a fresh sign-in for every Intune enrollment, with the exclusions group applied.",
       "doneWhen": [
-        "{policyDoneWhen}",
-        "The enrollment paths you use work, and user-driven enrollment asks for a fresh authentication."
+        "{policyDoneWhen}"
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -6920,13 +6902,7 @@
           "{reportOnlyLine}"
         ]
       },
-      "aiFocus": "Explain the enrollment-only resource and session-only control. MFA must come from applicable controls; the all-user policy's Intune Enrollment exception must not be overlooked.",
-      "whatToDo": {
-        "verification": [
-          "Test the actual enrollment path with a representative account and supported device. Confirm the enrollment completes and the relevant sign-in receives the intended fresh-authentication control.",
-          "Record the account, enrollment method, date and result. Identify the policy that supplies MFA on this path; this session control alone does not require MFA."
-        ]
-      }
+      "aiFocus": "Explain the enrollment-only resource and session-only control. MFA must come from applicable controls; the all-user policy's Intune Enrollment exception must not be overlooked."
     },
     {
       "id": "sign-in-risk",
@@ -7219,17 +7195,12 @@
         "before": [
           "Synchronized users who change their password here need password writeback in Entra Connect.",
           "Check that people in scope have a registered MFA method; the secure password change asks for it first."
-        ],
-        "verification": [
-          "Verify the MFA and secure password-change recovery path for the account types in scope, including password writeback where synchronized users require it.",
-          "Record a controlled recovery test with its account type, path, date and result. Keep the separate High user-risk protection in place."
         ]
       },
       "dates": "{datesNew}",
       "doneEnd": "An account {tenant} rates medium risk cannot be used again until its owner has answered the baseline's authentication strength and changed the password, and the exclusions group is applied.",
       "doneWhen": [
-        "{policyDoneWhen}",
-        "People in scope can complete MFA and the secure password change, and the High user-risk policy remains in place."
+        "{policyDoneWhen}"
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -7391,8 +7362,7 @@
       "dates": "{datesNew}",
       "doneEnd": "The user-based service accounts in the group can sign in to {tenant} only from the approved trusted network, and every job that uses one has been run from there and recorded.",
       "doneWhen": [
-        "{policyDoneWhen}",
-        "Each required job works from its expected network, including scheduled and infrequent ones."
+        "{policyDoneWhen}"
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -7444,13 +7414,7 @@
           "{reportOnlyLine}"
         ]
       },
-      "aiFocus": "Include the user-account group and actual workflow evidence. Do not infer service-principal protection or approve a network from sign-in history alone.",
-      "whatToDo": {
-        "verification": [
-          "Identify each required job, its user-based service account and public egress network. Run a controlled test from the approved location, including jobs that run infrequently.",
-          "Confirm the intended policy applies and the job succeeds. Record the account, job/network, date and outcome; an interactive sign-in is not a substitute for the actual job."
-        ]
-      }
+      "aiFocus": "Include the user-account group and actual workflow evidence. Do not infer service-principal protection or approve a network from sign-in history alone."
     },
     {
       "id": "s-ladder-security-defaults",

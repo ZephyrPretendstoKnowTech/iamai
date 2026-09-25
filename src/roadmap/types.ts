@@ -972,6 +972,13 @@ export type Step = {
    * 4.x items 4 and 5). Absent where none.
    */
   mailAccountsToMove?: string[]
+  /**
+   * Require MFA at Every Role Activation: the roles someone is eligible for in
+   * PIM whose activation does not yet require the context its policy targets,
+   * by role id (roadmap/pimSettings.ts). The step is not complete until none is
+   * left. Absent where none.
+   */
+  pimRolesToSet?: string[]
   /** Three sentences for a manager: the risk closed, the cost to people, what happens if not done (§3.3). */
   forManager: string
   /** Microsoft recommended, not in this baseline (target-state §13, floor.ts): rendered from Microsoft's template because the active baseline lacks the goal. */

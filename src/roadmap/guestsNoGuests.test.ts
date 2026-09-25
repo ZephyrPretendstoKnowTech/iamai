@@ -29,10 +29,13 @@ test('5.3 counts the people its policy reaches as people, never as guests', () =
   assert.equal(CONTRACT.readinessScope.guest, 'people in scope')
 })
 
-test('5.3 with guests still asks for its record', () => {
+// With guests, 5.3 still finishes on what the scan reads: no step records a
+// workflow test (owner, 2026-09-25; the step template bans Workflow Check).
+test('5.3 with guests asks for no workflow record, and finishes when its policies are in place', () => {
   const f = withRecoveryTested(withFoundationSettled(curatedFixture('mid')))
   assert.ok(f.snapshot.users.some((u) => u.userType === 'guest'), 'the premise: mid has guests')
   const step = runFixture(f).steps.find((s) => s.id === 's-goal-guests-mfa')!
-  assert.notEqual(step.status, 'done', 'guests to test: this rule does not complete it')
-  assert.ok(step.manualReview, 'its record is still asked for')
+  assert.equal(step.manualReview, undefined, 'no record is asked for')
+  assert.equal(awaitsWorkflowRecord(step), false)
+  assert.equal(step.status === 'done', step.state.satisfied, 'done exactly when the scan finds its policies in place')
 })

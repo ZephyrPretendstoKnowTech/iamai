@@ -24,7 +24,9 @@ import registry from '../../content/implementation/registry.generated.json' with
 import builtinStrengths from '../../../data/builtin-strengths.json' with { type: 'json' }
 import type { PolicyOperation, Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
-import { awaitsWorkflowRecord, createWaitsOnReadiness, implementationOffered, operationsOf, policyHold, policyResult, toReportOnly, unavailableReason } from '../../roadmap/operations.ts'
+import { awaitsPimSettings, awaitsWorkflowRecord, createWaitsOnReadiness, implementationOffered, operationsOf, policyHold, policyResult, toReportOnly, unavailableReason } from '../../roadmap/operations.ts'
+import { PIM_STEP_ID, eligibleRoleIds, pimPolicyIdsOf } from '../../roadmap/pimSettings.ts'
+import { roleName } from '../../roles.ts'
 import { changedFieldsOf } from '../../roadmap/changedFields.ts'
 import { findTaggedPolicies } from '../../roadmap/generate.ts'
 import { stepPopulation } from '../../derive/population.ts'
@@ -382,21 +384,19 @@ const SETUP_AFTER_ENFORCEMENT: string = 'pimSettingsPending'
 
 /**
  * The package state for the setup a step still owes after its policy is on, or
- * null: a step awaiting the person's workflow record (roadmap/operations.ts
- * awaitsWorkflowRecord) whose package authors setup that comes after
- * enforcement.
+ * null: Require MFA at Every Role Activation with a role whose PIM activation
+ * does not yet require the policy's context (roadmap/operations.ts
+ * awaitsPimSettings), whose package authors that setup.
  *
  * The runtime never entered it (content/implementation/states.ts reconciles it
  * as a hold), so once the policy read enforced the step said "The policy is
- * enforced and IAMAI is finished with it", offered a read-only inspection, and
- * no channel ever said to configure the PIM role settings — only to "inspect
- * each selected role's activation settings" (R4-18). IAMAI does not read PIM
- * role settings, so it cannot tell whether that setup is done: it stays the
- * step's work until the person records the workflow, whose own form asks
- * whether the role settings use the context (roadmap/manualWork.ts).
+ * enforced and IAMAI is finished with it", and no channel ever said to configure
+ * the PIM role settings (R4-18). The scan reads each eligible role's setting
+ * now (roadmap/pimSettings.ts), so the step names the roles and finishes once
+ * none is left (owner, 2026-09-25).
  */
 export function setupAfterEnforcementOf(step: Step): PackageState | null {
-  if (!awaitsWorkflowRecord(step)) return null
+  if (!awaitsPimSettings(step)) return null
   const projection = implementationPackageFor(step)?.meta.projection as Record<string, unknown> | undefined
   return projection?.[SETUP_AFTER_ENFORCEMENT] !== undefined ? (SETUP_AFTER_ENFORCEMENT as PackageState) : null
 }
@@ -979,7 +979,9 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   // may not exist, or another one of that name. The same policy became nameless
   // once enforced, where only that path was gated (R4-18 review).
   type Apps = { applications?: { includeAuthenticationContextClassReferences?: unknown } }
-  const tracked = op === null && awaitsWorkflowRecord(step) ? (step.tracking?.policyId?.toLowerCase() ?? null) : null
+  // Require MFA at Every Role Activation reads it in every state: its PIM procedure
+  // stands whole on a finished step too (step template rule 7).
+  const tracked = op === null && (awaitsWorkflowRecord(step) || step.id === PIM_STEP_ID) ? (step.tracking?.policyId?.toLowerCase() ?? null) : null
   const delivered = tracked === null ? undefined : ((ctx.snapshot?.config?.caPolicies?.rows ?? []) as Record<string, unknown>[]).find((row) => typeof row.id === 'string' && row.id.toLowerCase() === tracked)
   const contexts = ((op !== null ? settled('conditions.applications')?.conditions : delivered?.conditions) as Apps | undefined)?.applications?.includeAuthenticationContextClassReferences
   if (Array.isArray(contexts) && contexts.length === 1 && typeof contexts[0] === 'string') {
@@ -989,6 +991,15 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
     const policyId = op?.mode === 'update' ? op.policyId : delivered !== undefined ? tracked : null
     const built = op?.mode === 'create' || (policyId !== null && planBuilt(step, ctx.snapshot, policyId))
     if (ownContext && built) put('authContext.target.displayName', typeof authority.authenticationContextDisplayName === 'string' ? authority.authenticationContextDisplayName : undefined)
+  }
+  // The roles whose PIM activation is still to require the context, by name, and
+  // the role management policy of each the scan read (roadmap/pimSettings.ts).
+  // Where every role is set, the procedure still names them all: Implementation
+  // Tasks stand whole on a finished step (step template rule 7).
+  const pimRoles = step.id === PIM_STEP_ID ? (step.pimRolesToSet ?? eligibleRoleIds(ctx.snapshot)) : []
+  if (pimRoles.length > 0) {
+    put('pim.roles', list(pimRoles.map((id) => roleName(id) ?? id)))
+    putSome('pim.roleManagementPolicyIds', pimPolicyIdsOf(ctx.snapshot, pimRoles))
   }
   put('policy.current.id', op?.mode === 'update' ? op.policyId : step.tracking?.policyId)
   put('policy.current.displayName', step.tracking?.policyName)

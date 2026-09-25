@@ -9965,7 +9965,8 @@
           "policy.current.state",
           "evidence.pimEligible",
           "evidence.activation",
-          "dependencies.blockers"
+          "dependencies.blockers",
+          "pim.roles"
         ],
         "projection": {
           "contextMissing": {
@@ -10461,7 +10462,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Entra admin center → Entra ID → Conditional Access → Authentication context. If no context has ID `{{authContext.target.id}}`, create it with that ID, the name `{{authContext.target.displayName}}` and the description `Fresh strong authentication for privileged role activation.`, and publish it. If one with that ID already exists under exactly this name and description, publish it if it is not published. If it exists under any other name or description, stop here: something in your tenant may already request that context, and this step does not rename, republish or reuse a context it did not create. Do not choose a different context ID either: this plan's policy targets `{{authContext.target.id}}`.\n"
+          "text": "Entra admin center → Entra ID → Conditional Access → Authentication context. Create the context with ID `{{authContext.target.id}}`, the name `{{authContext.target.displayName}}` and the description `Fresh strong authentication for privileged role activation.`, and publish it.\n"
         },
         "entra.policy.create": {
           "meta": {
@@ -10617,7 +10618,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "With the matching Conditional Access policy verified **On**: Entra admin center → ID Governance → Privileged Identity Management → Microsoft Entra roles → Roles. For each selected role, open **Role settings** → **Edit** and enable **On activation, require Microsoft Entra Conditional Access authentication context**, selecting the authentication context with ID `{{authContext.target.id}}` — the context this policy targets — then **Update**. Change no unrelated approval, duration, justification, notification, or other activation settings. This requirement applies when the role is activated; it does not control how the role is used after activation.\n\nThis plan proposed the name `{{authContext.target.displayName}}` for that context. [omit this line when unavailable]\n"
+          "text": "Entra admin center → ID Governance → Privileged Identity Management → Microsoft Entra roles → Roles. For {{pim.roles}}: open the role, select **Role settings** → **Edit**, enable **On activation, require Microsoft Entra Conditional Access authentication context**, select the authentication context with ID `{{authContext.target.id}}`, then select **Update**.\n"
         },
         "entra.verify-activation": {
           "meta": {
@@ -10890,7 +10891,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nSTATE\nThe dedicated Conditional Access policy is On. This state updates only the authentication-context rule in the selected PIM role settings; other role settings stay unchanged.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Authentication context ID the policy targets: {{authContext.target.id}}\n- Name this plan proposes for that context (IAMAI does not read authentication contexts): {{authContext.target.displayName}} [omit if unavailable]\n- Authentication strength: {{authStrength.target.displayName}} [omit if unavailable]\n- Blockers: {{dependencies.blockers}} [omit if unavailable]\n\nSETUP ORDER\nAuthentication context → Conditional Access policy in Report-only → validate → policy On → only then PIM role settings → controlled activation. Microsoft says PIM's backup MFA is not triggered when the matching context policy is Report-only or disabled.\n\nLIMITS\n`Every time` still has Microsoft's documented 10-minute reauthentication window across activations, so a second activation soon afterward may not prompt again. The context applies at role activation; it does not control use of the role after activation.\n\nNEXT STEP\nExplain the PIM change and the controlled activation test that follows.\n"
+          "text": "\nSTATE\nThe dedicated Conditional Access policy is On. This state updates only the authentication-context rule in the PIM role settings of {{pim.roles}}; other role settings stay unchanged.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Authentication context ID the policy targets: {{authContext.target.id}}\n- Name this plan proposes for that context: {{authContext.target.displayName}} [omit if unavailable]\n- Roles whose activation does not yet require it: {{pim.roles}}\n- Authentication strength: {{authStrength.target.displayName}} [omit if unavailable]\n- Blockers: {{dependencies.blockers}} [omit if unavailable]\n\nSETUP ORDER\nAuthentication context → Conditional Access policy in Report-only → policy On → then PIM role settings. Microsoft says PIM's backup MFA is not triggered when the matching context policy is Report-only or disabled.\n\nLIMITS\n`Every time` still has Microsoft's documented 10-minute reauthentication window across activations, so a second activation soon afterward may not prompt again. The context applies at role activation; it does not control use of the role after activation.\n\nNEXT STEP\nExplain the PIM change for each role named above.\n"
         },
         "ai.verify": {
           "meta": {

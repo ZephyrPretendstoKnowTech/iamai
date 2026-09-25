@@ -50,8 +50,10 @@ test('midflight: policies are matched by tag and carry the policy dates, the dis
       const again = runFixture(f)
       const step = again.steps.find((s) => s.id === stepIdForGoal('guests-mfa'))!
       assert.equal(step.state.lifecycle, 'enforced')
-      assert.notEqual(step.status, 'done', 'a fingerprint match is not a guest workflow result')
-      assert.equal(step.manualReview?.confirmedAt, null)
+      // No step asks for a workflow record (owner, 2026-09-25): a policy matched by
+      // what it does finishes the step as the tagged one would.
+      assert.equal(step.manualReview, undefined)
+      assert.equal(step.status === 'done', step.state.satisfied, 'done exactly when the scan finds the goal delivered')
       assert.equal(step.tracking?.matchedBy, 'fingerprint')
       assert.match(step.tracking?.note ?? '', /already existed and covers this step/)
     } finally {

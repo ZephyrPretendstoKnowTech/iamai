@@ -27,7 +27,7 @@ import { findTaggedPolicies } from './generate.ts'
 import { inBaselineConflict } from './baselineConflict.ts'
 import { observationDaysFor } from './schedule.ts'
 import { readyBasis, readyWhen } from '../derive/readyWhen.ts'
-import { awaitsMailMove, awaitsWorkflowRecord, effectOf } from './operations.ts'
+import { awaitsMailMove, awaitsPimSettings, awaitsWorkflowRecord, effectOf } from './operations.ts'
 import { evidenceStrategyOf } from './evidenceStrategy.ts'
 import { scopeCohort } from './strand.ts'
 import { engine } from '../content/content.ts'
@@ -123,6 +123,9 @@ function advance(step: Step, to: Partial<StepState>, note: string, at: string): 
   // account still signs in with legacy authentication (roadmap/blockSignIns.ts;
   // walk list 4.x item 4): the policy being on does not move it.
   if (to.satisfied === true && (step.mailAccountsToMove?.length ?? 0) > 0) return
+  // Require MFA at Every Role Activation is not done while a role's PIM setting is
+  // still to set (roadmap/pimSettings.ts): the policy being on does not set it.
+  if (to.satisfied === true && (step.pimRolesToSet?.length ?? 0) > 0) return
   const from = step.status
   if (!advanceState(step, to)) return
   // The step HAS advanced, so its waits are spent. A `step` blocker is a
@@ -1311,7 +1314,7 @@ export type DriftOutcome = 'correctable' | 'review-required' | 'on-hold'
 export function driftOutcomeOf(step: Step): DriftOutcome | null {
   // A goal the tenant's enforced policy delivers, open only for its workflow record
   // or for Block Legacy Authentication's mail accounts to move, has not drifted.
-  if (awaitsWorkflowRecord(step) || awaitsMailMove(step)) return null
+  if (awaitsWorkflowRecord(step) || awaitsMailMove(step) || awaitsPimSettings(step)) return null
   if (step.status === 'done' || step.status === 'skipped') return null
   const members = step.tracking?.members ?? []
   if (!members.some((m) => m.policyId !== null)) return null

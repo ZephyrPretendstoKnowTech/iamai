@@ -283,11 +283,13 @@ test('a deferred floor step prints once, in the Deferred list, never in full und
   // A deferred policy the tenant already enforces is Completed on the board (a
   // terminal outcome reached comes before a deferral, actionability/lanes.ts),
   // and the print listed it twice, under Completed and again under Deferred.
-  // Mid after the recovery test with every step the Plan offers to defer
-  // deferred: Block Device Code Sign-in and Require MFA for Guests.
-  const pre = plan('mid', { stage: 'recovered' })
+  // Small after the recovery test with every step the Plan offers to defer
+  // deferred: Block Legacy Authentication, enforced and open only for a mail
+  // account still to move. (Mid's two, Block Device Code Sign-in and Require MFA
+  // for Guests, now finish from the scan: no step waits on a workflow record.)
+  const pre = plan('small', { stage: 'recovered' })
   const deferrable = pre.steps.filter((s) => s.status !== 'done' && s.status !== 'skipped' && (contentStepFor(s) as { skip?: boolean } | undefined)?.skip === true).map((s) => s.id)
-  const m = plan('mid', { stage: 'recovered', skips: deferrable })
+  const m = plan('small', { stage: 'recovered', skips: deferrable })
   const enforced = m.steps.filter((s) => s.status === 'skipped' && !s.doesntApply && m.board.laneOf(s.id).lane === 'Completed')
   assert.ok(enforced.length > 0, 'the premise: a deferred step the board reads Completed')
   const listedDeferred = new Set(deferredRows(m.steps, m.board.laneOf).map((s) => s.id))

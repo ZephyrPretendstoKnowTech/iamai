@@ -33,7 +33,7 @@ import { dimensionWords, historyReset } from './observation.ts'
 import { holdOf, waitsOnFoundation } from './holds.ts'
 import { readyWhen } from '../derive/readyWhen.ts'
 import { LEGACY_AUTH_STEP_ID } from './blockSignIns.ts'
-import { addsExclusionsToEnforced, awaitsMailMove, awaitsWorkflowRecord, implementationOffered, operationsOf, policyHold, unavailableReason } from './operations.ts'
+import { addsExclusionsToEnforced, awaitsMailMove, awaitsPimSettings, awaitsWorkflowRecord, implementationOffered, operationsOf, policyHold, unavailableReason } from './operations.ts'
 import { SECURITY_DEFAULTS_STEP_ID } from './enforceWaits.ts'
 import { list } from '../copy/statements.ts'
 import { estimatedDay, scheduleOf, shownDay } from './stepSchedule.ts'
@@ -43,6 +43,7 @@ import { DIRECTION_BLOCKER, directionBlockerStep } from './directionAnswers.ts'
 const MILESTONE = engine.milestone
 /** Block Legacy Authentication's mail task, by its title (shared.mailDevices; ui/surfaces/policyTasks.ts). */
 const MAIL_TASK_TITLE = (shared.mailDevices as { title: string }).title
+const PIM_TASK_TITLE = (shared.procedure as unknown as { tasks: { pimSettings: string } }).tasks.pimSettings
 
 /** The Conditional Access lifecycle. `null` on a step that deploys no policy: a prerequisite is not a stage of one. */
 export type Lifecycle = 'not-deployed' | 'report-only' | 'ready-to-enforce' | 'enforced'
@@ -361,6 +362,9 @@ export function nextMilestone(step: Step, opts: { undated?: boolean } = {}): Mil
   // Block Legacy Authentication's policy is on, and a named mail account is still
   // to move (walk list 4.x item 4): moving it is the next thing, in the task's words.
   if (awaitsMailMove(step)) return { kind: 'resolve', label: `${MAIL_TASK_TITLE}.`, at: null, gatedBy: null }
+  // Require MFA at Every Role Activation's policy is on, and a role's PIM setting
+  // is still to set: setting it is the next thing, in the task's words.
+  if (awaitsPimSettings(step)) return { kind: 'resolve', label: `${PIM_TASK_TITLE}.`, at: null, gatedBy: null }
   // A deployed policy that is no longer what the plan asked for is held until
   // somebody has looked at it, and that comes before the stage's own next move:
   // a window closing does not settle a change nobody has explained, and there is

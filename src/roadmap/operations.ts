@@ -1284,7 +1284,7 @@ export function submitsEnforcementOnly(op: PolicyOperation): boolean {
 }
 
 /** What any of this applies to: a step that describes a policy. */
-type PolicyStep = Pick<Step, 'goalId' | 'action'> & Partial<Pick<Step, 'kind' | 'status' | 'state' | 'manualReview' | 'tracking' | 'mailAccountsToMove'>>
+type PolicyStep = Pick<Step, 'goalId' | 'action'> & Partial<Pick<Step, 'kind' | 'status' | 'state' | 'manualReview' | 'tracking' | 'mailAccountsToMove' | 'pimRolesToSet'>>
 
 /**
  * True when a policy the tenant already enforces delivers the goal and the step
@@ -1311,6 +1311,18 @@ export function awaitsWorkflowRecord(step: PolicyStep): boolean {
 export function awaitsMailMove(step: PolicyStep): boolean {
   const s = step.state
   return (step.mailAccountsToMove?.length ?? 0) > 0 && s?.lifecycle === 'enforced' && s.condition === 'healthy' && !s.satisfied && !s.setAside && validOperations(step.action).length === 0
+}
+
+/**
+ * True when Require MFA at Every Role Activation's policy is on and delivers the
+ * goal, and the step stays open for its PIM role settings alone: a role someone
+ * is eligible for whose activation does not yet require the policy's context
+ * (Step.pimRolesToSet, roadmap/pimSettings.ts). Nothing is left for IAMAI to
+ * write; the next scan reads each role's setting.
+ */
+export function awaitsPimSettings(step: PolicyStep): boolean {
+  const s = step.state
+  return (step.pimRolesToSet?.length ?? 0) > 0 && s?.lifecycle === 'enforced' && s.condition === 'healthy' && !s.satisfied && !s.setAside && validOperations(step.action).length === 0
 }
 
 /**
@@ -1528,6 +1540,8 @@ export function policyResult(step: PolicyStep): PolicyResult {
   // Block Legacy Authentication's policy is on and the named mail accounts are
   // still to move (awaitsMailMove): the same answer, nothing to write.
   if (valid.length === 0 && step.status !== 'done' && awaitsMailMove(step)) return { kind: 'not-policy' }
+  // Its PIM role settings are still to set (awaitsPimSettings): the same answer.
+  if (valid.length === 0 && step.status !== 'done' && awaitsPimSettings(step)) return { kind: 'not-policy' }
   if (valid.length === 0) return step.status === 'done' ? { kind: 'preserved' } : { kind: 'unavailable', reason: 'no-operation' }
   if (step.status === 'done') return { kind: 'preserved' }
   // The correction is Configure Emergency Exclusions' own edit (Action.correctionAskedBy;
