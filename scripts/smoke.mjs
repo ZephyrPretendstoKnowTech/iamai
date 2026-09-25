@@ -1467,6 +1467,7 @@ try {
         instruction: said || null,
         instructionFirst: !!instruction && block.nextElementSibling === instruction && (!decision || !!(instruction.compareDocumentPosition(decision) & Node.DOCUMENT_POSITION_FOLLOWING)),
         instructionCount: said ? rail.textContent.split(said).length - 1 : 0,
+        accountsHelp: st.textContent.split('Select the accounts dedicated to emergency access').length - 1,
         footer: !!footer && !!(body.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING),
         scan: scan ? scan.textContent.trim() : null,
         close: [...st.querySelectorAll('button')].filter((x) => x.textContent.trim() === 'Close').length,
@@ -1539,7 +1540,8 @@ try {
       if (!/^next milestone$/i.test(t.label ?? '')) bad.push(`${at}: the column does not lead with Next milestone (${t.label})`)
       if (!t.headline || DAY_WORDS.test(t.headline) || (done ? t.headline !== 'Completed' : LANE_WORDS.test(t.headline))) bad.push(`${at}: headline "${t.headline}" on a row reading "${t.lane}"`)
       if (!/^[1-9][0-9.]*px solid$/.test(t.bar ?? '')) bad.push(`${at}: no divider under the milestone (${t.bar})`)
-      if (t.controls && (!t.instruction || !t.instructionFirst || t.instructionCount !== 1)) bad.push(`${at}: instruction ${JSON.stringify([t.instruction, t.instructionFirst, t.instructionCount])}`)
+      // A Completed step asks for nothing: its picker stands with no instruction over it (owner audit, 2026-09-24).
+      if (t.controls && (done ? t.instructionCount !== 0 || t.accountsHelp !== 0 : (!t.instruction || !t.instructionFirst || t.instructionCount !== 1))) bad.push(`${at}: instruction ${JSON.stringify([t.instruction, t.instructionFirst, t.instructionCount, t.accountsHelp])}`)
       if (!t.footer || t.scan !== 'Scan to update the plan' || t.close !== 0) bad.push(`${at}: footer ${JSON.stringify([t.footer, t.scan, t.close])}`)
       if (JSON.stringify(t.heads.slice(0, 4)) !== JSON.stringify(FOUR) || t.heads.slice(4).some((h) => FOUR.includes(h))) bad.push(`${at}: sections ${t.heads.join(' | ')}`)
       if (t.scanNote !== SCAN_NOTE) bad.push(`${at}: Tasks Remaining helper "${t.scanNote}"`)
@@ -1553,7 +1555,7 @@ try {
   }
   const templateBad = [...templateFaults(templateFollowUp, 'Follow-up 1440', true), ...templateFaults(templateFollowUpPhone, 'Follow-up 390', false), ...templateFaults(templateInitial, 'Initial 1440', true)]
   check(
-    'Demo: 1.1–1.4 draw one template on both scans: eyebrow, the inset column down the body with its Next milestone in words, the divider, the instruction once before the controls, the four sections in order with the Scan helper, and the footer strip with the Scan',
+    'Demo: 1.1–1.4 draw one template on both scans: eyebrow, the inset column down the body with its Next milestone in words, the divider, the instruction once before the controls until the step is Completed, the four sections in order with the Scan helper, and the footer strip with the Scan',
     templateBad.length === 0,
     templateBad.length === 0 ? [...templateInitial, ...templateFollowUp].map((t) => `${t.id}: ${t.headline}`).join(' | ') : templateBad.slice(0, 8).join(' ; '),
   )

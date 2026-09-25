@@ -64,7 +64,7 @@ import { HEAD, decisionHeadingsOf, taskHeadingsOf } from './stepHeadings.ts'
 import { ApproveAnswers, DirectionQuestions, OfficeNetworkRail, useDirectionDraft } from './DirectionQuestions.tsx'
 import type { DirectionAnswer } from '../../roadmap/directionAnswers.ts'
 import { ANSWERED_IN } from '../../roadmap/direction.ts'
-import { channelTabsOf, stepBodyOf, truthy } from './stepBody.ts'
+import { channelTabsOf, finishedChoice, stepBodyOf, truthy } from './stepBody.ts'
 import type { Artifact, Channel } from './stepBody.ts'
 import { whoBlocks } from './whoBlocks.ts'
 import type { WhoBlock } from './whoBlocks.ts'
@@ -527,7 +527,7 @@ export function ContentStep({
           {officeNetwork && !printing && step.doesntApply == null && <OfficeNetworkRail key={ctx.mapping.trustedLocationIds.join(',')} ctx={ctx} picked={ctx.mapping.trustedLocationIds} onAnswer={officeNetwork} />}
           {/* A question that moved to Define Your Rollout Scope is answered there, and this step draws nothing in its place: no Answered in block (walk list item 19; roadmap/direction.ts ANSWERED_IN). A step whose own picker saves under a key of its own still draws it: Create or Correct Service Accounts Group's group picker (decisions.ts decisionKeyOf). */}
           {/* The picker is the step's own, or — on a step that makes an object itself and asks nothing of its own — the object's, saved under the object's id (stepBody.ts taskDecision; Stage 3: the countries location's Work Countries, on the countries step). */}
-          {ANSWERED_IN[step.id] && decisionKeyOf(step.id) === step.id ? null : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && <Decision key={step.id} d={taskDecision?.d ?? d} ex={taskDecision?.ex ?? ex} saved={taskDecision ? objectTask?.saved ?? null : decision} onDecide={taskDecision ? objectTask?.onDecide : onDecide} stepId={taskDecision?.stepId ?? decisionKeyOf(step.id)} ctx={ctx} printing={printing} railInstruction={!taskDecision && rail.instruction !== null} />}
+          {ANSWERED_IN[step.id] && decisionKeyOf(step.id) === step.id ? null : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && <Decision key={step.id} d={taskDecision?.d ?? d} ex={taskDecision?.ex ?? ex} saved={taskDecision ? objectTask?.saved ?? null : decision} onDecide={taskDecision ? objectTask?.onDecide : onDecide} stepId={taskDecision?.stepId ?? decisionKeyOf(step.id)} ctx={ctx} printing={printing} railInstruction={!taskDecision && (rail.instruction !== null || finishedChoice(step.id, contract.state.satisfied))} />}
           {step.id === CAMPAIGN_STEP_ID && (followUp || printing) && <FollowUpDecision key={`${step.id}:follow-up`} step={step} ctx={ctx} saved={followUp?.saved ?? null} onDecide={followUp?.onDecide} printing={printing} />}
           {/* The one thing a scan cannot see, recorded where every other control
               on a step is (owner, 2026-09-20). It used to stand in the main
