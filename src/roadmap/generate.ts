@@ -1935,6 +1935,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // delivering policy, and a plan policy that resolves, or nothing is said.
       const delivering = result.satisfaction?.policyIds ?? []
       let ownPolicyDiffers: Action['ownPolicyDiffers'] | undefined
+      let alsoExcluded: Action['alsoExcluded'] | undefined
       if (!own && delivering.length === 1) {
         const theirs = (snapshot.config.caPolicies.rows as RawPolicy[]).find((p) => String(p.id) === delivering[0])
         const mine = stepSources.length > 0 ? stepPolicies() : templatePolicy()
@@ -1942,6 +1943,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         const body = plan && (plan.missing ?? []).length === 0 ? plan.resolution?.policies[0]?.body : undefined
         const dimensions = body && theirs ? unwrittenDifferences(body as Record<string, unknown>, null, theirs as Record<string, unknown>, COVERAGE_JUDGED) : []
         if (theirs && dimensions.length > 0) ownPolicyDiffers = { policyName: String(theirs.displayName ?? theirs.id), dimensions }
+        // The groups it leaves out that the plan's policy does not. Where the plan's
+        // policy does not resolve, the exclusions group is the one it would leave out.
+        const excludedGroups = (p: unknown): string[] => (((p as { conditions?: { users?: { excludeGroups?: unknown } } } | undefined)?.conditions?.users?.excludeGroups as unknown[] | undefined) ?? []).map(String)
+        const planned = new Set((body ? excludedGroups(body) : [exclusionsGroupId].filter((x): x is string => typeof x === 'string')).map((id) => id.toLowerCase()))
+        const extra = theirs ? excludedGroups(theirs).filter((id) => !planned.has(id.toLowerCase())) : []
+        if (theirs && extra.length > 0) alsoExcluded = { policyName: String(theirs.displayName ?? theirs.id), groupIds: extra }
       }
       action = {
         kind: 'create',
@@ -1951,6 +1958,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         ...(intended ? { intended } : {}),
         ...(planned ? { planned } : {}),
         ...(ownPolicyDiffers ? { ownPolicyDiffers } : {}),
+        ...(alsoExcluded ? { alsoExcluded } : {}),
       }
     } else if (result.status === 'unknown') {
       // Coverage could not settle the goal: a live policy that stands for it

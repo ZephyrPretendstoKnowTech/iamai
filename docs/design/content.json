@@ -2183,6 +2183,15 @@
             "label": "Differs From the Baseline",
             "note": "{policy} delivers this goal and differs from the baseline's policy in {dimensions}. That may be deliberate: IAMAI reads the goal as delivered and does not ask you to change it."
           },
+          "alsoExcluded": {
+            "$comment": "Owner audit, 2026-09-24: the tenant's policy delivering Require MFA for Admins also excluded a group the plan's policy does not. The step stays Completed and names the group and who is in it; anyone added there skips the policy.",
+            "label": "Also Excluded",
+            "note": "{policy} also leaves out {groups}, which the plan's policy does not. {who} Anyone added there skips this policy.",
+            "nobody": "Nobody is in it today.",
+            "nobodyMany": "Nobody is in them today.",
+            "members": "In it today: {names}.",
+            "membersMany": "In them today: {names}."
+          },
           "$commentFoundEnforcedUnwatched": "Owner decision 3 (2026-09-22; R4-12, Jordan D7): a finished policy this plan owns (its tag on the satisfying policy, enforced) that went live with no report-only period IAMAI watched stays Completed, and its Readiness says so on a warning tile (ui/surfaces/doneWhen.ts enforcedUnwatched: IAMAI watched every policy member go On from not deployed at the scan before, or from Off on the same object after a scan that recorded it not deployed, with no report-only state between, and the scan's sign-in records show no report-only result for it, observation.ts skippedWindow). A record must have seen the step's policy not deployed. Never on a policy a first scan found On or Off, which is also how a policy this plan built and watched through report-only reads from a second browser or after Forget: IAMAI cannot know that one skipped anything. Never on a different object replacing the one recorded, which the record only sighted and the scan before may have seen in report-only. Built straight to On, policies on the pinned baseline filed under Completed with the scan's sentence alone, and the one note saying nobody watched them sat under New evidence. This tile is that fact's one home on the step: the New evidence note that says the same (observations.appearedEnforced) is left out where it draws. It states what IAMAI could watch, never when the policy went on, which IAMAI cannot know. Never on a policy the tenant already had (In place): nothing went live under this plan there. The check after the change stays in the Done-when (shared.policyVerifyAfter), and this sentence does not repeat it.",
           "followUp": {
             "$comment": "Owner decision 9 (2026-09-22): one person on leave need not hold every policy that waits on Prepare Your Team for MFA. The people a person marks there to turn on without, for now, are named on the campaign and on each policy that reaches them, with what happens at their next sign-in.",
