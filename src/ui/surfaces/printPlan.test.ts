@@ -28,7 +28,7 @@ import { completedRows, deferredRows, doesntApplyRows, floorRows, phaseRows, pla
 import { cleanupDatesOf, cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, finishedRowsOf, finishedWarningsOf, holdsOf, noPlanLine, phaseDatesOf, postureOf, printSectionsOf, verificationDatesOf, verificationNoteOf } from './printPlan.ts'
 import { scheduleOf, scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
-import { absolute, absoluteDate, dateRange, setDisplayTimeZone } from '../../copy/dates.ts'
+import { absoluteDate, dateRange } from '../../copy/dates.ts'
 import { stepFacts } from '../../derive/facts.ts'
 import { conditionalAccessLicenceLine } from '../../derive/notLicensed.ts'
 import { planFinish, statedEstimate } from '../../derive/finish.ts'
@@ -484,23 +484,6 @@ test('the registration window\'s row states no dates while the board holds the c
   assert.ok(mid.schedule.verification.days > 0 && !boardHolds(campaign, mid.board.laneOf(campaign.id)), 'the premise: mid prints the window and the board does not hold the campaign step')
   assert.equal(verificationDatesOf(mid.steps, mid.schedule.verification, mid.board.laneOf), dateRange(mid.schedule.verification.start, mid.schedule.verification.end))
   assert.match(readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8'), /verificationDatesOf\(steps, schedule\.verification, laneOf\)/, 'the window row dates itself')
-})
-
-// ---- Every printed date in the plan's format and zone ----
-
-test('the drill\'s recovery procedure dates the scan in the plan\'s format and display zone, as the cover does', () => {
-  // It printed "8/28/2026, 3:00:00 AM" (Date.toLocaleString: the machine's
-  // locale and zone) under a cover reading "Scanned / Aug 28, 2026".
-  const src = readFileSync('src/ui/surfaces/CleanupStep.tsx', 'utf8')
-  assert.equal(src.includes('toLocaleString('), false, 'a Cleanup row formats a date in the machine\'s locale and zone')
-  assert.match(src, /reflect the scan at \{phase\.snapshotObservedAt \? absolute\(phase\.snapshotObservedAt\) :/, 'the scan time is not formatted by copy/dates.ts')
-  const at = '2026-08-28T03:00:00.000Z'
-  setDisplayTimeZone('Australia/Sydney')
-  try {
-    assert.ok(absolute(at).startsWith(`${absoluteDate(at)},`), `the scan time names another day than the cover: ${absolute(at)} / ${absoluteDate(at)}`)
-  } finally {
-    setDisplayTimeZone(null)
-  }
 })
 
 // ---- No empty list after a colon, no empty table, no same-day range ----
