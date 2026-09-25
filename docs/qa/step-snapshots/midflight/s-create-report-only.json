@@ -18,8 +18,16 @@
       "state": "Create in Report-only"
     },
     {
+      "label": "Require Phishing-Resistant MFA for Admins",
+      "state": "Correct grant controls"
+    },
+    {
       "label": "Shorten Admin Sessions",
       "state": "Create in Report-only"
+    },
+    {
+      "label": "Require MFA for Guests",
+      "state": "Correct who it applies to"
     },
     {
       "label": "Block Unsupported Device Platforms",

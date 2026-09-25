@@ -1,11 +1,11 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "Satisfied by Core - Grant - Guests MFA — no change needed",
+  "reason": "until the policy is corrected by hand",
   "fact": "Enforced",
   "badge": "On Hold",
   "bar": "Waiting on your answers",
-  "rail": "Waiting on your answers",
+  "rail": "Correct the policy",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -13,6 +13,14 @@
     "Completion Criteria"
   ],
   "tiles": [
+    {
+      "label": "Users differ from the plan",
+      "state": "Set Users as Implementation Tasks shows."
+    },
+    {
+      "label": "Configure Passkey Authentication",
+      "state": "Prerequisite · To do"
+    },
     {
       "label": "Confirm What You Use",
       "state": "Waiting on your answers"

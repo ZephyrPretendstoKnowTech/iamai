@@ -5,7 +5,7 @@
   "fact": "Report-only",
   "badge": "On Hold",
   "bar": "When every admin has a method it accepts (2 of 3)",
-  "rail": "Turn the policy on",
+  "rail": "Correct the policy",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -14,8 +14,8 @@
   ],
   "tiles": [
     {
-      "label": "Threshold",
-      "state": "2 of 3 admins have a method it accepts"
+      "label": "Users and grant differ from the plan",
+      "state": "Set Users as Implementation Tasks shows. Set Grant as Implementation Tasks shows."
     },
     {
       "label": "Configure Emergency Exclusions",
