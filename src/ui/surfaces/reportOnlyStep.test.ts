@@ -7,6 +7,7 @@ import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { REPORT_ONLY_STEP_ID } from '../../roadmap/reportOnlyBatch.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { stepBodyOf } from './stepBody.ts'
+import { railOf, readinessLeadOf } from './stepContract.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 
@@ -21,14 +22,15 @@ function plan(name: 'getiamai' | 'demo') {
 test('each task is its policy step’s own create procedure, word for word, in plan order', () => {
   const { r, ctx, step, body } = plan('getiamai')
   const tasks = body.emergencyAccountTasks!.tasks
-  const create = step.reportOnlyBatch!.create
-  assert.equal(tasks.length, create.length)
-  for (const [i, id] of create.entries()) {
+  const { create, created } = step.reportOnlyBatch!
+  const listed = r.steps.filter((s) => create.includes(s.id) || created.includes(s.id)).map((s) => s.id)
+  assert.equal(tasks.length, listed.length)
+  for (const [i, id] of listed.entries()) {
     const member = r.steps.find((s) => s.id === id)!
     const own = stepBodyOf(member, ctx).emergencyAccountTasks!.tasks.find((t) => t.id === 'create')!
     assert.equal(tasks[i].title, contentTitle(member))
     assert.deepEqual(tasks[i].steps, own.steps, `${id}: the same procedure as its own step`)
-    assert.equal(tasks[i].required, true)
+    assert.equal(tasks[i].required, create.includes(id))
   }
   assert.ok(tasks.every((t) => t.steps.some((l) => /Report-only/.test(l))), 'every create lands in Report-only')
 })
@@ -47,10 +49,28 @@ test('one card per policy: to create, headed by its step and naming the policy; 
     assert.equal(t.names?.length, 1, 'the policy it creates, by name')
   }
   for (const t of done) assert.match(t.value, /^(On|In Report-only|Report-only until .+)$/)
-  // A created policy has nothing left to do here: a Satisfied card, never a task.
+  // A created policy is a Satisfied card and keeps its task: the procedure is never hidden (owner, 2026-09-25).
   assert.ok(created.length > 0, 'the premise: the demo has created some')
-  const tasks = body.emergencyAccountTasks!.tasks.map((t) => t.id)
-  assert.deepEqual(tasks, create.map((id) => `create:${id}`), 'one task per policy to create, and none for one created')
+  const listed = r.steps.filter((s) => create.includes(s.id) || created.includes(s.id)).map((s) => `create:${s.id}`)
+  assert.deepEqual(body.emergencyAccountTasks!.tasks.map((t) => t.id), listed, 'one task per listed policy, created or not')
+  assert.equal(body.emergencyAccountTasks!.recommendedTaskId, `create:${r.steps.find((s) => create.includes(s.id))!.id}`, 'the first policy to create leads')
+})
+
+test('with every policy created, Entra still lists each create procedure and no line says Nothing left to do', () => {
+  const { r, ctx, step } = plan('demo')
+  const { create, created } = step.reportOnlyBatch!
+  const all = { ...step, reportOnlyBatch: { create: [], created: [...create, ...created] }, state: { ...step.state, satisfied: true } }
+  const body = stepBodyOf(all, ctx)
+  assert.equal(body.emergencyAccountTasks!.tasks.length, create.length + created.length)
+  const entra = body.artifacts.find((a) => a.id === 'portal')
+  assert.ok(entra, 'the Entra tab stands')
+  for (const id of [...create, ...created]) assert.ok(entra.text().includes(contentTitle(r.steps.find((s) => s.id === id)!)), id)
+  // Nothing drawn says it: the Tasks Remaining lead, the rail, and the Entra and AI Info tabs.
+  const rail = railOf(body.contract, { leadDrawn: true })
+  assert.equal(readinessLeadOf(body.contract), null)
+  assert.equal(rail.barLead, null)
+  assert.doesNotMatch(rail.headline, /Nothing left to do/)
+  for (const a of body.artifacts) assert.doesNotMatch(a.text(), /Nothing left to do/, a.id)
 })
 
 test('its rail counts the policies left to create, and its header reads Preparation step', () => {

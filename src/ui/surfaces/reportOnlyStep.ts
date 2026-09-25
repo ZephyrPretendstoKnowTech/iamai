@@ -4,7 +4,7 @@
 //
 // One card per policy: still to create, headed by its step's title and naming
 // the policy; or created, a Satisfied fact ("Report-only until Oct 1", "On").
-// One task per policy still to create, in plan order, and each task is that policy's own create
+// One task per listed policy, created or not, in plan order, and each task is that policy's own create
 // procedure, read from its own step (policyTasks.ts policyProcedureOf through
 // stepBody.ts), so the two can never say different things. A policy's own step
 // keeps its create task too: whichever the person follows, the scan closes both.
@@ -73,20 +73,23 @@ export function reportOnlyMilestoneOf(step: Step): string | null {
 }
 
 /**
- * One task per policy still to create, each its own step's create procedure
- * (`createOf` reads it from that step's body; stepBody.ts hands it in, so this
- * module imports none of it). A policy already created is a Satisfied card and
- * no task: it has nothing left to do here. The first task is the one the card
- * and the rail point at.
+ * One task per listed policy, created or not, each its own step's create
+ * procedure (`createOf` reads it from that step's body; stepBody.ts hands it in,
+ * so this module imports none of it). A created policy keeps its task: the
+ * procedure is never hidden, whatever the step's state (owner, 2026-09-25). The
+ * first policy still to create is the task the card and the rail point at, else
+ * the first.
  */
 export function reportOnlyTasksOf(step: Step, ctx: StepVarContext, createOf: (member: Step) => string[] | null): EmergencyTaskProjection | null {
   if (step.id !== REPORT_ONLY_STEP_ID) return null
-  const tasks: EmergencyAccountTask[] = membersOf(step, ctx).filter((m) => m.toCreate).flatMap((m) => {
+  const members = membersOf(step, ctx)
+  const tasks: EmergencyAccountTask[] = members.flatMap((m) => {
     const steps = createOf(m.step)
     if (steps === null || steps.length === 0) return []
     const title = contentTitle(m.step)
-    return [{ id: `create:${m.id}`, accountId: null, title, targetUpn: null, required: true, readinessKey: `batch:${m.id}`, evidence: null, actionLabel: title, steps }]
+    return [{ id: `create:${m.id}`, accountId: null, title, targetUpn: null, required: m.toCreate, readinessKey: `batch:${m.id}`, evidence: null, actionLabel: title, steps }]
   })
   if (tasks.length === 0) return null
-  return { tasks, recommendedTaskId: tasks[0].id, printAll: true }
+  const next = members.find((m) => m.toCreate && tasks.some((t) => t.id === `create:${m.id}`))
+  return { tasks, recommendedTaskId: next ? `create:${next.id}` : tasks[0].id, printAll: true }
 }
