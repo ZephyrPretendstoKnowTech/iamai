@@ -28,8 +28,12 @@ import { roleName } from '../../roles.ts'
 import { fillText } from '../../content/render.ts'
 import type { StepVarContext } from './stepVars.ts'
 
-/** The section whose policy steps read this (roadmap/stepGroups.ts: Turn On MFA for Everyone). */
-const SECTION = 'core'
+/**
+ * The sections whose policy steps read this (roadmap/stepGroups.ts): Turn On MFA
+ * for Everyone (walk list 4.x), and Extend MFA Coverage (owner, 2026-09-25: its
+ * steps finish on the same two lines).
+ */
+const SECTIONS = ['core', 'extend-mfa']
 /** The most accounts a fact names before it counts them. */
 const NAMED = 3
 
@@ -53,6 +57,9 @@ type FactWords = {
   adminRoles: string
   resources: string
   resourcesExcept: string
+  factWhen: string
+  when: { registerSecurityInfo: string; registerDevice: string; signInRisk: string; userRisk: string; authContext: string; applications: string }
+  registration: { registerSecurityInfo: string; registerDevice: string }
 }
 const W = (): FactWords => (app.plan as unknown as { stepContract: { policyFact: FactWords } }).stepContract.policyFact
 
@@ -137,14 +144,54 @@ function actionOf(e: PolicyEffect, row: Row, strengthName: (id: string) => strin
     }
     return { verb: 'blocks', what: w.signIn }
   }
-  if (e.strength) {
-    const name = strengthName(e.strength.id)
-    return name === null ? null : { verb: 'requires', what: name }
-  }
-  const controls = [...e.controls].map((c) => (c === 'mfa' ? w.mfa : w.controls[c] ?? null))
+  const strength = e.strength ? strengthName(e.strength.id) : null
+  if (e.strength && strength === null) return null
+  const controls = [...(strength !== null ? [strength] : []), ...[...e.controls].map((c) => (c === 'mfa' ? w.mfa : w.controls[c] ?? null))]
   if (controls.length === 0 || controls.some((c) => c === null)) return null
   const named = controls as string[]
   return { verb: 'requires', what: e.operator === 'OR' && named.length > 1 ? fillText(w.either, { a: named.slice(0, -1).join(', '), b: named[named.length - 1] }) : list(named) }
+}
+
+const ACTIONS: Record<string, 'registerSecurityInfo' | 'registerDevice'> = { 'urn:user:registersecurityinfo': 'registerSecurityInfo', 'urn:user:registerdevice': 'registerDevice' }
+
+/** Risk levels as one adjective: "high", "high- and medium". */
+const levelsOf = (levels: readonly string[]): string => (levels.length === 1 ? levels[0] : `${levels.slice(0, -1).map((l) => `${l}-`).join(', ')} and ${levels[levels.length - 1]}`)
+
+/**
+ * When the policy applies, in words, for the conditions this reads: the user
+ * action it protects, the risk it answers, the authentication context or the
+ * applications it is scoped to. Empty where it applies to every sign-in its
+ * people make. Null where a condition has no words here, so the fact is not
+ * said at all rather than said as if it applied everywhere (a high-risk policy
+ * read "requires Modern MFA + TAP for All users").
+ */
+function whenOf(e: PolicyEffect, blocks: boolean, nameOf: (id: string) => string | null): string[] | null {
+  const w = W().when
+  const out: string[] = []
+  for (const n of e.narrowings) {
+    if (n.kind === 'legacyClients' || n.kind === 'signInFlow') continue
+    if (n.kind === 'applications') {
+      if (n.none) return null
+      // Resources left out of All resources are the fact's resources clause.
+      if (n.ids.length === 0) continue
+      const apps = n.ids.map(nameOf)
+      if (apps.some((a) => a === null)) return null
+      out.push(fillText(w.applications, { apps: list(apps as string[]) }))
+      continue
+    }
+    if (n.kind === 'userActions') {
+      const actions = n.actions.map((a) => ACTIONS[a.toLowerCase()] ?? null)
+      if (actions.length !== 1 || actions[0] === null) return null
+      // A block names the registration it stops in its object instead (whatOf below).
+      if (!blocks) out.push(w[actions[0]])
+      continue
+    }
+    if (n.kind === 'signInRisk') { out.push(fillText(w.signInRisk, { levels: levelsOf(n.levels) })); continue }
+    if (n.kind === 'userRisk') { out.push(fillText(w.userRisk, { levels: levelsOf(n.levels) })); continue }
+    if (n.kind === 'authContext') { out.push(fillText(w.authContext, { ids: list(n.ids) })); continue }
+    return null
+  }
+  return out
 }
 
 /**
@@ -152,7 +199,7 @@ function actionOf(e: PolicyEffect, row: Row, strengthName: (id: string) => strin
  * Everyone; null anywhere else, and where the policy is not one this reads.
  */
 export function policyFactOf(step: Step, ctx: Pick<StepVarContext, 'snapshot' | 'mapping' | 'nameOf'>): PolicyFact | null {
-  if (!isGroupMember(step.id, SECTION)) return null
+  if (!SECTIONS.some((g) => isGroupMember(step.id, g))) return null
   if ((contentStepFor(step) as { kind?: unknown } | undefined)?.kind !== 'policy') return null
   const found = policyOf(step, (ctx.snapshot.config.caPolicies?.rows ?? []) as Row[])
   // Every policy the plan leaves behind excludes the exclusions group, whichever
@@ -165,9 +212,14 @@ export function policyFactOf(step: Step, ctx: Pick<StepVarContext, 'snapshot' | 
   if (policy === '') return null
   const e = effectOf(row)
   if (e.unknown.length > 0 || e.scope.unreadable || e.scope.workloadOnly) return null
-  const action = actionOf(e, row, (id) => strengthNameIn(id, ctx.snapshot, ctx.mapping))
-  if (action === null) return null
+  const acted = actionOf(e, row, (id) => strengthNameIn(id, ctx.snapshot, ctx.mapping))
+  const when = whenOf(e, e.blocks, (id) => { const n = ctx.nameOf(id); return !n || n.toLowerCase() === id.toLowerCase() || /‹/.test(n) ? null : n })
+  if (acted === null || when === null) return null
   const w = W()
+  // A block of a user action stops that registration, not sign-in.
+  const registration = e.blocks ? e.narrowings.find((n): n is { kind: 'userActions'; actions: string[] } => n.kind === 'userActions') : undefined
+  const kind = registration ? ACTIONS[registration.actions[0].toLowerCase()] : undefined
+  const action = kind ? { ...acted, what: w.registration[kind] } : acted
   // A name the scan holds; an id nobody resolved is not a name to print.
   let unresolved = false
   const name = (id: string): string => {
@@ -194,7 +246,7 @@ export function policyFactOf(step: Step, ctx: Pick<StepVarContext, 'snapshot' | 
   ]
   if (unresolved || who.length === 0) return null
   const whom = excluded.length > 2 ? fillText(w.exceptMore, { who: list(who), first: excluded[0], n: String(excluded.length - 1) }) : excluded.length > 0 ? fillText(w.except, { who: list(who), excluded: list(excluded) }) : list(who)
-  const [does, doing] = w.verbs[action.verb].map((verb) => fillText(w.fact, { verb, what: action.what, who: whom }))
+  const [does, doing] = w.verbs[action.verb].map((verb) => (when.length > 0 ? fillText(w.factWhen, { verb, what: action.what, when: when.join(' '), who: whom }) : fillText(w.fact, { verb, what: action.what, who: whom })))
   const apps = s.applications
   const all = apps.include.some((a) => a.toLowerCase() === 'all')
   const out = apps.exclude.filter((a) => a.toLowerCase() !== 'none')

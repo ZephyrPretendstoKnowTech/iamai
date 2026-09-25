@@ -239,28 +239,28 @@ export const ACCEPTANCE = [
   { item: '32', step: 'session-lifetime', path: 'more.helpDesk', must: 'Stay signed in? stops working for everyone here' },
   { item: '33', step: 'pim-activation-reauth', path: 'comms.body', must: 'when you activate an eligible admin role', mustNot: 'confirm with MFA each time' },
   { item: '33', step: 'pim-activation-reauth', path: 'who.evidence', must: '{n} of them are not yet Ready for phishing-resistant MFA: {list:eligibleWithout}' },
-  { item: '33', step: 'pim-activation-reauth', path: 'why', must: 'Role activation is a useful point to verify the person requesting privileged access.' },
+  { item: '33', step: 'pim-activation-reauth', path: 'why', must: 'This policy asks for a fresh strong sign-in every time someone activates a role.' },
   { item: '34', step: 'intune-enrollment-reauth', path: 'more.manager', must: 'User-driven enrollment asks for a fresh authentication', mustNot: 'one extra prompt' },
   { item: '35', step: 'sign-in-risk', path: 'more.risks', must: 'a person with only Authenticator approval cannot satisfy it until they register an accepted method' },
   { item: '35', step: 'sign-in-risk', path: 'who.evidence', must: '{list:pushOnlyUsers}' },
-  { item: '35', step: 'sign-in-risk', path: 'doneWhen', must: 'Available risky sign-ins were reviewed' },
+  { item: '35', step: 'sign-in-risk', path: 'doneWhen', mustNot: 'were reviewed' },
   // Risk and Sessions A1, A4-A6 (docs/plans/risk-and-sessions-spec.md section 3,
   // Microsoft Learn checked 2026-09-20): sign-in risk is a reading of one
   // request; the reading this step has is the sign-in record's and not Identity
   // Protection's; an unregistered person is blocked rather than prompted.
-  { item: '35', step: 'sign-in-risk', path: 'why', must: 'one authentication request', mustNot: 'flags a sign-in as suspicious' },
+  { item: '35', step: 'sign-in-risk', path: 'why', must: "A high-risk sign-in was probably not made by the account's owner.", mustNot: 'flags a sign-in as suspicious' },
   { item: '35', step: 'sign-in-risk', path: 'who.evidence', must: "Identity Protection's own risk reports are a separate surface this plan does not read" },
   { item: '35', step: 'sign-in-risk', path: 'more.risks', must: 'blocked, not prompted' },
   { item: '35', step: 'sign-in-risk', path: 'more.helpDesk', must: 'AADSTS53004', mustNot: 'then dismiss the risk in Identity Protection.' },
   { item: '36', step: 'user-risk', path: 'whatToDo.before', must: 'Synchronized users who remediate with a password change need password writeback in Entra Connect.' },
   { item: '36', step: 'user-risk', path: 'whatToDoReference.steps', mustNot: 'password writeback' },
-  { item: '36', step: 'user-risk', path: 'doneWhen', must: 'People rated at risk were reviewed' },
+  { item: '36', step: 'user-risk', path: 'doneWhen', mustNot: 'were reviewed' },
   // Risk and Sessions B1-B5 (docs/plans/risk-and-sessions-spec.md section 4,
   // Microsoft Learn checked 2026-09-20): user risk is about the account and is
   // mostly read after the sign-in; the pinned grant is Require risk remediation
   // with the strength, never MFA plus a password change; remediation needs a
   // registered method and is not the SSPR flow; a guest is blocked, not helped.
-  { item: '36', step: 'user-risk', path: 'why', must: 'the account itself is compromised', mustNot: 'outside a single suspicious sign-in' },
+  { item: '36', step: 'user-risk', path: 'why', must: 'A high-risk account is probably compromised.', mustNot: 'outside a single suspicious sign-in' },
   { item: '36', step: 'user-risk', path: 'whatToDoReference.steps', must: 'Grant → Require risk remediation with Require authentication strength: {strengthName}' },
   { item: '36', step: 'user-risk', path: 'who.evidence', must: 'registered for multifactor authentication before this policy reaches them' },
   { item: '36', step: 'user-risk', path: 'whatToDo.before', must: 'password hash synchronization and the on-premises password-change setting that clears user risk' },
@@ -269,7 +269,7 @@ export const ACCEPTANCE = [
   // Risk and Sessions C1-C2 (docs/plans/risk-and-sessions-spec.md section 5,
   // Microsoft Learn checked 2026-09-20): what Medium means, and the grant and
   // absent session control the pin actually holds.
-  { item: '37', step: 'sign-in-risk-medium', path: 'why', must: 'one or more moderate anomalies' },
+  { item: '37', step: 'sign-in-risk-medium', path: 'why', must: 'This policy asks for MFA before it goes through.' },
   { item: '37', step: 'sign-in-risk-medium', path: 'whatToDoReference.steps', must: 'Grant → Require multifactor authentication. No session control: the baseline sets none here', mustNot: 'Sign-in frequency → Every time' },
   { item: '37', step: 'sign-in-risk-medium', path: 'more.helpDesk', must: 'AADSTS53004', mustNot: 'dismiss the risk in Identity Protection' },
   { item: '38', step: 'user-risk-medium', path: 'who.evidence', must: 'This policy covers Medium user risk only. Keep the separate High-risk control unless a reviewed replacement preserves that coverage.' },
@@ -281,7 +281,7 @@ export const ACCEPTANCE = [
   // session control, and why guests are excluded from this one.
   { item: '38', step: 'user-risk-medium', path: 'whatToDoReference.steps', must: 'Grant → Require authentication strength: {strengthName} and Require password change', mustNot: 'Sign-in frequency → Every time' },
   { item: '38', step: 'user-risk-medium', path: 'who.evidence', must: 'Guests and external accounts are excluded from this policy' },
-  { item: '38', step: 'user-risk-medium', path: 'why', must: 'moderate anomalies on the account' },
+  { item: '38', step: 'user-risk-medium', path: 'why', must: 'its password may be known to someone else' },
   { item: '24', step: 'unmanaged-browser', path: 'whatToDo.before', must: 'SharePoint admin center → Policies → Access control → Unmanaged devices → Allow limited, web-only access → Save.' },
   // Require Healthy Devices D2 (docs/plans/require-healthy-devices-spec.md,
   // checked 2026-09-20): Intune's compliance settings moved to Endpoint

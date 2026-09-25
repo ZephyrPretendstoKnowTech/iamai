@@ -19,14 +19,6 @@ import { createsNewPolicy } from './stepJson.ts'
 import { stepEvidenceStrategy } from '../../roadmap/evidenceStrategy.ts'
 
 /**
- * The person's own check once the policy has changed (shared.policyVerifyAfter):
- * the last line of the sign-in-records policy block, and the one line of it a
- * finished policy IAMAI watched change still owes (stepContract.ts doneWhenOf).
- * Its own key, so the two places that state it read one sentence.
- */
-export const POLICY_VERIFY_AFTER: string = (content.shared as unknown as { policyVerifyAfter: string }).policyVerifyAfter
-
-/**
  * What an enforced policy IAMAI never watched in report-only says in place of the
  * two report-only gates (shared.policyDoneWhenUnobserved).
  */
@@ -138,7 +130,7 @@ export function doneWhenTemplates(step: Step, doneWhen: unknown[], mapping?: Pic
   const afterGates = shared.policyDoneWhen.slice(shared.policyDoneWhenTracked.length)
   const past = enforced && reportOnlyUnwatched(step) ? [POLICY_UNOBSERVED, ...afterGates] : afterGates
   const rollout = readyWhen(step) ? [...tracked, ...afterGates] : enforced ? past : shared.policyDoneWhen
-  const policy = configured ? shared.policyDoneWhenConfiguration : [...rollout, POLICY_VERIFY_AFTER]
+  const policy = configured ? shared.policyDoneWhenConfiguration : rollout
   // A create has no changed settings to match and no week after the change: its
   // completion is the report-only observation the plan is about to start.
   const change = createsNewPolicy(step) ? policy : shared.changeDoneWhen

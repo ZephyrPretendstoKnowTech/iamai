@@ -63,7 +63,7 @@ import { derivePolicyResults, deriveReportOnlyPolicyIds } from '../../graph/coll
 import type { StoredSignIn } from '../../graph/collect/types.ts'
 import { CONTRACT, FINISHED_READING, readinessOf, stepContract } from './stepContract.ts'
 import { stepBodyOf } from './stepBody.ts'
-import { POLICY_UNOBSERVED, POLICY_VERIFY_AFTER } from './doneWhen.ts'
+import { POLICY_UNOBSERVED } from './doneWhen.ts'
 import { ifWrongLineFor, stepExportView, stepLines } from './stepExport.ts'
 import { jsonOffered, stepOperations } from './stepJson.ts'
 import registry from '../../content/implementation/registry.generated.json' with { type: 'json' }
@@ -816,15 +816,17 @@ function assertWentLiveUnwatched(scan: Scan, id: string): void {
   // findings stopped carrying it, and told an assistant only "IAMAI watched it
   // get there". It says it once.
   assert.equal(briefingTells(step, ctx), 1, `${label}: the AI Info briefing says it went live unwatched ${briefingTells(step, ctx)} times`)
+  // The tile states the fact. The Done-when asks the person to verify nothing
+  // (owner, 2026-09-25: "Verify after the change" is gone everywhere) and does
+  // not say the fact twice.
   const done = stepContract(step, ctx).doneWhen
-  assert.ok(done.includes(POLICY_VERIFY_AFTER), `${label}: the check after the change is gone: ${done.join(' | ')}`)
-  // The tile states the fact; the Done-when keeps the check and does not say it twice.
+  assert.equal(done.some((l) => /^Verify after the change/.test(l)), false, `${label}: ${done.join(' | ')}`)
   assert.equal(done.some((l) => UNWATCHED.test(l) || /watched no report-only period/.test(l)), false, done.join(' | '))
-  assert.ok(stepExportView(step, ctx).doneWhen.includes(POLICY_VERIFY_AFTER), `${label}: the export lost the check after the change`)
-  assert.ok(stepLines(step, ctx).includes(POLICY_VERIFY_AFTER), `${label}: the step's lines lost the check after the change`)
+  assert.equal(stepExportView(step, ctx).doneWhen.some((l) => /^Verify after the change/.test(l)), false, `${label}: the export asks for a check after the change`)
+  assert.equal(stepLines(step, ctx).some((l) => /^Verify after the change/.test(l)), false, `${label}: the step's lines ask for a check after the change`)
 }
 
-test('a policy this plan built straight to On stays Completed, says it went live unwatched, and keeps the check after the change', () => {
+test('a policy this plan built straight to On stays Completed and says it went live unwatched', () => {
   // R4-12 (Jordan D7), owner decision 3 (2026-09-22). An administrator created
   // Block Unsupported Platforms On, skipping report-only, on a tenant whose last
   // scan had recorded it absent. The board filed it under Completed, its Readiness
@@ -858,7 +860,7 @@ test('a policy this plan built straight to On stays Completed, says it went live
   const watched = d2.steps.find((s) => s.id === before.id)!
   assert.equal(watched.state.lifecycle === 'enforced' && watched.state.satisfied, true, 'the premise: watched on, and finished')
   const watchedDone = stepContract(watched, unwatchedCtx(on, d2)).doneWhen
-  assert.equal(watchedDone.includes(POLICY_VERIFY_AFTER), false, watchedDone.join(" | "))
+  assert.equal(watchedDone.some((l) => /^Verify after the change/.test(l)), false, watchedDone.join(" | "))
   assert.ok(watchedDone.includes((CONTRACT as unknown as { donePeriod: string }).donePeriod), watchedDone.join(" | "))
   assert.deepEqual(unwatchedWarnings(watched, unwatchedCtx(on, d2)), [], 'a policy IAMAI watched in report-only is said to have gone live unwatched')
 
@@ -870,7 +872,7 @@ test('a policy this plan built straight to On stays Completed, says it went live
   assert.equal(found.state.satisfied && found.state.inPlace && found.state.lifecycle === 'enforced', true, 'the premise: In place when IAMAI first looked')
   assert.equal(found.state.members.every((mm) => mm.change.latest.neverObserved === true), true, 'the premise: first seen already enforced')
   assert.deepEqual(unwatchedWarnings(found, unwatchedCtx(m, mRun)), [], 'a policy the tenant already had is said to have gone live under this plan')
-  assert.equal(stepContract(found, unwatchedCtx(m, mRun)).doneWhen.includes(POLICY_VERIFY_AFTER), false)
+  assert.equal(stepContract(found, unwatchedCtx(m, mRun)).doneWhen.some((l) => /^Verify after the change/.test(l)), false)
 })
 
 test("a policy whose scan's records show it in report-only is not said under New evidence, in AI Info or in its Done-when to have had no report-only period", () => {
@@ -961,7 +963,7 @@ test('a policy carrying this plan\'s tag, first seen On, is never said to have g
       const ctx = unwatchedCtx(f, run)
       assert.equal((() => { const r = readinessOf(step, stepContract(step, ctx)); return [...r.tiles, ...r.satisfied] })().some((t) => t.key === 'enforced-unwatched'), false, `${label}, ${id}: said to have gone live unwatched`)
       assert.equal(briefingTells(step, ctx), 0, `${label}, ${id}: the AI Info briefing says it went live unwatched`)
-      assert.equal(stepContract(step, ctx).doneWhen.includes(POLICY_VERIFY_AFTER), false, `${label}, ${id}: a check after a change nobody saw`)
+      assert.equal(stepContract(step, ctx).doneWhen.some((l) => /^Verify after the change/.test(l)), false, `${label}, ${id}: a check after a change nobody saw`)
     }
   }
 })

@@ -57,7 +57,8 @@ import { isHeld } from '../../roadmap/holds.ts'
 import { badgeOf, planStateOf } from './planState.ts'
 import type { PlanStateKind } from './planState.ts'
 import { GATING_SUBJECTS, blockerStepId } from '../../roadmap/blockerSteps.ts'
-import { POLICY_VERIFY_AFTER, doneWhenTemplates, enforcedUnwatched } from './doneWhen.ts'
+import { doneWhenTemplates, enforcedUnwatched } from './doneWhen.ts'
+import { stepEvidenceStrategy } from '../../roadmap/evidenceStrategy.ts'
 import { estimatedDay, scheduleOf, shownDay } from '../../roadmap/stepSchedule.ts'
 import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
 import type { StepSchedule } from '../../roadmap/stepSchedule.ts'
@@ -1387,25 +1388,33 @@ function policyDoneWhen(step: Step, fact: PolicyFact | null, policy: string, mai
   // watched go from Report-only to On passed its period like any other.
   const members = step.state.members
   const foundOn = members.length > 0 ? members.every((m) => m.change.latest.neverObserved === true) : step.state.inPlace
-  const period = enforcedUnwatched(step) ? [POLICY_VERIFY_AFTER] : foundOn ? [] : [W.donePeriod]
+  const period = foundOn || enforcedUnwatched(step) || stepEvidenceStrategy(step) === 'configuration' ? [] : [W.donePeriod]
   if (mailAccounts.length === 0) return [on, ...period]
   // Two lines with the mail half too (walk list 4.x item 26): it joins the report-only line.
   const accounts = list([...mailAccounts])
   return period[0] === W.donePeriod ? [on, fillText(W.donePeriodMail, { accounts })] : [on, ...period, fillText(MAIL_DONE(), { accounts })]
 }
 
-/** A policy in Turn On MFA for Everyone: the steps policyDoneWhen finishes. */
-const isSectionPolicy = (step: Step, cs: Record<string, unknown> | undefined): boolean => isGroupMember(step.id, 'core') && cs?.kind === 'policy'
+/**
+ * A policy in Turn On MFA for Everyone or Extend MFA Coverage: the steps
+ * policyDoneWhen finishes (walk list 4.x item 26; owner, 2026-09-25 for section 5).
+ */
+const isSectionPolicy = (step: Step, cs: Record<string, unknown> | undefined): boolean => (isGroupMember(step.id, 'core') || isGroupMember(step.id, 'extend-mfa')) && cs?.kind === 'policy'
 
 function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<string, unknown> | undefined, ex: Record<string, unknown>, fix: ContractFix[], tenant: string, mapping?: StepVarContext['mapping'], ctx?: StepVarContext, fact: PolicyFact | null = null): string[] {
   if (step.state.setAside) return [CONTRACT.doneSetAside]
-  if (isSectionPolicy(step, cs) && step.state.condition !== 'baseline-conflict') {
+  // Not a pair IAMAI cannot tell apart, nor a goal a policy delivers with nothing
+  // left to write: neither has a rollout, and each keeps its own completion.
+  if (isSectionPolicy(step, cs) && step.state.condition !== 'baseline-conflict' && reason !== 'unmatched-pair' && reason !== 'no-operation') {
     const mail = step.id === QUESTION_STEP.mailDevices && mapping ? mailDevicesOf(mapping).map((id) => ctx?.nameOf(id) ?? id) : []
     // The policy by its name: the tracked one where the tenant has it, else the one the plan proposes.
     const tracked = (step.tracking?.members ?? []).map((m) => m.policyName).find((n): n is string => typeof n === 'string' && n.trim() !== '')
     // Several tenant policies delivering it together are named together, as the Satisfied card names them.
     const together = step.state.satisfied && step.satisfiedBy && step.satisfiedBy.sufficient === null && step.satisfiedBy.policies.length > 1 ? list(step.satisfiedBy.policies) : null
-    return policyDoneWhen(step, fact, together ?? tracked ?? String(ex.policyName ?? contentTitle(step)), mail)
+    // A step that makes two policies (Require MFA for Guests) names both, never its own title.
+    const planned = (step.action.resolution?.policies ?? []).map((op) => ((op.mode === 'update' ? (op.target ?? op.body) : op.body) as { displayName?: unknown } | undefined)?.displayName).filter((n): n is string => typeof n === 'string' && n.trim() !== '')
+    const pair = planned.length > 1 ? list(planned) : null
+    return policyDoneWhen(step, fact, together ?? pair ?? tracked ?? String(ex.policyName ?? contentTitle(step)), mail)
   }
   // Emergency access in place with its hardening deferred is not fully resilient,
   // and Done when does not say it is (owner, 2026-09-11).
@@ -1449,8 +1458,7 @@ function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<str
       // block policy whose own completion never carried the line - Block
       // Unsupported Platforms, built straight to On - finished on the scan's
       // sentence alone. The fact itself is the Readiness tile's (unwatchedTile).
-      const after = step.state.lifecycle === 'enforced' && ((watchedArrive(step) && own.includes(POLICY_VERIFY_AFTER)) || enforcedUnwatched(step)) ? [POLICY_VERIFY_AFTER] : []
-      return [...(end !== null ? [end] : []), fillText(CONTRACT.doneSatisfied, { tenant }), ...after]
+      return [...(end !== null ? [end] : []), fillText(CONTRACT.doneSatisfied, { tenant })]
     }
     return own.length > 0 ? own : [fillText(CONTRACT.doneSatisfied, { tenant })]
   }
