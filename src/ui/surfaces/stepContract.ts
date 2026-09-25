@@ -158,7 +158,7 @@ type ContractWords = {
   /** The signed-in account a policy would leave with no way in (walk list 4.x item 43). */
   operatorCard: { label: string; value: string; admin: string; other: string; fix: string }
   /** A gate on people's methods: who is short and what moves them (walk list 4.x items 42, 48). */
-  methodGate: { adminValue: string; everyoneValue: string; needs: string; needMany: string; needListed: string; signIn: string; signInMany: string; signInListed: string; route: string; people: string; newDevice: string }
+  methodGate: { adminValue: string; everyoneValue: string; needs: string; needMany: string; needListed: string; signIn: string; signInMany: string; signInListed: string; route: string; people: string; newDevice: string; readinessLink: string }
   /** A finished policy this plan owns that went live with no report-only period IAMAI watched (doneWhen.ts enforcedUnwatched; owner decision 3). */
   /** The people marked on the campaign to turn on without, for now (roadmap/followUp.ts). */
   followUp: { label: string; campaignLabel: string; campaign: string; campaignOpen: string; method: string; risk: string; pickerLabel: string; save: string; printed: string; printedNone: string }
@@ -2484,8 +2484,22 @@ function methodGateSentence(step: Step, gate: NonNullable<Step['action']['readin
 function adminGateNamesOf(step: Step, ctx: StepVarContext): string[] | null {
   const gate = step.action.readinessGate
   if (!gate || step.state.satisfied || step.state.lifecycle === 'enforced') return null
-  const ids = adminShortIds(step, gate, ctx.operatorId)
+  const ids = everyoneGate(gate) ? adminShortIds(step, gate, ctx.operatorId) : extendMfaShortIds(step, ctx.operatorId)
   return ids.length > 0 ? personLines(ctx, ids, { registersDevice: stepRegistersDevice(step) }) : null
+}
+
+/**
+ * A gate in Extend MFA Coverage names each person it is short of too (owner
+ * decision 5, 2026-09-25): the percentage, then each person without a method
+ * the policy accepts, with MFA Readiness's next step, the page folding the list
+ * after five. Not the signed-in account, which has its own card.
+ */
+function extendMfaShortIds(step: Step, operatorId: string | null): string[] {
+  const p = step.methodPreparation
+  if (!p || !isGroupMember(step.id, 'extend-mfa')) return []
+  const judged = new Set([...p.readyIds, ...p.unknownIds.filter((id) => !(p.staleIds ?? []).includes(id))])
+  const operator = operatorId?.toLowerCase() ?? null
+  return p.ids.filter((id) => !judged.has(id) && id.toLowerCase() !== operator)
 }
 
 /** The admins the admin gate is short of, the signed-in one aside; none on any other gate. The card's lines and its sentence read this one list. */
@@ -2577,13 +2591,16 @@ function stateTile(step: Step, c: StepContract, setupAfterEnforcement = false): 
     const people = methodGateOf(step, gate) !== null
     const route = people ? gateRouteOf(step, gate) : c.routeStart ?? gateRouteOf(step, gate)
     const note = c.found.find((f) => f.key === 'gate')?.text ?? readinessSentence(step, gate, c.routeStart)
-    // The admin gate names each admin on the card with their next step (round 1).
-    const admins = everyoneGate(gate) ? c.gateNames : null
+    // The admin gate names each admin on the card with their next step (round 1),
+    // and a gate in Extend MFA Coverage each person (owner decision 5, 2026-09-25).
+    const admins = everyoneGate(gate) || isGroupMember(step.id, 'extend-mfa') ? c.gateNames : null
+    // A card in Extend MFA Coverage that names people opens MFA Readiness on them.
+    const readiness = admins?.length && isGroupMember(step.id, 'extend-mfa') ? { label: CONTRACT.methodGate.readinessLink, href: `#/readiness/step/${step.id}` } : null
     // Where the card states its count ("21 of 30 people have a method it
     // accepts"), the percentage beside it carries no "At least" (walk list 4.x
     // item 48): the count is exact, and the hedge was IAMAI's to carry.
     const value = methodGateValueOf(step, gate) ?? readinessValueOf(people ? (({ floor: _floor, ...rest }) => rest)(gate) : gate)
-    return { key: 'gate', label: t.gate, tone: 'warn', value, note, ...(admins?.length ? { names: admins } : {}), ...(route !== null ? { link: stepLink(route.id, route.title) } : {}) }
+    return { key: 'gate', label: t.gate, tone: 'warn', value, note, ...(admins?.length ? { names: admins } : {}), ...(readiness !== null ? { link: readiness } : route !== null ? { link: stepLink(route.id, route.title) } : {}) }
   }
   // An observation with no date says WHY it has no date, where the step knows:
   // the people the policy stopped in report-only, or the records that could not

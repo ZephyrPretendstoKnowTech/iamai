@@ -3096,10 +3096,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const registrationStep = steps.find((s) => s.goalId === 'register-info-protected')
   if (registrationStep) {
     if (tapEnabled === false) blockLate(registrationStep, 'registration-no-tap', BLOCKED_REASON.exist(1, 'Temporary Access Pass policy', 0))
-    const withoutMethod = viability.filter((v) => isActivePerson(v) && v.mfa === 'none').length
-    // A reason, not a dependency edge: the campaign sits in a later phase, and
-    // pointing a phase 0 step at it would order the plan against itself.
-    if (withoutMethod > 0) blockLate(registrationStep, 'registration-coverage', BLOCKED_REASON.reaches('people without a method', '0', String(withoutMethod)))
+    // The people with no method at all are among those its readiness gate counts
+    // short of a method its strength accepts, and its Threshold card names each of
+    // them: one card for one fact (owner decision 5, 2026-09-25).
     // The count is only the nearest cause where nobody is being sent to create
     // the location: with Define the Trusted Network on the plan the step already
     // shows that prerequisite, and "when 1 trusted location exist (now 0)" beside

@@ -260,20 +260,17 @@ test('a reach the scan could not measure or settle names nobody, never zero peop
   }
   // a policy scope this scan could not settle is an unknown reach, never the goal's people
   {
-    let seen = 0
-    for (const name of ['demo', 'demo-week2', 'messy', 'midflight'] as const) {
-      const f = fixture(name)
-      const run = runFixture(f)
-      const scored = scoredPeople(f.snapshot, f.mapping, f.snapshot.asOf)
-      for (const step of run.steps) {
-        const hold = stepMfaHold(step, scored)
-        if (!hold || step.methodPreparation?.completeScope !== false) continue
-        assert.notEqual(step.population.ids.length, 0, `${name}/${step.id}: the goal did hand it people`)
-        assert.equal(hold.ids, null, `${name}/${step.id}: an unsettled scope names nobody`)
-        seen += 1
-      }
-    }
-    assert.ok(seen > 0, 'the fixtures hold MFA steps whose policy scope could not be settled')
+    // The fixtures' case was Require MFA for Guests, whose guest types the
+    // directory cannot place; it now counts only guests it can read and place
+    // (owner decision 7, 2026-09-25). The rule stands for any held step.
+    const f = fixture('demo')
+    const run = runFixture(f)
+    const scored = scoredPeople(f.snapshot, f.mapping, f.snapshot.asOf)
+    const held = run.steps.find((s) => s.id === 's-goal-register-info-protected')!
+    assert.ok(stepMfaHold(held, scored)?.ids?.length, 'the premise: a held step that names its people')
+    const unsettled = { ...held, methodPreparation: { ...held.methodPreparation!, completeScope: false } }
+    assert.notEqual(unsettled.population.ids.length, 0, 'the goal did hand it people')
+    assert.equal(stepMfaHold(unsettled, scored)?.ids, null, 'an unsettled scope names nobody')
   }
 })
 
