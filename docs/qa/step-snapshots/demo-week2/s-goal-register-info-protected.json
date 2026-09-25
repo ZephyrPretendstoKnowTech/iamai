@@ -1,11 +1,11 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": null,
+  "reason": "when MFA readiness reaches 90% (now 68%)",
   "fact": null,
   "badge": "On Hold",
   "bar": "Waiting on your answers",
-  "rail": "Create the policy in Report-only",
+  "rail": "Create the policy, turned on",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -32,8 +32,6 @@
   ],
   "channels": [
     "Entra",
-    "PowerShell",
-    "JSON",
     "AI Info"
   ],
   "when": "Est. Sep 7, 2026"

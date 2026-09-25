@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "Ready · Decision",
   "bar": "Needs a decision",
-  "rail": "Approving these answers sets which accounts count as people and which get a policy of their own.",
+  "rail": "Approving these answers sets which accounts count as people and which join the service-accounts group.",
   "headings": [
     "About this Step",
     "Questions",

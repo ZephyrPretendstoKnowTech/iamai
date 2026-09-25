@@ -1,11 +1,11 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "Baseline references an unmapped group",
+  "reason": "after: Configure Emergency Exclusions",
   "fact": null,
   "badge": "On Hold",
-  "bar": "Baseline references an unmapped group",
-  "rail": "Baseline mappings first (Plan settings): the baseline names a group of its author's, and IAMAI does not yet know whether it stands for something in Fixture messy or is left out.",
+  "bar": "When everyone it covers has a method it accepts (13 of 106)",
+  "rail": "Create the policy, turned on",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -15,15 +15,11 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "12% ready for Modern MFA + TAP"
+      "state": "13 of 106 people have a method it accepts"
     },
     {
       "label": "Configure Emergency Exclusions",
       "state": "Prerequisite · To do"
-    },
-    {
-      "label": "Baseline mapping",
-      "state": "Baseline references an unmapped group"
     },
     {
       "label": "Prepare Emergency Access Accounts",
@@ -36,10 +32,6 @@
     {
       "label": "Authentication strength",
       "state": "Not met"
-    },
-    {
-      "label": "Enrollment workflows",
-      "state": "Unknown"
     }
   ],
   "channels": [

@@ -1,7 +1,7 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "after: Prepare Emergency Access Accounts",
+  "reason": "after: Create or Correct Service Accounts Group",
   "fact": null,
   "badge": "On Hold",
   "bar": "Waiting on your answers",
@@ -14,12 +14,12 @@
   ],
   "tiles": [
     {
-      "label": "Configure Emergency Exclusions",
+      "label": "Create or Correct Service Accounts Group",
       "state": "Prerequisite · To do"
     },
     {
-      "label": "Prerequisites",
-      "state": "Review MFA before enabling Every time"
+      "label": "Configure Emergency Exclusions",
+      "state": "Prerequisite · To do"
     },
     {
       "label": "Decide How and Where People Sign In",
@@ -32,8 +32,6 @@
   ],
   "channels": [
     "Entra",
-    "PowerShell",
-    "JSON",
     "AI Info"
   ],
   "when": "Est. Sep 7, 2026"

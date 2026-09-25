@@ -1,10 +1,10 @@
 {
-  "lane": "Up Next",
+  "lane": "Deferred",
   "substatus": null,
-  "reason": "after: Configure Passkey Authentication",
+  "reason": null,
   "fact": null,
-  "badge": "Up Next",
-  "bar": "After Configure Passkey Authentication",
+  "badge": "Doesn't apply",
+  "bar": "Doesn't apply",
   "rail": "Create the policy in Report-only",
   "headings": [
     "About this Step",
@@ -14,15 +14,13 @@
   ],
   "tiles": [
     {
-      "label": "Configure Passkey Authentication",
+      "label": "Prepare Emergency Access Accounts",
       "state": "Prerequisite · To do"
     }
   ],
   "channels": [
     "Entra",
-    "PowerShell",
-    "JSON",
     "AI Info"
   ],
-  "when": "Est. Sep 7, 2026"
+  "when": "Not scheduled"
 }
